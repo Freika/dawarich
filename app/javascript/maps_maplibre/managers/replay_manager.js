@@ -1,3 +1,5 @@
+import { translate } from "i18n"
+
 /**
  * ReplayManager - Core business logic for replay feature
  * Manages point data grouping by day, indexing by minute, and navigation state
@@ -197,12 +199,12 @@ export class ReplayManager {
    */
   getCurrentDayDisplay() {
     const day = this.getCurrentDay()
-    if (!day) return "No data"
+    if (!day) return translate("replay.no_data")
 
     const [year, month, dayNum] = day.split("-").map(Number)
     const date = new Date(year, month - 1, dayNum)
 
-    return date.toLocaleDateString("en-US", {
+    return date.toLocaleDateString(document.documentElement.lang || undefined, {
       year: "numeric",
       month: "long",
       day: "numeric",

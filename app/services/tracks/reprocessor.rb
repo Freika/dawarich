@@ -4,10 +4,9 @@ module Tracks
   # Reprocesses tracks to update transportation mode segments.
   # Can reprocess tracks for a specific import or individual tracks.
   #
-  # Uses user-specific transportation thresholds from settings when available.
+  # Manually corrected segments are preserved: the Detector subtracts their
+  # time ranges from the auto-classified output.
   class Reprocessor
-    LARGE_TRACK_THRESHOLD = 10_000
-
     def initialize(import: nil, track: nil)
       @import = import
       @track = track
@@ -33,10 +32,12 @@ module Tracks
       count
     end
 
+    # Raises on failure so single-track callers (segment reset) can roll
+    # back alongside their own writes instead of committing half a change.
     def reprocess_single
       return false unless @track
 
-      reprocess_track(@track)
+      reprocess_track!(@track, fallback: false)
       true
     end
 
@@ -46,84 +47,33 @@ module Tracks
 
     private
 
+    # Batch path: one broken track must not abort the rest of the import.
     def reprocess_track(track)
-      points_count = track.points.count
-      return if points_count < 2
-
-      if points_count > LARGE_TRACK_THRESHOLD
-        Rails.logger.warn "[Reprocessor] Track #{track.id} has #{points_count} points, " \
-                          'which may use significant memory during reprocessing'
-      end
-
-      points = track.points.order(:timestamp).to_a
-
-      Track.transaction do
-        preserved = track.track_segments.manually_corrected.to_a
-        preserved = prune_out_of_bounds(preserved, points_count)
-        track.track_segments.auto_classified.delete_all
-
-        user_thresholds, expert_thresholds = extract_user_thresholds(track.user)
-        enabled_modes = extract_enabled_modes(track.user)
-
-        detector = TransportationModes::Detector.new(
-          track, points,
-          user_thresholds: user_thresholds,
-          user_expert_thresholds: expert_thresholds,
-          enabled_modes: enabled_modes
-        )
-        segment_data = detector.call
-        segment_data = drop_overlapping(segment_data, preserved)
-
-        create_segments(track, segment_data)
-        recompute_dominant_mode(track)
-      end
+      reprocess_track!(track)
     rescue StandardError => e
-      Rails.logger.error "Failed to reprocess track #{track.id}: #{e.message}"
+      ExceptionReporter.call(e, "Failed to reprocess track #{track.id}")
     end
 
-    def extract_user_thresholds(user)
-      return [nil, nil] unless user
+    def reprocess_track!(track, fallback: true)
+      Track.transaction do
+        preserved = track.track_segments.manually_corrected.to_a
+        track.track_segments.auto_classified.delete_all
 
-      safe_settings = Users::SafeSettings.new(user.settings || {})
-      [safe_settings.transportation_thresholds, safe_settings.transportation_expert_thresholds]
+        detector = TransportationModes::Detector.new(
+          track,
+          enabled_modes: extract_enabled_modes(track.user),
+          preserved: preserved,
+          fallback: fallback
+        )
+        create_segments(track, detector.call)
+        recompute_dominant_mode(track)
+      end
     end
 
     def extract_enabled_modes(user)
       return nil unless user
 
       Users::SafeSettings.new(user.settings || {}).enabled_transportation_modes
-    end
-
-    def prune_out_of_bounds(preserved, points_count)
-      valid, invalid = preserved.partition do |s|
-        s.start_index >= 0 &&
-          s.end_index < points_count &&
-          s.start_index <= s.end_index
-      end
-
-      if invalid.any?
-        Rails.logger.warn(
-          "[Reprocessor] dropping #{invalid.size} preserved segment(s) " \
-          "with out-of-bounds indices for track points_count=#{points_count}"
-        )
-        TrackSegment.where(id: invalid.map(&:id)).delete_all
-      end
-
-      valid
-    end
-
-    def drop_overlapping(segment_data, preserved)
-      return segment_data if preserved.empty?
-
-      segment_data.reject do |data|
-        preserved.any? do |p|
-          ranges_overlap?(p.start_index, p.end_index, data[:start_index], data[:end_index])
-        end
-      end
-    end
-
-    def ranges_overlap?(a_start, a_end, b_start, b_end)
-      a_start <= b_end && b_start <= a_end
     end
 
     def create_segments(track, segment_data)

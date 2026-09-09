@@ -12,7 +12,7 @@ class AreasController < ApplicationController
     if @area.save
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: stream_flash(:success, 'Area created successfully!')
+          render turbo_stream: stream_flash(:success, I18n.t('controllers.areas.created'))
         end
       end
     else
@@ -28,7 +28,7 @@ class AreasController < ApplicationController
     if @area.update(area_params)
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: stream_flash(:success, 'Area updated successfully!')
+          render turbo_stream: stream_flash(:success, I18n.t('controllers.areas.updated'))
         end
       end
     else

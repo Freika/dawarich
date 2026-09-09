@@ -27,13 +27,11 @@ gem 'flipper-ui', '~> 1.4'
 gem 'foreman'
 gem 'geocoder', github: 'Freika/geocoder', branch: 'master'
 gem 'google-id-token', '~> 1.4'
-gem 'gpx'
-gem 'groupdate'
 gem 'h3', '~> 3.7'
 gem 'httparty', '>= 0.24.0'
 gem 'importmap-rails'
 gem 'json', '>= 2.19.2'
-gem 'jwt', '~> 2.10.3'
+gem 'jwt', '~> 3.2.0'
 gem 'kaminari'
 gem 'lograge'
 gem 'net-imap', '>= 0.5.14'
@@ -69,7 +67,6 @@ gem 'sidekiq', '8.1.6' # Pin to 8.0.x - sidekiq 8.1+ requires connection_pool 3.
 gem 'sidekiq-cron', '>= 2.4.0'
 gem 'sidekiq-limit_fetch'
 gem 'sprockets-rails'
-gem 'stackprof'
 gem 'stimulus-rails'
 gem 'tailwindcss-rails', '= 3.3.2'
 gem 'turbo-rails', '>= 2.0.17'
@@ -107,6 +104,5 @@ group :test do
 end
 
 group :development do
-  gem 'database_consistency', '>= 2.0.5', require: false
   gem 'rubocop-rails', '>= 2.33.4', require: false
 end

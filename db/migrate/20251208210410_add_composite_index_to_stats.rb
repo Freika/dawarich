@@ -6,7 +6,7 @@ class AddCompositeIndexToStats < ActiveRecord::Migration[8.0]
   BATCH_SIZE = 1000
 
   def change
-    total_duplicates = execute(<<-SQL.squish).first['count'].to_i
+    total_duplicates = execute(<<~SQL.squish).first['count'].to_i
       SELECT COUNT(*) as count
       FROM stats s1
       WHERE EXISTS (
@@ -26,7 +26,7 @@ class AddCompositeIndexToStats < ActiveRecord::Migration[8.0]
 
     deleted_count = 0
     loop do
-      batch_deleted = execute(<<-SQL.squish).cmd_tuples
+      batch_deleted = execute(<<~SQL.squish).cmd_tuples
         DELETE FROM stats
         WHERE id IN (
           SELECT s1.id
@@ -49,6 +49,14 @@ class AddCompositeIndexToStats < ActiveRecord::Migration[8.0]
     end
 
     Rails.logger.info("Completed cleanup: removed #{deleted_count} duplicate stats records") if deleted_count.positive?
+
+    invalid = select_value(<<~SQL)
+      SELECT NOT i.indisvalid
+      FROM pg_index i
+      JOIN pg_class c ON c.oid = i.indexrelid
+      WHERE i.indrelid = 'stats'::regclass AND c.relname = 'index_stats_on_user_id_year_month'
+    SQL
+    remove_index :stats, name: 'index_stats_on_user_id_year_month', algorithm: :concurrently if invalid
 
     add_index :stats, %i[user_id year month],
               name: 'index_stats_on_user_id_year_month',

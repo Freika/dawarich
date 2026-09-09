@@ -24,6 +24,12 @@ RSpec.describe 'Shared::Digests', type: :request do
           expect(response.body).to include('Distance traveled')
           expect(response.body).to include('Countries visited')
         end
+
+        it 'uses German month abbreviations in the shared yearly chart' do
+          get shared_users_digest_url(digest.sharing_uuid), params: { locale: 'de' }
+
+          %w[Mär Mai Okt Dez].each { |month| expect(response.body).to include(month) }
+        end
       end
 
       context 'with invalid sharing UUID' do

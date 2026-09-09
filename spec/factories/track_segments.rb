@@ -4,8 +4,8 @@ FactoryBot.define do
   factory :track_segment do
     association :track
     transportation_mode { :driving }
-    start_index { 0 }
-    end_index { 10 }
+    sequence(:start_index) { |n| (n - 1) * 11 }
+    end_index { start_index + 10 }
     distance { 1000 }
     duration { 600 }
     avg_speed { 30.0 }
@@ -60,6 +60,13 @@ FactoryBot.define do
     trait :from_source do
       source { 'overland' }
       confidence { :high }
+    end
+
+    trait :anchored do
+      start_index { nil }
+      end_index { nil }
+      sequence(:start_at) { |n| Time.zone.at(1_735_689_600 + (n * 3600)) }
+      end_at { start_at + 600 }
     end
   end
 end

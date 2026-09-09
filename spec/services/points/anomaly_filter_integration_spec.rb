@@ -18,17 +18,17 @@ RSpec.describe 'GPS Noise Filtering Integration' do
                timestamp: base_time + i * 60,
                accuracy: 10)
       end
-      # 1 bad accuracy point
+      # 1 point whose accuracy radius is too large to be a position at all
       create(:point, user: user,
              latitude: 52.53, longitude: 13.41,
              lonlat: 'POINT(13.41 52.53)',
              timestamp: base_time + 300,
-             accuracy: 2000)
+             accuracy: 60_000)
 
       Points::AnomalyFilter.new(user.id, base_time, base_time + 600).call
     end
 
-    it 'marks bad accuracy points as anomalies' do
+    it 'marks absurd accuracy points as anomalies' do
       expect(user.points.anomaly.count).to eq(1)
       expect(user.points.not_anomaly.count).to eq(5)
     end
@@ -43,7 +43,8 @@ RSpec.describe 'GPS Noise Filtering Integration' do
     end
 
     it 'excludes anomalies from not_anomaly scope' do
-      expect(user.points.not_anomaly.pluck(:accuracy)).to all(be <= 100)
+      expect(user.points.not_anomaly.pluck(:accuracy))
+        .to all(be <= Points::AnomalyFilter::ABSURD_ACCURACY_METERS)
     end
   end
 

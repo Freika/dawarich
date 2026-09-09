@@ -60,7 +60,8 @@ describe 'Immich Enrich API', type: :request do
     post 'Writes location data back to Immich photos' do
       tags 'Immich'
       description 'Pushes latitude/longitude updates for the supplied Immich asset IDs back to the ' \
-                  "user's Immich instance."
+                  "user's Immich instance. Accepted updates are returned as pending; " \
+                  'background verification reports saved coordinates or actionable warnings through notifications.'
       consumes 'application/json'
       produces 'application/json'
       parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
@@ -84,7 +85,7 @@ describe 'Immich Enrich API', type: :request do
         required: %w[assets]
       }
 
-      response '200', 'enrich completed' do
+      response '200', 'updates submitted' do
         schema type: :object, additionalProperties: true
 
         let(:payload) do
@@ -93,7 +94,7 @@ describe 'Immich Enrich API', type: :request do
 
         before do
           allow_any_instance_of(Immich::EnrichPhotos).to receive(:call).and_return(
-            updated: 1, failed: 0
+            enriched: 0, pending: 1, failed: 0, errors: []
           )
         end
 

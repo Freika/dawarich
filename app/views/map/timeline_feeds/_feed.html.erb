@@ -10,8 +10,8 @@
       <% end %>
       <div class="text-center text-base-content/60 py-8">
         <%= render 'shared/plan_data_window_alert', utm_content: 'timeline_feed' %>
-        <p class="text-sm">No visits tracked this day.</p>
-        <p class="text-xs mt-1">Visits are auto-detected daily from your location data.</p>
+        <p class="text-sm"><%= t('.no_visits_tracked_this_day') %></p>
+        <p class="text-xs mt-1"><%= t('.visits_are_auto_detected_daily_from_your_location_data') %></p>
       </div>
     </div>
   <% else %>

@@ -2,11 +2,11 @@
 
 class Api::V1::Visits::SelectPlaceController < ApiController
   def create
-    visit = current_api_user.visits.find(params[:id])
+    visit = current_api_user.scoped_visits.find(params[:id])
     place = Visits::SelectPlace.new(user: current_api_user, visit: visit, photon: photon_params).call
     render json: serialize_place(place), status: :created
   rescue ActiveRecord::RecordNotFound
-    render json: { error: 'Visit not found' }, status: :not_found
+    render json: { error: I18n.t('controllers.api.v1.visits.select_place.visit_not_found') }, status: :not_found
   rescue ActiveRecord::RecordInvalid, ActionController::ParameterMissing => e
     render json: { error: e.message }, status: :unprocessable_entity
   end
@@ -44,7 +44,7 @@ class Api::V1::Visits::SelectPlaceController < ApiController
       note: place.note,
       icon: first_tag&.icon,
       color: first_tag&.color,
-      visits_count: place.visits.size,
+      visits_count: place.active_visits.size,
       created_at: place.created_at,
       tags: tags.map do |tag|
         {

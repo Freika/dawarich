@@ -159,8 +159,7 @@ class Imports::SecureFileDownloader
 
     # Verify checksum
     expected_checksum = storage_attachment.blob.checksum
-    temp_file.rewind
-    actual_checksum = Base64.strict_encode64(Digest::MD5.digest(temp_file.read))
+    actual_checksum = Base64.strict_encode64(Digest::MD5.file(temp_file.path).digest)
     temp_file.rewind
 
     return unless expected_checksum != actual_checksum

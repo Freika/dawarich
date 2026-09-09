@@ -14,8 +14,10 @@ export class BaseLayer {
   /**
    * Add layer to map with data
    * @param {Object} data - GeoJSON or layer-specific data
+   * @param {string|null} beforeId - Optional layer id to insert below,
+   *   preserving z-order on re-adds
    */
-  add(data) {
+  add(data, beforeId = null) {
     this.data = data
 
     // Add source
@@ -33,7 +35,11 @@ export class BaseLayer {
     console.log(`[BaseLayer:${this.id}] Adding ${layers.length} layer(s)`)
     layers.forEach((layerConfig) => {
       if (!this.map.getLayer(layerConfig.id)) {
-        this.map.addLayer(layerConfig)
+        // A stale beforeId makes MapLibre refuse the add with only an
+        // ErrorEvent — the layer would silently vanish. Re-validate it.
+        const before =
+          beforeId && this.map.getLayer(beforeId) ? beforeId : undefined
+        this.map.addLayer(layerConfig, before)
       } else {
         console.log(
           `[BaseLayer:${this.id}] Layer already exists:`,

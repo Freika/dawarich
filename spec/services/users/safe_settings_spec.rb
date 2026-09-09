@@ -3,6 +3,17 @@
 require 'rails_helper'
 
 RSpec.describe Users::SafeSettings do
+  describe '#initialize' do
+    it 'falls back to defaults for malformed settings containers' do
+      [nil, false, []].each do |settings|
+        safe_settings = described_class.new(settings)
+
+        expect(safe_settings.timezone).to eq('UTC')
+        expect(safe_settings.distance_unit).to eq('km')
+      end
+    end
+  end
+
   describe '#config' do
     context 'with default values' do
       let(:settings) { {} }
@@ -36,8 +47,10 @@ RSpec.describe Users::SafeSettings do
             fog_of_war_threshold: 50,
           fog_of_war_mode: 'points',
             enabled_map_layers: %w[Tracks Heatmap],
+            places_tag_filters: nil,
             maps_maplibre_style: 'light',
             maps_maplibre_tiles_url: nil,
+            maps_maplibre_tiles_fallback: false,
             maps_maplibre_custom_theme: {
               'base' => 'noir',
               'tokens' => {
@@ -49,34 +62,15 @@ RSpec.describe Users::SafeSettings do
               }
             },
             globe_projection: true,
-            transportation_thresholds: {
-              'walking_max_speed' => 7,
-              'cycling_max_speed' => 45,
-              'driving_max_speed' => 220,
-              'flying_min_speed' => 150
-            },
-            transportation_expert_thresholds: {
-              'stationary_max_speed' => 1,
-              'running_vs_cycling_accel' => 0.25,
-              'cycling_vs_driving_accel' => 0.4,
-              'train_min_speed' => 80,
-              'min_segment_duration' => 60,
-              'time_gap_threshold' => 180,
-              'min_flight_distance_km' => 100
-            },
             enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
-            transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
-            max_gap_minutes_in_city: 120,
             gps_filtering_enabled: true,
-            gps_accuracy_threshold: 100,
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            visit_density_fill_enabled: true,
-            stay_max_gap_minutes: 60,
-            point_dragging_enabled: false
+            point_dragging_enabled: false,
+            points_tiled_rendering: false
           }
         )
       end
@@ -133,11 +127,21 @@ RSpec.describe Users::SafeSettings do
             'airtrail_api_key' => nil,
             'airtrail_skip_ssl_verification' => false,
             'airtrail_last_synced_at' => nil,
+            'teslamate_url' => nil,
+            'teslamate_username' => nil,
+            'teslamate_password' => nil,
+            'teslamate_api_token' => nil,
+            'teslamate_skip_ssl_verification' => false,
+            'teslamate_last_synced_at' => nil,
+            'teslamate_last_synced_url' => nil,
+            'teslamate_processing_pending' => false,
+            'teslamate_processing_pending_url' => nil,
             'maps' => { 'distance_unit' => 'km', 'name' => 'custom', 'url' => 'https://custom.example.com' },
             'visits_suggestions_enabled' => false,
             'enabled_map_layers' => %w[Points Routes Areas Photos],
             'maps_maplibre_style' => 'light',
             'maps_maplibre_tiles_url' => nil,
+            'maps_maplibre_tiles_fallback' => false,
             'maps_maplibre_custom_theme' => {
               'base' => 'noir',
               'tokens' => {
@@ -153,33 +157,14 @@ RSpec.describe Users::SafeSettings do
             'supporter_email' => nil,
             'supporter_github_username' => nil,
             'show_supporter_badge' => true,
-            'transportation_thresholds' => {
-              'walking_max_speed' => 7,
-              'cycling_max_speed' => 45,
-              'driving_max_speed' => 220,
-              'flying_min_speed' => 150
-            },
-            'transportation_expert_thresholds' => {
-              'stationary_max_speed' => 1,
-              'running_vs_cycling_accel' => 0.25,
-              'cycling_vs_driving_accel' => 0.4,
-              'train_min_speed' => 80,
-              'min_segment_duration' => 60,
-              'time_gap_threshold' => 180,
-              'min_flight_distance_km' => 100
-            },
-            'transportation_expert_mode' => false,
             'min_minutes_spent_in_city' => 60,
-            'max_gap_minutes_in_city' => 120,
             'gps_filtering_enabled' => true,
-            'gps_accuracy_threshold' => 100,
             'timezone' => 'UTC',
             'visit_radius_meters' => 100,
             'visit_min_points' => 3,
             'visit_min_duration_minutes' => 5,
-            'visit_density_fill_enabled' => true,
-            'stay_max_gap_minutes' => 60,
-            'point_dragging_enabled' => false
+            'point_dragging_enabled' => false,
+            'points_tiled_rendering' => false
           }
         )
       end
@@ -212,8 +197,10 @@ RSpec.describe Users::SafeSettings do
             fog_of_war_threshold: 50,
           fog_of_war_mode: 'points',
             enabled_map_layers: %w[Points Routes Areas Photos],
+            places_tag_filters: nil,
             maps_maplibre_style: 'light',
             maps_maplibre_tiles_url: nil,
+            maps_maplibre_tiles_fallback: false,
             maps_maplibre_custom_theme: {
               'base' => 'noir',
               'tokens' => {
@@ -225,36 +212,61 @@ RSpec.describe Users::SafeSettings do
               }
             },
             globe_projection: true,
-            transportation_thresholds: {
-              'walking_max_speed' => 7,
-              'cycling_max_speed' => 45,
-              'driving_max_speed' => 220,
-              'flying_min_speed' => 150
-            },
-            transportation_expert_thresholds: {
-              'stationary_max_speed' => 1,
-              'running_vs_cycling_accel' => 0.25,
-              'cycling_vs_driving_accel' => 0.4,
-              'train_min_speed' => 80,
-              'min_segment_duration' => 60,
-              'time_gap_threshold' => 180,
-              'min_flight_distance_km' => 100
-            },
             enabled_transportation_modes: Track::TRANSPORTATION_MODES.keys.map(&:to_s),
-            transportation_expert_mode: false,
             min_minutes_spent_in_city: 60,
-            max_gap_minutes_in_city: 120,
             gps_filtering_enabled: true,
-            gps_accuracy_threshold: 100,
             timezone: 'UTC',
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            visit_density_fill_enabled: true,
-            stay_max_gap_minutes: 60,
-            point_dragging_enabled: false
+            point_dragging_enabled: false,
+            points_tiled_rendering: false
           }
         )
+      end
+    end
+  end
+
+  describe '#minutes_between_routes' do
+    let(:safe_settings) { described_class.new(settings) }
+
+    context 'with a blank value' do
+      let(:settings) { { 'minutes_between_routes' => '' } }
+
+      it 'falls back to the default' do
+        expect(safe_settings.minutes_between_routes).to eq(30)
+      end
+    end
+
+    context 'with a zero value' do
+      let(:settings) { { 'minutes_between_routes' => 0 } }
+
+      it 'falls back to the default' do
+        expect(safe_settings.minutes_between_routes).to eq(30)
+      end
+    end
+
+    context 'with a negative value' do
+      let(:settings) { { 'minutes_between_routes' => '-5' } }
+
+      it 'falls back to the default' do
+        expect(safe_settings.minutes_between_routes).to eq(30)
+      end
+    end
+
+    context 'with a value above one day' do
+      let(:settings) { { 'minutes_between_routes' => '2000' } }
+
+      it 'clamps to 1440 minutes' do
+        expect(safe_settings.minutes_between_routes).to eq(1440)
+      end
+    end
+
+    context 'with a valid string value' do
+      let(:settings) { { 'minutes_between_routes' => '45' } }
+
+      it 'returns the integer value' do
+        expect(safe_settings.minutes_between_routes).to eq(45)
       end
     end
   end
@@ -621,90 +633,6 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
-  describe 'transportation threshold settings' do
-    let(:safe_settings) { described_class.new(settings) }
-
-    context 'with default values' do
-      let(:settings) { {} }
-
-      it 'returns default transportation thresholds' do
-        expect(safe_settings.transportation_thresholds).to eq(
-          {
-            'walking_max_speed' => 7,
-            'cycling_max_speed' => 45,
-            'driving_max_speed' => 220,
-            'flying_min_speed' => 150
-          }
-        )
-      end
-
-      it 'returns default transportation expert thresholds' do
-        expect(safe_settings.transportation_expert_thresholds).to eq(
-          {
-            'stationary_max_speed' => 1,
-            'running_vs_cycling_accel' => 0.25,
-            'cycling_vs_driving_accel' => 0.4,
-            'train_min_speed' => 80,
-            'min_segment_duration' => 60,
-            'time_gap_threshold' => 180,
-            'min_flight_distance_km' => 100
-          }
-        )
-      end
-
-      it 'returns false for transportation expert mode' do
-        expect(safe_settings.transportation_expert_mode?).to be false
-      end
-    end
-
-    context 'with custom values' do
-      let(:settings) do
-        {
-          'transportation_thresholds' => {
-            'walking_max_speed' => 8,
-            'cycling_max_speed' => 50,
-            'driving_max_speed' => 200,
-            'flying_min_speed' => 180
-          },
-          'transportation_expert_thresholds' => {
-            'stationary_max_speed' => 2,
-            'train_min_speed' => 100
-          },
-          'transportation_expert_mode' => true
-        }
-      end
-
-      it 'returns custom transportation thresholds' do
-        expect(safe_settings.transportation_thresholds).to eq(
-          {
-            'walking_max_speed' => 8,
-            'cycling_max_speed' => 50,
-            'driving_max_speed' => 200,
-            'flying_min_speed' => 180
-          }
-        )
-      end
-
-      it 'returns custom transportation expert thresholds merged with defaults' do
-        expect(safe_settings.transportation_expert_thresholds).to eq(
-          {
-            'stationary_max_speed' => 2,
-            'running_vs_cycling_accel' => 0.25,
-            'cycling_vs_driving_accel' => 0.4,
-            'train_min_speed' => 100,
-            'min_segment_duration' => 60,
-            'time_gap_threshold' => 180,
-            'min_flight_distance_km' => 100
-          }
-        )
-      end
-
-      it 'returns true for transportation expert mode' do
-        expect(safe_settings.transportation_expert_mode?).to be true
-      end
-    end
-  end
-
   describe '#enabled_transportation_modes' do
     let(:safe_settings) { described_class.new(settings) }
     let(:canonical) { Track::TRANSPORTATION_MODES.keys.map(&:to_s) }
@@ -772,28 +700,6 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
-  describe '#gps_accuracy_threshold' do
-    it 'defaults to 100' do
-      expect(described_class.new({}).gps_accuracy_threshold).to eq(100)
-    end
-
-    it 'returns the user-provided integer' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => 250 }).gps_accuracy_threshold).to eq(250)
-    end
-
-    it 'clamps below the minimum' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => 10 }).gps_accuracy_threshold).to eq(50)
-    end
-
-    it 'clamps above the maximum' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => 99_999 }).gps_accuracy_threshold).to eq(1000)
-    end
-
-    it 'coerces string values' do
-      expect(described_class.new({ 'gps_accuracy_threshold' => '300' }).gps_accuracy_threshold).to eq(300)
-    end
-  end
-
   describe '#visit_radius_meters' do
     it 'returns 50 when missing' do
       expect(described_class.new({}).visit_radius_meters).to eq(100)
@@ -830,28 +736,6 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
-  describe '#stay_max_gap_minutes' do
-    it 'returns 60 when missing' do
-      expect(described_class.new({}).stay_max_gap_minutes).to eq(60)
-    end
-
-    it 'clamps below the minimum to 5' do
-      expect(described_class.new({ 'stay_max_gap_minutes' => 1 }).stay_max_gap_minutes).to eq(5)
-    end
-
-    it 'clamps above the maximum to 720' do
-      expect(described_class.new({ 'stay_max_gap_minutes' => 1000 }).stay_max_gap_minutes).to eq(720)
-    end
-
-    it 'returns the user value within range' do
-      expect(described_class.new({ 'stay_max_gap_minutes' => 90 }).stay_max_gap_minutes).to eq(90)
-    end
-
-    it 'is included in #config' do
-      expect(described_class.new({}).config).to include(stay_max_gap_minutes: 60)
-    end
-  end
-
   describe '#point_dragging_enabled?' do
     it 'returns false when missing' do
       expect(described_class.new({}).point_dragging_enabled?).to be false
@@ -882,23 +766,36 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
-  describe '#visit_density_fill_enabled?' do
-    it 'returns true when missing' do
-      expect(described_class.new({}).visit_density_fill_enabled?).to be true
+  describe '#points_tiled_rendering?' do
+    it 'returns false when missing' do
+      expect(described_class.new({}).points_tiled_rendering?).to be false
     end
 
-    it 'returns false for "0"' do
-      expect(described_class.new({ 'visit_density_fill_enabled' => '0' }).visit_density_fill_enabled?).to be false
+    it 'returns false when explicitly nil' do
+      expect(described_class.new({ 'points_tiled_rendering' => nil }).points_tiled_rendering?).to be false
+    end
+
+    it 'returns true for true' do
+      expect(described_class.new({ 'points_tiled_rendering' => true }).points_tiled_rendering?).to be true
     end
 
     it 'returns true for "1"' do
-      expect(described_class.new({ 'visit_density_fill_enabled' => '1' }).visit_density_fill_enabled?).to be true
+      expect(described_class.new({ 'points_tiled_rendering' => '1' }).points_tiled_rendering?).to be true
     end
 
-    it 'returns false for false' do
-      expect(described_class.new({ 'visit_density_fill_enabled' => false }).visit_density_fill_enabled?).to be false
+    it 'returns false for "0"' do
+      expect(described_class.new({ 'points_tiled_rendering' => '0' }).points_tiled_rendering?).to be false
+    end
+
+    it 'returns false for "false"' do
+      expect(described_class.new({ 'points_tiled_rendering' => 'false' }).points_tiled_rendering?).to be false
+    end
+
+    it 'is included in #config' do
+      expect(described_class.new({}).config).to include(points_tiled_rendering: false)
     end
   end
+
   describe '#fog_of_war_mode' do
     it 'defaults to points' do
       expect(described_class.new.fog_of_war_mode).to eq('points')
@@ -962,6 +859,20 @@ RSpec.describe Users::SafeSettings do
 
     it 'is included in config' do
       expect(described_class.new.config[:maps_maplibre_custom_theme]['base']).to eq('noir')
+    end
+  end
+
+  describe '#maps_maplibre_tiles_fallback?' do
+    it 'defaults to false' do
+      expect(described_class.new.maps_maplibre_tiles_fallback?).to be false
+    end
+
+    it 'casts a stored string to a boolean' do
+      expect(described_class.new({ 'maps_maplibre_tiles_fallback' => 'true' }).maps_maplibre_tiles_fallback?).to be true
+    end
+
+    it 'is exposed in config' do
+      expect(described_class.new.config).to have_key(:maps_maplibre_tiles_fallback)
     end
   end
 

@@ -68,6 +68,39 @@ RSpec.describe Places::NameFetcher do
         service.call
       end
 
+      context 'when a device-named place gets a real address' do
+        let(:place) do
+          create(
+            :place,
+            name: 'Visited place',
+            city: nil,
+            country: nil,
+            geodata: {},
+            lonlat: 'POINT(10.0 10.0)'
+          )
+        end
+
+        it 'renames the place' do
+          expect { service.call }.to change { place.reload.name }.from('Visited place').to('Central Park, New York')
+        end
+
+        it 'propagates the new name to a visit that carried the old place name' do
+          visit = create(:visit, place: place, user: place.user, name: 'Visited place')
+
+          service.call
+
+          expect(visit.reload.name).to eq('Central Park, New York')
+        end
+
+        it 'leaves a visit the user renamed independently alone' do
+          visit = create(:visit, place: place, user: place.user, name: 'Dentist')
+
+          service.call
+
+          expect(visit.reload.name).to eq('Dentist')
+        end
+      end
+
       context 'when the name is locked by the user' do
         let(:place) do
           create(
@@ -276,64 +309,6 @@ RSpec.describe Places::NameFetcher do
         expect(place.city).to be_nil
         expect(place.country).to be_nil
       end
-    end
-  end
-
-  describe '.lookup_attrs' do
-    let(:lat) { 52.5126 }
-    let(:lon) { 13.4012 }
-
-    let(:photon_result) do
-      double(
-        'photon_result',
-        data: {
-          'properties' => {
-            'name' => 'Café Bravo', 'city' => 'Berlin', 'country' => 'Germany',
-            'osm_key' => 'amenity', 'osm_value' => 'cafe', 'type' => 'house'
-          },
-          'geometry' => { 'coordinates' => [lon, lat] }
-        }
-      )
-    end
-
-    before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-    end
-
-    it 'returns name/city/country/geodata hash when Photon resolves' do
-      allow(Geocoder).to receive(:search).and_return([photon_result])
-
-      attrs = described_class.lookup_attrs(lat, lon)
-
-      expect(attrs).to include(name: be_present, city: 'Berlin', country: 'Germany')
-      expect(attrs[:geodata]).to eq(photon_result.data)
-    end
-
-    it 'returns nil when reverse geocoding is disabled' do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-
-      expect(described_class.lookup_attrs(lat, lon)).to be_nil
-    end
-
-    it 'returns nil when Photon returns no results' do
-      allow(Geocoder).to receive(:search).and_return([])
-
-      expect(described_class.lookup_attrs(lat, lon)).to be_nil
-    end
-
-    it 'returns nil when properties are blank' do
-      empty = double('photon_result', data: { 'properties' => {} })
-      allow(Geocoder).to receive(:search).and_return([empty])
-
-      expect(described_class.lookup_attrs(lat, lon)).to be_nil
-    end
-
-    it 'rescues StandardError and returns nil' do
-      allow(Geocoder).to receive(:search).and_raise(StandardError, 'photon down')
-      allow(ExceptionReporter).to receive(:call)
-
-      expect(described_class.lookup_attrs(lat, lon)).to be_nil
-      expect(ExceptionReporter).to have_received(:call)
     end
   end
 end

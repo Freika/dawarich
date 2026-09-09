@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
@@ -8,6 +9,7 @@ import {
 } from "maps_maplibre/utils/flight_mask"
 import { trimOutlierCoords } from "maps_maplibre/utils/geometry"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
+import { overlayAwarePadding } from "maps_maplibre/utils/map_padding"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
 const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] }
@@ -48,6 +50,8 @@ export class MapDataManager {
     let data = null
 
     try {
+      this.layerManager.updatePointTileRange(startDate, endDate)
+
       // 1. Initialize all layers with empty data for correct z-ordering
       await this._setupLayers({
         pointsGeoJSON: EMPTY_GEOJSON,
@@ -157,7 +161,9 @@ export class MapDataManager {
       if (showLoading) {
         this.controller.hideProgress()
       }
-      Toast.error("Failed to load location data. Please try again.")
+      Toast.error(
+        translate("messages.failed_to_load_location_data_please_try_again"),
+      )
       throw error
     } finally {
       const duration = performanceMonitor.measure("load-map-data")
@@ -482,8 +488,13 @@ export class MapDataManager {
     if (bounds.isEmpty()) return
     if (skipIfCovered && this._boundsCovered(bounds)) return
 
+    const mapRect = this.map.getContainer()?.getBoundingClientRect()
+    const toolbarRect = document
+      .querySelector(".map-button-cluster")
+      ?.getBoundingClientRect()
+
     this.map.fitBounds(bounds, {
-      padding: 50,
+      padding: overlayAwarePadding(mapRect, toolbarRect),
       maxZoom: 15,
       animate,
     })
@@ -513,7 +524,9 @@ export class MapDataManager {
 
     if (startDate < twelveMonthsAgo) {
       UpgradeBanner.show({
-        message: "Your Lite plan includes the last 12 months of data.",
+        message: translate(
+          "messages.your_lite_plan_includes_the_last_12_months_of_data",
+        ),
         upgradeUrl: this.controller.upgradeUrlValue,
         utmContent: "data_retention",
       })

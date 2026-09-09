@@ -93,7 +93,8 @@ RSpec.describe 'Api::V1::Immich::Enrich', type: :request do
 
         expect(response).to have_http_status(:ok)
         body = response.parsed_body
-        expect(body['enriched']).to eq(1)
+        expect(body['enriched']).to eq(0)
+        expect(body['pending']).to eq(1)
         expect(body['failed']).to eq(0)
       end
     end

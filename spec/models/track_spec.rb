@@ -35,9 +35,49 @@ RSpec.describe Track, type: :model do
       expect(Track.delete_orphaned(orphans.map(&:id))).to eq(2)
     end
 
+    it 'spares tracks that still have points' do
+      track = create(:track, user: user)
+      segment = create(:track_segment, track: track)
+      create(:point, user: user, track: track)
+
+      expect(Track.delete_orphaned([track.id])).to eq(0)
+      expect(Track.exists?(track.id)).to be true
+      expect(TrackSegment.exists?(segment.id)).to be true
+    end
+
+    it 'deletes only the point-less tracks in a mixed batch' do
+      orphan = create(:track, user: user)
+      kept = create(:track, user: user)
+      create(:point, user: user, track: kept)
+
+      expect(Track.delete_orphaned([orphan.id, kept.id])).to eq(1)
+      expect(Track.exists?(orphan.id)).to be false
+      expect(Track.exists?(kept.id)).to be true
+    end
+
     it 'does not broadcast for empty input' do
       expect { Track.delete_orphaned([]) }
         .not_to have_broadcasted_to(user).from_channel(TracksChannel)
+    end
+  end
+
+  describe 'points foreign key' do
+    let(:user) { create(:user) }
+
+    it 'refuses to delete a track that still has points' do
+      track = create(:track, user: user)
+      create(:point, user: user, track: track)
+
+      expect { Track.where(id: track.id).delete_all }
+        .to raise_error(ActiveRecord::InvalidForeignKey)
+    end
+
+    it 'allows destroy, which nullifies the points first' do
+      track = create(:track, user: user)
+      point = create(:point, user: user, track: track)
+
+      expect { track.destroy }.not_to raise_error
+      expect(point.reload.track_id).to be_nil
     end
   end
 

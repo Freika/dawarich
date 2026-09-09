@@ -1,16 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="<%= I18n.locale %>">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
-  <title><%= content_for?(:title) ? yield(:title) : "Shared on Dawarich" %></title>
+  <title><%= content_for?(:title) ? yield(:title) : t('.shared_on_dawarich') %></title>
   <%= csrf_meta_tags %>
   <%= csp_meta_tag %>
   <%= render 'application/favicon' %>
   <%= render 'layouts/pwa_meta' %>
   <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
   <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+  <%= javascript_translations %>
   <%= javascript_importmap_tags %>
   <%= yield :head %>
 </head>
@@ -18,12 +19,12 @@
   <header class="sticky top-0 z-30 border-b border-base-300 bg-base-100/85 backdrop-blur">
     <div class="container mx-auto px-4 flex items-center justify-between h-16">
       <%= link_to root_url, class: "btn btn-ghost normal-case text-xl px-2 gap-2" do %>
-        <%= image_tag 'logo.svg', alt: 'Dawarich logo', class: 'h-8 w-8 rounded-[20%]' %>
-        <span>Dawarich</span>
+        <%= image_tag 'logo.svg', alt: t('.dawarich_logo'), class: 'h-8 w-8 rounded-[20%]' %>
+        <span><%= t('.dawarich') %></span>
       <% end %>
       <%= link_to public_share_cta_url('header'),
                   class: "inline-flex items-center gap-2 rounded-lg bg-gradient-to-b from-[#3A66E8] to-[#2A56D8] px-4 py-2 text-sm font-bold text-white shadow-[0_6px_16px_rgba(45,91,227,0.30)] transition hover:brightness-105" do %>
-        Try Dawarich Cloud <span aria-hidden="true">→</span>
+        <%= t('.try_dawarich_cloud') %> <span aria-hidden="true">→</span>
       <% end %>
     </div>
   </header>
@@ -35,11 +36,11 @@
          style="background: radial-gradient(circle, rgba(43,182,196,0.16) 0%, rgba(43,182,196,0) 70%);"></div>
     <div class="relative container mx-auto px-4 py-14 sm:py-16 flex flex-wrap items-center justify-between gap-x-12 gap-y-8">
       <div class="max-w-xl">
-        <div class="mb-3 text-xs font-bold uppercase tracking-[0.1em] text-[#7f87a3]">Shared with Dawarich</div>
-        <h2 class="mb-3 text-3xl sm:text-[40px] font-extrabold leading-[1.05] tracking-tight">Map your own journeys.</h2>
-        <p class="mb-6 max-w-lg text-lg leading-relaxed text-[#aab2c5]">Dawarich turns your own location history into maps worth sharing — open-source, self-hostable, and yours to keep.</p>
+        <div class="mb-3 text-xs font-bold uppercase tracking-[0.1em] text-[#7f87a3]"><%= t('.shared_with_dawarich') %></div>
+        <h2 class="mb-3 text-3xl sm:text-[40px] font-extrabold leading-[1.05] tracking-tight"><%= t('.map_your_own_journeys') %></h2>
+        <p class="mb-6 max-w-lg text-lg leading-relaxed text-[#aab2c5]"><%= t('.dawarich_turns_your_own_location_history_into_maps_worth_sharing') %></p>
         <div class="flex flex-wrap gap-2.5">
-          <% ['Open-source', 'Self-hostable', 'Managed Cloud — no setup'].each do |chip| %>
+          <% [t('.open_source'), t('.self_hostable'), t('.managed_cloud_no_setup')].each do |chip| %>
             <span class="rounded-full border border-white/15 bg-white/5 px-3.5 py-1.5 text-sm font-semibold text-[#c6cdda]"><%= chip %></span>
           <% end %>
         </div>
@@ -47,9 +48,9 @@
       <div class="flex flex-col items-start gap-4">
         <%= link_to public_share_cta_url('footer_cta'),
                     class: "inline-flex items-center gap-2.5 rounded-xl bg-gradient-to-b from-[#3A66E8] to-[#2A56D8] px-7 py-4 text-lg font-bold text-white shadow-[0_14px_34px_rgba(45,91,227,0.48)] transition hover:-translate-y-0.5 hover:brightness-110" do %>
-          Try Dawarich Cloud <span aria-hidden="true">→</span>
+          <%= t('.try_dawarich_cloud') %> <span aria-hidden="true">→</span>
         <% end %>
-        <%= link_to "See how it works", public_share_cta_url('footer_docs', path: '/docs/'),
+        <%= link_to t('.see_how_it_works'), public_share_cta_url('footer_docs', path: '/docs/'),
                     class: "border-b border-white/25 pb-0.5 text-[15px] text-[#cbd2e0] transition hover:text-white" %>
       </div>
     </div>

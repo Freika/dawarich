@@ -10,22 +10,33 @@ class Tracks::RecalculationsController < ApplicationController
 
     if status.in_progress?
       respond_to do |format|
-        format.turbo_stream { render turbo_stream: stream_flash(:notice, 'Re-classification already running') }
-        format.html { redirect_back(fallback_location: root_path, notice: 'Re-classification already running') }
+        format.turbo_stream do
+          render turbo_stream: stream_flash(
+            :notice,
+            I18n.t('controllers.tracks.recalculations.re_classification_already_running')
+          )
+        end
+        format.html do
+          redirect_back(fallback_location: root_path,
+                        notice: I18n.t('controllers.tracks.recalculations.re_classification_already_running'))
+        end
       end
     else
-      Tracks::TransportationModeRecalculationJob.perform_later(current_user.id)
+      TransportationModes::UserReclassifyJob.perform_later(current_user.id)
       respond_to do |format|
         format.turbo_stream do
           render turbo_stream: stream_flash(
             :success,
-            'Re-classification started — your tracks will update over the next few minutes'
+            I18n.t('controllers.tracks.recalculations.re_classification_started_your_tracks_will_update_over_the_next')
           )
         end
         format.html do
+          notice = I18n.t(
+            'controllers.tracks.recalculations.re_classification_started_your_tracks_will_update_over_the_next'
+          )
           redirect_back(
             fallback_location: root_path,
-            notice: 'Re-classification started — your tracks will update over the next few minutes'
+            notice: notice
           )
         end
       end

@@ -1,0 +1,81 @@
+<div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl">
+  <%= form_with scope: :settings, url: settings_integrations_path, method: :patch, data: { turbo: false } do |f| %>
+    <%= hidden_field_tag :service, 'teslamate' %>
+    <div class="card-body space-y-5">
+      <div class="flex items-center gap-3">
+        <%= integration_icon('teslamate', css: 'size-6') %>
+        <h2 class="text-xl font-semibold"><%= t('settings.integrations.index.teslamate_integration') %></h2>
+      </div>
+      <div class="form-control w-full max-w-md">
+        <%= f.label :teslamate_url, class: 'label' do %>
+          <span class="label-text font-medium"><%= t('settings.integrations.index.teslamate_url') %></span>
+        <% end %>
+        <%= f.url_field :teslamate_url, value: current_user.safe_settings.teslamate_url, class: 'input input-bordered w-full', placeholder: 'https://teslamateapi.example.com' %>
+        <span class="label-text-alt mt-1 text-base-content/60">
+          <%= t('settings.integrations.index.the_base_url_of_your_teslamateapi_instance') %>
+          <%= link_to t('settings.integrations.index.teslamate_setup_guide'),
+              'https://github.com/tobiasehlert/teslamateapi#how-to-run-it',
+              target: '_blank', rel: 'noopener', class: 'link' %>
+        </span>
+      </div>
+      <div class="grid gap-4 md:grid-cols-2">
+        <div class="form-control w-full">
+          <%= f.label :teslamate_username, t('settings.integrations.index.teslamate_username'), class: 'label label-text font-medium' %>
+          <%= f.text_field :teslamate_username, value: current_user.safe_settings.teslamate_username, class: 'input input-bordered w-full', autocomplete: 'username' %>
+        </div>
+        <div class="form-control w-full">
+          <%= f.label :teslamate_password, t('settings.integrations.index.teslamate_password'), class: 'label label-text font-medium' %>
+          <%= f.password_field :teslamate_password, value: current_user.safe_settings.teslamate_password, class: 'input input-bordered w-full', autocomplete: 'current-password' %>
+        </div>
+      </div>
+      <div class="form-control w-full max-w-md">
+        <%= f.label :teslamate_api_token, t('settings.integrations.index.teslamate_api_token'), class: 'label label-text font-medium' %>
+        <%= f.password_field :teslamate_api_token, value: current_user.safe_settings.teslamate_api_token, class: 'input input-bordered w-full' %>
+        <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.teslamate_authentication_help') %></span>
+      </div>
+      <div class="form-control">
+        <label class="label cursor-pointer justify-start gap-3">
+          <%= f.check_box :teslamate_skip_ssl_verification,
+              checked: current_user.safe_settings.teslamate_skip_ssl_verification,
+              class: 'toggle toggle-warning',
+              onchange: "document.getElementById('teslamate-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+          <span class="label-text"><%= t('settings.integrations.index.skip_ssl_certificate_verification_self_signed_certificates') %></span>
+        </label>
+        <div id="teslamate-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.teslamate_skip_ssl_verification %>">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0 stroke-current" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span>
+            <strong><%= t('settings.integrations.index.security_warning') %></strong> <%= t('settings.integrations.index.disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in') %>
+          </span>
+        </div>
+      </div>
+      <div class="card-actions">
+        <%= f.submit t('settings.integrations.index.save_test_connection'), class: 'btn btn-primary' %>
+      </div>
+      <% if current_user.safe_settings.settings['teslamate_last_synced_at'].present? %>
+        <% last_synced = begin
+             Time.zone.parse(current_user.safe_settings.settings['teslamate_last_synced_at'])
+           rescue ArgumentError
+             nil
+           end %>
+        <p class="label-text-alt text-base-content/60">
+          <%= t('settings.integrations.index.last_synced') %>
+          <%= last_synced ? l(last_synced, format: :long) : current_user.safe_settings.settings['teslamate_last_synced_at'] %>
+        </p>
+      <% end %>
+    </div>
+  <% end %>
+
+  <% if current_user.safe_settings.teslamate_url.present? %>
+    <div class="border-t border-base-content/10 px-8 py-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="font-semibold"><%= t('settings.integrations.index.sync_teslamate_drives') %></h3>
+          <span class="label-text-alt text-base-content/60"><%= t('settings.integrations.index.teslamate_sync_help') %></span>
+        </div>
+        <%= button_to t('settings.integrations.index.sync_now'),
+            settings_background_jobs_path(job_name: 'start_teslamate_sync'),
+            method: :post, class: 'btn btn-primary btn-sm' %>
+      </div>
+    </div>
+  <% end %>
+</div>

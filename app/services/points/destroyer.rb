@@ -16,6 +16,7 @@ class Points::Destroyer
     return destroyed if destroyed.empty?
 
     User.update_counters(user.id, points_count: -destroyed.count)
+    Points::TileEpoch.bump(user.id, timestamps: destroyed.map(&:timestamp))
 
     enqueue_stats_recalculation(destroyed)
     enqueue_track_recalculation(destroyed)

@@ -215,5 +215,23 @@ RSpec.describe Insights::YearTotalsCalculator do
         expect(result.biggest_month).to be_nil
       end
     end
+
+    context 'when a legacy stat has an invalid month' do
+      let!(:valid_stat) do
+        create(:stat, user:, year: 2024, month: 6, distance: 100_000, daily_distance: {}, toponyms: [])
+      end
+      let!(:invalid_stat) do
+        create(:stat, user:, year: 2024, month: 7, distance: 500_000, daily_distance: {}, toponyms: []).tap do |stat|
+          stat.update_column(:month, 13)
+        end
+      end
+      let(:stats) { user.stats.where(year: 2024) }
+
+      it 'ignores the invalid row when naming the biggest month' do
+        result = calculator.call
+
+        expect(result.biggest_month).to eq(month: 'June', distance: 100)
+      end
+    end
   end
 end

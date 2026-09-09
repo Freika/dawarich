@@ -1,0 +1,19 @@
+{
+  "timelineObjects": [
+    {
+      "placeVisit": {
+        "duration": {
+          "startTimestamp": "2025-04-01T10:00:00Z",
+          "endTimestamp": "2025-04-01T13:00:00Z"
+        },
+        "location": {
+          "placeId": "ChIJ_TEST_OFFICE_456",
+          "name": "Office",
+          "latitudeE7": 525200000,
+          "longitudeE7": 134050000,
+          "semanticType": "TYPE_WORK"
+        }
+      }
+    }
+  ]
+}

@@ -111,7 +111,7 @@ RSpec.describe Archivable, type: :model do
     let(:june_point) { create(:point, user: user, timestamp: Time.new(2024, 6, 15).to_i) }
 
     it 'checks temporary restore cache with correct key format' do
-      cache_key = "raw_data:temp:#{user.id}:#{june_point.id}"
+      cache_key = "raw_data:temp:#{user.id}:#{june_point.id}:#{june_point.raw_data_archive_id}"
       cached_data = { lon: 16.0, lat: 55.0 }
 
       Rails.cache.write(cache_key, cached_data, expires_in: 1.hour)
@@ -239,6 +239,12 @@ RSpec.describe Archivable, type: :model do
       Point.archival_safe_upsert_all([east, west], returning: Arel.sql('id'))
 
       expect(captured).to eq([west, east])
+    end
+
+    it 'uses the same numeric conflict-key order when acquiring raw-data row locks' do
+      sql = Point.raw_data_lock_order.to_sql
+
+      expect(sql).to match(/ORDER BY ST_X\(lonlat::geometry\), ST_Y\(lonlat::geometry\), timestamp, user_id/)
     end
 
     it 'does not raise while sorting a batch containing a malformed lonlat' do

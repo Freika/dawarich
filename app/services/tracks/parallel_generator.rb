@@ -6,15 +6,20 @@ class Tracks::ParallelGenerator
   include Tracks::Segmentation
   include Tracks::TrackBuilder
 
-  attr_reader :user, :start_at, :end_at, :mode, :chunk_size, :untracked_only
+  attr_reader :user, :start_at, :end_at, :mode, :chunk_size, :untracked_only, :job_queue
 
-  def initialize(user, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day, untracked_only: false)
+  # job_queue moves the chunk fan-out off :tracks, where it would otherwise
+  # compete with Tracks::RealtimeGenerationJob. Housekeeping callers that are
+  # rebuilding whole histories pass :low_priority so live tracking stays ahead.
+  def initialize(user, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day, untracked_only: false,
+                 job_queue: nil)
     @user = user
     @start_at = start_at
     @end_at = end_at
     @mode = mode.to_sym
     @chunk_size = chunk_size
     @untracked_only = untracked_only
+    @job_queue = job_queue
   end
 
   def call
@@ -73,7 +78,7 @@ class Tracks::ParallelGenerator
 
   def enqueue_chunk_jobs(session_id, time_chunks)
     time_chunks.each do |chunk|
-      Tracks::TimeChunkProcessorJob.perform_later(
+      enqueue_on(Tracks::TimeChunkProcessorJob).perform_later(
         user.id,
         session_id,
         chunk.merge(untracked_only: untracked_only)
@@ -85,10 +90,18 @@ class Tracks::ParallelGenerator
     # Delay based on estimated processing time (30 seconds per chunk + buffer)
     estimated_delay = [chunk_count * 30.seconds, 5.minutes].max
 
-    Tracks::BoundaryResolverJob.set(wait: estimated_delay).perform_later(
+    enqueue_on(Tracks::BoundaryResolverJob, wait: estimated_delay).perform_later(
       user.id,
       session_id
     )
+  end
+
+  def enqueue_on(job_class, wait: nil)
+    options = {}
+    options[:wait] = wait if wait
+    options[:queue] = job_queue if job_queue
+
+    options.empty? ? job_class : job_class.set(**options)
   end
 
   def clean_existing_tracks

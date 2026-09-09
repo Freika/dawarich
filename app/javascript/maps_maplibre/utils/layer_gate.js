@@ -6,6 +6,8 @@
  * layer, it shows for PREVIEW_SECONDS then auto-hides with an upgrade
  * prompt.
  */
+
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
 
@@ -62,7 +64,10 @@ async function startPreview({ layerName, toggle, showFn, hideFn, upgradeUrl }) {
   cancelPreview(layerName)
 
   const toast = Toast.info(
-    `Previewing ${layerName} for ${PREVIEW_SECONDS} seconds.`,
+    translate("layer_preview.started", {
+      layer: layerName,
+      seconds: PREVIEW_SECONDS,
+    }),
     0,
   )
 
@@ -70,7 +75,10 @@ async function startPreview({ layerName, toggle, showFn, hideFn, upgradeUrl }) {
   const countdownInterval = setInterval(() => {
     remaining -= 5
     if (remaining > 0 && toast?.parentNode) {
-      toast.textContent = `Previewing ${layerName} — ${remaining}s remaining.`
+      toast.textContent = translate("layer_preview.remaining", {
+        layer: layerName,
+        seconds: remaining,
+      })
     }
   }, 5000)
 
@@ -93,7 +101,7 @@ async function startPreview({ layerName, toggle, showFn, hideFn, upgradeUrl }) {
     delete activeTimers[`${layerName}_countdown`]
 
     UpgradeBanner.show({
-      message: `${layerName} preview ended.`,
+      message: translate("layer_preview.ended", { layer: layerName }),
       upgradeUrl,
       utmContent: `layer_preview_${layerName.toLowerCase().replace(/ /g, "_")}`,
     })

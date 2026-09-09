@@ -75,7 +75,7 @@ class Imports::Watcher
     when 'geojson' then :geojson
     when 'kml', 'kmz' then :kml
     when 'zip' then nil
-    else raise UnsupportedSourceError, 'Unsupported source '
+    else raise UnsupportedSourceError, I18n.t('services.imports.watcher.unsupported_source_without_name')
     end
   end
 
@@ -83,7 +83,7 @@ class Imports::Watcher
     case source&.to_sym
     when :gpx then 'application/xml'
     when :json, :geojson, :google_phone_takeout, :google_records, :google_semantic_history, :google_photos,
-         :polarsteps
+         :polarsteps, :mobile_photo_library
       'application/json'
     when :owntracks, :fit
       'application/octet-stream'
@@ -93,7 +93,7 @@ class Imports::Watcher
     when nil
       'application/octet-stream' # fallback MIME type for nil source
     else
-      raise UnsupportedSourceError, "Unsupported source: #{source}"
+      raise UnsupportedSourceError, I18n.t('services.imports.watcher.unsupported_source', source:)
     end
   end
 end

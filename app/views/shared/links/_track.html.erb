@@ -14,33 +14,33 @@
     <div class="stats shadow w-full">
       <% if resource.distance.present? %>
         <div class="stat">
-          <div class="stat-title">Distance</div>
+          <div class="stat-title"><%= t('.distance') %></div>
           <div class="stat-value text-2xl"><%= resource.distance_in_unit(unit).round(1) %> <%= unit %></div>
         </div>
       <% end %>
       <% if resource.duration.present? && resource.duration.positive? %>
         <div class="stat">
-          <div class="stat-title">Duration</div>
+          <div class="stat-title"><%= t('.duration') %></div>
           <div class="stat-value text-2xl"><%= distance_of_time_in_words(resource.duration) %></div>
         </div>
       <% end %>
       <% if resource.avg_speed.present? %>
         <% speed = unit == 'mi' ? (resource.avg_speed.to_f * 0.621371).round(1) : resource.avg_speed.to_f.round(1) %>
         <div class="stat">
-          <div class="stat-title">Avg speed</div>
-          <div class="stat-value text-2xl"><%= speed %> <%= unit == 'mi' ? 'mph' : 'km/h' %></div>
+          <div class="stat-title"><%= t('.avg_speed') %></div>
+          <div class="stat-value text-2xl"><%= t(unit == 'mi' ? 'units.speed_mph' : 'units.speed_kmh', value: speed) %></div>
         </div>
       <% end %>
       <% if resource.elevation_gain.present? && resource.elevation_gain.positive? %>
         <div class="stat">
-          <div class="stat-title">Elevation gain</div>
-          <div class="stat-value text-2xl"><%= resource.elevation_gain.round %> m</div>
+          <div class="stat-title"><%= t('.elevation_gain') %></div>
+          <div class="stat-value text-2xl"><%= t('units.meters', value: resource.elevation_gain.round) %></div>
         </div>
       <% end %>
       <% if resource.elevation_loss.present? && resource.elevation_loss.positive? %>
         <div class="stat">
-          <div class="stat-title">Elevation loss</div>
-          <div class="stat-value text-2xl"><%= resource.elevation_loss.round %> m</div>
+          <div class="stat-title"><%= t('.elevation_loss') %></div>
+          <div class="stat-value text-2xl"><%= t('units.meters', value: resource.elevation_loss.round) %></div>
         </div>
       <% end %>
     </div>

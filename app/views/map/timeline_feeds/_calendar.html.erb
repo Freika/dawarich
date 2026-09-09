@@ -15,7 +15,7 @@
                           target_month: nav[:prev],
                           action: 'click->timeline-feed#previewMonth' },
                   class: 'btn btn-ghost btn-xs btn-square',
-                  'aria-label': 'Previous month' do %>
+                  'aria-label': t('.previous_month') do %>
         <%= icon 'chevron-left', class: 'w-4 h-4' %>
       <% end %>
       <div class="font-semibold text-sm" data-testid="calendar-title">
@@ -26,7 +26,7 @@
                           target_month: nav[:next],
                           action: 'click->timeline-feed#previewMonth' },
                   class: 'btn btn-ghost btn-xs btn-square',
-                  'aria-label': 'Next month' do %>
+                  'aria-label': t('.next_month') do %>
         <%= icon 'chevron-right', class: 'w-4 h-4' %>
       <% end %>
     </div>
@@ -48,9 +48,6 @@
                   data-tracked-seconds="<%= cell[:tracked_seconds] %>"
                   <% if cell[:disabled] %>disabled<% end %>>
             <span class="cal-cell__day"><%= calendar_day_number(cell) %></span>
-            <% if cell[:suggested_count].to_i.positive? %>
-              <span class="suggestion-dot" aria-label="Has suggested visits"></span>
-            <% end %>
           </button>
         <% end %>
       <% end %>

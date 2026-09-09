@@ -27,7 +27,7 @@ class Api::V1::Tracks::PointsController < ApiController
       response.set_header('X-Total-Pages', points.total_pages.to_s)
     end
 
-    serialized_points = points.map { |point| Api::PointSerializer.new(point).call }
+    serialized_points = points.preload(:source).map { |point| Api::PointSerializer.new(point).call }
 
     render json: serialized_points
   end

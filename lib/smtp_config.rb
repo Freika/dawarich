@@ -5,13 +5,14 @@ module SmtpConfig
   NO_AUTHENTICATION_VALUES = %w[none nil false off disabled].freeze
   DEFAULT_OPEN_TIMEOUT = 30
   DEFAULT_READ_TIMEOUT = 60
+  ALLOWED_OPENSSL_VERIFY_MODES = %w[none peer].freeze
 
   IMPLICIT_TLS_PORT = 465
 
   def self.smtp_settings(env = ENV)
     ssl = ssl?(env)
 
-    {
+    settings = {
       address:         env['SMTP_SERVER'],
       port:            env['SMTP_PORT']&.to_i,
       domain:          env['SMTP_DOMAIN'],
@@ -23,6 +24,11 @@ module SmtpConfig
       open_timeout:    timeout(env, 'SMTP_OPEN_TIMEOUT', DEFAULT_OPEN_TIMEOUT),
       read_timeout:    timeout(env, 'SMTP_READ_TIMEOUT', DEFAULT_READ_TIMEOUT)
     }
+
+    mode = openssl_verify_mode(env)
+    settings[:openssl_verify_mode] = mode if mode
+
+    settings
   end
 
   def self.mailer_url_options(env = ENV)
@@ -55,6 +61,29 @@ module SmtpConfig
     env['SMTP_PORT']&.to_i == IMPLICIT_TLS_PORT
   end
   private_class_method :ssl?
+
+  def self.openssl_verify_mode(env)
+    raw = env['SMTP_OPENSSL_VERIFY_MODE'].to_s.strip
+    return nil if raw.empty?
+
+    mode = raw.downcase
+    unless ALLOWED_OPENSSL_VERIFY_MODES.include?(mode)
+      raise ArgumentError,
+            "SMTP_OPENSSL_VERIFY_MODE=#{raw.inspect} is not supported; " \
+            "expected one of #{ALLOWED_OPENSSL_VERIFY_MODES.inspect}"
+    end
+
+    warn_unverified_tls if mode == 'none'
+
+    mode
+  end
+  private_class_method :openssl_verify_mode
+
+  def self.warn_unverified_tls
+    warn '[SMTP] SMTP_OPENSSL_VERIFY_MODE=none: TLS certificate verification is disabled. ' \
+         'Mail — including SMTP credentials — is sent over an unverified connection.'
+  end
+  private_class_method :warn_unverified_tls
 
   def self.timeout(env, key, default)
     raw = env[key]

@@ -15,6 +15,19 @@ class Notification < ApplicationRecord
     read_at.present?
   end
 
+  def update_with_broadcast!(attributes)
+    update!(attributes)
+    broadcast_notification
+    broadcast_replace_to(
+      [user, :notifications], target: "notification_#{id}",
+      partial: 'notifications/notification', locals: { notification: self, show_content: false }
+    )
+    broadcast_replace_to(
+      [user, :notifications], target: "detail_notification_#{id}",
+      partial: 'notifications/notification', locals: { notification: self, show_content: true }
+    )
+  end
+
   private
 
   def broadcast_notification

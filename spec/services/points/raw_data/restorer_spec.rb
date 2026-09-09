@@ -58,6 +58,45 @@ RSpec.describe Points::RawData::Restorer do
       end
     end
 
+    it 'uses the shared conflict-key order when locking points to restore' do
+      archive
+      expect(Point).to receive(:raw_data_lock_order).and_call_original
+
+      restorer.restore_to_database(user.id, 2024, 6)
+    end
+
+    it 'retries a restore batch after write contention' do
+      archive
+      attempts = 0
+      allow(Point).to receive(:sleep)
+      allow(Point).to receive(:transaction).and_wrap_original do |method, *args, &block|
+        attempts += 1
+        raise ActiveRecord::Deadlocked if attempts == 1
+
+        method.call(*args, &block)
+      end
+
+      restorer.restore_to_database(user.id, 2024, 6)
+
+      expect(attempts).to be > 1
+      expect(archived_points.map { |point| point.reload.raw_data }).to all(eq({ 'lon' => 13.4, 'lat' => 52.5 }))
+    end
+
+    it 'does not overwrite a point no longer linked to the archive' do
+      archive
+      changed_point = archived_points.first
+      changed_point.update!(
+        raw_data: { source: 'newer ingest' },
+        raw_data_archived: false,
+        raw_data_archive_id: nil
+      )
+
+      restorer.restore_to_database(user.id, 2024, 6)
+
+      expect(changed_point.reload.raw_data).to eq({ 'source' => 'newer ingest' })
+      expect(archived_points.second.reload.raw_data).to eq({ 'lon' => 13.4, 'lat' => 52.5 })
+    end
+
     it 'raises error when no archives found' do
       expect do
         restorer.restore_to_database(user.id, 2025, 12)
@@ -88,6 +127,7 @@ RSpec.describe Points::RawData::Restorer do
           content_type: 'application/gzip'
         )
         arc.save!
+        existing_point.update!(raw_data_archive: arc)
         arc
       end
 
@@ -140,6 +180,43 @@ RSpec.describe Points::RawData::Restorer do
         (archived_points + more_points).each(&:reload)
         expect(archived_points.first.raw_data).to eq({ 'lon' => 13.4, 'lat' => 52.5 })
         expect(more_points.first.raw_data).to eq({ 'lon' => 14.0, 'lat' => 53.0 })
+      end
+
+      it 'uses one transaction per restore slice rather than retaining locks for the whole restore' do
+        archive
+        archive2
+        stub_const('Points::RawData::Restorer::BATCH_SIZE', 1)
+
+        expect(Point).to receive(:transaction).exactly(5).times.and_call_original
+
+        restorer.restore_to_database(user.id, 2024, 6)
+      end
+
+      it 'safely resumes remaining archive chunks after a later chunk fails' do
+        archive
+        archive2
+        calls = 0
+        allow(restorer).to receive(:restore_archive_to_db).and_wrap_original do |method, current_archive|
+          calls += 1
+          raise StandardError, 'later archive failed' if calls == 2
+
+          method.call(current_archive)
+        end
+
+        expect { restorer.restore_to_database(user.id, 2024, 6) }
+          .to raise_error(StandardError, 'later archive failed')
+
+        expect(archived_points.map(&:reload)).to all(
+          have_attributes(raw_data_archived: false, raw_data_archive_id: nil)
+        )
+        expect(more_points.map(&:reload)).to all(
+          have_attributes(raw_data_archived: true, raw_data_archive_id: archive2.id)
+        )
+
+        allow(restorer).to receive(:restore_archive_to_db).and_call_original
+        restorer.restore_to_database(user.id, 2024, 6)
+
+        expect(more_points.map(&:reload)).to all(have_attributes(raw_data_archived: false, raw_data_archive_id: nil))
       end
     end
   end
@@ -203,10 +280,23 @@ RSpec.describe Points::RawData::Restorer do
       restorer.restore_to_memory(user.id, 2024, 6)
 
       archived_points.each do |point|
-        cache_key = "raw_data:temp:#{user.id}:#{point.id}"
+        cache_key = "raw_data:temp:#{user.id}:#{point.id}:#{archive.id}"
         cached_value = Rails.cache.read(cache_key)
         expect(cached_value).to eq({ 'lon' => 13.4, 'lat' => 52.5 })
       end
+    end
+
+    it 'does not cache a snapshot no longer linked to the archive' do
+      archive
+      detached_point = archived_points.first
+      detached_point.update!(raw_data_archived: false, raw_data_archive_id: nil)
+
+      restorer.restore_to_memory(user.id, 2024, 6)
+
+      detached_key = "raw_data:temp:#{user.id}:#{detached_point.id}:#{archive.id}"
+      linked_key = "raw_data:temp:#{user.id}:#{archived_points.second.id}:#{archive.id}"
+      expect(Rails.cache.read(detached_key)).to be_nil
+      expect(Rails.cache.read(linked_key)).to eq({ 'lon' => 13.4, 'lat' => 52.5 })
     end
 
     it 'does not modify database' do
@@ -224,7 +314,7 @@ RSpec.describe Points::RawData::Restorer do
       archive # Ensure archive is created before restore
       restorer.restore_to_memory(user.id, 2024, 6)
 
-      cache_key = "raw_data:temp:#{user.id}:#{archived_points.first.id}"
+      cache_key = "raw_data:temp:#{user.id}:#{archived_points.first.id}:#{archive.id}"
 
       # Cache should exist now
       expect(Rails.cache.exist?(cache_key)).to be true

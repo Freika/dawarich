@@ -83,5 +83,10 @@ module SharedLinks
 
       { day_key: day_key, action: ROW_ACTIONS, 'shared-trip-map-day-key-param': day_key }
     end
+
+    def gallery_row_data(day_key)
+      data = row_data(day_key)
+      data.merge(controller: 'lazy-gallery', action: [data[:action], 'toggle->lazy-gallery#toggle'].compact.join(' '))
+    end
   end
 end

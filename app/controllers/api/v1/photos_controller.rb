@@ -2,6 +2,7 @@
 
 class Api::V1::PhotosController < ApiController
   THUMBNAIL_BROWSER_CACHE_MAX_AGE = 30.minutes
+  PHOTO_SOURCE_ERRORS_HEADER = 'X-Photo-Source-Errors'
 
   before_action :check_integration_configured, only: %i[index thumbnail]
   before_action :check_source, only: %i[thumbnail]
@@ -13,20 +14,30 @@ class Api::V1::PhotosController < ApiController
 
     search = Photos::Search.new(current_api_user, start_date: params[:start_date], end_date: params[:end_date])
     @photos = search.call
+    return render_source_failure if search.all_sources_failed?
+
     Rails.cache.write(cache_key, @photos, expires_in: 30.minutes) if search.errors.blank? && @photos.present?
+    response.set_header(PHOTO_SOURCE_ERRORS_HEADER, search.errors.join(',')) if search.errors.any?
 
     render json: @photos, status: :ok
   rescue StandardError => e
     Rails.logger.error("Photo search failed: #{e.message}")
-    render json: { error: 'Failed to fetch photos' }, status: :bad_gateway
+    render_source_failure
   end
 
   def thumbnail
     upstream = Photos::Thumbnail.new(current_api_user, params[:source], params[:id]).call
     handle_thumbnail_response(upstream)
+  rescue *Photos::ConnectionErrors::HANDLED => e
+    Rails.logger.error("Photo thumbnail fetch failed: #{e.message}")
+    render json: { error: I18n.t('controllers.api.v1.photos.failed_to_fetch_photos') }, status: :bad_gateway
   end
 
   private
+
+  def render_source_failure
+    render json: { error: I18n.t('controllers.api.v1.photos.failed_to_fetch_photos') }, status: :bad_gateway
+  end
 
   def handle_thumbnail_response(upstream)
     if upstream.success?
@@ -41,7 +52,7 @@ class Api::V1::PhotosController < ApiController
   def thumbnail_error(response)
     return Immich::ResponseAnalyzer.new(response).error_message if params[:source] == 'immich'
 
-    'Failed to fetch thumbnail'
+    I18n.t('controllers.api.v1.photos.failed_to_fetch_thumbnail')
   end
 
   def integration_configured?
@@ -57,7 +68,11 @@ class Api::V1::PhotosController < ApiController
   end
 
   def unauthorized_integration
-    render json: { error: "#{params[:source]&.capitalize} integration not configured" },
+    error = I18n.t(
+      'controllers.api.v1.photos.capitalize_integration_not_configured',
+      source: params[:source]&.capitalize
+    )
+    render json: { error: error },
            status: :unauthorized
   end
 end

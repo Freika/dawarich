@@ -30,7 +30,7 @@ class ReverseGeocoding::Points::FetchData
   ].freeze
 
   def update_point_with_geocoding_data
-    response = Geocoder.search([point.lat, point.lon]).first
+    response = Geocoding::Search.call(user: point.user_id, query: [point.lat, point.lon]).first
 
     if response.blank?
       with_write_retry { point.update!(reverse_geocoded_at: Time.current) }
@@ -39,7 +39,7 @@ class ReverseGeocoding::Points::FetchData
 
     return if response.data['error'].present?
 
-    country_record = Country.find_by(name: response.country) if response.country
+    country_record = find_country(response) if response.country
 
     with_write_retry do
       point.update!(
@@ -49,6 +49,11 @@ class ReverseGeocoding::Points::FetchData
         geodata: DawarichSettings.store_geodata? ? response.data : {},
         reverse_geocoded_at: Time.current
       )
+      if point.saved_change_to_city? || point.saved_change_to_country_name? || point.saved_change_to_country_id?
+        user_id = point.user_id
+        timestamp = point.timestamp
+        ActiveRecord.after_all_transactions_commit { Stats::GeocodedDays.mark(user_id, timestamp) }
+      end
     end
   rescue *ReverseGeocoding::ProviderErrors::TRANSIENT => e
     Rails.logger.warn("Reverse geocoding provider error for point #{point.id}: #{e.message}")
@@ -62,6 +67,27 @@ class ReverseGeocoding::Points::FetchData
   rescue StandardError => e
     Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
     ExceptionReporter.call(e)
+  end
+
+  def find_country(response)
+    code = begin
+      response.country_code if response.respond_to?(:country_code)
+    rescue StandardError
+      nil
+    end
+
+    country = Country.matching_name(response.country)
+    country = nil if code.present? && country&.iso_a2 != code.upcase
+    country ||= Country.find_by(iso_a2: code.upcase) if code.present?
+
+    if country.nil?
+      Rails.logger.warn(
+        "[ReverseGeocoding] no country record for #{response.country.inspect}; " \
+        'add it to Countries::NameAliases if it is a known naming variant'
+      )
+    end
+
+    country
   end
 
   def with_write_retry

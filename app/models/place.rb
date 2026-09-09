@@ -9,8 +9,12 @@ class Place < ApplicationRecord
 
   DEFAULT_NAME = 'Suggested place'
 
-  belongs_to :user, optional: true # Optional until Stage 2 NOT NULL
+  belongs_to :user
   has_many :visits, dependent: :nullify
+  # Reader surfaces (drawers, serializers, stats) must never count tombstoned
+  # or declined visits; eager-loadable so list endpoints avoid N+1 counts.
+  # dependent: nil — lifecycle belongs to the canonical :visits association.
+  has_many :active_visits, -> { active }, class_name: 'Visit', inverse_of: :place, dependent: nil
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
 
@@ -22,24 +26,28 @@ class Place < ApplicationRecord
   validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
 
-  enum :source, { manual: 0, photon: 1 }
+  enum :source, { manual: 0, photon: 1, gpx_waypoint: 2 }
 
   scope :for_user, ->(user) { where(user: user) }
   scope :ordered, -> { order(:name) }
   scope :linked_to_confirmed_visits, lambda { |user|
-    where(id: user.visits.confirmed.where.not(place_id: nil).select(:place_id))
+    where(id: user.visits.active.confirmed.where.not(place_id: nil).select(:place_id))
   }
+  scope :imported, -> { where(source: sources[:gpx_waypoint]) }
   scope :tagged, -> { where(id: Tagging.where(taggable_type: 'Place').select(:taggable_id)) }
   scope :map_visible, lambda { |user|
-    manual.or(linked_to_confirmed_visits(user)).or(tagged)
+    manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged)
   }
 
+  # Legacy places predate the lonlat column and carry coordinates only in the
+  # decimal columns; to_f keeps their JSON serialization numeric — BigDecimal
+  # would encode as a string.
   def lon
-    lonlat.x
+    lonlat&.x || longitude.to_f
   end
 
   def lat
-    lonlat.y
+    lonlat&.y || latitude.to_f
   end
 
   def name_locked?

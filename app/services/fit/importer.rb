@@ -24,12 +24,13 @@ class Fit::Importer
     begin
       activity = Fit4Ruby.read(path)
     rescue StandardError => e
-      import.update!(status: :failed, error_message: "FIT parsing error: #{e.message}")
+      import.update!(status: :failed,
+                     error_message: I18n.t('services.fit.importer.fit_parsing_error_message', message: e.message))
       return
     end
 
     unless activity
-      import.update!(status: :failed, error_message: 'No activities found in FIT file')
+      import.update!(status: :failed, error_message: I18n.t('services.fit.importer.no_activities_found_in_fit_file'))
       return
     end
 

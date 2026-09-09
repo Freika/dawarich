@@ -1,5 +1,5 @@
 <div class="mx-auto md:w-2/3 w-full">
-  <h1 class="font-bold text-4xl">Editing import</h1>
+  <h1 class="font-bold text-4xl"><%= t('.editing_import') %></h1>
 
   <%= form_with model: @import, class: 'form-body mt-4' do |form| %>
     <div class="form-control">
@@ -9,12 +9,12 @@
 
     <div class="form-control">
       <%= form.label :source %>
-      <%= form.select :source, options_for_select(Import.sources.keys.map { |source| [source.humanize, source] }, @import.source), {}, class: 'select select-bordered' %>
+      <%= form.select :source, options_for_select(Import.sources.keys.map { |source| [t("enums.import.source.#{source}"), source] }, @import.source), {}, class: 'select select-bordered' %>
     </div>
 
     <div class='my-4'>
       <%= form.submit class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
-      <%= link_to "Back to imports", imports_path, class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
+      <%= link_to t('.back_to_imports'), imports_path, class: "rounded-lg py-3 px-5 bg-blue-600 text-white inline-block font-medium cursor-pointer" %>
     </div>
   <% end %>
 </div>

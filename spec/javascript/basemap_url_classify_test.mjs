@@ -108,8 +108,48 @@ test("detects extensions case-insensitively", () => {
   assert.equal(classifyBasemapUrl("https://t.example/STYLE.JSON"), "style")
 })
 
-test("returns null for a URL with no placeholders and no json extension", () => {
-  assert.equal(classifyBasemapUrl("https://tiles.example.com/basemap"), null)
+test("classifies an extensionless URL with no placeholders as a style", () => {
+  assert.equal(
+    classifyBasemapUrl("https://tiles.openfreemap.org/styles/liberty"),
+    "style",
+  )
+  assert.equal(classifyBasemapUrl("https://tiles.example.com/basemap"), "style")
+})
+
+test("classifies a placeholderless style path with a query string as a style", () => {
+  assert.equal(
+    classifyBasemapUrl("https://tiles.example.com/styles/liberty?key=abc"),
+    "style",
+  )
+})
+
+test("returns null for a malformed tile template missing a placeholder", () => {
+  for (const url of [
+    "https://t.example/{Z}/{X}/{Y}",
+    "https://t.example/{z}/{x}",
+    "https://t.example/{z}/{x}/{y-1}",
+    "https://t.example/styles/{name}",
+  ]) {
+    assert.equal(
+      classifyBasemapUrl(url),
+      null,
+      `expected ${url} to be rejected rather than treated as a style`,
+    )
+  }
+})
+
+test("returns null for a host that ends in a tile extension", () => {
+  assert.equal(classifyBasemapUrl("https://foo.png"), null)
+})
+
+test("returns null for a placeholderless URL ending in a tile extension", () => {
+  for (const extension of ["png", "jpg", "jpeg", "webp", "mvt", "pbf"]) {
+    assert.equal(
+      classifyBasemapUrl(`https://tiles.example.com/basemap.${extension}`),
+      null,
+      `expected .${extension} without placeholders to be rejected`,
+    )
+  }
 })
 
 test("returns null for an XYZ URL missing the x and y placeholders", () => {

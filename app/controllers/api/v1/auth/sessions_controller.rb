@@ -9,12 +9,14 @@ class Api::V1::Auth::SessionsController < Api::V1::Auth::BaseController
   # side channel.
   DUMMY_PASSWORD_HASH = BCrypt::Password.create(SecureRandom.hex(16)).to_s.freeze
 
+  before_action :check_email_password_login_allowed, only: [:create]
+
   def create
     user = User.find_by(email: params[:email]&.downcase)
 
     authenticated = constant_time_authenticate(user, params[:password].to_s)
 
-    return render_auth_error('Invalid email or password') unless authenticated
+    return render_auth_error(I18n.t('controllers.api.v1.auth.sessions.invalid_credentials')) unless authenticated
 
     if DawarichSettings.two_factor_available? && user.otp_required_for_login?
       challenge_token = Auth::IssueOtpChallengeToken.new(user).call
@@ -30,6 +32,15 @@ class Api::V1::Auth::SessionsController < Api::V1::Auth::BaseController
   end
 
   private
+
+  def check_email_password_login_allowed
+    return unless DawarichSettings.oidc_enabled? && !ALLOW_EMAIL_PASSWORD_LOGIN
+
+    render_auth_error(
+      I18n.t('controllers.users.sessions.email_password_login_is_disabled_please_use_oidc_to_sign'),
+      http_status: :forbidden
+    )
+  end
 
   # Always performs a bcrypt verification whether or not the user exists, so
   # response time does not leak account existence.

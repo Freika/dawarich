@@ -23,6 +23,31 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
       expect { described_class.perform_now }.not_to have_enqueued_job(VisitSuggestingJob)
     end
 
+    context 'when only per-user settings enable geocoding (no ENV)' do
+      before do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+        create(:point, user: user)
+      end
+
+      it 'schedules jobs only for users with an active geocoding setting' do
+        create(:service_setting, :active, user: user_with_points)
+
+        described_class.perform_now
+
+        expect(VisitSuggestingJob).to have_been_enqueued.with(
+          user_id: user_with_points.id,
+          start_at: time_chunks.first.first,
+          end_at: time_chunks.first.last
+        )
+
+        expect(VisitSuggestingJob).not_to have_been_enqueued.with(
+          user_id: user.id,
+          start_at: anything,
+          end_at: anything
+        )
+      end
+    end
+
     it 'schedules jobs only for active users with tracked points' do
       described_class.perform_now
 

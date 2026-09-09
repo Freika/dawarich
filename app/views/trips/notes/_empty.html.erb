@@ -3,7 +3,7 @@
     <button class="btn btn-sm btn-ghost"
             data-action="click->trip-maplibre#showNoteForm"
             data-date="<%= date %>">
-      + Add note
+      <%= t('.add_note') %>
     </button>
   </div>
 
@@ -14,13 +14,13 @@
         <textarea name="note[body]"
                   class="textarea textarea-bordered w-full min-h-[100px]"
                   maxlength="10000"
-                  placeholder="Write your notes for this day..."></textarea>
+                  placeholder="<%= t('.write_your_notes_for_this_day') %>"></textarea>
       </div>
       <div class="flex gap-2">
-        <button type="submit" class="btn btn-primary btn-sm">Save note</button>
+        <button type="submit" class="btn btn-primary btn-sm"><%= t('.save_note') %></button>
         <button type="button" class="btn btn-ghost btn-sm"
                 data-action="click->trip-maplibre#hideNoteForm"
-                data-date="<%= date %>">Cancel</button>
+                data-date="<%= date %>"><%= t('.cancel') %></button>
       </div>
     <% end %>
   </div>

@@ -1,5 +1,7 @@
 # 🌍 Dawarich: Your Self-Hostable Location History Tracker
 
+English | [简体中文](README.zh-CN.md)
+
 [![Discord](https://dcbadge.limes.pink/api/server/pHsBjpt5J8)](https://discord.gg/pHsBjpt5J8) | [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/H2H3IDYDD) | [![Patreon](https://img.shields.io/endpoint.svg?url=https%3A%2F%2Fshieldsio-patreon.vercel.app%2Fapi%3Fusername%3Dfreika%26type%3Dpatrons&style=for-the-badge)](https://www.patreon.com/freika) | [![Deploy on InstaPods](https://instapods.com/deploy-button.svg)](https://app.instapods.com/dashboard/pods/create?app=dawarich&ref=dawarich)
 
 ---
@@ -180,10 +182,10 @@ Check the documentation on the [website](https://dawarich.app/docs/environment-v
 
 As you could probably guess, I like statistics.
 
-<a href="https://star-history.com/#Freika/dawarich&Date">
+<a href="https://star-history.dera.page/#Freika/dawarich&Date">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=Freika/dawarich&type=Date&theme=dark" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=Freika/dawarich&type=Date" />
-   <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=Freika/dawarich&type=Date" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://star-history.dera.page/svg?repos=Freika/dawarich&type=Date&theme=dark" />
+   <source media="(prefers-color-scheme: light)" srcset="https://star-history.dera.page/svg?repos=Freika/dawarich&type=Date" />
+   <img alt="Star History Chart" src="https://star-history.dera.page/svg?repos=Freika/dawarich&type=Date" />
  </picture>
 </a>

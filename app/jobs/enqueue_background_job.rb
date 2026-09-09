@@ -11,6 +11,8 @@ class EnqueueBackgroundJob < ApplicationJob
       Import::PhotoprismGeodataJob.perform_later(user_id)
     when 'start_airtrail_import'
       AirTrail::ImportFlightsJob.perform_later(user_id)
+    when 'start_teslamate_sync'
+      TeslaMate::SyncJob.perform_later(user_id)
     when 'start_reverse_geocoding', 'continue_reverse_geocoding'
       Jobs::Create.new(job_name, user_id).call
     else

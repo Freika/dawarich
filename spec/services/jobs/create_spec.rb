@@ -58,6 +58,41 @@ RSpec.describe Jobs::Create do
       end
     end
 
+    context 'when only per-user settings enable geocoding (no ENV)' do
+      let(:user) { create(:user) }
+
+      before do
+        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+      end
+
+      it 'raises on force rerun with a user paid provider on a hosted instance' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        create(:service_setting, :geoapify, :active, user: user)
+
+        expect do
+          described_class.new('start_reverse_geocoding', user.id).call
+        end.to raise_error(Jobs::Create::PaidProviderForceRerunBlocked)
+      end
+
+      it 'allows force rerun with a user paid provider on a self-hosted instance' do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        create(:service_setting, :geoapify, :active, user: user)
+        create(:point, user: user)
+
+        expect do
+          described_class.new('start_reverse_geocoding', user.id).call
+        end.to have_enqueued_job(ReverseGeocodingJob)
+      end
+
+      it 'enqueues nothing for a user without settings' do
+        create(:point, user: user)
+
+        expect do
+          described_class.new('start_reverse_geocoding', user.id).call
+        end.not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+    end
+
     context 'when job_name is invalid' do
       let(:user) { create(:user) }
       let(:job_name) { 'invalid_job_name' }

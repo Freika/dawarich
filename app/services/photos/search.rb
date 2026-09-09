@@ -20,6 +20,17 @@ class Photos::Search
     @errors = []
   end
 
+  def configured_sources
+    sources = []
+    sources << :immich if user.immich_integration_configured?
+    sources << :photoprism if user.photoprism_integration_configured?
+    sources
+  end
+
+  def all_sources_failed?
+    configured_sources.any? && (configured_sources - errors).empty?
+  end
+
   def call
     photos = []
 
@@ -49,11 +60,11 @@ class Photos::Search
   end
 
   def request_photoprism
-    Photoprism::RequestPhotos.new(
-      user,
-      start_date: start_date,
-      end_date: end_date
-    ).call.map { |asset| transform_asset(asset, 'photoprism') }.compact
+    service = Photoprism::RequestPhotos.new(user, start_date: start_date, end_date: end_date)
+    assets = service.call
+    errors << :photoprism if service.connection_failed?
+
+    assets.map { |asset| transform_asset(asset, 'photoprism') }.compact
   end
 
   def transform_asset(asset, source)

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { escapeHtml } from "maps_maplibre/utils/geojson_transformers"
 import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
@@ -70,6 +71,7 @@ export default class extends Controller {
   addMembers() {
     const locations = this.locationsValue
     if (!locations.length) return
+    const theme = getCurrentTheme()
 
     const features = locations.map((loc, i) => ({
       type: "Feature",
@@ -79,7 +81,7 @@ export default class extends Controller {
       },
       properties: {
         id: loc.user_id,
-        name: loc.email || "Unknown",
+        name: loc.email || translate("common.unknown"),
         color: MEMBER_COLORS[i % MEMBER_COLORS.length],
         lastUpdate: loc.timestamp,
       },

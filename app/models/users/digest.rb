@@ -208,7 +208,7 @@ class Users::Digest < ApplicationRecord
   def month_name
     return nil unless month
 
-    Date::MONTHNAMES[month]
+    I18n.l(Date.new(year, month), format: :month_name)
   end
 
   def untracked_days
@@ -223,10 +223,10 @@ class Users::Digest < ApplicationRecord
   def distance_comparison_text
     if distance_km >= MOON_DISTANCE_KM
       percentage = ((distance_km / MOON_DISTANCE_KM) * 100).round(1)
-      "That's #{percentage}% of the distance to the Moon!"
+      I18n.t('helpers.users.digests.moon_distance', percentage:)
     else
       percentage = ((distance_km / EARTH_CIRCUMFERENCE_KM) * 100).round(1)
-      "That's #{percentage}% of Earth's circumference!"
+      I18n.t('helpers.users.digests.earth_circumference', percentage:)
     end
   end
 

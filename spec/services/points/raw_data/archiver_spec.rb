@@ -51,6 +51,101 @@ RSpec.describe Points::RawData::Archiver do
       expect(old_points.map(&:raw_data_archive_id).uniq.compact.size).to eq(1)
     end
 
+    it 'uses the shared conflict-key order when locking points to flag' do
+      expect(Point).to receive(:raw_data_lock_order).and_call_original
+
+      archiver.archive_user(user.id)
+    end
+
+    it 'does not link changed raw data to the stale archive snapshot' do
+      changed_point = old_points.first
+      stale_archive_id = nil
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        unless stale_archive_id
+          stale_archive_id = archive.id
+          changed_point.update_column(:raw_data, { source: 'concurrent ingest' })
+        end
+        method.call(archive, *args)
+      end
+
+      archiver.archive_user(user.id)
+
+      expect(changed_point.reload).to have_attributes(
+        raw_data_archived: true,
+        raw_data: { 'source' => 'concurrent ingest' }
+      )
+      expect(changed_point.raw_data_archive_id).not_to eq(stale_archive_id)
+      expect(old_points.drop(1).map { |point| point.reload.raw_data_archive_id }).to all(eq(stale_archive_id))
+    end
+
+    it 'stops re-fetching once a pass links no points' do
+      passes = 0
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        passes += 1
+        raise 'archive_user kept re-fetching points it could not link' if passes > 3
+
+        Point.where(id: old_points.map(&:id)).update_all(raw_data: { pass: passes })
+        method.call(archive, *args)
+      end
+
+      expect { archiver.archive_user(user.id) }.not_to raise_error
+      expect(passes).to eq(1)
+    end
+
+    it 'discards an archive that ends up with no linked points' do
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        Point.where(id: old_points.map(&:id)).update_all(raw_data: { source: 'concurrent ingest' })
+        method.call(archive, *args)
+      end
+
+      expect { archiver.archive_user(user.id) }.not_to change(Points::RawDataArchive, :count)
+    end
+
+    it 'skips a batch it cannot link and still archives the rest' do
+      stub_const('Points::RawData::Archiver::CHUNK_SIZE', 2)
+      ordered = old_points.sort_by(&:id)
+      stalled = ordered.first(2)
+      corrupted = false
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        unless corrupted
+          corrupted = true
+          Point.where(id: stalled.map(&:id)).update_all(raw_data: { source: 'concurrent ingest' })
+        end
+        method.call(archive, *args)
+      end
+
+      archiver.archive_user(user.id)
+
+      expect(stalled.map { |point| point.reload.raw_data_archived }).to all(be false)
+      expect(ordered.drop(2).map { |point| point.reload.raw_data_archived }).to all(be true)
+    end
+
+    it 'reports a failure when a zero-link archive cannot be cleaned up' do
+      allow(archiver).to receive(:verify_archive_full!).and_wrap_original do |method, archive, *args|
+        Point.where(id: old_points.map(&:id)).update_all(raw_data: { source: 'concurrent ingest' })
+        method.call(archive, *args)
+      end
+      allow(archiver).to receive(:cleanup_failed_archive!)
+
+      expect(archiver.archive_user(user.id)[:failed]).to eq(1)
+    end
+
+    it 'retries point flagging after write contention' do
+      attempts = 0
+      allow(Point).to receive(:sleep)
+      allow(Point).to receive(:transaction).and_wrap_original do |method, *args, &block|
+        attempts += 1
+        raise ActiveRecord::Deadlocked if attempts == 1
+
+        method.call(*args, &block)
+      end
+
+      archiver.archive_user(user.id)
+
+      expect(attempts).to be > 1
+      expect(old_points.map { |point| point.reload.raw_data_archived }).to all(be true)
+    end
+
     it 'does not archive recent points' do
       recent_point = create(:point, user: user,
                                     timestamp: 1.week.ago.to_i,
@@ -174,6 +269,12 @@ RSpec.describe Points::RawData::Archiver do
       expect do
         archiver.archive_specific_month(user.id, test_date.year, test_date.month)
       end.to change(Points::RawDataArchive, :count).by(1)
+    end
+
+    it 'reports how many points were actually linked' do
+      stats = archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      expect(stats).to include(processed: 1, archived: 3)
     end
 
     it 'creates archive with correct metadata' do

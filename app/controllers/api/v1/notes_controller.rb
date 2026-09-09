@@ -38,7 +38,7 @@ class Api::V1::NotesController < ApiController
   def destroy
     @note.destroy!
 
-    render json: { message: 'Note was successfully deleted' }, status: :ok
+    render json: { message: I18n.t('controllers.api.v1.notes.note_was_successfully_deleted') }, status: :ok
   end
 
   private

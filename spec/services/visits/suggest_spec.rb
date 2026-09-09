@@ -62,34 +62,55 @@ RSpec.describe Visits::Suggest do
       allow(Geocoder).to receive(:search).and_return(geocoder_response)
     end
 
-    it 'creates places' do
-      expect { subject }.to change(Place, :count).by(1)
+    it 'does not mint a place for street-level evidence — the visit is named by the street' do
+      expect { subject }.not_to change(Place, :count)
     end
 
-    it 'creates separate visits across a same-location time gap above the configured maximum' do
-      expect { subject }.to change(Visit, :count).by(2)
+    it 'bridges a same-location tracking gap into ONE visit' do
+      expect { subject }.to change(Visit, :count).by(1)
+
+      visit = Visit.last
+      expect(visit.started_at).to eq(start_at)
+      expect(visit.ended_at).to eq(start_at + 190.minutes)
     end
 
     it 'creates visits notification' do
       expect { subject }.to change(Notification, :count).by(1)
     end
 
+    it 'does not notify again when a re-run merely regenerates the same stays' do
+      described_class.new(user, start_at:, end_at:).call
+      create(:point, :with_known_location, user:, timestamp: start_at + 191.minutes)
+
+      expect { described_class.new(user, start_at:, end_at:).call }
+        .not_to change(Notification, :count)
+    end
+
     context 'when reverse geocoding is enabled' do
       let(:reverse_geocoding_start_at) { Time.zone.local(2020, 6, 1, 0, 0, 0) }
       let(:reverse_geocoding_end_at) { Time.zone.local(2020, 6, 1, 5, 0, 0) }
 
+      let(:venue_result) do
+        # A venue (non-street OSM key) at the known point location — clears
+        # the attribution evidence gate, so a place is minted.
+        double(data: {
+                 'geometry' => { 'coordinates' => [37.6173, 55.755826] },
+                 'properties' => { 'osm_key' => 'amenity', 'name' => 'Café Pushkin' }
+               })
+      end
+
       before do
         allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        allow(Geocoder).to receive(:search).and_return([venue_result])
 
         create_visit_points(user, reverse_geocoding_start_at)
         clear_enqueued_jobs
       end
 
-      it 'enqueues reverse geocoding jobs for created visits' do
+      it 'enqueues reverse geocoding jobs for created visits with venue evidence' do
         described_class.new(user, start_at: reverse_geocoding_start_at, end_at: reverse_geocoding_end_at).call
 
-        # Since both visits are at the same location, they share the same place.
-        # So only 1 ReverseGeocodingJob should be enqueued. (Places::NameFetchingJob
+        # The bridged visit resolves to one venue place. (Places::NameFetchingJob
         # is also enqueued by PlaceFinder when reverse geocoding is enabled, but
         # that's a separate concern and not what this test is asserting.)
         reverse_geocoding_jobs = enqueued_jobs.select { |job| job['job_class'] == 'ReverseGeocodingJob' }

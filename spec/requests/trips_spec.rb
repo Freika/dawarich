@@ -3,6 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe '/trips', type: :request do
+  def capture_sql(&block)
+    queries = []
+    callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record', &block)
+    queries
+  end
+
   let(:valid_attributes) do
     {
       name: 'Summer Vacation 2024',
@@ -51,6 +58,14 @@ RSpec.describe '/trips', type: :request do
       get trip_url(trip)
 
       expect(response).to be_successful
+    end
+
+    it 'does not load the unused raw point coordinate projection' do
+      queries = capture_sql { get trip_url(trip) }
+
+      expect(
+        queries.none? { |sql| sql.include?('ST_Y(lonlat::geometry)') && sql.include?('"points"."battery"') }
+      ).to be(true)
     end
 
     it 'renders the recalculate button' do
@@ -200,6 +215,14 @@ RSpec.describe '/trips', type: :request do
       get edit_trip_url(trip)
 
       expect(response).to be_successful
+    end
+
+    it 'does not load the unused raw point coordinate projection' do
+      queries = capture_sql { get edit_trip_url(trip) }
+
+      expect(
+        queries.none? { |sql| sql.include?('ST_Y(lonlat::geometry)') && sql.include?('"points"."battery"') }
+      ).to be(true)
     end
   end
 

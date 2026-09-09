@@ -9,13 +9,20 @@ module AirTrail
     end
 
     def call
-      return { success: false, error: 'AirTrail URL is missing' } if @url.blank?
-      return { success: false, error: 'AirTrail API key is missing' } if @api_key.blank?
+      if @url.blank?
+        return { success: false,
+error: I18n.t('services.air_trail.connection_tester.airtrail_url_is_missing') }
+      end
+      if @api_key.blank?
+        return { success: false,
+error: I18n.t('services.air_trail.connection_tester.airtrail_api_key_is_missing') }
+      end
 
       AirTrail::Client.new(@url, @api_key, skip_ssl_verification: @skip_ssl_verification).flights
-      { success: true, message: 'AirTrail connection verified' }
+      { success: true, message: I18n.t('services.air_trail.connection_tester.airtrail_connection_verified') }
     rescue AirTrail::Client::Error => e
-      { success: false, error: "AirTrail connection failed: #{e.message}" }
+      { success: false,
+error: I18n.t('services.air_trail.connection_tester.airtrail_connection_failed_message', message: e.message) }
     end
   end
 end

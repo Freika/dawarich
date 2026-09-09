@@ -4,8 +4,8 @@
   <div class="badge mx-4 <%= 'badge-outline' if github_update %>">
     <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
       <% if github_update %>
-        <span class="tooltip tooltip-bottom" data-tip="New version available! Check out Github releases!">
-          <span class="hidden sm:inline"><%= APP_VERSION %>&nbsp;!</span>
+        <span class="tooltip tooltip-bottom" data-tip="<%= t('.new_version_available_check_out_github_releases') %>">
+          <span class="hidden sm:inline"><%= APP_VERSION %><%= t('.nbsp') %></span>
         </span>
       <% else %>
         <span class="hidden sm:inline"><%= APP_VERSION %></span>

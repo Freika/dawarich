@@ -35,6 +35,7 @@ RSpec.describe Visits::SelectPlace do
       expect(place.source).to eq('photon')
       expect(visit.reload.place_id).to eq(place.id)
       expect(visit.name).to eq('Café Bravo')
+      expect(visit.status).to eq('confirmed')
     end
 
     it 'locks the name of a place the user picked so reverse geocoding cannot rewrite it' do

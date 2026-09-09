@@ -98,4 +98,46 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       expect(described_class.get_sidekiq_options['retry']).to eq(3)
     end
   end
+
+  describe 'user mode (no ENV)' do
+    let(:owner) { create(:user) }
+    let(:point) { create(:point, user: owner) }
+    let(:job) { described_class.new }
+    let(:fetcher) { instance_double(ReverseGeocoding::Points::FetchData, call: nil) }
+
+    before do
+      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+      allow(ReverseGeocoding::Points::FetchData).to receive(:new).and_return(fetcher)
+    end
+
+    it 'fetches data when the owner has an active provider' do
+      create(:service_setting, :active, user: owner)
+
+      job.perform('Point', point.id)
+
+      expect(ReverseGeocoding::Points::FetchData).to have_received(:new).with(point.id, force: false)
+    end
+
+    it 'skips fetching when the owner has no configuration' do
+      job.perform('Point', point.id)
+
+      expect(ReverseGeocoding::Points::FetchData).not_to have_received(:new)
+    end
+
+    it 'does not block its own thread to pace komoot' do
+      create(:service_setting, :active, user: owner, config: { 'host' => 'photon.komoot.io' })
+      allow(job).to receive(:sleep)
+
+      job.perform('Point', point.id)
+
+      expect(job).not_to have_received(:sleep)
+    end
+
+    it 'returns quietly when the record no longer exists' do
+      create(:service_setting, :active, user: owner)
+
+      expect { job.perform('Point', -1) }.not_to raise_error
+      expect(ReverseGeocoding::Points::FetchData).not_to have_received(:new)
+    end
+  end
 end

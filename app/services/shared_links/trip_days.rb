@@ -19,8 +19,8 @@ module SharedLinks
         row = stats[date]
         {
           date: date,
-          weekday: date.strftime('%A'),
-          label: date.strftime('%b %-d'),
+          weekday: I18n.l(date, format: '%A'),
+          label: I18n.l(date, format: :short_month_day),
           color: COLORS[index % COLORS.size],
           has_data: row.present?,
           first_time: row && row[:first_time],

@@ -1,0 +1,24 @@
+<%# The mode label IS the control: a transparent <select> stretched over the
+    text, submitting on change. No edit mode, no save button — the same
+    pattern the raw rows use, brought onto the leg you are already reading.
+    Only rendered for legs that map to exactly one segment; a merged transfer
+    or an inferred stop has nothing single to write to.
+    Locals: track, segment_id, mode, label %>
+<%= form_with url: track_segment_path(track, segment_id),
+              scope: :track_segment,
+              method: :patch,
+              class: 'segment-leg__form' do |f| %>
+  <label class="segment-leg__mode segment-leg__mode--editable">
+    <span><%= label %></span>
+    <%= icon 'chevron-down', class: 'segment-leg__caret' %>
+    <%= f.select :transportation_mode,
+                 modes_for_mode(mode, current_user),
+                 { selected: mode },
+                 class: 'segment-leg__select',
+                 "aria-label": t('tracks.segments.segment_row.transportation_mode_currently', mode: label),
+                 data: {
+                   action: 'change->segment-mode-editor#submit',
+                   testid: "leg-mode-select-#{segment_id}"
+                 } %>
+  </label>
+<% end %>

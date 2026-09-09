@@ -5,6 +5,9 @@ class Users::SafeSettings
 
   GATED_MAP_LAYERS = ['Heatmap', 'Fog of War', 'Scratch map'].freeze
 
+  MIN_MINUTES_BETWEEN_ROUTES = 1
+  MAX_MINUTES_BETWEEN_ROUTES = 1440
+
   FOG_OF_WAR_MODES = %w[points hexagons].freeze
 
   DEFAULT_VALUES = {
@@ -21,7 +24,7 @@ class Users::SafeSettings
     'live_map_enabled' => true,
     'route_opacity' => 0.6,
     # Layer colors: route fallback matches Map v1's blue, track color matches
-    # Tracks::GeojsonSerializer::DEFAULT_COLOR — keep them in sync.
+    # Tracks::GeojsonSerializer::DEFAULT_COLOR, keep them in sync.
     'route_color' => '#0000ff',
     'track_color' => '#6366F1',
     'immich_url' => nil,
@@ -34,11 +37,21 @@ class Users::SafeSettings
     'airtrail_api_key' => nil,
     'airtrail_skip_ssl_verification' => false,
     'airtrail_last_synced_at' => nil,
+    'teslamate_url' => nil,
+    'teslamate_username' => nil,
+    'teslamate_password' => nil,
+    'teslamate_api_token' => nil,
+    'teslamate_skip_ssl_verification' => false,
+    'teslamate_last_synced_at' => nil,
+    'teslamate_last_synced_url' => nil,
+    'teslamate_processing_pending' => false,
+    'teslamate_processing_pending_url' => nil,
     'maps' => { 'distance_unit' => 'km' },
     'visits_suggestions_enabled' => 'true',
     'enabled_map_layers' => %w[Tracks Heatmap],
     'maps_maplibre_style' => 'light',
     'maps_maplibre_tiles_url' => nil,
+    'maps_maplibre_tiles_fallback' => false,
     'maps_maplibre_custom_theme' => {
       'base' => 'noir',
       'tokens' => {
@@ -54,41 +67,20 @@ class Users::SafeSettings
     'supporter_email' => nil,
     'supporter_github_username' => nil,
     'show_supporter_badge' => true,
-    # Transportation mode thresholds (speeds in km/h, distances in km)
-    'transportation_thresholds' => {
-      'walking_max_speed' => 7,
-      'cycling_max_speed' => 45,
-      'driving_max_speed' => 220,
-      'flying_min_speed' => 150
-    },
-    'transportation_expert_thresholds' => {
-      'stationary_max_speed' => 1,
-      'running_vs_cycling_accel' => 0.25,
-      'cycling_vs_driving_accel' => 0.4,
-      'train_min_speed' => 80,
-      'min_segment_duration' => 60,
-      'time_gap_threshold' => 180,
-      'min_flight_distance_km' => 100
-    },
-    'transportation_expert_mode' => false,
     'min_minutes_spent_in_city' => 60,
-    'max_gap_minutes_in_city' => 120,
     # GPS noise filtering (Points::AnomalyFilter)
     'gps_filtering_enabled' => true,
-    'gps_accuracy_threshold' => 100,
     'timezone' => ENV.fetch('TIME_ZONE', 'UTC'),
     'visit_radius_meters' => 100,
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
-    'visit_density_fill_enabled' => true,
-    'stay_max_gap_minutes' => 60,
-    'point_dragging_enabled' => false
+    'point_dragging_enabled' => false,
+    'points_tiled_rendering' => false
   }.freeze
 
-  GPS_ACCURACY_THRESHOLD_MIN = 50
-  GPS_ACCURACY_THRESHOLD_MAX = 1000
-
   def initialize(settings = {}, plan: nil)
+    settings = {} unless settings.is_a?(Hash)
+
     @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
     @plan = plan
   end
@@ -120,25 +112,21 @@ class Users::SafeSettings
       fog_of_war_threshold: fog_of_war_threshold,
       fog_of_war_mode: fog_of_war_mode,
       enabled_map_layers: enabled_map_layers,
+      places_tag_filters: places_tag_filters,
       maps_maplibre_style: maps_maplibre_style,
       maps_maplibre_tiles_url: maps_maplibre_tiles_url,
+      maps_maplibre_tiles_fallback: maps_maplibre_tiles_fallback?,
       maps_maplibre_custom_theme: maps_maplibre_custom_theme,
       globe_projection: globe_projection,
-      transportation_thresholds: transportation_thresholds,
-      transportation_expert_thresholds: transportation_expert_thresholds,
       enabled_transportation_modes: enabled_transportation_modes,
-      transportation_expert_mode: transportation_expert_mode?,
       min_minutes_spent_in_city: min_minutes_spent_in_city,
-      max_gap_minutes_in_city: max_gap_minutes_in_city,
       gps_filtering_enabled: gps_filtering_enabled?,
-      gps_accuracy_threshold: gps_accuracy_threshold,
       timezone: timezone,
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
       visit_min_duration_minutes: visit_min_duration_minutes,
-      visit_density_fill_enabled: visit_density_fill_enabled?,
-      stay_max_gap_minutes: stay_max_gap_minutes,
-      point_dragging_enabled: point_dragging_enabled?
+      point_dragging_enabled: point_dragging_enabled?,
+      points_tiled_rendering: points_tiled_rendering?
     }
   end
 
@@ -163,7 +151,10 @@ class Users::SafeSettings
   end
 
   def minutes_between_routes
-    settings['minutes_between_routes']
+    minutes = settings['minutes_between_routes'].to_i
+    minutes = DEFAULT_VALUES['minutes_between_routes'] unless minutes.positive?
+
+    minutes.clamp(MIN_MINUTES_BETWEEN_ROUTES, MAX_MINUTES_BETWEEN_ROUTES)
   end
 
   def time_threshold_minutes
@@ -226,6 +217,26 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(settings['airtrail_skip_ssl_verification'])
   end
 
+  def teslamate_url
+    settings['teslamate_url']
+  end
+
+  def teslamate_username
+    settings['teslamate_username']
+  end
+
+  def teslamate_password
+    settings['teslamate_password']
+  end
+
+  def teslamate_api_token
+    settings['teslamate_api_token']
+  end
+
+  def teslamate_skip_ssl_verification
+    ActiveModel::Type::Boolean.new.cast(settings['teslamate_skip_ssl_verification'])
+  end
+
   def maps
     m = settings['maps']
     return m unless lite?
@@ -260,6 +271,13 @@ class Users::SafeSettings
     lite? ? layers - GATED_MAP_LAYERS : layers
   end
 
+  def places_tag_filters
+    filters = settings['places_tag_filters']
+    return if filters.nil?
+
+    Array(filters).map { |value| value == 'untagged' ? value : value.to_i }
+  end
+
   def maps_maplibre_style
     settings['maps_maplibre_style']
   end
@@ -270,6 +288,10 @@ class Users::SafeSettings
 
   def maps_maplibre_tiles_url
     settings['maps_maplibre_tiles_url']
+  end
+
+  def maps_maplibre_tiles_fallback?
+    ActiveModel::Type::Boolean.new.cast(settings['maps_maplibre_tiles_fallback']) || false
   end
 
   def globe_projection
@@ -308,18 +330,6 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(value)
   end
 
-  def transportation_thresholds
-    settings['transportation_thresholds'] || DEFAULT_VALUES['transportation_thresholds']
-  end
-
-  def transportation_expert_thresholds
-    settings['transportation_expert_thresholds'] || DEFAULT_VALUES['transportation_expert_thresholds']
-  end
-
-  def transportation_expert_mode?
-    ActiveModel::Type::Boolean.new.cast(settings['transportation_expert_mode'])
-  end
-
   def enabled_transportation_modes
     raw = settings['enabled_transportation_modes']
     valid = Track::TRANSPORTATION_MODES.keys.map(&:to_s)
@@ -331,10 +341,6 @@ class Users::SafeSettings
 
   def min_minutes_spent_in_city
     (settings['min_minutes_spent_in_city'] || DEFAULT_VALUES['min_minutes_spent_in_city']).to_i
-  end
-
-  def max_gap_minutes_in_city
-    (settings['max_gap_minutes_in_city'] || DEFAULT_VALUES['max_gap_minutes_in_city']).to_i
   end
 
   def timezone
@@ -352,13 +358,12 @@ class Users::SafeSettings
     ActiveModel::Type::Boolean.new.cast(value)
   end
 
-  def gps_accuracy_threshold
-    raw = settings['gps_accuracy_threshold'] || DEFAULT_VALUES['gps_accuracy_threshold']
-    raw.to_i.clamp(GPS_ACCURACY_THRESHOLD_MIN, GPS_ACCURACY_THRESHOLD_MAX)
-  end
-
   def point_dragging_enabled?
     ActiveModel::Type::Boolean.new.cast(settings['point_dragging_enabled']) || false
+  end
+
+  def points_tiled_rendering?
+    ActiveModel::Type::Boolean.new.cast(settings['points_tiled_rendering']) || false
   end
 
   def visit_radius_meters
@@ -372,14 +377,6 @@ class Users::SafeSettings
   def visit_min_duration_minutes
     raw = settings['visit_min_duration_minutes'] || DEFAULT_VALUES['visit_min_duration_minutes']
     raw.to_i.clamp(1, 60)
-  end
-
-  def visit_density_fill_enabled?
-    ActiveModel::Type::Boolean.new.cast(settings['visit_density_fill_enabled'])
-  end
-
-  def stay_max_gap_minutes
-    settings['stay_max_gap_minutes'].to_i.clamp(5, 720)
   end
 
   private

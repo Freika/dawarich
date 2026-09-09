@@ -28,7 +28,7 @@ class Jobs::Create
   private
 
   def bulk_enqueue(points_relation, force:)
-    return unless DawarichSettings.reverse_geocoding_enabled?
+    return unless geocoding_config.enabled?
 
     points_relation.in_batches(of: BULK_ENQUEUE_BATCH_SIZE) do |batch|
       ids = batch.pluck(:id)
@@ -85,13 +85,14 @@ class Jobs::Create
   end
 
   def paid_provider?
-    DawarichSettings.geoapify_enabled? || DawarichSettings.locationiq_enabled?
+    geocoding_config.paid_provider?
   end
 
   def paid_provider_name
-    return 'locationiq' if DawarichSettings.locationiq_enabled?
-    return 'geoapify' if DawarichSettings.geoapify_enabled?
+    (geocoding_config.provider || 'unknown').to_s
+  end
 
-    'unknown'
+  def geocoding_config
+    @geocoding_config ||= Geocoding::Config.for(user)
   end
 end

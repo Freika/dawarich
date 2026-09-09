@@ -11,34 +11,38 @@ class Users::OtpChallengeController < ApplicationController
 
     unless user && otp_challenge_valid?
       clear_otp_session
-      redirect_to new_user_session_path, alert: 'Session expired. Please sign in again.'
+      redirect_to new_user_session_path,
+                  alert: I18n.t('controllers.users.otp_challenge.session_expired_please_sign_in_again')
       return
     end
 
     otp_code = params[:otp_attempt]
 
     if authenticate_otp(user, otp_code)
+      remember_me = session[:otp_remember_me]
       clear_otp_session
       user.reset_failed_otp_attempts!
+      user.remember_me = remember_me
       sign_in(user)
-      redirect_to after_sign_in_path_for(user), notice: 'Signed in successfully.'
+      redirect_to after_sign_in_path_for(user), notice: I18n.t('controllers.users.otp_challenge.signed_in_successfully')
     elsif user.otp_locked?
       clear_otp_session
+      alert = I18n.t('controllers.users.otp_challenge.account_temporarily_locked_due_to_too_many_failed_2fa_attempts')
       redirect_to new_user_session_path,
-                  alert: 'Account temporarily locked due to too many failed 2FA attempts. ' \
-                         'Use a backup code, wait 30 minutes, or reset your password.'
+                  alert: alert
     else
       user.register_failed_otp_attempt!
 
       session[:otp_failed_attempts] = (session[:otp_failed_attempts] || 0) + 1
       if session[:otp_failed_attempts] >= MAX_FAILED_ATTEMPTS
         clear_otp_session
+        alert = I18n.t('controllers.users.otp_challenge.too_many_invalid_two_factor_codes_please_sign_in_again')
         redirect_to new_user_session_path,
-                    alert: 'Too many invalid two-factor codes. Please sign in again.'
+                    alert: alert
         return
       end
 
-      flash.now[:alert] = 'Invalid two-factor code.'
+      flash.now[:alert] = I18n.t('controllers.users.otp_challenge.invalid_two_factor_code')
       render 'devise/sessions/otp_challenge', status: :unprocessable_entity
     end
   end
@@ -67,5 +71,6 @@ class Users::OtpChallengeController < ApplicationController
     session.delete(:otp_user_id)
     session.delete(:otp_challenge_at)
     session.delete(:otp_failed_attempts)
+    session.delete(:otp_remember_me)
   end
 end

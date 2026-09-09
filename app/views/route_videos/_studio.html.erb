@@ -1,0 +1,237 @@
+<% hud_font_urls = %w[inter jetbrains-mono].flat_map do |key|
+     %w[400 700].map { |weight| ["#{key}-#{weight}", asset_path("poster/#{key}-#{weight}.woff2")] }
+   end.to_h %>
+<div id="video-studio"
+     class="fixed inset-0 hidden bg-base-300"
+     style="z-index: 60"
+     data-controller="video-studio"
+     data-video-studio-fonts-value="<%= hud_font_urls.to_json %>"
+     data-video-studio-upload-url-value="<%= rails_direct_uploads_url %>"
+     data-video-studio-create-url-value="<%= route_videos_path %>">
+  <div class="flex h-full flex-col">
+    <header class="flex items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2">
+      <div class="flex items-center gap-3 shrink-0">
+        <h2 class="text-sm font-semibold tracking-wide flex items-center gap-2">
+          <%= icon 'video', class: 'h-4 w-4 opacity-70' %>
+          <%= t('.video_studio') %>
+        </h2>
+        <%= render 'shared/studio_switcher', current: :video, controller_name: 'video-studio' %>
+      </div>
+      <div class="flex items-center gap-2 min-w-0 text-sm opacity-70">
+        <%= icon 'calendar-clock', class: 'h-4 w-4 shrink-0' %>
+        <span class="truncate" data-video-studio-target="rangeLabel"></span>
+      </div>
+      <button type="button" class="btn btn-ghost btn-sm btn-circle shrink-0" title="<%= t('.close_studio') %>"
+              aria-label="<%= t('.close_studio') %>"
+              data-action="video-studio#close">
+        <%= icon 'x' %>
+      </button>
+    </header>
+
+    <div class="flex min-h-0 flex-1 flex-col lg:flex-row">
+      <!-- Video preview -->
+      <div class="relative flex h-[38vh] min-w-0 shrink-0 flex-col items-center justify-center overflow-hidden p-6 lg:h-auto lg:flex-1 lg:shrink"
+           data-video-studio-target="stage">
+        <div class="relative shrink-0 overflow-hidden shadow-2xl" data-video-studio-target="frame">
+          <%# Inline position: MapLibre's own .maplibregl-map class forces
+              position: relative, which would override the utility class and
+              collapse the absolutely-positioned container to zero height. %>
+          <div style="position: absolute; inset: 0" data-video-studio-target="preview"></div>
+          <%# The real HUD, drawn over the preview at preview scale, so the
+              chrome you see is the chrome that gets burned into the video. %>
+          <canvas class="absolute inset-0 h-full w-full" style="pointer-events: none"
+                  data-video-studio-target="overlay"></canvas>
+          <video class="absolute inset-0 hidden h-full w-full bg-black"
+                 data-video-studio-target="result"
+                 controls playsinline></video>
+        </div>
+        <p class="mt-2 shrink-0 text-xs opacity-60">
+          <%= t('.rendered_on_your_device_nothing_leaves_the_browser_until_you_save') %>
+        </p>
+      </div>
+
+      <!-- Controls -->
+      <aside class="flex w-full shrink-0 flex-col border-t border-base-content/10 bg-base-200 lg:w-96 lg:border-l lg:border-t-0">
+        <div class="min-h-0 flex-1 space-y-3 overflow-y-auto p-3">
+          <details open class="collapse collapse-arrow bg-base-100 rounded-lg">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+                <%= icon 'grid2x2', class: 'h-4 w-4 opacity-70 shrink-0' %>
+                <%= t('.format') %>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-2">
+              <select class="select select-bordered select-sm py-0 w-full"
+                      data-setting="format" data-action="change->video-studio#updateSetting">
+                <option value="portrait"><%= t('.format_portrait') %></option>
+                <option value="landscape"><%= t('.format_landscape') %></option>
+                <option value="square"><%= t('.format_square') %></option>
+              </select>
+              <p class="text-xs opacity-60" data-video-studio-target="formatDims"></p>
+            </div>
+          </details>
+
+          <details open class="collapse collapse-arrow bg-base-100 rounded-lg">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+                <%= icon 'palette', class: 'h-4 w-4 opacity-70 shrink-0' %>
+                <%= t('.theme') %>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-2">
+              <div class="grid grid-cols-6 gap-1.5">
+                <% Array(@poster_themes).each do |theme| %>
+                  <button type="button"
+                          class="w-full overflow-hidden rounded-md border border-base-300 ring-primary ring-offset-base-100 transition hover:scale-105 focus:outline-none focus-visible:ring-2"
+                          style="height: 32px; background-image: url('<%= asset_path("poster_themes/#{theme['key']}.webp") %>'); background-size: cover; background-position: center;"
+                          title="<%= theme['name'] %>"
+                          aria-label="<%= theme['name'] %>"
+                          data-video-studio-target="themeSwatch"
+                          data-theme-key="<%= theme['key'] %>"
+                          data-theme-name="<%= theme['name'] %>"
+                          data-action="click->video-studio#selectTheme"></button>
+                <% end %>
+              </div>
+              <p class="text-xs opacity-70" data-video-studio-target="themeLabel"></p>
+            </div>
+          </details>
+
+          <details open class="collapse collapse-arrow bg-base-100 rounded-lg">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+                <%= icon 'route', class: 'h-4 w-4 opacity-70 shrink-0' %>
+                <%= t('.route') %>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-1">
+              <label class="flex items-center gap-2">
+                <input type="color"
+                       class="h-7 w-9 cursor-pointer rounded border border-base-300 bg-base-100 p-0.5"
+                       data-setting="track_color"
+                       data-action="input->video-studio#updateSetting">
+                <span class="label-text text-sm flex-1"><%= t('.track_color') %></span>
+                <button type="button" class="btn btn-ghost btn-xs"
+                        data-action="video-studio#resetTrackColor"><%= t('.reset') %></button>
+              </label>
+              <div class="pt-2">
+                <div class="flex items-center justify-between py-1">
+                  <span class="label-text text-xs"><%= t('.track_width') %></span>
+                  <span class="text-xs font-medium tabular-nums opacity-80"
+                        data-video-studio-target="trackWidthLabel"></span>
+                </div>
+                <input type="range" min="50" max="300" step="10"
+                       class="range range-primary range-xs"
+                       data-setting="track_width" data-action="input->video-studio#updateSetting">
+              </div>
+            </div>
+          </details>
+
+          <details open class="collapse collapse-arrow bg-base-100 rounded-lg">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+                <%= icon 'play', class: 'h-4 w-4 opacity-70 shrink-0' %>
+                <%= t('.playback') %>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-2">
+              <div>
+                <div class="flex items-center justify-between py-1">
+                  <span class="label-text text-xs"><%= t('.duration') %></span>
+                  <span class="text-xs font-medium tabular-nums opacity-80"
+                        data-video-studio-target="durationLabel"></span>
+                </div>
+                <input type="range" min="8" max="30" step="1"
+                       class="range range-primary range-xs"
+                       data-setting="duration_sec" data-action="input->video-studio#updateSetting">
+              </div>
+              <label class="form-control">
+                <span class="label-text text-xs"><%= t('.camera') %></span>
+                <select class="select select-bordered select-sm py-0 w-full"
+                        data-setting="camera_mode" data-action="change->video-studio#updateSetting">
+                  <option value="overview"><%= t('.camera_overview') %></option>
+                  <option value="follow"><%= t('.camera_follow') %></option>
+                </select>
+              </label>
+              <label class="form-control">
+                <span class="label-text text-xs"><%= t('.units') %></span>
+                <select class="select select-bordered select-sm py-0 w-full"
+                        data-setting="units" data-action="change->video-studio#updateSetting">
+                  <option value="km"><%= t('.units_km') %></option>
+                  <option value="mi"><%= t('.units_mi') %></option>
+                </select>
+              </label>
+              <div>
+                <div class="flex items-center justify-between py-1">
+                  <span class="label-text text-xs"><%= t('.hud_scale') %></span>
+                  <span class="text-xs font-medium tabular-nums opacity-80"
+                        data-video-studio-target="hudScaleLabel"></span>
+                </div>
+                <input type="range" min="80" max="140" step="5"
+                       class="range range-primary range-xs"
+                       data-setting="hud_scale" data-action="input->video-studio#updateSetting">
+              </div>
+              <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input type="checkbox" class="toggle toggle-sm toggle-primary"
+                       data-setting="watermark" data-action="change->video-studio#updateSetting">
+                <span class="label-text text-sm"><%= t('.watermark') %></span>
+              </label>
+            </div>
+          </details>
+
+          <details class="collapse collapse-arrow bg-base-100 rounded-lg">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
+                <%= icon 'camera', class: 'h-4 w-4 opacity-70 shrink-0' %>
+                <%= t('.recent_videos') %>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-3">
+              <p class="text-xs opacity-60"><%= t('.videos_from_save_to_gallery_they_stay_here') %></p>
+              <div id="route-video-gallery-list" class="space-y-3">
+                <%= render partial: 'route_videos/route_video', collection: @recent_route_videos %>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <div class="space-y-2 border-t border-base-content/10 p-3">
+          <label class="form-control">
+            <span class="label-text text-xs"><%= t('.name') %></span>
+            <input type="text" class="input input-bordered input-sm w-full"
+                   data-video-studio-target="nameInput">
+          </label>
+
+          <div class="text-xs opacity-70 space-y-0.5" data-video-studio-target="summary"></div>
+
+          <div class="divider my-0 text-xs font-medium opacity-50"><%= t('.render_a_video') %></div>
+
+          <div class="h-1 w-full overflow-hidden rounded-full bg-base-content/10" aria-hidden="true">
+            <div class="h-full origin-left rounded-full bg-primary transition-transform duration-150"
+                 style="transform: scaleX(0)"
+                 data-video-studio-target="progressBar"></div>
+          </div>
+          <p class="text-xs opacity-70" aria-live="polite" data-video-studio-target="status"></p>
+
+          <button type="button" class="btn btn-primary btn-sm w-full"
+                  data-video-studio-target="renderButton"
+                  data-action="video-studio#render"
+                  data-testid="video-render">
+            <%= icon 'play', class: 'h-4 w-4' %>
+            <%= t('.render_video') %>
+          </button>
+          <button type="button" class="btn btn-ghost btn-xs w-full gap-1 opacity-70 hidden"
+                  data-video-studio-target="cancelButton"
+                  data-action="video-studio#cancel"><%= t('.cancel') %></button>
+          <button type="button" class="btn btn-ghost btn-xs w-full gap-1 opacity-70" disabled
+                  data-video-studio-target="saveButton"
+                  data-action="video-studio#save"
+                  data-testid="video-save"
+                  title="<%= t('.keep_this_video_in_your_gallery') %>">
+            <%= icon 'camera', class: 'h-3.5 w-3.5' %>
+            <%= t('.save_to_gallery') %>
+          </button>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>

@@ -103,6 +103,18 @@ RSpec.describe StatsSerializer do
       it 'returns the expected JSON' do
         expect(serializer).to eq(expected_json)
       end
+
+      it 'does not load H3 payloads while aggregating stats' do
+        queries = []
+        callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { serializer }
+
+        row_queries = queries.select { |sql| sql.include?('FROM "stats"') && !sql.include?('SUM(') }
+        expect(row_queries).not_to be_empty
+        expect(row_queries).to all(satisfy { |sql| !sql.include?('"stats".*') })
+        expect(row_queries).to all(satisfy { |sql| !sql.include?('h3_hex_ids') })
+      end
     end
 
     context 'when years have different countries' do

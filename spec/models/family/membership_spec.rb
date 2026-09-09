@@ -65,4 +65,38 @@ RSpec.describe Family::Membership, type: :model do
       expect(membership.role).to eq('member')
     end
   end
+
+  describe 'leaving a family' do
+    let(:family) { create(:family) }
+    let(:member) { create(:user) }
+    let!(:membership) { create(:family_membership, family: family, user: member, role: :member) }
+
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+    it 'drops a member holding only the inherited grant to the free tier' do
+      member.update!(plan: :pro, status: :active, active_until: 1.month.from_now, subscription_source: :none)
+
+      membership.destroy!
+
+      expect(member.reload).to have_attributes(plan: 'lite', status: 'inactive', active_until: nil)
+    end
+
+    it 'keeps the paid period of a member whose own subscription has lapsed pending renewal' do
+      lapsed_at = 2.days.ago.change(usec: 0)
+      member.update!(plan: :pro, status: :active, active_until: lapsed_at, subscription_source: :paddle)
+
+      membership.destroy!
+
+      expect(member.reload.active_until).to be_within(1.second).of(lapsed_at)
+      expect(member.reload.plan).to eq('pro')
+    end
+
+    it 'leaves a member holding their own live subscription untouched' do
+      member.update!(plan: :pro, status: :active, active_until: 1.month.from_now, subscription_source: :paddle)
+
+      membership.destroy!
+
+      expect(member.reload.plan).to eq('pro')
+    end
+  end
 end

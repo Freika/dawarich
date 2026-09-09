@@ -26,10 +26,28 @@ export class TracksLayer extends BaseLayer {
     this.animationActive = false
     this.segmentsActive = false
     this.selectedTrackLength = 0 // meters
+    this.selectedFeature = null
+    this.selectionRevision = 0
     this.flowTrackColor = "#ff0000"
 
     this.onSegmentHover = null // Callback for segment hover events
     this.onSegmentLeave = null // Callback for segment leave events
+  }
+
+  // Under tiled mode the MAIN track lines come from the tile layer, but the
+  // selection/flow/segment sub-layers still render the click->highlight flow —
+  // hide only the data layers, never the selection stack (a full toggle(false)
+  // would silently kill setSelectedTrack/showSegments).
+  setMainVisibility(visible) {
+    this.visible = visible
+    for (const layerId of [this.id]) {
+      if (!this.map.getLayer(layerId)) continue
+      this.map.setLayoutProperty(
+        layerId,
+        "visibility",
+        visible ? "visible" : "none",
+      )
+    }
   }
 
   getSourceConfig() {
@@ -130,15 +148,18 @@ export class TracksLayer extends BaseLayer {
    * Set selected track for highlighting
    * @param {Object|null} feature - Track feature or null to clear
    */
-  setSelectedTrack(feature) {
+  setSelectedTrack(feature, { preserveSegments = false } = {}) {
     if (!this.map) return
 
     const selectionSource = this.map.getSource(this.selectionSourceId)
     if (!selectionSource) return
 
+    this.selectedFeature = feature || null
+    this.selectionRevision += 1
+
     if (feature) {
       this.flowTrackColor = feature.properties?.color || "#ff0000"
-      this.segmentsActive = false
+      if (!preserveSegments) this.segmentsActive = false
       this.selectedTrackLength = this._computeLineLength(
         feature.geometry?.coordinates || [],
       )
@@ -154,7 +175,7 @@ export class TracksLayer extends BaseLayer {
       }
     } else {
       this._stopFlowAnimation()
-      this.segmentsActive = false
+      if (!preserveSegments) this.segmentsActive = false
       this.selectedTrackLength = 0
       selectionSource.setData({ type: "FeatureCollection", features: [] })
 
@@ -343,11 +364,7 @@ export class TracksLayer extends BaseLayer {
    * @param {Array} segments - Array of segment data with mode, color, start_index, end_index
    */
   showSegments(trackFeature, segments) {
-    if (
-      !trackFeature ||
-      !trackFeature.geometry ||
-      trackFeature.geometry.type !== "LineString"
-    ) {
+    if (trackFeature?.geometry?.type !== "LineString") {
       return
     }
 
@@ -364,14 +381,19 @@ export class TracksLayer extends BaseLayer {
     // Create line features for each segment
     const segmentFeatures = segments
       .map((segment, idx) => {
-        const startIdx = Math.max(0, segment.start_index || 0)
-        const endIdx = Math.min(
-          coords.length - 1,
-          (segment.end_index || startIdx) + 1,
-        )
-
-        // Extract coordinates for this segment
-        const segmentCoords = coords.slice(startIdx, endIdx + 1)
+        // Prefer server-provided segment geometry (time-anchored segments);
+        // fall back to index slicing for legacy index-anchored segments.
+        let segmentCoords
+        if (segment.coordinates && segment.coordinates.length >= 2) {
+          segmentCoords = segment.coordinates
+        } else {
+          const startIdx = Math.max(0, segment.start_index || 0)
+          const endIdx = Math.min(
+            coords.length - 1,
+            (segment.end_index || startIdx) + 1,
+          )
+          segmentCoords = coords.slice(startIdx, endIdx + 1)
+        }
 
         // Need at least 2 points for a line
         if (segmentCoords.length < 2) {
@@ -531,7 +553,7 @@ export class TracksLayer extends BaseLayer {
    * @returns {Object|false} - The updated feature if successful, false otherwise
    */
   updateTrackFeature(trackFeature, options = {}) {
-    if (!trackFeature || !trackFeature.properties?.id) {
+    if (!trackFeature?.properties?.id) {
       console.warn("[TracksLayer] Cannot update track: invalid feature")
       return false
     }
@@ -544,7 +566,7 @@ export class TracksLayer extends BaseLayer {
 
     // Get current data
     const currentData = this.data || source._data
-    if (!currentData || !currentData.features) {
+    if (!currentData?.features) {
       console.warn("[TracksLayer] Cannot update track: no data")
       return false
     }

@@ -11,6 +11,10 @@ class ImportPolicy < ApplicationPolicy
     user.present? && record.user == user
   end
 
+  def download?
+    show?
+  end
+
   # Users can create new imports if they are active or trial
   def new?
     create?

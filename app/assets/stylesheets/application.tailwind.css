@@ -13,12 +13,10 @@
 
 */
 @import "actiontext.css";
-@import "leaflet_theme.css";
 @import "maps_maplibre_replay.css";
 @import "maps_maplibre_timeline_feed.css";
 @import "maps_maplibre_timeline_rail.css";
 @import "maps_maplibre_place_drawer.css";
-@import "maps_maplibre_suggested_picker.css";
 
 @layer components {
   .fade-out {
@@ -96,49 +94,6 @@ body::before {
   opacity: 0.04;
 }
 
-/* Leaflet Panel Styles */
-.leaflet-right-panel {
-  margin-top: 80px;
-  /* Give space for controls above */
-  margin-right: 10px;
-  transform: none;
-  transition: right 0.3s ease-in-out;
-  z-index: 400;
-  background: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-/* Add Visit Marker Styles */
-.add-visit-marker {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  background: white;
-  border: 2px solid #007bff;
-  border-radius: 50%;
-  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-  animation: pulse-visit 2s infinite;
-}
-
-@keyframes pulse-visit {
-  0% {
-    transform: scale(1);
-    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-  }
-
-  50% {
-    transform: scale(1.1);
-    box-shadow: 0 4px 12px rgba(0, 123, 255, 0.5);
-  }
-
-  100% {
-    transform: scale(1);
-    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
-  }
-}
-
 /* Supporter Badge Animation */
 @keyframes supporter-rainbow-glow {
   0% {
@@ -156,84 +111,6 @@ body::before {
   100% {
     filter: hue-rotate(360deg) drop-shadow(0 0 2px rgba(236, 72, 153, 0.4));
   }
-}
-
-/* Visit Form Popup Styles */
-.visit-form-popup .leaflet-popup-content-wrapper {
-  border-radius: 8px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-}
-
-.leaflet-right-panel.controls-shifted {
-  right: 310px;
-}
-
-/* Drawer Panel Styles */
-.leaflet-drawer {
-  position: absolute;
-  top: 10px;
-  right: 70px;
-  /* Position to the left of the control buttons with margin */
-  width: 24rem;
-  max-height: calc(100% - 20px);
-  background: rgba(255, 255, 255, 0.5);
-  border-radius: 8px;
-  opacity: 0;
-  visibility: hidden;
-  transform: scale(0.95);
-  transition:
-    opacity 0.2s ease-in-out,
-    transform 0.2s ease-in-out,
-    visibility 0.2s;
-  z-index: 450;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  height: auto;
-  /* Make height fit content */
-  cursor: default;
-  /* Override map cursor */
-}
-
-.leaflet-drawer * {
-  cursor: default;
-  /* Ensure all children have default cursor */
-}
-
-.leaflet-drawer a,
-.leaflet-drawer button,
-.leaflet-drawer .btn,
-.leaflet-drawer input[type="checkbox"] {
-  cursor: pointer;
-  /* Interactive elements get pointer cursor */
-}
-
-.leaflet-drawer.open {
-  opacity: 1;
-  visibility: visible;
-  transform: scale(1);
-}
-
-/* Controls remain in place - no transition needed */
-.leaflet-control-layers,
-.leaflet-control-button,
-.toggle-panel-button {
-  z-index: 500;
-}
-
-/* Selection Tool Styles */
-.leaflet-control-custom {
-  background-color: white;
-  border-radius: 4px;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-}
-
-.leaflet-control-custom:hover {
-  background-color: #f3f4f6;
 }
 
 #selection-tool-button.active {
@@ -302,4 +179,123 @@ html.dark em-emoji-picker {
 .color-input::-moz-color-swatch {
   border: none;
   border-radius: 0.5rem;
+}
+
+/* ===== Text resilience =====
+   The UI has to survive text that is longer than the English original:
+   translations (German compounds run 30-60% longer and offer no break
+   opportunity), user-supplied names, hostnames, hex values and emails.
+   These rules are the safety net; layout still has to opt into shrinking
+   with `min-w-0` wherever a flex or grid child holds text. */
+
+/* 1. A control grows to fit its label instead of clipping it.
+      DaisyUI pins .btn to a fixed `height`, so a label that wraps renders
+      outside the button's own background. Keep min-height (single-line
+      buttons are unchanged) but let the box grow. Circles and squares are
+      excluded — their fixed geometry is the point. */
+.btn:not(.btn-circle):not(.btn-square) {
+  height: auto;
+  padding-block: 0.4rem;
+}
+
+.btn-sm:not(.btn-circle):not(.btn-square) {
+  padding-block: 0.25rem;
+}
+
+.btn-xs:not(.btn-circle):not(.btn-square) {
+  padding-block: 0.125rem;
+}
+
+/* 2. A long word wraps instead of pushing its container wider than the
+      viewport. `break-word` only breaks words that cannot fit on a line
+      of their own, so normal prose is untouched.
+
+      Deliberately NOT paired with `min-width: 0` here: that belongs on the
+      flex/grid *child box* that should shrink, and blanket-applying it to
+      text elements collapses sized components (it turns a DaisyUI `.stats`
+      row into overlapping columns). Reach for `min-w-0` at the call site. */
+:where(
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    li,
+    dd,
+    dt,
+    figcaption,
+    summary,
+    label,
+    .card-title,
+    .stat-title,
+    .stat-value,
+    .stat-desc,
+    .label-text,
+    .label-text-alt,
+    .badge,
+    .alert,
+    .tab,
+    .menu li > *
+  ) {
+  overflow-wrap: break-word;
+}
+
+/* 3. Table cells and definition values hold names, hosts and addresses the
+      user controls — never let those set the table's minimum width. */
+:where(td, th) {
+  overflow-wrap: break-word;
+}
+
+/* 4. Headings hyphenate, but only under protest.
+      This is load-bearing, not cosmetic: `overflow-wrap: break-word` lets a
+      word break during layout but does NOT lower the element's min-content
+      width, so a long heading still forces its flex/grid parent wider than
+      the viewport. Hyphenation does lower it. The character limits are what
+      keep it from looking cheap — never strand fewer than five characters,
+      so "Zusammenfassun-gen" is rejected and "Zusammen-fassungen" is used.
+      `balance` evens out the resulting lines. */
+:where(h1, h2, h3, h4, .card-title) {
+  text-wrap: balance;
+  hyphens: auto;
+  -webkit-hyphenate-limit-before: 5;
+  -webkit-hyphenate-limit-after: 5;
+  hyphenate-limit-chars: 12 5 5;
+}
+
+/* 5. Body copy below the tablet breakpoint does hyphenate — there the line is
+      short enough that a ragged edge costs more than a hyphen. The limits
+      forbid stranding fewer than four characters on either side, which is
+      what makes machine hyphenation look cheap. Needs a `lang` attribute to
+      pick the dictionary; the layout sets it from the user's locale. */
+@media (max-width: 640px) {
+  :where(p, .stat-title, .stat-desc, .label-text, .label-text-alt, dd, li) {
+    hyphens: auto;
+    -webkit-hyphenate-limit-before: 4;
+    -webkit-hyphenate-limit-after: 4;
+    hyphenate-limit-chars: 9 4 4;
+  }
+}
+
+/* 6. Header rows: title on the left, actions on the right. They must wrap
+      onto two lines rather than force the page to scroll sideways.
+      Use in place of a bare `flex justify-between items-center`. */
+.page-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem 1rem;
+}
+
+.page-header-row > :first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+/* :not(:first-child) so a header with a title and no actions keeps the
+   shrinkable rule above instead of this one, which cannot shrink. */
+.page-header-row > :last-child:not(:first-child) {
+  flex: 0 0 auto;
 }

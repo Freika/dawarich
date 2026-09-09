@@ -15,16 +15,16 @@
     <% end %>
     <div class="card-actions justify-end">
       <% if poster.completed? && poster.image.attached? %>
-        <%= link_to 'Download PNG', rails_blob_path(poster.image, disposition: 'attachment', only_path: true),
+        <%= link_to t('.download_png'), rails_blob_path(poster.image, disposition: 'attachment', only_path: true),
               class: 'btn btn-xs btn-ghost' %>
       <% end %>
       <% if poster.completed? && poster.print_pdf.attached? %>
-        <%= link_to 'Download PDF', rails_blob_path(poster.print_pdf, disposition: 'attachment', only_path: true),
+        <%= link_to t('.download_pdf'), rails_blob_path(poster.print_pdf, disposition: 'attachment', only_path: true),
               class: 'btn btn-xs btn-primary' %>
       <% end %>
-      <%= link_to 'Delete', poster_path(poster),
+      <%= link_to t('.delete'), poster_path(poster),
             class: 'btn btn-xs btn-ghost',
-            data: { turbo_method: :delete, turbo_confirm: 'Delete this poster?' } %>
+            data: { turbo_method: :delete, turbo_confirm: t('.delete_this_poster') } %>
     </div>
   </div>
 </div>

@@ -10,13 +10,13 @@ class Api::V1::RecalculationsController < ApiController
     year = params[:year].presence&.to_i
 
     if year && (year < 2000 || year > Date.current.year + 1)
-      return render(json: { error: 'Invalid year' }, status: :bad_request)
+      return render(json: { error: I18n.t('controllers.api.v1.recalculations.invalid_year') }, status: :bad_request)
     end
 
     pending_key = "recalculation_pending:#{current_api_user.id}"
     if Rails.cache.read(pending_key)
       return render(
-        json: { error: 'Recalculation already in progress for this user.' },
+        json: { error: I18n.t('controllers.api.v1.recalculations.recalculation_already_in_progress_for_this_user') },
         status: :conflict
       )
     end
@@ -25,7 +25,9 @@ class Api::V1::RecalculationsController < ApiController
     Users::RecalculateDataJob.perform_later(current_api_user.id, year: year)
 
     render json: {
-      message: 'Recalculation queued. Tracks, stats, and digests will be regenerated in the background.'
+      message: I18n.t(
+        'controllers.api.v1.recalculations.recalculation_queued_tracks_stats_and_digests_will_be_regenerated_in'
+      )
     }, status: :accepted
   end
 end

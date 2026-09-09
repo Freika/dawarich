@@ -107,7 +107,7 @@ module Trips
     def render_invalid_date
       respond_to do |format|
         format.turbo_stream { head :unprocessable_content }
-        format.html { redirect_to @trip, alert: 'Invalid date' }
+        format.html { redirect_to @trip, alert: I18n.t('controllers.trips.notes.invalid_date') }
       end
     end
   end

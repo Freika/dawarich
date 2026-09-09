@@ -8,7 +8,7 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def call
-    unless DawarichSettings.reverse_geocoding_enabled?
+    unless Geocoding::Config.for(place.user_id).enabled?
       Rails.logger.warn('Reverse geocoding is not enabled')
 
       return
@@ -41,10 +41,13 @@ class ReverseGeocoding::Places::FetchData
       city:       data['properties']['city'],
       country:    data['properties']['country'],
       geodata:    data,
-      source:     Place.sources[:photon],
       reverse_geocoded_at: Time.current
     }
-    attributes[:name] = place_name(data) unless place.name_locked?
+
+    unless place.name_locked?
+      attributes[:name] = place_name(data)
+      attributes[:source] = :photon
+    end
 
     place.machine_named = true
     place.update!(attributes)
@@ -130,11 +133,14 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def populate_place_attributes(place, data)
-    place.name = place_name(data) unless place.name_locked?
+    unless place.name_locked?
+      place.name = place_name(data)
+      place.source = :photon
+    end
+
     place.city = data['properties']['city']
     place.country = data['properties']['country']
     place.geodata = data
-    place.source = :photon
 
     return if place.lonlat.present?
 
@@ -168,6 +174,7 @@ class ReverseGeocoding::Places::FetchData
     update_attributes = places_to_update.uniq(&:id).sort_by(&:id).map do |place|
       {
         id: place.id,
+        user_id: place.user_id,
         name: place.name,
         latitude: place.latitude,
         longitude: place.longitude,
@@ -200,8 +207,9 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def geocoder_places
-    Geocoder.search(
-      [place.lat, place.lon],
+    Geocoding::Search.call(
+      user: place.user_id,
+      query: [place.lat, place.lon],
       limit: 10,
       distance_sort: true,
       radius: 1,
@@ -213,36 +221,17 @@ class ReverseGeocoding::Places::FetchData
     []
   end
 
-  # Normalizes Nominatim/LocationIQ response format to the GeoJSON-like
-  # structure (geometry + properties) that the rest of this service expects.
-  # Photon and Geoapify already return GeoJSON and pass through unchanged.
+  # Keep existing GeoJSON metadata intact. Flat responses use the shared
+  # field extraction, with this service's legacy address-label naming policy.
   def normalize_geocoder_data(data)
     return data if data.key?('geometry')
-    return data unless data['lat'] && data['lon']
 
-    address = data['address'] || {}
+    fields = Geocoding::ResultNormalizer.from_data(data)
+    properties = fields[:properties]
 
     {
-      'geometry' => {
-        'coordinates' => [data['lon'].to_f, data['lat'].to_f]
-      },
-      'properties' => {
-        'osm_id' => data['osm_id'],
-        'name' => extract_nominatim_name(data, address),
-        'osm_value' => data['type'],
-        'city' => address['city'] || address['town'] || address['village'] || address['hamlet'],
-        'country' => address['country'],
-        'postcode' => address['postcode'],
-        'street' => address['road'] || address['pedestrian'] || address['highway'],
-        'housenumber' => address['house_number']
-      }
+      'geometry' => { 'coordinates' => fields[:coords] },
+      'properties' => properties.merge('name' => properties['address_name'] || properties['name'])
     }
-  end
-
-  def extract_nominatim_name(data, address)
-    # Try the place type key first (e.g., address['restaurant'] for type=restaurant)
-    name = address[data['type']] if data['type']
-    # Fall back to first part of display_name (the most specific part)
-    name || data['display_name']&.split(',')&.first&.strip
   end
 end

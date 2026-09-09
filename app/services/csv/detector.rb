@@ -89,8 +89,7 @@ module Csv
       return if missing.empty?
 
       raise DetectionError,
-            'Could not detect required columns: latitude, longitude, timestamp. ' \
-            'Found headers must include recognized aliases for all three.'
+            I18n.t('services.csv.detector.required_columns_missing')
     end
 
     def parse_data_rows(lines, delimiter)

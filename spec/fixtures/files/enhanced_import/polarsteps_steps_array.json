@@ -1,0 +1,22 @@
+[
+  {
+    "id": 99001,
+    "name": "Tokyo, Japan",
+    "display_name": "Tokyo, Japan",
+    "arrived": 1735689600,
+    "departed": 1735707600,
+    "location": {
+      "lat": 35.6762,
+      "lon": 139.6503,
+      "detail": "Shibuya"
+    }
+  },
+  {
+    "id": 99002,
+    "name": "Kyoto, Japan",
+    "arrived": 1735776000,
+    "departed": 1735794000,
+    "lat": 35.0116,
+    "lon": 135.7681
+  }
+]

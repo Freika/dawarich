@@ -11,21 +11,35 @@ module Families
     end
 
     def call
-      return false unless can_accept?
+      return false unless validate_invitation && validate_email_match
 
       if user.in_family?
-        @error_message = 'You must leave your current family before joining a new one.'
+        @error_message = I18n.t(
+          'services.families.accept_invitation.you_must_leave_your_current_family_before_joining_a_new'
+        )
 
         return false
       end
 
-      ActiveRecord::Base.transaction do
-        create_membership
-        update_invitation
-        send_notifications
+      accepted = false
+      family = invitation.family
+      family.with_lock do
+        # Keep subscription callbacks from changing the period between the
+        # acceptance gate and settlement, and re-read queued webhook changes.
+        family.creator.with_lock do
+          family.refresh_access_until!(family.creator)
+          invitation.reload
+          if can_accept?
+            create_membership
+            settle_new_member
+            update_invitation
+            send_notifications
+            accepted = true
+          end
+        end
       end
 
-      true
+      accepted
     rescue ActiveRecord::RecordInvalid => e
       handle_record_invalid_error(e)
       false
@@ -39,6 +53,7 @@ module Families
     def can_accept?
       return false unless validate_invitation
       return false unless validate_email_match
+      return false unless validate_family_plan
       return false unless validate_family_capacity
 
       true
@@ -47,7 +62,7 @@ module Families
     def validate_invitation
       return true if invitation.can_be_accepted?
 
-      @error_message = 'This invitation is no longer valid or has expired.'
+      @error_message = I18n.t('services.families.accept_invitation.this_invitation_is_no_longer_valid_or_has_expired')
 
       false
     end
@@ -55,15 +70,29 @@ module Families
     def validate_email_match
       return true if invitation.email == user.email
 
-      @error_message = 'This invitation is not for your email address.'
+      @error_message = I18n.t('services.families.accept_invitation.this_invitation_is_not_for_your_email_address')
 
       false
+    end
+
+    def validate_family_plan
+      return true if family_plan_live?
+
+      @error_message = I18n.t('services.families.accept_invitation.this_family_s_plan_is_no_longer_active')
+
+      false
+    end
+
+    def family_plan_live?
+      invitation.family.access_live?
     end
 
     def validate_family_capacity
       return true unless invitation.family.full?
 
-      @error_message = 'This family has reached the maximum number of members.'
+      @error_message = I18n.t(
+        'services.families.accept_invitation.this_family_has_reached_the_maximum_number_of_members'
+      )
 
       false
     end
@@ -76,6 +105,12 @@ module Families
       )
     end
 
+    def settle_new_member
+      return if DawarichSettings.self_hosted?
+
+      Families::SyncMembers.new(family: invitation.family).call
+    end
+
     def update_invitation
       invitation.update!(status: :accepted)
     end
@@ -86,21 +121,26 @@ module Families
     end
 
     def send_user_notification
-      Notification.create!(
-        user: user,
-        kind: :info,
-        title: 'Welcome to Family!',
-        content: "You've joined the family '#{invitation.family.name}'"
-      )
+      I18n.with_locale(user.locale) do
+        Notification.create!(
+          user: user,
+          kind: :info,
+          title: I18n.t('services.families.accept_invitation.welcome_to_family'),
+          content: I18n.t('services.families.accept_invitation.you_ve_joined_the_family_name',
+                          name: invitation.family.name)
+        )
+      end
     end
 
     def send_owner_notification
-      Notification.create!(
-        user: invitation.family.creator,
-        kind: :info,
-        title: 'New Family Member!',
-        content: "#{user.email} has joined your family"
-      )
+      I18n.with_locale(invitation.family.creator.locale) do
+        Notification.create!(
+          user: invitation.family.creator,
+          kind: :info,
+          title: I18n.t('services.families.accept_invitation.new_family_member'),
+          content: I18n.t('services.families.accept_invitation.email_has_joined_your_family', email: user.email)
+        )
+      end
     rescue StandardError => e
       ExceptionReporter.call(e, "Unexpected error in Families::AcceptInvitation: #{e.message}")
     end
@@ -110,14 +150,16 @@ module Families
         if error.record&.errors&.any?
           error.record.errors.full_messages.first
         else
-          "Failed to join family: #{error.message}"
+          I18n.t('services.families.accept_invitation.failed_to_join', message: error.message)
         end
     end
 
     def handle_generic_error(error)
       ExceptionReporter.call(error, "Unexpected error in Families::AcceptInvitation: #{error.message}")
 
-      @error_message = 'An unexpected error occurred while joining the family. Please try again'
+      @error_message = I18n.t(
+        'services.families.accept_invitation.an_unexpected_error_occurred_while_joining_the_family_please_try'
+      )
     end
   end
 end

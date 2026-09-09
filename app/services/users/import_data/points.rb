@@ -15,6 +15,7 @@ class Users::ImportData::Points
     @total_created = 0
     @processed_count = 0
     @skipped_count = 0
+    @failed_count = 0
     @preloaded = false
 
     @imports_lookup = {}
@@ -63,6 +64,12 @@ class Users::ImportData::Points
       "Points import completed. Created: #{@total_created}. " \
       "Processed #{@processed_count} valid points, skipped #{@skipped_count}."
     )
+
+    if @failed_count.positive?
+      logger.error(
+        "Points import had failures. Failed to insert #{@failed_count} of #{@processed_count} prepared points."
+      )
+    end
     @total_created
   end
 
@@ -88,10 +95,15 @@ class Users::ImportData::Points
 
     normalized_batch = normalize_point_keys(@buffer)
 
+    # Dual-write the dimension FK: the backfill only sweeps rows that exist
+    # when it passes. Stamped after key normalization so every row carries the
+    # key uniformly, as upsert_all requires.
+    dimension_resolver.stamp(normalized_batch)
+
     begin
       result = Point.upsert_all(
         normalized_batch,
-        unique_by: %i[lonlat timestamp user_id],
+        unique_by: %i[user_id timestamp lonlat],
         returning: %w[id],
         on_duplicate: :skip
       )
@@ -100,17 +112,28 @@ class Users::ImportData::Points
       batch_created = result&.count.to_i
       @total_created += batch_created
 
+      if batch_created.positive?
+        timestamps = normalized_batch.map { |row| row['timestamp'] || row[:timestamp] }
+        Points::TileEpoch.bump(user.id, timestamps: timestamps)
+      end
+
       logger.debug(
         "Processed batch of #{@buffer.size} points, created #{batch_created}, total created: #{@total_created}"
       )
     rescue StandardError => e
+      @failed_count += @buffer.size
       logger.error "Failed to process point batch: #{e.message}"
       logger.error "Batch size: #{@buffer.size}"
       logger.error "First point in failed batch: #{@buffer.first.inspect}"
       logger.error "Backtrace: #{e.backtrace.first(5).join('\n')}"
+      ExceptionReporter.call(e, 'Failed to process point batch')
     ensure
       @buffer.clear
     end
+  end
+
+  def dimension_resolver
+    @dimension_resolver ||= Points::DimensionResolver.new
   end
 
   def preload_reference_data
@@ -179,6 +202,8 @@ class Users::ImportData::Points
     )
 
     ensure_lonlat_field(attributes, point_data)
+    deserialize_array_columns(attributes)
+    deserialize_jsonb_columns(attributes)
 
     attributes.delete('longitude')
     attributes.delete('latitude')
@@ -199,7 +224,7 @@ class Users::ImportData::Points
     resolve_country_reference(attributes, point_data['country_info'])
     resolve_visit_reference(attributes, point_data['visit_reference'])
 
-    result = attributes.symbolize_keys
+    result = attributes.slice(*Point.column_names).symbolize_keys
 
     logger.debug "Prepared point attributes: #{result.slice(:lonlat, :timestamp, :import_id, :country_id, :visit_id)}"
     result
@@ -264,6 +289,27 @@ class Users::ImportData::Points
     else
       logger.debug "Visit not found for reference: #{visit_reference.inspect}"
       logger.debug "Available visits: #{visits_lookup.keys.inspect}"
+    end
+  end
+
+  # Export dumps carry the array columns as Postgres literals ('{home}'),
+  # which insert fine into the column but poison the dimension stamping:
+  # the resolver would wrap the string into a one-element array and mint a
+  # source row that matches nothing. Deserialize through the column's own
+  # type so old and new dumps alike arrive as real arrays.
+  def deserialize_array_columns(attributes)
+    %w[inrids in_regions].each do |column|
+      value = attributes[column]
+      attributes[column] = Point.type_for_attribute(column).deserialize(value) if value.is_a?(String)
+    end
+  end
+
+  # SQL-backed exports encode these JSONB values as JSON text inside JSONL.
+  # Decode before upsert_all, otherwise its serializer stores string scalars.
+  def deserialize_jsonb_columns(attributes)
+    %w[geodata raw_data].each do |column|
+      value = attributes[column]
+      attributes[column] = Point.type_for_attribute(column).deserialize(value) if value.is_a?(String)
     end
   end
 

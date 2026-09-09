@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'zip'
 
 RSpec.describe 'Imports', type: :request do
   describe 'GET /imports' do
@@ -67,6 +68,150 @@ RSpec.describe 'Imports', type: :request do
     context 'when user is not logged in' do
       it 'redirects to login' do
         get import_path(import)
+        expect(response).to redirect_to(new_user_session_path)
+      end
+    end
+  end
+
+  describe 'GET /imports/:id/download' do
+    let(:user) { create(:user) }
+    let(:import) { create(:import, user:, name: 'holiday.gpx') }
+    let(:gpx_content) { '<gpx><trk><name>Holiday</name></trk></gpx>' }
+    let(:zip_path) { create_zip('original.gpx' => gpx_content) }
+
+    before { attach_file(import, zip_path, 'original.gpx.zip', client_wrapped: true) }
+
+    after { File.delete(zip_path) if File.exist?(zip_path) }
+
+    context 'when user is logged in' do
+      before { sign_in user }
+
+      it 'downloads the extracted inner file using the renamed import name' do
+        prepare_and_download(import)
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['Content-Disposition']).to include('filename="holiday.gpx"')
+        expect(response.body).to eq(gpx_content)
+        expect(response.body.b).not_to start_with(Archive::Unzipper::ZIP_MAGIC)
+      end
+
+      it 'keeps the source downloadable when unwrapping exceeds the extraction limit' do
+        stub_const('Archive::Unzipper::MAX_EXTRACTED_SIZE', 8)
+        original = import.file.blob.download
+
+        prepare_and_download(import)
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['Content-Disposition']).to include('filename="holiday.gpx.zip"')
+        expect(response.body.b).to eq(original.b)
+        expect(import.file.blob.download).to eq(original)
+      end
+
+      it 'restores the inner extension of a legacy timestamp-suffixed wrapper name' do
+        import.update!(name: 'original.gpx_20260801_120000.zip')
+
+        prepare_and_download(import)
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['Content-Disposition']).to include('filename="original_20260801_120000.gpx"')
+        expect(response.body).to eq(gpx_content)
+      end
+
+      it 'queues preparation and responds before downloading or extracting the archive' do
+        expect { get download_import_path(import) }
+          .to have_enqueued_job(Imports::PrepareDownloadJob).with(import.id, import.file.blob_id)
+
+        expect(response).to have_http_status(:accepted)
+        expect(response.headers['Refresh']).to eq('3')
+        expect(import.reload.prepared_download).not_to be_attached
+        expect(response.body).to include('Download original archive')
+        expect { get download_import_path(import) }.not_to have_enqueued_job(Imports::PrepareDownloadJob)
+      end
+
+      it 'uses the latest rename after the download has already been prepared' do
+        prepare_and_download(import)
+        import.update!(name: 'new-holiday.gpx')
+
+        get download_import_path(import)
+        follow_redirect! while response.redirect?
+
+        expect(response.headers['Content-Disposition']).to include('filename="new-holiday.gpx"')
+        expect(response.body).to eq(gpx_content)
+      end
+
+      it 'prevents downloading another user\'s import' do
+        sign_in create(:user)
+
+        get download_import_path(import)
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+      end
+    end
+
+    context 'when the import is a genuine zip upload' do
+      let(:import) { create(:import, user:, name: 'tracks.zip') }
+      let(:zip_path) { create_zip('a.gpx' => gpx_content, 'b.gpx' => gpx_content) }
+
+      before do
+        import.file.purge
+        attach_file(import, zip_path, 'tracks.zip', client_wrapped: false)
+        sign_in user
+      end
+
+      it 'downloads the original zip without extracting an entry' do
+        get download_import_path(import)
+        follow_redirect!
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['Content-Disposition']).to include('filename="tracks.zip"')
+        expect(response.body.b).to start_with(Archive::Unzipper::ZIP_MAGIC)
+      end
+    end
+
+    context 'when the import is a legacy unmarked KML wrapper' do
+      let(:import) { create(:import, user:, name: 'route.kml.zip') }
+      let(:kml_content) { '<kml><Document><name>Route</name></Document></kml>' }
+      let(:zip_path) { create_zip('route.kml' => kml_content) }
+
+      before do
+        import.file.purge
+        import.file.attach(io: File.open(zip_path), filename: 'route.kml.zip', content_type: 'application/zip')
+        sign_in user
+      end
+
+      it 'detects the wrapper and downloads the inner KML with its original filename' do
+        prepare_and_download(import)
+
+        expect(response).to have_http_status(:ok)
+        expect(response.headers['Content-Disposition']).to include('filename="route.kml"')
+        expect(response.body).to eq(kml_content)
+      end
+    end
+
+    context 'when an unmarked legacy ZIP contains multiple files' do
+      let(:import) { create(:import, user: user, name: 'renamed.gpx.zip') }
+      let(:zip_path) { create_zip('a.gpx' => gpx_content, 'b.gpx' => gpx_content) }
+
+      before do
+        import.file.purge
+        import.file.attach(io: File.open(zip_path), filename: 'original.gpx.zip', content_type: 'application/zip')
+        sign_in user
+      end
+
+      it 'preserves the current name and complete original archive' do
+        original = import.file.blob.download
+        prepare_and_download(import)
+
+        expect(response.headers['Content-Disposition']).to include('filename="renamed.gpx.zip"')
+        expect(response.body.b).to eq(original.b)
+      end
+    end
+
+    context 'when user is not logged in' do
+      it 'redirects to login' do
+        get download_import_path(import)
+
         expect(response).to redirect_to(new_user_session_path)
       end
     end
@@ -160,6 +305,36 @@ RSpec.describe 'Imports', type: :request do
           end.to change(user.imports, :count).by(1)
 
           expect(response).to redirect_to(imports_path)
+        end
+      end
+
+      context 'when importing client-wrapped files' do
+        it 'uses the original GPX filename as the visible import name' do
+          blob = create_blob_from_zip('track.gpx.zip', 'track.gpx' => '<gpx/>')
+
+          post imports_path, params: { import: { files: [upload_descriptor(blob, 'track.gpx', true)] } }
+
+          created_import = user.imports.order(:id).last
+          expect(created_import.name).to eq('track.gpx')
+          expect(created_import.file.blob.metadata['dawarich_client_wrapped']).to be(true)
+        end
+
+        it 'uses the original KML filename as the visible import name' do
+          blob = create_blob_from_zip('route.kml.zip', 'route.kml' => '<kml/>')
+
+          post imports_path, params: { import: { files: [upload_descriptor(blob, 'route.kml', true)] } }
+
+          expect(user.imports.order(:id).last.name).to eq('route.kml')
+        end
+
+        it 'keeps a genuine zip filename and marks it as unwrapped' do
+          blob = create_blob_from_zip('tracks.zip', 'a.gpx' => '<gpx/>', 'b.gpx' => '<gpx/>')
+
+          post imports_path, params: { import: { files: [upload_descriptor(blob, 'tracks.zip', false)] } }
+
+          created_import = user.imports.order(:id).last
+          expect(created_import.name).to eq('tracks.zip')
+          expect(created_import.file.blob.metadata['dawarich_client_wrapped']).to be(false)
         end
       end
 
@@ -288,5 +463,51 @@ RSpec.describe 'Imports', type: :request do
 
   def generate_signed_id_for_blob(blob)
     blob.signed_id
+  end
+
+  def create_zip(entries)
+    path = Rails.root.join('tmp', "request_import_#{SecureRandom.hex(4)}.zip").to_s
+    ::Zip::File.open(path, create: true) do |zip|
+      entries.each do |filename, content|
+        zip.get_output_stream(filename) { |entry| entry.write(content) }
+      end
+    end
+    path
+  end
+
+  def create_blob_from_zip(filename, entries)
+    path = create_zip(entries)
+    ActiveStorage::Blob.create_and_upload!(
+      io: File.open(path), filename:, content_type: 'application/zip'
+    )
+  ensure
+    File.delete(path) if path && File.exist?(path)
+  end
+
+  def prepare_and_download(import)
+    perform_enqueued_jobs(only: Imports::PrepareDownloadJob) do
+      get download_import_path(import)
+      expect(response).to have_http_status(:accepted)
+    end
+    get download_import_path(import)
+    follow_redirect! while response.redirect?
+  end
+
+  def upload_descriptor(blob, original_filename, client_wrapped)
+    {
+      signed_id: blob.signed_id,
+      original_filename:,
+      client_wrapped:
+    }.to_json
+  end
+
+  def attach_file(import, path, filename, client_wrapped:)
+    import.file.attach(io: File.open(path), filename:, content_type: 'application/zip')
+    import.file.blob.update!(
+      metadata: import.file.blob.metadata.merge(
+        'dawarich_client_wrapped' => client_wrapped,
+        'dawarich_original_filename' => filename.delete_suffix('.zip')
+      )
+    )
   end
 end

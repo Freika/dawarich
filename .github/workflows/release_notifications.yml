@@ -17,7 +17,7 @@ jobs:
       github.event.workflow_run.event == 'release'
 
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7.0.1
 
       - name: Get release info
         id: version
@@ -56,8 +56,8 @@ jobs:
           VERSION_NUM="${VERSION#v}"
 
           # Extract section between this version and the next version header
-          # The changelog format is: # [version] - date
-          NOTES=$(sed -n "/^# \[$VERSION_NUM\]/,/^# \[/p" CHANGELOG.md | sed '$d' | tail -n +2)
+          # The changelog format is: ## [version] - date, with ### Added/Fixed/... sections
+          NOTES=$(sed -n "/^## \[$VERSION_NUM\]/,/^## \[/p" CHANGELOG.md | sed '$d' | tail -n +2)
 
           # Store in output (handle multiline)
           echo "notes<<EOF" >> $GITHUB_OUTPUT
@@ -71,10 +71,10 @@ jobs:
           NOTES: ${{ steps.changelog.outputs.notes }}
         run: |
           # Count items in each section using stateful awk to properly track sections
-          ADDED=$(echo "$NOTES" | awk '/^## Added/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
-          FIXED=$(echo "$NOTES" | awk '/^## Fixed/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
-          CHANGED=$(echo "$NOTES" | awk '/^## Changed/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
-          REMOVED=$(echo "$NOTES" | awk '/^## Removed/{f=1;next} /^## [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
+          ADDED=$(echo "$NOTES" | awk '/^### Added/{f=1;next} /^### [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
+          FIXED=$(echo "$NOTES" | awk '/^### Fixed/{f=1;next} /^### [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
+          CHANGED=$(echo "$NOTES" | awk '/^### Changed/{f=1;next} /^### [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
+          REMOVED=$(echo "$NOTES" | awk '/^### Removed/{f=1;next} /^### [A-Z]/{f=0} f&&/^- /{c++} END{print c+0}')
 
           # Build summary line
           PARTS=""

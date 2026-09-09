@@ -1,4 +1,4 @@
-<% content_for :title, "#{@digest.year} Year in Review" %>
+<% content_for :title, t('.year_year_in_review', year: @digest.year) %>
 <%= render 'shared/chartkick_scripts' %>
 
 <div class="max-w-xl mx-auto my-5">
@@ -6,11 +6,11 @@
   <div class="hero text-white rounded-lg shadow-lg mb-8" style="background: linear-gradient(135deg, #0f766e, #0284c7);">
     <div class="hero-content text-center py-12 relative w-full">
       <div class="max-w-lg">
-        <h1 class="text-4xl font-bold"><%= @digest.year %> Year in Review</h1>
-        <p class="py-4">Your journey, by the numbers</p>
+        <h1 class="text-4xl font-bold"><%= t('.year_year_in_review', year: @digest.year) %></h1>
+        <p class="py-4"><%= t('.your_journey_by_the_numbers') %></p>
         <button class="btn btn-outline btn-sm text-neutral border-neutral hover:bg-white hover:text-primary"
                 onclick="sharing_modal.showModal()">
-          <%= icon 'share' %> Share
+          <%= icon 'share' %> <%= t('.share') %>
         </button>
       </div>
     </div>
@@ -20,7 +20,7 @@
   <div class="card bg-base-200 shadow-xl mb-8">
     <div class="card-body text-center items-center">
       <div class="stat-title flex items-center gap-2">
-        <%= icon 'map' %> Distance Traveled
+        <%= icon 'map' %> <%= t('.distance_traveled') %>
       </div>
       <div class="stat-value text-primary text-4xl my-4">
         <%= distance_with_unit(@digest.distance, @distance_unit) %>
@@ -28,7 +28,7 @@
       <p class="text-gray-600"><%= distance_comparison_text(@digest.distance) %></p>
       <% if @digest.yoy_distance_change %>
         <p class="mt-2 font-semibold <%= yoy_change_class(@digest.yoy_distance_change) %>">
-          <%= yoy_change_text(@digest.yoy_distance_change) %> compared to <%= @digest.previous_year %>
+          <%= yoy_change_text(@digest.yoy_distance_change) %> <%= t('.compared_to') %> <%= @digest.previous_year %>
         </p>
       <% end %>
     </div>
@@ -38,21 +38,21 @@
   <div class="stats shadow w-full mb-8 bg-base-200">
     <div class="stat place-items-center">
       <div class="stat-title flex items-center gap-1">
-        <%= icon 'globe' %> Countries
+        <%= icon 'globe' %> <%= t('.countries') %>
       </div>
       <div class="stat-value text-secondary"><%= @digest.countries_count %></div>
       <div class="stat-desc font-medium flex items-center gap-1 <%= @digest.first_time_countries.any? ? 'text-success' : 'invisible' %>">
-        <%= icon 'star' %> <%= @digest.first_time_countries.any? ? "#{@digest.first_time_countries.count} first time" : '0 first time' %>
+        <%= icon 'star' %> <%= t('.first_time_count', count: @digest.first_time_countries.count) %>
       </div>
     </div>
 
     <div class="stat place-items-center">
       <div class="stat-title flex items-center gap-1">
-        <%= icon 'building' %> Cities
+        <%= icon 'building' %> <%= t('.cities') %>
       </div>
       <div class="stat-value text-accent"><%= @digest.cities_count %></div>
       <div class="stat-desc font-medium flex items-center gap-1 <%= @digest.first_time_cities.any? ? 'text-success' : 'invisible' %>">
-        <%= icon 'star' %> <%= @digest.first_time_cities.any? ? "#{@digest.first_time_cities.count} first time" : '0 first time' %>
+        <%= icon 'star' %> <%= t('.first_time_count', count: @digest.first_time_cities.count) %>
       </div>
     </div>
   </div>
@@ -63,12 +63,12 @@
       <div class="card bg-base-200 shadow-xl mb-8">
         <div class="card-body text-center items-center">
           <h2 class="card-title">
-            <%= icon 'star' %> First Time Visits
+            <%= icon 'star' %> <%= t('.first_time_visits') %>
           </h2>
 
           <% if @digest.first_time_countries.any? %>
             <div class="mb-4">
-              <h3 class="font-semibold mb-2">New Countries</h3>
+              <h3 class="font-semibold mb-2"><%= t('.new_countries') %></h3>
               <div class="flex flex-wrap gap-2 justify-center">
                 <% @digest.first_time_countries.each do |country| %>
                   <span class="badge badge-success badge-lg"><%= country %></span>
@@ -79,13 +79,13 @@
 
           <% if @digest.first_time_cities.any? %>
             <div>
-              <h3 class="font-semibold mb-2">New Cities</h3>
+              <h3 class="font-semibold mb-2"><%= t('.new_cities') %></h3>
               <div class="flex flex-wrap gap-2 justify-center">
                 <% @digest.first_time_cities.take(10).each do |city| %>
                   <span class="badge badge-outline"><%= city %></span>
                 <% end %>
                 <% if @digest.first_time_cities.count > 10 %>
-                  <span class="badge badge-ghost">+<%= @digest.first_time_cities.count - 10 %> more</span>
+                  <span class="badge badge-ghost">+<%= @digest.first_time_cities.count - 10 %> <%= t('.more') %></span>
                 <% end %>
               </div>
             </div>
@@ -99,17 +99,17 @@
       <div class="card bg-base-200 shadow-xl mb-8">
         <div class="card-body text-center items-center">
           <h2 class="card-title">
-            <%= icon 'activity' %> Your Year, Month by Month
+            <%= icon 'activity' %> <%= t('.your_year_month_by_month') %>
           </h2>
           <div class="w-full h-64 bg-base-100 rounded-lg p-4">
             <%= column_chart(
               @digest.monthly_distances.sort_by { |month, _| month.to_i }.map { |month, distance_meters|
-                [Date::ABBR_MONTHNAMES[month.to_i], Users::Digest.convert_distance(distance_meters.to_i, @distance_unit).round]
+                [I18n.t('date.abbr_month_names')[month.to_i], Users::Digest.convert_distance(distance_meters.to_i, @distance_unit).round]
               },
               height: '250px',
               suffix: " #{@distance_unit}",
-              xtitle: 'Month',
-              ytitle: 'Distance',
+              xtitle: t('.month'),
+              ytitle: t('.distance'),
               colors: [
                 '#397bb5', '#5A4E9D', '#3B945E',
                 '#7BC96F', '#FFD54F', '#FFA94D',
@@ -127,7 +127,7 @@
       <div class="card bg-base-200 shadow-xl mb-8">
         <div class="card-body text-center items-center">
           <h2 class="card-title">
-            <%= icon 'map-pin' %> Where You Spent the Most Time
+            <%= icon 'map-pin' %> <%= t('.where_you_spent_the_most_time') %>
           </h2>
           <div class="space-y-4 w-full">
             <% @digest.top_countries_by_time.take(5).each_with_index do |country, index| %>
@@ -149,12 +149,12 @@
               <div class="flex justify-between items-center p-3 bg-base-100 rounded-lg border-2 border-dashed border-gray-200">
                 <div class="flex items-center gap-3">
                   <span class="badge badge-lg badge-ghost">?</span>
-                  <span class="text-gray-500 italic">No tracking data</span>
+                  <span class="text-gray-500 italic"><%= t('.no_tracking_data') %></span>
                 </div>
-                <span class="text-gray-500"><%= pluralize(@digest.untracked_days.round, 'day') %></span>
+                <span class="text-gray-500"><%= t('.day_count', count: @digest.untracked_days.round) %></span>
               </div>
               <p class="text-sm text-gray-500 mt-2 flex items-center justify-center gap-2">
-                <%= icon 'lightbulb' %> Track more in <%= @digest.year + 1 %> to see a fuller picture of your travels!
+                <%= icon 'lightbulb' %> <%= t('.track_more_in') %> <%= @digest.year + 1 %> <%= t('.to_see_a_fuller_picture_of_your_travels') %>
               </p>
             <% end %>
           </div>
@@ -166,7 +166,7 @@
     <div class="card bg-base-200 shadow-xl mb-8">
       <div class="card-body text-center items-center">
         <h2 class="card-title">
-          <%= icon 'earth' %> Countries & Cities
+          <%= icon 'earth' %> <%= t('.countries_cities') %>
         </h2>
         <div class="space-y-4 w-full">
           <% if @digest.toponyms.present? %>
@@ -178,14 +178,14 @@
                     <%= country['country'] %>
                   </span>
                   <span class="text-sm">
-                    <%= pluralize(country['cities']&.length || 0, 'city') %>
+                    <%= t('.city_count', count: country['cities']&.length || 0) %>
                   </span>
                 </div>
                 <progress class="progress <%= progress_color_for_index(index) %> w-full" value="<%= city_progress_value(country['cities']&.length || 0, max_cities_count(@digest.toponyms)) %>" max="100"></progress>
               </div>
             <% end %>
           <% else %>
-            <p class="text-gray-500">No location data available</p>
+            <p class="text-gray-500"><%= t('.no_location_data_available') %></p>
           <% end %>
         </div>
       </div>
@@ -195,20 +195,20 @@
     <div class="card bg-slate-800 text-white shadow-xl mb-8">
       <div class="card-body text-center items-center">
         <h2 class="card-title text-white">
-          <%= icon 'trophy' %> All-Time Stats
+          <%= icon 'trophy' %> <%= t('.all_time_stats') %>
         </h2>
         <div class="grid grid-cols-2 gap-4 mt-4">
           <div class="stat place-items-center">
-            <div class="stat-title text-gray-400">Countries visited</div>
+            <div class="stat-title text-gray-400"><%= t('.countries_visited') %></div>
             <div class="stat-value text-white"><%= @digest.total_countries_all_time %></div>
           </div>
           <div class="stat place-items-center">
-            <div class="stat-title text-gray-400">Cities explored</div>
+            <div class="stat-title text-gray-400"><%= t('.cities_explored') %></div>
             <div class="stat-value text-white"><%= @digest.total_cities_all_time %></div>
           </div>
         </div>
         <div class="stat place-items-center mt-2">
-          <div class="stat-title text-gray-400">Total distance</div>
+          <div class="stat-title text-gray-400"><%= t('.total_distance') %></div>
           <div class="stat-value text-white"><%= distance_with_unit(@digest.total_distance_all_time, @distance_unit) %></div>
         </div>
       </div>
@@ -218,15 +218,14 @@
     <div class="card bg-base-200 shadow-xl mb-8 border border-primary/20">
       <div class="card-body text-center items-center">
         <h2 class="card-title">
-          <%= icon 'sparkles' %> Want more insights?
+          <%= icon 'sparkles' %> <%= t('.want_more_insights') %>
         </h2>
         <p class="text-gray-600 mb-4">
-          Upgrade to Pro to see your full year-in-review with monthly breakdowns,
-          detailed city and country rankings, transportation analysis, and all-time stats.
+          <%= t('.upgrade_to_pro_to_see_your_full_year_in_review') %>
         </p>
         <a href="<%= upgrade_url(utm_medium: 'digest', utm_content: 'year_in_review') %>"
            class="btn btn-primary">
-          Upgrade to Pro
+          <%= t('.upgrade_to_pro') %>
         </a>
       </div>
     </div>
@@ -235,16 +234,16 @@
   <!-- Action Buttons -->
   <div class="flex flex-wrap gap-4 justify-center">
     <%= link_to users_digests_path, class: 'btn btn-outline' do %>
-      Back to All Digests
+      <%= t('.back_to_all_digests') %>
     <% end %>
     <button class="btn btn-outline" onclick="sharing_modal.showModal()">
-      <%= icon 'share' %> Share
+      <%= icon 'share' %> <%= t('.share') %>
     </button>
     <%= button_to users_digest_path(year: @digest.year),
                   method: :delete,
                   class: 'btn btn-outline btn-error',
-                  data: { turbo_confirm: "Are you sure you want to delete the #{@digest.year} digest? This cannot be undone." } do %>
-      <%= icon 'trash-2' %> Delete
+                  data: { turbo_confirm: t('.are_you_sure_you_want_to_delete_the_year_digest', year: @digest.year) } do %>
+      <%= icon 'trash-2' %> <%= t('.delete') %>
     <% end %>
   </div>
 </div>
@@ -257,7 +256,7 @@
     </form>
 
     <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
-      <%= icon 'link' %> Sharing Settings
+      <%= icon 'link' %> <%= t('.sharing_settings') %>
     </h3>
 
     <div data-controller="sharing-modal">
@@ -267,7 +266,7 @@
         <%# Enable/Disable Sharing Toggle %>
         <div class="form-control mb-4">
           <label class="label cursor-pointer">
-            <span class="label-text font-medium">Enable public access</span>
+            <span class="label-text font-medium"><%= t('.enable_public_access') %></span>
             <input type="checkbox"
                    name="enabled"
                    value="1"
@@ -277,7 +276,7 @@
                    data-sharing-modal-target="enableToggle" />
           </label>
           <div class="label">
-            <span class="label-text-alt text-gray-500">Allow others to view this year-end digest • Auto-saves on change</span>
+            <span class="label-text-alt text-gray-500"><%= t('.allow_others_to_view_this_year_end_digest_auto_saves') %></span>
           </div>
         </div>
 
@@ -287,7 +286,7 @@
 
           <div class="form-control mb-4">
             <label class="label">
-              <span class="label-text font-medium">Link expiration</span>
+              <span class="label-text font-medium"><%= t('.link_expiration') %></span>
             </label>
             <select name="expiration"
                     class="select select-bordered w-full"
@@ -314,10 +313,10 @@
       <div class="alert alert-info mb-4">
         <%= icon 'info' %>
         <div>
-          <h3 class="font-bold">Privacy Protection</h3>
+          <h3 class="font-bold"><%= t('.privacy_protection') %></h3>
           <div class="text-sm">
-            • Exact coordinates are hidden<br>
-            • Personal information is not included
+            <%= t('.exact_coordinates_are_hidden') %><br>
+            <%= t('.personal_information_is_not_included') %>
           </div>
         </div>
       </div>
@@ -327,7 +326,7 @@
         <button type="button"
                 class="btn btn-primary"
                 onclick="sharing_modal.close()">
-          Done
+          <%= t('.done') %>
         </button>
       </div>
     </div>

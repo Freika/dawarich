@@ -8,9 +8,9 @@
   <button type="button"
           class="replay-close"
           data-action="click-><%= stimulus %>#toggleReplay"
-          title="Close replay"
-          aria-label="Close replay">
-    &times;
+          title="<%= t('.close_replay') %>"
+          aria-label="<%= t('.close_replay') %>">
+    <%= t('.times') %>
   </button>
 
   <%# Controls row: Day nav | Time display | Replay + Cycle controls %>
@@ -21,14 +21,14 @@
         <button type="button"
                 data-action="click-><%= stimulus %>#replayPrevDay"
                 data-<%= stimulus %>-target="replayPrevDayButton"
-                title="Previous day"
-                aria-label="Previous day">
-          &larr;
+                title="<%= t('.previous_day') %>"
+                aria-label="<%= t('.previous_day') %>">
+          <%= t('.larr') %>
         </button>
       <% end %>
       <div class="replay-day-info">
         <span class="replay-day-display" data-<%= stimulus %>-target="replayDayDisplay">
-          No data loaded
+          <%= t('.no_data_loaded') %>
         </span>
         <span class="replay-day-count" data-<%= stimulus %>-target="replayDayCount"></span>
       </div>
@@ -36,9 +36,9 @@
         <button type="button"
                 data-action="click-><%= stimulus %>#replayNextDay"
                 data-<%= stimulus %>-target="replayNextDayButton"
-                title="Next day"
-                aria-label="Next day">
-          &rarr;
+                title="<%= t('.next_day') %>"
+                aria-label="<%= t('.next_day') %>">
+          <%= t('.rarr') %>
         </button>
       <% end %>
     </div>
@@ -51,7 +51,7 @@
       <span class="replay-speed-display" data-<%= stimulus %>-target="replaySpeedDisplay">
       </span>
       <span class="replay-data-indicator hidden" data-<%= stimulus %>-target="replayDataIndicator" role="status">
-        No data
+        <%= t('.no_data') %>
       </span>
     </div>
 
@@ -61,8 +61,8 @@
               class="replay-play-btn"
               data-<%= stimulus %>-target="replayPlayButton"
               data-action="click-><%= stimulus %>#replayTogglePlayback"
-              title="Play/Pause"
-              aria-label="Play or pause replay">
+              title="<%= t('.play_pause') %>"
+              aria-label="<%= t('.play_or_pause_replay') %>">
         <span class="play-icon" data-<%= stimulus %>-target="replayPlayIcon">&#9658;</span>
         <span class="pause-icon hidden" data-<%= stimulus %>-target="replayPauseIcon">&#10074;&#10074;</span>
       </button>
@@ -70,8 +70,8 @@
               class="replay-follow-btn"
               data-<%= stimulus %>-target="replayFollowButton"
               data-action="click-><%= stimulus %>#replayRecenterFollow"
-              title="Recenter & follow marker"
-              aria-label="Recenter and follow the marker">
+              title="<%= t('.recenter_follow_marker') %>"
+              aria-label="<%= t('.recenter_and_follow_the_marker') %>">
         <%= icon "locate-fixed", class: "replay-follow-icon" %>
       </button>
       <div class="replay-speed-control">
@@ -83,25 +83,25 @@
                step="1"
                data-<%= stimulus %>-target="replaySpeedSlider"
                data-action="input-><%= stimulus %>#replaySpeedChange"
-               title="Replay speed"
-               aria-label="Replay speed">
+               title="<%= t('.replay_speed') %>"
+               aria-label="<%= t('.replay_speed') %>">
         <span class="replay-speed-label" data-<%= stimulus %>-target="replaySpeedLabel">2x</span>
       </div>
       <div class="replay-cycle-controls hidden" data-<%= stimulus %>-target="replayCycleControls">
         <button type="button"
                 data-action="click-><%= stimulus %>#replayCyclePrev"
-                title="Previous point"
-                aria-label="Previous point">
-          &larr;
+                title="<%= t('.previous_point') %>"
+                aria-label="<%= t('.previous_point') %>">
+          <%= t('.larr') %>
         </button>
         <span class="replay-point-counter" data-<%= stimulus %>-target="replayPointCounter">
-          Point 1 of 1
+          <%= t('.point_1_of_1') %>
         </span>
         <button type="button"
                 data-action="click-><%= stimulus %>#replayCycleNext"
-                title="Next point"
-                aria-label="Next point">
-          &rarr;
+                title="<%= t('.next_point') %>"
+                aria-label="<%= t('.next_point') %>">
+          <%= t('.rarr') %>
         </button>
       </div>
     </div>
@@ -119,7 +119,7 @@
              value="720"
              data-<%= stimulus %>-target="replayScrubber"
              data-action="input-><%= stimulus %>#replayScrubberHover"
-             aria-label="Replay scrubber - time of day">
+             aria-label="<%= t('.replay_scrubber_time_of_day') %>">
     </div>
     <span class="replay-time-label">23:59</span>
   </div>

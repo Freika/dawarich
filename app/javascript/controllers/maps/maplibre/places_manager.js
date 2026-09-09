@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
@@ -59,20 +60,20 @@ export class PlacesManager {
   /**
    * Initialize place tag filters (enable all by default or restore saved state)
    */
-  async initializePlaceTagFilters() {
+  async initializePlaceTagFilters({ reloadPlaces = true } = {}) {
     const savedFilters = this.settings.placesTagFilters
 
-    if (savedFilters && savedFilters.length > 0) {
-      return this.restoreSavedTagFilters(savedFilters)
+    if (Array.isArray(savedFilters)) {
+      return this.restoreSavedTagFilters(savedFilters, { reloadPlaces })
     } else {
-      return this.enableAllTagsInitial()
+      return this.enableAllTagsInitial({ reloadPlaces })
     }
   }
 
   /**
    * Restore saved tag filters
    */
-  restoreSavedTagFilters(savedFilters) {
+  restoreSavedTagFilters(savedFilters, { reloadPlaces = true } = {}) {
     const tagCheckboxes = document.querySelectorAll(
       'input[name="place_tag_ids[]"]',
     )
@@ -103,13 +104,15 @@ export class PlacesManager {
     })
 
     this.syncEnableAllTagsToggle()
-    return this.loadPlacesWithTags(savedFilters)
+    return reloadPlaces
+      ? this.loadPlacesWithTags(savedFilters)
+      : Promise.resolve()
   }
 
   /**
    * Enable all tags initially
    */
-  enableAllTagsInitial() {
+  enableAllTagsInitial({ reloadPlaces = true } = {}) {
     if (this.controller.hasEnableAllPlaceTagsToggleTarget) {
       this.controller.enableAllPlaceTagsToggleTarget.checked = true
     }
@@ -135,8 +138,9 @@ export class PlacesManager {
       allTagIds.push(value)
     })
 
+    this.settings.placesTagFilters = allTagIds
     SettingsManager.updateSetting("placesTagFilters", allTagIds)
-    return this.loadPlacesWithTags(allTagIds)
+    return reloadPlaces ? this.loadPlacesWithTags(allTagIds) : Promise.resolve()
   }
 
   /**
@@ -171,6 +175,7 @@ export class PlacesManager {
     this.syncEnableAllTagsToggle()
 
     const checkedTags = this.getSelectedPlaceTags()
+    this.settings.placesTagFilters = checkedTags
     SettingsManager.updateSetting("placesTagFilters", checkedTags)
     this.loadPlacesWithTags(checkedTags)
   }
@@ -240,6 +245,7 @@ export class PlacesManager {
     })
 
     const selectedTags = this.getSelectedPlaceTags()
+    this.settings.placesTagFilters = selectedTags
     SettingsManager.updateSetting("placesTagFilters", selectedTags)
     this.loadPlacesWithTags(selectedTags)
   }
@@ -249,7 +255,7 @@ export class PlacesManager {
    */
   startCreatePlace() {
     this.controller.map.getCanvas().style.cursor = "crosshair"
-    Toast.info("Click on the map to place a place")
+    Toast.info(translate("messages.click_on_the_map_to_place_a_place"))
 
     this.handleCreatePlaceClick = (e) => {
       const { lng, lat } = e.lngLat

@@ -159,5 +159,54 @@ RSpec.describe Traccar::Params do
         expect(params[:tracker_id]).to eq('x')
       end
     end
+
+    context 'with the Traccar form protocol' do
+      let(:input) do
+        {
+          id: 'android-tracker',
+          lat: '48.2082',
+          lon: '16.3738',
+          timestamp: '1785920400',
+          accuracy: '8.5',
+          altitude: '180.0',
+          speed: '9.72',
+          bearing: '125.0',
+          batt: '84',
+          charge: 'true',
+          alarm: 'sos'
+        }
+      end
+
+      it 'normalizes coordinates, time, and device id' do
+        expect(params).to include(
+          lonlat: 'POINT(16.3738 48.2082)',
+          timestamp: 1_785_920_400,
+          tracker_id: 'android-tracker'
+        )
+      end
+
+      it 'converts knots to meters per second' do
+        expect(params[:velocity].to_f).to be_within(0.01).of(5.0)
+      end
+
+      it 'normalizes battery state and preserves the original payload' do
+        expect(params).to include(battery: 84, battery_status: 'charging')
+        expect(params[:raw_data]).to include('lat' => '48.2082', 'batt' => '84')
+      end
+
+      it 'keeps charging state unknown when it is not reported' do
+        input.delete(:charge)
+
+        expect(params[:battery_status]).to eq('unknown')
+      end
+
+      [29, 57, 58].each do |percentage|
+        it "preserves a reported battery percentage of #{percentage}" do
+          input[:batt] = percentage.to_s
+
+          expect(params[:battery]).to eq(percentage)
+        end
+      end
+    end
   end
 end

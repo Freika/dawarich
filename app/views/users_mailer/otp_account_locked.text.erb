@@ -1,13 +1,13 @@
-Account temporarily locked
+<%= t('.account_temporarily_locked') %>
 
-Hi <%= @user.email %>,
+<%= t('.hi') %> <%= @user.email %>,
 
-Your Dawarich account has been temporarily locked because 10 consecutive failed two-factor authentication attempts were detected.
+<%= t('.your_dawarich_account_has_been_temporarily_locked_because_10_consecutive_2') %>
 
-The lock will automatically lift after 30 minutes. No action is required if this was you.
+<%= t('.the_lock_will_automatically_lift_after_30_minutes_no_action') %>
 
-Didn't recognise this activity? Someone may be trying to access your account. We recommend resetting your password immediately.
+<%= t('.didn_t_recognise_this_activity_someone_may_be_trying_to') %>
 
-Reset your password: <%= new_user_password_url %>
+<%= t('.reset_your_password_2') %> <%= new_user_password_url %>
 
-If you need further assistance, contact us at security@dawarich.app.
+<%= t('.if_you_need_further_assistance_contact_us_at_security_dawarich') %>

@@ -70,6 +70,14 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       expect(response.body).to include('Order a printed poster')
     end
 
+    it 'renders the order section on an instance carrying no flag at all' do
+      Flipper.remove(:poster_ordering)
+
+      get map_v2_path
+
+      expect(response.body).to include('Order a printed poster')
+    end
+
     it 'omits the order section when the poster_ordering flag is disabled' do
       Flipper.disable(:poster_ordering)
 

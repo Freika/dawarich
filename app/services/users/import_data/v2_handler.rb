@@ -79,7 +79,10 @@ class Users::ImportData::V2Handler
 
   def load_manifest
     manifest_path = import_directory.join('manifest.json')
-    raise StandardError, 'Manifest file not found in archive: manifest.json' unless File.exist?(manifest_path)
+    unless File.exist?(manifest_path)
+      raise StandardError,
+            I18n.t('services.users.import_data.v2_handler.manifest_missing')
+    end
 
     @manifest = JSON.parse(File.read(manifest_path))
     Rails.logger.info "Loaded manifest: format_version=#{@manifest['format_version']}, " \

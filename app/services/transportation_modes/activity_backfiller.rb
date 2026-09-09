@@ -89,8 +89,8 @@ module TransportationModes
     def process_activity_segment(segment)
       return unless segment.is_a?(Hash)
 
-      activities = segment['activities'] || []
-      travel_mode = segment.dig('waypointPath', 'travelMode')
+      motion_data = Points::MotionDataExtractor.from_google_semantic_history(segment)
+      return if motion_data.blank?
 
       start_time = parse_segment_timestamp(segment.dig('duration', 'startTimestamp'))
       end_time = parse_segment_timestamp(segment.dig('duration', 'endTimestamp'))
@@ -98,13 +98,7 @@ module TransportationModes
       return unless start_time && end_time
 
       @import.points.where(timestamp: start_time..end_time).find_each do |point|
-        activity_data = {
-          'activities' => activities,
-          'travelMode' => travel_mode,
-          'confidence' => segment['confidence']
-        }.compact
-
-        update_point_activity(point, activity_data)
+        point.update_column(:motion_data, (point.motion_data || {}).merge(motion_data))
       end
     end
 

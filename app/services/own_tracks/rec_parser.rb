@@ -13,7 +13,7 @@ class OwnTracks::RecParser
       parts = line.split("\t")
 
       # If tab splitting didn't work (only 1 part), try whitespace splitting
-      parts = line.split(/\s+/) if parts.size == 1
+      parts = line.split(/\s+/, 3) if parts.size == 1
 
       Oj.load(parts[2]) if parts.size > 2 && parts[1].strip == '*'
     end.compact

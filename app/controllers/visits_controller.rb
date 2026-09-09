@@ -42,15 +42,15 @@ class VisitsController < ApplicationController
         end
         format.html do
           redirect_to redirect_target,
-                      notice: "#{result[:count]} #{'visit'.pluralize(result[:count])} #{status}."
+                      notice: bulk_update_success_message(status, result[:count])
         end
       end
     else
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: stream_flash(:error, 'Failed to update visits.')
+          render turbo_stream: stream_flash(:error, I18n.t('controllers.visits.failed_to_update_visits'))
         end
-        format.html { redirect_to redirect_target, alert: 'Failed to update visits.' }
+        format.html { redirect_to redirect_target, alert: I18n.t('controllers.visits.failed_to_update_visits') }
       end
     end
   end
@@ -74,9 +74,9 @@ class VisitsController < ApplicationController
       return render_unprocessable(too_many_visits_message) if scope.count > MAX_BULK_VISIT_IDS
 
       visit_ids = scope.pluck(:id)
-      return render_unprocessable('No matching visits found.') if visit_ids.empty?
+      return render_unprocessable(I18n.t('controllers.visits.no_matching_visits')) if visit_ids.empty?
     else
-      return render_unprocessable('Select at least one visit to delete.')
+      return render_unprocessable(I18n.t('controllers.visits.select_visit_to_delete'))
     end
 
     visits = current_user.scoped_visits.where(id: visit_ids)
@@ -95,7 +95,7 @@ class VisitsController < ApplicationController
         end
       end
     else
-      render_unprocessable(service.errors.join(', ').presence || 'Failed to delete visits.')
+      render_unprocessable(service.errors.join(', ').presence || I18n.t('controllers.visits.failed_to_delete_visits'))
     end
   end
 
@@ -114,13 +114,13 @@ class VisitsController < ApplicationController
       raw_place_id = params_to_update[:place_id]
       allowed = current_user.places.where(id: raw_place_id).exists? ||
                 @visit.suggested_places.where(id: raw_place_id).exists?
-      return render_unprocessable('Invalid place') unless allowed
+      return render_unprocessable(I18n.t('controllers.visits.invalid_place')) unless allowed
     end
 
     selected_area = nil
     if params_to_update[:area_id].present?
       selected_area = current_user.areas.find_by(id: params_to_update[:area_id])
-      return render_unprocessable('Invalid area') unless selected_area
+      return render_unprocessable(I18n.t('controllers.visits.invalid_area')) unless selected_area
     end
 
     # Capture both old and new month so cache busts cover edits that move
@@ -142,6 +142,10 @@ class VisitsController < ApplicationController
       auto_name_on_confirm
     end
 
+    # Editing a suggested visit is an assertion that it happened — confirm
+    # it silently unless the request set a status itself (e.g. decline).
+    params_to_update[:status] = 'confirmed' if @visit.suggested? && params_to_update[:status].blank?
+
     if @visit.update(params_to_update)
       @visit.adopt! unless @visit.status == 'declined'
       respond_to do |format|
@@ -153,7 +157,7 @@ class VisitsController < ApplicationController
     else
       respond_to do |format|
         format.turbo_stream do
-          render turbo_stream: stream_flash(:error, 'Failed to update visit.')
+          render turbo_stream: stream_flash(:error, I18n.t('controllers.visits.failed_to_update_visit'))
         end
         format.html { render :edit, status: :unprocessable_content }
       end
@@ -164,7 +168,9 @@ class VisitsController < ApplicationController
     tz = current_user.safe_settings.timezone.presence || 'UTC'
     day_date = Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
     @affected_started_at = [@visit.started_at]
-    @visit.destroy!
+    # Soft delete: the row stays as a tombstone so visit detection never
+    # re-suggests it; the user's points are untouched either way.
+    @visit.soft_delete!
 
     respond_to do |format|
       format.turbo_stream do
@@ -176,12 +182,12 @@ class VisitsController < ApplicationController
 
   def merge
     visit_ids = parse_visit_ids(params[:visit_ids])
-    return render_unprocessable('Select at least 2 visits to merge.') if visit_ids.length < 2
+    return render_unprocessable(I18n.t('controllers.visits.select_visits_to_merge')) if visit_ids.length < 2
 
     visits = current_user.scoped_visits.where(id: visit_ids).order(:started_at)
     return render_not_found(message_for_missing_visits(visit_ids)) if visits.length != visit_ids.length
 
-    return render_unprocessable('Visits must be on the same day.') unless same_day?(visits)
+    return render_unprocessable(I18n.t('controllers.visits.visits_must_share_day')) unless same_day?(visits)
 
     @affected_started_at = visits.map(&:started_at)
 
@@ -194,7 +200,7 @@ class VisitsController < ApplicationController
         format.html { redirect_back(fallback_location: build_timeline_url(date: 'today')) }
       end
     else
-      render_unprocessable(service.errors.join(', ').presence || 'Failed to merge visits.')
+      render_unprocessable(service.errors.join(', ').presence || I18n.t('controllers.visits.failed_to_merge_visits'))
     end
   end
 
@@ -204,7 +210,7 @@ class VisitsController < ApplicationController
     return if params[:source_status].blank?
     return if ALLOWED_SOURCE_STATUSES.include?(params[:source_status].to_s)
 
-    render_unprocessable('Unsupported source status.')
+    render_unprocessable(I18n.t('controllers.visits.unsupported_source_status'))
   end
 
   def set_visit
@@ -231,10 +237,9 @@ class VisitsController < ApplicationController
   end
 
   # Turbo streams for #bulk_update: swaps the day's visit-list contents with
-  # a freshly-assembled day (so every row's status is current), refreshes the
-  # three filter counts in the rail, and shows the "N visits confirmed." flash.
-  # `turbo_stream.update` targets the frame's children — we keep the frame
-  # element (its id + Stimulus target) intact.
+  # a freshly-assembled day (so every row's state is current) and shows the
+  # "N visits confirmed." flash. `turbo_stream.update` targets the frame's
+  # children — we keep the frame element (its id + Stimulus target) intact.
   def build_bulk_update_streams(status, count)
     tz = current_user.safe_settings.timezone.presence || 'UTC'
     date_str = params[:date].presence || Time.use_zone(tz) { Date.current.to_s }
@@ -248,11 +253,6 @@ class VisitsController < ApplicationController
     ).call
     day = days.first
 
-    # Filter pills are scoped to the calendar's currently-visible month, so
-    # the streamed counts must be too — otherwise after a bulk action the
-    # pills swap from a monthly count to an all-time count and look wrong.
-    status_counts = month_status_counts(date_str)
-
     streams = []
     streams << if day
                  turbo_stream.update('timeline-feed-frame',
@@ -261,15 +261,8 @@ class VisitsController < ApplicationController
                else
                  turbo_stream.update('timeline-feed-frame', '')
                end
-    streams << turbo_stream.replace('filter-count-confirmed',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'confirmed', count: status_counts['confirmed'].to_i })
-    streams << turbo_stream.replace('filter-count-suggested',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'suggested', count: status_counts['suggested'].to_i })
     streams << calendar_frame_stream(date_str)
-    streams << suggestions_badge_stream
-    streams << stream_flash(:notice, "#{count} #{'visit'.pluralize(count)} #{status}.")
+    streams << stream_flash(:notice, bulk_update_success_message(status, count))
     streams
   end
 
@@ -280,39 +273,22 @@ class VisitsController < ApplicationController
                          locals: { summary: Timeline::MonthSummary.new(user: current_user, month: month).call })
   end
 
-  # Turbo streams emitted on a successful #update:
-  #   - Replace the visit row (status dot, picker, tags, everything)
-  #   - Re-render the day's suggestion banner (disappears when count hits 0)
-  #   - Re-render the three rail filter-count badges (confirmed/suggested/declined)
-  # Keeps the panel's state consistent after any confirm/decline/rename.
+  # Turbo streams emitted on a successful #update: replace the visit row
+  # (name, picker, tags, everything) and refresh the calendar so day dots
+  # stay accurate. Keeps the panel consistent after any edit.
   def build_update_streams
     tz = current_user.safe_settings.timezone.presence || 'UTC'
     day_date = Time.use_zone(tz) { @visit.started_at.in_time_zone.to_date.to_s }
-    day_range = Time.use_zone(tz) { Date.parse(day_date).in_time_zone.all_day }
-
-    day_suggested_count = current_user.scoped_visits
-                                      .where(started_at: day_range, status: :suggested)
-                                      .count
-    # Match the FILTER pills' month-scoped counts — they would otherwise
-    # flip from monthly (initial render) to all-time (after an edit).
-    status_counts = month_status_counts(day_date)
 
     [
       turbo_stream.replace("visit_entry_#{@visit.id}",
                            partial: 'map/timeline_feeds/visit_entry',
                            locals: { entry: timeline_entry_for(@visit) }),
-      turbo_stream.replace("day-banner-#{day_date}",
-                           partial: 'map/timeline_feeds/day_banner',
-                           locals: { date: day_date, suggested_count: day_suggested_count }),
-      turbo_stream.replace('filter-count-confirmed',
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: 'confirmed', count: status_counts['confirmed'].to_i }),
-      turbo_stream.replace('filter-count-suggested',
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: 'suggested', count: status_counts['suggested'].to_i }),
       calendar_frame_stream(day_date),
-      suggestions_badge_stream,
-      stream_flash(:notice, "Visit #{@visit.status}.")
+      stream_flash(
+        :notice,
+        I18n.t("controllers.visits.visit_updated.#{@visit.status}")
+      )
     ]
   end
 
@@ -320,27 +296,6 @@ class VisitsController < ApplicationController
     params = { panel: 'timeline', date: date }
     params[:status] = status if status.present?
     "/map/v2?#{params.to_query}"
-  end
-
-  # Refreshes the lifetime pending-suggestion badge on the Timeline map button
-  # so it doesn't go stale after a confirm/decline/merge/delete (it would
-  # otherwise keep the count from the initial page render).
-  def suggestions_badge_stream
-    turbo_stream.replace('timeline-suggestions-badge',
-                         partial: 'map/timeline_feeds/suggestions_badge',
-                         locals: { count: current_user.scoped_visits.suggested.count })
-  end
-
-  # Visits-by-status counts scoped to the month containing `date_str`. Used by
-  # the FILTER pills, which are intentionally month-bound so users see "this
-  # month's" totals next to the calendar grid.
-  def month_status_counts(date_str)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    month_range = Time.use_zone(tz) { Date.parse(date_str).in_time_zone.all_month }
-    current_user.scoped_visits
-                .where(started_at: month_range)
-                .group(:status)
-                .count
   end
 
   def update_visit_name_from_place(place_id)
@@ -389,8 +344,6 @@ class VisitsController < ApplicationController
     ).call
     day = days.first
 
-    status_counts = month_status_counts(day_date)
-
     streams = []
     streams << if day
                  turbo_stream.update('timeline-feed-frame',
@@ -399,39 +352,15 @@ class VisitsController < ApplicationController
                else
                  turbo_stream.update('timeline-feed-frame', '')
                end
-    streams << turbo_stream.replace('filter-count-confirmed',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'confirmed', count: status_counts['confirmed'].to_i })
-    streams << turbo_stream.replace('filter-count-suggested',
-                                    partial: 'map/timeline_feeds/filter_count',
-                                    locals: { status: 'suggested', count: status_counts['suggested'].to_i })
-    streams << suggestions_badge_stream
-    streams << stream_flash(:notice, 'Visits merged.')
+    streams << stream_flash(:notice, I18n.t('controllers.visits.visits_merged'))
     streams
   end
 
   def build_destroy_streams(day_date)
-    tz = current_user.safe_settings.timezone.presence || 'UTC'
-    day_range = Time.use_zone(tz) { Date.parse(day_date).in_time_zone.all_day }
-    day_suggested_count = current_user.scoped_visits
-                                      .where(started_at: day_range, status: :suggested)
-                                      .count
-    status_counts = month_status_counts(day_date)
-
     [
       turbo_stream.remove("visit_entry_#{@visit.id}"),
-      turbo_stream.replace("day-banner-#{day_date}",
-                           partial: 'map/timeline_feeds/day_banner',
-                           locals: { date: day_date, suggested_count: day_suggested_count }),
-      turbo_stream.replace('filter-count-confirmed',
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: 'confirmed', count: status_counts['confirmed'].to_i }),
-      turbo_stream.replace('filter-count-suggested',
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: 'suggested', count: status_counts['suggested'].to_i }),
       calendar_frame_stream(day_date),
-      suggestions_badge_stream,
-      stream_flash(:notice, 'Visit removed. Your location points are still here.')
+      stream_flash(:notice, I18n.t('controllers.visits.visit_removed'))
     ]
   end
 
@@ -446,9 +375,7 @@ class VisitsController < ApplicationController
     streams = []
     day_stream = build_day_frame_stream(visible_date, tz)
     streams << day_stream if day_stream
-    streams.concat(filter_count_streams(counts_date_str))
     streams << calendar_frame_stream(counts_date_str)
-    streams << suggestions_badge_stream
     streams << stream_flash(:notice, bulk_destroy_success_message(count))
     streams
   end
@@ -477,15 +404,6 @@ class VisitsController < ApplicationController
     end
   end
 
-  def filter_count_streams(date_str)
-    status_counts = month_status_counts(date_str)
-    %w[confirmed suggested].map do |status|
-      turbo_stream.replace("filter-count-#{status}",
-                           partial: 'map/timeline_feeds/filter_count',
-                           locals: { status: status, count: status_counts[status].to_i })
-    end
-  end
-
   def render_unprocessable(message)
     respond_to do |format|
       format.turbo_stream { render turbo_stream: stream_flash(:error, message), status: :unprocessable_content }
@@ -500,7 +418,7 @@ class VisitsController < ApplicationController
   end
 
   def too_many_visits_message
-    "You can update up to #{MAX_BULK_VISIT_IDS} visits at once. Narrow your selection and try again."
+    I18n.t('controllers.visits.too_many_visits', count: MAX_BULK_VISIT_IDS)
   end
 
   def message_for_missing_visits(ids)
@@ -515,16 +433,19 @@ class VisitsController < ApplicationController
   end
 
   def missing_visits_message
-    "Some of those visits aren't here anymore — probably edited in another tab. Refresh and try again."
+    I18n.t('controllers.visits.missing_visits')
   end
 
   def plan_window_visits_message
-    "Some of those visits are outside your Lite plan's 12-month window. Upgrade to Pro to manage older data."
+    I18n.t('controllers.visits.plan_window_visits')
   end
 
   def bulk_destroy_success_message(count)
-    noun = 'visit'.pluralize(count)
-    "#{count} #{noun} removed. Your location points are still here."
+    I18n.t('controllers.visits.bulk_removed', count:)
+  end
+
+  def bulk_update_success_message(status, count)
+    I18n.t("controllers.visits.bulk_updated.#{status}", count:)
   end
 
   def bust_timeline_month_cache

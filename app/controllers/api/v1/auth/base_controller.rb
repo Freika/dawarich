@@ -22,6 +22,7 @@ class Api::V1::Auth::BaseController < ApiController
       api_key: user.api_key,
       status: user.status,
       plan: user.plan,
+      effective_plan: user.entitlements.effective_plan,
       subscription_source: user.subscription_source,
       active_until: user.active_until&.iso8601
     }, status: status

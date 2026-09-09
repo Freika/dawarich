@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Places::NameFetcher renames places after geocoding even when the response lacks a top-level name' do
+  before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
+
   let(:place) do
     create(
       :place,

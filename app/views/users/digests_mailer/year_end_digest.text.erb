@@ -1,43 +1,43 @@
-Your <%= @digest.year %> Year in Review
+<%= t('.year_in_review_title', year: @digest.year) %>
 ──────────────────────────────
 
-Here's your <%= @digest.year %> at a glance.
+<%= t('.year_at_a_glance', year: @digest.year) %>
 
-THE NUMBERS
-  Distance       <%= distance_with_unit(@digest.distance, @distance_unit) %>
-  Countries      <%= @digest.all_time_stats.to_h['total_countries'] %>
-  Cities         <%= @digest.all_time_stats.to_h['total_cities'] %>
+<%= t('.the_numbers') %>
+  <%= t('.distance') %>       <%= distance_with_unit(@digest.distance, @distance_unit) %>
+  <%= t('.countries') %>      <%= @digest.all_time_stats.to_h['total_countries'] %>
+  <%= t('.cities') %>         <%= @digest.all_time_stats.to_h['total_cities'] %>
 
 <% if @daily_values.any? %>
-ACTIVITY HEATMAP
+<%= t('.activity_heatmap') %>
 <%= ascii_year_heatmap(@daily_values, start_date: Date.new(@digest.year, 1, 1)) %>
 
-· none   ░ light   ▒ moderate   ▓ high   █ peak
+<%= t('.none_light_moderate_high_peak') %>
 
 <% end %>
-MONTHLY DISTANCE
+<%= t('.monthly_distance') %>
 <%= ascii_hbar(
   (1..12).map { |m| @monthly_distances[m.to_s].to_f.round },
-  labels: Date::ABBR_MONTHNAMES[1..12],
+  labels: I18n.t('date.abbr_month_names').compact,
   width: 24,
   suffix: " #{@distance_unit}"
 ) %>
 
 <% if @top_countries.any? %>
-TOP COUNTRIES
+<%= t('.top_countries') %>
 <%= ascii_ranked_list(@top_countries.first(5), value_key: 'minutes', label_key: 'name', width: 20, format: ->(m) { "#{(m.to_f / 60).round}h" }) %>
 
 <% end %>
 <% if @digest.year_over_year.to_h['distance_change_percent'].present? %>
-VS PREVIOUS YEAR
-  Distance  <%= ascii_trend_from_pct(@digest.distance, @digest.year_over_year['distance_change_percent']) %>
+<%= t('.vs_previous_year') %>
+  <%= t('.distance') %>  <%= ascii_trend_from_pct(@digest.distance, @digest.year_over_year['distance_change_percent']) %>
 
 <% end %>
--> View full insights: <%= insights_url %>
+<%= t('.view_full_insights') %> <%= insights_url %>
 <% if @digest.sharing_uuid.present? %>
--> Share your year:    <%= shared_users_digest_url(uuid: @digest.sharing_uuid) %>
+<%= t('.share_your_year') %>    <%= shared_users_digest_url(uuid: @digest.sharing_uuid) %>
 <% end %>
 
 ─────────────────────────────────────────
-You're receiving this because yearly digest emails are on.
-Manage email preferences: <%= settings_general_index_url(anchor: 'email-digests') %>
+<%= t('.you_re_receiving_this_because_yearly_digest_emails_are_on_3') %>
+<%= t('.manage_email_preferences_2') %> <%= settings_general_index_url(anchor: 'email-digests') %>

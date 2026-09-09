@@ -12,12 +12,19 @@ class Photoprism::ConnectionTester
   end
 
   def call
-    return { success: false, error: 'Photoprism URL is missing' } if url.blank?
-    return { success: false, error: 'Photoprism API key is missing' } if api_key.blank?
+    if url.blank?
+      return { success: false,
+error: I18n.t('services.photoprism.connection_tester.photoprism_url_is_missing') }
+    end
+    if api_key.blank?
+      return { success: false,
+error: I18n.t('services.photoprism.connection_tester.photoprism_api_key_is_missing') }
+    end
 
     test_connection
-  rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, JSON::ParserError => e
-    { success: false, error: "Photoprism connection failed: #{e.message}" }
+  rescue *Photos::ConnectionErrors::HANDLED => e
+    { success: false,
+error: I18n.t('services.photoprism.connection_tester.photoprism_connection_failed_message', message: e.message) }
   end
 
   private
@@ -38,8 +45,12 @@ class Photoprism::ConnectionTester
       )
     )
 
-    return { success: true, message: 'Photoprism connection verified' } if response.success?
+    if response.success?
+      return { success: true,
+message: I18n.t('services.photoprism.connection_tester.photoprism_connection_verified') }
+    end
 
-    { success: false, error: "Photoprism connection failed: #{response.code}" }
+    { success: false,
+error: I18n.t('services.photoprism.connection_tester.photoprism_connection_failed_code', code: response.code) }
   end
 end

@@ -79,6 +79,36 @@ RSpec.describe 'Api::V1::Families::Locations', type: :request do
     end
   end
 
+  describe 'sibling endpoints when the Entitlement has lapsed' do
+    # The state endpoint answers a Lapsed user successfully so the client can
+    # explain itself; the data endpoints must keep refusing, or lapsing would
+    # not actually revoke access.
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :family, status: :inactive, active_until: 1.day.ago)
+      family.update!(access_until: 1.day.ago)
+    end
+
+    it 'refuses locations' do
+      get '/api/v1/families/locations', params: { api_key: user.api_key }
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it 'refuses history' do
+      get '/api/v1/families/locations/history',
+          params: { api_key: user.api_key, start_at: 1.day.ago.iso8601, end_at: Time.current.iso8601 }
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
+    it 'refuses sharing updates' do
+      patch '/api/v1/families/sharing', params: { api_key: user.api_key, enabled: true }
+
+      expect(response).to have_http_status(:forbidden)
+    end
+  end
+
   describe 'GET /api/v1/families/locations/history' do
     let(:now) { Time.zone.local(2026, 3, 13, 12, 0, 0) }
 

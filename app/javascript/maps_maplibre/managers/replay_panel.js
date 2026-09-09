@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { ReplayPhotoStack } from "maps_maplibre/components/replay_photo_stack"
 import { ReplayMarkerLayer } from "maps_maplibre/layers/replay_marker_layer"
 import { ReplayPhotoLayer } from "maps_maplibre/layers/replay_photo_layer"
@@ -367,7 +368,9 @@ export class ReplayPanel {
     if (this.c.hasReplayDataIndicatorTarget) {
       if (showNoData) {
         this.c.replayDataIndicatorTarget.classList.remove("hidden")
-        this.c.replayDataIndicatorTarget.textContent = "No data at this time"
+        this.c.replayDataIndicatorTarget.textContent = translate(
+          "replay.no_data_at_this_time",
+        )
       } else {
         this.c.replayDataIndicatorTarget.classList.add("hidden")
       }
@@ -387,7 +390,12 @@ export class ReplayPanel {
     if (velocity !== null && velocity !== undefined && velocity !== "") {
       const speedMs = parseFloat(velocity)
       if (!Number.isNaN(speedMs) && speedMs > 0) {
-        this.c.replaySpeedDisplayTarget.textContent = `${Math.round(speedMs * 3.6)} km/h`
+        this.c.replaySpeedDisplayTarget.textContent = translate(
+          "replay.speed",
+          {
+            speed: Math.round(speedMs * 3.6),
+          },
+        )
         return
       }
     }
@@ -398,7 +406,10 @@ export class ReplayPanel {
     if (!this.c.hasReplayDayCountTarget || !this.replayManager) return
     const dayCount = this.replayManager.getDayCount()
     const currentIndex = this.replayManager.currentDayIndex + 1
-    this.c.replayDayCountTarget.textContent = `Day ${currentIndex} of ${dayCount}`
+    this.c.replayDayCountTarget.textContent = translate("replay.day_count", {
+      current: currentIndex,
+      total: dayCount,
+    })
   }
 
   renderDensity() {
@@ -426,7 +437,10 @@ export class ReplayPanel {
       this.c.replayCycleControlsTarget.classList.remove("hidden")
       if (this.c.hasReplayPointCounterTarget) {
         const currentIndex = (this.replayManager.cycleIndex % count) + 1
-        this.c.replayPointCounterTarget.textContent = `Point ${currentIndex} of ${count}`
+        this.c.replayPointCounterTarget.textContent = translate(
+          "replay.point_count",
+          { current: currentIndex, total: count },
+        )
       }
     } else {
       this.c.replayCycleControlsTarget.classList.add("hidden")

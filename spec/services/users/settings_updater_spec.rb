@@ -1,0 +1,140 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe Users::SettingsUpdater do
+  let(:user) { create(:user) }
+
+  def clear_debounce_key
+    Sidekiq.redis { |redis| redis.del("stats_full_recalculation:user:#{user.id}") }
+  end
+
+  before { clear_debounce_key }
+
+  after { clear_debounce_key }
+
+  describe '#call' do
+    context 'with general settings' do
+      let(:params) { { 'route_opacity' => 0.5 } }
+
+      it 'updates the settings without triggering recalculation' do
+        result = nil
+        expect { result = described_class.new(user, params).call }
+          .not_to have_enqueued_job(TransportationModes::UserReclassifyJob)
+
+        expect(result.success?).to be true
+        expect(result.recalculation_triggered?).to be false
+        expect(user.reload.settings['route_opacity']).to eq(0.5)
+      end
+    end
+
+    context 'when the enabled modes allowlist changes' do
+      let(:params) { { 'enabled_transportation_modes' => %w[walking cycling] } }
+
+      it 'persists the allowlist and triggers reclassification' do
+        result = nil
+        expect { result = described_class.new(user, params).call }
+          .to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
+
+        expect(result.success?).to be true
+        expect(result.recalculation_triggered?).to be true
+        expect(user.reload.settings['enabled_transportation_modes']).to eq(%w[walking cycling])
+      end
+    end
+
+    context 'when the allowlist is unchanged' do
+      before do
+        user.settings['enabled_transportation_modes'] = %w[walking cycling]
+        user.save!
+      end
+
+      it 'does not trigger reclassification' do
+        result = nil
+        expect { result = described_class.new(user, 'enabled_transportation_modes' => %w[walking cycling]).call }
+          .not_to have_enqueued_job(TransportationModes::UserReclassifyJob)
+        expect(result.recalculation_triggered?).to be false
+      end
+    end
+
+    context 'when the allowlist contains no valid mode' do
+      it 'rejects the update' do
+        result = described_class.new(user, 'enabled_transportation_modes' => %w[teleporting]).call
+        expect(result.success?).to be false
+        expect(result.error).to be_present
+      end
+    end
+
+    context 'when recalculation is in progress' do
+      before do
+        allow_any_instance_of(Tracks::TransportationRecalculationStatus)
+          .to receive(:in_progress?).and_return(true)
+      end
+
+      it 'locks allowlist changes' do
+        result = described_class.new(user, 'enabled_transportation_modes' => %w[walking]).call
+        expect(result.success?).to be false
+      end
+
+      it 'still allows unrelated settings changes' do
+        result = described_class.new(user, 'route_opacity' => 0.7).call
+        expect(result.success?).to be true
+      end
+    end
+
+    context 'with an invalid timezone' do
+      it 'ignores the timezone value' do
+        described_class.new(user, 'timezone' => 'Not/AZone').call
+        expect(user.reload.settings['timezone']).not_to eq('Not/AZone')
+      end
+    end
+
+    context 'when the city threshold changes' do
+      it 'recalculates existing stats so the new value is reflected' do
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect { described_class.new(user, 'min_minutes_spent_in_city' => 15).call }
+          .to have_enqueued_job(Stats::FullRecalculationJob).with(user.id)
+      end
+
+      it 'does not recalculate when the value is unchanged' do
+        user.update!(settings: user.settings.merge('min_minutes_spent_in_city' => 15))
+
+        expect(Stats::RecalculationDebouncer).not_to receive(:new)
+
+        described_class.new(user, 'min_minutes_spent_in_city' => 15).call
+      end
+
+      it 'does not recalculate when a user with no stored value is sent the default' do
+        user.update!(settings: user.settings.except('min_minutes_spent_in_city'))
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect { described_class.new(user, 'min_minutes_spent_in_city' => 60).call }
+          .not_to have_enqueued_job(Stats::FullRecalculationJob)
+      end
+
+      it 'recalculates when a blank value drops the effective threshold' do
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect { described_class.new(user, 'min_minutes_spent_in_city' => '').call }
+          .to have_enqueued_job(Stats::FullRecalculationJob).with(user.id)
+      end
+
+      it 'triggers reclassification and stats recalculation independently' do
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect do
+          described_class.new(user,
+                              'enabled_transportation_modes' => %w[walking cycling],
+                              'min_minutes_spent_in_city' => 15).call
+        end.to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
+                                                                        .and have_enqueued_job(Stats::FullRecalculationJob).with(user.id)
+      end
+
+      it 'does not recalculate for unrelated settings' do
+        expect(Stats::RecalculationDebouncer).not_to receive(:new)
+
+        described_class.new(user, 'route_opacity' => 0.7).call
+      end
+    end
+  end
+end

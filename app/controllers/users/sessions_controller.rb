@@ -4,8 +4,8 @@ class Users::SessionsController < Devise::SessionsController
   include PendingImportClaimable
 
   before_action :load_invitation_context, only: [:new]
-  before_action :check_email_password_login_allowed, only: [:create]
   prepend_before_action :check_otp_required, only: [:create]
+  prepend_before_action :check_email_password_login_allowed, only: [:create]
 
   def new
     super
@@ -32,6 +32,7 @@ class Users::SessionsController < Devise::SessionsController
 
     session[:otp_user_id] = user.id
     session[:otp_challenge_at] = Time.current.to_i
+    session[:otp_remember_me] = params.dig(:user, :remember_me) == '1'
     self.resource = user
     render :otp_challenge, status: :unprocessable_entity
   end
@@ -40,7 +41,8 @@ class Users::SessionsController < Devise::SessionsController
     return unless DawarichSettings.oidc_enabled?
     return if ALLOW_EMAIL_PASSWORD_LOGIN
 
-    redirect_to root_path, alert: 'Email/password login is disabled. Please use OIDC to sign in.'
+    redirect_to root_path,
+                alert: I18n.t('controllers.users.sessions.email_password_login_is_disabled_please_use_oidc_to_sign')
   end
 
   def load_invitation_context

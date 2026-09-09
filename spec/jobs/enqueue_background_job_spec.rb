@@ -34,6 +34,13 @@ RSpec.describe EnqueueBackgroundJob, type: :job do
     end
   end
 
+  context 'when job_name is start_teslamate_sync' do
+    it 'enqueues TeslaMate::SyncJob' do
+      expect { described_class.perform_now('start_teslamate_sync', user_id) }
+        .to have_enqueued_job(TeslaMate::SyncJob).with(user_id)
+    end
+  end
+
   context 'when job_name is unknown' do
     it 'raises ArgumentError' do
       expect { described_class.perform_now('invalid_job', user_id) }

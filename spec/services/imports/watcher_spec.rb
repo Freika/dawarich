@@ -89,6 +89,29 @@ RSpec.describe Imports::Watcher do
         end
       end
 
+      context 'with a Dawarich mobile photo library export' do
+        let(:watched_dir_path) do
+          Rails.root.join('tmp', "watched_photo_library_#{SecureRandom.hex(4)}")
+        end
+
+        before do
+          user_dir = watched_dir_path.join(user.email)
+          FileUtils.mkdir_p(user_dir)
+          FileUtils.cp(file_fixture('mobile_photo_library/import.json'),
+                       user_dir.join('dawarich-photo-library.json'))
+        end
+
+        after { FileUtils.rm_rf(watched_dir_path) }
+
+        it 'attaches the export instead of raising on an unmapped MIME type' do
+          expect { service }.not_to raise_error
+
+          import = user.imports.find_by(name: 'dawarich-photo-library.json')
+          expect(import.source).to eq('mobile_photo_library')
+          expect(import.file).to be_attached
+        end
+      end
+
       context 'with a JSON whose content is not detectable' do
         let(:watched_dir_path) do
           Rails.root.join('tmp', "watched_fallback_#{SecureRandom.hex(4)}")

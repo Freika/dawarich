@@ -1,0 +1,19 @@
+{
+  "timelineObjects": [
+    {
+      "placeVisit": {
+        "duration": {
+          "startTimestampMs": "1554112800000",
+          "endTimestampMs": "1554123600000"
+        },
+        "location": {
+          "placeId": "ChIJ_TEST_LEGACY_789",
+          "name": "Legacy Office",
+          "latitudeE7": 525200000,
+          "longitudeE7": 134050000,
+          "semanticType": "TYPE_WORK"
+        }
+      }
+    }
+  ]
+}

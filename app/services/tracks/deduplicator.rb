@@ -20,6 +20,7 @@ class Tracks::Deduplicator
 
     deleted = ActiveRecord::Base.transaction do
       delete_orphaned_segments
+      detach_duplicate_points
       delete_duplicate_tracks
     end
 
@@ -56,6 +57,19 @@ class Tracks::Deduplicator
     ActiveRecord::Base.connection.execute(
       ActiveRecord::Base.sanitize_sql([<<~SQL.squish, { user_id: user.id }])
         DELETE FROM track_segments
+        WHERE track_id IN (
+          SELECT id FROM tracks
+          WHERE user_id = :user_id
+            AND id NOT IN (#{keeper_ids_subquery})
+        )
+      SQL
+    )
+  end
+
+  def detach_duplicate_points
+    ActiveRecord::Base.connection.execute(
+      ActiveRecord::Base.sanitize_sql([<<~SQL.squish, { user_id: user.id }])
+        UPDATE points SET track_id = NULL
         WHERE track_id IN (
           SELECT id FROM tracks
           WHERE user_id = :user_id

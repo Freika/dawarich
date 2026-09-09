@@ -1,9 +1,9 @@
 <div class="hero min-h-content bg-base-200">
   <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
     <div class="text-center lg:text-left">
-      <h1 class="text-5xl font-bold text-base-content">Resend confirmation</h1>
+      <h1 class="text-5xl font-bold text-base-content"><%= t('.resend_confirmation') %></h1>
       <p class="py-6 text-base-content opacity-70">
-        Enter your email address and we'll resend the confirmation instructions.
+        <%= t('.enter_your_email_address_and_we_ll_resend_the_confirmation') %>
       </p>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
@@ -12,7 +12,7 @@
 
         <div class="form-control">
           <%= f.label :email, class: 'label' do %>
-            <span class="label-text">Email</span>
+            <span class="label-text"><%= t('.email') %></span>
           <% end %>
           <%= f.email_field :email, autofocus: true, autocomplete: "email",
               value: (resource.pending_reconfirmation? ? resource.unconfirmed_email : resource.email),
@@ -20,7 +20,7 @@
         </div>
 
         <div class="form-control mt-6">
-          <%= f.submit "Resend confirmation instructions", class: 'btn btn-primary w-full' %>
+          <%= f.submit t('.resend_confirmation_instructions'), class: 'btn btn-primary w-full' %>
         </div>
       <% end %>
 

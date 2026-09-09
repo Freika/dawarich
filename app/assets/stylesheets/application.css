@@ -24,44 +24,6 @@
   overflow: visible !important;
 }
 
-/* Style for the settings panel */
-.leaflet-settings-panel {
-  background-color: white;
-  border-radius: 4px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
-  position: absolute !important;
-  top: 10px !important;
-  left: 60px !important;
-  transform: none;
-  z-index: 1000;
-}
-
-.leaflet-settings-panel label {
-  display: block;
-  margin-bottom: 5px;
-}
-
-.leaflet-settings-panel input {
-  width: 100%;
-  margin-bottom: 10px;
-  padding: 5px;
-  border: 1px solid #ccc;
-  border-radius: 3px;
-}
-
-.leaflet-settings-panel button {
-  padding: 5px 10px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.leaflet-settings-panel button:hover {
-  background-color: #0056b3;
-}
-
 .photo-marker {
   display: flex;
   align-items: center;
@@ -76,17 +38,6 @@
   width: 48px;
   height: 48px;
 }
-
-.leaflet-loading-control {
-  padding: 5px;
-  border-radius: 4px;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.2);
-  margin: 10px;
-  width: 32px;
-  height: 32px;
-  background: white;
-}
-
 .loading-spinner {
   display: flex;
   align-items: center;

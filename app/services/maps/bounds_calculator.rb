@@ -28,8 +28,8 @@ module Maps
     private
 
     def validate_inputs!
-      raise NoUserFoundError, 'No user found' unless @user
-      raise NoDateRangeError, 'No date range specified' unless @start_date && @end_date
+      raise NoUserFoundError, I18n.t('services.maps.bounds_calculator.no_user') unless @user
+      raise NoDateRangeError, I18n.t('services.maps.bounds_calculator.no_date_range') unless @start_date && @end_date
     end
 
     def execute_bounds_query(start_timestamp, end_timestamp)
@@ -63,7 +63,7 @@ module Maps
     def build_no_data_response
       {
         success: false,
-        error: 'No data found for the specified date range',
+        error: I18n.t('services.maps.bounds_calculator.no_data_found_for_the_specified_date_range'),
         point_count: 0
       }
     end
@@ -75,7 +75,7 @@ module Maps
           param.to_i
         else
           parsed_time = Time.zone.parse(param)
-          raise ArgumentError, "Invalid date format: #{param}" if parsed_time.nil?
+          raise ArgumentError, I18n.t('services.maps.bounds_calculator.invalid_date', value: param) if parsed_time.nil?
 
           parsed_time.to_i
         end
@@ -86,7 +86,7 @@ module Maps
       end
     rescue ArgumentError => e
       Rails.logger.error "Invalid date format: #{param} - #{e.message}"
-      raise ArgumentError, "Invalid date format: #{param}"
+      raise ArgumentError, I18n.t('services.maps.bounds_calculator.invalid_date', value: param)
     end
   end
 end

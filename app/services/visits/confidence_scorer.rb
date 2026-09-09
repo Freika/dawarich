@@ -10,13 +10,20 @@ module Visits
       tightness: 0.25,
       place_match: 0.20,
       density: 0.15,
-      accuracy: 0.10
+      accuracy: 0.10,
+      bridged: 0.15,
+      corroboration: 0.10
     }.freeze
 
-    PLACE_MATCH_SCORES = { area: 1.0, place: 0.7 }.freeze
+    PLACE_MATCH_SCORES = { area: 1.0, place: 0.85, poi: 0.6, address: 0.35 }.freeze
+
+    # An uncorroborated stay isn't suspicious — segments may simply not cover
+    # it — so absence scores neutral, not zero.
+    CORROBORATION_NEUTRAL = 0.5
 
     def initialize(duration_seconds:, point_count:, accuracies:, radius_meters:,
-                   stay_radius_meters:, min_points:, place_match: nil)
+                   stay_radius_meters:, min_points:, place_match: nil,
+                   bridged_fraction: nil, corroborated: nil)
       @duration_seconds = duration_seconds.to_f
       @point_count = point_count.to_i
       @accuracies = Array(accuracies)
@@ -24,6 +31,8 @@ module Visits
       @stay_radius_meters = stay_radius_meters.to_f
       @min_points = [min_points.to_i, 1].max
       @place_match = place_match
+      @bridged_fraction = bridged_fraction
+      @corroborated = corroborated
     end
 
     def call
@@ -34,6 +43,8 @@ module Visits
         accuracy: accuracy_score
       }
       subs[:place_match] = place_match_score unless @place_match.nil?
+      subs[:bridged] = bridged_score unless @bridged_fraction.nil?
+      subs[:corroboration] = corroboration_score unless @corroborated.nil?
 
       score = (weighted(subs) * 100).round.clamp(0, 100)
       { score: score, breakdown: breakdown(subs) }
@@ -70,6 +81,15 @@ module Visits
 
     def place_match_score
       PLACE_MATCH_SCORES.fetch(@place_match, 0.0)
+    end
+
+    # Observed time is trustworthy; inferred (bridged) time less so.
+    def bridged_score
+      clamp(1.0 - @bridged_fraction.to_f)
+    end
+
+    def corroboration_score
+      @corroborated ? 1.0 : CORROBORATION_NEUTRAL
     end
 
     def median_accuracy

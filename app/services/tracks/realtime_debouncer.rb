@@ -18,9 +18,7 @@
 # - Race conditions between overlapping track generations
 #
 # Used by:
-# - Points::Create
-# - Overland::PointsCreator
-# - OwnTracks::PointCreator
+# - Points::Intake
 #
 class Tracks::RealtimeDebouncer
   DEBOUNCE_DELAY = 45.seconds

@@ -1,0 +1,66 @@
+<div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl">
+  <%= form_with scope: :settings, url: settings_integrations_path, method: :patch, data: { turbo: false } do |f| %>
+    <%= hidden_field_tag :service, 'airtrail' %>
+    <div class="card-body space-y-5">
+      <div class="flex items-center gap-3">
+        <%= integration_icon('airtrail', css: 'size-6') %>
+        <h2 class="text-xl font-semibold"><%= t('settings.integrations.index.airtrail_integration') %></h2>
+      </div>
+      <div class="form-control w-full max-w-md">
+        <%= f.label :airtrail_url, class: 'label' do %>
+          <span class="label-text font-medium"><%= t('settings.integrations.index.airtrail_url') %></span>
+        <% end %>
+        <%= f.url_field :airtrail_url, value: current_user.safe_settings.airtrail_url, class: 'input input-bordered w-full', placeholder: 'https://airtrail.example.com' %>
+        <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.the_base_url_of_your_airtrail_instance_your_flights_are') %></span>
+      </div>
+      <div class="form-control w-full max-w-md">
+        <%= f.label :airtrail_api_key, class: 'label' do %>
+          <span class="label-text font-medium"><%= t('settings.integrations.index.airtrail_api_key') %></span>
+        <% end %>
+        <%= f.password_field :airtrail_api_key, value: current_user.safe_settings.airtrail_api_key, class: 'input input-bordered w-full', placeholder: t('settings.integrations.index.xxxxxxxxxxxxxx') %>
+        <span class="label-text-alt mt-1 text-base-content/60"><%= t('settings.integrations.index.create_an_api_key_in_airtrail_under_settings_rarr_security') %></span>
+      </div>
+      <div class="form-control">
+        <label class="label cursor-pointer justify-start gap-3">
+          <%= f.check_box :airtrail_skip_ssl_verification,
+              checked: current_user.safe_settings.airtrail_skip_ssl_verification,
+              class: 'toggle toggle-warning',
+              onchange: "document.getElementById('airtrail-ssl-warning').classList.toggle('hidden', !this.checked)" %>
+          <span class="label-text"><%= t('settings.integrations.index.skip_ssl_certificate_verification_self_signed_certificates') %></span>
+        </label>
+        <div id="airtrail-ssl-warning" class="alert alert-warning mt-2 <%= 'hidden' unless current_user.safe_settings.airtrail_skip_ssl_verification %>">
+          <%= icon 'triangle-alert' %>
+          <span>
+            <strong><%= t('settings.integrations.index.security_warning') %></strong> <%= t('settings.integrations.index.disabling_ssl_verification_makes_your_connection_vulnerable_to_man_in') %>
+          </span>
+        </div>
+      </div>
+      <% if current_user.safe_settings.settings['airtrail_last_synced_at'].present? %>
+        <% last_synced = begin
+             Time.zone.parse(current_user.safe_settings.settings['airtrail_last_synced_at'])
+           rescue ArgumentError
+             nil
+           end %>
+        <p class="label-text-alt text-base-content/60"><%= t('settings.integrations.index.last_synced') %> <%= last_synced ? l(last_synced, format: :long) : current_user.safe_settings.settings['airtrail_last_synced_at'] %></p>
+      <% end %>
+      <div class="card-actions">
+        <%= f.submit t('settings.integrations.index.save_test_connection'), class: 'btn btn-primary' %>
+      </div>
+    </div>
+  <% end %>
+
+  <% if current_user.safe_settings.airtrail_url.present? %>
+    <div class="border-t border-base-content/10 px-8 py-5">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h3 class="font-semibold flex items-center gap-2">
+            <%= icon 'plane', class: 'size-5 text-primary' %> <%= t('settings.integrations.index.sync_airtrail_flights') %>
+          </h3>
+          <span class="label-text-alt text-base-content/60"><%= t('settings.integrations.index.flights_also_sync_automatically_once_a_day') %></span>
+        </div>
+        <%= button_to t('settings.integrations.index.sync_now'), settings_background_jobs_path(job_name: 'start_airtrail_import'),
+            method: :post, class: 'btn btn-primary btn-sm' %>
+      </div>
+    </div>
+  <% end %>
+</div>

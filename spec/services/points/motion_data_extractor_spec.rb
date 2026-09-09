@@ -11,6 +11,20 @@ RSpec.describe Points::MotionDataExtractor do
       expect(result).to eq({ 'motion' => ['driving'], 'activity' => 'other_navigation', 'action' => 'moving' })
     end
 
+    it 'keeps a visit report departure date so it survives raw_data archival' do
+      properties = { action: 'visit', departure_date: '2026-05-19T18:34:25Z' }
+      result = described_class.from_overland_properties(properties)
+
+      expect(result).to eq({ 'action' => 'visit', 'departure_date' => '2026-05-19T18:34:25Z' })
+    end
+
+    it 'omits a nil departure date' do
+      properties = { action: 'visit', departure_date: nil }
+      result = described_class.from_overland_properties(properties)
+
+      expect(result).to eq({ 'action' => 'visit' })
+    end
+
     it 'handles string-keyed input' do
       properties = { 'motion' => ['walking'], 'activity' => 'stationary' }
       result = described_class.from_overland_properties(properties)

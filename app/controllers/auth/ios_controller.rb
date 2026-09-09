@@ -6,12 +6,12 @@ module Auth
       # If token is provided, this is the final callback for ASWebAuthenticationSession
       if params[:token].present?
         # ASWebAuthenticationSession will capture this URL and extract the token
-        render plain: 'Authentication successful! You can close this window.', status: :ok
+        render plain: I18n.t('controllers.auth.ios.authentication_successful_you_can_close_this_window'), status: :ok
       else
         # This should not happen with our current flow, but keeping for safety
         render json: {
           success: true,
-          message: 'iOS authentication successful',
+          message: I18n.t('controllers.auth.ios.ios_authentication_successful'),
           redirect_url: root_url
         }, status: :ok
       end

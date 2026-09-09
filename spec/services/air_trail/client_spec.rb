@@ -32,6 +32,20 @@ RSpec.describe AirTrail::Client do
       expect { client.flights }.to raise_error(AirTrail::Client::Error)
     end
 
+    it 'raises AirTrail::Client::Error when the connection is refused' do
+      stub_request(:get, 'https://airtrail.example/api/flight/list?scope=mine')
+        .to_raise(Errno::ECONNREFUSED)
+
+      expect { client.flights }.to raise_error(AirTrail::Client::Error)
+    end
+
+    it 'raises AirTrail::Client::Error when the host cannot be resolved' do
+      stub_request(:get, 'https://airtrail.example/api/flight/list?scope=mine')
+        .to_raise(SocketError.new('getaddrinfo: nodename nor servname provided'))
+
+      expect { client.flights }.to raise_error(AirTrail::Client::Error)
+    end
+
     it 'raises AirTrail::Client::Error when success is false' do
       stub_request(:get, 'https://airtrail.example/api/flight/list?scope=mine')
         .to_return(status: 200, body: { success: false }.to_json,

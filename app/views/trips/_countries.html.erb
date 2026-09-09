@@ -1,13 +1,13 @@
 <div class="mb-4">
   <p class="text-base-content/60 text-sm">
     <%= trip.distance_in_unit(distance_unit).round %> <%= distance_unit %>
-    &middot;
+    <%= t('.middot').html_safe %>
     <%= trip_duration(trip) %>
-    &middot;
+    <%= t('.middot').html_safe %>
     <% if trip.visited_countries.any? %>
-      <%= pluralize(trip.visited_countries.count, 'country', 'countries') %>
+      <%= t('.country_count', count: trip.visited_countries.count) %>
     <% else %>
-      <span class="text-base-content/40">&mdash;</span>
+      <span class="text-base-content/40"><%= t('.mdash').html_safe %></span>
     <% end %>
   </p>
   <% if trip.visited_countries.any? %>

@@ -4,6 +4,8 @@ module Visits
   module Names
     # Suggests names for places based on geodata from tracked points
     class Suggester
+      STREETISH_OSM_KEYS = %w[highway place boundary landuse natural waterway railway].freeze
+
       def initialize(points)
         @points = points
       end
@@ -31,7 +33,7 @@ module Visits
       attr_reader :points
 
       def extract_geocoded_points(points)
-        points.select { |p| p.geodata.present? && !p.geodata.empty? }
+        points.select { |p| p.geodata.is_a?(Hash) && p.geodata.present? }
       end
 
       def extract_features(geocoded_points)
@@ -43,9 +45,16 @@ module Visits
           elsif geodata['type'] == 'Feature' && geodata['properties'].is_a?(Hash)
             [geodata]
           else
-            []
+            [normalized_feature(geodata)]
           end
         end.compact
+      end
+
+      def normalized_feature(geodata)
+        properties = Geocoding::ResultNormalizer.from_data(geodata)[:properties]
+        return nil if properties['name'].blank? || STREETISH_OSM_KEYS.include?(properties['osm_key'])
+
+        { 'type' => 'Feature', 'properties' => properties }
       end
 
       def find_most_common_feature_type(features)

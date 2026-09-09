@@ -1,39 +1,38 @@
 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
   <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
-    <h2 style="color: #1f2937; margin-bottom: 20px; text-align: center;">🎉 Great news! Someone joined your family!</h2>
+    <h2 style="color: #1f2937; margin-bottom: 20px; text-align: center;"><%= t('.great_news_someone_joined_your_family') %></h2>
 
-    <p style="color: #374151; line-height: 1.6;">Hi <%= @family.owner.email %>!</p>
+    <p style="color: #374151; line-height: 1.6;"><%= t('.hi') %> <%= @family.owner.email %>!</p>
 
     <p style="color: #374151; line-height: 1.6;">
-      We're excited to let you know that <strong><%= @user.email %></strong> has just joined your family
-      "<strong><%= @family.name %></strong>" on Dawarich!
+      <%= t('.member_joined_family_html', email: @user.email, family: @family.name) %>
     </p>
 
     <div style="background-color: #f3f4f6; padding: 20px; border-radius: 6px; margin: 20px 0;">
-      <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 18px;">Now you can:</h3>
+      <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 18px;"><%= t('.now_you_can') %></h3>
       <ul style="color: #374151; line-height: 1.6; margin: 0; padding-left: 20px;">
-        <li style="margin-bottom: 8px;">See <%= @user.email %>'s current location (if they've enabled sharing)</li>
-        <li style="margin-bottom: 8px;">Stay connected with your growing family</li>
-        <li style="margin-bottom: 8px;">Share your location with <%= @user.email %></li>
-        <li>Manage family members and settings from your family page</li>
+        <li style="margin-bottom: 8px;"><%= t('.see_current_location_html', email: @user.email) %></li>
+        <li style="margin-bottom: 8px;"><%= t('.stay_connected_with_your_growing_family') %></li>
+        <li style="margin-bottom: 8px;"><%= t('.share_location_with_html', email: @user.email) %></li>
+        <li><%= t('.manage_family_members_and_settings_from_your_family_page') %></li>
       </ul>
     </div>
 
     <div style="background-color: #dbeafe; border: 1px solid #3b82f6; border-radius: 6px; padding: 15px; margin: 20px 0;">
       <p style="margin: 0; color: #1e40af; font-size: 14px;">
-        <strong>💡 Tip:</strong> You can manage your family members and privacy settings at any time from your family dashboard.
+        <strong><%= t('.tip') %></strong> <%= t('.you_can_manage_your_family_members_and_privacy_settings_at') %>
       </p>
     </div>
 
     <p style="color: #374151; line-height: 1.6;">
-      Your family now has <strong><%= @family.member_count %></strong> member<%= @family.member_count == 1 ? '' : 's' %>.
+      <%= t('.member_count_html', count: @family.member_count) %>
     </p>
 
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
 
     <p style="color: #6b7280; font-size: 14px; line-height: 1.6; text-align: center;">
-      Best regards,<br>
-      Evgenii from Dawarich
+      <%= t('.best_regards') %><br>
+      <%= t('.evgenii_from_dawarich') %>
     </p>
   </div>
 </div>

@@ -63,11 +63,14 @@ class Users::ImportDataJob < ApplicationJob
   end
 
   def create_import_failed_notification(user, error)
-    ::Notifications::Create.new(
-      user: user,
-      title: 'Data import failed',
-      content: "Your data import failed with error: #{error.message}. Please check the archive format and try again.",
-      kind: :error
-    ).call
+    I18n.with_locale(user.locale) do
+      ::Notifications::Create.new(
+        user: user,
+        title: I18n.t('jobs.users.import_data_job.data_import_failed'),
+        content: I18n.t('jobs.users.import_data_job.your_data_import_failed_with_error_message_please_check_the',
+                        message: error.message),
+        kind: :error
+      ).call
+    end
   end
 end

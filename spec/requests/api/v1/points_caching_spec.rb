@@ -64,6 +64,29 @@ RSpec.describe 'Api::V1::Points conditional GET caching', type: :request do
     expect(response.headers['X-Total-Pages']).to eq('2')
   end
 
+  it 'caps oversized page requests at 10,000 points' do
+    start_at = 2.days.ago.to_i
+    end_at = Time.current.to_i
+    base_timestamp = start_at + 1
+    now = Time.current
+    rows = 9_998.times.map do |offset|
+      {
+        user_id: user.id,
+        timestamp: base_timestamp + offset,
+        lonlat: 'POINT(13.4 52.5)',
+        created_at: now,
+        updated_at: now
+      }
+    end
+    Point.insert_all!(rows)
+
+    get "/api/v1/points?api_key=#{user.api_key}&slim=true&start_at=#{start_at}&end_at=#{end_at}&per_page=999999"
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body.size).to eq(10_000)
+    expect(response.headers['X-Total-Pages']).to eq('2')
+  end
+
   it 'falls back to the default page size when per_page is zero' do
     get "/api/v1/points?api_key=#{user.api_key}&#{range}&per_page=0"
 

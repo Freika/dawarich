@@ -1,19 +1,22 @@
 # frozen_string_literal: true
 
 class Settings::GeneralController < ApplicationController
+  self.page_refresh_morphing = true
+
   before_action :authenticate_user!
 
   def index; end
 
   def update
+    update_locale
     update_timezone
     update_email_settings
     update_supporter_settings
 
     if current_user.save
-      redirect_to settings_general_index_path, notice: 'Settings updated'
+      redirect_to settings_general_index_path, notice: I18n.t('controllers.settings.general.settings_updated')
     else
-      redirect_to settings_general_index_path, alert: 'Failed to update settings'
+      redirect_to settings_general_index_path, alert: I18n.t('controllers.settings.general.failed_to_update_settings')
     end
   end
 
@@ -23,7 +26,7 @@ class Settings::GeneralController < ApplicationController
 
     if email.blank? && github_username.blank?
       return redirect_to settings_general_index_path,
-                         alert: 'Please enter an email address or GitHub username'
+                         alert: I18n.t('controllers.settings.general.please_enter_an_email_address_or_github_username')
     end
 
     current_user.settings['supporter_email'] = email if email.present?
@@ -36,16 +39,29 @@ class Settings::GeneralController < ApplicationController
 
     if current_user.reload.supporter?
       platform = current_user.supporter_platform&.titleize
+      notice = I18n.t(
+        'controllers.settings.general.verified_thank_you_for_supporting_dawarich_via_platform',
+        platform: platform
+      )
       redirect_to settings_general_index_path,
-                  notice: "Verified! Thank you for supporting Dawarich via #{platform}."
+                  notice: notice
     else
       redirect_to settings_general_index_path,
-                  alert: 'Not found in supporter list. '\
-                         'Make sure you\'re using the same email or GitHub username as your donation platform.'
+                  alert: I18n.t('controllers.settings.general.not_found_in_supporter_list_make_sure_you_re_using')
     end
   end
 
   private
+
+  # Written here rather than left to the locale around_action: that one saves
+  # with `update_all`, which the `current_user.save` below would overwrite with
+  # the settings this request loaded.
+  def update_locale
+    locale = supported_locale(params[:locale])
+    return unless locale
+
+    current_user.settings['locale'] = locale.to_s
+  end
 
   def update_timezone
     return unless params.key?(:timezone) && ActiveSupport::TimeZone[params[:timezone]]

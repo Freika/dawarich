@@ -1,5 +1,7 @@
 # How to install Dawarich using Docker
 
+> [简体中文](zh-CN/How_to_install_Dawarich_using_Docker.md)
+
 > To do that you need previously install [Docker](https://docs.docker.com/get-docker/) on your system.
 
 To quick Dawarich install copy the contents of the `docker-compose.yml` file from project root folder to dedicated folder in your server and run `docker compose up` in this folder.

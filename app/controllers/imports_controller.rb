@@ -4,12 +4,16 @@ class ImportsController < ApplicationController
   include ActiveStorage::SetCurrent
   include Sortable
 
+  self.page_refresh_morphing = true
+
   SORTABLE_COLUMNS = %w[name status created_at processed byte_size].freeze
+  CLIENT_WRAPPED_METADATA_KEY = 'dawarich_client_wrapped'
+  ORIGINAL_FILENAME_METADATA_KEY = 'dawarich_original_filename'
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[create]
-  before_action :set_import, only: %i[show edit update destroy]
-  before_action :authorize_import, only: %i[show edit update destroy]
+  before_action :set_import, only: %i[show edit update destroy download]
+  before_action :authorize_import, only: %i[show edit update destroy download]
   before_action :validate_points_limit, only: %i[new create]
 
   after_action :verify_authorized, except: %i[index]
@@ -17,13 +21,26 @@ class ImportsController < ApplicationController
 
   def index
     scope = policy_scope(Import)
-            .select(:id, :name, :source, :created_at, :updated_at, :processed, :doubles, :status, :error_message, :demo)
+            .select(:id, :name, :source, :created_at, :updated_at, :processed, :doubles, :status, :error_message, :demo,
+                    :additional_data_extraction_status)
             .with_attached_file
 
     @imports = sorted(scope).page(params[:page])
   end
 
   def show; end
+
+  def download
+    @download = Imports::Download.new(@import)
+    return redirect_to @download.url, allow_other_host: true if @download.ready?
+
+    Rails.cache.fetch(['import-download', @import.id, @import.file.blob_id], expires_in: 1.minute) do
+      Imports::PrepareDownloadJob.perform_later(@import.id, @import.file.blob_id)
+      true
+    end
+    response.set_header('Refresh', '3')
+    render :download, status: :accepted
+  end
 
   def edit; end
 
@@ -36,7 +53,7 @@ class ImportsController < ApplicationController
   def update
     @import.update(import_params)
 
-    redirect_to imports_url, notice: 'Import was successfully updated.', status: :see_other
+    redirect_to imports_url, notice: I18n.t('controllers.imports.import_was_successfully_updated'), status: :see_other
   end
 
   def create
@@ -46,7 +63,8 @@ class ImportsController < ApplicationController
 
     raw_files = extract_raw_files
     if raw_files.empty?
-      redirect_to new_import_path, alert: 'No files were selected for upload', status: :unprocessable_content and return
+      redirect_to new_import_path, alert: I18n.t('controllers.imports.no_files_were_selected_for_upload'),
+status: :unprocessable_content and return
     end
 
     @created_imports = []
@@ -54,12 +72,13 @@ class ImportsController < ApplicationController
 
     unless @created_imports.any?
       redirect_to(new_import_path,
-                  alert: 'No valid file references were found. Please upload files using the file selector.',
+                  alert: I18n.t('controllers.imports.no_valid_file_references_were_found_please_upload_files_using'),
                   status: :unprocessable_content) and return
     end
 
     redirect_to imports_url,
-                notice: "#{@created_imports.size} files are queued to be imported in background",
+                notice: I18n.t('controllers.imports.size_files_are_queued_to_be_imported_in_background',
+                               size: @created_imports.size),
                 status: :see_other
   rescue StandardError => e
     cleanup_failed_imports
@@ -73,7 +92,9 @@ class ImportsController < ApplicationController
     Imports::DestroyJob.perform_later(@import.id)
 
     respond_to do |format|
-      format.html { redirect_to imports_url, notice: 'Import is being deleted.', status: :see_other }
+      format.html do
+        redirect_to imports_url, notice: I18n.t('controllers.imports.import_is_being_deleted'), status: :see_other
+      end
       format.turbo_stream
     end
   end
@@ -119,18 +140,47 @@ class ImportsController < ApplicationController
     ExceptionReporter.call(error)
   end
 
-  def create_import_from_signed_id(signed_id)
+  def create_import_from_signed_id(item)
+    descriptor = upload_descriptor(item)
+    signed_id = descriptor.fetch('signed_id')
     Rails.logger.debug "Creating import from signed ID: #{signed_id[0..20]}..."
 
     blob = ActiveStorage::Blob.find_signed(signed_id)
+    original_filename = verified_original_filename(blob, descriptor)
+    mark_client_wrapped(blob, original_filename.present?) if descriptor.key?('client_wrapped')
 
-    import_name = generate_unique_import_name(blob.filename.to_s)
+    import_name = generate_unique_import_name(original_filename || blob.filename.to_s)
     import = current_user.imports.build(name: import_name)
     import.file.attach(blob)
 
     import.save!
 
     import
+  end
+
+  def upload_descriptor(item)
+    parsed = JSON.parse(item.to_s)
+    return parsed if parsed.is_a?(Hash) && parsed['signed_id'].present?
+
+    { 'signed_id' => item.to_s }
+  rescue JSON::ParserError
+    { 'signed_id' => item.to_s }
+  end
+
+  def verified_original_filename(blob, descriptor)
+    return unless ActiveModel::Type::Boolean.new.cast(descriptor['client_wrapped'])
+
+    original_filename = File.basename(descriptor['original_filename'].to_s)
+    return if original_filename.blank?
+    return unless blob.filename.to_s == "#{original_filename}.zip"
+
+    original_filename
+  end
+
+  def mark_client_wrapped(blob, wrapped)
+    metadata = blob.metadata.merge(CLIENT_WRAPPED_METADATA_KEY => wrapped)
+    metadata[ORIGINAL_FILENAME_METADATA_KEY] = blob.filename.to_s.delete_suffix('.zip') if wrapped
+    blob.update!(metadata:)
   end
 
   def generate_unique_import_name(original_name)
@@ -148,6 +198,9 @@ class ImportsController < ApplicationController
   def validate_points_limit
     limit_exceeded = PointsLimitExceeded.new(current_user).call
 
-    redirect_to imports_path, alert: 'Points limit exceeded', status: :unprocessable_content if limit_exceeded
+    return unless limit_exceeded
+
+    redirect_to imports_path, alert: I18n.t('controllers.imports.points_limit_exceeded'),
+status: :unprocessable_content
   end
 end

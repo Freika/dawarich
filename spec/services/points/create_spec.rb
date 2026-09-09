@@ -60,14 +60,12 @@ RSpec.describe Points::Create do
       end
 
       it 'upserts the processed data' do
-        expect(Point).to receive(:archival_safe_upsert_all)
-          .with(
-            processed_data,
-            returning: Arel.sql(
-              'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
-            )
-          )
-          .and_return(upsert_result)
+        expect(Point).to receive(:archival_safe_upsert_all) do |rows, options|
+          expect(rows.map { |row| row.slice(:lonlat, :timestamp, :user_id) })
+            .to eq(processed_data.map { |row| row.slice(:lonlat, :timestamp, :user_id) })
+          expect(options[:returning]).to eq(Arel.sql(Point::UPSERT_RETURNING_COLUMNS))
+          upsert_result
+        end
 
         described_class.new(user, point_params).call
       end
@@ -167,7 +165,7 @@ RSpec.describe Points::Create do
 
         it 'uses the correct unique constraint' do
           expect(Point).to receive(:upsert_all) do |_data, options|
-            expect(options[:unique_by]).to eq(%i[lonlat timestamp user_id])
+            expect(options[:unique_by]).to eq(%i[user_id timestamp lonlat])
             deduplicated_upsert_result
           end
 
@@ -177,7 +175,10 @@ RSpec.describe Points::Create do
         it 'uses the correct returning clause' do
           expect(Point).to receive(:upsert_all) do |_data, options|
             expect(options[:returning]).to eq(
-              Arel.sql('id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude')
+              Arel.sql(
+                'id, xmax::text AS xmax, timestamp, ' \
+                'ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
+              )
             )
             deduplicated_upsert_result
           end
@@ -419,14 +420,11 @@ RSpec.describe Points::Create do
       before do
         allow(Points::Params).to receive(:new).with(geojson_data, user.id).and_return(params_service)
         allow(params_service).to receive(:call).and_return(all_processed_data)
-        allow(Point).to receive(:archival_safe_upsert_all)
-          .with(
-            all_processed_data,
-            returning: Arel.sql(
-              'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
-            )
-          )
-          .and_return(expected_results)
+        allow(Point).to receive(:archival_safe_upsert_all) do |rows, options|
+          expect(rows.map { |row| row[:lonlat] }).to eq(all_processed_data.map { |row| row[:lonlat] })
+          expect(options[:returning]).to eq(Arel.sql(Point::UPSERT_RETURNING_COLUMNS))
+          expected_results
+        end
       end
 
       it 'correctly processes real GeoJSON example data' do
