@@ -46,8 +46,9 @@ module Omniauthable
       first = info.first_name.presence if info.respond_to?(:first_name)
       last  = info.last_name.presence  if info.respond_to?(:last_name)
 
-      if (first.blank? || last.blank?) && info.respond_to?(:name) && info.name.present?
-        parts = info.name.to_s.split(' ', 2)
+      raw_name = info[:name] if info.respond_to?(:key?) && info.key?(:name)
+      if (first.blank? || last.blank?) && raw_name.present?
+        parts = raw_name.to_s.split(' ', 2)
         first ||= parts.first
         last  ||= parts.last if parts.length > 1
       end
