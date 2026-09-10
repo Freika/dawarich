@@ -130,6 +130,40 @@ module Points
         SQL
       end
 
+      # The C-chain's country resolution, inlined here because it is the only
+      # remaining prerequisite for dropping country_name that the rewrite did
+      # not own. The chain enqueues it on Sidekiq while this migration runs
+      # inline on boot, so on a self-hosted install upgrading across releases
+      # the async walk never lands before the name columns are gone — and once
+      # they are, BackfillPointCountryIdJob short-circuits and the attribution
+      # is unrecoverable outside points_legacy_d.
+      #
+      # Mirrors BackfillPointCountryIdJob#resolve_countries exactly: aliases
+      # unioned in so geocoder names ("United States") reach their seeded
+      # canonical ("United States of America"), duplicate names resolved to the
+      # lowest id for determinism, and a name matching nothing stays NULL
+      # rather than falling through to the legacy country column.
+      def resolve_countries(start_id, end_id)
+        <<~SQL
+          UPDATE points p
+          SET country_id = c.id
+          FROM (
+            SELECT MIN(id) AS id, name FROM (
+              SELECT countries.id, countries.name FROM countries
+              UNION ALL
+              SELECT countries.id, aliases.alias AS name
+              FROM countries
+              JOIN #{Countries::NameAliases.values_sql} AS aliases(alias, canonical)
+                ON countries.name = aliases.canonical
+            ) named
+            GROUP BY name
+          ) c
+          WHERE p.id BETWEEN #{start_id.to_i} AND #{end_id.to_i}
+            AND p.country_id IS NULL
+            AND c.name = COALESCE(p.country_name, p.country)
+        SQL
+      end
+
       def stamp_sources(start_id, end_id)
         <<~SQL
           UPDATE points p

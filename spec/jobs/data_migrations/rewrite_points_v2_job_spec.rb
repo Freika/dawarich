@@ -127,6 +127,49 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
     end
   end
 
+  describe 'inline country resolution' do
+    # Non-transactional: seeded countries outlive the example, and the
+    # resolution deliberately picks the lowest id per name, so a leftover from
+    # an earlier run would win over the one built here.
+    before { Country.where(name: ['Testlandia', 'United States of America']).delete_all }
+    after { Country.where(name: ['Testlandia', 'United States of America']).delete_all }
+
+    it 'resolves country_id from country_name for rows the async backfill never reached' do
+      country = create(:country, name: 'Testlandia', iso_a2: 'TL', iso_a3: 'TLD')
+      point = create(:point, user: user, timestamp: 1_700_000_400)
+      connection.execute(
+        "UPDATE points SET country_id = NULL, country_name = 'Testlandia' WHERE id = #{point.id}"
+      )
+
+      described_class.perform_now
+
+      expect(v2_row(point.id)['country_id']).to eq(country.id)
+    end
+
+    it 'resolves a geocoder alias to its canonical seeded country' do
+      country = create(:country, name: 'United States of America', iso_a2: 'US', iso_a3: 'USA')
+      point = create(:point, user: user, timestamp: 1_700_000_500)
+      connection.execute(
+        "UPDATE points SET country_id = NULL, country_name = 'United States' WHERE id = #{point.id}"
+      )
+
+      described_class.perform_now
+
+      expect(v2_row(point.id)['country_id']).to eq(country.id)
+    end
+
+    it 'leaves country_id NULL when the name matches no country' do
+      point = create(:point, user: user, timestamp: 1_700_000_600)
+      connection.execute(
+        "UPDATE points SET country_id = NULL, country_name = 'Nowhereland' WHERE id = #{point.id}"
+      )
+
+      described_class.perform_now
+
+      expect(v2_row(point.id)['country_id']).to be_nil
+    end
+  end
+
   describe 'NULL-timestamp synthesis' do
     it 'synthesizes unique, order-preserving timestamps anchored at created_at across batch boundaries' do
       shared_created_at = Time.zone.parse('2026-04-15 12:00:00')

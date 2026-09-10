@@ -4,6 +4,7 @@
 # idempotent and resumable via the one-row points_v2_rewrite_state table:
 #
 #   stamp    — seed + stamp dimensions for rows the C backfill never reached
+#   country  — resolve country_id for rows its async backfill never reached
 #   capture  — install the change-capture trigger (live ingest never pauses)
 #   copy     — id-range walk through the transform upsert (NULL-ts skipped)
 #   synthesize — ONE global NULL-timestamp synthesis pass
@@ -35,6 +36,7 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
 
     ensure_state_table
     stamp_dimensions(batch_size)
+    resolve_countries(batch_size)
     capture.install
     copy_range_walk(batch_size)
   end
@@ -86,6 +88,22 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
     walk_ranges(bounds['min_id'].to_i, bounds['max_id'].to_i, batch_size) do |from, upto|
       connection.execute(Points::Rewrite::Sql.seed_sources(from, upto))
       connection.execute(Points::Rewrite::Sql.stamp_sources(from, upto))
+    end
+  end
+
+  # country_name and country are dropped by the swap, so every row whose name
+  # still resolves must be resolved before it. Own bounds rather than the
+  # stamp walk's: a partially-run C chain leaves the unstamped and the
+  # unresolved sets overlapping only by accident.
+  def resolve_countries(batch_size)
+    bounds = connection.select_one(<<~SQL)
+      SELECT MIN(id) AS min_id, MAX(id) AS max_id FROM points
+      WHERE country_id IS NULL AND (country_name IS NOT NULL OR country IS NOT NULL)
+    SQL
+    return if bounds['min_id'].nil?
+
+    walk_ranges(bounds['min_id'].to_i, bounds['max_id'].to_i, batch_size) do |from, upto|
+      connection.execute(Points::Rewrite::Sql.resolve_countries(from, upto))
     end
   end
 
