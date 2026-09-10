@@ -76,22 +76,11 @@ module TransportationModes
         end
       return unless raw_signals.is_a?(Array)
 
-      sorted_points = @import.points.order(:timestamp).to_a
+      sorted_points = @import.points.order(:timestamp, :id).pluck(:id, :timestamp)
       return if sorted_points.empty?
 
-      raw_signals.each do |signal|
-        next unless signal.is_a?(Hash)
-
-        activity_record = signal['activityRecord']
-        next unless activity_record.is_a?(Hash)
-
-        timestamp = parse_timestamp_value(activity_record['timestamp'])
-        next unless timestamp
-
-        point = nearest_point(sorted_points, timestamp)
-        next unless point
-
-        update_point_activity(point, activity_record)
+      nearest_activity_records(raw_signals, sorted_points).each do |point_id, (activity_record, _distance)|
+        update_point_activity(point_id, activity_record)
       end
     rescue JSON::ParserError => e
       Rails.logger.error "Failed to parse import #{@import.id}: #{e.message}"
@@ -113,13 +102,34 @@ module TransportationModes
       end
     end
 
-    def update_point_activity(point, activity_data)
+    # One activityRecord per point: when several samples land inside the
+    # window of the same point, the closest one wins regardless of file order.
+    def nearest_activity_records(raw_signals, sorted_points)
+      raw_signals.each_with_object({}) do |signal, chosen|
+        next unless signal.is_a?(Hash)
+
+        activity_record = signal['activityRecord']
+        next unless activity_record.is_a?(Hash)
+
+        timestamp = parse_timestamp_value(activity_record['timestamp'])
+        next unless timestamp
+
+        point_id, point_timestamp = nearest_point(sorted_points, timestamp)
+        next unless point_id
+
+        distance = (point_timestamp - timestamp).abs
+        next if chosen.key?(point_id) && chosen[point_id].last <= distance
+
+        chosen[point_id] = [activity_record, distance]
+      end
+    end
+
+    def update_point_activity(point_id, activity_data)
       return if activity_data.blank?
 
-      current_motion = point.motion_data || {}
-      merged_motion = current_motion.merge('activityRecord' => activity_data)
-
-      point.update_column(:motion_data, merged_motion)
+      Point.where(id: point_id).update_all(
+        ["motion_data = COALESCE(motion_data, '{}'::jsonb) || ?::jsonb", { 'activityRecord' => activity_data }.to_json]
+      )
     end
 
     def download_file
@@ -129,15 +139,18 @@ module TransportationModes
       nil
     end
 
+    # sorted_points is an ascending array of [id, timestamp] pairs.
     def nearest_point(sorted_points, timestamp)
-      idx = sorted_points.bsearch_index { |p| p.timestamp > timestamp } || sorted_points.length
+      idx = sorted_points.bsearch_index { |(_, point_timestamp)| point_timestamp > timestamp } || sorted_points.length
 
       before_point = idx.positive? ? sorted_points[idx - 1] : nil
       after_point  = idx < sorted_points.length ? sorted_points[idx] : nil
 
       candidates = [before_point, after_point].compact
-      candidates = candidates.select { |p| (p.timestamp - timestamp).abs <= NEAREST_POINT_WINDOW_SECONDS }
-      candidates.min_by { |p| (p.timestamp - timestamp).abs }
+      nearest = candidates.min_by { |(_, point_timestamp)| (point_timestamp - timestamp).abs }
+      return nil unless nearest && (nearest.last - timestamp).abs <= NEAREST_POINT_WINDOW_SECONDS
+
+      nearest
     end
 
     def parse_segment_timestamp(timestamp)

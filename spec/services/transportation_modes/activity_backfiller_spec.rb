@@ -122,6 +122,17 @@ RSpec.describe TransportationModes::ActivityBackfiller do
       expect(later.reload.motion_data['activityRecord']['probableActivities']).to eq(activities)
     end
 
+    it 'keeps the closest activityRecord when several land in one point window, regardless of file order' do
+      p = point_at(base_ts)
+      near = [{ 'type' => 'STILL', 'confidence' => 0.8 }]
+      far = [{ 'type' => 'WALKING', 'confidence' => 0.6 }]
+      attach_raw_signals([activity_signal(base_ts + 2, near), activity_signal(base_ts + 20, far)])
+
+      described_class.new(pt_import).call
+
+      expect(p.reload.motion_data['activityRecord']['probableActivities']).to eq(near)
+    end
+
     it 'does not attach when the nearest point is outside the join window' do
       p = point_at(base_ts)
       attach_raw_signals([activity_signal(base_ts + 600)]) # 10 minutes away
