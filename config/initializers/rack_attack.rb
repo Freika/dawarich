@@ -34,6 +34,12 @@ UNPARSEABLE_BODY_ERRORS = [
   EOFError
 ].freeze
 
+# Login and OTP bodies are a few hundred bytes; anything larger is never a
+# legitimate client and is rejected before any throttle reads the body.
+MAX_JSON_BODY_BYTES = 16.kilobytes
+WEB_JSON_BODY_THROTTLED_PATHS = %w[/users/sign_in].freeze
+API_JSON_BODY_THROTTLED_PATHS = %w[/api/v1/auth/login /api/v1/auth/otp_challenge].freeze
+
 # Cheap params access: query string + form-encoded body only. rack-attack runs
 # on Rack::Request, whose #params (GET.merge(POST)) parses only
 # application/x-www-form-urlencoded and multipart/form-data bodies — it never
@@ -53,13 +59,23 @@ end
 # OTP challenge token): rack-attack runs before ActionDispatch::ParamsParser, so
 # the JSON body must be read and parsed here. The body is rewound and the parsed
 # result memoised on env so multiple throttles in one request share a single
-# read and the controller still sees the body.
+# read and the controller still sees the body. Query-string keys win over body
+# keys, matching ActionDispatch::Request#parameters, so the throttle keys on the
+# same value the controller authenticates.
 def safe_body_params(request)
-  return safe_params(request) unless json_request?(request)
+  body = json_request?(request) ? parsed_json_body(request) : safe_form_body(request)
 
-  safe_query(request).merge(parse_json_body(read_body_once(request)))
+  body.merge(safe_query(request))
 rescue *UNPARSEABLE_BODY_ERRORS
   safe_query(request)
+end
+
+# Form-encoded body only (Rack::Request#POST); never the query string, so the
+# caller can apply query-wins precedence itself.
+def safe_form_body(request)
+  request.POST
+rescue *UNPARSEABLE_BODY_ERRORS
+  {}
 end
 
 # The query string can be malformed on its own; a throttle must not raise here.
@@ -69,19 +85,31 @@ rescue *UNPARSEABLE_BODY_ERRORS
   {}
 end
 
+# Rails parses every registered :json synonym (text/x-json, application/jsonrequest)
+# with the JSON parser, so the throttle must accept the same set or a one-header
+# swap bypasses it again. A malformed Content-Type raises out of Mime::Type, and
+# Rails would reject that request anyway, so treat it as not-JSON rather than
+# letting an unauthenticated header crash the throttle.
 def json_request?(request)
-  request.media_type == 'application/json'
+  return false if request.media_type.blank?
+
+  Mime::Type.lookup(request.media_type).symbol == :json
+rescue Mime::Type::InvalidMimeType, ArgumentError
+  false
 end
 
-# Reads the body once per request, rewinding so downstream middleware and the
-# controller still see it. Memoised on env because several throttles run per
-# request and the body is a stream that can only be consumed once.
-def read_body_once(request)
-  request.env['rack.attack.parsed_body'] ||=
+# Reads at most MAX_JSON_BODY_BYTES + 1 so a flood of oversized bodies cannot
+# buffer unbounded input; anything longer is handed to the size blocklist.
+# Rewinds so downstream middleware and the controller still see the body, and
+# memoises the parsed Hash on env because several throttles run per request
+# and the body is a stream that can only be consumed once.
+def parsed_json_body(request)
+  request.env['rack.attack.json_body'] ||=
     begin
-      body = request.body.read
-      request.body.rewind
-      body
+      body = request.body
+      raw = body.read(MAX_JSON_BODY_BYTES + 1)
+      body.rewind if body.respond_to?(:rewind)
+      raw.to_s.bytesize > MAX_JSON_BODY_BYTES ? {} : parse_json_body(raw)
     end
 end
 
@@ -93,6 +121,18 @@ def parse_json_body(raw)
   JSON.parse(raw).then { |parsed| parsed.is_a?(Hash) ? parsed : {} }
 rescue JSON::ParserError
   {}
+end
+
+# The size guard must cover exactly the paths whose per-email/per-token throttle
+# is live: the web sign-in throttle runs everywhere, the API ones are exempt on
+# self-hosted, so an oversized body there was never going to be counted anyway.
+def json_body_throttled_path?(request)
+  return false unless request.post?
+
+  path = throttle_path(request)
+  return true if WEB_JSON_BODY_THROTTLED_PATHS.include?(path)
+
+  API_JSON_BODY_THROTTLED_PATHS.include?(path) && !DawarichSettings.self_hosted?
 end
 
 # Rails routes accept an optional (.:format) suffix, while Rack sees the raw
@@ -215,35 +255,45 @@ Rack::Attack.throttle('api/heavy_recompute', limit: 5, period: 1.hour) do |req|
   "heavy_recompute:#{api_key}"
 end
 
-# Login brute-force protection: 5 attempts per email per minute, 20 per IP per minute.
-Rack::Attack.throttle('logins/email', limit: 5, period: 1.minute) do |req|
-  next unless throttle_path(req) == '/users/sign_in' && req.post?
-
-  safe_params(req).dig('user', 'email')&.downcase&.strip
+# Bodies on the sign-in and OTP endpoints are a few hundred bytes; anything
+# larger is never a legitimate client, and letting it through would leave the
+# per-email throttle with nothing to key on.
+Rack::Attack.blocklist('api/auth/oversized_json_body') do |req|
+  json_body_throttled_path?(req) && json_request?(req) && req.content_length.to_i > MAX_JSON_BODY_BYTES
 end
 
+# Login brute-force protection: 5 attempts per email per minute, 20 per IP per
+# minute. Each per-IP throttle is declared before its per-email sibling so a
+# flooding IP is rejected before the per-email throttle reads and parses the
+# request body.
 Rack::Attack.throttle('logins/ip', limit: 20, period: 1.minute) do |req|
   next unless throttle_path(req) == '/users/sign_in' && req.post?
 
   req.ip
 end
 
-# Mobile login API — same brute-force protection as the web sign-in endpoint.
-# Mirrors the limits above (5/min per email, 20/min per IP) because the threat
-# model is identical: an attacker grinding passwords against /api/v1/auth/login
-# would otherwise bypass the Devise web throttles entirely.
-Rack::Attack.throttle('logins/api_email', limit: 5, period: 1.minute) do |req|
-  next if DawarichSettings.self_hosted?
-  next unless throttle_path(req) == '/api/v1/auth/login' && req.post?
+Rack::Attack.throttle('logins/email', limit: 5, period: 1.minute) do |req|
+  next unless throttle_path(req) == '/users/sign_in' && req.post?
 
-  safe_body_params(req)['email']&.to_s&.downcase&.strip
+  safe_body_params(req).dig('user', 'email')&.downcase&.strip
 end
 
+# Mobile login API — same brute-force protection as the web sign-in endpoint.
+# Mirrors the limits above because the threat model is identical: an attacker
+# grinding passwords against /api/v1/auth/login would otherwise bypass the
+# Devise web throttles entirely.
 Rack::Attack.throttle('logins/api_ip', limit: 20, period: 1.minute) do |req|
   next if DawarichSettings.self_hosted?
   next unless throttle_path(req) == '/api/v1/auth/login' && req.post?
 
   req.ip
+end
+
+Rack::Attack.throttle('logins/api_email', limit: 5, period: 1.minute) do |req|
+  next if DawarichSettings.self_hosted?
+  next unless throttle_path(req) == '/api/v1/auth/login' && req.post?
+
+  safe_body_params(req)['email']&.to_s&.downcase&.strip
 end
 
 Rack::Attack.throttle('signups/api_ip_burst', limit: 5, period: 1.minute) do |req|
@@ -281,10 +331,17 @@ Rack::Attack.throttle('users/exist', limit: 600, period: 1.hour) do |req|
   Digest::SHA256.hexdigest(secret)[0, 32] if secret.present?
 end
 
-# Brute-force protection on OTP verification.
-# Key the throttle on SHA256(challenge_token) so that an attacker cannot simply
-# rotate source IPs to multiply their TOTP guessing budget. Keep the legacy
-# IP-based throttle as defense-in-depth.
+# Brute-force protection on OTP verification. The legacy IP throttle is kept as
+# defense-in-depth and declared first, so a flooding IP is rejected before the
+# per-token throttle reads the body.
+Rack::Attack.throttle('api/auth/otp_challenge', limit: 5, period: 15.minutes) do |req|
+  next if DawarichSettings.self_hosted?
+
+  req.ip if throttle_path(req) == '/api/v1/auth/otp_challenge' && req.post?
+end
+
+# Key this one on SHA256(challenge_token) so that an attacker cannot simply
+# rotate source IPs to multiply their TOTP guessing budget.
 Rack::Attack.throttle('api/auth/otp_challenge_token', limit: 5, period: 15.minutes) do |req|
   next if DawarichSettings.self_hosted?
 
@@ -292,12 +349,6 @@ Rack::Attack.throttle('api/auth/otp_challenge_token', limit: 5, period: 15.minut
     token = safe_body_params(req)['challenge_token'].to_s
     Digest::SHA256.hexdigest(token)[0, 32] if token.present?
   end
-end
-
-Rack::Attack.throttle('api/auth/otp_challenge', limit: 5, period: 15.minutes) do |req|
-  next if DawarichSettings.self_hosted?
-
-  req.ip if throttle_path(req) == '/api/v1/auth/otp_challenge' && req.post?
 end
 
 Rack::Attack.throttle('users/otp_challenge_session', limit: 5, period: 15.minutes) do |req|
@@ -407,6 +458,16 @@ end
 # Companion throttle for the signup claim path that consumes ?import_ticket=.
 Rack::Attack.throttle('imports/claim attempts', limit: 30, period: 1.hour) do |req|
   req.ip if req.get? && req.path.start_with?('/users/sign_up') && safe_params(req)['import_ticket'].present?
+end
+
+# The oversized-JSON-body guard answers in the same JSON envelope the mobile
+# client already parses; any other blocklist added later keeps the plain 403.
+Rack::Attack.blocklisted_responder = lambda do |request|
+  next [403, { 'Content-Type' => 'text/plain' }, ["Forbidden\n"]] unless
+    request.env['rack.attack.matched'] == 'api/auth/oversized_json_body'
+
+  body = { error: 'payload_too_large', message: 'Request body is too large.' }.to_json
+  [413, { 'Content-Type' => 'application/json', 'Cache-Control' => 'no-store' }, [body]]
 end
 
 Rack::Attack.throttled_responder = lambda do |request|
