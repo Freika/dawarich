@@ -134,7 +134,12 @@ module Tracks::TrackBuilder
   end
 
   def reuse_existing_track(track, points, original_error)
-    existing = Track.find_by(user_id: user.id, start_at: track.start_at, end_at: track.end_at)
+    existing = Track.find_by(
+      user_id: user.id,
+      tracker_id: track.tracker_id,
+      start_at: track.start_at,
+      end_at: track.end_at
+    )
 
     unless existing
       # Under READ COMMITTED the conflicting row should be visible immediately

@@ -221,10 +221,7 @@ RSpec.describe 'Imports', type: :request do
     let(:user) { create(:user) }
 
     context 'when user is active' do
-      before do
-        allow(user).to receive(:active?).and_return(true)
-        sign_in user
-      end
+      before { sign_in user }
 
       it 'allows access to new import form' do
         get new_import_path
@@ -233,16 +230,33 @@ RSpec.describe 'Imports', type: :request do
     end
 
     context 'when user is inactive' do
-      before do
-        allow(user).to receive(:active?).and_return(false)
-        sign_in user
-      end
+      let(:user) { create(:user).tap { |u| u.update!(status: :inactive, active_until: 1.day.ago) } }
+
+      before { sign_in user }
 
       it 'prevents access to new import form' do
         get new_import_path
 
         expect(response).to redirect_to(root_path)
-        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+        expect(flash[:notice]).to eq('Your account is not active.')
+      end
+    end
+
+    context 'when an expired trial user has status: trial but active_until in the past' do
+      let(:user) do
+        create(:user).tap { |u| u.update_columns(status: User.statuses[:trial], active_until: 6.days.ago) }
+      end
+
+      before { sign_in user }
+
+      it 'prevents access to the new import form — gates must not diverge from create' do
+        expect(user).to be_trial
+        expect(user.active_until).to be_past
+
+        get new_import_path
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:notice]).to eq('Your account is not active.')
       end
     end
 
@@ -378,6 +392,24 @@ RSpec.describe 'Imports', type: :request do
         expect(flash[:notice]).to eq('Your account is not active.')
       end
     end
+
+    context 'when an expired trial user has status: trial but active_until in the past' do
+      let(:user) do
+        create(:user).tap { |u| u.update_columns(status: User.statuses[:trial], active_until: 6.days.ago) }
+      end
+
+      before { sign_in user }
+
+      it 'blocks import creation' do
+        expect(user).to be_trial
+        expect(user.active_until).to be_past
+
+        post imports_path, params: { import: { source: 'owntracks', files: [] } }
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:notice]).to eq('Your account is not active.')
+      end
+    end
   end
 
   describe 'GET /imports/new' do
@@ -425,7 +457,7 @@ RSpec.describe 'Imports', type: :request do
   describe 'GET /imports/:id/edit' do
     context 'when user is logged in' do
       let(:user) { create(:user) }
-      let(:import) { create(:import, user:) }
+      let(:import) { create(:import, user:, source: :gpx) }
 
       before { sign_in user }
 
@@ -433,6 +465,15 @@ RSpec.describe 'Imports', type: :request do
         get edit_import_path(import)
 
         expect(response).to have_http_status(200)
+      end
+
+      it 'renders a source dropdown bound to import[source]' do
+        get edit_import_path(import)
+
+        expect(response.body).to include('name="import[source]"')
+        Import.sources.each_key do |source|
+          expect(response.body).to include("value=\"#{source}\"")
+        end
       end
     end
   end
@@ -449,6 +490,35 @@ RSpec.describe 'Imports', type: :request do
 
         expect(import.reload.name).to eq('New Name')
         expect(response).to redirect_to(imports_path)
+      end
+
+      it 'updates the import source' do
+        import.update!(source: :gpx)
+
+        patch import_path(import), params: { import: { source: 'owntracks' } }
+
+        expect(import.reload.source).to eq('owntracks')
+        expect(response).to redirect_to(imports_path)
+        expect(flash[:notice]).to eq(I18n.t('controllers.imports.import_was_successfully_updated'))
+      end
+
+      it 'rejects an unknown source with 422 instead of raising' do
+        import.update!(source: :gpx)
+
+        patch import_path(import), params: { import: { source: 'not_a_real_source' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('Source')
+        expect(import.reload.source).to eq('gpx')
+      end
+
+      it 'clears the source when a blank value is submitted' do
+        import.update!(source: :gpx)
+
+        patch import_path(import), params: { import: { source: '' } }
+
+        expect(response).to redirect_to(imports_path)
+        expect(import.reload.source).to be_nil
       end
     end
   end

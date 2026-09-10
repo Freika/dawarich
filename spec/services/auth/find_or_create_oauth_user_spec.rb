@@ -57,6 +57,60 @@ RSpec.describe Auth::FindOrCreateOauthUser do
       expect(existing.reload.uid).to be_nil
     end
 
+    it 'carries rate_limited=false on the genuine first send' do
+      error = nil
+      expect do
+        build(claims: { sub: 'apple-2', email: 'taken@example.com' }, email_verified: true).call
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+        error = e
+      end.to have_enqueued_job(Users::MailerSendingJob)
+
+      expect(error).to respond_to(:rate_limited)
+      expect(error.rate_limited).to be(false)
+    end
+
+    it 'raises LinkVerificationSent with rate_limited=true on a rate-limited retry without enqueuing a second mailer' do
+      first_error = nil
+      expect do
+        build(claims: { sub: 'apple-2', email: 'taken@example.com' }, email_verified: true).call
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+        first_error = e
+      end.to have_enqueued_job(Users::MailerSendingJob)
+      expect(first_error.rate_limited).to be(false)
+
+      second_error = nil
+      expect do
+        build(claims: { sub: 'apple-3', email: 'taken@example.com' }, email_verified: true).call
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+        second_error = e
+      end.not_to have_enqueued_job(Users::MailerSendingJob)
+
+      expect(second_error).to be_a(Auth::FindOrCreateOauthUser::LinkVerificationSent)
+      expect(second_error.rate_limited).to be(true)
+      expect(existing.reload.provider).to be_nil
+      expect(existing.reload.uid).to be_nil
+    end
+
+    it 'raises LinkVerificationSent with rate_limited=false when on_email_collision is :raise_only (no email sent)' do
+      service = described_class.new(
+        provider: 'apple',
+        provider_label: 'Sign in with Apple',
+        claims: { sub: 'apple-2', email: 'taken@example.com' },
+        email_verified: true,
+        on_email_collision: :raise_only
+      )
+
+      error = nil
+      expect do
+        service.call
+      rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+        error = e
+      end.not_to have_enqueued_job(Users::MailerSendingJob)
+
+      expect(error).to be_a(Auth::FindOrCreateOauthUser::LinkVerificationSent)
+      expect(error.rate_limited).to be(false)
+    end
+
     it 'does not enqueue the Manager creation webhook on the link-verification path' do
       expect do
         build(claims: { sub: 'apple-2', email: 'taken@example.com' }, email_verified: true).call

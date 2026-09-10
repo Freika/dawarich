@@ -111,6 +111,52 @@ RSpec.describe OidcConfig do
       expect(config[:client_options][:authorization_endpoint]).to eq('/authorize')
     end
 
+    context 'manual-mode port parsing' do
+      let(:manual_env) do
+        base_env.merge('OIDC_HOST' => 'auth.example.com')
+      end
+
+      it 'uses the documented default when OIDC_PORT is absent' do
+        expect(described_class.build(manual_env)[:client_options][:port]).to eq(443)
+      end
+
+      it 'falls back to the default when OIDC_PORT is blank' do
+        env = manual_env.merge('OIDC_PORT' => '')
+        expect(described_class.build(env)[:client_options][:port]).to eq(443)
+      end
+
+      it 'defaults to 80 when OIDC_SCHEME is http and OIDC_PORT is blank' do
+        %w[http HTTP].each do |scheme|
+          env = manual_env.merge('OIDC_SCHEME' => scheme, 'OIDC_PORT' => '')
+          expect(described_class.build(env)[:client_options][:port]).to eq(80)
+        end
+      end
+
+      it 'falls back to the default when OIDC_PORT is outside 1..65535' do
+        %w[0 -1 65536].each do |value|
+          env = manual_env.merge('OIDC_PORT' => value)
+          port = described_class.build(env)[:client_options][:port]
+          expect(port).to eq(443), "expected port 443 for OIDC_PORT=#{value.inspect}, got #{port}"
+        end
+      end
+
+      it 'warns when a non-blank OIDC_PORT is discarded' do
+        allow(Rails.logger).to receive(:warn)
+
+        described_class.build(manual_env.merge('OIDC_PORT' => 'abc'))
+
+        expect(Rails.logger).to have_received(:warn).with(/OIDC_PORT="abc"/)
+      end
+
+      it 'falls back to the default when OIDC_PORT is non-numeric' do
+        %w[abc 0x10 ${PORT} ---].each do |value|
+          env = manual_env.merge('OIDC_PORT' => value)
+          port = described_class.build(env)[:client_options][:port]
+          expect(port).to eq(443), "expected port 443 for OIDC_PORT=#{value.inspect}, got #{port}"
+        end
+      end
+    end
+
     it 'defaults the redirect URI from APPLICATION_URL' do
       config = described_class.build(base_env)
 

@@ -2,6 +2,16 @@
   <h1 class="font-bold text-4xl"><%= t('.editing_import') %></h1>
 
   <%= form_with model: @import, class: 'form-body mt-4' do |form| %>
+    <% if @import.errors.any? %>
+      <div class="alert alert-error mb-4">
+        <ul>
+          <% @import.errors.each do |error| %>
+            <li><%= error.full_message %></li>
+          <% end %>
+        </ul>
+      </div>
+    <% end %>
+
     <div class="form-control">
       <%= form.label :name %>
       <%= form.text_field :name, class: 'input input-bordered' %>
