@@ -60,9 +60,16 @@ class Gpx::TrackImporter
     counts = {
       'waypoints_seen' => handler.waypoint_count,
       'trackpoints_seen' => handler.trackpoint_count,
-      'route_points_seen' => handler.route_point_count
+      'route_points_seen' => handler.route_point_count,
+      'parse_errors_seen' => handler.errors.size
     }.select { |_, value| value.positive? }
     return if counts.empty?
+
+    if handler.errors.any?
+      Rails.logger.warn(
+        "GPX import #{import.id} recovered from #{handler.errors.size} XML error(s): #{handler.errors.first}"
+      )
+    end
 
     import.update!(raw_data: (import.raw_data || {}).merge(counts))
   end
@@ -113,10 +120,11 @@ class Gpx::TrackImporter
   end
 
   class TrkptStreamHandler < Nokogiri::XML::SAX::Document
-    # libxml2 error messages that indicate a genuinely unusable document
-    # (e.g. truncation) as opposed to recoverable issues like an undeclared
-    # namespace prefix on an extension element. Matched against every
-    # collected SAX `error` message after parsing completes.
+    # libxml2 stops parsing at any well-formedness error, so a document whose
+    # root element never closed lost data and is unusable whatever the message
+    # says. Once the root did close, only these messages still mean the
+    # document was unusable; anything else (e.g. an undeclared namespace
+    # prefix on an extension element) was recovered from.
     FATAL_ERROR_PATTERNS = [
       /Premature end of data/i,
       /Extra content at the end/i,
@@ -142,9 +150,13 @@ class Gpx::TrackImporter
       @capturing_trk_field = nil
       @capture_depth = 0
       @errors = []
+      @depth = 0
+      @root_closed = false
     end
 
     def start_element_namespace(name, attrs = [], _prefix = nil, _uri = nil, _namespaces = [])
+      @depth += 1
+
       case name
       when 'trk'
         @trk_index += 1
@@ -206,13 +218,23 @@ class Gpx::TrackImporter
     end
 
     def raise_if_fatal_error!
-      fatal = @errors.find { |message| FATAL_ERROR_PATTERNS.any? { |p| p.match?(message) } }
+      return if @errors.empty?
+
+      fatal =
+        if @root_closed
+          @errors.find { |message| FATAL_ERROR_PATTERNS.any? { |pattern| pattern.match?(message) } }
+        else
+          @errors.last
+        end
       return unless fatal
 
       raise Nokogiri::XML::SyntaxError, I18n.t('services.gpx.track_importer.parse_error', message: fatal)
     end
 
     def end_element_namespace(name, _prefix = nil, _uri = nil)
+      @depth -= 1
+      @root_closed = true if @depth.zero?
+
       if @capturing_trk_field
         if @capture_depth.positive?
           @capture_depth -= 1

@@ -55,10 +55,10 @@ RSpec.describe 'Gpx::TrackImporter recoverable SAX error handling' do
               Time.zone.parse('2026-01-01T00:01:00Z').to_i])
   end
 
-  it 'records the seen-trackpoint count in import raw_data' do
+  it 'records the seen-trackpoint count and the recovered error count in import raw_data' do
     Gpx::TrackImporter.new(import, user.id).call
 
-    expect(import.reload.raw_data).to include('trackpoints_seen' => 2)
+    expect(import.reload.raw_data).to include('trackpoints_seen' => 2, 'parse_errors_seen' => 1)
   end
 
   it 'leaves the import in a non-failed state so Imports::Create can complete it' do
@@ -124,6 +124,45 @@ RSpec.describe 'Gpx::TrackImporter recoverable SAX error handling' do
     it 'still raises Nokogiri::XML::SyntaxError because the truncation is fatal' do
       expect { Gpx::TrackImporter.new(import, user.id).call }
         .to raise_error(Nokogiri::XML::SyntaxError, /GPX parse error/)
+    end
+  end
+
+  context 'when a well-formedness error stops libxml2 before the root element closes' do
+    {
+      'a mismatched closing tag' => '<trkpt lat="52.6" lon="13.5"><time>2026-01-01T00:01:00Z</time></trkseg></trkpt>',
+      'an unescaped ampersand' => '<trkpt lat="52.6" lon="13.5"><name>Tom & Jerry</name></trkpt>'
+    }.each do |label, broken_trkpt|
+      context "because of #{label}" do
+        let(:broken_gpx_path) do
+          f = Tempfile.new(['broken-', '.gpx'])
+          f.write(<<~XML)
+            <?xml version="1.0" encoding="UTF-8"?>
+            <gpx version="1.1" xmlns="http://www.topografix.com/GPX/1/1">
+              <trk><name>Broken</name><trkseg>
+                <trkpt lat="52.5" lon="13.4"><time>2026-01-01T00:00:00Z</time></trkpt>
+                #{broken_trkpt}
+                <trkpt lat="52.7" lon="13.6"><time>2026-01-01T00:02:00Z</time></trkpt>
+              </trkseg></trk>
+            </gpx>
+          XML
+          f.close
+          f.path
+        end
+        let(:gpx_file) { Rack::Test::UploadedFile.new(broken_gpx_path, 'application/xml') }
+
+        after { FileUtils.rm_f(broken_gpx_path) }
+
+        it 'raises instead of completing a partial import' do
+          expect { Gpx::TrackImporter.new(import, user.id).call }
+            .to raise_error(Nokogiri::XML::SyntaxError, /GPX parse error/)
+        end
+
+        it 'marks the import failed through Imports::Create' do
+          Imports::Create.new(user, import).call
+
+          expect(import.reload.status).to eq('failed')
+        end
+      end
     end
   end
 end
