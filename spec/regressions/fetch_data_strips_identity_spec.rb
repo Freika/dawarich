@@ -8,9 +8,11 @@ require 'rails_helper'
 # flipped `source` back to `:photon`, erasing the `external_place_id` /
 # `semantic_type` identity keys the enhanced-import `PlaceWriter` wrote and
 # `find_by_external_id` depends on. The fix merges the Photon payload into
-# the existing `geodata`, honours `DawarichSettings.store_geodata?` like the
-# reverse-geocoding peers, and stops rewriting `source` for `gpx_waypoint`
-# imports.
+# the existing `geodata` and stops rewriting `source` for `gpx_waypoint`
+# imports, on both the primary and the sibling (bulk) update paths. It also
+# brings this writer in line with its peers on `store_geodata?`: on an opt-out
+# instance only the import identity and the four osm properties the app itself
+# looks up are kept, not the whole provider payload.
 RSpec.describe 'ReverseGeocoding::Places::FetchData preserves import identity' do
   let(:user) { create(:user) }
   let(:import) { create(:import, user: user, source: :gpx, name: 'favourites.gpx') }
@@ -23,6 +25,20 @@ RSpec.describe 'ReverseGeocoding::Places::FetchData preserves import identity' d
                'name' => 'Cafe Riquet',
                'osm_value' => 'cafe',
                'osm_key' => 'amenity',
+               'city' => 'Leipzig',
+               'country' => 'Germany'
+             }
+           })
+  end
+  let(:street_result) do
+    double(data: {
+             'geometry' => { 'coordinates' => [12.3760, 51.3372] },
+             'properties' => {
+               'osm_id' => 111_111,
+               'name' => nil,
+               'street' => 'Schuhmachergäßchen',
+               'osm_value' => 'residential',
+               'osm_key' => 'highway',
                'city' => 'Leipzig',
                'country' => 'Germany'
              }
@@ -94,16 +110,62 @@ RSpec.describe 'ReverseGeocoding::Places::FetchData preserves import identity' d
   context 'when the instance opted out of storing geodata' do
     before { allow(DawarichSettings).to receive(:store_geodata?).and_return(false) }
 
-    it 'preserves the identity keys, writes no Photon payload, and still dedups on re-import' do
+    it 'keeps the import identity and still dedups the re-imported favourite' do
       place, = writer.upsert(extracted)
       fetch_data(place.id)
       place.reload
 
-      expect(place.geodata).to eq('external_place_id' => 'gpx:abc123', 'semantic_type' => 'Food')
-      expect(place.geodata['properties']).to be_nil
+      expect(place.geodata['external_place_id']).to eq('gpx:abc123')
+      expect(place.geodata['semantic_type']).to eq('Food')
       expect(place.source).to eq('gpx_waypoint')
 
       expect { writer.upsert(extracted) }.not_to(change { Place.where(user_id: user.id).count })
+    end
+
+    it 'keeps only the osm properties the app looks up, not the rest of the payload' do
+      place, = writer.upsert(extracted)
+      fetch_data(place.id)
+      place.reload
+
+      expect(place.geodata['properties']).to eq(
+        'osm_id' => 999_999, 'osm_key' => 'amenity', 'osm_value' => 'cafe'
+      )
+      expect(place.geodata).not_to have_key('geometry')
+      # The display fields live in their own columns, so nothing is lost.
+      expect(place.city).to eq('Leipzig')
+      expect(place.country).to eq('Germany')
+    end
+
+    it 'keeps the sibling path reduced too' do
+      imported, = writer.upsert(extracted)
+      fetch_data(imported.id)
+
+      neighbour = create(:place, user: user, latitude: 51.3372, longitude: 12.3760, source: :photon)
+      allow(Geocoding::Search).to receive(:call).and_return([street_result, photon_venue_result])
+
+      fetch_data(neighbour.id)
+
+      expect(neighbour.reload.geodata['properties'].keys)
+        .to match_array(%w[osm_id osm_key osm_value])
+    end
+  end
+
+  context 'when the imported place comes back as a sibling of another place' do
+    it 'keeps identity and source through the bulk sibling update' do
+      imported, = writer.upsert(extracted)
+      fetch_data(imported.id)
+
+      neighbour = create(:place, user: user, latitude: 51.3372, longitude: 12.3760, source: :photon)
+      allow(Geocoding::Search).to receive(:call).and_return([street_result, photon_venue_result])
+
+      fetch_data(neighbour.id)
+      imported.reload
+
+      expect(imported.geodata['external_place_id']).to eq('gpx:abc123')
+      expect(imported.geodata['semantic_type']).to eq('Food')
+      expect(imported.geodata['properties']['osm_id']).to eq(999_999)
+      expect(imported.source).to eq('gpx_waypoint')
+      expect(Place.where(user_id: user.id).count).to eq(2)
     end
   end
 

@@ -36,19 +36,11 @@ class ReverseGeocoding::Places::FetchData
 
     data = normalize_geocoder_data(reverse_geocoded_place.data)
 
-    preserved_identity = (place.geodata || {}).slice('external_place_id', 'semantic_type')
-    geodata =
-      if DawarichSettings.store_geodata?
-        data.merge(preserved_identity)
-      else
-        preserved_identity
-      end
-
     attributes = {
       lonlat:     build_point_coordinates(data['geometry']['coordinates']),
       city:       data['properties']['city'],
       country:    data['properties']['country'],
-      geodata:    geodata,
+      geodata:    geodata_for(place, data),
       reverse_geocoded_at: Time.current
     }
 
@@ -143,16 +135,32 @@ class ReverseGeocoding::Places::FetchData
   def populate_place_attributes(place, data)
     unless place.name_locked?
       place.name = place_name(data)
-      place.source = :photon
+      place.source = :photon unless place.gpx_waypoint?
     end
 
     place.city = data['properties']['city']
     place.country = data['properties']['country']
-    place.geodata = data
+    place.geodata = geodata_for(place, data)
 
     return if place.lonlat.present?
 
     place.lonlat = build_point_coordinates(data['geometry']['coordinates'])
+  end
+
+  # Written by the enhanced-import writers and keyed on by find_by_external_id
+  # and the partial unique index; a reverse-geocode must never erase them.
+  IDENTITY_KEYS = %w[external_place_id semantic_type].freeze
+  # The only provider properties this app reads back: find_existing_places
+  # matches siblings on osm_id, and the possible_places payload exposes all
+  # four. They are kept even when the operator opted out of storing geodata,
+  # because dropping them would break place dedup rather than protect privacy.
+  INDEXED_PROPERTY_KEYS = %w[osm_id osm_type osm_key osm_value].freeze
+
+  def geodata_for(place, data)
+    identity = (place.geodata || {}).slice(*IDENTITY_KEYS)
+    return data.merge(identity) if DawarichSettings.store_geodata?
+
+    identity.merge('properties' => (data['properties'] || {}).slice(*INDEXED_PROPERTY_KEYS).compact)
   end
 
   DEADLOCK_MAX_RETRIES = 3
