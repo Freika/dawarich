@@ -51,6 +51,11 @@ class ImportsController < ApplicationController
   end
 
   def update
+    if unknown_source_param?
+      @import.errors.add(:source, :inclusion)
+      return render :edit, status: :unprocessable_content
+    end
+
     @import.update(import_params)
 
     redirect_to imports_url, notice: I18n.t('controllers.imports.import_was_successfully_updated'), status: :see_other
@@ -111,6 +116,11 @@ status: :unprocessable_content and return
 
   def import_params
     params.require(:import).permit(:name, :source, files: [])
+  end
+
+  def unknown_source_param?
+    source = import_params[:source]
+    source.present? && Import.sources.exclude?(source)
   end
 
   def extract_raw_files

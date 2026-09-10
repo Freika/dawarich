@@ -469,6 +469,25 @@ RSpec.describe 'Imports', type: :request do
         expect(response).to redirect_to(imports_path)
         expect(flash[:notice]).to eq(I18n.t('controllers.imports.import_was_successfully_updated'))
       end
+
+      it 'rejects an unknown source with 422 instead of raising' do
+        import.update!(source: :gpx)
+
+        patch import_path(import), params: { import: { source: 'not_a_real_source' } }
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(response.body).to include('Source')
+        expect(import.reload.source).to eq('gpx')
+      end
+
+      it 'clears the source when a blank value is submitted' do
+        import.update!(source: :gpx)
+
+        patch import_path(import), params: { import: { source: '' } }
+
+        expect(response).to redirect_to(imports_path)
+        expect(import.reload.source).to be_nil
+      end
     end
   end
 
