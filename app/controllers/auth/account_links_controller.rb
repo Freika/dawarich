@@ -144,10 +144,12 @@ class Auth::AccountLinksController < ApplicationController
         provider_label: label_for(pending),
         link_url: link_url
       )
+      redirect_to new_user_session_path,
+                  notice: I18n.t('controllers.auth.account_links.confirmation_link_sent', email: user.email)
+    else
+      redirect_to new_user_session_path,
+                  alert: I18n.t('controllers.auth.account_links.account_link_rate_limited')
     end
-
-    redirect_to new_user_session_path,
-                notice: I18n.t('controllers.auth.account_links.confirmation_link_sent', email: user.email)
   end
 
   private

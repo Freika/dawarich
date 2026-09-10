@@ -2822,6 +2822,7 @@ zh:
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple 尚未验证此邮箱。请使用密码登录，并在设置中完成关联。
             this_email_already_has_a_dawarich_account_we_sent_a: 此邮箱已有 Dawarich 帐户。我们已向该邮箱发送确认链接，点击即可关联您的 Apple ID。
+            verification_rate_limited: 已向该地址发送过验证链接。请检查您的收件箱或稍后再试。
             we_couldn_t_find_your_existing_account_and_apple_didn: 我们找不到您现有的帐户，而且 Apple
               这次没有将您的邮箱分享给我们。Apple 只会分享一次。请前往 appleid.apple.com → 使用 Apple 登录，找到
               Dawarich，选择“停止使用 Apple 登录”，然后再次尝试登录。
@@ -2829,6 +2830,7 @@ zh:
           google:
             google_has_not_verified_this_email_sign_in_with_password: Google 尚未验证此邮箱。请使用密码登录，并在设置中完成关联。
             this_email_already_has_a_dawarich_account_we_sent_a: 此邮箱已有 Dawarich 帐户。我们已向该邮箱发送确认链接，点击即可关联您的 Google 登录。
+            verification_rate_limited: 已向该地址发送过验证链接。请检查您的收件箱或稍后再试。
             token_verification_failed: Google 令牌验证失败：%{message}
           otp_challenges:
             invalid_challenge: 验证请求无效或已过期：%{message}
@@ -2983,6 +2985,7 @@ zh:
         linked_sign_in_with_two_factor: "%{provider} 现已关联到您的帐户。请使用密码和 2FA 验证码登录以继续。"
         incorrect_password: 密码不正确。
         confirmation_link_sent: 我们已向 %{email} 发送确认链接。点击即可关联您的帐户。
+        account_link_rate_limited: 已发送过确认链接。请检查您的收件箱或稍后再请求。
         already_linked_to_different_identity: 此帐户已关联到不同的 %{provider} 身份。
       ios:
         authentication_successful_you_can_close_this_window: 验证成功！您可以关闭此窗口。

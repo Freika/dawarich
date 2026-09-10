@@ -3719,6 +3719,9 @@ fr:
             this_email_already_has_a_dawarich_account_we_sent_a: Cette adresse email
               possède déjà un compte Dawarich. Nous avons envoyé un lien de confirmation
               à cette adresse — cliquez dessus pour lier votre ID Apple.
+            verification_rate_limited: Un lien de vérification a déjà été envoyé à cette
+              adresse récemment. Vérifiez votre boîte de réception ou attendez avant
+              de réessayer.
             we_couldn_t_find_your_existing_account_and_apple_didn: Nous n'avons pas
               pu trouver votre compte existant, et Apple ne nous a pas partagé votre
               email cette fois-ci. Apple le partage qu'une seule fois. Veuillez vous
@@ -3734,6 +3737,9 @@ fr:
             this_email_already_has_a_dawarich_account_we_sent_a: Cette adresse e-mail
               possède déjà un compte Dawarich. Nous avons envoyé un lien de confirmation
               à cette adresse — cliquez dessus pour lier votre connexion Google.
+            verification_rate_limited: Un lien de vérification a déjà été envoyé à cette
+              adresse récemment. Vérifiez votre boîte de réception ou attendez avant
+              de réessayer.
             token_verification_failed: 'L''authentification par token Google a échoué :
               %{message}'
           otp_challenges:
@@ -3924,6 +3930,8 @@ fr:
         incorrect_password: Mot de passe incorrect.
         confirmation_link_sent: Nous avons envoyé un lien de confirmation à %{email}.
           Cliquez dessus pour lier votre compte.
+        account_link_rate_limited: Un lien de confirmation a déjà été envoyé récemment.
+          Vérifiez votre boîte de réception ou patientez avant d'en demander un autre.
         already_linked_to_different_identity: Ce compte est déjà lié à une identité
           différente %{provider}.
       ios:

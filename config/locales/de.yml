@@ -2877,11 +2877,13 @@ de:
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple hat diese E-Mail nicht verifiziert. Melde dich mit Passwort an und verknüpfe sie in den Einstellungen.
             this_email_already_has_a_dawarich_account_we_sent_a: Diese E-Mail hat bereits ein Dawarich-Konto. Wir haben einen Bestätigungslink an diese Adresse gesendet — klicke darauf, um deinen Apple-ID zu verknüpfen.
+            verification_rate_limited: Ein Bestätigungslink wurde kürzlich bereits an diese Adresse gesendet. Überprüfe deinen Posteingang oder warte, bevor du es erneut versuchst.
             we_couldn_t_find_your_existing_account_and_apple_didn: Wir konnten dein bestehendes Konto nicht finden, und Apple hat dieses Mal deine E-Mail nicht mit uns geteilt. Apple teilt die E-Mail nur einmal. Gehe zu appleid.apple.com → Anmeldung mit Apple, finde Dawarich, wähle "Nicht mehr mit Apple anmelden" und versuche es erneut.
             token_verification_failed: 'Apple-Token-Überprüfung fehlgeschlagen: %{message}'
           google:
             google_has_not_verified_this_email_sign_in_with_password: Google hat diese E-Mail nicht verifiziert. Melde dich mit Passwort an und verknüpfe sie in den Einstellungen.
             this_email_already_has_a_dawarich_account_we_sent_a: Diese E-Mail hat bereits ein Dawarich-Konto. Wir haben einen Bestätigungslink an diese Adresse gesendet — klicke darauf, um deine Google-Anmeldung zu verknüpfen.
+            verification_rate_limited: Ein Bestätigungslink wurde kürzlich bereits an diese Adresse gesendet. Überprüfe deinen Posteingang oder warte, bevor du es erneut versuchst.
             token_verification_failed: 'Google-Token-Überprüfung fehlgeschlagen: %{message}'
           otp_challenges:
             invalid_challenge: 'Ungültiger oder abgelaufener Challenge: %{message}'
@@ -3036,6 +3038,7 @@ de:
         linked_sign_in_with_two_factor: "%{provider} ist jetzt mit deinem Konto verbunden. Melde dich mit deinem Passwort und dem 2FA-Code an, um fortzufahren."
         incorrect_password: Falsches Passwort.
         confirmation_link_sent: Wir haben einen Bestätigungslink an %{email} gesendet. Klicke darauf, um dein Konto zu verknüpfen.
+        account_link_rate_limited: Ein Bestätigungslink wurde kürzlich bereits gesendet. Überprüfe deinen Posteingang oder warte, bevor du einen weiteren anforderst.
         already_linked_to_different_identity: Dieses Konto ist bereits mit einer anderen %{provider}-Identität verknüpft.
       ios:
         authentication_successful_you_can_close_this_window: Authentifizierung erfolgreich! Du kannst dieses Fenster schließen.
