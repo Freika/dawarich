@@ -56,15 +56,6 @@ module TimelineHelper
     ].flatten.compact.join(' ').downcase
   end
 
-  # visit.duration is MINUTES.
-  # Returns true when the visit covers (effectively) a whole day.
-  def timeline_all_day?(visit)
-    return false unless visit
-    return true if visit.duration.to_i >= 23 * 60
-
-    visit.started_at.hour.zero? && (visit.ended_at - visit.started_at) >= 23.hours
-  end
-
   # minutes -> "Xh Ym" (or "Xm" when < 1h)
   def format_dwell_minutes(minutes)
     minutes = minutes.to_i
@@ -93,8 +84,8 @@ module TimelineHelper
   end
 
   # Hash-entry helpers (Timeline::DayAssembler returns hash-shaped entries).
-  # These intentionally mirror the Visit-object helpers above but operate on
-  # the serialized hash payload, avoiding per-row Visit.find (N+1).
+  # Each operates directly on the serialized hash payload to avoid per-row
+  # Visit.find (N+1).
 
   def visit_entry_display_name(entry)
     entry[:name].presence ||
@@ -212,10 +203,6 @@ module TimelineHelper
 
   def confidence_gating_active?
     current_user&.visits_redetected_at.present?
-  end
-
-  def day_label(day)
-    I18n.l(Date.parse(day[:date].to_s), format: :weekday_month_day)
   end
 
   def day_total_visits_count(day)
