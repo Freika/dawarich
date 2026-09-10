@@ -1,3 +1,236 @@
-<%= turbo_frame_tag 'place-drawer' do %>
-  <%= render 'drawer', place: @place, recent_visits: @recent_visits %>
-<% end %>
+<% content_for :title, @place.name %>
+
+<% stats = place_dwell_stats(@place) %>
+
+<div class="container mx-auto px-4 my-5">
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Left column: Place details -->
+    <div>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="avatar placeholder">
+          <div class="bg-primary text-primary-content rounded-full w-12 h-12 flex items-center justify-center text-xl">
+            <% if stats[:primary_tag]&.icon.present? %>
+              <span><%= stats[:primary_tag].icon %></span>
+            <% else %>
+              <%= icon 'map-pin', class: 'w-6 h-6' %>
+            <% end %>
+          </div>
+        </div>
+        <div class="w-full">
+          <div class="flex items-center gap-2 w-full" data-controller="place-name-editor">
+            <h1 class="card-title text-2xl">
+              <span data-place-name-editor-target="display"><%= @place.name %></span>
+            </h1>
+            <button type="button"
+                    data-place-name-editor-target="editButton"
+                    data-action="click->place-name-editor#toggle"
+                    class="btn btn-ghost btn-xs btn-square"
+                    title="<%= t('.edit_name') %>">
+              <%= icon 'square-pen', class: 'w-4 h-4' %>
+            </button>
+
+            <%= form_with model: @place,
+                          method: :patch,
+                          class: "hidden inline-flex items-center gap-2",
+                          data: { place_name_editor_target: "form", action: "submit->place-name-editor#save" } do |f| %>
+              <%= f.text_field :name,
+                               data: { place_name_editor_target: "input" },
+                               class: "input input-bordered input-sm w-48",
+                               autocomplete: "off" %>
+              <button type="submit"
+                      data-place-name-editor-target="saveButton"
+                      class="btn btn-xs">
+                <%= icon 'save', class: 'w-4 h-4' %>
+              </button>
+              <button type="button"
+                      data-place-name-editor-target="cancelButton"
+                      data-action="click->place-name-editor#cancel"
+                      class="btn btn-ghost btn-xs">
+                <%= icon 'x', class: 'w-4 h-4' %>
+              </button>
+            <% end %>
+
+            <div class="ml-auto">
+              <%= button_to place_path(@place),
+                method: :delete,
+                class: 'ml-auto btn btn-ghost btn-xs btn-square',
+                data: { turbo_confirm: t('places.drawer.delete_this_place_this_cannot_be_undone') } do %>
+                <%= icon 'trash-2', class: 'w-4 h-4' %>
+              <% end %>
+            </div>
+          </div>
+          <% if stats[:location_line].present? %>
+            <p class="text-base-content/70"><%= stats[:location_line] %></p>
+          <% end %>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="stats stats-vertical lg:stats-horizontal shadow mb-4 w-full">
+        <div class="stat">
+          <div class="stat-title"><%= t('.visits') %></div>
+          <div class="stat-value text-primary"><%= stats[:visit_count] %></div>
+        </div>
+        <div class="stat">
+          <div class="stat-title"><%= t('places.drawer.total_hours') %></div>
+          <div class="stat-value text-secondary"><%= stats[:total_hours] %></div>
+        </div>
+        <div class="stat">
+          <div class="stat-title"><%= t('places.drawer.avg_dwell') %></div>
+          <div class="stat-value text-accent"><%= stats[:avg_label] %></div>
+        </div>
+      </div>
+
+      <!-- Visits -->
+      <div class="mt-4">
+        <h3 class="font-semibold mb-2"><%= t('.visits') %></h3>
+        <% if @visits.any? %>
+          <div class="border border-base-300 rounded-xl overflow-x-auto">
+            <table class="table table-sm w-full">
+              <thead class="bg-base-200">
+                <tr>
+                  <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50"><%= t('.visit_date') %></th>
+                  <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50"><%= t('.visit_time') %></th>
+                  <th class="px-3 py-2.5 text-xs uppercase tracking-wider text-base-content/50 text-right"><%= t('.visit_duration') %></th>
+                  <th class="px-3 py-2.5 w-12"></th>
+                </tr>
+              </thead>
+              <tbody>
+                <% @visits.each do |visit| %>
+                  <% range = place_visit_time_range(visit) %>
+                  <tr id="visit_entry_<%= visit.id %>">
+                    <td class="px-3 py-2.5"><%= range[:date_label] %></td>
+                    <td class="px-3 py-2.5"><%= range[:start_label] %> &rarr; <%= range[:end_label] %></td>
+                    <td class="px-3 py-2.5 text-right"><%= range[:duration_label] %></td>
+                    <td class="px-3 py-2.5 text-center">
+                      <%= button_to visit_path(visit),
+                                    method: :delete,
+                                    class: 'btn btn-ghost btn-xs text-error',
+                                    data: { turbo_confirm: t('visits.buttons.delete_this_visit_your_location_points_stay') } do %>
+                        <%= icon 'trash-2', class: 'w-3.5 h-3.5' %>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+
+          <div class="flex justify-center mt-4">
+            <%= paginate @visits %>
+          </div>
+        <% else %>
+          <p class="text-base-content/50 italic"><%= t('places.drawer.no_visits_yet') %></p>
+        <% end %>
+      </div>
+    </div>
+
+    <!-- Right column: Map -->
+    <div class="card bg-base-100">
+      <div class="w-full overflow-hidden" style="height: 500px"
+            data-controller="place-map"
+            data-place-map-lat-value="<%= @place.lat %>"
+            data-place-map-lng-value="<%= @place.lon %>"
+            data-place-map-name-value="<%= @place.name %>">
+      </div>
+
+      <!-- Note -->
+      <div class="mt-4" data-controller="place-note-editor">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-semibold"><%= t('places.drawer.notes') %></h3>
+          <button type="button"
+                  data-place-note-editor-target="editButton"
+                  data-action="click->place-note-editor#edit"
+                  class="btn btn-ghost btn-xs btn-square"
+                  title="<%= t('.edit_note') %>">
+            <%= icon 'square-pen', class: 'w-3.5 h-3.5' %>
+          </button>
+        </div>
+        <div data-place-note-editor-target="display">
+          <%= @place.note %>
+        </div>
+        <%= form_with model: @place,
+                      method: :patch,
+                      class: "hidden",
+                      data: { place_note_editor_target: "form", action: "submit->place-note-editor#save", turbo: false } do |f| %>
+          <%= f.text_area :note,
+                          rows: 4,
+                          data: { place_note_editor_target: "textarea" },
+                          class: "textarea textarea-bordered w-full text-sm mb-2",
+                          placeholder: t('places.drawer.notes') %>
+          <div class="flex gap-2">
+            <%= f.submit t('places.drawer.save'), class: 'btn btn-primary btn-xs', data: { place_note_editor_target: "saveButton" } %>
+            <button type="button"
+                    data-place-note-editor-target="cancelButton"
+                    data-action="click->place-note-editor#cancel"
+                    class="btn btn-ghost btn-xs">
+              <%= icon 'x', class: 'w-3.5 h-3.5' %> <%= t('.cancel') %>
+            </button>
+          </div>
+        <% end %>
+      </div>
+
+      <!-- Tags -->
+      <div class="mt-4" data-controller="place-tags-editor">
+        <div class="flex items-center justify-between mb-2">
+          <h3 class="font-semibold"><%= t('.tags') %></h3>
+          <button type="button"
+                  data-place-tags-editor-target="editButton"
+                  data-action="click->place-tags-editor#edit"
+                  class="btn btn-ghost btn-xs btn-square"
+                  title="<%= t('.edit_tags') %>">
+            <%= icon 'square-pen', class: 'w-3.5 h-3.5' %>
+          </button>
+        </div>
+
+        <!-- Display mode -->
+        <div data-place-tags-editor-target="display" class="flex flex-wrap gap-2">
+          <% if @place.tags.any? %>
+            <% @place.tags.each do |tag| %>
+              <span class="badge badge-lg">
+                <% if tag.color.present? %>
+                  <span class="w-3 h-3 rounded-full" style="margin-right: 5px; background-color: <%= tag.color %>"></span>
+                <% end %>
+                <%= tag.name %>
+              </span>
+            <% end %>
+          <% else %>
+            <span class="text-base-content/50 italic"><%= t('.no_tags') %></span>
+          <% end %>
+        </div>
+
+        <!-- Edit mode -->
+        <%= form_with model: @place,
+                      method: :patch,
+                      class: "hidden",
+                      data: { place_tags_editor_target: "form", action: "submit->place-tags-editor#save" } do |f| %>
+          <div class="space-y-1 mb-3 max-h-60 overflow-y-auto">
+            <% current_user.tags.ordered.each do |tag| %>
+              <label class="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-base-200 cursor-pointer transition-colors">
+                <%= check_box_tag "place[tag_ids][]", tag.id, @place.tags.include?(tag),
+                    class: "checkbox checkbox-sm",
+                    data: { place_tags_editor_target: "checkbox" } %>
+                <span class="text-sm">
+                  <%= tag.icon.present? ? tag.icon : '' %> <%= tag.name %>
+                </span>
+                <% if tag.color.present? %>
+                  <span class="w-3 h-3 rounded-full ml-auto" style="background-color: <%= tag.color %>"></span>
+                <% end %>
+              </label>
+            <% end %>
+          </div>
+          <div class="flex gap-2">
+            <%= f.submit t('places.drawer.save'), class: 'btn btn-primary btn-xs' %>
+            <button type="button"
+                    data-place-tags-editor-target="cancelButton"
+                    data-action="click->place-tags-editor#cancel"
+                    class="btn btn-ghost btn-xs">
+              <%= icon 'x', class: 'w-3.5 h-3.5' %> <%= t('.cancel') %>
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>
+

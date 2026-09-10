@@ -12,9 +12,7 @@ class PlacesController < ApplicationController
 
   def show
     @place = current_user.places.includes(:tags).find(params[:id])
-    @recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
-
-    render layout: false
+    @visits = @place.visits.active.order(started_at: :desc).page(params[:page]).per(10)
   end
 
   def create
@@ -49,6 +47,7 @@ class PlacesController < ApplicationController
       @place = current_user.places.includes(:tags, :active_visits).find(@place.id)
 
       respond_to do |format|
+        format.json { render json: { name: @place.name }, status: :ok }
         format.turbo_stream do
           if drawer_request?
             recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
@@ -70,6 +69,7 @@ class PlacesController < ApplicationController
       end
     else
       respond_to do |format|
+        format.json { render json: { error: @place.errors.full_messages.join(', ') }, status: :unprocessable_entity }
         format.turbo_stream do
           render turbo_stream: stream_flash(:error, @place.errors.full_messages.join(', '))
         end
