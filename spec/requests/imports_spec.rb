@@ -221,10 +221,7 @@ RSpec.describe 'Imports', type: :request do
     let(:user) { create(:user) }
 
     context 'when user is active' do
-      before do
-        allow(user).to receive(:active?).and_return(true)
-        sign_in user
-      end
+      before { sign_in user }
 
       it 'allows access to new import form' do
         get new_import_path
@@ -233,16 +230,33 @@ RSpec.describe 'Imports', type: :request do
     end
 
     context 'when user is inactive' do
-      before do
-        allow(user).to receive(:active?).and_return(false)
-        sign_in user
-      end
+      let(:user) { create(:user).tap { |u| u.update!(status: :inactive, active_until: 1.day.ago) } }
+
+      before { sign_in user }
 
       it 'prevents access to new import form' do
         get new_import_path
 
         expect(response).to redirect_to(root_path)
-        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+        expect(flash[:notice]).to eq('Your account is not active.')
+      end
+    end
+
+    context 'when an expired trial user has status: trial but active_until in the past' do
+      let(:user) do
+        create(:user).tap { |u| u.update_columns(status: User.statuses[:trial], active_until: 6.days.ago) }
+      end
+
+      before { sign_in user }
+
+      it 'prevents access to the new import form — gates must not diverge from create' do
+        expect(user).to be_trial
+        expect(user.active_until).to be_past
+
+        get new_import_path
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:notice]).to eq('Your account is not active.')
       end
     end
 
@@ -372,6 +386,24 @@ RSpec.describe 'Imports', type: :request do
       end
 
       it 'blocks import creation' do
+        post imports_path, params: { import: { source: 'owntracks', files: [] } }
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:notice]).to eq('Your account is not active.')
+      end
+    end
+
+    context 'when an expired trial user has status: trial but active_until in the past' do
+      let(:user) do
+        create(:user).tap { |u| u.update_columns(status: User.statuses[:trial], active_until: 6.days.ago) }
+      end
+
+      before { sign_in user }
+
+      it 'blocks import creation' do
+        expect(user).to be_trial
+        expect(user.active_until).to be_past
+
         post imports_path, params: { import: { source: 'owntracks', files: [] } }
 
         expect(response).to redirect_to(root_path)
