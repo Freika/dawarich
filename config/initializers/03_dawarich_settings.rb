@@ -56,6 +56,7 @@ class DawarichSettings
     # Deliberately not memoized: the answer depends on the user, and
     # DawarichSettings is a process-wide singleton.
     def family_feature_available_for?(user)
+      return false if ENV['DISABLE_FAMILY_FEATURE'].to_s == 'true'
       return true if self_hosted?
       return false if user.nil?
 
