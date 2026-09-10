@@ -38,6 +38,7 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
 
     raise 'points_v2 is missing - CreatePointsV2 (20260901100000) must run first' unless table_exists?(:points_v2)
 
+    ensure_source_id_column!
     log_preflight
 
     job = DataMigrations::RewritePointsV2Job.new
@@ -86,6 +87,29 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
 
   def schema_steps
     @schema_steps ||= Points::Rewrite::SchemaSteps.new(connection)
+  end
+
+  # CreatePointDimensionTables (20260816150000) is allowed to lose the race for
+  # points' ACCESS EXCLUSIVE lock and leave the column to
+  # DataMigrations::AddPointDimensionColumnsJob — autovacuum on a freshly
+  # written points table is enough to take that branch. That job runs on
+  # Sidekiq, a different container on a self-hosted install and not
+  # necessarily up, while this migration runs inline in the same boot: without
+  # the column the rewrite dies on PG::UndefinedColumn and cancels every later
+  # migration, so the web container never starts. Take the lock here instead,
+  # under the same retried discipline the rest of the swap uses.
+  def ensure_source_id_column!
+    return if column_exists?(:points, :source_id)
+
+    schema_steps.with_lock_timeout do
+      execute('ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer')
+    end
+    connection.schema_cache.clear!
+  rescue ActiveRecord::LockWaitTimeout, ActiveRecord::Deadlocked => e
+    raise e.class,
+          '[RewritePointsToV2] points.source_id is missing and the lock to add it could not be ' \
+          "acquired (#{e.message.lines.first.strip}). Add it once traffic is quiet with: " \
+          'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer; then re-run the migration.'
   end
 
   def log_preflight
