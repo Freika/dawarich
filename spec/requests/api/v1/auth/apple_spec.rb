@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/auth/apple', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:verifier_double) { instance_double(Auth::VerifyAppleToken) }
 
   before do
@@ -111,23 +113,37 @@ RSpec.describe 'POST /api/v1/auth/apple', type: :request do
       end
 
       it 'rate-limited retry returns 429 verification_rate_limited with Retry-After and no second mailer' do
-        # First collision seeds the rate-limit key and returns the genuine 202.
-        post '/api/v1/auth/apple', params: { id_token: 'fake_token' }
-        expect(response).to have_http_status(:accepted)
-
-        expect do
+        freeze_time do
+          # First collision seeds the rate-limit key and returns the genuine 202.
           post '/api/v1/auth/apple', params: { id_token: 'fake_token' }
-        end.not_to have_enqueued_job(Users::MailerSendingJob)
+          expect(response).to have_http_status(:accepted)
 
-        expect(response).to have_http_status(:too_many_requests)
-        expect(response.headers['Retry-After']).to eq(
-          Auth::FindOrCreateOauthUser::LINK_EMAIL_RATE_LIMIT_WINDOW.to_i.to_s
-        )
-        body = JSON.parse(response.body)
-        expect(body['error']).to eq('verification_rate_limited')
-        expect(body['message']).to be_present
-        expect(existing.reload.provider).to be_nil
-        expect(existing.reload.uid).to be_nil
+          expect do
+            post '/api/v1/auth/apple', params: { id_token: 'fake_token' }
+          end.not_to have_enqueued_job(Users::MailerSendingJob)
+
+          expect(response).to have_http_status(:too_many_requests)
+          expect(response.headers['Retry-After']).to eq(
+            Auth::FindOrCreateOauthUser::LINK_EMAIL_RATE_LIMIT_WINDOW.to_i.to_s
+          )
+          body = JSON.parse(response.body)
+          expect(body['error']).to eq('verification_rate_limited')
+          expect(body['message']).to be_present
+          expect(existing.reload.provider).to be_nil
+          expect(existing.reload.uid).to be_nil
+        end
+      end
+
+      it 'reports the time left in the window, not the full window, in Retry-After' do
+        freeze_time do
+          post '/api/v1/auth/apple', params: { id_token: 'fake_token' }
+
+          travel 20.minutes
+          post '/api/v1/auth/apple', params: { id_token: 'fake_token' }
+
+          expect(response).to have_http_status(:too_many_requests)
+          expect(response.headers['Retry-After']).to eq(40.minutes.to_i.to_s)
+        end
       end
     end
 
