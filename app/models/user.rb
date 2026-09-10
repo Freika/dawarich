@@ -129,7 +129,7 @@ class User < ApplicationRecord
   end
 
   def safe_settings
-    Users::SafeSettings.new(settings, plan: plan)
+    Users::SafeSettings.new(settings, plan: entitlements.full_access? ? :pro : :lite)
   end
 
   # Old rows can carry a settings container that is not an object at all, so the

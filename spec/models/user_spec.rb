@@ -41,6 +41,75 @@ RSpec.describe User, type: :model do
     end
   end
 
+  describe '#safe_settings read/write gate alignment' do
+    let(:gated_settings) do
+      {
+        'globe_projection' => true,
+        'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map'],
+        'maps' => { 'distance_unit' => 'km', 'hidden_tile_categories' => ['roads'],
+                    'disabled_poi_groups' => ['shopping'] }
+      }
+    end
+
+    def stripped?(user)
+      ss = user.safe_settings
+      ss.globe_projection == false || !ss.enabled_map_layers.include?('Heatmap') ||
+        !ss.maps.key?('hidden_tile_categories')
+    end
+
+    context 'when cloud :lite user is not in a family' do
+      let(:user) do
+        create(:user, plan: :lite, status: :active, active_until: 1.year.from_now,
+                      subscription_source: :paddle, skip_auto_trial: true, settings: gated_settings)
+      end
+
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'gates gated map settings on read, matching plan_restricted?' do
+        expect(user.plan_restricted?).to be true
+        expect(stripped?(user)).to be true
+      end
+    end
+
+    context 'when cloud :lite user joins a paid :family and keeps their own subscription' do
+      let(:owner) do
+        create(:user, plan: :family, status: :active, active_until: 1.year.from_now,
+                      subscription_source: :paddle, skip_auto_trial: true)
+      end
+      let(:family) { create(:family, creator: owner) }
+      let(:invitation) { create(:family_invitation, family: family, invited_by: owner, email: member.email) }
+      let(:member) do
+        create(:user, plan: :lite, status: :active, active_until: 1.year.from_now,
+                      subscription_source: :paddle, skip_auto_trial: true,
+                      email: 'member@example.com', settings: gated_settings)
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        create(:family_membership, :owner, family: family, user: owner)
+        Families::AcceptInvitation.new(invitation: invitation, user: member).call
+        member.reload
+      end
+
+      it 'keeps the :lite plan column but treats the member as non-restricted on read' do
+        expect(member.plan).to eq('lite')
+        expect(member.plan_restricted?).to be false
+        expect(stripped?(member)).to be false
+      end
+    end
+
+    context 'when self-hosted, regardless of plan column' do
+      let(:user) { create(:user, plan: :lite, skip_auto_trial: true, settings: gated_settings) }
+
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'does not gate gated map settings on read, matching plan_restricted?' do
+        expect(user.plan_restricted?).to be false
+        expect(stripped?(user)).to be false
+      end
+    end
+  end
+
   describe 'visit detection v3 stamp' do
     it 'marks new accounts as v3-native so confidence gating applies from day one' do
       expect(create(:user).reload.visits_redetected_at).to be_present
