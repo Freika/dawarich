@@ -337,6 +337,23 @@ paths:
                     type: string
                   message:
                     type: string
+        '429':
+          description: a verification email for this address was already sent within
+            the last hour
+          headers:
+            Retry-After:
+              schema:
+                type: string
+              description: Seconds until another verification email can be requested
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
         '409':
           description: account deletion is in progress
           content:
@@ -400,6 +417,23 @@ paths:
                     nullable: true
         '401':
           description: google token verification failed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
+        '429':
+          description: a verification email for this address was already sent within
+            the last hour
+          headers:
+            Retry-After:
+              schema:
+                type: string
+              description: Seconds until another verification email can be requested
           content:
             application/json:
               schema:

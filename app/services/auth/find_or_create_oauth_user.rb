@@ -16,19 +16,37 @@ module Auth
     end
 
     class LinkVerificationSent < StandardError
-      attr_reader :user, :provider, :uid, :rate_limited
+      attr_reader :user, :provider, :uid, :rate_limited, :retry_after
 
-      def initialize(user:, provider:, uid:, rate_limited: false)
+      def initialize(user:, provider:, uid:, rate_limited: false, retry_after: nil)
         @user = user
         @provider = provider
         @uid = uid
         @rate_limited = rate_limited
+        @retry_after = retry_after
         super('OAuth account link verification required for existing email')
       end
     end
 
     LINK_EMAIL_RATE_LIMIT_WINDOW = 1.hour
     LINK_EMAIL_RATE_LIMIT_KEY_PREFIX = 'oauth_account_link:rate_limit:'
+
+    # Stores the send time so a rate-limited retry can report how long is left.
+    def self.acquire_rate_limit(user_id)
+      Rails.cache.write(
+        "#{LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{user_id}", Time.current.to_i,
+        expires_in: LINK_EMAIL_RATE_LIMIT_WINDOW,
+        unless_exist: true
+      )
+    end
+
+    def self.rate_limit_retry_after(user_id)
+      window = LINK_EMAIL_RATE_LIMIT_WINDOW.to_i
+      sent_at = Rails.cache.read("#{LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{user_id}")
+      return window unless sent_at.is_a?(Integer)
+
+      (window - (Time.current.to_i - sent_at)).clamp(1, window)
+    end
 
     PROVIDERS_REQUIRING_EMAIL = %w[apple].freeze
 
@@ -93,7 +111,10 @@ module Auth
       end
 
       rate_limited = (@on_email_collision == :send_email) && send_verification_email(existing) == :rate_limited
-      raise LinkVerificationSent.new(user: existing, provider: @provider, uid: @uid, rate_limited: rate_limited)
+      raise LinkVerificationSent.new(
+        user: existing, provider: @provider, uid: @uid, rate_limited: rate_limited,
+        retry_after: (self.class.rate_limit_retry_after(existing.id) if rate_limited)
+      )
     end
 
     def auto_link_allowed?
@@ -101,13 +122,7 @@ module Auth
     end
 
     def send_verification_email(existing_user)
-      cache_key = "#{LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{existing_user.id}"
-      acquired = Rails.cache.write(
-        cache_key, true,
-        expires_in: LINK_EMAIL_RATE_LIMIT_WINDOW,
-        unless_exist: true
-      )
-      return :rate_limited unless acquired
+      return :rate_limited unless self.class.acquire_rate_limit(existing_user.id)
 
       token = Auth::IssueAccountLinkToken.new(
         existing_user, provider: @provider, uid: @uid
