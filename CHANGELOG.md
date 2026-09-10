@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Yearly digests for cloud-Lite users read seasonality and country time spent from the same data window as monthly distances and toponyms.
+
 ## [1.14.4] - 2026-09-06, Berlin
 
 ### Fixed
@@ -29,7 +35,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Overlapping track-generation chunks preserve point ownership and include single-point journey endpoints.
 - Historical Google Timeline activity hints are preserved when backfilling transportation modes.
 - Cloud Lite users are only offered digest years available within their data window.
-- Yearly digests for cloud-Lite users apply one consistent data window across seasonality, country time spent, monthly distances, and toponyms so a single digest no longer contradicts itself.
 - Authentication and shared-link rate limits now apply consistently to requests with optional format suffixes.
 - Upgrades rebuild invalid statistics indexes left by interrupted migrations and restore duplicate protection.
 - Browser and API password sign-in now respect OIDC-only configuration.

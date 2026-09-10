@@ -310,8 +310,6 @@ RSpec.describe Users::Digests::CalculateYear do
     end
 
     context 'when the user is on the Lite cloud plan' do
-      include ActiveSupport::Testing::TimeHelpers
-
       let(:user) { create(:user, :lite_plan) }
       let(:year) { Time.current.year }
 
@@ -347,6 +345,9 @@ RSpec.describe Users::Digests::CalculateYear do
 
         create(:stat, user: user, year: year, month: 1, distance: 1_000, toponyms: [
                  { 'country' => 'France', 'cities' => [{ 'city' => 'Paris', 'stayed_for' => 1440 }] }
+               ])
+        create(:stat, user: user, year: year, month: 3, distance: 1_000, toponyms: [
+                 { 'country' => 'France', 'cities' => [{ 'city' => 'Lyon', 'stayed_for' => 1440 }] }
                ])
         create(:stat, user: user, year: year, month: 12, distance: 1_000, toponyms: [
                  { 'country' => 'Russia', 'cities' => [{ 'city' => 'Moscow', 'stayed_for' => 1440 }] }

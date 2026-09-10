@@ -94,10 +94,12 @@ RSpec.describe 'Lite partial-window digest scope consistency', type: :request do
         }
 
         season_months.each do |season, months|
+          month_distances = months.map { |m| digest.monthly_distances[m].to_f }
+
           if seasonality[season] > 0
-            months.any? { |m| digest.monthly_distances[m].to_f > 0 }
+            expect(month_distances).to include(be > 0), "#{season} > 0 but all its months are 0"
           else
-            months.all? { |m| digest.monthly_distances[m].to_f.zero? }
+            expect(month_distances).to all(be_zero), "#{season} == 0 but a month of it is > 0"
           end
         end
       end
