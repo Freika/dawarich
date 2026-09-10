@@ -267,4 +267,73 @@ RSpec.describe 'Google Timeline tied timestamps preserve path order' do
       expect(points.map(&:timestamp)).to eq([base, base + 1, base + 2, base + 3])
     end
   end
+
+  context 'when a later segment steps back in time behind a tie group' do
+    let(:data) do
+      later_segment = {
+        'startTime' => '2024-06-15T10:00:00.000Z',
+        'endTime' => '2024-06-15T11:00:00.000Z',
+        'timelinePath' => [
+          { 'point' => 'geo:48.8600,2.3400', 'time' => '2024-06-15T10:05:23.000Z' },
+          { 'point' => 'geo:48.8610,2.3410', 'time' => '2024-06-15T10:05:23.000Z' },
+          { 'point' => 'geo:48.8620,2.3420', 'time' => '2024-06-15T10:05:23.000Z' }
+        ]
+      }
+      earlier_segment = {
+        'startTime' => '2024-06-15T09:00:00.000Z',
+        'endTime' => '2024-06-15T10:00:00.000Z',
+        'timelinePath' => [
+          { 'point' => 'geo:48.8500,2.3300', 'time' => '2024-06-15T10:04:50.000Z' },
+          { 'point' => 'geo:48.8510,2.3310', 'time' => '2024-06-15T10:04:55.000Z' }
+        ]
+      }
+      { 'semanticSegments' => [later_segment, earlier_segment] }
+    end
+
+    it 'keeps the genuine earlier timestamps instead of pushing them past the tie group' do
+      import_json(data)
+
+      tie_base = DateTime.parse('2024-06-15T10:05:23.000Z').utc.to_i
+      earlier_a = DateTime.parse('2024-06-15T10:04:50.000Z').utc.to_i
+      earlier_b = DateTime.parse('2024-06-15T10:04:55.000Z').utc.to_i
+
+      expect(user.points.order(:timestamp).map(&:timestamp))
+        .to eq([earlier_a, earlier_b, tie_base, tie_base + 1, tie_base + 2])
+    end
+  end
+
+  context 'when a segment lands back inside a tie group range after an earlier segment' do
+    let(:data) do
+      tie_segment = {
+        'startTime' => '2024-06-15T10:00:00.000Z',
+        'endTime' => '2024-06-15T11:00:00.000Z',
+        'timelinePath' => [
+          { 'point' => 'geo:48.8600,2.3400', 'time' => '2024-06-15T10:05:23.000Z' },
+          { 'point' => 'geo:48.8610,2.3410', 'time' => '2024-06-15T10:05:23.000Z' },
+          { 'point' => 'geo:48.8620,2.3420', 'time' => '2024-06-15T10:05:23.000Z' }
+        ]
+      }
+      earlier_segment = {
+        'startTime' => '2024-06-15T09:00:00.000Z',
+        'endTime' => '2024-06-15T10:00:00.000Z',
+        'timelinePath' => [{ 'point' => 'geo:48.8500,2.3300', 'time' => '2024-06-15T10:04:50.000Z' }]
+      }
+      returning_segment = {
+        'startTime' => '2024-06-15T10:00:00.000Z',
+        'endTime' => '2024-06-15T11:00:00.000Z',
+        'timelinePath' => [{ 'point' => 'geo:48.8610,2.3410', 'time' => '2024-06-15T10:05:24.000Z' }]
+      }
+      { 'semanticSegments' => [tie_segment, earlier_segment, returning_segment] }
+    end
+
+    it 'still pushes the returning point past every timestamp the tie group consumed' do
+      import_json(data)
+
+      tie_base = DateTime.parse('2024-06-15T10:05:23.000Z').utc.to_i
+      earlier = DateTime.parse('2024-06-15T10:04:50.000Z').utc.to_i
+
+      expect(user.points.order(:timestamp).map(&:timestamp))
+        .to eq([earlier, tie_base, tie_base + 1, tie_base + 2, tie_base + 3])
+    end
+  end
 end
