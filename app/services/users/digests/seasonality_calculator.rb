@@ -65,7 +65,7 @@ module Users
       end
 
       def calculate_distances_by_season
-        stats = user.stats.where(year: year)
+        stats = user.scoped_stats.where(year: year)
 
         seasons.transform_values do |months|
           stats.where(month: months).sum(:distance)
