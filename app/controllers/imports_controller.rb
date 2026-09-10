@@ -11,7 +11,7 @@ class ImportsController < ApplicationController
   ORIGINAL_FILENAME_METADATA_KEY = 'dawarich_original_filename'
 
   before_action :authenticate_user!
-  before_action :authenticate_active_user!, only: %i[create]
+  before_action :authenticate_active_user!, only: %i[new create]
   before_action :set_import, only: %i[show edit update destroy download]
   before_action :authorize_import, only: %i[show edit update destroy download]
   before_action :validate_points_limit, only: %i[new create]

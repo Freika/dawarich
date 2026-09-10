@@ -16,10 +16,6 @@ class ImportPolicy < ApplicationPolicy
   end
 
   # Users can create new imports only while their subscription window is open.
-  # This intentionally mirrors `ApplicationController#authenticate_active_user!`
-  # (the controller filter that gates `ImportsController#create`) so the `new`
-  # and `create` gates cannot diverge for a trial user whose `active_until` has
-  # passed.
   def new?
     create?
   end

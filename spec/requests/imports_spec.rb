@@ -238,7 +238,7 @@ RSpec.describe 'Imports', type: :request do
         get new_import_path
 
         expect(response).to redirect_to(root_path)
-        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+        expect(flash[:notice]).to eq('Your account is not active.')
       end
     end
 
@@ -256,7 +256,7 @@ RSpec.describe 'Imports', type: :request do
         get new_import_path
 
         expect(response).to redirect_to(root_path)
-        expect(flash[:alert]).to eq('You are not authorized to perform this action.')
+        expect(flash[:notice]).to eq('Your account is not active.')
       end
     end
 
