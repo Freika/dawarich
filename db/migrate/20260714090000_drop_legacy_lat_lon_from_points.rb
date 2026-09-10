@@ -138,16 +138,6 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
     SQL
   end
 
-  # A legacy row is dropped when the coordinate it would be backfilled to is
-  # already taken for that (user_id, timestamp) — either by a row that carries a
-  # lonlat already, or by an earlier legacy row in the same batch that will be
-  # backfilled to the identical point. The second case has to be handled here
-  # too: a unique btree index is checked per row inside a statement, so a single
-  # UPDATE that gives two rows the same key raises the violation on its own.
-  #
-  # DISTINCT ON picks the survivor through a sort, which uses the same btree
-  # opclass the unique index is built on. Grouping the geography by hash instead
-  # reports duplicates the index would not, and this statement deletes rows.
   def remove_duplicate_legacy_points(cursor, batch_end)
     result = execute(<<~SQL.squish)
       WITH candidates AS (
@@ -161,6 +151,8 @@ class DropLegacyLatLonFromPoints < ActiveRecord::Migration[8.0]
           AND legacy.lonlat IS NULL
           AND legacy.longitude IS NOT NULL
           AND legacy.latitude IS NOT NULL
+          AND legacy.user_id IS NOT NULL
+          AND legacy.timestamp IS NOT NULL
       ), keepers AS (
         SELECT DISTINCT ON (user_id, timestamp, target_lonlat) id
         FROM candidates

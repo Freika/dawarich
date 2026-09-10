@@ -42,7 +42,7 @@ RSpec.describe 'Legacy point coordinate backfill', :non_transactional do
     expect(Point.where(id: [existing.id, backfill_id, legacy_id]).count).to eq(2)
     expect(Point.find(backfill_id).lonlat.x).to eq(2.3522)
     expect(Point.find(backfill_id).lonlat.y).to eq(48.8566)
-    expect(Point.find_by(id: [existing.id, legacy_id]).lonlat).to eq(existing.lonlat)
+    expect(Point.where(id: [existing.id, legacy_id]).pluck(:id)).to eq([existing.id])
     expect(user.reload.points_count).to eq(2)
     expect(import.reload.points_count).to eq(2)
   end
@@ -68,5 +68,21 @@ RSpec.describe 'Legacy point coordinate backfill', :non_transactional do
     expect(Point.find(first_id).lonlat.y).to eq(latitude)
     expect(user.reload.points_count).to eq(1)
     expect(import.reload.points_count).to eq(1)
+  end
+
+  it 'keeps legacy rows with a missing user or timestamp that the unique index would accept' do
+    ids = [
+      [user.id, 'NULL'], [user.id, 'NULL'],
+      ['NULL', timestamp], ['NULL', timestamp]
+    ].map do |user_id, ts|
+      connection.select_value(<<~SQL.squish)
+        INSERT INTO points (user_id, timestamp, latitude, longitude, lonlat, created_at, updated_at)
+        VALUES (#{user_id}, #{ts}, #{latitude}, #{longitude}, NULL, NOW(), NOW())
+        RETURNING id
+      SQL
+    end
+
+    expect { DropLegacyLatLonFromPoints.new.up }.not_to raise_error
+    expect(Point.where(id: ids).where.not(lonlat: nil).pluck(:id)).to match_array(ids)
   end
 end
