@@ -10,6 +10,7 @@ import {
   escapeHtml,
   formatTimestamp,
 } from "maps_maplibre/utils/geojson_transformers"
+import { appUrl } from "services/app_url"
 
 /**
  * Handles map interaction events (clicks, info display)
@@ -163,7 +164,7 @@ export class EventHandlers {
         : null)
     const pointId = properties.id
     const addressFrame = pointId
-      ? `<turbo-frame id="point-address-${pointId}" src="/points/${pointId}/address" loading="lazy"></turbo-frame>`
+      ? `<turbo-frame id="point-address-${pointId}" src="${appUrl(`/points/${pointId}/address`)}" loading="lazy"></turbo-frame>`
       : ""
     return `
       <div class="space-y-2">

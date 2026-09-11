@@ -4,6 +4,7 @@ import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { RecentPointLayer } from "maps_maplibre/layers/recent_point_layer"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
+import { appUrl } from "services/app_url"
 
 export default class extends Controller {
   static values = {
@@ -64,7 +65,7 @@ export default class extends Controller {
   }
 
   async loadInitialPoint() {
-    const res = await fetch(`/api/v1/shared/${this.linkIdValue}/points`)
+    const res = await fetch(appUrl(`/api/v1/shared/${this.linkIdValue}/points`))
     if (!res.ok) return
     const points = await res.json()
     if (!points.length) {
@@ -79,7 +80,7 @@ export default class extends Controller {
 
   subscribe() {
     this.consumer = createConsumer(
-      `/cable?share_id=${encodeURIComponent(this.linkIdValue)}`,
+      appUrl(`/cable?share_id=${encodeURIComponent(this.linkIdValue)}`),
     )
     this.subscription = this.consumer.subscriptions.create(
       { channel: "SharedLocationChannel", share_id: this.linkIdValue },
@@ -129,7 +130,7 @@ export default class extends Controller {
       },
       "recent-point-pulse",
     )
-    const res = await fetch(`/api/v1/shared/${this.linkIdValue}/route`)
+    const res = await fetch(appUrl(`/api/v1/shared/${this.linkIdValue}/route`))
     if (!res.ok) return
     const points = await res.json()
     this.routeCoords = points.map(([lon, lat]) => [lon, lat])

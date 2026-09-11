@@ -173,6 +173,59 @@ timeline.example.com {
 ```
 timeline.example.com is an example, use your own (sub) domain.
 
+### Serving Dawarich under a subpath
+
+Dawarich can also run under a path of an existing domain, for example `https://example.com/dawarich`, instead of on its own (sub)domain.
+
+Set `RAILS_RELATIVE_URL_ROOT` to the path on **both** the `dawarich_app` and `dawarich_sidekiq` services. The value starts with a slash and has no trailing slash:
+
+```yaml
+dawarich_app:
+    ...
+    environment:
+      ...
+      RAILS_RELATIVE_URL_ROOT: /dawarich
+```
+
+Dawarich then answers only under that path, for example `http://127.0.0.1:3000/dawarich/`. The healthcheck in the provided `docker-compose.yml` follows the variable, so it needs no change. Leave the variable unset to serve Dawarich at the domain root.
+
+If you run Dawarich without the Docker image and precompile assets yourself, set the variable for `rails assets:precompile` as well, so that stylesheets load their fonts from under the path.
+
+The reverse proxy must pass the path to Dawarich unchanged. Do not strip it.
+
+Nginx:
+
+```nginx
+location /dawarich/ {
+	proxy_http_version 1.1;
+	proxy_set_header Upgrade $http_upgrade;
+	proxy_set_header Connection "upgrade";
+	proxy_set_header Host $http_host;
+	proxy_set_header X-Real-IP $remote_addr;
+	proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+	proxy_set_header X-Forwarded-Proto $scheme;
+
+	proxy_pass http://127.0.0.1:3000;
+}
+```
+
+`proxy_pass` has no path after the port, so nginx forwards `/dawarich/...` as it is. The `Upgrade` and `Connection` headers let the live map connect its WebSocket at `/dawarich/cable`.
+
+Caddy:
+
+```caddy
+example.com {
+	redir /dawarich /dawarich/
+	reverse_proxy /dawarich/* dawarich_app:3000
+}
+```
+
+Use `reverse_proxy` with a path matcher (or `handle`), not `handle_path`: `handle_path` strips the prefix.
+
+Mobile apps and trackers need URLs that include the path: `https://example.com/dawarich` as the server address in Dawarich for iOS, or `https://example.com/dawarich/api/v1/owntracks/points?api_key=...` in OwnTracks.
+
+If you sign in with OIDC, include the path in `APPLICATION_URL` (or set `OIDC_REDIRECT_URI` directly), so that the callback is `https://example.com/dawarich/users/auth/openid_connect/callback`.
+
 ---
 
 Please note that the above configurations are just examples and that they contain the minimum configuration needed to make the reverse proxy work properly. Feel free to adjust the configuration to your own needs.

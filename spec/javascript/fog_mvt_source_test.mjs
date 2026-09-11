@@ -40,7 +40,7 @@ const pointsMvtSource = await readFile(
 
 const stripImports = (source) =>
   source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const stubs = "class FogHexagonSource { }\n"
+const stubs = "class FogHexagonSource { }\nconst appUrl = (path) => path\n"
 const combined =
   stubs +
   [

@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Dawarich can be served under a URL subpath such as `https://example.com/dawarich` by setting `RAILS_RELATIVE_URL_ROOT` on the app and Sidekiq containers. Deployments at the domain root are unchanged.
+
 ### Fixed
 
 - Yearly digests for cloud-Lite users read seasonality and country time spent from the same data window as monthly distances and toponyms.

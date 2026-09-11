@@ -3,6 +3,7 @@
 // - trips/edit
 
 import { translate } from "i18n"
+import { appUrl } from "services/app_url"
 import BaseController from "./base_controller"
 
 export default class extends BaseController {
@@ -96,7 +97,9 @@ export default class extends BaseController {
           let hasMorePages = true
           while (hasMorePages) {
             const paginatedParams = `${params}&page=${currentPage}&per_page=${perPage}`
-            const response = await fetch(`/api/v1/points?${paginatedParams}`)
+            const response = await fetch(
+              appUrl(`/api/v1/points?${paginatedParams}`),
+            )
             const data = await response.json()
 
             allPoints = [...allPoints, ...data]

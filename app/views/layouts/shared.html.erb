@@ -7,6 +7,9 @@
   <title><%= content_for?(:title) ? yield(:title) : t('.shared_on_dawarich') %></title>
   <%= csrf_meta_tags %>
   <%= csp_meta_tag %>
+  <% if config.relative_url_root.present? %>
+    <meta name="relative-url-root" content="<%= config.relative_url_root %>">
+  <% end %>
   <%= render 'application/favicon' %>
   <%= render 'layouts/pwa_meta' %>
   <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>

@@ -4,6 +4,7 @@ import { Toast } from "maps_maplibre/components/toast"
 import { styleDocumentFailed } from "maps_maplibre/utils/basemap_url"
 import { registerRTLTextPlugin } from "maps_maplibre/utils/rtl_text_plugin"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
+import { appUrl } from "services/app_url"
 
 /**
  * Handles map initialization for Maps V2
@@ -53,7 +54,7 @@ export class MapInitializer {
         // the path alone would hand that host the user's api key.
         if (
           requestUrl.origin !== window.location.origin ||
-          !requestUrl.pathname.startsWith("/api/v1/tiles/") ||
+          !requestUrl.pathname.startsWith(appUrl("/api/v1/tiles/")) ||
           !apiKey
         ) {
           return { url: requestUrl.toString() }

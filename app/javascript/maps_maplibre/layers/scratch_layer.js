@@ -1,3 +1,4 @@
+import { appUrl } from "services/app_url"
 import { BaseLayer } from "./base_layer"
 
 /**
@@ -86,7 +87,7 @@ export class ScratchLayer extends BaseLayer {
           headers.Authorization = `Bearer ${this.apiClient.apiKey}`
         }
 
-        const response = await fetch("/api/v1/countries/borders.json", {
+        const response = await fetch(appUrl("/api/v1/countries/borders.json"), {
           headers: headers,
         })
 

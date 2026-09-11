@@ -1,4 +1,5 @@
 import { translate } from "i18n"
+import { appUrl } from "services/app_url"
 
 const DEBOUNCE_MS = 250
 const DEFAULT_RADIUS_KM = 1.0
@@ -62,7 +63,7 @@ export class VisitPlaceSearch {
     if (query.length >= 2) params.set("q", query)
 
     try {
-      const res = await fetch(`/api/v1/places/search?${params}`, {
+      const res = await fetch(appUrl(`/api/v1/places/search?${params}`), {
         headers: { Accept: "application/json", ...this.authHeaders() },
         signal: this.abortController.signal,
       })
@@ -125,9 +126,12 @@ export class VisitPlaceSearch {
       if (place.id) {
         await this.patchVisit({ place_id: place.id })
       } else {
-        await this.postJson(`/api/v1/visits/${this.visitId}/select_place`, {
-          photon: place,
-        })
+        await this.postJson(
+          appUrl(`/api/v1/visits/${this.visitId}/select_place`),
+          {
+            photon: place,
+          },
+        )
       }
       this.done()
     } catch (_e) {
@@ -146,7 +150,7 @@ export class VisitPlaceSearch {
 
   async createPlace(query) {
     try {
-      const created = await this.postJson("/api/v1/places", {
+      const created = await this.postJson(appUrl("/api/v1/places"), {
         place: {
           name: query,
           latitude: this.lat,
@@ -166,7 +170,7 @@ export class VisitPlaceSearch {
   }
 
   patchVisit(visitAttrs) {
-    return this.sendJson("PATCH", `/api/v1/visits/${this.visitId}`, {
+    return this.sendJson("PATCH", appUrl(`/api/v1/visits/${this.visitId}`), {
       visit: visitAttrs,
     })
   }

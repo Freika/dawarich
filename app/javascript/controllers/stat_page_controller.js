@@ -2,6 +2,7 @@ import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
+import { appUrl } from "services/app_url"
 import BaseController from "./base_controller"
 
 const HEATMAP_PAINT = {
@@ -136,7 +137,9 @@ export default class extends BaseController {
 
     while (true) {
       const response = await fetch(
-        `/api/v1/points?slim=true&start_at=${encodeURIComponent(startDate)}&end_at=${encodeURIComponent(endDate)}&per_page=1000&page=${page}`,
+        appUrl(
+          `/api/v1/points?slim=true&start_at=${encodeURIComponent(startDate)}&end_at=${encodeURIComponent(endDate)}&per_page=1000&page=${page}`,
+        ),
         {
           method: "GET",
           headers: {

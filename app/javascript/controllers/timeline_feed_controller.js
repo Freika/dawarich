@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
+import { appUrl } from "services/app_url"
 
 /**
  * Timeline Feed Controller (Unified Timeline)
@@ -343,7 +344,7 @@ export default class extends Controller {
     params.set("end_at", endAtLocal)
     params.set("panel", "timeline")
     params.set("date", date)
-    window.history.pushState({}, "", `/map/v2?${params.toString()}`)
+    window.history.pushState({}, "", appUrl(`/map/v2?${params.toString()}`))
 
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {
@@ -371,7 +372,9 @@ export default class extends Controller {
     const calendarFrame = document.getElementById("timeline-calendar-frame")
     if (calendarFrame && !cell) {
       const month = date.slice(0, 7)
-      const newSrc = `/map/timeline_feeds/calendar?month=${encodeURIComponent(month)}`
+      const newSrc = appUrl(
+        `/map/timeline_feeds/calendar?month=${encodeURIComponent(month)}`,
+      )
       if (calendarFrame.getAttribute("src") !== newSrc) {
         calendarFrame.setAttribute("src", newSrc)
       }
@@ -380,9 +383,11 @@ export default class extends Controller {
     if (this.hasVisitListFrameTarget) {
       const start = `${date}T00:00:00`
       const end = `${date}T23:59:59`
-      const newSrc = `/map/timeline_feeds?start_at=${encodeURIComponent(
-        start,
-      )}&end_at=${encodeURIComponent(end)}`
+      const newSrc = appUrl(
+        `/map/timeline_feeds?start_at=${encodeURIComponent(
+          start,
+        )}&end_at=${encodeURIComponent(end)}`,
+      )
       // Force-fetch even when the URL appears identical (cache-control or
       // an in-flight request can otherwise leave the frame showing stale
       // entries when the user nudges day-by-day with the arrow keys).
@@ -513,7 +518,7 @@ export default class extends Controller {
     if (isHidden) {
       frame.classList.remove("hidden")
       if (!frame.getAttribute("src")) {
-        frame.src = `/map/timeline_feeds/${trackId}/track_info`
+        frame.src = appUrl(`/map/timeline_feeds/${trackId}/track_info`)
       }
       if (chevron) chevron.style.transform = "rotate(180deg)"
 

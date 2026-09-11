@@ -40,7 +40,6 @@ class Visits::Suggest
   private
 
   ERROR_DEDUP_WINDOW = 1.hour
-  TIMELINE_PATH = '/map/v2?panel=timeline&date=today&status=suggested'
 
   # Detection replaces machine rows wholesale, so a debounced re-run over an
   # ongoing stay "creates" visits every few minutes. Only a visit that does
@@ -88,9 +87,13 @@ class Visits::Suggest
         title: I18n.t('services.visits.suggest.new_visits_suggested'),
         content: I18n.t(
           'services.visits.suggest.new_visits_suggested_message',
-          start_at: Time.zone.at(start_at), end_at: Time.zone.at(end_at), url: TIMELINE_PATH
+          start_at: Time.zone.at(start_at), end_at: Time.zone.at(end_at), url: timeline_path
         )
       )
     end
+  end
+
+  def timeline_path
+    "#{Rails.application.routes.url_helpers.map_v2_path}?panel=timeline&date=today&status=suggested"
   end
 end

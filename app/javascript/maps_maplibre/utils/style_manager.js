@@ -1,4 +1,5 @@
 import { translate } from "i18n"
+import { appUrl } from "services/app_url"
 /**
  * Style Manager for MapLibre GL styles
  * Loads and configures local map styles with dynamic tile source
@@ -43,7 +44,9 @@ async function loadStyleFile(styleName) {
   }
 
   // Fetch the style file from the public assets
-  const response = await fetch(`/maps_maplibre/styles/${styleName}.json`)
+  const response = await fetch(
+    appUrl(`/maps_maplibre/styles/${styleName}.json`),
+  )
   if (!response.ok) {
     throw new Error(`Failed to load style: ${styleName} (${response.status})`)
   }

@@ -1,6 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
+import { appUrl } from "services/app_url"
 
 /**
  * Controller for visit creation modal in Maps V2
@@ -159,8 +160,8 @@ export default class extends Controller {
 
     try {
       const url = isEdit
-        ? `/api/v1/visits/${this.editingVisitId}`
-        : "/api/v1/visits"
+        ? appUrl(`/api/v1/visits/${this.editingVisitId}`)
+        : appUrl("/api/v1/visits")
       const method = isEdit ? "PATCH" : "POST"
 
       const response = await fetch(url, {

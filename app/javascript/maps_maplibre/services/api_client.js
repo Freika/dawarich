@@ -1,5 +1,6 @@
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
+import { appUrl } from "services/app_url"
 
 /**
  * API client for Maps V2
@@ -8,7 +9,7 @@ import { Toast } from "maps_maplibre/components/toast"
 export class ApiClient {
   constructor(apiKey, importId = null) {
     this.apiKey = apiKey
-    this.baseURL = "/api/v1"
+    this.baseURL = appUrl("/api/v1")
     this.importId = importId
   }
 

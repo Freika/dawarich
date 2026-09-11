@@ -1,3 +1,5 @@
+import { appUrl } from "services/app_url"
+
 /**
  * Location Search Service
  * Handles API calls for location search (suggestions and visits)
@@ -24,7 +26,7 @@ export class LocationSearchService {
 
     try {
       const response = await fetch(
-        `/api/v1/locations/suggestions?q=${encodeURIComponent(query)}`,
+        appUrl(`/api/v1/locations/suggestions?q=${encodeURIComponent(query)}`),
         {
           method: "GET",
           headers: this.baseHeaders,
@@ -72,7 +74,7 @@ export class LocationSearchService {
         address,
       })
 
-      const response = await fetch(`/api/v1/locations?${params}`, {
+      const response = await fetch(appUrl(`/api/v1/locations?${params}`), {
         method: "GET",
         headers: this.baseHeaders,
       })
@@ -96,7 +98,7 @@ export class LocationSearchService {
    */
   async createVisit(visitData) {
     try {
-      const response = await fetch("/api/v1/visits", {
+      const response = await fetch(appUrl("/api/v1/visits"), {
         method: "POST",
         headers: this.baseHeaders,
         body: JSON.stringify({ visit: visitData }),

@@ -8,6 +8,7 @@ import {
   tiledPointsActive,
 } from "maps_maplibre/utils/settings_manager"
 import { applySpeedColors } from "maps_maplibre/utils/speed_colors"
+import { appUrl } from "services/app_url"
 
 /**
  * Tracks loading counts across multiple data sources
@@ -480,7 +481,9 @@ export class DataLoader {
         )
         .map((photo) => {
           // Construct thumbnail URL
-          const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`
+          const thumbnailUrl = appUrl(
+            `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKey}&source=${photo.source}`,
+          )
 
           return {
             type: "Feature",

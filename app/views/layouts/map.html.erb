@@ -7,6 +7,9 @@
     <%= action_cable_meta_tag %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <% if config.relative_url_root.present? %>
+      <meta name="relative-url-root" content="<%= config.relative_url_root %>">
+    <% end %>
 
 
     <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>

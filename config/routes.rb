@@ -38,7 +38,7 @@ Rails.application.routes.draw do
   # to the current user, locking out visitors who later become authorized.
   match '/sidekiq' => redirect(status: 302) { |_, request|
                         request.flash[:error] = 'You are not authorized to perform this action.'
-                        '/'
+                        ''
                       }, via: :get
 
   namespace :settings do
@@ -117,7 +117,7 @@ Rails.application.routes.draw do
   # once the redesign is known-stable so browsers cache the redirect.
   get '/visits', to: redirect(status: 302) { |_params, req|
     status = req.params[:status]
-    base = '/map/v2?panel=timeline&date=today'
+    base = 'map/v2?panel=timeline&date=today'
     status ? "#{base}&status=#{status}" : "#{base}&status=confirmed"
   }
   resources :visits, only: %i[update destroy] do
@@ -212,7 +212,7 @@ Rails.application.routes.draw do
       get :details
     end
   end
-  get 'stats/:year', to: 'stats#show', constraints: { year: /\d{4}/ }
+  get 'stats/:year', to: 'stats#show', as: :year_stats, constraints: { year: /\d{4}/ }
   get 'stats/:year/:month', to: 'stats#month', constraints: { year: /\d{4}/, month: /(0?[1-9]|1[0-2])/ }
   put 'stats/:year/:month/update',
       to: 'stats#update',
@@ -273,7 +273,7 @@ Rails.application.routes.draw do
 
   # Map namespace with versioning
   namespace :map do
-    get '/v1', to: redirect(path: '/map/v2')
+    get '/v1', to: redirect(path: 'map/v2')
     get '/v2', to: 'maplibre#index', as: :v2
     resources :timeline_feeds, only: [:index] do
       get :track_info, on: :member
@@ -284,7 +284,7 @@ Rails.application.routes.draw do
 
   # Backward compatibility redirects
   get '/map', to: 'map/maplibre#index'
-  get '/maps/v2', to: redirect('/map/v2')
+  get '/maps/v2', to: redirect('map/v2')
 
   namespace :api do
     namespace :v1 do

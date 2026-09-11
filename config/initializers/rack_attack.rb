@@ -138,7 +138,7 @@ end
 # Rails routes accept an optional (.:format) suffix, while Rack sees the raw
 # path before routing. Share counters across formats without matching child paths.
 def throttle_path(request)
-  request.path.sub(%r{\.[^/.]+\z}, '')
+  request.path_info.sub(%r{\.[^/.]+\z}, '')
 end
 
 def request_api_key(request)
@@ -174,10 +174,10 @@ end
 Rack::Attack.throttle('api/token',
                       limit: proc { |req| req.env['rack.attack.api_rate_limit'] || 1_000 },
                       period: 1.hour) do |req|
-  next unless req.path.start_with?('/api/')
+  next unless req.path_info.start_with?('/api/')
   # Tiles burst 10–30 requests per map pan and would burn this quota in
   # minutes; they run on their own api/tiles throttle below.
-  next if req.path.start_with?('/api/v1/tiles/')
+  next if req.path_info.start_with?('/api/v1/tiles/')
   next if DawarichSettings.self_hosted?
 
   api_key = request_api_key(req)
@@ -197,7 +197,7 @@ end
 Rack::Attack.throttle('api/tiles',
                       limit: proc { Rack::Attack.tiles_limit },
                       period: 1.hour) do |req|
-  next unless req.path.start_with?('/api/v1/tiles/')
+  next unless req.path_info.start_with?('/api/v1/tiles/')
   next if DawarichSettings.self_hosted?
 
   api_key = request_api_key(req)
@@ -209,7 +209,7 @@ end
 Rack::Attack.throttle('api/tiles_burst',
                       limit: proc { Rack::Attack.tiles_burst_limit },
                       period: 30.seconds) do |req|
-  next unless req.path.start_with?('/api/v1/tiles/')
+  next unless req.path_info.start_with?('/api/v1/tiles/')
   next if DawarichSettings.self_hosted?
 
   api_key = request_api_key(req)
@@ -417,7 +417,7 @@ end
 Rack::Attack.throttle('admin/flipper', limit: 30, period: 5.minutes) do |req|
   next if DawarichSettings.self_hosted?
 
-  req.ip if req.path.start_with?('/admin/flipper')
+  req.ip if req.path_info.start_with?('/admin/flipper')
 end
 
 # Shared-link viewer + public shared API: anonymous traffic, no API key.
@@ -428,7 +428,7 @@ Rack::Attack.throttle('shared_links/viewer',
                       period: 1.minute) do |req|
   next if DawarichSettings.self_hosted?
 
-  req.ip if req.path.match?(%r{\A/s/[^/]+\z}) || req.path.start_with?('/api/v1/shared/')
+  req.ip if req.path_info.match?(%r{\A/s/[^/]+\z}) || req.path_info.start_with?('/api/v1/shared/')
 end
 
 # Anonymous share WebSocket upgrades (/cable?share_id=...), keyed on IP. Matched
@@ -452,12 +452,12 @@ end
 # Prevents abuse of the public pending-import surface (no API key required,
 # accepts up to 100MB files).
 Rack::Attack.throttle('api/v1/imports/pending CREATE', limit: 60, period: 1.hour) do |req|
-  req.ip if req.post? && req.path.start_with?('/api/v1/imports/pending')
+  req.ip if req.post? && req.path_info.start_with?('/api/v1/imports/pending')
 end
 
 # Companion throttle for the signup claim path that consumes ?import_ticket=.
 Rack::Attack.throttle('imports/claim attempts', limit: 30, period: 1.hour) do |req|
-  req.ip if req.get? && req.path.start_with?('/users/sign_up') && safe_params(req)['import_ticket'].present?
+  req.ip if req.get? && req.path_info.start_with?('/users/sign_up') && safe_params(req)['import_ticket'].present?
 end
 
 # The oversized-JSON-body guard answers in the same JSON envelope the mobile

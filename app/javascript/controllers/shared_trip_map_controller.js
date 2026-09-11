@@ -3,6 +3,7 @@ import maplibregl from "maplibre-gl"
 import { DayRoutesLayer } from "maps_maplibre/layers/day_routes_layer"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
+import { appUrl } from "services/app_url"
 
 export default class extends Controller {
   static values = {
@@ -90,7 +91,7 @@ export default class extends Controller {
   }
 
   async fetchPoints() {
-    const res = await fetch(`/api/v1/shared/${this.linkIdValue}/points`)
+    const res = await fetch(appUrl(`/api/v1/shared/${this.linkIdValue}/points`))
     if (!res.ok) return []
     return res.json()
   }
@@ -288,7 +289,7 @@ export default class extends Controller {
   }
 
   async loadPhotos() {
-    const res = await fetch(`/api/v1/shared/${this.linkIdValue}/photos`)
+    const res = await fetch(appUrl(`/api/v1/shared/${this.linkIdValue}/photos`))
     if (!res.ok) return
     const photos = await res.json()
 

@@ -4,6 +4,7 @@
  */
 
 import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
+import { appUrl } from "services/app_url"
 
 // Route fallback matches Map v1's blue; track color matches the backend
 // Tracks::GeojsonSerializer::DEFAULT_COLOR, keep them in sync.
@@ -243,7 +244,7 @@ export class SettingsManager {
     }
 
     try {
-      const response = await fetch("/api/v1/settings", {
+      const response = await fetch(appUrl("/api/v1/settings"), {
         headers: {
           Authorization: `Bearer ${SettingsManager.apiKey}`,
           "Content-Type": "application/json",
@@ -418,7 +419,7 @@ export class SettingsManager {
         backendSettings.maps = mapsPayload
       }
 
-      const response = await fetch("/api/v1/settings", {
+      const response = await fetch(appUrl("/api/v1/settings"), {
         method: "PATCH",
         headers: {
           Authorization: `Bearer ${SettingsManager.apiKey}`,

@@ -87,6 +87,8 @@ services:
       # One preloaded Puma worker is plenty for a household instance and
       # halves idle memory. Raise for busier instances.
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+      ### To serve Dawarich under a subpath (see docs/how_to_setup_reverse_proxy.md), set this on dawarich_sidekiq too.
+      # RAILS_RELATIVE_URL_ROOT: /dawarich
       ### OTP encryption keys are required if you want to use 2FA
       # OTP_ENCRYPTION_PRIMARY_KEY: ${OTP_ENCRYPTION_PRIMARY_KEY:-}
       # OTP_ENCRYPTION_DETERMINISTIC_KEY: ${OTP_ENCRYPTION_DETERMINISTIC_KEY:-}
@@ -97,7 +99,7 @@ services:
         max-size: ${LOG_MAX_SIZE:-100m}
         max-file: ${LOG_MAX_FILE:-5}
     healthcheck:
-      test: [ "CMD-SHELL", "wget -qO - http://127.0.0.1:3000/api/v1/health | grep -q '\"status\"\\s*:\\s*\"ok\"'" ]
+      test: [ "CMD-SHELL", "wget -qO - http://127.0.0.1:3000$${RAILS_RELATIVE_URL_ROOT}/api/v1/health | grep -q '\"status\"\\s*:\\s*\"ok\"'" ]
       interval: 10s
       retries: 30
       start_period: 30s
@@ -150,6 +152,8 @@ services:
       RAILS_LOG_TO_STDOUT: ${RAILS_LOG_TO_STDOUT:-true}
       SELF_HOSTED: ${SELF_HOSTED:-true}
       STORE_GEODATA: ${STORE_GEODATA:-true}
+      ### To serve Dawarich under a subpath, use the same value as on dawarich_app.
+      # RAILS_RELATIVE_URL_ROOT: /dawarich
       ### OTP encryption keys are required if you want to use 2FA
       # OTP_ENCRYPTION_PRIMARY_KEY: ${OTP_ENCRYPTION_PRIMARY_KEY:-}
       # OTP_ENCRYPTION_DETERMINISTIC_KEY: ${OTP_ENCRYPTION_DETERMINISTIC_KEY:-}

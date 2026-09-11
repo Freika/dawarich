@@ -9,7 +9,7 @@ const source = await readFile(
   ),
   "utf8",
 )
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(source.replace('import { appUrl } from "services/app_url"', "const appUrl = (path) => path")).toString("base64")}`
 const { buildTripGeojson, MapPageProvider, TripProvider } = await import(
   moduleUrl
 )

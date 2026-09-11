@@ -63,7 +63,7 @@
           <h2 class="card-title"><%= t('.background_jobs_dashboard') %></h2>
           <p><%= t('.this_will_open_the_background_jobs_dashboard_in_a_new') %></p>
           <div class="card-actions justify-end">
-            <%= link_to t('.open_dashboard'), '/sidekiq', target: '_blank', class: 'btn btn-primary' %>
+            <%= link_to t('.open_dashboard'), sidekiq_web_path, target: '_blank', class: 'btn btn-primary' %>
           </div>
         </div>
       </div>

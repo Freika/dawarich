@@ -13,6 +13,7 @@ import {
   tiledPointsActive,
 } from "maps_maplibre/utils/settings_manager"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
+import { appUrl } from "services/app_url"
 
 // Polling interval for recalculation status (5 seconds)
 const RECALCULATION_POLL_INTERVAL = 5000
@@ -471,7 +472,7 @@ export class SettingsController {
       }
 
       const response = await fetch(
-        "/api/v1/settings/transportation_recalculation_status",
+        appUrl("/api/v1/settings/transportation_recalculation_status"),
         {
           headers: {
             Authorization: `Bearer ${apiKey}`,
@@ -1252,13 +1253,16 @@ export class SettingsController {
     }
 
     try {
-      const response = await fetch("/api/v1/points/reapply_anomaly_filter", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
+      const response = await fetch(
+        appUrl("/api/v1/points/reapply_anomaly_filter"),
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            "Content-Type": "application/json",
+          },
         },
-      })
+      )
 
       if (!response.ok) {
         throw new Error(`Request failed: ${response.status}`)
@@ -1287,7 +1291,7 @@ export class SettingsController {
     }
 
     try {
-      const response = await fetch("/api/v1/recalculations", {
+      const response = await fetch(appUrl("/api/v1/recalculations"), {
         method: "POST",
         headers: {
           Authorization: `Bearer ${apiKey}`,

@@ -35,7 +35,9 @@ class Trips::Photos
   def photo_thumbnail(asset)
     {
       id: asset[:id],
-      url: "/api/v1/photos/#{asset[:id]}/thumbnail.jpg?api_key=#{user.api_key}&source=#{asset[:source]}",
+      url: Rails.application.routes.url_helpers.thumbnail_api_v1_photo_path(
+        asset[:id], format: :jpg, api_key: user.api_key, source: asset[:source]
+      ),
       source: asset[:source],
       orientation: asset[:orientation],
       taken_at: asset[:capturedAt] || asset[:localDateTime]

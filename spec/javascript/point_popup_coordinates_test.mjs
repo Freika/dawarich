@@ -18,6 +18,7 @@ const { pointsToGeoJSON } = await loadModule(
 const { EventHandlers } = await loadModule(
   "../../app/javascript/controllers/maps/maplibre/event_handlers.js",
   `
+    const appUrl = (path) => path
     const translate = (key) => key
     const formatTimestamp = (value) => String(value)
     const formatSpeed = (value) => String(value)

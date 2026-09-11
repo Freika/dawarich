@@ -11,6 +11,7 @@ import { ApiClient } from "maps_maplibre/services/api_client"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { flightWindows, maskLines } from "maps_maplibre/utils/flight_mask"
 import { buildTripGeojson, TripProvider } from "poster_studio/data/providers"
+import { appUrl } from "services/app_url"
 import Flash from "./flash_controller"
 
 /**
@@ -504,7 +505,9 @@ export default class extends Controller {
     return {
       type: "FeatureCollection",
       features: photos.map((photo) => {
-        const thumbnailUrl = `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKeyValue}&source=${photo.source}`
+        const thumbnailUrl = appUrl(
+          `/api/v1/photos/${photo.id}/thumbnail.jpg?api_key=${this.apiKeyValue}&source=${photo.source}`,
+        )
         return {
           type: "Feature",
           geometry: {

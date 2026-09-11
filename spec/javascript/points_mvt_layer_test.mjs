@@ -33,7 +33,13 @@ const markerThemeSource = await readFile(
 
 const stripImports = (source) =>
   source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const combined = [baseLayerSource, heatmapSource, markerThemeSource, mvtSource]
+const combined = [
+  "const appUrl = (path) => path",
+  baseLayerSource,
+  heatmapSource,
+  markerThemeSource,
+  mvtSource,
+]
   .map(stripImports)
   .join("\n")
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combined).toString("base64")}`
