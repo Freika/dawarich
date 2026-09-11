@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_11_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -423,6 +423,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
     t.index ["user_id"], name: "index_posters_on_user_id"
   end
 
+  create_table "push_subscriptions", force: :cascade do |t|
+    t.string "api_key_digest", null: false
+    t.string "context_id", null: false
+    t.datetime "created_at", null: false
+    t.string "environment"
+    t.datetime "expires_at", null: false
+    t.string "installation_id", null: false
+    t.string "provider", null: false
+    t.string "push_token", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["provider", "environment", "push_token"], name: "index_push_subscriptions_on_delivery_token", unique: true, nulls_not_distinct: true
+    t.index ["user_id", "installation_id"], name: "index_push_subscriptions_on_user_id_and_installation_id", unique: true
+    t.index ["user_id"], name: "index_push_subscriptions_on_user_id"
+  end
+
   create_table "route_videos", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "expired_at"
@@ -696,6 +712,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"
   add_foreign_key "posters", "users"
+  add_foreign_key "push_subscriptions", "users"
   add_foreign_key "route_videos", "users"
   add_foreign_key "service_settings", "users"
   add_foreign_key "shared_links", "users", on_delete: :cascade

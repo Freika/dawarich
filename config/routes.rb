@@ -427,6 +427,8 @@ Rails.application.routes.draw do
         end
       end
 
+      resources :push_subscriptions, only: %i[update destroy]
+
       resources :notes, only: %i[index show create update destroy]
       namespace :shared do
         get ':id/trip',   to: 'trips#show'
