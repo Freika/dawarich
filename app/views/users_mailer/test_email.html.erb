@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <p><%= t('.body') %></p>
+
+    <p><%= t('.sent_at') %>: <%= l(Time.current.in_time_zone(@user.timezone), format: :long) rescue Time.current %></p>
+  </div>
+</body>
+</html>
