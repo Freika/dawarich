@@ -119,4 +119,42 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
       expect(connection.current_share).to eq(share)
     end
   end
+  context 'with a family API bearer credential' do
+    let(:family) { create(:family, creator: owner) }
+
+    before do
+      create(:family_membership, user: owner, family: family, role: :owner)
+      allow(DawarichSettings).to receive(:family_feature_available_for?).and_return(true)
+    end
+
+    it 'only identifies the restricted mobile family principal' do
+      connect headers: { 'Authorization' => "Bearer #{owner.api_key}" }
+      expect(connection.family_api_user).to eq(owner)
+      expect(connection.current_user).to be_nil
+      expect(connection.current_share).to be_nil
+    end
+
+    it 'does not accept API credentials in the URL' do
+      expect { connect params: { api_key: owner.api_key } }.to have_rejected_connection
+    end
+
+    it 'rejects a family without entitlement' do
+      allow(DawarichSettings).to receive(:family_feature_available_for?).and_return(false)
+      expect { connect headers: { 'Authorization' => "Bearer #{owner.api_key}" } }.to have_rejected_connection
+    end
+
+    it 'rechecks key rotation rather than retaining authenticated access forever' do
+      connect headers: { 'Authorization' => "Bearer #{owner.api_key}" }
+      owner.update!(api_key: SecureRandom.hex(16))
+      expect(connection.authorized_family_api_user).to be_nil
+    end
+
+    it 'reduces mobile heartbeat traffic to one ping per thirty seconds' do
+      connect headers: { 'Authorization' => "Bearer #{owner.api_key}" }
+      allow(connection).to receive(:transmit)
+      allow(Process).to receive(:clock_gettime).with(Process::CLOCK_MONOTONIC).and_return(100, 103, 130)
+      3.times { connection.beat }
+      expect(connection).to have_received(:transmit).twice
+    end
+  end
 end

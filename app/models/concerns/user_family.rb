@@ -8,6 +8,7 @@ module UserFamily
   # - Users::Destroy service: validates before hard-deleting
 
   included do
+    after_update_commit :broadcast_family_sharing_change, if: :saved_change_to_settings?
     has_one :family_membership, dependent: :destroy, class_name: 'Family::Membership'
     has_one :family, through: :family_membership
     has_one :created_family, class_name: 'Family', foreign_key: 'creator_id', inverse_of: :creator, dependent: :destroy
@@ -89,6 +90,17 @@ module UserFamily
     end
 
     update!(settings: current_settings)
+  end
+
+  def broadcast_family_sharing_change
+    before, after = saved_change_to_settings
+    return if before&.dig('family', 'location_sharing') == after&.dig('family', 'location_sharing')
+    return unless in_family?
+
+    FamilyUpdatesChannel.broadcast_to(family, type: 'sharing_changed')
+  rescue StandardError => e
+    # A realtime outage must not roll back or fail a user's sharing preference.
+    ExceptionReporter.call(e, 'Failed to broadcast family sharing change')
   end
 
   def family_sharing_expires_at
