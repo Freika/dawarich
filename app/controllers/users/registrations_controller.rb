@@ -178,23 +178,16 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def check_registration_allowed
-    return unless self_hosted_mode?
+    return if registration_policy.allowed?
 
-    # When OIDC is enabled and email/password registration is disabled,
-    # block all email/password registration including family invitations
-    if oidc_only_mode?
-      alert = I18n.t('controllers.users.registrations.email_password_registration_is_disabled_please_use_oidc_to_sign')
-      redirect_to root_path,
-                  alert: alert
-      return
-    end
+    message_key = if registration_policy.oidc_only?
+                    'controllers.users.registrations.email_password_registration_is_disabled_please_use_oidc_to_sign'
+                  else
+                    'controllers.users.registrations.' \
+                      'registration_is_not_available_please_contact_your_administrator_for_acce'
+                  end
 
-    return if valid_invitation_token?
-    return if email_password_registration_allowed?
-
-    alert = I18n.t(
-      'controllers.users.registrations.registration_is_not_available_please_contact_your_administrator_for_acce'
-    )
+    alert = I18n.t(message_key)
     redirect_to root_path, alert: alert
   end
 
@@ -204,12 +197,12 @@ class Users::RegistrationsController < Devise::RegistrationsController
     @invitation = Family::Invitation.find_by(token: invitation_token)
   end
 
-  def self_hosted_mode?
-    DawarichSettings.self_hosted?
-  end
-
   def valid_invitation_token?
     @invitation&.can_be_accepted?
+  end
+
+  def registration_policy
+    @registration_policy ||= Auth::EmailPasswordRegistrationPolicy.new(invitation_valid: valid_invitation_token?)
   end
 
   def invitation_token
@@ -255,13 +248,5 @@ class Users::RegistrationsController < Devise::RegistrationsController
     user.update_columns(
       settings: user.settings.merge('signup_intent' => intent)
     )
-  end
-
-  def email_password_registration_allowed?
-    DawarichSettings.registration_enabled?
-  end
-
-  def oidc_only_mode?
-    DawarichSettings.oidc_enabled? && !email_password_registration_allowed?
   end
 end
