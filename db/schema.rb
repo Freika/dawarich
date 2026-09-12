@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_11_150000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -326,6 +326,89 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
     t.index ["user_id"], name: "index_places_on_user_id"
   end
 
+  create_table "planned_accommodations", force: :cascade do |t|
+    t.string "address"
+    t.time "check_in_at"
+    t.time "check_out_at"
+    t.datetime "created_at", null: false
+    t.date "ends_on"
+    t.decimal "latitude", precision: 10, scale: 6
+    t.decimal "longitude", precision: 10, scale: 6
+    t.string "name", null: false
+    t.text "notes"
+    t.date "starts_on"
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id"], name: "index_planned_accommodations_on_trip_id"
+  end
+
+  create_table "planned_day_notes", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.time "noted_at"
+    t.bigint "planned_day_id", null: false
+    t.integer "position", null: false
+    t.datetime "updated_at", null: false
+    t.index ["planned_day_id", "position"], name: "index_planned_day_notes_on_planned_day_id_and_position", unique: true
+    t.index ["planned_day_id"], name: "index_planned_day_notes_on_planned_day_id"
+  end
+
+  create_table "planned_days", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "date", null: false
+    t.text "notes"
+    t.integer "position", null: false
+    t.string "title"
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id", "date"], name: "index_planned_days_on_trip_id_and_date", unique: true
+    t.index ["trip_id"], name: "index_planned_days_on_trip_id"
+  end
+
+  create_table "planned_reservations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "ends_at"
+    t.string "location"
+    t.text "notes"
+    t.bigint "planned_day_id"
+    t.string "reservation_type"
+    t.datetime "starts_at"
+    t.string "status"
+    t.string "title", null: false
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["planned_day_id"], name: "index_planned_reservations_on_planned_day_id"
+    t.index ["trip_id"], name: "index_planned_reservations_on_trip_id"
+  end
+
+  create_table "planned_stops", force: :cascade do |t|
+    t.string "address"
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.integer "duration_minutes"
+    t.time "ends_at"
+    t.decimal "latitude", precision: 10, scale: 6
+    t.decimal "longitude", precision: 10, scale: 6
+    t.string "name", null: false
+    t.text "notes"
+    t.bigint "planned_day_id", null: false
+    t.integer "position", null: false
+    t.time "starts_at"
+    t.string "transport_mode"
+    t.datetime "updated_at", null: false
+    t.index ["planned_day_id", "position"], name: "index_planned_stops_on_planned_day_id_and_position", unique: true
+    t.index ["planned_day_id"], name: "index_planned_stops_on_planned_day_id"
+  end
+
+  create_table "planned_travellers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.boolean "owner", default: false, null: false
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id"], name: "index_planned_travellers_on_trip_id"
+  end
+
   create_table "point_sources", id: :serial, force: :cascade do |t|
     t.integer "battery_status"
     t.string "bssid"
@@ -570,6 +653,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 
+  create_table "trip_sources", force: :cascade do |t|
+    t.text "api_key"
+    t.string "base_url", null: false
+    t.datetime "created_at", null: false
+    t.text "last_error"
+    t.datetime "last_synced_at"
+    t.string "provider", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "provider", "base_url"], name: "index_trip_sources_on_user_id_and_provider_and_base_url", unique: true
+    t.index ["user_id"], name: "index_trip_sources_on_user_id"
+  end
+
   create_table "trips", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "demo", default: false, null: false
@@ -578,11 +675,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
     t.datetime "last_recalculated_at"
     t.string "name", null: false
     t.geometry "path", limit: {srid: 4326, type: "line_string"}
+    t.string "source_digest"
+    t.string "source_identifier"
+    t.jsonb "source_snapshot", default: {}, null: false
+    t.integer "source_status"
+    t.datetime "source_synced_at"
     t.datetime "started_at", null: false
+    t.bigint "trip_source_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.jsonb "visited_countries", default: {}, null: false
     t.index ["demo"], name: "index_trips_on_demo_true", where: "(demo = true)"
+    t.index ["trip_source_id", "source_identifier"], name: "index_trips_on_source_identifier", unique: true, where: "((trip_source_id IS NOT NULL) AND (source_identifier IS NOT NULL))"
+    t.index ["trip_source_id"], name: "index_trips_on_trip_source_id"
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
@@ -690,6 +795,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
   add_foreign_key "pending_imports", "users", column: "claimed_by_user_id", on_delete: :nullify
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
+  add_foreign_key "planned_accommodations", "trips"
+  add_foreign_key "planned_day_notes", "planned_days"
+  add_foreign_key "planned_days", "trips"
+  add_foreign_key "planned_reservations", "planned_days"
+  add_foreign_key "planned_reservations", "trips"
+  add_foreign_key "planned_stops", "planned_days"
+  add_foreign_key "planned_travellers", "trips"
   add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :restrict
   add_foreign_key "points", "tracks"
   add_foreign_key "points", "users"
@@ -704,6 +816,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
   add_foreign_key "tags", "users"
   add_foreign_key "track_segments", "tracks"
   add_foreign_key "tracks", "users"
+  add_foreign_key "trip_sources", "users"
+  add_foreign_key "trips", "trip_sources"
   add_foreign_key "trips", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"

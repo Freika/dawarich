@@ -1,0 +1,61 @@
+<div class="space-y-6 max-w-3xl">
+  <div class="rounded-box border border-base-content/10 bg-base-200">
+    <%= form_with model: TripSource.new, url: settings_trek_sources_path, data: { turbo: false } do |f| %>
+      <div class="card-body space-y-5">
+        <div class="flex items-center gap-3">
+          <%= integration_icon('trek', css: 'size-6') %>
+          <div>
+            <h2 class="text-xl font-semibold"><%= t('.title') %></h2>
+            <p class="text-sm text-base-content/60"><%= t('.subtitle') %></p>
+          </div>
+        </div>
+        <div class="form-control w-full max-w-md">
+          <%= f.label :base_url, class: 'label' do %>
+            <span class="label-text font-medium"><%= t('.trek_url') %></span>
+          <% end %>
+          <%= f.url_field :base_url, class: 'input input-bordered w-full', placeholder: 'https://trek.example.com', required: true %>
+          <span class="label-text-alt mt-1 text-base-content/60"><%= t('.cloud_notice') %></span>
+        </div>
+        <div class="form-control w-full max-w-md">
+          <%= f.label :api_key, class: 'label' do %>
+            <span class="label-text font-medium"><%= t('.api_key') %></span>
+          <% end %>
+          <%= f.password_field :api_key, class: 'input input-bordered w-full', placeholder: 'trek_…', required: true %>
+          <span class="label-text-alt mt-1 text-base-content/60"><%= t('.api_key_help') %></span>
+        </div>
+        <div class="card-actions">
+          <%= f.submit t('.connect'), class: 'btn btn-primary' %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+
+  <% @trek_sources.each do |source| %>
+    <div class="rounded-box border border-base-content/10 bg-base-200">
+      <div class="card-body gap-4">
+        <div class="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h3 class="font-semibold"><%= source.base_url %></h3>
+            <p class="text-sm text-base-content/60">
+              <% if source.last_synced_at %>
+                <%= t('.last_synced', time: l(source.last_synced_at, format: :long)) %>
+              <% else %>
+                <%= t('.not_synced_yet') %>
+              <% end %>
+            </p>
+            <% if source.last_error.present? %>
+              <p class="text-sm text-warning mt-1"><%= source.last_error %></p>
+            <% end %>
+          </div>
+          <span class="badge <%= source.active? ? 'badge-success' : 'badge-warning' %>"><%= source.status %></span>
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <%= link_to t('.choose_trips'), select_trips_settings_trek_source_path(source), class: 'btn btn-primary btn-sm' %>
+          <%= button_to t('.sync_now'), sync_settings_trek_source_path(source), method: :post, class: 'btn btn-outline btn-sm' %>
+          <%= button_to t('.disconnect'), settings_trek_source_path(source), method: :delete,
+              class: 'btn btn-ghost btn-sm text-error', data: { turbo_confirm: t('.disconnect_confirmation') } %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+</div>

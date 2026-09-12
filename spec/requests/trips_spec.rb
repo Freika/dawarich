@@ -81,6 +81,21 @@ RSpec.describe '/trips', type: :request do
       expect(response.body).to include('Delete this trip')
     end
 
+    it 'renders a read-only itinerary for a TREK-managed trip' do
+      allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      source = create(:trip_source, user:)
+      trip.update!(trip_source: source, source_identifier: '12', source_status: :active)
+      day = trip.planned_days.create!(date: trip.started_at.to_date, position: 1, title: 'Arrival')
+      day.planned_stops.create!(name: 'Uffizi', position: 1)
+      trip.planned_reservations.create!(planned_day: day, title: 'LH 1234')
+
+      get trip_url(trip)
+
+      expect(response.body).to include('Plan from TREK')
+      expect(response.body).to include('Uffizi')
+      expect(response.body).to include('LH 1234')
+    end
+
     describe 'poster studio' do
       it 'renders the studio without date controls' do
         get trip_url(trip)
