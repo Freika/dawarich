@@ -5,8 +5,15 @@ module Distanceable
 
   module ClassMethods
     def total_distance(points = nil, unit = :km)
-      if points.nil?
-        calculate_distance_for_relation(unit)
+      if points.is_a?(Symbol) || (points.is_a?(String) && ::DISTANCE_UNITS.key?(points.to_sym))
+        unit = points
+        points = nil
+      end
+
+      if points.is_a?(ActiveRecord::Relation)
+        calculate_distance_for_relation(unit, points)
+      elsif points.nil?
+        calculate_distance_for_relation(unit, all)
       else
         calculate_distance_for_array(points, unit)
       end
@@ -99,17 +106,17 @@ module Distanceable
 
     private
 
-    def calculate_distance_for_relation(unit)
+    def calculate_distance_for_relation(unit, relation = all)
       unless ::DISTANCE_UNITS.key?(unit.to_sym)
         raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
       end
 
-      distance_in_meters = connection.select_value(<<-SQL.squish)
+      distance_in_meters = connection.select_value(<<~SQL.squish)
         WITH points_with_previous AS (
           SELECT
             lonlat,
             LAG(lonlat) OVER (ORDER BY timestamp) as prev_lonlat
-          FROM (#{to_sql}) AS points
+          FROM (#{relation.to_sql}) AS points
         )
         SELECT COALESCE(
           SUM(
@@ -156,7 +163,7 @@ module Distanceable
       end
 
       # Single query to calculate all distances using parameterized query
-      sql_with_params = ActiveRecord::Base.sanitize_sql_array([<<-SQL.squish] + params)
+      sql_with_params = ActiveRecord::Base.sanitize_sql_array([<<~SQL.squish] + params)
         WITH point_pairs AS (
           SELECT
             pair_id,
@@ -187,7 +194,7 @@ module Distanceable
     return nil if other_lonlat.nil?
 
     # Calculate distance in meters using PostGIS
-    distance_in_meters = self.class.connection.select_value(<<-SQL.squish)
+    distance_in_meters = self.class.connection.select_value(<<~SQL.squish)
       SELECT ST_Distance(
         ST_GeomFromEWKT('#{lonlat}')::geography,
         ST_GeomFromEWKT('#{other_lonlat}')::geography
