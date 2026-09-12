@@ -115,6 +115,40 @@ RSpec.describe Csv::Params do
       end
     end
 
+    context 'with separate DATE and TIME columns' do
+      let(:detection) do
+        {
+          columns: { latitude: 3, longitude: 4, timestamp_date: 1, timestamp_time: 2 },
+          coordinate_format: :decimal_degrees,
+          timestamp_format: :iso8601,
+          comma_decimals: false
+        }
+      end
+      let(:row) { ['1', '2008/12/02', '01:21:52', '51.126410', '1.338282'] }
+
+      it 'combines the date and time columns into the correct timestamp' do
+        result = described_class.new(row, detection, user_id, import_id).call
+        expect(result[:timestamp]).to eq(Time.zone.parse('2008-12-02 01:21:52').to_i)
+      end
+
+      it 'does not fall back to today\'s date' do
+        result = described_class.new(row, detection, user_id, import_id).call
+        expect(Time.zone.at(result[:timestamp]).year).to eq(2008)
+      end
+
+      it 'returns nil when the date column is blank' do
+        row = ['1', '', '01:21:52', '51.126410', '1.338282']
+        result = described_class.new(row, detection, user_id, import_id).call
+        expect(result).to be_nil
+      end
+
+      it 'returns nil when the time column is blank' do
+        row = ['1', '2008/12/02', '', '51.126410', '1.338282']
+        result = described_class.new(row, detection, user_id, import_id).call
+        expect(result).to be_nil
+      end
+    end
+
     context 'with comma decimals' do
       let(:detection) do
         {

@@ -74,6 +74,23 @@ RSpec.describe Csv::Detector do
       end
     end
 
+    context 'with separate DATE and TIME columns' do
+      let(:file_path) { Rails.root.join('spec/fixtures/files/csv/split_date_time.csv').to_s }
+      let(:result) { described_class.new(file_path).call }
+
+      it 'maps the date column' do
+        expect(result[:columns][:timestamp_date]).to be_a(Integer)
+      end
+
+      it 'maps the time column' do
+        expect(result[:columns][:timestamp_time]).to be_a(Integer)
+      end
+
+      it 'maps them to different columns' do
+        expect(result[:columns][:timestamp_date]).not_to eq(result[:columns][:timestamp_time])
+      end
+    end
+
     context 'with E7 integer coordinates' do
       let(:file_path) { Rails.root.join('spec/fixtures/files/csv/e7_integers.csv').to_s }
       let(:result) { described_class.new(file_path).call }
