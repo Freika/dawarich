@@ -1,0 +1,55 @@
+<section class="mb-6 rounded-lg border border-base-content/10 bg-base-200 p-4">
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+    <div>
+      <h2 class="text-lg font-semibold"><%= t('.title') %></h2>
+      <p class="text-sm text-base-content/60"><%= t('.subtitle') %></p>
+    </div>
+    <% if trip.source_stopped? %>
+      <span class="badge badge-warning"><%= t('.sync_stopped') %></span>
+    <% else %>
+      <span class="badge badge-success"><%= t('.managed_by_trek') %></span>
+    <% end %>
+  </div>
+
+  <div class="space-y-3">
+    <% trip.planned_days.each do |day| %>
+      <article class="rounded-lg bg-base-100 p-3">
+        <h3 class="font-medium"><%= l(day.date, format: :long) %><%= " — #{day.title}" if day.title.present? %></h3>
+        <% if day.notes.present? %>
+          <p class="mt-1 whitespace-pre-line text-sm text-base-content/70"><%= day.notes %></p>
+        <% end %>
+        <% if day.planned_stops.any? %>
+          <ol class="mt-2 space-y-1 text-sm">
+            <% day.planned_stops.each do |stop| %>
+              <li class="flex gap-2">
+                <% if stop.starts_at %><span class="shrink-0 text-base-content/50"><%= stop.starts_at.strftime('%H:%M') %></span><% end %>
+                <span>
+                  <strong><%= stop.name %></strong><%= " · #{stop.address}" if stop.address.present? %>
+                  <% if stop.notes.present? %><span class="text-base-content/60"> — <%= stop.notes %></span><% end %>
+                </span>
+              </li>
+            <% end %>
+          </ol>
+        <% end %>
+        <% if day.planned_reservations.any? %>
+          <ul class="mt-2 space-y-1 text-sm text-base-content/70">
+            <% day.planned_reservations.each do |reservation| %>
+              <li><%= icon 'calendar-check-2', class: 'mr-1 inline size-4' %><strong><%= reservation.title %></strong><%= " · #{reservation.location}" if reservation.location.present? %></li>
+            <% end %>
+          </ul>
+        <% end %>
+      </article>
+    <% end %>
+  </div>
+
+  <% if trip.planned_accommodations.any? || trip.planned_travellers.any? %>
+    <div class="mt-4 space-y-2 text-sm text-base-content/70">
+      <% if trip.planned_accommodations.any? %>
+        <p><strong><%= t('.accommodations') %>:</strong> <%= trip.planned_accommodations.map(&:name).join(', ') %></p>
+      <% end %>
+      <% if trip.planned_travellers.any? %>
+        <p><strong><%= t('.travellers') %>:</strong> <%= trip.planned_travellers.map(&:name).join(', ') %></p>
+      <% end %>
+    </div>
+  <% end %>
+</section>
