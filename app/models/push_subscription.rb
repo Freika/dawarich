@@ -1,6 +1,9 @@
 # frozen_string_literal: true
 
 class PushSubscription < ApplicationRecord
+  # Family push rollout is paused. Environment settings alone must not enable it.
+  RELEASE_ENABLED = false
+
   belongs_to :user
 
   validates :installation_id, format: { with: /\A[a-zA-Z0-9-]{16,128}\z/ }
@@ -18,7 +21,7 @@ class PushSubscription < ApplicationRecord
   end
 
   def self.enabled_providers
-    return [] unless ENV['FAMILY_PUSH_ENABLED'] == 'true'
+    return [] unless RELEASE_ENABLED && ENV['FAMILY_PUSH_ENABLED'] == 'true'
 
     providers = []
     providers << 'apns' if PushNotifications::Apns.configured?

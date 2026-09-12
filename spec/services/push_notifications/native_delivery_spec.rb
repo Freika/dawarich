@@ -20,6 +20,7 @@ RSpec.describe Families::PushNotification do
   let(:fcm_url) { 'https://fcm.googleapis.com/v1/projects/test-project/messages:send' }
 
   before do
+    stub_const('PushSubscription::RELEASE_ENABLED', true)
     allow(ENV).to receive(:[]).and_call_original
     allow(ENV).to receive(:fetch).and_call_original
     { 'APNS_KEY_ID' => 'KEY123', 'APNS_TEAM_ID' => 'TEAM123', 'APNS_TOPIC' => 'app.dawarich.Dawarich',

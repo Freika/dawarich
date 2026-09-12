@@ -12,7 +12,19 @@ own sharing includes `history_before_sharing`. Members include `share_history`,
 `history_window`, `history_before_sharing` and `sharing_started_at`. These fields
 explain the effective access without exposing additional location data.
 
-## Native push configuration
+## Current release: family pushes disabled
+
+`PushSubscription::RELEASE_ENABLED` is false. The API advertises no push providers,
+registration returns 503, requests do not enqueue notifications, and already queued
+push jobs return without sending. `FAMILY_PUSH_ENABLED=true` and provider credentials
+cannot override this pause. Unregistration remains available. History consent,
+member indicators and in-app location requests remain available.
+
+The native push implementation and migration are retained for a future rollout.
+The configuration instructions below apply only after a separate code change
+explicitly enables pushes in both the server and mobile app.
+
+## Native push configuration (future rollout)
 
 Run migration `20260911160000` and set `FAMILY_PUSH_ENABLED=true` in both web and
 Sidekiq environments. Only configured providers are advertised in `push_providers`
@@ -91,8 +103,9 @@ alert can still arrive until unregister succeeds or the lease expires.
 
 Companion mobile PR: https://github.com/dawarich-app/multiplatform-app/pull/123
 
-The mobile changes can ship first; history consent and native push remain
-capability-gated until this server is deployed/configured. Existing history access
+The mobile changes can ship first; history consent remains capability-gated until
+this server is deployed. Native push stays disabled until both release gates are
+explicitly enabled in a future change. Existing history access
 is not expanded without explicit consent. Backend-only deployment does not upgrade
 older mobile clients' registration or notification handling.
 
