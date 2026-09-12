@@ -402,7 +402,9 @@ class Users::ExportData
 
   def create_zip_archive(export_directory, zip_file_path)
     original_compression = Zip.default_compression
+    original_zip64_support = Zip.write_zip64_support
     Zip.default_compression = Zip::Entry::DEFLATED
+    Zip.write_zip64_support = true
 
     Zip::File.open(zip_file_path, create: true) do |zipfile|
       Dir.glob(export_directory.join('**', '*')).each do |file|
@@ -417,6 +419,7 @@ class Users::ExportData
     end
   ensure
     Zip.default_compression = original_compression if original_compression
+    Zip.write_zip64_support = original_zip64_support
   end
 
   def cleanup_temporary_files(export_directory)

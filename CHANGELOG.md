@@ -317,6 +317,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Photon place names no longer show generic "Yes" categories in visits (#3050)
 - Imports that finish with zero saved points now notify you instead of completing silently. GPX and KML files are called out when they lack per-point timestamps. (#3062)
 - Traccar KML exports now import LineString points using the time range in each track name instead of completing with zero points (#3120)
+- Large profile exports (over 4 GB uncompressed) now import correctly instead of failing with "Archive too large" (#3011).
 - "Cancel my account" now works on self-hosted instances. It never sent a password, so the request failed silently with a 401; deletion now asks for confirmation in a dialog and reports failures. Accounts registered through OIDC, which never had a password, can confirm with their email address, on the web and via the API. (#3107)
 - Tracks no longer connect two different devices. Google's Records.json contains every device on the account, and imports made before 1.10.0 stamped them all as one, so a phone left at home was stitched to the one that travelled. Existing imports are repaired automatically by re-reading the uploaded file.
 - Restoring a data archive now recomputes GPS noise flags. The archive carries none, so restored points previously arrived unfiltered and tracks were rebuilt from noise the instance had already learned to ignore.
