@@ -4,6 +4,11 @@ import maplibregl from "maplibre-gl"
 import { MapPageProvider } from "poster_studio/data/providers"
 import { loadThemeTokens } from "poster_studio/data/theme_loader"
 import { trackBounds } from "poster_studio/ui/preview"
+import {
+  formatDateTimeRange,
+  selectableDateTimeRange,
+  toLocalDateTimeInput,
+} from "video_studio/date_range"
 import { ensureHudFonts } from "video_studio/hud_fonts"
 import { drawHud } from "video_studio/hud_overlay"
 import { loadTrack } from "video_studio/load_track"
@@ -49,6 +54,12 @@ export default class extends Controller {
     "trackWidthLabel",
     "hudScaleLabel",
     "formatDims",
+    "dateStart",
+    "dateEnd",
+    "rangeControls",
+    "rangeDisplay",
+    "loadButton",
+    "loadSpinner",
     "rangeLabel",
     "summary",
   ]
@@ -89,6 +100,7 @@ export default class extends Controller {
     this.provider =
       provider ?? new MapPageProvider({ application: this.application })
     this.element.classList.remove("hidden")
+    this.syncDateTimeControls()
 
     try {
       await this.reloadTrack()
@@ -194,6 +206,65 @@ export default class extends Controller {
       // route the user did not ask for — say so rather than render it.
       warn()
     }
+  }
+
+  // Date changes stay inside the open studio. Map-backed providers update the
+  // main map in place; trip-backed providers keep their fixed range display.
+  syncDateTimeControls() {
+    const editable = Boolean(this.provider?.supportsDateNavigation)
+    if (this.hasRangeControlsTarget) {
+      this.rangeControlsTarget.classList.toggle("hidden", !editable)
+    }
+    if (this.hasRangeDisplayTarget) {
+      this.rangeDisplayTarget.classList.toggle("hidden", editable)
+    }
+    if (!editable || !this.hasDateStartTarget || !this.hasDateEndTarget) return
+
+    const { startAt, endAt } = this.provider.dateRange()
+    this.dateStartTarget.value = toLocalDateTimeInput(startAt)
+    this.dateEndTarget.value = toLocalDateTimeInput(endAt)
+  }
+
+  async applyDateTimeRange() {
+    if (!this.provider?.supportsDateNavigation) return
+    const range = selectableDateTimeRange(
+      this.dateStartTarget.value,
+      this.dateEndTarget.value,
+    )
+    if (!range) {
+      this.dateEndTarget.setCustomValidity(
+        translate("datetime.start_before_end"),
+      )
+      this.dateEndTarget.reportValidity()
+      return
+    }
+
+    this.dateEndTarget.setCustomValidity("")
+    const nameWasAuto = this.nameInputTarget.value === this.dateRangeLabel()
+    this.setRangeBusy(true)
+    this.statusTarget.textContent = translate("poster.loading_tracks")
+    try {
+      await this.provider.applyDates(range.start, range.end)
+      await this.reloadTrack()
+      if (nameWasAuto) this.nameInputTarget.value = this.dateRangeLabel()
+      this.clearResult()
+      await this.refreshStyle()
+      this.renderStats()
+    } catch (error) {
+      Flash.show(
+        "error",
+        translate("video.open_failed", { error: error.message }),
+      )
+    } finally {
+      this.statusTarget.textContent = ""
+      this.setRangeBusy(false)
+    }
+  }
+
+  setRangeBusy(value) {
+    if (!this.hasLoadButtonTarget) return
+    this.loadButtonTarget.disabled = value
+    this.loadSpinnerTarget.classList.toggle("hidden", !value)
   }
 
   async reloadTrack() {
@@ -501,19 +572,11 @@ export default class extends Controller {
 
   dateRangeLabel() {
     const { startAt, endAt } = this.provider.dateRange()
-    const format = new Intl.DateTimeFormat(
+    return formatDateTimeRange(
+      startAt,
+      endAt,
       document.documentElement.lang || undefined,
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      },
     )
-    const parts = [startAt, endAt]
-      .map((value) => (value ? new Date(value) : null))
-      .filter((date) => date && !Number.isNaN(date.valueOf()))
-      .map((date) => format.format(date))
-    return [...new Set(parts)].join(" – ")
   }
 
   showProgress(ratio, phase) {

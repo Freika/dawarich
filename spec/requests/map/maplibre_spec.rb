@@ -26,6 +26,14 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       expect(response.body).to include('data-poster-studio-editor-target="dateStart"')
     end
 
+    it 'renders date and time controls for the video studio' do
+      get map_v2_path
+
+      expect(response.body).to include('data-video-studio-target="dateStart"')
+      expect(response.body).to include('data-video-studio-target="dateEnd"')
+      expect(response.body).to include('video-studio#applyDateTimeRange')
+    end
+
     it 'defaults the track opacity slider to 100%' do
       get map_v2_path
 
