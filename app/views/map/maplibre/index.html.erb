@@ -7,7 +7,7 @@
      data-maps--maplibre-api-key-value="<%= current_user.api_key %>"
      data-maps--maplibre-start-date-value="<%= @start_at.iso8601 %>"
      data-maps--maplibre-end-date-value="<%= @end_at.iso8601 %>"
-     data-maps--maplibre-timezone-value="<%= current_user.timezone %>"
+     data-maps--maplibre-timezone-value="<%= current_user.timezone_iana %>"
      data-maps--maplibre-user-plan-value="<%= current_user.effective_plan %>"
      data-maps--maplibre-import-id-value="<%= @import_id %>"
      data-maps--maplibre-upgrade-url-value="<%= upgrade_url(utm_medium: 'map', utm_content: 'maplibre') %>"

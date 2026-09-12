@@ -499,7 +499,15 @@ export default class extends Controller {
    * to come back empty because the server parsed the dates differently.
    */
   handleTimelineDateNavigated(event) {
-    const { startAt, endAt } = event.detail || {}
+    const navigation = this.navigateTimelineDateRange(event.detail || {})
+    if (typeof event.detail?.waitUntil === "function") {
+      event.detail.waitUntil(navigation)
+    } else {
+      navigation.catch((error) => console.error(error))
+    }
+  }
+
+  async navigateTimelineDateRange({ startAt, endAt }) {
     if (!startAt || !endAt) return
 
     const toApiDate = (local) => {
@@ -515,11 +523,10 @@ export default class extends Controller {
     this.endDateValue = end
 
     this._clearDayHighlight?.()
-    this.loadMapData().then(() => {
-      if (this.settings?.anomaliesEnabled) {
-        this.routesManager.refreshAnomalies({ enabled: true })
-      }
-    })
+    await this.loadMapData()
+    if (this.settings?.anomaliesEnabled) {
+      this.routesManager.refreshAnomalies({ enabled: true })
+    }
     this.refreshTimelineFeedIfActive?.()
     this.debouncedLoadFamilyHistory?.()
   }
