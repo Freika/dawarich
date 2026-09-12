@@ -3651,9 +3651,7 @@ pl:
     visits:
       suggest:
         error_suggesting_visits_message: 'Błąd podczas sugerowania wizyt: %{message}'
-        new_visits_suggested: Zasugerowano nowe wizyty
         error_suggesting_visits: Błąd podczas sugerowania wizyt
-        new_visits_suggested_message: Na podstawie danych lokalizacji od %{start_at} do %{end_at} zasugerowano nowe wizyty. Możesz je przejrzeć na stronie <a href="%{url}" class="link">Osi czasu</a>.
       merge_service:
         minimum_visits: Do scalenia trzeba wybrać co najmniej 2 wizyty
       bulk_destroy:
