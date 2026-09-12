@@ -10,7 +10,6 @@ module UserFamily
   included do
     has_one :family_membership, dependent: :destroy, class_name: 'Family::Membership'
     has_one :family, through: :family_membership
-    has_many :push_subscriptions, dependent: :destroy
     has_one :created_family, class_name: 'Family', foreign_key: 'creator_id', inverse_of: :creator, dependent: :destroy
     has_many :sent_family_invitations, class_name: 'Family::Invitation', foreign_key: 'invited_by_id',
              inverse_of: :invited_by, dependent: :destroy

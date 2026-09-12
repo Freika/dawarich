@@ -9,8 +9,6 @@ class Api::FamilySerializer
     {
       lapsed: false,
       history_before_sharing_supported: true,
-      push_notifications_enabled: PushSubscription.delivery_enabled?,
-      push_providers: PushSubscription.enabled_providers,
       family: { name: family.name },
       me: me_payload,
       members: members_payload,

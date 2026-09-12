@@ -29,7 +29,6 @@ gem 'geocoder', github: 'Freika/geocoder', branch: 'master'
 gem 'google-id-token', '~> 1.4'
 gem 'h3', '~> 3.7'
 gem 'httparty', '>= 0.24.0'
-gem 'httpx', '~> 1.6' # HTTP/2 transport for native APNs notifications
 gem 'importmap-rails'
 gem 'json', '>= 2.19.2'
 gem 'jwt', '~> 3.2.0'

@@ -240,13 +240,10 @@ GEM
     hashdiff (1.2.1)
     hashie (5.1.0)
       logger
-    http-2 (1.2.3)
     httparty (0.24.2)
       csv
       mini_mime (>= 1.0.0)
       multi_xml (>= 0.5.2)
-    httpx (1.8.4)
-      http-2 (>= 1.2.0)
     i18n (1.15.2)
       concurrent-ruby (~> 1.0)
     icons (0.9.0)
@@ -749,7 +746,6 @@ DEPENDENCIES
   google-id-token (~> 1.4)
   h3 (~> 3.7)
   httparty (>= 0.24.0)
-  httpx (~> 1.6)
   importmap-rails
   json (>= 2.19.2)
   jwt (~> 3.2.0)

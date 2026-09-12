@@ -18,15 +18,8 @@ class Family::LocationRequest < ApplicationRecord
   scope :active, -> { pending.where('expires_at > ?', Time.current) }
 
   before_validation :set_defaults, on: :create
-  after_create_commit :notify_mobile_devices
 
   private
-
-  def notify_mobile_devices
-    Families::LocationRequestPushJob.perform_later(id) if PushSubscription.delivery_enabled?
-  rescue StandardError => e
-    ExceptionReporter.call(e, 'Failed to enqueue location request push')
-  end
 
   def requester_cannot_be_target
     return unless requester_id.present? && requester_id == target_user_id
