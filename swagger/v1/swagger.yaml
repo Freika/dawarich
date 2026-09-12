@@ -579,6 +579,17 @@ paths:
                   details:
                     type: object
                     additionalProperties: true
+        '403':
+          description: registration disabled on a self-hosted instance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  message:
+                    type: string
       requestBody:
         content:
           application/json:

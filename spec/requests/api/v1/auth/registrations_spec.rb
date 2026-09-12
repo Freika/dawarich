@@ -74,7 +74,10 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
   end
 
   context 'on a self-hosted instance' do
-    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
+    end
 
     it 'creates a user in active status (not pending_payment)' do
       expect do
@@ -100,6 +103,22 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
 
       expect { post '/api/v1/auth/register', params: valid_params }
         .not_to have_enqueued_job(Users::CreationWebhookJob)
+    end
+
+    context 'when accessing registration without invitation token and email/password registration disabled' do
+      before { allow(DawarichSettings).to receive(:registration_enabled?).and_return(false) }
+
+      it 'prevents account creation' do
+        expect do
+          post '/api/v1/auth/register', params: valid_params
+        end.not_to change(User, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)).to include(
+          'error' => 'registration_disabled',
+          'message' => include('Registration is not available')
+        )
+      end
     end
   end
 
@@ -161,6 +180,75 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
       post '/api/v1/auth/register', params: invitee_params.merge(email: 'someone.else@example.com')
 
       expect(User.find_by(email: 'someone.else@example.com')).to be_pending_payment
+    end
+
+    context 'on a self-hosted instance with registration disabled' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        allow(DawarichSettings).to receive(:registration_enabled?).and_return(false)
+        allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+      end
+
+      context 'when accessing registration with valid invitation token' do
+        it 'allows account creation' do
+          expect do
+            post '/api/v1/auth/register', params: invitee_params
+          end.to change(User, :count).by(1)
+
+          expect(response).to have_http_status(:created)
+          expect(invitation.reload).to be_accepted
+        end
+      end
+
+      context 'when accessing registration with expired invitation' do
+        before { invitation.update!(expires_at: 1.day.ago) }
+
+        it 'prevents account creation' do
+          expect do
+            post '/api/v1/auth/register', params: invitee_params
+          end.not_to change(User, :count)
+
+          expect(response).to have_http_status(:forbidden)
+        end
+      end
+
+      context 'when accessing registration with cancelled invitation' do
+        before { invitation.update!(status: :cancelled) }
+
+        it 'prevents account creation' do
+          expect do
+            post '/api/v1/auth/register', params: invitee_params
+          end.not_to change(User, :count)
+
+          expect(response).to have_http_status(:forbidden)
+        end
+      end
+
+      it 'prevents account creation when the invitation email does not match' do
+        expect do
+          post '/api/v1/auth/register', params: invitee_params.merge(email: 'someone.else@example.com')
+        end.not_to change(User, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(invitation.reload).to be_pending
+      end
+
+      it 'blocks family invitations in OIDC-only mode' do
+        allow(DawarichSettings).to receive(:oidc_enabled?).and_return(true)
+
+        expect do
+          post '/api/v1/auth/register', params: invitee_params
+        end.not_to change(User, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)).to include(
+          'error' => 'registration_disabled',
+          'message' => I18n.t(
+            'controllers.users.registrations.email_password_registration_is_disabled_please_use_oidc_to_sign'
+          )
+        )
+        expect(invitation.reload).to be_pending
+      end
     end
   end
 end

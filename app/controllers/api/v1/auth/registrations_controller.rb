@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Api::V1::Auth::RegistrationsController < Api::V1::Auth::BaseController
+  before_action :check_registration_allowed, only: :create
+
   def create
     user = User.new(new_user_attrs)
 
@@ -16,6 +18,32 @@ class Api::V1::Auth::RegistrationsController < Api::V1::Auth::BaseController
   end
 
   private
+
+  def check_registration_allowed
+    return unless DawarichSettings.self_hosted?
+
+    # When OIDC is enabled and email/password registration is disabled,
+    # block all email/password registration including family invitations
+    if DawarichSettings.oidc_enabled? && !DawarichSettings.registration_enabled?
+      render json: {
+        error: 'registration_disabled',
+        message: I18n.t(
+          'controllers.users.registrations.email_password_registration_is_disabled_please_use_oidc_to_sign'
+        )
+      }, status: :forbidden
+      return
+    end
+
+    return if joining_family?
+    return if DawarichSettings.registration_enabled?
+
+    render json: {
+      error: 'registration_disabled',
+      message: I18n.t(
+        'controllers.users.registrations.registration_is_not_available_please_contact_your_administrator_for_acce'
+      )
+    }, status: :forbidden
+  end
 
   def new_user_attrs
     base = {
