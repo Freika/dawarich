@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Yearly digests for cloud-Lite users read seasonality and country time spent from the same data window as monthly distances and toponyms.
 - The per-email API login brute-force throttle now counts `application/json` request bodies, so password grinding against `POST /api/v1/auth/login` is bounded per account even when an attacker rotates source IPs.
+- Upgrading from a release older than 1.10.1 no longer crash-loops when the legacy coordinate columns hold points that collide once they are copied into `lonlat`. The migration that drops `points.latitude` / `points.longitude` now removes a legacy row whose coordinates are already recorded for that user and timestamp — whether the coordinate is held by a point that carries a `lonlat` already, or by an earlier legacy row backfilled in the same batch — and corrects the affected user and import point counters. (#3200)
 
 ## [1.14.4] - 2026-09-06, Berlin
 
