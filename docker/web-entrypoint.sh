@@ -9,6 +9,7 @@ echo "⚠️ Starting Rails environment: $RAILS_ENV ⚠️"
 
 . "$(dirname "$0")/entrypoint-env-guard.sh"
 sanitize_integer_env WEB_CONCURRENCY 1
+warn_if_development_env
 
 # Optional privilege drop. When PUID/PGID are set and the container starts as
 # root, fix ownership of the mounted writable paths, then re-exec as that user.
