@@ -4772,9 +4772,7 @@ fr:
       suggest:
         error_suggesting_visits_message: 'Erreur lors de la suggestion de visites :
           %{message}'
-        new_visits_suggested: Nouvelles visites suggérées
         error_suggesting_visits: 'Erreur lors de la suggestion de visites'
-        new_visits_suggested_message: 'De nouvelles visites ont été suggérées à partir de vos données de localisation du %{start_at} au %{end_at}. Vous pouvez les consulter sur la page <a href="%{url}" class="link">Chronologie</a>.'
       merge_service:
         minimum_visits: Au moins 2 visites doivent être sélectionnées pour les fusionner
       bulk_destroy:

@@ -4,6 +4,11 @@ import maplibregl from "maplibre-gl"
 import { MapPageProvider } from "poster_studio/data/providers"
 import { loadThemeTokens } from "poster_studio/data/theme_loader"
 import { trackBounds } from "poster_studio/ui/preview"
+import {
+  formatDateTimeRange,
+  selectableDateTimeRange,
+  toLocalDateTimeInput,
+} from "video_studio/date_range"
 import { ensureHudFonts } from "video_studio/hud_fonts"
 import { drawHud } from "video_studio/hud_overlay"
 import { loadTrack } from "video_studio/load_track"
@@ -49,6 +54,13 @@ export default class extends Controller {
     "trackWidthLabel",
     "hudScaleLabel",
     "formatDims",
+    "dateStart",
+    "dateEnd",
+    "rangeControls",
+    "rangeDisplay",
+    "loadButton",
+    "loadSpinner",
+    "switchButton",
     "rangeLabel",
     "summary",
   ]
@@ -67,6 +79,7 @@ export default class extends Controller {
       document.body.appendChild(this.element)
       return
     }
+    this.operationVersion ??= 0
     this.settings = defaultSettings()
     this.onOpen = (event) => this.open(event.detail?.provider)
     document.addEventListener("video-studio:open", this.onOpen)
@@ -79,6 +92,7 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this.invalidateOperation()
     document.removeEventListener("video-studio:open", this.onOpen)
     window.removeEventListener("resize", this.onResize)
     this.teardown()
@@ -86,31 +100,44 @@ export default class extends Controller {
 
   async open(provider = null) {
     if (!this.element.classList.contains("hidden")) return
+    const operation = this.startOperation()
     this.provider =
       provider ?? new MapPageProvider({ application: this.application })
     this.element.classList.remove("hidden")
+    this.syncDateTimeControls()
+    this.setRangeBusy(true)
 
     try {
-      await this.reloadTrack()
+      await this.reloadTrack(operation)
+      if (!this.operationIsCurrent(operation)) return
       if (!this.nameInputTarget.value) {
         this.nameInputTarget.value =
           this.provider.defaultTitle() || this.dateRangeLabel()
       }
-      this.families = await ensureHudFonts(this.fontsValue)
-      await this.refreshStyle()
+      const families = await ensureHudFonts(this.fontsValue)
+      if (!this.operationIsCurrent(operation)) return
+      this.families = families
+      await this.refreshStyle(operation)
+      if (!this.operationIsCurrent(operation)) return
       this.renderStats()
       this.syncSupport()
     } catch (error) {
-      Flash.show(
-        "error",
-        translate("video.open_failed", { error: error.message }),
-      )
+      if (this.operationIsCurrent(operation)) {
+        Flash.show(
+          "error",
+          translate("video.open_failed", { error: error.message }),
+        )
+      }
+    } finally {
+      if (this.operationIsCurrent(operation)) this.setRangeBusy(false)
     }
   }
 
   close() {
+    this.invalidateOperation()
     this.cancel()
     this.teardown()
+    this.setRangeBusy(false)
     this.element.classList.add("hidden")
   }
 
@@ -118,6 +145,7 @@ export default class extends Controller {
   // switching carries the provider across — a trip-locked studio stays locked
   // to that trip rather than falling back to the map page.
   switchToPoster() {
+    if (this.rendering || this.rangeLoading) return
     const provider = this.provider
     this.close()
     document.dispatchEvent(
@@ -154,6 +182,8 @@ export default class extends Controller {
   // Re-seeds the studio from an expired video's stored recipe (option C: the
   // row outlives the blob, so the settings are enough to make it again).
   async restoreSettings(event) {
+    if (this.rendering || this.rangeLoading) return
+    const operation = this.startOperation()
     let raw = null
     try {
       raw = JSON.parse(event.currentTarget.dataset.settings)
@@ -162,42 +192,147 @@ export default class extends Controller {
       this.settings = defaultSettings()
     }
     this.syncControls()
-    await this.restoreRange(readProvenance(raw))
-    this.settingsChanged()
+    const restored = await this.restoreRange(readProvenance(raw), operation)
+    if (!restored || !this.operationIsCurrent(operation)) return
+    await this.settingsChanged(operation)
+    if (!this.operationIsCurrent(operation)) return
+    this.syncDateTimeControls()
   }
 
   // Styling alone is not the recipe: a video made from a different date range
   // has to bring that range back, or "re-render" quietly rebuilds whatever the
   // page is showing now under the old video's looks.
-  async restoreRange(provenance) {
+  async restoreRange(provenance, operation = this.startOperation()) {
     const plan = rangeRestorePlan(
       provenance,
       this.provider.dateRange(),
       this.provider,
     )
-    if (plan.action === "none") return
+    if (plan.action === "none") return true
 
     const warn = () => {
       this.statusTarget.textContent = translate("video.range_mismatch", {
         range: plan.range,
       })
     }
-    if (plan.action === "warn") return warn()
+    if (plan.action === "warn") {
+      warn()
+      return true
+    }
 
+    this.clearResult()
+    this.style = null
+    this.setRangeBusy(true)
     this.statusTarget.textContent = translate("video.restoring_range")
     try {
       await this.provider.applyDates(plan.start_at, plan.end_at)
-      await this.reloadTrack()
+      if (!this.operationIsCurrent(operation)) return false
+      await this.reloadTrack(operation)
+      if (!this.operationIsCurrent(operation)) return false
       this.statusTarget.textContent = ""
+      return true
     } catch {
       // A reload that never lands leaves the old track in place, which is the
       // route the user did not ask for — say so rather than render it.
-      warn()
+      if (this.operationIsCurrent(operation)) warn()
+      return false
+    } finally {
+      if (this.operationIsCurrent(operation)) this.setRangeBusy(false)
     }
   }
 
-  async reloadTrack() {
+  // Date changes stay inside the open studio. Map-backed providers update the
+  // main map in place; trip-backed providers keep their fixed range display.
+  syncDateTimeControls() {
+    const editable = Boolean(this.provider?.supportsDateNavigation)
+    if (this.hasRangeControlsTarget) {
+      this.rangeControlsTarget.classList.toggle("hidden", !editable)
+    }
+    if (this.hasRangeDisplayTarget) {
+      this.rangeDisplayTarget.classList.toggle("hidden", editable)
+    }
+    if (!editable || !this.hasDateStartTarget || !this.hasDateEndTarget) return
+
+    const { startAt, endAt } = this.provider.dateRange()
+    const timeZone = this.provider.timeZone?.()
+    this.dateStartTarget.value = toLocalDateTimeInput(startAt, timeZone)
+    this.dateEndTarget.value = toLocalDateTimeInput(endAt, timeZone)
+  }
+
+  async applyDateTimeRange() {
+    if (
+      !this.provider?.supportsDateNavigation ||
+      this.rendering ||
+      this.rangeLoading
+    )
+      return
+    const range = selectableDateTimeRange(
+      this.dateStartTarget.value,
+      this.dateEndTarget.value,
+      this.provider.timeZone?.(),
+    )
+    if (!range) {
+      this.dateEndTarget.setCustomValidity(
+        translate("datetime.start_before_end"),
+      )
+      this.dateEndTarget.reportValidity()
+      return
+    }
+
+    this.dateEndTarget.setCustomValidity("")
+    // The provider mutates its range before a failed map reload rejects. The
+    // visible range label only changes after a successful track reload, so it
+    // remains the reliable reference for whether this name is automatic.
+    const currentRangeLabel = this.hasRangeLabelTarget
+      ? this.rangeLabelTarget.textContent
+      : this.dateRangeLabel()
+    const nameWasAuto = this.nameInputTarget.value === currentRangeLabel
+    const operation = this.startOperation()
+    this.clearResult()
+    this.style = null
+    this.setRangeBusy(true)
+    this.statusTarget.textContent = translate("poster.loading_tracks")
+    try {
+      await this.provider.applyDates(range.start, range.end)
+      if (!this.operationIsCurrent(operation)) return
+      await this.reloadTrack(operation)
+      if (!this.operationIsCurrent(operation)) return
+      this.syncDateTimeControls()
+      if (nameWasAuto) this.nameInputTarget.value = this.dateRangeLabel()
+      await this.refreshStyle(operation)
+      if (!this.operationIsCurrent(operation)) return
+      this.renderStats()
+    } catch (error) {
+      if (this.operationIsCurrent(operation)) {
+        Flash.show(
+          "error",
+          translate("video.open_failed", { error: error.message }),
+        )
+      }
+    } finally {
+      if (this.operationIsCurrent(operation)) {
+        this.statusTarget.textContent = ""
+        this.setRangeBusy(false)
+      }
+    }
+  }
+
+  setRangeBusy(value) {
+    this.rangeLoading = value
+    if (this.hasLoadButtonTarget) this.loadButtonTarget.disabled = value
+    if (this.hasLoadSpinnerTarget) {
+      this.loadSpinnerTarget.classList.toggle("hidden", !value)
+    }
+    if (this.hasDateStartTarget) this.dateStartTarget.disabled = value
+    if (this.hasDateEndTarget) this.dateEndTarget.disabled = value
+    if (this.hasSwitchButtonTarget) this.switchButtonTarget.disabled = value
+    if (value && this.hasSaveButtonTarget) this.saveButtonTarget.disabled = true
+    this.syncRenderAvailability()
+  }
+
+  async reloadTrack(operation = null) {
     const { trackGeojson, points } = await loadTrack(this.provider)
+    if (operation !== null && !this.operationIsCurrent(operation)) return
     this.trackGeojson = trackGeojson
     this.points = toVideoPoints(points)
     this.stats = computeTrackStats(this.points)
@@ -207,11 +342,13 @@ export default class extends Controller {
     }
   }
 
-  async settingsChanged() {
+  async settingsChanged(operation = null) {
     this.syncControls()
     this.clearResult()
-    await this.refreshStyle()
+    await this.refreshStyle(operation)
+    if (operation !== null && !this.operationIsCurrent(operation)) return
     this.renderStats()
+    this.syncRenderAvailability()
   }
 
   syncControls() {
@@ -250,8 +387,9 @@ export default class extends Controller {
 
   // ===== preview =====
 
-  async refreshStyle() {
+  async refreshStyle(operation = null) {
     const tokens = await loadThemeTokens(this.settings.theme)
+    if (operation !== null && !this.operationIsCurrent(operation)) return
     this.themeTokens = tokens
     this.style = buildVideoStyle({
       tokens,
@@ -405,7 +543,7 @@ export default class extends Controller {
   // ===== render =====
 
   async render() {
-    if (!this.style || this.rendering) return
+    if (!this.style || this.rendering || this.rangeLoading) return
     if (this.points.length < 2) {
       this.statusTarget.textContent = translate("video.empty_track")
       return
@@ -456,7 +594,7 @@ export default class extends Controller {
   }
 
   async save() {
-    if (!this.blob) return
+    if (!this.blob || this.rangeLoading) return
     this.saveButtonTarget.disabled = true
 
     try {
@@ -482,6 +620,19 @@ export default class extends Controller {
 
   // ===== helpers =====
 
+  startOperation() {
+    this.operationVersion = (this.operationVersion || 0) + 1
+    return this.operationVersion
+  }
+
+  invalidateOperation() {
+    this.operationVersion = (this.operationVersion || 0) + 1
+  }
+
+  operationIsCurrent(operation) {
+    return operation === this.operationVersion
+  }
+
   hudLabels() {
     return {
       day: translate("video.hud.day"),
@@ -501,19 +652,12 @@ export default class extends Controller {
 
   dateRangeLabel() {
     const { startAt, endAt } = this.provider.dateRange()
-    const format = new Intl.DateTimeFormat(
+    return formatDateTimeRange(
+      startAt,
+      endAt,
       document.documentElement.lang || undefined,
-      {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      },
+      this.provider.timeZone?.(),
     )
-    const parts = [startAt, endAt]
-      .map((value) => (value ? new Date(value) : null))
-      .filter((date) => date && !Number.isNaN(date.valueOf()))
-      .map((date) => format.format(date))
-    return [...new Set(parts)].join(" – ")
   }
 
   showProgress(ratio, phase) {
@@ -555,14 +699,29 @@ export default class extends Controller {
   }
 
   setBusy(busy) {
-    this.renderButtonTarget.disabled = busy
+    if (this.hasLoadButtonTarget) this.loadButtonTarget.disabled = busy
+    if (this.hasDateStartTarget) this.dateStartTarget.disabled = busy
+    if (this.hasDateEndTarget) this.dateEndTarget.disabled = busy
+    if (this.hasSwitchButtonTarget) this.switchButtonTarget.disabled = busy
     this.cancelButtonTarget.classList.toggle("hidden", !busy)
+    this.syncRenderAvailability()
+  }
+
+  syncRenderAvailability() {
+    if (!this.hasRenderButtonTarget) return
+    this.renderButtonTarget.disabled = Boolean(
+      this.rendering ||
+        this.rangeLoading ||
+        !this.style ||
+        !isVideoExportSupported(),
+    )
   }
 
   syncSupport() {
-    if (isVideoExportSupported()) return
-    this.renderButtonTarget.disabled = true
-    this.statusTarget.textContent = translate("video.unsupported_browser")
+    this.syncRenderAvailability()
+    if (!isVideoExportSupported()) {
+      this.statusTarget.textContent = translate("video.unsupported_browser")
+    }
   }
 
   teardown() {

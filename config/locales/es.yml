@@ -3601,9 +3601,7 @@ es:
     visits:
       suggest:
         error_suggesting_visits_message: 'Error al sugerir visitas: %{message}'
-        new_visits_suggested: Se sugirieron nuevas visitas
         error_suggesting_visits: 'Error al sugerir visitas'
-        new_visits_suggested_message: 'Se han sugerido nuevas visitas a partir de tus datos de ubicación del %{start_at} al %{end_at}. Puedes revisarlas en la página <a href="%{url}" class="link">Cronología</a>.'
       merge_service:
         minimum_visits: Deben seleccionarse al menos 2 visitas para fusionarlas
       bulk_destroy:

@@ -29,8 +29,8 @@ RSpec.describe 'OIDC manual endpoint issuer configuration' do
     )
   end
 
-  it 'falls back to the default port when OIDC_PORT is blank or non-numeric' do
-    [[''], ['abc'], ['0x10'], ['${PORT}']].each do |(value)|
+  it 'falls back to the default port when OIDC_PORT is blank, non-numeric, or out of range' do
+    ['', 'abc', '0x10', '${PORT}', '0', '-1', '70000'].each do |value|
       config = OidcConfig.build(
         'OIDC_CLIENT_ID' => 'client-abc',
         'OIDC_CLIENT_SECRET' => 'secret-xyz',
@@ -43,7 +43,6 @@ RSpec.describe 'OIDC manual endpoint issuer configuration' do
 
       port = config[:client_options][:port]
       expect(port).to eq(443), "OIDC_PORT=#{value.inspect} should fall back to 443, got #{port}"
-      expect(config[:client_options]).not_to include(port: 0)
     end
   end
 
