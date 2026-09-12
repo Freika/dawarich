@@ -6,8 +6,6 @@ class Users::MailerSendingJob < ApplicationJob
   class UnknownEmailType < StandardError; end
 
   MAILER_REGISTRY = {
-    'welcome'                     => ['UsersMailer', :welcome],
-    'explore_features'            => ['UsersMailer', :explore_features],
     'archival_approaching'        => ['UsersMailer', :archival_approaching],
     'oauth_account_link'          => ['UsersMailer', :oauth_account_link],
     'account_destroy_confirmation' => ['UsersMailer', :account_destroy_confirmation]
@@ -18,6 +16,8 @@ class Users::MailerSendingJob < ApplicationJob
     trial_expires_soon
     post_trial_reminder_early
     post_trial_reminder_late
+    welcome
+    explore_features
   ].freeze
 
   def perform(user_id, email_type, **options)

@@ -1,20 +1,6 @@
 # frozen_string_literal: true
 
 class UsersMailer < ApplicationMailer
-  def welcome
-    # Sent after user signs up
-    @user = params[:user]
-
-    mail(to: @user.email, subject: I18n.t('mailers.users.welcome.subject'))
-  end
-
-  def explore_features
-    # Sent 2 days after user signs up
-    @user = params[:user]
-
-    mail(to: @user.email, subject: I18n.t('mailers.users.explore_features.subject'))
-  end
-
   def archival_approaching
     @user = params[:user]
     @upgrade_url = "#{MANAGER_URL}/auth/dawarich?token=#{@user.generate_subscription_token}" \
@@ -58,4 +44,8 @@ class UsersMailer < ApplicationMailer
   def post_trial_reminder_early; end
 
   def post_trial_reminder_late; end
+
+  def welcome; end
+
+  def explore_features; end
 end
