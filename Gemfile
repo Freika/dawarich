@@ -8,6 +8,7 @@ ruby File.read('.ruby-version').strip
 gem 'activerecord-postgis-adapter', '11.1.1'
 # https://meta.discourse.org/t/cant-rebuild-due-to-aws-sdk-gem-bump-and-new-aws-data-integrity-protections/354217/40
 gem 'addressable', '>= 2.9.0'
+gem 'airports', '~> 1.13'
 gem 'apple_id', '~> 1.2'
 gem 'aws-sdk-core', '~> 3.252', require: false
 gem 'aws-sdk-kms', '~> 1.129', require: false

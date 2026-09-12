@@ -1,0 +1,49 @@
+{
+  "users": [
+    {
+      "id": "user-1",
+      "displayName": "Demo User",
+      "username": "demo"
+    }
+  ],
+  "flights": [
+    {
+      "date": "2026-04-20",
+      "datePrecision": "day",
+      "from": {
+        "icao": "EDDB",
+        "iata": "BER",
+        "name": "Berlin Brandenburg",
+        "lat": 52.351,
+        "lon": 13.493
+      },
+      "to": {
+        "icao": "LFPG",
+        "iata": "CDG",
+        "name": "Paris CDG",
+        "lat": 49.009,
+        "lon": 2.547
+      },
+      "departure": "2026-04-20T10:00:00.000+00:00",
+      "arrival": "2026-04-20T12:00:00.000+00:00",
+      "duration": 7200,
+      "flightNumber": "AF1235",
+      "airline": {
+        "name": "Air France",
+        "iata": "AF"
+      },
+      "aircraft": {
+        "name": "A320"
+      },
+      "aircraftReg": "F-GKXA",
+      "seats": [
+        {
+          "userId": "user-1",
+          "seat": "window",
+          "seatNumber": "14A",
+          "seatClass": "economy"
+        }
+      ]
+    }
+  ]
+}
