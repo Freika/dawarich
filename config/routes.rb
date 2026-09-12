@@ -44,6 +44,13 @@ Rails.application.routes.draw do
 
     resources :integrations, only: [:index]
     patch 'integrations', to: 'integrations#update'
+    resources :trek_sources, only: %i[create destroy] do
+      member do
+        get :select_trips
+        post :import_trips
+        post :sync
+      end
+    end
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'

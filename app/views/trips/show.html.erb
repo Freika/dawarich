@@ -90,6 +90,10 @@
 
         <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
       </div>
+
+      <% if @trip.trip_source.present? && @trip.planned_days.any? %>
+        <%= render 'trips/source_itinerary', trip: @trip %>
+      <% end %>
       <turbo-frame id="share-link-modal"></turbo-frame>
 
       <%# Map tools toolbar %>
