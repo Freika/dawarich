@@ -1,19 +1,37 @@
 # frozen_string_literal: true
 
 class Settings::GeneralController < ApplicationController
+  include FlashStreamable
+
+  self.page_refresh_morphing = true
+
   before_action :authenticate_user!
+  before_action :authenticate_self_hosted!, only: :test_email
 
   def index; end
 
   def update
+    update_locale
     update_timezone
     update_email_settings
     update_supporter_settings
 
     if current_user.save
-      redirect_to settings_general_index_path, notice: 'Settings updated'
+      redirect_to settings_general_index_path, notice: I18n.t('controllers.settings.general.settings_updated')
     else
-      redirect_to settings_general_index_path, alert: 'Failed to update settings'
+      redirect_to settings_general_index_path, alert: I18n.t('controllers.settings.general.failed_to_update_settings')
+    end
+  end
+
+  def test_email
+    type, message = run_email_test
+
+    respond_to do |format|
+      format.turbo_stream { render turbo_stream: stream_flash(type, message) }
+      format.html do
+        flash_key = type == :notice ? :notice : :alert
+        redirect_to settings_general_index_path, flash_key => message
+      end
     end
   end
 
@@ -23,11 +41,11 @@ class Settings::GeneralController < ApplicationController
 
     if email.blank? && github_username.blank?
       return redirect_to settings_general_index_path,
-                         alert: 'Please enter an email address or GitHub username'
+                         alert: I18n.t('controllers.settings.general.please_enter_an_email_address_or_github_username')
     end
 
-    current_user.settings['supporter_email'] = email
-    current_user.settings['supporter_github_username'] = github_username
+    current_user.settings['supporter_email'] = email if email.present?
+    current_user.settings['supporter_github_username'] = github_username if github_username.present?
     current_user.save!
 
     # Clear cached verification so we get a fresh result
@@ -36,16 +54,50 @@ class Settings::GeneralController < ApplicationController
 
     if current_user.reload.supporter?
       platform = current_user.supporter_platform&.titleize
+      notice = I18n.t(
+        'controllers.settings.general.verified_thank_you_for_supporting_dawarich_via_platform',
+        platform: platform
+      )
       redirect_to settings_general_index_path,
-                  notice: "Verified! Thank you for supporting Dawarich via #{platform}."
+                  notice: notice
     else
       redirect_to settings_general_index_path,
-                  alert: 'Not found in supporter list. '\
-                         'Make sure you\'re using the same email or GitHub username as your donation platform.'
+                  alert: I18n.t('controllers.settings.general.not_found_in_supporter_list_make_sure_you_re_using')
     end
   end
 
   private
+
+  def run_email_test
+    return [:alert, t('controllers.settings.general.smtp_not_configured')] unless DawarichSettings.email_configured?
+
+    message = UsersMailer.with(user: current_user).test_email.message
+    message.raise_delivery_errors = true
+    message.deliver
+    [:notice, t('controllers.settings.general.test_email_sent', email: current_user.email)]
+  rescue StandardError => e
+    Rails.logger.error("Test email delivery failed: #{e.class}: #{e.message}")
+    [:alert, t('controllers.settings.general.test_email_failed', error: test_email_error_description(e))]
+  end
+
+  def test_email_error_description(error)
+    safe = error.is_a?(SocketError) || error.is_a?(Timeout::Error) ||
+           error.is_a?(OpenSSL::SSL::SSLError) || error.is_a?(SystemCallError) ||
+           error.is_a?(ArgumentError) ||
+           error.class.name.start_with?('Net::SMTP')
+
+    safe ? "#{error.class}: #{error.message}" : error.class.name
+  end
+
+  # Written here rather than left to the locale around_action: that one saves
+  # with `update_all`, which the `current_user.save` below would overwrite with
+  # the settings this request loaded.
+  def update_locale
+    locale = supported_locale(params[:locale])
+    return unless locale
+
+    current_user.settings['locale'] = locale.to_s
+  end
 
   def update_timezone
     return unless params.key?(:timezone) && ActiveSupport::TimeZone[params[:timezone]]

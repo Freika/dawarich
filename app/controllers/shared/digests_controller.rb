@@ -14,14 +14,14 @@ class Shared::DigestsController < ApplicationController
 
     unless @digest&.public_accessible?
       return redirect_to root_path,
-                         alert: 'Shared digest not found or no longer available'
+                         alert: I18n.t('controllers.shared.digests.shared_digest_not_found_or_no_longer_available')
     end
 
     @year = @digest.year
     @user = @digest.user
     @distance_unit = @user.safe_settings.distance_unit || 'km'
     @is_public_view = true
-    @full_digest = DawarichSettings.self_hosted? || @user.pro?
+    @full_digest = @user.full_access?
 
     render 'users/digests/public_year'
   end
@@ -35,11 +35,11 @@ class Shared::DigestsController < ApplicationController
     if params[:enabled] == '1'
       @digest.enable_sharing!(expiration: params[:expiration] || '24h')
       @sharing_url = shared_users_digest_url(@digest.sharing_uuid)
-      @message = 'Sharing enabled successfully'
+      @message = I18n.t('controllers.shared.digests.sharing_enabled')
     else
       @digest.disable_sharing!
       @sharing_url = ''
-      @message = 'Sharing disabled successfully'
+      @message = I18n.t('controllers.shared.digests.sharing_disabled')
     end
 
     respond_to do |format|
@@ -48,7 +48,7 @@ class Shared::DigestsController < ApplicationController
           turbo_stream.replace('sharing-link-display',
                                partial: 'shared/sharing_link',
                                locals: { sharing_url: @sharing_url }),
-          stream_flash(:success, 'Auto-saved')
+          stream_flash(:success, I18n.t('controllers.shared.digests.auto_saved'))
         ]
       end
       format.json do
@@ -58,10 +58,14 @@ class Shared::DigestsController < ApplicationController
   rescue StandardError
     respond_to do |format|
       format.turbo_stream do
-        render turbo_stream: stream_flash(:error, 'Failed to update sharing settings')
+        render turbo_stream: stream_flash(
+          :error,
+          I18n.t('controllers.shared.digests.failed_to_update_sharing_settings')
+        )
       end
       format.json do
-        render json: { success: false, message: 'Failed to update sharing settings' },
+        message = I18n.t('controllers.shared.digests.failed_to_update_sharing_settings')
+        render json: { success: false, message: message },
                status: :unprocessable_content
       end
     end

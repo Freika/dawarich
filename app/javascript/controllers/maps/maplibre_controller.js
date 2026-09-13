@@ -1,10 +1,15 @@
 import { Controller } from "@hotwired/stimulus"
+import { formatNumber, translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
+import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
+import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
+import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { AreaSelectionManager } from "./maplibre/area_selection_manager"
@@ -32,6 +37,7 @@ export default class extends Controller {
     timezone: String,
     userPlan: { type: String, default: "pro" },
     upgradeUrl: { type: String, default: "" },
+    importId: { type: String, default: "" },
   }
 
   static targets = [
@@ -50,15 +56,17 @@ export default class extends Controller {
     "metersBetweenValue",
     "minutesBetweenValue",
     "minMinutesInCityValue",
-    "maxGapMinutesValue",
-    "stayMaxGapMinutesValue",
-    "gpsAccuracyThresholdValue",
     "gpsFilteringToggle",
     // Search
     "searchInput",
     "searchResults",
     // Layer toggles
     "pointsToggle",
+    "pointsEditToggle",
+    "pointsTiledToggle",
+    "pointsTiledInactiveNote",
+    "pointsEditUnavailableNote",
+    "routeSplittingUnavailableNote",
     "routesToggle",
     "heatmapToggle",
     "hexagonsToggle",
@@ -71,6 +79,7 @@ export default class extends Controller {
     "anomaliesToggle",
     "familyToggle",
     "flightsToggle",
+    "tracksToggle",
     // Speed-colored routes
     "routesOptions",
     "speedColoredToggle",
@@ -104,40 +113,8 @@ export default class extends Controller {
     "routeSpeed",
     "routeSpeedContainer",
     "routePoints",
-    // Transportation mode thresholds
+    // Transportation mode detection
     "transportationCollapseToggle",
-    "transportationExpertToggle",
-    "transportationBasicSettings",
-    "transportationExpertSettings",
-    // Transportation speed inputs
-    "walkingMaxSpeedInput",
-    "cyclingMaxSpeedInput",
-    "drivingMaxSpeedInput",
-    "flyingMinSpeedInput",
-    // Transportation speed value displays
-    "walkingMaxSpeedValue",
-    "cyclingMaxSpeedValue",
-    "drivingMaxSpeedValue",
-    "flyingMinSpeedValue",
-    // Transportation expert inputs
-    "stationaryMaxSpeedInput",
-    "trainMinSpeedInput",
-    "runningVsCyclingAccelInput",
-    "cyclingVsDrivingAccelInput",
-    "minSegmentDurationInput",
-    "timeGapThresholdInput",
-    "minFlightDistanceInput",
-    // Transportation expert value displays
-    "stationaryMaxSpeedValue",
-    "trainMinSpeedValue",
-    "runningVsCyclingAccelValue",
-    "cyclingVsDrivingAccelValue",
-    "minSegmentDurationValue",
-    "timeGapThresholdValue",
-    "minFlightDistanceValue",
-    // Transportation unit labels
-    "speedUnitLabel",
-    "distanceUnitLabel",
     // Transportation recalculation status
     "transportationRecalculationAlert",
     "transportationLockedMessage",
@@ -161,6 +138,7 @@ export default class extends Controller {
     "timelineFeedContainer",
     // Replay playback
     "replayPlayButton",
+    "replayFollowButton",
     "replayPlayIcon",
     "replayPauseIcon",
     "replaySpeedSlider",
@@ -172,6 +150,10 @@ export default class extends Controller {
   ]
 
   async connect() {
+    // Reset in case this controller instance is reconnected after a prior
+    // disconnect (so the mid-init teardown guard doesn't fire on a fresh map).
+    this._disconnected = false
+
     if (!this.isWebGLSupported()) {
       this.showWebGLError()
       return
@@ -201,6 +183,11 @@ export default class extends Controller {
     this.settingsController.syncToggleStates()
 
     await this.initializeMap()
+    // initializeMap bails without setting this.map if the controller
+    // disconnected mid-init (fast Turbo nav); don't build managers on a
+    // dead controller with an undefined map.
+    if (this._disconnected) return
+
     this.initializeAPI()
 
     // Initialize managers
@@ -278,6 +265,10 @@ export default class extends Controller {
       this.boundHandleEntryDeselect,
     )
 
+    this.timelineSegmentHover = new TimelineSegmentHover(this, () =>
+      SettingsManager.getSetting("tracksEnabled"),
+    )
+
     // SPA date-range change from the Timeline calendar — refetch all enabled
     // layers for the new start/end without tearing down the map instance.
     this.boundHandleDateNavigated = this.handleTimelineDateNavigated.bind(this)
@@ -350,6 +341,22 @@ export default class extends Controller {
       new Date(this.endDateValue),
     )
 
+    // Snapshot the load-time window so realtime filtering can tell the default
+    // "today" view (whose frozen end goes stale across local midnight) apart
+    // from an explicitly selected past range.
+    const loadEnd = parseTimestamp(this.endDateValue)
+    this.defaultDateRange = {
+      startValue: this.startDateValue,
+      endValue: this.endDateValue,
+      reachesNow: loadEnd !== null && loadEnd >= Date.now(),
+    }
+
+    if (this.settings.placesEnabled) {
+      await this.placesManager.initializePlaceTagFilters({
+        reloadPlaces: false,
+      })
+    }
+
     this.loadMapData().then(() => {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()
@@ -366,13 +373,16 @@ export default class extends Controller {
   }
 
   disconnect() {
+    this._disconnected = true
     if (this._familyHistoryTimer) clearTimeout(this._familyHistoryTimer)
     this.replayPanel?.destroy()
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
+    this.timelineSegmentHover?.destroy()
     this.eventHandlers?.destroy()
     cancelAllPreviews()
+    if (this._persistView) this.map?.off("moveend", this._persistView)
     this.cleanup.cleanup()
     this.map?.remove()
     performanceMonitor.logReport()
@@ -396,19 +406,44 @@ export default class extends Controller {
    * Initialize MapLibre map
    */
   async initializeMap() {
-    this.map = await MapInitializer.initialize(this.containerTarget, {
-      mapStyle: this.settings.mapStyle,
-      globeProjection: this.settings.globeProjection,
-      hiddenTileCategories: this.settings.hiddenTileCategories || [],
-      disabledPoiGroups: this.settings.disabledPoiGroups || [],
-    })
+    // Reopen at the user's last viewport instead of the zoomed-out globe.
+    // When the date range has data, fitBounds overrides this; when it has
+    // none, the map stays on the last-known view rather than the world.
+    const lastView = loadLastView(this.apiKeyValue)
+
+    const map = await MapInitializer.initialize(
+      this.containerTarget,
+      {
+        mapStyle: this.settings.mapStyle,
+        globeProjection: this.settings.globeProjection,
+        hiddenTileCategories: this.settings.hiddenTileCategories || [],
+        disabledPoiGroups: this.settings.disabledPoiGroups || [],
+        customTheme: this.settings.customTheme,
+        vectorTilesUrl: this.settings.vectorTilesUrl,
+        tilesFallback: this.settings.tilesFallback === true,
+        ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
+      },
+      this.apiKeyValue,
+    )
+
+    // The controller may have disconnected while the style was loading (e.g.
+    // fast Turbo navigation). Tear the map down instead of attaching a listener
+    // to an orphaned instance that disconnect() can no longer reach.
+    if (this._disconnected) {
+      map.remove()
+      return
+    }
+
+    this.map = map
+    this._persistView = () => saveView(this.map, this.apiKeyValue)
+    this.map.on("moveend", this._persistView)
   }
 
   /**
    * Initialize API client
    */
   initializeAPI() {
-    this.api = new ApiClient(this.apiKeyValue)
+    this.api = new ApiClient(this.apiKeyValue, this.importIdValue || null)
   }
 
   /**
@@ -464,7 +499,15 @@ export default class extends Controller {
    * to come back empty because the server parsed the dates differently.
    */
   handleTimelineDateNavigated(event) {
-    const { startAt, endAt } = event.detail || {}
+    const navigation = this.navigateTimelineDateRange(event.detail || {})
+    if (typeof event.detail?.waitUntil === "function") {
+      event.detail.waitUntil(navigation)
+    } else {
+      navigation.catch((error) => console.error(error))
+    }
+  }
+
+  async navigateTimelineDateRange({ startAt, endAt }) {
     if (!startAt || !endAt) return
 
     const toApiDate = (local) => {
@@ -480,13 +523,32 @@ export default class extends Controller {
     this.endDateValue = end
 
     this._clearDayHighlight?.()
-    this.loadMapData().then(() => {
-      if (this.settings?.anomaliesEnabled) {
-        this.routesManager.refreshAnomalies({ enabled: true })
-      }
-    })
+    await this.loadMapData()
+    if (this.settings?.anomaliesEnabled) {
+      this.routesManager.refreshAnomalies({ enabled: true })
+    }
     this.refreshTimelineFeedIfActive?.()
     this.debouncedLoadFamilyHistory?.()
+  }
+
+  /**
+   * The active window realtime points are filtered against. When the range is
+   * still the untouched load-time window that reached the present, the end is
+   * left open so live points recorded after local midnight keep showing.
+   */
+  realtimeDateRange() {
+    const startValue = this.startDateValue
+    const endValue = this.endDateValue
+    const unchanged =
+      this.defaultDateRange &&
+      startValue === this.defaultDateRange.startValue &&
+      endValue === this.defaultDateRange.endValue
+
+    return {
+      startValue,
+      endValue,
+      treatEndAsOpen: Boolean(unchanged && this.defaultDateRange.reachesNow),
+    }
   }
 
   debouncedLoadFamilyHistory() {
@@ -504,7 +566,7 @@ export default class extends Controller {
       this.progressBadgeTarget.classList.add("visible")
     }
     if (this.hasProgressBadgeTextTarget) {
-      this.progressBadgeTextTarget.textContent = "Loading..."
+      this.progressBadgeTextTarget.textContent = translate("common.loading")
     }
   }
 
@@ -549,13 +611,23 @@ export default class extends Controller {
     const counts = this._lastLoadingCounts || {}
     const parts = []
     for (const [source, count] of Object.entries(counts)) {
-      parts.push(`${count.toLocaleString()} ${source}`)
+      parts.push(
+        translate(`loading_sources.${source}`, {
+          count,
+          formatted_count: formatNumber(count),
+        }),
+      )
     }
 
     // Append family count if family layer is enabled
-    if (this.settings?.familyEnabled) {
+    if (this.settings?.familyEnabled && counts.family === undefined) {
       const familyCount = this._familyMemberCount || 0
-      parts.push(`${familyCount.toLocaleString()} family members`)
+      parts.push(
+        translate("loading_sources.family", {
+          count: familyCount,
+          formatted_count: formatNumber(familyCount),
+        }),
+      )
     }
 
     // Detect when a new data source appears and trigger a pop animation
@@ -573,7 +645,7 @@ export default class extends Controller {
     this._lastSourceCount = sourceCount
 
     this.progressBadgeTextTarget.textContent =
-      parts.length > 0 ? parts.join(" \u00B7 ") : "Loading..."
+      parts.length > 0 ? parts.join(" \u00B7 ") : translate("common.loading")
 
     if (isComplete) {
       if (this.hasProgressBadgeTarget) {
@@ -1174,8 +1246,35 @@ export default class extends Controller {
   updateMapStyle(event) {
     return this.settingsController.updateMapStyle(event)
   }
+  applyMapStyle(styleName) {
+    return this.settingsController.applyMapStyle(styleName)
+  }
   resetSettings() {
     return this.settingsController.resetSettings()
+  }
+  toggleTileCategory(event) {
+    return this.settingsController.toggleTileCategory(event)
+  }
+  togglePoiGroup(event) {
+    return this.settingsController.togglePoiGroup(event)
+  }
+  updateDistanceUnit(event) {
+    return this.settingsController.updateDistanceUnit(event)
+  }
+  updateVectorTilesUrl(event) {
+    return this.settingsController.updateVectorTilesUrl(event)
+  }
+  updateTilesFallback(event) {
+    return this.settingsController.updateTilesFallback(event)
+  }
+  updateRouteColor(event) {
+    return this.settingsController.updateRouteColor(event)
+  }
+  updateTrackColor(event) {
+    return this.settingsController.updateTrackColor(event)
+  }
+  resetLayerColors() {
+    return this.settingsController.resetLayerColors()
   }
   updateRouteOpacity(event) {
     return this.settingsController.updateRouteOpacity(event)
@@ -1198,15 +1297,6 @@ export default class extends Controller {
   updateMinMinutesInCityDisplay(event) {
     return this.settingsController.updateMinMinutesInCityDisplay(event)
   }
-  updateMaxGapMinutesDisplay(event) {
-    return this.settingsController.updateMaxGapMinutesDisplay(event)
-  }
-  updateStayMaxGapMinutesDisplay(event) {
-    return this.settingsController.updateStayMaxGapMinutesDisplay(event)
-  }
-  updateGpsAccuracyThresholdDisplay(event) {
-    return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
-  }
   reapplyAnomalyFilter() {
     return this.settingsController.reapplyAnomalyFilter()
   }
@@ -1215,12 +1305,6 @@ export default class extends Controller {
   }
   toggleGlobe(event) {
     return this.settingsController.toggleGlobe(event)
-  }
-  toggleTransportationExpertMode(event) {
-    return this.settingsController.toggleTransportationExpertMode(event)
-  }
-  updateTransportationThresholdDisplay(event) {
-    return this.settingsController.updateTransportationThresholdDisplay(event)
   }
   markTransportationSettingsDirty(event) {
     return this.settingsController.markTransportationSettingsDirty(event)
@@ -1283,7 +1367,7 @@ export default class extends Controller {
     if (drawerController) {
       drawerController.startDrawing(this.map)
     } else {
-      Toast.error("Area drawer controller not available")
+      Toast.error(translate("messages.area_drawer_controller_not_available"))
     }
   }
 
@@ -1332,15 +1416,23 @@ export default class extends Controller {
       // in place so the side panel matches the map.
       this.eventHandlers?.refreshActiveAreaInfo(areas)
 
-      Toast.success("Area created successfully!")
+      Toast.success(translate("messages.area_created_successfully"))
     } catch (_error) {
-      Toast.error("Failed to reload areas")
+      Toast.error(translate("messages.failed_to_reload_areas"))
     }
   }
 
   // Routes Manager methods
   togglePoints(event) {
     return this.routesManager.togglePoints(event)
+  }
+
+  togglePointsEditing(event) {
+    return this.settingsController.togglePointsEditing(event)
+  }
+
+  togglePointsTiledRendering(event) {
+    return this.routesManager.togglePointsTiledRendering(event)
   }
   toggleRoutes(event) {
     return this.routesManager.toggleRoutes(event)
@@ -1361,8 +1453,11 @@ export default class extends Controller {
   toggleScratch(event) {
     return this.routesManager.toggleScratch(event)
   }
-  togglePhotos(event) {
-    return this.routesManager.togglePhotos(event)
+  async togglePhotos(event) {
+    await this.routesManager.togglePhotos(event)
+    if (!this.replayPanel?.isOpen) return
+    if (!event.target.checked) this._photosWasVisible = false
+    this.replayPanel.refreshReplayPhotos()
   }
   toggleAreas(event) {
     return this.routesManager.toggleAreas(event)
@@ -1408,7 +1503,7 @@ export default class extends Controller {
 
       if (!response.ok) {
         if (response.status === 403) {
-          Toast.info("Family feature not available")
+          Toast.info(translate("messages.family_feature_not_available"))
           this.updateLoadingCounts({
             counts: { family: 0 },
             isComplete: true,
@@ -1437,13 +1532,15 @@ export default class extends Controller {
       // Render family members list
       this.renderFamilyMembersList(locations)
 
-      Toast.success(`Loaded ${locations.length} family member(s)`)
+      Toast.success(
+        translate("family.loaded_members", { count: locations.length }),
+      )
 
       // Load history polylines
       this.loadFamilyHistory()
     } catch (error) {
       console.error("[Maps V2] Failed to load family members:", error)
-      Toast.error("Failed to load family members")
+      Toast.error(translate("messages.failed_to_load_family_members"))
     }
   }
 
@@ -1507,12 +1604,18 @@ export default class extends Controller {
           (Date.now() - sharingDate.getTime()) / (1000 * 60 * 60 * 24),
         ),
       )
-      const formattedDate = sharingDate.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
+      const formattedDate = sharingDate.toLocaleDateString(
+        document.documentElement.lang || undefined,
+        {
+          month: "short",
+          day: "numeric",
+        },
+      )
 
-      infoEl.textContent = `Sharing since ${formattedDate} (${daysSharing} day${daysSharing !== 1 ? "s" : ""} of history)`
+      infoEl.textContent = translate("family.sharing_since", {
+        date: formattedDate,
+        count: daysSharing,
+      })
     }
   }
 
@@ -1522,8 +1625,7 @@ export default class extends Controller {
     const container = this.familyMembersContainerTarget
 
     if (locations.length === 0) {
-      container.innerHTML =
-        '<p class="text-xs text-base-content/60">No family members sharing location</p>'
+      container.innerHTML = `<p class="text-xs text-base-content/60">${translate("family.none_sharing")}</p>`
       return
     }
 
@@ -1531,13 +1633,16 @@ export default class extends Controller {
       ...locations.map((location) => {
         const emailInitial = location.email?.charAt(0)?.toUpperCase() || "?"
         const color = this.getFamilyMemberColor(location.user_id)
-        const lastSeen = new Date(location.updated_at).toLocaleString("en-US", {
-          timeZone: this.timezoneValue || "UTC",
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        })
+        const lastSeen = new Date(location.updated_at).toLocaleString(
+          document.documentElement.lang || undefined,
+          {
+            timeZone: this.timezoneValue || "UTC",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          },
+        )
 
         const row = document.createElement("div")
         row.className =
@@ -1566,7 +1671,7 @@ export default class extends Controller {
 
         const emailDiv = document.createElement("div")
         emailDiv.className = "text-sm font-medium truncate"
-        emailDiv.textContent = location.email || "Unknown"
+        emailDiv.textContent = location.email || translate("common.unknown")
 
         const timeDiv = document.createElement("div")
         timeDiv.className = "text-xs text-base-content/60"
@@ -1607,7 +1712,7 @@ export default class extends Controller {
     const familyLayer = this.layerManager.getLayer("family")
     if (familyLayer) {
       familyLayer.centerOnMember(parseInt(memberId, 10))
-      Toast.success("Centered on family member")
+      Toast.success(translate("messages.centered_on_family_member"))
     }
   }
 
@@ -1632,7 +1737,7 @@ export default class extends Controller {
             // For button actions (modals, etc.), create a button with data-action
             // Use error styling for delete buttons
             const buttonClass =
-              action.label === "Delete"
+              action.handler === "handleDelete"
                 ? "btn btn-sm btn-error"
                 : "btn btn-sm btn-primary"
             return `<button class="${buttonClass}" data-action="click->maps--maplibre#${action.handler}" data-id="${action.id}" data-entity-type="${action.entityType}">${action.label}</button>`
@@ -1696,7 +1801,7 @@ export default class extends Controller {
     const div = document.createElement("div")
     div.appendChild(fragment)
 
-    this.showInfo("Route Information", div.innerHTML)
+    this.showInfo(translate("map_info.route_information"), div.innerHTML)
   }
 
   closeInfo() {
@@ -1780,7 +1885,7 @@ export default class extends Controller {
       })
       document.dispatchEvent(event)
     } catch (_error) {
-      Toast.error("Failed to load visit details")
+      Toast.error(translate("messages.failed_to_load_visit_details"))
     }
   }
 
@@ -1808,7 +1913,7 @@ export default class extends Controller {
         new CustomEvent("area:edit", { detail: { area }, bubbles: true }),
       )
     } catch (_error) {
-      Toast.error("Failed to load area details")
+      Toast.error(translate("messages.failed_to_load_area_details"))
     }
   }
 
@@ -1818,32 +1923,85 @@ export default class extends Controller {
    * full reload.
    */
   async deletePoint(pointId) {
-    const confirmed = confirm(
-      "Delete this point?\n\nThis action cannot be undone.",
-    )
+    const confirmed = confirm(translate("map.confirm_delete_point_permanently"))
     if (!confirmed) return
 
+    const numericId = Number(pointId)
+    const pointsLayer = this.layerManager.getLayer("points")
+    const source = pointsLayer && this.map.getSource(pointsLayer.sourceId)
+    const data = source?._data
+    const removedIndex =
+      data?.features?.findIndex(
+        (f) => Number(f.properties?.id) === numericId,
+      ) ?? -1
+    const removedFeature =
+      removedIndex >= 0 ? data.features[removedIndex] : undefined
+    const canReconcile = Boolean(data?.features && removedFeature)
+
+    // The cached full point set feeds route rebuilds and the scratch layer
+    // in simplified rendering mode — keep it in sync with the layer data.
+    const cachedPoints = this.mapDataManager?.lastLoadedData?.points
+    const removedCacheIndex =
+      cachedPoints?.findIndex((p) => Number(p.id) === numericId) ?? -1
+    const removedCachePoint =
+      removedCacheIndex >= 0 ? cachedPoints[removedCacheIndex] : undefined
+
+    // The API delete fires regardless of layer reconciliation, so the cache
+    // must always drop the point too.
+    if (removedCachePoint) cachedPoints.splice(removedCacheIndex, 1)
+
+    // Optimistically remove the point so the map updates instantly; the API
+    // call and route rebuild run in the background and are reverted on error.
+    if (canReconcile) {
+      data.features = data.features.filter(
+        (f) => Number(f.properties?.id) !== numericId,
+      )
+      source.setData(data)
+      pointsLayer.data = data
+      this.routesManager.reloadRoutes().catch((error) => console.error(error))
+    }
+
     try {
-      Toast.info("Deleting point...")
       await this.api.deletePoint(pointId)
 
-      const numericId = Number(pointId)
-      const pointsLayer = this.layerManager.getLayer("points")
-      const source = pointsLayer && this.map.getSource(pointsLayer.sourceId)
-      if (source?._data?.features) {
-        const data = source._data
-        data.features = data.features.filter(
-          (f) => Number(f.properties?.id) !== numericId,
-        )
-        source.setData(data)
-        pointsLayer.data = data
-        await this.routesManager.reloadRoutes()
-      }
+      // Cached tiles still contain the deleted point.
+      const tiledLayer = this.layerManager.getLayer("points-mvt")
+      if (tiledLayer?.anyVisible) tiledLayer.refresh()
 
       this.closeInfo()
-      Toast.success("Point deleted successfully")
+      Toast.success(translate("messages.point_deleted_successfully"))
     } catch (_error) {
-      Toast.error("Failed to delete point")
+      // The point still exists server-side, so restore it in the cache even
+      // when the layer reconcile below is skipped.
+      if (removedCachePoint && !cachedPoints.includes(removedCachePoint)) {
+        cachedPoints.splice(
+          Math.min(removedCacheIndex, cachedPoints.length),
+          0,
+          removedCachePoint,
+        )
+      }
+
+      // Reconcile against the source's CURRENT data, re-read fresh: a realtime
+      // broadcast may have replaced it while the request was in flight, so the
+      // snapshot captured above could be stale and would clobber that update.
+      const currentSource =
+        pointsLayer && this.map?.getSource(pointsLayer.sourceId)
+      const currentData = currentSource?._data
+      if (currentData?.features && removedFeature) {
+        // Splice back at the original index so the restored point keeps its
+        // render order instead of jumping on top of every other point.
+        const features = [...currentData.features]
+        features.splice(
+          Math.min(removedIndex, features.length),
+          0,
+          removedFeature,
+        )
+        currentData.features = features
+        currentSource.setData(currentData)
+        pointsLayer.data = currentData
+        this.routesManager.reloadRoutes().catch((error) => console.error(error))
+      }
+      Toast.error(translate("messages.failed_to_delete_point"))
     }
   }
 
@@ -1857,12 +2015,12 @@ export default class extends Controller {
 
       // Show delete confirmation
       const confirmed = confirm(
-        `Delete area "${area.name}"?\n\nThis action cannot be undone.`,
+        translate("areas.confirm_delete_named", { name: area.name }),
       )
 
       if (!confirmed) return
 
-      Toast.info("Deleting area...")
+      Toast.info(translate("messages.deleting_area"))
 
       // Delete the area
       await this.api.deleteArea(areaId)
@@ -1879,9 +2037,9 @@ export default class extends Controller {
       // Close info display
       this.closeInfo()
 
-      Toast.success("Area deleted successfully")
+      Toast.success(translate("messages.area_deleted_successfully"))
     } catch (_error) {
-      Toast.error("Failed to delete area")
+      Toast.error(translate("messages.failed_to_delete_area"))
     }
   }
 
@@ -1911,7 +2069,7 @@ export default class extends Controller {
       })
       document.dispatchEvent(event)
     } catch (_error) {
-      Toast.error("Failed to load place details")
+      Toast.error(translate("messages.failed_to_load_place_details"))
     }
   }
 
@@ -1950,6 +2108,21 @@ export default class extends Controller {
       highlightPoint: (point) => this._highlightReplayRouteSegment(point),
       clearHighlight: () => this._clearReplayRouteHighlight(),
       onPlayStateChange: (playing) => this._updateTrackReplayButton(playing),
+      getPhotos: () => {
+        const layer = this.layerManager?.getLayer("photos")
+        const features = layer?.visible ? layer.data?.features : null
+        return features?.length ? features.map(featureToPhoto) : []
+      },
+      onReplayPhotosActive: (active) => {
+        const layer = this.layerManager?.getLayer("photos")
+        if (!layer) return
+        if (active) {
+          this._photosWasVisible = layer.visible
+          layer.hide()
+        } else if (this._photosWasVisible) {
+          layer.show()
+        }
+      },
     })
   }
 
@@ -1973,6 +2146,10 @@ export default class extends Controller {
 
   replayTogglePlayback() {
     this.replayPanel?.togglePlayback()
+  }
+
+  replayRecenterFollow() {
+    this.replayPanel?.recenterFollow()
   }
 
   replaySpeedChange(event) {
@@ -2043,11 +2220,11 @@ export default class extends Controller {
     if (playing) {
       playIcon.classList.add("hidden")
       pauseIcon.classList.remove("hidden")
-      label.textContent = "Pause"
+      label.textContent = translate("replay.pause")
     } else {
       playIcon.classList.remove("hidden")
       pauseIcon.classList.add("hidden")
-      label.textContent = "Replay"
+      label.textContent = translate("replay.replay")
     }
   }
 

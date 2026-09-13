@@ -86,6 +86,33 @@ RSpec.describe Visits::Names::Suggester do
       end
     end
 
+    context 'when points have flat Nominatim geodata' do
+      let(:points) do
+        [
+          double(
+            'Point',
+            geodata: {
+              'place_id' => 1, 'lat' => '51.3402', 'lon' => '12.3712', 'name' => 'Coffee Shop',
+              'category' => 'amenity', 'type' => 'cafe',
+              'address' => { 'road' => 'Hauptstraße', 'house_number' => '1', 'city' => 'Leipzig' }
+            }
+          ),
+          double(
+            'Point',
+            geodata: {
+              'place_id' => 2, 'lat' => '51.3402', 'lon' => '12.3712', 'name' => 'Coffee Shop',
+              'category' => 'amenity', 'type' => 'cafe',
+              'address' => { 'road' => 'Hauptstraße', 'house_number' => '1', 'city' => 'Leipzig' }
+            }
+          )
+        ]
+      end
+
+      it 'derives the most common name from the flat shape' do
+        expect(suggester.call).to eq('Coffee Shop, Hauptstraße, Leipzig')
+      end
+    end
+
     context 'when a complete place can be built' do
       let(:points) do
         [

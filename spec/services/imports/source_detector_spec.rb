@@ -9,6 +9,55 @@ RSpec.describe Imports::SourceDetector do
   let(:filename) { nil }
 
   describe '#detect_source' do
+    context 'with a Dawarich mobile photo library export' do
+      let(:file_content) { file_fixture('mobile_photo_library/import.json').read }
+      let(:filename) { 'dawarich-photo-library.json' }
+
+      it 'detects mobile_photo_library format' do
+        expect(detector.detect_source).to eq(:mobile_photo_library)
+      end
+
+      # Real exports are read from disk and truncated at MAX_DETECTION_BYTES, so
+      # they must go through new_from_file_header to exercise the path they take
+      # in production rather than the whole-string one.
+      context 'when a real export on disk exceeds the detection read limit' do
+        let(:payload) do
+          points = Array.new(400) do |i|
+            { timestamp: 1_718_447_400 + i, latitude: 48.1 + (i / 10_000.0), longitude: 11.5 }
+          end
+          JSON.generate(type: 'DawarichPhotoLibrary', version: 1, points:)
+        end
+
+        around do |example|
+          Tempfile.create(['photo-library', '.json']) do |file|
+            file.write(payload)
+            file.flush
+            @path = file.path
+            example.run
+          end
+        end
+
+        it 'detects the format from the truncated header' do
+          expect(payload.bytesize).to be > described_class::MAX_DETECTION_BYTES
+          expect(described_class.new_from_file_header(@path).detect_source).to eq(:mobile_photo_library)
+        end
+      end
+
+      context 'when the export declares an unsupported version' do
+        let(:file_content) do
+          JSON.generate(
+            type: 'DawarichPhotoLibrary',
+            version: 2,
+            points: [{ timestamp: 1_718_447_400, latitude: 48.1, longitude: 11.5 }]
+          )
+        end
+
+        it 'does not claim the format' do
+          expect(detector.detect_source).not_to eq(:mobile_photo_library)
+        end
+      end
+    end
+
     context 'with Google Semantic History format' do
       let(:file_content) { file_fixture('google/semantic_history.json').read }
 
@@ -38,6 +87,25 @@ RSpec.describe Imports::SourceDetector do
 
       it 'detects google_phone_takeout format' do
         expect(detector.detect_source).to eq(:google_phone_takeout)
+      end
+    end
+
+    context 'with a Google Photos metadata sidecar' do
+      let(:file_content) { file_fixture('google_photos/sidecar.json').read }
+      let(:filename) { 'anonymized-photo.jpg.json' }
+
+      it 'detects google_photos format' do
+        expect(detector.detect_source).to eq(:google_photos)
+      end
+
+      context 'without geodata' do
+        let(:file_content) do
+          JSON.parse(file_fixture('google_photos/sidecar.json').read).except('geoDataExif').to_json
+        end
+
+        it 'still detects the sidecar so the importer can skip it cleanly' do
+          expect(detector.detect_source).to eq(:google_photos)
+        end
       end
     end
 
@@ -81,6 +149,24 @@ RSpec.describe Imports::SourceDetector do
       let(:filename) { 'test.kml' }
 
       it 'detects kml format' do
+        expect(detector.detect_source).to eq(:kml)
+      end
+    end
+
+    context 'with GPX file prefixed with a UTF-8 BOM (#3101)' do
+      let(:file_content) { "\xEF\xBB\xBF#{file_fixture('gpx/gpx_track_single_segment.gpx').read}" }
+      let(:filename) { 'test.gpx' }
+
+      it 'detects gpx format despite the BOM' do
+        expect(detector.detect_source).to eq(:gpx)
+      end
+    end
+
+    context 'with KML file prefixed with a UTF-8 BOM (#3101)' do
+      let(:file_content) { "\xEF\xBB\xBF#{file_fixture('kml/points_with_timestamps.kml').read}" }
+      let(:filename) { 'test.kml' }
+
+      it 'detects kml format despite the BOM' do
         expect(detector.detect_source).to eq(:kml)
       end
     end
@@ -299,6 +385,38 @@ RSpec.describe Imports::SourceDetector do
       it 'detects google_semantic_history despite BOM' do
         detector = described_class.new_from_file_header(fixture_path)
         expect(detector.detect_source).to eq(:google_semantic_history)
+      end
+    end
+
+    context 'with a GPX file that has a UTF-8 BOM, read via file header (#3101)' do
+      let(:tmp_path) do
+        file = Tempfile.new(['gpx_with_bom', '.gpx'])
+        file.binmode
+        file.write("\xEF\xBB\xBF".b)
+        file.write(file_fixture('gpx/gpx_track_single_segment.gpx').read)
+        file.close
+        file.path
+      end
+
+      it 'detects gpx despite the BOM' do
+        detector = described_class.new_from_file_header(tmp_path)
+        expect(detector.detect_source).to eq(:gpx)
+      end
+    end
+
+    context 'with a KML file that has a UTF-8 BOM, read via file header (#3101)' do
+      let(:tmp_path) do
+        file = Tempfile.new(['kml_with_bom', '.kml'])
+        file.binmode
+        file.write("\xEF\xBB\xBF".b)
+        file.write(file_fixture('kml/points_with_timestamps.kml').read)
+        file.close
+        file.path
+      end
+
+      it 'detects kml despite the BOM' do
+        detector = described_class.new_from_file_header(tmp_path)
+        expect(detector.detect_source).to eq(:kml)
       end
     end
 

@@ -1,0 +1,9 @@
+<?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+<gpx version="1.1" creator="Komoot" xmlns="http://www.topografix.com/GPX/1/1">
+  <rte>
+    <name>Planned tour</name>
+    <rtept lat="51.3400000" lon="12.3710000"><ele>113</ele></rtept>
+    <rtept lat="51.3401000" lon="12.3715000"><ele>114</ele></rtept>
+    <rtept lat="51.3403000" lon="12.3720000"><ele>115</ele></rtept>
+  </rte>
+</gpx>

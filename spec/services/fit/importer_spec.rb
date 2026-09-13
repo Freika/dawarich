@@ -51,25 +51,19 @@ RSpec.describe Fit::Importer do
         expect(Time.zone.at(point.timestamp).year).to eq(2024)
       end
 
-      it 'parses heart rate into raw_data' do
-        point = user.points.order(:timestamp).first
-        expect(point.raw_data['heart_rate']).to eq(140)
+      it 'does not persist raw_data for imported points' do
+        expect(Point.where(import_id: import.id).pluck(:raw_data).uniq).to eq([{}])
       end
 
-      it 'parses cadence into raw_data' do
-        point = user.points.order(:timestamp).first
-        expect(point.raw_data['cadence']).to eq(80)
-      end
+      it 'maps activity type from session sport into motion_data' do
+        point = Point.where(import_id: import.id).first
 
-      it 'maps activity type from session sport' do
-        point = user.points.order(:timestamp).first
-        expect(point.raw_data['activity_type']).to eq('cycling')
+        expect(point.motion_data['activity_type']).to eq('cycling')
       end
 
       it 'imports all records with correct ordering' do
         points = user.points.order(:timestamp)
         expect(points.last.lat).to be_within(0.001).of(52.522)
-        expect(points.last.raw_data['heart_rate']).to eq(150)
       end
     end
 
@@ -96,9 +90,29 @@ RSpec.describe Fit::Importer do
         expect(point.lon).to be_within(0.0001).of(13.4050)
       end
 
-      it 'maps activity type from session sport' do
-        point = user.points.order(:timestamp).first
-        expect(point.raw_data['activity_type']).to eq('cycling')
+      it 'maps activity type from session sport into motion_data' do
+        point = Point.where(import_id: import.id).first
+
+        expect(point.motion_data['activity_type']).to eq('cycling')
+      end
+    end
+
+    context 'with a FIT activity that omits the device_info section' do
+      let(:file_path) do
+        path = Rails.root.join('tmp', "test_without_device_info_#{SecureRandom.hex(4)}.fit").to_s
+        generate_fit_fixture_without_device_info(path)
+        path
+      end
+
+      after { File.delete(file_path) if File.exist?(file_path) }
+
+      it 'imports its GPS records without inventing persisted device data' do
+        expect do
+          described_class.new(import, user.id, file_path).call
+        end.to change { user.points.count }.by(3)
+
+        expect(import.reload).not_to be_failed
+        expect(Fit4Ruby.read(file_path).device_infos).to be_empty
       end
     end
 
@@ -150,6 +164,22 @@ RSpec.describe Fit::Importer do
         info.instance_variable_set(:@garmin_product, 'fenix3')
         info.instance_variable_set(:@serial_number, nil)
         expect { info.check(0) }.not_to raise_error
+      end
+
+      it 'temporarily tolerates an activity with no device_info section' do
+        activity = Fit4Ruby::Activity.new(timestamp: Time.current, total_timer_time: 60)
+
+        expect { activity.check }.not_to raise_error
+        expect(activity.device_infos).to be_empty
+      end
+
+      it 'leaves existing device_info entries untouched when they are present' do
+        activity = Fit4Ruby::Activity.new(timestamp: Time.current, total_timer_time: 60)
+        activity.new_device_info(timestamp: Time.current, device_index: 0)
+        activity.new_device_info(timestamp: Time.current, device_index: 1)
+
+        expect { activity.check }.not_to raise_error
+        expect(activity.device_infos.size).to eq(2)
       end
     end
   end

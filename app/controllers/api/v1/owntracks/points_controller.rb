@@ -7,14 +7,25 @@ class Api::V1::Owntracks::PointsController < ApiController
   def create
     OwnTracks::PointCreator.new(point_params, current_api_user.id).call
 
-    render json: [], status: :ok
+    render json: friends_payload, status: :ok
   rescue StandardError => e
+    Rails.logger.error("Point creation failed: #{e.class}: #{e.message}")
     Sentry.capture_exception(e) if defined?(Sentry)
 
-    render json: { error: 'Point creation failed' }, status: :internal_server_error
+    render json: { error: I18n.t('controllers.api.v1.owntracks.points.point_creation_failed') },
+           status: :internal_server_error
   end
 
   private
+
+  def friends_payload
+    OwnTracks::FriendsFormatter.new(current_api_user).call
+  rescue StandardError => e
+    Rails.logger.error("OwnTracks friends formatting failed: #{e.class}: #{e.message}")
+    Sentry.capture_exception(e) if defined?(Sentry)
+
+    []
+  end
 
   OWNTRACKS_FIELDS = %i[
     _type lat lon tst tid t bs batt p acc vac vel alt

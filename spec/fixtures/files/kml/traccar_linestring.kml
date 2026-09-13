@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2">
+  <Document>
+    <name>Traccar User</name>
+    <Placemark>
+      <name>2026-05-23 16:55 - 2026-05-23 16:57</name>
+      <LineString>
+        <extrude>1</extrude>
+        <tessellate>1</tessellate>
+        <altitudeMode>absolute</altitudeMode>
+        <coordinates>
+          13.404954,52.520008,35.000000
+          13.405315,52.520171,36.000000
+          13.405781,52.520409,37.000000
+        </coordinates>
+      </LineString>
+    </Placemark>
+  </Document>
+</kml>

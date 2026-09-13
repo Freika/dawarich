@@ -15,7 +15,9 @@ class Lite::ArchivalWarningJob < ApplicationJob
     return if DawarichSettings.self_hosted?
 
     User.where(plan: :lite).find_each do |user|
-      check_thresholds(user)
+      next if user.full_access?
+
+      I18n.with_locale(user.locale) { check_thresholds(user) }
     end
   end
 
@@ -41,13 +43,14 @@ class Lite::ArchivalWarningJob < ApplicationJob
   end
 
   def notify_approaching(user)
-    Notification.create!(
-      user: user,
-      kind: :warning,
-      title: 'Your oldest data will archive in 30 days',
-      content: 'Your oldest month of location data will be archived soon. ' \
-               'Upgrade to Pro to keep your full history searchable.'
-    )
+    I18n.with_locale(user.locale) do
+      Notification.create!(
+        user: user,
+        kind: :warning,
+        title: I18n.t('jobs.lite.archival_warning_job.your_oldest_data_will_archive_in_30_days'),
+        content: I18n.t('jobs.lite.archival_warning_job.your_oldest_month_of_location_data_will_be_archived_soon')
+      )
+    end
   end
 
   def notify_email(user)
@@ -55,14 +58,14 @@ class Lite::ArchivalWarningJob < ApplicationJob
   end
 
   def notify_archived(user)
-    Notification.create!(
-      user: user,
-      kind: :warning,
-      title: 'Data has been archived',
-      content: '1 month of location data has been archived. ' \
-               'Your archived data can be exported at any time. ' \
-               'Upgrade to Pro to make it visible and interactive in-app again.'
-    )
+    I18n.with_locale(user.locale) do
+      Notification.create!(
+        user: user,
+        kind: :warning,
+        title: I18n.t('jobs.lite.archival_warning_job.data_has_been_archived'),
+        content: I18n.t('jobs.lite.archival_warning_job.month_of_location_data_has_been_archived_your_archived')
+      )
+    end
   end
 
   def mark_warning_sent(user, key)

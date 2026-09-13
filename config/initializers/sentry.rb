@@ -7,9 +7,9 @@ require Rails.root.join('lib/sentry_log_redactor')
 Sentry.init do |config|
   config.breadcrumbs_logger = [:active_support_logger]
   config.dsn = SENTRY_DSN
-  config.traces_sample_rate = 0.05
-  config.profiles_sample_rate = 0.1
-  config.enable_logs = Rails.env.production? || Rails.env.staging?
+  config.traces_sample_rate = ENV.fetch('SENTRY_TRACES_SAMPLE_RATE', 0.05).to_f
+  config.profiles_sample_rate = ENV.fetch('SENTRY_PROFILES_SAMPLE_RATE', 0.1).to_f
+  config.enable_logs = ENV.fetch('SENTRY_ENABLE_LOGS', 'false').casecmp?('true')
 
   config.before_send_log = ->(log) { SentryLogRedactor.call(log) }
 end

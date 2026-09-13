@@ -4,7 +4,8 @@ require 'rails_helper'
 
 RSpec.describe LocationSearch::GeocodingService do
   let(:query) { 'Kaufland Berlin' }
-  let(:service) { described_class.new(query) }
+  let(:user) { create(:user) }
+  let(:service) { described_class.new(query, user: user) }
 
   describe '#search' do
     context 'with valid query' do
@@ -59,7 +60,7 @@ RSpec.describe LocationSearch::GeocodingService do
     end
 
     context 'with blank query' do
-      let(:service) { described_class.new('') }
+      let(:service) { described_class.new('', user: user) }
 
       it 'returns empty array' do
         expect(service.search).to eq([])
@@ -158,7 +159,7 @@ RSpec.describe LocationSearch::GeocodingService do
       end
 
       it 'removes locations within 100m of each other' do
-        service = described_class.new('test')
+        service = described_class.new('test', user: user)
         results = service.search
 
         expect(results.length).to eq(1)
@@ -174,6 +175,35 @@ RSpec.describe LocationSearch::GeocodingService do
 
     it 'returns the current geocoding provider name' do
       expect(service.provider_name).to eq('Nominatim')
+    end
+  end
+
+  describe 'user mode (no ENV)' do
+    before do
+      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+      allow(Geocoder).to receive(:search).and_call_original
+      allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
+    end
+
+    it 'uses the user provider for search and names it' do
+      create(:service_setting, :geoapify, :active, user: user)
+      stub_request(:get, %r{https://api\.geoapify\.com/v1/geocode/search})
+        .to_return(status: 200, body: { type: 'FeatureCollection', features: [] }.to_json,
+                   headers: { 'Content-Type' => 'application/json' })
+
+      described_class.new('Leipzig', user: user).search
+
+      expect(WebMock).to have_requested(:get, /api\.geoapify\.com/)
+      expect(described_class.new('Leipzig', user: user).provider_name).to eq('Geoapify')
+    end
+
+    it 'falls back to the default public lookup for unconfigured users' do
+      stub_request(:get, /nominatim\.openstreetmap\.org/)
+        .to_return(status: 200, body: '[]', headers: { 'Content-Type' => 'application/json' })
+
+      described_class.new('Leipzig', user: user).search
+
+      expect(WebMock).to have_requested(:get, /nominatim\.openstreetmap\.org/)
     end
   end
 end

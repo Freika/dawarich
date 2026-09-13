@@ -1,0 +1,15 @@
+{
+  "name": "Sunset",
+  "description": "Warm oranges and pinks on soft peach - dreamy golden hour aesthetic",
+  "bg": "#FDF5F0",
+  "text": "#C45C3E",
+  "gradient_color": "#FDF5F0",
+  "water": "#F0D8D0",
+  "parks": "#F8E8E0",
+  "road_motorway": "#C45C3E",
+  "road_primary": "#D87A5A",
+  "road_secondary": "#E8A088",
+  "road_tertiary": "#F0B8A8",
+  "road_residential": "#F5D0C8",
+  "road_default": "#E8A088"
+}

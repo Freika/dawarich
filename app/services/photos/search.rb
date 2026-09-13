@@ -3,11 +3,32 @@
 class Photos::Search
   attr_reader :user, :start_date, :end_date, :errors
 
+  def self.cached(user, start_date: '1970-01-01', end_date: nil, expires_in: 1.minute)
+    key = "photos_search/#{user.id}/#{start_date}/#{end_date}"
+    cached = Rails.cache.read(key)
+    return cached if cached.present?
+
+    result = new(user, start_date: start_date, end_date: end_date).call
+    Rails.cache.write(key, result, expires_in: expires_in) if result.present?
+    result
+  end
+
   def initialize(user, start_date: '1970-01-01', end_date: nil)
     @user = user
     @start_date = start_date
     @end_date = end_date
     @errors = []
+  end
+
+  def configured_sources
+    sources = []
+    sources << :immich if user.immich_integration_configured?
+    sources << :photoprism if user.photoprism_integration_configured?
+    sources
+  end
+
+  def all_sources_failed?
+    configured_sources.any? && (configured_sources - errors).empty?
   end
 
   def call
@@ -39,11 +60,11 @@ class Photos::Search
   end
 
   def request_photoprism
-    Photoprism::RequestPhotos.new(
-      user,
-      start_date: start_date,
-      end_date: end_date
-    ).call.map { |asset| transform_asset(asset, 'photoprism') }.compact
+    service = Photoprism::RequestPhotos.new(user, start_date: start_date, end_date: end_date)
+    assets = service.call
+    errors << :photoprism if service.connection_failed?
+
+    assets.map { |asset| transform_asset(asset, 'photoprism') }.compact
   end
 
   def transform_asset(asset, source)

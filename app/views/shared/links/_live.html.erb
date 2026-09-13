@@ -4,9 +4,9 @@
          data-shared-live-map-show-route-value="<%= ActiveModel::Type::Boolean.new.cast(link.settings['show_route']) %>">
   <div class="flex items-center gap-3 mb-2">
     <h1 class="text-3xl font-bold"><%= link.name %></h1>
-    <span class="badge badge-error gap-1">● Live</span>
+    <span class="badge badge-error gap-1"><%= t('.live') %></span>
   </div>
-  <p data-shared-live-map-target="status" class="text-base-content/70">Connecting…</p>
+  <p data-shared-live-map-target="status" class="text-base-content/70"><%= t('.connecting') %></p>
   <p data-shared-live-map-target="lastSeen" class="text-sm text-base-content/50 mb-4"></p>
 
   <div id="shared-live-map"

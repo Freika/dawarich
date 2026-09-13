@@ -4,15 +4,15 @@
       <div class="hero-content text-center">
         <div class="max-w-md">
           <h1 class="text-5xl font-bold">
-            <a href="https://dawarich.app" class='link'>Dawarich</a>
+            <a href="https://dawarich.app" class='link'><%= t('.dawarich') %></a>
           </h1>
-          <p class="py-6 text-3xl">The only location history tracker you'll ever need.</p>
+          <p class="py-6 text-3xl"><%= t('.the_only_location_history_tracker_you_ll_ever_need') %></p>
 
           <% if email_password_registration_enabled? %>
-            <%= link_to 'Sign up', new_user_registration_path, class: "rounded-lg py-3 px-5 my-3 bg-blue-600 text-white block font-medium" %>
-            <div class="divider">or</div>
+            <%= link_to t('.sign_up'), new_user_registration_path, class: "rounded-lg py-3 px-5 my-3 bg-blue-600 text-white block font-medium" %>
+            <div class="divider"><%= t('.or') %></div>
           <% end %>
-          <%= link_to 'Sign in', new_user_session_path, class: "rounded-lg py-3 px-5 bg-neutral text-neutral-content block font-medium" %>
+          <%= link_to t('.sign_in'), new_user_session_path, class: "rounded-lg py-3 px-5 bg-neutral text-neutral-content block font-medium" %>
         </div>
       </div>
     </div>
@@ -20,27 +20,27 @@
   <div class="grid grid-cols-1 gap-4 m-auto justify-center md:grid-cols-2 xl:grid-cols-3">
     <div class="card w-full max-w-sm bg-base-100 justify-self-center shadow-xl">
       <div class="card-body">
-        <h2 class="card-title mx-auto">Location history visualisation</h2>
-        <p class='text-center'>Effortlessly import your location history from Google Maps Timeline and Owntracks. View your journeys on an interactive map, complete with customizable layers like heatmaps, points, and connecting lines to visualize your travels.</p>
+        <h2 class="card-title mx-auto"><%= t('.location_history_visualisation') %></h2>
+        <p class='text-center'><%= t('.effortlessly_import_your_location_history_from_google_maps_timeline_and') %></p>
       </div>
     </div>
 
     <div class="card w-full max-w-sm bg-base-100 justify-self-center shadow-xl">
       <div class="card-body">
-        <h2 class="card-title mx-auto">Comprehensive Travel Statistics</h2>
-        <p class='text-center'>Gain insights into your travel patterns with detailed statistics. Track the number of countries and cities visited and total distance traveled. Split your data by years and months for a clear overview of your journeys.</p>
+        <h2 class="card-title mx-auto"><%= t('.comprehensive_travel_statistics') %></h2>
+        <p class='text-center'><%= t('.gain_insights_into_your_travel_patterns_with_detailed_statistics_track') %></p>
       </div>
     </div>
 
     <div class="card w-full max-w-sm bg-base-100 justify-self-center shadow-xl md:col-span-2 xl:col-span-1">
       <div class="card-body">
-        <h2 class="card-title mx-auto">Self-Hosted and Private</h2>
-        <p class='text-center'>Maintain complete control over your data with our self-hosted solution. Dawarich ensures your location history remains private and secure, giving you peace of mind while enjoying the full functionality of a robust tracking system.</p>
+        <h2 class="card-title mx-auto"><%= t('.self_hosted_and_private') %></h2>
+        <p class='text-center'><%= t('.maintain_complete_control_over_your_data_with_our_self_hosted') %></p>
       </div>
     </div>
   </div>
 
   <div class='text-center my-10'>
-    Find more on <a href="https://dawarich.app" class='link'>the website</a>, or check out the <a href="https://github.com/Freika/dawarich" class='link'>source code</a> on GitHub.
+    <%= t('.find_more_on') %> <a href="https://dawarich.app" class='link'><%= t('.the_website') %></a><%= t('.or_check_out_the') %> <a href="https://github.com/Freika/dawarich" class='link'><%= t('.source_code') %></a> <%= t('.on_github') %>
   </div>
 </div>

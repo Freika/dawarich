@@ -14,20 +14,20 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Confirm account link</h1>
+      <h1><%= t('.confirm_account_link') %></h1>
     </div>
     <div class="content">
-      <p>Hi <%= @user.email %>,</p>
+      <p><%= t('.hi') %> <%= @user.email %>,</p>
 
-      <p>Someone — hopefully you — is trying to link <strong><%= @provider_label %></strong> sign-in to your Dawarich account. Clicking the button below will allow that sign-in method to access this account going forward.</p>
+      <p><%= t('.account_link_request_html', provider: @provider_label) %></p>
 
-      <p><a href="<%= @link_url %>" class="cta">Link <%= @provider_label %></a></p>
+      <p><a href="<%= @link_url %>" class="cta"><%= t('.link') %> <%= @provider_label %></a></p>
 
       <div class="notice">
-        <p><strong>Didn't request this?</strong> Ignore this email — the link expires in 15 minutes and no change will be made to your account. If you keep getting these emails, change your password.</p>
+        <p><strong><%= t('.didn_t_request_this') %></strong> <%= t('.ignore_this_email_the_link_expires_in_15_minutes_and') %></p>
       </div>
 
-      <p style="font-size: 12px; color: #6b7280;">Link: <%= @link_url %></p>
+      <p style="font-size: 12px; color: #6b7280;"><%= t('.link_2') %> <%= @link_url %></p>
     </div>
   </div>
 </body>

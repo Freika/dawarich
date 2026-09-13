@@ -1,11 +1,17 @@
 import { Controller } from "@hotwired/stimulus"
 import { MapInitializer } from "controllers/maps/maplibre/map_initializer"
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { DayRoutesLayer } from "maps_maplibre/layers/day_routes_layer"
+import { FlightsLayer } from "maps_maplibre/layers/flights_layer"
 import { PhotosLayer } from "maps_maplibre/layers/photos_layer"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
+import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
+import { flightWindows, maskLines } from "maps_maplibre/utils/flight_mask"
+import { buildTripGeojson, TripProvider } from "poster_studio/data/providers"
+import Flash from "./flash_controller"
 
 /**
  * Trip MapLibre Controller
@@ -18,8 +24,11 @@ export default class extends Controller {
     "daysAccordion",
     "expandAllBtn",
     "loadingIndicator",
+    "posterBtn",
     // Photos button
     "photosToggleBtn",
+    // Flights button
+    "flightsToggleBtn",
     // Replay toggle button
     "replayToggleBtn",
     // Replay panel
@@ -36,6 +45,7 @@ export default class extends Controller {
     "replayPrevDayButton",
     "replayNextDayButton",
     "replayPlayButton",
+    "replayFollowButton",
     "replayPlayIcon",
     "replayPauseIcon",
     "replaySpeedSlider",
@@ -49,6 +59,7 @@ export default class extends Controller {
     startedAt: String,
     endedAt: String,
     tripId: Number,
+    tripName: String,
     pathData: String,
     mapStyle: { type: String, default: "light" },
   }
@@ -60,6 +71,9 @@ export default class extends Controller {
     this.photosLayer = null
     this.photosGeoJSON = null
     this.photosActive = false
+    this.flightsLayer = null
+    this.flightsGeoJSON = null
+    this.flightsActive = false
     this.mapInitializing = false
     this.overviewSourceId = "trip-overview-source"
     this.overviewLayerId = "trip-overview-layer"
@@ -78,6 +92,10 @@ export default class extends Controller {
     if (this.photosLayer) {
       this.photosLayer.remove()
       this.photosLayer = null
+    }
+    if (this.flightsLayer) {
+      this.flightsLayer.remove()
+      this.flightsLayer = null
     }
     if (this.dayRoutesLayer) {
       this.dayRoutesLayer.remove()
@@ -215,6 +233,11 @@ export default class extends Controller {
         this.map.fitBounds(fullBounds, { padding: 50, maxZoom: 15 })
       }
 
+      // Re-apply flight masking in case flights were toggled on before the
+      // day routes finished loading. Skip when flights are off so we don't
+      // re-set every route source to its unmasked data on every load.
+      if (this.flightsActive) this.applyFlightMask()
+
       // Store all points for replay use
       this.allPoints = allPoints
 
@@ -343,14 +366,16 @@ export default class extends Controller {
         d.removeAttribute("open")
       }
       if (this.hasExpandAllBtnTarget) {
-        this.expandAllBtnTarget.textContent = "Show all days"
+        this.expandAllBtnTarget.textContent = translate("trip.show_all_days")
       }
     } else {
       for (const d of allDetails) {
         d.setAttribute("open", "")
       }
       if (this.hasExpandAllBtnTarget) {
-        this.expandAllBtnTarget.textContent = "Collapse all days"
+        this.expandAllBtnTarget.textContent = translate(
+          "trip.collapse_all_days",
+        )
       }
     }
 
@@ -381,6 +406,60 @@ export default class extends Controller {
     }
   }
 
+  // ===== Poster studio =====
+
+  openPosterStudio() {
+    document.dispatchEvent(
+      new CustomEvent("poster-studio:open", {
+        detail: { provider: this.posterProvider() },
+      }),
+    )
+  }
+
+  posterProvider() {
+    const geojson = this.posterGeojson()
+    // Keep the GPS snapshot for video, including switches between studios.
+    const posterGeojson =
+      this.flightsActive && this.flightsLayer?.visible
+        ? {
+            type: "FeatureCollection",
+            features: [
+              ...maskLines(geojson, flightWindows(this.flightsGeoJSON))
+                .features,
+              ...(this.flightsLayer.data?.features ?? []),
+            ],
+          }
+        : geojson
+    return new TripProvider({
+      geojson,
+      posterGeojson,
+      startAt: this.startedAtValue,
+      endAt: this.endedAtValue,
+      title: this.tripNameValue,
+      points: this.allPoints,
+      timezone: this.timezoneValue,
+    })
+  }
+
+  // ===== Video studio =====
+
+  openVideoStudio() {
+    document.dispatchEvent(
+      new CustomEvent("video-studio:open", {
+        detail: { provider: this.posterProvider() },
+      }),
+    )
+  }
+
+  posterGeojson() {
+    return buildTripGeojson({
+      dayRouteCollections: this.dayRoutesLayer
+        ? [...this.dayRoutesLayer.dayRouteData.values()]
+        : [],
+      pathData: this.getPathData(),
+    })
+  }
+
   // ===== Photos layer toggle (button-based) =====
 
   async togglePhotos() {
@@ -392,6 +471,7 @@ export default class extends Controller {
         this.photosLayer = null
       }
       this._setButtonActive(this.photosToggleBtnTarget, false)
+      if (this.replayPanel?.isOpen) this.replayPanel.refreshReplayPhotos()
       return
     }
 
@@ -418,6 +498,7 @@ export default class extends Controller {
     this.photosLayer = new PhotosLayer(this.map)
     this.photosLayer.add(this.photosGeoJSON)
     this._setButtonActive(this.photosToggleBtnTarget, true)
+    if (this.replayPanel?.isOpen) this.replayPanel.refreshReplayPhotos()
   }
 
   photosToGeoJSON(photos) {
@@ -434,7 +515,7 @@ export default class extends Controller {
           properties: {
             id: photo.id,
             thumbnail_url: thumbnailUrl,
-            taken_at: photo.localDateTime,
+            taken_at: photo.capturedAt || photo.localDateTime,
             filename: photo.originalFileName,
             city: photo.city,
             state: photo.state,
@@ -445,6 +526,71 @@ export default class extends Controller {
         }
       }),
     }
+  }
+
+  // ===== Flights layer toggle (button-based) =====
+
+  async toggleFlights() {
+    this.flightsActive = !this.flightsActive
+
+    if (!this.flightsActive) {
+      this.flightsLayer?.hide()
+      this.applyFlightMask()
+      this._setButtonActive(this.flightsToggleBtnTarget, false)
+      return
+    }
+
+    if (!this.flightsGeoJSON) {
+      const apiClient = new ApiClient(this.apiKeyValue)
+      try {
+        this.flightsGeoJSON = await apiClient.fetchFlights({
+          start_at: this.startedAtValue,
+          end_at: this.endedAtValue,
+        })
+      } catch (e) {
+        console.error("[TripMapLibre] Error fetching flights:", e)
+        // Drop the cache so the next click retries the fetch.
+        this.flightsGeoJSON = null
+        this.flightsActive = false
+        this._setButtonActive(this.flightsToggleBtnTarget, false)
+        Flash.show(
+          "error",
+          translate("messages.could_not_load_flights_please_try_again"),
+        )
+        return
+      }
+    }
+
+    if (!this.flightsGeoJSON.features?.length) {
+      // Drop the cache so flights added to AirTrail later in the session are
+      // picked up on the next click instead of staying empty.
+      this.flightsGeoJSON = null
+      this.flightsActive = false
+      this._setButtonActive(this.flightsToggleBtnTarget, false)
+      Flash.show("notice", translate("messages.no_flights_found_for_this_trip"))
+      return
+    }
+
+    if (!this.flightsLayer) {
+      this.flightsLayer = new FlightsLayer(this.map, {
+        style: this.mapStyleValue,
+      })
+      this.flightsLayer.add(this.flightsGeoJSON)
+    } else {
+      this.flightsLayer.update(this.flightsGeoJSON)
+      this.flightsLayer.show()
+    }
+
+    this.applyFlightMask()
+    this._setButtonActive(this.flightsToggleBtnTarget, true)
+  }
+
+  applyFlightMask() {
+    const windows =
+      this.flightsActive && this.flightsLayer?.visible
+        ? flightWindows(this.flightsGeoJSON)
+        : []
+    this.dayRoutesLayer?.maskRoutes(windows)
   }
 
   // ===== Note form toggling =====
@@ -476,6 +622,19 @@ export default class extends Controller {
         element: this.element,
         timezone: this.timezoneValue,
         allPoints: this.allPoints,
+        getPhotos: () =>
+          this.photosActive && this.photosGeoJSON
+            ? this.photosGeoJSON.features.map(featureToPhoto)
+            : [],
+        onReplayPhotosActive: (active) => {
+          if (!this.photosLayer) return
+          if (active) {
+            this._photosWasVisible = this.photosLayer.visible
+            this.photosLayer.hide()
+          } else if (this._photosWasVisible) {
+            this.photosLayer.show()
+          }
+        },
       })
     }
     this.replayPanel.toggle()
@@ -503,6 +662,10 @@ export default class extends Controller {
 
   replayTogglePlayback() {
     this.replayPanel?.togglePlayback()
+  }
+
+  replayRecenterFollow() {
+    this.replayPanel?.recenterFollow()
   }
 
   replaySpeedChange(event) {

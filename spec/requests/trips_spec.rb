@@ -3,6 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe '/trips', type: :request do
+  def capture_sql(&block)
+    queries = []
+    callback = ->(_name, _start, _finish, _id, payload) { queries << payload[:sql] }
+    ActiveSupport::Notifications.subscribed(callback, 'sql.active_record', &block)
+    queries
+  end
+
   let(:valid_attributes) do
     {
       name: 'Summer Vacation 2024',
@@ -22,7 +29,7 @@ RSpec.describe '/trips', type: :request do
   let(:user) { create(:user) }
 
   before do
-    allow_any_instance_of(Trip).to receive(:photo_previews).and_return([])
+    allow_any_instance_of(Trip).to receive(:photos_by_day).and_return({})
 
     sign_in user
   end
@@ -53,6 +60,14 @@ RSpec.describe '/trips', type: :request do
       expect(response).to be_successful
     end
 
+    it 'does not load the unused raw point coordinate projection' do
+      queries = capture_sql { get trip_url(trip) }
+
+      expect(
+        queries.none? { |sql| sql.include?('ST_Y(lonlat::geometry)') && sql.include?('"points"."battery"') }
+      ).to be(true)
+    end
+
     it 'renders the recalculate button' do
       get trip_url(trip)
 
@@ -64,6 +79,74 @@ RSpec.describe '/trips', type: :request do
 
       expect(response.body).to include(edit_trip_path(trip))
       expect(response.body).to include('Delete this trip')
+    end
+
+    describe 'poster studio' do
+      it 'renders the studio without date controls' do
+        get trip_url(trip)
+
+        expect(response.body).to include('id="poster-studio"')
+        expect(response.body).not_to include('data-poster-studio-editor-target="dateStart"')
+      end
+
+      it 'passes the trip name to the map controller' do
+        get trip_url(trip)
+
+        expect(response.body).to include("data-trip-maplibre-trip-name-value=\"#{trip.name}\"")
+      end
+
+      it 'renders an enabled poster button when the path exists' do
+        get trip_url(trip)
+
+        button = Nokogiri::HTML(response.body).at_css('[data-trip-maplibre-target="posterBtn"]')
+        expect(button).to be_present
+        expect(button['disabled']).to be_nil
+      end
+
+      it 'renders a disabled poster button while the path is calculating' do
+        trip.update_columns(path: nil)
+
+        get trip_url(trip)
+
+        button = Nokogiri::HTML(response.body).at_css('[data-trip-maplibre-target="posterBtn"]')
+        expect(button['disabled']).to be_present
+        expect(button['title']).to eq('Available once the trip route is calculated')
+      end
+
+      it 'renders the poster gallery list' do
+        create(:poster, user:)
+
+        get trip_url(trip)
+
+        expect(response.body).to include('poster-gallery-list')
+      end
+    end
+
+    context 'with photos grouped by day' do
+      let(:photo) do
+        { id: 7, url: '/api/v1/photos/7/thumbnail.jpg?api_key=x&source=immich',
+          source: 'immich', orientation: 'landscape' }
+      end
+
+      before do
+        allow_any_instance_of(Trip).to receive(:photos_by_day)
+          .and_return({ Date.new(2024, 11, 28) => [photo] })
+      end
+
+      it "renders a day's photos inside that day's collapse" do
+        get trip_url(trip)
+
+        day = Nokogiri::HTML(response.body).at_css("details[data-day-key='2024-11-28']")
+        expect(day.at_css("img[src='#{photo[:url]}']")).to be_present
+      end
+
+      it 'renders photo thumbnails only inside day collapses (no flat bottom grid)' do
+        get trip_url(trip)
+
+        imgs = Nokogiri::HTML(response.body).css("img[src*='/api/v1/photos/']")
+        expect(imgs).to be_present
+        expect(imgs).to all(satisfy { |img| img.ancestors('details').any? })
+      end
     end
 
     it 'computes day stats with PostGIS (no Ruby Geocoder fallback)' do
@@ -132,6 +215,14 @@ RSpec.describe '/trips', type: :request do
       get edit_trip_url(trip)
 
       expect(response).to be_successful
+    end
+
+    it 'does not load the unused raw point coordinate projection' do
+      queries = capture_sql { get edit_trip_url(trip) }
+
+      expect(
+        queries.none? { |sql| sql.include?('ST_Y(lonlat::geometry)') && sql.include?('"points"."battery"') }
+      ).to be(true)
     end
   end
 

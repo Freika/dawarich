@@ -32,20 +32,22 @@ module UrlValidatable
   # Blocked everywhere. Nothing in this list is a legitimate integration
   # target on either deployment topology.
   ALWAYS_BLOCKED_RANGES = [
-    IPAddr.new('0.0.0.0/8'),       # invalid / "this network"
-    IPAddr.new('169.254.0.0/16'),  # link-local + cloud metadata (AWS / GCP / OpenStack 169.254.169.254)
-    IPAddr.new('224.0.0.0/4'),     # IPv4 multicast
-    IPAddr.new('240.0.0.0/4'),     # IPv4 reserved
-    IPAddr.new('fe80::/10'),       # IPv6 link-local (no scope-id support in URL form)
-    IPAddr.new('ff00::/8')         # IPv6 multicast
+    IPAddr.new('0.0.0.0/8'),           # invalid / "this network"
+    IPAddr.new('169.254.169.254/32'),  # cloud metadata (AWS / GCP / OpenStack)
+    IPAddr.new('224.0.0.0/4'),         # IPv4 multicast
+    IPAddr.new('240.0.0.0/4'),         # IPv4 reserved
+    IPAddr.new('fe80::/10'),           # IPv6 link-local (no scope-id support in URL form)
+    IPAddr.new('ff00::/8')             # IPv6 multicast
   ].freeze
 
   # Additional ranges blocked on cloud only. Self-hosters routinely point
-  # at these (Docker bridge networks, LAN, loopback, Tailscale CGNAT).
+  # at these (Docker bridge networks, LAN, loopback, Tailscale CGNAT,
+  # container host-gateway link-local).
   CLOUD_ONLY_BLOCKED_RANGES = [
     IPAddr.new('10.0.0.0/8'),      # RFC1918
     IPAddr.new('100.64.0.0/10'),   # CGNAT (Tailscale uses this)
     IPAddr.new('127.0.0.0/8'),     # IPv4 loopback
+    IPAddr.new('169.254.0.0/16'),  # IPv4 link-local (podman/pasta host-gateway)
     IPAddr.new('172.16.0.0/12'),   # RFC1918
     IPAddr.new('192.0.0.0/24'),    # IETF protocol assignments
     IPAddr.new('192.168.0.0/16'),  # RFC1918
@@ -60,22 +62,27 @@ module UrlValidatable
     return if url.blank?
 
     uri = URI.parse(url)
-    raise BlockedUrlError, "Invalid URL scheme: #{uri.scheme}" unless %w[http https].include?(uri.scheme)
-    raise BlockedUrlError, 'URL must include a host' if uri.host.blank?
+    unless %w[http https].include?(uri.scheme)
+      raise BlockedUrlError, I18n.t('services.concerns.url_validatable.invalid_scheme', scheme: uri.scheme)
+    end
+    raise BlockedUrlError, I18n.t('services.concerns.url_validatable.host_required') if uri.host.blank?
 
     # Cloud refuses URLs that embed credentials. Self-hosters legitimately
     # use http://user:pass@host — homelab Immich behind nginx basic-auth
     # is a real config we don't want to break.
     if uri.userinfo.present? && !DawarichSettings.self_hosted?
-      raise BlockedUrlError, 'URL must not embed credentials (user:pass@host)'
+      raise BlockedUrlError, I18n.t('services.concerns.url_validatable.embedded_credentials')
     end
 
     ip = IPAddr.new(Resolv.getaddress(uri.host))
-    raise BlockedUrlError, 'URL resolves to a blocked address' if blocked_ranges.any? { |range| range.include?(ip) }
+    if blocked_ranges.any? { |range| range.include?(ip) }
+      Rails.logger.warn("Integration URL #{uri.host} resolves to blocked address #{ip}")
+      raise BlockedUrlError, I18n.t('services.concerns.url_validatable.blocked_address')
+    end
   rescue URI::InvalidURIError
-    raise BlockedUrlError, 'Invalid URL format'
+    raise BlockedUrlError, I18n.t('services.concerns.url_validatable.invalid_format')
   rescue Resolv::ResolvError
-    raise BlockedUrlError, "Could not resolve hostname: #{uri.host}"
+    raise BlockedUrlError, I18n.t('services.concerns.url_validatable.unresolvable_host', host: uri.host)
   end
 
   def blocked_ranges

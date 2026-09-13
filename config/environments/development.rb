@@ -80,6 +80,11 @@ Rails.application.configure do
   # Raises error for missing translations.
   # config.i18n.raise_on_missing_translations = true
 
+  # Match production (and staging), which both enable fallbacks. Without this,
+  # a missing translation renders the humanised key locally but the English
+  # string in production, so local locale QA does not reflect what users see.
+  config.i18n.fallbacks = true
+
   # Annotate rendered view with file names.
   config.action_view.annotate_rendered_view_with_filenames = true
 

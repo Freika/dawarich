@@ -10,7 +10,7 @@ class Visits::RedetectionsController < ApplicationController
       respond_to do |format|
         format.html do
           redirect_to settings_visits_path,
-                      alert: 'Re-detect ran recently. Try again in an hour.',
+                      alert: I18n.t('controllers.visits.redetections.re_detect_ran_recently_try_again_in_an_hour'),
                       status: :too_many_requests
         end
         format.json { render json: { error: 'cooldown_active' }, status: :too_many_requests }
@@ -20,7 +20,7 @@ class Visits::RedetectionsController < ApplicationController
 
     Visits::FullHistoryRedetectJob.perform_later(current_user.id)
     redirect_to settings_visits_path,
-                notice: "Re-detection queued. We'll notify you when it finishes."
+                notice: I18n.t('controllers.visits.redetections.re_detection_queued_we_ll_notify_you_when_it_finishes')
   end
 
   private

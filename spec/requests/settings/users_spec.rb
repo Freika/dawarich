@@ -113,10 +113,11 @@ RSpec.describe '/settings/users', type: :request do
               end.to change(User, :count).by(0)
             end
 
-            it 'renders a response with 422 status (i.e. to display the "new" template)' do
+            it 'redirects back with an alert explaining the failure' do
               post settings_users_url, params: { user: invalid_attributes }
 
-              expect(response).to have_http_status(:unprocessable_content)
+              expect(response).to have_http_status(:see_other)
+              expect(flash[:alert]).to include('User could not be created')
             end
           end
         end
@@ -229,6 +230,23 @@ RSpec.describe '/settings/users', type: :request do
             get settings_user_url(user)
 
             expect(response.body).to include(user.points_count.to_s)
+          end
+        end
+
+        describe 'GET /edit' do
+          let(:user) { create(:user, status: :pending_payment) }
+
+          before do
+            admin.update!(settings: { 'locale' => 'fr' })
+            sign_in admin
+          end
+
+          it 'renders every user status with a French label' do
+            get edit_settings_user_url(user)
+
+            options = Nokogiri::HTML(response.body).css('select[name="user[status]"] option').map(&:text)
+            expect(options).to contain_exactly('Inactif', 'Actif', 'Essai', 'Paiement en attente')
+            expect(response.body).not_to include('Pending_payment')
           end
         end
 
@@ -372,10 +390,10 @@ RSpec.describe '/settings/users', type: :request do
               end.not_to(change { user.reload.deleted_at })
             end
 
-            it 'returns unprocessable content with error message' do
+            it 'redirects back with an error message' do
               delete settings_user_url(user)
 
-              expect(response).to have_http_status(:unprocessable_content)
+              expect(response).to have_http_status(:see_other)
               expect(flash[:alert]).to eq(
                 'Cannot delete account while being owner of a family which has other members.'
               )

@@ -91,6 +91,13 @@ description: 'Event type that produced the fix (e.g. motionchange, heartbeat)' }
 
         run_test!
       end
+
+      response '422', 'Point rejected' do
+        let(:point) { { device_id: 'x' } }
+        let(:api_key) { create(:user).api_key }
+
+        run_test!
+      end
     end
   end
 end

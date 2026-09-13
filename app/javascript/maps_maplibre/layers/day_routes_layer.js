@@ -1,4 +1,6 @@
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
+import { maskLines } from "../utils/flight_mask"
 import { RouteSegmenter } from "../utils/route_segmenter"
 
 /**
@@ -12,6 +14,7 @@ export class DayRoutesLayer {
     this.daySources = new Map() // dayKey -> sourceId
     this.dayLayers = new Map() // dayKey -> layerId
     this.dayColors = new Map() // dayKey -> color string
+    this.dayRouteData = new Map() // dayKey -> unmasked route GeoJSON
     this.dayBounds = new Map() // dayKey -> LngLatBounds
     this.fullBounds = null
     this.selectedDay = null
@@ -83,6 +86,7 @@ export class DayRoutesLayer {
 
       this.daySources.set(dayKey, sourceId)
       this.dayLayers.set(dayKey, layerId)
+      this.dayRouteData.set(dayKey, routeGeoJSON)
 
       // Add source
       if (!this.map.getSource(sourceId)) {
@@ -135,6 +139,24 @@ export class DayRoutesLayer {
       for (const coord of allCoords) {
         this.fullBounds.extend(coord)
       }
+    }
+  }
+
+  /**
+   * Give AirTrail flights render priority over day routes: hide route segments
+   * whose full time span is contained inside a flight window. Passing empty
+   * windows restores the unmasked routes. Reversible.
+   * @param {Array<[number, number]>} windows - Flight windows in Unix seconds
+   */
+  maskRoutes(windows) {
+    for (const [dayKey, sourceId] of this.daySources) {
+      const original = this.dayRouteData.get(dayKey)
+      if (!original) continue
+
+      const source = this.map.getSource(sourceId)
+      if (!source?.setData) continue
+
+      source.setData(windows?.length ? maskLines(original, windows) : original)
     }
   }
 
@@ -251,10 +273,18 @@ export class DayRoutesLayer {
           const endCoord = coords[coords.length - 1]
 
           this.hoverMarkers.push(
-            this.createCircleMarker(startCoord, "#22c55e", "Start"),
+            this.createCircleMarker(
+              startCoord,
+              "#22c55e",
+              translate("map_info.start"),
+            ),
           )
           this.hoverMarkers.push(
-            this.createCircleMarker(endCoord, "#ef4444", "End"),
+            this.createCircleMarker(
+              endCoord,
+              "#ef4444",
+              translate("map_info.end"),
+            ),
           )
         }
       }
@@ -349,6 +379,7 @@ export class DayRoutesLayer {
     this.daySources.clear()
     this.dayLayers.clear()
     this.dayColors.clear()
+    this.dayRouteData.clear()
     this.dayBounds.clear()
     this.fullBounds = null
     this.selectedDay = null

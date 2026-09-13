@@ -73,5 +73,27 @@ RSpec.describe Families::Create do
         expect(service.error_message).to eq('You have already created a family. Each user can only create one family')
       end
     end
+
+    context 'when cloud and the user is not on the family plan' do
+      let(:user) { create(:user, plan: :pro, skip_auto_trial: true) }
+
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'returns false and does not create a family' do
+        expect(service.call).to be false
+        expect { service.call }.not_to change(Family, :count)
+        expect(service.error_message).to eq('Family feature requires an active subscription')
+      end
+    end
+
+    context 'when cloud and the user is on the family plan' do
+      let(:user) { create(:user, plan: :family, skip_auto_trial: true) }
+
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'creates a family' do
+        expect { service.call }.to change(Family, :count).by(1)
+      end
+    end
   end
 end

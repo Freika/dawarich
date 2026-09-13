@@ -1,3 +1,7 @@
+import {
+  LAYER_COLOR_DEFAULTS,
+  SettingsManager,
+} from "maps_maplibre/utils/settings_manager"
 import { RouteSegmenter } from "../utils/route_segmenter"
 import { BaseLayer } from "./base_layer"
 
@@ -66,6 +70,10 @@ export class RoutesLayer extends BaseLayer {
   }
 
   getLayerConfigs() {
+    const routeColor =
+      SettingsManager.getSetting("routeColor") ||
+      LAYER_COLOR_DEFAULTS.routeColor
+
     return [
       // Base layer: original unsplit routes visible below zoom 8.
       // Speed-colored segments are tiny LineStrings that MapLibre's vector tile
@@ -81,7 +89,7 @@ export class RoutesLayer extends BaseLayer {
           "line-cap": "round",
         },
         paint: {
-          "line-color": "#0000ff",
+          "line-color": routeColor,
           "line-width": 3,
           "line-opacity": 0.8,
         },
@@ -97,12 +105,13 @@ export class RoutesLayer extends BaseLayer {
           "line-cap": "round",
         },
         paint: {
-          // Use color from feature properties if available, otherwise default blue
+          // Use color from feature properties if available (speed-colored
+          // segments), otherwise the user's route color setting
           "line-color": [
             "case",
             ["has", "color"],
             ["get", "color"],
-            "#0000ff", // Default blue color (matching v1)
+            routeColor,
           ],
           "line-width": 3,
           "line-opacity": 0.8,

@@ -10,6 +10,26 @@ RSpec.describe ChangelogHelper, type: :helper do
     end
   end
 
+  describe '#chibichange_slug' do
+    context 'on cloud (not self-hosted)' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'returns the cloud slug' do
+        stub_const('CHIBICHANGE_CLOUD_SLUG', 'dawarich-cloud')
+        expect(helper.chibichange_slug).to eq('dawarich-cloud')
+      end
+    end
+
+    context 'on self-hosted' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'returns the self-hosted slug' do
+        stub_const('CHIBICHANGE_SLUG', 'dawarich')
+        expect(helper.chibichange_slug).to eq('dawarich')
+      end
+    end
+  end
+
   describe '#changelog_indicator_state' do
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted) }
 

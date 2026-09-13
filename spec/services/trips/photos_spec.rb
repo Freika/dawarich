@@ -27,15 +27,17 @@ RSpec.describe Trips::Photos do
         [
           {
             id: 1,
-            url: '/api/v1/photos/1/thumbnail.jpg?api_key=test-api-key&source=immich',
             source: 'immich',
-            orientation: 'landscape'
+            orientation: 'landscape',
+            localDateTime: '2024-01-02T14:30:00',
+            capturedAt: '2024-01-02T13:30:00Z'
           },
           {
             id: 2,
-            url: '/api/v1/photos/2/thumbnail.jpg?api_key=test-api-key&source=photoprism',
             source: 'photoprism',
-            orientation: 'portrait'
+            orientation: 'portrait',
+            localDateTime: '2024-01-03T09:00:00',
+            capturedAt: '2024-01-03T08:00:00Z'
           }
         ]
       end
@@ -57,13 +59,15 @@ RSpec.describe Trips::Photos do
             id: 1,
             url: '/api/v1/photos/1/thumbnail.jpg?api_key=test-api-key&source=immich',
             source: 'immich',
-            orientation: 'landscape'
+            orientation: 'landscape',
+            taken_at: '2024-01-02T13:30:00Z'
           },
           {
             id: 2,
             url: '/api/v1/photos/2/thumbnail.jpg?api_key=test-api-key&source=photoprism',
             source: 'photoprism',
-            orientation: 'portrait'
+            orientation: 'portrait',
+            taken_at: '2024-01-03T08:00:00Z'
           }
         ]
 

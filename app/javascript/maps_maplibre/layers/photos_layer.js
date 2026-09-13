@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { formatTimestamp } from "../utils/geojson_transformers"
 import { getCurrentTheme, getThemeColors } from "../utils/popup_theme"
@@ -541,10 +542,14 @@ export class PhotosLayer extends BaseLayer {
 
     const takenDate = taken_at
       ? formatTimestamp(taken_at, this.timezone)
-      : "Unknown"
+      : translate("common.unknown")
     const location =
-      [city, state, country].filter(Boolean).join(", ") || "Unknown location"
-    const mediaType = type === "VIDEO" ? "🎥 Video" : "📷 Photo"
+      [city, state, country].filter(Boolean).join(", ") ||
+      translate("search.unknown_location")
+    const mediaType =
+      type === "VIDEO"
+        ? `🎥 ${translate("map_info.video")}`
+        : `📷 ${translate("map_info.photo")}`
 
     // Get theme colors
     const theme = getCurrentTheme()
@@ -556,7 +561,7 @@ export class PhotosLayer extends BaseLayer {
         <div style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background: ${colors.backgroundAlt};">
           <img
             src="${thumbnail_url}"
-            alt="${filename || "Photo"}"
+            alt="${filename || translate("map_info.photo")}"
             style="width: 100%; height: auto; max-height: 350px; object-fit: contain; display: block;"
             loading="lazy"
           />
@@ -565,8 +570,8 @@ export class PhotosLayer extends BaseLayer {
           ${filename ? `<div style="font-weight: 600; color: ${colors.textPrimary}; margin-bottom: 6px; word-wrap: break-word;">${filename}</div>` : ""}
           <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📅 ${takenDate}</div>
           <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📍 ${location}</div>
-          <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-          ${source ? `<div style="color: ${colors.textSecondary}; font-size: 11px; margin-bottom: 6px;">Source: ${source}</div>` : ""}
+          <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">${translate("map_info.coordinates")}: ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+          ${source ? `<div style="color: ${colors.textSecondary}; font-size: 11px; margin-bottom: 6px;">${translate("map_info.source")}: ${source}</div>` : ""}
           <div style="font-size: 14px; margin-top: 8px; color: ${colors.textPrimary};">${mediaType}</div>
         </div>
       </div>

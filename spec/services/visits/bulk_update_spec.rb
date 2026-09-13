@@ -43,6 +43,22 @@ RSpec.describe Visits::BulkUpdate do
       end
     end
 
+    context 'with hidden visits in the id list' do
+      let!(:tombstone) { create(:visit, user: user, status: 'suggested', deleted_at: 1.day.ago) }
+      let!(:declined) { create(:visit, user: user, status: 'declined') }
+
+      subject(:service) { described_class.new(user, [visit1.id, tombstone.id, declined.id], 'confirmed') }
+
+      it 'never resurrects tombstoned or declined visits via a status toggle' do
+        result = service.call
+
+        expect(result[:count]).to eq(1)
+        expect(visit1.reload.status).to eq('confirmed')
+        expect(tombstone.reload.status).to eq('suggested')
+        expect(declined.reload.status).to eq('declined')
+      end
+    end
+
     context 'when changing to declined status' do
       let(:visit_ids) { [visit1.id, visit2.id, visit3.id] }
       let(:status) { 'declined' }
@@ -56,6 +72,14 @@ RSpec.describe Visits::BulkUpdate do
         expect(visit1.reload.status).to eq('declined')
         expect(visit2.reload.status).to eq('declined')
         expect(visit3.reload.status).to eq('declined')
+      end
+
+      it 'enqueues orphan-place checks for the affected places' do
+        place = create(:place, user: user, source: :photon)
+        visit1.update!(place: place)
+
+        expect { service.call }
+          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(place.id)
       end
     end
 

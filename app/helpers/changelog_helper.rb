@@ -9,6 +9,14 @@ module ChangelogHelper
     URI.parse(CHIBICHANGE_WIDGET_HOST).host || CHIBICHANGE_WIDGET_HOST
   end
 
+  # Cloud and self-hosted publish separate changelogs: self-hosters track the
+  # OSS releases (CHIBICHANGE_SLUG), cloud users see cloud-specific notes.
+  def chibichange_slug
+    return CHIBICHANGE_SLUG if DawarichSettings.self_hosted?
+
+    CHIBICHANGE_CLOUD_SLUG
+  end
+
   # Which navbar version indicator to render:
   #   :widget — chibichange "What's New" pill
   #   :prompt — native badge + opt-in card

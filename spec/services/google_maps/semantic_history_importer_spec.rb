@@ -27,6 +27,12 @@ RSpec.describe GoogleMaps::SemanticHistoryImporter do
           expect(Point.last.lonlat.to_s).to eq('POINT (12.3411111 12.3411111)')
         end
 
+        it 'stamps the per-import tracker id' do
+          parser
+
+          expect(Point.last.tracker_id).to eq("google-semantic-#{import.id}")
+        end
+
         context 'when waypointPath is blank' do
           let(:file_name) { 'with_activitySegment_without_startLocation_without_waypointPath' }
 
@@ -42,6 +48,12 @@ RSpec.describe GoogleMaps::SemanticHistoryImporter do
         it 'creates a point' do
           expect { parser }.to change(Point, :count).by(1)
           expect(Point.last.lonlat.to_s).to eq('POINT (12.3422222 12.3422222)')
+        end
+
+        it 'does not persist raw_data for imported points' do
+          parser
+
+          expect(Point.where(user_id: user.id).pluck(:raw_data).uniq).to eq([{}])
         end
 
         context 'with different timestamp formats' do

@@ -22,7 +22,8 @@ describe 'Settings API', type: :request do
           'photoprism_url': 'https://photoprism.example.com',
           'photoprism_api_key': 'your-photoprism-api-key',
           'speed_color_scale': 'viridis',
-          'fog_of_war_threshold': 100
+          'fog_of_war_threshold': 100,
+          'maps': { 'distance_unit': 'km' }
         }
       }
       tags 'Settings'
@@ -109,6 +110,17 @@ describe 'Settings API', type: :request do
             type: :number,
             example: 100,
             description: 'Fog of war threshold value'
+          },
+          maps: {
+            type: :object,
+            properties: {
+              distance_unit: {
+                type: :string,
+                enum: %w[km mi],
+                example: 'km',
+                description: 'Distance unit used for displayed distances'
+              }
+            }
           }
         }
       }

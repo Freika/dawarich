@@ -26,6 +26,26 @@ FactoryBot.define do
         content_type: 'application/gzip'
       )
     end
+
+    trait :encrypted do
+      metadata do
+        {
+          format_version: 2,
+          compression: 'gzip',
+          encryption: 'aes-256-gcm',
+          expected_count: point_count,
+          actual_count: point_count
+        }
+      end
+
+      after(:build) do |archive|
+        archive.file.attach(
+          io: StringIO.new(Points::RawData::Encryption.encrypt(gzip_test_data)),
+          filename: archive.filename,
+          content_type: 'application/octet-stream'
+        )
+      end
+    end
   end
 end
 

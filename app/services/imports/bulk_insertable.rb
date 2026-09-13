@@ -9,11 +9,19 @@ module Imports
     def bulk_insert_points(batch)
       return 0 if batch.empty?
 
-      unique_batch = batch.compact.uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
+      compacted = batch.compact
+      unique_batch = compacted
+                     .reject { |record| Points::NullIsland.lonlat?(record[:lonlat]) }
+                     .uniq { |record| [record[:lonlat], record[:timestamp], record[:user_id]] }
+      zero_skipped = compacted.size - compacted.count { |r| !Points::NullIsland.lonlat?(r[:lonlat]) }
+      Rails.logger.info("[#{importer_name}] skipped #{zero_skipped} Null Island (0,0) points") if zero_skipped.positive?
+      return 0 if unique_batch.empty?
+
+      dimension_resolver.stamp(unique_batch)
 
       result = Point.upsert_all(
         unique_batch,
-        unique_by: %i[lonlat timestamp user_id],
+        unique_by: %i[user_id timestamp lonlat],
         returning: Arel.sql('id'),
         on_duplicate: :skip
       )
@@ -22,11 +30,31 @@ module Imports
       skipped  = unique_batch.length - inserted
       record_batch_counters(unique_batch.length, skipped)
 
+      if inserted.positive?
+        Points::TileEpoch.bump(import.user_id, timestamps: unique_batch.map { |record| record[:timestamp] })
+      end
+
       inserted
     rescue StandardError => e
+      raise if atomic_bulk_insert?
+
       on_bulk_insert_error(e)
       create_import_error_notification("Failed to process #{importer_name} data: #{e.message}")
       0
+    end
+
+    # Memoised across batches: one import usually carries a single
+    # device/importer combo, so the resolver's cache turns the whole run into
+    # one lookup instead of one per batch.
+    def dimension_resolver
+      @dimension_resolver ||= Points::DimensionResolver.new
+    end
+
+    # Importers that wrap the whole import in a transaction override this to true, so an
+    # insert failure propagates and rolls back cleanly instead of poisoning the transaction
+    # (a swallowed error would leave the connection aborted for the notification write).
+    def atomic_bulk_insert?
+      false
     end
 
     def record_batch_counters(attempted, skipped)
@@ -36,12 +64,14 @@ module Imports
     end
 
     def create_import_error_notification(message)
-      Notification.create!(
-        user_id: import.user_id,
-        title: "#{importer_name} Import Error",
-        content: message,
-        kind: :error
-      )
+      I18n.with_locale(import.user.locale) do
+        Notification.create!(
+          user_id: import.user_id,
+          title: I18n.t('services.imports.bulk_insertable.importer_name_import_error', importer_name: importer_name),
+          content: message,
+          kind: :error
+        )
+      end
     end
 
     # Override in subclasses to add custom error handling (e.g. ExceptionReporter)

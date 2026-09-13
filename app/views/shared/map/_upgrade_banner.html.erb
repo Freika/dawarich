@@ -4,13 +4,13 @@
        role="status" style="pointer-events: auto;">
     <span class="map-upgrade-banner-icon" aria-hidden="true"><%= icon 'info', class: 'w-4 h-4' %></span>
     <span class="map-upgrade-banner-text">
-      Your Lite plan includes the last 12 months of data.
+      <%= t('.your_lite_plan_includes_the_last_12_months_of_data') %>
     </span>
     <a href="<%= upgrade_url(utm_medium: 'data_window', utm_content: local_assigns[:utm_content] || 'map') %>"
        class="btn btn-sm btn-primary map-upgrade-banner-cta" target="_blank" rel="noopener">
-      Upgrade to Pro
+      <%= t('.upgrade_to_pro') %>
     </a>
     <button data-action="click->removals#remove"
-            class="map-upgrade-banner-dismiss" aria-label="Dismiss">✕</button>
+            class="map-upgrade-banner-dismiss" aria-label="<%= t('.dismiss') %>">✕</button>
   </div>
 <% end %>

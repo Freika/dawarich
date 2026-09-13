@@ -70,4 +70,33 @@ RSpec.describe SharedLinks::TripPresenter do
       expect(presenter.notes).to eq({})
     end
   end
+
+  describe '#photos_by_day and #photos_for' do
+    context 'when show_photos is disabled' do
+      let(:settings) { { 'show_photos' => false } }
+
+      it 'returns an empty hash' do
+        expect(presenter.photos_by_day).to eq({})
+      end
+    end
+
+    context 'when show_photos is enabled' do
+      let(:settings) { { 'show_photos' => true } }
+      let(:grouped) { { Date.new(2024, 11, 28) => [{ id: 'p1', source: 'immich', taken_at: '2024-11-27T23:30:00Z' }] } }
+
+      before do
+        allow(SharedLinks::TripPhotos).to receive(:new)
+          .with(link, timezone: user.timezone_iana)
+          .and_return(instance_double(SharedLinks::TripPhotos, call: grouped))
+      end
+
+      it 'returns photos grouped by day' do
+        expect(presenter.photos_by_day).to eq(grouped)
+      end
+
+      it 'photos_for returns that day\'s photos' do
+        expect(presenter.photos_for({ date: Date.new(2024, 11, 28) }).map { _1[:id] }).to eq(['p1'])
+      end
+    end
+  end
 end

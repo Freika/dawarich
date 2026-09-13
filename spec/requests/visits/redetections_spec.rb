@@ -8,6 +8,9 @@ RSpec.describe 'Visits::Redetections', type: :request do
 
   describe 'POST /redetections' do
     it 'enqueues the job and redirects with notice when no cooldown active' do
+      # New accounts are born re-detected (DB default), which starts the cooldown.
+      user.update!(visits_redetected_at: 2.hours.ago)
+
       expect do
         post visits_redetections_path
       end.to have_enqueued_job(Visits::FullHistoryRedetectJob).with(user.id)

@@ -148,4 +148,48 @@ RSpec.describe Photos::Search do
       end
     end
   end
+
+  describe '.cached' do
+    let(:immich_photo) { { 'type' => 'image', 'id' => '1' } }
+    let(:serialized_photo) { { id: '1', source: 'immich' } }
+    let(:args) { { start_date: '2024-01-01', end_date: '2024-03-01' } }
+
+    before do
+      allow(user).to receive(:immich_integration_configured?).and_return(true)
+      allow(user).to receive(:photoprism_integration_configured?).and_return(false)
+      allow_any_instance_of(Api::PhotoSerializer).to receive(:call).and_return(serialized_photo)
+    end
+
+    it 'returns the search results' do
+      allow_any_instance_of(Immich::RequestPhotos).to receive(:call).and_return([immich_photo])
+
+      expect(described_class.cached(user, **args)).to eq([serialized_photo])
+    end
+
+    it 'does not re-run the upstream search on a second call within the window' do
+      call_count = 0
+      allow_any_instance_of(Immich::RequestPhotos).to receive(:call) do
+        call_count += 1
+        [immich_photo]
+      end
+
+      described_class.cached(user, **args)
+      described_class.cached(user, **args)
+
+      expect(call_count).to eq(1)
+    end
+
+    it 'does not cache an empty result, so a transient empty re-queries upstream' do
+      call_count = 0
+      allow_any_instance_of(Immich::RequestPhotos).to receive(:call) do
+        call_count += 1
+        []
+      end
+
+      described_class.cached(user, **args)
+      described_class.cached(user, **args)
+
+      expect(call_count).to eq(2)
+    end
+  end
 end

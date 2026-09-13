@@ -27,6 +27,7 @@ export default class extends Controller {
     "replaySpeedDisplay",
     "replayDataIndicator",
     "replayPlayButton",
+    "replayFollowButton",
     "replayPlayIcon",
     "replayPauseIcon",
     "replaySpeedSlider",
@@ -38,6 +39,7 @@ export default class extends Controller {
   connect() {
     this.selectedDay = null
     this.allPoints = []
+    this.photoMarkers = []
     this.initializeMap()
   }
 
@@ -224,6 +226,20 @@ export default class extends Controller {
         element: this.element,
         timezone: this.timezoneValue,
         allPoints: this.allPoints,
+        getPhotos: () =>
+          (this.photoMarkers || []).map(({ photo }) => ({
+            id: photo.id,
+            taken_at: photo.taken_at,
+            thumbnail_url: photo.thumbnail_url,
+            latitude: photo.latitude,
+            longitude: photo.longitude,
+            source: photo.source,
+          })),
+        onReplayPhotosActive: (active) => {
+          for (const { marker } of this.photoMarkers || []) {
+            marker.getElement().style.display = active ? "none" : ""
+          }
+        },
       })
     }
     this.replayPanel.toggle()
@@ -253,6 +269,10 @@ export default class extends Controller {
     this.replayPanel?.togglePlayback()
   }
 
+  replayRecenterFollow() {
+    this.replayPanel?.recenterFollow()
+  }
+
   replaySpeedChange(event) {
     this.replayPanel?.speedChange(event)
   }
@@ -272,6 +292,7 @@ export default class extends Controller {
     if (!res.ok) return
     const photos = await res.json()
 
+    this.photoMarkers = []
     for (const photo of photos) {
       if (photo.latitude == null || photo.longitude == null) continue
       const el = document.createElement("img")
@@ -281,9 +302,10 @@ export default class extends Controller {
       el.style.width = "32px"
       el.style.height = "32px"
       el.style.objectFit = "cover"
-      new maplibregl.Marker({ element: el })
+      const marker = new maplibregl.Marker({ element: el })
         .setLngLat([photo.longitude, photo.latitude])
         .addTo(this.map)
+      this.photoMarkers.push({ photo, marker })
     }
   }
 }

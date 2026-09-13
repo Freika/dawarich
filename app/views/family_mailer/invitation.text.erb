@@ -1,22 +1,22 @@
-You've been invited to join a family!
+<%= t('.you_ve_been_invited_to_join_a_family') %>
 
-Hi there!
+<%= t('.hi_there') %>
 
-<%= @invited_by.email %> has invited you to join their family "<%= @family.name %>" on Dawarich.
+<%= t('.invited_by_family_text', email: @invited_by.email, family: @family.name) %>
 
-By joining this family, you'll be able to:
-• Share your current location with family members
-• See the current location of other family members
-• Stay connected with your loved ones
-• Control your privacy with full sharing controls
+<%= t('.by_joining_this_family_you_ll_be_able_to') %>
+<%= t('.share_your_current_location_with_family_members_2') %>
+<%= t('.see_the_current_location_of_other_family_members_2') %>
+<%= t('.stay_connected_with_your_loved_ones_2') %>
+<%= t('.control_your_privacy_with_full_sharing_controls_2') %>
 
-Accept your invitation here: <%= @accept_url %>
+<%= t('.accept_your_invitation_here') %> <%= @accept_url %>
 
-IMPORTANT: This invitation will expire in 7 days.
+<%= t('.important_this_invitation_will_expire_in_7_days') %>
 
-If you don't have a Dawarich account yet, you'll be able to create one when you accept the invitation.
+<%= t('.if_you_don_t_have_a_dawarich_account_yet_you') %>
 
-If you didn't expect this invitation, you can safely ignore this email.
+<%= t('.if_you_didn_t_expect_this_invitation_you_can_safely') %>
 
-Best regards,
-Evgenii from Dawarich
+<%= t('.best_regards') %>
+<%= t('.evgenii_from_dawarich') %>

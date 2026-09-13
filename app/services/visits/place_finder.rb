@@ -22,20 +22,9 @@ module Visits
 
     private
 
-    def find_existing_place(lat, lon, name)
-      return ranked_existing_place(lat, lon, name) if ranked?
-
-      by_location = user.places.near([lat, lon], SIMILARITY_RADIUS, :m).first
-      return by_location if by_location
-
-      return nil if name.blank?
-
-      user.places.where(name: name).near([lat, lon], SIMILARITY_RADIUS * 2, :m).first
-    end
-
-    # Flag-on: rank candidates within the radius by exact-name, then manual-over-photon, then distance.
+    # Rank candidates within the radius by exact-name, then manual-over-photon, then distance.
     # Avoids minting duplicate "Suggested place" rows and prefers user-curated places.
-    def ranked_existing_place(lat, lon, name)
+    def find_existing_place(lat, lon, name)
       candidates = user.places.near([lat, lon], SIMILARITY_RADIUS, :m).to_a
       return nil if candidates.empty?
 
@@ -52,18 +41,6 @@ module Visits
       Geocoder::Calculations.distance_between([lat, lon], [other_lat, other_lon], units: :km) * 1000
     end
 
-    def ranked?
-      return @ranked if defined?(@ranked)
-
-      @ranked =
-        begin
-          Flipper.enabled?(:stay_point_detection, user)
-        rescue StandardError => e
-          Rails.logger.warn("[Visits::PlaceFinder] Flipper unavailable, unranked lookup: #{e.class}: #{e.message}")
-          false
-        end
-    end
-
     def create_default_place(lat, lon, suggested_name)
       place = user.places.create!(
         name:      suggested_name.presence || Place::DEFAULT_NAME,
@@ -74,7 +51,7 @@ module Visits
         source:    :photon
       )
 
-      Places::NameFetchingJob.perform_later(place.id) if DawarichSettings.reverse_geocoding_enabled?
+      Places::NameFetchingJob.perform_later(place.id) if Geocoding::Config.for(user).enabled?
       place
     end
   end

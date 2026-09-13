@@ -7,11 +7,16 @@ module Api
 
       def index
         unless date_params_present?
-          return render json: { error: 'start_at and end_at are required' }, status: :bad_request
+          return render json: { error: I18n.t('controllers.api.v1.timeline.start_at_and_end_at_are_required') },
+                        status: :bad_request
         end
 
         if range_too_large?
-          return render json: { error: "Date range cannot exceed #{MAX_RANGE_DAYS} days" },
+          error = I18n.t(
+            'controllers.api.v1.timeline.date_range_cannot_exceed_max_range_days_days',
+            max_days: MAX_RANGE_DAYS
+          )
+          return render json: { error: error },
                         status: :bad_request
         end
 

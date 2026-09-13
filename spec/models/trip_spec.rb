@@ -96,13 +96,15 @@ RSpec.describe Trip, type: :model do
           id: '456',
           url: "/api/v1/photos/456/thumbnail.jpg?api_key=#{user.api_key}&source=immich",
           source: 'immich',
-          orientation: 'portrait'
+          orientation: 'portrait',
+          taken_at: '2024-01-02T01:00:00.000Z'
         },
         {
           id: '789',
           url: "/api/v1/photos/789/thumbnail.jpg?api_key=#{user.api_key}&source=immich",
           source: 'immich',
-          orientation: 'portrait'
+          orientation: 'portrait',
+          taken_at: '2024-01-02T02:00:00.000Z'
         }
       ]
     end
@@ -135,6 +137,69 @@ RSpec.describe Trip, type: :model do
     end
   end
 
+  describe '#photos_by_day' do
+    let(:user) { create(:user) }
+    let(:trip) { create(:trip, user: user) }
+
+    context 'when there are photos with timestamps' do
+      let(:photos) do
+        [
+          { id: 1, url: '/p/1', source: 'immich', orientation: 'landscape', taken_at: '2024-11-27T23:30:00Z' },
+          { id: 2, url: '/p/2', source: 'immich', orientation: 'landscape', taken_at: '2024-11-29T08:00:00Z' },
+          { id: 3, url: '/p/3', source: 'immich', orientation: 'landscape', taken_at: nil }
+        ]
+      end
+
+      before do
+        allow(Trips::Photos).to receive(:new).with(trip, user)
+                                             .and_return(instance_double(Trips::Photos, call: photos))
+      end
+
+      it 'buckets a photo by its UTC instant converted into the given timezone, not its UTC date' do
+        result = trip.photos_by_day('Europe/Berlin')
+
+        expect(result.keys).to contain_exactly(Date.new(2024, 11, 28), Date.new(2024, 11, 29))
+        expect(result[Date.new(2024, 11, 28)].map { _1[:id] }).to eq([1])
+        expect(result[Date.new(2024, 11, 29)].map { _1[:id] }).to eq([2])
+      end
+
+      it 'excludes photos with a blank taken_at' do
+        result = trip.photos_by_day('Europe/Berlin')
+
+        expect(result.values.flatten.map { _1[:id] }).not_to include(3)
+      end
+    end
+
+    context 'when a photo has a naive (no-offset) timestamp' do
+      let(:photos) do
+        [{ id: 9, url: '/p/9', source: 'immich', orientation: 'landscape', taken_at: '2024-11-30T00:30:00' }]
+      end
+
+      before do
+        allow(Trips::Photos).to receive(:new).with(trip, user)
+                                             .and_return(instance_double(Trips::Photos, call: photos))
+      end
+
+      it 'buckets it as wall-clock time in the given timezone' do
+        result = trip.photos_by_day('Europe/Berlin')
+
+        expect(result.keys).to contain_exactly(Date.new(2024, 11, 30))
+        expect(result[Date.new(2024, 11, 30)].map { _1[:id] }).to eq([9])
+      end
+    end
+
+    context 'when there are no photos' do
+      before do
+        allow(Trips::Photos).to receive(:new).with(trip, user)
+                                             .and_return(instance_double(Trips::Photos, call: []))
+      end
+
+      it 'returns an empty hash' do
+        expect(trip.photos_by_day('Europe/Berlin')).to eq({})
+      end
+    end
+  end
+
   describe 'Calculateable concern' do
     let(:user) { create(:user) }
     let(:trip) { create(:trip, user: user) }
@@ -154,6 +219,17 @@ RSpec.describe Trip, type: :model do
         trip.calculate_distance
 
         expect(trip.distance).to eq(3) # Should be rounded, in km
+      end
+
+      it 'calculates distance in the database without loading trip points' do
+        create(:point, user: user, lonlat: 'POINT(13.064477 52.398862)', timestamp: trip.started_at.to_i + 4.hours)
+        loaded = []
+        callback = ->(*, payload) { loaded << payload[:name] if payload[:name] == 'Point Load' }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { trip.calculate_distance }
+
+        expect(loaded).to be_empty
+        expect(trip.distance).to be_within(1_000).of(26_500)
       end
     end
 

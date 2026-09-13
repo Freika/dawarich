@@ -64,6 +64,16 @@ module SharedLinks
       notes[day[:date]]
     end
 
+    def photos_by_day
+      return {} unless @ctx.show_photos?
+
+      @photos_by_day ||= SharedLinks::TripPhotos.new(@link, timezone: timezone).call
+    end
+
+    def photos_for(day)
+      photos_by_day[day[:date]] || []
+    end
+
     def interactive_class
       show_map? ? ' cursor-pointer transition-colors hover:bg-base-300' : ''
     end
@@ -72,6 +82,11 @@ module SharedLinks
       return {} unless show_map?
 
       { day_key: day_key, action: ROW_ACTIONS, 'shared-trip-map-day-key-param': day_key }
+    end
+
+    def gallery_row_data(day_key)
+      data = row_data(day_key)
+      data.merge(controller: 'lazy-gallery', action: [data[:action], 'toggle->lazy-gallery#toggle'].compact.join(' '))
     end
   end
 end

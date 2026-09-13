@@ -4,8 +4,13 @@ module Points
   module RawData
     class Clearer
       BATCH_SIZE = 10_000
+      COOLING_PERIOD = 7.days
 
-      def initialize
+      # cooling_period: nil clears any verified archive immediately (manual
+      # runbook paths); pass COOLING_PERIOD to only clear archives whose
+      # verification has aged past the safety window (automated paths).
+      def initialize(cooling_period: nil)
+        @cooling_period = cooling_period
         @stats = { cleared: 0, skipped: 0 }
       end
 
@@ -44,9 +49,9 @@ module Points
 
       def verified_archives
         # Only archives that are verified but have points with non-empty raw_data
-        Points::RawDataArchive
-          .where.not(verified_at: nil)
-          .where(id: points_needing_clearing.select(:raw_data_archive_id).distinct)
+        scope = Points::RawDataArchive.where.not(verified_at: nil)
+        scope = scope.where(verified_at: ..@cooling_period.ago) if @cooling_period
+        scope.where(id: points_needing_clearing.select(:raw_data_archive_id).distinct)
       end
 
       def points_needing_clearing

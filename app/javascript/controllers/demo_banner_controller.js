@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 export default class extends Controller {
   static targets = ["deleteButton", "loadingState", "label"]
@@ -8,11 +9,7 @@ export default class extends Controller {
   }
 
   confirmDelete(event) {
-    const ok = window.confirm(
-      "Delete all demo data?\n\n" +
-        "This removes the demo points, visits, places, tags, tracks, and the Prague trip.\n\n" +
-        "Your real data — anything you've imported, edited, confirmed, or created yourself — will NOT be touched.",
-    )
+    const ok = window.confirm(translate("demo.confirm_delete"))
     if (!ok) {
       event.preventDefault()
       return
@@ -30,7 +27,7 @@ export default class extends Controller {
       this.deleteButtonTarget.classList.add("opacity-50", "pointer-events-none")
     }
     if (this.hasLabelTarget) {
-      this.labelTarget.textContent = "Removing demo data…"
+      this.labelTarget.textContent = translate("demo.removing_data")
     }
   }
 }

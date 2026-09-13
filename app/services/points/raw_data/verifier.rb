@@ -46,7 +46,9 @@ module Points
         verification_result = perform_verification(archive)
 
         if verification_result[:success]
-          archive.update!(verified_at: Time.current)
+          # First verification stamps the archive; re-checks must not bump the
+          # timestamp, or spot checks would keep restarting the clear cooling window.
+          archive.update!(verified_at: Time.current) if archive.verified_at.blank?
           @stats[:verified] += 1
           Rails.logger.info("✓ Archive #{archive.id} verified successfully")
 
@@ -54,16 +56,19 @@ module Points
 
           report_verification_metric(start_time, 'success')
         else
+          check_name = extract_check_name_from_error(verification_result[:error])
+          context = failure_context(archive, check_name)
+
+          # A previously verified archive failing a re-check may be corrupted in
+          # storage — unset verified_at so clearing is blocked until investigated.
+          # Transient download errors are not integrity failures and keep the stamp.
+          archive.update!(verified_at: nil) if archive.verified_at.present? && check_name != 'download_failed'
           @stats[:failed] += 1
           Rails.logger.error("✗ Archive #{archive.id} verification failed: #{verification_result[:error]}")
-          ExceptionReporter.call(
-            StandardError.new(verification_result[:error]),
-            "Archive verification failed for archive #{archive.id}"
-          )
+          ExceptionReporter.call(StandardError.new(verification_result[:error]), context)
 
           Yabeda.dawarich_archive.operations_total.increment({ operation: 'verify', status: 'failure' })
 
-          check_name = extract_check_name_from_error(verification_result[:error])
           report_verification_metric(start_time, 'failure', check_name)
         end
       rescue StandardError => e
@@ -74,6 +79,15 @@ module Points
         Yabeda.dawarich_archive.operations_total.increment({ operation: 'verify', status: 'failure' })
 
         report_verification_metric(start_time, 'failure', 'exception')
+      end
+
+      def failure_context(archive, check_name)
+        context = "Archive verification failed for archive #{archive.id}"
+        return context unless archive.verified_at.present? && check_name != 'download_failed'
+
+        cleared = Point.where(raw_data_archive_id: archive.id, raw_data: {}).count
+        "#{context} (previously verified; #{cleared}/#{archive.point_count} linked points already cleared " \
+          'and recoverable only from this archive)'
       end
 
       def perform_verification(archive)
@@ -88,21 +102,40 @@ module Points
       end
 
       def download_and_verify_content(archive)
-        return { success: false, error: 'File not attached' } unless archive.file.attached?
+        unless archive.file.attached?
+          return { success: false,
+error: I18n.t('services.points.raw_data.verifier.file_not_attached') }
+        end
 
-        raw_content = archive.file.blob.download
-        return { success: false, error: 'File is empty' } if raw_content.bytesize.zero?
+        begin
+          raw_content = archive.file.blob.download
+        rescue StandardError => e
+          # Only I/O errors get the download_failed label — it exempts the
+          # archive from the verified_at unset, so decrypt/integrity errors
+          # must never be classified here.
+          return { success: false,
+error: I18n.t('services.points.raw_data.verifier.file_download_failed_message', message: e.message) }
+        end
+
+        if raw_content.bytesize.zero?
+          return { success: false,
+error: I18n.t('services.points.raw_data.verifier.file_is_empty') }
+        end
 
         verify_content_integrity(raw_content, archive)
       rescue StandardError => e
-        { success: false, error: "File download failed: #{e.message}" }
+        { success: false,
+error: I18n.t('services.points.raw_data.verifier.decryption_failed_message', message: e.message) }
       end
 
       def verify_content_integrity(raw_content, archive)
         stored_checksum = archive.metadata&.dig('content_checksum')
         if stored_checksum.present?
           actual_checksum = Digest::SHA256.hexdigest(raw_content)
-          return { success: false, error: 'Content checksum mismatch' } if actual_checksum != stored_checksum
+          if actual_checksum != stored_checksum
+            return { success: false,
+error: I18n.t('services.points.raw_data.verifier.content_checksum_mismatch') }
+          end
         end
 
         compressed_content = Encryption.decrypt_if_needed(raw_content, archive)
@@ -116,16 +149,21 @@ module Points
         if point_ids.count != archive.point_count
           return {
             success: false,
-            error: "Point count mismatch: expected #{archive.point_count}, found #{point_ids.count}"
+            error: I18n.t('services.points.raw_data.verifier.point_count_mismatch_expected_point_count_found_count',
+                          point_count: archive.point_count, count: point_ids.count)
           }
         end
 
         id_checksum = calculate_checksum(point_ids)
-        return { success: false, error: 'Point IDs checksum mismatch' } if id_checksum != archive.point_ids_checksum
+        if id_checksum != archive.point_ids_checksum
+          return { success: false,
+error: I18n.t('services.points.raw_data.verifier.point_ids_checksum_mismatch') }
+        end
 
         { success: true, point_ids: point_ids, sampled_data: parse_result[:sampled_data] }
       rescue StandardError => e
-        { success: false, error: "Decompression/parsing failed: #{e.message}" }
+        { success: false,
+error: I18n.t('services.points.raw_data.verifier.decompression_parsing_failed_message', message: e.message) }
       end
 
       def verify_existing_points(archive, point_ids, sampled_data)
@@ -138,7 +176,7 @@ module Points
         end
 
         if existing_count.positive?
-          verification_result = verify_raw_data_matches(sampled_data)
+          verification_result = verify_raw_data_matches(archive, sampled_data)
           return verification_result unless verification_result[:success]
         else
           Rails.logger.info(
@@ -189,7 +227,7 @@ module Points
         (0...sample_size).map { |i| (i * stride).floor }.to_set
       end
 
-      def verify_raw_data_matches(sampled_data)
+      def verify_raw_data_matches(archive, sampled_data)
         existing_point_ids = Point.where(id: sampled_data.keys).pluck(:id)
 
         if existing_point_ids.empty?
@@ -202,6 +240,8 @@ module Points
         Point.where(id: existing_point_ids).find_each do |point|
           archived_raw_data = sampled_data[point.id]
           next if archived_raw_data.nil?
+          next if point.raw_data_archive_id != archive.id
+          next if point.raw_data_archived? && point.raw_data.blank?
 
           mismatches << { point_id: point.id } if archived_raw_data != point.raw_data
         end
@@ -209,8 +249,11 @@ module Points
         if mismatches.any?
           return {
             success: false,
-            error: "Raw data mismatch detected in #{mismatches.count} point(s). " \
-                   "First mismatch: Point #{mismatches.first[:point_id]}"
+            error: I18n.t(
+              'services.points.raw_data.verifier.raw_data_mismatch_detected_in_count_point_s_first_mismatch',
+              count: mismatches.count,
+              point_id: mismatches.first[:point_id]
+            )
           }
         end
 
@@ -238,6 +281,8 @@ module Points
           'empty_file'
         when /Content checksum mismatch/i
           'content_checksum_mismatch'
+        when /Decryption failed/i
+          'decryption_failed'
         when %r{Decompression/parsing failed}i
           'decompression_failed'
         when /Point count mismatch/i

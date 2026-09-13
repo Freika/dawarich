@@ -1,0 +1,15 @@
+{
+  "name": "Contrast Zones",
+  "description": "Strong contrast showing urban density - darker in center, lighter at edges",
+  "bg": "#FFFFFF",
+  "text": "#000000",
+  "gradient_color": "#FFFFFF",
+  "water": "#B0B0B0",
+  "parks": "#ECECEC",
+  "road_motorway": "#000000",
+  "road_primary": "#0F0F0F",
+  "road_secondary": "#252525",
+  "road_tertiary": "#404040",
+  "road_residential": "#5A5A5A",
+  "road_default": "#404040"
+}

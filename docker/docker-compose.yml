@@ -64,7 +64,7 @@ services:
     tty: true
     entrypoint: web-entrypoint.sh
     command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
-    restart: on-failure
+    restart: unless-stopped
     environment:
       RAILS_ENV: ${RAILS_ENV:-production}
       ### To run under a non-root user, set PUID/PGID here (do NOT use `user:`).
@@ -84,6 +84,9 @@ services:
       RAILS_LOG_TO_STDOUT: ${RAILS_LOG_TO_STDOUT:-true}
       SELF_HOSTED: ${SELF_HOSTED:-true}
       STORE_GEODATA: ${STORE_GEODATA:-true}
+      # One preloaded Puma worker is plenty for a household instance and
+      # halves idle memory. Raise for busier instances.
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
       ### OTP encryption keys are required if you want to use 2FA
       # OTP_ENCRYPTION_PRIMARY_KEY: ${OTP_ENCRYPTION_PRIMARY_KEY:-}
       # OTP_ENCRYPTION_DETERMINISTIC_KEY: ${OTP_ENCRYPTION_DETERMINISTIC_KEY:-}
@@ -125,7 +128,7 @@ services:
     tty: true
     entrypoint: sidekiq-entrypoint.sh
     command: ['sidekiq']
-    restart: on-failure
+    restart: unless-stopped
     environment:
       RAILS_ENV: ${RAILS_ENV:-production}
       ### To run under a non-root user, set PUID/PGID here (do NOT use `user:`).
@@ -138,7 +141,9 @@ services:
       DATABASE_PASSWORD: ${DATABASE_PASSWORD:-password}
       DATABASE_NAME: ${DATABASE_NAME:-dawarich_development}
       APPLICATION_HOSTS: ${APPLICATION_HOSTS:-localhost,::1,127.0.0.1}
-      BACKGROUND_PROCESSING_CONCURRENCY: ${BACKGROUND_PROCESSING_CONCURRENCY:-5}
+      # 3 job threads keep idle memory and DB connections low; raise
+      # temporarily for large imports.
+      BACKGROUND_PROCESSING_CONCURRENCY: ${BACKGROUND_PROCESSING_CONCURRENCY:-3}
       APPLICATION_PROTOCOL: ${APPLICATION_PROTOCOL:-http}
       PROMETHEUS_EXPORTER_ENABLED: ${PROMETHEUS_EXPORTER_ENABLED:-false}
       SECRET_KEY_BASE: ${SECRET_KEY_BASE:-"CHANGE_ME"}

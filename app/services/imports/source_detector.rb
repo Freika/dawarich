@@ -4,6 +4,18 @@ class Imports::SourceDetector
   class UnknownSourceError < StandardError; end
 
   DETECTION_RULES = {
+    mobile_photo_library: {
+      required_keys: %w[type version points],
+      required_values: {
+        'type' => MobilePhotoLibrary::Importer::FORMAT_TYPE,
+        'version' => MobilePhotoLibrary::Importer::FORMAT_VERSION
+      },
+      nested_patterns: [
+        ['points', 0, 'timestamp'],
+        ['points', 0, 'latitude'],
+        ['points', 0, 'longitude']
+      ]
+    },
     google_semantic_history: {
       required_keys: ['timelineObjects'],
       nested_patterns: [
@@ -39,6 +51,10 @@ class Imports::SourceDetector
           ]
         }
       ]
+    },
+    google_photos: {
+      required_keys: %w[title creationTime imageViews],
+      nested_patterns: [%w[creationTime timestamp]]
     },
     geojson: {
       required_keys: %w[type features],
@@ -143,6 +159,7 @@ class Imports::SourceDetector
       else
         file_content
       end
+    content_to_check = strip_bom(content_to_check)
     (
       content_to_check.strip.start_with?('<?xml') ||
       content_to_check.strip.start_with?('<gpx')
@@ -159,6 +176,7 @@ class Imports::SourceDetector
       else
         file_content
       end
+    content_to_check = strip_bom(content_to_check)
 
     # Check if it's a KMZ file (ZIP archive)
     if filename&.downcase&.end_with?('.kmz')
@@ -228,8 +246,13 @@ class Imports::SourceDetector
     content = read_for_raw_detection
     return nil if content.blank?
 
-    if content.include?('"semanticSegments"') &&
-       (content.include?('"startTime"') || content.include?('"visit"') || content.include?('"activity"'))
+    # Real exports exceed MAX_DETECTION_BYTES, so the structured rules cannot
+    # parse them and this branch has to carry the version check itself.
+    if content.include?(%("#{MobilePhotoLibrary::Importer::FORMAT_TYPE}")) && content.include?('"points"') &&
+       content.match?(/"version"\s*:\s*#{MobilePhotoLibrary::Importer::FORMAT_VERSION}\b/)
+      :mobile_photo_library
+    elsif content.include?('"semanticSegments"') &&
+          (content.include?('"startTime"') || content.include?('"visit"') || content.include?('"activity"'))
       :google_phone_takeout
     elsif content.include?('"timelineObjects"') &&
           (content.include?('"activitySegment"') || content.include?('"placeVisit"'))
@@ -245,6 +268,9 @@ class Imports::SourceDetector
       :google_phone_takeout
     elsif content.include?('"topCandidate"') && content.include?('"placeLocation"')
       :google_phone_takeout
+    elsif content.include?('"title"') && content.include?('"imageViews"') &&
+          content.include?('"creationTime"')
+      :google_photos
     elsif content.include?('"arrived"') && content.include?('"departed"') && content.include?('"segment-')
       :polarsteps
     end
@@ -373,47 +399,37 @@ class Imports::SourceDetector
   def unsupported_reason
     content = read_for_raw_detection.to_s
 
-    return 'The uploaded file is empty (0 bytes).' if content.empty?
+    return I18n.t('services.imports.source_detector.empty_file') if content.empty?
 
     binary_reason = unsupported_binary_reason(content)
     return binary_reason if binary_reason
 
     stripped = content.strip
-    return 'The uploaded file contains no data (empty JSON object or array).' if EMPTY_JSON_BODIES.include?(stripped)
+    return I18n.t('services.imports.source_detector.empty_json') if EMPTY_JSON_BODIES.include?(stripped)
 
     if content.include?('You have encrypted Timeline backups')
-      'Your Google Timeline data is encrypted. Open the Google Maps app, ' \
-        'turn off Timeline encryption in your settings, then re-export your data.'
+      I18n.t('services.imports.source_detector.encrypted_timeline')
     elsif content.lstrip.start_with?('<!DOCTYPE html', '<!doctype html', '<html', '<HTML')
-      'This is an HTML page (likely "archive_browser.html" from your Google Takeout), ' \
-        'not the data file. Open the Takeout archive and look for the .json or .kml inside.'
+      I18n.t('services.imports.source_detector.html_page')
     elsif content.include?('"timelineEdits"')
-      'Google Timeline Edits format is not yet supported. Please upload Records.json ' \
-        'or the files inside the Timeline/ folder of your Google Takeout instead.'
+      I18n.t('services.imports.source_detector.timeline_edits')
     elsif content.include?('"deviceSettings"') ||
           (content.include?('"gaiaId"') && content.include?('"hasReportedLocations"'))
-      'This file contains your Google Maps settings, not location data. ' \
-        'Look for "Records.json" or files inside "Timeline/" in your Google Takeout.'
+      I18n.t('services.imports.source_detector.google_settings')
     elsif content.include?('"placeUrl"') && content.include?('"selectedChoice"')
-      'This is a Google Maps place-feedback file (Maps Q&A answers like "Was this place open?"), ' \
-        'not your location history. Look for "Records.json" or files inside "Timeline/" in your Google Takeout.'
+      I18n.t('services.imports.source_detector.place_feedback')
     elsif google_my_activity?(content)
-      'This is a Google "My Activity" log (search and Maps activity), not your location history. ' \
-        'Look for "Records.json" or files inside "Timeline/" in your Google Takeout.'
+      I18n.t('services.imports.source_detector.my_activity')
     elsif google_saved_places?(content)
-      'This is a Google saved-places / geocodes file, not your location history. ' \
-        'Look for "Records.json" or files inside "Timeline/" in your Google Takeout.'
+      I18n.t('services.imports.source_detector.saved_places')
     elsif amazon_order?(content)
-      'This is an Amazon order export, not location data. ' \
-        'Dawarich imports location history from Google Takeout, OwnTracks, GPX, and similar sources.'
+      I18n.t('services.imports.source_detector.amazon_order')
     elsif snapchat_export?(content)
-      'This appears to be a Snapchat data export, not location data. ' \
-        'Dawarich imports location history from Google Takeout, OwnTracks, GPX, and similar sources.'
+      I18n.t('services.imports.source_detector.snapchat_export')
     elsif looks_like_json_fragment?(content)
-      'The uploaded file appears to be a truncated or corrupted fragment of a JSON file ' \
-        '(it does not start with "{" or "["). Please re-export and upload the original complete file.'
+      I18n.t('services.imports.source_detector.json_fragment')
     else
-      'Unable to detect file format'
+      I18n.t('services.imports.source_detector.unknown_format')
     end
   end
 
@@ -427,25 +443,23 @@ class Imports::SourceDetector
     head_bytes = content.bytes
 
     if head4 == '%PDF'
-      'PDF files are not supported. Open the PDF and find your actual location data file.'
+      I18n.t('services.imports.source_detector.pdf')
     elsif head4.start_with?('Rar!')
-      'RAR archives are not supported. Please extract the archive and upload the data files inside.'
+      I18n.t('services.imports.source_detector.rar')
     elsif head8 == 'bplist00'
-      'Apple binary plist (.plist) files are not supported.'
+      I18n.t('services.imports.source_detector.apple_plist')
     elsif head_bytes[0, 2] == [0x1F, 0x8B]
-      'Gzip-compressed files (.gz) are not auto-decompressed. Please decompress the file and re-upload the contents.'
+      I18n.t('services.imports.source_detector.gzip')
     elsif head_bytes[0, 8] == [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1]
-      'Microsoft Office documents (Word/Excel) are not supported. Please upload your location data file.'
+      I18n.t('services.imports.source_detector.office_document')
     elsif heic_file?(content)
-      'HEIC image files are not supported. Photos do not contain a location history; ' \
-        'connect your photo library via the Immich or PhotoPrism integration to import photo locations.'
+      I18n.t('services.imports.source_detector.heic')
     elsif head_bytes[0, 3] == [0xFF, 0xD8, 0xFF]
-      'JPEG image files are not supported. Photos do not contain a location history; ' \
-        'connect your photo library via the Immich or PhotoPrism integration to import photo locations.'
+      I18n.t('services.imports.source_detector.jpeg')
     elsif head8 == "\x89PNG\r\n\x1A\n".b
-      'PNG image files are not supported. Please upload your location data file (.json, .gpx, .kml, etc).'
+      I18n.t('services.imports.source_detector.png')
     elsif ds_store?(head_bytes)
-      'This is a macOS Finder metadata file (.DS_Store), not a data file. Please upload your actual location export.'
+      I18n.t('services.imports.source_detector.ds_store')
     end
   end
 

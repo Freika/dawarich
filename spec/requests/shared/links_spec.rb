@@ -96,6 +96,24 @@ RSpec.describe 'Shared::Links', type: :request do
       get "/s/#{link.id}"
       expect(response.body).not_to include(owner.email)
     end
+
+    it "renders a day's photos inside the day collapse when show_photos is on" do
+      link = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
+                                  settings: { 'show_days' => true, 'show_photos' => true })
+      allow(SharedLinks::TripPhotos).to receive(:new).and_return(
+        instance_double(SharedLinks::TripPhotos,
+                        call: { Date.new(2026, 4, 1) => [{ id: 'asset-9', source: 'immich',
+                                                           taken_at: '2026-04-01T10:00:00Z' }] })
+      )
+
+      get "/s/#{link.id}"
+
+      day = Nokogiri::HTML(response.body).at_css("details[data-day-key='2026-04-01']")
+      expect(day).to be_present
+      img = day.at_css('img')
+      expect(img['src']).to include("/api/v1/shared/#{link.id}/photos/asset-9/thumbnail")
+      expect(img['src']).to include('source=immich')
+    end
   end
 
   describe 'happy-path GET /s/:id for a track' do

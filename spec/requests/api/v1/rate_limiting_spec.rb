@@ -62,6 +62,50 @@ RSpec.describe 'API Rate Limiting', type: :request do
       end
     end
 
+    context 'when user is on family plan' do
+      let!(:user) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:family])
+        u
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      end
+
+      it 'includes rate limit headers with a limit of 1000' do
+        get api_v1_points_url(api_key: user.api_key)
+
+        expect(response.headers['X-RateLimit-Limit']).to eq('1000')
+      end
+    end
+
+    context 'when user is a lite member of a family-plan family' do
+      let!(:owner) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:family])
+        u
+      end
+      let!(:family) { create(:family, creator: owner) }
+      let!(:member) do
+        u = create(:user)
+        u.update_columns(plan: User.plans[:lite])
+        u
+      end
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        create(:family_membership, :owner, family: family, user: owner)
+        create(:family_membership, family: family, user: member)
+      end
+
+      it 'gets the full 1000 limit via effective plan' do
+        get api_v1_points_url(api_key: member.api_key)
+
+        expect(response.headers['X-RateLimit-Limit']).to eq('1000')
+      end
+    end
+
     context 'when on a self-hosted instance' do
       let!(:user) { create(:user) }
 
@@ -70,6 +114,91 @@ RSpec.describe 'API Rate Limiting', type: :request do
 
         expect(response.headers['X-RateLimit-Limit']).to be_nil
       end
+    end
+  end
+
+  describe 'tile requests' do
+    let!(:user) do
+      u = create(:user)
+      # update_columns bypasses the activate callback that resets plan to :pro
+      u.update_columns(plan: User.plans[:lite])
+      u
+    end
+    let(:tile_path) { '/api/v1/tiles/points/0/0/0.mvt' }
+    let(:original_tiles_limit) { Rack::Attack.tiles_limit }
+    let(:original_tiles_burst_limit) { Rack::Attack.tiles_burst_limit }
+
+    before do
+      original_tiles_limit
+      original_tiles_burst_limit
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    end
+
+    after do
+      Rack::Attack.tiles_limit = original_tiles_limit
+      Rack::Attack.tiles_burst_limit = original_tiles_burst_limit
+    end
+
+    it 'does not count tile requests toward the general api quota' do
+      Rack::Attack.api_rate_limits = { 'lite' => 2, 'pro' => 2 }
+
+      3.times { get tile_path, params: { api_key: user.api_key } }
+      get api_v1_points_url(api_key: user.api_key)
+
+      expect(response).not_to have_http_status(:too_many_requests)
+    end
+
+    it 'throttles tiles on their own limit' do
+      Rack::Attack.tiles_limit = 3
+
+      4.times { get tile_path, params: { api_key: user.api_key } }
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'throttles sustained tile bursts on the short window' do
+      Rack::Attack.tiles_burst_limit = 3
+
+      4.times { get tile_path, params: { api_key: user.api_key } }
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'covers tracks tiles with the same throttle key as points' do
+      Rack::Attack.tiles_limit = 5
+
+      3.times { get '/api/v1/tiles/points/0/0/0.mvt', params: { api_key: user.api_key } }
+      3.times { get '/api/v1/tiles/tracks/0/0/0.mvt', params: { api_key: user.api_key } }
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'keeps a realistic two-source pan sequence under the shipped burst budget' do
+      # ~30 tiles/source/pan × 2 sources × 3 rapid pans = 180 requests in one
+      # burst window — must fit the raised (600) budget with headroom.
+      sources = %w[points tracks]
+      180.times do |i|
+        get "/api/v1/tiles/#{sources[i % 2]}/0/0/0.mvt", params: { api_key: user.api_key }
+      end
+
+      expect(response).not_to have_http_status(:too_many_requests)
+    end
+
+    it 'keys the tile throttle off the Bearer header when no api_key param is present' do
+      Rack::Attack.tiles_limit = 3
+
+      4.times { get tile_path, headers: { 'Authorization' => "Bearer #{user.api_key}" } }
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'does not throttle tiles on self-hosted instances' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      Rack::Attack.tiles_limit = 2
+
+      5.times { get tile_path, params: { api_key: user.api_key } }
+
+      expect(response).not_to have_http_status(:too_many_requests)
     end
   end
 

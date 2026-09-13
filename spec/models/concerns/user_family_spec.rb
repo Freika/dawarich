@@ -72,6 +72,33 @@ RSpec.describe UserFamily do
     end
   end
 
+  describe '#update_family_location_sharing! preserves duration and expiry' do
+    it 'keeps the existing duration and expires_at when re-enabling without a duration' do
+      freeze_time do
+        user.update_family_location_sharing!(true, duration: '1h')
+        original_expires_at = user.family_sharing_expires_at
+
+        user.update_family_location_sharing!(true, share_history: true)
+
+        expect(user.family_share_history?).to be(true)
+        expect(user.family_sharing_duration).to eq('1h')
+        expect(user.family_sharing_expires_at).to be_within(1.second).of(original_expires_at)
+      end
+    end
+
+    it 're-arms an expired timed share when re-enabling without a duration' do
+      user.update_family_location_sharing!(true, duration: '1h')
+
+      travel 2.hours do
+        user.update_family_location_sharing!(true, share_history: true)
+
+        expect(user.family_sharing_enabled?).to be(true)
+        expect(user.family_sharing_duration).to eq('1h')
+        expect(user.family_sharing_expires_at).to be_within(1.second).of(1.hour.from_now)
+      end
+    end
+  end
+
   describe '#family_history_points' do
     let(:now) { Time.zone.local(2026, 3, 13, 12, 0, 0) }
 
@@ -156,20 +183,86 @@ RSpec.describe UserFamily do
       end
     end
 
-    it 'rejects invalid history_window and falls back to 24h' do
+    it 'rejects invalid history_window and falls back to the default window' do
       user.update_family_location_sharing!(true, duration: 'permanent', history_window: 'invalid')
-      expect(user.family_history_window).to eq('24h')
+      expect(user.family_history_window).to eq(UserFamily::DEFAULT_HISTORY_WINDOW)
     end
 
     it 'rejects XSS payloads in history_window' do
       user.update_family_location_sharing!(true, duration: 'permanent', history_window: '<script>alert(1)</script>')
-      expect(user.family_history_window).to eq('24h')
+      expect(user.family_history_window).to eq(UserFamily::DEFAULT_HISTORY_WINDOW)
     end
 
     it 'preserves existing valid window when nil is passed' do
       user.update_family_location_sharing!(true, duration: 'permanent', history_window: '30d')
       user.update_family_location_sharing!(true, duration: 'permanent', history_window: nil)
       expect(user.family_history_window).to eq('30d')
+    end
+  end
+
+  describe '#family_history_window default' do
+    it 'defaults to 7 days when never configured' do
+      expect(user.family_history_window).to eq('7d')
+    end
+
+    it 'uses the default window on first enable without an explicit window' do
+      user.update_family_location_sharing!(true, duration: 'permanent')
+      expect(user.family_history_window).to eq(UserFamily::DEFAULT_HISTORY_WINDOW)
+    end
+  end
+
+  describe '#latest_location_for_family' do
+    before { user.update_family_location_sharing!(true, duration: 'permanent') }
+
+    it 'returns nil when sharing is disabled' do
+      user.update_family_location_sharing!(false)
+      create(:point, user: user, timestamp: 1.hour.ago.to_i)
+      expect(user.latest_location_for_family).to be_nil
+    end
+
+    it 'returns nil when the user has no points' do
+      expect(user.latest_location_for_family).to be_nil
+    end
+
+    it 'returns the most recent point location' do
+      create(:point, user: user, timestamp: 3.hours.ago.to_i)
+      newest = create(:point, user: user, timestamp: 1.hour.ago.to_i)
+
+      result = user.latest_location_for_family
+      expect(result[:timestamp]).to eq(newest.timestamp)
+      expect(result[:updated_at]).to eq(Time.zone.at(newest.timestamp))
+    end
+
+    # A point with a NULL timestamp sorts
+    # NULLS FIRST under ORDER BY timestamp DESC and used to crash
+    # Time.zone.at(nil) with "can't convert NilClass into an exact number".
+    it 'ignores points with a nil timestamp and does not raise' do
+      timestamped = create(:point, user: user, timestamp: 1.hour.ago.to_i)
+      create(:point, user: user, timestamp: 1.minute.ago.to_i).update_column(:timestamp, nil)
+
+      result = nil
+      expect { result = user.latest_location_for_family }.not_to raise_error
+      expect(result[:timestamp]).to eq(timestamped.timestamp)
+    end
+
+    it 'returns nil when the only point has a nil timestamp' do
+      create(:point, user: user, timestamp: 1.hour.ago.to_i).update_column(:timestamp, nil)
+      expect(user.latest_location_for_family).to be_nil
+    end
+  end
+
+  describe '#family_map_sharing_active?' do
+    it 'is false when the user is not in a family' do
+      expect(create(:user).family_map_sharing_active?).to be(false)
+    end
+
+    it 'is false when in a family but nobody is sharing' do
+      expect(user.family_map_sharing_active?).to be(false)
+    end
+
+    it 'is true when a family member has sharing enabled' do
+      user.update_family_location_sharing!(true, duration: 'permanent')
+      expect(user.reload.family_map_sharing_active?).to be(true)
     end
   end
 end

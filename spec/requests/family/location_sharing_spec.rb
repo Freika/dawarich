@@ -64,7 +64,7 @@ RSpec.describe 'Family::LocationSharing', type: :request do
 
         expect(response).to have_http_status(:ok)
         user.reload
-        expect(user.family_history_window).to eq('24h')
+        expect(user.family_history_window).to eq(UserFamily::DEFAULT_HISTORY_WINDOW)
       end
     end
 

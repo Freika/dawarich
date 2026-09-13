@@ -39,21 +39,21 @@ class Polarsteps::Importer
   def build_point(loc)
     return nil unless loc.is_a?(Hash)
 
-    lat = loc['lat']
-    lon = loc['lon'] || loc['lng']
+    location = loc['location'].is_a?(Hash) ? loc['location'] : {}
+    lat = location['lat'] || loc['lat']
+    lon = location['lon'] || location['lng'] || loc['lon'] || loc['lng']
     return nil if lat.nil? || lon.nil?
 
-    timestamp = parse_timestamp(loc['time'] || loc['timestamp'])
+    timestamp = parse_timestamp(
+      loc['time'] || loc['timestamp'] || loc['arrived'] || loc['departed'] || loc['start_time'] || loc['end_time']
+    )
     return nil if timestamp.nil?
-
-    raw_data = { 'segment_id' => loc['id'], 'type' => loc['type'] }.compact
 
     {
       lonlat: "POINT(#{lon} #{lat})",
       timestamp: timestamp,
       user_id: user_id,
       import_id: import.id,
-      raw_data: raw_data,
       created_at: Time.current,
       updated_at: Time.current
     }
@@ -61,6 +61,8 @@ class Polarsteps::Importer
 
   def parse_timestamp(value)
     return nil if value.nil?
+
+    return Time.zone.at(value.to_f).to_i if value.is_a?(Numeric) || value.to_s.match?(/\A-?\d+(?:\.\d+)?\z/)
 
     Time.zone.parse(value.to_s)&.to_i
   rescue ArgumentError, TypeError

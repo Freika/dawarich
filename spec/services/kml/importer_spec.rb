@@ -97,13 +97,10 @@ RSpec.describe Kml::Importer do
         expect(point.velocity).to eq('5.5')
       end
 
-      it 'stores extended data in raw_data' do
+      it 'does not persist raw_data for imported points' do
         parser
 
-        point = user.points.first
-
-        expect(point.raw_data['name']).to eq('Location with Speed')
-        expect(point.raw_data['description']).to eq('A location with extended data including speed')
+        expect(Point.where(import_id: import.id).pluck(:raw_data).uniq).to eq([{}])
       end
     end
 
@@ -238,6 +235,70 @@ RSpec.describe Kml::Importer do
         expect_any_instance_of(Imports::Broadcaster).to receive(:broadcast_import_progress).at_least(1).time
 
         parser
+      end
+    end
+
+    context 'when file has raw ampersands in text fields' do
+      let(:file) { Tempfile.new(['raw_ampersand', '.kml']) }
+      let(:file_path) { file.path }
+
+      before do
+        file.write(<<~XML)
+          <?xml version="1.0" encoding="UTF-8"?>
+          <kml xmlns="http://www.opengis.net/kml/2.2">
+            <Document>
+              <Placemark>
+                <name>Fish & Chips</name>
+                <TimeStamp><when>2024-01-15T12:00:00Z</when></TimeStamp>
+                <Point>
+                  <coordinates>-122.0841,37.4220,10</coordinates>
+                </Point>
+              </Placemark>
+            </Document>
+          </kml>
+        XML
+        file.close
+      end
+
+      after do
+        file.unlink
+      end
+
+      it 'creates points' do
+        expect { parser }.to change(Point, :count).by(1)
+      end
+    end
+
+    context 'when KMZ archive contains KML with raw ampersands' do
+      let(:import) { create(:import, user:, name: 'test.kmz', source: 'kml') }
+      let(:kml_body) do
+        <<~KML
+          <?xml version="1.0" encoding="UTF-8"?>
+          <kml xmlns="http://www.opengis.net/kml/2.2">
+            <Document>
+              <Placemark>
+                <name>Fish & Chips</name>
+                <TimeStamp><when>2024-01-15T12:00:00Z</when></TimeStamp>
+                <Point><coordinates>-122.0841,37.4220,10</coordinates></Point>
+              </Placemark>
+            </Document>
+          </kml>
+        KML
+      end
+      let(:file_path) do
+        path = Rails.root.join('tmp', "ampersand_kmz_#{SecureRandom.hex(4)}.kmz").to_s
+        buffer = Zip::OutputStream.write_buffer do |zip|
+          zip.put_next_entry('doc.kml')
+          zip.write(kml_body)
+        end
+        File.binwrite(path, buffer.string)
+        path
+      end
+
+      after { File.delete(file_path) if File.exist?(file_path) }
+
+      it 'creates points' do
+        expect { parser }.to change(Point, :count).by(1)
       end
     end
 

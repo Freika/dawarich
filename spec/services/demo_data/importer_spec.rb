@@ -54,7 +54,6 @@ RSpec.describe DemoData::Importer do
       anchor = Time.use_zone(user.safe_settings.timezone.presence || 'UTC') { Time.zone.now.beginning_of_day }
       pre_existing = Point.create!(
         user_id: user.id,
-        latitude: 52.5, longitude: 13.4,
         lonlat: 'POINT(13.4 52.5)',
         timestamp: (anchor - 2.hours).to_i
       )

@@ -15,9 +15,13 @@ namespace :demo do
     puts '🚀 Starting demo data generation...'
     puts '=' * 60
 
-    # 1. Create demo user
+    # 1. Create demo user. E2E_SEED_EMAIL / E2E_SEED_API_KEY / E2E_SEED_SUFFIX /
+    # E2E_SEED_SKIP_LITE let e2e:reset_and_seed clone the full demo dataset onto
+    # extra per-Playwright-worker users (see lib/tasks/e2e.rake).
+    demo_email = ENV.fetch('E2E_SEED_EMAIL', 'demo@dawarich.app')
+    demo_api_key = ENV.fetch('E2E_SEED_API_KEY', 'demo_api_key_001')
     puts "\n📝 Creating demo user..."
-    user = User.find_or_initialize_by(email: 'demo@dawarich.app')
+    user = User.find_or_initialize_by(email: demo_email)
 
     if user.new_record?
       user.password = 'safepassword'
@@ -32,7 +36,7 @@ namespace :demo do
 
     # Set specific API key and enable live mode for e2e testing
     user.update!(
-      api_key: 'demo_api_key_001',
+      api_key: demo_api_key,
       settings: (user.settings || {}).merge('live_map_enabled' => true)
     )
     puts "   API Key: #{user.api_key}"
@@ -95,51 +99,54 @@ namespace :demo do
 
     # 8. Create family with members
     puts "\n👨‍👩‍👧‍👦 Creating demo family..."
-    family_members = create_family_with_members(user)
+    family_members = create_family_with_members(user, suffix: ENV['E2E_SEED_SUFFIX'].to_s)
     puts "✅ Created family with #{family_members.count} members"
 
-    # 9. Create Lite demo user
-    puts "\n📝 Creating Lite demo user..."
-    lite_user = User.find_or_initialize_by(email: 'lite@dawarich.app')
-    if lite_user.new_record?
-      lite_user.password = 'safepassword'
-      lite_user.password_confirmation = 'safepassword'
-      lite_user.save!
-      puts "✅ Lite user created: #{lite_user.email}"
-    else
-      puts "ℹ️  Lite user already exists: #{lite_user.email}"
+    # 9. Create Lite demo user (skipped for per-worker clone seeds)
+    lite_user = nil
+    unless ENV['E2E_SEED_SKIP_LITE'] == '1'
+      puts "\n📝 Creating Lite demo user..."
+      lite_user = User.find_or_initialize_by(email: 'lite@dawarich.app')
+      if lite_user.new_record?
+        lite_user.password = 'safepassword'
+        lite_user.password_confirmation = 'safepassword'
+        lite_user.save!
+        puts "✅ Lite user created: #{lite_user.email}"
+      else
+        puts "ℹ️  Lite user already exists: #{lite_user.email}"
+      end
+
+      lite_user.update_columns(
+        api_key: 'lite_demo_api_key_001',
+        plan: User.plans[:lite],
+        status: User.statuses[:active],
+        active_until: 1000.years.from_now,
+        signup_variant: 'legacy_trial'
+      )
+      lite_user.update!(settings: (lite_user.settings || {}).merge('live_map_enabled' => true))
+      puts "   API Key: #{lite_user.api_key}"
+      puts '   Plan: lite'
+      puts "   Signup Variant: #{lite_user.signup_variant}"
+
+      # 9a. Create recent points for Lite user (within 12-month window)
+      puts "\n📍 Creating recent points for Lite user..."
+      recent_points_count = create_lite_recent_points(lite_user)
+      puts "✅ Created #{recent_points_count} recent points"
+
+      # 9b. Create old points for Lite user (outside 12-month window)
+      puts "\n📍 Creating old points for Lite user..."
+      old_points_count = create_lite_old_points(lite_user)
+      puts "✅ Created #{old_points_count} old points"
+
+      # 9c. Create visits and areas for Lite user
+      puts "\n🏠 Creating visits for Lite user..."
+      lite_confirmed = create_visits(lite_user, 3, :confirmed)
+      puts "✅ Created #{lite_confirmed} confirmed visits"
+
+      puts "\n📍 Creating areas for Lite user..."
+      lite_areas = create_areas(lite_user, 2)
+      puts "✅ Created #{lite_areas} areas"
     end
-
-    lite_user.update_columns(
-      api_key: 'lite_demo_api_key_001',
-      plan: User.plans[:lite],
-      status: User.statuses[:active],
-      active_until: 1000.years.from_now,
-      signup_variant: 'legacy_trial'
-    )
-    lite_user.update!(settings: (lite_user.settings || {}).merge('live_map_enabled' => true))
-    puts "   API Key: #{lite_user.api_key}"
-    puts '   Plan: lite'
-    puts "   Signup Variant: #{lite_user.signup_variant}"
-
-    # 9a. Create recent points for Lite user (within 12-month window)
-    puts "\n📍 Creating recent points for Lite user..."
-    recent_points_count = create_lite_recent_points(lite_user)
-    puts "✅ Created #{recent_points_count} recent points"
-
-    # 9b. Create old points for Lite user (outside 12-month window)
-    puts "\n📍 Creating old points for Lite user..."
-    old_points_count = create_lite_old_points(lite_user)
-    puts "✅ Created #{old_points_count} old points"
-
-    # 9c. Create visits and areas for Lite user
-    puts "\n🏠 Creating visits for Lite user..."
-    lite_confirmed = create_visits(lite_user, 3, :confirmed)
-    puts "✅ Created #{lite_confirmed} confirmed visits"
-
-    puts "\n📍 Creating areas for Lite user..."
-    lite_areas = create_areas(lite_user, 2)
-    puts "✅ Created #{lite_areas} areas"
 
     puts "\n#{'=' * 60}"
     puts '🎉 Demo data generation complete!'
@@ -154,18 +161,22 @@ namespace :demo do
     puts "   Tracks: #{user.tracks.count}"
     puts "   Track Segments: #{TrackSegment.joins(:track).where(tracks: { user_id: user.id }).count}"
     puts "   Family Members: #{family_members.count}"
-    puts "\n   Lite User: #{lite_user.email}"
-    puts "   Lite Points: #{Point.where(user_id: lite_user.id).count}"
-    lite_points = Point.where(user_id: lite_user.id)
-    puts "   Lite Recent Points: #{lite_points.where('timestamp >= ?', 12.months.ago.to_i).count}"
-    puts "   Lite Old Points: #{lite_points.where('timestamp < ?', 12.months.ago.to_i).count}"
-    puts "   Lite Visits: #{lite_user.visits.count}"
-    puts "   Lite Areas: #{lite_user.areas.count}"
+    if lite_user
+      puts "\n   Lite User: #{lite_user.email}"
+      puts "   Lite Points: #{Point.where(user_id: lite_user.id).count}"
+      lite_points = Point.where(user_id: lite_user.id)
+      puts "   Lite Recent Points: #{lite_points.where('timestamp >= ?', 12.months.ago.to_i).count}"
+      puts "   Lite Old Points: #{lite_points.where('timestamp < ?', 12.months.ago.to_i).count}"
+      puts "   Lite Visits: #{lite_user.visits.count}"
+      puts "   Lite Areas: #{lite_user.areas.count}"
+    end
     puts "\n🔐 Login credentials:"
-    puts '   Email: demo@dawarich.app'
+    puts "   Email: #{user.email}"
     puts '   Password: safepassword'
-    puts "\n   Lite Email: lite@dawarich.app"
-    puts '   Lite Password: safepassword'
+    if lite_user
+      puts "\n   Lite Email: lite@dawarich.app"
+      puts '   Lite Password: safepassword'
+    end
     puts "\n👨‍👩‍👧‍👦 Family member credentials:"
     family_members.each_with_index do |member, index|
       puts "   Member #{index + 1}: #{member.email} / safepassword / API Key: #{member.api_key}"
@@ -201,7 +212,12 @@ namespace :demo do
       rounded_lat = point.lat.round(5)
       rounded_lon = point.lon.round(5)
 
+      # Scoped to the seeding user: places.user_id is NOT NULL, so the previous
+      # ownerless rows shared across e2e worker seeds are no longer possible.
+      # Each seeded user now carries its own copy of these places, which does
+      # surface them on that user's Places layer.
       place = Place.find_or_initialize_by(
+        user: user,
         latitude: rounded_lat,
         longitude: rounded_lon
       )
@@ -306,7 +322,7 @@ namespace :demo do
     family_member_3_api_key
   ].freeze
 
-  def create_family_with_members(owner)
+  def create_family_with_members(owner, suffix: '')
     # Create or find family
     family = Family.find_or_initialize_by(creator: owner)
 
@@ -325,12 +341,9 @@ namespace :demo do
       role: :owner
     )
 
-    # Create 3 family members with location data
-    member_emails = [
-      'family.member1@dawarich.app',
-      'family.member2@dawarich.app',
-      'family.member3@dawarich.app'
-    ]
+    # Create 3 family members with location data. The suffix (e.g. ".w1")
+    # produces per-Playwright-worker families: family.member1.w1@dawarich.app.
+    member_emails = (1..3).map { |n| "family.member#{n}#{suffix}@dawarich.app" }
 
     family_members = []
 
@@ -351,8 +364,8 @@ namespace :demo do
         puts "   ℹ️  Family member already exists: #{member.email}"
       end
 
-      # Set specific API key for e2e testing
-      member.update!(api_key: FAMILY_API_KEYS[index])
+      # Set specific API key for e2e testing (suffix ".w1" -> "_w1")
+      member.update!(api_key: "#{FAMILY_API_KEYS[index]}#{suffix.tr('.', '_')}")
 
       # Add member to family
       Family::Membership.find_or_create_by!(
@@ -386,8 +399,6 @@ namespace :demo do
 
           Point.create!(
             user: member,
-            latitude: lat,
-            longitude: lon,
             lonlat: "POINT(#{lon} #{lat})",
             timestamp: timestamp,
             altitude: base_point.altitude || 0,
@@ -616,8 +627,6 @@ namespace :demo do
 
       Point.create!(
         user: user,
-        latitude: lat,
-        longitude: lon,
         lonlat: "POINT(#{lon} #{lat})",
         timestamp: timestamp,
         altitude: rand(30..80),
@@ -643,8 +652,6 @@ namespace :demo do
 
       Point.create!(
         user: user,
-        latitude: lat,
-        longitude: lon,
         lonlat: "POINT(#{lon} #{lat})",
         timestamp: timestamp,
         altitude: rand(30..80),
@@ -768,7 +775,7 @@ lon_offset: 0.009, note: nil }
       lat = (BERLIN_BASE[:lat] + cat[:lat_offset]).round(5)
       lon = (BERLIN_BASE[:lon] + cat[:lon_offset]).round(5)
 
-      place = Place.find_or_initialize_by(latitude: lat, longitude: lon)
+      place = Place.find_or_initialize_by(latitude: lat, longitude: lon, user_id: user.id)
       place.user    ||= user
       place.name      = cat[:name]
       place.lonlat    = "POINT(#{lon} #{lat})"

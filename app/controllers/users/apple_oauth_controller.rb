@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Users::AppleOauthController < ApplicationController
+  include PendingImportClaimable
+
   skip_before_action :verify_authenticity_token, only: :callback
   before_action :ensure_enabled
 
@@ -14,12 +16,21 @@ class Users::AppleOauthController < ApplicationController
     cookies.encrypted[:apple_oauth_nonce] = COOKIE_OPTS.merge(value: nonce, expires: COOKIE_TTL.from_now)
     cookies.encrypted[:apple_oauth_state] = COOKIE_OPTS.merge(value: state, expires: COOKIE_TTL.from_now)
 
+    # Apple's callback is a cross-site form POST, so the SameSite=Lax session
+    # cookie won't accompany it. Relay the pending-import ticket through an
+    # encrypted SameSite=None cookie, same as the nonce/state above.
+    if session[:pending_import_ticket].present?
+      cookies.encrypted[:apple_pending_import_ticket] =
+        COOKIE_OPTS.merge(value: session[:pending_import_ticket], expires: COOKIE_TTL.from_now)
+    end
+
     redirect_to authorize_url(nonce: nonce, state: state), allow_other_host: true
   end
 
   def callback
     expected_state = cookies.encrypted[:apple_oauth_state]
     expected_nonce = cookies.encrypted[:apple_oauth_nonce]
+    restore_pending_import_ticket
     cookies.delete(:apple_oauth_state)
     cookies.delete(:apple_oauth_nonce)
 
@@ -36,39 +47,56 @@ class Users::AppleOauthController < ApplicationController
 
     user, _created = Auth::FindOrCreateOauthUser.new(
       provider: 'apple',
-      provider_label: 'Sign in with Apple',
+      provider_label: I18n.t('oauth_providers.sign_in_with_apple'),
       claims: claims,
       email_verified: [true, 'true'].include?(claims[:email_verified]),
       name_attrs: extract_name_from_params
     ).call
 
-    flash[:notice] = I18n.t('devise.omniauth_callbacks.success', kind: 'Apple')
+    flash[:notice] = I18n.t('devise.omniauth_callbacks.success', kind: I18n.t('oauth_providers.apple'))
     sign_in_and_redirect user, event: :authentication
   rescue Auth::VerifyAppleToken::InvalidToken => e
-    reject_with("Apple sign-in failed: #{e.message}")
+    reject_with(I18n.t('controllers.users.apple_oauth.sign_in_failed', message: e.message))
     capture_apple_breadcrumb('invalid_token', extra: { message: e.message })
   rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
     session[:pending_oauth_link] = {
       'user_id' => e.user.id,
       'provider' => e.provider,
       'uid' => e.uid,
-      'provider_label' => 'Sign in with Apple',
+      'provider_label' => I18n.t('oauth_providers.sign_in_with_apple'),
       'expires_at' => 15.minutes.from_now.to_i
     }
     redirect_to auth_account_link_challenge_path
     capture_apple_breadcrumb('link_verification_sent', extra: { user_id: e.user.id, uid: e.uid })
   rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
-    reject_with('Your Apple ID email is not verified. Verify it with Apple, then try again.')
+    reject_with(I18n.t('controllers.users.apple_oauth.email_not_verified'))
     capture_apple_breadcrumb('unverified_email')
+  rescue Auth::FindOrCreateOauthUser::AccountPendingDeletion
+    reject_with(I18n.t('controllers.users.apple_oauth.account_pending_deletion'))
+    capture_apple_breadcrumb('account_pending_deletion')
   rescue Auth::FindOrCreateOauthUser::MissingOauthEmail => e
     reject_with(
-      "Apple didn't share your email this time and we couldn't find your existing account. " \
-      'Visit appleid.apple.com → Sign in with Apple → Dawarich → Stop using Sign in with Apple, then try again.'
+      I18n.t('controllers.users.apple_oauth.missing_email')
     )
     capture_apple_breadcrumb('missing_email', level: :warning, extra: { uid: e.uid })
   end
 
+  protected
+
+  def after_sign_in_path_for(resource)
+    claim_pending_import_for(resource)
+    super
+  end
+
   private
+
+  def restore_pending_import_ticket
+    ticket = cookies.encrypted[:apple_pending_import_ticket]
+    cookies.delete(:apple_pending_import_ticket)
+    return if ticket.blank?
+
+    session[:pending_import_ticket] ||= ticket
+  end
 
   def ensure_enabled
     head :not_found unless APPLE_WEB_SIGN_IN_ENABLED
@@ -107,10 +135,11 @@ class Users::AppleOauthController < ApplicationController
 
   def handle_apple_error
     if params[:error].to_s == 'user_cancelled_authorize'
-      redirect_to new_user_session_path, notice: 'Sign in with Apple was cancelled.'
+      redirect_to new_user_session_path,
+                  notice: I18n.t('controllers.users.apple_oauth.sign_in_with_apple_was_cancelled')
     else
       capture_apple_breadcrumb('authorize_error', extra: { error: params[:error].to_s })
-      reject_with('Sign in with Apple did not complete. Please try again.')
+      reject_with(I18n.t('controllers.users.apple_oauth.did_not_complete'))
     end
   end
 
@@ -119,7 +148,7 @@ class Users::AppleOauthController < ApplicationController
   end
 
   def state_mismatch_message
-    'Sign in with Apple state mismatch — please try again.'
+    I18n.t('controllers.users.apple_oauth.state_mismatch')
   end
 
   def states_equal?(expected, submitted)

@@ -2,6 +2,8 @@
 
 require 'rails_helper'
 
+# Renaming must never create a Place or reassign place_id (the original
+# regression), and under stateless visits any edit silently confirms.
 RSpec.describe 'Inline rename of a suggested visit', type: :request do
   let(:user) { create(:user) }
 
@@ -27,10 +29,10 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
       expect(visit.reload.name).to eq('My Coffee Spot')
     end
 
-    it 'does NOT confirm the visit — status stays suggested' do
+    it 'silently confirms the visit — editing is asserting it' do
       patch visit_url(visit), params: { visit: { name: 'My Coffee Spot' } }, as: :turbo_stream
 
-      expect(visit.reload.status).to eq('suggested')
+      expect(visit.reload.status).to eq('confirmed')
     end
 
     it 'does not create a new Place or change place_id' do
@@ -60,20 +62,20 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
   describe 'PATCH /visits/:id with blank visit[name] on a suggested visit' do
     let(:visit) { create(:visit, user:, status: :suggested, name: 'Original') }
 
-    it 'is a no-op for name and does not confirm or create a Place' do
+    it 'is a no-op for name and does not create a Place' do
       expect do
         patch visit_url(visit), params: { visit: { name: '   ' } }, as: :turbo_stream
       end.not_to change(Place, :count)
 
       expect(visit.reload.name).to eq('Original')
-      expect(visit.reload.status).to eq('suggested')
+      expect(visit.reload.status).to eq('confirmed')
     end
   end
 
   describe 'PATCH /visits/:id with rename on a suggested visit that has no resolvable center' do
     let(:visit) { create(:visit, user:, area: nil, place: nil, status: :suggested, name: 'Visit') }
 
-    it 'renames the visit without error and leaves status suggested' do
+    it 'renames the visit without error' do
       expect(visit.center).to eq([0, 0])
 
       expect do
@@ -82,7 +84,7 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(visit.reload.name).to eq('My Coffee Spot')
-      expect(visit.reload.status).to eq('suggested')
+      expect(visit.reload.status).to eq('confirmed')
     end
   end
 
@@ -102,7 +104,7 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
       end.not_to change(Place, :count)
 
       expect(visit.reload.name).to eq('My Coffee Spot')
-      expect(visit.reload.status).to eq('suggested')
+      expect(visit.reload.status).to eq('confirmed')
     end
   end
 

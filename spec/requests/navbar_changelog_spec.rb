@@ -42,6 +42,30 @@ RSpec.describe 'Navbar changelog indicator', type: :request do
       expect(indicator).to be_present
       expect(indicator.text).to include(APP_VERSION)
     end
+
+    it 'mounts the widget with the self-hosted slug' do
+      user.update!(changelog_consent: :granted)
+
+      get '/settings/users'
+
+      mount = Nokogiri::HTML(response.body).at_css('#chgtool-mount')
+      expect(mount['data-changelog-widget-slug-value']).to eq(CHIBICHANGE_SLUG)
+    end
+  end
+
+  context 'on cloud (not self-hosted), consent granted' do
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(changelog_consent: :granted)
+    end
+
+    it 'mounts the widget with the cloud slug' do
+      get '/'
+      follow_redirect! while response.redirect?
+
+      mount = Nokogiri::HTML(response.body).at_css('#chgtool-mount')
+      expect(mount['data-changelog-widget-slug-value']).to eq(CHIBICHANGE_CLOUD_SLUG)
+    end
   end
 
   context 'when consent is declined' do

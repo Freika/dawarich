@@ -1,11 +1,11 @@
-<% content_for :title, "Notifications" %>
+<% content_for :title, t('.notifications') %>
 <div class="w-full my-5">
-  <%= render layout: 'shared/page_header', locals: { title: 'Notifications' } do %>
+  <%= render layout: 'shared/page_header', locals: { title: t('.notifications') } do %>
     <% if @notifications.unread.any? %>
-      <%= link_to "Mark all as read", mark_notifications_as_read_path, data: { turbo_method: :post }, class: "btn btn-sm btn-primary" %>
+      <%= link_to t('notifications.index.mark_all_as_read'), mark_notifications_as_read_path, data: { turbo_method: :post }, class: "btn btn-sm btn-primary" %>
     <% end %>
     <% if @notifications.any? %>
-      <%= link_to "Delete all", delete_all_notifications_path, data: { turbo_method: :post, turbo_confirm: 'Are you sure you want to delete all notifications?' }, class: "btn btn-sm btn-warning" %>
+      <%= link_to t('notifications.index.delete_all'), delete_all_notifications_path, data: { turbo_method: :post, turbo_confirm: t('notifications.index.are_you_sure_you_want_to_delete_all_notifications') }, class: "btn btn-sm btn-warning" %>
     <% end %>
   <% end %>
   <div class="flex justify-center mb-4">

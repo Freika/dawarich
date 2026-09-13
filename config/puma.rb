@@ -40,6 +40,13 @@ workers ENV.fetch('WEB_CONCURRENCY', 2)
 #
 preload_app!
 
+# Compact the preloaded heap before forking so workers share as many
+# copy-on-write pages as possible. Only runs in cluster mode (workers > 0).
+before_fork do
+  3.times { GC.start }
+  GC.compact
+end
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 

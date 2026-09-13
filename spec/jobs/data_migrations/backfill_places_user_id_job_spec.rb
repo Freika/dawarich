@@ -6,8 +6,19 @@ RSpec.describe DataMigrations::BackfillPlacesUserIdJob, type: :job do
   let(:user_a) { create(:user) }
   let(:user_b) { create(:user) }
 
+  # places.user_id is NOT NULL as of 20260815100001, but this job runs *inside*
+  # that migration, against databases that still hold ownerless rows. Relax the
+  # column for the duration of each example so the assignment logic the upgrade
+  # depends on stays covered.
+  around do |example|
+    ActiveRecord::Base.connection.execute('ALTER TABLE places ALTER COLUMN user_id DROP NOT NULL')
+    example.run
+  end
+
   def orphan_place
-    create(:place, user: nil)
+    place = create(:place, user: user_a)
+    place.update_columns(user_id: nil)
+    place
   end
 
   describe '#perform' do
@@ -101,6 +112,13 @@ RSpec.describe DataMigrations::BackfillPlacesUserIdJob, type: :job do
       expect(place_1.reload.user_id).to eq(user_a.id)
       expect(place_2.reload.user_id).to eq(user_b.id)
       expect(Place.where(id: place_3.id)).not_to exist
+    end
+
+    it 'leaves nothing to do when every place already has an owner' do
+      create(:place, user: user_a)
+
+      expect { described_class.perform_now }
+        .not_to(change { Place.where(user_id: nil).count }.from(0))
     end
   end
 end

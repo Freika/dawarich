@@ -3,10 +3,19 @@
 require 'rails_helper'
 
 RSpec.describe ApplicationHelper, type: :helper do
+  describe '#javascript_translations' do
+    it 'forces a Turbo reload when the locale-dependent payload changes' do
+      script = Nokogiri::HTML.fragment(helper.javascript_translations).at_css('#i18n-translations')
+
+      expect(script['data-turbo-track']).to eq('reload')
+      expect(script['data-turbo-permanent']).to be_nil
+    end
+  end
+
   describe '#pro_badge_tag' do
-    context 'when user is not lite' do
+    context 'when user has full access' do
       before do
-        allow(helper).to receive(:current_user).and_return(double(lite?: false))
+        allow(helper).to receive(:current_user).and_return(double(plan_restricted?: false))
       end
 
       it 'returns nil' do
@@ -14,8 +23,8 @@ RSpec.describe ApplicationHelper, type: :helper do
       end
     end
 
-    context 'when user is lite' do
-      let(:fake_user) { double(lite?: true, generate_subscription_token: 'test_token') }
+    context 'when user is plan-restricted' do
+      let(:fake_user) { double(plan_restricted?: true, generate_subscription_token: 'test_token') }
 
       before do
         allow(helper).to receive(:current_user).and_return(fake_user)
@@ -88,6 +97,46 @@ RSpec.describe ApplicationHelper, type: :helper do
       it 'returns empty string without invoking JWT generation' do
         # Would raise KeyError on self-hosted (no JWT_SECRET_KEY) if not guarded.
         expect(helper.upgrade_url).to eq('')
+      end
+    end
+  end
+
+  describe '#family_upgrade_url' do
+    let(:secret) { ENV.fetch('JWT_SECRET_KEY', 'test_secret') }
+
+    def token_from(url)
+      url[/token=([^&]+)/, 1]
+    end
+
+    def decode(token)
+      JWT.decode(token, secret, true, { algorithm: 'HS256' }).first
+    end
+
+    context 'on cloud instances' do
+      let(:user) { create(:user) }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        allow(helper).to receive(:current_user).and_return(user)
+        stub_const('MANAGER_URL', 'https://manager.example.com')
+      end
+
+      it 'embeds a token whose payload carries the family plan and annual interval' do
+        url = helper.family_upgrade_url
+
+        expect(url).to start_with('https://manager.example.com/auth/dawarich?token=')
+        payload = decode(token_from(url))
+        expect(payload['plan']).to eq('family')
+        expect(payload['interval']).to eq('annual')
+        expect(payload['user_id']).to eq(user.id)
+      end
+    end
+
+    context 'on self-hosted instances' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'returns an empty string' do
+        expect(helper.family_upgrade_url).to eq('')
       end
     end
   end
@@ -561,92 +610,28 @@ RSpec.describe ApplicationHelper, type: :helper do
   end
 
   describe '#preferred_map_path' do
-    context 'when user is not signed in' do
-      before do
-        allow(helper).to receive(:user_signed_in?).and_return(false)
-      end
-
-      it 'returns map_v2_path by default' do
-        expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-      end
+    it 'returns map_v2_path' do
+      expect(helper.preferred_map_path).to eq(helper.map_v2_path)
     end
 
-    context 'when user is signed in' do
+    it 'passes query params through' do
+      params = { start_at: '2025-01-01T00:00', end_at: '2025-12-31T23:59' }
+
+      expect(helper.preferred_map_path(params)).to eq(helper.map_v2_path(params))
+    end
+
+    context 'when a user still carries the legacy v1 preference' do
       let(:user) { create(:user) }
 
       before do
         allow(helper).to receive(:user_signed_in?).and_return(true)
         allow(helper).to receive(:current_user).and_return(user)
+        user.settings['maps'] = { 'preferred_version' => 'v1', 'distance_unit' => 'km' }
+        user.save
       end
 
-      context 'when user has no preferred_version set' do
-        before do
-          user.settings['maps'] = { 'distance_unit' => 'km' }
-          user.save
-        end
-
-        it 'returns map_v2_path as the default' do
-          expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-        end
-      end
-
-      context 'when user has preferred_version set to v1' do
-        before do
-          user.settings['maps'] = { 'preferred_version' => 'v1', 'distance_unit' => 'km' }
-          user.save
-        end
-
-        it 'returns map_v1_path' do
-          expect(helper.preferred_map_path).to eq(helper.map_v1_path)
-        end
-      end
-
-      context 'when user has preferred_version set to v2' do
-        before do
-          user.settings['maps'] = { 'preferred_version' => 'v2', 'distance_unit' => 'km' }
-          user.save
-        end
-
-        it 'returns map_v2_path' do
-          expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-        end
-      end
-
-      context 'when user has no maps settings at all' do
-        before do
-          user.settings.delete('maps')
-          user.save
-        end
-
-        it 'returns map_v2_path as the default' do
-          expect(helper.preferred_map_path).to eq(helper.map_v2_path)
-        end
-      end
-
-      context 'when called with query params' do
-        let(:params) { { start_at: '2025-01-01T00:00', end_at: '2025-12-31T23:59' } }
-
-        context 'when preferred version is v1' do
-          before do
-            user.settings['maps'] = { 'preferred_version' => 'v1' }
-            user.save
-          end
-
-          it 'returns map_v1_path with query params' do
-            expect(helper.preferred_map_path(params)).to eq(helper.map_v1_path(params))
-          end
-        end
-
-        context 'when preferred version is v2' do
-          before do
-            user.settings['maps'] = { 'preferred_version' => 'v2' }
-            user.save
-          end
-
-          it 'returns map_v2_path with query params' do
-            expect(helper.preferred_map_path(params)).to eq(helper.map_v2_path(params))
-          end
-        end
+      it 'still returns map_v2_path' do
+        expect(helper.preferred_map_path).to eq(helper.map_v2_path)
       end
     end
   end

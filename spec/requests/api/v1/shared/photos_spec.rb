@@ -42,7 +42,10 @@ RSpec.describe 'Api::V1::Shared::Photos', type: :request do
       create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id,
                            settings: { 'show_photos' => true })
     end
-    let(:found_photos) { [{ id: 'asset-1', source: 'immich', latitude: 52.0, longitude: 13.0 }] }
+    let(:found_photos) do
+      [{ id: 'asset-1', source: 'immich', latitude: 52.0, longitude: 13.0,
+         localDateTime: '2026-04-02T14:30:00', capturedAt: '2026-04-02T13:30:00Z' }]
+    end
 
     before do
       allow(Photos::Search).to receive(:new).and_return(instance_double(Photos::Search, call: found_photos))
@@ -54,6 +57,12 @@ RSpec.describe 'Api::V1::Shared::Photos', type: :request do
       photo = JSON.parse(response.body).first
       expect(photo).to include('id' => 'asset-1', 'latitude' => 52.0, 'longitude' => 13.0)
       expect(photo['thumbnail_url']).to be_present
+    end
+
+    it 'includes taken_at so replay can reveal photos by timestamp' do
+      get "/api/v1/shared/#{link.id}/photos"
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body).first['taken_at']).to eq('2026-04-02T13:30:00Z')
     end
 
     it 'serves thumbnails for photos belonging to the trip' do

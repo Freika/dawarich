@@ -1,4 +1,9 @@
-import { formatTimestamp } from "../utils/geojson_transformers"
+import { translate } from "i18n"
+import { escapeHtml, formatTimestamp } from "../utils/geojson_transformers"
+
+function escapeAttr(value) {
+  return escapeHtml(value).replace(/"/g, "&quot;").replace(/'/g, "&#39;")
+}
 
 /**
  * Factory for creating photo popups
@@ -22,23 +27,29 @@ export class PhotoPopupFactory {
       source,
     } = properties
 
-    const takenDate = taken_at ? formatTimestamp(taken_at, timezone) : "Unknown"
+    const takenDate = taken_at
+      ? formatTimestamp(taken_at, timezone)
+      : translate("common.unknown")
     const location =
-      [city, state, country].filter(Boolean).join(", ") || "Unknown location"
-    const mediaType = type === "VIDEO" ? "🎥 Video" : "📷 Photo"
+      [city, state, country].filter(Boolean).join(", ") ||
+      translate("search.unknown_location")
+    const mediaType =
+      type === "VIDEO"
+        ? `🎥 ${translate("map_info.video")}`
+        : `📷 ${translate("map_info.photo")}`
 
     return `
       <div class="photo-popup">
         <div class="photo-preview">
-          <img src="${thumbnail_url}"
-               alt="${filename}"
+          <img src="${escapeAttr(thumbnail_url)}"
+               alt="${escapeAttr(filename)}"
                loading="lazy">
         </div>
         <div class="photo-info">
-          <div class="filename">${filename}</div>
-          <div class="timestamp">Taken: ${takenDate}</div>
-          <div class="location">Location: ${location}</div>
-          <div class="source">Source: ${source}</div>
+          <div class="filename">${escapeHtml(filename)}</div>
+          <div class="timestamp">${translate("map_info.taken")}: ${escapeHtml(takenDate)}</div>
+          <div class="location">${translate("map_info.location")}: ${escapeHtml(location)}</div>
+          <div class="source">${translate("map_info.source")}: ${escapeHtml(source)}</div>
           <div class="media-type">${mediaType}</div>
         </div>
       </div>

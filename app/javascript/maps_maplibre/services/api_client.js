@@ -1,11 +1,15 @@
+import { translate } from "i18n"
+import { Toast } from "maps_maplibre/components/toast"
+
 /**
  * API client for Maps V2
  * Wraps all API endpoints with consistent error handling
  */
 export class ApiClient {
-  constructor(apiKey) {
+  constructor(apiKey, importId = null) {
     this.apiKey = apiKey
     this.baseURL = "/api/v1"
+    this.importId = importId
   }
 
   /**
@@ -22,6 +26,8 @@ export class ApiClient {
       slim: "true",
       order: "asc",
     })
+
+    if (this.importId) params.append("import_id", this.importId)
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
       headers: this.getHeaders(),
@@ -387,7 +393,17 @@ export class ApiClient {
     })
 
     if (!response.ok) {
+      Toast.error(translate("messages.failed_to_load_photos"))
       throw new Error(`Failed to fetch photos: ${response.statusText}`)
+    }
+
+    const failedSources = response.headers.get("X-Photo-Source-Errors")
+    if (failedSources) {
+      Toast.warning(
+        translate("messages.some_photo_sources_unavailable", {
+          sources: failedSources.split(",").join(", "),
+        }),
+      )
     }
 
     return response.json()
@@ -558,11 +574,12 @@ export class ApiClient {
    * @param {number|string} trackId - The track ID
    * @returns {Promise<Object>} GeoJSON Feature with segments
    */
-  async fetchTrackWithSegments(trackId) {
+  async fetchTrackWithSegments(trackId, { signal } = {}) {
     const url = `${this.baseURL}/tracks/${trackId}`
 
     const response = await fetch(url, {
       headers: this.getHeaders(),
+      signal,
     })
 
     if (!response.ok) {
@@ -633,6 +650,8 @@ export class ApiClient {
       include_anomalies: "true",
       per_page: "10000", // Get all points in area (up to 10k)
     })
+
+    if (this.importId) params.append("import_id", this.importId)
 
     const response = await fetch(`${this.baseURL}/points?${params}`, {
       headers: this.getHeaders(),
