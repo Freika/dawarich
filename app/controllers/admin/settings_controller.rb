@@ -7,6 +7,15 @@ module Admin
   class SettingsController < ApplicationController
     include FlashStreamable
 
+    SECTIONS = {
+      'photon' => %i[photon_api_host photon_api_key photon_api_use_https],
+      'geoapify' => %i[geoapify_api_key],
+      'nominatim' => %i[nominatim_api_host nominatim_api_key nominatim_api_use_https],
+      'locationiq' => %i[locationiq_api_key],
+      'rate_limit' => %i[reverse_geocoding_rps],
+      'points' => %i[store_geodata]
+    }.freeze
+
     before_action :authenticate_user!
     before_action :ensure_admin!
 
@@ -14,17 +23,18 @@ module Admin
       @settings = InstanceSettings::Registry.keys.index_with { |key| InstanceSettings::Resolver.get(key) }
       @unreadable_keys = unreadable_secret_keys
       @geocoding = Geocoding::Config.resolved_config
+      @section = params[:section].presence_in(SECTIONS.keys) || default_section
     end
 
     def update
       refused = apply_submitted_settings
 
+      back = admin_settings_path(section: params[:section].presence_in(SECTIONS.keys))
+
       if refused.any?
-        redirect_to admin_settings_path,
-                    alert: t('admin.settings.update.pinned', variables: refused.join(', ')),
-                    status: :see_other
+        redirect_to back, alert: t('admin.settings.update.pinned', variables: refused.join(', ')), status: :see_other
       else
-        redirect_to admin_settings_path, notice: t('admin.settings.update.saved'), status: :see_other
+        redirect_to back, notice: t('admin.settings.update.saved'), status: :see_other
       end
     end
 
@@ -38,6 +48,10 @@ module Admin
     end
 
     private
+
+    def default_section
+      @geocoding.enabled? ? @geocoding.provider.to_s : SECTIONS.keys.first
+    end
 
     def ensure_admin!
       user_not_authorized unless current_user&.admin?

@@ -10,6 +10,9 @@ en:
         pinned_hint: "Pinned by %{variable}"
         clear_secret: "Clear the stored value"
         unreadable_secret: "A stored value cannot be decrypted with this instance's keys. Enter it again."
+        sections_nav: "Instance settings sections"
+        nav_pinned: "Set by an environment variable"
+        nav_attention: "Needs attention"
         geocoding:
           title: "Geocoding"
           description: "Geocoding turns coordinates into city and country names on your points and stats, and powers place and location search."

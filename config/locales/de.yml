@@ -10,6 +10,9 @@ de:
         pinned_hint: "Festgelegt durch %{variable}"
         clear_secret: "Gespeicherten Wert löschen"
         unreadable_secret: "Ein gespeicherter Wert lässt sich mit den Schlüsseln dieser Instanz nicht entschlüsseln. Gib ihn erneut ein."
+        sections_nav: "Bereiche der Instanz-Einstellungen"
+        nav_pinned: "Durch eine Umgebungsvariable festgelegt"
+        nav_attention: "Erfordert Aufmerksamkeit"
         geocoding:
           title: "Geokodierung"
           description: "Die Geokodierung macht aus Koordinaten Stadt- und Ländernamen für deine Punkte und Statistiken und ermöglicht die Suche nach Orten."

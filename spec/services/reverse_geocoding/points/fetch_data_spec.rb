@@ -12,7 +12,7 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
   end
 
   before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    configure_instance_geocoding
   end
 
   context 'when the geocoder name differs from the seeded Natural Earth name' do

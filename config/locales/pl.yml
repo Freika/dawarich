@@ -10,6 +10,9 @@ pl:
         pinned_hint: "Ustalone przez %{variable}"
         clear_secret: "Usuń zapisaną wartość"
         unreadable_secret: "Zapisanej wartości nie da się odszyfrować kluczami tej instancji. Wprowadź ją ponownie."
+        sections_nav: "Sekcje ustawień instancji"
+        nav_pinned: "Ustawione zmienną środowiskową"
+        nav_attention: "Wymaga uwagi"
         geocoding:
           title: "Geokodowanie"
           description: "Geokodowanie zamienia współrzędne w nazwy miast i krajów w Twoich punktach i statystykach oraz obsługuje wyszukiwanie miejsc i lokalizacji."

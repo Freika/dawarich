@@ -11,6 +11,9 @@ fr:
         pinned_hint: "Fixé par %{variable}"
         clear_secret: "Effacer la valeur enregistrée"
         unreadable_secret: "Une valeur enregistrée ne peut pas être déchiffrée avec les clés de cette instance. Saisissez-la à nouveau."
+        sections_nav: "Sections des paramètres de l'instance"
+        nav_pinned: "Défini par une variable d'environnement"
+        nav_attention: "Nécessite votre attention"
         geocoding:
           title: "Géocodage"
           description: "Le géocodage transforme les coordonnées en noms de villes et de pays sur vos points et statistiques, et permet la recherche de lieux."

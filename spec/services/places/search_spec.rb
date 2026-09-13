@@ -4,10 +4,6 @@ require 'rails_helper'
 require 'geocoder/results/photon'
 
 RSpec.describe Places::Search do
-  before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-  end
-
   let(:user) { create(:user) }
   let(:lat) { 52.5126 }
   let(:lon) { 13.4012 }
@@ -23,6 +19,8 @@ RSpec.describe Places::Search do
   end
 
   describe '#call' do
+    before { configure_instance_geocoding }
+
     it 'returns nearby matches in the select_place shape' do
       allow(Geocoder).to receive(:search).and_return([photon(name: 'Café Bravo', plat: lat, plon: lon)])
 
@@ -71,11 +69,6 @@ RSpec.describe Places::Search do
       allow(Geocoding::RateLimiter).to receive(:throttle).and_return(nil)
 
       expect(described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
-    end
-
-    it 'returns [] when reverse geocoding is disabled' do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-      expect(described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
     end
 
     it 'handles invalid provider requests without reporting an application exception' do
@@ -160,15 +153,15 @@ RSpec.describe Places::Search do
     end
   end
 
-  describe 'user mode (no ENV)' do
+  describe 'instance provider routing' do
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+      use_real_geocoding_lookups
       allow(Geocoder).to receive(:search).and_call_original
       allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
     end
 
-    it 'routes forward search through the user provider' do
-      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+    it 'routes forward search through the instance provider' do
+      configure_instance_geocoding(photon_api_host: 'photon.mine.example.com', photon_api_use_https: true)
       stub_request(:get, %r{https://photon\.mine\.example\.com/api})
         .to_return(status: 200, body: { type: 'FeatureCollection', features: [] }.to_json,
                    headers: { 'Content-Type' => 'application/json' })
@@ -178,7 +171,7 @@ RSpec.describe Places::Search do
       expect(WebMock).to have_requested(:get, %r{https://photon\.mine\.example\.com/api})
     end
 
-    it 'returns an empty list for an unconfigured user without HTTP' do
+    it 'returns an empty list without HTTP when the instance has no provider' do
       result = described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call
 
       expect(result).to eq([])

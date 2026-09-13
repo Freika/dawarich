@@ -42,7 +42,7 @@
              value="<%= displayed %>"
              autocomplete="off"
              <%= 'step=any min=0 inputmode=decimal' if definition.kind == :float %>
-             class="input input-bordered w-full <%= 'tabular-nums' if definition.kind.in?(%i[integer float]) %>"
+             class="input input-bordered w-full disabled:border-base-content/10 disabled:bg-base-100 <%= 'tabular-nums' if definition.kind.in?(%i[integer float]) %>"
              placeholder="<%= instance_setting_placeholder(setting) %>"
              <%= 'disabled' if setting.pinned? %>
              <%= "aria-describedby=#{field_id}_hint" if hint %>>

@@ -44,19 +44,19 @@ RSpec.describe 'Admin::Settings' do
       get '/admin/settings'
 
       expect(response.body).to include('PHOTON_API_HOST')
-      expect(response.body).to match(/photon_api_host[^>]*disabled/m)
+      expect(response.body).to match(/<input[^>]*id="instance_settings_photon_api_host"[^>]*\sdisabled[\s>]/)
     end
 
     # Differential: proves the assertion above is about pinning, not about every
     # field happening to carry the attribute.
-    it 'leaves an unpinned field editable on the same page' do
+    it 'leaves an unpinned field editable' do
       ENV['PHOTON_API_HOST'] = 'pinned.example.com'
       InstanceSettings::Resolver.reset!
 
-      get '/admin/settings'
+      get '/admin/settings', params: { section: 'nominatim' }
 
-      expect(response.body).to match(/photon_api_host[^>]*disabled/m)
-      expect(response.body).not_to match(/nominatim_api_host[^>]*disabled/m)
+      expect(response.body).to include('id="instance_settings_nominatim_api_host"')
+      expect(response.body).not_to match(/<input[^>]*id="instance_settings_nominatim_api_host"[^>]*\sdisabled[\s>]/)
     end
 
     it 'never renders a stored secret into the page' do
@@ -66,6 +66,100 @@ RSpec.describe 'Admin::Settings' do
       get '/admin/settings'
 
       expect(response.body).not_to include('super-secret-value')
+    end
+  end
+
+  describe 'sections' do
+    before { sign_in admin }
+
+    def section_link(name)
+      response.body[/<a[^>]*data-testid="instance-settings-section-#{name}"[^>]*>/]
+    end
+
+    it 'lists every section in the navigation' do
+      get '/admin/settings'
+
+      %w[photon geoapify nominatim locationiq rate_limit points].each do |name|
+        expect(section_link(name)).to be_present, "missing #{name} in the section navigation"
+      end
+    end
+
+    it 'opens the section of the provider in use' do
+      InstanceSetting.create!(key: 'geoapify_api_key', value: 'key')
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings'
+
+      expect(section_link('geoapify')).to include('aria-current="page"')
+      expect(response.body).to include('id="instance_settings_geoapify_api_key"')
+      expect(response.body).not_to include('id="instance_settings_photon_api_host"')
+    end
+
+    it 'opens Photon when no provider is configured' do
+      get '/admin/settings'
+
+      expect(section_link('photon')).to include('aria-current="page"')
+    end
+
+    it 'renders only the fields of the requested section' do
+      get '/admin/settings', params: { section: 'points' }
+
+      expect(response.body).to include('id="instance_settings_store_geodata"')
+      expect(response.body).not_to include('id="instance_settings_photon_api_host"')
+      expect(response.body).not_to include('id="instance_settings_reverse_geocoding_rps"')
+    end
+
+    it 'falls back to the default section for an unknown one' do
+      get '/admin/settings', params: { section: 'bogus' }
+
+      expect(response).to have_http_status(:ok)
+      expect(section_link('photon')).to include('aria-current="page"')
+    end
+
+    it 'returns to the section that was saved' do
+      patch '/admin/settings', params: { section: 'nominatim',
+                                         instance_settings: { nominatim_api_host: 'nominatim.example.com' } }
+
+      expect(response).to redirect_to(admin_settings_path(section: 'nominatim'))
+    end
+
+    it 'marks a section whose value the environment pins' do
+      ENV['NOMINATIM_API_KEY'] = 'env-key'
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings'
+
+      expect(section_link('nominatim')).to include('data-status="pinned"')
+      expect(section_link('geoapify')).not_to include('data-status')
+    end
+
+    it 'offers no save button in a section the environment pins entirely' do
+      ENV['GEOAPIFY_API_KEY'] = 'env-key'
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings', params: { section: 'geoapify' }
+
+      pane = response.body[/data-testid="instance-settings-pane-geoapify".*/m]
+      expect(pane).not_to include(I18n.t('admin.settings.show.save'))
+    end
+
+    it 'keeps the save button in a section with an editable value' do
+      get '/admin/settings', params: { section: 'geoapify' }
+
+      pane = response.body[/data-testid="instance-settings-pane-geoapify".*/m]
+      expect(pane).to include(I18n.t('admin.settings.show.save'))
+    end
+
+    it 'marks a section holding a secret that cannot be decrypted' do
+      setting = InstanceSetting.create!(key: 'locationiq_api_key', value: 'token')
+      InstanceSetting.connection.execute(
+        "UPDATE instance_settings SET encrypted_value = 'not-valid-ciphertext' WHERE id = #{setting.id}"
+      )
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings'
+
+      expect(section_link('locationiq')).to include('data-status="attention"')
     end
   end
 
@@ -161,7 +255,7 @@ RSpec.describe 'Admin::Settings' do
       ENV['STORE_GEODATA'] = 'true'
       InstanceSettings::Resolver.reset!
 
-      get '/admin/settings'
+      get '/admin/settings', params: { section: 'points' }
 
       expect(response.body).not_to match(/name="instance_settings\[store_geodata\]"\s+value="false"/)
     ensure
@@ -269,7 +363,7 @@ RSpec.describe 'Admin::Settings' do
       )
       InstanceSettings::Resolver.reset!
 
-      get '/admin/settings'
+      get '/admin/settings', params: { section: 'geoapify' }
 
       expect(response.body).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.unreadable_secret')))
     end
@@ -301,7 +395,7 @@ RSpec.describe 'Admin::Settings' do
       expect(status).to include('Geoapify')
       expect(status).to include(I18n.t('admin.settings.show.pinned_hint', variable: 'GEOAPIFY_API_KEY'))
       expect(response.body).to match(
-        /data-testid="instance-settings-provider-geoapify".*?#{I18n.t('admin.settings.show.geocoding.in_use')}/m
+        /<a(?=[^>]*data-testid="instance-settings-section-geoapify")(?=[^>]*data-status="in_use")[^>]*>/
       )
     ensure
       ENV['GEOAPIFY_API_KEY'] = saved
@@ -331,7 +425,7 @@ RSpec.describe 'Admin::Settings' do
       InstanceSetting.create!(key: 'reverse_geocoding_rps', value: 5.0)
       InstanceSettings::Resolver.reset!
 
-      get '/admin/settings'
+      get '/admin/settings', params: { section: 'rate_limit' }
 
       expect(response.body[/<input[^>]*id="instance_settings_reverse_geocoding_rps"[^>]*>/m]).to include('value="5"')
     end
@@ -358,7 +452,7 @@ RSpec.describe 'Admin::Settings' do
       )
       InstanceSettings::Resolver.reset!
 
-      get '/admin/settings'
+      get '/admin/settings', params: { section: 'locationiq' }
 
       expect(response.body).to include('instance_settings_clear[locationiq_api_key]')
     end

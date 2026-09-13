@@ -10,6 +10,9 @@ ca:
         pinned_hint: "Fixat per %{variable}"
         clear_secret: "Esborra el valor desat"
         unreadable_secret: "Un valor desat no es pot desxifrar amb les claus d'aquesta instància. Torna a introduir-lo."
+        sections_nav: "Seccions de la configuració de la instància"
+        nav_pinned: "Definit per una variable d'entorn"
+        nav_attention: "Requereix atenció"
         geocoding:
           title: "Geocodificació"
           description: "La geocodificació converteix les coordenades en noms de ciutat i de país als teus punts i estadístiques, i fa funcionar la cerca de llocs i ubicacions."

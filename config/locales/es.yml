@@ -10,6 +10,9 @@ es:
         pinned_hint: "Fijado por %{variable}"
         clear_secret: "Borrar el valor guardado"
         unreadable_secret: "Un valor guardado no se puede descifrar con las claves de esta instancia. Vuelve a introducirlo."
+        sections_nav: "Secciones de los ajustes de la instancia"
+        nav_pinned: "Definido por una variable de entorno"
+        nav_attention: "Requiere atención"
         geocoding:
           title: "Geocodificación"
           description: "La geocodificación convierte coordenadas en nombres de ciudades y países en tus puntos y estadísticas, y hace posible la búsqueda de lugares."

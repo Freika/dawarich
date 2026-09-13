@@ -4,10 +4,6 @@ require 'rails_helper'
 require 'geocoder/results/photon'
 
 RSpec.describe Places::NearbySearch do
-  before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-  end
-
   let(:user) { create(:user) }
   let(:lat) { 52.5126 }
   let(:lon) { 13.4012 }
@@ -28,6 +24,8 @@ RSpec.describe Places::NearbySearch do
   end
 
   describe '#call' do
+    before { configure_instance_geocoding }
+
     it 'returns hashes with id, source, geodata keys' do
       allow(Geocoder).to receive(:search).and_return([photon_result])
 
@@ -40,12 +38,6 @@ RSpec.describe Places::NearbySearch do
         osm_id: 1_234_567
       )
       expect(result.first[:geodata]).to eq(photon_result.data)
-    end
-
-    it 'returns [] when reverse geocoding is disabled' do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-
-      expect(described_class.new(user: user, latitude: lat, longitude: lon).call).to eq([])
     end
 
     it 'returns [] when coordinates are zero (degenerate visit)' do
@@ -195,30 +187,36 @@ RSpec.describe Places::NearbySearch do
     end
   end
 
-  describe 'per-user cache isolation (no ENV)' do
+  describe 'when geocoding is not configured for the instance' do
+    it 'returns [] without querying a provider' do
+      expect(described_class.new(user: user, latitude: lat, longitude: lon).call).to eq([])
+      expect(Geocoder).not_to have_received(:search)
+    end
+  end
+
+  describe 'cache isolation across instance provider changes' do
     let(:memory_store) { ActiveSupport::Cache::MemoryStore.new }
 
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-      allow(Geocoder).to receive(:search).and_call_original
+      use_real_geocoding_lookups
       allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
       allow(Rails).to receive(:cache).and_return(memory_store)
     end
 
-    it 'caches per provider config instead of serving another user cached results' do
-      other = create(:user)
-      create(:service_setting, :active, user: user, config: { 'host' => 'photon.a.example.com' })
-      create(:service_setting, :active, user: other, config: { 'host' => 'photon.b.example.com' })
+    it 'does not serve results cached under the previous provider after the instance switches host' do
       stub_request(:get, %r{https://photon\.a\.example\.com/reverse})
         .to_return(status: 200, body: { type: 'FeatureCollection', features: [] }.to_json,
                    headers: { 'Content-Type' => 'application/json' })
       stub_request(:get, %r{https://photon\.b\.example\.com/reverse})
         .to_return(status: 200, body: { type: 'FeatureCollection', features: [] }.to_json,
                    headers: { 'Content-Type' => 'application/json' })
+      configure_instance_geocoding(photon_api_host: 'photon.a.example.com', photon_api_use_https: true)
 
       described_class.new(user: user, latitude: lat, longitude: lon, cache: true).call
-      described_class.new(user: other, latitude: lat, longitude: lon, cache: true).call
+      InstanceSetting.find_by!(key: 'photon_api_host').update!(value: 'photon.b.example.com')
+      InstanceSettings::Resolver.reset!
       described_class.new(user: user, latitude: lat, longitude: lon, cache: true).call
+      described_class.new(user: create(:user), latitude: lat, longitude: lon, cache: true).call
 
       expect(WebMock).to have_requested(:get, /photon\.a\.example\.com/).once
       expect(WebMock).to have_requested(:get, /photon\.b\.example\.com/).once

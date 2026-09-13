@@ -100,7 +100,7 @@ RSpec.describe Visits::Suggest do
       end
 
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        configure_instance_geocoding
         allow(Geocoder).to receive(:search).and_return([venue_result])
 
         create_visit_points(user, reverse_geocoding_start_at)
@@ -121,7 +121,6 @@ RSpec.describe Visits::Suggest do
 
     context 'when reverse geocoding is disabled' do
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
         clear_enqueued_jobs
       end
 

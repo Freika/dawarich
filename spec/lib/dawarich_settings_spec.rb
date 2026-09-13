@@ -45,37 +45,81 @@ RSpec.describe DawarichSettings do
   end
 
   describe '.photon_enabled?' do
-    context 'when PHOTON_API_HOST is present' do
-      before { stub_const('PHOTON_API_HOST', 'photon.example.com') }
+    context 'when PHOTON_API_HOST is set in the environment' do
+      before do
+        ENV['PHOTON_API_HOST'] = 'photon.example.com'
+        InstanceSettings::Resolver.reset!
+      end
 
       it 'returns true' do
         expect(described_class.photon_enabled?).to be true
       end
     end
 
-    context 'when PHOTON_API_HOST is blank' do
-      before { stub_const('PHOTON_API_HOST', '') }
+    context 'when a Photon host is stored as an instance setting' do
+      before { configure_instance_geocoding(photon_api_host: 'photon.example.com') }
 
-      it 'returns false' do
+      it 'returns true' do
+        expect(described_class.photon_enabled?).to be true
+      end
+    end
+
+    context 'when no Photon host is configured' do
+      before { stub_const('PHOTON_API_HOST', 'photon.example.com') }
+
+      it 'returns false regardless of the boot constant' do
         expect(described_class.photon_enabled?).to be false
+      end
+    end
+
+    context 'when the instance settings cannot be read' do
+      before do
+        stub_const('PHOTON_API_HOST', 'photon.example.com')
+        allow(InstanceSettings::Resolver).to receive(:value).and_raise(ActiveRecord::NoDatabaseError)
+      end
+
+      it 'falls back to the boot constant' do
+        expect(described_class.photon_enabled?).to be true
       end
     end
   end
 
   describe '.geoapify_enabled?' do
-    context 'when GEOAPIFY_API_KEY is present' do
-      before { stub_const('GEOAPIFY_API_KEY', 'some-api-key') }
+    context 'when GEOAPIFY_API_KEY is set in the environment' do
+      before do
+        ENV['GEOAPIFY_API_KEY'] = 'some-api-key'
+        InstanceSettings::Resolver.reset!
+      end
 
       it 'returns true' do
         expect(described_class.geoapify_enabled?).to be true
       end
     end
 
-    context 'when GEOAPIFY_API_KEY is blank' do
-      before { stub_const('GEOAPIFY_API_KEY', '') }
+    context 'when a Geoapify key is stored as an instance setting' do
+      before { configure_instance_geocoding(geoapify_api_key: 'some-api-key') }
 
-      it 'returns false' do
+      it 'returns true' do
+        expect(described_class.geoapify_enabled?).to be true
+      end
+    end
+
+    context 'when no Geoapify key is configured' do
+      before { stub_const('GEOAPIFY_API_KEY', 'some-api-key') }
+
+      it 'returns false regardless of the boot constant' do
         expect(described_class.geoapify_enabled?).to be false
+      end
+    end
+
+    context 'when the instance settings cannot be read' do
+      before do
+        stub_const('GEOAPIFY_API_KEY', 'some-api-key')
+        allow(InstanceSettings::Resolver).to receive(:value).and_raise(ActiveRecord::NoDatabaseError)
+      end
+
+      it 'falls back to the boot constant' do
+        expect(described_class.geoapify_enabled?).to be true
       end
     end
   end

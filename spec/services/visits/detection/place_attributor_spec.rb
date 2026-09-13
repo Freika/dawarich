@@ -7,9 +7,11 @@ RSpec.describe Visits::Detection::PlaceAttributor do
   let(:policy) { Visits::Detection::Policy.for(user) }
   let(:lat0) { 51.3402 }
   let(:lon0) { 12.3712 }
+  let(:geocoding_configured) { true }
 
   before do
-    allow(DawarichSettings).to receive_messages(reverse_geocoding_enabled?: true, store_geodata?: false)
+    configure_instance_geocoding if geocoding_configured
+    allow(DawarichSettings).to receive(:store_geodata?).and_return(false)
   end
 
   def north(meters) = meters / 111_320.0
@@ -128,14 +130,16 @@ RSpec.describe Visits::Detection::PlaceAttributor do
     expect(result[:place]).to be_nil
   end
 
-  it 'returns honest nothing when there is no evidence at all' do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+  context 'when geocoding is not configured' do
+    let(:geocoding_configured) { false }
 
-    result = attribute
+    it 'returns honest nothing when there is no evidence at all' do
+      result = attribute
 
-    expect(result[:evidence]).to eq(:none)
-    expect(result[:name]).to be_nil
-    expect(result[:place]).to be_nil
-    expect(result[:area]).to be_nil
+      expect(result[:evidence]).to eq(:none)
+      expect(result[:name]).to be_nil
+      expect(result[:place]).to be_nil
+      expect(result[:area]).to be_nil
+    end
   end
 end

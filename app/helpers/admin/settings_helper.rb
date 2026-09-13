@@ -2,14 +2,9 @@
 
 module Admin
   module SettingsHelper
-    # Each geocoding provider with the settings it reads, in the order the
-    # resolver tries them — the page lists them in that order on purpose.
-    GEOCODING_PROVIDERS = {
-      photon: %i[photon_api_host photon_api_key photon_api_use_https],
-      geoapify: %i[geoapify_api_key],
-      nominatim: %i[nominatim_api_host nominatim_api_key nominatim_api_use_https],
-      locationiq: %i[locationiq_api_key]
-    }.freeze
+    GEOCODING_SECTIONS = %w[photon geoapify nominatim locationiq rate_limit].freeze
+    PROVIDER_SECTIONS = %w[photon geoapify nominatim locationiq].freeze
+    SECTION_ICONS = { 'rate_limit' => 'clock', 'points' => 'map-pin' }.freeze
 
     CHIBIGEO_KEY_URL = 'https://chibigeo.com/docs/guides/dawarich?utm_source=dawarich&utm_medium=app&utm_campaign=geocoding_settings'
 
@@ -18,7 +13,39 @@ module Admin
     end
 
     def geocoding_in_use?(config, provider)
-      config.enabled? && config.provider == provider
+      config.enabled? && config.provider == provider.to_sym
+    end
+
+    def instance_section_title(section)
+      return geocoding_provider_name(section) if PROVIDER_SECTIONS.include?(section)
+
+      section == 'rate_limit' ? t('admin.settings.show.geocoding.rate_limit') : t('admin.settings.show.points.title')
+    end
+
+    def instance_section_icon(section)
+      SECTION_ICONS.fetch(section, 'globe')
+    end
+
+    # What the navigation flags about a section: a secret that needs re-entering
+    # outranks the provider being in use, which outranks a pinned value.
+    def instance_section_status(section, settings:, unreadable_keys:, geocoding:)
+      keys = Admin::SettingsController::SECTIONS.fetch(section)
+      return :attention if keys.intersect?(unreadable_keys)
+      return :in_use if PROVIDER_SECTIONS.include?(section) && geocoding_in_use?(geocoding, section)
+
+      :pinned if keys.any? { |key| settings.fetch(key).pinned? }
+    end
+
+    def instance_section_status_icon(status)
+      icon_name, css, label = {
+        attention: ['triangle-alert', 'text-warning', t('admin.settings.show.nav_attention')],
+        in_use: ['circle-check', 'text-success', t('admin.settings.show.geocoding.in_use')],
+        pinned: ['lock', 'text-base-content/70', t('admin.settings.show.nav_pinned')]
+      }.fetch(status)
+
+      tag.span(class: 'tooltip tooltip-left', data: { tip: label }) do
+        icon(icon_name, class: "size-4 #{css}") + tag.span(label, class: 'sr-only')
+      end
     end
 
     # The variable that pins the setting choosing this provider, when one does.
