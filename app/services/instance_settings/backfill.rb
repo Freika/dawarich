@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 
-module Geocoding
-  # Carries an existing per-user geocoding configuration up to the Instance
-  # setting that now owns it.
+module InstanceSettings
+  # Carries existing configuration into Instance settings so it survives the
+  # variables being removed later: every variable that is set, then — only when
+  # the environment names no geocoding provider — per-user geocoding rows.
   #
-  # Deliberately conservative: it writes only when every user has an active
-  # configuration and they all agree. Electing one user's provider for the whole
+  # The per-user copy is deliberately conservative: it writes only when every
+  # user has an active configuration and they all agree. Electing one user's provider for the whole
   # deployment would be data loss dressed as a migration, and the hand-edited
-  # instance is exactly the one worth not clobbering. Nothing is ever deleted, so the move is reversible.
-  class BackfillInstanceSettings
+  # instance is exactly the one worth not clobbering. Nothing is ever deleted,
+  # so the move is reversible.
+  class Backfill
     KEY_FOR_HOST = { 'photon' => :photon_api_host, 'nominatim' => :nominatim_api_host }.freeze
     KEY_FOR_API_KEY = {
       'photon' => :photon_api_key, 'nominatim' => :nominatim_api_key,
@@ -20,6 +22,34 @@ module Geocoding
     end
 
     def call
+      copy_environment
+      copy_user_settings unless environment_names_a_provider?
+    end
+
+    private
+
+    def copy_environment
+      copied = Registry::DEFINITIONS.values.filter_map do |definition|
+        raw = ENV.fetch(definition.env_var, nil)
+        next if raw.to_s.strip.empty?
+
+        definition.env_var if store(definition.key, definition.coerce(raw))
+      end
+      return if copied.empty?
+
+      Rails.logger.info("[InstanceSettings] copied from the environment: #{copied.join(', ')}")
+    end
+
+    # A provider chosen by a variable is the instance's decision; copying a
+    # different one from old per-user rows would surface it the day the
+    # variable is removed.
+    def environment_names_a_provider?
+      Geocoding::Config::PROVIDER_KEYS.values.any? do |key|
+        ENV.fetch(Registry.fetch(key).env_var, nil).to_s.strip.present?
+      end
+    end
+
+    def copy_user_settings
       settings = ServiceSetting.service_geocoding.where(active: true, user_id: User.select(:id)).to_a
       return if settings.empty?
       return log_partial_coverage if User.where.not(id: settings.map(&:user_id)).exists?
@@ -29,8 +59,6 @@ module Geocoding
 
       write(settings.first)
     end
-
-    private
 
     def signature(setting)
       [setting.provider, setting.config['host'], setting.config['use_https'], safe_api_key(setting)]
@@ -80,13 +108,14 @@ module Geocoding
     # nominatim is `true` — silently flipping a plain-HTTP host to HTTPS and
     # breaking geocoding the first time the flag is turned on.
     def store(key, value)
-      return if key.nil? || value.nil? || value == :unreadable
-      return if value.respond_to?(:empty?) && value.empty?
-      return if InstanceSetting.exists?(key: key.to_s)
+      return false if key.nil? || value.nil? || value == :unreadable
+      return false if value.respond_to?(:empty?) && value.empty?
+      return false if InstanceSetting.exists?(key: key.to_s)
 
       InstanceSetting.create!(key: key.to_s, value: value)
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique => e
-      Rails.logger.warn("[Geocoding] could not backfill #{key}: #{e.class}: #{e.message}")
+      Rails.logger.warn("[InstanceSettings] could not backfill #{key}: #{e.class}")
+      false
     end
   end
 end

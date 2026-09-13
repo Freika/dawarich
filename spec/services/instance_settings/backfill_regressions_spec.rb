@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Geocoding::BackfillInstanceSettings, 'review regressions' do
+RSpec.describe InstanceSettings::Backfill, 'review regressions' do
   before { ActiveRecord::Base.connection.execute('TRUNCATE users CASCADE') }
 
   # `false.blank?` is true, so the old guard dropped use_https: false and the

@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- Geocoding is no longer configured per user: the Geocoding page under Integrations is gone, and existing per-user settings are carried over to the instance when every user agrees on one.
+- Geocoding is no longer configured per user: the Geocoding page under Integrations is gone. On upgrade, environment variables that are set are copied into Instance settings, so removing one later keeps its value; without a provider variable, existing per-user settings are carried over when every user agrees on one.
 
 ## [1.14.2]
 
