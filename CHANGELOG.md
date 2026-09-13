@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Unauthorized visits to Sidekiq no longer leave browsers caching a permanent redirect.
 - Map and trip pages handle timezones saved under legacy names such as `Berlin`.
 - The map's date range fields follow day navigation from the timeline.
+- Self-hosted registration settings apply to mobile app sign-ups, and a family invitation only admits the email address it was sent to.
 
 ## [1.14.4] - 2026-09-06, Berlin
 
