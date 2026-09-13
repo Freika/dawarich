@@ -1,19 +1,17 @@
 <div class="hero min-h-[70vh] bg-base-200 rounded-box">
   <div class="hero-content text-center">
     <div class="max-w-lg">
-      <h1 class="text-4xl font-bold">Finish setting up your account</h1>
+      <h1 class="text-4xl font-bold"><%= t('.finish_setting_up_your_account') %></h1>
       <p class="py-6">
-        Your account is almost ready. To start tracking your location data, please
-        complete your subscription checkout. You won't be charged during the
-        7-day free trial — cancel anytime before it ends and you won't be billed.
+        <%= t('.your_account_is_almost_ready_to_start_tracking_your_location') %>
       </p>
-      <%= link_to 'Resume checkout', @checkout_url,
+      <%= link_to t('.resume_checkout'), @checkout_url,
             class: 'btn btn-primary btn-lg',
             data: { turbo: false } %>
       <div class="mt-6 text-sm">
-        <%= link_to 'Or delete my account',
+        <%= link_to t('.or_delete_my_account'),
               user_registration_path,
-              data: { turbo_method: :delete, turbo_confirm: 'Are you sure? This cannot be undone.' },
+              data: { turbo_method: :delete, turbo_confirm: t('.are_you_sure_this_cannot_be_undone') },
               class: 'link link-hover text-base-content/60' %>
       </div>
     </div>

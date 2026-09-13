@@ -93,6 +93,19 @@ RSpec.describe Tracks::TransportationRecalculationStatus do
     end
   end
 
+  describe '#increment_processed! after completion' do
+    it 'leaves the completed hash untouched when a retried job reports late' do
+      status.start(total_tracks: 2)
+      status.increment_processed!
+      status.increment_processed! # reaches total → complete
+
+      status.increment_processed! # late retry overshoot
+
+      expect(status.data['status']).to eq('completed')
+      expect(status.data['processed_tracks']).to eq(2)
+    end
+  end
+
   describe '#fail' do
     it 'sets failed status with error message' do
       status.start(total_tracks: 10)

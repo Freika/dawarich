@@ -23,6 +23,14 @@ RSpec.describe Import::ProcessJob, type: :job do
       expect { perform }.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3)
     end
 
+    it 'processes the import in the user saved locale' do
+      user.update!(settings: { 'locale' => 'fr' })
+      allow(Import).to receive(:find).with(import.id).and_return(import)
+      allow(import).to receive(:process!) { expect(I18n.locale).to eq(:fr) }
+
+      I18n.with_locale(:en) { perform }
+    end
+
     context 'when there is an error' do
       before do
         allow_any_instance_of(OwnTracks::Importer).to receive(:call).and_raise(StandardError)

@@ -1,6 +1,6 @@
 <div id="sharing-link-display" class="form-control mb-4">
   <label class="label">
-    <span class="label-text font-medium">Sharing link</span>
+    <span class="label-text font-medium"><%= t('.sharing_link') %></span>
   </label>
   <div class="join w-full">
     <input type="text"
@@ -11,10 +11,10 @@
     <button type="button"
             class="btn btn-outline join-item"
             data-action="click->sharing-modal#copyLink">
-      <%= icon 'copy' %> Copy
+      <%= icon 'copy' %> <%= t('.copy') %>
     </button>
   </div>
   <div class="label">
-    <span class="label-text-alt text-gray-500">Share this link to allow others to view your stats</span>
+    <span class="label-text-alt text-gray-500"><%= t('.share_this_link_to_allow_others_to_view_your_stats') %></span>
   </div>
 </div>

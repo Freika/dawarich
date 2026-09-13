@@ -8,19 +8,18 @@ module Archivable
                class_name: 'Points::RawDataArchive',
                optional: true
 
-    scope :archived, -> { where(raw_data_archived: true) }
-    scope :not_archived, -> { where(raw_data_archived: false) }
-    scope :with_archived_raw_data, lambda {
-      includes(raw_data_archive: { file_attachment: :blob })
-    }
-
     before_save :reset_archival_on_raw_data_change
   end
 
-  UPSERT_CONFLICT_KEYS = %i[lonlat timestamp user_id].freeze
+  UPSERT_CONFLICT_KEYS = %i[user_id timestamp lonlat].freeze
   UPSERT_MAX_RETRIES = 3
   UPSERT_BACKOFF_BASE = 0.1
   UPSERT_BACKOFF_JITTER = 0.05
+  UPSERT_CONTENTION_ERRORS = [
+    ActiveRecord::Deadlocked,
+    ActiveRecord::LockWaitTimeout,
+    ActiveRecord::QueryCanceled
+  ].freeze
 
   class_methods do
     # Bulk-ingest counterpart of the reset_archival_on_raw_data_change
@@ -40,7 +39,7 @@ module Archivable
       set_clauses << '"updated_at" = CURRENT_TIMESTAMP' unless update_columns.include?(:updated_at)
       set_clauses.concat(archival_reset_clauses) if update_columns.include?(:raw_data)
 
-      with_deadlock_retry do
+      result = with_write_contention_retry do
         upsert_all(
           rows,
           unique_by: UPSERT_CONFLICT_KEYS,
@@ -48,16 +47,30 @@ module Archivable
           returning: returning
         )
       end
+
+      # Choke point for tile-cache invalidation: every bulk point creator
+      # (API, OwnTracks, Overland, Traccar) funnels through here, and raw
+      # upserts bypass the AR callbacks that could otherwise do this.
+      rows.group_by { |row| row[:user_id] || row['user_id'] }.each do |user_id, user_rows|
+        next if user_id.nil?
+
+        timestamps = user_rows.map { |row| row[:timestamp] || row['timestamp'] }
+        Points::TileEpoch.bump(user_id, timestamps: timestamps)
+      end
+
+      result
     end
 
-    private
+    def raw_data_lock_order
+      order(Arel.sql('ST_X(lonlat::geometry), ST_Y(lonlat::geometry), timestamp, user_id'))
+    end
 
-    def with_deadlock_retry
+    def with_write_contention_retry
       retries = 0
 
       begin
         yield
-      rescue ActiveRecord::Deadlocked => e
+      rescue *UPSERT_CONTENTION_ERRORS => e
         retries += 1
         raise e if retries > UPSERT_MAX_RETRIES
 
@@ -65,6 +78,8 @@ module Archivable
         retry
       end
     end
+
+    private
 
     def archival_reset_clauses
       table = connection.quote_table_name(table_name)
@@ -117,7 +132,7 @@ module Archivable
   end
 
   def check_temporary_restore_cache
-    Rails.cache.read("raw_data:temp:#{user_id}:#{id}")
+    Rails.cache.read("raw_data:temp:#{user_id}:#{id}:#{raw_data_archive_id}")
   end
 
   def fetch_from_archive_file

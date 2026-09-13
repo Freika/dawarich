@@ -614,11 +614,15 @@
 
 /* Replay corner photo stack (tilted pile revealed during replay) */
 .replay-photo-stack {
+  /* Single source of truth for the stack's scale. The fan offset is derived
+     from it so cards keep their spacing ratio at any size. */
+  --stack-size: 140px;
+  --stack-fan-step: calc(var(--stack-size) * 0.078);
   position: absolute;
   top: 16px;
   left: 16px;
-  width: 90px;
-  height: 90px;
+  width: var(--stack-size);
+  height: var(--stack-size);
   z-index: 450;
   pointer-events: none;
 }
@@ -627,11 +631,14 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 90px;
-  height: 90px;
+  width: var(--stack-size);
+  height: var(--stack-size);
   cursor: pointer;
   pointer-events: auto;
-  transform: translate(calc(var(--depth, 0) * 7px), calc(var(--depth, 0) * 7px))
+  transform: translate(
+      calc(var(--depth, 0) * var(--stack-fan-step)),
+      calc(var(--depth, 0) * var(--stack-fan-step))
+    )
     rotate(var(--rot, 0deg));
   transition: transform 0.25s cubic-bezier(0.18, 0.89, 0.32, 1.28);
 }

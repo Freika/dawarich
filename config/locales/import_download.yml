@@ -1,0 +1,49 @@
+en:
+  imports:
+    download:
+      preparing: "Preparing your download"
+      automatic_download: "Your download will start automatically when it is ready. You can also download the original archive below."
+      original_archive: "Download original archive"
+      back: "Back to imports"
+de:
+  imports:
+    download:
+      preparing: "Download wird vorbereitet"
+      automatic_download: "Dein Download startet automatisch, sobald er bereit ist. Du kannst unten auch das ursprüngliche Archiv herunterladen."
+      original_archive: "Ursprüngliches Archiv herunterladen"
+      back: "Zurück zu den Importen"
+es:
+  imports:
+    download:
+      preparing: "Preparando la descarga"
+      automatic_download: "La descarga comenzará automáticamente cuando esté lista. También puedes descargar el archivo comprimido original a continuación."
+      original_archive: "Descargar el archivo comprimido original"
+      back: "Volver a las importaciones"
+fr:
+  imports:
+    download:
+      preparing: "Préparation du téléchargement"
+      automatic_download: "Le téléchargement démarrera automatiquement dès que le fichier sera prêt. Vous pouvez aussi télécharger l’archive originale ci-dessous."
+      original_archive: "Télécharger l’archive originale"
+      back: "Retour aux importations"
+pl:
+  imports:
+    download:
+      preparing: "Przygotowywanie pobierania"
+      automatic_download: "Pobieranie rozpocznie się automatycznie, gdy plik będzie gotowy. Poniżej możesz też pobrać oryginalne archiwum."
+      original_archive: "Pobierz oryginalne archiwum"
+      back: "Powrót do importów"
+ca:
+  imports:
+    download:
+      preparing: "S’està preparant la baixada"
+      automatic_download: "La baixada començarà automàticament quan estigui preparada. També pots baixar l’arxiu comprimit original a continuació."
+      original_archive: "Baixa l’arxiu comprimit original"
+      back: "Torna a les importacions"
+zh:
+  imports:
+    download:
+      preparing: "正在准备下载"
+      automatic_download: "文件准备就绪后将自动开始下载。你也可以在下方下载原始压缩包。"
+      original_archive: "下载原始压缩包"
+      back: "返回导入列表"

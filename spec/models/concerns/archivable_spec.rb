@@ -8,21 +8,6 @@ RSpec.describe Archivable, type: :model do
 
   describe 'associations and scopes' do
     it { expect(point).to belong_to(:raw_data_archive).optional }
-
-    describe 'scopes' do
-      let!(:archived_point) { create(:point, user: user, raw_data_archived: true) }
-      let!(:not_archived_point) { create(:point, user: user, raw_data_archived: false) }
-
-      it '.archived returns archived points' do
-        expect(Point.archived).to include(archived_point)
-        expect(Point.archived).not_to include(not_archived_point)
-      end
-
-      it '.not_archived returns non-archived points' do
-        expect(Point.not_archived).to include(not_archived_point)
-        expect(Point.not_archived).not_to include(archived_point)
-      end
-    end
   end
 
   describe '#raw_data_with_archive' do
@@ -111,7 +96,7 @@ RSpec.describe Archivable, type: :model do
     let(:june_point) { create(:point, user: user, timestamp: Time.new(2024, 6, 15).to_i) }
 
     it 'checks temporary restore cache with correct key format' do
-      cache_key = "raw_data:temp:#{user.id}:#{june_point.id}"
+      cache_key = "raw_data:temp:#{user.id}:#{june_point.id}:#{june_point.raw_data_archive_id}"
       cached_data = { lon: 16.0, lat: 55.0 }
 
       Rails.cache.write(cache_key, cached_data, expires_in: 1.hour)
@@ -241,6 +226,12 @@ RSpec.describe Archivable, type: :model do
       expect(captured).to eq([west, east])
     end
 
+    it 'uses the same numeric conflict-key order when acquiring raw-data row locks' do
+      sql = Point.raw_data_lock_order.to_sql
+
+      expect(sql).to match(/ORDER BY ST_X\(lonlat::geometry\), ST_Y\(lonlat::geometry\), timestamp, user_id/)
+    end
+
     it 'does not raise while sorting a batch containing a malformed lonlat' do
       captured = nil
       allow(Point).to receive(:upsert_all) do |rows, **|
@@ -290,6 +281,43 @@ RSpec.describe Archivable, type: :model do
         end.to raise_error(ActiveRecord::Deadlocked)
 
         expect(Point).to have_received(:sleep).exactly(3).times
+      end
+    end
+
+    context 'when the upsert is canceled by a transient statement or lock timeout' do
+      [ActiveRecord::QueryCanceled, ActiveRecord::LockWaitTimeout].each do |error_class|
+        it "retries #{error_class} and returns the result" do
+          attempts = 0
+          allow(Point).to receive(:upsert_all).and_wrap_original do |original, *args, **kwargs|
+            attempts += 1
+            raise error_class, 'canceling statement' if attempts == 1
+
+            original.call(*args, **kwargs)
+          end
+          allow(Point).to receive(:sleep)
+
+          result = Point.archival_safe_upsert_all(
+            [base_row.merge(timestamp: 1_700_000_240)],
+            returning: Arel.sql('id, xmax')
+          )
+
+          expect(attempts).to eq(2)
+          expect(Point.exists?(result.first['id'])).to be true
+        end
+
+        it "raises #{error_class} after exhausting retries" do
+          allow(Point).to receive(:upsert_all).and_raise(error_class, 'canceling statement')
+          allow(Point).to receive(:sleep)
+
+          expect do
+            Point.archival_safe_upsert_all(
+              [base_row.merge(timestamp: 1_700_000_300)],
+              returning: Arel.sql('id, xmax')
+            )
+          end.to raise_error(error_class)
+
+          expect(Point).to have_received(:sleep).exactly(3).times
+        end
       end
     end
   end

@@ -14,6 +14,10 @@ export default class extends BaseController {
     document.removeEventListener("visit-place:changed", this.boundOnChanged)
   }
 
+  get isOpen() {
+    return Boolean(this._search?.open)
+  }
+
   toggle() {
     if (!this._search) {
       this._search = new VisitPlaceSearch(

@@ -10,9 +10,6 @@ namespace :dawarich do
         enqueued += 1
       end
     end
-    # Ownerless (user_id IS NULL) orphan suggested places aren't reached by the
-    # per-user passes above, so drain them in a dedicated pass after the rest.
-    Places::OrphanCleanupJob.set(wait: (enqueued * 0.1).seconds).perform_later(nil)
     Rails.logger.info('[dawarich:cleanup_suggested_places] enqueued')
     Rails.logger.info(<<~MSG)
       [dawarich:cleanup_suggested_places] To verify the drain is complete, run:

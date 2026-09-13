@@ -1,5 +1,14 @@
 /* Maps V2 Styles */
 
+/* The one colour that says "a visit". Read here by the timeline's rail dot
+   and by the map's visit circles (via getVisitMarkerColor in
+   utils/marker_theme.js), so the list and the map cannot drift apart.
+   A visit deliberately carries no status colour: showing a visit is
+   asserting it, and confirmed / suggested / declined is not a visual state. */
+:root {
+  --visit-marker: #38bdf8;
+}
+
 /* Loading Overlay */
 .loading-overlay {
   position: absolute;

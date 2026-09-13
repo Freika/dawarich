@@ -29,4 +29,16 @@ RSpec.describe AirTrail::ImportFlightsJob, type: :job do
     expect(notification.kind).to eq('error')
     expect(notification.content).to include('connection refused')
   end
+
+  it 'notifies a failed sync in the user saved locale' do
+    user = create(:user, settings: { 'locale' => 'fr' })
+    service = instance_double(AirTrail::ImportFlights)
+    allow(service).to receive(:call).and_raise(AirTrail::Client::Error, 'connexion refusée')
+    allow(AirTrail::ImportFlights).to receive(:new).with(user).and_return(service)
+
+    expect { I18n.with_locale(:en) { described_class.perform_now(user.id) } }
+      .to raise_error(AirTrail::Client::Error)
+
+    expect(user.notifications.last.title).to eq('La synchronisation AirTrail a échoué')
+  end
 end

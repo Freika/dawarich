@@ -31,7 +31,7 @@ class StatsSerializer
   end
 
   def yearly_stats
-    user.stats.group_by(&:year).sort.reverse.map do |year, stats|
+    user.stats.select(:id, :year, :month, :distance, :toponyms).group_by(&:year).sort.reverse.map do |year, stats|
       countries, cities = countries_and_cities_from_stats(stats)
 
       {

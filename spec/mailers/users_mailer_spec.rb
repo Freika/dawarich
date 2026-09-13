@@ -51,4 +51,30 @@ RSpec.describe UsersMailer, type: :mailer do
       expect(mail.text_part.body.encoded).to include('password')
     end
   end
+
+  describe 'legacy trial lifecycle emails' do
+    %i[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late].each do |action|
+      it "delivers nothing for a stale #{action} job" do
+        mail = UsersMailer.with(user: user).public_send(action)
+
+        expect { mail.deliver_now }.not_to(change { ActionMailer::Base.deliveries.size })
+      end
+    end
+
+    it 'delivers nothing for a stale job without user params' do
+      mail = UsersMailer.with({}).trial_expired
+
+      expect { mail.deliver_now }.not_to(change { ActionMailer::Base.deliveries.size })
+    end
+
+    it 'discards a stale delivery job whose user record is gone' do
+      job = ActionMailer::MailDeliveryJob.new(
+        'UsersMailer', 'trial_expired', 'deliver_now', args: [], params: { user: user }
+      )
+      serialized = job.serialize
+      User.unscoped.where(id: user.id).delete_all
+
+      expect { ActiveJob::Base.execute(serialized) }.not_to raise_error
+    end
+  end
 end

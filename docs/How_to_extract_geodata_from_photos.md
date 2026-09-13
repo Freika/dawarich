@@ -1,5 +1,7 @@
 **User Guide: Importing GPS Coordinates from your photos into Dawarich**
 
+> [简体中文](zh-CN/How_to_extract_geodata_from_photos.md)
+
 Introduction:
 This user guide provides step-by-step instructions on how to extract GPS coordinates from photos and import it into the Dawarich service.
 This process is useful for adding points of interest from memorable locations into Dawarich, especially when Google Location History is unavailable or was not initially enabled.

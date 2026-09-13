@@ -99,4 +99,34 @@ RSpec.describe AirTrail::ImportFlights do
     expect(user.reload.settings['other_key']).to eq('x')
     expect(user.settings['airtrail_last_synced_at']).to be_present
   end
+  describe 'stats recalculation' do
+    it 'enqueues a stats recalculation for the month a synced flight falls in' do
+      allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
+
+      expect { described_class.new(user).call }
+        .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 4)
+    end
+
+    it 'enqueues a recalculation for the month of a flight that the sync removed' do
+      create(:flight, user: user, external_id: 99, flight_date: Date.new(2025, 11, 3))
+      allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
+
+      expect { described_class.new(user).call }
+        .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2025, 11)
+    end
+
+    it 'enqueues each affected month once' do
+      allow_any_instance_of(AirTrail::Client).to receive(:flights)
+        .and_return([airtrail_flight(id: 1), airtrail_flight(id: 2)])
+
+      expect { described_class.new(user).call }
+        .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 4).exactly(:once)
+    end
+
+    it 'does not enqueue anything when the integration is not configured' do
+      user.update!(settings: user.settings.merge('airtrail_url' => '', 'airtrail_api_key' => ''))
+
+      expect { described_class.new(user).call }.not_to have_enqueued_job(Stats::CalculatingJob)
+    end
+  end
 end

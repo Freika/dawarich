@@ -36,8 +36,22 @@ RSpec.describe TrackSegment, type: :model do
     subject { build(:track_segment) }
 
     it { is_expected.to validate_presence_of(:transportation_mode) }
-    it { is_expected.to validate_presence_of(:start_index) }
-    it { is_expected.to validate_presence_of(:end_index) }
+
+    it 'requires either time anchors or index anchors' do
+      segment = build(:track_segment, start_index: nil, end_index: nil, start_at: nil, end_at: nil)
+      expect(segment).not_to be_valid
+      expect(segment.errors[:base]).to include('must have either start_at/end_at or start_index/end_index')
+    end
+
+    it 'accepts time anchors without indexes' do
+      expect(build(:track_segment, :anchored)).to be_valid
+    end
+
+    it 'rejects end_at before start_at' do
+      segment = build(:track_segment, :anchored)
+      segment.end_at = segment.start_at - 60
+      expect(segment).not_to be_valid
+    end
 
     it { is_expected.to validate_numericality_of(:start_index).only_integer.is_greater_than_or_equal_to(0) }
     it { is_expected.to validate_numericality_of(:end_index).only_integer.is_greater_than_or_equal_to(0) }

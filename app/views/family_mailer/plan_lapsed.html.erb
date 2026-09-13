@@ -1,0 +1,41 @@
+<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background-color: #f9fafb;">
+  <div style="background-color: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+    <h2 style="color: #1f2937; margin-bottom: 20px; text-align: center;"><%= t('.the_family_plan_has_ended') %></h2>
+
+    <p style="color: #374151; line-height: 1.6;"><%= t('.hi') %> <%= @user.email %>,</p>
+
+    <p style="color: #374151; line-height: 1.6;">
+      <%= t('.family_plan_ended_html', family: @family.name) %>
+    </p>
+
+    <div style="background-color: #f3f4f6; padding: 20px; border-radius: 6px; margin: 20px 0;">
+      <h3 style="color: #1f2937; margin-bottom: 15px; font-size: 18px;"><%= t('.what_this_means') %></h3>
+      <ul style="color: #374151; line-height: 1.6; margin: 0; padding-left: 20px;">
+        <li style="margin-bottom: 8px;"><%= t('.your_data_is_safe_and_still_yours') %></li>
+        <li style="margin-bottom: 8px;"><%= t('.you_can_no_longer_see_your_family_on_the_map') %></li>
+        <li style="margin-bottom: 8px;"><%= t('.your_location_is_no_longer_shared_with_them') %></li>
+        <li><%= t('.tracking_and_uploads_are_paused_until_a_plan_is_active') %></li>
+      </ul>
+    </div>
+
+    <div style="background-color: #dbeafe; border: 1px solid #3b82f6; border-radius: 6px; padding: 15px; margin: 20px 0;">
+      <p style="margin: 0; color: #1e40af; font-size: 14px;">
+        <strong><%= t('.what_you_can_do') %></strong>
+        <%= t('.ask_the_owner_to_renew_html', owner: @owner_email) %>
+      </p>
+    </div>
+
+    <% if @subscription_url.present? %>
+      <div style="text-align: center; margin: 30px 0;">
+        <a href="<%= @subscription_url %>"
+           style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">
+          <%= t('.get_your_own_plan') %>
+        </a>
+      </div>
+    <% end %>
+
+    <p style="color: #6b7280; font-size: 13px; line-height: 1.6;">
+      <%= t('.nothing_is_deleted_your_history_is_waiting_when_you_come_back') %>
+    </p>
+  </div>
+</div>

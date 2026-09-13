@@ -1,3 +1,6 @@
+import { shouldShowPointPopup } from "controllers/maps/maplibre/event_handlers"
+import { translate } from "i18n"
+import { Toast } from "maps_maplibre/components/toast"
 import { AnomaliesLayer } from "maps_maplibre/layers/anomalies_layer"
 import { AreasLayer } from "maps_maplibre/layers/areas_layer"
 import { FamilyLayer } from "maps_maplibre/layers/family_layer"
@@ -8,13 +11,20 @@ import { HexagonLayer } from "maps_maplibre/layers/hexagon_layer"
 import { PhotosLayer } from "maps_maplibre/layers/photos_layer"
 import { PlacesLayer } from "maps_maplibre/layers/places_layer"
 import { PointsLayer } from "maps_maplibre/layers/points_layer"
+import { PointsMvtLayer } from "maps_maplibre/layers/points_mvt_layer"
 import { RecentPointLayer } from "maps_maplibre/layers/recent_point_layer"
 import { ReplayMarkerLayer } from "maps_maplibre/layers/replay_marker_layer"
 import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
 import { TracksLayer } from "maps_maplibre/layers/tracks_layer"
+import { TracksMvtLayer } from "maps_maplibre/layers/tracks_mvt_layer"
 import { VisitsLayer } from "maps_maplibre/layers/visits_layer"
+import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { lazyLoader } from "maps_maplibre/utils/lazy_loader"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import {
+  SettingsManager,
+  tiledPointsActive,
+} from "maps_maplibre/utils/settings_manager"
 
 /**
  * Manages all map layers lifecycle and visibility
@@ -25,8 +35,10 @@ export class LayerManager {
     this.settings = settings
     this.api = api
     this.controller = controller
+    this.apiKey = controller?.apiKeyValue || null
     this.layers = {}
     this.eventHandlersSetup = false
+    this.pointTileRange = { startAt: null, endAt: null }
   }
 
   /**
@@ -66,7 +78,9 @@ export class LayerManager {
     }
 
     this._addFamilyLayer()
+    this._addTracksMvtLayer()
     this._addAnomaliesLayer()
+    this._addPointsMvtLayer()
     this._addPointsLayer(pointsGeoJSON)
     this._addRoutesHitLayer() // Add hit target layer after points, will be on top visually
     this._addRecentPointLayer()
@@ -87,6 +101,7 @@ export class LayerManager {
 
     // Click handlers
     this.map.on("click", "points", handlers.handlePointClick)
+    this.map.on("click", "points-mvt", handlers.handlePointClick)
     this.map.on("click", "visits", handlers.handleVisitClick)
     this.map.on("click", "photos", handlers.handlePhotoClick)
     this.map.on("click", "places", handlers.handlePlaceClick)
@@ -100,6 +115,15 @@ export class LayerManager {
 
     // Track click handler (debug mode for segment visualization)
     this.map.on("click", "tracks", handlers.handleTrackClick)
+    // MVT track fragments carry the same id property; the click flow fetches
+    // the full geometry by id, so a clipped fragment is a valid entry point.
+    this.map.on("click", "tracks-mvt", handlers.handleTrackClick)
+    this.map.on("mouseenter", "tracks-mvt", () => {
+      this.map.getCanvas().style.cursor = "pointer"
+    })
+    this.map.on("mouseleave", "tracks-mvt", () => {
+      this.map.getCanvas().style.cursor = ""
+    })
 
     // Route handlers - use routes-hit layer for better interactivity
     this.map.on("click", "routes-hit", handlers.handleRouteClick)
@@ -111,6 +135,19 @@ export class LayerManager {
       this.map.getCanvas().style.cursor = "pointer"
     })
     this.map.on("mouseleave", "points", () => {
+      this.map.getCanvas().style.cursor = ""
+    })
+    // Merged cells carry no point to open, so they must not promise a click.
+    // mousemove, not mouseenter: clickable and merged features sit side by side
+    // in this layer, and mouseenter fires only on entering the layer as a whole.
+    this.map.on("mousemove", "points-mvt", (e) => {
+      this.map.getCanvas().style.cursor = shouldShowPointPopup(
+        e.features?.[0]?.properties,
+      )
+        ? "pointer"
+        : ""
+    })
+    this.map.on("mouseleave", "points-mvt", () => {
       this.map.getCanvas().style.cursor = ""
     })
     this.map.on("mouseenter", "visits", () => {
@@ -178,10 +215,20 @@ export class LayerManager {
       const trackPointFeatures = this.map.getLayer("track-points")
         ? this.map.queryRenderedFeatures(e.point, { layers: ["track-points"] })
         : []
+      // Tiled tracks select via their own click handler — without them here a
+      // tiled-track click would deselect first and stay deselected whenever
+      // the async detail fetch fails.
+      const tiledTrackFeatures = this.map.getLayer("tracks-mvt")
+        ? this.map.queryRenderedFeatures(e.point, { layers: ["tracks-mvt"] })
+        : []
       if (routeFeatures.length === 0) {
         handlers.clearRouteSelection()
       }
-      if (trackFeatures.length === 0 && trackPointFeatures.length === 0) {
+      if (
+        trackFeatures.length === 0 &&
+        tiledTrackFeatures.length === 0 &&
+        trackPointFeatures.length === 0
+      ) {
         handlers.clearTrackSelection()
       }
     })
@@ -193,7 +240,7 @@ export class LayerManager {
    * Toggle layer visibility
    */
   toggleLayer(layerName) {
-    const layer = this.layers[`${layerName}Layer`]
+    const layer = this.getLayer(layerName)
     if (!layer) return null
 
     layer.toggle()
@@ -204,7 +251,10 @@ export class LayerManager {
    * Get layer instance
    */
   getLayer(layerName) {
-    return this.layers[`${layerName}Layer`]
+    return (
+      this.layers[`${layerName}Layer`] ||
+      this.layers[`${this._normalizeLayerName(layerName)}Layer`]
+    )
   }
 
   /**
@@ -213,7 +263,16 @@ export class LayerManager {
    * @param {object} layerInstance - Layer instance
    */
   registerLayer(layerName, layerInstance) {
-    this.layers[`${layerName}Layer`] = layerInstance
+    this.layers[`${this._normalizeLayerName(layerName)}Layer`] = layerInstance
+  }
+
+  updatePointTileRange(startAt, endAt) {
+    this.pointTileRange = { startAt, endAt }
+
+    for (const layerName of ["points-mvt", "tracks-mvt"]) {
+      const layer = this.getLayer(layerName)
+      if (layer) layer.update(this.pointTileRange)
+    }
   }
 
   /**
@@ -224,8 +283,27 @@ export class LayerManager {
     if (this.layers.tracksLayer?._stopFlowAnimation) {
       this.layers.tracksLayer._stopFlowAnimation()
     }
+    // Drag handlers live on the map, not the style, so an orphaned points
+    // layer keeps moving points. setEditMode, not disableDragging: add() arms
+    // enableDragging on a timer that re-checks editModeEnabled.
+    this.layers.pointsLayer?.setEditMode(false)
+    // Same reason: the tile-error listener is on the map, so an orphaned layer
+    // keeps reporting and the replacement adds a second one.
+    this.layers.pointsMvtLayer?._unwatchTileErrors()
+    this.layers.tracksMvtLayer?._unwatchTileErrors()
+    this.layers.tracksMvtLayer?._unwatchEmptyTracks()
+    // Fog's canvas and its move/zoom/sourcedata listeners live on the map and
+    // container, not the style — orphaning the layer object leaks them all.
+    // remove() is idempotent and _addFogLayer builds a fresh layer afterwards.
+    this.layers.fogLayer?.remove()
     this.layers = {}
     this.eventHandlersSetup = false
+  }
+
+  _normalizeLayerName(layerName) {
+    return layerName.replace(/-([a-z])/g, (_match, letter) =>
+      letter.toUpperCase(),
+    )
   }
 
   // Private methods for individual layer management
@@ -250,7 +328,9 @@ export class LayerManager {
   _addHeatmapLayer(pointsGeoJSON) {
     if (!this.layers.heatmapLayer) {
       this.layers.heatmapLayer = new HeatmapLayer(this.map, {
-        visible: this.settings.heatmapEnabled,
+        visible:
+          this.settings.heatmapEnabled &&
+          !tiledPointsActive(SettingsManager.getSettings()),
       })
       this.layers.heatmapLayer.add(pointsGeoJSON)
     } else {
@@ -406,15 +486,70 @@ export class LayerManager {
 
   _addPointsLayer(pointsGeoJSON) {
     if (!this.layers.pointsLayer) {
+      const tiled = tiledPointsActive(SettingsManager.getSettings())
       this.layers.pointsLayer = new PointsLayer(this.map, {
-        visible: this.settings.pointsVisible !== false, // Default true unless explicitly false
+        // Only one points renderer draws at a time
+        visible: this.settings.pointsVisible !== false && !tiled,
         apiClient: this.api,
         layerManager: this,
         styleName: this.settings.mapStyle,
+        // Live cache, not this.settings: that snapshot is replaced wholesale
+        // when advanced settings are saved. Lite can't write points.
+        editModeEnabled:
+          SettingsManager.getSetting("pointDraggingEnabled") === true &&
+          !tiled &&
+          !isGatedPlan(this.controller?.userPlanValue),
       })
       this.layers.pointsLayer.add(pointsGeoJSON)
     } else {
       this.layers.pointsLayer.update(pointsGeoJSON)
+    }
+  }
+
+  // Serves BOTH the Tracks and Routes toggles under tiled mode; added below
+  // the points layers so circles stay on top of track lines.
+  _addTracksMvtLayer() {
+    const settings = SettingsManager.getSettings()
+    const tiled = tiledPointsActive(settings)
+    if (!this.layers.tracksMvtLayer) {
+      this.layers.tracksMvtLayer = new TracksMvtLayer(this.map, {
+        tracksEnabled: tiled && this.settings.tracksEnabled === true,
+        routesVisible: tiled && this.settings.routesVisible !== false,
+        trackColor: SettingsManager.getSetting("trackColor"),
+        routeColor: SettingsManager.getSetting("routeColor"),
+        routeOpacity: SettingsManager.getSetting("routeOpacity"),
+        speedColoredRoutes:
+          SettingsManager.getSetting("speedColoredRoutes") === true,
+        speedColorScale: SettingsManager.getSetting("speedColorScale"),
+        apiKey: this.apiKey,
+        onTileError: () => Toast.error(translate("map.tiled_rendering.failed")),
+        onEmptyTracks: () =>
+          Toast.info(translate("map.tiled_rendering.tracks_pending")),
+        ...this.pointTileRange,
+      })
+      this.layers.tracksMvtLayer.add(this.pointTileRange)
+    } else {
+      this.layers.tracksMvtLayer.update(this.pointTileRange)
+    }
+  }
+
+  _addPointsMvtLayer() {
+    if (!this.layers.pointsMvtLayer) {
+      this.layers.pointsMvtLayer = new PointsMvtLayer(this.map, {
+        heatmapVisible:
+          Boolean(this.settings.heatmapEnabled) &&
+          tiledPointsActive(SettingsManager.getSettings()),
+        visible:
+          this.settings.pointsVisible !== false &&
+          tiledPointsActive(SettingsManager.getSettings()),
+        apiKey: this.apiKey,
+        styleName: this.settings.mapStyle,
+        onTileError: () => Toast.error(translate("map.tiled_rendering.failed")),
+        ...this.pointTileRange,
+      })
+      this.layers.pointsMvtLayer.add(this.pointTileRange)
+    } else {
+      this.layers.pointsMvtLayer.update(this.pointTileRange)
     }
   }
 
@@ -443,6 +578,9 @@ export class LayerManager {
   }
 
   _addFogLayer(pointsGeoJSON) {
+    const tiledFog =
+      tiledPointsActive(SettingsManager.getSettings()) &&
+      (this.settings.fogOfWarMode || "points") !== "hexagons"
     // Always create fog layer for backward compatibility
     if (!this.layers.fogLayer) {
       this.layers.fogLayer = new FogLayer(this.map, {
@@ -451,10 +589,16 @@ export class LayerManager {
         mode: this.settings.fogOfWarMode || "points",
         api: this.api,
         controller: this.controller,
+        tiledSource: tiledFog,
       })
       this.layers.fogLayer.add(pointsGeoJSON)
     } else {
       this.layers.fogLayer.update(pointsGeoJSON)
+    }
+    // Tiled fog reads the points MVT source — keep it loading even when the
+    // Points toggle is off (paint-based hiding, see PointsMvtLayer).
+    if (tiledFog && this.settings.fogEnabled) {
+      this.layers.pointsMvtLayer?.setSourceKeepAlive(true)
     }
   }
 }

@@ -5,14 +5,14 @@ class UsersMailer < ApplicationMailer
     # Sent after user signs up
     @user = params[:user]
 
-    mail(to: @user.email, subject: 'Welcome to Dawarich!')
+    mail(to: @user.email, subject: I18n.t('mailers.users.welcome.subject'))
   end
 
   def explore_features
     # Sent 2 days after user signs up
     @user = params[:user]
 
-    mail(to: @user.email, subject: 'Explore Dawarich features!')
+    mail(to: @user.email, subject: I18n.t('mailers.users.explore_features.subject'))
   end
 
   def archival_approaching
@@ -20,7 +20,7 @@ class UsersMailer < ApplicationMailer
     @upgrade_url = "#{MANAGER_URL}/auth/dawarich?token=#{@user.generate_subscription_token}" \
                    '&utm_source=email&utm_medium=email&utm_campaign=archival_approaching&utm_content=upgrade'
 
-    mail(to: @user.email, subject: 'Keep your full history — upgrade to Pro')
+    mail(to: @user.email, subject: I18n.t('mailers.users.archival_approaching.subject'))
   end
 
   # Sent by Auth::FindOrCreateOauthUser when a mobile OAuth signup
@@ -32,19 +32,30 @@ class UsersMailer < ApplicationMailer
     @provider_label = params[:provider_label]
     @link_url = params[:link_url]
 
-    mail(to: @user.email, subject: "Confirm linking #{@provider_label} to your Dawarich account")
+    mail(
+      to: @user.email,
+      subject: I18n.t('mailers.users.oauth_account_link.subject', provider: @provider_label)
+    )
   end
 
   def account_destroy_confirmation
     @user = params[:user]
     @link_url = params[:link_url]
 
-    mail(to: @user.email, subject: 'Confirm Dawarich account deletion')
+    mail(to: @user.email, subject: I18n.t('mailers.users.account_destroy_confirmation.subject'))
   end
 
   def otp_account_locked
     @user = params[:user]
 
-    mail(to: @user.email, subject: 'Dawarich account temporarily locked')
+    mail(to: @user.email, subject: I18n.t('mailers.users.otp_account_locked.subject'))
   end
+
+  def trial_expired; end
+
+  def trial_expires_soon; end
+
+  def post_trial_reminder_early; end
+
+  def post_trial_reminder_late; end
 end

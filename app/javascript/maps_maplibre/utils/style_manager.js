@@ -1,12 +1,21 @@
+import { translate } from "i18n"
 /**
  * Style Manager for MapLibre GL styles
  * Loads and configures local map styles with dynamic tile source
  */
 
+import {
+  composeRasterFallback,
+  composeVectorFallback,
+} from "maps_maplibre/utils/basemap_fallback"
+import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
 import { resolveTheme } from "poster_studio/data/theme_loader"
 import { buildBasemapStyle } from "poster_studio/render/style_builder"
 
 const TILE_SOURCE_URL = "https://tyles.dwri.xyz/planet/{z}/{x}/{y}.mvt"
+
+const BASEMAP_ATTRIBUTION =
+  '<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>'
 
 // Cache for loaded styles
 const styleCache = {}
@@ -42,6 +51,37 @@ async function loadStyleFile(styleName) {
   const style = await response.json()
   styleCache[styleName] = style
   return style
+}
+
+/**
+ * Build a raster basemap style from an XYZ tile URL.
+ * Reuses the light style's glyphs/sprite so re-added app label layers render.
+ * @param {string} url - Raster XYZ tile URL
+ * @returns {Promise<Object>} MapLibre style object
+ */
+async function buildRasterStyle(url) {
+  const base = await loadStyleFile("light")
+  return {
+    version: 8,
+    glyphs: base.glyphs,
+    sprite: base.sprite,
+    sources: {
+      protomaps: {
+        type: "raster",
+        tiles: [url],
+        tileSize: 256,
+        attribution: "",
+      },
+    },
+    layers: [
+      {
+        id: "background",
+        type: "background",
+        paint: { "background-color": "#e0e0e0" },
+      },
+      { id: "basemap-raster", type: "raster", source: "protomaps" },
+    ],
+  }
 }
 
 /**
@@ -128,7 +168,7 @@ export const TILE_LAYER_CATEGORIES = {
  */
 export const POI_GROUPS = {
   food_drink: {
-    label: "Food & Drink",
+    label: translate("messages.food_drink"),
     kinds: [
       "restaurant",
       "fast_food",
@@ -141,7 +181,7 @@ export const POI_GROUPS = {
     ],
   },
   shopping: {
-    label: "Shopping",
+    label: translate("messages.shopping"),
     kinds: [
       "supermarket",
       "convenience",
@@ -162,7 +202,7 @@ export const POI_GROUPS = {
     ],
   },
   transport: {
-    label: "Transport",
+    label: translate("messages.transport"),
     kinds: [
       "aerodrome",
       "station",
@@ -178,11 +218,11 @@ export const POI_GROUPS = {
     ],
   },
   cycling: {
-    label: "Cycling",
+    label: translate("messages.cycling"),
     kinds: ["bicycle_parking", "bicycle_rental", "bicycle_repair_station"],
   },
   nature_leisure: {
-    label: "Nature & Leisure",
+    label: translate("messages.nature_leisure"),
     kinds: [
       "park",
       "forest",
@@ -203,7 +243,7 @@ export const POI_GROUPS = {
     ],
   },
   tourism: {
-    label: "Tourism & Culture",
+    label: translate("messages.tourism_culture"),
     kinds: [
       "attraction",
       "museum",
@@ -220,7 +260,7 @@ export const POI_GROUPS = {
     ],
   },
   services: {
-    label: "Services & Civic",
+    label: translate("messages.services_civic"),
     kinds: [
       "post_office",
       "post_box",
@@ -242,7 +282,7 @@ export const POI_GROUPS = {
     ],
   },
   urban_amenities: {
-    label: "Urban Amenities",
+    label: translate("messages.urban_amenities"),
     kinds: [
       "bench",
       "toilets",
@@ -324,7 +364,33 @@ function hiddenLayerIds(hiddenCategories) {
  */
 export async function getMapStyle(styleName = "light", options = {}) {
   try {
-    const tilesUrl = options.vectorTilesUrl || TILE_SOURCE_URL
+    const customUrl = options.vectorTilesUrl
+    const basemapType = customUrl ? classifyBasemapUrl(customUrl) : null
+
+    // A full MapLibre style URL replaces the whole document. Hand it to
+    // setStyle/new Map, which fetch it; app layers are re-added on style.load.
+    if (basemapType === "style") return customUrl
+
+    // With the fallback on, the default basemap stays as the lower stack and
+    // the user's tiles are drawn over it, so a tileset covering one country
+    // no longer leaves the rest of the world blank.
+    const fallback = Boolean(options.tilesFallback) && basemapType !== null
+
+    // Raster XYZ tiles need their own source and layer — the vendored vector
+    // layers cannot draw against a raster source.
+    if (basemapType === "raster" && !fallback) {
+      return await buildRasterStyle(customUrl)
+    }
+
+    const tilesUrl = fallback ? TILE_SOURCE_URL : customUrl || TILE_SOURCE_URL
+
+    const composeFallback = (style) => {
+      if (!fallback) return style
+
+      return basemapType === "raster"
+        ? composeRasterFallback(style, customUrl)
+        : composeVectorFallback(style, customUrl)
+    }
 
     // Custom themes are built client-side from the user's stored color
     // tokens (poster-minimal basemap) — no vendored JSON to fetch. Base-map
@@ -333,12 +399,14 @@ export async function getMapStyle(styleName = "light", options = {}) {
     if (styleName === "custom") {
       const tokens = options.customTheme?.tokens
       if (!tokens) throw new Error("Custom map style has no theme tokens")
-      return buildBasemapStyle({
-        theme: resolveTheme(tokens),
-        tileUrl: tilesUrl,
-        extras: true,
-        hiddenCategories: options.hiddenTileCategories || [],
-      })
+      return composeFallback(
+        buildBasemapStyle({
+          theme: resolveTheme(tokens),
+          tileUrl: tilesUrl,
+          extras: true,
+          hiddenCategories: options.hiddenTileCategories || [],
+        }),
+      )
     }
 
     // Load the style file
@@ -355,8 +423,7 @@ export async function getMapStyle(styleName = "light", options = {}) {
         minzoom: 0,
         maxzoom: 15,
         attribution:
-          clonedStyle.sources.protomaps.attribution ||
-          '<a href="https://github.com/protomaps/basemaps">Protomaps</a> © <a href="https://openstreetmap.org">OpenStreetMap</a>',
+          clonedStyle.sources.protomaps.attribution || BASEMAP_ATTRIBUTION,
       }
     }
 
@@ -379,7 +446,7 @@ export async function getMapStyle(styleName = "light", options = {}) {
       applyPoiFilter(clonedStyle, kinds)
     }
 
-    return clonedStyle
+    return composeFallback(clonedStyle)
   } catch (error) {
     console.error(`Error loading style '${styleName}':`, error)
     // Fall back to light style if the requested style fails
@@ -406,11 +473,11 @@ export function getAvailableStyles() {
  */
 export function getStyleDisplayName(styleName) {
   const displayNames = {
-    dark: "Dark",
-    light: "Light",
-    white: "White",
-    black: "Black",
-    grayscale: "Grayscale",
+    dark: translate("map_styles.dark"),
+    light: translate("map_styles.light"),
+    white: translate("map_styles.white"),
+    black: translate("map_styles.black"),
+    grayscale: translate("map_styles.grayscale"),
   }
   return (
     displayNames[styleName] ||

@@ -20,6 +20,14 @@ RSpec.describe 'GET /api/v1/visits/:id/possible_places' do
     }]
   end
 
+  it 'returns 404 for a tombstoned visit' do
+    tombstone = create(:visit, user: user, area: nil, place: nil, deleted_at: 1.day.ago)
+
+    get "/api/v1/visits/#{tombstone.id}/possible_places", headers: headers
+
+    expect(response).to have_http_status(:not_found)
+  end
+
   it 'returns Photon hashes prepended with the current place' do
     allow_any_instance_of(Places::NearbySearch).to receive(:call).and_return(photon_hashes)
 

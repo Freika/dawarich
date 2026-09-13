@@ -81,6 +81,7 @@ async function main() {
     theme,
     trackGeojson: job.trackGeojson ?? { type: "FeatureCollection", features: [] },
     trackOpacity: job.trackOpacity ?? 1,
+    trackWidth: job.trackWidth ?? 1,
     ...(job.tilesUrl ? { tileUrl: job.tilesUrl } : {}),
   })
 

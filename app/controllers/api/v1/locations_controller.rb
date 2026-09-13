@@ -10,17 +10,19 @@ class Api::V1::LocationsController < ApiController
 
       render json: Api::LocationSearchResultSerializer.new(search_results).call
     else
-      render json: { error: 'Coordinates (lat, lon) are required' }, status: :bad_request
+      render json: { error: I18n.t('controllers.api.v1.locations.coordinates_lat_lon_are_required') },
+             status: :bad_request
     end
   rescue StandardError => e
     Rails.logger.error "Location search error: #{e.message}"
     Rails.logger.error e.backtrace.join("\n")
-    render json: { error: 'Search failed. Please try again.' }, status: :internal_server_error
+    render json: { error: I18n.t('controllers.api.v1.locations.search_failed_please_try_again') },
+           status: :internal_server_error
   end
 
   def suggestions
     if search_query.present? && search_query.length >= 2
-      suggestions = LocationSearch::GeocodingService.new(search_query).search
+      suggestions = LocationSearch::GeocodingService.new(search_query, user: current_api_user).search
 
       # Format suggestions for the frontend
       formatted_suggestions = suggestions.map do |suggestion|
@@ -64,7 +66,8 @@ class Api::V1::LocationsController < ApiController
 
   def validate_search_params
     unless coordinate_search?
-      render json: { error: 'Coordinates (lat, lon) are required' }, status: :bad_request
+      render json: { error: I18n.t('controllers.api.v1.locations.coordinates_lat_lon_are_required') },
+             status: :bad_request
       return false
     end
 
@@ -72,7 +75,7 @@ class Api::V1::LocationsController < ApiController
     lon = params[:lon]&.to_f
 
     if lat.abs > 90 || lon.abs > 180
-      render json: { error: 'Invalid coordinates: lat must be -90..90, lon must be -180..180' },
+      render json: { error: I18n.t('controllers.api.v1.locations.invalid_coordinates_lat_must_be_90_90_lon_must_be') },
              status: :bad_request
       return false
     end
@@ -82,7 +85,8 @@ class Api::V1::LocationsController < ApiController
 
   def validate_suggestion_params
     if search_query.present? && search_query.length > 200
-      render json: { error: 'Search query too long (max 200 characters)' }, status: :bad_request
+      render json: { error: I18n.t('controllers.api.v1.locations.search_query_too_long_max_200_characters') },
+             status: :bad_request
       return false
     end
 

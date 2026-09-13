@@ -1,0 +1,5 @@
+<%= button_to t('.remove_extracted_data'),
+              import_extraction_path(import),
+              method: :delete,
+              class: 'btn btn-sm btn-ghost text-error',
+              form: { data: { turbo_confirm: t('.remove_the_visits_places_and_tracks_this_extraction_created_your') } } %>

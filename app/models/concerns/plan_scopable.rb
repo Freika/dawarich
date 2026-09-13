@@ -3,19 +3,14 @@
 module PlanScopable
   extend ActiveSupport::Concern
 
-  def effective_plan
-    return plan.to_sym if DawarichSettings.self_hosted?
-    return :family if in_family? && family&.owner&.family?
+  delegate :effective_plan, :full_access?, :inherited_family_access?, to: :entitlements
 
-    plan.to_sym
-  end
-
-  def full_access?
-    DawarichSettings.self_hosted? || effective_plan != :lite
+  def entitlements
+    @entitlements ||= Entitlements.for(self)
   end
 
   def plan_restricted?
-    !DawarichSettings.self_hosted? && effective_plan == :lite
+    entitlements.restricted?
   end
 
   def data_window_start
@@ -35,9 +30,9 @@ module PlanScopable
   end
 
   def scoped_visits
-    return visits unless plan_restricted?
+    return visits.active unless plan_restricted?
 
-    visits.where('started_at >= ?', data_window_start)
+    visits.active.where('started_at >= ?', data_window_start)
   end
 
   def scoped_stats

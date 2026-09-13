@@ -30,7 +30,7 @@ module AirTrail
       raise Error, 'AirTrail returned an unsuccessful response' unless body['success']
 
       body['flights'] || []
-    rescue HTTParty::Error, Net::OpenTimeout, Net::ReadTimeout, JSON::ParserError => e
+    rescue *Photos::ConnectionErrors::HANDLED => e
       raise Error, e.message
     end
   end

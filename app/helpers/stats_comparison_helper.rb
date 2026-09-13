@@ -8,8 +8,8 @@ module StatsComparisonHelper
     difference = current_km - average_distance_this_year.to_f
     percentage = ((difference / average_distance_this_year.to_f) * 100).round
 
-    more_or_less = difference.positive? ? 'more' : 'less'
-    "#{percentage.abs}% #{more_or_less} than your average this year"
+    direction = difference.positive? ? 'more' : 'less'
+    I18n.t("helpers.stats_comparison.distance.#{direction}", percentage: percentage.abs)
   end
 
   def x_than_previous_active_days(stat, previous_stat)
@@ -19,12 +19,10 @@ module StatsComparisonHelper
     current_active_days = stat.daily_distance.select { _1[1].positive? }.count
     difference = current_active_days - previous_active_days
 
-    return 'Same as previous month' if difference.zero?
+    return I18n.t('helpers.stats_comparison.same_as_previous_month') if difference.zero?
 
-    more_or_less = difference.positive? ? 'more' : 'less'
-    days_word = pluralize(difference.abs, 'day')
-
-    "#{days_word} #{more_or_less} than previous month"
+    direction = difference.positive? ? 'more' : 'less'
+    I18n.t("helpers.stats_comparison.active_days.#{direction}", count: difference.abs)
   end
 
   def x_than_previous_countries_visited(stat, previous_stat)
@@ -34,11 +32,9 @@ module StatsComparisonHelper
     current_countries = stat.toponyms.count { _1['country'] }
     difference = current_countries - previous_countries
 
-    return 'Same as previous month' if difference.zero?
+    return I18n.t('helpers.stats_comparison.same_as_previous_month') if difference.zero?
 
-    more_or_less = difference.positive? ? 'more' : 'less'
-    countries_word = pluralize(difference.abs, 'country')
-
-    "#{countries_word} #{more_or_less} than previous month"
+    direction = difference.positive? ? 'more' : 'less'
+    I18n.t("helpers.stats_comparison.countries.#{direction}", count: difference.abs)
   end
 end

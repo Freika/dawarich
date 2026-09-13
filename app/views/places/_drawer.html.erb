@@ -11,26 +11,33 @@
       <% end %>
     </div>
     <div class="place-drawer__titles">
-      <h2 class="place-drawer__name"><%= place.name %></h2>
+      <h2 class="place-drawer__name">
+        <%= place.name %>
+        <% if place.name_locked? %>
+          <span class="place-drawer__name-lock"
+                title="<%= t('.manual_name_title', default_name: Place::DEFAULT_NAME) %>"
+                data-testid="place-name-lock"><%= icon 'lock', class: 'w-4 h-4 inline' %></span>
+        <% end %>
+      </h2>
       <% if stats[:location_line].present? %>
         <p class="place-drawer__location"><%= stats[:location_line] %></p>
       <% end %>
-      <p class="place-drawer__source">Source: <%= place.source.to_s.humanize %></p>
+      <p class="place-drawer__source"><%= t('.source') %> <%= t("enums.place.source.#{place.source}") %></p>
     </div>
   </header>
 
   <section class="place-drawer__stats">
     <div class="place-drawer__stat">
       <span class="place-drawer__stat-value"><%= stats[:visit_count] %></span>
-      <span class="place-drawer__stat-label"><%= pluralize(stats[:visit_count], 'visit') %></span>
+      <span class="place-drawer__stat-label"><%= t('.visit_count', count: stats[:visit_count]) %></span>
     </div>
     <div class="place-drawer__stat">
       <span class="place-drawer__stat-value"><%= stats[:total_hours] %></span>
-      <span class="place-drawer__stat-label">total hours</span>
+      <span class="place-drawer__stat-label"><%= t('.total_hours') %></span>
     </div>
     <div class="place-drawer__stat">
       <span class="place-drawer__stat-value"><%= stats[:avg_label] %></span>
-      <span class="place-drawer__stat-label">avg dwell</span>
+      <span class="place-drawer__stat-label"><%= t('.avg_dwell') %></span>
     </div>
   </section>
 
@@ -44,43 +51,43 @@
         <% end %>
       </ul>
     <% else %>
-      <p class="place-drawer__tags-empty">No tags</p>
+      <p class="place-drawer__tags-empty"><%= t('.no_tags') %></p>
     <% end %>
   </section>
 
   <section class="place-drawer__notes">
     <%= form_with model: place, method: :patch, data: { turbo_frame: 'place-drawer' } do |f| %>
-      <%= f.label :note, 'Notes', class: 'place-drawer__notes-label' %>
+      <%= f.label :note, t('.notes'), class: 'place-drawer__notes-label' %>
       <%= f.text_area :note, rows: 3, class: 'place-drawer__notes-input' %>
-      <%= f.submit 'Save', class: 'place-drawer__notes-submit' %>
+      <%= f.submit t('.save'), class: 'place-drawer__notes-submit' %>
     <% end %>
   </section>
 
   <section class="place-drawer__visits">
-    <h3 class="place-drawer__visits-heading">Recent visits</h3>
+    <h3 class="place-drawer__visits-heading"><%= t('.recent_visits') %></h3>
     <% if recent_visits.any? %>
       <ul class="place-drawer__visits-list">
         <% recent_visits.each do |visit| %>
           <% range = place_visit_time_range(visit) %>
           <li class="place-drawer__visit">
             <span class="place-drawer__visit-name"><%= visit.name %></span>
-            <span class="place-drawer__visit-time"><%= range[:start_label] %> &rarr; <%= range[:end_label] %> on <%= range[:date_label] %></span>
+            <span class="place-drawer__visit-time"><%= range[:start_label] %> <%= t('.rarr') %> <%= range[:end_label] %> <%= t('.on') %> <%= range[:date_label] %></span>
             <span class="place-drawer__visit-duration"><%= range[:duration_label] %></span>
           </li>
         <% end %>
       </ul>
     <% else %>
-      <p class="place-drawer__visits-empty">No visits yet</p>
+      <p class="place-drawer__visits-empty"><%= t('.no_visits_yet') %></p>
     <% end %>
   </section>
 
   <footer class="place-drawer__actions">
-    <button type="button" class="place-drawer__action place-drawer__action--rename" disabled>Rename</button>
-    <button type="button" class="place-drawer__action place-drawer__action--merge" disabled>Merge</button>
-    <%= button_to 'Delete',
+    <button type="button" class="place-drawer__action place-drawer__action--rename" disabled><%= t('.rename') %></button>
+    <button type="button" class="place-drawer__action place-drawer__action--merge" disabled><%= t('.merge') %></button>
+    <%= button_to t('.delete'),
                   places_path(place),
                   method: :delete,
                   class: 'place-drawer__action place-drawer__action--delete',
-                  data: { turbo_confirm: 'Delete this place? This cannot be undone.' } %>
+                  data: { turbo_confirm: t('.delete_this_place_this_cannot_be_undone') } %>
   </footer>
 </div>

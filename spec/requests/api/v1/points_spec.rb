@@ -310,6 +310,17 @@ RSpec.describe 'Api::V1::Points', type: :request do
       expect(response).to have_http_status(:success)
     end
 
+    it 'invalidates the tile epoch for the moved point' do
+      point = points.first
+      range = [point.timestamp - 1.day.to_i, point.timestamp + 1.day.to_i]
+      before_component = Points::TileEpoch.etag_component(user.id, *range)
+
+      put "/api/v1/points/#{point.id}?api_key=#{user.api_key}",
+          params: { point: { latitude: 1.0, longitude: 1.1 } }
+
+      expect(Points::TileEpoch.etag_component(user.id, *range)).not_to eq(before_component)
+    end
+
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)

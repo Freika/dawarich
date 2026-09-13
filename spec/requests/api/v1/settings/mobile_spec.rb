@@ -13,6 +13,7 @@ RSpec.describe 'Api::V1::Settings::Mobile', type: :request do
       expect(response).to have_http_status(:success)
       expect(response.parsed_body['settings']).to eq({})
       expect(response.parsed_body['updated_at']).to be_nil
+      expect(response.parsed_body.dig('capabilities', 'photo_library_import', 'version')).to eq(1)
     end
 
     it 'returns stored mobile settings with updated_at' do

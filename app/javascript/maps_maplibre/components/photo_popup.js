@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { escapeHtml, formatTimestamp } from "../utils/geojson_transformers"
 
 function escapeAttr(value) {
@@ -26,10 +27,16 @@ export class PhotoPopupFactory {
       source,
     } = properties
 
-    const takenDate = taken_at ? formatTimestamp(taken_at, timezone) : "Unknown"
+    const takenDate = taken_at
+      ? formatTimestamp(taken_at, timezone)
+      : translate("common.unknown")
     const location =
-      [city, state, country].filter(Boolean).join(", ") || "Unknown location"
-    const mediaType = type === "VIDEO" ? "🎥 Video" : "📷 Photo"
+      [city, state, country].filter(Boolean).join(", ") ||
+      translate("search.unknown_location")
+    const mediaType =
+      type === "VIDEO"
+        ? `🎥 ${translate("map_info.video")}`
+        : `📷 ${translate("map_info.photo")}`
 
     return `
       <div class="photo-popup">
@@ -40,9 +47,9 @@ export class PhotoPopupFactory {
         </div>
         <div class="photo-info">
           <div class="filename">${escapeHtml(filename)}</div>
-          <div class="timestamp">Taken: ${escapeHtml(takenDate)}</div>
-          <div class="location">Location: ${escapeHtml(location)}</div>
-          <div class="source">Source: ${escapeHtml(source)}</div>
+          <div class="timestamp">${translate("map_info.taken")}: ${escapeHtml(takenDate)}</div>
+          <div class="location">${translate("map_info.location")}: ${escapeHtml(location)}</div>
+          <div class="source">${translate("map_info.source")}: ${escapeHtml(source)}</div>
           <div class="media-type">${mediaType}</div>
         </div>
       </div>

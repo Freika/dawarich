@@ -108,5 +108,43 @@ RSpec.describe Insights::TravelInsightGenerator do
         expect(result).to include('You travel most in the evening')
       end
     end
+
+    context 'in French' do
+      around do |example|
+        I18n.with_locale(:fr) { example.run }
+      end
+
+      context 'with a morning peak' do
+        let(:time_of_day) { { 'morning' => 50, 'afternoon' => 20, 'evening' => 20, 'night' => 10 } }
+        let(:day_of_week) { Array.new(7, 0) }
+        let(:seasonality) { {} }
+
+        it 'uses an idiomatic time-of-day phrase' do
+          expect(result).to include('Vous voyagez surtout en matinée')
+          expect(result).not_to include('le plus à en matinée')
+        end
+      end
+
+      context 'with a weekend peak' do
+        let(:time_of_day) { {} }
+        let(:day_of_week) { [0, 0, 0, 0, 0, 500, 100] }
+        let(:seasonality) { {} }
+
+        it 'uses a singular weekday sentence' do
+          expect(result).to include('Le samedi est votre jour de voyage le plus actif')
+          expect(result).not_to include('Samedis sont')
+        end
+      end
+
+      context 'with a summer peak' do
+        let(:time_of_day) { {} }
+        let(:day_of_week) { Array.new(7, 0) }
+        let(:seasonality) { { 'winter' => 10, 'spring' => 20, 'summer' => 50, 'fall' => 20 } }
+
+        it 'includes the required article before the season' do
+          expect(result).to include("L'été est votre saison de voyage la plus active")
+        end
+      end
+    end
   end
 end

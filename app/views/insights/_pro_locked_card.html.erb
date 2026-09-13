@@ -16,10 +16,10 @@
       <%# Lock overlay %>
       <div class="absolute inset-0 flex flex-col items-center justify-center">
         <%= icon 'lock', class: 'w-6 h-6 opacity-30' %>
-        <p class="text-sm text-base-content/50 mt-1">Available on Pro</p>
+        <p class="text-sm text-base-content/50 mt-1"><%= t('.available_on_pro') %></p>
         <a href="<%= upgrade_url(utm_medium: 'insights', utm_content: utm_content) %>"
            class="btn btn-sm btn-primary mt-2" target="_blank" rel="noopener">
-          Upgrade to Pro
+          <%= t('.upgrade_to_pro') %>
         </a>
       </div>
     </div>

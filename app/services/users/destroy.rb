@@ -25,7 +25,7 @@ class Users::Destroy
       if created_family
         member_count = Family::Membership.where(family_id: created_family.id).count
         if member_count > 1
-          error_message = 'Cannot delete user who owns a family with other members'
+          error_message = I18n.t('services.users.destroy.cannot_delete_user_who_owns_a_family_with_other_members')
           Rails.logger.warn "#{error_message}: user_id=#{user_id}"
           user.errors.add(:base, error_message)
           raise ActiveRecord::RecordInvalid, user

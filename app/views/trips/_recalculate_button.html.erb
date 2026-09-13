@@ -1,17 +1,17 @@
 <%= turbo_frame_tag "trip_recalculate_frame" do %>
   <% if trip.recalculating? %>
     <button class="btn btn-outline btn-sm" disabled>
-      <span class="loading loading-spinner loading-xs"></span> Recalculating&hellip;
+      <span class="loading loading-spinner loading-xs"></span> <%= t('.recalculating_hellip') %>
     </button>
   <% else %>
     <%= button_to recalculate_trip_path(trip),
         method: :post,
-        form: { data: { turbo_confirm: "Recalculate this trip's path, distance, and countries from your latest points?" } },
+        form: { data: { turbo_confirm: t('.recalculate_this_trip_s_path_distance_and_countries_from_your') } },
         class: "btn btn-outline btn-sm" do %>
-      <%= icon 'refresh-ccw', class: 'w-4 h-4' %> Recalculate
+      <%= icon 'refresh-ccw', class: 'w-4 h-4' %> <%= t('.recalculate') %>
     <% end %>
     <% if local_assigns[:error] %>
-      <span class="text-error text-xs ml-2">Recalculation failed — try again.</span>
+      <span class="text-error text-xs ml-2"><%= t('.recalculation_failed_try_again') %></span>
     <% end %>
   <% end %>
 <% end %>

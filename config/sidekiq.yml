@@ -8,6 +8,7 @@
   - mailers
   - families
   - imports
+  - extractions
   - exports
   - tracks
   - stats
@@ -21,4 +22,5 @@
   - archival
   - digests
   - achievements
+  - route_videos
   - low_priority

@@ -1,6 +1,8 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import { createMapChannel } from "maps_maplibre/channels/map_channel"
 import { Toast } from "maps_maplibre/components/toast"
+import { pointMatchesActiveDateRange } from "maps_maplibre/utils/realtime_date_filter"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
 /**
@@ -84,8 +86,8 @@ export default class extends Controller {
     SettingsManager.updateSetting("liveMapEnabled", this.liveModeEnabled)
 
     const message = this.liveModeEnabled
-      ? "Live mode enabled"
-      : "Live mode disabled"
+      ? translate("live_map.enabled")
+      : translate("live_map.disabled")
     Toast.info(message)
   }
 
@@ -119,7 +121,7 @@ export default class extends Controller {
     this.connectedChannels.add(channelName)
 
     if (this.connectedChannels.size === 1) {
-      Toast.success("Connected to real-time updates")
+      Toast.success(translate("messages.connected_to_real_time_updates"))
       this.updateConnectionIndicator(true)
     }
   }
@@ -131,7 +133,7 @@ export default class extends Controller {
     this.connectedChannels.delete(channelName)
 
     if (this.connectedChannels.size === 0) {
-      Toast.warning("Disconnected from real-time updates")
+      Toast.warning(translate("messages.disconnected_from_real_time_updates"))
       this.updateConnectionIndicator(false)
     }
   }
@@ -175,6 +177,15 @@ export default class extends Controller {
 
     const [lat, lon, battery, altitude, timestamp, velocity, id, countryName] =
       pointData
+
+    if (
+      !pointMatchesActiveDateRange(
+        timestamp,
+        mapsController.realtimeDateRange(),
+      )
+    ) {
+      return
+    }
 
     const pointsLayer = mapsController.layerManager?.getLayer("points")
     if (!pointsLayer) {
@@ -238,7 +249,7 @@ export default class extends Controller {
 
     this.zoomToPoint(parseFloat(lon), parseFloat(lat))
 
-    Toast.info("New location recorded")
+    Toast.info(translate("messages.new_location_recorded"))
   }
 
   /**

@@ -1,9 +1,14 @@
-<% times = visit_entry_times(entry); status = visit_entry_status(entry); all_day = visit_entry_all_day?(entry) %>
+<% times = visit_entry_times(entry); all_day = visit_entry_all_day?(entry) %>
 <% coords = entry[:place] || entry[:area] || entry[:suggested_places]&.first %>
-<li class="visit-row<%= ' visit-row--suggested' if status == 'suggested' %><%= ' visit-row--all-day' if all_day %>"
+<% name_parts = visit_entry_name_parts(entry) %>
+<%# A visit renders the same regardless of detection status — showing it is
+    asserting it. The only affordance is Edit: rename, re-attach a place,
+    or delete. data-status stays for API/JS compatibility. %>
+<li class="visit-row<%= ' visit-row--all-day' if all_day %><%= ' visit-row--subdued' if visit_entry_subdued?(entry) %><%= ' visit-row--lowconf' if visit_entry_low_confidence?(entry) %>"
     id="visit_entry_<%= entry[:visit_id] %>"
     data-visit-id="<%= entry[:visit_id] %>"
-    data-status="<%= status %>"
+    data-status="<%= visit_entry_status(entry) %>"
+    data-confidence-band="<%= entry[:confidence_band] %>"
     data-testid="visit-row"
     tabindex="0"
     role="button"
@@ -13,10 +18,10 @@
     data-started-at="<%= entry[:started_at] %>"
     data-ended-at="<%= entry[:ended_at] %>"
     data-search-tokens="<%= visit_entry_search_tokens(entry) %>"
+    data-controller="visit-editor<%= ' visit-place-search' if coords %>"
     <% if coords %>
       data-visit-lat="<%= coords[:lat] %>"
       data-visit-lng="<%= coords[:lng] %>"
-      data-controller="visit-place-search"
       data-visit-place-search-visit-id-value="<%= entry[:visit_id] %>"
       data-visit-place-search-lat-value="<%= coords[:lat] %>"
       data-visit-place-search-lng-value="<%= coords[:lng] %>"
@@ -27,69 +32,80 @@
            data-timeline-feed-target="rowCheck"
            data-visit-id="<%= entry[:visit_id] %>"
            data-action="change->timeline-feed#rowCheckChanged click->timeline-feed#stopPropagation"
-           aria-label="Select visit for merge"
+           aria-label="<%= t('.select_visit_for_merge') %>"
            tabindex="-1">
   </span>
 
+  <%# Arrival time only. The end time is the start plus the duration printed
+      on the right, and stacking both turned the column into a grey block. %>
   <div class="visit-row__time">
     <% if all_day %>
-      <span class="text-xs">All day</span>
+      <span class="visit-row__all-day"><%= t('.all_day') %></span>
     <% else %>
-      <div class="font-mono text-xs"><%= times[:start_label] %></div>
-      <div class="font-mono text-[10px] text-base-content/50"><%= times[:end_label] %></div>
+      <%= times[:start_label] %>
     <% end %>
   </div>
 
   <div class="visit-row__rail">
-    <span class="visit-status-dot visit-status-dot--<%= status %>"></span>
+    <span class="visit-status-dot"></span>
   </div>
 
   <div class="visit-row__content">
     <div class="visit-row__title">
-      <%# Display name with inline rename (click to edit) %>
-      <%= render 'visits/name',
-                 visit_id: entry[:visit_id],
-                 name: visit_entry_display_name(entry),
-                 suggested: status == 'suggested' %>
+      <span data-testid="visit-name-<%= entry[:visit_id] %>"><%= name_parts[:primary] %></span>
     </div>
-    <div class="visit-row__meta text-xs text-base-content/60">
-      <%= format_dwell_minutes(entry[:duration]) %> · <%= entry[:point_count] %> pts
+    <div class="visit-row__meta">
+      <% if name_parts[:secondary] %>
+        <span class="visit-row__address"><%= name_parts[:secondary] %></span>
+      <% end %>
+      <span class="visit-row__points"><%= entry[:point_count] %> <%= t('.pts') %></span>
       <% Array(entry[:tags]).each do |t| %>
-        <span class="tag-chip" style="background-color: <%= t[:color] %>;">#<%= t[:name] %></span>
+        <span class="visit-tag">
+          <span class="visit-tag__dot" style="background-color: <%= t[:color] %>;"></span>#<%= t[:name] %>
+        </span>
       <% end %>
     </div>
   </div>
 
-  <% show_actions = coords || status != 'suggested' %>
-  <% if show_actions %>
-    <div class="visit-row__actions">
-      <% if coords %>
-        <button type="button"
-                class="btn btn-xs btn-ghost btn-square"
-                title="Search for a place"
-                data-testid="visit-search-trigger"
-                data-action="click->visit-place-search#toggle click->timeline-feed#stopPropagation">
-          <%= icon 'search', class: 'w-4 h-4' %>
-        </button>
-      <% end %>
-      <% if status != 'suggested' %>
-        <%= button_to 'Delete', visit_path(entry[:visit_id]),
-                      method: :delete,
-                      data: { testid: 'visit-delete', turbo_confirm: 'Delete this visit? Your location points stay.' },
-                      class: 'btn btn-xs btn-ghost' %>
-      <% end %>
-    </div>
-  <% end %>
+  <div class="visit-row__actions">
+    <button type="button"
+            class="visit-edit-btn"
+            data-testid="visit-edit"
+            data-visit-editor-target="button"
+            aria-expanded="false"
+            title="<%= t('.edit') %>"
+            data-action="click->visit-editor#toggle">
+      <%= icon 'square-pen', class: 'w-3 h-3' %>
+      <span class="sr-only"><%= t('.edit') %></span>
+    </button>
+    <% unless all_day %>
+      <span class="visit-row__duration"><%= format_dwell_minutes(entry[:duration]) %></span>
+    <% end %>
+  </div>
 
-  <% if coords %>
-    <div class="visit-row__place-search" data-visit-place-search-target="mount"></div>
-  <% end %>
+  <div class="visit-row__editor hidden"
+       data-visit-editor-target="panel"
+       data-action="click->timeline-feed#stopPropagation keydown->timeline-feed#stopPropagation">
+    <label class="visit-editor__label" for="visit-editor-name-<%= entry[:visit_id] %>"><%= t('.name') %></label>
+    <%= form_with url: visit_path(entry[:visit_id]), scope: :visit, method: :patch,
+                  class: 'visit-editor__name-form' do |f| %>
+      <%= f.text_field :name, value: visit_entry_display_name(entry),
+                       id: "visit-editor-name-#{entry[:visit_id]}",
+                       class: 'input input-xs input-bordered flex-1 min-w-0',
+                       data: { testid: 'visit-editor-name' } %>
+      <%= f.submit t('.save'), class: 'btn btn-xs btn-primary', data: { testid: 'visit-editor-save' } %>
+    <% end %>
 
-  <%# Suggested picker spans the full row width (grid-column: 1 / -1) so it
-      doesn't squeeze into the narrow content column. %>
-  <% if status == 'suggested' %>
-    <div class="visit-row__suggested">
-      <%= render partial: 'map/timeline_feeds/suggested_picker', locals: { entry: entry } %>
+    <% if coords %>
+      <label class="visit-editor__label"><%= t('.attached_place') %></label>
+      <div class="visit-row__place-search" data-visit-place-search-target="mount"></div>
+    <% end %>
+
+    <div class="visit-editor__foot">
+      <%= button_to t('.delete'), visit_path(entry[:visit_id]),
+                    method: :delete,
+                    data: { testid: 'visit-delete', turbo_confirm: t('.delete_this_visit_your_location_points_stay') },
+                    class: 'btn btn-xs btn-ghost text-error' %>
     </div>
-  <% end %>
+  </div>
 </li>

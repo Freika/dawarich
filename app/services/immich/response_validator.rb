@@ -3,12 +3,16 @@
 module Immich
   class ResponseValidator
     def self.validate_and_parse(response, logger: Rails.logger)
-      return { success: false, error: "Request failed: #{response.code}" } unless response.success?
+      unless response.success?
+        return { success: false,
+error: I18n.t('services.immich.response_validator.request_failed_code', code: response.code) }
+      end
 
       unless json_content_type?(response)
         content_type = response.headers['content-type'] || response.headers['Content-Type'] || 'unknown'
         logger.error("Immich returned non-JSON response: #{response.code} #{truncate_body(response.body)}")
-        return { success: false, error: "Expected JSON, got #{content_type}" }
+        return { success: false,
+error: I18n.t('services.immich.response_validator.expected_json_got_content_type', content_type: content_type) }
       end
 
       parsed = JSON.parse(response.body)
@@ -16,18 +20,18 @@ module Immich
     rescue JSON::ParserError => e
       logger.error("Immich JSON parse error: #{e.message}")
       logger.error("Response body: #{truncate_body(response.body)}")
-      { success: false, error: 'Invalid JSON response' }
+      { success: false, error: I18n.t('services.immich.response_validator.invalid_json_response') }
     end
 
     def self.validate_and_parse_body(body_string, logger: Rails.logger)
-      return { success: false, error: 'Invalid JSON' } if body_string.nil?
+      return { success: false, error: I18n.t('services.immich.response_validator.invalid_json') } if body_string.nil?
 
       parsed = JSON.parse(body_string)
       { success: true, data: parsed }
     rescue JSON::ParserError, TypeError => e
       logger.error("JSON parse error: #{e.message}")
       logger.error("Body: #{truncate_body(body_string)}")
-      { success: false, error: 'Invalid JSON' }
+      { success: false, error: I18n.t('services.immich.response_validator.invalid_json') }
     end
 
     private_class_method def self.json_content_type?(response)
