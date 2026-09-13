@@ -16,23 +16,29 @@ sanitize_integer_env() {
   unset _name _default _value
 }
 
-warn_if_development_env() {
-  if [ "$RAILS_ENV" = "development" ] && [ "${SELF_HOSTED:-}" = "true" ]; then
-    cat >&2 <<'EOF'
-⚠️⚠️⚠️  RAILS_ENV=development on a self-hosted instance  ⚠️⚠️⚠️
-Development mode skips eager loading and caching, and logs every SQL query
-verbatim (with bind params) instead of Rails' compact production format.
-Under real background-job load (imports, reverse geocoding, stats, visit
-suggestions) this drives up memory and CPU far beyond what production mode
-needs, and has caused Sidekiq to be OOM-killed and restarted on other
-self-hosted instances — leaving gaps in recorded location data.
+env_value_is_truthy() {
+  case "$(printf '%s' "$1" | tr -d "\"'" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | tr '[:upper:]' '[:lower:]')" in
+    true | 1 | yes | on | t) return 0 ;;
+  esac
 
-RAILS_ENV has defaulted to `production` in the bundled docker-compose.yml
-since v1.3.0 (Feb 2026). If your compose file or .env still sets
-RAILS_ENV=development from an older setup, remove that override (or set
-RAILS_ENV=production and provide SECRET_KEY_BASE) unless you intend to
-develop Dawarich itself.
-See: https://dawarich.app/docs/self-hosting/environment-variables/
+  return 1
+}
+
+warn_if_development_env() {
+  if [ "${RAILS_ENV:-${RACK_ENV:-development}}" = "development" ] && env_value_is_truthy "${SELF_HOSTED-true}"; then
+    cat >&2 <<'EOF'
+⚠️ Dawarich is running with RAILS_ENV=development ⚠️
+Development mode is meant for working on Dawarich itself: code is loaded on
+demand and reloaded when it changes, and every SQL query is logged at debug
+level together with the line of code that ran it.
+
+Self-hosted instances should run with RAILS_ENV=production, the default in
+docker/docker-compose.yml since Dawarich 1.3.0. Compose files from earlier
+versions default to development, so set RAILS_ENV=production explicitly for
+both the app and the Sidekiq container.
+
+Read this before switching an existing instance:
+https://dawarich.app/docs/self-hosting/environment-variables/#switching-an-existing-instance-to-production
 EOF
   fi
 }

@@ -21,6 +21,14 @@
 kubectl create namespace dawarich
 ```
 
+### Secret key base
+
+生产环境需要 `SECRET_KEY_BASE`。生成一个随机值并保存为 Secret。之后请保持不变：修改它会让所有用户退出登录，并可能导致已归档的数据无法读取。
+
+```bash
+kubectl create secret generic dawarich --namespace dawarich --from-literal=secret-key-base="$(openssl rand -hex 64)"
+```
+
 ### 持久卷声明（PVC）
 
 ```yaml
@@ -81,7 +89,12 @@ spec:
             - name: TIME_ZONE
               value: "Europe/Prague"
             - name: RAILS_ENV
-              value: development
+              value: production
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: dawarich
+                  key: secret-key-base
             - name: REDIS_URL
               value: redis://redis-master.redis.svc.cluster.local:6379/10
             - name: DATABASE_HOST
@@ -128,10 +141,36 @@ spec:
               cpu: "2000m"
           ports:
           - containerPort: 3000
+          startupProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            periodSeconds: 10
+            failureThreshold: 180
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 3
         - name: dawarich-sidekiq
           env:
             - name: RAILS_ENV
-              value: development
+              value: production
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: dawarich
+                  key: secret-key-base
             - name: REDIS_URL
               value: redis://redis-master.redis.svc.cluster.local:6379/10
             - name: DATABASE_HOST
@@ -178,22 +217,6 @@ spec:
             limits:
               memory: "3Gi"
               cpu: "1500m"
-          livenessProbe:
-            httpGet:
-              path: /api/v1/health
-              port: 3000
-            initialDelaySeconds: 60
-            periodSeconds: 10
-            timeoutSeconds: 5
-            failureThreshold: 3
-          readinessProbe:
-            httpGet:
-              path: /
-              port: 3000
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            timeoutSeconds: 3
-            failureThreshold: 3
       volumes:
         - name: public
           persistentVolumeClaim:

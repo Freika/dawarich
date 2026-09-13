@@ -9,7 +9,6 @@ echo "⚠️ Starting Sidekiq in $RAILS_ENV environment ⚠️"
 
 . "$(dirname "$0")/entrypoint-env-guard.sh"
 sanitize_integer_env BACKGROUND_PROCESSING_CONCURRENCY 3
-warn_if_development_env
 
 # Optional privilege drop. When PUID/PGID are set and the container starts as
 # root, fix ownership of the mounted writable paths, then re-exec as that user.
@@ -28,6 +27,8 @@ if [ "$(id -u)" = "0" ] && [ -n "${PUID}${PGID}" ]; then
   done
   exec gosu "$TARGET_UID:$TARGET_GID" "$0" "$@"
 fi
+
+warn_if_development_env
 
 # Parse DATABASE_URL if present, otherwise use individual variables
 if [ -n "$DATABASE_URL" ]; then
