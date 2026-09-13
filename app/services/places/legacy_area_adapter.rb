@@ -42,6 +42,8 @@ module Places
         area.skip_visit_relabel = true
         area.update!(attributes)
         place.user_named = true
+        # Coordinates are the location data the user explicitly chose to persist.
+        # codeql[rb/clear-text-storage-sensitive-data]
         place.update!(place_attributes(area))
       end
 
