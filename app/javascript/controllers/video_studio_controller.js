@@ -778,9 +778,9 @@ export default class extends Controller {
     if (!this.hasRenderButtonTarget) return
     this.renderButtonTarget.disabled = Boolean(
       this.rendering ||
-      this.rangeLoading ||
-      !this.style ||
-      !isVideoExportSupported(),
+        this.rangeLoading ||
+        !this.style ||
+        !isVideoExportSupported(),
     )
   }
 
