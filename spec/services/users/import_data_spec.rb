@@ -176,7 +176,9 @@ RSpec.describe Users::ImportData, type: :service do
       service.instance_variable_set(:@import_directory, tmp_dir)
 
       allow(Users::ImportData::Settings).to receive(:new).and_return(double(call: true))
-      allow(Users::ImportData::Areas).to receive(:new).and_return(double(call: 0))
+      allow(Users::ImportData::Areas).to receive(:new).and_return(
+        double(call: 0, place_references_by_id: {}, place_references_by_name: {})
+      )
       allow(Users::ImportData::Imports).to receive(:new).and_return(double(call: [0, 0]))
       allow(Users::ImportData::Exports).to receive(:new).and_return(double(call: [0, 0]))
       allow(Users::ImportData::Trips).to receive(:new).and_return(double(call: 0))
@@ -188,7 +190,7 @@ RSpec.describe Users::ImportData, type: :service do
         double(call: batch.size)
       end
 
-      allow(Users::ImportData::Visits).to receive(:new) do |_, batch|
+      allow(Users::ImportData::Visits).to receive(:new) do |_, batch, **_options|
         visits_batches << batch
         double(call: batch.size)
       end

@@ -1100,6 +1100,7 @@ de:
         create_visit: Aufenthalt erstellen
         create_place: Ort erstellen
         select_area: Bereich auswählen
+        select_data_on_map: Daten auf der Karte auswählen
         create_area: Bereich erstellen
         replay: Wiedergabe
         enrich_photos: Fotos bereichern
@@ -1303,10 +1304,12 @@ de:
       no_visits_yet: Noch keine Aufenthalte
       rename: Umbenennen
       merge: Verbinden
+      select_place_to_merge: Doppelten Ort auswählen
+      merge_confirmation: Den ausgewählten Ort mit „%{survivor}“ zusammenführen? Aufenthalte, Tags und Notizen werden hierher verschoben.
       notes: Notizen
       save: Speichern
       delete: Löschen
-      delete_this_place_this_cannot_be_undone: Diesen Ort löschen? Dies kann nicht rückgängig gemacht werden.
+      delete_this_place_this_cannot_be_undone: Diesen Ort löschen? Seine Aufenthalte bleiben ohne zugeordneten Ort erhalten.
       manual_name_title: Du hast diesen Ort benannt, daher wird der automatische Name nicht geändert. Benenne ihn um zu „%{default_name}“, um ihn wieder der automatischen Namensgebung zu übergeben.
       visit_count:
         one: "%{count} Aufenthalt"
@@ -1315,6 +1318,9 @@ de:
       no_nearby_places_found: Keine nahen Orte gefunden
       load_more_search_up_to_distance_m: Weitere laden (Suche bis zu %{distance}m)
     index:
+      filters: Ortsfilter
+      all_places: Alle Orte
+      unconfirmed_places: Unbestätigt
       hello_there: Hallo!
       here_you_ll_find_your_places_created_by_visits_suggestion: Hier findest du deine Orte, die durch den Visits-Vorschlagsprozess erstellt wurden. Aber jetzt gibt es keine.
       name: Name
@@ -1324,7 +1330,7 @@ de:
       timeline: Zeitleiste
       places: Orte
       delete: Löschen
-      are_you_sure_deleting_a_place_will_result_in_deleting: Bist du sicher? Das Löschen eines Ortes wird dazu führen, dass alle Aufenthalte für diesen Ort gelöscht werden.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Diesen Ort löschen? Seine Aufenthalte bleiben ohne zugeordneten Ort erhalten.
   points:
     address:
       address: 'Adresse:'
@@ -1840,6 +1846,8 @@ de:
     place_creation_modal:
       create_new_place: Neuer Ort erstellen
       place_name: Ortsname *
+      visit_radius: Besuchsradius (Meter) *
+      visit_radius_hint: Besuche, deren Mittelpunkt in diesem Radius liegt, können dem Ort zugeordnet werden. Dies hat keinen Einfluss auf den Datenschutz.
       note: Notiz
       optional_add_any_notes_or_details_about_this_place: Optional - Füge hier beliebige Notizen oder Details über diesen Ort hinzu
       tags: Tags
@@ -2997,6 +3005,7 @@ de:
             visit_not_found: Aufenthalt nicht gefunden
           invalid_place: Ungültiger Ort
           invalid_area: Ungültiger Bereich
+          conflicting_place_and_area: place_id und area_id können nicht gemeinsam angegeben werden
           at_least_2_visits_must_be_selected_for_merging: Mindestens 2 Aufenthalte müssen ausgewählt werden, um sie zu verbinden
           one_or_more_visits_not_found: Ein oder mehrere Aufenthalte wurden nicht gefunden
           count_visits_updated_successfully: "%{count} Aufenthalte wurden erfolgreich aktualisiert"
@@ -3123,6 +3132,7 @@ de:
       place_was_successfully_destroyed: Ort wurde erfolgreich gelöscht.
       created: Ort erfolgreich erstellt!
       updated: Ort erfolgreich aktualisiert!
+      merged: '„%{duplicate}“ wurde mit „%{survivor}“ zusammengeführt.'
     points:
       no_points_selected: Keine Punkte ausgewählt.
       points_were_successfully_destroyed: Punkte wurden erfolgreich gelöscht.
@@ -3307,6 +3317,7 @@ de:
       failed_to_delete_visits: Löschen der Aufenthalte fehlgeschlagen.
       invalid_place: Ungültiger Ort
       invalid_area: Ungültiger Bereich
+      conflicting_place_and_area: Ort und Bereich können nicht gemeinsam angegeben werden
       failed_to_update_visit: Aktualisierung des Aufenthalts fehlgeschlagen.
       select_visits_to_merge: Wähle mindestens zwei Aufenthalte zum Verbinden.
       visits_must_share_day: Aufenthalte müssen am selben Tag sein.
@@ -4281,6 +4292,7 @@ de:
       place: Ort
       points: Punkte
       radius: Radius
+      visit_radius: Aufenthaltsradius
       reason: Grund
       route_information: Route-Informationen
       routes: Route

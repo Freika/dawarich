@@ -1100,6 +1100,7 @@ es:
         create_visit: Crear visita
         create_place: Crear lugar
         select_area: Seleccionar área
+        select_data_on_map: Seleccionar datos en el mapa
         create_area: Crear área
         replay: Reproducir
         enrich_photos: Mejorar Fotos
@@ -1303,10 +1304,12 @@ es:
       no_visits_yet: No hay visitas aún
       rename: Renombrar
       merge: Unir
+      select_place_to_merge: Seleccionar lugar duplicado
+      merge_confirmation: "¿Unir el lugar seleccionado con \"%{survivor}\"? Las visitas, etiquetas y notas se moverán aquí."
       notes: Notas
       save: Guardar
       delete: Eliminar
-      delete_this_place_this_cannot_be_undone: "¿Quieres eliminar este lugar? Esto no se puede deshacer."
+      delete_this_place_this_cannot_be_undone: "¿Eliminar este lugar? Sus visitas se conservarán sin un lugar asociado."
       manual_name_title: Tú nombraste este lugar, por lo que el nombre automático no lo cambiará. Renómbralo como "%{default_name}" para devolverlo a la asignación automática.
       visit_count:
         one: "%{count} visita"
@@ -1315,6 +1318,9 @@ es:
       no_nearby_places_found: No se encontraron lugares cercanos
       load_more_search_up_to_distance_m: Cargar más (buscar hasta %{distance}m)
     index:
+      filters: Filtros de lugares
+      all_places: Todos los lugares
+      unconfirmed_places: Sin confirmar
       hello_there: "¡Hola!"
       here_you_ll_find_your_places_created_by_visits_suggestion: Aquí encontrarás tus lugares, creados por el proceso de sugerencia de visitas. Pero ahora no hay ninguno.
       name: Nombre
@@ -1324,7 +1330,7 @@ es:
       timeline: Cronología
       places: Lugares
       delete: Eliminar
-      are_you_sure_deleting_a_place_will_result_in_deleting: "¿Estás seguro? Eliminar un lugar resultará en eliminar todas las visitas para este lugar."
+      are_you_sure_deleting_a_place_will_result_in_deleting: "¿Eliminar este lugar? Sus visitas se conservarán sin un lugar asociado."
   points:
     address:
       address: 'Dirección:'
@@ -1840,6 +1846,8 @@ es:
     place_creation_modal:
       create_new_place: Crear nuevo lugar
       place_name: Nombre del lugar *
+      visit_radius: Radio de visita (metros) *
+      visit_radius_hint: Las visitas cuyo centro esté dentro de este radio se pueden asociar al lugar. Esto no afecta a la privacidad.
       note: Nota
       optional_add_any_notes_or_details_about_this_place: Opcional - Agrega cualquier nota o detalle sobre este lugar
       tags: Etiquetas
@@ -2942,6 +2950,7 @@ es:
             visit_not_found: No se encontró la visita
           invalid_place: Lugar inválido
           invalid_area: Área inválida
+          conflicting_place_and_area: place_id y area_id no se pueden especificar juntos
           at_least_2_visits_must_be_selected_for_merging: Deben seleccionarse al menos 2 visitas para fusionarlas
           one_or_more_visits_not_found: Una o más visitas no encontradas
           count_visits_updated_successfully: "%{count} visitas actualizadas con éxito"
@@ -3068,6 +3077,7 @@ es:
       place_was_successfully_destroyed: Lugar eliminado con éxito.
       created: Se creó el lugar con éxito!
       updated: Se actualizó el lugar con éxito!
+      merged: 'Se unió "%{duplicate}" con "%{survivor}".'
     points:
       no_points_selected: No se seleccionaron puntos.
       points_were_successfully_destroyed: Se destruyeron los puntos con éxito.
@@ -3252,6 +3262,7 @@ es:
       failed_to_delete_visits: Falló la eliminación de visitas.
       invalid_place: Lugar inválido
       invalid_area: Área inválida
+      conflicting_place_and_area: El lugar y el área no se pueden especificar juntos
       failed_to_update_visit: Falló la actualización de visita.
       select_visits_to_merge: Selecciona al menos 2 visitas para fusionar.
       visits_must_share_day: Las visitas deben estar en el mismo día.
@@ -4225,6 +4236,7 @@ es:
       place: Lugar
       points: Puntos
       radius: Radio
+      visit_radius: Radio de visita
       reason: Razón
       route_information: Información de ruta
       routes: Rutas

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_11_090003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -248,6 +248,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
     t.index ["user_id"], name: "index_imports_on_user_id"
   end
 
+  create_table "legacy_area_place_mappings", force: :cascade do |t|
+    t.bigint "area_id", null: false
+    t.datetime "created_at", null: false
+    t.bigint "place_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["area_id"], name: "index_legacy_area_place_mappings_on_area_id", unique: true
+    t.index ["place_id"], name: "index_legacy_area_place_mappings_on_place_id"
+  end
+
   create_table "notes", force: :cascade do |t|
     t.bigint "attachable_id"
     t.string "attachable_type"
@@ -318,12 +327,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
     t.integer "source", default: 0
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.integer "visit_radius", default: 50, null: false
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index "user_id, ((geodata ->> 'external_place_id'::text))", name: "idx_places_user_external_place_id", unique: true, where: "((geodata ->> 'external_place_id'::text) IS NOT NULL)"
     t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"
     t.index ["import_id"], name: "idx_places_import_id_extracted", where: "(import_id IS NOT NULL)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
     t.index ["user_id"], name: "index_places_on_user_id"
+    t.check_constraint "visit_radius > 0", name: "places_visit_radius_positive"
   end
 
   create_table "point_sources", id: :serial, force: :cascade do |t|
@@ -657,7 +668,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
     t.integer "duration", null: false
     t.datetime "ended_at", null: false
     t.bigint "import_id"
-    t.string "name", null: false
+    t.string "location_label"
+    t.string "name"
     t.bigint "place_id"
     t.datetime "started_at", null: false
     t.integer "status", default: 0, null: false
@@ -685,6 +697,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
   add_foreign_key "family_memberships", "families"
   add_foreign_key "family_memberships", "users"
   add_foreign_key "flights", "users"
+  add_foreign_key "legacy_area_place_mappings", "areas", on_delete: :cascade
+  add_foreign_key "legacy_area_place_mappings", "places", on_delete: :cascade
   add_foreign_key "notes", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "pending_imports", "users", column: "claimed_by_user_id", on_delete: :nullify

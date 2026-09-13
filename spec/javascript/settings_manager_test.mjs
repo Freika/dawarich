@@ -16,7 +16,7 @@ const source = await readFile(
   ),
   "utf8",
 )
-const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
 const combinedSource = `${basemapUrlSource}\n${withoutImports}`
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combinedSource).toString("base64")}`
 const {
@@ -35,7 +35,7 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     "utf8",
   )
   const withoutImports = controllerSource.replace(
-    /^import[\s\S]*?from "[^"]+"\n/gm,
+    /^import[\s\S]*?from "[^"]+";?\n/gm,
     "",
   )
   globalThis.__settingsManagerTestDouble = settingsManager

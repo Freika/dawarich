@@ -16,6 +16,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
       json = JSON.parse(response.body)
       expect(json.size).to eq(1)
       expect(json.first['name']).to eq('Home')
+      expect(json.first['visit_radius']).to eq(50)
     end
 
     it 'filters by tag_ids' do
@@ -128,6 +129,14 @@ RSpec.describe 'Api::V1::Places', type: :request do
         expect(names).not_to include('Suggested Only', 'Home')
       end
 
+      it 'filter=unconfirmed returns only suggestion-only places' do
+        get '/api/v1/places', params: { filter: 'unconfirmed' }, headers: headers
+
+        names = JSON.parse(response.body).map { |p| p['name'] }
+        expect(names).to include('Suggested Only')
+        expect(names).not_to include('Confirmed Place', 'Home')
+      end
+
       it 'filter=tagged returns only tagged places' do
         tagged = create(:place, user: user, name: 'Tagged Place', source: :photon)
         create(:tagging, taggable: tagged, tag: tag)
@@ -157,6 +166,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
       json = JSON.parse(response.body)
       expect(json['name']).to eq('Home')
       expect(json['latitude']).to eq(40.7128)
+      expect(json['visit_radius']).to eq(50)
     end
 
     it 'returns 404 for other users place' do
@@ -177,6 +187,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
           latitude: 40.785091,
           longitude: -73.968285,
           source: 'manual',
+          visit_radius: 125,
           tag_ids: [tag.id]
         }
       }
@@ -190,6 +201,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json['name']).to eq('Central Park')
+      expect(json['visit_radius']).to eq(125)
     end
 
     it 'associates tags with the place' do
@@ -211,11 +223,12 @@ RSpec.describe 'Api::V1::Places', type: :request do
   describe 'PATCH /api/v1/places/:id' do
     it 'updates the place' do
       patch "/api/v1/places/#{place.id}",
-            params: { place: { name: 'Updated Home' } },
+            params: { place: { name: 'Updated Home', visit_radius: 80 } },
             headers: headers
 
       expect(response).to have_http_status(:success)
       expect(place.reload.name).to eq('Updated Home')
+      expect(place.visit_radius).to eq(80)
     end
 
     it 'updates tags' do

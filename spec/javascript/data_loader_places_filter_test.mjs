@@ -16,12 +16,12 @@ const settingsManagerPath = path.join(
 )
 let dataLoaderSource = await readFile(dataLoaderPath, "utf8")
 dataLoaderSource = dataLoaderSource
-  .replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+  .replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
   .replace("export class DataLoader", "class DataLoader")
   .concat("\nglobalThis.DataLoader = DataLoader\n")
 let settingsManagerSource = await readFile(settingsManagerPath, "utf8")
 settingsManagerSource = settingsManagerSource
-  .replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+  .replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
   .replaceAll("export function ", "function ")
   .replaceAll("export const ", "const ")
   .replace("export class SettingsManager", "class SettingsManager")
@@ -47,7 +47,11 @@ const context = {
     pointsToRoutes: () => ({ type: "FeatureCollection", features: [] }),
   },
   pointsToGeoJSON: () => ({ type: "FeatureCollection", features: [] }),
-  createCircle: () => null,
+  createCircle: ([longitude, latitude], radius) => [
+    [longitude, latitude],
+    [longitude + radius, latitude],
+    [longitude, latitude],
+  ],
   applySpeedColors: (value) => value,
 }
 vm.createContext(context)
@@ -98,3 +102,32 @@ calls.length = 0
 const emptyLoader = new context.DataLoader(api, "test-key", settings)
 await emptyLoader.fetchMapData("2026-06-01", "2026-06-30")
 assert.deepEqual(calls, [])
+
+const placeFeatures = loader.placesToGeoJSON([
+  {
+    id: 7,
+    name: "Home",
+    latitude: "52.52",
+    longitude: "13.405",
+    visit_radius: 125,
+    tags: [{ color: "#123456" }],
+  },
+]).features
+assert.equal(placeFeatures.length, 2)
+assert.deepEqual(
+  JSON.parse(
+    JSON.stringify(placeFeatures.map((feature) => feature.geometry.type)),
+  ),
+  ["Polygon", "Point"],
+)
+assert.deepEqual(
+  JSON.parse(
+    JSON.stringify(
+      placeFeatures.map((feature) => feature.properties.featureKind),
+    ),
+  ),
+  ["boundary", "center"],
+)
+assert.ok(
+  placeFeatures.every((feature) => feature.properties.visitRadius === 125),
+)

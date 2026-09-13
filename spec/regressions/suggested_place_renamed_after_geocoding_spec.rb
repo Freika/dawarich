@@ -43,16 +43,18 @@ RSpec.describe 'Places::NameFetcher renames places after geocoding even when the
     expect(place.country).to eq('Germany')
   end
 
-  it 'renames linked visits to the assembled name' do
-    visit_with_default = create(:visit, name: Place::DEFAULT_NAME)
-    visit_with_custom = create(:visit, name: 'Coffee with Anna')
+  it 'refreshes linked Visit location labels without changing custom names' do
+    visit_with_default = create(:visit, name: nil, location_label: Place::DEFAULT_NAME)
+    visit_with_custom = create(:visit, name: 'Coffee with Anna', location_label: Place::DEFAULT_NAME)
     place.visits << visit_with_default
     place.visits << visit_with_custom
 
     Places::NameFetcher.new(place).call
 
-    expect(visit_with_default.reload.name).to eq('Hauptstrasse, 5, Berlin')
-    expect(visit_with_custom.reload.name).to eq('Coffee with Anna')
+    expect(visit_with_default.reload).to have_attributes(name: nil, location_label: 'Hauptstrasse, 5, Berlin')
+    expect(visit_with_custom.reload).to have_attributes(
+      name: 'Coffee with Anna', location_label: 'Hauptstrasse, 5, Berlin'
+    )
   end
 
   context 'when the geocoder response has no name-building components at all' do

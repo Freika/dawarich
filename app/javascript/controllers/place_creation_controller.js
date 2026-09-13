@@ -8,12 +8,14 @@ export default class extends Controller {
     "nameInput",
     "latitudeInput",
     "longitudeInput",
+    "visitRadiusInput",
     "noteInput",
     "nearbyFrame",
     "tagCheckboxes",
     "modalTitle",
     "submitButton",
     "placeIdInput",
+    "visitIdInput",
   ]
 
   connect() {
@@ -24,7 +26,7 @@ export default class extends Controller {
 
   setupEventListeners() {
     document.addEventListener("place:create", (e) => {
-      this.open(e.detail.latitude, e.detail.longitude)
+      this.open(e.detail.latitude, e.detail.longitude, e.detail)
     })
     document.addEventListener("place:edit", (e) => {
       this.openForEdit(e.detail.place)
@@ -54,10 +56,13 @@ export default class extends Controller {
     })
   }
 
-  open(latitude, longitude) {
+  open(latitude, longitude, options = {}) {
     this.editingPlaceId = null
     this.latitudeInputTarget.value = latitude
     this.longitudeInputTarget.value = longitude
+    this.visitIdInputTarget.value = options.visitId || ""
+    this.nameInputTarget.value = options.name || ""
+    this.visitRadiusInputTarget.value = 50
 
     // Set form for creation mode
     this.formTarget.action = "/places"
@@ -78,9 +83,11 @@ export default class extends Controller {
 
   openForEdit(place) {
     this.editingPlaceId = place.id
+    this.visitIdInputTarget.value = ""
     this.nameInputTarget.value = place.name
     this.latitudeInputTarget.value = place.latitude
     this.longitudeInputTarget.value = place.longitude
+    this.visitRadiusInputTarget.value = place.visit_radius || 50
 
     if (this.hasNoteInputTarget && place.note) {
       this.noteInputTarget.value = place.note
@@ -156,10 +163,18 @@ export default class extends Controller {
       dataEl.dataset.updated === "true" ? "place:updated" : "place:created"
 
     document.dispatchEvent(new CustomEvent(eventName, { detail: { place } }))
+    if (dataEl.dataset.visitId) {
+      document.dispatchEvent(
+        new CustomEvent("visit-place:changed", {
+          detail: { visitId: Number.parseInt(dataEl.dataset.visitId, 10) },
+        }),
+      )
+    }
 
     delete dataEl.dataset.place
     delete dataEl.dataset.created
     delete dataEl.dataset.updated
+    delete dataEl.dataset.visitId
   }
 
   // --- Private helpers ---

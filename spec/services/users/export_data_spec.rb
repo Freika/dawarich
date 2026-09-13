@@ -83,7 +83,7 @@ RSpec.describe Users::ExportData, type: :service do
 
           Zip::File.open(temp_zip) do |zip_file|
             expect(zip_file.find_entry('settings.jsonl')).not_to be_nil
-            expect(zip_file.find_entry('areas.jsonl')).not_to be_nil
+            expect(zip_file.find_entry('areas.jsonl')).to be_nil
             expect(zip_file.find_entry('places.jsonl')).not_to be_nil
             expect(zip_file.find_entry('trips.jsonl')).not_to be_nil
             expect(zip_file.find_entry('notifications.jsonl')).not_to be_nil
@@ -278,6 +278,7 @@ RSpec.describe Users::ExportData, type: :service do
       it 'returns correct counts for all entity types' do
         # Create some test data
         create_list(:area, 2, user: user)
+        create_list(:place, 2, user: user)
         create(:import, user: user)
         create(:trip, user: user)
         create(:stat, user: user)
@@ -286,7 +287,8 @@ RSpec.describe Users::ExportData, type: :service do
 
         counts = service.send(:calculate_entity_counts)
 
-        expect(counts[:areas]).to eq(2)
+        expect(counts).not_to have_key(:areas)
+        expect(counts[:places]).to eq(2)
         expect(counts[:imports]).to eq(1)
         expect(counts[:trips]).to eq(1)
         expect(counts[:stats]).to eq(1)

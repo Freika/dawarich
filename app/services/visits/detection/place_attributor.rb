@@ -3,8 +3,8 @@
 module Visits
   module Detection
     # Labels a detected stay — attribution, not detection. Evidence order:
-    # containing user area > nearby known place (manual-first, history-boosted)
-    # > POI voted from the stay's own reverse-geocoded points > bare address.
+    # a containing Place > a POI voted from the
+    # stay's own reverse-geocoded points > a bare address.
     # Below the POI gate no Place row is minted and no business name is
     # claimed: a visit the data can't support gets a street address, not a
     # restaurant. Must never run inside a DB transaction (geocoder I/O).
@@ -19,11 +19,14 @@ module Visits
       STREETISH_OSM_KEYS = %w[highway place boundary landuse natural waterway railway].freeze
 
       def call(stay)
-        area = containing_area(stay)
-        return { area: area, place: nil, name: area.name, evidence: :area } if area
+        area = unmapped_containing_area(stay)
+        if area
+          place = Places::LegacyAreaAdapter.new(user: user).resolve(area)
+          return { area: nil, place: place, name: place.name, location_label: place.name, evidence: :place }
+        end
 
-        place = known_place(stay)
-        return { area: nil, place: place, name: place.name, evidence: :place } if place
+        place = containing_place(stay)
+        return { area: nil, place: place, name: place.name, location_label: place.name, evidence: :place } if place
 
         poi_name = poi_vote(stay)
         lookup = poi_name ? nil : reverse_lookup(stay)
@@ -32,11 +35,11 @@ module Visits
           minted = PlaceFinder.new(user).find_or_create_place(
             center_lat: stay[:center_lat], center_lon: stay[:center_lon], suggested_name: poi_name
           )
-          return { area: nil, place: minted, name: poi_name, evidence: :poi }
+          return { area: nil, place: minted, name: poi_name, location_label: poi_name, evidence: :poi }
         end
 
         address = address_name(lookup)
-        return { area: nil, place: nil, name: address, evidence: :address } if address
+        return { area: nil, place: nil, name: address, location_label: address, evidence: :address } if address
 
         { area: nil, place: nil, name: nil, evidence: :none }
       end
@@ -45,29 +48,25 @@ module Visits
 
       attr_reader :user, :policy
 
-      def containing_area(stay)
-        user.areas.find do |area|
+      # Keeps Areas functional while the async migration is draining. Once an
+      # Area has a mapping, its Place participates in the canonical path below.
+      def unmapped_containing_area(stay)
+        user.areas.where.not(id: LegacyAreaPlaceMapping.select(:area_id)).find do |area|
           distance_m(stay[:center_lat], stay[:center_lon], area.latitude, area.longitude) <= area.radius
         end
       end
 
-      # Manual curation outranks everything; among equals the user's own
-      # confirmed history, then plain distance.
-      def known_place(stay)
-        candidates = user.places
-                         .near([stay[:center_lat], stay[:center_lon]], policy.attribution_radius_m, :m)
-                         .to_a
+      def containing_place(stay)
+        candidates = user.places.select do |place|
+          distance_m(stay[:center_lat], stay[:center_lon], place.lat, place.lon) <= place.visit_radius
+        end
         return nil if candidates.empty?
-
-        history = user.visits.active.confirmed
-                      .where(place_id: candidates.map(&:id))
-                      .group(:place_id).count
 
         candidates.min_by do |place|
           [
-            place.manual? ? 0 : 1,
-            -history.fetch(place.id, 0),
-            distance_m(stay[:center_lat], stay[:center_lon], place.lat, place.lon)
+            place.visit_radius,
+            distance_m(stay[:center_lat], stay[:center_lon], place.lat, place.lon),
+            place.id
           ]
         end
       end

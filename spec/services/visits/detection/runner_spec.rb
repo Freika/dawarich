@@ -151,15 +151,17 @@ RSpec.describe Visits::Detection::Runner do
     expect(second).to eq(first)
   end
 
-  it 'labels a stay inside a user area — area visit counts keep working without the old area detector' do
+  it 'converts a matching legacy Area and assigns its canonical Place' do
     area = create(:area, user: user, latitude: 51.3402, longitude: 12.3712, radius: 200, name: 'Home Zone')
     seed_scenario(:home_gap)
 
     created = run
 
-    expect(created.first.area).to eq(area)
-    expect(created.first.name).to eq('Home Zone')
-    expect(user.visits.where(area_id: area.id).count).to eq(1)
+    place = LegacyAreaPlaceMapping.find_by!(area:).place
+    expect(created.first.area).to be_nil
+    expect(created.first.place).to eq(place)
+    expect(created.first).to have_attributes(name: nil, location_label: 'Home Zone')
+    expect(user.visits.where(place_id: place.id).count).to eq(1)
   end
 
   it 'clears stale machine visits the data no longer supports' do

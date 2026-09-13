@@ -52,6 +52,7 @@ RSpec.describe 'POST /api/v1/visits/:id/select_place' do
     body = JSON.parse(response.body)
     expect(body['name']).to eq('Café Bravo')
     expect(body['id']).to eq(visit.reload.place_id)
+    expect(body['visit_radius']).to eq(50)
   end
 
   it 'returns 404 for a visit not owned by current user' do

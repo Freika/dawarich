@@ -75,7 +75,6 @@ const LAYER_NAME_MAP = {
   Hexagons: "hexagonsEnabled",
   Visits: "visitsEnabled",
   Photos: "photosEnabled",
-  Areas: "areasEnabled",
   Tracks: "tracksEnabled",
   Flights: "flightsEnabled",
   "Fog of War": "fogEnabled",
@@ -124,8 +123,8 @@ export function bulkPointsRequired(settings = {}) {
     Boolean(settings.heatmapEnabled && !tiledRequested) ||
     Boolean(
       settings.fogEnabled &&
-        settings.fogOfWarMode !== "hexagons" &&
-        !tiledRequested,
+      settings.fogOfWarMode !== "hexagons" &&
+      !tiledRequested,
     ) ||
     Boolean(settings.scratchEnabled)
   )

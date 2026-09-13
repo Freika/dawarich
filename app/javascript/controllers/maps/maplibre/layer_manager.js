@@ -2,7 +2,6 @@ import { shouldShowPointPopup } from "controllers/maps/maplibre/event_handlers"
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { AnomaliesLayer } from "maps_maplibre/layers/anomalies_layer"
-import { AreasLayer } from "maps_maplibre/layers/areas_layer"
 import { FamilyLayer } from "maps_maplibre/layers/family_layer"
 import { FlightsLayer } from "maps_maplibre/layers/flights_layer"
 import { FogLayer } from "maps_maplibre/layers/fog_layer"
@@ -49,7 +48,6 @@ export class LayerManager {
     routesGeoJSON,
     visitsGeoJSON,
     photosGeoJSON,
-    areasGeoJSON,
     tracksGeoJSON,
     placesGeoJSON,
     flightsGeoJSON,
@@ -57,13 +55,12 @@ export class LayerManager {
     performanceMonitor.mark("add-layers")
 
     // Layer order matters - layers added first render below layers added later
-    // Order: scratch (bottom) -> heatmap -> areas -> tracks -> routes (visual) -> visits -> places -> photos -> family -> points -> routes-hit (interaction) -> recent-point (top) -> fog (canvas overlay)
+    // Order: scratch (bottom) -> heatmap -> tracks -> routes (visual) -> visits -> places -> photos -> family -> points -> routes-hit (interaction) -> recent-point (top) -> fog (canvas overlay)
     // Note: routes-hit is above points visually but points dragging takes precedence via event ordering
 
     await this._addScratchLayer(pointsGeoJSON)
     this._addHeatmapLayer(pointsGeoJSON)
     this._addHexagonLayer()
-    this._addAreasLayer(areasGeoJSON)
     this._addTracksLayer(tracksGeoJSON)
     this._addRoutesLayer(routesGeoJSON)
     this._addFlightsLayer(flightsGeoJSON)
@@ -105,10 +102,9 @@ export class LayerManager {
     this.map.on("click", "visits", handlers.handleVisitClick)
     this.map.on("click", "photos", handlers.handlePhotoClick)
     this.map.on("click", "places", handlers.handlePlaceClick)
-    // Areas have multiple layers (fill, outline, labels)
-    this.map.on("click", "areas-fill", handlers.handleAreaClick)
-    this.map.on("click", "areas-outline", handlers.handleAreaClick)
-    this.map.on("click", "areas-labels", handlers.handleAreaClick)
+    this.map.on("click", "places-radius-fill", handlers.handlePlaceClick)
+    this.map.on("click", "places-radius-outline", handlers.handlePlaceClick)
+    this.map.on("click", "places-labels", handlers.handlePlaceClick)
 
     // Anomalies click handler
     this.map.on("click", "anomalies", handlers.handleAnomalyClick)
@@ -162,11 +158,19 @@ export class LayerManager {
     this.map.on("mouseleave", "photos", () => {
       this.map.getCanvas().style.cursor = ""
     })
-    this.map.on("mouseenter", "places", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    this.map.on("mouseleave", "places", () => {
-      this.map.getCanvas().style.cursor = ""
+    const placeLayers = [
+      "places",
+      "places-radius-fill",
+      "places-radius-outline",
+      "places-labels",
+    ]
+    placeLayers.forEach((layerId) => {
+      this.map.on("mouseenter", layerId, () => {
+        this.map.getCanvas().style.cursor = "pointer"
+      })
+      this.map.on("mouseleave", layerId, () => {
+        this.map.getCanvas().style.cursor = ""
+      })
     })
     // Anomalies cursor handlers
     this.map.on("mouseenter", "anomalies", () => {
@@ -189,20 +193,6 @@ export class LayerManager {
     this.map.on("mouseleave", "routes-hit", () => {
       this.map.getCanvas().style.cursor = ""
     })
-    // Areas hover handlers for all sub-layers
-    const areaLayers = ["areas-fill", "areas-outline", "areas-labels"]
-    areaLayers.forEach((layerId) => {
-      // Only add handlers if layer exists
-      if (this.map.getLayer(layerId)) {
-        this.map.on("mouseenter", layerId, () => {
-          this.map.getCanvas().style.cursor = "pointer"
-        })
-        this.map.on("mouseleave", layerId, () => {
-          this.map.getCanvas().style.cursor = ""
-        })
-      }
-    })
-
     // Map-level click to deselect routes and tracks
     this.map.on("click", (e) => {
       const routeFeatures = this.map.queryRenderedFeatures(e.point, {
@@ -347,17 +337,6 @@ export class LayerManager {
     })
     this.layers.hexagonsLayer.add({ type: "FeatureCollection", features: [] })
     return this.layers.hexagonsLayer
-  }
-
-  _addAreasLayer(areasGeoJSON) {
-    if (!this.layers.areasLayer) {
-      this.layers.areasLayer = new AreasLayer(this.map, {
-        visible: this.settings.areasEnabled || false,
-      })
-      this.layers.areasLayer.add(areasGeoJSON)
-    } else {
-      this.layers.areasLayer.update(areasGeoJSON)
-    }
   }
 
   _addTracksLayer(tracksGeoJSON) {

@@ -30,7 +30,24 @@ class Api::V1::VisitsController < ApiController
   end
 
   def create
-    service = Visits::Create.new(current_api_user, visit_params)
+    attributes = visit_params.to_h
+    if attributes[:place_id].present? && attributes[:area_id].present?
+      return render json: { error: I18n.t('controllers.api.v1.visits.conflicting_place_and_area') },
+                    status: :unprocessable_content
+    end
+
+    if attributes[:area_id].present?
+      area = current_api_user.areas.find_by(id: attributes[:area_id])
+      unless area
+        return render json: { error: I18n.t('controllers.api.v1.visits.invalid_area') },
+                      status: :unprocessable_content
+      end
+
+      attributes['place_id'] = Places::LegacyAreaAdapter.new(user: current_api_user).resolve(area).id
+      attributes['area_id'] = nil
+    end
+
+    service = Visits::Create.new(current_api_user, attributes)
 
     result = service.call
 
@@ -44,26 +61,35 @@ class Api::V1::VisitsController < ApiController
 
   def update
     visit = current_api_user.scoped_visits.find(params[:id])
+    attributes = visit_params.to_h
 
-    if visit_params[:place_id].present?
-      place = current_api_user.places.find_by(id: visit_params[:place_id]) ||
-              visit.suggested_places.find_by(id: visit_params[:place_id])
+    if attributes[:place_id].present? && attributes[:area_id].present?
+      return render json: { error: I18n.t('controllers.api.v1.visits.conflicting_place_and_area') },
+                    status: :unprocessable_content
+    end
+
+    if attributes[:place_id].present?
+      place = current_api_user.places.find_by(id: attributes[:place_id]) ||
+              visit.suggested_places.find_by(id: attributes[:place_id])
       if place.nil?
         return render json: { error: I18n.t('controllers.api.v1.visits.invalid_place') },
                       status: :unprocessable_content
       end
     end
 
-    area = nil
-    if visit_params[:area_id].present?
-      area = current_api_user.areas.find_by(id: visit_params[:area_id])
+    if attributes[:area_id].present?
+      area = current_api_user.areas.find_by(id: attributes[:area_id])
       if area.nil?
         return render json: { error: I18n.t('controllers.api.v1.visits.invalid_area') },
                       status: :unprocessable_content
       end
+
+      mapped_place = Places::LegacyAreaAdapter.new(user: current_api_user).resolve(area)
+      attributes['place_id'] = mapped_place.id
+      attributes['area_id'] = nil
     end
 
-    visit = update_visit(visit, area: area)
+    visit = update_visit(visit, attributes: attributes)
 
     render json: Api::VisitSerializer.new(visit).call
   end
@@ -200,8 +226,10 @@ class Api::V1::VisitsController < ApiController
     params.permit(:status, visit_ids: [])
   end
 
-  def update_visit(visit, area: nil)
-    attributes = visit_params.to_h.except('latitude', 'longitude')
+  def update_visit(visit, attributes: visit_params.to_h)
+    attributes = attributes.except('latitude', 'longitude')
+    attributes['area_id'] = nil if attributes['place_id'].present?
+    attributes['name'] = attributes['name'].presence if attributes.key?('name')
     user_provided_name = attributes['name'].present?
     # Editing a suggested visit is an assertion that it happened — mirror the
     # web controller and confirm it unless the request set a status itself,
@@ -211,9 +239,7 @@ class Api::V1::VisitsController < ApiController
     visit.assign_attributes(attributes)
 
     if attributes['place_id'].present? && !user_provided_name && visit.place.present?
-      visit.name = visit.place.name
-    elsif area && !user_provided_name && area.name.present?
-      visit.name = area.name
+      visit.location_label = visit.place.name
     end
 
     visit.save!

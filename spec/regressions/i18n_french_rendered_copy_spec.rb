@@ -245,7 +245,7 @@ RSpec.describe 'Rendered French copy' do
       expect(I18n.t('visits.buttons.delete_this_visit_your_location_points_stay'))
         .to eq('Voulez-vous supprimer cette visite ? Vos points de localisation resteront.')
       expect(I18n.t('places.drawer.delete_this_place_this_cannot_be_undone'))
-        .to eq('Voulez-vous supprimer ce lieu ? Cette action est irréversible.')
+        .to eq('Supprimer ce lieu ? Ses visites seront conservées sans lieu associé.')
       expect(I18n.t('statuses.deleting')).to eq('Suppression en cours')
       expect(I18n.t('javascript.map_controls.toggle_footer')).to eq('Afficher/masquer le pied de page')
       expect(I18n.t('javascript.map_controls.toggle_panel')).to eq('Afficher/masquer le panneau')
