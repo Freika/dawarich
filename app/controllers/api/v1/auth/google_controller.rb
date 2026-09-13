@@ -23,11 +23,24 @@ class Api::V1::Auth::GoogleController < Api::V1::Auth::BaseController
       error: 'email_not_verified',
       message: I18n.t('controllers.api.v1.auth.google.google_has_not_verified_this_email_sign_in_with_password')
     }, status: :forbidden
-  rescue Auth::FindOrCreateOauthUser::LinkVerificationSent
+  rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
+    if e.rate_limited
+      response.headers['Retry-After'] = e.retry_after.to_s
+      render json: {
+        error: 'verification_rate_limited',
+        message: I18n.t('controllers.api.v1.auth.google.verification_rate_limited')
+      }, status: :too_many_requests
+    else
+      render json: {
+        error: 'verification_sent',
+        message: I18n.t('controllers.api.v1.auth.google.this_email_already_has_a_dawarich_account_we_sent_a')
+      }, status: :accepted
+    end
+  rescue Auth::FindOrCreateOauthUser::AccountPendingDeletion
     render json: {
-      error: 'verification_sent',
-      message: I18n.t('controllers.api.v1.auth.google.this_email_already_has_a_dawarich_account_we_sent_a')
-    }, status: :accepted
+      error: 'account_pending_deletion',
+      message: I18n.t('controllers.api.v1.auth.account_pending_deletion')
+    }, status: :conflict
   end
 
   private

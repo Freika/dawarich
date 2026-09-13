@@ -27,7 +27,7 @@ class Gpx::TrackImporter
 
   def call
     batch = []
-    each_trkpt do |point_hash, tracker_id|
+    handler = each_trkpt do |point_hash, tracker_id|
       data = prepare_point(point_hash, tracker_id)
       next unless data
 
@@ -38,6 +38,7 @@ class Gpx::TrackImporter
       batch = []
     end
     flush(batch) unless batch.empty?
+    record_element_counts(handler)
   ensure
     cleanup_temp_file
   end
@@ -50,7 +51,27 @@ class Gpx::TrackImporter
       seek_to_document_start(io)
       handler = TrkptStreamHandler.new(import.id, import.name, &block)
       Nokogiri::XML::SAX::Parser.new(handler).parse(io)
+      handler.raise_if_fatal_error!
+      handler
     end
+  end
+
+  def record_element_counts(handler)
+    counts = {
+      'waypoints_seen' => handler.waypoint_count,
+      'trackpoints_seen' => handler.trackpoint_count,
+      'route_points_seen' => handler.route_point_count,
+      'parse_errors_seen' => handler.errors.size
+    }.select { |_, value| value.positive? }
+    return if counts.empty?
+
+    if handler.errors.any?
+      Rails.logger.warn(
+        "GPX import #{import.id} recovered from #{handler.errors.size} XML error(s): #{handler.errors.first}"
+      )
+    end
+
+    import.update!(raw_data: (import.raw_data || {}).merge(counts))
   end
 
   def seek_to_document_start(io)
@@ -69,10 +90,9 @@ class Gpx::TrackImporter
 
     elevation = point['ele'].to_f
 
-    {
+    attrs = {
       lonlat: "POINT(#{point['lon'].to_d} #{point['lat'].to_d})",
       altitude: elevation,
-      altitude_decimal: elevation,
       timestamp: Time.zone.parse(point['time']).utc.to_i,
       tracker_id: tracker_id,
       import_id: import.id,
@@ -81,6 +101,8 @@ class Gpx::TrackImporter
       created_at: Time.current,
       updated_at: Time.current
     }
+    attrs[:altitude_decimal] = elevation if Point.altitude_decimal_supported?
+    attrs
   end
 
   def importer_name
@@ -98,11 +120,27 @@ class Gpx::TrackImporter
   end
 
   class TrkptStreamHandler < Nokogiri::XML::SAX::Document
+    # libxml2 stops parsing at any well-formedness error, so a document whose
+    # root element never closed lost data and is unusable whatever the message
+    # says. Once the root did close, only these messages still mean the
+    # document was unusable; anything else (e.g. an undeclared namespace
+    # prefix on an extension element) was recovered from.
+    FATAL_ERROR_PATTERNS = [
+      /Premature end of data/i,
+      /Extra content at the end/i,
+      /Start tag expected/i
+    ].freeze
+
+    attr_reader :waypoint_count, :trackpoint_count, :route_point_count, :errors
+
     def initialize(import_id, import_name, &block)
       super()
       @import_id = import_id
       @import_name = import_name
       @callback = block
+      @waypoint_count = 0
+      @trackpoint_count = 0
+      @route_point_count = 0
       @stack = nil
       @text = +''
       @trk_index = -1
@@ -111,9 +149,14 @@ class Gpx::TrackImporter
       @trk_identity_source = nil
       @capturing_trk_field = nil
       @capture_depth = 0
+      @errors = []
+      @depth = 0
+      @root_closed = false
     end
 
     def start_element_namespace(name, attrs = [], _prefix = nil, _uri = nil, _namespaces = [])
+      @depth += 1
+
       case name
       when 'trk'
         @trk_index += 1
@@ -125,6 +168,12 @@ class Gpx::TrackImporter
         return
       when 'trkseg'
         @seg_index += 1
+        return
+      when 'wpt'
+        @waypoint_count += 1
+        return
+      when 'rtept'
+        @route_point_count += 1
         return
       end
 
@@ -142,6 +191,7 @@ class Gpx::TrackImporter
 
       attrs_h = attrs.each_with_object({}) { |a, h| h[a.localname] = a.value }
       if name == 'trkpt' && @stack.nil?
+        @trackpoint_count += 1
         @stack = [attrs_h]
         @text = +''
       elsif @stack
@@ -158,10 +208,33 @@ class Gpx::TrackImporter
     end
 
     def error(message)
-      raise Nokogiri::XML::SyntaxError, I18n.t('services.gpx.track_importer.parse_error', message:)
+      # Nokogiri's SAX `error` callback fires for both fatal well-formedness
+      # breaks and recoverable libxml2 errors (e.g. an undeclared namespace
+      # prefix on an extension element), without surfacing the severity.
+      # Collect every message and decide whether the document is unusable
+      # after parsing completes -- raising here would abort an otherwise
+      # valid import and discard every parsed <trkpt>.
+      @errors << message
+    end
+
+    def raise_if_fatal_error!
+      return if @errors.empty?
+
+      fatal =
+        if @root_closed
+          @errors.find { |message| FATAL_ERROR_PATTERNS.any? { |pattern| pattern.match?(message) } }
+        else
+          @errors.last
+        end
+      return unless fatal
+
+      raise Nokogiri::XML::SyntaxError, I18n.t('services.gpx.track_importer.parse_error', message: fatal)
     end
 
     def end_element_namespace(name, _prefix = nil, _uri = nil)
+      @depth -= 1
+      @root_closed = true if @depth.zero?
+
       if @capturing_trk_field
         if @capture_depth.positive?
           @capture_depth -= 1

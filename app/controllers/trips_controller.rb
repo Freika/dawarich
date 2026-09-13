@@ -2,12 +2,11 @@
 
 class TripsController < ApplicationController
   include FlashStreamable
-  include PosterStudioContext
+  include VideoStudioContext
 
   before_action :authenticate_user!
   before_action :authenticate_active_user!, only: %i[new create recalculate]
   before_action :set_trip, only: %i[show edit update destroy recalculate export]
-  before_action :set_coordinates, only: %i[show edit]
 
   def index
     @trips = current_user.trips.order(started_at: :desc).page(params[:page]).per(6)
@@ -20,7 +19,7 @@ class TripsController < ApplicationController
     @photos_by_day = @trip.photos_by_day(@timezone)
     @day_notes = @trip.notes.index_by(&:date)
     @day_stats = compute_day_stats
-    load_poster_studio_context
+    load_video_studio_context
 
     return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
 
@@ -29,7 +28,6 @@ class TripsController < ApplicationController
 
   def new
     @trip = Trip.new
-    @coordinates = []
   end
 
   def edit; end
@@ -140,13 +138,6 @@ class TripsController < ApplicationController
 
   def set_trip
     @trip = current_user.trips.find(params[:id])
-  end
-
-  def set_coordinates
-    @coordinates = @trip.points.pluck(
-      Arel.sql('ST_Y(lonlat::geometry)'), Arel.sql('ST_X(lonlat::geometry)'),
-      :battery, :altitude, :timestamp, :velocity, :id, :country
-    ).map { [_1.to_f, _2.to_f, _3.to_s, _4.to_s, _5.to_s, _6.to_s, _7.to_s, _8.to_s] }
   end
 
   def trip_params

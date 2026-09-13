@@ -3,6 +3,8 @@
 module Api
   module V1
     class PlacesController < ApiController
+      CO_LOCATED_THRESHOLD_METERS = 50
+
       before_action :set_place, only: %i[show update destroy]
 
       def index
@@ -131,7 +133,7 @@ module Api
         limit = [[params[:limit]&.to_i || 10, 1].max, 50].min
         query = params[:q].to_s.strip
 
-        places =
+        external_places =
           if query.length >= 2
             Places::Search.new(user: current_api_user, query: query, latitude: lat, longitude: lon,
                                radius: radius, limit: limit).call
@@ -139,6 +141,17 @@ module Api
             Places::NearbySearch.new(user: current_api_user, latitude: lat, longitude: lon,
                                      radius: radius, limit: limit, cache: true).call
           end
+
+        user_places = Places::UserSearch.new(
+          user: current_api_user, latitude: lat, longitude: lon, radius: radius, limit: limit, query: query
+        ).call
+        user_places_by_name = user_places.group_by { |place| place[:name].to_s.strip.downcase }
+        external_places.reject! do |place|
+          co_located_saved_place?(place, user_places_by_name)
+        end
+        places = (user_places + external_places)
+                 .sort_by { |place| distance_from_query(place, lat, lon) }
+                 .first(limit)
 
         areas = Areas::Nearby.new(
           user: current_api_user, latitude: lat, longitude: lon, radius: radius, query: query
@@ -148,6 +161,35 @@ module Api
       end
 
       private
+
+      def distance_from_query(place, latitude, longitude)
+        return Float::INFINITY if place[:latitude].nil? || place[:longitude].nil?
+
+        distance = Geocoder::Calculations.distance_between(
+          [latitude, longitude],
+          [place[:latitude], place[:longitude]],
+          units: :km
+        )
+        distance.is_a?(Numeric) && distance.finite? ? distance : Float::INFINITY
+      end
+
+      def co_located_saved_place?(external, user_places_by_name)
+        return false if external[:latitude].nil? || external[:longitude].nil?
+
+        matches = user_places_by_name[external[:name].to_s.strip.downcase]
+        return false if matches.blank?
+
+        matches.any? do |place|
+          next false if place[:latitude].nil? || place[:longitude].nil?
+
+          distance = Geocoder::Calculations.distance_between(
+            [external[:latitude], external[:longitude]],
+            [place[:latitude], place[:longitude]],
+            units: :km
+          )
+          distance.is_a?(Numeric) && distance.finite? && (distance * 1000) <= CO_LOCATED_THRESHOLD_METERS
+        end
+      end
 
       def set_place
         @place = current_api_user.places.includes(:tags, :active_visits).find(params[:id])

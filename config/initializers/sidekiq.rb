@@ -55,6 +55,9 @@ end
 # removed. The floor of 1 matters for the same reason - limit_fetch treats 0 as
 # "never acquire", which would strand the queue permanently.
 if Sidekiq.server?
+  require 'dawarich/idle_queue_check'
+  Sidekiq::LimitFetch::Global::Selector.singleton_class.prepend(Dawarich::IdleQueueCheck)
+
   pool_size = ENV['BACKGROUND_PROCESSING_CONCURRENCY'].presence&.to_i || 10
   configured = ENV['REVERSE_GEOCODING_CONCURRENCY'].presence&.to_i
 

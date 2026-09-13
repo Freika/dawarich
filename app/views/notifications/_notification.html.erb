@@ -1,11 +1,12 @@
-<div role="<%= notification.kind %>" class="<%= notification.kind %> shadow-lg p-5 flex justify-between items-center mb-4 rounded-lg bg-base-200" id="<%= dom_id notification %>">
+<% show_content = local_assigns.fetch(:show_content, params[:action] == 'show') %>
+<div role="<%= notification.kind %>" class="<%= notification.kind %> shadow-lg p-5 flex justify-between items-center mb-4 rounded-lg bg-base-200" id="<%= dom_id(notification, show_content ? :detail : nil) %>">
   <div class="flex-1 min-w-0 [overflow-wrap:anywhere]">
     <h3 class="font-bold text-xl">
       <%= link_to notification.title, notification, class: "link hover:no-underline #{notification_link_color(notification)}" %>
     </h3>
     <div class="text-sm text-gray-500"><%= t('common.time_ago', time: relative_distance_in_words(notification.created_at)) %></div>
 
-    <% if params[:action] == 'show' %>
+    <% if show_content %>
       <div class="mt-2">
         <%= sanitize notification.content %>
 

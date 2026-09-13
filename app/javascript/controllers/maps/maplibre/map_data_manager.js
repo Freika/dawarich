@@ -9,6 +9,7 @@ import {
 } from "maps_maplibre/utils/flight_mask"
 import { trimOutlierCoords } from "maps_maplibre/utils/geometry"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
+import { overlayAwarePadding } from "maps_maplibre/utils/map_padding"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 
 const EMPTY_GEOJSON = { type: "FeatureCollection", features: [] }
@@ -487,8 +488,13 @@ export class MapDataManager {
     if (bounds.isEmpty()) return
     if (skipIfCovered && this._boundsCovered(bounds)) return
 
+    const mapRect = this.map.getContainer()?.getBoundingClientRect()
+    const toolbarRect = document
+      .querySelector(".map-button-cluster")
+      ?.getBoundingClientRect()
+
     this.map.fitBounds(bounds, {
-      padding: 50,
+      padding: overlayAwarePadding(mapRect, toolbarRect),
       maxZoom: 15,
       animate,
     })

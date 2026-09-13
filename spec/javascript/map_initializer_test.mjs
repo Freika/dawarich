@@ -22,11 +22,14 @@ async function loadMapInitializer({ getMapStyle, Toast }) {
     ),
     "utf8",
   )
-  const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
+  const withoutImports = source
+    .replace('import.meta.resolve("mapbox-gl-rtl-text")', '"/assets/rtl.js"')
+    .replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
   const dependencies = `
     const maplibregl = globalThis.__mapInitializerMaplibre
     const getMapStyle = globalThis.__mapInitializerGetMapStyle
     const Toast = globalThis.__mapInitializerToast
+    const registerRTLTextPlugin = () => {}
     const translate = (key) => key
     ${basemapUrlSource.replace(/^export /gm, "")}
   `

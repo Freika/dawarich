@@ -71,6 +71,9 @@ class Users::AppleOauthController < ApplicationController
   rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
     reject_with(I18n.t('controllers.users.apple_oauth.email_not_verified'))
     capture_apple_breadcrumb('unverified_email')
+  rescue Auth::FindOrCreateOauthUser::AccountPendingDeletion
+    reject_with(I18n.t('controllers.users.apple_oauth.account_pending_deletion'))
+    capture_apple_breadcrumb('account_pending_deletion')
   rescue Auth::FindOrCreateOauthUser::MissingOauthEmail => e
     reject_with(
       I18n.t('controllers.users.apple_oauth.missing_email')

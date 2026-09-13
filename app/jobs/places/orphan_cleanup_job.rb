@@ -4,14 +4,9 @@ class Places::OrphanCleanupJob < ApplicationJob
   queue_as :places
   BATCH = 500
 
-  # Pass a user id to drain that user's orphan suggested places, or nil to drain
-  # ownerless (user_id IS NULL) orphans that no per-user pass can reach.
+  # Drains the given user's orphan suggested places. Every place carries a
+  # user_id (NOT NULL since 20260815100001), so there is no ownerless pass.
   def perform(user_id)
-    if user_id.nil?
-      drain('ownerless', ownerless_victims_sql, [])
-      return
-    end
-
     return unless User.exists?(id: user_id)
 
     drain("user=#{user_id}", user_victims_sql, victim_binds(user_id))
@@ -52,10 +47,6 @@ class Places::OrphanCleanupJob < ApplicationJob
 
   def user_victims_sql
     victims_sql('p.user_id = $1')
-  end
-
-  def ownerless_victims_sql
-    victims_sql('p.user_id IS NULL')
   end
 
   def victims_sql(user_predicate)

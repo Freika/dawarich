@@ -4,6 +4,7 @@ class Api::V1::PointsController < ApiController
   include SafeTimestampParser
 
   BULK_DESTROY_MAX = 5_000
+  MAX_PER_PAGE = 10_000
 
   before_action :authenticate_active_api_user!, only: %i[create update destroy bulk_destroy reapply_anomaly_filter]
   before_action :require_write_api!, only: %i[update destroy bulk_destroy reapply_anomaly_filter]
@@ -55,6 +56,7 @@ class Api::V1::PointsController < ApiController
 
     per_page = params[:per_page].to_i
     per_page = 100 unless per_page.positive?
+    per_page = [per_page, MAX_PER_PAGE].min
     points = points
              .order(timestamp: order)
              .page(params[:page])
@@ -63,7 +65,9 @@ class Api::V1::PointsController < ApiController
     serialized_points = if slim_points?
                           Points::SlimCollectionQuery.new(points).call
                         else
-                          points.map { |point| point_serializer.new(point).call }
+                          # The serializer reads the device combo through each
+                          # point's source; preloading keeps that one query.
+                          points.preload(:source).map { |point| point_serializer.new(point).call }
                         end
 
     total_count = cache_count.to_i

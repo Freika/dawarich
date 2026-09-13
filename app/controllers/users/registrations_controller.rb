@@ -36,7 +36,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
       # the reverse-trial redirect below never consults the sign-up path, and
       # the ticket must not outlive the signup that owns it. It runs after
       # each flash decision so the "Importing..." notice isn't overwritten.
-      if @signup_variant == 'reverse_trial'
+      if @signup_variant == 'reverse_trial' && !@invitation_accepted
         resource.update!(status: :pending_payment)
         claim_pending_import_for(resource)
         redirect_to manager_checkout_url(resource), allow_other_host: true
@@ -178,24 +178,9 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def check_registration_allowed
-    return unless self_hosted_mode?
+    return if registration_policy.allowed?
 
-    # When OIDC is enabled and email/password registration is disabled,
-    # block all email/password registration including family invitations
-    if oidc_only_mode?
-      alert = I18n.t('controllers.users.registrations.email_password_registration_is_disabled_please_use_oidc_to_sign')
-      redirect_to root_path,
-                  alert: alert
-      return
-    end
-
-    return if valid_invitation_token?
-    return if email_password_registration_allowed?
-
-    alert = I18n.t(
-      'controllers.users.registrations.registration_is_not_available_please_contact_your_administrator_for_acce'
-    )
-    redirect_to root_path, alert: alert
+    redirect_to root_path, alert: I18n.t(registration_policy.denial_message_key)
   end
 
   def set_invitation
@@ -204,18 +189,22 @@ class Users::RegistrationsController < Devise::RegistrationsController
     @invitation = Family::Invitation.find_by(token: invitation_token)
   end
 
-  def self_hosted_mode?
-    DawarichSettings.self_hosted?
-  end
-
-  def valid_invitation_token?
-    @invitation&.can_be_accepted?
+  def registration_policy
+    @registration_policy ||= Auth::EmailPasswordRegistrationPolicy.new(
+      invitation: @invitation,
+      email: user_param(:email) || @invitation&.email
+    )
   end
 
   def invitation_token
     @invitation_token ||= params[:invitation_token] ||
-                          params.dig(:user, :invitation_token) ||
+                          user_param(:invitation_token) ||
                           session[:invitation_token]
+  end
+
+  def user_param(key)
+    user_params = params[:user]
+    user_params[key] if user_params.is_a?(ActionController::Parameters)
   end
 
   def accept_invitation_for_user(user)
@@ -227,6 +216,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     )
 
     if service.call
+      @invitation_accepted = true
       flash[:notice] =
         I18n.t('controllers.users.registrations.welcome_to_name_you_re_now_part_of_the_family',
                name: @invitation.family.name)
@@ -248,19 +238,11 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def store_signup_intent(user)
     return if DawarichSettings.self_hosted?
 
-    intent = params.dig(:user, :signup_intent)
+    intent = user_param(:signup_intent)
     return unless intent.in?(%w[cloud self_hosted_demo])
 
     user.update_columns(
       settings: user.settings.merge('signup_intent' => intent)
     )
-  end
-
-  def email_password_registration_allowed?
-    DawarichSettings.registration_enabled?
-  end
-
-  def oidc_only_mode?
-    DawarichSettings.oidc_enabled? && !email_password_registration_allowed?
   end
 end

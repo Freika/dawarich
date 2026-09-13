@@ -60,12 +60,12 @@ RSpec.describe Points::Create do
       end
 
       it 'upserts the processed data' do
-        expect(Point).to receive(:archival_safe_upsert_all)
-          .with(
-            processed_data,
-            returning: Arel.sql(Point::UPSERT_RETURNING_COLUMNS)
-          )
-          .and_return(upsert_result)
+        expect(Point).to receive(:archival_safe_upsert_all) do |rows, options|
+          expect(rows.map { |row| row.slice(:lonlat, :timestamp, :user_id) })
+            .to eq(processed_data.map { |row| row.slice(:lonlat, :timestamp, :user_id) })
+          expect(options[:returning]).to eq(Arel.sql(Point::UPSERT_RETURNING_COLUMNS))
+          upsert_result
+        end
 
         described_class.new(user, point_params).call
       end
@@ -420,12 +420,11 @@ RSpec.describe Points::Create do
       before do
         allow(Points::Params).to receive(:new).with(geojson_data, user.id).and_return(params_service)
         allow(params_service).to receive(:call).and_return(all_processed_data)
-        allow(Point).to receive(:archival_safe_upsert_all)
-          .with(
-            all_processed_data,
-            returning: Arel.sql(Point::UPSERT_RETURNING_COLUMNS)
-          )
-          .and_return(expected_results)
+        allow(Point).to receive(:archival_safe_upsert_all) do |rows, options|
+          expect(rows.map { |row| row[:lonlat] }).to eq(all_processed_data.map { |row| row[:lonlat] })
+          expect(options[:returning]).to eq(Arel.sql(Point::UPSERT_RETURNING_COLUMNS))
+          expected_results
+        end
       end
 
       it 'correctly processes real GeoJSON example data' do

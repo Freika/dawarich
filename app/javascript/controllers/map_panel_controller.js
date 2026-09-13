@@ -214,6 +214,10 @@ export default class extends Controller {
     document.dispatchEvent(new CustomEvent("poster-studio:open"))
   }
 
+  openVideoStudio() {
+    document.dispatchEvent(new CustomEvent("video-studio:open"))
+  }
+
   /**
    * Programmatic equivalent of openTab(event). Opens the settings panel
    * (via the maps--maplibre controller) and activates the given tab on the

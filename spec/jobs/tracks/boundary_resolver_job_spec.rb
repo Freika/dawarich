@@ -45,6 +45,20 @@ RSpec.describe Tracks::BoundaryResolverJob do
     expect(session_manager).to have_received(:mark_failed)
   end
 
+  it 'does not report a session that expires during boundary resolution' do
+    boundary_detector = instance_double(Tracks::BoundaryDetector, resolve_cross_chunk_tracks: 1)
+    allow(Tracks::PerUserLock).to receive(:with_user_lock).with(user.id).and_yield
+    allow(Tracks::BoundaryDetector).to receive(:new).with(user).and_return(boundary_detector)
+    allow(session_manager).to receive_messages(get_session_data: nil, mark_completed: false)
+
+    described_class.perform_now(user.id, session_id)
+
+    expect(boundary_detector).to have_received(:resolve_cross_chunk_tracks)
+    expect(session_manager).to have_received(:mark_completed)
+    expect(ExceptionReporter).not_to have_received(:call)
+    expect(session_manager).not_to have_received(:mark_failed)
+  end
+
   describe 'rescheduling while chunks are still running' do
     let(:pending_session) do
       instance_double(

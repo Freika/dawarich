@@ -11,7 +11,7 @@ module Families
     end
 
     def call
-      return false unless can_accept?
+      return false unless validate_invitation && validate_email_match
 
       if user.in_family?
         @error_message = I18n.t(
@@ -21,13 +21,25 @@ module Families
         return false
       end
 
-      ActiveRecord::Base.transaction do
-        create_membership
-        update_invitation
-        send_notifications
+      accepted = false
+      family = invitation.family
+      family.with_lock do
+        # Keep subscription callbacks from changing the period between the
+        # acceptance gate and settlement, and re-read queued webhook changes.
+        family.creator.with_lock do
+          family.refresh_access_until!(family.creator)
+          invitation.reload
+          if can_accept?
+            create_membership
+            settle_new_member
+            update_invitation
+            send_notifications
+            accepted = true
+          end
+        end
       end
 
-      true
+      accepted
     rescue ActiveRecord::RecordInvalid => e
       handle_record_invalid_error(e)
       false
@@ -64,11 +76,15 @@ module Families
     end
 
     def validate_family_plan
-      return true if DawarichSettings.family_feature_available_for?(invitation.family.owner)
+      return true if family_plan_live?
 
       @error_message = I18n.t('services.families.accept_invitation.this_family_s_plan_is_no_longer_active')
 
       false
+    end
+
+    def family_plan_live?
+      invitation.family.access_live?
     end
 
     def validate_family_capacity
@@ -87,6 +103,12 @@ module Families
         user: user,
         role: :member
       )
+    end
+
+    def settle_new_member
+      return if DawarichSettings.self_hosted?
+
+      Families::SyncMembers.new(family: invitation.family).call
     end
 
     def update_invitation

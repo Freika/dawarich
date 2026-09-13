@@ -47,7 +47,7 @@ class Tracks::VectorTileQuery
     Result.new(
       tile: row['tile'],
       feature_count: row['feature_count'].to_i,
-      limit: TRACKS_PER_TILE_LIMIT
+      limit: tile_feature_limit
     )
   end
 
@@ -59,6 +59,10 @@ class Tracks::VectorTileQuery
   end
 
   private
+
+  def tile_feature_limit
+    TRACKS_PER_TILE_LIMIT
+  end
 
   attr_reader :scope, :z, :x, :y
 

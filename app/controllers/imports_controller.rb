@@ -7,11 +7,13 @@ class ImportsController < ApplicationController
   self.page_refresh_morphing = true
 
   SORTABLE_COLUMNS = %w[name status created_at processed byte_size].freeze
+  CLIENT_WRAPPED_METADATA_KEY = 'dawarich_client_wrapped'
+  ORIGINAL_FILENAME_METADATA_KEY = 'dawarich_original_filename'
 
   before_action :authenticate_user!
-  before_action :authenticate_active_user!, only: %i[create]
-  before_action :set_import, only: %i[show edit update destroy]
-  before_action :authorize_import, only: %i[show edit update destroy]
+  before_action :authenticate_active_user!, only: %i[new create]
+  before_action :set_import, only: %i[show edit update destroy download]
+  before_action :authorize_import, only: %i[show edit update destroy download]
   before_action :validate_points_limit, only: %i[new create]
 
   after_action :verify_authorized, except: %i[index]
@@ -28,6 +30,18 @@ class ImportsController < ApplicationController
 
   def show; end
 
+  def download
+    @download = Imports::Download.new(@import)
+    return redirect_to @download.url, allow_other_host: true if @download.ready?
+
+    Rails.cache.fetch(['import-download', @import.id, @import.file.blob_id], expires_in: 1.minute) do
+      Imports::PrepareDownloadJob.perform_later(@import.id, @import.file.blob_id)
+      true
+    end
+    response.set_header('Refresh', '3')
+    render :download, status: :accepted
+  end
+
   def edit; end
 
   def new
@@ -37,6 +51,11 @@ class ImportsController < ApplicationController
   end
 
   def update
+    if unknown_source_param?
+      @import.errors.add(:source, :inclusion)
+      return render :edit, status: :unprocessable_content
+    end
+
     @import.update(import_params)
 
     redirect_to imports_url, notice: I18n.t('controllers.imports.import_was_successfully_updated'), status: :see_other
@@ -96,7 +115,12 @@ status: :unprocessable_content and return
   end
 
   def import_params
-    params.require(:import).permit(:name, files: [])
+    params.require(:import).permit(:name, :source, files: [])
+  end
+
+  def unknown_source_param?
+    source = import_params[:source]
+    source.present? && Import.sources.exclude?(source)
   end
 
   def extract_raw_files
@@ -126,18 +150,47 @@ status: :unprocessable_content and return
     ExceptionReporter.call(error)
   end
 
-  def create_import_from_signed_id(signed_id)
+  def create_import_from_signed_id(item)
+    descriptor = upload_descriptor(item)
+    signed_id = descriptor.fetch('signed_id')
     Rails.logger.debug "Creating import from signed ID: #{signed_id[0..20]}..."
 
     blob = ActiveStorage::Blob.find_signed(signed_id)
+    original_filename = verified_original_filename(blob, descriptor)
+    mark_client_wrapped(blob, original_filename.present?) if descriptor.key?('client_wrapped')
 
-    import_name = generate_unique_import_name(blob.filename.to_s)
+    import_name = generate_unique_import_name(original_filename || blob.filename.to_s)
     import = current_user.imports.build(name: import_name)
     import.file.attach(blob)
 
     import.save!
 
     import
+  end
+
+  def upload_descriptor(item)
+    parsed = JSON.parse(item.to_s)
+    return parsed if parsed.is_a?(Hash) && parsed['signed_id'].present?
+
+    { 'signed_id' => item.to_s }
+  rescue JSON::ParserError
+    { 'signed_id' => item.to_s }
+  end
+
+  def verified_original_filename(blob, descriptor)
+    return unless ActiveModel::Type::Boolean.new.cast(descriptor['client_wrapped'])
+
+    original_filename = File.basename(descriptor['original_filename'].to_s)
+    return if original_filename.blank?
+    return unless blob.filename.to_s == "#{original_filename}.zip"
+
+    original_filename
+  end
+
+  def mark_client_wrapped(blob, wrapped)
+    metadata = blob.metadata.merge(CLIENT_WRAPPED_METADATA_KEY => wrapped)
+    metadata[ORIGINAL_FILENAME_METADATA_KEY] = blob.filename.to_s.delete_suffix('.zip') if wrapped
+    blob.update!(metadata:)
   end
 
   def generate_unique_import_name(original_name)

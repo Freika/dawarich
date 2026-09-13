@@ -150,7 +150,8 @@ RSpec.describe Import, type: :model do
         tcx: 11,
         fit: 12,
         polarsteps: 13,
-        google_photos: 14
+        google_photos: 14,
+        mobile_photo_library: 15
       )
     end
   end

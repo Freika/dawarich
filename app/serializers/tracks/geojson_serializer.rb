@@ -119,6 +119,7 @@ class Tracks::GeojsonSerializer
 
   def segment_identity(segment)
     {
+      id: segment.id,
       mode: segment.transportation_mode,
       emoji: emoji_for_mode(segment.transportation_mode),
       color: color_for_mode(segment.transportation_mode),

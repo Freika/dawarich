@@ -1,0 +1,17 @@
+<%= t('.the_family_plan_has_ended') %>
+
+<%= t('.hi') %> <%= @user.email %>,
+
+<%= t('.family_plan_ended_text', family: @family.name) %>
+
+<%= t('.what_this_means') %>
+- <%= t('.your_data_is_safe_and_still_yours') %>
+- <%= t('.you_can_no_longer_see_your_family_on_the_map') %>
+- <%= t('.your_location_is_no_longer_shared_with_them') %>
+- <%= t('.tracking_and_uploads_are_paused_until_a_plan_is_active') %>
+
+<%= t('.what_you_can_do') %> <%= t('.ask_the_owner_to_renew_text', owner: @owner_email) %>
+<% if @subscription_url.present? %>
+<%= t('.get_your_own_plan') %>: <%= @subscription_url %>
+<% end %>
+<%= t('.nothing_is_deleted_your_history_is_waiting_when_you_come_back') %>

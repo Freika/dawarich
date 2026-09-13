@@ -7,7 +7,11 @@
         <%= extraction_status_badge(import) %>
       </div>
 
-      <% if import.additional_data_extraction_unsupported? %>
+      <% if import.gpx_without_waypoints? %>
+        <p class="text-sm text-base-content/70">
+          <%= t('.this_gpx_file_holds_no_waypoints') %>
+        </p>
+      <% elsif import.additional_data_extraction_unavailable? %>
         <p class="text-sm text-base-content/70">
           <%= t('.this_import_format_doesn_t_carry_visits_named_places_or') %>
         </p>
@@ -72,5 +76,5 @@
     </div>
   </div>
 
-  <%= render 'imports/extraction_dialog', import: import unless import.additional_data_extraction_unsupported? %>
+  <%= render 'imports/extraction_dialog', import: import unless import.additional_data_extraction_unavailable? || import.gpx_without_waypoints? %>
 <% end %>

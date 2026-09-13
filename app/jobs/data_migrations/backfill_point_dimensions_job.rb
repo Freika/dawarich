@@ -68,7 +68,7 @@ class DataMigrations::BackfillPointDimensionsJob < ApplicationJob
       # walk the same id ranges at the same batch size and pace, so in parallel
       # they contend for the same rows, and the bounded lock_timeout turns that
       # contention into aborted batches instead of waits.
-      DataMigrations::BackfillPointCountryIdJob.perform_later
+      DataMigrations::BackfillPointCountryIdJob.perform_later(repair_collisions: true)
       return
     end
 

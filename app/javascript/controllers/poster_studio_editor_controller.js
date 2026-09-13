@@ -105,6 +105,7 @@ export default class extends Controller {
     "loadButton",
     "loadSpinner",
     "loadLabel",
+    "switchButton",
     "orderSection",
     "orderCta",
     "orderButton",
@@ -162,6 +163,7 @@ export default class extends Controller {
       if (!this.subtitleInputTarget.value)
         this.subtitleInputTarget.value = this.dateRangeLabel()
       this.seedDateInputs()
+      await this.provider.ensureTrackLoaded()
 
       this.resizeFrame()
       await this.loadFonts()
@@ -182,6 +184,17 @@ export default class extends Controller {
     this.teardown()
     this.releaseBackdrop()
     this.element.classList.add("hidden")
+  }
+
+  // Alternate view of the same track and date range; carry the provider so a
+  // trip-locked studio stays locked to that trip.
+  switchToVideo() {
+    if (this.rangeLoading) return
+    const provider = this.provider
+    this.close()
+    document.dispatchEvent(
+      new CustomEvent("video-studio:open", { detail: { provider } }),
+    )
   }
 
   teardown() {
@@ -508,6 +521,7 @@ export default class extends Controller {
     this.setStatus(translate("poster.loading_tracks"))
     try {
       await this.provider.applyDates(start, end)
+      await this.provider.ensureTrackLoaded()
 
       if (subtitleWasAuto)
         this.subtitleInputTarget.value = this.dateRangeLabel()
@@ -521,12 +535,15 @@ export default class extends Controller {
   }
 
   setLoadBusy(value) {
-    if (!this.hasLoadButtonTarget) return
-    this.loadButtonTarget.disabled = value
-    this.loadSpinnerTarget.classList.toggle("hidden", !value)
-    this.loadLabelTarget.textContent = translate(
-      value ? "poster.loading" : "poster.load",
-    )
+    this.rangeLoading = value
+    if (this.hasLoadButtonTarget) {
+      this.loadButtonTarget.disabled = value
+      this.loadSpinnerTarget.classList.toggle("hidden", !value)
+      this.loadLabelTarget.textContent = translate(
+        value ? "poster.loading" : "poster.load",
+      )
+    }
+    if (this.hasSwitchButtonTarget) this.switchButtonTarget.disabled = value
   }
 
   presetRange(event) {
@@ -835,16 +852,26 @@ export default class extends Controller {
   // both guards here so Save to gallery can't queue a doomed poster.
   syncSaveAvailability() {
     if (!this.hasSaveButtonTarget || !this.previewMap) return
-    const coords = collectCoords(this.trackGeojson)
+    // Gallery renders are rebuilt server-side from GPS, without flight overlays.
+    const coords = collectCoords(this.provider?.trackGeojson())
     let reason = null
     if (coords.length === 0) {
       reason = translate("poster.no_location_data")
     } else if (!this.frameCoversTrack(coords)) {
       reason = translate("poster.no_tracks_in_frame")
     }
-    const message =
+    const posterGeometry = this.provider?.posterGeojson?.()
+    const overlayNotice =
+      posterGeometry && posterGeometry !== this.provider.trackGeojson()
+        ? translate("poster.gallery_without_flights")
+        : null
+    const message = [
       reason ||
-      (this.frameIsClamped() ? translate("poster.frame_too_wide") : null)
+        (this.frameIsClamped() ? translate("poster.frame_too_wide") : null),
+      overlayNotice,
+    ]
+      .filter(Boolean)
+      .join(" ")
     this.saveButtonTarget.disabled = Boolean(reason)
     this.saveNoticeTarget.textContent = message || ""
     this.saveNoticeTarget.classList.toggle("hidden", !message)
@@ -875,6 +902,7 @@ export default class extends Controller {
 
   get trackGeojson() {
     return (
+      this.provider?.posterGeojson?.() ??
       this.provider?.trackGeojson() ?? {
         type: "FeatureCollection",
         features: [],

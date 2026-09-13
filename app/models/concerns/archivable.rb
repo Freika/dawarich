@@ -8,12 +8,6 @@ module Archivable
                class_name: 'Points::RawDataArchive',
                optional: true
 
-    scope :archived, -> { where(raw_data_archived: true) }
-    scope :not_archived, -> { where(raw_data_archived: false) }
-    scope :with_archived_raw_data, lambda {
-      includes(raw_data_archive: { file_attachment: :blob })
-    }
-
     before_save :reset_archival_on_raw_data_change
   end
 
@@ -67,7 +61,9 @@ module Archivable
       result
     end
 
-    private
+    def raw_data_lock_order
+      order(Arel.sql('ST_X(lonlat::geometry), ST_Y(lonlat::geometry), timestamp, user_id'))
+    end
 
     def with_write_contention_retry
       retries = 0
@@ -82,6 +78,8 @@ module Archivable
         retry
       end
     end
+
+    private
 
     def archival_reset_clauses
       table = connection.quote_table_name(table_name)
@@ -134,7 +132,7 @@ module Archivable
   end
 
   def check_temporary_restore_cache
-    Rails.cache.read("raw_data:temp:#{user_id}:#{id}")
+    Rails.cache.read("raw_data:temp:#{user_id}:#{id}:#{raw_data_archive_id}")
   end
 
   def fetch_from_archive_file

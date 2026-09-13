@@ -43,9 +43,7 @@ RSpec.describe 'dual-write ingest' do
     end
   end
 
-  # The three live trackers each have their own creator calling
-  # archival_safe_upsert_all directly — none of them pass through
-  # Points::Create, so each must stamp for itself.
+  # Each tracker parses for itself before Points::Intake; every path must still land stamped.
   describe OwnTracks::PointCreator do
     let(:params) do
       OwnTracks::RecParser.new(File.read('spec/fixtures/files/owntracks/2024-03.rec')).call.first

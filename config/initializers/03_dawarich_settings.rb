@@ -41,6 +41,10 @@ class DawarichSettings
       ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
     end
 
+    def email_configured?
+      ENV['SMTP_SERVER'].present?
+    end
+
     def nominatim_enabled?
       @nominatim_enabled ||= NOMINATIM_API_HOST.present?
     end
@@ -81,6 +85,17 @@ class DawarichSettings
 
     def archive_raw_data_enabled?
       @archive_raw_data_enabled ||= ARCHIVE_RAW_DATA
+    end
+
+    # 0 (or a negative value) disables the age limit; videos then live until
+    # the per-user cap evicts them, or the user deletes them.
+    def video_retention_days
+      @video_retention_days ||= [VIDEO_RETENTION_DAYS, 0].max
+    end
+
+    # 0 (or a negative value) disables the per-user cap.
+    def video_max_per_user
+      @video_max_per_user ||= [VIDEO_MAX_PER_USER, 0].max
     end
 
     def two_factor_available?

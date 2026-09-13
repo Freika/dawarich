@@ -52,9 +52,10 @@ export class SearchManager {
 
     // Clear results when clicking outside
     this._documentClickHandler = (e) => {
+      const eventPath = e.composedPath()
       if (
-        !this.searchInput.contains(e.target) &&
-        !this.resultsContainer.contains(e.target)
+        !eventPath.includes(this.searchInput) &&
+        !eventPath.includes(this.resultsContainer)
       ) {
         // Delay to allow animations to complete
         setTimeout(() => {

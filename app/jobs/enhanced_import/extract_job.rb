@@ -11,6 +11,21 @@ module EnhancedImport
     MAX_LOCK_ATTEMPTS = 60
     LOCK_RETRY_WAIT = 1.minute
 
+    # A deadlock here is transient — the extractor and track generation contend
+    # for the same rows. Retry silently rather than red-carding an import the
+    # user cannot act on; only surface it once the retries are spent.
+    retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: 3 do |job, error|
+      job.fail_after_deadlock_retries(error)
+    end
+
+    def fail_after_deadlock_retries(error)
+      import = Import.find_by(id: arguments.first)
+      return if import.nil?
+
+      mark_failed!(import, error)
+      ExceptionReporter.call(error)
+    end
+
     def perform(import_id, attempt: 1)
       import = Import.find_by(id: import_id)
       return if import.nil?
@@ -38,6 +53,8 @@ module EnhancedImport
       # Sibling imports from one archive all finish together; wait our turn
       # rather than surfacing a red card the user can do nothing about.
       requeue(import, attempt, e)
+    rescue ActiveRecord::Deadlocked
+      raise
     rescue StandardError => e
       mark_failed!(import, e)
       ExceptionReporter.call(e)
@@ -63,7 +80,7 @@ module EnhancedImport
     def process_stream(import)
       counts = Hash.new(0)
       user = import.user
-      place_writer = Writers::PlaceWriter.new(user, import)
+      place_writer = Writers::PlaceWriter.new(user, import, source: place_source_for(import))
       visit_writer = Writers::VisitWriter.new(user, import)
       track_writer = Writers::TrackWriter.new(user, import)
       segment_writer = Writers::SegmentWriter.new
@@ -96,6 +113,10 @@ module EnhancedImport
       end
 
       counts
+    end
+
+    def place_source_for(import)
+      import.gpx? ? :gpx_waypoint : :photon
     end
 
     def trust_source?(import)

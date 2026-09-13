@@ -18,6 +18,32 @@ RSpec.describe Families::Locations do
 
   after { travel_back }
 
+  def membership_queries_for_family_of(member_count)
+    owner = create(:user)
+    owner_family = create(:family, creator: owner)
+    create(:family_membership, family: owner_family, user: owner, role: :owner)
+
+    member_count.times do
+      member = create(:user)
+      create(:family_membership, family: owner_family, user: member)
+      member.update_family_location_sharing!(true, duration: 'permanent')
+      create(:point, user: member, timestamp: 1.hour.ago.to_i)
+    end
+
+    membership_queries_during { described_class.new(owner.reload).call }
+  end
+
+  def membership_queries_during
+    count = 0
+    subscription = ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
+      count += 1 if payload[:sql].include?('family_memberships') && payload[:name] != 'SCHEMA'
+    end
+    yield
+    ActiveSupport::Notifications.unsubscribe(subscription)
+
+    count
+  end
+
   describe '#call' do
     it 'returns latest locations for sharing members' do
       other_user.update_family_location_sharing!(true, duration: 'permanent')
@@ -41,6 +67,20 @@ RSpec.describe Families::Locations do
       expect(result.length).to eq(1)
       expect(result.first[:timestamp]).to eq(real_point.timestamp)
       expect(result.first[:updated_at]).to eq(Time.zone.at(real_point.timestamp))
+    end
+
+    it 'excludes a member the caller asked to skip' do
+      other_user.update_family_location_sharing!(true, duration: 'permanent')
+      create(:point, user: other_user, timestamp: 1.hour.ago.to_i)
+
+      expect(described_class.new(user).call(excluding: other_user.id)).to eq([])
+    end
+
+    it 'does not issue a membership query per member' do
+      small = membership_queries_for_family_of(2)
+      large = membership_queries_for_family_of(4)
+
+      expect(large).to eq(small)
     end
 
     context 'when the family feature is unavailable to the caller' do

@@ -90,12 +90,14 @@ RSpec.describe DataMigrations::RecalculatePerTrackerTracksJob do
   describe 'with user_id: processing one user' do
     let(:user) { create(:user) }
 
-    it 'backfills point tracker_ids first, then invokes RecalculateDataJob via the ActiveJob lifecycle' do
+    it 'backfills point tracker_ids first, then invokes recalculation without swallowing retry errors' do
       create(:track, user: user, tracker_id: nil)
 
       backfiller = instance_double(Points::TrackerIdBackfiller, call: 0)
       expect(Points::TrackerIdBackfiller).to receive(:new).with(user).and_return(backfiller)
-      expect(Users::RecalculateDataJob).to receive(:perform_now).with(user.id, notify: false)
+      recalculation = instance_double(Users::RecalculateDataJob)
+      expect(Users::RecalculateDataJob).to receive(:new).and_return(recalculation)
+      expect(recalculation).to receive(:perform).with(user.id, notify: false)
 
       described_class.new.perform(user.id)
     end
@@ -103,7 +105,7 @@ RSpec.describe DataMigrations::RecalculatePerTrackerTracksJob do
     it 'skips RecalculateDataJob when no nil-tracker tracks remain after backfill' do
       create(:track, user: user, tracker_id: 'iphone')
 
-      expect(Users::RecalculateDataJob).not_to receive(:perform_now)
+      expect(Users::RecalculateDataJob).not_to receive(:new)
 
       described_class.new.perform(user.id)
     end

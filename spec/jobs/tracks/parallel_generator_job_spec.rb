@@ -83,6 +83,22 @@ RSpec.describe Tracks::ParallelGeneratorJob do
       end
     end
 
+    context 'when cache pool retries are exhausted' do
+      let(:timeout_error) { ConnectionPool::TimeoutError.new('Waited 5.0 sec, 0/5 available') }
+
+      before do
+        allow(Tracks::ParallelGenerator).to receive(:new).and_raise(timeout_error)
+      end
+
+      it 'reports the terminal timeout without retrying the full generator' do
+        expect(ExceptionReporter).to receive(:call)
+          .with(timeout_error, 'Failed to start parallel track generation')
+
+        expect { described_class.perform_now(user_id) }
+          .not_to have_enqueued_job(described_class)
+      end
+    end
+
     context 'when an error occurs' do
       let(:error_message) { 'Something went wrong' }
 

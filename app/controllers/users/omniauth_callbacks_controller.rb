@@ -84,6 +84,9 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
     redirect_to new_user_session_path,
                 alert: I18n.t('controllers.users.omniauth_callbacks.email_not_verified', provider:)
+  rescue Auth::FindOrCreateOauthUser::AccountPendingDeletion
+    redirect_to new_user_session_path,
+                alert: I18n.t('controllers.users.omniauth_callbacks.account_pending_deletion')
   end
 
   def oidc_auto_register_enabled?

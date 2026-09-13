@@ -73,10 +73,13 @@ RSpec.describe TrackSegments::TimeAnchorBackfillJob do
     survivor = create(:track_segment, track: track, transportation_mode: :walking,
                       start_index: 6, end_index: 9, start_at: nil, end_at: nil)
 
+    allow(ExceptionReporter).to receive(:call)
+
     expect { described_class.perform_now }.not_to raise_error
 
     expect(TrackSegment.exists?(colliding.id)).to be false
     expect(survivor.reload.start_at).to be_present
+    expect(ExceptionReporter).not_to have_received(:call)
   end
 
   it 'preserves manually-corrected segments even when their slice cannot be anchored' do

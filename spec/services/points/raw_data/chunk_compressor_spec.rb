@@ -28,6 +28,9 @@ RSpec.describe Points::RawData::ChunkCompressor do
       expect(result[:data]).to be_a(String)
       expect(result[:data].encoding.name).to eq('ASCII-8BIT')
       expect(result[:count]).to eq(3)
+      expect(result[:raw_data_checksums]).to eq(
+        points.to_h { |point| [point.id, Digest::SHA256.hexdigest(point.reload.raw_data.to_json)] }
+      )
     end
 
     it 'returns correct count of compressed points' do

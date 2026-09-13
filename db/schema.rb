@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_23_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_06_103000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -86,6 +86,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_190000) do
     t.datetime "created_at", null: false
     t.bigint "distance", default: 0, null: false
     t.jsonb "first_time_visits", default: {}
+    t.bigint "flight_distance", default: 0, null: false
     t.integer "month"
     t.jsonb "monthly_distances", default: {}
     t.integer "period_type", default: 0, null: false
@@ -126,6 +127,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_190000) do
   end
 
   create_table "families", force: :cascade do |t|
+    t.datetime "access_until"
     t.datetime "created_at", null: false
     t.bigint "creator_id", null: false
     t.string "name", limit: 50, null: false
@@ -315,7 +317,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_190000) do
     t.datetime "reverse_geocoded_at"
     t.integer "source", default: 0
     t.datetime "updated_at", null: false
-    t.bigint "user_id"
+    t.bigint "user_id", null: false
     t.index "(((geodata -> 'properties'::text) ->> 'osm_id'::text))", name: "index_places_on_geodata_osm_id"
     t.index "user_id, ((geodata ->> 'external_place_id'::text))", name: "idx_places_user_external_place_id", unique: true, where: "((geodata ->> 'external_place_id'::text) IS NOT NULL)"
     t.index ["demo"], name: "index_places_on_demo_true", where: "(demo = true)"
@@ -386,6 +388,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_190000) do
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
     t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
+    t.index ["user_id", "created_at"], name: "index_points_on_user_id_and_created_at"
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
     t.index ["user_id", "timestamp", "lonlat"], name: "index_points_on_user_id_timestamp_lonlat", unique: true
     t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY (ARRAY[('google-maps-timeline-export'::character varying)::text, ('google-maps-phone-timeline-export'::character varying)::text]))"
@@ -418,6 +421,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_190000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_posters_on_user_id"
+  end
+
+  create_table "route_videos", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expired_at"
+    t.string "name", null: false
+    t.jsonb "settings", default: {}, null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_route_videos_on_user_id_and_created_at"
   end
 
   create_table "service_settings", force: :cascade do |t|
@@ -453,11 +467,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_190000) do
   end
 
   create_table "stats", force: :cascade do |t|
+    t.integer "calculation_version", default: 0, null: false
     t.datetime "created_at", null: false
     t.jsonb "daily_distance", default: {}
     t.bigint "distance", null: false
+    t.bigint "flight_distance", default: 0, null: false
     t.jsonb "h3_hex_ids", default: {}
     t.integer "month", null: false
+    t.datetime "repair_deferred_at"
     t.jsonb "sharing_settings", default: {}
     t.uuid "sharing_uuid"
     t.jsonb "toponyms"
@@ -556,7 +573,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_190000) do
   create_table "trips", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "demo", default: false, null: false
-    t.integer "distance"
+    t.bigint "distance"
     t.datetime "ended_at", null: false
     t.datetime "last_recalculated_at"
     t.string "name", null: false
@@ -601,6 +618,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_190000) do
     t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "1000", "minutes_between_routes" => "60"}
     t.integer "sign_in_count", default: 0, null: false
     t.string "signup_variant"
+    t.datetime "stats_swept_at"
     t.integer "status", default: 0
     t.integer "subscription_source", default: 0, null: false
     t.string "theme", default: "dark", null: false
@@ -673,10 +691,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_23_190000) do
   add_foreign_key "place_visits", "places"
   add_foreign_key "place_visits", "visits"
   add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :restrict
+  add_foreign_key "points", "tracks"
   add_foreign_key "points", "users"
   add_foreign_key "points", "visits"
   add_foreign_key "points_raw_data_archives", "users"
   add_foreign_key "posters", "users"
+  add_foreign_key "route_videos", "users"
   add_foreign_key "service_settings", "users"
   add_foreign_key "shared_links", "users", on_delete: :cascade
   add_foreign_key "stats", "users"

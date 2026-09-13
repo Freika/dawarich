@@ -81,7 +81,7 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
     it 'deletes orphaned user-owned photon places, keeps manual and global places' do
       photon  = create(:place, user: user, source: :photon, name: 'cafe')
       manual  = create(:place, user: user, source: :manual, name: 'home')
-      global  = create(:place, user: nil,  source: :photon, name: 'park')
+      global  = create(:place, user: create(:user), source: :photon, name: 'park')
 
       create(:visit, user: user, status: :suggested, place: photon,
                      started_at: Time.zone.at(base_ts),

@@ -58,8 +58,15 @@ RSpec.describe Cache::PreheatingJob do
       end
 
       it 'enqueues exactly one job per active or trial user' do
-        expect { described_class.new.perform }
-          .to have_enqueued_job(Cache::UserPreheatingJob).exactly(2).times
+        described_class.new.perform
+
+        preheated = enqueued_jobs.filter_map do |job|
+          job[:args].first if job[:job] == Cache::UserPreheatingJob
+        end
+
+        expect(preheated.count(active_user.id)).to eq(1)
+        expect(preheated.count(trial_user.id)).to eq(1)
+        expect(preheated).not_to include(inactive_user.id, pending_payment_user.id)
       end
 
       it 'preheats the fanned-out users once their jobs run' do

@@ -35,6 +35,20 @@ class FamilyMailer < ApplicationMailer
     end
   end
 
+  def plan_lapsed(user, family)
+    @user = user
+    @family = family
+    @owner_email = family.owner&.email
+    @subscription_url = DawarichSettings.self_hosted? ? nil : "#{MANAGER_URL}/auth/dawarich"
+
+    with_user_locale(@user) do
+      mail(
+        to: @user.email,
+        subject: I18n.t('mailers.family.plan_lapsed.subject', family: @family.name)
+      )
+    end
+  end
+
   def member_joined(family, user)
     @family = family
     @user = user

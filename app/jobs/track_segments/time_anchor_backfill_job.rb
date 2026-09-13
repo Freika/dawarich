@@ -62,8 +62,10 @@ module TrackSegments
         ActiveRecord::Base.transaction(requires_new: true) do
           ActiveRecord::Base.connection.execute(anchor_sql([id]))
         end
-      rescue ActiveRecord::RecordNotUnique => e
-        ExceptionReporter.call(e, "TimeAnchorBackfill: segment #{id} collides with an existing anchor")
+      rescue ActiveRecord::RecordNotUnique
+        Rails.logger.info(
+          "TimeAnchorBackfill: segment #{id} collides with an existing anchor"
+        )
       end
     end
 

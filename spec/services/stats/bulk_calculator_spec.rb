@@ -57,7 +57,8 @@ RSpec.describe Stats::BulkCalculator do
       end
 
       before do
-        create(:stat, user: user, year: 2020, month: 6, updated_at: DateTime.new(2020, 7, 1))
+        create(:stat, user: user, year: 2020, month: 6, updated_at: DateTime.new(2020, 7, 1),
+                      calculation_version: Stats::CalculateMonth::CALCULATION_VERSION)
       end
 
       it 'only schedules calculations for months with points after last calculation' do

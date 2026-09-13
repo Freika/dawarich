@@ -2,6 +2,7 @@ import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { styleDocumentFailed } from "maps_maplibre/utils/basemap_url"
+import { registerRTLTextPlugin } from "maps_maplibre/utils/rtl_text_plugin"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
 /**
@@ -27,6 +28,8 @@ export class MapInitializer {
       vectorTilesUrl = null,
       tilesFallback = false,
     } = settings
+
+    registerRTLTextPlugin(maplibregl, import.meta.resolve("mapbox-gl-rtl-text"))
 
     const style = await getMapStyle(mapStyle, {
       hiddenTileCategories,

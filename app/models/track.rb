@@ -71,12 +71,21 @@ class Track < ApplicationRecord
     ids = Array(ids).uniq
     return 0 if ids.empty?
 
-    rows = where(id: ids).pluck(:id, :user_id, :start_at, :end_at)
+    rows = []
+    transaction do
+      rows = where(id: ids).where.missing(:points)
+                           .lock('FOR UPDATE OF tracks')
+                           .pluck(:id, :user_id, :start_at, :end_at)
+      next if rows.empty?
+
+      orphan_ids = rows.map(&:first)
+      TrackSegment.where(track_id: orphan_ids).delete_all
+      where(id: orphan_ids).delete_all
+    end
     return 0 if rows.empty?
 
     owners = rows.map { |id, user_id, _, _| [id, user_id] }
-    TrackSegment.where(track_id: ids).delete_all
-    deleted = where(id: ids).delete_all
+    deleted = rows.size
     # delete_all skips after_commit, so the epoch bump (like the broadcast
     # below) must be replayed explicitly or deleted tracks 304 forever.
     rows.group_by { |_, user_id, _, _| user_id }.each do |user_id, user_rows|
@@ -86,6 +95,9 @@ class Track < ApplicationRecord
     end
     broadcast_destroyed(owners)
     deleted
+  rescue ActiveRecord::InvalidForeignKey
+    Rails.logger.info("event=tracks.orphan_delete_aborted count=#{ids.size}")
+    0
   end
 
   def self.broadcast_destroyed(track_owner_pairs)

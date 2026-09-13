@@ -32,7 +32,7 @@ RSpec.describe Imports::ExtractionPolicy do
     end
 
     it 'blocks an unsupported source' do
-      other = create(:import, user: user, source: :gpx)
+      other = create(:import, user: user, source: :kml)
 
       expect(described_class.new(user, other).create?).to be false
     end

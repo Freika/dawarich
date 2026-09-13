@@ -122,6 +122,12 @@ RSpec.describe Entitlements do
         expect(entitlements.data_window).to be_nil
       end
 
+      it 'revokes family creation once the owner own subscription lapses' do
+        user.update!(status: :inactive, active_until: 1.day.ago)
+
+        expect(entitlements.families?).to be false
+      end
+
       it 'reports family as effective plan' do
         expect(entitlements.effective_plan).to eq(:family)
       end

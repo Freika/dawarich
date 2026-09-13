@@ -64,6 +64,7 @@ class Immich::EnrichScan
     points = user.points
                  .where(timestamp: min_ts..max_ts)
                  .where.not(lonlat: nil)
+                 .select(:id, :timestamp, :lonlat)
                  .order(:timestamp)
                  .to_a
 

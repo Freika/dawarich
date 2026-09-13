@@ -927,26 +927,6 @@
             <p class="text-xs text-base-content/60 mt-1"><%= t('.how_long_you_must_stay_for_a_city_to_count') %></p>
           </div>
 
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium"><%= t('.max_gap_between_points') %></span>
-              <span class="label-text-alt" data-maps--maplibre-target="maxGapMinutesValue"><%= t('.min_8') %></span>
-            </label>
-            <input type="range"
-                   name="maxGapMinutesInCity"
-                   min="30"
-                   max="360"
-                   step="15"
-                   value="120"
-                   class="range range-sm"
-                   data-action="input->maps--maplibre#updateMaxGapMinutesDisplay" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span><%= t('.min_9') %></span>
-              <span><%= t('.min_10') %></span>
-              <span><%= t('.min_11') %></span>
-            </div>
-            <p class="text-xs text-base-content/60 mt-1"><%= t('.max_gap_between_points_before_assuming_you_left_the_city') %></p>
-          </div>
 
             </div>
           </details>

@@ -8,9 +8,12 @@ module EnhancedImport
       :latitude,
       :longitude,
       :semantic_type,
-      :geodata_extras
+      :geodata_extras,
+      :tag_name,
+      :tag_color
     ) do
-      def initialize(external_place_id:, name:, latitude:, longitude:, semantic_type: nil, geodata_extras: {})
+      def initialize(external_place_id:, name:, latitude:, longitude:, semantic_type: nil,
+                     geodata_extras: {}, tag_name: nil, tag_color: nil)
         super
       end
     end

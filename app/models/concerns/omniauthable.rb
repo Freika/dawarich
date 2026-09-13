@@ -7,17 +7,14 @@ module Omniauthable
     def from_omniauth(access_token)
       provider = access_token.provider.to_s
 
-      if provider == 'openid_connect' && !oidc_auto_register_enabled?
-        return User.find_by(provider: provider, uid: access_token.uid.to_s)
-      end
-
       user, created = Auth::FindOrCreateOauthUser.new(
         provider: provider,
         provider_label: omniauth_provider_label(provider),
         claims: { sub: access_token.uid.to_s, email: access_token.info&.email.to_s },
         email_verified: omniauth_email_verified?(access_token),
         name_attrs: omniauth_name_attrs(access_token),
-        on_email_collision: :raise_only
+        on_email_collision: :raise_only,
+        allow_registration: provider != 'openid_connect' || oidc_auto_register_enabled?
       ).call
 
       user&.oauth_newly_created = created
@@ -49,8 +46,9 @@ module Omniauthable
       first = info.first_name.presence if info.respond_to?(:first_name)
       last  = info.last_name.presence  if info.respond_to?(:last_name)
 
-      if (first.blank? || last.blank?) && info.respond_to?(:name) && info.name.present?
-        parts = info.name.to_s.split(' ', 2)
+      raw_name = info[:name] if info.respond_to?(:key?) && info.key?(:name)
+      if (first.blank? || last.blank?) && raw_name.present?
+        parts = raw_name.to_s.split(' ', 2)
         first ||= parts.first
         last  ||= parts.last if parts.length > 1
       end

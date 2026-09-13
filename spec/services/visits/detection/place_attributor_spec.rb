@@ -99,6 +99,23 @@ RSpec.describe Visits::Detection::PlaceAttributor do
     expect(result[:name]).to eq('Café Pushkin')
   end
 
+  it 'promotes a Nominatim-shaped reverse result to a minted place' do
+    geocoder_result = double(data: {
+                               'lat' => lat0.to_s, 'lon' => lon0.to_s, 'name' => 'Café Pushkin',
+                               'category' => 'amenity', 'type' => 'cafe', 'osm_id' => 5,
+                               'osm_type' => 'node',
+                               'address' => { 'road' => 'Karlstraße', 'house_number' => '1',
+                                              'city' => 'Leipzig', 'country' => 'Germany' }
+                             })
+    allow(Geocoder).to receive(:search).and_return([geocoder_result])
+
+    result = nil
+    expect { result = attribute }.to change { Place.count }.by(1)
+
+    expect(result[:evidence]).to eq(:poi)
+    expect(result[:name]).to eq('Café Pushkin')
+  end
+
   it 'refuses venue evidence for a street-keyed feature, naming by street instead' do
     geocoder_result = double(data: {
                                'geometry' => { 'coordinates' => [lon0, lat0] },
@@ -137,5 +154,26 @@ RSpec.describe Visits::Detection::PlaceAttributor do
     expect(result[:name]).to be_nil
     expect(result[:place]).to be_nil
     expect(result[:area]).to be_nil
+  end
+  [
+    { 'type' => 'house', 'category' => 'building' },
+    { 'type' => 'residential', 'category' => 'highway', 'name' => 'Hauptstraße' },
+    { 'type' => 'residential', 'class' => 'highway', 'name' => 'Hauptstraße' }
+  ].each do |classification|
+    it "keeps flat #{classification.inspect} geodata as address evidence" do
+      data = classification.merge(
+        'lat' => lat0.to_s, 'lon' => lon0.to_s,
+        'address' => { 'road' => 'Hauptstraße', 'house_number' => '51', 'city' => 'Leipzig' }
+      )
+      points = create_list(:point, 2, user: user, geodata: data)
+      allow(Geocoder).to receive(:search).and_return([double(data: data)])
+
+      result = nil
+      expect { result = attribute(stay(point_ids: points.map(&:id))) }.not_to(change { Place.count })
+
+      expect(result[:evidence]).to eq(:address)
+      expect(result[:name]).to eq('Hauptstraße 51')
+      expect(result[:place]).to be_nil
+    end
   end
 end

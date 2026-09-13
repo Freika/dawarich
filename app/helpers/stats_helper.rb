@@ -28,10 +28,11 @@ module StatsHelper
   end
 
   def distance_traveled(user, stat)
-    distance_unit = user.safe_settings.distance_unit
-    value = Stat.convert_distance(stat.distance, distance_unit).round
+    formatted_distance(user, stat.distance)
+  end
 
-    I18n.t('helpers.stats.distance', value: number_with_delimiter(value), unit: distance_unit)
+  def flight_distance_traveled(user, stat)
+    formatted_distance(user, stat.flight_distance)
   end
 
   def active_days(stat)
@@ -74,6 +75,13 @@ module StatsHelper
   end
 
   private
+
+  def formatted_distance(user, meters)
+    distance_unit = user.safe_settings.distance_unit
+    value = Stat.convert_distance(meters, distance_unit).round
+
+    I18n.t('helpers.stats.distance', value: number_with_delimiter(value), unit: distance_unit)
+  end
 
   def collect_countries_and_cities(year_stats)
     countries = []

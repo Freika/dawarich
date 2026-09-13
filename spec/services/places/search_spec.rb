@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require 'geocoder/results/photon'
+require 'geocoder/results/geoapify'
 
 RSpec.describe Places::Search do
   before do
@@ -40,6 +41,75 @@ RSpec.describe Places::Search do
       described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
     end
 
+    it 'passes a bounding box to Photon matching visit coordinates and radius' do
+      min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
+      expected_bbox = "#{min_lon.round(6)},#{min_lat.round(6)},#{max_lon.round(6)},#{max_lat.round(6)}"
+
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', hash_including(params: { bbox: expected_bbox }))
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
+    end
+
+    it 'omits the bounding box when search radius crosses the 180th meridian' do
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', satisfy { |opts| opts[:params].nil? || !opts[:params].key?(:bbox) })
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: 0.0, longitude: 179.999, radius: 5.0).call
+    end
+
+    it 'omits the bounding box when searching near polar latitudes' do
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', satisfy { |opts| opts[:params].nil? || !opts[:params].key?(:bbox) })
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: 89.5, longitude: lon, radius: 1.0).call
+    end
+
+    it 'formats viewbox and bounded: 1 when provider is nominatim' do
+      nominatim_config = Geocoding::Config.new(source: :env, provider: :nominatim)
+      allow(Geocoding::Config).to receive(:for).with(user).and_return(nominatim_config)
+
+      min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
+      expected_viewbox = "#{min_lon.round(6)},#{max_lat.round(6)},#{max_lon.round(6)},#{min_lat.round(6)}"
+
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', hash_including(params: { viewbox: expected_viewbox, bounded: 1 }))
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
+    end
+
+    it 'formats rect filter when provider is geoapify' do
+      geoapify_config = Geocoding::Config.new(source: :env, provider: :geoapify)
+      allow(Geocoding::Config).to receive(:for).with(user).and_return(geoapify_config)
+
+      min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
+      expected_rect = "rect:#{min_lon.round(6)},#{min_lat.round(6)},#{max_lon.round(6)},#{max_lat.round(6)}"
+
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', hash_including(params: { filter: expected_rect }))
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
+    end
+
+    it 'formats viewbox and bounded: 1 when provider is locationiq' do
+      locationiq_config = Geocoding::Config.new(source: :env, provider: :locationiq)
+      allow(Geocoding::Config).to receive(:for).with(user).and_return(locationiq_config)
+
+      min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
+      expected_viewbox = "#{min_lon.round(6)},#{max_lat.round(6)},#{max_lon.round(6)},#{min_lat.round(6)}"
+
+      expect(Geocoder).to receive(:search)
+        .with('Bravo', hash_including(params: { viewbox: expected_viewbox, bounded: 1 }))
+        .and_return([])
+
+      described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call
+    end
+
     it 'filters out results beyond the radius' do
       near = photon(name: 'Near', plat: lat, plon: lon)
       far  = photon(name: 'Far', plat: 53.5, plon: 14.5) # ~140 km away
@@ -60,6 +130,34 @@ RSpec.describe Places::Search do
       results = described_class.new(user: user, query: 'xx', latitude: lat, longitude: lon, radius: 5.0).call
 
       expect(results.map { |r| r[:name] }).to eq(%w[Nearest Farther])
+    end
+
+    describe 'Geoapify results (datasource-nested OSM metadata)' do
+      let(:geoapify_result) do
+        instance_double(
+          Geocoder::Result::Geoapify,
+          data: {
+            'type' => 'Feature',
+            'geometry' => { 'type' => 'Point', 'coordinates' => [lon, lat] },
+            'properties' => {
+              'name' => 'Madison Square Garden', 'city' => 'New York',
+              'country' => 'United States', 'lon' => lon, 'lat' => lat,
+              'result_type' => 'building',
+              'datasource' => { 'sourcename' => 'openstreetmap', 'osm_type' => 'W', 'osm_id' => 138_141_251 }
+            }
+          },
+          latitude: lat, longitude: lon, address: 'Madison Square Garden'
+        )
+      end
+
+      it 'surfaces osm_id and osm_type from datasource in the suggestion payload' do
+        allow(Geocoder).to receive(:search).and_return([geoapify_result])
+
+        results = described_class.new(user: user, query: 'msg', latitude: lat, longitude: lon, radius: 1.0).call
+
+        expect(results.first[:osm_id]).to eq(138_141_251)
+        expect(results.first[:osm_type]).to eq('W')
+      end
     end
 
     it 'returns [] for a query shorter than 2 chars' do
@@ -176,6 +274,22 @@ RSpec.describe Places::Search do
       described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call
 
       expect(WebMock).to have_requested(:get, %r{https://photon\.mine\.example\.com/api})
+    end
+
+    it 'passes the bounding box to the user photon endpoint' do
+      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+      min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
+      expected_bbox = "#{min_lon.round(6)},#{min_lat.round(6)},#{max_lon.round(6)},#{max_lat.round(6)}"
+
+      stub_request(:get, %r{https://photon\.mine\.example\.com/api})
+        .with(query: hash_including('bbox' => expected_bbox))
+        .to_return(status: 200, body: { type: 'FeatureCollection', features: [] }.to_json,
+                   headers: { 'Content-Type' => 'application/json' })
+
+      described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call
+
+      expect(WebMock).to have_requested(:get, %r{https://photon\.mine\.example\.com/api})
+        .with(query: hash_including('bbox' => expected_bbox))
     end
 
     it 'returns an empty list for an unconfigured user without HTTP' do

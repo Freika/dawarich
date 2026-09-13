@@ -63,7 +63,7 @@ RSpec.describe Points::DimensionResolver do
 
       resolved = resolver.stamp([combo_attrs.dup]).first[:source_id]
 
-      expect(PointSource.find(resolved).battery_status).to eq(1)
+      expect(PointSource.find(resolved).battery_status_before_type_cast).to eq(1)
     end
 
     # The factory fills every combo column, so a genuinely sparse row has to be

@@ -71,6 +71,7 @@ export default class extends Controller {
   addMembers() {
     const locations = this.locationsValue
     if (!locations.length) return
+    const theme = getCurrentTheme()
 
     const features = locations.map((loc, i) => ({
       type: "Feature",
