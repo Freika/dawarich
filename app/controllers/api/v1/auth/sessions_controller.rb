@@ -12,7 +12,7 @@ class Api::V1::Auth::SessionsController < Api::V1::Auth::BaseController
   before_action :check_email_password_login_allowed, only: [:create]
 
   def create
-    user = User.find_by(email: params[:email]&.downcase)
+    user = User.find_by(email: params[:email]&.to_s&.strip&.downcase)
 
     authenticated = constant_time_authenticate(user, params[:password].to_s)
 

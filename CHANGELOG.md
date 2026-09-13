@@ -4,6 +4,57 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [UNRELEASED]
+
+### Added
+
+- The app and Sidekiq containers print a warning at startup when a self-hosted instance runs with `RAILS_ENV=development`.
+
+### Fixed
+
+- The Synology template and the Kubernetes guide run Dawarich in production instead of development.
+- The Synology template no longer hangs waiting for its database on a fresh install.
+- The Kubernetes guide's health probes check the web container instead of the Sidekiq container, and a startup probe keeps it from being restarted while migrations run.
+
+## [1.14.5] - 2026-09-13, Berlin
+
+### Added
+
+- Video Studio can select exact start and end times for map ranges.
+- Family members can consent to sharing location history recorded before they started sharing.
+- The import edit page can change or clear an import's source.
+
+### Changed
+
+- Visit detection no longer sends a notification for every new suggested visit.
+- Poster Studio waits for the map to load the selected date range and disables the studio switch while loading.
+
+### Fixed
+
+- Yearly digests for cloud-Lite users read seasonality and country time spent from the same data window as monthly distances and toponyms.
+- The per-email API login brute-force throttle now counts `application/json` request bodies, so password grinding against `POST /api/v1/auth/login` is bounded per account even when an attacker rotates source IPs.
+- API sign-in ignores leading and trailing spaces in the email address.
+- Manual OIDC configuration falls back to the default port when `OIDC_PORT` is blank, non-numeric or out of range.
+- OAuth account linking reports when a verification email was not re-sent because of rate limiting, with the real remaining wait.
+- Signing up through an OAuth provider without a name claim no longer saves the username or email as the first name.
+- `SMTP_AUTHENTICATION=none` no longer sends credentials when `SMTP_USERNAME` is set.
+- Cloud Lite subscribers in a paid Family can use the map features the Family plan includes.
+- Users whose trial has ended are no longer shown an import form they cannot submit.
+- GPX imports continue past recoverable XML errors instead of aborting.
+- OwnTracks `.rec` imports skip malformed lines instead of aborting.
+- Google Phone Timeline imports no longer drop or reorder points when groups of identical timestamps sit close together.
+- Transportation mode backfill uses activity data from Google Phone Timeline imports.
+- Track generation keeps each tracker's points on its own track when several tracks share a time window.
+- Reverse geocoding keeps the identity of places created by imports, so re-imports no longer duplicate them.
+- Visit names use nearby points of interest on Photon and Geoapify instead of falling back to addresses.
+- Place search results from Geoapify include OpenStreetMap IDs.
+- Restoring a user archive no longer fails or keeps empty records when the export could not include some raw data archive files.
+- The web digest page no longer generates a year-end digest for the year still in progress.
+- Unauthorized visits to Sidekiq no longer leave browsers caching a permanent redirect.
+- Map and trip pages handle timezones saved under legacy names such as `Berlin`.
+- The map's date range fields follow day navigation from the timeline.
+- Self-hosted registration settings apply to mobile app sign-ups, and a family invitation only admits the email address it was sent to.
+
 ## [1.14.4] - 2026-09-06, Berlin
 
 ### Fixed
@@ -90,6 +141,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Days per Country now uses a more varied color palette so countries are easier to distinguish (#3602).
 - Cities where you stayed but your phone reported infrequently are counted again. Time spent in a city was measured from how often your device sent points rather than from how long you were there, so a stationary phone saving battery could be credited no time at all and drop the city — including your home city — from statistics and from the map's visited-cities view. Recalculated months will generally show higher numbers than before. **Existing months keep their old numbers until recalculated: press "Update stats" on the Stats page.** (#2207)
 - Changing "Min Minutes in City" now recalculates your existing statistics, instead of leaving old numbers in place until you refreshed them by hand (#2207).
 - A GPX file holding only waypoints (such as an OsmAnd+ `favourites.gpx`) now says so when it imports 0 points, instead of reporting that the file lacks per-point timestamps. That advice was wrong: OsmAnd waypoints do carry a time, and adding more timestamps never helped. (#1261)

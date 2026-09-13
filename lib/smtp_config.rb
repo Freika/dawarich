@@ -11,14 +11,16 @@ module SmtpConfig
 
   def self.smtp_settings(env = ENV)
     ssl = ssl?(env)
+    auth = authentication(env)
+    user, pass = credentials(env, auth)
 
     settings = {
       address:         env['SMTP_SERVER'],
       port:            env['SMTP_PORT']&.to_i,
       domain:          env['SMTP_DOMAIN'],
-      user_name:       env['SMTP_USERNAME'],
-      password:        env['SMTP_PASSWORD'],
-      authentication:  authentication(env),
+      user_name:       user,
+      password:        pass,
+      authentication:  auth,
       ssl:             ssl,
       enable_starttls: !ssl && env.fetch('SMTP_STARTTLS', 'true') == 'true',
       open_timeout:    timeout(env, 'SMTP_OPEN_TIMEOUT', DEFAULT_OPEN_TIMEOUT),
@@ -54,6 +56,17 @@ module SmtpConfig
   end
   private_class_method :authentication
 
+  def self.credentials(env, auth)
+    user = env['SMTP_USERNAME']
+    pass = env['SMTP_PASSWORD']
+    return [user, pass] if auth
+    return [nil, nil] if user.to_s.strip.empty? && pass.to_s.strip.empty?
+
+    warn_unexpected_credentials
+    [nil, nil]
+  end
+  private_class_method :credentials
+
   def self.ssl?(env)
     raw = env['SMTP_SSL'].to_s.strip
     return raw == 'true' unless raw.empty?
@@ -84,6 +97,12 @@ module SmtpConfig
          'Mail — including SMTP credentials — is sent over an unverified connection.'
   end
   private_class_method :warn_unverified_tls
+
+  def self.warn_unexpected_credentials
+    warn '[SMTP] SMTP_AUTHENTICATION=none ignores SMTP_USERNAME/SMTP_PASSWORD; clearing them to disable AUTH. ' \
+         'Unset SMTP_USERNAME/SMTP_PASSWORD (or set SMTP_AUTHENTICATION=plain) to silence this warning.'
+  end
+  private_class_method :warn_unexpected_credentials
 
   def self.timeout(env, key, default)
     raw = env[key]

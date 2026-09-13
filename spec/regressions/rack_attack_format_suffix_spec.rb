@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Rack Attack format suffix protection', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   around do |example|
     original_enabled = Rack::Attack.enabled
     original_store = Rack::Attack.cache.store
@@ -71,11 +73,13 @@ RSpec.describe 'Rack Attack format suffix protection', type: :request do
   end
 
   it 'throttles actual API authentication attempts across plain and JSON routes' do
-    5.times do
-      post '/api/v1/auth/login', params: { email: 'absent@example.test', password: 'wrong' }
-      expect(response).to have_http_status(:unauthorized)
+    freeze_time do
+      5.times do
+        post '/api/v1/auth/login', params: { email: 'absent@example.test', password: 'wrong' }
+        expect(response).to have_http_status(:unauthorized)
+      end
+      post '/api/v1/auth/login.json', params: { email: 'absent@example.test', password: 'wrong' }
+      expect(response).to have_http_status(:too_many_requests)
     end
-    post '/api/v1/auth/login.json', params: { email: 'absent@example.test', password: 'wrong' }
-    expect(response).to have_http_status(:too_many_requests)
   end
 end

@@ -437,6 +437,7 @@ export default class extends Controller {
       endAt: this.endedAtValue,
       title: this.tripNameValue,
       points: this.allPoints,
+      timezone: this.timezoneValue,
     })
   }
 

@@ -28,6 +28,19 @@ RSpec.describe 'Map::Residency', type: :request do
         expect(response.body).to include('Czechia')
       end
 
+      it 'uses distinct theme-independent colors for countries' do
+        %w[France Spain Italy Netherlands Poland Austria].each_with_index do |country_name, index|
+          create(:point, user:, country_name:, timestamp: Time.zone.local(2026, 4, index + 1, 12).to_i)
+        end
+
+        get map_residency_path(year: 2026)
+
+        expect(response.body).to include(
+          'bg-blue-600', 'bg-orange-700', 'bg-emerald-600', 'bg-fuchsia-600',
+          'bg-amber-700', 'bg-cyan-700', 'bg-rose-600', 'bg-violet-500'
+        )
+      end
+
       it 'takes the year from the page instead of offering its own selector' do
         get map_residency_path(year: 2026)
 

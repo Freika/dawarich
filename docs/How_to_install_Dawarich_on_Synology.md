@@ -68,10 +68,11 @@ If you don't yet have a DNS server you can install [Synology DNS](https://www.sy
 1. Open /[Docker root folder](#docker-root-share)/[Dawarich root folder](#dawarich-root-folder)/.env file in any text editor. For example, you can use [Text editor](https://www.synology.com/en-global/dsm/packages/TextEditor) package or download it from **File station**, edit locally and upload it back, or get access by file share.
 2. Update your `APPLICATION_HOSTS` value to include your **Dawarich hostname** that you set in **Web station**. In example above **dawarich.my-syno.com**. If you want to set multiple hosts, separate them by a comma: `dawarich.my-syno.com,dawarich2.my-syno.com`.
 3. Set your current `TIME_ZONE`. The full list [here](https://github.com/Freika/dawarich/issues/27#issuecomment-2094721396).
-4. Optionally change `DATABASE_USERNAME`, `DATABASE_USERNAME`, `DATABASE_NAME`.
+4. Set `SECRET_KEY_BASE` to a random value, for example the output of `openssl rand -hex 64`. Dawarich doesn't start without it. Keep the value afterwards: changing it signs everyone out and can make archived data unreadable.
+5. Optionally change `DATABASE_USERNAME`, `DATABASE_PASSWORD`, `DATABASE_NAME`.
 
-5. Click on the name of your project.
-6. Open **YAML Configurations** tab.
+6. Click on the name of your project.
+7. Open **YAML Configurations** tab.
 
 # Run
 1. Open  **Container Manager** -> **Projects** ->**dawarich**

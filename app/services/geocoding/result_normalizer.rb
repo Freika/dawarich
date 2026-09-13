@@ -46,6 +46,8 @@ module Geocoding
         coords = [properties['lon'].to_f, properties['lat'].to_f]
       end
 
+      datasource = properties['datasource'].is_a?(Hash) ? properties['datasource'] : {}
+
       {
         properties: properties.merge(
           'name' => properties['name'].presence,
@@ -54,8 +56,8 @@ module Geocoding
           'city' => properties['city'],
           'country' => properties['country'],
           'postcode' => properties['postcode'],
-          'osm_id' => properties['osm_id'],
-          'osm_type' => properties['osm_type'],
+          'osm_id' => properties['osm_id'] || datasource['osm_id'],
+          'osm_type' => properties['osm_type'] || datasource['osm_type'],
           'osm_key' => properties['osm_key'] || properties['category'],
           'osm_value' => properties['osm_value'] || properties['result_type'] || properties['type']
         ),
