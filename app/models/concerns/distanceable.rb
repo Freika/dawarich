@@ -111,6 +111,8 @@ module Distanceable
         raise ArgumentError, "Invalid unit. Supported units are: #{::DISTANCE_UNITS.keys.join(', ')}"
       end
 
+      raise ArgumentError, 'Distance can only be calculated for a scoped relation' if relation.where_clause.empty?
+
       distance_in_meters = connection.select_value(<<~SQL.squish)
         WITH points_with_previous AS (
           SELECT

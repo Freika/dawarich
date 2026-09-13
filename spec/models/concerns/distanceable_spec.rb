@@ -47,8 +47,25 @@ RSpec.describe Distanceable, type: :model do
 
       it 'calculates distance via SQL without loading records into memory' do
         relation = Point.where(id: [point1.id, point2.id])
-        expect(relation).not_to receive(:to_a)
+        expect(relation).not_to receive(:records)
         Point.total_distance(relation)
+      end
+
+      it 'matches the array calculation for the same ordered points' do
+        create(:point, user: user, timestamp: 45.minutes.ago.to_i, lonlat: 'POINT(13.2003 52.5360)')
+        relation = user.points.order(:timestamp)
+
+        expect(Point.total_distance(relation, :m)).to be_within(0.01).of(Point.total_distance(relation.to_a, :m))
+      end
+    end
+
+    context 'when the relation has no conditions' do
+      it 'raises instead of scanning every point' do
+        expect { Point.total_distance }.to raise_error(ArgumentError, /scoped relation/)
+      end
+
+      it 'raises for an explicit unscoped relation' do
+        expect { Point.total_distance(Point.all, :m) }.to raise_error(ArgumentError, /scoped relation/)
       end
     end
 
