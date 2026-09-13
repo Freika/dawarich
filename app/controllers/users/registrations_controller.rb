@@ -197,12 +197,11 @@ class Users::RegistrationsController < Devise::RegistrationsController
     @invitation = Family::Invitation.find_by(token: invitation_token)
   end
 
-  def valid_invitation_token?
-    @invitation&.can_be_accepted?
-  end
-
   def registration_policy
-    @registration_policy ||= Auth::EmailPasswordRegistrationPolicy.new(invitation_valid: valid_invitation_token?)
+    @registration_policy ||= Auth::EmailPasswordRegistrationPolicy.new(
+      invitation: @invitation,
+      email: params.dig(:user, :email) || @invitation&.email
+    )
   end
 
   def invitation_token

@@ -238,6 +238,37 @@ RSpec.describe 'Users::Registrations', type: :request do
 
         expect(response).to redirect_to(family_path)
       end
+
+      it 'allows account creation when the email differs only in case' do
+        expect do
+          post user_registration_path, params: {
+            user: {
+              email: invitation.email.upcase,
+              password: 'password123456',
+              password_confirmation: 'password123456'
+            },
+            invitation_token: invitation.token
+          }
+        end.to change(User, :count).by(1)
+
+        expect(response).to redirect_to(family_path)
+      end
+
+      it 'prevents account creation for a different email' do
+        expect do
+          post user_registration_path, params: {
+            user: {
+              email: 'someone.else@example.com',
+              password: 'password123456',
+              password_confirmation: 'password123456'
+            },
+            invitation_token: invitation.token
+          }
+        end.not_to change(User, :count)
+
+        expect(response).to redirect_to(root_path)
+        expect(invitation.reload.status).to eq('pending')
+      end
     end
 
     context 'when accessing registration with expired invitation' do

@@ -206,6 +206,15 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
         expect(response).to have_http_status(:forbidden)
         expect(invitation.reload).to be_pending
       end
+
+      it 'rejects a valid invitation for a different email without creating a user' do
+        expect do
+          post '/api/v1/auth/register', params: invitee_params.merge(email: 'someone.else@example.com')
+        end.not_to change(User, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(invitation.reload).to be_pending
+      end
     end
   end
 end

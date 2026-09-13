@@ -36,7 +36,7 @@ class Api::V1::Auth::RegistrationsController < Api::V1::Auth::BaseController
   end
 
   def registration_policy
-    @registration_policy ||= Auth::EmailPasswordRegistrationPolicy.new(invitation_valid: joining_family?)
+    @registration_policy ||= Auth::EmailPasswordRegistrationPolicy.new(invitation:, email: normalized_email)
   end
 
   def new_user_attrs
@@ -63,7 +63,7 @@ class Api::V1::Auth::RegistrationsController < Api::V1::Auth::BaseController
   end
 
   def joining_family?
-    invitation&.can_be_accepted? && invitation.email == normalized_email
+    registration_policy.invitation_matches_email?
   end
 
   def accept_family_invitation(user)

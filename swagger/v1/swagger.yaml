@@ -579,6 +579,21 @@ paths:
                   details:
                     type: object
                     additionalProperties: true
+        '403':
+          description: registration disabled on this instance
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: registration_disabled
+                  message:
+                    type: string
+                required:
+                - error
+                - message
       requestBody:
         content:
           application/json:
