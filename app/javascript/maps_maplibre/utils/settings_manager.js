@@ -123,8 +123,8 @@ export function bulkPointsRequired(settings = {}) {
     Boolean(settings.heatmapEnabled && !tiledRequested) ||
     Boolean(
       settings.fogEnabled &&
-      settings.fogOfWarMode !== "hexagons" &&
-      !tiledRequested,
+        settings.fogOfWarMode !== "hexagons" &&
+        !tiledRequested,
     ) ||
     Boolean(settings.scratchEnabled)
   )
@@ -158,6 +158,7 @@ export function tiledLayerModes(settings = {}) {
   }
 }
 
+// biome-ignore lint/complexity/noStaticOnlyClass: retain the established public API
 export class SettingsManager {
   static apiKey = null
   static cachedSettings = null
@@ -401,7 +402,6 @@ export class SettingsManager {
       // distance_unit, tile categories, and POI groups live inside the
       // nested `maps` hash on the backend, the API merges it so the V1
       // keys managed by the settings page survive.
-      // biome-ignore lint/performance/noDelete: key must be absent, not undefined
       delete backendSettings.distance_unit
       const mapsPayload = {}
       if (settings.distance_unit != null) {

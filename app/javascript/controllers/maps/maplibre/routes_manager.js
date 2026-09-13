@@ -244,8 +244,9 @@ export class RoutesManager {
           })) || []
 
       const { RoutesLayer } = await import("maps_maplibre/layers/routes_layer")
-      const { applySpeedColors } =
-        await import("maps_maplibre/utils/speed_colors")
+      const { applySpeedColors } = await import(
+        "maps_maplibre/utils/speed_colors"
+      )
 
       let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
         distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,

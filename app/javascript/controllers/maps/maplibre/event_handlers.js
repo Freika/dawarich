@@ -908,8 +908,9 @@ export class EventHandlers {
 
       if (!trackPointsLayer) {
         // Import and create the layer dynamically
-        const { TrackPointsLayer } =
-          await import("maps_maplibre/layers/track_points_layer")
+        const { TrackPointsLayer } = await import(
+          "maps_maplibre/layers/track_points_layer"
+        )
         trackPointsLayer = new TrackPointsLayer(this.map, {
           apiClient: this.controller.api,
         })
