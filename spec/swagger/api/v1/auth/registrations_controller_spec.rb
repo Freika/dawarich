@@ -54,6 +54,25 @@ describe 'Auth Registrations API', type: :request do
 
         run_test!
       end
+
+      response '403', 'registration disabled on a self-hosted instance' do
+        schema type: :object,
+               properties: {
+                 error: { type: :string },
+                 message: { type: :string }
+               }
+
+        before do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+          allow(DawarichSettings).to receive(:registration_enabled?).and_return(false)
+        end
+
+        let(:credentials) do
+          { email: 'new@example.com', password: 'secret123456', password_confirmation: 'secret123456' }
+        end
+
+        run_test!
+      end
     end
   end
 end
