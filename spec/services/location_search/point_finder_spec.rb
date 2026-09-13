@@ -72,6 +72,26 @@ RSpec.describe LocationSearch::PointFinder do
         end
       end
 
+      context 'with address metadata' do
+        let(:search_params) do
+          {
+            latitude: 52.5200,
+            longitude: 13.4050,
+            place_name: 'Kaufland Mitte',
+            address: 'Alexanderplatz 1, Berlin'
+          }
+        end
+
+        it 'includes the selected address in the result' do
+          result = service.call
+
+          expect(result[:locations].first).to include(
+            place_name: 'Kaufland Mitte',
+            address: 'Alexanderplatz 1, Berlin'
+          )
+        end
+      end
+
       context 'with date filtering' do
         let(:search_params) do
           {
