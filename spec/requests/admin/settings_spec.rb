@@ -16,6 +16,8 @@ RSpec.describe 'Admin::Settings' do
     InstanceSettings::Resolver.reset!
   end
 
+  before { allow(InstanceSettings).to receive(:enabled?).and_return(true) }
+
   describe 'authorisation' do
     it 'does not serve the page to a non-admin' do
       sign_in non_admin
@@ -170,14 +172,110 @@ RSpec.describe 'Admin::Settings' do
     end
   end
 
+  describe 'while the resolver flag is off' do
+    before do
+      allow(InstanceSettings).to receive(:enabled?).and_return(false)
+      sign_in admin
+    end
+
+    it 'refuses a write that nothing would read' do
+      patch '/admin/settings', params: { instance_settings: { photon_api_host: 'stored.example.com' } }
+
+      expect(InstanceSetting.find_by(key: 'photon_api_host')).to be_nil
+      expect(flash[:alert]).to eq(I18n.t('admin.settings.update.disabled'))
+    end
+
+    it 'names the flag that turns the page on and disables the form' do
+      get '/admin/settings'
+
+      expect(response.body).to include(InstanceSettings::FLAG.to_s)
+      expect(response.body).to match(/<fieldset[^>]*disabled/)
+    end
+  end
+
+  describe 'with the resolver flag on' do
+    before { sign_in admin }
+
+    it 'does not disable the form' do
+      get '/admin/settings'
+
+      expect(response.body).not_to match(/<fieldset[^>]*disabled/)
+      expect(response.body).not_to include(InstanceSettings::FLAG.to_s)
+    end
+
+    it 'says a stored secret cannot be decrypted instead of showing it as unset' do
+      setting = InstanceSetting.create!(key: 'geoapify_api_key', value: 'token')
+      InstanceSetting.connection.execute(
+        InstanceSetting.sanitize_sql_array(
+          ['UPDATE instance_settings SET encrypted_value = ? WHERE id = ?', 'not-valid-ciphertext', setting.id]
+        )
+      )
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings'
+
+      expect(response.body).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.unreadable_secret')))
+    end
+
+    it 'replaces an undecryptable secret with the value the operator re-enters' do
+      setting = InstanceSetting.create!(key: 'geoapify_api_key', value: 'token')
+      InstanceSetting.connection.execute(
+        InstanceSetting.sanitize_sql_array(
+          ['UPDATE instance_settings SET encrypted_value = ? WHERE id = ?', 'not-valid-ciphertext', setting.id]
+        )
+      )
+      InstanceSettings::Resolver.reset!
+
+      patch '/admin/settings', params: { instance_settings: { geoapify_api_key: 'fresh-key' } }
+
+      expect(response).to have_http_status(:see_other)
+      expect(InstanceSetting.find_by(key: 'geoapify_api_key').value).to eq('fresh-key')
+    end
+
+    it 'names the provider in effect and the variable pinning it, so a stored one it overrides is not a mystery' do
+      saved = ENV.fetch('GEOAPIFY_API_KEY', nil)
+      ENV['GEOAPIFY_API_KEY'] = 'env-geo-key'
+      InstanceSetting.create!(key: 'photon_api_host', value: 'stored.example.com')
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings'
+
+      expect(response.body).to include(
+        ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding_pinned', provider: 'Geoapify',
+                                                                            variable: 'GEOAPIFY_API_KEY'))
+      )
+    ensure
+      ENV['GEOAPIFY_API_KEY'] = saved
+      InstanceSettings::Resolver.reset!
+    end
+
+    it 'says geocoding is off when no provider is configured' do
+      get '/admin/settings'
+
+      expect(response.body).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding_none')))
+    end
+
+    it 'does not claim an unreadable secret when every stored secret decrypts' do
+      InstanceSetting.create!(key: 'geoapify_api_key', value: 'token')
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings'
+
+      expect(response.body).not_to include(ERB::Util.html_escape(I18n.t('admin.settings.show.unreadable_secret')))
+    end
+  end
+
   describe 'locale parity' do
     it 'defines the admin settings strings in every shipped locale' do
       en = I18n.t('admin.settings.show.title', locale: :en, default: nil)
       expect(en).to be_present
 
-      %i[de es fr pl ca].each do |locale|
-        expect(I18n.t('admin.settings.show.title', locale: locale, default: nil))
-          .to be_present, "missing admin.settings.show.title for #{locale}"
+      keys = %w[admin.settings.show.title admin.settings.show.disabled_notice
+                admin.settings.show.unreadable_secret admin.settings.update.disabled
+                admin.settings.show.geocoding_pinned admin.settings.show.geocoding_stored
+                admin.settings.show.geocoding_none]
+      %i[de es fr pl ca].product(keys).each do |locale, key|
+        expect(I18n.t(key, locale: locale, default: nil)).to be_present, "missing #{key} for #{locale}"
       end
     end
   end

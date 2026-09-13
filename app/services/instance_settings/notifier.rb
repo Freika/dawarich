@@ -29,7 +29,7 @@ module InstanceSettings
         Rails.logger.warn("[InstanceSettings] ignoring malformed notification: #{e.message}")
       end
 
-      # Started from Puma's on_worker_boot and Sidekiq's :startup, never from an
+      # Started from Puma's before_worker_boot and Sidekiq's :startup, never from an
       # initializer: config/puma.rb sets preload_app!, so a thread spawned during
       # preload lives in the master and dies at fork, leaving every request-serving
       # worker permanently stale.

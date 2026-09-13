@@ -47,6 +47,12 @@
     </label>
   <% end %>
 
+  <% if unreadable && !setting.pinned? %>
+    <label class="label" for="<%= field_id %>">
+      <span class="label-text-alt text-warning"><%= t('admin.settings.show.unreadable_secret') %></span>
+    </label>
+  <% end %>
+
   <% if setting.pinned? %>
     <label class="label" for="<%= field_id %>">
       <span class="label-text-alt text-base-content/60">

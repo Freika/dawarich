@@ -3,6 +3,9 @@
 module Geocoding
   class Config
     KOMOOT_HOST = Providers::KOMOOT_HOST
+    # The Instance setting whose presence selects each provider, in chain order.
+    PROVIDER_KEYS = { photon: :photon_api_host, geoapify: :geoapify_api_key,
+                      nominatim: :nominatim_api_host, locationiq: :locationiq_api_key }.freeze
 
     attr_reader :source, :provider, :host, :api_key, :use_https, :rps
 
@@ -27,33 +30,32 @@ module Geocoding
 
     # Walks the same provider chain as the ENV path, but each candidate carries
     # the source that supplied it so the admin page can say whether a value is
-    # Pinned by a variable or merely stored.
+    # Pinned by a variable or merely stored. A provider the environment pins
+    # outranks every stored one, wherever the stored one sits in the chain.
     def self.resolved_provider_attributes
-      rps = InstanceSettings::Resolver.value(:reverse_geocoding_rps)
+      candidates = provider_candidates.select { |_provider, primary| primary.value.present? }
+      provider, primary = (candidates.select { |_provider, value| value.pinned? }.presence || candidates).first
+      return {} if provider.nil?
 
-      photon_host = InstanceSettings::Resolver.get(:photon_api_host)
-      if photon_host.value.present?
-        return { source: photon_host.source, provider: :photon, host: photon_host.value,
-                 api_key: InstanceSettings::Resolver.value(:photon_api_key),
-                 use_https: resolved_photon_use_https(photon_host.value), rps: rps }
+      { source: primary.source, provider: provider, rps: InstanceSettings::Resolver.value(:reverse_geocoding_rps) }
+        .merge(resolved_attributes_for(provider, primary.value))
+    end
+
+    def self.provider_candidates
+      PROVIDER_KEYS.transform_values { |key| InstanceSettings::Resolver.get(key) }
+    end
+
+    def self.resolved_attributes_for(provider, primary_value)
+      case provider
+      when :photon
+        { host: primary_value, api_key: InstanceSettings::Resolver.value(:photon_api_key),
+          use_https: resolved_photon_use_https(primary_value) }
+      when :nominatim
+        { host: primary_value, api_key: InstanceSettings::Resolver.value(:nominatim_api_key),
+          use_https: InstanceSettings::Resolver.value(:nominatim_api_use_https) }
+      else
+        { api_key: primary_value }
       end
-
-      geoapify_key = InstanceSettings::Resolver.get(:geoapify_api_key)
-      if geoapify_key.value.present?
-        return { source: geoapify_key.source, provider: :geoapify, api_key: geoapify_key.value, rps: rps }
-      end
-
-      nominatim_host = InstanceSettings::Resolver.get(:nominatim_api_host)
-      if nominatim_host.value.present?
-        return { source: nominatim_host.source, provider: :nominatim, host: nominatim_host.value,
-                 api_key: InstanceSettings::Resolver.value(:nominatim_api_key),
-                 use_https: InstanceSettings::Resolver.value(:nominatim_api_use_https), rps: rps }
-      end
-
-      locationiq_key = InstanceSettings::Resolver.get(:locationiq_api_key)
-      return {} if locationiq_key.value.blank?
-
-      { source: locationiq_key.source, provider: :locationiq, api_key: locationiq_key.value, rps: rps }
     end
 
     # Hosts that only ever answer over TLS force it on regardless of the flag,
@@ -122,7 +124,8 @@ module Geocoding
     end
 
     private_class_method :env_config, :disabled_config, :env_provider_attributes,
-                         :resolved_provider_attributes, :resolved_photon_use_https
+                         :resolved_provider_attributes, :resolved_photon_use_https,
+                         :provider_candidates, :resolved_attributes_for
 
     def initialize(source:, provider: nil, host: nil, api_key: nil, use_https: true, rps: nil)
       @source = source

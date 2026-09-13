@@ -111,9 +111,4 @@ RSpec.describe Geocoding::SeedFromEnv do
       expect(ExceptionReporter).to have_received(:call).at_least(:once)
     end
   end
-
-  # The after_create hook that used to call this service is gone: geocoding is an
-  # Instance setting, so seeding a per-user copy on every signup produced rows
-  # nothing reads. The service itself stays callable and is covered above.
-  # spec/models/user_geocoding_seeding_spec.rb asserts the hook is not registered.
 end

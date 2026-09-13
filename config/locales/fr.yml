@@ -9,9 +9,15 @@ fr:
         secret_set: "Une valeur est enregistrée"
         pinned_hint: "Fixé par %{variable}"
         clear_secret: "Effacer la valeur enregistrée"
+        disabled_notice: "Les paramètres de l'instance sont désactivés : ce qui est enregistré ici n'a pas encore d'effet. Activez le feature flag %{flag} dans Flipper (/admin/flipper) pour les utiliser."
+        unreadable_secret: "Une valeur enregistrée ne peut pas être déchiffrée avec les clés de cette instance. Saisissez-la à nouveau."
+        geocoding_pinned: "Le géocodage utilise actuellement %{provider}, fixé par %{variable}."
+        geocoding_stored: "Le géocodage utilise actuellement %{provider}, avec les valeurs enregistrées ici."
+        geocoding_none: "Le géocodage est actuellement désactivé : aucun fournisseur n'est configuré."
       update:
         saved: "Paramètres enregistrés."
         pinned: "Refusé : fixé par %{variables}."
+        disabled: "Les paramètres de l'instance sont désactivés : rien n'a été enregistré."
       source:
         env: "depuis l'environnement"
         stored: "enregistré ici"

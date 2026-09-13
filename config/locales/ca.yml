@@ -8,9 +8,15 @@ ca:
         secret_set: "Hi ha un valor desat"
         pinned_hint: "Fixat per %{variable}"
         clear_secret: "Esborra el valor desat"
+        disabled_notice: "La configuració de la instància està desactivada, així que el que desis aquí encara no té efecte. Activa la feature flag %{flag} a Flipper (/admin/flipper) per fer-la servir."
+        unreadable_secret: "Un valor desat no es pot desxifrar amb les claus d'aquesta instància. Torna a introduir-lo."
+        geocoding_pinned: "La geocodificació fa servir ara %{provider}, fixat per %{variable}."
+        geocoding_stored: "La geocodificació fa servir ara %{provider}, amb els valors desats aquí."
+        geocoding_none: "La geocodificació està desactivada: no hi ha cap proveïdor configurat."
       update:
         saved: "Configuració desada."
         pinned: "Rebutjat: fixat per %{variables}."
+        disabled: "La configuració de la instància està desactivada, així que no s'ha desat res."
       source:
         env: "de l'entorn"
         stored: "desat aquí"

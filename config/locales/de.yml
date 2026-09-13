@@ -8,9 +8,15 @@ de:
         secret_set: "Ein Wert ist hinterlegt"
         pinned_hint: "Festgelegt durch %{variable}"
         clear_secret: "Gespeicherten Wert löschen"
+        disabled_notice: "Die Instanz-Einstellungen sind ausgeschaltet, hier Gespeichertes wirkt also noch nicht. Schalte das Feature-Flag %{flag} in Flipper (/admin/flipper) ein, um sie zu nutzen."
+        unreadable_secret: "Ein gespeicherter Wert lässt sich mit den Schlüsseln dieser Instanz nicht entschlüsseln. Gib ihn erneut ein."
+        geocoding_pinned: "Geocoding nutzt derzeit %{provider}, festgelegt durch %{variable}."
+        geocoding_stored: "Geocoding nutzt derzeit %{provider} mit den hier gespeicherten Werten."
+        geocoding_none: "Geocoding ist derzeit aus: Es ist kein Anbieter konfiguriert."
       update:
         saved: "Einstellungen gespeichert."
         pinned: "Abgelehnt: festgelegt durch %{variables}."
+        disabled: "Die Instanz-Einstellungen sind ausgeschaltet, es wurde nichts gespeichert."
       source:
         env: "aus der Umgebung"
         stored: "hier gespeichert"

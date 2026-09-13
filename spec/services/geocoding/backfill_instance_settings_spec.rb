@@ -52,6 +52,45 @@ RSpec.describe Geocoding::BackfillInstanceSettings do
     expect(InstanceSetting.where(key: 'photon_api_host')).to be_empty
   end
 
+  it "writes nothing when some users have no configuration, so one user's key never serves everyone" do
+    geocoding_setting(create(:user), host: nil, provider: 'geoapify', api_key: 'personal-key')
+    create(:user)
+
+    described_class.call
+
+    expect(InstanceSetting.count).to eq(0)
+  end
+
+  it 'does not count a soft-deleted user as lacking a configuration' do
+    geocoding_setting(create(:user), host: 'only.example.com')
+    create(:user).update_column(:deleted_at, Time.current)
+
+    described_class.call
+
+    expect(InstanceSetting.find_by(key: 'photon_api_host')&.value).to eq('only.example.com')
+  end
+
+  it "ignores a soft-deleted user's configuration rather than letting it block agreement" do
+    geocoding_setting(create(:user), host: 'live.example.com')
+    deleted = create(:user)
+    geocoding_setting(deleted, host: 'deleted.example.com')
+    deleted.update_column(:deleted_at, Time.current)
+
+    described_class.call
+
+    expect(InstanceSetting.find_by(key: 'photon_api_host')&.value).to eq('live.example.com')
+  end
+
+  it "never promotes a soft-deleted user's configuration when no live user has one" do
+    deleted = create(:user)
+    geocoding_setting(deleted, host: nil, provider: 'geoapify', api_key: 'departed-key')
+    deleted.update_column(:deleted_at, Time.current)
+
+    described_class.call
+
+    expect(InstanceSetting.count).to eq(0)
+  end
+
   it 'does nothing and does not raise on an instance with no users' do
     expect { described_class.call }.not_to raise_error
     expect(InstanceSetting.count).to eq(0)

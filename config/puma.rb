@@ -51,7 +51,7 @@ end
 # started during preload lives in the master and dies at fork, so the subscriber
 # has to be started per worker or every request-serving process would keep a
 # stale snapshot until the next restart.
-on_worker_boot do
+before_worker_boot do
   InstanceSettings::Notifier.start
 rescue StandardError => e
   Rails.logger.warn("[InstanceSettings] subscriber failed to start: #{e.class}: #{e.message}")

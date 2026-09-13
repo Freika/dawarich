@@ -8,9 +8,15 @@ en:
         secret_set: "A value is stored"
         pinned_hint: "Pinned by %{variable}"
         clear_secret: "Clear the stored value"
+        disabled_notice: "Instance settings are switched off, so nothing saved here takes effect yet. Turn on the %{flag} feature flag in Flipper (/admin/flipper) to use them."
+        unreadable_secret: "A stored value cannot be decrypted with this instance's keys. Enter it again."
+        geocoding_pinned: "Geocoding currently uses %{provider}, pinned by %{variable}."
+        geocoding_stored: "Geocoding currently uses %{provider}, from the values stored here."
+        geocoding_none: "Geocoding is currently off: no provider is configured."
       update:
         saved: "Settings saved."
         pinned: "Refused: pinned by %{variables}."
+        disabled: "Instance settings are switched off, so nothing was saved."
       source:
         env: "from environment"
         stored: "stored here"

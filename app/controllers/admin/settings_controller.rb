@@ -7,9 +7,13 @@ module Admin
   class SettingsController < ApplicationController
     before_action :authenticate_user!
     before_action :ensure_admin!
+    before_action :refuse_while_disabled, only: :update
 
     def show
+      @enabled = InstanceSettings.enabled?
       @settings = resolved_settings
+      @unreadable_keys = unreadable_secret_keys
+      @geocoding_summary = geocoding_summary if @enabled
     end
 
     def update
@@ -28,6 +32,35 @@ module Admin
 
     def ensure_admin!
       user_not_authorized unless current_user&.admin?
+    end
+
+    # With the flag off nothing reads these rows, so a save would be accepted and
+    # silently discarded — the behaviour Instance settings exist to remove.
+    def refuse_while_disabled
+      return if InstanceSettings.enabled?
+
+      redirect_to admin_settings_path, alert: t('admin.settings.update.disabled'), status: :see_other
+    end
+
+    # The resolver treats an undecryptable secret as unset, which on its own
+    # renders identically to one that was never stored.
+    def unreadable_secret_keys
+      InstanceSetting.where(key: InstanceSettings::Registry.secret_keys.map(&:to_s))
+                     .reject(&:readable_value?)
+                     .map { |setting| setting.key.to_sym }
+    end
+
+    # Each field shows only its own source, so a stored provider that a pinned
+    # one outranks would otherwise look like it is in use.
+    def geocoding_summary
+      config = Geocoding::Config.resolved_config
+      return t('admin.settings.show.geocoding_none') unless config.enabled?
+
+      provider = Geocoding::Providers.name(config.provider)
+      return t('admin.settings.show.geocoding_stored', provider: provider) unless config.pinned?
+
+      variable = InstanceSettings::Registry.fetch(Geocoding::Config::PROVIDER_KEYS.fetch(config.provider)).env_var
+      t('admin.settings.show.geocoding_pinned', provider: provider, variable: variable)
     end
 
     def resolved_settings

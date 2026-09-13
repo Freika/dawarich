@@ -64,6 +64,26 @@ RSpec.describe Geocoding::Config, 'resolved from instance settings' do
       expect(described_class.for(user).provider).to eq(:photon)
     end
 
+    it 'lets a provider the environment pins win over a higher-priority stored one' do
+      ENV['GEOAPIFY_API_KEY'] = 'env-geo-key'
+      InstanceSetting.create!(key: 'photon_api_host', value: 'stored.example.com')
+      InstanceSettings::Resolver.reset!
+
+      config = described_class.for(user)
+
+      expect(config.provider).to eq(:geoapify)
+      expect(config.api_key).to eq('env-geo-key')
+      expect(config.source).to eq(:env)
+    end
+
+    it 'still follows the chain among providers the environment pins' do
+      ENV['GEOAPIFY_API_KEY'] = 'env-geo-key'
+      ENV['PHOTON_API_HOST'] = 'env.example.com'
+      InstanceSettings::Resolver.reset!
+
+      expect(described_class.for(user).provider).to eq(:photon)
+    end
+
     it 'carries a stored api key through' do
       InstanceSetting.create!(key: 'geoapify_api_key', value: 'geo-key')
       InstanceSettings::Resolver.reset!
@@ -75,7 +95,7 @@ RSpec.describe Geocoding::Config, 'resolved from instance settings' do
     end
 
     it 'never consults per-user service settings' do
-      user # create before asserting: the after_create seeding hook touches ServiceSetting itself
+      user
       expect(ServiceSetting).not_to receive(:service_geocoding)
 
       described_class.for(user)

@@ -5,15 +5,30 @@
 
   <p class="text-base-content/60 max-w-2xl mb-6"><%= t('admin.settings.show.intro') %></p>
 
-  <%= form_with url: admin_settings_path, method: :patch do %>
-    <div class="grid gap-4 max-w-2xl">
-      <% @settings.each do |setting| %>
-        <%= render 'admin/settings/setting_field', setting: setting %>
-      <% end %>
-    </div>
+  <% if @geocoding_summary %>
+    <p class="text-sm font-medium max-w-2xl mb-6 [overflow-wrap:anywhere]"><%= @geocoding_summary %></p>
+  <% end %>
 
-    <div class="mt-6">
-      <%= submit_tag t('admin.settings.show.save'), class: 'btn btn-primary' %>
+  <% unless @enabled %>
+    <div role="alert" class="alert alert-warning max-w-2xl mb-6">
+      <span class="min-w-0 [overflow-wrap:anywhere]">
+        <%= t('admin.settings.show.disabled_notice', flag: InstanceSettings::FLAG) %>
+      </span>
     </div>
+  <% end %>
+
+  <%= form_with url: admin_settings_path, method: :patch do %>
+    <fieldset class="contents" <%= 'disabled' unless @enabled %>>
+      <div class="grid gap-4 max-w-2xl">
+        <% @settings.each do |setting| %>
+          <%= render 'admin/settings/setting_field', setting: setting,
+                                                     unreadable: @unreadable_keys.include?(setting.key) %>
+        <% end %>
+      </div>
+
+      <div class="mt-6">
+        <%= submit_tag t('admin.settings.show.save'), class: 'btn btn-primary' %>
+      </div>
+    </fieldset>
   <% end %>
 </div>

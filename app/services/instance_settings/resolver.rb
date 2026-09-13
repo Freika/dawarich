@@ -71,6 +71,7 @@ module InstanceSettings
         end
 
         record = InstanceSetting.find_or_initialize_by(key: definition.key.to_s)
+        record.discard_unreadable_value!
         record.value = new_value
         record.save!
         reset!

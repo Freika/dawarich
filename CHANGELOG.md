@@ -4,13 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Opt-in: with the `instance_settings_resolver` feature flag on, admins can configure geocoding for the whole instance in Instance settings (`/admin/settings`) without a redeploy. A set environment variable still wins and shows its field read-only.
+
 ## [1.14.2]
 
 ### Added
 
 - GPX waypoints are now imported as places, so a `favourites.gpx` exported from OsmAnd+ and similar apps no longer imports as nothing at all. Each waypoint's category becomes a tag, re-importing an updated file does not duplicate anything, and waypoints never become timeline points, so they do not affect your distance or statistics. (#1261)
 - The API now accepts visits in batches: `POST /api/v1/visits/batch` takes up to 100 visits in one request and reports each one's outcome separately, so a single rejected visit no longer costs the whole sync. The mobile apps previously had to send one request per detected visit.
-- Geocoding is now configured for the whole instance rather than per user, and admins can change it in Instance settings without a redeploy. Environment variables still win: a variable that is set pins its value, and the field is shown read-only beside the variable's name.
 
 ### Changed
 

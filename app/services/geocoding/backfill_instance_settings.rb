@@ -4,10 +4,10 @@ module Geocoding
   # Carries an existing per-user geocoding configuration up to the Instance
   # setting that now owns it.
   #
-  # Deliberately conservative: it writes only when every active configuration
-  # agrees. Electing one user's provider for the whole deployment would be data
-  # loss dressed as a migration, and the hand-edited instance is exactly the one
-  # worth not clobbering. Nothing is ever deleted, so the move is reversible.
+  # Deliberately conservative: it writes only when every user has an active
+  # configuration and they all agree. Electing one user's provider for the whole
+  # deployment would be data loss dressed as a migration, and the hand-edited
+  # instance is exactly the one worth not clobbering. Nothing is ever deleted, so the move is reversible.
   class BackfillInstanceSettings
     KEY_FOR_HOST = { 'photon' => :photon_api_host, 'nominatim' => :nominatim_api_host }.freeze
     KEY_FOR_API_KEY = {
@@ -20,8 +20,9 @@ module Geocoding
     end
 
     def call
-      settings = ServiceSetting.service_geocoding.where(active: true).to_a
+      settings = ServiceSetting.service_geocoding.where(active: true, user_id: User.select(:id)).to_a
       return if settings.empty?
+      return log_partial_coverage if User.where.not(id: settings.map(&:user_id)).exists?
 
       distinct = settings.map { |s| signature(s) }.uniq
       return log_disagreement(distinct) if distinct.size > 1
@@ -52,6 +53,14 @@ module Geocoding
       Rails.logger.warn(
         '[Geocoding] active geocoding settings disagree across users; writing no instance setting. ' \
         "Configurations seen: #{redacted.inspect}"
+      )
+    end
+
+    # A configuration only some users made is theirs, not the instance's: its API
+    # key would otherwise start serving, and billing, every other user.
+    def log_partial_coverage
+      Rails.logger.warn(
+        '[Geocoding] not every user has an active geocoding setting; writing no instance setting.'
       )
     end
 

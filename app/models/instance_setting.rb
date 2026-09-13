@@ -35,8 +35,17 @@ class InstanceSetting < ApplicationRecord
   def readable_value?
     encrypted_value
     true
-  rescue ActiveRecord::Encryption::Errors::Decryption
+  rescue *InstanceSettings::Resolver::UNREADABLE
     false
+  end
+
+  # Saving reads the previous ciphertext to track the change, so a row whose
+  # keys were rotated away cannot be overwritten until that ciphertext is gone.
+  def discard_unreadable_value!
+    return if new_record? || readable_value?
+
+    self.class.where(id: id).update_all(encrypted_value: nil)
+    reload
   end
 
   def definition

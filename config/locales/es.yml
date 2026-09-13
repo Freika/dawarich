@@ -8,9 +8,15 @@ es:
         secret_set: "Hay un valor guardado"
         pinned_hint: "Fijado por %{variable}"
         clear_secret: "Borrar el valor guardado"
+        disabled_notice: "Los ajustes de la instancia están desactivados, así que lo que guardes aquí aún no tiene efecto. Activa la feature flag %{flag} en Flipper (/admin/flipper) para usarlos."
+        unreadable_secret: "Un valor guardado no se puede descifrar con las claves de esta instancia. Vuelve a introducirlo."
+        geocoding_pinned: "La geocodificación usa ahora %{provider}, fijado por %{variable}."
+        geocoding_stored: "La geocodificación usa ahora %{provider}, con los valores guardados aquí."
+        geocoding_none: "La geocodificación está desactivada: no hay ningún proveedor configurado."
       update:
         saved: "Ajustes guardados."
         pinned: "Rechazado: fijado por %{variables}."
+        disabled: "Los ajustes de la instancia están desactivados, así que no se ha guardado nada."
       source:
         env: "desde el entorno"
         stored: "guardado aquí"
