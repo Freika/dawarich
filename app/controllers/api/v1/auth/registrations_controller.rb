@@ -22,16 +22,9 @@ class Api::V1::Auth::RegistrationsController < Api::V1::Auth::BaseController
   def check_registration_allowed
     return if registration_policy.allowed?
 
-    message_key = if registration_policy.oidc_only?
-                    'controllers.users.registrations.email_password_registration_is_disabled_please_use_oidc_to_sign'
-                  else
-                    'controllers.users.registrations.' \
-                      'registration_is_not_available_please_contact_your_administrator_for_acce'
-                  end
-
     render json: {
       error: 'registration_disabled',
-      message: I18n.t(message_key)
+      message: I18n.t(registration_policy.denial_message_key)
     }, status: :forbidden
   end
 

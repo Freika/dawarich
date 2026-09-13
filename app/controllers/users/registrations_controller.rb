@@ -180,15 +180,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def check_registration_allowed
     return if registration_policy.allowed?
 
-    message_key = if registration_policy.oidc_only?
-                    'controllers.users.registrations.email_password_registration_is_disabled_please_use_oidc_to_sign'
-                  else
-                    'controllers.users.registrations.' \
-                      'registration_is_not_available_please_contact_your_administrator_for_acce'
-                  end
-
-    alert = I18n.t(message_key)
-    redirect_to root_path, alert: alert
+    redirect_to root_path, alert: I18n.t(registration_policy.denial_message_key)
   end
 
   def set_invitation
@@ -200,14 +192,19 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def registration_policy
     @registration_policy ||= Auth::EmailPasswordRegistrationPolicy.new(
       invitation: @invitation,
-      email: params.dig(:user, :email) || @invitation&.email
+      email: user_param(:email) || @invitation&.email
     )
   end
 
   def invitation_token
     @invitation_token ||= params[:invitation_token] ||
-                          params.dig(:user, :invitation_token) ||
+                          user_param(:invitation_token) ||
                           session[:invitation_token]
+  end
+
+  def user_param(key)
+    user_params = params[:user]
+    user_params[key] if user_params.is_a?(ActionController::Parameters)
   end
 
   def accept_invitation_for_user(user)
@@ -241,7 +238,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def store_signup_intent(user)
     return if DawarichSettings.self_hosted?
 
-    intent = params.dig(:user, :signup_intent)
+    intent = user_param(:signup_intent)
     return unless intent.in?(%w[cloud self_hosted_demo])
 
     user.update_columns(

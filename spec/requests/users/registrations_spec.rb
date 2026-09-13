@@ -186,6 +186,15 @@ RSpec.describe 'Users::Registrations', type: :request do
         expect(response).to redirect_to(root_path)
         expect(flash[:alert]).to include('Registration is not available')
       end
+
+      it 'rejects a user param that is not a hash without erroring' do
+        expect do
+          post user_registration_path, params: { user: 'test@example.com' }
+        end.not_to change(User, :count)
+
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to include('Registration is not available')
+      end
     end
 
     context 'when email/password registration is enabled' do
@@ -267,7 +276,14 @@ RSpec.describe 'Users::Registrations', type: :request do
         end.not_to change(User, :count)
 
         expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('This invitation is not for your email address.')
         expect(invitation.reload.status).to eq('pending')
+      end
+
+      it 'renders the registration page when the user param is not a hash' do
+        get new_user_registration_path(invitation_token: invitation.token, user: 'someone.else@example.com')
+
+        expect(response).to have_http_status(:ok)
       end
     end
 

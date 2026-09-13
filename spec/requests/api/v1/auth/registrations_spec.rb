@@ -213,6 +213,7 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
         end.not_to change(User, :count)
 
         expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['message']).to eq('This invitation is not for your email address.')
         expect(invitation.reload).to be_pending
       end
     end
