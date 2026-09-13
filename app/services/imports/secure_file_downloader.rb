@@ -35,6 +35,13 @@ class Imports::SecureFileDownloader
           temp_file.rewind
         end
       end
+
+      raise 'Download completed but no content was received' if temp_file.size.zero? # rubocop:disable Style/ZeroLengthPredicate -- Tempfile has no .empty?
+
+      verify_temp_file_integrity(temp_file)
+      path = temp_file.path
+      temp_file.close
+      path
     rescue Timeout::Error => e
       retries += 1
       if retries <= MAX_RETRIES
@@ -51,14 +58,6 @@ class Imports::SecureFileDownloader
       cleanup_temp_file(temp_file)
       raise
     end
-
-    raise 'Download completed but no content was received' if temp_file.size.zero? # rubocop:disable Style/ZeroLengthPredicate -- Tempfile has no .empty?
-
-    verify_temp_file_integrity(temp_file)
-    temp_file.path
-
-    # Keep temp file open so it can be read by other processes
-    # Caller is responsible for cleanup
   end
 
   private

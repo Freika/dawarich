@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Failed imports no longer leave temporary downloads on disk when the file is empty or fails integrity checks.
 - The Synology template and the Kubernetes guide run Dawarich in production instead of development.
 - The Synology template no longer hangs waiting for its database on a fresh install.
 - The Kubernetes guide's health probes check the web container instead of the Sidekiq container, and a startup probe keeps it from being restarted while migrations run.
