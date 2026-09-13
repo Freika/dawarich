@@ -1,10 +1,10 @@
 <%= turbo_frame_tag "residency-content" do %>
   <%
-    # Color palette: one color per country, ordered by most days
     country_colors = %w[
-      bg-primary bg-secondary bg-accent bg-info bg-success
-      bg-warning bg-error bg-primary/70 bg-secondary/70 bg-accent/70
-      bg-info/70 bg-success/70 bg-warning/70 bg-error/70
+      bg-blue-600 bg-orange-700 bg-emerald-600 bg-fuchsia-600
+      bg-amber-700 bg-cyan-700 bg-rose-600 bg-violet-500
+      bg-lime-700 bg-pink-600 bg-teal-600 bg-yellow-700
+      bg-indigo-500 bg-red-600
     ]
     color_map = @countries.each_with_index.to_h { |c, i| [c[:country_name], country_colors[i % country_colors.length]] }
   %>
