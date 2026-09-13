@@ -15,6 +15,8 @@ class Tracks::BoundaryDetector
   # don't auto-stitch them into one continuous track.
   SAME_TRACKER_MAX_GAP_METERS = 5_000
 
+  ADJACENCY_QUERY_BATCH_SIZE = 25
+
   attr_reader :user
 
   def initialize(user)
@@ -104,8 +106,8 @@ class Tracks::BoundaryDetector
   def find_boundary_track_candidates
     recent_tracks = user.tracks
                         .where('created_at > ?', 1.hour.ago)
-                        .includes(:points)
                         .order(:start_at)
+                        .to_a
 
     return [] if recent_tracks.empty?
 
@@ -135,11 +137,20 @@ class Tracks::BoundaryDetector
   def adjacent_existing_tracks(recent_tracks)
     return [] if recent_tracks.empty?
 
-    window = adjacency_window
-    recent_ids = recent_tracks.map(&:id)
+    recent_ids = recent_tracks.map(&:id).to_set
     tracker_ids = recent_tracks.map(&:tracker_id).uniq
 
-    conditions = recent_tracks.flat_map do |track|
+    recent_tracks
+      .each_slice(ADJACENCY_QUERY_BATCH_SIZE)
+      .flat_map { |slice| adjacent_tracks_for_slice(slice, tracker_ids) }
+      .uniq(&:id)
+      .reject { |track| recent_ids.include?(track.id) }
+  end
+
+  def adjacent_tracks_for_slice(slice, tracker_ids)
+    window = adjacency_window
+
+    conditions = slice.flat_map do |track|
       [
         ['end_at BETWEEN ? AND ?', track.start_at - window, track.start_at],
         ['start_at BETWEEN ? AND ?', track.end_at, track.end_at + window],
@@ -151,10 +162,9 @@ class Tracks::BoundaryDetector
     bindings = conditions.flat_map { |c| c[1..] }
 
     user.tracks
-        .where.not(id: recent_ids)
         .where(tracker_id: tracker_ids)
         .where(sql, *bindings)
-        .includes(:points)
+        .to_a
   end
 
   # Time gap that still counts as "adjacent" for boundary merging.

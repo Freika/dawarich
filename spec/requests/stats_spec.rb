@@ -32,6 +32,29 @@ RSpec.describe '/stats', type: :request do
 
         expect(response.status).to eq(200)
       end
+
+      context 'when only per-user settings enable geocoding (no ENV)' do
+        before do
+          allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+          create(:stat, user:, year: 2024)
+        end
+
+        it 'renders the geocoding stats for a configured user' do
+          create(:service_setting, :active, user: user)
+
+          get stats_url
+
+          expect(response.status).to eq(200)
+          expect(response.body).to include(I18n.t('stats.reverse_geocoding_stats.reverse_geocoded_points'))
+        end
+
+        it 'renders for an unconfigured user without the geocoding stats' do
+          get stats_url
+
+          expect(response.status).to eq(200)
+          expect(response.body).not_to include(I18n.t('stats.reverse_geocoding_stats.reverse_geocoded_points'))
+        end
+      end
     end
 
     describe 'GET /show' do
@@ -52,6 +75,18 @@ RSpec.describe '/stats', type: :request do
           put update_year_month_stats_url(year: '2024', month: '1')
 
           expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, '2024', '1')
+        end
+
+        it 'rejects zero and out-of-range months without enqueueing work' do
+          %w[0 00 13 99].each do |month|
+            expect do
+              put update_year_month_stats_url(year: '2024', month:)
+            end.not_to have_enqueued_job(Stats::CalculatingJob)
+
+            expect(response).to redirect_to(stats_path)
+            expect(response).to have_http_status(:see_other)
+            expect(flash[:alert]).to eq('Select a valid month before updating statistics')
+          end
         end
       end
 

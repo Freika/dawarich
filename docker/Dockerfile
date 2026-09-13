@@ -42,7 +42,6 @@ RUN apt-get update -qq \
     libyaml-dev \
     zlib1g-dev \
     libgeos-dev libgeos++-dev \
-    imagemagick \
     tzdata \
     less \
     libjemalloc2 libjemalloc-dev \
@@ -122,9 +121,10 @@ RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
 RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
     && chmod -R 777 tmp
 
-# Copy public directory to temp location for syncing with volume at runtime
-# This allows new static files to be added to the persistent volume
-RUN cp -r public /tmp/public_assets
+# Stage a pristine copy of public/ for the entrypoint to sync into the
+# persistent volume at runtime. Lives under the app dir, not /tmp, so
+# tmpfs-mounted /tmp cannot make the sync silently skip.
+RUN cp -r public $APP_PATH/public_dist
 
 # Copy entrypoint scripts and grant execution permissions
 COPY ./docker/entrypoint-env-guard.sh /usr/local/bin/entrypoint-env-guard.sh

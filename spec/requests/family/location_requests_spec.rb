@@ -12,7 +12,6 @@ RSpec.describe 'Family::LocationRequests', type: :request do
   before do
     create(:family_membership, family: family, user: owner, role: :owner)
     create(:family_membership, family: family, user: target_user)
-    allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(true)
   end
 
   describe 'POST /family/location_requests' do

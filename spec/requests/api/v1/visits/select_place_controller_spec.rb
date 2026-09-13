@@ -24,6 +24,27 @@ RSpec.describe 'POST /api/v1/visits/:id/select_place' do
     }
   end
 
+  it 'excludes tombstoned visits from the serialized visits_count' do
+    existing_place = create(:place, user: user, name: 'Café Bravo', latitude: 52.5126, longitude: 13.4012)
+    create(:visit, user: user, place: existing_place, area: nil, deleted_at: 1.day.ago)
+
+    post "/api/v1/visits/#{visit.id}/select_place", params: photon_payload, headers: headers, as: :json
+
+    expect(response).to have_http_status(:created)
+    body = JSON.parse(response.body)
+    expect(body['id']).to eq(existing_place.id)
+    expect(body['visits_count']).to eq(1)
+  end
+
+  it 'returns 404 for a tombstoned visit' do
+    tombstone = create(:visit, user: user, area: nil, place: nil, deleted_at: 1.day.ago)
+
+    post "/api/v1/visits/#{tombstone.id}/select_place", params: photon_payload, headers: headers, as: :json
+
+    expect(response).to have_http_status(:not_found)
+    expect(tombstone.reload.place_id).to be_nil
+  end
+
   it 'creates a place and assigns it to the visit (201)' do
     post "/api/v1/visits/#{visit.id}/select_place", params: photon_payload, headers: headers, as: :json
 

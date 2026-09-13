@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import { escapeHtml } from "../utils/geojson_transformers"
 import { BaseLayer } from "./base_layer"
 
@@ -94,9 +95,9 @@ export class AnomaliesLayer extends BaseLayer {
   static anomalyReason(properties) {
     const accuracy = properties.accuracy
     if (accuracy != null && accuracy > 100) {
-      return `Filtered: low accuracy (${accuracy}m, threshold 100m)`
+      return translate("anomalies.low_accuracy", { accuracy, threshold: 100 })
     }
-    return "Filtered: impossible speed between neighboring points"
+    return translate("anomalies.impossible_speed")
   }
 
   /**
@@ -140,8 +141,8 @@ export class AnomaliesLayer extends BaseLayer {
     const reason = AnomaliesLayer.anomalyReason(properties)
 
     return `<div class="text-sm space-y-1">
-      <div><strong>Time:</strong> ${escapeHtml(ts)}</div>
-      <div><strong>Reason:</strong> ${escapeHtml(reason)}</div>
+      <div><strong>${translate("map_info.time")}:</strong> ${escapeHtml(ts)}</div>
+      <div><strong>${translate("map_info.reason")}:</strong> ${escapeHtml(reason)}</div>
     </div>`
   }
 

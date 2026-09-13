@@ -130,5 +130,49 @@ RSpec.describe Users::Digests::SeasonalityCalculator do
         expect(result['summer']).to eq(100)
       end
     end
+
+    context 'with a cloud-Lite plan user whose data window cuts into the year' do
+      include ActiveSupport::Testing::TimeHelpers
+
+      let(:user) { create(:user, :lite_plan, settings: { 'timezone' => 'Europe/London' }) }
+      let(:year) { 2025 }
+
+      around { |example| travel_to(Time.utc(2026, 9, 6, 12)) { example.run } }
+
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+        # Out-of-window (Jan-May 2025): spring months plus a winter month
+        create(:stat, user: user, year: year, month: 1,  distance: 1000)
+        create(:stat, user: user, year: year, month: 3,  distance: 1000)
+        create(:stat, user: user, year: year, month: 4,  distance: 1000)
+        create(:stat, user: user, year: year, month: 5,  distance: 1000)
+        # In-window (Sep-Dec 2025): fall months plus a winter month
+        create(:stat, user: user, year: year, month: 9,  distance: 1000)
+        create(:stat, user: user, year: year, month: 10, distance: 1000)
+        create(:stat, user: user, year: year, month: 11, distance: 1000)
+        create(:stat, user: user, year: year, month: 12, distance: 1000)
+      end
+
+      it 'zeros out seasons composed entirely of out-of-window months' do
+        # spring is Mar-May, all out of window -> must be 0
+        expect(result['spring']).to eq(0)
+      end
+
+      it 'reports seasonality only for seasons touching the in-window subset' do
+        # fall (Sep-Nov) and winter (Dec, Jan, Feb): in-window months carry the
+        # entire scoped total, so they share 100% in some split.
+        expect(result['fall']).to be > 0
+        expect(result['winter']).to be > 0
+        expect(result.values.sum).to eq(100)
+      end
+
+      it 'does not include out-of-window distance in any season total' do
+        # The four in-window months each carry 1000; the scoped yearly total is
+        # 4000. spring/summer (entirely out of window) must contribute 0.
+        expect(result['spring']).to eq(0)
+        expect(result['summer']).to eq(0)
+      end
+    end
   end
 end

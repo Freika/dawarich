@@ -6,11 +6,11 @@
       </div>
       <div>
         <div class="font-medium"><%= export.name %></div>
-        <div class="text-xs text-base-content/50"><%= export.file_format&.upcase %> &middot; <%= export.file_type&.humanize %></div>
+        <div class="text-xs text-base-content/50"><%= export.file_format&.upcase %> <%= t('.middot') %> <%= t("enums.export.file_type.#{export.file_type}") %></div>
       </div>
     </div>
   </td>
-  <td class="px-4 py-3 text-sm tabular-nums"><%= number_to_human_size(export.file&.byte_size) || 'N/A' %></td>
+  <td class="px-4 py-3 text-sm tabular-nums"><%= number_to_human_size(export.file&.byte_size) || t('common.not_available') %></td>
   <td class="px-4 py-3">
     <%= status_badge(export) %>
   </td>
@@ -19,21 +19,21 @@
     <div class="flex items-center gap-1 justify-end">
       <% if export.completed? %>
         <% if export.file.present? %>
-          <div class="tooltip" data-tip="Download file">
+          <div class="tooltip" data-tip="<%= t('.download_file') %>">
             <%= link_to rails_blob_path(export.file, disposition: 'attachment'), class: "btn btn-ghost btn-xs", download: export.name do %>
               <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
             <% end %>
           </div>
         <% elsif export.url.present? %>
-          <div class="tooltip" data-tip="Download file">
+          <div class="tooltip" data-tip="<%= t('.download_file') %>">
             <%= link_to export.url, class: "btn btn-ghost btn-xs", download: export.name do %>
               <%= icon 'arrow-big-down', class: 'w-4 h-4' %>
             <% end %>
           </div>
         <% end %>
       <% end %>
-      <div class="tooltip" data-tip="Delete export">
-        <%= link_to export, data: { turbo_confirm: "Are you sure?", turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
+      <div class="tooltip" data-tip="<%= t('.delete_export') %>">
+        <%= link_to export, data: { turbo_confirm: t('.are_you_sure'), turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" do %>
           <%= icon 'trash-2', class: 'w-4 h-4' %>
         <% end %>
       </div>

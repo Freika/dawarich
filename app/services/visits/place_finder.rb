@@ -51,7 +51,7 @@ module Visits
         source:    :photon
       )
 
-      Places::NameFetchingJob.perform_later(place.id) if DawarichSettings.reverse_geocoding_enabled?
+      Places::NameFetchingJob.perform_later(place.id) if Geocoding::Config.for(user).enabled?
       place
     end
   end

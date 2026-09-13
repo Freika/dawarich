@@ -5,7 +5,7 @@ class Api::V1::Auth::OtpChallengesController < Api::V1::Auth::BaseController
     verifier = Auth::VerifyOtpChallengeToken.new(params[:challenge_token])
     user = verifier.call
   rescue Auth::VerifyOtpChallengeToken::InvalidToken => e
-    render_auth_error("Invalid or expired challenge: #{e.message}")
+    render_auth_error(I18n.t('controllers.api.v1.auth.otp_challenges.invalid_challenge', message: e.message))
   else
     otp_code = params[:otp_code].to_s.strip
 
@@ -15,13 +15,12 @@ class Api::V1::Auth::OtpChallengesController < Api::V1::Auth::BaseController
       render_auth_success(user)
     elsif user.otp_locked?
       render_auth_error(
-        'Account temporarily locked due to too many failed 2FA attempts. ' \
-        'Use a backup code, wait 30 minutes, or reset your password.',
+        I18n.t('controllers.api.v1.auth.otp_challenges.account_locked'),
         http_status: :locked
       )
     else
       user.register_failed_otp_attempt!
-      render_auth_error('Invalid two-factor code')
+      render_auth_error(I18n.t('controllers.api.v1.auth.otp_challenges.invalid_two_factor_code'))
     end
   end
 

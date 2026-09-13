@@ -11,13 +11,17 @@ class ImportPolicy < ApplicationPolicy
     user.present? && record.user == user
   end
 
-  # Users can create new imports if they are active or trial
+  def download?
+    show?
+  end
+
+  # Users can create new imports only while their subscription window is open.
   def new?
     create?
   end
 
   def create?
-    user.present? && (user.active? || user.trial?)
+    user.present? && user.active_until&.future?
   end
 
   # Users can only edit their own imports

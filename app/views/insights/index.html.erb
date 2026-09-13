@@ -1,7 +1,7 @@
-<% content_for :title, 'Insights' %>
+<% content_for :title, t('.insights') %>
 <%= render 'shared/chartkick_scripts' %>
 
-<% insights_cache_key = [current_user.id, "insights", @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
+<% insights_cache_key = [current_user.id, "insights", I18n.locale, @selected_year, @year_stats&.maximum(:updated_at), current_user.safe_settings.distance_unit] %>
 
 <div class="w-full my-5">
   <%= render 'header' %>
@@ -9,31 +9,31 @@
 
   <% if @year_locked %>
     <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
-      <% %w[Total\ Distance Countries Cities Days\ Traveling].each do |title| %>
-        <%= render 'pro_locked_card', title: title, utm_content: "insights_#{title.parameterize}" %>
+      <% %w[total_distance countries cities days_traveling].each do |metric| %>
+        <%= render 'pro_locked_card', title: t(".#{metric}"), utm_content: "insights_#{metric}" %>
       <% end %>
     </div>
     <div class="flex flex-col lg:flex-row gap-6">
       <div class="w-full lg:w-3/4 mb-6">
-        <%= render 'pro_locked_card', title: 'Activity Heatmap', utm_content: 'activity_heatmap' %>
+        <%= render 'pro_locked_card', title: t('.activity_heatmap'), utm_content: 'activity_heatmap' %>
       </div>
       <div class="w-full lg:w-1/4 mb-6">
-        <%= render 'pro_locked_card', title: 'Activity Streak', utm_content: 'activity_streak' %>
+        <%= render 'pro_locked_card', title: t('.activity_streak'), utm_content: 'activity_streak' %>
       </div>
     </div>
     <%= turbo_frame_tag "insights_details" do %>
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 mt-6">
         <div class="space-y-6">
-          <%= render 'pro_locked_card', title: 'Year Comparison', utm_content: 'year_comparison' %>
-          <%= render 'pro_locked_card', title: 'Activity Breakdown', utm_content: 'activity_breakdown' %>
-          <%= render 'pro_locked_card', title: 'Location Clusters', utm_content: 'location_clusters' %>
+          <%= render 'pro_locked_card', title: t('.year_comparison'), utm_content: 'year_comparison' %>
+          <%= render 'pro_locked_card', title: t('.activity_breakdown'), utm_content: 'activity_breakdown' %>
+          <%= render 'pro_locked_card', title: t('.location_clusters'), utm_content: 'location_clusters' %>
         </div>
         <div class="space-y-6">
-          <%= render 'pro_locked_card', title: 'Monthly Digest', utm_content: 'monthly_digest' %>
-          <%= render 'pro_locked_card', title: 'Travel Patterns', utm_content: 'travel_patterns' %>
+          <%= render 'pro_locked_card', title: t('.monthly_digest'), utm_content: 'monthly_digest' %>
+          <%= render 'pro_locked_card', title: t('.travel_patterns'), utm_content: 'travel_patterns' %>
         </div>
       </div>
-      <%= render 'pro_locked_card', title: 'Movement & Wellness', utm_content: 'movement_wellness' %>
+      <%= render 'pro_locked_card', title: t('.movement_wellness'), utm_content: 'movement_wellness' %>
     <% end %>
   <% else %>
     <%= render 'stats_row' %>
@@ -48,6 +48,16 @@
       <% end %>
     </div>
 
+    <%# Days per country follows the page's year selector, so it has nothing to
+        show for All Time — same reasoning as the heatmap and streak cards. %>
+    <% if current_user.full_access? && !@all_time %>
+      <%= turbo_frame_tag "residency-content",
+                          src: map_residency_path(year: @selected_year),
+                          loading: :lazy do %>
+        <%= render 'days_per_country_skeleton' %>
+      <% end %>
+    <% end %>
+
     <!-- Lazy-loaded below-the-fold details -->
     <%= turbo_frame_tag "insights_details", src: details_insights_path(year: @selected_year, month: params[:month]), loading: :lazy do %>
       <%= render 'details_skeleton' %>
@@ -56,6 +66,6 @@
 
   <!-- Footer -->
   <div class="text-center text-sm text-base-content/50 py-4">
-    Geodata Insights &bull; Powered by your location history
+    <%= t('.geodata_insights_bull_powered_by_your_location_history') %>
   </div>
 </div>

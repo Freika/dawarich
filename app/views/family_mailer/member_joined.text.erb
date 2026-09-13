@@ -1,18 +1,18 @@
-Great news! Someone joined your family!
+<%= t('.great_news_someone_joined_your_family_2') %>
 
-Hi <%= @family.owner.email %>!
+<%= t('.hi') %> <%= @family.owner.email %>!
 
-We're excited to let you know that <%= @user.email %> has just joined your family "<%= @family.name %>" on Dawarich!
+<%= t('.member_joined_family_text', email: @user.email, family: @family.name) %>
 
-Now you can:
-• See <%= @user.email %>'s current location (if they've enabled sharing)
-• Stay connected with your growing family
-• Share your location with <%= @user.email %>
-• Manage family members and settings from your family page
+<%= t('.now_you_can') %>
+<%= t('.see_current_location_text', email: @user.email) %>
+<%= t('.stay_connected_with_your_growing_family_2') %>
+<%= t('.share_location_with_text', email: @user.email) %>
+<%= t('.manage_family_members_and_settings_from_your_family_page_2') %>
 
-TIP: You can manage your family members and privacy settings at any time from your family dashboard.
+<%= t('.tip_you_can_manage_your_family_members_and_privacy_settings') %>
 
-Your family now has <%= @family.member_count %> member<%= @family.member_count == 1 ? '' : 's' %>.
+<%= t('.member_count', count: @family.member_count) %>
 
-Best regards,
-Evgenii from Dawarich
+<%= t('.best_regards') %>
+<%= t('.evgenii_from_dawarich') %>

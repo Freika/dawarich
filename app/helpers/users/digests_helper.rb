@@ -25,7 +25,7 @@ module Users
 
     def distance_with_unit(distance_meters, unit)
       value = Users::Digest.convert_distance(distance_meters, unit).round
-      "#{number_with_delimiter(value)} #{unit}"
+      I18n.t('helpers.users.digests.distance_with_unit', distance: number_with_delimiter(value), unit: unit)
     end
 
     def distance_comparison_text(distance_meters)
@@ -33,25 +33,25 @@ module Users
 
       if distance_km >= Users::Digest::MOON_DISTANCE_KM
         percentage = ((distance_km / Users::Digest::MOON_DISTANCE_KM) * 100).round(1)
-        "That's #{percentage}% of the distance to the Moon!"
+        I18n.t('helpers.users.digests.moon_distance', percentage: percentage)
       else
         percentage = ((distance_km / Users::Digest::EARTH_CIRCUMFERENCE_KM) * 100).round(1)
-        "That's #{percentage}% of Earth's circumference!"
+        I18n.t('helpers.users.digests.earth_circumference', percentage: percentage)
       end
     end
 
     def format_time_spent(minutes)
-      return "#{minutes} minutes" if minutes < 60
+      return I18n.t('units.minutes', value: minutes) if minutes < 60
 
       hours = minutes / 60
       remaining_minutes = minutes % 60
 
       if hours < 24
-        "#{hours}h #{remaining_minutes}m"
+        I18n.t('units.hours_minutes_compact', hours: hours, minutes: remaining_minutes)
       else
         days = hours / 24
         remaining_hours = hours % 24
-        "#{days}d #{remaining_hours}h"
+        I18n.t('units.days_hours_compact', days: days, hours: remaining_hours)
       end
     end
 

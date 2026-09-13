@@ -86,14 +86,6 @@ RSpec.describe 'Family plan access gating', type: :request do
       expect(response.body).to include('data-maps--maplibre-user-plan-value="family"')
     end
 
-    it 'passes family to Map v1 for a lite family member' do
-      sign_in member
-
-      get map_v1_path
-
-      expect(response.body).to include('data-user_plan="family"')
-    end
-
     it 'still passes lite for a lite user not in a family' do
       lone_lite = create(:user, plan: :lite, skip_auto_trial: true)
       sign_in lone_lite

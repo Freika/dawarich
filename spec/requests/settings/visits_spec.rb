@@ -22,12 +22,12 @@ RSpec.describe 'Settings::Visits', type: :request do
   describe 'PATCH /settings/visits' do
     it 'updates the three permitted keys' do
       patch settings_visits_path, params: {
-        settings: { visit_radius_meters: '75', visit_min_points: '4', visit_density_fill_enabled: '0' }
+        settings: { visit_radius_meters: '75', visit_min_points: '4', visit_min_duration_minutes: '7' }
       }
       user.reload
       expect(user.safe_settings.visit_radius_meters).to eq(75)
       expect(user.safe_settings.visit_min_points).to eq(4)
-      expect(user.safe_settings.visit_density_fill_enabled?).to eq(false)
+      expect(user.safe_settings.visit_min_duration_minutes).to eq(7)
     end
 
     it 'ignores params other than the three permitted keys' do

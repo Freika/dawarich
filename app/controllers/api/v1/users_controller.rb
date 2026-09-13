@@ -11,11 +11,18 @@ class Api::V1::UsersController < ApiController
   def exist
     if ENV['SUBSCRIPTION_WEBHOOK_SECRET'].blank?
       Rails.logger.error('[Users#exist] SUBSCRIPTION_WEBHOOK_SECRET is not configured')
-      return render(json: { error: 'Configuration error' }, status: :service_unavailable)
+      return render(json: { error: I18n.t('controllers.api.v1.users.configuration_error') },
+                    status: :service_unavailable)
     end
-    return render(json: { error: 'Invalid webhook secret' }, status: :unauthorized) unless valid_manager_secret?
+    unless valid_manager_secret?
+      return render(json: { error: I18n.t('controllers.api.v1.users.invalid_webhook_secret') },
+                    status: :unauthorized)
+    end
 
-    return render(json: { error: 'ids is required' }, status: :unprocessable_content) if params[:ids].nil?
+    if params[:ids].nil?
+      return render(json: { error: I18n.t('controllers.api.v1.users.ids_is_required') },
+                    status: :unprocessable_content)
+    end
 
     ids = Array(params[:ids]).filter_map { |raw| safe_integer(raw) }.uniq
     existing = ids.empty? ? [] : User.where(id: ids).pluck(:id)

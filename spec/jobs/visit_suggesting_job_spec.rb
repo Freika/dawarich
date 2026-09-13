@@ -117,6 +117,35 @@ RSpec.describe VisitSuggestingJob, type: :job do
     end
   end
 
+  describe 'realtime debounce key' do
+    let(:redis_key) { "visit_realtime:user:#{user.id}" }
+
+    before do
+      Sidekiq.redis { |redis| redis.del(redis_key) }
+      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    end
+
+    after { Sidekiq.redis { |redis| redis.del(redis_key) } }
+
+    it 'still runs when Redis is unavailable' do
+      allow_any_instance_of(Visits::RealtimeDebouncer)
+        .to receive(:clear).and_raise(RedisClient::CannotConnectError, 'redis down')
+
+      expect(Visits::Suggest).to receive(:new).at_least(:once).and_call_original
+
+      described_class.perform_now(user_id: user.id, start_at: start_at, end_at: end_at)
+    end
+
+    it 'releases the key so the debouncer can schedule the next run' do
+      Visits::RealtimeDebouncer.new(user.id).trigger
+
+      described_class.perform_now(user_id: user.id, start_at: start_at, end_at: end_at)
+
+      expect { Visits::RealtimeDebouncer.new(user.id).trigger }
+        .to have_enqueued_job(VisitSuggestingJob).with(hash_including(user_id: user.id))
+    end
+  end
+
   describe 'queue name' do
     it 'uses the visit_suggesting queue' do
       expect(described_class.queue_name).to eq('visit_suggesting')

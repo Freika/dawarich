@@ -3,9 +3,9 @@
     <%= render @notification %>
 
     <div class='my-5'>
-      <%= link_to "Back to notifications", notifications_path, class: "btn btn-small" %>
+      <%= link_to t('.back_to_notifications'), notifications_path, class: "btn btn-small" %>
       <div class="inline-block ml-2">
-        <%= button_to "Destroy this notification", @notification, data: { turbo_confirm: "Are you sure?" }, method: :delete, class: "btn btn-small btn-warning" %>
+        <%= button_to t('.destroy_this_notification'), @notification, data: { turbo_confirm: t('.are_you_sure') }, method: :delete, class: "btn btn-small btn-warning" %>
       </div>
     </div>
   </div>

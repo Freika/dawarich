@@ -9,6 +9,15 @@ module Timeline
 
     PHANTOM_STATIONARY_DISTANCE_M = 100
 
+    # Modes that never count as movement in summaries or journey rows.
+    NON_MOVING_MODES = %w[stationary unknown].freeze
+    # Segments below this posterior don't get to claim a mode in the day
+    # chips (matches the display gate in TrackSegments::DisplayLegs).
+    CHIP_CONFIDENCE_MIN = TrackSegments::DisplayLegs::UNCERTAIN_BELOW
+    # Modes that moved less than this (in the user's display unit) stay off
+    # the day chips — a 200 m jog across a parking lot is not a story.
+    CHIP_MIN_DISTANCE = 0.5
+
     def initialize(user, start_at:, end_at:, distance_unit: 'km')
       @user = user
       @start_at = start_at.present? ? Time.zone.parse(start_at) : nil
@@ -24,6 +33,8 @@ module Timeline
       tracks = fetch_tracks
 
       return [] if visits.empty? && tracks.empty?
+
+      @segment_stats = load_segment_stats(tracks)
 
       @visit_point_counts = Point.where(visit_id: visits.map(&:id)).group(:visit_id).count
 
@@ -42,6 +53,7 @@ module Timeline
         name: visit.name,
         editable_name: visit.name,
         status: visit.status,
+        confidence_band: visit.confidence_band,
         place_id: visit.place_id,
         point_count: point_count_for(visit),
         tags: build_tags(visit.place),
@@ -85,6 +97,24 @@ module Timeline
           .where('start_at <= ? AND end_at >= ?', end_at, start_at)
           .without_phantom_stationary(PHANTOM_STATIONARY_DISTANCE_M)
           .order(start_at: :asc)
+    end
+
+    # Two grouped sums over the whole window's segments: per-track moving
+    # seconds (any non-stationary movement, however uncertain) and per-track
+    # per-mode confident distances for the day chips.
+    def load_segment_stats(tracks)
+      ids = tracks.map(&:id)
+      return { moving: {}, mode_distances: {} } if ids.empty?
+
+      moving_scope = TrackSegment.where(track_id: ids)
+                                 .where.not(transportation_mode: NON_MOVING_MODES)
+      {
+        moving: moving_scope.group(:track_id).sum(:duration),
+        mode_distances: moving_scope
+                        .where('corrected_at IS NOT NULL OR confidence_score IS NULL OR confidence_score >= ?',
+                               CHIP_CONFIDENCE_MIN)
+                        .group(:track_id, :transportation_mode).sum(:distance)
+      }
     end
 
     def group_by_day(visits, tracks)
@@ -215,8 +245,18 @@ module Timeline
         elevation_loss: track.elevation_loss,
         continuation_of_date: continuation ? start_day.to_s : nil,
         day_distance: continuation ? convert_distance(track.distance.to_f * day_share) : nil,
-        day_duration: continuation ? (track.duration.to_f * day_share).round : nil
+        day_duration: continuation ? (track.duration.to_f * day_share).round : nil,
+        moving_duration: day_moving_duration(track, continuation, day_share)
       }
+    end
+
+    # Continuation rows describe one day's slice of the track, so moving time
+    # has to be apportioned the same way distance and duration are.
+    def day_moving_duration(track, continuation, day_share)
+      moving = @segment_stats[:moving][track.id]
+      return moving unless continuation && moving
+
+      (moving.to_f * day_share).round
     end
 
     def build_place(place)
@@ -248,8 +288,25 @@ module Timeline
         time_stationary_minutes: stationary_minutes,
         suggested_count: status_counts.fetch('suggested', 0),
         confirmed_count: status_counts.fetch('confirmed', 0),
-        declined_count: status_counts.fetch('declined', 0)
+        declined_count: status_counts.fetch('declined', 0),
+        mode_distances: mode_distances_for(tracks, track_shares)
       }
+    end
+
+    def mode_distances_for(tracks, track_shares)
+      day_track_ids = tracks.map(&:id).to_set
+      totals = Hash.new(0.0)
+
+      @segment_stats[:mode_distances].each do |(track_id, mode), meters|
+        next unless day_track_ids.include?(track_id)
+
+        totals[mode] += meters.to_f * track_shares.fetch(track_id, 1.0)
+      end
+
+      totals.transform_values { |meters| convert_distance(meters) }
+            .reject { |_, value| value < CHIP_MIN_DISTANCE }
+            .sort_by { |_, value| -value }
+            .to_h
     end
 
     def build_bounds(visits, tracks)

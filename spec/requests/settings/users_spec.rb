@@ -233,6 +233,23 @@ RSpec.describe '/settings/users', type: :request do
           end
         end
 
+        describe 'GET /edit' do
+          let(:user) { create(:user, status: :pending_payment) }
+
+          before do
+            admin.update!(settings: { 'locale' => 'fr' })
+            sign_in admin
+          end
+
+          it 'renders every user status with a French label' do
+            get edit_settings_user_url(user)
+
+            options = Nokogiri::HTML(response.body).css('select[name="user[status]"] option').map(&:text)
+            expect(options).to contain_exactly('Inactif', 'Actif', 'Essai', 'Paiement en attente')
+            expect(response.body).not_to include('Pending_payment')
+          end
+        end
+
         describe 'POST /regenerate_api_key' do
           let(:user) { create(:user) }
 

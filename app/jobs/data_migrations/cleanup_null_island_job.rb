@@ -17,7 +17,10 @@ class DataMigrations::CleanupNullIslandJob < ApplicationJob
       [time.year, time.month]
     end.uniq
 
-    Point.where(id: rows.map(&:first)).update_all(anomaly: true, updated_at: Time.current) if rows.any?
+    if rows.any?
+      Point.where(id: rows.map(&:first)).update_all(anomaly: true, updated_at: Time.current)
+      Points::TileEpoch.bump(user.id, timestamps: rows.map { |_, timestamp, _| timestamp })
+    end
     destroyed_visits = destroy_null_island_visits(user)
 
     Rails.logger.info(

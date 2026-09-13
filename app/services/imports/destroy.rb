@@ -13,6 +13,8 @@ class Imports::Destroy
   def call
     track_ids = @import.points.where.not(track_id: nil).distinct.pluck(:track_id)
 
+    EnhancedImport::Destroy.new(@import).call
+
     total_deleted = delete_points_in_batches
     User.update_counters(@user.id, points_count: -total_deleted) if total_deleted.positive?
 
@@ -38,10 +40,24 @@ class Imports::Destroy
     total_deleted = 0
 
     loop do
-      ids = @import.points.limit(BATCH_SIZE).pluck(:id)
-      break if ids.empty?
+      # delete_all returns no rows, so capture the timestamps BEFORE deleting —
+      # the tile epoch needs to know which years the deletion touched.
+      rows = @import.points.limit(BATCH_SIZE).pluck(:id, :timestamp)
+      break if rows.empty?
 
-      total_deleted += Point.where(id: ids).delete_all
+      # Collapsing to one timestamp per year keeps the bump to one write per
+      # touched year.
+      timestamp_per_year = {}
+      rows.each do |(_id, timestamp)|
+        timestamp_per_year[Points::TileEpoch.year_for(timestamp)] ||= timestamp
+      end
+      deleted = Point.where(id: rows.map(&:first)).delete_all
+      total_deleted += deleted
+
+      # Bumping per batch keeps tiles honest even when a later batch dies:
+      # a retry re-plucks only the rows that survived, so the years already
+      # deleted here would otherwise never be invalidated.
+      Points::TileEpoch.bump(@user.id, timestamps: timestamp_per_year.values) if deleted.positive?
     end
 
     total_deleted

@@ -54,7 +54,6 @@ RSpec.describe 'Family', type: :request do
 
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-        allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(true)
         stub_const('MANAGER_URL', 'https://manager.example.com')
         sign_in cloud_user
       end
@@ -74,7 +73,6 @@ RSpec.describe 'Family', type: :request do
 
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-        allow(DawarichSettings).to receive(:family_feature_enabled?).and_return(true)
         sign_in cloud_family_user
       end
 

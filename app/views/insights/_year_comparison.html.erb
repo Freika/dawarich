@@ -3,7 +3,7 @@
     <div class="card-body p-5">
       <h2 class="card-title text-lg flex items-center gap-2">
         <%= icon 'git-compare', class: 'w-5 h-5 text-primary' %>
-        Your Journey: <%= @previous_year %> vs <%= @selected_year %>
+        <%= t('.your_journey') %> <%= @previous_year %> <%= t('.vs') %> <%= @selected_year %>
       </h2>
 
       <%
@@ -27,7 +27,7 @@
       <!-- Distance -->
       <div class="mt-4">
         <div class="flex justify-between text-sm mb-1">
-          <span class="font-medium">DISTANCE</span>
+          <span class="font-medium"><%= t('.distance') %></span>
           <% if @distance_change != 0 %>
             <span class="text-<%= @distance_change.positive? ? 'success' : 'warning' %>">
               <%= distance_diff.positive? ? '+' : '' %><%= number_with_delimiter(distance_diff) %> <%= current_user.safe_settings.distance_unit %>
@@ -52,7 +52,7 @@
       <!-- Countries -->
       <div class="mt-4">
         <div class="flex justify-between text-sm mb-1">
-          <span class="font-medium">COUNTRIES</span>
+          <span class="font-medium"><%= t('.countries') %></span>
           <% if @countries_change != 0 %>
             <span class="text-<%= @countries_change.positive? ? 'success' : 'warning' %>">
               <%= @countries_change.positive? ? '+' : '' %><%= @countries_change %>
@@ -76,11 +76,10 @@
       <!-- Days Traveling -->
       <div class="mt-4">
         <div class="flex justify-between text-sm mb-1">
-          <span class="font-medium">DAYS TRAVELING</span>
+          <span class="font-medium"><%= t('.days_traveling') %></span>
           <% if @days_change != 0 %>
             <span class="text-<%= @days_change.positive? ? 'success' : 'warning' %>">
-              <%= days_diff.positive? ? '+' : '' %><%= days_diff %> days
-              (<%= @days_change.positive? ? '+' : '' %><%= @days_change %>%)
+              <%= days_diff.positive? ? '+' : '' %><%= days_diff %> <%= t('.days') %><%= @days_change.positive? ? '+' : '' %><%= @days_change %>%)
             </span>
           <% end %>
         </div>
@@ -89,19 +88,19 @@
           <div class="flex-1 h-3 bg-base-300 rounded-full overflow-hidden">
             <div class="h-full rounded-full bg-base-content/25" style="width: <%= prev_days_pct %>%"></div>
           </div>
-          <span class="w-24 text-right"><%= @prev_days_traveling %> days</span>
+          <span class="w-24 text-right"><%= @prev_days_traveling %> <%= t('.days_2') %></span>
         </div>
         <div class="flex items-center gap-2 text-sm">
           <span class="w-10 text-base-content/60"><%= @selected_year %></span>
           <progress class="progress progress-accent flex-1 h-3" value="<%= curr_days_pct %>" max="100"></progress>
-          <span class="w-24 text-right"><%= @days_traveling %> days</span>
+          <span class="w-24 text-right"><%= @days_traveling %> <%= t('.days_2') %></span>
         </div>
       </div>
 
       <!-- Bottom Stats -->
       <% if @biggest_month || @prev_biggest_month %>
         <div class="mt-4 pt-4 border-t border-base-300">
-          <div class="text-sm font-medium text-base-content/60 mb-2">BIGGEST MONTH</div>
+          <div class="text-sm font-medium text-base-content/60 mb-2"><%= t('.biggest_month') %></div>
           <% if @prev_biggest_month %>
             <div class="text-sm"><%= @previous_year %>: <span class="text-primary"><%= @prev_biggest_month[:month] %></span> (<%= number_with_delimiter(@prev_biggest_month[:distance]) %> <%= current_user.safe_settings.distance_unit %>)</div>
           <% end %>

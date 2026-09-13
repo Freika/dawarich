@@ -74,4 +74,49 @@ RSpec.describe ApplicationCable::Connection, type: :channel do
       expect(connection.current_user).to be_nil
     end
   end
+
+  context 'with an authenticated Warden user viewing a share' do
+    let(:visitor) { create(:user) }
+    let(:warden_env) { { 'warden' => instance_double(Warden::Proxy, user: visitor) } }
+
+    it 'identifies a phrase-free live share alongside the user' do
+      share = create(:shared_link, :live, user: owner)
+      connect env: warden_env, params: { share_id: share.id }
+      expect(connection.current_user).to eq(visitor)
+      expect(connection.current_share).to eq(share)
+    end
+
+    it 'leaves the share unset for a revoked live share' do
+      share = create(:shared_link, :live, :revoked, user: owner)
+      connect env: warden_env, params: { share_id: share.id }
+      expect(connection.current_user).to eq(visitor)
+      expect(connection.current_share).to be_nil
+    end
+
+    it 'leaves the share unset for an expired live share' do
+      share = create(:shared_link, :live, :expired, user: owner)
+      connect env: warden_env, params: { share_id: share.id }
+      expect(connection.current_share).to be_nil
+    end
+
+    it 'leaves the share unset for a non-live share' do
+      trip = create(:trip, user: owner)
+      share = create(:shared_link, user: owner, resource_type: :trip, resource_id: trip.id)
+      connect env: warden_env, params: { share_id: share.id }
+      expect(connection.current_share).to be_nil
+    end
+
+    it 'leaves the share unset for a phrase-protected share without the unlock cookie' do
+      share = create(:shared_link, :live, :with_phrase, user: owner)
+      connect env: warden_env, params: { share_id: share.id }
+      expect(connection.current_share).to be_nil
+    end
+
+    it 'identifies a phrase-protected share with the matching encrypted unlock cookie' do
+      share = create(:shared_link, :live, :with_phrase, user: owner)
+      cookies.encrypted["shared_link_#{share.id}"] = share.unlock_token
+      connect env: warden_env, params: { share_id: share.id }
+      expect(connection.current_share).to eq(share)
+    end
+  end
 end

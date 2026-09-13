@@ -38,8 +38,21 @@ RSpec.describe Visits::TimeChunks do
       end
     end
 
+    context 'with the nightly single-day range' do
+      it 'ends the chunk at end_at rather than the end of the calendar year' do
+        start_at = DateTime.new(2026, 1, 2).beginning_of_day
+        end_at = DateTime.new(2026, 1, 2).end_of_day
+
+        chunks = described_class.new(start_at: start_at, end_at: end_at).call
+
+        expect(chunks.size).to eq(1)
+        expect(chunks[0].first).to eq(start_at)
+        expect(chunks[0].last).to eq(end_at)
+      end
+    end
+
     context 'with a span within a single year' do
-      it 'creates a single chunk ending at year end' do
+      it 'creates a single chunk ending at end_at' do
         start_at = DateTime.new(2020, 3, 15)
         end_at = DateTime.new(2020, 10, 20)
 
@@ -48,8 +61,7 @@ RSpec.describe Visits::TimeChunks do
 
         expect(chunks.size).to eq(1)
         expect(chunks[0].begin).to eq(start_at)
-        # The implementation appears to extend to the end of the year
-        expect(chunks[0].end).to eq(DateTime.new(2020, 12, 31).end_of_day)
+        expect(chunks[0].end).to eq(end_at)
       end
     end
 
@@ -76,7 +88,7 @@ RSpec.describe Visits::TimeChunks do
     end
 
     context 'with start and end dates in the same day' do
-      it 'returns a single chunk ending at the end of the year' do
+      it 'returns a single chunk covering only that day' do
         date = DateTime.new(2020, 5, 15)
         start_at = date.beginning_of_day
         end_at = date.end_of_day
@@ -86,8 +98,7 @@ RSpec.describe Visits::TimeChunks do
 
         expect(chunks.size).to eq(1)
         expect(chunks[0].begin).to eq(start_at)
-        # Implementation extends to end of year
-        expect(chunks[0].end).to eq(DateTime.new(2020, 12, 31).end_of_day)
+        expect(chunks[0].end).to eq(end_at)
       end
     end
 
@@ -130,22 +141,21 @@ RSpec.describe Visits::TimeChunks do
     end
 
     context 'with start date after end date' do
-      it 'still creates a chunk for start date year' do
+      it 'returns a single chunk bounded by the given dates' do
         start_at = DateTime.new(2023, 1, 1)
         end_at = DateTime.new(2020, 1, 1)
 
         service = described_class.new(start_at: start_at, end_at: end_at)
         chunks = service.call
 
-        # The implementation creates one chunk for the start date year
         expect(chunks.size).to eq(1)
         expect(chunks[0].begin).to eq(start_at)
-        expect(chunks[0].end).to eq(DateTime.new(2023, 12, 31).end_of_day)
+        expect(chunks[0].end).to eq(end_at)
       end
     end
 
     context 'when start date equals end date' do
-      it 'returns a single chunk extending to year end' do
+      it 'returns a single zero-length chunk' do
         date = DateTime.new(2022, 6, 15, 12, 30)
 
         service = described_class.new(start_at: date, end_at: date)
@@ -153,8 +163,7 @@ RSpec.describe Visits::TimeChunks do
 
         expect(chunks.size).to eq(1)
         expect(chunks[0].begin).to eq(date)
-        # Implementation extends to end of year
-        expect(chunks[0].end).to eq(DateTime.new(2022, 12, 31).end_of_day)
+        expect(chunks[0].end).to eq(date)
       end
     end
   end

@@ -88,6 +88,6 @@ class Trip < ApplicationRecord
     return if started_at.blank? || ended_at.blank?
     return unless started_at >= ended_at
 
-    errors.add(:ended_at, 'must be after start date')
+    errors.add(:ended_at, I18n.t('models.trip.must_be_after_start_date'))
   end
 end

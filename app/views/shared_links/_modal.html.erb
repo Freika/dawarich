@@ -15,7 +15,7 @@
       <%= link_to close_path,
                   class: "btn btn-sm btn-circle btn-ghost absolute right-3 top-3",
                   data: { turbo_frame: "_top", action: "share-link-modal#close" },
-                  aria: { label: "Close" } do %>
+                  aria: { label: t('.close') } do %>
         ✕
       <% end %>
 
@@ -23,10 +23,10 @@
         <%= render 'shared_links/modal_active', share: share, paths: paths, subtitle: local_assigns[:subtitle] %>
       <% else %>
         <h3 class="font-bold text-lg mb-1"><%= title %></h3>
-        <p class="text-sm text-base-content/70 mb-5">Anyone with the link will be able to view this.</p>
+        <p class="text-sm text-base-content/70 mb-5"><%= t('.anyone_with_the_link_will_be_able_to_view_this') %></p>
         <%= render create_form_partial, resource: resource, paths: paths, close_path: close_path %>
       <% end %>
     </div>
-    <%= link_to '', close_path, class: "modal-backdrop", data: { turbo_frame: "_top", action: "share-link-modal#close" }, aria: { label: "Close" } %>
+    <%= link_to '', close_path, class: "modal-backdrop", data: { turbo_frame: "_top", action: "share-link-modal#close" }, aria: { label: t('.close') } %>
   </div>
 </turbo-frame>

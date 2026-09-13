@@ -1,10 +1,10 @@
-<% content_for :title, "Places" %>
+<% content_for :title, t('.places') %>
 
 <div class="w-full my-5">
   <div class="overflow-x-auto pb-1">
     <div role="tablist" class="tabs tabs-lifted tabs-lg inline-flex min-w-max flex-nowrap">
-      <%= link_to 'Timeline', '/map/v2?panel=timeline&date=today&status=confirmed', role: 'tab', class: 'tab font-bold text-xl' %>
-      <%= link_to 'Places', places_path, role: 'tab', class: 'tab font-bold text-xl tab-active' %>
+      <%= link_to t('.timeline'), '/map/v2?panel=timeline&date=today&status=confirmed', role: 'tab', class: 'tab font-bold text-xl' %>
+      <%= link_to t('.places'), places_path, role: 'tab', class: 'tab font-bold text-xl tab-active' %>
     </div>
   </div>
 
@@ -13,9 +13,9 @@
       <div class="hero min-h-80 bg-base-200">
         <div class="hero-content text-center">
           <div class="max-w-md">
-            <h1 class="text-5xl font-bold">Hello there!</h1>
+            <h1 class="text-5xl font-bold"><%= t('.hello_there') %></h1>
             <p class="py-6">
-              Here you'll find your places, created by Visits suggestion process. But now there are none.
+              <%= t('.here_you_ll_find_your_places_created_by_visits_suggestion') %>
             </p>
           </div>
         </div>
@@ -28,10 +28,10 @@
         <table class="table">
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Created at</th>
-              <th>Coordinates</th>
-              <th>Actions</th>
+              <th><%= t('.name') %></th>
+              <th><%= t('.created_at') %></th>
+              <th><%= t('.coordinates') %></th>
+              <th><%= t('.actions') %></th>
             </tr>
           </thead>
           <tbody>
@@ -41,7 +41,7 @@
                 <td><%= human_datetime(place.created_at, current_user.safe_settings.timezone) %></td>
                 <td><%= "#{place.lat}, #{place.lon}" %></td>
                 <td>
-                  <%= link_to 'Delete', place_path(place, page: params[:page]), data: { turbo_confirm: "Are you sure? Deleting a place will result in deleting all visits for this place.", turbo_method: :delete }, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
+                  <%= link_to t('.delete'), place_path(place, page: params[:page]), data: { turbo_confirm: t('.are_you_sure_deleting_a_place_will_result_in_deleting'), turbo_method: :delete }, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
                 </td>
               </tr>
             <% end %>

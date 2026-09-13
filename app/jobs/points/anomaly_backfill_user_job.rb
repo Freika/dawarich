@@ -3,35 +3,69 @@
 # Per-user anomaly backfill. Processes points in monthly chunks,
 # guarded by an advisory lock so duplicate enqueues are harmless.
 class Points::AnomalyBackfillUserJob < ApplicationJob
+  include Resumable
+
   queue_as :low_priority
 
-  def perform(user_id, reset: false)
+  def perform(user_id, reset: false, notify: true, rebuild: :async)
     user = User.find(user_id)
     lock_key = "anomaly_backfill:#{user.id}"
 
     lock_acquired = ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
-      reset_existing_flags(user) if reset
-      run_filter_in_monthly_chunks(user)
+      step :reset_flags do
+        reset_existing_flags(user) if reset
+      end
+
+      step :filter_months, start: 0 do |step|
+        run_filter_in_monthly_chunks(user, step, invalidate_dependents: !reset)
+      end
+
       true
     end
 
     if lock_acquired
       # When we reset & re-evaluated anomalies, the tracks/stats/digests built
       # off the old anomaly state are stale. Rebuild them with the new flags.
-      Users::RecalculateDataJob.perform_later(user.id) if reset
+      # A fleet-wide data migration passes notify: false so an upgrade does not
+      # hand every user a notification they never asked for, and rebuild: :inline
+      # to keep the rebuild on the caller's queue and its failures visible to it.
+      rebuild_data(user, notify: notify, rebuild: rebuild) if reset
     else
       Rails.logger.info("Skipping anomaly backfill for user #{user.id} — already locked")
     end
+
+    # Whether the work actually ran: a caller that records progress must not
+    # record a run that the lock skipped.
+    lock_acquired
   end
 
   private
 
+  # #perform rather than .perform_now: perform_now routes exceptions through
+  # rescue_with_handler, and Users::RecalculateDataJob's retry_on swallows a
+  # PerUserLock::AcquisitionTimeout there — it re-enqueues onto :stats and
+  # returns normally, so an inline caller would record a rebuild that never
+  # happened. Calling perform directly lets the timeout reach us.
+  def rebuild_data(user, notify:, rebuild:)
+    if rebuild == :inline
+      Users::RecalculateDataJob.new.perform(user.id, notify: notify, job_queue: :low_priority)
+    else
+      Users::RecalculateDataJob.perform_later(user.id, notify: notify)
+    end
+  end
+
   def reset_existing_flags(user)
     cleared = user.points.where(anomaly: true).update_all(anomaly: false, updated_at: Time.current)
+    # Clearing un-hides points in vector tiles; the filter re-run only bumps
+    # when it MARKS anomalies, so the all-clear outcome must invalidate here.
+    Points::TileEpoch.bump(user.id) if cleared.positive?
     Rails.logger.info("[AnomalyBackfill] User #{user.id}: cleared #{cleared} anomaly flags before re-evaluation")
   end
 
-  def run_filter_in_monthly_chunks(user)
+  # invalidate_dependents mirrors the reset flow: a resetting run rebuilds
+  # tracks and stats wholesale afterwards, a non-resetting one has no rebuild
+  # coming and must let the filter queue its own.
+  def run_filter_in_monthly_chunks(user, step, invalidate_dependents:)
     populated_months = user.points
                            .distinct
                            .pluck(Arel.sql("date_trunc('month', to_timestamp(timestamp))"))
@@ -43,12 +77,19 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
 
     populated_months.each_with_index do |month_start, index|
       chunk_start = month_start.to_i
+      next if chunk_start <= step.cursor
+
       chunk_end = (month_start + 1.month).to_i
 
-      marked = Points::AnomalyFilter.new(user.id, chunk_start, chunk_end).call
+      marked = Points::AnomalyFilter.new(
+        user.id, chunk_start, chunk_end,
+        invalidate_dependents: invalidate_dependents, job_queue: :low_priority
+      ).call
       Rails.logger.info(
         "[AnomalyBackfill] User #{user.id}: month #{index + 1}/#{total_months}, marked #{marked} anomalies"
       )
+
+      step.set!(chunk_start)
     end
   end
 end

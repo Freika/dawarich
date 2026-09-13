@@ -16,6 +16,12 @@ RSpec.describe SharedLink::PhraseGenerator do
       expect(phrases.size).to be > 15
     end
 
+    it 'draws from a wordlist whose every entry survives the hyphen join' do
+      words = File.readlines(Rails.root.join('config/shared_link_wordlist.txt'), chomp: true)
+
+      expect(words.reject { |word| word.match?(/\A[a-z]+\z/) }).to be_empty
+    end
+
     it 'uses only words from the wordlist' do
       wordlist = File.readlines(Rails.root.join('config/shared_link_wordlist.txt'), chomp: true).to_set
       10.times do

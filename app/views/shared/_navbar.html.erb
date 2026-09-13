@@ -1,41 +1,44 @@
 <div class="navbar bg-base-100 h-16">
   <div class="navbar-start">
-    <div class="dropdown">
-      <label tabindex="0" class="btn btn-ghost lg:hidden">
+    <details class="dropdown xl:hidden">
+      <summary class="btn btn-ghost list-none"
+               aria-label="<%= t('.open_navigation_menu') %>"
+               aria-controls="mobile-navigation-menu">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16" /></svg>
-      </label>
-      <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52">
-        <li><%= link_to 'Map', preferred_map_path, class: "#{active_class?(preferred_map_path)}" %></li>
-        <li><%= link_to 'Trips'.html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
-        <li><%= link_to 'Stats', stats_url, class: "#{active_class?(stats_url)}" %></li>
-        <li><%= link_to 'Insights<sup>α</sup>'.html_safe, insights_url, class: "#{active_class?(insights_url)}" %></li>
-        <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
+      </summary>
+      <ul id="mobile-navigation-menu"
+          class="menu menu-sm dropdown-content mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52">
+        <li><%= link_to t('.map'), preferred_map_path, class: "#{active_class?(preferred_map_path)}" %></li>
+        <li><%= link_to t('.trips').html_safe, trips_url, class: "#{active_class?(trips_url)}" %></li>
+        <li><%= link_to t('.stats'), stats_url, class: "#{active_class?(stats_url)}" %></li>
+        <li><%= link_to t('.insights_sup_sup_html').html_safe, insights_url, class: "#{active_class?(insights_url)}" %></li>
+        <% if user_signed_in? && (family_feature_available? || current_user.in_family?) %>
           <li>
             <% if current_user.in_family? %>
-              <%= link_to family_path, class: "#{active_class?(family_path)} flex items-center space-x-2" do %>
-                <span>Family</span>
+              <%= link_to family_home_path, class: "#{active_class?(family_home_path)} flex items-center space-x-2" do %>
+                <span><%= t('.family') %></span>
                 <%= render 'families/navbar_indicator', user: current_user %>
               <% end %>
             <% else %>
-              <%= link_to 'Family<sup>α</sup>'.html_safe, new_family_path, class: "#{active_class?(new_family_path)}" %>
+              <%= link_to t('.family_sup_sup_html').html_safe, new_family_path, class: "#{active_class?(new_family_path)}" %>
             <% end %>
           </li>
         <% end %>
         <li>
           <details>
-            <summary>My data</summary>
+            <summary><%= t('.my_data') %></summary>
             <ul class="p-2 bg-base-100">
-              <li><%= link_to 'Points', points_url, class: "#{active_class?(points_url)}" %></li>
-              <li><%= link_to 'Places', places_url, class: "#{active_class?(places_url)}" %></li>
-              <li><%= link_to 'Imports', imports_url, class: "#{active_class?(imports_url)}" %></li>
-              <li><%= link_to 'Exports', exports_url, class: "#{active_class?(exports_url)}" %></li>
-              <li><%= link_to 'Tags', tags_url, class: "#{active_class?(tags_url)}" %></li>
+              <li><%= link_to t('.points'), points_url, class: "#{active_class?(points_url)}" %></li>
+              <li><%= link_to t('.places'), places_url, class: "#{active_class?(places_url)}" %></li>
+              <li><%= link_to t('.imports'), imports_url, class: "#{active_class?(imports_url)}" %></li>
+              <li><%= link_to t('.exports'), exports_url, class: "#{active_class?(exports_url)}" %></li>
+              <li><%= link_to t('.tags'), tags_url, class: "#{active_class?(tags_url)}" %></li>
             </ul>
           </details>
         </li>
         <% if user_signed_in? && current_user.can_subscribe? && !current_user.auto_converting_trial? %>
           <li>
-            <%= link_to 'Subscribe', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %>
+            <%= link_to t('.subscribe'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}", class: 'btn btn-sm btn-success' %>
           </li>
         <% end %>
         <% if user_signed_in? %>
@@ -43,7 +46,7 @@
           <li><%= render 'shared/navbar/theme_toggle', show_label: true, css_class: 'flex items-center gap-2' %></li>
           <li>
             <details>
-              <summary><%= icon 'message-circle-question-mark' %> Help</summary>
+              <summary><%= icon 'message-circle-question-mark' %> <%= t('.help') %></summary>
               <ul class="p-2 bg-base-100">
                 <%= render 'shared/navbar/help_links' %>
               </ul>
@@ -51,48 +54,46 @@
           </li>
         <% end %>
       </ul>
-    </div>
+    </details>
     <%= link_to (user_signed_in? ? preferred_map_path : root_path), class: 'btn btn-ghost normal-case text-xl gap-2' do %>
-      <%= image_tag 'logo.svg', alt: 'Dawarich logo', class: 'h-8 w-8 rounded-[20%]' %>
-      <span>Dawarich<sup>β</sup></span>
+      <%= image_tag 'logo.svg', alt: t('.dawarich_logo'), class: 'h-8 w-8 rounded-[20%]' %>
+      <span><%= t('.dawarich') %><sup>β</sup></span>
     <% end %>
     <%= render "shared/navbar/version_indicator" %>
 
     <% if user_signed_in? %>
-      <div class="hidden lg:block">
+      <div class="hidden xl:block">
         <%= render 'shared/navbar/theme_toggle' %>
       </div>
     <% end %>
   </div>
-  <div class="navbar-center hidden lg:flex">
+  <div class="navbar-center hidden xl:flex">
     <ul class="menu menu-horizontal px-1">
-      <li><%= link_to 'Map', preferred_map_path, class: "mx-1 #{active_class?(preferred_map_path)}" %></li>
-      <li><%= link_to 'Trips'.html_safe, trips_url, class: "mx-1 #{active_class?(trips_url)}" %></li>
-      <li><%= link_to 'Stats', stats_url, class: "mx-1 #{active_class?(stats_url)}" %></li>
-      <li><%= link_to 'Insights<sup>α</sup>'.html_safe, insights_url, class: "mx-1 #{active_class?(insights_url)}" %></li>
-      <% if user_signed_in? && DawarichSettings.family_feature_enabled? %>
+      <li><%= link_to t('.map'), preferred_map_path, class: "mx-1 #{active_class?(preferred_map_path)}" %></li>
+      <li><%= link_to t('.trips').html_safe, trips_url, class: "mx-1 #{active_class?(trips_url)}" %></li>
+      <li><%= link_to t('.stats'), stats_url, class: "mx-1 #{active_class?(stats_url)}" %></li>
+      <li><%= link_to t('.insights_sup_sup_html').html_safe, insights_url, class: "mx-1 #{active_class?(insights_url)}" %></li>
+      <% if user_signed_in? && (family_feature_available? || current_user.in_family?) %>
         <li>
           <% if current_user.in_family? %>
-            <div class="<%= active_class?(family_path) %>">
-              <%= link_to family_path, class: "mx-1 flex items-center space-x-2" do %>
-                <span>Family<sup>α</sup></span>
-                <%= render 'families/navbar_indicator', user: current_user %>
-              <% end %>
-            </div>
+            <%= link_to family_home_path, class: "mx-1 #{active_class?(family_home_path)} flex items-center space-x-2" do %>
+              <span><%= t('.family') %><sup>α</sup></span>
+              <%= render 'families/navbar_indicator', user: current_user %>
+            <% end %>
           <% else %>
-            <%= link_to 'Family<sup>α</sup>'.html_safe, new_family_path, class: "mx-1 #{active_class?(new_family_path)}" %>
+            <%= link_to t('.family_sup_sup_html').html_safe, new_family_path, class: "mx-1 #{active_class?(new_family_path)}" %>
           <% end %>
         </li>
       <% end %>
       <li>
         <details>
-          <summary>My data</summary>
+          <summary><%= t('.my_data') %></summary>
           <ul class="p-2 bg-base-100 rounded-box shadow-md z-[50]">
-            <li><%= link_to 'Points', points_url, class: "#{active_class?(points_url)}" %></li>
-            <li><%= link_to 'Places', places_url, class: "#{active_class?(places_url)}" %></li>
-            <li><%= link_to 'Imports', imports_url, class: "#{active_class?(imports_url)}" %></li>
-            <li><%= link_to 'Exports', exports_url, class: "#{active_class?(exports_url)}" %></li>
-            <li><%= link_to 'Tags', tags_url, class: "#{active_class?(tags_url)}" %></li>
+            <li><%= link_to t('.points'), points_url, class: "#{active_class?(points_url)}" %></li>
+            <li><%= link_to t('.places'), places_url, class: "#{active_class?(places_url)}" %></li>
+            <li><%= link_to t('.imports'), imports_url, class: "#{active_class?(imports_url)}" %></li>
+            <li><%= link_to t('.exports'), exports_url, class: "#{active_class?(exports_url)}" %></li>
+            <li><%= link_to t('.tags'), tags_url, class: "#{active_class?(tags_url)}" %></li>
           </ul>
         </details>
       </li>
@@ -100,8 +101,8 @@
   </div>
   <div class="navbar-end">
     <% if user_signed_in? %>
-      <%# ===== Mobile navbar-end (< lg) ===== %>
-      <div class="flex items-center gap-1 lg:hidden">
+      <%# ===== Mobile navbar-end (< xl) ===== %>
+      <div class="flex items-center gap-1 xl:hidden">
         <% if current_user.can_subscribe? && !current_user.auto_converting_trial? %>
           <%= link_to subscription_upgrade_url(current_user),
                       class: "btn btn-xs #{trial_button_class(current_user)}" do %>
@@ -126,42 +127,42 @@
             <% end %>
           </label>
           <ul tabindex="0" class="dropdown-content menu menu-sm mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52">
-            <li><%= link_to 'Account', edit_user_registration_path %></li>
-            <li><%= link_to 'Settings', settings_general_index_path %></li>
+            <li><%= link_to t('.account'), edit_user_registration_path %></li>
+            <li><%= link_to t('.settings'), settings_general_index_path %></li>
             <% if !DawarichSettings.self_hosted? %>
-              <li><%= link_to 'Subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" %></li>
+              <li><%= link_to t('.subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" %></li>
             <% end %>
             <li>
-              <a onclick="getting_started.showModal()" class="relative">
-                Get started
+              <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
+                <%= t('.get_started') %>
                 <% if onboarding_modal_showable?(current_user) %>
-                  <span class="indicator-item badge badge-secondary badge-xs"></span>
+                  <span class="badge badge-secondary badge-xs absolute right-2 top-1/2 -translate-y-1/2"></span>
                 <% end %>
               </a>
             </li>
-            <li><%= link_to 'Logout', destroy_user_session_path, method: :delete, data: { turbo: false } %></li>
+            <li><%= link_to t('.logout'), destroy_user_session_path, method: :delete, data: { turbo: false } %></li>
           </ul>
         </div>
       </div>
 
-      <%# ===== Desktop navbar-end (>= lg) ===== %>
-      <div class="hidden lg:flex items-center gap-2 flex-nowrap">
+      <%# ===== Desktop navbar-end (>= xl) ===== %>
+      <div class="hidden xl:flex items-center gap-2 flex-nowrap">
         <% if current_user.can_subscribe? && !current_user.auto_converting_trial? %>
           <%= link_to subscription_upgrade_url(current_user),
                       class: "join flex-nowrap" do %>
             <span class="join-item btn btn-sm <%= trial_button_class(current_user) %>">
               <% if current_user.pending_payment? %>
-                <span class="tooltip tooltip-bottom" data-tip="Finish setting up your account" title="Finish setting up your account">Finish signup</span>
+                <span class="tooltip tooltip-bottom" data-tip="<%= t('.finish_setting_up_your_account') %>" title="<%= t('.finish_setting_up_your_account') %>"><%= t('.finish_signup') %></span>
               <% else %>
                 <% expiry = current_user.active_until %>
                 <% if expiry.blank? || expiry.past? %>
-                  <span class="tooltip tooltip-bottom" data-tip="Trial expired" title="Trial expired">Trial expired 🥺</span>
+                  <span class="tooltip tooltip-bottom" data-tip="<%= t('.trial_expired') %>" title="<%= t('.trial_expired') %>"><%= t('.trial_expired_2') %></span>
                 <% else %>
                   <% days_left = [(expiry.to_date - Time.zone.today).to_i, 0].max %>
                   <span class="tooltip tooltip-bottom"
-                        data-tip="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>"
-                        title="Your trial will end in <%= distance_of_time_in_words(expiry, Time.current) %>">
-                    <%= pluralize(days_left, 'day') %> remaining
+                        data-tip="<%= t('.trial_ends_in', time: relative_distance_in_words(expiry)) %>"
+                        title="<%= t('.trial_ends_in', time: relative_distance_in_words(expiry)) %>">
+                    <%= t('.days_remaining', count: days_left) %>
                   </span>
                 <% end %>
               <% end %>
@@ -172,75 +173,75 @@
         <% end %>
 
         <ul class="menu menu-horizontal px-1 flex-nowrap">
-        <%= turbo_stream_from current_user, :notifications %>
-        <li data-controller="notifications">
-          <details>
-            <summary class="relative">
-              <%= icon 'bell' %>
-              <%= render 'notifications/badge', count: @unread_notifications&.size || 0 %>
-            </summary>
-            <ul class="p-2 bg-base-100 rounded-t-none z-[50] min-w-52" id="notifications-list">
-              <li><%= link_to 'See all', notifications_path %></li>
-              <% @unread_notifications&.first(10)&.each do |notification| %>
-                <%= render 'notifications/navbar_item', notification: notification %>
-              <% end %>
-            </ul>
-          </details>
-        </li>
-        <li>
-          <details>
-            <summary><%= icon 'message-circle-question-mark' %></summary>
-            <ul class="p-2 bg-base-100 rounded-box shadow-md z-[50] w-52">
-              <%= render 'shared/navbar/help_links' %>
-            </ul>
-          </details>
-        </li>
-        <li>
-          <details>
-            <summary>
-              <span class="inline"><%= icon 'user' %></span>
-              <% if onboarding_modal_showable?(current_user) %>
-                <span class="indicator-item badge badge-secondary badge-xs"></span>
-              <% end %>
-              <% if current_user.admin? %>
-                <span class='tooltip tooltip-left' data-tip="You're an admin, Harry!">
-                  <%= icon 'star' %>
-                </span>
-              <% end %>
-              <% if current_user.supporter? && current_user.safe_settings.show_supporter_badge? %>
-                <span class='tooltip tooltip-left' data-tip="Dawarich Supporter">
-                  <span class="text-sky-400 inline-block animate-[supporter-rainbow-glow_8s_linear_infinite]">
-                    <%= icon 'gem' %>
+          <%= turbo_stream_from current_user, :notifications %>
+          <li data-controller="notifications">
+            <details>
+              <summary class="relative">
+                <%= icon 'bell' %>
+                <%= render 'notifications/badge', count: @unread_notifications&.size || 0 %>
+              </summary>
+              <ul class="p-2 bg-base-100 rounded-t-none z-[50] min-w-52" id="notifications-list">
+                <li><%= link_to t('.see_all'), notifications_path %></li>
+                <% @unread_notifications&.first(10)&.each do |notification| %>
+                  <%= render 'notifications/navbar_item', notification: notification %>
+                <% end %>
+              </ul>
+            </details>
+          </li>
+          <li>
+            <details>
+              <summary><%= icon 'message-circle-question-mark' %></summary>
+              <ul class="p-2 bg-base-100 rounded-box shadow-md z-[50] w-52">
+                <%= render 'shared/navbar/help_links' %>
+              </ul>
+            </details>
+          </li>
+          <li>
+            <details>
+              <summary>
+                <span class="inline"><%= icon 'user' %></span>
+                <% if onboarding_modal_showable?(current_user) %>
+                  <span class="indicator-item badge badge-secondary badge-xs"></span>
+                <% end %>
+                <% if current_user.admin? %>
+                  <span class='tooltip tooltip-left' data-tip="<%= t('.you_re_an_admin_harry') %>">
+                    <%= icon 'star' %>
                   </span>
-                </span>
-              <% end %>
-            </summary>
-            <ul class="p-2 bg-base-100 rounded-t-none z-[50]">
-              <li><%= link_to 'Account', edit_user_registration_path %></li>
-              <li><%= link_to 'Settings', settings_general_index_path %></li>
-              <% if !DawarichSettings.self_hosted? %>
-                <li><%= link_to 'Subscription', "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" %></li>
-              <% end %>
-              <li>
-                <a onclick="getting_started.showModal()" class="relative">
-                  Get started
-                  <% if onboarding_modal_showable?(current_user) %>
-                    <span class="indicator-item badge badge-secondary badge-xs"></span>
-                  <% end %>
-                </a>
-              </li>
+                <% end %>
+                <% if current_user.supporter? && current_user.safe_settings.show_supporter_badge? %>
+                  <span class='tooltip tooltip-left' data-tip="<%= t('.dawarich_supporter') %>">
+                    <span class="text-sky-400 inline-block animate-[supporter-rainbow-glow_8s_linear_infinite]">
+                      <%= icon 'gem' %>
+                    </span>
+                  </span>
+                <% end %>
+              </summary>
+              <ul class="p-2 bg-base-100 rounded-t-none z-[50]">
+                <li><%= link_to t('.account'), edit_user_registration_path %></li>
+                <li><%= link_to t('.settings'), settings_general_index_path %></li>
+                <% if !DawarichSettings.self_hosted? %>
+                  <li><%= link_to t('.subscription'), "#{MANAGER_URL}/auth/dawarich?token=#{current_user.generate_subscription_token}" %></li>
+                <% end %>
+                <li>
+                  <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
+                    <%= t('.get_started') %>
+                    <% if onboarding_modal_showable?(current_user) %>
+                      <span class="badge badge-secondary badge-xs absolute right-2 top-1/2 -translate-y-1/2"></span>
+                    <% end %>
+                  </a>
+                </li>
 
-              <li><%= link_to 'Logout', destroy_user_session_path, method: :delete, data: { turbo: false } %></li>
-            </ul>
-          </details>
-        </li>
-      </ul>
+                <li><%= link_to t('.logout'), destroy_user_session_path, method: :delete, data: { turbo: false } %></li>
+              </ul>
+            </details>
+          </li>
+        </ul>
       </div>
     <% else %>
       <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
-        <li><%= link_to 'Login', new_user_session_path %></li>
+        <li><%= link_to t('.login'), new_user_session_path %></li>
         <% if !SELF_HOSTED && defined?(devise_mapping) && devise_mapping&.registerable? %>
-          <li><%= link_to 'Register', new_user_registration_path %></li>
+          <li><%= link_to t('.register'), new_user_registration_path %></li>
         <% end %>
       </ul>
     <% end %>
