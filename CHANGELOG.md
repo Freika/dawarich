@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Synology template and the Kubernetes guide run Dawarich in production instead of development.
 - The Synology template no longer hangs waiting for its database on a fresh install.
 - The Kubernetes guide's health probes check the web container instead of the Sidekiq container, and a startup probe keeps it from being restarted while migrations run.
+- Trip and track distance is calculated in the database, so large trips no longer run out of memory and leave the distance empty. Press Recalculate on an affected trip to fill it in.
 
 ## [1.14.5] - 2026-09-13, Berlin
 
