@@ -1,58 +1,54 @@
+<% content_for :title, t('achievements.ui.title') %>
 
-<div class="container mx-auto px-4 py-8">
-  <div class="ach-page" data-controller="card-modal">
-    <div class="ach-layout">
-      <%= render 'sidebar', continents: @sets, summary: @summary %>
+<div class="w-full my-5 ach-page" data-controller="card-modal">
+  <%= render 'shared/page_header', title: t('achievements.ui.title') %>
+  <div class="ach-layout">
+    <%= render 'sidebar', continents: @sets, summary: @summary %>
+    <div class="ach-main">
+      <dl class="ach-stats" aria-label="<%= t('achievements.ui.summary') %>">
+        <div class="ach-stat">
+          <dt class="ach-stat-label"><%= t('achievements.ui.countries') %></dt>
+          <dd class="ach-stat-value"><%= @summary.earned_countries %><span class="ach-stat-total">/<%= @summary.total_countries %></span></dd>
+        </div>
+        <div class="ach-stat">
+          <dt class="ach-stat-label"><%= t('achievements.ui.regions') %></dt>
+          <dd class="ach-stat-value"><%= @summary.earned_subdivisions %><span class="ach-stat-total">/<%= number_with_delimiter(@summary.total_subdivisions) %></span></dd>
+        </div>
+        <div class="ach-stat">
+          <dt class="ach-stat-label"><%= t('achievements.ui.world_explored') %></dt>
+          <dd class="ach-stat-value"><%= @summary.percent %><span class="ach-stat-total">%</span></dd>
+        </div>
+      </dl>
 
-      <div class="ach-main">
-        <h1 class="ach-page-title">Achievements</h1>
+      <% if @summary.earned_countries.zero? && @summary.earned_subdivisions.zero? %>
+        <div class="ach-getting-started">
+          <%= icon 'compass', class: 'w-5 h-5', 'aria-hidden': true %>
+          <p><%= t('achievements.ui.getting_started') %> <%= link_to t('achievements.ui.import_data'), new_import_path, class: 'link link-hover' %></p>
+        </div>
+      <% end %>
 
-        <div class="ach-stats">
-          <div class="ach-stat">
-            <div class="ach-stat-value ach-stat-value--gold">
-              <%= @summary.earned_countries %><span class="ach-stat-total">/<%= @summary.total_countries %></span>
-            </div>
-            <div class="ach-stat-label">Countries</div>
-          </div>
-          <div class="ach-stat">
-            <div class="ach-stat-value ach-stat-value--teal">
-              <%= @summary.earned_subdivisions %><span class="ach-stat-total">/<%= @summary.total_subdivisions %></span>
-            </div>
-            <div class="ach-stat-label">Regions</div>
-          </div>
-          <div class="ach-stat">
-            <div class="ach-stat-value ach-stat-value--blue"><%= @summary.percent %>%</div>
-            <div class="ach-stat-label">World explored</div>
+      <section aria-labelledby="collection-heading">
+        <div class="ach-section-heading">
+          <div>
+            <h2 id="collection-heading"><%= t('achievements.ui.continents') %></h2>
+            <p><%= t('achievements.ui.collection_hint') %></p>
           </div>
         </div>
-
-        <div class="ach-divider"><span>Continents</span></div>
-
-        <div class="ach-grid">
-          <% @sets.each_with_index do |set, index| %>
+        <div class="ach-grid" data-testid="achievement-collection">
+          <% @sets.each do |set| %>
             <%= link_to achievement_path(set.definition.key), class: 'ach-card-link' do %>
-              <%= render 'card', reveal_delay: 0.1 + (0.15 * [index, 10].min),
-                                 celebrate: set.celebrate?,
-                                 **set.card_attributes %>
+              <%= render 'card', celebrate: set.celebrate?, **set.card_attributes %>
             <% end %>
           <% end %>
-          <% @orphans.each_with_index do |set, index| %>
-            <%= render 'card', reveal_delay: 0.1 + (0.15 * [@sets.size + index, 10].min),
-                               celebrate: set.celebrate?, modal: true,
+          <% @orphans.each do |set| %>
+            <%= render 'card', celebrate: set.celebrate?, modal: true,
                                share: { key: set.definition.key, shared: set.sharing_enabled?, uuid: set.sharing_uuid },
                                **set.card_attributes %>
           <% end %>
         </div>
-
-        <%= render 'card_modal' %>
-
-        <p class="ach-footnote">
-          Region detection is based on approximate boundaries.
-          Boundaries: Natural Earth (public domain) and
-          <%= link_to 'geoBoundaries', 'https://www.geoboundaries.org', target: '_blank', rel: 'noopener' %> (CC BY 4.0).
-          Map art: Protomaps © OpenStreetMap contributors
-        </p>
-      </div>
+      </section>
+      <%= render 'attribution' %>
     </div>
   </div>
+  <%= render 'card_modal' %>
 </div>

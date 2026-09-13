@@ -1,139 +1,136 @@
 import { Controller } from "@hotwired/stimulus"
+import { spectralMarkup } from "achievements/spectral_material"
 
-const PROXIMITY = 30
-const HYSTERESIS = 12
-const DEPTH = 13
-const RIM = 0.3
-const LIGHT_THROW = 42
-const SHADOW_ALPHA = 0.1
-const RADIANS = Math.PI / 180
-
-const PROPS = [
-  "--ry",
-  "--rx",
-  "--mx",
-  "--my",
-  "--fo",
-  "--sc",
-  "--gl",
-  "--px",
-  "--py",
-  "--rimx",
-  "--rimy",
-  "--sx",
-  "--sy",
-  "--sa",
-  "--gx",
-  "--gy",
-]
-
+// Mount near the viewport; local, frame-coalesced pointer work stays cheap.
 export default class extends Controller {
+  static targets = ["material"]
   static values = {
-    tilt: { type: Number, default: 12 },
-    holo: { type: Number, default: 0.7 },
-    locked: { type: Boolean, default: false },
+    locked: Boolean,
+    silhouette: Object,
+    key: String,
+    rarity: String,
+    paper: String,
+    foil: String,
   }
 
   connect() {
-    this.engaged = false
-    this.track = this.track.bind(this)
-    document.addEventListener("pointermove", this.track)
+    this.card = this.element.querySelector(".ach-spectral")
+    this.reducedMotion = matchMedia("(prefers-reduced-motion: reduce)")
+    // Moving a card into/out of the dialog reconnects this controller before
+    // paint. Refit now: IntersectionObserver runs after paint and would expose
+    // the previous layout's map scale for a frame before visibly correcting it.
+    if (this.mounted || this.element.closest(".ach-modal[open]")) {
+      this.mount()
+      return
+    }
+    this.observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) this.mount()
+      },
+      { rootMargin: "160px" },
+    )
+    this.observer.observe(this.element)
   }
 
   disconnect() {
-    document.removeEventListener("pointermove", this.track)
+    this.observer?.disconnect()
+    this.resizeObserver?.disconnect()
+    this.leave()
   }
 
-  // Engagement is proximity-based rather than enter/leave on the element. The
-  // card scales to 1.04 while the wrap carrying the listener does not, so it
-  // overhangs its own hit area by a few px — and in that halo the pointer sits
-  // on the card but off the listener, flipping the state on every sub-pixel
-  // move. Releasing only past PROXIMITY + HYSTERESIS gives the boundary a dead
-  // band it cannot oscillate inside.
-  track(event) {
-    if (this.lockedValue) return
-
-    const rect = this.element.getBoundingClientRect()
-    const away = Math.hypot(
-      Math.max(rect.left - event.clientX, 0, event.clientX - rect.right),
-      Math.max(rect.top - event.clientY, 0, event.clientY - rect.bottom),
-    )
-
-    if (away > (this.engaged ? PROXIMITY + HYSTERESIS : PROXIMITY)) {
-      if (this.engaged) {
-        this.engaged = false
-        this.clear()
-      }
+  mount() {
+    this.observer?.disconnect()
+    if (!this.hasSilhouetteValue) return
+    // Turbo/dialog moves reconnect the same controller; preserve its material,
+    // but observe its new layout so compact cards refit in the fullscreen view.
+    if (this.mounted) {
+      this.observeSize()
       return
     }
+    const result = spectralMarkup({
+      silhouette: this.silhouetteValue,
+      key: this.keyValue,
+      rarity: this.rarityValue,
+      paperAsset: this.paperValue,
+      foilAsset: this.foilValue,
+      uid: "sc-" + crypto.randomUUID(),
+    })
+    if (!result) return
+    this.materialTarget.innerHTML = result.html
+    this.card.style.setProperty("--accent", result.accent)
+    this.mounted = true
+    this.observeSize()
+  }
 
-    this.engaged = true
-    this.apply(rect, event.clientX, event.clientY)
+  observeSize() {
+    this.resizeObserver?.disconnect()
+    this.resizeObserver = new ResizeObserver(() => this.fit())
+    this.resizeObserver.observe(this.materialTarget.querySelector(".geo-stage"))
+    this.fit()
+  }
+
+  fit() {
+    const stage = this.materialTarget.querySelector(".geo-stage")
+    if (!stage?.clientWidth || !stage.clientHeight) return
+    const svg = stage.querySelector("svg")
+    const box = svg.querySelector(".geo-fill").getBBox()
+    const unit = Math.min(stage.clientWidth / 300, stage.clientHeight / 260)
+    const width =
+      2 * Math.max(Math.abs(box.x - 150), Math.abs(box.x + box.width - 150))
+    const height =
+      2 * Math.max(Math.abs(box.y - 130), Math.abs(box.y + box.height - 130))
+    const scale = Math.max(
+      0.05,
+      Math.min(
+        1.15,
+        (stage.clientWidth - 8) / (width * unit),
+        (stage.clientHeight - 8) / (height * unit),
+      ),
+    )
+    svg.style.setProperty("--map-scale", scale.toFixed(4))
   }
 
   move(event) {
-    this.track(event)
+    if (this.reducedMotion.matches || event.pointerType === "touch") return
+    this.restingRect ||= this.element.getBoundingClientRect()
+    this.pointer = { x: event.clientX, y: event.clientY }
+    if (this.frame) return
+    this.frame = requestAnimationFrame(() => {
+      this.frame = null
+      const rect = this.restingRect
+      const x = Math.max(
+        -1,
+        Math.min(1, ((this.pointer.x - rect.left) / rect.width) * 2 - 1),
+      )
+      const y = Math.max(
+        -1,
+        Math.min(1, ((this.pointer.y - rect.top) / rect.height) * 2 - 1),
+      )
+      this.card.style.setProperty("--rx", -y * 10 + "deg")
+      this.card.style.setProperty("--ry", x * 10 + "deg")
+      this.card.querySelectorAll("[data-spectrum]").forEach((gradient) => {
+        gradient.setAttribute(
+          "gradientTransform",
+          "rotate(" +
+            (8 + x * 8 - y * 3) +
+            " 150 130) translate(" +
+            x * 14 +
+            " " +
+            y * 8 +
+            ")",
+        )
+      })
+    })
   }
 
   leave() {
-    // the pointer may still be inside the proximity zone, and mouseleave fires
-    // at the element edge — exactly the boundary proximity exists to soften
-    if (this.engaged) return
-
-    this.clear()
-  }
-
-  apply(rect, clientX, clientY) {
-    // clamped: engaging from outside the card must not drive the tilt past its
-    // own maximum, or the anticipation reads as a lurch
-    const px = Math.min(1, Math.max(0, (clientX - rect.left) / rect.width))
-    const py = Math.min(1, Math.max(0, (clientY - rect.top) / rect.height))
-    const tilt = this.tiltValue
-    const ry = (px - 0.5) * 2 * tilt
-    const rx = (0.5 - py) * 2 * tilt
-    const set = (prop, value) => this.element.style.setProperty(prop, value)
-
-    set("--ry", `${ry.toFixed(2)}deg`)
-    set("--rx", `${rx.toFixed(2)}deg`)
-
-    // Fixed overhead light rather than a cursor-locked one: the highlight
-    // slides opposite the lean, the way foil catches a lamp that is not moving
-    // with your hand.
-    const throwFrom = tilt || 1
-    const mx = 50 - (ry / throwFrom) * LIGHT_THROW
-    const my = 50 + (rx / throwFrom) * LIGHT_THROW
-    set("--mx", `${mx.toFixed(1)}%`)
-    set("--my", `${my.toFixed(1)}%`)
-
-    set("--fo", String(this.holoValue))
-    set("--sc", "1.04")
-    set("--gl", "1")
-
-    // A point at depth d under a surface turned by θ projects d*tan(θ) to the
-    // side, so the art's drift follows the angle rather than the tilt's numeric
-    // value read as pixels.
-    set("--px", `${(-Math.tan(ry * RADIANS) * DEPTH).toFixed(2)}px`)
-    set("--py", `${(Math.tan(rx * RADIANS) * DEPTH).toFixed(2)}px`)
-
-    // Card stock. The back face translates rigidly by
-    // (-T*sin(rotateY), +T*sin(rotateX)), so the wall is the card swept along
-    // that one vector. Splitting it per axis would leave a hole where the
-    // corner belongs; only the two edges turning away ever show, which is what
-    // a slab does.
-    set("--rimx", `${(-ry * 0.6 * RIM).toFixed(2)}px`)
-    set("--rimy", `${((2 + rx * 0.5) * RIM).toFixed(2)}px`)
-
-    set("--sx", `${(-ry * 0.9).toFixed(1)}px`)
-    set("--sy", `${(rx * 0.7).toFixed(1)}px`)
-    set("--sa", String(SHADOW_ALPHA))
-
-    set("--gx", `${(100 - mx).toFixed(1)}%`)
-    set("--gy", `${(100 - my).toFixed(1)}%`)
-  }
-
-  clear() {
-    for (const prop of PROPS) {
-      this.element.style.removeProperty(prop)
-    }
+    cancelAnimationFrame(this.frame)
+    this.frame = null
+    this.restingRect = null
+    this.card?.style.removeProperty("--rx")
+    this.card?.style.removeProperty("--ry")
+    this.card?.querySelectorAll("[data-spectrum]").forEach((gradient) => {
+      gradient.setAttribute("gradientTransform", "rotate(8 150 130)")
+    })
   }
 }

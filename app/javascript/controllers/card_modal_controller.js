@@ -15,12 +15,21 @@ export default class extends Controller {
     "copyBtn",
     "unshareBtn",
     "error",
+    "featured",
+    "createForm",
+    "disableForm",
+    "publicLink",
+    "sharingButton",
   ]
 
   open(event) {
     if (this.dialogTarget.open) return
     const wrap = event.currentTarget
     if (!wrap.querySelector(".ach-card")) return
+    if (this.hasFeaturedTarget && this.featuredTarget.contains(wrap)) {
+      this.featuredKey = wrap.dataset.shareKey
+    }
+    this.session = {}
 
     // Move the whole wrap (not just the card) so its tilt/holo controller,
     // perspective, and hover behaviour come along and stay live in the dialog.
@@ -40,9 +49,19 @@ export default class extends Controller {
     this.toggleUrl = wrap.dataset.shareToggle || null
 
     this.toolsTarget.hidden = !this.key
+    this.setBusy(Boolean(this.busy))
     this.hidePanel()
     this.clearError()
     this.dialogTarget.showModal()
+  }
+
+  async createPublicLink(event) {
+    if (!this.hasFeaturedTarget) return
+    const wrap = this.featuredTarget.querySelector(".ach-card-wrap")
+    if (!wrap) return
+    event.preventDefault()
+    this.open({ currentTarget: wrap })
+    await this.share()
   }
 
   openOnKey(event) {
@@ -81,9 +100,19 @@ export default class extends Controller {
       this.moved.dataset.achievementCardLockedValue = this.wasLocked
     }
 
-    this.origin.parent.insertBefore(this.moved, this.origin.next)
+    const { parent, next } = this.origin
+    if (parent) {
+      parent.insertBefore(this.moved, next?.parentNode === parent ? next : null)
+    } else {
+      this.moved.remove()
+    }
+    // Moving the trigger before showModal loses the native return-focus target.
+    // Focus it only after reinsertion, without changing the user's scroll position.
+    if (this.moved.isConnected) this.moved.focus({ preventScroll: true })
     this.moved = null
     this.origin = null
+    this.session = null
+    clearTimeout(this.copyTimer)
   }
 
   async share() {
@@ -105,25 +134,45 @@ export default class extends Controller {
   // the result back onto the card so a reopen isn't stale, and surfaces
   // failures instead of failing silently. Returns true on success.
   async setSharing(enabled) {
-    if (this.shared === enabled) return true
+    if (this.busy) return false
+    if (this.shared === enabled && (!enabled || this.shareUrl)) return true
 
-    const data = await this.postToggle(enabled)
-    if (!data || data.enabled !== enabled) {
-      this.showError("Couldn't update sharing. Please try again.")
-      return false
-    }
-
-    this.shared = data.enabled
-    this.shareUrl = data.url ? absolute(data.url) : null
-    this.persistState()
+    const wrap = this.moved
+    const session = this.session
     this.clearError()
-    return true
+    this.setBusy(true)
+    try {
+      const data = await this.postToggle(enabled, this.toggleUrl)
+      if (!data || data.enabled !== enabled || (enabled && !data.url)) {
+        if (session === this.session)
+          this.showError("Couldn't update sharing. Please try again.")
+        return false
+      }
+
+      const url = data.url ? absolute(data.url) : null
+      // A completed request still belongs to its original card, even if the
+      // user has closed the preview or opened a different one while waiting.
+      this.persistState(wrap, data.enabled, url)
+      if (wrap === this.moved) {
+        this.shared = data.enabled
+        this.shareUrl = url
+      }
+      return session === this.session
+    } finally {
+      this.setBusy(false)
+    }
   }
 
-  async postToggle(enabled) {
-    if (!this.toggleUrl) return null
+  setBusy(busy) {
+    this.busy = busy
+    this.toolsTarget.ariaBusy = String(busy)
+    for (const button of this.sharingButtonTargets || []) button.disabled = busy
+  }
+
+  async postToggle(enabled, url) {
+    if (!url) return null
     try {
-      const response = await fetch(this.toggleUrl, {
+      const response = await fetch(url, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -140,13 +189,21 @@ export default class extends Controller {
 
   // Keep the grid card's data-share-* in sync so reopening the modal reflects
   // the latest sharing state rather than the stale server-rendered value.
-  persistState() {
-    if (!this.moved) return
-    this.moved.dataset.shareShared = String(this.shared)
-    if (this.shared && this.shareUrl) {
-      this.moved.dataset.shareUrl = this.shareUrl
+  persistState(wrap, shared, url) {
+    if (!wrap) return
+    wrap.dataset.shareShared = String(shared)
+    if (shared && url) {
+      wrap.dataset.shareUrl = url
     } else {
-      delete this.moved.dataset.shareUrl
+      delete wrap.dataset.shareUrl
+    }
+    if (this.featuredKey && wrap.dataset.shareKey === this.featuredKey) {
+      if (this.hasCreateFormTarget) this.createFormTarget.hidden = shared
+      if (this.hasDisableFormTarget) this.disableFormTarget.hidden = !shared
+      if (this.hasPublicLinkTarget) {
+        this.publicLinkTarget.hidden = !shared
+        this.publicLinkTarget.href = shared ? url : "#"
+      }
     }
   }
 
@@ -160,25 +217,45 @@ export default class extends Controller {
     if (this.hasErrorTarget) this.errorTarget.hidden = true
   }
 
-  copy() {
-    navigator.clipboard?.writeText(this.outputTarget.value)
-    this.copyBtnTarget.textContent = "Copied"
-    setTimeout(() => {
-      if (this.hasCopyBtnTarget) this.copyBtnTarget.textContent = "Copy"
-    }, 1500)
+  async copy() {
+    const session = this.session
+    const value = this.outputTarget.value
+    try {
+      await navigator.clipboard.writeText(value)
+      if (session !== this.session || value !== this.outputTarget.value) return
+      this.clearError()
+      this.copyBtnTarget.textContent = "Copied"
+      clearTimeout(this.copyTimer)
+      this.copyTimer = setTimeout(() => {
+        if (this.hasCopyBtnTarget) this.copyBtnTarget.textContent = "Copy"
+      }, 1500)
+    } catch {
+      if (session !== this.session) return
+      this.showError(
+        "Couldn't copy automatically. Select the link or code and copy it manually.",
+      )
+      this.outputTarget.focus({ preventScroll: true })
+      this.outputTarget.select()
+    }
   }
 
   showPanel(label, value) {
+    clearTimeout(this.copyTimer)
+    this.copyBtnTarget.textContent = "Copy"
     this.panelLabelTarget.textContent = label
     this.outputTarget.value = value
     this.unshareBtnTarget.hidden = !this.shared
     this.panelTarget.hidden = false
-    this.outputTarget.focus()
+    this.outputTarget.focus({ preventScroll: true })
     this.outputTarget.select()
   }
 
   hidePanel() {
     this.panelTarget.hidden = true
+  }
+
+  disconnect() {
+    clearTimeout(this.copyTimer)
   }
 
   get csrfToken() {

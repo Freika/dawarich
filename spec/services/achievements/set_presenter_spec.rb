@@ -175,6 +175,17 @@ RSpec.describe Achievements::SetPresenter do
   end
 
   describe '#card_attributes' do
+    it 'selects the continent artwork frame rather than the member countries full extent' do
+      allow(Achievements::RegionSilhouettes).to receive(:collection).and_return(nil)
+
+      presenter('continent_europe').card_attributes
+
+      expect(Achievements::RegionSilhouettes).to have_received(:collection).with(
+        codes: Achievements::Registry.find('continent_europe').region_codes,
+        key: 'continent_europe'
+      )
+    end
+
     it 'returns plain locals for the card partial' do
       set = presenter('country_de', earned: { 'DE-BY' => '2026-05-01', 'DE-SN' => '2026-05-02' })
 

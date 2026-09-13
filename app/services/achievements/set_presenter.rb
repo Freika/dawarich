@@ -107,7 +107,10 @@ module Achievements
         percent: percent,
         completed: completed?,
         locked: locked?,
-        earned_label: earned_label
+        earned_label: earned_label,
+        geography_key: definition.key,
+        silhouette: silhouette,
+        metric_label: "#{display_count}/#{target} #{level == :country ? 'countries' : 'regions'}"
       }
     end
 
@@ -118,6 +121,14 @@ module Achievements
     end
 
     private
+
+    def silhouette
+      @silhouette ||= if definition.kind == 'country'
+                        RegionSilhouettes.new(level: :country, codes: [definition.country]).call[definition.country]
+                      else
+                        RegionSilhouettes.collection(codes: definition.region_codes, key: definition.key)
+                      end
+    end
 
     def subdivision_cards
       art = definition.card['art']

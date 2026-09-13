@@ -35,6 +35,15 @@ RSpec.describe 'Achievements' do
         expect(response.body).to include('<span class="ach-stat-total">/238</span>')
       end
 
+      it 'explains how to start when the collection has no exploration data' do
+        get achievements_path
+
+        document = Nokogiri::HTML(response.body)
+        expect(document.at_css('.ach-getting-started').text).to include('Record or import location data')
+        expect(document.at_css('.ach-getting-started a')['href']).to eq(new_import_path)
+        expect(document.css('.ach-grid .ach-spectral')).not_to be_empty
+      end
+
       describe 'first-view celebration' do
         it 'celebrates a newly completed set exactly once' do
           all_earned = Achievements::Registry.find('country_de').region_codes.index_with { '2026-07-19' }
@@ -52,6 +61,102 @@ RSpec.describe 'Achievements' do
       end
 
       describe 'GET /achievements/:key' do
+        it 'uses the application header and accessible collection navigation' do
+          get achievement_path('continent_europe')
+
+          document = Nokogiri::HTML(response.body)
+          expect(document.at_css('h1').text).to eq('Europe Explorer')
+          expect(document.at_css('nav[aria-label="Breadcrumb"]').text).to include('Achievements')
+          expect(document.at_css('.ach-side--desktop [aria-current="page"]')['href'])
+            .to eq(achievement_path('continent_europe'))
+          expect(document.at_css('.ach-mobile-nav summary').text).to include('Europe')
+        end
+
+        it 'keeps a compact overview above the featured card and sharing in the page header' do
+          get achievement_path('continent_europe')
+
+          document = Nokogiri::HTML(response.body)
+          expect(document.css('h1').size).to eq(1)
+          expect(document.at_css('.ach-main h1').text).to eq('Europe Explorer')
+          expect(document.at_css('.ach-set-layout > .ach-set-hero .ach-set-preview [role="button"]'))
+            .to be_present
+          expect(document.at_css('.ach-set-layout > #collection [role="search"]')).to be_present
+          expect(document.at_css('.ach-set-header form')['action'])
+            .to eq(toggle_sharing_achievement_path('continent_europe'))
+          expect(document.at_css('.ach-set-header form').text).to include('Create public link')
+          create_form = document.at_css('[data-card-modal-target="createForm"]')
+          expect(create_form['data-action']).to eq('submit->card-modal#createPublicLink')
+          expect(create_form['data-turbo']).to eq('false')
+          expect(create_form.at_css('[name="enabled"]')['value']).to eq('true')
+          expect(create_form['hidden']).to be_nil
+          disable_form = document.at_css('[data-card-modal-target="disableForm"]')
+          expect(disable_form.at_css('[name="enabled"]')['value']).to eq('false')
+          expect(disable_form['hidden']).not_to be_nil
+          expect(document.at_css('[data-card-modal-target="publicLink"]')['hidden']).not_to be_nil
+          expect(document.at_css('.ach-set-hero > :first-child')['class']).to eq('ach-set-details')
+          expect(document.at_css('.ach-set-details').text).to include('0 of 50 countries visited')
+          expect(document.css('.ach-set-status, .ach-set-description, .ach-set-tools')).to be_empty
+          expect(document.at_css('.ach-collection-jump')['href']).to eq('#collection')
+          expect(document.at_css('#collection')['tabindex']).to eq('-1')
+        end
+
+        it 'uses native GET submission so filtering retains the collection fragment' do
+          get achievement_path('continent_europe')
+
+          form = Nokogiri::HTML(response.body).at_css('[role="search"]')
+          expect(form['action']).to eq("#{achievement_path('continent_europe')}#collection")
+          expect(form['method']).to eq('get')
+          expect(form['data-turbo']).to eq('false')
+        end
+
+        it 'searches beyond the first page without requiring accents or matching case' do
+          get achievement_path('country_br'), params: { q: 'sAo pAuLo' }
+
+          document = Nokogiri::HTML(response.body)
+          expect(document.css('.ach-child-grid .card-title').map(&:text)).to eq(['São Paulo'])
+          expect(document.at_css('input[name="q"]')['value']).to eq('sAo pAuLo')
+        end
+
+        it 'filters unlocked and locked cards before pagination' do
+          exploration('DE-BY' => '2026-07-01T10:00:00Z')
+
+          get achievement_path('country_de'), params: { status: 'unlocked' }
+          document = Nokogiri::HTML(response.body)
+          expect(document.css('.ach-child-grid .card-title').map(&:text)).to eq(['Bavaria'])
+
+          get achievement_path('country_de'), params: { status: 'locked' }
+          expect(Nokogiri::HTML(response.body).css('.ach-child-grid .card-title').map(&:text)).not_to include('Bavaria')
+        end
+
+        it 'combines a search with the in-progress status' do
+          exploration('DE' => '2026-07-01T10:00:00Z')
+
+          get achievement_path('continent_europe'), params: { status: 'in_progress', q: 'germ' }
+
+          document = Nokogiri::HTML(response.body)
+          expect(document.css('.ach-child-grid .card-title').map(&:text)).to eq(['Germany'])
+        end
+
+        it 'offers a recovery path for an empty search and escapes the query' do
+          get achievement_path('country_de'), params: { q: '<script>alert(1)</script>' }
+
+          document = Nokogiri::HTML(response.body)
+          expect(document.at_css('.ach-empty[role="status"]').text).to include('No matching cards')
+          expect(document.at_css('.ach-empty a')['href']).to eq("#{achievement_path('country_de')}#collection")
+          expect(response.body).not_to include('<script>alert(1)</script>')
+        end
+
+        it 'keeps search and status when paginating and falls back for an invalid status' do
+          get achievement_path('continent_europe'), params: { q: 'a', status: 'locked' }
+
+          document = Nokogiri::HTML(response.body)
+          href = document.at_css('.ach-pagination a')['href']
+          expect(href).to include('q=a', 'status=locked', '#collection')
+
+          get achievement_path('continent_europe'), params: { status: 'unknown' }
+          expect(Nokogiri::HTML(response.body).at_css('select[name="status"] option[selected]')['value']).to eq('all')
+        end
+
         it 'renders a country page with its region cards' do
           exploration('DE-BY' => '2026-07-01T10:00:00Z')
 
@@ -62,14 +167,23 @@ RSpec.describe 'Achievements' do
           expect(response.body).to include('Saxony')
         end
 
-        it 'paginates a continent page at ten cards, earned first' do
+        it 'paginates at twelve cards with a filtered pager above the grid, earned first' do
           exploration('SE' => '2026-07-01T10:00:00Z')
 
           get achievement_path('continent_europe')
 
-          expect(response.body.scan(/ach-card--sm/).size).to eq(10)
+          expect(response.body.scan(/ach-spectral-wrap--sm/).size).to eq(12)
           expect(response.body).to include('ach-pagination')
           expect(response.body.index('Sweden')).to be < response.body.index('Albania')
+          document = Nokogiri::HTML(response.body)
+          expect(document.at_css('.ach-collection-header .ach-page-range').text).to include('1–12 of 50')
+          expect(document.at_css('.ach-collection-header a[rel="next"]')['href']).to include('page=2', '#collection')
+          expect(document.at_css('.ach-collection-header a[rel="prev"]')).to be_nil
+
+          get achievement_path('continent_europe'), params: { page: 2, status: 'locked' }
+          document = Nokogiri::HTML(response.body)
+          expect(document.at_css('.ach-collection-header a[rel="next"]')['href']).to include('page=3', 'status=locked')
+          expect(document.at_css('.ach-collection-header a[rel="prev"]')['href']).to include('page=1', 'status=locked')
         end
 
         it 'renders a continent page with country cards, linking only gridded ones' do
@@ -90,13 +204,31 @@ RSpec.describe 'Achievements' do
 
           get achievement_path('country_de')
 
-          expect(response.body).to include('ach-art-silhouette')
+          expect(response.body).to include('data-achievement-card-silhouette-value')
+          expect(response.body).not_to include('data-controller="achievement-map"')
         end
 
         it 'redirects a hidden world tier page to the index' do
           get achievement_path('border_hopper')
 
           expect(response).to redirect_to(achievements_path)
+        end
+
+        it 'renders earned regions with the same shared spectral materials as locked ones' do
+          create(:region, code: 'DE-BY',
+                          geom: 'MULTIPOLYGON (((11 48, 11 49, 12 49, 12 48, 11 48)))')
+          exploration('DE-BY' => '2026-07-01T10:00:00Z')
+
+          get achievement_path('country_de')
+
+          document = Nokogiri::HTML(response.body)
+          card = document.at_css('[data-achievement-card-key-value="DE-BY"]')
+          expect(card['data-achievement-card-locked-value']).to eq('false')
+          expect(card['data-achievement-card-silhouette-value']).to include('viewbox')
+          expect(card['data-achievement-card-paper-value']).to include('paper-pressed-fiber-v2')
+          expect(card['data-achievement-card-foil-value']).to include('foil-stamped-grain-v4')
+          expect(card.text).to include('Unlocked · 1 Jul 2026')
+          expect(document.css('[data-controller="achievement-map"]')).to be_empty
         end
 
         it 'sends a flat country to its continent instead of 404ing' do
@@ -125,6 +257,14 @@ RSpec.describe 'Achievements' do
       end
 
       describe 'PATCH /achievements/:key/toggle_sharing' do
+        it 'returns to the collection page after changing sharing' do
+          page_url = achievement_url('country_de')
+
+          patch toggle_sharing_achievement_path('country_de'), headers: { 'HTTP_REFERER' => page_url }
+
+          expect(response).to redirect_to(page_url)
+        end
+
         it 'enables sharing and generates a uuid once' do
           progress = create(:achievement_progress, user:, achievement_key: 'country_de')
 

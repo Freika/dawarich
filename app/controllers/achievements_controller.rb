@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class AchievementsController < ApplicationController
-  ROWS_PER_PAGE = 10
+  ROWS_PER_PAGE = 12
 
   before_action :authenticate_user!
   before_action :require_feature_enabled
@@ -22,7 +22,9 @@ class AchievementsController < ApplicationController
 
     @set = presenters_for([definition]).first
     @sidebar_key = definition.parent_key || definition.key
-    @children = paginate(attach_sharing(@set.region_cards))
+    @query = params[:q].to_s.strip.first(100)
+    @filter_status = params[:status].presence_in(%w[all unlocked in_progress locked]) || 'all'
+    @children = paginate(attach_sharing(filtered_cards(@set.region_cards)))
     attach_silhouettes(@children)
 
     mark_celebrated([@set])
@@ -38,7 +40,7 @@ class AchievementsController < ApplicationController
     )
 
     respond_to do |format|
-      format.html { redirect_to achievements_path }
+      format.html { redirect_back fallback_location: achievement_path(params[:key]) }
       format.json do
         render json: {
           enabled: progress.sharing_enabled,
@@ -83,17 +85,34 @@ class AchievementsController < ApplicationController
     Kaminari.paginate_array(collection).page(params[:page]).per(ROWS_PER_PAGE)
   end
 
-  # Locked cards on the current page swap their map art for the region's
-  # geometry outline. Mutates the paginated hashes in place so Kaminari's
-  # pagination metadata survives.
+  # Search the full collection before pagination; hydrate only visible geometry.
+  def filtered_cards(cards)
+    query = I18n.transliterate(@query).downcase
+    cards.select do |card|
+      matches_query = query.blank? || I18n.transliterate(card[:name]).downcase.include?(query)
+      matches_status = case @filter_status
+                       when 'unlocked' then card[:completed]
+                       when 'in_progress' then !card[:locked] && !card[:completed]
+                       when 'locked' then card[:locked]
+                       else true
+                       end
+      matches_query && matches_status
+    end
+  end
+
+  # Only the current page needs geometry. All states share the same SVG art;
+  # no raster map request or per-card map instance is needed.
   def attach_silhouettes(cards)
-    locked = cards.select { |card| card[:locked] && card[:code] }
-    return if locked.empty?
+    visible = cards.select { |card| card[:code] }
+    return if visible.empty?
 
     shapes = Achievements::RegionSilhouettes.new(
-      level: @set.level, codes: locked.map { |card| card[:code] }
+      level: @set.level, codes: visible.map { |card| card[:code] }
     ).call
-    locked.each { |card| card[:silhouette] = shapes[card[:code]] }
+    visible.each do |card|
+      card[:silhouette] = shapes[card[:code]]
+      card[:geography_key] = @set.level == :country ? "country_#{card[:code].downcase}" : card[:code]
+    end
   end
 
   # A leaf country card carries its own achievement key, so resolve that key's
