@@ -130,12 +130,7 @@ class Auth::AccountLinksController < ApplicationController
                          alert: I18n.t('controllers.auth.account_links.account_no_longer_exists'))
     end
 
-    cache_key = "#{Auth::FindOrCreateOauthUser::LINK_EMAIL_RATE_LIMIT_KEY_PREFIX}#{user.id}"
-    acquired = Rails.cache.write(cache_key, true,
-                                 expires_in: Auth::FindOrCreateOauthUser::LINK_EMAIL_RATE_LIMIT_WINDOW,
-                                 unless_exist: true)
-
-    if acquired
+    if Auth::FindOrCreateOauthUser.acquire_rate_limit(user.id)
       token = Auth::IssueAccountLinkToken.new(user, provider: pending['provider'], uid: pending['uid']).call
       link_url = auth_account_link_url(token: token)
       Users::MailerSendingJob.perform_later(
@@ -144,10 +139,12 @@ class Auth::AccountLinksController < ApplicationController
         provider_label: label_for(pending),
         link_url: link_url
       )
+      redirect_to new_user_session_path,
+                  notice: I18n.t('controllers.auth.account_links.confirmation_link_sent', email: user.email)
+    else
+      redirect_to new_user_session_path,
+                  alert: I18n.t('controllers.auth.account_links.account_link_rate_limited')
     end
-
-    redirect_to new_user_session_path,
-                notice: I18n.t('controllers.auth.account_links.confirmation_link_sent', email: user.email)
   end
 
   private

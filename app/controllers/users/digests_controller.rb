@@ -57,7 +57,7 @@ status: :see_other
   end
 
   def valid_year?(year)
-    return false if year < 1970 || year > Time.current.year
+    return false if year < 1970 || year >= Time.current.year
 
     current_user.scoped_stats.exists?(year: year)
   end

@@ -11,7 +11,7 @@ class ImportsController < ApplicationController
   ORIGINAL_FILENAME_METADATA_KEY = 'dawarich_original_filename'
 
   before_action :authenticate_user!
-  before_action :authenticate_active_user!, only: %i[create]
+  before_action :authenticate_active_user!, only: %i[new create]
   before_action :set_import, only: %i[show edit update destroy download]
   before_action :authorize_import, only: %i[show edit update destroy download]
   before_action :validate_points_limit, only: %i[new create]
@@ -51,6 +51,11 @@ class ImportsController < ApplicationController
   end
 
   def update
+    if unknown_source_param?
+      @import.errors.add(:source, :inclusion)
+      return render :edit, status: :unprocessable_content
+    end
+
     @import.update(import_params)
 
     redirect_to imports_url, notice: I18n.t('controllers.imports.import_was_successfully_updated'), status: :see_other
@@ -110,7 +115,12 @@ status: :unprocessable_content and return
   end
 
   def import_params
-    params.require(:import).permit(:name, files: [])
+    params.require(:import).permit(:name, :source, files: [])
+  end
+
+  def unknown_source_param?
+    source = import_params[:source]
+    source.present? && Import.sources.exclude?(source)
   end
 
   def extract_raw_files

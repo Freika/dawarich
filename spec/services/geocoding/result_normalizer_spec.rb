@@ -26,6 +26,57 @@ RSpec.describe Geocoding::ResultNormalizer do
       )
     end
 
+    describe 'Geoapify (GeoJSON with datasource nesting)' do
+      let(:geoapify_feature) do
+        {
+          'type' => 'Feature',
+          'geometry' => { 'type' => 'Point', 'coordinates' => [-73.993368, 40.750487] },
+          'properties' => {
+            'name' => 'Madison Square Garden', 'housenumber' => '4',
+            'street' => 'Pennsylvania Plaza', 'city' => 'New York',
+            'country' => 'United States', 'postcode' => '10001',
+            'lon' => -73.993368, 'lat' => 40.750487, 'result_type' => 'building',
+            'datasource' => {
+              'sourcename' => 'openstreetmap', 'osm_type' => 'W', 'osm_id' => 138_141_251
+            }
+          }
+        }
+      end
+
+      it 'surfaces osm_id and osm_type from datasource' do
+        fields = described_class.from_data(geoapify_feature)
+        expect(fields[:properties]['osm_id']).to eq(138_141_251)
+        expect(fields[:properties]['osm_type']).to eq('W')
+      end
+    end
+
+    it 'prefers a top-level osm_id over datasource.osm_id when both are present' do
+      result = double(data: {
+                        'type' => 'Feature',
+                        'geometry' => { 'type' => 'Point', 'coordinates' => [9.5, 47.1] },
+                        'properties' => {
+                          'osm_id' => 999, 'osm_type' => 'N', 'name' => 'Café',
+                          'datasource' => { 'osm_id' => 1, 'osm_type' => 'W' }
+                        }
+                      })
+
+      fields = described_class.call(result)
+      expect(fields[:properties]['osm_id']).to eq(999)
+      expect(fields[:properties]['osm_type']).to eq('N')
+    end
+
+    it 'tolerates a non-Hash datasource without raising' do
+      result = double(data: {
+                        'type' => 'Feature',
+                        'geometry' => { 'type' => 'Point', 'coordinates' => [9.5, 47.1] },
+                        'properties' => { 'name' => 'Café', 'datasource' => 'openstreetmap' }
+                      })
+
+      fields = described_class.call(result)
+      expect(fields[:properties]['osm_id']).to be_nil
+      expect(fields[:properties]['osm_type']).to be_nil
+    end
+
     it 'normalizes a Nominatim (flat) result' do
       result = double(data: {
                         'place_id' => 42, 'lat' => '47.1', 'lon' => '9.5', 'name' => 'Café',

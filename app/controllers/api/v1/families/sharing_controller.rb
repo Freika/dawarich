@@ -9,7 +9,8 @@ class Api::V1::Families::SharingController < Api::V1::Families::BaseController
       enabled: params[:enabled],
       duration: params[:duration],
       share_history: params[:share_history],
-      history_window: params[:history_window]
+      history_window: params[:history_window],
+      history_before_sharing: params[:history_before_sharing]
     ).call
 
     render json: result.payload, status: result.status

@@ -74,7 +74,24 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
   end
 
   context 'on a self-hosted instance' do
-    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(DawarichSettings).to receive(:registration_enabled?).and_return(true)
+      allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+    end
+
+    context 'when email/password registration is disabled' do
+      before { allow(DawarichSettings).to receive(:registration_enabled?).and_return(false) }
+
+      it 'rejects registration without creating a user' do
+        expect do
+          post '/api/v1/auth/register', params: valid_params
+        end.not_to change(User, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)).to include('error' => 'registration_disabled')
+      end
+    end
 
     it 'creates a user in active status (not pending_payment)' do
       expect do
@@ -161,6 +178,44 @@ RSpec.describe 'POST /api/v1/auth/register', type: :request do
       post '/api/v1/auth/register', params: invitee_params.merge(email: 'someone.else@example.com')
 
       expect(User.find_by(email: 'someone.else@example.com')).to be_pending_payment
+    end
+
+    context 'on a self-hosted instance with email/password registration disabled' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        allow(DawarichSettings).to receive(:registration_enabled?).and_return(false)
+        allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
+      end
+
+      it 'allows registration with a valid invitation for the submitted email' do
+        expect do
+          post '/api/v1/auth/register', params: invitee_params
+        end.to change(User, :count).by(1)
+
+        expect(response).to have_http_status(:created)
+        expect(User.find_by(email: invitation.email).family).to eq(family)
+      end
+
+      it 'rejects invitations in OIDC-only mode' do
+        allow(DawarichSettings).to receive(:oidc_enabled?).and_return(true)
+
+        expect do
+          post '/api/v1/auth/register', params: invitee_params
+        end.not_to change(User, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(invitation.reload).to be_pending
+      end
+
+      it 'rejects a valid invitation for a different email without creating a user' do
+        expect do
+          post '/api/v1/auth/register', params: invitee_params.merge(email: 'someone.else@example.com')
+        end.not_to change(User, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(JSON.parse(response.body)['message']).to eq('This invitation is not for your email address.')
+        expect(invitation.reload).to be_pending
+      end
     end
   end
 end
