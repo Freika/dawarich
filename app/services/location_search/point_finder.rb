@@ -10,6 +10,8 @@ module LocationSearch
       @date_from = params[:date_from]
       @date_to = params[:date_to]
       @radius_override = params[:radius_override]
+      @place_name = params[:place_name]
+      @address = params[:address]
     end
 
     def call
@@ -18,6 +20,8 @@ module LocationSearch
       location = {
         lat: @latitude,
         lon: @longitude,
+        name: @place_name,
+        address: @address,
         type: 'coordinate_search'
       }
 
