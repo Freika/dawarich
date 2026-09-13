@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Geocoding::BackfillInstanceSettings, 'review regressions' do
+  before { ActiveRecord::Base.connection.execute('TRUNCATE users CASCADE') }
+
   # `false.blank?` is true, so the old guard dropped use_https: false and the
   # registry default (true) took over — flipping a plain-HTTP Nominatim to
   # HTTPS the first time the flag was enabled.

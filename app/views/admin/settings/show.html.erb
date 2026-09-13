@@ -1,34 +1,81 @@
-<div class="w-full px-4 sm:px-6 py-6">
-  <div class="flex flex-wrap justify-between items-center gap-3 mb-4">
-    <h1 class="text-2xl font-semibold min-w-0"><%= t('admin.settings.show.title') %></h1>
-  </div>
+<% content_for :title, t('.title') %>
 
-  <p class="text-base-content/60 max-w-2xl mb-6"><%= t('admin.settings.show.intro') %></p>
+<div class="min-h-content w-full my-5">
+  <%= render 'shared/page_header', title: t('.title') %>
+  <%= render 'settings/navigation' %>
 
-  <% if @geocoding_summary %>
-    <p class="text-sm font-medium max-w-2xl mb-6 [overflow-wrap:anywhere]"><%= @geocoding_summary %></p>
-  <% end %>
+  <div class="max-w-3xl">
+    <p class="text-base-content/70 mb-10 [text-wrap:pretty]"><%= t('.intro') %></p>
 
-  <% unless @enabled %>
-    <div role="alert" class="alert alert-warning max-w-2xl mb-6">
-      <span class="min-w-0 [overflow-wrap:anywhere]">
-        <%= t('admin.settings.show.disabled_notice', flag: InstanceSettings::FLAG) %>
-      </span>
-    </div>
-  <% end %>
+    <section aria-labelledby="instance-settings-geocoding" class="mb-8">
+      <h2 id="instance-settings-geocoding" class="text-xl font-semibold"><%= t('.geocoding.title') %></h2>
+      <p class="mt-1 mb-5 text-base-content/70 [text-wrap:pretty]"><%= t('.geocoding.description') %></p>
 
-  <%= form_with url: admin_settings_path, method: :patch do %>
-    <fieldset class="contents" <%= 'disabled' unless @enabled %>>
-      <div class="grid gap-4 max-w-2xl">
-        <% @settings.each do |setting| %>
-          <%= render 'admin/settings/setting_field', setting: setting,
-                                                     unreadable: @unreadable_keys.include?(setting.key) %>
+      <%= render 'admin/settings/geocoding_status', geocoding: @geocoding %>
+    </section>
+
+    <%= form_with url: admin_settings_path, method: :patch, id: 'instance-settings-form' do %>
+      <div class="mb-12">
+        <p class="text-sm text-base-content/70 [text-wrap:pretty]"><%= t('.geocoding.chain_hint') %></p>
+
+        <% Admin::SettingsHelper::GEOCODING_PROVIDERS.each do |provider, keys| %>
+          <section aria-labelledby="instance-settings-<%= provider %>"
+                   class="border-t border-base-content/10 pt-6 mt-6"
+                   data-testid="instance-settings-provider-<%= provider %>">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <h3 id="instance-settings-<%= provider %>" class="text-base font-semibold min-w-0">
+                <%= geocoding_provider_name(provider) %>
+              </h3>
+              <% if geocoding_in_use?(@geocoding, provider) %>
+                <span class="badge badge-sm badge-primary badge-outline"><%= t('.geocoding.in_use') %></span>
+              <% end %>
+            </div>
+            <p class="mt-1 text-sm text-base-content/70 [text-wrap:pretty]"><%= t(".providers.#{provider}") %></p>
+
+            <% if provider == :photon %>
+              <p class="mt-2 text-sm text-base-content/70 [text-wrap:pretty]">
+                <%= t('.geocoding.chibigeo_message') %>
+                <%= link_to t('.geocoding.chibigeo_key_link'), Admin::SettingsHelper::CHIBIGEO_KEY_URL,
+                            target: '_blank', rel: 'noopener', class: 'link link-hover font-medium text-base-content' %>
+              </p>
+              <% if komoot_host?(@geocoding) %>
+                <div role="note" class="mt-3 flex items-start gap-2 text-sm">
+                  <%= icon 'triangle-alert', class: 'size-4 shrink-0 mt-0.5 text-warning' %>
+                  <p class="min-w-0 [text-wrap:pretty]"><%= t('.geocoding.komoot_warning') %></p>
+                </div>
+              <% end %>
+            <% end %>
+
+            <div class="mt-2 divide-y divide-base-content/10">
+              <% keys.each do |key| %>
+                <%= render 'admin/settings/setting_field', setting: @settings.fetch(key), settings: @settings,
+                                                           unreadable: @unreadable_keys.include?(key) %>
+              <% end %>
+            </div>
+          </section>
         <% end %>
+
+        <section aria-labelledby="instance-settings-rate" class="border-t border-base-content/10 pt-6 mt-6">
+          <h3 id="instance-settings-rate" class="text-base font-semibold"><%= t('.geocoding.rate_limit') %></h3>
+          <div class="mt-2">
+            <%= render 'admin/settings/setting_field', setting: @settings.fetch(:reverse_geocoding_rps),
+                                                       settings: @settings, unreadable: false %>
+          </div>
+        </section>
       </div>
 
-      <div class="mt-6">
-        <%= submit_tag t('admin.settings.show.save'), class: 'btn btn-primary' %>
+      <section aria-labelledby="instance-settings-points" class="mb-10">
+        <h2 id="instance-settings-points" class="text-xl font-semibold"><%= t('.points.title') %></h2>
+        <div class="mt-2">
+          <%= render 'admin/settings/setting_field', setting: @settings.fetch(:store_geodata),
+                                                     settings: @settings, unreadable: false %>
+        </div>
+      </section>
+
+      <div class="sticky bottom-0 z-10 border-t border-base-content/10 bg-base-100 py-4">
+        <%= button_tag t('.save'), type: 'submit', class: 'btn btn-primary',
+                                   data: { turbo_submits_with: t('.saving') } %>
       </div>
-    </fieldset>
-  <% end %>
+    <% end %>
+  </div>
 </div>

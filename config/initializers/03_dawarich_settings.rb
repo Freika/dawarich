@@ -49,9 +49,6 @@ class DawarichSettings
       %i[@self_hosted @store_geodata].each { |ivar| remove_instance_variable(ivar) if instance_variable_defined?(ivar) }
     end
 
-    # With the flag off the boot constant stays authoritative, which is what
-    # makes the flag a genuine rollback rather than a partial one.
-    #
     # This class is defined in an initializer, so it can run before the autoloader
     # or the database can answer — config/initializers/geocoder.rb calls
     # photon_use_https? at boot, and the image build precompiles assets with no
@@ -59,17 +56,9 @@ class DawarichSettings
     # rather than taking the process down. `::` is required: without it Ruby
     # looks for DawarichSettings::InstanceSettings and raises NameError.
     def setting(key, constant_value)
-      return constant_value unless resolver_enabled?
-
       ::InstanceSettings::Resolver.value(key)
     rescue StandardError
       constant_value
-    end
-
-    def resolver_enabled?
-      ::InstanceSettings.enabled?
-    rescue StandardError
-      false
     end
 
     def self_hosted?

@@ -16,8 +16,6 @@ RSpec.describe DawarichSettings, 'resolved from instance settings' do
   end
 
   context 'with the resolver enabled' do
-    before { allow(InstanceSettings).to receive(:enabled?).and_return(true) }
-
     it 'reflects a stored provider without a process restart' do
       expect(described_class.photon_enabled?).to be(false)
 

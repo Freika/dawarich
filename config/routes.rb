@@ -31,7 +31,9 @@ Rails.application.routes.draw do
     mount Flipper::UI.app(Flipper) => '/admin/flipper'
 
     namespace :admin do
-      resource :settings, only: %i[show update]
+      resource :settings, only: %i[show update] do
+        post :test_geocoding
+      end
     end
   end
 
@@ -51,9 +53,6 @@ Rails.application.routes.draw do
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
-    resource :geocoding, only: %i[show update], controller: 'geocoding' do
-      post :test
-    end
     resource :visits, only: %i[show update]
     resources :users, only: %i[index show create destroy edit update] do
       member do

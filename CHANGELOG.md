@@ -8,7 +8,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
-- Opt-in: with the `instance_settings_resolver` feature flag on, admins can configure geocoding for the whole instance in Instance settings (`/admin/settings`) without a redeploy. A set environment variable still wins and shows its field read-only.
+- Admins can configure geocoding for the whole instance in Settings → Instance without a redeploy, and test the connection there. A set environment variable still wins and shows its field read-only.
+
+### Changed
+
+- Geocoding is no longer configured per user: the Geocoding page under Integrations is gone, and existing per-user settings are carried over to the instance when every user agrees on one.
 
 ## [1.14.2]
 

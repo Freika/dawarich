@@ -2,6 +2,9 @@
 
 module Geocoding
   class Search
+    # Sources that name a provider directly, as opposed to the gem fallback.
+    DIRECT_SOURCES = %i[stored env].freeze
+
     # With a max_wait budget, a lookup the rate limiter cannot grant in time
     # returns nil instead of results — distinct from [] so callers can tell a
     # busy limiter from a genuine empty answer (and avoid caching it).
@@ -9,19 +12,10 @@ module Geocoding
       config = Config.for(user)
 
       case config.source
-      when :env
-        # The bare Geocoder.search resolves its provider from the global config
-        # the initializer builds at boot. Once the resolver owns provider
-        # selection that global is no longer authoritative, so the lookup has to
-        # carry its own configuration or it silently falls back to the gem
-        # default — public Nominatim — at the rate the operator granted their
-        # own server.
-        if InstanceSettings.enabled?
-          user_mode_search(config, query, options, max_wait: max_wait)
-        else
-          RateLimiter.throttle(config, max_wait: max_wait) { Geocoder.search(query, **options) }
-        end
-      when :stored, :user
+      # Never the bare Geocoder.search: it resolves its provider from the global
+      # config built at boot, which is not authoritative, and would silently fall
+      # back to public Nominatim at the rate the operator granted their own server.
+      when *DIRECT_SOURCES
         user_mode_search(config, query, options, max_wait: max_wait)
       else
         # The gem default is public Nominatim, which publishes a hard 1 rps
@@ -31,12 +25,6 @@ module Geocoding
         RateLimiter.throttle(Config.default_fallback, max_wait: max_wait) { Geocoder.search(query, **options) }
       end
     end
-
-    # Serves the settings "test connection" button. Accepts any config that
-    # names a provider directly: :user for a per-user row, :stored once the
-    # resolver owns geocoding. Guarding on :user alone made the button report
-    # an empty result forever the moment the source changed.
-    DIRECT_SOURCES = %i[user stored env].freeze
 
     def self.with_config(config:, query:, max_wait: nil, **options)
       return [] unless DIRECT_SOURCES.include?(config.source)

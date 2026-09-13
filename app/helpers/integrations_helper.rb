@@ -1,21 +1,8 @@
 # frozen_string_literal: true
 
 module IntegrationsHelper
-  SERVICE_ICONS = {
-    'geocoding' => { name: 'map-pin', library: 'lucide' },
-    'immich' => { name: 'immich', library: 'brands' },
-    'photoprism' => { name: 'photoprism', library: 'brands' },
-    'airtrail' => { name: 'airtrail', library: 'brands' }
-  }.freeze
-
   def integration_icon(service, css: 'size-5')
-    config = SERVICE_ICONS.fetch(service.to_s)
-
-    if config[:library] == 'brands'
-      icon config[:name], library: 'brands', class: "#{css} shrink-0"
-    else
-      icon config[:name], class: "#{css} shrink-0 text-base-content/60"
-    end
+    icon service.to_s, library: 'brands', class: "#{css} shrink-0"
   end
 
   def integration_status_icon(status)

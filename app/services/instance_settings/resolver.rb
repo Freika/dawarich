@@ -85,7 +85,6 @@ module InstanceSettings
         # one for the life of the process, which is exactly when an operator is
         # trying to diagnose it.
         @warned = false
-        InstanceSettings.reset_flag_cache!
       end
 
       private

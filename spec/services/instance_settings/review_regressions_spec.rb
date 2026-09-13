@@ -9,26 +9,6 @@ RSpec.describe 'Instance settings review regressions' do
 
   after { InstanceSettings::Resolver.reset! }
 
-  describe 'the flag is not read from the database on every call' do
-    # Point evaluates DawarichSettings.store_geodata? once per created row, and
-    # Flipper's memoizer is Rack middleware so it does not cover Sidekiq.
-    it 'reads Flipper once for many predicate calls' do
-      allow(Flipper).to receive(:enabled?).with(InstanceSettings::FLAG).and_return(false)
-      InstanceSettings.reset_flag_cache!
-
-      10.times { InstanceSettings.enabled? }
-
-      expect(Flipper).to have_received(:enabled?).once
-    end
-
-    it 'still degrades to disabled when Flipper raises' do
-      allow(Flipper).to receive(:enabled?).and_raise(StandardError, 'flipper down')
-      InstanceSettings.reset_flag_cache!
-
-      expect(InstanceSettings.enabled?).to be(false)
-    end
-  end
-
   describe 'an unreadable secret' do
     it 'falls through to the registry default instead of reporting a stored nil' do
       InstanceSetting.create!(key: 'geoapify_api_key', value: 'readable')

@@ -2,62 +2,76 @@
   definition = InstanceSettings::Registry.fetch(setting.key)
   field_id = "instance_settings_#{setting.key}"
   field_name = "instance_settings[#{setting.key}]"
+  hint = instance_setting_hint(setting, settings)
+  locked_on = https_locked?(setting, settings)
   # A stored secret is never echoed back into the page; the operator replaces it
   # or leaves it alone.
-  displayed = definition.secret? ? nil : setting.value
+  displayed = definition.secret? ? nil : instance_setting_display_value(setting)
 %>
-<div class="form-control">
-  <label class="label" for="<%= field_id %>">
-    <span class="label-text font-medium"><%= definition.env_var %></span>
-    <span class="label-text-alt text-base-content/60">
-      <%= t("admin.settings.source.#{setting.source}") %>
-    </span>
-  </label>
+<div class="grid gap-x-8 gap-y-2 py-4 sm:grid-cols-[minmax(0,13rem)_minmax(0,1fr)] sm:items-start"
+     data-testid="instance-setting-<%= setting.key %>">
+  <div class="min-w-0 sm:pt-3">
+    <label for="<%= field_id %>" class="block text-sm font-medium">
+      <%= t("admin.settings.show.fields.#{setting.key}") %>
+    </label>
+    <code class="mt-0.5 block text-xs text-base-content/70 [overflow-wrap:anywhere]"><%= definition.env_var %></code>
+  </div>
 
-  <% if definition.kind == :boolean %>
-    <%# A hidden field cannot be disabled, so a pinned boolean would post on
-        every save and be refused. STORE_GEODATA is set in docker/.env.example,
-        i.e. pinned on most real deployments. %>
-    <% unless setting.pinned? %>
-      <input type="hidden" name="<%= field_name %>" value="false">
+  <div class="min-w-0 space-y-2">
+    <% if definition.kind == :boolean %>
+      <%# A hidden field cannot be disabled, so a pinned boolean would post on
+          every save and be refused. STORE_GEODATA is set in docker/.env.example,
+          i.e. pinned on most real deployments. %>
+      <div class="flex items-center sm:min-h-12">
+        <% unless setting.pinned? || locked_on %>
+          <input type="hidden" name="<%= field_name %>" value="false">
+        <% end %>
+        <input type="checkbox"
+               id="<%= field_id %>"
+               name="<%= field_name %>"
+               value="true"
+               class="toggle toggle-primary"
+               <%= 'checked' if setting.value || locked_on %>
+               <%= 'disabled' if setting.pinned? || locked_on %>
+               <%= "aria-describedby=#{field_id}_hint" if hint %>>
+      </div>
+    <% else %>
+      <input type="<%= definition.secret? ? 'password' : definition.kind.in?(%i[integer float]) ? 'number' : 'text' %>"
+             id="<%= field_id %>"
+             name="<%= field_name %>"
+             value="<%= displayed %>"
+             autocomplete="off"
+             <%= 'step=any min=0 inputmode=decimal' if definition.kind == :float %>
+             class="input input-bordered w-full <%= 'tabular-nums' if definition.kind.in?(%i[integer float]) %>"
+             placeholder="<%= instance_setting_placeholder(setting) %>"
+             <%= 'disabled' if setting.pinned? %>
+             <%= "aria-describedby=#{field_id}_hint" if hint %>>
     <% end %>
-    <input type="checkbox"
-           id="<%= field_id %>"
-           name="<%= field_name %>"
-           value="true"
-           class="toggle"
-           <%= 'checked' if setting.value %>
-           <%= 'disabled' if setting.pinned? %>>
-  <% else %>
-    <input type="<%= definition.secret? ? 'password' : 'text' %>"
-           id="<%= field_id %>"
-           name="<%= field_name %>"
-           value="<%= displayed %>"
-           autocomplete="off"
-           class="input input-bordered w-full"
-           placeholder="<%= definition.secret? && setting.value.present? ? t('admin.settings.show.secret_set') : '' %>"
-           <%= 'disabled' if setting.pinned? %>>
-  <% end %>
 
-  <% if definition.secret? && setting.value.present? && !setting.pinned? %>
-    <label class="label cursor-pointer justify-start gap-2" for="<%= field_id %>_clear">
-      <input type="checkbox" id="<%= field_id %>_clear" class="checkbox checkbox-sm"
-             name="instance_settings_clear[<%= setting.key %>]" value="1">
-      <span class="label-text-alt"><%= t('admin.settings.show.clear_secret') %></span>
-    </label>
-  <% end %>
+    <% if setting.pinned? %>
+      <p class="flex items-center gap-1.5 text-xs text-base-content/70">
+        <%= icon 'lock', class: 'size-3.5 shrink-0' %>
+        <span class="min-w-0 [overflow-wrap:anywhere]"><%= t('admin.settings.show.pinned_hint', variable: definition.env_var) %></span>
+      </p>
+    <% end %>
 
-  <% if unreadable && !setting.pinned? %>
-    <label class="label" for="<%= field_id %>">
-      <span class="label-text-alt text-warning"><%= t('admin.settings.show.unreadable_secret') %></span>
-    </label>
-  <% end %>
+    <% if unreadable && !setting.pinned? %>
+      <p class="flex items-start gap-1.5 text-xs">
+        <%= icon 'triangle-alert', class: 'size-3.5 shrink-0 mt-px text-warning' %>
+        <span class="min-w-0 [text-wrap:pretty]"><%= t('admin.settings.show.unreadable_secret') %></span>
+      </p>
+    <% end %>
 
-  <% if setting.pinned? %>
-    <label class="label" for="<%= field_id %>">
-      <span class="label-text-alt text-base-content/60">
-        <%= t('admin.settings.show.pinned_hint', variable: definition.env_var) %>
-      </span>
-    </label>
-  <% end %>
+    <% if hint %>
+      <p id="<%= field_id %>_hint" class="text-xs text-base-content/70 [text-wrap:pretty]"><%= hint %></p>
+    <% end %>
+
+    <% if definition.secret? && (setting.value.present? || unreadable) && !setting.pinned? %>
+      <label class="flex cursor-pointer items-center gap-2 text-xs text-base-content/70" for="<%= field_id %>_clear">
+        <input type="checkbox" id="<%= field_id %>_clear" class="checkbox checkbox-xs"
+               name="instance_settings_clear[<%= setting.key %>]" value="1">
+        <span><%= t('admin.settings.show.clear_secret') %></span>
+      </label>
+    <% end %>
+  </div>
 </div>

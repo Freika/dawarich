@@ -1,0 +1,38 @@
+<% pinning_variable = geocoding_pinning_variable(geocoding) %>
+<div class="flex flex-col gap-4 rounded-box border border-base-content/10 bg-base-200 p-5 sm:flex-row sm:items-center sm:justify-between"
+     data-testid="instance-settings-geocoding-status">
+  <div class="min-w-0">
+    <p class="text-[10px] font-bold uppercase tracking-[0.05em] text-base-content/70">
+      <%= geocoding.enabled? ? t('admin.settings.show.geocoding.in_use') : t('admin.settings.show.geocoding.off') %>
+    </p>
+
+    <% if geocoding.enabled? %>
+      <p class="mt-1 font-medium [overflow-wrap:anywhere]">
+        <%= geocoding_provider_name(geocoding.provider) %>
+        <% if geocoding.host.present? %>
+          <span class="font-normal text-base-content/70">· <%= geocoding.host %></span>
+        <% end %>
+      </p>
+      <p class="mt-1 flex items-center gap-1.5 text-sm text-base-content/70">
+        <% if pinning_variable %>
+          <%= icon 'lock', class: 'size-3.5 shrink-0' %>
+          <span class="min-w-0 [overflow-wrap:anywhere]"><%= t('admin.settings.show.pinned_hint', variable: pinning_variable) %></span>
+        <% else %>
+          <span><%= t('admin.settings.show.geocoding.stored') %></span>
+        <% end %>
+      </p>
+    <% else %>
+      <p class="mt-1 text-sm text-base-content/70 [text-wrap:pretty]"><%= t('admin.settings.show.geocoding.none') %></p>
+    <% end %>
+  </div>
+
+  <% if geocoding.enabled? %>
+    <div class="shrink-0 sm:text-right">
+      <%= button_to t('admin.settings.show.geocoding.test'), test_geocoding_admin_settings_path,
+                    class: 'btn btn-sm btn-outline',
+                    form: { class: 'inline-block' },
+                    data: { turbo_submits_with: t('admin.settings.show.geocoding.testing') } %>
+      <p class="mt-1.5 text-xs text-base-content/70"><%= t('admin.settings.show.geocoding.test_hint') %></p>
+    </div>
+  <% end %>
+</div>

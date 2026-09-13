@@ -25,6 +25,8 @@ RSpec.describe 'Geocoding provider routing' do
     InstanceSettings::Resolver.reset!
   end
 
+  before { use_real_geocoding_lookups }
+
   def requested_hosts
     hosts = []
     stub_request(:get, /.*/)
@@ -35,8 +37,6 @@ RSpec.describe 'Geocoding provider routing' do
   end
 
   context 'with the resolver enabled' do
-    before { allow(InstanceSettings).to receive(:enabled?).and_return(true) }
-
     it 'sends an environment-pinned lookup to that host, not to the gem default' do
       ENV['PHOTON_API_HOST'] = 'pinned.example.com'
       InstanceSettings::Resolver.reset!
@@ -84,8 +84,6 @@ RSpec.describe 'Geocoding provider routing' do
   end
 
   describe 'independence from the global Geocoder configuration' do
-    before { allow(InstanceSettings).to receive(:enabled?).and_return(true) }
-
     # The initializer is deliberately left alone (it runs before the database is
     # guaranteed reachable). Routing must therefore ignore whatever provider the
     # global config happens to name, rather than depend on it being cleared.
@@ -109,6 +107,8 @@ end
 # :user, so reverting DIRECT_SOURCES to `config.source == :user` would leave the
 # suite green while the button silently returned [] forever.
 RSpec.describe Geocoding::Search, '.with_config source handling' do
+  before { use_real_geocoding_lookups }
+
   let(:config) do
     Geocoding::Config.new(source: :stored, provider: :photon, host: 'stored.example.com', use_https: false)
   end

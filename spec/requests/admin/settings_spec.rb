@@ -16,8 +16,6 @@ RSpec.describe 'Admin::Settings' do
     InstanceSettings::Resolver.reset!
   end
 
-  before { allow(InstanceSettings).to receive(:enabled?).and_return(true) }
-
   describe 'authorisation' do
     it 'does not serve the page to a non-admin' do
       sign_in non_admin
@@ -172,36 +170,95 @@ RSpec.describe 'Admin::Settings' do
     end
   end
 
-  describe 'while the resolver flag is off' do
-    before do
-      allow(InstanceSettings).to receive(:enabled?).and_return(false)
-      sign_in admin
-    end
+  describe 'without any feature flag' do
+    before { sign_in admin }
 
-    it 'refuses a write that nothing would read' do
+    it 'saves a setting while Flipper has never heard of instance settings' do
       patch '/admin/settings', params: { instance_settings: { photon_api_host: 'stored.example.com' } }
 
-      expect(InstanceSetting.find_by(key: 'photon_api_host')).to be_nil
-      expect(flash[:alert]).to eq(I18n.t('admin.settings.update.disabled'))
-    end
-
-    it 'names the flag that turns the page on and disables the form' do
-      get '/admin/settings'
-
-      expect(response.body).to include(InstanceSettings::FLAG.to_s)
-      expect(response.body).to match(/<fieldset[^>]*disabled/)
+      expect(InstanceSetting.find_by(key: 'photon_api_host')&.value).to eq('stored.example.com')
     end
   end
 
-  describe 'with the resolver flag on' do
-    before { sign_in admin }
+  describe 'settings navigation' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
 
-    it 'does not disable the form' do
+    it 'puts Instance settings in the settings tabs for an admin, marked current' do
+      sign_in admin
+
       get '/admin/settings'
 
-      expect(response.body).not_to match(/<fieldset[^>]*disabled/)
-      expect(response.body).not_to include(InstanceSettings::FLAG.to_s)
+      expect(response.body).to match(%r{<a(?=[^>]*href="/admin/settings")(?=[^>]*tab-active)[^>]*>})
     end
+
+    it 'offers the Instance tab to an admin on other settings pages' do
+      sign_in admin
+
+      get '/settings/general'
+
+      expect(response.body).to include('href="/admin/settings"')
+    end
+
+    it 'does not offer the Instance tab to anyone else' do
+      sign_in non_admin
+
+      get '/settings/general'
+
+      expect(response.body).not_to include('href="/admin/settings"')
+    end
+  end
+
+  describe 'POST test_geocoding' do
+    it 'is refused for a non-admin and makes no lookup' do
+      allow(Geocoding::Search).to receive(:with_config)
+      sign_in non_admin
+
+      post '/admin/settings/test_geocoding'
+
+      expect(response).not_to have_http_status(:ok)
+      expect(Geocoding::Search).not_to have_received(:with_config)
+    end
+
+    it 'says geocoding is not configured when no provider resolves' do
+      sign_in admin
+
+      post '/admin/settings/test_geocoding'
+
+      expect(flash[:alert]).to eq(I18n.t('admin.settings.test_geocoding.not_configured'))
+    end
+
+    it 'reports the place the saved provider answered with' do
+      InstanceSetting.create!(key: 'photon_api_host', value: 'stored.example.com')
+      InstanceSettings::Resolver.reset!
+      use_real_geocoding_lookups
+      allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
+      stub_request(:get, %r{stored\.example\.com/reverse}).to_return(
+        status: 200, headers: { 'Content-Type' => 'application/json' },
+        body: { type: 'FeatureCollection',
+                features: [{ type: 'Feature', properties: { city: 'Leipzig', country: 'Germany' },
+                             geometry: { type: 'Point', coordinates: [12.3712, 51.3402] } }] }.to_json
+      )
+      sign_in admin
+
+      post '/admin/settings/test_geocoding'
+
+      expect(flash[:notice]).to eq(I18n.t('admin.settings.test_geocoding.success', place: 'Leipzig, Germany'))
+    end
+
+    it 'names a network failure instead of leaking an internal error' do
+      InstanceSetting.create!(key: 'photon_api_host', value: 'stored.example.com')
+      InstanceSettings::Resolver.reset!
+      allow(Geocoding::Search).to receive(:with_config).and_raise(SocketError, 'getaddrinfo failed')
+      sign_in admin
+
+      post '/admin/settings/test_geocoding'
+
+      expect(flash[:alert]).to include('SocketError')
+    end
+  end
+
+  describe 'secrets and the provider in effect' do
+    before { sign_in admin }
 
     it 'says a stored secret cannot be decrypted instead of showing it as unset' do
       setting = InstanceSetting.create!(key: 'geoapify_api_key', value: 'token')
@@ -240,9 +297,11 @@ RSpec.describe 'Admin::Settings' do
 
       get '/admin/settings'
 
-      expect(response.body).to include(
-        ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding_pinned', provider: 'Geoapify',
-                                                                            variable: 'GEOAPIFY_API_KEY'))
+      status = response.body[%r{<div[^>]*data-testid="instance-settings-geocoding-status".*?</form>}m]
+      expect(status).to include('Geoapify')
+      expect(status).to include(I18n.t('admin.settings.show.pinned_hint', variable: 'GEOAPIFY_API_KEY'))
+      expect(response.body).to match(
+        /data-testid="instance-settings-provider-geoapify".*?#{I18n.t('admin.settings.show.geocoding.in_use')}/m
       )
     ensure
       ENV['GEOAPIFY_API_KEY'] = saved
@@ -252,7 +311,56 @@ RSpec.describe 'Admin::Settings' do
     it 'says geocoding is off when no provider is configured' do
       get '/admin/settings'
 
-      expect(response.body).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding_none')))
+      expect(response.body).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding.none')))
+      expect(response.body).not_to include('/admin/settings/test_geocoding')
+    end
+
+    it 'shows HTTPS as on and locked for a Photon host that only answers over TLS' do
+      InstanceSetting.create!(key: 'photon_api_host', value: 'photon.komoot.io')
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings'
+
+      toggle = response.body[/<input[^>]*id="instance_settings_photon_api_use_https"[^>]*>/m]
+      expect(toggle).to include('checked')
+      expect(toggle).to include('disabled')
+      expect(response.body).not_to match(/name="instance_settings\[photon_api_use_https\]"\s+value="false"/)
+    end
+
+    it 'renders a whole-number rate without a decimal part' do
+      InstanceSetting.create!(key: 'reverse_geocoding_rps', value: 5.0)
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings'
+
+      expect(response.body[/<input[^>]*id="instance_settings_reverse_geocoding_rps"[^>]*>/m]).to include('value="5"')
+    end
+
+    it 'masks a pinned secret instead of calling it stored here' do
+      saved = ENV.fetch('GEOAPIFY_API_KEY', nil)
+      ENV['GEOAPIFY_API_KEY'] = 'env-geo-key'
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings'
+
+      field = response.body[/<input[^>]*id="instance_settings_geoapify_api_key"[^>]*>/m]
+      expect(field).to include('placeholder="••••••••"')
+      expect(field).not_to include('env-geo-key')
+    ensure
+      ENV['GEOAPIFY_API_KEY'] = saved
+      InstanceSettings::Resolver.reset!
+    end
+
+    it 'offers to clear a secret that can no longer be decrypted' do
+      setting = InstanceSetting.create!(key: 'locationiq_api_key', value: 'token')
+      InstanceSetting.connection.execute(
+        "UPDATE instance_settings SET encrypted_value = 'not-valid-ciphertext' WHERE id = #{setting.id}"
+      )
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings'
+
+      expect(response.body).to include('instance_settings_clear[locationiq_api_key]')
     end
 
     it 'does not claim an unreadable secret when every stored secret decrypts' do
@@ -270,10 +378,10 @@ RSpec.describe 'Admin::Settings' do
       en = I18n.t('admin.settings.show.title', locale: :en, default: nil)
       expect(en).to be_present
 
-      keys = %w[admin.settings.show.title admin.settings.show.disabled_notice
-                admin.settings.show.unreadable_secret admin.settings.update.disabled
-                admin.settings.show.geocoding_pinned admin.settings.show.geocoding_stored
-                admin.settings.show.geocoding_none]
+      keys = %w[admin.settings.show.title settings.navigation.instance
+                admin.settings.show.unreadable_secret admin.settings.test_geocoding.success
+                admin.settings.show.geocoding.none admin.settings.show.geocoding.chain_hint
+                admin.settings.show.providers.photon admin.settings.show.fields.store_geodata_hint]
       %i[de es fr pl ca].product(keys).each do |locale, key|
         expect(I18n.t(key, locale: locale, default: nil)).to be_present, "missing #{key} for #{locale}"
       end
