@@ -58,6 +58,8 @@ export default class extends Controller {
     "durationLabel",
     "trackWidthLabel",
     "fogOpacityLabel",
+    "fogColorLabel",
+    "trackColorLabel",
     "fogControls",
     "visualizationMode",
     "hudScaleLabel",
@@ -384,10 +386,18 @@ export default class extends Controller {
     if (this.hasFogOpacityLabelTarget) {
       this.fogOpacityLabelTarget.textContent = `${Math.round(this.settings.fog_opacity)}%`
     }
+    if (this.hasFogColorLabelTarget) {
+      this.fogColorLabelTarget.textContent =
+        this.settings.fog_color.toUpperCase()
+    }
+    if (this.hasTrackColorLabelTarget) {
+      this.trackColorLabelTarget.textContent =
+        this.settings.track_color.toUpperCase()
+    }
     if (this.hasFogControlsTarget) {
       const fogSelected = this.settings.visualization_mode === "fog"
-      this.fogControlsTarget.classList.toggle("opacity-45", !fogSelected)
-      this.fogControlsTarget.setAttribute("aria-disabled", String(!fogSelected))
+      this.fogControlsTarget.classList.toggle("hidden", !fogSelected)
+      this.fogControlsTarget.setAttribute("aria-hidden", String(!fogSelected))
       for (const control of this.fogControlsTarget.querySelectorAll(
         "input, button",
       )) {
@@ -728,9 +738,14 @@ export default class extends Controller {
   }
 
   showProgress(ratio, phase) {
-    this.progressBarTarget.style.transform = `scaleX(${ratio || 0})`
+    const progress = Math.max(0, Math.min(1, ratio || 0))
+    this.progressBarTarget.style.transform = `scaleX(${progress})`
+    this.progressBarTarget.setAttribute(
+      "aria-valuenow",
+      String(Math.round(progress * 100)),
+    )
     this.statusTarget.textContent = phase
-      ? translate(`video.${phase}`, { percent: Math.round(ratio * 100) })
+      ? translate(`video.${phase}`, { percent: Math.round(progress * 100) })
       : ""
   }
 
