@@ -62,6 +62,7 @@ export default class extends Controller {
     "trackColorLabel",
     "fogControls",
     "visualizationMode",
+    "formatOption",
     "hudScaleLabel",
     "formatDims",
     "dateStart",
@@ -183,6 +184,11 @@ export default class extends Controller {
   selectVisualizationMode(event) {
     this.settings.visualization_mode =
       event.currentTarget.dataset.visualizationMode
+    this.settingsChanged()
+  }
+
+  selectFormat(event) {
+    this.settings.format = event.currentTarget.dataset.format
     this.settingsChanged()
   }
 
@@ -407,6 +413,12 @@ export default class extends Controller {
     for (const button of this.visualizationModeTargets) {
       const active =
         button.dataset.visualizationMode === this.settings.visualization_mode
+      button.setAttribute("aria-checked", String(active))
+      button.classList.toggle("btn-primary", active)
+      button.classList.toggle("btn-ghost", !active)
+    }
+    for (const button of this.formatOptionTargets) {
+      const active = button.dataset.format === this.settings.format
       button.setAttribute("aria-checked", String(active))
       button.classList.toggle("btn-primary", active)
       button.classList.toggle("btn-ghost", !active)
@@ -721,10 +733,10 @@ export default class extends Controller {
   }
 
   formatLabel() {
-    const select = this.element.querySelector('select[data-setting="format"]')
-    return (
-      select?.selectedOptions?.[0]?.textContent?.trim() ?? this.settings.format
+    const option = this.formatOptionTargets.find(
+      (button) => button.dataset.format === this.settings.format,
     )
+    return option?.dataset.formatLabel ?? this.settings.format
   }
 
   dateRangeLabel() {

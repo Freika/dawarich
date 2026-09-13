@@ -1,6 +1,11 @@
 <% hud_font_urls = %w[inter jetbrains-mono].flat_map do |key|
      %w[400 700].map { |weight| ["#{key}-#{weight}", asset_path("poster/#{key}-#{weight}.woff2")] }
    end.to_h %>
+<% video_format_options = [
+     { key: 'portrait', label: t('.format_portrait'), ratio: '9:16', preview_class: 'h-8 w-[18px]' },
+     { key: 'landscape', label: t('.format_landscape'), ratio: '16:9', preview_class: 'h-6 w-11' },
+     { key: 'square', label: t('.format_square'), ratio: '1:1', preview_class: 'h-8 w-8' }
+   ] %>
 <div id="video-studio"
      class="fixed inset-0 hidden bg-base-300"
      style="z-index: 60"
@@ -91,13 +96,30 @@
               </span>
             </summary>
             <div class="collapse-content space-y-2">
-              <select class="select select-bordered select-sm py-0 w-full"
-                      data-setting="format" data-action="change->video-studio#updateSetting">
-                <option value="portrait"><%= t('.format_portrait') %></option>
-                <option value="landscape"><%= t('.format_landscape') %></option>
-                <option value="square"><%= t('.format_square') %></option>
-              </select>
-              <p class="text-xs opacity-60" data-video-studio-target="formatDims"></p>
+              <div class="grid grid-cols-3 gap-1 rounded-lg bg-base-200 p-1"
+                   role="radiogroup"
+                   aria-label="<%= t('.format') %>">
+                <% video_format_options.each do |option| %>
+                  <button type="button"
+                          class="btn btn-sm h-auto min-h-20 flex-col gap-2 border-0 px-2 py-3"
+                          role="radio"
+                          title="<%= option[:label] %>"
+                          aria-label="<%= option[:label] %>"
+                          data-video-studio-target="formatOption"
+                          data-format="<%= option[:key] %>"
+                          data-format-label="<%= option[:label] %>"
+                          data-action="video-studio#selectFormat">
+                    <span class="flex h-8 w-12 items-center justify-center" aria-hidden="true">
+                      <span class="<%= option[:preview_class] %> rounded-sm border-2 border-current opacity-80"></span>
+                    </span>
+                    <span class="min-w-0 text-center leading-tight">
+                      <span class="block truncate text-xs font-medium"><%= option[:label].split(' · ', 2).first %></span>
+                      <span class="block text-[10px] font-bold uppercase tracking-[0.05em] opacity-60"><%= option[:ratio] %></span>
+                    </span>
+                  </button>
+                <% end %>
+              </div>
+              <p class="text-center text-xs tabular-nums opacity-60" data-video-studio-target="formatDims"></p>
             </div>
           </details>
 
