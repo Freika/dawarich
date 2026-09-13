@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - Visit detection no longer sends a notification for every new suggested visit.
+- Poster Studio waits for the map to load the selected date range and disables the studio switch while loading.
 
 ### Fixed
 
@@ -38,6 +39,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Restoring a user archive no longer fails or keeps empty records when the export could not include some raw data archive files.
 - The web digest page no longer generates a year-end digest for the year still in progress.
 - Unauthorized visits to Sidekiq no longer leave browsers caching a permanent redirect.
+- Map and trip pages handle timezones saved under legacy names such as `Berlin`.
+- The map's date range fields follow day navigation from the timeline.
 
 ## [1.14.4] - 2026-09-06, Berlin
 
