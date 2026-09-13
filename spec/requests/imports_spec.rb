@@ -467,6 +467,16 @@ RSpec.describe 'Imports', type: :request do
         expect(response).to have_http_status(200)
       end
 
+      it 'selects a blank source for an import without one' do
+        import.update!(source: nil)
+
+        get edit_import_path(import)
+
+        select = Nokogiri::HTML(response.body).at_css('select[name="import[source]"]')
+        expect(select.at_css('option[value=""]')).to be_present
+        expect(select.css('option[selected]')).to be_empty
+      end
+
       it 'renders a source dropdown bound to import[source]' do
         get edit_import_path(import)
 

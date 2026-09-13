@@ -275,7 +275,10 @@ end
 Rack::Attack.throttle('logins/email', limit: 5, period: 1.minute) do |req|
   next unless throttle_path(req) == '/users/sign_in' && req.post?
 
-  safe_body_params(req).dig('user', 'email')&.downcase&.strip
+  user = safe_body_params(req)['user']
+  next unless user.is_a?(Hash)
+
+  user['email']&.to_s&.downcase&.strip
 end
 
 # Mobile login API — same brute-force protection as the web sign-in endpoint.

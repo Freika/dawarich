@@ -19,7 +19,7 @@
 
     <div class="form-control">
       <%= form.label :source %>
-      <%= form.select :source, options_for_select(Import.sources.keys.map { |source| [t("enums.import.source.#{source}"), source] }, @import.source), {}, class: 'select select-bordered' %>
+      <%= form.select :source, options_for_select(Import.sources.keys.map { |source| [t("enums.import.source.#{source}"), source] }, @import.source), { include_blank: true }, class: 'select select-bordered' %>
     </div>
 
     <div class='my-4'>
