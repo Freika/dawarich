@@ -46,6 +46,17 @@ RSpec.describe 'CSV complete timestamp precedence' do
     end
   end
 
+  %w[2020-01-01T03:00:00+02:00 1577840400 1577840400000].each do |timestamp|
+    ['', '2024-01-01'].each do |date|
+      it "preserves a complete TIME=#{timestamp} with DATE=#{date.inspect}" do
+        import_csv(%w[lat lon DATE TIME], ['51', '1', date, timestamp])
+
+        expect(import.points.pluck(:timestamp)).to eq([1_577_840_400])
+        expect(import.reload.raw_data['skipped_rows']).to eq(0)
+      end
+    end
+  end
+
   it 'combines reordered, mixed-case date and time columns without a complete timestamp' do
     import_csv([' Time ', 'lon', ' daTE ', 'lat'], ['01:21:52', '1', '2008/12/02', '51'])
 

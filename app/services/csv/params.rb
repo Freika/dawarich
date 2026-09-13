@@ -87,15 +87,20 @@ module Csv
     end
 
     def parse_timestamp
+      value = field_value(:timestamp)
       if @columns[:timestamp_date] && @columns[:timestamp_time]
-        date_value = @row[@columns[:timestamp_date]]&.strip
-        time_value = @row[@columns[:timestamp_time]]&.strip
-        return nil if date_value.blank? || time_value.blank?
+        value = @row[@columns[:timestamp_time]]&.strip
+        return nil if value.blank?
 
-        return Time.zone.parse("#{date_value} #{time_value}").to_i
+        unless %i[unix_seconds unix_milliseconds].include?(@timestamp_format) ||
+               Date._parse(value).slice(:year, :mon, :mday).any?
+          date_value = @row[@columns[:timestamp_date]]&.strip
+          return nil if date_value.blank?
+
+          value = "#{date_value} #{value}"
+        end
       end
 
-      value = field_value(:timestamp)
       return nil if value.blank?
 
       case @timestamp_format
