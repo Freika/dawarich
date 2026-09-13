@@ -194,6 +194,29 @@ test("studio cannot switch to poster while a range is loading", () => {
   assert.deepEqual(calls, [])
 })
 
+test("format buttons update the render format and its localized label", () => {
+  const calls = []
+  const controller = new VideoStudioController()
+  controller.settings = { format: "portrait" }
+  controller.settingsChanged = () => calls.push("changed")
+  controller.formatOptionTargets = [
+    {
+      dataset: {
+        format: "landscape",
+        formatLabel: "Wide · 16:9 (widescreen)",
+      },
+    },
+  ]
+
+  controller.selectFormat({
+    currentTarget: { dataset: { format: "landscape" } },
+  })
+
+  assert.equal(controller.settings.format, "landscape")
+  assert.equal(controller.formatLabel(), "Wide · 16:9 (widescreen)")
+  assert.deepEqual(calls, ["changed"])
+})
+
 test("initial studio load locks range actions until it finishes", async () => {
   const calls = []
   const controller = new VideoStudioController()

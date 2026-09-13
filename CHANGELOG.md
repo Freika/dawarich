@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Video Studio can select exact start and end times for map ranges.
+- Video Studio adds a Fog of War mode with adjustable overlay colour and opacity, independent route and marker visibility, and preview buttons for visualization modes and output formats.
 - Family members can consent to sharing location history recorded before they started sharing.
 - The import edit page can change or clear an import's source.
 

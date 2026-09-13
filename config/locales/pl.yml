@@ -1315,7 +1315,15 @@ pl:
       close_studio: Zamknij studio
       name: Nazwa
       theme: Motyw
+      visualization: Wizualizacja
+      mode: Tryb
+      mode_route: Odtwarzanie trasy
+      mode_fog: Mgła wojny
+      fog_color: Kolor nakładki
+      fog_opacity: Krycie nakładki
       route: Trasa
+      show_route: Pokaż trasę
+      show_marker: Pokaż znacznik
       playback: Odtwarzanie
       reset: Resetuj
       format: Format
