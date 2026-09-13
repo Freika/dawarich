@@ -5,6 +5,8 @@ module OidcConfig
   DEFAULT_TOKEN_ENDPOINT = '/token'
   DEFAULT_USERINFO_ENDPOINT = '/userinfo'
   DEFAULT_PORT = 443
+  DEFAULT_HTTP_PORT = 80
+  PORT_RANGE = (1..65_535)
   DEFAULT_SCHEME = 'https'
 
   def self.enabled?(env = ENV)
@@ -77,7 +79,7 @@ module OidcConfig
     {
       host: env['OIDC_HOST'],
       scheme: env.fetch('OIDC_SCHEME', DEFAULT_SCHEME),
-      port: parse_port(env['OIDC_PORT']),
+      port: parse_port(env['OIDC_PORT'], env.fetch('OIDC_SCHEME', DEFAULT_SCHEME)),
       authorization_endpoint: env.fetch('OIDC_AUTHORIZATION_ENDPOINT', DEFAULT_AUTHORIZATION_ENDPOINT),
       token_endpoint: env.fetch('OIDC_TOKEN_ENDPOINT', DEFAULT_TOKEN_ENDPOINT),
       userinfo_endpoint: env.fetch('OIDC_USERINFO_ENDPOINT', DEFAULT_USERINFO_ENDPOINT)
@@ -85,13 +87,23 @@ module OidcConfig
   end
   private_class_method :manual_endpoints
 
-  def self.parse_port(value)
+  def self.parse_port(value, scheme)
+    default = scheme.to_s.casecmp('http').zero? ? DEFAULT_HTTP_PORT : DEFAULT_PORT
     port_str = value.to_s.strip
-    return DEFAULT_PORT if port_str.empty?
+    return default if port_str.empty?
 
-    Integer(port_str, 10)
+    port = Integer(port_str, 10)
+    return port if PORT_RANGE.cover?(port)
+
+    warn_invalid_port(port_str, default)
   rescue ArgumentError
-    DEFAULT_PORT
+    warn_invalid_port(port_str, default)
   end
   private_class_method :parse_port
+
+  def self.warn_invalid_port(port_str, default)
+    Rails.logger.warn("OIDC: ignoring invalid OIDC_PORT=#{port_str.inspect}, using #{default}")
+    default
+  end
+  private_class_method :warn_invalid_port
 end

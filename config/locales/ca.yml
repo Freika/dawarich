@@ -3594,9 +3594,7 @@ ca:
     visits:
       suggest:
         error_suggesting_visits_message: 'Error en suggerir visites: %{message}'
-        new_visits_suggested: S'han suggerit visites noves
         error_suggesting_visits: 'Error en suggerir visites'
-        new_visits_suggested_message: 'S''han suggerit visites noves basades en les teves dades d''ubicació del %{start_at} al %{end_at}. Les pots revisar a la pàgina <a href="%{url}" class="link">Línia de temps</a>.'
       merge_service:
         minimum_visits: Cal seleccionar almenys 2 visites per fusionar-les
       bulk_destroy:

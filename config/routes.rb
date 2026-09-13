@@ -31,8 +31,12 @@ Rails.application.routes.draw do
     mount Flipper::UI.app(Flipper) => '/admin/flipper'
   end
 
-  # We want to return a nice error message if the user is not authorized to access Sidekiq
-  match '/sidekiq' => redirect { |_, request|
+  # We want to return a nice error message if the user is not authorized to access Sidekiq.
+  # A temporary (302) redirect is intentional: the auth/role/env state that gates
+  # /sidekiq can change between requests, so the outcome must be re-evaluated on
+  # every visit. A 301 would be permanently cached by browsers with no reference
+  # to the current user, locking out visitors who later become authorized.
+  match '/sidekiq' => redirect(status: 302) { |_, request|
                         request.flash[:error] = 'You are not authorized to perform this action.'
                         '/'
                       }, via: :get

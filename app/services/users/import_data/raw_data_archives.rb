@@ -18,6 +18,12 @@ class Users::ImportData::RawDataArchives
     archives_data.each do |archive_data|
       next unless archive_data.is_a?(Hash)
 
+      if archive_data['file_error'].present?
+        Rails.logger.warn "Skipping raw data archive #{archive_label(archive_data)}: " \
+                          "exported without its file (#{archive_data['file_error']})"
+        next
+      end
+
       existing = find_existing_archive(archive_data)
 
       if existing
@@ -30,8 +36,8 @@ class Users::ImportData::RawDataArchives
         archives_created += 1
 
         files_restored += 1 if archive_data['file_name'] && restore_archive_file(archive_record, archive_data)
-      rescue ActiveRecord::RecordInvalid, ActiveModel::UnknownAttributeError => e
-        Rails.logger.warn "Skipping invalid raw data archive: #{e.message}"
+      rescue ActiveRecord::RecordInvalid => e
+        Rails.logger.warn "Skipping invalid raw data archive #{archive_label(archive_data)}: #{e.message}"
         next
       end
     end
@@ -52,10 +58,12 @@ class Users::ImportData::RawDataArchives
     )
   end
 
+  def archive_label(archive_data)
+    "#{archive_data['year']}/#{archive_data['month']} chunk #{archive_data['chunk_number']}"
+  end
+
   def create_archive_record(archive_data)
-    attributes = archive_data.except(
-      'file_name', 'original_filename', 'content_type', 'file_error'
-    )
+    attributes = archive_data.slice(*Points::RawDataArchive.column_names).except('id', 'user_id')
 
     user.raw_data_archives.create!(attributes)
   end

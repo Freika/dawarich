@@ -25,7 +25,7 @@ class Api::V1::Auth::GoogleController < Api::V1::Auth::BaseController
     }, status: :forbidden
   rescue Auth::FindOrCreateOauthUser::LinkVerificationSent => e
     if e.rate_limited
-      response.headers['Retry-After'] = Auth::FindOrCreateOauthUser::LINK_EMAIL_RATE_LIMIT_WINDOW.to_i.to_s
+      response.headers['Retry-After'] = e.retry_after.to_s
       render json: {
         error: 'verification_rate_limited',
         message: I18n.t('controllers.api.v1.auth.google.verification_rate_limited')

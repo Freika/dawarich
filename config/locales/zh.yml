@@ -3620,10 +3620,7 @@ zh:
     visits:
       suggest:
         error_suggesting_visits_message: 生成到访建议时出错：%{message}
-        new_visits_suggested: 已生成新的到访建议
         error_suggesting_visits: 生成到访建议时出错
-        new_visits_suggested_message: 已根据您 %{start_at} 至 %{end_at} 的位置数据生成了新的到访建议。您可以在<a
-          href="%{url}" class="link">时间线</a>页面中查看。
       merge_service:
         minimum_visits: 至少需要选择 2 条到访记录才能合并
       bulk_destroy:
