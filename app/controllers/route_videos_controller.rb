@@ -86,6 +86,7 @@ class RouteVideosController < ApplicationController
     (route_video_params[:settings] || {}).to_h.slice(
       'theme', 'format', 'duration_sec', 'camera_mode', 'follow_zoom',
       'track_color', 'track_width', 'hud_scale', 'units', 'watermark',
+      'visualization_mode', 'fog_opacity', 'fog_color', 'show_marker', 'show_route',
       'source', 'start_at', 'end_at'
     ).transform_values { |value| value.to_s.first(MAX_SETTING_LENGTH) }
   end

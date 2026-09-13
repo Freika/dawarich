@@ -102,6 +102,60 @@
           <details open class="collapse collapse-arrow bg-base-100 rounded-lg">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
+                <%= icon 'cloud-fog', class: 'h-4 w-4 opacity-70 shrink-0' %>
+                <%= t('.visualization') %>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-3">
+              <div>
+                <span class="label-text text-xs"><%= t('.mode') %></span>
+                <div class="mt-1 grid grid-cols-2 gap-2" role="radiogroup" aria-label="<%= t('.mode') %>">
+                  <button type="button"
+                          class="btn btn-sm h-auto min-h-10 justify-start gap-2 px-3 py-2"
+                          role="radio"
+                          data-video-studio-target="visualizationMode"
+                          data-visualization-mode="route"
+                          data-action="video-studio#selectVisualizationMode">
+                    <%= icon 'route', class: 'h-4 w-4 shrink-0' %>
+                    <span class="truncate"><%= t('.mode_route') %></span>
+                  </button>
+                  <button type="button"
+                          class="btn btn-sm h-auto min-h-10 justify-start gap-2 px-3 py-2"
+                          role="radio"
+                          data-video-studio-target="visualizationMode"
+                          data-visualization-mode="fog"
+                          data-action="video-studio#selectVisualizationMode">
+                    <%= icon 'cloud-fog', class: 'h-4 w-4 shrink-0' %>
+                    <span class="truncate"><%= t('.mode_fog') %></span>
+                  </button>
+                </div>
+              </div>
+              <div class="rounded-md bg-base-200/60 px-3 py-2 transition-opacity"
+                   data-video-studio-target="fogControls">
+                <label class="flex items-center gap-2 pb-2">
+                  <input type="color"
+                         class="h-7 w-9 cursor-pointer rounded border border-base-300 bg-base-100 p-0.5"
+                         data-setting="fog_color"
+                         data-action="input->video-studio#updateSetting">
+                  <span class="label-text text-xs flex-1"><%= t('.fog_color') %></span>
+                  <button type="button" class="btn btn-ghost btn-xs"
+                          data-action="video-studio#resetFogColor"><%= t('.reset') %></button>
+                </label>
+                <div class="flex items-center justify-between py-1">
+                  <span class="label-text text-xs"><%= t('.fog_opacity') %></span>
+                  <span class="text-xs font-medium tabular-nums opacity-80"
+                        data-video-studio-target="fogOpacityLabel"></span>
+                </div>
+                <input type="range" min="0" max="100" step="5"
+                       class="range range-primary range-xs"
+                       data-setting="fog_opacity" data-action="input->video-studio#updateSetting">
+              </div>
+            </div>
+          </details>
+
+          <details open class="collapse collapse-arrow bg-base-100 rounded-lg">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
                 <%= icon 'palette', class: 'h-4 w-4 opacity-70 shrink-0' %>
                 <%= t('.theme') %>
               </span>
@@ -132,6 +186,18 @@
               </span>
             </summary>
             <div class="collapse-content space-y-1">
+              <div class="grid grid-cols-2 gap-2 pb-2">
+                <label class="label cursor-pointer justify-start gap-2 rounded-md bg-base-200/60 px-2 py-1.5">
+                  <input type="checkbox" class="toggle toggle-xs toggle-primary"
+                         data-setting="show_route" data-action="change->video-studio#updateSetting">
+                  <span class="label-text text-xs"><%= t('.show_route') %></span>
+                </label>
+                <label class="label cursor-pointer justify-start gap-2 rounded-md bg-base-200/60 px-2 py-1.5">
+                  <input type="checkbox" class="toggle toggle-xs toggle-primary"
+                         data-setting="show_marker" data-action="change->video-studio#updateSetting">
+                  <span class="label-text text-xs"><%= t('.show_marker') %></span>
+                </label>
+              </div>
               <label class="flex items-center gap-2">
                 <input type="color"
                        class="h-7 w-9 cursor-pointer rounded border border-base-300 bg-base-100 p-0.5"

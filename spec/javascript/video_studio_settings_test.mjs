@@ -22,7 +22,9 @@ const {
   formatFor,
   normalizeSettings,
   MAX_HUD_SCALE,
+  MAX_FOG_OPACITY,
   MAX_TRACK_WIDTH,
+  MIN_FOG_OPACITY,
   MIN_HUD_SCALE,
   MIN_TRACK_WIDTH,
   previewFitPadding,
@@ -51,6 +53,11 @@ test("a stored recipe round-trips unchanged", () => {
     follow_zoom: 12,
     track_color: "#ff0000",
     track_width: 240,
+    visualization_mode: "fog",
+    fog_opacity: 80,
+    fog_color: "#123456",
+    show_marker: false,
+    show_route: false,
     units: "mi",
     hud_scale: 130,
     watermark: false,
@@ -65,7 +72,10 @@ test("a duration outside the studio's range is clamped, not rejected", () => {
 })
 
 test("values that arrived as strings become numbers", () => {
-  const settings = normalizeSettings({ duration_sec: "20", track_width: "250" })
+  const settings = normalizeSettings({
+    duration_sec: "20",
+    track_width: "250",
+  })
 
   assert.equal(settings.duration_sec, 20)
   assert.equal(settings.track_width, 250)
@@ -95,6 +105,50 @@ test("a recipe from an older release keeps working", () => {
 test("the watermark stays on unless it was explicitly turned off", () => {
   assert.equal(normalizeSettings({}).watermark, true)
   assert.equal(normalizeSettings({ watermark: false }).watermark, false)
+})
+
+test("an unknown visualization mode falls back to route replay", () => {
+  assert.equal(
+    normalizeSettings({ visualization_mode: "satellite" }).visualization_mode,
+    "route",
+  )
+  assert.equal(
+    normalizeSettings({ visualization_mode: "fog" }).visualization_mode,
+    "fog",
+  )
+})
+
+test("fog opacity is numeric and clamped to the control range", () => {
+  assert.equal(normalizeSettings({ fog_opacity: "75" }).fog_opacity, 75)
+  assert.equal(
+    normalizeSettings({ fog_opacity: 900 }).fog_opacity,
+    MAX_FOG_OPACITY,
+  )
+  assert.equal(
+    normalizeSettings({ fog_opacity: -10 }).fog_opacity,
+    MIN_FOG_OPACITY,
+  )
+})
+
+test("fog color keeps valid hex and rejects malformed recipe values", () => {
+  assert.equal(normalizeSettings({ fog_color: "#123abc" }).fog_color, "#123abc")
+  assert.equal(
+    normalizeSettings({ fog_color: "linear-gradient(red, blue)" }).fog_color,
+    defaultSettings().fog_color,
+  )
+})
+
+test("route and marker visibility survive stored FormData strings", () => {
+  const hidden = normalizeSettings({
+    show_marker: "false",
+    show_route: "false",
+  })
+  assert.equal(hidden.show_marker, false)
+  assert.equal(hidden.show_route, false)
+
+  const defaults = normalizeSettings({})
+  assert.equal(defaults.show_marker, true)
+  assert.equal(defaults.show_route, true)
 })
 
 test("garbage in gives defaults out", () => {

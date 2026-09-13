@@ -12,9 +12,14 @@ import {
 import { ensureHudFonts } from "video_studio/hud_fonts"
 import { drawHud } from "video_studio/hud_overlay"
 import { loadTrack } from "video_studio/load_track"
+import { drawFogOverlay, drawRouteMarker } from "video_studio/map_effects"
 import { isVideoExportSupported } from "video_studio/mp4_encoder"
 import { toVideoPoints } from "video_studio/points"
 import { buildRouteClock } from "video_studio/route_clock"
+import {
+  buildRouteTimeline,
+  sliceAtFraction,
+} from "video_studio/route_timeline"
 import { saveVideo } from "video_studio/save_video"
 import {
   buildVideoStyle,
@@ -52,6 +57,9 @@ export default class extends Controller {
     "themeLabel",
     "durationLabel",
     "trackWidthLabel",
+    "fogOpacityLabel",
+    "fogControls",
+    "visualizationMode",
     "hudScaleLabel",
     "formatDims",
     "dateStart",
@@ -162,6 +170,17 @@ export default class extends Controller {
 
   resetTrackColor() {
     this.settings.track_color = defaultSettings().track_color
+    this.settingsChanged()
+  }
+
+  resetFogColor() {
+    this.settings.fog_color = defaultSettings().fog_color
+    this.settingsChanged()
+  }
+
+  selectVisualizationMode(event) {
+    this.settings.visualization_mode =
+      event.currentTarget.dataset.visualizationMode
     this.settingsChanged()
   }
 
@@ -337,6 +356,7 @@ export default class extends Controller {
     this.points = toVideoPoints(points)
     this.stats = computeTrackStats(this.points)
     this.clock = buildRouteClock(this.points)
+    this.timeline = buildRouteTimeline(this.trackGeojson, { smooth: true })
     if (this.hasRangeLabelTarget) {
       this.rangeLabelTarget.textContent = this.dateRangeLabel()
     }
@@ -360,6 +380,26 @@ export default class extends Controller {
     }
     if (this.hasTrackWidthLabelTarget) {
       this.trackWidthLabelTarget.textContent = `${Math.round(this.settings.track_width)}%`
+    }
+    if (this.hasFogOpacityLabelTarget) {
+      this.fogOpacityLabelTarget.textContent = `${Math.round(this.settings.fog_opacity)}%`
+    }
+    if (this.hasFogControlsTarget) {
+      const fogSelected = this.settings.visualization_mode === "fog"
+      this.fogControlsTarget.classList.toggle("opacity-45", !fogSelected)
+      this.fogControlsTarget.setAttribute("aria-disabled", String(!fogSelected))
+      for (const control of this.fogControlsTarget.querySelectorAll(
+        "input, button",
+      )) {
+        control.disabled = !fogSelected
+      }
+    }
+    for (const button of this.visualizationModeTargets) {
+      const active =
+        button.dataset.visualizationMode === this.settings.visualization_mode
+      button.setAttribute("aria-checked", String(active))
+      button.classList.toggle("btn-primary", active)
+      button.classList.toggle("btn-ghost", !active)
     }
     // Selects belong here too — leaving them out silently drops any restored
     // value that is not the first option.
@@ -434,6 +474,28 @@ export default class extends Controller {
     const ctx = canvas.getContext("2d")
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
+    const slice = sliceAtFraction(this.timeline, HUD_PREVIEW_FRACTION)
+    if (this.settings.visualization_mode === "fog") {
+      drawFogOverlay(ctx, {
+        map: this.previewMap,
+        features: slice.features,
+        head: slice.head,
+        width: canvas.width,
+        height: canvas.height,
+        opacity: this.settings.fog_opacity / 100,
+        color: this.settings.fog_color,
+      })
+    }
+    if (this.settings.show_marker) {
+      drawRouteMarker(ctx, {
+        map: this.previewMap,
+        coordinate: slice.head,
+        width: canvas.width,
+        height: canvas.height,
+        accent: this.settings.track_color,
+      })
+    }
+
     drawHud(ctx, {
       width: canvas.width,
       height: canvas.height,
@@ -480,6 +542,7 @@ export default class extends Controller {
       interactive: false,
       attributionControl: false,
     })
+    this.previewMap.once("idle", () => this.drawHudPreview())
   }
 
   // Padding is scaled to the preview's size so it covers the same fraction of
@@ -573,6 +636,10 @@ export default class extends Controller {
         fontUrls: this.fontsValue,
         labels: this.hudLabels(),
         watermark: this.settings.watermark ? DAWARICH_URL : null,
+        visualizationMode: this.settings.visualization_mode,
+        fogOpacity: this.settings.fog_opacity / 100,
+        fogColor: this.settings.fog_color,
+        showMarker: this.settings.show_marker,
         onProgress: (done, total) =>
           this.showProgress(done / total, "rendering"),
         signal: this.abortController.signal,
@@ -711,9 +778,9 @@ export default class extends Controller {
     if (!this.hasRenderButtonTarget) return
     this.renderButtonTarget.disabled = Boolean(
       this.rendering ||
-        this.rangeLoading ||
-        !this.style ||
-        !isVideoExportSupported(),
+      this.rangeLoading ||
+      !this.style ||
+      !isVideoExportSupported(),
     )
   }
 
