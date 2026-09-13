@@ -4,16 +4,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [1.14.5] - 2026-09-13, Berlin
 
 ### Added
 
 - Video Studio can select exact start and end times for map ranges.
+- Family members can consent to sharing location history recorded before they started sharing.
+- The import edit page can change or clear an import's source.
+
+### Changed
+
+- Visit detection no longer sends a notification for every new suggested visit.
 
 ### Fixed
 
 - Yearly digests for cloud-Lite users read seasonality and country time spent from the same data window as monthly distances and toponyms.
 - The per-email API login brute-force throttle now counts `application/json` request bodies, so password grinding against `POST /api/v1/auth/login` is bounded per account even when an attacker rotates source IPs.
+- API sign-in ignores leading and trailing spaces in the email address.
+- Manual OIDC configuration falls back to the default port when `OIDC_PORT` is blank, non-numeric or out of range.
+- OAuth account linking reports when a verification email was not re-sent because of rate limiting, with the real remaining wait.
+- Signing up through an OAuth provider without a name claim no longer saves the username or email as the first name.
+- `SMTP_AUTHENTICATION=none` no longer sends credentials when `SMTP_USERNAME` is set.
+- Cloud Lite subscribers in a paid Family can use the map features the Family plan includes.
+- Users whose trial has ended are no longer shown an import form they cannot submit.
+- GPX imports continue past recoverable XML errors instead of aborting.
+- OwnTracks `.rec` imports skip malformed lines instead of aborting.
+- Google Phone Timeline imports no longer drop or reorder points when groups of identical timestamps sit close together.
+- Transportation mode backfill uses activity data from Google Phone Timeline imports.
+- Track generation keeps each tracker's points on its own track when several tracks share a time window.
+- Reverse geocoding keeps the identity of places created by imports, so re-imports no longer duplicate them.
+- Visit names use nearby points of interest on Photon and Geoapify instead of falling back to addresses.
+- Place search results from Geoapify include OpenStreetMap IDs.
+- Restoring a user archive no longer fails or keeps empty records when the export could not include some raw data archive files.
+- The web digest page no longer generates a year-end digest for the year still in progress.
+- Unauthorized visits to Sidekiq no longer leave browsers caching a permanent redirect.
 
 ## [1.14.4] - 2026-09-06, Berlin
 
