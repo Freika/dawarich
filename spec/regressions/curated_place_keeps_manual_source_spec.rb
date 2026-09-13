@@ -40,7 +40,7 @@ RSpec.describe 'Curated places keep their manual source through reverse geocodin
       expect(place.reload).to be_manual
     end
 
-    it 'outranks a machine-minted neighbour that sits closer to the visit' do
+    it 'does not absorb a nameless detected location based on proximity alone' do
       create(:place, user: user, name: 'Greifswalder Chaussee 1', source: :photon,
                      latitude: 54.280050, longitude: 13.080050)
 
@@ -50,7 +50,8 @@ RSpec.describe 'Curated places keep their manual source through reverse geocodin
         center_lat: 54.280045, center_lon: 13.080045, suggested_name: nil
       )
 
-      expect(found.id).to eq(place.id)
+      expect(found.id).not_to eq(place.id)
+      expect(found.name).to eq(Place::DEFAULT_NAME)
     end
 
     it 'still refreshes the geocoded payload' do

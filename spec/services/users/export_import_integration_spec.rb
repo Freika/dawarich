@@ -46,7 +46,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
 
       target_counts = calculate_user_entity_counts(target_user)
 
-      expect(target_counts[:areas]).to eq(original_counts[:areas])
+      expect(target_counts[:areas]).to eq(0)
       expect(target_counts[:imports]).to eq(original_counts[:imports])
       expect(target_counts[:exports]).to eq(original_counts[:exports])
       expect(target_counts[:trips]).to eq(original_counts[:trips])
@@ -60,7 +60,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       expect(target_counts[:digests]).to eq(original_counts[:digests])
 
       # Verify import stats match expectations
-      expect(import_stats[:areas_created]).to eq(original_counts[:areas])
+      expect(import_stats[:areas_created]).to eq(0)
       expect(import_stats[:imports_created]).to eq(original_counts[:imports])
       expect(import_stats[:exports_created]).to eq(original_counts[:exports])
       expect(import_stats[:trips_created]).to eq(original_counts[:trips])
@@ -530,7 +530,8 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
 
       # Verify specific data
       expect(import_user.reload.settings['distance_unit']).to eq('mi')
-      expect(import_user.areas.pluck(:name)).to contain_exactly('V1 Home', 'V1 Work')
+      expect(import_user.areas).to be_empty
+      expect(import_user.places.pluck(:name)).to include('V1 Home', 'V1 Work')
       expect(import_user.trips.find_by(name: 'V1 Trip')).to be_present
       expect(import_user.stats.find_by(year: 2023, month: 6)).to be_present
       expect(import_user.visits.find_by(name: 'V1 Visit')).to be_present
@@ -576,7 +577,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
           expect(manifest['files']['points']).to include('points/2024/2024-06.jsonl')
 
           # Verify JSONL files exist
-          expect(zipfile.find_entry('areas.jsonl')).not_to be_nil
+          expect(zipfile.find_entry('areas.jsonl')).to be_nil
           expect(zipfile.find_entry('settings.jsonl')).not_to be_nil
 
           # Verify monthly files exist

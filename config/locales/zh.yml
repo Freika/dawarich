@@ -1132,6 +1132,7 @@ zh:
         create_visit: 创建到访记录
         create_place: 创建地点
         select_area: 选择区域
+        select_data_on_map: 在地图上选择数据
         create_area: 创建区域
         replay: 重播
         enrich_photos: 为照片补充 GPS 坐标
@@ -1338,10 +1339,12 @@ zh:
       no_visits_yet: 尚无到访记录
       rename: 重命名
       merge: 合并
+      select_place_to_merge: 选择重复地点
+      merge_confirmation: 将所选地点合并到“%{survivor}”？访问、标签和备注都会移到这里。
       notes: 备注
       save: 保存
       delete: 删除
-      delete_this_place_this_cannot_be_undone: 删除此地点？此操作无法撤销。
+      delete_this_place_this_cannot_be_undone: 删除此地点？其访问记录将保留，但不再关联地点。
       manual_name_title: 您为此地点命名，因此自动命名不会更改它。将其重命名为“%{default_name}”即可交还自动命名。
       visit_count:
         one: "%{count} 次到访"
@@ -1350,6 +1353,9 @@ zh:
       no_nearby_places_found: 未找到附近地点
       load_more_search_up_to_distance_m: 加载更多（最多搜索到 %{distance}m）
     index:
+      filters: 地点筛选
+      all_places: 所有地点
+      unconfirmed_places: 未确认
       hello_there: 您好！
       here_you_ll_find_your_places_created_by_visits_suggestion: 您可以在这里找到通过到访建议流程创建的地点，但目前还没有。
       name: 名称
@@ -1359,7 +1365,7 @@ zh:
       timeline: 时间线
       places: 地点
       delete: 删除
-      are_you_sure_deleting_a_place_will_result_in_deleting: 确定吗？删除地点将同时删除该地点的所有到访记录。
+      are_you_sure_deleting_a_place_will_result_in_deleting: 删除此地点？其访问记录将保留，但不再关联地点。
   points:
     address:
       address: 地址：
@@ -1923,6 +1929,8 @@ zh:
     place_creation_modal:
       create_new_place: 创建新地点
       place_name: 地点名称 *
+      visit_radius: 访问半径（米）*
+      visit_radius_hint: 中心位于此半径内的访问可与该地点匹配。这不会影响隐私设置。
       note: 备注
       optional_add_any_notes_or_details_about_this_place: 可选 — 添加有关此地点的一些备注或详细信息
       tags: 标签
@@ -3082,6 +3090,7 @@ zh:
             visit_not_found: 未找到到访记录
           invalid_place: 无效地点
           invalid_area: 无效区域
+          conflicting_place_and_area: place_id 和 area_id 不能同时指定
           at_least_2_visits_must_be_selected_for_merging: 至少需要选择 2 条到访记录才能合并
           one_or_more_visits_not_found: 未找到一条或多条到访记录
           count_visits_updated_successfully: "%{count} 条到访记录更新成功"
@@ -3208,6 +3217,7 @@ zh:
       place_was_successfully_destroyed: 地点已成功删除。
       created: 地点创建成功！
       updated: 地点更新成功！
+      merged: '已将“%{duplicate}”合并到“%{survivor}”。'
     points:
       no_points_selected: 未选择轨迹点。
       points_were_successfully_destroyed: 轨迹点已成功删除。
@@ -3396,6 +3406,7 @@ zh:
       failed_to_delete_visits: 删除到访记录失败。
       invalid_place: 无效地点
       invalid_area: 无效区域
+      conflicting_place_and_area: 地点和区域不能同时指定
       failed_to_update_visit: 更新到访记录失败。
       select_visits_to_merge: 请至少选择 2 条到访记录进行合并。
       visits_must_share_day: 到访记录必须属于同一天。
@@ -4399,6 +4410,7 @@ zh:
       place: 地点
       points: 轨迹点
       radius: 半径
+      visit_radius: 访问半径
       reason: 原因
       route_information: 路线信息
       selected_point: 选定的轨迹点

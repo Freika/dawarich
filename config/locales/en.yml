@@ -1118,6 +1118,7 @@ en:
         create_visit: Create Visit
         create_place: Create Place
         select_area: Select Area
+        select_data_on_map: Select data on map
         create_area: Create Area
         replay: Replay
         enrich_photos: Enrich Photos
@@ -1321,10 +1322,12 @@ en:
       no_visits_yet: No visits yet
       rename: Rename
       merge: Merge
+      select_place_to_merge: Select duplicate place
+      merge_confirmation: Merge the selected place into "%{survivor}"? Visits, tags, and notes will be moved here.
       notes: Notes
       save: Save
       delete: Delete
-      delete_this_place_this_cannot_be_undone: Delete this place? This cannot be undone.
+      delete_this_place_this_cannot_be_undone: Delete this place? Its visits will be kept without an attached place.
       manual_name_title: You named this place, so automatic naming will not change it. Rename it to "%{default_name}" to hand it back to automatic naming.
       visit_count:
         one: "%{count} visit"
@@ -1333,6 +1336,9 @@ en:
       no_nearby_places_found: No nearby places found
       load_more_search_up_to_distance_m: Load More (search up to %{distance}m)
     index:
+      filters: Place filters
+      all_places: All Places
+      unconfirmed_places: Unconfirmed
       hello_there: Hello there!
       here_you_ll_find_your_places_created_by_visits_suggestion: Here you'll find your places, created by Visits suggestion process. But now there are none.
       name: Name
@@ -1342,7 +1348,7 @@ en:
       timeline: Timeline
       places: Places
       delete: Delete
-      are_you_sure_deleting_a_place_will_result_in_deleting: Are you sure? Deleting a place will result in deleting all visits for this place.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Delete this place? Its visits will be kept without an attached place.
   points:
     address:
       address: 'Address:'
@@ -1899,6 +1905,8 @@ en:
     place_creation_modal:
       create_new_place: Create New Place
       place_name: Place Name *
+      visit_radius: Visit Radius (meters) *
+      visit_radius_hint: Visits whose center falls inside this radius can be matched to the place. This does not affect privacy.
       note: Note
       optional_add_any_notes_or_details_about_this_place: Optional - Add any notes or details about this place
       tags: Tags
@@ -3015,6 +3023,7 @@ en:
             visit_not_found: Visit not found
           invalid_place: Invalid place
           invalid_area: Invalid area
+          conflicting_place_and_area: place_id and area_id cannot be specified together
           at_least_2_visits_must_be_selected_for_merging: At least 2 visits must be selected for merging
           one_or_more_visits_not_found: One or more visits not found
           count_visits_updated_successfully: "%{count} visits updated successfully"
@@ -3141,6 +3150,7 @@ en:
       place_was_successfully_destroyed: Place was successfully destroyed.
       created: Place created successfully!
       updated: Place updated successfully!
+      merged: 'Merged "%{duplicate}" into "%{survivor}".'
     points:
       no_points_selected: No points selected.
       points_were_successfully_destroyed: Points were successfully destroyed.
@@ -3334,6 +3344,7 @@ en:
       failed_to_delete_visits: Failed to delete visits.
       invalid_place: Invalid place
       invalid_area: Invalid area
+      conflicting_place_and_area: Place and Area cannot be specified together
       failed_to_update_visit: Failed to update visit.
       select_visits_to_merge: Select at least 2 visits to merge.
       visits_must_share_day: Visits must be on the same day.
@@ -4321,6 +4332,7 @@ en:
       place: Place
       points: Points
       radius: Radius
+      visit_radius: Visit Radius
       reason: Reason
       route_information: Route Information
       selected_point: Selected Point

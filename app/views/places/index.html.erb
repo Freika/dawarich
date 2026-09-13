@@ -8,6 +8,13 @@
     </div>
   </div>
 
+  <nav class="flex gap-2 my-4" aria-label="<%= t('.filters') %>">
+    <%= link_to t('.all_places'), places_path,
+                class: "btn btn-sm #{'btn-primary' if params[:filter].blank?}" %>
+    <%= link_to t('.unconfirmed_places'), places_path(filter: 'unconfirmed'),
+                class: "btn btn-sm #{'btn-primary' if params[:filter] == 'unconfirmed'}" %>
+  </nav>
+
   <div id="places" class="min-w-full">
     <% if @places.empty? %>
       <div class="hero min-h-80 bg-base-200">

@@ -18,13 +18,17 @@ class Place < ApplicationRecord
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
 
-  attr_accessor :machine_named, :user_named
+  attr_accessor :machine_named, :user_named, :skip_suggested_visit_reattribution
 
   before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
   before_save :lock_name_on_user_edit
+  after_commit :schedule_suggested_visit_reattribution,
+               on: %i[create update],
+               if: :suggested_visit_reattribution_needed?
 
   validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
+  validates :visit_radius, numericality: { only_integer: true, greater_than: 0 }
 
   enum :source, { manual: 0, photon: 1, gpx_waypoint: 2 }
 
@@ -35,9 +39,15 @@ class Place < ApplicationRecord
   }
   scope :imported, -> { where(source: sources[:gpx_waypoint]) }
   scope :tagged, -> { where(id: Tagging.where(taggable_type: 'Place').select(:taggable_id)) }
-  scope :map_visible, lambda { |user|
-    manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged)
+  scope :noted, lambda {
+    where("NULLIF(BTRIM(places.note), '') IS NOT NULL")
+      .or(where(id: Note.where(attachable_type: 'Place').select(:attachable_id)))
   }
+  scope :confirmed_for, lambda { |user|
+    manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged).or(noted)
+  }
+  scope :unconfirmed_for, ->(user) { where.not(id: confirmed_for(user).select(:id)) }
+  scope :map_visible, ->(user) { confirmed_for(user) }
 
   # Legacy places predate the lonlat column and carry coordinates only in the
   # decimal columns; to_f keeps their JSON serialization numeric — BigDecimal
@@ -84,5 +94,15 @@ class Place < ApplicationRecord
     return if new_record? && !user_named
 
     self.name_locked_at = Time.current
+  end
+
+  def suggested_visit_reattribution_needed?
+    return false if skip_suggested_visit_reattribution
+
+    previously_new_record? || saved_change_to_latitude? || saved_change_to_longitude? || saved_change_to_visit_radius?
+  end
+
+  def schedule_suggested_visit_reattribution
+    Places::ReattributeSuggestedVisitsJob.perform_later(user_id, id)
   end
 end

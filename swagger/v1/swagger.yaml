@@ -11,7 +11,9 @@ paths:
       summary: Creates an area
       tags:
       - Areas
-      description: Creates a new geographic area for the authenticated user
+      deprecated: true
+      description: Deprecated compatibility adapter. Creates a canonical Place; use
+        POST /api/v1/places.
       parameters:
       - name: api_key
         in: query
@@ -102,7 +104,9 @@ paths:
       summary: Retrieves all areas
       tags:
       - Areas
-      description: Returns all areas belonging to the authenticated user
+      deprecated: true
+      description: Deprecated compatibility adapter backed by canonical Places; use
+        GET /api/v1/places.
       parameters:
       - name: api_key
         in: query
@@ -164,6 +168,7 @@ paths:
       summary: Retrieves a specific area
       tags:
       - Areas
+      deprecated: true
       parameters:
       - name: api_key
         in: query
@@ -206,6 +211,7 @@ paths:
       summary: Updates an area
       tags:
       - Areas
+      deprecated: true
       parameters:
       - name: api_key
         in: query
@@ -269,6 +275,7 @@ paths:
       summary: Deletes an area
       tags:
       - Areas
+      deprecated: true
       parameters:
       - name: api_key
         in: query
@@ -3446,10 +3453,12 @@ paths:
         - all
         - manual
         - confirmed
+        - unconfirmed
         - tagged
-        description: "Visibility filter. Defaults to manual + confirmed-visit + tagged
-          places. Use \"all\" for every place (including suggested-only), or \"manual\"/\"confirmed\"/\"tagged\".:\n
-          * `all` \n * `manual` \n * `confirmed` \n * `tagged` \n "
+        description: "Visibility filter. Defaults to user-owned/confirmed Places.
+          Use \"all\" for every Place or \"unconfirmed\" for machine-owned suggestions.:\n
+          * `all` \n * `manual` \n * `confirmed` \n * `unconfirmed` \n * `tagged`
+          \n "
         schema:
           type: string
       responses:
@@ -3474,6 +3483,10 @@ paths:
                       format: float
                     source:
                       type: string
+                    visit_radius:
+                      type: integer
+                      minimum: 1
+                      default: 50
                     icon:
                       type: string
                       nullable: true
@@ -3536,6 +3549,10 @@ paths:
                     format: float
                   source:
                     type: string
+                  visit_radius:
+                    type: integer
+                    minimum: 1
+                    default: 50
                   icon:
                     type: string
                     nullable: true
@@ -3569,6 +3586,10 @@ paths:
                   format: float
                 source:
                   type: string
+                visit_radius:
+                  type: integer
+                  minimum: 1
+                  default: 50
                 tag_ids:
                   type: array
                   items:
@@ -3683,6 +3704,10 @@ paths:
                     format: float
                   source:
                     type: string
+                  visit_radius:
+                    type: integer
+                    minimum: 1
+                    default: 50
                   icon:
                     type: string
                     nullable: true
@@ -3729,6 +3754,9 @@ paths:
                   longitude:
                     type: number
                     format: float
+                  visit_radius:
+                    type: integer
+                    minimum: 1
                   tags:
                     type: array
         '404':
@@ -3751,6 +3779,9 @@ paths:
                 longitude:
                   type: number
                   format: float
+                visit_radius:
+                  type: integer
+                  minimum: 1
                 tag_ids:
                   type: array
                   items:
@@ -6225,7 +6256,9 @@ paths:
                   duration:
                     type: integer
                   place:
-                    type: object
+                    type:
+                    - object
+                    - 'null'
         '404':
           description: visit not found
         '401':
@@ -6246,6 +6279,9 @@ paths:
                     area_id:
                       type: integer
                       nullable: true
+                      deprecated: true
+                      description: Legacy Area ID. It is translated to place_id; do
+                        not send both fields.
                     status:
                       type: string
                       enum:
@@ -6382,7 +6418,9 @@ paths:
                   duration:
                     type: integer
                   place:
-                    type: object
+                    type:
+                    - object
+                    - 'null'
         '422':
           description: invalid request
         '401':

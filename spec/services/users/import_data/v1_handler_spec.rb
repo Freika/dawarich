@@ -127,11 +127,12 @@ RSpec.describe Users::ImportData::V1Handler, type: :service do
         expect(user.reload.settings['distance_unit']).to eq('km')
       end
 
-      it 'processes areas' do
+      it 'processes legacy areas as Places' do
         handler.process
 
         expect(import_stats[:areas_created]).to eq(1)
-        expect(user.areas.find_by(name: 'Home')).to be_present
+        expect(user.places.find_by(name: 'Home')).to be_present
+        expect(user.areas.find_by(name: 'Home')).to be_nil
       end
 
       it 'processes trips' do

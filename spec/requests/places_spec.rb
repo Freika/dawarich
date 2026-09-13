@@ -15,17 +15,37 @@ RSpec.describe '/places', type: :request do
 
       expect(response).to be_successful
     end
+
+    it 'can show only unconfirmed suggested Places' do
+      suggested = create(:place, user:, source: :photon, name: 'Needs Review')
+      create(:visit, user:, place: suggested, area: nil, status: :suggested)
+      create(:place, user:, source: :manual, name: 'My Home')
+
+      get places_url(filter: 'unconfirmed')
+
+      expect(response.body).to include('Needs Review')
+      expect(response.body).not_to include('My Home')
+    end
   end
 
   describe 'POST /create' do
     context 'with turbo_stream format' do
-      let(:valid_params) { { place: { name: 'Coffee Shop', latitude: 52.52, longitude: 13.405, source: 'manual' } } }
+      let(:valid_params) do
+        { place: { name: 'Coffee Shop', latitude: 52.52, longitude: 13.405, source: 'manual', visit_radius: 125 } }
+      end
 
       context 'with valid params' do
         it 'creates a new place' do
           expect do
             post places_url, params: valid_params, as: :turbo_stream
           end.to change(Place, :count).by(1)
+        end
+
+        it 'stores and returns the visit radius' do
+          post places_url, params: valid_params, as: :turbo_stream
+
+          expect(Place.last.visit_radius).to eq(125)
+          expect(response.body).to include('visit_radius&quot;:125')
         end
 
         it 'returns turbo_stream replacing place-creation-data with flash' do
@@ -49,6 +69,36 @@ RSpec.describe '/places', type: :request do
           post places_url, params: params_with_tags, as: :turbo_stream
 
           expect(Place.last.tags).to include(tag1)
+        end
+
+        it 'creates a full Place from a Visit and attaches it atomically' do
+          legacy_area = create(:area, user:)
+          visit = create(:visit, user:, area: legacy_area, status: :suggested, location_label: 'Corner cafe')
+
+          post places_url,
+               params: valid_params.merge(visit_id: visit.id),
+               as: :turbo_stream
+
+          expect(response).to have_http_status(:ok)
+          expect(visit.reload).to have_attributes(
+            place_id: Place.last.id,
+            area_id: nil,
+            location_label: 'Coffee Shop',
+            status: 'confirmed'
+          )
+          expect(response.body).to include("data-visit-id=\"#{visit.id}\"")
+        end
+
+        it 'does not create a Place when the Visit belongs to another user' do
+          other_visit = create(:visit, user: create(:user))
+
+          expect do
+            post places_url,
+                 params: valid_params.merge(visit_id: other_visit.id),
+                 as: :turbo_stream
+          end.not_to change(Place, :count)
+
+          expect(response).to have_http_status(:not_found)
         end
       end
 
@@ -76,9 +126,10 @@ RSpec.describe '/places', type: :request do
 
     context 'with turbo_stream format' do
       it 'updates the place and returns turbo_stream' do
-        patch place_url(place), params: { place: { name: 'Updated Name' } }, as: :turbo_stream
+        patch place_url(place), params: { place: { name: 'Updated Name', visit_radius: 90 } }, as: :turbo_stream
 
         expect(place.reload.name).to eq('Updated Name')
+        expect(place.visit_radius).to eq(90)
         expect_turbo_stream_response
         expect_turbo_stream_action('replace', 'place-creation-data')
         expect_flash_stream('Place updated successfully!')
@@ -177,6 +228,36 @@ RSpec.describe '/places', type: :request do
       delete place_url(place)
 
       expect(response).to redirect_to(places_url)
+    end
+  end
+
+  describe 'POST /places/:id/merge' do
+    let!(:survivor) { create(:place, user:, name: 'Home') }
+    let!(:duplicate) { create(:place, user:, name: 'My Home') }
+
+    it 'merges the duplicate into the selected survivor' do
+      visit = create(:visit, user:, place: duplicate, area: nil, status: :confirmed)
+
+      post merge_place_url(survivor),
+           params: { duplicate_place_id: duplicate.id },
+           as: :turbo_stream
+
+      expect(response).to have_http_status(:ok)
+      expect(visit.reload.place).to eq(survivor)
+      expect(Place.exists?(duplicate.id)).to be(false)
+      expect_turbo_stream_action('replace', 'place-drawer')
+    end
+
+    it 'does not merge another users Place' do
+      other_place = create(:place, user: create(:user))
+
+      expect do
+        post merge_place_url(survivor),
+             params: { duplicate_place_id: other_place.id },
+             as: :turbo_stream
+      end.not_to change(Place, :count)
+
+      expect(response).to have_http_status(:not_found)
     end
   end
 

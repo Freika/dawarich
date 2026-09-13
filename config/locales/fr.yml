@@ -1853,6 +1853,7 @@ fr:
         create_visit: Créer Visite
         create_place: Créer Lieu
         select_area: Sélectionner une zone
+        select_data_on_map: Sélectionner des données sur la carte
         create_area: Créer Zone
         replay: Rejouer
         enrich_photos: Enrichir les photos
@@ -2080,11 +2081,12 @@ fr:
       no_visits_yet: Aucune visite pour le moment
       rename: Renommer
       merge: Fusionner
+      select_place_to_merge: Sélectionner le lieu en double
+      merge_confirmation: Fusionner le lieu sélectionné avec « %{survivor} » ? Les visites, étiquettes et notes seront déplacées ici.
       notes: Notes
       save: Enregistrer
       delete: Supprimer
-      delete_this_place_this_cannot_be_undone: Voulez-vous supprimer ce lieu ? Cette
-        action est irréversible.
+      delete_this_place_this_cannot_be_undone: Supprimer ce lieu ? Ses visites seront conservées sans lieu associé.
       manual_name_title: Vous avez nommé ce lieu, il ne sera donc pas renommé automatiquement.
         Renommez-le en "%{default_name}" pour le rendre disponible à nouveau pour
         la nomination automatique.
@@ -2095,6 +2097,9 @@ fr:
       no_nearby_places_found: Aucun lieu proche trouvé
       load_more_search_up_to_distance_m: Charger plus (recherche jusqu'à %{distance}m)
     index:
+      filters: Filtres des lieux
+      all_places: Tous les lieux
+      unconfirmed_places: Non confirmés
       hello_there: Bonjour !
       here_you_ll_find_your_places_created_by_visits_suggestion: Vous trouverez ici
         les lieux créés grâce aux suggestions de visites. Il n’y en a encore aucun.
@@ -2105,8 +2110,7 @@ fr:
       timeline: Chronologie
       places: Lieux
       delete: Supprimer
-      are_you_sure_deleting_a_place_will_result_in_deleting: Êtes-vous sûr ? La suppression
-        d'un lieu entraînera la suppression de toutes les visites pour ce lieu.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Supprimer ce lieu ? Ses visites seront conservées sans lieu associé.
   points:
     address:
       address: 'Adresse :'
@@ -2728,6 +2732,8 @@ fr:
     place_creation_modal:
       create_new_place: Créer un nouveau lieu
       place_name: Nom du lieu *
+      visit_radius: Rayon de visite (mètres) *
+      visit_radius_hint: Les visites dont le centre se trouve dans ce rayon peuvent être associées au lieu. Cela n’affecte pas la confidentialité.
       note: Note
       optional_add_any_notes_or_details_about_this_place: Optionnel - Ajoutez des
         notes ou des détails supplémentaires sur ce lieu
@@ -3975,6 +3981,7 @@ fr:
             visit_not_found: Visite non trouvée
           invalid_place: Lieu non valide
           invalid_area: Zone non valide
+          conflicting_place_and_area: place_id et area_id ne peuvent pas être indiqués ensemble
           at_least_2_visits_must_be_selected_for_merging: Au moins 2 visites doivent
             être sélectionnées pour la fusion.
           one_or_more_visits_not_found: Une ou plusieurs visites ne sont pas trouvées
@@ -4131,6 +4138,7 @@ fr:
       place_was_successfully_destroyed: Lieu supprimé avec succès
       created: Lieu créé avec succès !
       updated: Lieu mis à jour avec succès
+      merged: '« %{duplicate} » a été fusionné avec « %{survivor} ».'
     points:
       no_points_selected: Aucun point sélectionné.
       points_were_successfully_destroyed: Les points ont été supprimés avec succès.
@@ -4390,6 +4398,7 @@ fr:
       failed_to_delete_visits: Échec de suppression des visites
       invalid_place: Lieu invalide
       invalid_area: Zone géographique invalide
+      conflicting_place_and_area: Le lieu et la zone ne peuvent pas être indiqués ensemble
       failed_to_update_visit: Échec de mise à jour de la visite
       select_visits_to_merge: Sélectionnez au moins 2 visites pour les fusionner.
       visits_must_share_day: Les visites doivent se situer sur la même journée.
@@ -5613,6 +5622,7 @@ fr:
       place: Lieu
       points: Points
       radius: Rayon
+      visit_radius: Rayon de visite
       reason: Raison
       route_information: Informations de la route
       selected_point: Point sélectionné

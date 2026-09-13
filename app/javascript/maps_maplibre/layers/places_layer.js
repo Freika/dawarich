@@ -21,11 +21,36 @@ export class PlacesLayer extends BaseLayer {
 
   getLayerConfigs() {
     return [
-      // Place circles
+      // Visit Radius boundaries. These remain deliberately subtle so the
+      // Places layer can stay useful without obscuring routes and points.
+      {
+        id: `${this.id}-radius-fill`,
+        type: "fill",
+        source: this.sourceId,
+        filter: ["==", ["get", "featureKind"], "boundary"],
+        paint: {
+          "fill-color": ["coalesce", ["get", "color"], "#6366f1"],
+          "fill-opacity": 0.1,
+        },
+      },
+      {
+        id: `${this.id}-radius-outline`,
+        type: "line",
+        source: this.sourceId,
+        filter: ["==", ["get", "featureKind"], "boundary"],
+        paint: {
+          "line-color": ["coalesce", ["get", "color"], "#6366f1"],
+          "line-width": 2,
+          "line-opacity": 0.65,
+        },
+      },
+
+      // Place centers
       {
         id: this.id,
         type: "circle",
         source: this.sourceId,
+        filter: ["==", ["get", "featureKind"], "center"],
         paint: {
           "circle-radius": 10,
           "circle-color": [
@@ -44,6 +69,7 @@ export class PlacesLayer extends BaseLayer {
         id: `${this.id}-labels`,
         type: "symbol",
         source: this.sourceId,
+        filter: ["==", ["get", "featureKind"], "center"],
         layout: {
           "text-field": ["get", "name"],
           "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
@@ -61,6 +87,11 @@ export class PlacesLayer extends BaseLayer {
   }
 
   getLayerIds() {
-    return [this.id, `${this.id}-labels`]
+    return [
+      `${this.id}-radius-fill`,
+      `${this.id}-radius-outline`,
+      this.id,
+      `${this.id}-labels`,
+    ]
   }
 }
