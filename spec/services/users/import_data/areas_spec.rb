@@ -7,155 +7,72 @@ RSpec.describe Users::ImportData::Areas, type: :service do
   let(:areas_data) do
     [
       {
+        'id' => 91,
         'name' => 'Home',
         'latitude' => '40.7128',
         'longitude' => '-74.0060',
-        'radius' => 100,
-        'created_at' => '2024-01-01T00:00:00Z',
-        'updated_at' => '2024-01-01T00:00:00Z'
+        'radius' => 100
       },
       {
+        'id' => 92,
         'name' => 'Work',
         'latitude' => '40.7589',
         'longitude' => '-73.9851',
-        'radius' => 50,
-        'created_at' => '2024-01-02T00:00:00Z',
-        'updated_at' => '2024-01-02T00:00:00Z'
+        'radius' => 50
       }
     ]
   end
   let(:service) { described_class.new(user, areas_data) }
 
-  describe '#call' do
-    context 'with valid areas data' do
-      it 'creates new areas for the user' do
-        expect { service.call }.to change { user.areas.count }.by(2)
-      end
+  it 'imports legacy Areas as canonical Places without recreating Areas' do
+    expect { service.call }.to change { user.places.count }.by(2)
+    expect(user.areas.count).to eq(0)
 
-      it 'creates areas with correct attributes' do
-        service.call
+    expect(user.places.find_by(name: 'Home')).to have_attributes(
+      latitude: 40.7128,
+      longitude: -74.0060,
+      visit_radius: 100,
+      source: 'manual'
+    )
+  end
 
-        home_area = user.areas.find_by(name: 'Home')
-        expect(home_area).to have_attributes(
-          name: 'Home',
-          latitude: 40.7128,
-          longitude: -74.0060,
-          radius: 100
-        )
+  it 'exposes legacy IDs for Visit remapping' do
+    service.call
 
-        work_area = user.areas.find_by(name: 'Work')
-        expect(work_area).to have_attributes(
-          name: 'Work',
-          latitude: 40.7589,
-          longitude: -73.9851,
-          radius: 50
-        )
-      end
+    expect(service.place_references_by_id.fetch('91')).to include(
+      'name' => 'Home',
+      'visit_radius' => 100
+    )
+  end
 
-      it 'returns the number of areas created' do
-        result = service.call
-        expect(result).to eq(2)
-      end
+  it 'reuses a same-name Place within 50 meters and keeps the larger radius' do
+    existing = create(
+      :place,
+      user:,
+      name: 'Home',
+      latitude: 40.7128,
+      longitude: -74.0060,
+      visit_radius: 40
+    )
 
-      it 'logs the import process' do
-        expect(Rails.logger).to receive(:info).with("Importing 2 areas for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with('Areas import completed. Created: 2')
+    expect(service.call).to eq(1)
+    expect(existing.reload.visit_radius).to eq(100)
+    expect(user.places.where(name: 'Home').count).to eq(1)
+  end
 
-        service.call
-      end
-    end
+  it 'does not merge different names based on proximity alone' do
+    create(:place, user:, name: 'Apartment', latitude: 40.7128, longitude: -74.0060)
 
-    context 'with duplicate areas' do
-      before do
-        # Create an existing area with same name and coordinates
-        user.areas.create!(
-          name: 'Home',
-          latitude: 40.7128,
-          longitude: -74.0060,
-          radius: 100
-        )
-      end
+    expect { service.call }.to change { user.places.count }.by(2)
+  end
 
-      it 'skips duplicate areas' do
-        expect { service.call }.to change { user.areas.count }.by(1)
-      end
+  it 'skips invalid records' do
+    input = ['invalid', { 'name' => 'Missing coordinates' }]
 
-      it 'logs when skipping duplicates' do
-        allow(Rails.logger).to receive(:debug) # Allow any debug logs
-        expect(Rails.logger).to receive(:debug).with('Area already exists: Home')
+    expect(described_class.new(user, input).call).to eq(0)
+  end
 
-        service.call
-      end
-
-      it 'returns only the count of newly created areas' do
-        result = service.call
-        expect(result).to eq(1)
-      end
-    end
-
-    context 'with invalid area data' do
-      let(:areas_data) do
-        [
-          { 'name' => 'Valid Area', 'latitude' => '40.7128', 'longitude' => '-74.0060', 'radius' => 100 },
-          'invalid_data',
-          { 'name' => 'Another Valid Area', 'latitude' => '40.7589', 'longitude' => '-73.9851', 'radius' => 50 }
-        ]
-      end
-
-      it 'skips invalid entries and imports valid ones' do
-        expect { service.call }.to change { user.areas.count }.by(2)
-      end
-
-      it 'returns the count of valid areas created' do
-        result = service.call
-        expect(result).to eq(2)
-      end
-    end
-
-    context 'with nil areas data' do
-      let(:areas_data) { nil }
-
-      it 'does not create any areas' do
-        expect { service.call }.not_to(change { user.areas.count })
-      end
-
-      it 'returns 0' do
-        result = service.call
-        expect(result).to eq(0)
-      end
-    end
-
-    context 'with non-array areas data' do
-      let(:areas_data) { 'invalid_data' }
-
-      it 'does not create any areas' do
-        expect { service.call }.not_to(change { user.areas.count })
-      end
-
-      it 'returns 0' do
-        result = service.call
-        expect(result).to eq(0)
-      end
-    end
-
-    context 'with empty areas data' do
-      let(:areas_data) { [] }
-
-      it 'does not create any areas' do
-        expect { service.call }.not_to(change { user.areas.count })
-      end
-
-      it 'logs the import process with 0 count' do
-        expect(Rails.logger).to receive(:info).with("Importing 0 areas for user: #{user.email}")
-        expect(Rails.logger).to receive(:info).with('Areas import completed. Created: 0')
-
-        service.call
-      end
-
-      it 'returns 0' do
-        result = service.call
-        expect(result).to eq(0)
-      end
-    end
+  it 'returns zero for non-array input' do
+    expect(described_class.new(user, nil).call).to eq(0)
   end
 end

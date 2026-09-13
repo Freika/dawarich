@@ -11,6 +11,7 @@
         <%= f.hidden_field :latitude, data: { place_creation_target: "latitudeInput" } %>
         <%= f.hidden_field :longitude, data: { place_creation_target: "longitudeInput" } %>
         <%= f.hidden_field :source, value: "manual" %>
+        <%= hidden_field_tag :visit_id, nil, data: { place_creation_target: "visitIdInput" } %>
         <input type="hidden" name="_method_url" data-place-creation-target="placeIdInput">
 
         <div class="space-y-4">
@@ -23,6 +24,22 @@
                 class: "input input-bordered w-full",
                 data: { place_creation_target: "nameInput" },
                 required: true %>
+          </div>
+
+          <div class="form-control">
+            <label class="label">
+              <span class="label-text font-semibold"><%= t('.visit_radius') %></span>
+            </label>
+            <%= f.number_field :visit_radius,
+                value: Place.column_defaults.fetch('visit_radius', 50),
+                min: 1,
+                step: 1,
+                class: "input input-bordered w-full",
+                data: { place_creation_target: "visitRadiusInput" },
+                required: true %>
+            <label class="label">
+              <span class="label-text-alt"><%= t('.visit_radius_hint') %></span>
+            </label>
           </div>
 
           <div class="form-control">

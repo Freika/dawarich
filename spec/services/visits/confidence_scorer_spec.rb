@@ -78,10 +78,12 @@ RSpec.describe Visits::ConfidenceScorer do
 
     it 'ranks attribution evidence: area above poi above address' do
       area = score(place_match: :area)[:score]
+      place = score(place_match: :place)[:score]
       poi = score(place_match: :poi)[:score]
       address = score(place_match: :address)[:score]
 
-      expect(area).to be > poi
+      expect(area).to eq(place)
+      expect(place).to be > poi
       expect(poi).to be > address
     end
   end

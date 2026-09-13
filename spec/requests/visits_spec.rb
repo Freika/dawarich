@@ -127,13 +127,14 @@ RSpec.describe '/visits', type: :request do
         expect(visit.reload.status).to eq('declined')
       end
 
-      it 'auto-names the visit from suggested place when confirming without name change' do
+      it 'stores the suggested Place name as the location label when confirming' do
         place = create(:place, user:, name: 'Central Park')
         create(:place_visit, visit:, place:)
 
         patch visit_url(visit), params: { visit: { status: :confirmed } }
 
-        expect(visit.reload.name).to eq('Central Park')
+        expect(visit.reload.location_label).to eq('Central Park')
+        expect(visit.name).to eq('Visit')
       end
 
       it 'keeps the original name when confirming if no suggested place exists' do
@@ -144,13 +145,13 @@ RSpec.describe '/visits', type: :request do
         expect(visit.reload.name).to eq('My Visit')
       end
 
-      it 'keeps the original name when a blank name is submitted (no 422)' do
+      it 'clears the custom name when a blank name is submitted' do
         visit.update!(name: 'Original Name')
 
         patch visit_url(visit), params: { visit: { name: '  ' } }
 
         expect(response).not_to have_http_status(:unprocessable_content)
-        expect(visit.reload.name).to eq('Original Name')
+        expect(visit.reload.name).to be_nil
       end
 
       it 'silently confirms a suggested visit when the user edits it' do
@@ -196,13 +197,34 @@ RSpec.describe '/visits', type: :request do
         expect(response.body).not_to include('filter-count-')
       end
 
-      it 'sets visit name from place when place_id is provided' do
+      it 'sets the location label from Place when place_id is provided' do
         place = create(:place, user:, name: 'Coffee Shop')
         patch visit_url(visit), params: { visit: { place_id: place.id } }, as: :turbo_stream
 
-        expect(visit.reload.name).to eq('Coffee Shop')
+        expect(visit.reload.location_label).to eq('Coffee Shop')
+        expect(visit.name).to eq('Visit')
         expect_turbo_stream_response
         expect_turbo_stream_action('replace', "visit_entry_#{visit.id}")
+      end
+
+      it 'clears the legacy Area association when a Place is selected' do
+        place = create(:place, user:, name: 'Coffee Shop')
+
+        patch visit_url(visit), params: { visit: { place_id: place.id } }, as: :turbo_stream
+
+        expect(visit.reload.area_id).to be_nil
+        expect(visit.place_id).to eq(place.id)
+      end
+
+      it 'rejects conflicting Place and Area selections' do
+        place = create(:place, user:)
+        area = create(:area, user:)
+
+        patch visit_url(visit),
+              params: { visit: { place_id: place.id, area_id: area.id } },
+              as: :turbo_stream
+
+        expect(response).to have_http_status(:unprocessable_content)
       end
 
       it 'rejects place_id belonging to another user (IDOR guard)' do

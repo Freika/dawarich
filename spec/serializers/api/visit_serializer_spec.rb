@@ -20,11 +20,14 @@ RSpec.describe Api::VisitSerializer do
       expect(result[:ended_at]).to eq(visit.ended_at)
       expect(result[:duration]).to eq(visit.duration)
       expect(result[:name]).to eq(visit.name)
+      expect(result[:display_name]).to eq(visit.name)
+      expect(result[:place_id]).to eq(place.id)
       expect(result[:status]).to eq(visit.status)
 
       expect(result[:place][:id]).to eq(place.id)
       expect(result[:place][:latitude]).to eq(place.lat)
       expect(result[:place][:longitude]).to eq(place.lon)
+      expect(result[:place][:visit_radius]).to eq(place.visit_radius)
     end
 
     context 'confidence fields' do

@@ -140,7 +140,8 @@ RSpec.describe Users::ImportData::V2Handler, type: :service do
         handler.process
 
         expect(import_stats[:areas_created]).to eq(1)
-        expect(user.areas.find_by(name: 'Home')).to be_present
+        expect(user.areas).to be_empty
+        expect(user.places.find_by(name: 'Home')).to have_attributes(visit_radius: 50)
       end
 
       it 'processes trips from JSONL' do
@@ -284,7 +285,8 @@ RSpec.describe Users::ImportData::V2Handler, type: :service do
         handler.process
 
         expect(import_stats[:areas_created]).to eq(3)
-        expect(user.areas.pluck(:name)).to contain_exactly('Home', 'Work', 'Gym')
+        expect(user.areas).to be_empty
+        expect(user.places.pluck(:name)).to contain_exactly('Home', 'Work', 'Gym')
       end
     end
   end

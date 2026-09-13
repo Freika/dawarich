@@ -67,22 +67,19 @@ export class VisitPlaceSearch {
         signal: this.abortController.signal,
       })
       const data = await res.json()
-      this.render(data.places || [], data.areas || [], query)
+      this.render(data.places || [], query)
     } catch (err) {
       if (err.name === "AbortError") return
       this.renderError()
     }
   }
 
-  render(places, areas, query) {
+  render(places, query) {
     const hasExact = places.some(
       (p) => (p.name || "").toLowerCase() === query.toLowerCase(),
     )
     const rows = []
 
-    areas.forEach((a, i) => {
-      rows.push(this.areaRow(a, i))
-    })
     places.forEach((p, i) => {
       rows.push(this.placeRow(p, i))
     })
@@ -92,17 +89,13 @@ export class VisitPlaceSearch {
       ? rows.join("")
       : `<li class="px-3 py-2 text-xs text-base-content/60">${translate("places.none_found")}</li>`
 
-    this.bindRows(places, areas, query)
+    this.bindRows(places, query)
   }
 
-  bindRows(places, areas, query) {
+  bindRows(places, query) {
     this.list.querySelectorAll("[data-select-place]").forEach((el) => {
       const place = places[parseInt(el.dataset.selectPlace, 10)]
       el.addEventListener("click", () => this.selectPlace(place))
-    })
-    this.list.querySelectorAll("[data-select-area]").forEach((el) => {
-      const area = areas[parseInt(el.dataset.selectArea, 10)]
-      el.addEventListener("click", () => this.selectArea(area))
     })
     const createEl = this.list.querySelector("[data-create-place]")
     if (createEl)
@@ -135,34 +128,18 @@ export class VisitPlaceSearch {
     }
   }
 
-  async selectArea(area) {
-    try {
-      await this.patchVisit({ area_id: area.id, status: "confirmed" })
-      this.done()
-    } catch (_e) {
-      this.renderError()
-    }
-  }
-
-  async createPlace(query) {
-    try {
-      const created = await this.postJson("/api/v1/places", {
-        place: {
-          name: query,
+  createPlace(query) {
+    document.dispatchEvent(
+      new CustomEvent("place:create", {
+        detail: {
           latitude: this.lat,
           longitude: this.lon,
-          source: "manual",
+          visitId: this.visitId,
+          name: query,
         },
-      })
-      await this.patchVisit({
-        place_id: created.id,
-        name: created.name,
-        status: "confirmed",
-      })
-      this.done()
-    } catch (_e) {
-      this.renderError()
-    }
+      }),
+    )
+    this.close()
   }
 
   patchVisit(visitAttrs) {
@@ -238,15 +215,6 @@ export class VisitPlaceSearch {
     return `<li class="w-full"><a data-select-place="${idx}" onclick="event.stopPropagation()" class="${this.rowClass()}">
       <span class="block truncate">${this.escape(place.name)}</span>
       ${meta ? `<span class="block text-xs opacity-60 truncate">${this.escape(meta)}</span>` : ""}</a></li>`
-  }
-
-  areaRow(area, idx) {
-    const dist = this.formatDistance(
-      this.distanceMeters(area.latitude, area.longitude),
-    )
-    return `<li class="w-full"><a data-select-area="${idx}" onclick="event.stopPropagation()" class="${this.rowClass()}">
-      <span class="block truncate"><span class="badge badge-xs badge-secondary mr-1">${translate("map_info.area")}</span>${this.escape(area.name)}</span>
-      ${dist ? `<span class="block text-xs opacity-60 truncate">${this.escape(dist)}</span>` : ""}</a></li>`
   }
 
   placeKind(place) {

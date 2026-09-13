@@ -67,7 +67,6 @@ const LAYER_NAME_MAP = {
   Hexagons: "hexagonsEnabled",
   Visits: "visitsEnabled",
   Photos: "photosEnabled",
-  Areas: "areasEnabled",
   Tracks: "tracksEnabled",
   Flights: "flightsEnabled",
   "Fog of War": "fogEnabled",

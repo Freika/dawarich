@@ -32,7 +32,7 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
   context 'with an instance geocoding provider' do
     before { configure_instance_geocoding }
 
-    it 'with a query, returns forward matches within radius and merges nearby areas' do
+    it 'with a query, returns one canonical Place list without legacy Areas' do
       create(:area, user: user, name: 'Home', latitude: lat, longitude: lon, radius: 100)
       near = photon(name: 'Café Bravo', plat: lat, plon: lon)
       far  = photon(name: 'Far Café', plat: 53.5, plon: 14.5)
@@ -43,7 +43,7 @@ RSpec.describe 'Api::V1::Places::Search', type: :request do
       expect(response).to have_http_status(:success)
       json = JSON.parse(response.body)
       expect(json['places'].map { |p| p['name'] }).to eq(['Café Bravo'])
-      expect(json['areas'].map { |a| a['name'] }).to eq(['Home'])
+      expect(json).not_to have_key('areas')
     end
 
     it 'with a blank query, returns nearby reverse suggestions' do

@@ -37,8 +37,9 @@ module Api
           when 'all'       then @places
           when 'manual'    then @places.manual
           when 'confirmed' then @places.linked_to_confirmed_visits(current_api_user)
-          when 'tagged'    then @places.tagged
-          else                  @places.map_visible(current_api_user)
+          when 'unconfirmed' then @places.unconfirmed_for(current_api_user)
+          when 'tagged' then @places.tagged
+          else @places.map_visible(current_api_user)
           end
 
         # Support pagination (defaults to page 1 with all results if no page param)
@@ -153,11 +154,7 @@ module Api
                  .sort_by { |place| distance_from_query(place, lat, lon) }
                  .first(limit)
 
-        areas = Areas::Nearby.new(
-          user: current_api_user, latitude: lat, longitude: lon, radius: radius, query: query
-        ).call
-
-        render json: { places: places, areas: areas }
+        render json: { places: places }
       end
 
       private
@@ -196,7 +193,7 @@ module Api
       end
 
       def place_params
-        params.require(:place).permit(:name, :latitude, :longitude, :source, :note, tag_ids: [])
+        params.require(:place).permit(:name, :latitude, :longitude, :source, :note, :visit_radius, tag_ids: [])
       end
 
       def tag_ids
@@ -225,6 +222,7 @@ module Api
           longitude: place.lon,
           source: place.source,
           note: place.note,
+          visit_radius: place.visit_radius,
           icon: place.tags.first&.icon,
           color: place.tags.first&.color,
           visits_count: place.active_visits.size,

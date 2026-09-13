@@ -1,9 +1,11 @@
 # frozen_string_literal: true
 
 class Users::ImportData::Visits
-  def initialize(user, visits_data)
+  def initialize(user, visits_data, legacy_area_place_references: {}, legacy_area_places_by_name: {})
     @user = user
     @visits_data = visits_data
+    @legacy_area_place_references = legacy_area_place_references
+    @legacy_area_places_by_name = legacy_area_places_by_name
   end
 
   def call
@@ -44,7 +46,7 @@ class Users::ImportData::Visits
 
   private
 
-  attr_reader :user, :visits_data
+  attr_reader :user, :visits_data, :legacy_area_place_references, :legacy_area_places_by_name
 
   def find_existing_visit(visit_data)
     user.visits.find_by(
@@ -60,14 +62,26 @@ class Users::ImportData::Visits
   end
 
   def prepare_visit_attributes(visit_data)
-    attributes = visit_data.except('place_reference')
+    attributes = visit_data.except('place_reference', 'area_id')
+    legacy_area_id = visit_data['area_id']
+    attributes['location_label'] ||= visit_data['name'] if legacy_area_id.present?
 
-    if visit_data['place_reference']
-      place = find_or_create_referenced_place(visit_data['place_reference'])
+    reference = visit_data['place_reference'] || legacy_place_reference(visit_data)
+    if reference
+      place = find_or_create_referenced_place(reference)
       attributes[:place] = place if place
     end
 
     attributes
+  end
+
+  def legacy_place_reference(visit_data)
+    legacy_id = visit_data['area_id']
+    return if legacy_id.blank?
+
+    legacy_area_place_references[legacy_id.to_s] ||
+      legacy_area_places_by_name[visit_data['location_label'].presence&.strip&.downcase] ||
+      legacy_area_places_by_name[visit_data['name'].presence&.strip&.downcase]
   end
 
   def find_or_create_referenced_place(place_reference)
@@ -92,11 +106,11 @@ class Users::ImportData::Visits
       return place
     end
 
-    place = user.places.where(
-      'latitude BETWEEN ? AND ? AND longitude BETWEEN ? AND ?',
-      latitude - 0.0001, latitude + 0.0001,
-      longitude - 0.0001, longitude + 0.0001
-    ).first
+    place = user.places
+                .where('LOWER(BTRIM(name)) = ?', name.to_s.strip.downcase)
+                .near([latitude, longitude], 50, :m)
+                .order(:id)
+                .first
 
     if place
       Rails.logger.debug "Found nearby place match for visit: #{name} -> #{place.name} (ID: #{place.id})"
@@ -111,7 +125,8 @@ class Users::ImportData::Visits
         latitude: latitude,
         longitude: longitude,
         lonlat: "POINT(#{longitude} #{latitude})",
-        source: place_reference['source'] || 'manual'
+        source: place_reference['source'] || 'manual',
+        visit_radius: place_reference['visit_radius'].presence || 50
       )
 
       Rails.logger.debug "Created missing place for visit: #{place.name} (ID: #{place.id})"

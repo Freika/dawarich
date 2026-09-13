@@ -52,7 +52,7 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
       expect(Visit.where(id: imported.id)).to exist
     end
 
-    it 'clears suggested visits without enqueueing a place-cleanup job per row' do
+    it 'clears suggested visits while preserving their places' do
       place = create(:place, user: user)
       2.times do |i|
         create(:visit, user: user, status: :suggested,
@@ -61,8 +61,9 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
                        duration: 600, name: 'old').update_columns(place_id: place.id)
       end
 
-      expect { described_class.new.perform(user.id) }
-        .to have_enqueued_job(Places::DeleteIfOrphanJob).with(place.id).once
+      described_class.new.perform(user.id)
+
+      expect(Place.exists?(place.id)).to be(true)
     end
 
     it 'preserves tombstoned suggested visits so user-deleted visits are never re-suggested' do
@@ -77,8 +78,8 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
     end
   end
 
-  describe 'orphan place cleanup' do
-    it 'deletes orphaned user-owned photon places, keeps manual and global places' do
+  describe 'place durability' do
+    it 'keeps photon, manual, and other-user places' do
       photon  = create(:place, user: user, source: :photon, name: 'cafe')
       manual  = create(:place, user: user, source: :manual, name: 'home')
       global  = create(:place, user: create(:user), source: :photon, name: 'park')
@@ -96,11 +97,9 @@ RSpec.describe Visits::FullHistoryRedetectJob, type: :job do
                      ended_at: Time.zone.at(base_ts + 1700),
                      duration: 300, name: 'park')
 
-      perform_enqueued_jobs(only: Places::DeleteIfOrphanJob) do
-        described_class.new.perform(user.id)
-      end
+      described_class.new.perform(user.id)
 
-      expect(Place.where(id: photon.id)).to be_empty
+      expect(Place.where(id: photon.id)).to exist
       expect(Place.where(id: manual.id)).to exist
       expect(Place.where(id: global.id)).to exist
     end

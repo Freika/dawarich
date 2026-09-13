@@ -52,14 +52,15 @@ class Users::ExportData::Visits
   end
 
   def build_visit_hash(visit)
-    visit_hash = visit.as_json(except: %w[user_id place_id id import_id])
+    visit_hash = visit.as_json(except: %w[user_id place_id area_id id import_id])
 
     visit_hash['place_reference'] = if visit.place
                                       {
                                         'name' => visit.place.name,
                                         'latitude' => visit.place.lat.to_s,
                                         'longitude' => visit.place.lon.to_s,
-                                        'source' => visit.place.source
+                                        'source' => visit.place.source,
+                                        'visit_radius' => visit.place.visit_radius
                                       }
                                     end
 

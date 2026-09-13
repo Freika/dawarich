@@ -57,7 +57,8 @@ RSpec.describe Users::ExportData::Visits, type: :service do
                                                         'name' => 'Office Building',
             'latitude' => '40.7589',
             'longitude' => '-73.9851',
-            'source' => 'manual'
+            'source' => 'manual',
+            'visit_radius' => 50
                                                       })
         end
 

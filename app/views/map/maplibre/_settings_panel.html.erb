@@ -72,8 +72,6 @@
                      label: t('.visits'), description: t('.show_detected_area_visits') %>
           <%= render 'map/maplibre/layer_tile', target: 'placesToggle', action: 'togglePlaces', icon_name: 'map-pin',
                      label: t('.places'), description: t('.show_your_saved_places') %>
-          <%= render 'map/maplibre/layer_tile', target: 'areasToggle', action: 'toggleAreas', icon_name: 'square-dashed-mouse-pointer',
-                     label: t('.areas'), description: t('.show_defined_areas') %>
           <%= render 'map/maplibre/layer_tile', target: 'photosToggle', action: 'togglePhotos', icon_name: 'image',
                      label: t('.photos'), description: t('.show_geotagged_photos') %>
           <%= render 'map/maplibre/layer_tile', target: 'heatmapToggle', action: 'toggleHeatmap', icon_name: 'flame', pro: true,
@@ -905,14 +903,7 @@
                     data-maps--maplibre-target="selectAreaButton"
                     data-action="click->maps--maplibre#startSelectArea">
               <%= icon 'square-dashed-mouse-pointer' %>
-              <span class="text-xs"><%= t('.select_area') %></span>
-            </button>
-
-            <button type="button"
-                    class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
-                    data-action="click->maps--maplibre#startCreateArea">
-              <%= icon 'circle-plus' %>
-              <span class="text-xs"><%= t('.create_area') %></span>
+              <span class="text-xs"><%= t('.select_data_on_map') %></span>
             </button>
 
             <button type="button"

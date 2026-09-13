@@ -70,7 +70,6 @@ export class MapDataManager {
         {
           visitsGeoJSON: EMPTY_GEOJSON,
           photosGeoJSON: EMPTY_GEOJSON,
-          areasGeoJSON: EMPTY_GEOJSON,
           placesGeoJSON: EMPTY_GEOJSON,
           flightsGeoJSON: EMPTY_GEOJSON,
         },
@@ -135,7 +134,6 @@ export class MapDataManager {
         if (isCurrent() && !this._hasFittedBounds) {
           this._hasFittedBounds = this._fitToFirstAvailable([
             data.visitsGeoJSON,
-            data.areasGeoJSON,
             data.placesGeoJSON,
           ])
         }
@@ -296,7 +294,6 @@ export class MapDataManager {
   _updateLayerBySource(source, geoJSON) {
     const layerMap = {
       visits: "visits",
-      areas: "areas",
       places: "places",
       photos: "photos",
       flights: "flights",
@@ -354,7 +351,6 @@ export class MapDataManager {
       await this.layerManager.addAllLayers(
         data.visitsGeoJSON,
         data.photosGeoJSON,
-        data.areasGeoJSON,
         data.placesGeoJSON,
         data.flightsGeoJSON,
         isCurrent,
@@ -373,9 +369,6 @@ export class MapDataManager {
           this.eventHandlers,
         ),
         handlePlaceClick: this.eventHandlers.handlePlaceClick.bind(
-          this.eventHandlers,
-        ),
-        handleAreaClick: this.eventHandlers.handleAreaClick.bind(
           this.eventHandlers,
         ),
         handleAnomalyClick: this.eventHandlers.handleAnomalyClick.bind(

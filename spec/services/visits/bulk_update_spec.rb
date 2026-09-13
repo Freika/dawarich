@@ -74,12 +74,12 @@ RSpec.describe Visits::BulkUpdate do
         expect(visit3.reload.status).to eq('declined')
       end
 
-      it 'enqueues orphan-place checks for the affected places' do
+      it 'preserves places attached to declined visits' do
         place = create(:place, user: user, source: :photon)
         visit1.update!(place: place)
 
-        expect { service.call }
-          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(place.id)
+        expect { service.call }.not_to(change { Place.exists?(place.id) })
+        expect(enqueued_jobs).not_to include(job: Places::DeleteIfOrphanJob)
       end
     end
 
