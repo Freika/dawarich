@@ -16,13 +16,24 @@ class Settings::TrekSourcesController < ApplicationController
                          alert: t('settings.trek_sources.sync.source_importing')
     end
 
-    source.assign_attributes(api_key: attributes[:api_key], status: :active, last_error: nil)
+    connection_attributes = { api_key: attributes[:api_key], status: :active, last_error: nil }
+    source.assign_attributes(connection_attributes)
     unless source.valid?
       return redirect_to settings_integrations_path(service: 'trek'), alert: source.errors.full_messages.to_sentence
     end
 
     Trek::Client.new(source).trips
-    source.save!
+    if source.persisted?
+      source.reload
+      source.with_lock do
+        return source_importing_redirect if source.importing?
+
+        source.assign_attributes(connection_attributes)
+        source.save!
+      end
+    else
+      source.save!
+    end
     redirect_to select_trips_settings_trek_source_path(source), notice: t('.connected_choose_trips')
   rescue Trek::Client::Error => e
     redirect_to settings_integrations_path(service: 'trek'), alert: e.message
@@ -62,8 +73,15 @@ class Settings::TrekSourcesController < ApplicationController
       return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.select_at_least_one_active_trip')
     end
 
-    token = SecureRandom.uuid
-    @source.with_lock { @source.update!(selection_token: token, importing: true) }
+    token = nil
+    @source.with_lock do
+      next if !@source.active? || @source.importing?
+
+      token = SecureRandom.uuid
+      @source.update!(selection_token: token, importing: true)
+    end
+    return source_importing_redirect unless token
+
     Trek::ImportTripsJob.perform_later(@source.id, identifiers, token)
     redirect_to settings_integrations_path(service: 'trek'), notice: t('.trips_are_now_syncing')
   rescue Trek::Client::Error => e
@@ -82,6 +100,8 @@ class Settings::TrekSourcesController < ApplicationController
   end
 
   def destroy
+    return source_importing_redirect if @source.importing?
+
     TripSource.transaction do
       @source.trips.find_each do |trip|
         trip.update!(trip_source: nil, source_status: :stopped)

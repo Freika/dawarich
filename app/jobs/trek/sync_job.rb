@@ -10,7 +10,7 @@ module Trek
 
     def perform(source_id, after_id = nil)
       source = TripSource.active.find_by(id: source_id, provider: 'trek')
-      return unless source && !source.importing?
+      return unless source&.sync_allowed? && !source.importing?
 
       result = nil
       locked = ActiveRecord::Base.with_advisory_lock("trek-sync:#{source.id}", timeout_seconds: 0) do

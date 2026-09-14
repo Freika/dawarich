@@ -26,6 +26,10 @@ class TripSource < ApplicationRecord
     validate_integration_url!(base_url)
   end
 
+  def sync_allowed?
+    DawarichSettings.self_hosted? || user.full_access?
+  end
+
   private
 
   def normalize_base_url

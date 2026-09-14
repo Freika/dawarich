@@ -6,6 +6,8 @@ module Trek
 
     def perform
       TripSource.active.where(provider: 'trek').find_each do |source|
+        next unless source.sync_allowed?
+
         Trek::SyncJob.perform_later(source.id)
       end
     end

@@ -14,6 +14,11 @@ module Trek
       source = TripSource.active.find_by(id: source_id, provider: 'trek')
       return unless source&.selection_token == selection_token
 
+      unless source.sync_allowed?
+        source.update!(importing: false)
+        return
+      end
+
       completed = ActiveRecord::Base.with_advisory_lock("trek-sync:#{source.id}", timeout_seconds: 0) do
         source.reload
         next unless source.selection_token == selection_token && source.importing?

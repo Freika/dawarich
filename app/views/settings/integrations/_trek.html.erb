@@ -58,8 +58,10 @@
           <% elsif source.disabled? %>
             <%= link_to t('.reconnect'), '#trek-source-form', class: 'btn btn-outline btn-sm' %>
           <% end %>
-          <%= button_to t('.disconnect'), settings_trek_source_path(source), method: :delete,
-              class: 'btn btn-ghost btn-sm text-error', data: { turbo_confirm: t('.disconnect_confirmation') } %>
+          <% unless source.importing? %>
+            <%= button_to t('.disconnect'), settings_trek_source_path(source), method: :delete,
+                class: 'btn btn-ghost btn-sm text-error', data: { turbo_confirm: t('.disconnect_confirmation') } %>
+          <% end %>
         </div>
       </div>
     </div>
