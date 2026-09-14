@@ -36,4 +36,10 @@ RSpec.describe Trek::Client do
 
     expect { client.trips }.to raise_error(Trek::Client::Error, /invalid trip/)
   end
+
+  it 'rejects a JSON response whose root is not an object' do
+    stub_request(:get, 'https://trek.example.test/api/v1/trips').to_return(status: 200, body: [].to_json)
+
+    expect { client.trips }.to raise_error(Trek::Client::Error, /trip list/)
+  end
 end

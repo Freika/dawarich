@@ -172,4 +172,49 @@ RSpec.describe Trek::ImportTripsJob do
     expect(source.reload).to be_importing
     expect(source.last_error).to include('accommodation start_date is invalid')
   end
+
+  it 'keeps importing through invalid scheduled-place coordinates so Active Job can retry it' do
+    payload = {
+      title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22',
+      days: [{ date: '2030-06-14', day_number: 1, places: [{ name: 'Uffizi', lat: 'bad', lng: 11.25 }] }]
+    }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /place latitude is invalid/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('place latitude is invalid')
+  end
+
+  it 'keeps importing through invalid unplanned-place duration so Active Job can retry it' do
+    payload = {
+      title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22',
+      unplanned_places: [{ name: 'Mercato Centrale', duration_minutes: 'bad' }]
+    }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /unplanned place duration_minutes is invalid/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('unplanned place duration_minutes is invalid')
+  end
+
+  it 'keeps importing through invalid accommodation coordinates so Active Job can retry it' do
+    payload = {
+      title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22',
+      accommodations: [{ name: 'Hotel Roma', lat: 100, lng: 11.25 }]
+    }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /accommodation latitude is invalid/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('accommodation latitude is invalid')
+  end
 end

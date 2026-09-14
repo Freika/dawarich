@@ -209,7 +209,7 @@ module Trek
         day_date = validate_date!(day['date'], 'day date')
         invalid_payload!('day date falls outside the trip range') if day_date < trip_start || day_date > trip_end
         validate_integer!(day['day_number'], 'day number')
-        validate_named_collection!(day, 'places', 'place')
+        validate_places!(day, 'places', 'place')
         validate_named_collection!(day, 'day_notes', 'day note', field: 'text')
         validate_named_collection!(day, 'reservations', 'reservation', field: 'title')
         day_date.to_date
@@ -219,6 +219,7 @@ module Trek
       validate_named_collection!(payload, 'unscheduled_reservations', 'reservation', field: 'title')
       collection!(payload, 'accommodations').each do |accommodation|
         validate_required_fields!(accommodation, ['name'], 'accommodation')
+        validate_coordinates!(accommodation, 'accommodation')
         accommodation_start = validate_optional_date!(accommodation['start_date'], 'accommodation start_date')
         accommodation_end = validate_optional_date!(accommodation['end_date'], 'accommodation end_date')
         if accommodation_start && accommodation_end && accommodation_end < accommodation_start
@@ -226,7 +227,15 @@ module Trek
         end
       end
       validate_named_collection!(payload, 'travellers', 'traveller')
-      validate_named_collection!(payload, 'unplanned_places', 'unplanned place')
+      validate_places!(payload, 'unplanned_places', 'unplanned place')
+    end
+
+    def validate_places!(payload, collection_name, item_name)
+      collection!(payload, collection_name).each do |place|
+        validate_required_fields!(place, ['name'], item_name)
+        validate_coordinates!(place, item_name)
+        validate_optional_nonnegative_integer!(place['duration_minutes'], "#{item_name} duration_minutes")
+      end
     end
 
     def validate_named_collection!(payload, collection_name, item_name, field: 'name')
@@ -258,6 +267,32 @@ module Trek
 
     def validate_optional_date!(value, field)
       validate_date!(value, field) if value.present?
+    end
+
+    def validate_coordinates!(payload, object_name)
+      latitude = payload['lat']
+      longitude = payload['lng']
+      return if latitude.blank? && longitude.blank?
+
+      invalid_payload!("#{object_name} coordinates are incomplete") if latitude.blank? || longitude.blank?
+
+      validate_number_in_range!(latitude, -90..90, "#{object_name} latitude")
+      validate_number_in_range!(longitude, -180..180, "#{object_name} longitude")
+    end
+
+    def validate_optional_nonnegative_integer!(value, field)
+      return if value.blank?
+
+      invalid_payload!("#{field} is invalid") if Integer(value).negative?
+    rescue ArgumentError, TypeError
+      invalid_payload!("#{field} is invalid")
+    end
+
+    def validate_number_in_range!(value, range, field)
+      number = Float(value)
+      invalid_payload!("#{field} is invalid") unless number.finite? && range.cover?(number)
+    rescue ArgumentError, TypeError
+      invalid_payload!("#{field} is invalid")
     end
 
     def validate_integer!(value, field)

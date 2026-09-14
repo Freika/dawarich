@@ -161,6 +161,16 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
       expect(source.reload.last_error).to include('invalid trip')
     end
+
+    it 'shows a recoverable error when TREK returns a non-object JSON response' do
+      source = create(:trip_source, user: user)
+      stub_request(:get, 'https://trek.example.test/api/v1/trips').to_return(status: 200, body: [].to_json)
+
+      get select_trips_settings_trek_source_path(source)
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
+      expect(source.reload.last_error).to include('trip list')
+    end
   end
 
   describe 'POST /settings/trek_sources/:id/import_trips' do

@@ -22,6 +22,8 @@ module Trek
     def trips
       response = get('/api/v1/trips')
       payload = parse_json(response)
+      raise Error, 'TREK response does not contain a trip list' unless payload.is_a?(Hash)
+
       trips = payload['trips']
       raise Error, 'TREK response does not contain trips' unless trips.is_a?(Array)
       unless trips.all? { |trip| trip.is_a?(Hash) && trip['id'].present? }
