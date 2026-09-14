@@ -128,6 +128,30 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       expect(flash[:alert]).to include('disabled')
       expect(a_request(:get, 'https://trek.example.test/api/v1/trips')).not_to have_been_made
     end
+
+    it 'disables a source when TREK rejects its key' do
+      source = create(:trip_source, user: user)
+      stub_request(:get, 'https://trek.example.test/api/v1/trips').to_return(status: 401)
+
+      get select_trips_settings_trek_source_path(source)
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
+      expect(source.reload).to be_disabled
+      expect(source.last_error).to include('401')
+    end
+  end
+
+  describe 'POST /settings/trek_sources/:id/import_trips' do
+    it 'disables a source when TREK rejects its key while confirming the selection' do
+      source = create(:trip_source, user: user)
+      stub_request(:get, 'https://trek.example.test/api/v1/trips').to_return(status: 401)
+
+      post import_trips_settings_trek_source_path(source), params: { trip_ids: ['12'] }
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
+      expect(source.reload).to be_disabled
+      expect(source.last_error).to include('401')
+    end
   end
 
   describe 'POST /settings/trek_sources/:id/sync' do

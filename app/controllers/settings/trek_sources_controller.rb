@@ -29,6 +29,7 @@ class Settings::TrekSourcesController < ApplicationController
     @remote_trips = Trek::Client.new(@source).trips
     @selected_identifiers = @source.trips.source_active.pluck(:source_identifier)
   rescue Trek::Client::Error => e
+    Trek::Sync.new(@source).record_error!(e)
     redirect_to settings_integrations_path(service: 'trek'), alert: e.message
   end
 
@@ -58,7 +59,10 @@ class Settings::TrekSourcesController < ApplicationController
     @source.with_lock { @source.update!(selection_token: token, importing: true) }
     Trek::ImportTripsJob.perform_later(@source.id, identifiers, token)
     redirect_to settings_integrations_path(service: 'trek'), notice: t('.trips_are_now_syncing')
-  rescue Trek::Client::Error, ActiveRecord::RecordInvalid => e
+  rescue Trek::Client::Error => e
+    Trek::Sync.new(@source).record_error!(e)
+    redirect_to settings_integrations_path(service: 'trek'), alert: e.message
+  rescue ActiveRecord::RecordInvalid => e
     redirect_to select_trips_settings_trek_source_path(@source), alert: e.message
   end
 
