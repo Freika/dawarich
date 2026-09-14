@@ -84,7 +84,9 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       stub_request(:get, 'https://trek.example.test/api/v1/trips/12')
         .to_return(status: 200, body: response_payload.to_json)
 
-      post import_trips_settings_trek_source_path(source), params: { trip_ids: ['12'] }
+      perform_enqueued_jobs do
+        post import_trips_settings_trek_source_path(source), params: { trip_ids: ['12'] }
+      end
 
       expect(previous_trip.reload).to be_source_stopped
       expect(source.trips.find_by!(source_identifier: '12')).to be_source_active
@@ -101,14 +103,16 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       expect(source.trips).to be_empty
     end
 
-    it 'does not change the current selection when more than 100 trips are submitted' do
+    it 'queues every selected trip without truncating the selection' do
       source = create(:trip_source, user: user)
-      trip = create(:trip, user: user, trip_source: source, source_identifier: 'existing', source_status: :active)
+      identifiers = (1..101).map(&:to_s)
 
-      post import_trips_settings_trek_source_path(source), params: { trip_ids: (1..101).map(&:to_s) }
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_return(status: 200, body: { trips: identifiers.map { |id| { id: id, archived: false } } }.to_json)
 
-      expect(response).to redirect_to(select_trips_settings_trek_source_path(source))
-      expect(trip.reload).to be_source_active
+      expect do
+        post import_trips_settings_trek_source_path(source), params: { trip_ids: identifiers }
+      end.to have_enqueued_job(Trek::ImportTripsJob).with(source.id, identifiers, a_kind_of(String))
     end
   end
 end

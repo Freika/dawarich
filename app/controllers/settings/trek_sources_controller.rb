@@ -33,13 +33,11 @@ class Settings::TrekSourcesController < ApplicationController
   def import_trips
     identifiers = Array(params[:trip_ids]).map(&:to_s).reject(&:blank?).uniq
     if identifiers.empty?
+      @source.update!(selection_token: SecureRandom.uuid)
       @source.trips.source_active.update_all(
         source_status: Trip.source_statuses.fetch('stopped'), source_synced_at: Time.current
       )
       return redirect_to settings_integrations_path(service: 'trek'), notice: t('.no_trips_selected')
-    end
-    if identifiers.size > 100
-      return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.too_many_trips')
     end
 
     client = Trek::Client.new(@source)
@@ -50,11 +48,9 @@ class Settings::TrekSourcesController < ApplicationController
       return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.select_at_least_one_active_trip')
     end
 
-    synchronizer = Trek::Sync.new(@source, client:)
-    identifiers.each { |identifier| synchronizer.import!(identifier) }
-    @source.trips.source_active.where.not(source_identifier: identifiers).update_all(
-      source_status: Trip.source_statuses.fetch('stopped'), source_synced_at: Time.current
-    )
+    token = SecureRandom.uuid
+    @source.update!(selection_token: token)
+    Trek::ImportTripsJob.perform_later(@source.id, identifiers, token)
     redirect_to settings_integrations_path(service: 'trek'), notice: t('.trips_are_now_syncing')
   rescue Trek::Client::Error, ActiveRecord::RecordInvalid => e
     redirect_to select_trips_settings_trek_source_path(@source), alert: e.message

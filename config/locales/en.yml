@@ -1611,7 +1611,7 @@ en:
     trek_sources:
       select_trips:
         title: Choose TREK trips
-        subtitle: Only selected trips are copied into Dawarich. You can change the selection later, up to 100 trips at once.
+        subtitle: Only selected trips are copied into Dawarich. You can change the selection later.
         untitled_trip: Untitled trip
         archived: Archived
         import_selected: Import selected trips
@@ -1621,7 +1621,6 @@ en:
       import_trips:
         no_trips_selected: No TREK trips selected. Existing itineraries were kept and stopped syncing.
         select_at_least_one_active_trip: Select at least one active TREK trip.
-        too_many_trips: Select no more than 100 TREK trips at once.
         trips_are_now_syncing: Selected TREK trips are being synchronized.
       sync:
         sync_queued: TREK synchronization was queued.
