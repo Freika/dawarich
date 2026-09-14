@@ -72,7 +72,6 @@ export default class extends Controller {
     "hexagonsToggle",
     "visitsToggle",
     "photosToggle",
-    "areasToggle",
     "placesToggle",
     "fogToggle",
     "scratchToggle",
@@ -316,21 +315,6 @@ export default class extends Controller {
       document,
       "place:updated",
       this.boundHandlePlaceUpdated,
-    )
-
-    this.boundHandleAreaCreated = this.handleAreaCreated.bind(this)
-    this.cleanup.addEventListener(
-      document,
-      "area:created",
-      this.boundHandleAreaCreated,
-    )
-
-    // Re-use the same refresh path for area edits — both create and update
-    // need the areas layer rebuilt from the API.
-    this.cleanup.addEventListener(
-      document,
-      "area:updated",
-      this.boundHandleAreaCreated,
     )
 
     // Format initial dates
@@ -1355,73 +1339,6 @@ export default class extends Controller {
     return this.placesManager.startCreatePlace()
   }
 
-  // Area creation
-  startCreateArea() {
-    // Find area drawer controller on the same element
-    const drawerController =
-      this.application.getControllerForElementAndIdentifier(
-        this.element,
-        "area-drawer",
-      )
-
-    if (drawerController) {
-      drawerController.startDrawing(this.map)
-    } else {
-      Toast.error(translate("messages.area_drawer_controller_not_available"))
-    }
-  }
-
-  async handleAreaCreated(_event) {
-    try {
-      // Fetch all areas from API
-      const areas = await this.api.fetchAreas()
-
-      // Convert to GeoJSON
-      const areasGeoJSON = this.dataLoader.areasToGeoJSON(areas)
-
-      // Get or create the areas layer
-      let areasLayer = this.layerManager.getLayer("areas")
-
-      if (areasLayer) {
-        // Update existing layer
-        areasLayer.update(areasGeoJSON)
-      } else {
-        // Create the layer if it doesn't exist yet
-        console.log("[Maps V2] Creating areas layer")
-        this.layerManager._addAreasLayer(areasGeoJSON)
-        areasLayer = this.layerManager.getLayer("areas")
-        console.log(
-          "[Maps V2] Areas layer created, visible?",
-          areasLayer?.visible,
-        )
-      }
-
-      // Enable the layer if it wasn't already
-      if (areasLayer) {
-        if (!areasLayer.visible) {
-          areasLayer.show()
-          this.settings.layers.areas = true
-          this.settingsController.saveSetting("layers.areas", true)
-
-          // Update toggle state
-          if (this.hasAreasToggleTarget) {
-            this.areasToggleTarget.checked = true
-          }
-        } else {
-          console.log("[Maps V2] Areas layer already visible")
-        }
-      }
-
-      // If the area info card is open for an edited area, refresh its name
-      // in place so the side panel matches the map.
-      this.eventHandlers?.refreshActiveAreaInfo(areas)
-
-      Toast.success(translate("messages.area_created_successfully"))
-    } catch (_error) {
-      Toast.error(translate("messages.failed_to_reload_areas"))
-    }
-  }
-
   // Routes Manager methods
   togglePoints(event) {
     return this.routesManager.togglePoints(event)
@@ -1458,9 +1375,6 @@ export default class extends Controller {
     if (!this.replayPanel?.isOpen) return
     if (!event.target.checked) this._photosWasVisible = false
     this.replayPanel.refreshReplayPhotos()
-  }
-  toggleAreas(event) {
-    return this.routesManager.toggleAreas(event)
   }
   toggleTracks(event) {
     return this.routesManager.toggleTracks(event)
@@ -1848,9 +1762,6 @@ export default class extends Controller {
     const entityType = button.dataset.entityType
 
     switch (entityType) {
-      case "area":
-        this.deleteArea(id)
-        break
       case "point":
         this.deletePoint(id)
         break
@@ -1886,34 +1797,6 @@ export default class extends Controller {
       document.dispatchEvent(event)
     } catch (_error) {
       Toast.error(translate("messages.failed_to_load_visit_details"))
-    }
-  }
-
-  /**
-   * Fetch an area and dispatch `area:edit` so the area_creation_v2
-   * controller opens its modal in edit mode. Triggered from the area
-   * info card's Edit button.
-   */
-  async openAreaEditModal(event) {
-    const areaId = event.currentTarget?.dataset?.id
-    if (!areaId) return
-
-    try {
-      const response = await fetch(`/api/v1/areas/${areaId}`, {
-        headers: {
-          Authorization: `Bearer ${this.apiKeyValue}`,
-          "Content-Type": "application/json",
-        },
-      })
-      if (!response.ok) {
-        throw new Error(`Failed to fetch area: ${response.status}`)
-      }
-      const area = await response.json()
-      document.dispatchEvent(
-        new CustomEvent("area:edit", { detail: { area }, bubbles: true }),
-      )
-    } catch (_error) {
-      Toast.error(translate("messages.failed_to_load_area_details"))
     }
   }
 
@@ -2002,44 +1885,6 @@ export default class extends Controller {
         this.routesManager.reloadRoutes().catch((error) => console.error(error))
       }
       Toast.error(translate("messages.failed_to_delete_point"))
-    }
-  }
-
-  /**
-   * Delete area with confirmation
-   */
-  async deleteArea(areaId) {
-    try {
-      // Fetch area details
-      const area = await this.api.fetchArea(areaId)
-
-      // Show delete confirmation
-      const confirmed = confirm(
-        translate("areas.confirm_delete_named", { name: area.name }),
-      )
-
-      if (!confirmed) return
-
-      Toast.info(translate("messages.deleting_area"))
-
-      // Delete the area
-      await this.api.deleteArea(areaId)
-
-      // Reload areas
-      const areas = await this.api.fetchAreas()
-      const areasGeoJSON = this.dataLoader.areasToGeoJSON(areas)
-
-      const areasLayer = this.layerManager.getLayer("areas")
-      if (areasLayer) {
-        areasLayer.update(areasGeoJSON)
-      }
-
-      // Close info display
-      this.closeInfo()
-
-      Toast.success(translate("messages.area_deleted_successfully"))
-    } catch (_error) {
-      Toast.error(translate("messages.failed_to_delete_area"))
     }
   }
 

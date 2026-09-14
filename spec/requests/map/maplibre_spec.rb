@@ -7,6 +7,26 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
 
   before { sign_in user }
 
+  describe 'unified Places UI' do
+    it 'offers one Place workflow and no separate Area controls' do
+      get map_v2_path
+
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('[data-action="click->maps--maplibre#startCreatePlace"]')).to be_present
+      expect(document.at_css('[data-action="click->maps--maplibre#startCreateArea"]')).to be_nil
+      expect(document.at_css('[data-maps--maplibre-target="areasToggle"]')).to be_nil
+      expect(response.body).to include('Select data on map')
+    end
+
+    it 'renders the shared Place form with Visit Radius and Visit attachment context' do
+      get map_v2_path
+
+      document = Nokogiri::HTML(response.body)
+      expect(document.at_css('input[name="place[visit_radius]"]')).to be_present
+      expect(document.at_css('input[name="visit_id"]')).to be_present
+    end
+  end
+
   describe 'poster studio' do
     it 'renders the poster tab button' do
       get map_v2_path

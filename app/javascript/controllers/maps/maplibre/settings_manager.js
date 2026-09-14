@@ -70,7 +70,6 @@ export class SettingsController {
       hexagonsToggle: "hexagonsEnabled",
       visitsToggle: "visitsEnabled",
       photosToggle: "photosEnabled",
-      areasToggle: "areasEnabled",
       placesToggle: "placesEnabled",
       fogToggle: "fogEnabled",
       scratchToggle: "scratchEnabled",

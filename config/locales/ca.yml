@@ -1052,6 +1052,7 @@ ca:
         create_visit: Crea una visita
         create_place: Crea un lloc
         select_area: Selecciona una àrea
+        select_data_on_map: Selecciona dades al mapa
         create_area: Crea una àrea
         replay: Reproducció
         enrich_photos: Enriqueix fotos
@@ -1261,10 +1262,12 @@ ca:
       no_visits_yet: Encara no hi ha visites
       rename: Canvia el nom
       merge: Fusiona
+      select_place_to_merge: Selecciona el lloc duplicat
+      merge_confirmation: "Vols fusionar el lloc seleccionat amb \"%{survivor}\"? Les visites, etiquetes i notes s'hi traslladaran."
       notes: Notes
       save: Desa
       delete: Suprimeix
-      delete_this_place_this_cannot_be_undone: Suprimir aquest lloc? Aquesta acció no es pot desfer.
+      delete_this_place_this_cannot_be_undone: Vols suprimir aquest lloc? Les visites es conservaran sense cap lloc associat.
       manual_name_title: "Vas posar nom a aquest lloc, així que l'assignació automàtica de noms no el canviarà. Canvia'l a \"%{default_name}\" per tornar-lo a l'assignació automàtica."
       visit_count:
         one: "%{count} visita"
@@ -1273,6 +1276,9 @@ ca:
       no_nearby_places_found: No s'han trobat llocs propers
       load_more_search_up_to_distance_m: Carrega'n més (cerca fins a %{distance} m)
     index:
+      filters: Filtres de llocs
+      all_places: Tots els llocs
+      unconfirmed_places: Sense confirmar
       hello_there: Hola!
       here_you_ll_find_your_places_created_by_visits_suggestion: Aquí trobaràs els teus llocs, creats pel procés de suggeriment de visites. Però ara mateix no n'hi ha cap.
       name: Nom
@@ -1282,7 +1288,7 @@ ca:
       timeline: Línia de temps
       places: Llocs
       delete: Suprimeix
-      are_you_sure_deleting_a_place_will_result_in_deleting: Estàs segur? Suprimir un lloc eliminarà totes les visites d'aquest lloc.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Vols suprimir aquest lloc? Les visites es conservaran sense cap lloc associat.
   points:
     address:
       address: 'Adreça:'
@@ -1839,6 +1845,8 @@ ca:
     place_creation_modal:
       create_new_place: Crea un lloc nou
       place_name: Nom del lloc *
+      visit_radius: Radi de visita (metres) *
+      visit_radius_hint: Les visites amb el centre dins d’aquest radi es poden associar al lloc. Això no afecta la privadesa.
       note: Nota
       optional_add_any_notes_or_details_about_this_place: Opcional - Afegeix qualsevol nota o detall sobre aquest lloc
       tags: Etiquetes
@@ -2936,6 +2944,7 @@ ca:
             visit_not_found: Visita no trobada
           invalid_place: Lloc no vàlid
           invalid_area: Àrea no vàlida
+          conflicting_place_and_area: place_id i area_id no es poden especificar alhora
           at_least_2_visits_must_be_selected_for_merging: Cal seleccionar almenys 2 visites per fusionar-les
           one_or_more_visits_not_found: No s'ha trobat una o més visites
           count_visits_updated_successfully: "%{count} visites actualitzades correctament"
@@ -3062,6 +3071,7 @@ ca:
       place_was_successfully_destroyed: El lloc s'ha suprimit correctament.
       created: El lloc s'ha creat correctament!
       updated: El lloc s'ha actualitzat correctament!
+      merged: "S'ha fusionat \"%{duplicate}\" amb \"%{survivor}\"."
     points:
       no_points_selected: No s'ha seleccionat cap punt.
       points_were_successfully_destroyed: Els punts s'han suprimit correctament.
@@ -3255,6 +3265,7 @@ ca:
       failed_to_delete_visits: No s'han pogut suprimir les visites.
       invalid_place: Lloc no vàlid
       invalid_area: Àrea no vàlida
+      conflicting_place_and_area: El lloc i l'àrea no es poden especificar alhora
       failed_to_update_visit: No s'ha pogut actualitzar la visita.
       select_visits_to_merge: Selecciona almenys 2 visites per fusionar-les.
       visits_must_share_day: Les visites han de ser del mateix dia.
@@ -4241,6 +4252,7 @@ ca:
       place: Lloc
       points: Punts
       radius: Radi
+      visit_radius: Radi de visita
       reason: Motiu
       route_information: Informació de la ruta
       routes: Rutes

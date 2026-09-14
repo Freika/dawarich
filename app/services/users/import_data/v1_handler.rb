@@ -204,7 +204,12 @@ class Users::ImportData::V1Handler
   end
 
   def import_visits_batch(batch)
-    visits_created = Users::ImportData::Visits.new(user, batch).call.to_i
+    visits_created = Users::ImportData::Visits.new(
+      user,
+      batch,
+      legacy_area_place_references: @legacy_area_place_references || {},
+      legacy_area_places_by_name: @legacy_area_places_by_name || {}
+    ).call.to_i
     import_stats[:visits_created] += visits_created
   end
 
@@ -233,7 +238,10 @@ class Users::ImportData::V1Handler
 
   def import_areas(areas_data)
     Rails.logger.debug "Importing #{areas_data&.size || 0} areas"
-    areas_created = Users::ImportData::Areas.new(user, areas_data).call.to_i
+    importer = Users::ImportData::Areas.new(user, areas_data)
+    areas_created = importer.call.to_i
+    @legacy_area_place_references = importer.place_references_by_id
+    @legacy_area_places_by_name = importer.place_references_by_name
     import_stats[:areas_created] += areas_created
   end
 

@@ -14,9 +14,9 @@ RSpec.describe 'Places API', type: :request do
       parameter name: :tag_ids, in: :query, type: :array, items: { type: :integer }, required: false,
                 description: 'Filter places by tag IDs'
       parameter name: :filter, in: :query, type: :string, required: false,
-                enum: %w[all manual confirmed tagged],
-                description: 'Visibility filter. Defaults to manual + confirmed-visit + tagged places. ' \
-                             'Use "all" for every place (including suggested-only), or "manual"/"confirmed"/"tagged".'
+                enum: %w[all manual confirmed unconfirmed tagged],
+                description: 'Visibility filter. Defaults to user-owned/confirmed Places. ' \
+                             'Use "all" for every Place or "unconfirmed" for machine-owned suggestions.'
 
       response '200', 'places found' do
         schema type: :array,
@@ -28,6 +28,7 @@ RSpec.describe 'Places API', type: :request do
                    latitude: { type: :number, format: :float },
                    longitude: { type: :number, format: :float },
                    source: { type: :string },
+                   visit_radius: { type: :integer, minimum: 1, default: 50 },
                    icon: { type: :string, nullable: true },
                    color: { type: :string, nullable: true },
                    visits_count: { type: :integer },
@@ -76,6 +77,7 @@ RSpec.describe 'Places API', type: :request do
           latitude: { type: :number, format: :float },
           longitude: { type: :number, format: :float },
           source: { type: :string },
+          visit_radius: { type: :integer, minimum: 1, default: 50 },
           tag_ids: { type: :array, items: { type: :integer } }
         },
         required: %w[name latitude longitude]
@@ -89,6 +91,7 @@ RSpec.describe 'Places API', type: :request do
                  latitude: { type: :number, format: :float },
                  longitude: { type: :number, format: :float },
                  source: { type: :string },
+                 visit_radius: { type: :integer, minimum: 1, default: 50 },
                  icon: { type: :string, nullable: true },
                  color: { type: :string, nullable: true },
                  visits_count: { type: :integer },
@@ -103,6 +106,7 @@ RSpec.describe 'Places API', type: :request do
             latitude: 40.7589,
             longitude: -73.9851,
             source: 'manual',
+            visit_radius: 125,
             tag_ids: [tag.id]
           }
         end
@@ -110,6 +114,7 @@ RSpec.describe 'Places API', type: :request do
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['name']).to eq('Coffee Shop')
+          expect(data['visit_radius']).to eq(125)
           expect(data).to have_key('tags')
         end
       end
@@ -199,6 +204,7 @@ RSpec.describe 'Places API', type: :request do
                  latitude: { type: :number, format: :float },
                  longitude: { type: :number, format: :float },
                  source: { type: :string },
+                 visit_radius: { type: :integer, minimum: 1, default: 50 },
                  icon: { type: :string, nullable: true },
                  color: { type: :string, nullable: true },
                  visits_count: { type: :integer },
@@ -241,6 +247,7 @@ RSpec.describe 'Places API', type: :request do
           name: { type: :string },
           latitude: { type: :number, format: :float },
           longitude: { type: :number, format: :float },
+          visit_radius: { type: :integer, minimum: 1 },
           tag_ids: { type: :array, items: { type: :integer } }
         }
       }
@@ -252,16 +259,18 @@ RSpec.describe 'Places API', type: :request do
                  name: { type: :string },
                  latitude: { type: :number, format: :float },
                  longitude: { type: :number, format: :float },
+                 visit_radius: { type: :integer, minimum: 1 },
                  tags: { type: :array }
                }
 
         let(:existing_place) { create(:place, user: user) }
         let(:id) { existing_place.id }
-        let(:place) { { name: 'Updated Name' } }
+        let(:place) { { name: 'Updated Name', visit_radius: 80 } }
 
         run_test! do |response|
           data = JSON.parse(response.body)
           expect(data['name']).to eq('Updated Name')
+          expect(data['visit_radius']).to eq(80)
         end
       end
 

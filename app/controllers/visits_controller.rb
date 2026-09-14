@@ -103,11 +103,20 @@ class VisitsController < ApplicationController
     params_to_update = visit_params.to_h
     if params_to_update[:name].is_a?(String)
       stripped = params_to_update[:name].strip
-      if stripped.empty?
-        params_to_update.delete(:name)
-      else
-        params_to_update[:name] = stripped
-      end
+      params_to_update[:name] = stripped.empty? ? nil : stripped
+    end
+
+    if params_to_update[:place_id].present? && params_to_update[:area_id].present?
+      return render_unprocessable(I18n.t('controllers.visits.conflicting_place_and_area'))
+    end
+
+    if params_to_update[:area_id].present?
+      selected_area = current_user.areas.find_by(id: params_to_update[:area_id])
+      return render_unprocessable(I18n.t('controllers.visits.invalid_area')) unless selected_area
+
+      mapped_place = Places::LegacyAreaAdapter.new(user: current_user).resolve(selected_area)
+      params_to_update[:place_id] = mapped_place.id
+      params_to_update[:area_id] = nil
     end
 
     if params_to_update[:place_id].present?
@@ -115,12 +124,8 @@ class VisitsController < ApplicationController
       allowed = current_user.places.where(id: raw_place_id).exists? ||
                 @visit.suggested_places.where(id: raw_place_id).exists?
       return render_unprocessable(I18n.t('controllers.visits.invalid_place')) unless allowed
-    end
 
-    selected_area = nil
-    if params_to_update[:area_id].present?
-      selected_area = current_user.areas.find_by(id: params_to_update[:area_id])
-      return render_unprocessable(I18n.t('controllers.visits.invalid_area')) unless selected_area
+      params_to_update[:area_id] = nil
     end
 
     # Capture both old and new month so cache busts cover edits that move
@@ -132,9 +137,7 @@ class VisitsController < ApplicationController
     end
 
     if params_to_update[:place_id].present?
-      update_visit_name_from_place(params_to_update[:place_id])
-    elsif selected_area
-      @visit.name = selected_area.name if selected_area.name.present?
+      update_visit_label_from_place(params_to_update[:place_id])
     elsif confirming_suggested_visit?(params_to_update)
       # Only auto-pick from the visit's first suggested place when the
       # user did NOT explicitly select one — otherwise we'd overwrite the
@@ -298,10 +301,10 @@ class VisitsController < ApplicationController
     "/map/v2?#{params.to_query}"
   end
 
-  def update_visit_name_from_place(place_id)
+  def update_visit_label_from_place(place_id)
     place = current_user.places.find_by(id: place_id) ||
             @visit.suggested_places.find_by(id: place_id)
-    @visit.name = place.name if place && place.name.present?
+    @visit.location_label = place.name if place && place.name.present?
   end
 
   def confirming_suggested_visit?(params_to_update = visit_params)
@@ -310,7 +313,7 @@ class VisitsController < ApplicationController
 
   def auto_name_on_confirm
     place = @visit.place || @visit.suggested_places.first
-    @visit.name = place.name if place&.name.present?
+    @visit.location_label = place.name if place&.name.present?
   end
 
   def visit_params
