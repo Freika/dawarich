@@ -68,7 +68,8 @@ module Integrations
     end
 
     def trek_status
-      source = user.trip_sources.where(provider: 'trek').order(updated_at: :desc).first
+      source = user.trip_sources.active.where(provider: 'trek').first ||
+               user.trip_sources.where(provider: 'trek').order(updated_at: :desc).first
       return unless source
 
       source.active? ? :connected : :failed
