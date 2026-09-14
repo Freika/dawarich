@@ -118,6 +118,18 @@ RSpec.describe 'Settings::TrekSources', type: :request do
     end
   end
 
+  describe 'GET /settings/trek_sources/:id/select_trips' do
+    it 'does not let a disabled source load its remote trip list' do
+      source = create(:trip_source, user: user, status: :disabled)
+
+      get select_trips_settings_trek_source_path(source)
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
+      expect(flash[:alert]).to include('disabled')
+      expect(a_request(:get, 'https://trek.example.test/api/v1/trips')).not_to have_been_made
+    end
+  end
+
   describe 'POST /settings/trek_sources/:id/sync' do
     it 'does not queue a sync for a disabled source' do
       source = create(:trip_source, user: user, status: :disabled)

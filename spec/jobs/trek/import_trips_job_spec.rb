@@ -34,4 +34,38 @@ RSpec.describe Trek::ImportTripsJob do
 
     expect(a_request(:get, 'https://trek.example.test/api/v1/trips/12')).not_to have_been_made
   end
+
+  it 'keeps importing through a transient detail error so a retry can finish the import' do
+    payload = {
+      id: 12, title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22',
+      days: [], unplanned_places: [], unscheduled_reservations: [], accommodations: [], travellers: []
+    }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(
+      { status: 429 }, { status: 200, body: payload.to_json }
+    )
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /429/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('429')
+
+    described_class.new.perform(source.id, ['12'], 'current-selection')
+
+    expect(source.reload).not_to be_importing
+    expect(source.trips.find_by!(source_identifier: '12')).to be_source_active
+  end
+
+  it 'disables the source and stops importing when TREK rejects its key during detail import' do
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 401)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /401/)
+
+    expect(source.reload).to be_disabled
+    expect(source).not_to be_importing
+    expect(source.last_error).to include('401')
+  end
 end

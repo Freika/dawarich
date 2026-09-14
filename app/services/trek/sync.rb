@@ -71,6 +71,13 @@ module Trek
       [trip, created, changed]
     end
 
+    # ImportTripsJob fetches details in rate-limited batches, so it cannot use
+    # #import!'s rescue block. Keep its source errors consistent with the
+    # regular synchronizer nevertheless.
+    def record_error!(error)
+      handle_error!(error)
+    end
+
     private
 
     def synchronize!(trip, payload)

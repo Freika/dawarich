@@ -52,9 +52,11 @@
           <span class="badge <%= source.active? ? 'badge-success' : 'badge-warning' %>"><%= source.status %></span>
         </div>
         <div class="flex flex-wrap gap-2">
-          <%= link_to t('.choose_trips'), select_trips_settings_trek_source_path(source), class: 'btn btn-primary btn-sm' %>
           <% if source.active? && !source.importing? %>
+            <%= link_to t('.choose_trips'), select_trips_settings_trek_source_path(source), class: 'btn btn-primary btn-sm' %>
             <%= button_to t('.sync_now'), sync_settings_trek_source_path(source), method: :post, class: 'btn btn-outline btn-sm' %>
+          <% elsif source.active? %>
+            <%= link_to t('.choose_trips'), select_trips_settings_trek_source_path(source), class: 'btn btn-primary btn-sm' %>
           <% elsif source.disabled? %>
             <%= link_to t('.reconnect'), '#trek-source-form', class: 'btn btn-outline btn-sm' %>
           <% end %>

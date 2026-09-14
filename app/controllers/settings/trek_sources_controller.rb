@@ -24,6 +24,8 @@ class Settings::TrekSourcesController < ApplicationController
   end
 
   def select_trips
+    return source_disabled_redirect unless @source.active?
+
     @remote_trips = Trek::Client.new(@source).trips
     @selected_identifiers = @source.trips.source_active.pluck(:source_identifier)
   rescue Trek::Client::Error => e
@@ -31,6 +33,8 @@ class Settings::TrekSourcesController < ApplicationController
   end
 
   def import_trips
+    return source_disabled_redirect unless @source.active?
+
     identifiers = Array(params[:trip_ids]).map(&:to_s).reject(&:blank?).uniq
     if identifiers.empty?
       @source.with_lock do
@@ -84,5 +88,9 @@ class Settings::TrekSourcesController < ApplicationController
 
   def source_params
     params.require(:trip_source).permit(:base_url, :api_key)
+  end
+
+  def source_disabled_redirect
+    redirect_to settings_integrations_path(service: 'trek'), alert: t('settings.trek_sources.sync.source_disabled')
   end
 end

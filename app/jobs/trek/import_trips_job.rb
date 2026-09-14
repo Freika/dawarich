@@ -6,7 +6,9 @@ module Trek
 
     BATCH_SIZE = 100
 
-    retry_on Trek::Client::Error, wait: :polynomially_longer, attempts: 5
+    retry_on Trek::Client::Error, wait: :polynomially_longer, attempts: 5 do |job, error|
+      job.finish_failed_import(error)
+    end
 
     def perform(source_id, identifiers, selection_token, offset = 0)
       source = TripSource.active.find_by(id: source_id, provider: 'trek')
@@ -51,9 +53,27 @@ module Trek
           end
         end
       end
-    rescue Trek::Client::Error
-      source.update!(importing: false) if source&.selection_token == selection_token
+    rescue Trek::Client::Error => e
+      Trek::Sync.new(source).record_error!(e) if source
+      finish_unauthorized_import(source) if e.status == 401
       raise
+    end
+
+    def finish_failed_import(error)
+      source_id, _identifiers, selection_token = arguments
+      source = TripSource.find_by(id: source_id, provider: 'trek')
+      return unless source
+
+      Trek::Sync.new(source).record_error!(error)
+      source.with_lock do
+        source.update!(importing: false) if source.selection_token == selection_token
+      end
+    end
+
+    private
+
+    def finish_unauthorized_import(source)
+      source.with_lock { source.update!(importing: false) }
     end
   end
 end
