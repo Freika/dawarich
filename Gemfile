@@ -9,9 +9,9 @@ gem 'activerecord-postgis-adapter', '11.1.1'
 # https://meta.discourse.org/t/cant-rebuild-due-to-aws-sdk-gem-bump-and-new-aws-data-integrity-protections/354217/40
 gem 'addressable', '>= 2.9.0'
 gem 'apple_id', '~> 1.2'
-gem 'aws-sdk-core', '~> 3.254', require: false
-gem 'aws-sdk-kms', '~> 1.130', require: false
-gem 'aws-sdk-s3', '~> 1.229', require: false
+gem 'aws-sdk-core', '~> 3.255', require: false
+gem 'aws-sdk-kms', '~> 1.131', require: false
+gem 'aws-sdk-s3', '~> 1.231', require: false
 gem 'bcrypt', '>= 3.1.22'
 gem 'bootsnap', require: false
 gem 'chartkick'
