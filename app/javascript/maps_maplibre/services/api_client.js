@@ -913,6 +913,60 @@ export class ApiClient {
     return pageResults.flatMap((r) => r.points)
   }
 
+  async movePointPosition(
+    pointId,
+    { latitude, longitude, pointRevision, trackRevision, historyScope },
+  ) {
+    const response = await fetch(`${this.baseURL}/points/${pointId}/position`, {
+      method: "PATCH",
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        point: {
+          latitude: String(latitude),
+          longitude: String(longitude),
+          revision: pointRevision,
+        },
+        track_revision: trackRevision,
+        history_scope: {
+          start_at: historyScope.startAt,
+          end_at: historyScope.endAt,
+          import_id: this.importId,
+        },
+      }),
+    })
+    const payload = await response.json()
+
+    if (!response.ok) {
+      const error = new Error(
+        payload?.error?.message || `Point move failed (${response.status})`,
+      )
+      error.status = response.status
+      error.payload = payload
+      throw error
+    }
+
+    return payload
+  }
+
+  async fetchVisitedCountries({ start_at, end_at }) {
+    const params = new URLSearchParams({ start_at, end_at })
+    if (this.importId) params.set("import_id", this.importId)
+
+    const response = await fetch(
+      `${this.baseURL}/countries/visited?${params}`,
+      {
+        headers: this.getHeaders(),
+      },
+    )
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch visited countries: ${response.statusText}`,
+      )
+    }
+
+    return response.json()
+  }
+
   /**
    * Fetch timeline day feed for date range
    * @param {Object} options - { start_at, end_at }
