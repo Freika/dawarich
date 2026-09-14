@@ -16,6 +16,7 @@ class Settings::IntegrationsController < ApplicationController
     @statuses = Integrations::Status.for(current_user)
 
     prepare_geocoding if @service == 'geocoding'
+    @trek_sources = current_user.trip_sources.where(provider: 'trek').order(:created_at) if @service == 'trek'
   end
 
   def update

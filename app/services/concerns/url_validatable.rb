@@ -59,6 +59,10 @@ module UrlValidatable
   private
 
   def validate_integration_url!(url)
+    resolve_integration_url!(url)
+  end
+
+  def resolve_integration_url!(url)
     return if url.blank?
 
     uri = URI.parse(url)
@@ -79,6 +83,7 @@ module UrlValidatable
       Rails.logger.warn("Integration URL #{uri.host} resolves to blocked address #{ip}")
       raise BlockedUrlError, I18n.t('services.concerns.url_validatable.blocked_address')
     end
+    ip.to_s
   rescue URI::InvalidURIError
     raise BlockedUrlError, I18n.t('services.concerns.url_validatable.invalid_format')
   rescue Resolv::ResolvError

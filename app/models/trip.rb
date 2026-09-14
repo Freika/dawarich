@@ -11,17 +11,31 @@ class Trip < ApplicationRecord
   has_rich_text :description
 
   belongs_to :user
+  belongs_to :trip_source, optional: true
   has_many :shared_links, -> { where(resource_type: SharedLink.resource_types[:trip]) },
            foreign_key: :resource_id, inverse_of: false, dependent: :destroy
+  has_many :planned_days, -> { order(:date) }, dependent: :destroy, inverse_of: :trip
+  has_many :planned_reservations, dependent: :destroy
+  has_many :planned_accommodations, dependent: :destroy
+  has_many :planned_travellers, dependent: :destroy
+  has_many :planned_unplanned_places, -> { order(:position) }, dependent: :destroy, inverse_of: :trip
+
+  enum :source_status, { active: 0, stopped: 1 }, prefix: :source
 
   validates :name, :started_at, :ended_at, presence: true
   validate :started_at_before_ended_at
 
-  after_create :enqueue_calculation_jobs, unless: :demo?
+  attr_accessor :skip_calculation_enqueue
+
+  after_create :enqueue_calculation_jobs, if: :should_enqueue_calculation_jobs?
   after_update :enqueue_calculation_jobs, if: :should_recalculate_after_update?
 
   def enqueue_calculation_jobs
     Trips::CalculateAllJob.perform_later(id, user.safe_settings.distance_unit)
+  end
+
+  def source_imported?
+    source_identifier.present?
   end
 
   def recalculating?
@@ -58,9 +72,13 @@ class Trip < ApplicationRecord
   private
 
   def should_recalculate_after_update?
-    return false if demo?
+    return false if demo? || skip_calculation_enqueue
 
     saved_change_to_started_at? || saved_change_to_ended_at?
+  end
+
+  def should_enqueue_calculation_jobs?
+    !demo? && !skip_calculation_enqueue
   end
 
   def photos
