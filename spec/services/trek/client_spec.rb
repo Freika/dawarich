@@ -19,6 +19,8 @@ RSpec.describe Trek::Client do
       .with(headers: { 'Authorization' => 'Bearer trek_test_key', 'Accept' => 'application/json' })
       .to_return(status: 200, body: { trips: [{ id: 12, title: 'Tuscany' }] }.to_json)
 
+    expect(Net::HTTP).to receive(:new).with('trek.example.test', 443, nil).and_call_original
+
     expect(client.trips).to eq([{ 'id' => 12, 'title' => 'Tuscany' }])
     expect(source).to have_received(:resolved_base_url_ip!)
   end

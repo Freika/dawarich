@@ -55,7 +55,7 @@ module Trek
     def get(path)
       uri = URI.parse("#{@source.base_url}#{path}")
       ip_address = @source.resolved_base_url_ip!
-      http = Net::HTTP.new(uri.host, uri.port)
+      http = Net::HTTP.new(uri.host, uri.port, nil)
       http.ipaddr = ip_address
       http.use_ssl = uri.scheme == 'https'
       http.open_timeout = TIMEOUT
