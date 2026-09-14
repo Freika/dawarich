@@ -22,11 +22,9 @@ module Visits
     attr_reader :user, :start_at, :end_at
 
     def parse_time(time_string)
-      parsed_time = Time.zone.parse(time_string)
-
-      raise ArgumentError, "Invalid time format: #{time_string}" if parsed_time.nil?
-
-      parsed_time
+      Time.zone.parse(time_string) || raise(Visits::InvalidTimeRange)
+    rescue ArgumentError, TypeError
+      raise Visits::InvalidTimeRange
     end
   end
 end

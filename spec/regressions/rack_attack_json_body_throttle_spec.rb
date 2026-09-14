@@ -305,6 +305,20 @@ RSpec.describe 'Rack Attack JSON body throttle parsing' do
       expect(throttle.matched_by?(json_sign_in_request(body))).to be(true)
     end
 
+    it 'does not raise when the JSON sign-in user field is not an object' do
+      body = { user: 'victim@example.com' }.to_json
+
+      expect(throttle.matched_by?(json_sign_in_request(body))).to be(false)
+    end
+
+    it 'counts a non-string JSON sign-in email against the per-email bucket' do
+      body = { user: { email: 12_345, password: 'wrong' } }.to_json
+
+      throttle.limit.times { expect(throttle.matched_by?(json_sign_in_request(body))).to be(false) }
+
+      expect(throttle.matched_by?(json_sign_in_request(body))).to be(true)
+    end
+
     it 'is evaluated after the per-IP throttle so a flooding IP never gets its body parsed' do
       names = Rack::Attack.throttles.keys
       expect(names.index('logins/ip')).to be < names.index('logins/email')

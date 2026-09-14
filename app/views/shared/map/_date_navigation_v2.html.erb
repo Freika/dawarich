@@ -1,5 +1,8 @@
 <!-- Date Navigation Controls - Native Page Element -->
-<div class="w-full px-4 bg-base-100 border-b border-base-300" data-controller="map-controls">
+<div class="w-full px-4 bg-base-100 border-b border-base-300"
+     data-controller="map-controls"
+     data-map-controls-locale-value="<%= I18n.locale %>"
+     data-map-controls-timezone-value="<%= current_user.timezone_iana %>">
   <!-- Mobile: Compact Toggle Button -->
   <div class="lg:hidden flex justify-center">
     <button
@@ -9,7 +12,7 @@
       <span data-map-controls-target="toggleIcon">
         <%= icon 'chevron-down' %>
       </span>
-      <span class="ml-2"><%= human_date(start_at) %></span>
+      <span class="ml-2" data-map-controls-target="mobileLabel"><%= human_date(start_at) %></span>
     </button>
   </div>
 
@@ -30,10 +33,10 @@
           <% end %>
         </div>
         <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="<%= t('.start_date_and_time') %>">
-          <%= f.datetime_local_field :start_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: start_at %>
+          <%= f.datetime_local_field :start_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: start_at, data: { map_controls_target: "start" } %>
         </div>
         <div class="w-full lg:w-2/12 tooltip tooltip-bottom" data-tip="<%= t('.end_date_and_time') %>">
-          <%= f.datetime_local_field :end_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: end_at %>
+          <%= f.datetime_local_field :end_at, include_seconds: false, max: "9999-12-31T23:59", class: "input input-sm input-bordered hover:cursor-pointer hover:input-primary w-full", value: end_at, data: { map_controls_target: "end" } %>
         </div>
         <div class="w-full lg:w-1/12 tooltip tooltip-bottom" data-tip="<%= human_date(start_at + 1.day) %>">
           <%= link_to map_v2_path(start_at: (start_at + 1.day).iso8601, end_at: (end_at + 1.day).iso8601, import_id: params[:import_id], panel: params[:panel]), class: "btn btn-sm border border-base-300 hover:btn-ghost w-full" do %>

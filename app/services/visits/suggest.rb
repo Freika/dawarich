@@ -17,7 +17,6 @@ class Visits::Suggest
     fresh = visits.reject { |visit| covered_by_known?(visit, known) }
     return visits if fresh.empty?
 
-    create_visits_notification(user)
     if Geocoding::Config.for(user).enabled?
       fresh.filter_map(&:place_id).uniq.each do |place_id|
         ReverseGeocodingJob.perform_later('place', place_id)
@@ -78,22 +77,5 @@ class Visits::Suggest
   rescue StandardError => e
     Rails.logger.warn("[Visits::Suggest] error-notification dedupe unavailable: #{e.class}: #{e.message}")
     true
-  end
-
-  def create_visits_notification(user)
-    I18n.with_locale(user.locale) do
-      user.notifications.create!(
-        kind: :info,
-        title: I18n.t('services.visits.suggest.new_visits_suggested'),
-        content: I18n.t(
-          'services.visits.suggest.new_visits_suggested_message',
-          start_at: Time.zone.at(start_at), end_at: Time.zone.at(end_at), url: timeline_path
-        )
-      )
-    end
-  end
-
-  def timeline_path
-    "#{Rails.application.routes.url_helpers.map_v2_path}?panel=timeline&date=today&status=suggested"
   end
 end

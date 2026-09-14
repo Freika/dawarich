@@ -6,6 +6,7 @@
           class="btn btn-xs join-item gap-1 <%= current == :poster ? 'btn-active' : 'btn-ghost' %>"
           <%= 'aria-current="true"'.html_safe if current == :poster %>
           data-action="<%= current == :poster ? '' : "#{controller_name}#switchToPoster" %>"
+          <%= "data-#{controller_name}-target=\"switchButton\"".html_safe if current == :video %>
           data-testid="studio-switch-poster">
     <%= icon 'image', class: 'h-3.5 w-3.5' %>
     <span class="hidden sm:inline"><%= t('shared.studio_switcher.poster') %></span>
@@ -14,6 +15,7 @@
           class="btn btn-xs join-item gap-1 <%= current == :video ? 'btn-active' : 'btn-ghost' %>"
           <%= 'aria-current="true"'.html_safe if current == :video %>
           data-action="<%= current == :video ? '' : "#{controller_name}#switchToVideo" %>"
+          <%= "data-#{controller_name}-target=\"switchButton\"".html_safe if current == :poster %>
           data-testid="studio-switch-video">
     <%= icon 'video', class: 'h-3.5 w-3.5' %>
     <span class="hidden sm:inline"><%= t('shared.studio_switcher.video') %></span>

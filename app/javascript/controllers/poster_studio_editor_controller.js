@@ -105,6 +105,7 @@ export default class extends Controller {
     "loadButton",
     "loadSpinner",
     "loadLabel",
+    "switchButton",
     "orderSection",
     "orderCta",
     "orderButton",
@@ -188,6 +189,7 @@ export default class extends Controller {
   // Alternate view of the same track and date range; carry the provider so a
   // trip-locked studio stays locked to that trip.
   switchToVideo() {
+    if (this.rangeLoading) return
     const provider = this.provider
     this.close()
     document.dispatchEvent(
@@ -533,12 +535,15 @@ export default class extends Controller {
   }
 
   setLoadBusy(value) {
-    if (!this.hasLoadButtonTarget) return
-    this.loadButtonTarget.disabled = value
-    this.loadSpinnerTarget.classList.toggle("hidden", !value)
-    this.loadLabelTarget.textContent = translate(
-      value ? "poster.loading" : "poster.load",
-    )
+    this.rangeLoading = value
+    if (this.hasLoadButtonTarget) {
+      this.loadButtonTarget.disabled = value
+      this.loadSpinnerTarget.classList.toggle("hidden", !value)
+      this.loadLabelTarget.textContent = translate(
+        value ? "poster.loading" : "poster.load",
+      )
+    }
+    if (this.hasSwitchButtonTarget) this.switchButtonTarget.disabled = value
   }
 
   presetRange(event) {

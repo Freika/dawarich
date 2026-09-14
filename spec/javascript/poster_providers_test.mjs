@@ -67,6 +67,7 @@ test("MapPageProvider reads layers and dates from the maps controller", (t) => {
     layerManager: { getLayer: (name) => layers[name] },
     startDateValue: "2026-01-01T00:00",
     endDateValue: "2026-01-31T23:59",
+    timezoneValue: "Europe/Berlin",
   }
   const originalDocument = globalThis.document
   globalThis.document = { getElementById: () => ({}) }
@@ -84,6 +85,7 @@ test("MapPageProvider reads layers and dates from the maps controller", (t) => {
     endAt: "2026-01-31T23:59",
   })
   assert.equal(provider.defaultTitle(), "")
+  assert.equal(provider.timeZone(), "Europe/Berlin")
   assert.equal(provider.supportsDateNavigation, true)
 
   layers.routes.data.features.push(lineString([[1, 1]]))
