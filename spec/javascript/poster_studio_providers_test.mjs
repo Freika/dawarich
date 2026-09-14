@@ -16,14 +16,21 @@ const source = await readFile(
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
 const { MapPageProvider, TripProvider } = await import(moduleUrl)
 
-// Mirrors the real controller: ensurePointsLoaded() is what builds the routes
-// GeoJSON and fills the routes layer, so the track is only readable after it.
+// Mirrors the real controller: poster/video generation is an explicit bounded
+// consumer which loads exact points and canonical tracks on demand.
 function fakeMapPage() {
   const controller = {
-    loads: 0,
+    pointLoads: 0,
+    trackLoads: 0,
     mapDataManager: {
       async ensurePointsLoaded() {
-        controller.loads += 1
+        controller.pointLoads += 1
+      },
+    },
+    api: {
+      async fetchTracks() {
+        controller.trackLoads += 1
+        return { type: "FeatureCollection", features: [] }
       },
     },
     _getLoadedPoints: () => [{ latitude: "51.3402", longitude: "12.3712" }],
@@ -34,12 +41,13 @@ function fakeMapPage() {
   return { controller, provider: new MapPageProvider({ application }) }
 }
 
-test("forces the map's lazy point load so the track becomes readable", async () => {
+test("loads exact points and canonical tracks for the studio", async () => {
   const { controller, provider } = fakeMapPage()
 
   await provider.ensureTrackLoaded()
 
-  assert.equal(controller.loads, 1)
+  assert.equal(controller.pointLoads, 1)
+  assert.equal(controller.trackLoads, 1)
 })
 
 test("points still resolve through the same lazy load", async () => {
@@ -47,7 +55,8 @@ test("points still resolve through the same lazy load", async () => {
 
   const points = await provider.points()
 
-  assert.equal(controller.loads, 1)
+  assert.equal(controller.pointLoads, 1)
+  assert.equal(controller.trackLoads, 1)
   assert.equal(points.length, 1)
 })
 

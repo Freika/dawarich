@@ -23,16 +23,10 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.config).to eq(
           {
             fog_of_war_meters: 50,
-            meters_between_routes: 500,
             preferred_map_layer: 'OpenStreetMap',
-            speed_colored_routes: false,
-            points_rendering_mode: 'raw',
-            minutes_between_routes: 30,
             time_threshold_minutes: 30,
             merge_threshold_minutes: 15,
             live_map_enabled: true,
-            route_opacity: 0.6,
-            route_color: '#0000ff',
             track_color: '#6366F1',
             immich_url: nil,
             immich_api_key: nil,
@@ -43,9 +37,8 @@ RSpec.describe Users::SafeSettings do
             maps: { 'distance_unit' => 'km' },
             distance_unit: 'km',
             visits_suggestions_enabled: true,
-            speed_color_scale: nil,
             fog_of_war_threshold: 50,
-          fog_of_war_mode: 'points',
+            fog_of_war_mode: 'points',
             enabled_map_layers: %w[Tracks Heatmap],
             places_tag_filters: nil,
             maps_maplibre_style: 'light',
@@ -69,8 +62,7 @@ RSpec.describe Users::SafeSettings do
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            point_dragging_enabled: false,
-            points_tiled_rendering: false
+            point_dragging_enabled: false
           }
         )
       end
@@ -164,7 +156,7 @@ RSpec.describe Users::SafeSettings do
             'visit_min_points' => 3,
             'visit_min_duration_minutes' => 5,
             'point_dragging_enabled' => false,
-            'points_tiled_rendering' => false
+            'points_tiled_rendering' => true
           }
         )
       end
@@ -173,17 +165,11 @@ RSpec.describe Users::SafeSettings do
         expect(safe_settings.config).to eq(
           {
             fog_of_war_meters: 100,
-            meters_between_routes: 1000,
             preferred_map_layer: 'Satellite',
-            speed_colored_routes: true,
-            points_rendering_mode: 'simplified',
-            minutes_between_routes: 60,
             time_threshold_minutes: 45,
             merge_threshold_minutes: 20,
             live_map_enabled: false,
-            route_opacity: 80,
-            route_color: '#0000ff',
-            track_color: '#6366F1',
+            track_color: '#0000ff',
             immich_url: 'https://immich.example.com',
             immich_api_key: 'immich-key',
             photoprism_url: 'https://photoprism.example.com',
@@ -193,10 +179,9 @@ RSpec.describe Users::SafeSettings do
             maps: { 'distance_unit' => 'km', 'name' => 'custom', 'url' => 'https://custom.example.com' },
             distance_unit: 'km',
             visits_suggestions_enabled: false,
-            speed_color_scale: nil,
             fog_of_war_threshold: 50,
-          fog_of_war_mode: 'points',
-            enabled_map_layers: %w[Points Routes Areas Photos],
+            fog_of_war_mode: 'points',
+            enabled_map_layers: %w[Points Areas Photos Tracks],
             places_tag_filters: nil,
             maps_maplibre_style: 'light',
             maps_maplibre_tiles_url: nil,
@@ -219,8 +204,7 @@ RSpec.describe Users::SafeSettings do
             visit_radius_meters: 100,
             visit_min_points: 3,
             visit_min_duration_minutes: 5,
-            point_dragging_enabled: false,
-            points_tiled_rendering: false
+            point_dragging_enabled: false
           }
         )
       end
@@ -767,32 +751,10 @@ RSpec.describe Users::SafeSettings do
   end
 
   describe '#points_tiled_rendering?' do
-    it 'returns false when missing' do
-      expect(described_class.new({}).points_tiled_rendering?).to be false
-    end
-
-    it 'returns false when explicitly nil' do
-      expect(described_class.new({ 'points_tiled_rendering' => nil }).points_tiled_rendering?).to be false
-    end
-
-    it 'returns true for true' do
-      expect(described_class.new({ 'points_tiled_rendering' => true }).points_tiled_rendering?).to be true
-    end
-
-    it 'returns true for "1"' do
-      expect(described_class.new({ 'points_tiled_rendering' => '1' }).points_tiled_rendering?).to be true
-    end
-
-    it 'returns false for "0"' do
-      expect(described_class.new({ 'points_tiled_rendering' => '0' }).points_tiled_rendering?).to be false
-    end
-
-    it 'returns false for "false"' do
-      expect(described_class.new({ 'points_tiled_rendering' => 'false' }).points_tiled_rendering?).to be false
-    end
-
-    it 'is included in #config' do
-      expect(described_class.new({}).config).to include(points_tiled_rendering: false)
+    it 'is always enabled internally but omitted from the returned config' do
+      expect(described_class.new({ 'points_tiled_rendering' => false }).points_tiled_rendering?).to be true
+      expect(described_class.new({}).points_tiled_rendering?).to be true
+      expect(described_class.new({}).config).not_to have_key(:points_tiled_rendering)
     end
   end
 
@@ -913,7 +875,7 @@ RSpec.describe Users::SafeSettings do
     it 'is included in config' do
       config = described_class.new.config
 
-      expect(config[:route_color]).to eq('#0000ff')
+      expect(config).not_to have_key(:route_color)
       expect(config[:track_color]).to eq('#6366F1')
     end
   end

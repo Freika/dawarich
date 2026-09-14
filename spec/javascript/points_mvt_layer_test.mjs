@@ -151,6 +151,13 @@ test("tile URLs carry a stable non-secret per-user cache partitioner", () => {
   assert.notEqual(partitioner(layerA), partitioner(layerB))
 })
 
+test("tile URLs preserve the selected import scope", () => {
+  const layer = new PointsMvtLayer(fakeMap(), { importId: "42" })
+  const params = new URLSearchParams(layer._buildTileUrl().split("?")[1])
+
+  assert.equal(params.get("import_id"), "42")
+})
+
 test("tiled heatmap weight scales with count: log-monotonic, classic at count 1", () => {
   const layer = new PointsMvtLayer(fakeMap(), {})
   const heatmapConfig = layer
@@ -170,7 +177,7 @@ test("tiled heatmap weight scales with count: log-monotonic, classic at count 1"
   assert.ok(at(5000) <= 1, "weight must stay clamped at 1")
 })
 
-test("circle stroke follows the basemap marker theme like the classic layer", () => {
+test("circle stroke follows the basemap marker theme", () => {
   const stroke = (styleName) =>
     new PointsMvtLayer(fakeMap(), { styleName })
       .getLayerConfigs()
@@ -200,22 +207,22 @@ test("update() to a new range re-adds sub-layers at their original z-position", 
   const map = fakeMap(["visits"])
   const layer = new PointsMvtLayer(map, { startAt: "a", endAt: "b" })
   layer.add({ startAt: "a", endAt: "b" })
-  // Real production ids stacked ABOVE points-mvt in layer_manager order
-  map.layers.push("points", "routes-hit", "recent-point")
+  // Representative production ids stacked above points-mvt.
+  map.layers.push("focused-overlay", "selection-hit", "recent-point")
 
   map.addLayerCalls.length = 0
   layer.update({ startAt: "c", endAt: "d" })
 
   assert.deepEqual(
     map.addLayerCalls.map((call) => call.beforeId),
-    ["points", "points"],
+    ["focused-overlay", "focused-overlay"],
   )
   assert.deepEqual(map.layers, [
     "visits",
     "points-mvt-heatmap",
     "points-mvt",
-    "points",
-    "routes-hit",
+    "focused-overlay",
+    "selection-hit",
     "recent-point",
   ])
 })
@@ -275,7 +282,7 @@ test("refresh() preserves z-position too", () => {
   )
 })
 
-test("shared heatmapPaint stays byte-identical for the classic layer", () => {
+test("shared heatmapPaint retains its established defaults", () => {
   assert.deepEqual(heatmapPaint(0.6), {
     "heatmap-weight": 0.2,
     "heatmap-intensity": [

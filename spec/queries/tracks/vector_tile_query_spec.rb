@@ -161,7 +161,7 @@ RSpec.describe Tracks::VectorTileQuery do
         serialized[:features].first[:properties].keys.map(&:to_s) -
         %w[mode_timeline segments]
 
-      expect(row.keys).to match_array(serializer_scalar_keys + ['geom'])
+      expect(row.keys).to match_array(serializer_scalar_keys + %w[start_timestamp end_timestamp geom])
       expect(row['start_at']).to match(/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
       expect(row['color']).to eq(Tracks::GeojsonSerializer::DEFAULT_COLOR)
       expect(row['dominant_mode']).to eq('driving')

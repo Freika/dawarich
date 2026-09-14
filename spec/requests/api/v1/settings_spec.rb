@@ -12,6 +12,9 @@ RSpec.describe 'Api::V1::Settings', type: :request do
 
       expect(response).to have_http_status(:success)
       expect(response.parsed_body['settings']['timezone']).to eq('UTC')
+      expect(response.parsed_body['settings']).not_to have_key('points_tiled_rendering')
+      expect(response.parsed_body['settings']).not_to have_key('points_rendering_mode')
+      expect(response.parsed_body['settings']).not_to have_key('route_color')
     end
 
     it 'returns custom timezone when set' do
@@ -38,10 +41,11 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.reload.settings['route_opacity'].to_f).to eq(0.3)
       end
 
-      it 'returns the updated settings' do
+      it 'accepts deprecated route settings without returning them to the map' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { route_opacity: 0.3 } }
 
-        expect(response.parsed_body['settings']['route_opacity'].to_f).to eq(0.3)
+        expect(user.reload.settings['route_opacity'].to_f).to eq(0.3)
+        expect(response.parsed_body['settings']).not_to have_key('route_opacity')
       end
 
       it 'updates timezone' do
@@ -93,10 +97,10 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         expect(user.reload.safe_settings.points_tiled_rendering?).to be true
       end
 
-      it 'returns points_tiled_rendering in the response' do
+      it 'omits points_tiled_rendering from the response' do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { points_tiled_rendering: true } }
 
-        expect(response.parsed_body['settings']['points_tiled_rendering']).to be true
+        expect(response.parsed_body['settings']).not_to have_key('points_tiled_rendering')
       end
 
       it 'turns points_tiled_rendering back off' do
@@ -105,7 +109,9 @@ RSpec.describe 'Api::V1::Settings', type: :request do
         patch "/api/v1/settings?api_key=#{api_key}", params: { settings: { points_tiled_rendering: false } }
 
         expect(response).to have_http_status(:success)
-        expect(user.reload.safe_settings.points_tiled_rendering?).to be false
+        stored = ActiveModel::Type::Boolean.new.cast(user.reload.settings['points_tiled_rendering'])
+        expect(stored).to be false
+        expect(user.safe_settings.points_tiled_rendering?).to be true
       end
 
       it 'updates fog_of_war_mode' do

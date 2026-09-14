@@ -22,6 +22,7 @@ export class PointsMvtLayer extends BaseLayer {
     this.startAt = options.startAt || null
     this.endAt = options.endAt || null
     this.apiKey = options.apiKey || null
+    this.importId = options.importId || null
     this.styleName = options.styleName
     this._tileUrl = null
     this._cacheBuster = 0
@@ -30,13 +31,15 @@ export class PointsMvtLayer extends BaseLayer {
     this.onTileError = options.onTileError || null
     this._tileErrorHandler = null
     this._tileErrorReported = false
+    this.flightWindows = []
   }
 
   // A failed tile fetch (timeout, throttle, expired session) reaches the page
-  // only as a map `error` event. Unwatched, the layer just renders nothing and
-  // the classic layer is hidden — an empty map with no explanation.
+  // only as a map `error` event. Unwatched, the layer renders nothing and the
+  // user sees an empty map with no explanation.
   add(data, beforeId = null) {
     super.add(data, beforeId)
+    if (this.flightWindows.length) this._applyFlightFilter()
     this._tileErrorReported = false
     this._watchTileErrors()
   }
@@ -76,6 +79,24 @@ export class PointsMvtLayer extends BaseLayer {
   setHeatmapVisible(visible) {
     this.heatmapVisible = visible
     this._applyLayerVisibility(PointsMvtLayer.HEATMAP_LAYER_ID, visible)
+  }
+
+  setFlightWindows(windows = []) {
+    this.flightWindows = windows
+    this._applyFlightFilter()
+  }
+
+  _applyFlightFilter() {
+    const masked = this.flightWindows.map(([start, end]) => [
+      "all",
+      [">=", ["get", "timestamp"], start],
+      ["<=", ["get", "timestamp"], end],
+    ])
+    const filter = masked.length ? ["!", ["any", ...masked]] : null
+    if (this.map.getLayer(this.id)) this.map.setFilter(this.id, filter)
+    if (this.map.getLayer(PointsMvtLayer.HEATMAP_LAYER_ID)) {
+      this.map.setFilter(PointsMvtLayer.HEATMAP_LAYER_ID, filter)
+    }
   }
 
   // The circle and heatmap sub-layers toggle independently; anything keyed to
@@ -237,6 +258,7 @@ export class PointsMvtLayer extends BaseLayer {
 
     if (startAt) params.set("start_at", startAt)
     if (endAt) params.set("end_at", endAt)
+    if (this.importId) params.set("import_id", this.importId)
     // Never the raw api key: the Bearer header authenticates (transformRequest)
     if (this.apiKey) params.set("u", cachePartitioner(this.apiKey))
     if (this._cacheBuster) params.set("_", String(this._cacheBuster))

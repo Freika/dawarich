@@ -14,6 +14,7 @@ module TileCacheable
   end
 
   def show
+    started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     # Auth is header-only, so URL-keyed caches need Vary to keep users' tiles apart.
     response.headers['Vary'] = [response.headers['Vary'], 'Authorization'].compact.join(', ')
 
@@ -60,6 +61,12 @@ module TileCacheable
   rescue ActiveRecord::QueryCanceled
     force_uncacheable_response
     render json: { error: 'Tile query timed out' }, status: :service_unavailable
+  rescue Tracks::SpeedVectorTileQuery::FeatureLimitError
+    force_uncacheable_response
+    render json: { error: 'Too many route segments in this tile. Zoom in or shorten the date range.' },
+           status: :service_unavailable
+  ensure
+    record_tile_metrics(started_at) if started_at
   end
 
   private
@@ -73,6 +80,34 @@ module TileCacheable
     response.headers.delete('ETag')
   end
 
+  def record_tile_metrics(started_at)
+    outcome = case response.status
+              when 200, 204 then 'success'
+              when 304 then 'not_modified'
+              when 400 then 'invalid'
+              when 503 then 'failure'
+              else "http_#{response.status}"
+              end
+    tags = { layer: tile_metric_layer, outcome: outcome }
+    duration = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started_at
+    log_tile_failure(tags, duration) unless %w[success not_modified].include?(outcome)
+    Yabeda.dawarich_map.tile_requests_total.increment(tags)
+    Yabeda.dawarich_map.tile_request_duration_seconds.measure(tags, duration)
+  rescue StandardError => e
+    Rails.logger.warn("event=map_tile.metrics_failed error_class=#{e.class}")
+  end
+
+  def log_tile_failure(tags, duration)
+    Rails.logger.warn(
+      "event=map.tile_request layer=#{tags.fetch(:layer)} outcome=#{tags.fetch(:outcome)} " \
+      "status=#{response.status} duration_ms=#{(duration * 1000).round(1)}"
+    )
+  end
+
+  def tile_metric_layer
+    self.class.name.demodulize.delete_suffix('Controller').underscore
+  end
+
   def tile_etag
     [
       tile_schema_version,
@@ -82,7 +117,7 @@ module TileCacheable
       # would make every Lite ETag unique.
       (current_api_user.data_window_start.to_date if current_api_user.plan_restricted?),
       params[:z], params[:x], params[:y],
-      cacheable_start_at, cacheable_end_at
+      cacheable_start_at, cacheable_end_at, params[:import_id].presence
     ]
   end
 

@@ -1599,11 +1599,7 @@ fr:
           cours, et les déplacements ne sont pas sauvegardés sur le plan Lite.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Autoriser
           la traînée des points pour corriger leur position. Mémorisé entre sessions.
-        tiled_rendering: "Rendu par tuiles"
         beta: "Bêta"
-        tiled_rendering_description: "Dessine les points, itinéraires, tracks et brouillard à partir de tuiles vectorielles pendant le déplacement, au lieu de charger toute la plage de dates à l'avance. Les itinéraires affichent vos tracks générés. Zoomez pour voir la vitesse de chaque segment."
-        tiled_rendering_caveats: "Actif tant que la carte à gratter est désactivée. Les zones denses sont fusionnées en marqueurs avec un compteur — zoomez pour ouvrir les points individuels. La modification des points est indisponible, l'info-bulle d'itinéraire au survol disparaît — cliquez sur un track — et la trace en direct peut avoir quelques minutes de retard."
-        routes: Itinéraires
         show_connected_route_lines: Afficher les lignes d'itinéraire connectées
         color_by_speed: Colorer par vitesse
         edit_color_gradient: Éditer l'échelle de couleurs
@@ -1638,8 +1634,8 @@ fr:
         show_explored_areas: Afficher les zones explorées
         per_point: Par point
         per_hexagon: Par hexagone
-        scratch_map: Carte à gratter
-        show_scratched_countries: Afficher les pays grattés
+        scratch_map: Pays visités
+        show_scratched_countries: Mettre en évidence les pays visités dans la période sélectionnée
         family_members: Membres de la famille
         show_family_member_locations: Afficher les emplacements des membres de la
           famille
@@ -1686,20 +1682,15 @@ fr:
         points_of_interest: Points d'intérêt
         choose_which_poi_categories_appear_on_the_map: Choisissez les catégories des
           POI qui apparaissent sur la carte.
-        meters_between_routes: Mètres entre les itinéraires
         distance_threshold_for_route_splitting: Seuil de distance pour la division
           des itinéraires
-        minutes_between_routes: Minutes entre les itinéraires
         min: 60min
         min_2: 1min
         min_3: 90min
         min_4: 180min
         time_threshold_for_route_splitting: Seuil de temps pour la division des itinéraires ; les intervalles plus longs sont aussi exclus des statistiques de distance
-        points_rendering_mode: Mode de rendu de points
         raw_all_points: Brut (tous les points)
         simplified_reduced_points: Simplifié (points réduits)
-        speed_colored_routes: Itinéraires colorés en fonction de la vitesse
-        color_routes_by_speed: Colorer les itinéraires en fonction de la vitesse
         fog_of_war_radius: Rayon de brouillard
         clear_radius_around_visited_points: Effacer le rayon autour des points visités
         fog_of_war_threshold: Seuil de brouillard
@@ -5029,8 +5020,6 @@ fr:
       failed_to_load_location_data_please_try_again: Échec du chargement des données
         de localisation. Veuillez réessayer.
       click_on_the_map_to_place_a_place: Cliquez sur la carte pour placer un endroit
-      failed_to_reload_routes: Échec du rechargement des itinéraires
-      failed_to_load_scratch_layer: Échec du chargement de la carte à gratter
       failed_to_load_photos: Échec du chargement des photos
       some_photo_sources_unavailable: "Certaines sources de photos sont indisponibles : %{sources}"
       failed_to_load_areas: Échec du chargement des zones
@@ -5038,7 +5027,6 @@ fr:
       failed_to_load_track_details: Échec du chargement des détails du trajet
       failed_to_load_flights: Échec du chargement des vols
       failed_to_load_anomalies: Échec du chargement des anomalies
-      reloading_routes: Rechargement des itinéraires...
       cannot_update_recalculation_is_already_in_progress: 'Impossible de mettre à
         jour : le recalcul est déjà en cours'
       transportation_settings_saved: Paramètres de transport sauvegardés
@@ -5110,6 +5098,10 @@ fr:
       visit_deleted_successfully: Visite supprimée avec succès
       failed_to_update_point_position_please_try_again: Échec de mise à jour de la
         position du point. Veuillez réessayer.
+      point_edit_conflict: Ce point a été modifié dans une autre session. La dernière position enregistrée est affichée.
+      failed_to_load_map_tiles: Impossible de charger les tuiles de la carte.
+      failed_to_load_visited_countries: Impossible de charger les pays visités.
+      retry: Réessayer
       failed_to_load_track_points: Échec de chargement des points de trajet
       point_updated_track_will_be_recalculated: Point mis à jour. Le trajet sera recalculé.
       delete: Supprimer
@@ -5123,11 +5115,10 @@ fr:
       confirmed: Confirmé
       layers: Couches
       points: Points
-      routes: Itinéraires
       tracks: Trajets
       heatmap: Carte de chaleur
       fog_of_war: Brouillard de guerre
-      scratch_map: Carte à gratter
+      scratch_map: Pays visités
       areas: Zones
       photos: Photos
       visits: Visites
@@ -5167,16 +5158,6 @@ fr:
       show_all_days: Afficher tous les jours
       collapse_all_days: Réduire tous les jours
     map:
-      tiled_rendering:
-        inactive_note:
-          one: "Inactif tant que %{layers} est activé — cette couche nécessite tous les points."
-          other: "Inactif tant que %{layers} sont activés — ces couches nécessitent tous les points."
-        editing_unavailable: "Indisponible avec le rendu par tuiles : les tuiles vectorielles n'ont pas de points déplaçables"
-        failed: "Impossible de charger les tuiles de la carte. Essayez une plage de dates plus courte ou désactivez le rendu par tuiles dans les paramètres de la carte."
-        tracks_pending: "Aucun track dans cette vue. Avec les tuiles, les itinéraires affichent vos tracks générés — déplacez la carte, élargissez la période ou revenez plus tard après un import récent."
-        splitting_unavailable: "Sans effet avec le rendu par tuiles — les itinéraires suivent vos tracks générés."
-        blockers:
-          scratch: "Carte à gratter"
       places_layer: Couche de lieux
       confirm_delete_point: Voulez-vous vraiment supprimer ce point ?
       confirm_delete_point_permanently: |-
@@ -5528,7 +5509,6 @@ fr:
       radius: Rayon
       reason: Raison
       route_information: Informations de la route
-      routes: Itinéraires
       selected_point: Point sélectionné
       show_points: Afficher les points
       show_points_help: Activer pour afficher et déplacer les points afin de modifier
@@ -5652,14 +5632,10 @@ fr:
       fog_threshold: Seuil de la brume de guerre
       live_map: Carte en direct
       merge_threshold: Seuil de fusion (en minutes)
-      meters_between_routes: Distance entre les itinéraires
-      minutes_between_routes: Intervalle entre les itinéraires (en minutes)
-      points_rendering_mode: Mode de rendu des points
       raw: Brut
       route_opacity: Opacité des itinéraires, %
       simplified: Simplifié
       speed_color_scale: Échelle de couleur de vitesse
-      speed_colored_routes: Itinéraires colorés en fonction de la vitesse
       time_threshold: Seuil de temps (en minutes)
     calendar_panel:
       loading_visited_places: Chargement des lieux visités...

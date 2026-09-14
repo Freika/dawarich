@@ -7,10 +7,8 @@ import {
 } from "maps_maplibre/utils/basemap_url"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import {
-  bulkPointsRequired,
   LAYER_COLOR_DEFAULTS,
   SettingsManager,
-  tiledPointsActive,
 } from "maps_maplibre/utils/settings_manager"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
@@ -64,8 +62,6 @@ export class SettingsController {
     const toggleMap = {
       pointsToggle: "pointsVisible",
       pointsEditToggle: "pointDraggingEnabled",
-      pointsTiledToggle: "pointsTiledRendering",
-      routesToggle: "routesVisible",
       heatmapToggle: "heatmapEnabled",
       hexagonsToggle: "hexagonsEnabled",
       visitsToggle: "visitsEnabled",
@@ -75,7 +71,6 @@ export class SettingsController {
       fogToggle: "fogEnabled",
       scratchToggle: "scratchEnabled",
       familyToggle: "familyEnabled",
-      speedColoredToggle: "speedColoredRoutes",
       tracksToggle: "tracksEnabled",
       flightsToggle: "flightsEnabled",
       anomaliesToggle: "anomaliesEnabled",
@@ -107,8 +102,6 @@ export class SettingsController {
     })
 
     this.syncPointsEditAvailability()
-    this.syncRouteSplittingAvailability()
-    this.syncTiledRenderingNote()
 
     // Show/hide visits search based on initial toggle state
     if (controller.hasVisitsToggleTarget && controller.hasVisitsSearchTarget) {
@@ -136,12 +129,6 @@ export class SettingsController {
         .familyToggleTarget.checked
         ? "block"
         : "none"
-    }
-
-    // Sync route opacity slider
-    if (controller.hasRouteOpacityRangeTarget) {
-      controller.routeOpacityRangeTarget.value =
-        (this.settings.routeOpacity || 1.0) * 100
     }
 
     // Sync layer color pickers
@@ -226,27 +213,6 @@ export class SettingsController {
       }
     }
 
-    // Sync route generation settings
-    const metersBetweenInput = controller.element.querySelector(
-      'input[name="metersBetweenRoutes"]',
-    )
-    if (metersBetweenInput) {
-      metersBetweenInput.value = this.settings.metersBetweenRoutes || 500
-      if (controller.hasMetersBetweenValueTarget) {
-        controller.metersBetweenValueTarget.textContent = `${metersBetweenInput.value}m`
-      }
-    }
-
-    const minutesBetweenInput = controller.element.querySelector(
-      'input[name="minutesBetweenRoutes"]',
-    )
-    if (minutesBetweenInput) {
-      minutesBetweenInput.value = this.settings.minutesBetweenRoutes || 60
-      if (controller.hasMinutesBetweenValueTarget) {
-        controller.minutesBetweenValueTarget.textContent = `${minutesBetweenInput.value}min`
-      }
-    }
-
     // Sync city statistics settings
     const minMinutesInput = controller.element.querySelector(
       'input[name="minMinutesSpentInCity"]',
@@ -264,42 +230,6 @@ export class SettingsController {
     )
     if (gpsFilteringToggle) {
       gpsFilteringToggle.checked = this.settings.gpsFilteringEnabled !== false
-    }
-
-    // Sync speed-colored routes settings
-    if (controller.hasSpeedColorScaleInputTarget) {
-      const colorScale =
-        this.settings.speedColorScale ||
-        "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
-      controller.speedColorScaleInputTarget.value = colorScale
-    }
-    if (
-      controller.hasSpeedColorScaleContainerTarget &&
-      controller.hasSpeedColoredToggleTarget
-    ) {
-      const isEnabled = controller.speedColoredToggleTarget.checked
-      controller.speedColorScaleContainerTarget.classList.toggle(
-        "hidden",
-        !isEnabled,
-      )
-    }
-
-    // Sync points rendering mode radio buttons
-    const pointsRenderingRadios = controller.element.querySelectorAll(
-      'input[name="pointsRenderingMode"]',
-    )
-    pointsRenderingRadios.forEach((radio) => {
-      radio.checked =
-        radio.value === (this.settings.pointsRenderingMode || "raw")
-    })
-
-    // Sync speed-colored routes toggle
-    const speedColoredRoutesToggle = controller.element.querySelector(
-      'input[name="speedColoredRoutes"]',
-    )
-    if (speedColoredRoutesToggle) {
-      speedColoredRoutesToggle.checked =
-        this.settings.speedColoredRoutes || false
     }
 
     // Sync transportation mode settings
@@ -821,42 +751,15 @@ export class SettingsController {
     }
 
     await SettingsManager.updateSetting("fogOfWarMode", mode)
-    await this.controller.routesManager?.reapplyPointsRenderer()
+    await this.controller.layerVisibilityManager?.reapplyPointsRenderer()
   }
 
   togglePointsEditing(event) {
     const enabled = event.target.checked
 
-    this.layerManager.getLayer("points")?.setEditMode(enabled)
+    this.layerManager.getLayer("map-editor")?.setEditable(enabled)
 
     SettingsManager.updateSetting("pointDraggingEnabled", enabled)
-  }
-
-  // Dim Edit points while tiled rendering is on. The saved preference survives.
-  // Tiles are pointless while another layer already needs the whole point set
-  syncTiledRenderingNote() {
-    const controller = this.controller
-    if (!controller.hasPointsTiledInactiveNoteTarget) return
-
-    const settings = SettingsManager.getSettings()
-    const note = controller.pointsTiledInactiveNoteTarget
-    const inactive =
-      settings.pointsTiledRendering === true && bulkPointsRequired(settings)
-
-    note.classList.toggle("hidden", !inactive)
-    if (!inactive) return
-
-    // Routes and fog ride tile sources now — Scratch map is the only layer
-    // left that needs the whole point set.
-    const blockers = [
-      settings.scratchEnabled &&
-        translate("map.tiled_rendering.blockers.scratch"),
-    ].filter(Boolean)
-
-    note.textContent = translate("map.tiled_rendering.inactive_note", {
-      layers: blockers.join(", "),
-      count: blockers.length,
-    })
   }
 
   syncPointsEditAvailability() {
@@ -864,84 +767,27 @@ export class SettingsController {
     if (!controller.hasPointsEditToggleTarget) return
 
     const input = controller.pointsEditToggleTarget
-    const tiled = tiledPointsActive(SettingsManager.getSettings())
+    const gated = isGatedPlan(controller.userPlanValue)
 
-    // Keep the checkbox in step with the layer's real edit mode.
-    input.disabled = tiled
+    input.disabled = gated
     input.checked =
-      !tiled &&
-      SettingsManager.getSetting("pointDraggingEnabled") === true &&
-      !isGatedPlan(controller.userPlanValue)
+      SettingsManager.getSetting("pointDraggingEnabled") === true && !gated
 
     // A hover tooltip cannot explain a disabled control to touch or keyboard,
     // so the reason also renders as a line under the row.
     if (controller.hasPointsEditUnavailableNoteTarget) {
       const note = controller.pointsEditUnavailableNoteTarget
-      note.textContent = tiled
-        ? translate("map.tiled_rendering.editing_unavailable")
-        : ""
-      note.classList.toggle("hidden", !tiled)
+      note.textContent = ""
+      note.classList.add("hidden")
     }
 
     const label = input.closest("label")
     if (!label) return
-    label.classList.toggle("opacity-40", tiled)
-    label.style.cursor = tiled ? "not-allowed" : ""
+    label.classList.toggle("opacity-40", gated)
+    label.style.cursor = gated ? "not-allowed" : ""
   }
 
-  // The route-splitting sliders shape the polylines the CLASSIC path builds
-  // from raw points; under tiled mode backend track boundaries replace client
-  // splitting entirely, so the inputs dim rather than silently no-op.
-  syncRouteSplittingAvailability() {
-    const controller = this.controller
-    const tiled = tiledPointsActive(SettingsManager.getSettings())
-
-    for (const name of ["metersBetweenRoutes", "minutesBetweenRoutes"]) {
-      const input = controller.element.querySelector(`input[name="${name}"]`)
-      if (!input) continue
-      input.disabled = tiled
-      const section = input.closest(".form-control")
-      if (section) {
-        section.classList.toggle("opacity-40", tiled)
-        section.style.cursor = tiled ? "not-allowed" : ""
-      }
-    }
-
-    if (controller.hasRouteSplittingUnavailableNoteTarget) {
-      const note = controller.routeSplittingUnavailableNoteTarget
-      note.textContent = tiled
-        ? translate("map.tiled_rendering.splitting_unavailable")
-        : ""
-      note.classList.toggle("hidden", !tiled)
-    }
-  }
-
-  updateRouteOpacity(event) {
-    const opacity = parseInt(event.target.value, 10) / 100
-
-    const routesLayer = this.layerManager.getLayer("routes")
-    if (routesLayer && this.map.getLayer("routes")) {
-      this.map.setPaintProperty("routes", "line-opacity", opacity)
-    }
-
-    // Under tiled mode the slider drives the track-tile line instead of
-    // silently no-oping against the unpopulated classic layer.
-    this.layerManager.getLayer("tracks-mvt")?.setRouteOpacity(opacity)
-
-    SettingsManager.updateSetting("routeOpacity", opacity)
-  }
-
-  /**
-   * Layer colors (routes / tracks): paint applies immediately, the save
-   * is debounced because color inputs fire rapidly while dragging.
-   */
-  updateRouteColor(event) {
-    const color = event.target.value
-    this.applyRouteColor(color)
-    this.syncLayerColorLabel("routeColor", color)
-    this.scheduleLayerColorSave("routeColor", color)
-  }
-
+  /** Track color applies immediately; saving is debounced while dragging. */
   updateTrackColor(event) {
     const color = event.target.value
     this.applyTrackColor(color)
@@ -961,29 +807,10 @@ export class SettingsController {
       this.syncLayerColorLabel(key, color)
     })
     SettingsManager.updateSettings(LAYER_COLOR_DEFAULTS)
-    this.applyRouteColor(LAYER_COLOR_DEFAULTS.routeColor)
     this.applyTrackColor(LAYER_COLOR_DEFAULTS.trackColor)
   }
 
-  applyRouteColor(color) {
-    if (this.map.getLayer("routes")) {
-      this.map.setPaintProperty("routes", "line-color", [
-        "case",
-        ["has", "color"],
-        ["get", "color"],
-        color,
-      ])
-    }
-    if (this.map.getLayer("routes-base")) {
-      this.map.setPaintProperty("routes-base", "line-color", color)
-    }
-    this.layerManager.getLayer("tracks-mvt")?.setColors({ routeColor: color })
-  }
-
   applyTrackColor(color) {
-    if (this.map.getLayer("tracks")) {
-      this.map.setPaintProperty("tracks", "line-color", color)
-    }
     this.layerManager.getLayer("tracks-mvt")?.setColors({ trackColor: color })
   }
 
@@ -1127,13 +954,8 @@ export class SettingsController {
     const formData = new FormData(event.target)
 
     const settings = {
-      routeOpacity: parseFloat(formData.get("routeOpacity")) / 100,
       fogOfWarRadius: parseInt(formData.get("fogOfWarRadius"), 10),
       fogOfWarThreshold: parseInt(formData.get("fogOfWarThreshold"), 10),
-      metersBetweenRoutes: parseInt(formData.get("metersBetweenRoutes"), 10),
-      minutesBetweenRoutes: parseInt(formData.get("minutesBetweenRoutes"), 10),
-      pointsRenderingMode: formData.get("pointsRenderingMode"),
-      speedColoredRoutes: formData.get("speedColoredRoutes") === "on",
       minMinutesSpentInCity: parseInt(
         formData.get("minMinutesSpentInCity"),
         10,
@@ -1168,18 +990,6 @@ export class SettingsController {
    * Apply settings to map without reload
    */
   async applySettingsToMap(settings) {
-    // Update route opacity
-    if (settings.routeOpacity !== undefined) {
-      const routesLayer = this.layerManager.getLayer("routes")
-      if (routesLayer && this.map.getLayer("routes")) {
-        this.map.setPaintProperty(
-          "routes",
-          "line-opacity",
-          settings.routeOpacity,
-        )
-      }
-    }
-
     // Update fog of war settings
     if (
       settings.fogOfWarRadius !== undefined ||
@@ -1196,15 +1006,6 @@ export class SettingsController {
         }
       }
     }
-
-    // For settings that require data reload
-    if (
-      settings.pointsRenderingMode ||
-      settings.speedColoredRoutes !== undefined
-    ) {
-      Toast.info(translate("messages.reloading_map_data_with_new_settings"))
-      await this.controller.loadMapData()
-    }
   }
 
   // Display value update methods
@@ -1217,18 +1018,6 @@ export class SettingsController {
   updateFogThresholdDisplay(event) {
     if (this.controller.hasFogThresholdValueTarget) {
       this.controller.fogThresholdValueTarget.textContent = event.target.value
-    }
-  }
-
-  updateMetersBetweenDisplay(event) {
-    if (this.controller.hasMetersBetweenValueTarget) {
-      this.controller.metersBetweenValueTarget.textContent = `${event.target.value}m`
-    }
-  }
-
-  updateMinutesBetweenDisplay(event) {
-    if (this.controller.hasMinutesBetweenValueTarget) {
-      this.controller.minutesBetweenValueTarget.textContent = `${event.target.value}min`
     }
   }
 

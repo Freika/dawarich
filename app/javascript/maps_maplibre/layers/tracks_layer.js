@@ -1,14 +1,8 @@
-import {
-  LAYER_COLOR_DEFAULTS,
-  SettingsManager,
-} from "maps_maplibre/utils/settings_manager"
 import { BaseLayer } from "./base_layer"
 
 /**
- * Tracks layer for saved routes with segment visualization support
- *
- * Debug feature: When a track is clicked, segments are highlighted
- * with different colors based on transportation mode.
+ * Focused Track selection and segment visualization overlay.
+ * Canonical journey lines are rendered exclusively by TracksMvtLayer.
  */
 export class TracksLayer extends BaseLayer {
   constructor(map, options = {}) {
@@ -34,53 +28,8 @@ export class TracksLayer extends BaseLayer {
     this.onSegmentLeave = null // Callback for segment leave events
   }
 
-  // Under tiled mode the MAIN track lines come from the tile layer, but the
-  // selection/flow/segment sub-layers still render the click->highlight flow —
-  // hide only the data layers, never the selection stack (a full toggle(false)
-  // would silently kill setSelectedTrack/showSegments).
-  setMainVisibility(visible) {
-    this.visible = visible
-    for (const layerId of [this.id]) {
-      if (!this.map.getLayer(layerId)) continue
-      this.map.setLayoutProperty(
-        layerId,
-        "visibility",
-        visible ? "visible" : "none",
-      )
-    }
-  }
-
-  getSourceConfig() {
-    return {
-      type: "geojson",
-      data: this.data || {
-        type: "FeatureCollection",
-        features: [],
-      },
-    }
-  }
-
   getLayerConfigs() {
     return [
-      // Main tracks layer (bottom). Track features all carry the backend's
-      // uniform default color, so the user's track color setting replaces
-      // it directly; mode-colored segments live in their own layer.
-      {
-        id: this.id,
-        type: "line",
-        source: this.sourceId,
-        layout: {
-          "line-join": "round",
-          "line-cap": "round",
-        },
-        paint: {
-          "line-color":
-            SettingsManager.getSetting("trackColor") ||
-            LAYER_COLOR_DEFAULTS.trackColor,
-          "line-width": 4,
-          "line-opacity": 0.7,
-        },
-      },
       // Selection Layer 1: White border (widest, bottom of selection stack)
       {
         id: this.selectionBorderLayerId,
@@ -113,18 +62,11 @@ export class TracksLayer extends BaseLayer {
     ]
   }
 
-  /**
-   * Override add() to create both main and selection sources
-   */
+  /** Add only the exact, focused selection source. */
   add(data) {
     this.data = data
 
-    // Add main source
-    if (!this.map.getSource(this.sourceId)) {
-      this.map.addSource(this.sourceId, this.getSourceConfig())
-    }
-
-    // Add selection source (initially empty, lineMetrics required for line-gradient)
+    // lineMetrics is required for the animated line-gradient.
     if (!this.map.getSource(this.selectionSourceId)) {
       this.map.addSource(this.selectionSourceId, {
         type: "geojson",
@@ -168,21 +110,11 @@ export class TracksLayer extends BaseLayer {
         features: [feature],
       })
       this._startFlowAnimation()
-
-      // Dim all tracks to highlight the selected one
-      if (this.map.getLayer(this.id)) {
-        this.map.setPaintProperty(this.id, "line-opacity", 0.3)
-      }
     } else {
       this._stopFlowAnimation()
       if (!preserveSegments) this.segmentsActive = false
       this.selectedTrackLength = 0
       selectionSource.setData({ type: "FeatureCollection", features: [] })
-
-      // Restore original track opacity
-      if (this.map.getLayer(this.id)) {
-        this.map.setPaintProperty(this.id, "line-opacity", 0.7)
-      }
     }
   }
 
@@ -542,68 +474,6 @@ export class TracksLayer extends BaseLayer {
    */
   setSegmentLeaveCallback(callback) {
     this.onSegmentLeave = callback
-  }
-
-  /**
-   * Update a single track feature in the layer
-   * Used when a track is recalculated after point movement
-   * @param {Object} trackFeature - The updated GeoJSON feature
-   * @param {Object} options - Options for the update
-   * @param {boolean} options.preserveSelection - If true and this track is selected, re-apply selection
-   * @returns {Object|false} - The updated feature if successful, false otherwise
-   */
-  updateTrackFeature(trackFeature, options = {}) {
-    if (!trackFeature?.properties?.id) {
-      console.warn("[TracksLayer] Cannot update track: invalid feature")
-      return false
-    }
-
-    const source = this.map.getSource(this.sourceId)
-    if (!source) {
-      console.warn("[TracksLayer] Cannot update track: source not found")
-      return false
-    }
-
-    // Get current data
-    const currentData = this.data || source._data
-    if (!currentData?.features) {
-      console.warn("[TracksLayer] Cannot update track: no data")
-      return false
-    }
-
-    // Find and update the track
-    const trackId = trackFeature.properties.id
-    const featureIndex = currentData.features.findIndex(
-      (f) => f.properties?.id === trackId,
-    )
-
-    if (featureIndex === -1) {
-      console.warn(`[TracksLayer] Track ${trackId} not found in layer`)
-      return false
-    }
-
-    // Update the feature in place
-    currentData.features[featureIndex] = trackFeature
-
-    // Update the source
-    source.setData(currentData)
-
-    // Also update our cached data reference
-    this.data = currentData
-
-    // If this track has segments displayed, update them too
-    if (options.preserveSelection && this.map.getSource(this.segmentSourceId)) {
-      const segments = trackFeature.properties?.segments || []
-      const parsedSegments =
-        typeof segments === "string" ? JSON.parse(segments) : segments
-
-      if (parsedSegments.length > 0) {
-        this.showSegments(trackFeature, parsedSegments)
-      }
-    }
-
-    console.log(`[TracksLayer] Updated track ${trackId}`)
-    return trackFeature
   }
 
   /**
