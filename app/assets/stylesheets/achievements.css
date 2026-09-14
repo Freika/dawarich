@@ -1,0 +1,1652 @@
+/* Achievement trading cards */
+
+.ach-page {
+  --ach-muted: oklch(var(--bc) / 0.7);
+  --ach-border: oklch(var(--bc) / 0.12);
+  min-width: 0;
+  color: oklch(var(--bc));
+}
+.ach-header {
+  text-align: center;
+  margin-bottom: 2rem;
+}
+.ach-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+.ach-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0 0 2rem;
+  border: 1px solid var(--ach-border);
+  border-radius: var(--rounded-box, 0.625rem);
+  background: oklch(var(--b2));
+}
+.ach-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.25rem 1.5rem;
+}
+.ach-stat + .ach-stat {
+  border-inline-start: 1px solid var(--ach-border);
+}
+.ach-stat-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+.ach-stat-total {
+  margin-inline-start: 0.125rem;
+  font-size: 1rem;
+  font-weight: 400;
+  color: var(--ach-muted);
+}
+.ach-stat-label {
+  font-size: 0.875rem;
+  color: var(--ach-muted);
+}
+.ach-grid {
+  display: flex;
+  gap: 2rem 1.5rem;
+  justify-content: center;
+  flex-wrap: wrap;
+  perspective: 1200px;
+}
+
+.ach-slot {
+  width: 300px;
+  max-width: 100%;
+}
+
+.ach-card-wrap {
+  position: relative;
+  transform-style: preserve-3d;
+  perspective: 900px;
+  animation: ach-reveal 0.9s cubic-bezier(0.3, 0.7, 0.3, 1)
+    var(--reveal-delay, 0.1s) backwards;
+}
+
+.ach-card {
+  position: relative;
+  width: 300px;
+  height: 440px;
+  border-radius: 18px;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))
+    scale(var(--sc, 1));
+  transition:
+    transform 0.18s ease-out,
+    box-shadow 0.25s ease;
+  cursor: pointer;
+  background: linear-gradient(160deg, #2a3038 0%, #171b20 100%);
+  border: 1px solid var(--frame);
+  box-shadow:
+    calc(var(--rimx, 0px) * 0.1) calc(var(--rimy, 0.6px) * 0.1) 0 #39424e,
+    calc(var(--rimx, 0px) * 0.2) calc(var(--rimy, 0.6px) * 0.2) 0 #353d48,
+    calc(var(--rimx, 0px) * 0.3) calc(var(--rimy, 0.6px) * 0.3) 0 #303843,
+    calc(var(--rimx, 0px) * 0.4) calc(var(--rimy, 0.6px) * 0.4) 0 #2c333d,
+    calc(var(--rimx, 0px) * 0.5) calc(var(--rimy, 0.6px) * 0.5) 0 #282e37,
+    calc(var(--rimx, 0px) * 0.6) calc(var(--rimy, 0.6px) * 0.6) 0 #232a32,
+    calc(var(--rimx, 0px) * 0.7) calc(var(--rimy, 0.6px) * 0.7) 0 #1f252c,
+    calc(var(--rimx, 0px) * 0.8) calc(var(--rimy, 0.6px) * 0.8) 0 #1b2026,
+    calc(var(--rimx, 0px) * 0.9) calc(var(--rimy, 0.6px) * 0.9) 0 #161b21,
+    calc(var(--rimx, 0px) * 1) calc(var(--rimy, 0.6px) * 1) 0 #12161b,
+    0 12px 30px rgba(0, 0, 0, 0.55),
+    var(--sx, 0px) calc(14px + var(--sy, 0px)) 34px rgba(0, 0, 0, var(--sa, 0)),
+    0 0 var(--glow-idle) var(--glow),
+    0 0 calc(var(--glow-size) * var(--gl, 0)) var(--glow),
+    0 0 calc(var(--glow-size-far) * var(--gl, 0)) var(--glow-soft);
+}
+
+.ach-card--common {
+  --holo-mesh: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'rgb(220%2C228%2C235)'%20stroke-opacity%3D'0.5'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E");
+  --frame: #8a9199;
+  --gem: #6d7680;
+  --glow: rgba(170, 180, 190, 0.3);
+  --glow-soft: rgba(170, 180, 190, 0.12);
+  --glow-idle: 0px;
+  --glow-size: 18px;
+  --glow-size-far: 40px;
+  --holo: repeating-linear-gradient(
+    115deg,
+    rgba(220, 228, 235, 0.5) 0%,
+    rgba(150, 160, 172, 0.5) 6%,
+    rgba(255, 255, 255, 0.5) 12%,
+    rgba(170, 182, 195, 0.5) 18%,
+    rgba(220, 228, 235, 0.5) 24%
+  );
+}
+
+.ach-card--rare {
+  --holo-mesh: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'rgb(80%2C180%2C255)'%20stroke-opacity%3D'0.5'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E");
+  --frame: #4a90d9;
+  --gem: #2f6db3;
+  --glow: rgba(90, 170, 255, 0.6);
+  --glow-soft: rgba(90, 170, 255, 0.25);
+  --glow-idle: 6px;
+  --glow-size: 34px;
+  --glow-size-far: 80px;
+  --holo: repeating-linear-gradient(
+    115deg,
+    rgba(80, 180, 255, 0.5) 0%,
+    rgba(120, 240, 255, 0.5) 6%,
+    rgba(70, 110, 255, 0.5) 12%,
+    rgba(150, 200, 255, 0.5) 18%,
+    rgba(80, 180, 255, 0.5) 24%
+  );
+}
+
+.ach-card--epic {
+  --holo-mesh: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'rgb(255%2C80%2C80)'%20stroke-opacity%3D'0.5'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E");
+  --frame: #a45ee5;
+  --gem: #7f3ec2;
+  --glow: rgba(180, 100, 255, 0.7);
+  --glow-soft: rgba(255, 90, 220, 0.3);
+  --glow-idle: 9px;
+  --glow-size: 44px;
+  --glow-size-far: 110px;
+  --holo: repeating-linear-gradient(
+    115deg,
+    rgba(255, 80, 80, 0.5) 0%,
+    rgba(255, 220, 80, 0.5) 6%,
+    rgba(90, 255, 140, 0.5) 12%,
+    rgba(80, 180, 255, 0.5) 18%,
+    rgba(200, 90, 255, 0.5) 24%,
+    rgba(255, 80, 80, 0.5) 30%
+  );
+}
+
+.ach-card--legendary {
+  --holo-mesh: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'rgb(255%2C190%2C70)'%20stroke-opacity%3D'0.55'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E");
+  --frame: #e0a13e;
+  --gem: #c07f22;
+  --glow: rgba(255, 185, 60, 0.8);
+  --glow-soft: rgba(255, 120, 30, 0.35);
+  --glow-idle: 12px;
+  --glow-size: 56px;
+  --glow-size-far: 140px;
+  --holo: repeating-linear-gradient(
+    115deg,
+    rgba(255, 190, 70, 0.55) 0%,
+    rgba(255, 240, 160, 0.55) 6%,
+    rgba(230, 140, 40, 0.55) 12%,
+    rgba(255, 215, 110, 0.55) 18%,
+    rgba(255, 190, 70, 0.55) 24%
+  );
+}
+
+.ach-card--partial {
+  --glow-idle: 0px;
+  --glow-size: 14px;
+  --glow-size-far: 30px;
+}
+
+.ach-art-fog {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      ellipse 62% 55% at 50% 45%,
+      rgba(23, 28, 35, 0) 28%,
+      rgba(23, 28, 35, 0.65) 68%,
+      rgba(23, 28, 35, 0.97) 100%
+    ),
+    radial-gradient(
+      ellipse 62% 55% at 50% 45%,
+      transparent 55%,
+      rgba(200, 190, 165, 0.08) 75%,
+      rgba(200, 190, 165, 0.14) 100%
+    );
+}
+
+.ach-frame {
+  position: absolute;
+  inset: 7px;
+  border-radius: 13px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border: 2px solid var(--frame);
+  background-color: #12161b;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.016) 0 1px,
+      transparent 1px 3px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.016) 0 1px,
+      transparent 1px 3px
+    );
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.ach-card--locked .ach-frame {
+  filter: grayscale(1) brightness(0.55) contrast(0.85);
+  opacity: 0.9;
+}
+
+.ach-card--partial .ach-frame {
+  filter: saturate(0.55) brightness(0.92);
+}
+
+.ach-art {
+  position: relative;
+  height: 210px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-bottom: 2px solid var(--frame);
+  border-radius: 11px 11px 0 0;
+}
+
+.ach-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  filter: saturate(0.85) contrast(1.05);
+  transform: translateZ(0) scale(1.06);
+}
+
+.ach-art-shade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(10, 14, 18, 0.25) 0%,
+      rgba(10, 14, 18, 0) 30%,
+      rgba(10, 14, 18, 0) 60%,
+      rgba(18, 22, 27, 0.9) 100%
+    ),
+    radial-gradient(
+      ellipse at 50% 45%,
+      rgba(10, 14, 18, 0) 45%,
+      rgba(10, 14, 18, 0.55) 100%
+    );
+}
+
+.ach-art-lock {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10, 14, 18, 0.62);
+}
+
+.ach-art-lock svg {
+  width: 40px;
+  height: 40px;
+  stroke: #c4cbd2;
+}
+
+/* Locked regions show their geometry as an embossed scratch-map shape
+   waiting to be filled, instead of a bare lock on an empty map. */
+.ach-art-silhouette {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 22px;
+  background: radial-gradient(ellipse at 50% 42%, #171d24 0%, #10141a 78%);
+}
+
+.ach-silhouette-svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.ach-silhouette-svg path {
+  fill: #28303a;
+  stroke: #414b57;
+  stroke-width: 1.5px;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.55));
+}
+
+.ach-pin {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -100%) translate(var(--px, 0px), var(--py, 0px));
+  transition: transform 0.18s ease-out;
+}
+
+.ach-pin-head {
+  width: 18px;
+  height: 18px;
+  background: var(--frame);
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.6);
+}
+
+.ach-pin-shadow {
+  width: 22px;
+  height: 6px;
+  margin: 2px auto 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.4);
+  filter: blur(2px);
+}
+
+.ach-plate {
+  position: relative;
+  margin: -18px 18px 0;
+  padding: 8px 12px;
+  text-align: center;
+  background: linear-gradient(180deg, #343b45 0%, #23282f 100%);
+  border: 1.5px solid var(--frame);
+  border-radius: 8px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+
+.ach-plate-name {
+  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-weight: 700;
+  font-size: 17px;
+  color: #f2ede0;
+  text-wrap: balance;
+}
+
+/* Quest-log progress under the name: scannable across a whole grid. */
+.ach-plate-bar {
+  margin-top: 7px;
+  height: 3px;
+  border-radius: 2px;
+  background: rgb(255 255 255 / 10%);
+  overflow: hidden;
+}
+
+.ach-plate-bar span {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #b6903e, #e6c877);
+}
+
+.ach-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 18px 22px 14px;
+  text-align: center;
+}
+
+.ach-desc {
+  margin: 0;
+  font-size: 15.5px;
+  line-height: 1.45;
+  color: #c4cbd2;
+  text-wrap: pretty;
+}
+.ach-flavor {
+  font-style: italic;
+  font-size: 13px;
+  color: #8a929b;
+  text-wrap: pretty;
+}
+
+.ach-rarity-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 16px 14px;
+}
+
+.ach-rarity-row::before,
+.ach-rarity-row::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+}
+
+.ach-rarity-row::before {
+  background: linear-gradient(90deg, transparent, var(--frame));
+}
+.ach-rarity-row::after {
+  background: linear-gradient(270deg, transparent, var(--frame));
+}
+
+.ach-rarity {
+  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-size: 11.5px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--frame);
+}
+
+.ach-earned {
+  text-align: center;
+  padding: 0 16px 12px;
+  margin-top: -6px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: #7d858e;
+}
+
+.ach-badge {
+  position: absolute;
+  top: -14px;
+  left: -14px;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gem);
+  border: 2px solid var(--frame);
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.6),
+    inset 0 0 0 3px rgba(0, 0, 0, 0.25);
+  /* Above the holo (z-index 4) so the shimmer is overlapped BY the badge,
+     not painted over it. */
+  z-index: 5;
+}
+
+.ach-badge-text {
+  font-family: Fraunces, ui-serif, Georgia, serif;
+  font-weight: 700;
+  font-size: 13px;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.ach-badge svg {
+  width: 20px;
+  height: 20px;
+  stroke: #fff;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.6));
+}
+
+/* Paper grain (::before) and laminate glare (::after). Both sit on .ach-card
+   rather than inside .ach-frame: the frame paints below .ach-holo (z-index 4),
+   so nothing nested in it can reach the glare's layer above the foil. They also
+   stay clear of the holo's mask this way.
+   feTurbulence writes noise into ALPHA as well as RGB, so its raw output is
+   mostly transparent and blends to nothing over a dark card; the feColorMatrix
+   flattens it to opaque greyscale centred on ~0.5, which is what `overlay`
+   needs to push light and dark symmetrically. */
+.ach-card::before,
+.ach-card::after {
+  content: "";
+  position: absolute;
+  inset: 7px;
+  border-radius: 13px;
+  pointer-events: none;
+}
+
+.ach-card::before {
+  z-index: 3;
+  opacity: 0.1;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 0 1'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-size: 160px 160px;
+}
+
+.ach-card::after {
+  z-index: 6;
+  opacity: 0.18;
+  mix-blend-mode: screen;
+  background-image: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.42) 47%,
+    rgba(255, 255, 255, 0.16) 54%,
+    transparent 68%
+  );
+  background-size: 250% 250%;
+  background-position: var(--gx, 50%) var(--gy, 50%);
+  transition: background-position 0.18s ease-out;
+}
+
+/* Layer parallax: the art sits below the glass, so it lags the frame as the
+   card turns. `.ach-art-canvas` is inset -4px purely as bleed — the map image
+   is exactly host-sized (`.ach-art-canvas img { transform: none }` cancels the
+   1.06 scale `.ach-art img` applies elsewhere), so without it a shift of a few
+   px exposes bare frame at one edge. --px/--py peak at ~2.8px for the shipped
+   tilt, well inside that 4px budget. */
+.ach-art-canvas,
+.ach-art-silhouette {
+  transform: translate(var(--px, 0px), var(--py, 0px));
+  transition: transform 0.18s ease-out;
+}
+
+.ach-art-silhouette {
+  transform: translate(var(--px, 0px), var(--py, 0px)) scale(1.03);
+}
+
+.ach-holo {
+  position: absolute;
+  inset: 7px;
+  border-radius: 13px;
+  pointer-events: none;
+  z-index: 4;
+  mix-blend-mode: color-dodge;
+  opacity: var(--fo, 0);
+  transition: opacity 0.3s ease;
+  background-image:
+    radial-gradient(
+      circle at var(--mx, 50%) var(--my, 50%),
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0) 45%
+    ),
+    var(--holo-mesh), var(--holo);
+  background-position:
+    var(--mx, 50%) 0%,
+    0 0,
+    calc(50% + (var(--mx, 50%) - 50%) * 0.6) 0%;
+  background-size:
+    100% 100%,
+    58px 33.49px,
+    300% 300%;
+  -webkit-mask-image:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'%2523ffffff'%20stroke-opacity%3D'1'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E"),
+    radial-gradient(
+      circle at var(--mx, 50%) var(--my, 50%),
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 0) 60%
+    );
+  -webkit-mask-size:
+    58px 33.49px,
+    100% 100%;
+  -webkit-mask-position:
+    0 0,
+    0 0;
+  -webkit-mask-composite: source-in;
+  mask-image:
+    url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20width%3D'60'%20height%3D'34.641'%20viewBox%3D'0%200%2060%2034.641'%3E%3Cpath%20d%3D'M-20%200%20L-10.0%20-17.32%20L10.0%20-17.32%20L20%200%20L10.0%2017.32%20L-10.0%2017.32%20Z%20M40%200%20L50.0%20-17.32%20L70.0%20-17.32%20L80%200%20L70.0%2017.32%20L50.0%2017.32%20Z%20M-20%2034.641%20L-10.0%2017.320999999999998%20L10.0%2017.320999999999998%20L20%2034.641%20L10.0%2051.961%20L-10.0%2051.961%20Z%20M40%2034.641%20L50.0%2017.320999999999998%20L70.0%2017.320999999999998%20L80%2034.641%20L70.0%2051.961%20L50.0%2051.961%20Z%20M10.0%2017.3205%20L20.0%200.0004999999999988347%20L40.0%200.0004999999999988347%20L50.0%2017.3205%20L40.0%2034.6405%20L20.0%2034.6405%20Z'%20fill%3D'none'%20stroke%3D'%2523ffffff'%20stroke-opacity%3D'1'%20stroke-width%3D'3'%2F%3E%3C%2Fsvg%3E"),
+    radial-gradient(
+      circle at var(--mx, 50%) var(--my, 50%),
+      rgba(0, 0, 0, 1) 0%,
+      rgba(0, 0, 0, 0) 60%
+    );
+  mask-size:
+    58px 33.49px,
+    100% 100%;
+  mask-position:
+    0 0,
+    0 0;
+  mask-composite: intersect;
+}
+
+.ach-card--partial .ach-holo {
+  display: none;
+}
+
+.ach-shimmer {
+  position: absolute;
+  inset: -1px;
+  border-radius: 18px;
+  pointer-events: none;
+  z-index: 6;
+  padding: 2px;
+  -webkit-mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+  -webkit-mask-clip: content-box, border-box;
+  -webkit-mask-composite: xor;
+  mask-image: linear-gradient(#000 0 0), linear-gradient(#000 0 0);
+  mask-clip: content-box, border-box;
+  mask-composite: exclude;
+  background: linear-gradient(
+    115deg,
+    transparent 20%,
+    rgba(255, 235, 170, 0.1) 38%,
+    rgba(255, 245, 200, 0.95) 50%,
+    rgba(255, 235, 170, 0.1) 62%,
+    transparent 80%
+  );
+  background-size: 250% 100%;
+  animation: ach-shimmer 3.2s linear infinite;
+}
+
+.ach-sparks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 6;
+  overflow: visible;
+}
+
+.ach-spark {
+  position: absolute;
+  border-radius: 50%;
+  background: #ffdf9a;
+  box-shadow: 0 0 6px 2px rgba(255, 200, 90, 0.8);
+  animation: ach-spark 3s ease-out infinite;
+}
+
+.ach-spark:nth-child(1) {
+  left: 14%;
+  top: 78%;
+  width: 4px;
+  height: 4px;
+  animation-duration: 2.6s;
+}
+.ach-spark:nth-child(2) {
+  left: 30%;
+  top: 90%;
+  width: 3px;
+  height: 3px;
+  animation-duration: 3.1s;
+  animation-delay: 0.8s;
+}
+.ach-spark:nth-child(3) {
+  left: 55%;
+  top: 84%;
+  width: 5px;
+  height: 5px;
+  animation-duration: 2.9s;
+  animation-delay: 1.5s;
+}
+.ach-spark:nth-child(4) {
+  left: 72%;
+  top: 92%;
+  width: 3px;
+  height: 3px;
+  animation-duration: 3.4s;
+  animation-delay: 0.4s;
+}
+.ach-spark:nth-child(5) {
+  left: 86%;
+  top: 80%;
+  width: 4px;
+  height: 4px;
+  animation-duration: 2.7s;
+  animation-delay: 2s;
+}
+.ach-spark:nth-child(6) {
+  left: 44%;
+  top: 96%;
+  width: 4px;
+  height: 4px;
+  animation-duration: 3.2s;
+  animation-delay: 2.5s;
+}
+
+.ach-back {
+  position: absolute;
+  inset: 0;
+  border-radius: 18px;
+  transform: rotateY(180deg);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  pointer-events: none;
+  animation: ach-backhide 0.9s linear var(--reveal-delay, 0.1s) both;
+  z-index: 9;
+  border: 1px solid #3d4854;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(
+      ellipse 72% 58% at 50% 44%,
+      rgba(216, 180, 90, 0.11) 0%,
+      rgba(216, 180, 90, 0) 68%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 27px,
+      rgba(216, 180, 90, 0.075) 27px 28px
+    ),
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 27px,
+      rgba(216, 180, 90, 0.055) 27px 28px
+    ),
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.014) 0 2px,
+      transparent 2px 7px
+    ),
+    linear-gradient(160deg, #1e2833 0%, #12161b 100%);
+}
+
+.ach-back::before {
+  content: "";
+  position: absolute;
+  inset: 9px;
+  border-radius: 12px;
+  border: 1px solid rgba(216, 180, 90, 0.28);
+  box-shadow: inset 0 0 0 1px rgba(10, 14, 18, 0.55);
+}
+
+.ach-back::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(
+    ellipse 62% 52% at 50% 46%,
+    rgba(10, 14, 18, 0) 42%,
+    rgba(10, 14, 18, 0.72) 100%
+  );
+}
+
+.ach-back-logo {
+  position: relative;
+  z-index: 1;
+  width: 104px;
+  height: 104px;
+  padding: 9px;
+  border-radius: 22px;
+  border: 2px solid #d8b45a;
+  background: radial-gradient(circle at 50% 42%, #232c37 0%, #151a21 78%);
+  box-shadow:
+    0 0 0 7px rgba(216, 180, 90, 0.12),
+    0 0 0 8px rgba(216, 180, 90, 0.3),
+    0 8px 22px rgba(0, 0, 0, 0.55),
+    inset 0 0 26px rgba(216, 180, 90, 0.22);
+}
+
+.ach-back-logo-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 13px;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.45));
+}
+
+.ach-card--sm .ach-back-logo {
+  width: 70px;
+  height: 70px;
+  padding: 6px;
+  border-radius: 16px;
+  box-shadow:
+    0 0 0 5px rgba(216, 180, 90, 0.12),
+    0 0 0 6px rgba(216, 180, 90, 0.3),
+    0 6px 16px rgba(0, 0, 0, 0.55),
+    inset 0 0 18px rgba(216, 180, 90, 0.22);
+}
+
+.ach-card--sm .ach-back-logo-img {
+  border-radius: 10px;
+}
+
+.ach-card--sm .ach-back::before {
+  inset: 7px;
+  border-radius: 9px;
+}
+
+.ach-details {
+  margin-top: 22px;
+  border: 1px solid #2b333c;
+  border-radius: 10px;
+  background: rgba(18, 22, 27, 0.7);
+}
+
+.ach-details summary {
+  cursor: pointer;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #9aa4ad;
+  list-style: none;
+}
+
+.ach-details summary::after {
+  content: " ▾";
+  font-size: 11px;
+}
+.ach-details[open] summary::after {
+  content: " ▴";
+}
+
+.ach-regions {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 0 14px 10px;
+  margin: 0;
+  list-style: none;
+  font-size: 13.5px;
+}
+
+.ach-regions li {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+  color: #c4cbd2;
+}
+
+.ach-regions li.ach-region--pending {
+  opacity: 0.35;
+}
+
+.ach-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+.ach-footnote {
+  text-align: center;
+  margin: 2rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--ach-muted);
+}
+
+@keyframes ach-shimmer {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 0%;
+  }
+}
+
+@keyframes ach-spark {
+  0% {
+    transform: translateY(6px) scale(0.4);
+    opacity: 0;
+  }
+  25% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-46px) scale(1);
+    opacity: 0;
+  }
+}
+
+@keyframes ach-reveal {
+  0% {
+    transform: rotateY(180deg) translateY(14px);
+  }
+  100% {
+    transform: rotateY(0deg) translateY(0);
+  }
+}
+
+@keyframes ach-backhide {
+  0%,
+  99.9% {
+    visibility: visible;
+  }
+  100% {
+    visibility: hidden;
+  }
+}
+
+/* A card rehydrated from the snapshot cache skips the entrance flip so a reload
+   shows the map at once, without replaying the back→front reveal. */
+.ach-card-wrap--instant:not(.ach-card-wrap--celebrate),
+.ach-card-wrap--instant:not(.ach-card-wrap--celebrate) .ach-back {
+  animation: none;
+}
+
+.ach-card-wrap--celebrate {
+  animation: ach-celebrate 1.8s cubic-bezier(0.16, 0.9, 0.3, 1) 0.3s backwards;
+}
+
+.ach-card-wrap--celebrate .ach-back {
+  animation-duration: 1.8s;
+  animation-delay: 0.3s;
+}
+
+@keyframes ach-celebrate {
+  0% {
+    transform: rotateY(1080deg) scale(0.55) translateY(20px);
+  }
+  70% {
+    transform: rotateY(0deg) scale(1.07) translateY(0);
+  }
+  100% {
+    transform: rotateY(0deg) scale(1) translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ach-card-wrap,
+  .ach-card-wrap--celebrate,
+  .ach-back,
+  .ach-card-wrap--celebrate .ach-back,
+  .ach-shimmer,
+  .ach-spark {
+    animation: none;
+  }
+}
+
+.ach-layout {
+  display: grid;
+  grid-template-columns: 208px minmax(0, 1fr);
+  gap: 2rem;
+  align-items: start;
+}
+.ach-main {
+  container: achievement-content / inline-size;
+}
+.ach-navigation {
+  position: sticky;
+  top: 1.5rem;
+  min-width: 0;
+}
+.ach-side {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border-radius: var(--rounded-box, 0.625rem);
+  background: oklch(var(--b2));
+}
+.ach-side-group {
+  padding: 1rem 0.75rem 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--ach-muted);
+}
+.ach-side-link {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.375rem 0.5rem;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  border-radius: var(--rounded-btn, 0.375rem);
+  font-size: 0.875rem;
+  text-decoration: none;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+.ach-side-link:hover {
+  background: oklch(var(--bc) / 0.06);
+}
+.ach-side-link--active {
+  background: oklch(var(--p) / 0.12);
+  color: oklch(var(--bc));
+  font-weight: 600;
+}
+.ach-side-count {
+  color: var(--ach-muted);
+  font-size: 0.75rem;
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+}
+.ach-side-bar {
+  grid-column: 1 / -1;
+  height: 2px;
+  border-radius: 1px;
+  background: oklch(var(--bc) / 0.12);
+  overflow: hidden;
+}
+.ach-side-bar span {
+  display: block;
+  height: 100%;
+  background: oklch(var(--p));
+}
+.ach-mobile-nav {
+  display: none;
+}
+.ach-mobile-nav > summary {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--ach-border);
+  border-radius: var(--rounded-btn, 0.375rem);
+  background: oklch(var(--b2));
+  list-style: none;
+  cursor: pointer;
+  font-size: 0.875rem;
+}
+.ach-mobile-nav > summary::-webkit-details-marker {
+  display: none;
+}
+.ach-mobile-nav > summary strong {
+  margin-inline-start: auto;
+}
+.ach-mobile-nav[open] > summary svg {
+  transform: rotate(180deg);
+}
+.ach-mobile-nav .ach-side {
+  margin-top: 0.5rem;
+}
+
+.ach-card-link {
+  display: block;
+  text-decoration: none;
+}
+
+.ach-art-canvas {
+  position: absolute;
+  /* bleed for the parallax drift: the map image is exactly host-sized (the
+     rule below cancels the 1.06 scale `.ach-art img` applies elsewhere), so
+     without it a shift of a few px exposes bare frame at one edge. --px/--py
+     peak at ~2.8px for the shipped tilt, inside this 4px budget. */
+  inset: -4px;
+  background: #1a222c;
+}
+
+.ach-art-canvas img {
+  width: 100%;
+  height: 100%;
+  transform: none;
+}
+
+.ach-set-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: 2rem;
+}
+.ach-set-layout > #collection {
+  min-width: 0;
+  scroll-margin-top: 1.5rem;
+}
+.ach-set-layout > #collection:focus {
+  outline: none;
+}
+.ach-set-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-content: start;
+  gap: 1.25rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--ach-border);
+}
+.ach-set-preview {
+  min-width: 0;
+  width: min(100%, 18.75rem);
+  justify-self: center;
+}
+.ach-set-details {
+  min-width: 0;
+  width: 100%;
+  max-width: 18.75rem;
+  justify-self: center;
+}
+.ach-progress-summary {
+  margin-bottom: 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-wrap: pretty;
+  font-variant-numeric: tabular-nums;
+}
+.ach-set-details .progress {
+  display: block;
+  height: 0.375rem;
+  margin-bottom: 0.5rem;
+}
+.ach-progress-caption {
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+.ach-collection-header {
+  min-width: 0;
+  margin-bottom: 1.5rem;
+}
+.ach-collection-header .ach-section-heading {
+  min-height: 2rem;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+}
+.ach-collection-header .ach-collection-toolbar {
+  margin-bottom: 0;
+}
+.ach-collection-pager {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+.ach-page-range {
+  margin-inline-end: 0.5rem;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+.ach-collection-pager .btn {
+  min-width: 2.75rem;
+}
+.ach-collection-content {
+  min-width: 0;
+}
+.ach-preview-hint {
+  margin-top: 0.75rem;
+  font-size: 0.8125rem;
+  color: var(--ach-muted);
+  text-align: center;
+}
+@container achievement-content (min-width: 54rem) {
+  .ach-set-layout {
+    grid-template-columns: 18.75rem minmax(0, 1fr);
+    gap: 1.5rem 2rem;
+  }
+  .ach-set-hero {
+    row-gap: 1.5rem;
+    padding: 0;
+    border: 0;
+  }
+  .ach-collection-jump {
+    display: none;
+  }
+  /* Shared header track aligns the actual cards, including wrapped filters.
+     Older browsers retain the independently stacked, usable sections. */
+  @supports (grid-template-rows: subgrid) {
+    .ach-set-layout {
+      grid-template-rows: auto 1fr;
+      align-items: stretch;
+    }
+    .ach-set-hero,
+    .ach-set-layout > #collection {
+      display: grid;
+      grid-row: span 2;
+      grid-template-rows: subgrid;
+    }
+    .ach-set-details {
+      align-self: end;
+    }
+    .ach-set-preview {
+      align-self: start;
+    }
+    .ach-collection-header {
+      margin-bottom: 0;
+    }
+  }
+  .ach-set-layout .ach-child-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(12rem, 1fr));
+    gap: 1.5rem 1rem;
+  }
+  .ach-set-layout .ach-child-grid > .ach-card-link:has(.ach-spectral),
+  .ach-set-layout .ach-child-grid > .ach-spectral-wrap,
+  .ach-set-layout .ach-child-grid .ach-spectral-wrap--sm {
+    width: 100%;
+    max-width: 100%;
+  }
+}
+.ach-section-heading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+.ach-section-heading h2 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.ach-section-heading p {
+  margin-top: 0.25rem;
+  font-size: 0.875rem;
+  color: var(--ach-muted);
+}
+.ach-child-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.75rem 1.25rem;
+  justify-content: center;
+  perspective: 1200px;
+}
+.ach-muted {
+  color: var(--ach-muted);
+}
+.ach-collection-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+.ach-search-field {
+  position: relative;
+  flex: 1 1 12rem;
+}
+.ach-search-field > svg {
+  position: absolute;
+  top: 50%;
+  inset-inline-start: 0.75rem;
+  transform: translateY(-50%);
+  color: var(--ach-muted);
+  pointer-events: none;
+}
+.ach-search-field .input {
+  padding-inline-start: 2.25rem;
+}
+.ach-search-field input::placeholder {
+  color: var(--ach-muted);
+  opacity: 1;
+}
+.ach-status-field {
+  flex: 0 1 10rem;
+}
+.ach-status-field .select {
+  padding-block: 0;
+  line-height: normal;
+}
+.ach-getting-started {
+  display: flex;
+  align-items: start;
+  gap: 0.75rem;
+  padding: 1rem;
+  margin-bottom: 2rem;
+  border-radius: var(--rounded-box, 0.625rem);
+  background: oklch(var(--b2));
+  font-size: 0.875rem;
+}
+.ach-getting-started > svg {
+  flex-shrink: 0;
+}
+.ach-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 3rem 1.5rem;
+  border: 1px dashed var(--ach-border);
+  border-radius: var(--rounded-box, 0.625rem);
+  text-align: center;
+}
+.ach-empty h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+}
+.ach-empty p {
+  color: var(--ach-muted);
+  max-width: 40ch;
+}
+.ach-empty .btn {
+  margin-top: 0.5rem;
+}
+.ach-attribution {
+  margin-top: 2.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--ach-border);
+  color: var(--ach-muted);
+  font-size: 0.8125rem;
+}
+.ach-attribution summary {
+  width: fit-content;
+  padding-block: 0.5rem;
+  cursor: pointer;
+}
+.ach-attribution p {
+  max-width: 70ch;
+  margin-top: 0.5rem;
+  line-height: 1.6;
+}
+.ach-page
+  :is(a, button, summary, input, select, [role="button"]):focus-visible {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 3px;
+}
+.ach-page a {
+  text-underline-offset: 0.2em;
+}
+.ach-page input {
+  caret-color: oklch(var(--p));
+}
+.ach-page ::selection {
+  background: oklch(var(--p) / 0.25);
+}
+#collection {
+  scroll-margin-top: 1.5rem;
+}
+
+.ach-card--sm {
+  width: 190px;
+  height: 268px;
+}
+
+.ach-card--sm .ach-art {
+  height: 128px;
+}
+
+.ach-card--sm .ach-plate {
+  margin: -14px 12px 0;
+  padding: 5px 8px;
+}
+
+.ach-card--sm .ach-plate-name {
+  font-size: 13.5px;
+}
+
+.ach-card--sm .ach-rarity-row {
+  margin-top: auto;
+  padding-bottom: 10px;
+}
+
+.ach-card--sm .ach-rarity {
+  font-size: 10px;
+}
+
+.ach-card--sm .ach-earned {
+  font-size: 10.5px;
+  padding-bottom: 10px;
+}
+
+.ach-card--sm .ach-badge {
+  width: 40px;
+  height: 40px;
+  top: -10px;
+  left: -10px;
+}
+
+.ach-card--sm .ach-badge-text {
+  font-size: 10.5px;
+}
+
+.ach-card--sm .ach-badge svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ach-card--sm .ach-pin-head {
+  width: 14px;
+  height: 14px;
+}
+
+@media (max-width: 900px) {
+  .ach-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+  .ach-navigation {
+    position: static;
+  }
+  .ach-side--desktop {
+    display: none;
+  }
+  .ach-mobile-nav {
+    display: block;
+  }
+}
+@media (max-width: 640px) {
+  .ach-stat {
+    padding: 1rem 0.75rem;
+  }
+  .ach-stat-value {
+    font-size: 1.25rem;
+  }
+  .ach-stat-total {
+    font-size: 0.75rem;
+  }
+  .ach-stat-label {
+    min-height: 2.5em;
+    font-size: 0.75rem;
+    line-height: 1.25;
+  }
+  .ach-collection-toolbar .ach-search-field {
+    flex-basis: 100%;
+  }
+  .ach-status-field {
+    flex-grow: 1;
+  }
+  .ach-page :is(.btn, .input, .select) {
+    min-height: 2.75rem;
+    height: auto;
+  }
+  .ach-collection-toolbar :is(.input, .select) {
+    font-size: 1rem;
+  }
+}
+
+.ach-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid rgb(148 163 184 / 18%);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.ach-row {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) auto auto;
+  gap: 14px;
+  align-items: center;
+  padding: 11px 16px;
+  font-family: Inter, system-ui, sans-serif;
+  font-size: 14.5px;
+  color: #8a929b;
+  border-bottom: 1px solid rgb(148 163 184 / 10%);
+}
+
+.ach-row:last-child {
+  border-bottom: none;
+}
+
+.ach-row-mark {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 1.5px solid rgb(148 163 184 / 45%);
+}
+
+.ach-row--earned {
+  color: #e8e4da;
+  background: rgb(216 180 90 / 5%);
+}
+
+.ach-row--earned .ach-row-mark {
+  background: #d8b45a;
+  border-color: #d8b45a;
+  box-shadow: 0 0 8px rgb(216 180 90 / 55%);
+}
+
+.ach-row-name a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px solid rgb(216 180 90 / 40%);
+}
+
+.ach-row-name a:hover {
+  color: #f2ede0;
+}
+
+.ach-row-code,
+.ach-row-date {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: #6f7780;
+}
+
+.ach-row--earned .ach-row-date {
+  color: #d8b45a;
+}
+
+.ach-pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.ach-pagination .join {
+  flex-wrap: wrap;
+}
+@media (max-width: 640px) {
+  .ach-pagination {
+    justify-content: center;
+  }
+}
+
+/* Fullscreen card expansion */
+.ach-card-wrap--expandable {
+  cursor: zoom-in;
+}
+
+.ach-modal {
+  /* Perspective expands the face beyond its layout box. Keep those corners
+     and the cast shadow inside the dialog's scrollable painting area. */
+  --ach-modal-clearance: clamp(24px, 5vw, 64px);
+  border: none;
+  padding: var(--ach-modal-clearance);
+  max-width: 100vw;
+  max-height: 100svh;
+  overflow: auto;
+  background: transparent;
+  color: oklch(var(--bc));
+}
+
+.ach-modal::backdrop {
+  background: rgb(6 9 12 / 82%);
+  backdrop-filter: blur(6px);
+}
+
+.ach-modal[open] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.ach-modal-close {
+  position: fixed;
+  top: 24px;
+  right: 24px;
+  z-index: 3;
+  width: 44px;
+  height: 44px;
+}
+
+.ach-modal-stage {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  /* Reserve the enlarged card's height so its scaled visual stays clear of
+     the toolbar below it. */
+  min-height: 640px;
+}
+
+/* Enlarge the card for the showcase. Small (subdivision) cards start much
+   smaller, so they scale up more to reach a comparable size. */
+.ach-modal-stage .ach-card-wrap {
+  transform: scale(1.45);
+}
+
+.ach-modal-stage .ach-card-wrap:has(.ach-card--sm) {
+  transform: scale(2.1);
+}
+
+@media (max-height: 820px) {
+  .ach-modal-stage {
+    min-height: 74vh;
+  }
+
+  .ach-modal-stage .ach-card-wrap {
+    transform: scale(1.2);
+  }
+
+  .ach-modal-stage .ach-card-wrap:has(.ach-card--sm) {
+    transform: scale(1.7);
+  }
+}
+
+.ach-modal-tools {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-shrink: 0;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: var(--rounded-box, 0.625rem);
+  background: oklch(var(--b2));
+}
+
+.ach-modal-tools[hidden],
+.ach-modal-panel[hidden],
+.ach-modal-unshare[hidden],
+.ach-modal-error[hidden] {
+  display: none;
+}
+
+.ach-modal-error {
+  position: relative;
+  z-index: 2;
+  padding: 8px 14px;
+  border-radius: var(--rounded-box, 0.625rem);
+  background: oklch(var(--er));
+  color: oklch(var(--erc));
+  font-size: 13px;
+}
+
+.ach-modal-panel {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-shrink: 0;
+  width: min(440px, calc(100vw - 2 * var(--ach-modal-clearance)));
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--rounded-box, 0.625rem);
+  background: oklch(var(--b2));
+}
+
+.ach-modal-panel-label {
+  font-size: 0.875rem;
+}
+
+.ach-modal-copyrow {
+  display: flex;
+  gap: 8px;
+}
+
+.ach-modal-output {
+  flex: 1;
+  min-width: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 16px;
+}
+
+.ach-set-header [hidden] {
+  display: none;
+}
+
+.ach-modal-unshare {
+  align-self: flex-start;
+  border: none;
+  background: none;
+  color: inherit;
+  font-size: 0.8125rem;
+  min-height: 2.75rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Phones are taller than the max-height breakpoint above, so the showcase
+   scale must also clamp on width or the card overflows the screen. */
+@media (max-width: 640px) {
+  .ach-modal-stage {
+    min-height: 70vh;
+  }
+
+  .ach-modal-stage .ach-card-wrap {
+    transform: scale(1.1);
+  }
+
+  .ach-modal-stage .ach-card-wrap:has(.ach-card--sm) {
+    transform: scale(1.7);
+  }
+}
+
+@media (max-width: 360px) {
+  .ach-modal-stage .ach-card-wrap {
+    transform: scale(1);
+  }
+
+  .ach-modal-stage .ach-card-wrap:has(.ach-card--sm) {
+    transform: scale(1.5);
+  }
+}

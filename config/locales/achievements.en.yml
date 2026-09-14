@@ -1,0 +1,46 @@
+en:
+  achievements:
+    ui:
+      title: Achievements
+      summary: Summary
+      continents: Continents
+      countries: Countries
+      regions: Regions
+      world_explored: World explored
+      collection_hint: Explore your collection by continent, country and region.
+      collection_navigation: Achievement collections
+      browse: Browse collection
+      breadcrumb: Breadcrumb
+      getting_started: Record or import location data to start exploring these cards.
+      import_data: Import data
+      collection_progress: "%{collection} explored"
+      completed_on: "Unlocked on %{date}"
+      remaining:
+        one: 1 left to explore
+        other: "%{count} left to explore"
+      share: Share
+      enable_sharing: Create public link
+      countries_progress: "%{count} of %{total} countries visited"
+      regions_progress: "%{count} of %{total} regions explored"
+      browse_children: "Browse %{collection}"
+      search_children: "Search %{collection}"
+      collection_pages: Collection pages
+      prev_page: Previous page
+      next_page: Next page
+      disable_sharing: Disable sharing
+      public_link: Public link
+      preview_hint: Select the card for a closer look.
+      search_cards: Search cards
+      card_status: Card status
+      apply: Apply
+      clear: Clear filters
+      page_range: "%{first}–%{last} of %{total} cards"
+      no_results: No matching cards
+      no_results_hint: Try another name or clear the filters to see the full collection.
+      about_boundaries: About boundary data
+      boundaries_note: "Region detection is based on approximate boundaries. Sources:"
+      status:
+        all: All cards
+        unlocked: Unlocked
+        in_progress: In progress
+        locked: Locked
