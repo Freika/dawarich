@@ -42,6 +42,17 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       expect(source.reload).to have_attributes(api_key: 'replacement_key', status: 'active', last_error: nil)
       expect(response).to redirect_to(select_trips_settings_trek_source_path(source))
     end
+
+    it 'does not replace credentials while selected trips are importing' do
+      source = create(:trip_source, user: user, api_key: 'current_key', importing: true)
+
+      post settings_trek_sources_path,
+           params: { trip_source: { base_url: source.base_url, api_key: 'replacement_key' } }
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
+      expect(source.reload).to have_attributes(api_key: 'current_key', importing: true)
+      expect(a_request(:get, 'https://trek.example.test/api/v1/trips')).not_to have_been_made
+    end
   end
 
   describe 'DELETE /settings/trek_sources/:id' do

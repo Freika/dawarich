@@ -32,6 +32,8 @@
                 <% if stop.starts_at %><span class="shrink-0 text-base-content/50"><%= stop.starts_at.strftime('%H:%M') %></span><% end %>
                 <span>
                   <strong><%= stop.name %></strong><%= " · #{stop.address}" if stop.address.present? %>
+                  <% details = [stop.transport_mode, stop.category, ("#{stop.duration_minutes} min" if stop.duration_minutes)] %>
+                  <% if details.compact.any? %><span class="text-base-content/60"> · <%= details.compact.join(' · ') %></span><% end %>
                   <% if stop.notes.present? %><span class="text-base-content/60"> — <%= stop.notes %></span><% end %>
                 </span>
               </li>
@@ -41,7 +43,7 @@
         <% if day.planned_reservations.any? %>
           <ul class="mt-2 space-y-1 text-sm text-base-content/70">
             <% day.planned_reservations.each do |reservation| %>
-              <li><%= icon 'calendar-check-2', class: 'mr-1 inline size-4' %><strong><%= reservation.title %></strong><%= " · #{reservation.location}" if reservation.location.present? %></li>
+              <li><%= icon 'calendar-check-2', class: 'mr-1 inline size-4' %><strong><%= reservation.title %></strong><%= " · #{reservation.location}" if reservation.location.present? %><%= " · #{l(reservation.starts_at, format: :short)}" if reservation.starts_at %><%= " · #{reservation.status}" if reservation.status.present? %><%= " — #{reservation.notes}" if reservation.notes.present? %></li>
             <% end %>
           </ul>
         <% end %>
@@ -56,7 +58,7 @@
         <% trip.planned_reservations.each do |reservation| %>
           <% next if reservation.planned_day_id.present? %>
 
-          <li><%= icon 'calendar-check-2', class: 'mr-1 inline size-4' %><strong><%= reservation.title %></strong><%= " · #{reservation.location}" if reservation.location.present? %></li>
+          <li><%= icon 'calendar-check-2', class: 'mr-1 inline size-4' %><strong><%= reservation.title %></strong><%= " · #{reservation.location}" if reservation.location.present? %><%= " · #{l(reservation.starts_at, format: :short)}" if reservation.starts_at %><%= " · #{reservation.status}" if reservation.status.present? %><%= " — #{reservation.notes}" if reservation.notes.present? %></li>
         <% end %>
       </ul>
     </div>
@@ -76,7 +78,12 @@
   <% if trip.planned_accommodations.any? || trip.planned_travellers.any? %>
     <div class="mt-4 space-y-2 text-sm text-base-content/70">
       <% if trip.planned_accommodations.any? %>
-        <p><strong><%= t('.accommodations') %>:</strong> <%= trip.planned_accommodations.map(&:name).join(', ') %></p>
+        <p><strong><%= t('.accommodations') %>:</strong></p>
+        <ul class="space-y-1">
+          <% trip.planned_accommodations.each do |accommodation| %>
+            <li><strong><%= accommodation.name %></strong><%= " · #{accommodation.address}" if accommodation.address.present? %><%= " · #{l(accommodation.starts_on, format: :short)}" if accommodation.starts_on %><%= " – #{l(accommodation.ends_on, format: :short)}" if accommodation.ends_on %><%= " — #{accommodation.notes}" if accommodation.notes.present? %></li>
+          <% end %>
+        </ul>
       <% end %>
       <% if trip.planned_travellers.any? %>
         <p><strong><%= t('.travellers') %>:</strong> <%= trip.planned_travellers.map(&:name).join(', ') %></p>

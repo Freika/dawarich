@@ -92,6 +92,18 @@ RSpec.describe Trek::ImportTripsJob do
     expect(source.last_error).to include('trip start_date is invalid')
   end
 
+  it 'keeps importing through an impossible trip date so Active Job can retry it' do
+    payload = { title: 'Tuscany', start_date: '2030-02-31', end_date: '2030-06-22' }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /trip start_date is invalid/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('trip start_date is invalid')
+  end
+
   it 'keeps importing through an inverted trip date range so Active Job can retry it' do
     payload = { title: 'Tuscany', start_date: '2030-06-22', end_date: '2030-06-14' }
     stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)
@@ -129,5 +141,20 @@ RSpec.describe Trek::ImportTripsJob do
 
     expect(source.reload).to be_importing
     expect(source.last_error).to include('duplicate dates')
+  end
+
+  it 'keeps importing through itinerary days outside the trip range so Active Job can retry it' do
+    day = { date: '2030-06-13', day_number: 1 }
+    payload = {
+      title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22', days: [day]
+    }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /outside the trip range/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('outside the trip range')
   end
 end

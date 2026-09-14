@@ -102,7 +102,10 @@ RSpec.describe Trek::Sync do
     end
 
     it 'enqueues one calculation for an imported trip that has already started' do
-      past_payload = payload.merge(start_date: 2.days.ago.to_date.to_s, end_date: 1.day.from_now.to_date.to_s)
+      past_payload = payload.deep_dup
+      past_payload[:start_date] = 2.days.ago.to_date.to_s
+      past_payload[:end_date] = 1.day.from_now.to_date.to_s
+      past_payload[:days][0][:date] = past_payload[:start_date]
       stub_trip(past_payload)
 
       expect do
@@ -111,13 +114,18 @@ RSpec.describe Trek::Sync do
     end
 
     it 'recalculates an imported trip when TREK changes its date range' do
-      past_payload = payload.merge(start_date: 2.days.ago.to_date.to_s, end_date: 1.day.from_now.to_date.to_s)
+      past_payload = payload.deep_dup
+      past_payload[:start_date] = 2.days.ago.to_date.to_s
+      past_payload[:end_date] = 1.day.from_now.to_date.to_s
+      past_payload[:days][0][:date] = past_payload[:start_date]
       stub_trip(past_payload)
       trip, = described_class.new(source).import!('12')
       trip.update_columns(path: 'LINESTRING(1 1, 2 2)', distance: 100, visited_countries: ['Italy'])
       clear_enqueued_jobs
 
-      changed_payload = past_payload.merge(start_date: 3.days.ago.to_date.to_s)
+      changed_payload = past_payload.deep_dup
+      changed_payload[:start_date] = 3.days.ago.to_date.to_s
+      changed_payload[:days][0][:date] = changed_payload[:start_date]
       stub_trip(changed_payload)
 
       expect do

@@ -207,6 +207,7 @@ module Trek
       day_dates = collection!(payload, 'days').map do |day|
         validate_required_fields!(day, %w[date day_number], 'day')
         day_date = validate_date!(day['date'], 'day date')
+        invalid_payload!('day date falls outside the trip range') if day_date < trip_start || day_date > trip_end
         validate_integer!(day['day_number'], 'day number')
         validate_named_collection!(day, 'places', 'place')
         validate_named_collection!(day, 'day_notes', 'day note', field: 'text')
@@ -243,11 +244,8 @@ module Trek
     end
 
     def validate_date!(value, field)
-      parsed = source_time_zone.parse(value.to_s)
-      invalid_payload!("#{field} is invalid") unless parsed
-
-      parsed
-    rescue ArgumentError, TypeError
+      Date.iso8601(value.to_s)
+    rescue Date::Error, TypeError
       invalid_payload!("#{field} is invalid")
     end
 

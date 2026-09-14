@@ -11,7 +11,12 @@ class Settings::TrekSourcesController < ApplicationController
     source = current_user.trip_sources.find_or_initialize_by(
       provider: 'trek', base_url: attributes[:base_url].to_s.strip.chomp('/')
     )
-    source.assign_attributes(api_key: attributes[:api_key], status: :active, last_error: nil, importing: false)
+    if source.persisted? && source.importing?
+      return redirect_to settings_integrations_path(service: 'trek'),
+                         alert: t('settings.trek_sources.sync.source_importing')
+    end
+
+    source.assign_attributes(api_key: attributes[:api_key], status: :active, last_error: nil)
     unless source.valid?
       return redirect_to settings_integrations_path(service: 'trek'), alert: source.errors.full_messages.to_sentence
     end
