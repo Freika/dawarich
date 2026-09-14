@@ -187,7 +187,7 @@ dawarich_app:
       RAILS_RELATIVE_URL_ROOT: /dawarich
 ```
 
-Dawarich then answers only under that path, for example `http://127.0.0.1:3000/dawarich/`. The healthcheck in the provided `docker-compose.yml` follows the variable, so it needs no change. Leave the variable unset to serve Dawarich at the domain root.
+Dawarich then answers only under that path, for example `http://127.0.0.1:3000/dawarich/`, so anything that probes the health endpoint needs the path as well. The healthcheck in the current `docker-compose.yml` follows the variable. If your compose file is older, change the `dawarich_app` healthcheck URL from `http://127.0.0.1:3000/api/v1/health` to `http://127.0.0.1:3000$${RAILS_RELATIVE_URL_ROOT}/api/v1/health`; otherwise Docker marks the app unhealthy and does not start Sidekiq. Kubernetes probes (see [How to install Dawarich in k8s](How_to_install_Dawarich_in_k8s.md)) use `/dawarich/api/v1/health`. Leave the variable unset to serve Dawarich at the domain root.
 
 If you run Dawarich without the Docker image and precompile assets yourself, set the variable for `rails assets:precompile` as well, so that stylesheets load their fonts from under the path.
 
