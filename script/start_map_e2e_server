@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+export OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES
+export RAILS_ENV=test
+export RAILS_SERVE_STATIC_FILES=true
+export DATABASE_NAME="${MAP_E2E_DATABASE_NAME:-dawarich_tile_only_e2e_test}"
+export WEB_CONCURRENCY=0
+
+asdf exec bundle exec rails db:prepare
+asdf exec bundle exec rails runner e2e/setup/seed.rb
+exec asdf exec bundle exec rails server -b 127.0.0.1 -p "${MAP_E2E_PORT:-3200}"

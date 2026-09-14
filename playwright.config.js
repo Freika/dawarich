@@ -5,20 +5,21 @@ import { defineConfig, devices } from "@playwright/test"
  */
 export default defineConfig({
   testDir: "./e2e",
-  /* Run tests in files in parallel */
-  fullyParallel: true,
+  fullyParallel: false,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
   /* Retry on CI only */
   retries: process.env.CI ? 2 : 0,
   /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: [["html"], ["junit", { outputFile: "test-results/results.xml" }]],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.BASE_URL || "http://localhost:3000",
+    baseURL:
+      process.env.BASE_URL ||
+      `http://127.0.0.1:${process.env.MAP_E2E_PORT || "3200"}`,
 
     /* Use European locale and timezone */
     locale: "en-GB",
@@ -36,45 +37,48 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
-    // Setup project - runs authentication before all tests
     {
       name: "setup",
       testMatch: /.*\/setup\/auth\.setup\.js/,
+      use: { ...devices["Desktop Chrome"], channel: "chrome" },
     },
 
     {
-      name: "chromium",
-      testIgnore: /.*\/lite\/.*/,
+      name: "map-editing",
+      testIgnore: [/.*\/large\/.*/, /.*\/setup\/.*/],
       use: {
         ...devices["Desktop Chrome"],
-        // Use saved authentication state
+        channel: "chrome",
         storageState: "e2e/temp/.auth/user.json",
       },
       dependencies: ["setup"],
     },
 
-    // Lite user setup and tests
     {
-      name: "lite-setup",
-      testMatch: /.*\/setup\/auth-lite\.setup\.js/,
+      name: "large-setup",
+      testMatch: /.*\/setup\/auth-large\.setup\.js/,
+      use: { ...devices["Desktop Chrome"], channel: "chrome" },
     },
     {
-      name: "lite",
-      testMatch: /.*\/lite\/.*/,
+      name: "large-history",
+      testMatch: /.*\/large\/.*/,
       use: {
         ...devices["Desktop Chrome"],
-        storageState: "e2e/temp/.auth/lite-user.json",
+        channel: "chrome",
+        storageState: "e2e/temp/.auth/large-user.json",
       },
-      dependencies: ["lite-setup"],
+      dependencies: ["large-setup"],
     },
   ],
 
-  /* Run your local dev server before starting the tests */
+  globalTeardown: "./e2e/setup/global_teardown.js",
+
   webServer: {
-    command:
-      "OBJC_DISABLE_INITIALIZE_FORK_SAFETY=YES RAILS_ENV=development rails server -p 3000",
-    url: "http://localhost:3000",
-    reuseExistingServer: !process.env.CI,
-    timeout: 120 * 1000,
+    command: "script/start_map_e2e_server",
+    url:
+      process.env.BASE_URL ||
+      `http://127.0.0.1:${process.env.MAP_E2E_PORT || "3200"}`,
+    reuseExistingServer: false,
+    timeout: 240 * 1000,
   },
 })
