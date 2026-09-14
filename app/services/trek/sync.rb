@@ -62,9 +62,10 @@ module Trek
     end
 
     def import_payload!(identifier, detail)
+      normalized = normalize(detail)
       trip = @source.trips.find_or_initialize_by(source_identifier: identifier.to_s)
       created = trip.new_record?
-      changed = synchronize!(trip, detail)
+      changed = synchronize_normalized!(trip, normalized)
       enqueue_calculation_if_needed!(trip, force: changed)
       @source.update!(last_synced_at: Time.current, last_error: nil)
 
@@ -81,7 +82,10 @@ module Trek
     private
 
     def synchronize!(trip, payload)
-      normalized = normalize(payload)
+      synchronize_normalized!(trip, normalize(payload))
+    end
+
+    def synchronize_normalized!(trip, normalized)
       digest = Digest::SHA256.hexdigest(JSON.generate(normalized))
       if trip.persisted? && trip.source_digest == digest
         trip.update!(source_status: :active, source_synced_at: Time.current) if trip.source_stopped?
@@ -91,7 +95,7 @@ module Trek
       Trip.transaction do
         trip.assign_attributes(
           user: @source.user,
-          name: normalized.fetch('title').presence || 'Untitled TREK trip',
+          name: normalized['title'].presence || 'Untitled TREK trip',
           started_at: day_start(normalized.fetch('start_date')),
           ended_at: day_end(normalized.fetch('end_date')),
           source_status: :active,
@@ -188,7 +192,13 @@ module Trek
     end
 
     def normalize(payload)
-      canonicalize(payload.deep_stringify_keys)
+      normalized = payload.deep_stringify_keys
+      missing_fields = %w[start_date end_date].select { |field| normalized[field].blank? }
+      if missing_fields.any?
+        raise Client::Error, "TREK trip response is missing required fields: #{missing_fields.join(', ')}"
+      end
+
+      canonicalize(normalized)
     end
 
     def day_start(value)

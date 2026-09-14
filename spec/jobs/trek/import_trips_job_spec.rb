@@ -68,4 +68,15 @@ RSpec.describe Trek::ImportTripsJob do
     expect(source).not_to be_importing
     expect(source.last_error).to include('401')
   end
+
+  it 'keeps importing through an incomplete trip response so Active Job can retry it' do
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: {}.to_json)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /missing required fields/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('missing required fields')
+  end
 end
