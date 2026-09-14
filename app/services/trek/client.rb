@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'digest'
+require 'net/http'
 
 module Trek
   class Client
@@ -52,19 +53,21 @@ module Trek
     end
 
     def get(path)
-      @source.verify_base_url!
-
-      response = HTTParty.get(
-        "#{@source.base_url}#{path}",
-        headers: {
-          'Authorization' => "Bearer #{@source.api_key}",
-          'Accept' => 'application/json'
-        },
-        timeout: TIMEOUT,
-        follow_redirects: false
+      uri = URI.parse("#{@source.base_url}#{path}")
+      ip_address = @source.resolved_base_url_ip!
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.ipaddr = ip_address
+      http.use_ssl = uri.scheme == 'https'
+      http.open_timeout = TIMEOUT
+      http.read_timeout = TIMEOUT
+      request = Net::HTTP::Get.new(
+        uri.request_uri,
+        'Authorization' => "Bearer #{@source.api_key}",
+        'Accept' => 'application/json'
       )
+      response = http.start { |connection| connection.request(request) }
 
-      return response if response.success?
+      return response if response.is_a?(Net::HTTPSuccess)
 
       raise Error.new("TREK request failed with HTTP #{response.code}", status: response.code.to_i)
     rescue UrlValidatable::BlockedUrlError => e

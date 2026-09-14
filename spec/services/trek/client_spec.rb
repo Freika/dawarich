@@ -8,7 +8,7 @@ RSpec.describe Trek::Client do
       TripSource,
       base_url: 'https://trek.example.test',
       api_key: 'trek_test_key',
-      verify_base_url!: true
+      resolved_base_url_ip!: '93.184.216.34'
     )
   end
 
@@ -20,7 +20,7 @@ RSpec.describe Trek::Client do
       .to_return(status: 200, body: { trips: [{ id: 12, title: 'Tuscany' }] }.to_json)
 
     expect(client.trips).to eq([{ 'id' => 12, 'title' => 'Tuscany' }])
-    expect(source).to have_received(:verify_base_url!)
+    expect(source).to have_received(:resolved_base_url_ip!)
   end
 
   it 'turns a non-success response into an error that retains the status' do
