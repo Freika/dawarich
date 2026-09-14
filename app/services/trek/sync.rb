@@ -217,7 +217,14 @@ module Trek
       invalid_payload!('days contain duplicate dates') if day_dates.uniq.length != day_dates.length
 
       validate_named_collection!(payload, 'unscheduled_reservations', 'reservation', field: 'title')
-      validate_named_collection!(payload, 'accommodations', 'accommodation')
+      collection!(payload, 'accommodations').each do |accommodation|
+        validate_required_fields!(accommodation, ['name'], 'accommodation')
+        accommodation_start = validate_optional_date!(accommodation['start_date'], 'accommodation start_date')
+        accommodation_end = validate_optional_date!(accommodation['end_date'], 'accommodation end_date')
+        if accommodation_start && accommodation_end && accommodation_end < accommodation_start
+          invalid_payload!('accommodation end_date precedes start_date')
+        end
+      end
       validate_named_collection!(payload, 'travellers', 'traveller')
       validate_named_collection!(payload, 'unplanned_places', 'unplanned place')
     end
@@ -247,6 +254,10 @@ module Trek
       Date.iso8601(value.to_s)
     rescue Date::Error, TypeError
       invalid_payload!("#{field} is invalid")
+    end
+
+    def validate_optional_date!(value, field)
+      validate_date!(value, field) if value.present?
     end
 
     def validate_integer!(value, field)
