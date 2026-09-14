@@ -79,4 +79,28 @@ RSpec.describe Trek::ImportTripsJob do
     expect(source.reload).to be_importing
     expect(source.last_error).to include('missing required fields')
   end
+
+  it 'keeps importing through an invalid trip date so Active Job can retry it' do
+    payload = { title: 'Tuscany', start_date: 'not a date', end_date: '2030-06-22' }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /trip start_date is invalid/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('trip start_date is invalid')
+  end
+
+  it 'keeps importing through malformed nested itinerary data so Active Job can retry it' do
+    payload = { title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22', days: [{}] }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /day is missing required fields/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('day is missing required fields')
+  end
 end

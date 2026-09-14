@@ -193,12 +193,66 @@ module Trek
 
     def normalize(payload)
       normalized = payload.deep_stringify_keys
-      missing_fields = %w[start_date end_date].select { |field| normalized[field].blank? }
-      if missing_fields.any?
-        raise Client::Error, "TREK trip response is missing required fields: #{missing_fields.join(', ')}"
-      end
+      validate_payload!(normalized)
 
       canonicalize(normalized)
+    end
+
+    def validate_payload!(payload)
+      validate_required_fields!(payload, %w[start_date end_date], 'trip')
+      validate_date!(payload['start_date'], 'trip start_date')
+      validate_date!(payload['end_date'], 'trip end_date')
+
+      collection!(payload, 'days').each do |day|
+        validate_required_fields!(day, %w[date day_number], 'day')
+        validate_date!(day['date'], 'day date')
+        validate_integer!(day['day_number'], 'day number')
+        validate_named_collection!(day, 'places', 'place')
+        validate_named_collection!(day, 'day_notes', 'day note', field: 'text')
+        validate_named_collection!(day, 'reservations', 'reservation', field: 'title')
+      end
+
+      validate_named_collection!(payload, 'unscheduled_reservations', 'reservation', field: 'title')
+      validate_named_collection!(payload, 'accommodations', 'accommodation')
+      validate_named_collection!(payload, 'travellers', 'traveller')
+      validate_named_collection!(payload, 'unplanned_places', 'unplanned place')
+    end
+
+    def validate_named_collection!(payload, collection_name, item_name, field: 'name')
+      collection!(payload, collection_name).each do |item|
+        validate_required_fields!(item, [field], item_name)
+      end
+    end
+
+    def collection!(payload, field)
+      value = payload[field]
+      return [] if value.nil?
+      return value if value.is_a?(Array)
+
+      invalid_payload!("#{field} must be an array")
+    end
+
+    def validate_required_fields!(payload, fields, object_name)
+      invalid_payload!("#{object_name} must be an object") unless payload.is_a?(Hash)
+
+      missing_fields = fields.select { |field| payload[field].blank? }
+      invalid_payload!("#{object_name} is missing required fields: #{missing_fields.join(', ')}") if missing_fields.any?
+    end
+
+    def validate_date!(value, field)
+      invalid_payload!("#{field} is invalid") unless source_time_zone.parse(value.to_s)
+    rescue ArgumentError, TypeError
+      invalid_payload!("#{field} is invalid")
+    end
+
+    def validate_integer!(value, field)
+      Integer(value)
+    rescue ArgumentError, TypeError
+      invalid_payload!("#{field} is invalid")
+    end
+
+    def invalid_payload!(message)
+      raise Client::Error, "TREK trip response is invalid: #{message}"
     end
 
     def day_start(value)
