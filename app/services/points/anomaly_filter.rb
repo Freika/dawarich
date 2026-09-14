@@ -189,11 +189,23 @@ class Points::AnomalyFilter
     # tower fix often arrives in a batch of one, before the precise fixes
     # that condemn it exist, and the batch that brings those fixes starts
     # after it. Each run therefore re-judges the recent past.
+    sentinel_conditions = <<~SQL.squish
+      (vertical_accuracy < 0 AND velocity LIKE '-%') OR (
+        vertical_accuracy = 0 AND velocity ~ '^0+(\.0+)?$' AND
+        EXISTS (SELECT 1 FROM points repeated
+          WHERE repeated.user_id = points.user_id
+          AND repeated.tracker_id IS NOT DISTINCT FROM points.tracker_id
+          AND repeated.timestamp BETWEEN points.timestamp - :repeat_window
+          AND points.timestamp + :repeat_window
+          AND repeated.id <> points.id
+          AND repeated.lonlat = points.lonlat)
+      )
+    SQL
+
     relation = Point.where(user_id: @user_id,
                            timestamp: (@start_time - SENTINEL_PRECISE_NEIGHBOR_SECONDS)..@end_time)
                     .not_anomaly
-                    .where(vertical_accuracy: ...0)
-                    .where("velocity LIKE '-%'")
+                    .where(sentinel_conditions, repeat_window: SENTINEL_PRECISE_NEIGHBOR_SECONDS)
                     .where('accuracy > ?', SENTINEL_ACCURACY_METERS)
                     .where(
                       'EXISTS (SELECT 1 FROM points precise ' \
