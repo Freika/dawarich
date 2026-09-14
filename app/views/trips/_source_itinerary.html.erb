@@ -42,6 +42,17 @@
     <% end %>
   </div>
 
+  <% if trip.planned_unplanned_places.any? %>
+    <div class="mt-4">
+      <h3 class="font-medium"><%= t('.unplanned_places') %></h3>
+      <ul class="mt-2 space-y-1 text-sm">
+        <% trip.planned_unplanned_places.each do |place| %>
+          <li><strong><%= place.name %></strong><%= " · #{place.address}" if place.address.present? %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
+
   <% if trip.planned_accommodations.any? || trip.planned_travellers.any? %>
     <div class="mt-4 space-y-2 text-sm text-base-content/70">
       <% if trip.planned_accommodations.any? %>

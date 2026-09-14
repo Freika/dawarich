@@ -7,8 +7,10 @@
   <%= form_with url: import_trips_settings_trek_source_path(@source), method: :post, data: { turbo: false }, class: 'space-y-3' do %>
     <% @remote_trips.each do |trip| %>
       <% identifier = trip.fetch('id').to_s %>
-      <label class="flex items-start gap-3 rounded-box border border-base-content/10 bg-base-200 p-4 cursor-pointer hover:border-primary/50">
-        <%= check_box_tag 'trip_ids[]', identifier, @selected_identifiers.include?(identifier), class: 'checkbox checkbox-primary mt-1' %>
+      <% archived = trip['archived'] == true %>
+      <label class="flex items-start gap-3 rounded-box border border-base-content/10 bg-base-200 p-4 <%= archived ? 'opacity-60' : 'cursor-pointer hover:border-primary/50' %>">
+        <%= check_box_tag 'trip_ids[]', identifier, @selected_identifiers.include?(identifier) && !archived,
+                          class: 'checkbox checkbox-primary mt-1', disabled: archived %>
         <span>
           <span class="font-semibold block"><%= trip['title'].presence || t('.untitled_trip') %></span>
           <span class="text-sm text-base-content/60"><%= trip['start_date'] %> – <%= trip['end_date'] %></span>

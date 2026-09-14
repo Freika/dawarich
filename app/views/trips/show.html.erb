@@ -29,8 +29,12 @@
       <% else %>
         <div class="flex items-center justify-center h-full rounded-lg bg-base-200">
           <div class="text-center">
-            <p class="text-base-content/60"><%= t('.trip_path_is_being_calculated') %></p>
-            <div class="loading loading-spinner loading-lg mt-4"></div>
+            <% if @trip.trip_source.present? && @trip.started_at > Time.current %>
+              <p class="text-base-content/60"><%= t('.trip_has_not_started_yet') %></p>
+            <% else %>
+              <p class="text-base-content/60"><%= t('.trip_path_is_being_calculated') %></p>
+              <div class="loading loading-spinner loading-lg mt-4"></div>
+            <% end %>
           </div>
         </div>
       <% end %>
@@ -91,7 +95,7 @@
         <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
       </div>
 
-      <% if @trip.trip_source.present? && @trip.planned_days.any? %>
+      <% if @trip.planned_days.any? || @trip.planned_unplanned_places.any? || @trip.planned_reservations.any? || @trip.planned_accommodations.any? || @trip.planned_travellers.any? %>
         <%= render 'trips/source_itinerary', trip: @trip %>
       <% end %>
       <turbo-frame id="share-link-modal"></turbo-frame>

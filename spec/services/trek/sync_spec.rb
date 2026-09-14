@@ -32,7 +32,13 @@ RSpec.describe Trek::Sync do
           ]
         }
       ],
-      unplanned_places: [], unscheduled_reservations: [],
+      unplanned_places: [
+        {
+          name: 'Mercato Centrale', address: 'Florence', lat: 43.775, lng: 11.253,
+          category: 'Food market', notes: 'Choose lunch there'
+        }
+      ],
+      unscheduled_reservations: [],
       accommodations: [
         {
           name: 'Hotel Alba', address: nil, lat: nil, lng: nil, start_date: '2030-06-14',
@@ -65,6 +71,7 @@ RSpec.describe Trek::Sync do
       expect(@trip.planned_reservations.first.title).to eq('LH 1234')
       expect(@trip.planned_accommodations.first.name).to eq('Hotel Alba')
       expect(@trip.planned_travellers.pluck(:name)).to contain_exactly('ada', 'bob')
+      expect(@trip.planned_unplanned_places.first).to have_attributes(name: 'Mercato Centrale', category: 'Food market')
       expect(@trip.notes).to be_empty
     end
 
@@ -79,6 +86,37 @@ RSpec.describe Trek::Sync do
       expect(created).to be(false)
       expect(changed).to be(false)
       expect(trip.reload.planned_days.first.planned_stops.first.id).to eq(original_stop_id)
+    end
+
+    it 'reactivates a selected trip without rewriting an unchanged itinerary' do
+      stub_trip(payload)
+      trip, = described_class.new(source).import!('12')
+      trip.update!(source_status: :stopped)
+
+      stub_trip(payload)
+      _, created, changed = described_class.new(source).import!('12')
+
+      expect(created).to be(false)
+      expect(changed).to be(false)
+      expect(trip.reload).to be_source_active
+    end
+
+    it 'enqueues one calculation for an imported trip that has already started' do
+      past_payload = payload.merge(start_date: 2.days.ago.to_date.to_s, end_date: 1.day.from_now.to_date.to_s)
+      stub_trip(past_payload)
+
+      expect do
+        described_class.new(source).import!('12')
+      end.to have_enqueued_job(Trips::CalculateAllJob).exactly(:once)
+    end
+
+    it 'uses the source owner timezone when parsing TREK local dates' do
+      user.update!(settings: user.settings.merge('timezone' => 'America/Los_Angeles'))
+      stub_trip(payload)
+
+      Time.use_zone('UTC') { @trip, = described_class.new(source).import!('12') }
+
+      expect(@trip.started_at).to eq(Time.find_zone('America/Los_Angeles').parse('2030-06-14').beginning_of_day)
     end
   end
 

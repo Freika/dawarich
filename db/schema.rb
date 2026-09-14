@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_11_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_14_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -409,6 +409,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_150000) do
     t.index ["trip_id"], name: "index_planned_travellers_on_trip_id"
   end
 
+  create_table "planned_unplanned_places", force: :cascade do |t|
+    t.string "address"
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.integer "duration_minutes"
+    t.time "ends_at"
+    t.decimal "latitude", precision: 10, scale: 6
+    t.decimal "longitude", precision: 10, scale: 6
+    t.string "name", null: false
+    t.text "notes"
+    t.integer "position", null: false
+    t.time "starts_at"
+    t.string "transport_mode"
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id", "position"], name: "index_planned_unplanned_places_on_trip_id_and_position", unique: true
+    t.index ["trip_id"], name: "index_planned_unplanned_places_on_trip_id"
+  end
+
   create_table "point_sources", id: :serial, force: :cascade do |t|
     t.integer "battery_status"
     t.string "bssid"
@@ -802,6 +821,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_11_150000) do
   add_foreign_key "planned_reservations", "trips"
   add_foreign_key "planned_stops", "planned_days"
   add_foreign_key "planned_travellers", "trips"
+  add_foreign_key "planned_unplanned_places", "trips"
   add_foreign_key "points", "points_raw_data_archives", column: "raw_data_archive_id", on_delete: :restrict
   add_foreign_key "points", "tracks"
   add_foreign_key "points", "users"

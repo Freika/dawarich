@@ -40,4 +40,38 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
     end
   end
+
+  describe 'POST /settings/trek_sources/:id/import_trips' do
+    it 'stops syncing previously selected trips that are no longer selected' do
+      source = create(:trip_source, user: user)
+      previous_trip = create(
+        :trip, user: user, trip_source: source, source_identifier: 'previous', source_status: :active
+      )
+      response_payload = {
+        id: 12, title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22',
+        days: [], unplanned_places: [], unscheduled_reservations: [], accommodations: [], travellers: []
+      }
+
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_return(status: 200, body: { trips: [{ id: 12, archived: false }] }.to_json)
+      stub_request(:get, 'https://trek.example.test/api/v1/trips/12')
+        .to_return(status: 200, body: response_payload.to_json)
+
+      post import_trips_settings_trek_source_path(source), params: { trip_ids: ['12'] }
+
+      expect(previous_trip.reload).to be_source_stopped
+      expect(source.trips.find_by!(source_identifier: '12')).to be_source_active
+    end
+
+    it 'does not import archived trips submitted outside the selection UI' do
+      source = create(:trip_source, user: user)
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_return(status: 200, body: { trips: [{ id: 12, archived: true }] }.to_json)
+
+      post import_trips_settings_trek_source_path(source), params: { trip_ids: ['12'] }
+
+      expect(response).to redirect_to(select_trips_settings_trek_source_path(source))
+      expect(source.trips).to be_empty
+    end
+  end
 end

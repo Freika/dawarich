@@ -21,7 +21,7 @@ class Settings::TrekSourcesController < ApplicationController
 
   def select_trips
     @remote_trips = Trek::Client.new(@source).trips
-    @selected_identifiers = @source.trips.pluck(:source_identifier)
+    @selected_identifiers = @source.trips.source_active.pluck(:source_identifier)
   rescue Trek::Client::Error => e
     redirect_to settings_integrations_path(service: 'trek'), alert: e.message
   end
@@ -32,8 +32,19 @@ class Settings::TrekSourcesController < ApplicationController
       return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.select_at_least_one_trip')
     end
 
-    synchronizer = Trek::Sync.new(@source)
+    client = Trek::Client.new(@source)
+    remote_trips = client.trips
+    available_identifiers = remote_trips.reject { |trip| trip['archived'] == true }.map { |trip| trip.fetch('id').to_s }
+    identifiers &= available_identifiers
+    if identifiers.empty?
+      return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.select_at_least_one_active_trip')
+    end
+
+    synchronizer = Trek::Sync.new(@source, client:)
     identifiers.each { |identifier| synchronizer.import!(identifier) }
+    @source.trips.source_active.where.not(source_identifier: identifiers).update_all(
+      source_status: Trip.source_statuses.fetch('stopped'), source_synced_at: Time.current
+    )
     redirect_to settings_integrations_path(service: 'trek'), notice: t('.trips_are_now_syncing')
   rescue Trek::Client::Error, ActiveRecord::RecordInvalid => e
     redirect_to select_trips_settings_trek_source_path(@source), alert: e.message

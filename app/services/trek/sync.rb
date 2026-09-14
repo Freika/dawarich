@@ -27,6 +27,7 @@ module Trek
         else
           result.unchanged += 1
         end
+        enqueue_calculation_if_needed!(managed_trip)
       end
 
       @source.update!(last_synced_at: Time.current, last_error: nil)
@@ -44,6 +45,7 @@ module Trek
       trip = @source.trips.find_or_initialize_by(source_identifier: identifier.to_s)
       created = trip.new_record?
       changed = synchronize!(trip, detail)
+      enqueue_calculation_if_needed!(trip)
       @source.update!(last_synced_at: Time.current, last_error: nil)
 
       [trip, created, changed]
@@ -57,7 +59,10 @@ module Trek
     def synchronize!(trip, payload)
       normalized = normalize(payload)
       digest = Digest::SHA256.hexdigest(JSON.generate(normalized))
-      return false if trip.persisted? && trip.source_digest == digest
+      if trip.persisted? && trip.source_digest == digest
+        trip.update!(source_status: :active, source_synced_at: Time.current) if trip.source_stopped?
+        return false
+      end
 
       Trip.transaction do
         trip.assign_attributes(
@@ -70,11 +75,11 @@ module Trek
           source_synced_at: Time.current,
           source_snapshot: normalized
         )
+        trip.skip_calculation_enqueue = true
         trip.save!
         replace_itinerary!(trip, normalized)
       end
 
-      trip.enqueue_calculation_jobs unless trip.future?
       true
     end
 
@@ -83,6 +88,7 @@ module Trek
       trip.planned_reservations.destroy_all
       trip.planned_accommodations.destroy_all
       trip.planned_travellers.destroy_all
+      trip.planned_unplanned_places.destroy_all
 
       Array(payload['days']).each do |day|
         planned_day = trip.planned_days.create!(
@@ -114,6 +120,9 @@ module Trek
       end
       Array(payload['travellers']).each do |traveller|
         trip.planned_travellers.create!(name: traveller.fetch('name'), owner: traveller['owner'] == true)
+      end
+      Array(payload['unplanned_places']).each_with_index do |place, index|
+        trip.planned_unplanned_places.create!(stop_attributes(place, index))
       end
     end
 
@@ -150,17 +159,17 @@ module Trek
     end
 
     def day_start(value)
-      Time.zone.parse(value.to_s).beginning_of_day
+      source_time_zone.parse(value.to_s).beginning_of_day
     end
 
     def day_end(value)
-      Time.zone.parse(value.to_s).end_of_day
+      source_time_zone.parse(value.to_s).end_of_day
     end
 
     def local_time(value)
       return if value.blank?
 
-      Time.zone.parse(value.to_s)&.to_time
+      source_time_zone.parse(value.to_s)&.to_time
     rescue ArgumentError, TypeError
       nil
     end
@@ -168,13 +177,24 @@ module Trek
     def local_datetime(value)
       return if value.blank?
 
-      Time.zone.parse(value.to_s)
+      source_time_zone.parse(value.to_s)
     rescue ArgumentError, TypeError
       nil
     end
 
     def stop!(trip)
       trip.update!(source_status: :stopped, source_synced_at: Time.current)
+    end
+
+    def enqueue_calculation_if_needed!(trip)
+      return if trip.started_at > Time.current
+      return unless trip.path.blank? || trip.distance.blank? || trip.visited_countries.blank?
+
+      trip.enqueue_calculation_jobs
+    end
+
+    def source_time_zone
+      @source_time_zone ||= Time.find_zone(@source.user.timezone) || Time.zone
     end
 
     def canonicalize(value)
