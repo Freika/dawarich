@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- User profile archives uploaded through the regular Imports page are now restored as profile backups instead of failing the multi-file archive size limit. (#3011)
 - CSV imports combine separate DATE/TIME columns while preserving complete timestamps when both formats are present.
 - The visits API now returns a clear bad-request response for malformed date ranges on both time-based and area-based queries, instead of failing or silently ignoring the filter.
 - Failed imports no longer leave temporary downloads on disk when the file is empty or fails integrity checks.
