@@ -837,6 +837,70 @@ paths:
                   error:
                     type: string
                     example: 'Missing required parameters: start_at, end_at'
+  "/api/v1/countries/visited":
+    get:
+      summary: Returns visited countries for a history scope
+      tags:
+      - Countries
+      description: Returns unique country metadata only; location points and boundary
+        geometry are not included.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: start_at
+        in: query
+        required: true
+        schema:
+          oneOf:
+          - type: integer
+          - type: string
+            format: date-time
+      - name: end_at
+        in: query
+        required: true
+        schema:
+          oneOf:
+          - type: integer
+          - type: string
+            format: date-time
+      - name: import_id
+        in: query
+        required: false
+        description: Optional import filter
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: visited countries found
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - countries
+                properties:
+                  countries:
+                    type: array
+                    items:
+                      type: object
+                      required:
+                      - iso_a3
+                      - name
+                      properties:
+                        iso_a3:
+                          type: string
+                          example: DEU
+                        name:
+                          type: string
+                          example: Germany
+        '422':
+          description: invalid history scope
+        '401':
+          description: unauthorized
   "/api/v1/demo_data":
     get:
       summary: Checks whether demo data exists
@@ -3774,6 +3838,114 @@ paths:
                         description: null for Pro, `12_months` for Lite
         '401':
           description: unauthorized
+  "/api/v1/points/{point_id}/position":
+    parameters:
+    - name: point_id
+      in: path
+      required: true
+      description: Point ID
+      schema:
+        type: integer
+    patch:
+      summary: Moves a point and synchronously recalculates its track
+      tags:
+      - Points
+      description: Atomically moves one point and returns the canonical point, track,
+        segments, and revisions.
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      responses:
+        '200':
+          description: point moved and track recalculated
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - point
+                - track
+                - revision
+                - visited_countries
+                properties:
+                  point:
+                    type: object
+                  track:
+                    type: object
+                    nullable: true
+                    description: Canonical GeoJSON Track feature
+                  revision:
+                    type: object
+                    properties:
+                      point:
+                        type: integer
+                      track:
+                        type: integer
+                        nullable: true
+                  visited_countries:
+                    type: object
+                    nullable: true
+                    properties:
+                      iso_a3:
+                        type: array
+                        items:
+                          type: string
+        '409':
+          description: stale edit; canonical state returned
+        '422':
+          description: invalid coordinates, history scope, or recalculation timeout
+        '401':
+          description: unauthorized
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+              - point
+              - history_scope
+              properties:
+                point:
+                  type: object
+                  required:
+                  - latitude
+                  - longitude
+                  - revision
+                  properties:
+                    latitude:
+                      type: number
+                      format: double
+                    longitude:
+                      type: number
+                      format: double
+                    revision:
+                      type: integer
+                track_revision:
+                  type: integer
+                  nullable: true
+                history_scope:
+                  type: object
+                  required:
+                  - start_at
+                  - end_at
+                  properties:
+                    start_at:
+                      oneOf:
+                      - type: integer
+                      - type: string
+                        format: date-time
+                    end_at:
+                      oneOf:
+                      - type: integer
+                      - type: string
+                        format: date-time
+                    import_id:
+                      type: integer
+                      nullable: true
   "/api/v1/points/tracked_months":
     get:
       summary: Returns list of tracked years and months
@@ -4769,22 +4941,6 @@ paths:
                   settings:
                     type: object
                     properties:
-                      route_opacity:
-                        type: number
-                        example: 60
-                        description: Route opacity percentage (0-100)
-                      meters_between_routes:
-                        oneOf:
-                        - type: number
-                        - type: string
-                        example: 500
-                        description: Minimum distance between routes in meters
-                      minutes_between_routes:
-                        oneOf:
-                        - type: number
-                        - type: string
-                        example: 30
-                        description: Minimum time between routes in minutes
                       fog_of_war_meters:
                         oneOf:
                         - type: number
@@ -4807,15 +4963,10 @@ paths:
                         type: string
                         example: OpenStreetMap
                         description: Preferred map layer/tile provider
-                      speed_colored_routes:
-                        type: boolean
-                        example: false
-                        description: Whether to color routes based on speed
-                      points_rendering_mode:
+                      track_color:
                         type: string
-                        example: raw
-                        description: How to render points on the map (raw, heatmap,
-                          etc.)
+                        example: "#6366F1"
+                        description: Color used for tile-rendered tracks
                       live_map_enabled:
                         type: boolean
                         example: true
@@ -4844,12 +4995,6 @@ paths:
                         - type: 'null'
                         example: your-photoprism-api-key
                         description: API key for PhotoPrism photo service
-                      speed_color_scale:
-                        oneOf:
-                        - type: string
-                        - type: 'null'
-                        example: viridis
-                        description: Color scale for speed-colored routes
                       fog_of_war_threshold:
                         oneOf:
                         - type: number

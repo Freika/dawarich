@@ -18,16 +18,18 @@ RSpec.describe Countries::NameAliases do
   # unresolved. Pin every canonical value to the shipped seed file.
   describe 'seed consistency' do
     it 'maps every alias onto a name that exists verbatim in the seed data' do
-      seeded = Oj.load(File.read(Rails.root.join('lib/assets/countries.geojson')))['features']
-                 .map { |feature| feature['properties']['name'] }
+      path = Rails.root.join('lib/assets/countries.geojson.gz')
+      seeded = Zlib::GzipReader.open(path) { |gzip| Oj.load(gzip.read) }['features']
+                               .map { |feature| feature['properties']['name'] }
 
       missing = described_class::ALIASES.values.uniq - seeded
       expect(missing).to be_empty
     end
 
     it 'never aliases a name the seed already carries' do
-      seeded = Oj.load(File.read(Rails.root.join('lib/assets/countries.geojson')))['features']
-                 .map { |feature| feature['properties']['name'] }
+      path = Rails.root.join('lib/assets/countries.geojson.gz')
+      seeded = Zlib::GzipReader.open(path) { |gzip| Oj.load(gzip.read) }['features']
+                               .map { |feature| feature['properties']['name'] }
 
       shadowed = described_class::ALIASES.keys & seeded
       expect(shadowed).to be_empty
