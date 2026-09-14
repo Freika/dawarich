@@ -200,17 +200,20 @@ module Trek
 
     def validate_payload!(payload)
       validate_required_fields!(payload, %w[start_date end_date], 'trip')
-      validate_date!(payload['start_date'], 'trip start_date')
-      validate_date!(payload['end_date'], 'trip end_date')
+      trip_start = validate_date!(payload['start_date'], 'trip start_date')
+      trip_end = validate_date!(payload['end_date'], 'trip end_date')
+      invalid_payload!('trip end_date precedes start_date') if trip_end < trip_start
 
-      collection!(payload, 'days').each do |day|
+      day_dates = collection!(payload, 'days').map do |day|
         validate_required_fields!(day, %w[date day_number], 'day')
-        validate_date!(day['date'], 'day date')
+        day_date = validate_date!(day['date'], 'day date')
         validate_integer!(day['day_number'], 'day number')
         validate_named_collection!(day, 'places', 'place')
         validate_named_collection!(day, 'day_notes', 'day note', field: 'text')
         validate_named_collection!(day, 'reservations', 'reservation', field: 'title')
+        day_date.to_date
       end
+      invalid_payload!('days contain duplicate dates') if day_dates.uniq.length != day_dates.length
 
       validate_named_collection!(payload, 'unscheduled_reservations', 'reservation', field: 'title')
       validate_named_collection!(payload, 'accommodations', 'accommodation')
@@ -240,7 +243,10 @@ module Trek
     end
 
     def validate_date!(value, field)
-      invalid_payload!("#{field} is invalid") unless source_time_zone.parse(value.to_s)
+      parsed = source_time_zone.parse(value.to_s)
+      invalid_payload!("#{field} is invalid") unless parsed
+
+      parsed
     rescue ArgumentError, TypeError
       invalid_payload!("#{field} is invalid")
     end
