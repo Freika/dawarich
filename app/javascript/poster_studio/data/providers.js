@@ -18,19 +18,11 @@ export class MapPageProvider {
   }
 
   trackSource() {
-    const layerManager = this.controller?.layerManager
-    if (layerManager?.getLayer("routes")?.data?.features?.length)
-      return "routes"
-    if (layerManager?.getLayer("tracks")?.data?.features?.length)
-      return "tracks"
-    return "routes"
+    return "tracks"
   }
 
   trackGeojson() {
-    return (
-      this.controller?.layerManager?.getLayer(this.trackSource())?.data ??
-      EMPTY_COLLECTION
-    )
+    return this._tracks ?? EMPTY_COLLECTION
   }
 
   dateRange() {
@@ -44,13 +36,17 @@ export class MapPageProvider {
     return this.controller?.timezoneValue || undefined
   }
 
-  // The map loads points lazily and the poster never needs the points
-  // themselves — but that same load is what builds the routes GeoJSON and
-  // fills the routes layer. Under tiled rendering the bulk points and tracks
-  // fetches are both skipped, so nothing else fills it and a studio that only
-  // draws the track still has to force the load.
+  // Poster/video generation is an explicit bounded consumer, so it may fetch
+  // exact Points and canonical Tracks without making the browsing map bulk-load.
   async ensureTrackLoaded() {
-    await this.controller?.mapDataManager?.ensurePointsLoaded()
+    const controller = this.controller
+    if (!controller) return
+    const { startAt, endAt } = this.dateRange()
+    const [, tracks] = await Promise.all([
+      controller.mapDataManager?.ensurePointsLoaded(),
+      controller.api.fetchTracks({ start_at: startAt, end_at: endAt }),
+    ])
+    this._tracks = tracks || EMPTY_COLLECTION
   }
 
   // Timestamped points, for consumers that animate the track rather than

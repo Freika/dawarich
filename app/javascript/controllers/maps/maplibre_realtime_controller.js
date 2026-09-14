@@ -151,8 +151,39 @@ export default class extends Controller {
         this.handleFamilyLocation(data.member)
         break
 
+      case "map_edit":
+        this.handleMapEdit(data.event)
+        break
+
+      case "track_update":
+        this.handleTrackUpdate(data)
+        break
+
       // Note: notifications are handled by notifications_controller.js in the navbar
     }
+  }
+
+  handleMapEdit(event) {
+    if (event?.type !== "point_moved" || !event.data) return
+    const mapsController = this.mapsV2Controller
+    if (!mapsController) return
+
+    const editor = mapsController.layerManager?.getLayer("map-editor")
+    editor?.applyRealtime(event.data)
+    mapsController.layerManager?.getLayer("points-mvt")?.refresh()
+    mapsController.layerManager?.getLayer("tracks-mvt")?.refresh()
+    editor?.reapplyTileFilters()
+    document.dispatchEvent(
+      new CustomEvent("dawarich:point-moved", { detail: event.data }),
+    )
+  }
+
+  handleTrackUpdate() {
+    const mapsController = this.mapsV2Controller
+    if (!mapsController) return
+
+    mapsController.layerManager?.getLayer("tracks-mvt")?.refresh()
+    mapsController.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
   }
 
   /**
@@ -187,56 +218,22 @@ export default class extends Controller {
       return
     }
 
-    const pointsLayer = mapsController.layerManager?.getLayer("points")
-    if (!pointsLayer) {
-      console.warn("[Realtime Controller] Points layer not found")
-      return
-    }
-
-    const currentData = pointsLayer.data || {
-      type: "FeatureCollection",
-      features: [],
-    }
-    const features = [...(currentData.features || [])]
-
-    features.push({
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [parseFloat(lon), parseFloat(lat)],
-      },
-      properties: {
-        id: parseInt(id, 10),
-        latitude: parseFloat(lat),
-        longitude: parseFloat(lon),
-        battery: parseFloat(battery) || null,
-        altitude: parseFloat(altitude) || null,
-        timestamp: timestamp,
-        velocity: parseFloat(velocity) || null,
-        country_name: countryName || null,
-      },
-    })
-
-    pointsLayer.update({
-      type: "FeatureCollection",
-      features,
-    })
-
-    // Keep the cached full point set in sync — route rebuilds and the
-    // scratch layer read from it in simplified rendering mode.
-    const cachedPoints = mapsController.mapDataManager?.lastLoadedData?.points
-    if (cachedPoints) {
-      cachedPoints.push({
-        id: parseInt(id, 10),
-        latitude: parseFloat(lat),
-        longitude: parseFloat(lon),
-        timestamp: timestamp,
-        battery: parseFloat(battery) || null,
-        altitude: parseFloat(altitude) || null,
-        velocity: parseFloat(velocity) || null,
-        country_name: countryName || null,
+    mapsController.layerManager?.getLayer("points-mvt")?.refresh()
+    mapsController.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
+    mapsController.layerManager
+      ?.getLayer("scratch")
+      ?.update()
+      .catch((error) => {
+        console.warn(
+          "[Realtime Controller] Failed to refresh visited countries:",
+          error,
+        )
+        Toast.retry(
+          translate("messages.failed_to_load_visited_countries"),
+          translate("messages.retry"),
+          () => mapsController.layerManager?.getLayer("scratch")?.update(),
+        )
       })
-    }
 
     this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
       id: parseInt(id, 10),

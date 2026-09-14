@@ -12,80 +12,40 @@ function trackCachePartitioner(value) {
   return (hash >>> 0).toString(16)
 }
 
-// Decodes the user's "0:#00ff00|15:#00ffff|..." speed scale. Returns sorted
-// [speed, color] stops, or null when the setting is absent or malformed.
-export function parseSpeedColorScale(encoded) {
-  if (!encoded || typeof encoded !== "string") return null
-
-  const stops = encoded
-    .split("|")
-    .map((entry) => entry.split(":"))
-    .filter(
-      ([speed, color]) =>
-        speed !== undefined &&
-        color !== undefined &&
-        Number.isFinite(Number(speed)) &&
-        /^#[0-9a-fA-F]{6}$/.test(color),
-    )
-    .map(([speed, color]) => [Number(speed), color])
-    .sort((a, b) => a[0] - b[0])
-    // MapLibre's interpolate requires strictly ascending stops — equal speeds
-    // (user-editable input) would throw at paint time; the last entry wins.
-    .filter(
-      ([speed], index, sorted) =>
-        index === sorted.length - 1 || speed !== sorted[index + 1][0],
-    )
-
-  return stops.length >= 2 ? stops : null
-}
-
-// Matches classic speed coloring's clamp (speed_colors.js MAX_SPEED) so
-// flights don't pin the top stop.
-const MAX_SPEED_KMH = 150
-
 /**
- * Vector-tile line layer serving BOTH the Tracks and Routes toggles under
- * tiled mode. Speed tiles carry consecutive point segments when zoomed in;
- * the overview keeps the same flat-color behavior as classic routes.
+ * Vector-tile line layer for canonical backend Tracks.
  */
 export class TracksMvtLayer extends BaseLayer {
   constructor(map, options = {}) {
     const tracksEnabled = options.tracksEnabled === true
-    const routesVisible = options.routesVisible === true
     super(map, {
       id: "tracks-mvt",
       ...options,
-      visible: tracksEnabled || routesVisible,
+      visible: tracksEnabled,
     })
     this.tracksEnabled = tracksEnabled
-    this.routesVisible = routesVisible
     this.startAt = options.startAt || null
     this.endAt = options.endAt || null
     this.apiKey = options.apiKey || null
+    this.importId = options.importId || null
     this.trackColor = options.trackColor || "#6366F1"
-    this.routeColor = options.routeColor || "#0000ff"
-    this.routeOpacity = options.routeOpacity ?? 1
-    this.speedColoredRoutes = options.speedColoredRoutes === true
-    this.speedColorScale = options.speedColorScale || null
     this.onTileError = options.onTileError || null
-    this.onEmptyTracks = options.onEmptyTracks || null
     this._tileUrl = null
+    this._cacheBuster = 0
     this._tileErrorHandler = null
     this._tileErrorReported = false
-    this._sourceDataHandler = null
-    this._emptyTracksReported = false
+    this.flightWindows = []
   }
 
   add(data, beforeId = null) {
     super.add(data, beforeId)
+    if (this.flightWindows.length) this._applyFlightFilter()
     this._tileErrorReported = false
     this._watchTileErrors()
-    this._watchEmptyTracks()
   }
 
   remove() {
     this._unwatchTileErrors()
-    this._unwatchEmptyTracks()
     super.remove()
   }
 
@@ -107,41 +67,6 @@ export class TracksMvtLayer extends BaseLayer {
 
     this.map.off("error", this._tileErrorHandler)
     this._tileErrorHandler = null
-  }
-
-  // Routes-on-tracks renders nothing for an account whose tracks were never
-  // generated (throttled cloud backfill, fresh import) — without this note the
-  // user sees Routes toggled on over an empty map and reads it as a bug.
-  _watchEmptyTracks() {
-    if (this._sourceDataHandler || !this.onEmptyTracks) return
-
-    this._sourceDataHandler = (event) => {
-      if (event?.sourceId !== this.sourceId || !event?.isSourceLoaded) return
-      if (this._emptyTracksReported || !this.routesVisible) return
-
-      const features =
-        this.map.querySourceFeatures?.(this.sourceId, {
-          sourceLayer: "tracks",
-        }) ?? []
-      if (features.length > 0) {
-        // Tracks exist — the warning can never fire for this range, so stop
-        // paying for querySourceFeatures on every tile load (update() re-adds
-        // the layer on range changes, which re-arms the watcher).
-        this._unwatchEmptyTracks()
-        return
-      }
-
-      this._emptyTracksReported = true
-      this.onEmptyTracks()
-    }
-    this.map.on("sourcedata", this._sourceDataHandler)
-  }
-
-  _unwatchEmptyTracks() {
-    if (!this._sourceDataHandler) return
-
-    this.map.off("sourcedata", this._sourceDataHandler)
-    this._sourceDataHandler = null
   }
 
   getSourceConfig() {
@@ -167,80 +92,46 @@ export class TracksMvtLayer extends BaseLayer {
           "line-cap": "round",
         },
         paint: {
-          "line-color": this._lineColor(),
+          "line-color": this.trackColor,
           "line-width": 3,
-          "line-opacity": this._lineOpacity(),
+          "line-opacity": 1,
         },
       },
     ]
   }
 
-  // Color precedence: segment speed scale > the user's route
-  // color when only Routes drives the layer > the track color.
-  _lineColor() {
-    const flatColor = this._routesOnly() ? this.routeColor : this.trackColor
-    if (this.speedColoredRoutes) {
-      const stops = parseSpeedColorScale(this.speedColorScale)
-      if (stops) {
-        const expression = [
-          "interpolate",
-          ["linear"],
-          ["min", MAX_SPEED_KMH, ["coalesce", ["get", "segment_speed"], 0]],
-        ]
-        for (const [speed, color] of stops) expression.push(speed, color)
-        return [
-          "step",
-          ["zoom"],
-          flatColor,
-          8,
-          ["case", ["has", "segment_speed"], expression, flatColor],
-        ]
-      }
+  setEnabled(enabled) {
+    this.tracksEnabled = enabled === true
+    this.toggle(this.tracksEnabled)
+  }
+
+  setFlightWindows(windows = []) {
+    this.flightWindows = windows
+    this._applyFlightFilter()
+  }
+
+  _applyFlightFilter() {
+    const masked = this.flightWindows.map(([start, end]) => [
+      "all",
+      [">=", ["get", "start_timestamp"], start],
+      ["<=", ["get", "end_timestamp"], end],
+    ])
+    if (this.map.getLayer(this.id)) {
+      this.map.setFilter(
+        this.id,
+        masked.length ? ["!", ["any", ...masked]] : null,
+      )
     }
-    if (this._routesOnly()) return this.routeColor
-    return this.trackColor
   }
 
-  _lineOpacity() {
-    return this._routesOnly() ? this.routeOpacity : 1
-  }
-
-  _routesOnly() {
-    return this.routesVisible && !this.tracksEnabled
-  }
-
-  setModes({ tracksEnabled, routesVisible }) {
-    if (tracksEnabled !== undefined) this.tracksEnabled = tracksEnabled
-    if (routesVisible !== undefined) this.routesVisible = routesVisible
-    this.setVisibility(this.tracksEnabled || this.routesVisible)
-    this._repaint()
-  }
-
-  setRouteOpacity(opacity) {
-    this.routeOpacity = opacity
-    if (!this.map.getLayer(this.id)) return
-    this.map.setPaintProperty(this.id, "line-opacity", this._lineOpacity())
-  }
-
-  setColors({ trackColor, routeColor } = {}) {
+  setColors({ trackColor } = {}) {
     if (trackColor) this.trackColor = trackColor
-    if (routeColor) this.routeColor = routeColor
-    this._repaint()
-  }
-
-  setSpeedColoring(enabled, scale = this.speedColorScale) {
-    this.speedColoredRoutes = enabled === true
-    this.speedColorScale = scale
-    if (this.map.getSource(this.sourceId)) {
-      this.update({ startAt: this.startAt, endAt: this.endAt })
-    }
     this._repaint()
   }
 
   _repaint() {
     if (!this.map.getLayer(this.id)) return
-    this.map.setPaintProperty(this.id, "line-color", this._lineColor())
-    this.map.setPaintProperty(this.id, "line-opacity", this._lineOpacity())
+    this.map.setPaintProperty(this.id, "line-color", this.trackColor)
   }
 
   _layerAbove() {
@@ -251,6 +142,15 @@ export class TracksMvtLayer extends BaseLayer {
     })
     if (ownIndex === -1 || ownIndex + 1 >= styleLayers.length) return null
     return styleLayers[ownIndex + 1].id
+  }
+
+  refresh() {
+    this._cacheBuster += 1
+    const wasVisible = this.visible
+    const beforeId = this._layerAbove()
+    this.remove()
+    this.add({ startAt: this.startAt, endAt: this.endAt }, beforeId)
+    this.setVisibility(wasVisible)
   }
 
   update(options = {}) {
@@ -269,7 +169,6 @@ export class TracksMvtLayer extends BaseLayer {
     this.remove()
     this.startAt = nextStartAt
     this.endAt = nextEndAt
-    this._emptyTracksReported = false
     this.add(options, beforeId)
     this.setVisibility(wasVisible)
   }
@@ -279,11 +178,10 @@ export class TracksMvtLayer extends BaseLayer {
 
     if (startAt) params.set("start_at", startAt)
     if (endAt) params.set("end_at", endAt)
-    if (this.speedColoredRoutes && parseSpeedColorScale(this.speedColorScale)) {
-      params.set("speed_coloring", "true")
-    }
+    if (this.importId) params.set("import_id", this.importId)
     // Never the raw api key: the Bearer header authenticates (transformRequest)
     if (this.apiKey) params.set("u", trackCachePartitioner(this.apiKey))
+    if (this._cacheBuster) params.set("_", String(this._cacheBuster))
 
     const query = params.toString()
     const path = "/api/v1/tiles/tracks/{z}/{x}/{y}.mvt"

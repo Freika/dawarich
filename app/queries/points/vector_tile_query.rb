@@ -119,6 +119,7 @@ class Points::VectorTileQuery
 
     <<~SQL.squish
       MIN(id) AS id, MIN(timestamp) AS timestamp, MIN(battery) AS battery,
+      MIN(track_id) AS track_id, MIN(lock_version) AS revision,
       MIN(altitude) AS altitude, MIN(velocity) AS velocity,
       MIN(latitude) AS latitude, MIN(longitude) AS longitude,
     SQL
@@ -157,6 +158,7 @@ class Points::VectorTileQuery
       if point_regime?
         <<~SQL.squish
           points.id AS id, points.timestamp AS timestamp, points.battery AS battery,
+          points.track_id AS track_id, points.lock_version AS lock_version,
           points.altitude AS altitude, points.velocity AS velocity,
           ST_Y(points.lonlat::geometry) AS latitude,
           ST_X(points.lonlat::geometry) AS longitude,
@@ -230,7 +232,8 @@ class Points::VectorTileQuery
 
   def tile_scope
     scope.except(:select, :order, :includes, :preload, :eager_load)
-         .select(:id, :timestamp, :battery, :altitude, :velocity, :lonlat)
+         .select(:id, :timestamp, :battery, :altitude, :velocity, :lonlat,
+                 :track_id, :lock_version)
   end
 
   def with_statement_timeout

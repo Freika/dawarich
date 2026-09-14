@@ -56,15 +56,14 @@ test("TripProvider defaults to an empty collection and blank title", () => {
   assert.equal(provider.defaultTitle(), "")
 })
 
-test("MapPageProvider reads layers and dates from the maps controller", (t) => {
-  const layers = {
-    routes: { data: { type: "FeatureCollection", features: [] } },
-    tracks: {
-      data: { type: "FeatureCollection", features: [lineString([[0, 0]])] },
-    },
+test("MapPageProvider loads canonical tracks on demand and reads map dates", async (t) => {
+  const tracks = {
+    type: "FeatureCollection",
+    features: [lineString([[0, 0]])],
   }
   const fakeController = {
-    layerManager: { getLayer: (name) => layers[name] },
+    mapDataManager: { ensurePointsLoaded: async () => {} },
+    api: { fetchTracks: async () => tracks },
     startDateValue: "2026-01-01T00:00",
     endDateValue: "2026-01-31T23:59",
     timezoneValue: "Europe/Berlin",
@@ -79,7 +78,12 @@ test("MapPageProvider reads layers and dates from the maps controller", (t) => {
   })
 
   assert.equal(provider.trackSource(), "tracks")
-  assert.equal(provider.trackGeojson(), layers.tracks.data)
+  assert.deepEqual(provider.trackGeojson(), {
+    type: "FeatureCollection",
+    features: [],
+  })
+  await provider.ensureTrackLoaded()
+  assert.equal(provider.trackGeojson(), tracks)
   assert.deepEqual(provider.dateRange(), {
     startAt: "2026-01-01T00:00",
     endAt: "2026-01-31T23:59",
@@ -87,9 +91,6 @@ test("MapPageProvider reads layers and dates from the maps controller", (t) => {
   assert.equal(provider.defaultTitle(), "")
   assert.equal(provider.timeZone(), "Europe/Berlin")
   assert.equal(provider.supportsDateNavigation, true)
-
-  layers.routes.data.features.push(lineString([[1, 1]]))
-  assert.equal(provider.trackSource(), "routes")
 })
 
 test("buildTripGeojson merges day-route collections when present", () => {

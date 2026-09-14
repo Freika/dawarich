@@ -2,11 +2,7 @@ import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { UpgradeBanner } from "maps_maplibre/components/upgrade_banner"
-import {
-  flightWindows,
-  maskLines,
-  maskPoints,
-} from "maps_maplibre/utils/flight_mask"
+import { flightWindows } from "maps_maplibre/utils/flight_mask"
 import { trimOutlierCoords } from "maps_maplibre/utils/geometry"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { overlayAwarePadding } from "maps_maplibre/utils/map_padding"
@@ -54,13 +50,11 @@ export class MapDataManager {
 
       // 1. Initialize all layers with empty data for correct z-ordering
       await this._setupLayers({
-        pointsGeoJSON: EMPTY_GEOJSON,
-        routesGeoJSON: EMPTY_GEOJSON,
         visitsGeoJSON: EMPTY_GEOJSON,
         photosGeoJSON: EMPTY_GEOJSON,
         areasGeoJSON: EMPTY_GEOJSON,
-        tracksGeoJSON: EMPTY_GEOJSON,
         placesGeoJSON: EMPTY_GEOJSON,
+        flightsGeoJSON: EMPTY_GEOJSON,
       })
 
       // Visits load is windowed to the current map viewport. On first
@@ -86,26 +80,6 @@ export class MapDataManager {
           : null,
         onLayerData: (source, geoJSON) =>
           this._updateLayerBySource(source, geoJSON),
-        onTracksLoaded: (tracksGeoJSON) => {
-          console.log(
-            "[MapDataManager] Updating tracks layer from background load",
-          )
-          this._updateTracksLayer(tracksGeoJSON)
-          // Tracks usually have the largest bbox of any layer (they include
-          // every leg between visits), so when they arrive late we re-fit to
-          // them — but if an earlier fit already covers them we skip the
-          // pointless blink, and otherwise ease rather than snap so the late
-          // correction reads as intentional. skipIfCovered only applies
-          // after a real fit: the initial world view trivially "covers"
-          // everything and must not suppress the only fit.
-          if (fitBounds && tracksGeoJSON?.features?.length) {
-            this._fitMapToBounds(tracksGeoJSON, {
-              skipIfCovered: this._hasFittedBounds,
-              animate: this._hasFittedBounds,
-            })
-            this._hasFittedBounds = true
-          }
-        },
         onPhotosLoaded: (photosGeoJSON) => {
           console.log(
             "[MapDataManager] Updating photos layer from background load",
@@ -125,14 +99,12 @@ export class MapDataManager {
         this._showDataWindowBanner()
       }
 
-      // 6. Fit bounds if requested — use the first available data source.
-      // Skipped when the tracks background fetch already fitted (it can
-      // land first on fast responses) so we never fit twice.
+      // 6. Fit bounds if requested — use the first available non-tile source.
       if (fitBounds && !this._hasFittedBounds) {
         this._hasFittedBounds = this._fitToFirstAvailable([
-          data.pointsGeoJSON,
-          data.routesGeoJSON,
           data.visitsGeoJSON,
+          data.areasGeoJSON,
+          data.placesGeoJSON,
         ])
       }
 
@@ -209,10 +181,7 @@ export class MapDataManager {
     return this._pointsLoadPromise
   }
 
-  /**
-   * Fetch points data, cache it, and update all 5 point-dependent layers.
-   * @private
-   */
+  /** Fetch exact points only for explicit bounded consumers such as replay. */
   async _loadPoints() {
     try {
       this.controller.showProgress()
@@ -221,13 +190,7 @@ export class MapDataManager {
         isComplete: false,
       })
 
-      const {
-        points,
-        pointsGeoJSON,
-        allPointsGeoJSON,
-        routesGeoJSON,
-        routesBaseGeoJSON,
-      } = await this.dataLoader.fetchPointsData(
+      const { points, pointsGeoJSON } = await this.dataLoader.fetchPointsData(
         this.controller.startDateValue,
         this.controller.endDateValue,
       )
@@ -235,16 +198,6 @@ export class MapDataManager {
       if (!this.lastLoadedData) this.lastLoadedData = {}
       this.lastLoadedData.points = points
       this.lastLoadedData.pointsGeoJSON = pointsGeoJSON
-      this.lastLoadedData.routesGeoJSON = routesGeoJSON
-      this.lastLoadedData.routesBaseGeoJSON = routesBaseGeoJSON
-
-      this._updateLayerBySource("points", pointsGeoJSON)
-      // Heatmap, fog and scratch need all points
-      this._updateLayerBySource("heatmap", allPointsGeoJSON)
-      this._updateLayerBySource("routes", routesGeoJSON)
-      this._updateLayerBySource("routes-base", routesBaseGeoJSON)
-      this._updateLayerBySource("fog", allPointsGeoJSON)
-      this._updateLayerBySource("scratch", allPointsGeoJSON)
 
       this.controller.updateLoadingCounts({
         counts: { points: points.length },
@@ -261,26 +214,11 @@ export class MapDataManager {
    * @private
    */
   _updateLayerBySource(source, geoJSON) {
-    // Handle routes-base separately — it updates the routes layer's base source
-    if (source === "routes-base") {
-      const routesLayer = this.layerManager?.getLayer("routes")
-      if (routesLayer?.updateBaseData) {
-        routesLayer.updateBaseData(geoJSON)
-      }
-      return
-    }
-
     const layerMap = {
-      points: "points",
-      heatmap: "heatmap",
-      routes: "routes",
       visits: "visits",
       areas: "areas",
       places: "places",
-      tracks: "tracks",
       photos: "photos",
-      fog: "fog",
-      scratch: "scratch",
       flights: "flights",
     }
     const layerName = layerMap[source]
@@ -297,51 +235,18 @@ export class MapDataManager {
   }
 
   /**
-   * Give AirTrail flights render priority: when the Flights layer is visible,
-   * hide GPS points/routes/tracks that fall inside a flight's time window.
-   * When hidden, restore the original (unmasked) GPS geometry. Reversible.
+   * Give AirTrail flights render priority using filters on both MVT layers.
    */
   applyFlightMask() {
     const flightsLayer = this.layerManager?.getLayer("flights")
     const data = this.lastLoadedData
     if (!data) return
 
-    const pointsLayer = this.layerManager?.getLayer("points")
-    const routesLayer = this.layerManager?.getLayer("routes")
-    const tracksLayer = this.layerManager?.getLayer("tracks")
-
     const windows = flightsLayer?.visible
       ? flightWindows(data.flightsGeoJSON)
       : []
-
-    if (windows.length === 0) {
-      pointsLayer?.update(data.pointsGeoJSON || EMPTY_GEOJSON)
-      routesLayer?.update(data.routesGeoJSON || EMPTY_GEOJSON)
-      if (data.tracksGeoJSON) tracksLayer?.update(data.tracksGeoJSON)
-      return
-    }
-
-    pointsLayer?.update(
-      maskPoints(data.pointsGeoJSON || EMPTY_GEOJSON, windows),
-    )
-    routesLayer?.update(maskLines(data.routesGeoJSON || EMPTY_GEOJSON, windows))
-    if (data.tracksGeoJSON) {
-      tracksLayer?.update(maskLines(data.tracksGeoJSON, windows))
-    }
-  }
-
-  /**
-   * Update tracks layer after background load completes
-   * @private
-   */
-  _updateTracksLayer(tracksGeoJSON) {
-    const tracksLayer = this.layerManager?.getLayer("tracks")
-    if (tracksLayer) {
-      tracksLayer.update(tracksGeoJSON)
-      if (this.lastLoadedData) {
-        this.lastLoadedData.tracksGeoJSON = tracksGeoJSON
-      }
-    }
+    this.layerManager?.getLayer("points-mvt")?.setFlightWindows(windows)
+    this.layerManager?.getLayer("tracks-mvt")?.setFlightWindows(windows)
   }
 
   /**
@@ -365,12 +270,9 @@ export class MapDataManager {
   async _setupLayers(data) {
     const addAllLayers = async () => {
       await this.layerManager.addAllLayers(
-        data.pointsGeoJSON,
-        data.routesGeoJSON,
         data.visitsGeoJSON,
         data.photosGeoJSON,
         data.areasGeoJSON,
-        data.tracksGeoJSON,
         data.placesGeoJSON,
         data.flightsGeoJSON,
       )
@@ -393,18 +295,6 @@ export class MapDataManager {
           this.eventHandlers,
         ),
         handleAnomalyClick: this.eventHandlers.handleAnomalyClick.bind(
-          this.eventHandlers,
-        ),
-        handleRouteClick: this.eventHandlers.handleRouteClick.bind(
-          this.eventHandlers,
-        ),
-        handleRouteHover: this.eventHandlers.handleRouteHover.bind(
-          this.eventHandlers,
-        ),
-        handleRouteMouseLeave: this.eventHandlers.handleRouteMouseLeave.bind(
-          this.eventHandlers,
-        ),
-        clearRouteSelection: this.eventHandlers.clearRouteSelection.bind(
           this.eventHandlers,
         ),
         handleTrackClick: this.eventHandlers.handleTrackClick.bind(

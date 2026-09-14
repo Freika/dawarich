@@ -948,11 +948,7 @@ es:
         allow_dragging_points_to_correct_their_position: Permite arrastrar puntos para corregir su posición.
         editing_points_is_a_pro_feature_this_stays_on_for: Editar puntos es una función Pro — esto se queda activo solo durante la sesión actual, y no se guardan cambios en el plan Lite.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Permite arrastrar puntos para corregir su posición. Recordado a lo largo de sesiones.
-        tiled_rendering: "Renderizado en teselas"
         beta: "Beta"
-        tiled_rendering_description: "Dibuja puntos, rutas, tracks y niebla desde teselas vectoriales mientras te desplazas, en lugar de cargar todo el rango de fechas de antemano. Las rutas muestran tus tracks generados. Acércate para ver la velocidad de cada segmento."
-        tiled_rendering_caveats: "Activo mientras el mapa de pruebas está desactivado. Las zonas densas se agrupan en marcadores con un recuento — acércate para abrir puntos individuales. La edición de puntos no está disponible, el globo de ruta al pasar el cursor desaparece — haz clic en un track — y el rastro en vivo puede retrasarse unos minutos."
-        routes: Rutas
         show_connected_route_lines: Muestra líneas de rutas conectadas
         color_by_speed: Color por velocidad
         edit_color_gradient: Editar gradiente de color
@@ -986,8 +982,8 @@ es:
         show_explored_areas: Mostrar áreas exploradas
         per_point: Por punto
         per_hexagon: Por hexágono
-        scratch_map: Mapa de pruebas
-        show_scratched_countries: Mostrar países rayados
+        scratch_map: Países visitados
+        show_scratched_countries: Resaltar los países visitados en el intervalo seleccionado
         family_members: Miembros de la familia
         show_family_member_locations: Mostrar ubicaciones de miembros de la familia
         click_to_center_on_member: Haz clic para centrar en miembro
@@ -1020,19 +1016,14 @@ es:
         the_custom_style_draws_no_labels_or_points_of_interest: El estilo personalizado dibuja sin etiquetas ni puntos de interés — las opciones están deshabilitadas mientras está activo.
         points_of_interest: Puntos de Interés
         choose_which_poi_categories_appear_on_the_map: Elegir qué categorías de POI aparecen en el mapa.
-        meters_between_routes: Distancia entre rutas
         distance_threshold_for_route_splitting: Umbral de distancia para la división de rutas
-        minutes_between_routes: Tiempo entre rutas
         min: 60min
         min_2: 1min
         min_3: 90min
         min_4: 180min
         time_threshold_for_route_splitting: Umbral de tiempo para la división de rutas; los intervalos más largos también se excluyen de las estadísticas de distancia
-        points_rendering_mode: Modo de renderizado de puntos
         raw_all_points: Crudo (todos los puntos)
         simplified_reduced_points: Simplificado (puntos reducidos)
-        speed_colored_routes: Rutas coloreadas por velocidad
-        color_routes_by_speed: Colorear rutas según la velocidad
         fog_of_war_radius: Radio de niebla de guerra
         clear_radius_around_visited_points: Limpiar radio alrededor de puntos visitados
         fog_of_war_threshold: Umbral de niebla de guerra
@@ -3792,8 +3783,6 @@ es:
       anomaly_point: Punto de anomalía
       failed_to_load_location_data_please_try_again: No se pudo cargar los datos de ubicación. Por favor, inténtalo de nuevo.
       click_on_the_map_to_place_a_place: Haz clic en el mapa para colocar un lugar
-      failed_to_reload_routes: No se pudo recargar las rutas
-      failed_to_load_scratch_layer: No se pudo cargar la capa de borrador
       failed_to_load_photos: No se pudo cargar las fotos
       some_photo_sources_unavailable: "Algunas fuentes de fotos no están disponibles: %{sources}"
       failed_to_load_areas: No se pudo cargar los ámbitos
@@ -3801,7 +3790,6 @@ es:
       failed_to_load_track_details: No se pudieron cargar los detalles del trayecto
       failed_to_load_flights: No se pudo cargar los vuelos
       failed_to_load_anomalies: No se pudo cargar las anomalías
-      reloading_routes: Recargando rutas...
       cannot_update_recalculation_is_already_in_progress: 'No se puede actualizar: la recálculo ya está en curso'
       transportation_settings_saved: Configuración de transporte guardada
       globe_view_will_be_applied_after_page_reload: La vista del globo se aplicará después de recargar la página
@@ -3856,6 +3844,10 @@ es:
       failed_to_update_visit: No se pudo actualizar la visita
       visit_deleted_successfully: La visita ha sido eliminada con éxito
       failed_to_update_point_position_please_try_again: No se pudo actualizar la posición del punto. Inténtalo de nuevo.
+      point_edit_conflict: Este punto cambió en otra sesión. Se muestra la última posición guardada.
+      failed_to_load_map_tiles: No se pudieron cargar las teselas del mapa.
+      failed_to_load_visited_countries: No se pudieron cargar los países visitados.
+      retry: Reintentar
       failed_to_load_track_points: No se pudo cargar los puntos de seguimiento
       point_updated_track_will_be_recalculated: El punto ha sido actualizado. El seguimiento será recalculado.
       delete: Eliminar
@@ -3868,11 +3860,10 @@ es:
       confirmed: Confirmado
       layers: Capas
       points: Puntos
-      routes: Rutas
       tracks: Trayectos
       heatmap: Calor gráfico
       fog_of_war: Niebla de guerra
-      scratch_map: Mapa de pruebas
+      scratch_map: Países visitados
       areas: Áreas
       photos: Fotos
       visits: Visitas
@@ -3912,16 +3903,6 @@ es:
       show_all_days: Mostrar todos los días
       collapse_all_days: Colapsar todos los días
     map:
-      tiled_rendering:
-        inactive_note:
-          one: "Inactivo mientras %{layers} está activada — esa capa necesita todos los puntos."
-          other: "Inactivo mientras %{layers} están activadas — esas capas necesitan todos los puntos."
-        editing_unavailable: "No disponible con el renderizado en teselas: las teselas vectoriales no tienen puntos arrastrables"
-        failed: "No se pudieron cargar las teselas del mapa. Prueba con un intervalo de fechas más corto o desactiva el renderizado en teselas en los ajustes del mapa."
-        tracks_pending: "No hay tracks en esta vista. Con teselas, las rutas muestran tus tracks generados — desplaza el mapa, amplía el intervalo o vuelve más tarde si importaste hace poco."
-        splitting_unavailable: "Sin efecto con el renderizado en teselas — las rutas siguen tus tracks generados."
-        blockers:
-          scratch: "Mapa de pruebas"
       places_layer: Capa de lugares
       confirm_delete_point: "¿Seguro que quieres eliminar este punto?"
       confirm_delete_point_permanently: |-
@@ -4239,7 +4220,6 @@ es:
       radius: Radio
       reason: Razón
       route_information: Información de ruta
-      routes: Rutas
       selected_point: Punto seleccionado
       show_points: Mostrar puntos
       show_points_help: Habilita para ver y arrastrar los puntos para editar la trayecto
@@ -4354,14 +4334,10 @@ es:
       fog_threshold: Umbral del velo de la guerra
       live_map: Mapa en vivo
       merge_threshold: Umbral de fusión minutos
-      meters_between_routes: Metros entre rutas
-      minutes_between_routes: Minutos entre rutas
-      points_rendering_mode: Modo de renderizado de puntos
       raw: Crudo
       route_opacity: Transparencia de ruta, %
       simplified: Simplificado
       speed_color_scale: Escala de colores por velocidad
-      speed_colored_routes: Rutas coloreadas por velocidad
       time_threshold: Umbral de tiempo minutos
     calendar_panel:
       loading_visited_places: Cargando lugares visitados...

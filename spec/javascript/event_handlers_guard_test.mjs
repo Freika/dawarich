@@ -27,6 +27,45 @@ test("merged cells carrying an arbitrary representative show no popup", () => {
   assert.equal(shouldShowPointPopup({ id: 42, count: 2 }), false)
 })
 
+test("an aggregate MVT Point zooms instead of opening an editor", () => {
+  const movements = []
+  const editorCalls = []
+  const handlers = new EventHandlers(
+    {
+      easeTo: (options) => movements.push(options),
+      getZoom: () => 8,
+    },
+    {
+      layerManager: {
+        getLayer: () => ({ justDragged: false }),
+      },
+      showInfo: () => {
+        throw new Error("aggregate must not open point info")
+      },
+    },
+  )
+  handlers._openPointEditor = (...args) => editorCalls.push(args)
+
+  handlers.handlePointClick({
+    features: [
+      {
+        properties: { id: 42, count: 8 },
+        layer: { id: "points-mvt" },
+      },
+    ],
+    lngLat: { lng: 13.4, lat: 52.5 },
+  })
+
+  assert.equal(editorCalls.length, 0)
+  assert.deepEqual(movements, [
+    {
+      center: { lng: 13.4, lat: 52.5 },
+      zoom: 10,
+      duration: 350,
+    },
+  ])
+})
+
 // The constructor registers document-level listeners; node has no DOM.
 globalThis.document ??= {
   addEventListener: () => {},
@@ -69,9 +108,7 @@ test("a tiled track click swaps the clipped fragment for the fetched geometry", 
   }
   const { handlers, shown, selected } = loadSegmentsHarness(fetched)
 
-  await handlers._loadTrackSegments(7, fragment, {
-    preferFetchedGeometry: true,
-  })
+  await handlers._loadTrackSegments(7, fragment)
 
   assert.deepEqual(shown, [fetched])
   assert.deepEqual(selected, [fetched])
@@ -84,9 +121,7 @@ test("a fetched track without geometry keeps the clicked feature", async () => {
     properties: { id: 7 },
   })
 
-  await handlers._loadTrackSegments(7, fragment, {
-    preferFetchedGeometry: true,
-  })
+  await handlers._loadTrackSegments(7, fragment)
 
   assert.deepEqual(shown, [fragment])
   assert.deepEqual(selected, [])
@@ -102,32 +137,6 @@ test("a failed detail fetch on the tiled path surfaces a toast", async () => {
     throw new Error("network down")
   }
 
-  await handlers._loadTrackSegments(7, fragment, {
-    preferFetchedGeometry: true,
-  })
+  await handlers._loadTrackSegments(7, fragment)
   assert.deepEqual(toasts, ["messages.failed_to_load_track_details"])
-
-  toasts.length = 0
-  await handlers._loadTrackSegments(7, fragment)
-  assert.deepEqual(toasts, [])
-})
-
-test("a classic track click never swaps its already-loaded feature", async () => {
-  const fragment = { properties: { id: 7 }, geometry: { type: "LineString" } }
-  const fetched = {
-    properties: { id: 7 },
-    geometry: {
-      type: "LineString",
-      coordinates: [
-        [0, 0],
-        [1, 1],
-      ],
-    },
-  }
-  const { handlers, shown, selected } = loadSegmentsHarness(fetched)
-
-  await handlers._loadTrackSegments(7, fragment)
-
-  assert.deepEqual(shown, [fragment])
-  assert.deepEqual(selected, [])
 })

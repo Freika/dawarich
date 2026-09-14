@@ -117,6 +117,9 @@ class Tracks::VectorTileQuery
       #{Track.sanitize_sql_array(['? AS color', Tracks::GeojsonSerializer::DEFAULT_COLOR])},
       to_char(tracks.start_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS start_at,
       to_char(tracks.end_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS end_at,
+      EXTRACT(EPOCH FROM tracks.start_at)::bigint AS start_timestamp,
+      EXTRACT(EPOCH FROM tracks.end_at)::bigint AS end_timestamp,
+      tracks.lock_version AS revision,
       tracks.distance AS distance,
       tracks.avg_speed AS avg_speed,
       tracks.duration AS duration,
@@ -164,7 +167,7 @@ class Tracks::VectorTileQuery
   def tile_scope
     scope.except(:select, :order, :includes, :preload, :eager_load)
          .select(:id, :start_at, :end_at, :distance, :avg_speed, :duration,
-                 :dominant_mode, :original_path)
+                 :dominant_mode, :original_path, :lock_version)
   end
 
   def with_statement_timeout

@@ -263,7 +263,11 @@ module Points
               next 0 if unchanged_ids.empty?
 
               Point.where(id: unchanged_ids, raw_data_archived: false, raw_data_archive_id: nil)
-                   .update_all(raw_data_archived: true, raw_data_archive_id: archive_id)
+                   .update_all(
+                     raw_data_archived: true,
+                     raw_data_archive_id: archive_id,
+                     lock_version: Arel.sql('lock_version')
+                   )
             end
           end
         end

@@ -75,12 +75,13 @@ class Users::SafeSettings
     'visit_min_points' => 3,
     'visit_min_duration_minutes' => 5,
     'point_dragging_enabled' => false,
-    'points_tiled_rendering' => false
+    'points_tiled_rendering' => true
   }.freeze
 
   def initialize(settings = {}, plan: nil)
     settings = {} unless settings.is_a?(Hash)
 
+    @provided_settings = settings
     @settings = DEFAULT_VALUES.deep_dup.deep_merge(settings)
     @plan = plan
   end
@@ -88,16 +89,10 @@ class Users::SafeSettings
   def config
     {
       fog_of_war_meters: fog_of_war_meters,
-      meters_between_routes: meters_between_routes,
       preferred_map_layer: preferred_map_layer,
-      speed_colored_routes: speed_colored_routes,
-      points_rendering_mode: points_rendering_mode,
-      minutes_between_routes: minutes_between_routes,
       time_threshold_minutes: time_threshold_minutes,
       merge_threshold_minutes: merge_threshold_minutes,
       live_map_enabled: live_map_enabled,
-      route_opacity: route_opacity,
-      route_color: route_color,
       track_color: track_color,
       immich_url: immich_url,
       immich_api_key: immich_api_key,
@@ -108,7 +103,6 @@ class Users::SafeSettings
       maps: maps,
       distance_unit: distance_unit,
       visits_suggestions_enabled: visits_suggestions_enabled?,
-      speed_color_scale: speed_color_scale,
       fog_of_war_threshold: fog_of_war_threshold,
       fog_of_war_mode: fog_of_war_mode,
       enabled_map_layers: enabled_map_layers,
@@ -125,8 +119,7 @@ class Users::SafeSettings
       visit_radius_meters: visit_radius_meters,
       visit_min_points: visit_min_points,
       visit_min_duration_minutes: visit_min_duration_minutes,
-      point_dragging_enabled: point_dragging_enabled?,
-      points_tiled_rendering: points_tiled_rendering?
+      point_dragging_enabled: point_dragging_enabled?
     }
   end
 
@@ -178,6 +171,9 @@ class Users::SafeSettings
   end
 
   def track_color
+    return settings['track_color'] if @provided_settings.key?('track_color')
+    return settings['route_color'] if Array(@provided_settings['enabled_map_layers']).include?('Routes')
+
     settings['track_color']
   end
 
@@ -267,7 +263,10 @@ class Users::SafeSettings
   end
 
   def enabled_map_layers
-    layers = settings['enabled_map_layers']
+    layers = Array(settings['enabled_map_layers']).dup
+    layers << 'Tracks' if layers.include?('Routes')
+    layers.delete('Routes')
+    layers.uniq!
     lite? ? layers - GATED_MAP_LAYERS : layers
   end
 
@@ -363,7 +362,7 @@ class Users::SafeSettings
   end
 
   def points_tiled_rendering?
-    ActiveModel::Type::Boolean.new.cast(settings['points_tiled_rendering']) || false
+    true
   end
 
   def visit_radius_meters

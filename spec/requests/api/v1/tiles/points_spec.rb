@@ -10,7 +10,10 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
     it 'returns a vector tile for authenticated requests' do
       create(:point, user:, longitude: 0.0, latitude: 0.0, lonlat: 'POINT(0 0)')
 
-      get path, params: { api_key: user.api_key }
+      expect do
+        get path, params: { api_key: user.api_key }
+      end.to increment_yabeda_counter(Yabeda.dawarich_map.tile_requests_total)
+        .with_tags(layer: 'points', outcome: 'success')
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('application/vnd.mapbox-vector-tile')
@@ -27,9 +30,10 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
 
       expect(body).to include("\x1a\x02id".b, 'timestamp', 'battery', 'altitude', 'velocity')
       expect(body).to include("\x1a\x08latitude".b, "\x1a\x09longitude".b, "\x1a\x05count".b)
+      expect(body).to include('track_id', 'revision')
       expect(body).not_to include('point_id')
       expect(body).not_to include('grid_cell')
-      expect(body).not_to include('track_id', 'visit_id')
+      expect(body).not_to include('visit_id')
     end
 
     it 'serves aggregate features without per-point attributes at low zooms' do
@@ -48,11 +52,16 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
       query = instance_double(Points::VectorTileQuery)
       allow(Points::VectorTileQuery).to receive(:new).and_return(query)
       allow(query).to receive(:call).and_raise(ActiveRecord::QueryCanceled)
+      allow(Rails.logger).to receive(:warn)
 
-      get path, params: { api_key: user.api_key }
+      expect do
+        get path, params: { api_key: user.api_key }
+      end.to increment_yabeda_counter(Yabeda.dawarich_map.tile_requests_total)
+        .with_tags(layer: 'points', outcome: 'failure')
 
       expect(response).to have_http_status(:service_unavailable)
       expect(response.headers['Cache-Control']).to include('no-store')
+      expect(Rails.logger).to have_received(:warn).with(/event=map\.tile_request layer=points outcome=failure/)
     end
 
     it 'flags the impossible truncation case with a response header' do
@@ -73,6 +82,23 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
 
       expect(response).to have_http_status(:ok)
       expect(response.media_type).to eq('application/vnd.mapbox-vector-tile')
+    end
+
+    it 'limits the tile relation to the selected import' do
+      selected_import = create(:import, user:)
+      selected = create(:point, user:, import: selected_import, longitude: 0.0, latitude: 0.0,
+                                lonlat: 'POINT(0 0)')
+      create(:point, user:, longitude: 1.0, latitude: 1.0, lonlat: 'POINT(1 1)')
+      captured_scope = nil
+      allow(Points::VectorTileQuery).to receive(:new).and_wrap_original do |original, **attributes|
+        captured_scope = attributes.fetch(:scope)
+        original.call(**attributes)
+      end
+
+      get path, params: { api_key: user.api_key, import_id: selected_import.id }
+
+      expect(response).to have_http_status(:ok)
+      expect(captured_scope.ids).to eq([selected.id])
     end
 
     context 'at zooms that use the geography prefilter' do
@@ -141,7 +167,10 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
         etag = response.headers['ETag']
         expect(etag).to be_present
 
-        get path, params: cached_params, headers: { 'If-None-Match' => etag }
+        expect do
+          get path, params: cached_params, headers: { 'If-None-Match' => etag }
+        end.to increment_yabeda_counter(Yabeda.dawarich_map.tile_requests_total)
+          .with_tags(layer: 'points', outcome: 'not_modified')
 
         expect(response).to have_http_status(:not_modified)
         expect(response.body).to be_empty
