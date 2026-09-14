@@ -110,6 +110,21 @@ RSpec.describe Trek::Sync do
       end.to have_enqueued_job(Trips::CalculateAllJob).exactly(:once)
     end
 
+    it 'recalculates an imported trip when TREK changes its date range' do
+      past_payload = payload.merge(start_date: 2.days.ago.to_date.to_s, end_date: 1.day.from_now.to_date.to_s)
+      stub_trip(past_payload)
+      trip, = described_class.new(source).import!('12')
+      trip.update_columns(path: 'LINESTRING(1 1, 2 2)', distance: 100, visited_countries: ['Italy'])
+      clear_enqueued_jobs
+
+      changed_payload = past_payload.merge(start_date: 3.days.ago.to_date.to_s)
+      stub_trip(changed_payload)
+
+      expect do
+        described_class.new(source).import!('12')
+      end.to have_enqueued_job(Trips::CalculateAllJob).exactly(:once)
+    end
+
     it 'uses the source owner timezone when parsing TREK local dates' do
       user.update!(settings: user.settings.merge('timezone' => 'America/Los_Angeles'))
       stub_trip(payload)

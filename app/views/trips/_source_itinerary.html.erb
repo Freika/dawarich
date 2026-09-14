@@ -18,6 +18,13 @@
         <% if day.notes.present? %>
           <p class="mt-1 whitespace-pre-line text-sm text-base-content/70"><%= day.notes %></p>
         <% end %>
+        <% if day.planned_day_notes.any? %>
+          <ul class="mt-2 space-y-1 text-sm text-base-content/70">
+            <% day.planned_day_notes.each do |note| %>
+              <li><%= "#{note.noted_at.strftime('%H:%M')} · " if note.noted_at %><%= note.body %></li>
+            <% end %>
+          </ul>
+        <% end %>
         <% if day.planned_stops.any? %>
           <ol class="mt-2 space-y-1 text-sm">
             <% day.planned_stops.each do |stop| %>
@@ -41,6 +48,19 @@
       </article>
     <% end %>
   </div>
+
+  <% if trip.planned_reservations.any? { |reservation| reservation.planned_day_id.nil? } %>
+    <div class="mt-4">
+      <h3 class="font-medium"><%= t('.unscheduled_reservations') %></h3>
+      <ul class="mt-2 space-y-1 text-sm text-base-content/70">
+        <% trip.planned_reservations.each do |reservation| %>
+          <% next if reservation.planned_day_id.present? %>
+
+          <li><%= icon 'calendar-check-2', class: 'mr-1 inline size-4' %><strong><%= reservation.title %></strong><%= " · #{reservation.location}" if reservation.location.present? %></li>
+        <% end %>
+      </ul>
+    </div>
+  <% end %>
 
   <% if trip.planned_unplanned_places.any? %>
     <div class="mt-4">

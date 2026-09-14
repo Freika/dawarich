@@ -87,13 +87,17 @@ RSpec.describe '/trips', type: :request do
       trip.update!(trip_source: source, source_identifier: '12', source_status: :active)
       day = trip.planned_days.create!(date: trip.started_at.to_date, position: 1, title: 'Arrival')
       day.planned_stops.create!(name: 'Uffizi', position: 1)
+      day.planned_day_notes.create!(position: 1, body: 'Bring the tickets', noted_at: '09:00')
       trip.planned_reservations.create!(planned_day: day, title: 'LH 1234')
+      trip.planned_reservations.create!(title: 'Train 987', location: 'Florence')
 
       get trip_url(trip)
 
       expect(response.body).to include('Plan from TREK')
       expect(response.body).to include('Uffizi')
+      expect(response.body).to include('Bring the tickets')
       expect(response.body).to include('LH 1234')
+      expect(response.body).to include('Train 987')
     end
 
     it 'keeps a disconnected TREK itinerary visible' do

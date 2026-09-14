@@ -7,7 +7,11 @@ class Settings::TrekSourcesController < ApplicationController
   before_action :set_source, only: %i[destroy select_trips import_trips sync]
 
   def create
-    source = current_user.trip_sources.build(source_params.merge(provider: 'trek'))
+    attributes = source_params.to_h.symbolize_keys
+    source = current_user.trip_sources.find_or_initialize_by(
+      provider: 'trek', base_url: attributes[:base_url].to_s.strip.chomp('/')
+    )
+    source.assign_attributes(api_key: attributes[:api_key], status: :active, last_error: nil)
     unless source.valid?
       return redirect_to settings_integrations_path(service: 'trek'), alert: source.errors.full_messages.to_sentence
     end
@@ -27,9 +31,12 @@ class Settings::TrekSourcesController < ApplicationController
   end
 
   def import_trips
-    identifiers = Array(params[:trip_ids]).map(&:to_s).reject(&:blank?).first(100)
+    identifiers = Array(params[:trip_ids]).map(&:to_s).reject(&:blank?).uniq
     if identifiers.empty?
       return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.select_at_least_one_trip')
+    end
+    if identifiers.size > 100
+      return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.too_many_trips')
     end
 
     client = Trek::Client.new(@source)

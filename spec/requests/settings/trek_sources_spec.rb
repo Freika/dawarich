@@ -25,6 +25,23 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       expect(response).to redirect_to(select_trips_settings_trek_source_path(source))
       expect(source.base_url).to eq('https://trek.example.test')
     end
+
+    it 'reconnects an existing disabled source with a replacement API key' do
+      source = create(
+        :trip_source, user: user, status: :disabled, api_key: 'expired_key', last_error: '401 Unauthorized'
+      )
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .with(headers: { 'Authorization' => 'Bearer replacement_key' })
+        .to_return(status: 200, body: { trips: [] }.to_json)
+
+      expect do
+        post settings_trek_sources_path,
+             params: { trip_source: { base_url: 'https://trek.example.test/', api_key: 'replacement_key' } }
+      end.not_to change(user.trip_sources, :count)
+
+      expect(source.reload).to have_attributes(api_key: 'replacement_key', status: 'active', last_error: nil)
+      expect(response).to redirect_to(select_trips_settings_trek_source_path(source))
+    end
   end
 
   describe 'DELETE /settings/trek_sources/:id' do
@@ -72,6 +89,16 @@ RSpec.describe 'Settings::TrekSources', type: :request do
 
       expect(response).to redirect_to(select_trips_settings_trek_source_path(source))
       expect(source.trips).to be_empty
+    end
+
+    it 'does not change the current selection when more than 100 trips are submitted' do
+      source = create(:trip_source, user: user)
+      trip = create(:trip, user: user, trip_source: source, source_identifier: 'existing', source_status: :active)
+
+      post import_trips_settings_trek_source_path(source), params: { trip_ids: (1..101).map(&:to_s) }
+
+      expect(response).to redirect_to(select_trips_settings_trek_source_path(source))
+      expect(trip.reload).to be_source_active
     end
   end
 end

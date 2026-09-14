@@ -22,12 +22,13 @@ module Trek
         end
 
         detail = @client.trip(managed_trip.source_identifier)
-        if synchronize!(managed_trip, detail)
+        changed = synchronize!(managed_trip, detail)
+        if changed
           result.updated += 1
         else
           result.unchanged += 1
         end
-        enqueue_calculation_if_needed!(managed_trip)
+        enqueue_calculation_if_needed!(managed_trip, force: changed)
       end
 
       @source.update!(last_synced_at: Time.current, last_error: nil)
@@ -45,7 +46,7 @@ module Trek
       trip = @source.trips.find_or_initialize_by(source_identifier: identifier.to_s)
       created = trip.new_record?
       changed = synchronize!(trip, detail)
-      enqueue_calculation_if_needed!(trip)
+      enqueue_calculation_if_needed!(trip, force: changed)
       @source.update!(last_synced_at: Time.current, last_error: nil)
 
       [trip, created, changed]
@@ -186,9 +187,9 @@ module Trek
       trip.update!(source_status: :stopped, source_synced_at: Time.current)
     end
 
-    def enqueue_calculation_if_needed!(trip)
+    def enqueue_calculation_if_needed!(trip, force: false)
       return if trip.started_at > Time.current
-      return unless trip.path.blank? || trip.distance.blank? || trip.visited_countries.blank?
+      return unless force || trip.path.blank? || trip.distance.blank? || trip.visited_countries.blank?
 
       trip.enqueue_calculation_jobs
     end
