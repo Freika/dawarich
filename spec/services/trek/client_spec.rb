@@ -42,4 +42,18 @@ RSpec.describe Trek::Client do
 
     expect { client.trips }.to raise_error(Trek::Client::Error, /trip list/)
   end
+
+  it 'rejects a trip list with a non-scalar identifier' do
+    stub_request(:get, 'https://trek.example.test/api/v1/trips')
+      .to_return(status: 200, body: { trips: [{ id: [] }] }.to_json)
+
+    expect { client.trips }.to raise_error(Trek::Client::Error, /invalid trip/)
+  end
+
+  it 'rejects duplicate identifiers after normalization' do
+    stub_request(:get, 'https://trek.example.test/api/v1/trips')
+      .to_return(status: 200, body: { trips: [{ id: 12 }, { id: '12' }] }.to_json)
+
+    expect { client.trips }.to raise_error(Trek::Client::Error, /invalid trip/)
+  end
 end

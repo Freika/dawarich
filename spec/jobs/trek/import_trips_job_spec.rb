@@ -217,4 +217,49 @@ RSpec.describe Trek::ImportTripsJob do
     expect(source.reload).to be_importing
     expect(source.last_error).to include('accommodation latitude is invalid')
   end
+
+  it 'keeps importing through a fractional day number so Active Job can retry it' do
+    payload = {
+      title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22',
+      days: [{ date: '2030-06-14', day_number: 1.5 }]
+    }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /day number is invalid/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('day number is invalid')
+  end
+
+  it 'keeps importing through a fractional place duration so Active Job can retry it' do
+    payload = {
+      title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22',
+      unplanned_places: [{ name: 'Mercato Centrale', duration_minutes: 1.5 }]
+    }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /unplanned place duration_minutes is invalid/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('unplanned place duration_minutes is invalid')
+  end
+
+  it 'keeps importing through boolean coordinates so Active Job can retry it' do
+    payload = {
+      title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22',
+      unplanned_places: [{ name: 'Mercato Centrale', lat: false, lng: false }]
+    }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(Trek::Client::Error, /unplanned place latitude is invalid/)
+
+    expect(source.reload).to be_importing
+    expect(source.last_error).to include('unplanned place latitude is invalid')
+  end
 end

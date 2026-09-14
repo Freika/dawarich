@@ -208,7 +208,7 @@ module Trek
         validate_required_fields!(day, %w[date day_number], 'day')
         day_date = validate_date!(day['date'], 'day date')
         invalid_payload!('day date falls outside the trip range') if day_date < trip_start || day_date > trip_end
-        validate_integer!(day['day_number'], 'day number')
+        validate_positive_integer!(day['day_number'], 'day number')
         validate_places!(day, 'places', 'place')
         validate_named_collection!(day, 'day_notes', 'day note', field: 'text')
         validate_named_collection!(day, 'reservations', 'reservation', field: 'title')
@@ -257,6 +257,7 @@ module Trek
 
       missing_fields = fields.select { |field| payload[field].blank? }
       invalid_payload!("#{object_name} is missing required fields: #{missing_fields.join(', ')}") if missing_fields.any?
+      invalid_payload!("#{object_name} contains invalid fields") unless fields.all? { |field| scalar?(payload[field]) }
     end
 
     def validate_date!(value, field)
@@ -266,37 +267,44 @@ module Trek
     end
 
     def validate_optional_date!(value, field)
-      validate_date!(value, field) if value.present?
+      validate_date!(value, field) unless value.nil?
     end
 
     def validate_coordinates!(payload, object_name)
       latitude = payload['lat']
       longitude = payload['lng']
-      return if latitude.blank? && longitude.blank?
+      return if latitude.nil? && longitude.nil?
 
-      invalid_payload!("#{object_name} coordinates are incomplete") if latitude.blank? || longitude.blank?
+      invalid_payload!("#{object_name} coordinates are incomplete") if latitude.nil? || longitude.nil?
 
       validate_number_in_range!(latitude, -90..90, "#{object_name} latitude")
       validate_number_in_range!(longitude, -180..180, "#{object_name} longitude")
     end
 
     def validate_optional_nonnegative_integer!(value, field)
-      return if value.blank?
+      return if value.nil?
 
-      invalid_payload!("#{field} is invalid") if Integer(value).negative?
-    rescue ArgumentError, TypeError
+      invalid_payload!("#{field} is invalid") if validate_integer!(value, field).negative?
+    end
+
+    def validate_positive_integer!(value, field)
+      invalid_payload!("#{field} is invalid") unless validate_integer!(value, field).positive?
+    end
+
+    def validate_integer!(value, field)
+      return value if value.is_a?(Integer)
+      return Integer(value, 10) if value.is_a?(String) && value.match?(/\A[+-]?\d+\z/)
+
       invalid_payload!("#{field} is invalid")
+    end
+
+    def scalar?(value)
+      value.is_a?(String) || value.is_a?(Numeric)
     end
 
     def validate_number_in_range!(value, range, field)
       number = Float(value)
       invalid_payload!("#{field} is invalid") unless number.finite? && range.cover?(number)
-    rescue ArgumentError, TypeError
-      invalid_payload!("#{field} is invalid")
-    end
-
-    def validate_integer!(value, field)
-      Integer(value)
     rescue ArgumentError, TypeError
       invalid_payload!("#{field} is invalid")
     end

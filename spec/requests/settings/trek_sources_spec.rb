@@ -140,6 +140,16 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       expect(a_request(:get, 'https://trek.example.test/api/v1/trips')).not_to have_been_made
     end
 
+    it 'does not let a source change its selection while importing' do
+      source = create(:trip_source, user: user, importing: true)
+
+      get select_trips_settings_trek_source_path(source)
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
+      expect(flash[:alert]).to include('still importing')
+      expect(a_request(:get, 'https://trek.example.test/api/v1/trips')).not_to have_been_made
+    end
+
     it 'disables a source when TREK rejects its key' do
       source = create(:trip_source, user: user)
       stub_request(:get, 'https://trek.example.test/api/v1/trips').to_return(status: 401)
@@ -174,6 +184,17 @@ RSpec.describe 'Settings::TrekSources', type: :request do
   end
 
   describe 'POST /settings/trek_sources/:id/import_trips' do
+    it 'does not let a source replace its selection while importing' do
+      source = create(:trip_source, user: user, importing: true, selection_token: 'original-token')
+
+      expect do
+        post import_trips_settings_trek_source_path(source), params: { trip_ids: ['12'] }
+      end.not_to have_enqueued_job(Trek::ImportTripsJob)
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
+      expect(source.reload).to have_attributes(importing: true, selection_token: 'original-token')
+    end
+
     it 'disables a source when TREK rejects its key while confirming the selection' do
       source = create(:trip_source, user: user)
       stub_request(:get, 'https://trek.example.test/api/v1/trips').to_return(status: 401)

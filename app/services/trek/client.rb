@@ -26,7 +26,9 @@ module Trek
 
       trips = payload['trips']
       raise Error, 'TREK response does not contain trips' unless trips.is_a?(Array)
-      unless trips.all? { |trip| trip.is_a?(Hash) && trip['id'].present? }
+
+      identifiers = trips.filter_map { |trip| normalized_identifier(trip['id']) if trip.is_a?(Hash) }
+      unless identifiers.length == trips.length && identifiers.uniq.length == identifiers.length
         raise Error, 'TREK trip list contains an invalid trip'
       end
 
@@ -41,6 +43,13 @@ module Trek
     end
 
     private
+
+    def normalized_identifier(identifier)
+      return identifier.to_s if identifier.is_a?(Integer)
+      return identifier if identifier.is_a?(String) && identifier.present?
+
+      nil
+    end
 
     def get(path)
       @source.verify_base_url!
