@@ -33,7 +33,10 @@ class Settings::TrekSourcesController < ApplicationController
   def import_trips
     identifiers = Array(params[:trip_ids]).map(&:to_s).reject(&:blank?).uniq
     if identifiers.empty?
-      return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.select_at_least_one_trip')
+      @source.trips.source_active.update_all(
+        source_status: Trip.source_statuses.fetch('stopped'), source_synced_at: Time.current
+      )
+      return redirect_to settings_integrations_path(service: 'trek'), notice: t('.no_trips_selected')
     end
     if identifiers.size > 100
       return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.too_many_trips')

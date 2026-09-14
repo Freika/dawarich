@@ -59,6 +59,16 @@ RSpec.describe 'Settings::TrekSources', type: :request do
   end
 
   describe 'POST /settings/trek_sources/:id/import_trips' do
+    it 'stops syncing every selected trip when the selection is cleared' do
+      source = create(:trip_source, user: user)
+      trip = create(:trip, user: user, trip_source: source, source_identifier: 'existing', source_status: :active)
+
+      post import_trips_settings_trek_source_path(source), params: { trip_ids: [] }
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
+      expect(trip.reload).to be_source_stopped
+    end
+
     it 'stops syncing previously selected trips that are no longer selected' do
       source = create(:trip_source, user: user)
       previous_trip = create(

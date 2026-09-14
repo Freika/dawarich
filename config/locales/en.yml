@@ -1619,7 +1619,7 @@ en:
       create:
         connected_choose_trips: TREK connected. Choose the trips you want Dawarich to manage.
       import_trips:
-        select_at_least_one_trip: Select at least one TREK trip.
+        no_trips_selected: No TREK trips selected. Existing itineraries were kept and stopped syncing.
         select_at_least_one_active_trip: Select at least one active TREK trip.
         too_many_trips: Select no more than 100 TREK trips at once.
         trips_are_now_syncing: Selected TREK trips are being synchronized.
