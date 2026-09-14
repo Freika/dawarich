@@ -29,7 +29,7 @@
       <% else %>
         <div class="flex items-center justify-center h-full rounded-lg bg-base-200">
           <div class="text-center">
-            <% if @trip.trip_source.present? && @trip.started_at > Time.current %>
+            <% if @trip.source_imported? && @trip.started_at > Time.current %>
               <p class="text-base-content/60"><%= t('.trip_has_not_started_yet') %></p>
             <% else %>
               <p class="text-base-content/60"><%= t('.trip_path_is_being_calculated') %></p>

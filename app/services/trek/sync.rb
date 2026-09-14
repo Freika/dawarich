@@ -2,27 +2,33 @@
 
 module Trek
   class Sync
-    Result = Struct.new(:created, :updated, :unchanged, :stopped, keyword_init: true)
+    Result = Struct.new(:created, :updated, :unchanged, :stopped, :more, :next_cursor, keyword_init: true)
 
     def initialize(source, client: Client.new(source))
       @source = source
       @client = client
     end
 
-    def call
+    def call(limit: nil, after_id: nil)
       remote_trips = @client.trips.index_by { |trip| trip.fetch('id').to_s }
-      result = Result.new(created: 0, updated: 0, unchanged: 0, stopped: 0)
+      result = Result.new(created: 0, updated: 0, unchanged: 0, stopped: 0, more: false)
+      selection_token = @source.selection_token
+      managed_trips = @source.trips.source_active.order(:id)
+      managed_trips = managed_trips.where('id > ?', after_id) if after_id
+      managed_trips = managed_trips.limit(limit) if limit
 
-      @source.trips.source_active.find_each do |managed_trip|
+      managed_trips.each do |managed_trip|
+        result.next_cursor = managed_trip.id
         remote = remote_trips[managed_trip.source_identifier]
         if remote.nil? || remote['archived']
-          stop!(managed_trip)
-          result.stopped += 1
+          result.stopped += 1 if stop_if_current!(managed_trip, selection_token)
           next
         end
 
         detail = @client.trip(managed_trip.source_identifier)
-        changed = synchronize!(managed_trip, detail)
+        changed = synchronize_if_current!(managed_trip, detail, selection_token)
+        next if changed.nil?
+
         if changed
           result.updated += 1
         else
@@ -31,7 +37,9 @@ module Trek
         enqueue_calculation_if_needed!(managed_trip, force: changed)
       end
 
-      @source.update!(last_synced_at: Time.current, last_error: nil)
+      remaining_trips = @source.trips.source_active.where('id > ?', result.next_cursor || after_id || 0)
+      result.more = limit.present? && remaining_trips.exists?
+      @source.update!(last_synced_at: Time.current, last_error: nil) unless result.more
       result
     rescue Client::Error => e
       handle_error!(e)
@@ -42,7 +50,18 @@ module Trek
     # intentionally separate from #call so a shared TREK trip is never pulled
     # merely because it appeared in the source's list response.
     def import!(identifier)
-      detail = @client.trip(identifier)
+      detail = fetch_trip(identifier)
+      import_payload!(identifier, detail)
+    rescue Client::Error => e
+      handle_error!(e)
+      raise
+    end
+
+    def fetch_trip(identifier)
+      @client.trip(identifier)
+    end
+
+    def import_payload!(identifier, detail)
       trip = @source.trips.find_or_initialize_by(source_identifier: identifier.to_s)
       created = trip.new_record?
       changed = synchronize!(trip, detail)
@@ -50,9 +69,6 @@ module Trek
       @source.update!(last_synced_at: Time.current, last_error: nil)
 
       [trip, created, changed]
-    rescue Client::Error => e
-      handle_error!(e)
-      raise
     end
 
     private
@@ -82,6 +98,15 @@ module Trek
       end
 
       true
+    end
+
+    def synchronize_if_current!(trip, payload, selection_token)
+      @source.with_lock do
+        if current_selection?(selection_token)
+          trip.reload
+          synchronize!(trip, payload) if trip.source_active?
+        end
+      end
     end
 
     def replace_itinerary!(trip, payload)
@@ -183,8 +208,28 @@ module Trek
       nil
     end
 
+    def stop_if_current!(trip, selection_token)
+      @source.with_lock do
+        if current_selection?(selection_token)
+          trip.reload
+          if trip.source_active?
+            stop!(trip)
+            true
+          else
+            false
+          end
+        else
+          false
+        end
+      end
+    end
+
     def stop!(trip)
       trip.update!(source_status: :stopped, source_synced_at: Time.current)
+    end
+
+    def current_selection?(selection_token)
+      @source.selection_token == selection_token && !@source.importing?
     end
 
     def enqueue_calculation_if_needed!(trip, force: false)

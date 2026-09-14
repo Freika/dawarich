@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Trek::ImportTripsJob do
   let(:user) { create(:user) }
-  let(:source) { create(:trip_source, user: user, selection_token: 'current-selection') }
+  let(:source) { create(:trip_source, user: user, selection_token: 'current-selection', importing: true) }
 
   before do
     allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')

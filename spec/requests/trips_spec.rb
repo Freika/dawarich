@@ -117,7 +117,23 @@ RSpec.describe '/trips', type: :request do
       source = create(:trip_source, user:)
       trip.update!(
         trip_source: source,
+        source_identifier: '12',
         source_status: :active,
+        started_at: 1.day.from_now,
+        ended_at: 2.days.from_now,
+        path: nil
+      )
+
+      expect { get trip_url(trip) }.not_to have_enqueued_job(Trips::CalculateAllJob)
+
+      expect(response.body).to include('This planned trip has not started yet.')
+      expect(response.body).not_to include('Trip path is being calculated...')
+    end
+
+    it 'keeps a disconnected future TREK trip in its planned state' do
+      trip.update!(
+        source_identifier: '12',
+        source_status: :stopped,
         started_at: 1.day.from_now,
         ended_at: 2.days.from_now,
         path: nil

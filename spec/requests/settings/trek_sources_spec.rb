@@ -113,6 +113,32 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       expect do
         post import_trips_settings_trek_source_path(source), params: { trip_ids: identifiers }
       end.to have_enqueued_job(Trek::ImportTripsJob).with(source.id, identifiers, a_kind_of(String))
+
+      expect(source.reload).to be_importing
+    end
+  end
+
+  describe 'POST /settings/trek_sources/:id/sync' do
+    it 'does not queue a sync for a disabled source' do
+      source = create(:trip_source, user: user, status: :disabled)
+
+      expect do
+        post sync_settings_trek_source_path(source)
+      end.not_to have_enqueued_job(Trek::SyncJob)
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
+      expect(flash[:alert]).to include('disabled')
+    end
+
+    it 'does not queue a sync while selected trips are importing' do
+      source = create(:trip_source, user: user, importing: true)
+
+      expect do
+        post sync_settings_trek_source_path(source)
+      end.not_to have_enqueued_job(Trek::SyncJob)
+
+      expect(response).to redirect_to(settings_integrations_path(service: 'trek'))
+      expect(flash[:alert]).to include('still importing')
     end
   end
 end

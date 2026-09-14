@@ -34,6 +34,10 @@ class Trip < ApplicationRecord
     Trips::CalculateAllJob.perform_later(id, user.safe_settings.distance_unit)
   end
 
+  def source_imported?
+    source_identifier.present?
+  end
+
   def recalculating?
     last_recalculated_at.present? && last_recalculated_at > RECALCULATE_COOLDOWN.ago
   end

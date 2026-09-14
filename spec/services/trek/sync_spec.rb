@@ -136,6 +136,28 @@ RSpec.describe Trek::Sync do
   end
 
   describe '#call' do
+    it 'batches large selections within TREK request limits' do
+      101.times do |index|
+        create(
+          :trip,
+          user: user,
+          trip_source: source,
+          source_identifier: "trip-#{index}",
+          source_status: :active
+        )
+      end
+      client = instance_double(Trek::Client)
+      allow(client).to receive(:trips).and_return(
+        101.times.map { |index| { 'id' => "trip-#{index}", 'archived' => false } }
+      )
+      allow(client).to receive(:trip).and_return(payload)
+
+      result = described_class.new(source, client:).call(limit: 100)
+
+      expect(result).to have_attributes(more: true, next_cursor: source.trips.order(:id).offset(99).pick(:id))
+      expect(client).to have_received(:trip).exactly(100).times
+    end
+
     it 'stops, but does not delete, a selected trip that TREK archives' do
       stub_trip(payload)
       trip, = described_class.new(source).import!('12')

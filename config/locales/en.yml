@@ -1602,6 +1602,8 @@ en:
         api_key: TREK API key
         api_key_help: Create a read-only API key in TREK under Settings → Integrations. It starts with trek_.
         connect: Connect TREK
+        reconnect: Reconnect TREK
+        importing_trips: Importing selected trips…
         last_synced: "Last synced: %{time}"
         not_synced_yet: Not synced yet
         choose_trips: Choose trips
@@ -1624,6 +1626,8 @@ en:
         trips_are_now_syncing: Selected TREK trips are being synchronized.
       sync:
         sync_queued: TREK synchronization was queued.
+        source_disabled: TREK is disabled. Reconnect it with a new API key before syncing.
+        source_importing: TREK is still importing your selected trips.
       destroy:
         source_removed_trips_kept: TREK was disconnected. Your managed trips were kept and will no longer sync.
     subscriptions:

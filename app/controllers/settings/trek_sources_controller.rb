@@ -11,7 +11,7 @@ class Settings::TrekSourcesController < ApplicationController
     source = current_user.trip_sources.find_or_initialize_by(
       provider: 'trek', base_url: attributes[:base_url].to_s.strip.chomp('/')
     )
-    source.assign_attributes(api_key: attributes[:api_key], status: :active, last_error: nil)
+    source.assign_attributes(api_key: attributes[:api_key], status: :active, last_error: nil, importing: false)
     unless source.valid?
       return redirect_to settings_integrations_path(service: 'trek'), alert: source.errors.full_messages.to_sentence
     end
@@ -33,10 +33,12 @@ class Settings::TrekSourcesController < ApplicationController
   def import_trips
     identifiers = Array(params[:trip_ids]).map(&:to_s).reject(&:blank?).uniq
     if identifiers.empty?
-      @source.update!(selection_token: SecureRandom.uuid)
-      @source.trips.source_active.update_all(
-        source_status: Trip.source_statuses.fetch('stopped'), source_synced_at: Time.current
-      )
+      @source.with_lock do
+        @source.update!(selection_token: SecureRandom.uuid, importing: false)
+        @source.trips.source_active.update_all(
+          source_status: Trip.source_statuses.fetch('stopped'), source_synced_at: Time.current
+        )
+      end
       return redirect_to settings_integrations_path(service: 'trek'), notice: t('.no_trips_selected')
     end
 
@@ -49,7 +51,7 @@ class Settings::TrekSourcesController < ApplicationController
     end
 
     token = SecureRandom.uuid
-    @source.update!(selection_token: token)
+    @source.with_lock { @source.update!(selection_token: token, importing: true) }
     Trek::ImportTripsJob.perform_later(@source.id, identifiers, token)
     redirect_to settings_integrations_path(service: 'trek'), notice: t('.trips_are_now_syncing')
   rescue Trek::Client::Error, ActiveRecord::RecordInvalid => e
@@ -57,6 +59,9 @@ class Settings::TrekSourcesController < ApplicationController
   end
 
   def sync
+    return redirect_to settings_integrations_path(service: 'trek'), alert: t('.source_disabled') unless @source.active?
+    return redirect_to settings_integrations_path(service: 'trek'), alert: t('.source_importing') if @source.importing?
+
     Trek::SyncJob.perform_later(@source.id)
     redirect_to settings_integrations_path(service: 'trek'), notice: t('.sync_queued')
   end
