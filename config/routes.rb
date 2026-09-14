@@ -326,6 +326,7 @@ Rails.application.routes.draw do
         end
       end
       resources :points, only: %i[index create update destroy] do
+        resource :position, only: :update, controller: 'points/positions'
         collection do
           delete :bulk_destroy
           post :reapply_anomaly_filter
