@@ -24,6 +24,9 @@ module Trek
       payload = parse_json(response)
       trips = payload['trips']
       raise Error, 'TREK response does not contain trips' unless trips.is_a?(Array)
+      unless trips.all? { |trip| trip.is_a?(Hash) && trip['id'].present? }
+        raise Error, 'TREK trip list contains an invalid trip'
+      end
 
       trips
     end

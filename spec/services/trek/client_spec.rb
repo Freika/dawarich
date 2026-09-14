@@ -29,4 +29,11 @@ RSpec.describe Trek::Client do
 
     expect { client.trips }.to raise_error(Trek::Client::Error) { |error| expect(error.status).to eq(401) }
   end
+
+  it 'rejects a trip list with an entry that cannot be identified' do
+    stub_request(:get, 'https://trek.example.test/api/v1/trips')
+      .to_return(status: 200, body: { trips: [{}] }.to_json)
+
+    expect { client.trips }.to raise_error(Trek::Client::Error, /invalid trip/)
+  end
 end
