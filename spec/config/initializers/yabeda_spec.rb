@@ -57,4 +57,24 @@ RSpec.describe 'Yabeda metrics registration' do
       expect(metric.tags).to eq(%i[check])
     end
   end
+
+  describe 'dawarich_map group' do
+    it 'declares low-cardinality move, publication, and tile metrics' do
+      expect(Yabeda.groups[:dawarich_map]).not_to be_nil
+      expect(Yabeda.metrics['dawarich_map_point_moves_total']).to be_a(Yabeda::Counter)
+      expect(Yabeda.metrics['dawarich_map_point_move_duration_seconds']).to be_a(Yabeda::Histogram)
+      expect(Yabeda.metrics['dawarich_map_point_move_lock_wait_seconds']).to be_a(Yabeda::Histogram)
+      expect(Yabeda.metrics['dawarich_map_point_move_track_points']).to be_a(Yabeda::Histogram)
+      expect(Yabeda.metrics['dawarich_map_point_move_track_segments']).to be_a(Yabeda::Histogram)
+      expect(Yabeda.metrics['dawarich_map_post_commit_failures_total']).to be_a(Yabeda::Counter)
+      expect(Yabeda.metrics['dawarich_map_tile_requests_total']).to be_a(Yabeda::Counter)
+      expect(Yabeda.metrics['dawarich_map_tile_request_duration_seconds']).to be_a(Yabeda::Histogram)
+    end
+
+    it 'uses only bounded outcome, operation, and layer labels' do
+      expect(Yabeda.dawarich_map.point_moves_total.tags).to eq(%i[outcome])
+      expect(Yabeda.dawarich_map.post_commit_failures_total.tags).to eq(%i[operation])
+      expect(Yabeda.dawarich_map.tile_requests_total.tags).to eq(%i[layer outcome])
+    end
+  end
 end
