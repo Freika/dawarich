@@ -1,8 +1,6 @@
 # frozen_string_literal: true
 
 class TrackSegments::GeometryRecalculator
-  EARTH_RADIUS_METERS = 6_371_008.8
-
   def self.call(track, points)
     new(track, points).call
   end
@@ -12,19 +10,10 @@ class TrackSegments::GeometryRecalculator
   end
 
   def self.distance_between(first, second)
-    lat1 = radians(first.lat)
-    lat2 = radians(second.lat)
-    delta_lat = lat2 - lat1
-    delta_lon = radians(second.lon - first.lon)
-    haversine = Math.sin(delta_lat / 2)**2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(delta_lon / 2)**2
-
-    2 * EARTH_RADIUS_METERS * Math.asin(Math.sqrt([haversine, 1.0].min))
+    Geocoder::Calculations.distance_between(
+      [first.lat, first.lon], [second.lat, second.lon], units: :km
+    ) * 1000
   end
-
-  def self.radians(degrees)
-    degrees.to_f * Math::PI / 180
-  end
-  private_class_method :radians
 
   def initialize(track, points)
     @track = track
