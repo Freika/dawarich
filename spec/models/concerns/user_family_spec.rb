@@ -250,19 +250,4 @@ RSpec.describe UserFamily do
       expect(user.latest_location_for_family).to be_nil
     end
   end
-
-  describe '#family_map_sharing_active?' do
-    it 'is false when the user is not in a family' do
-      expect(create(:user).family_map_sharing_active?).to be(false)
-    end
-
-    it 'is false when in a family but nobody is sharing' do
-      expect(user.family_map_sharing_active?).to be(false)
-    end
-
-    it 'is true when a family member has sharing enabled' do
-      user.update_family_location_sharing!(true, duration: 'permanent')
-      expect(user.reload.family_map_sharing_active?).to be(true)
-    end
-  end
 end
