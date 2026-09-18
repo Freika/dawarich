@@ -116,7 +116,7 @@ RSpec.describe Users::ImportData::Visits, type: :service do
 
       context 'when place exists with nearby coordinates' do
         let!(:nearby_place) do
-          create(:place, user: user, name: 'Different Name', latitude: 40.75895, longitude: -73.98515)
+          create(:place, user: user, name: 'Office Building', latitude: 40.75895, longitude: -73.98515)
         end
 
         it 'uses the nearby place' do
@@ -127,6 +127,58 @@ RSpec.describe Users::ImportData::Visits, type: :service do
           visit = user.visits.find_by(name: 'Office Visit')
           expect(visit.place).to eq(nearby_place)
         end
+      end
+
+      context 'when only a differently named place is nearby' do
+        before do
+          create(:place, user:, name: 'Different Name', latitude: 40.75895, longitude: -73.98515)
+        end
+
+        it 'creates the referenced Place instead of merging by proximity alone' do
+          service = described_class.new(user, visits_data)
+
+          expect { service.call }.to change { Place.count }.by(1)
+          expect(user.visits.find_by(name: 'Office Visit').place.name).to eq('Office Building')
+        end
+      end
+    end
+
+    context 'with a legacy area_id' do
+      let(:visits_data) do
+        [
+          {
+            'name' => 'Home',
+            'area_id' => 91,
+            'started_at' => '2024-01-01T18:00:00Z',
+            'ended_at' => '2024-01-01T22:00:00Z',
+            'duration' => 14_400,
+            'status' => 'confirmed'
+          }
+        ]
+      end
+      let(:reference) do
+        {
+          'name' => 'Home',
+          'latitude' => '40.7128',
+          'longitude' => '-74.0060',
+          'source' => 'manual',
+          'visit_radius' => 150
+        }
+      end
+
+      it 'remaps it to a canonical Place and never persists the foreign Area ID' do
+        service = described_class.new(
+          user,
+          visits_data,
+          legacy_area_place_references: { '91' => reference }
+        )
+
+        service.call
+
+        visit = user.visits.find_by(name: 'Home')
+        expect(visit.area_id).to be_nil
+        expect(visit.place).to have_attributes(name: 'Home', visit_radius: 150)
+        expect(visit.location_label).to eq('Home')
       end
     end
 

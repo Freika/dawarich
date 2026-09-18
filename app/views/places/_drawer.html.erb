@@ -70,7 +70,7 @@
         <% recent_visits.each do |visit| %>
           <% range = place_visit_time_range(visit) %>
           <li class="place-drawer__visit">
-            <span class="place-drawer__visit-name"><%= visit.name %></span>
+            <span class="place-drawer__visit-name"><%= visit.display_name %></span>
             <span class="place-drawer__visit-time"><%= range[:start_label] %> <%= t('.rarr') %> <%= range[:end_label] %> <%= t('.on') %> <%= range[:date_label] %></span>
             <span class="place-drawer__visit-duration"><%= range[:duration_label] %></span>
           </li>
@@ -83,7 +83,19 @@
 
   <footer class="place-drawer__actions">
     <button type="button" class="place-drawer__action place-drawer__action--rename" disabled><%= t('.rename') %></button>
-    <button type="button" class="place-drawer__action place-drawer__action--merge" disabled><%= t('.merge') %></button>
+    <% candidates = local_assigns.fetch(:merge_candidates, @merge_candidates || []) %>
+    <% if candidates.any? %>
+      <%= form_with url: merge_place_path(place), method: :post, class: 'flex gap-2 items-center' do |f| %>
+        <%= select_tag :duplicate_place_id,
+                       options_from_collection_for_select(candidates, :id, :name),
+                       prompt: t('.select_place_to_merge'),
+                       required: true,
+                       class: 'select select-bordered select-sm max-w-48' %>
+        <%= f.submit t('.merge'),
+                     class: 'place-drawer__action place-drawer__action--merge',
+                     data: { turbo_confirm: t('.merge_confirmation', survivor: place.name) } %>
+      <% end %>
+    <% end %>
     <%= button_to t('.delete'),
                   places_path(place),
                   method: :delete,

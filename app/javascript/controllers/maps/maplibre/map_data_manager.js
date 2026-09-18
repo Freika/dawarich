@@ -58,7 +58,6 @@ export class MapDataManager {
         routesGeoJSON: EMPTY_GEOJSON,
         visitsGeoJSON: EMPTY_GEOJSON,
         photosGeoJSON: EMPTY_GEOJSON,
-        areasGeoJSON: EMPTY_GEOJSON,
         tracksGeoJSON: EMPTY_GEOJSON,
         placesGeoJSON: EMPTY_GEOJSON,
       })
@@ -275,7 +274,6 @@ export class MapDataManager {
       heatmap: "heatmap",
       routes: "routes",
       visits: "visits",
-      areas: "areas",
       places: "places",
       tracks: "tracks",
       photos: "photos",
@@ -369,7 +367,6 @@ export class MapDataManager {
         data.routesGeoJSON,
         data.visitsGeoJSON,
         data.photosGeoJSON,
-        data.areasGeoJSON,
         data.tracksGeoJSON,
         data.placesGeoJSON,
         data.flightsGeoJSON,
@@ -387,9 +384,6 @@ export class MapDataManager {
           this.eventHandlers,
         ),
         handlePlaceClick: this.eventHandlers.handlePlaceClick.bind(
-          this.eventHandlers,
-        ),
-        handleAreaClick: this.eventHandlers.handleAreaClick.bind(
           this.eventHandlers,
         ),
         handleAnomalyClick: this.eventHandlers.handleAnomalyClick.bind(

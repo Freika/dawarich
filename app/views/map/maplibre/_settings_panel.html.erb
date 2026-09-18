@@ -329,20 +329,6 @@
 
           <div class="divider"></div>
 
-          <!-- Areas Layer -->
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     class="toggle toggle-primary"
-                     data-maps--maplibre-target="areasToggle"
-                     data-action="change->maps--maplibre#toggleAreas" />
-              <span class="label-text font-medium"><%= t('.areas') %></span>
-            </label>
-            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_defined_areas') %></p>
-          </div>
-
-          <div class="divider"></div>
-
           <!-- Fog of War Layer -->
           <div class="form-control">
             <label class="label cursor-pointer justify-start gap-3">
@@ -1170,14 +1156,7 @@
                     data-maps--maplibre-target="selectAreaButton"
                     data-action="click->maps--maplibre#startSelectArea">
               <%= icon 'square-dashed-mouse-pointer' %>
-              <span class="text-xs"><%= t('.select_area') %></span>
-            </button>
-
-            <button type="button"
-                    class="btn btn-sm btn-outline flex flex-col items-center gap-1 h-auto py-3"
-                    data-action="click->maps--maplibre#startCreateArea">
-              <%= icon 'circle-plus' %>
-              <span class="text-xs"><%= t('.create_area') %></span>
+              <span class="text-xs"><%= t('.select_data_on_map') %></span>
             </button>
 
             <button type="button"

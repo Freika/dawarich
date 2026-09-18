@@ -172,7 +172,12 @@ describe 'Visits API', type: :request do
             properties: {
               name: { type: :string },
               place_id: { type: :integer },
-              area_id: { type: :integer, nullable: true },
+              area_id: {
+                type: :integer,
+                nullable: true,
+                deprecated: true,
+                description: 'Legacy Area ID. It is translated to place_id; do not send both fields.'
+              },
               status: { type: :string, enum: %w[suggested confirmed declined] }
             }
           }
@@ -191,7 +196,7 @@ describe 'Visits API', type: :request do
                  started_at: { type: :string, format: :datetime },
                  ended_at: { type: :string, format: :datetime },
                  duration: { type: :integer },
-                 place: { type: :object }
+                 place: { type: [:object, 'null'] }
                }
 
         run_test!
@@ -318,7 +323,7 @@ describe 'Visits API', type: :request do
                  started_at: { type: :string, format: :datetime },
                  ended_at: { type: :string, format: :datetime },
                  duration: { type: :integer },
-                 place: { type: :object }
+                 place: { type: [:object, 'null'] }
                }
 
         run_test!

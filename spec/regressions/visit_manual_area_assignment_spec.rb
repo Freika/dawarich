@@ -10,21 +10,22 @@ RSpec.describe 'Manual area assignment for visits', type: :request do
   describe 'PATCH /api/v1/visits/:id' do
     let(:auth_headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
-    it 'persists area_id when the user owns the area' do
+    it 'translates area_id to the mapped canonical Place' do
       patch "/api/v1/visits/#{visit.id}",
             params: { visit: { area_id: area.id } },
             headers: auth_headers
 
       expect(response).to have_http_status(:ok)
-      expect(visit.reload.area_id).to eq(area.id)
+      expect(visit.reload.area_id).to be_nil
+      expect(visit.place).to eq(LegacyAreaPlaceMapping.find_by!(area:).place)
     end
 
-    it 'updates the visit name to the area name when no name was provided' do
+    it 'updates the location label to the area name without replacing the custom name' do
       patch "/api/v1/visits/#{visit.id}",
             params: { visit: { area_id: area.id } },
             headers: auth_headers
 
-      expect(visit.reload.name).to eq('Home')
+      expect(visit.reload).to have_attributes(name: 'before', location_label: 'Home')
     end
 
     it 'preserves a user-provided name even when area_id is set' do
@@ -47,17 +48,15 @@ RSpec.describe 'Manual area assignment for visits', type: :request do
       expect(visit.reload.area_id).to be_nil
     end
 
-    it 'prefers place name over area name when both are provided' do
+    it 'rejects conflicting place_id and area_id' do
       place = create(:place, user: user, name: 'Coffee Shop')
 
       patch "/api/v1/visits/#{visit.id}",
             params: { visit: { place_id: place.id, area_id: area.id } },
             headers: auth_headers
 
-      visit.reload
-      expect(visit.place_id).to eq(place.id)
-      expect(visit.area_id).to eq(area.id)
-      expect(visit.name).to eq('Coffee Shop')
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(visit.reload).to have_attributes(place_id: nil, area_id: nil)
     end
 
     it 'clears area_id when an empty value is sent' do
@@ -96,12 +95,13 @@ RSpec.describe 'Manual area assignment for visits', type: :request do
   describe 'PATCH /visits/:id (web controller)' do
     before { sign_in user }
 
-    it 'persists area_id when the user owns the area' do
+    it 'translates area_id to the mapped canonical Place' do
       patch "/visits/#{visit.id}",
             params: { visit: { area_id: area.id } }
 
-      expect(visit.reload.area_id).to eq(area.id)
-      expect(visit.reload.name).to eq('Home')
+      expect(visit.reload.area_id).to be_nil
+      expect(visit.place).to eq(LegacyAreaPlaceMapping.find_by!(area:).place)
+      expect(visit.reload).to have_attributes(name: 'before', location_label: 'Home')
     end
 
     it 'rejects a foreign area' do
@@ -117,19 +117,18 @@ RSpec.describe 'Manual area assignment for visits', type: :request do
       expect(visit.reload.area_id).to be_nil
     end
 
-    it 'prefers place name over area name when both are provided' do
+    it 'rejects conflicting place_id and area_id' do
       place = create(:place, user: user, name: 'Coffee Shop')
 
       patch "/visits/#{visit.id}",
-            params: { visit: { place_id: place.id, area_id: area.id } }
+            params: { visit: { place_id: place.id, area_id: area.id } },
+            headers: { 'Accept' => 'text/vnd.turbo-stream.html' }
 
-      visit.reload
-      expect(visit.place_id).to eq(place.id)
-      expect(visit.area_id).to eq(area.id)
-      expect(visit.name).to eq('Coffee Shop')
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(visit.reload).to have_attributes(place_id: nil, area_id: nil)
     end
 
-    it 'confirms a suggested visit and uses the area name when status and area_id are sent together' do
+    it 'confirms a suggested visit and uses the area name as its location label' do
       visit.update!(status: :suggested, name: 'before')
 
       patch "/visits/#{visit.id}",
@@ -137,8 +136,9 @@ RSpec.describe 'Manual area assignment for visits', type: :request do
 
       visit.reload
       expect(visit.status).to eq('confirmed')
-      expect(visit.area_id).to eq(area.id)
-      expect(visit.name).to eq('Home')
+      expect(visit.area_id).to be_nil
+      expect(visit.place).to eq(LegacyAreaPlaceMapping.find_by!(area:).place)
+      expect(visit).to have_attributes(name: 'before', location_label: 'Home')
     end
 
     it 'clears area_id when an empty value is sent' do

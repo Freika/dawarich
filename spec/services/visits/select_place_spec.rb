@@ -34,7 +34,8 @@ RSpec.describe Visits::SelectPlace do
       expect(place.name).to eq('Café Bravo')
       expect(place.source).to eq('photon')
       expect(visit.reload.place_id).to eq(place.id)
-      expect(visit.name).to eq('Café Bravo')
+      expect(visit.name).to eq('Visit')
+      expect(visit.location_label).to eq('Café Bravo')
       expect(visit.status).to eq('confirmed')
     end
 

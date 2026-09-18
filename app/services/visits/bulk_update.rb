@@ -41,15 +41,8 @@ module Visits
         return false
       end
 
-      # Captured before update_all: declined visits drop out of scoped_visits.
-      declined_place_ids = status == 'declined' ? visits.where.not(place_id: nil).distinct.pluck(:place_id) : []
-
       updated_count = visits.update_all(status: status)
       # rubocop:enable Rails/SkipsModelValidations
-
-      # update_all skips AR callbacks, so declining here must enqueue the
-      # orphan-place check the model runs on single-record declines.
-      declined_place_ids.each { |place_id| Places::DeleteIfOrphanJob.perform_later(place_id) }
 
       { count: updated_count, visits: visits }
     end

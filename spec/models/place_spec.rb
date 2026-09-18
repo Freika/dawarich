@@ -56,6 +56,18 @@ RSpec.describe Place, type: :model do
     it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:lonlat) }
     it { is_expected.to validate_length_of(:name).is_at_most(255) }
+    it { is_expected.to validate_numericality_of(:visit_radius).only_integer.is_greater_than(0) }
+
+    it 'defaults the visit radius to 50 meters' do
+      expect(create(:place).reload.visit_radius).to eq(50)
+    end
+
+    it 'rejects a non-positive visit radius at the database level' do
+      place = create(:place)
+
+      expect { place.update_columns(visit_radius: 0) }
+        .to raise_error(ActiveRecord::StatementInvalid)
+    end
   end
 
   describe 'enums' do
@@ -96,6 +108,31 @@ RSpec.describe Place, type: :model do
         ordered = Place.for_user(user1).ordered
         # The ordered scope orders by name alphabetically (case-sensitive in most DBs)
         expect(ordered.map(&:name)).to include('airport', 'BEACH')
+      end
+    end
+
+    describe '.confirmed_for and .unconfirmed_for' do
+      let!(:suggested_only) { create(:place, user: user1, source: :photon, name: 'Suggested Only') }
+
+      it 'keeps a suggestion-only Place unconfirmed' do
+        create(:visit, user: user1, place: suggested_only, area: nil, status: :suggested)
+
+        expect(Place.confirmed_for(user1)).not_to include(suggested_only)
+        expect(Place.unconfirmed_for(user1)).to include(suggested_only)
+      end
+
+      it 'treats legacy text notes as confirmation' do
+        suggested_only.update!(note: 'Known location')
+
+        expect(Place.confirmed_for(user1)).to include(suggested_only)
+        expect(Place.unconfirmed_for(user1)).not_to include(suggested_only)
+      end
+
+      it 'treats attached timeline notes as confirmation' do
+        create(:note, user: user1, attachable: suggested_only)
+
+        expect(Place.confirmed_for(user1)).to include(suggested_only)
+        expect(Place.map_visible(user1)).to include(suggested_only)
       end
     end
   end
