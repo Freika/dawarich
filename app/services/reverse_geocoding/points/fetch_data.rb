@@ -49,6 +49,7 @@ class ReverseGeocoding::Points::FetchData
 
     if response.blank?
       with_write_retry { point.update!(reverse_geocoded_at: Time.current) }
+      invalidate_point_tiles
       return
     end
 
@@ -70,6 +71,7 @@ class ReverseGeocoding::Points::FetchData
         ActiveRecord.after_all_transactions_commit { Stats::GeocodedDays.mark(user_id, timestamp) }
       end
     end
+    invalidate_point_tiles
   rescue *ReverseGeocoding::ProviderErrors::TRANSIENT => e
     Rails.logger.warn("Reverse geocoding provider error for point #{point.id}: #{e.message}")
   rescue OpenSSL::SSL::SSLError => e
@@ -84,6 +86,12 @@ class ReverseGeocoding::Points::FetchData
   rescue StandardError => e
     Rails.logger.error("Reverse geocoding error for point #{point.id}: #{e.message}")
     ExceptionReporter.call(e)
+  end
+
+  def invalidate_point_tiles
+    user_id = point.user_id
+    timestamp = point.timestamp
+    ActiveRecord.after_all_transactions_commit { Points::TileEpoch.bump(user_id, timestamps: [timestamp]) }
   end
 
   def find_country(response)
