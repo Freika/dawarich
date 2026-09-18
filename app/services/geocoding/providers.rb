@@ -36,7 +36,7 @@ module Geocoding
     # Strips the port and any reverse-proxy path suffix so hosts written as
     # "app.chibigeo.com/v1/photon" or "photon.komoot.io:443" still match.
     def self.bare_host(host)
-      host.to_s.split('/').first.to_s.split(':').first
+      host.to_s.downcase.split('/').first.to_s.split(':').first
     end
 
     def self.komoot?(provider, host)

@@ -59,6 +59,7 @@ zh:
         pinned: "已拒绝：由 %{variables} 固定。"
         host_invalid: "主机必须是单纯的主机名，可附带端口或路径，不能包含空格。"
         chibigeo_key_required: "ChibiGeo 需要 API 密钥。免费的 Hobby 套餐每天包含 2,500 次查询——请在 chibigeo.com 获取密钥。"
+        host_blocked: "无法使用此主机：%{reason}"
       test_geocoding:
         not_configured: "尚未配置地理编码提供商。请先保存一个提供商。"
         success: "您的提供商将测试坐标解析为 %{place}。"

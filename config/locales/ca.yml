@@ -57,6 +57,7 @@ ca:
         pinned: "Rebutjat: fixat per %{variables}."
         host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals i sense espais."
         chibigeo_key_required: "ChibiGeo necessita una clau d'API. El pla gratuït Hobby inclou 2.500 cerques al dia; obtén la teva clau a chibigeo.com."
+        host_blocked: "Aquest amfitrió no es pot utilitzar: %{reason}"
       test_geocoding:
         not_configured: "No hi ha cap proveïdor de geocodificació configurat. Desa primer un proveïdor."
         success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."

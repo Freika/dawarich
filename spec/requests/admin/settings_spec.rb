@@ -16,6 +16,11 @@ RSpec.describe 'Admin::Settings' do
     InstanceSettings::Resolver.reset!
   end
 
+  before do
+    allow(Resolv).to receive(:getaddress).and_return('203.0.113.10')
+    allow(Socket).to receive(:getaddrinfo).and_return([])
+  end
+
   describe 'authorisation' do
     it 'does not serve the page to a non-admin' do
       sign_in non_admin
@@ -221,6 +226,10 @@ RSpec.describe 'Admin::Settings' do
   describe 'geocoding input' do
     before { sign_in admin }
 
+    def blocked_alert
+      I18n.t('admin.settings.update.host_blocked', reason: I18n.t('services.concerns.url_validatable.blocked_address'))
+    end
+
     it 'stores a pasted URL as a bare host' do
       patch '/admin/settings', params: { instance_settings: { photon_api_host: ' https://Photon.Example.com:2322/ ' } }
 
@@ -269,6 +278,41 @@ RSpec.describe 'Admin::Settings' do
 
       expect(InstanceSettings::Resolver.value(:photon_api_host)).to eq('app.chibigeo.com/v1/photon')
       expect(InstanceSettings::Resolver.value(:photon_api_key)).to eq('chibi-key')
+    end
+
+    it 'refuses a host on the cloud metadata address' do
+      allow(Resolv).to receive(:getaddress).with('169.254.169.254').and_return('169.254.169.254')
+
+      patch '/admin/settings', params: { instance_settings: { photon_api_host: '169.254.169.254' } }
+
+      expect(InstanceSetting.find_by(key: 'photon_api_host')).to be_nil
+      expect(flash[:alert]).to eq(blocked_alert)
+    end
+
+    it 'refuses a hostname that resolves into a blocked range' do
+      allow(Resolv).to receive(:getaddress).with('metadata.internal.example').and_return('169.254.169.254')
+
+      patch '/admin/settings', params: { instance_settings: { nominatim_api_host: 'metadata.internal.example' } }
+
+      expect(InstanceSetting.find_by(key: 'nominatim_api_host')).to be_nil
+    end
+
+    it 'saves a host the web container cannot resolve' do
+      allow(Resolv).to receive(:getaddress).with('photon.homelab.lan').and_raise(Resolv::ResolvError)
+      allow(Socket).to receive(:getaddrinfo).with('photon.homelab.lan', nil).and_raise(SocketError)
+
+      patch '/admin/settings', params: { instance_settings: { photon_api_host: 'photon.homelab.lan' } }
+
+      expect(InstanceSettings::Resolver.value(:photon_api_host)).to eq('photon.homelab.lan')
+    end
+
+    it 'calls a blocked numeric host blocked rather than unresolvable' do
+      allow(Resolv).to receive(:getaddress).with('2130706433').and_raise(Resolv::ResolvError)
+
+      patch '/admin/settings', params: { instance_settings: { photon_api_host: '2130706433' } }
+
+      expect(InstanceSetting.find_by(key: 'photon_api_host')).to be_nil
+      expect(flash[:alert]).to eq(blocked_alert)
     end
 
     it 'links the ChibiGeo guide for self-hosted geocoding' do
@@ -575,8 +619,8 @@ RSpec.describe 'Admin::Settings' do
                 admin.settings.show.geocoding.none admin.settings.show.geocoding.chain_hint
                 admin.settings.show.providers.photon admin.settings.show.fields.store_geodata_hint
                 admin.settings.show.geocoding.legacy_user_settings admin.settings.update.host_invalid
-                admin.settings.update.chibigeo_key_required]
-      %i[de es fr pl ca].product(keys).each do |locale, key|
+                admin.settings.update.chibigeo_key_required admin.settings.update.host_blocked]
+      %i[de es fr pl ca zh].product(keys).each do |locale, key|
         expect(I18n.t(key, locale: locale, default: nil)).to be_present, "missing #{key} for #{locale}"
       end
     end
