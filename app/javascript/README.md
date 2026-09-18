@@ -175,15 +175,15 @@ app/javascript/
 ├── maps_maplibre/                    # Maps (MapLibre) implementation
 │   ├── layers/                 # Map layer classes
 │   │   ├── base_layer.js       # Abstract base class
-│   │   ├── points_mvt_layer.js # Tile-backed Point markers and heatmap
-│   │   ├── tracks_mvt_layer.js # Tile-backed canonical Tracks
-│   │   ├── editable_track_layer.js # Focused exact edit overlay
+│   │   ├── points_layer.js     # Point markers
+│   │   ├── routes_layer.js     # Route lines
+│   │   ├── heatmap_layer.js    # Heatmap visualization
 │   │   ├── visits_layer.js     # Visit markers
 │   │   ├── photos_layer.js     # Photo markers
 │   │   ├── places_layer.js     # Places markers
 │   │   ├── areas_layer.js      # User-defined areas
 │   │   ├── fog_layer.js        # Fog of war overlay
-│   │   └── scratch_layer.js    # Tile-backed Visited Countries
+│   │   └── scratch_layer.js    # Scratch map
 │   ├── services/               # API and external services
 │   │   ├── api_client.js       # REST API wrapper
 │   │   └── location_search_service.js
@@ -283,17 +283,17 @@ map.on('click', 'layer-id', (e) => {
 
 Layers are rendered in specific order (bottom to top):
 
-1. **Visited Countries Layer** - Bundled PMTiles filtered by visited ISO-3 metadata
-2. **Heatmap Layer** - Tile-backed point density visualization
+1. **Scratch Layer** - Visited countries/regions overlay
+2. **Heatmap Layer** - Point density visualization
 3. **Areas Layer** - User-defined circular areas
-4. **Tracks MVT Layer** - Canonical backend Tracks from vector tiles
-5. **Focused Track Layer** - Exact selected Track/segments during inspection or editing
+4. **Tracks Layer** - Imported GPS tracks
+5. **Routes Layer** - Generated routes from points
 6. **Visits Layer** - Detected visits to places
 7. **Places Layer** - Named locations
 8. **Photos Layer** - Photos with geolocation
 9. **Family Layer** - Real-time family member locations
-10. **Points MVT Layer** - Individual/aggregated location points from vector tiles
-11. **Fog Layer** - Tile-derived explored-area overlay
+10. **Points Layer** - Individual location points
+11. **Fog Layer** - Canvas overlay showing unexplored areas
 
 ### BaseLayer Pattern
 
@@ -310,8 +310,33 @@ All layers extend `BaseLayer` which provides:
 - `getSourceConfig()` - MapLibre source configuration
 - `getLayerConfigs()` - Array of MapLibre layer configurations
 
-The main map renders Points and Tracks only from vector tiles. Exact GeoJSON
-is loaded into `EditableTrackLayer` only for the selected edit session.
+**Example Implementation:**
+```javascript
+export class PointsLayer extends BaseLayer {
+  constructor(map, options = {}) {
+    super(map, { id: 'points', ...options })
+  }
+
+  getSourceConfig() {
+    return {
+      type: 'geojson',
+      data: this.data || { type: 'FeatureCollection', features: [] }
+    }
+  }
+
+  getLayerConfigs() {
+    return [{
+      id: 'points',
+      type: 'circle',
+      source: this.sourceId,
+      paint: {
+        'circle-radius': 4,
+        'circle-color': '#3b82f6'
+      }
+    }]
+  }
+}
+```
 
 ### Lazy Loading
 
