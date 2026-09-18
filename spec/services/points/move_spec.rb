@@ -42,15 +42,21 @@ RSpec.describe Points::Move do
     end.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 1970, 1)
   end
 
-  it 'still publishes the map edit when the stats job cannot be enqueued' do
+  it 'returns the committed move and publishes it when the stats job cannot be enqueued' do
     allow(Stats::CalculatingJob).to receive(:perform_later).and_raise(Redis::CannotConnectError)
+    allow(ExceptionReporter).to receive(:call)
 
-    result = described_class.call(
-      user:, point_id: point.id, latitude: 0.01, longitude: 0.01,
-      point_revision: point.lock_version, track_revision: track.lock_version,
-      history_scope: scope
-    )
+    result = nil
+    expect do
+      result = described_class.call(
+        user:, point_id: point.id, latitude: 0.01, longitude: 0.01,
+        point_revision: point.lock_version, track_revision: track.lock_version,
+        history_scope: scope
+      )
+    end.to increment_yabeda_counter(Yabeda.dawarich_map.post_commit_failures_total)
+      .with_tags(operation: 'stats')
 
+    expect(result.point).to have_attributes(lat: 0.01, lon: 0.01, lock_version: 1)
     expect(MapEdits::Publisher).to have_received(:call).with(user:, result:)
   end
 

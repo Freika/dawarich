@@ -135,9 +135,11 @@ class Points::Move
     local_time = Time.zone.at(point.timestamp).in_time_zone(user.timezone_iana)
     Stats::CalculatingJob.perform_later(user.id, local_time.year, local_time.month)
   rescue StandardError => e
-    Rails.logger.error("event=point_move.post_commit_failed error_class=#{e.class} point_id=#{point.id}")
+    Rails.logger.error(
+      "event=point_move.post_commit_failed operation=stats error_class=#{e.class} point_id=#{point.id}"
+    )
     record_post_commit_failure('stats')
-    report_post_commit_failure(e)
+    report_post_commit_failure(e, 'Failed to enqueue stats recalculation for committed map edit')
   end
 
   def instrument(outcome, started_at, result = nil)
@@ -173,8 +175,8 @@ class Points::Move
     Rails.logger.warn("event=point_move.metrics_failed error_class=#{e.class}")
   end
 
-  def report_post_commit_failure(error)
-    ExceptionReporter.call(error, 'Failed to invalidate or publish committed map edit')
+  def report_post_commit_failure(error, message = 'Failed to invalidate or publish committed map edit')
+    ExceptionReporter.call(error, message)
   rescue StandardError
     nil
   end
