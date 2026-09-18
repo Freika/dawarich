@@ -904,7 +904,7 @@ pl:
         show_individual_location_points: Pokaż pojedyncze punkty lokalizacji
         edit_points: Edytuj punkty
         allow_dragging_points_to_correct_their_position: Pozwala przeciągać punkty, aby poprawić ich pozycję.
-        editing_points_is_a_pro_feature_this_stays_on_for: Edycja punktów to funkcja Pro - to ustawienie działa tylko w bieżącej sesji, a przesunięcia nie są zapisywane w planie Lite.
+        editing_points_is_a_pro_feature_this_stays_on_for: Edycja punktów jest dostępna w planie Pro.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Pozwala przeciągać punkty, aby poprawić ich pozycję. Zapamiętywane między sesjami.
         beta: Beta
         show_connected_route_lines: Pokaż połączone linie tras
@@ -987,11 +987,16 @@ pl:
         fog_of_war_threshold: Próg Nieodkrytego obszaru
         minimum_points_to_clear_fog: Minimalna liczba punktów do odkrycia obszaru
         gps_noise_filtering: Filtrowanie szumu GPS
+        track_generation: Generowanie tras
+        track_split_distance: Odstęp odległości między trasami
+        track_split_distance_hint: Rozpocznij nową trasę, gdy kolejne punkty są dalej od siebie.
+        track_split_time: Odstęp czasu między trasami
+        track_split_time_hint: Rozpocznij nową trasę, gdy przerwa między punktami jest dłuższa.
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Ukryj odczyty, które nie mogą być rzeczywistą pozycją - niemożliwe skoki, uszkodzone współrzędne. Wyłącz, aby zobaczyć wszystkie surowe punkty.
         re_evaluate_past_data: Ponownie oceń dane historyczne
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Czyści istniejące flagi anomalii i ponownie uruchamia filtr dla wszystkich punktów z bieżącymi ustawieniami. Potem trasy, statystyki i podsumowania zostaną przebudowane. Działa w tle.
         recalculate_tracks_stats: Przelicz trasy i statystyki
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Przebuduj trasy, statystyki i podsumowania na podstawie bieżących punktów bez ruszania flag anomalii. Przydatne po zmianie progów dzielenia tras.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Najpierw zapisz te progi. Nowe ślady będą ich używać automatycznie; wybierz „Przelicz ślady i statystyki”, aby zastosować je do istniejącej historii.
         city_statistics: Statystyki miast
         min_minutes_in_city: Minimalny czas w mieście
         min_5: 60 min
@@ -3906,6 +3911,7 @@ pl:
       failed_to_update_point_position_please_try_again: Nie udało się zaktualizować pozycji punktu. Spróbuj ponownie.
       point_edit_conflict: Ten punkt został zmieniony w innej sesji. Wyświetlono ostatnią zapisaną pozycję.
       failed_to_load_map_tiles: Nie udało się wczytać kafelków mapy.
+      tracks_pending: W tym widoku nie ma jeszcze tras. Przesuń mapę lub rozszerz zakres dat; niedawny import może być nadal przetwarzany.
       failed_to_load_visited_countries: Nie udało się wczytać odwiedzonych krajów.
       retry: Spróbuj ponownie
       failed_to_load_track_points: Nie udało się załadować punktów trasy

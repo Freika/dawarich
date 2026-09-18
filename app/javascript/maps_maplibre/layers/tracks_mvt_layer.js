@@ -30,10 +30,13 @@ export class TracksMvtLayer extends BaseLayer {
     this.importId = options.importId || null
     this.trackColor = options.trackColor || "#6366F1"
     this.onTileError = options.onTileError || null
+    this.onEmptyTracks = options.onEmptyTracks || null
     this._tileUrl = null
     this._cacheBuster = 0
     this._tileErrorHandler = null
     this._tileErrorReported = false
+    this._sourceDataHandler = null
+    this._emptyTracksReported = false
     this.flightWindows = []
   }
 
@@ -42,10 +45,13 @@ export class TracksMvtLayer extends BaseLayer {
     if (this.flightWindows.length) this._applyFlightFilter()
     this._tileErrorReported = false
     this._watchTileErrors()
+    this._emptyTracksReported = false
+    this._watchEmptyTracks()
   }
 
   remove() {
     this._unwatchTileErrors()
+    this._unwatchEmptyTracks()
     super.remove()
   }
 
@@ -67,6 +73,35 @@ export class TracksMvtLayer extends BaseLayer {
 
     this.map.off("error", this._tileErrorHandler)
     this._tileErrorHandler = null
+  }
+
+  _watchEmptyTracks() {
+    if (this._sourceDataHandler || !this.onEmptyTracks) return
+
+    this._sourceDataHandler = (event) => {
+      if (event?.sourceId !== this.sourceId || !event?.isSourceLoaded) return
+      if (this._emptyTracksReported || !this.tracksEnabled) return
+
+      const features =
+        this.map.querySourceFeatures?.(this.sourceId, {
+          sourceLayer: "tracks",
+        }) ?? []
+      if (features.length > 0) {
+        this._unwatchEmptyTracks()
+        return
+      }
+
+      this._emptyTracksReported = true
+      this.onEmptyTracks()
+    }
+    this.map.on("sourcedata", this._sourceDataHandler)
+  }
+
+  _unwatchEmptyTracks() {
+    if (!this._sourceDataHandler) return
+
+    this.map.off("sourcedata", this._sourceDataHandler)
+    this._sourceDataHandler = null
   }
 
   getSourceConfig() {

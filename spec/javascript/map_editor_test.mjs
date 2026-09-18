@@ -99,6 +99,66 @@ function point(id, longitude, latitude, revision = 2) {
   }
 }
 
+test("import editor exposes only selected Points and keeps scoped Track geometry after a move", async () => {
+  const map = fakeMap()
+  const highlights = []
+  const scopedFeature = {
+    ...trackFeature(),
+    geometry: {
+      type: "MultiLineString",
+      coordinates: [
+        [
+          [0, 0],
+          [2, 0],
+        ],
+      ],
+    },
+  }
+  const editor = new MapEditor(map, {
+    apiClient: {
+      importId: "42",
+      fetchTrackWithSegments: async () => scopedFeature,
+      fetchTrackPoints: async () => [point(1, 0, 0), point(2, 2, 0)],
+      movePointPosition: async () => ({
+        point: point(1, 1, 0, 3),
+        track: trackFeature(5, [
+          [1, 0],
+          [9, 0],
+        ]),
+        revision: { point: 3, track: 5 },
+      }),
+    },
+    layerManager: {
+      getLayer(name) {
+        if (name === "tracks")
+          return { setSelectedTrack: (feature) => highlights.push(feature) }
+        return { refresh() {} }
+      },
+    },
+    historyScope: () => ({}),
+  })
+
+  await editor.selectTrack(10)
+  assert.equal(editor._track(), undefined)
+  assert.equal(map.filters.get("tracks-mvt"), undefined)
+  assert.deepEqual(
+    editor._points().map((feature) => feature.properties.id),
+    [1, 2],
+  )
+
+  editor.onMouseDown({
+    features: [{ properties: { id: 1 } }],
+    preventDefault() {},
+  })
+  editor.onMouseMove({ lngLat: { lng: 0.5, lat: 0 } })
+  await editor.onMouseUp({ lngLat: { lng: 1, lat: 0 } })
+  await new Promise(setImmediate)
+
+  assert.equal(editor.trackRevision, 5)
+  assert.deepEqual(highlights.at(-1), scopedFeature)
+  assert.equal(editor._track(), undefined)
+})
+
 test("drag previews point and track locally, then sends exactly one composite mutation", async () => {
   const calls = []
   const refreshes = []
@@ -510,4 +570,47 @@ test("tile refresh reapplies exclusions and close restores the newest base filte
   assert.equal(map.listenerCount("mousedown", "track-points"), 0)
   assert.equal(map.listenerCount("mousemove"), 0)
   assert.equal(map.listenerCount("mouseup"), 0)
+})
+
+test("successful point move refreshes tiles even after the editor closes", async () => {
+  const map = fakeMap()
+  const refreshed = []
+  const events = []
+  const originalDispatch = document.dispatchEvent
+  document.dispatchEvent = (event) => events.push(event.type)
+  let completeMove
+  const editor = new MapEditor(map, {
+    apiClient: {
+      fetchTrackWithSegments: async () => trackFeature(),
+      fetchTrackPoints: async () => [point(1, 0, 0), point(2, 2, 0)],
+      movePointPosition: () =>
+        new Promise((resolve) => {
+          completeMove = resolve
+        }),
+    },
+    layerManager: {
+      getLayer: (name) => ({ refresh: () => refreshed.push(name) }),
+    },
+    historyScope: () => ({}),
+  })
+
+  try {
+    await editor.selectTrack(10)
+    editor.onMouseDown({
+      features: [{ properties: { id: 1 } }],
+      preventDefault() {},
+    })
+    editor.onMouseMove({ lngLat: { lng: 1, lat: 1 } })
+    const pendingMove = editor.onMouseUp({ lngLat: { lng: 1, lat: 1 } })
+    editor.close()
+    completeMove({ point: point(1, 1, 1, 3), revision: { point: 3 } })
+    await pendingMove
+
+    assert.deepEqual(refreshed, ["points-mvt", "tracks-mvt"])
+    assert.deepEqual(events, ["dawarich:point-moved"])
+    assert.equal(editor.data, null)
+    assert.deepEqual(editor.indicator.shown, [])
+  } finally {
+    document.dispatchEvent = originalDispatch
+  }
 })

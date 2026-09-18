@@ -2,10 +2,15 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-// MapPageProvider reaches the live map through document.getElementById; the
-// module itself imports nothing, so a minimal DOM shim is all Node needs.
 globalThis.document = { getElementById: () => ({}) }
 
+const segmenterSource = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/route_segmenter.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
 const source = await readFile(
   new URL(
     "../../app/javascript/poster_studio/data/providers.js",
@@ -13,7 +18,8 @@ const source = await readFile(
   ),
   "utf8",
 )
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(segmenterSource.replace(/^export /gm, "") + withoutImports).toString("base64")}`
 const { MapPageProvider, TripProvider } = await import(moduleUrl)
 
 // Mirrors the real controller: poster/video generation is an explicit bounded
@@ -58,6 +64,24 @@ test("points still resolve through the same lazy load", async () => {
   assert.equal(controller.pointLoads, 1)
   assert.equal(controller.trackLoads, 1)
   assert.equal(points.length, 1)
+})
+
+test("import-scoped studio geometry uses only imported points", async () => {
+  const { controller, provider } = fakeMapPage()
+  controller.api.importId = 42
+  controller._getLoadedPoints = () => [
+    { latitude: 52.5, longitude: 13.4, timestamp: 1 },
+    { latitude: 52.6, longitude: 13.5, timestamp: 2 },
+  ]
+
+  await provider.ensureTrackLoaded()
+
+  assert.equal(controller.pointLoads, 1)
+  assert.equal(controller.trackLoads, 0)
+  assert.deepEqual(provider.trackGeojson().features[0].geometry.coordinates, [
+    [13.4, 52.5],
+    [13.5, 52.6],
+  ])
 })
 
 test("date changes wait for the map reload promise", async (t) => {

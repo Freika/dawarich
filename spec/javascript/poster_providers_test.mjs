@@ -2,6 +2,13 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
+const segmenterSource = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/route_segmenter.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
 const source = await readFile(
   new URL(
     "../../app/javascript/poster_studio/data/providers.js",
@@ -9,7 +16,8 @@ const source = await readFile(
   ),
   "utf8",
 )
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(segmenterSource.replace(/^export /gm, "") + withoutImports).toString("base64")}`
 const { buildTripGeojson, MapPageProvider, TripProvider } = await import(
   moduleUrl
 )

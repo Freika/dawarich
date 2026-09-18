@@ -35,6 +35,7 @@ export class LayerManager {
     this.eventHandlersSetup = false
     this.eventHandlerCleanups = []
     this.pointTileRange = { startAt: null, endAt: null }
+    this._styleGeneration = 0
   }
 
   /**
@@ -46,13 +47,13 @@ export class LayerManager {
     areasGeoJSON,
     placesGeoJSON,
     flightsGeoJSON,
+    isCurrent = () => true,
   ) {
     performanceMonitor.mark("add-layers")
 
     // Layer order matters: visited countries at the bottom, MVT journey data
     // above contextual overlays, and transient/replay markers at the top.
 
-    await this._addScratchLayer()
     this._addHexagonLayer()
     this._addAreasLayer(areasGeoJSON)
     this._addTracksLayer(EMPTY_GEOJSON)
@@ -66,6 +67,7 @@ export class LayerManager {
     } catch (error) {
       console.warn("Failed to add photos layer:", error)
     }
+    if (!isCurrent()) return
 
     this._addFamilyLayer()
     this._addTracksMvtLayer()
@@ -74,6 +76,9 @@ export class LayerManager {
     this._addRecentPointLayer()
     this._addReplayMarkerLayer()
     this._addFogLayer(EMPTY_GEOJSON)
+    // Membership may scan a large history. The blank-filter Scratch source
+    // attaches below the overlays when ready, without holding up tile layers.
+    void this._addScratchLayer()
 
     performanceMonitor.measure("add-layers")
   }
@@ -228,22 +233,13 @@ export class LayerManager {
       const layer = this.getLayer(layerName)
       if (layer) layer.update(this.pointTileRange)
     }
-    this.getLayer("scratch")
-      ?.update()
-      .catch((error) => {
-        console.warn("Failed to update visited countries:", error)
-        Toast.retry(
-          translate("messages.failed_to_load_visited_countries"),
-          translate("messages.retry"),
-          () => this.getLayer("scratch")?.update(),
-        )
-      })
   }
 
   /**
    * Clear all layer references (for style changes)
    */
   clearLayerReferences() {
+    this._styleGeneration += 1
     // Stop animations on layers that have them before orphaning
     if (this.layers.tracksLayer?._stopFlowAnimation) {
       this.layers.tracksLayer._stopFlowAnimation()
@@ -280,9 +276,12 @@ export class LayerManager {
   // Private methods for individual layer management
 
   async _addScratchLayer() {
+    const styleGeneration = this._styleGeneration
     try {
       if (!this.layers.scratchLayer && this.settings.scratchEnabled) {
         const ScratchLayer = await lazyLoader.loadLayer("scratch")
+        if (styleGeneration !== this._styleGeneration) return
+        if (this.layers.scratchLayer) return this.layers.scratchLayer.update()
         this.layers.scratchLayer = new ScratchLayer(this.map, {
           visible: true,
           apiClient: this.api,
@@ -296,14 +295,26 @@ export class LayerManager {
               translate("messages.retry"),
               () => this.layers.scratchLayer?.refresh(),
             ),
+          onMembershipError: () =>
+            Toast.retry(
+              translate("messages.failed_to_load_visited_countries"),
+              translate("messages.retry"),
+              () => this.layers.scratchLayer?.retryMembership(),
+            ),
         })
-        await this.layers.scratchLayer.add()
+        const beforeId = this.map.getLayer("hexagons-fill")
+          ? "hexagons-fill"
+          : null
+        await this.layers.scratchLayer.add(undefined, beforeId)
       } else if (this.layers.scratchLayer) {
         await this.layers.scratchLayer.update()
       }
     } catch (error) {
       console.warn("Failed to load scratch layer:", error)
-      if (!this.map.getLayer("scratch")) this.layers.scratchLayer = null
+      if (!this.map.getLayer("scratch")) {
+        this.layers.scratchLayer?.remove()
+        this.layers.scratchLayer = null
+      }
       Toast.retry(
         translate("messages.failed_to_load_visited_countries"),
         translate("messages.retry"),
@@ -432,6 +443,7 @@ export class LayerManager {
               this.layers.mapEditorLayer?.reapplyTileFilters()
             },
           ),
+        onEmptyTracks: () => Toast.info(translate("messages.tracks_pending")),
         ...this.pointTileRange,
       })
       this.layers.tracksMvtLayer.add(this.pointTileRange)

@@ -5,7 +5,7 @@ class Api::V1::Tiles::TracksController < ApiController
 
   # ETag material — bump when Tracks::VectorTileQuery's SQL or its emitted
   # properties change.
-  TILE_SCHEMA_VERSION = 4
+  TILE_SCHEMA_VERSION = 5
 
   private
 
@@ -15,12 +15,15 @@ class Api::V1::Tiles::TracksController < ApiController
 
   def tile_epoch_component
     tracks_epoch = Tracks::TileEpoch.etag_component(current_api_user.id, cacheable_start_at, cacheable_end_at)
-    return tracks_epoch unless speed_coloring?
+    return tracks_epoch unless speed_coloring? || params[:import_id].present?
 
     # Overlap semantics render whole tracks, including their portions outside
-    # the requested dates. Point edits in those portions must invalidate too.
-    first_at, last_at = filtered_tracks.pick(Arel.sql('MIN(start_at), MAX(end_at)'))
-    [tracks_epoch, Points::TileEpoch.etag_component(current_api_user.id, first_at, last_at)]
+    # the requested dates. Any year's point edits may affect an import-clipped
+    # track, so use all year tokens instead of running an import-wide MIN/MAX
+    # query for every tile request (including conditional 304s).
+    [tracks_epoch, Points::TileEpoch.etag_component(current_api_user.id,
+                                                    Time.utc(TileEpoch::MIN_YEAR).to_i,
+                                                    Time.utc(TileEpoch::MAX_YEAR).to_i)]
   end
 
   def tile_query
@@ -30,9 +33,13 @@ class Api::V1::Tiles::TracksController < ApiController
       x: params[:x],
       y: params[:y]
     }
+    if params[:import_id].present?
+      options[:clip_points_scope] = current_api_user.scoped_points.without_raw_data.not_anomaly
+      options[:clip_import_id] = params[:import_id]
+    end
     return Tracks::VectorTileQuery.new(**options) unless speed_coloring?
 
-    Tracks::SpeedVectorTileQuery.new(points_scope: speed_points_scope, **options)
+    Tracks::SpeedVectorTileQuery.new(points_scope: options[:clip_points_scope] || speed_points_scope, **options)
   end
 
   def speed_coloring?

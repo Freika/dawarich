@@ -36,6 +36,7 @@ export class MapEditor {
   ) {
     this.map = map
     this.apiClient = apiClient
+    this.importScoped = Boolean(apiClient?.importId)
     this.layerManager = layerManager
     this.historyScope = historyScope
     this.editable = editable
@@ -65,8 +66,12 @@ export class MapEditor {
     this.data = {
       type: "FeatureCollection",
       features: [
-        { ...track, properties: { ...track.properties, kind: "track" } },
-        ...(track.properties.segments || []).map(segmentFeature),
+        ...(!this.importScoped
+          ? [
+              { ...track, properties: { ...track.properties, kind: "track" } },
+              ...(track.properties.segments || []).map(segmentFeature),
+            ]
+          : []),
         ...points.map((point) => pointFeature(point, trackId)),
       ],
     }
@@ -175,12 +180,14 @@ export class MapEditor {
         trackRevision: this.trackRevision,
         historyScope: this.historyScope(),
       })
-      if (sessionVersion !== this.sessionVersion) return
-      this.applyCanonical(response, { rejectStale: true })
+      const isCurrentSession = sessionVersion === this.sessionVersion
+      if (isCurrentSession) this.applyCanonical(response, { rejectStale: true })
       this.layerManager.getLayer("points-mvt")?.refresh()
       this.layerManager.getLayer("tracks-mvt")?.refresh()
       this.reapplyTileFilters()
-      this.indicator.show(pointId)
+      if (isCurrentSession) this.indicator.show(pointId)
+      if (isCurrentSession && this.importScoped && this.trackId != null)
+        void this._refreshSelectedImportTrack(sessionVersion)
       document.dispatchEvent(
         new CustomEvent("dawarich:point-moved", { detail: response }),
       )
@@ -217,16 +224,18 @@ export class MapEditor {
     if (point) Object.assign(point, pointFeature(canonicalPoint, this.trackId))
     if (canonicalTrack) {
       const track = this._track()
-      track.geometry = clone(canonicalTrack.geometry)
-      track.properties = { ...canonicalTrack.properties, kind: "track" }
-      this.data.features = this.data.features.filter(
-        (feature) => feature.properties.kind !== "segment",
-      )
-      this.data.features.splice(
-        1,
-        0,
-        ...(canonicalTrack.properties.segments || []).map(segmentFeature),
-      )
+      if (track) {
+        track.geometry = clone(canonicalTrack.geometry)
+        track.properties = { ...canonicalTrack.properties, kind: "track" }
+        this.data.features = this.data.features.filter(
+          (feature) => feature.properties.kind !== "segment",
+        )
+        this.data.features.splice(
+          1,
+          0,
+          ...(canonicalTrack.properties.segments || []).map(segmentFeature),
+        )
+      }
       this.trackRevision = Number(
         response.revision?.track ?? canonicalTrack.properties.revision,
       )
@@ -250,7 +259,21 @@ export class MapEditor {
       : Number(activePoint.properties.revision || 0)
     if (revision <= currentRevision) return false
     this.applyCanonical(response)
+    if (this.importScoped && this.trackId != null)
+      void this._refreshSelectedImportTrack(this.sessionVersion)
     return true
+  }
+
+  async _refreshSelectedImportTrack(sessionVersion) {
+    try {
+      const feature = await this.apiClient.fetchTrackWithSegments(this.trackId)
+      if (sessionVersion !== this.sessionVersion) return
+      this.layerManager.getLayer("tracks")?.setSelectedTrack(feature)
+    } catch (error) {
+      if (sessionVersion !== this.sessionVersion) return
+      this.layerManager.getLayer("tracks")?.setSelectedTrack(null)
+      console.warn("Failed to refresh imported track highlight:", error)
+    }
   }
 
   close() {
@@ -350,7 +373,7 @@ export class MapEditor {
   _hideTileFeatures() {
     this.previousTrackFilter = this.map.getFilter?.("tracks-mvt") || null
     this.previousPointFilter = this.map.getFilter?.("points-mvt") || null
-    if (this.trackId && this.map.getLayer("tracks-mvt")) {
+    if (this.trackId && !this.importScoped && this.map.getLayer("tracks-mvt")) {
       const exclusion = ["!=", ["get", "id"], this.trackId]
       this.map.setFilter(
         "tracks-mvt",

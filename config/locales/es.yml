@@ -946,7 +946,7 @@ es:
         show_individual_location_points: Muestra puntos individuales
         edit_points: Editar puntos
         allow_dragging_points_to_correct_their_position: Permite arrastrar puntos para corregir su posición.
-        editing_points_is_a_pro_feature_this_stays_on_for: Editar puntos es una función Pro — esto se queda activo solo durante la sesión actual, y no se guardan cambios en el plan Lite.
+        editing_points_is_a_pro_feature_this_stays_on_for: La edición de puntos está disponible con el plan Pro.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Permite arrastrar puntos para corregir su posición. Recordado a lo largo de sesiones.
         beta: "Beta"
         show_connected_route_lines: Muestra líneas de rutas conectadas
@@ -1029,11 +1029,16 @@ es:
         fog_of_war_threshold: Umbral de niebla de guerra
         minimum_points_to_clear_fog: Puntos mínimos para despejar la niebla
         gps_noise_filtering: Filtrado de ruido GPS
+        track_generation: Generación de trayectos
+        track_split_distance: Distancia entre trayectos
+        track_split_distance_hint: Inicia un trayecto nuevo cuando los puntos consecutivos están más separados.
+        track_split_time: Tiempo entre trayectos
+        track_split_time_hint: Inicia un trayecto nuevo cuando el intervalo entre puntos es mayor.
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Ocultar lecturas que no pueden ser una posición real — saltos imposibles, coordenadas rotas. Desactiva para ver cada punto bruto.
         re_evaluate_past_data: Re-evaluar datos pasados
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Borra las marcas de anomalías existentes y vuelve a ejecutar el filtro sobre todos tus puntos con los ajustes actuales. Después se reconstruirán los trayectos, las estadísticas y los resúmenes. Se ejecuta en segundo plano.
         recalculate_tracks_stats: Recalcular trayectos y estadísticas
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Reconstruye los trayectos, las estadísticas y los resúmenes a partir de tus puntos actuales sin modificar las marcas de anomalías. Resulta útil después de cambiar los umbrales de división de rutas.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Guarda primero estos umbrales. Los nuevos trayectos los usarán automáticamente; selecciona «Recalcular trayectos y estadísticas» para aplicarlos al historial existente.
         city_statistics: Estadísticas de ciudad
         min_minutes_in_city: Minutos en ciudad
         min_5: 60 min
@@ -3846,6 +3851,7 @@ es:
       failed_to_update_point_position_please_try_again: No se pudo actualizar la posición del punto. Inténtalo de nuevo.
       point_edit_conflict: Este punto cambió en otra sesión. Se muestra la última posición guardada.
       failed_to_load_map_tiles: No se pudieron cargar las teselas del mapa.
+      tracks_pending: Aún no hay recorridos en esta vista. Desplaza el mapa o amplía el intervalo de fechas; es posible que un importe reciente siga procesándose.
       failed_to_load_visited_countries: No se pudieron cargar los países visitados.
       retry: Reintentar
       failed_to_load_track_points: No se pudo cargar los puntos de seguimiento

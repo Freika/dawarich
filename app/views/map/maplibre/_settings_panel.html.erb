@@ -632,6 +632,57 @@
           <details class="collapse collapse-arrow bg-base-200 rounded-lg" data-map-settings-dirty-target="section">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
+                <%= icon 'route', class: 'h-4 w-4 opacity-70 shrink-0' %>
+                <%= t('.track_generation') %>
+                <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
+              </span>
+            </summary>
+            <div class="collapse-content space-y-4">
+              <div class="form-control w-full">
+                <label class="label">
+                  <span class="label-text font-medium"><%= t('.track_split_distance') %></span>
+                  <span class="label-text-alt" data-maps--maplibre-target="metersBetweenValue"><%= t('units.meters_compact', value: 500) %></span>
+                </label>
+                <input type="range"
+                       name="metersBetweenRoutes"
+                       min="100"
+                       max="5000"
+                       step="100"
+                       value="500"
+                       class="range range-sm"
+                       data-action="input->maps--maplibre#updateMetersBetweenDisplay" />
+                <p class="text-xs text-base-content/60 mt-1"><%= t('.track_split_distance_hint') %></p>
+              </div>
+
+              <div class="form-control w-full">
+                <label class="label">
+                  <span class="label-text font-medium"><%= t('.track_split_time') %></span>
+                  <span class="label-text-alt" data-maps--maplibre-target="minutesBetweenValue"><%= t('units.minutes_compact', value: 30) %></span>
+                </label>
+                <input type="range"
+                       name="minutesBetweenRoutes"
+                       min="1"
+                       max="180"
+                       step="1"
+                       value="30"
+                       class="range range-sm"
+                       data-action="input->maps--maplibre#updateMinutesBetweenDisplay" />
+                <p class="text-xs text-base-content/60 mt-1"><%= t('.track_split_time_hint') %></p>
+              </div>
+
+              <button type="button"
+                      class="btn btn-sm btn-outline btn-block"
+                      data-action="click->maps--maplibre#recalculateUserData">
+                <%= icon 'refresh-ccw' %>
+                <%= t('.recalculate_tracks_stats') %>
+              </button>
+              <p class="text-xs text-base-content/60"><%= t('.rebuild_tracks_stats_and_digests_from_your_current_points_without') %></p>
+            </div>
+          </details>
+
+          <details class="collapse collapse-arrow bg-base-200 rounded-lg" data-map-settings-dirty-target="section">
+            <summary class="collapse-title font-medium min-h-0 cursor-pointer">
+              <span class="flex items-center gap-2">
               <%= icon 'cloud-fog', class: 'h-4 w-4 opacity-70 shrink-0' %>
               <%= t('.fog_of_war') %>
               <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
@@ -712,13 +763,6 @@
           </button>
           <p class="text-xs text-base-content/60 mt-1"><%= t('.clears_existing_anomaly_flags_and_re_runs_the_filter_on') %></p>
 
-          <button type="button"
-                  class="btn btn-sm btn-outline btn-block mt-2"
-                  data-action="click->maps--maplibre#recalculateUserData">
-            <%= icon 'refresh-ccw' %>
-            <%= t('.recalculate_tracks_stats') %>
-          </button>
-          <p class="text-xs text-base-content/60 mt-1"><%= t('.rebuild_tracks_stats_and_digests_from_your_current_points_without') %></p>
             </div>
           </details>
 

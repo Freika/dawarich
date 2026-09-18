@@ -12,6 +12,7 @@ import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { timeOverlapOpacityExpr } from "maps_maplibre/utils/time_overlap"
 import { AreaSelectionManager } from "./maplibre/area_selection_manager"
 import { DataLoader } from "./maplibre/data_loader"
 import { DateManager } from "./maplibre/date_manager"
@@ -52,6 +53,8 @@ export default class extends Controller {
     "enableAllPlaceTagsToggle",
     "fogRadiusValue",
     "fogThresholdValue",
+    "metersBetweenValue",
+    "minutesBetweenValue",
     "minMinutesInCityValue",
     "gpsFilteringToggle",
     // Search
@@ -817,8 +820,9 @@ export default class extends Controller {
     const isoStart = `${day}T00:00:00`
     const isoEnd = `${day}T23:59:59`
 
-    const trackExpr = this._dayRangeExpr(
+    const trackExpr = timeOverlapOpacityExpr(
       "start_timestamp",
+      "end_timestamp",
       dayStart,
       dayEnd,
       1,
@@ -827,7 +831,14 @@ export default class extends Controller {
     this._safeSetPaint("tracks-mvt", "line-opacity", trackExpr)
 
     // Points: timestamp is Unix seconds
-    const pointExpr = this._dayRangeExpr("timestamp", dayStart, dayEnd, 1, DIM)
+    const pointExpr = timeOverlapOpacityExpr(
+      "timestamp",
+      "max_timestamp",
+      dayStart,
+      dayEnd,
+      1,
+      DIM,
+    )
     this._safeSetPaint("points-mvt", "circle-opacity", pointExpr)
     this._safeSetPaint("points-mvt", "circle-stroke-opacity", pointExpr)
 
@@ -879,8 +890,9 @@ export default class extends Controller {
     const DIM = 0.08
     const startUnix = new Date(startedAt).getTime() / 1000
     const endUnix = new Date(endedAt).getTime() / 1000
-    const trackExpr = this._dayRangeExpr(
+    const trackExpr = timeOverlapOpacityExpr(
       "start_timestamp",
+      "end_timestamp",
       startUnix,
       endUnix,
       1,
@@ -889,8 +901,9 @@ export default class extends Controller {
     this._safeSetPaint("tracks-mvt", "line-opacity", trackExpr)
 
     // Points: timestamp is Unix seconds
-    const pointExpr = this._dayRangeExpr(
+    const pointExpr = timeOverlapOpacityExpr(
       "timestamp",
+      "max_timestamp",
       startUnix,
       endUnix,
       1,
@@ -996,7 +1009,11 @@ export default class extends Controller {
     if (!feature) return
 
     // Zoom to track bounding box
-    const coords = feature.geometry?.coordinates
+    const geometry = feature.geometry
+    const coords =
+      geometry?.type === "MultiLineString"
+        ? geometry.coordinates.flat()
+        : geometry?.coordinates
     if (coords?.length > 0) {
       let minLng = Infinity
       let minLat = Infinity
@@ -1072,6 +1089,16 @@ export default class extends Controller {
    * @private
    */
   _safeSetPaint(layerId, property, value) {
+    if (
+      layerId === "points-mvt" &&
+      ["circle-opacity", "circle-stroke-opacity"].includes(property)
+    ) {
+      const pointsLayer = this.layerManager?.getLayer("points-mvt")
+      if (pointsLayer?.setCircleOpacity) {
+        pointsLayer.setCircleOpacity(property, value)
+        return
+      }
+    }
     if (this.map.getLayer(layerId)) {
       this.map.setPaintProperty(layerId, property, value)
     }
@@ -1247,6 +1274,12 @@ export default class extends Controller {
   }
   updateFogThresholdDisplay(event) {
     return this.settingsController.updateFogThresholdDisplay(event)
+  }
+  updateMetersBetweenDisplay(event) {
+    return this.settingsController.updateMetersBetweenDisplay(event)
+  }
+  updateMinutesBetweenDisplay(event) {
+    return this.settingsController.updateMinutesBetweenDisplay(event)
   }
   updateMinMinutesInCityDisplay(event) {
     return this.settingsController.updateMinMinutesInCityDisplay(event)
@@ -1697,16 +1730,13 @@ export default class extends Controller {
     this.switchToToolsTab()
   }
 
-  closeInfo() {
+  closeInfo(options = {}) {
     if (!this.hasInfoDisplayTarget) return
     this.infoDisplayTarget.classList.add("hidden")
 
-    // Clear the appropriate selection when info panel is closed
-    // Only one type can be selected at a time
-    if (this.eventHandlers) {
-      if (this.eventHandlers.selectedTrackFeature) {
-        this.eventHandlers.clearTrackSelection()
-      }
+    if (options.clearSelection !== false && this.eventHandlers) {
+      this.eventHandlers.clearTrackSelection()
+      this.eventHandlers.clearPointSelection()
     }
   }
 

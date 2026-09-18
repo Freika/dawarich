@@ -31,6 +31,10 @@ function fakeMap() {
     layers,
     paintCalls,
     filterCalls,
+    sourceFeatures: [],
+    querySourceFeatures() {
+      return this.sourceFeatures
+    },
     addSource(id) {
       sources.add(id)
     },
@@ -70,6 +74,9 @@ function fakeMap() {
     },
     listenerCount(event) {
       return listeners.has(event) ? 1 : 0
+    },
+    emit(event, data) {
+      listeners.get(event)?.(data)
     },
   }
 }
@@ -139,4 +146,35 @@ test("map-level error listener is removed with the layer", () => {
   assert.equal(map.listenerCount("error"), 1)
   layer.remove()
   assert.equal(map.listenerCount("error"), 0)
+})
+
+test("reports empty loaded Track tiles once and removes the listener on teardown", () => {
+  let reported = 0
+  const { map, layer } = build({
+    onEmptyTracks: () => {
+      reported += 1
+    },
+  })
+  assert.equal(map.listenerCount("sourcedata"), 1)
+  map.emit("sourcedata", { sourceId: "points-mvt", isSourceLoaded: true })
+  map.emit("sourcedata", { sourceId: layer.sourceId, isSourceLoaded: false })
+  assert.equal(reported, 0)
+  map.emit("sourcedata", { sourceId: layer.sourceId, isSourceLoaded: true })
+  map.emit("sourcedata", { sourceId: layer.sourceId, isSourceLoaded: true })
+  assert.equal(reported, 1)
+  layer.remove()
+  assert.equal(map.listenerCount("sourcedata"), 0)
+})
+
+test("does not report an empty tile after Track features have loaded", () => {
+  let reported = 0
+  const { map, layer } = build({
+    onEmptyTracks: () => {
+      reported += 1
+    },
+  })
+  map.sourceFeatures = [{ id: 1 }]
+  map.emit("sourcedata", { sourceId: layer.sourceId, isSourceLoaded: true })
+  assert.equal(reported, 0)
+  assert.equal(map.listenerCount("sourcedata"), 0)
 })

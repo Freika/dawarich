@@ -36,7 +36,7 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
       expect(body).not_to include('visit_id')
     end
 
-    it 'serves aggregate features without per-point attributes at low zooms' do
+    it 'serves aggregate features with time bounds but without point IDs at low zooms' do
       create(:point, user:, longitude: 0.0, latitude: 0.0, lonlat: 'POINT(0 0)')
 
       get path, params: { api_key: user.api_key }
@@ -44,8 +44,8 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
       body = response.body.b
 
       expect(response).to have_http_status(:ok)
-      expect(body).to include("\x1a\x05count".b)
-      expect(body).not_to include("\x1a\x02id".b, 'timestamp')
+      expect(body).to include("\x1a\x05count".b, 'timestamp', 'max_timestamp')
+      expect(body).not_to include("\x1a\x02id".b)
     end
 
     it 'returns 503 with no-store when the tile query times out' do

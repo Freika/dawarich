@@ -33,7 +33,21 @@ export class MapDataManager {
    */
   async loadMapData(startDate, endDate, options = {}) {
     const { showLoading = true, fitBounds = true } = options
+    const loadGeneration = (this._loadGeneration || 0) + 1
+    this._loadGeneration = loadGeneration
     this._hasFittedBounds = false
+    this.lastLoadedData = null
+    this._pointsLoadPromise = null
+    const isCurrent = () => loadGeneration === this._loadGeneration
+    const historyBoundsPromise =
+      fitBounds && this.controller.api?.fetchHistoryBounds
+        ? this.controller.api
+            .fetchHistoryBounds({ start_at: startDate, end_at: endDate })
+            .catch((error) => {
+              console.warn("Failed to fetch history bounds:", error)
+              return null
+            })
+        : Promise.resolve(null)
 
     performanceMonitor.mark("load-map-data")
 
@@ -49,13 +63,17 @@ export class MapDataManager {
       this.layerManager.updatePointTileRange(startDate, endDate)
 
       // 1. Initialize all layers with empty data for correct z-ordering
-      await this._setupLayers({
-        visitsGeoJSON: EMPTY_GEOJSON,
-        photosGeoJSON: EMPTY_GEOJSON,
-        areasGeoJSON: EMPTY_GEOJSON,
-        placesGeoJSON: EMPTY_GEOJSON,
-        flightsGeoJSON: EMPTY_GEOJSON,
-      })
+      await this._setupLayers(
+        {
+          visitsGeoJSON: EMPTY_GEOJSON,
+          photosGeoJSON: EMPTY_GEOJSON,
+          areasGeoJSON: EMPTY_GEOJSON,
+          placesGeoJSON: EMPTY_GEOJSON,
+          flightsGeoJSON: EMPTY_GEOJSON,
+        },
+        isCurrent,
+      )
+      if (!isCurrent()) return null
 
       // Visits load is windowed to the current map viewport. On first
       // load `getBounds()` may not have settled yet — fall back to an
@@ -76,37 +94,50 @@ export class MapDataManager {
       data = await this.dataLoader.fetchMapData(startDate, endDate, {
         viewportBounds,
         onUpdate: showLoading
-          ? (info) => this.controller.updateLoadingCounts(info)
+          ? (info) => {
+              if (isCurrent()) this.controller.updateLoadingCounts(info)
+            }
           : null,
-        onLayerData: (source, geoJSON) =>
-          this._updateLayerBySource(source, geoJSON),
+        onLayerData: (source, geoJSON) => {
+          if (isCurrent()) this._updateLayerBySource(source, geoJSON)
+        },
         onPhotosLoaded: (photosGeoJSON) => {
+          if (!isCurrent()) return
           console.log(
             "[MapDataManager] Updating photos layer from background load",
           )
           this._updatePhotosLayer(photosGeoJSON)
         },
       })
+      if (!isCurrent()) return null
 
       // 3. Store visits for filtering
       this.filterManager.setAllVisits(data.visits)
 
       // 4. Store data for replay and other features
       this.lastLoadedData = data
+      this.applyFlightMask()
 
       // 5. Show upsell banner for Lite users when searching outside the 12-month window
       if (isGatedPlan(this.controller.userPlanValue)) {
         this._showDataWindowBanner()
       }
 
-      // 6. Fit bounds if requested — use the first available non-tile source.
-      if (fitBounds && !this._hasFittedBounds) {
-        this._hasFittedBounds = this._fitToFirstAvailable([
-          data.visitsGeoJSON,
-          data.areasGeoJSON,
-          data.placesGeoJSON,
-        ])
+      // 6. Fit bounds if requested.
+      if (fitBounds) {
+        const historyBounds = await historyBoundsPromise
+        if (isCurrent()) {
+          this._hasFittedBounds = this._fitToHistoryBounds(historyBounds)
+        }
+        if (isCurrent() && !this._hasFittedBounds) {
+          this._hasFittedBounds = this._fitToFirstAvailable([
+            data.visitsGeoJSON,
+            data.areasGeoJSON,
+            data.placesGeoJSON,
+          ])
+        }
       }
+      if (!isCurrent()) return null
 
       // 7. Reload hexagons if currently visible — they own their own fetch
       // pipeline (raw points + h3 aggregation), so they need a date-range
@@ -129,6 +160,7 @@ export class MapDataManager {
 
       return data
     } catch (error) {
+      if (!isCurrent()) return null
       console.error("[MapDataManager] Failed to load map data:", error)
       if (showLoading) {
         this.controller.hideProgress()
@@ -145,7 +177,7 @@ export class MapDataManager {
       // running the safety net. If we don't, the badge gets force-hidden
       // while tracks are still loading — see issue: "loader disappears
       // before tracks are rendered."
-      if (data?.backgroundReady) {
+      if (isCurrent() && data?.backgroundReady) {
         try {
           await data.backgroundReady
         } catch {
@@ -156,7 +188,11 @@ export class MapDataManager {
       // Safety net: if the counter didn't complete (e.g. no sources expected,
       // or the user has every layer disabled), ensure the badge is dismissed
       // after a short delay so it doesn't linger forever.
-      if (showLoading && this.controller.hasProgressBadgeTarget) {
+      if (
+        isCurrent() &&
+        showLoading &&
+        this.controller.hasProgressBadgeTarget
+      ) {
         const badge = this.controller.progressBadgeTarget
         if (
           badge.classList.contains("visible") &&
@@ -176,13 +212,19 @@ export class MapDataManager {
   async ensurePointsLoaded() {
     if (this.lastLoadedData?.points?.length > 0) return
     if (!this._pointsLoadPromise) {
-      this._pointsLoadPromise = this._loadPoints()
+      const promise = this._loadPoints()
+      this._pointsLoadPromise = promise
+      const clearPending = () => {
+        if (this._pointsLoadPromise === promise) this._pointsLoadPromise = null
+      }
+      void promise.then(clearPending, clearPending)
     }
     return this._pointsLoadPromise
   }
 
   /** Fetch exact points only for explicit bounded consumers such as replay. */
   async _loadPoints() {
+    const loadGeneration = this._loadGeneration
     try {
       this.controller.showProgress()
       this.controller.updateLoadingCounts({
@@ -194,6 +236,7 @@ export class MapDataManager {
         this.controller.startDateValue,
         this.controller.endDateValue,
       )
+      if (loadGeneration !== this._loadGeneration) return
 
       if (!this.lastLoadedData) this.lastLoadedData = {}
       this.lastLoadedData.points = points
@@ -204,8 +247,8 @@ export class MapDataManager {
         isComplete: true,
       })
     } finally {
-      this._pointsLoadPromise = null
-      this.controller.hideProgress()
+      if (loadGeneration === this._loadGeneration)
+        this.controller.hideProgress()
     }
   }
 
@@ -267,15 +310,18 @@ export class MapDataManager {
    * Setup all map layers with loaded data
    * @private
    */
-  async _setupLayers(data) {
+  async _setupLayers(data, isCurrent = () => true) {
     const addAllLayers = async () => {
+      if (!isCurrent()) return
       await this.layerManager.addAllLayers(
         data.visitsGeoJSON,
         data.photosGeoJSON,
         data.areasGeoJSON,
         data.placesGeoJSON,
         data.flightsGeoJSON,
+        isCurrent,
       )
+      if (!isCurrent()) return
 
       // Setup event handlers after layers are added
       this.layerManager.setupLayerEventHandlers({
@@ -318,6 +364,10 @@ export class MapDataManager {
         const onIdle = async () => {
           if (this.map.isStyleLoaded()) {
             this.map.off("idle", onIdle)
+            if (!isCurrent()) {
+              resolve()
+              return
+            }
             try {
               await addAllLayers()
               resolve()
@@ -339,11 +389,37 @@ export class MapDataManager {
   _fitToFirstAvailable(geojsonSources) {
     for (const geojson of geojsonSources) {
       if (geojson?.features?.length > 0) {
-        this._fitMapToBounds(geojson)
-        return true
+        return this._fitMapToBounds(geojson)
       }
     }
     return false
+  }
+
+  _fitToHistoryBounds(bounds) {
+    const values = bounds
+      ? [bounds.min_lng, bounds.min_lat, bounds.max_lng, bounds.max_lat].map(
+          Number,
+        )
+      : []
+    if (values.length !== 4 || values.some((value) => !Number.isFinite(value)))
+      return false
+
+    const [minLng, minLat, maxLng, maxLat] = values
+    return this._fitMapToBounds({
+      type: "FeatureCollection",
+      features: [
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [minLng, minLat] },
+          properties: {},
+        },
+        {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [maxLng, maxLat] },
+          properties: {},
+        },
+      ],
+    })
   }
 
   /**
@@ -353,7 +429,7 @@ export class MapDataManager {
    * @private
    */
   _fitMapToBounds(geojson, { animate = false, skipIfCovered = false } = {}) {
-    if (!geojson?.features?.length) return
+    if (!geojson?.features?.length) return false
 
     const coords = []
 
@@ -375,8 +451,8 @@ export class MapDataManager {
       bounds.extend(coord)
     }
 
-    if (bounds.isEmpty()) return
-    if (skipIfCovered && this._boundsCovered(bounds)) return
+    if (bounds.isEmpty()) return false
+    if (skipIfCovered && this._boundsCovered(bounds)) return false
 
     const mapRect = this.map.getContainer()?.getBoundingClientRect()
     const toolbarRect = document
@@ -388,6 +464,7 @@ export class MapDataManager {
       maxZoom: 15,
       animate,
     })
+    return true
   }
 
   /**

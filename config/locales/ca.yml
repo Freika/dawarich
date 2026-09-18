@@ -904,7 +904,7 @@ ca:
         show_individual_location_points: Mostra els punts d'ubicació individuals
         edit_points: Edita els punts
         allow_dragging_points_to_correct_their_position: Permet arrossegar els punts per corregir-ne la posició.
-        editing_points_is_a_pro_feature_this_stays_on_for: Editar punts és una funció de Pro — es manté activat només per a la sessió actual, i els moviments no es desen al pla Lite.
+        editing_points_is_a_pro_feature_this_stays_on_for: L'edició de punts està disponible amb el pla Pro.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Permet arrossegar els punts per corregir-ne la posició. Es recorda entre sessions.
         show_connected_route_lines: Mostra les línies de ruta connectades
         color_by_speed: Colora segons la velocitat
@@ -984,11 +984,16 @@ ca:
         fog_of_war_threshold: Llindar de la boira de guerra
         minimum_points_to_clear_fog: Punts mínims per aclarir la boira
         gps_noise_filtering: Filtratge de soroll GPS
+        track_generation: Generació de trajectes
+        track_split_distance: Distància entre trajectes
+        track_split_distance_hint: Inicia un trajecte nou quan els punts consecutius són més lluny.
+        track_split_time: Temps entre trajectes
+        track_split_time_hint: Inicia un trajecte nou quan l'interval entre punts és més llarg.
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Amaga les lectures que no poden ser una posició real — salts impossibles, coordenades incorrectes. Desactiva-ho per veure tots els punts en brut.
         re_evaluate_past_data: Torna a avaluar les dades passades
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Elimina les marques d'anomalia existents i torna a executar el filtre sobre tots els teus punts amb la configuració actual. Els trajectes, estadístiques i resums es reconstruiran després. S'executa en segon pla.
         recalculate_tracks_stats: Recalcula trajectes i estadístiques
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Reconstrueix trajectes, estadístiques i resums a partir dels teus punts actuals sense tocar les marques d'anomalia. Útil després de canviar els llindars de divisió de rutes.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Desa primer aquests llindars. Els trajectes nous els faran servir automàticament; selecciona «Recalcula trajectes i estadístiques» per aplicar-los a l'historial existent.
         city_statistics: Estadístiques de ciutat
         min_minutes_in_city: Minuts mínims a la ciutat
         min_5: 60 min
@@ -3848,6 +3853,7 @@ ca:
       failed_to_update_point_position_please_try_again: No s'ha pogut actualitzar la posició del punt. Torna-ho a provar.
       point_edit_conflict: Aquest punt ha canviat en una altra sessió. Es mostra la darrera posició desada.
       failed_to_load_map_tiles: No s'han pogut carregar les tessel·les del mapa.
+      tracks_pending: Encara no hi ha trajectes en aquesta vista. Mou el mapa o amplia l'interval de dates; és possible que una importació recent encara s'estigui processant.
       failed_to_load_visited_countries: No s'han pogut carregar els països visitats.
       retry: Torna-ho a provar
       failed_to_load_track_points: No s'han pogut carregar els punts del trajecte

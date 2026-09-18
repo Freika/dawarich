@@ -22,7 +22,10 @@ export class ScratchLayer extends BaseLayer {
     this.apiClient = options.apiClient
     this.historyScope = options.historyScope
     this.onTileError = options.onTileError || null
+    this.onMembershipError = options.onMembershipError || null
     this.visitedIsoA3 = []
+    this._membershipStale = false
+    this._membershipGeneration = 0
     this._cacheBuster = 0
     this._tileErrorHandler = null
     this._tileErrorReported = false
@@ -31,36 +34,64 @@ export class ScratchLayer extends BaseLayer {
 
   async add(_data, beforeId = null) {
     registerPmtilesProtocol()
-    await this.reload()
     this._tileErrorReported = false
     this._watchTileErrors()
     super.add(undefined, beforeId)
     this.applyFilter()
     document.removeEventListener("dawarich:point-moved", this._onPointMoved)
     document.addEventListener("dawarich:point-moved", this._onPointMoved)
+    await this.update()
   }
 
   async update() {
-    await this.reload()
-    this.applyFilter()
+    if (await this.reload()) this.applyFilter()
   }
 
   async reload() {
+    const generation = ++this._membershipGeneration
     const scope = this.historyScope()
-    const response = await this.apiClient.fetchVisitedCountries({
-      start_at: scope.startAt,
-      end_at: scope.endAt,
-    })
+    let response
+    try {
+      response = await this.apiClient.fetchVisitedCountries({
+        start_at: scope.startAt,
+        end_at: scope.endAt,
+      })
+    } catch (error) {
+      if (generation !== this._membershipGeneration) return false
+      this._membershipStale = true
+      throw error
+    }
+    if (generation !== this._membershipGeneration) return false
+    this._membershipStale = false
     this.visitedIsoA3 = (response.countries || []).map(
       (country) => country.iso_a3,
     )
+    return true
   }
 
-  onPointMoved(event) {
-    const membership = event.detail?.visited_countries
-    if (!membership) return
-    this.visitedIsoA3 = membership.iso_a3 || []
-    this.applyFilter()
+  onPointMoved() {
+    // The broadcast's visited_countries value is scoped to the editing tab.
+    // Another tab can show a different range/import, even when that value is
+    // null, so every receiver must refresh its own membership.
+    void this.retryMembership()
+  }
+
+  async retryMembership() {
+    try {
+      await this.update()
+    } catch (error) {
+      if (this.onMembershipError) this.onMembershipError(error)
+      else
+        console.warn(
+          "Failed to refresh visited countries after a point move:",
+          error,
+        )
+    }
+  }
+
+  show() {
+    super.show()
+    if (this._membershipStale) void this.retryMembership()
   }
 
   applyFilter() {
@@ -148,6 +179,7 @@ export class ScratchLayer extends BaseLayer {
   }
 
   remove() {
+    this._membershipGeneration += 1
     this._unwatchTileErrors()
     document.removeEventListener("dawarich:point-moved", this._onPointMoved)
     super.remove()

@@ -25,8 +25,8 @@ RSpec.describe Tracks::VectorTileQuery do
     create(:track, user:, original_path: linestring_wkt(meter_pairs), **attrs)
   end
 
-  def feature_rows(z:, x:, y:, scope: user.tracks) # rubocop:disable Naming/MethodParameterName
-    described_class.new(scope:, z:, x:, y:).feature_rows
+  def feature_rows(z:, x:, y:, scope: user.tracks, clip_points_scope: nil, clip_import_id: nil) # rubocop:disable Naming/MethodParameterName
+    described_class.new(scope:, z:, x:, y:, clip_points_scope:, clip_import_id:).feature_rows
   end
 
   def npoints(geom)
@@ -46,6 +46,64 @@ RSpec.describe Tracks::VectorTileQuery do
       rows = feature_rows(z: 10, x: 512, y: 511)
 
       expect(rows.map { |r| r['id'].to_i }).to contain_exactly(inside_a.id, inside_b.id)
+    end
+  end
+
+  describe 'import-scoped geometry' do
+    let(:selected_import) { create(:import, user:) }
+    let(:other_import) { create(:import, user:) }
+    let(:track) { create_track_at([[10, 10], [500, 500], [2_000, 2_000]]) }
+
+    before do
+      [[10, 10], [500, 500]].each_with_index do |(east, north), index|
+        lon, lat = lonlat_at(east, north)
+        create(:point, user:, track:, import: selected_import, longitude: lon, latitude: lat,
+                       timestamp: track.start_at.to_i + index)
+      end
+      lon, lat = lonlat_at(2_000, 2_000)
+      create(:point, user:, track:, import: other_import, longitude: lon, latitude: lat,
+                     timestamp: track.start_at.to_i + 2)
+    end
+
+    it 'renders only the selected-import portion of a mixed track' do
+      full = feature_rows(z: 10, x: 512, y: 511).first
+      clipped = feature_rows(z: 10, x: 512, y: 511,
+                             clip_points_scope: user.points, clip_import_id: selected_import.id).first
+
+      expect(clipped['id'].to_i).to eq(track.id)
+      max_x = lambda do |row|
+        query = Track.sanitize_sql_array(['SELECT ST_XMax(?::geometry)', row['geom']])
+        ActiveRecord::Base.connection.select_value(query).to_f
+      end
+      expect(max_x.call(clipped)).to be < max_x.call(full)
+      expect(clipped['distance'].to_f).to be < full['distance'].to_f
+      expect(clipped['end_timestamp'].to_i).to eq(track.start_at.to_i + 1)
+    end
+
+    it 'does not draw a line for only one selected-import point' do
+      single_point = user.points.where(import_id: selected_import.id).order(:id).first
+
+      rows = feature_rows(z: 10, x: 512, y: 511,
+                          clip_points_scope: user.points.where(id: single_point.id),
+                          clip_import_id: selected_import.id)
+
+      expect(rows).to be_empty
+    end
+
+    it 'keeps interleaved import runs separate instead of inventing a shortcut' do
+      [[3_000, 3_000], [3_500, 3_500]].each_with_index do |(east, north), index|
+        lon, lat = lonlat_at(east, north)
+        create(:point, user:, track:, import: selected_import, longitude: lon, latitude: lat,
+                       timestamp: track.start_at.to_i + 3 + index)
+      end
+
+      rows = feature_rows(z: 10, x: 512, y: 511,
+                          clip_points_scope: user.points, clip_import_id: selected_import.id)
+      geometry_count = ActiveRecord::Base.connection.select_value(
+        Track.sanitize_sql_array(['SELECT ST_NumGeometries(?::geometry)', rows.first['geom']])
+      )
+
+      expect(geometry_count).to eq(2)
     end
   end
 

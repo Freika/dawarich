@@ -105,6 +105,7 @@ class Points::VectorTileQuery
       WITH candidates AS (#{candidates_sql}),
       features AS (
         SELECT COUNT(*) AS count,
+          MIN(timestamp) AS timestamp, MAX(timestamp) AS max_timestamp,
           #{point_attribute_aggregates}
           #{mvt_geom_expression('ST_Centroid(ST_Collect(geom_3857))')} AS geom
         FROM candidates
@@ -118,7 +119,7 @@ class Points::VectorTileQuery
     return '' unless point_regime?
 
     <<~SQL.squish
-      MIN(id) AS id, MIN(timestamp) AS timestamp, MIN(battery) AS battery,
+      MIN(id) AS id, MIN(battery) AS battery,
       MIN(track_id) AS track_id, MIN(lock_version) AS revision,
       MIN(altitude) AS altitude, MIN(velocity) AS velocity,
       MIN(latitude) AS latitude, MIN(longitude) AS longitude,
@@ -157,7 +158,7 @@ class Points::VectorTileQuery
     columns =
       if point_regime?
         <<~SQL.squish
-          points.id AS id, points.timestamp AS timestamp, points.battery AS battery,
+          points.id AS id, points.battery AS battery,
           points.track_id AS track_id, points.lock_version AS lock_version,
           points.altitude AS altitude, points.velocity AS velocity,
           ST_Y(points.lonlat::geometry) AS latitude,
@@ -168,7 +169,7 @@ class Points::VectorTileQuery
       end
 
     <<~SQL.squish
-      SELECT #{columns}
+      SELECT points.timestamp AS timestamp, #{columns}
         #{translated_geom_expression(shift)} AS geom_3857
       FROM (#{tile_scope.to_sql}) AS points
       WHERE points.lonlat IS NOT NULL

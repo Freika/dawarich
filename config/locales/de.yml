@@ -946,7 +946,7 @@ de:
         show_individual_location_points: Zeige einzelne Standortpunkte
         edit_points: Punkte bearbeiten
         allow_dragging_points_to_correct_their_position: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren.
-        editing_points_is_a_pro_feature_this_stays_on_for: Die Bearbeitung von Punkten ist eine Pro-Funktion — dies bleibt für die aktuelle Sitzung aktiv, und Bewegungen werden auf dem Lite-Plan nicht gespeichert.
+        editing_points_is_a_pro_feature_this_stays_on_for: Die Bearbeitung von Punkten ist mit dem Pro-Plan verfügbar.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren. Wird über Sitzungen hinweg gespeichert.
         beta: "Beta"
         show_connected_route_lines: Zeige verbundene Routenlinien
@@ -1029,11 +1029,16 @@ de:
         fog_of_war_threshold: Schwellenwert des Kartennebels
         minimum_points_to_clear_fog: Mindestanzahl an Punkten zum Aufdecken
         gps_noise_filtering: GPS-Rauschfilterung
+        track_generation: Track-Erstellung
+        track_split_distance: Entfernungsabstand zwischen Tracks
+        track_split_distance_hint: Einen neuen Track beginnen, wenn aufeinanderfolgende Punkte weiter auseinanderliegen.
+        track_split_time: Zeitabstand zwischen Tracks
+        track_split_time_hint: Einen neuen Track beginnen, wenn die Zeitspanne zwischen Punkten länger ist.
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Blendet Messwerte aus, die keine echte Position darstellen können — etwa unmögliche Sprünge oder beschädigte Koordinaten. Deaktivieren, um alle Rohpunkte anzuzeigen.
         re_evaluate_past_data: Vergangene Daten erneut prüfen
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Entfernt vorhandene Anomaliemarkierungen und prüft alle Punkte mit den aktuellen Einstellungen erneut. Tracks, Statistiken und Zusammenfassungen werden anschließend im Hintergrund neu erstellt.
         recalculate_tracks_stats: Tracks & Statistiken neu berechnen
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Tracks, Statistiken und Zusammenfassungen aus deinen aktuellen Punkten neu erstellen, ohne Anomalie-Flaggen zu berühren. Nützlich nach Änderung der Routenteilungsschwellen.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Speichere diese Schwellenwerte zuerst. Neue Tracks verwenden sie automatisch; wähle „Tracks und Statistiken neu berechnen“, um sie auf bestehende Daten anzuwenden.
         city_statistics: Stadtstatistiken
         min_minutes_in_city: Min. Minuten in der Stadt
         min_5: 60 min
@@ -3901,6 +3906,7 @@ de:
       failed_to_update_point_position_please_try_again: Aktualisierung der Punktposition fehlgeschlagen. Bitte versuche es erneut.
       point_edit_conflict: Dieser Punkt wurde in einer anderen Sitzung geändert. Die zuletzt gespeicherte Position wird angezeigt.
       failed_to_load_map_tiles: Kartenkacheln konnten nicht geladen werden.
+      tracks_pending: Noch keine Tracks in dieser Ansicht. Verschiebe die Karte oder erweitere den Zeitraum; ein neuer Import wird möglicherweise noch verarbeitet.
       failed_to_load_visited_countries: Besuchte Länder konnten nicht geladen werden.
       retry: Erneut versuchen
       failed_to_load_track_points: Die Track-Punkte konnten nicht geladen werden

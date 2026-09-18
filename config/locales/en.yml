@@ -904,7 +904,7 @@ en:
         show_individual_location_points: Show individual location points
         edit_points: Edit points
         allow_dragging_points_to_correct_their_position: Allow dragging points to correct their position.
-        editing_points_is_a_pro_feature_this_stays_on_for: Editing points is a Pro feature — this stays on for the current session only, and moves aren't saved on the Lite plan.
+        editing_points_is_a_pro_feature_this_stays_on_for: Editing points is available on the Pro plan.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
         beta: "Beta"
         show_connected_route_lines: Show connected route lines
@@ -987,11 +987,16 @@ en:
         fog_of_war_threshold: Fog of War Threshold
         minimum_points_to_clear_fog: Minimum points to clear fog
         gps_noise_filtering: GPS Noise Filtering
+        track_generation: Track generation
+        track_split_distance: Distance gap between Tracks
+        track_split_distance_hint: Start a new Track when consecutive points are farther apart.
+        track_split_time: Time gap between Tracks
+        track_split_time_hint: Start a new Track when the gap between points is longer.
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Hide readings that cannot be a real position — impossible jumps, broken coordinates. Disable to see every raw point.
         re_evaluate_past_data: Re-evaluate past data
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Clears existing anomaly flags and re-runs the filter on all your points with the current settings. Tracks, stats, and digests will be rebuilt afterwards. Runs in the background.
         recalculate_tracks_stats: Recalculate tracks & stats
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Rebuild tracks, stats, and digests from your current points without touching anomaly flags. Useful after changing route-splitting thresholds.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Save these thresholds first. New Tracks use them automatically; choose Recalculate tracks & stats to apply them to existing history.
         city_statistics: City Statistics
         min_minutes_in_city: Min Minutes in City
         min_5: 60 min
@@ -3840,6 +3845,7 @@ en:
       failed_to_update_point_position_please_try_again: Failed to update point position. Please try again.
       point_edit_conflict: This point changed in another session. The latest saved position is shown.
       failed_to_load_map_tiles: Could not load map tiles.
+      tracks_pending: No tracks in this view yet. Pan or widen the date range; a recent import may still be processing.
       failed_to_load_visited_countries: Could not load Visited Countries.
       retry: Retry
       failed_to_load_track_points: Failed to load track points

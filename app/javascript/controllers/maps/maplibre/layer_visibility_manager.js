@@ -160,9 +160,27 @@ export class LayerVisibilityManager {
               translate("messages.retry"),
               () => newScratchLayer.refresh(),
             ),
+          onMembershipError: () =>
+            Toast.retry(
+              translate("messages.failed_to_load_visited_countries"),
+              translate("messages.retry"),
+              () => newScratchLayer.retryMembership(),
+            ),
         })
-        await newScratchLayer.add()
         this.layerManager.layers.scratchLayer = newScratchLayer
+        try {
+          await newScratchLayer.add()
+        } catch (error) {
+          // A membership failure happens after the source, layers and event
+          // listener are installed. Keep that instance for the Retry action;
+          // only tear it down if layer installation itself failed.
+          if (!this.map.getLayer(newScratchLayer.id)) {
+            newScratchLayer.remove()
+            if (this.layerManager.layers.scratchLayer === newScratchLayer)
+              this.layerManager.layers.scratchLayer = null
+          }
+          throw error
+        }
       } else {
         scratchLayer.show()
       }
@@ -313,6 +331,10 @@ export class LayerVisibilityManager {
     SettingsManager.updateSetting("tracksEnabled", enabled)
 
     this.layerManager.getLayer("tracks-mvt")?.setEnabled(enabled)
+    this.layerManager.getLayer("tracks")?.toggle(enabled)
+    if (!enabled && this.controller.eventHandlers?.selectedTrackFeature) {
+      this.controller.eventHandlers.clearTrackSelection()
+    }
   }
 
   /**

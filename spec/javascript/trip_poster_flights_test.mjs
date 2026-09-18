@@ -6,7 +6,10 @@ const moduleUrl = (source) =>
   `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
 const read = (path) =>
   readFile(new URL(`../../app/javascript/${path}`, import.meta.url), "utf8")
-const providers = await read("poster_studio/data/providers.js")
+const providers = (await read("poster_studio/data/providers.js")).replace(
+  /^import[\s\S]*?from "[^"]+"\n/gm,
+  "",
+)
 const mask = await read("maps_maplibre/utils/flight_mask.js")
 const arcs = await import(
   moduleUrl(await read("maps_maplibre/utils/flight_arcs.js"))

@@ -79,15 +79,19 @@ function loadSegmentsHarness(fetchedFeature) {
   const tracksLayer = {
     setSelectedTrack: (feature) => selected.push(feature),
     showSegments: (feature) => shown.push(feature),
+    hideSegments: () => {},
     setSegmentHoverCallback: () => {},
     setSegmentLeaveCallback: () => {},
     clearSegmentHover: () => {},
   }
   const handlers = new EventHandlers(
-    {},
+    { off: () => {}, getLayer: () => null },
     {
       api: { fetchTrackWithSegments: async () => fetchedFeature },
-      layerManager: { getLayer: () => tracksLayer },
+      layerManager: {
+        getLayer: (name) => (name === "tracks" ? tracksLayer : null),
+      },
+      closeInfo: () => {},
     },
   )
   handlers._createTrackSegmentMarkers = () => {}
@@ -107,6 +111,7 @@ test("a tiled track click swaps the clipped fragment for the fetched geometry", 
     },
   }
   const { handlers, shown, selected } = loadSegmentsHarness(fetched)
+  handlers.selectedTrackFeature = fragment
 
   await handlers._loadTrackSegments(7, fragment)
 
@@ -120,6 +125,7 @@ test("a fetched track without geometry keeps the clicked feature", async () => {
   const { handlers, shown, selected } = loadSegmentsHarness({
     properties: { id: 7 },
   })
+  handlers.selectedTrackFeature = fragment
 
   await handlers._loadTrackSegments(7, fragment)
 
@@ -133,10 +139,102 @@ test("a failed detail fetch on the tiled path surfaces a toast", async () => {
   globalThis.Toast = { error: (message) => toasts.push(message) }
   globalThis.translate = (key) => key
   const { handlers } = loadSegmentsHarness(null)
+  handlers.selectedTrackFeature = fragment
   handlers.controller.api.fetchTrackWithSegments = async () => {
     throw new Error("network down")
   }
 
   await handlers._loadTrackSegments(7, fragment)
   assert.deepEqual(toasts, ["messages.failed_to_load_track_details"])
+})
+
+test("a late track-detail response cannot revive a cleared selection", async () => {
+  const fragment = { properties: { id: 7 } }
+  const { handlers, shown, selected } = loadSegmentsHarness(null)
+  let resolveFetch
+  handlers.controller.api.fetchTrackWithSegments = () =>
+    new Promise((resolve) => {
+      resolveFetch = resolve
+    })
+  handlers.selectedTrackFeature = fragment
+
+  const pending = handlers._loadTrackSegments(7, fragment)
+  handlers.clearTrackSelection()
+  resolveFetch({ properties: { id: 7 }, geometry: { type: "LineString" } })
+  await pending
+
+  assert.deepEqual(shown, [])
+  assert.deepEqual(selected, [null])
+  assert.equal(handlers.selectedTrackFeature, null)
+})
+
+test("an older track-detail response cannot overwrite a newer click", async () => {
+  const first = { properties: { id: 7 } }
+  const second = { properties: { id: 8 } }
+  const { handlers, shown } = loadSegmentsHarness(null)
+  const requests = new Map()
+  handlers.controller.api.fetchTrackWithSegments = (id) =>
+    new Promise((resolve) => requests.set(id, resolve))
+
+  handlers.selectedTrackFeature = first
+  const older = handlers._loadTrackSegments(7, first)
+  handlers._trackSelectionGeneration += 1
+  handlers.selectedTrackFeature = second
+  const newer = handlers._loadTrackSegments(8, second)
+  requests.get(8)({ properties: { id: 8 }, geometry: { type: "LineString" } })
+  await newer
+  requests.get(7)({ properties: { id: 7 }, geometry: { type: "LineString" } })
+  await older
+
+  assert.deepEqual(
+    shown.map((feature) => feature.properties.id),
+    [8],
+  )
+  assert.equal(handlers.selectedTrackFeature.properties.id, 8)
+})
+
+test("clearing a point-only selection restores its editor and leaves info open", () => {
+  const cleared = []
+  const paint = []
+  const closed = []
+  const editor = { data: { features: [{}] }, clear: () => cleared.push(true) }
+  const map = {
+    off() {},
+    getLayer: (name) => (name === "points-mvt" ? { id: name } : null),
+    setPaintProperty: (...args) => paint.push(args),
+  }
+  const controller = {
+    layerManager: {
+      getLayer: (name) => (name === "map-editor" ? editor : null),
+    },
+    closeInfo: (options) => closed.push(options),
+  }
+  const handlers = new EventHandlers(map, controller)
+
+  handlers.clearTrackSelection()
+  assert.deepEqual(closed, [])
+  handlers.clearPointSelection()
+
+  assert.deepEqual(cleared, [true])
+  assert.deepEqual(paint, [
+    ["points-mvt", "circle-opacity", 1],
+    ["points-mvt", "circle-stroke-opacity", 1],
+  ])
+  assert.deepEqual(closed, [])
+})
+
+test("tearing down track interactions removes segment markers", () => {
+  const removed = []
+  const handlers = new EventHandlers({ off() {} }, {})
+  handlers.selectedTrackFeature = { properties: { id: 7 } }
+  handlers.trackMarkers = [
+    { remove: () => removed.push(1) },
+    { remove: () => removed.push(2) },
+  ]
+
+  handlers.teardownLayerInteractions()
+
+  assert.deepEqual(removed, [1, 2])
+  assert.deepEqual(handlers.trackMarkers, [])
+  assert.equal(handlers.selectedTrackFeature, null)
 })

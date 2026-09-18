@@ -91,6 +91,38 @@ test("basemap URLs also accept raster XYZ, style.json and suffixless style URLs"
   )
 })
 
+test("Track generation thresholds load and persist with their existing backend keys", async () => {
+  const originalFetch = globalThis.fetch
+  let saved
+  globalThis.fetch = async (_url, options = {}) => {
+    if (options.method === "PATCH") {
+      saved = JSON.parse(options.body).settings
+      return { ok: true, json: async () => ({ settings: saved }) }
+    }
+    return {
+      ok: true,
+      json: async () => ({
+        settings: {
+          meters_between_routes: "1200",
+          minutes_between_routes: "45",
+        },
+      }),
+    }
+  }
+
+  try {
+    SettingsManager.apiKey = "test-key"
+    const loaded = await SettingsManager.loadFromBackend()
+    assert.equal(loaded.metersBetweenRoutes, 1200)
+    assert.equal(loaded.minutesBetweenRoutes, 45)
+    await SettingsManager.saveToBackend(loaded)
+    assert.equal(saved.meters_between_routes, "1200")
+    assert.equal(saved.minutes_between_routes, "45")
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test("multiple setting updates are persisted in one complete snapshot", async () => {
   SettingsManager.cachedSettings = {
     mapStyle: "light",

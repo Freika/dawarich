@@ -123,6 +123,21 @@ class Users::SafeSettings
     }
   end
 
+  # Preserve the public API contract for clients that still synchronize
+  # classic-renderer settings, without exposing those settings to MapLibre.
+  def api_config
+    config.merge(
+      meters_between_routes: meters_between_routes,
+      speed_colored_routes: speed_colored_routes,
+      points_rendering_mode: points_rendering_mode,
+      minutes_between_routes: minutes_between_routes,
+      route_opacity: route_opacity,
+      route_color: route_color,
+      speed_color_scale: speed_color_scale,
+      points_tiled_rendering: points_tiled_rendering?
+    )
+  end
+
   def fog_of_war_meters
     settings['fog_of_war_meters']
   end

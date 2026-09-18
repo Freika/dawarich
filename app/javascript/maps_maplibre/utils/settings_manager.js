@@ -41,6 +41,8 @@ const DEFAULT_SETTINGS = {
   fogOfWarThreshold: 50,
   fogOfWarMode: "points",
   globeProjection: false,
+  metersBetweenRoutes: 500,
+  minutesBetweenRoutes: 30,
   minMinutesSpentInCity: 60,
   gpsFilteringEnabled: true,
   pointDraggingEnabled: false,
@@ -87,6 +89,8 @@ const BACKEND_SETTINGS_MAP = {
   fogOfWarThreshold: "fog_of_war_threshold",
   fogOfWarMode: "fog_of_war_mode",
   globeProjection: "globe_projection",
+  metersBetweenRoutes: "meters_between_routes",
+  minutesBetweenRoutes: "minutes_between_routes",
   minMinutesSpentInCity: "min_minutes_spent_in_city",
   gpsFilteringEnabled: "gps_filtering_enabled",
   pointDraggingEnabled: "point_dragging_enabled",
@@ -210,6 +214,16 @@ export class SettingsManager {
                 value,
                 DEFAULT_SETTINGS.fogOfWarThreshold,
               )
+            } else if (frontendKey === "metersBetweenRoutes") {
+              value = SettingsManager._parseIntOr(
+                value,
+                DEFAULT_SETTINGS.metersBetweenRoutes,
+              )
+            } else if (frontendKey === "minutesBetweenRoutes") {
+              value = SettingsManager._parseIntOr(
+                value,
+                DEFAULT_SETTINGS.minutesBetweenRoutes,
+              )
             } else if (frontendKey === "minMinutesSpentInCity") {
               value = SettingsManager._parseIntOr(
                 value,
@@ -293,6 +307,8 @@ export class SettingsManager {
             if (
               frontendKey === "fogOfWarRadius" ||
               frontendKey === "fogOfWarThreshold" ||
+              frontendKey === "metersBetweenRoutes" ||
+              frontendKey === "minutesBetweenRoutes" ||
               frontendKey === "minMinutesSpentInCity"
             ) {
               value = parseInt(value, 10).toString()

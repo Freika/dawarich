@@ -1594,9 +1594,7 @@ fr:
         edit_points: Éditer les points
         allow_dragging_points_to_correct_their_position: Autoriser la traînée des
           points pour corriger leur position.
-        editing_points_is_a_pro_feature_this_stays_on_for: L'édition des points est
-          une fonctionnalité Pro — cela reste activé uniquement pour la session en
-          cours, et les déplacements ne sont pas sauvegardés sur le plan Lite.
+        editing_points_is_a_pro_feature_this_stays_on_for: La modification des points est disponible avec l'offre Pro.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Autoriser
           la traînée des points pour corriger leur position. Mémorisé entre sessions.
         beta: "Bêta"
@@ -1696,6 +1694,11 @@ fr:
         fog_of_war_threshold: Seuil de brouillard
         minimum_points_to_clear_fog: Points minimum pour effacer le brouillard
         gps_noise_filtering: Filtrage du bruit GPS
+        track_generation: Génération des trajets
+        track_split_distance: Distance entre les trajets
+        track_split_distance_hint: Commencer un nouveau trajet lorsque deux points successifs sont plus éloignés.
+        track_split_time: Temps entre les trajets
+        track_split_time_hint: Commencer un nouveau trajet lorsque l'intervalle entre deux points est plus long.
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Masquer les
           lectures qui ne peuvent pas correspondre à une position réelle — sauts
           impossibles, coordonnées invalides. Désactivez cette option pour voir tous
@@ -1706,10 +1709,10 @@ fr:
           actuels. Les trajets, statistiques et récapitulatifs seront reconstruits
           ensuite. Exécute en arrière-plan.
         recalculate_tracks_stats: Recalculer les trajets & statistiques
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Reconstruire
-          les trajets, statistiques et récapitulatifs à partir de vos points actuels
-          sans toucher les indicateurs d’anomalie. Utile après avoir modifié les seuils
-          de division des itinéraires.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Enregistrez
+          d’abord ces seuils. Les nouveaux trajets les utiliseront automatiquement ;
+          choisissez « Recalculer les trajets et statistiques » pour les appliquer
+          à l’historique existant.
         city_statistics: Statistiques de ville
         min_minutes_in_city: Durée minimale dans une ville
         min_5: 60 min
@@ -5100,6 +5103,7 @@ fr:
         position du point. Veuillez réessayer.
       point_edit_conflict: Ce point a été modifié dans une autre session. La dernière position enregistrée est affichée.
       failed_to_load_map_tiles: Impossible de charger les tuiles de la carte.
+      tracks_pending: Aucun trajet dans cette vue pour l'instant. Déplacez la carte ou élargissez la période ; un import récent est peut-être encore en cours de traitement.
       failed_to_load_visited_countries: Impossible de charger les pays visités.
       retry: Réessayer
       failed_to_load_track_points: Échec de chargement des points de trajet

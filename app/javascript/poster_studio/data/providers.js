@@ -1,3 +1,5 @@
+import { RouteSegmenter } from "maps_maplibre/utils/route_segmenter"
+
 const EMPTY_COLLECTION = { type: "FeatureCollection", features: [] }
 
 export class MapPageProvider {
@@ -42,6 +44,13 @@ export class MapPageProvider {
     const controller = this.controller
     if (!controller) return
     const { startAt, endAt } = this.dateRange()
+    if (controller.api.importId) {
+      await controller.mapDataManager?.ensurePointsLoaded()
+      this._tracks = RouteSegmenter.pointsToRoutes(
+        controller._getLoadedPoints?.() ?? [],
+      )
+      return
+    }
     const [, tracks] = await Promise.all([
       controller.mapDataManager?.ensurePointsLoaded(),
       controller.api.fetchTracks({ start_at: startAt, end_at: endAt }),

@@ -758,6 +758,25 @@ RSpec.describe Users::SafeSettings do
     end
   end
 
+  describe '#api_config' do
+    it 'retains deprecated map settings for API clients' do
+      api_config = described_class.new(
+        {
+          'meters_between_routes' => 750,
+          'points_rendering_mode' => 'simplified',
+          'route_color' => '#123456'
+        }
+      ).api_config
+
+      expect(api_config).to include(
+        meters_between_routes: 750,
+        points_rendering_mode: 'simplified',
+        route_color: '#123456',
+        points_tiled_rendering: true
+      )
+    end
+  end
+
   describe '#fog_of_war_mode' do
     it 'defaults to points' do
       expect(described_class.new.fog_of_war_mode).to eq('points')

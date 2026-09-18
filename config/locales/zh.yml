@@ -913,7 +913,7 @@ zh:
         show_individual_location_points: 显示各个轨迹点
         edit_points: 编辑轨迹点
         allow_dragging_points_to_correct_their_position: 允许拖动轨迹点来修正位置。
-        editing_points_is_a_pro_feature_this_stays_on_for: 编辑轨迹点是一项 Pro 功能，仅在当前会话中生效，且移动不会保存在 Lite 计划中。
+        editing_points_is_a_pro_feature_this_stays_on_for: 编辑轨迹点功能可在 Pro 计划中使用。
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: 允许拖动轨迹点来修正位置。此设置会跨会话保留。
         show_connected_route_lines: 显示连通的路线
         color_by_speed: 按速度着色
@@ -995,11 +995,16 @@ zh:
         fog_of_war_threshold: 战争迷雾阈值
         minimum_points_to_clear_fog: 清除迷雾所需的最少轨迹点
         gps_noise_filtering: GPS 噪声过滤
+        track_generation: 轨迹生成
+        track_split_distance: 轨迹之间的距离间隔
+        track_split_distance_hint: 连续点之间的距离超过此值时开始新轨迹。
+        track_split_time: 轨迹之间的时间间隔
+        track_split_time_hint: 连续点之间的时间超过此值时开始新轨迹。
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: 隐藏不可能为真实位置的读数 — 如不可能的跳跃、损坏的坐标。禁用后显示每个原始轨迹点。
         re_evaluate_past_data: 重新评估过去的数据
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: 清除现有异常标记，并使用当前设置对所有轨迹点重新运行过滤器。之后将重建轨迹、统计数据和摘要，整个过程在后台运行。
         recalculate_tracks_stats: 重新计算轨迹和统计数据
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: 根据当前轨迹点重建轨迹、统计数据和摘要，且不触碰异常标记。在更改路线拆分阈值后很有用。
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: 请先保存这些阈值。新轨迹会自动使用它们；若要应用到已有历史记录，请选择“重新计算轨迹和统计数据”。
         city_statistics: 城市统计数据
         min_minutes_in_city: 城市最短停留分钟数
         min_5: 60 分钟
@@ -3863,6 +3868,7 @@ zh:
       failed_to_update_point_position_please_try_again: 更新轨迹点位置失败。请重试。
       point_edit_conflict: 此点已在另一个会话中更改。现已显示最新保存的位置。
       failed_to_load_map_tiles: 无法加载地图瓦片。
+      tracks_pending: 此视图中暂时没有轨迹。请移动地图或扩大日期范围；最近导入的数据可能仍在处理中。
       failed_to_load_visited_countries: 无法加载已访问国家。
       retry: 重试
       failed_to_load_track_points: 加载轨迹点失败

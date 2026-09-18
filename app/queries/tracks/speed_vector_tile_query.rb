@@ -39,12 +39,12 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
       WITH candidates AS MATERIALIZED (
         SELECT * FROM (#{tile_scope.to_sql}) AS tracks
         WHERE ST_Intersects(tracks.original_path, ST_Transform(#{margined_envelope}, 4326))
-      ), geometries AS MATERIALIZED (
+      )#{import_paths_cte}, geometries AS MATERIALIZED (
         SELECT tracks.id,
           ROUND(segments.segment_speed::numeric)::double precision AS segment_speed,
-          COALESCE(segments.path, tracks.original_path) AS geom
+          #{speed_geometry_expression} AS geom
         FROM candidates AS tracks
-        LEFT JOIN LATERAL (#{segments_sql}) AS segments ON true
+        #{segment_join} LATERAL (#{segments_sql}) AS segments ON true
       ), grouped_segments AS (
         SELECT id, segment_speed, ST_Collect(geom) AS geom
         FROM geometries
@@ -56,12 +56,34 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
                        #{EXTENT}, #{BUFFER}, true) AS geom
         FROM grouped_segments
       ), features AS (
-        SELECT #{property_columns}, projected.segment_speed, projected.geom
+        SELECT #{@clip_points_scope ? import_property_columns : property_columns}, projected.segment_speed, projected.geom
         FROM projected JOIN candidates AS tracks USING (id)
+        #{'JOIN import_paths AS import_path USING (id)' if @clip_points_scope}
         WHERE projected.geom IS NOT NULL
         LIMIT #{tile_feature_limit}
       )
     SQL
+  end
+
+  def import_paths_cte
+    return '' unless @clip_points_scope
+
+    <<~SQL
+      , import_paths AS MATERIALIZED (
+        SELECT tracks.id, import_path.path, import_path.start_timestamp, import_path.end_timestamp
+        FROM candidates AS tracks
+        JOIN LATERAL (#{import_geometry_query.path_sql(track_id_sql: 'tracks.id')}) AS import_path
+          ON import_path.path IS NOT NULL
+      )
+    SQL
+  end
+
+  def speed_geometry_expression
+    @clip_points_scope ? 'segments.path' : 'COALESCE(segments.path, tracks.original_path)'
+  end
+
+  def segment_join
+    @clip_points_scope ? 'JOIN' : 'LEFT JOIN'
   end
 
   # Compute neighbors before clipping: even two off-screen endpoints can have
@@ -76,20 +98,23 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
         ELSE 0.0 END AS segment_speed
       FROM (
         SELECT points.timestamp, points.lonlat::geometry AS position,
+          #{'points.import_id,' if @clip_import_id}
           LAG(points.lonlat::geometry) OVER sequence AS previous_position,
           LAG(points.timestamp) OVER sequence AS previous_timestamp
+          #{', LAG(points.import_id) OVER sequence AS previous_import_id' if @clip_import_id}
         FROM (#{point_scope_sql}) AS points
         WHERE points.track_id = tracks.id
           AND points.timestamp BETWEEN EXTRACT(EPOCH FROM tracks.start_at)::bigint AND EXTRACT(EPOCH FROM tracks.end_at)::bigint
         WINDOW sequence AS (ORDER BY points.timestamp, points.id)
       ) AS ordered_points
       WHERE previous_position IS NOT NULL
+        #{"AND import_id = #{@clip_import_id.to_i} AND previous_import_id = #{@clip_import_id.to_i}" if @clip_import_id}
     SQL
   end
 
   def point_scope_sql
     @points_scope.except(:select, :order, :includes, :preload, :eager_load)
                  .where.not(lonlat: nil)
-                 .select(:id, :track_id, :timestamp, :lonlat).to_sql
+                 .select(:id, :track_id, :timestamp, :lonlat, :import_id).to_sql
   end
 end

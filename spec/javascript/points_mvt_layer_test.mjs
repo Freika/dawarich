@@ -99,6 +99,20 @@ function evaluate(expression, properties) {
   const [op, ...args] = expression
   const resolved = () => args.map((arg) => evaluate(arg, properties))
   switch (op) {
+    case "all":
+      return resolved().every(Boolean)
+    case "any":
+      return resolved().some(Boolean)
+    case "!":
+      return !resolved()[0]
+    case ">=": {
+      const [left, right] = resolved()
+      return left >= right
+    }
+    case "<=": {
+      const [left, right] = resolved()
+      return left <= right
+    }
     case "min":
       return Math.min(...resolved())
     case "*":
@@ -115,6 +129,40 @@ function evaluate(expression, properties) {
       throw new Error(`Unsupported op: ${op}`)
   }
 }
+
+test("low-zoom aggregates are flight-masked only when their full time span overlaps", () => {
+  const filters = []
+  const layer = new PointsMvtLayer({
+    getLayer: () => true,
+    setFilter: (_id, filter) => filters.push(filter),
+  })
+
+  layer.setFlightWindows([[100, 200]])
+  const filter = filters[0]
+  assert.equal(evaluate(filter, { timestamp: 120, max_timestamp: 180 }), false)
+  assert.equal(evaluate(filter, { timestamp: 120, max_timestamp: 240 }), true)
+  assert.equal(evaluate(filter, { timestamp: 80, max_timestamp: 180 }), true)
+})
+
+test("fog keep-alive restores the active day opacity after Points are toggled", () => {
+  const paint = []
+  const layer = new PointsMvtLayer({
+    getLayer: () => true,
+    setLayoutProperty() {},
+    setPaintProperty: (_id, property, value) => paint.push({ property, value }),
+  })
+  layer.setSourceKeepAlive(true)
+  const dayExpression = ["case", true, 1, 0.04]
+  layer.setCircleOpacity("circle-opacity", dayExpression)
+  layer.setVisibility(false)
+  layer.setCircleOpacity("circle-opacity", ["case", false, 1, 0.04])
+  assert.equal(paint.at(-1).value, 0)
+  layer.setVisibility(true)
+  assert.deepEqual(
+    paint.findLast(({ property }) => property === "circle-opacity").value,
+    ["case", false, 1, 0.04],
+  )
+})
 
 test("tile URLs carry no raw api key under any input combination", () => {
   const cases = [

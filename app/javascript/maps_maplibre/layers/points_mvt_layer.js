@@ -32,6 +32,10 @@ export class PointsMvtLayer extends BaseLayer {
     this._tileErrorHandler = null
     this._tileErrorReported = false
     this.flightWindows = []
+    this._visibleCirclePaint = {
+      "circle-opacity": 1,
+      "circle-stroke-opacity": 1,
+    }
   }
 
   // A failed tile fetch (timeout, throttle, expired session) reaches the page
@@ -39,6 +43,9 @@ export class PointsMvtLayer extends BaseLayer {
   // user sees an empty map with no explanation.
   add(data, beforeId = null) {
     super.add(data, beforeId)
+    for (const [property, value] of Object.entries(this._visibleCirclePaint)) {
+      this.setCircleOpacity(property, value)
+    }
     if (this.flightWindows.length) this._applyFlightFilter()
     this._tileErrorReported = false
     this._watchTileErrors()
@@ -90,7 +97,8 @@ export class PointsMvtLayer extends BaseLayer {
     const masked = this.flightWindows.map(([start, end]) => [
       "all",
       [">=", ["get", "timestamp"], start],
-      ["<=", ["get", "timestamp"], end],
+      // An aggregate is hidden only if every constituent point is in the flight window.
+      ["<=", ["get", "max_timestamp"], end],
     ])
     const filter = masked.length ? ["!", ["any", ...masked]] : null
     if (this.map.getLayer(this.id)) this.map.setFilter(this.id, filter)
@@ -125,6 +133,13 @@ export class PointsMvtLayer extends BaseLayer {
     this.setVisibility(this.visible)
   }
 
+  setCircleOpacity(property, value) {
+    this._visibleCirclePaint[property] = value
+    if (!this._paintHidden && this.map.getLayer(this.id)) {
+      this.map.setPaintProperty?.(this.id, property, value)
+    }
+  }
+
   _applyLayerVisibility(layerId, visible) {
     if (!this.map.getLayer(layerId)) return
 
@@ -141,8 +156,11 @@ export class PointsMvtLayer extends BaseLayer {
       return
     }
     if (layerId === this.id && this._paintHidden) {
-      this.map.setPaintProperty?.(layerId, "circle-opacity", 1)
-      this.map.setPaintProperty?.(layerId, "circle-stroke-opacity", 1)
+      for (const [property, value] of Object.entries(
+        this._visibleCirclePaint,
+      )) {
+        this.map.setPaintProperty?.(layerId, property, value)
+      }
       this.map.setPaintProperty?.(
         layerId,
         "circle-radius",

@@ -108,7 +108,6 @@ export class DataLoader {
     const data = {}
 
     const counter = onUpdate ? new LoadingCounter(onUpdate) : null
-
     // Register every source that will be fetched so the badge stays visible
     // until each one finishes. Photos load after the core data resolves, but
     // the badge must still wait for them.

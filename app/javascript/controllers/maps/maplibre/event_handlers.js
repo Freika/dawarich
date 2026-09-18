@@ -45,6 +45,7 @@ export class EventHandlers {
     this.map = map
     this.controller = controller
     this.selectedTrackFeature = null // Track selection state
+    this._trackSelectionGeneration = 0
     this.trackMarkers = [] // Store segment markers for tracks
     this._infoPanelDelegationSetup = false // Track if delegation is setup
 
@@ -86,7 +87,9 @@ export class EventHandlers {
 
   teardownLayerInteractions() {
     this.map.off("click", "track-points", this._handleTrackPointClick)
+    this._trackSelectionGeneration += 1
     this.selectedTrackFeature = null
+    this._clearTrackMarkers()
   }
 
   /** Handle a tile Point; address details load through the existing info UI. */
@@ -389,6 +392,7 @@ export class EventHandlers {
 
     const properties = clickedFeature.properties
     const fullFeature = clickedFeature
+    const generation = ++this._trackSelectionGeneration
     this.selectedTrackFeature = fullFeature
 
     // Keep the on-map highlight + segment visualization — those are visual
@@ -401,7 +405,7 @@ export class EventHandlers {
     } catch (err) {
       console.warn("[EventHandlers] Failed to highlight track:", err)
     }
-    this._loadTrackSegments(properties.id, fullFeature)
+    this._loadTrackSegments(properties.id, fullFeature, generation)
 
     // Derive the day from the track's start. `start_at` comes from our own
     // serializer as an ISO8601 string — safe to slice the date portion.
@@ -421,10 +425,19 @@ export class EventHandlers {
    * Load track segments from API (lazy loading)
    * @private
    */
-  async _loadTrackSegments(trackId, fullFeature) {
+  async _loadTrackSegments(
+    trackId,
+    fullFeature,
+    generation = this._trackSelectionGeneration,
+  ) {
     try {
       const trackFeature =
         await this.controller.api.fetchTrackWithSegments(trackId)
+      if (
+        generation !== this._trackSelectionGeneration ||
+        this.selectedTrackFeature !== fullFeature
+      )
+        return
       if (!trackFeature) return
 
       // The clicked MVT feature is clipped to a tile; segment visualization
@@ -464,6 +477,7 @@ export class EventHandlers {
 
       this._createTrackSegmentMarkers(trackId, displayFeature, segments)
     } catch (error) {
+      if (generation !== this._trackSelectionGeneration) return
       console.error("Failed to load track segments:", error)
       Toast.error(translate("messages.failed_to_load_track_details"))
     }
@@ -611,6 +625,7 @@ export class EventHandlers {
   clearTrackSelection() {
     if (!this.selectedTrackFeature) return
 
+    this._trackSelectionGeneration += 1
     this.selectedTrackFeature = null
 
     const tracksLayer = this.controller.layerManager.getLayer("tracks")
@@ -627,17 +642,18 @@ export class EventHandlers {
       tracksLayer.setSegmentLeaveCallback(null)
     }
 
-    // Clear track points layer
-    this._clearTrackPointsLayer()
-
-    // Restore main points layer opacity
-    this._setMainPointsOpacity(1.0)
+    this.clearPointSelection()
 
     // Clear segment markers
     this._clearTrackMarkers()
 
     // Close info panel
-    this.controller.closeInfo()
+    this.controller.closeInfo({ clearSelection: false })
+  }
+
+  clearPointSelection() {
+    this._clearTrackPointsLayer()
+    this._setMainPointsOpacity(1.0)
   }
 
   /**

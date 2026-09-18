@@ -22,9 +22,18 @@ test("main-map code has no classic Point, Track, or Route renderer switch", asyn
   assert.doesNotMatch(loader, /RoutesLayer|fetchTracks\(/)
   assert.doesNotMatch(layers, /PointsLayer|RoutesLayer/)
   assert.doesNotMatch(tracks, /id: this\.id|source: this\.sourceId/)
-  assert.doesNotMatch(
-    panel,
-    /pointsTiledRendering|routesToggle|metersBetweenRoutes/,
+  assert.doesNotMatch(panel, /pointsTiledRendering|routesToggle/)
+  assert.match(panel, /name="metersBetweenRoutes"/)
+  assert.match(panel, /name="minutesBetweenRoutes"/)
+  const trackSettingsStart = panel.indexOf("t('.track_generation')")
+  const trackSettings = panel.slice(
+    trackSettingsStart,
+    panel.indexOf("</details>", trackSettingsStart),
+  )
+  assert.match(trackSettings, /recalculateUserData/)
+  assert.match(
+    trackSettings,
+    /rebuild_tracks_stats_and_digests_from_your_current_points_without/,
   )
   assert.match(
     controller,
@@ -42,4 +51,18 @@ test("Trip day-route presentation remains separate", async () => {
 
   assert.match(tripController, /DayRoutesLayer/)
   assert.match(sharedController, /DayRoutesLayer/)
+})
+
+test("Scratch membership cannot block canonical tile layers during startup", async () => {
+  const layers = await read(
+    "../../app/javascript/controllers/maps/maplibre/layer_manager.js",
+  )
+  const setup = layers.slice(
+    layers.indexOf("async addAllLayers("),
+    layers.indexOf("setupLayerEventHandlers("),
+  )
+
+  assert.match(setup, /this\._addPointsMvtLayer\(\)/)
+  assert.match(setup, /void this\._addScratchLayer\(\)/)
+  assert.doesNotMatch(setup, /await this\._addScratchLayer\(\)/)
 })

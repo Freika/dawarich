@@ -102,8 +102,14 @@ export class TracksLayer extends BaseLayer {
     if (feature) {
       this.flowTrackColor = feature.properties?.color || "#ff0000"
       if (!preserveSegments) this.segmentsActive = false
-      this.selectedTrackLength = this._computeLineLength(
-        feature.geometry?.coordinates || [],
+      const geometry = feature.geometry
+      const lines =
+        geometry?.type === "MultiLineString"
+          ? geometry.coordinates
+          : [geometry?.coordinates || []]
+      this.selectedTrackLength = lines.reduce(
+        (length, coordinates) => length + this._computeLineLength(coordinates),
+        0,
       )
       selectionSource.setData({
         type: "FeatureCollection",
