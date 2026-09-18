@@ -36,6 +36,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Android cell-tower location bursts no longer draw repeated spikes away from the real route when precise fixes from the same device are available nearby (#3417)
 - Yearly digests for cloud-Lite users read seasonality and country time spent from the same data window as monthly distances and toponyms.
 - The per-email API login brute-force throttle now counts `application/json` request bodies, so password grinding against `POST /api/v1/auth/login` is bounded per account even when an attacker rotates source IPs.
 - API sign-in ignores leading and trailing spaces in the email address.
