@@ -67,10 +67,12 @@ function livePoint(index) {
 
 function installFakeTimers(t) {
   const pending = new Map()
+  const delays = []
   let nextId = 1
   const originalSetTimeout = globalThis.setTimeout
   const originalClearTimeout = globalThis.clearTimeout
-  globalThis.setTimeout = (callback) => {
+  globalThis.setTimeout = (callback, delay) => {
+    delays.push(delay)
     const id = nextId++
     pending.set(id, callback)
     return id
@@ -83,6 +85,7 @@ function installFakeTimers(t) {
     globalThis.clearTimeout = originalClearTimeout
   })
   return {
+    delays,
     runPending() {
       for (const [id, callback] of [...pending]) {
         pending.delete(id)
@@ -102,6 +105,7 @@ test("a burst of live points triggers a single tile and visited-countries refres
 
   assert.equal(calls.pointsRefresh, 0)
   assert.equal(calls.scratchUpdate, 0)
+  assert.deepEqual(timers.delays, [1000])
 
   timers.runPending()
 
