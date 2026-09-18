@@ -373,6 +373,7 @@ Rails.application.routes.draw do
 
       namespace :countries do
         resources :borders, only: :index
+        resources :visited, only: :index
         resources :visited_cities, only: :index
       end
 

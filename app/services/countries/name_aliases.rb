@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Geocoders return OSM English names; the countries table is seeded with the
-# Natural Earth names from lib/assets/countries.geojson, and the two disagree
+# Natural Earth names from lib/assets/countries.geojson.gz, and the two disagree
 # for a handful of countries. Aliases come from two sources: names observed
 # unresolved in stored point data, and known OSM-vs-seed divergences that the
 # name-only backfill could never recover once the name columns are dropped.
