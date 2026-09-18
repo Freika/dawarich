@@ -1,0 +1,91 @@
+_continents:
+  Africa:
+    flavor: “Cradle of everything, and still the least travelled.”
+    child_zoom: 3.0
+    art:
+      lat: 2.0
+      lon: 20.0
+      zoom: 1.4
+  Asia:
+    flavor: “Half the world lives here. Go meet them.”
+    child_zoom: 3.0
+    art:
+      lat: 34.0
+      lon: 90.0
+      zoom: 1.3
+  Europe:
+    flavor: “From Lisbon to the Urals.”
+    child_zoom: 3.2
+    art:
+      lat: 54.0
+      lon: 15.0
+      zoom: 2.3
+  North America:
+    flavor: “Three countries, and everything in between.”
+    child_zoom: 2.8
+    art:
+      lat: 42.0
+      lon: -100.0
+      zoom: 1.5
+  Oceania:
+    flavor: “Mostly ocean. That is rather the point.”
+    child_zoom: 2.8
+    art:
+      lat: -22.0
+      lon: 140.0
+      zoom: 1.5
+  South America:
+    flavor: “Andes on one side, Atlantic on the other.”
+    child_zoom: 3.0
+    art:
+      lat: -20.0
+      lon: -60.0
+      zoom: 1.7
+
+border_hopper:
+  kind: region_set
+  name: Border Hopper
+  continent: World
+  threshold: 5
+  card:
+    rarity: Rare
+    description: Spend time in 5 different countries.
+    flavor: “Lines on a map were never going to stop you.”
+    place: The World
+    child_zoom: 3.2
+    art:
+      lat: 24.0
+      lon: 10.0
+      zoom: 0.7
+
+globetrotter:
+  kind: region_set
+  name: Globetrotter
+  continent: World
+  threshold: 15
+  card:
+    rarity: Epic
+    description: Spend time in 15 different countries.
+    flavor: “The stamps stopped fitting on one page.”
+    place: The World
+    child_zoom: 3.2
+    art:
+      lat: 24.0
+      lon: 10.0
+      zoom: 0.7
+
+world_traveler:
+  kind: region_set
+  name: World Traveler
+  continent: World
+  threshold: 50
+  card:
+    rarity: Legendary
+    description: Spend time in 50 different countries.
+    flavor: “Fifty countries in, and still counting.”
+    place: The World
+    child_zoom: 3.2
+    art:
+      lat: 24.0
+      lon: 10.0
+      zoom: 0.7

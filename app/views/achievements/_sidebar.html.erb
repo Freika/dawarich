@@ -1,0 +1,18 @@
+<% active_key = local_assigns.fetch(:active_key, nil) %>
+<% active_name = continents.find { |set| set.definition.key == active_key }&.definition&.continent || t('achievements.ui.summary') %>
+
+<aside class="ach-navigation">
+  <nav class="ach-side ach-side--desktop" aria-label="<%= t('achievements.ui.collection_navigation') %>">
+    <%= render 'navigation_links', continents: continents, summary: summary, active_key: active_key %>
+  </nav>
+  <details class="ach-mobile-nav">
+    <summary>
+      <span><%= t('achievements.ui.browse') %></span>
+      <strong><%= active_name %></strong>
+      <%= icon 'chevron-down', class: 'w-4 h-4', 'aria-hidden': true %>
+    </summary>
+    <nav class="ach-side" aria-label="<%= t('achievements.ui.collection_navigation') %>">
+      <%= render 'navigation_links', continents: continents, summary: summary, active_key: active_key %>
+    </nav>
+  </details>
+</aside>

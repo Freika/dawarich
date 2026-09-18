@@ -1,0 +1,47 @@
+<%# locals: (name:, rarity:, map_lat:, map_lon:, map_zoom:, marker_lat: nil, marker_lon: nil, description: nil, flavor: nil, place: nil, size: :md, percent: 0, completed: false, locked: false, earned_label: nil, celebrate: false, reveal_delay: 0.1, modal: false, share: nil, silhouette: nil, geography_key: nil, metric_label: nil) %>
+<% actions = 'pointermove->achievement-card#move pointerleave->achievement-card#leave'
+   actions += ' click->card-modal#open keydown->card-modal#openOnKey' if modal
+   status = earned_label.presence || (locked ? 'Locked' : (completed ? 'Unlocked' : 'In progress'))
+   metric = metric_label.presence || (completed ? 'Explored' : (locked ? 'Not yet explored' : "#{percent}% explored"))
+   status = 'In progress' if status == metric && !completed && !locked %>
+<div class="ach-card-wrap ach-spectral-wrap <%= 'ach-card-wrap--celebrate' if celebrate %> <%= 'ach-spectral-wrap--sm' if size == :sm %> <%= 'ach-card-wrap--expandable' if modal %>"
+     data-controller="achievement-card"
+     data-achievement-card-locked-value="<%= locked %>"
+     data-achievement-card-key-value="<%= geography_key || place || name %>"
+     data-achievement-card-rarity-value="<%= rarity %>"
+     data-achievement-card-paper-value="<%= asset_path('achievements/paper-pressed-fiber-v2.webp') %>"
+     data-achievement-card-foil-value="<%= asset_path('achievements/foil-stamped-grain-v4.webp') %>"
+     <% if silhouette %>data-achievement-card-silhouette-value="<%= silhouette.to_json %>"<% end %>
+     data-action="<%= actions %>"
+     <% if modal %>role="button" tabindex="0" aria-label="Open <%= name %> — <%= status %>"<% end %>
+     <% if share %>
+       data-share-key="<%= share[:key] %>"
+       data-share-shared="<%= share[:shared] %>"
+       data-share-toggle="<%= toggle_sharing_achievement_path(share[:key]) %>"
+       <% if share[:shared] && share[:uuid] %>data-share-url="<%= shared_achievement_path(share[:uuid]) %>"<% end %>
+     <% end %>>
+  <article class="ach-card ach-spectral <%= 'ach-spectral--locked' if locked %>" aria-label="<%= name %>, <%= rarity %>, <%= metric %>, <%= status %>">
+    <div class="card-light" aria-hidden="true"></div>
+    <div class="spectral-material" data-achievement-card-target="material" aria-hidden="true">
+      <% if silhouette %>
+        <div class="geo-stage spectral-fallback"><%= region_silhouette(silhouette) %></div>
+      <% else %>
+        <div class="spectral-unavailable"><%= icon 'globe' %><span>Boundary unavailable</span></div>
+      <% end %>
+    </div>
+    <div class="card-copy">
+      <h2 class="card-title"><%= name %></h2>
+      <% if description.present? %><p class="card-description"><%= description %></p><% end %>
+      <div class="meta-row">
+        <div class="metric"><%= icon 'map-pin' %><span><%= metric %></span></div>
+        <span class="meta-divider" aria-hidden="true"></span>
+        <div class="earned"><%= icon(locked ? 'lock' : (completed ? 'calendar' : 'clock')) %><span><%= status %></span></div>
+      </div>
+      <% if !locked && !completed && percent.positive? %>
+        <div class="spectral-progress" role="progressbar" aria-label="Exploration progress" aria-valuenow="<%= percent %>" aria-valuemin="0" aria-valuemax="100"><span style="width: <%= percent.clamp(0, 100) %>%"></span></div>
+      <% end %>
+      <div class="rarity-row"><span class="rarity"><%= rarity %></span><span class="rarity-rule" aria-hidden="true"><i></i></span></div>
+      <div class="wordmark">DAWARICH</div>
+    </div>
+  </article>
+</div>

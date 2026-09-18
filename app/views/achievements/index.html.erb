@@ -1,0 +1,54 @@
+<% content_for :title, t('achievements.ui.title') %>
+
+<div class="w-full my-5 ach-page" data-controller="card-modal">
+  <%= render 'shared/page_header', title: t('achievements.ui.title') %>
+  <div class="ach-layout">
+    <%= render 'sidebar', continents: @sets, summary: @summary %>
+    <div class="ach-main">
+      <dl class="ach-stats" aria-label="<%= t('achievements.ui.summary') %>">
+        <div class="ach-stat">
+          <dt class="ach-stat-label"><%= t('achievements.ui.countries') %></dt>
+          <dd class="ach-stat-value"><%= @summary.earned_countries %><span class="ach-stat-total">/<%= @summary.total_countries %></span></dd>
+        </div>
+        <div class="ach-stat">
+          <dt class="ach-stat-label"><%= t('achievements.ui.regions') %></dt>
+          <dd class="ach-stat-value"><%= @summary.earned_subdivisions %><span class="ach-stat-total">/<%= number_with_delimiter(@summary.total_subdivisions) %></span></dd>
+        </div>
+        <div class="ach-stat">
+          <dt class="ach-stat-label"><%= t('achievements.ui.world_explored') %></dt>
+          <dd class="ach-stat-value"><%= @summary.percent %><span class="ach-stat-total">%</span></dd>
+        </div>
+      </dl>
+
+      <% if @summary.earned_countries.zero? && @summary.earned_subdivisions.zero? %>
+        <div class="ach-getting-started">
+          <%= icon 'compass', class: 'w-5 h-5', 'aria-hidden': true %>
+          <p><%= t('achievements.ui.getting_started') %> <%= link_to t('achievements.ui.import_data'), new_import_path, class: 'link link-hover' %></p>
+        </div>
+      <% end %>
+
+      <section aria-labelledby="collection-heading">
+        <div class="ach-section-heading">
+          <div>
+            <h2 id="collection-heading"><%= t('achievements.ui.continents') %></h2>
+            <p><%= t('achievements.ui.collection_hint') %></p>
+          </div>
+        </div>
+        <div class="ach-grid" data-testid="achievement-collection">
+          <% @sets.each do |set| %>
+            <%= link_to achievement_path(set.definition.key), class: 'ach-card-link' do %>
+              <%= render 'card', celebrate: set.celebrate?, **set.card_attributes %>
+            <% end %>
+          <% end %>
+          <% @orphans.each do |set| %>
+            <%= render 'card', celebrate: set.celebrate?, modal: true,
+                               share: { key: set.definition.key, shared: set.sharing_enabled?, uuid: set.sharing_uuid },
+                               **set.card_attributes %>
+          <% end %>
+        </div>
+      </section>
+      <%= render 'attribution' %>
+    </div>
+  </div>
+  <%= render 'card_modal' %>
+</div>
