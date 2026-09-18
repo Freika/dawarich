@@ -46,6 +46,7 @@ class User < ApplicationRecord
   has_many :notes, dependent: :destroy
   has_many :shared_links, dependent: :destroy
   has_many :achievement_progresses, class_name: 'Achievements::Progress', dependent: :destroy
+  has_many :achievement_unlock_events, class_name: 'Achievements::UnlockEvent', dependent: :delete_all
   has_many :user_achievements, dependent: :destroy
 
   after_create :create_api_key

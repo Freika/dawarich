@@ -1,5 +1,15 @@
 zh:
   achievements:
+    unlocks:
+      kicker: 新发现
+      announcement: 卡片已解锁
+      remaining:
+        one: 这叠中的最后一张卡片
+        other: "这叠中还有 %{count} 张卡片"
+      next: 下一张
+      done: 完成
+      dismiss: 关闭这叠卡片
+      view: 在收藏中查看 %{name}
     ui:
       title: 成就
       summary: 概览

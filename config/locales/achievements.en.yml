@@ -1,5 +1,15 @@
 en:
   achievements:
+    unlocks:
+      kicker: New discovery
+      announcement: Card unlocked
+      remaining:
+        one: Last card in this deck
+        other: "%{count} cards in this deck"
+      next: Next card
+      done: Done
+      dismiss: Dismiss this deck
+      view: View %{name} in your collection
     ui:
       title: Achievements
       summary: Summary

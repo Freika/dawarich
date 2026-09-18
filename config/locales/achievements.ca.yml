@@ -1,5 +1,15 @@
 ca:
   achievements:
+    unlocks:
+      kicker: Nova descoberta
+      announcement: Carta desbloquejada
+      remaining:
+        one: Última carta d'aquesta pila
+        other: "%{count} cartes en aquesta pila"
+      next: Carta següent
+      done: Fet
+      dismiss: Tanca aquesta pila
+      view: Mostra %{name} a la col·lecció
     ui:
       title: Assoliments
       summary: Resum

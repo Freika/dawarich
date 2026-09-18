@@ -208,6 +208,9 @@ Rails.application.routes.draw do
       put :update_all
     end
   end
+  post 'achievements/unlocks/next', to: 'achievements/unlocks#next', as: :next_achievement_unlock
+  post 'achievements/unlocks/:id/seen', to: 'achievements/unlocks#seen', as: :seen_achievement_unlock
+  post 'achievements/unlocks/dismiss', to: 'achievements/unlocks#dismiss', as: :dismiss_achievement_unlocks
   resources :achievements, only: %i[index show], param: :key do
     member do
       patch :toggle_sharing

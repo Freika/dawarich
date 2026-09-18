@@ -1,5 +1,15 @@
 pl:
   achievements:
+    unlocks:
+      kicker: Nowe odkrycie
+      announcement: Karta odblokowana
+      remaining:
+        one: Ostatnia karta w tej talii
+        other: "%{count} kart w tej talii"
+      next: Następna karta
+      done: Gotowe
+      dismiss: Zamknij tę talię
+      view: Zobacz %{name} w kolekcji
     ui:
       title: Osiągnięcia
       summary: Podsumowanie

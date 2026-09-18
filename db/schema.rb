@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_14_195000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_18_103000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -26,6 +26,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_195000) do
     t.bigint "user_id", null: false
     t.index ["sharing_uuid"], name: "index_achievement_progresses_on_sharing_uuid", unique: true
     t.index ["user_id", "achievement_key"], name: "index_achievement_progresses_on_user_id_and_achievement_key", unique: true
+  end
+
+  create_table "achievement_unlock_events", force: :cascade do |t|
+    t.string "claim_token"
+    t.datetime "claimed_at"
+    t.datetime "created_at", null: false
+    t.string "key", null: false
+    t.string "kind", null: false
+    t.datetime "seen_at"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "id"], name: "index_achievement_unlock_events_pending", where: "(seen_at IS NULL)"
+    t.index ["user_id", "kind", "key"], name: "index_achievement_unlock_events_on_user_kind_key", unique: true
+    t.index ["user_id"], name: "index_achievement_unlock_events_on_user_id"
   end
 
   create_table "action_text_rich_texts", force: :cascade do |t|
@@ -705,6 +719,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_195000) do
   end
 
   add_foreign_key "achievement_progresses", "users"
+  add_foreign_key "achievement_unlock_events", "users", on_delete: :cascade
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"

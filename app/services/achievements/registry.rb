@@ -51,6 +51,13 @@ module Achievements
         @subdivision_codes ||= subdivision_sets.flat_map(&:region_codes).to_set
       end
 
+      def subdivision_parent_for(code)
+        @subdivision_parents ||= subdivision_sets.each_with_object({}) do |definition, parents|
+          definition.region_codes.each { |region_code| parents[region_code] ||= definition }
+        end
+        @subdivision_parents[code]
+      end
+
       def find(key)
         index[key]
       end
@@ -62,6 +69,7 @@ module Achievements
         @hand_yaml = nil
         @country_universe = nil
         @subdivision_sets = nil
+        @subdivision_parents = nil
         @country_codes = nil
         @subdivision_codes = nil
       end

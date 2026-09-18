@@ -1,5 +1,15 @@
 de:
   achievements:
+    unlocks:
+      kicker: Neue Entdeckung
+      announcement: Karte freigeschaltet
+      remaining:
+        one: Letzte Karte in diesem Stapel
+        other: "%{count} Karten in diesem Stapel"
+      next: Nächste Karte
+      done: Fertig
+      dismiss: Diesen Stapel schließen
+      view: "%{name} in der Sammlung ansehen"
     ui:
       title: Erfolge
       summary: Übersicht

@@ -78,10 +78,13 @@ module Achievements
         committed_cursor = [@cursor, expected].max
         committed_point_id = [@point_id_cursor, expected_point_id].max
 
+        new_codes = []
         @progress.update!(
-          state: merged_state(current_state, deltas, @newly_earned, replace: replace, cursor: committed_cursor,
+          state: merged_state(current_state, deltas, new_codes, replace: replace, cursor: committed_cursor,
                               point_id_cursor: committed_point_id)
         )
+        UnlockEvent.enqueue_geographies!(user_id: user.id, codes: new_codes)
+        @newly_earned.concat(new_codes)
         committed = true
       end
 
@@ -176,9 +179,15 @@ module Achievements
       return false if awarded.include?(definition.key)
       return false if (definition.region_codes & earned.keys).size < definition.target
 
-      UserAchievement.find_or_create_by!(user: user, achievement_key: definition.key) do |award|
-        award.earned_at = Time.current
-      end.previously_new_record?
+      UserAchievement.transaction do
+        award = UserAchievement.find_or_create_by!(user: user, achievement_key: definition.key) do |new_award|
+          new_award.earned_at = Time.current
+        end
+        next false unless award.previously_new_record?
+
+        UnlockEvent.enqueue_set!(user_id: user.id, definition: definition)
+        true
+      end
     rescue ActiveRecord::RecordNotUnique
       false # created concurrently by another job; this run did not newly earn it
     end

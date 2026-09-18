@@ -1,5 +1,15 @@
 fr:
   achievements:
+    unlocks:
+      kicker: Nouvelle découverte
+      announcement: Carte débloquée
+      remaining:
+        one: Dernière carte de cette pile
+        other: "%{count} cartes dans cette pile"
+      next: Carte suivante
+      done: Terminé
+      dismiss: Fermer cette pile
+      view: Voir %{name} dans votre collection
     ui:
       title: Succès
       summary: Résumé

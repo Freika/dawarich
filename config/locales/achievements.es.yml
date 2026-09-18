@@ -1,5 +1,15 @@
 es:
   achievements:
+    unlocks:
+      kicker: Nuevo descubrimiento
+      announcement: Carta desbloqueada
+      remaining:
+        one: Última carta de este mazo
+        other: "%{count} cartas en este mazo"
+      next: Siguiente carta
+      done: Listo
+      dismiss: Cerrar este mazo
+      view: Ver %{name} en tu colección
     ui:
       title: Logros
       summary: Resumen
