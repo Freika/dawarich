@@ -19,6 +19,17 @@ export class PhotosLayer extends BaseLayer {
     this._syncMarkers = this._syncMarkers.bind(this)
     this._onClusterClick = this._onClusterClick.bind(this)
     this._onMoveEnd = this._onMoveEnd.bind(this)
+    this._onClusterEnter = () => {
+      this.map.getCanvas().style.cursor = "pointer"
+    }
+    this._onClusterLeave = () => {
+      this.map.getCanvas().style.cursor = ""
+    }
+    this._onSourceData = (event) => {
+      if (event.sourceId === this.sourceId && event.isSourceLoaded) {
+        this._syncMarkers()
+      }
+    }
   }
 
   getSourceConfig() {
@@ -84,23 +95,15 @@ export class PhotosLayer extends BaseLayer {
     this.map.on("click", "photos-clusters", this._onClusterClick)
 
     // Cursor changes on cluster hover
-    this.map.on("mouseenter", "photos-clusters", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    this.map.on("mouseleave", "photos-clusters", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
+    this.map.on("mouseenter", "photos-clusters", this._onClusterEnter)
+    this.map.on("mouseleave", "photos-clusters", this._onClusterLeave)
 
     // Sync DOM markers when data loads or map moves;
     // also clear any spiderfied cluster expansion on move
     this.map.on("moveend", this._onMoveEnd)
 
     // Also sync when source data finishes loading
-    this.map.on("data", (e) => {
-      if (e.sourceId === this.sourceId && e.isSourceLoaded) {
-        this._syncMarkers()
-      }
-    })
+    this.map.on("data", this._onSourceData)
 
     // Initial sync
     this._syncMarkers()
@@ -641,6 +644,9 @@ export class PhotosLayer extends BaseLayer {
     this._clearSpiderfiedMarkers()
     this.map.off("moveend", this._onMoveEnd)
     this.map.off("click", "photos-clusters", this._onClusterClick)
+    this.map.off("mouseenter", "photos-clusters", this._onClusterEnter)
+    this.map.off("mouseleave", "photos-clusters", this._onClusterLeave)
+    this.map.off("data", this._onSourceData)
     super.remove()
   }
 }

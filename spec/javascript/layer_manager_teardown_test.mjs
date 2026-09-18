@@ -40,27 +40,17 @@ test("releases the tile-error listener before orphaning the layers", () => {
   assert.deepEqual(context.layers, {})
 })
 
-test("disarms point dragging before orphaning the layers", () => {
-  // Same class of map-level state, already guarded — pinned so neither
-  // teardown can be dropped quietly.
-  const seen = []
-  teardown({ pointsLayer: { setEditMode: (v) => seen.push(v) } })
-
-  assert.deepEqual(seen, [false])
-})
-
 test("releases the tracks-mvt map listeners before orphaning the layers", () => {
-  // Both handlers (error + sourcedata) live on the map and survive setStyle —
-  // unreleased, each style change stacks another pair.
+  // The error handler lives on the map and survives setStyle — unreleased,
+  // each style change stacks another listener.
   const seen = []
   teardown({
     tracksMvtLayer: {
       _unwatchTileErrors: () => seen.push("errors"),
-      _unwatchEmptyTracks: () => seen.push("empty"),
     },
   })
 
-  assert.deepEqual(seen, ["errors", "empty"])
+  assert.deepEqual(seen, ["errors"])
 })
 
 test("removes the fog layer before orphaning the layers", () => {
@@ -77,6 +67,33 @@ test("removes the fog layer before orphaning the layers", () => {
   })
 
   assert.equal(removed, 1)
+})
+
+test("removes visited-country listeners before orphaning the layer", () => {
+  let removed = 0
+  teardown({
+    scratchLayer: {
+      remove: () => {
+        removed += 1
+      },
+    },
+  })
+
+  assert.equal(removed, 1)
+})
+
+test("unsubscribes every delegated map handler before rebuilding a style", () => {
+  const seen = []
+  const context = teardown({})
+  context.eventHandlerCleanups = [
+    () => seen.push("point-click"),
+    () => seen.push("track-hover"),
+  ]
+
+  LayerManager.prototype.clearLayerReferences.call(context)
+
+  assert.deepEqual(seen, ["point-click", "track-hover"])
+  assert.deepEqual(context.eventHandlerCleanups, [])
 })
 
 test("tears down without any layers present", () => {

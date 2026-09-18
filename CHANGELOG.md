@@ -10,6 +10,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Admins can configure geocoding for the whole instance in Settings → Instance without a redeploy, and test the connection there. A set environment variable still wins and shows its field read-only.
 - The app and Sidekiq containers print a warning at startup when a self-hosted instance runs with `RAILS_ENV=development`.
+- Map points and tracks can be edited directly over the vector-tile renderer; a completed drag atomically saves the point, recalculates its track and segments, and synchronizes other open sessions.
+- Visited Countries uses bundled PMTiles plus a small, privately cached metadata response, so it remains available without downloading the full location history or requiring outbound network access.
+
+### Changed
+
+- The main map now always renders points and tracks from vector tiles. The classic renderer, its rendering preferences, and the separate main-map Routes layer have been removed; Trip day routes are unchanged.
+- Successful point moves use a short in-map pulse instead of a flash message, with a static reduced-motion variant.
 
 ### Changed
 
@@ -18,6 +25,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- The map fits locations recorded during a short period even when the selected history spans years.
+- Switching flight visibility while editing a point or track keeps the edit visible and restores the correct map filters afterward.
 - User profile archives uploaded through the regular Imports page are now restored as profile backups instead of failing the multi-file archive size limit. (#3011)
 - CSV imports combine separate DATE/TIME columns while preserving complete timestamps when both formats are present.
 - The visits API now returns a clear bad-request response for malformed date ranges on both time-based and area-based queries, instead of failing or silently ignoring the filter.

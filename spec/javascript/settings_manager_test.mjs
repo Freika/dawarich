@@ -19,12 +19,7 @@ const source = await readFile(
 const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const combinedSource = `${basemapUrlSource}\n${withoutImports}`
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combinedSource).toString("base64")}`
-const {
-  bulkPointsRequired,
-  LAYER_COLOR_DEFAULTS,
-  SettingsManager,
-  tiledPointsActive,
-} = await import(moduleUrl)
+const { LAYER_COLOR_DEFAULTS, SettingsManager } = await import(moduleUrl)
 
 async function loadSettingsController(settingsManager, overrides = {}) {
   const controllerSource = await readFile(
@@ -45,8 +40,6 @@ async function loadSettingsController(settingsManager, overrides = {}) {
   }
   globalThis.__settingsManagerGetMapStyle =
     overrides.getMapStyle ?? (async () => ({}))
-  globalThis.__settingsManagerBulkPointsRequired = bulkPointsRequired
-  globalThis.__settingsManagerTiledPointsActive = tiledPointsActive
   const dependencies = `
     const Toast = globalThis.__settingsManagerToast
     const UpgradeBanner = {}
@@ -55,8 +48,6 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     const SettingsManager = globalThis.__settingsManagerTestDouble
     const getMapStyle = globalThis.__settingsManagerGetMapStyle
     const translate = globalThis.__settingsManagerTranslate ?? ((key) => key)
-    const bulkPointsRequired = globalThis.__settingsManagerBulkPointsRequired
-    const tiledPointsActive = globalThis.__settingsManagerTiledPointsActive
     ${basemapUrlSource.replace(/^export /gm, "")}
   `
   const url = `data:text/javascript;base64,${Buffer.from(`${dependencies}\n${withoutImports}`).toString("base64")}`
@@ -100,6 +91,38 @@ test("basemap URLs also accept raster XYZ, style.json and suffixless style URLs"
   )
 })
 
+test("Track generation thresholds load and persist with their existing backend keys", async () => {
+  const originalFetch = globalThis.fetch
+  let saved
+  globalThis.fetch = async (_url, options = {}) => {
+    if (options.method === "PATCH") {
+      saved = JSON.parse(options.body).settings
+      return { ok: true, json: async () => ({ settings: saved }) }
+    }
+    return {
+      ok: true,
+      json: async () => ({
+        settings: {
+          meters_between_routes: "1200",
+          minutes_between_routes: "45",
+        },
+      }),
+    }
+  }
+
+  try {
+    SettingsManager.apiKey = "test-key"
+    const loaded = await SettingsManager.loadFromBackend()
+    assert.equal(loaded.metersBetweenRoutes, 1200)
+    assert.equal(loaded.minutesBetweenRoutes, 45)
+    await SettingsManager.saveToBackend(loaded)
+    assert.equal(saved.meters_between_routes, "1200")
+    assert.equal(saved.minutes_between_routes, "45")
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test("multiple setting updates are persisted in one complete snapshot", async () => {
   SettingsManager.cachedSettings = {
     mapStyle: "light",
@@ -117,7 +140,7 @@ test("multiple setting updates are persisted in one complete snapshot", async ()
   assert.equal(snapshots.length, 1)
   assert.deepEqual(snapshots[0], {
     mapStyle: "light",
-    routeColor: "#0000ff",
+    routeColor: "#111111",
     trackColor: "#6366F1",
   })
 })
@@ -140,7 +163,7 @@ test("settings writes are serialized so a newer snapshot persists last", async (
     return settings
   }
 
-  const staleSave = SettingsManager.updateSetting("routeColor", "#333333")
+  const staleSave = SettingsManager.updateSetting("trackColor", "#333333")
   await Promise.resolve()
   const resetSave = SettingsManager.updateSettings(LAYER_COLOR_DEFAULTS)
   await Promise.resolve()
@@ -150,7 +173,7 @@ test("settings writes are serialized so a newer snapshot persists last", async (
   await Promise.all([staleSave, resetSave])
   assert.deepEqual(snapshots.at(-1), {
     mapStyle: "light",
-    routeColor: "#0000ff",
+    routeColor: "#111111",
     trackColor: "#6366F1",
   })
 })
@@ -169,11 +192,10 @@ test("resetting layer colors cancels stale debounced saves", async () => {
   const controller = new SettingsController({
     element: { querySelector: () => null },
   })
-  controller.applyRouteColor = () => {}
   controller.applyTrackColor = () => {}
   controller.layerColorTimers = {
-    routeColor: setTimeout(
-      () => settingsManager.updateSetting("routeColor", "#111111"),
+    trackColor: setTimeout(
+      () => settingsManager.updateSetting("trackColor", "#111111"),
       10,
     ),
   }
@@ -311,173 +333,7 @@ test("a stale style.load after the fallback does not double-reload", async () =>
   assert.deepEqual(restored, ["loadMapData"])
 })
 
-// Layer settings as _expandLayerSettings produces them: every layer key is an
-// explicit boolean, and the stock enabled_map_layers is ["Tracks","Heatmap"]
-function layerSettings(overrides = {}) {
-  return {
-    pointsVisible: true,
-    routesVisible: false,
-    heatmapEnabled: true,
-    fogEnabled: false,
-    scratchEnabled: false,
-    fogOfWarMode: "points",
-    ...overrides,
-  }
-}
-
-test("tiled rendering stays off until it is asked for", () => {
-  assert.equal(tiledPointsActive(layerSettings()), false)
-  assert.equal(
-    tiledPointsActive(layerSettings({ pointsTiledRendering: false })),
-    false,
-  )
-})
-
-test("the stock layer set does not block tiled rendering", () => {
-  // Heatmap ships enabled, so blocking on it would make the beta inert for
-  // everyone who never touched their layer settings
-  const settings = layerSettings({ pointsTiledRendering: true })
-
-  assert.equal(bulkPointsRequired(settings), false)
-  assert.equal(tiledPointsActive(settings), true)
-})
-
-test("heatmap still needs the bulk fetch when tiles were not asked for", () => {
-  assert.equal(bulkPointsRequired(layerSettings()), true)
-})
-
-test("only Scratch map still switches tiles back off — routes and fog ride tile sources now", () => {
-  const scratch = layerSettings({
-    pointsTiledRendering: true,
-    scratchEnabled: true,
-  })
-  assert.equal(bulkPointsRequired(scratch), true)
-  assert.equal(tiledPointsActive(scratch), false)
-
-  for (const rider of [
-    { routesVisible: true },
-    { fogEnabled: true, fogOfWarMode: "points" },
-  ]) {
-    const settings = layerSettings({ pointsTiledRendering: true, ...rider })
-
-    assert.equal(bulkPointsRequired(settings), false, JSON.stringify(rider))
-    assert.equal(tiledPointsActive(settings), true, JSON.stringify(rider))
-  }
-})
-
-test("hexagon fog fetches its own data, so it leaves tiles alone", () => {
-  const settings = layerSettings({
-    pointsTiledRendering: true,
-    fogEnabled: true,
-    fogOfWarMode: "hexagons",
-  })
-
-  assert.equal(bulkPointsRequired(settings), false)
-  assert.equal(tiledPointsActive(settings), true)
-})
-
-test("a missing routesVisible counts as routes being on in classic mode", () => {
-  // needsPoints has always treated absent as visible, so the guard must agree
-  // rather than quietly skipping a fetch the routes layer depends on
-  assert.equal(bulkPointsRequired({ heatmapEnabled: false }), true)
-
-  // Under tiled mode default-visible routes ride the tracks tile source
-  const tiled = { pointsTiledRendering: true, heatmapEnabled: false }
-  assert.equal(bulkPointsRequired(tiled), false)
-  assert.equal(tiledPointsActive(tiled), true)
-})
-
-test("the tiled-rendering inactive note is translated with plural forms", async () => {
-  const fixtures = {
-    "map.tiled_rendering.blockers.scratch": "Rubbelkarte",
-  }
-  const calls = []
-  globalThis.__settingsManagerTranslate = (key, values = {}) => {
-    calls.push({ key, values })
-    if (key === "map.tiled_rendering.inactive_note") {
-      const verb = values.count === 1 ? "ist" : "sind"
-      return `Inaktiv solange ${values.layers} ${verb} an`
-    }
-    return fixtures[key] ?? key
-  }
-
-  try {
-    const settingsFor = (overrides) => ({
-      pointsTiledRendering: true,
-      pointsVisible: true,
-      routesVisible: false,
-      heatmapEnabled: false,
-      fogEnabled: false,
-      scratchEnabled: false,
-      fogOfWarMode: "points",
-      ...overrides,
-    })
-    let settings = settingsFor({ scratchEnabled: true })
-    const settingsManager = {
-      getSettings: () => settings,
-      getSetting: () => false,
-      updateSetting: () => {},
-    }
-    const { SettingsController } = await loadSettingsController(settingsManager)
-    const note = {
-      textContent: "",
-      classList: {
-        toggle() {},
-      },
-    }
-    const controller = new SettingsController({
-      element: { querySelector: () => null },
-      hasPointsTiledInactiveNoteTarget: true,
-      pointsTiledInactiveNoteTarget: note,
-    })
-
-    controller.syncTiledRenderingNote()
-    const noteCall = calls.find(
-      (call) => call.key === "map.tiled_rendering.inactive_note",
-    )
-    assert.ok(noteCall, "inactive note must go through translate()")
-    assert.equal(noteCall.values.count, 1)
-    assert.equal(note.textContent, "Inaktiv solange Rubbelkarte ist an")
-
-    // Routes no longer appear as a blocker — the note stays scratch-only
-    calls.length = 0
-    settings = settingsFor({ routesVisible: true, scratchEnabled: true })
-    controller.syncTiledRenderingNote()
-    const secondCall = calls.find(
-      (call) => call.key === "map.tiled_rendering.inactive_note",
-    )
-    assert.equal(secondCall.values.count, 1)
-    assert.equal(note.textContent, "Inaktiv solange Rubbelkarte ist an")
-  } finally {
-    delete globalThis.__settingsManagerTranslate
-  }
-})
-
-test("updateRouteOpacity drives the tiled tracks layer, not just the classic routes layer", async () => {
-  const settingsManager = {
-    getSettings: () => ({}),
-    getSetting: () => false,
-    updateSetting: () => {},
-  }
-  const { SettingsController } = await loadSettingsController(settingsManager)
-  const opacityCalls = []
-  const controller = new SettingsController({
-    element: { querySelector: () => null },
-    map: { getLayer: () => null },
-    layerManager: {
-      getLayer: (name) =>
-        name === "tracks-mvt"
-          ? { setRouteOpacity: (value) => opacityCalls.push(value) }
-          : null,
-    },
-  })
-
-  controller.updateRouteOpacity({ target: { value: "40" } })
-
-  assert.deepEqual(opacityCalls, [0.4])
-})
-
-test("color pickers drive the tiled tracks layer, not just the classic layers", async () => {
+test("track color picker drives the tiled Tracks layer", async () => {
   const settingsManager = {
     getSettings: () => ({}),
     getSetting: () => false,
@@ -496,11 +352,7 @@ test("color pickers drive the tiled tracks layer, not just the classic layers", 
     },
   })
 
-  controller.applyRouteColor("#123456")
   controller.applyTrackColor("#abcdef")
 
-  assert.deepEqual(colorCalls, [
-    { routeColor: "#123456" },
-    { trackColor: "#abcdef" },
-  ])
+  assert.deepEqual(colorCalls, [{ trackColor: "#abcdef" }])
 })

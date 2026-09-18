@@ -580,7 +580,9 @@ export class AreaSelectionManager {
       this.controller.anomaliesToggleTarget.checked
     if (!toggleOn) return
 
-    await this.controller.routesManager.refreshAnomalies({ enabled: true })
+    await this.controller.layerVisibilityManager.refreshAnomalies({
+      enabled: true,
+    })
   }
 
   /**

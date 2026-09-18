@@ -27,6 +27,29 @@ RSpec.describe '/api/v1/tracks/:track_id/points', type: :request do
       expect(point_ids).to contain_exactly(point1.id, point2.id, point3.id)
     end
 
+    it 'limits the editor Point list to the selected import' do
+      selected_import = create(:import, user:)
+      point1.update!(import: selected_import)
+      point2.update!(import: selected_import)
+
+      get api_v1_track_points_url(track), headers:, params: { import_id: selected_import.id }
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body).pluck('id')).to contain_exactly(point1.id, point2.id)
+    end
+
+    it 'does not fall back to another Track when this Track has no Points in the import' do
+      selected_import = create(:import, user:)
+      other_track = create(:track, user:)
+      create(:point, user:, track: other_track, import: selected_import,
+                     timestamp: track.start_at.to_i + 1)
+
+      get api_v1_track_points_url(track), headers:, params: { import_id: selected_import.id }
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq([])
+    end
+
     it 'does not return points from other tracks' do
       get api_v1_track_points_url(track), headers: headers
       json = JSON.parse(response.body)

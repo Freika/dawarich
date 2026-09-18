@@ -199,6 +199,28 @@ RSpec.describe '/api/v1/tracks', type: :request do
       expect(properties['duration']).to eq(3600)
     end
 
+    it 'limits a mixed Track detail to consecutive Points in the selected import' do
+      selected_import = create(:import, user:)
+      other_import = create(:import, user:)
+      [[0.001, selected_import], [0.002, selected_import], [0.003, other_import],
+       [0.004, selected_import], [0.005, selected_import]].each_with_index do |(longitude, point_import), index|
+        create(:point, user:, track:, import: point_import, longitude:, latitude: 0.001,
+                       timestamp: track.start_at.to_i + (index * 10))
+      end
+
+      get api_v1_track_url(track), headers:, params: { import_id: selected_import.id }
+
+      expect(response).to have_http_status(:ok)
+      feature = JSON.parse(response.body).fetch('features').first
+      expect(feature.dig('geometry', 'type')).to eq('MultiLineString')
+      expect(feature.dig('geometry', 'coordinates')).to eq(
+        [[[0.001, 0.001], [0.002, 0.001]], [[0.004, 0.001], [0.005, 0.001]]]
+      )
+      expect(feature.dig('properties', 'segments')).to eq([])
+      expect(feature.dig('properties', 'distance')).to be < 5000
+      expect(feature.dig('properties', 'duration')).to eq(40)
+    end
+
     it 'includes segments with transportation mode data' do
       get api_v1_track_url(track), headers: headers
       json = JSON.parse(response.body)

@@ -2,10 +2,15 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-// MapPageProvider reaches the live map through document.getElementById; the
-// module itself imports nothing, so a minimal DOM shim is all Node needs.
 globalThis.document = { getElementById: () => ({}) }
 
+const segmenterSource = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/route_segmenter.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
 const source = await readFile(
   new URL(
     "../../app/javascript/poster_studio/data/providers.js",
@@ -13,17 +18,25 @@ const source = await readFile(
   ),
   "utf8",
 )
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(segmenterSource.replace(/^export /gm, "") + withoutImports).toString("base64")}`
 const { MapPageProvider, TripProvider } = await import(moduleUrl)
 
-// Mirrors the real controller: ensurePointsLoaded() is what builds the routes
-// GeoJSON and fills the routes layer, so the track is only readable after it.
+// Mirrors the real controller: poster/video generation is an explicit bounded
+// consumer which loads exact points and canonical tracks on demand.
 function fakeMapPage() {
   const controller = {
-    loads: 0,
+    pointLoads: 0,
+    trackLoads: 0,
     mapDataManager: {
       async ensurePointsLoaded() {
-        controller.loads += 1
+        controller.pointLoads += 1
+      },
+    },
+    api: {
+      async fetchTracks() {
+        controller.trackLoads += 1
+        return { type: "FeatureCollection", features: [] }
       },
     },
     _getLoadedPoints: () => [{ latitude: "51.3402", longitude: "12.3712" }],
@@ -34,12 +47,13 @@ function fakeMapPage() {
   return { controller, provider: new MapPageProvider({ application }) }
 }
 
-test("forces the map's lazy point load so the track becomes readable", async () => {
+test("loads exact points and canonical tracks for the studio", async () => {
   const { controller, provider } = fakeMapPage()
 
   await provider.ensureTrackLoaded()
 
-  assert.equal(controller.loads, 1)
+  assert.equal(controller.pointLoads, 1)
+  assert.equal(controller.trackLoads, 1)
 })
 
 test("points still resolve through the same lazy load", async () => {
@@ -47,8 +61,27 @@ test("points still resolve through the same lazy load", async () => {
 
   const points = await provider.points()
 
-  assert.equal(controller.loads, 1)
+  assert.equal(controller.pointLoads, 1)
+  assert.equal(controller.trackLoads, 1)
   assert.equal(points.length, 1)
+})
+
+test("import-scoped studio geometry uses only imported points", async () => {
+  const { controller, provider } = fakeMapPage()
+  controller.api.importId = 42
+  controller._getLoadedPoints = () => [
+    { latitude: 52.5, longitude: 13.4, timestamp: 1 },
+    { latitude: 52.6, longitude: 13.5, timestamp: 2 },
+  ]
+
+  await provider.ensureTrackLoaded()
+
+  assert.equal(controller.pointLoads, 1)
+  assert.equal(controller.trackLoads, 0)
+  assert.deepEqual(provider.trackGeojson().features[0].geometry.coordinates, [
+    [13.4, 52.5],
+    [13.5, 52.6],
+  ])
 })
 
 test("date changes wait for the map reload promise", async (t) => {

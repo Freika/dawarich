@@ -1010,13 +1010,9 @@ de:
         show_individual_location_points: Zeige einzelne Standortpunkte
         edit_points: Punkte bearbeiten
         allow_dragging_points_to_correct_their_position: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren.
-        editing_points_is_a_pro_feature_this_stays_on_for: Die Bearbeitung von Punkten ist eine Pro-Funktion — dies bleibt für die aktuelle Sitzung aktiv, und Bewegungen werden auf dem Lite-Plan nicht gespeichert.
+        editing_points_is_a_pro_feature_this_stays_on_for: Die Bearbeitung von Punkten ist mit dem Pro-Plan verfügbar.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren. Wird über Sitzungen hinweg gespeichert.
-        tiled_rendering: "Gekachelte Darstellung"
         beta: "Beta"
-        tiled_rendering_description: "Zeichnet Punkte, Routen, Tracks und Kartennebel beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden. Routen zeigen deine erzeugten Tracks. Zoome hinein, um die Geschwindigkeit einzelner Abschnitte zu sehen."
-        tiled_rendering_caveats: "Aktiv, solange die Rubbelkarte aus ist. Dichte Bereiche werden zu Markern mit Punktanzahl zusammengefasst — zoome hinein, um einzelne Punkte zu öffnen. Punktbearbeitung ist nicht verfügbar, das Routen-Popup beim Überfahren entfällt — klicke stattdessen auf einen Track — und die Live-Spur kann einige Minuten nachhängen."
-        routes: Routen
         show_connected_route_lines: Zeige verbundene Routenlinien
         color_by_speed: Farbe nach Geschwindigkeit
         edit_color_gradient: Farbverlauf bearbeiten
@@ -1050,8 +1046,8 @@ de:
         show_explored_areas: Erkundete Flächen anzeigen
         per_point: Pro Punkt
         per_hexagon: Pro Sechseck
-        scratch_map: Rubbelkarte
-        show_scratched_countries: Freigerubbelte Länder anzeigen
+        scratch_map: Besuchte Länder
+        show_scratched_countries: Im ausgewählten Zeitraum besuchte Länder hervorheben
         family_members: Familienmitglieder
         show_family_member_locations: Standorte von Familienmitgliedern anzeigen
         click_to_center_on_member: Klicke, um auf Mitglied zu zoomen
@@ -1084,29 +1080,29 @@ de:
         the_custom_style_draws_no_labels_or_points_of_interest: Der benutzerdefinierte Stil zeichnet keine Beschriftungen oder Sehenswürdigkeiten — diese Schalter sind während der Aktivierung deaktiviert.
         points_of_interest: Sehenswürdigkeiten
         choose_which_poi_categories_appear_on_the_map: Wähle aus, welche POI-Kategorien auf der Karte angezeigt werden.
-        meters_between_routes: Meter zwischen Routen
         distance_threshold_for_route_splitting: Schwellenwert für die Routenunterteilung
-        minutes_between_routes: Minuten zwischen Routen
         min: 60min
         min_2: 1min
         min_3: 90min
         min_4: 180min
         time_threshold_for_route_splitting: Schwellenwert für die Routenteilung; Lücken über diesem Wert fließen auch nicht in die Distanzstatistik ein
-        points_rendering_mode: Darstellungsmodus der Punkte
         raw_all_points: Rohdaten (alle Punkte)
         simplified_reduced_points: Vereinfacht (reduzierte Punkte)
-        speed_colored_routes: Geschwindigkeitsfarbige Routen
-        color_routes_by_speed: Routen nach Geschwindigkeit färben
         fog_of_war_radius: Radius des Kartennebels
         clear_radius_around_visited_points: Radius des aufgedeckten Bereichs um besuchte Punkte
         fog_of_war_threshold: Schwellenwert des Kartennebels
         minimum_points_to_clear_fog: Mindestanzahl an Punkten zum Aufdecken
         gps_noise_filtering: GPS-Rauschfilterung
+        track_generation: Track-Erstellung
+        track_split_distance: Entfernungsabstand zwischen Tracks
+        track_split_distance_hint: Einen neuen Track beginnen, wenn aufeinanderfolgende Punkte weiter auseinanderliegen.
+        track_split_time: Zeitabstand zwischen Tracks
+        track_split_time_hint: Einen neuen Track beginnen, wenn die Zeitspanne zwischen Punkten länger ist.
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Blendet Messwerte aus, die keine echte Position darstellen können — etwa unmögliche Sprünge oder beschädigte Koordinaten. Deaktivieren, um alle Rohpunkte anzuzeigen.
         re_evaluate_past_data: Vergangene Daten erneut prüfen
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Entfernt vorhandene Anomaliemarkierungen und prüft alle Punkte mit den aktuellen Einstellungen erneut. Tracks, Statistiken und Zusammenfassungen werden anschließend im Hintergrund neu erstellt.
         recalculate_tracks_stats: Tracks & Statistiken neu berechnen
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Tracks, Statistiken und Zusammenfassungen aus deinen aktuellen Punkten neu erstellen, ohne Anomalie-Flaggen zu berühren. Nützlich nach Änderung der Routenteilungsschwellen.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Speichere diese Schwellenwerte zuerst. Neue Tracks verwenden sie automatisch; wähle „Tracks und Statistiken neu berechnen“, um sie auf bestehende Daten anzuwenden.
         city_statistics: Stadtstatistiken
         min_minutes_in_city: Min. Minuten in der Stadt
         min_5: 60 min
@@ -3862,8 +3858,6 @@ de:
       anomaly_point: Anomaliepunkt
       failed_to_load_location_data_please_try_again: Daten zum Standort konnten nicht geladen werden. Bitte versuche es erneut.
       click_on_the_map_to_place_a_place: Klicke auf die Karte, um einen Ort zu platzieren
-      failed_to_reload_routes: Route konnte nicht neu geladen werden
-      failed_to_load_scratch_layer: Rubbelkartenebene konnte nicht geladen werden
       failed_to_load_photos: Fotos konnten nicht geladen werden
       some_photo_sources_unavailable: "Einige Fotoquellen sind nicht verfügbar: %{sources}"
       failed_to_load_areas: Gebiete konnten nicht geladen werden
@@ -3871,7 +3865,6 @@ de:
       failed_to_load_track_details: Track-Details konnten nicht geladen werden
       failed_to_load_flights: Flüge konnten nicht geladen werden
       failed_to_load_anomalies: Anomalien konnten nicht geladen werden
-      reloading_routes: Route wird neu geladen...
       cannot_update_recalculation_is_already_in_progress: 'Aktualisierung nicht möglich: Eine Neuberechnung läuft bereits.'
       transportation_settings_saved: Transporteinstellungen gespeichert
       globe_view_will_be_applied_after_page_reload: Globusansicht wird nach Neuladen der Seite angewendet
@@ -3926,6 +3919,11 @@ de:
       failed_to_update_visit: Aktualisierung des Aufenthalts fehlgeschlagen
       visit_deleted_successfully: Aufenthalt gelöscht
       failed_to_update_point_position_please_try_again: Aktualisierung der Punktposition fehlgeschlagen. Bitte versuche es erneut.
+      point_edit_conflict: Dieser Punkt wurde in einer anderen Sitzung geändert. Die zuletzt gespeicherte Position wird angezeigt.
+      failed_to_load_map_tiles: Kartenkacheln konnten nicht geladen werden.
+      tracks_pending: Noch keine Tracks in dieser Ansicht. Verschiebe die Karte oder erweitere den Zeitraum; ein neuer Import wird möglicherweise noch verarbeitet.
+      failed_to_load_visited_countries: Besuchte Länder konnten nicht geladen werden.
+      retry: Erneut versuchen
       failed_to_load_track_points: Die Track-Punkte konnten nicht geladen werden
       point_updated_track_will_be_recalculated: Punkt aktualisiert. Der Track wird neu berechnet.
       delete: Löschen
@@ -3938,11 +3936,10 @@ de:
       confirmed: Bestätigt
       layers: Ebenen
       points: Punkte
-      routes: Routen
       tracks: Tracks
       heatmap: Heatmap
       fog_of_war: Kartennebel
-      scratch_map: Rubbelkarte
+      scratch_map: Besuchte Länder
       areas: Gebiete
       photos: Fotos
       visits: Aufenthalte
@@ -3982,16 +3979,6 @@ de:
       show_all_days: Alle Tage anzeigen
       collapse_all_days: Alle Tage zusammenklappen
     map:
-      tiled_rendering:
-        inactive_note:
-          one: "Inaktiv, solange %{layers} aktiv ist — diese Ebene benötigt alle Punkte."
-          other: "Inaktiv, solange %{layers} aktiv sind — diese Ebenen benötigen alle Punkte."
-        editing_unavailable: "Bei gekachelter Darstellung nicht verfügbar — Vektorkacheln haben keine verschiebbaren Punkte"
-        failed: "Kartenkacheln konnten nicht geladen werden. Versuche einen kürzeren Zeitraum oder schalte die gekachelte Darstellung in den Karteneinstellungen aus."
-        tracks_pending: "Keine Tracks in diesem Ausschnitt. Routen zeigen bei gekachelter Darstellung deine erzeugten Tracks — verschiebe die Karte, erweitere den Zeitraum oder schau nach einem frischen Import später wieder vorbei."
-        splitting_unavailable: "Bei gekachelter Darstellung ohne Wirkung — Routen folgen deinen erzeugten Tracks."
-        blockers:
-          scratch: "Rubbelkarte"
       places_layer: Ortsebene
       confirm_delete_point: Möchtest du diesen Punkt wirklich löschen?
       confirm_delete_point_permanently: |-
@@ -4310,7 +4297,6 @@ de:
       radius: Radius
       reason: Grund
       route_information: Route-Informationen
-      routes: Route
       selected_point: Ausgewählter Punkt
       show_points: Punkte anzeigen
       show_points_help: Aktivieren, um Punkte anzuzeigen und zu ziehen, um den Track zu bearbeiten
@@ -4425,14 +4411,10 @@ de:
       fog_threshold: Schwellenwert des Kartennebels
       live_map: Live-Karte
       merge_threshold: Verschmelzschwellwert in Minuten
-      meters_between_routes: Meter zwischen Routen
-      minutes_between_routes: Minuten zwischen Routen
-      points_rendering_mode: Darstellung der Punkte
       raw: Rohdaten
       route_opacity: Deckkraft der Route, %
       simplified: Vereinfacht
       speed_color_scale: Geschwindigkeitsfarbskala
-      speed_colored_routes: Geschwindigkeitsfarbige Routen
       time_threshold: Zeitgrenze in Minuten
     calendar_panel:
       loading_visited_places: Lade besuchte Orte...

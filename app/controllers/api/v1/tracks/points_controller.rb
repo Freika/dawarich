@@ -10,7 +10,7 @@ class Api::V1::Tracks::PointsController < ApiController
 
     # If no points are associated, fall back to fetching by time range
     # This handles tracks created before point association was implemented
-    if points.empty?
+    unless points.exists?
       points = scoped_points
                .not_anomaly
                .without_raw_data
@@ -18,6 +18,7 @@ class Api::V1::Tracks::PointsController < ApiController
                .where(timestamp: track.start_at.to_i..track.end_at.to_i)
                .order(timestamp: :asc)
     end
+    points = points.where(import_id: params[:import_id]) if params[:import_id].present?
 
     # Support optional pagination (backward compatible - returns all if no page param)
     if params[:page].present?
