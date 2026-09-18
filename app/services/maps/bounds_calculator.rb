@@ -101,17 +101,24 @@ module Maps
       scope = scoped_points(start_timestamp, end_timestamp).where.not(lonlat: nil)
       columns = 'points.id AS point_id, points.timestamp AS point_timestamp, points.lonlat AS point_lonlat'
       scoped_sql = scope.reselect(columns).to_sql
-      interval = end_timestamp - start_timestamp
 
       select_cells_with_timeout(SAMPLE_QUERY_TIMEOUT_MS, <<~SQL.squish)
-        WITH sampled_points AS (
+        WITH occupied_range AS (
+          SELECT
+            (SELECT point_timestamp FROM (#{scoped_sql}) earliest
+             ORDER BY point_timestamp LIMIT 1) AS first_timestamp,
+            (SELECT point_timestamp FROM (#{scoped_sql}) latest
+             ORDER BY point_timestamp DESC LIMIT 1) AS last_timestamp
+        ), sampled_points AS (
           SELECT DISTINCT ON (sample.point_id) sample.point_id, sample.point_lonlat
-          FROM generate_series(0, #{SAMPLE_MARKS - 1}) AS marks(sample_number)
+          FROM occupied_range
+          CROSS JOIN generate_series(0, #{SAMPLE_MARKS - 1}) AS marks(sample_number)
           JOIN LATERAL (
             SELECT point_id, point_lonlat
             FROM (#{scoped_sql}) scoped
-            WHERE point_timestamp >= #{start_timestamp} +
-              (#{interval}::bigint * marks.sample_number / #{SAMPLE_MARKS - 1})
+            WHERE point_timestamp >= occupied_range.first_timestamp +
+              ((occupied_range.last_timestamp - occupied_range.first_timestamp)::bigint *
+               marks.sample_number / #{SAMPLE_MARKS - 1})
             ORDER BY point_timestamp, point_id
             LIMIT 1
           ) sample ON true

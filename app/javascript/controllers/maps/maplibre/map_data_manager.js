@@ -290,6 +290,7 @@ export class MapDataManager {
       : []
     this.layerManager?.getLayer("points-mvt")?.setFlightWindows(windows)
     this.layerManager?.getLayer("tracks-mvt")?.setFlightWindows(windows)
+    this.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
   }
 
   /**

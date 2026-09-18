@@ -282,7 +282,7 @@ export class MapEditor {
     this.map.off("mousemove", this._onMouseMove)
     this.map.off("mouseup", this._onMouseUp)
     this.map.off("mousedown", "track-points", this._onMouseDown)
-    this._restoreTileFilters()
+    if (this.data) this._restoreTileFilters()
     this.layer.remove()
     this.data = null
     this.trackId = null

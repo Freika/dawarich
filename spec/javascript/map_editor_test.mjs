@@ -29,6 +29,20 @@ class EditSuccessIndicator {
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(dependencies + source).toString("base64")}`
 const { MapEditor } = await import(moduleUrl)
 
+let managerSource = await readFile(
+  new URL(
+    "../../app/javascript/controllers/maps/maplibre/map_data_manager.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
+managerSource = managerSource.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const managerDependencies = `
+const flightWindows = (geoJSON) => geoJSON?.windows || []
+`
+const managerUrl = `data:text/javascript;base64,${Buffer.from(managerDependencies + managerSource).toString("base64")}`
+const { MapDataManager } = await import(managerUrl)
+
 globalThis.document = { dispatchEvent() {} }
 globalThis.CustomEvent = class {
   constructor(type, options) {
@@ -570,6 +584,69 @@ test("tile refresh reapplies exclusions and close restores the newest base filte
   assert.equal(map.listenerCount("mousedown", "track-points"), 0)
   assert.equal(map.listenerCount("mousemove"), 0)
   assert.equal(map.listenerCount("mouseup"), 0)
+})
+
+test("flight toggles preserve edit exclusions and closing restores the current mask", async () => {
+  const map = fakeMap()
+  const layers = {
+    flights: { visible: false },
+    "points-mvt": {
+      setFlightWindows: (windows) =>
+        map.setFilter(
+          "points-mvt",
+          windows.length ? ["flight-points", windows] : null,
+        ),
+    },
+    "tracks-mvt": {
+      setFlightWindows: (windows) =>
+        map.setFilter(
+          "tracks-mvt",
+          windows.length ? ["flight-tracks", windows] : null,
+        ),
+    },
+  }
+  const layerManager = { getLayer: (name) => layers[name] }
+  const editor = new MapEditor(map, {
+    apiClient: {
+      fetchTrackWithSegments: async () => trackFeature(),
+      fetchTrackPoints: async () => [point(1, 0, 0), point(2, 2, 0)],
+    },
+    layerManager,
+    historyScope: () => ({}),
+  })
+  layers["map-editor"] = editor
+  const manager = new MapDataManager({ map, layerManager })
+  manager.lastLoadedData = { flightsGeoJSON: { windows: [[100, 200]] } }
+
+  await editor.selectTrack(10)
+  layers.flights.visible = true
+  manager.applyFlightMask()
+  const trackMask = ["flight-tracks", [[100, 200]]]
+  const pointMask = ["flight-points", [[100, 200]]]
+  assert.deepEqual(map.getFilter("tracks-mvt"), [
+    "all",
+    trackMask,
+    ["!=", ["get", "id"], 10],
+  ])
+  assert.deepEqual(map.getFilter("points-mvt"), [
+    "all",
+    pointMask,
+    ["!", ["in", ["get", "id"], ["literal", [1, 2]]]],
+  ])
+
+  layers.flights.visible = false
+  manager.applyFlightMask()
+  assert.deepEqual(map.getFilter("tracks-mvt"), ["!=", ["get", "id"], 10])
+  editor.close()
+  assert.equal(map.getFilter("tracks-mvt"), null)
+  assert.equal(map.getFilter("points-mvt"), null)
+
+  layers.flights.visible = true
+  manager.applyFlightMask()
+  await editor.selectTrack(10)
+  editor.close()
+  assert.deepEqual(map.getFilter("tracks-mvt"), trackMask)
+  assert.deepEqual(map.getFilter("points-mvt"), pointMask)
 })
 
 test("successful point move refreshes tiles even after the editor closes", async () => {
