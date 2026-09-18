@@ -5,6 +5,8 @@ import { Toast } from "maps_maplibre/components/toast"
 import { pointMatchesActiveDateRange } from "maps_maplibre/utils/realtime_date_filter"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 
+const LIVE_REFRESH_DELAY_MS = 1000
+
 /**
  * Real-time controller
  * Manages ActionCable connection and real-time updates
@@ -47,6 +49,8 @@ export default class extends Controller {
   }
 
   disconnect() {
+    clearTimeout(this.liveRefreshTimer)
+    this.liveRefreshTimer = null
     this.channels?.unsubscribeAll()
   }
 
@@ -218,6 +222,35 @@ export default class extends Controller {
       return
     }
 
+    this.scheduleLiveRefresh()
+
+    this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
+      id: parseInt(id, 10),
+      battery: parseFloat(battery) || null,
+      altitude: parseFloat(altitude) || null,
+      timestamp: timestamp,
+      velocity: parseFloat(velocity) || null,
+      country_name: countryName || null,
+    })
+
+    this.zoomToPoint(parseFloat(lon), parseFloat(lat))
+
+    Toast.info(translate("messages.new_location_recorded"))
+  }
+
+  scheduleLiveRefresh() {
+    if (this.liveRefreshTimer) return
+
+    this.liveRefreshTimer = setTimeout(() => {
+      this.liveRefreshTimer = null
+      this.refreshLiveLayers()
+    }, LIVE_REFRESH_DELAY_MS)
+  }
+
+  refreshLiveLayers() {
+    const mapsController = this.mapsV2Controller
+    if (!mapsController) return
+
     mapsController.layerManager?.getLayer("points-mvt")?.refresh()
     mapsController.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
     mapsController.layerManager
@@ -234,19 +267,6 @@ export default class extends Controller {
           () => mapsController.layerManager?.getLayer("scratch")?.update(),
         )
       })
-
-    this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
-      id: parseInt(id, 10),
-      battery: parseFloat(battery) || null,
-      altitude: parseFloat(altitude) || null,
-      timestamp: timestamp,
-      velocity: parseFloat(velocity) || null,
-      country_name: countryName || null,
-    })
-
-    this.zoomToPoint(parseFloat(lon), parseFloat(lat))
-
-    Toast.info(translate("messages.new_location_recorded"))
   }
 
   /**
