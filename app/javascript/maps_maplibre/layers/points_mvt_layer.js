@@ -1,3 +1,4 @@
+import { appUrl } from "services/app_url"
 import { getMarkerStrokeColor } from "../utils/marker_theme"
 import { BaseLayer } from "./base_layer"
 import { heatmapPaint } from "./heatmap_layer"
@@ -242,7 +243,7 @@ export class PointsMvtLayer extends BaseLayer {
     if (this._cacheBuster) params.set("_", String(this._cacheBuster))
 
     const query = params.toString()
-    const path = "/api/v1/tiles/points/{z}/{x}/{y}.mvt"
+    const path = appUrl("/api/v1/tiles/points/{z}/{x}/{y}.mvt")
 
     return query ? `${path}?${query}` : path
   }

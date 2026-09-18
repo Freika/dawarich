@@ -1,3 +1,5 @@
+import { appUrl } from "services/app_url"
+
 export const DEFAULT_ROUTE_COLOR = "#FF3B30"
 export const DEFAULT_CASING_COLOR = "#000000"
 
@@ -77,7 +79,7 @@ const tokenCache = new Map()
 
 export async function loadThemeTokens(key) {
   if (tokenCache.has(key)) return tokenCache.get(key)
-  const response = await fetch(`/poster_themes/${key}.json`)
+  const response = await fetch(appUrl(`/poster_themes/${key}.json`))
   if (!response.ok) {
     throw new Error(`Failed to load poster theme "${key}" (${response.status})`)
   }

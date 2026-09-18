@@ -1,5 +1,6 @@
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
+import { appUrl } from "services/app_url"
 import { BaseLayer } from "./base_layer"
 
 /**
@@ -280,7 +281,7 @@ export class TrackPointsLayer extends BaseLayer {
       throw new Error("API client not configured")
     }
 
-    const response = await fetch(`/api/v1/points/${pointId}`, {
+    const response = await fetch(appUrl(`/api/v1/points/${pointId}`), {
       method: "PATCH",
       headers: {
         "Content-Type": "application/json",

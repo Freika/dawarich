@@ -7,11 +7,14 @@ RSpec.describe 'Web app manifest launch behavior' do
     JSON.parse(Rails.root.join('public/site.webmanifest').read)
   end
 
-  it 'opens the Map v2 application within the site scope' do
-    expect(manifest).to include(
-      'start_url' => '/map/v2',
-      'scope' => '/'
-    )
+  it 'opens the Map v2 application within the scope the manifest is served from' do
+    at_root = URI('https://example.com/site.webmanifest')
+    under_subpath = URI('https://example.com/dawarich/site.webmanifest')
+
+    expect(URI.join(at_root, manifest['start_url']).path).to eq('/map/v2')
+    expect(URI.join(at_root, manifest['scope']).path).to eq('/')
+    expect(URI.join(under_subpath, manifest['start_url']).path).to eq('/dawarich/map/v2')
+    expect(URI.join(under_subpath, manifest['scope']).path).to eq('/dawarich/')
   end
 
   it 'declares the fields browsers require for installation' do

@@ -29,6 +29,7 @@ settingsManagerSource = settingsManagerSource
 
 const requests = []
 const context = {
+  appUrl: (path) => path,
   console,
   fetch: async (_url, options = {}) => {
     requests.push(options)

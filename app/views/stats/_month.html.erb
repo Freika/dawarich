@@ -323,7 +323,7 @@
 
 <!-- Action Buttons -->
 <div class="flex flex-wrap gap-4 mt-8 justify-center">
-  <a href="/stats/<%= year %>" class="btn btn-outline"><%= t('.back_to') %> <%= year %></a>
+  <a href="<%= year_stats_path(year) %>" class="btn btn-outline"><%= t('.back_to') %> <%= year %></a>
   <button class="btn btn-outline" onclick="sharing_modal.showModal()">
     <%= icon 'share' %> <%= t('.share') %>
   </button>

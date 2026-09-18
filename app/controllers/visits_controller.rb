@@ -295,7 +295,7 @@ class VisitsController < ApplicationController
   def build_timeline_url(date: 'today', status: nil)
     params = { panel: 'timeline', date: date }
     params[:status] = status if status.present?
-    "/map/v2?#{params.to_query}"
+    map_v2_path(params)
   end
 
   def update_visit_name_from_place(place_id)

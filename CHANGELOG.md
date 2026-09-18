@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Visit detection no longer sends a notification for every new suggested visit.
 - Poster Studio waits for the map to load the selected date range and disables the studio switch while loading.
 
+### Added
+
+- Dawarich can be served under a URL subpath such as `https://example.com/dawarich` by setting `RAILS_RELATIVE_URL_ROOT` on the app and Sidekiq containers. Deployments at the domain root are unchanged.
+
 ### Fixed
 
 - Yearly digests for cloud-Lite users read seasonality and country time spent from the same data window as monthly distances and toponyms.

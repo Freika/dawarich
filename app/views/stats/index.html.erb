@@ -50,7 +50,7 @@
         <div class="card-body">
           <h2 class="card-title justify-between text-<%= header_colors[year % header_colors.size] %>">
             <div>
-              <%= link_to year, "/stats/#{year}", class: 'underline hover:no-underline' %>
+              <%= link_to year, year_stats_path(year), class: 'underline hover:no-underline' %>
               <%= link_to t('.map'), preferred_map_path(year_timespan(year)), class: 'underline hover:no-underline' %>
             </div>
             <div class="flex items-center gap-2">

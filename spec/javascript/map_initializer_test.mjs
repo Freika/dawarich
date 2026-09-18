@@ -30,6 +30,7 @@ async function loadMapInitializer({ getMapStyle, Toast }) {
     const getMapStyle = globalThis.__mapInitializerGetMapStyle
     const Toast = globalThis.__mapInitializerToast
     const registerRTLTextPlugin = () => {}
+    const appUrl = (path) => path
     const translate = (key) => key
     ${basemapUrlSource.replace(/^export /gm, "")}
   `

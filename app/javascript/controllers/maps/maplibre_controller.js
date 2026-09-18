@@ -12,6 +12,7 @@ import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
 import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { appUrl } from "services/app_url"
 import { AreaSelectionManager } from "./maplibre/area_selection_manager"
 import { DataLoader } from "./maplibre/data_loader"
 import { DateManager } from "./maplibre/date_manager"
@@ -756,7 +757,9 @@ export default class extends Controller {
     if (!this.hasTimelineFeedContainerTarget) return
 
     const frame = this.timelineFeedContainerTarget
-    const url = `/map/timeline_feeds?start_at=${encodeURIComponent(this.startDateValue)}&end_at=${encodeURIComponent(this.endDateValue)}`
+    const url = appUrl(
+      `/map/timeline_feeds?start_at=${encodeURIComponent(this.startDateValue)}&end_at=${encodeURIComponent(this.endDateValue)}`,
+    )
 
     if (frame.getAttribute("src") !== url) {
       // Show skeleton while loading
@@ -1493,7 +1496,7 @@ export default class extends Controller {
         isComplete: false,
       })
 
-      const response = await fetch("/api/v1/families/locations", {
+      const response = await fetch(appUrl("/api/v1/families/locations"), {
         headers: {
           Accept: "application/json",
           "Content-Type": "application/json",
@@ -1552,7 +1555,7 @@ export default class extends Controller {
 
       const params = new URLSearchParams({ start_at: startAt, end_at: endAt })
       const response = await fetch(
-        `/api/v1/families/locations/history?${params}`,
+        appUrl(`/api/v1/families/locations/history?${params}`),
         {
           headers: {
             Accept: "application/json",
@@ -1865,7 +1868,7 @@ export default class extends Controller {
   async openVisitModal(visitId) {
     try {
       // Fetch visit details
-      const response = await fetch(`/api/v1/visits/${visitId}`, {
+      const response = await fetch(appUrl(`/api/v1/visits/${visitId}`), {
         headers: {
           Authorization: `Bearer ${this.apiKeyValue}`,
           "Content-Type": "application/json",
@@ -1899,7 +1902,7 @@ export default class extends Controller {
     if (!areaId) return
 
     try {
-      const response = await fetch(`/api/v1/areas/${areaId}`, {
+      const response = await fetch(appUrl(`/api/v1/areas/${areaId}`), {
         headers: {
           Authorization: `Bearer ${this.apiKeyValue}`,
           "Content-Type": "application/json",
@@ -2049,7 +2052,7 @@ export default class extends Controller {
   async openPlaceEditModal(placeId) {
     try {
       // Fetch place details
-      const response = await fetch(`/api/v1/places/${placeId}`, {
+      const response = await fetch(appUrl(`/api/v1/places/${placeId}`), {
         headers: {
           Authorization: `Bearer ${this.apiKeyValue}`,
           "Content-Type": "application/json",

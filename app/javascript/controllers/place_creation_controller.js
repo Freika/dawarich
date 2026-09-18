@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
+import { appUrl } from "services/app_url"
 
 export default class extends Controller {
   static targets = [
@@ -60,7 +61,7 @@ export default class extends Controller {
     this.longitudeInputTarget.value = longitude
 
     // Set form for creation mode
-    this.formTarget.action = "/places"
+    this.formTarget.action = appUrl("/places")
     this.formTarget.method = "post"
     this.removeMethodOverride()
 
@@ -87,7 +88,7 @@ export default class extends Controller {
     }
 
     // Set form for edit mode
-    this.formTarget.action = `/places/${place.id}`
+    this.formTarget.action = appUrl(`/places/${place.id}`)
     this.addMethodOverride("patch")
 
     if (this.hasModalTitleTarget)
@@ -129,7 +130,9 @@ export default class extends Controller {
   loadNearbyFrame(latitude, longitude) {
     if (!this.hasNearbyFrameTarget) return
 
-    this.nearbyFrameTarget.src = `/places/nearby?latitude=${latitude}&longitude=${longitude}&radius=0.5&limit=5`
+    this.nearbyFrameTarget.src = appUrl(
+      `/places/nearby?latitude=${latitude}&longitude=${longitude}&radius=0.5&limit=5`,
+    )
   }
 
   selectNearby(event) {

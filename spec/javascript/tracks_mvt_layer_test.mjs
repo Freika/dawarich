@@ -19,7 +19,13 @@ const tracksMvtSource = await readFile(
 
 const stripImports = (source) =>
   source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const combined = [baseLayerSource, tracksMvtSource].map(stripImports).join("\n")
+const combined = [
+  "const appUrl = (path) => path",
+  baseLayerSource,
+  tracksMvtSource,
+]
+  .map(stripImports)
+  .join("\n")
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combined).toString("base64")}`
 const { TracksMvtLayer, parseSpeedColorScale } = await import(moduleUrl)
 

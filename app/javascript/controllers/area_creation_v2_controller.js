@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
+import { appUrl } from "services/app_url"
 
 export default class extends Controller {
   static targets = [
@@ -55,14 +56,14 @@ export default class extends Controller {
 
   applyMode(mode) {
     if (mode === "edit" && this.editingAreaId) {
-      this.formTarget.action = `/areas/${this.editingAreaId}`
+      this.formTarget.action = appUrl(`/areas/${this.editingAreaId}`)
       this.addMethodOverride("patch")
       if (this.hasModalTitleTarget)
         this.modalTitleTarget.textContent = translate("areas.edit")
       if (this.hasSubmitButtonTarget)
         this.submitButtonTarget.value = translate("areas.update")
     } else {
-      this.formTarget.action = "/areas"
+      this.formTarget.action = appUrl("/areas")
       this.removeMethodOverride()
       if (this.hasModalTitleTarget)
         this.modalTitleTarget.textContent = translate("areas.create_new")

@@ -1,3 +1,5 @@
+import { appUrl } from "services/app_url"
+
 const EMPTY_COLLECTION = { type: "FeatureCollection", features: [] }
 
 export class MapPageProvider {
@@ -79,7 +81,7 @@ export class MapPageProvider {
     const params = new URLSearchParams(window.location.search)
     params.set("start_at", start)
     params.set("end_at", end)
-    window.history.pushState({}, "", `/map/v2?${params.toString()}`)
+    window.history.pushState({}, "", appUrl(`/map/v2?${params.toString()}`))
     const pending = []
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {

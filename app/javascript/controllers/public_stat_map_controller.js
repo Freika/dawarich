@@ -3,6 +3,7 @@ import maplibregl from "maplibre-gl"
 import { buildHexagonPopup } from "maps_maplibre/utils/hexagon_popup"
 import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
+import { appUrl } from "services/app_url"
 import BaseController from "./base_controller"
 
 export default class extends BaseController {
@@ -103,7 +104,7 @@ export default class extends BaseController {
         uuid: this.uuidValue,
       })
 
-      const response = await fetch(`/api/v1/maps/hexagons?${params}`, {
+      const response = await fetch(appUrl(`/api/v1/maps/hexagons?${params}`), {
         headers: { "Content-Type": "application/json" },
       })
 

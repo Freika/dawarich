@@ -1,3 +1,4 @@
+import { appUrl } from "services/app_url"
 import { BaseLayer } from "./base_layer"
 
 // FNV-1a over the api key: a non-secret cache partitioner keying URL-based
@@ -286,7 +287,7 @@ export class TracksMvtLayer extends BaseLayer {
     if (this.apiKey) params.set("u", trackCachePartitioner(this.apiKey))
 
     const query = params.toString()
-    const path = "/api/v1/tiles/tracks/{z}/{x}/{y}.mvt"
+    const path = appUrl("/api/v1/tiles/tracks/{z}/{x}/{y}.mvt")
 
     return query ? `${path}?${query}` : path
   }

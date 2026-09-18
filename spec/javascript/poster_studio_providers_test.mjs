@@ -2,8 +2,8 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-// MapPageProvider reaches the live map through document.getElementById; the
-// module itself imports nothing, so a minimal DOM shim is all Node needs.
+// MapPageProvider reaches the live map through document.getElementById; with
+// its one import stubbed, a minimal DOM shim is all Node needs.
 globalThis.document = { getElementById: () => ({}) }
 
 const source = await readFile(
@@ -13,7 +13,7 @@ const source = await readFile(
   ),
   "utf8",
 )
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(source.replace('import { appUrl } from "services/app_url"', "const appUrl = (path) => path")).toString("base64")}`
 const { MapPageProvider, TripProvider } = await import(moduleUrl)
 
 // Mirrors the real controller: ensurePointsLoaded() is what builds the routes

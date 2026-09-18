@@ -75,6 +75,16 @@ else
   echo "⚠️ $ASSETS_DIST not found — static assets were NOT synced. The public volume may keep serving assets from a previous version."
 fi
 
+if [ -n "$RAILS_RELATIVE_URL_ROOT" ] && [ -d "$APP_PATH/public/assets" ]; then
+  echo "🔗 Pointing stylesheet asset URLs at $RAILS_RELATIVE_URL_ROOT/assets..."
+  find "$APP_PATH/public/assets" -name '*.css' -exec grep -l 'url(/assets/' {} + | while read -r css; do
+    sed -i "s#url(/assets/#url(${RAILS_RELATIVE_URL_ROOT}/assets/#g" "$css"
+    if [ -f "$css.gz" ]; then
+      gzip -9 -kf "$css"
+    fi
+  done
+fi
+
 # Function to check and create a PostgreSQL database
 create_database() {
   local db_name=$1
