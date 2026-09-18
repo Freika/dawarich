@@ -32,6 +32,42 @@ RSpec.describe Points::Move do
     expect(TracksChannel).not_to have_received(:broadcast_to)
   end
 
+  it "enqueues a monthly stats recalculation for the moved point's month" do
+    expect do
+      described_class.call(
+        user:, point_id: point.id, latitude: 0.01, longitude: 0.01,
+        point_revision: point.lock_version, track_revision: track.lock_version,
+        history_scope: scope
+      )
+    end.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 1970, 1)
+  end
+
+  it 'still publishes the map edit when the stats job cannot be enqueued' do
+    allow(Stats::CalculatingJob).to receive(:perform_later).and_raise(Redis::CannotConnectError)
+
+    result = described_class.call(
+      user:, point_id: point.id, latitude: 0.01, longitude: 0.01,
+      point_revision: point.lock_version, track_revision: track.lock_version,
+      history_scope: scope
+    )
+
+    expect(MapEdits::Publisher).to have_received(:call).with(user:, result:)
+  end
+
+  it "picks the stats month in the user's timezone" do
+    user.update!(settings: user.settings.merge('timezone' => 'Asia/Tokyo'))
+    boundary_timestamp = Time.utc(2026, 1, 31, 20, 0).to_i
+    boundary_point = create(:point, user:, timestamp: boundary_timestamp, longitude: 5, latitude: 5)
+
+    expect do
+      described_class.call(
+        user:, point_id: boundary_point.id, latitude: 5.01, longitude: 5.01,
+        point_revision: boundary_point.lock_version, track_revision: nil,
+        history_scope: { start_at: boundary_timestamp - 60, end_at: boundary_timestamp + 60, import_id: nil }
+      )
+    end.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 2)
+  end
+
   it 'returns canonical state and does not mutate on a stale point revision' do
     expect do
       described_class.call(

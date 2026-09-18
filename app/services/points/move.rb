@@ -38,6 +38,7 @@ class Points::Move
     started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     result = Timeout.timeout(TIMEOUT_SECONDS) { move_in_transaction }
     publish(result)
+    enqueue_stats_recalculation(result.point)
     instrument(:success, started_at, result)
     result
   rescue StaleEdit => e
@@ -127,6 +128,15 @@ class Points::Move
     )
     ActiveSupport::Notifications.instrument('point_move.post_commit_failure', operation: 'publish')
     record_post_commit_failure('publish')
+    report_post_commit_failure(e)
+  end
+
+  def enqueue_stats_recalculation(point)
+    local_time = Time.zone.at(point.timestamp).in_time_zone(user.timezone_iana)
+    Stats::CalculatingJob.perform_later(user.id, local_time.year, local_time.month)
+  rescue StandardError => e
+    Rails.logger.error("event=point_move.post_commit_failed error_class=#{e.class} point_id=#{point.id}")
+    record_post_commit_failure('stats')
     report_post_commit_failure(e)
   end
 
