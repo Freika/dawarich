@@ -56,7 +56,7 @@ RSpec.describe 'ReverseGeocoding::Places::FetchData preserves import identity' d
   end
 
   before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    configure_instance_geocoding
     allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
     allow(Geocoding::Search).to receive(:call).and_return([photon_venue_result])
   end

@@ -9,6 +9,7 @@
     <% if DawarichSettings.self_hosted? %>
       <% if current_user.admin? %>
         <%= link_to t('.users'), settings_users_path, role: 'tab', class: "tab tab-lg #{controller_path == 'settings/users' ? 'tab-active' : ''}" %>
+        <%= link_to t('.instance'), admin_settings_path, role: 'tab', class: "tab tab-lg #{active_tab?(admin_settings_path)}" %>
       <% end %>
       <%= link_to t('.background_jobs'), settings_background_jobs_path, role: 'tab', class: "tab tab-lg #{active_tab?(settings_background_jobs_path)}" %>
     <% end %>

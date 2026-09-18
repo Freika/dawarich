@@ -29,7 +29,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
   describe '#call' do
     context 'when reverse geocoding is enabled' do
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        configure_instance_geocoding
         allow(Geocoder).to receive(:search).and_return([mock_geocoded_place])
       end
 
@@ -221,7 +221,6 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
 
     context 'when reverse geocoding is disabled' do
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
         allow(Rails.logger).to receive(:warn)
       end
 
@@ -246,7 +245,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
 
   describe 'private methods' do
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+      configure_instance_geocoding
     end
 
     describe '#place_name' do
@@ -554,7 +553,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
 
   describe 'edge cases and error scenarios' do
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+      configure_instance_geocoding
     end
 
     context 'when Geocoder returns empty results' do
@@ -715,6 +714,7 @@ RSpec.describe ReverseGeocoding::Places::FetchData do
       end
 
       before do
+        configure_instance_geocoding(nominatim_api_host: 'nominatim.test.example.com')
         allow(Geocoder).to receive(:search).and_return([nominatim_place, second_nominatim_place])
       end
 

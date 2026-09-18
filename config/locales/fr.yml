@@ -1,5 +1,69 @@
 ---
 fr:
+  admin:
+    settings:
+      show:
+        title: "Paramètres de l'instance"
+        intro: "Ces paramètres s'appliquent à toute l'instance. Un paramètre fourni par une variable d'environnement est affiché en lecture seule : supprimez la variable pour le modifier ici."
+        save: "Enregistrer les paramètres"
+        saving: "Enregistrement…"
+        secret_set: "Une valeur est enregistrée"
+        pinned_hint: "Fixé par %{variable}"
+        clear_secret: "Effacer la valeur enregistrée"
+        unreadable_secret: "Une valeur enregistrée ne peut pas être déchiffrée avec les clés de cette instance. Saisissez-la à nouveau."
+        sections_nav: "Sections des paramètres de l'instance"
+        nav_pinned: "Défini par une variable d'environnement"
+        nav_attention: "Nécessite votre attention"
+        geocoding:
+          title: "Géocodage"
+          description: "Le géocodage transforme les coordonnées en noms de villes et de pays sur vos points et statistiques, et permet la recherche de lieux."
+          in_use: "Utilisé"
+          "off": "Désactivé"
+          none: "Aucun fournisseur n'est configuré : les nouveaux points ne sont donc pas géocodés. Ajoutez ci-dessous un hôte Photon ou une clé d'API."
+          stored: "Enregistré sur cette page"
+          chain_hint: "Dawarich utilise le premier fournisseur configuré, dans l'ordre ci-dessous. Un fournisseur défini par une variable d'environnement passe avant ceux enregistrés ici."
+          test: "Tester la connexion"
+          testing: "Test en cours…"
+          test_hint: "Une requête avec les paramètres enregistrés"
+          rate_limit: "Limite de requêtes"
+          chibigeo_message: "ChibiGeo est un service de géocodage à tarif fixe et respectueux de la vie privée, conçu par l'équipe Dawarich. Il fonctionne avec Dawarich sans configuration et nécessite une clé d'API."
+          chibigeo_key_link: "Obtenir une clé d'API gratuite"
+          komoot_warning: "photon.komoot.io est un serveur public partagé aux limites strictes. Les requêtes sont limitées à une par seconde, le géocodage en masse sera donc lent. Envisagez d'héberger votre propre instance Photon."
+          https_locked: "HTTPS est toujours activé pour cet hôte."
+          legacy_user_settings: "Certains utilisateurs avaient configuré leur propre géocodage avant son déplacement ici. Leurs réglages n'ont pas été repris, car tous les utilisateurs n'en avaient pas ou ils différaient. Configurez un fournisseur ci-dessous pour réactiver le géocodage pour tout le monde."
+        providers:
+          photon: "Géocodeur open source. Utilisez un serveur hébergé ou le vôtre."
+          geoapify: "Service hébergé. Nécessite une clé d'API."
+          nominatim: "Le géocodeur d'OpenStreetMap, généralement sur votre propre serveur."
+          locationiq: "Service hébergé. Nécessite une clé d'API."
+        points:
+          title: "Points"
+        fields:
+          photon_api_host: "Hôte"
+          photon_api_key: "Clé d'API"
+          photon_api_use_https: "Utiliser HTTPS"
+          nominatim_api_host: "Hôte"
+          nominatim_api_key: "Clé d'API"
+          nominatim_api_use_https: "Utiliser HTTPS"
+          geoapify_api_key: "Clé d'API"
+          locationiq_api_key: "Clé d'API"
+          reverse_geocoding_rps: "Requêtes par seconde"
+          store_geodata: "Géocoder les nouveaux points"
+          host_hint: "Nom d'hôte avec port facultatif, par ex. photon.example.com:2322"
+          rps_hint: "Laissez vide pour ne pas limiter. Indiquez ce que votre serveur ou votre offre autorise."
+          api_key_keep_hint: "Laissez vide pour conserver la clé enregistrée."
+          store_geodata_hint: "Recherche la ville et le pays de chaque nouveau point et enregistre le résultat. Désactivé, les nouveaux points ne gardent que leurs coordonnées."
+      update:
+        saved: "Paramètres enregistrés."
+        pinned: "Refusé : fixé par %{variables}."
+        host_invalid: "L'hôte doit être un simple nom d'hôte, avec un port ou un chemin facultatif, sans espaces."
+        chibigeo_key_required: "ChibiGeo nécessite une clé d'API. Le forfait gratuit Hobby inclut 2 500 requêtes par jour : obtenez votre clé sur chibigeo.com."
+      test_geocoding:
+        not_configured: "Aucun fournisseur de géocodage n'est configuré. Enregistrez d'abord un fournisseur."
+        success: "Votre fournisseur a résolu les coordonnées de test en : %{place}."
+        empty: "Le fournisseur a répondu, mais n'a renvoyé aucun résultat pour les coordonnées de test."
+        failure: "Échec du test : %{error}"
+        rate_limited: "La limite de requêtes du fournisseur est atteinte pour le moment. Réessayez dans un instant."
   route_videos:
     route_video:
       download: "Télécharger le MP4"
@@ -2137,55 +2201,6 @@ fr:
       residential_roads: Routes résidentielles
       track: Tracé
   settings:
-    geocoding:
-      show:
-        title: Geocoding
-        provider: Geocoding provider
-        provider_hint: The provider used for reverse geocoding your points and for place and location search.
-        intro: Geocoding turns coordinates into city and country names on your points and stats, and powers place and location search.
-        host_choice: Photon server
-        choice_chibigeo: ChibiGeo hosted service
-        choice_chibigeo_desc: 'Free tier: 2,500 lookups per day. Works out of the box — just add your API key.'
-        choice_komoot: komoot public server
-        choice_komoot_desc: Free shared instance, throttled to one request per second.
-        choice_custom: Custom host
-        choice_custom_desc: Your own Photon instance or another compatible server.
-        recommended: Recommended
-        https_locked: HTTPS is always on for this host.
-        https_on: 'On'
-        https_off: 'Off'
-        chibigeo_message: ChibiGeo is a flat-rate, privacy-first geocoding service built by the Dawarich team. It works with Dawarich out of the box. An API key is required.
-        chibigeo_limits: The free Hobby plan includes 2,500 lookups per day at 1 request per second — hard caps, no overage.
-        chibigeo_key_link: Get your free API key
-        chibigeo_site_link: What is ChibiGeo?
-        disabled: Disabled
-        env_managed_notice: Geocoding is currently managed by environment variables set by your instance operator. The settings below take effect only if those variables are removed.
-        host: Host
-        host_hint: Bare hostname with optional port, e.g. photon.example.com:2322
-        api_key: API key
-        api_key_hint: Leave blank to keep the saved key.
-        api_key_saved: A key is saved for this provider.
-        clear_api_key: Remove the saved API key
-        use_https: Use HTTPS
-        rps: Requests per second
-        rps_hint_custom: Leave blank for no limit. Set this to whatever your server or plan allows.
-        rps_hint_chibigeo: Match your ChibiGeo plan - Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Asking for more than your plan allows only earns rejected lookups.
-        rps_hint_komoot: komoot enforces one request per second for everyone, so this is fixed.
-        komoot_warning: photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance.
-        komoot_no_api_key: The public komoot server takes no API key — leave it unset.
-        save: Save
-        test: Test my provider
-        test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
-      update:
-        updated: Geocoding settings updated.
-        disabled: Geocoding disabled.
-        invalid_provider: Unknown geocoding provider.
-      test:
-        not_configured: No geocoding provider is configured for your account. Save a provider first.
-        success: 'Success! Your provider resolved the test coordinates to: %{place}.'
-        empty: The provider responded but returned no results for the test coordinates.
-        failure: 'Test failed: %{error}'
-        rate_limited: "The provider's rate limit is busy right now — try again in a moment."
     navigation:
       general: Général
       integrations: Intégrations
@@ -2193,6 +2208,7 @@ fr:
       visits: Visites
       two_factor_authentication: Authentification à deux facteurs
       users: Utilisateurs
+      instance: "Instance"
       background_jobs: Tâches en arrière-plan
     background_jobs:
       index:
@@ -2307,7 +2323,6 @@ fr:
       index:
         services_nav: Services d'intégration
         services:
-          geocoding: Géocodage
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail

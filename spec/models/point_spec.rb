@@ -139,7 +139,7 @@ RSpec.describe Point, type: :model do
       end
 
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        configure_instance_geocoding
         allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
         Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
       end
@@ -160,30 +160,10 @@ RSpec.describe Point, type: :model do
         end
       end
 
-      context 'when only per-user settings enable geocoding (no ENV)' do
-        before do
-          allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-        end
-
-        it 'enqueues for a point whose owner has an active setting' do
-          point.save
-          create(:service_setting, :active, user: point.user)
-          clear_dedup_key(point.id)
-
-          expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
-        end
-
-        it 'does not enqueue for a point whose owner has no setting' do
-          point.save
-          clear_dedup_key(point.id)
-
-          expect { point.async_reverse_geocode }.not_to have_enqueued_job(ReverseGeocodingJob)
-        end
-      end
-
       context 'when reverse geocoding is disabled' do
         before do
-          allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+          InstanceSetting.delete_all
+          InstanceSettings::Resolver.reset!
         end
 
         it 'does not enqueue ReverseGeocodeJob' do

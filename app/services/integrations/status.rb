@@ -2,8 +2,7 @@
 
 module Integrations
   class Status
-    EXTERNAL_SERVICES = %w[immich photoprism airtrail teslamate].freeze
-    SERVICES = (%w[geocoding] + EXTERNAL_SERVICES).freeze
+    SERVICES = %w[immich photoprism airtrail teslamate].freeze
 
     def self.for(user)
       new(user)
@@ -17,9 +16,7 @@ module Integrations
     def configured?(service)
       service = service.to_s
 
-      if service == 'geocoding'
-        geocoding_config.enabled?
-      elsif service == 'teslamate'
+      if service == 'teslamate'
         settings['teslamate_url'].present?
       else
         settings["#{service}_url"].present? && settings["#{service}_api_key"].present?
@@ -40,26 +37,11 @@ module Integrations
     def resolve_status(service)
       return unless configured?(service)
 
-      if service == 'geocoding'
-        geocoding_status
-      else
-        normalize(settings["#{service}_connection_status"])
-      end
+      normalize(settings["#{service}_connection_status"])
     end
 
     def settings
       @settings ||= user.safe_settings.settings
-    end
-
-    def geocoding_config
-      @geocoding_config ||= Geocoding::Config.for(user)
-    end
-
-    def geocoding_status
-      return if geocoding_config.env_managed?
-
-      setting = user.service_settings.service_geocoding.find_by(active: true)
-      normalize(setting&.config&.fetch('connection_status', nil))
     end
 
     def normalize(value)
