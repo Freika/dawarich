@@ -260,7 +260,7 @@ GEM
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
     jmespath (1.6.2)
-    json (2.21.2)
+    json (3.0.2)
     json-jwt (1.17.0)
       activesupport (>= 4.2)
       aes_key_wrap
