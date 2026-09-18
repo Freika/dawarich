@@ -504,11 +504,28 @@
   width: 70px;
   height: 70px;
 }
+.ach-card.ach-spectral--locked {
+  --accent: #899297;
+  --card-light-opacity: 0.25;
+  transform: none;
+  transition: none;
+}
 .ach-spectral.ach-spectral--locked .geo-foil-composite {
-  filter: brightness(0.6) saturate(0.15);
+  filter: grayscale(1) brightness(0.7) contrast(0.88);
 }
 .ach-spectral.ach-spectral--locked .geo-edge-prism {
-  opacity: 0.25;
+  filter: grayscale(1);
+  opacity: 0.16;
+}
+.ach-spectral.ach-spectral--locked .spectral-fallback svg {
+  fill: #747b7e;
+}
+.ach-spectral.ach-spectral--locked .card-title,
+.ach-spectral.ach-spectral--locked .card-description,
+.ach-spectral.ach-spectral--locked .metric,
+.ach-spectral.ach-spectral--locked .earned,
+.ach-spectral.ach-spectral--locked .wordmark {
+  color: #b4b9ba;
 }
 .ach-spectral .spectral-progress {
   width: 60%;

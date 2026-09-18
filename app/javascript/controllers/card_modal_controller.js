@@ -33,14 +33,10 @@ export default class extends Controller {
     }
     this.session = {}
 
-    // Move the whole wrap (not just the card) so its tilt/holo controller,
-    // perspective, and hover behaviour come along and stay live in the dialog.
+    // Move the whole wrap (not just the card) so its material and interaction
+    // state stay intact in the dialog. Locked cards remain static there too.
     this.moved = wrap
     this.origin = { parent: wrap.parentNode, next: wrap.nextSibling }
-    // Showcase the card as interactive even when it is a locked achievement,
-    // which the grid otherwise keeps inert.
-    this.wasLocked = wrap.dataset.achievementCardLockedValue
-    wrap.dataset.achievementCardLockedValue = "false"
     this.stageTarget.replaceChildren(wrap)
 
     this.key = wrap.dataset.shareKey || null
@@ -106,12 +102,6 @@ export default class extends Controller {
     ]) {
       this.moved.style.removeProperty(prop)
     }
-    if (this.wasLocked === undefined) {
-      this.moved.removeAttribute("data-achievement-card-locked-value")
-    } else {
-      this.moved.dataset.achievementCardLockedValue = this.wasLocked
-    }
-
     const { parent, next } = this.origin
     if (parent) {
       parent.insertBefore(this.moved, next?.parentNode === parent ? next : null)

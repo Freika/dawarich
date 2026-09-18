@@ -33,6 +33,17 @@ RSpec.describe 'Shared achievements' do
       expect(response.body).not_to include('1 Jul 2026')
     end
 
+    it 'keeps an unexplored shared card grey and static' do
+      exploration.update!(state: { 'earned' => {} })
+
+      get shared_achievement_path(progress.sharing_uuid)
+
+      card = Nokogiri::HTML(response.body).at_css('[data-achievement-card-locked-value="true"]')
+      expect(card).to be_present
+      expect(card['data-action']).not_to include('pointermove->achievement-card#move')
+      expect(card.at_css('.ach-spectral--locked')).to be_present
+    end
+
     it 'is embeddable in third-party iframes' do
       get shared_achievement_path(progress.sharing_uuid)
 

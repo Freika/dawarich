@@ -1,9 +1,7 @@
 <% interactive = local_assigns.fetch(:interactive, true) %>
 <% attrs = set.card_attributes %>
 <% unless interactive %>
-  <%# On the public badge a grayscale lock reads as broken; show the card as
-      in-progress with an honest label instead. %>
-  <% attrs = attrs.merge(locked: false, earned_label: set.locked? ? t('achievements.cards.metric.not_yet_explored') : attrs[:earned_label]) %>
+  <% attrs = attrs.merge(earned_label: set.locked? ? t('achievements.cards.metric.not_yet_explored') : attrs[:earned_label]) %>
 <% end %>
 <div class="ach-slot">
   <%= render 'achievements/card',

@@ -1,5 +1,5 @@
 <%# locals: (name:, rarity:, map_lat:, map_lon:, map_zoom:, marker_lat: nil, marker_lon: nil, description: nil, flavor: nil, place: nil, size: :md, percent: 0, completed: false, locked: false, earned_label: nil, celebrate: false, reveal_delay: 0.1, modal: false, share: nil, silhouette: nil, geography_key: nil, metric_label: nil) %>
-<% actions = 'pointermove->achievement-card#move pointerleave->achievement-card#leave'
+<% actions = locked ? '' : 'pointermove->achievement-card#move pointerleave->achievement-card#leave'
    actions += ' click->card-modal#open keydown->card-modal#openOnKey' if modal
    status = earned_label.presence || t("achievements.cards.status.#{locked ? 'locked' : (completed ? 'unlocked' : 'in_progress')}")
    metric = metric_label.presence || (completed ? t('achievements.cards.metric.explored') : (locked ? t('achievements.cards.metric.not_yet_explored') : t('achievements.cards.metric.percent_explored', percent: percent)))

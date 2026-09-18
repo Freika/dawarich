@@ -76,7 +76,10 @@ export default class extends Controller {
     })
     if (!result) return
     this.materialTarget.innerHTML = result.html
-    this.card.style.setProperty("--accent", result.accent)
+    this.card.style.setProperty(
+      "--accent",
+      this.lockedValue ? "#899297" : result.accent,
+    )
     this.mounted = true
     this.observeSize()
   }
@@ -119,7 +122,12 @@ export default class extends Controller {
   }
 
   move(event) {
-    if (this.reducedMotion.matches || event.pointerType === "touch") return
+    if (
+      this.lockedValue ||
+      this.reducedMotion.matches ||
+      event.pointerType === "touch"
+    )
+      return
     this.restingRect ||= this.element.getBoundingClientRect()
     this.pointer = { x: event.clientX, y: event.clientY }
     if (this.frame) return

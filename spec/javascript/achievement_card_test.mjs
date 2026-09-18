@@ -17,12 +17,19 @@ const { default: AchievementCardController } = await import(
 
 function fixture(
   t,
-  { mounted = false, dialogOpen = false, restoredMaterial = false } = {},
+  {
+    mounted = false,
+    dialogOpen = false,
+    restoredMaterial = false,
+    locked = false,
+  } = {},
 ) {
   const intersections = []
   const sizes = []
+  const animationFrames = []
   const globals = {
     matchMedia: () => ({ matches: false }),
+    requestAnimationFrame: (callback) => animationFrames.push(callback),
     IntersectionObserver: class {
       constructor(callback) {
         this.callback = callback
@@ -73,9 +80,24 @@ function fixture(
     clientHeight: 210,
     querySelector: () => svg,
   }
+  const cardProperties = {}
+  const gradientAttributes = {}
   const card = {
-    style: { removeProperty() {}, setProperty() {} },
-    querySelectorAll: () => [],
+    style: {
+      removeProperty(name) {
+        delete cardProperties[name]
+      },
+      setProperty(name, value) {
+        cardProperties[name] = value
+      },
+    },
+    querySelectorAll: () => [
+      {
+        setAttribute(name, value) {
+          gradientAttributes[name] = value
+        },
+      },
+    ],
   }
   const fallbackPath = {
     getAttribute: (name) => (name === "d" ? "M0 0L10 0L10 10Z" : null),
@@ -88,6 +110,7 @@ function fixture(
   controller.element = {
     querySelector: () => card,
     closest: () => (dialogOpen ? {} : null),
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 300, height: 450 }),
   }
   controller.materialTarget = {
     querySelector: (selector) => {
@@ -97,9 +120,59 @@ function fixture(
     },
   }
   controller.card = card
+  controller.lockedValue = locked
   controller.mounted = mounted
-  return { controller, stage, svg, properties, intersections, sizes }
+  return {
+    controller,
+    stage,
+    svg,
+    properties,
+    cardProperties,
+    gradientAttributes,
+    animationFrames,
+    intersections,
+    sizes,
+  }
 }
+
+test("locked cards use a neutral accent and ignore pointer tilt, including in preview", (t) => {
+  const { controller, cardProperties, gradientAttributes, animationFrames } =
+    fixture(t, {
+      locked: true,
+      dialogOpen: true,
+    })
+  const original = globalThis.__spectralMarkup
+  globalThis.__spectralMarkup = () => ({
+    html: '<div class="geo-stage"></div>',
+    accent: "#ffba38",
+  })
+  t.after(() => {
+    if (original) globalThis.__spectralMarkup = original
+    else delete globalThis.__spectralMarkup
+  })
+
+  controller.connect()
+  controller.move({ pointerType: "mouse", clientX: 240, clientY: 90 })
+
+  assert.equal(cardProperties["--accent"], "#899297")
+  assert.equal(cardProperties["--rx"], undefined)
+  assert.equal(cardProperties["--ry"], undefined)
+  assert.equal(animationFrames.length, 0)
+  assert.deepEqual(gradientAttributes, {})
+})
+
+test("unlocked cards retain pointer tilt and foil color shift", (t) => {
+  const { controller, cardProperties, gradientAttributes, animationFrames } =
+    fixture(t)
+  controller.connect()
+  controller.move({ pointerType: "mouse", clientX: 240, clientY: 90 })
+
+  assert.equal(animationFrames.length, 1)
+  animationFrames[0]()
+  assert.notEqual(cardProperties["--rx"], undefined)
+  assert.notEqual(cardProperties["--ry"], undefined)
+  assert.match(gradientAttributes.gradientTransform, /rotate\(/)
+})
 
 test("mount derives the silhouette from fallback SVG without secure-context APIs", (t) => {
   const { controller, sizes } = fixture(t)

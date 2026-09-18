@@ -253,12 +253,24 @@ RSpec.describe 'Achievements' do
           document = Nokogiri::HTML(response.body)
           card = document.at_css('[data-achievement-card-key-value="DE-BY"]')
           expect(card['data-achievement-card-locked-value']).to eq('false')
+          expect(card['data-action']).to include('pointermove->achievement-card#move')
           expect(card.at_css('.spectral-fallback svg path')['d']).to be_present
           expect(card['data-achievement-card-silhouette-value']).to be_nil
           expect(card['data-achievement-card-paper-value']).to include('paper-pressed-fiber-v2')
           expect(card['data-achievement-card-foil-value']).to include('foil-stamped-grain-v4')
           expect(card.text).to include('Unlocked · 1 Jul 2026')
           expect(document.css('[data-controller="achievement-map"]')).to be_empty
+        end
+
+        it 'keeps locked cards previewable without pointer tilt actions' do
+          get achievement_path('country_de')
+
+          document = Nokogiri::HTML(response.body)
+          card = document.at_css('.ach-child-grid [data-achievement-card-locked-value="true"]')
+          expect(card).to be_present
+          expect(card['data-action']).not_to include('pointermove->achievement-card#move')
+          expect(card['data-action']).to include('click->card-modal#open')
+          expect(card.at_css('.ach-spectral--locked')).to be_present
         end
 
         it 'sends a flat country to its continent instead of 404ing' do

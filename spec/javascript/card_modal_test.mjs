@@ -130,6 +130,7 @@ function fixture() {
 
   function open(key = "Enter") {
     let prevented = false
+    const lockedValue = wrap.dataset.achievementCardLockedValue
     controller.openOnKey({
       key,
       currentTarget: wrap,
@@ -141,7 +142,7 @@ function fixture() {
     assert.equal(dialog.open, true)
     assert.equal(wrap.parentNode, stage)
     assert.equal(wrap.children[0], card, "the existing card/map node is moved")
-    assert.equal(wrap.dataset.achievementCardLockedValue, "false")
+    assert.equal(wrap.dataset.achievementCardLockedValue, lockedValue)
   }
 
   return { controller, document, dialog, grid, wrap, next, stage, open }
@@ -449,10 +450,12 @@ test("restoration leaves no stale modal card if the trigger had no parent", () =
   assert.equal(controller.origin, null)
 })
 
-test("restoration removes a temporary locked value when the trigger had none", () => {
+test("opening an unlocked card does not create a locked value", () => {
   const { controller, wrap, open } = fixture()
   delete wrap.dataset.achievementCardLockedValue
   open()
+
+  assert.equal(wrap.dataset.achievementCardLockedValue, undefined)
 
   controller.close()
 
