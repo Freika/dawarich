@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - The app and Sidekiq containers print a warning at startup when a self-hosted instance runs with `RAILS_ENV=development`.
 
+### Changed
+
+- Updated the Sentry SDK to 7.0. Instances with `SENTRY_DSN` set start normally, Sentry logs are still sent only when `SENTRY_ENABLE_LOGS=true`, and the SDK's new automatic database query and request logs are not sent.
+
 ### Fixed
 
 - User profile archives uploaded through the regular Imports page are now restored as profile backups instead of failing the multi-file archive size limit. (#3011)
