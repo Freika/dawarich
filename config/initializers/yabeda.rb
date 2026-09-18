@@ -36,6 +36,43 @@ Yabeda.configure do
             comment: 'Archive verification failures by check',
             tags: %i[check]
   end
+
+  group :dawarich_map do
+    counter :point_moves_total,
+            comment: 'Point position mutations by outcome',
+            tags: %i[outcome]
+
+    histogram :point_move_duration_seconds,
+              comment: 'End-to-end synchronous Point move duration',
+              tags: %i[outcome],
+              buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3]
+
+    histogram :point_move_lock_wait_seconds,
+              comment: 'Time spent acquiring Point and Track row locks',
+              tags: %i[outcome],
+              buckets: [0.001, 0.005, 0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3]
+
+    histogram :point_move_track_points,
+              comment: 'Point count of synchronously recalculated Tracks',
+              buckets: [1, 100, 1_000, 10_000, 50_000, 100_000]
+
+    histogram :point_move_track_segments,
+              comment: 'TrackSegment count touched by synchronous Point moves',
+              buckets: [0, 1, 5, 10, 25, 50, 100]
+
+    counter :post_commit_failures_total,
+            comment: 'Map cache invalidation or publication failures after a successful commit',
+            tags: %i[operation]
+
+    counter :tile_requests_total,
+            comment: 'Point and Track vector-tile requests by HTTP outcome',
+            tags: %i[layer outcome]
+
+    histogram :tile_request_duration_seconds,
+              comment: 'Point and Track vector-tile request duration',
+              tags: %i[layer outcome],
+              buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5]
+  end
 end
 
 Yabeda.configure! if defined?(Yabeda)

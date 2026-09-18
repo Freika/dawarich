@@ -40,13 +40,25 @@ export class MapPageProvider {
     }
   }
 
+  timeZone() {
+    return this.controller?.timezoneValue || undefined
+  }
+
+  // The map loads points lazily and the poster never needs the points
+  // themselves — but that same load is what builds the routes GeoJSON and
+  // fills the routes layer. Under tiled rendering the bulk points and tracks
+  // fetches are both skipped, so nothing else fills it and a studio that only
+  // draws the track still has to force the load.
+  async ensureTrackLoaded() {
+    await this.controller?.mapDataManager?.ensurePointsLoaded()
+  }
+
   // Timestamped points, for consumers that animate the track rather than
-  // draw it flat. The map loads points lazily, so this forces the fetch the
-  // poster path never needs.
+  // draw it flat.
   async points() {
     const controller = this.controller
     if (!controller) return []
-    await controller.mapDataManager?.ensurePointsLoaded()
+    await this.ensureTrackLoaded()
     return controller._getLoadedPoints?.() ?? []
   }
 
@@ -63,49 +75,23 @@ export class MapPageProvider {
     return ""
   }
 
-  // SPA date change, same as the timeline: dispatch the shared event so the
-  // main map reloads its layers in place. The URL is pushed for
-  // browser-state consistency.
   async applyDates(start, end) {
     const params = new URLSearchParams(window.location.search)
     params.set("start_at", start)
     params.set("end_at", end)
     window.history.pushState({}, "", `/map/v2?${params.toString()}`)
+    const pending = []
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {
-        detail: { startAt: start, endAt: end },
+        detail: {
+          startAt: start,
+          endAt: end,
+          waitUntil: (promise) => pending.push(Promise.resolve(promise)),
+        },
       }),
     )
-    await this.waitForTrackReload()
-  }
-
-  // The reload replaces the layer data objects; wait for the identity to
-  // change and then stay stable for two polls (progressive loading lands
-  // in several passes), capped at ~16s.
-  async waitForTrackReload() {
-    const layerManager = this.controller?.layerManager
-    const snapshot = () => ({
-      routes: layerManager?.getLayer("routes")?.data,
-      tracks: layerManager?.getLayer("tracks")?.data,
-    })
-    const before = snapshot()
-    let changed = false
-    let stable = 0
-    let last = before
-    for (let i = 0; i < 40; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 400))
-      const current = snapshot()
-      if (current.routes !== before.routes || current.tracks !== before.tracks)
-        changed = true
-      if (changed) {
-        stable =
-          current.routes === last.routes && current.tracks === last.tracks
-            ? stable + 1
-            : 0
-        if (stable >= 2) return
-      }
-      last = current
-    }
+    if (!pending.length) throw new Error("Map date navigation is unavailable")
+    await Promise.all(pending)
   }
 }
 
@@ -135,12 +121,22 @@ export function buildTripGeojson({
 }
 
 export class TripProvider {
-  constructor({ geojson, startAt, endAt, title, points }) {
+  constructor({
+    geojson,
+    posterGeojson,
+    startAt,
+    endAt,
+    title,
+    points,
+    timezone,
+  }) {
     this.geojson = geojson ?? EMPTY_COLLECTION
+    this.posterGeometry = posterGeojson ?? this.geojson
     this.startAt = startAt
     this.endAt = endAt
     this.title = title ?? ""
     this.trackPoints = points ?? []
+    this.timezone = timezone
     this.supportsDateNavigation = false
   }
 
@@ -152,8 +148,17 @@ export class TripProvider {
     return this.geojson
   }
 
+  // Posters can include visible flight arcs; video still animates GPS points.
+  posterGeojson() {
+    return this.posterGeometry
+  }
+
   dateRange() {
     return { startAt: this.startAt, endAt: this.endAt }
+  }
+
+  timeZone() {
+    return this.timezone || undefined
   }
 
   fallbackBounds() {
@@ -163,6 +168,9 @@ export class TripProvider {
   defaultTitle() {
     return this.title
   }
+
+  // Nothing to load: a trip hands the studio its geojson up front.
+  async ensureTrackLoaded() {}
 
   async points() {
     return this.trackPoints

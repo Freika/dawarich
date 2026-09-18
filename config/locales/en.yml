@@ -969,8 +969,8 @@ en:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
         tiled_rendering: "Tiled rendering"
         beta: "Beta"
-        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks, colored per track."
-        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, routes are colored per track (average speed, not a gradient), hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
+        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks. Zoom in to see the speed of each segment."
+        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
         routes: Routes
         show_connected_route_lines: Show connected route lines
         color_by_speed: Color by speed
@@ -1537,6 +1537,8 @@ en:
         receive_an_annual_summary_on_january_2nd_with_your_year: Receive an annual summary on January 2nd with your year in review.
         news_updates: News & Updates
         receive_occasional_emails_about_new_features_and_important_updates: Receive occasional emails about new features and important updates
+        send_test_email: Send test email
+        test_email_hint: Sends a test message to your account email to verify SMTP settings
         timezone: Timezone
         your_timezone: Your timezone
         all_dates_and_times_will_be_displayed_in_this_timezone: All dates and times will be displayed in this timezone
@@ -1552,6 +1554,7 @@ en:
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
+          teslamate: TeslaMateApi
         status_connected: Connected
         status_failed: Last connection attempt failed
         immich_photoprism_integrations: Immich & Photoprism Integrations
@@ -1581,6 +1584,16 @@ en:
         the_base_url_of_your_airtrail_instance_your_flights_are: The base URL of your AirTrail instance. Your flights are shown as arcs on the map.
         airtrail_api_key: AirTrail API Key
         create_an_api_key_in_airtrail_under_settings_rarr_security: Create an API key in AirTrail under Settings → Security.
+        teslamate_integration: TeslaMateApi Integration
+        teslamate_url: TeslaMateApi URL
+        the_base_url_of_your_teslamateapi_instance: The base URL of your TeslaMateApi instance.
+        teslamate_setup_guide: Setup guide (TeslaMateApi v1.25.0 or newer)
+        teslamate_username: HTTP Basic username (optional)
+        teslamate_password: HTTP Basic password (optional)
+        teslamate_api_token: Bearer token (optional)
+        teslamate_authentication_help: Use Basic authentication for a protected reverse proxy, or a bearer token for a compatible proxy or fork. Canonical TeslaMateApi read endpoints do not use its API_TOKEN.
+        sync_teslamate_drives: Sync TeslaMateApi drives
+        teslamate_sync_help: Completed drives sync automatically once a day. Current drives and parked positions are not available through TeslaMateApi.
         last_synced: 'Last synced:'
         connected_accounts: Connected Accounts
         you_ve_connected_your_account_using_the_following_oauth_provider: 'You''ve connected your account using the following OAuth provider:'
@@ -2504,6 +2517,9 @@ en:
       the_lock_will_automatically_lift_after_30_minutes_no_action: The lock will automatically lift after 30 minutes. No action is required if this was you.
       didn_t_recognise_this_activity_someone_may_be_trying_to: Didn't recognise this activity? Someone may be trying to access your account. We recommend resetting your password immediately.
       reset_your_password_2: 'Reset your password:'
+    test_email:
+      body: If you can read this, your instance's SMTP configuration works.
+      sent_at: Sent at
     welcome:
       welcome_to_dawarich: Welcome to Dawarich!
       hi: Hi
@@ -2800,11 +2816,13 @@ en:
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple has not verified this email. Sign in with password and link from settings.
             this_email_already_has_a_dawarich_account_we_sent_a: This email already has a Dawarich account. We sent a confirmation link to that address — click it to link your Apple ID.
+            verification_rate_limited: A verification link was already sent to that address recently. Check your inbox or wait before trying again.
             we_couldn_t_find_your_existing_account_and_apple_didn: We couldn't find your existing account, and Apple didn't share your email with us this time. Apple only shares it once. Please go to appleid.apple.com → Sign in with Apple, find Dawarich, choose "Stop using Sign in with Apple", then try signing in again.
             token_verification_failed: 'Apple token verification failed: %{message}'
           google:
             google_has_not_verified_this_email_sign_in_with_password: Google has not verified this email. Sign in with password and link from settings.
             this_email_already_has_a_dawarich_account_we_sent_a: This email already has a Dawarich account. We sent a confirmation link to that address — click it to link your Google sign-in.
+            verification_rate_limited: A verification link was already sent to that address recently. Check your inbox or wait before trying again.
             token_verification_failed: 'Google token verification failed: %{message}'
           otp_challenges:
             invalid_challenge: 'Invalid or expired challenge: %{message}'
@@ -2959,6 +2977,7 @@ en:
         linked_sign_in_with_two_factor: "%{provider} is now linked to your account. Sign in with your password and 2FA code to continue."
         incorrect_password: Incorrect password.
         confirmation_link_sent: We sent a confirmation link to %{email}. Click it to link your account.
+        account_link_rate_limited: A confirmation link was already sent recently. Check your inbox or wait before requesting another.
         already_linked_to_different_identity: This account is already linked to a different %{provider} identity.
       ios:
         authentication_successful_you_can_close_this_window: Authentication successful! You can close this window.
@@ -3068,6 +3087,11 @@ en:
         please_enter_an_email_address_or_github_username: Please enter an email address or GitHub username
         verified_thank_you_for_supporting_dawarich_via_platform: Verified! Thank you for supporting Dawarich via %{platform}.
         not_found_in_supporter_list_make_sure_you_re_using: Not found in supporter list. Make sure you're using the same email or GitHub username as your donation platform.
+        smtp_not_configured: Email sending via SMTP is not configured. Configure self-hosted SMTP settings in order to set email preferences.
+        smtp_not_configured_html: 'Email sending via SMTP is not configured. Configure %{link} in order to set email preferences.'
+        smtp_not_configured_link: self-hosted SMTP settings
+        test_email_sent: Test email sent to %{email}. Check your inbox (and spam folder).
+        test_email_failed: 'Test email failed: %{error}'
       onboardings:
         demo_data_loaded: Demo data loaded.
         demo_data_is_already_loaded: Demo data is already loaded.
@@ -3275,6 +3299,8 @@ en:
         subject: Confirm Dawarich account deletion
       otp_account_locked:
         subject: Dawarich account temporarily locked
+      test_email:
+        subject: Dawarich test email
       digests:
         year_end:
           subject: Your %{year} Year in Review - Dawarich
@@ -3310,6 +3336,11 @@ en:
     trip:
       must_be_after_start_date: must be after start date
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: TeslaMateApi connection verified
+        teslamate_url_is_missing: TeslaMateApi URL is missing
+        teslamate_connection_failed_message: 'TeslaMateApi connection failed: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: AirTrail connection verified
@@ -3429,6 +3460,13 @@ en:
         immich_api_key_missing_permission_asset_view: 'Immich API key missing permission: asset.view'
         immich_thumbnail_check_failed_code: 'Immich thumbnail check failed: %{code}'
       enrich_photos:
+        checking_title: Checking Immich location updates
+        checking: "Submitted %{count} location updates to Immich. Checking whether the coordinates were saved."
+        result_title: Immich location update results
+        confirmed:
+          one: "Confirmed the saved location for %{count} photo."
+          other: "Confirmed saved locations for %{count} photos."
+        unconfirmed: "Location updates still unconfirmed: %{count}. Immich may still be processing the updates. Check its metadata jobs and your API key's asset.read permission. For external libraries, check that Immich can write XMP sidecar files: read-only mounts or file permissions can prevent saving. Once resolved, scan again before retrying."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Failed to fetch photos from Immich
@@ -3568,9 +3606,7 @@ en:
     visits:
       suggest:
         error_suggesting_visits_message: 'Error suggesting visits: %{message}'
-        new_visits_suggested: New visits suggested
         error_suggesting_visits: 'Error suggesting visits'
-        new_visits_suggested_message: 'New visits have been suggested based on your location data from %{start_at} to %{end_at}. You can review them on the <a href="%{url}" class="link">Timeline</a> page.'
       merge_service:
         minimum_visits: At least 2 visits must be selected for merging
       bulk_destroy:
@@ -3620,6 +3656,10 @@ en:
         weekday_preference: You travel more on weekdays than weekends
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: TeslaMateApi sync failed
+        your_teslamate_sync_failed: 'Your TeslaMateApi sync failed with error: %{message}. Check your integration settings and try again.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: AirTrail sync failed
@@ -4133,6 +4173,7 @@ en:
       no_matches: No matches found within tolerance
       open_in_immich: Open in Immich
       partially_enriched: Enriched %{enriched} photos. %{failed} failed.
+      pending_enrichment: "Submitted %{count} location updates to Immich; %{failed} failed to send. You will receive a notification after the saved coordinates are checked."
       photos_without_gps:
         one: "%{count} photo without GPS"
         other: "%{count} photos without GPS"
@@ -4319,6 +4360,7 @@ en:
       loading: Loading…
       loading_tracks: Loading tracks for the new range…
       no_location_data: No location data in this date range — pick a range with tracks in the date bar above.
+      gallery_without_flights: "Gallery posters use GPS routes without flight overlays. Download preserves the current view."
       no_tracks_in_frame: No tracks inside the frame — move or zoom the map over your route to save to the gallery.
       queued: Queued — rendering server-side into Recent posters…
       rendering: Rendering %{width} × %{height}px…

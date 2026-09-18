@@ -10,6 +10,43 @@ export function isVideoExportSupported() {
   return typeof VideoEncoder === "function" && typeof VideoFrame === "function"
 }
 
+export async function probeVideoEncoderConfig(config) {
+  let encoder = null
+  let frame = null
+  let encodeError = null
+
+  try {
+    const canvas =
+      typeof OffscreenCanvas === "function"
+        ? new OffscreenCanvas(config.width, config.height)
+        : Object.assign(document.createElement("canvas"), {
+            width: config.width,
+            height: config.height,
+          })
+
+    canvas.getContext("2d")
+
+    encoder = new VideoEncoder({
+      output: () => {},
+      error: (error) => {
+        encodeError = error
+      },
+    })
+    encoder.configure(config)
+    frame = new VideoFrame(canvas, { timestamp: 0 })
+    encoder.encode(frame, { keyFrame: true })
+    await encoder.flush()
+    return !encodeError
+  } catch {
+    return false
+  } finally {
+    frame?.close()
+    try {
+      if (encoder?.state !== "closed") encoder?.close()
+    } catch {}
+  }
+}
+
 export async function createMp4Encoder({ width, height, fps }) {
   if (!isVideoExportSupported()) return null
 
@@ -18,6 +55,7 @@ export async function createMp4Encoder({ width, height, fps }) {
     height,
     fps,
     isConfigSupported: (config) => VideoEncoder.isConfigSupported(config),
+    probeConfig: probeVideoEncoderConfig,
   })
   if (!picked) return null
 

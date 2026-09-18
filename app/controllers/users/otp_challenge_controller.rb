@@ -19,8 +19,10 @@ class Users::OtpChallengeController < ApplicationController
     otp_code = params[:otp_attempt]
 
     if authenticate_otp(user, otp_code)
+      remember_me = session[:otp_remember_me]
       clear_otp_session
       user.reset_failed_otp_attempts!
+      user.remember_me = remember_me
       sign_in(user)
       redirect_to after_sign_in_path_for(user), notice: I18n.t('controllers.users.otp_challenge.signed_in_successfully')
     elsif user.otp_locked?
@@ -69,5 +71,6 @@ class Users::OtpChallengeController < ApplicationController
     session.delete(:otp_user_id)
     session.delete(:otp_challenge_at)
     session.delete(:otp_failed_attempts)
+    session.delete(:otp_remember_me)
   end
 end

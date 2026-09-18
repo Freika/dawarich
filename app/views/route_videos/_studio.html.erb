@@ -9,7 +9,7 @@
      data-video-studio-upload-url-value="<%= rails_direct_uploads_url %>"
      data-video-studio-create-url-value="<%= route_videos_path %>">
   <div class="flex h-full flex-col">
-    <header class="flex items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2">
+    <header class="flex flex-wrap items-center justify-between gap-4 border-b border-base-content/10 bg-base-200 px-4 py-2 lg:flex-nowrap">
       <div class="flex items-center gap-3 shrink-0">
         <h2 class="text-sm font-semibold tracking-wide flex items-center gap-2">
           <%= icon 'video', class: 'h-4 w-4 opacity-70' %>
@@ -17,7 +17,35 @@
         </h2>
         <%= render 'shared/studio_switcher', current: :video, controller_name: 'video-studio' %>
       </div>
-      <div class="flex items-center gap-2 min-w-0 text-sm opacity-70">
+      <div class="order-3 flex w-full min-w-0 items-center gap-2 lg:order-none lg:w-auto lg:flex-none"
+           data-video-studio-target="rangeControls">
+        <label class="min-w-0 flex-1 lg:w-56 lg:flex-none">
+          <span class="sr-only"><%= t('shared.map.date_navigation_v2.start_date_and_time') %></span>
+          <input type="datetime-local"
+                 class="input input-bordered input-sm w-full"
+                 max="9999-12-31T23:59"
+                 aria-label="<%= t('shared.map.date_navigation_v2.start_date_and_time') %>"
+                 data-video-studio-target="dateStart">
+        </label>
+        <span class="text-xs opacity-60">–</span>
+        <label class="min-w-0 flex-1 lg:w-56 lg:flex-none">
+          <span class="sr-only"><%= t('shared.map.date_navigation_v2.end_date_and_time') %></span>
+          <input type="datetime-local"
+                 class="input input-bordered input-sm w-full"
+                 max="9999-12-31T23:59"
+                 aria-label="<%= t('shared.map.date_navigation_v2.end_date_and_time') %>"
+                 data-video-studio-target="dateEnd">
+        </label>
+        <button type="button" class="btn btn-sm btn-primary shrink-0"
+                data-video-studio-target="loadButton"
+                data-action="video-studio#applyDateTimeRange">
+          <span class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
+                data-video-studio-target="loadSpinner"></span>
+          <span><%= t('posters.studio.load') %></span>
+        </button>
+      </div>
+      <div class="flex items-center gap-2 min-w-0 text-sm opacity-70"
+           data-video-studio-target="rangeDisplay">
         <%= icon 'calendar-clock', class: 'h-4 w-4 shrink-0' %>
         <span class="truncate" data-video-studio-target="rangeLabel"></span>
       </div>

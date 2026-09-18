@@ -108,22 +108,29 @@ module EnhancedImport
       def attach_tag(place, extracted)
         return if extracted.tag_name.blank?
 
-        tag = existing_tag(extracted.tag_name)
-        return if tag&.privacy_zone?
-
-        tag ||= create_tag(extracted)
+        tag = existing_tag(extracted.tag_name) || create_tag(extracted)
         return if tag.nil?
+        return if tag.privacy_zone?
 
         place.add_tag(tag)
       end
 
       def existing_tag(name)
-        @user.tags.where('LOWER(tags.name) = ?', name.downcase).first
+        key = name.downcase
+        return tag_cache[key] if tag_cache.key?(key)
+
+        tag_cache[key] = @user.tags.where('LOWER(tags.name) = ?', key).first
+      end
+
+      def tag_cache
+        @tag_cache ||= {}
       end
 
       def create_tag(extracted)
-        @user.tags.create!(name: extracted.tag_name, color: extracted.tag_color)
+        tag = @user.tags.create!(name: extracted.tag_name, color: extracted.tag_color)
+        tag_cache[extracted.tag_name.downcase] = tag
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        tag_cache.delete(extracted.tag_name.downcase)
         existing_tag(extracted.tag_name)
       end
 

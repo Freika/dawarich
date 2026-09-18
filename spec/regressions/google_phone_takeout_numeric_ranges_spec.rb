@@ -6,6 +6,20 @@ RSpec.describe 'Google phone takeout numeric metadata ranges' do
   let(:user) { create(:user) }
   let(:import) { create(:import, user:, name: 'phone_takeout.json') }
 
+  it 'preserves long fractional metadata instead of scaling it into an out-of-range integer' do
+    document = <<~JSON
+      {"semanticSegments":[{"startTime":"2024-06-15T09:00:00Z",
+      "altitudeMeters":-0.40511831641197205,"accuracyMeters":0.36759892106056213,
+      "visit":{"topCandidate":{"placeLocation":{"latLng":"48.8566,2.3522"}}}}]}
+    JSON
+
+    import_document(document)
+
+    point = user.points.find_by!(timestamp: Time.utc(2024, 6, 15, 9).to_i)
+    expect(point.altitude_decimal).to eq(BigDecimal('-0.41'))
+    expect(point.accuracy).to eq(0)
+  end
+
   it 'imports points when optional numeric metadata exceeds point column ranges' do
     document = {
       semanticSegments: [
@@ -63,7 +77,7 @@ RSpec.describe 'Google phone takeout numeric metadata ranges' do
 
   def import_document(document)
     Tempfile.create(['phone-takeout-numeric-ranges', '.json']) do |file|
-      file.write(JSON.generate(document))
+      file.write(document.is_a?(String) ? document : JSON.generate(document))
       file.flush
 
       expect do

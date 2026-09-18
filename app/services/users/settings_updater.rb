@@ -106,7 +106,7 @@ module Users
       return unless city_threshold_param_present?
       return if @old_city_threshold == normalized_city_threshold(@user.settings[CITY_THRESHOLD_KEY])
 
-      Stats::EnqueueFullRecalculation.new(@user).call
+      Stats::RecalculationDebouncer.new(@user.id).trigger
     end
 
     def city_threshold_param_present?

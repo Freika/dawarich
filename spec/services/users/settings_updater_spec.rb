@@ -5,6 +5,14 @@ require 'rails_helper'
 RSpec.describe Users::SettingsUpdater do
   let(:user) { create(:user) }
 
+  def clear_debounce_key
+    Sidekiq.redis { |redis| redis.del("stats_full_recalculation:user:#{user.id}") }
+  end
+
+  before { clear_debounce_key }
+
+  after { clear_debounce_key }
+
   describe '#call' do
     context 'with general settings' do
       let(:params) { { 'route_opacity' => 0.5 } }
@@ -85,13 +93,13 @@ RSpec.describe Users::SettingsUpdater do
         allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
 
         expect { described_class.new(user, 'min_minutes_spent_in_city' => 15).call }
-          .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 3)
+          .to have_enqueued_job(Stats::FullRecalculationJob).with(user.id)
       end
 
       it 'does not recalculate when the value is unchanged' do
         user.update!(settings: user.settings.merge('min_minutes_spent_in_city' => 15))
 
-        expect(Stats::EnqueueFullRecalculation).not_to receive(:new)
+        expect(Stats::RecalculationDebouncer).not_to receive(:new)
 
         described_class.new(user, 'min_minutes_spent_in_city' => 15).call
       end
@@ -101,14 +109,14 @@ RSpec.describe Users::SettingsUpdater do
         allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
 
         expect { described_class.new(user, 'min_minutes_spent_in_city' => 60).call }
-          .not_to have_enqueued_job(Stats::CalculatingJob)
+          .not_to have_enqueued_job(Stats::FullRecalculationJob)
       end
 
       it 'recalculates when a blank value drops the effective threshold' do
         allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
 
         expect { described_class.new(user, 'min_minutes_spent_in_city' => '').call }
-          .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2026, 3)
+          .to have_enqueued_job(Stats::FullRecalculationJob).with(user.id)
       end
 
       it 'triggers reclassification and stats recalculation independently' do
@@ -119,13 +127,11 @@ RSpec.describe Users::SettingsUpdater do
                               'enabled_transportation_modes' => %w[walking cycling],
                               'min_minutes_spent_in_city' => 15).call
         end.to have_enqueued_job(TransportationModes::UserReclassifyJob).with(user.id)
-                                                                        .and have_enqueued_job(Stats::CalculatingJob).with(
-                                                                          user.id, 2026, 3
-                                                                        )
+                                                                        .and have_enqueued_job(Stats::FullRecalculationJob).with(user.id)
       end
 
       it 'does not recalculate for unrelated settings' do
-        expect(Stats::EnqueueFullRecalculation).not_to receive(:new)
+        expect(Stats::RecalculationDebouncer).not_to receive(:new)
 
         described_class.new(user, 'route_opacity' => 0.7).call
       end

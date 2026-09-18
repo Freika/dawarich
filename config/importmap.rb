@@ -30,3 +30,5 @@ pin 'maplibre-gl' # @5.12.0
 pin 'fflate' # @0.8.2
 pin 'h3-js' # @4.4.0
 pin 'mp4-muxer' # @5.2.2
+
+pin 'mapbox-gl-rtl-text', preload: false # @0.3.0

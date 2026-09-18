@@ -969,8 +969,8 @@ pl:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Pozwala przeciągać punkty, aby poprawić ich pozycję. Zapamiętywane między sesjami.
         tiled_rendering: Renderowanie kafelkowe
         beta: Beta
-        tiled_rendering_description: Rysuje punkty, trasy, odcinki i nieodkryty obszar z kafelków wektorowych podczas przesuwania mapy, dzięki czemu długi zakres dat wczytuje tylko to, co widać. Trasy pokazują wygenerowane odcinki, kolorowane osobno dla każdego z nich.
-        tiled_rendering_caveats: Aktywne, gdy warstwa Odkryte kraje jest wyłączona. W gęstych obszarach punkty łączą się w znaczniki z licznikiem punktów — przybliż, aby otworzyć pojedyncze punkty. Edycja punktów jest niedostępna, trasy są kolorowane osobno dla każdego odcinka (średnia prędkość, nie gradient), najechanie na trasę nie pokazuje już dymka — zamiast tego kliknij odcinek — a ślad na żywo może opóźniać się o kilka minut.
+        tiled_rendering_description: Rysuje punkty, trasy, odcinki i nieodkryty obszar z kafelków wektorowych podczas przesuwania mapy, dzięki czemu długi zakres dat wczytuje tylko to, co widać. Trasy pokazują wygenerowane odcinki. Przybliż mapę, aby zobaczyć prędkość każdego segmentu.
+        tiled_rendering_caveats: Aktywne, gdy warstwa Odkryte kraje jest wyłączona. W gęstych obszarach punkty łączą się w znaczniki z licznikiem punktów — przybliż, aby otworzyć pojedyncze punkty. Edycja punktów jest niedostępna, najechanie na trasę nie pokazuje już dymka — zamiast tego kliknij odcinek — a ślad na żywo może opóźniać się o kilka minut.
         routes: Trasy
         show_connected_route_lines: Pokaż połączone linie tras
         color_by_speed: Koloruj według prędkości
@@ -1537,6 +1537,8 @@ pl:
         receive_an_annual_summary_on_january_2nd_with_your_year: Otrzymuj roczne podsumowanie 2 stycznia z przeglądem całego roku.
         news_updates: Aktualności i nowości
         receive_occasional_emails_about_new_features_and_important_updates: Otrzymuj okazjonalne wiadomości o nowych funkcjach i ważnych aktualizacjach
+        send_test_email: Wyślij testowego e-maila
+        test_email_hint: Wysyła testową wiadomość na adres e-mail Twojego konta, aby zweryfikować ustawienia SMTP
         timezone: Strefa czasowa
         your_timezone: Twoja strefa czasowa
         all_dates_and_times_will_be_displayed_in_this_timezone: Wszystkie daty i godziny będą wyświetlane w tej strefie czasowej
@@ -1552,6 +1554,7 @@ pl:
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
+          teslamate: TeslaMateApi
         status_connected: Połączono
         status_failed: Ostatnia próba połączenia nie powiodła się
         immich_photoprism_integrations: Integracje Immich i Photoprism
@@ -1581,6 +1584,16 @@ pl:
         the_base_url_of_your_airtrail_instance_your_flights_are: Bazowy URL Twojej instancji AirTrail. Loty są pokazywane na mapie jako łuki.
         airtrail_api_key: Klucz API AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Utwórz klucz API w AirTrail w Ustawienia → Security.
+        teslamate_integration: Integracja TeslaMateApi
+        teslamate_url: URL TeslaMateApi
+        the_base_url_of_your_teslamateapi_instance: Bazowy URL Twojej instancji TeslaMateApi.
+        teslamate_setup_guide: Instrukcja konfiguracji (TeslaMateApi v1.25.0 lub nowszy)
+        teslamate_username: Nazwa użytkownika HTTP Basic (opcjonalnie)
+        teslamate_password: Hasło HTTP Basic (opcjonalnie)
+        teslamate_api_token: Token Bearer (opcjonalnie)
+        teslamate_authentication_help: Użyj uwierzytelniania Basic dla chronionego reverse proxy lub tokenu Bearer dla zgodnego proxy albo forka. Standardowe endpointy odczytu TeslaMateApi nie używają API_TOKEN.
+        sync_teslamate_drives: Synchronizuj przejazdy TeslaMateApi
+        teslamate_sync_help: Zakończone przejazdy synchronizują się automatycznie raz dziennie. Bieżące przejazdy i pozycje podczas postoju nie są dostępne przez TeslaMateApi.
         last_synced: 'Ostatnia synchronizacja:'
         connected_accounts: Połączone konta
         you_ve_connected_your_account_using_the_following_oauth_provider: 'Połączyłeś konto przy użyciu następującego dostawcy OAuth:'
@@ -2504,6 +2517,9 @@ pl:
       the_lock_will_automatically_lift_after_30_minutes_no_action: Blokada zostanie automatycznie zdjęta po 30 minutach. Jeśli to była Twoja aktywność, nie musisz nic robić.
       didn_t_recognise_this_activity_someone_may_be_trying_to: Nie rozpoznajesz tej aktywności? Ktoś może próbować uzyskać dostęp do Twojego konta. Zalecamy natychmiastową zmianę hasła.
       reset_your_password_2: 'Zmień hasło:'
+    test_email:
+      body: Jeśli możesz to przeczytać, konfiguracja SMTP Twojej instancji działa.
+      sent_at: Wysłano
     welcome:
       welcome_to_dawarich: Witamy w Dawarich!
       hi: Cześć
@@ -2867,11 +2883,13 @@ pl:
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple nie zweryfikowało tego adresu e-mail. Zaloguj się hasłem i połącz konto w ustawieniach.
             this_email_already_has_a_dawarich_account_we_sent_a: Ten adres e-mail ma już konto Dawarich. Wysłaliśmy link potwierdzający na ten adres - kliknij go, aby połączyć Apple ID.
+            verification_rate_limited: Link weryfikacyjny został niedawno wysłany na ten adres. Sprawdź swoją skrzynkę odbiorczą lub poczekaj przed ponowną próbą.
             we_couldn_t_find_your_existing_account_and_apple_didn: Nie znaleźliśmy Twojego istniejącego konta, a Apple tym razem nie udostępniło adresu e-mail. Apple udostępnia go tylko raz. Wejdź na appleid.apple.com → Sign in with Apple, znajdź Dawarich, wybierz "Stop using Sign in with Apple", a potem spróbuj zalogować się ponownie.
             token_verification_failed: 'Weryfikacja tokenu Apple nie powiodła się: %{message}'
           google:
             google_has_not_verified_this_email_sign_in_with_password: Google nie zweryfikowało tego adresu e-mail. Zaloguj się hasłem i połącz konto w ustawieniach.
             this_email_already_has_a_dawarich_account_we_sent_a: Ten adres e-mail ma już konto Dawarich. Wysłaliśmy link potwierdzający na ten adres - kliknij go, aby połączyć logowanie Google.
+            verification_rate_limited: Link weryfikacyjny został niedawno wysłany na ten adres. Sprawdź swoją skrzynkę odbiorczą lub poczekaj przed ponowną próbą.
             token_verification_failed: 'Weryfikacja tokenu Google nie powiodła się: %{message}'
           otp_challenges:
             invalid_challenge: 'Nieprawidłowe lub wygasłe wyzwanie: %{message}'
@@ -3026,6 +3044,7 @@ pl:
         linked_sign_in_with_two_factor: "%{provider} jest teraz połączony z Twoim kontem. Zaloguj się hasłem i kodem 2FA, aby kontynuować."
         incorrect_password: Nieprawidłowe hasło.
         confirmation_link_sent: Wysłaliśmy link potwierdzający na adres %{email}. Kliknij go, aby połączyć konto.
+        account_link_rate_limited: Link potwierdzający został niedawno wysłany. Sprawdź swoją skrzynkę odbiorczą lub poczekaj przed złożeniem kolejnego żądania.
         already_linked_to_different_identity: To konto jest już połączone z inną tożsamością %{provider}.
       ios:
         authentication_successful_you_can_close_this_window: Uwierzytelnianie zakończone sukcesem! Możesz zamknąć to okno.
@@ -3135,6 +3154,11 @@ pl:
         please_enter_an_email_address_or_github_username: Podaj adres e-mail lub nazwę użytkownika GitHub
         verified_thank_you_for_supporting_dawarich_via_platform: Zweryfikowano! Dziękujemy za wspieranie Dawarich przez %{platform}.
         not_found_in_supporter_list_make_sure_you_re_using: Nie znaleziono na liście wspierających. Upewnij się, że używasz tego samego e-maila lub loginu GitHub co na platformie wsparcia.
+        smtp_not_configured: Wysyłanie e-maili przez SMTP nie jest skonfigurowane. Skonfiguruj ustawienia SMTP dla self-hostingu, aby ustawić preferencje e-mail.
+        smtp_not_configured_html: 'Wysyłanie e-maili przez SMTP nie jest skonfigurowane. Skonfiguruj %{link}, aby ustawić preferencje e-mail.'
+        smtp_not_configured_link: ustawienia SMTP dla self-hostingu
+        test_email_sent: Testowy e-mail wysłano na adres %{email}. Sprawdź swoją skrzynkę odbiorczą (i folder spam).
+        test_email_failed: 'Nie udało się wysłać testowego e-maila: %{error}'
       onboardings:
         demo_data_loaded: Dane demo zostały załadowane.
         demo_data_is_already_loaded: Dane demo są już załadowane.
@@ -3342,6 +3366,8 @@ pl:
         subject: Potwierdź usunięcie konta Dawarich
       otp_account_locked:
         subject: Konto Dawarich zostało tymczasowo zablokowane
+      test_email:
+        subject: Testowy e-mail Dawarich
       digests:
         year_end:
           subject: Twoje podsumowanie roku %{year} - Dawarich
@@ -3377,6 +3403,11 @@ pl:
     trip:
       must_be_after_start_date: musi być po dacie rozpoczęcia
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: Połączenie TeslaMateApi zweryfikowane
+        teslamate_url_is_missing: Brakuje URL TeslaMateApi
+        teslamate_connection_failed_message: 'Połączenie TeslaMateApi nie powiodło się: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: Połączenie AirTrail zweryfikowane
@@ -3496,6 +3527,15 @@ pl:
         immich_api_key_missing_permission_asset_view: 'Klucz API Immich nie ma uprawnienia: asset.view'
         immich_thumbnail_check_failed_code: 'Sprawdzenie miniatury Immich nie powiodło się: %{code}'
       enrich_photos:
+        checking_title: "Sprawdzanie aktualizacji lokalizacji w Immich"
+        checking: "Wysłano %{count} aktualizacji lokalizacji do Immich. Trwa sprawdzanie, czy współrzędne zostały zapisane."
+        result_title: "Wyniki aktualizacji lokalizacji w Immich"
+        confirmed:
+          one: "Potwierdzono zapisaną lokalizację dla %{count} zdjęcia."
+          other: "Potwierdzono zapisane lokalizacje dla %{count} zdjęć."
+          few: "Potwierdzono zapisane lokalizacje dla %{count} zdjęć."
+          many: "Potwierdzono zapisane lokalizacje dla %{count} zdjęć."
+        unconfirmed: "Niepotwierdzone aktualizacje lokalizacji: %{count}. Immich może nadal przetwarzać zmiany. Sprawdź zadania metadanych i uprawnienie asset.read klucza API. W bibliotekach zewnętrznych Immich musi mieć możliwość zapisywania plików pomocniczych XMP: montowanie tylko do odczytu lub uprawnienia plików mogą uniemożliwić zapis. Po rozwiązaniu problemu wyszukaj zdjęcia ponownie przed kolejną próbą."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Nie udało się pobrać zdjęć z Immich
@@ -3635,9 +3675,7 @@ pl:
     visits:
       suggest:
         error_suggesting_visits_message: 'Błąd podczas sugerowania wizyt: %{message}'
-        new_visits_suggested: Zasugerowano nowe wizyty
         error_suggesting_visits: Błąd podczas sugerowania wizyt
-        new_visits_suggested_message: Na podstawie danych lokalizacji od %{start_at} do %{end_at} zasugerowano nowe wizyty. Możesz je przejrzeć na stronie <a href="%{url}" class="link">Osi czasu</a>.
       merge_service:
         minimum_visits: Do scalenia trzeba wybrać co najmniej 2 wizyty
       bulk_destroy:
@@ -3687,6 +3725,10 @@ pl:
         weekday_preference: Podróżujesz częściej w dni robocze niż w weekendy
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: Synchronizacja TeslaMateApi nie powiodła się
+        your_teslamate_sync_failed: 'Synchronizacja TeslaMateApi nie powiodła się z błędem: %{message}. Sprawdź ustawienia integracji i spróbuj ponownie.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: Synchronizacja AirTrail nie powiodła się
@@ -4197,6 +4239,7 @@ pl:
       no_matches: Nie znaleziono dopasowań w zakresie tolerancji
       open_in_immich: Otwórz w Immich
       partially_enriched: Uzupełniono %{enriched} zdjęć. Dla %{failed} nie udało się.
+      pending_enrichment: "Wysłano %{count} aktualizacji lokalizacji do Immich; %{failed} nie udało się wysłać. Otrzymasz powiadomienie po sprawdzeniu zapisanych współrzędnych."
       photos_without_gps:
         one: "%{count} zdjęcie bez GPS"
         other: "%{count} zdjęć bez GPS"
@@ -4383,6 +4426,7 @@ pl:
       loading: Ładowanie…
       loading_tracks: Ładowanie tras dla nowego zakresu…
       no_location_data: Brak danych lokalizacji w tym zakresie dat - wybierz zakres z trasami na pasku daty powyżej.
+      gallery_without_flights: "Plakaty w galerii używają tras GPS bez lotów. Pobranie zachowuje bieżący widok."
       no_tracks_in_frame: Brak tras w ramce - przesuń lub przybliż mapę nad trasą, aby zapisać do galerii.
       queued: W kolejce - renderowanie po stronie serwera do sekcji Ostatnie plakaty…
       rendering: Renderowanie %{width} × %{height}px…

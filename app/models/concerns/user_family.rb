@@ -53,7 +53,8 @@ module UserFamily
     expires_at.blank? || Time.zone.parse(expires_at).future?
   end
 
-  def update_family_location_sharing!(enabled, duration: nil, share_history: nil, history_window: nil)
+  def update_family_location_sharing!(enabled, duration: nil, share_history: nil, history_window: nil,
+                                      history_before_sharing: nil)
     return false unless in_family?
 
     current_settings = settings || {}
@@ -71,6 +72,11 @@ module UserFamily
       sharing_config['share_history'] = share_history.nil? ? (existing_share_history || false) : share_history
       validated_window = validate_history_window(history_window || existing_history_window)
       sharing_config['history_window'] = validated_window
+      # Old clients and existing shares retain their original privacy boundary.
+      # Only an explicit confirmation may grant access to earlier points.
+      previous_consent = current_settings.dig('family', 'location_sharing', 'history_before_sharing') == true
+      consent = history_before_sharing.nil? ? previous_consent : history_before_sharing == true
+      sharing_config['history_before_sharing'] = sharing_config['share_history'] && consent
 
       if duration.present?
         expiration_time = sharing_expiration_time(duration)
@@ -122,6 +128,10 @@ module UserFamily
     settings.dig('family', 'location_sharing', 'history_window') || DEFAULT_HISTORY_WINDOW
   end
 
+  def family_history_before_sharing?
+    settings.dig('family', 'location_sharing', 'history_before_sharing') == true
+  end
+
   # Returns points within the given date range, scoped by sharing start time,
   # history window preference, and capped at 1 year maximum.
   # Points are ordered by timestamp ascending.
@@ -130,7 +140,7 @@ module UserFamily
     return Point.none unless family_share_history?
 
     started_at = family_sharing_started_at
-    return Point.none unless started_at
+    return Point.none unless started_at || family_history_before_sharing?
 
     # Apply history window preference
     window_start = case family_history_window
@@ -141,7 +151,9 @@ module UserFamily
                    else 7.days.ago
                    end
 
-    effective_start = [start_at, started_at, window_start].max
+    effective_start = [start_at, window_start]
+    effective_start << started_at unless family_history_before_sharing?
+    effective_start = effective_start.max
 
     return Point.none if effective_start >= end_at
 

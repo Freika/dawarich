@@ -31,6 +31,35 @@ RSpec.describe Settings::Update do
       end
     end
 
+    context 'when the TeslaMateApi URL changes' do
+      let(:settings_params) { { 'teslamate_url' => 'https://teslamate-new.test' } }
+      let(:service) { described_class.new(user, settings_params) }
+
+      before do
+        user.update!(settings: user.settings.merge(
+          'teslamate_url' => 'https://teslamate-old.test',
+          'teslamate_last_synced_at' => '2026-09-01T12:00:00Z',
+          'teslamate_last_synced_url' => 'https://teslamate-old.test',
+          'teslamate_processing_pending' => true,
+          'teslamate_processing_pending_url' => 'https://teslamate-old.test'
+        ))
+        allow(Resolv).to receive(:getaddress).with('teslamate-new.test').and_return('93.184.216.34')
+        allow_any_instance_of(TeslaMate::ConnectionTester).to receive(:call)
+          .and_return({ success: true, message: 'TeslaMateApi connection verified' })
+      end
+
+      it 'clears the previous source checkpoint' do
+        service.call
+
+        settings = user.reload.settings
+        expect(settings['teslamate_url']).to eq('https://teslamate-new.test')
+        expect(settings['teslamate_last_synced_at']).to be_nil
+        expect(settings['teslamate_last_synced_url']).to be_nil
+        expect(settings['teslamate_processing_pending']).to be(false)
+        expect(settings['teslamate_processing_pending_url']).to be_nil
+      end
+    end
+
     context 'when updating basic settings' do
       let(:settings_params) { { 'immich_url' => 'https://immich.test', 'photoprism_url' => 'https://photoprism.test' } }
       let(:service) { described_class.new(user, settings_params) }

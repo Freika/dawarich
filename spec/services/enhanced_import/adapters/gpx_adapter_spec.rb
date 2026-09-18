@@ -91,4 +91,39 @@ RSpec.describe EnhancedImport::Adapters::GpxAdapter do
       expect(other.external_place_id).not_to eq(first.external_place_id)
     end
   end
+
+  describe 'coordinate validation' do
+    def wpt(lat, lon, name = 'Cafe Riquet')
+      <<~GPX
+        <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
+        <gpx version="1.1" creator="OsmAnd~" xmlns="http://www.topografix.com/GPX/1/1">
+          <wpt lat="#{lat}" lon="#{lon}">
+            <name>#{name}</name>
+            <type>Food</type>
+          </wpt>
+        </gpx>
+      GPX
+    end
+
+    it 'keeps a waypoint with real coordinates' do
+      expect(extract(wpt('51.3402000', '12.3712000')).size).to eq(1)
+    end
+
+    it 'skips a waypoint whose coordinates are not numeric' do
+      expect(extract(wpt('north', '12.3712000'))).to be_empty
+    end
+
+    it 'skips a Null Island waypoint' do
+      expect(extract(wpt('0.0', '0.0'))).to be_empty
+    end
+
+    it 'still extracts the waypoints around an unreadable one' do
+      body = wpt('north', '12.3712000').sub(
+        '</gpx>',
+        %(  <wpt lat="51.3402000" lon="12.3712000"><name>Pharmacy</name></wpt>\n</gpx>)
+      )
+
+      expect(extract(body).map(&:name)).to eq(['Pharmacy'])
+    end
+  end
 end

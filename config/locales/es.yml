@@ -1011,8 +1011,8 @@ es:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Permite arrastrar puntos para corregir su posición. Recordado a lo largo de sesiones.
         tiled_rendering: "Renderizado en teselas"
         beta: "Beta"
-        tiled_rendering_description: "Dibuja puntos, rutas, tracks y niebla desde teselas vectoriales mientras te desplazas, en lugar de cargar todo el rango de fechas de antemano. Las rutas muestran tus tracks generados, coloreados por track."
-        tiled_rendering_caveats: "Activo mientras el mapa de pruebas está desactivado. Las zonas densas se agrupan en marcadores con un recuento — acércate para abrir puntos individuales. La edición de puntos no está disponible, las rutas se colorean por track (velocidad media, no un degradado), el globo de ruta al pasar el cursor desaparece — haz clic en un track — y el rastro en vivo puede retrasarse unos minutos."
+        tiled_rendering_description: "Dibuja puntos, rutas, tracks y niebla desde teselas vectoriales mientras te desplazas, en lugar de cargar todo el rango de fechas de antemano. Las rutas muestran tus tracks generados. Acércate para ver la velocidad de cada segmento."
+        tiled_rendering_caveats: "Activo mientras el mapa de pruebas está desactivado. Las zonas densas se agrupan en marcadores con un recuento — acércate para abrir puntos individuales. La edición de puntos no está disponible, el globo de ruta al pasar el cursor desaparece — haz clic en un track — y el rastro en vivo puede retrasarse unos minutos."
         routes: Rutas
         show_connected_route_lines: Muestra líneas de rutas conectadas
         color_by_speed: Color por velocidad
@@ -1540,6 +1540,8 @@ es:
         receive_an_annual_summary_on_january_2nd_with_your_year: Recibir un resumen anual el 2 de enero con tu año en revisión.
         news_updates: Noticias y actualizaciones
         receive_occasional_emails_about_new_features_and_important_updates: Recibir correos electrónicos ocasionales sobre nuevas características y actualizaciones importantes.
+        send_test_email: Enviar correo de prueba
+        test_email_hint: Envía un mensaje de prueba al correo electrónico de tu cuenta para verificar la configuración SMTP
         timezone: Zona horaria
         your_timezone: Tu zona horaria
         all_dates_and_times_will_be_displayed_in_this_timezone: Todos los fechas y horas se mostrarán en esta zona horaria.
@@ -1555,6 +1557,7 @@ es:
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
+          teslamate: TeslaMateApi
         status_connected: Conectado
         status_failed: El último intento de conexión falló
         immich_photoprism_integrations: Integraciones Immich y Photoprism
@@ -1584,6 +1587,16 @@ es:
         the_base_url_of_your_airtrail_instance_your_flights_are: La URL base de tu instancia de AirTrail. Tus vuelos se muestran como arcos en el mapa.
         airtrail_api_key: Clave API de AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Crea una clave API en AirTrail bajo Ajustes → Seguridad.
+        teslamate_integration: Integración de TeslaMateApi
+        teslamate_url: URL de TeslaMateApi
+        the_base_url_of_your_teslamateapi_instance: La URL base de tu instancia de TeslaMateApi.
+        teslamate_setup_guide: Guía de configuración (TeslaMateApi v1.25.0 o posterior)
+        teslamate_username: Usuario HTTP Basic (opcional)
+        teslamate_password: Contraseña HTTP Basic (opcional)
+        teslamate_api_token: Token Bearer (opcional)
+        teslamate_authentication_help: Usa autenticación Basic para un proxy inverso protegido o un token Bearer para un proxy o fork compatible. Los endpoints de lectura de TeslaMateApi estándar no usan API_TOKEN.
+        sync_teslamate_drives: Sincronizar trayectos de TeslaMateApi
+        teslamate_sync_help: Los trayectos completados se sincronizan automáticamente una vez al día. Los trayectos actuales y las posiciones estacionadas no están disponibles mediante TeslaMateApi.
         last_synced: 'Última sincronización:'
         connected_accounts: Cuentas conectadas
         you_ve_connected_your_account_using_the_following_oauth_provider: 'Has conectado tu cuenta utilizando el siguiente proveedor de OAuth:'
@@ -2509,6 +2522,9 @@ es:
       the_lock_will_automatically_lift_after_30_minutes_no_action: El bloqueo se levantará automáticamente después de 30 minutos. Si has sido tú, no tienes que hacer nada.
       didn_t_recognise_this_activity_someone_may_be_trying_to: "¿No reconoces esta actividad? Es posible que alguien esté intentando acceder a tu cuenta. Te recomendamos restablecer tu contraseña de inmediato."
       reset_your_password_2: 'Reinicia tu contraseña:'
+    test_email:
+      body: Si puedes leer esto, la configuración SMTP de tu instancia funciona.
+      sent_at: Enviado el
     welcome:
       welcome_to_dawarich: "¡Te damos la bienvenida a Dawarich!"
       hi: Hola
@@ -2823,11 +2839,13 @@ es:
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple no ha verificado este correo electrónico. Inicia sesión con contraseña y haz clic en el enlace desde ajustes.
             this_email_already_has_a_dawarich_account_we_sent_a: Este correo electrónico ya tiene una cuenta de Dawarich. Enviamos un enlace de confirmación a ese dirección — haz clic en él para vincular tu ID de Apple.
+            verification_rate_limited: Ya se envió un enlace de verificación a esa dirección recientemente. Revisa tu bandeja de entrada o espera antes de intentarlo de nuevo.
             we_couldn_t_find_your_existing_account_and_apple_didn: No encontramos tu cuenta existente, y Apple no nos compartió tu correo electrónico esta vez. Apple solo lo comparte una vez. Por favor, ve a appleid.apple.com → Inicia sesión con Apple, encuentra Dawarich, elige "Detén el inicio de sesión con Apple", luego intenta iniciar sesión de nuevo.
             token_verification_failed: 'Falló la verificación del token de Apple: %{message}'
           google:
             google_has_not_verified_this_email_sign_in_with_password: Google no ha verificado este correo electrónico. Inicia sesión con contraseña y haz clic en el enlace desde ajustes.
             this_email_already_has_a_dawarich_account_we_sent_a: Este correo electrónico ya tiene una cuenta de Dawarich. Nosotros enviamos un enlace de confirmación a ese dirección — haz clic en él para vincular tu inicio de sesión de Google.
+            verification_rate_limited: Ya se envió un enlace de verificación a esa dirección recientemente. Revisa tu bandeja de entrada o espera antes de intentarlo de nuevo.
             token_verification_failed: 'Falló la verificación del token de Google: %{message}'
           otp_challenges:
             invalid_challenge: 'Desafío inválido o expirado: %{message}'
@@ -2982,6 +3000,7 @@ es:
         linked_sign_in_with_two_factor: "%{provider} ahora está vinculado a tu cuenta. Inicia sesión con tu contraseña y código 2FA para continuar."
         incorrect_password: Contraseña incorrecta.
         confirmation_link_sent: Enviamos un enlace de confirmación a %{email}. Haz clic en él para vincular la cuenta.
+        account_link_rate_limited: Ya se envió un enlace de confirmación recientemente. Revisa tu bandeja de entrada o espera antes de solicitar otro.
         already_linked_to_different_identity: Esta cuenta ya está vinculada a una identidad diferente %{provider}.
       ios:
         authentication_successful_you_can_close_this_window: La autenticación fue exitosa! Puedes cerrar esta ventana.
@@ -3085,6 +3104,11 @@ es:
         please_enter_an_email_address_or_github_username: Por favor, introduce una dirección de correo electrónico o un nombre de usuario de GitHub
         verified_thank_you_for_supporting_dawarich_via_platform: Verificado! ¡Gracias por apoyar a Dawarich mediante %{platform}!
         not_found_in_supporter_list_make_sure_you_re_using: No encontrado en la lista de apoyo. Asegúrate de que estás utilizando el mismo correo electrónico o nombre de usuario de GitHub que tu plataforma de donación.
+        smtp_not_configured: El envío de correo electrónico mediante SMTP no está configurado. Configura los ajustes SMTP de autoalojamiento para establecer las preferencias de correo electrónico.
+        smtp_not_configured_html: 'El envío de correo electrónico mediante SMTP no está configurado. Configura %{link} para establecer las preferencias de correo electrónico.'
+        smtp_not_configured_link: los ajustes SMTP de autoalojamiento
+        test_email_sent: Correo de prueba enviado a %{email}. Revisa tu bandeja de entrada (y la carpeta de spam).
+        test_email_failed: 'El correo de prueba falló: %{error}'
       onboardings:
         demo_data_loaded: Datos de demostración cargados.
         demo_data_is_already_loaded: Los datos de demostración ya están cargados.
@@ -3294,6 +3318,8 @@ es:
         subject: Confirma la eliminación de la cuenta de Dawarich
       otp_account_locked:
         subject: La cuenta de Dawarich está temporalmente bloqueada
+      test_email:
+        subject: Correo de prueba de Dawarich
       digests:
         year_end:
           subject: Tu %{year} Año en Resumen - Dawarich
@@ -3329,6 +3355,11 @@ es:
     trip:
       must_be_after_start_date: debe estar después de la fecha de inicio
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: Se ha verificado la conexión con TeslaMateApi
+        teslamate_url_is_missing: Falta la URL de TeslaMateApi
+        teslamate_connection_failed_message: 'La conexión con TeslaMateApi falló: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: Se ha verificado la conexión con AirTrail
@@ -3448,6 +3479,13 @@ es:
         immich_api_key_missing_permission_asset_view: A la clave API de Immich le falta el permiso asset.view
         immich_thumbnail_check_failed_code: 'Falló el chequeo de miniatura en Immich: %{code}'
       enrich_photos:
+        checking_title: "Comprobando las actualizaciones de ubicación de Immich"
+        checking: "Se enviaron %{count} actualizaciones de ubicación a Immich. Comprobando si se guardaron las coordenadas."
+        result_title: "Resultados de las actualizaciones de ubicación de Immich"
+        confirmed:
+          one: "Ubicación guardada confirmada para %{count} foto."
+          other: "Ubicaciones guardadas confirmadas para %{count} fotos."
+        unconfirmed: "Actualizaciones de ubicación aún sin confirmar: %{count}. Es posible que Immich siga procesando los cambios. Comprueba sus tareas de metadatos y el permiso asset.read de tu clave API. En las bibliotecas externas, Immich debe poder escribir archivos auxiliares XMP: los montajes de solo lectura o los permisos de archivos pueden impedir que se guarden. Una vez resuelto, vuelve a buscar antes de reintentarlo."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Falló obtener fotos desde Immich
@@ -3587,9 +3625,7 @@ es:
     visits:
       suggest:
         error_suggesting_visits_message: 'Error al sugerir visitas: %{message}'
-        new_visits_suggested: Se sugirieron nuevas visitas
         error_suggesting_visits: 'Error al sugerir visitas'
-        new_visits_suggested_message: 'Se han sugerido nuevas visitas a partir de tus datos de ubicación del %{start_at} al %{end_at}. Puedes revisarlas en la página <a href="%{url}" class="link">Cronología</a>.'
       merge_service:
         minimum_visits: Deben seleccionarse al menos 2 visitas para fusionarlas
       bulk_destroy:
@@ -3639,6 +3675,10 @@ es:
         weekday_preference: Viajas más en días laborables que en fines de semana
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: Sincronización de TeslaMateApi fallida
+        your_teslamate_sync_failed: 'Tu sincronización de TeslaMateApi ha fallado con el error: %{message}. Revisa los ajustes de la integración y vuelve a intentarlo.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: Sincronización de AirTrail fallida
@@ -4138,6 +4178,7 @@ es:
       no_matches: No se encontraron coincidencias dentro del umbral de tolerancia
       open_in_immich: Abrir en Immich
       partially_enriched: Mejorada %{enriched} fotos. %{failed} falló.
+      pending_enrichment: "Se enviaron %{count} actualizaciones de ubicación a Immich; %{failed} no se pudieron enviar. Recibirás una notificación cuando se comprueben las coordenadas guardadas."
       photos_without_gps:
         one: "%{count} foto sin GPS"
         other: "%{count} fotos sin GPS"
@@ -4303,6 +4344,7 @@ es:
       loading: Cargando…
       loading_tracks: Cargando trayectos para el nuevo intervalo…
       no_location_data: No hay datos de ubicación en este intervalo; selecciona uno que contenga trayectos en la barra de fechas superior.
+      gallery_without_flights: "Los pósteres de la galería usan rutas GPS sin vuelos. La descarga conserva la vista actual."
       no_tracks_in_frame: No hay trayectos dentro del marco; mueve o amplía el mapa sobre tu ruta para guardarlo en la galería.
       queued: Pendiente — renderizando servidor-side a posteres recientes…
       rendering: Renderizando %{width} × %{height}px…

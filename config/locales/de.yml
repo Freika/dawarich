@@ -791,7 +791,7 @@ de:
       available_on_pro: Verfügbar auf Pro
       upgrade_to_pro: Auf Pro upgraden
     stats_row:
-      total_distance: GESAMTSTrecke
+      total_distance: Gesamtstrecke
       all_tracked_history: Alle verfolgten Historie
       vs: vs
       in: in
@@ -813,9 +813,9 @@ de:
         other: "Aufenthalte"
     travel_patterns:
       when_do_you_travel: Wann reist du?
-      time_of_day_distribution: ZEIT DES TAGES VERTEILUNG
-      day_of_week: TAG DES WOCHENENDES
-      seasonality: SEASONALITÄT
+      time_of_day_distribution: TAGESZEIT
+      day_of_week: WOCHENTAG
+      seasonality: SAISONALITÄT
       insight: Erkenntnis
     travel_story:
       your_travel_story: Deine Reiseerzählung
@@ -870,7 +870,7 @@ de:
     year_comparison:
       your_journey: 'Deine Reise:'
       vs: vs
-      distance: STrecke
+      distance: Strecke
       countries: Länder
       days_traveling: Tagen unterwegs
       days: Tage (
@@ -1011,8 +1011,8 @@ de:
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren. Wird über Sitzungen hinweg gespeichert.
         tiled_rendering: "Gekachelte Darstellung"
         beta: "Beta"
-        tiled_rendering_description: "Zeichnet Punkte, Routen, Tracks und Kartennebel beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden. Routen zeigen deine erzeugten Tracks, je Track eingefärbt."
-        tiled_rendering_caveats: "Aktiv, solange die Rubbelkarte aus ist. Dichte Bereiche werden zu Markern mit Punktanzahl zusammengefasst — zoome hinein, um einzelne Punkte zu öffnen. Punktbearbeitung ist nicht verfügbar, Routen werden je Track eingefärbt (Durchschnittsgeschwindigkeit statt Verlauf), das Routen-Popup beim Überfahren entfällt — klicke stattdessen auf einen Track — und die Live-Spur kann einige Minuten nachhängen."
+        tiled_rendering_description: "Zeichnet Punkte, Routen, Tracks und Kartennebel beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden. Routen zeigen deine erzeugten Tracks. Zoome hinein, um die Geschwindigkeit einzelner Abschnitte zu sehen."
+        tiled_rendering_caveats: "Aktiv, solange die Rubbelkarte aus ist. Dichte Bereiche werden zu Markern mit Punktanzahl zusammengefasst — zoome hinein, um einzelne Punkte zu öffnen. Punktbearbeitung ist nicht verfügbar, das Routen-Popup beim Überfahren entfällt — klicke stattdessen auf einen Track — und die Live-Spur kann einige Minuten nachhängen."
         routes: Routen
         show_connected_route_lines: Zeige verbundene Routenlinien
         color_by_speed: Farbe nach Geschwindigkeit
@@ -1540,6 +1540,8 @@ de:
         receive_an_annual_summary_on_january_2nd_with_your_year: Erhalte eine jährliche Zusammenfassung am 2. Januar mit einem Überblick über dein Jahr.
         news_updates: Nachrichten & Updates
         receive_occasional_emails_about_new_features_and_important_updates: Erhalte gelegentliche E-Mails zu neuen Funktionen und wichtigen Updates
+        send_test_email: Test-E-Mail senden
+        test_email_hint: Sendet eine Testnachricht an die E-Mail-Adresse deines Kontos, um die SMTP-Einstellungen zu überprüfen
         timezone: Zeitzone
         your_timezone: Deine Zeitzone
         all_dates_and_times_will_be_displayed_in_this_timezone: Alle Daten und Uhrzeiten werden in dieser Zeitzone angezeigt
@@ -1555,6 +1557,7 @@ de:
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
+          teslamate: TeslaMateApi
         status_connected: Verbunden
         status_failed: Letzter Verbindungsversuch fehlgeschlagen
         immich_photoprism_integrations: Immich & Photoprism-Integrationen
@@ -1584,6 +1587,16 @@ de:
         the_base_url_of_your_airtrail_instance_your_flights_are: Die Basis-URL deiner AirTrail-Instanz. Deine Flüge werden als Bögen auf der Karte angezeigt.
         airtrail_api_key: AirTrail-API-Schlüssel
         create_an_api_key_in_airtrail_under_settings_rarr_security: Erstelle einen API-Schlüssel in AirTrail unter Einstellungen → Sicherheit.
+        teslamate_integration: TeslaMateApi-Integration
+        teslamate_url: TeslaMateApi-URL
+        the_base_url_of_your_teslamateapi_instance: Die Basis-URL deiner TeslaMateApi-Instanz.
+        teslamate_setup_guide: Einrichtungsanleitung (TeslaMateApi v1.25.0 oder neuer)
+        teslamate_username: HTTP-Basic-Benutzername (optional)
+        teslamate_password: HTTP-Basic-Passwort (optional)
+        teslamate_api_token: Bearer-Token (optional)
+        teslamate_authentication_help: Verwende Basic-Authentifizierung für einen geschützten Reverse-Proxy oder ein Bearer-Token für einen kompatiblen Proxy oder Fork. Die Lese-Endpunkte der regulären TeslaMateApi verwenden API_TOKEN nicht.
+        sync_teslamate_drives: TeslaMateApi-Fahrten synchronisieren
+        teslamate_sync_help: Abgeschlossene Fahrten werden einmal täglich automatisch synchronisiert. Aktuelle Fahrten und Parkpositionen sind über TeslaMateApi nicht verfügbar.
         last_synced: 'Letzte Synchronisation:'
         connected_accounts: Verknüpfte Konten
         you_ve_connected_your_account_using_the_following_oauth_provider: 'Du hast dein Konto über folgenden OAuth-Anbieter verknüpft:'
@@ -2509,6 +2522,9 @@ de:
       the_lock_will_automatically_lift_after_30_minutes_no_action: Die Sperre wird nach 30 Minuten automatisch aufgehoben. Wenn du das warst, musst du nichts unternehmen.
       didn_t_recognise_this_activity_someone_may_be_trying_to: Warst du das nicht? Möglicherweise versucht jemand, auf dein Konto zuzugreifen. Wir empfehlen dir, dein Passwort sofort zurückzusetzen.
       reset_your_password_2: 'Passwort zurücksetzen:'
+    test_email:
+      body: Wenn du dies lesen kannst, funktioniert die SMTP-Konfiguration deiner Instanz.
+      sent_at: Gesendet um
     welcome:
       welcome_to_dawarich: Willkommen bei Dawarich!
       hi: Hallo
@@ -2878,11 +2894,13 @@ de:
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple hat diese E-Mail nicht verifiziert. Melde dich mit Passwort an und verknüpfe sie in den Einstellungen.
             this_email_already_has_a_dawarich_account_we_sent_a: Diese E-Mail hat bereits ein Dawarich-Konto. Wir haben einen Bestätigungslink an diese Adresse gesendet — klicke darauf, um deinen Apple-ID zu verknüpfen.
+            verification_rate_limited: Ein Bestätigungslink wurde kürzlich bereits an diese Adresse gesendet. Überprüfe deinen Posteingang oder warte, bevor du es erneut versuchst.
             we_couldn_t_find_your_existing_account_and_apple_didn: Wir konnten dein bestehendes Konto nicht finden, und Apple hat dieses Mal deine E-Mail nicht mit uns geteilt. Apple teilt die E-Mail nur einmal. Gehe zu appleid.apple.com → Anmeldung mit Apple, finde Dawarich, wähle "Nicht mehr mit Apple anmelden" und versuche es erneut.
             token_verification_failed: 'Apple-Token-Überprüfung fehlgeschlagen: %{message}'
           google:
             google_has_not_verified_this_email_sign_in_with_password: Google hat diese E-Mail nicht verifiziert. Melde dich mit Passwort an und verknüpfe sie in den Einstellungen.
             this_email_already_has_a_dawarich_account_we_sent_a: Diese E-Mail hat bereits ein Dawarich-Konto. Wir haben einen Bestätigungslink an diese Adresse gesendet — klicke darauf, um deine Google-Anmeldung zu verknüpfen.
+            verification_rate_limited: Ein Bestätigungslink wurde kürzlich bereits an diese Adresse gesendet. Überprüfe deinen Posteingang oder warte, bevor du es erneut versuchst.
             token_verification_failed: 'Google-Token-Überprüfung fehlgeschlagen: %{message}'
           otp_challenges:
             invalid_challenge: 'Ungültiger oder abgelaufener Challenge: %{message}'
@@ -3037,6 +3055,7 @@ de:
         linked_sign_in_with_two_factor: "%{provider} ist jetzt mit deinem Konto verbunden. Melde dich mit deinem Passwort und dem 2FA-Code an, um fortzufahren."
         incorrect_password: Falsches Passwort.
         confirmation_link_sent: Wir haben einen Bestätigungslink an %{email} gesendet. Klicke darauf, um dein Konto zu verknüpfen.
+        account_link_rate_limited: Ein Bestätigungslink wurde kürzlich bereits gesendet. Überprüfe deinen Posteingang oder warte, bevor du einen weiteren anforderst.
         already_linked_to_different_identity: Dieses Konto ist bereits mit einer anderen %{provider}-Identität verknüpft.
       ios:
         authentication_successful_you_can_close_this_window: Authentifizierung erfolgreich! Du kannst dieses Fenster schließen.
@@ -3140,6 +3159,11 @@ de:
         please_enter_an_email_address_or_github_username: Gib bitte eine E-Mail-Adresse oder GitHub-Nutzername ein
         verified_thank_you_for_supporting_dawarich_via_platform: Verifiziert! Danke für deine Unterstützung von Dawarich über %{platform}.
         not_found_in_supporter_list_make_sure_you_re_using: Nicht in der Unterstützerliste gefunden. Stelle sicher, dass du dieselbe E-Mail-Adresse oder GitHub-Nutzername verwendest, wie dein Spenden-Plattform.
+        smtp_not_configured: Der E-Mail-Versand über SMTP ist nicht konfiguriert. Konfiguriere die selbst gehosteten SMTP-Einstellungen, um E-Mail-Präferenzen festzulegen.
+        smtp_not_configured_html: 'Der E-Mail-Versand über SMTP ist nicht konfiguriert. Konfiguriere %{link}, um E-Mail-Präferenzen festzulegen.'
+        smtp_not_configured_link: die selbst gehosteten SMTP-Einstellungen
+        test_email_sent: Test-E-Mail an %{email} gesendet. Prüfe deinen Posteingang (und den Spam-Ordner).
+        test_email_failed: 'Test-E-Mail fehlgeschlagen: %{error}'
       onboardings:
         demo_data_loaded: Demo-Daten geladen.
         demo_data_is_already_loaded: Demo-Daten sind bereits geladen.
@@ -3349,6 +3373,8 @@ de:
         subject: Bestätige die Löschung deines Dawarich-Kontos
       otp_account_locked:
         subject: Dawarich-Konto vorübergehend gesperrt
+      test_email:
+        subject: Dawarich Test-E-Mail
       digests:
         year_end:
           subject: Dein %{year} Jahresrückblick – Dawarich
@@ -3384,6 +3410,11 @@ de:
     trip:
       must_be_after_start_date: muss nach start_date sein
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: TeslaMateApi-Verbindung bestätigt
+        teslamate_url_is_missing: TeslaMateApi-URL fehlt
+        teslamate_connection_failed_message: 'TeslaMateApi-Verbindung fehlgeschlagen: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: AirTrail-Verbindung bestätigt
@@ -3503,6 +3534,13 @@ de:
         immich_api_key_missing_permission_asset_view: 'Immich-API-Schlüssel fehlt Berechtigung: asset.view'
         immich_thumbnail_check_failed_code: 'Immich-Thumbnail-Prüfung fehlgeschlagen: %{code}'
       enrich_photos:
+        checking_title: "Immich-Standortaktualisierungen werden geprüft"
+        checking: "%{count} Standortaktualisierungen an Immich gesendet. Es wird geprüft, ob die Koordinaten gespeichert wurden."
+        result_title: "Ergebnisse der Immich-Standortaktualisierung"
+        confirmed:
+          one: "Der gespeicherte Standort für %{count} Foto wurde bestätigt."
+          other: "Gespeicherte Standorte für %{count} Fotos wurden bestätigt."
+        unconfirmed: "Noch nicht bestätigte Standortaktualisierungen: %{count}. Immich verarbeitet die Änderungen möglicherweise noch. Prüfe die Metadatenaufträge und die Berechtigung asset.read deines API-Schlüssels. Bei externen Bibliotheken muss Immich XMP-Begleitdateien schreiben können: Schreibgeschützte Einbindungen oder Dateiberechtigungen können das Speichern verhindern. Suche nach der Behebung erneut, bevor du es noch einmal versuchst."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: Fehler beim Abrufen der Fotos von Immich
@@ -3642,9 +3680,7 @@ de:
     visits:
       suggest:
         error_suggesting_visits_message: 'Fehler beim Vorschlagen von Aufenthalten: %{message}'
-        new_visits_suggested: Neue Aufenthalte vorgeschlagen
         error_suggesting_visits: 'Fehler beim Vorschlagen von Aufenthalten'
-        new_visits_suggested_message: 'Basierend auf deinen Standortdaten von %{start_at} bis %{end_at} wurden neue Aufenthalte vorgeschlagen. Du kannst sie auf der Seite <a href="%{url}" class="link">Zeitleiste</a> durchsehen.'
       merge_service:
         minimum_visits: Mindestens 2 Aufenthalte müssen ausgewählt werden, um sie zu verbinden
       bulk_destroy:
@@ -3694,6 +3730,10 @@ de:
         weekday_preference: Du reist mehr an Werktagen als an Wochenenden
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: TeslaMateApi-Synchronisation fehlgeschlagen
+        your_teslamate_sync_failed: 'Deine TeslaMateApi-Synchronisation ist mit folgendem Fehler fehlgeschlagen: %{message}. Prüfe deine Integrationseinstellungen und versuche es erneut.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: AirTrail-Synchronisation fehlgeschlagen
@@ -4194,6 +4234,7 @@ de:
       no_matches: Keine Übereinstimmungen innerhalb der Toleranz gefunden
       open_in_immich: In Immich öffnen
       partially_enriched: "%{enriched} Fotos bereichert. %{failed} fehlgeschlagen."
+      pending_enrichment: "%{count} Standortaktualisierungen an Immich gesendet; %{failed} konnten nicht gesendet werden. Du erhältst nach der Prüfung der gespeicherten Koordinaten eine Benachrichtigung."
       photos_without_gps:
         one: "%{count} Foto ohne GPS"
         other: "%{count} Fotos ohne GPS"
@@ -4359,6 +4400,7 @@ de:
       loading: Lade…
       loading_tracks: Lade Tracks für den neuen Bereich…
       no_location_data: Keine Standortdaten in diesem Zeitraum — wähle einen Zeitraum mit Tracks in der Zeitleiste oben aus.
+      gallery_without_flights: "Galerieposter verwenden GPS-Routen ohne Fluglinien. Der Download behält die aktuelle Ansicht bei."
       no_tracks_in_frame: Keine Tracks im Rahmen — verschiebe oder zoome die Karte über deinen Weg, um sie in die Galerie zu speichern.
       queued: In der Warteschlange — wird auf der Serverseite in Recent Posters gerendert…
       rendering: Rendere %{width} × %{height}px…

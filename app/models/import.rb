@@ -10,6 +10,7 @@ class Import < ApplicationRecord
   has_many :extracted_tracks, class_name: 'Track', dependent: :nullify
 
   has_one_attached :file
+  has_one_attached :prepared_download
 
   # Flag to skip background processing during user data import
   attr_accessor :skip_background_processing

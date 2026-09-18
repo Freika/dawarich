@@ -4,7 +4,7 @@
 
 <div class="container mx-auto px-4 my-5" data-controller="trip-maplibre"
      data-trip-maplibre-api-key-value="<%= current_user.api_key %>"
-     data-trip-maplibre-timezone-value="<%= current_user.timezone %>"
+     data-trip-maplibre-timezone-value="<%= current_user.timezone_iana %>"
      data-trip-maplibre-started-at-value="<%= @trip.started_at.iso8601 %>"
      data-trip-maplibre-ended-at-value="<%= @trip.ended_at.iso8601 %>"
      data-trip-maplibre-trip-id-value="<%= @trip.id %>"

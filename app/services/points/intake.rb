@@ -3,14 +3,18 @@
 module Points
   class Intake
     SLICE_SIZE = 1_000
+    MODES = %i[realtime bulk].freeze
 
-    def self.call(user_id:, payloads:)
-      new(user_id, payloads).call
+    def self.call(user_id:, payloads:, mode: :realtime)
+      new(user_id, payloads, mode).call
     end
 
-    def initialize(user_id, payloads)
+    def initialize(user_id, payloads, mode)
+      raise ArgumentError, "unsupported intake mode: #{mode}" unless MODES.include?(mode)
+
       @user_id = user_id
       @payloads = payloads
+      @mode = mode
     end
 
     def call
@@ -19,14 +23,15 @@ module Points
       upserted = upsert(usable_payloads)
       return [] if upserted.empty?
 
-      register_arrival(upserted)
+      bump_points_count(upserted)
+      register_arrival(upserted) if mode == :realtime
 
       upserted
     end
 
     private
 
-    attr_reader :user_id, :payloads
+    attr_reader :user_id, :payloads, :mode
 
     def usable_payloads
       @usable_payloads ||= payloads
@@ -49,8 +54,6 @@ module Points
     end
 
     def register_arrival(upserted)
-      bump_points_count(upserted)
-
       Points::AnomalyFilterJob.perform_later(user_id, timestamps.min, timestamps.max) if timestamps.any?
       Tracks::RealtimeDebouncer.new(user_id).trigger
       Tracks::BackfillScheduler.new(user_id, timestamps).call

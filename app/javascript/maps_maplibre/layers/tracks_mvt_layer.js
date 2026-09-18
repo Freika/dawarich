@@ -45,8 +45,8 @@ const MAX_SPEED_KMH = 150
 
 /**
  * Vector-tile line layer serving BOTH the Tracks and Routes toggles under
- * tiled mode. Coloring is per-track (avg_speed / flat), an approximation of
- * classic per-vertex speed gradients — disclosed in the settings copy.
+ * tiled mode. Speed tiles carry consecutive point segments when zoomed in;
+ * the overview keeps the same flat-color behavior as classic routes.
  */
 export class TracksMvtLayer extends BaseLayer {
   constructor(map, options = {}) {
@@ -175,19 +175,26 @@ export class TracksMvtLayer extends BaseLayer {
     ]
   }
 
-  // Color precedence: speed scale (approximate, per-track) > the user's route
+  // Color precedence: segment speed scale > the user's route
   // color when only Routes drives the layer > the track color.
   _lineColor() {
+    const flatColor = this._routesOnly() ? this.routeColor : this.trackColor
     if (this.speedColoredRoutes) {
       const stops = parseSpeedColorScale(this.speedColorScale)
       if (stops) {
         const expression = [
           "interpolate",
           ["linear"],
-          ["min", MAX_SPEED_KMH, ["coalesce", ["get", "avg_speed"], 0]],
+          ["min", MAX_SPEED_KMH, ["coalesce", ["get", "segment_speed"], 0]],
         ]
         for (const [speed, color] of stops) expression.push(speed, color)
-        return expression
+        return [
+          "step",
+          ["zoom"],
+          flatColor,
+          8,
+          ["case", ["has", "segment_speed"], expression, flatColor],
+        ]
       }
     }
     if (this._routesOnly()) return this.routeColor
@@ -224,6 +231,9 @@ export class TracksMvtLayer extends BaseLayer {
   setSpeedColoring(enabled, scale = this.speedColorScale) {
     this.speedColoredRoutes = enabled === true
     this.speedColorScale = scale
+    if (this.map.getSource(this.sourceId)) {
+      this.update({ startAt: this.startAt, endAt: this.endAt })
+    }
     this._repaint()
   }
 
@@ -269,6 +279,9 @@ export class TracksMvtLayer extends BaseLayer {
 
     if (startAt) params.set("start_at", startAt)
     if (endAt) params.set("end_at", endAt)
+    if (this.speedColoredRoutes && parseSpeedColorScale(this.speedColorScale)) {
+      params.set("speed_coloring", "true")
+    }
     // Never the raw api key: the Bearer header authenticates (transformRequest)
     if (this.apiKey) params.set("u", trackCachePartitioner(this.apiKey))
 

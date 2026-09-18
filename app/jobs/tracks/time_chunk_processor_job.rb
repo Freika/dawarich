@@ -18,9 +18,9 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
 
     # No per-user lock here: chunks for the same user are deliberately allowed
     # to run concurrently (that's the whole point of ParallelGenerator's
-    # fan-out). Race-safety is provided by the (user_id, start_at, end_at)
-    # unique index plus the rescue paths in TrackBuilder, Merger, and
-    # BoundaryDetector — racing inserts collapse onto the winning track.
+    # fan-out). TrackBuilder locks and claims only orphan points, so overlapping
+    # chunks cannot drain one another. The unique time-span index and rescue
+    # paths also collapse racing inserts onto the winning track.
     tracks_created = process_chunk
     update_session_progress(tracks_created)
   rescue StandardError => e
@@ -111,7 +111,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
         return nil
       end
 
-      track = create_track_from_points(points, distance * 1000) # Convert km to meters
+      track = create_track_from_points(points, distance * 1000, orphan_only: true) # Convert km to meters
 
       unless track
         Rails.logger.warn "Failed to create track from #{points.size} points with distance #{distance.round(2)} km"

@@ -2,12 +2,14 @@ import { Controller } from "@hotwired/stimulus"
 import { formatNumber, translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
+import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { AreaSelectionManager } from "./maplibre/area_selection_manager"
@@ -263,6 +265,10 @@ export default class extends Controller {
       this.boundHandleEntryDeselect,
     )
 
+    this.timelineSegmentHover = new TimelineSegmentHover(this, () =>
+      SettingsManager.getSetting("tracksEnabled"),
+    )
+
     // SPA date-range change from the Timeline calendar — refetch all enabled
     // layers for the new start/end without tearing down the map instance.
     this.boundHandleDateNavigated = this.handleTimelineDateNavigated.bind(this)
@@ -335,6 +341,22 @@ export default class extends Controller {
       new Date(this.endDateValue),
     )
 
+    // Snapshot the load-time window so realtime filtering can tell the default
+    // "today" view (whose frozen end goes stale across local midnight) apart
+    // from an explicitly selected past range.
+    const loadEnd = parseTimestamp(this.endDateValue)
+    this.defaultDateRange = {
+      startValue: this.startDateValue,
+      endValue: this.endDateValue,
+      reachesNow: loadEnd !== null && loadEnd >= Date.now(),
+    }
+
+    if (this.settings.placesEnabled) {
+      await this.placesManager.initializePlaceTagFilters({
+        reloadPlaces: false,
+      })
+    }
+
     this.loadMapData().then(() => {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()
@@ -357,6 +379,7 @@ export default class extends Controller {
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
+    this.timelineSegmentHover?.destroy()
     this.eventHandlers?.destroy()
     cancelAllPreviews()
     if (this._persistView) this.map?.off("moveend", this._persistView)
@@ -476,7 +499,15 @@ export default class extends Controller {
    * to come back empty because the server parsed the dates differently.
    */
   handleTimelineDateNavigated(event) {
-    const { startAt, endAt } = event.detail || {}
+    const navigation = this.navigateTimelineDateRange(event.detail || {})
+    if (typeof event.detail?.waitUntil === "function") {
+      event.detail.waitUntil(navigation)
+    } else {
+      navigation.catch((error) => console.error(error))
+    }
+  }
+
+  async navigateTimelineDateRange({ startAt, endAt }) {
     if (!startAt || !endAt) return
 
     const toApiDate = (local) => {
@@ -492,13 +523,32 @@ export default class extends Controller {
     this.endDateValue = end
 
     this._clearDayHighlight?.()
-    this.loadMapData().then(() => {
-      if (this.settings?.anomaliesEnabled) {
-        this.routesManager.refreshAnomalies({ enabled: true })
-      }
-    })
+    await this.loadMapData()
+    if (this.settings?.anomaliesEnabled) {
+      this.routesManager.refreshAnomalies({ enabled: true })
+    }
     this.refreshTimelineFeedIfActive?.()
     this.debouncedLoadFamilyHistory?.()
+  }
+
+  /**
+   * The active window realtime points are filtered against. When the range is
+   * still the untouched load-time window that reached the present, the end is
+   * left open so live points recorded after local midnight keep showing.
+   */
+  realtimeDateRange() {
+    const startValue = this.startDateValue
+    const endValue = this.endDateValue
+    const unchanged =
+      this.defaultDateRange &&
+      startValue === this.defaultDateRange.startValue &&
+      endValue === this.defaultDateRange.endValue
+
+    return {
+      startValue,
+      endValue,
+      treatEndAsOpen: Boolean(unchanged && this.defaultDateRange.reachesNow),
+    }
   }
 
   debouncedLoadFamilyHistory() {

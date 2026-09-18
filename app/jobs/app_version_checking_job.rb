@@ -5,8 +5,6 @@ class AppVersionCheckingJob < ApplicationJob
   sidekiq_options retry: false
 
   def perform
-    Rails.cache.delete(CheckAppVersion::VERSION_CACHE_KEY)
-
-    CheckAppVersion.new.call
+    CheckAppVersion.new.refresh
   end
 end

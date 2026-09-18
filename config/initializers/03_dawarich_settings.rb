@@ -69,6 +69,10 @@ class DawarichSettings
       ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
     end
 
+    def email_configured?
+      ENV['SMTP_SERVER'].present?
+    end
+
     def nominatim_enabled?
       setting(:nominatim_api_host, NOMINATIM_API_HOST).present?
     end

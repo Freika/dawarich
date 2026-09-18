@@ -41,13 +41,13 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
     )
   end
 
-  def perform(start_id = nil, batch_size = BATCH_SIZE)
+  def perform(start_id = nil, batch_size = BATCH_SIZE, repair_collisions: false)
     start_id ||= Point.minimum(:id)
     return if start_id.nil?
 
     end_id = start_id + batch_size - 1
 
-    resolved = bounded { resolve_countries(start_id, end_id) }
+    resolved = bounded { resolve_countries(start_id, end_id, repair_collisions:) }
 
     max_id = Point.maximum(:id)
     log_progress(resolved, start_id, end_id, max_id)
@@ -57,7 +57,11 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
       return
     end
 
-    self.class.set(wait: PAUSE).perform_later(end_id + 1)
+    if repair_collisions
+      self.class.set(wait: PAUSE).perform_later(end_id + 1, BATCH_SIZE, repair_collisions: true)
+    else
+      self.class.set(wait: PAUSE).perform_later(end_id + 1)
+    end
   # Mirrors BackfillPointDimensionsJob: a statement_timeout is usually size,
   # not luck. Halve and retry from the same cursor; the successor batch
   # returns to the default size, and only the smallest batch reaches retry_on.
@@ -68,7 +72,11 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
       "[BackfillPointCountryId] batch #{start_id}..#{end_id} aborted (#{e.class}: #{e.message}); " \
       "retrying from id #{start_id} at half size #{batch_size / 2}"
     )
-    self.class.set(wait: PAUSE).perform_later(start_id, batch_size / 2)
+    if repair_collisions
+      self.class.set(wait: PAUSE).perform_later(start_id, batch_size / 2, repair_collisions: true)
+    else
+      self.class.set(wait: PAUSE).perform_later(start_id, batch_size / 2)
+    end
   end
 
   private
@@ -109,7 +117,21 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
   # name AND its geocoder aliases ("United States" vs "United States of
   # America") — without the aliases a third of a real-world points table
   # stays unresolved.
-  def resolve_countries(start_id, end_id)
+  def resolve_countries(start_id, end_id, repair_collisions: false)
+    predicate = if repair_collisions
+                  <<~SQL.squish
+                    (p.country_id IS NULL OR (
+                      p.country_id <> c.id AND EXISTS (
+                        SELECT 1 FROM countries current_country
+                        JOIN countries target_country ON target_country.iso_a2 = current_country.iso_a2
+                        WHERE current_country.id = p.country_id AND target_country.id = c.id
+                      )
+                    ))
+                  SQL
+                else
+                  'p.country_id IS NULL'
+                end
+
     execute_sanitized(<<~SQL.squish, start_id, end_id).cmd_tuples
       UPDATE points p
       SET country_id = c.id
@@ -125,7 +147,7 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
         GROUP BY name
       ) c
       WHERE p.id BETWEEN ? AND ?
-        AND p.country_id IS NULL
+        AND #{predicate}
         AND c.name = COALESCE(p.country_name, p.country)
     SQL
   end

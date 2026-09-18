@@ -46,7 +46,7 @@ class Shared::LinksController < ApplicationController
       value: @link.unlock_token,
       expires: @link.expires_at || 30.days.from_now,
       httponly: true,
-      secure: Rails.env.production?,
+      secure: request.ssl?,
       same_site: :lax
     }
   end

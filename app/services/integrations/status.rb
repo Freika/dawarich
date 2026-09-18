@@ -2,7 +2,7 @@
 
 module Integrations
   class Status
-    SERVICES = %w[immich photoprism airtrail].freeze
+    SERVICES = %w[immich photoprism airtrail teslamate].freeze
 
     def self.for(user)
       new(user)
@@ -16,7 +16,11 @@ module Integrations
     def configured?(service)
       service = service.to_s
 
-      settings["#{service}_url"].present? && settings["#{service}_api_key"].present?
+      if service == 'teslamate'
+        settings['teslamate_url'].present?
+      else
+        settings["#{service}_url"].present? && settings["#{service}_api_key"].present?
+      end
     end
 
     def status(service)

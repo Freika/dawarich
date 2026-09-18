@@ -82,6 +82,7 @@ class Api::V1::SettingsController < ApiController
       :gps_filtering_enabled,
       :point_dragging_enabled, :points_tiled_rendering,
       enabled_map_layers: [],
+      places_tag_filters: [],
       enabled_transportation_modes: [],
       maps_maplibre_custom_theme: [
         :base,

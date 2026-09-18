@@ -76,12 +76,45 @@ RSpec.describe DataMigrations::BackfillPointCountryIdJob, type: :job do
       expect(stamped.reload.country_id).to eq(other.id)
     end
 
+    it 'repairs a country link when the name resolves within the same ISO code' do
+      naval_base = create(:country, name: 'US Naval Base Guantanamo Bay', iso_a2: 'US', iso_a3: 'USA')
+      united_states = create(:country, name: 'United States of America', iso_a2: 'US', iso_a3: 'USA')
+      stamped = create(:point, user: user)
+      stamped.update_columns(country_name: 'United States', country_id: naval_base.id)
+
+      described_class.perform_now(nil, described_class::BATCH_SIZE, repair_collisions: true)
+
+      expect(stamped.reload.country_id).to eq(united_states.id)
+    end
+
+    it 'keeps a country link when the name resolves to a different ISO code' do
+      united_states = create(:country, name: 'United States of America', iso_a2: 'US', iso_a3: 'USA')
+      france = create(:country, name: 'France', iso_a2: 'FR', iso_a3: 'FRA')
+      stamped = create(:point, user: user)
+      stamped.update_columns(country_name: 'United States', country_id: france.id)
+
+      described_class.perform_now(nil, described_class::BATCH_SIZE, repair_collisions: true)
+
+      expect(stamped.reload.country_id).to eq(france.id)
+      expect(stamped.reload.country_id).not_to eq(united_states.id)
+    end
+
     it 'walks the id range in batches by re-enqueueing itself' do
       stub_const("#{described_class}::BATCH_SIZE", 1)
       first_id = Point.minimum(:id)
 
       expect { described_class.perform_now(first_id) }.to \
         have_enqueued_job(described_class).with(first_id + 1)
+    end
+
+    it 'keeps collision repair enabled across batches' do
+      stub_const("#{described_class}::BATCH_SIZE", 1)
+      first_id = Point.minimum(:id)
+
+      expect do
+        described_class.perform_now(first_id, described_class::BATCH_SIZE, repair_collisions: true)
+      end.to have_enqueued_job(described_class)
+        .with(first_id + 1, described_class::BATCH_SIZE, repair_collisions: true)
     end
 
     it 'does not fall through to the legacy column when country_name is set but unmatched' do

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_01_150000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_14_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -372,6 +372,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_150000) do
     t.bigint "import_id"
     t.text "in_regions", default: [], array: true
     t.text "inrids", default: [], array: true
+    t.integer "lock_version", default: 0, null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
     t.integer "mode"
     t.jsonb "motion_data", default: {}, null: false
@@ -397,6 +398,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_150000) do
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
     t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
+    t.index ["user_id", "created_at"], name: "index_points_on_user_id_and_created_at"
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
     t.index ["user_id", "timestamp", "lonlat"], name: "index_points_on_user_id_timestamp_lonlat", unique: true
     t.index ["user_id"], name: "idx_points_user_id_legacy_tracker", where: "((tracker_id)::text = ANY (ARRAY[('google-maps-timeline-export'::character varying)::text, ('google-maps-phone-timeline-export'::character varying)::text]))"
@@ -475,12 +477,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_150000) do
   end
 
   create_table "stats", force: :cascade do |t|
+    t.integer "calculation_version", default: 0, null: false
     t.datetime "created_at", null: false
     t.jsonb "daily_distance", default: {}
     t.bigint "distance", null: false
     t.bigint "flight_distance", default: 0, null: false
     t.jsonb "h3_hex_ids", default: {}
     t.integer "month", null: false
+    t.datetime "repair_deferred_at"
     t.jsonb "sharing_settings", default: {}
     t.uuid "sharing_uuid"
     t.jsonb "toponyms"
@@ -561,6 +565,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_150000) do
     t.integer "elevation_min"
     t.datetime "end_at", null: false
     t.bigint "import_id"
+    t.integer "lock_version", default: 0, null: false
     t.geometry "original_path", limit: {srid: 4326, type: "line_string"}, null: false
     t.datetime "start_at", null: false
     t.string "tracker_id"
@@ -624,6 +629,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_150000) do
     t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "1000", "minutes_between_routes" => "60"}
     t.integer "sign_in_count", default: 0, null: false
     t.string "signup_variant"
+    t.datetime "stats_swept_at"
     t.integer "status", default: 0
     t.integer "subscription_source", default: 0, null: false
     t.string "theme", default: "dark", null: false

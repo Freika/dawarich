@@ -37,8 +37,12 @@ Rails.application.routes.draw do
     end
   end
 
-  # We want to return a nice error message if the user is not authorized to access Sidekiq
-  match '/sidekiq' => redirect { |_, request|
+  # We want to return a nice error message if the user is not authorized to access Sidekiq.
+  # A temporary (302) redirect is intentional: the auth/role/env state that gates
+  # /sidekiq can change between requests, so the outcome must be re-evaluated on
+  # every visit. A 301 would be permanently cached by browsers with no reference
+  # to the current user, locking out visitors who later become authorized.
+  match '/sidekiq' => redirect(status: 302) { |_, request|
                         request.flash[:error] = 'You are not authorized to perform this action.'
                         '/'
                       }, via: :get
@@ -47,6 +51,7 @@ Rails.application.routes.draw do
     resources :general, only: [:index]
     patch 'general', to: 'general#update'
     post 'general/verify_supporter', to: 'general#verify_supporter', as: :verify_supporter
+    post 'general/test_email', to: 'general#test_email', as: :test_email
 
     resources :integrations, only: [:index]
     patch 'integrations', to: 'integrations#update'
@@ -100,6 +105,7 @@ Rails.application.routes.draw do
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
   resources :imports do
+    get :download, on: :member
     resource :extraction, only: %i[create destroy], controller: 'imports/extractions'
   end
   resources :tracks, only: [] do
@@ -323,6 +329,7 @@ Rails.application.routes.draw do
         end
       end
       resources :points, only: %i[index create update destroy] do
+        resource :position, only: :update, controller: 'points/positions'
         collection do
           delete :bulk_destroy
           post :reapply_anomaly_filter
