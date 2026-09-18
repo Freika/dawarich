@@ -6,7 +6,7 @@ module Admin
     PROVIDER_SECTIONS = %w[photon geoapify nominatim locationiq].freeze
     SECTION_ICONS = { 'rate_limit' => 'clock', 'points' => 'map-pin' }.freeze
 
-    CHIBIGEO_KEY_URL = 'https://chibigeo.com/docs/guides/dawarich?utm_source=dawarich&utm_medium=app&utm_campaign=geocoding_settings'
+    CHIBIGEO_KEY_URL = 'https://chibigeo.com/docs/guides/dawarich-self-hosted-geocoding?utm_source=dawarich&utm_medium=app&utm_campaign=geocoding_settings'
 
     def geocoding_provider_name(provider)
       Geocoding::Providers.name(provider)

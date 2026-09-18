@@ -30,6 +30,7 @@ fr:
           chibigeo_key_link: "Obtenir une clé d'API gratuite"
           komoot_warning: "photon.komoot.io est un serveur public partagé aux limites strictes. Les requêtes sont limitées à une par seconde, le géocodage en masse sera donc lent. Envisagez d'héberger votre propre instance Photon."
           https_locked: "HTTPS est toujours activé pour cet hôte."
+          legacy_user_settings: "Certains utilisateurs avaient configuré leur propre géocodage avant son déplacement ici. Leurs réglages n'ont pas été repris, car tous les utilisateurs n'en avaient pas ou ils différaient. Configurez un fournisseur ci-dessous pour réactiver le géocodage pour tout le monde."
         providers:
           photon: "Géocodeur open source. Utilisez un serveur hébergé ou le vôtre."
           geoapify: "Service hébergé. Nécessite une clé d'API."
@@ -55,6 +56,8 @@ fr:
       update:
         saved: "Paramètres enregistrés."
         pinned: "Refusé : fixé par %{variables}."
+        host_invalid: "L'hôte doit être un simple nom d'hôte, avec un port ou un chemin facultatif, sans espaces."
+        chibigeo_key_required: "ChibiGeo nécessite une clé d'API. Le forfait gratuit Hobby inclut 2 500 requêtes par jour : obtenez votre clé sur chibigeo.com."
       test_geocoding:
         not_configured: "Aucun fournisseur de géocodage n'est configuré. Enregistrez d'abord un fournisseur."
         success: "Votre fournisseur a résolu les coordonnées de test en : %{place}."

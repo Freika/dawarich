@@ -57,7 +57,7 @@ module InstanceSettings
       distinct = settings.map { |s| signature(s) }.uniq
       return log_disagreement(distinct) if distinct.size > 1
 
-      write(settings.first)
+      write(settings.min_by { |setting| setting.config['rps'].presence&.to_f || Float::INFINITY })
     end
 
     def signature(setting)

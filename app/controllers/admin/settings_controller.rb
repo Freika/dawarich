@@ -17,19 +17,23 @@ module Admin
     }.freeze
 
     before_action :authenticate_user!
+    before_action :authenticate_self_hosted!
     before_action :ensure_admin!
 
     def show
       @settings = InstanceSettings::Registry.keys.index_with { |key| InstanceSettings::Resolver.get(key) }
       @unreadable_keys = unreadable_secret_keys
       @geocoding = Geocoding::Config.resolved_config
+      @legacy_user_geocoding = ServiceSetting.service_geocoding.where(active: true).exists?
       @section = params[:section].presence_in(SECTIONS.keys) || default_section
     end
 
     def update
-      refused = apply_submitted_settings
-
       back = admin_settings_path(section: params[:section].presence_in(SECTIONS.keys))
+      input = InstanceSettings::GeocodingInput.new(submitted_values)
+      return redirect_to back, alert: input.errors.join(' '), status: :see_other unless input.valid?
+
+      refused = apply_settings(input.values)
 
       if refused.any?
         redirect_to back, alert: t('admin.settings.update.pinned', variables: refused.join(', ')), status: :see_other
@@ -65,13 +69,11 @@ module Admin
                      .map { |setting| setting.key.to_sym }
     end
 
-    # Returns the variables that refused a write, so the operator is told which
-    # ones to remove from the environment rather than left wondering.
-    def apply_submitted_settings
+    def submitted_values
       submitted = params.fetch(:instance_settings, {})
-      return [] if submitted.blank?
+      return {} if submitted.blank?
 
-      submitted.to_unsafe_h.each_with_object([]) do |(key, raw), refused|
+      submitted.to_unsafe_h.each_with_object({}) do |(key, raw), values|
         definition = registry_definition(key)
         next if definition.nil?
         # A secret is never rendered back into the form, so the browser posts an
@@ -80,11 +82,17 @@ module Admin
         # "unchanged", and clearing one is an explicit checkbox.
         next if definition.secret? && raw.to_s.strip.empty? && !clearing?(definition)
 
-        begin
-          InstanceSettings::Resolver.set(definition.key, definition.coerce(raw))
-        rescue InstanceSettings::Resolver::PinnedSettingError
-          refused << definition.env_var
-        end
+        values[definition.key] = definition.coerce(raw)
+      end
+    end
+
+    # Returns the variables that refused a write, so the operator is told which
+    # ones to remove from the environment rather than left wondering.
+    def apply_settings(values)
+      values.each_with_object([]) do |(key, value), refused|
+        InstanceSettings::Resolver.set(key, value)
+      rescue InstanceSettings::Resolver::PinnedSettingError
+        refused << InstanceSettings::Registry.fetch(key).env_var
       end
     end
 

@@ -8,7 +8,7 @@ class Settings::IntegrationsController < ApplicationController
   before_action :require_pro!, only: %i[update]
 
   def index
-    return redirect_to admin_settings_path if params[:service] == 'geocoding' && current_user.admin?
+    return redirect_to admin_settings_path if old_geocoding_link_for_admin?
 
     @pro_required = !current_user.full_access?
     return if @pro_required
@@ -35,6 +35,10 @@ class Settings::IntegrationsController < ApplicationController
 
   def flash_message(messages)
     messages.join('. ').truncate_bytes(FLASH_MESSAGE_BYTES)
+  end
+
+  def old_geocoding_link_for_admin?
+    params[:service] == 'geocoding' && current_user.admin? && DawarichSettings.self_hosted?
   end
 
   def settings_params

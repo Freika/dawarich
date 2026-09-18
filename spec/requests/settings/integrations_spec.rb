@@ -252,6 +252,15 @@ RSpec.describe 'Settings::Integrations', type: :request do
       expect(response).to redirect_to(admin_settings_path)
     end
 
+    it 'keeps a cloud admin on Integrations for an old geocoding link' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(admin: true)
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response).not_to be_redirect
+    end
+
     it 'shows anyone else the first photo service for an old geocoding link' do
       get settings_integrations_path(service: 'geocoding')
 

@@ -29,6 +29,7 @@ ca:
           chibigeo_key_link: "Obtén la teva clau d'API gratuïta"
           komoot_warning: "photon.komoot.io és una instància pública compartida amb límits de peticions estrictes. Les peticions es limiten a una per segon i la geocodificació massiva serà lenta. Considera allotjar la teva pròpia instància de Photon."
           https_locked: "L'HTTPS sempre està activat per a aquest amfitrió."
+          legacy_user_settings: "Alguns usuaris havien configurat la seva pròpia geocodificació abans que es traslladés aquí. La seva configuració no s'ha conservat perquè no tots els usuaris en tenien o eren diferents. Configura un proveïdor a sota per tornar a activar la geocodificació per a tothom."
         providers:
           photon: "Geocodificador de codi obert. Fes servir un servidor allotjat o el teu."
           geoapify: "Servei allotjat. Necessita una clau d'API."
@@ -54,6 +55,8 @@ ca:
       update:
         saved: "Configuració desada."
         pinned: "Rebutjat: fixat per %{variables}."
+        host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals i sense espais."
+        chibigeo_key_required: "ChibiGeo necessita una clau d'API. El pla gratuït Hobby inclou 2.500 cerques al dia; obtén la teva clau a chibigeo.com."
       test_geocoding:
         not_configured: "No hi ha cap proveïdor de geocodificació configurat. Desa primer un proveïdor."
         success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."

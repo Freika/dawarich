@@ -10,7 +10,7 @@
     <section aria-labelledby="instance-settings-geocoding" class="mb-8">
       <h2 id="instance-settings-geocoding" class="text-xl font-semibold"><%= t('.geocoding.title') %></h2>
       <p class="mt-1 mb-4 max-w-3xl text-base-content/70 [text-wrap:pretty]"><%= t('.geocoding.description') %></p>
-      <%= render 'admin/settings/geocoding_status', geocoding: @geocoding %>
+      <%= render 'admin/settings/geocoding_status', geocoding: @geocoding, legacy_user_geocoding: @legacy_user_geocoding %>
       <p class="mt-3 max-w-3xl text-sm text-base-content/70 [text-wrap:pretty]"><%= t('.geocoding.chain_hint') %></p>
     </section>
 

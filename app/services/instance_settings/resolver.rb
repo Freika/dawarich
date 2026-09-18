@@ -108,7 +108,11 @@ module InstanceSettings
       # Loads row by row so one undecryptable secret degrades to unset instead
       # of blanking every other setting on the instance.
       def load_stored
-        InstanceSetting.all.each_with_object({}) do |record, acc|
+        records = InstanceSetting.with_connection do |connection|
+          connection.transaction(requires_new: true) { InstanceSetting.all.to_a }
+        end
+
+        records.each_with_object({}) do |record, acc|
           definition = safe_definition(record.key)
           next if definition.nil?
 

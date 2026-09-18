@@ -29,6 +29,7 @@ de:
           chibigeo_key_link: "Kostenlosen API-Schlüssel holen"
           komoot_warning: "photon.komoot.io ist ein gemeinsam genutzter öffentlicher Server mit strengen Limits. Anfragen werden auf eine pro Sekunde gedrosselt, Massen-Geokodierung ist daher langsam. Erwäge, eine eigene Photon-Instanz zu betreiben."
           https_locked: "Für diesen Host ist HTTPS immer aktiv."
+          legacy_user_settings: "Einige Nutzer hatten die Geokodierung selbst eingerichtet, bevor sie hierher verschoben wurde. Ihre Einstellungen wurden nicht übernommen, weil nicht alle Nutzer eine hatten oder sie sich unterschieden. Richte unten einen Anbieter ein, um die Geokodierung für alle wieder einzuschalten."
         providers:
           photon: "Open-Source-Geocoder. Nutze einen gehosteten Server oder betreibe deinen eigenen."
           geoapify: "Gehosteter Dienst. Benötigt einen API-Schlüssel."
@@ -54,6 +55,8 @@ de:
       update:
         saved: "Einstellungen gespeichert."
         pinned: "Abgelehnt: festgelegt durch %{variables}."
+        host_invalid: "Der Host muss ein reiner Hostname mit optionalem Port oder Pfad sein, ohne Leerzeichen."
+        chibigeo_key_required: "ChibiGeo benötigt einen API-Schlüssel. Der kostenlose Hobby-Tarif umfasst 2.500 Abfragen pro Tag – deinen Schlüssel bekommst du auf chibigeo.com."
       test_geocoding:
         not_configured: "Es ist kein Geokodierungsanbieter konfiguriert. Speichere zuerst einen Anbieter."
         success: "Dein Anbieter hat die Testkoordinaten aufgelöst zu: %{place}."

@@ -32,6 +32,23 @@ RSpec.describe 'Admin::Settings' do
 
       expect(response).to have_http_status(:ok)
     end
+
+    it 'refuses a settings write from a non-admin' do
+      sign_in non_admin
+
+      patch '/admin/settings', params: { instance_settings: { photon_api_host: 'attempt.example.com' } }
+
+      expect(InstanceSetting.find_by(key: 'photon_api_host')).to be_nil
+    end
+
+    it 'does not serve the page on a cloud instance, even to an admin' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      sign_in admin
+
+      get '/admin/settings'
+
+      expect(response).not_to have_http_status(:ok)
+    end
   end
 
   describe 'GET show' do
@@ -198,6 +215,87 @@ RSpec.describe 'Admin::Settings' do
       )
       expect(raw).to be_present
       expect(raw).not_to include('a-key')
+    end
+  end
+
+  describe 'geocoding input' do
+    before { sign_in admin }
+
+    it 'stores a pasted URL as a bare host' do
+      patch '/admin/settings', params: { instance_settings: { photon_api_host: ' https://Photon.Example.com:2322/ ' } }
+
+      expect(InstanceSetting.find_by(key: 'photon_api_host')&.value).to eq('photon.example.com:2322')
+    end
+
+    it 'turns HTTPS on for a TLS-only host pasted with its scheme' do
+      patch '/admin/settings',
+            params: { instance_settings: { photon_api_host: 'https://app.chibigeo.com/v1/photon',
+                                           photon_api_key: 'chibi-key', photon_api_use_https: 'false' } }
+
+      config = Geocoding::Config.resolved_config
+      expect(config.host).to eq('app.chibigeo.com/v1/photon')
+      expect(config.use_https).to be(true)
+    end
+
+    it 'refuses a host that is not a bare hostname' do
+      patch '/admin/settings', params: { instance_settings: { nominatim_api_host: 'nominatim example.com' } }
+
+      expect(InstanceSetting.find_by(key: 'nominatim_api_host')).to be_nil
+      expect(flash[:alert]).to eq(I18n.t('admin.settings.update.host_invalid'))
+    end
+
+    it 'does not keep a Photon key for the public komoot host' do
+      InstanceSetting.create!(key: 'photon_api_key', value: 'meant-for-another-host')
+      InstanceSettings::Resolver.reset!
+
+      patch '/admin/settings',
+            params: { instance_settings: { photon_api_host: 'photon.komoot.io', photon_api_key: '' } }
+
+      expect(InstanceSettings::Resolver.value(:photon_api_key)).to be_nil
+    end
+
+    it 'refuses a ChibiGeo host without an API key' do
+      patch '/admin/settings',
+            params: { instance_settings: { photon_api_host: 'app.chibigeo.com/v1/photon', photon_api_key: '' } }
+
+      expect(InstanceSetting.find_by(key: 'photon_api_host')).to be_nil
+      expect(flash[:alert]).to eq(I18n.t('admin.settings.update.chibigeo_key_required'))
+    end
+
+    it 'accepts a ChibiGeo host with an API key' do
+      patch '/admin/settings',
+            params: { instance_settings: { photon_api_host: 'app.chibigeo.com/v1/photon',
+                                           photon_api_key: 'chibi-key' } }
+
+      expect(InstanceSettings::Resolver.value(:photon_api_host)).to eq('app.chibigeo.com/v1/photon')
+      expect(InstanceSettings::Resolver.value(:photon_api_key)).to eq('chibi-key')
+    end
+
+    it 'links the ChibiGeo guide for self-hosted geocoding' do
+      get '/admin/settings', params: { section: 'photon' }
+
+      expect(response.body).to include('https://chibigeo.com/docs/guides/dawarich-self-hosted-geocoding?')
+    end
+  end
+
+  describe 'per-user geocoding left behind by an upgrade' do
+    before { sign_in admin }
+
+    it 'tells the admin that per-user settings were not carried over' do
+      create(:service_setting, :active, user: non_admin)
+
+      get '/admin/settings'
+
+      expect(response.body).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding.legacy_user_settings')))
+    end
+
+    it 'drops the notice once the instance has a provider' do
+      create(:service_setting, :active, user: non_admin)
+      configure_instance_geocoding
+
+      get '/admin/settings'
+
+      expect(response.body).not_to include(ERB::Util.html_escape(I18n.t('admin.settings.show.geocoding.legacy_user_settings')))
     end
   end
 
@@ -475,7 +573,9 @@ RSpec.describe 'Admin::Settings' do
       keys = %w[admin.settings.show.title settings.navigation.instance
                 admin.settings.show.unreadable_secret admin.settings.test_geocoding.success
                 admin.settings.show.geocoding.none admin.settings.show.geocoding.chain_hint
-                admin.settings.show.providers.photon admin.settings.show.fields.store_geodata_hint]
+                admin.settings.show.providers.photon admin.settings.show.fields.store_geodata_hint
+                admin.settings.show.geocoding.legacy_user_settings admin.settings.update.host_invalid
+                admin.settings.update.chibigeo_key_required]
       %i[de es fr pl ca].product(keys).each do |locale, key|
         expect(I18n.t(key, locale: locale, default: nil)).to be_present, "missing #{key} for #{locale}"
       end

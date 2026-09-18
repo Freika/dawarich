@@ -23,6 +23,12 @@
       </p>
     <% else %>
       <p class="mt-1 text-sm text-base-content/70 [text-wrap:pretty]"><%= t('admin.settings.show.geocoding.none') %></p>
+      <% if legacy_user_geocoding %>
+        <div role="note" class="mt-2 flex items-start gap-2 text-sm" data-testid="instance-settings-legacy-user-geocoding">
+          <%= icon 'triangle-alert', class: 'size-4 shrink-0 mt-0.5 text-warning' %>
+          <p class="min-w-0 [text-wrap:pretty]"><%= t('admin.settings.show.geocoding.legacy_user_settings') %></p>
+        </div>
+      <% end %>
     <% end %>
   </div>
 

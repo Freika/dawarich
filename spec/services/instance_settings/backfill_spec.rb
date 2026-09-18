@@ -15,9 +15,10 @@ RSpec.describe InstanceSettings::Backfill do
 
   before { ActiveRecord::Base.connection.execute('TRUNCATE users CASCADE') }
 
-  def geocoding_setting(user, host:, provider: 'photon', api_key: nil)
-    setting = user.service_settings.new(service: :geocoding, provider: provider,
-                                        config: { 'host' => host, 'use_https' => true }, active: true)
+  def geocoding_setting(user, host:, provider: 'photon', api_key: nil, rps: nil)
+    config = { 'host' => host, 'use_https' => true }
+    config['rps'] = rps if rps
+    setting = user.service_settings.new(service: :geocoding, provider: provider, config: config, active: true)
     setting.api_key = api_key if api_key
     setting.save!
     setting
@@ -39,6 +40,15 @@ RSpec.describe InstanceSettings::Backfill do
 
     expect(InstanceSetting.where(key: 'photon_api_host').count).to eq(1)
     expect(InstanceSetting.find_by(key: 'photon_api_host').value).to eq('same.example.com')
+  end
+
+  it 'takes the lowest rate limit when agreeing users set different ones' do
+    geocoding_setting(create(:user), host: 'same.example.com', rps: 5)
+    geocoding_setting(create(:user), host: 'same.example.com', rps: 2)
+
+    described_class.call
+
+    expect(InstanceSetting.find_by(key: 'reverse_geocoding_rps')&.value).to eq(2)
   end
 
   # Silently electing one user's provider for the whole instance is data loss
