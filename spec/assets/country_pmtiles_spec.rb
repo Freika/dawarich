@@ -22,16 +22,12 @@ RSpec.describe 'bundled country PMTiles' do
     expect(File.size(archive) + File.size(compressed_source)).to be < 14_643_638
   end
 
-  it 'matches the checked-in deterministic build manifest' do
+  it 'matches the checked-in asset manifest' do
     manifest = JSON.parse(Rails.root.join('public/maps/countries-v1.manifest.json').read)
     source = Rails.root.join('lib/assets/countries.geojson.gz')
-    build_script = Rails.root.join('script/build_country_pmtiles.py')
-    requirements = Rails.root.join('script/country_pmtiles_requirements.txt')
     source_sha = Zlib::GzipReader.open(source) { |gzip| Digest::SHA256.hexdigest(gzip.read) }
 
     expect(manifest).to include('source_sha256' => source_sha, 'maxzoom' => 8)
-    expect(Digest::SHA256.file(build_script).hexdigest).to eq(manifest.fetch('build_script_sha256'))
-    expect(Digest::SHA256.file(requirements).hexdigest).to eq(manifest.fetch('requirements_sha256'))
     expect(Digest::SHA256.file(archive).hexdigest).to eq(manifest.fetch('archive_sha256'))
   end
 

@@ -1,4 +1,68 @@
 ca:
+  admin:
+    settings:
+      show:
+        title: "Configuració de la instància"
+        intro: "Aquesta configuració s'aplica a tota la instància. Un paràmetre definit per una variable d'entorn es mostra només de lectura: elimina la variable per editar-lo aquí."
+        save: "Desa la configuració"
+        saving: "S'està desant…"
+        secret_set: "Hi ha un valor desat"
+        pinned_hint: "Fixat per %{variable}"
+        clear_secret: "Esborra el valor desat"
+        unreadable_secret: "Un valor desat no es pot desxifrar amb les claus d'aquesta instància. Torna a introduir-lo."
+        sections_nav: "Seccions de la configuració de la instància"
+        nav_pinned: "Definit per una variable d'entorn"
+        nav_attention: "Requereix atenció"
+        geocoding:
+          title: "Geocodificació"
+          description: "La geocodificació converteix les coordenades en noms de ciutat i de país als teus punts i estadístiques, i fa funcionar la cerca de llocs i ubicacions."
+          in_use: "En ús"
+          "off": "Desactivada"
+          none: "No hi ha cap proveïdor configurat, així que els punts nous no es geocodifiquen. Afegeix a sota un host de Photon o una clau d'API."
+          stored: "Desat en aquesta pàgina"
+          chain_hint: "Dawarich fa servir el primer proveïdor configurat, en l'ordre de sota. Un proveïdor definit per una variable d'entorn té prioritat sobre els desats aquí."
+          test: "Prova la connexió"
+          testing: "S'està provant…"
+          test_hint: "Una consulta amb la configuració desada"
+          rate_limit: "Límit de peticions"
+          chibigeo_message: "ChibiGeo és un servei de geocodificació de tarifa plana i centrat en la privadesa creat per l'equip de Dawarich. Funciona amb Dawarich sense configuració. Cal una clau d'API."
+          chibigeo_key_link: "Obtén la teva clau d'API gratuïta"
+          komoot_warning: "photon.komoot.io és una instància pública compartida amb límits de peticions estrictes. Les peticions es limiten a una per segon i la geocodificació massiva serà lenta. Considera allotjar la teva pròpia instància de Photon."
+          https_locked: "L'HTTPS sempre està activat per a aquest amfitrió."
+          legacy_user_settings: "Alguns usuaris havien configurat la seva pròpia geocodificació abans que es traslladés aquí. La seva configuració no s'ha conservat perquè no tots els usuaris en tenien o eren diferents. Configura un proveïdor a sota per tornar a activar la geocodificació per a tothom."
+        providers:
+          photon: "Geocodificador de codi obert. Fes servir un servidor allotjat o el teu."
+          geoapify: "Servei allotjat. Necessita una clau d'API."
+          nominatim: "El geocodificador d'OpenStreetMap, normalment al teu propi servidor."
+          locationiq: "Servei allotjat. Necessita una clau d'API."
+        points:
+          title: "Punts"
+        fields:
+          photon_api_host: "Amfitrió"
+          photon_api_key: "Clau d'API"
+          photon_api_use_https: "Utilitza HTTPS"
+          nominatim_api_host: "Amfitrió"
+          nominatim_api_key: "Clau d'API"
+          nominatim_api_use_https: "Utilitza HTTPS"
+          geoapify_api_key: "Clau d'API"
+          locationiq_api_key: "Clau d'API"
+          reverse_geocoding_rps: "Peticions per segon"
+          store_geodata: "Geocodifica els punts nous"
+          host_hint: "Nom d'amfitrió simple amb port opcional, p. ex. photon.example.com:2322"
+          rps_hint: "Deixa-ho en blanc per no posar-hi límit. Ajusta-ho al que permeti el teu servidor o el teu pla."
+          api_key_keep_hint: "Deixa-ho en blanc per mantenir la clau desada."
+          store_geodata_hint: "Cerca la ciutat i el país de cada punt nou i en desa el resultat. Si està desactivat, els punts nous només conserven les coordenades."
+      update:
+        saved: "Configuració desada."
+        pinned: "Rebutjat: fixat per %{variables}."
+        host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals i sense espais."
+        chibigeo_key_required: "ChibiGeo necessita una clau d'API. El pla gratuït Hobby inclou 2.500 cerques al dia; obtén la teva clau a chibigeo.com."
+      test_geocoding:
+        not_configured: "No hi ha cap proveïdor de geocodificació configurat. Desa primer un proveïdor."
+        success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."
+        empty: "El proveïdor ha respost, però no ha retornat cap resultat per a les coordenades de prova."
+        failure: "La prova ha fallat: %{error}"
+        rate_limited: "El límit de peticions del proveïdor està ocupat ara mateix; torna-ho a provar d'aquí a un moment."
   activerecord:
     errors:
       models:
@@ -1413,6 +1477,7 @@ ca:
       visits: Visites
       two_factor_authentication: Autenticació de dos factors
       users: Usuaris
+      instance: "Instància"
       background_jobs: Tasques en segon pla
     background_jobs:
       index:
@@ -1533,7 +1598,6 @@ ca:
         settings: Configuració
         services_nav: "Serveis d'integració"
         services:
-          geocoding: "Geocodificació"
           immich: "Immich"
           photoprism: "PhotoPrism"
           airtrail: "AirTrail"
@@ -1664,55 +1728,6 @@ ca:
         minimum_points_to_count_as_a_visit: Punts mínims perquè compti com a visita
         minimum_visit_duration_minutes: Durada mínima de la visita (minuts)
         save_settings: Desa la configuració
-    geocoding:
-      show:
-        title: "Geocodificació"
-        provider: "Proveïdor de geocodificació"
-        provider_hint: "El proveïdor que s'utilitza per a la geocodificació inversa dels teus punts i per a la cerca de llocs i ubicacions."
-        intro: "La geocodificació converteix les coordenades en noms de ciutat i de país als teus punts i estadístiques, i fa funcionar la cerca de llocs i ubicacions."
-        host_choice: "Servidor Photon"
-        choice_chibigeo: "Servei allotjat de ChibiGeo"
-        choice_chibigeo_desc: "Nivell gratuït: 2.500 cerques al dia. Funciona sense configuració; només cal que hi afegeixis la teva clau d'API."
-        choice_komoot: "Servidor públic de komoot"
-        choice_komoot_desc: "Instància compartida gratuïta, limitada a una petició per segon."
-        choice_custom: "Amfitrió personalitzat"
-        choice_custom_desc: "La teva pròpia instància de Photon o un altre servidor compatible."
-        recommended: "Recomanat"
-        https_locked: "L'HTTPS sempre està activat per a aquest amfitrió."
-        https_on: "Activat"
-        https_off: "Desactivat"
-        chibigeo_message: "ChibiGeo és un servei de geocodificació de tarifa plana i centrat en la privadesa creat per l'equip de Dawarich. Funciona amb Dawarich sense configuració. Cal una clau d'API."
-        chibigeo_limits: "El pla gratuït Hobby inclou 2.500 cerques al dia a 1 petició per segon: límits estrictes, sense excedents."
-        chibigeo_key_link: "Obtén la teva clau d'API gratuïta"
-        chibigeo_site_link: "Què és ChibiGeo?"
-        disabled: "Desactivat"
-        env_managed_notice: "Actualment la geocodificació la gestionen variables d'entorn definides per l'operador de la teva instància. La configuració següent només tindrà efecte si s'eliminen aquestes variables."
-        host: "Amfitrió"
-        host_hint: "Nom d'amfitrió simple amb port opcional, p. ex. photon.example.com:2322"
-        api_key: "Clau d'API"
-        api_key_hint: "Deixa-ho en blanc per mantenir la clau desada."
-        api_key_saved: "Hi ha una clau desada per a aquest proveïdor."
-        clear_api_key: "Elimina la clau d'API desada"
-        use_https: "Utilitza HTTPS"
-        rps: "Peticions per segon"
-        rps_hint_custom: "Deixa-ho en blanc per no posar-hi límit. Ajusta-ho al que permeti el teu servidor o el teu pla."
-        rps_hint_chibigeo: "Ajusta-ho al teu pla de ChibiGeo: Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Demanar més del que permet el teu pla només genera cerques rebutjades."
-        rps_hint_komoot: "komoot imposa una petició per segon a tothom, així que aquest valor és fix."
-        komoot_warning: "photon.komoot.io és una instància pública compartida amb límits de peticions estrictes. Les peticions es limiten a una per segon i la geocodificació massiva serà lenta. Considera allotjar la teva pròpia instància de Photon."
-        komoot_no_api_key: "El servidor públic de komoot no accepta cap clau d'API; deixa-la sense definir."
-        save: "Desa"
-        test: "Prova el teu proveïdor"
-        test_hint: "Desa primer la configuració i després fes la prova. La prova executa una cerca amb la configuració del teu propi proveïdor, fins i tot quan hi ha variables d'entorn actives."
-      update:
-        updated: "S'ha actualitzat la configuració de geocodificació."
-        disabled: "S'ha desactivat la geocodificació."
-        invalid_provider: "Proveïdor de geocodificació desconegut."
-      test:
-        not_configured: "No hi ha cap proveïdor de geocodificació configurat al teu compte. Desa'n un primer."
-        success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."
-        empty: "El proveïdor ha respost, però no ha retornat cap resultat per a les coordenades de prova."
-        failure: "La prova ha fallat: %{error}"
-        rate_limited: "El límit de peticions del proveïdor està ocupat ara mateix; torna-ho a provar d'aquí a un moment."
   share_links:
     hubs:
       body:

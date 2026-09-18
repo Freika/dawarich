@@ -235,21 +235,36 @@ RSpec.describe 'Settings::Integrations', type: :request do
       body[/<a[^>]*data-testid="integration-#{service}"[^>]*>/]
     end
 
-    it 'lists every service in the sidebar on self-hosted instances' do
+    it 'lists the photo services and not geocoding, which belongs to the instance' do
       get settings_integrations_path
 
-      %w[geocoding immich photoprism airtrail].each do |service|
+      %w[immich photoprism airtrail].each do |service|
         expect(response.body).to include(%(data-testid="integration-#{service}"))
       end
+      expect(response.body).not_to include('data-testid="integration-geocoding"')
     end
 
-    it 'hides geocoding from the sidebar on non-self-hosted instances' do
+    it 'sends an admin who follows an old geocoding link to Instance settings' do
+      user.update!(admin: true)
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response).to redirect_to(admin_settings_path)
+    end
+
+    it 'keeps a cloud admin on Integrations for an old geocoding link' do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(admin: true)
 
-      get settings_integrations_path
+      get settings_integrations_path(service: 'geocoding')
 
-      expect(response.body).not_to include('data-testid="integration-geocoding"')
-      expect(response.body).to include('data-testid="integration-immich"')
+      expect(response).not_to be_redirect
+    end
+
+    it 'shows anyone else the first photo service for an old geocoding link' do
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).to include('name="settings[immich_url]"')
     end
 
     it 'marks a service as connected after a successful connection' do
@@ -298,7 +313,7 @@ RSpec.describe 'Settings::Integrations', type: :request do
       get settings_integrations_path(service: 'bogus')
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(I18n.t('settings.geocoding.show.provider'))
+      expect(response.body).to include('name="settings[immich_url]"')
     end
   end
 end

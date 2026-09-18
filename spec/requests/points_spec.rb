@@ -37,7 +37,7 @@ RSpec.describe '/points', type: :request do
         let(:recent_timestamp) { 1.day.ago.to_i }
 
         before do
-          allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+          configure_instance_geocoding
         end
 
         it 'displays address from geodata properties when available' do

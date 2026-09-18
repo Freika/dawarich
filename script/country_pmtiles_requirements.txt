@@ -1,8 +1,0 @@
-click==8.5.0
-mapbox-vector-tile==2.2.0
-mercantile==1.2.1
-numpy==2.5.3
-pmtiles==3.8.0
-protobuf==6.33.6
-pyclipper==1.4.0
-shapely==2.1.2

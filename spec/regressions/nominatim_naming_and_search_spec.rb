@@ -15,7 +15,7 @@ RSpec.describe 'Nominatim naming and stored geodata' do
   let(:result) { double(data: data) }
 
   before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    configure_instance_geocoding(nominatim_api_host: 'nominatim.example.com')
     allow(Geocoding::Search).to receive(:call).and_return([result])
   end
 

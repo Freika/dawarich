@@ -2,7 +2,6 @@
 
 module IntegrationsHelper
   SERVICE_ICONS = {
-    'geocoding' => { name: 'map-pin', library: 'lucide' },
     'immich' => { name: 'immich', library: 'brands' },
     'photoprism' => { name: 'photoprism', library: 'brands' },
     'airtrail' => { name: 'airtrail', library: 'brands' },
