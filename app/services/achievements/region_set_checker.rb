@@ -2,6 +2,8 @@
 
 module Achievements
   class RegionSetChecker
+    CALCULATION_VERSION = 2
+
     # Above this many newly earned regions in one run (a big import backfill),
     # collapse the per-region announcements into a single digest notification.
     REGION_NOTIFY_CAP = 5
@@ -15,19 +17,27 @@ module Achievements
     end
 
     def call
-      @cursor = latest_timestamp
-      return if @cursor.nil?
+      @progress = Progress.find_by(user_id: user.id, achievement_key: Progress::EXPLORATION_KEY)
+      return if @progress.nil? && !eligible_points.exists?
 
-      @progress = fetch_progress
+      @progress ||= fetch_progress
       @newly_earned = []
 
       COMMIT_ATTEMPTS.times do
-        previous = @progress.reload.state['cursor'].to_i
-        break if settled?(previous)
+        state = @progress.reload.state
+        previous = state['cursor'].to_i
+        previous_point_id = state['point_id_cursor'].to_i
+        @cursor, @point_id_cursor = latest_position(previous, previous_point_id)
+        break if @cursor.nil?
+        break if settled?(previous, previous_point_id, state)
 
-        replace = recompute?(previous)
-        deltas = collect_deltas(replace ? 0 : previous)
-        break if commit(deltas, replace: replace, expected: previous)
+        replace = recompute?(previous, previous_point_id) || calculation_changed?(state)
+        deltas = if threshold_changed?(state) && @cursor <= previous && !replace
+                   {}
+                 else
+                   collect_deltas(replace ? 0 : previous)
+                 end
+        break if commit(deltas, replace: replace, expected: previous, expected_point_id: previous_point_id)
 
         @newly_earned.clear
       end
@@ -48,18 +58,29 @@ module Achievements
 
     attr_reader :user, :notify, :oldest_timestamp
 
-    def settled?(previous)
-      previous.positive? && @cursor <= previous && !recompute?(previous)
+    def settled?(previous, previous_point_id, state)
+      previous.positive? && @cursor <= previous && @point_id_cursor <= previous_point_id &&
+        !recompute?(previous, previous_point_id) && !threshold_changed?(state) &&
+        state['calculation_version'].to_i >= CALCULATION_VERSION
     end
 
-    def commit(deltas, replace:, expected:)
+    def commit(deltas, replace:, expected:, expected_point_id:)
       committed = false
 
       @progress.with_lock do
-        next unless @progress.state['cursor'].to_i == expected
+        current_state = @progress.state
+        next unless current_state['cursor'].to_i == expected &&
+                    current_state['point_id_cursor'].to_i == expected_point_id
+
+        # Point deletion may make either current maximum look older. Keep both
+        # watermarks monotonic so the next incremental pass cannot count old
+        # dwell again or mistake a reused historical range for unseen data.
+        committed_cursor = [@cursor, expected].max
+        committed_point_id = [@point_id_cursor, expected_point_id].max
 
         @progress.update!(
-          state: merged_state(@progress.state, deltas, @newly_earned, replace: replace, cursor: @cursor)
+          state: merged_state(current_state, deltas, @newly_earned, replace: replace, cursor: committed_cursor,
+                              point_id_cursor: committed_point_id)
         )
         committed = true
       end
@@ -67,20 +88,45 @@ module Achievements
       committed
     end
 
-    def latest_timestamp
-      user.points.not_anomaly.where.not(lonlat: nil).maximum(:timestamp)
+    def eligible_points
+      user.points.where.not(lonlat: nil).where('anomaly IS DISTINCT FROM TRUE')
     end
 
-    def recompute?(cursor)
-      oldest_timestamp.present? && cursor.positive? && oldest_timestamp < cursor
+    # Timestamp alone cannot identify buffered device uploads: a newly inserted
+    # point can be older than the timestamp cursor. Track the monotonic row ID
+    # as a second watermark and rebuild when unseen rows fall behind the cursor.
+    def latest_position(cursor, point_id_cursor)
+      latest_point_id = eligible_points.maximum(:id)
+      return [nil, nil] if latest_point_id.nil? && cursor.zero? && point_id_cursor.zero?
+
+      latest_timestamp = if oldest_timestamp.present?
+                           eligible_points.maximum(:timestamp)
+                         elsif latest_point_id.present? && latest_point_id > point_id_cursor
+                           eligible_points.where(id: (point_id_cursor + 1)..latest_point_id).maximum(:timestamp)
+                         end
+
+      [[cursor, latest_timestamp.to_i].max, [point_id_cursor, latest_point_id.to_i].max]
+    end
+
+    def recompute?(cursor, point_id_cursor)
+      (oldest_timestamp.present? && cursor.positive? && oldest_timestamp <= cursor) ||
+        historical_points_inserted?(cursor, point_id_cursor)
+    end
+
+    def historical_points_inserted?(cursor, point_id_cursor)
+      return false unless cursor.positive? && @point_id_cursor > point_id_cursor
+
+      eligible_points.where(id: (point_id_cursor + 1)..@point_id_cursor)
+                     .where('timestamp < ?', cursor).exists?
     end
 
     def collect_deltas(since)
-      CountryDwellCalculator.new(user, since: since).call
-                            .merge(GridDwellCalculator.new(user, table: 'regions', since: since).call)
+      CountryDwellCalculator.new(user, since: since, through: @cursor).call
+                            .merge(GridDwellCalculator.new(user, table: 'regions', since: since,
+                                                                through: @cursor).call)
     end
 
-    def merged_state(state, deltas, newly_earned, replace:, cursor:)
+    def merged_state(state, deltas, newly_earned, replace:, cursor:, point_id_cursor:)
       dwell = replace ? {} : state.fetch('dwell', {})
       earned = state.fetch('earned', {})
 
@@ -93,7 +139,22 @@ module Achievements
         newly_earned << code
       end
 
-      state.merge('cursor' => cursor, 'dwell' => dwell, 'earned' => earned)
+      state.merge(
+        'cursor' => cursor,
+        'point_id_cursor' => point_id_cursor,
+        'dwell' => dwell,
+        'earned' => earned,
+        'threshold_seconds' => threshold_seconds,
+        'calculation_version' => CALCULATION_VERSION
+      )
+    end
+
+    def threshold_changed?(state)
+      state['threshold_seconds'].to_i != threshold_seconds
+    end
+
+    def calculation_changed?(state)
+      state['calculation_version'].to_i < CALCULATION_VERSION
     end
 
     def threshold_seconds
@@ -105,8 +166,10 @@ module Achievements
       awarded = user.user_achievements.pluck(:achievement_key).to_set
       completed = Registry.all.filter_map { |definition| definition if award?(definition, earned, awarded) }
 
-      notify_regions(newly_earned, earned)
-      completed.each { |definition| notify_completion(definition) }
+      I18n.with_locale(user.locale) do
+        notify_regions(newly_earned, earned)
+        completed.each { |definition| notify_completion(definition) }
+      end
     end
 
     def award?(definition, earned, awarded)
@@ -130,9 +193,13 @@ module Achievements
 
         ::Notifications::Create.new(
           user: user, kind: :info,
-          title: "#{definition.regions[code]} explored!",
-          content: "#{definition.name}: #{[(definition.region_codes & earned.keys).size, definition.target].min}" \
-                   "/#{definition.target} regions visited."
+          title: I18n.t('achievements.notifications.region_title', region: definition.regions[code]),
+          content: I18n.t(
+            "achievements.notifications.#{notification_progress_key(definition)}",
+            achievement: achievement_name(definition),
+            count: [(definition.region_codes & earned.keys).size, definition.target].min,
+            total: definition.target
+          )
         ).call
       end
     end
@@ -140,8 +207,8 @@ module Achievements
     def notify_region_digest(newly_earned)
       ::Notifications::Create.new(
         user: user, kind: :info,
-        title: "#{newly_earned.size} new regions explored!",
-        content: 'Your latest data unlocked new regions — see them all on the Achievements page.'
+        title: I18n.t('achievements.notifications.digest_title', count: newly_earned.size),
+        content: I18n.t('achievements.notifications.digest_content')
       ).call
     end
 
@@ -152,13 +219,30 @@ module Achievements
 
       ::Notifications::Create.new(
         user: user, kind: :info,
-        title: "#{definition.name} completed!",
-        content: "You explored #{definition.threshold ? definition.target : "all #{definition.total}"} regions."
+        title: I18n.t('achievements.notifications.completion_title', achievement: achievement_name(definition)),
+        content: completion_content(definition)
       ).call
+    end
+
+    def notification_progress_key(definition)
+      definition.level == :country ? 'country_content' : 'region_content'
+    end
+
+    def completion_content(definition)
+      return I18n.t('achievements.notifications.completion_country') if definition.flat?
+
+      unit = definition.level == :country ? 'countries' : 'regions'
+      quantifier = definition.threshold ? 'target' : 'all'
+      count = definition.threshold || definition.total
+      I18n.t("achievements.notifications.completion_#{quantifier}_#{unit}", count: count)
     end
 
     def announcer_for(code)
       announcers[code]
+    end
+
+    def achievement_name(definition)
+      SetPresenter.new(definition: definition).name
     end
 
     def announcers

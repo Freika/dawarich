@@ -220,6 +220,17 @@ RSpec.describe Trip, type: :model do
 
         expect(trip.distance).to eq(3) # Should be rounded, in km
       end
+
+      it 'calculates distance in the database without loading trip points' do
+        create(:point, user: user, lonlat: 'POINT(13.064477 52.398862)', timestamp: trip.started_at.to_i + 4.hours)
+        loaded = []
+        callback = ->(*, payload) { loaded << payload[:name] if payload[:name] == 'Point Load' }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { trip.calculate_distance }
+
+        expect(loaded).to be_empty
+        expect(trip.distance).to be_within(1_000).of(26_500)
+      end
     end
 
     describe '#recalculate_distance!' do

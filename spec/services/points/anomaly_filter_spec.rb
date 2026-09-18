@@ -20,6 +20,18 @@ RSpec.describe Points::AnomalyFilter do
       expect(point.updated_at).to be > before_updated
     end
 
+    it 'rebuilds achievement dwell from the oldest newly excluded point' do
+      point = create(:point, user: user, accuracy: 50_000, timestamp: 30.minutes.ago.to_i,
+                             latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
+      Flipper.enable(:achievements)
+
+      expect do
+        described_class.new(user.id, start_time, end_time).call
+      end.to have_enqueued_job(Achievements::CheckJob).with(user.id, oldest_timestamp: point.timestamp)
+    ensure
+      Flipper.disable(:achievements)
+    end
+
     # A reported accuracy radius is a confidence estimate, not evidence that the
     # position is wrong. Google Timeline routinely reports 1-4km while the point
     # still sits on the road, and deleting those points replaces real route

@@ -429,6 +429,17 @@
   width: min(300px, 100%);
   animation: none;
 }
+.ach-embed-page {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 32px 30px 38px;
+  background: #080b0e;
+}
+.ach-embed-page .ach-slot {
+  width: 300px;
+}
 .ach-card-link:has(.ach-spectral) {
   width: 300px;
   max-width: 100%;

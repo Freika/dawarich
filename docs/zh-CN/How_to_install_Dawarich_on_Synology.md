@@ -68,10 +68,11 @@
 1. 用任意文本编辑器打开 /[Docker 根共享文件夹](#docker-根共享文件夹)/[Dawarich 根目录](#dawarich-根目录)/.env 文件。例如，你可以使用 [Text Editor](https://www.synology.com/en-global/dsm/packages/TextEditor) 套件，或者从**文件站**下载后本地编辑再上传回去，或者通过文件共享方式访问。
 2. 更新 `APPLICATION_HOSTS` 的值，加入你在 **Web Station** 中设置的 **Dawarich 主机名**。按上面的例子就是 **dawarich.my-syno.com**。如果要设置多个主机名，用逗号分隔：`dawarich.my-syno.com,dawarich2.my-syno.com`。
 3. 设置你当前所在的 `TIME_ZONE`。完整列表见[这里](https://github.com/Freika/dawarich/issues/27#issuecomment-2094721396)。
-4. 可选：修改 `DATABASE_USERNAME`、`DATABASE_USERNAME`、`DATABASE_NAME`。
+4. 将 `SECRET_KEY_BASE` 设置为一个随机值，例如 `openssl rand -hex 64` 的输出。未设置时 Dawarich 无法启动。之后请保持不变：修改它会让所有用户退出登录，并可能导致已归档的数据无法读取。
+5. 可选：修改 `DATABASE_USERNAME`、`DATABASE_PASSWORD`、`DATABASE_NAME`。
 
-5. 点击你的项目名称。
-6. 打开 **YAML 配置**标签页。
+6. 点击你的项目名称。
+7. 打开 **YAML 配置**标签页。
 
 # 运行
 1. 打开 **Container Manager** -> **项目** -> **dawarich**

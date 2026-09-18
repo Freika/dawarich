@@ -1458,6 +1458,8 @@ zh:
         receive_an_annual_summary_on_january_2nd_with_your_year: 1 月 2 日接收年度摘要，内含您的年度回顾。
         news_updates: 新闻与更新
         receive_occasional_emails_about_new_features_and_important_updates: 偶尔接收关于新功能和重要更新的邮件
+        send_test_email: 发送测试邮件
+        test_email_hint: 向您的帐户邮箱发送测试邮件，以验证 SMTP 设置
         timezone: 时区
         your_timezone: 您的时区
         all_dates_and_times_will_be_displayed_in_this_timezone: 所有日期和时间都将显示在该时区中
@@ -2510,6 +2512,9 @@ zh:
       the_lock_will_automatically_lift_after_30_minutes_no_action: 30 分钟后锁定将自动解除。如果是您本人操作，则无需任何操作。
       didn_t_recognise_this_activity_someone_may_be_trying_to: 不是您本人的操作？有人可能正在尝试访问您的帐户。我们建议立即重置密码。
       reset_your_password_2: 重置密码：
+    test_email:
+      body: 如果您能阅读此邮件，说明您的实例 SMTP 配置工作正常。
+      sent_at: 发送时间
     welcome:
       welcome_to_dawarich: 欢迎使用 Dawarich！
       hi: 您好
@@ -3089,6 +3094,11 @@ zh:
         please_enter_an_email_address_or_github_username: 请输入邮箱地址或 GitHub 用户名
         verified_thank_you_for_supporting_dawarich_via_platform: 已验证！感谢您通过 %{platform} 支持 Dawarich。
         not_found_in_supporter_list_make_sure_you_re_using: 未在支持者列表中找到。请确保使用的邮箱或 GitHub 用户名与捐赠平台一致。
+        smtp_not_configured: 尚未配置通过 SMTP 发送邮件。请配置自托管 SMTP 设置以使用邮件偏好功能。
+        smtp_not_configured_html: 尚未配置通过 SMTP 发送邮件。请配置%{link}以使用邮件偏好功能。
+        smtp_not_configured_link: 自托管 SMTP 设置
+        test_email_sent: 测试邮件已发送至 %{email}。请检查收件箱（以及垃圾邮件文件夹）。
+        test_email_failed: '测试邮件发送失败：%{error}'
       onboardings:
         demo_data_loaded: 演示数据已加载。
         demo_data_is_already_loaded: 演示数据已加载。
@@ -3303,6 +3313,8 @@ zh:
         subject: 确认 Dawarich 帐户删除
       otp_account_locked:
         subject: Dawarich 帐户暂时锁定
+      test_email:
+        subject: Dawarich 测试邮件
       digests:
         year_end:
           subject: 您的 %{year} 年度回顾 - Dawarich

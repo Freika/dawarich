@@ -9,10 +9,16 @@ RSpec.describe Achievements::BulkCheckJob do
 
   after { Flipper.disable(:achievements) }
 
+  def eligible_user(status: :active)
+    user = create(:user, status: status)
+    create(:point, user: user)
+    user
+  end
+
   it 'enqueues a check for active and trial users only' do
-    active = create(:user, status: :active)
-    trial = create(:user, status: :trial)
-    create(:user, status: :inactive)
+    active = eligible_user
+    trial = eligible_user(status: :trial)
+    eligible_user(status: :inactive)
 
     expect { described_class.perform_now }
       .to have_enqueued_job(Achievements::CheckJob).with(active.id, notify: true, force: false).once
@@ -21,7 +27,7 @@ RSpec.describe Achievements::BulkCheckJob do
 
   it 'staggers batches and can suppress notifications for backfills' do
     stub_const("#{described_class}::BATCH_SIZE", 1)
-    users = create_list(:user, 2, status: :active)
+    users = Array.new(2) { eligible_user }
 
     described_class.perform_now(notify: false)
 
@@ -33,16 +39,40 @@ RSpec.describe Achievements::BulkCheckJob do
 
   it 'enqueues nothing while the feature flag is disabled' do
     Flipper.disable(:achievements)
-    create(:user, status: :active)
+    eligible_user
 
     expect { described_class.perform_now }.not_to have_enqueued_job(Achievements::CheckJob)
   end
 
   it 'still runs a forced backfill while the feature flag is disabled' do
     Flipper.disable(:achievements)
-    user = create(:user, status: :active)
+    user = eligible_user
 
     expect { described_class.perform_now(notify: false, force: true) }
       .to have_enqueued_job(Achievements::CheckJob).with(user.id, notify: false, force: true).once
+  end
+
+  it 'queues only users without progress from the current calculation version during rollout' do
+    current = eligible_user
+    stale = eligible_user
+    new_user = eligible_user(status: :trial)
+    version = Achievements::RegionSetChecker::CALCULATION_VERSION
+    create(:achievement_progress, user: current, achievement_key: Achievements::Progress::EXPLORATION_KEY,
+                                  state: { 'calculation_version' => version })
+    create(:achievement_progress, user: stale, achievement_key: Achievements::Progress::EXPLORATION_KEY, state: {})
+
+    described_class.perform_now(notify: false, force: true, stale_only: true)
+
+    expect(Achievements::CheckJob).not_to have_been_enqueued.with(current.id, notify: false, force: true)
+    expect(Achievements::CheckJob).to have_been_enqueued.with(stale.id, notify: false, force: true).once
+    expect(Achievements::CheckJob).to have_been_enqueued.with(new_user.id, notify: false, force: true).once
+  end
+
+  it 'ignores users without usable points' do
+    user = create(:user, status: :active)
+
+    described_class.perform_now(force: true)
+
+    expect(Achievements::CheckJob).not_to have_been_enqueued.with(user.id, notify: true, force: true)
   end
 end

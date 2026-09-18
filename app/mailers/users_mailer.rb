@@ -51,6 +51,12 @@ class UsersMailer < ApplicationMailer
     mail(to: @user.email, subject: I18n.t('mailers.users.otp_account_locked.subject'))
   end
 
+  def test_email
+    @user = params[:user]
+
+    mail(to: @user.email, subject: I18n.t('mailers.users.test_email.subject'))
+  end
+
   def trial_expired; end
 
   def trial_expires_soon; end

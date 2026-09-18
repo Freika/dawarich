@@ -1,12 +1,18 @@
 import { Controller } from "@hotwired/stimulus"
 import { spectralMarkup } from "achievements/spectral_material"
 
+let uidSequence = 0
+
+function nextUid() {
+  uidSequence += 1
+  return `sc-${Date.now().toString(36)}-${uidSequence.toString(36)}`
+}
+
 // Mount near the viewport; local, frame-coalesced pointer work stays cheap.
 export default class extends Controller {
   static targets = ["material"]
   static values = {
     locked: Boolean,
-    silhouette: Object,
     key: String,
     rarity: String,
     paper: String,
@@ -40,26 +46,48 @@ export default class extends Controller {
 
   mount() {
     this.observer?.disconnect()
-    if (!this.hasSilhouetteValue) return
     // Turbo/dialog moves reconnect the same controller; preserve its material,
     // but observe its new layout so compact cards refit in the fullscreen view.
     if (this.mounted) {
       this.observeSize()
       return
     }
+
+    // Turbo can restore a cached page containing already-generated material
+    // into a fresh controller instance. Adopt it instead of looking for the
+    // fallback SVG, which was intentionally replaced on first mount.
+    if (
+      this.materialTarget.querySelector(".geo-stage") &&
+      !this.materialTarget.querySelector(".spectral-fallback svg")
+    ) {
+      this.mounted = true
+      this.observeSize()
+      return
+    }
+    const silhouette = this.silhouette
+    if (!silhouette) return
     const result = spectralMarkup({
-      silhouette: this.silhouetteValue,
+      silhouette,
       key: this.keyValue,
       rarity: this.rarityValue,
       paperAsset: this.paperValue,
       foilAsset: this.foilValue,
-      uid: "sc-" + crypto.randomUUID(),
+      uid: nextUid(),
     })
     if (!result) return
     this.materialTarget.innerHTML = result.html
     this.card.style.setProperty("--accent", result.accent)
     this.mounted = true
     this.observeSize()
+  }
+
+  get silhouette() {
+    const svg = this.materialTarget.querySelector(".spectral-fallback svg")
+    const path = svg?.querySelector("path")
+    const viewbox = svg?.getAttribute("viewBox")
+    const data = path?.getAttribute("d")
+
+    return viewbox && data ? { viewbox, path: data } : null
   }
 
   observeSize() {

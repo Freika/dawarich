@@ -56,7 +56,9 @@ class Api::V1::LocationsController < ApiController
       limit: params[:limit]&.to_i || 50,
       date_from: parse_date(params[:date_from]),
       date_to: parse_date(params[:date_to]),
-      radius_override: params[:radius_override]&.to_i
+      radius_override: params[:radius_override]&.to_i,
+      place_name: params[:name],
+      address: params[:address]
     }
   end
 

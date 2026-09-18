@@ -24,4 +24,15 @@ module AchievementsHelper
       'aria-hidden': true
     )
   end
+
+  def achievement_modal_data
+    keys = %i[public_link embed_code iframe_title copy copied share_error copy_error]
+    labels = keys.index_with { |key| t("achievements.modal.#{key}") }
+
+    {
+      controller: 'card-modal',
+      action: 'turbo:before-cache@document->card-modal#prepareForCache',
+      card_modal_labels_value: labels.to_json
+    }
+  end
 end

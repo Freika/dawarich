@@ -1,6 +1,6 @@
 <% content_for :title, t('achievements.ui.title') %>
 
-<div class="w-full my-5 ach-page" data-controller="card-modal">
+<%= tag.div class: 'w-full my-5 ach-page', data: achievement_modal_data do %>
   <%= render 'shared/page_header', title: t('achievements.ui.title') %>
   <div class="ach-layout">
     <%= render 'sidebar', continents: @sets, summary: @summary %>
@@ -51,4 +51,4 @@
     </div>
   </div>
   <%= render 'card_modal' %>
-</div>
+<% end %>

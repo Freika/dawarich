@@ -99,6 +99,16 @@ function fixture() {
   dialog.replaceChildren(closeButton, stage)
 
   const controller = new CardModalController()
+  controller.labelsValue = {
+    public_link: "Public link",
+    embed_code: "Embed code",
+    iframe_title: "Dawarich achievement",
+    copy: "Copy",
+    copied: "Copied",
+    share_error: "Couldn't update sharing. Please try again.",
+    copy_error:
+      "Couldn't copy automatically. Select the link or code and copy it manually.",
+  }
   controller.dialogTarget = dialog
   controller.stageTarget = stage
   controller.toolsTarget = { hidden: false }
@@ -271,6 +281,23 @@ test("Stop sharing clears the saved URL and synchronizes the header", async () =
   assert.equal(controller.publicLinkTarget.hidden, true)
 })
 
+test("Embed uses the card-only public view that fits the iframe", async () => {
+  const { controller, open } = sharingFixture()
+  open()
+  controller.postToggle = async () => ({
+    enabled: true,
+    url: "/shared/achievements/demo",
+  })
+
+  await controller.embed()
+
+  assert.match(
+    controller.outputTarget.value,
+    /src="http:\/\/localhost:3016\/shared\/achievements\/demo\?embed=1"/,
+  )
+  assert.match(controller.outputTarget.value, /width="360" height="520"/)
+})
+
 test("a successful enable response without a URL is treated as an error", async () => {
   const { controller, open, wrap } = sharingFixture()
   open()
@@ -366,6 +393,19 @@ test("Space opens the modal and clicking its contents does not close it", () => 
   controller.backdrop({ target: wrap })
 
   assert.equal(dialog.open, true)
+})
+
+test("Turbo cache preparation restores the live card before the DOM is snapshotted", () => {
+  const { controller, dialog, grid, wrap, next, stage, open } = fixture()
+  open()
+
+  controller.prepareForCache()
+
+  assert.equal(dialog.open, false)
+  assert.deepEqual(grid.children, [wrap, next])
+  assert.deepEqual(stage.children, [])
+  assert.equal(controller.moved, null)
+  assert.equal(controller.origin, null)
 })
 
 test("restoration appends safely if the original next sibling was removed", () => {

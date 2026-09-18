@@ -5,6 +5,8 @@ import { Controller } from "@hotwired/stimulus"
 // back on close. Keyed achievements also get Share/Embed controls that reuse
 // the existing /achievements/:key/toggle_sharing endpoint (JSON).
 export default class extends Controller {
+  static values = { labels: Object }
+
   static targets = [
     "dialog",
     "stage",
@@ -75,6 +77,16 @@ export default class extends Controller {
     this.dialogTarget.close()
   }
 
+  // Turbo snapshots the current DOM, but not this controller's origin state.
+  // Put a previewed card back before caching so history restoration cannot
+  // strand it inside the dialog.
+  prepareForCache() {
+    if (!this.dialogTarget.open) return
+
+    this.restore()
+    this.dialogTarget.close()
+  }
+
   backdrop(event) {
     if (event.target === this.dialogTarget) this.close()
   }
@@ -117,13 +129,15 @@ export default class extends Controller {
 
   async share() {
     if (await this.setSharing(true))
-      this.showPanel("Public link", this.shareUrl)
+      this.showPanel(this.label("public_link"), this.shareUrl)
   }
 
   async embed() {
     if (!(await this.setSharing(true))) return
-    const iframe = `<iframe src="${this.shareUrl}" width="360" height="520" style="border:0" title="Dawarich achievement"></iframe>`
-    this.showPanel("Embed code", iframe)
+    const embedUrl = new URL(this.shareUrl)
+    embedUrl.searchParams.set("embed", "1")
+    const iframe = `<iframe src="${embedUrl.href}" width="360" height="520" style="border:0" title="${this.label("iframe_title")}"></iframe>`
+    this.showPanel(this.label("embed_code"), iframe)
   }
 
   async unshare() {
@@ -144,8 +158,7 @@ export default class extends Controller {
     try {
       const data = await this.postToggle(enabled, this.toggleUrl)
       if (!data || data.enabled !== enabled || (enabled && !data.url)) {
-        if (session === this.session)
-          this.showError("Couldn't update sharing. Please try again.")
+        if (session === this.session) this.showError(this.label("share_error"))
         return false
       }
 
@@ -224,16 +237,15 @@ export default class extends Controller {
       await navigator.clipboard.writeText(value)
       if (session !== this.session || value !== this.outputTarget.value) return
       this.clearError()
-      this.copyBtnTarget.textContent = "Copied"
+      this.copyBtnTarget.textContent = this.label("copied")
       clearTimeout(this.copyTimer)
       this.copyTimer = setTimeout(() => {
-        if (this.hasCopyBtnTarget) this.copyBtnTarget.textContent = "Copy"
+        if (this.hasCopyBtnTarget)
+          this.copyBtnTarget.textContent = this.label("copy")
       }, 1500)
     } catch {
       if (session !== this.session) return
-      this.showError(
-        "Couldn't copy automatically. Select the link or code and copy it manually.",
-      )
+      this.showError(this.label("copy_error"))
       this.outputTarget.focus({ preventScroll: true })
       this.outputTarget.select()
     }
@@ -241,7 +253,7 @@ export default class extends Controller {
 
   showPanel(label, value) {
     clearTimeout(this.copyTimer)
-    this.copyBtnTarget.textContent = "Copy"
+    this.copyBtnTarget.textContent = this.label("copy")
     this.panelLabelTarget.textContent = label
     this.outputTarget.value = value
     this.unshareBtnTarget.hidden = !this.shared
@@ -260,6 +272,10 @@ export default class extends Controller {
 
   get csrfToken() {
     return document.querySelector('meta[name="csrf-token"]')?.content || ""
+  }
+
+  label(key) {
+    return this.labelsValue[key] || key
   }
 }
 

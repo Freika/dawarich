@@ -28,6 +28,8 @@ if [ "$(id -u)" = "0" ] && [ -n "${PUID}${PGID}" ]; then
   exec gosu "$TARGET_UID:$TARGET_GID" "$0" "$@"
 fi
 
+warn_if_development_env
+
 # Parse DATABASE_URL if present, otherwise use individual variables
 if [ -n "$DATABASE_URL" ]; then
   # Strip scheme (postgres:// or postgresql://)
@@ -112,6 +114,9 @@ bundle exec rake data:migrate
 
 echo "Running seeds..."
 bundle exec rails db:seed
+
+echo "Scheduling achievement backfill..."
+bundle exec rake achievements:backfill
 
 # run passed commands
 exec bundle exec "${@}"

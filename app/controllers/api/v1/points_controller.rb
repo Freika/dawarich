@@ -104,8 +104,10 @@ class Api::V1::PointsController < ApiController
   def update
     point = current_api_user.points.find(params[:id])
 
-    if point.update(lonlat: "POINT(#{point_params[:longitude]} #{point_params[:latitude]})")
+    if relocate(point)
       Points::TileEpoch.bump(point.user_id, timestamps: [point.timestamp])
+      Achievements::CheckJob.perform_later(point.user_id, oldest_timestamp: point.timestamp) if achievements_enabled?
+      point.async_reverse_geocode(force: true)
 
       if point.track_id.present?
         Rails.logger.info(
@@ -169,6 +171,24 @@ class Api::V1::PointsController < ApiController
   end
 
   private
+
+  def relocate(point)
+    point.lonlat = "POINT(#{point_params[:longitude]} #{point_params[:latitude]})"
+    country = point.found_in_country
+    point.assign_attributes(
+      country_id: country&.id,
+      country_name: country&.name,
+      city: nil,
+      geodata: {},
+      reverse_geocoded_at: nil
+    )
+    point[:country] = country&.name
+    point.save
+  end
+
+  def achievements_enabled?
+    Flipper.enabled?(:achievements)
+  end
 
   def point_params
     params.require(:point).permit(:latitude, :longitude)

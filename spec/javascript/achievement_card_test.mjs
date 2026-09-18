@@ -12,10 +12,13 @@ const source = (
   )
 ).replace(/^import .*\n/gm, "")
 const { default: AchievementCardController } = await import(
-  `data:text/javascript;base64,${Buffer.from(`class Controller {}\n${source}`).toString("base64")}`
+  `data:text/javascript;base64,${Buffer.from(`const spectralMarkup = (...args) => globalThis.__spectralMarkup(...args)\nclass Controller {}\n${source}`).toString("base64")}`
 )
 
-function fixture(t, { mounted = false, dialogOpen = false } = {}) {
+function fixture(
+  t,
+  { mounted = false, dialogOpen = false, restoredMaterial = false } = {},
+) {
   const intersections = []
   const sizes = []
   const globals = {
@@ -70,17 +73,57 @@ function fixture(t, { mounted = false, dialogOpen = false } = {}) {
     clientHeight: 210,
     querySelector: () => svg,
   }
-  const card = { style: { removeProperty() {} }, querySelectorAll: () => [] }
+  const card = {
+    style: { removeProperty() {}, setProperty() {} },
+    querySelectorAll: () => [],
+  }
+  const fallbackPath = {
+    getAttribute: (name) => (name === "d" ? "M0 0L10 0L10 10Z" : null),
+  }
+  const fallbackSvg = {
+    getAttribute: (name) => (name === "viewBox" ? "0 0 10 10" : null),
+    querySelector: () => fallbackPath,
+  }
   const controller = new AchievementCardController()
   controller.element = {
     querySelector: () => card,
     closest: () => (dialogOpen ? {} : null),
   }
-  controller.materialTarget = { querySelector: () => stage }
-  controller.hasSilhouetteValue = true
+  controller.materialTarget = {
+    querySelector: (selector) => {
+      if (selector === ".spectral-fallback svg")
+        return restoredMaterial ? null : fallbackSvg
+      return stage
+    },
+  }
+  controller.card = card
   controller.mounted = mounted
   return { controller, stage, svg, properties, intersections, sizes }
 }
+
+test("mount derives the silhouette from fallback SVG without secure-context APIs", (t) => {
+  const { controller, sizes } = fixture(t)
+  let options
+  const original = globalThis.__spectralMarkup
+  globalThis.__spectralMarkup = (value) => {
+    options = value
+    return { html: '<div class="geo-stage"></div>', accent: "#fff" }
+  }
+  t.after(() => {
+    if (original) globalThis.__spectralMarkup = original
+    else delete globalThis.__spectralMarkup
+  })
+
+  controller.mount()
+
+  assert.deepEqual(options.silhouette, {
+    viewbox: "0 0 10 10",
+    path: "M0 0L10 0L10 10Z",
+  })
+  assert.match(options.uid, /^sc-/)
+  assert.equal(controller.mounted, true)
+  assert.equal(sizes.length, 1)
+})
 
 test("a mounted card refits synchronously when moved into the preview and back", (t) => {
   const { controller, stage, properties, intersections, sizes } = fixture(t, {
@@ -111,6 +154,28 @@ test("a mounted card refits synchronously when moved into the preview and back",
   stage.clientHeight = 210
   controller.connect()
   assert.equal(properties["--map-scale"], compactScale)
+})
+
+test("a fresh controller adopts material restored from the Turbo cache", (t) => {
+  const { controller, intersections, sizes } = fixture(t, {
+    restoredMaterial: true,
+  })
+  let renders = 0
+  const original = globalThis.__spectralMarkup
+  globalThis.__spectralMarkup = () => {
+    renders += 1
+  }
+  t.after(() => {
+    if (original) globalThis.__spectralMarkup = original
+    else delete globalThis.__spectralMarkup
+  })
+
+  controller.connect()
+  intersections[0].callback([{ isIntersecting: true }])
+
+  assert.equal(controller.mounted, true)
+  assert.equal(renders, 0)
+  assert.equal(sizes.length, 1)
 })
 
 test("an unmounted card opened directly in a dialog mounts before paint", (t) => {

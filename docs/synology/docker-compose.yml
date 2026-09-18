@@ -15,6 +15,7 @@ services:
     environment:
       POSTGRES_USER: ${DATABASE_USERNAME}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      POSTGRES_DB: ${DATABASE_NAME}
     volumes:
       - ./db_data:/var/lib/postgresql/data
       - ./db_shared:/var/shared
@@ -28,7 +29,7 @@ services:
     stdin_open: true
     tty: true
     entrypoint: web-entrypoint.sh
-    command: ['bin/dev']
+    command: ['bin/rails', 'server', '-p', '3000', '-b', '::']
     restart: unless-stopped
     env_file:
       - .env

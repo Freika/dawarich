@@ -1,0 +1,106 @@
+de:
+  achievements:
+    ui:
+      title: Erfolge
+      summary: Übersicht
+      continents: Kontinente
+      countries: Länder
+      regions: Regionen
+      world_explored: Welt erkundet
+      collection_hint: Entdecke deine Sammlung nach Kontinent, Land und Region.
+      collection_navigation: Erfolgssammlungen
+      browse: Sammlung ansehen
+      breadcrumb: Brotkrümelnavigation
+      getting_started: Zeichne Standortdaten auf oder importiere sie, um diese Karten zu entdecken.
+      import_data: Daten importieren
+      collection_progress: "%{collection} erkundet"
+      completed_on: "Freigeschaltet am %{date}"
+      remaining:
+        one: Noch 1 zu erkunden
+        other: Noch %{count} zu erkunden
+      share: Teilen
+      enable_sharing: Öffentlichen Link erstellen
+      countries_progress: "%{count} von %{total} Ländern besucht"
+      regions_progress: "%{count} von %{total} Regionen erkundet"
+      browse_children: "%{collection} ansehen"
+      search_children: "%{collection} durchsuchen"
+      collection_pages: Sammlungsseiten
+      prev_page: Vorherige Seite
+      next_page: Nächste Seite
+      disable_sharing: Teilen deaktivieren
+      public_link: Öffentlicher Link
+      preview_hint: Wähle die Karte für eine größere Ansicht aus.
+      search_cards: Karten durchsuchen
+      card_status: Kartenstatus
+      apply: Anwenden
+      clear: Filter löschen
+      page_range: "%{first}–%{last} von %{total} Karten"
+      no_results: Keine passenden Karten
+      no_results_hint: Suche nach einem anderen Namen oder lösche die Filter, um die ganze Sammlung zu sehen.
+      about_boundaries: Über Grenzdaten
+      boundaries_note: "Die Regionserkennung basiert auf ungefähren Grenzen. Quellen:"
+      threshold_note:
+        one: Ein Ort zählt nach %{count} Minute Aufenthaltszeit.
+        other: Ein Ort zählt nach %{count} Minuten Aufenthaltszeit.
+      status:
+        all: Alle Karten
+        unlocked: Freigeschaltet
+        in_progress: In Bearbeitung
+        locked: Gesperrt
+    cards:
+      explorer_name: "%{place}-Entdecker"
+      date_format: "%-d. %b %Y"
+      description:
+        continent: "Verbringe Zeit in allen %{count} Ländern und Gebieten von %{place}."
+        regions: "Verbringe Zeit in allen %{count} Regionen von %{place}."
+        country: "Verbringe Zeit in %{place}."
+      status:
+        locked: Gesperrt
+        unlocked: Freigeschaltet
+        unlocked_on: "Freigeschaltet · %{date}"
+        in_progress: In Bearbeitung
+        visited: Besucht
+      metric:
+        explored: Erkundet
+        not_yet_explored: Noch nicht erkundet
+        percent_explored: "%{percent} % erkundet"
+        countries: "%{count}/%{total} Länder"
+        regions: "%{count}/%{total} Regionen"
+      rarity:
+        common: Gewöhnlich
+        rare: Selten
+        epic: Episch
+        legendary: Legendär
+      boundary_unavailable: Grenze nicht verfügbar
+      open_label: "%{name} öffnen — %{status}"
+      progress_label: Erkundungsfortschritt
+      details_regions: "%{count}/%{total} Regionen"
+    modal:
+      detail: Erfolgsdetails
+      close: Schließen
+      share: Teilen
+      embed: Einbetten
+      public_link: Öffentlicher Link
+      embed_code: Einbettungscode
+      iframe_title: Dawarich-Erfolg
+      copy: Kopieren
+      copied: Kopiert
+      stop_sharing: Teilen beenden
+      share_error: Teilen konnte nicht aktualisiert werden. Bitte versuche es erneut.
+      copy_error: Automatisches Kopieren fehlgeschlagen. Wähle den Link oder Code aus und kopiere ihn manuell.
+    public:
+      not_found: Der geteilte Erfolg wurde nicht gefunden oder ist nicht mehr verfügbar
+      social_description: "%{progress} erkundet. Aufgezeichnet mit Dawarich."
+      tracked_with_html: "Aufgezeichnet mit %{link}"
+    notifications:
+      region_title: "%{region} erkundet!"
+      region_content: "%{achievement}: %{count}/%{total} Regionen besucht."
+      country_content: "%{achievement}: %{count}/%{total} Länder besucht."
+      digest_title: "%{count} neue Gebiete erkundet!"
+      digest_content: Deine neuesten Daten haben neue Gebiete freigeschaltet — sieh sie dir auf der Erfolge-Seite an.
+      completion_title: "%{achievement} abgeschlossen!"
+      completion_country: Du hast dieses Land erkundet.
+      completion_target_regions: "Du hast %{count} Regionen erkundet."
+      completion_all_regions: "Du hast alle %{count} Regionen erkundet."
+      completion_target_countries: "Du hast %{count} Länder erkundet."
+      completion_all_countries: "Du hast alle %{count} Länder erkundet."

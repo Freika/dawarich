@@ -88,6 +88,21 @@ RSpec.describe Users::Destroy do
       end
     end
 
+    context 'with achievement records' do
+      let!(:progress) { create(:achievement_progress, user: user) }
+      let!(:achievement) { create(:user_achievement, user: user) }
+
+      before { user.service_settings.delete_all }
+
+      it 'deletes both achievement tables before hard deleting the user' do
+        service.call
+
+        expect(Achievements::Progress.where(id: progress.id)).not_to exist
+        expect(UserAchievement.where(id: achievement.id)).not_to exist
+        expect(User.unscoped.where(id: user.id)).not_to exist
+      end
+    end
+
     context 'with scheduled jobs' do
       it 'attempts to cancel scheduled jobs for the user' do
         allow(Rails.logger).to receive(:info)

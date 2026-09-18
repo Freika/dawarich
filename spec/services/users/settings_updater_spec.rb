@@ -89,11 +89,22 @@ RSpec.describe Users::SettingsUpdater do
     end
 
     context 'when the city threshold changes' do
+      before { Flipper.enable(:achievements) }
+
+      after { Flipper.disable(:achievements) }
+
       it 'recalculates existing stats so the new value is reflected' do
         allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
 
         expect { described_class.new(user, 'min_minutes_spent_in_city' => 15).call }
           .to have_enqueued_job(Stats::FullRecalculationJob).with(user.id)
+      end
+
+      it 'rechecks achievements immediately' do
+        allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
+
+        expect { described_class.new(user, 'min_minutes_spent_in_city' => 15).call }
+          .to have_enqueued_job(Achievements::CheckJob).with(user.id)
       end
 
       it 'does not recalculate when the value is unchanged' do

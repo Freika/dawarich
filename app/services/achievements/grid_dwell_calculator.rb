@@ -2,6 +2,7 @@
 
 module Achievements
   class GridDwellCalculator
+    MAX_TIMESTAMP = (2**63) - 1
     PAIR_CAP_SECONDS = 30.minutes.to_i
     GRID_DEGREES = 0.01
     SOURCES = {
@@ -16,6 +17,7 @@ module Achievements
         FROM points
         WHERE user_id = %<user_id>d
           AND "timestamp" >= %<since>d
+          AND "timestamp" <= %<through>d
           AND lonlat IS NOT NULL
           AND (anomaly IS DISTINCT FROM TRUE)
       ),
@@ -44,6 +46,7 @@ module Achievements
          AND cc.gy = FLOOR(ST_Y(p.lonlat::geometry) / %<grid>f)::int
         WHERE p.user_id = %<user_id>d
           AND p."timestamp" >= %<since>d
+          AND p."timestamp" <= %<through>d
           AND p.lonlat IS NOT NULL
           AND (p.anomaly IS DISTINCT FROM TRUE)
       )
@@ -53,12 +56,13 @@ module Achievements
       GROUP BY code
     SQL
 
-    def initialize(user, table:, since: 0)
+    def initialize(user, table:, since: 0, through: MAX_TIMESTAMP)
       raise ArgumentError, "unsupported source: #{table}" unless SOURCES.key?(table)
 
       @user = user
       @table = table
       @since = since
+      @through = through
     end
 
     def call
@@ -68,7 +72,7 @@ module Achievements
     private
 
     def sql
-      format(SQL, user_id: @user.id, since: @since, cap: PAIR_CAP_SECONDS, grid: GRID_DEGREES,
+      format(SQL, user_id: @user.id, since: @since, through: @through, cap: PAIR_CAP_SECONDS, grid: GRID_DEGREES,
                   table: @table, code_column: SOURCES.fetch(@table))
     end
   end

@@ -22,6 +22,16 @@ RSpec.describe Imports::Destroy do
       service.call
     end
 
+    it 'rebuilds achievement dwell from the oldest deleted import point' do
+      oldest_timestamp = import.points.minimum(:timestamp)
+      Flipper.enable(:achievements)
+
+      expect { service.call }
+        .to have_enqueued_job(Achievements::CheckJob).with(user.id, oldest_timestamp: oldest_timestamp)
+    ensure
+      Flipper.disable(:achievements)
+    end
+
     context 'with points spanning several years' do
       let!(:import) { create(:import, user: user) }
 

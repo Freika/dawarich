@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [UNRELEASED]
+
+### Added
+
+- The app and Sidekiq containers print a warning at startup when a self-hosted instance runs with `RAILS_ENV=development`.
+- Exploration achievements: every country gets a collectible card, and 183 of them a grid of their first-level regions. A region counts as explored once time spent inside it passes your "minimum minutes spent in city" setting, so pass-throughs don't count. Earned regions are never revoked. Behind the `achievements` feature flag. (#3121)
+
+### Fixed
+
+- Simplified Chinese covers the SMTP test-email flow.
+- CSV imports combine separate DATE/TIME columns while preserving complete timestamps when both formats are present.
+- The visits API now returns a clear bad-request response for malformed date ranges on both time-based and area-based queries, instead of failing or silently ignoring the filter.
+- Failed imports no longer leave temporary downloads on disk when the file is empty or fails integrity checks.
+- The Synology template and the Kubernetes guide run Dawarich in production instead of development.
+- The Synology template no longer hangs waiting for its database on a fresh install.
+- The Kubernetes guide's health probes check the web container instead of the Sidekiq container, and a startup probe keeps it from being restarted while migrations run.
+- Trip and track distance is calculated in the database, so large trips no longer run out of memory and leave the distance empty. Press Recalculate on an affected trip to fill it in.
+- Exploration achievement rollout silently backfills existing location history, while public cards expose aggregate progress only. (#3121)
+- Achievement cards support HTTP self-hosted installations, use the user's timezone for unlock dates and refresh after dwell-threshold changes. (#3121)
+
 ## [1.14.5] - 2026-09-13, Berlin
 
 ### Added
@@ -16,10 +36,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Visit detection no longer sends a notification for every new suggested visit.
 - Poster Studio waits for the map to load the selected date range and disables the studio switch while loading.
-
-### Added
-
-- Exploration achievements: every country gets a collectible card, and 183 of them a grid of their first-level regions. A region counts as explored once time spent inside it passes your "minimum minutes spent in city" setting, so pass-throughs don't count. Earned regions are never revoked. Behind the `achievements` feature flag. (#3121)
 
 ### Fixed
 

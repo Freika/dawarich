@@ -10,6 +10,14 @@ RSpec.describe Achievements::SetPresenter do
     )
   end
 
+  def presenter_in(key, timezone:, earned: {})
+    described_class.new(
+      definition: Achievements::Registry.find(key),
+      state: { 'earned' => earned },
+      timezone: timezone
+    )
+  end
+
   describe 'scoping the global state to one set' do
     it 'ignores earned codes belonging to other sets' do
       set = presenter('country_de', earned: { 'DE-BY' => '2026-05-01', 'FR' => '2026-06-01',
@@ -37,6 +45,14 @@ RSpec.describe Achievements::SetPresenter do
       expect(set).to be_completed
       expect(set.completed_on).to eq(Date.new(2026, 7, 20))
       expect(set.earned_label).to eq('Unlocked · 20 Jul 2026')
+    end
+
+    it 'renders timestamp dates in the user timezone' do
+      earned = Achievements::Registry.find('country_de').region_codes.index_with { '2026-07-20T00:30:00Z' }
+      set = presenter_in('country_de', timezone: 'Pacific Time (US & Canada)', earned: earned)
+
+      expect(set.completed_on).to eq(Date.new(2026, 7, 19))
+      expect(set.earned_label).to eq('Unlocked · 19 Jul 2026')
     end
 
     it 'is locked with nothing earned' do

@@ -82,7 +82,7 @@ module Achievements
 
       def country_universe
         @country_universe ||= planet.values.flat_map { |data| data['countries'].to_a }
-                                           .to_h { |code, country| [code, country['name']] }
+                                    .to_h { |code, country| [code, country['name']] }
       end
 
       def continent_key(continent)

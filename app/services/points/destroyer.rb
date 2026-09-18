@@ -20,6 +20,7 @@ class Points::Destroyer
 
     enqueue_stats_recalculation(destroyed)
     enqueue_track_recalculation(destroyed)
+    enqueue_achievement_recalculation(destroyed)
 
     destroyed
   end
@@ -48,5 +49,11 @@ class Points::Destroyer
       "enqueuing Tracks::RecalculateJob for #{track_ids.size} tracks: #{track_ids.inspect}"
     )
     track_ids.each { |track_id| Tracks::RecalculateJob.perform_later(track_id) }
+  end
+
+  def enqueue_achievement_recalculation(destroyed)
+    return unless Flipper.enabled?(:achievements)
+
+    Achievements::CheckJob.perform_later(user.id, oldest_timestamp: destroyed.map(&:timestamp).min)
   end
 end

@@ -2,6 +2,7 @@
 
 module Achievements
   class CountryDwellCalculator
+    MAX_TIMESTAMP = (2**63) - 1
     PAIR_CAP_SECONDS = 30.minutes.to_i
     COVERAGE_THRESHOLD = 0.9
 
@@ -16,6 +17,7 @@ module Achievements
         LEFT JOIN countries c ON c.id = p.country_id
         WHERE p.user_id = %<user_id>d
           AND p."timestamp" >= %<since>d
+          AND p."timestamp" <= %<through>d
           AND p.lonlat IS NOT NULL
           AND (p.anomaly IS DISTINCT FROM TRUE)
       )
@@ -32,9 +34,10 @@ module Achievements
       GROUP BY code
     SQL
 
-    def initialize(user, since: 0)
+    def initialize(user, since: 0, through: MAX_TIMESTAMP)
       @user = user
       @since = since
+      @through = through
     end
 
     def call
@@ -48,7 +51,7 @@ module Achievements
     private
 
     def sql
-      format(SQL, user_id: @user.id, since: @since, cap: PAIR_CAP_SECONDS)
+      format(SQL, user_id: @user.id, since: @since, through: @through, cap: PAIR_CAP_SECONDS)
     end
 
     def country_ids_populated?(rows)
@@ -63,7 +66,7 @@ module Achievements
         'falling back to the spatial path'
       )
 
-      GridDwellCalculator.new(@user, table: 'countries', since: @since).call
+      GridDwellCalculator.new(@user, table: 'countries', since: @since, through: @through).call
     end
   end
 end

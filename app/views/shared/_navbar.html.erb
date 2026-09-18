@@ -13,7 +13,7 @@
         <li><%= link_to t('.stats'), stats_url, class: "#{active_class?(stats_url)}" %></li>
         <li><%= link_to t('.insights_sup_sup_html').html_safe, insights_url, class: "#{active_class?(insights_url)}" %></li>
         <% if Flipper.enabled?(:achievements) %>
-          <li><%= link_to 'Achievements', achievements_path, class: "#{active_class?(achievements_path)}" %></li>
+          <li><%= link_to t('achievements.ui.title'), achievements_path, class: "#{active_class?(achievements_path)}" %></li>
         <% end %>
         <% if user_signed_in? && (family_feature_available? || current_user.in_family?) %>
           <li>
@@ -77,7 +77,7 @@
       <li><%= link_to t('.stats'), stats_url, class: "mx-1 #{active_class?(stats_url)}" %></li>
       <li><%= link_to t('.insights_sup_sup_html').html_safe, insights_url, class: "mx-1 #{active_class?(insights_url)}" %></li>
       <% if Flipper.enabled?(:achievements) %>
-        <li><%= link_to 'Achievements', achievements_path, class: "mx-1 #{active_class?(achievements_path)}" %></li>
+        <li><%= link_to t('achievements.ui.title'), achievements_path, class: "mx-1 #{active_class?(achievements_path)}" %></li>
       <% end %>
       <% if user_signed_in? && (family_feature_available? || current_user.in_family?) %>
         <li>

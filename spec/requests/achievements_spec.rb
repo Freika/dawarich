@@ -58,6 +58,17 @@ RSpec.describe 'Achievements' do
 
           expect(response.body).not_to include('ach-card-wrap--celebrate')
         end
+
+        it 'does not mark hidden world tiers as celebrated' do
+          progress = exploration(
+            'DE' => '2026-07-01', 'FR' => '2026-07-02', 'IT' => '2026-07-03',
+            'ES' => '2026-07-04', 'PT' => '2026-07-05'
+          )
+
+          get achievements_path
+
+          expect(progress.reload.state.dig('celebrated', 'border_hopper')).to be_nil
+        end
       end
 
       describe 'GET /achievements/:key' do
@@ -95,9 +106,26 @@ RSpec.describe 'Achievements' do
           expect(document.at_css('[data-card-modal-target="publicLink"]')['hidden']).not_to be_nil
           expect(document.at_css('.ach-set-hero > :first-child')['class']).to eq('ach-set-details')
           expect(document.at_css('.ach-set-details').text).to include('0 of 50 countries visited')
+          expect(document.at_css('.ach-threshold-note').text).to include('60 minutes')
           expect(document.css('.ach-set-status, .ach-set-description, .ach-set-tools')).to be_empty
           expect(document.at_css('.ach-collection-jump')['href']).to eq('#collection')
           expect(document.at_css('#collection')['tabindex']).to eq('-1')
+        end
+
+        it 'localizes card content and modal controls in the user locale' do
+          user.persist_locale!(:de)
+
+          get achievement_path('continent_europe')
+
+          document = Nokogiri::HTML(response.body)
+          expect(document.at_css('.card-title').text).to eq('Europe-Entdecker')
+          expect(document.at_css('.card-description').text).to include('allen 50 Ländern')
+          expect(document.at_css('.rarity').text).to eq('Legendär')
+          expect(document.at_css('.ach-modal-tools').text).to include('Teilen', 'Einbetten')
+          expect(document.at_css('[data-card-modal-labels-value]')['data-card-modal-labels-value'])
+            .to include('Öffentlicher Link')
+          expect(document.at_css('[data-controller="card-modal"]')['data-action'])
+            .to include('turbo:before-cache@document->card-modal#prepareForCache')
         end
 
         it 'uses native GET submission so filtering retains the collection fragment' do
@@ -204,7 +232,8 @@ RSpec.describe 'Achievements' do
 
           get achievement_path('country_de')
 
-          expect(response.body).to include('data-achievement-card-silhouette-value')
+          expect(response.body).to include('ach-silhouette-svg')
+          expect(response.body).not_to include('data-achievement-card-silhouette-value')
           expect(response.body).not_to include('data-controller="achievement-map"')
         end
 
@@ -224,7 +253,8 @@ RSpec.describe 'Achievements' do
           document = Nokogiri::HTML(response.body)
           card = document.at_css('[data-achievement-card-key-value="DE-BY"]')
           expect(card['data-achievement-card-locked-value']).to eq('false')
-          expect(card['data-achievement-card-silhouette-value']).to include('viewbox')
+          expect(card.at_css('.spectral-fallback svg path')['d']).to be_present
+          expect(card['data-achievement-card-silhouette-value']).to be_nil
           expect(card['data-achievement-card-paper-value']).to include('paper-pressed-fiber-v2')
           expect(card['data-achievement-card-foil-value']).to include('foil-stamped-grain-v4')
           expect(card.text).to include('Unlocked · 1 Jul 2026')
@@ -276,6 +306,15 @@ RSpec.describe 'Achievements' do
           patch toggle_sharing_achievement_path('country_de')
           expect(progress.reload.sharing_enabled).to be(false)
           expect(progress.sharing_uuid).to eq(uuid)
+        end
+
+        it 'serializes uuid initialization on the sharing carrier' do
+          progress = create(:achievement_progress, user:, achievement_key: 'country_de')
+          expect_any_instance_of(Achievements::Progress).to receive(:with_lock).and_call_original
+
+          patch toggle_sharing_achievement_path('country_de'), params: { enabled: true }, as: :json
+
+          expect(response.parsed_body['uuid']).to eq(progress.reload.sharing_uuid)
         end
 
         it 'creates the sharing carrier on demand' do

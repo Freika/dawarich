@@ -56,6 +56,14 @@ RSpec.describe Achievements::GridDwellCalculator do
     expect(described_class.new(user, table: 'regions', since: base_ts + 1800).call['TT-01']).to eq(1200)
   end
 
+  it 'does not include points after the captured cursor' do
+    6.times { |i| create(:point, user:, longitude: 11.0, latitude: 11.0, timestamp: base_ts + (i * 600)) }
+
+    result = described_class.new(user, table: 'regions', through: base_ts + 1800).call
+
+    expect(result['TT-01']).to eq(1800)
+  end
+
   it 'rejects an unknown source table' do
     expect { described_class.new(user, table: 'users') }.to raise_error(ArgumentError, /unsupported source/)
   end

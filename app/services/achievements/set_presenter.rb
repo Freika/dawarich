@@ -4,12 +4,13 @@ module Achievements
   class SetPresenter
     DEFAULT_CHILD_ZOOM = 6
 
-    attr_reader :definition, :state, :sharing
+    attr_reader :definition, :state, :sharing, :timezone
 
-    def initialize(definition:, state: {}, sharing: nil)
+    def initialize(definition:, state: {}, sharing: nil, timezone: 'UTC')
       @definition = definition
       @state = state || {}
       @sharing = sharing
+      @timezone = timezone
     end
 
     delegate :total, :target, :flat?, :level, :parent_key, to: :definition
@@ -57,16 +58,16 @@ module Achievements
     def completed_on
       return nil unless completed?
 
-      earned.values.map { |date| Date.parse(date) }.sort[target - 1]
+      earned.values.map { |date| local_date(date) }.sort[target - 1]
     end
 
     def earned_label
-      return 'Locked' if locked?
-      return "Unlocked · #{completed_on.strftime('%-d %b %Y')}" if completed?
+      return translate('status.locked') if locked?
+      return translate('status.unlocked_on', date: localized_date(completed_on)) if completed?
 
       # Absolute count, not a percent: the plate bar already shows how far,
       # so the label carries the number the bar can't.
-      "#{display_count}/#{target} #{level == :country ? 'countries' : 'regions'}"
+      progress_metric(display_count, target)
     end
 
     def celebrate?
@@ -77,8 +78,23 @@ module Achievements
       definition.card['rarity']
     end
 
+    def name
+      return definition.name if definition.kind == 'region_set'
+      return place if definition.flat?
+
+      translate('explorer_name', place: place)
+    end
+
     def description
-      definition.card['description']
+      if definition.kind == 'continent'
+        translate('description.continent', count: total, place: place)
+      elsif definition.kind == 'country' && definition.level == :subdivision
+        translate('description.regions', count: total, place: place)
+      elsif definition.kind == 'country'
+        translate('description.country', place: place)
+      else
+        definition.card['description']
+      end
     end
 
     def flavor
@@ -94,7 +110,7 @@ module Achievements
       marker = definition.card['marker'] || art
 
       {
-        name: definition.name,
+        name: name,
         description: description,
         flavor: flavor,
         rarity: rarity,
@@ -110,7 +126,7 @@ module Achievements
         earned_label: earned_label,
         geography_key: definition.key,
         silhouette: silhouette,
-        metric_label: "#{display_count}/#{target} #{level == :country ? 'countries' : 'regions'}"
+        metric_label: progress_metric(display_count, target)
       }
     end
 
@@ -154,7 +170,7 @@ module Achievements
 
     def country_card(child, visited_at:)
       art = child.card['art']
-      progress = self.class.new(definition: child, state: state)
+      progress = self.class.new(definition: child, state: state, timezone: timezone)
       link_key = child.level == :subdivision ? child.key : nil
 
       {
@@ -177,9 +193,9 @@ module Achievements
 
     def country_label(progress, visited_at)
       return progress.earned_label if progress.completed? || progress.percent.positive?
-      return 'Visited' if visited_at.present?
+      return translate('status.visited') if visited_at.present?
 
-      'Locked'
+      translate('status.locked')
     end
 
     def child_card(name:, code:, rarity:, lat:, lon:, zoom:, earned_at:, key: nil)
@@ -196,8 +212,26 @@ module Achievements
         percent: earned_at ? 100 : 0,
         completed: earned_at.present?,
         locked: earned_at.blank?,
-        earned_label: earned_at ? "Unlocked · #{Date.parse(earned_at).strftime('%-d %b %Y')}" : nil
+        earned_label: earned_at ? translate('status.unlocked_on', date: localized_date(local_date(earned_at))) : nil
       }
+    end
+
+    def progress_metric(count, total)
+      translate("metric.#{level == :country ? 'countries' : 'regions'}", count: count, total: total)
+    end
+
+    def localized_date(date)
+      I18n.l(date, format: translate('date_format'))
+    end
+
+    def translate(key, **options)
+      I18n.t("achievements.cards.#{key}", **options)
+    end
+
+    def local_date(value)
+      Time.iso8601(value).in_time_zone(timezone).to_date
+    rescue ArgumentError
+      Date.parse(value)
     end
 
     # ST_PointOnSurface, not ST_Centroid: a ring-shaped region's centroid can

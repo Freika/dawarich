@@ -1,7 +1,7 @@
-<% content_for :title, @set.definition.name %>
+<% content_for :title, @set.name %>
 <% collection_label = t("achievements.ui.#{@set.level == :country ? 'countries' : 'regions'}") %>
 
-<div class="w-full my-5 ach-page" data-controller="card-modal">
+<%= tag.div class: 'w-full my-5 ach-page', data: achievement_modal_data do %>
   <nav class="breadcrumbs text-sm mb-3" aria-label="<%= t('achievements.ui.breadcrumb') %>">
     <ul>
       <li><%= link_to t('achievements.ui.title'), achievements_path %></li>
@@ -15,7 +15,7 @@
     <%= render 'sidebar', continents: @continents, summary: @summary, active_key: @sidebar_key %>
     <div class="ach-main">
       <div class="ach-set-header">
-        <%= render layout: 'shared/page_header', locals: { title: @set.definition.name } do %>
+        <%= render layout: 'shared/page_header', locals: { title: @set.name } do %>
           <%= link_to '#collection', class: 'btn btn-sm btn-ghost ach-collection-jump', data: { turbo: false } do %>
             <%= t('achievements.ui.browse_children', collection: collection_label.downcase) %>
             <%= icon 'chevron-down', class: 'w-4 h-4', 'aria-hidden': true %>
@@ -42,7 +42,7 @@
         <% end %>
       </div>
       <div class="ach-set-layout">
-        <section class="ach-set-hero" aria-label="<%= @set.definition.name %>">
+        <section class="ach-set-hero" aria-label="<%= @set.name %>">
           <div class="ach-set-details">
             <p class="ach-progress-summary">
               <%= t("achievements.ui.#{@set.level == :country ? 'countries_progress' : 'regions_progress'}",
@@ -56,6 +56,9 @@
               <% else %>
                 <%= t('achievements.ui.remaining', count: @set.target - @set.display_count) %>
               <% end %>
+            </p>
+            <p class="ach-muted ach-threshold-note">
+              <%= t('achievements.ui.threshold_note', count: @threshold_minutes) %>
             </p>
           </div>
           <figure class="ach-set-preview" data-card-modal-target="featured">
@@ -141,4 +144,4 @@
     </div>
   </div>
   <%= render 'card_modal' %>
-</div>
+<% end %>

@@ -321,6 +321,30 @@ RSpec.describe 'Api::V1::Points', type: :request do
       expect(Points::TileEpoch.etag_component(user.id, *range)).not_to eq(before_component)
     end
 
+    it 'refreshes country attribution and achievement dwell after a coordinate edit' do
+      old_country = create(:country, name: 'Old country', iso_a2: 'OC', iso_a3: 'OLD',
+                                     geom: 'MULTIPOLYGON (((10 10, 11 10, 11 11, 10 11, 10 10)))')
+      new_country = create(:country, name: 'New country', iso_a2: 'NC', iso_a3: 'NEW',
+                                     geom: 'MULTIPOLYGON (((1 1, 2 1, 2 2, 1 2, 1 1)))')
+      point = create(:point, user: user, longitude: 10.5, latitude: 10.5, country_id: old_country.id,
+                             city: 'Old city', country_name: old_country.name,
+                             reverse_geocoded_at: Time.current)
+      Flipper.enable(:achievements)
+
+      expect do
+        put "/api/v1/points/#{point.id}?api_key=#{user.api_key}",
+            params: { point: { latitude: 1.5, longitude: 1.5 } }
+      end.to have_enqueued_job(Achievements::CheckJob).with(user.id, oldest_timestamp: point.timestamp)
+
+      point.reload
+      expect(point.country_id).to eq(new_country.id)
+      expect(point.country_name).to eq(new_country.name)
+      expect(point.city).to be_nil
+      expect(point.reverse_geocoded_at).to be_nil
+    ensure
+      Flipper.disable(:achievements)
+    end
+
     context 'when user is inactive' do
       before do
         user.update(status: :inactive, active_until: 1.day.ago)

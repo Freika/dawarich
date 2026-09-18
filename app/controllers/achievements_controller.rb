@@ -9,7 +9,7 @@ class AchievementsController < ApplicationController
 
   def index
     @sets = @continents
-    mark_celebrated(@continents + @orphans + @tiers)
+    mark_celebrated(@continents + @orphans)
   end
 
   def show
@@ -26,6 +26,7 @@ class AchievementsController < ApplicationController
     @filter_status = params[:status].presence_in(%w[all unlocked in_progress locked]) || 'all'
     @children = paginate(attach_sharing(filtered_cards(@set.region_cards)))
     attach_silhouettes(@children)
+    @threshold_minutes = current_user.safe_settings.min_minutes_spent_in_city
 
     mark_celebrated([@set])
   end
@@ -34,10 +35,12 @@ class AchievementsController < ApplicationController
     raise ActiveRecord::RecordNotFound unless Achievements::Registry.find(params[:key])
 
     progress = sharing_carrier(params[:key])
-    progress.update!(
-      sharing_enabled: desired_sharing_state(progress),
-      sharing_uuid: progress.sharing_uuid || SecureRandom.uuid
-    )
+    progress.with_lock do
+      progress.update!(
+        sharing_enabled: desired_sharing_state(progress),
+        sharing_uuid: progress.sharing_uuid || SecureRandom.uuid
+      )
+    end
 
     respond_to do |format|
       format.html { redirect_back fallback_location: achievement_path(params[:key]) }
@@ -68,7 +71,6 @@ class AchievementsController < ApplicationController
 
     by_kind = Achievements::Registry.all.group_by(&:kind)
     @continents = presenters_for(by_kind.fetch('continent', []))
-    @tiers = presenters_for(by_kind.fetch('region_set', []))
     @orphans = presenters_for(by_kind.fetch('country', []).select { |set| set.parent_key.nil? })
     @summary = Achievements::SummaryPresenter.new(state: @state)
   end
@@ -76,7 +78,8 @@ class AchievementsController < ApplicationController
   def presenters_for(definitions)
     definitions.map do |definition|
       Achievements::SetPresenter.new(
-        definition: definition, state: @state, sharing: @carriers[definition.key]
+        definition: definition, state: @state, sharing: @carriers[definition.key],
+        timezone: current_user.safe_settings.timezone
       )
     end
   end

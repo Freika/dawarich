@@ -6,8 +6,15 @@ namespace :achievements do
     if Country.none?
       warn 'Skipping achievements backfill: countries table is empty (run db:seed first).'
     else
-      Achievements::LoadRegions.new.call
-      Achievements::BulkCheckJob.perform_later(notify: false, force: true)
+      expected_regions = Achievements::Registry.subdivision_codes.size
+      loaded_regions = Region.where(code: Achievements::Registry.subdivision_codes).count
+      Achievements::LoadRegions.new.call if loaded_regions < expected_regions
+      # Release tasks can finish before existing Sidekiq processes have been
+      # replaced. Delay dispatch so only workers running this release consume
+      # the new job signature.
+      Achievements::BulkCheckJob.set(wait: 2.minutes).perform_later(
+        notify: false, force: true, stale_only: true
+      )
     end
   end
 end
