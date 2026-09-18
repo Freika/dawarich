@@ -12,6 +12,7 @@ export function createMapChannel(options = {}) {
     family: null,
     points: null,
     tracks: null,
+    mapEdits: null,
   }
 
   console.log(
@@ -124,6 +125,23 @@ export function createMapChannel(options = {}) {
     })
   } catch (error) {
     console.warn("[MapChannel] Failed to subscribe to tracks channel:", error)
+  }
+
+  // Edit synchronization is independent from the live-point preference.
+  try {
+    subscriptions.mapEdits = consumer.subscriptions.create("MapEditsChannel", {
+      connected() {
+        callbacks.connected?.("mapEdits")
+      },
+      disconnected() {
+        callbacks.disconnected?.("mapEdits")
+      },
+      received(data) {
+        callbacks.received?.({ type: "map_edit", event: data })
+      },
+    })
+  } catch (error) {
+    console.warn("[MapChannel] Failed to subscribe to map edits:", error)
   }
 
   return {
