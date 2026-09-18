@@ -28,9 +28,10 @@ class Cache::PreheatingJob < ApplicationJob
   end
 
   def preheat_country_borders
+    path = Rails.root.join('lib/assets/countries.geojson.gz')
     Rails.cache.write(
       'dawarich/countries_codes',
-      Oj.load(File.read(Rails.root.join('lib/assets/countries.geojson'))),
+      Zlib::GzipReader.open(path) { |gzip| Oj.load(gzip.read) },
       expires_in: Cache::UserPreheatingJob::EXPIRES_IN
     )
   end
