@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - The app and Sidekiq containers print a warning at startup when a self-hosted instance runs with `RAILS_ENV=development`.
+- Map points and tracks can be edited directly over the vector-tile renderer; a completed drag atomically saves the point, recalculates its track and segments, and synchronizes other open sessions.
+- Visited Countries uses bundled PMTiles plus a small, privately cached metadata response, so it remains available without downloading the full location history or requiring outbound network access.
+
+### Changed
+
+- The main map now always renders points and tracks from vector tiles. The classic renderer, its rendering preferences, and the separate main-map Routes layer have been removed; Trip day routes are unchanged.
+- Successful point moves use a short in-map pulse instead of a flash message, with a static reduced-motion variant.
 
 ### Fixed
 
