@@ -130,6 +130,16 @@ FactoryBot.define do
       end
     end
 
+    trait :weekly do
+      period_type { :weekly }
+      month { nil }
+      week { 30 }
+      monthly_distances { {} }
+      first_time_visits { {} }
+      year_over_year { {} }
+      all_time_stats { {} }
+    end
+
     trait :without_previous_year do
       year_over_year { {} }
     end
