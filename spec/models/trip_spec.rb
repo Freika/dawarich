@@ -302,14 +302,34 @@ RSpec.describe Trip, type: :model do
         expect(trip.distance).to be_between(150, 250)
       end
 
-      it 'names the primary device' do
-        expect(trip.primary_tracker_id).to eq('phone')
+      it 'names the devices worth following' do
+        expect(trip.primary_tracker_ids).to eq(['phone'])
       end
 
       it 'measures each day along the primary device only' do
         stats = trip.day_stats('UTC')
 
         expect(stats.values.sum { |day| day[:distance_m] }).to be_between(150, 250)
+      end
+    end
+
+    describe 'with devices recording one after another' do
+      before do
+        points.each { |point| point.update!(tracker_id: 'gpx-trk-0-seg-0') }
+        [0, 1, 2, 3, 4, 5].each do |i|
+          create(:point, user:, tracker_id: 'gpx-trk-0-seg-1', lonlat: "POINT(13.40#{i} 52.52)",
+                         timestamp: trip.ended_at.to_i - 1.hour + (i * 5.minutes))
+        end
+      end
+
+      it 'keeps every device whose recording does not overlap another' do
+        expect(trip.primary_tracker_ids).to contain_exactly('gpx-trk-0-seg-0', 'gpx-trk-0-seg-1')
+      end
+
+      it 'builds the path from both of them' do
+        trip.calculate_path
+
+        expect(trip.path.points.size).to eq(points.size + 6)
       end
     end
 

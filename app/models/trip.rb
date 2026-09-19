@@ -50,14 +50,20 @@ class Trip < ApplicationRecord
   end
 
   # Devices recording at the same time are separate paths, so the trip line,
-  # its distance and its day routes follow the device with the most points.
-  def primary_tracker_id
-    return @primary_tracker_id if defined?(@primary_tracker_id)
+  # its distance and its day routes follow the busiest of them. Devices that
+  # never recorded at the same time are consecutive parts of one journey —
+  # GPX segments, imported activities, a swapped phone — and all are kept.
+  def primary_tracker_ids
+    @primary_tracker_ids ||= begin
+      windows = device_windows
+      kept = []
+      windows.each do |device, first, last|
+        next if kept.any? { |_, other_first, other_last| first <= other_last && other_first <= last }
 
-    @primary_tracker_id = points.reorder(nil).left_joins(:source)
-                                .group(Arel.sql(DEVICE_SQL))
-                                .order(Arel.sql('COUNT(*) DESC'), Arel.sql("#{DEVICE_SQL} NULLS LAST"))
-                                .pick(Arel.sql(DEVICE_SQL))
+        kept << [device, first, last]
+      end
+      kept.map(&:first)
+    end
   end
 
   def plan_geojson
@@ -84,10 +90,9 @@ class Trip < ApplicationRecord
 
   def primary_device_points
     scope = points.left_joins(:source)
-    tracker_id = primary_tracker_id
-    return scope.where("(#{DEVICE_SQL}) IS NULL") if tracker_id.nil?
+    return scope if primary_tracker_ids.size == device_windows.size
 
-    scope.where("(#{DEVICE_SQL}) = ?", tracker_id)
+    scope.where("COALESCE(#{DEVICE_SQL}, '') IN (?)", primary_tracker_ids.map(&:to_s))
   end
 
   def photo_previews
@@ -114,6 +119,18 @@ class Trip < ApplicationRecord
   end
 
   private
+
+  # Every device in the trip with the window it recorded in, busiest first.
+  def device_windows
+    @device_windows ||= points.reorder(nil).left_joins(:source)
+                              .group(Arel.sql(DEVICE_SQL))
+                              .order(Arel.sql('COUNT(*) DESC'), Arel.sql("#{DEVICE_SQL} NULLS LAST"))
+                              .pluck(
+                                Arel.sql(DEVICE_SQL),
+                                Arel.sql('MIN(points.timestamp)'),
+                                Arel.sql('MAX(points.timestamp)')
+                              )
+  end
 
   def path_coordinates
     primary_device_points.pluck(:lonlat)

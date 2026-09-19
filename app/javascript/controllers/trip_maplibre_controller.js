@@ -64,7 +64,7 @@ export default class extends Controller {
     tripId: Number,
     tripName: String,
     pathData: String,
-    trackerId: String,
+    trackerIds: Array,
     plan: String,
     mapStyle: { type: String, default: "light" },
   }
@@ -209,9 +209,10 @@ export default class extends Controller {
         start_at: this.startedAtValue,
         end_at: this.endedAtValue,
       })
-      const allPoints = this.hasTrackerIdValue
-        ? pointsFromDevice(fetchedPoints || [], this.trackerIdValue)
-        : fetchedPoints
+      const allPoints = pointsFromDevice(
+        fetchedPoints || [],
+        this.trackerIdsValue,
+      )
 
       if (!allPoints?.length) {
         this.showLoading(false)

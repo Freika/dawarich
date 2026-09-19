@@ -21,20 +21,27 @@ const points = [
   { id: 5, tracker_id: "" },
 ]
 
-test("keeps only the points of the chosen device", () => {
+test("keeps only the points of the chosen devices", () => {
   assert.deepEqual(
-    pointsFromDevice(points, "phone").map((point) => point.id),
+    pointsFromDevice(points, ["phone"]).map((point) => point.id),
     [1, 3],
+  )
+  assert.deepEqual(
+    pointsFromDevice(points, ["phone", "watch"]).map((point) => point.id),
+    [1, 2, 3],
   )
 })
 
 test("treats a missing and an empty device alike", () => {
   assert.deepEqual(
-    pointsFromDevice(points, "").map((point) => point.id),
+    pointsFromDevice(points, [""]).map((point) => point.id),
     [4, 5],
   )
+})
+
+test("keeps every point when no device is named", () => {
   assert.deepEqual(
-    pointsFromDevice(points, null).map((point) => point.id),
-    [4, 5],
+    pointsFromDevice(points, []).map((point) => point.id),
+    [1, 2, 3, 4, 5],
   )
 })
