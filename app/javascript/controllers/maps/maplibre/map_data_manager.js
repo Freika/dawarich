@@ -354,7 +354,8 @@ export class MapDataManager {
     }
 
     // Wait for style to be loaded before adding layers.
-    // Use "idle" (fires after every render) instead of "load" (fires only once).
+    // Check on "render" as well as "idle": an animated layer keeps the map
+    // rendering, and "idle" never fires while it runs.
     // Also use isStyleLoaded() instead of loaded() — layers only need the style,
     // not all tiles, and loaded() can return false during re-renders triggered
     // by setPaintProperty, causing a hang if we wait for "load".
@@ -362,9 +363,10 @@ export class MapDataManager {
       await addAllLayers()
     } else {
       await new Promise((resolve, reject) => {
-        const onIdle = async () => {
+        const onReady = async () => {
           if (this.map.isStyleLoaded()) {
-            this.map.off("idle", onIdle)
+            this.map.off("idle", onReady)
+            this.map.off("render", onReady)
             if (!isCurrent()) {
               resolve()
               return
@@ -377,7 +379,8 @@ export class MapDataManager {
             }
           }
         }
-        this.map.on("idle", onIdle)
+        this.map.on("idle", onReady)
+        this.map.on("render", onReady)
       })
     }
   }

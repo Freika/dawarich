@@ -1,5 +1,13 @@
 import { BaseLayer } from "./base_layer"
 
+const BASE_TRACKS_LAYER_ID = "tracks-mvt"
+const FLOW_PIXELS_PER_SECOND = 40
+const FLOW_MAX_PAINTS_PER_SECOND = 30
+const FLOW_MIN_CYCLE_MS = 750
+const FLOW_FALLBACK_CYCLE_MS = 3000
+const EARTH_CIRCUMFERENCE_METERS = 40075016.686
+const TILE_SIZE_PIXELS = 512
+
 /**
  * Focused Track selection and segment visualization overlay.
  * Canonical journey lines are rendered exclusively by TracksMvtLayer.
@@ -101,7 +109,7 @@ export class TracksLayer extends BaseLayer {
 
     if (feature) {
       this.flowTrackColor = feature.properties?.color || "#ff0000"
-      if (!preserveSegments) this.segmentsActive = false
+      if (!preserveSegments) this.hideSegments()
       const geometry = feature.geometry
       const lines =
         geometry?.type === "MultiLineString"
@@ -115,12 +123,26 @@ export class TracksLayer extends BaseLayer {
         type: "FeatureCollection",
         features: [feature],
       })
+      this._raiseSelectionAboveBaseTracks()
       this._startFlowAnimation()
     } else {
       this._stopFlowAnimation()
-      if (!preserveSegments) this.segmentsActive = false
+      if (!preserveSegments) this.hideSegments()
       this.selectedTrackLength = 0
       selectionSource.setData({ type: "FeatureCollection", features: [] })
+    }
+  }
+
+  _raiseSelectionAboveBaseTracks() {
+    const ids = this.map.getStyle?.()?.layers?.map((layer) => layer.id) ?? []
+    const baseIndex = ids.indexOf(BASE_TRACKS_LAYER_ID)
+    if (baseIndex === -1) return
+
+    const layerAboveBase = ids[baseIndex + 1]
+    for (const id of [this.selectionBorderLayerId, this.flowLayerId]) {
+      const index = ids.indexOf(id)
+      if (index !== -1 && index < baseIndex)
+        this.map.moveLayer(id, layerAboveBase)
     }
   }
 
@@ -208,17 +230,16 @@ export class TracksLayer extends BaseLayer {
 
   /**
    * Start the flowing gradient animation for the selected track.
-   * Uses setPaintProperty to update the line-gradient expression each frame,
-   * which triggers MapLibre's internal gradientVersion increment and
-   * texture regeneration without the overhead of removeLayer/addLayer.
-   * Cycle duration: 3000ms (one full period shift per 3 seconds).
+   * The dashes travel at a constant on-screen speed whatever the zoom, and
+   * the gradient is rebuilt at most FLOW_MAX_PAINTS_PER_SECOND times.
    */
   _startFlowAnimation() {
     if (this.animationActive) return
     this.animationActive = true
 
-    const cycleDuration = 3000
-    let startTime = null
+    let phase = 0
+    let lastTimestamp = null
+    let lastPaintAt = Number.NEGATIVE_INFINITY
 
     const animate = (timestamp) => {
       if (!this.animationActive) return
@@ -226,34 +247,33 @@ export class TracksLayer extends BaseLayer {
         this._stopFlowAnimation()
         return
       }
-      if (!startTime) startTime = timestamp
 
-      const phase = ((timestamp - startTime) / cycleDuration) % 1
+      const numDashes = this._flowDashCount()
+      if (lastTimestamp !== null) {
+        phase =
+          (phase + (timestamp - lastTimestamp) / this._flowCycleMs(numDashes)) %
+          1
+      }
+      lastTimestamp = timestamp
 
-      try {
-        if (this.map.getLayer(this.flowLayerId)) {
-          // ~400m per dash; clamp to [4, 30] for visual consistency
-          const numDashes =
-            this.selectedTrackLength > 0
-              ? Math.max(
-                  4,
-                  Math.min(30, Math.round(this.selectedTrackLength / 400)),
-                )
-              : 6
+      if (timestamp - lastPaintAt >= 1000 / FLOW_MAX_PAINTS_PER_SECOND - 1) {
+        lastPaintAt = timestamp
+        try {
+          if (this.map.getLayer(this.flowLayerId)) {
+            // Transparent base when segments visible so their colors show through
+            const baseColor = this.segmentsActive
+              ? "rgba(255,255,255,0)"
+              : undefined
 
-          // Transparent base when segments visible so their colors show through
-          const baseColor = this.segmentsActive
-            ? "rgba(255,255,255,0)"
-            : undefined
-
-          this.map.setPaintProperty(
-            this.flowLayerId,
-            "line-gradient",
-            this._buildFlowGradient(phase, { baseColor, numDashes }),
-          )
+            this.map.setPaintProperty(
+              this.flowLayerId,
+              "line-gradient",
+              this._buildFlowGradient(phase, { baseColor, numDashes }),
+            )
+          }
+        } catch (e) {
+          console.warn("[TracksLayer] Animation frame error:", e)
         }
-      } catch (e) {
-        console.warn("[TracksLayer] Animation frame error:", e)
       }
 
       if (this.animationActive) {
@@ -262,6 +282,35 @@ export class TracksLayer extends BaseLayer {
     }
 
     this.animationFrame = requestAnimationFrame(animate)
+  }
+
+  // ~400m per dash; clamp to [4, 30] for visual consistency
+  _flowDashCount() {
+    if (!(this.selectedTrackLength > 0)) return 6
+
+    return Math.max(4, Math.min(30, Math.round(this.selectedTrackLength / 400)))
+  }
+
+  _flowCycleMs(numDashes) {
+    const zoom = this.map.getZoom?.()
+    const latitude = this.map.getCenter?.()?.lat
+    if (
+      !(this.selectedTrackLength > 0) ||
+      !Number.isFinite(zoom) ||
+      !Number.isFinite(latitude)
+    ) {
+      return FLOW_FALLBACK_CYCLE_MS
+    }
+
+    const metersPerPixel =
+      (EARTH_CIRCUMFERENCE_METERS * Math.cos((latitude * Math.PI) / 180)) /
+      (TILE_SIZE_PIXELS * 2 ** zoom)
+    const periodPixels = this.selectedTrackLength / numDashes / metersPerPixel
+
+    return Math.max(
+      FLOW_MIN_CYCLE_MS,
+      (periodPixels / FLOW_PIXELS_PER_SECOND) * 1000,
+    )
   }
 
   /**

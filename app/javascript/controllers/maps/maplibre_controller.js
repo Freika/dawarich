@@ -491,7 +491,7 @@ export default class extends Controller {
     }
   }
 
-  async navigateTimelineDateRange({ startAt, endAt }) {
+  async navigateTimelineDateRange({ startAt, endAt, fitBounds = true }) {
     if (!startAt || !endAt) return
 
     const toApiDate = (local) => {
@@ -508,7 +508,7 @@ export default class extends Controller {
 
     this.layerManager.getLayer("map-editor")?.close()
     this._clearDayHighlight?.()
-    await this.loadMapData()
+    await this.loadMapData({ fitBounds })
     if (this.settings?.anomaliesEnabled) {
       this.layerVisibilityManager.refreshAnomalies({ enabled: true })
     }
@@ -1037,7 +1037,10 @@ export default class extends Controller {
     // Apply track selection highlight
     const tracksLayer = this.layerManager.getLayer("tracks")
     if (tracksLayer?.setSelectedTrack) {
-      tracksLayer.setSelectedTrack(feature)
+      const preserveSegments =
+        tracksLayer.segmentsActive === true &&
+        String(tracksLayer.selectedFeature?.properties?.id) === String(trackId)
+      tracksLayer.setSelectedTrack(feature, { preserveSegments })
       this._timelineSelectedTrack = true
       this._hoverHighlightedTrack = false
     }
@@ -1204,6 +1207,7 @@ export default class extends Controller {
     const selected = tracksLayer.selectedFeature
     if (
       selected &&
+      !selected.sourceLayer &&
       ((trackId && String(selected.properties?.id) === String(trackId)) ||
         (startedAt && selected.properties?.start_at === startedAt))
     ) {
