@@ -27,7 +27,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- A trip recorded by several devices at once no longer zigzags between them: its line, distance and day routes follow the device that recorded the most points.
+- A trip recorded by several devices at once no longer zigzags between them: its line, distance and day routes follow the busiest of the devices that were recording at the same time. Devices that recorded one after another — GPX segments, imported activities, a phone swapped mid-trip — all stay on the trip.
+- Undoing a point move after leaving the map selection no longer reports a failure for a move that went through.
+- A TREK source no longer stays stuck on "still importing" when an import fails unexpectedly, and it can be disconnected while it is importing.
+- One TREK trip that the server describes with an invalid payload no longer stops the scheduled sync of every other trip on that source.
 - A trip page switches from "Trip path is being calculated" to the map as soon as the path is ready, and a trip with no recorded locations says so instead of calculating forever.
 - The map fits locations recorded during a short period even when the selected history spans years.
 - Switching flight visibility while editing a point or track keeps the edit visible and restores the correct map filters afterward.
