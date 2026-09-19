@@ -3,6 +3,8 @@
 module Trek
   class Sync
     class UndatedTripError < StandardError; end
+    # A payload this source will keep sending; retrying it never helps.
+    class InvalidPayloadError < Client::Error; end
 
     Result = Struct.new(:created, :updated, :unchanged, :stopped, :more, :next_cursor, keyword_init: true)
 
@@ -15,6 +17,7 @@ module Trek
       remote_trips = @client.trips.index_by { |trip| trip.fetch('id').to_s }
       result = Result.new(created: 0, updated: 0, unchanged: 0, stopped: 0, more: false)
       selection_token = @source.selection_token
+      trip_error = nil
       managed_trips = @source.trips.source_active.order(:id)
       managed_trips = managed_trips.where('id > ?', after_id) if after_id
       managed_trips = managed_trips.limit(limit) if limit
@@ -37,13 +40,19 @@ module Trek
           result.unchanged += 1
         end
         enqueue_calculation_if_needed!(managed_trip, force: changed)
-      rescue UndatedTripError
+      rescue UndatedTripError, InvalidPayloadError => e
+        trip_error = e.message
+        result.stopped += 1 if stop_if_current!(managed_trip, selection_token)
+      rescue Client::Error => e
+        raise unless e.status == 404
+
+        trip_error = e.message
         result.stopped += 1 if stop_if_current!(managed_trip, selection_token)
       end
 
       remaining_trips = @source.trips.source_active.where('id > ?', result.next_cursor || after_id || 0)
       result.more = limit.present? && remaining_trips.exists?
-      @source.update!(last_synced_at: Time.current, last_error: nil) unless result.more
+      @source.update!(last_synced_at: Time.current, last_error: trip_error) unless result.more
       result
     rescue Client::Error => e
       handle_error!(e)
@@ -330,7 +339,7 @@ module Trek
     end
 
     def invalid_payload!(message)
-      raise Client::Error, "TREK trip response is invalid: #{message}"
+      raise InvalidPayloadError, "TREK trip response is invalid: #{message}"
     end
 
     def day_start(value)

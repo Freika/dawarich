@@ -163,6 +163,14 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       expect(a_request(:get, 'https://trek.example.test/api/v1/trips')).not_to have_been_made
     end
 
+    it 'lets a stuck import be disconnected' do
+      source = create(:trip_source, user: user, importing: true)
+
+      delete settings_trek_source_path(source)
+
+      expect(TripSource.where(id: source.id)).to be_empty
+    end
+
     it 'does not let a source change its selection while importing' do
       source = create(:trip_source, user: user, importing: true)
 

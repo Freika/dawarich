@@ -57,6 +57,22 @@ RSpec.describe Trek::ImportTripsJob do
     expect(source.trips.find_by!(source_identifier: '12')).to be_source_active
   end
 
+  it 'releases the import when a trip cannot be persisted, so the source can be used again' do
+    payload = {
+      id: 12, title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22',
+      days: [], unplanned_places: [], unscheduled_reservations: [], accommodations: [], travellers: []
+    }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12')
+      .to_return(status: 200, body: payload.to_json)
+    allow_any_instance_of(Trek::Sync).to receive(:import_payload!).and_raise(ActiveRecord::RecordInvalid)
+
+    expect do
+      described_class.new.perform(source.id, ['12'], 'current-selection')
+    end.to raise_error(ActiveRecord::RecordInvalid)
+
+    expect(source.reload).not_to be_importing
+  end
+
   it 'disables the source and stops importing when TREK rejects its key during detail import' do
     stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 401)
 

@@ -280,6 +280,27 @@ RSpec.describe Trek::Sync do
       expect(trip.planned_days).not_to be_empty
     end
 
+    it 'keeps syncing the other trips when TREK describes one of them with an invalid payload' do
+      stub_trip(payload)
+      broken, = described_class.new(source).import!('12')
+      stub_request(:get, 'https://trek.example.test/api/v1/trips/13')
+        .to_return(status: 200, body: payload.merge(id: 13, title: 'Umbria').to_json)
+      healthy, = described_class.new(source).import!('13')
+
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_return(status: 200, body: { trips: [{ id: 12, archived: false }, { id: 13, archived: false }] }.to_json)
+      stub_trip(payload.merge(end_date: '2030-06-01'))
+      stub_request(:get, 'https://trek.example.test/api/v1/trips/13')
+        .to_return(status: 200, body: payload.merge(id: 13, title: 'Umbria, renamed').to_json)
+
+      result = described_class.new(source).call
+
+      expect(result.updated).to eq(1)
+      expect(broken.reload).to be_source_stopped
+      expect(healthy.reload.name).to eq('Umbria, renamed')
+      expect(source.reload.last_error).to include('invalid')
+    end
+
     it 'disables the source when TREK rejects the key' do
       stub_request(:get, 'https://trek.example.test/api/v1/trips')
         .to_return(status: 401, body: { error: 'unknown key' }.to_json)

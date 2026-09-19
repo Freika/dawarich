@@ -66,6 +66,11 @@ module Trek
       Trek::Sync.new(source).record_error!(e) if source
       finish_unauthorized_import(source) if e.status == 401
       raise
+    rescue StandardError
+      # Anything else will not resolve itself on a retry; release the source
+      # so the user can pick their trips again or disconnect it.
+      release_import(source)
+      raise
     end
 
     def finish_failed_import(error)
@@ -82,7 +87,11 @@ module Trek
     private
 
     def finish_unauthorized_import(source)
-      source.with_lock { source.update!(importing: false) }
+      release_import(source)
+    end
+
+    def release_import(source)
+      source&.with_lock { source.update!(importing: false) }
     end
   end
 end

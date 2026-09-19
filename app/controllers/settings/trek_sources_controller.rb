@@ -102,8 +102,6 @@ class Settings::TrekSourcesController < ApplicationController
   end
 
   def destroy
-    return source_importing_redirect if @source.importing?
-
     TripSource.transaction do
       @source.trips.find_each do |trip|
         trip.update!(trip_source: nil, source_status: :stopped)
