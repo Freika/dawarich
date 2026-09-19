@@ -1552,6 +1552,9 @@ es:
     integrations:
       index:
         services_nav: Servicios de integración
+        geocoding: "Geocodificación"
+        geocoding_moved_to_instance: "Ahora en los ajustes de la instancia"
+        geocoding_managed_by_admin: "Lo configura el administrador de la instancia"
         services:
           immich: Immich
           photoprism: PhotoPrism

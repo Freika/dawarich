@@ -5,11 +5,10 @@ module InstanceSettings
   # variables being removed later: every variable that is set, then — only when
   # the environment names no geocoding provider — per-user geocoding rows.
   #
-  # The per-user copy is deliberately conservative: it writes only when every
-  # user has an active configuration and they all agree. Electing one user's provider for the whole
-  # deployment would be data loss dressed as a migration, and the hand-edited
-  # instance is exactly the one worth not clobbering. Nothing is ever deleted,
-  # so the move is reversible.
+  # The per-user copy is deliberately conservative: it writes when every user
+  # has an active configuration and they all agree, or else when the
+  # administrators' configurations agree. A regular user's key never becomes
+  # the instance's. Nothing is ever deleted, so the move is reversible.
   class Backfill
     KEY_FOR_HOST = { 'photon' => :photon_api_host, 'nominatim' => :nominatim_api_host }.freeze
     KEY_FOR_API_KEY = {
@@ -50,14 +49,24 @@ module InstanceSettings
     end
 
     def copy_user_settings
-      settings = ServiceSetting.service_geocoding.where(active: true, user_id: User.select(:id)).to_a
+      settings = ServiceSetting.service_geocoding.where(active: true, user_id: User.select(:id)).includes(:user).to_a
       return if settings.empty?
-      return log_partial_coverage if User.where.not(id: settings.map(&:user_id)).exists?
 
+      partial = User.where.not(id: settings.map(&:user_id)).exists?
       distinct = settings.map { |s| signature(s) }.uniq
-      return log_disagreement(distinct) if distinct.size > 1
+      return write(lowest_rate(settings)) if !partial && distinct.size == 1
 
-      write(settings.min_by { |setting| setting.config['rps'].presence&.to_f || Float::INFINITY })
+      admin_settings = settings.select { |setting| setting.user.admin? }
+      if admin_settings.any? && admin_settings.map { |s| signature(s) }.uniq.size == 1
+        Rails.logger.info('[Geocoding] users disagree; carrying the administrator geocoding setting across.')
+        return write(lowest_rate(admin_settings))
+      end
+
+      partial ? log_partial_coverage : log_disagreement(distinct)
+    end
+
+    def lowest_rate(settings)
+      settings.min_by { |setting| setting.config['rps'].presence&.to_f || Float::INFINITY }
     end
 
     def signature(setting)

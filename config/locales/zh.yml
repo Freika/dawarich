@@ -1580,6 +1580,9 @@ zh:
         sync_now: 立即同步
         settings: 设置
         services_nav: 集成服务
+        geocoding: "地理编码"
+        geocoding_moved_to_instance: "已移至实例设置"
+        geocoding_managed_by_admin: "由实例管理员配置"
         services:
           geocoding: 地理编码
           immich: Immich

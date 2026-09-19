@@ -73,6 +73,35 @@ RSpec.describe InstanceSettings::Backfill do
     expect(InstanceSetting.count).to eq(0)
   end
 
+  it "carries the administrator's configuration across when other users have none" do
+    geocoding_setting(create(:user, admin: true), host: 'admin.example.com', api_key: 'admin-key', rps: 2)
+    create(:user)
+
+    described_class.call
+
+    expect(InstanceSetting.find_by(key: 'photon_api_host')&.value).to eq('admin.example.com')
+    expect(InstanceSetting.find_by(key: 'photon_api_key')&.value).to eq('admin-key')
+  end
+
+  it "carries the administrator's configuration across when users disagree" do
+    geocoding_setting(create(:user, admin: true), host: 'admin.example.com')
+    geocoding_setting(create(:user), host: 'member.example.com')
+
+    described_class.call
+
+    expect(InstanceSetting.find_by(key: 'photon_api_host')&.value).to eq('admin.example.com')
+  end
+
+  it 'writes nothing when administrators disagree with each other' do
+    geocoding_setting(create(:user, admin: true), host: 'first-admin.example.com')
+    geocoding_setting(create(:user, admin: true), host: 'second-admin.example.com')
+    create(:user)
+
+    described_class.call
+
+    expect(InstanceSetting.where(key: 'photon_api_host')).to be_empty
+  end
+
   it 'does not count a soft-deleted user as lacking a configuration' do
     geocoding_setting(create(:user), host: 'only.example.com')
     create(:user).update_column(:deleted_at, Time.current)

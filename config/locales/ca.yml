@@ -1597,6 +1597,9 @@ ca:
         sync_now: Sincronitza ara
         settings: Configuració
         services_nav: "Serveis d'integració"
+        geocoding: "Geocodificació"
+        geocoding_moved_to_instance: "Ara a la configuració de la instància"
+        geocoding_managed_by_admin: "El configura l'administrador de la instància"
         services:
           immich: "Immich"
           photoprism: "PhotoPrism"

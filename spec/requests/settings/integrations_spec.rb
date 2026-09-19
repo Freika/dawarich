@@ -244,6 +244,34 @@ RSpec.describe 'Settings::Integrations', type: :request do
       expect(response.body).not_to include('data-testid="integration-geocoding"')
     end
 
+    it 'points a self-hosted admin to Instance settings for geocoding' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      user.update!(admin: true)
+
+      get settings_integrations_path
+
+      pointer = response.body[/<a[^>]*data-testid="integration-geocoding-moved"[^>]*>/]
+      expect(pointer).to include(%(href="#{admin_settings_path}"))
+    end
+
+    it 'tells a self-hosted member that the administrator configures geocoding' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+      get settings_integrations_path
+
+      expect(response.body).to include('data-testid="integration-geocoding-moved"')
+      expect(response.body).not_to match(/<a[^>]*data-testid="integration-geocoding-moved"/)
+      expect(response.body).to include(I18n.t('settings.integrations.index.geocoding_managed_by_admin'))
+    end
+
+    it 'shows no geocoding pointer on Cloud' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+      get settings_integrations_path
+
+      expect(response.body).not_to include('integration-geocoding-moved')
+    end
+
     it 'sends an admin who follows an old geocoding link to Instance settings' do
       user.update!(admin: true)
 
