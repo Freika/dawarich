@@ -1557,6 +1557,7 @@ en:
           photoprism: PhotoPrism
           airtrail: AirTrail
           teslamate: TeslaMateApi
+          trek: TREK
         status_connected: Connected
         status_failed: Last connection attempt failed
         immich_photoprism_integrations: Immich & Photoprism Integrations
@@ -1607,6 +1608,43 @@ en:
         save_test_connection: Save & Test Connection
         sync_now: Sync now
         settings: Settings
+      trek:
+        title: TREK integration
+        subtitle: Import a selected TREK itinerary as a Dawarich Trip. TREK remains the source of the plan.
+        trek_url: TREK URL
+        cloud_notice: Cloud Dawarich needs a publicly reachable TREK URL. Self-hosted Dawarich can connect to a LAN or Tailscale instance.
+        api_key: TREK API key
+        api_key_help: Create a read-only API key in TREK under Settings → Integrations. It starts with trek_.
+        connect: Connect TREK
+        reconnect: Reconnect TREK
+        importing_trips: Importing selected trips…
+        last_synced: "Last synced: %{time}"
+        not_synced_yet: Not synced yet
+        choose_trips: Choose trips
+        sync_now: Sync now
+        disconnect: Disconnect
+        disconnect_confirmation: Disconnect TREK? Managed trips and their recorded data stay in Dawarich, but stop syncing.
+    trek_sources:
+      select_trips:
+        title: Choose TREK trips
+        subtitle: Only selected trips are copied into Dawarich. You can change the selection later.
+        untitled_trip: Untitled trip
+        archived: Archived
+        dates_required: Add start and end dates in TREK before importing this trip.
+        import_selected: Import selected trips
+        back: Back
+      create:
+        connected_choose_trips: TREK connected. Choose the trips you want Dawarich to manage.
+      import_trips:
+        no_trips_selected: No TREK trips selected. Existing itineraries were kept and stopped syncing.
+        select_at_least_one_dated_trip: Select at least one active TREK trip with start and end dates.
+        trips_are_now_syncing: Selected TREK trips are being synchronized.
+      sync:
+        sync_queued: TREK synchronization was queued.
+        source_disabled: TREK is disabled. Reconnect it with a new API key before syncing.
+        source_importing: TREK is still importing your selected trips.
+      destroy:
+        source_removed_trips_kept: TREK was disconnected. Your managed trips were kept and will no longer sync.
     subscriptions:
       index:
         hello_there: Hello there!
@@ -2196,6 +2234,15 @@ en:
       recalculate: Recalculate
       recalculation_failed_try_again: Recalculation failed — try again.
       recalculate_this_trip_s_path_distance_and_countries_from_your: Recalculate this trip's path, distance, and countries from your latest points?
+    source_itinerary:
+      title: Plan from TREK
+      subtitle: This itinerary is managed in TREK. Your Dawarich tracking data stays separate.
+      managed_by_trek: Managed by TREK
+      sync_stopped: Sync stopped
+      accommodations: Accommodations
+      travellers: Travellers
+      unscheduled_reservations: Other reservations
+      unplanned_places: Unplanned places
     trip:
       no_points_found: No points found
       calculating: Calculating...
@@ -2240,6 +2287,7 @@ en:
     show:
       loading_route_data: Loading route data...
       trip_path_is_being_calculated: Trip path is being calculated...
+      trip_has_not_started_yet: This planned trip has not started yet.
       download_trip: Download trip
       currently_shared: Currently shared
       public: Public

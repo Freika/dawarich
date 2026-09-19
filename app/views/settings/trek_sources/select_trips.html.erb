@@ -1,0 +1,31 @@
+<% content_for :title, t('.title') %>
+
+<div class="container max-w-3xl mx-auto px-4 my-8">
+  <%= render 'shared/page_header', title: t('.title') %>
+  <p class="text-base-content/60 mb-6"><%= t('.subtitle') %></p>
+
+  <%= form_with url: import_trips_settings_trek_source_path(@source), method: :post, data: { turbo: false }, class: 'space-y-3' do %>
+    <% @remote_trips.each do |trip| %>
+      <% identifier = trip.fetch('id').to_s %>
+      <% archived = trip['archived'] == true %>
+      <% dated = trip['start_date'].present? && trip['end_date'].present? %>
+      <label class="flex items-start gap-3 rounded-box border border-base-content/10 bg-base-200 p-4 <%= archived || !dated ? 'opacity-60' : 'cursor-pointer hover:border-primary/50' %>">
+        <%= check_box_tag 'trip_ids[]', identifier, @selected_identifiers.include?(identifier) && !archived && dated,
+                          class: 'checkbox checkbox-primary mt-1', disabled: archived || !dated %>
+        <span>
+          <span class="font-semibold block"><%= trip['title'].presence || t('.untitled_trip') %></span>
+          <% if dated %>
+            <span class="text-sm text-base-content/60"><%= trip['start_date'] %> – <%= trip['end_date'] %></span>
+          <% else %>
+            <span class="text-sm text-base-content/60"><%= t('.dates_required') %></span>
+          <% end %>
+          <% if trip['archived'] %><span class="badge badge-ghost badge-sm ml-2"><%= t('.archived') %></span><% end %>
+        </span>
+      </label>
+    <% end %>
+    <div class="flex gap-2 pt-3">
+      <%= submit_tag t('.import_selected'), class: 'btn btn-primary' %>
+      <%= link_to t('.back'), settings_integrations_path(service: 'trek'), class: 'btn btn-ghost' %>
+    </div>
+  <% end %>
+</div>

@@ -50,6 +50,13 @@ RSpec.describe Trip, type: :model do
       it 'enqueues the calculation jobs' do
         expect { trip.save }.to have_enqueued_job(Trips::CalculateAllJob)
       end
+
+      it 'enqueues calculations for an ongoing trip' do
+        trip.started_at = 1.day.ago
+        trip.ended_at = 1.day.from_now
+
+        expect { trip.save }.to have_enqueued_job(Trips::CalculateAllJob)
+      end
     end
   end
 
