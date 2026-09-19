@@ -21,7 +21,7 @@
         <% if day.planned_day_notes.any? %>
           <ul class="mt-2 space-y-1 text-sm text-base-content/70">
             <% day.planned_day_notes.each do |note| %>
-              <li><%= "#{note.noted_at.strftime('%H:%M')} · " if note.noted_at %><%= note.body %></li>
+              <li><%= "#{note.noted_at} · " if note.noted_at %><%= note.body %></li>
             <% end %>
           </ul>
         <% end %>
@@ -29,7 +29,7 @@
           <ol class="mt-2 space-y-1 text-sm">
             <% day.planned_stops.each do |stop| %>
               <li class="flex gap-2">
-                <% if stop.starts_at %><span class="shrink-0 text-base-content/50"><%= stop.starts_at.strftime('%H:%M') %></span><% end %>
+                <% if stop.starts_at %><span class="shrink-0 text-base-content/50"><%= stop.starts_at %></span><% end %>
                 <span>
                   <strong><%= stop.name %></strong><%= " · #{stop.address}" if stop.address.present? %>
                   <% details = [stop.transport_mode, stop.category, ("#{stop.duration_minutes} min" if stop.duration_minutes)] %>

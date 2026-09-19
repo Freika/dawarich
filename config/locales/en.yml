@@ -1627,13 +1627,14 @@ en:
         subtitle: Only selected trips are copied into Dawarich. You can change the selection later.
         untitled_trip: Untitled trip
         archived: Archived
+        dates_required: Add start and end dates in TREK before importing this trip.
         import_selected: Import selected trips
         back: Back
       create:
         connected_choose_trips: TREK connected. Choose the trips you want Dawarich to manage.
       import_trips:
         no_trips_selected: No TREK trips selected. Existing itineraries were kept and stopped syncing.
-        select_at_least_one_active_trip: Select at least one active TREK trip.
+        select_at_least_one_dated_trip: Select at least one active TREK trip with start and end dates.
         trips_are_now_syncing: Selected TREK trips are being synchronized.
       sync:
         sync_queued: TREK synchronization was queued.

@@ -45,8 +45,8 @@ class CreateTripSourcesAndPlannedItineraries < ActiveRecord::Migration[8.0]
       t.string :address
       t.decimal :latitude, precision: 10, scale: 6
       t.decimal :longitude, precision: 10, scale: 6
-      t.time :starts_at
-      t.time :ends_at
+      t.string :starts_at
+      t.string :ends_at
       t.integer :duration_minutes
       t.string :category
       t.string :transport_mode
@@ -58,7 +58,7 @@ class CreateTripSourcesAndPlannedItineraries < ActiveRecord::Migration[8.0]
     create_table :planned_day_notes do |t|
       t.references :planned_day, null: false, foreign_key: true
       t.integer :position, null: false
-      t.time :noted_at
+      t.string :noted_at
       t.text :body, null: false
       t.timestamps
     end
@@ -85,8 +85,8 @@ class CreateTripSourcesAndPlannedItineraries < ActiveRecord::Migration[8.0]
       t.decimal :longitude, precision: 10, scale: 6
       t.date :starts_on
       t.date :ends_on
-      t.time :check_in_at
-      t.time :check_out_at
+      t.string :check_in_at
+      t.string :check_out_at
       t.text :notes
       t.timestamps
     end

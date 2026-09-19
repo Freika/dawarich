@@ -25,14 +25,18 @@ module Trek
 
         synchronizer = Trek::Sync.new(source)
         identifiers.slice(offset, BATCH_SIZE).each do |identifier|
-          detail = synchronizer.fetch_trip(identifier)
-          persisted = source.with_lock do
-            if source.selection_token == selection_token && source.importing?
-              synchronizer.import_payload!(identifier, detail)
-              true
-            else
-              false
+          begin
+            detail = synchronizer.fetch_trip(identifier)
+            persisted = source.with_lock do
+              if source.selection_token == selection_token && source.importing?
+                synchronizer.import_payload!(identifier, detail)
+                true
+              else
+                false
+              end
             end
+          rescue Trek::Sync::UndatedTripError
+            next
           end
           break unless persisted
         end

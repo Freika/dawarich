@@ -91,7 +91,10 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       }
 
       stub_request(:get, 'https://trek.example.test/api/v1/trips')
-        .to_return(status: 200, body: { trips: [{ id: 12, archived: false }] }.to_json)
+        .to_return(
+          status: 200,
+          body: { trips: [{ id: 12, archived: false, start_date: '2030-06-14', end_date: '2030-06-22' }] }.to_json
+        )
       stub_request(:get, 'https://trek.example.test/api/v1/trips/12')
         .to_return(status: 200, body: response_payload.to_json)
 
@@ -119,13 +122,33 @@ RSpec.describe 'Settings::TrekSources', type: :request do
       identifiers = (1..101).map(&:to_s)
 
       stub_request(:get, 'https://trek.example.test/api/v1/trips')
-        .to_return(status: 200, body: { trips: identifiers.map { |id| { id: id, archived: false } } }.to_json)
+        .to_return(
+          status: 200,
+          body: {
+            trips: identifiers.map do |id|
+              { id: id, archived: false, start_date: '2030-06-14', end_date: '2030-06-22' }
+            end
+          }.to_json
+        )
 
       expect do
         post import_trips_settings_trek_source_path(source), params: { trip_ids: identifiers }
       end.to have_enqueued_job(Trek::ImportTripsJob).with(source.id, identifiers, a_kind_of(String))
 
       expect(source.reload).to be_importing
+    end
+
+    it 'does not queue a trip without a date range' do
+      source = create(:trip_source, user: user)
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_return(status: 200, body: { trips: [{ id: 12, archived: false, start_date: nil, end_date: nil }] }.to_json)
+
+      expect do
+        post import_trips_settings_trek_source_path(source), params: { trip_ids: ['12'] }
+      end.not_to have_enqueued_job(Trek::ImportTripsJob)
+
+      expect(response).to redirect_to(select_trips_settings_trek_source_path(source))
+      expect(flash[:alert]).to include('start and end dates')
     end
   end
 

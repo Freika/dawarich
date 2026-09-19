@@ -141,6 +141,40 @@ RSpec.describe Trek::Sync do
 
       expect(@trip.started_at).to eq(Time.find_zone('America/Los_Angeles').parse('2030-06-14').beginning_of_day)
     end
+
+    it 'preserves TREK wall-clock times across timezones' do
+      user.update!(settings: user.settings.merge('timezone' => 'America/Los_Angeles'))
+      stub_trip(payload)
+
+      Time.use_zone('UTC') { @trip, = described_class.new(source).import!('12') }
+
+      expect(@trip.planned_days.first.planned_stops.first.starts_at).to eq('14:00:00')
+      expect(@trip.planned_days.first.planned_day_notes.first.noted_at).to eq('09:00:00')
+      expect(@trip.planned_accommodations.first.check_in_at).to eq('15:00:00')
+    end
+
+    it 'uses the owning day for a time-only reservation' do
+      timed_payload = payload.deep_dup
+      timed_payload[:days][0][:reservations][0][:time] = '08:00'
+      stub_trip(timed_payload)
+
+      trip = Time.use_zone(user.timezone) { described_class.new(source).import!('12').first }
+
+      reservation = trip.planned_reservations.first
+      expect(reservation.starts_at).to eq(Time.find_zone(user.timezone).parse('2030-06-14 08:00'))
+    end
+
+    it 'imports reservations and accommodations without a name' do
+      nullable_payload = payload.deep_dup
+      nullable_payload[:days][0][:reservations][0][:title] = nil
+      nullable_payload[:accommodations][0][:name] = nil
+      stub_trip(nullable_payload)
+
+      trip, = described_class.new(source).import!('12')
+
+      expect(trip.planned_reservations.first.title).to eq('Reservation')
+      expect(trip.planned_accommodations.first.name).to eq('Accommodation')
+    end
   end
 
   describe '#call' do

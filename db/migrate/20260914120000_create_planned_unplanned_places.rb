@@ -9,8 +9,8 @@ class CreatePlannedUnplannedPlaces < ActiveRecord::Migration[8.0]
       t.string :address
       t.decimal :latitude, precision: 10, scale: 6
       t.decimal :longitude, precision: 10, scale: 6
-      t.time :starts_at
-      t.time :ends_at
+      t.string :starts_at
+      t.string :ends_at
       t.integer :duration_minutes
       t.string :category
       t.string :transport_mode

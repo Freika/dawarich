@@ -337,8 +337,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_140000) do
 
   create_table "planned_accommodations", force: :cascade do |t|
     t.string "address"
-    t.time "check_in_at"
-    t.time "check_out_at"
+    t.string "check_in_at"
+    t.string "check_out_at"
     t.datetime "created_at", null: false
     t.date "ends_on"
     t.decimal "latitude", precision: 10, scale: 6
@@ -354,7 +354,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_140000) do
   create_table "planned_day_notes", force: :cascade do |t|
     t.text "body", null: false
     t.datetime "created_at", null: false
-    t.time "noted_at"
+    t.string "noted_at"
     t.bigint "planned_day_id", null: false
     t.integer "position", null: false
     t.datetime "updated_at", null: false
@@ -395,14 +395,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_140000) do
     t.string "category"
     t.datetime "created_at", null: false
     t.integer "duration_minutes"
-    t.time "ends_at"
+    t.string "ends_at"
     t.decimal "latitude", precision: 10, scale: 6
     t.decimal "longitude", precision: 10, scale: 6
     t.string "name", null: false
     t.text "notes"
     t.bigint "planned_day_id", null: false
     t.integer "position", null: false
-    t.time "starts_at"
+    t.string "starts_at"
     t.string "transport_mode"
     t.datetime "updated_at", null: false
     t.index ["planned_day_id", "position"], name: "index_planned_stops_on_planned_day_id_and_position", unique: true
@@ -423,13 +423,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_14_140000) do
     t.string "category"
     t.datetime "created_at", null: false
     t.integer "duration_minutes"
-    t.time "ends_at"
+    t.string "ends_at"
     t.decimal "latitude", precision: 10, scale: 6
     t.decimal "longitude", precision: 10, scale: 6
     t.string "name", null: false
     t.text "notes"
     t.integer "position", null: false
-    t.time "starts_at"
+    t.string "starts_at"
     t.string "transport_mode"
     t.bigint "trip_id", null: false
     t.datetime "updated_at", null: false

@@ -67,10 +67,12 @@ class Settings::TrekSourcesController < ApplicationController
 
     client = Trek::Client.new(@source)
     remote_trips = client.trips
-    available_identifiers = remote_trips.reject { |trip| trip['archived'] == true }.map { |trip| trip.fetch('id').to_s }
+    available_identifiers = remote_trips.filter_map do |trip|
+      trip.fetch('id').to_s if trip['archived'] != true && trip['start_date'].present? && trip['end_date'].present?
+    end
     identifiers &= available_identifiers
     if identifiers.empty?
-      return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.select_at_least_one_active_trip')
+      return redirect_to select_trips_settings_trek_source_path(@source), alert: t('.select_at_least_one_dated_trip')
     end
 
     token = nil

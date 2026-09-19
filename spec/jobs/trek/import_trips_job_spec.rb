@@ -80,6 +80,24 @@ RSpec.describe Trek::ImportTripsJob do
     expect(source.last_error).to include('missing required fields')
   end
 
+  it 'skips an undated trip and imports the remaining selection' do
+    undated_payload = { id: 11, title: 'Draft', start_date: nil, end_date: nil }
+    dated_payload = {
+      id: 12, title: 'Tuscany', start_date: '2030-06-14', end_date: '2030-06-22',
+      days: [], unplanned_places: [], unscheduled_reservations: [], accommodations: [], travellers: []
+    }
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/11')
+      .to_return(status: 200, body: undated_payload.to_json)
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12')
+      .to_return(status: 200, body: dated_payload.to_json)
+
+    described_class.perform_now(source.id, %w[11 12], 'current-selection')
+
+    expect(source.reload).not_to be_importing
+    expect(source.trips.find_by!(source_identifier: '12')).to be_source_active
+    expect(source.last_error).to be_nil
+  end
+
   it 'keeps importing through an invalid trip date so Active Job can retry it' do
     payload = { title: 'Tuscany', start_date: 'not a date', end_date: '2030-06-22' }
     stub_request(:get, 'https://trek.example.test/api/v1/trips/12').to_return(status: 200, body: payload.to_json)

@@ -2,6 +2,8 @@
 
 module Trek
   class Sync
+    class UndatedTripError < StandardError; end
+
     Result = Struct.new(:created, :updated, :unchanged, :stopped, :more, :next_cursor, keyword_init: true)
 
     def initialize(source, client: Client.new(source))
@@ -35,6 +37,8 @@ module Trek
           result.unchanged += 1
         end
         enqueue_calculation_if_needed!(managed_trip, force: changed)
+      rescue UndatedTripError
+        result.stopped += 1 if stop_if_current!(managed_trip, selection_token)
       end
 
       remaining_trips = @source.trips.source_active.where('id > ?', result.next_cursor || after_id || 0)
@@ -175,15 +179,17 @@ module Trek
 
     def reservation_attributes(reservation, planned_day)
       {
-        planned_day: planned_day, reservation_type: reservation['type'], title: reservation.fetch('title'),
-        location: reservation['location'], starts_at: local_datetime(reservation['time']),
-        ends_at: local_datetime(reservation['end_time']), status: reservation['status'], notes: reservation['notes']
+        planned_day: planned_day, reservation_type: reservation['type'],
+        title: reservation['title'].presence || 'Reservation',
+        location: reservation['location'], starts_at: local_datetime(reservation['time'], date: planned_day&.date),
+        ends_at: local_datetime(reservation['end_time'], date: planned_day&.date),
+        status: reservation['status'], notes: reservation['notes']
       }
     end
 
     def accommodation_attributes(accommodation)
       {
-        name: accommodation.fetch('name'), address: accommodation['address'],
+        name: accommodation['name'].presence || 'Accommodation', address: accommodation['address'],
         latitude: accommodation['lat'], longitude: accommodation['lng'],
         starts_on: accommodation['start_date'], ends_on: accommodation['end_date'],
         check_in_at: local_time(accommodation['check_in']), check_out_at: local_time(accommodation['check_out']),
@@ -199,6 +205,11 @@ module Trek
     end
 
     def validate_payload!(payload)
+      validate_required_keys!(payload, %w[start_date end_date], 'trip')
+      if payload['start_date'].nil? || payload['end_date'].nil?
+        raise UndatedTripError, 'TREK trip needs start and end dates before it can be imported'
+      end
+
       validate_required_fields!(payload, %w[start_date end_date], 'trip')
       trip_start = validate_date!(payload['start_date'], 'trip start_date')
       trip_end = validate_date!(payload['end_date'], 'trip end_date')
@@ -211,14 +222,14 @@ module Trek
         validate_positive_integer!(day['day_number'], 'day number')
         validate_places!(day, 'places', 'place')
         validate_named_collection!(day, 'day_notes', 'day note', field: 'text')
-        validate_named_collection!(day, 'reservations', 'reservation', field: 'title')
+        validate_named_collection!(day, 'reservations', 'reservation', field: nil)
         day_date.to_date
       end
       invalid_payload!('days contain duplicate dates') if day_dates.uniq.length != day_dates.length
 
-      validate_named_collection!(payload, 'unscheduled_reservations', 'reservation', field: 'title')
+      validate_named_collection!(payload, 'unscheduled_reservations', 'reservation', field: nil)
       collection!(payload, 'accommodations').each do |accommodation|
-        validate_required_fields!(accommodation, ['name'], 'accommodation')
+        invalid_payload!('accommodation must be an object') unless accommodation.is_a?(Hash)
         validate_coordinates!(accommodation, 'accommodation')
         accommodation_start = validate_optional_date!(accommodation['start_date'], 'accommodation start_date')
         accommodation_end = validate_optional_date!(accommodation['end_date'], 'accommodation end_date')
@@ -240,7 +251,7 @@ module Trek
 
     def validate_named_collection!(payload, collection_name, item_name, field: 'name')
       collection!(payload, collection_name).each do |item|
-        validate_required_fields!(item, [field], item_name)
+        validate_required_fields!(item, Array(field), item_name)
       end
     end
 
@@ -258,6 +269,13 @@ module Trek
       missing_fields = fields.select { |field| payload[field].blank? }
       invalid_payload!("#{object_name} is missing required fields: #{missing_fields.join(', ')}") if missing_fields.any?
       invalid_payload!("#{object_name} contains invalid fields") unless fields.all? { |field| scalar?(payload[field]) }
+    end
+
+    def validate_required_keys!(payload, fields, object_name)
+      invalid_payload!("#{object_name} must be an object") unless payload.is_a?(Hash)
+
+      missing_keys = fields.reject { |field| payload.key?(field) }
+      invalid_payload!("#{object_name} is missing required fields: #{missing_keys.join(', ')}") if missing_keys.any?
     end
 
     def validate_date!(value, field)
@@ -324,14 +342,15 @@ module Trek
     def local_time(value)
       return if value.blank?
 
-      source_time_zone.parse(value.to_s)&.to_time
+      source_time_zone.parse(value.to_s)&.strftime('%H:%M:%S')
     rescue ArgumentError, TypeError
       nil
     end
 
-    def local_datetime(value)
+    def local_datetime(value, date: nil)
       return if value.blank?
 
+      value = "#{date} #{value}" if date && time_only?(value)
       source_time_zone.parse(value.to_s)
     rescue ArgumentError, TypeError
       nil
@@ -370,6 +389,10 @@ module Trek
 
     def source_time_zone
       @source_time_zone ||= Time.find_zone(@source.user.timezone) || Time.zone
+    end
+
+    def time_only?(value)
+      value.to_s.match?(/\A\d{1,2}:\d{2}(?::\d{2})?\z/)
     end
 
     def canonicalize(value)

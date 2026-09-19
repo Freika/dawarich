@@ -58,6 +58,7 @@ module Integrations
 
       source.active? ? :connected : :failed
     end
+
     def normalize(value)
       case value
       when 'ok' then :connected
