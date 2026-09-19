@@ -20,7 +20,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The main map now always renders points and tracks from vector tiles. The classic renderer, its rendering preferences, and the separate main-map Routes layer have been removed; Trip day routes are unchanged.
 - Successful point moves use a short in-map pulse instead of a flash message, with a static reduced-motion variant.
 - Email preferences are hidden on self-hosted instances without `SMTP_SERVER`, replaced by a note linking to the SMTP setup guide.
-- Geocoding is no longer configured per user: the Geocoding page under Integrations is gone. On upgrade, environment variables that are set are copied into Instance settings, so removing one later keeps its value; without a provider variable, existing per-user settings are carried over when every user agrees on one, and Settings → Instance says when they were not.
+- Geocoding is no longer configured per user: it moved from Integrations to Settings → Instance, and Integrations links there. On upgrade, environment variables that are set are copied into Instance settings, so removing one later keeps its value; without a provider variable, existing per-user settings are carried over when every user agrees on one, or else when the administrators do, and Settings → Instance says when they were not. Per-user settings themselves are left untouched.
+- Installation guides moved out of the repository's `docs` folder to [dawarich.app/docs](https://dawarich.app/docs/self-hosting/introduction): Synology (with its compose and `.env` templates), Kubernetes, Docker, reverse proxy and photo geodata.
 - Updated the Sentry SDK to 7.0. Instances with `SENTRY_DSN` set start normally, Sentry logs are still sent only when `SENTRY_ENABLE_LOGS=true`, and the SDK's new automatic database query and request logs are not sent.
 
 ### Fixed
@@ -37,6 +38,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Trip and track distance is calculated in the database, so large trips no longer run out of memory and leave the distance empty. Press Recalculate on an affected trip to fill it in.
 - Days per Country now uses a more varied color palette so countries are easier to distinguish (#3602).
 - Creating a visit from a location search result keeps the searched place's name and address.
+- Clicking a track on the map keeps the camera on that track instead of zooming out to every track of its day.
+- The map's loading indicator no longer stays on after clicking a track.
+- The selected track's flowing highlight moves at a steady, calmer speed at every zoom level.
 
 ## [1.14.5] - 2026-09-13, Berlin
 
