@@ -93,6 +93,23 @@ RSpec.describe 'Admin::Settings' do
       response.body[/<a[^>]*data-testid="instance-settings-section-#{name}"[^>]*>/]
     end
 
+    it 'switches sections inside a frame that advances the URL, keeping the page scroll' do
+      get '/admin/settings'
+
+      frame = response.body[%r{<turbo-frame[^>]*id="instance-settings-sections"[^>]*>.*</turbo-frame>}m]
+      expect(frame).to be_present
+      expect(frame[/<turbo-frame[^>]*>/]).to include('data-turbo-action="advance"')
+      expect(frame).to include('data-testid="instance-settings-section-geoapify"')
+      expect(frame).to include('data-testid="instance-settings-pane-photon"')
+    end
+
+    it 'saves a section with a full page visit so the flash and geocoding status refresh' do
+      get '/admin/settings'
+
+      form = response.body[%r{<form[^>]*action="/admin/settings"[^>]*>}]
+      expect(form).to include('data-turbo-frame="_top"')
+    end
+
     it 'lists every section in the navigation' do
       get '/admin/settings'
 

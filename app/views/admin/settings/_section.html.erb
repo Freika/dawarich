@@ -4,7 +4,7 @@
 %>
 <div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl"
      data-testid="instance-settings-pane-<%= section %>">
-  <%= form_with url: admin_settings_path, method: :patch do %>
+  <%= form_with url: admin_settings_path, method: :patch, data: { turbo_frame: '_top' } do %>
     <%= hidden_field_tag :section, section %>
     <div class="card-body">
       <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
