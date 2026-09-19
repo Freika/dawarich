@@ -81,6 +81,79 @@ RSpec.describe '/trips', type: :request do
       expect(response.body).to include('Delete this trip')
     end
 
+    it 'renders a read-only itinerary for a TREK-managed trip' do
+      allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      source = create(:trip_source, user:)
+      trip.update!(trip_source: source, source_identifier: '12', source_status: :active)
+      day = trip.planned_days.create!(date: trip.started_at.to_date, position: 1, title: 'Arrival')
+      day.planned_stops.create!(name: 'Uffizi', position: 1, transport_mode: 'walk', duration_minutes: 90)
+      day.planned_day_notes.create!(position: 1, body: 'Bring the tickets', noted_at: '09:00')
+      trip.planned_reservations.create!(
+        planned_day: day, title: 'LH 1234', status: 'confirmed', notes: 'Online check-in'
+      )
+      trip.planned_reservations.create!(title: 'Train 987', location: 'Florence')
+      trip.planned_accommodations.create!(
+        name: 'Hotel Roma', starts_on: trip.started_at.to_date, ends_on: trip.ended_at.to_date
+      )
+
+      get trip_url(trip)
+
+      expect(response.body).to include('Plan from TREK')
+      expect(response.body).to include('Uffizi')
+      expect(response.body).to include('Bring the tickets')
+      expect(response.body).to include('LH 1234')
+      expect(response.body).to include('Train 987')
+      expect(response.body).to include('walk')
+      expect(response.body).to include('90 min')
+      expect(response.body).to include('confirmed')
+      expect(response.body).to include('Hotel Roma')
+    end
+
+    it 'keeps a disconnected TREK itinerary visible' do
+      trip.update!(source_status: :stopped)
+      day = trip.planned_days.create!(date: trip.started_at.to_date, position: 1, title: 'Arrival')
+      day.planned_stops.create!(name: 'Uffizi', position: 1)
+
+      get trip_url(trip)
+
+      expect(response.body).to include('Plan from TREK')
+      expect(response.body).to include('Sync stopped')
+      expect(response.body).to include('Uffizi')
+    end
+
+    it 'shows a future TREK trip as planned instead of permanently calculating its path' do
+      allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      source = create(:trip_source, user:)
+      trip.update!(
+        trip_source: source,
+        source_identifier: '12',
+        source_status: :active,
+        started_at: 1.day.from_now,
+        ended_at: 2.days.from_now,
+        path: nil
+      )
+
+      expect { get trip_url(trip) }.not_to have_enqueued_job(Trips::CalculateAllJob)
+
+      expect(response.body).to include('This planned trip has not started yet.')
+      expect(response.body).not_to include('Trip path is being calculated...')
+    end
+
+    it 'keeps a disconnected future TREK trip in its planned state' do
+      trip.update!(
+        source_identifier: '12',
+        source_status: :stopped,
+        started_at: 1.day.from_now,
+        ended_at: 2.days.from_now,
+        path: nil
+      )
+
+      expect { get trip_url(trip) }.not_to have_enqueued_job(Trips::CalculateAllJob)
+
+      expect(response.body).to include('This planned trip has not started yet.')
+      expect(response.body).not_to include('Trip path is being calculated...')
+    end
+
     describe 'poster studio' do
       it 'renders the studio without date controls' do
         get trip_url(trip)

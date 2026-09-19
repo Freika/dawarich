@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Synology template no longer hangs waiting for its database on a fresh install.
 - The Kubernetes guide's health probes check the web container instead of the Sidekiq container, and a startup probe keeps it from being restarted while migrations run.
 - Trip and track distance is calculated in the database, so large trips no longer run out of memory and leave the distance empty. Press Recalculate on an affected trip to fill it in.
+- TREK itinerary imports now keep unscheduled places, honour the trip owner's timezone, and retain the plan after disconnecting TREK. (#3615)
 - Days per Country now uses a more varied color palette so countries are easier to distinguish (#3602).
 - Creating a visit from a location search result keeps the searched place's name and address.
 

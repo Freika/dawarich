@@ -21,6 +21,7 @@ class TripsController < ApplicationController
     @day_stats = compute_day_stats
     load_video_studio_context
 
+    return if @trip.source_imported? && @trip.started_at > Time.current
     return unless @trip.path.blank? || @trip.distance.blank? || @trip.visited_countries.blank?
 
     Trips::CalculateAllJob.perform_later(@trip.id, @distance_unit)

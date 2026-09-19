@@ -2,7 +2,7 @@
 
 module Integrations
   class Status
-    SERVICES = %w[immich photoprism airtrail teslamate].freeze
+    SERVICES = %w[immich photoprism airtrail teslamate trek].freeze
 
     def self.for(user)
       new(user)
@@ -16,7 +16,10 @@ module Integrations
     def configured?(service)
       service = service.to_s
 
-      if service == 'teslamate'
+      case service
+      when 'trek'
+        user.trip_sources.active.where(provider: 'trek').exists?
+      when 'teslamate'
         settings['teslamate_url'].present?
       else
         settings["#{service}_url"].present? && settings["#{service}_api_key"].present?
@@ -37,11 +40,23 @@ module Integrations
     def resolve_status(service)
       return unless configured?(service)
 
-      normalize(settings["#{service}_connection_status"])
+      if service == 'trek'
+        trek_status
+      else
+        normalize(settings["#{service}_connection_status"])
+      end
     end
 
     def settings
       @settings ||= user.safe_settings.settings
+    end
+
+    def trek_status
+      source = user.trip_sources.active.where(provider: 'trek').first ||
+               user.trip_sources.where(provider: 'trek').order(updated_at: :desc).first
+      return unless source
+
+      source.active? ? :connected : :failed
     end
 
     def normalize(value)

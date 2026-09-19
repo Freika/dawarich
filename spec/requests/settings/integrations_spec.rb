@@ -238,7 +238,7 @@ RSpec.describe 'Settings::Integrations', type: :request do
     it 'lists the photo services and not geocoding, which belongs to the instance' do
       get settings_integrations_path
 
-      %w[immich photoprism airtrail].each do |service|
+      %w[immich photoprism airtrail trek].each do |service|
         expect(response.body).to include(%(data-testid="integration-#{service}"))
       end
       expect(response.body).not_to include('data-testid="integration-geocoding"')
@@ -307,6 +307,13 @@ RSpec.describe 'Settings::Integrations', type: :request do
       expect(response.body).to include('TeslaMateApi Integration')
       expect(response.body).to include('https://github.com/tobiasehlert/teslamateapi#how-to-run-it')
       expect(response.body).to include('man-in-the-middle attacks')
+    end
+
+    it 'renders the TREK settings pane' do
+      get settings_integrations_path(service: 'trek')
+
+      expect(response.body).to include('name="trip_source[base_url]"')
+      expect(response.body).to include('TREK integration')
     end
 
     it 'falls back to the first available service for unknown service params' do

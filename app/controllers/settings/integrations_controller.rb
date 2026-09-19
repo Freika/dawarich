@@ -16,6 +16,7 @@ class Settings::IntegrationsController < ApplicationController
     @services = Integrations::Status::SERVICES
     @service = params[:service].presence_in(@services) || @services.first
     @statuses = Integrations::Status.for(current_user)
+    @trek_sources = current_user.trip_sources.where(provider: 'trek').order(:created_at) if @service == 'trek'
   end
 
   def update

@@ -1,0 +1,232 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe Trek::Sync do
+  let(:user) { create(:user) }
+  let(:source) { create(:trip_source, user: user) }
+
+  let(:payload) do
+    {
+      id: 12,
+      title: 'Tuscany',
+      description: 'Wine and hill towns',
+      start_date: '2030-06-14',
+      end_date: '2030-06-22',
+      days: [
+        {
+          date: '2030-06-14', day_number: 1, title: 'Arrival', notes: 'Check the rental car',
+          places: [
+            {
+              name: 'Uffizi', address: 'Florence', lat: 43.76, lng: 11.25, time: '14:00',
+              end_time: nil, duration_minutes: 180, category: 'Museum', notes: 'Tickets ready',
+              transport_mode: 'walking'
+            }
+          ],
+          day_notes: [{ text: 'Bring the tickets', time: '09:00' }],
+          reservations: [
+            {
+              type: 'flight', title: 'LH 1234', location: 'FRA', time: '2030-06-14T08:00:00',
+              end_time: nil, status: 'confirmed', notes: nil
+            }
+          ]
+        }
+      ],
+      unplanned_places: [
+        {
+          name: 'Mercato Centrale', address: 'Florence', lat: 43.775, lng: 11.253,
+          category: 'Food market', notes: 'Choose lunch there'
+        }
+      ],
+      unscheduled_reservations: [],
+      accommodations: [
+        {
+          name: 'Hotel Alba', address: nil, lat: nil, lng: nil, start_date: '2030-06-14',
+          end_date: '2030-06-15', check_in: '15:00', check_out: '11:00', notes: nil
+        }
+      ],
+      travellers: [{ name: 'ada', owner: true }, { name: 'bob', owner: false }]
+    }
+  end
+
+  before do
+    allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+  end
+
+  describe '#import!' do
+    it 'creates a managed future trip and its complete source-owned itinerary' do
+      stub_trip(payload)
+
+      expect do
+        @trip, @created, @changed = described_class.new(source).import!('12')
+      end.not_to have_enqueued_job(Trips::CalculateAllJob)
+
+      expect(@created).to be(true)
+      expect(@changed).to be(true)
+      expect(@trip).to have_attributes(name: 'Tuscany', source_identifier: '12', source_status: 'active')
+      expect(@trip.user).to eq(user)
+      expect(@trip.planned_days.size).to eq(1)
+      expect(@trip.planned_days.first.planned_stops.first).to have_attributes(name: 'Uffizi', transport_mode: 'walking')
+      expect(@trip.planned_days.first.planned_day_notes.first.body).to eq('Bring the tickets')
+      expect(@trip.planned_reservations.first.title).to eq('LH 1234')
+      expect(@trip.planned_accommodations.first.name).to eq('Hotel Alba')
+      expect(@trip.planned_travellers.pluck(:name)).to contain_exactly('ada', 'bob')
+      expect(@trip.planned_unplanned_places.first).to have_attributes(name: 'Mercato Centrale', category: 'Food market')
+      expect(@trip.notes).to be_empty
+    end
+
+    it 'does not rewrite source-owned rows when the normalized snapshot is unchanged' do
+      stub_trip(payload)
+      trip, = described_class.new(source).import!('12')
+      original_stop_id = trip.planned_days.first.planned_stops.first.id
+
+      stub_trip(payload)
+      _, created, changed = described_class.new(source).import!('12')
+
+      expect(created).to be(false)
+      expect(changed).to be(false)
+      expect(trip.reload.planned_days.first.planned_stops.first.id).to eq(original_stop_id)
+    end
+
+    it 'reactivates a selected trip without rewriting an unchanged itinerary' do
+      stub_trip(payload)
+      trip, = described_class.new(source).import!('12')
+      trip.update!(source_status: :stopped)
+
+      stub_trip(payload)
+      _, created, changed = described_class.new(source).import!('12')
+
+      expect(created).to be(false)
+      expect(changed).to be(false)
+      expect(trip.reload).to be_source_active
+    end
+
+    it 'enqueues one calculation for an imported trip that has already started' do
+      past_payload = payload.deep_dup
+      past_payload[:start_date] = 2.days.ago.to_date.to_s
+      past_payload[:end_date] = 1.day.from_now.to_date.to_s
+      past_payload[:days][0][:date] = past_payload[:start_date]
+      stub_trip(past_payload)
+
+      expect do
+        described_class.new(source).import!('12')
+      end.to have_enqueued_job(Trips::CalculateAllJob).exactly(:once)
+    end
+
+    it 'recalculates an imported trip when TREK changes its date range' do
+      past_payload = payload.deep_dup
+      past_payload[:start_date] = 2.days.ago.to_date.to_s
+      past_payload[:end_date] = 1.day.from_now.to_date.to_s
+      past_payload[:days][0][:date] = past_payload[:start_date]
+      stub_trip(past_payload)
+      trip, = described_class.new(source).import!('12')
+      trip.update_columns(path: 'LINESTRING(1 1, 2 2)', distance: 100, visited_countries: ['Italy'])
+      clear_enqueued_jobs
+
+      changed_payload = past_payload.deep_dup
+      changed_payload[:start_date] = 3.days.ago.to_date.to_s
+      changed_payload[:days][0][:date] = changed_payload[:start_date]
+      stub_trip(changed_payload)
+
+      expect do
+        described_class.new(source).import!('12')
+      end.to have_enqueued_job(Trips::CalculateAllJob).exactly(:once)
+    end
+
+    it 'uses the source owner timezone when parsing TREK local dates' do
+      user.update!(settings: user.settings.merge('timezone' => 'America/Los_Angeles'))
+      stub_trip(payload)
+
+      Time.use_zone('UTC') { @trip, = described_class.new(source).import!('12') }
+
+      expect(@trip.started_at).to eq(Time.find_zone('America/Los_Angeles').parse('2030-06-14').beginning_of_day)
+    end
+
+    it 'preserves TREK wall-clock times across timezones' do
+      user.update!(settings: user.settings.merge('timezone' => 'America/Los_Angeles'))
+      stub_trip(payload)
+
+      Time.use_zone('UTC') { @trip, = described_class.new(source).import!('12') }
+
+      expect(@trip.planned_days.first.planned_stops.first.starts_at).to eq('14:00:00')
+      expect(@trip.planned_days.first.planned_day_notes.first.noted_at).to eq('09:00:00')
+      expect(@trip.planned_accommodations.first.check_in_at).to eq('15:00:00')
+    end
+
+    it 'uses the owning day for a time-only reservation' do
+      timed_payload = payload.deep_dup
+      timed_payload[:days][0][:reservations][0][:time] = '08:00'
+      stub_trip(timed_payload)
+
+      trip = Time.use_zone(user.timezone) { described_class.new(source).import!('12').first }
+
+      reservation = trip.planned_reservations.first
+      expect(reservation.starts_at).to eq(Time.find_zone(user.timezone).parse('2030-06-14 08:00'))
+    end
+
+    it 'imports reservations and accommodations without a name' do
+      nullable_payload = payload.deep_dup
+      nullable_payload[:days][0][:reservations][0][:title] = nil
+      nullable_payload[:accommodations][0][:name] = nil
+      stub_trip(nullable_payload)
+
+      trip, = described_class.new(source).import!('12')
+
+      expect(trip.planned_reservations.first.title).to eq('Reservation')
+      expect(trip.planned_accommodations.first.name).to eq('Accommodation')
+    end
+  end
+
+  describe '#call' do
+    it 'batches large selections within TREK request limits' do
+      101.times do |index|
+        create(
+          :trip,
+          user: user,
+          trip_source: source,
+          source_identifier: "trip-#{index}",
+          source_status: :active
+        )
+      end
+      client = instance_double(Trek::Client)
+      allow(client).to receive(:trips).and_return(
+        101.times.map { |index| { 'id' => "trip-#{index}", 'archived' => false } }
+      )
+      allow(client).to receive(:trip).and_return(payload)
+
+      result = described_class.new(source, client:).call(limit: 100)
+
+      expect(result).to have_attributes(more: true, next_cursor: source.trips.order(:id).offset(99).pick(:id))
+      expect(client).to have_received(:trip).exactly(100).times
+    end
+
+    it 'stops, but does not delete, a selected trip that TREK archives' do
+      stub_trip(payload)
+      trip, = described_class.new(source).import!('12')
+
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_return(status: 200, body: { trips: [{ id: 12, archived: true }] }.to_json)
+
+      result = described_class.new(source).call
+
+      expect(result.stopped).to eq(1)
+      expect(trip.reload).to be_source_stopped
+      expect(trip.planned_days).not_to be_empty
+    end
+
+    it 'disables the source when TREK rejects the key' do
+      stub_request(:get, 'https://trek.example.test/api/v1/trips')
+        .to_return(status: 401, body: { error: 'unknown key' }.to_json)
+
+      expect { described_class.new(source).call }.to raise_error(Trek::Client::Error)
+
+      expect(source.reload).to be_disabled
+      expect(source.last_error).to include('401')
+    end
+  end
+
+  def stub_trip(body)
+    stub_request(:get, 'https://trek.example.test/api/v1/trips/12')
+      .to_return(status: 200, body: body.to_json, headers: { 'Content-Type' => 'application/json' })
+  end
+end
