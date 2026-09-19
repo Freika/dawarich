@@ -1448,6 +1448,27 @@ zh:
       residential_roads: 住宅道路
       track: 轨迹
   settings:
+    trek_sources:
+      select_trips:
+        title: "选择 TREK 旅程"
+        subtitle: "只有选中的旅程会复制到 Dawarich。你之后可以更改选择。"
+        untitled_trip: "未命名旅程"
+        archived: "已归档"
+        dates_required: "导入此旅程前，请先在 TREK 中添加开始和结束日期。"
+        import_selected: "导入所选旅程"
+        back: "返回"
+      create:
+        connected_choose_trips: "已连接 TREK。请选择要由 Dawarich 管理的旅程。"
+      import_trips:
+        no_trips_selected: "未选择任何 TREK 旅程。现有行程已保留，并已停止同步。"
+        select_at_least_one_dated_trip: "请至少选择一个有开始和结束日期的有效 TREK 旅程。"
+        trips_are_now_syncing: "所选 TREK 旅程正在同步。"
+      sync:
+        sync_queued: "TREK 同步已加入队列。"
+        source_disabled: "TREK 已停用。同步前请用新的 API 密钥重新连接。"
+        source_importing: "TREK 仍在导入你选择的旅程。"
+      destroy:
+        source_removed_trips_kept: "TREK 已断开连接。你受管理的旅程已保留，将不再同步。"
     navigation:
       general: 常规
       integrations: 集成
@@ -1530,6 +1551,22 @@ zh:
         general_settings: 常规设置
         save_changes: 保存更改
     integrations:
+      trek:
+        title: "TREK 集成"
+        subtitle: "将选定的 TREK 行程导入为 Dawarich 旅程。计划仍以 TREK 为准。"
+        trek_url: "TREK URL"
+        cloud_notice: "Dawarich Cloud 需要可公开访问的 TREK URL。自托管的 Dawarich 可以连接局域网或 Tailscale 中的实例。"
+        api_key: "TREK API 密钥"
+        api_key_help: "在 TREK 的“设置 → 集成”中创建只读 API 密钥。它以 trek_ 开头。"
+        connect: "连接 TREK"
+        reconnect: "重新连接 TREK"
+        importing_trips: "正在导入所选旅程…"
+        last_synced: "上次同步：%{time}"
+        not_synced_yet: "尚未同步"
+        choose_trips: "选择旅程"
+        sync_now: "立即同步"
+        disconnect: "断开连接"
+        disconnect_confirmation: "断开 TREK？受管理的旅程及其记录数据会保留在 Dawarich 中，但不再同步。"
       index:
         immich_photoprism_integrations: Immich 和 Photoprism 集成
         connect_your_photo_management_tools_to_see_your_photos_on: 连接您的照片管理工具，即可在地图上查看您的照片。Immich 和 PhotoPrism 集成在 Pro 计划中可用。
@@ -1589,6 +1626,7 @@ zh:
           photoprism: PhotoPrism
           airtrail: AirTrail
           teslamate: TeslaMateApi
+          trek: "TREK"
         status_connected: 已连接
         status_failed: 上次连接尝试失败
     subscriptions:
@@ -2223,6 +2261,8 @@ zh:
     distance:
       calculating: 正在计算...
     form:
+      cancel: "取消"
+      managed_by_trek_hint: "名称和日期来自 TREK，每次同步都会更新。请在 TREK 中修改。"
       prohibited_this_trip_from_being_saved: 导致此行程无法保存：
       errors_prohibited_save:
         one: 有 %{count} 个错误导致此行程无法保存：
@@ -2233,6 +2273,7 @@ zh:
       recalculation_failed_try_again: 重新计算失败 — 重试。
       recalculate_this_trip_s_path_distance_and_countries_from_your: 根据您的最新轨迹点重新计算此行程的路径、距离和国家/地区？
     trip:
+      plan: "计划"
       no_points_found: 未找到轨迹点
       calculating: 正在计算...
       ndash: –
@@ -2243,9 +2284,7 @@ zh:
         one: "%{count} 天"
         other: "%{count} 天"
     edit:
-      back_to_trips: 返回行程
       editing_trip: 编辑行程
-      show_this_trip: 显示此行程
     index:
       new_trip: 新行程
       no_trips_yet: 尚无行程
@@ -2253,7 +2292,6 @@ zh:
       create_your_first_trip: 创建您的第一个行程
       trips: 行程
     new:
-      back_to_trips: 返回行程
       new_trip: 新行程
     notes:
       empty:
@@ -2273,9 +2311,41 @@ zh:
         delete: 删除
         delete_this_note: 删除此备注吗？
         update_note: 更新备注
+    source_itinerary:
+      show_on_map: "在地图上显示"
+      title: "来自 TREK 的计划"
+      subtitle: "此行程在 TREK 中管理。你的 Dawarich 轨迹数据保持独立。"
+      sync_stopped: "同步已停止"
+      synced_ago: "%{time}前已同步"
+      open_in_trek: "在 TREK 中打开"
+      day_number: "第 %{number} 天"
+      days_count:
+        one: "%{count} 天"
+        other: "%{count} 天"
+      stops_count:
+        one: "%{count} 个停靠点"
+        other: "%{count} 个停靠点"
+      duration_minutes:
+        one: "%{count} 分钟"
+        other: "%{count} 分钟"
+      reservation_statuses:
+        confirmed: "已确认"
+        pending: "待定"
+        cancelled: "已取消"
+      accommodations: "住宿"
+      travellers: "旅行者"
+      unscheduled_reservations: "其他预订"
+      unplanned_places: "未计划的地点"
     show:
+      planned_route: "计划路线"
+      plan: "计划"
+      toggle_plan_on_map: "在地图上显示计划"
+      back_to_trips: "返回行程"
       loading_route_data: 正在加载路线数据...
       trip_path_is_being_calculated: 正在计算行程路径...
+      trip_has_not_started_yet: "此计划行程尚未开始。"
+      no_locations_recorded: "此行程期间没有记录到位置。"
+      no_locations_recorded_hint: "这些日期之间记录的点会显示在这里。"
       download_trip: 下载行程
       currently_shared: 当前共享
       public: 公共
@@ -2293,7 +2363,6 @@ zh:
       no_data: 无数据
       trip_notes: 行程备注
       more_on: 更多信息
-      back_to_trips: 返回行程
       gpx: GPX
       geojson: GeoJSON
       edit_trip: 编辑行程

@@ -207,6 +207,41 @@ RSpec.describe Trip, type: :model do
     end
   end
 
+  describe '#plan_geojson' do
+    let(:trip) { create(:trip) }
+
+    it 'maps located stops per day with their order, a line within each day, stays and loose places' do
+      first = trip.planned_days.create!(date: trip.started_at.to_date, position: 1)
+      second = trip.planned_days.create!(date: trip.started_at.to_date + 1, position: 2)
+      first.planned_stops.create!(name: 'Museum', position: 1, latitude: 51.31, longitude: 12.41)
+      first.planned_stops.create!(name: 'No coordinates', position: 2)
+      first.planned_stops.create!(name: 'Panorama', position: 3, latitude: 51.32, longitude: 12.39)
+      second.planned_stops.create!(name: 'Station', position: 1, latitude: 51.35, longitude: 12.38)
+      trip.planned_accommodations.create!(name: 'Hotel', latitude: 51.34, longitude: 12.37)
+      trip.planned_unplanned_places.create!(name: 'Market', position: 1, latitude: 51.33, longitude: 12.36)
+
+      features = trip.plan_geojson[:features]
+
+      stops = features.select { |f| f[:properties][:kind] == 'stop' }
+      expect(stops.map { |f| f[:properties].values_at(:name, :day, :number) }).to eq(
+        [['Museum', 0, 1], ['Panorama', 0, 3], ['Station', 1, 1]]
+      )
+      expect(stops.first[:geometry]).to eq(type: 'Point', coordinates: [12.41, 51.31])
+      routes = features.select { |f| f[:properties][:kind] == 'route' }
+      expect(routes.map { |f| [f[:properties][:day], f[:geometry][:coordinates]] }).to eq(
+        [[0, [[12.41, 51.31], [12.39, 51.32]]]]
+      )
+      expect(features.map { |f| f[:properties][:kind] }).to include('stay', 'unplanned')
+    end
+
+    it 'has nothing to draw without coordinates' do
+      day = trip.planned_days.create!(date: trip.started_at.to_date, position: 1)
+      day.planned_stops.create!(name: 'Somewhere', position: 1)
+
+      expect(trip.plan_geojson).to be_nil
+    end
+  end
+
   describe 'Calculateable concern' do
     let(:user) { create(:user) }
     let(:trip) { create(:trip, user: user) }
@@ -237,6 +272,44 @@ RSpec.describe Trip, type: :model do
 
         expect(loaded).to be_empty
         expect(trip.distance).to be_within(1_000).of(26_500)
+      end
+    end
+
+    describe 'with several devices recording at once' do
+      let(:berlin_phone) do
+        [0, 1, 2, 3].map do |i|
+          create(:point, user:, tracker_id: 'phone', lonlat: "POINT(13.40#{i} 52.52)",
+                         timestamp: trip.started_at.to_i + 5.hours + (i * 10.minutes))
+        end
+      end
+
+      before do
+        points.each { |point| point.update!(tracker_id: 'watch') }
+        berlin_phone
+        create(:point, user:, tracker_id: 'watch', lonlat: 'POINT(12.38 51.34)',
+                       timestamp: trip.started_at.to_i + 5.hours + 5.minutes)
+      end
+
+      it 'builds the path from the device that recorded the most points' do
+        trip.calculate_path
+
+        expect(trip.path.points.map { |point| point.x.round(3) }).to eq([13.4, 13.401, 13.402, 13.403])
+      end
+
+      it 'measures the distance along that device only' do
+        trip.calculate_distance
+
+        expect(trip.distance).to be_between(150, 250)
+      end
+
+      it 'names the primary device' do
+        expect(trip.primary_tracker_id).to eq('phone')
+      end
+
+      it 'measures each day along the primary device only' do
+        stats = trip.day_stats('UTC')
+
+        expect(stats.values.sum { |day| day[:distance_m] }).to be_between(150, 250)
       end
     end
 

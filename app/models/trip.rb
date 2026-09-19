@@ -7,6 +7,9 @@ class Trip < ApplicationRecord
   include Notable
 
   RECALCULATE_COOLDOWN = 60.seconds
+  # A stamped point reads its device from point_sources exclusively; the
+  # legacy column serves unstamped rows (see PointDimensionReads).
+  DEVICE_SQL = 'CASE WHEN points.source_id IS NULL THEN points.tracker_id ELSE point_sources.tracker_id END'
 
   has_rich_text :description
 
@@ -46,6 +49,47 @@ class Trip < ApplicationRecord
     user.points.not_anomaly.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
   end
 
+  # Devices recording at the same time are separate paths, so the trip line,
+  # its distance and its day routes follow the device with the most points.
+  def primary_tracker_id
+    return @primary_tracker_id if defined?(@primary_tracker_id)
+
+    @primary_tracker_id = points.reorder(nil).left_joins(:source)
+                                .group(Arel.sql(DEVICE_SQL))
+                                .order(Arel.sql('COUNT(*) DESC'), Arel.sql("#{DEVICE_SQL} NULLS LAST"))
+                                .pick(Arel.sql(DEVICE_SQL))
+  end
+
+  def plan_geojson
+    Trips::PlanGeojson.new(self).call
+  end
+
+  def day_stats(timezone)
+    day_expr = "(to_timestamp(points.timestamp) AT TIME ZONE #{self.class.connection.quote(timezone)})::date"
+    rows = primary_device_points.reorder(nil).group(Arel.sql(day_expr)).pluck(
+      Arel.sql(day_expr),
+      Arel.sql('MIN(points.timestamp)'),
+      Arel.sql('MAX(points.timestamp)'),
+      Arel.sql('COALESCE(ST_Length(ST_MakeLine(points.lonlat::geometry ORDER BY points.timestamp)::geography), 0)')
+    )
+
+    rows.each_with_object({}) do |(day, first_ts, last_ts, distance_m), stats|
+      stats[day] = {
+        first_time: Time.at(first_ts).in_time_zone(timezone),
+        last_time: Time.at(last_ts).in_time_zone(timezone),
+        distance_m: distance_m.to_f
+      }
+    end
+  end
+
+  def primary_device_points
+    scope = points.left_joins(:source)
+    tracker_id = primary_tracker_id
+    return scope.where("(#{DEVICE_SQL}) IS NULL") if tracker_id.nil?
+
+    scope.where("(#{DEVICE_SQL}) = ?", tracker_id)
+  end
+
   def photo_previews
     @photo_previews ||= select_dominant_orientation(photos).sample(12)
   end
@@ -70,6 +114,14 @@ class Trip < ApplicationRecord
   end
 
   private
+
+  def path_coordinates
+    primary_device_points.pluck(:lonlat)
+  end
+
+  def calculate_distance_from_coordinates
+    Point.total_distance(primary_device_points, :m)
+  end
 
   def should_recalculate_after_update?
     return false if demo? || skip_calculation_enqueue

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Trips can be imported from TREK (Settings → Integrations). A TREK trip shows its plan above the recorded days, a trip with nothing recorded yet draws the planned stops on its map and card preview, a recorded trip can lay its plan over the track, and TREK day notes fill in the trip's day notes and stay in sync until you edit them in Dawarich. (#3615)
 - Admins can configure geocoding for the whole instance in Settings → Instance without a redeploy, and test the connection there. A set environment variable still wins and shows its field read-only.
 - The app and Sidekiq containers print a warning at startup when a self-hosted instance runs with `RAILS_ENV=development`.
 - Map points and tracks can be edited directly over the vector-tile renderer; a completed drag atomically saves the point, recalculates its track and segments, and synchronizes other open sessions. With Edit points on, a point can be dragged straight from the map at zoom 14 and closer, a long press starts the drag on touch screens, and an edit history panel on the map undoes and redoes the last 5 moves.
@@ -26,6 +27,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- A trip recorded by several devices at once no longer zigzags between them: its line, distance and day routes follow the device that recorded the most points.
+- A trip page switches from "Trip path is being calculated" to the map as soon as the path is ready, and a trip with no recorded locations says so instead of calculating forever.
 - The map fits locations recorded during a short period even when the selected history spans years.
 - Switching flight visibility while editing a point or track keeps the edit visible and restores the correct map filters afterward.
 - User profile archives uploaded through the regular Imports page are now restored as profile backups instead of failing the multi-file archive size limit. (#3011)

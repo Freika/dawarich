@@ -1,93 +1,148 @@
-<section class="mb-6 rounded-lg border border-base-content/10 bg-base-200 p-4">
-  <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-    <div>
-      <h2 class="text-lg font-semibold"><%= t('.title') %></h2>
-      <p class="text-sm text-base-content/60"><%= t('.subtitle') %></p>
+<% stop_count = trip.planned_days.sum { |day| day.planned_stops.size } %>
+<% unscheduled = trip.planned_reservations.select { |reservation| reservation.planned_day_id.nil? } %>
+<section class="mb-6 rounded-lg border border-base-content/10" aria-labelledby="trip-plan-title">
+  <header class="border-b border-base-content/10 px-4 py-3">
+    <div class="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
+      <div class="min-w-0">
+        <h2 id="trip-plan-title" class="text-lg font-semibold"><%= t('.title') %></h2>
+        <p class="text-sm text-base-content/60"><%= t('.subtitle') %></p>
+      </div>
+      <% if trip.source_stopped? %>
+        <span class="badge badge-warning shrink-0"><%= t('.sync_stopped') %></span>
+      <% end %>
     </div>
-    <% if trip.source_stopped? %>
-      <span class="badge badge-warning"><%= t('.sync_stopped') %></span>
-    <% else %>
-      <span class="badge badge-success"><%= t('.managed_by_trek') %></span>
-    <% end %>
-  </div>
+    <p class="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-base-content/60">
+      <% if trip.source_synced_at %>
+        <span><%= t('.synced_ago', time: time_ago_in_words(trip.source_synced_at)) %></span>
+      <% end %>
+      <% if trip.planned_days.any? %>
+        <span class="tabular-nums"><%= t('.days_count', count: trip.planned_days.size) %> · <%= t('.stops_count', count: stop_count) %></span>
+      <% end %>
+      <% if trip.planned_travellers.any? %>
+        <span class="inline-flex min-w-0 items-center gap-1">
+          <%= icon 'users', class: 'size-3.5 shrink-0' %>
+          <span class="sr-only"><%= t('.travellers') %>:</span>
+          <span class="[overflow-wrap:anywhere]"><%= trip.planned_travellers.map(&:name).join(', ') %></span>
+        </span>
+      <% end %>
+      <% if (trek_url = trek_trip_url(trip)) %>
+        <%= link_to trek_url, target: '_blank', rel: 'noopener noreferrer',
+                              class: 'link link-hover inline-flex items-center gap-1' do %>
+          <%= t('.open_in_trek') %><%= icon 'external-link', class: 'size-3.5' %>
+        <% end %>
+      <% end %>
+    </p>
+  </header>
 
-  <div class="space-y-3">
-    <% trip.planned_days.each do |day| %>
-      <article class="rounded-lg bg-base-100 p-3">
-        <h3 class="font-medium"><%= l(day.date, format: :long) %><%= " — #{day.title}" if day.title.present? %></h3>
-        <% if day.notes.present? %>
-          <p class="mt-1 whitespace-pre-line text-sm text-base-content/70"><%= day.notes %></p>
-        <% end %>
-        <% if day.planned_day_notes.any? %>
-          <ul class="mt-2 space-y-1 text-sm text-base-content/70">
-            <% day.planned_day_notes.each do |note| %>
-              <li><%= "#{note.noted_at} · " if note.noted_at %><%= note.body %></li>
+  <% if trip.planned_days.any? %>
+    <ol class="divide-y divide-base-content/10">
+      <% trip.planned_days.each_with_index do |day, day_index| %>
+        <li class="px-4 py-3">
+          <h3 class="flex flex-wrap items-baseline gap-x-2 text-sm">
+            <span class="font-semibold"><%= t('.day_number', number: day_index + 1) %></span>
+            <span class="text-base-content/60"><%= l(day.date, format: :short_month_day_weekday) %></span>
+            <% if day.title.present? %>
+              <span class="min-w-0 font-medium [overflow-wrap:anywhere]"><%= day.title %></span>
             <% end %>
-          </ul>
-        <% end %>
-        <% if day.planned_stops.any? %>
-          <ol class="mt-2 space-y-1 text-sm">
-            <% day.planned_stops.each do |stop| %>
-              <li class="flex gap-2">
-                <% if stop.starts_at %><span class="shrink-0 text-base-content/50"><%= stop.starts_at %></span><% end %>
-                <span>
-                  <strong><%= stop.name %></strong><%= " · #{stop.address}" if stop.address.present? %>
-                  <% details = [stop.transport_mode, stop.category, ("#{stop.duration_minutes} min" if stop.duration_minutes)] %>
-                  <% if details.compact.any? %><span class="text-base-content/60"> · <%= details.compact.join(' · ') %></span><% end %>
-                  <% if stop.notes.present? %><span class="text-base-content/60"> — <%= stop.notes %></span><% end %>
-                </span>
-              </li>
-            <% end %>
-          </ol>
-        <% end %>
-        <% if day.planned_reservations.any? %>
-          <ul class="mt-2 space-y-1 text-sm text-base-content/70">
-            <% day.planned_reservations.each do |reservation| %>
-              <li><%= icon 'calendar-check-2', class: 'mr-1 inline size-4' %><strong><%= reservation.title %></strong><%= " · #{reservation.location}" if reservation.location.present? %><%= " · #{l(reservation.starts_at, format: :short)}" if reservation.starts_at %><%= " · #{reservation.status}" if reservation.status.present? %><%= " — #{reservation.notes}" if reservation.notes.present? %></li>
-            <% end %>
-          </ul>
-        <% end %>
-      </article>
-    <% end %>
-  </div>
+          </h3>
+          <% notes_in_day_note = day_notes[day.date]&.synced_from_source? %>
+          <% if day.notes.present? && !notes_in_day_note %>
+            <p class="mt-1 whitespace-pre-line text-sm text-base-content/70"><%= day.notes %></p>
+          <% end %>
+          <% if day.planned_day_notes.any? && !notes_in_day_note %>
+            <ul class="mt-2 space-y-1 text-sm text-base-content/70">
+              <% day.planned_day_notes.each do |note| %>
+                <li>
+                  <% if note.noted_at %><span class="tabular-nums text-base-content/50"><%= note.noted_at %></span> <% end %><%= note.body %>
+                </li>
+              <% end %>
+            </ul>
+          <% end %>
+          <% if day.planned_stops.any? %>
+            <ol class="mt-2 space-y-2">
+              <% day.planned_stops.each_with_index do |stop, stop_index| %>
+                <li class="grid grid-cols-[1.25rem_minmax(0,1fr)] gap-x-2">
+                  <span class="text-right text-sm tabular-nums text-base-content/40"><%= stop_index + 1 %></span>
+                  <div class="min-w-0">
+                    <% if local_assigns[:plan_on_map] && stop.latitude && stop.longitude %>
+                      <button type="button"
+                              class="text-left text-sm font-medium [overflow-wrap:anywhere] hover:underline"
+                              title="<%= t('.show_on_map') %>"
+                              data-controller="trip-plan-focus"
+                              data-action="trip-plan-focus#focus"
+                              data-trip-plan-focus-longitude-param="<%= stop.longitude.to_f %>"
+                              data-trip-plan-focus-latitude-param="<%= stop.latitude.to_f %>"><%= stop.name %></button>
+                    <% else %>
+                      <p class="text-sm font-medium [overflow-wrap:anywhere]"><%= stop.name %></p>
+                    <% end %>
+                    <% if stop.address.present? %>
+                      <p class="text-xs text-base-content/60 [overflow-wrap:anywhere]"><%= stop.address %></p>
+                    <% end %>
+                    <% details = planned_stop_details(stop) %>
+                    <% if details.any? %>
+                      <p class="text-xs tabular-nums text-base-content/60"><%= details.join(' · ') %></p>
+                    <% end %>
+                    <% if stop.notes.present? %>
+                      <p class="mt-0.5 whitespace-pre-line text-xs text-base-content/70"><%= stop.notes %></p>
+                    <% end %>
+                  </div>
+                </li>
+              <% end %>
+            </ol>
+          <% end %>
+          <% if day.planned_reservations.any? %>
+            <ul class="mt-3 space-y-2">
+              <%= render partial: 'trips/planned_reservation', collection: day.planned_reservations, as: :reservation %>
+            </ul>
+          <% end %>
+        </li>
+      <% end %>
+    </ol>
+  <% end %>
 
-  <% if trip.planned_reservations.any? { |reservation| reservation.planned_day_id.nil? } %>
-    <div class="mt-4">
-      <h3 class="font-medium"><%= t('.unscheduled_reservations') %></h3>
-      <ul class="mt-2 space-y-1 text-sm text-base-content/70">
-        <% trip.planned_reservations.each do |reservation| %>
-          <% next if reservation.planned_day_id.present? %>
-
-          <li><%= icon 'calendar-check-2', class: 'mr-1 inline size-4' %><strong><%= reservation.title %></strong><%= " · #{reservation.location}" if reservation.location.present? %><%= " · #{l(reservation.starts_at, format: :short)}" if reservation.starts_at %><%= " · #{reservation.status}" if reservation.status.present? %><%= " — #{reservation.notes}" if reservation.notes.present? %></li>
-        <% end %>
+  <% if unscheduled.any? %>
+    <div class="border-t border-base-content/10 px-4 py-3">
+      <h3 class="text-sm font-semibold"><%= t('.unscheduled_reservations') %></h3>
+      <ul class="mt-2 space-y-2">
+        <%= render partial: 'trips/planned_reservation', collection: unscheduled, as: :reservation %>
       </ul>
     </div>
   <% end %>
 
   <% if trip.planned_unplanned_places.any? %>
-    <div class="mt-4">
-      <h3 class="font-medium"><%= t('.unplanned_places') %></h3>
+    <div class="border-t border-base-content/10 px-4 py-3">
+      <h3 class="text-sm font-semibold"><%= t('.unplanned_places') %></h3>
       <ul class="mt-2 space-y-1 text-sm">
         <% trip.planned_unplanned_places.each do |place| %>
-          <li><strong><%= place.name %></strong><%= " · #{place.address}" if place.address.present? %></li>
+          <li>
+            <span class="font-medium [overflow-wrap:anywhere]"><%= place.name %></span>
+            <% if place.address.present? %><span class="text-xs text-base-content/60 [overflow-wrap:anywhere]"> · <%= place.address %></span><% end %>
+          </li>
         <% end %>
       </ul>
     </div>
   <% end %>
 
-  <% if trip.planned_accommodations.any? || trip.planned_travellers.any? %>
-    <div class="mt-4 space-y-2 text-sm text-base-content/70">
-      <% if trip.planned_accommodations.any? %>
-        <p><strong><%= t('.accommodations') %>:</strong></p>
-        <ul class="space-y-1">
-          <% trip.planned_accommodations.each do |accommodation| %>
-            <li><strong><%= accommodation.name %></strong><%= " · #{accommodation.address}" if accommodation.address.present? %><%= " · #{l(accommodation.starts_on, format: :short)}" if accommodation.starts_on %><%= " – #{l(accommodation.ends_on, format: :short)}" if accommodation.ends_on %><%= " — #{accommodation.notes}" if accommodation.notes.present? %></li>
-          <% end %>
-        </ul>
-      <% end %>
-      <% if trip.planned_travellers.any? %>
-        <p><strong><%= t('.travellers') %>:</strong> <%= trip.planned_travellers.map(&:name).join(', ') %></p>
-      <% end %>
+  <% if trip.planned_accommodations.any? %>
+    <div class="border-t border-base-content/10 px-4 py-3">
+      <h3 class="text-sm font-semibold"><%= t('.accommodations') %></h3>
+      <ul class="mt-2 space-y-2 text-sm">
+        <% trip.planned_accommodations.each do |accommodation| %>
+          <li class="min-w-0">
+            <p class="font-medium [overflow-wrap:anywhere]"><%= accommodation.name %></p>
+            <% details = [
+                 accommodation.address.presence,
+                 [accommodation.starts_on, accommodation.ends_on].compact.map { |date| l(date, format: :short) }.join(' – ').presence
+               ].compact %>
+            <% if details.any? %>
+              <p class="text-xs tabular-nums text-base-content/60 [overflow-wrap:anywhere]"><%= details.join(' · ') %></p>
+            <% end %>
+            <% if accommodation.notes.present? %>
+              <p class="mt-0.5 whitespace-pre-line text-xs text-base-content/70"><%= accommodation.notes %></p>
+            <% end %>
+          </li>
+        <% end %>
+      </ul>
     </div>
   <% end %>
 </section>

@@ -2195,6 +2195,27 @@ fr:
       residential_roads: Routes résidentielles
       track: Tracé
   settings:
+    trek_sources:
+      select_trips:
+        title: "Choisir des voyages TREK"
+        subtitle: "Seuls les voyages sélectionnés sont copiés dans Dawarich. Vous pourrez modifier la sélection plus tard."
+        untitled_trip: "Voyage sans titre"
+        archived: "Archivé"
+        dates_required: "Ajoutez des dates de début et de fin dans TREK avant d'importer ce voyage."
+        import_selected: "Importer les voyages sélectionnés"
+        back: "Retour"
+      create:
+        connected_choose_trips: "TREK est connecté. Choisissez les voyages que Dawarich doit gérer."
+      import_trips:
+        no_trips_selected: "Aucun voyage TREK sélectionné. Les itinéraires existants ont été conservés et ne sont plus synchronisés."
+        select_at_least_one_dated_trip: "Sélectionnez au moins un voyage TREK actif avec des dates de début et de fin."
+        trips_are_now_syncing: "Les voyages TREK sélectionnés sont en cours de synchronisation."
+      sync:
+        sync_queued: "La synchronisation TREK a été mise en file d'attente."
+        source_disabled: "TREK est désactivé. Reconnectez-le avec une nouvelle clé API avant de synchroniser."
+        source_importing: "TREK importe encore vos voyages sélectionnés."
+      destroy:
+        source_removed_trips_kept: "TREK a été déconnecté. Vos voyages gérés ont été conservés et ne seront plus synchronisés."
     navigation:
       general: Général
       integrations: Intégrations
@@ -2314,6 +2335,22 @@ fr:
         your_language: "Votre langue"
         the_interface_emails_and_notifications_will_use_this_language: "L'interface, les e-mails et les notifications utiliseront cette langue."
     integrations:
+      trek:
+        title: "Intégration TREK"
+        subtitle: "Importez un itinéraire TREK sélectionné comme voyage Dawarich. TREK reste la source du plan."
+        trek_url: "URL de TREK"
+        cloud_notice: "Dawarich Cloud a besoin d'une URL TREK accessible publiquement. Dawarich auto-hébergé peut se connecter à une instance sur le réseau local ou Tailscale."
+        api_key: "Clé API TREK"
+        api_key_help: "Créez une clé API en lecture seule dans TREK, sous Paramètres → Intégrations. Elle commence par trek_."
+        connect: "Connecter TREK"
+        reconnect: "Reconnecter TREK"
+        importing_trips: "Import des voyages sélectionnés…"
+        last_synced: "Dernière synchronisation : %{time}"
+        not_synced_yet: "Pas encore synchronisé"
+        choose_trips: "Choisir des voyages"
+        sync_now: "Synchroniser maintenant"
+        disconnect: "Déconnecter"
+        disconnect_confirmation: "Déconnecter TREK ? Les voyages gérés et leurs données enregistrées restent dans Dawarich, mais ne sont plus synchronisés."
       index:
         services_nav: Services d'intégration
         geocoding: "Géocodage"
@@ -2324,6 +2361,7 @@ fr:
           photoprism: PhotoPrism
           airtrail: AirTrail
           teslamate: TeslaMateApi
+          trek: "TREK"
         status_connected: Connecté
         status_failed: La dernière tentative de connexion a échoué
         immich_photoprism_integrations: Intégrations Immich & Photoprism
@@ -3063,6 +3101,8 @@ fr:
     distance:
       calculating: Calcul en cours...
     form:
+      cancel: "Annuler"
+      managed_by_trek_hint: "Le nom et les dates viennent de TREK et sont mis à jour à chaque synchronisation. Modifiez-les dans TREK."
       prohibited_this_trip_from_being_saved: 'a empêché l’enregistrement de ce voyage
         :'
       errors_prohibited_save:
@@ -3075,6 +3115,7 @@ fr:
       recalculate_this_trip_s_path_distance_and_countries_from_your: Recalculer l’itinéraire,
         la distance et les pays de votre voyage à partir de vos derniers points ?
     trip:
+      plan: "Plan"
       no_points_found: Aucun point trouvé
       calculating: Calcul en cours...
       ndash: "–"
@@ -3085,9 +3126,7 @@ fr:
         one: "%{count} jour"
         other: "%{count} jours"
     edit:
-      back_to_trips: Retour aux voyages
       editing_trip: Modification du voyage
-      show_this_trip: Afficher ce voyage
     index:
       new_trip: Nouveau voyage
       no_trips_yet: Aucun voyage pour le moment
@@ -3097,7 +3136,6 @@ fr:
       create_your_first_trip: Créer votre premier voyage
       trips: Voyages
     new:
-      back_to_trips: Retour aux voyages
       new_trip: Nouveau voyage
     notes:
       empty:
@@ -3117,12 +3155,44 @@ fr:
         delete: Supprimer
         delete_this_note: Supprimer cette note ?
         update_note: Mettre à jour la note
+    source_itinerary:
+      show_on_map: "Afficher sur la carte"
+      title: "Plan depuis TREK"
+      subtitle: "Cet itinéraire est géré dans TREK. Vos données de suivi Dawarich restent séparées."
+      sync_stopped: "Synchronisation arrêtée"
+      synced_ago: "Synchronisé il y a %{time}"
+      open_in_trek: "Ouvrir dans TREK"
+      day_number: "Jour %{number}"
+      days_count:
+        one: "%{count} jour"
+        other: "%{count} jours"
+      stops_count:
+        one: "%{count} étape"
+        other: "%{count} étapes"
+      duration_minutes:
+        one: "%{count} min"
+        other: "%{count} min"
+      reservation_statuses:
+        confirmed: "Confirmée"
+        pending: "En attente"
+        cancelled: "Annulée"
+      accommodations: "Hébergements"
+      travellers: "Voyageurs"
+      unscheduled_reservations: "Autres réservations"
+      unplanned_places: "Lieux non planifiés"
     show:
+      planned_route: "Itinéraire prévu"
+      plan: "Plan"
+      toggle_plan_on_map: "Afficher le plan sur la carte"
+      back_to_trips: "Retour aux voyages"
       video: "Vidéo"
       video_unavailable: "Disponible une fois le trajet du voyage calculé"
       create_video: "Créer une vidéo de relecture de ce voyage"
       loading_route_data: Chargement des données de route...
       trip_path_is_being_calculated: Calcul de l'itinéraire en cours...
+      trip_has_not_started_yet: "Ce voyage planifié n'a pas encore commencé."
+      no_locations_recorded: "Aucune position n'a été enregistrée pendant ce voyage."
+      no_locations_recorded_hint: "Les points enregistrés entre ces dates apparaîtront ici."
       download_trip: Télécharger l'itinéraire
       currently_shared: Partagé actuellement
       public: Public
@@ -3141,7 +3211,6 @@ fr:
       no_data: Aucune donnée disponible
       trip_notes: Notes du voyage
       more_on: En savoir plus sur
-      back_to_trips: Retour aux voyages
       gpx: GPX
       geojson: GeoJSON
       edit_trip: Éditer l'itinéraire

@@ -1470,6 +1470,27 @@ ca:
       residential_roads: Carrers residencials
       track: Trajecte
   settings:
+    trek_sources:
+      select_trips:
+        title: "Tria viatges de TREK"
+        subtitle: "Només es copien a Dawarich els viatges seleccionats. Pots canviar la selecció més endavant."
+        untitled_trip: "Viatge sense títol"
+        archived: "Arxivat"
+        dates_required: "Afegeix dates d'inici i de fi a TREK abans d'importar aquest viatge."
+        import_selected: "Importa els viatges seleccionats"
+        back: "Enrere"
+      create:
+        connected_choose_trips: "TREK connectat. Tria els viatges que vols que gestioni Dawarich."
+      import_trips:
+        no_trips_selected: "No s'ha seleccionat cap viatge de TREK. Els itineraris existents s'han conservat i han deixat de sincronitzar-se."
+        select_at_least_one_dated_trip: "Selecciona almenys un viatge actiu de TREK amb dates d'inici i de fi."
+        trips_are_now_syncing: "Els viatges de TREK seleccionats s'estan sincronitzant."
+      sync:
+        sync_queued: "La sincronització amb TREK s'ha posat a la cua."
+        source_disabled: "TREK està desactivat. Torna'l a connectar amb una clau API nova abans de sincronitzar."
+        source_importing: "TREK encara està important els viatges seleccionats."
+      destroy:
+        source_removed_trips_kept: "TREK s'ha desconnectat. Els teus viatges gestionats s'han conservat i ja no es sincronitzaran."
     navigation:
       general: General
       integrations: Integracions
@@ -1547,6 +1568,22 @@ ca:
         general_settings: Configuració general
         save_changes: Desa els canvis
     integrations:
+      trek:
+        title: "Integració amb TREK"
+        subtitle: "Importa un itinerari de TREK seleccionat com a viatge de Dawarich. TREK continua sent la font del pla."
+        trek_url: "URL de TREK"
+        cloud_notice: "Dawarich Cloud necessita una URL de TREK accessible públicament. Dawarich autoallotjat es pot connectar a una instància a la xarxa local o a Tailscale."
+        api_key: "Clau API de TREK"
+        api_key_help: "Crea una clau API de només lectura a TREK, a Configuració → Integracions. Comença per trek_."
+        connect: "Connecta TREK"
+        reconnect: "Torna a connectar TREK"
+        importing_trips: "S'estan important els viatges seleccionats…"
+        last_synced: "Darrera sincronització: %{time}"
+        not_synced_yet: "Encara no sincronitzat"
+        choose_trips: "Tria viatges"
+        sync_now: "Sincronitza ara"
+        disconnect: "Desconnecta"
+        disconnect_confirmation: "Vols desconnectar TREK? Els viatges gestionats i les seves dades registrades es queden a Dawarich, però deixen de sincronitzar-se."
       index:
         immich_photoprism_integrations: Integracions d'Immich i Photoprism
         connect_your_photo_management_tools_to_see_your_photos_on: Connecta les teves eines de gestió fotogràfica per veure les teves fotos al mapa. Les integracions d'Immich i Photoprism estan disponibles al pla Pro.
@@ -1605,6 +1642,7 @@ ca:
           photoprism: "PhotoPrism"
           airtrail: "AirTrail"
           teslamate: "TeslaMateApi"
+          trek: "TREK"
         status_connected: "Connectat"
         status_failed: "L'últim intent de connexió ha fallat"
     subscriptions:
@@ -2187,6 +2225,8 @@ ca:
     distance:
       calculating: Calculant...
     form:
+      cancel: "Cancel·la"
+      managed_by_trek_hint: "El nom i les dates venen de TREK i s'actualitzen a cada sincronització. Canvia'ls a TREK."
       prohibited_this_trip_from_being_saved: 'ha impedit que es desés aquest viatge:'
       errors_prohibited_save:
         one: "%{count} error ha impedit que es desés aquest viatge:"
@@ -2197,6 +2237,7 @@ ca:
       recalculation_failed_try_again: El recàlcul ha fallat — torna-ho a provar.
       recalculate_this_trip_s_path_distance_and_countries_from_your: Recalcular el recorregut, la distància i els països d'aquest viatge a partir dels teus punts més recents?
     trip:
+      plan: "Pla"
       no_points_found: No s'ha trobat cap punt
       calculating: Calculant...
       ndash: "–"
@@ -2207,9 +2248,7 @@ ca:
         one: "%{count} dia"
         other: "%{count} dies"
     edit:
-      back_to_trips: Torna als viatges
       editing_trip: Edició del viatge
-      show_this_trip: Mostra aquest viatge
     index:
       new_trip: Nou viatge
       no_trips_yet: Encara no hi ha viatges
@@ -2217,7 +2256,6 @@ ca:
       create_your_first_trip: Crea el teu primer viatge
       trips: Viatges
     new:
-      back_to_trips: Torna als viatges
       new_trip: Nou viatge
     notes:
       empty:
@@ -2237,9 +2275,41 @@ ca:
         delete: Suprimeix
         delete_this_note: Suprimir aquesta nota?
         update_note: Actualitza la nota
+    source_itinerary:
+      show_on_map: "Mostra al mapa"
+      title: "Pla de TREK"
+      subtitle: "Aquest itinerari es gestiona a TREK. Les teves dades de seguiment de Dawarich es mantenen a part."
+      sync_stopped: "Sincronització aturada"
+      synced_ago: "Sincronitzat fa %{time}"
+      open_in_trek: "Obre a TREK"
+      day_number: "Dia %{number}"
+      days_count:
+        one: "%{count} dia"
+        other: "%{count} dies"
+      stops_count:
+        one: "%{count} parada"
+        other: "%{count} parades"
+      duration_minutes:
+        one: "%{count} min"
+        other: "%{count} min"
+      reservation_statuses:
+        confirmed: "Confirmada"
+        pending: "Pendent"
+        cancelled: "Cancel·lada"
+      accommodations: "Allotjaments"
+      travellers: "Viatgers"
+      unscheduled_reservations: "Altres reserves"
+      unplanned_places: "Llocs sense planificar"
     show:
+      planned_route: "Ruta planificada"
+      plan: "Pla"
+      toggle_plan_on_map: "Mostra el pla al mapa"
+      back_to_trips: "Torna als viatges"
       loading_route_data: Carregant les dades de la ruta...
       trip_path_is_being_calculated: S'està calculant el recorregut del viatge...
+      trip_has_not_started_yet: "Aquest viatge planificat encara no ha començat."
+      no_locations_recorded: "No s'han registrat ubicacions durant aquest viatge."
+      no_locations_recorded_hint: "Els punts registrats entre aquestes dates apareixeran aquí."
       download_trip: Descarrega el viatge
       currently_shared: Actualment compartit
       public: Públic
@@ -2257,7 +2327,6 @@ ca:
       no_data: No hi ha dades
       trip_notes: Notes del viatge
       more_on: Més a
-      back_to_trips: Torna als viatges
       gpx: GPX
       geojson: GeoJSON
       edit_trip: Edita el viatge

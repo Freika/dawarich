@@ -794,3 +794,47 @@
     min-height: 40px;
   }
 }
+
+/* Trip plan — numbered stop markers and the caption that names the map. */
+.trip-plan-marker {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  background: var(--trip-plan-marker-color, oklch(var(--p)));
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  cursor: default;
+}
+
+.trip-plan-caption {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: calc(100% - 24px);
+  padding: 6px 10px;
+  color: oklch(var(--bc));
+  font-size: 0.8125rem;
+  background: oklch(var(--b1) / 0.95);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 8px;
+}
+
+.trip-plan-caption--compact {
+  top: 8px;
+  left: 8px;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}

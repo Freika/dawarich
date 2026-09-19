@@ -2225,6 +2225,8 @@ en:
     distance:
       calculating: Calculating...
     form:
+      cancel: "Cancel"
+      managed_by_trek_hint: "The name and dates come from TREK and update with every sync. Change them in TREK."
       prohibited_this_trip_from_being_saved: 'prohibited this trip from being saved:'
       errors_prohibited_save:
         one: "%{count} error prohibited this trip from being saved:"
@@ -2235,15 +2237,32 @@ en:
       recalculation_failed_try_again: Recalculation failed — try again.
       recalculate_this_trip_s_path_distance_and_countries_from_your: Recalculate this trip's path, distance, and countries from your latest points?
     source_itinerary:
-      title: Plan from TREK
-      subtitle: This itinerary is managed in TREK. Your Dawarich tracking data stays separate.
-      managed_by_trek: Managed by TREK
-      sync_stopped: Sync stopped
-      accommodations: Accommodations
-      travellers: Travellers
-      unscheduled_reservations: Other reservations
-      unplanned_places: Unplanned places
+      show_on_map: "Show on map"
+      title: "Plan from TREK"
+      subtitle: "This itinerary is managed in TREK. Your Dawarich tracking data stays separate."
+      sync_stopped: "Sync stopped"
+      synced_ago: "Synced %{time} ago"
+      open_in_trek: "Open in TREK"
+      day_number: "Day %{number}"
+      days_count:
+        one: "%{count} day"
+        other: "%{count} days"
+      stops_count:
+        one: "%{count} stop"
+        other: "%{count} stops"
+      duration_minutes:
+        one: "%{count} min"
+        other: "%{count} min"
+      reservation_statuses:
+        confirmed: "Confirmed"
+        pending: "Pending"
+        cancelled: "Cancelled"
+      accommodations: "Accommodations"
+      travellers: "Travellers"
+      unscheduled_reservations: "Other reservations"
+      unplanned_places: "Unplanned places"
     trip:
+      plan: "Plan"
       no_points_found: No points found
       calculating: Calculating...
       ndash: "–"
@@ -2254,9 +2273,7 @@ en:
         one: "%{count} day"
         other: "%{count} days"
     edit:
-      back_to_trips: Back to trips
       editing_trip: Editing trip
-      show_this_trip: Show this trip
     index:
       new_trip: New trip
       no_trips_yet: No trips yet
@@ -2264,7 +2281,6 @@ en:
       create_your_first_trip: Create your first trip
       trips: Trips
     new:
-      back_to_trips: Back to trips
       new_trip: New trip
     notes:
       empty:
@@ -2285,9 +2301,15 @@ en:
         delete_this_note: Delete this note?
         update_note: Update note
     show:
+      planned_route: "Planned route"
+      plan: "Plan"
+      toggle_plan_on_map: "Show the plan on the map"
+      back_to_trips: "Back to trips"
       loading_route_data: Loading route data...
       trip_path_is_being_calculated: Trip path is being calculated...
-      trip_has_not_started_yet: This planned trip has not started yet.
+      trip_has_not_started_yet: "This planned trip has not started yet."
+      no_locations_recorded: "No locations were recorded during this trip."
+      no_locations_recorded_hint: "Points recorded between these dates will appear here."
       download_trip: Download trip
       currently_shared: Currently shared
       public: Public
@@ -2305,7 +2327,6 @@ en:
       no_data: No data
       trip_notes: Trip Notes
       more_on: More on
-      back_to_trips: Back to trips
       gpx: GPX
       geojson: GeoJSON
       edit_trip: Edit trip

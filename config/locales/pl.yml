@@ -1470,6 +1470,27 @@ pl:
       residential_roads: Drogi osiedlowe
       track: Trasa
   settings:
+    trek_sources:
+      select_trips:
+        title: "Wybierz podróże z TREK"
+        subtitle: "Do Dawarich kopiowane są tylko wybrane podróże. Wybór możesz zmienić później."
+        untitled_trip: "Podróż bez tytułu"
+        archived: "Zarchiwizowana"
+        dates_required: "Dodaj w TREK datę rozpoczęcia i zakończenia przed zaimportowaniem tej podróży."
+        import_selected: "Importuj wybrane podróże"
+        back: "Wstecz"
+      create:
+        connected_choose_trips: "Połączono z TREK. Wybierz podróże, którymi ma zarządzać Dawarich."
+      import_trips:
+        no_trips_selected: "Nie wybrano żadnych podróży z TREK. Istniejące plany podróży zostały zachowane i przestały się synchronizować."
+        select_at_least_one_dated_trip: "Wybierz co najmniej jedną aktywną podróż z TREK z datą rozpoczęcia i zakończenia."
+        trips_are_now_syncing: "Wybrane podróże z TREK są synchronizowane."
+      sync:
+        sync_queued: "Synchronizacja z TREK została dodana do kolejki."
+        source_disabled: "TREK jest wyłączony. Przed synchronizacją połącz go ponownie z nowym kluczem API."
+        source_importing: "TREK wciąż importuje wybrane podróże."
+      destroy:
+        source_removed_trips_kept: "TREK został rozłączony. Zarządzane podróże zostały zachowane i nie będą już synchronizowane."
     navigation:
       general: Ogólne
       integrations: Integracje
@@ -1547,6 +1568,22 @@ pl:
         general_settings: Ustawienia ogólne
         save_changes: Zapisz zmiany
     integrations:
+      trek:
+        title: "Integracja z TREK"
+        subtitle: "Zaimportuj wybrany plan podróży z TREK jako podróż w Dawarich. TREK pozostaje źródłem planu."
+        trek_url: "Adres URL TREK"
+        cloud_notice: "Dawarich Cloud wymaga publicznie dostępnego adresu URL TREK. Samodzielnie hostowany Dawarich może połączyć się z instancją w sieci lokalnej lub w Tailscale."
+        api_key: "Klucz API TREK"
+        api_key_help: "Utwórz w TREK klucz API tylko do odczytu w Ustawienia → Integracje. Zaczyna się od trek_."
+        connect: "Połącz z TREK"
+        reconnect: "Połącz ponownie z TREK"
+        importing_trips: "Importowanie wybranych podróży…"
+        last_synced: "Ostatnia synchronizacja: %{time}"
+        not_synced_yet: "Jeszcze nie zsynchronizowano"
+        choose_trips: "Wybierz podróże"
+        sync_now: "Synchronizuj teraz"
+        disconnect: "Rozłącz"
+        disconnect_confirmation: "Rozłączyć TREK? Zarządzane podróże i ich zarejestrowane dane pozostaną w Dawarich, ale przestaną się synchronizować."
       index:
         services_nav: Usługi integracji
         geocoding: "Geokodowanie"
@@ -1557,6 +1594,7 @@ pl:
           photoprism: PhotoPrism
           airtrail: AirTrail
           teslamate: TeslaMateApi
+          trek: "TREK"
         status_connected: Połączono
         status_failed: Ostatnia próba połączenia nie powiodła się
         immich_photoprism_integrations: Integracje Immich i Photoprism
@@ -2187,6 +2225,8 @@ pl:
     distance:
       calculating: Obliczanie...
     form:
+      cancel: "Anuluj"
+      managed_by_trek_hint: "Nazwa i daty pochodzą z TREK i są aktualizowane przy każdej synchronizacji. Zmień je w TREK."
       prohibited_this_trip_from_being_saved: 'uniemożliwił zapisanie tej podróży:'
       errors_prohibited_save:
         one: "%{count} błąd uniemożliwił zapisanie tej podróży:"
@@ -2197,6 +2237,7 @@ pl:
       recalculation_failed_try_again: Przeliczanie nie powiodło się — spróbuj ponownie.
       recalculate_this_trip_s_path_distance_and_countries_from_your: Przeliczyć trasę, dystans i kraje tej podróży na podstawie najnowszych punktów?
     trip:
+      plan: "Plan"
       no_points_found: Nie znaleziono punktów
       calculating: Obliczanie...
       ndash: "–"
@@ -2207,9 +2248,7 @@ pl:
         one: "%{count} dzień"
         other: "%{count} dni"
     edit:
-      back_to_trips: Powrót do podróży
       editing_trip: Edycja podróży
-      show_this_trip: Pokaż tę podróż
     index:
       new_trip: Nowa podróż
       no_trips_yet: Brak podróży
@@ -2217,7 +2256,6 @@ pl:
       create_your_first_trip: Utwórz pierwszą podróż
       trips: Podróże
     new:
-      back_to_trips: Powrót do podróży
       new_trip: Nowa podróż
     notes:
       empty:
@@ -2237,9 +2275,41 @@ pl:
         delete: Usuń
         delete_this_note: Usunąć tę notatkę?
         update_note: Zaktualizuj notatkę
+    source_itinerary:
+      show_on_map: "Pokaż na mapie"
+      title: "Plan z TREK"
+      subtitle: "Ten plan podróży jest zarządzany w TREK. Twoje dane śledzenia w Dawarich pozostają osobno."
+      sync_stopped: "Synchronizacja zatrzymana"
+      synced_ago: "Zsynchronizowano %{time} temu"
+      open_in_trek: "Otwórz w TREK"
+      day_number: "Dzień %{number}"
+      days_count:
+        one: "%{count} dzień"
+        other: "Dni: %{count}"
+      stops_count:
+        one: "%{count} przystanek"
+        other: "Przystanki: %{count}"
+      duration_minutes:
+        one: "%{count} min"
+        other: "%{count} min"
+      reservation_statuses:
+        confirmed: "Potwierdzona"
+        pending: "Oczekująca"
+        cancelled: "Anulowana"
+      accommodations: "Noclegi"
+      travellers: "Podróżni"
+      unscheduled_reservations: "Inne rezerwacje"
+      unplanned_places: "Niezaplanowane miejsca"
     show:
+      planned_route: "Zaplanowana trasa"
+      plan: "Plan"
+      toggle_plan_on_map: "Pokaż plan na mapie"
+      back_to_trips: "Powrót do podróży"
       loading_route_data: Wczytywanie danych trasy...
       trip_path_is_being_calculated: Trwa obliczanie przebiegu podróży...
+      trip_has_not_started_yet: "Ta zaplanowana podróż jeszcze się nie rozpoczęła."
+      no_locations_recorded: "Podczas tej podróży nie zarejestrowano żadnych lokalizacji."
+      no_locations_recorded_hint: "Punkty zarejestrowane w tych dniach pojawią się tutaj."
       download_trip: Pobierz podróż
       currently_shared: Aktualnie udostępnione
       public: Publiczne
@@ -2257,7 +2327,6 @@ pl:
       no_data: Brak danych
       trip_notes: Notatki z podróży
       more_on: Więcej o
-      back_to_trips: Powrót do podróży
       gpx: GPX
       geojson: GeoJSON
       edit_trip: Edytuj podróż

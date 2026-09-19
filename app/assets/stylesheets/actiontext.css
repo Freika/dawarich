@@ -40,12 +40,61 @@
   display: none;
 }
 
-/* Color buttons in white */
-.trix-button-row button {
-  background-color: white !important;
+/* Toolbar and editor follow the theme tokens, like input-bordered fields. */
+trix-toolbar .trix-button-row {
+  gap: 0.5rem;
 }
 
-.trix-content-editor {
-  min-height: 10rem;
+trix-toolbar .trix-button-group {
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+  background: oklch(var(--b1));
+  border: 1px solid oklch(var(--bc) / 0.2);
+  border-radius: var(--rounded-btn, 0.375rem);
+}
+
+trix-toolbar .trix-button {
+  color: oklch(var(--bc));
+  background: transparent;
+  border: 0;
+}
+
+trix-toolbar .trix-button:not(:first-child) {
+  border-left: 1px solid oklch(var(--bc) / 0.1);
+}
+
+trix-toolbar .trix-button:not(:disabled):hover {
+  background: oklch(var(--bc) / 0.08);
+}
+
+trix-toolbar .trix-button.trix-active {
+  background: oklch(var(--p) / 0.15);
+}
+
+trix-toolbar .trix-button:disabled::before {
+  opacity: 0.25;
+}
+
+trix-toolbar .trix-button:focus-visible {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: -2px;
+}
+
+:is([data-theme="dark"], [data-theme="dawarich-dark"], .dark) trix-toolbar .trix-button--icon::before {
+  filter: invert(1);
+}
+
+trix-editor.trix-content-editor {
   width: 100%;
+  min-height: 10rem;
+  padding: 0.625rem 0.875rem;
+  color: oklch(var(--bc));
+  background: oklch(var(--b1));
+  border: 1px solid oklch(var(--bc) / 0.2);
+  border-radius: var(--rounded-btn, 0.375rem);
+}
+
+trix-editor.trix-content-editor:focus {
+  outline: 2px solid oklch(var(--bc) / 0.2);
+  outline-offset: 2px;
 }

@@ -1,6 +1,7 @@
 <% content_for :title, @trip.name %>
 
 <%= turbo_stream_from @trip %>
+<% plan_toggle = @trip.path.present? && @trip_plan.present? %>
 
 <div class="container mx-auto px-4 my-5" data-controller="trip-maplibre"
      data-trip-maplibre-api-key-value="<%= current_user.api_key %>"
@@ -10,6 +11,8 @@
      data-trip-maplibre-trip-id-value="<%= @trip.id %>"
      data-trip-maplibre-trip-name-value="<%= @trip.name %>"
      data-trip-maplibre-path-data-value="<%= @trip.path&.coordinates&.to_json %>"
+     data-trip-maplibre-tracker-id-value="<%= @trip.primary_tracker_id %>"
+     <% if plan_toggle %>data-trip-maplibre-plan-value="<%= @trip_plan.to_json %>"<% end %>
      data-trip-maplibre-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
 
   <%# Side-by-side layout: map card left (capped to viewport), scrollable content right %>
@@ -26,11 +29,33 @@
           </div>
           <%= render "shared/replay_panel", stimulus: "trip-maplibre", show_day_nav: true %>
         </div>
+      <% elsif @plan_map %>
+        <div class="relative h-full w-full overflow-hidden rounded-lg">
+          <div class="h-full w-full"
+               data-testid="trip-plan-map"
+               data-controller="trip-maplibre-preview"
+               data-trip-maplibre-preview-plan-value="<%= @plan_map.to_json %>"
+               data-trip-maplibre-preview-numbered-value="true"
+               data-trip-maplibre-preview-interactive-value="true"
+               data-trip-maplibre-preview-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>"></div>
+          <p class="trip-plan-caption" role="status">
+            <%= icon 'map', class: 'size-4 shrink-0' %>
+            <span class="min-w-0">
+              <span class="font-medium"><%= t('.planned_route') %></span>
+              <span class="text-base-content/60"> · <%= @trip.started_at > Time.current ? t('.trip_has_not_started_yet') : t('.no_locations_recorded') %></span>
+            </span>
+          </p>
+        </div>
       <% else %>
-        <div class="flex items-center justify-center h-full rounded-lg bg-base-200">
-          <div class="text-center">
+        <div class="flex items-center justify-center h-full rounded-lg bg-base-200 p-6">
+          <div class="max-w-xs text-center" role="status">
             <% if @trip.source_imported? && @trip.started_at > Time.current %>
+              <%= icon 'calendar-clock', class: 'mx-auto mb-3 size-8 text-base-content/40' %>
               <p class="text-base-content/60"><%= t('.trip_has_not_started_yet') %></p>
+            <% elsif @day_stats.empty? %>
+              <%= icon 'route', class: 'mx-auto mb-3 size-8 text-base-content/40' %>
+              <p class="font-medium"><%= t('.no_locations_recorded') %></p>
+              <p class="mt-1 text-sm text-base-content/60"><%= t('.no_locations_recorded_hint') %></p>
             <% else %>
               <p class="text-base-content/60"><%= t('.trip_path_is_being_calculated') %></p>
               <div class="loading loading-spinner loading-lg mt-4"></div>
@@ -46,7 +71,7 @@
       <div class="mb-6">
         <div class="flex items-start justify-between gap-3 mb-1">
           <h1 class="text-3xl font-bold leading-tight"><%= @trip.name %></h1>
-          <div class="flex items-center gap-1 shrink-0">
+          <div class="flex items-center gap-1 shrink-0" data-testid="trip-header-actions">
             <div class="dropdown dropdown-end">
               <label tabindex="0" class="btn btn-sm btn-ghost" title="<%= t('.download_trip') %>">
                 <%= icon 'download', class: 'w-4 h-4' %>
@@ -64,6 +89,23 @@
                 </li>
               </ul>
             </div>
+            <button type="button"
+                    class="btn btn-sm btn-ghost"
+                    data-trip-maplibre-target="posterBtn"
+                    data-action="click->trip-maplibre#openPosterStudio"
+                    aria-label="<%= t('.create_poster') %>"
+                    title="<%= t(@trip.path.blank? ? '.poster_unavailable' : '.create_poster') %>"
+                    <% if @trip.path.blank? %>disabled<% end %>>
+              <%= icon 'image', class: 'w-4 h-4' %>
+            </button>
+            <button type="button"
+                    class="btn btn-sm btn-ghost"
+                    data-action="click->trip-maplibre#openVideoStudio"
+                    aria-label="<%= t('.create_video') %>"
+                    title="<%= t(@trip.path.blank? ? '.video_unavailable' : '.create_video') %>"
+                    <% if @trip.path.blank? %>disabled<% end %>>
+              <%= icon 'video', class: 'w-4 h-4' %>
+            </button>
             <%= link_to edit_trip_path(@trip),
                 class: "btn btn-sm btn-ghost",
                 title: t('.edit_trip') do %>
@@ -95,9 +137,6 @@
         <%= render "trips/countries", trip: @trip, current_user: current_user, distance_unit: current_user.safe_settings.distance_unit %>
       </div>
 
-      <% if @trip.planned_days.any? || @trip.planned_unplanned_places.any? || @trip.planned_reservations.any? || @trip.planned_accommodations.any? || @trip.planned_travellers.any? %>
-        <%= render 'trips/source_itinerary', trip: @trip %>
-      <% end %>
       <turbo-frame id="share-link-modal"></turbo-frame>
 
       <%# Map tools toolbar %>
@@ -124,6 +163,19 @@
           </button>
         <% end %>
 
+        <% if plan_toggle %>
+          <button type="button"
+                  class="btn btn-sm btn-outline gap-1"
+                  data-testid="trip-plan-toggle"
+                  data-trip-maplibre-target="planToggleBtn"
+                  data-action="click->trip-maplibre#togglePlan"
+                  aria-pressed="false"
+                  title="<%= t('.toggle_plan_on_map') %>">
+            <%= icon 'map', class: 'w-4 h-4' %>
+            <span class="hidden sm:inline"><%= t('.plan') %></span>
+          </button>
+        <% end %>
+
         <button type="button"
                 class="btn btn-sm btn-outline gap-1"
                 data-trip-maplibre-target="replayToggleBtn"
@@ -141,27 +193,12 @@
           <span class="hidden sm:inline"><%= t('.show_all_days') %></span>
         </button>
 
-        <button type="button"
-                class="btn btn-sm btn-outline gap-1"
-                data-trip-maplibre-target="posterBtn"
-                data-action="click->trip-maplibre#openPosterStudio"
-                title="<%= t(@trip.path.blank? ? '.poster_unavailable' : '.create_poster') %>"
-                <% if @trip.path.blank? %>disabled<% end %>>
-          <%= icon 'image', class: 'w-4 h-4' %>
-          <span class="hidden sm:inline"><%= t('.poster') %></span>
-        </button>
-
-        <button type="button"
-                class="btn btn-sm btn-outline gap-1"
-                data-action="click->trip-maplibre#openVideoStudio"
-                title="<%= t(@trip.path.blank? ? '.video_unavailable' : '.create_video') %>"
-                <% if @trip.path.blank? %>disabled<% end %>>
-          <%= icon 'video', class: 'w-4 h-4' %>
-          <span class="hidden sm:inline"><%= t('.video') %></span>
-        </button>
-
         <%= render "trips/recalculate_button", trip: @trip %>
       </div>
+
+      <% if @trip.planned_days.any? || @trip.planned_unplanned_places.any? || @trip.planned_reservations.any? || @trip.planned_accommodations.any? || @trip.planned_travellers.any? %>
+        <%= render 'trips/source_itinerary', trip: @trip, day_notes: @day_notes, plan_on_map: @plan_map.present? || plan_toggle %>
+      <% end %>
 
       <%# Accordion days %>
       <div data-trip-maplibre-target="daysAccordion" class="space-y-1 mb-6">
