@@ -1,6 +1,6 @@
 # Country boundaries
 
-`countries.geojson.gz` and the generated `public/maps/countries-v1.pmtiles`
+`countries.geojson.gz` and the generated `public/maps/countries-v2.pmtiles`
 contain Natural Earth 1:10m administrative country boundaries. Natural Earth
 data is in the public domain. See https://www.naturalearthdata.com/about/terms-of-use/.
 

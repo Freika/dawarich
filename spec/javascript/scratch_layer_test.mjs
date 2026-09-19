@@ -37,7 +37,7 @@ test("the bundled country source overzooms a native maxzoom-8 PMTiles archive", 
 
   assert.deepEqual(layer.getSourceConfig(), {
     type: "vector",
-    url: "pmtiles:///maps/countries-v1.pmtiles",
+    url: "pmtiles:///maps/countries-v2.pmtiles",
     minzoom: 0,
     maxzoom: 8,
   })
@@ -73,7 +73,7 @@ test("a failed PMTiles source episode is reported once and can use a fresh archi
   layer._cacheBuster = 1
   assert.equal(
     layer.getSourceConfig().url,
-    "pmtiles:///maps/countries-v1.pmtiles?_=1",
+    "pmtiles:///maps/countries-v2.pmtiles?_=1",
   )
   layer._unwatchTileErrors()
   assert.equal(handlers.has("error"), false)

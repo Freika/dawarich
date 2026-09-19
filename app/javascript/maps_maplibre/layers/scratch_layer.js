@@ -145,7 +145,7 @@ export class ScratchLayer extends BaseLayer {
     const suffix = this._cacheBuster ? `?_=${this._cacheBuster}` : ""
     return {
       type: "vector",
-      url: `pmtiles:///maps/countries-v1.pmtiles${suffix}`,
+      url: `pmtiles:///maps/countries-v2.pmtiles${suffix}`,
       minzoom: 0,
       maxzoom: 8,
     }

@@ -6,7 +6,7 @@ require 'json'
 require 'zlib'
 
 RSpec.describe 'bundled country PMTiles' do
-  let(:archive) { Rails.root.join('public/maps/countries-v1.pmtiles') }
+  let(:archive) { Rails.root.join('public/maps/countries-v2.pmtiles') }
 
   it 'is a PMTiles v3 archive within the accepted eight MiB budget' do
     header = File.binread(archive, 127)
@@ -23,7 +23,7 @@ RSpec.describe 'bundled country PMTiles' do
   end
 
   it 'matches the checked-in asset manifest' do
-    manifest = JSON.parse(Rails.root.join('public/maps/countries-v1.manifest.json').read)
+    manifest = JSON.parse(Rails.root.join('public/maps/countries-v2.manifest.json').read)
     source = Rails.root.join('lib/assets/countries.geojson.gz')
     source_sha = Zlib::GzipReader.open(source) { |gzip| Digest::SHA256.hexdigest(gzip.read) }
 
