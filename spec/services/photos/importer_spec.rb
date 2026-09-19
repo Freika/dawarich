@@ -55,6 +55,18 @@ RSpec.describe Photos::Importer do
       end
     end
 
+    context 'when a point has no lonlat key but valid lat/lon' do
+      before do
+        json = [{ latitude: 59.0, longitude: 30.0, timestamp: 978_296_400 }].to_json
+        import.file.attach(io: StringIO.new(json), filename: 'x.json', content_type: 'application/json')
+      end
+
+      it 'derives lonlat from lat/lon instead of dropping the point' do
+        expect { service }.to change { Point.count }.by(1)
+        expect(user.points.first.lonlat.to_s).to eq('POINT (30.0 59.0)')
+      end
+    end
+
     it 'does not persist raw_data for imported points' do
       service
 
