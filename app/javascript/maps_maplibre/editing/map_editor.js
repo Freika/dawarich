@@ -304,6 +304,8 @@ export class MapEditor {
   }
 
   applyCanonical(response, { rejectStale = false } = {}) {
+    if (!this.data) return false
+
     const canonicalPoint = response.point
     const canonicalTrack = response.track
     if (!canonicalPoint) return false

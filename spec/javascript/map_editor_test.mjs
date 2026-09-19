@@ -720,6 +720,36 @@ test("successful point move refreshes tiles even after the editor closes", async
   }
 })
 
+test("undo after the editor closed moves the point without throwing", async () => {
+  const map = fakeMap()
+  const moves = []
+  const editor = new MapEditor(map, {
+    apiClient: {
+      fetchTrackWithSegments: async () => trackFeature(),
+      fetchTrackPoints: async () => [point(1, 0, 0), point(2, 2, 0)],
+      movePointPosition: async (id, position) => {
+        moves.push([id, position.longitude, position.latitude])
+        return { point: point(1, position.longitude, position.latitude, 4) }
+      },
+    },
+    layerManager: { getLayer: () => ({ refresh: () => {} }) },
+    historyScope: () => ({}),
+  })
+
+  await editor.selectTrack(10)
+  editor.onMouseDown({ features: [{ properties: { id: 1 } }], preventDefault() {} })
+  editor.onMouseMove({ lngLat: { lng: 1, lat: 1 } })
+  await editor.onMouseUp({ lngLat: { lng: 1, lat: 1 } })
+  editor.close()
+  globalThis.__mapEditorToastErrors.length = 0
+
+  await editor.edits.undo()
+
+  assert.deepEqual(moves.at(-1), [1, 0, 0])
+  assert.deepEqual(globalThis.__mapEditorToastErrors, [])
+  assert.equal(editor.edits.history.entries.length, 0)
+})
+
 function tilePoint(
   id,
   longitude,
