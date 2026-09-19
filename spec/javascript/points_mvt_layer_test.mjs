@@ -31,13 +31,28 @@ const markerThemeSource = await readFile(
   "utf8",
 )
 
+const freshness = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/tile_freshness.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
 const stripImports = (source) =>
   source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const combined = [baseLayerSource, heatmapSource, markerThemeSource, mvtSource]
+const combined = [
+  baseLayerSource,
+  heatmapSource,
+  markerThemeSource,
+  freshness,
+  mvtSource,
+]
   .map(stripImports)
   .join("\n")
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combined).toString("base64")}`
-const { heatmapPaint, PointsMvtLayer } = await import(moduleUrl)
+const { heatmapPaint, PointsMvtLayer, withTileVersion } = await import(
+  moduleUrl
+)
 
 // Minimal fake MapLibre map: records addLayer calls, tracks style layer order.
 function fakeMap(initialLayers = []) {
@@ -178,7 +193,6 @@ test("tile URLs carry no raw api key under any input combination", () => {
 
   for (const options of cases) {
     const layer = new PointsMvtLayer(fakeMap(), options)
-    layer._cacheBuster = 2
     const url = layer._buildTileUrl()
 
     assert.ok(!url.includes("api_key"), `api_key leaked in: ${url}`)
@@ -249,23 +263,6 @@ test("anyVisible reports heatmap-only, circles-only and fully hidden states", ()
   layer.visible = true
   layer.heatmapVisible = false
   assert.equal(layer.anyVisible, true)
-})
-
-test("a refresh never reuses a tile URL from an earlier page session", () => {
-  const firstSession = new PointsMvtLayer(fakeMap(), {
-    startAt: "a",
-    endAt: "b",
-  })
-  firstSession.add({ startAt: "a", endAt: "b" })
-  firstSession.refresh()
-  const secondSession = new PointsMvtLayer(fakeMap(), {
-    startAt: "a",
-    endAt: "b",
-  })
-  secondSession.add({ startAt: "a", endAt: "b" })
-  secondSession.refresh()
-
-  assert.notEqual(secondSession._tileUrl, firstSession._tileUrl)
 })
 
 test("update() to a new range re-adds sub-layers at their original z-position", () => {
@@ -472,4 +469,46 @@ test("stops listening for tile errors once removed", () => {
   layer.remove()
 
   assert.equal(map.listenerCount("error"), 0)
+})
+
+test("refresh reloads tiles in place with a fresh version, so rendered points stay on screen", () => {
+  const map = fakeMap([])
+  const layer = new PointsMvtLayer(map, { startAt: "a", endAt: "b" })
+  layer.add({ startAt: "a", endAt: "b" })
+  const reloads = []
+  map.refreshTiles = (sourceId) => reloads.push(sourceId)
+  map.removeLayer = () => assert.fail("refresh must not remove a layer")
+  map.removeSource = () => assert.fail("refresh must not remove the source")
+  const tile = () =>
+    withTileVersion(
+      new URL("/api/v1/tiles/points/1/2/3.mvt", "http://x.test"),
+    ).searchParams.get("_")
+  const before = tile()
+
+  layer.refresh()
+
+  assert.deepEqual(reloads, ["points-mvt-source"])
+  assert.notEqual(tile(), before)
+})
+
+test("a request cancelled by a newer refresh is not a tile failure", () => {
+  const map = fakeMap()
+  const reported = []
+  const layer = new PointsMvtLayer(map, {
+    onTileError: () => reported.push("failed"),
+  })
+  layer.add({})
+
+  map.emit("error", {
+    sourceId: "points-mvt-source",
+    error: new Error("AbortError"),
+  })
+  map.emit("error", {
+    sourceId: "points-mvt-source",
+    error: new DOMException("The user aborted a request.", "AbortError"),
+  })
+  assert.deepEqual(reported, [])
+
+  map.emit("error", { sourceId: "points-mvt-source", error: new Error("500") })
+  assert.deepEqual(reported, ["failed"])
 })

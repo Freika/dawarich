@@ -1,4 +1,5 @@
-import { BaseLayer } from "./base_layer"
+import { bumpTileVersion } from "../utils/tile_freshness"
+import { BaseLayer, isAbortedRequest } from "./base_layer"
 
 // FNV-1a over the api key: a non-secret cache partitioner keying URL-based
 // caches per user — auth itself travels only in the Authorization header
@@ -32,8 +33,6 @@ export class TracksMvtLayer extends BaseLayer {
     this.onTileError = options.onTileError || null
     this.onEmptyTracks = options.onEmptyTracks || null
     this._tileUrl = null
-    this._cacheBuster = 0
-    this._cacheScope = Math.random().toString(36).slice(2, 10)
     this._tileErrorHandler = null
     this._tileErrorReported = false
     this._sourceDataHandler = null
@@ -61,6 +60,7 @@ export class TracksMvtLayer extends BaseLayer {
 
     this._tileErrorHandler = (event) => {
       if (event?.sourceId !== this.sourceId) return
+      if (isAbortedRequest(event.error)) return
       if (this._tileErrorReported) return
 
       this._tileErrorReported = true
@@ -181,7 +181,12 @@ export class TracksMvtLayer extends BaseLayer {
   }
 
   refresh() {
-    this._cacheBuster += 1
+    bumpTileVersion("/api/v1/tiles/tracks/")
+    if (this.map.refreshTiles && this.map.getSource(this.sourceId)) {
+      this.map.refreshTiles(this.sourceId)
+      return
+    }
+
     const wasVisible = this.visible
     const beforeId = this._layerAbove()
     this.remove()
@@ -217,8 +222,6 @@ export class TracksMvtLayer extends BaseLayer {
     if (this.importId) params.set("import_id", this.importId)
     // Never the raw api key: the Bearer header authenticates (transformRequest)
     if (this.apiKey) params.set("u", trackCachePartitioner(this.apiKey))
-    if (this._cacheBuster)
-      params.set("_", `${this._cacheScope}-${this._cacheBuster}`)
 
     const query = params.toString()
     const path = "/api/v1/tiles/tracks/{z}/{x}/{y}.mvt"

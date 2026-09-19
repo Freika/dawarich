@@ -16,10 +16,17 @@ const tracks = await readFile(
   ),
   "utf8",
 )
+const freshness = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/tile_freshness.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
 const stripImports = (value) =>
   value.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const url = `data:text/javascript;base64,${Buffer.from([base, tracks].map(stripImports).join("\n")).toString("base64")}`
-const { TracksMvtLayer } = await import(url)
+const url = `data:text/javascript;base64,${Buffer.from([base, freshness, tracks].map(stripImports).join("\n")).toString("base64")}`
+const { TracksMvtLayer, withTileVersion } = await import(url)
 
 function fakeMap() {
   const layers = []
@@ -132,22 +139,11 @@ test("flight windows become a tile filter using track timestamps", () => {
   assert.match(JSON.stringify(map.filterCalls.at(-1).filter), /end_timestamp/)
 })
 
-test("refresh changes the URL and preserves layer order", () => {
+test("refresh without in-place reloading preserves layer order", () => {
   const { map, layer } = build()
   map.addLayer({ id: "points-above" })
-  const before = layer._tileUrl
   layer.refresh()
-  assert.notEqual(layer._tileUrl, before)
   assert.deepEqual(map.layers, ["tracks-mvt", "points-above"])
-})
-
-test("a refresh never reuses a tile URL from an earlier page session", () => {
-  const firstSession = build().layer
-  firstSession.refresh()
-  const secondSession = build().layer
-  secondSession.refresh()
-
-  assert.notEqual(secondSession._tileUrl, firstSession._tileUrl)
 })
 
 test("map-level error listener is removed with the layer", () => {
@@ -186,4 +182,36 @@ test("does not report an empty tile after Track features have loaded", () => {
   map.emit("sourcedata", { sourceId: layer.sourceId, isSourceLoaded: true })
   assert.equal(reported, 0)
   assert.equal(map.listenerCount("sourcedata"), 0)
+})
+
+test("refresh reloads tiles in place with a fresh version, so rendered tracks stay on screen", () => {
+  const { map, layer } = build()
+  const reloads = []
+  map.refreshTiles = (sourceId) => reloads.push(sourceId)
+  map.removeLayer = () => assert.fail("refresh must not remove the layer")
+  map.removeSource = () => assert.fail("refresh must not remove the source")
+  const tile = () =>
+    withTileVersion(
+      new URL("/api/v1/tiles/tracks/1/2/3.mvt", "http://x.test"),
+    ).searchParams.get("_")
+  const before = tile()
+
+  layer.refresh()
+
+  assert.deepEqual(reloads, ["tracks-mvt-source"])
+  assert.notEqual(tile(), before)
+})
+
+test("a request cancelled by a newer refresh is not a tile failure", () => {
+  const reported = []
+  const { map } = build({ onTileError: () => reported.push("failed") })
+
+  map.emit("error", {
+    sourceId: "tracks-mvt-source",
+    error: new Error("AbortError"),
+  })
+  assert.deepEqual(reported, [])
+
+  map.emit("error", { sourceId: "tracks-mvt-source", error: new Error("500") })
+  assert.deepEqual(reported, ["failed"])
 })

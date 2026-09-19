@@ -1,5 +1,6 @@
 import { getMarkerStrokeColor } from "../utils/marker_theme"
-import { BaseLayer } from "./base_layer"
+import { bumpTileVersion } from "../utils/tile_freshness"
+import { BaseLayer, isAbortedRequest } from "./base_layer"
 import { heatmapPaint } from "./heatmap_layer"
 
 // FNV-1a over the api key: a non-secret cache partitioner keying URL-based
@@ -25,8 +26,6 @@ export class PointsMvtLayer extends BaseLayer {
     this.importId = options.importId || null
     this.styleName = options.styleName
     this._tileUrl = null
-    this._cacheBuster = 0
-    this._cacheScope = Math.random().toString(36).slice(2, 10)
     // Heatmap rides the same source and same lifecycle, toggled independently
     this.heatmapVisible = options.heatmapVisible === true
     this.onTileError = options.onTileError || null
@@ -62,6 +61,7 @@ export class PointsMvtLayer extends BaseLayer {
 
     this._tileErrorHandler = (event) => {
       if (event?.sourceId !== this.sourceId) return
+      if (isAbortedRequest(event.error)) return
       // One pan fails a whole screenful of tiles; report the episode once.
       if (this._tileErrorReported) return
 
@@ -182,9 +182,12 @@ export class PointsMvtLayer extends BaseLayer {
     )
   }
 
-  // MapLibre caches tiles by URL, so bump a nonce to force a re-fetch.
   refresh() {
-    this._cacheBuster += 1
+    bumpTileVersion("/api/v1/tiles/points/")
+    if (this.map.refreshTiles && this.map.getSource(this.sourceId)) {
+      this.map.refreshTiles(this.sourceId)
+      return
+    }
 
     const wasVisible = this.visible
     const beforeId = this._layerAbove()
@@ -280,8 +283,6 @@ export class PointsMvtLayer extends BaseLayer {
     if (this.importId) params.set("import_id", this.importId)
     // Never the raw api key: the Bearer header authenticates (transformRequest)
     if (this.apiKey) params.set("u", cachePartitioner(this.apiKey))
-    if (this._cacheBuster)
-      params.set("_", `${this._cacheScope}-${this._cacheBuster}`)
 
     const query = params.toString()
     const path = "/api/v1/tiles/points/{z}/{x}/{y}.mvt"
