@@ -1375,7 +1375,15 @@ en:
       close_studio: Close the studio
       name: Name
       theme: Theme
+      visualization: Visualization
+      mode: Mode
+      mode_route: Route replay
+      mode_fog: Fog of War
+      fog_color: Overlay colour
+      fog_opacity: Overlay opacity
       route: Route
+      show_route: Show route
+      show_marker: Show marker
       playback: Playback
       reset: Reset
       format: Format

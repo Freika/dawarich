@@ -1375,7 +1375,15 @@ ca:
       close_studio: Tanca l'estudi
       name: Nom
       theme: Tema
+      visualization: Visualització
+      mode: Mode
+      mode_route: Reproducció de la ruta
+      mode_fog: Boira de guerra
+      fog_color: Color de la superposició
+      fog_opacity: Opacitat de la superposició
       route: Ruta
+      show_route: Mostra la ruta
+      show_marker: Mostra el marcador
       playback: Reproducció
       reset: Restableix
       format: Format

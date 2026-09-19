@@ -4636,7 +4636,15 @@ zh:
       close_studio: 关闭工作室
       name: 名称
       theme: 主题
+      visualization: 可视化
+      mode: 模式
+      mode_route: 路线回放
+      mode_fog: 战争迷雾
+      fog_color: 覆盖层颜色
+      fog_opacity: 覆盖层不透明度
       route: 路线
+      show_route: 显示路线
+      show_marker: 显示标记
       playback: 播放
       reset: 重置
       format: 格式

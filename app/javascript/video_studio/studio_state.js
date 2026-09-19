@@ -30,6 +30,8 @@ export const MAX_DURATION_SEC = 30
 // Matches the track width slider in the studio rail.
 export const MIN_TRACK_WIDTH = 50
 export const MAX_TRACK_WIDTH = 300
+export const MIN_FOG_OPACITY = 0
+export const MAX_FOG_OPACITY = 100
 
 export function defaultSettings() {
   return {
@@ -40,6 +42,11 @@ export function defaultSettings() {
     follow_zoom: 13.5,
     track_color: DAWARICH_BLUE,
     track_width: 120,
+    visualization_mode: "route",
+    fog_opacity: 65,
+    fog_color: "#000000",
+    show_marker: true,
+    show_route: true,
     units: "km",
     hud_scale: 100,
     watermark: true,
@@ -62,6 +69,7 @@ export function normalizeSettings(raw) {
   const hudScale = Number(raw.hud_scale)
   const rawWidth = Number(raw.track_width)
   const trackWidth = rawWidth <= 5 ? rawWidth * 100 : rawWidth
+  const fogOpacity = Number(raw.fog_opacity)
 
   return {
     theme: typeof raw.theme === "string" ? raw.theme : base.theme,
@@ -76,6 +84,15 @@ export function normalizeSettings(raw) {
     track_width: Number.isFinite(trackWidth)
       ? Math.min(MAX_TRACK_WIDTH, Math.max(MIN_TRACK_WIDTH, trackWidth))
       : base.track_width,
+    visualization_mode: raw.visualization_mode === "fog" ? "fog" : "route",
+    fog_opacity: Number.isFinite(fogOpacity)
+      ? Math.min(MAX_FOG_OPACITY, Math.max(MIN_FOG_OPACITY, fogOpacity))
+      : base.fog_opacity,
+    fog_color: /^#[0-9a-f]{6}$/i.test(raw.fog_color || "")
+      ? raw.fog_color
+      : base.fog_color,
+    show_marker: raw.show_marker !== false && raw.show_marker !== "false",
+    show_route: raw.show_route !== false && raw.show_route !== "false",
     units: raw.units === "mi" ? "mi" : "km",
     hud_scale: Number.isFinite(hudScale)
       ? Math.min(MAX_HUD_SCALE, Math.max(MIN_HUD_SCALE, hudScale))
@@ -173,7 +190,7 @@ export function buildVideoStyle({ tokens, trackGeojson, settings }) {
     theme: resolveTheme(tokens),
     trackGeojson,
     trackColor: settings.track_color,
-    trackOpacity: 1,
+    trackOpacity: settings.show_route ? 1 : 0,
     trackWidth: settings.track_width / 100,
   })
 }
