@@ -251,6 +251,23 @@ test("anyVisible reports heatmap-only, circles-only and fully hidden states", ()
   assert.equal(layer.anyVisible, true)
 })
 
+test("a refresh never reuses a tile URL from an earlier page session", () => {
+  const firstSession = new PointsMvtLayer(fakeMap(), {
+    startAt: "a",
+    endAt: "b",
+  })
+  firstSession.add({ startAt: "a", endAt: "b" })
+  firstSession.refresh()
+  const secondSession = new PointsMvtLayer(fakeMap(), {
+    startAt: "a",
+    endAt: "b",
+  })
+  secondSession.add({ startAt: "a", endAt: "b" })
+  secondSession.refresh()
+
+  assert.notEqual(secondSession._tileUrl, firstSession._tileUrl)
+})
+
 test("update() to a new range re-adds sub-layers at their original z-position", () => {
   const map = fakeMap(["visits"])
   const layer = new PointsMvtLayer(map, { startAt: "a", endAt: "b" })

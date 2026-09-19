@@ -141,6 +141,15 @@ test("refresh changes the URL and preserves layer order", () => {
   assert.deepEqual(map.layers, ["tracks-mvt", "points-above"])
 })
 
+test("a refresh never reuses a tile URL from an earlier page session", () => {
+  const firstSession = build().layer
+  firstSession.refresh()
+  const secondSession = build().layer
+  secondSession.refresh()
+
+  assert.notEqual(secondSession._tileUrl, firstSession._tileUrl)
+})
+
 test("map-level error listener is removed with the layer", () => {
   const { map, layer } = build({ onTileError() {} })
   assert.equal(map.listenerCount("error"), 1)

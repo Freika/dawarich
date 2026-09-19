@@ -26,6 +26,7 @@ export class PointsMvtLayer extends BaseLayer {
     this.styleName = options.styleName
     this._tileUrl = null
     this._cacheBuster = 0
+    this._cacheScope = Math.random().toString(36).slice(2, 10)
     // Heatmap rides the same source and same lifecycle, toggled independently
     this.heatmapVisible = options.heatmapVisible === true
     this.onTileError = options.onTileError || null
@@ -279,7 +280,8 @@ export class PointsMvtLayer extends BaseLayer {
     if (this.importId) params.set("import_id", this.importId)
     // Never the raw api key: the Bearer header authenticates (transformRequest)
     if (this.apiKey) params.set("u", cachePartitioner(this.apiKey))
-    if (this._cacheBuster) params.set("_", String(this._cacheBuster))
+    if (this._cacheBuster)
+      params.set("_", `${this._cacheScope}-${this._cacheBuster}`)
 
     const query = params.toString()
     const path = "/api/v1/tiles/points/{z}/{x}/{y}.mvt"
