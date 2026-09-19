@@ -8,14 +8,14 @@ class Settings::IntegrationsController < ApplicationController
   before_action :require_pro!, only: %i[update]
 
   def index
+    return redirect_to admin_settings_path if old_geocoding_link_for_admin?
+
     @pro_required = !current_user.full_access?
     return if @pro_required
 
-    @services = available_services
+    @services = Integrations::Status::SERVICES
     @service = params[:service].presence_in(@services) || @services.first
     @statuses = Integrations::Status.for(current_user)
-
-    prepare_geocoding if @service == 'geocoding'
     @trek_sources = current_user.trip_sources.where(provider: 'trek').order(:created_at) if @service == 'trek'
   end
 
@@ -38,15 +38,8 @@ class Settings::IntegrationsController < ApplicationController
     messages.join('. ').truncate_bytes(FLASH_MESSAGE_BYTES)
   end
 
-  def available_services
-    return Integrations::Status::SERVICES if DawarichSettings.self_hosted?
-
-    Integrations::Status::EXTERNAL_SERVICES
-  end
-
-  def prepare_geocoding
-    @settings_by_provider = current_user.service_settings.service_geocoding.index_by(&:provider)
-    @geocoding_config = Geocoding::Config.for(current_user)
+  def old_geocoding_link_for_admin?
+    params[:service] == 'geocoding' && current_user.admin? && DawarichSettings.self_hosted?
   end
 
   def settings_params

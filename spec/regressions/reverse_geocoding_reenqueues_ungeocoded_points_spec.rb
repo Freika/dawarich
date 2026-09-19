@@ -7,7 +7,7 @@ RSpec.describe 'Reverse geocoding re-enqueue after an ungeocoded run', type: :jo
   let!(:point) { create(:point, user:, country: nil, city: nil, reverse_geocoded_at: nil) }
 
   before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    configure_instance_geocoding
     Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
   end
 

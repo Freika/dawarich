@@ -1,4 +1,68 @@
 ca:
+  admin:
+    settings:
+      show:
+        title: "Configuració de la instància"
+        intro: "Aquesta configuració s'aplica a tota la instància. Un paràmetre definit per una variable d'entorn es mostra només de lectura: elimina la variable per editar-lo aquí."
+        save: "Desa la configuració"
+        saving: "S'està desant…"
+        secret_set: "Hi ha un valor desat"
+        pinned_hint: "Fixat per %{variable}"
+        clear_secret: "Esborra el valor desat"
+        unreadable_secret: "Un valor desat no es pot desxifrar amb les claus d'aquesta instància. Torna a introduir-lo."
+        sections_nav: "Seccions de la configuració de la instància"
+        nav_pinned: "Definit per una variable d'entorn"
+        nav_attention: "Requereix atenció"
+        geocoding:
+          title: "Geocodificació"
+          description: "La geocodificació converteix les coordenades en noms de ciutat i de país als teus punts i estadístiques, i fa funcionar la cerca de llocs i ubicacions."
+          in_use: "En ús"
+          "off": "Desactivada"
+          none: "No hi ha cap proveïdor configurat, així que els punts nous no es geocodifiquen. Afegeix a sota un host de Photon o una clau d'API."
+          stored: "Desat en aquesta pàgina"
+          chain_hint: "Dawarich fa servir el primer proveïdor configurat, en l'ordre de sota. Un proveïdor definit per una variable d'entorn té prioritat sobre els desats aquí."
+          test: "Prova la connexió"
+          testing: "S'està provant…"
+          test_hint: "Una consulta amb la configuració desada"
+          rate_limit: "Límit de peticions"
+          chibigeo_message: "ChibiGeo és un servei de geocodificació de tarifa plana i centrat en la privadesa creat per l'equip de Dawarich. Funciona amb Dawarich sense configuració. Cal una clau d'API."
+          chibigeo_key_link: "Obtén la teva clau d'API gratuïta"
+          komoot_warning: "photon.komoot.io és una instància pública compartida amb límits de peticions estrictes. Les peticions es limiten a una per segon i la geocodificació massiva serà lenta. Considera allotjar la teva pròpia instància de Photon."
+          https_locked: "L'HTTPS sempre està activat per a aquest amfitrió."
+          legacy_user_settings: "Alguns usuaris havien configurat la seva pròpia geocodificació abans que es traslladés aquí. La seva configuració no s'ha conservat perquè no tots els usuaris en tenien o eren diferents. Configura un proveïdor a sota per tornar a activar la geocodificació per a tothom."
+        providers:
+          photon: "Geocodificador de codi obert. Fes servir un servidor allotjat o el teu."
+          geoapify: "Servei allotjat. Necessita una clau d'API."
+          nominatim: "El geocodificador d'OpenStreetMap, normalment al teu propi servidor."
+          locationiq: "Servei allotjat. Necessita una clau d'API."
+        points:
+          title: "Punts"
+        fields:
+          photon_api_host: "Amfitrió"
+          photon_api_key: "Clau d'API"
+          photon_api_use_https: "Utilitza HTTPS"
+          nominatim_api_host: "Amfitrió"
+          nominatim_api_key: "Clau d'API"
+          nominatim_api_use_https: "Utilitza HTTPS"
+          geoapify_api_key: "Clau d'API"
+          locationiq_api_key: "Clau d'API"
+          reverse_geocoding_rps: "Peticions per segon"
+          store_geodata: "Geocodifica els punts nous"
+          host_hint: "Nom d'amfitrió simple amb port opcional, p. ex. photon.example.com:2322"
+          rps_hint: "Deixa-ho en blanc per no posar-hi límit. Ajusta-ho al que permeti el teu servidor o el teu pla."
+          api_key_keep_hint: "Deixa-ho en blanc per mantenir la clau desada."
+          store_geodata_hint: "Cerca la ciutat i el país de cada punt nou i en desa el resultat. Si està desactivat, els punts nous només conserven les coordenades."
+      update:
+        saved: "Configuració desada."
+        pinned: "Rebutjat: fixat per %{variables}."
+        host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals i sense espais."
+        chibigeo_key_required: "ChibiGeo necessita una clau d'API. El pla gratuït Hobby inclou 2.500 cerques al dia; obtén la teva clau a chibigeo.com."
+      test_geocoding:
+        not_configured: "No hi ha cap proveïdor de geocodificació configurat. Desa primer un proveïdor."
+        success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."
+        empty: "El proveïdor ha respost, però no ha retornat cap resultat per a les coordenades de prova."
+        failure: "La prova ha fallat: %{error}"
+        rate_limited: "El límit de peticions del proveïdor està ocupat ara mateix; torna-ho a provar d'aquí a un moment."
   activerecord:
     errors:
       models:
@@ -904,9 +968,8 @@ ca:
         show_individual_location_points: Mostra els punts d'ubicació individuals
         edit_points: Edita els punts
         allow_dragging_points_to_correct_their_position: Permet arrossegar els punts per corregir-ne la posició.
-        editing_points_is_a_pro_feature_this_stays_on_for: Editar punts és una funció de Pro — es manté activat només per a la sessió actual, i els moviments no es desen al pla Lite.
+        editing_points_is_a_pro_feature_this_stays_on_for: L'edició de punts està disponible amb el pla Pro.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Permet arrossegar els punts per corregir-ne la posició. Es recorda entre sessions.
-        routes: Rutes
         show_connected_route_lines: Mostra les línies de ruta connectades
         color_by_speed: Colora segons la velocitat
         edit_color_gradient: Edita el degradat de colors
@@ -940,8 +1003,8 @@ ca:
         show_explored_areas: Mostra les àrees explorades
         per_point: Per punt
         per_hexagon: Per hexàgon
-        scratch_map: Mapa de rascar
-        show_scratched_countries: Mostra els països rascats
+        scratch_map: Països visitats
+        show_scratched_countries: Ressalta els països visitats durant l'interval seleccionat
         family_members: Membres de la família
         show_family_member_locations: Mostra les ubicacions dels membres de la família
         click_to_center_on_member: Fes clic per centrar en el membre
@@ -972,29 +1035,29 @@ ca:
         the_custom_style_draws_no_labels_or_points_of_interest: L'estil personalitzat no dibuixa etiquetes ni punts d'interès — aquests interruptors estan desactivats mentre és actiu.
         points_of_interest: Punts d'interès
         choose_which_poi_categories_appear_on_the_map: Tria quines categories de punts d'interès apareixen al mapa.
-        meters_between_routes: Metres entre rutes
         distance_threshold_for_route_splitting: Llindar de distància per dividir rutes
-        minutes_between_routes: Minuts entre rutes
         min: 60 min
         min_2: 1 min
         min_3: 90 min
         min_4: 180 min
         time_threshold_for_route_splitting: Llindar de temps per dividir rutes
-        points_rendering_mode: Mode de representació de punts
         raw_all_points: En brut (tots els punts)
         simplified_reduced_points: Simplificat (punts reduïts)
-        speed_colored_routes: Rutes acolorides per velocitat
-        color_routes_by_speed: Colora les rutes segons la velocitat
         fog_of_war_radius: Radi de la boira de guerra
         clear_radius_around_visited_points: Radi que s'aclareix al voltant dels punts visitats
         fog_of_war_threshold: Llindar de la boira de guerra
         minimum_points_to_clear_fog: Punts mínims per aclarir la boira
         gps_noise_filtering: Filtratge de soroll GPS
+        track_generation: Generació de trajectes
+        track_split_distance: Distància entre trajectes
+        track_split_distance_hint: Inicia un trajecte nou quan els punts consecutius són més lluny.
+        track_split_time: Temps entre trajectes
+        track_split_time_hint: Inicia un trajecte nou quan l'interval entre punts és més llarg.
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Amaga les lectures que no poden ser una posició real — salts impossibles, coordenades incorrectes. Desactiva-ho per veure tots els punts en brut.
         re_evaluate_past_data: Torna a avaluar les dades passades
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Elimina les marques d'anomalia existents i torna a executar el filtre sobre tots els teus punts amb la configuració actual. Els trajectes, estadístiques i resums es reconstruiran després. S'executa en segon pla.
         recalculate_tracks_stats: Recalcula trajectes i estadístiques
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Reconstrueix trajectes, estadístiques i resums a partir dels teus punts actuals sense tocar les marques d'anomalia. Útil després de canviar els llindars de divisió de rutes.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Desa primer aquests llindars. Els trajectes nous els faran servir automàticament; selecciona «Recalcula trajectes i estadístiques» per aplicar-los a l'historial existent.
         city_statistics: Estadístiques de ciutat
         min_minutes_in_city: Minuts mínims a la ciutat
         min_5: 60 min
@@ -1136,10 +1199,7 @@ ca:
         train_tracks_and_rail_lines: Vies i línies de tren
         urban_amenities: Serveis urbans
         water_labels: Etiquetes d'aigua
-        tiled_rendering: "Renderitzat per tessel·les"
         beta: "Beta"
-        tiled_rendering_description: "Dibuixa els punts, les rutes, els trajectes i la boira a partir de tessel·les vectorials mentre et desplaces, de manera que un interval de dates llarg només carrega el que es veu. Les rutes mostren els trajectes que has generat. Amplia per veure la velocitat de cada segment."
-        tiled_rendering_caveats: "Actiu mentre el Mapa de rascar està desactivat. Les zones denses s'agrupen en marcadors amb un recompte de punts: amplia per obrir els punts individualment. L'edició de punts no està disponible, en passar el cursor per una ruta ja no se'n mostra la finestra emergent (fes clic en un trajecte) i el rastre en directe pot trigar uns minuts."
         fill_gaps_with_the_default_basemap: "Omple els buits amb el mapa base predeterminat"
         uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: "Per a un conjunt de tessel·les que només cobreix una part del món. Les zones que no cobreix es dibuixen des del servidor de tessel·les predeterminat de Dawarich, de manera que, si ho actives, s'hi enviaran peticions de tessel·les."
       visit_creation_modal:
@@ -1417,6 +1477,7 @@ ca:
       visits: Visites
       two_factor_authentication: Autenticació de dos factors
       users: Usuaris
+      instance: "Instància"
       background_jobs: Tasques en segon pla
     background_jobs:
       index:
@@ -1537,7 +1598,6 @@ ca:
         settings: Configuració
         services_nav: "Serveis d'integració"
         services:
-          geocoding: "Geocodificació"
           immich: "Immich"
           photoprism: "PhotoPrism"
           airtrail: "AirTrail"
@@ -1668,55 +1728,6 @@ ca:
         minimum_points_to_count_as_a_visit: Punts mínims perquè compti com a visita
         minimum_visit_duration_minutes: Durada mínima de la visita (minuts)
         save_settings: Desa la configuració
-    geocoding:
-      show:
-        title: "Geocodificació"
-        provider: "Proveïdor de geocodificació"
-        provider_hint: "El proveïdor que s'utilitza per a la geocodificació inversa dels teus punts i per a la cerca de llocs i ubicacions."
-        intro: "La geocodificació converteix les coordenades en noms de ciutat i de país als teus punts i estadístiques, i fa funcionar la cerca de llocs i ubicacions."
-        host_choice: "Servidor Photon"
-        choice_chibigeo: "Servei allotjat de ChibiGeo"
-        choice_chibigeo_desc: "Nivell gratuït: 2.500 cerques al dia. Funciona sense configuració; només cal que hi afegeixis la teva clau d'API."
-        choice_komoot: "Servidor públic de komoot"
-        choice_komoot_desc: "Instància compartida gratuïta, limitada a una petició per segon."
-        choice_custom: "Amfitrió personalitzat"
-        choice_custom_desc: "La teva pròpia instància de Photon o un altre servidor compatible."
-        recommended: "Recomanat"
-        https_locked: "L'HTTPS sempre està activat per a aquest amfitrió."
-        https_on: "Activat"
-        https_off: "Desactivat"
-        chibigeo_message: "ChibiGeo és un servei de geocodificació de tarifa plana i centrat en la privadesa creat per l'equip de Dawarich. Funciona amb Dawarich sense configuració. Cal una clau d'API."
-        chibigeo_limits: "El pla gratuït Hobby inclou 2.500 cerques al dia a 1 petició per segon: límits estrictes, sense excedents."
-        chibigeo_key_link: "Obtén la teva clau d'API gratuïta"
-        chibigeo_site_link: "Què és ChibiGeo?"
-        disabled: "Desactivat"
-        env_managed_notice: "Actualment la geocodificació la gestionen variables d'entorn definides per l'operador de la teva instància. La configuració següent només tindrà efecte si s'eliminen aquestes variables."
-        host: "Amfitrió"
-        host_hint: "Nom d'amfitrió simple amb port opcional, p. ex. photon.example.com:2322"
-        api_key: "Clau d'API"
-        api_key_hint: "Deixa-ho en blanc per mantenir la clau desada."
-        api_key_saved: "Hi ha una clau desada per a aquest proveïdor."
-        clear_api_key: "Elimina la clau d'API desada"
-        use_https: "Utilitza HTTPS"
-        rps: "Peticions per segon"
-        rps_hint_custom: "Deixa-ho en blanc per no posar-hi límit. Ajusta-ho al que permeti el teu servidor o el teu pla."
-        rps_hint_chibigeo: "Ajusta-ho al teu pla de ChibiGeo: Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Demanar més del que permet el teu pla només genera cerques rebutjades."
-        rps_hint_komoot: "komoot imposa una petició per segon a tothom, així que aquest valor és fix."
-        komoot_warning: "photon.komoot.io és una instància pública compartida amb límits de peticions estrictes. Les peticions es limiten a una per segon i la geocodificació massiva serà lenta. Considera allotjar la teva pròpia instància de Photon."
-        komoot_no_api_key: "El servidor públic de komoot no accepta cap clau d'API; deixa-la sense definir."
-        save: "Desa"
-        test: "Prova el teu proveïdor"
-        test_hint: "Desa primer la configuració i després fes la prova. La prova executa una cerca amb la configuració del teu propi proveïdor, fins i tot quan hi ha variables d'entorn actives."
-      update:
-        updated: "S'ha actualitzat la configuració de geocodificació."
-        disabled: "S'ha desactivat la geocodificació."
-        invalid_provider: "Proveïdor de geocodificació desconegut."
-      test:
-        not_configured: "No hi ha cap proveïdor de geocodificació configurat al teu compte. Desa'n un primer."
-        success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."
-        empty: "El proveïdor ha respost, però no ha retornat cap resultat per a les coordenades de prova."
-        failure: "La prova ha fallat: %{error}"
-        rate_limited: "El límit de peticions del proveïdor està ocupat ara mateix; torna-ho a provar d'aquí a un moment."
   share_links:
     hubs:
       body:
@@ -3795,15 +3806,12 @@ ca:
       anomaly_point: Punt anòmal
       failed_to_load_location_data_please_try_again: No s'han pogut carregar les dades d'ubicació. Torna-ho a provar.
       click_on_the_map_to_place_a_place: Fes clic al mapa per col·locar un lloc
-      failed_to_reload_routes: No s'han pogut tornar a carregar les rutes
-      failed_to_load_scratch_layer: No s'ha pogut carregar la capa de mapa de rascar
       failed_to_load_photos: No s'han pogut carregar les fotos
       some_photo_sources_unavailable: "Algunes fonts de fotos no estan disponibles: %{sources}"
       failed_to_load_areas: No s'han pogut carregar les àrees
       failed_to_load_tracks: No s'han pogut carregar els trajectes
       failed_to_load_flights: No s'han pogut carregar els vols
       failed_to_load_anomalies: No s'han pogut carregar les anomalies
-      reloading_routes: Tornant a carregar les rutes...
       cannot_update_recalculation_is_already_in_progress: 'No es pot actualitzar: ja hi ha un recàlcul en curs'
       transportation_settings_saved: Configuració de transport desada
       globe_view_will_be_applied_after_page_reload: La vista de globus s'aplicarà després de recarregar la pàgina
@@ -3858,6 +3866,11 @@ ca:
       failed_to_update_visit: No s'ha pogut actualitzar la visita
       visit_deleted_successfully: Visita suprimida correctament
       failed_to_update_point_position_please_try_again: No s'ha pogut actualitzar la posició del punt. Torna-ho a provar.
+      point_edit_conflict: Aquest punt ha canviat en una altra sessió. Es mostra la darrera posició desada.
+      failed_to_load_map_tiles: No s'han pogut carregar les tessel·les del mapa.
+      tracks_pending: Encara no hi ha trajectes en aquesta vista. Mou el mapa o amplia l'interval de dates; és possible que una importació recent encara s'estigui processant.
+      failed_to_load_visited_countries: No s'han pogut carregar els països visitats.
+      retry: Torna-ho a provar
       failed_to_load_track_points: No s'han pogut carregar els punts del trajecte
       point_updated_track_will_be_recalculated: Punt actualitzat. El trajecte es recalcularà.
       delete: Suprimeix
@@ -3870,11 +3883,10 @@ ca:
       confirmed: Confirmada
       layers: Capes
       points: Punts
-      routes: Rutes
       tracks: Trajectes
       heatmap: Mapa de calor
       fog_of_war: Boira de guerra
-      scratch_map: Mapa de rascar
+      scratch_map: Països visitats
       areas: Àrees
       photos: Fotos
       visits: Visites
@@ -3930,16 +3942,6 @@ ca:
         one: "%{distance} %{unit} | %{count} punt"
         other: "%{distance} %{unit} | %{count} punts"
       updating: Actualitzant el mapa...
-      tiled_rendering:
-        inactive_note:
-          one: "Inactiu mentre %{layers} està activat: necessita el conjunt complet de punts."
-          other: "Inactiu mentre %{layers} estan activats: necessiten el conjunt complet de punts."
-        editing_unavailable: "No disponible amb el renderitzat per tessel·les; les tessel·les vectorials no tenen punts arrossegables"
-        failed: "No s'han pogut carregar les tessel·les del mapa. Prova un interval de dates més curt o desactiva el renderitzat per tessel·les a la configuració del mapa."
-        tracks_pending: "No hi ha cap trajecte en aquesta vista. Amb el renderitzat per tessel·les, les rutes mostren els trajectes que has generat: desplaça't o amplia l'interval de dates, o torna-ho a mirar més tard si has importat l'historial fa poc."
-        splitting_unavailable: "No s'utilitza amb el renderitzat per tessel·les; les rutes segueixen els trajectes que has generat."
-        blockers:
-          scratch: "Mapa de rascar"
     replay:
       no_data_at_this_time: No hi ha dades en aquest moment
       pause: Pausa
@@ -4243,7 +4245,6 @@ ca:
       radius: Radi
       reason: Motiu
       route_information: Informació de la ruta
-      routes: Rutes
       selected_point: Punt seleccionat
       show_points: Mostra els punts
       show_points_help: Activa-ho per veure i arrossegar punts per editar el trajecte
@@ -4379,14 +4380,10 @@ ca:
       fog_threshold: Llindar de la boira de guerra
       live_map: Mapa en directe
       merge_threshold: Minuts del llindar de fusió
-      meters_between_routes: Metres entre rutes
-      minutes_between_routes: Minuts entre rutes
-      points_rendering_mode: Mode de representació de punts
       raw: En brut
       route_opacity: "Opacitat de la ruta, %"
       simplified: Simplificat
       speed_color_scale: Escala de colors per velocitat
-      speed_colored_routes: Rutes acolorides per velocitat
       time_threshold: Minuts del llindar de temps
     calendar_panel:
       loading_visited_places: Carregant llocs visitats...

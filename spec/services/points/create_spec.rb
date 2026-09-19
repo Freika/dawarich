@@ -340,7 +340,7 @@ RSpec.describe Points::Create do
       end
 
       it 'enqueues VisitSuggestingJob when reverse geocoding is enabled (regression for #1749)' do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        configure_instance_geocoding
 
         expect do
           described_class.new(user, point_params).call
@@ -348,8 +348,6 @@ RSpec.describe Points::Create do
       end
 
       it 'does not enqueue VisitSuggestingJob when reverse geocoding is disabled' do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-
         expect do
           described_class.new(user, point_params).call
         end.not_to have_enqueued_job(VisitSuggestingJob)

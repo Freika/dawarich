@@ -91,57 +91,6 @@
                    data-maps--maplibre-target="pointsEditUnavailableNote"></p>
               </div>
 
-              <div>
-                <label class="label cursor-pointer justify-start gap-3 py-0">
-                  <input type="checkbox"
-                         class="toggle toggle-primary toggle-sm"
-                         data-maps--maplibre-target="pointsTiledToggle"
-                         data-action="change->maps--maplibre#togglePointsTiledRendering" />
-                  <span class="label-text"><%= t('.tiled_rendering') %></span>
-                  <span class="badge badge-sm badge-warning badge-outline"><%= t('.beta') %></span>
-                </label>
-                <p class="text-sm text-base-content/60 ml-10 mt-1"><%= t('.tiled_rendering_description') %></p>
-                <p class="text-xs text-base-content/50 ml-10 mt-1"><%= t('.tiled_rendering_caveats') %></p>
-                <p class="text-xs text-warning ml-10 mt-1 hidden" data-maps--maplibre-target="pointsTiledInactiveNote"></p>
-              </div>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
-          <!-- Routes Layer -->
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     class="toggle toggle-primary"
-                     data-maps--maplibre-target="routesToggle"
-                     data-action="change->maps--maplibre#toggleRoutes" />
-              <span class="label-text font-medium"><%= t('.routes') %></span>
-            </label>
-            <p class="text-sm text-base-content/60 ml-14"><%= t('.show_connected_route_lines') %></p>
-          </div>
-
-          <!-- Speed-Colored Routes Options (conditionally shown) -->
-          <div class="ml-14 space-y-3" data-maps--maplibre-target="routesOptions" style="display: none;">
-            <div class="form-control">
-              <label class="label cursor-pointer py-2">
-                <span class="label-text text-sm"><%= t('.color_by_speed') %></span>
-                <input type="checkbox"
-                       class="toggle toggle-sm toggle-primary"
-                       data-maps--maplibre-target="speedColoredToggle"
-                       data-action="change->maps--maplibre#toggleSpeedColoredRoutes" />
-              </label>
-            </div>
-
-            <!-- Speed Color Scale Editor (shown when speed colors enabled) -->
-            <div class="hidden" data-maps--maplibre-target="speedColorScaleContainer">
-              <button type="button"
-                      class="btn btn-sm btn-outline w-full"
-                      data-action="click->maps--maplibre#openSpeedColorEditor">
-                <%= icon 'palette', class: 'h-4 w-4 mr-2' %>
-                <%= t('.edit_color_gradient') %>
-              </button>
-              <input type="hidden" data-maps--maplibre-target="speedColorScaleInput" value="" />
             </div>
           </div>
 
@@ -518,41 +467,10 @@
           <div class="divider"></div>
 
           <!-- Route Opacity -->
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium"><%= t('.route_opacity') %></span>
-              <span class="label-text-alt">%</span>
-            </label>
-            <input type="range"
-                   name="routeOpacity"
-                   min="10"
-                   max="100"
-                   step="10"
-                   value="100"
-                   class="range range-sm"
-                   data-maps--maplibre-target="routeOpacityRange"
-                   data-action="input->maps--maplibre#updateRouteOpacity" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span>10%</span>
-              <span>50%</span>
-              <span>100%</span>
-            </div>
-          </div>
-
-          <div class="divider"></div>
-
           <!-- Layer Colors -->
           <div class="form-control w-full space-y-1">
             <label class="label">
               <span class="label-text font-medium"><%= t('.layer_colors') %></span>
-            </label>
-            <label class="flex items-center gap-2">
-              <input type="color"
-                     name="routeColor"
-                     class="h-7 w-9 cursor-pointer rounded border border-base-300 bg-base-100 p-0.5"
-                     data-action="input->maps--maplibre#updateRouteColor">
-              <span class="label-text text-sm flex-1"><%= t('.routes') %></span>
-              <span class="text-xs opacity-60 tabular-nums" data-layer-color-value="routeColor"></span>
             </label>
             <label class="flex items-center gap-2">
               <input type="color"
@@ -714,92 +632,51 @@
           <details class="collapse collapse-arrow bg-base-200 rounded-lg" data-map-settings-dirty-target="section">
             <summary class="collapse-title font-medium min-h-0 cursor-pointer">
               <span class="flex items-center gap-2">
-              <%= icon 'route', class: 'h-4 w-4 opacity-70 shrink-0' %>
-              <%= t('.routes') %>
-              <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
+                <%= icon 'route', class: 'h-4 w-4 opacity-70 shrink-0' %>
+                <%= t('.track_generation') %>
+                <span class="badge badge-outline badge-warning badge-sm tooltip tooltip-left ml-auto mr-1 self-center hidden" data-dirty-badge></span>
               </span>
             </summary>
             <div class="collapse-content space-y-4">
-          <!-- Route Generation Settings -->
-          <p class="text-xs text-warning hidden" data-maps--maplibre-target="routeSplittingUnavailableNote"></p>
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium"><%= t('.meters_between_routes') %></span>
-              <span class="label-text-alt" data-maps--maplibre-target="metersBetweenValue"><%= t('units.meters_compact', value: 500) %></span>
-            </label>
-            <input type="range"
-                   name="metersBetweenRoutes"
-                   min="100"
-                   max="5000"
-                   step="100"
-                   value="500"
-                   class="range range-sm"
-                   data-action="input->maps--maplibre#updateMetersBetweenDisplay" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span><%= t('units.meters_compact', value: 100) %></span>
-              <span><%= t('units.meters_compact', value: 2500) %></span>
-              <span><%= t('units.meters_compact', value: 5000) %></span>
-            </div>
-            <p class="text-xs text-base-content/60 mt-1"><%= t('.distance_threshold_for_route_splitting') %></p>
-          </div>
+              <div class="form-control w-full">
+                <label class="label">
+                  <span class="label-text font-medium"><%= t('.track_split_distance') %></span>
+                  <span class="label-text-alt" data-maps--maplibre-target="metersBetweenValue"><%= t('units.meters_compact', value: 500) %></span>
+                </label>
+                <input type="range"
+                       name="metersBetweenRoutes"
+                       min="100"
+                       max="5000"
+                       step="100"
+                       value="500"
+                       class="range range-sm"
+                       data-action="input->maps--maplibre#updateMetersBetweenDisplay" />
+                <p class="text-xs text-base-content/60 mt-1"><%= t('.track_split_distance_hint') %></p>
+              </div>
 
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium"><%= t('.minutes_between_routes') %></span>
-              <span class="label-text-alt" data-maps--maplibre-target="minutesBetweenValue"><%= t('.min') %></span>
-            </label>
-            <input type="range"
-                   name="minutesBetweenRoutes"
-                   min="1"
-                   max="180"
-                   step="1"
-                   value="60"
-                   class="range range-sm"
-                   data-action="input->maps--maplibre#updateMinutesBetweenDisplay" />
-            <div class="w-full flex justify-between text-xs px-2 mt-1">
-              <span><%= t('.min_2') %></span>
-              <span><%= t('.min_3') %></span>
-              <span><%= t('.min_4') %></span>
-            </div>
-            <p class="text-xs text-base-content/60 mt-1"><%= t('.time_threshold_for_route_splitting') %></p>
-          </div>
+              <div class="form-control w-full">
+                <label class="label">
+                  <span class="label-text font-medium"><%= t('.track_split_time') %></span>
+                  <span class="label-text-alt" data-maps--maplibre-target="minutesBetweenValue"><%= t('units.minutes_compact', value: 30) %></span>
+                </label>
+                <input type="range"
+                       name="minutesBetweenRoutes"
+                       min="1"
+                       max="180"
+                       step="1"
+                       value="30"
+                       class="range range-sm"
+                       data-action="input->maps--maplibre#updateMinutesBetweenDisplay" />
+                <p class="text-xs text-base-content/60 mt-1"><%= t('.track_split_time_hint') %></p>
+              </div>
 
-          <div class="divider"></div>
-
-          <!-- Points Rendering Mode -->
-          <div class="form-control w-full">
-            <label class="label">
-              <span class="label-text font-medium"><%= t('.points_rendering_mode') %></span>
-            </label>
-            <div class="flex flex-col gap-2">
-              <label class="label cursor-pointer justify-start gap-3 py-1">
-                <input type="radio"
-                       name="pointsRenderingMode"
-                       value="raw"
-                       class="radio radio-primary radio-sm"
-                       checked />
-                <span class="label-text"><%= t('.raw_all_points') %></span>
-              </label>
-              <label class="label cursor-pointer justify-start gap-3 py-1">
-                <input type="radio"
-                       name="pointsRenderingMode"
-                       value="simplified"
-                       class="radio radio-primary radio-sm" />
-                <span class="label-text"><%= t('.simplified_reduced_points') %></span>
-              </label>
-            </div>
-          </div>
-
-          <!-- Speed-Colored Routes -->
-          <div class="form-control">
-            <label class="label cursor-pointer justify-start gap-3">
-              <input type="checkbox"
-                     name="speedColoredRoutes"
-                     class="toggle toggle-primary" />
-              <span class="label-text font-medium"><%= t('.speed_colored_routes') %></span>
-            </label>
-            <p class="text-sm text-base-content/60 mt-1"><%= t('.color_routes_by_speed') %></p>
-          </div>
+              <button type="button"
+                      class="btn btn-sm btn-outline btn-block"
+                      data-action="click->maps--maplibre#recalculateUserData">
+                <%= icon 'refresh-ccw' %>
+                <%= t('.recalculate_tracks_stats') %>
+              </button>
+              <p class="text-xs text-base-content/60"><%= t('.rebuild_tracks_stats_and_digests_from_your_current_points_without') %></p>
             </div>
           </details>
 
@@ -886,13 +763,6 @@
           </button>
           <p class="text-xs text-base-content/60 mt-1"><%= t('.clears_existing_anomaly_flags_and_re_runs_the_filter_on') %></p>
 
-          <button type="button"
-                  class="btn btn-sm btn-outline btn-block mt-2"
-                  data-action="click->maps--maplibre#recalculateUserData">
-            <%= icon 'refresh-ccw' %>
-            <%= t('.recalculate_tracks_stats') %>
-          </button>
-          <p class="text-xs text-base-content/60 mt-1"><%= t('.rebuild_tracks_stats_and_digests_from_your_current_points_without') %></p>
             </div>
           </details>
 
@@ -1137,7 +1007,9 @@
 
           <%# ---------- MAIN COLUMN (visit list) ---------- %>
           <div class="timeline-main">
-            <turbo-frame id="timeline-feed-frame" data-timeline-feed-target="visitListFrame">
+            <turbo-frame id="timeline-feed-frame"
+                         data-timeline-feed-target="visitListFrame"
+                         data-maps--maplibre-target="timelineFeedContainer">
               <div class="timeline-main__empty">
                 <%= t('.pick_a_day_in_the_calendar_to_see_visits') %>
               </div>
@@ -1311,36 +1183,6 @@
               </div>
             </div>
           </div>
-
-          <!-- Hidden template for route info display -->
-          <template data-maps--maplibre-target="routeInfoTemplate">
-            <div class="space-y-2">
-              <div>
-                <span class="font-semibold"><%= t('.start') %></span>
-                <span data-maps--maplibre-target="routeStartTime"></span>
-              </div>
-              <div>
-                <span class="font-semibold"><%= t('.end') %></span>
-                <span data-maps--maplibre-target="routeEndTime"></span>
-              </div>
-              <div>
-                <span class="font-semibold"><%= t('.duration') %></span>
-                <span data-maps--maplibre-target="routeDuration"></span>
-              </div>
-              <div>
-                <span class="font-semibold"><%= t('.distance') %></span>
-                <span data-maps--maplibre-target="routeDistance"></span>
-              </div>
-              <div data-maps--maplibre-target="routeSpeedContainer">
-                <span class="font-semibold"><%= t('.avg_speed') %></span>
-                <span data-maps--maplibre-target="routeSpeed"></span>
-              </div>
-              <div>
-                <span class="font-semibold"><%= t('.points_2') %></span>
-                <span data-maps--maplibre-target="routePoints"></span>
-              </div>
-            </div>
-          </template>
 
           <!-- Selection Actions (shown after area is selected) -->
           <div class="hidden mt-4 space-y-2" data-maps--maplibre-target="selectionActions">

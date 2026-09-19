@@ -1,6 +1,70 @@
 zh:
   language_name: 简体中文
   language_flag: cn
+  admin:
+    settings:
+      show:
+        title: "实例设置"
+        intro: "这些设置作用于整个实例。由环境变量提供的设置显示为只读：删除该变量后才能在此编辑。"
+        save: "保存设置"
+        saving: "正在保存…"
+        secret_set: "已存储一个值"
+        pinned_hint: "由 %{variable} 固定"
+        clear_secret: "清除已存储的值"
+        unreadable_secret: "已存储的值无法用本实例的密钥解密。请重新输入。"
+        sections_nav: "实例设置分区"
+        nav_pinned: "由环境变量设置"
+        nav_attention: "需要处理"
+        geocoding:
+          title: "地理编码"
+          description: "地理编码会把坐标转换为轨迹点和统计中的城市与国家名称，并支持地点和位置搜索。"
+          in_use: "使用中"
+          "off": "关闭"
+          none: "尚未配置提供商，因此新的轨迹点不会进行地理编码。请在下方添加 Photon 主机或提供商 API 密钥。"
+          stored: "在此页面保存"
+          chain_hint: "Dawarich 按下方顺序使用第一个已配置的提供商。由环境变量设置的提供商优先于此处保存的提供商。"
+          test: "测试连接"
+          testing: "正在测试…"
+          test_hint: "使用已保存的设置进行一次查询"
+          rate_limit: "速率限制"
+          chibigeo_message: "ChibiGeo 是由 Dawarich 团队打造的固定费率、隐私优先的地理编码服务，可直接与 Dawarich 配合使用。需要 API 密钥。"
+          chibigeo_key_link: "获取免费 API 密钥"
+          komoot_warning: "photon.komoot.io 是一个共享的公共实例，速率限制严格。请求被限制为每秒一次，批量地理编码会很慢。建议自行托管 Photon 实例。"
+          https_locked: "此主机始终使用 HTTPS。"
+          legacy_user_settings: "部分用户在地理编码移至此处之前设置了自己的地理编码。由于并非每位用户都有设置，或各自的设置不同，这些设置没有被迁移。请在下方设置提供商，为所有人重新开启地理编码。"
+        providers:
+          photon: "开源地理编码器。可使用托管服务器，也可自行部署。"
+          geoapify: "托管服务。需要 API 密钥。"
+          nominatim: "OpenStreetMap 的地理编码器，通常部署在您自己的服务器上。"
+          locationiq: "托管服务。需要 API 密钥。"
+        points:
+          title: "轨迹点"
+        fields:
+          photon_api_host: "主机"
+          photon_api_key: "API 密钥"
+          photon_api_use_https: "使用 HTTPS"
+          nominatim_api_host: "主机"
+          nominatim_api_key: "API 密钥"
+          nominatim_api_use_https: "使用 HTTPS"
+          geoapify_api_key: "API 密钥"
+          locationiq_api_key: "API 密钥"
+          reverse_geocoding_rps: "每秒请求数"
+          store_geodata: "对新轨迹点进行地理编码"
+          host_hint: "仅主机名，可附带端口，例如 photon.example.com:2322"
+          rps_hint: "留空表示不限制。请设置为您的服务器或套餐允许的值。"
+          api_key_keep_hint: "留空则保留已保存的密钥。"
+          store_geodata_hint: "查询每个新轨迹点所在的城市和国家并保存结果。关闭后，新轨迹点只保留坐标。"
+      update:
+        saved: "设置已保存。"
+        pinned: "已拒绝：由 %{variables} 固定。"
+        host_invalid: "主机必须是单纯的主机名，可附带端口或路径，不能包含空格。"
+        chibigeo_key_required: "ChibiGeo 需要 API 密钥。免费的 Hobby 套餐每天包含 2,500 次查询——请在 chibigeo.com 获取密钥。"
+      test_geocoding:
+        not_configured: "尚未配置地理编码提供商。请先保存一个提供商。"
+        success: "您的提供商将测试坐标解析为 %{place}。"
+        empty: "提供商已响应，但测试坐标没有返回结果。"
+        failure: "测试失败：%{error}"
+        rate_limited: "提供商的速率限制当前繁忙——请稍后再试。"
   auth:
     account_links:
       challenge:
@@ -913,9 +977,8 @@ zh:
         show_individual_location_points: 显示各个轨迹点
         edit_points: 编辑轨迹点
         allow_dragging_points_to_correct_their_position: 允许拖动轨迹点来修正位置。
-        editing_points_is_a_pro_feature_this_stays_on_for: 编辑轨迹点是一项 Pro 功能，仅在当前会话中生效，且移动不会保存在 Lite 计划中。
+        editing_points_is_a_pro_feature_this_stays_on_for: 编辑轨迹点功能可在 Pro 计划中使用。
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: 允许拖动轨迹点来修正位置。此设置会跨会话保留。
-        routes: 路线
         show_connected_route_lines: 显示连通的路线
         color_by_speed: 按速度着色
         edit_color_gradient: 编辑颜色渐变
@@ -949,8 +1012,8 @@ zh:
         show_explored_areas: 显示探索过的区域
         per_point: 按轨迹点
         per_hexagon: 按六边形
-        scratch_map: 刮刮地图
-        show_scratched_countries: 显示已刮开的国家/地区
+        scratch_map: 已访问国家/地区
+        show_scratched_countries: 突出显示所选时间范围内访问过的国家/地区
         family_members: 家庭成员
         show_family_member_locations: 显示家庭成员位置
         click_to_center_on_member: 点击以家庭成员为中心
@@ -983,29 +1046,29 @@ zh:
         the_custom_style_draws_no_labels_or_points_of_interest: 自定义样式不绘制标签或兴趣点 — 该样式启用时这些开关会被禁用。
         points_of_interest: 兴趣点
         choose_which_poi_categories_appear_on_the_map: 选择地图上显示的 POI 类别。
-        meters_between_routes: 路线间隔（米）
         distance_threshold_for_route_splitting: 路线拆分距离阈值
-        minutes_between_routes: 路线间隔（分钟）
         min: 60 分钟
         min_2: 1 分钟
         min_3: 90 分钟
         min_4: 180 分钟
         time_threshold_for_route_splitting: 路线拆分的时间阈值
-        points_rendering_mode: 轨迹点渲染模式
         raw_all_points: 原始（所有轨迹点）
         simplified_reduced_points: 简化（减少轨迹点）
-        speed_colored_routes: 按速度着色的路线
-        color_routes_by_speed: 按速度为路线着色
         fog_of_war_radius: 战争迷雾半径
         clear_radius_around_visited_points: 到访轨迹点周围的清除半径
         fog_of_war_threshold: 战争迷雾阈值
         minimum_points_to_clear_fog: 清除迷雾所需的最少轨迹点
         gps_noise_filtering: GPS 噪声过滤
+        track_generation: 轨迹生成
+        track_split_distance: 轨迹之间的距离间隔
+        track_split_distance_hint: 连续点之间的距离超过此值时开始新轨迹。
+        track_split_time: 轨迹之间的时间间隔
+        track_split_time_hint: 连续点之间的时间超过此值时开始新轨迹。
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: 隐藏不可能为真实位置的读数 — 如不可能的跳跃、损坏的坐标。禁用后显示每个原始轨迹点。
         re_evaluate_past_data: 重新评估过去的数据
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: 清除现有异常标记，并使用当前设置对所有轨迹点重新运行过滤器。之后将重建轨迹、统计数据和摘要，整个过程在后台运行。
         recalculate_tracks_stats: 重新计算轨迹和统计数据
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: 根据当前轨迹点重建轨迹、统计数据和摘要，且不触碰异常标记。在更改路线拆分阈值后很有用。
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: 请先保存这些阈值。新轨迹会自动使用它们；若要应用到已有历史记录，请选择“重新计算轨迹和统计数据”。
         city_statistics: 城市统计数据
         min_minutes_in_city: 城市最短停留分钟数
         min_5: 60 分钟
@@ -1153,10 +1216,7 @@ zh:
         train_tracks_and_rail_lines: 火车轨道和铁路线
         urban_amenities: 城市设施
         water_labels: 水域标签
-        tiled_rendering: 瓦片渲染
         beta: 测试版
-        tiled_rendering_description: 在您平移时从矢量瓦片绘制点、路线、轨迹和迷雾，因此较长的日期范围只加载视图内的内容。路线显示您生成的轨迹，按轨迹着色。
-        tiled_rendering_caveats: 在刮刮地图关闭时生效。密集区域会合并为带点数的标记 — 放大即可展开单个点。点编辑不可用，路线按轨迹着色（平均速度，而非渐变），悬停路线不再显示弹窗 — 请改为点击轨迹，实时轨迹可能会延迟几分钟。
         fill_gaps_with_the_default_basemap: 用默认底图填补空白区域
         uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: 适用于仅覆盖部分世界的瓦片集。未覆盖的区域将由 Dawarich 的默认瓦片服务器绘制，因此开启此项会向该服务器发送瓦片请求。
       visit_creation_modal:
@@ -1396,6 +1456,7 @@ zh:
       two_factor_authentication: 双重验证
       users: 用户
       background_jobs: 后台任务
+      instance: 实例
     background_jobs:
       index:
         spamming_many_new_jobs_at_once_is_a_bad_idea: 同时启动大量新任务并非明智之举。请等待任务完成，或提前清理队列。
@@ -1458,6 +1519,8 @@ zh:
         receive_an_annual_summary_on_january_2nd_with_your_year: 1 月 2 日接收年度摘要，内含您的年度回顾。
         news_updates: 新闻与更新
         receive_occasional_emails_about_new_features_and_important_updates: 偶尔接收关于新功能和重要更新的邮件
+        send_test_email: 发送测试邮件
+        test_email_hint: 向您的帐户邮箱发送一封测试邮件，以验证 SMTP 设置
         timezone: 时区
         your_timezone: 您的时区
         all_dates_and_times_will_be_displayed_in_this_timezone: 所有日期和时间都将显示在该时区中
@@ -2510,6 +2573,9 @@ zh:
       the_lock_will_automatically_lift_after_30_minutes_no_action: 30 分钟后锁定将自动解除。如果是您本人操作，则无需任何操作。
       didn_t_recognise_this_activity_someone_may_be_trying_to: 不是您本人的操作？有人可能正在尝试访问您的帐户。我们建议立即重置密码。
       reset_your_password_2: 重置密码：
+    test_email:
+      body: 如果您能看到这封邮件，说明您实例的 SMTP 配置工作正常。
+      sent_at: 发送时间
     welcome:
       welcome_to_dawarich: 欢迎使用 Dawarich！
       hi: 您好
@@ -3089,6 +3155,11 @@ zh:
         please_enter_an_email_address_or_github_username: 请输入邮箱地址或 GitHub 用户名
         verified_thank_you_for_supporting_dawarich_via_platform: 已验证！感谢您通过 %{platform} 支持 Dawarich。
         not_found_in_supporter_list_make_sure_you_re_using: 未在支持者列表中找到。请确保使用的邮箱或 GitHub 用户名与捐赠平台一致。
+        smtp_not_configured: 尚未配置 SMTP 邮件发送。请配置自托管 SMTP 设置后再设置邮件偏好。
+        smtp_not_configured_html: '尚未配置 SMTP 邮件发送。请配置%{link}后再设置邮件偏好。'
+        smtp_not_configured_link: 自托管 SMTP 设置
+        test_email_sent: 测试邮件已发送至 %{email}。请检查您的收件箱（以及垃圾邮件文件夹）。
+        test_email_failed: '测试邮件发送失败：%{error}'
       onboardings:
         demo_data_loaded: 演示数据已加载。
         demo_data_is_already_loaded: 演示数据已加载。
@@ -3303,6 +3374,8 @@ zh:
         subject: 确认 Dawarich 帐户删除
       otp_account_locked:
         subject: Dawarich 帐户暂时锁定
+      test_email:
+        subject: Dawarich 测试邮件
       digests:
         year_end:
           subject: 您的 %{year} 年度回顾 - Dawarich
@@ -3810,15 +3883,12 @@ zh:
       anomaly_point: 异常轨迹点
       failed_to_load_location_data_please_try_again: 加载位置数据失败。请重试。
       click_on_the_map_to_place_a_place: 点击地图放置地点
-      failed_to_reload_routes: 无法重新加载路线
-      failed_to_load_scratch_layer: 无法加载刮刮图层
       failed_to_load_photos: 无法加载照片
       some_photo_sources_unavailable: 部分照片来源不可用：%{sources}
       failed_to_load_areas: 无法加载区域
       failed_to_load_tracks: 无法加载轨迹
       failed_to_load_flights: 无法加载航班
       failed_to_load_anomalies: 无法加载异常轨迹点
-      reloading_routes: 正在重新加载路线...
       cannot_update_recalculation_is_already_in_progress: 无法更新：重新计算已在进行中
       transportation_settings_saved: 已保存交通设置
       globe_view_will_be_applied_after_page_reload: 重新加载页面后将应用地球视图
@@ -3873,6 +3943,11 @@ zh:
       failed_to_update_visit: 更新到访记录失败
       visit_deleted_successfully: 到访记录删除成功
       failed_to_update_point_position_please_try_again: 更新轨迹点位置失败。请重试。
+      point_edit_conflict: 此点已在另一个会话中更改。现已显示最新保存的位置。
+      failed_to_load_map_tiles: 无法加载地图瓦片。
+      tracks_pending: 此视图中暂时没有轨迹。请移动地图或扩大日期范围；最近导入的数据可能仍在处理中。
+      failed_to_load_visited_countries: 无法加载已访问国家。
+      retry: 重试
       failed_to_load_track_points: 加载轨迹点失败
       point_updated_track_will_be_recalculated: 轨迹点已更新，轨迹将重新计算。
       delete: 删除
@@ -3885,11 +3960,10 @@ zh:
       confirmed: 已确认
       layers: 图层
       points: 轨迹点
-      routes: 路线
       tracks: 轨迹
       heatmap: 热图
       fog_of_war: 战争迷雾
-      scratch_map: 刮刮地图
+      scratch_map: 已访问国家/地区
       areas: 区域
       photos: 照片
       visits: 到访记录
@@ -3945,16 +4019,6 @@ zh:
         one: "%{distance} %{unit} | %{count} 个轨迹点"
         other: "%{distance} %{unit} | %{count} 个轨迹点"
       updating: 正在更新地图...
-      tiled_rendering:
-        inactive_note:
-          one: '%{layers} 开启时不可用 — 它需要完整的点集。'
-          other: '%{layers} 开启时不可用 — 它们需要完整的点集。'
-        editing_unavailable: 瓦片渲染下不可用，矢量瓦片没有可拖动的点
-        failed: 无法加载地图瓦片。请尝试缩短日期范围，或在地图设置中关闭瓦片渲染。
-        tracks_pending: 此视图中没有轨迹。瓦片渲染下的路线显示您生成的轨迹 — 请平移地图或扩大日期范围，如果您的历史记录是最近导入的，请稍后再查看。
-        splitting_unavailable: 瓦片渲染下不生效 — 路线跟随您生成的轨迹。
-        blockers:
-          scratch: 刮刮地图
     replay:
       no_data_at_this_time: 此时无数据
       pause: 暂停
@@ -4258,7 +4322,6 @@ zh:
       radius: 半径
       reason: 原因
       route_information: 路线信息
-      routes: 路线
       selected_point: 选定的轨迹点
       show_points: 显示轨迹点
       show_points_help: 启用后可查看并拖动轨迹点以编辑轨迹
@@ -4373,14 +4436,10 @@ zh:
       fog_threshold: 战争迷雾阈值
       live_map: 实时地图
       merge_threshold: 合并阈值（分钟）
-      meters_between_routes: 路线间隔（米）
-      minutes_between_routes: 路线间隔（分钟）
-      points_rendering_mode: 轨迹点渲染模式
       raw: 原始
       route_opacity: 路线不透明度（%）
       simplified: 简化
       speed_color_scale: 速度色标
-      speed_colored_routes: 按速度着色的路线
       time_threshold: 时间阈值（分钟）
     calendar_panel:
       loading_visited_places: 正在加载到访过的地点...

@@ -99,6 +99,20 @@ function evaluate(expression, properties) {
   const [op, ...args] = expression
   const resolved = () => args.map((arg) => evaluate(arg, properties))
   switch (op) {
+    case "all":
+      return resolved().every(Boolean)
+    case "any":
+      return resolved().some(Boolean)
+    case "!":
+      return !resolved()[0]
+    case ">=": {
+      const [left, right] = resolved()
+      return left >= right
+    }
+    case "<=": {
+      const [left, right] = resolved()
+      return left <= right
+    }
     case "min":
       return Math.min(...resolved())
     case "*":
@@ -115,6 +129,40 @@ function evaluate(expression, properties) {
       throw new Error(`Unsupported op: ${op}`)
   }
 }
+
+test("low-zoom aggregates are flight-masked only when their full time span overlaps", () => {
+  const filters = []
+  const layer = new PointsMvtLayer({
+    getLayer: () => true,
+    setFilter: (_id, filter) => filters.push(filter),
+  })
+
+  layer.setFlightWindows([[100, 200]])
+  const filter = filters[0]
+  assert.equal(evaluate(filter, { timestamp: 120, max_timestamp: 180 }), false)
+  assert.equal(evaluate(filter, { timestamp: 120, max_timestamp: 240 }), true)
+  assert.equal(evaluate(filter, { timestamp: 80, max_timestamp: 180 }), true)
+})
+
+test("fog keep-alive restores the active day opacity after Points are toggled", () => {
+  const paint = []
+  const layer = new PointsMvtLayer({
+    getLayer: () => true,
+    setLayoutProperty() {},
+    setPaintProperty: (_id, property, value) => paint.push({ property, value }),
+  })
+  layer.setSourceKeepAlive(true)
+  const dayExpression = ["case", true, 1, 0.04]
+  layer.setCircleOpacity("circle-opacity", dayExpression)
+  layer.setVisibility(false)
+  layer.setCircleOpacity("circle-opacity", ["case", false, 1, 0.04])
+  assert.equal(paint.at(-1).value, 0)
+  layer.setVisibility(true)
+  assert.deepEqual(
+    paint.findLast(({ property }) => property === "circle-opacity").value,
+    ["case", false, 1, 0.04],
+  )
+})
 
 test("tile URLs carry no raw api key under any input combination", () => {
   const cases = [
@@ -151,6 +199,13 @@ test("tile URLs carry a stable non-secret per-user cache partitioner", () => {
   assert.notEqual(partitioner(layerA), partitioner(layerB))
 })
 
+test("tile URLs preserve the selected import scope", () => {
+  const layer = new PointsMvtLayer(fakeMap(), { importId: "42" })
+  const params = new URLSearchParams(layer._buildTileUrl().split("?")[1])
+
+  assert.equal(params.get("import_id"), "42")
+})
+
 test("tiled heatmap weight scales with count: log-monotonic, classic at count 1", () => {
   const layer = new PointsMvtLayer(fakeMap(), {})
   const heatmapConfig = layer
@@ -170,7 +225,7 @@ test("tiled heatmap weight scales with count: log-monotonic, classic at count 1"
   assert.ok(at(5000) <= 1, "weight must stay clamped at 1")
 })
 
-test("circle stroke follows the basemap marker theme like the classic layer", () => {
+test("circle stroke follows the basemap marker theme", () => {
   const stroke = (styleName) =>
     new PointsMvtLayer(fakeMap(), { styleName })
       .getLayerConfigs()
@@ -200,22 +255,22 @@ test("update() to a new range re-adds sub-layers at their original z-position", 
   const map = fakeMap(["visits"])
   const layer = new PointsMvtLayer(map, { startAt: "a", endAt: "b" })
   layer.add({ startAt: "a", endAt: "b" })
-  // Real production ids stacked ABOVE points-mvt in layer_manager order
-  map.layers.push("points", "routes-hit", "recent-point")
+  // Representative production ids stacked above points-mvt.
+  map.layers.push("focused-overlay", "selection-hit", "recent-point")
 
   map.addLayerCalls.length = 0
   layer.update({ startAt: "c", endAt: "d" })
 
   assert.deepEqual(
     map.addLayerCalls.map((call) => call.beforeId),
-    ["points", "points"],
+    ["focused-overlay", "focused-overlay"],
   )
   assert.deepEqual(map.layers, [
     "visits",
     "points-mvt-heatmap",
     "points-mvt",
-    "points",
-    "routes-hit",
+    "focused-overlay",
+    "selection-hit",
     "recent-point",
   ])
 })
@@ -275,7 +330,7 @@ test("refresh() preserves z-position too", () => {
   )
 })
 
-test("shared heatmapPaint stays byte-identical for the classic layer", () => {
+test("shared heatmapPaint retains its established defaults", () => {
   assert.deepEqual(heatmapPaint(0.6), {
     "heatmap-weight": 0.2,
     "heatmap-intensity": [

@@ -250,13 +250,13 @@ test("update() under tiled mode refreshes from the source instead of clobbering 
   fog._refreshTiledPositions()
   assert.equal(fog.points.length, 1)
 
-  // The fog-radius slider re-sends the stored (empty) classic collection.
+  // The fog-radius slider re-sends the stored (empty) GeoJSON collection.
   fog.update({ type: "FeatureCollection", features: [] })
 
   assert.equal(fog.points.length, 1)
 })
 
-test("setTiledSource flips the layer between classic data and the tile source in place", () => {
+test("setTiledSource flips the layer between GeoJSON data and the tile source in place", () => {
   const { map, fog } = buildFog({ tiledSource: false })
   assert.equal(map.listenerCount("sourcedata"), 0)
 

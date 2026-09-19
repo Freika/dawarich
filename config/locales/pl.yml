@@ -1,4 +1,68 @@
 pl:
+  admin:
+    settings:
+      show:
+        title: "Ustawienia instancji"
+        intro: "Te ustawienia dotyczą całej instancji. Ustawienie pochodzące ze zmiennej środowiskowej jest wyświetlane tylko do odczytu: usuń zmienną, aby edytować je tutaj."
+        save: "Zapisz ustawienia"
+        saving: "Zapisywanie…"
+        secret_set: "Wartość jest zapisana"
+        pinned_hint: "Ustalone przez %{variable}"
+        clear_secret: "Usuń zapisaną wartość"
+        unreadable_secret: "Zapisanej wartości nie da się odszyfrować kluczami tej instancji. Wprowadź ją ponownie."
+        sections_nav: "Sekcje ustawień instancji"
+        nav_pinned: "Ustawione zmienną środowiskową"
+        nav_attention: "Wymaga uwagi"
+        geocoding:
+          title: "Geokodowanie"
+          description: "Geokodowanie zamienia współrzędne w nazwy miast i krajów w Twoich punktach i statystykach oraz obsługuje wyszukiwanie miejsc i lokalizacji."
+          in_use: "W użyciu"
+          "off": "Wyłączone"
+          none: "Nie skonfigurowano żadnego dostawcy, więc nowe punkty nie są geokodowane. Dodaj poniżej host Photon lub klucz API dostawcy."
+          stored: "Zapisane na tej stronie"
+          chain_hint: "Dawarich używa pierwszego skonfigurowanego dostawcy w kolejności poniżej. Dostawca ustawiony zmienną środowiskową ma pierwszeństwo przed zapisanymi tutaj."
+          test: "Testuj połączenie"
+          testing: "Testowanie…"
+          test_hint: "Jedno zapytanie z zapisanymi ustawieniami"
+          rate_limit: "Limit zapytań"
+          chibigeo_message: "ChibiGeo to nastawiona na prywatność usługa geokodowania w stałej cenie, stworzona przez zespół Dawarich. Działa z Dawarich od razu. Wymagany jest klucz API."
+          chibigeo_key_link: "Odbierz darmowy klucz API"
+          komoot_warning: "photon.komoot.io to współdzielona instancja publiczna ze ścisłymi limitami zapytań. Zapytania są ograniczone do jednego na sekundę, a masowe geokodowanie będzie powolne. Rozważ uruchomienie własnej instancji Photon."
+          https_locked: "Dla tego hosta HTTPS jest zawsze włączony."
+          legacy_user_settings: "Niektórzy użytkownicy skonfigurowali własne geokodowanie, zanim zostało przeniesione tutaj. Ich ustawienia nie zostały przeniesione, ponieważ nie każdy użytkownik je miał albo się różniły. Skonfiguruj dostawcę poniżej, aby ponownie włączyć geokodowanie dla wszystkich."
+        providers:
+          photon: "Otwartoźródłowy geokoder. Użyj hostowanego serwera albo własnego."
+          geoapify: "Usługa hostowana. Wymaga klucza API."
+          nominatim: "Geokoder OpenStreetMap, zwykle na własnym serwerze."
+          locationiq: "Usługa hostowana. Wymaga klucza API."
+        points:
+          title: "Punkty"
+        fields:
+          photon_api_host: "Host"
+          photon_api_key: "Klucz API"
+          photon_api_use_https: "Używaj HTTPS"
+          nominatim_api_host: "Host"
+          nominatim_api_key: "Klucz API"
+          nominatim_api_use_https: "Używaj HTTPS"
+          geoapify_api_key: "Klucz API"
+          locationiq_api_key: "Klucz API"
+          reverse_geocoding_rps: "Zapytania na sekundę"
+          store_geodata: "Geokoduj nowe punkty"
+          host_hint: "Sama nazwa hosta z opcjonalnym portem, np. photon.example.com:2322"
+          rps_hint: "Pozostaw puste, aby nie stosować limitu. Ustaw wartość, na jaką pozwala Twój serwer lub plan."
+          api_key_keep_hint: "Pozostaw puste, aby zachować zapisany klucz."
+          store_geodata_hint: "Ustala miasto i kraj każdego nowego punktu i zapisuje wynik. Gdy wyłączone, nowe punkty zachowują tylko współrzędne."
+      update:
+        saved: "Ustawienia zapisane."
+        pinned: "Odrzucono: ustalone przez %{variables}."
+        host_invalid: "Host musi być samą nazwą hosta z opcjonalnym portem lub ścieżką, bez spacji."
+        chibigeo_key_required: "ChibiGeo wymaga klucza API. Darmowy plan Hobby obejmuje 2500 zapytań dziennie — odbierz swój klucz na chibigeo.com."
+      test_geocoding:
+        not_configured: "Nie skonfigurowano dostawcy geokodowania. Najpierw zapisz dostawcę."
+        success: "Udało się! Twój dostawca rozpoznał testowe współrzędne jako: %{place}."
+        empty: "Dostawca odpowiedział, ale nie zwrócił wyników dla testowych współrzędnych."
+        failure: "Test nie powiódł się: %{error}"
+        rate_limited: "Limit zapytań dostawcy jest w tej chwili wyczerpany — spróbuj ponownie za chwilę."
   activerecord:
     errors:
       models:
@@ -904,13 +968,9 @@ pl:
         show_individual_location_points: Pokaż pojedyncze punkty lokalizacji
         edit_points: Edytuj punkty
         allow_dragging_points_to_correct_their_position: Pozwala przeciągać punkty, aby poprawić ich pozycję.
-        editing_points_is_a_pro_feature_this_stays_on_for: Edycja punktów to funkcja Pro - to ustawienie działa tylko w bieżącej sesji, a przesunięcia nie są zapisywane w planie Lite.
+        editing_points_is_a_pro_feature_this_stays_on_for: Edycja punktów jest dostępna w planie Pro.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Pozwala przeciągać punkty, aby poprawić ich pozycję. Zapamiętywane między sesjami.
-        tiled_rendering: Renderowanie kafelkowe
         beta: Beta
-        tiled_rendering_description: Rysuje punkty, trasy, odcinki i nieodkryty obszar z kafelków wektorowych podczas przesuwania mapy, dzięki czemu długi zakres dat wczytuje tylko to, co widać. Trasy pokazują wygenerowane odcinki. Przybliż mapę, aby zobaczyć prędkość każdego segmentu.
-        tiled_rendering_caveats: Aktywne, gdy warstwa Odkryte kraje jest wyłączona. W gęstych obszarach punkty łączą się w znaczniki z licznikiem punktów — przybliż, aby otworzyć pojedyncze punkty. Edycja punktów jest niedostępna, najechanie na trasę nie pokazuje już dymka — zamiast tego kliknij odcinek — a ślad na żywo może opóźniać się o kilka minut.
-        routes: Trasy
         show_connected_route_lines: Pokaż połączone linie tras
         color_by_speed: Koloruj według prędkości
         edit_color_gradient: Edytuj gradient kolorów
@@ -944,8 +1004,8 @@ pl:
         show_explored_areas: Pokaż odkryte obszary
         per_point: Na punkt
         per_hexagon: Na heksagon
-        scratch_map: Odkryte kraje
-        show_scratched_countries: Pokaż odwiedzone kraje
+        scratch_map: Odwiedzone kraje
+        show_scratched_countries: Wyróżnij kraje odwiedzone w wybranym zakresie
         family_members: Członkowie rodziny
         show_family_member_locations: Pokaż lokalizacje członków rodziny
         click_to_center_on_member: Kliknij, aby wycentrować na członku
@@ -978,29 +1038,29 @@ pl:
         the_custom_style_draws_no_labels_or_points_of_interest: Styl Własny nie rysuje etykiet ani punktów zainteresowania - te przełączniki są wyłączone, gdy jest aktywny.
         points_of_interest: Punkty zainteresowania
         choose_which_poi_categories_appear_on_the_map: Wybierz kategorie POI widoczne na mapie.
-        meters_between_routes: Metry między trasami
         distance_threshold_for_route_splitting: Próg odległości do dzielenia tras
-        minutes_between_routes: Minuty między trasami
         min: 60 min
         min_2: 1 min
         min_3: 90 min
         min_4: 180 min
         time_threshold_for_route_splitting: Próg czasu do dzielenia tras
-        points_rendering_mode: Tryb renderowania punktów
         raw_all_points: Surowe (wszystkie punkty)
         simplified_reduced_points: Uproszczone (zredukowane punkty)
-        speed_colored_routes: Trasy kolorowane prędkością
-        color_routes_by_speed: Koloruj trasy według prędkości
         fog_of_war_radius: Promień Nieodkrytego obszaru
         clear_radius_around_visited_points: Promień czyszczenia wokół odwiedzonych punktów
         fog_of_war_threshold: Próg Nieodkrytego obszaru
         minimum_points_to_clear_fog: Minimalna liczba punktów do odkrycia obszaru
         gps_noise_filtering: Filtrowanie szumu GPS
+        track_generation: Generowanie tras
+        track_split_distance: Odstęp odległości między trasami
+        track_split_distance_hint: Rozpocznij nową trasę, gdy kolejne punkty są dalej od siebie.
+        track_split_time: Odstęp czasu między trasami
+        track_split_time_hint: Rozpocznij nową trasę, gdy przerwa między punktami jest dłuższa.
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Ukryj odczyty, które nie mogą być rzeczywistą pozycją - niemożliwe skoki, uszkodzone współrzędne. Wyłącz, aby zobaczyć wszystkie surowe punkty.
         re_evaluate_past_data: Ponownie oceń dane historyczne
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Czyści istniejące flagi anomalii i ponownie uruchamia filtr dla wszystkich punktów z bieżącymi ustawieniami. Potem trasy, statystyki i podsumowania zostaną przebudowane. Działa w tle.
         recalculate_tracks_stats: Przelicz trasy i statystyki
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Przebuduj trasy, statystyki i podsumowania na podstawie bieżących punktów bez ruszania flag anomalii. Przydatne po zmianie progów dzielenia tras.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Najpierw zapisz te progi. Nowe ślady będą ich używać automatycznie; wybierz „Przelicz ślady i statystyki”, aby zastosować je do istniejącej historii.
         city_statistics: Statystyki miast
         min_minutes_in_city: Minimalny czas w mieście
         min_5: 60 min
@@ -1410,55 +1470,6 @@ pl:
       residential_roads: Drogi osiedlowe
       track: Trasa
   settings:
-    geocoding:
-      show:
-        title: Geokodowanie
-        provider: Dostawca geokodowania
-        provider_hint: Dostawca używany do odwrotnego geokodowania Twoich punktów oraz do wyszukiwania miejsc i lokalizacji.
-        intro: Geokodowanie zamienia współrzędne w nazwy miast i krajów w Twoich punktach i statystykach oraz obsługuje wyszukiwanie miejsc i lokalizacji.
-        host_choice: Serwer Photon
-        choice_chibigeo: Usługa hostowana ChibiGeo
-        choice_chibigeo_desc: 'Darmowy poziom: 2500 zapytań dziennie. Działa od razu — wystarczy dodać klucz API.'
-        choice_komoot: Publiczny serwer komoot
-        choice_komoot_desc: Darmowa współdzielona instancja, ograniczona do jednego zapytania na sekundę.
-        choice_custom: Własny host
-        choice_custom_desc: Twoja własna instancja Photon lub inny zgodny serwer.
-        recommended: Zalecane
-        https_locked: Dla tego hosta HTTPS jest zawsze włączony.
-        https_on: Włączony
-        https_off: Wyłączony
-        chibigeo_message: ChibiGeo to nastawiona na prywatność usługa geokodowania w stałej cenie, stworzona przez zespół Dawarich. Działa z Dawarich od razu. Wymagany jest klucz API.
-        chibigeo_limits: Darmowy plan Hobby obejmuje 2500 zapytań dziennie przy 1 zapytaniu na sekundę — to sztywne limity, bez możliwości ich przekroczenia.
-        chibigeo_key_link: Odbierz darmowy klucz API
-        chibigeo_site_link: Czym jest ChibiGeo?
-        disabled: Wyłączone
-        env_managed_notice: Geokodowanie jest obecnie zarządzane przez zmienne środowiskowe ustawione przez operatora Twojej instancji. Poniższe ustawienia zadziałają dopiero po usunięciu tych zmiennych.
-        host: Host
-        host_hint: Sama nazwa hosta z opcjonalnym portem, np. photon.example.com:2322
-        api_key: Klucz API
-        api_key_hint: Pozostaw puste, aby zachować zapisany klucz.
-        api_key_saved: Dla tego dostawcy zapisano klucz.
-        clear_api_key: Usuń zapisany klucz API
-        use_https: Używaj HTTPS
-        rps: Zapytania na sekundę
-        rps_hint_custom: Pozostaw puste, aby nie stosować limitu. Ustaw wartość, na jaką pozwala Twój serwer lub plan.
-        rps_hint_chibigeo: Dopasuj do swojego planu ChibiGeo — Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Ustawienie wyższej wartości, niż pozwala plan, skończy się tylko odrzuconymi zapytaniami.
-        rps_hint_komoot: komoot wymusza jedno zapytanie na sekundę dla wszystkich, więc ta wartość jest stała.
-        komoot_warning: photon.komoot.io to współdzielona instancja publiczna ze ścisłymi limitami zapytań. Zapytania są ograniczone do jednego na sekundę, a masowe geokodowanie będzie powolne. Rozważ uruchomienie własnej instancji Photon.
-        komoot_no_api_key: Publiczny serwer komoot nie przyjmuje klucza API — pozostaw to pole puste.
-        save: Zapisz
-        test: Przetestuj dostawcę
-        test_hint: Najpierw zapisz ustawienia, a potem przetestuj. Test wykonuje jedno zapytanie do Twojej własnej konfiguracji dostawcy, nawet gdy aktywne są zmienne środowiskowe.
-      update:
-        updated: Zaktualizowano ustawienia geokodowania.
-        disabled: Geokodowanie wyłączone.
-        invalid_provider: Nieznany dostawca geokodowania.
-      test:
-        not_configured: Dla Twojego konta nie skonfigurowano dostawcy geokodowania. Najpierw zapisz dostawcę.
-        success: 'Udało się! Twój dostawca rozpoznał testowe współrzędne jako: %{place}.'
-        empty: Dostawca odpowiedział, ale nie zwrócił wyników dla testowych współrzędnych.
-        failure: 'Test nie powiódł się: %{error}'
-        rate_limited: Limit zapytań dostawcy jest w tej chwili wyczerpany — spróbuj ponownie za chwilę.
     navigation:
       general: Ogólne
       integrations: Integracje
@@ -1466,6 +1477,7 @@ pl:
       visits: Wizyty
       two_factor_authentication: Uwierzytelnianie dwuskładnikowe
       users: Użytkownicy
+      instance: "Instancja"
       background_jobs: Zadania w tle
     background_jobs:
       index:
@@ -1538,7 +1550,6 @@ pl:
       index:
         services_nav: Usługi integracji
         services:
-          geocoding: Geokodowanie
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
@@ -3852,8 +3863,6 @@ pl:
       anomaly_point: Punkt anomalii
       failed_to_load_location_data_please_try_again: Nie udało się załadować danych lokalizacji. Spróbuj ponownie.
       click_on_the_map_to_place_a_place: Kliknij na mapie, aby dodać miejsce
-      failed_to_reload_routes: Nie udało się odświeżyć tras
-      failed_to_load_scratch_layer: Nie udało się załadować warstwy scratch
       failed_to_load_photos: Nie udało się załadować zdjęć
       some_photo_sources_unavailable: "Niektóre źródła zdjęć są niedostępne: %{sources}"
       failed_to_load_areas: Nie udało się załadować obszarów
@@ -3861,7 +3870,6 @@ pl:
       failed_to_load_track_details: Nie udało się wczytać szczegółów odcinka
       failed_to_load_flights: Nie udało się załadować lotów
       failed_to_load_anomalies: Nie udało się załadować anomalii
-      reloading_routes: Odświeżanie tras...
       cannot_update_recalculation_is_already_in_progress: 'Nie można zaktualizować: przeliczanie już trwa'
       transportation_settings_saved: Ustawienia transportu zapisane
       globe_view_will_be_applied_after_page_reload: Widok globu zostanie zastosowany po odświeżeniu strony
@@ -3916,6 +3924,11 @@ pl:
       failed_to_update_visit: Nie udało się zaktualizować wizyty
       visit_deleted_successfully: Wizyta została usunięta
       failed_to_update_point_position_please_try_again: Nie udało się zaktualizować pozycji punktu. Spróbuj ponownie.
+      point_edit_conflict: Ten punkt został zmieniony w innej sesji. Wyświetlono ostatnią zapisaną pozycję.
+      failed_to_load_map_tiles: Nie udało się wczytać kafelków mapy.
+      tracks_pending: W tym widoku nie ma jeszcze tras. Przesuń mapę lub rozszerz zakres dat; niedawny import może być nadal przetwarzany.
+      failed_to_load_visited_countries: Nie udało się wczytać odwiedzonych krajów.
+      retry: Spróbuj ponownie
       failed_to_load_track_points: Nie udało się załadować punktów trasy
       point_updated_track_will_be_recalculated: Punkt zaktualizowano. Trasa zostanie przeliczona.
       delete: Usuń
@@ -3928,11 +3941,10 @@ pl:
       confirmed: Potwierdzone
       layers: Warstwy
       points: Punkty
-      routes: Trasy
       tracks: Odcinki
       heatmap: Heatmapa
       fog_of_war: Nieodkryty obszar
-      scratch_map: Odkryte kraje
+      scratch_map: Odwiedzone kraje
       areas: Obszary
       photos: Zdjęcia
       visits: Wizyty
@@ -3972,16 +3984,6 @@ pl:
       show_all_days: Pokaż wszystkie dni
       collapse_all_days: Zwiń wszystkie dni
     map:
-      tiled_rendering:
-        inactive_note:
-          one: Nieaktywne, gdy włączona jest warstwa %{layers} — wymaga ona pełnego zestawu punktów.
-          other: Nieaktywne, gdy włączone są warstwy %{layers} — wymagają one pełnego zestawu punktów.
-        editing_unavailable: Niedostępne przy renderowaniu kafelkowym — kafelki wektorowe nie mają przeciąganych punktów
-        failed: Nie udało się wczytać kafelków mapy. Spróbuj węższego zakresu dat albo wyłącz renderowanie kafelkowe w ustawieniach mapy.
-        tracks_pending: Brak odcinków w tym widoku. Przy renderowaniu kafelkowym trasy pokazują wygenerowane odcinki — przesuń mapę lub poszerz zakres dat, a jeśli Twoja historia została zaimportowana niedawno, sprawdź ponownie później.
-        splitting_unavailable: Nieużywane przy renderowaniu kafelkowym — trasy podążają za wygenerowanymi odcinkami.
-        blockers:
-          scratch: Odkryte kraje
       places_layer: Warstwa miejsc
       confirm_delete_point: Czy na pewno chcesz usunąć ten punkt?
       confirm_delete_point_permanently: |-
@@ -4300,7 +4302,6 @@ pl:
       radius: Promień
       reason: Powód
       route_information: Informacje o trasie
-      routes: Trasy
       selected_point: Wybrany punkt
       show_points: Pokaż punkty
       show_points_help: Włącz, aby wyświetlać i przeciągać punkty przy edycji trasy
@@ -4436,14 +4437,10 @@ pl:
       fog_threshold: Próg Nieodkrytego obszaru
       live_map: Mapa na żywo
       merge_threshold: Próg łączenia (minuty)
-      meters_between_routes: Metry między trasami
-      minutes_between_routes: Minuty między trasami
-      points_rendering_mode: Tryb renderowania punktów
       raw: Surowy
       route_opacity: Nieprzezroczystość tras, %
       simplified: Uproszczony
       speed_color_scale: Skala kolorów prędkości
-      speed_colored_routes: Trasy kolorowane prędkością
       time_threshold: Próg czasu (minuty)
     calendar_panel:
       loading_visited_places: Ładowanie odwiedzonych miejsc...

@@ -6,18 +6,17 @@ RSpec.describe Visits::RealtimeDebouncer do
   let(:user) { create(:user) }
   let(:debouncer) { described_class.new(user.id) }
   let(:redis_key) { "visit_realtime:user:#{user.id}" }
+  let(:geocoding_configured) { true }
 
   before do
     Sidekiq.redis { |r| r.del(redis_key) }
     ActiveJob::Base.queue_adapter.enqueued_jobs.clear
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    configure_instance_geocoding if geocoding_configured
   end
 
   describe '#trigger' do
     context 'when reverse geocoding is disabled' do
-      before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-      end
+      let(:geocoding_configured) { false }
 
       it 'does not enqueue VisitSuggestingJob' do
         expect { debouncer.trigger }.not_to have_enqueued_job(VisitSuggestingJob)

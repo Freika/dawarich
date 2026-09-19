@@ -12,7 +12,7 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
   end
 
   before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    configure_instance_geocoding
   end
 
   context 'when the geocoder name differs from the seeded Natural Earth name' do
@@ -202,6 +202,66 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
         expect(Geocoder).not_to have_received(:search)
       end
+    end
+  end
+
+  context 'when the point moves while geocoding is in progress' do
+    let(:new_coordinates) { [52.5, 13.4] }
+    let(:new_location) { 'POINT(13.4 52.5)' }
+
+    it 'discards the old response and geocodes the current coordinates' do
+      original_coordinates = [point.lat, point.lon]
+      queries = []
+
+      allow(Geocoding::Search).to receive(:call) do |query:, **|
+        queries << query
+        if queries.one?
+          Point.find(point.id).update!(lonlat: new_location)
+          [double(city: 'Old city', country: nil, data: { 'location' => 'old' })]
+        else
+          [double(city: 'Berlin', country: nil, data: { 'location' => 'new' })]
+        end
+      end
+
+      fetch_data
+
+      expect(queries).to eq([original_coordinates, new_coordinates])
+      expect(point.reload).to have_attributes(city: 'Berlin', geodata: { 'location' => 'new' })
+      expect(point.reverse_geocoded_at).to be_present
+    end
+
+    it 'retries against current coordinates when the old lookup was empty' do
+      queries = []
+      allow(Geocoding::Search).to receive(:call) do |query:, **|
+        queries << query
+        if queries.one?
+          Point.find(point.id).update!(lonlat: new_location)
+          []
+        else
+          [double(city: 'Berlin', country: nil, data: {})]
+        end
+      end
+
+      fetch_data
+
+      expect(queries.last).to eq(new_coordinates)
+      expect(point.reload.city).to eq('Berlin')
+    end
+
+    it 'stops after the retry budget when the point keeps moving' do
+      attempts = 0
+      allow(ExceptionReporter).to receive(:call)
+      allow(Geocoding::Search).to receive(:call) do
+        attempts += 1
+        Point.find(point.id).update!(lonlat: "POINT(#{attempts} #{attempts})")
+        [double(city: 'Stale city', country: nil, data: {})]
+      end
+
+      fetch_data
+
+      expect(attempts).to eq(described_class::WRITE_MAX_RETRIES + 1)
+      expect(point.reload.reverse_geocoded_at).to be_nil
+      expect(ExceptionReporter).to have_received(:call).with(an_instance_of(ActiveRecord::StaleObjectError))
     end
   end
 
