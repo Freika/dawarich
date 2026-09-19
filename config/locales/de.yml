@@ -3923,6 +3923,13 @@ de:
       visit_deleted_successfully: Aufenthalt gelöscht
       failed_to_update_point_position_please_try_again: Aktualisierung der Punktposition fehlgeschlagen. Bitte versuche es erneut.
       point_edit_conflict: Dieser Punkt wurde in einer anderen Sitzung geändert. Die zuletzt gespeicherte Position wird angezeigt.
+      edit_history: Bearbeitungsverlauf
+      edit_history_capacity: "Speichert deine letzten %{count} Verschiebungen"
+      redo: Wiederholen
+      point_label: "Punkt #%{id}"
+      undo_to_here: "Bis hierher rückgängig machen"
+      redo_to_here: "Bis hierher wiederholen"
+      undo: Rückgängig
       failed_to_load_map_tiles: Kartenkacheln konnten nicht geladen werden.
       tracks_pending: Noch keine Tracks in dieser Ansicht. Verschiebe die Karte oder erweitere den Zeitraum; ein neuer Import wird möglicherweise noch verarbeitet.
       failed_to_load_visited_countries: Besuchte Länder konnten nicht geladen werden.

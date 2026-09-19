@@ -3947,6 +3947,13 @@ zh:
       visit_deleted_successfully: 到访记录删除成功
       failed_to_update_point_position_please_try_again: 更新轨迹点位置失败。请重试。
       point_edit_conflict: 此点已在另一个会话中更改。现已显示最新保存的位置。
+      edit_history: 编辑历史
+      edit_history_capacity: "保留最近 %{count} 次移动"
+      redo: 重做
+      point_label: "点 #%{id}"
+      undo_to_here: "撤销到此处"
+      redo_to_here: "重做到此处"
+      undo: 撤销
       failed_to_load_map_tiles: 无法加载地图瓦片。
       tracks_pending: 此视图中暂时没有轨迹。请移动地图或扩大日期范围；最近导入的数据可能仍在处理中。
       failed_to_load_visited_countries: 无法加载已访问国家。

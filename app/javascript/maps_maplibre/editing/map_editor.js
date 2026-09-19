@@ -2,37 +2,26 @@ import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { EditableTrackLayer } from "../layers/editable_track_layer"
 import { EditSuccessIndicator } from "./edit_success_indicator"
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value))
-}
-
-function pointFeature(point, trackId) {
-  const properties = { ...point, id: Number(point.id), kind: "point" }
-  if (trackId != null) properties.track_id = Number(trackId)
-
-  return {
-    type: "Feature",
-    geometry: {
-      type: "Point",
-      coordinates: [Number(point.longitude), Number(point.latitude)],
-    },
-    properties,
-  }
-}
-
-function segmentFeature(segment) {
-  return {
-    type: "Feature",
-    geometry: { type: "LineString", coordinates: segment.coordinates || [] },
-    properties: { ...segment, id: Number(segment.id), kind: "segment" },
-  }
-}
+import {
+  clone,
+  pointFeature,
+  segmentFeature,
+  snapshotCoordinates,
+  updateSegmentGeometry,
+} from "./editable_track_data"
+import { EditorHistory } from "./editor_history"
+import { TileExclusions } from "./tile_exclusions"
 
 export class MapEditor {
   constructor(
     map,
-    { apiClient, layerManager, historyScope, editable = true } = {},
+    {
+      apiClient,
+      layerManager,
+      historyScope,
+      editable = true,
+      distanceUnit = "km",
+    } = {},
   ) {
     this.map = map
     this.apiClient = apiClient
@@ -42,6 +31,9 @@ export class MapEditor {
     this.editable = editable
     this.layer = new EditableTrackLayer(map)
     this.indicator = new EditSuccessIndicator(map, this.layer.successLayerId)
+    this.exclusions = new TileExclusions(map)
+    this.trackLoad = null
+    this.edits = new EditorHistory(this, { distanceUnit })
     this.inFlight = false
     this.inFlightKeys = new Set()
     this.sessionVersion = 0
@@ -51,19 +43,43 @@ export class MapEditor {
     this._onMouseUp = this.onMouseUp.bind(this)
   }
 
-  async selectTrack(trackId) {
+  async selectTrack(trackId, { forEditing = false } = {}) {
     this.close()
     const sessionVersion = this.sessionVersion
-    const [track, points] = await Promise.all([
+    const [track, points] = await this._fetchTrack(trackId)
+    if (sessionVersion !== this.sessionVersion) return false
+
+    this.forEditing = forEditing
+    this._showTrack(trackId, track, points)
+    if (this.editable) this._enableDragging()
+    return true
+  }
+
+  // Starts dragging a point straight from the tile layer. Its track loads in
+  // the background: the line follows once it arrives, and saving waits for
+  // it because the server requires the track revision.
+  beginTileDrag(feature) {
+    if (!this.editable) return false
+    this.selectPoint(feature, { forEditing: true })
+    const trackId = feature.properties?.track_id
+    if (trackId != null)
+      this.trackLoad = this._loadTrackDuringDrag(trackId, this.sessionVersion)
+    return this.startDrag(Number(feature.properties.id))
+  }
+
+  _fetchTrack(trackId) {
+    return Promise.all([
       this.apiClient.fetchTrackWithSegments(trackId),
       this.apiClient.fetchTrackPoints(trackId),
     ])
-    if (sessionVersion !== this.sessionVersion) return false
+  }
+
+  _showTrack(trackId, track, points) {
     if (!track) throw new Error(`Track ${trackId} was not found`)
 
     this.trackId = Number(trackId)
     this.trackRevision = Number(track.properties.revision || 0)
-    this.data = {
+    const data = {
       type: "FeatureCollection",
       features: [
         ...(!this.importScoped
@@ -75,14 +91,36 @@ export class MapEditor {
         ...points.map((point) => pointFeature(point, trackId)),
       ],
     }
-    this.layer.add(this.data)
-    this._hideTileFeatures()
-    if (this.editable) this._enableDragging()
-    return true
+    if (this.data) this.layer.setData(data)
+    else this.layer.add(data)
+    this.data = data
+    this._excludeTiles()
   }
 
-  selectPoint(feature) {
+  async _loadTrackDuringDrag(trackId, sessionVersion) {
+    try {
+      const [track, points] = await this._fetchTrack(trackId)
+      if (sessionVersion !== this.sessionVersion || !track) return
+
+      const draggedId = this.draggedPointId
+      const dragged = draggedId != null && this._point(draggedId)
+      const coordinates = dragged && [...dragged.geometry.coordinates]
+      this.exclusions.restore()
+      this._showTrack(trackId, track, points)
+      if (draggedId == null) return
+      this.snapshot = clone(this.data)
+      if (this.hasMoved && coordinates) this.preview(draggedId, ...coordinates)
+    } catch (error) {
+      console.warn(
+        "[MapEditor] Failed to load the dragged point's track:",
+        error,
+      )
+    }
+  }
+
+  selectPoint(feature, { forEditing = false } = {}) {
     this.close()
+    this.forEditing = forEditing
     const properties = feature.properties || {}
     this.trackId = null
     this.trackRevision = null
@@ -107,33 +145,66 @@ export class MapEditor {
       ],
     }
     this.layer.add(this.data)
-    this._hideTileFeatures()
+    this._excludeTiles()
     if (this.editable) this._enableDragging()
   }
 
   setEditable(editable) {
     this.editable = editable === true
     this.map.off("mousedown", "track-points", this._onMouseDown)
+    this.edits.sync()
+    if (!this.editable && this.forEditing) {
+      this.close()
+      return
+    }
     if (this.editable && this.data) this._enableDragging()
   }
 
   onMouseDown(event) {
-    if (this.inFlight || !event.features?.[0]) return
-    const pointId = Number(event.features[0].properties.id)
-    if (this.inFlightKeys.has(this._mutationKey(pointId))) return
+    if (!event.features?.[0]) return
+    if (!this.startDrag(Number(event.features[0].properties.id))) return
     event.preventDefault()
-    this.draggedPointId = pointId
-    this.snapshot = clone(this.data)
-    this.hasMoved = false
-    this.map.getCanvasContainer().style.cursor = "grabbing"
     this.map.on("mousemove", this._onMouseMove)
     this.map.once("mouseup", this._onMouseUp)
   }
 
   onMouseMove(event) {
-    if (!this.draggedPointId) return
+    this.dragTo(event.lngLat.lng, event.lngLat.lat)
+  }
+
+  onMouseUp(event) {
+    this.map.off("mousemove", this._onMouseMove)
+    return this.endDrag(event.lngLat)
+  }
+
+  startDrag(pointId) {
+    if (!this.editable || this.inFlight || !this.data || !this._point(pointId))
+      return false
+    if (this.inFlightKeys.has(this._mutationKey(pointId))) return false
+    this.draggedPointId = pointId
+    this.snapshot = clone(this.data)
+    this.hasMoved = false
+    this.map.getCanvasContainer().style.cursor = "grabbing"
+    return true
+  }
+
+  dragTo(longitude, latitude) {
+    if (this.draggedPointId == null) return
     this.hasMoved = true
-    this.preview(this.draggedPointId, event.lngLat.lng, event.lngLat.lat)
+    this.preview(this.draggedPointId, longitude, latitude)
+  }
+
+  cancelDrag() {
+    if (this.draggedPointId == null) return
+    this.map.off("mousemove", this._onMouseMove)
+    this.map.getCanvasContainer().style.cursor = ""
+    if (this.snapshot) {
+      this.data = this.snapshot
+      this.layer.setData(this.data)
+    }
+    this.draggedPointId = null
+    this.snapshot = null
+    this.hasMoved = false
   }
 
   preview(pointId, longitude, latitude) {
@@ -152,10 +223,9 @@ export class MapEditor {
     this.layer.setData(this.data)
   }
 
-  async onMouseUp(event) {
-    this.map.off("mousemove", this._onMouseMove)
+  async endDrag(lngLat) {
     this.map.getCanvasContainer().style.cursor = ""
-    if (!this.hasMoved || !this.draggedPointId) {
+    if (!this.hasMoved || this.draggedPointId == null) {
       this.draggedPointId = null
       return
     }
@@ -163,7 +233,7 @@ export class MapEditor {
     const pointId = this.draggedPointId
     const sessionVersion = this.sessionVersion
     const mutationKey = this._mutationKey(pointId)
-    this.preview(pointId, event.lngLat.lng, event.lngLat.lat)
+    this.preview(pointId, lngLat.lng, lngLat.lat)
     this.justDragged = true
     setTimeout(() => {
       this.justDragged = false
@@ -172,7 +242,10 @@ export class MapEditor {
     this.inFlightKeys.add(mutationKey)
 
     try {
+      if (this.trackLoad) await this.trackLoad
+      if (sessionVersion !== this.sessionVersion) return
       const point = this._point(pointId)
+      const original = snapshotCoordinates(this.snapshot, pointId)
       const response = await this.apiClient.movePointPosition(pointId, {
         latitude: point.geometry.coordinates[1],
         longitude: point.geometry.coordinates[0],
@@ -180,17 +253,19 @@ export class MapEditor {
         trackRevision: this.trackRevision,
         historyScope: this.historyScope(),
       })
-      const isCurrentSession = sessionVersion === this.sessionVersion
-      if (isCurrentSession) this.applyCanonical(response, { rejectStale: true })
-      this.layerManager.getLayer("points-mvt")?.refresh()
-      this.layerManager.getLayer("tracks-mvt")?.refresh()
-      this.reapplyTileFilters()
-      if (isCurrentSession) this.indicator.show(pointId)
-      if (isCurrentSession && this.importScoped && this.trackId != null)
-        void this._refreshSelectedImportTrack(sessionVersion)
-      document.dispatchEvent(
-        new CustomEvent("dawarich:point-moved", { detail: response }),
-      )
+      this._afterMove(response, sessionVersion, pointId)
+      if (original)
+        this.edits.record(
+          {
+            pointId,
+            from: original,
+            to: {
+              longitude: point.geometry.coordinates[0],
+              latitude: point.geometry.coordinates[1],
+            },
+          },
+          response,
+        )
     } catch (error) {
       if (sessionVersion !== this.sessionVersion) return
       if (error.status === 409 && error.payload?.point)
@@ -212,6 +287,20 @@ export class MapEditor {
         this.snapshot = null
       }
     }
+  }
+
+  _afterMove(response, sessionVersion, pointId) {
+    const isCurrentSession = sessionVersion === this.sessionVersion
+    if (isCurrentSession) this.applyCanonical(response, { rejectStale: true })
+    this.layerManager.getLayer("points-mvt")?.refresh()
+    this.layerManager.getLayer("tracks-mvt")?.refresh()
+    this.reapplyTileFilters()
+    if (isCurrentSession) this.indicator.show(pointId)
+    if (isCurrentSession && this.importScoped && this.trackId != null)
+      void this._refreshSelectedImportTrack(sessionVersion)
+    document.dispatchEvent(
+      new CustomEvent("dawarich:point-moved", { detail: response }),
+    )
   }
 
   applyCanonical(response, { rejectStale = false } = {}) {
@@ -282,9 +371,11 @@ export class MapEditor {
     this.map.off("mousemove", this._onMouseMove)
     this.map.off("mouseup", this._onMouseUp)
     this.map.off("mousedown", "track-points", this._onMouseDown)
-    if (this.data) this._restoreTileFilters()
+    this.exclusions.restore()
     this.layer.remove()
     this.data = null
+    this.forEditing = false
+    this.trackLoad = null
     this.trackId = null
     this.inFlight = false
     this.draggedPointId = null
@@ -296,12 +387,16 @@ export class MapEditor {
     this.close()
   }
 
-  // Tile refreshes replace MapLibre sources and therefore discard their
-  // filters. Re-capture the canonical base filters (for example flight masks)
-  // and put the focused edit exclusions back on top.
   reapplyTileFilters() {
     if (!this.data) return
-    this._hideTileFeatures()
+    this._excludeTiles()
+  }
+
+  _excludeTiles() {
+    this.exclusions.apply({
+      trackId: this.importScoped ? null : this.trackId,
+      pointIds: this._points().map((point) => Number(point.properties.id)),
+    })
   }
 
   _enableDragging() {
@@ -349,64 +444,6 @@ export class MapEditor {
   }
 
   _updateSegments() {
-    const points = this._points()
-    for (const segment of this._segments()) {
-      const { start_index: startIndex, end_index: endIndex } =
-        segment.properties
-      let segmentPoints
-      if (startIndex != null && endIndex != null) {
-        segmentPoints = points.slice(Number(startIndex), Number(endIndex) + 1)
-      } else {
-        const start = Number(segment.properties.start_time)
-        const end = Number(segment.properties.end_time)
-        segmentPoints = points.filter((point) => {
-          const timestamp = Number(point.properties.timestamp)
-          return timestamp >= start && timestamp <= end
-        })
-      }
-      segment.geometry.coordinates = segmentPoints.map(
-        (point) => point.geometry.coordinates,
-      )
-    }
-  }
-
-  _hideTileFeatures() {
-    this.previousTrackFilter = this.map.getFilter?.("tracks-mvt") || null
-    this.previousPointFilter = this.map.getFilter?.("points-mvt") || null
-    if (this.trackId && !this.importScoped && this.map.getLayer("tracks-mvt")) {
-      const exclusion = ["!=", ["get", "id"], this.trackId]
-      this.map.setFilter(
-        "tracks-mvt",
-        this.previousTrackFilter
-          ? ["all", this.previousTrackFilter, exclusion]
-          : exclusion,
-      )
-    }
-    if (this.map.getLayer("points-mvt")) {
-      const exclusion = [
-        "!",
-        [
-          "in",
-          ["get", "id"],
-          [
-            "literal",
-            this._points().map((point) => Number(point.properties.id)),
-          ],
-        ],
-      ]
-      this.map.setFilter(
-        "points-mvt",
-        this.previousPointFilter
-          ? ["all", this.previousPointFilter, exclusion]
-          : exclusion,
-      )
-    }
-  }
-
-  _restoreTileFilters() {
-    if (this.map.getLayer("tracks-mvt"))
-      this.map.setFilter("tracks-mvt", this.previousTrackFilter)
-    if (this.map.getLayer("points-mvt"))
-      this.map.setFilter("points-mvt", this.previousPointFilter)
+    updateSegmentGeometry(this._points(), this._segments())
   }
 }

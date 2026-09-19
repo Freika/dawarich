@@ -5120,6 +5120,13 @@ fr:
       failed_to_update_point_position_please_try_again: Échec de mise à jour de la
         position du point. Veuillez réessayer.
       point_edit_conflict: Ce point a été modifié dans une autre session. La dernière position enregistrée est affichée.
+      edit_history: Historique des modifications
+      edit_history_capacity: "Conserve vos %{count} derniers déplacements"
+      redo: Rétablir
+      point_label: "Point n° %{id}"
+      undo_to_here: "Annuler jusqu'ici"
+      redo_to_here: "Rétablir jusqu'ici"
+      undo: Annuler
       failed_to_load_map_tiles: Impossible de charger les tuiles de la carte.
       tracks_pending: Aucun trajet dans cette vue pour l'instant. Déplacez la carte ou élargissez la période ; un import récent est peut-être encore en cours de traitement.
       failed_to_load_visited_countries: Impossible de charger les pays visités.

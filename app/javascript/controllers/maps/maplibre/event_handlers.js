@@ -1,6 +1,7 @@
 import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
+import { PointDragGesture } from "maps_maplibre/editing/point_drag_gesture"
 import {
   formatDistance,
   formatSpeed,
@@ -55,6 +56,13 @@ export class EventHandlers {
     this._boundTrackPointsToggleChange =
       this._handleTrackPointsToggleChange.bind(this)
 
+    this.pointDrag = new PointDragGesture(map, {
+      isEnabled: () => this._pointEditingEnabled(),
+      getEditor: () => this._mapEditor(),
+      isSinglePoint: shouldShowPointPopup,
+    })
+    this.pointDrag.attach()
+
     this._boundOnSegmentModeChanged = this._onSegmentModeChanged.bind(this)
     document.addEventListener(
       "dawarich:segment-mode-changed",
@@ -68,6 +76,7 @@ export class EventHandlers {
    * don't accumulate stale `dawarich:segment-mode-changed` listeners.
    */
   destroy() {
+    this.pointDrag?.detach()
     if (this._boundOnSegmentModeChanged) {
       document.removeEventListener(
         "dawarich:segment-mode-changed",
@@ -86,6 +95,7 @@ export class EventHandlers {
   }
 
   teardownLayerInteractions() {
+    this.pointDrag?.cancel()
     this.map.off("click", "track-points", this._handleTrackPointClick)
     this._trackSelectionGeneration += 1
     this.selectedTrackFeature = null
@@ -110,11 +120,7 @@ export class EventHandlers {
       return
     }
 
-    if (
-      feature.layer?.id === "points-mvt" &&
-      SettingsManager.getSetting("pointDraggingEnabled") === true &&
-      !isGatedPlan(this.controller?.userPlanValue)
-    ) {
+    if (feature.layer?.id === "points-mvt" && this._pointEditingEnabled()) {
       this._openPointEditor(feature).catch((error) => {
         console.error("[EventHandlers] Failed to open point editor:", error)
         Toast.error(translate("messages.failed_to_load_track_points"))
@@ -340,7 +346,7 @@ export class EventHandlers {
    */
   refreshActiveAreaInfo(areas) {
     const entity = this.controller._infoEntity
-    if (!entity || entity.type !== "area") return
+    if (entity?.type !== "area") return
     if (!this.controller.hasInfoDisplayTarget) return
     if (this.controller.infoDisplayTarget.classList.contains("hidden")) return
 
@@ -724,9 +730,8 @@ export class EventHandlers {
     editor = new MapEditor(this.map, {
       apiClient: this.controller.api,
       layerManager: this.controller.layerManager,
-      editable:
-        SettingsManager.getSetting("pointDraggingEnabled") === true &&
-        !isGatedPlan(this.controller?.userPlanValue),
+      editable: this._pointEditingEnabled(),
+      distanceUnit: this.controller.settings?.distance_unit || "km",
       historyScope: () => ({
         startAt: this.controller.startDateValue,
         endAt: this.controller.endDateValue,
@@ -736,12 +741,21 @@ export class EventHandlers {
     return editor
   }
 
+  _pointEditingEnabled() {
+    return (
+      SettingsManager.getSetting("pointDraggingEnabled") === true &&
+      !isGatedPlan(this.controller?.userPlanValue)
+    )
+  }
+
   async _openPointEditor(feature) {
     const editor = await this._mapEditor()
     if (feature.properties.track_id) {
-      await editor.selectTrack(feature.properties.track_id)
+      await editor.selectTrack(feature.properties.track_id, {
+        forEditing: true,
+      })
     } else {
-      editor.selectPoint(feature)
+      editor.selectPoint(feature, { forEditing: true })
     }
   }
 
@@ -762,8 +776,7 @@ export class EventHandlers {
   _createTrackSegmentMarkers(trackId, feature, segments) {
     this._clearTrackMarkers()
 
-    if (!feature || !feature.geometry || feature.geometry.type !== "LineString")
-      return
+    if (feature?.geometry?.type !== "LineString") return
     if (!segments || segments.length === 0) return
 
     const coords = feature.geometry.coordinates
@@ -807,8 +820,7 @@ export class EventHandlers {
    */
   updateTrackMarkers(feature) {
     if (!this.selectedTrackFeature) return
-    if (!feature || !feature.geometry || feature.geometry.type !== "LineString")
-      return
+    if (feature?.geometry?.type !== "LineString") return
 
     // Parse segments from feature properties
     let segments = []

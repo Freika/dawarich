@@ -3868,6 +3868,13 @@ es:
       visit_deleted_successfully: La visita ha sido eliminada con éxito
       failed_to_update_point_position_please_try_again: No se pudo actualizar la posición del punto. Inténtalo de nuevo.
       point_edit_conflict: Este punto cambió en otra sesión. Se muestra la última posición guardada.
+      edit_history: Historial de cambios
+      edit_history_capacity: "Guarda tus últimos %{count} movimientos"
+      redo: Rehacer
+      point_label: "Punto #%{id}"
+      undo_to_here: "Deshacer hasta aquí"
+      redo_to_here: "Rehacer hasta aquí"
+      undo: Deshacer
       failed_to_load_map_tiles: No se pudieron cargar las teselas del mapa.
       tracks_pending: Aún no hay recorridos en esta vista. Desplaza el mapa o amplía el intervalo de fechas; es posible que un importe reciente siga procesándose.
       failed_to_load_visited_countries: No se pudieron cargar los países visitados.

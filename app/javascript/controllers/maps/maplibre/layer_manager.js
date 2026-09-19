@@ -128,11 +128,11 @@ export class LayerManager {
     // mousemove, not mouseenter: clickable and merged features sit side by side
     // in this layer, and mouseenter fires only on entering the layer as a whole.
     subscribe("mousemove", "points-mvt", (e) => {
-      this.map.getCanvas().style.cursor = shouldShowPointPopup(
-        e.features?.[0]?.properties,
-      )
-        ? "pointer"
-        : ""
+      const properties = e.features?.[0]?.properties
+      let cursor = ""
+      if (shouldShowPointPopup(properties))
+        cursor = handlers.canDragPoint?.(properties) ? "grab" : "pointer"
+      this.map.getCanvas().style.cursor = cursor
     })
     subscribe("mouseleave", "points-mvt", () => {
       this.map.getCanvas().style.cursor = ""
@@ -190,6 +190,10 @@ export class LayerManager {
         : []
       if (tiledTrackFeatures.length === 0 && trackPointFeatures.length === 0) {
         handlers.clearTrackSelection()
+        const tilePointFeatures = this.map.getLayer("points-mvt")
+          ? this.map.queryRenderedFeatures(e.point, { layers: ["points-mvt"] })
+          : []
+        if (tilePointFeatures.length === 0) handlers.clearPointSelection()
       }
     })
 

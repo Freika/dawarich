@@ -10,7 +10,14 @@ const source = await readFile(
   "utf8",
 )
 const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(withoutImports).toString("base64")}`
+const stubs = `class PointDragGesture {
+  attach() {}
+  detach() {}
+  cancel() {}
+  canDrag() { return false }
+}
+`
+const moduleUrl = `data:text/javascript;base64,${Buffer.from(stubs + withoutImports).toString("base64")}`
 const { shouldShowPointPopup, EventHandlers } = await import(moduleUrl)
 
 test("a real single point shows its popup", () => {

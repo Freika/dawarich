@@ -3870,6 +3870,13 @@ ca:
       visit_deleted_successfully: Visita suprimida correctament
       failed_to_update_point_position_please_try_again: No s'ha pogut actualitzar la posició del punt. Torna-ho a provar.
       point_edit_conflict: Aquest punt ha canviat en una altra sessió. Es mostra la darrera posició desada.
+      edit_history: Historial de canvis
+      edit_history_capacity: "Desa els teus darrers %{count} moviments"
+      redo: Refés
+      point_label: "Punt #%{id}"
+      undo_to_here: "Desfés fins aquí"
+      redo_to_here: "Refés fins aquí"
+      undo: Desfés
       failed_to_load_map_tiles: No s'han pogut carregar les tessel·les del mapa.
       tracks_pending: Encara no hi ha trajectes en aquesta vista. Mou el mapa o amplia l'interval de dates; és possible que una importació recent encara s'estigui processant.
       failed_to_load_visited_countries: No s'han pogut carregar els països visitats.

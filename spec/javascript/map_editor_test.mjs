@@ -9,11 +9,39 @@ let source = await readFile(
   ),
   "utf8",
 )
-source = source.replace(/^import .*\n/gm, "")
-const dependencies = `
+source = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const editingModule = async (name) =>
+  (
+    await readFile(
+      new URL(
+        `../../app/javascript/maps_maplibre/editing/${name}`,
+        import.meta.url,
+      ),
+      "utf8",
+    )
+  )
+    .replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+    .replace(/^export /gm, "")
+const editingModules = (
+  await Promise.all(
+    [
+      "tile_exclusions.js",
+      "editable_track_data.js",
+      "point_edit_history.js",
+      "point_edit_history_panel.js",
+      "editor_history.js",
+      "../utils/format_helpers.js",
+    ].map(editingModule),
+  )
+).join("\n")
+const dependencies = `${editingModules}
 const translate = (key) => key
 globalThis.__mapEditorToastErrors = []
-const Toast = { error(message) { globalThis.__mapEditorToastErrors.push(message) } }
+globalThis.__mapEditorToasts = []
+const Toast = {
+  error(message) { globalThis.__mapEditorToastErrors.push(message) },
+  show(message, type, duration, action) { globalThis.__mapEditorToasts.push({ message, type, duration, action }) },
+}
 class EditableTrackLayer {
   constructor() { this.pointsLayerId = "track-points"; this.successLayerId = "edit-success-indicator" }
   add(data) { this.data = data }
@@ -690,4 +718,369 @@ test("successful point move refreshes tiles even after the editor closes", async
   } finally {
     document.dispatchEvent = originalDispatch
   }
+})
+
+function tilePoint(
+  id,
+  longitude,
+  latitude,
+  { trackId = 10, revision = 2 } = {},
+) {
+  return {
+    properties: {
+      id,
+      track_id: trackId,
+      revision,
+      longitude: String(longitude),
+      latitude: String(latitude),
+    },
+  }
+}
+
+function deferred() {
+  let resolve
+  const promise = new Promise((done) => {
+    resolve = done
+  })
+  return { promise, resolve }
+}
+
+test("a drag started on a tile point waits for its track before saving, and sends the track revision", async () => {
+  const trackLoad = deferred()
+  const calls = []
+  const map = fakeMap()
+  const editor = new MapEditor(map, {
+    apiClient: {
+      fetchTrackWithSegments: () =>
+        trackLoad.promise.then(() => trackFeature(4)),
+      fetchTrackPoints: () =>
+        trackLoad.promise.then(() => [point(1, 0, 0, 2), point(2, 2, 0)]),
+      movePointPosition: async (id, attributes) => {
+        calls.push({ id, attributes, trackFilter: map.getFilter("tracks-mvt") })
+        return {
+          point: point(1, 1, 1, 3),
+          track: trackFeature(5, [
+            [1, 1],
+            [2, 0],
+          ]),
+          revision: { point: 3, track: 5 },
+        }
+      },
+    },
+    layerManager: { getLayer: () => null },
+    historyScope: () => ({}),
+  })
+
+  assert.equal(editor.beginTileDrag(tilePoint(1, 0, 0)), true)
+  editor.dragTo(0.5, 0.5)
+  const saving = editor.endDrag({ lng: 1, lat: 1 })
+  await Promise.resolve()
+  assert.equal(calls.length, 0)
+
+  trackLoad.resolve()
+  await saving
+
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].attributes.trackRevision, 4)
+  assert.equal(calls[0].attributes.longitude, 1)
+  assert.equal(calls[0].attributes.latitude, 1)
+  assert.deepEqual(calls[0].trackFilter, ["!=", ["get", "id"], 10])
+})
+
+test("a track that arrives mid-drag follows the dragged point", async () => {
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {
+      fetchTrackWithSegments: async () => trackFeature(),
+      fetchTrackPoints: async () => [point(1, 0, 0), point(2, 2, 0)],
+    },
+    layerManager: { getLayer: () => null },
+    historyScope: () => ({}),
+  })
+
+  editor.beginTileDrag(tilePoint(1, 0, 0))
+  editor.dragTo(0.5, 0.5)
+  await editor.trackLoad
+
+  assert.deepEqual(editor._track().geometry.coordinates, [
+    [0.5, 0.5],
+    [2, 0],
+  ])
+})
+
+test("a tile point without a track saves without waiting for one", async () => {
+  const calls = []
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {
+      movePointPosition: async (_id, attributes) => {
+        calls.push(attributes)
+        return { point: point(7, 1, 1, 3), revision: { point: 3 } }
+      },
+    },
+    layerManager: { getLayer: () => null },
+    historyScope: () => ({}),
+  })
+
+  editor.beginTileDrag(tilePoint(7, 0, 0, { trackId: null }))
+  editor.dragTo(1, 1)
+  await editor.endDrag({ lng: 1, lat: 1 })
+
+  assert.equal(calls.length, 1)
+  assert.equal(calls[0].trackRevision, null)
+})
+
+test("a saved move can be undone from the edit history with the new revisions", async () => {
+  globalThis.__mapEditorToasts.length = 0
+  const calls = []
+  const refreshed = []
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {
+      fetchTrackWithSegments: async () => trackFeature(4),
+      fetchTrackPoints: async () => [point(1, 0, 0), point(2, 2, 0)],
+      movePointPosition: async (id, attributes) => {
+        calls.push({ id, attributes })
+        const revision = calls.length === 1 ? 3 : 4
+        return {
+          point: point(1, attributes.longitude, attributes.latitude, revision),
+          track: trackFeature(revision + 2, [
+            [attributes.longitude, attributes.latitude],
+            [2, 0],
+          ]),
+          revision: { point: revision, track: revision + 2 },
+        }
+      },
+    },
+    layerManager: {
+      getLayer: (name) => ({ refresh: () => refreshed.push(name) }),
+    },
+    historyScope: () => ({}),
+  })
+  await editor.selectTrack(10)
+  editor.onMouseDown({
+    features: [{ properties: { id: 1 } }],
+    preventDefault() {},
+  })
+  editor.onMouseMove({ lngLat: { lng: 1, lat: 1 } })
+  await editor.onMouseUp({ lngLat: { lng: 1, lat: 1 } })
+
+  assert.equal(editor.edits.history.canUndo, true)
+  assert.deepEqual(globalThis.__mapEditorToasts, [])
+
+  refreshed.length = 0
+  await editor.edits.undo()
+
+  assert.equal(calls.length, 2)
+  assert.deepEqual(calls[1], {
+    id: 1,
+    attributes: {
+      longitude: 0,
+      latitude: 0,
+      pointRevision: 3,
+      trackRevision: 5,
+      historyScope: {},
+    },
+  })
+  assert.deepEqual(editor._point(1).geometry.coordinates, [0, 0])
+  assert.deepEqual(refreshed, ["points-mvt", "tracks-mvt"])
+  assert.equal(editor.edits.history.canRedo, true)
+})
+
+test("an undo that lost to another edit explains the conflict", async () => {
+  globalThis.__mapEditorToasts.length = 0
+  globalThis.__mapEditorToastErrors.length = 0
+  let calls = 0
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {
+      movePointPosition: async () => {
+        calls += 1
+        if (calls === 1)
+          return { point: point(7, 1, 1, 3), revision: { point: 3 } }
+        const error = new Error("conflict")
+        error.status = 409
+        error.payload = { point: point(7, 5, 5, 9), revision: { point: 9 } }
+        throw error
+      },
+    },
+    layerManager: { getLayer: () => ({ refresh() {} }) },
+    historyScope: () => ({}),
+  })
+  editor.beginTileDrag(tilePoint(7, 0, 0, { trackId: null }))
+  editor.dragTo(1, 1)
+  await editor.endDrag({ lng: 1, lat: 1 })
+
+  await editor.edits.undo()
+
+  assert.deepEqual(globalThis.__mapEditorToastErrors, [
+    "messages.point_edit_conflict",
+  ])
+  assert.deepEqual(editor._point(7).geometry.coordinates, [5, 5])
+})
+
+test("a cancelled drag puts the point back without saving", () => {
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {},
+    layerManager: { getLayer: () => null },
+    historyScope: () => ({}),
+  })
+  editor.beginTileDrag(tilePoint(7, 0, 0, { trackId: null }))
+  editor.dragTo(3, 3)
+
+  editor.cancelDrag()
+
+  assert.deepEqual(editor._point(7).geometry.coordinates, [0, 0])
+  assert.equal(editor.draggedPointId, null)
+})
+
+test("a read-only editor refuses a tile drag", () => {
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {},
+    layerManager: { getLayer: () => null },
+    historyScope: () => ({}),
+    editable: false,
+  })
+
+  assert.equal(
+    editor.beginTileDrag(tilePoint(7, 0, 0, { trackId: null })),
+    false,
+  )
+  assert.equal(editor.data ?? null, null)
+})
+
+test("reapplying exclusions over filters that still carry them does not nest them", async () => {
+  const map = fakeMap()
+  const base = ["==", ["get", "visible"], true]
+  map.filters.set("tracks-mvt", base)
+  const editor = new MapEditor(map, {
+    apiClient: {
+      fetchTrackWithSegments: async () => trackFeature(),
+      fetchTrackPoints: async () => [point(1, 0, 0), point(2, 2, 0)],
+    },
+    layerManager: { getLayer: () => null },
+    historyScope: () => ({}),
+  })
+  await editor.selectTrack(10)
+
+  editor.reapplyTileFilters()
+  editor.reapplyTileFilters()
+
+  assert.deepEqual(map.filters.get("tracks-mvt"), [
+    "all",
+    base,
+    ["!=", ["get", "id"], 10],
+  ])
+  editor.close()
+  assert.deepEqual(map.filters.get("tracks-mvt"), base)
+})
+
+function viewOnlyEditor(map = fakeMap()) {
+  return new MapEditor(map, {
+    apiClient: {
+      fetchTrackWithSegments: async () => trackFeature(),
+      fetchTrackPoints: async () => [point(1, 0, 0), point(2, 2, 0)],
+    },
+    layerManager: { getLayer: () => null },
+    historyScope: () => ({}),
+  })
+}
+
+test("turning editing off closes a track opened for editing", async () => {
+  const map = fakeMap()
+  const editor = viewOnlyEditor(map)
+  await editor.selectTrack(10, { forEditing: true })
+
+  editor.setEditable(false)
+
+  assert.equal(editor.data, null)
+  assert.equal(map.getFilter("tracks-mvt"), null)
+})
+
+test("turning editing off closes a point dragged from the tiles", () => {
+  const editor = viewOnlyEditor()
+  editor.beginTileDrag(tilePoint(7, 0, 0, { trackId: null }))
+  editor.cancelDrag()
+
+  editor.setEditable(false)
+
+  assert.equal(editor.data, null)
+})
+
+test("turning editing off keeps a track's points open for viewing", async () => {
+  const editor = viewOnlyEditor()
+  await editor.selectTrack(10)
+
+  editor.setEditable(false)
+
+  assert.notEqual(editor.data, null)
+})
+
+test("the edit history panel appears after a move and goes away when editing is turned off", async () => {
+  const map = fakeMap()
+  const controls = []
+  map.addControl = (control, position) => {
+    control.container = { position }
+    controls.push(position)
+  }
+  map.removeControl = (control) => {
+    control.container = null
+    controls.push("removed")
+  }
+  const editor = new MapEditor(map, {
+    apiClient: {
+      movePointPosition: async () => ({
+        point: point(7, 1, 1, 3),
+        revision: { point: 3 },
+      }),
+    },
+    layerManager: { getLayer: () => ({ refresh() {} }) },
+    historyScope: () => ({}),
+  })
+  editor.edits.panel.render = () => {}
+
+  editor.beginTileDrag(tilePoint(7, 0, 0, { trackId: null }))
+  editor.dragTo(1, 1)
+  await editor.endDrag({ lng: 1, lat: 1 })
+  assert.deepEqual(controls, ["bottom-left"])
+
+  editor.setEditable(false)
+  assert.deepEqual(controls, ["bottom-left", "removed"])
+})
+
+test("closing the edit history panel hides it until the next move", async () => {
+  const map = fakeMap()
+  const controls = []
+  map.addControl = (control) => {
+    control.container = {}
+    controls.push("shown")
+  }
+  map.removeControl = (control) => {
+    control.container = null
+    controls.push("hidden")
+  }
+  let revision = 2
+  const editor = new MapEditor(map, {
+    apiClient: {
+      movePointPosition: async () => {
+        revision += 1
+        return {
+          point: point(7, 1, 1, revision),
+          revision: { point: revision },
+        }
+      },
+    },
+    layerManager: { getLayer: () => ({ refresh() {} }) },
+    historyScope: () => ({}),
+  })
+  editor.edits.panel.render = () => {}
+  const move = async (lng) => {
+    editor.beginTileDrag(tilePoint(7, 0, 0, { trackId: null, revision }))
+    editor.dragTo(lng, lng)
+    await editor.endDrag({ lng, lat: lng })
+  }
+
+  await move(1)
+  editor.edits.close()
+  assert.deepEqual(controls, ["shown", "hidden"])
+  assert.equal(editor.edits.history.canUndo, true)
+
+  await move(2)
+  assert.deepEqual(controls, ["shown", "hidden", "shown"])
 })

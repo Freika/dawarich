@@ -562,3 +562,235 @@
   border: 1.5px solid oklch(var(--b1));
   white-space: nowrap;
 }
+
+/* Point edit history — floating map chrome, flat at rest. */
+.map-edit-history {
+  width: 19rem;
+  max-width: calc(100vw - 24px);
+  overflow: hidden;
+  color: oklch(var(--bc));
+  font-size: 0.875rem;
+  background: oklch(var(--b1) / 0.95);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  border: 1px solid oklch(var(--bc) / 0.15);
+  border-radius: 8px;
+}
+
+.map-edit-history__header {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 6px 6px 12px;
+  border-bottom: 1px solid oklch(var(--bc) / 0.1);
+}
+
+.map-edit-history[aria-busy="true"] .map-edit-history__header::after {
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  width: 40%;
+  height: 2px;
+  background: oklch(var(--p));
+  animation: map-edit-history-saving 1.1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes map-edit-history-saving {
+  from {
+    transform: translateX(-100%);
+  }
+
+  to {
+    transform: translateX(250%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .map-edit-history[aria-busy="true"] .map-edit-history__header::after {
+    width: 100%;
+    opacity: 0.5;
+    animation: none;
+  }
+}
+
+.map-edit-history__title {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  hyphens: auto;
+  hyphenate-limit-chars: 12 5 5;
+  overflow-wrap: anywhere;
+}
+
+.map-edit-history__capacity {
+  flex: none;
+  color: oklch(var(--bc) / 0.6);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-edit-history__actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 2px;
+}
+
+.map-edit-history__divider {
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: oklch(var(--bc) / 0.15);
+}
+
+.map-edit-history__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  color: oklch(var(--bc) / 0.75);
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.map-edit-history__icon:hover:not(:disabled) {
+  color: oklch(var(--bc));
+  background: oklch(var(--bc) / 0.08);
+}
+
+.map-edit-history__icon:disabled {
+  color: oklch(var(--bc) / 0.25);
+  cursor: default;
+}
+
+.map-edit-history button:focus-visible {
+  outline: 2px solid oklch(var(--p));
+  outline-offset: 1px;
+}
+
+.map-edit-history__list {
+  max-height: 14rem;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.map-edit-history__entry {
+  position: relative;
+}
+
+.map-edit-history__entry::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 16px;
+  width: 1px;
+  background: oklch(var(--bc) / 0.12);
+}
+
+.map-edit-history__entry:first-child::before {
+  top: 50%;
+}
+
+.map-edit-history__entry:last-child::before {
+  bottom: 50%;
+}
+
+.map-edit-history__entry:only-child::before {
+  display: none;
+}
+
+.map-edit-history__step {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: baseline;
+  column-gap: 8px;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 12px 6px 30px;
+  color: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: background-color 150ms ease;
+}
+
+.map-edit-history__step:hover:not(:disabled) {
+  background: oklch(var(--bc) / 0.06);
+}
+
+.map-edit-history__step:disabled {
+  cursor: progress;
+}
+
+.map-edit-history__step::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 13px;
+  width: 7px;
+  height: 7px;
+  margin-top: -3.5px;
+  background: oklch(var(--bc) / 0.45);
+  border-radius: 50%;
+}
+
+.map-edit-history__distance {
+  font-weight: 600;
+}
+
+.map-edit-history__point,
+.map-edit-history__time {
+  color: oklch(var(--bc) / 0.6);
+  font-size: 0.75rem;
+}
+
+.map-edit-history__point {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.map-edit-history__entry[data-state="current"] .map-edit-history__step::before {
+  left: 12px;
+  width: 9px;
+  height: 9px;
+  margin-top: -4.5px;
+  background: oklch(var(--p));
+}
+
+.map-edit-history__entry[data-state="undone"] .map-edit-history__step {
+  color: oklch(var(--bc) / 0.5);
+}
+
+.map-edit-history__entry[data-state="undone"] .map-edit-history__step::before {
+  background: oklch(var(--b1));
+  border: 1.5px solid oklch(var(--bc) / 0.35);
+}
+
+@media (pointer: coarse) {
+  .map-edit-history__icon {
+    width: 36px;
+    height: 36px;
+  }
+
+  .map-edit-history__step {
+    min-height: 40px;
+  }
+}

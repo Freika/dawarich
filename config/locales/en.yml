@@ -3862,6 +3862,13 @@ en:
       visit_deleted_successfully: Visit deleted successfully
       failed_to_update_point_position_please_try_again: Failed to update point position. Please try again.
       point_edit_conflict: This point changed in another session. The latest saved position is shown.
+      edit_history: Edit history
+      edit_history_capacity: "Keeps your last %{count} moves"
+      redo: Redo
+      point_label: "Point #%{id}"
+      undo_to_here: "Undo up to here"
+      redo_to_here: "Redo up to here"
+      undo: Undo
       failed_to_load_map_tiles: Could not load map tiles.
       tracks_pending: No tracks in this view yet. Pan or widen the date range; a recent import may still be processing.
       failed_to_load_visited_countries: Could not load Visited Countries.

@@ -350,6 +350,11 @@ export class MapDataManager {
         clearTrackSelection: this.eventHandlers.clearTrackSelection.bind(
           this.eventHandlers,
         ),
+        clearPointSelection: this.eventHandlers.clearPointSelection.bind(
+          this.eventHandlers,
+        ),
+        canDragPoint: (properties) =>
+          this.eventHandlers.pointDrag?.canDrag(properties) === true,
       })
     }
 

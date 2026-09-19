@@ -3928,6 +3928,13 @@ pl:
       visit_deleted_successfully: Wizyta została usunięta
       failed_to_update_point_position_please_try_again: Nie udało się zaktualizować pozycji punktu. Spróbuj ponownie.
       point_edit_conflict: Ten punkt został zmieniony w innej sesji. Wyświetlono ostatnią zapisaną pozycję.
+      edit_history: Historia zmian
+      edit_history_capacity: "Przechowuje %{count} ostatnich przesunięć"
+      redo: Ponów
+      point_label: "Punkt #%{id}"
+      undo_to_here: "Cofnij do tego miejsca"
+      redo_to_here: "Ponów do tego miejsca"
+      undo: Cofnij
       failed_to_load_map_tiles: Nie udało się wczytać kafelków mapy.
       tracks_pending: W tym widoku nie ma jeszcze tras. Przesuń mapę lub rozszerz zakres dat; niedawny import może być nadal przetwarzany.
       failed_to_load_visited_countries: Nie udało się wczytać odwiedzonych krajów.
