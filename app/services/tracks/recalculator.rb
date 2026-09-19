@@ -42,7 +42,7 @@ class Tracks::Recalculator
              ST_Y(lonlat::geometry) AS latitude,
              COALESCE(altitude_decimal, altitude) AS altitude
       FROM points
-      WHERE track_id = ?
+      WHERE track_id = ? AND anomaly IS NOT TRUE
       ORDER BY timestamp ASC, id ASC
     SQL
 

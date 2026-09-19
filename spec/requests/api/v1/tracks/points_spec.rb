@@ -67,6 +67,20 @@ RSpec.describe '/api/v1/tracks/:track_id/points', type: :request do
       expect(json.third['id']).to eq(point3.id)
     end
 
+    # The map editor previews a moved Point along this list and then shows the
+    # Track the server rebuilt in timestamp, id order; a different tie order
+    # makes the edges jump when the Point is released.
+    it 'orders points sharing a timestamp by id, even after the earlier one was updated' do
+      earlier = create(:point, user: user, track: track, timestamp: 20.minutes.ago.to_i)
+      later = create(:point, user: user, track: track, timestamp: earlier.timestamp)
+      earlier.update_columns(lonlat: 'POINT(13.41 52.52)')
+
+      get api_v1_track_points_url(track), headers: headers
+      ids = JSON.parse(response.body).pluck('id')
+
+      expect(ids.index(earlier.id)).to be < ids.index(later.id)
+    end
+
     it 'serializes points using Api::PointSerializer' do
       get api_v1_track_points_url(track), headers: headers
       json = JSON.parse(response.body)

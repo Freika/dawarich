@@ -29,6 +29,16 @@ RSpec.describe Tracks::Recalculator do
     expect(segment.transportation_mode).to eq('driving')
   end
 
+  # The editor never shows anomaly Points, so rebuilding through one would draw
+  # an edge to a vertex the user cannot see or move.
+  it 'leaves anomaly points out of the rebuilt track, as track generation does' do
+    create(:point, user:, track:, timestamp: 1_090, longitude: 5, latitude: 5, anomaly: true)
+
+    described_class.call(track)
+
+    expect(track.reload.original_path.points.map(&:x)).to eq([0.0, 0.01, 0.02])
+  end
+
   it 'preserves manual correction metadata on time-anchored segments' do
     corrected_at = 1.day.ago
     segment = create(:track_segment, :anchored, track:, start_at: Time.zone.at(1_000),

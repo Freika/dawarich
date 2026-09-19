@@ -5,7 +5,7 @@ class Api::V1::Tracks::PointsController < ApiController
     track = current_api_user.tracks.find(params[:track_id])
 
     # First try to get points directly associated with the track
-    points = track.points.not_anomaly.without_raw_data.includes(:country).order(timestamp: :asc)
+    points = track.points.not_anomaly.without_raw_data.includes(:country).order(timestamp: :asc, id: :asc)
     points = apply_plan_scope(points)
 
     # If no points are associated, fall back to fetching by time range
@@ -16,7 +16,7 @@ class Api::V1::Tracks::PointsController < ApiController
                .without_raw_data
                .includes(:country)
                .where(timestamp: track.start_at.to_i..track.end_at.to_i)
-               .order(timestamp: :asc)
+               .order(timestamp: :asc, id: :asc)
     end
     points = points.where(import_id: params[:import_id]) if params[:import_id].present?
 
