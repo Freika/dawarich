@@ -72,7 +72,7 @@ RSpec.describe Trek::Sync do
       expect(@trip.planned_accommodations.first.name).to eq('Hotel Alba')
       expect(@trip.planned_travellers.pluck(:name)).to contain_exactly('ada', 'bob')
       expect(@trip.planned_unplanned_places.first).to have_attributes(name: 'Mercato Centrale', category: 'Food market')
-      expect(@trip.notes).to be_empty
+      expect(@trip.notes.pluck(:body)).to eq(["Check the rental car\n09:00 Bring the tickets"])
     end
 
     it 'does not rewrite source-owned rows when the normalized snapshot is unchanged' do
@@ -174,6 +174,72 @@ RSpec.describe Trek::Sync do
 
       expect(trip.planned_reservations.first.title).to eq('Reservation')
       expect(trip.planned_accommodations.first.name).to eq('Accommodation')
+    end
+  end
+
+  describe 'day notes' do
+    def import(body)
+      stub_trip(body)
+      described_class.new(source).import!('12').first
+    end
+
+    def with_day_notes(notes:, day_notes: [])
+      payload.deep_dup.tap do |body|
+        body[:days].first.merge!(notes:, day_notes:)
+      end
+    end
+
+    def day_note(trip)
+      trip.notes.for_date(Date.new(2030, 6, 14)).first
+    end
+
+    it 'fills an empty trip day with the TREK notes as its native note' do
+      trip = import(payload)
+
+      expect(day_note(trip)).to have_attributes(body: "Check the rental car\n09:00 Bring the tickets", user: user)
+    end
+
+    it 'updates a synced note that nobody edited when TREK changes it' do
+      trip = import(payload)
+
+      import(with_day_notes(notes: 'Pick up the car at nine'))
+
+      expect(day_note(trip).body).to eq('Pick up the car at nine')
+    end
+
+    it 'leaves a note once it was edited in Dawarich' do
+      trip = import(payload)
+      day_note(trip).update!(body: 'My own words')
+
+      import(with_day_notes(notes: 'Pick up the car at nine'))
+
+      expect(day_note(trip).body).to eq('My own words')
+    end
+
+    it 'never overwrites a note the user wrote before the plan arrived' do
+      trip = import(with_day_notes(notes: nil))
+      trip.notes.create!(user:, date: Date.new(2030, 6, 14), body: 'Written in Dawarich')
+
+      import(with_day_notes(notes: 'Pick up the car at nine'))
+
+      expect(day_note(trip).body).to eq('Written in Dawarich')
+    end
+
+    it 'removes a synced note that nobody edited when TREK drops it' do
+      trip = import(payload)
+
+      import(with_day_notes(notes: nil))
+
+      expect(day_note(trip)).to be_nil
+    end
+
+    it 'does not bring back a synced note the user deleted while TREK keeps the same text' do
+      trip = import(payload)
+      day_note(trip).destroy!
+
+      import(payload.merge(title: 'Tuscany, renamed'))
+
+      expect(day_note(trip)).to be_nil
     end
   end
 

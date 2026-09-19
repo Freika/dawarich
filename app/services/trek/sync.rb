@@ -96,6 +96,7 @@ module Trek
         return false
       end
 
+      previous_snapshot = trip.source_snapshot
       Trip.transaction do
         trip.assign_attributes(
           user: @source.user,
@@ -110,6 +111,7 @@ module Trek
         trip.skip_calculation_enqueue = true
         trip.save!
         replace_itinerary!(trip, normalized)
+        DayNotes.new(trip, previous_snapshot).call
       end
 
       true
