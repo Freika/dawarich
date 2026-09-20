@@ -47,11 +47,11 @@ pl:
           geoapify_api_key: "Klucz API"
           locationiq_api_key: "Klucz API"
           reverse_geocoding_rps: "Zapytania na sekundę"
-          store_geodata: "Geokoduj nowe punkty"
+          store_geodata: "Geokoduj nowe punkty od razu"
           host_hint: "Sama nazwa hosta z opcjonalnym portem, np. photon.example.com:2322"
           rps_hint: "Pozostaw puste, aby nie stosować limitu. Ustaw wartość, na jaką pozwala Twój serwer lub plan."
           api_key_keep_hint: "Pozostaw puste, aby zachować zapisany klucz."
-          store_geodata_hint: "Ustala miasto i kraj każdego nowego punktu i zapisuje wynik. Gdy wyłączone, nowe punkty zachowują tylko współrzędne."
+          store_geodata_hint: "Ustala miasto i kraj przy dodawaniu nowych punktów. Nocne wyszukiwania nadal działają, gdy dostawca jest skonfigurowany, nawet po wyłączeniu tej opcji."
       update:
         saved: "Ustawienia zapisane."
         pinned: "Odrzucono: ustalone przez %{variables}."
@@ -1055,7 +1055,7 @@ pl:
         track_split_distance: Odstęp odległości między trasami
         track_split_distance_hint: Rozpocznij nową trasę, gdy kolejne punkty są dalej od siebie.
         track_split_time: Odstęp czasu między trasami
-        track_split_time_hint: Rozpocznij nową trasę, gdy przerwa między punktami jest dłuższa.
+        track_split_time_hint: "Dłuższe przerwy rozpoczynają nową trasę i pozwalają podróżom użyć nagrania z innego urządzenia. Po zmianie wybierz „Przelicz” na stronie każdej podróży, której dotyczy zmiana, aby zaktualizować zapisaną trasę i dystans."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Ukryj odczyty, które nie mogą być rzeczywistą pozycją - niemożliwe skoki, uszkodzone współrzędne. Wyłącz, aby zobaczyć wszystkie surowe punkty.
         re_evaluate_past_data: Ponownie oceń dane historyczne
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Czyści istniejące flagi anomalii i ponownie uruchamia filtr dla wszystkich punktów z bieżącymi ustawieniami. Potem trasy, statystyki i podsumowania zostaną przebudowane. Działa w tle.

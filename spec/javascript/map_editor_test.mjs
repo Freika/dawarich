@@ -1230,3 +1230,175 @@ test("point moves, undo and redo refresh exact points for replay", async () => {
     1,
   )
 })
+
+function mutationHarness() {
+  const map = fakeMap()
+  const controls = new Set()
+  map.addControl = (control) => {
+    control.container = {}
+    controls.add(control)
+  }
+  map.removeControl = (control) => {
+    control.container = null
+    controls.delete(control)
+  }
+  const requests = []
+  const layerManager = { getLayer: () => ({ refresh() {} }) }
+  const create = () => {
+    const editor = new MapEditor(map, {
+      apiClient: {
+        movePointPosition: (id, position) =>
+          new Promise((resolve, reject) => {
+            requests.push({ id, position, resolve, reject })
+          }),
+      },
+      layerManager,
+      historyScope: () => ({}),
+    })
+    editor.edits.panel.render = (state) => {
+      editor.panelState = state
+    }
+    return editor
+  }
+  const finish = (index) => {
+    const { id, position, resolve } = requests[index]
+    resolve({
+      point: point(id, position.longitude, position.latitude, index + 3),
+      revision: { point: index + 3 },
+    })
+  }
+  return { editor: create(), create, controls, requests, finish }
+}
+
+async function savedMove(harness, id = 7) {
+  const { editor, requests, finish } = harness
+  editor.beginTileDrag(tilePoint(id, 0, 0, { trackId: null }))
+  editor.dragTo(1, 1)
+  const saving = editor.endDrag({ lng: 1, lat: 1 })
+  finish(requests.length - 1)
+  await saving
+}
+
+test("undo blocks another point drag after switching selection", async () => {
+  const harness = mutationHarness()
+  const { editor, requests, finish } = harness
+  await savedMove(harness)
+  const undoing = editor.edits.undo()
+  editor.selectPoint(tilePoint(8, 2, 2, { trackId: null }))
+
+  assert.equal(editor.startDrag(8), false)
+  assert.equal(editor.panelState.canUndo, false)
+  finish(1)
+  await undoing
+  assert.equal(requests.length, 2)
+  assert.equal(editor.edits.history.entries.length, 0)
+  assert.equal(editor.edits.history.undone[0].pointId, 7)
+  assert.equal(editor.startDrag(8), true)
+  editor.cancelDrag()
+  const redoing = editor.edits.redo()
+  finish(2)
+  await redoing
+})
+
+test("a pending point save blocks undo after closing its selection", async () => {
+  const harness = mutationHarness()
+  const { editor, requests, finish } = harness
+  await savedMove(harness)
+  editor.beginTileDrag(tilePoint(8, 2, 2, { trackId: null }))
+  editor.dragTo(3, 3)
+  const saving = editor.endDrag({ lng: 3, lat: 3 })
+  editor.close()
+
+  await editor.edits.undo()
+  assert.equal(requests.length, 2)
+  finish(1)
+  await saving
+  assert.deepEqual(
+    editor.edits.history.entries.map((entry) => entry.pointId),
+    [7, 8],
+  )
+})
+
+test("history actions are disabled during a drag and recover after cancellation", async () => {
+  const harness = mutationHarness()
+  const { editor, requests } = harness
+  await savedMove(harness)
+  editor.startDrag(7)
+
+  assert.equal(editor.panelState.canUndo, false)
+  await editor.edits.undo()
+  assert.equal(requests.length, 1)
+  editor.cancelDrag()
+  assert.equal(editor.panelState.canUndo, true)
+})
+
+test("disposing an editor removes its history and pending moves cannot restore it", async () => {
+  const harness = mutationHarness()
+  const { editor, controls, create, finish } = harness
+  await savedMove(harness)
+  editor.startDrag(7)
+  editor.dragTo(2, 2)
+  const saving = editor.endDrag({ lng: 2, lat: 2 })
+  editor.dispose()
+  const replacement = create()
+  replacement.selectPoint(tilePoint(8, 2, 2, { trackId: null }))
+
+  assert.equal(controls.size, 0)
+  assert.equal(replacement.startDrag(8), false)
+  finish(1)
+  await saving
+  assert.equal(controls.size, 0)
+  assert.equal(replacement.startDrag(8), true)
+  replacement.cancelDrag()
+})
+
+test("disposing an editor during undo keeps its history control removed", async () => {
+  const harness = mutationHarness()
+  const { editor, controls, finish } = harness
+  await savedMove(harness)
+  const undoing = editor.edits.undo()
+  editor.dispose()
+  finish(1)
+  await undoing
+
+  assert.equal(controls.size, 0)
+  await editor.edits.redo()
+  assert.equal(harness.requests.length, 2)
+})
+
+test("style teardown removes the previous history before another editor is created", async () => {
+  const source = (
+    await readFile(
+      new URL(
+        "../../app/javascript/controllers/maps/maplibre/layer_manager.js",
+        import.meta.url,
+      ),
+      "utf8",
+    )
+  ).replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+  const { LayerManager } = await import(
+    `data:text/javascript;base64,${Buffer.from(source).toString("base64")}`
+  )
+  const harness = mutationHarness()
+  await savedMove(harness)
+  const manager = harness.editor.layerManager
+  manager.layers = { mapEditorLayer: harness.editor }
+  LayerManager.prototype.clearLayerReferences.call(manager)
+
+  assert.equal(harness.controls.size, 0)
+  assert.equal(harness.editor.disposed, true)
+  const replacement = harness.create()
+  assert.equal(replacement.startDrag(7), false)
+})
+
+test("a failed history request releases other point edits", async () => {
+  const harness = mutationHarness()
+  await savedMove(harness)
+  const undoing = harness.editor.edits.undo()
+  harness.requests[1].reject(new Error("offline"))
+  await undoing
+
+  assert.equal(harness.editor.startDrag(7), true)
+  harness.editor.cancelDrag()
+  assert.equal(harness.editor.edits.history.canUndo, true)
+})

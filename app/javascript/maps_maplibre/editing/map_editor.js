@@ -27,6 +27,8 @@ export class MapEditor {
     this.apiClient = apiClient
     this.importScoped = Boolean(apiClient?.importId)
     this.layerManager = layerManager
+    this.mutationState = layerManager.pointMutationState ||= { busy: false }
+    this.disposed = false
     this.historyScope = historyScope
     this.editable = editable
     this.layer = new EditableTrackLayer(map)
@@ -59,7 +61,7 @@ export class MapEditor {
   // the background: the line follows once it arrives, and saving waits for
   // it because the server requires the track revision.
   beginTileDrag(feature) {
-    if (!this.editable) return false
+    if (!this.editable || this.disposed || this.mutationState.busy) return false
     this.selectPoint(feature, { forEditing: true })
     const trackId = feature.properties?.track_id
     if (trackId != null)
@@ -178,13 +180,21 @@ export class MapEditor {
   }
 
   startDrag(pointId) {
-    if (!this.editable || this.inFlight || !this.data || !this._point(pointId))
+    if (
+      !this.editable ||
+      this.disposed ||
+      this.inFlight ||
+      this.mutationState.busy ||
+      !this.data ||
+      !this._point(pointId)
+    )
       return false
     if (this.inFlightKeys.has(this._mutationKey(pointId))) return false
     this.draggedPointId = pointId
     this.snapshot = clone(this.data)
     this.hasMoved = false
     this.map.getCanvasContainer().style.cursor = "grabbing"
+    this.edits.sync()
     return true
   }
 
@@ -205,6 +215,7 @@ export class MapEditor {
     this.draggedPointId = null
     this.snapshot = null
     this.hasMoved = false
+    this.edits.sync()
   }
 
   preview(pointId, longitude, latitude) {
@@ -227,6 +238,7 @@ export class MapEditor {
     this.map.getCanvasContainer().style.cursor = ""
     if (!this.hasMoved || this.draggedPointId == null) {
       this.draggedPointId = null
+      this.edits.sync()
       return
     }
 
@@ -239,6 +251,8 @@ export class MapEditor {
       this.justDragged = false
     }, 0)
     this.inFlight = true
+    this.mutationState.busy = true
+    this.edits.sync()
     this.inFlightKeys.add(mutationKey)
 
     try {
@@ -280,12 +294,14 @@ export class MapEditor {
           : "messages.failed_to_update_point_position_please_try_again"
       Toast.error(translate(message))
     } finally {
+      this.mutationState.busy = false
       this.inFlightKeys.delete(mutationKey)
       if (sessionVersion === this.sessionVersion) {
         this.inFlight = false
         this.draggedPointId = null
         this.snapshot = null
       }
+      this.edits.sync()
     }
   }
 
@@ -389,6 +405,12 @@ export class MapEditor {
     this.draggedPointId = null
     this.snapshot = null
     this.hasMoved = false
+    this.edits.sync()
+  }
+
+  dispose() {
+    this.disposed = true
+    this.close()
   }
 
   clear() {

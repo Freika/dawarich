@@ -47,11 +47,11 @@ es:
           geoapify_api_key: "Clave de API"
           locationiq_api_key: "Clave de API"
           reverse_geocoding_rps: "Peticiones por segundo"
-          store_geodata: "Geocodificar puntos nuevos"
+          store_geodata: "Geocodificar puntos nuevos de inmediato"
           host_hint: "Nombre de host con puerto opcional, p. ej. photon.example.com:2322"
           rps_hint: "Déjalo vacío para no limitar. Indica lo que permita tu servidor o tu plan."
           api_key_keep_hint: "Déjalo vacío para conservar la clave guardada."
-          store_geodata_hint: "Busca la ciudad y el país de cada punto nuevo y guarda el resultado. Si está desactivado, los puntos nuevos solo conservan sus coordenadas."
+          store_geodata_hint: "Busca la ciudad y el país al añadir puntos nuevos. Las consultas nocturnas continúan si hay un proveedor configurado, aunque esta opción esté desactivada."
       update:
         saved: "Ajustes guardados."
         pinned: "Rechazado: fijado por %{variables}."
@@ -1105,7 +1105,7 @@ es:
         track_split_distance: Distancia entre trayectos
         track_split_distance_hint: Inicia un trayecto nuevo cuando los puntos consecutivos están más separados.
         track_split_time: Tiempo entre trayectos
-        track_split_time_hint: Inicia un trayecto nuevo cuando el intervalo entre puntos es mayor.
+        track_split_time_hint: "Los intervalos más largos inician un trayecto nuevo y permiten usar la grabación de otro dispositivo en los viajes. Tras cambiar este valor, pulsa «Recalcular» en cada viaje afectado para actualizar la ruta y la distancia guardadas."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Ocultar lecturas que no pueden ser una posición real — saltos imposibles, coordenadas rotas. Desactiva para ver cada punto bruto.
         re_evaluate_past_data: Re-evaluar datos pasados
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Borra las marcas de anomalías existentes y vuelve a ejecutar el filtro sobre todos tus puntos con los ajustes actuales. Después se reconstruirán los trayectos, las estadísticas y los resúmenes. Se ejecuta en segundo plano.

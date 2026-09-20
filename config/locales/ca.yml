@@ -47,11 +47,11 @@ ca:
           geoapify_api_key: "Clau d'API"
           locationiq_api_key: "Clau d'API"
           reverse_geocoding_rps: "Peticions per segon"
-          store_geodata: "Geocodifica els punts nous"
+          store_geodata: "Geocodifica els punts nous immediatament"
           host_hint: "Nom d'amfitrió simple amb port opcional, p. ex. photon.example.com:2322"
           rps_hint: "Deixa-ho en blanc per no posar-hi límit. Ajusta-ho al que permeti el teu servidor o el teu pla."
           api_key_keep_hint: "Deixa-ho en blanc per mantenir la clau desada."
-          store_geodata_hint: "Cerca la ciutat i el país de cada punt nou i en desa el resultat. Si està desactivat, els punts nous només conserven les coordenades."
+          store_geodata_hint: "Cerca la ciutat i el país quan s’afegeixen punts nous. Les cerques nocturnes continuen si hi ha un proveïdor configurat, encara que aquesta opció estigui desactivada."
       update:
         saved: "Configuració desada."
         pinned: "Rebutjat: fixat per %{variables}."
@@ -1052,7 +1052,7 @@ ca:
         track_split_distance: Distància entre trajectes
         track_split_distance_hint: Inicia un trajecte nou quan els punts consecutius són més lluny.
         track_split_time: Temps entre trajectes
-        track_split_time_hint: Inicia un trajecte nou quan l'interval entre punts és més llarg.
+        track_split_time_hint: "Els intervals més llargs inicien un trajecte nou i permeten als viatges utilitzar l’enregistrament d’un altre dispositiu. Després de canviar aquest valor, prem «Recalcula» a cada viatge afectat per actualitzar-ne la ruta i la distància desades."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Amaga les lectures que no poden ser una posició real — salts impossibles, coordenades incorrectes. Desactiva-ho per veure tots els punts en brut.
         re_evaluate_past_data: Torna a avaluar les dades passades
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Elimina les marques d'anomalia existents i torna a executar el filtre sobre tots els teus punts amb la configuració actual. Els trajectes, estadístiques i resums es reconstruiran després. S'executa en segon pla.

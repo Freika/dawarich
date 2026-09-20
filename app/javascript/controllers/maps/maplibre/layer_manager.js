@@ -252,7 +252,7 @@ export class LayerManager {
     // layer keeps moving points. setEditMode, not disableDragging: add() arms
     // enableDragging on a timer that re-checks editModeEnabled.
     this.controller?.eventHandlers?.teardownLayerInteractions()
-    this.layers.mapEditorLayer?.close()
+    this.layers.mapEditorLayer?.dispose()
     // setStyle replaces style sources/layers, but every layer object may also
     // own map/document/DOM listeners, popups, markers or timers. Release every
     // instance while the old style still exists instead of special-casing the

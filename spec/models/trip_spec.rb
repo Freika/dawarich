@@ -243,7 +243,7 @@ RSpec.describe Trip, type: :model do
   end
 
   describe 'device handoffs' do
-    let(:user) { create(:user) }
+    let(:user) { create(:user, settings: { 'minutes_between_routes' => 60 }) }
     let(:trip) { create(:trip, user:, started_at: Time.utc(2026, 1, 1), ended_at: Time.utc(2026, 1, 5)) }
 
     def recorded_point(device, hour, longitude)
@@ -321,7 +321,7 @@ RSpec.describe Trip, type: :model do
 
     describe '#calculate_distance' do
       it 'stores distance in user preferred unit for Trip model' do
-        allow(user).to receive(:safe_settings).and_return(double(distance_unit: 'km'))
+        user.update!(settings: user.settings.merge('distance_unit' => 'km'))
         allow(Point).to receive(:total_distance).and_return(2.5) # 2.5 km
 
         trip.calculate_distance

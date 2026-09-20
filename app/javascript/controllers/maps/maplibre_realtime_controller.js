@@ -223,6 +223,7 @@ export default class extends Controller {
       return
     }
 
+    mapsController.mapDataManager?.invalidatePoints({ appendOnly: true })
     this.scheduleLiveRefresh()
 
     this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {

@@ -47,11 +47,11 @@ en:
           geoapify_api_key: "API key"
           locationiq_api_key: "API key"
           reverse_geocoding_rps: "Requests per second"
-          store_geodata: "Geocode new points"
+          store_geodata: "Geocode new points immediately"
           host_hint: "Bare hostname with optional port, e.g. photon.example.com:2322"
           rps_hint: "Leave blank for no limit. Set this to whatever your server or plan allows."
           api_key_keep_hint: "Leave blank to keep the saved key."
-          store_geodata_hint: "Looks up the city and country of each new point and stores the result. When off, new points keep only their coordinates."
+          store_geodata_hint: "Looks up city and country names when new points are added. Nightly lookups still run when a provider is configured, even with this option off."
       update:
         saved: "Settings saved."
         pinned: "Refused: pinned by %{variables}."
@@ -1055,7 +1055,7 @@ en:
         track_split_distance: Distance gap between Tracks
         track_split_distance_hint: Start a new Track when consecutive points are farther apart.
         track_split_time: Time gap between Tracks
-        track_split_time_hint: Start a new Track when the gap between points is longer.
+        track_split_time_hint: "Longer gaps start a new Track and let Trips use another device’s recording. After changing this, press Recalculate on affected Trip pages to update saved routes and distances."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Hide readings that cannot be a real position — impossible jumps, broken coordinates. Disable to see every raw point.
         re_evaluate_past_data: Re-evaluate past data
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Clears existing anomaly flags and re-runs the filter on all your points with the current settings. Tracks, stats, and digests will be rebuilt afterwards. Runs in the background.
