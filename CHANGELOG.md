@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Trip routes and distances retain unique portions of recordings when devices overlap briefly during a handoff.
+- Trip routes and distances retain unique portions of recordings when devices overlap briefly during a handoff. For previously calculated trips affected by this issue, press Recalculate on the trip page to update the saved route and distance.
 - Undoing or redoing a point move no longer replaces a different selected track.
 - Live map edits continue updating the map after the editor selection is closed.
 - Point and track tiles refresh immediately after a point moves instead of displaying cached positions.
