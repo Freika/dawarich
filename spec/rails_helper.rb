@@ -10,6 +10,7 @@ require 'yabeda/rspec'
 require 'rswag/specs'
 require 'sidekiq/testing'
 require 'super_diff/rspec-rails'
+require 'active_job/continuation/test_helper'
 
 require 'rake'
 require 'shoulda/matchers'
@@ -34,11 +35,13 @@ end
 
 RSpec.configure do |config|
   config.use_transactional_fixtures = true
+  config.filter_run_excluding :eval
   config.infer_spec_type_from_file_location!
   config.filter_rails_from_backtrace!
 
   config.include FactoryBot::Syntax::Methods
   config.include ActiveJob::TestHelper
+  config.include ActiveJob::Continuation::TestHelper
 
   config.rswag_dry_run = false
 
@@ -49,6 +52,10 @@ RSpec.configure do |config|
   config.before do
     ActiveJob::Base.queue_adapter = :test
     allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
+    # The resolver memoises a snapshot on the module with a 30s TTL, which
+    # otherwise survives the transactional rollback between examples and serves
+    # rows that no longer exist.
+    InstanceSettings::Resolver.reset!
     # Disable OIDC by default in tests to prevent OIDC-only mode from blocking tests
     allow(DawarichSettings).to receive(:oidc_enabled?).and_return(false)
   end

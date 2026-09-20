@@ -18,6 +18,25 @@ RSpec.describe 'Api::V1::Places', type: :request do
       expect(json.first['name']).to eq('Home')
     end
 
+    it 'serializes legacy places without lonlat geometry' do
+      legacy_place = create(
+        :place,
+        :without_lonlat,
+        user: user,
+        name: 'Legacy Import Place',
+        latitude: 52.52,
+        longitude: 13.405
+      )
+
+      get '/api/v1/places', params: { filter: 'all' }, headers: headers
+
+      expect(response).to have_http_status(:success)
+      json = JSON.parse(response.body)
+      serialized = json.find { |place_json| place_json['id'] == legacy_place.id }
+      expect(serialized['latitude'].to_f).to eq(52.52)
+      expect(serialized['longitude'].to_f).to eq(13.405)
+    end
+
     it 'filters by tag_ids' do
       tagged_place = create(:place, user: user)
       create(:tagging, taggable: tagged_place, tag: tag)
@@ -37,6 +56,18 @@ RSpec.describe 'Api::V1::Places', type: :request do
 
       json = JSON.parse(response.body)
       expect(json.map { |p| p['name'] }).not_to include('Private Place')
+    end
+
+    it 'excludes tombstoned visits from visits_count' do
+      create(:visit, user: user, place: place, area: nil,
+                     started_at: 2.hours.ago, ended_at: 1.hour.ago)
+      create(:visit, user: user, place: place, area: nil, deleted_at: 1.day.ago,
+                     started_at: 5.hours.ago, ended_at: 4.hours.ago)
+
+      get '/api/v1/places', headers: headers
+
+      json = JSON.parse(response.body)
+      expect(json.first['visits_count']).to eq(1)
     end
 
     context 'map visibility (manual + confirmed + tagged only)' do
@@ -276,7 +307,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
     it 'accepts custom radius and limit' do
       service_double = instance_double(Places::NearbySearch)
       allow(Places::NearbySearch).to receive(:new)
-        .with(latitude: 40.7128, longitude: -74.0060, radius: 1.0, limit: 5)
+        .with(user: user, latitude: 40.7128, longitude: -74.0060, radius: 1.0, limit: 5)
         .and_return(service_double)
       allow(service_double).to receive(:call).and_return([])
 
@@ -295,6 +326,25 @@ RSpec.describe 'Api::V1::Places', type: :request do
 
       post '/api/v1/places', params: { place: { name: 'Test' } }
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe 'name lock exposure' do
+    let(:user) { create(:user) }
+    let(:place) { create(:place, user: user, name: Place::DEFAULT_NAME) }
+
+    it 'reports the lock state so Map v2 can surface it' do
+      place.update!(name: "Mum's house")
+
+      get api_v1_place_path(place), headers: { 'Authorization' => "Bearer #{user.api_key}" }
+
+      expect(response.parsed_body['name_locked']).to be(true)
+    end
+
+    it 'reports an auto-named place as unlocked' do
+      get api_v1_place_path(place), headers: { 'Authorization' => "Bearer #{user.api_key}" }
+
+      expect(response.parsed_body['name_locked']).to be(false)
     end
   end
 end

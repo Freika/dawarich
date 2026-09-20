@@ -1,0 +1,65 @@
+ca:
+  devise:
+    confirmations:
+      confirmed: La teva adreça de correu electrònic s'ha confirmat correctament.
+      send_instructions: En uns minuts rebràs un correu electrònic amb instruccions per confirmar la teva adreça.
+      send_paranoid_instructions: Si la teva adreça de correu electrònic existeix a la nostra base de dades, en uns minuts rebràs un missatge amb instruccions per confirmar-la.
+    failure:
+      already_authenticated: Ja has iniciat sessió.
+      inactive: El teu compte encara no està activat.
+      invalid: "%{authentication_keys} o contrasenya no vàlids."
+      locked: El teu compte està bloquejat.
+      last_attempt: Et queda un intent abans que es bloquegi el teu compte.
+      not_found_in_database: "%{authentication_keys} o contrasenya no vàlids."
+      timeout: La teva sessió ha caducat. Torna a iniciar sessió per continuar.
+      unauthenticated: Has d'iniciar sessió o registrar-te abans de continuar.
+      unconfirmed: Has de confirmar la teva adreça de correu electrònic abans de continuar.
+      deleted: El teu compte s'ha suprimit.
+    mailer:
+      confirmation_instructions:
+        subject: Instruccions de confirmació
+      reset_password_instructions:
+        subject: Instruccions per restablir la contrasenya
+      unlock_instructions:
+        subject: Instruccions de desbloqueig
+      email_changed:
+        subject: Adreça de correu electrònic modificada
+      password_change:
+        subject: Contrasenya modificada
+    omniauth_callbacks:
+      failure: 'No s''ha pogut autenticar el teu compte de %{kind} perquè "%{reason}".'
+      success: T'has autenticat correctament amb el teu compte de %{kind}.
+    passwords:
+      no_token: No pots accedir a aquesta pàgina sense arribar-hi des d'un correu electrònic per restablir la contrasenya. Si has seguit aquest enllaç, assegura't d'haver utilitzat la URL completa.
+      send_instructions: En uns minuts rebràs un correu electrònic amb instruccions per restablir la teva contrasenya.
+      send_paranoid_instructions: Si la teva adreça de correu electrònic existeix a la nostra base de dades, en uns minuts rebràs un enllaç per recuperar la contrasenya.
+      updated: La teva contrasenya s'ha modificat correctament. Ja has iniciat sessió.
+      updated_not_active: La teva contrasenya s'ha modificat correctament.
+    registrations:
+      destroyed: S'ha programat la supressió del teu compte. Fins aviat!
+      cannot_delete: No pots suprimir el teu compte mentre siguis propietari d'una família amb altres membres.
+      signed_up: Benvingut/da! T'has registrat correctament.
+      signed_up_but_inactive: T'has registrat correctament, però no hem pogut iniciar la teva sessió perquè el teu compte encara no està activat.
+      signed_up_but_locked: T'has registrat correctament, però no hem pogut iniciar la teva sessió perquè el teu compte està bloquejat.
+      signed_up_but_unconfirmed: S'ha enviat un missatge amb un enllaç de confirmació a la teva adreça de correu electrònic. Segueix l'enllaç per activar el teu compte.
+      update_needs_confirmation: Has actualitzat el teu compte correctament, però hem de verificar la teva nova adreça de correu electrònic. Revisa el teu correu i segueix l'enllaç de confirmació per confirmar la nova adreça.
+      updated: El teu compte s'ha actualitzat correctament.
+      updated_but_not_signed_in: El teu compte s'ha actualitzat correctament, però com que la teva contrasenya ha canviat, has de tornar a iniciar sessió.
+    sessions:
+      signed_in: Sessió iniciada correctament.
+      signed_out: Sessió tancada correctament.
+      already_signed_out: Sessió tancada correctament.
+    unlocks:
+      send_instructions: En uns minuts rebràs un correu electrònic amb instruccions per desbloquejar el teu compte.
+      send_paranoid_instructions: Si el teu compte existeix, en uns minuts rebràs un correu electrònic amb instruccions per desbloquejar-lo.
+      unlocked: El teu compte s'ha desbloquejat correctament. Inicia sessió per continuar.
+  errors:
+    messages:
+      already_confirmed: ja s'havia confirmat; intenta iniciar sessió
+      confirmation_period_expired: s'ha de confirmar en un termini de %{period}; sol·licita'n un de nou
+      expired: ha caducat; sol·licita'n un de nou
+      not_found: no s'ha trobat
+      not_locked: no estava bloquejat
+      not_saved:
+        one: '1 error ha impedit desar %{resource}:'
+        other: '%{count} errors han impedit desar %{resource}:'

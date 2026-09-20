@@ -33,9 +33,10 @@ RSpec.describe '/sidekiq', type: :request do
       context 'when user is not admin' do
         before { sign_in create(:user) }
 
-        it 'redirects to root page' do
+        it 'redirects to root page with a temporary (302) status' do
           get sidekiq_url
 
+          expect(response).to have_http_status(:found)
           expect(response).to redirect_to(root_url)
         end
 
@@ -77,9 +78,10 @@ RSpec.describe '/sidekiq', type: :request do
     context 'when user is authenticated' do
       before { sign_in create(:user, :admin) }
 
-      it 'redirects to root page' do
+      it 'redirects to root page with a temporary (302) status' do
         get sidekiq_url
 
+        expect(response).to have_http_status(:found)
         expect(response).to redirect_to(root_url)
         expect(flash[:error]).to eq('You are not authorized to perform this action.')
       end
@@ -104,9 +106,10 @@ RSpec.describe '/sidekiq', type: :request do
     context 'when user is not admin' do
       before { sign_in create(:user) }
 
-      it 'redirects to root page' do
+      it 'redirects to root page with a temporary (302) status' do
         get sidekiq_url
 
+        expect(response).to have_http_status(:found)
         expect(response).to redirect_to(root_url)
         expect(flash[:error]).to eq('You are not authorized to perform this action.')
       end

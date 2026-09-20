@@ -19,6 +19,26 @@ RSpec.describe 'Map', type: :request do
 
         expect(response).to have_http_status(:success)
       end
+
+      it 'no longer carries Days per Country, which now lives on Insights' do
+        get map_path
+
+        expect(response.body).not_to include('residency-content')
+      end
+
+      it 'exposes an enabled reverse geocoding flag when the instance has a provider' do
+        configure_instance_geocoding
+
+        get map_path
+
+        expect(response.body).to include('reverse_geocoding&quot;:true')
+      end
+
+      it 'exposes a disabled reverse geocoding flag when the instance has no provider' do
+        get map_path
+
+        expect(response.body).to include('reverse_geocoding&quot;:false')
+      end
     end
 
     context 'when user not signed in' do

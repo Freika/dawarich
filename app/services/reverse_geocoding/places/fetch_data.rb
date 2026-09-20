@@ -8,7 +8,7 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def call
-    unless DawarichSettings.reverse_geocoding_enabled?
+    unless Geocoding::Config.for(place.user_id).enabled?
       Rails.logger.warn('Reverse geocoding is not enabled')
 
       return
@@ -36,15 +36,21 @@ class ReverseGeocoding::Places::FetchData
 
     data = normalize_geocoder_data(reverse_geocoded_place.data)
 
-    place.update!(
-      name:       place_name(data),
+    attributes = {
       lonlat:     build_point_coordinates(data['geometry']['coordinates']),
       city:       data['properties']['city'],
       country:    data['properties']['country'],
-      geodata:    data,
-      source:     Place.sources[:photon],
+      geodata:    geodata_for(place, data),
       reverse_geocoded_at: Time.current
-    )
+    }
+
+    unless place.name_locked?
+      attributes[:name] = place_name(data)
+      attributes[:source] = :photon unless place.gpx_waypoint?
+    end
+
+    place.machine_named = true
+    place.update!(attributes)
   end
 
   def find_place(place_data, existing_places)
@@ -65,14 +71,34 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def place_name(data)
-    name = data.dig('properties', 'name')
-    type = data.dig('properties', 'osm_value')&.capitalize&.gsub('_', ' ')
-    address = "#{data.dig('properties', 'postcode')} #{data.dig('properties', 'street')}"
+    name = meaningful_place_name(data.dig('properties', 'name'))
+    type = formatted_place_type(data.dig('properties', 'osm_value'))
+    address = "#{data.dig('properties', 'postcode')} #{data.dig('properties', 'street')}".strip
     address += " #{data.dig('properties', 'housenumber')}" if data.dig('properties', 'housenumber').present?
 
-    name ||= address
+    name ||= address.presence || Place::DEFAULT_NAME
+
+    return name if type.blank?
 
     "#{name} (#{type})"
+  end
+
+  def meaningful_place_name(value)
+    normalized = value.to_s.strip
+    return nil if generic_osm_value?(normalized)
+
+    normalized.presence
+  end
+
+  def formatted_place_type(value)
+    normalized = value.to_s.strip
+    return nil if generic_osm_value?(normalized)
+
+    normalized.capitalize.gsub('_', ' ').presence
+  end
+
+  def generic_osm_value?(value)
+    value.blank? || %w[yes no].include?(value.downcase)
   end
 
   def extract_osm_ids(places)
@@ -107,15 +133,34 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def populate_place_attributes(place, data)
-    place.name = place_name(data)
+    unless place.name_locked?
+      place.name = place_name(data)
+      place.source = :photon unless place.gpx_waypoint?
+    end
+
     place.city = data['properties']['city']
     place.country = data['properties']['country']
-    place.geodata = data
-    place.source = :photon
+    place.geodata = geodata_for(place, data)
 
     return if place.lonlat.present?
 
     place.lonlat = build_point_coordinates(data['geometry']['coordinates'])
+  end
+
+  # Written by the enhanced-import writers and keyed on by find_by_external_id
+  # and the partial unique index; a reverse-geocode must never erase them.
+  IDENTITY_KEYS = %w[external_place_id semantic_type].freeze
+  # The only provider properties this app reads back: find_existing_places
+  # matches siblings on osm_id, and the possible_places payload exposes all
+  # four. They are kept even when the operator opted out of storing geodata,
+  # because dropping them would break place dedup rather than protect privacy.
+  INDEXED_PROPERTY_KEYS = %w[osm_id osm_type osm_key osm_value].freeze
+
+  def geodata_for(place, data)
+    identity = (place.geodata || {}).slice(*IDENTITY_KEYS)
+    return data.merge(identity) if DawarichSettings.store_geodata?
+
+    identity.merge('properties' => (data['properties'] || {}).slice(*INDEXED_PROPERTY_KEYS).compact)
   end
 
   DEADLOCK_MAX_RETRIES = 3
@@ -145,6 +190,7 @@ class ReverseGeocoding::Places::FetchData
     update_attributes = places_to_update.uniq(&:id).sort_by(&:id).map do |place|
       {
         id: place.id,
+        user_id: place.user_id,
         name: place.name,
         latitude: place.latitude,
         longitude: place.longitude,
@@ -177,8 +223,9 @@ class ReverseGeocoding::Places::FetchData
   end
 
   def geocoder_places
-    Geocoder.search(
-      [place.lat, place.lon],
+    Geocoding::Search.call(
+      user: place.user_id,
+      query: [place.lat, place.lon],
       limit: 10,
       distance_sort: true,
       radius: 1,
@@ -190,36 +237,17 @@ class ReverseGeocoding::Places::FetchData
     []
   end
 
-  # Normalizes Nominatim/LocationIQ response format to the GeoJSON-like
-  # structure (geometry + properties) that the rest of this service expects.
-  # Photon and Geoapify already return GeoJSON and pass through unchanged.
+  # Keep existing GeoJSON metadata intact. Flat responses use the shared
+  # field extraction, with this service's legacy address-label naming policy.
   def normalize_geocoder_data(data)
     return data if data.key?('geometry')
-    return data unless data['lat'] && data['lon']
 
-    address = data['address'] || {}
+    fields = Geocoding::ResultNormalizer.from_data(data)
+    properties = fields[:properties]
 
     {
-      'geometry' => {
-        'coordinates' => [data['lon'].to_f, data['lat'].to_f]
-      },
-      'properties' => {
-        'osm_id' => data['osm_id'],
-        'name' => extract_nominatim_name(data, address),
-        'osm_value' => data['type'],
-        'city' => address['city'] || address['town'] || address['village'] || address['hamlet'],
-        'country' => address['country'],
-        'postcode' => address['postcode'],
-        'street' => address['road'] || address['pedestrian'] || address['highway'],
-        'housenumber' => address['house_number']
-      }
+      'geometry' => { 'coordinates' => fields[:coords] },
+      'properties' => properties.merge('name' => properties['address_name'] || properties['name'])
     }
-  end
-
-  def extract_nominatim_name(data, address)
-    # Try the place type key first (e.g., address['restaurant'] for type=restaurant)
-    name = address[data['type']] if data['type']
-    # Fall back to first part of display_name (the most specific part)
-    name || data['display_name']&.split(',')&.first&.strip
   end
 end

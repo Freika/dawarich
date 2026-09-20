@@ -25,6 +25,30 @@ module TripsHelper
     end
   end
 
+  def trek_trip_url(trip)
+    source = trip.trip_source
+    return if source.blank? || trip.source_identifier.blank?
+
+    "#{source.base_url.chomp('/')}/trips/#{ERB::Util.url_encode(trip.source_identifier)}"
+  end
+
+  def planned_stop_details(stop)
+    time = [stop.starts_at, stop.ends_at].compact_blank.join('–').presence
+    mode = planned_transport_mode(stop.transport_mode)
+    duration = t('trips.source_itinerary.duration_minutes', count: stop.duration_minutes) if stop.duration_minutes
+    [time, mode, stop.category.presence, duration].compact
+  end
+
+  def planned_transport_mode(mode)
+    return if mode.blank?
+
+    t("transportation_modes.#{mode}", default: mode.humanize)
+  end
+
+  def planned_reservation_status(status)
+    t("trips.source_itinerary.reservation_statuses.#{status}", default: status.to_s.humanize)
+  end
+
   def trip_duration(trip)
     start_time = trip.started_at.to_time
     end_time = trip.ended_at.to_time
@@ -51,11 +75,11 @@ module TripsHelper
     end
 
     parts = []
-    parts << "#{years} year#{'s' if years != 1}" if years.positive?
-    parts << "#{months} month#{'s' if months != 1}" if months.positive?
-    parts << "#{days} day#{'s' if days != 1}" if days.positive?
-    parts << "#{hours} hour#{'s' if hours != 1}" if hours.positive?
-    parts = ['0 hours'] if parts.empty?
+    parts << I18n.t('helpers.trips.duration.years', count: years) if years.positive?
+    parts << I18n.t('helpers.trips.duration.months', count: months) if months.positive?
+    parts << I18n.t('helpers.trips.duration.days', count: days) if days.positive?
+    parts << I18n.t('helpers.trips.duration.hours', count: hours) if hours.positive?
+    parts = [I18n.t('helpers.trips.duration.hours', count: 0)] if parts.empty?
     parts.join(', ')
   end
 end

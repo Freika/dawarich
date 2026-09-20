@@ -39,7 +39,7 @@ class Users::ImportData::V1Handler
     Rails.logger.info "Processing v1 format archive for user: #{user.email}"
 
     json_path = import_directory.join('data.json')
-    raise StandardError, 'Data file not found in archive: data.json' unless File.exist?(json_path)
+    raise StandardError, I18n.t('services.users.import_data.v1_handler.data_file_missing') unless File.exist?(json_path)
 
     initialize_stream_state
 
@@ -52,9 +52,9 @@ class Users::ImportData::V1Handler
 
     finalize_stream_processing
   rescue Oj::ParseError => e
-    raise StandardError, "Invalid JSON format in data file: #{e.message}"
+    raise StandardError, I18n.t('services.users.import_data.v1_handler.invalid_json', message: e.message)
   rescue IOError => e
-    raise StandardError, "Failed to read JSON data: #{e.message}"
+    raise StandardError, I18n.t('services.users.import_data.v1_handler.read_failed', message: e.message)
   end
 
   attr_reader :expected_counts

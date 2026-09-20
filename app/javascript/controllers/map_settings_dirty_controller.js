@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 // Tracks unsaved edits in the map settings sections whose fields only
 // persist on "Apply Settings" (live-saving controls are simply not inside
@@ -62,8 +63,12 @@ export default class extends Controller {
       const changed = this.changedFields(section)
       badge.classList.toggle("hidden", changed.length === 0)
       if (changed.length > 0) {
-        badge.textContent = `${changed.length} unsaved`
-        badge.dataset.tip = `Changed: ${changed.join(", ")}`
+        badge.textContent = translate("settings.unsaved_count", {
+          count: changed.length,
+        })
+        badge.dataset.tip = translate("settings.changed_fields", {
+          fields: changed.join(", "),
+        })
       }
     })
   }

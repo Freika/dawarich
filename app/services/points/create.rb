@@ -9,34 +9,6 @@ class Points::Create
   end
 
   def call
-    data = Points::Params.new(params, user.id).call
-
-    deduplicated_data = data.uniq { |point| Point.dedup_key(point) }
-
-    created_points = []
-    inserted_count = 0
-
-    deduplicated_data.each_slice(1000) do |location_batch|
-      result = Point.archival_safe_upsert_all(
-        location_batch,
-        returning: Arel.sql(
-          'id, xmax, timestamp, ST_X(lonlat::geometry) AS longitude, ST_Y(lonlat::geometry) AS latitude'
-        )
-      )
-      inserted_count += result.count { |row| row['xmax'].to_i.zero? }
-      created_points.concat(result)
-    end
-
-    if created_points.any?
-      User.update_counters(user.id, points_count: inserted_count) if inserted_count.positive?
-      timestamps = deduplicated_data.filter_map { |p| p[:timestamp]&.to_i }
-      Points::AnomalyFilterJob.perform_later(user.id, timestamps.min, timestamps.max) if timestamps.any?
-      Tracks::RealtimeDebouncer.new(user.id).trigger
-      Tracks::BackfillScheduler.new(user.id, timestamps).call
-      Visits::RealtimeDebouncer.new(user.id).trigger
-      Points::LiveBroadcaster.new(user.id, created_points, deduplicated_data).call
-    end
-
-    created_points
+    Points::Intake.call(user_id: user.id, payloads: Points::Params.new(params, user.id).call)
   end
 end

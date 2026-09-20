@@ -207,6 +207,16 @@ RSpec.describe Imports::Create do
             expect(user.notifications.last.content).to \
               include('Import "2024-03.rec" failed: StandardError, stacktrace: ')
           end
+
+          it 'localizes the failed notification' do
+            user.persist_locale!(:fr)
+
+            service.call
+
+            expect(user.notifications.last.title).to eq("L'importation a échoué")
+            expect(user.notifications.last.content).to \
+              include("L'importation « 2024-03.rec » a échoué : StandardError, détail de l'erreur : ")
+          end
         end
 
         context 'when not self-hosted' do
@@ -223,6 +233,15 @@ RSpec.describe Imports::Create do
 
             expect(user.notifications.last.content).to \
               include('Import "2024-03.rec" failed, please contact us at hi@dawarich.com')
+          end
+
+          it 'localizes the failed notification' do
+            user.persist_locale!(:fr)
+
+            service.call
+
+            expect(user.notifications.last.content).to \
+              include("L'importation « 2024-03.rec » a échoué. Contactez-nous à hi@dawarich.com")
           end
         end
       end
@@ -391,6 +410,44 @@ RSpec.describe Imports::Create do
 
         it 'delegates to ZipExtractor which spawns per-entry sub-imports' do
           expect { service.call }.to change { user.imports.count }.by(1) # +2 -1 destroyed
+        end
+      end
+
+      context 'when the stored blob is a Dawarich profile export' do
+        let(:import) { create(:import, user:) }
+        let(:zip_path) do
+          path = Rails.root.join('tmp', "profile_#{SecureRandom.hex(4)}.zip").to_s
+          manifest = {
+            format_version: 2,
+            dawarich_version: '1.9.1',
+            exported_at: '2026-09-14T12:00:00Z',
+            counts: { points: 0 },
+            files: { points: [] }
+          }
+
+          ::Zip::File.open(path, create: true) do |zf|
+            zf.get_output_stream('manifest.json') { |f| f.write(manifest.to_json) }
+            zf.get_output_stream('settings.jsonl') { |f| f.write("{}\n") }
+          end
+          path
+        end
+
+        before do
+          import.file.attach(io: File.open(zip_path), filename: 'user_data_export.zip',
+                             content_type: 'application/zip')
+          clear_enqueued_jobs
+        end
+
+        after { File.delete(zip_path) if File.exist?(zip_path) }
+
+        it 'routes the existing import to the user data importer' do
+          expect(Imports::ZipExtractor).not_to receive(:new)
+
+          expect { service.call }
+            .to have_enqueued_job(Users::ImportDataJob).with(import.id)
+
+          expect(import.reload.source).to eq('user_data_archive')
+          expect(import.status).to eq('created')
         end
       end
 

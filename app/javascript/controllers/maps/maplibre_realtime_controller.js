@@ -1,7 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import { createMapChannel } from "maps_maplibre/channels/map_channel"
 import { Toast } from "maps_maplibre/components/toast"
+import { pointMatchesActiveDateRange } from "maps_maplibre/utils/realtime_date_filter"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+
+const LIVE_REFRESH_DELAY_MS = 1000
 
 /**
  * Real-time controller
@@ -45,6 +49,8 @@ export default class extends Controller {
   }
 
   disconnect() {
+    clearTimeout(this.liveRefreshTimer)
+    this.liveRefreshTimer = null
     this.channels?.unsubscribeAll()
   }
 
@@ -84,8 +90,8 @@ export default class extends Controller {
     SettingsManager.updateSetting("liveMapEnabled", this.liveModeEnabled)
 
     const message = this.liveModeEnabled
-      ? "Live mode enabled"
-      : "Live mode disabled"
+      ? translate("live_map.enabled")
+      : translate("live_map.disabled")
     Toast.info(message)
   }
 
@@ -119,7 +125,7 @@ export default class extends Controller {
     this.connectedChannels.add(channelName)
 
     if (this.connectedChannels.size === 1) {
-      Toast.success("Connected to real-time updates")
+      Toast.success(translate("messages.connected_to_real_time_updates"))
       this.updateConnectionIndicator(true)
     }
   }
@@ -131,7 +137,7 @@ export default class extends Controller {
     this.connectedChannels.delete(channelName)
 
     if (this.connectedChannels.size === 0) {
-      Toast.warning("Disconnected from real-time updates")
+      Toast.warning(translate("messages.disconnected_from_real_time_updates"))
       this.updateConnectionIndicator(false)
     }
   }
@@ -149,8 +155,40 @@ export default class extends Controller {
         this.handleFamilyLocation(data.member)
         break
 
+      case "map_edit":
+        this.handleMapEdit(data.event)
+        break
+
+      case "track_update":
+        this.handleTrackUpdate(data)
+        break
+
       // Note: notifications are handled by notifications_controller.js in the navbar
     }
+  }
+
+  handleMapEdit(event) {
+    if (event?.type !== "point_moved" || !event.data) return
+    const mapsController = this.mapsV2Controller
+    if (!mapsController) return
+
+    mapsController.mapDataManager?.invalidatePoints()
+    const editor = mapsController.layerManager?.getLayer("map-editor")
+    editor?.applyRealtime(event.data)
+    mapsController.layerManager?.getLayer("points-mvt")?.refresh()
+    mapsController.layerManager?.getLayer("tracks-mvt")?.refresh()
+    editor?.reapplyTileFilters()
+    document.dispatchEvent(
+      new CustomEvent("dawarich:point-moved", { detail: event.data }),
+    )
+  }
+
+  handleTrackUpdate() {
+    const mapsController = this.mapsV2Controller
+    if (!mapsController) return
+
+    mapsController.layerManager?.getLayer("tracks-mvt")?.refresh()
+    mapsController.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
   }
 
   /**
@@ -176,56 +214,17 @@ export default class extends Controller {
     const [lat, lon, battery, altitude, timestamp, velocity, id, countryName] =
       pointData
 
-    const pointsLayer = mapsController.layerManager?.getLayer("points")
-    if (!pointsLayer) {
-      console.warn("[Realtime Controller] Points layer not found")
+    if (
+      !pointMatchesActiveDateRange(
+        timestamp,
+        mapsController.realtimeDateRange(),
+      )
+    ) {
       return
     }
 
-    const currentData = pointsLayer.data || {
-      type: "FeatureCollection",
-      features: [],
-    }
-    const features = [...(currentData.features || [])]
-
-    features.push({
-      type: "Feature",
-      geometry: {
-        type: "Point",
-        coordinates: [parseFloat(lon), parseFloat(lat)],
-      },
-      properties: {
-        id: parseInt(id, 10),
-        latitude: parseFloat(lat),
-        longitude: parseFloat(lon),
-        battery: parseFloat(battery) || null,
-        altitude: parseFloat(altitude) || null,
-        timestamp: timestamp,
-        velocity: parseFloat(velocity) || null,
-        country_name: countryName || null,
-      },
-    })
-
-    pointsLayer.update({
-      type: "FeatureCollection",
-      features,
-    })
-
-    // Keep the cached full point set in sync — route rebuilds and the
-    // scratch layer read from it in simplified rendering mode.
-    const cachedPoints = mapsController.mapDataManager?.lastLoadedData?.points
-    if (cachedPoints) {
-      cachedPoints.push({
-        id: parseInt(id, 10),
-        latitude: parseFloat(lat),
-        longitude: parseFloat(lon),
-        timestamp: timestamp,
-        battery: parseFloat(battery) || null,
-        altitude: parseFloat(altitude) || null,
-        velocity: parseFloat(velocity) || null,
-        country_name: countryName || null,
-      })
-    }
+    mapsController.mapDataManager?.invalidatePoints({ appendOnly: true })
+    this.scheduleLiveRefresh()
 
     this.updateRecentPoint(parseFloat(lon), parseFloat(lat), {
       id: parseInt(id, 10),
@@ -238,7 +237,38 @@ export default class extends Controller {
 
     this.zoomToPoint(parseFloat(lon), parseFloat(lat))
 
-    Toast.info("New location recorded")
+    Toast.info(translate("messages.new_location_recorded"))
+  }
+
+  scheduleLiveRefresh() {
+    if (this.liveRefreshTimer) return
+
+    this.liveRefreshTimer = setTimeout(() => {
+      this.liveRefreshTimer = null
+      this.refreshLiveLayers()
+    }, LIVE_REFRESH_DELAY_MS)
+  }
+
+  refreshLiveLayers() {
+    const mapsController = this.mapsV2Controller
+    if (!mapsController) return
+
+    mapsController.layerManager?.getLayer("points-mvt")?.refresh()
+    mapsController.layerManager?.getLayer("map-editor")?.reapplyTileFilters()
+    mapsController.layerManager
+      ?.getLayer("scratch")
+      ?.update()
+      .catch((error) => {
+        console.warn(
+          "[Realtime Controller] Failed to refresh visited countries:",
+          error,
+        )
+        Toast.retry(
+          translate("messages.failed_to_load_visited_countries"),
+          translate("messages.retry"),
+          () => mapsController.layerManager?.getLayer("scratch")?.update(),
+        )
+      })
   }
 
   /**

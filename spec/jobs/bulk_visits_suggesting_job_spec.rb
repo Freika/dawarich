@@ -10,17 +10,48 @@ RSpec.describe BulkVisitsSuggestingJob, type: :job do
     let(:inactive_user) { create(:user, :inactive) }
     let(:user_with_points) { create(:user) }
     let(:time_chunks) { [[start_at, end_at]] }
+    let(:geocoding_configured) { true }
 
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+      configure_instance_geocoding if geocoding_configured
       allow_any_instance_of(Visits::TimeChunks).to receive(:call).and_return(time_chunks)
       create(:point, user: user_with_points)
     end
 
-    it 'does nothing if reverse geocoding is disabled' do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+    context 'when reverse geocoding is disabled' do
+      let(:geocoding_configured) { false }
 
-      expect { described_class.perform_now }.not_to have_enqueued_job(VisitSuggestingJob)
+      it 'does nothing' do
+        expect { described_class.perform_now }.not_to have_enqueued_job(VisitSuggestingJob)
+      end
+
+      it 'does nothing even when a user has an active geocoding setting' do
+        create(:service_setting, :active, user: user_with_points)
+
+        expect { described_class.perform_now }.not_to have_enqueued_job(VisitSuggestingJob)
+      end
+    end
+
+    context 'when the environment pins a provider' do
+      let(:geocoding_configured) { false }
+
+      before do
+        ENV['PHOTON_API_HOST'] = 'photon.pinned.example.com'
+        InstanceSettings::Resolver.reset!
+        create(:point, user: user)
+      end
+
+      it 'schedules jobs for every active user with tracked points' do
+        described_class.perform_now
+
+        [user, user_with_points].each do |scheduled_user|
+          expect(VisitSuggestingJob).to have_been_enqueued.with(
+            user_id: scheduled_user.id,
+            start_at: time_chunks.first.first,
+            end_at: time_chunks.first.last
+          )
+        end
+      end
     end
 
     it 'schedules jobs only for active users with tracked points' do

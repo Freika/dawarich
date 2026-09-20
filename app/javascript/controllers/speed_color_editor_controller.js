@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 
 /**
  * Speed Color Editor Controller
@@ -43,7 +44,7 @@ export default class extends Controller {
       <div class="flex items-center gap-3 p-3 bg-base-200 rounded-lg" data-index="${index}">
         <div class="flex-1">
           <label class="label">
-            <span class="label-text text-sm">Speed (km/h)</span>
+            <span class="label-text text-sm">${translate("speed_gradient.speed")}</span>
           </label>
           <input type="number"
                  class="input input-bordered input-sm w-full"
@@ -56,7 +57,7 @@ export default class extends Controller {
 
         <div class="flex-1">
           <label class="label">
-            <span class="label-text text-sm">Color</span>
+            <span class="label-text text-sm">${translate("speed_gradient.color")}</span>
           </label>
           <div class="flex gap-2 items-center">
             <input type="color"

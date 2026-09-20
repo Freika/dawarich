@@ -1,15 +1,15 @@
-<% content_for :title, 'Imports' %>
+<% content_for :title, t('.imports') %>
 
 <div class="w-full my-5">
   <% has_immich = current_user.safe_settings.immich_url.present? && current_user.safe_settings.immich_api_key.present? %>
   <% has_photoprism = current_user.safe_settings.photoprism_url.present? && current_user.safe_settings.photoprism_api_key.present? %>
   <% has_integrations = has_immich || has_photoprism %>
 
-  <%= render layout: 'shared/page_header', locals: { title: 'Imports' } do %>
+  <%= render layout: 'shared/page_header', locals: { title: t('.imports') } do %>
     <% if has_integrations %>
       <div class="join">
         <%= link_to new_import_path, class: "btn btn-primary btn-sm join-item" do %>
-          <%= icon 'circle-plus', class: 'w-4 h-4' %> New import
+          <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('imports.index.new_import') %>
         <% end %>
         <div class="dropdown dropdown-end">
           <label tabindex="0" class="btn btn-primary btn-sm join-item">
@@ -18,15 +18,15 @@
           <ul tabindex="0" class="dropdown-content z-[1] menu p-2 shadow-lg bg-base-100 rounded-lg w-52 mt-1 border border-base-300">
             <% if has_immich %>
               <li>
-                <%= link_to settings_background_jobs_path(job_name: 'start_immich_import'), data: { turbo_confirm: 'Are you sure?', turbo_method: :post } do %>
-                  <%= icon 'camera', class: 'w-4 h-4' %> Import from Immich
+                <%= link_to settings_background_jobs_path(job_name: 'start_immich_import'), data: { turbo_confirm: t('imports.index.are_you_sure'), turbo_method: :post } do %>
+                  <%= icon 'camera', class: 'w-4 h-4' %> <%= t('imports.index.import_from_immich') %>
                 <% end %>
               </li>
             <% end %>
             <% if has_photoprism %>
               <li>
-                <%= link_to settings_background_jobs_path(job_name: 'start_photoprism_import'), data: { turbo_confirm: 'Are you sure?', turbo_method: :post } do %>
-                  <%= icon 'camera', class: 'w-4 h-4' %> Import from Photoprism
+                <%= link_to settings_background_jobs_path(job_name: 'start_photoprism_import'), data: { turbo_confirm: t('imports.index.are_you_sure'), turbo_method: :post } do %>
+                  <%= icon 'camera', class: 'w-4 h-4' %> <%= t('imports.index.import_from_photoprism') %>
                 <% end %>
               </li>
             <% end %>
@@ -35,7 +35,7 @@
       </div>
     <% else %>
       <%= link_to new_import_path, class: "btn btn-primary btn-sm" do %>
-        <%= icon 'circle-plus', class: 'w-4 h-4' %> New import
+        <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('imports.index.new_import') %>
       <% end %>
     <% end %>
   <% end %>
@@ -44,12 +44,12 @@
   <div id="imports" class="min-w-full">
     <% if @imports.empty? %>
       <div class="text-center py-16 px-8 bg-base-200 rounded-xl border-2 border-dashed border-base-300">
-        <h3 class="text-xl font-bold mb-3">No imports yet</h3>
+        <h3 class="text-xl font-bold mb-3"><%= t('.no_imports_yet') %></h3>
         <p class="text-base-content/50 mb-6 max-w-sm mx-auto">
-          Import your location data from Google Maps Timeline, GPX files, OwnTracks, or other sources to start tracking.
+          <%= t('.import_your_location_data_from_google_maps_timeline_gpx_files') %>
         </p>
         <%= link_to new_import_path, class: 'btn btn-primary' do %>
-          <%= icon 'circle-plus', class: 'w-4 h-4' %> Create your first import
+          <%= icon 'circle-plus', class: 'w-4 h-4' %> <%= t('.create_your_first_import') %>
         <% end %>
       </div>
     <% else %>
@@ -60,12 +60,12 @@
         <table class="table w-full">
           <thead class="bg-base-200">
             <tr>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-auto"><%= sortable_column 'Name', :name, :imports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[10%]"><%= sortable_column 'File size', :byte_size, :imports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[10%]"><%= sortable_column 'Points', :processed, :imports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[12%]"><%= sortable_column 'Status', :status, :imports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[18%]"><%= sortable_column 'Created', :created_at, :imports_path %></th>
-              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[15%]">Actions</th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-auto"><%= sortable_column t('.name'), :name, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[10%]"><%= sortable_column t('.file_size'), :byte_size, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[10%]"><%= sortable_column t('.points'), :processed, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[12%]"><%= sortable_column t('.status'), :status, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 w-[18%]"><%= sortable_column t('.created'), :created_at, :imports_path %></th>
+              <th class="px-4 py-3 text-xs uppercase tracking-wider text-base-content/50 text-right w-[15%]"><%= t('.actions') %></th>
             </tr>
           </thead>
           <tbody
@@ -74,7 +74,7 @@
             data-user-id="<%= current_user.id %>"
           >
             <% @imports.each do |import| %>
-              <%= render 'imports/table_row', import: import %>
+              <%= render 'imports/table_row', import: import, timezone: current_user.safe_settings.timezone %>
             <% end %>
           </tbody>
         </table>

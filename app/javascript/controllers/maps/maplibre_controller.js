@@ -1,24 +1,28 @@
 import { Controller } from "@hotwired/stimulus"
+import { formatNumber, translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
+import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
 import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
+import { parseTimestamp } from "maps_maplibre/utils/realtime_date_filter"
 import { SearchManager } from "maps_maplibre/utils/search_manager"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { timeOverlapOpacityExpr } from "maps_maplibre/utils/time_overlap"
 import { AreaSelectionManager } from "./maplibre/area_selection_manager"
 import { DataLoader } from "./maplibre/data_loader"
 import { DateManager } from "./maplibre/date_manager"
 import { EventHandlers } from "./maplibre/event_handlers"
 import { FilterManager } from "./maplibre/filter_manager"
 import { LayerManager } from "./maplibre/layer_manager"
+import { LayerVisibilityManager } from "./maplibre/layer_visibility_manager"
 import { MapDataManager } from "./maplibre/map_data_manager"
 import { MapInitializer } from "./maplibre/map_initializer"
 import { PlacesManager } from "./maplibre/places_manager"
-import { RoutesManager } from "./maplibre/routes_manager"
 import { SettingsController } from "./maplibre/settings_manager"
 import { VisitsManager } from "./maplibre/visits_manager"
 
@@ -45,7 +49,6 @@ export default class extends Controller {
     "clusterToggle",
     "settingsPanel",
     "visitsSearch",
-    "routeOpacityRange",
     "placesFilters",
     "enableAllPlaceTagsToggle",
     "fogRadiusValue",
@@ -53,16 +56,14 @@ export default class extends Controller {
     "metersBetweenValue",
     "minutesBetweenValue",
     "minMinutesInCityValue",
-    "maxGapMinutesValue",
-    "stayMaxGapMinutesValue",
-    "gpsAccuracyThresholdValue",
     "gpsFilteringToggle",
     // Search
     "searchInput",
     "searchResults",
     // Layer toggles
     "pointsToggle",
-    "routesToggle",
+    "pointsEditToggle",
+    "pointsEditUnavailableNote",
     "heatmapToggle",
     "hexagonsToggle",
     "visitsToggle",
@@ -74,11 +75,7 @@ export default class extends Controller {
     "anomaliesToggle",
     "familyToggle",
     "flightsToggle",
-    // Speed-colored routes
-    "routesOptions",
-    "speedColoredToggle",
-    "speedColorScaleContainer",
-    "speedColorScaleInput",
+    "tracksToggle",
     // Globe projection
     "globeToggle",
     // Family members
@@ -98,49 +95,8 @@ export default class extends Controller {
     "infoTitle",
     "infoContent",
     "infoActions",
-    // Route info template
-    "routeInfoTemplate",
-    "routeStartTime",
-    "routeEndTime",
-    "routeDuration",
-    "routeDistance",
-    "routeSpeed",
-    "routeSpeedContainer",
-    "routePoints",
-    // Transportation mode thresholds
+    // Transportation mode detection
     "transportationCollapseToggle",
-    "transportationExpertToggle",
-    "transportationBasicSettings",
-    "transportationExpertSettings",
-    // Transportation speed inputs
-    "walkingMaxSpeedInput",
-    "cyclingMaxSpeedInput",
-    "drivingMaxSpeedInput",
-    "flyingMinSpeedInput",
-    // Transportation speed value displays
-    "walkingMaxSpeedValue",
-    "cyclingMaxSpeedValue",
-    "drivingMaxSpeedValue",
-    "flyingMinSpeedValue",
-    // Transportation expert inputs
-    "stationaryMaxSpeedInput",
-    "trainMinSpeedInput",
-    "runningVsCyclingAccelInput",
-    "cyclingVsDrivingAccelInput",
-    "minSegmentDurationInput",
-    "timeGapThresholdInput",
-    "minFlightDistanceInput",
-    // Transportation expert value displays
-    "stationaryMaxSpeedValue",
-    "trainMinSpeedValue",
-    "runningVsCyclingAccelValue",
-    "cyclingVsDrivingAccelValue",
-    "minSegmentDurationValue",
-    "timeGapThresholdValue",
-    "minFlightDistanceValue",
-    // Transportation unit labels
-    "speedUnitLabel",
-    "distanceUnitLabel",
     // Transportation recalculation status
     "transportationRecalculationAlert",
     "transportationLockedMessage",
@@ -239,7 +195,7 @@ export default class extends Controller {
       this.visitsManager.attachViewportRefetch()
     }
     this.placesManager = new PlacesManager(this)
-    this.routesManager = new RoutesManager(this)
+    this.layerVisibilityManager = new LayerVisibilityManager(this)
 
     // Listen for tab changes to trigger timeline feed loading via Turbo Frame
     this.boundHandleTabChanged = this.handleTabChanged.bind(this)
@@ -289,6 +245,10 @@ export default class extends Controller {
       document,
       "timeline-feed:entry-deselect",
       this.boundHandleEntryDeselect,
+    )
+
+    this.timelineSegmentHover = new TimelineSegmentHover(this, () =>
+      SettingsManager.getSetting("tracksEnabled"),
     )
 
     // SPA date-range change from the Timeline calendar — refetch all enabled
@@ -363,12 +323,28 @@ export default class extends Controller {
       new Date(this.endDateValue),
     )
 
+    // Snapshot the load-time window so realtime filtering can tell the default
+    // "today" view (whose frozen end goes stale across local midnight) apart
+    // from an explicitly selected past range.
+    const loadEnd = parseTimestamp(this.endDateValue)
+    this.defaultDateRange = {
+      startValue: this.startDateValue,
+      endValue: this.endDateValue,
+      reachesNow: loadEnd !== null && loadEnd >= Date.now(),
+    }
+
+    if (this.settings.placesEnabled) {
+      await this.placesManager.initializePlaceTagFilters({
+        reloadPlaces: false,
+      })
+    }
+
     this.loadMapData().then(() => {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()
       }
       if (this.settings?.anomaliesEnabled) {
-        this.routesManager.refreshAnomalies({ enabled: true })
+        this.layerVisibilityManager.refreshAnomalies({ enabled: true })
       }
     })
 
@@ -385,10 +361,12 @@ export default class extends Controller {
     this.settingsController?.stopRecalculationPolling()
     this.searchManager?.destroy()
     this.visitsManager?.destroy()
+    this.timelineSegmentHover?.destroy()
     this.eventHandlers?.destroy()
     cancelAllPreviews()
     if (this._persistView) this.map?.off("moveend", this._persistView)
     this.cleanup.cleanup()
+    this.layerManager?.clearLayerReferences()
     this.map?.remove()
     performanceMonitor.logReport()
   }
@@ -416,15 +394,20 @@ export default class extends Controller {
     // none, the map stays on the last-known view rather than the world.
     const lastView = loadLastView(this.apiKeyValue)
 
-    const map = await MapInitializer.initialize(this.containerTarget, {
-      mapStyle: this.settings.mapStyle,
-      globeProjection: this.settings.globeProjection,
-      hiddenTileCategories: this.settings.hiddenTileCategories || [],
-      disabledPoiGroups: this.settings.disabledPoiGroups || [],
-      customTheme: this.settings.customTheme,
-      vectorTilesUrl: this.settings.vectorTilesUrl,
-      ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
-    })
+    const map = await MapInitializer.initialize(
+      this.containerTarget,
+      {
+        mapStyle: this.settings.mapStyle,
+        globeProjection: this.settings.globeProjection,
+        hiddenTileCategories: this.settings.hiddenTileCategories || [],
+        disabledPoiGroups: this.settings.disabledPoiGroups || [],
+        customTheme: this.settings.customTheme,
+        vectorTilesUrl: this.settings.vectorTilesUrl,
+        tilesFallback: this.settings.tilesFallback === true,
+        ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
+      },
+      this.apiKeyValue,
+    )
 
     // The controller may have disconnected while the style was loading (e.g.
     // fast Turbo navigation). Tear the map down instead of attaching a listener
@@ -485,6 +468,7 @@ export default class extends Controller {
     this.startDateValue = startDate
     this.endDateValue = endDate
 
+    this.layerManager.getLayer("map-editor")?.close()
     this._clearDayHighlight()
     this.loadMapData()
     this.refreshTimelineFeedIfActive()
@@ -499,7 +483,15 @@ export default class extends Controller {
    * to come back empty because the server parsed the dates differently.
    */
   handleTimelineDateNavigated(event) {
-    const { startAt, endAt } = event.detail || {}
+    const navigation = this.navigateTimelineDateRange(event.detail || {})
+    if (typeof event.detail?.waitUntil === "function") {
+      event.detail.waitUntil(navigation)
+    } else {
+      navigation.catch((error) => console.error(error))
+    }
+  }
+
+  async navigateTimelineDateRange({ startAt, endAt, fitBounds = true }) {
     if (!startAt || !endAt) return
 
     const toApiDate = (local) => {
@@ -514,14 +506,34 @@ export default class extends Controller {
     this.startDateValue = start
     this.endDateValue = end
 
+    this.layerManager.getLayer("map-editor")?.close()
     this._clearDayHighlight?.()
-    this.loadMapData().then(() => {
-      if (this.settings?.anomaliesEnabled) {
-        this.routesManager.refreshAnomalies({ enabled: true })
-      }
-    })
+    await this.loadMapData({ fitBounds })
+    if (this.settings?.anomaliesEnabled) {
+      this.layerVisibilityManager.refreshAnomalies({ enabled: true })
+    }
     this.refreshTimelineFeedIfActive?.()
     this.debouncedLoadFamilyHistory?.()
+  }
+
+  /**
+   * The active window realtime points are filtered against. When the range is
+   * still the untouched load-time window that reached the present, the end is
+   * left open so live points recorded after local midnight keep showing.
+   */
+  realtimeDateRange() {
+    const startValue = this.startDateValue
+    const endValue = this.endDateValue
+    const unchanged =
+      this.defaultDateRange &&
+      startValue === this.defaultDateRange.startValue &&
+      endValue === this.defaultDateRange.endValue
+
+    return {
+      startValue,
+      endValue,
+      treatEndAsOpen: Boolean(unchanged && this.defaultDateRange.reachesNow),
+    }
   }
 
   debouncedLoadFamilyHistory() {
@@ -539,7 +551,7 @@ export default class extends Controller {
       this.progressBadgeTarget.classList.add("visible")
     }
     if (this.hasProgressBadgeTextTarget) {
-      this.progressBadgeTextTarget.textContent = "Loading..."
+      this.progressBadgeTextTarget.textContent = translate("common.loading")
     }
   }
 
@@ -584,13 +596,23 @@ export default class extends Controller {
     const counts = this._lastLoadingCounts || {}
     const parts = []
     for (const [source, count] of Object.entries(counts)) {
-      parts.push(`${count.toLocaleString()} ${source}`)
+      parts.push(
+        translate(`loading_sources.${source}`, {
+          count,
+          formatted_count: formatNumber(count),
+        }),
+      )
     }
 
     // Append family count if family layer is enabled
-    if (this.settings?.familyEnabled) {
+    if (this.settings?.familyEnabled && counts.family === undefined) {
       const familyCount = this._familyMemberCount || 0
-      parts.push(`${familyCount.toLocaleString()} family members`)
+      parts.push(
+        translate("loading_sources.family", {
+          count: familyCount,
+          formatted_count: formatNumber(familyCount),
+        }),
+      )
     }
 
     // Detect when a new data source appears and trigger a pop animation
@@ -608,7 +630,7 @@ export default class extends Controller {
     this._lastSourceCount = sourceCount
 
     this.progressBadgeTextTarget.textContent =
-      parts.length > 0 ? parts.join(" \u00B7 ") : "Loading..."
+      parts.length > 0 ? parts.join(" \u00B7 ") : translate("common.loading")
 
     if (isComplete) {
       if (this.hasProgressBadgeTarget) {
@@ -779,7 +801,7 @@ export default class extends Controller {
 
   /**
    * Dim non-matching features for the selected day.
-   * Routes and points use Unix timestamps (seconds);
+   * Tile-backed Tracks and Points use Unix timestamps (seconds);
    * visits use ISO 8601 strings (lexicographically sortable).
    * @param {string} day - Date string "YYYY-MM-DD"
    * @private
@@ -789,7 +811,6 @@ export default class extends Controller {
 
     this._highlightedDay = day
     const DIM = 0.04
-    const routeFull = this.settings?.routeOpacity ?? 0.8
 
     // Compute day boundaries as Unix seconds
     const dayStart = new Date(`${day}T00:00:00`).getTime() / 1000
@@ -799,21 +820,27 @@ export default class extends Controller {
     const isoStart = `${day}T00:00:00`
     const isoEnd = `${day}T23:59:59`
 
-    // Routes: startTime is Unix seconds
-    const routeExpr = this._dayRangeExpr(
-      "startTime",
+    const trackExpr = timeOverlapOpacityExpr(
+      "start_timestamp",
+      "end_timestamp",
       dayStart,
       dayEnd,
-      routeFull,
+      1,
       DIM,
     )
-    this._safeSetPaint("routes", "line-opacity", routeExpr)
-    this._safeSetPaint("routes-base", "line-opacity", routeExpr)
+    this._safeSetPaint("tracks-mvt", "line-opacity", trackExpr)
 
     // Points: timestamp is Unix seconds
-    const pointExpr = this._dayRangeExpr("timestamp", dayStart, dayEnd, 1, DIM)
-    this._safeSetPaint("points", "circle-opacity", pointExpr)
-    this._safeSetPaint("points", "circle-stroke-opacity", pointExpr)
+    const pointExpr = timeOverlapOpacityExpr(
+      "timestamp",
+      "max_timestamp",
+      dayStart,
+      dayEnd,
+      1,
+      DIM,
+    )
+    this._safeSetPaint("points-mvt", "circle-opacity", pointExpr)
+    this._safeSetPaint("points-mvt", "circle-stroke-opacity", pointExpr)
 
     // Visits: started_at is ISO 8601 string
     const visitExpr = this._dayRangeExpr(
@@ -830,10 +857,6 @@ export default class extends Controller {
     const labelExpr = this._dayRangeExpr("started_at", isoStart, isoEnd, 1, DIM)
     this._safeSetPaint("visits-labels", "text-opacity", labelExpr)
     this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
-
-    // Tracks: start_at is ISO 8601 string
-    const trackExpr = this._dayRangeExpr("start_at", isoStart, isoEnd, 0.7, DIM)
-    this._safeSetPaint("tracks", "line-opacity", trackExpr)
   }
 
   /**
@@ -845,17 +868,13 @@ export default class extends Controller {
 
     this._highlightedDay = null
     this._hideDayVisits()
-    const routeOpacity = this.settings?.routeOpacity ?? 0.8
-
-    this._safeSetPaint("routes", "line-opacity", routeOpacity)
-    this._safeSetPaint("routes-base", "line-opacity", routeOpacity)
-    this._safeSetPaint("points", "circle-opacity", 1)
-    this._safeSetPaint("points", "circle-stroke-opacity", 1)
+    this._safeSetPaint("tracks-mvt", "line-opacity", 1)
+    this._safeSetPaint("points-mvt", "circle-opacity", 1)
+    this._safeSetPaint("points-mvt", "circle-stroke-opacity", 1)
     this._safeSetPaint("visits", "circle-opacity", 0.9)
     this._safeSetPaint("visits", "circle-stroke-opacity", 1)
     this._safeSetPaint("visits-labels", "text-opacity", 1)
     this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
-    this._safeSetPaint("tracks", "line-opacity", 0.7)
   }
 
   /**
@@ -863,7 +882,7 @@ export default class extends Controller {
    * Highlights the matching route/visit on the map by dimming everything else.
    */
   handleEntryHover(event) {
-    const { entryType, startedAt, endedAt, trackId, visitId } = event.detail
+    const { entryType, startedAt, endedAt, visitId } = event.detail
     if (!this.map || !startedAt || !endedAt) return
 
     this._entryHighlightActive = true
@@ -871,29 +890,27 @@ export default class extends Controller {
     const DIM = 0.08
     const startUnix = new Date(startedAt).getTime() / 1000
     const endUnix = new Date(endedAt).getTime() / 1000
-    const routeFull = this.settings?.routeOpacity ?? 0.8
-
-    // Routes: startTime is Unix seconds
-    const routeExpr = this._dayRangeExpr(
-      "startTime",
-      startUnix,
-      endUnix,
-      routeFull,
-      DIM,
-    )
-    this._safeSetPaint("routes", "line-opacity", routeExpr)
-    this._safeSetPaint("routes-base", "line-opacity", routeExpr)
-
-    // Points: timestamp is Unix seconds
-    const pointExpr = this._dayRangeExpr(
-      "timestamp",
+    const trackExpr = timeOverlapOpacityExpr(
+      "start_timestamp",
+      "end_timestamp",
       startUnix,
       endUnix,
       1,
       DIM,
     )
-    this._safeSetPaint("points", "circle-opacity", pointExpr)
-    this._safeSetPaint("points", "circle-stroke-opacity", pointExpr)
+    this._safeSetPaint("tracks-mvt", "line-opacity", trackExpr)
+
+    // Points: timestamp is Unix seconds
+    const pointExpr = timeOverlapOpacityExpr(
+      "timestamp",
+      "max_timestamp",
+      startUnix,
+      endUnix,
+      1,
+      DIM,
+    )
+    this._safeSetPaint("points-mvt", "circle-opacity", pointExpr)
+    this._safeSetPaint("points-mvt", "circle-stroke-opacity", pointExpr)
 
     // Visits:
     //   - Visit hover  → only the hovered visit stays full opacity; others are
@@ -941,28 +958,6 @@ export default class extends Controller {
       )
       this._safeSetLayout("visits-labels", "symbol-sort-key", undefined)
     }
-
-    // Tracks: start_at is ISO 8601 string
-    const trackExpr = this._dayRangeExpr(
-      "start_at",
-      startedAt,
-      endedAt,
-      0.7,
-      DIM,
-    )
-    this._safeSetPaint("tracks", "line-opacity", trackExpr)
-
-    // Highlight the matching track with border + animation for journey entries
-    if (entryType === "journey") {
-      const feature = this._findTrackFeature(trackId, startedAt)
-      if (feature) {
-        const tracksLayer = this.layerManager.getLayer("tracks")
-        if (tracksLayer?.setSelectedTrack) {
-          tracksLayer.setSelectedTrack(feature)
-          this._hoverHighlightedTrack = true
-        }
-      }
-    }
   }
 
   /**
@@ -995,15 +990,30 @@ export default class extends Controller {
    * Handle entry-click events from the timeline feed (journey card opened).
    * Zooms to the track and applies the selection highlight.
    */
-  handleEntryClick(event) {
+  async handleEntryClick(event) {
     const { trackId, startedAt } = event.detail
     if (!this.map) return
 
-    const feature = this._findTrackFeature(trackId, startedAt)
+    const selectionVersion = (this._timelineSelectionVersion || 0) + 1
+    this._timelineSelectionVersion = selectionVersion
+    let feature = this._findTrackFeature(trackId, startedAt)
+    if (!feature && trackId) {
+      try {
+        feature = await this.api.fetchTrackWithSegments(trackId)
+      } catch (error) {
+        console.warn(`[Map] Failed to load timeline track ${trackId}:`, error)
+        return
+      }
+    }
+    if (selectionVersion !== this._timelineSelectionVersion) return
     if (!feature) return
 
     // Zoom to track bounding box
-    const coords = feature.geometry?.coordinates
+    const geometry = feature.geometry
+    const coords =
+      geometry?.type === "MultiLineString"
+        ? geometry.coordinates.flat()
+        : geometry?.coordinates
     if (coords?.length > 0) {
       let minLng = Infinity
       let minLat = Infinity
@@ -1027,7 +1037,10 @@ export default class extends Controller {
     // Apply track selection highlight
     const tracksLayer = this.layerManager.getLayer("tracks")
     if (tracksLayer?.setSelectedTrack) {
-      tracksLayer.setSelectedTrack(feature)
+      const preserveSegments =
+        tracksLayer.segmentsActive === true &&
+        String(tracksLayer.selectedFeature?.properties?.id) === String(trackId)
+      tracksLayer.setSelectedTrack(feature, { preserveSegments })
       this._timelineSelectedTrack = true
       this._hoverHighlightedTrack = false
     }
@@ -1039,6 +1052,7 @@ export default class extends Controller {
    */
   handleEntryDeselect() {
     if (!this.map) return
+    this._timelineSelectionVersion = (this._timelineSelectionVersion || 0) + 1
 
     const tracksLayer = this.layerManager.getLayer("tracks")
     if (tracksLayer?.setSelectedTrack) {
@@ -1078,6 +1092,16 @@ export default class extends Controller {
    * @private
    */
   _safeSetPaint(layerId, property, value) {
+    if (
+      layerId === "points-mvt" &&
+      ["circle-opacity", "circle-stroke-opacity"].includes(property)
+    ) {
+      const pointsLayer = this.layerManager?.getLayer("points-mvt")
+      if (pointsLayer?.setCircleOpacity) {
+        pointsLayer.setCircleOpacity(property, value)
+        return
+      }
+    }
     if (this.map.getLayer(layerId)) {
       this.map.setPaintProperty(layerId, property, value)
     }
@@ -1180,6 +1204,16 @@ export default class extends Controller {
     const tracksLayer = this.layerManager?.getLayer("tracks")
     if (!tracksLayer) return null
 
+    const selected = tracksLayer.selectedFeature
+    if (
+      selected &&
+      !selected.sourceLayer &&
+      ((trackId && String(selected.properties?.id) === String(trackId)) ||
+        (startedAt && selected.properties?.start_at === startedAt))
+    ) {
+      return selected
+    }
+
     const source = this.map.getSource(tracksLayer.sourceId)
     const sourceData = source?._data || tracksLayer.data
     if (!sourceData?.features) return null
@@ -1227,17 +1261,14 @@ export default class extends Controller {
   updateVectorTilesUrl(event) {
     return this.settingsController.updateVectorTilesUrl(event)
   }
-  updateRouteColor(event) {
-    return this.settingsController.updateRouteColor(event)
+  updateTilesFallback(event) {
+    return this.settingsController.updateTilesFallback(event)
   }
   updateTrackColor(event) {
     return this.settingsController.updateTrackColor(event)
   }
   resetLayerColors() {
     return this.settingsController.resetLayerColors()
-  }
-  updateRouteOpacity(event) {
-    return this.settingsController.updateRouteOpacity(event)
   }
   updateAdvancedSettings(event) {
     return this.settingsController.updateAdvancedSettings(event)
@@ -1257,15 +1288,6 @@ export default class extends Controller {
   updateMinMinutesInCityDisplay(event) {
     return this.settingsController.updateMinMinutesInCityDisplay(event)
   }
-  updateMaxGapMinutesDisplay(event) {
-    return this.settingsController.updateMaxGapMinutesDisplay(event)
-  }
-  updateStayMaxGapMinutesDisplay(event) {
-    return this.settingsController.updateStayMaxGapMinutesDisplay(event)
-  }
-  updateGpsAccuracyThresholdDisplay(event) {
-    return this.settingsController.updateGpsAccuracyThresholdDisplay(event)
-  }
   reapplyAnomalyFilter() {
     return this.settingsController.reapplyAnomalyFilter()
   }
@@ -1274,12 +1296,6 @@ export default class extends Controller {
   }
   toggleGlobe(event) {
     return this.settingsController.toggleGlobe(event)
-  }
-  toggleTransportationExpertMode(event) {
-    return this.settingsController.toggleTransportationExpertMode(event)
-  }
-  updateTransportationThresholdDisplay(event) {
-    return this.settingsController.updateTransportationThresholdDisplay(event)
   }
   markTransportationSettingsDirty(event) {
     return this.settingsController.markTransportationSettingsDirty(event)
@@ -1342,7 +1358,7 @@ export default class extends Controller {
     if (drawerController) {
       drawerController.startDrawing(this.map)
     } else {
-      Toast.error("Area drawer controller not available")
+      Toast.error(translate("messages.area_drawer_controller_not_available"))
     }
   }
 
@@ -1391,69 +1407,57 @@ export default class extends Controller {
       // in place so the side panel matches the map.
       this.eventHandlers?.refreshActiveAreaInfo(areas)
 
-      Toast.success("Area created successfully!")
+      Toast.success(translate("messages.area_created_successfully"))
     } catch (_error) {
-      Toast.error("Failed to reload areas")
+      Toast.error(translate("messages.failed_to_reload_areas"))
     }
   }
 
   // Routes Manager methods
   togglePoints(event) {
-    return this.routesManager.togglePoints(event)
+    return this.layerVisibilityManager.togglePoints(event)
   }
 
   togglePointsEditing(event) {
-    const pointsLayer = this.layerManager.getLayer("points")
-    pointsLayer?.setEditMode(event.currentTarget.checked)
+    return this.settingsController.togglePointsEditing(event)
   }
-  toggleRoutes(event) {
-    return this.routesManager.toggleRoutes(event)
-  }
+
   toggleHeatmap(event) {
-    return this.routesManager.toggleHeatmap(event)
+    return this.layerVisibilityManager.toggleHeatmap(event)
   }
   toggleHexagons(event) {
-    return this.routesManager.toggleHexagons(event)
+    return this.layerVisibilityManager.toggleHexagons(event)
   }
   updateFogMode(event) {
     return this.settingsController.updateFogMode(event)
   }
 
   toggleFog(event) {
-    return this.routesManager.toggleFog(event)
+    return this.layerVisibilityManager.toggleFog(event)
   }
   toggleScratch(event) {
-    return this.routesManager.toggleScratch(event)
+    return this.layerVisibilityManager.toggleScratch(event)
   }
   async togglePhotos(event) {
-    await this.routesManager.togglePhotos(event)
+    await this.layerVisibilityManager.togglePhotos(event)
     if (!this.replayPanel?.isOpen) return
     if (!event.target.checked) this._photosWasVisible = false
     this.replayPanel.refreshReplayPhotos()
   }
   toggleAreas(event) {
-    return this.routesManager.toggleAreas(event)
+    return this.layerVisibilityManager.toggleAreas(event)
   }
   toggleTracks(event) {
-    return this.routesManager.toggleTracks(event)
+    return this.layerVisibilityManager.toggleTracks(event)
   }
   toggleFlights(event) {
-    return this.routesManager.toggleFlights(event)
-  }
-  toggleSpeedColoredRoutes(event) {
-    return this.routesManager.toggleSpeedColoredRoutes(event)
-  }
-  openSpeedColorEditor() {
-    return this.routesManager.openSpeedColorEditor()
-  }
-  handleSpeedColorSave(event) {
-    return this.routesManager.handleSpeedColorSave(event)
+    return this.layerVisibilityManager.toggleFlights(event)
   }
   toggleAnomalies(event) {
-    return this.routesManager.toggleAnomalies(event)
+    return this.layerVisibilityManager.toggleAnomalies(event)
   }
   toggleFamily(event) {
-    return this.routesManager.toggleFamily(event)
+    return this.layerVisibilityManager.toggleFamily(event)
   }
 
   // Family Members methods
@@ -1475,7 +1479,7 @@ export default class extends Controller {
 
       if (!response.ok) {
         if (response.status === 403) {
-          Toast.info("Family feature not available")
+          Toast.info(translate("messages.family_feature_not_available"))
           this.updateLoadingCounts({
             counts: { family: 0 },
             isComplete: true,
@@ -1504,13 +1508,15 @@ export default class extends Controller {
       // Render family members list
       this.renderFamilyMembersList(locations)
 
-      Toast.success(`Loaded ${locations.length} family member(s)`)
+      Toast.success(
+        translate("family.loaded_members", { count: locations.length }),
+      )
 
       // Load history polylines
       this.loadFamilyHistory()
     } catch (error) {
       console.error("[Maps V2] Failed to load family members:", error)
-      Toast.error("Failed to load family members")
+      Toast.error(translate("messages.failed_to_load_family_members"))
     }
   }
 
@@ -1574,12 +1580,18 @@ export default class extends Controller {
           (Date.now() - sharingDate.getTime()) / (1000 * 60 * 60 * 24),
         ),
       )
-      const formattedDate = sharingDate.toLocaleDateString("en-US", {
-        month: "short",
-        day: "numeric",
-      })
+      const formattedDate = sharingDate.toLocaleDateString(
+        document.documentElement.lang || undefined,
+        {
+          month: "short",
+          day: "numeric",
+        },
+      )
 
-      infoEl.textContent = `Sharing since ${formattedDate} (${daysSharing} day${daysSharing !== 1 ? "s" : ""} of history)`
+      infoEl.textContent = translate("family.sharing_since", {
+        date: formattedDate,
+        count: daysSharing,
+      })
     }
   }
 
@@ -1589,8 +1601,7 @@ export default class extends Controller {
     const container = this.familyMembersContainerTarget
 
     if (locations.length === 0) {
-      container.innerHTML =
-        '<p class="text-xs text-base-content/60">No family members sharing location</p>'
+      container.innerHTML = `<p class="text-xs text-base-content/60">${translate("family.none_sharing")}</p>`
       return
     }
 
@@ -1598,13 +1609,16 @@ export default class extends Controller {
       ...locations.map((location) => {
         const emailInitial = location.email?.charAt(0)?.toUpperCase() || "?"
         const color = this.getFamilyMemberColor(location.user_id)
-        const lastSeen = new Date(location.updated_at).toLocaleString("en-US", {
-          timeZone: this.timezoneValue || "UTC",
-          month: "short",
-          day: "numeric",
-          hour: "numeric",
-          minute: "2-digit",
-        })
+        const lastSeen = new Date(location.updated_at).toLocaleString(
+          document.documentElement.lang || undefined,
+          {
+            timeZone: this.timezoneValue || "UTC",
+            month: "short",
+            day: "numeric",
+            hour: "numeric",
+            minute: "2-digit",
+          },
+        )
 
         const row = document.createElement("div")
         row.className =
@@ -1633,7 +1647,7 @@ export default class extends Controller {
 
         const emailDiv = document.createElement("div")
         emailDiv.className = "text-sm font-medium truncate"
-        emailDiv.textContent = location.email || "Unknown"
+        emailDiv.textContent = location.email || translate("common.unknown")
 
         const timeDiv = document.createElement("div")
         timeDiv.className = "text-xs text-base-content/60"
@@ -1674,7 +1688,7 @@ export default class extends Controller {
     const familyLayer = this.layerManager.getLayer("family")
     if (familyLayer) {
       familyLayer.centerOnMember(parseInt(memberId, 10))
-      Toast.success("Centered on family member")
+      Toast.success(translate("messages.centered_on_family_member"))
     }
   }
 
@@ -1699,7 +1713,7 @@ export default class extends Controller {
             // For button actions (modals, etc.), create a button with data-action
             // Use error styling for delete buttons
             const buttonClass =
-              action.label === "Delete"
+              action.handler === "handleDelete"
                 ? "btn btn-sm btn-error"
                 : "btn btn-sm btn-primary"
             return `<button class="${buttonClass}" data-action="click->maps--maplibre#${action.handler}" data-id="${action.id}" data-entity-type="${action.entityType}">${action.label}</button>`
@@ -1720,64 +1734,13 @@ export default class extends Controller {
     this.switchToToolsTab()
   }
 
-  showRouteInfo(routeData) {
-    if (!this.hasRouteInfoTemplateTarget) return
-
-    // Clone the template
-    const template = this.routeInfoTemplateTarget.content.cloneNode(true)
-
-    // Populate the template with data
-    const fragment = document.createDocumentFragment()
-    fragment.appendChild(template)
-
-    fragment.querySelector(
-      '[data-maps--maplibre-target="routeStartTime"]',
-    ).textContent = routeData.startTime
-    fragment.querySelector(
-      '[data-maps--maplibre-target="routeEndTime"]',
-    ).textContent = routeData.endTime
-    fragment.querySelector(
-      '[data-maps--maplibre-target="routeDuration"]',
-    ).textContent = routeData.duration
-    fragment.querySelector(
-      '[data-maps--maplibre-target="routeDistance"]',
-    ).textContent = routeData.distance
-    fragment.querySelector(
-      '[data-maps--maplibre-target="routePoints"]',
-    ).textContent = routeData.pointCount
-
-    // Handle optional speed field
-    const speedContainer = fragment.querySelector(
-      '[data-maps--maplibre-target="routeSpeedContainer"]',
-    )
-    if (routeData.speed) {
-      fragment.querySelector(
-        '[data-maps--maplibre-target="routeSpeed"]',
-      ).textContent = routeData.speed
-      speedContainer.style.display = ""
-    } else {
-      speedContainer.style.display = "none"
-    }
-
-    // Convert fragment to HTML string for showInfo
-    const div = document.createElement("div")
-    div.appendChild(fragment)
-
-    this.showInfo("Route Information", div.innerHTML)
-  }
-
-  closeInfo() {
+  closeInfo(options = {}) {
     if (!this.hasInfoDisplayTarget) return
     this.infoDisplayTarget.classList.add("hidden")
 
-    // Clear the appropriate selection when info panel is closed
-    // Only one type can be selected at a time
-    if (this.eventHandlers) {
-      if (this.eventHandlers.selectedTrackFeature) {
-        this.eventHandlers.clearTrackSelection()
-      } else if (this.eventHandlers.selectedRouteFeature) {
-        this.eventHandlers.clearRouteSelection()
-      }
+    if (options.clearSelection !== false && this.eventHandlers) {
+      this.eventHandlers.clearTrackSelection()
+      this.eventHandlers.clearPointSelection()
     }
   }
 
@@ -1847,7 +1810,7 @@ export default class extends Controller {
       })
       document.dispatchEvent(event)
     } catch (_error) {
-      Toast.error("Failed to load visit details")
+      Toast.error(translate("messages.failed_to_load_visit_details"))
     }
   }
 
@@ -1875,92 +1838,29 @@ export default class extends Controller {
         new CustomEvent("area:edit", { detail: { area }, bubbles: true }),
       )
     } catch (_error) {
-      Toast.error("Failed to load area details")
+      Toast.error(translate("messages.failed_to_load_area_details"))
     }
   }
 
-  /**
-   * Delete a single point with confirmation, then remove it from the points
-   * source and rebuild the connecting routes so the map updates without a
-   * full reload.
-   */
+  /** Delete a point, then invalidate the tile-backed presentation. */
   async deletePoint(pointId) {
-    const confirmed = confirm(
-      "Delete this point?\n\nThis action cannot be undone.",
-    )
+    const confirmed = confirm(translate("map.confirm_delete_point_permanently"))
     if (!confirmed) return
-
-    const numericId = Number(pointId)
-    const pointsLayer = this.layerManager.getLayer("points")
-    const source = pointsLayer && this.map.getSource(pointsLayer.sourceId)
-    const data = source?._data
-    const removedIndex =
-      data?.features?.findIndex(
-        (f) => Number(f.properties?.id) === numericId,
-      ) ?? -1
-    const removedFeature =
-      removedIndex >= 0 ? data.features[removedIndex] : undefined
-    const canReconcile = Boolean(data?.features && removedFeature)
-
-    // The cached full point set feeds route rebuilds and the scratch layer
-    // in simplified rendering mode — keep it in sync with the layer data.
-    const cachedPoints = this.mapDataManager?.lastLoadedData?.points
-    const removedCacheIndex =
-      cachedPoints?.findIndex((p) => Number(p.id) === numericId) ?? -1
-    const removedCachePoint =
-      removedCacheIndex >= 0 ? cachedPoints[removedCacheIndex] : undefined
-
-    // The API delete fires regardless of layer reconciliation, so the cache
-    // must always drop the point too.
-    if (removedCachePoint) cachedPoints.splice(removedCacheIndex, 1)
-
-    // Optimistically remove the point so the map updates instantly; the API
-    // call and route rebuild run in the background and are reverted on error.
-    if (canReconcile) {
-      data.features = data.features.filter(
-        (f) => Number(f.properties?.id) !== numericId,
-      )
-      source.setData(data)
-      pointsLayer.data = data
-      this.routesManager.reloadRoutes().catch((error) => console.error(error))
-    }
 
     try {
       await this.api.deletePoint(pointId)
+      this.mapDataManager?.invalidatePoints()
+      this.layerManager.getLayer("map-editor")?.close()
+      this.layerManager.getLayer("points-mvt")?.refresh()
+      this.layerManager.getLayer("tracks-mvt")?.refresh()
+      this.layerManager
+        .getLayer("scratch")
+        ?.update()
+        .catch(() => {})
       this.closeInfo()
-      Toast.success("Point deleted successfully")
+      Toast.success(translate("messages.point_deleted_successfully"))
     } catch (_error) {
-      // The point still exists server-side, so restore it in the cache even
-      // when the layer reconcile below is skipped.
-      if (removedCachePoint && !cachedPoints.includes(removedCachePoint)) {
-        cachedPoints.splice(
-          Math.min(removedCacheIndex, cachedPoints.length),
-          0,
-          removedCachePoint,
-        )
-      }
-
-      // Reconcile against the source's CURRENT data, re-read fresh: a realtime
-      // broadcast may have replaced it while the request was in flight, so the
-      // snapshot captured above could be stale and would clobber that update.
-      const currentSource =
-        pointsLayer && this.map?.getSource(pointsLayer.sourceId)
-      const currentData = currentSource?._data
-      if (currentData?.features && removedFeature) {
-        // Splice back at the original index so the restored point keeps its
-        // render order instead of jumping on top of every other point.
-        const features = [...currentData.features]
-        features.splice(
-          Math.min(removedIndex, features.length),
-          0,
-          removedFeature,
-        )
-        currentData.features = features
-        currentSource.setData(currentData)
-        pointsLayer.data = currentData
-        this.routesManager.reloadRoutes().catch((error) => console.error(error))
-      }
-      Toast.error("Failed to delete point")
+      Toast.error(translate("messages.failed_to_delete_point"))
     }
   }
 
@@ -1974,12 +1874,12 @@ export default class extends Controller {
 
       // Show delete confirmation
       const confirmed = confirm(
-        `Delete area "${area.name}"?\n\nThis action cannot be undone.`,
+        translate("areas.confirm_delete_named", { name: area.name }),
       )
 
       if (!confirmed) return
 
-      Toast.info("Deleting area...")
+      Toast.info(translate("messages.deleting_area"))
 
       // Delete the area
       await this.api.deleteArea(areaId)
@@ -1996,9 +1896,9 @@ export default class extends Controller {
       // Close info display
       this.closeInfo()
 
-      Toast.success("Area deleted successfully")
+      Toast.success(translate("messages.area_deleted_successfully"))
     } catch (_error) {
-      Toast.error("Failed to delete area")
+      Toast.error(translate("messages.failed_to_delete_area"))
     }
   }
 
@@ -2028,7 +1928,7 @@ export default class extends Controller {
       })
       document.dispatchEvent(event)
     } catch (_error) {
-      Toast.error("Failed to load place details")
+      Toast.error(translate("messages.failed_to_load_place_details"))
     }
   }
 
@@ -2064,8 +1964,6 @@ export default class extends Controller {
         await this.mapDataManager.ensurePointsLoaded()
         return this._getLoadedPoints()
       },
-      highlightPoint: (point) => this._highlightReplayRouteSegment(point),
-      clearHighlight: () => this._clearReplayRouteHighlight(),
       onPlayStateChange: (playing) => this._updateTrackReplayButton(playing),
       getPhotos: () => {
         const layer = this.layerManager?.getLayer("photos")
@@ -2179,76 +2077,11 @@ export default class extends Controller {
     if (playing) {
       playIcon.classList.add("hidden")
       pauseIcon.classList.remove("hidden")
-      label.textContent = "Pause"
+      label.textContent = translate("replay.pause")
     } else {
       playIcon.classList.remove("hidden")
       pauseIcon.classList.add("hidden")
-      label.textContent = "Replay"
-    }
-  }
-
-  _highlightReplayRouteSegment(point) {
-    const routesLayer = this.layerManager?.getLayer("routes")
-    if (!routesLayer) return
-
-    const manager = this.replayPanel?.manager
-    const coords = manager?.getCoordinates(point)
-    if (!coords) return
-
-    const routesSource = this.map?.getSource("routes-source")
-    if (!routesSource?._data?.features) {
-      routesLayer.setHoverRoute(null)
-      return
-    }
-
-    const timestamp = manager?.getTimestamp(point)
-    if (!timestamp) {
-      routesLayer.setHoverRoute(null)
-      return
-    }
-
-    const pointTime = this._parseReplayTimestamp(timestamp)
-
-    const matchingFeature = routesSource._data.features.find((feature) => {
-      const startTime = feature.properties?.startTime
-      const endTime = feature.properties?.endTime
-
-      if (startTime && endTime) {
-        const start = this._parseReplayTimestamp(startTime)
-        const end = this._parseReplayTimestamp(endTime)
-        return pointTime >= start && pointTime <= end
-      }
-      return false
-    })
-
-    if (matchingFeature) {
-      routesLayer.setHoverRoute(matchingFeature)
-    } else {
-      routesLayer.setHoverRoute(null)
-    }
-  }
-
-  _parseReplayTimestamp(timestamp) {
-    if (!timestamp) return 0
-
-    if (typeof timestamp === "string") {
-      return new Date(timestamp).getTime()
-    }
-
-    if (typeof timestamp === "number") {
-      if (timestamp < 10000000000) {
-        return timestamp * 1000
-      }
-      return timestamp
-    }
-
-    return 0
-  }
-
-  _clearReplayRouteHighlight() {
-    const routesLayer = this.layerManager?.getLayer("routes")
-    if (routesLayer) {
-      routesLayer.setHoverRoute(null)
+      label.textContent = translate("replay.replay")
     }
   }
 }

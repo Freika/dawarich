@@ -18,11 +18,12 @@ module Posters
     RENDER_TIMEOUT = 180
     TERMINATE_TIMEOUT = 5
 
-    def initialize(poster:, track:, distance:, route_opacity:, subtitle:, command: nil)
+    def initialize(poster:, track:, distance:, route_opacity:, subtitle:, route_width: 1, command: nil)
       @poster = poster
       @track = track
       @distance = distance
       @route_opacity = route_opacity
+      @route_width = route_width
       @subtitle = subtitle
       @command = command || default_command
     end
@@ -47,6 +48,7 @@ module Posters
         tokens: theme_tokens,
         trackGeojson: { type: 'Feature', properties: {}, geometry: @track },
         trackOpacity: @route_opacity,
+        trackWidth: @route_width,
         view: {
           lat: @poster.settings['lat'].to_f,
           lon: @poster.settings['lon'].to_f,

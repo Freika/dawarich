@@ -67,7 +67,7 @@ module Points
 
       return unless metadata['expected_count'].blank? || metadata['actual_count'].blank?
 
-      errors.add(:metadata, 'must contain expected_count and actual_count')
+      errors.add(:metadata, I18n.t('models.points.raw_data_archive.must_contain_expected_count_and_actual_count'))
     end
 
     def remove_attached_file

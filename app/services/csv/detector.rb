@@ -76,6 +76,24 @@ module Csv
       columns[:longitude] ||= find_header_by_substring(headers, 'longitude')
       columns[:timestamp] ||= find_header_by_substring(headers, 'timestamp')
 
+      normalized = headers.map { |h| h.to_s.downcase.strip }
+      date_idx = normalized.index('date')
+      time_idx = normalized.index('time')
+      if date_idx && time_idx
+        combined_headers = headers.map do |header|
+          header unless %w[date time].include?(header.to_s.downcase.strip)
+        end
+        combined_idx = find_header(combined_headers, :timestamp) ||
+                       find_header_by_substring(combined_headers, 'timestamp')
+
+        if combined_idx
+          columns[:timestamp] = combined_idx
+        else
+          columns[:timestamp_date] = date_idx
+          columns[:timestamp_time] = time_idx
+        end
+      end
+
       columns
     end
 
@@ -89,8 +107,7 @@ module Csv
       return if missing.empty?
 
       raise DetectionError,
-            'Could not detect required columns: latitude, longitude, timestamp. ' \
-            'Found headers must include recognized aliases for all three.'
+            I18n.t('services.csv.detector.required_columns_missing')
     end
 
     def parse_data_rows(lines, delimiter)

@@ -33,8 +33,31 @@ RSpec.describe Families::AcceptInvitation do
         expect(owner_notification).to be_present
       end
 
+      it 'localizes each notification for its recipient' do
+        invitee.update!(settings: { 'locale' => 'fr' })
+        family.creator.update!(settings: { 'locale' => 'en' })
+
+        I18n.with_locale(:en) { service.call }
+
+        expect(invitee.notifications.last.title).to eq('Bienvenue dans la famille !')
+        expect(family.creator.notifications.last.title).to eq('New Family Member!')
+      end
+
       it 'returns true' do
         expect(service.call).to be true
+      end
+    end
+
+    context 'when the family owner no longer holds the plan' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        family.creator.update!(plan: :pro)
+      end
+
+      it 'refuses the invitation' do
+        expect(service.call).to be false
+        expect(service.error_message).to eq("This family's plan is no longer active.")
+        expect(invitee.reload.family_membership).to be_nil
       end
     end
 
@@ -48,15 +71,23 @@ RSpec.describe Families::AcceptInvitation do
         create(:family_membership, :owner, family: family, user: owner)
       end
 
-      it 'grants full access immediately upon joining without changing the stored plan' do
+      it 'grants full access immediately upon joining' do
         expect(invitee.full_access?).to be false
 
         service.call
         invitee.reload
 
-        expect(invitee.plan).to eq('lite')
         expect(invitee.full_access?).to be true
         expect(invitee.plan_restricted?).to be false
+      end
+
+      it 'puts the joining member on the owner plan and billing period' do
+        service.call
+        invitee.reload
+
+        expect(invitee.plan).to eq('pro')
+        expect(invitee).to be_active
+        expect(invitee.active_until).to be_within(1.second).of(owner.active_until)
       end
     end
 

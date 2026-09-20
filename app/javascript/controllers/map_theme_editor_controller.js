@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { translate } from "i18n"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
 import { extendTokens, loadThemeTokens } from "poster_studio/data/theme_loader"
 import Flash from "./flash_controller"
@@ -62,7 +63,10 @@ export default class extends Controller {
       if (this.hasBlockTarget) this.blockTarget.open = true
       this.scheduleSave()
     } catch (error) {
-      Flash.show("error", `Failed to load theme preset: ${error.message}`)
+      Flash.show(
+        "error",
+        translate("poster.theme_preset_failed", { error: error.message }),
+      )
     }
   }
 

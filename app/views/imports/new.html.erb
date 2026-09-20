@@ -1,9 +1,9 @@
-<% content_for :title, 'New Import' %>
+<% content_for :title, t('.new_import_2') %>
 
 <div class="mx-auto md:w-2/3 w-full my-5">
-  <%= render layout: 'shared/page_header', locals: { title: 'New import' } do %>
+  <%= render layout: 'shared/page_header', locals: { title: t('.new_import') } do %>
     <%= link_to imports_path, class: "btn btn-sm" do %>
-      <%= icon 'arrow-left', class: 'w-4 h-4' %> Back to imports
+      <%= icon 'arrow-left', class: 'w-4 h-4' %> <%= t('imports.new.back_to_imports') %>
     <% end %>
   <% end %>
 
@@ -11,9 +11,9 @@
     <div class="alert alert-info my-4">
       <%= icon 'scissors', class: 'w-5 h-5 shrink-0' %>
       <span>
-        Google Timeline file too large?
-        <%= link_to 'Split it with our free private tool', 'https://dawarich.app/tools/google-timeline-splitter?utm_source=dawarich&utm_medium=import_page&utm_campaign=trial_banner',
-            target: '_blank', rel: 'noopener', class: 'link link-primary font-semibold' %> — your data never leaves your browser.
+        <%= t('.google_timeline_file_too_large') %>
+        <%= link_to t('.split_it_with_our_free_private_tool'), 'https://dawarich.app/tools/google-timeline-splitter?utm_source=dawarich&utm_medium=import_page&utm_campaign=trial_banner',
+            target: '_blank', rel: 'noopener', class: 'link link-primary font-semibold' %> <%= t('.your_data_never_leaves_your_browser') %>
       </span>
     </div>
   <% end %>

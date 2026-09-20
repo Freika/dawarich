@@ -26,14 +26,14 @@ class Settings::TwoFactorController < ApplicationController
     else
       @qr_code = generate_qr_code
       @otp_secret = current_user.otp_secret
-      flash.now[:alert] = 'Invalid verification code. Please try again.'
+      flash.now[:alert] = I18n.t('controllers.settings.two_factor.invalid_verification_code')
       render :verify, status: :unprocessable_entity
     end
   end
 
   def destroy
     unless current_user.valid_password?(params[:password])
-      redirect_to settings_two_factor_path, alert: 'Incorrect password.'
+      redirect_to settings_two_factor_path, alert: I18n.t('controllers.settings.two_factor.incorrect_password')
       return
     end
 
@@ -43,7 +43,7 @@ class Settings::TwoFactorController < ApplicationController
 
     unless otp_ok
       redirect_to settings_two_factor_path,
-                  alert: 'Provide a valid two-factor code (or backup code) to disable 2FA.'
+                  alert: I18n.t('controllers.settings.two_factor.provide_a_valid_two_factor_code_or_backup_code_to')
       return
     end
 
@@ -52,7 +52,8 @@ class Settings::TwoFactorController < ApplicationController
       otp_secret: nil,
       otp_backup_codes: nil
     )
-    redirect_to settings_two_factor_path, notice: 'Two-factor authentication disabled.'
+    redirect_to settings_two_factor_path,
+                notice: I18n.t('controllers.settings.two_factor.two_factor_authentication_disabled')
   end
 
   private
@@ -60,7 +61,9 @@ class Settings::TwoFactorController < ApplicationController
   def require_two_factor_available
     return if DawarichSettings.two_factor_available?
 
-    redirect_to settings_general_index_path, alert: 'Two-factor authentication is not configured on this instance.'
+    alert = I18n.t('controllers.settings.two_factor.two_factor_authentication_is_not_configured_on_this_instance')
+    redirect_to settings_general_index_path,
+                alert: alert
   end
 
   def generate_qr_code

@@ -1,0 +1,25 @@
+{
+  "semanticSegments": [],
+  "rawSignals": [
+    {
+      "position": {
+        "LatLng": "48.8566, 2.3522",
+        "accuracyMeters": 15,
+        "altitudeMeters": 35,
+        "speedMetersPerSecond": 0,
+        "source": "WIFI",
+        "timestamp": "2024-06-15T09:05:00.000Z"
+      }
+    },
+    {
+      "activityRecord": {
+        "probableActivities": [
+          { "type": "STILL", "confidence": 0.95 },
+          { "type": "IN_VEHICLE", "confidence": 0.01 },
+          { "type": "UNKNOWN", "confidence": 0.01 }
+        ],
+        "timestamp": "2024-06-15T09:05:05.000Z"
+      }
+    }
+  ]
+}

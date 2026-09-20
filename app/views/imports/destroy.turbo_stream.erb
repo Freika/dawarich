@@ -1,3 +1,3 @@
 <%= turbo_stream.replace dom_id(@import) do %>
-  <%= render 'imports/table_row', import: @import %>
+  <%= render 'imports/table_row', import: @import, timezone: current_user.safe_settings.timezone %>
 <% end %>

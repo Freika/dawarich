@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Blank geocoder response marks the point as attempted' do
+  before { configure_instance_geocoding }
+
   subject(:fetch_data) { ReverseGeocoding::Points::FetchData.new(point.id).call }
 
   let(:point) do

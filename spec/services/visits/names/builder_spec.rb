@@ -39,6 +39,17 @@ RSpec.describe Visits::Names::Builder do
       expect(result).to eq('New York Cafe, New York, NY')
     end
 
+    it 'ignores generic boolean Photon names' do
+      properties = {
+        'name' => 'Yes',
+        'street' => 'Main St',
+        'city' => 'Berlin'
+      }
+
+      result = described_class.build_from_properties(properties)
+      expect(result).to eq('Main St, Berlin')
+    end
+
     it 'returns nil for empty properties' do
       result = described_class.build_from_properties({})
       expect(result).to be_nil

@@ -11,6 +11,10 @@ Rails.application.config.after_initialize do
       alias_method :getaddress_without_cache, :getaddress
 
       def getaddress(name)
+        # Let the original resolver raise its usual error for non-string
+        # names (e.g. nil when SMTP settings are missing)
+        return getaddress_without_cache(name) unless name.is_a?(String)
+
         # Skip caching for IP addresses (no DNS lookup needed)
         return getaddress_without_cache(name) if ip_address?(name)
 

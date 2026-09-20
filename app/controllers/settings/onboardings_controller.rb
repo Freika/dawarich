@@ -15,11 +15,12 @@ module Settings
 
       case result[:status]
       when :created
-        redirect_to demo_data_landing_path, notice: 'Demo data loaded.'
+        redirect_to demo_data_landing_path, notice: I18n.t('controllers.settings.onboardings.demo_data_loaded')
       when :exists
-        redirect_to demo_data_landing_path, notice: 'Demo data is already loaded.'
+        redirect_to demo_data_landing_path,
+                    notice: I18n.t('controllers.settings.onboardings.demo_data_is_already_loaded')
       else
-        redirect_to root_path, alert: 'Something went wrong loading demo data.'
+        redirect_to root_path, alert: I18n.t('controllers.settings.onboardings.something_went_wrong_loading_demo_data')
       end
     end
 
@@ -28,11 +29,11 @@ module Settings
 
       case result[:status]
       when :destroyed
-        redirect_to root_path, notice: 'Demo data removed.'
+        redirect_to root_path, notice: I18n.t('controllers.settings.onboardings.demo_data_removed')
       when :no_demo_data
-        redirect_to root_path, notice: 'No demo data found.'
+        redirect_to root_path, notice: I18n.t('controllers.settings.onboardings.no_demo_data_found')
       else
-        redirect_to root_path, alert: 'Something went wrong removing demo data.'
+        redirect_to root_path, alert: I18n.t('controllers.settings.onboardings.something_went_wrong_removing_demo_data')
       end
     end
 

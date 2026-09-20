@@ -192,6 +192,21 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
       end
     end
 
+    context 'when the stats service handles an internal error' do
+      before do
+        user.update!(settings: { 'locale' => 'fr' })
+        allow_any_instance_of(Stats::CalculateMonth).to receive(:call).and_call_original
+        allow_any_instance_of(Stats::CalculateMonth).to receive(:points).and_raise(StandardError, 'boom')
+      end
+
+      it 'creates the service notifications in the user saved locale' do
+        I18n.with_locale(:en) { described_class.perform_now(user.id, year: 2024) }
+
+        titles = user.notifications.error.pluck(:title).uniq
+        expect(titles).to eq(["L'actualisation des statistiques a échoué"])
+      end
+    end
+
     it 'enqueues to the stats queue' do
       expect(described_class.new.queue_name).to eq('stats')
     end

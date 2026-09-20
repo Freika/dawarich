@@ -62,6 +62,16 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
         expect(notification.title).to include('archive')
       end
 
+      it 'uses the recipient saved locale for the persisted notification' do
+        lite_user.update!(settings: { 'locale' => 'fr' })
+
+        I18n.with_locale(:en) { described_class.perform_now }
+
+        notification = Notification.find_by!(user: lite_user)
+        expect(notification.title).to eq('Vos données les plus anciennes seront archivées dans 30 jours')
+        expect(notification.content).to include('Votre plus ancien mois de données de localisation')
+      end
+
       it 'does not warn the same user twice for the 11-month threshold' do
         described_class.perform_now
         expect { described_class.perform_now }.not_to change(Notification, :count)

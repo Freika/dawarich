@@ -98,6 +98,22 @@ RSpec.describe Users::ExportData, type: :service do
         end
       end
 
+      it 'exports a portable TREK snapshot without its database source ID' do
+        allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+        source = create(:trip_source, user:)
+        snapshot = { 'days' => [{ 'date' => '2024-11-27', 'day_number' => 1, 'notes' => 'Arrival' }] }
+        create(:trip, user:, trip_source: source, source_identifier: '12', source_status: :active,
+                      source_snapshot: snapshot)
+
+        result = service.export
+
+        Zip::File.open_buffer(result.file.download) do |archive|
+          exported = JSON.parse(archive.read('trips.jsonl').lines.first)
+          expect(exported).not_to have_key('trip_source_id')
+          expect(exported['source_snapshot']).to eq(snapshot)
+        end
+      end
+
       it 'marks the export as completed' do
         result = service.export
 

@@ -57,6 +57,10 @@ export function pointsToGeoJSON(points, options = {}) {
         accuracy: point.accuracy,
         velocity: point.velocity,
         country_name: point.country_name,
+        // Carried alongside the geometry because a clicked feature's geometry
+        // comes back snapped to the tile grid.
+        latitude: point.latitude,
+        longitude: point.longitude,
       },
     })),
   }
@@ -133,4 +137,15 @@ export function escapeHtml(value) {
   const div = document.createElement("div")
   div.textContent = str
   return div.innerHTML
+}
+
+/**
+ * Escape a value for use inside a double- or single-quoted HTML attribute.
+ * escapeHtml alone leaves quotes intact, which lets a value close the
+ * attribute and start a new one.
+ * @param {*} value - Value to escape (coerced to string)
+ * @returns {string} Attribute-safe string
+ */
+export function escapeAttribute(value) {
+  return escapeHtml(value).replace(/"/g, "&quot;").replace(/'/g, "&#39;")
 }

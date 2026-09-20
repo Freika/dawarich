@@ -90,6 +90,18 @@ RSpec.describe '/places', type: :request do
         expect(response.body).to include('data-updated="true"')
       end
 
+      it 'excludes tombstoned visits from the serialized visits_count' do
+        base_time = Time.zone.parse('2026-04-01 12:00')
+        create(:visit, place:, user:, area: nil,
+                       started_at: base_time, ended_at: base_time + 30.minutes)
+        create(:visit, place:, user:, area: nil, deleted_at: 1.day.ago,
+                       started_at: base_time + 1.hour, ended_at: base_time + 90.minutes)
+
+        patch place_url(place), params: { place: { name: 'Renamed' } }, as: :turbo_stream
+
+        expect(response.body).to include('visits_count&quot;:1')
+      end
+
       it 'returns turbo_stream flash error with invalid params' do
         patch place_url(place), params: { place: { name: '' } }, as: :turbo_stream
 
@@ -117,11 +129,8 @@ RSpec.describe '/places', type: :request do
       )
     end
 
-    before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-    end
-
     it 'returns nearby places partial with place cards' do
+      configure_instance_geocoding
       allow(Geocoder).to receive(:search).and_return([geocoder_result])
 
       get nearby_places_url, params: { latitude: 52.52, longitude: 13.405 }
@@ -137,6 +146,7 @@ RSpec.describe '/places', type: :request do
     end
 
     it 'renders no results message when geocoder returns empty' do
+      configure_instance_geocoding
       allow(Geocoder).to receive(:search).and_return([])
 
       get nearby_places_url, params: { latitude: 52.52, longitude: 13.405 }
@@ -145,9 +155,7 @@ RSpec.describe '/places', type: :request do
       expect(response.body).to include('No nearby places found')
     end
 
-    it 'renders no results when reverse geocoding is disabled' do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-
+    it 'renders no results when the instance has no geocoding provider' do
       get nearby_places_url, params: { latitude: 52.52, longitude: 13.405 }
 
       expect(response).to be_successful
@@ -247,6 +255,19 @@ RSpec.describe '/places', type: :request do
         expect(response.body).to include('1h 30m')
       end
 
+      it 'hides tombstoned visits from the recent-visits list' do
+        base_time = Time.zone.parse('2026-04-01 12:00')
+        create(:visit, place:, user:, name: 'Living Visit', area: nil,
+                       started_at: base_time, ended_at: base_time + 30.minutes)
+        create(:visit, place:, user:, name: 'Ghost Visit', area: nil, deleted_at: 1.day.ago,
+                       started_at: base_time + 1.hour, ended_at: base_time + 90.minutes)
+
+        get place_url(place)
+
+        expect(response.body).to include('Living Visit')
+        expect(response.body).not_to include('Ghost Visit')
+      end
+
       it 'lists up to 5 most recent visits ordered by started_at DESC' do
         base_time = Time.zone.parse('2026-04-01 12:00')
         7.times do |i|
@@ -342,6 +363,56 @@ RSpec.describe '/places', type: :request do
       expect(place.reload.note).to eq('Updated note')
       expect_turbo_stream_response
       expect_turbo_stream_action('replace', 'place-drawer')
+    end
+  end
+
+  describe 'name locking' do
+    let(:user) { create(:user) }
+
+    before { sign_in user }
+
+    it 'locks the name of a place the user creates by hand' do
+      post places_path, params: { place: { name: "Mum's house", latitude: 51.3402, longitude: 12.3712 } },
+                        as: :turbo_stream
+
+      expect(user.places.last).to be_name_locked
+    end
+
+    it 'shows a lock indicator on the drawer for a locked place' do
+      place = create(:place, user: user, name: Place::DEFAULT_NAME)
+      place.update!(name: "Mum's house")
+
+      get place_path(place)
+
+      expect(response.body).to include('place-name-lock')
+    end
+
+    it 'shows the lock in the drawer response right after a rename' do
+      place = create(:place, user: user, name: Place::DEFAULT_NAME)
+
+      patch place_path(place), params: { place: { name: "Mum's house" } },
+                               headers: { 'Turbo-Frame' => 'place-drawer' }, as: :turbo_stream
+
+      expect(response.body).to include('place-name-lock')
+    end
+
+    it 'drops the lock from the drawer when the name is reset to the default' do
+      place = create(:place, user: user, name: Place::DEFAULT_NAME)
+      place.update!(name: "Mum's house")
+
+      patch place_path(place), params: { place: { name: Place::DEFAULT_NAME } },
+                               headers: { 'Turbo-Frame' => 'place-drawer' }, as: :turbo_stream
+
+      expect(place.reload).not_to be_name_locked
+      expect(response.body).not_to include('place-name-lock')
+    end
+
+    it 'shows no lock indicator for an auto-named place' do
+      place = create(:place, user: user, name: Place::DEFAULT_NAME)
+
+      get place_path(place)
+
+      expect(response.body).not_to include('place-name-lock')
     end
   end
 end

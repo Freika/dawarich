@@ -1,3 +1,4 @@
+import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
 import { maskLines } from "../utils/flight_mask"
 import { RouteSegmenter } from "../utils/route_segmenter"
@@ -272,10 +273,18 @@ export class DayRoutesLayer {
           const endCoord = coords[coords.length - 1]
 
           this.hoverMarkers.push(
-            this.createCircleMarker(startCoord, "#22c55e", "Start"),
+            this.createCircleMarker(
+              startCoord,
+              "#22c55e",
+              translate("map_info.start"),
+            ),
           )
           this.hoverMarkers.push(
-            this.createCircleMarker(endCoord, "#ef4444", "End"),
+            this.createCircleMarker(
+              endCoord,
+              "#ef4444",
+              translate("map_info.end"),
+            ),
           )
         }
       }

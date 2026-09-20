@@ -199,7 +199,7 @@ class Users::ExportData
     count = 0
     File.open(trips_path, 'w') do |file|
       user.trips.find_each do |trip|
-        file.puts(trip.as_json(except: %w[user_id id]).to_json)
+        file.puts(trip.as_json(except: %w[user_id id trip_source_id]).to_json)
         count += 1
       end
     end
@@ -443,12 +443,14 @@ class Users::ExportData
       "#{counts[:digests]} digests, " \
       "#{counts[:notifications]} notifications"
 
-    ::Notifications::Create.new(
-      user: user,
-      title: 'Export completed',
-      content: "Your data export has been processed successfully (#{summary}). " \
-               'You can download it from the exports page.',
-      kind: :info
-    ).call
+    I18n.with_locale(user.locale) do
+      ::Notifications::Create.new(
+        user: user,
+        title: I18n.t('services.users.export_data.export_completed'),
+        content: I18n.t('services.users.export_data.your_data_export_has_been_processed_successfully_summary_you_can',
+                        summary: summary),
+        kind: :info
+      ).call
+    end
   end
 end

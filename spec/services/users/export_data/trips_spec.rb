@@ -28,6 +28,7 @@ RSpec.describe Users::ExportData::Trips, type: :service do
         subject.each do |trip_data|
           expect(trip_data).not_to have_key('user_id')
           expect(trip_data).not_to have_key('id')
+          expect(trip_data).not_to have_key('trip_source_id')
         end
       end
 

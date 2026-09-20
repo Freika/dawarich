@@ -1,0 +1,51 @@
+<%
+  provider = Admin::SettingsHelper::PROVIDER_SECTIONS.include?(section)
+  keys = Admin::SettingsController::SECTIONS.fetch(section)
+%>
+<div class="rounded-box border border-base-content/10 bg-base-200 max-w-3xl"
+     data-testid="instance-settings-pane-<%= section %>">
+  <%= form_with url: admin_settings_path, method: :patch, data: { turbo_frame: '_top' } do %>
+    <%= hidden_field_tag :section, section %>
+    <div class="card-body">
+      <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <%= icon instance_section_icon(section), class: 'size-6 shrink-0 text-base-content/70' %>
+        <h2 class="text-xl font-semibold min-w-0"><%= instance_section_title(section) %></h2>
+        <% if provider && geocoding_in_use?(@geocoding, section) %>
+          <span class="badge badge-sm badge-primary badge-outline"><%= t('admin.settings.show.geocoding.in_use') %></span>
+        <% end %>
+      </div>
+
+      <% if provider %>
+        <p class="text-sm text-base-content/70 [text-wrap:pretty]"><%= t("admin.settings.show.providers.#{section}") %></p>
+      <% end %>
+
+      <% if section == 'photon' %>
+        <p class="text-sm text-base-content/70 [text-wrap:pretty]">
+          <%= t('admin.settings.show.geocoding.chibigeo_message') %>
+          <%= link_to t('admin.settings.show.geocoding.chibigeo_key_link'), Admin::SettingsHelper::CHIBIGEO_KEY_URL,
+                      target: '_blank', rel: 'noopener', class: 'link link-hover font-medium text-base-content' %>
+        </p>
+        <% if komoot_host?(@geocoding) %>
+          <div role="note" class="flex items-start gap-2 text-sm">
+            <%= icon 'triangle-alert', class: 'size-4 shrink-0 mt-0.5 text-warning' %>
+            <p class="min-w-0 [text-wrap:pretty]"><%= t('admin.settings.show.geocoding.komoot_warning') %></p>
+          </div>
+        <% end %>
+      <% end %>
+
+      <div class="divide-y divide-base-content/10">
+        <% keys.each do |key| %>
+          <%= render 'admin/settings/setting_field', setting: @settings.fetch(key), settings: @settings,
+                                                     unreadable: @unreadable_keys.include?(key) %>
+        <% end %>
+      </div>
+
+      <% unless keys.all? { |key| @settings.fetch(key).pinned? } %>
+        <div class="card-actions border-t border-base-content/10 pt-5">
+          <%= button_tag t('admin.settings.show.save'), type: 'submit', class: 'btn btn-primary',
+                                                        data: { turbo_submits_with: t('admin.settings.show.saving') } %>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+</div>

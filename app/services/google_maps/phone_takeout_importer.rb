@@ -15,6 +15,7 @@ class GoogleMaps::PhoneTakeoutImporter
   end
 
   BATCH_SIZE = 1000
+  MAX_TIE_OFFSET = 59
 
   def call
     path = resolve_file_path
@@ -35,7 +36,6 @@ class GoogleMaps::PhoneTakeoutImporter
     parser = Oj::Parser.new(:validate)
     File.open(path, 'rb') { |io| parser.load(io) }
   rescue EncodingError, JSON::ParserError
-    @legacy_parser_required = true
     File.open(path, 'rb') { |io| Oj.saj_parse(nil, io) }
   end
 
@@ -45,6 +45,8 @@ class GoogleMaps::PhoneTakeoutImporter
     @first_semantic_start_time = nil
     @seen_first_semantic_segment = false
     @user_location_profile = nil
+    @assigned_timestamps = {}
+    @used_timestamps = Set.new
   end
 
   def stream_entries(path)
@@ -54,11 +56,9 @@ class GoogleMaps::PhoneTakeoutImporter
     )
 
     File.open(path, 'rb') do |io|
-      if @legacy_parser_required
-        Oj.saj_parse(handler, io)
-      else
-        Oj::Parser.new(:saj, handler:).load(io)
-      end
+      # Oj 3.17's newer SAJ parser can lose the decimal point in long 0.xxx
+      # literals. The original streaming API preserves those numeric values.
+      Oj.saj_parse(handler, io)
     end
   end
 
@@ -115,6 +115,7 @@ class GoogleMaps::PhoneTakeoutImporter
     batch = @points_batch
     @points_batch = []
     bulk_insert_points(batch)
+    log_out_of_range_metadata
     @processed_points += batch.size
     broadcast_import_progress(import, @processed_points)
   end
@@ -142,20 +143,55 @@ class GoogleMaps::PhoneTakeoutImporter
   end
 
   def point_hash(lat, lon, timestamp, raw_data, altitude: nil, activity_type: nil)
+    safe_timestamp = integer_metadata(:timestamp, timestamp)
+    return if safe_timestamp.nil? && !timestamp.nil?
+
     altitude_value = altitude || raw_data['altitudeMeters']
+    altitude_decimal_supported = Point.altitude_decimal_supported?
+    altitude_decimal = decimal_metadata(:altitude_decimal, altitude_value) if altitude_decimal_supported
+    altitude_integer = integer_metadata(:altitude, altitude_value) if altitude_decimal || !altitude_decimal_supported
     motion_data = Points::MotionDataExtractor.from_google_phone_takeout(raw_data)
     motion_data['activity_type'] = activity_type if activity_type
 
     attrs = {
       lonlat: "POINT(#{lon.to_f} #{lat.to_f})",
-      timestamp:,
+      timestamp: safe_timestamp,
       motion_data: motion_data,
-      accuracy: raw_data['accuracyMeters'],
-      altitude: altitude_value,
+      accuracy: integer_metadata(:accuracy, raw_data['accuracyMeters']),
+      altitude: altitude_integer,
       velocity: raw_data['speedMetersPerSecond']
     }
-    attrs[:altitude_decimal] = altitude_value if Point.altitude_decimal_supported?
+    attrs[:altitude_decimal] = altitude_decimal if altitude_decimal_supported
     attrs
+  end
+
+  def integer_metadata(attribute, value)
+    Point.type_for_attribute(attribute.to_s).serialize(value)
+  rescue ActiveModel::RangeError
+    discard_out_of_range(attribute)
+  end
+
+  def decimal_metadata(attribute, value)
+    decimal = Point.type_for_attribute(attribute.to_s).serialize(value)
+    column = Point.columns_hash.fetch(attribute.to_s)
+    limit = 10**(column.precision - column.scale)
+    return decimal if decimal.nil? || decimal.abs < limit
+
+    discard_out_of_range(attribute)
+  end
+
+  def discard_out_of_range(attribute)
+    @out_of_range_metadata ||= Hash.new(0)
+    @out_of_range_metadata[attribute] += 1
+    nil
+  end
+
+  def log_out_of_range_metadata
+    return if @out_of_range_metadata.blank?
+
+    summary = @out_of_range_metadata.map { |attribute, count| "#{attribute}=#{count}" }.join(' ')
+    Rails.logger.warn("[#{importer_name}] discarded out-of-range values: #{summary}")
+    @out_of_range_metadata = nil
   end
 
   def parse_visit_place_location(data_point)
@@ -196,8 +232,9 @@ class GoogleMaps::PhoneTakeoutImporter
       start_time = DateTime.parse(data_point['startTime'])
       offset = point['durationMinutesOffsetFromStartTime']
 
-      timestamp = start_time
-      timestamp += offset.to_i.minutes if offset.present? && !offset.to_i.negative?
+      source_timestamp = start_time
+      source_timestamp += offset.to_i.minutes if offset.present? && !offset.to_i.negative?
+      timestamp = tie_break_timestamp(source_timestamp.to_i, lat, lon)
 
       point_hash(lat, lon, timestamp, data_point, altitude: alt)
     end
@@ -237,10 +274,29 @@ class GoogleMaps::PhoneTakeoutImporter
       next if coords.nil?
 
       lat, lon, alt = coords
-      timestamp = DateTime.parse(point['time']).utc.to_i
+      source_timestamp = DateTime.parse(point['time']).utc.to_i
+      timestamp = tie_break_timestamp(source_timestamp, lat, lon)
 
       point_hash(lat, lon, timestamp, segment, altitude: alt)
     end
+  end
+
+  # Every point in the file gets the first free second at or after its source
+  # timestamp, capped at MAX_TIE_OFFSET so synthetic offsets never leave the
+  # source minute. Ties within a group, a later group landing inside an
+  # earlier group's assigned range, and out-of-order segments all reduce to
+  # the same rule: never hand out a timestamp this import already used.
+  def tie_break_timestamp(source_timestamp, lat, lon)
+    key = [source_timestamp, lat, lon]
+    return @assigned_timestamps[key] if @assigned_timestamps.key?(key)
+
+    offset = 0
+    offset += 1 while offset < MAX_TIE_OFFSET && @used_timestamps.include?(source_timestamp + offset)
+
+    assigned = source_timestamp + offset
+    @assigned_timestamps[key] = assigned
+    @used_timestamps << assigned
+    assigned
   end
 
   def parse_raw_array(raw_data)
@@ -272,15 +328,19 @@ class GoogleMaps::PhoneTakeoutImporter
 
   def parse_raw_signals(raw_signals)
     raw_signals.flat_map do |segment|
-      next unless segment.dig('position', 'LatLng')
+      position = segment['position']
+      next unless position&.dig('LatLng')
 
-      coords = parse_coordinates(segment['position']['LatLng'])
+      coords = parse_coordinates(position['LatLng'])
       next if coords.nil?
 
       lat, lon, alt = coords
-      timestamp = DateTime.parse(segment['position']['timestamp']).utc.to_i
+      timestamp = DateTime.parse(position['timestamp']).utc.to_i
 
-      point_hash(lat, lon, timestamp, segment, altitude: alt)
+      # `position` — not the `segment` wrapper — is what carries altitudeMeters,
+      # accuracyMeters and speedMetersPerSecond in this format. Passing the
+      # wrapper made point_hash read those keys one level too high and drop them.
+      point_hash(lat, lon, timestamp, position, altitude: alt)
     end
   end
 

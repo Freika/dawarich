@@ -4,12 +4,13 @@ class Points::NightlyReverseGeocodingJob < ApplicationJob
   queue_as :reverse_geocoding
 
   def perform
-    return unless DawarichSettings.reverse_geocoding_enabled?
+    config = Geocoding::Config.resolved_config
+    return unless config.enabled?
 
     processed_user_ids = Set.new
 
     Point.not_reverse_geocoded.find_each(batch_size: 1000) do |point|
-      point.async_reverse_geocode(force: true)
+      point.async_reverse_geocode(force: true, config: config)
       processed_user_ids.add(point.user_id)
     end
 

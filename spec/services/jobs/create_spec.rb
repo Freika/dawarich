@@ -5,12 +5,13 @@ require 'rails_helper'
 RSpec.describe Jobs::Create do
   describe '#call' do
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
       allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
       Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
     end
 
     context 'when job_name is start_reverse_geocoding' do
+      before { configure_instance_geocoding }
+
       let(:user) { create(:user) }
       let(:points) do
         (1..4).map do |i|
@@ -31,6 +32,8 @@ RSpec.describe Jobs::Create do
     end
 
     context 'when job_name is continue_reverse_geocoding' do
+      before { configure_instance_geocoding }
+
       let(:user) { create(:user) }
       let(:points_without_address) do
         (1..4).map do |i|
@@ -58,6 +61,27 @@ RSpec.describe Jobs::Create do
       end
     end
 
+    context 'when geocoding is not configured for the instance' do
+      let(:user) { create(:user) }
+
+      it 'enqueues nothing for a user without settings' do
+        create(:point, user: user)
+
+        expect do
+          described_class.new('start_reverse_geocoding', user.id).call
+        end.not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+
+      it 'enqueues nothing even when the user has an active geocoding setting' do
+        create(:service_setting, :geoapify, :active, user: user)
+        create(:point, user: user)
+
+        expect do
+          described_class.new('start_reverse_geocoding', user.id).call
+        end.not_to have_enqueued_job(ReverseGeocodingJob)
+      end
+    end
+
     context 'when job_name is invalid' do
       let(:user) { create(:user) }
       let(:job_name) { 'invalid_job_name' }
@@ -71,8 +95,7 @@ RSpec.describe Jobs::Create do
       let(:user) { create(:user) }
 
       before do
-        allow(DawarichSettings).to receive(:locationiq_enabled?).and_return(true)
-        allow(DawarichSettings).to receive(:geoapify_enabled?).and_return(false)
+        configure_instance_geocoding(locationiq_api_key: 'test-api-key')
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       end
 
@@ -91,7 +114,7 @@ RSpec.describe Jobs::Create do
       let(:user) { create(:user) }
 
       before do
-        allow(DawarichSettings).to receive(:locationiq_enabled?).and_return(true)
+        configure_instance_geocoding(locationiq_api_key: 'test-api-key')
         allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
       end
 
@@ -108,7 +131,8 @@ RSpec.describe Jobs::Create do
       let(:user) { create(:user) }
 
       before do
-        allow(DawarichSettings).to receive(:locationiq_enabled?).and_return(true)
+        configure_instance_geocoding(locationiq_api_key: 'test-api-key')
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       end
 
       it 'is not blocked because force is false' do
@@ -125,7 +149,10 @@ RSpec.describe Jobs::Create do
       let(:user) { create(:user) }
       let!(:point) { create(:point, user:, country: nil, city: nil, reverse_geocoded_at: nil) }
 
-      before { Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } } }
+      before do
+        configure_instance_geocoding
+        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+      end
 
       it 'skips continue_reverse_geocoding when a dedup key already claims the point' do
         Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }

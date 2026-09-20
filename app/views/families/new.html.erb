@@ -1,26 +1,25 @@
-<% content_for :title, "New Family" %>
+<% content_for :title, t('.new_family') %>
 
 <div class="container mx-auto px-4 py-8">
   <div class="max-w-2xl mx-auto">
     <div class="text-center mb-8">
       <h1 class="text-3xl font-bold text-base-content mb-4">
-        <%= t('families.new.title', default: 'Create Your Family') %>
+        <%= t('families.new.title') %>
       </h1>
       <p class="text-base-content opacity-60">
-        <%= t('families.new.description', default: 'Create a family to share your location data with your loved ones.') %>
+        <%= t('families.new.description') %>
       </p>
     </div>
 
     <% if @can_create_family == false %>
       <div class="bg-base-200 rounded-lg p-6 text-center">
         <h2 class="text-xl font-bold mb-2">
-          <%= t('families.new.upgrade_title', default: 'Family plan required') %>
+          <%= t('families.new.upgrade_title') %>
         </h2>
         <p class="text-base-content opacity-60 mb-6">
-          <%= t('families.new.upgrade_description',
-                default: 'Creating a family requires the Family plan. Upgrade to invite up to 5 members and share full access.') %>
+          <%= t('families.new.upgrade_description') %>
         </p>
-        <%= link_to t('families.new.upgrade_cta', default: 'Upgrade to Family'),
+        <%= link_to t('families.new.upgrade_cta'),
               @family_upgrade_url,
               target: '_blank', rel: 'noopener noreferrer',
               class: 'btn btn-primary' %>
@@ -32,7 +31,7 @@
           <div class="alert alert-error">
             <div>
               <h3 class="text-sm font-medium">
-                <%= t('families.new.error_title', default: 'There were problems with your submission:') %>
+                <%= t('families.new.error_title') %>
               </h3>
               <div class="mt-2 text-sm">
                 <ul class="list-disc pl-5 space-y-1">
@@ -46,35 +45,35 @@
         <% end %>
 
         <div>
-          <%= form.label :name, t('families.form.name', default: 'Family Name'), class: "label label-text font-medium mb-2" %>
+          <%= form.label :name, t('families.form.name'), class: "label label-text font-medium mb-2" %>
           <%= form.text_field :name,
                 class: "input input-bordered w-full",
-                placeholder: t('families.form.name_placeholder', default: 'Enter your family name') %>
+                placeholder: t('families.form.name_placeholder') %>
           <p class="mt-1 text-sm text-base-content opacity-50">
-            <%= t('families.new.name_help', default: 'Choose a name that all family members will recognize, like "The Smith Family" or "Our Travel Group".') %>
+            <%= t('families.new.name_help') %>
           </p>
         </div>
 
         <div class="alert alert-info">
           <div>
             <h3 class="text-sm font-medium mb-2">
-              <%= t('families.new.what_happens_title', default: 'What happens next?') %>
+              <%= t('families.new.what_happens_title') %>
             </h3>
             <ul class="text-sm space-y-1">
-              <li>• <%= t('families.new.what_happens_1', default: 'You will become the family owner') %></li>
-              <li>• <%= t('families.new.what_happens_2', default: 'You can invite others to join your family') %></li>
-              <li>• <%= t('families.new.what_happens_3', default: 'Family members can view shared location data') %></li>
-              <li>• <%= t('families.new.what_happens_4', default: 'You can manage family settings and members') %></li>
+              <li>• <%= t('families.new.what_happens_1') %></li>
+              <li>• <%= t('families.new.what_happens_2') %></li>
+              <li>• <%= t('families.new.what_happens_3') %></li>
+              <li>• <%= t('families.new.what_happens_4') %></li>
             </ul>
           </div>
         </div>
 
         <div class="flex items-center justify-between">
-          <%= form.submit t('families.new.create_family', default: 'Create Family'),
+          <%= form.submit t('families.new.create_family'),
                 class: "btn btn-primary" %>
           <%= link_to root_path,
                 class: "btn btn-ghost" do %>
-            <%= t('families.new.back', default: '← Back') %>
+            <%= t('families.new.back') %>
           <% end %>
         </div>
       <% end %>

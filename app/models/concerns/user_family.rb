@@ -53,7 +53,8 @@ module UserFamily
     expires_at.blank? || Time.zone.parse(expires_at).future?
   end
 
-  def update_family_location_sharing!(enabled, duration: nil, share_history: nil, history_window: nil)
+  def update_family_location_sharing!(enabled, duration: nil, share_history: nil, history_window: nil,
+                                      history_before_sharing: nil)
     return false unless in_family?
 
     current_settings = settings || {}
@@ -63,25 +64,29 @@ module UserFamily
       existing_started_at = current_settings.dig('family', 'location_sharing', 'started_at')
       existing_share_history = current_settings.dig('family', 'location_sharing', 'share_history')
       existing_history_window = current_settings.dig('family', 'location_sharing', 'history_window')
+      existing_duration = current_settings.dig('family', 'location_sharing', 'duration')
+      existing_expires_at = current_settings.dig('family', 'location_sharing', 'expires_at')
 
       sharing_config = { 'enabled' => true }
       sharing_config['started_at'] = existing_started_at || Time.current.iso8601
       sharing_config['share_history'] = share_history.nil? ? (existing_share_history || false) : share_history
       validated_window = validate_history_window(history_window || existing_history_window)
       sharing_config['history_window'] = validated_window
+      # Old clients and existing shares retain their original privacy boundary.
+      # Only an explicit confirmation may grant access to earlier points.
+      previous_consent = current_settings.dig('family', 'location_sharing', 'history_before_sharing') == true
+      consent = history_before_sharing.nil? ? previous_consent : history_before_sharing == true
+      sharing_config['history_before_sharing'] = sharing_config['share_history'] && consent
 
       if duration.present?
-        expiration_time = case duration
-                          when '1h' then 1.hour.from_now
-                          when '6h' then 6.hours.from_now
-                          when '12h' then 12.hours.from_now
-                          when '24h' then 24.hours.from_now
-                          when 'permanent' then nil
-                          else duration.to_i.hours.from_now if duration.to_i.positive?
-                          end
+        expiration_time = sharing_expiration_time(duration)
 
         sharing_config['expires_at'] = expiration_time.iso8601 if expiration_time
         sharing_config['duration'] = duration
+      elsif existing_duration.present?
+        sharing_config['duration'] = existing_duration
+        carried_expiry = carried_sharing_expiry(existing_duration, existing_expires_at)
+        sharing_config['expires_at'] = carried_expiry.iso8601 if carried_expiry
       end
 
       current_settings['family']['location_sharing'] = sharing_config
@@ -123,6 +128,10 @@ module UserFamily
     settings.dig('family', 'location_sharing', 'history_window') || DEFAULT_HISTORY_WINDOW
   end
 
+  def family_history_before_sharing?
+    settings.dig('family', 'location_sharing', 'history_before_sharing') == true
+  end
+
   # Returns points within the given date range, scoped by sharing start time,
   # history window preference, and capped at 1 year maximum.
   # Points are ordered by timestamp ascending.
@@ -131,7 +140,7 @@ module UserFamily
     return Point.none unless family_share_history?
 
     started_at = family_sharing_started_at
-    return Point.none unless started_at
+    return Point.none unless started_at || family_history_before_sharing?
 
     # Apply history window preference
     window_start = case family_history_window
@@ -142,11 +151,14 @@ module UserFamily
                    else 7.days.ago
                    end
 
-    effective_start = [start_at, started_at, window_start].max
+    effective_start = [start_at, window_start]
+    effective_start << started_at unless family_history_before_sharing?
+    effective_start = effective_start.max
 
     return Point.none if effective_start >= end_at
 
     scoped_points
+      .complete
       .where('timestamp >= ? AND timestamp <= ?', effective_start.to_i, end_at.to_i)
       .order(timestamp: :asc)
   end
@@ -157,7 +169,8 @@ module UserFamily
     return nil unless family_sharing_enabled?
 
     latest_point =
-      points.select(:lonlat, :timestamp)
+      points.complete
+            .select(:lonlat, :timestamp)
             .order(timestamp: :desc)
             .limit(1)
             .first
@@ -175,6 +188,33 @@ module UserFamily
   end
 
   private
+
+  def sharing_expiration_time(duration)
+    case duration
+    when '1h' then 1.hour.from_now
+    when '6h' then 6.hours.from_now
+    when '12h' then 12.hours.from_now
+    when '24h' then 24.hours.from_now
+    when 'permanent' then nil
+    else duration.to_i.hours.from_now if duration.to_i.positive?
+    end
+  end
+
+  # Re-enabling without an explicit duration keeps a still-active expiry,
+  # but an already-lapsed one is re-armed from the preserved duration so the
+  # share stays time-boxed instead of silently staying off (or going permanent).
+  def carried_sharing_expiry(existing_duration, existing_expires_at)
+    return nil if existing_expires_at.blank?
+
+    existing_expiry = begin
+      Time.zone.parse(existing_expires_at)
+    rescue ArgumentError
+      nil
+    end
+    return existing_expiry if existing_expiry&.future?
+
+    sharing_expiration_time(existing_duration)
+  end
 
   def validate_history_window(window)
     VALID_HISTORY_WINDOWS.include?(window) ? window : DEFAULT_HISTORY_WINDOW
