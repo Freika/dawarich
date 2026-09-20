@@ -1,4 +1,4 @@
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { PhotoPopupFactory } from "maps_maplibre/components/photo_popup"
 
 /**

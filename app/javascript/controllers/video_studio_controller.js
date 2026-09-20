@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { MapPageProvider } from "poster_studio/data/providers"
 import { loadThemeTokens } from "poster_studio/data/theme_loader"
 import { trackBounds } from "poster_studio/ui/preview"

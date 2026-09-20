@@ -2,7 +2,7 @@
 // MapLibre map is driven frame by frame (partial track via setData, camera
 // via jumpTo), each settled frame is composited with the HUD onto a canvas
 // and handed to the WebCodecs encoder.
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { TRACK_SOURCE_ID } from "poster_studio/render/style_builder"
 import { trackBounds } from "poster_studio/ui/preview"
 import { followCenter, lerpCamera } from "video_studio/camera_path"
