@@ -78,7 +78,10 @@ module UrlValidatable
       raise BlockedUrlError, I18n.t('services.concerns.url_validatable.embedded_credentials')
     end
 
-    ip = IPAddr.new(Resolv.getaddress(uri.host))
+    # #native unwraps IPv4-mapped and IPv4-compatible IPv6 addresses, which
+    # would otherwise clear every IPv4 range below: IPAddr#include? is false
+    # across address families while the OS still routes to the bare IPv4 host.
+    ip = IPAddr.new(Resolv.getaddress(uri.host)).native
     if blocked_ranges.any? { |range| range.include?(ip) }
       Rails.logger.warn("Integration URL #{uri.host} resolves to blocked address #{ip}")
       raise BlockedUrlError, I18n.t('services.concerns.url_validatable.blocked_address')
