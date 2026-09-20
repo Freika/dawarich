@@ -1,6 +1,10 @@
 import { translate } from "i18n"
 import maplibregl from "maplibre-gl"
-import { formatTimestamp } from "../utils/geojson_transformers"
+import {
+  escapeAttribute,
+  escapeHtml,
+  formatTimestamp,
+} from "../utils/geojson_transformers"
 import { getCurrentTheme, getThemeColors } from "../utils/popup_theme"
 import { BaseLayer } from "./base_layer"
 
@@ -563,18 +567,18 @@ export class PhotosLayer extends BaseLayer {
       <div class="photo-popup" style="font-family: system-ui, -apple-system, sans-serif; max-width: 350px;">
         <div style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background: ${colors.backgroundAlt};">
           <img
-            src="${thumbnail_url}"
-            alt="${filename || translate("map_info.photo")}"
+            src="${escapeAttribute(thumbnail_url)}"
+            alt="${escapeAttribute(filename || translate("map_info.photo"))}"
             style="width: 100%; height: auto; max-height: 350px; object-fit: contain; display: block;"
             loading="lazy"
           />
         </div>
         <div style="font-size: 13px;">
-          ${filename ? `<div style="font-weight: 600; color: ${colors.textPrimary}; margin-bottom: 6px; word-wrap: break-word;">${filename}</div>` : ""}
+          ${filename ? `<div style="font-weight: 600; color: ${colors.textPrimary}; margin-bottom: 6px; word-wrap: break-word;">${escapeHtml(filename)}</div>` : ""}
           <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📅 ${takenDate}</div>
-          <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📍 ${location}</div>
+          <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📍 ${escapeHtml(location)}</div>
           <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">${translate("map_info.coordinates")}: ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-          ${source ? `<div style="color: ${colors.textSecondary}; font-size: 11px; margin-bottom: 6px;">${translate("map_info.source")}: ${source}</div>` : ""}
+          ${source ? `<div style="color: ${colors.textSecondary}; font-size: 11px; margin-bottom: 6px;">${translate("map_info.source")}: ${escapeHtml(source)}</div>` : ""}
           <div style="font-size: 14px; margin-top: 8px; color: ${colors.textPrimary};">${mediaType}</div>
         </div>
       </div>

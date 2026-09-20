@@ -59,6 +59,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Profile backups restore TREK plans without linking trips to another account's source or skipping unrelated trips.
 - Accounts connected to TREK can be permanently deleted along with their planned itineraries.
 - Instance settings clarify that disabling immediate geocoding does not stop scheduled lookups.
+- Photo popups on the map escape filenames, place names and source labels instead of rendering them as HTML.
+- An integration URL that resolves to an IPv4 address written in IPv6 form is now blocked like the bare IPv4 address.
 
 ## [1.14.5] - 2026-09-13, Berlin
 
