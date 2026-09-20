@@ -211,6 +211,7 @@ export class MapEditor {
     if (this.snapshot) {
       this.data = this.snapshot
       this.layer.setData(this.data)
+      this._syncSelectedTrack(this._track())
     }
     this.draggedPointId = null
     this.snapshot = null
@@ -232,6 +233,7 @@ export class MapEditor {
       this._updateSegments()
     }
     this.layer.setData(this.data)
+    this._syncSelectedTrack(track)
   }
 
   async endDrag(lngLat) {
@@ -287,6 +289,7 @@ export class MapEditor {
       else {
         this.data = this.snapshot
         this.layer.setData(this.data)
+        this._syncSelectedTrack(this._track())
       }
       const message =
         error.status === 409
@@ -309,6 +312,7 @@ export class MapEditor {
     this.layerManager.controller?.mapDataManager?.invalidatePoints()
     const isCurrentSession = sessionVersion === this.sessionVersion
     if (isCurrentSession) this.applyCanonical(response, { rejectStale: true })
+    else this._syncSelectedTrack(response.track)
     this.layerManager.getLayer("points-mvt")?.refresh()
     this.layerManager.getLayer("tracks-mvt")?.refresh()
     this.reapplyTileFilters()
@@ -352,7 +356,23 @@ export class MapEditor {
       )
     }
     this.layer.setData(this.data)
+    this._syncSelectedTrack(canonicalTrack)
     return true
+  }
+
+  _syncSelectedTrack(feature) {
+    if (this.importScoped || !feature) return
+    const layer = this.layerManager.getLayer("tracks")
+    const selected = layer?.selectedFeature
+    if (
+      !selected ||
+      Number(selected.properties?.id) !== Number(feature.properties?.id)
+    )
+      return
+    const selectedRevision = Number(selected.properties?.revision || 0)
+    const featureRevision = Number(feature.properties?.revision || 0)
+    if (featureRevision < selectedRevision) return
+    layer.setSelectedTrack(clone(feature))
   }
 
   applyRealtime(response) {

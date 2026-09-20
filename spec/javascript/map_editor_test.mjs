@@ -255,6 +255,65 @@ test("drag previews point and track locally, then sends exactly one composite mu
   assert.deepEqual(refreshes, ["points-mvt", "tracks-mvt"])
 })
 
+test("selected track highlight follows a dragged point through save and undo", async () => {
+  let position = [0, 0]
+  let revision = 4
+  const selected = {
+    selectedFeature: trackFeature(),
+    setSelectedTrack(feature) {
+      this.selectedFeature = structuredClone(feature)
+    },
+  }
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {
+      fetchTrackWithSegments: async () => trackFeature(),
+      fetchTrackPoints: async () => [point(1, 0, 0), point(2, 2, 0)],
+      movePointPosition: async (_id, { longitude, latitude }) => {
+        position = [longitude, latitude]
+        revision += 1
+        return {
+          point: point(1, ...position, revision),
+          track: trackFeature(revision, [position, [2, 0]]),
+          revision: { point: revision, track: revision },
+        }
+      },
+    },
+    layerManager: {
+      getLayer(name) {
+        return name === "tracks" ? selected : { refresh() {} }
+      },
+    },
+    historyScope: () => ({}),
+  })
+  await editor.selectTrack(10)
+  editor.startDrag(1)
+  editor.dragTo(1, 1)
+  assert.deepEqual(selected.selectedFeature.geometry.coordinates, [
+    [1, 1],
+    [2, 0],
+  ])
+
+  await editor.endDrag({ lng: 1, lat: 1 })
+  assert.deepEqual(selected.selectedFeature.geometry.coordinates, [
+    [1, 1],
+    [2, 0],
+  ])
+
+  await editor.edits.undo()
+  assert.deepEqual(selected.selectedFeature.geometry.coordinates, [
+    [0, 0],
+    [2, 0],
+  ])
+
+  const otherTrack = {
+    ...trackFeature(),
+    properties: { id: 20, revision: 1, segments: [] },
+  }
+  selected.setSelectedTrack(otherTrack)
+  await editor.edits.redo()
+  assert.deepEqual(selected.selectedFeature, otherTrack)
+})
+
 test("a second drag is ignored while the same track has a mutation in flight", async () => {
   const editor = new MapEditor(fakeMap(), {
     apiClient: {
