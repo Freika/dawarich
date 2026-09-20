@@ -1,4 +1,68 @@
 en:
+  admin:
+    settings:
+      show:
+        title: "Instance settings"
+        intro: "These settings apply to this whole instance. A setting supplied by an environment variable is shown read-only: remove the variable to edit it here."
+        save: "Save settings"
+        saving: "Saving…"
+        secret_set: "A value is stored"
+        pinned_hint: "Pinned by %{variable}"
+        clear_secret: "Clear the stored value"
+        unreadable_secret: "A stored value cannot be decrypted with this instance's keys. Enter it again."
+        sections_nav: "Instance settings sections"
+        nav_pinned: "Set by an environment variable"
+        nav_attention: "Needs attention"
+        geocoding:
+          title: "Geocoding"
+          description: "Geocoding turns coordinates into city and country names on your points and stats, and powers place and location search."
+          in_use: "In use"
+          "off": "Off"
+          none: "No provider is configured, so new points are not geocoded. Add a Photon host or a provider API key below."
+          stored: "Saved on this page"
+          chain_hint: "Dawarich uses the first configured provider, in the order below. A provider set by an environment variable is used before any saved here."
+          test: "Test connection"
+          testing: "Testing…"
+          test_hint: "One lookup with the saved settings"
+          rate_limit: "Rate limit"
+          chibigeo_message: "ChibiGeo is a flat-rate, privacy-first geocoding service built by the Dawarich team. It works with Dawarich out of the box. An API key is required."
+          chibigeo_key_link: "Get your free API key"
+          komoot_warning: "photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance."
+          https_locked: "HTTPS is always on for this host."
+          legacy_user_settings: "Some users set up their own geocoding before it moved here. Their settings were not carried over because not every user had one, or they differed. Set up a provider below to turn geocoding back on for everyone."
+        providers:
+          photon: "Open-source geocoder. Use a hosted server or run your own."
+          geoapify: "Hosted service. Needs an API key."
+          nominatim: "OpenStreetMap's geocoder, usually on your own server."
+          locationiq: "Hosted service. Needs an API key."
+        points:
+          title: "Points"
+        fields:
+          photon_api_host: "Host"
+          photon_api_key: "API key"
+          photon_api_use_https: "Use HTTPS"
+          nominatim_api_host: "Host"
+          nominatim_api_key: "API key"
+          nominatim_api_use_https: "Use HTTPS"
+          geoapify_api_key: "API key"
+          locationiq_api_key: "API key"
+          reverse_geocoding_rps: "Requests per second"
+          store_geodata: "Geocode new points immediately"
+          host_hint: "Bare hostname with optional port, e.g. photon.example.com:2322"
+          rps_hint: "Leave blank for no limit. Set this to whatever your server or plan allows."
+          api_key_keep_hint: "Leave blank to keep the saved key."
+          store_geodata_hint: "Looks up city and country names when new points are added. Nightly lookups still run when a provider is configured, even with this option off."
+      update:
+        saved: "Settings saved."
+        pinned: "Refused: pinned by %{variables}."
+        host_invalid: "The host must be a bare hostname with an optional port or path, with no spaces."
+        chibigeo_key_required: "ChibiGeo needs an API key. The free Hobby plan includes 2,500 lookups per day — get your key at chibigeo.com."
+      test_geocoding:
+        not_configured: "No geocoding provider is configured. Save a provider first."
+        success: "Your provider resolved the test coordinates to %{place}."
+        empty: "The provider responded but returned no results for the test coordinates."
+        failure: "Test failed: %{error}"
+        rate_limited: "The provider's rate limit is busy right now — try again in a moment."
   activerecord:
     errors:
       models:
@@ -904,13 +968,9 @@ en:
         show_individual_location_points: Show individual location points
         edit_points: Edit points
         allow_dragging_points_to_correct_their_position: Allow dragging points to correct their position.
-        editing_points_is_a_pro_feature_this_stays_on_for: Editing points is a Pro feature — this stays on for the current session only, and moves aren't saved on the Lite plan.
+        editing_points_is_a_pro_feature_this_stays_on_for: Editing points is available on the Pro plan.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Allow dragging points to correct their position. Remembered across sessions.
-        tiled_rendering: "Tiled rendering"
         beta: "Beta"
-        tiled_rendering_description: "Draws points, routes, tracks and fog from vector tiles as you pan, so a long date range loads only what is in view. Routes show your generated tracks. Zoom in to see the speed of each segment."
-        tiled_rendering_caveats: "Active while Scratch map is off. Dense areas merge into markers with a point count — zoom in to open individual points. Point editing is unavailable, hovering a route no longer shows its popup — click a track instead — and the live trail can lag a few minutes."
-        routes: Routes
         show_connected_route_lines: Show connected route lines
         color_by_speed: Color by speed
         edit_color_gradient: Edit Color Gradient
@@ -944,8 +1004,8 @@ en:
         show_explored_areas: Show explored areas
         per_point: Per point
         per_hexagon: Per hexagon
-        scratch_map: Scratch Map
-        show_scratched_countries: Show scratched countries
+        scratch_map: Visited Countries
+        show_scratched_countries: Highlight countries visited in the selected range
         family_members: Family Members
         show_family_member_locations: Show family member locations
         click_to_center_on_member: Click to center on member
@@ -978,29 +1038,29 @@ en:
         the_custom_style_draws_no_labels_or_points_of_interest: The Custom style draws no labels or points of interest — those toggles are disabled while it's active.
         points_of_interest: Points of Interest
         choose_which_poi_categories_appear_on_the_map: Choose which POI categories appear on the map.
-        meters_between_routes: Meters Between Routes
         distance_threshold_for_route_splitting: Distance threshold for route splitting
-        minutes_between_routes: Minutes Between Routes
         min: 60min
         min_2: 1min
         min_3: 90min
         min_4: 180min
         time_threshold_for_route_splitting: Time threshold for route splitting; gaps longer than this are also left out of distance stats
-        points_rendering_mode: Points Rendering Mode
         raw_all_points: Raw (all points)
         simplified_reduced_points: Simplified (reduced points)
-        speed_colored_routes: Speed-Colored Routes
-        color_routes_by_speed: Color routes by speed
         fog_of_war_radius: Fog of War Radius
         clear_radius_around_visited_points: Clear radius around visited points
         fog_of_war_threshold: Fog of War Threshold
         minimum_points_to_clear_fog: Minimum points to clear fog
         gps_noise_filtering: GPS Noise Filtering
+        track_generation: Track generation
+        track_split_distance: Distance gap between Tracks
+        track_split_distance_hint: Start a new Track when consecutive points are farther apart.
+        track_split_time: Time gap between Tracks
+        track_split_time_hint: "Longer gaps start a new Track and let Trips use another device’s recording. After changing this, press Recalculate on affected Trip pages to update saved routes and distances."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Hide readings that cannot be a real position — impossible jumps, broken coordinates. Disable to see every raw point.
         re_evaluate_past_data: Re-evaluate past data
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Clears existing anomaly flags and re-runs the filter on all your points with the current settings. Tracks, stats, and digests will be rebuilt afterwards. Runs in the background.
         recalculate_tracks_stats: Recalculate tracks & stats
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Rebuild tracks, stats, and digests from your current points without touching anomaly flags. Useful after changing route-splitting thresholds.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Save these thresholds first. New Tracks use them automatically; choose Recalculate tracks & stats to apply them to existing history.
         city_statistics: City Statistics
         min_minutes_in_city: Min Minutes in City
         min_5: 60 min
@@ -1418,55 +1478,6 @@ en:
       residential_roads: Residential roads
       track: Track
   settings:
-    geocoding:
-      show:
-        title: Geocoding
-        provider: Geocoding provider
-        provider_hint: The provider used for reverse geocoding your points and for place and location search.
-        intro: Geocoding turns coordinates into city and country names on your points and stats, and powers place and location search.
-        host_choice: Photon server
-        choice_chibigeo: ChibiGeo hosted service
-        choice_chibigeo_desc: 'Free tier: 2,500 lookups per day. Works out of the box — just add your API key.'
-        choice_komoot: komoot public server
-        choice_komoot_desc: Free shared instance, throttled to one request per second.
-        choice_custom: Custom host
-        choice_custom_desc: Your own Photon instance or another compatible server.
-        recommended: Recommended
-        https_locked: HTTPS is always on for this host.
-        https_on: 'On'
-        https_off: 'Off'
-        chibigeo_message: ChibiGeo is a flat-rate, privacy-first geocoding service built by the Dawarich team. It works with Dawarich out of the box. An API key is required.
-        chibigeo_limits: The free Hobby plan includes 2,500 lookups per day at 1 request per second — hard caps, no overage.
-        chibigeo_key_link: Get your free API key
-        chibigeo_site_link: What is ChibiGeo?
-        disabled: Disabled
-        env_managed_notice: Geocoding is currently managed by environment variables set by your instance operator. The settings below take effect only if those variables are removed.
-        host: Host
-        host_hint: Bare hostname with optional port, e.g. photon.example.com:2322
-        api_key: API key
-        api_key_hint: Leave blank to keep the saved key.
-        api_key_saved: A key is saved for this provider.
-        clear_api_key: Remove the saved API key
-        use_https: Use HTTPS
-        rps: Requests per second
-        rps_hint_custom: Leave blank for no limit. Set this to whatever your server or plan allows.
-        rps_hint_chibigeo: Match your ChibiGeo plan - Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Asking for more than your plan allows only earns rejected lookups.
-        rps_hint_komoot: komoot enforces one request per second for everyone, so this is fixed.
-        komoot_warning: photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance.
-        komoot_no_api_key: The public komoot server takes no API key — leave it unset.
-        save: Save
-        test: Test my provider
-        test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
-      update:
-        updated: Geocoding settings updated.
-        disabled: Geocoding disabled.
-        invalid_provider: Unknown geocoding provider.
-      test:
-        not_configured: No geocoding provider is configured for your account. Save a provider first.
-        success: 'Success! Your provider resolved the test coordinates to: %{place}.'
-        empty: The provider responded but returned no results for the test coordinates.
-        failure: 'Test failed: %{error}'
-        rate_limited: "The provider's rate limit is busy right now — try again in a moment."
     navigation:
       general: General
       integrations: Integrations
@@ -1474,6 +1485,7 @@ en:
       visits: Visits
       two_factor_authentication: Two-Factor Authentication
       users: Users
+      instance: "Instance"
       background_jobs: Background Jobs
     background_jobs:
       index:
@@ -1532,6 +1544,8 @@ en:
         receive_an_annual_summary_on_january_2nd_with_your_year: Receive an annual summary on January 2nd with your year in review.
         news_updates: News & Updates
         receive_occasional_emails_about_new_features_and_important_updates: Receive occasional emails about new features and important updates
+        send_test_email: Send test email
+        test_email_hint: Sends a test message to your account email to verify SMTP settings
         timezone: Timezone
         your_timezone: Your timezone
         all_dates_and_times_will_be_displayed_in_this_timezone: All dates and times will be displayed in this timezone
@@ -1543,12 +1557,15 @@ en:
     integrations:
       index:
         services_nav: Integration services
+        geocoding: "Geocoding"
+        geocoding_moved_to_instance: "Moved to Instance settings"
+        geocoding_managed_by_admin: "Set up by your instance administrator"
         services:
-          geocoding: Geocoding
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
           teslamate: TeslaMateApi
+          trek: TREK
         status_connected: Connected
         status_failed: Last connection attempt failed
         immich_photoprism_integrations: Immich & Photoprism Integrations
@@ -1599,6 +1616,43 @@ en:
         save_test_connection: Save & Test Connection
         sync_now: Sync now
         settings: Settings
+      trek:
+        title: TREK integration
+        subtitle: Import a selected TREK itinerary as a Dawarich Trip. TREK remains the source of the plan.
+        trek_url: TREK URL
+        cloud_notice: Cloud Dawarich needs a publicly reachable TREK URL. Self-hosted Dawarich can connect to a LAN or Tailscale instance.
+        api_key: TREK API key
+        api_key_help: Create a read-only API key in TREK under Settings → Integrations. It starts with trek_.
+        connect: Connect TREK
+        reconnect: Reconnect TREK
+        importing_trips: Importing selected trips…
+        last_synced: "Last synced: %{time}"
+        not_synced_yet: Not synced yet
+        choose_trips: Choose trips
+        sync_now: Sync now
+        disconnect: Disconnect
+        disconnect_confirmation: Disconnect TREK? Managed trips and their recorded data stay in Dawarich, but stop syncing.
+    trek_sources:
+      select_trips:
+        title: Choose TREK trips
+        subtitle: Only selected trips are copied into Dawarich. You can change the selection later.
+        untitled_trip: Untitled trip
+        archived: Archived
+        dates_required: Add start and end dates in TREK before importing this trip.
+        import_selected: Import selected trips
+        back: Back
+      create:
+        connected_choose_trips: TREK connected. Choose the trips you want Dawarich to manage.
+      import_trips:
+        no_trips_selected: No TREK trips selected. Existing itineraries were kept and stopped syncing.
+        select_at_least_one_dated_trip: Select at least one active TREK trip with start and end dates.
+        trips_are_now_syncing: Selected TREK trips are being synchronized.
+      sync:
+        sync_queued: TREK synchronization was queued.
+        source_disabled: TREK is disabled. Reconnect it with a new API key before syncing.
+        source_importing: TREK is still importing your selected trips.
+      destroy:
+        source_removed_trips_kept: TREK was disconnected. Your managed trips were kept and will no longer sync.
     subscriptions:
       index:
         hello_there: Hello there!
@@ -2179,6 +2233,8 @@ en:
     distance:
       calculating: Calculating...
     form:
+      cancel: "Cancel"
+      managed_by_trek_hint: "The name and dates come from TREK and update with every sync. Change them in TREK."
       prohibited_this_trip_from_being_saved: 'prohibited this trip from being saved:'
       errors_prohibited_save:
         one: "%{count} error prohibited this trip from being saved:"
@@ -2188,7 +2244,33 @@ en:
       recalculate: Recalculate
       recalculation_failed_try_again: Recalculation failed — try again.
       recalculate_this_trip_s_path_distance_and_countries_from_your: Recalculate this trip's path, distance, and countries from your latest points?
+    source_itinerary:
+      show_on_map: "Show on map"
+      title: "Plan from TREK"
+      subtitle: "This itinerary is managed in TREK. Your Dawarich tracking data stays separate."
+      sync_stopped: "Sync stopped"
+      synced_ago: "Synced %{time} ago"
+      open_in_trek: "Open in TREK"
+      day_number: "Day %{number}"
+      days_count:
+        one: "%{count} day"
+        other: "%{count} days"
+      stops_count:
+        one: "%{count} stop"
+        other: "%{count} stops"
+      duration_minutes:
+        one: "%{count} min"
+        other: "%{count} min"
+      reservation_statuses:
+        confirmed: "Confirmed"
+        pending: "Pending"
+        cancelled: "Cancelled"
+      accommodations: "Accommodations"
+      travellers: "Travellers"
+      unscheduled_reservations: "Other reservations"
+      unplanned_places: "Unplanned places"
     trip:
+      plan: "Plan"
       no_points_found: No points found
       calculating: Calculating...
       ndash: "–"
@@ -2199,9 +2281,7 @@ en:
         one: "%{count} day"
         other: "%{count} days"
     edit:
-      back_to_trips: Back to trips
       editing_trip: Editing trip
-      show_this_trip: Show this trip
     index:
       new_trip: New trip
       no_trips_yet: No trips yet
@@ -2209,7 +2289,6 @@ en:
       create_your_first_trip: Create your first trip
       trips: Trips
     new:
-      back_to_trips: Back to trips
       new_trip: New trip
     notes:
       empty:
@@ -2230,8 +2309,15 @@ en:
         delete_this_note: Delete this note?
         update_note: Update note
     show:
+      planned_route: "Planned route"
+      plan: "Plan"
+      toggle_plan_on_map: "Show the plan on the map"
+      back_to_trips: "Back to trips"
       loading_route_data: Loading route data...
       trip_path_is_being_calculated: Trip path is being calculated...
+      trip_has_not_started_yet: "This planned trip has not started yet."
+      no_locations_recorded: "No locations were recorded during this trip."
+      no_locations_recorded_hint: "Points recorded between these dates will appear here."
       download_trip: Download trip
       currently_shared: Currently shared
       public: Public
@@ -2249,7 +2335,6 @@ en:
       no_data: No data
       trip_notes: Trip Notes
       more_on: More on
-      back_to_trips: Back to trips
       gpx: GPX
       geojson: GeoJSON
       edit_trip: Edit trip
@@ -2511,6 +2596,9 @@ en:
       the_lock_will_automatically_lift_after_30_minutes_no_action: The lock will automatically lift after 30 minutes. No action is required if this was you.
       didn_t_recognise_this_activity_someone_may_be_trying_to: Didn't recognise this activity? Someone may be trying to access your account. We recommend resetting your password immediately.
       reset_your_password_2: 'Reset your password:'
+    test_email:
+      body: If you can read this, your instance's SMTP configuration works.
+      sent_at: Sent at
     welcome:
       welcome_to_dawarich: Welcome to Dawarich!
       hi: Hi
@@ -3078,6 +3166,11 @@ en:
         please_enter_an_email_address_or_github_username: Please enter an email address or GitHub username
         verified_thank_you_for_supporting_dawarich_via_platform: Verified! Thank you for supporting Dawarich via %{platform}.
         not_found_in_supporter_list_make_sure_you_re_using: Not found in supporter list. Make sure you're using the same email or GitHub username as your donation platform.
+        smtp_not_configured: Email sending via SMTP is not configured. Configure self-hosted SMTP settings in order to set email preferences.
+        smtp_not_configured_html: 'Email sending via SMTP is not configured. Configure %{link} in order to set email preferences.'
+        smtp_not_configured_link: self-hosted SMTP settings
+        test_email_sent: Test email sent to %{email}. Check your inbox (and spam folder).
+        test_email_failed: 'Test email failed: %{error}'
       onboardings:
         demo_data_loaded: Demo data loaded.
         demo_data_is_already_loaded: Demo data is already loaded.
@@ -3285,6 +3378,8 @@ en:
         subject: Confirm Dawarich account deletion
       otp_account_locked:
         subject: Dawarich account temporarily locked
+      test_email:
+        subject: Dawarich test email
       digests:
         year_end:
           subject: Your %{year} Year in Review - Dawarich
@@ -3782,8 +3877,6 @@ en:
       anomaly_point: Anomaly Point
       failed_to_load_location_data_please_try_again: Failed to load location data. Please try again.
       click_on_the_map_to_place_a_place: Click on the map to place a place
-      failed_to_reload_routes: Failed to reload routes
-      failed_to_load_scratch_layer: Failed to load scratch layer
       failed_to_load_photos: Failed to load photos
       some_photo_sources_unavailable: "Some photo sources are unavailable: %{sources}"
       failed_to_load_areas: Failed to load areas
@@ -3791,7 +3884,6 @@ en:
       failed_to_load_track_details: Failed to load track details
       failed_to_load_flights: Failed to load flights
       failed_to_load_anomalies: Failed to load anomalies
-      reloading_routes: Reloading routes...
       cannot_update_recalculation_is_already_in_progress: 'Cannot update: recalculation is already in progress'
       transportation_settings_saved: Transportation settings saved
       globe_view_will_be_applied_after_page_reload: Globe view will be applied after page reload
@@ -3846,6 +3938,18 @@ en:
       failed_to_update_visit: Failed to update visit
       visit_deleted_successfully: Visit deleted successfully
       failed_to_update_point_position_please_try_again: Failed to update point position. Please try again.
+      point_edit_conflict: This point changed in another session. The latest saved position is shown.
+      edit_history: Edit history
+      edit_history_capacity: "Keeps your last %{count} moves"
+      redo: Redo
+      point_label: "Point #%{id}"
+      undo_to_here: "Undo up to here"
+      redo_to_here: "Redo up to here"
+      undo: Undo
+      failed_to_load_map_tiles: Could not load map tiles.
+      tracks_pending: No tracks in this view yet. Pan or widen the date range; a recent import may still be processing.
+      failed_to_load_visited_countries: Could not load Visited Countries.
+      retry: Retry
       failed_to_load_track_points: Failed to load track points
       point_updated_track_will_be_recalculated: Point updated. Track will be recalculated.
       delete: Delete
@@ -3858,11 +3962,10 @@ en:
       confirmed: Confirmed
       layers: Layers
       points: Points
-      routes: Routes
       tracks: Tracks
       heatmap: Heatmap
       fog_of_war: Fog of War
-      scratch_map: Scratch map
+      scratch_map: Visited Countries
       areas: Areas
       photos: Photos
       visits: Visits
@@ -3902,16 +4005,6 @@ en:
       show_all_days: Show all days
       collapse_all_days: Collapse all days
     map:
-      tiled_rendering:
-        inactive_note:
-          one: "Inactive while %{layers} is on — it needs the full point set."
-          other: "Inactive while %{layers} are on — those need the full point set."
-        editing_unavailable: "Not available with tiled rendering, vector tiles have no draggable points"
-        failed: "Could not load map tiles. Try a shorter date range, or turn off tiled rendering in map settings."
-        tracks_pending: "No tracks in this view. Routes under tiled rendering show your generated tracks — pan or widen the date range, or check back if your history was imported recently."
-        splitting_unavailable: "Not used with tiled rendering — routes follow your generated tracks."
-        blockers:
-          scratch: "Scratch map"
       places_layer: Places Layer
       confirm_delete_point: Are you sure you want to delete this point?
       confirm_delete_point_permanently: |-
@@ -4230,7 +4323,6 @@ en:
       radius: Radius
       reason: Reason
       route_information: Route Information
-      routes: Routes
       selected_point: Selected Point
       show_points: Show Points
       show_points_help: Enable to view and drag points to edit track
@@ -4366,14 +4458,10 @@ en:
       fog_threshold: Fog of War threshold
       live_map: Live Map
       merge_threshold: Merge threshold minutes
-      meters_between_routes: Meters between routes
-      minutes_between_routes: Minutes between routes
-      points_rendering_mode: Points rendering mode
       raw: Raw
       route_opacity: Route Opacity, %
       simplified: Simplified
       speed_color_scale: Speed color scale
-      speed_colored_routes: Speed-colored routes
       time_threshold: Time threshold minutes
     calendar_panel:
       loading_visited_places: Loading visited places...

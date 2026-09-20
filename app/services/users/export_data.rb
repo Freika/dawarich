@@ -199,7 +199,7 @@ class Users::ExportData
     count = 0
     File.open(trips_path, 'w') do |file|
       user.trips.find_each do |trip|
-        file.puts(trip.as_json(except: %w[user_id id]).to_json)
+        file.puts(trip.as_json(except: %w[user_id id trip_source_id]).to_json)
         count += 1
       end
     end

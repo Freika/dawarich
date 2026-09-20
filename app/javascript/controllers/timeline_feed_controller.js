@@ -166,8 +166,9 @@ export default class extends Controller {
     // entry is already rendered — expand it immediately. Otherwise navigate
     // to the day; the frame-load handler consumes the pending target once the
     // new day's entries render.
+    this.keepCameraOnDate = date || this.selectedDate
     if (date && date !== this.selectedDate) {
-      this.navigateToDay(date)
+      this.navigateToDay(date, { fitBounds: false })
     } else {
       this._tryExpandPendingTrack()
     }
@@ -224,7 +225,11 @@ export default class extends Controller {
     // Extract the day's bounds from the rendered DOM and re-dispatch
     // day-selected with bounds so the map can fit to the visits.
     const dayEl = this.visitListFrameTarget.querySelector(".timeline-day")
-    if (dayEl?.dataset?.bounds) {
+    const keepCamera =
+      this.pendingTrackId ||
+      this.pendingTrackTime ||
+      this.keepCameraOnDate === this.selectedDate
+    if (dayEl?.dataset?.bounds && !keepCamera) {
       try {
         const bounds = JSON.parse(dayEl.dataset.bounds)
         if (bounds && typeof bounds === "object") {
@@ -323,7 +328,8 @@ export default class extends Controller {
     this.navigateToDay(date)
   }
 
-  navigateToDay(date) {
+  navigateToDay(date, { fitBounds = true } = {}) {
+    if (fitBounds) this.keepCameraOnDate = null
     // Fully SPA — no Turbo.visit. The map instance stays alive, layers
     // refetch in place, URL updates via pushState, panel state is preserved.
     // Three things happen in order:
@@ -347,7 +353,7 @@ export default class extends Controller {
 
     document.dispatchEvent(
       new CustomEvent("timeline-feed:date-navigated", {
-        detail: { date, startAt: startAtLocal, endAt: endAtLocal },
+        detail: { date, startAt: startAtLocal, endAt: endAtLocal, fitBounds },
       }),
     )
   }
@@ -408,6 +414,7 @@ export default class extends Controller {
   // already reflect the date (hydrating after a Turbo page load) and from the
   // `timeline:open-visit` event path.
   selectDayByDate(date, alignInputs = true) {
+    this.keepCameraOnDate = null
     if (this.selectionMode) this.exitSelection()
     this.applySelectedDayUI(date)
     if (alignInputs) this.alignRangeInputsToDay(date)

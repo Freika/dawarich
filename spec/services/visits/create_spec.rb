@@ -215,7 +215,9 @@ RSpec.describe Visits::Create do
     end
 
     context 'geocoding a machine-named place' do
-      before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
+      let(:geocoding_configured) { true }
+
+      before { configure_instance_geocoding if geocoding_configured }
 
       it 'enqueues Places::NameFetchingJob for a place created from a suggested visit' do
         service = described_class.new(user, valid_params.merge(status: 'suggested'))
@@ -237,11 +239,14 @@ RSpec.describe Visits::Create do
         expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
       end
 
-      it 'does not enqueue when reverse geocoding is disabled' do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-        service = described_class.new(user, valid_params.merge(status: 'suggested'))
+      context 'when reverse geocoding is disabled' do
+        let(:geocoding_configured) { false }
 
-        expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
+        it 'does not enqueue' do
+          service = described_class.new(user, valid_params.merge(status: 'suggested'))
+
+          expect { service.call }.not_to have_enqueued_job(Places::NameFetchingJob)
+        end
       end
 
       it 'does not enqueue for a place the rolled-back transaction discarded' do
@@ -315,7 +320,7 @@ RSpec.describe Visits::Create do
       end
 
       it 'still reports a queue outage, which is infrastructure and not bad input' do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        configure_instance_geocoding
         allow(Places::NameFetchingJob).to receive(:perform_later).and_raise(RedisClient::ConnectionError)
 
         expect(ExceptionReporter).to receive(:call).at_least(:once)
@@ -350,7 +355,7 @@ RSpec.describe Visits::Create do
 
     context 'when the place name fetch cannot be enqueued' do
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        configure_instance_geocoding
         allow(Places::NameFetchingJob).to receive(:perform_later).and_raise(RedisClient::ConnectionError)
       end
 

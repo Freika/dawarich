@@ -60,6 +60,26 @@ RSpec.describe Tracks::SpeedVectorTileQuery do
     expect(rows.first['segment_speed']).to be_within(0.05).of(4.0)
   end
 
+  it 'does not color an invented edge across interleaved imports' do
+    selected_import = create(:import, user:)
+    other_import = create(:import, user:)
+    track = track_with_points(longitudes: [0.001, 0.002, 0.003, 0.004, 0.005],
+                              offsets: [0, 10, 20, 30, 40])
+    track.points.order(:timestamp).each_with_index do |point, index|
+      point.update!(import: index == 2 ? other_import : selected_import)
+    end
+
+    rows = query(clip_points_scope: user.points, clip_import_id: selected_import.id).feature_rows
+    total_edges = rows.sum do |row|
+      ActiveRecord::Base.connection.select_value(
+        Track.sanitize_sql_array(['SELECT ST_NumGeometries(?::geometry)', row['geom']])
+      ).to_i
+    end
+
+    expect(total_edges).to eq(2)
+    expect(rows.map { |row| row['end_timestamp'].to_i }.uniq).to eq([start_at.to_i + 40])
+  end
+
   it 'does not use another user\'s point even if it references the selected track' do
     track = track_with_points
     create(:point, user: create(:user), track:, longitude: 0.004, latitude: 0.001,

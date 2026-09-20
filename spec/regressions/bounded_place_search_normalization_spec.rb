@@ -8,7 +8,7 @@ RSpec.describe 'Bounded place search with normalized provider results' do
   let(:lon) { 13.4012 }
 
   before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+    use_real_geocoding_lookups
     allow(Geocoder).to receive(:search).and_call_original
     allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
   end
@@ -31,16 +31,17 @@ RSpec.describe 'Bounded place search with normalized provider results' do
   end
 
   {
-    photon: ['https://photon.example.com/api', { 'bbox' => /\A[-\d.,]+\z/ }],
-    nominatim: ['https://nominatim.example.com/search', { 'viewbox' => /\A[-\d.,]+\z/, 'bounded' => '1' }],
-    locationiq: ['https://us1.locationiq.com/v1/search.php', { 'viewbox' => /\A[-\d.,]+\z/, 'bounded' => '1' }],
-    geoapify: ['https://api.geoapify.com/v1/geocode/search', { 'filter' => /\Arect:/ }]
-  }.each do |provider, (endpoint, spatial_query)|
+    photon: ['https://photon.example.com/api', { 'bbox' => /\A[-\d.,]+\z/ },
+             { photon_api_host: 'photon.example.com', photon_api_use_https: true }],
+    nominatim: ['https://nominatim.example.com/search', { 'viewbox' => /\A[-\d.,]+\z/, 'bounded' => '1' },
+                { nominatim_api_host: 'nominatim.example.com', nominatim_api_use_https: true }],
+    locationiq: ['https://us1.locationiq.com/v1/search.php', { 'viewbox' => /\A[-\d.,]+\z/, 'bounded' => '1' },
+                 { locationiq_api_key: 'test-api-key' }],
+    geoapify: ['https://api.geoapify.com/v1/geocode/search', { 'filter' => /\Arect:/ },
+               { geoapify_api_key: 'test-api-key' }]
+  }.each do |provider, (endpoint, spatial_query, instance_settings)|
     context "with #{provider}" do
-      before do
-        traits = provider == :photon ? [:active] : [:active, provider]
-        create(:service_setting, *traits, user: user)
-      end
+      before { configure_instance_geocoding(**instance_settings) }
 
       it 'sends spatial constraints and returns normalized nearby addresses in distance order' do
         flat = %i[nominatim locationiq].include?(provider)

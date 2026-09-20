@@ -4,6 +4,14 @@ Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
   config.logger = Sidekiq::Logger.new($stdout)
 
+  # The worker process caches instance settings independently of the web
+  # process, so it needs its own subscriber to notice a change made in the UI.
+  config.on(:startup) do
+    InstanceSettings::Notifier.start
+  rescue StandardError => e
+    Rails.logger.warn("[InstanceSettings] subscriber failed to start: #{e.class}: #{e.message}")
+  end
+
   next unless DawarichSettings.prometheus_exporter_enabled?
 
   # yabeda-sidekiq auto-registers server middleware and the death handler on require.

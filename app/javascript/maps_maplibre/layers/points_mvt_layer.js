@@ -1,5 +1,6 @@
+import { bumpTileVersion } from "maps_maplibre/utils/tile_freshness"
 import { getMarkerStrokeColor } from "../utils/marker_theme"
-import { BaseLayer } from "./base_layer"
+import { BaseLayer, isAbortedRequest } from "./base_layer"
 import { heatmapPaint } from "./heatmap_layer"
 
 // FNV-1a over the api key: a non-secret cache partitioner keying URL-based
@@ -22,21 +23,30 @@ export class PointsMvtLayer extends BaseLayer {
     this.startAt = options.startAt || null
     this.endAt = options.endAt || null
     this.apiKey = options.apiKey || null
+    this.importId = options.importId || null
     this.styleName = options.styleName
     this._tileUrl = null
-    this._cacheBuster = 0
     // Heatmap rides the same source and same lifecycle, toggled independently
     this.heatmapVisible = options.heatmapVisible === true
     this.onTileError = options.onTileError || null
     this._tileErrorHandler = null
     this._tileErrorReported = false
+    this.flightWindows = []
+    this._visibleCirclePaint = {
+      "circle-opacity": 1,
+      "circle-stroke-opacity": 1,
+    }
   }
 
   // A failed tile fetch (timeout, throttle, expired session) reaches the page
-  // only as a map `error` event. Unwatched, the layer just renders nothing and
-  // the classic layer is hidden — an empty map with no explanation.
+  // only as a map `error` event. Unwatched, the layer renders nothing and the
+  // user sees an empty map with no explanation.
   add(data, beforeId = null) {
     super.add(data, beforeId)
+    for (const [property, value] of Object.entries(this._visibleCirclePaint)) {
+      this.setCircleOpacity(property, value)
+    }
+    if (this.flightWindows.length) this._applyFlightFilter()
     this._tileErrorReported = false
     this._watchTileErrors()
   }
@@ -51,6 +61,7 @@ export class PointsMvtLayer extends BaseLayer {
 
     this._tileErrorHandler = (event) => {
       if (event?.sourceId !== this.sourceId) return
+      if (isAbortedRequest(event.error)) return
       // One pan fails a whole screenful of tiles; report the episode once.
       if (this._tileErrorReported) return
 
@@ -76,6 +87,25 @@ export class PointsMvtLayer extends BaseLayer {
   setHeatmapVisible(visible) {
     this.heatmapVisible = visible
     this._applyLayerVisibility(PointsMvtLayer.HEATMAP_LAYER_ID, visible)
+  }
+
+  setFlightWindows(windows = []) {
+    this.flightWindows = windows
+    this._applyFlightFilter()
+  }
+
+  _applyFlightFilter() {
+    const masked = this.flightWindows.map(([start, end]) => [
+      "all",
+      [">=", ["get", "timestamp"], start],
+      // An aggregate is hidden only if every constituent point is in the flight window.
+      ["<=", ["get", "max_timestamp"], end],
+    ])
+    const filter = masked.length ? ["!", ["any", ...masked]] : null
+    if (this.map.getLayer(this.id)) this.map.setFilter(this.id, filter)
+    if (this.map.getLayer(PointsMvtLayer.HEATMAP_LAYER_ID)) {
+      this.map.setFilter(PointsMvtLayer.HEATMAP_LAYER_ID, filter)
+    }
   }
 
   // The circle and heatmap sub-layers toggle independently; anything keyed to
@@ -104,6 +134,13 @@ export class PointsMvtLayer extends BaseLayer {
     this.setVisibility(this.visible)
   }
 
+  setCircleOpacity(property, value) {
+    this._visibleCirclePaint[property] = value
+    if (!this._paintHidden && this.map.getLayer(this.id)) {
+      this.map.setPaintProperty?.(this.id, property, value)
+    }
+  }
+
   _applyLayerVisibility(layerId, visible) {
     if (!this.map.getLayer(layerId)) return
 
@@ -120,8 +157,11 @@ export class PointsMvtLayer extends BaseLayer {
       return
     }
     if (layerId === this.id && this._paintHidden) {
-      this.map.setPaintProperty?.(layerId, "circle-opacity", 1)
-      this.map.setPaintProperty?.(layerId, "circle-stroke-opacity", 1)
+      for (const [property, value] of Object.entries(
+        this._visibleCirclePaint,
+      )) {
+        this.map.setPaintProperty?.(layerId, property, value)
+      }
       this.map.setPaintProperty?.(
         layerId,
         "circle-radius",
@@ -142,9 +182,12 @@ export class PointsMvtLayer extends BaseLayer {
     )
   }
 
-  // MapLibre caches tiles by URL, so bump a nonce to force a re-fetch.
   refresh() {
-    this._cacheBuster += 1
+    bumpTileVersion("/api/v1/tiles/points/")
+    if (this.map.refreshTiles && this.map.getSource(this.sourceId)) {
+      this.map.refreshTiles(this.sourceId)
+      return
+    }
 
     const wasVisible = this.visible
     const beforeId = this._layerAbove()
@@ -237,9 +280,9 @@ export class PointsMvtLayer extends BaseLayer {
 
     if (startAt) params.set("start_at", startAt)
     if (endAt) params.set("end_at", endAt)
+    if (this.importId) params.set("import_id", this.importId)
     // Never the raw api key: the Bearer header authenticates (transformRequest)
     if (this.apiKey) params.set("u", cachePartitioner(this.apiKey))
-    if (this._cacheBuster) params.set("_", String(this._cacheBuster))
 
     const query = params.toString()
     const path = "/api/v1/tiles/points/{z}/{x}/{y}.mvt"

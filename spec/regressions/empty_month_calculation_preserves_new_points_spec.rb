@@ -14,7 +14,7 @@ RSpec.describe 'Empty monthly calculation after historical points arrive', type:
     existing_country = Country.find_by(iso_a2: 'DE')
     country = existing_country || create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
     stat = create(:stat, user: owner, year: 2015, month: 1, toponyms: [], calculation_version: 0)
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    configure_instance_geocoding
     allow(Geocoder).to receive(:search).and_return([double(city: 'Berlin', country: country.name, country_code: 'DE',
                                                            data: {})])
     empty_read = Concurrent::CountDownLatch.new(1)
@@ -64,5 +64,6 @@ RSpec.describe 'Empty monthly calculation after historical points arrive', type:
       owner.destroy!
     end
     country&.destroy! if defined?(existing_country) && existing_country.nil?
+    InstanceSetting.delete_all
   end
 end

@@ -5,10 +5,8 @@
 
 import { classifyBasemapUrl } from "maps_maplibre/utils/basemap_url"
 
-// Route fallback matches Map v1's blue; track color matches the backend
-// Tracks::GeojsonSerializer::DEFAULT_COLOR, keep them in sync.
+// Matches Tracks::GeojsonSerializer::DEFAULT_COLOR; keep them in sync.
 export const LAYER_COLOR_DEFAULTS = {
-  routeColor: "#0000ff",
   trackColor: "#6366F1",
 }
 
@@ -39,20 +37,15 @@ const DEFAULT_SETTINGS = {
   },
   enabledMapLayers: ["Heatmap", "Tracks"],
   placesTagFilters: null,
-  routeOpacity: 0.6,
   fogOfWarRadius: 50,
   fogOfWarThreshold: 50,
   fogOfWarMode: "points",
+  globeProjection: false,
   metersBetweenRoutes: 500,
   minutesBetweenRoutes: 30,
-  pointsRenderingMode: "raw",
-  speedColoredRoutes: false,
-  speedColorScale: "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300",
-  globeProjection: false,
   minMinutesSpentInCity: 60,
   gpsFilteringEnabled: true,
   pointDraggingEnabled: false,
-  pointsTiledRendering: false,
   enabledTransportationModes: [
     "unknown",
     "stationary",
@@ -70,7 +63,6 @@ const DEFAULT_SETTINGS = {
 
 const LAYER_NAME_MAP = {
   Points: "pointsVisible",
-  Routes: "routesVisible",
   Heatmap: "heatmapEnabled",
   Hexagons: "hexagonsEnabled",
   Visits: "visitsEnabled",
@@ -90,73 +82,21 @@ const BACKEND_SETTINGS_MAP = {
   customTheme: "maps_maplibre_custom_theme",
   vectorTilesUrl: "maps_maplibre_tiles_url",
   tilesFallback: "maps_maplibre_tiles_fallback",
-  routeColor: "route_color",
   trackColor: "track_color",
   enabledMapLayers: "enabled_map_layers",
   placesTagFilters: "places_tag_filters",
-  routeOpacity: "route_opacity",
   fogOfWarRadius: "fog_of_war_meters",
   fogOfWarThreshold: "fog_of_war_threshold",
   fogOfWarMode: "fog_of_war_mode",
+  globeProjection: "globe_projection",
   metersBetweenRoutes: "meters_between_routes",
   minutesBetweenRoutes: "minutes_between_routes",
-  pointsRenderingMode: "points_rendering_mode",
-  speedColoredRoutes: "speed_colored_routes",
-  speedColorScale: "speed_color_scale",
-  globeProjection: "globe_projection",
   minMinutesSpentInCity: "min_minutes_spent_in_city",
   gpsFilteringEnabled: "gps_filtering_enabled",
   pointDraggingEnabled: "point_dragging_enabled",
-  pointsTiledRendering: "points_tiled_rendering",
   enabledTransportationModes: "enabled_transportation_modes",
   distance_unit: "distance_unit",
   liveMapEnabled: "live_map_enabled",
-}
-
-// Layers that can only be drawn from the full point set. With tiles requested,
-// routes ride the tracks tile source, fog reads the points tile source, and
-// heatmap reads the tiled source — only Scratch map still needs everything.
-export function bulkPointsRequired(settings = {}) {
-  const tiledRequested = settings.pointsTiledRendering === true
-
-  return (
-    Boolean(settings.routesVisible !== false && !tiledRequested) ||
-    Boolean(settings.heatmapEnabled && !tiledRequested) ||
-    Boolean(
-      settings.fogEnabled &&
-        settings.fogOfWarMode !== "hexagons" &&
-        !tiledRequested,
-    ) ||
-    Boolean(settings.scratchEnabled)
-  )
-}
-
-// Tiles only save anything when nothing else already needs the full set
-export function tiledPointsActive(settings = {}) {
-  return settings.pointsTiledRendering === true && !bulkPointsRequired(settings)
-}
-
-// The renderer each tiled-aware layer must use for the CURRENT settings.
-// Layers read tiledPointsActive once at construction; flipping the beta
-// toggle (or the fog mode) mid-session re-derives everything through this
-// single truth table so no layer is left on the wrong renderer.
-export function tiledLayerModes(settings = {}) {
-  const tiled = tiledPointsActive(settings)
-  const routesOn = settings.routesVisible !== false
-  const tracksOn = settings.tracksEnabled === true
-  const fogTiled = tiled && (settings.fogOfWarMode || "points") !== "hexagons"
-
-  return {
-    tiled,
-    tracksMvt: {
-      tracksEnabled: tiled && tracksOn,
-      routesVisible: tiled && routesOn,
-    },
-    classicRoutes: routesOn && !tiled,
-    classicTracks: tracksOn && !tiled,
-    fogTiled,
-    pointsSourceKeepAlive: fogTiled && Boolean(settings.fogEnabled),
-  }
 }
 
 export class SettingsManager {
@@ -196,10 +136,16 @@ export class SettingsManager {
    * @returns {Object} Settings with individual layer booleans
    */
   static _expandLayerSettings(settings) {
-    const enabledLayers = settings.enabledMapLayers || []
+    const enabledLayers = [...(settings.enabledMapLayers || [])]
+    if (enabledLayers.includes("Routes") && !enabledLayers.includes("Tracks")) {
+      enabledLayers.push("Tracks")
+    }
+    settings.enabledMapLayers = enabledLayers.filter(
+      (name) => name !== "Routes",
+    )
 
     Object.entries(LAYER_NAME_MAP).forEach(([layerName, settingKey]) => {
-      settings[settingKey] = enabledLayers.includes(layerName)
+      settings[settingKey] = settings.enabledMapLayers.includes(layerName)
     })
 
     return settings
@@ -224,11 +170,6 @@ export class SettingsManager {
 
   static _parseIntOr(value, fallback) {
     const parsed = parseInt(value, 10)
-    return Number.isNaN(parsed) ? fallback : parsed
-  }
-
-  static _parseFloatOr(value, fallback) {
-    const parsed = parseFloat(value)
     return Number.isNaN(parsed) ? fallback : parsed
   }
 
@@ -263,12 +204,7 @@ export class SettingsManager {
           if (backendKey in backendSettings) {
             let value = backendSettings[backendKey]
 
-            if (frontendKey === "routeOpacity") {
-              value = SettingsManager._parseFloatOr(
-                value,
-                DEFAULT_SETTINGS.routeOpacity,
-              )
-            } else if (frontendKey === "fogOfWarRadius") {
+            if (frontendKey === "fogOfWarRadius") {
               value = SettingsManager._parseIntOr(
                 value,
                 DEFAULT_SETTINGS.fogOfWarRadius,
@@ -296,10 +232,6 @@ export class SettingsManager {
             } else if (frontendKey === "gpsFilteringEnabled") {
               value = value === true || value === "true"
             } else if (frontendKey === "pointDraggingEnabled") {
-              value = value === true || value === "true"
-            } else if (frontendKey === "pointsTiledRendering") {
-              value = value === true || value === "true"
-            } else if (frontendKey === "speedColoredRoutes") {
               value = value === true || value === "true"
             } else if (frontendKey === "globeProjection") {
               value = value === true || value === "true"
@@ -372,9 +304,7 @@ export class SettingsManager {
           } else if (frontendKey in settings) {
             let value = settings[frontendKey]
 
-            if (frontendKey === "routeOpacity") {
-              value = parseFloat(value).toString()
-            } else if (
+            if (
               frontendKey === "fogOfWarRadius" ||
               frontendKey === "fogOfWarThreshold" ||
               frontendKey === "metersBetweenRoutes" ||
@@ -382,15 +312,11 @@ export class SettingsManager {
               frontendKey === "minMinutesSpentInCity"
             ) {
               value = parseInt(value, 10).toString()
-            } else if (frontendKey === "speedColoredRoutes") {
-              value = Boolean(value)
             } else if (frontendKey === "globeProjection") {
               value = Boolean(value)
             } else if (frontendKey === "liveMapEnabled") {
               value = Boolean(value)
             } else if (frontendKey === "pointDraggingEnabled") {
-              value = Boolean(value)
-            } else if (frontendKey === "pointsTiledRendering") {
               value = Boolean(value)
             }
 
@@ -402,7 +328,6 @@ export class SettingsManager {
       // distance_unit, tile categories, and POI groups live inside the
       // nested `maps` hash on the backend, the API merges it so the V1
       // keys managed by the settings page survive.
-      // biome-ignore lint/performance/noDelete: key must be absent, not undefined
       delete backendSettings.distance_unit
       const mapsPayload = {}
       if (settings.distance_unit != null) {

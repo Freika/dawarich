@@ -31,13 +31,28 @@ const markerThemeSource = await readFile(
   "utf8",
 )
 
+const freshness = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/tile_freshness.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
 const stripImports = (source) =>
   source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const combined = [baseLayerSource, heatmapSource, markerThemeSource, mvtSource]
+const combined = [
+  baseLayerSource,
+  heatmapSource,
+  markerThemeSource,
+  freshness,
+  mvtSource,
+]
   .map(stripImports)
   .join("\n")
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combined).toString("base64")}`
-const { heatmapPaint, PointsMvtLayer } = await import(moduleUrl)
+const { heatmapPaint, PointsMvtLayer, withTileVersion } = await import(
+  moduleUrl
+)
 
 // Minimal fake MapLibre map: records addLayer calls, tracks style layer order.
 function fakeMap(initialLayers = []) {
@@ -99,6 +114,20 @@ function evaluate(expression, properties) {
   const [op, ...args] = expression
   const resolved = () => args.map((arg) => evaluate(arg, properties))
   switch (op) {
+    case "all":
+      return resolved().every(Boolean)
+    case "any":
+      return resolved().some(Boolean)
+    case "!":
+      return !resolved()[0]
+    case ">=": {
+      const [left, right] = resolved()
+      return left >= right
+    }
+    case "<=": {
+      const [left, right] = resolved()
+      return left <= right
+    }
     case "min":
       return Math.min(...resolved())
     case "*":
@@ -116,6 +145,40 @@ function evaluate(expression, properties) {
   }
 }
 
+test("low-zoom aggregates are flight-masked only when their full time span overlaps", () => {
+  const filters = []
+  const layer = new PointsMvtLayer({
+    getLayer: () => true,
+    setFilter: (_id, filter) => filters.push(filter),
+  })
+
+  layer.setFlightWindows([[100, 200]])
+  const filter = filters[0]
+  assert.equal(evaluate(filter, { timestamp: 120, max_timestamp: 180 }), false)
+  assert.equal(evaluate(filter, { timestamp: 120, max_timestamp: 240 }), true)
+  assert.equal(evaluate(filter, { timestamp: 80, max_timestamp: 180 }), true)
+})
+
+test("fog keep-alive restores the active day opacity after Points are toggled", () => {
+  const paint = []
+  const layer = new PointsMvtLayer({
+    getLayer: () => true,
+    setLayoutProperty() {},
+    setPaintProperty: (_id, property, value) => paint.push({ property, value }),
+  })
+  layer.setSourceKeepAlive(true)
+  const dayExpression = ["case", true, 1, 0.04]
+  layer.setCircleOpacity("circle-opacity", dayExpression)
+  layer.setVisibility(false)
+  layer.setCircleOpacity("circle-opacity", ["case", false, 1, 0.04])
+  assert.equal(paint.at(-1).value, 0)
+  layer.setVisibility(true)
+  assert.deepEqual(
+    paint.findLast(({ property }) => property === "circle-opacity").value,
+    ["case", false, 1, 0.04],
+  )
+})
+
 test("tile URLs carry no raw api key under any input combination", () => {
   const cases = [
     {},
@@ -130,7 +193,6 @@ test("tile URLs carry no raw api key under any input combination", () => {
 
   for (const options of cases) {
     const layer = new PointsMvtLayer(fakeMap(), options)
-    layer._cacheBuster = 2
     const url = layer._buildTileUrl()
 
     assert.ok(!url.includes("api_key"), `api_key leaked in: ${url}`)
@@ -149,6 +211,13 @@ test("tile URLs carry a stable non-secret per-user cache partitioner", () => {
   assert.ok(partitioner(layerA), "u= partitioner missing")
   assert.equal(partitioner(layerA), partitioner(layerA2))
   assert.notEqual(partitioner(layerA), partitioner(layerB))
+})
+
+test("tile URLs preserve the selected import scope", () => {
+  const layer = new PointsMvtLayer(fakeMap(), { importId: "42" })
+  const params = new URLSearchParams(layer._buildTileUrl().split("?")[1])
+
+  assert.equal(params.get("import_id"), "42")
 })
 
 test("tiled heatmap weight scales with count: log-monotonic, classic at count 1", () => {
@@ -170,7 +239,7 @@ test("tiled heatmap weight scales with count: log-monotonic, classic at count 1"
   assert.ok(at(5000) <= 1, "weight must stay clamped at 1")
 })
 
-test("circle stroke follows the basemap marker theme like the classic layer", () => {
+test("circle stroke follows the basemap marker theme", () => {
   const stroke = (styleName) =>
     new PointsMvtLayer(fakeMap(), { styleName })
       .getLayerConfigs()
@@ -200,22 +269,22 @@ test("update() to a new range re-adds sub-layers at their original z-position", 
   const map = fakeMap(["visits"])
   const layer = new PointsMvtLayer(map, { startAt: "a", endAt: "b" })
   layer.add({ startAt: "a", endAt: "b" })
-  // Real production ids stacked ABOVE points-mvt in layer_manager order
-  map.layers.push("points", "routes-hit", "recent-point")
+  // Representative production ids stacked above points-mvt.
+  map.layers.push("focused-overlay", "selection-hit", "recent-point")
 
   map.addLayerCalls.length = 0
   layer.update({ startAt: "c", endAt: "d" })
 
   assert.deepEqual(
     map.addLayerCalls.map((call) => call.beforeId),
-    ["points", "points"],
+    ["focused-overlay", "focused-overlay"],
   )
   assert.deepEqual(map.layers, [
     "visits",
     "points-mvt-heatmap",
     "points-mvt",
-    "points",
-    "routes-hit",
+    "focused-overlay",
+    "selection-hit",
     "recent-point",
   ])
 })
@@ -275,7 +344,7 @@ test("refresh() preserves z-position too", () => {
   )
 })
 
-test("shared heatmapPaint stays byte-identical for the classic layer", () => {
+test("shared heatmapPaint retains its established defaults", () => {
   assert.deepEqual(heatmapPaint(0.6), {
     "heatmap-weight": 0.2,
     "heatmap-intensity": [
@@ -400,4 +469,46 @@ test("stops listening for tile errors once removed", () => {
   layer.remove()
 
   assert.equal(map.listenerCount("error"), 0)
+})
+
+test("refresh reloads tiles in place with a fresh version, so rendered points stay on screen", () => {
+  const map = fakeMap([])
+  const layer = new PointsMvtLayer(map, { startAt: "a", endAt: "b" })
+  layer.add({ startAt: "a", endAt: "b" })
+  const reloads = []
+  map.refreshTiles = (sourceId) => reloads.push(sourceId)
+  map.removeLayer = () => assert.fail("refresh must not remove a layer")
+  map.removeSource = () => assert.fail("refresh must not remove the source")
+  const tile = () =>
+    withTileVersion(
+      new URL("/api/v1/tiles/points/1/2/3.mvt", "http://x.test"),
+    ).searchParams.get("_")
+  const before = tile()
+
+  layer.refresh()
+
+  assert.deepEqual(reloads, ["points-mvt-source"])
+  assert.notEqual(tile(), before)
+})
+
+test("a request cancelled by a newer refresh is not a tile failure", () => {
+  const map = fakeMap()
+  const reported = []
+  const layer = new PointsMvtLayer(map, {
+    onTileError: () => reported.push("failed"),
+  })
+  layer.add({})
+
+  map.emit("error", {
+    sourceId: "points-mvt-source",
+    error: new Error("AbortError"),
+  })
+  map.emit("error", {
+    sourceId: "points-mvt-source",
+    error: new DOMException("The user aborted a request.", "AbortError"),
+  })
+  assert.deepEqual(reported, [])
+
+  map.emit("error", { sourceId: "points-mvt-source", error: new Error("500") })
+  assert.deepEqual(reported, ["failed"])
 })

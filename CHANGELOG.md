@@ -4,12 +4,69 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.15.0] - 2026-09-20, Berlin
+
+### Added
+
+- Trips can be imported from TREK (Settings → Integrations). A TREK trip shows its plan above the recorded days, a trip with nothing recorded yet draws the planned stops on its map and card preview, a recorded trip can lay its plan over the track, and TREK day notes fill in the trip's day notes and stay in sync until you edit them in Dawarich. (#3615)
+- Admins can configure geocoding for the whole instance in Settings → Instance without a redeploy, and test the connection there. A set environment variable still wins and shows its field read-only.
+- The app and Sidekiq containers print a warning at startup when a self-hosted instance runs with `RAILS_ENV=development`.
+- Map points and tracks can be edited directly over the vector-tile renderer; a completed drag atomically saves the point, recalculates its track and segments, and synchronizes other open sessions. With Edit points on, a point can be dragged straight from the map at zoom 14 and closer, a long press starts the drag on touch screens, and an edit history panel on the map undoes and redoes the last 5 moves.
+- Visited Countries uses bundled PMTiles plus a small, privately cached metadata response, so it remains available without downloading the full location history or requiring outbound network access.
+- Video Studio adds a Fog of War mode with adjustable overlay colour and opacity, independent route and marker visibility, and preview buttons for visualization modes and output formats.
+- Self-hosted instances have a Send test email button in Settings → General that sends a message to your own address through the configured SMTP server and reports the result.
+
+### Changed
+
+- The main map now always renders points and tracks from vector tiles. The classic renderer, its rendering preferences, and the separate main-map Routes layer have been removed; Trip day routes are unchanged.
+- Successful point moves use a short in-map pulse instead of a flash message, with a static reduced-motion variant.
+- Email preferences are hidden on self-hosted instances without `SMTP_SERVER`, replaced by a note linking to the SMTP setup guide.
+- Geocoding is no longer configured per user: it moved from Integrations to Settings → Instance, and Integrations links there. On upgrade, environment variables that are set are copied into Instance settings, so removing one later keeps its value; without a provider variable, existing per-user settings are carried over when every user agrees on one, or else when the administrators do, and Settings → Instance says when they were not. Per-user settings themselves are left untouched.
+- Installation guides moved out of the repository's `docs` folder to [dawarich.app/docs](https://dawarich.app/docs/self-hosting/introduction): Synology (with its compose and `.env` templates), Kubernetes, Docker, reverse proxy and photo geodata.
+- Updated the Sentry SDK to 7.0. Instances with `SENTRY_DSN` set start normally, Sentry logs are still sent only when `SENTRY_ENABLE_LOGS=true`, and the SDK's new automatic database query and request logs are not sent.
+
+### Fixed
+
+- A trip recorded by several devices at once no longer zigzags between them: its line, distance and day routes follow the busiest of the devices that were recording at the same time. Devices that recorded one after another — GPX segments, imported activities, a phone swapped mid-trip — all stay on the trip. For trips calculated before this release, press Recalculate on the trip page to update the saved route and distance.
+- Undoing a point move after leaving the map selection no longer reports a failure for a move that went through.
+- A TREK source no longer stays stuck on "still importing" when an import fails unexpectedly, and it can be disconnected while it is importing.
+- One TREK trip that the server describes with an invalid payload no longer stops the scheduled sync of every other trip on that source.
+- A trip page switches from "Trip path is being calculated" to the map as soon as the path is ready, and a trip with no recorded locations says so instead of calculating forever.
+- The map fits locations recorded during a short period even when the selected history spans years.
+- Switching flight visibility while editing a point or track keeps the edit visible and restores the correct map filters afterward.
+- User profile archives uploaded through the regular Imports page are now restored as profile backups instead of failing the multi-file archive size limit. (#3011)
+- CSV imports combine separate DATE/TIME columns while preserving complete timestamps when both formats are present.
+- The visits API now returns a clear bad-request response for malformed date ranges on both time-based and area-based queries, instead of failing or silently ignoring the filter.
+- Failed imports no longer leave temporary downloads on disk when the file is empty or fails integrity checks.
+- The Synology template and the Kubernetes guide run Dawarich in production instead of development.
+- The Synology template no longer hangs waiting for its database on a fresh install.
+- The Kubernetes guide's health probes check the web container instead of the Sidekiq container, and a startup probe keeps it from being restarted while migrations run.
+- Trip and track distance is calculated in the database, so large trips no longer run out of memory and leave the distance empty. Press Recalculate on an affected trip to fill it in.
+- TREK itinerary imports now keep unscheduled places, honour the trip owner's timezone, and retain the plan after disconnecting TREK. (#3615)
+- Days per Country now uses a more varied color palette so countries are easier to distinguish (#3602).
+- Creating a visit from a location search result keeps the searched place's name and address.
+- Clicking a track on the map keeps the camera on that track instead of zooming out to every track of its day.
+- The map's loading indicator no longer stays on after clicking a track.
+- The selected track's flowing highlight moves at a steady, calmer speed at every zoom level.
+- Trip day statistics refresh after changing the track time-gap setting. Recalculate affected trips to update their saved routes and distances.
+- Undoing or redoing a point move no longer replaces a different selected track.
+- Undo and redo remain consistent when another point move is still saving.
+- Changing the map style no longer leaves duplicate or active controls from a discarded edit history.
+- Live map edits continue updating the map after the editor selection is closed.
+- Point and track tiles refresh immediately after a point moves instead of displaying cached positions.
+- Replay and Video Studio reload location data after point edits, deletions and newly recorded live locations. Loading completes even while live recording continues.
+- Saved point moves no longer report a timeout when cache updates after saving are slow.
+- Profile backups restore TREK plans without linking trips to another account's source or skipping unrelated trips.
+- Accounts connected to TREK can be permanently deleted along with their planned itineraries.
+- Instance settings clarify that disabling immediate geocoding does not stop scheduled lookups.
+- Photo popups on the map escape filenames, place names and source labels instead of rendering them as HTML.
+- An integration URL that resolves to an IPv4 address written in IPv6 form is now blocked like the bare IPv4 address.
+
 ## [1.14.5] - 2026-09-13, Berlin
 
 ### Added
 
 - Video Studio can select exact start and end times for map ranges.
-- Video Studio adds a Fog of War mode with adjustable overlay colour and opacity, independent route and marker visibility, and preview buttons for visualization modes and output formats.
 - Family members can consent to sharing location history recorded before they started sharing.
 - The import edit page can change or clear an import's source.
 

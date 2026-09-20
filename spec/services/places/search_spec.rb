@@ -5,10 +5,6 @@ require 'geocoder/results/photon'
 require 'geocoder/results/geoapify'
 
 RSpec.describe Places::Search do
-  before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-  end
-
   let(:user) { create(:user) }
   let(:lat) { 52.5126 }
   let(:lon) { 13.4012 }
@@ -24,6 +20,8 @@ RSpec.describe Places::Search do
   end
 
   describe '#call' do
+    before { configure_instance_geocoding }
+
     it 'returns nearby matches in the select_place shape' do
       allow(Geocoder).to receive(:search).and_return([photon(name: 'Café Bravo', plat: lat, plon: lon)])
 
@@ -69,8 +67,8 @@ RSpec.describe Places::Search do
     end
 
     it 'formats viewbox and bounded: 1 when provider is nominatim' do
-      nominatim_config = Geocoding::Config.new(source: :env, provider: :nominatim)
-      allow(Geocoding::Config).to receive(:for).with(user).and_return(nominatim_config)
+      InstanceSetting.delete_all
+      configure_instance_geocoding(nominatim_api_host: 'nominatim.example.com')
 
       min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
       expected_viewbox = "#{min_lon.round(6)},#{max_lat.round(6)},#{max_lon.round(6)},#{min_lat.round(6)}"
@@ -83,8 +81,8 @@ RSpec.describe Places::Search do
     end
 
     it 'formats rect filter when provider is geoapify' do
-      geoapify_config = Geocoding::Config.new(source: :env, provider: :geoapify)
-      allow(Geocoding::Config).to receive(:for).with(user).and_return(geoapify_config)
+      InstanceSetting.delete_all
+      configure_instance_geocoding(geoapify_api_key: 'test-api-key')
 
       min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
       expected_rect = "rect:#{min_lon.round(6)},#{min_lat.round(6)},#{max_lon.round(6)},#{max_lat.round(6)}"
@@ -97,8 +95,8 @@ RSpec.describe Places::Search do
     end
 
     it 'formats viewbox and bounded: 1 when provider is locationiq' do
-      locationiq_config = Geocoding::Config.new(source: :env, provider: :locationiq)
-      allow(Geocoding::Config).to receive(:for).with(user).and_return(locationiq_config)
+      InstanceSetting.delete_all
+      configure_instance_geocoding(locationiq_api_key: 'test-api-key')
 
       min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
       expected_viewbox = "#{min_lon.round(6)},#{max_lat.round(6)},#{max_lon.round(6)},#{min_lat.round(6)}"
@@ -169,11 +167,6 @@ RSpec.describe Places::Search do
       allow(Geocoding::RateLimiter).to receive(:throttle).and_return(nil)
 
       expect(described_class.new(user: user, query: 'Bravo', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
-    end
-
-    it 'returns [] when reverse geocoding is disabled' do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-      expect(described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call).to eq([])
     end
 
     it 'handles invalid provider requests without reporting an application exception' do
@@ -258,15 +251,15 @@ RSpec.describe Places::Search do
     end
   end
 
-  describe 'user mode (no ENV)' do
+  describe 'instance provider routing' do
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+      use_real_geocoding_lookups
       allow(Geocoder).to receive(:search).and_call_original
       allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
     end
 
-    it 'routes forward search through the user provider' do
-      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+    it 'routes forward search through the instance provider' do
+      configure_instance_geocoding(photon_api_host: 'photon.mine.example.com', photon_api_use_https: true)
       stub_request(:get, %r{https://photon\.mine\.example\.com/api})
         .to_return(status: 200, body: { type: 'FeatureCollection', features: [] }.to_json,
                    headers: { 'Content-Type' => 'application/json' })
@@ -276,8 +269,8 @@ RSpec.describe Places::Search do
       expect(WebMock).to have_requested(:get, %r{https://photon\.mine\.example\.com/api})
     end
 
-    it 'passes the bounding box to the user photon endpoint' do
-      create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
+    it 'passes the bounding box to the instance photon endpoint' do
+      configure_instance_geocoding(photon_api_host: 'photon.mine.example.com', photon_api_use_https: true)
       min_lat, min_lon, max_lat, max_lon = Geocoder::Calculations.bounding_box([lat, lon], 1.0, units: :km)
       expected_bbox = "#{min_lon.round(6)},#{min_lat.round(6)},#{max_lon.round(6)},#{max_lat.round(6)}"
 
@@ -292,7 +285,7 @@ RSpec.describe Places::Search do
         .with(query: hash_including('bbox' => expected_bbox))
     end
 
-    it 'returns an empty list for an unconfigured user without HTTP' do
+    it 'returns an empty list without HTTP when the instance has no provider' do
       result = described_class.new(user: user, query: 'cafe', latitude: lat, longitude: lon, radius: 1.0).call
 
       expect(result).to eq([])

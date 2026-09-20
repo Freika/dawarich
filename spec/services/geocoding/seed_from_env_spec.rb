@@ -111,38 +111,4 @@ RSpec.describe Geocoding::SeedFromEnv do
       expect(ExceptionReporter).to have_received(:call).at_least(:once)
     end
   end
-
-  describe 'seed on user creation' do
-    it 'seeds a new user while ENV is set' do
-      stub_photon_env
-
-      new_user = create(:user)
-
-      expect(new_user.service_settings.service_geocoding.find_by(provider: 'photon')).to be_present
-    end
-
-    it 'does not seed without ENV' do
-      new_user = create(:user)
-
-      expect(new_user.service_settings.count).to eq(0)
-    end
-
-    it 'does not seed on cloud instances' do
-      stub_photon_env
-      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-
-      new_user = create(:user, skip_auto_trial: true)
-
-      expect(new_user.service_settings.count).to eq(0)
-    end
-
-    it 'does not abort user creation when seeding raises' do
-      stub_photon_env
-      allow(described_class).to receive(:call).and_raise(StandardError, 'boom')
-      allow(ExceptionReporter).to receive(:call)
-
-      expect { create(:user) }.not_to raise_error
-      expect(ExceptionReporter).to have_received(:call)
-    end
-  end
 end

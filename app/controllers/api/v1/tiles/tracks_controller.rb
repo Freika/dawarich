@@ -5,13 +5,7 @@ class Api::V1::Tiles::TracksController < ApiController
 
   # ETag material — bump when Tracks::VectorTileQuery's SQL or its emitted
   # properties change.
-  TILE_SCHEMA_VERSION = 2
-
-  rescue_from Tracks::SpeedVectorTileQuery::FeatureLimitError do
-    force_uncacheable_response
-    render json: { error: 'Too many route segments in this tile. Zoom in or shorten the date range.' },
-           status: :service_unavailable
-  end
+  TILE_SCHEMA_VERSION = 5
 
   private
 
@@ -21,12 +15,15 @@ class Api::V1::Tiles::TracksController < ApiController
 
   def tile_epoch_component
     tracks_epoch = Tracks::TileEpoch.etag_component(current_api_user.id, cacheable_start_at, cacheable_end_at)
-    return tracks_epoch unless speed_coloring?
+    return tracks_epoch unless speed_coloring? || params[:import_id].present?
 
     # Overlap semantics render whole tracks, including their portions outside
-    # the requested dates. Point edits in those portions must invalidate too.
-    first_at, last_at = filtered_tracks.pick(Arel.sql('MIN(start_at), MAX(end_at)'))
-    [tracks_epoch, Points::TileEpoch.etag_component(current_api_user.id, first_at, last_at)]
+    # the requested dates. Any year's point edits may affect an import-clipped
+    # track, so use all year tokens instead of running an import-wide MIN/MAX
+    # query for every tile request (including conditional 304s).
+    [tracks_epoch, Points::TileEpoch.etag_component(current_api_user.id,
+                                                    Time.utc(TileEpoch::MIN_YEAR).to_i,
+                                                    Time.utc(TileEpoch::MAX_YEAR).to_i)]
   end
 
   def tile_query
@@ -36,9 +33,13 @@ class Api::V1::Tiles::TracksController < ApiController
       x: params[:x],
       y: params[:y]
     }
+    if params[:import_id].present?
+      options[:clip_points_scope] = current_api_user.scoped_points.without_raw_data.not_anomaly
+      options[:clip_import_id] = params[:import_id]
+    end
     return Tracks::VectorTileQuery.new(**options) unless speed_coloring?
 
-    Tracks::SpeedVectorTileQuery.new(points_scope: current_api_user.scoped_points, **options)
+    Tracks::SpeedVectorTileQuery.new(points_scope: options[:clip_points_scope] || speed_points_scope, **options)
   end
 
   def speed_coloring?
@@ -47,6 +48,13 @@ class Api::V1::Tiles::TracksController < ApiController
 
   def filtered_tracks
     scope = current_api_user.scoped_tracks
+    if params[:import_id].present?
+      track_ids = current_api_user.scoped_points
+                                  .where(import_id: params[:import_id])
+                                  .where.not(track_id: nil)
+                                  .select(:track_id)
+      scope = scope.where(id: track_ids)
+    end
 
     start_at = safe_timestamp(params[:start_at]) if params[:start_at].present?
     end_at = safe_timestamp(params[:end_at]) if params[:end_at].present?
@@ -56,5 +64,12 @@ class Api::V1::Tiles::TracksController < ApiController
     # range edge still renders.
     scope.where('end_at >= ? AND start_at <= ?',
                 Time.zone.at(start_at || 0), Time.zone.at(end_at || Time.zone.now.to_i))
+  end
+
+  def speed_points_scope
+    scope = current_api_user.scoped_points
+    return scope if params[:import_id].blank?
+
+    scope.where(import_id: params[:import_id])
   end
 end

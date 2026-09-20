@@ -32,8 +32,10 @@ class Tracks::VectorTileQuery
   # nothing at coarse zoom is correct, matching the points quantization.
   SIMPLIFY_SKIP_ZOOM = 14
 
-  def initialize(scope:, z:, x:, y:) # rubocop:disable Naming/MethodParameterName
+  def initialize(scope:, z:, x:, y:, clip_points_scope: nil, clip_import_id: nil) # rubocop:disable Naming/MethodParameterName
     @scope = scope
+    @clip_points_scope = clip_points_scope
+    @clip_import_id = clip_import_id
     @z = parse_integer(z)
     @x = parse_integer(x)
     @y = parse_integer(y)
@@ -93,6 +95,8 @@ class Tracks::VectorTileQuery
   # does today (a world-spanning planar line) — translating the whole line
   # would move half its vertices wrongly.
   def with_clauses
+    return clipped_with_clauses if @clip_points_scope
+
     <<~SQL
       WITH features AS (
         SELECT #{property_columns},
@@ -107,6 +111,28 @@ class Tracks::VectorTileQuery
     SQL
   end
 
+  def clipped_with_clauses
+    <<~SQL
+      WITH candidates AS MATERIALIZED (
+        SELECT * FROM (#{tile_scope.to_sql}) AS tracks
+        WHERE ST_Intersects(tracks.original_path, ST_Transform(#{margined_envelope}, 4326))
+      ), features AS (
+        SELECT #{import_property_columns},
+          #{mvt_geom_expression('import_path.path')} AS geom
+        FROM candidates AS tracks
+        JOIN LATERAL (#{import_geometry_query.path_sql(track_id_sql: 'tracks.id')}) AS import_path
+          ON import_path.path IS NOT NULL
+        WHERE ST_Intersects(import_path.path, ST_Transform(#{margined_envelope}, 4326))
+        LIMIT #{TRACKS_PER_TILE_LIMIT}
+      )
+    SQL
+  end
+
+  def import_geometry_query
+    @import_geometry_query ||= Tracks::ImportGeometryQuery.new(points_scope: @clip_points_scope,
+                                                               import_id: @clip_import_id)
+  end
+
   # The exact scalar property set (keys AND types) of
   # Tracks::GeojsonSerializer#base_properties + dominant_mode fields, so JS
   # click/popup/animation flows are source-agnostic. mode_timeline/segments are
@@ -117,9 +143,32 @@ class Tracks::VectorTileQuery
       #{Track.sanitize_sql_array(['? AS color', Tracks::GeojsonSerializer::DEFAULT_COLOR])},
       to_char(tracks.start_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS start_at,
       to_char(tracks.end_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS end_at,
+      EXTRACT(EPOCH FROM tracks.start_at)::bigint AS start_timestamp,
+      EXTRACT(EPOCH FROM tracks.end_at)::bigint AS end_timestamp,
+      tracks.lock_version AS revision,
       tracks.distance AS distance,
       tracks.avg_speed AS avg_speed,
       tracks.duration AS duration,
+      #{mode_case_expression} AS dominant_mode,
+      #{emoji_case_expression} AS dominant_mode_emoji
+    SQL
+  end
+
+  def import_property_columns
+    <<~SQL.squish
+      tracks.id AS id,
+      #{Track.sanitize_sql_array(['? AS color', Tracks::GeojsonSerializer::DEFAULT_COLOR])},
+      to_char(to_timestamp(import_path.start_timestamp) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS start_at,
+      to_char(to_timestamp(import_path.end_timestamp) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS end_at,
+      import_path.start_timestamp,
+      import_path.end_timestamp,
+      tracks.lock_version AS revision,
+      ROUND(ST_Length(import_path.path::geography))::bigint AS distance,
+      CASE WHEN import_path.end_timestamp > import_path.start_timestamp THEN
+        ST_Length(import_path.path::geography) * 3.6 /
+          (import_path.end_timestamp - import_path.start_timestamp)
+      ELSE 0 END AS avg_speed,
+      import_path.end_timestamp - import_path.start_timestamp AS duration,
       #{mode_case_expression} AS dominant_mode,
       #{emoji_case_expression} AS dominant_mode_emoji
     SQL
@@ -140,12 +189,12 @@ class Tracks::VectorTileQuery
     "CASE tracks.dominant_mode #{whens.join(' ')} ELSE '❓' END"
   end
 
-  def mvt_geom_expression
-    "ST_AsMVTGeom(#{simplified_geom}, ST_TileEnvelope(#{z}, #{x}, #{y}), #{EXTENT}, #{BUFFER}, true)"
+  def mvt_geom_expression(geometry = 'tracks.original_path')
+    "ST_AsMVTGeom(#{simplified_geom(geometry)}, ST_TileEnvelope(#{z}, #{x}, #{y}), #{EXTENT}, #{BUFFER}, true)"
   end
 
-  def simplified_geom
-    geom = 'ST_Transform(tracks.original_path, 3857)'
+  def simplified_geom(geometry)
+    geom = "ST_Transform(#{geometry}, 3857)"
     return geom if z >= SIMPLIFY_SKIP_ZOOM
 
     "ST_Simplify(#{geom}, #{simplify_tolerance})"
@@ -164,7 +213,7 @@ class Tracks::VectorTileQuery
   def tile_scope
     scope.except(:select, :order, :includes, :preload, :eager_load)
          .select(:id, :start_at, :end_at, :distance, :avg_speed, :duration,
-                 :dominant_mode, :original_path)
+                 :dominant_mode, :original_path, :lock_version)
   end
 
   def with_statement_timeout

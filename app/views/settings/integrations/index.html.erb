@@ -34,6 +34,32 @@
             <%= integration_status_icon(@statuses.status(service)) %>
           <% end %>
         <% end %>
+
+        <% if DawarichSettings.self_hosted? %>
+          <div class="pt-2 mt-2 border-t border-base-content/10">
+            <% if current_user.admin? %>
+              <%= link_to admin_settings_path,
+                          class: 'flex items-center gap-3 rounded-box border border-base-content/10 p-3 transition-colors hover:border-base-content/25',
+                          data: { testid: 'integration-geocoding-moved' } do %>
+                <%= icon 'map-pin', class: 'size-5 shrink-0 text-base-content/70' %>
+                <span class="flex-1 min-w-0">
+                  <span class="block font-medium truncate"><%= t('.geocoding') %></span>
+                  <span class="block text-xs text-base-content/70"><%= t('.geocoding_moved_to_instance') %></span>
+                </span>
+                <%= icon 'arrow-right', class: 'size-4 shrink-0 text-base-content/50' %>
+              <% end %>
+            <% else %>
+              <div class="flex items-center gap-3 rounded-box border border-dashed border-base-content/10 p-3"
+                   data-testid="integration-geocoding-moved">
+                <%= icon 'map-pin', class: 'size-5 shrink-0 text-base-content/50' %>
+                <span class="flex-1 min-w-0">
+                  <span class="block font-medium truncate text-base-content/70"><%= t('.geocoding') %></span>
+                  <span class="block text-xs text-base-content/70"><%= t('.geocoding_managed_by_admin') %></span>
+                </span>
+              </div>
+            <% end %>
+          </div>
+        <% end %>
       </nav>
 
       <div class="flex-1 min-w-0 w-full">

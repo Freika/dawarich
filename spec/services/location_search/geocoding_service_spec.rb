@@ -178,15 +178,15 @@ RSpec.describe LocationSearch::GeocodingService do
     end
   end
 
-  describe 'user mode (no ENV)' do
+  describe 'instance provider routing' do
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+      use_real_geocoding_lookups
       allow(Geocoder).to receive(:search).and_call_original
       allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
     end
 
-    it 'uses the user provider for search and names it' do
-      create(:service_setting, :geoapify, :active, user: user)
+    it 'uses the instance provider for search and names it' do
+      configure_instance_geocoding(geoapify_api_key: 'test-geoapify-key')
       stub_request(:get, %r{https://api\.geoapify\.com/v1/geocode/search})
         .to_return(status: 200, body: { type: 'FeatureCollection', features: [] }.to_json,
                    headers: { 'Content-Type' => 'application/json' })
@@ -197,7 +197,7 @@ RSpec.describe LocationSearch::GeocodingService do
       expect(described_class.new('Leipzig', user: user).provider_name).to eq('Geoapify')
     end
 
-    it 'falls back to the default public lookup for unconfigured users' do
+    it 'falls back to the default public lookup when the instance has no provider' do
       stub_request(:get, /nominatim\.openstreetmap\.org/)
         .to_return(status: 200, body: '[]', headers: { 'Content-Type' => 'application/json' })
 

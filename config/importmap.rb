@@ -28,6 +28,7 @@ pin '@rails/actiontext', to: 'actiontext.esm.js'
 pin 'emoji-mart' # @5.6.0
 pin 'maplibre-gl' # @5.12.0
 pin 'fflate' # @0.8.2
+pin 'pmtiles', to: 'pmtiles.js' # @4.5.0, vendored for offline maps
 pin 'h3-js' # @4.4.0
 pin 'mp4-muxer' # @5.2.2
 

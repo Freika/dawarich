@@ -7,22 +7,10 @@ RSpec.describe 'Place search against a provider that rejects the request' do
   let(:lat) { 52.5126 }
   let(:lon) { 13.4012 }
 
-  around do |example|
-    original = Geocoder.config.to_hash.dup
-    Geocoder.configure(
-      lookup: :photon,
-      photon: { host: 'photon.test' },
-      use_https: false,
-      cache: nil
-    )
-    example.run
-  ensure
-    Geocoder::Configuration.instance.data = original
-  end
-
   before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-    allow(Geocoder).to receive(:search).and_call_original
+    configure_instance_geocoding(photon_api_host: 'photon.test')
+    use_real_geocoding_lookups
+    allow_any_instance_of(Geocoder::Lookup::Base).to receive(:cache).and_return(nil)
     allow(ExceptionReporter).to receive(:call)
     allow(Rails.logger).to receive(:warn)
 

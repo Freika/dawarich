@@ -13,10 +13,6 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
     end
 
     context 'when reverse geocoding is disabled' do
-      before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-      end
-
       let!(:point_without_geocoding) do
         create(:point, user: user, reverse_geocoded_at: nil)
       end
@@ -40,39 +36,23 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
       end
     end
 
-    context 'when geocoding runs on per-user settings' do
-      before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-      end
+    context 'when resolving the geocoding config' do
+      before { configure_instance_geocoding }
 
-      it 'resolves the geocoding config once per user, not per point' do
-        create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
-        create_list(:point, 3, user: user, reverse_geocoded_at: nil)
-        allow(Geocoding::Config).to receive(:for).and_call_original
-
-        described_class.perform_now
-
-        expect(Geocoding::Config).to have_received(:for).once
-      end
-
-      it 'resolves the config once per user across multiple users' do
+      it 'resolves the config once per run, not per user or per point' do
         other_user = create(:user)
-        create(:service_setting, :active, user: user, config: { 'host' => 'photon.mine.example.com' })
-        create(:service_setting, :active, user: other_user, config: { 'host' => 'photon.mine.example.com' })
         create_list(:point, 2, user: user, reverse_geocoded_at: nil)
         create_list(:point, 2, user: other_user, reverse_geocoded_at: nil)
-        allow(Geocoding::Config).to receive(:for).and_call_original
+        allow(Geocoding::Config).to receive(:resolved_config).and_call_original
 
         described_class.perform_now
 
-        expect(Geocoding::Config).to have_received(:for).twice
+        expect(Geocoding::Config).to have_received(:resolved_config).once
       end
     end
 
     context 'when reverse geocoding is enabled' do
-      before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-      end
+      before { configure_instance_geocoding }
 
       context 'with no points needing reverse geocoding' do
         let!(:geocoded_point) do
@@ -194,9 +174,7 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
     end
 
     describe 'error handling' do
-      before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-      end
+      before { configure_instance_geocoding }
 
       let!(:point_without_geocoding) do
         create(:point, user: user, reverse_geocoded_at: nil)
@@ -213,32 +191,30 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
       end
     end
 
-    context 'when only per-user settings enable geocoding (no ENV)' do
+    context 'when the environment pins a provider' do
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
+        ENV['PHOTON_API_HOST'] = 'photon.pinned.example.com'
+        InstanceSettings::Resolver.reset!
       end
 
-      let(:configured_user) { create(:user) }
-      let(:unconfigured_user) { create(:user) }
-
-      it 'enqueues geocoding only for points of configured users' do
-        create(:service_setting, :active, user: configured_user)
-        configured_point = create(:point, user: configured_user, reverse_geocoded_at: nil)
-        unconfigured_point = create(:point, user: unconfigured_user, reverse_geocoded_at: nil)
+      it 'enqueues geocoding for the points of every user' do
+        other_user = create(:user)
+        point = create(:point, user: user, reverse_geocoded_at: nil)
+        other_point = create(:point, user: other_user, reverse_geocoded_at: nil)
 
         described_class.perform_now
 
-        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', configured_point.id, force: true)
-        expect(ReverseGeocodingJob).not_to have_been_enqueued.with('Point', unconfigured_point.id, force: true)
+        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', point.id, force: true)
+        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', other_point.id, force: true)
       end
+    end
 
-      it 'returns early when nobody has an active setting' do
-        create(:point, user: unconfigured_user, reverse_geocoded_at: nil)
-        allow(Point).to receive(:not_reverse_geocoded)
+    context 'when only a per-user geocoding setting exists' do
+      it 'does not enqueue geocoding' do
+        create(:service_setting, :active, user: user)
+        create(:point, user: user, reverse_geocoded_at: nil)
 
-        described_class.perform_now
-
-        expect(Point).not_to have_received(:not_reverse_geocoded)
+        expect { described_class.perform_now }.not_to have_enqueued_job(ReverseGeocodingJob)
       end
     end
   end
