@@ -14,6 +14,7 @@
       "!!**/vendor",
       "!!app/assets/builds",
       "!!app/assets/stylesheets/maplibre-gl.css",
+      "!!public/maplibre/**",
       "!!app/javascript/posthog.js",
       "!!spec/fixtures/files/**"
     ]
