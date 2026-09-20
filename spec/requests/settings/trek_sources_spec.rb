@@ -10,6 +10,19 @@ RSpec.describe 'Settings::TrekSources', type: :request do
     allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
   end
 
+  it 'shows the disconnect action while selected trips are importing' do
+    source = create(:trip_source, user:, importing: true)
+
+    get settings_integrations_path(service: 'trek')
+
+    expect(response).to have_http_status(:ok)
+    document = Nokogiri::HTML(response.body)
+    form = document.at_css("form[action='#{settings_trek_source_path(source)}']")
+    expect(form).to be_present
+    expect(form.at_css("input[name='_method'][value='delete']")).to be_present
+    expect(form.at_css('button').text).to include('Disconnect')
+  end
+
   describe 'POST /settings/trek_sources' do
     it 'verifies a source before saving it and then asks the user to choose trips' do
       stub_request(:get, 'https://trek.example.test/api/v1/trips')

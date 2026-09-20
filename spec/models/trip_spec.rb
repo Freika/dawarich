@@ -242,6 +242,72 @@ RSpec.describe Trip, type: :model do
     end
   end
 
+  describe 'device handoffs' do
+    let(:user) { create(:user) }
+    let(:trip) { create(:trip, user:, started_at: Time.utc(2026, 1, 1), ended_at: Time.utc(2026, 1, 5)) }
+
+    def recorded_point(device, hour, longitude)
+      create(:point, user:, tracker_id: device, timestamp: trip.started_at.to_i + hour.hours,
+                     lonlat: "POINT(#{longitude} 52)")
+    end
+
+    it 'keeps both remainders when recordings share their handoff timestamp' do
+      first = [recorded_point('phone', 1, 13), recorded_point('phone', 2, 13.01), recorded_point('phone', 3, 13.02)]
+      recorded_point('watch', 3, 14)
+      last = recorded_point('watch', 4, 13.03)
+
+      trip.calculate_path
+      trip.calculate_distance
+
+      expect(trip.primary_device_points.pluck(:id)).to eq(first.map(&:id) + [last.id])
+      expected_windows = [
+        { tracker_id: 'phone', start_at: first.first.timestamp, end_at: first.last.timestamp },
+        { tracker_id: 'watch', start_at: first.last.timestamp + 1, end_at: last.timestamp }
+      ]
+      expect(trip.primary_device_windows).to eq(expected_windows)
+      expect(trip.path.points.map(&:x)).to eq([13, 13.01, 13.02, 13.03])
+      expect(trip.distance).to be_within(1).of(Point.total_distance(first + [last], :m))
+    end
+
+    it 'keeps unique days before and after a busier device records' do
+      early = recorded_point('watch', 1, 13)
+      recorded_point('watch', 25, 14)
+      late = recorded_point('watch', 73, 13.04)
+      primary = [recorded_point('phone', 24, 13.01), recorded_point('phone', 25, 13.02),
+                 recorded_point('phone', 26, 13.03), recorded_point('phone', 27, 13.035)]
+
+      trip.calculate_path
+      trip.calculate_distance
+      expected = [early] + primary + [late]
+
+      expect(trip.primary_device_points.pluck(:id)).to eq(expected.map(&:id))
+      expect(trip.path.points.map(&:x)).to eq([13, 13.01, 13.02, 13.03, 13.035, 13.04])
+      expect(trip.distance).to be_within(1).of(Point.total_distance(expected, :m))
+      expect(trip.day_stats('UTC').keys).to contain_exactly(Date.new(2026, 1, 1), Date.new(2026, 1, 2),
+                                                            Date.new(2026, 1, 4))
+    end
+
+    it 'uses source dimensions when selecting overlapping recordings' do
+      first = recorded_point('legacy-phone', 1, 13)
+      second = recorded_point('legacy-phone', 2, 13.01)
+      source = PointSource.create!(digest: SecureRandom.hex(16), tracker_id: 'phone')
+      Point.where(id: [first.id, second.id]).update_all(source_id: source.id)
+      recorded_point('watch', 2, 14)
+      last = recorded_point('watch', 3, 13.02)
+
+      expect(trip.primary_device_points.pluck(:id)).to eq([first.id, second.id, last.id])
+    end
+
+    it 'combines unnamed recordings and prefers a named device on a tie' do
+      recorded_point(nil, 1, 14)
+      recorded_point('', 3, 14.02)
+      first = recorded_point('phone', 1, 13)
+      last = recorded_point('phone', 3, 13.02)
+
+      expect(trip.primary_device_points.pluck(:id)).to eq([first.id, last.id])
+    end
+  end
+
   describe 'Calculateable concern' do
     let(:user) { create(:user) }
     let(:trip) { create(:trip, user: user) }
@@ -284,7 +350,9 @@ RSpec.describe Trip, type: :model do
       end
 
       before do
-        points.each { |point| point.update!(tracker_id: 'watch') }
+        points.each_with_index do |point, i|
+          point.update!(tracker_id: 'watch', timestamp: trip.started_at.to_i + 5.hours + ((i + 1) * 5.minutes))
+        end
         berlin_phone
         create(:point, user:, tracker_id: 'watch', lonlat: 'POINT(12.38 51.34)',
                        timestamp: trip.started_at.to_i + 5.hours + 5.minutes)
@@ -303,7 +371,7 @@ RSpec.describe Trip, type: :model do
       end
 
       it 'names the devices worth following' do
-        expect(trip.primary_tracker_ids).to eq(['phone'])
+        expect(trip.primary_device_windows.map { |window| window[:tracker_id] }.uniq).to eq(['phone'])
       end
 
       it 'measures each day along the primary device only' do
@@ -323,7 +391,8 @@ RSpec.describe Trip, type: :model do
       end
 
       it 'keeps every device whose recording does not overlap another' do
-        expect(trip.primary_tracker_ids).to contain_exactly('gpx-trk-0-seg-0', 'gpx-trk-0-seg-1')
+        tracker_ids = trip.primary_device_windows.pluck(:tracker_id).uniq
+        expect(tracker_ids).to contain_exactly('gpx-trk-0-seg-0', 'gpx-trk-0-seg-1')
       end
 
       it 'builds the path from both of them' do

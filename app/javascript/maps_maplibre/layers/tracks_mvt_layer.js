@@ -1,4 +1,4 @@
-import { bumpTileVersion } from "../utils/tile_freshness"
+import { bumpTileVersion } from "maps_maplibre/utils/tile_freshness"
 import { BaseLayer, isAbortedRequest } from "./base_layer"
 
 // FNV-1a over the api key: a non-secret cache partitioner keying URL-based

@@ -290,6 +290,7 @@ export class MapEditor {
   }
 
   _afterMove(response, sessionVersion, pointId) {
+    this.layerManager.controller?.mapDataManager?.invalidatePoints()
     const isCurrentSession = sessionVersion === this.sessionVersion
     if (isCurrentSession) this.applyCanonical(response, { rejectStale: true })
     this.layerManager.getLayer("points-mvt")?.refresh()
@@ -313,7 +314,10 @@ export class MapEditor {
 
     const point = this._point(canonicalPoint.id)
     if (point) Object.assign(point, pointFeature(canonicalPoint, this.trackId))
-    if (canonicalTrack) {
+    if (
+      canonicalTrack &&
+      Number(canonicalTrack.properties.id) === this.trackId
+    ) {
       const track = this._track()
       if (track) {
         track.geometry = clone(canonicalTrack.geometry)
@@ -336,6 +340,8 @@ export class MapEditor {
   }
 
   applyRealtime(response) {
+    if (!this.data) return false
+
     const responseTrackId = response.track?.properties?.id
     const sameTrack =
       responseTrackId != null && Number(responseTrackId) === this.trackId

@@ -9,7 +9,8 @@ class Trip < ApplicationRecord
   RECALCULATE_COOLDOWN = 60.seconds
   # A stamped point reads its device from point_sources exclusively; the
   # legacy column serves unstamped rows (see PointDimensionReads).
-  DEVICE_SQL = 'CASE WHEN points.source_id IS NULL THEN points.tracker_id ELSE point_sources.tracker_id END'
+  DEVICE_SQL = 'COALESCE(CASE WHEN points.source_id IS NULL THEN points.tracker_id ' \
+               "ELSE point_sources.tracker_id END, '')"
 
   has_rich_text :description
 
@@ -49,21 +50,8 @@ class Trip < ApplicationRecord
     user.points.not_anomaly.where(timestamp: started_at.to_i..ended_at.to_i).order(:timestamp)
   end
 
-  # Devices recording at the same time are separate paths, so the trip line,
-  # its distance and its day routes follow the busiest of them. Devices that
-  # never recorded at the same time are consecutive parts of one journey —
-  # GPX segments, imported activities, a swapped phone — and all are kept.
-  def primary_tracker_ids
-    @primary_tracker_ids ||= begin
-      windows = device_windows
-      kept = []
-      windows.each do |device, first, last|
-        next if kept.any? { |_, other_first, other_last| first <= other_last && other_first <= last }
-
-        kept << [device, first, last]
-      end
-      kept.map(&:first)
-    end
+  def primary_device_windows
+    @primary_device_windows ||= build_primary_device_windows
   end
 
   def plan_geojson
@@ -90,9 +78,13 @@ class Trip < ApplicationRecord
 
   def primary_device_points
     scope = points.left_joins(:source)
-    return scope if primary_tracker_ids.size == device_windows.size
+    return scope if device_windows.size <= 1
 
-    scope.where("COALESCE(#{DEVICE_SQL}, '') IN (?)", primary_tracker_ids.map(&:to_s))
+    condition = "(#{DEVICE_SQL} = ? AND points.timestamp BETWEEN ? AND ?)"
+    conditions = primary_device_windows.map do |window|
+      self.class.sanitize_sql_array([condition, window[:tracker_id], window[:start_at], window[:end_at]])
+    end
+    scope.where(conditions.join(' OR '))
   end
 
   def photo_previews
@@ -120,11 +112,42 @@ class Trip < ApplicationRecord
 
   private
 
+  def build_primary_device_windows
+    events = device_windows.each_with_index.flat_map do |(_, first, last), priority|
+      [[first, priority, true], [last + 1, priority, false]]
+    end.group_by(&:first).sort
+    active = []
+    windows = []
+
+    events.each_cons(2) do |(timestamp, changes), (next_timestamp, _)|
+      changes.each do |_, priority, starting|
+        if starting
+          index = active.bsearch_index { |existing| existing > priority } || active.size
+          active.insert(index, priority)
+        else
+          active.delete(priority)
+        end
+      end
+      append_device_window(windows, active.first, timestamp, next_timestamp - 1) if active.any?
+    end
+    windows
+  end
+
+  def append_device_window(windows, priority, start_at, end_at)
+    tracker_id = device_windows[priority].first
+    previous = windows.last
+    if previous && previous[:tracker_id] == tracker_id && previous[:end_at] + 1 == start_at
+      previous[:end_at] = end_at
+    else
+      windows << { tracker_id:, start_at:, end_at: }
+    end
+  end
+
   # Every device in the trip with the window it recorded in, busiest first.
   def device_windows
     @device_windows ||= points.reorder(nil).left_joins(:source)
                               .group(Arel.sql(DEVICE_SQL))
-                              .order(Arel.sql('COUNT(*) DESC'), Arel.sql("#{DEVICE_SQL} NULLS LAST"))
+                              .order(Arel.sql('COUNT(*) DESC'), Arel.sql("NULLIF(#{DEVICE_SQL}, '') NULLS LAST"))
                               .pluck(
                                 Arel.sql(DEVICE_SQL),
                                 Arel.sql('MIN(points.timestamp)'),

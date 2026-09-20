@@ -11,7 +11,7 @@
      data-trip-maplibre-trip-id-value="<%= @trip.id %>"
      data-trip-maplibre-trip-name-value="<%= @trip.name %>"
      data-trip-maplibre-path-data-value="<%= @trip.path&.coordinates&.to_json %>"
-     data-trip-maplibre-tracker-ids-value="<%= @trip.primary_tracker_ids.to_json %>"
+     data-trip-maplibre-device-windows-value="<%= @trip.primary_device_windows.to_json %>"
      <% if plan_toggle %>data-trip-maplibre-plan-value="<%= @trip_plan.to_json %>"<% end %>
      data-trip-maplibre-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
 

@@ -64,7 +64,7 @@ export default class extends Controller {
     tripId: Number,
     tripName: String,
     pathData: String,
-    trackerIds: Array,
+    deviceWindows: Array,
     plan: String,
     mapStyle: { type: String, default: "light" },
   }
@@ -211,7 +211,7 @@ export default class extends Controller {
       })
       const allPoints = pointsFromDevice(
         fetchedPoints || [],
-        this.trackerIdsValue,
+        this.deviceWindowsValue,
       )
 
       if (!allPoints?.length) {
