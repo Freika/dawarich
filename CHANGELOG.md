@@ -4,25 +4,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
-
-### Fixed
-
-- Trip routes and distances retain recordings made by another device during a handoff or a recording gap. For previously calculated trips affected by this issue, press Recalculate on the trip page to update the saved route and distance.
-- Trip day statistics refresh after changing the track time-gap setting. Recalculate affected trips to update their saved routes and distances.
-- Undoing or redoing a point move no longer replaces a different selected track.
-- Undo and redo remain consistent when another point move is still saving.
-- Changing the map style no longer leaves duplicate or active controls from a discarded edit history.
-- Live map edits continue updating the map after the editor selection is closed.
-- Point and track tiles refresh immediately after a point moves instead of displaying cached positions.
-- Replay and Video Studio reload location data after point edits, deletions and newly recorded live locations. Loading completes even while live recording continues.
-- Saved point moves no longer report a timeout when cache updates after saving are slow.
-- Profile backups restore TREK plans without linking trips to another account's source or skipping unrelated trips.
-- Accounts connected to TREK can be permanently deleted along with their planned itineraries.
-- The TREK Disconnect button remains available while trips are importing.
-- Instance settings clarify that disabling immediate geocoding does not stop scheduled lookups.
-
-## [1.15.0] - 2026-09-18, Berlin
+## [1.15.0] - 2026-09-20, Berlin
 
 ### Added
 
@@ -45,7 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- A trip recorded by several devices at once no longer zigzags between them: its line, distance and day routes follow the busiest of the devices that were recording at the same time. Devices that recorded one after another — GPX segments, imported activities, a phone swapped mid-trip — all stay on the trip.
+- A trip recorded by several devices at once no longer zigzags between them: its line, distance and day routes follow the busiest of the devices that were recording at the same time. Devices that recorded one after another — GPX segments, imported activities, a phone swapped mid-trip — all stay on the trip. For trips calculated before this release, press Recalculate on the trip page to update the saved route and distance.
 - Undoing a point move after leaving the map selection no longer reports a failure for a move that went through.
 - A TREK source no longer stays stuck on "still importing" when an import fails unexpectedly, and it can be disconnected while it is importing.
 - One TREK trip that the server describes with an invalid payload no longer stops the scheduled sync of every other trip on that source.
@@ -66,6 +48,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Clicking a track on the map keeps the camera on that track instead of zooming out to every track of its day.
 - The map's loading indicator no longer stays on after clicking a track.
 - The selected track's flowing highlight moves at a steady, calmer speed at every zoom level.
+- Trip day statistics refresh after changing the track time-gap setting. Recalculate affected trips to update their saved routes and distances.
+- Undoing or redoing a point move no longer replaces a different selected track.
+- Undo and redo remain consistent when another point move is still saving.
+- Changing the map style no longer leaves duplicate or active controls from a discarded edit history.
+- Live map edits continue updating the map after the editor selection is closed.
+- Point and track tiles refresh immediately after a point moves instead of displaying cached positions.
+- Replay and Video Studio reload location data after point edits, deletions and newly recorded live locations. Loading completes even while live recording continues.
+- Saved point moves no longer report a timeout when cache updates after saving are slow.
+- Profile backups restore TREK plans without linking trips to another account's source or skipping unrelated trips.
+- Accounts connected to TREK can be permanently deleted along with their planned itineraries.
+- Instance settings clarify that disabling immediate geocoding does not stop scheduled lookups.
 
 ## [1.14.5] - 2026-09-13, Berlin
 
