@@ -48,11 +48,11 @@ fr:
           geoapify_api_key: "Clé d'API"
           locationiq_api_key: "Clé d'API"
           reverse_geocoding_rps: "Requêtes par seconde"
-          store_geodata: "Géocoder les nouveaux points"
+          store_geodata: "Géocoder immédiatement les nouveaux points"
           host_hint: "Nom d'hôte avec port facultatif, par ex. photon.example.com:2322"
           rps_hint: "Laissez vide pour ne pas limiter. Indiquez ce que votre serveur ou votre offre autorise."
           api_key_keep_hint: "Laissez vide pour conserver la clé enregistrée."
-          store_geodata_hint: "Recherche la ville et le pays de chaque nouveau point et enregistre le résultat. Désactivé, les nouveaux points ne gardent que leurs coordonnées."
+          store_geodata_hint: "Recherche la ville et le pays à l’ajout de nouveaux points. Les recherches nocturnes continuent si un fournisseur est configuré, même lorsque cette option est désactivée."
       update:
         saved: "Paramètres enregistrés."
         pinned: "Refusé : fixé par %{variables}."
@@ -1770,7 +1770,7 @@ fr:
         track_split_distance: Distance entre les trajets
         track_split_distance_hint: Commencer un nouveau trajet lorsque deux points successifs sont plus éloignés.
         track_split_time: Temps entre les trajets
-        track_split_time_hint: Commencer un nouveau trajet lorsque l'intervalle entre deux points est plus long.
+        track_split_time_hint: "Les intervalles plus longs créent un nouveau trajet et permettent aux voyages d’utiliser l’enregistrement d’un autre appareil. Après modification, choisissez « Recalculer » sur chaque voyage concerné pour actualiser le parcours et la distance enregistrés."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Masquer les
           lectures qui ne peuvent pas correspondre à une position réelle — sauts
           impossibles, coordonnées invalides. Désactivez cette option pour voir tous

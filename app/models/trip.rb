@@ -78,13 +78,19 @@ class Trip < ApplicationRecord
 
   def primary_device_points
     scope = points.left_joins(:source)
-    return scope if device_windows.size <= 1
+    return scope if device_windows.map(&:first).uniq.size <= 1
 
-    condition = "(#{DEVICE_SQL} = ? AND points.timestamp BETWEEN ? AND ?)"
-    conditions = primary_device_windows.map do |window|
-      self.class.sanitize_sql_array([condition, window[:tracker_id], window[:start_at], window[:end_at]])
+    windows = primary_device_windows.map do |window|
+      self.class.sanitize_sql_array(['(?, ?::bigint, ?::bigint)',
+                                     window[:tracker_id], window[:start_at], window[:end_at]])
     end
-    scope.where(conditions.join(' OR '))
+    scope.where(<<~SQL.squish)
+      EXISTS (
+        SELECT 1 FROM (VALUES #{windows.join(', ')}) AS recording_windows(tracker_id, start_at, end_at)
+        WHERE recording_windows.tracker_id = #{DEVICE_SQL}
+          AND points.timestamp BETWEEN recording_windows.start_at AND recording_windows.end_at
+      )
+    SQL
   end
 
   def photo_previews
@@ -143,16 +149,31 @@ class Trip < ApplicationRecord
     end
   end
 
-  # Every device in the trip with the window it recorded in, busiest first.
   def device_windows
-    @device_windows ||= points.reorder(nil).left_joins(:source)
-                              .group(Arel.sql(DEVICE_SQL))
-                              .order(Arel.sql('COUNT(*) DESC'), Arel.sql("NULLIF(#{DEVICE_SQL}, '') NULLS LAST"))
-                              .pluck(
-                                Arel.sql(DEVICE_SQL),
-                                Arel.sql('MIN(points.timestamp)'),
-                                Arel.sql('MAX(points.timestamp)')
-                              )
+    @device_windows ||= begin
+      scope = points.reorder(nil).left_joins(:source)
+                    .select("points.id, points.timestamp, #{DEVICE_SQL} AS tracker_id")
+      gap_seconds = user.safe_settings.minutes_between_routes * 60
+
+      self.class.connection.select_rows(<<~SQL.squish)
+        WITH ordered_points AS (
+          SELECT id, timestamp, tracker_id,
+            LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp, id) AS previous_timestamp
+          FROM (#{scope.to_sql}) AS recordings
+        ), sessions AS (
+          SELECT timestamp, tracker_id,
+            SUM(CASE WHEN previous_timestamp IS NULL OR timestamp - previous_timestamp > #{gap_seconds}
+                     THEN 1 ELSE 0 END)
+              OVER (PARTITION BY tracker_id ORDER BY timestamp, id ROWS UNBOUNDED PRECEDING) AS session_number
+          FROM ordered_points
+        )
+        SELECT tracker_id, MIN(timestamp), MAX(timestamp)
+        FROM sessions
+        GROUP BY tracker_id, session_number
+        ORDER BY SUM(COUNT(*)) OVER (PARTITION BY tracker_id) DESC,
+                 NULLIF(tracker_id, '') NULLS LAST, MIN(timestamp)
+      SQL
+    end
   end
 
   def path_coordinates

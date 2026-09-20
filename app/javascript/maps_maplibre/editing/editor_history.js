@@ -24,6 +24,7 @@ export class EditorHistory {
   }
 
   record(move, response) {
+    if (this.editor.disposed) return
     this.closed = false
     this.history.record(move, response)
   }
@@ -48,16 +49,41 @@ export class EditorHistory {
   sync() {
     const { map, editable } = this.editor
     const { entries, undone } = this.history
-    const shown = editable && !this.closed && entries.length + undone.length > 0
+    const busy =
+      this.history.busy ||
+      this.editor.mutationState.busy ||
+      this.editor.draggedPointId != null
+    const shown =
+      editable &&
+      !this.editor.disposed &&
+      !this.closed &&
+      entries.length + undone.length > 0
     if (shown && !this.panel.container)
       map.addControl?.(this.panel, "bottom-left")
     else if (!shown && this.panel.container) map.removeControl?.(this.panel)
-    this.panel.render(this.history)
+    this.panel.render({
+      entries,
+      undone,
+      size: this.history.size,
+      limit: this.history.limit,
+      busy,
+      canUndo: this.history.canUndo && !busy,
+      canRedo: this.history.canRedo && !busy,
+    })
   }
 
   async _run(step) {
     const editor = this.editor
+    if (
+      editor.disposed ||
+      !editor.editable ||
+      editor.mutationState.busy ||
+      editor.draggedPointId != null
+    )
+      return
     const sessionVersion = editor.sessionVersion
+    editor.mutationState.busy = true
+    this.sync()
     try {
       await step()
     } catch (error) {
@@ -78,6 +104,9 @@ export class EditorHistory {
             : "messages.failed_to_update_point_position_please_try_again",
         ),
       )
+    } finally {
+      editor.mutationState.busy = false
+      this.sync()
     }
   }
 

@@ -362,6 +362,32 @@ RSpec.describe '/trips', type: :request do
       expect(Geocoder::Calculations).not_to have_received(:distance_between)
     end
 
+    it 'refreshes cached day stats when the recording gap setting changes' do
+      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+      user.update!(settings: user.settings.merge('minutes_between_routes' => 60, 'timezone' => 'UTC'))
+      recorded_trip = create(:trip, user:, started_at: Time.utc(2026, 1, 1, 23), ended_at: Time.utc(2026, 1, 3))
+      midnight = Time.utc(2026, 1, 2)
+      { 'phone' => [-10, 30, 35, 40], 'watch' => [5, 10] }.each do |device, minutes|
+        minutes.each do |minute|
+          create(:point, user:, tracker_id: device, timestamp: (midnight + minute.minutes).to_i,
+                         latitude: 52, longitude: 13 + minute * 0.001)
+        end
+      end
+
+      get trip_url(recorded_trip)
+
+      day = Nokogiri::HTML(response.body).at_css("details[data-day-key='2026-01-02'] summary")
+      expect(day.text).to include('00:30')
+      expect(day.text).not_to include('00:05')
+
+      user.update!(settings: user.settings.merge('minutes_between_routes' => 10))
+      get trip_url(recorded_trip)
+
+      day = Nokogiri::HTML(response.body).at_css("details[data-day-key='2026-01-02'] summary")
+      expect(day.text).to include('00:05')
+      expect(day.text).not_to include('00:30')
+    end
+
     context 'when the user timezone is not UTC' do
       before { user.update!(settings: user.settings.merge('timezone' => 'Europe/Berlin')) }
 

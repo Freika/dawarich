@@ -22,6 +22,8 @@ export class MapDataManager {
     this.filterManager = controller.filterManager
     this.eventHandlers = controller.eventHandlers
     this._pointsGeneration = 0
+    this._pointsArrivalGeneration = 0
+    this._pointsStale = false
   }
 
   /**
@@ -213,7 +215,7 @@ export class MapDataManager {
   async ensurePointsLoaded() {
     let generation
     do {
-      if (this.lastLoadedData?.points?.length > 0) return
+      if (!this._pointsStale && this.lastLoadedData?.points?.length > 0) return
       generation = this._pointsGeneration
       if (!this._pointsLoadPromise) {
         const promise = this._loadPoints()
@@ -228,7 +230,12 @@ export class MapDataManager {
     } while (generation !== this._pointsGeneration)
   }
 
-  invalidatePoints() {
+  invalidatePoints({ appendOnly = false } = {}) {
+    this._pointsStale = true
+    if (appendOnly) {
+      this._pointsArrivalGeneration += 1
+      return
+    }
     this._pointsGeneration += 1
     this._pointsLoadPromise = null
     if (!this.lastLoadedData) return
@@ -250,20 +257,28 @@ export class MapDataManager {
         isComplete: false,
       })
 
-      const { points, pointsGeoJSON } = await this.dataLoader.fetchPointsData(
-        this.controller.startDateValue,
-        this.controller.endDateValue,
-      )
-      if (!isCurrent()) return
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        const arrivalGeneration = this._pointsArrivalGeneration
+        const { points, pointsGeoJSON } = await this.dataLoader.fetchPointsData(
+          this.controller.startDateValue,
+          this.controller.endDateValue,
+        )
+        if (!isCurrent()) return
 
-      if (!this.lastLoadedData) this.lastLoadedData = {}
-      this.lastLoadedData.points = points
-      this.lastLoadedData.pointsGeoJSON = pointsGeoJSON
+        const stale = arrivalGeneration !== this._pointsArrivalGeneration
+        if (stale && attempt === 0) continue
 
-      this.controller.updateLoadingCounts({
-        counts: { points: points.length },
-        isComplete: true,
-      })
+        if (!this.lastLoadedData) this.lastLoadedData = {}
+        this.lastLoadedData.points = points
+        this.lastLoadedData.pointsGeoJSON = pointsGeoJSON
+        this._pointsStale = stale
+
+        this.controller.updateLoadingCounts({
+          counts: { points: points.length },
+          isComplete: true,
+        })
+        return
+      }
     } finally {
       if (
         loadGeneration === this._loadGeneration &&

@@ -49,11 +49,11 @@ zh:
           geoapify_api_key: "API 密钥"
           locationiq_api_key: "API 密钥"
           reverse_geocoding_rps: "每秒请求数"
-          store_geodata: "对新轨迹点进行地理编码"
+          store_geodata: "立即对新轨迹点进行地理编码"
           host_hint: "仅主机名，可附带端口，例如 photon.example.com:2322"
           rps_hint: "留空表示不限制。请设置为您的服务器或套餐允许的值。"
           api_key_keep_hint: "留空则保留已保存的密钥。"
-          store_geodata_hint: "查询每个新轨迹点所在的城市和国家并保存结果。关闭后，新轨迹点只保留坐标。"
+          store_geodata_hint: "添加新轨迹点时查询所在城市和国家。只要配置了地理编码服务，关闭此选项后仍会在夜间进行查询。"
       update:
         saved: "设置已保存。"
         pinned: "已拒绝：由 %{variables} 固定。"
@@ -1063,7 +1063,7 @@ zh:
         track_split_distance: 轨迹之间的距离间隔
         track_split_distance_hint: 连续点之间的距离超过此值时开始新轨迹。
         track_split_time: 轨迹之间的时间间隔
-        track_split_time_hint: 连续点之间的时间超过此值时开始新轨迹。
+        track_split_time_hint: "超过此间隔会开始新轨迹，并允许行程使用另一台设备的记录。修改后，请在受影响的行程页面点击“重新计算”，以更新已保存的路线和距离。"
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: 隐藏不可能为真实位置的读数 — 如不可能的跳跃、损坏的坐标。禁用后显示每个原始轨迹点。
         re_evaluate_past_data: 重新评估过去的数据
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: 清除现有异常标记，并使用当前设置对所有轨迹点重新运行过滤器。之后将重建轨迹、统计数据和摘要，整个过程在后台运行。
