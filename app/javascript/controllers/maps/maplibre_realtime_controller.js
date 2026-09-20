@@ -172,6 +172,7 @@ export default class extends Controller {
     const mapsController = this.mapsV2Controller
     if (!mapsController) return
 
+    mapsController.mapDataManager?.invalidatePoints()
     const editor = mapsController.layerManager?.getLayer("map-editor")
     editor?.applyRealtime(event.data)
     mapsController.layerManager?.getLayer("points-mvt")?.refresh()

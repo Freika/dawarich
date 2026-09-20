@@ -21,6 +21,7 @@ export class MapDataManager {
     this.layerManager = controller.layerManager
     this.filterManager = controller.filterManager
     this.eventHandlers = controller.eventHandlers
+    this._pointsGeneration = 0
   }
 
   /**
@@ -210,21 +211,38 @@ export class MapDataManager {
    * Deduplicates concurrent calls via a shared promise.
    */
   async ensurePointsLoaded() {
-    if (this.lastLoadedData?.points?.length > 0) return
-    if (!this._pointsLoadPromise) {
-      const promise = this._loadPoints()
-      this._pointsLoadPromise = promise
-      const clearPending = () => {
-        if (this._pointsLoadPromise === promise) this._pointsLoadPromise = null
+    let generation
+    do {
+      if (this.lastLoadedData?.points?.length > 0) return
+      generation = this._pointsGeneration
+      if (!this._pointsLoadPromise) {
+        const promise = this._loadPoints()
+        this._pointsLoadPromise = promise
+        const clearPending = () => {
+          if (this._pointsLoadPromise === promise)
+            this._pointsLoadPromise = null
+        }
+        void promise.then(clearPending, clearPending)
       }
-      void promise.then(clearPending, clearPending)
-    }
-    return this._pointsLoadPromise
+      await this._pointsLoadPromise
+    } while (generation !== this._pointsGeneration)
+  }
+
+  invalidatePoints() {
+    this._pointsGeneration += 1
+    this._pointsLoadPromise = null
+    if (!this.lastLoadedData) return
+    this.lastLoadedData.points = []
+    this.lastLoadedData.pointsGeoJSON = EMPTY_GEOJSON
   }
 
   /** Fetch exact points only for explicit bounded consumers such as replay. */
   async _loadPoints() {
     const loadGeneration = this._loadGeneration
+    const pointsGeneration = this._pointsGeneration
+    const isCurrent = () =>
+      loadGeneration === this._loadGeneration &&
+      pointsGeneration === this._pointsGeneration
     try {
       this.controller.showProgress()
       this.controller.updateLoadingCounts({
@@ -236,7 +254,7 @@ export class MapDataManager {
         this.controller.startDateValue,
         this.controller.endDateValue,
       )
-      if (loadGeneration !== this._loadGeneration) return
+      if (!isCurrent()) return
 
       if (!this.lastLoadedData) this.lastLoadedData = {}
       this.lastLoadedData.points = points
@@ -247,7 +265,11 @@ export class MapDataManager {
         isComplete: true,
       })
     } finally {
-      if (loadGeneration === this._loadGeneration)
+      if (
+        loadGeneration === this._loadGeneration &&
+        (pointsGeneration === this._pointsGeneration ||
+          !this._pointsLoadPromise)
+      )
         this.controller.hideProgress()
     }
   }

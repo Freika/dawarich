@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Trip routes and distances retain unique portions of recordings when devices overlap briefly during a handoff. For previously calculated trips affected by this issue, press Recalculate on the trip page to update the saved route and distance.
+- Undoing or redoing a point move no longer replaces a different selected track.
+- Live map edits continue updating the map after the editor selection is closed.
+- Point and track tiles refresh immediately after a point moves instead of displaying cached positions.
+- Replay and Video Studio reload location data after point edits and deletions.
+- Saved point moves no longer report a timeout when cache updates after saving are slow.
+- Profile backups restore TREK plans without linking trips to another account's source or skipping unrelated trips.
+- Accounts connected to TREK can be permanently deleted along with their planned itineraries.
+- The TREK Disconnect button remains available while trips are importing.
+
 ## [1.15.0] - 2026-09-18, Berlin
 
 ### Added

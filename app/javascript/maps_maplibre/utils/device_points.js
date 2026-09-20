@@ -1,8 +1,22 @@
-// Devices recording at the same time trace separate paths; drawing them as
-// one line zigzags between them. The server names the devices to follow;
-// consecutive devices — GPX segments, imported activities — are all named.
-export function pointsFromDevice(points, trackerIds) {
-  const devices = new Set((trackerIds || []).map((id) => id || null))
-  if (!devices.size) return points
-  return points.filter((point) => devices.has(point.tracker_id || null))
+export function pointsFromDevice(points, windows) {
+  if (!windows?.length) return points
+
+  return points.filter((point) => {
+    const timestamp = Number(point.timestamp)
+    let start = 0
+    let end = windows.length - 1
+
+    while (start <= end) {
+      const index = Math.floor((start + end) / 2)
+      const window = windows[index]
+      if (timestamp < window.start_at) {
+        end = index - 1
+      } else if (timestamp > window.end_at) {
+        start = index + 1
+      } else {
+        return (point.tracker_id || "") === (window.tracker_id || "")
+      }
+    }
+    return false
+  })
 }

@@ -737,7 +737,10 @@ test("undo after the editor closed moves the point without throwing", async () =
   })
 
   await editor.selectTrack(10)
-  editor.onMouseDown({ features: [{ properties: { id: 1 } }], preventDefault() {} })
+  editor.onMouseDown({
+    features: [{ properties: { id: 1 } }],
+    preventDefault() {},
+  })
   editor.onMouseMove({ lngLat: { lng: 1, lat: 1 } })
   await editor.onMouseUp({ lngLat: { lng: 1, lat: 1 } })
   editor.close()
@@ -1113,4 +1116,117 @@ test("closing the edit history panel hides it until the next move", async () => 
 
   await move(2)
   assert.deepEqual(controls, ["shown", "hidden", "shown"])
+})
+
+test("undo and redo preserve a different selected track", async () => {
+  let revision = 2
+  const featureFor = (id) => ({
+    ...trackFeature(0, [
+      [id, 0],
+      [id + 1, 0],
+    ]),
+    properties: { id, revision: 0, segments: [] },
+  })
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {
+      fetchTrackWithSegments: async (id) => featureFor(id),
+      fetchTrackPoints: async (id) => [
+        point(id, id, 0),
+        point(id + 1, id + 1, 0),
+      ],
+      movePointPosition: async (id, position) => ({
+        point: point(id, position.longitude, position.latitude, ++revision),
+        track: { ...featureFor(10), properties: { id: 10, revision } },
+        revision: { point: revision, track: revision },
+      }),
+    },
+    layerManager: { getLayer: () => ({ refresh() {} }) },
+    historyScope: () => ({}),
+  })
+  await editor.selectTrack(10)
+  editor.startDrag(10)
+  editor.dragTo(12, 1)
+  await editor.endDrag({ lng: 12, lat: 1 })
+  await editor.selectTrack(20)
+  const selected = structuredClone(editor.data)
+
+  await editor.edits.undo()
+  assert.deepEqual(editor.data, selected)
+  assert.equal(editor.trackRevision, 0)
+  assert.equal(editor.edits.history.canRedo, true)
+
+  await editor.edits.redo()
+  assert.deepEqual(editor.data, selected)
+  assert.equal(editor.trackRevision, 0)
+  assert.equal(editor.edits.history.canUndo, true)
+})
+
+test("closed editor ignores incoming point moves", async () => {
+  const editor = viewOnlyEditor()
+  await editor.selectTrack(10)
+  editor.close()
+
+  assert.equal(
+    editor.applyRealtime({
+      point: point(1, 1, 1, 3),
+      track: trackFeature(5),
+      revision: { point: 3, track: 5 },
+    }),
+    false,
+  )
+  assert.equal(editor.data, null)
+})
+
+test("point moves, undo and redo refresh exact points for replay", async () => {
+  let position = { longitude: 0, latitude: 0 }
+  let revision = 2
+  const controller = {
+    map: fakeMap(),
+    showProgress() {},
+    hideProgress() {},
+    updateLoadingCounts() {},
+    dataLoader: {
+      fetchPointsData: async () => ({
+        points: [point(7, position.longitude, position.latitude, revision)],
+        pointsGeoJSON: { type: "FeatureCollection", features: [] },
+      }),
+    },
+  }
+  controller.mapDataManager = new MapDataManager(controller)
+  const editor = new MapEditor(controller.map, {
+    apiClient: {
+      movePointPosition: async (_id, nextPosition) => {
+        position = nextPosition
+        return {
+          point: point(7, position.longitude, position.latitude, ++revision),
+          revision: { point: revision },
+        }
+      },
+    },
+    layerManager: { controller, getLayer: () => ({ refresh() {} }) },
+    historyScope: () => ({}),
+  })
+  await controller.mapDataManager.ensurePointsLoaded()
+  editor.beginTileDrag(tilePoint(7, 0, 0, { trackId: null }))
+  editor.dragTo(1, 1)
+  await editor.endDrag({ lng: 1, lat: 1 })
+  await controller.mapDataManager.ensurePointsLoaded()
+  assert.equal(
+    Number(controller.mapDataManager.lastLoadedData.points[0].longitude),
+    1,
+  )
+
+  await editor.edits.undo()
+  await controller.mapDataManager.ensurePointsLoaded()
+  assert.equal(
+    Number(controller.mapDataManager.lastLoadedData.points[0].longitude),
+    0,
+  )
+
+  await editor.edits.redo()
+  await controller.mapDataManager.ensurePointsLoaded()
+  assert.equal(
+    Number(controller.mapDataManager.lastLoadedData.points[0].longitude),
+    1,
+  )
 })

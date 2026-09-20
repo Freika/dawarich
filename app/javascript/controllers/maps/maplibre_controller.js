@@ -1849,6 +1849,7 @@ export default class extends Controller {
 
     try {
       await this.api.deletePoint(pointId)
+      this.mapDataManager?.invalidatePoints()
       this.layerManager.getLayer("map-editor")?.close()
       this.layerManager.getLayer("points-mvt")?.refresh()
       this.layerManager.getLayer("tracks-mvt")?.refresh()

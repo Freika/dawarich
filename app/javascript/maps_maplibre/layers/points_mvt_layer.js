@@ -1,5 +1,5 @@
+import { bumpTileVersion } from "maps_maplibre/utils/tile_freshness"
 import { getMarkerStrokeColor } from "../utils/marker_theme"
-import { bumpTileVersion } from "../utils/tile_freshness"
 import { BaseLayer, isAbortedRequest } from "./base_layer"
 import { heatmapPaint } from "./heatmap_layer"
 

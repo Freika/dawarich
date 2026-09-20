@@ -36,7 +36,7 @@ class Points::Move
 
   def call
     started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    result = Timeout.timeout(TIMEOUT_SECONDS) { move_in_transaction }
+    result = move_in_transaction
     publish(result)
     enqueue_stats_recalculation(result.point)
     instrument(:success, started_at, result)
@@ -56,33 +56,35 @@ class Points::Move
   attr_reader :user, :point_id, :latitude, :longitude, :point_revision, :track_revision, :history_scope
 
   def move_in_transaction
-    Point.transaction do
-      Point.connection.execute("SET LOCAL statement_timeout = '#{TIMEOUT_SECONDS}s'")
-      point_identity = user.points.where(id: point_id).pick(:id, :track_id)
-      raise ActiveRecord::RecordNotFound unless point_identity
+    Point.transaction { Timeout.timeout(TIMEOUT_SECONDS) { move_locked_point } }
+  end
 
-      track_id = point_identity.last
+  def move_locked_point
+    Point.connection.execute("SET LOCAL statement_timeout = '#{TIMEOUT_SECONDS}s'")
+    point_identity = user.points.where(id: point_id).pick(:id, :track_id)
+    raise ActiveRecord::RecordNotFound unless point_identity
 
-      locks_started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      track = track_id && user.tracks.lock.find(track_id)
-      point = user.points.lock.find(point_id)
-      @lock_wait_seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC) - locks_started_at
-      raise StaleEdit, current_result(point, track) if point.track_id != track_id
+    track_id = point_identity.last
 
-      check_revisions!(point, track)
-      before_countries = visited_country_codes
+    locks_started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    track = track_id && user.tracks.lock.find(track_id)
+    point = user.points.lock.find(point_id)
+    @lock_wait_seconds = Process.clock_gettime(Process::CLOCK_MONOTONIC) - locks_started_at
+    raise StaleEdit, current_result(point, track) if point.track_id != track_id
 
-      assign_position_and_country(point)
-      point.save!
-      # The composite MapEdits event is the single canonical publication for
-      # this mutation; suppress the legacy generic Track update broadcast.
-      Tracks::Recalculator.call(track, broadcast: false) if track
+    check_revisions!(point, track)
+    before_countries = visited_country_codes
 
-      after_countries = visited_country_codes
-      changed_countries = before_countries == after_countries ? nil : { iso_a3: after_countries }
+    assign_position_and_country(point)
+    point.save!
+    # The composite MapEdits event is the single canonical publication for
+    # this mutation; suppress the legacy generic Track update broadcast.
+    Tracks::Recalculator.call(track, broadcast: false) if track
 
-      current_result(point, track, changed_countries)
-    end
+    after_countries = visited_country_codes
+    changed_countries = before_countries == after_countries ? nil : { iso_a3: after_countries }
+
+    current_result(point, track, changed_countries)
   end
 
   def check_revisions!(point, track)

@@ -88,6 +88,42 @@ RSpec.describe Users::Destroy do
       end
     end
 
+    context 'with TREK sources and itineraries' do
+      before do
+        allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      end
+
+      it 'deletes a connected source even when no trips were imported' do
+        source = create(:trip_source, user:)
+
+        expect { service.call }.to change { User.unscoped.exists?(user.id) }.from(true).to(false)
+        expect(TripSource.exists?(source.id)).to be(false)
+      end
+
+      it 'deletes the entire planned itinerary and its source without touching another account' do
+        source = create(:trip_source, user:)
+        trip = create(:trip, user:, trip_source: source, source_identifier: '12', source_status: :active)
+        day = trip.planned_days.create!(date: trip.started_at.to_date, position: 1)
+        stop = day.planned_stops.create!(name: 'Museum', position: 0)
+        day_note = day.planned_day_notes.create!(body: 'Bring tickets', position: 0)
+        reservation = trip.planned_reservations.create!(planned_day: day, title: 'Tickets')
+        accommodation = trip.planned_accommodations.create!(name: 'Hotel')
+        traveller = trip.planned_travellers.create!(name: 'Ada')
+        unplanned_place = trip.planned_unplanned_places.create!(name: 'Market', position: 0)
+        note = trip.notes.create!(user:, date: day.date, body: 'Day journal')
+        other_source = create(:trip_source)
+
+        service.call
+
+        [source, trip, day, stop, day_note, reservation, accommodation, traveller, unplanned_place,
+         note].each do |record|
+          expect(record.class.exists?(record.id)).to be(false)
+        end
+        expect(User.unscoped.exists?(user.id)).to be(false)
+        expect(TripSource.exists?(other_source.id)).to be(true)
+      end
+    end
+
     context 'with scheduled jobs' do
       it 'attempts to cancel scheduled jobs for the user' do
         allow(Rails.logger).to receive(:info)
