@@ -102,7 +102,7 @@ class Settings::TrekSourcesController < ApplicationController
   end
 
   def destroy
-    TripSource.transaction do
+    @source.with_lock do
       @source.trips.find_each do |trip|
         trip.update!(trip_source: nil, source_status: :stopped)
       end

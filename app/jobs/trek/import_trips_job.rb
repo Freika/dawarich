@@ -92,6 +92,8 @@ module Trek
 
     def release_import(source)
       source&.with_lock { source.update!(importing: false) }
+    rescue ActiveRecord::RecordNotFound
+      nil
     end
   end
 end
