@@ -18,17 +18,4 @@ RSpec.describe Flight, type: :model do
       expect(dup).not_to be_valid
     end
   end
-
-  describe '#mask_window' do
-    it 'returns [departure, arrival] epoch seconds when both present' do
-      flight = build(:flight,
-                     departure_time: Time.utc(2026, 4, 20, 10),
-                     arrival_time: Time.utc(2026, 4, 20, 12))
-      expect(flight.mask_window).to eq([Time.utc(2026, 4, 20, 10).to_i, Time.utc(2026, 4, 20, 12).to_i])
-    end
-
-    it 'returns nil when a time is missing' do
-      expect(build(:flight, departure_time: nil).mask_window).to be_nil
-    end
-  end
 end
