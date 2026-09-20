@@ -240,7 +240,9 @@ namespace :demo do
       )
 
       # Associate the point with the visit
-      point.update!(visit: visit)
+      # An earlier visit can update this point while it is still in the
+      # preloaded sample, so refresh its optimistic lock before assigning it.
+      point.reload.update!(visit: visit)
 
       # Find nearby points within 100 meters and associate them
       nearby_points = Point.where(user_id: user.id)
