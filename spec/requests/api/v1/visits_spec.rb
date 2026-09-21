@@ -146,6 +146,19 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response['place']['id']).to eq(existing_place.id)
       end
+
+      it 'uses the canonical Place resolved from a legacy area_id' do
+        area = create(:area, user: user, latitude: 52.52, longitude: 13.405, radius: 500)
+        params = valid_create_params.deep_merge(
+          visit: { area_id: area.id, latitude: 52.522, longitude: 13.405 }
+        )
+
+        post '/api/v1/visits', params: params, headers: auth_headers
+
+        mapped_place = LegacyAreaPlaceMapping.find_by!(area: area).place
+        expect(response).to have_http_status(:ok)
+        expect(user.visits.last).to have_attributes(place_id: mapped_place.id, area_id: nil)
+      end
     end
 
     context 'with invalid parameters' do
@@ -201,7 +214,7 @@ RSpec.describe 'Api::V1::Visits', type: :request do
     let(:invalid_attributes) do
       {
         visit: {
-          name: nil
+          ended_at: visit.started_at
         }
       }
     end
@@ -254,22 +267,43 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         expect(visit.place_id).to eq(new_place.id)
       end
 
-      it 'falls back to the place name when the user clears the name field' do
+      it 'clears the custom name and stores the Place label when the user clears the name field' do
         put "/api/v1/visits/#{visit.id}",
             params: { visit: { name: '', place_id: new_place.id } },
             headers: auth_headers
 
-        expect(visit.reload.name).to eq('Coffee Shop')
+        expect(visit.reload.name).to be_nil
+        expect(visit.location_label).to eq('Coffee Shop')
         expect(visit.place_id).to eq(new_place.id)
       end
 
-      it 'sets the visit name from the place when no name is provided' do
+      it 'stores the Place label without overwriting the custom Visit name' do
         put "/api/v1/visits/#{visit.id}",
             params: { visit: { place_id: new_place.id } },
             headers: auth_headers
 
-        expect(visit.reload.name).to eq('Coffee Shop')
+        expect(visit.reload.name).to eq('Visit')
+        expect(visit.location_label).to eq('Coffee Shop')
         expect(visit.place_id).to eq(new_place.id)
+      end
+
+      it 'clears the legacy Area association when a Place is selected' do
+        put "/api/v1/visits/#{visit.id}",
+            params: { visit: { place_id: new_place.id } },
+            headers: auth_headers
+
+        expect(visit.reload.area_id).to be_nil
+        expect(visit.place_id).to eq(new_place.id)
+      end
+
+      it 'rejects conflicting Place and Area selections' do
+        area = create(:area, user:)
+
+        put "/api/v1/visits/#{visit.id}",
+            params: { visit: { place_id: new_place.id, area_id: area.id } },
+            headers: auth_headers
+
+        expect(response).to have_http_status(:unprocessable_content)
       end
     end
   end

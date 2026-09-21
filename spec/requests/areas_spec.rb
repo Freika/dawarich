@@ -27,6 +27,15 @@ RSpec.describe '/areas', type: :request do
             end.to change(Area, :count).by(1)
           end
 
+          it 'creates a canonical Place behind the legacy form' do
+            expect do
+              post areas_url, params: valid_params, as: :turbo_stream
+            end.to change(Place, :count).by(1)
+
+            expect(LegacyAreaPlaceMapping.find_by!(area: Area.last).place.visit_radius).to eq(200)
+            expect(response.headers['Deprecation']).to eq('true')
+          end
+
           it 'returns turbo_stream with flash' do
             post areas_url, params: valid_params, as: :turbo_stream
 
@@ -76,6 +85,9 @@ RSpec.describe '/areas', type: :request do
 
           expect(area.reload.name).to eq('New Name')
           expect(area.radius).to eq(250)
+          expect(LegacyAreaPlaceMapping.find_by!(area:).place).to have_attributes(
+            name: 'New Name', visit_radius: 250
+          )
         end
 
         it 'returns turbo_stream with flash' do

@@ -77,6 +77,18 @@ RSpec.describe Visits::Create do
       end
     end
 
+    context 'when a Place is supplied without a Visit Name' do
+      let(:place) { create(:place, user: user, name: 'Cafe', latitude: 52.52, longitude: 13.405) }
+
+      it 'leaves the Visit Name empty so the display follows the Place' do
+        service = described_class.new(user, valid_params.except(:name).merge(place_id: place.id))
+        service.call
+        place.update!(name: 'Corner Cafe')
+
+        expect(service.visit.reload).to have_attributes(name: nil, display_name: 'Corner Cafe')
+      end
+    end
+
     context 'when reusing existing place' do
       let!(:existing_place) do
         create(:place,

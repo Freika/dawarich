@@ -25,6 +25,7 @@ export class FilterManager {
       // Apply search
       const matchesSearch =
         !searchTerm ||
+        visit.display_name?.toLowerCase().includes(searchTerm) ||
         visit.name?.toLowerCase().includes(searchTerm) ||
         visit.place?.name?.toLowerCase().includes(searchTerm)
 

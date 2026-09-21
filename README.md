@@ -122,8 +122,8 @@ Feel free to change them in the account settings.
 - View locations of family members on the map (with their consent).
 - Each family member can enable or disable location sharing individually.
 
-### Areas
-- Draw areas on the map so Dawarich could suggest your visits there.
+### Places
+- Save the places that matter to you, each with a visit radius, so Dawarich attributes your visits to them. Create a place from the map or straight from a visit.
 
 ### Visits (Beta)
 - Dawarich can suggest places you've visited and allow you to confirm or reject them.

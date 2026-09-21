@@ -14,16 +14,18 @@ RSpec.describe Visit, type: :model do
       expect(visit.reload.place_id).to be_nil
     end
 
-    it 'is destroyed when associated area is destroyed' do
+    it 'is preserved when an associated legacy area is destroyed' do
       area = create(:area, user: user)
-      create(:visit, user: user, area: area, place: nil)
-      expect { area.destroy }.to change(Visit, :count).by(-1)
+      visit = create(:visit, user: user, area: area, place: nil)
+
+      expect { area.destroy }.not_to change(Visit, :count)
+      expect(visit.reload.area_id).to be_nil
     end
   end
 
   describe 'validations' do
     it 'can be created without a place or area' do
-      visit = build(:visit, user: user, place: nil, area: nil)
+      visit = build(:visit, user: user, place: nil)
       expect(visit).to be_valid
       expect(visit.save).to be true
     end

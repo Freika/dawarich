@@ -84,20 +84,20 @@ RSpec.describe Places::NameFetcher do
           expect { service.call }.to change { place.reload.name }.from('Visited place').to('Central Park, New York')
         end
 
-        it 'propagates the new name to a visit that carried the old place name' do
-          visit = create(:visit, place: place, user: place.user, name: 'Visited place')
+        it 'propagates the new name to the visit location label' do
+          visit = create(:visit, place: place, user: place.user, name: nil, location_label: 'Visited place')
 
           service.call
 
-          expect(visit.reload.name).to eq('Central Park, New York')
+          expect(visit.reload).to have_attributes(name: nil, location_label: 'Central Park, New York')
         end
 
-        it 'leaves a visit the user renamed independently alone' do
-          visit = create(:visit, place: place, user: place.user, name: 'Dentist')
+        it 'leaves the custom Visit name alone while refreshing its location label' do
+          visit = create(:visit, place: place, user: place.user, name: 'Dentist', location_label: 'Visited place')
 
           service.call
 
-          expect(visit.reload.name).to eq('Dentist')
+          expect(visit.reload).to have_attributes(name: 'Dentist', location_label: 'Central Park, New York')
         end
       end
 
@@ -122,12 +122,12 @@ RSpec.describe Places::NameFetcher do
           expect { service.call }.to change(place, :city).from(nil).to('New York')
         end
 
-        it 'propagates the locked name to visits still using the default name' do
-          visit = create(:visit, place: place, user: place.user, name: Place::DEFAULT_NAME)
+        it 'propagates the locked name to visits still using the default location label' do
+          visit = create(:visit, place: place, user: place.user, name: nil, location_label: Place::DEFAULT_NAME)
 
           service.call
 
-          expect(visit.reload.name).to eq("Mum's house")
+          expect(visit.reload).to have_attributes(name: nil, location_label: "Mum's house")
         end
       end
 
@@ -155,10 +155,10 @@ RSpec.describe Places::NameFetcher do
 
       context 'when place has visits with default name' do
         let!(:visit_with_default_name) do
-          create(:visit, name: Place::DEFAULT_NAME)
+          create(:visit, name: nil, location_label: Place::DEFAULT_NAME)
         end
         let!(:visit_with_custom_name) do
-          create(:visit, name: 'Custom Visit Name')
+          create(:visit, name: 'Custom Visit Name', location_label: Place::DEFAULT_NAME)
         end
 
         before do
@@ -166,15 +166,16 @@ RSpec.describe Places::NameFetcher do
           place.visits << visit_with_custom_name
         end
 
-        it 'updates visits with default name to the new place name' do
+        it 'updates the default location label to the new Place name' do
           expect { service.call }.to \
-            change { visit_with_default_name.reload.name }
+            change { visit_with_default_name.reload.location_label }
             .from(Place::DEFAULT_NAME)
             .to('Central Park, New York')
         end
 
-        it 'does not update visits with custom names' do
+        it 'does not update custom Visit names' do
           expect { service.call }.not_to(change { visit_with_custom_name.reload.name })
+          expect(visit_with_custom_name.reload.location_label).to eq('Central Park, New York')
         end
       end
 

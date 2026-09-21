@@ -127,11 +127,12 @@ RSpec.describe Users::ImportData::V1Handler, type: :service do
         expect(user.reload.settings['distance_unit']).to eq('km')
       end
 
-      it 'processes areas' do
+      it 'processes legacy areas as Places' do
         handler.process
 
         expect(import_stats[:areas_created]).to eq(1)
-        expect(user.areas.find_by(name: 'Home')).to be_present
+        expect(user.places.find_by(name: 'Home')).to be_present
+        expect(user.areas.find_by(name: 'Home')).to be_nil
       end
 
       it 'processes trips' do
@@ -159,6 +160,25 @@ RSpec.describe Users::ImportData::V1Handler, type: :service do
         handler.process
 
         expect(import_stats[:places_created]).to eq(1)
+      end
+
+      it 'imports a rich canonical Place before its matching legacy Area' do
+        v1_data[:places] = [{
+          'name' => 'Home', 'latitude' => 40.7128, 'longitude' => -74.006,
+          'source' => 'manual', 'visit_radius' => 125, 'note' => 'Keep me',
+          'name_locked_at' => '2024-01-01T00:00:00Z',
+          'geodata' => { 'properties' => { 'city' => 'New York' } }
+        }]
+        File.write(import_directory.join('data.json'), v1_data.to_json)
+
+        handler.process
+
+        expect(user.places.where(name: 'Home').count).to eq(1)
+        expect(user.places.find_by!(name: 'Home')).to have_attributes(
+          source: 'manual', visit_radius: 125, note: 'Keep me',
+          name_locked_at: be_present,
+          geodata: { 'properties' => { 'city' => 'New York' } }
+        )
       end
 
       it 'processes visits via streaming' do

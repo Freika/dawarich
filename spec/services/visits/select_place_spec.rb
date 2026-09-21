@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Visits::SelectPlace do
   let(:user)  { create(:user) }
-  let(:visit) { create(:visit, user: user, area: nil, place: nil) }
+  let(:visit) { create(:visit, user: user, place: nil) }
 
   let(:photon_payload) do
     {
@@ -34,8 +34,18 @@ RSpec.describe Visits::SelectPlace do
       expect(place.name).to eq('Café Bravo')
       expect(place.source).to eq('photon')
       expect(visit.reload.place_id).to eq(place.id)
-      expect(visit.name).to eq('Café Bravo')
+      expect(visit.name).to eq('Visit')
+      expect(visit.location_label).to eq('Café Bravo')
       expect(visit.status).to eq('confirmed')
+    end
+
+    it 'clears the legacy Area when assigning the canonical Place' do
+      area = create(:area, user: user)
+      visit.update!(area: area)
+
+      described_class.new(user: user, visit: visit, photon: photon_payload).call
+
+      expect(visit.reload).to have_attributes(area_id: nil, place_id: be_present)
     end
 
     it 'locks the name of a place the user picked so reverse geocoding cannot rewrite it' do

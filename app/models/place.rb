@@ -8,6 +8,7 @@ class Place < ApplicationRecord
   include Notable
 
   DEFAULT_NAME = 'Suggested place'
+  MAX_VISIT_RADIUS = 50_000
 
   belongs_to :user
   has_many :visits, dependent: :nullify
@@ -17,27 +18,63 @@ class Place < ApplicationRecord
   has_many :active_visits, -> { active }, class_name: 'Visit', inverse_of: :place, dependent: nil
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
+  has_many :legacy_area_place_mappings, dependent: :delete_all
 
-  attr_accessor :machine_named, :user_named
+  attr_accessor :machine_named, :user_named, :skip_suggested_visit_reattribution,
+                :reattribute_suggested_visits_on_create
 
   before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
   before_save :lock_name_on_user_edit
+  after_commit :schedule_suggested_visit_reattribution,
+               on: %i[create update],
+               if: :suggested_visit_reattribution_needed?
 
   validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
+  validates :visit_radius,
+            numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_VISIT_RADIUS }
 
   enum :source, { manual: 0, photon: 1, gpx_waypoint: 2 }
 
   scope :for_user, ->(user) { where(user: user) }
   scope :ordered, -> { order(:name) }
+  scope :containing, lambda { |latitude, longitude|
+    where(
+      'ST_DWithin(places.lonlat::geography, ' \
+      'ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, places.visit_radius)',
+      longitude, latitude
+    )
+  }
   scope :linked_to_confirmed_visits, lambda { |user|
     where(id: user.visits.active.confirmed.where.not(place_id: nil).select(:place_id))
   }
   scope :imported, -> { where(source: sources[:gpx_waypoint]) }
   scope :tagged, -> { where(id: Tagging.where(taggable_type: 'Place').select(:taggable_id)) }
-  scope :map_visible, lambda { |user|
-    manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged)
+  scope :noted, lambda {
+    where("NULLIF(BTRIM(places.note), '') IS NOT NULL")
+      .or(where(id: Note.where(attachable_type: 'Place').select(:attachable_id)))
   }
+  scope :confirmed_for, lambda { |user|
+    manual.or(imported).or(linked_to_confirmed_visits(user)).or(tagged).or(noted)
+  }
+  scope :unconfirmed_for, ->(user) { where.not(id: confirmed_for(user).select(:id)) }
+  scope :map_visible, ->(user) { confirmed_for(user) }
+
+  def self.normalize_visit_radius(value)
+    radius = value.to_i
+    radius.positive? ? [radius, MAX_VISIT_RADIUS].min : column_defaults['visit_radius']
+  end
+
+  def self.attribution_for(latitude, longitude, search_radius: maximum(:visit_radius).to_i)
+    return if search_radius <= 0
+
+    near([latitude, longitude], search_radius, :m)
+      .containing(latitude, longitude)
+      .min_by do |place|
+        distance = Geocoder::Calculations.distance_between([latitude, longitude], [place.lat, place.lon])
+        [place.visit_radius, distance, place.id]
+      end
+  end
 
   # Legacy places predate the lonlat column and carry coordinates only in the
   # decimal columns; to_f keeps their JSON serialization numeric — BigDecimal
@@ -48,6 +85,10 @@ class Place < ApplicationRecord
 
   def lat
     lonlat&.y || latitude.to_f
+  end
+
+  def legacy_area_id
+    legacy_area_place_mappings.map(&:area_id).min
   end
 
   def name_locked?
@@ -84,5 +125,16 @@ class Place < ApplicationRecord
     return if new_record? && !user_named
 
     self.name_locked_at = Time.current
+  end
+
+  def suggested_visit_reattribution_needed?
+    return false if skip_suggested_visit_reattribution
+    return !!reattribute_suggested_visits_on_create if previously_new_record?
+
+    saved_change_to_latitude? || saved_change_to_longitude? || saved_change_to_visit_radius?
+  end
+
+  def schedule_suggested_visit_reattribution
+    Places::ReattributeSuggestedVisitsJob.perform_later(user_id, id)
   end
 end

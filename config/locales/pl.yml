@@ -993,6 +993,7 @@ pl:
         places: Miejsca
         show_your_saved_places: Pokaż zapisane miejsca
         enable_all_tags: Włącz wszystkie tagi
+        show_place_boundaries: Pokaż granice miejsc
         filter_by_tags: Filtruj po tagach
         untagged: "\U0001F3F7️ Bez tagu"
         click_tags_to_filter_places: Kliknij tagi, aby filtrować miejsca
@@ -1118,6 +1119,7 @@ pl:
         create_visit: Utwórz wizytę
         create_place: Utwórz miejsce
         select_area: Wybierz obszar
+        select_data_on_map: Wybierz dane na mapie
         create_area: Utwórz obszar
         replay: Odtwórz
         enrich_photos: Uzupełnij zdjęcia
@@ -1321,10 +1323,13 @@ pl:
       no_visits_yet: Brak wizyt
       rename: Zmień nazwę
       merge: Scal
+      select_place_to_merge: Wybierz zduplikowane miejsce
+      no_matching_places: Nie znaleziono pasujących miejsc
+      merge_confirmation: Połączyć wybrane miejsce z „%{survivor}”? Wizyty, tagi i notatki zostaną tutaj przeniesione.
       notes: Notatki
       save: Zapisz
       delete: Usuń
-      delete_this_place_this_cannot_be_undone: Usunąć to miejsce? Tego nie da się cofnąć.
+      delete_this_place_this_cannot_be_undone: Usunąć to miejsce? Wizyty pozostaną bez przypisanego miejsca.
       manual_name_title: To miejsce ma nazwę nadaną ręcznie, więc automatyczne nazewnictwo go nie zmieni. Zmień nazwę na "%{default_name}", aby przywrócić automatyczne nazewnictwo.
       visit_count:
         one: "%{count} wizyta"
@@ -1333,6 +1338,9 @@ pl:
       no_nearby_places_found: Nie znaleziono pobliskich miejsc
       load_more_search_up_to_distance_m: Załaduj więcej (szukaj do %{distance} m)
     index:
+      filters: Filtry miejsc
+      all_places: Wszystkie miejsca
+      unconfirmed_places: Niepotwierdzone
       hello_there: Cześć!
       here_you_ll_find_your_places_created_by_visits_suggestion: Tutaj znajdziesz miejsca utworzone przez mechanizm sugestii wizyt. Na razie jeszcze ich nie ma.
       name: Nazwa
@@ -1342,7 +1350,7 @@ pl:
       timeline: Oś czasu
       places: Miejsca
       delete: Usuń
-      are_you_sure_deleting_a_place_will_result_in_deleting: Czy na pewno chcesz kontynuować? Usunięcie miejsca spowoduje usunięcie wszystkich powiązanych z nim wizyt.
+      are_you_sure_deleting_a_place_will_result_in_deleting: Usunąć to miejsce? Wizyty pozostaną bez przypisanego miejsca.
   points:
     address:
       address: 'Adres:'
@@ -1741,7 +1749,7 @@ pl:
         tracks: Trasy
         imports: Importy
         exports: Eksporty
-        areas: Obszary
+        places: Miejsca
         sign_in_history: Historia logowań
         total_sign_ins: Liczba logowań
         last_sign_in: Ostatnie logowanie
@@ -1899,6 +1907,8 @@ pl:
     place_creation_modal:
       create_new_place: Utwórz nowe miejsce
       place_name: Nazwa miejsca *
+      visit_radius: Promień wizyty (metry) *
+      visit_radius_hint: Wizyty, których środek znajduje się w tym promieniu, mogą zostać przypisane do miejsca. Nie wpływa to na prywatność.
       note: Notatka
       optional_add_any_notes_or_details_about_this_place: Opcjonalnie - dodaj notatki lub szczegóły dotyczące tego miejsca
       tags: Tagi
@@ -3082,6 +3092,7 @@ pl:
             visit_not_found: Nie znaleziono wizyty
           invalid_place: Nieprawidłowe miejsce
           invalid_area: Nieprawidłowy obszar
+          conflicting_place_and_area: place_id i area_id nie mogą być podane jednocześnie
           at_least_2_visits_must_be_selected_for_merging: Do scalenia trzeba zaznaczyć co najmniej 2 wizyty
           one_or_more_visits_not_found: Nie znaleziono co najmniej jednej wizyty
           count_visits_updated_successfully: Pomyślnie zaktualizowano %{count} wizyt
@@ -3208,6 +3219,8 @@ pl:
       place_was_successfully_destroyed: Miejsce zostało pomyślnie usunięte.
       created: Miejsce utworzono pomyślnie!
       updated: Miejsce zaktualizowano pomyślnie!
+      merged: Połączono „%{duplicate}” z „%{survivor}”.
+      merge_visit_conflict: "Tych miejsc nie można scalić, ponieważ wizyta #%{first_id} i wizyta #%{second_id} zaczynają się o %{started_at}. Najpierw rozwiąż te wizyty."
     points:
       no_points_selected: Nie wybrano punktów.
       points_were_successfully_destroyed: Punkty zostały pomyślnie usunięte.
@@ -3401,6 +3414,7 @@ pl:
       failed_to_delete_visits: Nie udało się usunąć wizyt.
       invalid_place: Nieprawidłowe miejsce
       invalid_area: Nieprawidłowy obszar
+      conflicting_place_and_area: Miejsce i obszar nie mogą być podane jednocześnie
       failed_to_update_visit: Nie udało się zaktualizować wizyty.
       select_visits_to_merge: Wybierz co najmniej 2 wizyty do scalenia.
       visits_must_share_day: Wizyty muszą przypadać na ten sam dzień.
@@ -4387,6 +4401,7 @@ pl:
       place: Miejsce
       points: Punkty
       radius: Promień
+      visit_radius: Promień wizyty
       reason: Powód
       route_information: Informacje o trasie
       selected_point: Wybrany punkt

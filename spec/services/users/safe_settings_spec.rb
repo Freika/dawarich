@@ -181,7 +181,7 @@ RSpec.describe Users::SafeSettings do
             visits_suggestions_enabled: false,
             fog_of_war_threshold: 50,
             fog_of_war_mode: 'points',
-            enabled_map_layers: %w[Points Areas Photos Tracks],
+            enabled_map_layers: ['Points', 'Photos', 'Tracks', 'Places', 'Place boundaries'],
             places_tag_filters: nil,
             maps_maplibre_style: 'light',
             maps_maplibre_tiles_url: nil,
@@ -415,6 +415,14 @@ RSpec.describe Users::SafeSettings do
 
   describe 'plan-aware filtering' do
     describe '#enabled_map_layers' do
+      context 'when the retired Areas layer is enabled' do
+        let(:safe_settings) { described_class.new({ 'enabled_map_layers' => %w[Tracks Areas] }) }
+
+        it 'carries it over to Places with their boundaries' do
+          expect(safe_settings.enabled_map_layers).to eq(['Tracks', 'Places', 'Place boundaries'])
+        end
+      end
+
       context 'when plan is lite' do
         let(:settings) { { 'enabled_map_layers' => ['Tracks', 'Heatmap', 'Fog of War', 'Scratch map', 'Points'] } }
         let(:safe_settings) { described_class.new(settings, plan: :lite) }

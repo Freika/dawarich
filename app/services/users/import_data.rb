@@ -221,11 +221,11 @@ class Users::ImportData
   end
 
   def create_success_notification
+    places_created = @import_stats[:places_created] + @import_stats[:areas_created]
     summary = "#{@import_stats[:points_created]} points, " \
       "#{@import_stats[:visits_created]} visits, " \
-      "#{@import_stats[:places_created]} places, " \
+      "#{places_created} places, " \
       "#{@import_stats[:trips_created]} trips, " \
-      "#{@import_stats[:areas_created]} areas, " \
       "#{@import_stats[:tags_created]} tags, " \
       "#{@import_stats[:tracks_created]} tracks, " \
       "#{@import_stats[:digests_created]} digests, " \

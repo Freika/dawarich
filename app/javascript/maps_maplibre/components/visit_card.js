@@ -66,7 +66,7 @@ export class VisitCard {
         <div class="card-body p-3">
           <!-- Visit Name -->
           <h3 class="card-title text-sm font-semibold mb-2">
-            ${escapeHtml(visit.name || visit.place?.name) || translate("visits.unnamed")}
+            ${escapeHtml(visit.display_name || visit.name || visit.place?.name) || translate("visits.unnamed")}
           </h3>
 
           <!-- Date and Time -->

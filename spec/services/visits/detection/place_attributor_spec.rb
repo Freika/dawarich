@@ -24,40 +24,62 @@ RSpec.describe Visits::Detection::PlaceAttributor do
     described_class.new(user, policy).call(stay_hash)
   end
 
-  it 'assigns a containing area with the strongest evidence' do
+  it 'lazily converts an unmigrated Area and returns its canonical Place' do
     area = create(:area, user: user, latitude: lat0, longitude: lon0, radius: 200)
     create(:place, user: user, latitude: lat0, longitude: lon0)
 
     result = attribute
 
-    expect(result[:evidence]).to eq(:area)
-    expect(result[:area]).to eq(area)
-    expect(result[:place]).to be_nil
+    expect(result[:evidence]).to eq(:place)
+    expect(result[:area]).to be_nil
+    expect(result[:place]).to eq(LegacyAreaPlaceMapping.find_by!(area:).place)
     expect(result[:name]).to eq(area.name)
   end
 
-  it 'prefers a manual place over a closer photon one' do
-    create(:place, user: user, source: :photon, latitude: lat0 + north(5), longitude: lon0, name: 'Photon Guess')
-    manual = create(:place, user: user, source: :manual, latitude: lat0 + north(35), longitude: lon0, name: 'My Spot')
+  it 'prefers the smallest containing Place' do
+    create(:place, user: user, latitude: lat0 + north(5), longitude: lon0,
+                   visit_radius: 100, name: 'Broad Place')
+    specific = create(:place, user: user, latitude: lat0 + north(20), longitude: lon0,
+                              visit_radius: 25, name: 'Specific Place')
 
     result = attribute
 
     expect(result[:evidence]).to eq(:place)
-    expect(result[:place]).to eq(manual)
-    expect(result[:name]).to eq('My Spot')
+    expect(result[:place]).to eq(specific)
+    expect(result[:name]).to eq('Specific Place')
   end
 
-  it 'boosts a place the user has confirmed visits at' do
-    create(:place, user: user, source: :photon, latitude: lat0 + north(5), longitude: lon0, name: 'Closer Stranger')
-    known = create(:place, user: user, source: :photon, name: 'The Regular',
-                           latitude: lat0 + north(35), longitude: lon0)
-    create_list(:visit, 2, user: user, place: known, status: :confirmed)
+  it 'uses an indexed constant-radius prefilter before the exact per-Place radius check' do
+    create(:place, user: user, latitude: lat0, longitude: lon0, visit_radius: 100)
+    containing_query = nil
 
-    expect(attribute[:place]).to eq(known)
+    subscriber = lambda do |_name, _started, _finished, _id, payload|
+      sql = payload[:sql]
+      containing_query = sql if sql.include?('places.visit_radius') && sql.include?('ST_DWithin')
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record') { attribute }
+
+    expect(containing_query.scan('ST_DWithin').size).to eq(2)
   end
 
-  it 'ignores places beyond the attribution radius' do
-    create(:place, user: user, latitude: lat0 + north(300), longitude: lon0, name: 'Too Far')
+  it 'prefers the nearest center when containing Places have equal radii' do
+    nearest = create(:place, user: user, latitude: lat0 + north(5), longitude: lon0, visit_radius: 50)
+    create(:place, user: user, latitude: lat0 + north(25), longitude: lon0, visit_radius: 50)
+
+    expect(attribute[:place]).to eq(nearest)
+  end
+
+  it 'uses stable Place ID as the final tie-breaker' do
+    first = create(:place, user: user, latitude: lat0, longitude: lon0, visit_radius: 50)
+    create(:place, user: user, latitude: lat0, longitude: lon0, visit_radius: 50)
+
+    expect(attribute[:place]).to eq(first)
+  end
+
+  it 'ignores places beyond their own Visit Radius' do
+    create(:place, user: user, latitude: lat0 + north(60), longitude: lon0,
+                   visit_radius: 50, name: 'Too Far')
 
     expect(attribute[:evidence]).not_to eq(:place)
   end
@@ -144,6 +166,7 @@ RSpec.describe Visits::Detection::PlaceAttributor do
 
     expect(result[:evidence]).to eq(:address)
     expect(result[:name]).to eq('Stargarder Straße 65')
+    expect(result[:location_label]).to eq('Stargarder Straße 65')
     expect(result[:place]).to be_nil
   end
 

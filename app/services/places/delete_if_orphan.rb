@@ -15,6 +15,7 @@ module Places
       return false unless place
       return false unless place.photon?
       return false if place.note.present?
+      return false if LegacyAreaPlaceMapping.exists?(place_id: @place_id)
       return false if Visit.active.where(place_id: @place_id).exists?
       return false if Tagging.where(taggable_id: @place_id, taggable_type: 'Place').exists?
 

@@ -62,18 +62,18 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
   describe 'PATCH /visits/:id with blank visit[name] on a suggested visit' do
     let(:visit) { create(:visit, user:, status: :suggested, name: 'Original') }
 
-    it 'is a no-op for name and does not create a Place' do
+    it 'clears the custom name and does not create a Place' do
       expect do
         patch visit_url(visit), params: { visit: { name: '   ' } }, as: :turbo_stream
       end.not_to change(Place, :count)
 
-      expect(visit.reload.name).to eq('Original')
+      expect(visit.reload.name).to be_nil
       expect(visit.reload.status).to eq('confirmed')
     end
   end
 
   describe 'PATCH /visits/:id with rename on a suggested visit that has no resolvable center' do
-    let(:visit) { create(:visit, user:, area: nil, place: nil, status: :suggested, name: 'Visit') }
+    let(:visit) { create(:visit, user:, place: nil, status: :suggested, name: 'Visit') }
 
     it 'renames the visit without error' do
       expect(visit.center).to eq([0, 0])
@@ -123,7 +123,7 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
 
       expect(visit.reload.place_id).to eq(nearby_place.id)
       expect(visit.reload.status).to eq('confirmed')
-      expect(visit.reload.name).to eq('Cafe A')
+      expect(visit.reload).to have_attributes(name: 'Visit', location_label: 'Cafe A')
     end
   end
 end

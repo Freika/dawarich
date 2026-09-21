@@ -2,10 +2,8 @@
 
 module Visits
   module Detection
-    # Bulk removal of machine visit rows. Per-row destroy callbacks would
-    # enqueue one orphan-cleanup job and one cache delete per visit, so
-    # callers delete in bulk here and run the side effects batched, using
-    # the returned rows.
+    # Bulk removal of machine visit rows. Places are durable domain objects,
+    # so replacing their machine visits never deletes the Places themselves.
     class MachineVisitWipe
       Row = Struct.new(:id, :place_id, :started_at, :demo)
       Result = Struct.new(:rows, :suggested_place_ids)
@@ -22,18 +20,16 @@ module Visits
         Result.new(rows, suggested_place_ids)
       end
 
-      # Every wipe owes the same debts: orphan-cleanup for the places the
-      # rows referenced (directly or through suggested-place joins) and a
-      # month-summary cache bust for the days they occupied.
+      # Every wipe still owes a month-summary cache bust for the days the
+      # removed rows occupied. Orphan Place cleanup is deliberately explicit.
       def self.flush_side_effects(user, result)
         return if result.rows.empty?
 
-        place_ids = (result.rows.filter_map(&:place_id) + result.suggested_place_ids).uniq
-        ActiveJob.perform_all_later(place_ids.map { |id| Places::DeleteIfOrphanJob.new(id) })
+        preserved_place_ids = (result.rows.filter_map(&:place_id) + result.suggested_place_ids).uniq
         bust_month_caches(user, result.rows.map(&:started_at))
         Rails.logger.info(
           "[Visits::Detection::MachineVisitWipe] user_id=#{user.id} " \
-          "wiped=#{result.rows.size} orphan_candidates=#{place_ids.size}"
+          "wiped=#{result.rows.size} preserved_places=#{preserved_place_ids.size}"
         )
       end
 

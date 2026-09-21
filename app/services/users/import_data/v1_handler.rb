@@ -68,7 +68,7 @@ class Users::ImportData::V1Handler
     when 'settings'
       import_settings(value) if value.present?
     when 'areas'
-      import_areas(value)
+      @areas_data = value
     when 'imports'
       import_imports(value)
     when 'exports'
@@ -116,12 +116,14 @@ class Users::ImportData::V1Handler
 
   def initialize_stream_state
     @places_batch = []
+    @areas_data = nil
     @stream_writers = {}
     @stream_temp_paths = {}
   end
 
   def finalize_stream_processing
     flush_places_batch
+    import_areas(@areas_data)
     close_stream_writer(:visits)
     close_stream_writer(:points)
 
@@ -204,7 +206,12 @@ class Users::ImportData::V1Handler
   end
 
   def import_visits_batch(batch)
-    visits_created = Users::ImportData::Visits.new(user, batch).call.to_i
+    visits_created = Users::ImportData::Visits.new(
+      user,
+      batch,
+      legacy_area_place_references: @legacy_area_place_references || {},
+      legacy_area_places_by_name: @legacy_area_places_by_name || {}
+    ).call.to_i
     import_stats[:visits_created] += visits_created
   end
 
@@ -233,7 +240,10 @@ class Users::ImportData::V1Handler
 
   def import_areas(areas_data)
     Rails.logger.debug "Importing #{areas_data&.size || 0} areas"
-    areas_created = Users::ImportData::Areas.new(user, areas_data).call.to_i
+    importer = Users::ImportData::Areas.new(user, areas_data)
+    areas_created = importer.call.to_i
+    @legacy_area_place_references = importer.place_references_by_id
+    @legacy_area_places_by_name = importer.place_references_by_name
     import_stats[:areas_created] += areas_created
   end
 

@@ -8,6 +8,13 @@
     </div>
   </div>
 
+  <nav class="flex gap-2 my-4" aria-label="<%= t('.filters') %>">
+    <%= link_to t('.all_places'), places_path,
+                class: "btn btn-sm #{'btn-primary' if params[:filter].blank?}" %>
+    <%= link_to t('.unconfirmed_places'), places_path(filter: 'unconfirmed'),
+                class: "btn btn-sm #{'btn-primary' if params[:filter] == 'unconfirmed'}" %>
+  </nav>
+
   <div id="places" class="min-w-full">
     <% if @places.empty? %>
       <div class="hero min-h-80 bg-base-200">
@@ -41,6 +48,9 @@
                 <td><%= human_datetime(place.created_at, current_user.safe_settings.timezone) %></td>
                 <td><%= "#{place.lat}, #{place.lon}" %></td>
                 <td>
+                  <% if params[:filter] == 'unconfirmed' %>
+                    <%= button_to t('visits.buttons.confirm'), confirm_place_path(place, filter: 'unconfirmed', page: params[:page]), method: :patch, class: "px-4 py-2 bg-green-600 text-white rounded-md" %>
+                  <% end %>
                   <%= link_to t('.delete'), place_path(place, page: params[:page]), data: { turbo_confirm: t('.are_you_sure_deleting_a_place_will_result_in_deleting'), turbo_method: :delete }, class: "px-4 py-2 bg-red-500 text-white rounded-md" %>
                 </td>
               </tr>

@@ -20,11 +20,16 @@ RSpec.describe Visit, type: :model do
   end
 
   describe 'validations' do
-    it { is_expected.to validate_presence_of(:name) }
     it { is_expected.to validate_presence_of(:started_at) }
     it { is_expected.to validate_presence_of(:ended_at) }
     it { is_expected.to validate_presence_of(:duration) }
     it { is_expected.to validate_presence_of(:status) }
+
+    it 'allows an unplaced visit to use a location label without a custom name' do
+      visit = build(:visit, place: nil, name: nil, location_label: 'Alexanderplatz 1')
+
+      expect(visit).to be_valid
+    end
 
     it 'validates ended_at is greater than started_at' do
       visit = build(:visit, started_at: Time.zone.now, ended_at: Time.zone.now - 1.hour)
@@ -98,77 +103,33 @@ RSpec.describe Visit, type: :model do
     end
   end
 
-  describe 'self-cleanup callbacks' do
-    include ActiveJob::TestHelper
+  describe 'place durability' do
+    let(:user) { create(:user) }
+    let(:place) { create(:place, user: user, source: :photon) }
+    let!(:visit) { create(:visit, user: user, place: place) }
 
-    let(:user)      { create(:user) }
-    let(:old_place) { create(:place, user: user, source: :photon) }
-    let(:new_place) { create(:place, user: user, source: :photon) }
-    let!(:visit)    { create(:visit, user: user, place: old_place, area: nil) }
+    it 'preserves a place when the visit is reassigned' do
+      visit.update!(place: create(:place, user: user))
 
-    describe 'after_commit on: :update' do
-      it 'enqueues orphan-check for the previous place when place_id changes' do
-        expect { visit.update!(place: new_place) }
-          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
-      end
-
-      it 'deletes the previous place after the job runs when it is orphan' do
-        perform_enqueued_jobs { visit.update!(place: new_place) }
-
-        expect(Place.exists?(old_place.id)).to be false
-      end
-
-      it 'does not enqueue when an unrelated attribute changes' do
-        expect { visit.update!(name: 'Renamed') }
-          .not_to have_enqueued_job(Places::DeleteIfOrphanJob)
-      end
-
-      it 'keeps the old place when it is still referenced by another visit' do
-        create(:visit, user: user, place: old_place, area: nil)
-
-        perform_enqueued_jobs { visit.update!(place: new_place) }
-
-        expect(Place.exists?(old_place.id)).to be true
-      end
+      expect(Place.exists?(place.id)).to be(true)
     end
 
-    describe 'on decline' do
-      it 'enqueues orphan-check because declined visits no longer keep a place alive' do
-        expect { visit.update!(status: :declined) }
-          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
-      end
+    it 'preserves a place when the visit is declined' do
+      visit.update!(status: :declined)
+
+      expect(Place.exists?(place.id)).to be(true)
     end
 
-    describe 'on soft delete' do
-      it 'enqueues orphan-check when a visit is tombstoned' do
-        expect { visit.soft_delete! }
-          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
-      end
+    it 'preserves a place when the visit is soft-deleted' do
+      visit.soft_delete!
 
-      it 'deletes the place after the job runs when only the tombstone references it' do
-        perform_enqueued_jobs { visit.soft_delete! }
-
-        expect(Place.exists?(old_place.id)).to be false
-      end
+      expect(Place.exists?(place.id)).to be(true)
     end
 
-    describe 'after_destroy_commit' do
-      it 'enqueues orphan-check for the destroyed visit place' do
-        expect { visit.destroy! }
-          .to have_enqueued_job(Places::DeleteIfOrphanJob).with(old_place.id)
-      end
+    it 'preserves a place when the visit is destroyed' do
+      visit.destroy!
 
-      it 'deletes the place after the job runs when it is orphan' do
-        perform_enqueued_jobs { visit.destroy! }
-
-        expect(Place.exists?(old_place.id)).to be false
-      end
-
-      it 'is a no-op when visit had no place' do
-        orphan_visit = create(:visit, user: user, place: nil, area: nil)
-
-        expect { orphan_visit.destroy! }.not_to raise_error
-      end
+      expect(Place.exists?(place.id)).to be(true)
     end
   end
 
@@ -184,14 +145,14 @@ RSpec.describe Visit, type: :model do
     it 'reflects a newly created visit instead of serving stale cached counts' do
       expect(summary_status_counts).to eq({}) # warms the 5-minute cache with zero visits
 
-      create(:visit, user: user, area: nil, place: nil, status: :suggested,
+      create(:visit, user: user, place: nil, status: :suggested,
                      started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
 
       expect(summary_status_counts).to include('suggested' => 1)
     end
 
     it 'reflects a status change after the cache is warm' do
-      visit = create(:visit, user: user, area: nil, place: nil, status: :suggested,
+      visit = create(:visit, user: user, place: nil, status: :suggested,
                              started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
       expect(summary_status_counts).to include('suggested' => 1) # warm cache
 
@@ -203,11 +164,11 @@ RSpec.describe Visit, type: :model do
     end
 
     it 'does not bust the cache for demo visits (the demo importer busts once at the end)' do
-      create(:visit, user: user, area: nil, place: nil, status: :confirmed,
+      create(:visit, user: user, place: nil, status: :confirmed,
                      started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
       expect(summary_status_counts).to include('confirmed' => 1) # warm cache
 
-      create(:visit, user: user, area: nil, place: nil, status: :suggested, demo: true,
+      create(:visit, user: user, place: nil, status: :suggested, demo: true,
                      started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
 
       counts = summary_status_counts

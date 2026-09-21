@@ -89,8 +89,8 @@ export class DataLoader {
   }
 
   /**
-   * Fetch all non-tile map data (visits, photos, areas, places, flights)
-   * Core data (points, visits, areas, places) loads incrementally.
+   * Fetch all non-tile map data (visits, photos, Places, flights)
+   * Core data (visits, Places, flights) loads incrementally.
    * Photos load in the background via a callback.
    *
    * @param {string} startDate
@@ -114,7 +114,6 @@ export class DataLoader {
     if (counter) {
       if (this.settings.visitsEnabled) counter.expect("visits")
       if (this.settings.placesEnabled) counter.expect("places")
-      if (this.settings.areasEnabled) counter.expect("areas")
       if (this.settings.photosEnabled) counter.expect("photos")
       if (this.settings.flightsEnabled) counter.expect("flights")
     }
@@ -140,26 +139,6 @@ export class DataLoader {
           .catch((error) => {
             console.warn("Failed to fetch visits:", error)
             if (counter) counter.complete("visits")
-            return []
-          })
-      : Promise.resolve([])
-
-    const areasPromise = this.settings.areasEnabled
-      ? this.api
-          .fetchAreas()
-          .then((result) => {
-            if (counter) {
-              counter.update("areas", result.length)
-              counter.complete("areas")
-            }
-            if (onLayerData) {
-              onLayerData("areas", this.areasToGeoJSON(result))
-            }
-            return result
-          })
-          .catch((error) => {
-            console.warn("Failed to fetch areas:", error)
-            if (counter) counter.complete("areas")
             return []
           })
       : Promise.resolve([])
@@ -217,9 +196,8 @@ export class DataLoader {
       : Promise.resolve({ type: "FeatureCollection", features: [] })
 
     // Wait for all core data
-    const [visits, areas, places, flights] = await Promise.all([
+    const [visits, places, flights] = await Promise.all([
       visitsPromise,
-      areasPromise,
       placesPromise,
       flightsPromise,
     ])
@@ -232,11 +210,12 @@ export class DataLoader {
     data.totalPointsInRange = 0
     data.visits = visits
     data.visitsGeoJSON = this.visitsToGeoJSON(data.visits)
-    data.areas = areas
-    data.areasGeoJSON = this.areasToGeoJSON(data.areas)
     data.places = places
     data.placesGeoJSON = this.placesToGeoJSON(data.places)
-    data.flightsGeoJSON = flights || { type: "FeatureCollection", features: [] }
+    data.flightsGeoJSON = flights || {
+      type: "FeatureCollection",
+      features: [],
+    }
 
     // Initialize empty collections for background-loaded data
     data.photos = []
@@ -290,22 +269,27 @@ export class DataLoader {
   visitsToGeoJSON(visits) {
     return {
       type: "FeatureCollection",
-      features: visits.map((visit) => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [visit.place.longitude, visit.place.latitude],
-        },
-        properties: {
-          id: visit.id,
-          name: visit.name,
-          place_name: visit.place?.name,
-          status: visit.status,
-          started_at: visit.started_at,
-          ended_at: visit.ended_at,
-          duration: visit.duration,
-        },
-      })),
+      features: visits
+        .filter(
+          (visit) =>
+            visit.place?.longitude != null && visit.place?.latitude != null,
+        )
+        .map((visit) => ({
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [visit.place.longitude, visit.place.latitude],
+          },
+          properties: {
+            id: visit.id,
+            name: visit.display_name || visit.name,
+            place_name: visit.place.name,
+            status: visit.status,
+            started_at: visit.started_at,
+            ended_at: visit.ended_at,
+            duration: visit.duration,
+          },
+        })),
     }
   }
 
@@ -355,54 +339,38 @@ export class DataLoader {
   placesToGeoJSON(places) {
     return {
       type: "FeatureCollection",
-      features: places.map((place) => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [place.longitude, place.latitude],
-        },
-        properties: {
+      features: places.flatMap((place) => {
+        const center = [parseFloat(place.longitude), parseFloat(place.latitude)]
+        const visitRadius = Math.max(parseInt(place.visit_radius, 10) || 50, 1)
+        const properties = {
           id: place.id,
           name: place.name,
-          latitude: place.latitude,
-          longitude: place.longitude,
+          latitude: center[1],
+          longitude: center[0],
           note: place.note,
+          visitRadius,
           nameLocked: Boolean(place.name_locked),
           // Stringify tags for MapLibre GL JS compatibility
           tags: JSON.stringify(place.tags || []),
           // Use first tag's color if available
           color: place.tags?.[0]?.color || "#6366f1",
-        },
-      })),
-    }
-  }
-
-  /**
-   * Convert areas to GeoJSON
-   * Backend returns circular areas with latitude, longitude, radius
-   */
-  areasToGeoJSON(areas) {
-    return {
-      type: "FeatureCollection",
-      features: areas.map((area) => {
-        // Create circle polygon from center and radius
-        // Parse as floats since API returns strings
-        const center = [parseFloat(area.longitude), parseFloat(area.latitude)]
-        const coordinates = createCircle(center, area.radius)
-
-        return {
-          type: "Feature",
-          geometry: {
-            type: "Polygon",
-            coordinates: [coordinates],
-          },
-          properties: {
-            id: area.id,
-            name: area.name,
-            color: area.color || "#ef4444",
-            radius: area.radius,
-          },
         }
+
+        return [
+          {
+            type: "Feature",
+            geometry: {
+              type: "Polygon",
+              coordinates: [createCircle(center, visitRadius)],
+            },
+            properties: { ...properties, featureKind: "boundary" },
+          },
+          {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: center },
+            properties: { ...properties, featureKind: "center" },
+          },
+        ]
       }),
     }
   }

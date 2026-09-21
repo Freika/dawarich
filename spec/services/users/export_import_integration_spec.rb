@@ -30,6 +30,10 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       expect(File.exist?(temp_archive_path)).to be true
 
       original_counts = calculate_user_entity_counts(original_user)
+      expected_legacy_places_created = original_user.areas
+                                                    .pluck(:name, :latitude, :longitude)
+                                                    .uniq
+                                                    .size
 
       original_log_level = Rails.logger.level
       Rails.logger.level = Logger::DEBUG
@@ -46,7 +50,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
 
       target_counts = calculate_user_entity_counts(target_user)
 
-      expect(target_counts[:areas]).to eq(original_counts[:areas])
+      expect(target_counts[:areas]).to eq(0)
       expect(target_counts[:imports]).to eq(original_counts[:imports])
       expect(target_counts[:exports]).to eq(original_counts[:exports])
       expect(target_counts[:trips]).to eq(original_counts[:trips])
@@ -60,7 +64,9 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       expect(target_counts[:digests]).to eq(original_counts[:digests])
 
       # Verify import stats match expectations
-      expect(import_stats[:areas_created]).to eq(original_counts[:areas])
+      # Legacy areas are imported as canonical places, but the compatibility
+      # counter retains its historical name.
+      expect(import_stats[:areas_created]).to eq(expected_legacy_places_created)
       expect(import_stats[:imports_created]).to eq(original_counts[:imports])
       expect(import_stats[:exports_created]).to eq(original_counts[:exports])
       expect(import_stats[:trips_created]).to eq(original_counts[:trips])
@@ -149,6 +155,16 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       create(:visit, user: original_user, place: office_place, name: 'Work Visit')
       create(:visit, user: original_user, place: gym_place, name: 'Workout')
 
+      shared_started_at = Time.zone.parse('2024-06-01 10:00:00 UTC')
+      shared_ended_at = shared_started_at + 1.hour
+      home_visit = create(:visit, user: original_user, place: home_place, name: nil, location_label: 'Detected stop',
+                                  started_at: shared_started_at, ended_at: shared_ended_at)
+      office_visit = create(:visit, user: original_user, place: office_place, name: nil,
+                                    location_label: 'Detected stop', started_at: shared_started_at,
+                                    ended_at: shared_ended_at)
+      create(:point, user: original_user, visit: home_visit, external_track_id: 'same-window-home')
+      create(:point, user: original_user, visit: office_visit, external_track_id: 'same-window-office')
+
       # Create a visit without a place
       create(:visit, user: original_user, place: nil, name: 'Unknown Location')
 
@@ -212,11 +228,20 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       # Verify specific visits have their place associations
       imported_visits = import_user.visits.includes(:place)
       visits_with_places = imported_visits.where.not(place: nil)
-      expect(visits_with_places.count).to eq(3) # Home, Office, Gym
+      expect(visits_with_places.count).to eq(5)
 
       # Verify place names are preserved
       place_names = visits_with_places.map { |v| v.place.name }.sort
-      expect(place_names).to eq(%w[Gym Home Office])
+      expect(place_names).to eq(%w[Gym Home Home Office Office])
+
+      restored_pair = imported_visits.where(name: nil, started_at: shared_started_at, ended_at: shared_ended_at)
+      expect(restored_pair.map { |visit| visit.place.name }).to contain_exactly('Home', 'Office')
+
+      restored_points = import_user.points.where(external_track_id: %w[same-window-home same-window-office])
+                                   .includes(visit: :place)
+                                   .index_by(&:external_track_id)
+      expect(restored_points['same-window-home'].visit.place.name).to eq('Home')
+      expect(restored_points['same-window-office'].visit.place.name).to eq('Office')
 
       # Cleanup
       temp_export_file.unlink
@@ -280,7 +305,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
 
     visit1 = create(:visit, user: user, place: office, name: 'Work Visit')
     visit2 = create(:visit, user: user, place: home, name: 'Home Visit')
-    visit3 = create(:visit, user: user, place: nil, name: 'Unknown Location')
+    visit3 = create(:visit, user: user, place: nil, name: nil, location_label: 'Detected address')
 
     create_list(:point, 5,
                 user: user,
@@ -530,7 +555,8 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
 
       # Verify specific data
       expect(import_user.reload.settings['distance_unit']).to eq('mi')
-      expect(import_user.areas.pluck(:name)).to contain_exactly('V1 Home', 'V1 Work')
+      expect(import_user.areas).to be_empty
+      expect(import_user.places.pluck(:name)).to include('V1 Home', 'V1 Work')
       expect(import_user.trips.find_by(name: 'V1 Trip')).to be_present
       expect(import_user.stats.find_by(year: 2023, month: 6)).to be_present
       expect(import_user.visits.find_by(name: 'V1 Visit')).to be_present

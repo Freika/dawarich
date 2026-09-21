@@ -16,7 +16,7 @@ const source = await readFile(
   ),
   "utf8",
 )
-const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+";?\n/gm, "")
 const combinedSource = `${basemapUrlSource}\n${withoutImports}`
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(combinedSource).toString("base64")}`
 const { LAYER_COLOR_DEFAULTS, SettingsManager } = await import(moduleUrl)
@@ -30,7 +30,7 @@ async function loadSettingsController(settingsManager, overrides = {}) {
     "utf8",
   )
   const withoutImports = controllerSource.replace(
-    /^import[\s\S]*?from "[^"]+"\n/gm,
+    /^import[\s\S]*?from "[^"]+";?\n/gm,
     "",
   )
   globalThis.__settingsManagerTestDouble = settingsManager
@@ -118,6 +118,26 @@ test("Track generation thresholds load and persist with their existing backend k
     await SettingsManager.saveToBackend(loaded)
     assert.equal(saved.meters_between_routes, "1200")
     assert.equal(saved.minutes_between_routes, "45")
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
+test("a saved Areas layer carries over to Places with their boundaries", async () => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      settings: { enabled_map_layers: ["Tracks", "Areas"] },
+    }),
+  })
+
+  try {
+    SettingsManager.apiKey = "test-key"
+    const loaded = await SettingsManager.loadFromBackend()
+    assert.equal(loaded.placesEnabled, true)
+    assert.equal(loaded.placeBoundariesEnabled, true)
+    assert.equal(loaded.enabledMapLayers.includes("Areas"), false)
   } finally {
     globalThis.fetch = originalFetch
   }

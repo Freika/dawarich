@@ -16,6 +16,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
       json = JSON.parse(response.body)
       expect(json.size).to eq(1)
       expect(json.first['name']).to eq('Home')
+      expect(json.first['visit_radius']).to eq(50)
     end
 
     it 'serializes legacy places without lonlat geometry' do
@@ -59,9 +60,9 @@ RSpec.describe 'Api::V1::Places', type: :request do
     end
 
     it 'excludes tombstoned visits from visits_count' do
-      create(:visit, user: user, place: place, area: nil,
+      create(:visit, user: user, place: place,
                      started_at: 2.hours.ago, ended_at: 1.hour.ago)
-      create(:visit, user: user, place: place, area: nil, deleted_at: 1.day.ago,
+      create(:visit, user: user, place: place, deleted_at: 1.day.ago,
                      started_at: 5.hours.ago, ended_at: 4.hours.ago)
 
       get '/api/v1/places', headers: headers
@@ -73,7 +74,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
     context 'map visibility (manual + confirmed + tagged only)' do
       it 'excludes a suggested-only photon place' do
         suggested = create(:place, user: user, name: 'Suggested Only', source: :photon)
-        create(:visit, user: user, place: suggested, area: nil, status: :suggested)
+        create(:visit, user: user, place: suggested, status: :suggested)
 
         get '/api/v1/places', headers: headers
 
@@ -83,7 +84,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
 
       it 'includes a photon place linked to a confirmed visit' do
         confirmed = create(:place, user: user, name: 'Confirmed Place', source: :photon)
-        create(:visit, user: user, place: confirmed, area: nil, status: :confirmed)
+        create(:visit, user: user, place: confirmed, status: :confirmed)
 
         get '/api/v1/places', headers: headers
 
@@ -103,7 +104,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
       it 'includes a tagged photon place even when its only visit is suggested' do
         tagged = create(:place, user: user, name: 'Tagged Suggested', source: :photon)
         create(:tagging, taggable: tagged, tag: tag)
-        create(:visit, user: user, place: tagged, area: nil, status: :suggested)
+        create(:visit, user: user, place: tagged, status: :suggested)
 
         get '/api/v1/places', headers: headers
 
@@ -115,12 +116,12 @@ RSpec.describe 'Api::V1::Places', type: :request do
     context 'with filter param' do
       let!(:suggested) do
         place = create(:place, user: user, name: 'Suggested Only', source: :photon)
-        create(:visit, user: user, place: place, area: nil, status: :suggested)
+        create(:visit, user: user, place: place, status: :suggested)
         place
       end
       let!(:confirmed) do
         place = create(:place, user: user, name: 'Confirmed Place', source: :photon)
-        create(:visit, user: user, place: place, area: nil, status: :confirmed)
+        create(:visit, user: user, place: place, status: :confirmed)
         place
       end
 
@@ -145,6 +146,14 @@ RSpec.describe 'Api::V1::Places', type: :request do
         names = JSON.parse(response.body).map { |p| p['name'] }
         expect(names).to include('Confirmed Place')
         expect(names).not_to include('Suggested Only', 'Home')
+      end
+
+      it 'filter=unconfirmed returns only suggestion-only places' do
+        get '/api/v1/places', params: { filter: 'unconfirmed' }, headers: headers
+
+        names = JSON.parse(response.body).map { |p| p['name'] }
+        expect(names).to include('Suggested Only')
+        expect(names).not_to include('Confirmed Place', 'Home')
       end
 
       it 'filter=tagged returns only tagged places' do
@@ -176,6 +185,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
       json = JSON.parse(response.body)
       expect(json['name']).to eq('Home')
       expect(json['latitude']).to eq(40.7128)
+      expect(json['visit_radius']).to eq(50)
     end
 
     it 'returns 404 for other users place' do
@@ -196,6 +206,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
           latitude: 40.785091,
           longitude: -73.968285,
           source: 'manual',
+          visit_radius: 125,
           tag_ids: [tag.id]
         }
       }
@@ -209,6 +220,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
       expect(response).to have_http_status(:created)
       json = JSON.parse(response.body)
       expect(json['name']).to eq('Central Park')
+      expect(json['visit_radius']).to eq(125)
     end
 
     it 'associates tags with the place' do
@@ -230,11 +242,12 @@ RSpec.describe 'Api::V1::Places', type: :request do
   describe 'PATCH /api/v1/places/:id' do
     it 'updates the place' do
       patch "/api/v1/places/#{place.id}",
-            params: { place: { name: 'Updated Home' } },
+            params: { place: { name: 'Updated Home', visit_radius: 80 } },
             headers: headers
 
       expect(response).to have_http_status(:success)
       expect(place.reload.name).to eq('Updated Home')
+      expect(place.visit_radius).to eq(80)
     end
 
     it 'updates tags' do
@@ -326,6 +339,19 @@ RSpec.describe 'Api::V1::Places', type: :request do
 
       post '/api/v1/places', params: { place: { name: 'Test' } }
       expect(response).to have_http_status(:unauthorized)
+    end
+  end
+
+  describe 'DELETE /api/v1/places/:id' do
+    it 'removes legacy Area shells with the canonical Place' do
+      area = create(:area, user: user)
+      LegacyAreaPlaceMapping.create!(area:, place:)
+
+      delete api_v1_place_path(place), headers: headers
+
+      expect(response).to have_http_status(:no_content)
+      expect(Place.exists?(place.id)).to be(false)
+      expect(Area.exists?(area.id)).to be(false)
     end
   end
 

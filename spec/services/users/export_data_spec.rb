@@ -114,6 +114,22 @@ RSpec.describe Users::ExportData, type: :service do
         end
       end
 
+      it 'exports mapped Areas with the current canonical Place attributes' do
+        area = create(:area, user: user, name: 'Stale name', radius: 50)
+        place = create(:place, user: user, name: 'Current name', latitude: 52.5, longitude: 13.4,
+                               visit_radius: 125)
+        LegacyAreaPlaceMapping.create!(area: area, place: place)
+
+        result = service.export
+
+        Zip::File.open_buffer(result.file.download) do |zip_file|
+          payload = JSON.parse(zip_file.find_entry('areas.jsonl').get_input_stream.read.lines.first)
+          expect(payload).to include(
+            'name' => 'Current name', 'latitude' => place.lat, 'longitude' => place.lon, 'radius' => 125
+          )
+        end
+      end
+
       it 'marks the export as completed' do
         result = service.export
 
@@ -126,6 +142,17 @@ RSpec.describe Users::ExportData, type: :service do
           title: 'Export completed',
           content: /Your data export has been processed successfully/,
           kind: :info
+        ).and_return(double(call: true))
+
+        service.export
+      end
+
+      it 'does not expose legacy Area compatibility records in the notification' do
+        create(:area, user: user)
+        create(:place, user: user)
+
+        expect(Notifications::Create).to receive(:new).with(
+          hash_including(content: satisfy { |content| content.include?('1 places') && !content.include?('areas') })
         ).and_return(double(call: true))
 
         service.export
@@ -294,6 +321,7 @@ RSpec.describe Users::ExportData, type: :service do
       it 'returns correct counts for all entity types' do
         # Create some test data
         create_list(:area, 2, user: user)
+        create_list(:place, 2, user: user)
         create(:import, user: user)
         create(:trip, user: user)
         create(:stat, user: user)
@@ -303,6 +331,7 @@ RSpec.describe Users::ExportData, type: :service do
         counts = service.send(:calculate_entity_counts)
 
         expect(counts[:areas]).to eq(2)
+        expect(counts[:places]).to eq(2)
         expect(counts[:imports]).to eq(1)
         expect(counts[:trips]).to eq(1)
         expect(counts[:stats]).to eq(1)

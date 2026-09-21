@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [UNRELEASED]
+
+### Changed
+
+- Areas are now Places: each Area is migrated in the background to a Place with a Visit Radius (up to 50 km), together with its notes and Visits, and a map that showed Areas now shows Places with their boundaries. A Place can be created directly from a Visit.
+- `/api/v1/areas` and the Visit `area_id` field are deprecated in favour of `/api/v1/places` and `place_id`. Visit responses add `display_name` and `location_label`; `name` is now empty for suggested Visits and `place` is `null` for Visits without a Place or Area.
+
 ## [1.15.0] - 2026-09-20, Berlin
 
 ### Added
