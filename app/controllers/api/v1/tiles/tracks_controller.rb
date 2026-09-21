@@ -33,7 +33,7 @@ class Api::V1::Tiles::TracksController < ApiController
         options[:clip_start_at] = cacheable_start_at
         options[:clip_end_at] = cacheable_end_at
       end
-      options[:clip_import_id] = params[:import_id]
+      options[:clip_import_id] = params[:import_id].presence
     end
     return Tracks::VectorTileQuery.new(**options) unless speed_coloring?
 

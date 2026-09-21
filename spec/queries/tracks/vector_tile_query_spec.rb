@@ -25,6 +25,13 @@ RSpec.describe Tracks::VectorTileQuery do
     create(:track, user:, original_path: linestring_wkt(meter_pairs), **attrs)
   end
 
+  def link_points(track, positions_at)
+    positions_at.each do |(east, north), timestamp|
+      lon, lat = lonlat_at(east, north)
+      create(:point, user:, track:, longitude: lon, latitude: lat, timestamp: timestamp.to_i)
+    end
+  end
+
   # rubocop:disable Naming/MethodParameterName
   def feature_rows(z:, x:, y:, scope: user.tracks, clip_points_scope: nil, clip_import_id: nil,
                    clip_start_at: nil, clip_end_at: nil)
@@ -150,15 +157,12 @@ RSpec.describe Tracks::VectorTileQuery do
         [[10, 10], [500, 500], [2_000, 2_000], [3_000, 3_000]],
         start_at: Time.utc(2024, 9, 14), end_at: range_start + 11.hours
       )
-      [
-        [[10, 10], Time.utc(2024, 9, 14)],
-        [[500, 500], Time.utc(2024, 9, 15)],
-        [[2_000, 2_000], range_start + 10.hours],
-        [[3_000, 3_000], range_start + 11.hours]
-      ].each do |(east, north), timestamp|
-        lon, lat = lonlat_at(east, north)
-        create(:point, user:, track:, longitude: lon, latitude: lat, timestamp: timestamp.to_i)
-      end
+      link_points(track, [
+                    [[10, 10], Time.utc(2024, 9, 14)],
+                    [[500, 500], Time.utc(2024, 9, 15)],
+                    [[2_000, 2_000], range_start + 10.hours],
+                    [[3_000, 3_000], range_start + 11.hours]
+                  ])
       scope = user.tracks.where('end_at >= ? AND start_at <= ?', range_start, range_end)
 
       row = feature_rows(z: 10, x: 512, y: 511, scope:, clip_points_scope: user.points,
@@ -170,6 +174,42 @@ RSpec.describe Tracks::VectorTileQuery do
       expect(xmin).to be > 150
       expect(row['start_timestamp'].to_i).to eq((range_start + 10.hours).to_i)
       expect(row['end_timestamp'].to_i).to eq((range_start + 11.hours).to_i)
+    end
+
+    it 'keeps the stored path and stats of a track entirely inside the requested window' do
+      range_start = Time.utc(2024, 9, 20)
+      track = create_track_at([[10, 10], [3_000, 3_000]], start_at: range_start + 1.hour,
+                                                          end_at: range_start + 2.hours, distance: 12_345)
+      link_points(track, [[[10, 10], range_start + 1.hour], [[3_000, 3_000], range_start + 2.hours]])
+
+      row = feature_rows(z: 10, x: 512, y: 511, clip_points_scope: user.points,
+                         clip_start_at: range_start, clip_end_at: range_start.end_of_day).sole
+
+      expect(row['id'].to_i).to eq(track.id)
+      expect(row['distance'].to_f).to eq(12_345)
+    end
+
+    it 'falls back to the stored path of a boundary-spanning track without linked Points' do
+      range_start = Time.utc(2024, 9, 20)
+      track = create_track_at([[10, 10], [3_000, 3_000]], start_at: range_start - 2.days,
+                                                          end_at: range_start + 1.hour)
+
+      row = feature_rows(z: 10, x: 512, y: 511, clip_points_scope: user.points,
+                         clip_start_at: range_start, clip_end_at: range_start.end_of_day).sole
+
+      expect(row['id'].to_i).to eq(track.id)
+    end
+
+    it 'hides a boundary-spanning track with fewer than two linked Points inside the window' do
+      range_start = Time.utc(2024, 9, 20)
+      track = create_track_at([[10, 10], [3_000, 3_000]], start_at: range_start - 2.days,
+                                                          end_at: range_start + 1.hour)
+      link_points(track, [[[10, 10], range_start - 2.days], [[3_000, 3_000], range_start + 1.hour]])
+
+      rows = feature_rows(z: 10, x: 512, y: 511, clip_points_scope: user.points,
+                          clip_start_at: range_start, clip_end_at: range_start.end_of_day)
+
+      expect(rows).to be_empty
     end
   end
 

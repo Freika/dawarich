@@ -118,18 +118,41 @@ class Tracks::VectorTileQuery
 
   def clipped_with_clauses
     <<~SQL
-      WITH candidates AS MATERIALIZED (
-        SELECT * FROM (#{tile_scope.to_sql}) AS tracks
-        WHERE ST_Intersects(tracks.original_path, ST_Transform(#{margined_envelope}, 4326))
-      ), features AS (
+      WITH #{candidates_cte}, features AS (
+        SELECT #{property_columns}, #{mvt_geom_expression} AS geom
+        FROM candidates AS tracks
+        WHERE NOT tracks.clipped
+        UNION ALL
         SELECT #{clipped_property_columns},
           #{mvt_geom_expression('clipped_path.path')} AS geom
         FROM candidates AS tracks
         JOIN LATERAL (#{point_geometry_query.path_sql(track_id_sql: 'tracks.id')}) AS clipped_path
           ON clipped_path.path IS NOT NULL
-        WHERE ST_Intersects(clipped_path.path, ST_Transform(#{margined_envelope}, 4326))
+        WHERE tracks.clipped
+          AND ST_Intersects(clipped_path.path, ST_Transform(#{margined_envelope}, 4326))
         LIMIT #{TRACKS_PER_TILE_LIMIT}
       )
+    SQL
+  end
+
+  def candidates_cte
+    <<~SQL
+      candidates AS MATERIALIZED (
+        SELECT tracks.*, #{clipped_track_predicate} AS clipped
+        FROM (#{tile_scope.to_sql}) AS tracks
+        WHERE ST_Intersects(tracks.original_path, ST_Transform(#{margined_envelope}, 4326))
+      )
+    SQL
+  end
+
+  def clipped_track_predicate
+    return 'false' unless @clip_points_scope
+    return 'true' if @clip_import_id || !(@clip_start_at && @clip_end_at)
+
+    <<~SQL.squish
+      (EXTRACT(EPOCH FROM tracks.start_at) < #{@clip_start_at}
+        OR EXTRACT(EPOCH FROM tracks.end_at) > #{@clip_end_at})
+      AND EXISTS (SELECT 1 FROM points WHERE points.track_id = tracks.id)
     SQL
   end
 
