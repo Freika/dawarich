@@ -10,7 +10,7 @@
     "esbenp.prettier-vscode", // Prettier for JS-Formating
     "dbaeumer.vscode-eslint" // ESLint for JavaScript
   ],
-  "postCreateCommand": "yarn install && bundle config set --local path 'vendor/bundle' && bundle install --jobs 20 --retry 5",
+  "postCreateCommand": "npm ci && bundle config set --local path 'vendor/bundle' && bundle install --jobs 20 --retry 5",
   "forwardPorts": [3000], // Redirect to Rails-App-Server
   "remoteUser": "root",
   "workspaceFolder": "/var/app"

@@ -274,7 +274,7 @@ class Points::AnomalyFilter
   end
 
   def filter_speed_chunk(chunk_start, chunk_end)
-    points, main_points = fetch_points_with_context(chunk_start, chunk_end)
+    points, judged_points = fetch_points_with_context(chunk_start, chunk_end)
     return 0 if points.size < 3
 
     speeds_by_point = calculate_all_speeds(points.map(&:id))
@@ -283,15 +283,14 @@ class Points::AnomalyFilter
     threshold = speed_threshold(speeds_by_point)
     return 0 if threshold.nil?
 
-    # Only check points in the main range (not context points)
-    main_range_ids = main_points.map(&:id).to_set
+    judged_ids = judged_points.map(&:id).to_set
     frozen_ids = frozen_range_ids(points, chunk_start, chunk_end)
 
     # Each device is its own stream. Interleaving them by timestamp invents
     # journeys between devices that nobody made — the same reason track
     # generation groups by tracker_id (Tracks::TimeChunkProcessorJob).
     anomaly_ids = points.group_by { |point| point.tracker_id.to_s }.values.flat_map do |stream|
-      displaced_run_ids(stream, speeds_by_point, threshold, main_range_ids) +
+      displaced_run_ids(stream, speeds_by_point, threshold, judged_ids) +
         frozen_fix_run_ids(stream, speeds_by_point, threshold, frozen_ids)
     end
 
@@ -315,7 +314,7 @@ class Points::AnomalyFilter
   # and its return leg is often slow enough to look like an ordinary flight.
   # Each candidate excursion is therefore judged on the distance it ADDS versus
   # going straight from the fix before it to the fix after it.
-  def displaced_run_ids(stream, speeds_by_point, threshold, main_range_ids)
+  def displaced_run_ids(stream, speeds_by_point, threshold, judged_ids)
     displaced = Set.new
 
     # Slide a window of every allowed run length over the stream, judging each
@@ -338,7 +337,7 @@ class Points::AnomalyFilter
           next
         end
 
-        run.each { |point| displaced << point.id if main_range_ids.include?(point.id) }
+        run.each { |point| displaced << point.id if judged_ids.include?(point.id) }
       end
     end
 
@@ -472,7 +471,9 @@ class Points::AnomalyFilter
                      .order(:timestamp, :id).limit(CONTEXT_POINTS)
                      .select(:id, :timestamp, :tracker_id, :lonlat, :accuracy).to_a
 
-    [before_ctx + main + after_ctx, main]
+    recent_ctx = before_ctx.select { |point| point.timestamp >= start_time - MAX_FROZEN_FIX_SPAN_SECONDS }
+
+    [before_ctx + main + after_ctx, recent_ctx + main]
   end
 
   def before_context(start_time)
