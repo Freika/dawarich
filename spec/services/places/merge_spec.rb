@@ -30,8 +30,8 @@ RSpec.describe Places::Merge do
   end
 
   it 'moves confirmed and Suggested Visits without changing their ownership state' do
-    confirmed = create(:visit, user:, place: duplicate, area: nil, status: :confirmed)
-    suggested = create(:visit, user:, place: duplicate, area: nil, status: :suggested)
+    confirmed = create(:visit, user:, place: duplicate, status: :confirmed)
+    suggested = create(:visit, user:, place: duplicate, status: :suggested)
     survivor
 
     visit_count = Visit.count
@@ -48,7 +48,7 @@ RSpec.describe Places::Merge do
     duplicate_tag = create(:tag, user:, name: 'Favorite')
     survivor.tags << survivor_tag
     duplicate.tags << duplicate_tag
-    suggested_visit = create(:visit, user:, area: nil)
+    suggested_visit = create(:visit, user:)
     create(:place_visit, place: survivor, visit: suggested_visit)
     create(:place_visit, place: duplicate, visit: suggested_visit)
     area = create(:area, user:)
@@ -81,8 +81,8 @@ RSpec.describe Places::Merge do
 
   it 'blocks a merge when Visit timestamps would collide' do
     started_at = Time.zone.parse('2026-09-01 12:00:00')
-    survivor_visit = create(:visit, user:, place: survivor, area: nil, started_at:)
-    duplicate_visit = create(:visit, user:, place: duplicate, area: nil, started_at:)
+    survivor_visit = create(:visit, user:, place: survivor, started_at:)
+    duplicate_visit = create(:visit, user:, place: duplicate, started_at:)
 
     visit_count = Visit.count
     expect do

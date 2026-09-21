@@ -27,7 +27,7 @@ RSpec.describe Visits::BulkDestroy do
 
       it 'preserves places attached to removed visits' do
         place = create(:place, user: user, source: :photon)
-        visit_with_place = create(:visit, user: user, place: place, area: nil)
+        visit_with_place = create(:visit, user: user, place: place)
 
         expect { described_class.new(user, [visit_with_place.id]).call }
           .not_to(change { Place.exists?(place.id) })

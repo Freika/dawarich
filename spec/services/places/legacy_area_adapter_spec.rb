@@ -65,7 +65,7 @@ RSpec.describe Places::LegacyAreaAdapter do
     started_at = Time.zone.parse('2026-05-01 10:00:00')
     area = create(:area, user:, name: 'Home')
     place = create(:place, user:, name: 'Home', latitude: area.latitude, longitude: area.longitude)
-    canonical = create(:visit, user:, area: nil, place:, started_at:, ended_at: started_at + 1.hour)
+    canonical = create(:visit, user:, place:, started_at:, ended_at: started_at + 1.hour)
     legacy = create(:visit, user:, area:, place: nil, started_at:, ended_at: started_at + 30.minutes)
 
     expect { adapter.resolve(area) }.not_to raise_error
