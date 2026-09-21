@@ -6,6 +6,8 @@ module Achievements
     before_action :require_feature_enabled
 
     def next
+      return head :no_content unless UnlockEvent.pending.exists?(user_id: current_user.id)
+
       state = Progress.find_by(user: current_user, achievement_key: Progress::EXPLORATION_KEY)&.state || {}
       10.times do
         claim = deck.claim(resume_token: params[:claim_token].to_s, batch_end_id: positive_id(params[:batch_end_id]))

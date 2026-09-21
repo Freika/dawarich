@@ -9,6 +9,15 @@ module Achievements
     MISSING_COUNTRIES = 'countries table is empty: run db/seeds.rb before loading achievement ' \
                         'regions, country-level achievements resolve through Country#iso_a2'
 
+    UPSERT_SQL = <<~SQL.freeze
+      INSERT INTO regions (code, geom, created_at, updated_at)
+      SELECT feature -> 'properties' ->> '#{CODE_PROPERTY}',
+             ST_Multi(ST_SetSRID(ST_GeomFromGeoJSON(feature ->> 'geometry'), 4326)),
+             NOW(), NOW()
+      FROM jsonb_array_elements(?::jsonb -> 'features') AS feature
+      ON CONFLICT (code) DO UPDATE SET geom = EXCLUDED.geom, updated_at = EXCLUDED.updated_at
+    SQL
+
     REPAIR_SQL = <<~SQL
       UPDATE regions
       SET geom = ST_Multi(ST_CollectionExtract(ST_MakeValid(geom), 3))
@@ -18,34 +27,9 @@ module Achievements
     def call
       raise MissingCountriesError, MISSING_COUNTRIES if Country.none?
 
-      rows.each_slice(500) do |batch|
-        Region.upsert_all(batch, unique_by: :code, update_only: %i[geom])
-      end
-
+      geojson = File.read(Rails.root.join(ASSET_PATH))
+      Region.connection.execute(Region.sanitize_sql_array([UPSERT_SQL, geojson]))
       Region.connection.execute(REPAIR_SQL)
-    end
-
-    private
-
-    def rows
-      now = Time.current
-
-      features.map do |feature|
-        { code: feature.properties[CODE_PROPERTY], geom: multi_polygon(feature.geometry),
-          created_at: now, updated_at: now }
-      end
-    end
-
-    def features
-      RGeo::GeoJSON.decode(File.read(Rails.root.join(ASSET_PATH)), geo_factory: factory)
-    end
-
-    def factory
-      @factory ||= RGeo::Geos.factory(srid: 4326)
-    end
-
-    def multi_polygon(geom)
-      geom.geometry_type == RGeo::Feature::Polygon ? factory.multi_polygon([geom]) : geom
     end
   end
 end

@@ -34,10 +34,7 @@ module Achievements
     end
 
     def current_user_ids
-      Progress
-        .where(achievement_key: Progress::EXPLORATION_KEY)
-        .where("COALESCE((state ->> 'calculation_version')::integer, 0) >= ?", RegionSetChecker::CALCULATION_VERSION)
-        .pluck(:user_id)
+      Progress.current_exploration.pluck(:user_id)
     end
   end
 end

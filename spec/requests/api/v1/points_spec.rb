@@ -330,12 +330,13 @@ RSpec.describe 'Api::V1::Points', type: :request do
                              city: 'Old city', country_name: old_country.name,
                              reverse_geocoded_at: Time.current)
       Flipper.enable(:achievements)
+      clear_achievement_checks(user.id)
 
       expect do
         put "/api/v1/points/#{point.id}?api_key=#{user.api_key}",
             params: { point: { latitude: 1.5, longitude: 1.5 } }
       end.to have_enqueued_job(Achievements::CheckJob).with(user.id)
-      expect(Achievements::CheckJob.take_pending_timestamp(user.id)).to eq(point.timestamp)
+      expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([point.timestamp])
 
       point.reload
       expect(point.country_id).to eq(new_country.id)

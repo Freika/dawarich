@@ -174,6 +174,8 @@ class Api::V1::PointsController < ApiController
 
   def relocate(point)
     point.lonlat = "POINT(#{point_params[:longitude]} #{point_params[:latitude]})"
+    return false unless point.validate
+
     country = point.found_in_country
     point.assign_attributes(
       country_id: country&.id,

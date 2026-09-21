@@ -44,7 +44,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Synology template no longer hangs waiting for its database on a fresh install.
 - The Kubernetes guide's health probes check the web container instead of the Sidekiq container, and a startup probe keeps it from being restarted while migrations run.
 - Trip and track distance is calculated in the database, so large trips no longer run out of memory and leave the distance empty. Press Recalculate on an affected trip to fill it in.
-- Exploration achievement rollout silently backfills existing location history, while public cards expose aggregate progress only. (#3121)
+- Exploration achievements work through existing location history without notifications — before launch on Cloud, once the feature is enabled on self-hosted instances — and public cards show set progress and unlock dates only. (#3121)
 - Achievement cards support HTTP self-hosted installations, use the user's timezone for unlock dates and refresh after dwell-threshold changes. (#3121)
 - TREK itinerary imports now keep unscheduled places, honour the trip owner's timezone, and retain the plan after disconnecting TREK. (#3615)
 - Days per Country now uses a more varied color palette so countries are easier to distinguish (#3602).

@@ -35,5 +35,18 @@ RSpec.describe Achievements::LoadRegions do
         expect { described_class.new.call }.not_to change(Region, :count)
       end
     end
+
+    context 'when rgeo was built without GEOS' do
+      before do
+        create(:country)
+        allow(RGeo::Geos).to receive(:supported?).and_return(false)
+      end
+
+      it 'still loads every region' do
+        described_class.new.call
+
+        expect(Region.count).to eq(Achievements::Registry.subdivision_codes.size)
+      end
+    end
   end
 end

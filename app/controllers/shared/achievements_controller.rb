@@ -8,9 +8,9 @@ class Shared::AchievementsController < ApplicationController
 
   def show
     progress = Achievements::Progress.find_by(sharing_uuid: params[:uuid], sharing_enabled: true)
-    definition = progress && Achievements::Registry.find(progress.achievement_key)
+    definition = progress&.user && Achievements::Registry.find(progress.achievement_key)
 
-    return redirect_to root_path, alert: I18n.t('achievements.public.not_found') if progress.nil? || definition.nil?
+    return redirect_to root_path, alert: I18n.t('achievements.public.not_found') if definition.nil?
 
     I18n.with_locale(progress.user.locale) do
       exploration = Achievements::Progress.exploration_for(progress.user)

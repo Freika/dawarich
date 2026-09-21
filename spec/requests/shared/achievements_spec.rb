@@ -23,6 +23,15 @@ RSpec.describe 'Shared achievements' do
       )
     end
 
+    it 'treats a link whose owner is being deleted as not found' do
+      uuid = progress.sharing_uuid
+      user.mark_as_deleted!
+
+      get shared_achievement_path(uuid)
+
+      expect(response).to redirect_to(root_path)
+    end
+
     it 'renders the badge page without authentication' do
       get shared_achievement_path(progress.sharing_uuid)
 
