@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Map track lines now respect the selected date range, so Today and custom searches no longer show portions of overlapping tracks from outside that range.
 - A trip recorded by several devices at once no longer zigzags between them: its line, distance and day routes follow the busiest of the devices that were recording at the same time. Devices that recorded one after another — GPX segments, imported activities, a phone swapped mid-trip — all stay on the trip. For trips calculated before this release, press Recalculate on the trip page to update the saved route and distance.
 - Undoing a point move after leaving the map selection no longer reports a failure for a move that went through.
 - A TREK source no longer stays stuck on "still importing" when an import fails unexpectedly, and it can be disconnected while it is importing.
