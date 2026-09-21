@@ -1340,6 +1340,7 @@ zh:
       rename: 重命名
       merge: 合并
       select_place_to_merge: 选择重复地点
+      no_matching_places: 未找到匹配的地点
       merge_confirmation: 将所选地点合并到“%{survivor}”？访问、标签和备注都会移到这里。
       notes: 备注
       save: 保存
@@ -1723,7 +1724,7 @@ zh:
         tracks: 轨迹
         imports: 导入
         exports: 导出
-        areas: 区域
+        places: 地点
         sign_in_history: 登录历史记录
         total_sign_ins: 登录总数
         last_sign_in: 上次登录
@@ -3218,6 +3219,7 @@ zh:
       created: 地点创建成功！
       updated: 地点更新成功！
       merged: '已将“%{duplicate}”合并到“%{survivor}”。'
+      merge_visit_conflict: "这些地点无法合并，因为到访 #%{first_id} 和到访 #%{second_id} 都开始于 %{started_at}。请先处理这些到访记录。"
     points:
       no_points_selected: 未选择轨迹点。
       points_were_successfully_destroyed: 轨迹点已成功删除。

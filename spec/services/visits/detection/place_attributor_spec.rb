@@ -49,6 +49,20 @@ RSpec.describe Visits::Detection::PlaceAttributor do
     expect(result[:name]).to eq('Specific Place')
   end
 
+  it 'uses an indexed constant-radius prefilter before the exact per-Place radius check' do
+    create(:place, user: user, latitude: lat0, longitude: lon0, visit_radius: 100)
+    containing_query = nil
+
+    subscriber = lambda do |_name, _started, _finished, _id, payload|
+      sql = payload[:sql]
+      containing_query = sql if sql.include?('places.visit_radius') && sql.include?('ST_DWithin')
+    end
+
+    ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record') { attribute }
+
+    expect(containing_query.scan('ST_DWithin').size).to eq(2)
+  end
+
   it 'prefers the nearest center when containing Places have equal radii' do
     nearest = create(:place, user: user, latitude: lat0 + north(5), longitude: lon0, visit_radius: 50)
     create(:place, user: user, latitude: lat0 + north(25), longitude: lon0, visit_radius: 50)

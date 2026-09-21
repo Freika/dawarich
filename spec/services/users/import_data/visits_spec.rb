@@ -240,6 +240,34 @@ RSpec.describe Users::ImportData::Visits, type: :service do
       end
     end
 
+    context 'with unnamed visits in the same time window at different Places' do
+      let(:visits_data) do
+        %w[Home Office].each_with_index.map do |place_name, index|
+          {
+            'name' => nil,
+            'location_label' => 'Detected stop',
+            'started_at' => '2024-01-01T09:00:00Z',
+            'ended_at' => '2024-01-01T10:00:00Z',
+            'duration' => 3600,
+            'status' => 'confirmed',
+            'place_reference' => {
+              'name' => place_name,
+              'latitude' => (40 + index).to_s,
+              'longitude' => (-74 - index).to_s,
+              'source' => 'manual'
+            }
+          }
+        end
+      end
+
+      it 'preserves both distinct visits' do
+        service = described_class.new(user, visits_data)
+
+        expect(service.call).to eq(2)
+        expect(user.visits.includes(:place).map { |visit| visit.place.name }).to contain_exactly('Home', 'Office')
+      end
+    end
+
     context 'with invalid visit data' do
       let(:visits_data) do
         [

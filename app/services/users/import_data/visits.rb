@@ -18,15 +18,16 @@ class Users::ImportData::Visits
     visits_data.each do |visit_data|
       next unless visit_data.is_a?(Hash)
 
-      existing_visit = find_existing_visit(visit_data)
-
-      if existing_visit
-        Rails.logger.debug "Visit already exists: #{visit_data['name']}"
-        next
-      end
-
       begin
-        visit_record = create_visit_record(visit_data)
+        visit_attributes = prepare_visit_attributes(visit_data)
+        existing_visit = find_existing_visit(visit_attributes)
+
+        if existing_visit
+          Rails.logger.debug "Visit already exists: #{visit_data['name']}"
+          next
+        end
+
+        visit_record = create_visit_record(visit_attributes)
         visits_created += 1
         Rails.logger.debug "Created visit: #{visit_record.name}"
       rescue ActiveRecord::RecordInvalid => e
@@ -48,17 +49,18 @@ class Users::ImportData::Visits
 
   attr_reader :user, :visits_data, :legacy_area_place_references, :legacy_area_places_by_name
 
-  def find_existing_visit(visit_data)
+  def find_existing_visit(attributes)
     user.visits.find_by(
-      name: visit_data['name'],
-      started_at: visit_data['started_at'],
-      ended_at: visit_data['ended_at']
+      name: attributes['name'],
+      location_label: attributes['location_label'],
+      started_at: attributes['started_at'],
+      ended_at: attributes['ended_at'],
+      place_id: attributes[:place]&.id || attributes['place_id']
     )
   end
 
-  def create_visit_record(visit_data)
-    visit_attributes = prepare_visit_attributes(visit_data)
-    ActiveRecord::Base.transaction(requires_new: true) { user.visits.create!(visit_attributes) }
+  def create_visit_record(attributes)
+    ActiveRecord::Base.transaction(requires_new: true) { user.visits.create!(attributes) }
   end
 
   def prepare_visit_attributes(visit_data)

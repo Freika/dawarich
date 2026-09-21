@@ -47,7 +47,7 @@ module Visits
     end
 
     def create_default_place(lat, lon, suggested_name)
-      place = user.places.create!(
+      place = user.places.build(
         name:      suggested_name.presence || Place::DEFAULT_NAME,
         geodata:   {},
         latitude:  lat,
@@ -55,6 +55,8 @@ module Visits
         lonlat:    "POINT(#{lon} #{lat})",
         source:    :photon
       )
+      place.skip_suggested_visit_reattribution = true
+      place.save!
 
       Places::NameFetchingJob.perform_later(place.id) if Geocoding::Config.for(user).enabled?
       place

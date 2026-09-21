@@ -13,6 +13,7 @@ class Users::ImportData::Areas
     @areas_data = areas_data
     @place_references_by_id = {}
     @place_references_by_name = {}
+    @ambiguous_place_names = Set.new
   end
 
   def call
@@ -40,11 +41,12 @@ class Users::ImportData::Areas
     candidates = matching_places(name, latitude, longitude)
 
     # Multiple same-name candidates are deliberately not guessed between.
-    place = candidates.one? ? candidates.first : create_place(name, latitude, longitude, radius)
-    place.update!(visit_radius: [place.visit_radius, radius].max) if place.visit_radius < radius
+    created = !candidates.one?
+    place = created ? create_place(name, latitude, longitude, radius) : candidates.first
+    promote_place(place, name, radius) unless created
     remember_reference(area_data, place)
 
-    place.previously_new_record? ? :created : :reused
+    created ? :created : :reused
   rescue ActiveRecord::RecordInvalid => e
     Rails.logger.warn "Skipped invalid legacy Area during import: #{e.record.errors.full_messages.join(', ')}"
     :skipped
@@ -72,6 +74,17 @@ class Users::ImportData::Areas
     place
   end
 
+  def promote_place(place, name, radius)
+    place.user_named = true
+    place.skip_suggested_visit_reattribution = true
+    place.update!(
+      name: name,
+      source: :manual,
+      name_locked_at: place.name_locked_at || Time.current,
+      visit_radius: [place.visit_radius, radius].max
+    )
+  end
+
   def remember_reference(area_data, place)
     reference = {
       'name' => place.name,
@@ -85,8 +98,11 @@ class Users::ImportData::Areas
     place_references_by_id[legacy_id.to_s] = reference if legacy_id.present?
 
     normalized_name = normalize(place.name)
+    return if @ambiguous_place_names.include?(normalized_name)
+
     if place_references_by_name.key?(normalized_name)
       place_references_by_name.delete(normalized_name)
+      @ambiguous_place_names << normalized_name
     else
       place_references_by_name[normalized_name] = reference
     end

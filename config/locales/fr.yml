@@ -2082,6 +2082,7 @@ fr:
       rename: Renommer
       merge: Fusionner
       select_place_to_merge: Sélectionner le lieu en double
+      no_matching_places: Aucun lieu correspondant trouvé
       merge_confirmation: Fusionner le lieu sélectionné avec « %{survivor} » ? Les visites, étiquettes et notes seront déplacées ici.
       notes: Notes
       save: Enregistrer
@@ -2551,7 +2552,7 @@ fr:
         tracks: Trajets
         imports: Importations
         exports: Exportations
-        areas: Zones
+        places: Lieux
         sign_in_history: Historique de connexion
         total_sign_ins: Connexions totales
         last_sign_in: Dernière connexion
@@ -4139,6 +4140,7 @@ fr:
       created: Lieu créé avec succès !
       updated: Lieu mis à jour avec succès
       merged: '« %{duplicate} » a été fusionné avec « %{survivor} ».'
+      merge_visit_conflict: "Ces lieux ne peuvent pas être fusionnés car la visite #%{first_id} et la visite #%{second_id} commencent toutes deux à %{started_at}. Résolvez d'abord ces visites."
     points:
       no_points_selected: Aucun point sélectionné.
       points_were_successfully_destroyed: Les points ont été supprimés avec succès.

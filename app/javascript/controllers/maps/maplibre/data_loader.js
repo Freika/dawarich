@@ -269,22 +269,27 @@ export class DataLoader {
   visitsToGeoJSON(visits) {
     return {
       type: "FeatureCollection",
-      features: visits.map((visit) => ({
-        type: "Feature",
-        geometry: {
-          type: "Point",
-          coordinates: [visit.place.longitude, visit.place.latitude],
-        },
-        properties: {
-          id: visit.id,
-          name: visit.name,
-          place_name: visit.place?.name,
-          status: visit.status,
-          started_at: visit.started_at,
-          ended_at: visit.ended_at,
-          duration: visit.duration,
-        },
-      })),
+      features: visits
+        .filter(
+          (visit) =>
+            visit.place?.longitude != null && visit.place?.latitude != null,
+        )
+        .map((visit) => ({
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [visit.place.longitude, visit.place.latitude],
+          },
+          properties: {
+            id: visit.id,
+            name: visit.display_name || visit.name,
+            place_name: visit.place.name,
+            status: visit.status,
+            started_at: visit.started_at,
+            ended_at: visit.ended_at,
+            duration: visit.duration,
+          },
+        })),
     }
   }
 

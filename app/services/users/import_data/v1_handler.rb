@@ -68,7 +68,7 @@ class Users::ImportData::V1Handler
     when 'settings'
       import_settings(value) if value.present?
     when 'areas'
-      import_areas(value)
+      @areas_data = value
     when 'imports'
       import_imports(value)
     when 'exports'
@@ -116,12 +116,14 @@ class Users::ImportData::V1Handler
 
   def initialize_stream_state
     @places_batch = []
+    @areas_data = nil
     @stream_writers = {}
     @stream_temp_paths = {}
   end
 
   def finalize_stream_processing
     flush_places_batch
+    import_areas(@areas_data)
     close_stream_writer(:visits)
     close_stream_writer(:points)
 

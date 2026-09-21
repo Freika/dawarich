@@ -26,6 +26,30 @@ RSpec.describe '/places', type: :request do
       expect(response.body).to include('Needs Review')
       expect(response.body).not_to include('My Home')
     end
+
+    it 'offers a direct confirmation action for unconfirmed Places' do
+      suggested = create(:place, user:, source: :photon, name: 'Needs Review')
+      create(:visit, user:, place: suggested, area: nil, status: :suggested)
+
+      get places_url(filter: 'unconfirmed')
+
+      expect(response.body).to include(confirm_place_path(suggested))
+      expect(response.body).to include('Confirm')
+    end
+  end
+
+  describe 'PATCH /places/:id/confirm' do
+    it 'promotes a suggested Place into the user-owned catalogue' do
+      place = create(:place, user:, source: :photon, name: 'Neighbourhood cafe')
+      create(:visit, user:, place:, area: nil, status: :suggested)
+
+      patch confirm_place_url(place), params: { filter: 'unconfirmed' }
+
+      expect(response).to redirect_to(places_url(filter: 'unconfirmed'))
+      expect(place.reload).to have_attributes(source: 'manual')
+      expect(place).to be_name_locked
+      expect(Place.unconfirmed_for(user)).not_to include(place)
+    end
   end
 
   describe 'POST /create' do
@@ -39,6 +63,12 @@ RSpec.describe '/places', type: :request do
           expect do
             post places_url, params: valid_params, as: :turbo_stream
           end.to change(Place, :count).by(1)
+        end
+
+        it 'reattributes Suggested Visits after explicit user creation' do
+          expect do
+            post places_url, params: valid_params, as: :turbo_stream
+          end.to have_enqueued_job(Places::ReattributeSuggestedVisitsJob)
         end
 
         it 'stores and returns the visit radius' do
@@ -229,6 +259,17 @@ RSpec.describe '/places', type: :request do
 
       expect(response).to redirect_to(places_url)
     end
+
+    it 'deletes mapped legacy Area shells so the Place cannot be recreated' do
+      area = create(:area, user:)
+      LegacyAreaPlaceMapping.create!(area:, place:)
+
+      delete place_url(place)
+
+      expect(Area.exists?(area.id)).to be(false)
+      expect(LegacyAreaPlaceMapping.exists?(area_id: area.id)).to be(false)
+      expect(Visit.exists?(visit.id)).to be(true)
+    end
   end
 
   describe 'POST /places/:id/merge' do
@@ -259,6 +300,21 @@ RSpec.describe '/places', type: :request do
 
       expect(response).to have_http_status(:not_found)
     end
+
+    it 'reports a timestamp conflict without changing either Place' do
+      started_at = Time.zone.parse('2026-09-01 12:00:00')
+      create(:visit, user:, place: survivor, area: nil, started_at:)
+      duplicate_visit = create(:visit, user:, place: duplicate, area: nil, started_at:)
+
+      expect do
+        post merge_place_url(survivor), params: { duplicate_place_id: duplicate.id }, as: :turbo_stream
+      end.not_to change(Place, :count)
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(response.body).to include("Visit ##{duplicate_visit.id}")
+      expect(response.body).to include('both start at September 01, 2026')
+      expect(duplicate_visit.reload.place).to eq(duplicate)
+    end
   end
 
   describe 'GET /show' do
@@ -286,6 +342,34 @@ RSpec.describe '/places', type: :request do
         expect(response.body).to include('Test Cafe')
         expect(response.body).to include('Berlin')
         expect(response.body).to include('Germany')
+      end
+
+      it 'searches a bounded merge candidate list by name with location context' do
+        create(:place, user:, name: 'Nearby candidate', latitude: place.lat, longitude: place.lon)
+        distant = create(:place, user:, name: 'Distant duplicate', latitude: 48.8566, longitude: 2.3522)
+        create(:place, user:, name: 'Unrelated place', latitude: 48.8566, longitude: 2.3522)
+
+        get place_url(place), params: { merge_query: 'Distant' }
+
+        expect(response.body).to include('Distant duplicate')
+        expect(response.body).to include(distant.lat.to_s, distant.lon.to_s)
+        expect(response.body).not_to include('Nearby candidate', 'Unrelated place')
+      end
+
+      it 'shows an empty state when no merge candidates match the search' do
+        get place_url(place), params: { merge_query: 'Missing place' }
+
+        expect(response.body).to include(I18n.t('places.drawer.no_matching_places'))
+      end
+
+      it 'labels merge search and selection controls for assistive technology' do
+        create(:place, user: user, name: 'Candidate', latitude: place.lat, longitude: place.lon)
+
+        get place_url(place)
+
+        document = Nokogiri::HTML(response.body)
+        expect(document.at_css('label[for="merge_query"]')).to be_present
+        expect(document.at_css('label[for="duplicate_place_id"]')).to be_present
       end
 
       it 'renders the total visit count' do

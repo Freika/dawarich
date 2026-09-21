@@ -146,6 +146,19 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         json_response = JSON.parse(response.body)
         expect(json_response['place']['id']).to eq(existing_place.id)
       end
+
+      it 'uses the canonical Place resolved from a legacy area_id' do
+        area = create(:area, user: user, latitude: 52.52, longitude: 13.405, radius: 500)
+        params = valid_create_params.deep_merge(
+          visit: { area_id: area.id, latitude: 52.522, longitude: 13.405 }
+        )
+
+        post '/api/v1/visits', params: params, headers: auth_headers
+
+        mapped_place = LegacyAreaPlaceMapping.find_by!(area: area).place
+        expect(response).to have_http_status(:ok)
+        expect(user.visits.last).to have_attributes(place_id: mapped_place.id, area_id: nil)
+      end
     end
 
     context 'with invalid parameters' do

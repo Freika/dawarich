@@ -231,6 +231,17 @@ RSpec.describe '/settings/users', type: :request do
 
             expect(response.body).to include(user.points_count.to_s)
           end
+
+          it 'shows canonical Places instead of legacy Areas in the data overview' do
+            create_list(:place, 2, user: user)
+            create_list(:area, 3, user: user)
+
+            get settings_user_url(user)
+
+            rows = response.parsed_body.css('table tr').map { |row| row.text.squish }
+            expect(rows).to include('Places 2')
+            expect(rows).not_to include('Areas 3')
+          end
         end
 
         describe 'GET /edit' do

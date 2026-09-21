@@ -84,10 +84,16 @@
   <footer class="place-drawer__actions">
     <button type="button" class="place-drawer__action place-drawer__action--rename" disabled><%= t('.rename') %></button>
     <% candidates = local_assigns.fetch(:merge_candidates, @merge_candidates || []) %>
+    <%= form_with url: place_path(place), method: :get, data: { turbo_frame: 'place-drawer' }, class: 'flex gap-2 items-center' do %>
+      <%= label_tag :merge_query, t('maps.places.search_placeholder'), class: 'sr-only' %>
+      <%= search_field_tag :merge_query, params[:merge_query], placeholder: t('maps.places.search_placeholder'), class: 'input input-bordered input-sm max-w-48' %>
+      <%= submit_tag t('maps.map_panel.search'), class: 'btn btn-sm' %>
+    <% end %>
     <% if candidates.any? %>
       <%= form_with url: merge_place_path(place), method: :post, class: 'flex gap-2 items-center' do |f| %>
+        <%= label_tag :duplicate_place_id, t('.select_place_to_merge'), class: 'sr-only' %>
         <%= select_tag :duplicate_place_id,
-                       options_from_collection_for_select(candidates, :id, :name),
+                       options_for_select(candidates.map { |candidate| ["#{candidate.name} · #{number_with_precision(candidate.distance_in_km, precision: 2)} km · #{candidate.lat}, #{candidate.lon}", candidate.id] }),
                        prompt: t('.select_place_to_merge'),
                        required: true,
                        class: 'select select-bordered select-sm max-w-48' %>
@@ -95,6 +101,8 @@
                      class: 'place-drawer__action place-drawer__action--merge',
                      data: { turbo_confirm: t('.merge_confirmation', survivor: place.name) } %>
       <% end %>
+    <% elsif params[:merge_query].present? %>
+      <p class="text-sm text-base-content/60"><%= t('.no_matching_places') %></p>
     <% end %>
     <%= button_to t('.delete'),
                   places_path(place),

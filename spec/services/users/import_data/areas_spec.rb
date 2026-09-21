@@ -60,6 +60,37 @@ RSpec.describe Users::ImportData::Areas, type: :service do
     expect(user.places.where(name: 'Home').count).to eq(1)
   end
 
+  it 'promotes a reused Photon Place to a user-owned locked Place' do
+    existing = create(
+      :place,
+      user:,
+      name: 'home',
+      source: :photon,
+      latitude: 40.7128,
+      longitude: -74.0060,
+      visit_radius: 40
+    )
+
+    service.call
+
+    expect(existing.reload).to have_attributes(name: 'Home', source: 'manual', visit_radius: 100)
+    expect(existing).to be_name_locked
+  end
+
+  it 'keeps a legacy name ambiguous after three same-name Areas' do
+    input = [
+      { 'id' => 1, 'name' => 'Home', 'latitude' => 40.0, 'longitude' => -74.0 },
+      { 'id' => 2, 'name' => 'Home', 'latitude' => 41.0, 'longitude' => -75.0 },
+      { 'id' => 3, 'name' => 'Home', 'latitude' => 42.0, 'longitude' => -76.0 }
+    ]
+    importer = described_class.new(user, input)
+
+    importer.call
+
+    expect(importer.place_references_by_id.keys).to contain_exactly('1', '2', '3')
+    expect(importer.place_references_by_name).not_to have_key('home')
+  end
+
   it 'does not merge different names based on proximity alone' do
     create(:place, user:, name: 'Apartment', latitude: 40.7128, longitude: -74.0060)
 

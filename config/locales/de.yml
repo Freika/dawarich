@@ -1373,6 +1373,7 @@ de:
       rename: Umbenennen
       merge: Verbinden
       select_place_to_merge: Doppelten Ort auswählen
+      no_matching_places: Keine passenden Orte gefunden
       merge_confirmation: Den ausgewählten Ort mit „%{survivor}“ zusammenführen? Aufenthalte, Tags und Notizen werden hierher verschoben.
       notes: Notizen
       save: Speichern
@@ -1750,7 +1751,7 @@ de:
         tracks: Tracks
         imports: Importe
         exports: Exporte
-        areas: Gebiete
+        places: Orte
         sign_in_history: Anmeldehistorie
         total_sign_ins: Gesamtanzahl Anmeldungen
         last_sign_in: Letzte Anmeldung
@@ -3229,6 +3230,7 @@ de:
       created: Ort erfolgreich erstellt!
       updated: Ort erfolgreich aktualisiert!
       merged: '„%{duplicate}“ wurde mit „%{survivor}“ zusammengeführt.'
+      merge_visit_conflict: "Diese Orte können nicht zusammengeführt werden, weil Besuch #%{first_id} und Besuch #%{second_id} beide um %{started_at} beginnen. Löse zuerst diese Besuche auf."
     points:
       no_points_selected: Keine Punkte ausgewählt.
       points_were_successfully_destroyed: Punkte wurden erfolgreich gelöscht.

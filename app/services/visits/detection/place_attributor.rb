@@ -22,6 +22,7 @@ module Visits
         area = unmapped_containing_area(stay)
         if area
           place = Places::LegacyAreaAdapter.new(user: user).resolve(area)
+          remember_visit_radius(place)
           return { area: nil, place: place, name: place.name, location_label: place.name, evidence: :place }
         end
 
@@ -35,6 +36,7 @@ module Visits
           minted = PlaceFinder.new(user).find_or_create_place(
             center_lat: stay[:center_lat], center_lon: stay[:center_lon], suggested_name: poi_name
           )
+          remember_visit_radius(minted)
           return { area: nil, place: minted, name: poi_name, location_label: poi_name, evidence: :poi }
         end
 
@@ -57,9 +59,12 @@ module Visits
       end
 
       def containing_place(stay)
-        candidates = user.places.select do |place|
-          distance_m(stay[:center_lat], stay[:center_lon], place.lat, place.lon) <= place.visit_radius
-        end
+        return nil unless max_visit_radius.positive?
+
+        candidates = user.places
+                         .near([stay[:center_lat], stay[:center_lon]], max_visit_radius, :m)
+                         .containing(stay[:center_lat], stay[:center_lon])
+                         .to_a
         return nil if candidates.empty?
 
         candidates.min_by do |place|
@@ -69,6 +74,16 @@ module Visits
             place.id
           ]
         end
+      end
+
+      def max_visit_radius
+        return @max_visit_radius if defined?(@max_visit_radius)
+
+        @max_visit_radius = user.places.maximum(:visit_radius).to_i
+      end
+
+      def remember_visit_radius(place)
+        @max_visit_radius = [max_visit_radius, place.visit_radius].max
       end
 
       def poi_vote(stay)

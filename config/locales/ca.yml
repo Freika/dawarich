@@ -1323,6 +1323,7 @@ ca:
       rename: Canvia el nom
       merge: Fusiona
       select_place_to_merge: Selecciona el lloc duplicat
+      no_matching_places: No s'han trobat llocs coincidents
       merge_confirmation: "Vols fusionar el lloc seleccionat amb \"%{survivor}\"? Les visites, etiquetes i notes s'hi traslladaran."
       notes: Notes
       save: Desa
@@ -1747,7 +1748,7 @@ ca:
         tracks: Trajectes
         imports: Importacions
         exports: Exportacions
-        areas: Àrees
+        places: Llocs
         sign_in_history: Historial d'inicis de sessió
         total_sign_ins: Total d'inicis de sessió
         last_sign_in: Últim inici de sessió
@@ -3163,6 +3164,7 @@ ca:
       created: El lloc s'ha creat correctament!
       updated: El lloc s'ha actualitzat correctament!
       merged: "S'ha fusionat \"%{duplicate}\" amb \"%{survivor}\"."
+      merge_visit_conflict: "Aquests llocs no es poden fusionar perquè la visita #%{first_id} i la visita #%{second_id} comencen a les %{started_at}. Resol primer aquestes visites."
     points:
       no_points_selected: No s'ha seleccionat cap punt.
       points_were_successfully_destroyed: Els punts s'han suprimit correctament.

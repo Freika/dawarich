@@ -158,8 +158,17 @@ class Users::ImportData::Points
     end
     logger.debug "Loaded #{Country.count} countries for lookup"
 
-    @visits_lookup = user.visits.reload.index_by do |visit|
-      [visit.name, visit.started_at.utc.iso8601, visit.ended_at.utc.iso8601]
+    @visits_lookup = {}
+    user.visits.includes(:place).find_each do |visit|
+      started_at = visit.started_at.utc.iso8601
+      ended_at = visit.ended_at.utc.iso8601
+      exact_key = [visit.name, visit.location_label, started_at, ended_at, place_identity(visit.place)]
+      labeled_legacy_key = [visit.name, visit.location_label, started_at, ended_at]
+      legacy_key = [visit.name, started_at, ended_at]
+
+      @visits_lookup[exact_key] = visit
+      add_unambiguous_visit_key(labeled_legacy_key, visit)
+      add_unambiguous_visit_key(legacy_key, visit)
     end
     logger.debug "Loaded #{@visits_lookup.size} visits for lookup"
 
@@ -276,11 +285,14 @@ class Users::ImportData::Points
     started_at = normalize_timestamp_for_lookup(visit_reference['started_at'])
     ended_at = normalize_timestamp_for_lookup(visit_reference['ended_at'])
 
-    visit_key = [
-      visit_reference['name'],
-      started_at,
-      ended_at
-    ]
+    visit_key = if visit_reference.key?('place_reference')
+                  [visit_reference['name'], visit_reference['location_label'], started_at, ended_at,
+                   place_identity(visit_reference['place_reference'])]
+                elsif visit_reference.key?('location_label')
+                  [visit_reference['name'], visit_reference['location_label'], started_at, ended_at]
+                else
+                  [visit_reference['name'], started_at, ended_at]
+                end
 
     visit = visits_lookup[visit_key]
     if visit
@@ -290,6 +302,26 @@ class Users::ImportData::Points
       logger.debug "Visit not found for reference: #{visit_reference.inspect}"
       logger.debug "Available visits: #{visits_lookup.keys.inspect}"
     end
+  end
+
+  def add_unambiguous_visit_key(key, visit)
+    @visits_lookup[key] = @visits_lookup.key?(key) ? nil : visit
+  end
+
+  def place_identity(place_or_reference)
+    return unless place_or_reference
+
+    if place_or_reference.is_a?(Place)
+      name = place_or_reference.name
+      latitude = place_or_reference.lat
+      longitude = place_or_reference.lon
+    else
+      name = place_or_reference['name']
+      latitude = place_or_reference['latitude']
+      longitude = place_or_reference['longitude']
+    end
+
+    [name.to_s.strip.downcase, format('%.6f', latitude.to_f), format('%.6f', longitude.to_f)]
   end
 
   # Export dumps carry the array columns as Postgres literals ('{home}'),

@@ -1323,6 +1323,7 @@ pl:
       rename: Zmień nazwę
       merge: Scal
       select_place_to_merge: Wybierz zduplikowane miejsce
+      no_matching_places: Nie znaleziono pasujących miejsc
       merge_confirmation: Połączyć wybrane miejsce z „%{survivor}”? Wizyty, tagi i notatki zostaną tutaj przeniesione.
       notes: Notatki
       save: Zapisz
@@ -1747,7 +1748,7 @@ pl:
         tracks: Trasy
         imports: Importy
         exports: Eksporty
-        areas: Obszary
+        places: Miejsca
         sign_in_history: Historia logowań
         total_sign_ins: Liczba logowań
         last_sign_in: Ostatnie logowanie
@@ -3218,6 +3219,7 @@ pl:
       created: Miejsce utworzono pomyślnie!
       updated: Miejsce zaktualizowano pomyślnie!
       merged: Połączono „%{duplicate}” z „%{survivor}”.
+      merge_visit_conflict: "Tych miejsc nie można scalić, ponieważ wizyta #%{first_id} i wizyta #%{second_id} zaczynają się o %{started_at}. Najpierw rozwiąż te wizyty."
     points:
       no_points_selected: Nie wybrano punktów.
       points_were_successfully_destroyed: Punkty zostały pomyślnie usunięte.

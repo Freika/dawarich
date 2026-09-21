@@ -1323,6 +1323,7 @@ en:
       rename: Rename
       merge: Merge
       select_place_to_merge: Select duplicate place
+      no_matching_places: No matching places found
       merge_confirmation: Merge the selected place into "%{survivor}"? Visits, tags, and notes will be moved here.
       notes: Notes
       save: Save
@@ -1747,7 +1748,7 @@ en:
         tracks: Tracks
         imports: Imports
         exports: Exports
-        areas: Areas
+        places: Places
         sign_in_history: Sign-in history
         total_sign_ins: Total sign-ins
         last_sign_in: Last sign-in
@@ -3151,6 +3152,7 @@ en:
       created: Place created successfully!
       updated: Place updated successfully!
       merged: 'Merged "%{duplicate}" into "%{survivor}".'
+      merge_visit_conflict: "These places cannot be merged because Visit #%{first_id} and Visit #%{second_id} both start at %{started_at}. Resolve those visits first."
     points:
       no_points_selected: No points selected.
       points_were_successfully_destroyed: Points were successfully destroyed.

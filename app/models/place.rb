@@ -18,7 +18,8 @@ class Place < ApplicationRecord
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
 
-  attr_accessor :machine_named, :user_named, :skip_suggested_visit_reattribution
+  attr_accessor :machine_named, :user_named, :skip_suggested_visit_reattribution,
+                :reattribute_suggested_visits_on_create
 
   before_validation :build_lonlat, if: -> { latitude.present? && longitude.present? }
   before_save :lock_name_on_user_edit
@@ -34,6 +35,13 @@ class Place < ApplicationRecord
 
   scope :for_user, ->(user) { where(user: user) }
   scope :ordered, -> { order(:name) }
+  scope :containing, lambda { |latitude, longitude|
+    where(
+      'ST_DWithin(places.lonlat::geography, ' \
+      'ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, places.visit_radius)',
+      longitude, latitude
+    )
+  }
   scope :linked_to_confirmed_visits, lambda { |user|
     where(id: user.visits.active.confirmed.where.not(place_id: nil).select(:place_id))
   }
@@ -98,8 +106,9 @@ class Place < ApplicationRecord
 
   def suggested_visit_reattribution_needed?
     return false if skip_suggested_visit_reattribution
+    return !!reattribute_suggested_visits_on_create if previously_new_record?
 
-    previously_new_record? || saved_change_to_latitude? || saved_change_to_longitude? || saved_change_to_visit_radius?
+    saved_change_to_latitude? || saved_change_to_longitude? || saved_change_to_visit_radius?
   end
 
   def schedule_suggested_visit_reattribution

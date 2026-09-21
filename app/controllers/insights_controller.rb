@@ -173,10 +173,20 @@ class InsightsController < ApplicationController
     start_time = Time.zone.local(@selected_year, 1, 1)
     end_time = Time.zone.local(@selected_year, 12, 31).end_of_year
 
-    current_user.scoped_visits.confirmed.where(started_at: start_time..end_time).group(:name)
-                .select('name, COUNT(*) as visit_count, SUM(duration) as total_duration')
+    display_name_sql = Visit.display_name_sql
+
+    current_user.scoped_visits.confirmed.where(started_at: start_time..end_time)
+                .left_joins(:place, :area)
+                .group(Arel.sql(display_name_sql))
+                .select("#{display_name_sql} AS display_name, COUNT(*) as visit_count, SUM(duration) as total_duration")
                 .order('visit_count DESC, total_duration DESC').limit(5)
-                .map { |v| { name: v.name, visit_count: v.visit_count, total_duration: v.total_duration } }
+                .map do |visit|
+                  {
+                    name: visit.read_attribute(:display_name),
+                    visit_count: visit.visit_count,
+                    total_duration: visit.total_duration
+                  }
+                end
   end
 
   def load_monthly_digest

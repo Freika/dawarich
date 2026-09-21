@@ -59,9 +59,17 @@ RSpec.describe Users::ImportData, type: :service do
         expect(::Notifications::Create).to receive(:new).with(
           user: user,
           title: 'Data import completed',
-          content: include('1000 points, 4 visits, 3 places, 2 trips'),
+          content: include('1000 points, 4 visits, 5 places, 2 trips'),
           kind: :info
         )
+        service.import
+      end
+
+      it 'does not expose the legacy Area compatibility counter in the notification' do
+        expect(::Notifications::Create).to receive(:new).with(
+          hash_including(content: satisfy { |content| content.include?('5 places') && !content.include?('areas') })
+        )
+
         service.import
       end
 

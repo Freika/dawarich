@@ -1373,6 +1373,7 @@ es:
       rename: Renombrar
       merge: Unir
       select_place_to_merge: Seleccionar lugar duplicado
+      no_matching_places: No se encontraron lugares coincidentes
       merge_confirmation: "¿Unir el lugar seleccionado con \"%{survivor}\"? Las visitas, etiquetas y notas se moverán aquí."
       notes: Notas
       save: Guardar
@@ -1750,7 +1751,7 @@ es:
         tracks: Trayectos
         imports: Importaciones
         exports: Exportaciones
-        areas: Áreas
+        places: Lugares
         sign_in_history: Historial de inicio de sesión
         total_sign_ins: Inicios de sesión totales
         last_sign_in: Último inicio de sesión
@@ -3174,6 +3175,7 @@ es:
       created: Se creó el lugar con éxito!
       updated: Se actualizó el lugar con éxito!
       merged: 'Se unió "%{duplicate}" con "%{survivor}".'
+      merge_visit_conflict: "Estos lugares no se pueden unir porque la visita #%{first_id} y la visita #%{second_id} empiezan a las %{started_at}. Resuelve primero esas visitas."
     points:
       no_points_selected: No se seleccionaron puntos.
       points_were_successfully_destroyed: Se destruyeron los puntos con éxito.

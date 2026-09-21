@@ -82,6 +82,74 @@ RSpec.describe Users::ImportData::Points, type: :service do
       end
     end
 
+    context 'when resolving a visit without a custom name' do
+      let!(:visit) do
+        create(:visit, user: user, name: nil, location_label: 'Detected address',
+                       started_at: Time.zone.parse('2024-01-01 10:00:00 UTC'),
+                       ended_at: Time.zone.parse('2024-01-01 11:00:00 UTC'))
+      end
+      let(:points_data) do
+        [
+          {
+            'timestamp' => 1_704_106_800,
+            'lonlat' => 'POINT(13.4050 52.5200)',
+            'visit_reference' => {
+              'name' => nil,
+              'location_label' => 'Detected address',
+              'started_at' => visit.started_at.iso8601,
+              'ended_at' => visit.ended_at.iso8601,
+              'place_reference' => nil
+            }
+          }
+        ]
+      end
+
+      it 'restores the point-to-visit association' do
+        service.call
+
+        expect(user.points.last.visit).to eq(visit)
+      end
+    end
+
+    context 'when same-window visits belong to different Places' do
+      let(:started_at) { Time.zone.parse('2024-01-01 10:00:00 UTC') }
+      let(:home) { create(:place, user: user, name: 'Home', latitude: 40, longitude: -74) }
+      let(:office) { create(:place, user: user, name: 'Office', latitude: 41, longitude: -75) }
+      let!(:home_visit) do
+        create(:visit, user: user, place: home, name: nil, location_label: 'Detected stop',
+                       started_at: started_at, ended_at: started_at + 1.hour)
+      end
+      let!(:office_visit) do
+        create(:visit, user: user, place: office, name: nil, location_label: 'Detected stop',
+                       started_at: started_at, ended_at: started_at + 1.hour)
+      end
+      let(:points_data) do
+        [home, office].each_with_index.map do |place, index|
+          {
+            'timestamp' => 1_704_106_800 + index,
+            'lonlat' => "POINT(#{place.lon} #{place.lat})",
+            'visit_reference' => {
+              'name' => nil,
+              'location_label' => 'Detected stop',
+              'started_at' => started_at.iso8601,
+              'ended_at' => (started_at + 1.hour).iso8601,
+              'place_reference' => {
+                'name' => place.name,
+                'latitude' => place.lat,
+                'longitude' => place.lon
+              }
+            }
+          }
+        end
+      end
+
+      it 'restores each Point to the Visit at its referenced Place' do
+        service.call
+
+        expect(user.points.order(:timestamp).pluck(:visit_id)).to eq([home_visit.id, office_visit.id])
+      end
+    end
+
     context 'when points_data is not an array' do
       let(:points_data) { 'invalid' }
 
