@@ -135,6 +135,19 @@ RUN chmod +x /usr/local/bin/web-entrypoint.sh
 COPY ./docker/sidekiq-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
 RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
 
+# Cloud-only entrypoints. Self-hosted never selects these; docker-compose.yml
+# pins web-entrypoint.sh / sidekiq-entrypoint.sh per service.
+COPY ./docker/entrypoint-common.sh /usr/local/bin/entrypoint-common.sh
+
+COPY ./docker/cloud-entrypoint.sh /usr/local/bin/cloud-entrypoint.sh
+RUN chmod +x /usr/local/bin/cloud-entrypoint.sh
+
+COPY ./docker/cloud-sidekiq-entrypoint.sh /usr/local/bin/cloud-sidekiq-entrypoint.sh
+RUN chmod +x /usr/local/bin/cloud-sidekiq-entrypoint.sh
+
+COPY ./docker/release.sh /usr/local/bin/release.sh
+RUN chmod +x /usr/local/bin/release.sh
+
 EXPOSE $RAILS_PORT
 
 STOPSIGNAL SIGINT

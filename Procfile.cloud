@@ -1,0 +1,5 @@
+# Each entrypoint ends in `exec bundle exec "$@"`, so these resolve to the same
+# commands as Procfile.production regardless of the image ENTRYPOINT.
+web: cloud-entrypoint.sh puma -C config/puma.rb
+worker: cloud-sidekiq-entrypoint.sh sidekiq -C config/sidekiq.yml
+prometheus_exporter: cloud-entrypoint.sh prometheus_exporter -b ANY
