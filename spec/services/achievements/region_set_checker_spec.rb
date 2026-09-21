@@ -77,11 +77,18 @@ RSpec.describe Achievements::RegionSetChecker do
     end
 
     it 'awards a flat country as soon as it is visited' do
-      described_class.new(user, notify: false).call
+      described_class.new(user, notify: true).call
 
       expect(user.user_achievements.pluck(:achievement_key)).to include('country_fr')
       expect(user.achievement_unlock_events.pending.pluck(:kind, :key)).to include(%w[geography FR])
       expect(user.achievement_unlock_events.where(kind: 'set', key: 'country_fr')).to be_empty
+    end
+
+    it 'awards silently without queueing reveal cards' do
+      described_class.new(user, notify: false).call
+
+      expect(user.user_achievements.pluck(:achievement_key)).to include('country_fr')
+      expect(user.achievement_unlock_events).to be_empty
     end
 
     it 'describes flat-country completion as a country, not a region' do
@@ -92,15 +99,25 @@ RSpec.describe Achievements::RegionSetChecker do
   end
 
   describe 'completed collection reveals' do
-    it 'queues the completed country card only once without a notification requirement' do
+    it 'queues the completed country card only once' do
+      earned = Achievements::Registry.find('country_de').region_codes.index_with { Time.current.iso8601 }
+      create(:achievement_progress, user: user, achievement_key: 'exploration', state: { 'earned' => earned })
+
+      described_class.new(user, notify: true).call
+      described_class.new(user, notify: true).call
+
+      expect(user.user_achievements.where(achievement_key: 'country_de').count).to eq(1)
+      expect(user.achievement_unlock_events.pending.where(kind: 'set', key: 'country_de').count).to eq(1)
+    end
+
+    it 'queues no completed card on a silent run' do
       earned = Achievements::Registry.find('country_de').region_codes.index_with { Time.current.iso8601 }
       create(:achievement_progress, user: user, achievement_key: 'exploration', state: { 'earned' => earned })
 
       described_class.new(user, notify: false).call
-      described_class.new(user, notify: false).call
 
-      expect(user.user_achievements.where(achievement_key: 'country_de').count).to eq(1)
-      expect(user.achievement_unlock_events.pending.where(kind: 'set', key: 'country_de').count).to eq(1)
+      expect(user.user_achievements.where(achievement_key: 'country_de')).to exist
+      expect(user.achievement_unlock_events).to be_empty
     end
   end
 

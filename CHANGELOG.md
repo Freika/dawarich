@@ -46,6 +46,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Trip and track distance is calculated in the database, so large trips no longer run out of memory and leave the distance empty. Press Recalculate on an affected trip to fill it in.
 - Exploration achievements work through existing location history without notifications — before launch on Cloud, once the feature is enabled on self-hosted instances — and public cards show set progress and unlock dates only. (#3121)
 - Achievement cards support HTTP self-hosted installations, use the user's timezone for unlock dates and refresh after dwell-threshold changes. (#3121)
+- Moving a point on the map updates its country and looks its address up again, so a dragged point no longer keeps its old city. (#3121)
 - TREK itinerary imports now keep unscheduled places, honour the trip owner's timezone, and retain the plan after disconnecting TREK. (#3615)
 - Days per Country now uses a more varied color palette so countries are easier to distinguish (#3602).
 - Creating a visit from a location search result keeps the searched place's name and address.

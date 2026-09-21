@@ -83,7 +83,7 @@ module Achievements
           state: merged_state(current_state, deltas, new_codes, replace: replace, cursor: committed_cursor,
                               point_id_cursor: committed_point_id)
         )
-        UnlockEvent.enqueue_geographies!(user_id: user.id, codes: new_codes)
+        UnlockEvent.enqueue_geographies!(user_id: user.id, codes: new_codes) if notify
         @newly_earned.concat(new_codes)
         committed = true
       end
@@ -185,7 +185,7 @@ module Achievements
         end
         next false unless award.previously_new_record?
 
-        UnlockEvent.enqueue_set!(user_id: user.id, definition: definition)
+        UnlockEvent.enqueue_set!(user_id: user.id, definition: definition) if notify
         true
       end
     rescue ActiveRecord::RecordNotUnique
