@@ -34,7 +34,7 @@ class Imports::Destroy
   def enqueue_achievement_recalculation(oldest_timestamp)
     return unless Flipper.enabled?(:achievements)
 
-    Achievements::CheckJob.perform_later(@user.id, oldest_timestamp: oldest_timestamp)
+    Achievements::CheckJob.schedule(@user.id, oldest_timestamp: oldest_timestamp)
   end
 
   def destroy_orphaned_tracks(track_ids)

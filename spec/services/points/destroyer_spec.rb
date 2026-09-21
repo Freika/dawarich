@@ -51,8 +51,8 @@ RSpec.describe Points::Destroyer do
         Flipper.enable(:achievements)
 
         expect { described_class.new(user, point_ids).call }
-          .to have_enqueued_job(Achievements::CheckJob)
-          .with(user.id, oldest_timestamp: may_point.timestamp)
+          .to have_enqueued_job(Achievements::CheckJob).with(user.id)
+        expect(Achievements::CheckJob.take_pending_timestamp(user.id)).to eq(may_point.timestamp)
       ensure
         Flipper.disable(:achievements)
       end

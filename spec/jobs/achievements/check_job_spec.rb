@@ -50,4 +50,30 @@ RSpec.describe Achievements::CheckJob do
 
     expect(Achievements::Progress.where(user: user)).to be_present
   end
+
+  describe '.schedule' do
+    it 'collapses a burst of changes into one delayed check' do
+      expect { 5.times { |i| described_class.schedule(user.id, oldest_timestamp: 100 + i) } }
+        .to have_enqueued_job(described_class).with(user.id).exactly(:once)
+    end
+
+    it 'hands the oldest scheduled timestamp to the check' do
+      [300, 100, 200].each { |timestamp| described_class.schedule(user.id, oldest_timestamp: timestamp) }
+      checker = instance_double(Achievements::RegionSetChecker, call: nil)
+      allow(Achievements::RegionSetChecker).to receive(:new)
+        .with(user, notify: true, oldest_timestamp: 100).and_return(checker)
+
+      described_class.perform_now(user.id)
+
+      expect(checker).to have_received(:call)
+    end
+
+    it 'schedules again once the pending check has started' do
+      described_class.schedule(user.id, oldest_timestamp: 100)
+      described_class.perform_now(user.id)
+
+      expect { described_class.schedule(user.id, oldest_timestamp: 200) }
+        .to have_enqueued_job(described_class).with(user.id)
+    end
+  end
 end

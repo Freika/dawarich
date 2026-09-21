@@ -215,6 +215,21 @@ RSpec.describe Achievements::RegionSetChecker do
     end
   end
 
+  describe 'future-dated points' do
+    before { seed_germany }
+
+    it 'keeps later live points on the incremental path' do
+      create(:point, user:, longitude: 11.5, latitude: 48.5, timestamp: 1.year.from_now.to_i)
+      described_class.new(user, notify: false).call
+      create(:point, user:, longitude: 11.5, latitude: 48.5, timestamp: Time.current.to_i)
+      allow(Achievements::CountryDwellCalculator).to receive(:new).and_call_original
+
+      described_class.new(user, notify: false).call
+
+      expect(Achievements::CountryDwellCalculator).not_to have_received(:new).with(user, since: 0, through: anything)
+    end
+  end
+
   describe 'buffered device uploads' do
     before { seed_germany }
 

@@ -27,7 +27,8 @@ RSpec.describe Points::AnomalyFilter do
 
       expect do
         described_class.new(user.id, start_time, end_time).call
-      end.to have_enqueued_job(Achievements::CheckJob).with(user.id, oldest_timestamp: point.timestamp)
+      end.to have_enqueued_job(Achievements::CheckJob).with(user.id)
+      expect(Achievements::CheckJob.take_pending_timestamp(user.id)).to eq(point.timestamp)
     ensure
       Flipper.disable(:achievements)
     end

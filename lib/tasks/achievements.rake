@@ -3,6 +3,8 @@
 namespace :achievements do
   desc 'Load region geometries (idempotent) and enqueue a staggered exploration backfill'
   task backfill: :environment do
+    next if DawarichSettings.self_hosted? && !Flipper.enabled?(:achievements)
+
     if Country.none?
       warn 'Skipping achievements backfill: countries table is empty (run db:seed first).'
     else

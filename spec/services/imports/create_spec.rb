@@ -185,6 +185,21 @@ RSpec.describe Imports::Create do
             expect { service.call }.to have_enqueued_job(VisitSuggestingJob)
           end
         end
+
+        it 'schedules an achievements check from the oldest imported point' do
+          Flipper.enable(:achievements)
+
+          expect { service.call }.to have_enqueued_job(Achievements::CheckJob).with(user.id)
+          expect(Achievements::CheckJob.take_pending_timestamp(user.id)).to eq(import.points.minimum(:timestamp))
+        ensure
+          Flipper.disable(:achievements)
+        end
+
+        it 'does not schedule an achievements check while the feature is off' do
+          Flipper.disable(:achievements)
+
+          expect { service.call }.not_to have_enqueued_job(Achievements::CheckJob)
+        end
       end
 
       context 'when import fails' do

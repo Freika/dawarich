@@ -108,7 +108,7 @@ module Achievements
                            eligible_points.where(id: (point_id_cursor + 1)..latest_point_id).maximum(:timestamp)
                          end
 
-      [[cursor, latest_timestamp.to_i].max, [point_id_cursor, latest_point_id.to_i].max]
+      [[cursor, [latest_timestamp.to_i, Time.current.to_i].min].max, [point_id_cursor, latest_point_id.to_i].max]
     end
 
     def recompute?(cursor, point_id_cursor)

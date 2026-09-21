@@ -27,7 +27,8 @@ RSpec.describe Imports::Destroy do
       Flipper.enable(:achievements)
 
       expect { service.call }
-        .to have_enqueued_job(Achievements::CheckJob).with(user.id, oldest_timestamp: oldest_timestamp)
+        .to have_enqueued_job(Achievements::CheckJob).with(user.id)
+      expect(Achievements::CheckJob.take_pending_timestamp(user.id)).to eq(oldest_timestamp)
     ensure
       Flipper.disable(:achievements)
     end

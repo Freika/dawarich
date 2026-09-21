@@ -244,7 +244,7 @@ class Points::AnomalyFilter
     jobs = track_jobs + stats_jobs
     if Flipper.enabled?(:achievements)
       oldest_timestamp = @flagged_for_rebuild.filter_map { |_, _, timestamp| timestamp }.min
-      jobs << Achievements::CheckJob.new(@user_id, oldest_timestamp: oldest_timestamp)
+      Achievements::CheckJob.schedule(@user_id, oldest_timestamp: oldest_timestamp)
     end
 
     jobs.each { |job| job.queue_name = @job_queue.to_s } if @job_queue

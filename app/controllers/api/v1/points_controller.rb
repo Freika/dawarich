@@ -106,7 +106,7 @@ class Api::V1::PointsController < ApiController
 
     if relocate(point)
       Points::TileEpoch.bump(point.user_id, timestamps: [point.timestamp])
-      Achievements::CheckJob.perform_later(point.user_id, oldest_timestamp: point.timestamp) if achievements_enabled?
+      Achievements::CheckJob.schedule(point.user_id, oldest_timestamp: point.timestamp) if achievements_enabled?
       point.async_reverse_geocode(force: true)
 
       if point.track_id.present?

@@ -196,7 +196,9 @@ class Imports::Create
       Stats::CalculatingJob.perform_later(user_id, year, month)
     end
 
-    Achievements::CheckJob.perform_later(user_id, oldest_timestamp: import.points.minimum(:timestamp))
+    return unless Flipper.enabled?(:achievements)
+
+    Achievements::CheckJob.schedule(user_id, oldest_timestamp: import.points.minimum(:timestamp))
   end
 
   def schedule_visit_suggesting(user_id, import)
