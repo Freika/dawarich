@@ -8,6 +8,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- A position far off your route is now flagged as an anomaly even when the tracking app uploads one point at a time: it is judged again once the next point arrives, instead of staying on the map until the anomaly filter is re-applied. (#3664)
+- The family map no longer draws a member's points that were flagged as anomalies: their history trail, their "last seen" marker and the locations sent to OwnTracks friends skip them, as the member's own map already does. (#3663)
 - Track regeneration no longer fails when transportation segments are created while an old track is being removed.
 
 ## [1.15.0] - 2026-09-20, Berlin
