@@ -23,9 +23,13 @@ RSpec.describe Places::ReattributeSuggestedVisitsJob do
   end
 
   describe 'Place lifecycle' do
-    it 'enqueues after creation and geometry changes, but not a rename' do
+    it 'enqueues after opted-in creation and geometry changes, but not a rename' do
       place = nil
-      expect { place = create(:place, user: user) }
+      expect do
+        place = build(:place, user: user)
+        place.reattribute_suggested_visits_on_create = true
+        place.save!
+      end
         .to have_enqueued_job(described_class).with(user.id, kind_of(Integer))
 
       expect { place.update!(visit_radius: 75) }
@@ -33,12 +37,8 @@ RSpec.describe Places::ReattributeSuggestedVisitsJob do
       expect { place.update!(name: 'Renamed') }.not_to have_enqueued_job(described_class)
     end
 
-    it 'can be suppressed for bulk migration' do
-      expect do
-        place = build(:place, user: user)
-        place.skip_suggested_visit_reattribution = true
-        place.save!
-      end.not_to have_enqueued_job(described_class)
+    it 'does not enqueue after ordinary programmatic creation' do
+      expect { create(:place, user: user) }.not_to have_enqueued_job(described_class)
     end
   end
 end

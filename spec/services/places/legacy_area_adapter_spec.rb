@@ -28,6 +28,19 @@ RSpec.describe Places::LegacyAreaAdapter do
     expect(note.reload.attachable).to eq(place)
   end
 
+  it 'keeps a colliding legacy Visit without a Place when resolving lazily' do
+    started_at = Time.zone.parse('2026-05-01 10:00:00')
+    area = create(:area, user:, name: 'Home')
+    place = create(:place, user:, name: 'Home', latitude: area.latitude, longitude: area.longitude)
+    canonical = create(:visit, user:, area: nil, place:, started_at:, ended_at: started_at + 1.hour)
+    legacy = create(:visit, user:, area:, place: nil, started_at:, ended_at: started_at + 30.minutes)
+
+    expect { adapter.resolve(area) }.not_to raise_error
+
+    expect(canonical.reload.place).to eq(place)
+    expect(legacy.reload).to have_attributes(place_id: nil, area_id: nil, location_label: 'Home')
+  end
+
   it 'creates and updates the compatibility shell together with its Place' do
     area, place = adapter.create(name: 'Work', latitude: 52.5, longitude: 13.4, radius: 90)
 

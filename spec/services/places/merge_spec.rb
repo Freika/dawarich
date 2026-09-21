@@ -79,6 +79,22 @@ RSpec.describe Places::Merge do
     expect(survivor.geodata['properties']).to eq('city' => 'Berlin', 'osm_id' => 1)
   end
 
+  it 'blocks a merge when Visit timestamps would collide' do
+    started_at = Time.zone.parse('2026-09-01 12:00:00')
+    survivor_visit = create(:visit, user:, place: survivor, area: nil, started_at:)
+    duplicate_visit = create(:visit, user:, place: duplicate, area: nil, started_at:)
+
+    visit_count = Visit.count
+    expect do
+      described_class.new(user:, survivor:, duplicate:).call
+    end.to raise_error(Places::Merge::VisitConflict)
+
+    expect(Visit.count).to eq(visit_count)
+    expect(survivor_visit.reload.place).to eq(survivor)
+    expect(duplicate_visit.reload.place).to eq(duplicate)
+    expect(Place.exists?(duplicate.id)).to be(true)
+  end
+
   it 'rejects Places belonging to another user' do
     other_place = create(:place, user: create(:user))
 

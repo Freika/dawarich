@@ -48,6 +48,9 @@
                 <td><%= human_datetime(place.created_at, current_user.safe_settings.timezone) %></td>
                 <td><%= "#{place.lat}, #{place.lon}" %></td>
                 <td>
+                  <% if params[:filter] == 'unconfirmed' %>
+                    <%= button_to t('visits.buttons.confirm'), confirm_place_path(place, filter: 'unconfirmed', page: params[:page]), method: :patch, class: "btn btn-ghost btn-xs text-success hover:bg-success/10" %>
+                  <% end %>
                   <%= link_to t('.delete'), place_path(place, page: params[:page]), data: { turbo_confirm: t('.are_you_sure_deleting_a_place_will_result_in_deleting'), turbo_method: :delete }, class: "btn btn-ghost btn-xs text-error hover:bg-error/10" %>
                 </td>
               </tr>

@@ -59,6 +59,15 @@ RSpec.describe Places::DeleteIfOrphan do
       expect(Place.exists?(place.id)).to be(true)
     end
 
+    it 'keeps a Place that backs a legacy Area' do
+      place = create(:place, user: user, source: :photon)
+      area = create(:area, user: user)
+      LegacyAreaPlaceMapping.create!(area:, place:)
+
+      expect(described_class.call(place.id)).to be(false)
+      expect(Place.exists?(place.id)).to be(true)
+    end
+
     it 'deletes the place and cascading place_visits rows even when residual ones exist' do
       place = create(:place, user: user, source: :photon)
       visit = create(:visit, user: user, area: nil, place: create(:place, user: user, source: :manual))

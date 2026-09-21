@@ -164,6 +164,24 @@ RSpec.describe Users::ImportData::V2Handler, type: :service do
         expect(import_stats[:places_created]).to eq(1)
       end
 
+      it 'imports a rich canonical Place before its matching legacy Area shell' do
+        File.write(import_directory.join('places.jsonl'), {
+          'name' => 'Home', 'latitude' => 40.7128, 'longitude' => -74.006,
+          'source' => 'manual', 'visit_radius' => 125, 'note' => 'Keep me',
+          'name_locked_at' => '2024-01-01T00:00:00Z',
+          'geodata' => { 'properties' => { 'city' => 'New York' } }
+        }.to_json)
+
+        handler.process
+
+        expect(user.places.where(name: 'Home').count).to eq(1)
+        expect(user.places.find_by!(name: 'Home')).to have_attributes(
+          source: 'manual', visit_radius: 125, note: 'Keep me',
+          name_locked_at: be_present,
+          geodata: { 'properties' => { 'city' => 'New York' } }
+        )
+      end
+
       it 'processes stats from monthly files' do
         handler.process
 

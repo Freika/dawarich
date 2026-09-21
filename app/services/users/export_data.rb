@@ -10,6 +10,7 @@ require 'zip'
 # ├── manifest.json                 # Format version, counts, file listing
 # ├── files/                        # Attached files (imports, exports, raw data archives)
 # ├── settings.jsonl                # Single line (user settings)
+# ├── areas.jsonl                   # Legacy Area compatibility records
 # ├── tags.jsonl                    # One tag per line
 # ├── taggings.jsonl                # One tagging per line (with references)
 # ├── imports.jsonl                 # One import record per line
@@ -117,6 +118,7 @@ class Users::ExportData
 
     # Export simple entities as JSONL files
     export_settings
+    export_areas
     export_places
     export_tags
     export_taggings
@@ -142,6 +144,30 @@ class Users::ExportData
       file.puts(user.safe_settings.settings.to_json)
     end
     Rails.logger.info 'Exported settings'
+  end
+
+  def export_areas
+    areas_path = export_directory.join('areas.jsonl')
+    mappings = LegacyAreaPlaceMapping.includes(:place)
+                                     .where(area_id: user.areas.select(:id))
+                                     .index_by(&:area_id)
+    count = 0
+    File.open(areas_path, 'w') do |file|
+      user.areas.find_each do |area|
+        payload = area.as_json(except: %w[user_id id])
+        if (place = mappings[area.id]&.place)
+          payload.merge!(
+            'name' => place.name,
+            'latitude' => place.lat,
+            'longitude' => place.lon,
+            'radius' => place.visit_radius
+          )
+        end
+        file.puts(payload.to_json)
+        count += 1
+      end
+    end
+    Rails.logger.info "Exported #{count} areas"
   end
 
   def export_places
@@ -367,6 +393,7 @@ class Users::ExportData
     Rails.logger.info 'Calculating entity counts for export'
 
     counts = {
+      areas: user.areas.count,
       imports: user.imports.count,
       exports: user.exports.count,
       trips: user.trips.count,

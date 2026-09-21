@@ -13,20 +13,17 @@ module Places
       @report = Hash.new(0)
       @report[:ambiguous_area_ids] = []
       @report[:failed_area_ids] = []
+      @report[:conflicting_visit_ids] = []
     end
 
     def call
-      visit_count_before = Visit.count
-
-      migrate_areas
+      migration_error = migrate_areas
       migrate_visit_labels
       migrate_visit_associations
 
-      report[:visits_before] = visit_count_before
-      report[:visits_after] = Visit.count
-      raise ActiveRecord::MigrationError, 'Visit count changed during Areas backfill' if visits_lost?
-
       logger.info("[#{self.class}] #{report.to_json}")
+      raise migration_error if migration_error
+
       report
     end
 
@@ -35,6 +32,8 @@ module Places
     attr_reader :batch_size, :logger
 
     def migrate_areas
+      first_error = nil
+
       Area.where.not(id: LegacyAreaPlaceMapping.select(:area_id)).find_each(batch_size: batch_size) do |area|
         report[:areas_scanned] += 1
         migrate_area(area)
@@ -42,7 +41,10 @@ module Places
         report[:areas_failed] += 1
         report[:failed_area_ids] << area.id
         logger.error("[#{self.class}] area_id=#{area.id} #{e.class}: #{e.message}")
+        first_error ||= e
       end
+
+      first_error
     end
 
     def migrate_area(area)
@@ -50,7 +52,7 @@ module Places
       if candidates.many?
         report[:areas_ambiguous] += 1
         report[:ambiguous_area_ids] << area.id
-        return
+        candidates = []
       end
 
       Place.transaction do
@@ -58,7 +60,7 @@ module Places
         place = nil if place && note_dates_overlap?(area, place)
 
         if place
-          place.update_columns(visit_radius: [place.visit_radius, area.radius].max)
+          promote_place(area, place)
           report[:areas_mapped] += 1
         else
           place = create_place(area)
@@ -106,6 +108,17 @@ module Places
       place
     end
 
+    def promote_place(area, place)
+      place.user_named = true
+      place.skip_suggested_visit_reattribution = true
+      place.update!(
+        name: area.name,
+        source: :manual,
+        name_locked_at: place.name_locked_at || Time.current,
+        visit_radius: [place.visit_radius, area.radius].max
+      )
+    end
+
     def move_notes(area, place)
       moved = area.notes.update_all(attachable_type: 'Place', attachable_id: place.id)
       report[:notes_moved] += moved
@@ -131,25 +144,42 @@ module Places
 
     def migrate_visit_association(visit, mapping)
       if visit.place_id.nil?
-        visit.update_columns(place_id: mapping.place_id, area_id: nil)
-        report[:area_only_visits_reassigned] += 1
-      elsif visit.confirmed? || visit.import_id.present?
+        if place_conflict?(visit, mapping.place_id)
+          visit.update_columns(area_id: nil)
+          record_visit_conflict(visit)
+        else
+          visit.update_columns(place_id: mapping.place_id, area_id: nil)
+          report[:area_only_visits_reassigned] += 1
+        end
+      elsif visit.user.visits.machine_detected.exists?(id: visit.id)
+        selected = select_place_for(visit, fallback: mapping.place)
+        if place_conflict?(visit, selected.id)
+          visit.update_columns(area_id: nil)
+          record_visit_conflict(visit)
+        else
+          visit.update_columns(place_id: selected.id, area_id: nil)
+          report[:dual_suggested_visits_reattributed] += 1
+        end
+      else
         visit.update_columns(area_id: nil)
         report[:dual_user_owned_visits_retained] += 1
-      else
-        selected = select_place_for(visit, fallback: mapping.place)
-        visit.update_columns(place_id: selected.id, area_id: nil)
-        report[:dual_suggested_visits_reattributed] += 1
       end
+    end
+
+    def place_conflict?(visit, place_id)
+      visit.user.visits.where(place_id: place_id, started_at: visit.started_at).where.not(id: visit.id).exists?
+    end
+
+    def record_visit_conflict(visit)
+      report[:visit_place_conflicts] += 1
+      report[:conflicting_visit_ids] << visit.id
     end
 
     def select_place_for(visit, fallback:)
       center = visit_center(visit)
       return fallback unless center
 
-      candidates = visit.user.places.select do |place|
-        distance_meters(center, [place.lat, place.lon]) <= place.visit_radius
-      end
+      candidates = visit.user.places.containing(*center).to_a
       return fallback if candidates.empty?
 
       candidates.min_by do |place|
@@ -178,10 +208,6 @@ module Places
 
     def distance_meters(first, second)
       Geocoder::Calculations.distance_between(first, second, units: :km) * 1000
-    end
-
-    def visits_lost?
-      report[:visits_after] != report[:visits_before]
     end
   end
 end

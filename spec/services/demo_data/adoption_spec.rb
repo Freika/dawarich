@@ -31,6 +31,16 @@ RSpec.describe 'Demo entity adoption', type: :request do
     expect(place.reload.demo).to be(false)
   end
 
+  it 'adopts a demo place when the user confirms it so demo cleanup preserves it' do
+    place = Place.demo.where(user_id: user.id).first
+    expect(place).to be_present
+
+    patch confirm_place_path(place)
+    DemoData::Destroyer.new(user).call
+
+    expect(place.reload.demo).to be(false)
+  end
+
   it 'flips a demo tag to non-demo when the user updates it' do
     tag = user.tags.demo.first
     expect(tag).to be_present

@@ -2,6 +2,15 @@
 
 module Places
   class Merge
+    class VisitConflict < StandardError
+      attr_reader :conflicts
+
+      def initialize(conflicts)
+        @conflicts = conflicts
+        super('Visits with the same start time prevent this Place merge')
+      end
+    end
+
     def initialize(user:, survivor:, duplicate:)
       @user = user
       @survivor = survivor
@@ -47,6 +56,21 @@ module Places
     end
 
     def merge_visits
+      conflicting = duplicate.visits.where(<<~SQL.squish, survivor.id)
+        EXISTS (
+          SELECT 1
+          FROM visits survivor_visits
+          WHERE survivor_visits.user_id = visits.user_id
+            AND survivor_visits.started_at = visits.started_at
+            AND survivor_visits.place_id = ?
+        )
+      SQL
+      conflict_details = conflicting.order(:started_at).map do |visit|
+        other = survivor.visits.find_by(user_id: visit.user_id, started_at: visit.started_at)
+        { duplicate_id: visit.id, survivor_id: other.id, started_at: visit.started_at }
+      end
+      raise VisitConflict, conflict_details if conflict_details.any?
+
       duplicate.visits.update_all(place_id: survivor.id)
     end
 

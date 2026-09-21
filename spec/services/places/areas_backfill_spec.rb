@@ -32,6 +32,17 @@ RSpec.describe Places::AreasBackfill do
       expect(report[:areas_mapped]).to eq(1)
     end
 
+    it 'promotes a matched suggested Place to the user-owned Area identity' do
+      user = create(:user)
+      place = create(:place, user: user, name: 'Home', source: :photon)
+      area = create(:area, user: user, name: 'Home', latitude: place.lat, longitude: place.lon)
+
+      backfill.call
+
+      expect(LegacyAreaPlaceMapping.find_by!(area: area).place).to eq(place)
+      expect(place.reload).to have_attributes(source: 'manual', name_locked_at: be_present)
+    end
+
     it 'does not merge Places based on proximity alone' do
       user = create(:user)
       existing = create(:place, user: user, name: 'Cafe', latitude: 52.437, longitude: 13.539)
@@ -44,16 +55,39 @@ RSpec.describe Places::AreasBackfill do
       expect(mapping.place.name).to eq('Office')
     end
 
-    it 'reports an ambiguous same-name match instead of guessing' do
+    it 'creates a distinct Place when a same-name match is ambiguous' do
       user = create(:user)
       area = create(:area, user: user, name: 'Home', latitude: 52.437, longitude: 13.539)
-      create(:place, user: user, name: 'Home', latitude: 52.437, longitude: 13.539)
-      create(:place, user: user, name: ' home ', latitude: 52.4371, longitude: 13.539)
+      first = create(:place, user: user, name: 'Home', latitude: 52.437, longitude: 13.539)
+      second = create(:place, user: user, name: ' home ', latitude: 52.4371, longitude: 13.539)
 
       report = backfill.call
 
-      expect(LegacyAreaPlaceMapping.find_by(area: area)).to be_nil
+      mapped = LegacyAreaPlaceMapping.find_by!(area: area).place
+      expect(mapped).not_to eq(first)
+      expect(mapped).not_to eq(second)
       expect(report[:ambiguous_area_ids]).to contain_exactly(area.id)
+    end
+
+    it 'raises after recording an Area migration failure so the job retries' do
+      area = create(:area)
+      area.update_column(:radius, 0)
+
+      expect { backfill.call }.to raise_error(ActiveRecord::RecordInvalid)
+      expect(backfill.report[:failed_area_ids]).to contain_exactly(area.id)
+    end
+
+    it 'migrates later valid Areas before retrying a permanently invalid one' do
+      invalid = create(:area)
+      invalid.update_column(:radius, 0)
+      valid = create(:area)
+      visit = create(:visit, user: valid.user, area: valid, place: nil)
+
+      expect { backfill.call }.to raise_error(ActiveRecord::RecordInvalid)
+
+      expect(LegacyAreaPlaceMapping.find_by(area: invalid)).to be_nil
+      expect(LegacyAreaPlaceMapping.find_by(area: valid)).to be_present
+      expect(visit.reload).to have_attributes(area_id: nil, place_id: be_present)
     end
 
     it 'moves Area notes to the mapped Place' do
@@ -88,6 +122,21 @@ RSpec.describe Places::AreasBackfill do
       expect(visit.area_id).to be_nil
     end
 
+    it 'reports and unlinks an Area-only Visit that collides with the canonical Place index' do
+      user = create(:user)
+      place = create(:place, user: user)
+      area = create(:area, user: user, name: place.name, latitude: place.lat, longitude: place.lon)
+      started_at = Time.zone.parse('2026-09-01 12:00:00')
+      create(:visit, user: user, area: nil, place: place, started_at: started_at)
+      conflicting = create(:visit, user: user, area: area, place: nil, started_at: started_at)
+
+      report = backfill.call
+
+      expect(conflicting.reload).to have_attributes(area_id: nil, place_id: nil)
+      expect(report[:conflicting_visit_ids]).to contain_exactly(conflicting.id)
+      expect(report[:visit_place_conflicts]).to eq(1)
+    end
+
     it 'keeps the existing Place for a dual-linked Confirmed Visit' do
       user = create(:user)
       area = create(:area, user: user)
@@ -99,6 +148,26 @@ RSpec.describe Places::AreasBackfill do
       expect(visit.reload.place).to eq(place)
       expect(visit.area_id).to be_nil
       expect(report[:dual_user_owned_visits_retained]).to eq(1)
+    end
+
+    it 'keeps existing Places for dual-linked Visits outside machine ownership' do
+      user = create(:user)
+      area = create(:area, user: user)
+      place = create(:place, user: user)
+      visits = [
+        create(:visit, user: user, area: area, place: place, status: :declined),
+        create(:visit, user: user, area: area, place: place, status: :suggested, deleted_at: 1.day.ago),
+        create(:visit, user: user, area: area, place: place, status: :suggested, import_id: 42),
+        create(:visit, user: user, area: area, place: place, status: :suggested, demo: true)
+      ]
+      annotated = create(:visit, user: user, area: area, place: place, status: :suggested)
+      create(:note, user: user, attachable: annotated)
+      visits << annotated
+
+      backfill.call
+
+      expect(visits.map { |visit| visit.reload.place_id }).to all(eq(place.id))
+      expect(visits.map(&:area_id)).to all(be_nil)
     end
 
     it 'reattributes a dual-linked Suggested Visit to the smallest containing Place' do

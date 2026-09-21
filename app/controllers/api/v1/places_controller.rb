@@ -73,6 +73,7 @@ module Api
       def create
         @place = current_api_user.places.build(place_params.except(:tag_ids))
         @place.user_named = true
+        @place.reattribute_suggested_visits_on_create = true
 
         if @place.save
           add_tags if tag_ids.present?
@@ -96,7 +97,7 @@ module Api
       end
 
       def destroy
-        @place.destroy!
+        Places::Destroy.new(user: current_api_user, place: @place).call
 
         head :no_content
       end
@@ -154,7 +155,11 @@ module Api
                  .sort_by { |place| distance_from_query(place, lat, lon) }
                  .first(limit)
 
-        render json: { places: places }
+        areas = Areas::Nearby.new(
+          user: current_api_user, latitude: lat, longitude: lon, radius: radius, query: query
+        ).call
+
+        render json: { places: places, areas: areas }
       end
 
       private

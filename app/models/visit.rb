@@ -65,6 +65,18 @@ class Visit < ApplicationRecord
     name.presence || place&.name || location_label.presence || area&.name || DEFAULT_NAME
   end
 
+  def self.display_name_sql
+    <<~SQL.squish
+      COALESCE(
+        NULLIF(visits.name, ''),
+        NULLIF(places.name, ''),
+        NULLIF(visits.location_label, ''),
+        NULLIF(areas.name, ''),
+        #{connection.quote(DEFAULT_NAME)}
+      )
+    SQL
+  end
+
   # in meters
   def default_radius
     return area&.radius if area.present?

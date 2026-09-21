@@ -68,6 +68,11 @@ RSpec.describe Visits::PlaceFinder do
         .to have_enqueued_job(Places::NameFetchingJob).with(an_instance_of(Integer))
     end
 
+    it 'does not enqueue suggested Visit reattribution for a detected Place' do
+      expect { described_class.new(user).find_or_create_place(visit_data) }
+        .not_to have_enqueued_job(Places::ReattributeSuggestedVisitsJob)
+    end
+
     context 'when reverse geocoding is disabled' do
       let(:geocoding_configured) { false }
 

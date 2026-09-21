@@ -342,6 +342,19 @@ RSpec.describe 'Api::V1::Places', type: :request do
     end
   end
 
+  describe 'DELETE /api/v1/places/:id' do
+    it 'removes legacy Area shells with the canonical Place' do
+      area = create(:area, user: user)
+      LegacyAreaPlaceMapping.create!(area:, place:)
+
+      delete api_v1_place_path(place), headers: headers
+
+      expect(response).to have_http_status(:no_content)
+      expect(Place.exists?(place.id)).to be(false)
+      expect(Area.exists?(area.id)).to be(false)
+    end
+  end
+
   describe 'name lock exposure' do
     let(:user) { create(:user) }
     let(:place) { create(:place, user: user, name: Place::DEFAULT_NAME) }

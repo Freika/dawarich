@@ -17,7 +17,7 @@ module Places
 
       Place.transaction do
         place = matching_places(area).one? ? matching_places(area).first : create_place(area)
-        place.update!(visit_radius: [place.visit_radius, area.radius].max) if place.visit_radius < area.radius
+        promote_place(area, place)
         migrate_area_dependents(area, place)
         LegacyAreaPlaceMapping.create!(area:, place:)
         place
@@ -52,12 +52,7 @@ module Places
 
     def destroy(area)
       place = resolve(area)
-      mapped_area_ids = LegacyAreaPlaceMapping.where(place_id: place.id).pluck(:area_id)
-
-      Area.transaction do
-        place.destroy!
-        user.areas.where(id: mapped_area_ids).destroy_all
-      end
+      Places::Destroy.new(user:, place:).call
     end
 
     def payload(area, place = resolve(area))
@@ -94,8 +89,20 @@ module Places
       place = user.places.build(place_attributes(area).merge(source: :manual))
       place.user_named = true
       place.skip_suggested_visit_reattribution = skip_reattribution
+      place.reattribute_suggested_visits_on_create = !skip_reattribution
       place.save!
       place
+    end
+
+    def promote_place(area, place)
+      place.user_named = true
+      place.skip_suggested_visit_reattribution = true
+      place.update!(
+        name: area.name,
+        source: :manual,
+        name_locked_at: place.name_locked_at || Time.current,
+        visit_radius: [place.visit_radius, area.radius].max
+      )
     end
 
     def place_attributes(area)
@@ -120,8 +127,17 @@ module Places
 
       visits = user.visits.where(area_id: area.id)
       area_only = visits.where(place_id: nil)
-      area_only.where(location_label: nil).update_all(location_label: area.name)
-      area_only.update_all(place_id: place.id, area_id: nil)
+      occupied_started_at = user.visits.where(place_id: place.id, started_at: area_only.select(:started_at))
+                                .pluck(:started_at).to_set
+
+      area_only.order(:id).find_each do |visit|
+        attributes = { area_id: nil, location_label: visit.location_label || area.name }
+        unless occupied_started_at.include?(visit.started_at)
+          attributes[:place_id] = place.id
+          occupied_started_at << visit.started_at
+        end
+        visit.update_columns(attributes)
+      end
       visits.where.not(place_id: nil).update_all(area_id: nil)
     end
 

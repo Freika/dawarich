@@ -51,8 +51,8 @@ class Users::ImportData::V2Handler
 
     # Import in dependency order
     import_settings
-    import_areas
     import_places
+    import_areas
     import_tags
     import_taggings
     import_imports

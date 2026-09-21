@@ -59,11 +59,13 @@ class Places::OrphanCleanupJob < ApplicationJob
                           AND v.deleted_at IS NULL
                           AND v.status <> #{Visit.statuses[:declined]}
       LEFT JOIN taggings t ON t.taggable_id = p.id AND t.taggable_type = 'Place'
+      LEFT JOIN legacy_area_place_mappings m ON m.place_id = p.id
       WHERE #{user_predicate}
         AND p.source = #{Place.sources[:photon]}
         AND (p.note IS NULL OR p.note = '')
         AND v.id IS NULL
         AND t.id IS NULL
+        AND m.id IS NULL
       LIMIT #{BATCH}
     SQL
   end
