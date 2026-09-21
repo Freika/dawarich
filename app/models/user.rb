@@ -38,7 +38,7 @@ class User < ApplicationRecord
   has_many :places,         dependent: :destroy
   has_many :tags,           dependent: :destroy
   has_many :service_settings, dependent: :destroy
-  has_many :trips,  dependent: :destroy
+  has_many :trips, dependent: :destroy
   has_many :trip_sources, dependent: :destroy
   has_many :tracks, dependent: :destroy
   has_many :flights, dependent: :destroy
