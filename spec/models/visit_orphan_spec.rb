@@ -25,7 +25,7 @@ RSpec.describe Visit, type: :model do
 
   describe 'validations' do
     it 'can be created without a place or area' do
-      visit = build(:visit, user: user, place: nil, area: nil)
+      visit = build(:visit, user: user, place: nil)
       expect(visit).to be_valid
       expect(visit.save).to be true
     end

@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Visits::SelectPlace do
   let(:user)  { create(:user) }
-  let(:visit) { create(:visit, user: user, area: nil, place: nil) }
+  let(:visit) { create(:visit, user: user, place: nil) }
 
   let(:photon_payload) do
     {

@@ -18,7 +18,7 @@ RSpec.describe Places::OrphanCleanupJob, type: :job do
       tag = create(:tag, user: user)
       tagged.tags << tag
 
-      create(:visit, user: user, place: chosen, area: nil)
+      create(:visit, user: user, place: chosen)
 
       described_class.new.perform(user.id)
 
@@ -32,9 +32,9 @@ RSpec.describe Places::OrphanCleanupJob, type: :job do
 
     it 'sweeps places referenced only by tombstoned visits and detaches them' do
       place = create(:place, user: user, source: :photon)
-      tombstone = create(:visit, user: user, place: place, area: nil, deleted_at: 1.day.ago)
+      tombstone = create(:visit, user: user, place: place, deleted_at: 1.day.ago)
       kept = create(:place, user: user, source: :photon)
-      create(:visit, user: user, place: kept, area: nil)
+      create(:visit, user: user, place: kept)
 
       described_class.new.perform(user.id)
 
@@ -53,7 +53,7 @@ RSpec.describe Places::OrphanCleanupJob, type: :job do
     it 'deletes place_visits rows referencing orphan places' do
       manual_place = create(:place, user: user, source: :manual)
       orphan       = create(:place, user: user, source: :photon)
-      visit        = create(:visit, user: user, area: nil, place: manual_place)
+      visit        = create(:visit, user: user, place: manual_place)
       PlaceVisit.create!(place: orphan, visit: visit)
 
       described_class.new.perform(user.id)

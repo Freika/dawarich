@@ -5,7 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Manual area assignment for visits', type: :request do
   let(:user) { create(:user, settings: { 'timezone' => 'Etc/UTC' }) }
   let(:area) { create(:area, user: user, name: 'Home', latitude: 52.5, longitude: 13.4, radius: 200) }
-  let(:visit) { create(:visit, user: user, name: 'before', place: nil, area: nil) }
+  let(:visit) { create(:visit, user: user, name: 'before', place: nil) }
 
   describe 'PATCH /api/v1/visits/:id' do
     let(:auth_headers) { { 'Authorization' => "Bearer #{user.api_key}" } }

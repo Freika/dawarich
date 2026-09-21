@@ -31,8 +31,8 @@ RSpec.describe Place, type: :model do
       user = create(:user)
       alive_place = create(:place, user: user)
       ghost_place = create(:place, user: user)
-      create(:visit, user: user, place: alive_place, status: 'confirmed', area: nil)
-      create(:visit, user: user, place: ghost_place, status: 'confirmed', deleted_at: 1.day.ago, area: nil)
+      create(:visit, user: user, place: alive_place, status: 'confirmed')
+      create(:visit, user: user, place: ghost_place, status: 'confirmed', deleted_at: 1.day.ago)
 
       expect(Place.linked_to_confirmed_visits(user)).to include(alive_place)
       expect(Place.linked_to_confirmed_visits(user)).not_to include(ghost_place)
@@ -43,7 +43,7 @@ RSpec.describe Place, type: :model do
     it 'nullifies place_id on associated visits, does not delete them' do
       user = create(:user)
       place = create(:place, user: user)
-      visit = create(:visit, user: user, place: place, area: nil)
+      visit = create(:visit, user: user, place: place)
 
       place.destroy!
 
@@ -116,7 +116,7 @@ RSpec.describe Place, type: :model do
       let!(:suggested_only) { create(:place, user: user1, source: :photon, name: 'Suggested Only') }
 
       it 'keeps a suggestion-only Place unconfirmed' do
-        create(:visit, user: user1, place: suggested_only, area: nil, status: :suggested)
+        create(:visit, user: user1, place: suggested_only, status: :suggested)
 
         expect(Place.confirmed_for(user1)).not_to include(suggested_only)
         expect(Place.unconfirmed_for(user1)).to include(suggested_only)

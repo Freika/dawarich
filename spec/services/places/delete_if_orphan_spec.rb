@@ -33,7 +33,7 @@ RSpec.describe Places::DeleteIfOrphan do
 
     it 'keeps places referenced by any visit' do
       place = create(:place, user: user, source: :photon)
-      create(:visit, user: user, place: place, area: nil)
+      create(:visit, user: user, place: place)
 
       expect(described_class.call(place.id)).to be(false)
       expect(Place.exists?(place.id)).to be(true)
@@ -41,8 +41,8 @@ RSpec.describe Places::DeleteIfOrphan do
 
     it 'deletes a photon place referenced only by hidden visits and detaches them' do
       place = create(:place, user: user, source: :photon)
-      tombstone = create(:visit, user: user, place: place, area: nil, deleted_at: 1.day.ago)
-      declined = create(:visit, user: user, place: place, area: nil, status: :declined)
+      tombstone = create(:visit, user: user, place: place, deleted_at: 1.day.ago)
+      declined = create(:visit, user: user, place: place, status: :declined)
 
       expect(described_class.call(place.id)).to be(true)
       expect(Place.exists?(place.id)).to be(false)
@@ -70,7 +70,7 @@ RSpec.describe Places::DeleteIfOrphan do
 
     it 'deletes the place and cascading place_visits rows even when residual ones exist' do
       place = create(:place, user: user, source: :photon)
-      visit = create(:visit, user: user, area: nil, place: create(:place, user: user, source: :manual))
+      visit = create(:visit, user: user, place: create(:place, user: user, source: :manual))
       PlaceVisit.create!(place: place, visit: visit)
 
       expect(described_class.call(place.id)).to be(true)

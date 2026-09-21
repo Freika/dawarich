@@ -91,7 +91,6 @@ RSpec.describe Users::ExportData::Visits, type: :service do
           create(:visit,
                  user: user,
                  place: nil,
-                 area: nil,
                  name: 'Unknown Location',
                  started_at: Time.zone.parse('2024-01-02 10:00:00'),
                  ended_at: Time.zone.parse('2024-01-02 12:00:00'),
@@ -126,7 +125,7 @@ RSpec.describe Users::ExportData::Visits, type: :service do
       context 'with mixed visits (with and without places)' do
         let(:place) { create(:place, name: 'Gym', longitude: -74.006, latitude: 40.7128) }
         let!(:visit_with_place) { create(:visit, user: user, place: place, name: 'Workout') }
-        let!(:visit_without_place) { create(:visit, user: user, place: nil, area: nil, name: 'Random Stop') }
+        let!(:visit_without_place) { create(:visit, user: user, place: nil, name: 'Random Stop') }
 
         it 'returns all visits with appropriate place references' do
           expect(subject.size).to eq(2)
@@ -185,7 +184,6 @@ RSpec.describe Users::ExportData::Visits, type: :service do
           create(:visit,
                  user: user,
                  place: nil,
-                 area: nil,
                  name: 'Jan 2023 Visit',
                  started_at: Time.zone.parse('2023-01-05 08:00:00'),
                  ended_at: Time.zone.parse('2023-01-05 17:00:00'))

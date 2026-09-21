@@ -18,7 +18,7 @@ RSpec.describe '/places', type: :request do
 
     it 'can show only unconfirmed suggested Places' do
       suggested = create(:place, user:, source: :photon, name: 'Needs Review')
-      create(:visit, user:, place: suggested, area: nil, status: :suggested)
+      create(:visit, user:, place: suggested, status: :suggested)
       create(:place, user:, source: :manual, name: 'My Home')
 
       get places_url(filter: 'unconfirmed')
@@ -29,7 +29,7 @@ RSpec.describe '/places', type: :request do
 
     it 'offers a direct confirmation action for unconfirmed Places' do
       suggested = create(:place, user:, source: :photon, name: 'Needs Review')
-      create(:visit, user:, place: suggested, area: nil, status: :suggested)
+      create(:visit, user:, place: suggested, status: :suggested)
 
       get places_url(filter: 'unconfirmed')
 
@@ -41,7 +41,7 @@ RSpec.describe '/places', type: :request do
   describe 'PATCH /places/:id/confirm' do
     it 'promotes a suggested Place into the user-owned catalogue' do
       place = create(:place, user:, source: :photon, name: 'Neighbourhood cafe')
-      create(:visit, user:, place:, area: nil, status: :suggested)
+      create(:visit, user:, place:, status: :suggested)
 
       patch confirm_place_url(place), params: { filter: 'unconfirmed' }
 
@@ -173,9 +173,9 @@ RSpec.describe '/places', type: :request do
 
       it 'excludes tombstoned visits from the serialized visits_count' do
         base_time = Time.zone.parse('2026-04-01 12:00')
-        create(:visit, place:, user:, area: nil,
+        create(:visit, place:, user:,
                        started_at: base_time, ended_at: base_time + 30.minutes)
-        create(:visit, place:, user:, area: nil, deleted_at: 1.day.ago,
+        create(:visit, place:, user:, deleted_at: 1.day.ago,
                        started_at: base_time + 1.hour, ended_at: base_time + 90.minutes)
 
         patch place_url(place), params: { place: { name: 'Renamed' } }, as: :turbo_stream
@@ -277,7 +277,7 @@ RSpec.describe '/places', type: :request do
     let!(:duplicate) { create(:place, user:, name: 'My Home') }
 
     it 'merges the duplicate into the selected survivor' do
-      visit = create(:visit, user:, place: duplicate, area: nil, status: :confirmed)
+      visit = create(:visit, user:, place: duplicate, status: :confirmed)
 
       post merge_place_url(survivor),
            params: { duplicate_place_id: duplicate.id },
@@ -303,8 +303,8 @@ RSpec.describe '/places', type: :request do
 
     it 'reports a timestamp conflict without changing either Place' do
       started_at = Time.zone.parse('2026-09-01 12:00:00')
-      create(:visit, user:, place: survivor, area: nil, started_at:)
-      duplicate_visit = create(:visit, user:, place: duplicate, area: nil, started_at:)
+      create(:visit, user:, place: survivor, started_at:)
+      duplicate_visit = create(:visit, user:, place: duplicate, started_at:)
 
       expect do
         post merge_place_url(survivor), params: { duplicate_place_id: duplicate.id }, as: :turbo_stream
@@ -373,7 +373,7 @@ RSpec.describe '/places', type: :request do
       end
 
       it 'renders the total visit count' do
-        create_list(:visit, 3, place:, user:, duration: 60, area: nil)
+        create_list(:visit, 3, place:, user:, duration: 60)
 
         get place_url(place)
 
@@ -389,8 +389,7 @@ RSpec.describe '/places', type: :request do
             user:,
             duration: 60,
             started_at: base_time + i.days,
-            ended_at: base_time + i.days + 1.hour,
-            area: nil
+            ended_at: base_time + i.days + 1.hour
           )
         end
 
@@ -409,8 +408,7 @@ RSpec.describe '/places', type: :request do
             user:,
             duration: duration,
             started_at: base_time + i.days,
-            ended_at: base_time + i.days + duration.minutes,
-            area: nil
+            ended_at: base_time + i.days + duration.minutes
           )
         end
 
@@ -422,9 +420,9 @@ RSpec.describe '/places', type: :request do
 
       it 'hides tombstoned visits from the recent-visits list' do
         base_time = Time.zone.parse('2026-04-01 12:00')
-        create(:visit, place:, user:, name: 'Living Visit', area: nil,
+        create(:visit, place:, user:, name: 'Living Visit',
                        started_at: base_time, ended_at: base_time + 30.minutes)
-        create(:visit, place:, user:, name: 'Ghost Visit', area: nil, deleted_at: 1.day.ago,
+        create(:visit, place:, user:, name: 'Ghost Visit', deleted_at: 1.day.ago,
                        started_at: base_time + 1.hour, ended_at: base_time + 90.minutes)
 
         get place_url(place)
@@ -443,8 +441,7 @@ RSpec.describe '/places', type: :request do
             name: "Visit #{i}",
             duration: 30,
             started_at: base_time + i.hours,
-            ended_at: base_time + i.hours + 30.minutes,
-            area: nil
+            ended_at: base_time + i.hours + 30.minutes
           )
         end
 
@@ -468,8 +465,7 @@ RSpec.describe '/places', type: :request do
             name: "Eager Visit #{i}",
             duration: 30,
             started_at: base_time + i.hours,
-            ended_at: base_time + i.hours + 30.minutes,
-            area: nil
+            ended_at: base_time + i.hours + 30.minutes
           )
           visits_for_place << v
           create_list(:point, 5, user: user, visit: v)

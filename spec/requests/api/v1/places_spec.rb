@@ -60,9 +60,9 @@ RSpec.describe 'Api::V1::Places', type: :request do
     end
 
     it 'excludes tombstoned visits from visits_count' do
-      create(:visit, user: user, place: place, area: nil,
+      create(:visit, user: user, place: place,
                      started_at: 2.hours.ago, ended_at: 1.hour.ago)
-      create(:visit, user: user, place: place, area: nil, deleted_at: 1.day.ago,
+      create(:visit, user: user, place: place, deleted_at: 1.day.ago,
                      started_at: 5.hours.ago, ended_at: 4.hours.ago)
 
       get '/api/v1/places', headers: headers
@@ -74,7 +74,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
     context 'map visibility (manual + confirmed + tagged only)' do
       it 'excludes a suggested-only photon place' do
         suggested = create(:place, user: user, name: 'Suggested Only', source: :photon)
-        create(:visit, user: user, place: suggested, area: nil, status: :suggested)
+        create(:visit, user: user, place: suggested, status: :suggested)
 
         get '/api/v1/places', headers: headers
 
@@ -84,7 +84,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
 
       it 'includes a photon place linked to a confirmed visit' do
         confirmed = create(:place, user: user, name: 'Confirmed Place', source: :photon)
-        create(:visit, user: user, place: confirmed, area: nil, status: :confirmed)
+        create(:visit, user: user, place: confirmed, status: :confirmed)
 
         get '/api/v1/places', headers: headers
 
@@ -104,7 +104,7 @@ RSpec.describe 'Api::V1::Places', type: :request do
       it 'includes a tagged photon place even when its only visit is suggested' do
         tagged = create(:place, user: user, name: 'Tagged Suggested', source: :photon)
         create(:tagging, taggable: tagged, tag: tag)
-        create(:visit, user: user, place: tagged, area: nil, status: :suggested)
+        create(:visit, user: user, place: tagged, status: :suggested)
 
         get '/api/v1/places', headers: headers
 
@@ -116,12 +116,12 @@ RSpec.describe 'Api::V1::Places', type: :request do
     context 'with filter param' do
       let!(:suggested) do
         place = create(:place, user: user, name: 'Suggested Only', source: :photon)
-        create(:visit, user: user, place: place, area: nil, status: :suggested)
+        create(:visit, user: user, place: place, status: :suggested)
         place
       end
       let!(:confirmed) do
         place = create(:place, user: user, name: 'Confirmed Place', source: :photon)
-        create(:visit, user: user, place: place, area: nil, status: :confirmed)
+        create(:visit, user: user, place: place, status: :confirmed)
         place
       end
 

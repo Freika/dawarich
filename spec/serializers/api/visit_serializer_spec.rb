@@ -43,7 +43,7 @@ RSpec.describe Api::VisitSerializer do
       area = create(:area)
       mapped = create(:place, user: area.user)
       LegacyAreaPlaceMapping.create!(area: area, place: mapped)
-      migrated = create(:visit, user: area.user, area: nil, place: mapped)
+      migrated = create(:visit, user: area.user, place: mapped)
 
       expect(described_class.new(migrated).call[:area_id]).to eq(area.id)
     end

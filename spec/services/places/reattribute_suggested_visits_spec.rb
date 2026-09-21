@@ -12,7 +12,7 @@ RSpec.describe Places::ReattributeSuggestedVisits do
   def visit_at(distance, **attributes)
     visit = create(
       :visit,
-      { user: user, area: nil, place: nil, status: :suggested,
+      { user: user, place: nil, status: :suggested,
         detection_version: Visits::Detection::VERSION,
         started_at: 2.days.ago, ended_at: 2.days.ago + 1.hour, duration: 60 }.merge(attributes)
     )
