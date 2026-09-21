@@ -91,6 +91,7 @@ RSpec.describe Users::ExportData::Visits, type: :service do
           create(:visit,
                  user: user,
                  place: nil,
+                 area: nil,
                  name: 'Unknown Location',
                  started_at: Time.zone.parse('2024-01-02 10:00:00'),
                  ended_at: Time.zone.parse('2024-01-02 12:00:00'),
@@ -110,10 +111,22 @@ RSpec.describe Users::ExportData::Visits, type: :service do
         end
       end
 
+      context 'with an Area-only visit awaiting migration' do
+        let(:area) { create(:area, user: user, name: 'Home', latitude: 52.5, longitude: 13.4, radius: 120) }
+        let!(:area_only) { create(:visit, user: user, area: area, place: nil) }
+
+        it 'references the Area so the import can attach its Place' do
+          expect(subject.first['place_reference']).to eq(
+            'name' => 'Home', 'latitude' => '52.5', 'longitude' => '13.4',
+            'source' => 'manual', 'visit_radius' => 120
+          )
+        end
+      end
+
       context 'with mixed visits (with and without places)' do
         let(:place) { create(:place, name: 'Gym', longitude: -74.006, latitude: 40.7128) }
         let!(:visit_with_place) { create(:visit, user: user, place: place, name: 'Workout') }
-        let!(:visit_without_place) { create(:visit, user: user, place: nil, name: 'Random Stop') }
+        let!(:visit_without_place) { create(:visit, user: user, place: nil, area: nil, name: 'Random Stop') }
 
         it 'returns all visits with appropriate place references' do
           expect(subject.size).to eq(2)
@@ -172,6 +185,7 @@ RSpec.describe Users::ExportData::Visits, type: :service do
           create(:visit,
                  user: user,
                  place: nil,
+                 area: nil,
                  name: 'Jan 2023 Visit',
                  started_at: Time.zone.parse('2023-01-05 08:00:00'),
                  ended_at: Time.zone.parse('2023-01-05 17:00:00'))

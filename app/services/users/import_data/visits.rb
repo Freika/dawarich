@@ -128,7 +128,7 @@ class Users::ImportData::Visits
         longitude: longitude,
         lonlat: "POINT(#{longitude} #{latitude})",
         source: place_reference['source'] || 'manual',
-        visit_radius: place_reference['visit_radius'].presence || 50
+        visit_radius: Place.normalize_visit_radius(place_reference['visit_radius'])
       )
 
       Rails.logger.debug "Created missing place for visit: #{place.name} (ID: #{place.id})"

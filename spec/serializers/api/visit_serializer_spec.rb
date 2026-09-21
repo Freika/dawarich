@@ -30,6 +30,24 @@ RSpec.describe Api::VisitSerializer do
       expect(result[:place][:visit_radius]).to eq(place.visit_radius)
     end
 
+    it 'falls back to the Area geometry for an Area-only Visit awaiting migration' do
+      area = create(:area, name: 'Home', latitude: 52.5, longitude: 13.4, radius: 120)
+      area_only = create(:visit, user: area.user, area: area, place: nil)
+
+      expect(described_class.new(area_only).call[:place]).to eq(
+        id: nil, name: 'Home', latitude: 52.5, longitude: 13.4, visit_radius: 120
+      )
+    end
+
+    it 'keeps reporting the legacy Area ID after the Visit moves to the mapped Place' do
+      area = create(:area)
+      mapped = create(:place, user: area.user)
+      LegacyAreaPlaceMapping.create!(area: area, place: mapped)
+      migrated = create(:visit, user: area.user, area: nil, place: mapped)
+
+      expect(described_class.new(migrated).call[:area_id]).to eq(area.id)
+    end
+
     context 'confidence fields' do
       it 'exposes confidence and confidence_band when set' do
         visit.update!(confidence: 85)

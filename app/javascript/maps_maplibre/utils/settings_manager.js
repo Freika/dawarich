@@ -141,9 +141,14 @@ export class SettingsManager {
     if (enabledLayers.includes("Routes") && !enabledLayers.includes("Tracks")) {
       enabledLayers.push("Tracks")
     }
-    settings.enabledMapLayers = enabledLayers.filter(
-      (name) => name !== "Routes",
-    )
+    if (enabledLayers.includes("Areas")) {
+      enabledLayers.push("Places", "Place boundaries")
+    }
+    settings.enabledMapLayers = [
+      ...new Set(
+        enabledLayers.filter((name) => name !== "Routes" && name !== "Areas"),
+      ),
+    ]
 
     Object.entries(LAYER_NAME_MAP).forEach(([layerName, settingKey]) => {
       settings[settingKey] = settings.enabledMapLayers.includes(layerName)

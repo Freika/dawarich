@@ -84,6 +84,20 @@ RSpec.describe Places::ReattributeSuggestedVisits do
     end.not_to(change { confirmed.reload.attributes.slice('place_id', 'location_label') })
   end
 
+  it 'does not overwrite a Visit the user confirms while reattribution runs' do
+    original = create(:place, user: user, name: 'Original', latitude: lat, longitude: lon, visit_radius: 100)
+    visit = visit_at(10, place: original, location_label: original.name)
+    specific = create(:place, user: user, name: 'Specific', latitude: lat, longitude: lon, visit_radius: 20)
+    allow(Place).to receive(:attribution_for).and_wrap_original do |method, *args, **kwargs|
+      visit.update_columns(status: Visit.statuses[:confirmed])
+      method.call(*args, **kwargs)
+    end
+
+    described_class.new(user: user, changed_place: specific).call
+
+    expect(visit.reload).to have_attributes(status: 'confirmed', place_id: original.id, location_label: 'Original')
+  end
+
   it 'does not alter imported or annotated Suggested Visits' do
     original = create(:place, user: user, name: 'Original', latitude: lat, longitude: lon, visit_radius: 100)
     imported = visit_at(10, place: original, import_id: 42, location_label: original.name)
@@ -98,6 +112,17 @@ RSpec.describe Places::ReattributeSuggestedVisits do
         [imported, annotated].map { |visit| visit.reload.attributes.slice('place_id', 'location_label') }
       end
     )
+  end
+
+  it 'only evaluates Visits with points near the changed Place' do
+    straddling = visit_at(3_000, location_label: 'Far away')
+    create(:point, user: user, visit: straddling, latitude: lat - north(3_000), longitude: lon,
+                   lonlat: "POINT(#{lon} #{lat - north(3_000)})")
+    place = create(:place, user: user, name: 'Cafe', latitude: lat, longitude: lon, visit_radius: 50)
+
+    described_class.new(user: user, changed_place: place).call
+
+    expect(straddling.reload.place_id).to be_nil
   end
 
   it 'does not touch a Suggested Visit outside the affected Place' do

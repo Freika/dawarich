@@ -151,22 +151,30 @@ module Places
     end
 
     def migrate_visits_for(mapping)
+      reassign_area_only_visits(mapping)
+
       Visit.where(area_id: mapping.area_id).find_each(batch_size: batch_size) do |visit|
         migrate_visit_association(visit, mapping)
       end
     end
 
+    def reassign_area_only_visits(mapping)
+      occupied = Visit.where(user_id: mapping.place.user_id, place_id: mapping.place_id).select(:started_at)
+      first_per_start = Visit.where(area_id: mapping.area_id, place_id: nil)
+                             .where.not(started_at: occupied)
+                             .select('DISTINCT ON (started_at) id')
+                             .order(:started_at, :id)
+
+      report[:area_only_visits_reassigned] += Visit.where(id: first_per_start).update_all(
+        ['place_id = ?, area_id = NULL, location_label = COALESCE(location_label, ?)',
+         mapping.place_id, mapping.area.name]
+      )
+    end
+
     def migrate_visit_association(visit, mapping)
       if visit.place_id.nil?
-        if place_conflict?(visit, mapping.place_id)
-          record_visit_conflict(visit)
-        else
-          visit.update_columns(
-            place_id: mapping.place_id, area_id: nil, location_label: visit.location_label || mapping.area.name
-          )
-          report[:area_only_visits_reassigned] += 1
-        end
-      elsif visit.user.visits.machine_detected.exists?(id: visit.id)
+        record_visit_conflict(visit)
+      elsif Visit.machine_detected.exists?(id: visit.id)
         selected = select_place_for(visit, fallback: mapping.place)
         if place_conflict?(visit, selected.id)
           record_visit_conflict(visit)
@@ -181,7 +189,8 @@ module Places
     end
 
     def place_conflict?(visit, place_id)
-      visit.user.visits.where(place_id: place_id, started_at: visit.started_at).where.not(id: visit.id).exists?
+      Visit.where(user_id: visit.user_id, place_id: place_id, started_at: visit.started_at)
+           .where.not(id: visit.id).exists?
     end
 
     def record_visit_conflict(visit)
@@ -193,7 +202,7 @@ module Places
       center = visit_center(visit)
       return fallback unless center
 
-      visit.user.places.attribution_for(*center) || fallback
+      Place.where(user_id: visit.user_id).attribution_for(*center) || fallback
     end
 
     def visit_center(visit)

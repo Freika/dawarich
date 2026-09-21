@@ -8,6 +8,7 @@ class Place < ApplicationRecord
   include Notable
 
   DEFAULT_NAME = 'Suggested place'
+  MAX_VISIT_RADIUS = 50_000
 
   belongs_to :user
   has_many :visits, dependent: :nullify
@@ -17,6 +18,7 @@ class Place < ApplicationRecord
   has_many :active_visits, -> { active }, class_name: 'Visit', inverse_of: :place, dependent: nil
   has_many :place_visits, dependent: :destroy
   has_many :suggested_visits, -> { distinct }, through: :place_visits, source: :visit
+  has_many :legacy_area_place_mappings, dependent: :delete_all
 
   attr_accessor :machine_named, :user_named, :skip_suggested_visit_reattribution,
                 :reattribute_suggested_visits_on_create
@@ -29,7 +31,8 @@ class Place < ApplicationRecord
 
   validates :name, presence: true, length: { maximum: 255 }
   validates :lonlat, presence: true
-  validates :visit_radius, numericality: { only_integer: true, greater_than: 0 }
+  validates :visit_radius,
+            numericality: { only_integer: true, greater_than: 0, less_than_or_equal_to: MAX_VISIT_RADIUS }
 
   enum :source, { manual: 0, photon: 1, gpx_waypoint: 2 }
 
@@ -57,6 +60,11 @@ class Place < ApplicationRecord
   scope :unconfirmed_for, ->(user) { where.not(id: confirmed_for(user).select(:id)) }
   scope :map_visible, ->(user) { confirmed_for(user) }
 
+  def self.normalize_visit_radius(value)
+    radius = value.to_i
+    radius.positive? ? [radius, MAX_VISIT_RADIUS].min : column_defaults['visit_radius']
+  end
+
   def self.attribution_for(latitude, longitude, search_radius: maximum(:visit_radius).to_i)
     return if search_radius <= 0
 
@@ -77,6 +85,10 @@ class Place < ApplicationRecord
 
   def lat
     lonlat&.y || latitude.to_f
+  end
+
+  def legacy_area_id
+    legacy_area_place_mappings.map(&:area_id).min
   end
 
   def name_locked?
