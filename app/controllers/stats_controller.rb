@@ -8,6 +8,7 @@ class StatsController < ApplicationController
   def index
     @stats = build_stats
     assign_points_statistics
+    @visited_countries_map_data = visited_countries_map_data
     @year_distances = precompute_year_distances
     @locked_years = locked_years
   end
@@ -68,6 +69,17 @@ status: :see_other
     @points_reverse_geocoded = points_stats[:geocoded]
     @points_reverse_geocoded_percentage = points_stats[:geocoded_percentage]
     @points_reverse_geocoded_without_data = points_stats[:without_data]
+  end
+
+  def visited_countries_map_data
+    current_user.countries_visited.filter_map do |name|
+      country = Country.matching_name(name)
+      iso_a3 = country&.iso_a3 ||
+               Countries::IsoCodeMapper.iso_codes_from_country_name(name).last
+      next if iso_a3.blank?
+
+      { name: name, iso_a3: iso_a3 }
+    end.uniq { |country| country[:iso_a3] }
   end
 
   def precompute_year_distances
