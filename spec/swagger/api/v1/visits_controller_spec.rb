@@ -31,29 +31,39 @@ describe 'Visits API', type: :request do
         let(:start_at) { 1.week.ago.iso8601 }
         let(:end_at) { Time.current.iso8601 }
 
+        before do
+          create(:visit, user: user, place: place, started_at: 3.days.ago, ended_at: 3.days.ago + 1.hour)
+          create(:visit, user: user, place: nil, name: nil, location_label: 'Main Street 5', status: :suggested,
+                         started_at: 2.days.ago, ended_at: 2.days.ago + 1.hour)
+        end
+
         schema type: :array,
                items: {
                  type: :object,
                  properties: {
                    id: { type: :integer },
-                   name: { type: :string },
+                   name: { type: :string, nullable: true, description: 'User-defined Visit Name' },
+                   display_name: { type: :string, description: 'Visit Name, Place name, or Location Label' },
+                   location_label: { type: :string, nullable: true },
+                   place_id: { type: :integer, nullable: true },
+                   area_id: { type: :integer, nullable: true, deprecated: true },
                    status: { type: :string, enum: %w[suggested confirmed declined] },
                    started_at: { type: :string, format: :datetime },
                    ended_at: { type: :string, format: :datetime },
                    duration: { type: :integer, description: 'Duration in minutes' },
                    place: {
                      type: :object,
+                     nullable: true,
                      properties: {
-                       id: { type: :integer },
+                       id: { type: :integer, nullable: true },
                        name: { type: :string },
                        latitude: { type: :number },
                        longitude: { type: :number },
-                       city: { type: :string },
-                       country: { type: :string }
+                       visit_radius: { type: :integer }
                      }
                    }
                  },
-                 required: %w[id name status started_at ended_at duration]
+                 required: %w[id name display_name status started_at ended_at duration]
                }
 
         run_test!

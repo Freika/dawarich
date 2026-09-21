@@ -37,7 +37,7 @@ class Users::ImportData::Areas
     name = area_data['name'].to_s.strip
     latitude = area_data['latitude'].to_f
     longitude = area_data['longitude'].to_f
-    radius = positive_radius(area_data['radius'])
+    radius = Place.normalize_visit_radius(area_data['radius'])
     candidates = matching_places(name, latitude, longitude)
 
     # Multiple same-name candidates are deliberately not guessed between.
@@ -111,11 +111,6 @@ class Users::ImportData::Areas
   def valid_area_data?(area_data)
     area_data.is_a?(Hash) && area_data['name'].present? &&
       area_data['latitude'].present? && area_data['longitude'].present?
-  end
-
-  def positive_radius(radius)
-    value = radius.to_i
-    value.positive? ? value : 50
   end
 
   def normalize(name)

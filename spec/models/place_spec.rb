@@ -57,6 +57,7 @@ RSpec.describe Place, type: :model do
     it { is_expected.to validate_presence_of(:lonlat) }
     it { is_expected.to validate_length_of(:name).is_at_most(255) }
     it { is_expected.to validate_numericality_of(:visit_radius).only_integer.is_greater_than(0) }
+    it { is_expected.to validate_numericality_of(:visit_radius).is_less_than_or_equal_to(Place::MAX_VISIT_RADIUS) }
 
     it 'defaults the visit radius to 50 meters' do
       expect(create(:place).reload.visit_radius).to eq(50)

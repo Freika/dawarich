@@ -5,6 +5,8 @@ module Places
   # reshaped. Confirmed and declined visits are deliberately outside this
   # service: their Place association belongs to the user.
   class ReattributeSuggestedVisits
+    MAX_STAY_SPREAD_METERS = 2_000
+
     def initialize(user:, changed_place:)
       @user = user
       @changed_place = changed_place
@@ -21,8 +23,8 @@ module Places
         winner = user.places.attribution_for(*centers.fetch(visit.id), search_radius:)
         attributes = attributes_for(visit, winner)
         next if attributes.empty?
+        next if Visit.machine_detected.where(id: visit.id).update_all(attributes).zero?
 
-        visit.update_columns(attributes)
         changed_at << visit.started_at
       end
 
@@ -43,7 +45,13 @@ module Places
     end
 
     def visit_ids_inside_changed_place
-      Point.where(visit_id: user.visits.machine_detected.select(:id))
+      nearby_visit_ids = Point.where(user_id: user.id, visit_id: user.visits.machine_detected.select(:id))
+                              .where('ST_DWithin(points.lonlat, ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography, ?)',
+                                     changed_place.lon, changed_place.lat,
+                                     changed_place.visit_radius + MAX_STAY_SPREAD_METERS)
+                              .select(:visit_id)
+
+      Point.where(visit_id: nearby_visit_ids)
            .group(:visit_id)
            .having(centroid_inside_sql, changed_place.lon, changed_place.lat, changed_place.visit_radius)
            .pluck(:visit_id)

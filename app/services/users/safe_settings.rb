@@ -281,6 +281,7 @@ class Users::SafeSettings
     layers = Array(settings['enabled_map_layers']).dup
     layers << 'Tracks' if layers.include?('Routes')
     layers.delete('Routes')
+    layers.push('Places', 'Place boundaries') if layers.delete('Areas')
     layers.uniq!
     lite? ? layers - GATED_MAP_LAYERS : layers
   end

@@ -26,7 +26,7 @@ class Area < ApplicationRecord
   def center = [latitude.to_f, longitude.to_f]
 
   def visit_radius
-    radius.to_i.positive? ? radius.to_i : Place.column_defaults['visit_radius']
+    Place.normalize_visit_radius(radius)
   end
 
   private

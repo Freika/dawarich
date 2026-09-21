@@ -31,7 +31,7 @@ class Users::ExportData::Visits
   def stream_to_monthly_files
     count = 0
 
-    user.visits.includes(:place).find_each do |visit|
+    user.visits.includes(:place, :area).find_each do |visit|
       visit_hash = build_visit_hash(visit)
       month_key = extract_month_key(visit)
 
@@ -46,7 +46,7 @@ class Users::ExportData::Visits
   end
 
   def export_as_array
-    user.visits.includes(:place).map do |visit|
+    user.visits.includes(:place, :area).map do |visit|
       build_visit_hash(visit)
     end
   end
@@ -54,17 +54,29 @@ class Users::ExportData::Visits
   def build_visit_hash(visit)
     visit_hash = visit.as_json(except: %w[user_id place_id area_id id import_id])
 
-    visit_hash['place_reference'] = if visit.place
-                                      {
-                                        'name' => visit.place.name,
-                                        'latitude' => visit.place.lat.to_s,
-                                        'longitude' => visit.place.lon.to_s,
-                                        'source' => visit.place.source,
-                                        'visit_radius' => visit.place.visit_radius
-                                      }
-                                    end
+    visit_hash['place_reference'] = place_reference(visit)
 
     visit_hash
+  end
+
+  def place_reference(visit)
+    if visit.place
+      {
+        'name' => visit.place.name,
+        'latitude' => visit.place.lat.to_s,
+        'longitude' => visit.place.lon.to_s,
+        'source' => visit.place.source,
+        'visit_radius' => visit.place.visit_radius
+      }
+    elsif visit.area
+      {
+        'name' => visit.area.name,
+        'latitude' => visit.area.latitude.to_f.to_s,
+        'longitude' => visit.area.longitude.to_f.to_s,
+        'source' => 'manual',
+        'visit_radius' => visit.area.visit_radius
+      }
+    end
   end
 
   def extract_month_key(visit)

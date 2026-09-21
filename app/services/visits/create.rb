@@ -202,7 +202,7 @@ module Visits
       duration_minutes = ((ended_at - started_at) / 60).to_i
 
       @visit = user.visits.create!(
-        name: params[:name].presence || place.name,
+        name: params[:name].presence,
         place: place,
         started_at: started_at,
         ended_at: ended_at,

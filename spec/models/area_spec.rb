@@ -26,6 +26,16 @@ RSpec.describe Area, type: :model do
     end
   end
 
+  describe '#visit_radius' do
+    it 'caps a legacy radius at the maximum Visit Radius' do
+      expect(build(:area, radius: Place::MAX_VISIT_RADIUS * 2).visit_radius).to eq(Place::MAX_VISIT_RADIUS)
+    end
+
+    it 'falls back to the default Visit Radius for a non-positive radius' do
+      expect(build(:area, radius: 0).visit_radius).to eq(Place.column_defaults['visit_radius'])
+    end
+  end
+
   describe 'factory' do
     it { expect(build(:area)).to be_valid }
   end

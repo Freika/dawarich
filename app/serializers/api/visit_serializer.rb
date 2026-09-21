@@ -8,7 +8,7 @@ class Api::VisitSerializer
   def call
     {
       id: visit.id,
-      area_id: visit.area_id,
+      area_id: visit.area_id || visit.place&.legacy_area_id,
       place_id: visit.place_id,
       user_id: visit.user_id,
       started_at: visit.started_at,
@@ -29,7 +29,7 @@ class Api::VisitSerializer
   attr_reader :visit
 
   def serialize_place
-    return unless visit.place
+    return serialize_area if visit.place.nil?
 
     {
       id: visit.place.id,
@@ -37,6 +37,18 @@ class Api::VisitSerializer
       latitude: visit.place.lat,
       longitude: visit.place.lon,
       visit_radius: visit.place.visit_radius
+    }
+  end
+
+  def serialize_area
+    return unless visit.area
+
+    {
+      id: nil,
+      name: visit.area.name,
+      latitude: visit.area.latitude.to_f,
+      longitude: visit.area.longitude.to_f,
+      visit_radius: visit.area.visit_radius
     }
   end
 end

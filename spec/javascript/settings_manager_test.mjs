@@ -123,6 +123,26 @@ test("Track generation thresholds load and persist with their existing backend k
   }
 })
 
+test("a saved Areas layer carries over to Places with their boundaries", async () => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async () => ({
+    ok: true,
+    json: async () => ({
+      settings: { enabled_map_layers: ["Tracks", "Areas"] },
+    }),
+  })
+
+  try {
+    SettingsManager.apiKey = "test-key"
+    const loaded = await SettingsManager.loadFromBackend()
+    assert.equal(loaded.placesEnabled, true)
+    assert.equal(loaded.placeBoundariesEnabled, true)
+    assert.equal(loaded.enabledMapLayers.includes("Areas"), false)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test("multiple setting updates are persisted in one complete snapshot", async () => {
   SettingsManager.cachedSettings = {
     mapStyle: "light",

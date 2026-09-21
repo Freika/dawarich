@@ -166,7 +166,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
       create(:point, user: original_user, visit: office_visit, external_track_id: 'same-window-office')
 
       # Create a visit without a place
-      create(:visit, user: original_user, place: nil, name: 'Unknown Location')
+      create(:visit, user: original_user, place: nil, area: nil, name: 'Unknown Location')
 
       # Calculate counts properly - places are accessed through visits
       original_places_count = original_user.visited_places.distinct.count
@@ -305,7 +305,7 @@ RSpec.describe 'Users Export-Import Integration', type: :service do
 
     visit1 = create(:visit, user: user, place: office, name: 'Work Visit')
     visit2 = create(:visit, user: user, place: home, name: 'Home Visit')
-    visit3 = create(:visit, user: user, place: nil, name: nil, location_label: 'Detected address')
+    visit3 = create(:visit, user: user, place: nil, area: nil, name: nil, location_label: 'Detected address')
 
     create_list(:point, 5,
                 user: user,

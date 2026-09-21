@@ -24,7 +24,7 @@ module Visits
     def call
       relation = user.scoped_visits
                      .left_outer_joins(:place, :area)
-                     .includes(:place, :area)
+                     .includes(:area, place: :legacy_area_place_mappings)
                      .references(:place, :area)
                      .where(
                        "(#{PLACE_INSIDE}) OR (#{AREA_INSIDE})",

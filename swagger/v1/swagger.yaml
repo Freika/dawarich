@@ -6101,6 +6101,21 @@ paths:
                       type: integer
                     name:
                       type: string
+                      nullable: true
+                      description: User-defined Visit Name
+                    display_name:
+                      type: string
+                      description: Visit Name, Place name, or Location Label
+                    location_label:
+                      type: string
+                      nullable: true
+                    place_id:
+                      type: integer
+                      nullable: true
+                    area_id:
+                      type: integer
+                      nullable: true
+                      deprecated: true
                     status:
                       type: string
                       enum:
@@ -6118,22 +6133,23 @@ paths:
                       description: Duration in minutes
                     place:
                       type: object
+                      nullable: true
                       properties:
                         id:
                           type: integer
+                          nullable: true
                         name:
                           type: string
                         latitude:
                           type: number
                         longitude:
                           type: number
-                        city:
-                          type: string
-                        country:
-                          type: string
+                        visit_radius:
+                          type: integer
                   required:
                   - id
                   - name
+                  - display_name
                   - status
                   - started_at
                   - ended_at

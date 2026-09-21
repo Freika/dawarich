@@ -133,6 +133,35 @@ RSpec.describe Places::AreasBackfill do
       expect(visit.area_id).to be_nil
     end
 
+    it 'reassigns only one of two Area-only Visits that share a start time' do
+      area = create(:area)
+      started_at = Time.zone.parse('2026-09-01 12:00:00')
+      first = create(:visit, user: area.user, area: area, place: nil, started_at: started_at)
+      second = create(:visit, user: area.user, area: area, place: nil, started_at: started_at)
+
+      report = backfill.call
+
+      expect(first.reload.place_id).to eq(LegacyAreaPlaceMapping.find_by!(area: area).place_id)
+      expect(second.reload).to have_attributes(place_id: nil, area_id: area.id)
+      expect(report[:conflicting_visit_ids]).to contain_exactly(second.id)
+    end
+
+    it 'reassigns Area-only Visits without a query per Visit' do
+      user = create(:user)
+      queries_to_migrate = lambda do |visit_count|
+        area = create(:area, user: user)
+        visit_count.times do |index|
+          create(:visit, user: user, area: area, place: nil, started_at: Time.zone.parse('2026-09-01') + index.hours)
+        end
+        statements = []
+        collect = ->(*, payload) { statements << payload[:sql] unless payload[:name] == 'SCHEMA' }
+        ActiveSupport::Notifications.subscribed(collect, 'sql.active_record') { backfill.migrate(area) }
+        statements.size
+      end
+
+      expect(queries_to_migrate.call(6)).to eq(queries_to_migrate.call(1))
+    end
+
     it 'reports an Area-only Visit that collides with the canonical Place index and keeps its Area link' do
       user = create(:user)
       place = create(:place, user: user)

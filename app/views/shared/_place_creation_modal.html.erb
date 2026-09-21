@@ -33,6 +33,7 @@
             <%= f.number_field :visit_radius,
                 value: Place.column_defaults.fetch('visit_radius', 50),
                 min: 1,
+                max: Place::MAX_VISIT_RADIUS,
                 step: 1,
                 class: "input input-bordered w-full",
                 data: { place_creation_target: "visitRadiusInput" },
