@@ -1211,8 +1211,8 @@ ca:
         cancel: Cancel·la
         create_visit: Crea la visita
       webgl_error:
-        webgl_is_not_available: WebGL no està disponible
-        map_v2_requires_webgl_to_render_maps_please_enable_hardware: El mapa v2 necessita WebGL per representar els mapes. Activa l'acceleració per maquinari a la configuració del teu navegador o prova amb un altre navegador.
+        webgl_is_not_available: WebGL 2 no està disponible
+        map_v2_requires_webgl_to_render_maps_please_enable_hardware: El mapa v2 necessita WebGL 2 per representar els mapes. Activa l'acceleració per maquinari a la configuració del teu navegador o prova amb un altre navegador.
       index:
         loading: Carregant...
         pick_a_day: Tria un dia

@@ -1,5 +1,5 @@
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { styleDocumentFailed } from "maps_maplibre/utils/basemap_url"
 import { registerRTLTextPlugin } from "maps_maplibre/utils/rtl_text_plugin"

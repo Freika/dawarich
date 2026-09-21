@@ -1211,8 +1211,8 @@ en:
         cancel: Cancel
         create_visit: Create Visit
       webgl_error:
-        webgl_is_not_available: WebGL is not available
-        map_v2_requires_webgl_to_render_maps_please_enable_hardware: Map v2 requires WebGL to render maps. Please enable hardware acceleration in your browser settings or try a different browser.
+        webgl_is_not_available: WebGL 2 is not available
+        map_v2_requires_webgl_to_render_maps_please_enable_hardware: Map v2 requires WebGL 2 to render maps. Please enable hardware acceleration in your browser settings or try a different browser.
       index:
         loading: Loading...
         pick_a_day: Pick a day

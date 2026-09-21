@@ -1261,8 +1261,8 @@ de:
         cancel: Abbrechen
         create_visit: Aufenthalt erstellen
       webgl_error:
-        webgl_is_not_available: WebGL ist nicht verfügbar
-        map_v2_requires_webgl_to_render_maps_please_enable_hardware: Map v2 benötigt WebGL, um Karten anzuzeigen. Aktiviere die Hardwarebeschleunigung in den Einstellungen deines Browsers oder versuche einen anderen Browser.
+        webgl_is_not_available: WebGL 2 ist nicht verfügbar
+        map_v2_requires_webgl_to_render_maps_please_enable_hardware: Map v2 benötigt WebGL 2, um Karten anzuzeigen. Aktiviere die Hardwarebeschleunigung in den Einstellungen deines Browsers oder versuche einen anderen Browser.
       index:
         loading: Lädt...
         pick_a_day: Wähle einen Tag aus
