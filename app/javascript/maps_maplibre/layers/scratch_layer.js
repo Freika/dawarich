@@ -21,9 +21,13 @@ export class ScratchLayer extends BaseLayer {
     super(map, { id: "scratch", ...options })
     this.apiClient = options.apiClient
     this.historyScope = options.historyScope
+    this.staticMembership = Object.prototype.hasOwnProperty.call(
+      options,
+      "visitedIsoA3",
+    )
     this.onTileError = options.onTileError || null
     this.onMembershipError = options.onMembershipError || null
-    this.visitedIsoA3 = []
+    this.visitedIsoA3 = this.staticMembership ? options.visitedIsoA3 : []
     this._membershipStale = false
     this._membershipGeneration = 0
     this._cacheBuster = 0
@@ -38,8 +42,10 @@ export class ScratchLayer extends BaseLayer {
     this._watchTileErrors()
     super.add(undefined, beforeId)
     this.applyFilter()
-    document.removeEventListener("dawarich:point-moved", this._onPointMoved)
-    document.addEventListener("dawarich:point-moved", this._onPointMoved)
+    if (!this.staticMembership) {
+      document.removeEventListener("dawarich:point-moved", this._onPointMoved)
+      document.addEventListener("dawarich:point-moved", this._onPointMoved)
+    }
     await this.update()
   }
 
@@ -49,6 +55,8 @@ export class ScratchLayer extends BaseLayer {
 
   async reload() {
     const generation = ++this._membershipGeneration
+    if (this.staticMembership) return true
+
     const scope = this.historyScope()
     let response
     try {
@@ -181,7 +189,9 @@ export class ScratchLayer extends BaseLayer {
   remove() {
     this._membershipGeneration += 1
     this._unwatchTileErrors()
-    document.removeEventListener("dawarich:point-moved", this._onPointMoved)
+    if (!this.staticMembership) {
+      document.removeEventListener("dawarich:point-moved", this._onPointMoved)
+    }
     super.remove()
   }
 }
