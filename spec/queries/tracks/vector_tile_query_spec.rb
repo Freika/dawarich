@@ -73,6 +73,16 @@ RSpec.describe Tracks::VectorTileQuery do
 
       expect(rows.map { |row| row['id'].to_i }).to contain_exactly(matched_inside.id, fallback_inside.id)
     end
+
+    it 'does not let unmatched tracks outside the tile consume the per-tile limit' do
+      stub_const('Tracks::VectorTileQuery::TRACKS_PER_TILE_LIMIT', 1)
+      create_track_at([[200_000, 200_000], [210_000, 210_000]])
+      unmatched_inside = create_track_at([[10, 10], [2_000, 2_000]])
+
+      rows = feature_rows(z: 10, x: 512, y: 511, use_matched_path: true)
+
+      expect(rows.map { |row| row['id'].to_i }).to eq([unmatched_inside.id])
+    end
   end
 
   describe 'import-scoped geometry' do

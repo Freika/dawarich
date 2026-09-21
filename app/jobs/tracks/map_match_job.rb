@@ -5,6 +5,7 @@ class Tracks::MapMatchJob < ApplicationJob
 
   queue_as :map_matching
   sidekiq_options retry: false
+  self.enqueue_after_transaction_commit = true
 
   retry_on ::MapMatching::Atlas::Client::RetryableError,
            wait: :polynomially_longer,
@@ -47,17 +48,20 @@ class Tracks::MapMatchJob < ApplicationJob
 
       code = error.respond_to?(:code) ? error.code : 'enqueue_failed'
       status = error.respond_to?(:status) ? error.status : nil
-      track.update!(
-        matched_path: nil,
-        map_matching_status: :failed,
-        map_matching_data: {
-          schema_version: ::MapMatching::Processor::SCHEMA_VERSION,
-          policy_version: ::MapMatching::QualityPolicy::VERSION,
-          provider: { name: 'atlas' },
-          segments: [],
-          error: { code:, status:, attempt:, message: code }.compact
+      track.write_map_matching!(
+        {
+          matched_path: nil,
+          map_matching_status: :failed,
+          map_matching_data: {
+            schema_version: ::MapMatching::Processor::SCHEMA_VERSION,
+            policy_version: ::MapMatching::QualityPolicy::VERSION,
+            provider: { name: 'atlas' },
+            segments: [],
+            error: { code:, status:, attempt:, message: code }.compact
+          },
+          map_matched_at: Time.current
         },
-        map_matched_at: Time.current
+        broadcast: true
       )
       Rails.logger.warn(
         "event=map_matching.failed track_id=#{track.id} digest=#{digest.first(12)} " \
@@ -85,11 +89,14 @@ class Tracks::MapMatchJob < ApplicationJob
       track.reload
       return unless current?(track, digest)
 
-      track.update!(
-        matched_path: result.path,
-        map_matching_status: result.status,
-        map_matching_data: result.data,
-        map_matched_at: Time.current
+      track.write_map_matching!(
+        {
+          matched_path: result.path,
+          map_matching_status: result.status,
+          map_matching_data: result.data,
+          map_matched_at: Time.current
+        },
+        broadcast: true
       )
       Rails.logger.info(
         "event=map_matching.completed track_id=#{track.id} digest=#{digest.first(12)} " \

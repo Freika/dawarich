@@ -148,8 +148,8 @@ class Tracks::VectorTileQuery
   def original_path_predicate
     statuses = Track.map_matching_statuses.values_at('matched', 'partial').join(', ')
     <<~SQL.squish
-      tracks.matched_path IS NULL OR tracks.map_matching_input_digest IS NULL
-      OR tracks.map_matching_status IS NULL OR tracks.map_matching_status NOT IN (#{statuses})
+      (tracks.matched_path IS NULL OR tracks.map_matching_input_digest IS NULL
+      OR tracks.map_matching_status IS NULL OR tracks.map_matching_status NOT IN (#{statuses}))
     SQL
   end
 

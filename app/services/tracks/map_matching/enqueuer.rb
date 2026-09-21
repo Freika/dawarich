@@ -3,6 +3,8 @@
 module Tracks
   module MapMatching
     class Enqueuer
+      STALE_CLAIM_AFTER = 1.hour
+
       def self.call(track)
         new(track).call
       rescue StandardError => e
@@ -42,17 +44,26 @@ module Tracks
         track.with_lock do
           track.reload
           next if current_result?(digest)
-          next if track.map_matching_status_pending? && track.map_matching_input_digest == digest
+          next if live_claim?(digest)
 
-          track.update!(
-            map_matching_status: :pending,
-            map_matching_input_digest: digest,
-            map_matching_data: {},
-            map_matched_at: nil
+          track.write_map_matching!(
+            {
+              map_matching_status: :pending,
+              map_matching_input_digest: digest,
+              map_matching_data: { claimed_at: Time.current.iso8601 },
+              map_matched_at: nil
+            }
           )
           claimed = true
         end
         claimed
+      end
+
+      def live_claim?(digest)
+        return false unless track.map_matching_status_pending? && track.map_matching_input_digest == digest
+
+        claimed_at = Time.zone.parse(track.map_matching_data['claimed_at'].to_s)
+        claimed_at.present? && claimed_at > STALE_CLAIM_AFTER.ago
       end
 
       def current_result?(digest)
@@ -71,12 +82,14 @@ module Tracks
         return false if track.map_matching_status_skipped? && track.map_matching_input_digest == digest
 
         result = ::MapMatching::Processor.skipped(input)
-        track.update!(
-          matched_path: nil,
-          map_matching_status: result.status,
-          map_matching_input_digest: digest,
-          map_matching_data: result.data,
-          map_matched_at: Time.current
+        track.write_map_matching!(
+          {
+            matched_path: nil,
+            map_matching_status: result.status,
+            map_matching_input_digest: digest,
+            map_matching_data: result.data,
+            map_matched_at: Time.current
+          }
         )
         false
       end

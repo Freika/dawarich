@@ -351,7 +351,7 @@ export class TracksLayer extends BaseLayer {
    * @param {Array} segments - Array of segment data with mode, color, start_index, end_index
    */
   showSegments(trackFeature, segments) {
-    if (trackFeature?.geometry?.type !== "LineString") {
+    if (!trackFeature?.geometry) {
       return
     }
 
@@ -360,10 +360,10 @@ export class TracksLayer extends BaseLayer {
       return
     }
 
-    const coords = trackFeature.geometry.coordinates
-    if (coords.length < 2) {
-      return
-    }
+    const coords =
+      trackFeature.geometry.type === "LineString"
+        ? trackFeature.geometry.coordinates
+        : []
 
     // Create line features for each segment
     const segmentFeatures = segments

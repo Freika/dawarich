@@ -245,3 +245,57 @@ test("tearing down track interactions removes segment markers", () => {
   assert.deepEqual(handlers.trackMarkers, [])
   assert.equal(handlers.selectedTrackFeature, null)
 })
+
+test("a map-matched track click still places mode markers from segment geometry", () => {
+  const placed = []
+  const handlers = new EventHandlers(
+    { off: () => {}, getLayer: () => null },
+    { layerManager: { getLayer: () => null } },
+  )
+  handlers._createEmojiMarker = () => {
+    const marker = {
+      setLngLat: (coord) => {
+        placed.push(coord)
+        return marker
+      },
+      addTo: () => marker,
+      remove: () => {},
+    }
+    return marker
+  }
+  const matched = {
+    properties: { id: 7 },
+    geometry: {
+      type: "MultiLineString",
+      coordinates: [
+        [
+          [5, 5],
+          [6, 6],
+        ],
+      ],
+    },
+  }
+
+  handlers._createTrackSegmentMarkers(7, matched, [
+    {
+      emoji: "🚶",
+      coordinates: [
+        [0, 0],
+        [1, 1],
+      ],
+    },
+    {
+      emoji: "🚲",
+      coordinates: [
+        [1, 1],
+        [2, 2],
+      ],
+    },
+  ])
+
+  assert.deepEqual(placed, [
+    [0, 0],
+    [1, 1],
+    [2, 2],
+  ])
+})

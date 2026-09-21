@@ -201,3 +201,20 @@ test("reselecting while keeping segments leaves them visible", (t) => {
   assert.equal(tracksLayer.segmentsActive, true)
   assert.notEqual(map.getLayer("tracks-segments").visibility, "none")
 })
+
+test("segment highlighting renders for a map-matched track whose display geometry is a MultiLineString", (t) => {
+  const { map, tracksLayer } = mountAfterBaseTracks(t)
+  const matchedTrack = {
+    ...track,
+    geometry: {
+      type: "MultiLineString",
+      coordinates: [track.geometry.coordinates],
+    },
+  }
+  tracksLayer.setSelectedTrack(matchedTrack)
+
+  tracksLayer.showSegments(matchedTrack, walkingSegments)
+
+  assert.equal(tracksLayer.segmentsActive, true)
+  assert.equal(map.getSource("tracks-segments-source").data.features.length, 2)
+})

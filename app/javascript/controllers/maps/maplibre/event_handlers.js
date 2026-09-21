@@ -776,15 +776,21 @@ export class EventHandlers {
   _createTrackSegmentMarkers(trackId, feature, segments) {
     this._clearTrackMarkers()
 
-    if (feature?.geometry?.type !== "LineString") return
     if (!segments || segments.length === 0) return
 
-    const coords = feature.geometry.coordinates
-    if (coords.length < 2) return
+    const coords =
+      feature?.geometry?.type === "LineString"
+        ? feature.geometry.coordinates
+        : []
+    const lastSegmentCoords = segments[segments.length - 1].coordinates
+    const endCoord =
+      coords[coords.length - 1] ??
+      lastSegmentCoords?.[lastSegmentCoords.length - 1]
+    if (!endCoord) return
 
     segments.forEach((segment) => {
       const coordIndex = Math.min(segment.start_index || 0, coords.length - 1)
-      const coord = coords[coordIndex]
+      const coord = coords[coordIndex] ?? segment.coordinates?.[0]
       if (!coord) return
 
       const marker = this._createEmojiMarker(
@@ -797,7 +803,6 @@ export class EventHandlers {
       this.trackMarkers.push(marker)
     })
 
-    const endCoord = coords[coords.length - 1]
     const endMarker = this._createEmojiMarker("🏁", "track-emoji-marker")
     endMarker.setLngLat(endCoord).addTo(this.map)
     this.trackMarkers.push(endMarker)

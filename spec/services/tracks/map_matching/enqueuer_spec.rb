@@ -4,6 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Tracks::MapMatching::Enqueuer do
   include ActiveJob::TestHelper
+  include ActiveSupport::Testing::TimeHelpers
 
   let(:user) { create(:user) }
   let(:track) do
@@ -27,6 +28,31 @@ RSpec.describe Tracks::MapMatching::Enqueuer do
 
     expect { described_class.call(track) }.not_to have_enqueued_job(Tracks::MapMatchJob)
     expect(track.reload.map_matching_input_digest).to eq(digest)
+  end
+
+  it 're-enqueues unchanged input when the previous claim went stale' do
+    described_class.call(track)
+
+    travel(2.hours) do
+      expect { described_class.call(track) }.to have_enqueued_job(Tracks::MapMatchJob).once
+    end
+  end
+
+  it 'claims without changing the track revision the map editor checks' do
+    expect { described_class.call(track) }.not_to(change { track.reload.lock_version })
+    expect(track).to be_map_matching_status_pending
+  end
+
+  it 'enqueues only after the surrounding transaction commits' do
+    enqueued_inside_transaction = nil
+
+    Track.transaction do
+      described_class.call(track)
+      enqueued_inside_transaction = enqueued_jobs.count { |job| job[:job] == Tracks::MapMatchJob }
+    end
+
+    expect(enqueued_inside_transaction).to eq(0)
+    expect(Tracks::MapMatchJob).to have_been_enqueued.once
   end
 
   it 'does nothing when the global setting is off' do

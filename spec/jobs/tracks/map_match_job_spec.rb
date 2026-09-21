@@ -40,6 +40,36 @@ RSpec.describe Tracks::MapMatchJob do
     expect(track.map_matched_at).to be_present
   end
 
+  it 'publishes without changing the track revision the map editor checks, and invalidates its tiles' do
+    input = MapMatching::Input.new(track)
+    digest = MapMatching::Fingerprint.call(input)
+    track.update!(map_matching_input_digest: digest)
+    result = MapMatching::Processor::Result.new(
+      status: :matched, path:, data: { schema_version: 1, segments: [] }
+    )
+    allow(MapMatching::Processor).to receive(:new).and_return(instance_double(MapMatching::Processor, call: result))
+    tile_epoch = -> { Tracks::TileEpoch.etag_component(user.id, track.start_at.to_i, track.end_at.to_i) }
+    epoch_before = tile_epoch.call
+
+    expect { described_class.perform_now(track.id, digest) }.not_to(change { track.reload.lock_version })
+    expect(track).to be_map_matching_status_matched
+    expect(tile_epoch.call).not_to eq(epoch_before)
+  end
+
+  it 'records a terminal failure without changing the track revision' do
+    input = MapMatching::Input.new(track)
+    digest = MapMatching::Fingerprint.call(input)
+    track.update!(map_matching_input_digest: digest)
+    processor = instance_double(MapMatching::Processor)
+    allow(MapMatching::Processor).to receive(:new).and_return(processor)
+    allow(processor).to receive(:call).and_raise(
+      MapMatching::Atlas::Client::ProviderError.new('boom', code: 'http_error', status: 418)
+    )
+
+    expect { described_class.perform_now(track.id, digest) }.not_to(change { track.reload.lock_version })
+    expect(track).to be_map_matching_status_failed
+  end
+
   it 'cannot overwrite a newer digest' do
     track.update!(map_matching_input_digest: 'newer')
     allow(MapMatching::Processor).to receive(:new)

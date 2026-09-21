@@ -68,6 +68,14 @@ class Track < ApplicationRecord
     matched_path.present? && (map_matching_status_matched? || map_matching_status_partial?)
   end
 
+  def write_map_matching!(attributes, broadcast: false)
+    update_columns(attributes)
+    ActiveRecord.after_all_transactions_commit do
+      bump_tile_epoch
+      broadcast_track_update('updated') if broadcast
+    end
+  end
+
   # Convert raw distance + duration into a stored avg_speed (km/h),
   # capped to the column's precision limit.
   def self.avg_speed_kmh(distance_meters, duration_seconds)
