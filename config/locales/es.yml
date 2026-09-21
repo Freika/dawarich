@@ -11,6 +11,7 @@ es:
         clear_secret: "Borrar el valor guardado"
         unreadable_secret: "Un valor guardado no se puede descifrar con las claves de esta instancia. Vuelve a introducirlo."
         sections_nav: "Secciones de los ajustes de la instancia"
+        maps: "Mapas"
         nav_pinned: "Definido por una variable de entorno"
         nav_attention: "Requiere atención"
         geocoding:
@@ -37,6 +38,16 @@ es:
           locationiq: "Servicio alojado. Necesita una clave de API."
         points:
           title: "Puntos"
+        map_matching:
+          title: "Ajuste de rutas"
+          description: "Alinea los trayectos registrados con ruido a carreteras y caminos cercanos. Solo cambia cómo se dibujan los trayectos compatibles; los puntos registrados y la ruta original permanecen intactos."
+          example_alt: "Una ruta original imprecisa junto a la misma ruta ajustada a las calles"
+          original_label: "Ruta original"
+          matched_label: "Ruta ajustada"
+          example_caption: "La original conserva la forma registrada. La ajustada sigue la red transitable cercana y siempre puede volver a la original."
+          privacy: "Dawarich envía coordenadas, marcas de tiempo y precisión GPS al servicio Atlas configurado. Mantén ese servicio dentro de una red de confianza."
+          test: "Probar conexión"
+          testing: "Probando…"
         fields:
           photon_api_host: "Host"
           photon_api_key: "Clave de API"
@@ -48,21 +59,32 @@ es:
           locationiq_api_key: "Clave de API"
           reverse_geocoding_rps: "Peticiones por segundo"
           store_geodata: "Geocodificar puntos nuevos de inmediato"
+          atlas_url: "URL de Atlas"
+          map_matching_enabled: "Activar el ajuste de rutas"
           host_hint: "Nombre de host con puerto opcional, p. ej. photon.example.com:2322"
           rps_hint: "Déjalo vacío para no limitar. Indica lo que permita tu servidor o tu plan."
           api_key_keep_hint: "Déjalo vacío para conservar la clave guardada."
           store_geodata_hint: "Busca la ciudad y el país al añadir puntos nuevos. Las consultas nocturnas continúan si hay un proveedor configurado, aunque esta opción esté desactivada."
+          atlas_url_hint: "URL base HTTP o HTTPS completa de tu servicio privado Dawarich Atlas."
+          map_matching_enabled_hint: "Se aplica a toda la instancia. Los trayectos existentes no se procesan automáticamente."
       update:
         saved: "Ajustes guardados."
         pinned: "Rechazado: fijado por %{variables}."
         host_invalid: "El host debe ser un nombre de host sin más, con un puerto o una ruta opcionales y sin espacios."
         chibigeo_key_required: "ChibiGeo necesita una clave de API. El plan gratuito Hobby incluye 2.500 consultas al día; obtén tu clave en chibigeo.com."
+        atlas_url_invalid: "La URL de Atlas debe ser una URL HTTP o HTTPS completa, sin credenciales, consulta ni fragmento."
+        atlas_url_required: "Configura una URL de Atlas antes de activar el ajuste de rutas."
       test_geocoding:
         not_configured: "No hay ningún proveedor de geocodificación configurado. Guarda primero un proveedor."
         success: "Tu proveedor resolvió las coordenadas de prueba como: %{place}."
         empty: "El proveedor respondió, pero no devolvió resultados para las coordenadas de prueba."
         failure: "La prueba falló: %{error}"
         rate_limited: "El límite de peticiones del proveedor está ocupado ahora mismo. Vuelve a intentarlo en un momento."
+      test_map_matching:
+        not_configured: "Guarda primero una URL de Atlas."
+        success: "Atlas %{version} está listo para el ajuste de rutas."
+        routing_unavailable: "Atlas %{version} respondió, pero su capacidad de enrutamiento todavía no está lista."
+        failure: "La conexión con Atlas falló (%{error})."
   route_videos:
     route_video:
       download: "Descargar MP4"
@@ -1325,6 +1347,10 @@ es:
         track: 'Trayecto n.º '
         dist: Dist
         avg: Promedio
+        map_matching_pending: Mejorando la ruta…
+        map_matching_matched: Ajustado a las carreteras
+        map_matching_partial: Ajustado parcialmente
+        map_matching_partial_hint: Algunos tramos usan la ruta registrada original.
         show_points: Mostrar puntos
         replay: Reproducir
         share: Compartir

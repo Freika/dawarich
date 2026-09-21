@@ -4,12 +4,13 @@ require 'rails_helper'
 
 RSpec.describe InstanceSettings::Registry do
   describe '.keys' do
-    it 'declares exactly the ten geocoding pilot keys' do
+    it 'declares the supported instance settings' do
       expect(described_class.keys).to contain_exactly(
         :photon_api_host, :photon_api_key, :photon_api_use_https,
         :nominatim_api_host, :nominatim_api_key, :nominatim_api_use_https,
         :geoapify_api_key, :locationiq_api_key,
-        :reverse_geocoding_rps, :store_geodata
+        :reverse_geocoding_rps, :store_geodata,
+        :atlas_url, :map_matching_enabled
       )
     end
   end
@@ -23,6 +24,8 @@ RSpec.describe InstanceSettings::Registry do
       expect(described_class.fetch(:photon_api_host).env_var).to eq('PHOTON_API_HOST')
       expect(described_class.fetch(:store_geodata).env_var).to eq('STORE_GEODATA')
       expect(described_class.fetch(:reverse_geocoding_rps).env_var).to eq('REVERSE_GEOCODING_RPS')
+      expect(described_class.fetch(:atlas_url).env_var).to eq('ATLAS_URL')
+      expect(described_class.fetch(:map_matching_enabled).env_var).to eq('MAP_MATCHING_ENABLED')
     end
   end
 
@@ -31,6 +34,7 @@ RSpec.describe InstanceSettings::Registry do
       expect(described_class.fetch(:store_geodata).default).to be(true)
       expect(described_class.fetch(:photon_api_use_https).default).to be(false)
       expect(described_class.fetch(:nominatim_api_use_https).default).to be(true)
+      expect(described_class.fetch(:map_matching_enabled).default).to be(false)
     end
 
     it 'defaults the rate ceiling to nil, meaning unlimited' do

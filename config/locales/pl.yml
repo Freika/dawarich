@@ -11,6 +11,7 @@ pl:
         clear_secret: "Usuń zapisaną wartość"
         unreadable_secret: "Zapisanej wartości nie da się odszyfrować kluczami tej instancji. Wprowadź ją ponownie."
         sections_nav: "Sekcje ustawień instancji"
+        maps: "Mapy"
         nav_pinned: "Ustawione zmienną środowiskową"
         nav_attention: "Wymaga uwagi"
         geocoding:
@@ -37,6 +38,16 @@ pl:
           locationiq: "Usługa hostowana. Wymaga klucza API."
         points:
           title: "Punkty"
+        map_matching:
+          title: "Dopasowanie do mapy"
+          description: "Dopasowuje niedokładne zapisane trasy do pobliskich dróg i ścieżek. Zmienia tylko sposób rysowania kwalifikujących się tras; zapisane punkty i oryginalna ścieżka pozostają bez zmian."
+          example_alt: "Niedokładna oryginalna ścieżka obok tej samej ścieżki dopasowanej do ulic"
+          original_label: "Oryginalna ścieżka"
+          matched_label: "Dopasowana ścieżka"
+          example_caption: "Oryginał zachowuje zapisany kształt. Dopasowana ścieżka podąża pobliską siecią i zawsze może wrócić do oryginału."
+          privacy: "Dawarich wysyła współrzędne, znaczniki czasu i dokładność GPS do skonfigurowanej usługi Atlas. Utrzymuj ją w zaufanej sieci."
+          test: "Testuj połączenie"
+          testing: "Testowanie…"
         fields:
           photon_api_host: "Host"
           photon_api_key: "Klucz API"
@@ -48,21 +59,32 @@ pl:
           locationiq_api_key: "Klucz API"
           reverse_geocoding_rps: "Zapytania na sekundę"
           store_geodata: "Geokoduj nowe punkty od razu"
+          atlas_url: "Adres URL Atlas"
+          map_matching_enabled: "Włącz dopasowanie do mapy"
           host_hint: "Sama nazwa hosta z opcjonalnym portem, np. photon.example.com:2322"
           rps_hint: "Pozostaw puste, aby nie stosować limitu. Ustaw wartość, na jaką pozwala Twój serwer lub plan."
           api_key_keep_hint: "Pozostaw puste, aby zachować zapisany klucz."
           store_geodata_hint: "Ustala miasto i kraj przy dodawaniu nowych punktów. Nocne wyszukiwania nadal działają, gdy dostawca jest skonfigurowany, nawet po wyłączeniu tej opcji."
+          atlas_url_hint: "Pełny bazowy adres HTTP lub HTTPS prywatnej usługi Dawarich Atlas."
+          map_matching_enabled_hint: "Dotyczy całej instancji. Istniejące trasy nie są przetwarzane automatycznie."
       update:
         saved: "Ustawienia zapisane."
         pinned: "Odrzucono: ustalone przez %{variables}."
         host_invalid: "Host musi być samą nazwą hosta z opcjonalnym portem lub ścieżką, bez spacji."
         chibigeo_key_required: "ChibiGeo wymaga klucza API. Darmowy plan Hobby obejmuje 2500 zapytań dziennie — odbierz swój klucz na chibigeo.com."
+        atlas_url_invalid: "Adres URL Atlas musi być pełnym adresem HTTP lub HTTPS bez danych logowania, zapytania ani fragmentu."
+        atlas_url_required: "Ustaw adres URL Atlas przed włączeniem dopasowania do mapy."
       test_geocoding:
         not_configured: "Nie skonfigurowano dostawcy geokodowania. Najpierw zapisz dostawcę."
         success: "Udało się! Twój dostawca rozpoznał testowe współrzędne jako: %{place}."
         empty: "Dostawca odpowiedział, ale nie zwrócił wyników dla testowych współrzędnych."
         failure: "Test nie powiódł się: %{error}"
         rate_limited: "Limit zapytań dostawcy jest w tej chwili wyczerpany — spróbuj ponownie za chwilę."
+      test_map_matching:
+        not_configured: "Najpierw zapisz adres URL Atlas."
+        success: "Atlas %{version} jest gotowy do dopasowania do mapy."
+        routing_unavailable: "Atlas %{version} odpowiedział, ale jego funkcja routingu nie jest jeszcze gotowa."
+        failure: "Połączenie z Atlas nie powiodło się (%{error})."
   activerecord:
     errors:
       models:
@@ -1275,6 +1297,10 @@ pl:
         track: 'Trasa #'
         dist: Dyst.
         avg: Śr.
+        map_matching_pending: Ulepszanie trasy…
+        map_matching_matched: Dopasowano do dróg
+        map_matching_partial: Dopasowano częściowo
+        map_matching_partial_hint: Niektóre odcinki używają oryginalnie zapisanej trasy.
         show_points: Pokaż punkty
         replay: Odtwórz
         share: Udostępnij

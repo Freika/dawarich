@@ -77,6 +77,7 @@ class Tracks::BoundaryDetector
       succeeded = true
     end
 
+    Tracks::MapMatching::Enqueuer.call(track) if succeeded
     succeeded ? orphan_ids.size : 0
   rescue ActiveRecord::RecordNotUnique
     Rails.logger.warn(

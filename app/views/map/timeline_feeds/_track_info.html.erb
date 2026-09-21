@@ -10,6 +10,14 @@
 %>
 <div class="track-info-card">
   <div class="track-info-card__id"><%= t('.track') %><%= track.id %></div>
+  <% if Tracks::DisplayPath.enabled? && track.map_matching_status_pending? %>
+    <div class="badge badge-ghost badge-sm mb-2"><%= t('.map_matching_pending') %></div>
+  <% elsif Tracks::DisplayPath.enabled? && track.map_matching_status_matched? %>
+    <div class="badge badge-success badge-outline badge-sm mb-2"><%= t('.map_matching_matched') %></div>
+  <% elsif Tracks::DisplayPath.enabled? && track.map_matching_status_partial? %>
+    <div class="badge badge-warning badge-outline badge-sm mb-2"
+         title="<%= t('.map_matching_partial_hint') %>"><%= t('.map_matching_partial') %></div>
+  <% end %>
   <%# Inline stat row — labels live to the left of values to keep height low.
       Elevation entries only render when present so quick walks/cycles stay
       single-line. %>

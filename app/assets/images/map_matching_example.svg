@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 200" role="img" aria-labelledby="title desc">
+  <title id="title">Original and map-matched paths</title>
+  <desc id="desc">A noisy recorded path compared with a path aligned to nearby streets.</desc>
+  <rect width="720" height="200" rx="18" fill="#f3f4f6"/>
+  <g fill="none" stroke="#d1d5db" stroke-width="9" stroke-linecap="round">
+    <path d="M25 55H310M47 190L292 30M185 18v175"/>
+    <path d="M410 55h285M432 190L677 30M570 18v175"/>
+  </g>
+  <g fill="none" stroke="#e5e7eb" stroke-width="2">
+    <path d="M25 115h285M410 115h285M95 18v175M255 18v175M480 18v175M640 18v175"/>
+  </g>
+  <path d="M48 184C80 158 93 172 126 139S172 126 194 96 218 83 238 65 269 54 291 42"
+        fill="none" stroke="#f97316" stroke-width="6" stroke-linecap="round" stroke-dasharray="4 10"/>
+  <path d="M433 184L677 30" fill="none" stroke="#16a34a" stroke-width="7" stroke-linecap="round"/>
+</svg>

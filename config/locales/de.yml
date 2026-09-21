@@ -11,6 +11,7 @@ de:
         clear_secret: "Gespeicherten Wert löschen"
         unreadable_secret: "Ein gespeicherter Wert lässt sich mit den Schlüsseln dieser Instanz nicht entschlüsseln. Gib ihn erneut ein."
         sections_nav: "Bereiche der Instanz-Einstellungen"
+        maps: "Karten"
         nav_pinned: "Durch eine Umgebungsvariable festgelegt"
         nav_attention: "Erfordert Aufmerksamkeit"
         geocoding:
@@ -37,6 +38,16 @@ de:
           locationiq: "Gehosteter Dienst. Benötigt einen API-Schlüssel."
         points:
           title: "Punkte"
+        map_matching:
+          title: "Map-Matching"
+          description: "Richtet ungenaue aufgezeichnete Wege an nahe gelegenen Straßen und Wegen aus. Es ändert sich nur die Darstellung geeigneter Tracks; aufgezeichnete Punkte und der ursprüngliche Pfad bleiben unverändert."
+          example_alt: "Ein ungenauer Originalpfad neben demselben, an Straßen ausgerichteten Pfad"
+          original_label: "Originalpfad"
+          matched_label: "Angepasster Pfad"
+          example_caption: "Das Original behält die aufgezeichnete Form. Der angepasste Pfad folgt dem nahe gelegenen Wegenetz und kann jederzeit auf das Original zurückfallen."
+          privacy: "Dawarich sendet Koordinaten, Zeitstempel und GPS-Genauigkeit an den konfigurierten Atlas-Dienst. Betreibe diesen Dienst in einem vertrauenswürdigen Netzwerk."
+          test: "Verbindung testen"
+          testing: "Wird getestet…"
         fields:
           photon_api_host: "Host"
           photon_api_key: "API-Schlüssel"
@@ -48,21 +59,32 @@ de:
           locationiq_api_key: "API-Schlüssel"
           reverse_geocoding_rps: "Anfragen pro Sekunde"
           store_geodata: "Neue Punkte sofort geokodieren"
+          atlas_url: "Atlas-URL"
+          map_matching_enabled: "Map-Matching aktivieren"
           host_hint: "Hostname mit optionalem Port, z. B. photon.example.com:2322"
           rps_hint: "Leer lassen für kein Limit. Trage ein, was dein Server oder Tarif erlaubt."
           api_key_keep_hint: "Leer lassen, um den gespeicherten Schlüssel zu behalten."
           store_geodata_hint: "Ermittelt Stadt und Land beim Hinzufügen neuer Punkte. Nächtliche Abfragen laufen bei konfiguriertem Anbieter auch dann weiter, wenn diese Option ausgeschaltet ist."
+          atlas_url_hint: "Vollständige HTTP- oder HTTPS-Basis-URL deines privaten Dawarich-Atlas-Dienstes."
+          map_matching_enabled_hint: "Gilt für die gesamte Instanz. Vorhandene Tracks werden nicht automatisch verarbeitet."
       update:
         saved: "Einstellungen gespeichert."
         pinned: "Abgelehnt: festgelegt durch %{variables}."
         host_invalid: "Der Host muss ein reiner Hostname mit optionalem Port oder Pfad sein, ohne Leerzeichen."
         chibigeo_key_required: "ChibiGeo benötigt einen API-Schlüssel. Der kostenlose Hobby-Tarif umfasst 2.500 Abfragen pro Tag – deinen Schlüssel bekommst du auf chibigeo.com."
+        atlas_url_invalid: "Die Atlas-URL muss eine vollständige HTTP- oder HTTPS-URL ohne Zugangsdaten, Abfrage oder Fragment sein."
+        atlas_url_required: "Lege eine Atlas-URL fest, bevor du Map-Matching aktivierst."
       test_geocoding:
         not_configured: "Es ist kein Geokodierungsanbieter konfiguriert. Speichere zuerst einen Anbieter."
         success: "Dein Anbieter hat die Testkoordinaten aufgelöst zu: %{place}."
         empty: "Der Anbieter hat geantwortet, aber keine Ergebnisse für die Testkoordinaten geliefert."
         failure: "Test fehlgeschlagen: %{error}"
         rate_limited: "Das Anfragelimit des Anbieters ist gerade ausgeschöpft. Versuche es gleich noch einmal."
+      test_map_matching:
+        not_configured: "Speichere zuerst eine Atlas-URL."
+        success: "Atlas %{version} ist für Map-Matching bereit."
+        routing_unavailable: "Atlas %{version} hat geantwortet, aber die Routing-Funktion ist noch nicht bereit."
+        failure: "Atlas-Verbindung fehlgeschlagen (%{error})."
   route_videos:
     route_video:
       download: "MP4 herunterladen"
@@ -1325,6 +1347,10 @@ de:
         track: 'Track #'
         dist: Dist
         avg: Avg
+        map_matching_pending: Route wird verbessert…
+        map_matching_matched: An Straßen angepasst
+        map_matching_partial: Teilweise angepasst
+        map_matching_partial_hint: Einige Abschnitte verwenden den ursprünglich aufgezeichneten Pfad.
         show_points: Punkte anzeigen
         replay: Wiedergabe
         share: Teilen

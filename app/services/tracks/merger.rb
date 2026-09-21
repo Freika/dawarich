@@ -62,6 +62,7 @@ class Tracks::Merger
       Rails.logger.error "Failed to detect segments after merging tracks #{@older_track.id}: #{e.message}"
     end
 
+    Tracks::MapMatching::Enqueuer.call(@older_track)
     true
   rescue ActiveRecord::RecordNotUnique
     Rails.logger.info(

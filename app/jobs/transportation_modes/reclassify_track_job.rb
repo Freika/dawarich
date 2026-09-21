@@ -37,6 +37,7 @@ module TransportationModes
 
         recompute_dominant_mode(track)
       end
+      Tracks::MapMatching::Enqueuer.call(track)
     end
 
     def enabled_modes(user)

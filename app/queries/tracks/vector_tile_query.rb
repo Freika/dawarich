@@ -32,14 +32,18 @@ class Tracks::VectorTileQuery
   # nothing at coarse zoom is correct, matching the points quantization.
   SIMPLIFY_SKIP_ZOOM = 14
 
-  def initialize(scope:, z:, x:, y:, clip_points_scope: nil, clip_import_id: nil) # rubocop:disable Naming/MethodParameterName
+  # rubocop:disable Naming/MethodParameterName
+  def initialize(scope:, z:, x:, y:, clip_points_scope: nil, clip_import_id: nil,
+                 use_matched_path: false)
     @scope = scope
     @clip_points_scope = clip_points_scope
     @clip_import_id = clip_import_id
+    @use_matched_path = use_matched_path
     @z = parse_integer(z)
     @x = parse_integer(x)
     @y = parse_integer(y)
   end
+  # rubocop:enable Naming/MethodParameterName
 
   def call
     validate_tile_coordinates!
@@ -96,6 +100,7 @@ class Tracks::VectorTileQuery
   # would move half its vertices wrongly.
   def with_clauses
     return clipped_with_clauses if @clip_points_scope
+    return displayed_with_clauses if @use_matched_path
 
     <<~SQL
       WITH features AS (
@@ -108,6 +113,43 @@ class Tracks::VectorTileQuery
         )
         LIMIT #{TRACKS_PER_TILE_LIMIT}
       )
+    SQL
+  end
+
+  def displayed_with_clauses
+    <<~SQL
+      WITH features AS (
+        SELECT * FROM (
+          SELECT #{property_columns},
+            #{mvt_geom_expression('tracks.matched_path')} AS geom
+          FROM (#{tile_scope.to_sql}) AS tracks
+          WHERE #{matched_path_predicate}
+            AND ST_Intersects(tracks.matched_path, ST_Transform(#{margined_envelope}, 4326))
+          UNION ALL
+          SELECT #{property_columns},
+            #{mvt_geom_expression} AS geom
+          FROM (#{tile_scope.to_sql}) AS tracks
+          WHERE #{original_path_predicate}
+            AND ST_Intersects(tracks.original_path, ST_Transform(#{margined_envelope}, 4326))
+        ) AS display_features
+        LIMIT #{TRACKS_PER_TILE_LIMIT}
+      )
+    SQL
+  end
+
+  def matched_path_predicate
+    statuses = Track.map_matching_statuses.values_at('matched', 'partial').join(', ')
+    <<~SQL.squish
+      tracks.matched_path IS NOT NULL AND tracks.map_matching_input_digest IS NOT NULL
+      AND tracks.map_matching_status IN (#{statuses})
+    SQL
+  end
+
+  def original_path_predicate
+    statuses = Track.map_matching_statuses.values_at('matched', 'partial').join(', ')
+    <<~SQL.squish
+      tracks.matched_path IS NULL OR tracks.map_matching_input_digest IS NULL
+      OR tracks.map_matching_status IS NULL OR tracks.map_matching_status NOT IN (#{statuses})
     SQL
   end
 
@@ -213,7 +255,8 @@ class Tracks::VectorTileQuery
   def tile_scope
     scope.except(:select, :order, :includes, :preload, :eager_load)
          .select(:id, :start_at, :end_at, :distance, :avg_speed, :duration,
-                 :dominant_mode, :original_path, :lock_version)
+                 :dominant_mode, :original_path, :matched_path, :map_matching_status,
+                 :map_matching_input_digest, :lock_version)
   end
 
   def with_statement_timeout

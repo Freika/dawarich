@@ -4,6 +4,15 @@ require 'rails_helper'
 
 RSpec.describe FeatureFlags do
   describe '.apply_defaults!' do
+    it 'registers shadow mode disabled by default' do
+      Flipper.remove(:map_matching_shadow_mode)
+
+      described_class.apply_defaults!
+
+      expect(Flipper.exist?(:map_matching_shadow_mode)).to be true
+      expect(Flipper.enabled?(:map_matching_shadow_mode)).to be false
+    end
+
     it 'ships poster ordering enabled on an install that has never seen the flag' do
       Flipper.remove(:poster_ordering)
 

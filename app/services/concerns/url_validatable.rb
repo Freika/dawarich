@@ -58,11 +58,13 @@ module UrlValidatable
 
   private
 
-  def validate_integration_url!(url)
-    resolve_integration_url!(url)
+  def validate_integration_url!(url, allow_private: DawarichSettings.self_hosted?,
+                                allow_credentials: DawarichSettings.self_hosted?)
+    resolve_integration_url!(url, allow_private:, allow_credentials:)
   end
 
-  def resolve_integration_url!(url)
+  def resolve_integration_url!(url, allow_private: DawarichSettings.self_hosted?,
+                               allow_credentials: DawarichSettings.self_hosted?)
     return if url.blank?
 
     uri = URI.parse(url)
@@ -74,7 +76,7 @@ module UrlValidatable
     # Cloud refuses URLs that embed credentials. Self-hosters legitimately
     # use http://user:pass@host — homelab Immich behind nginx basic-auth
     # is a real config we don't want to break.
-    if uri.userinfo.present? && !DawarichSettings.self_hosted?
+    if uri.userinfo.present? && !allow_credentials
       raise BlockedUrlError, I18n.t('services.concerns.url_validatable.embedded_credentials')
     end
 
@@ -82,7 +84,7 @@ module UrlValidatable
     # would otherwise clear every IPv4 range below: IPAddr#include? is false
     # across address families while the OS still routes to the bare IPv4 host.
     ip = IPAddr.new(Resolv.getaddress(uri.host)).native
-    if blocked_ranges.any? { |range| range.include?(ip) }
+    if blocked_ranges(allow_private:).any? { |range| range.include?(ip) }
       Rails.logger.warn("Integration URL #{uri.host} resolves to blocked address #{ip}")
       raise BlockedUrlError, I18n.t('services.concerns.url_validatable.blocked_address')
     end
@@ -93,8 +95,8 @@ module UrlValidatable
     raise BlockedUrlError, I18n.t('services.concerns.url_validatable.unresolvable_host', host: uri.host)
   end
 
-  def blocked_ranges
-    if DawarichSettings.self_hosted?
+  def blocked_ranges(allow_private: DawarichSettings.self_hosted?)
+    if allow_private
       ALWAYS_BLOCKED_RANGES
     else
       ALWAYS_BLOCKED_RANGES + CLOUD_ONLY_BLOCKED_RANGES

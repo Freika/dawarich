@@ -45,6 +45,21 @@ RSpec.describe Users::ExportData::Tracks, type: :service do
           expect(track_data['dominant_mode']).to be_an(Integer)
         end
 
+        it 'omits derived map-matching state' do
+          track1.update!(
+            matched_path: 'MULTILINESTRING((-74.006 40.7128, -74.007 40.713))',
+            map_matching_status: :matched,
+            map_matching_input_digest: 'digest',
+            map_matching_data: { provider: 'atlas' },
+            map_matched_at: Time.current
+          )
+
+          expect(subject.first).not_to include(
+            'matched_path', 'map_matching_status', 'map_matching_input_digest',
+            'map_matching_data', 'map_matched_at'
+          )
+        end
+
         it 'embeds track segments' do
           track_data = subject.first
           expect(track_data['segments']).to be_an(Array)

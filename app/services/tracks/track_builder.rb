@@ -103,6 +103,7 @@ module Tracks::TrackBuilder
       end
     end
 
+    Tracks::MapMatching::Enqueuer.call(saved_track) if saved_track
     saved_track
   rescue ActiveRecord::RecordNotUnique => e
     reuse_existing_track(track, points, e)

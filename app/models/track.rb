@@ -19,6 +19,15 @@ class Track < ApplicationRecord
     motorcycle: 10
   }.freeze
 
+  MAP_MATCHING_STATUSES = {
+    pending: 0,
+    matched: 1,
+    partial: 2,
+    rejected: 3,
+    skipped: 4,
+    failed: 5
+  }.freeze
+
   belongs_to :user
   has_many :points, dependent: :nullify
   has_many :track_segments, dependent: :destroy
@@ -26,6 +35,7 @@ class Track < ApplicationRecord
            foreign_key: :resource_id, inverse_of: false, dependent: :destroy
 
   enum :dominant_mode, TRANSPORTATION_MODES, prefix: true
+  enum :map_matching_status, MAP_MATCHING_STATUSES, prefix: true
 
   validates :start_at, :end_at, :original_path, presence: true
   validates :distance, :avg_speed, :duration, numericality: { greater_than_or_equal_to: 0 }
@@ -53,6 +63,10 @@ class Track < ApplicationRecord
     where('NOT (dominant_mode = ? AND distance < ?)',
           dominant_modes[:stationary], distance_threshold_m)
   }
+
+  def map_matching_result?
+    matched_path.present? && (map_matching_status_matched? || map_matching_status_partial?)
+  end
 
   # Convert raw distance + duration into a stored avg_speed (km/h),
   # capped to the column's precision limit.

@@ -236,6 +236,29 @@ RSpec.describe '/api/v1/tracks', type: :request do
       expect(first_segment['end_index']).to eq(5)
     end
 
+    it 'keeps original geometry by default and supports explicit display and compare variants' do
+      track.update!(
+        matched_path: 'MULTILINESTRING((-74.006 40.7128, -74.0065 40.7129, -74.007 40.713))',
+        map_matching_status: :matched,
+        map_matching_input_digest: 'current'
+      )
+      allow(DawarichSettings).to receive(:map_matching_enabled?).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:map_matching_shadow_mode).and_return(false)
+
+      get api_v1_track_url(track), headers: headers
+      expect(JSON.parse(response.body).dig('features', 0, 'geometry', 'type')).to eq('LineString')
+
+      get api_v1_track_url(track), headers: headers, params: { geometry: 'display' }
+      feature = JSON.parse(response.body).dig('features', 0)
+      expect(feature.dig('geometry', 'type')).to eq('MultiLineString')
+      expect(feature.dig('properties', 'map_matching_status')).to eq('matched')
+
+      get api_v1_track_url(track), headers: headers, params: { geometry: 'compare' }
+      properties = JSON.parse(response.body).dig('features', 0, 'properties')
+      expect(properties.dig('original_geometry', 'type')).to eq('LineString')
+      expect(properties.dig('matched_geometry', 'type')).to eq('MultiLineString')
+    end
+
     it 'returns not found for another user track' do
       other_user = create(:user)
       other_track = create(:track, user: other_user)

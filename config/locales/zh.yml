@@ -13,6 +13,7 @@ zh:
         clear_secret: "清除已存储的值"
         unreadable_secret: "已存储的值无法用本实例的密钥解密。请重新输入。"
         sections_nav: "实例设置分区"
+        maps: "地图"
         nav_pinned: "由环境变量设置"
         nav_attention: "需要处理"
         geocoding:
@@ -39,6 +40,16 @@ zh:
           locationiq: "托管服务。需要 API 密钥。"
         points:
           title: "轨迹点"
+        map_matching:
+          title: "地图匹配"
+          description: "将有噪声的记录轨迹对齐到附近的道路和路径。它只改变符合条件的轨迹的绘制方式；记录点和原始路径保持不变。"
+          example_alt: "有噪声的原始路径与对齐到街道后的同一路径"
+          original_label: "原始路径"
+          matched_label: "匹配路径"
+          example_caption: "原始路径保留记录形状。匹配路径沿附近的可通行网络绘制，并可随时回退到原始路径。"
+          privacy: "Dawarich 会将坐标、时间戳和 GPS 精度发送到配置的 Atlas 服务。请将该服务置于您信任的网络中。"
+          test: "测试连接"
+          testing: "正在测试…"
         fields:
           photon_api_host: "主机"
           photon_api_key: "API 密钥"
@@ -50,21 +61,32 @@ zh:
           locationiq_api_key: "API 密钥"
           reverse_geocoding_rps: "每秒请求数"
           store_geodata: "立即对新轨迹点进行地理编码"
+          atlas_url: "Atlas URL"
+          map_matching_enabled: "启用地图匹配"
           host_hint: "仅主机名，可附带端口，例如 photon.example.com:2322"
           rps_hint: "留空表示不限制。请设置为您的服务器或套餐允许的值。"
           api_key_keep_hint: "留空则保留已保存的密钥。"
           store_geodata_hint: "添加新轨迹点时查询所在城市和国家。只要配置了地理编码服务，关闭此选项后仍会在夜间进行查询。"
+          atlas_url_hint: "您的私有 Dawarich Atlas 服务的完整 HTTP 或 HTTPS 基础 URL。"
+          map_matching_enabled_hint: "应用于整个实例。现有轨迹不会自动处理。"
       update:
         saved: "设置已保存。"
         pinned: "已拒绝：由 %{variables} 固定。"
         host_invalid: "主机必须是单纯的主机名，可附带端口或路径，不能包含空格。"
         chibigeo_key_required: "ChibiGeo 需要 API 密钥。免费的 Hobby 套餐每天包含 2,500 次查询——请在 chibigeo.com 获取密钥。"
+        atlas_url_invalid: "Atlas URL 必须是完整的 HTTP 或 HTTPS URL，且不能包含凭据、查询参数或片段。"
+        atlas_url_required: "启用地图匹配前请先设置 Atlas URL。"
       test_geocoding:
         not_configured: "尚未配置地理编码提供商。请先保存一个提供商。"
         success: "您的提供商将测试坐标解析为 %{place}。"
         empty: "提供商已响应，但测试坐标没有返回结果。"
         failure: "测试失败：%{error}"
         rate_limited: "提供商的速率限制当前繁忙——请稍后再试。"
+      test_map_matching:
+        not_configured: "请先保存 Atlas URL。"
+        success: "Atlas %{version} 已准备好进行地图匹配。"
+        routing_unavailable: "Atlas %{version} 已响应，但其路由功能尚未就绪。"
+        failure: "Atlas 连接失败（%{error}）。"
   auth:
     account_links:
       challenge:
@@ -1292,6 +1314,10 @@ zh:
         track: "轨迹 #"
         dist: 距离
         avg: 平均
+        map_matching_pending: 正在改善路线…
+        map_matching_matched: 已匹配道路
+        map_matching_partial: 部分匹配
+        map_matching_partial_hint: 部分路段使用原始记录路线。
         show_points: 显示轨迹点
         replay: 重播
         share: 共享

@@ -19,6 +19,31 @@
         <p class="text-sm text-base-content/70 [text-wrap:pretty]"><%= t("admin.settings.show.providers.#{section}") %></p>
       <% end %>
 
+      <% if section == 'map_matching' %>
+        <p class="text-sm text-base-content/70 [text-wrap:pretty]"><%= t('admin.settings.show.map_matching.description') %></p>
+        <figure class="rounded-box border border-base-content/10 bg-base-100 p-4" data-testid="map-matching-example">
+          <%= image_tag 'map_matching_example.svg', class: 'w-full h-auto',
+                                                    alt: t('admin.settings.show.map_matching.example_alt') %>
+          <div class="mt-2 grid grid-cols-2 gap-4 text-xs font-medium">
+            <span class="text-warning"><%= t('admin.settings.show.map_matching.original_label') %></span>
+            <span class="text-success"><%= t('admin.settings.show.map_matching.matched_label') %></span>
+          </div>
+          <figcaption class="mt-3 text-xs text-base-content/70 [text-wrap:pretty]">
+            <%= t('admin.settings.show.map_matching.example_caption') %>
+          </figcaption>
+        </figure>
+        <div role="note" class="flex items-start gap-2 text-sm">
+          <%= icon 'shield', class: 'size-4 shrink-0 mt-0.5 text-warning' %>
+          <p class="min-w-0 [text-wrap:pretty]"><%= t('admin.settings.show.map_matching.privacy') %></p>
+        </div>
+        <% if @settings.fetch(:atlas_url).value.present? %>
+          <%= button_to t('admin.settings.show.map_matching.test'), test_map_matching_admin_settings_path,
+                        class: 'btn btn-sm btn-outline self-start',
+                        form: { class: 'inline-block' },
+                        data: { turbo_submits_with: t('admin.settings.show.map_matching.testing') } %>
+        <% end %>
+      <% end %>
+
       <% if section == 'photon' %>
         <p class="text-sm text-base-content/70 [text-wrap:pretty]">
           <%= t('admin.settings.show.geocoding.chibigeo_message') %>

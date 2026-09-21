@@ -28,6 +28,7 @@ class Tracks::Recalculator
     track.save!
 
     TrackSegments::GeometryRecalculator.call(track, points)
+    Tracks::MapMatching::Enqueuer.call(track)
     track
   end
 
