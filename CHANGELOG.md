@@ -6,8 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.15.1] - Unreleased
 
+### Added
+
+- Exploration achievements: every country gets a collectible card, and 183 of them a grid of their first-level regions. A region counts as explored once time spent inside it passes your "minimum minutes spent in city" setting, so pass-throughs don't count. Earned regions are never revoked. Behind the `achievements` feature flag. (#3121)
+- Exploration achievements work through existing location history without notifications — before launch on Cloud, once the feature is enabled on self-hosted instances — and public cards show set progress and unlock dates only. (#3121)
+- Achievement cards support HTTP self-hosted installations, use the user's timezone for unlock dates and refresh after dwell-threshold changes. (#3121)
+
 ### Fixed
 
+- Moving a point on the map updates its country and looks its address up again, so a dragged point no longer keeps its old city. (#3121)
 - A position far off your route is now flagged as an anomaly even when the tracking app uploads one point at a time: it is judged again once the next point arrives, instead of staying on the map until the anomaly filter is re-applied. (#3664)
 - The family map no longer draws a member's points that were flagged as anomalies: their history trail, their "last seen" marker and the locations sent to OwnTracks friends skip them, as the member's own map already does. (#3663)
 
@@ -18,7 +25,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Trips can be imported from TREK (Settings → Integrations). A TREK trip shows its plan above the recorded days, a trip with nothing recorded yet draws the planned stops on its map and card preview, a recorded trip can lay its plan over the track, and TREK day notes fill in the trip's day notes and stay in sync until you edit them in Dawarich. (#3615)
 - Admins can configure geocoding for the whole instance in Settings → Instance without a redeploy, and test the connection there. A set environment variable still wins and shows its field read-only.
 - The app and Sidekiq containers print a warning at startup when a self-hosted instance runs with `RAILS_ENV=development`.
-- Exploration achievements: every country gets a collectible card, and 183 of them a grid of their first-level regions. A region counts as explored once time spent inside it passes your "minimum minutes spent in city" setting, so pass-throughs don't count. Earned regions are never revoked. Behind the `achievements` feature flag. (#3121)
 - Map points and tracks can be edited directly over the vector-tile renderer; a completed drag atomically saves the point, recalculates its track and segments, and synchronizes other open sessions. With Edit points on, a point can be dragged straight from the map at zoom 14 and closer, a long press starts the drag on touch screens, and an edit history panel on the map undoes and redoes the last 5 moves.
 - Visited Countries uses bundled PMTiles plus a small, privately cached metadata response, so it remains available without downloading the full location history or requiring outbound network access.
 - Video Studio adds a Fog of War mode with adjustable overlay colour and opacity, independent route and marker visibility, and preview buttons for visualization modes and output formats.
@@ -43,7 +49,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The map fits locations recorded during a short period even when the selected history spans years.
 - Switching flight visibility while editing a point or track keeps the edit visible and restores the correct map filters afterward.
 - User profile archives uploaded through the regular Imports page are now restored as profile backups instead of failing the multi-file archive size limit. (#3011)
-- Simplified Chinese covers the SMTP test-email flow.
 - CSV imports combine separate DATE/TIME columns while preserving complete timestamps when both formats are present.
 - The visits API now returns a clear bad-request response for malformed date ranges on both time-based and area-based queries, instead of failing or silently ignoring the filter.
 - Failed imports no longer leave temporary downloads on disk when the file is empty or fails integrity checks.
@@ -51,9 +56,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - The Synology template no longer hangs waiting for its database on a fresh install.
 - The Kubernetes guide's health probes check the web container instead of the Sidekiq container, and a startup probe keeps it from being restarted while migrations run.
 - Trip and track distance is calculated in the database, so large trips no longer run out of memory and leave the distance empty. Press Recalculate on an affected trip to fill it in.
-- Exploration achievements work through existing location history without notifications — before launch on Cloud, once the feature is enabled on self-hosted instances — and public cards show set progress and unlock dates only. (#3121)
-- Achievement cards support HTTP self-hosted installations, use the user's timezone for unlock dates and refresh after dwell-threshold changes. (#3121)
-- Moving a point on the map updates its country and looks its address up again, so a dragged point no longer keeps its old city. (#3121)
 - TREK itinerary imports now keep unscheduled places, honour the trip owner's timezone, and retain the plan after disconnecting TREK. (#3615)
 - Days per Country now uses a more varied color palette so countries are easier to distinguish (#3602).
 - Creating a visit from a location search result keeps the searched place's name and address.
