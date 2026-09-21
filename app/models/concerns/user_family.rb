@@ -159,6 +159,7 @@ module UserFamily
 
     scoped_points
       .complete
+      .not_anomaly
       .where('timestamp >= ? AND timestamp <= ?', effective_start.to_i, end_at.to_i)
       .order(timestamp: :asc)
   end
@@ -170,6 +171,7 @@ module UserFamily
 
     latest_point =
       points.complete
+            .not_anomaly
             .select(:lonlat, :timestamp)
             .order(timestamp: :desc)
             .limit(1)
