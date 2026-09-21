@@ -10,6 +10,28 @@ export class PlacesLayer extends BaseLayer {
       offset: [0, 14],
       visible: this.visible,
     })
+    this.boundariesVisible = options.boundariesVisible === true
+  }
+
+  setBoundariesVisible(visible) {
+    this.boundariesVisible = visible
+    this.setVisibility(this.visible)
+  }
+
+  setVisibility(visible) {
+    const boundaryIds = [`${this.id}-radius-fill`, `${this.id}-radius-outline`]
+    this.getLayerIds().forEach((layerId) => {
+      if (!this.map.getLayer(layerId)) return
+
+      const shown =
+        visible && (this.boundariesVisible || !boundaryIds.includes(layerId))
+      this.map.setLayoutProperty(
+        layerId,
+        "visibility",
+        shown ? "visible" : "none",
+      )
+    })
+    this.labels?.setVisibility(visible)
   }
 
   getSourceConfig() {
@@ -82,11 +104,6 @@ export class PlacesLayer extends BaseLayer {
   remove() {
     this.labels.clear()
     super.remove()
-  }
-
-  setVisibility(visible) {
-    super.setVisibility(visible)
-    this.labels?.setVisibility(visible)
   }
 }
 

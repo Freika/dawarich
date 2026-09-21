@@ -10,6 +10,18 @@ RSpec.describe '/api/v1/areas', type: :request do
       get api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" }
       expect(response).to be_successful
     end
+
+    it 'serves a legacy Area whose stored radius is not positive' do
+      area = create(:area, user:)
+      area.update_column(:radius, 0)
+
+      get api_v1_areas_url, headers: { 'Authorization' => "Bearer #{user.api_key}" }
+
+      expect(response).to be_successful
+      expect(response.parsed_body).to contain_exactly(
+        include('id' => area.id, 'radius' => Place.column_defaults['visit_radius'])
+      )
+    end
   end
 
   describe 'POST /create' do

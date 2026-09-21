@@ -11,14 +11,14 @@ module Places
     end
 
     def call
-      centers = centers_for(candidate_visit_ids)
+      centers = Visit.weighted_centers(candidate_visit_ids)
       return 0 if centers.empty?
 
-      places = user.places.select(:id, :name, :lonlat, :visit_radius).to_a
+      search_radius = user.places.maximum(:visit_radius).to_i
       changed_at = []
 
       user.visits.machine_detected.where(id: centers.keys).includes(:place).find_each do |visit|
-        winner = containing_place(places, centers.fetch(visit.id))
+        winner = user.places.attribution_for(*centers.fetch(visit.id), search_radius:)
         attributes = attributes_for(visit, winner)
         next if attributes.empty?
 
@@ -53,38 +53,13 @@ module Places
       <<~SQL.squish
         ST_DWithin(
           ST_SetSRID(
-            ST_MakePoint(
-              AVG(ST_X(points.lonlat::geometry)),
-              AVG(ST_Y(points.lonlat::geometry))
-            ),
+            ST_MakePoint(#{Visit::CENTER_LONGITUDE_SQL}, #{Visit::CENTER_LATITUDE_SQL}),
             4326
           )::geography,
           ST_SetSRID(ST_MakePoint(?, ?), 4326)::geography,
           ?
         )
       SQL
-    end
-
-    def centers_for(visit_ids)
-      return {} if visit_ids.empty?
-
-      Point.where(visit_id: visit_ids)
-           .group(:visit_id)
-           .pluck(
-             :visit_id,
-             Arel.sql('AVG(ST_Y(lonlat::geometry))'),
-             Arel.sql('AVG(ST_X(lonlat::geometry))')
-           )
-           .to_h { |visit_id, lat, lon| [visit_id, [lat.to_f, lon.to_f]] }
-    end
-
-    def containing_place(places, center)
-      candidates = places.filter_map do |place|
-        distance = distance_meters(center, [place.lat, place.lon])
-        [place, distance] if distance <= place.visit_radius
-      end
-
-      candidates.min_by { |place, distance| [place.visit_radius, distance, place.id] }&.first
     end
 
     def attributes_for(visit, winner)
@@ -95,10 +70,6 @@ module Places
       label = nil if winner.nil? && visit.location_label == visit.place&.name
       attributes[:location_label] = label if label != visit.location_label
       attributes
-    end
-
-    def distance_meters(first, second)
-      Geocoder::Calculations.distance_between(first, second, units: :km) * 1000
     end
   end
 end

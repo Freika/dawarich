@@ -157,6 +157,13 @@
             <label class="label cursor-pointer justify-start gap-2 py-0">
               <input type="checkbox"
                      class="toggle toggle-sm"
+                     data-maps--maplibre-target="placeBoundariesToggle"
+                     data-action="change->maps--maplibre#togglePlaceBoundaries">
+              <span class="label-text text-sm"><%= t('.show_place_boundaries') %></span>
+            </label>
+            <label class="label cursor-pointer justify-start gap-2 py-0">
+              <input type="checkbox"
+                     class="toggle toggle-sm"
                      data-maps--maplibre-target="enableAllPlaceTagsToggle"
                      data-action="change->maps--maplibre#toggleAllPlaceTags">
               <span class="label-text text-sm"><%= t('.enable_all_tags') %></span>

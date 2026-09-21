@@ -1023,6 +1023,7 @@ en:
         places: Places
         show_your_saved_places: Show your saved places
         enable_all_tags: Enable All Tags
+        show_place_boundaries: Show place boundaries
         untagged: "\U0001F3F7️ Untagged"
         click_tags_to_filter_places: Click tags to filter places
         photos: Photos

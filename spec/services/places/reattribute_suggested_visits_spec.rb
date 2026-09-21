@@ -31,6 +31,29 @@ RSpec.describe Places::ReattributeSuggestedVisits do
     expect(visit.reload).to have_attributes(place_id: place.id, location_label: 'Cafe')
   end
 
+  it 'weights Visit points by accuracy like detection does' do
+    visit = visit_at(20, location_label: 'Old address')
+    Point.where(visit: visit).update_all(accuracy: 5)
+    create(:point, user: user, visit: visit, accuracy: 500, latitude: lat + north(400), longitude: lon,
+                   lonlat: "POINT(#{lon} #{lat + north(400)})")
+    place = create(:place, user: user, name: 'Cafe', latitude: lat, longitude: lon, visit_radius: 50)
+
+    described_class.new(user: user, changed_place: place).call
+
+    expect(visit.reload).to have_attributes(place_id: place.id, location_label: 'Cafe')
+  end
+
+  it 'skips a legacy Place without lonlat, as detection does' do
+    legacy = create(:place, user: user, name: 'Legacy', latitude: lat, longitude: lon, visit_radius: 50)
+    legacy.update_column(:lonlat, nil)
+    visit = visit_at(20, location_label: 'Old address')
+    place = create(:place, user: user, name: 'Cafe', latitude: lat, longitude: lon, visit_radius: 50)
+
+    described_class.new(user: user, changed_place: place).call
+
+    expect(visit.reload.place_id).to eq(place.id)
+  end
+
   it 'removes a stale association after a Place moves away' do
     place = create(:place, user: user, name: 'Cafe', latitude: lat, longitude: lon, visit_radius: 50)
     visit = visit_at(20, place: place, location_label: 'Cafe')

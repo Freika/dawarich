@@ -36,6 +36,18 @@ class Visit < ApplicationRecord
           .where.not(id: Note.where(attachable_type: 'Visit').select(:attachable_id))
   }
 
+  POINT_WEIGHT_SQL = '1.0 / GREATEST(COALESCE(points.accuracy, ' \
+                     "#{Visits::Detection::StayAssembler::DEFAULT_ACCURACY_M}), 1)".freeze
+  CENTER_LATITUDE_SQL = "SUM(ST_Y(points.lonlat::geometry) * #{POINT_WEIGHT_SQL}) / SUM(#{POINT_WEIGHT_SQL})".freeze
+  CENTER_LONGITUDE_SQL = "SUM(ST_X(points.lonlat::geometry) * #{POINT_WEIGHT_SQL}) / SUM(#{POINT_WEIGHT_SQL})".freeze
+
+  def self.weighted_centers(visit_ids)
+    Point.where(visit_id: visit_ids)
+         .group(:visit_id)
+         .pluck(:visit_id, Arel.sql(CENTER_LATITUDE_SQL), Arel.sql(CENTER_LONGITUDE_SQL))
+         .to_h { |visit_id, latitude, longitude| [visit_id, [latitude.to_f, longitude.to_f]] }
+  end
+
   def soft_delete!
     update!(deleted_at: Time.current)
   end

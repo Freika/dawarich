@@ -57,6 +57,17 @@ class Place < ApplicationRecord
   scope :unconfirmed_for, ->(user) { where.not(id: confirmed_for(user).select(:id)) }
   scope :map_visible, ->(user) { confirmed_for(user) }
 
+  def self.attribution_for(latitude, longitude, search_radius: maximum(:visit_radius).to_i)
+    return if search_radius <= 0
+
+    near([latitude, longitude], search_radius, :m)
+      .containing(latitude, longitude)
+      .min_by do |place|
+        distance = Geocoder::Calculations.distance_between([latitude, longitude], [place.lat, place.lon])
+        [place.visit_radius, distance, place.id]
+      end
+  end
+
   # Legacy places predate the lonlat column and carry coordinates only in the
   # decimal columns; to_f keeps their JSON serialization numeric — BigDecimal
   # would encode as a string.

@@ -25,6 +25,15 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       expect(document.at_css('input[name="place[visit_radius]"]')).to be_present
       expect(document.at_css('input[name="visit_id"]')).to be_present
     end
+
+    it 'offers a Place boundaries toggle within the Places layer controls' do
+      get map_v2_path
+
+      document = Nokogiri::HTML(response.body)
+      toggle = document.at_css('[data-maps--maplibre-target="placesFilters"] ' \
+                               '[data-maps--maplibre-target="placeBoundariesToggle"]')
+      expect(toggle['data-action']).to eq('change->maps--maplibre#togglePlaceBoundaries')
+    end
   end
 
   describe 'poster studio' do

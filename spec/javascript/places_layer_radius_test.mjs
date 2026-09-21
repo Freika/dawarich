@@ -17,6 +17,23 @@ class BaseLayer {
     this.map = map
     this.id = options.id
     this.sourceId = `${this.id}-source`
+    this.visible = options.visible !== false
+  }
+
+  hide() {
+    this.visible = false
+    this.setVisibility(false)
+  }
+}
+
+function recordingMap() {
+  const visibility = {}
+  return {
+    visibility,
+    getLayer: () => true,
+    setLayoutProperty: (layerId, _property, value) => {
+      visibility[layerId] = value
+    },
   }
 }
 
@@ -41,4 +58,31 @@ test("Places layer renders the Visit Radius boundary and center together", () =>
   assert.equal(configs[0].type, "fill")
   assert.equal(configs[1].type, "line")
   assert.equal(configs[2].type, "circle")
+})
+
+test("Place boundaries stay hidden until the boundaries toggle is on", () => {
+  const map = recordingMap()
+  const layer = new context.PlacesLayer(map)
+
+  layer.setVisibility(true)
+  assert.equal(map.visibility["places-radius-fill"], "none")
+  assert.equal(map.visibility["places-radius-outline"], "none")
+  assert.equal(map.visibility.places, "visible")
+  assert.equal(map.visibility["places-labels"], "visible")
+
+  layer.setBoundariesVisible(true)
+  assert.equal(map.visibility["places-radius-fill"], "visible")
+  assert.equal(map.visibility["places-radius-outline"], "visible")
+
+  layer.hide()
+  assert.equal(map.visibility["places-radius-fill"], "none")
+  assert.equal(map.visibility.places, "none")
+})
+
+test("Place boundaries follow the saved toggle on first render", () => {
+  const map = recordingMap()
+  const layer = new context.PlacesLayer(map, { boundariesVisible: true })
+
+  layer.setVisibility(true)
+  assert.equal(map.visibility["places-radius-fill"], "visible")
 })

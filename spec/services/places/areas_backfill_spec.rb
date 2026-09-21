@@ -69,9 +69,20 @@ RSpec.describe Places::AreasBackfill do
       expect(report[:ambiguous_area_ids]).to contain_exactly(area.id)
     end
 
-    it 'raises after recording an Area migration failure so the job retries' do
+    it 'gives an Area with a non-positive stored radius the default Visit Radius' do
       area = create(:area)
       area.update_column(:radius, 0)
+
+      report = backfill.call
+
+      expect(LegacyAreaPlaceMapping.find_by!(area: area).place.visit_radius)
+        .to eq(Place.column_defaults['visit_radius'])
+      expect(report[:failed_area_ids]).to be_empty
+    end
+
+    it 'raises after recording an Area migration failure so the job retries' do
+      area = create(:area)
+      area.update_column(:name, 'x' * 256)
 
       expect { backfill.call }.to raise_error(ActiveRecord::RecordInvalid)
       expect(backfill.report[:failed_area_ids]).to contain_exactly(area.id)
@@ -79,7 +90,7 @@ RSpec.describe Places::AreasBackfill do
 
     it 'migrates later valid Areas before retrying a permanently invalid one' do
       invalid = create(:area)
-      invalid.update_column(:radius, 0)
+      invalid.update_column(:name, 'x' * 256)
       valid = create(:area)
       visit = create(:visit, user: valid.user, area: valid, place: nil)
 
@@ -122,7 +133,7 @@ RSpec.describe Places::AreasBackfill do
       expect(visit.area_id).to be_nil
     end
 
-    it 'reports and unlinks an Area-only Visit that collides with the canonical Place index' do
+    it 'reports an Area-only Visit that collides with the canonical Place index and keeps its Area link' do
       user = create(:user)
       place = create(:place, user: user)
       area = create(:area, user: user, name: place.name, latitude: place.lat, longitude: place.lon)
@@ -132,12 +143,12 @@ RSpec.describe Places::AreasBackfill do
 
       report = backfill.call
 
-      expect(conflicting.reload).to have_attributes(area_id: nil, place_id: nil)
+      expect(conflicting.reload).to have_attributes(area_id: area.id, place_id: nil)
       expect(report[:conflicting_visit_ids]).to contain_exactly(conflicting.id)
       expect(report[:visit_place_conflicts]).to eq(1)
     end
 
-    it 'keeps the existing Place for a dual-linked Confirmed Visit' do
+    it 'keeps the existing Place and the Area link for a dual-linked Confirmed Visit' do
       user = create(:user)
       area = create(:area, user: user)
       place = create(:place, user: user)
@@ -146,8 +157,9 @@ RSpec.describe Places::AreasBackfill do
       report = backfill.call
 
       expect(visit.reload.place).to eq(place)
-      expect(visit.area_id).to be_nil
+      expect(visit.area_id).to eq(area.id)
       expect(report[:dual_user_owned_visits_retained]).to eq(1)
+      expect(report[:dual_user_owned_visit_ids]).to contain_exactly(visit.id)
     end
 
     it 'keeps existing Places for dual-linked Visits outside machine ownership' do
@@ -167,7 +179,7 @@ RSpec.describe Places::AreasBackfill do
       backfill.call
 
       expect(visits.map { |visit| visit.reload.place_id }).to all(eq(place.id))
-      expect(visits.map(&:area_id)).to all(be_nil)
+      expect(visits.map(&:area_id)).to all(eq(area.id))
     end
 
     it 'reattributes a dual-linked Suggested Visit to the smallest containing Place' do
@@ -181,6 +193,22 @@ RSpec.describe Places::AreasBackfill do
 
       expect(visit.reload.place).to eq(specific)
       expect(visit.area_id).to be_nil
+    end
+
+    it 'weights Visit points by accuracy when reattributing a dual-linked Suggested Visit' do
+      user = create(:user)
+      area = create(:area, user: user, name: 'Campus', latitude: 52.437, longitude: 13.539, radius: 500)
+      broad = create(:place, user: user, latitude: 52.437, longitude: 13.539, visit_radius: 300)
+      specific = create(:place, user: user, latitude: 52.437, longitude: 13.539, visit_radius: 30)
+      visit = create(:visit, user: user, area: area, place: broad, status: :suggested)
+      [[52.43710, 5], [52.43710, 5], [52.44060, 500]].each do |latitude, accuracy|
+        create(:point, user: user, visit: visit, accuracy: accuracy, latitude: latitude, longitude: 13.539,
+                       lonlat: "POINT(13.539 #{latitude})")
+      end
+
+      backfill.call
+
+      expect(visit.reload.place).to eq(specific)
     end
 
     it 'copies labels, clears machine Suggested names, and keeps user-owned names' do
