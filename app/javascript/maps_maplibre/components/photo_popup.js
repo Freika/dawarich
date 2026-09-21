@@ -1,9 +1,9 @@
 import { translate } from "i18n"
-import { escapeHtml, formatTimestamp } from "../utils/geojson_transformers"
-
-function escapeAttr(value) {
-  return escapeHtml(value).replace(/"/g, "&quot;").replace(/'/g, "&#39;")
-}
+import {
+  escapeAttribute,
+  escapeHtml,
+  formatTimestamp,
+} from "../utils/geojson_transformers"
 
 /**
  * Factory for creating photo popups
@@ -41,8 +41,8 @@ export class PhotoPopupFactory {
     return `
       <div class="photo-popup">
         <div class="photo-preview">
-          <img src="${escapeAttr(thumbnail_url)}"
-               alt="${escapeAttr(filename)}"
+          <img src="${escapeAttribute(thumbnail_url)}"
+               alt="${escapeAttribute(filename)}"
                loading="lazy">
         </div>
         <div class="photo-info">

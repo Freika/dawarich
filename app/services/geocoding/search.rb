@@ -2,6 +2,9 @@
 
 module Geocoding
   class Search
+    # Sources that name a provider directly, as opposed to the gem fallback.
+    DIRECT_SOURCES = %i[stored env].freeze
+
     # With a max_wait budget, a lookup the rate limiter cannot grant in time
     # returns nil instead of results — distinct from [] so callers can tell a
     # busy limiter from a genuine empty answer (and avoid caching it).
@@ -9,9 +12,10 @@ module Geocoding
       config = Config.for(user)
 
       case config.source
-      when :env
-        RateLimiter.throttle(config, max_wait: max_wait) { Geocoder.search(query, **options) }
-      when :user
+      # Never the bare Geocoder.search: it resolves its provider from the global
+      # config built at boot, which is not authoritative, and would silently fall
+      # back to public Nominatim at the rate the operator granted their own server.
+      when *DIRECT_SOURCES
         user_mode_search(config, query, options, max_wait: max_wait)
       else
         # The gem default is public Nominatim, which publishes a hard 1 rps
@@ -23,7 +27,8 @@ module Geocoding
     end
 
     def self.with_config(config:, query:, max_wait: nil, **options)
-      return [] unless config.source == :user
+      return [] unless DIRECT_SOURCES.include?(config.source)
+      return [] if config.provider.blank?
 
       user_mode_search(config, query, options, max_wait: max_wait)
     end

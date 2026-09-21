@@ -27,8 +27,9 @@ pin 'family_locations_channel', to: 'channels/family_locations_channel.js'
 pin 'trix'
 pin '@rails/actiontext', to: 'actiontext.esm.js'
 pin 'emoji-mart' # @5.6.0
-pin 'maplibre-gl' # @5.12.0
+pin 'maplibre-gl', to: '/maplibre/6.4.1/maplibre-gl.mjs' # ESM module and worker are served together
 pin 'fflate' # @0.8.2
+pin 'pmtiles', to: 'pmtiles.js' # @4.5.0, vendored for offline maps
 pin 'h3-js' # @4.4.0
 pin 'mp4-muxer' # @5.2.2
 

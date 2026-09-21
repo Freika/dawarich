@@ -43,9 +43,6 @@ const context = {
     }
   },
   performanceMonitor: { mark() {}, measure() {} },
-  RoutesLayer: {
-    pointsToRoutes: () => ({ type: "FeatureCollection", features: [] }),
-  },
   pointsToGeoJSON: () => ({ type: "FeatureCollection", features: [] }),
   createCircle: () => null,
   applySpeedColors: (value) => value,
@@ -81,9 +78,7 @@ const api = {
   },
 }
 await context.SettingsManager.updateSetting("pointsVisible", false)
-await context.SettingsManager.updateSetting("routesVisible", false)
 settings.pointsVisible = false
-settings.routesVisible = false
 settings.placesEnabled = true
 
 const loader = new context.DataLoader(api, "test-key", settings)

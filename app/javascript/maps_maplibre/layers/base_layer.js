@@ -2,6 +2,12 @@
  * Base class for all map layers
  * Provides common functionality for layer management
  */
+// MapLibre reports a cancelled tile or TileJSON request (a newer setTiles
+// supersedes it) as a source error; it is not a failed load.
+export function isAbortedRequest(error) {
+  return error?.name === "AbortError" || error?.message === "AbortError"
+}
+
 export class BaseLayer {
   constructor(map, options = {}) {
     this.map = map

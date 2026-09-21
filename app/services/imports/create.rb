@@ -11,13 +11,18 @@ class Imports::Create
   end
 
   def call
-    import.update!(status: :processing, raw_points: 0, doubles: 0)
-    broadcast_status_update
-
     temp_file_path = Imports::SecureFileDownloader.new(import.file).download_to_temp_file
     inner_file_path = nil
 
     dispatch = Archive::Unzipper.inspect_archive(temp_file_path)
+
+    if dispatch.kind == :user_data_archive
+      route_user_data_archive
+      return
+    end
+
+    import.update!(status: :processing, raw_points: 0, doubles: 0)
+    broadcast_status_update
 
     case dispatch.kind
     when :multi_entry
@@ -51,6 +56,11 @@ class Imports::Create
   end
 
   private
+
+  def route_user_data_archive
+    import.update!(source: :user_data_archive)
+    import.process_user_data_archive!
+  end
 
   def post_import_processing
     run_post_import_step('points_count') { User.where(id: user.id).update_all(points_count: user.points.count) }

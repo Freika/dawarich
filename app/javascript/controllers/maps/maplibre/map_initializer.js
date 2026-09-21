@@ -1,9 +1,10 @@
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { styleDocumentFailed } from "maps_maplibre/utils/basemap_url"
 import { registerRTLTextPlugin } from "maps_maplibre/utils/rtl_text_plugin"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
+import { withTileVersion } from "maps_maplibre/utils/tile_freshness"
 
 /**
  * Handles map initialization for Maps V2
@@ -53,11 +54,13 @@ export class MapInitializer {
         // the path alone would hand that host the user's api key.
         if (
           requestUrl.origin !== window.location.origin ||
-          !requestUrl.pathname.startsWith("/api/v1/tiles/") ||
-          !apiKey
+          !requestUrl.pathname.startsWith("/api/v1/tiles/")
         ) {
           return { url: requestUrl.toString() }
         }
+
+        withTileVersion(requestUrl)
+        if (!apiKey) return { url: requestUrl.toString() }
 
         return {
           url: requestUrl.toString(),

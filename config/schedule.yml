@@ -25,6 +25,11 @@ teslamate_sync_job:
   class: "TeslaMate::SyncSchedulingJob"
   queue: imports
 
+trek_sync_job:
+  cron: "0 */6 * * *" # every 6 hours
+  class: "Trek::SyncSchedulingJob"
+  queue: imports
+
 app_version_checking_job:
   cron: "0 */6 * * *" # every 6 hours
   class: "AppVersionCheckingJob"

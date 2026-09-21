@@ -142,8 +142,8 @@ export default class extends Controller {
         -1,
         Math.min(1, ((this.pointer.y - rect.top) / rect.height) * 2 - 1),
       )
-      this.card.style.setProperty("--rx", -y * 10 + "deg")
-      this.card.style.setProperty("--ry", x * 10 + "deg")
+      this.card.style.setProperty("--rx", `${-y * 10}deg`)
+      this.card.style.setProperty("--ry", `${x * 10}deg`)
       this.card.querySelectorAll("[data-spectrum]").forEach((gradient) => {
         gradient.setAttribute(
           "gradientTransform",

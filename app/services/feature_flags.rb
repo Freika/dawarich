@@ -9,7 +9,7 @@ module FeatureFlags
   DEFAULTS = { poster_ordering: true, achievements: false }.freeze
 
   # Flags whose feature shipped unconditionally and no longer gates anything.
-  RETIRED = %i[posters stay_point_detection].freeze
+  RETIRED = %i[posters stay_point_detection instance_settings_resolver].freeze
 
   def self.apply_defaults!
     DEFAULTS.each do |flag, enabled|

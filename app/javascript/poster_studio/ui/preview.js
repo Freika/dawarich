@@ -1,4 +1,4 @@
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { trimOutlierCoords } from "maps_maplibre/utils/geometry"
 
 // Live map inside the poster frame: pan and zoom stay enabled, rotation and

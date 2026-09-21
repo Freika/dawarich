@@ -129,11 +129,8 @@ RSpec.describe '/places', type: :request do
       )
     end
 
-    before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
-    end
-
     it 'returns nearby places partial with place cards' do
+      configure_instance_geocoding
       allow(Geocoder).to receive(:search).and_return([geocoder_result])
 
       get nearby_places_url, params: { latitude: 52.52, longitude: 13.405 }
@@ -149,6 +146,7 @@ RSpec.describe '/places', type: :request do
     end
 
     it 'renders no results message when geocoder returns empty' do
+      configure_instance_geocoding
       allow(Geocoder).to receive(:search).and_return([])
 
       get nearby_places_url, params: { latitude: 52.52, longitude: 13.405 }
@@ -157,9 +155,7 @@ RSpec.describe '/places', type: :request do
       expect(response.body).to include('No nearby places found')
     end
 
-    it 'renders no results when reverse geocoding is disabled' do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-
+    it 'renders no results when the instance has no geocoding provider' do
       get nearby_places_url, params: { latitude: 52.52, longitude: 13.405 }
 
       expect(response).to be_successful

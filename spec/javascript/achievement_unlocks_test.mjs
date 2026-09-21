@@ -4,7 +4,10 @@ import test from "node:test"
 
 const source = (
   await readFile(
-    new URL("../../app/javascript/controllers/achievement_unlocks_controller.js", import.meta.url),
+    new URL(
+      "../../app/javascript/controllers/achievement_unlocks_controller.js",
+      import.meta.url,
+    ),
     "utf8",
   )
 ).replace(/^import .*\n/gm, "")
@@ -50,8 +53,12 @@ function fixture(t, responses = []) {
       this.html = value
       this.firstElementChild = value ? { classList: { add() {} } } : null
     },
-    get innerHTML() { return this.html || "" },
-    replaceChildren() { this.innerHTML = "" },
+    get innerHTML() {
+      return this.html || ""
+    },
+    replaceChildren() {
+      this.innerHTML = ""
+    },
   }
   const controller = new UnlocksController()
   controller.element = element
@@ -67,14 +74,30 @@ function fixture(t, responses = []) {
 }
 
 function response(status, payload) {
-  return { status, ok: status >= 200 && status < 300, json: async () => payload }
+  return {
+    status,
+    ok: status >= 200 && status < 300,
+    json: async () => payload,
+  }
 }
 
 test("shows one card at a time, acknowledges it, and advances the deck", async (t) => {
   const { controller, element, calls, storage } = fixture(t, [
-    response(200, { id: 7, token: "a", batch_end_id: 8, remaining: 2, html: "<section>France</section>" }),
+    response(200, {
+      id: 7,
+      token: "a",
+      batch_end_id: 8,
+      remaining: 2,
+      html: "<section>France</section>",
+    }),
     response(204),
-    response(200, { id: 8, token: "b", batch_end_id: 8, remaining: 1, html: "<section>Germany</section>" }),
+    response(200, {
+      id: 8,
+      token: "b",
+      batch_end_id: 8,
+      remaining: 1,
+      html: "<section>Germany</section>",
+    }),
     response(204),
   ])
 
@@ -85,11 +108,14 @@ test("shows one card at a time, acknowledges it, and advances the deck", async (
   await controller.nextCard()
   clearTimeout(controller.ackTimer)
   assert.match(element.innerHTML, /Germany/)
-  assert.deepEqual(calls.map((call) => call.url), [
-    "/achievements/unlocks/next",
-    "/achievements/unlocks/7/seen",
-    "/achievements/unlocks/next",
-  ])
+  assert.deepEqual(
+    calls.map((call) => call.url),
+    [
+      "/achievements/unlocks/next",
+      "/achievements/unlocks/7/seen",
+      "/achievements/unlocks/next",
+    ],
+  )
   assert.equal(calls[2].body.batch_end_id, 8)
   await controller.nextCard()
   assert.equal(element.innerHTML, "")
@@ -109,7 +135,13 @@ test("waits while another dialog obscures the card", async (t) => {
 test("checks the inbox when an open browser tab is revisited", async (t) => {
   const { controller, calls, document, element } = fixture(t, [
     response(204),
-    response(200, { id: 9, token: "c", batch_end_id: 9, remaining: 1, html: "<section>Poland</section>" }),
+    response(200, {
+      id: 9,
+      token: "c",
+      batch_end_id: 9,
+      remaining: 1,
+      html: "<section>Poland</section>",
+    }),
   ])
 
   await controller.load()
@@ -126,7 +158,13 @@ test("checks the inbox when an open browser tab is revisited", async (t) => {
 
 test("dismisses the original batch without fetching every card", async (t) => {
   const { controller, calls, element } = fixture(t, [
-    response(200, { id: 7, token: "a", batch_end_id: 100, remaining: 120, html: "<section>France</section>" }),
+    response(200, {
+      id: 7,
+      token: "a",
+      batch_end_id: 100,
+      remaining: 120,
+      html: "<section>France</section>",
+    }),
     response(204),
   ])
   await controller.load()

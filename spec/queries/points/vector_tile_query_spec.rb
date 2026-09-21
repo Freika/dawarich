@@ -76,16 +76,17 @@ RSpec.describe Points::VectorTileQuery do
   end
 
   describe 'low-zoom aggregate regime' do
-    it 'emits only centroid features with counts and no per-point attributes' do
-      create_point_at(10, 10)
-      create_point_at(30, 10)
+    it 'emits counts and time span for safe flight masking without per-point identity' do
+      create_point_at(10, 10, timestamp: 1_720_000_000)
+      create_point_at(30, 10, timestamp: 1_720_000_100)
 
       rows = feature_rows(z: 2, x: 2, y: 1)
 
       expect(rows.size).to eq(1)
       expect(rows.first['count'].to_i).to eq(2)
       expect(rows.first).not_to have_key('id')
-      expect(rows.first).not_to have_key('timestamp')
+      expect(rows.first['timestamp'].to_i).to eq(1_720_000_000)
+      expect(rows.first['max_timestamp'].to_i).to eq(1_720_000_100)
     end
 
     it 'stays within the low-zoom tier ceiling on a large spread account' do

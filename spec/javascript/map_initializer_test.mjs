@@ -10,6 +10,14 @@ const basemapUrlSource = await readFile(
   "utf8",
 )
 
+const tileFreshnessSource = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/tile_freshness.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
+
 // Date.now() collides when two loads land in the same millisecond, and the
 // cached module keeps the previous test's fakes.
 let moduleLoadCount = 0
@@ -32,6 +40,7 @@ async function loadMapInitializer({ getMapStyle, Toast }) {
     const registerRTLTextPlugin = () => {}
     const translate = (key) => key
     ${basemapUrlSource.replace(/^export /gm, "")}
+    ${tileFreshnessSource}
   `
   globalThis.__mapInitializerGetMapStyle = getMapStyle
   globalThis.__mapInitializerToast = Toast
@@ -124,6 +133,27 @@ async function transformRequestWithApiKey(apiKey) {
   return state.map.options.transformRequest
 }
 
+async function loadedInitializer() {
+  const state = { map: null }
+  globalThis.__mapInitializerMaplibre = {
+    Map: class extends FakeMap {
+      constructor(options) {
+        super(options)
+        state.map = this
+      }
+    },
+    NavigationControl: class {},
+    AttributionControl: class {},
+  }
+  const module = await loadMapInitializer({
+    getMapStyle: async () => ({ version: 8, sources: {}, layers: [] }),
+    Toast: { error: () => {} },
+  })
+  globalThis.window = { location: { origin: "https://app.example" } }
+  await module.MapInitializer.initialize({}, {}, "secret-key")
+  return { ...module, transformRequest: state.map.options.transformRequest }
+}
+
 test("authorizes same-origin tile requests", async (t) => {
   t.after(() => {
     delete globalThis.window
@@ -190,4 +220,27 @@ test("stops watching for style errors once the custom style loads", async () => 
 
   assert.deepEqual(state.map.setStyles, [])
   assert.deepEqual(state.errors, [])
+})
+
+test("a refreshed tile layer is requested with a fresh version", async (t) => {
+  t.after(() => {
+    delete globalThis.window
+  })
+  const { transformRequest, bumpTileVersion } = await loadedInitializer()
+  const version = () =>
+    new URL(
+      transformRequest("/api/v1/tiles/tracks/1/2/3.mvt").url,
+    ).searchParams.get("_")
+
+  const before = version()
+  bumpTileVersion("/api/v1/tiles/tracks/")
+
+  assert.equal(before, null)
+  assert.ok(version())
+  assert.equal(
+    new URL(
+      transformRequest("/api/v1/tiles/points/1/2/3.mvt").url,
+    ).searchParams.get("_"),
+    null,
+  )
 })

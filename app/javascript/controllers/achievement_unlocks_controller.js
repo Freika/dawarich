@@ -3,7 +3,12 @@ import { Controller } from "@hotwired/stimulus"
 // A small, durable inbox for newly earned cards. Fetch one front card at a
 // time so a large import never mounts a gallery of foil effects in the corner.
 export default class extends Controller {
-  static values = { nextUrl: String, seenUrl: String, dismissUrl: String, userId: Number }
+  static values = {
+    nextUrl: String,
+    seenUrl: String,
+    dismissUrl: String,
+    userId: Number,
+  }
 
   connect() {
     this.generation = (this.generation || 0) + 1
@@ -31,7 +36,12 @@ export default class extends Controller {
   }
 
   keyDown(event) {
-    if (event.key === "Escape" && this.element.firstElementChild && this.canReveal()) this.dismiss()
+    if (
+      event.key === "Escape" &&
+      this.element.firstElementChild &&
+      this.canReveal()
+    )
+      this.dismiss()
   }
 
   resumeVisit() {
@@ -68,13 +78,18 @@ export default class extends Controller {
         this.hide()
         return
       }
-      if (!response.ok) throw new Error(`Unlock request failed: ${response.status}`)
+      if (!response.ok)
+        throw new Error(`Unlock request failed: ${response.status}`)
 
       const item = await response.json()
       if (this.stopped || generation !== this.generation) return
       this.current = item
       this.batchEndId = item.batch_end_id
-      this.saved = { id: item.id, token: item.token, batchEndId: item.batch_end_id }
+      this.saved = {
+        id: item.id,
+        token: item.token,
+        batchEndId: item.batch_end_id,
+      }
       this.saveClaim()
       if (!this.canReveal()) {
         this.retryTimer = setTimeout(() => this.load(), 1000)
@@ -82,7 +97,9 @@ export default class extends Controller {
       }
       this.element.innerHTML = item.html
       if (this.focusAfterLoad) {
-        this.element.querySelector?.(".ach-unlock-front")?.focus({ preventScroll: true })
+        this.element
+          .querySelector?.(".ach-unlock-front")
+          ?.focus({ preventScroll: true })
         this.focusAfterLoad = false
       }
       this.ackTimer = setTimeout(
@@ -111,7 +128,9 @@ export default class extends Controller {
       this.hide()
       this.restoreFocus()
     } else {
-      this.element.firstElementChild?.classList.add("ach-unlock-reveal--leaving")
+      this.element.firstElementChild?.classList.add(
+        "ach-unlock-reveal--leaving",
+      )
       await new Promise((resolve) => setTimeout(resolve, 170))
       this.focusAfterLoad = true
       await this.load()
@@ -125,8 +144,11 @@ export default class extends Controller {
     this.transitioning = true
     clearTimeout(this.ackTimer)
     try {
-      const response = await this.post(this.dismissUrlValue, { batch_end_id: this.batchEndId })
-      if (!response.ok) throw new Error(`Unlock dismiss failed: ${response.status}`)
+      const response = await this.post(this.dismissUrlValue, {
+        batch_end_id: this.batchEndId,
+      })
+      if (!response.ok)
+        throw new Error(`Unlock dismiss failed: ${response.status}`)
       this.hide()
       this.restoreFocus()
     } catch (error) {
@@ -146,7 +168,8 @@ export default class extends Controller {
     const url = this.seenUrlValue.replace("__ID__", String(item.id))
     this.ackPromise = this.post(url, { claim_token: item.token })
       .then((response) => {
-        if (!response.ok) throw new Error(`Unlock acknowledgement failed: ${response.status}`)
+        if (!response.ok)
+          throw new Error(`Unlock acknowledgement failed: ${response.status}`)
         item.token = null
         this.saved = null
         this.saveClaim()
@@ -157,7 +180,9 @@ export default class extends Controller {
         this.retryTimer = setTimeout(() => this.acknowledge(), 5000)
         return false
       })
-      .finally(() => { this.ackPromise = null })
+      .finally(() => {
+        this.ackPromise = null
+      })
     return this.ackPromise
   }
 
@@ -177,7 +202,8 @@ export default class extends Controller {
   }
 
   restoreFocus() {
-    if (this.originFocus?.isConnected) this.originFocus.focus({ preventScroll: true })
+    if (this.originFocus?.isConnected)
+      this.originFocus.focus({ preventScroll: true })
   }
 
   post(url, body) {
@@ -187,7 +213,8 @@ export default class extends Controller {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
-        "X-CSRF-Token": document.querySelector('meta[name="csrf-token"]')?.content || "",
+        "X-CSRF-Token":
+          document.querySelector('meta[name="csrf-token"]')?.content || "",
       },
       body: JSON.stringify(body),
     })
@@ -203,7 +230,8 @@ export default class extends Controller {
 
   saveClaim() {
     try {
-      if (this.saved) sessionStorage.setItem(this.storageKey, JSON.stringify(this.saved))
+      if (this.saved)
+        sessionStorage.setItem(this.storageKey, JSON.stringify(this.saved))
       else sessionStorage.removeItem(this.storageKey)
     } catch {
       // Private browsing may deny storage; the server lease still expires.

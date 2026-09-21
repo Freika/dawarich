@@ -197,7 +197,7 @@ RSpec.describe 'malformed persisted toponyms' do
   describe 'stats index page', type: :request do
     before do
       sign_in user
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+      configure_instance_geocoding
     end
 
     it 'renders the yearly aggregation when a month holds malformed toponyms' do

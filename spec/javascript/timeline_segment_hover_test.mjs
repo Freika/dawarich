@@ -79,6 +79,7 @@ function setup(fetcher = async () => full) {
       return this.source
     },
     getLayer: () => ({}),
+    setLayoutProperty() {},
     getPaintProperty() {
       return this.opacity
     },

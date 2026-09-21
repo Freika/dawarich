@@ -16,13 +16,12 @@ RSpec.describe Tracks::RecalculateJob, type: :job do
     end
 
     it 'recalculates path and distance for the track' do
-      expect_any_instance_of(Track).to receive(:recalculate_path_and_distance!)
+      expect(Tracks::Recalculator).to receive(:call).with(instance_of(Track))
       described_class.perform_now(track.id)
     end
 
-    it 'broadcasts updated track GeoJSON via ActionCable' do
-      allow_any_instance_of(Track).to receive(:recalculate_path_and_distance!)
-      expect_any_instance_of(Track).to receive(:broadcast_geojson_updated)
+    it 'uses the Track after-commit broadcast instead of broadcasting twice' do
+      expect_any_instance_of(Track).not_to receive(:broadcast_geojson_updated)
       described_class.perform_now(track.id)
     end
 
@@ -55,15 +54,14 @@ RSpec.describe Tracks::RecalculateJob, type: :job do
       end
 
       it 'does not attempt to recalculate' do
-        expect_any_instance_of(Track).not_to receive(:recalculate_path_and_distance!)
+        expect(Tracks::Recalculator).not_to receive(:call)
         described_class.perform_now(-1)
       end
     end
 
     context 'when recalculation fails' do
       before do
-        allow_any_instance_of(Track).to receive(:recalculate_path_and_distance!)
-          .and_raise(StandardError, 'Database error')
+        allow(Tracks::Recalculator).to receive(:call).and_raise(StandardError, 'Database error')
       end
 
       it 'does not raise error' do
@@ -76,23 +74,6 @@ RSpec.describe Tracks::RecalculateJob, type: :job do
           instance_of(StandardError),
           "Failed to recalculate track #{track.id}"
         )
-      end
-    end
-
-    context 'when broadcast fails' do
-      before do
-        allow_any_instance_of(Track).to receive(:recalculate_path_and_distance!)
-        allow_any_instance_of(Track).to receive(:broadcast_geojson_updated)
-          .and_raise(StandardError, 'Redis connection failed')
-      end
-
-      it 'does not raise error' do
-        expect { described_class.perform_now(track.id) }.not_to raise_error
-      end
-
-      it 'reports the exception' do
-        described_class.perform_now(track.id)
-        expect(ExceptionReporter).to have_received(:call)
       end
     end
   end

@@ -1,4 +1,68 @@
 de:
+  admin:
+    settings:
+      show:
+        title: "Instanz-Einstellungen"
+        intro: "Diese Einstellungen gelten für die gesamte Instanz. Eine Einstellung, die über eine Umgebungsvariable gesetzt ist, wird schreibgeschützt angezeigt: Entferne die Variable, um sie hier zu bearbeiten."
+        save: "Einstellungen speichern"
+        saving: "Wird gespeichert…"
+        secret_set: "Ein Wert ist hinterlegt"
+        pinned_hint: "Festgelegt durch %{variable}"
+        clear_secret: "Gespeicherten Wert löschen"
+        unreadable_secret: "Ein gespeicherter Wert lässt sich mit den Schlüsseln dieser Instanz nicht entschlüsseln. Gib ihn erneut ein."
+        sections_nav: "Bereiche der Instanz-Einstellungen"
+        nav_pinned: "Durch eine Umgebungsvariable festgelegt"
+        nav_attention: "Erfordert Aufmerksamkeit"
+        geocoding:
+          title: "Geokodierung"
+          description: "Die Geokodierung macht aus Koordinaten Stadt- und Ländernamen für deine Punkte und Statistiken und ermöglicht die Suche nach Orten."
+          in_use: "Aktiv"
+          "off": "Aus"
+          none: "Es ist kein Anbieter konfiguriert, neue Punkte werden daher nicht geokodiert. Trage unten einen Photon-Host oder einen API-Schlüssel ein."
+          stored: "Auf dieser Seite gespeichert"
+          chain_hint: "Dawarich nutzt den ersten konfigurierten Anbieter in der Reihenfolge unten. Ein per Umgebungsvariable gesetzter Anbieter hat Vorrang vor hier gespeicherten."
+          test: "Verbindung testen"
+          testing: "Wird getestet…"
+          test_hint: "Eine Abfrage mit den gespeicherten Einstellungen"
+          rate_limit: "Ratenbegrenzung"
+          chibigeo_message: "ChibiGeo ist ein datenschutzfreundlicher Geokodierungsdienst zum Festpreis, entwickelt vom Dawarich-Team. Er funktioniert sofort mit Dawarich und benötigt einen API-Schlüssel."
+          chibigeo_key_link: "Kostenlosen API-Schlüssel holen"
+          komoot_warning: "photon.komoot.io ist ein gemeinsam genutzter öffentlicher Server mit strengen Limits. Anfragen werden auf eine pro Sekunde gedrosselt, Massen-Geokodierung ist daher langsam. Erwäge, eine eigene Photon-Instanz zu betreiben."
+          https_locked: "Für diesen Host ist HTTPS immer aktiv."
+          legacy_user_settings: "Einige Nutzer hatten die Geokodierung selbst eingerichtet, bevor sie hierher verschoben wurde. Ihre Einstellungen wurden nicht übernommen, weil nicht alle Nutzer eine hatten oder sie sich unterschieden. Richte unten einen Anbieter ein, um die Geokodierung für alle wieder einzuschalten."
+        providers:
+          photon: "Open-Source-Geocoder. Nutze einen gehosteten Server oder betreibe deinen eigenen."
+          geoapify: "Gehosteter Dienst. Benötigt einen API-Schlüssel."
+          nominatim: "Der Geocoder von OpenStreetMap, meist auf deinem eigenen Server."
+          locationiq: "Gehosteter Dienst. Benötigt einen API-Schlüssel."
+        points:
+          title: "Punkte"
+        fields:
+          photon_api_host: "Host"
+          photon_api_key: "API-Schlüssel"
+          photon_api_use_https: "HTTPS verwenden"
+          nominatim_api_host: "Host"
+          nominatim_api_key: "API-Schlüssel"
+          nominatim_api_use_https: "HTTPS verwenden"
+          geoapify_api_key: "API-Schlüssel"
+          locationiq_api_key: "API-Schlüssel"
+          reverse_geocoding_rps: "Anfragen pro Sekunde"
+          store_geodata: "Neue Punkte sofort geokodieren"
+          host_hint: "Hostname mit optionalem Port, z. B. photon.example.com:2322"
+          rps_hint: "Leer lassen für kein Limit. Trage ein, was dein Server oder Tarif erlaubt."
+          api_key_keep_hint: "Leer lassen, um den gespeicherten Schlüssel zu behalten."
+          store_geodata_hint: "Ermittelt Stadt und Land beim Hinzufügen neuer Punkte. Nächtliche Abfragen laufen bei konfiguriertem Anbieter auch dann weiter, wenn diese Option ausgeschaltet ist."
+      update:
+        saved: "Einstellungen gespeichert."
+        pinned: "Abgelehnt: festgelegt durch %{variables}."
+        host_invalid: "Der Host muss ein reiner Hostname mit optionalem Port oder Pfad sein, ohne Leerzeichen."
+        chibigeo_key_required: "ChibiGeo benötigt einen API-Schlüssel. Der kostenlose Hobby-Tarif umfasst 2.500 Abfragen pro Tag – deinen Schlüssel bekommst du auf chibigeo.com."
+      test_geocoding:
+        not_configured: "Es ist kein Geokodierungsanbieter konfiguriert. Speichere zuerst einen Anbieter."
+        success: "Dein Anbieter hat die Testkoordinaten aufgelöst zu: %{place}."
+        empty: "Der Anbieter hat geantwortet, aber keine Ergebnisse für die Testkoordinaten geliefert."
+        failure: "Test fehlgeschlagen: %{error}"
+        rate_limited: "Das Anfragelimit des Anbieters ist gerade ausgeschöpft. Versuche es gleich noch einmal."
   route_videos:
     route_video:
       download: "MP4 herunterladen"
@@ -12,7 +76,15 @@ de:
       close_studio: "Studio schließen"
       name: "Name"
       theme: "Thema"
+      visualization: "Visualisierung"
+      mode: "Modus"
+      mode_route: "Routenwiedergabe"
+      mode_fog: "Nebel des Krieges"
+      fog_color: "Overlay-Farbe"
+      fog_opacity: "Deckkraft der Überlagerung"
       route: "Route"
+      show_route: "Route zeigen"
+      show_marker: "Marker zeigen"
       playback: "Wiedergabe"
       reset: "Zurücksetzen"
       format: "Format"
@@ -946,13 +1018,9 @@ de:
         show_individual_location_points: Zeige einzelne Standortpunkte
         edit_points: Punkte bearbeiten
         allow_dragging_points_to_correct_their_position: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren.
-        editing_points_is_a_pro_feature_this_stays_on_for: Die Bearbeitung von Punkten ist eine Pro-Funktion — dies bleibt für die aktuelle Sitzung aktiv, und Bewegungen werden auf dem Lite-Plan nicht gespeichert.
+        editing_points_is_a_pro_feature_this_stays_on_for: Die Bearbeitung von Punkten ist mit dem Pro-Plan verfügbar.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Erlaube das Ziehen von Punkten, um ihre Position zu korrigieren. Wird über Sitzungen hinweg gespeichert.
-        tiled_rendering: "Gekachelte Darstellung"
         beta: "Beta"
-        tiled_rendering_description: "Zeichnet Punkte, Routen, Tracks und Kartennebel beim Bewegen der Karte aus Vektorkacheln, statt den gesamten Zeitraum vorab zu laden. Routen zeigen deine erzeugten Tracks. Zoome hinein, um die Geschwindigkeit einzelner Abschnitte zu sehen."
-        tiled_rendering_caveats: "Aktiv, solange die Rubbelkarte aus ist. Dichte Bereiche werden zu Markern mit Punktanzahl zusammengefasst — zoome hinein, um einzelne Punkte zu öffnen. Punktbearbeitung ist nicht verfügbar, das Routen-Popup beim Überfahren entfällt — klicke stattdessen auf einen Track — und die Live-Spur kann einige Minuten nachhängen."
-        routes: Routen
         show_connected_route_lines: Zeige verbundene Routenlinien
         color_by_speed: Farbe nach Geschwindigkeit
         edit_color_gradient: Farbverlauf bearbeiten
@@ -986,8 +1054,8 @@ de:
         show_explored_areas: Erkundete Flächen anzeigen
         per_point: Pro Punkt
         per_hexagon: Pro Sechseck
-        scratch_map: Rubbelkarte
-        show_scratched_countries: Freigerubbelte Länder anzeigen
+        scratch_map: Besuchte Länder
+        show_scratched_countries: Im ausgewählten Zeitraum besuchte Länder hervorheben
         family_members: Familienmitglieder
         show_family_member_locations: Standorte von Familienmitgliedern anzeigen
         click_to_center_on_member: Klicke, um auf Mitglied zu zoomen
@@ -1020,29 +1088,29 @@ de:
         the_custom_style_draws_no_labels_or_points_of_interest: Der benutzerdefinierte Stil zeichnet keine Beschriftungen oder Sehenswürdigkeiten — diese Schalter sind während der Aktivierung deaktiviert.
         points_of_interest: Sehenswürdigkeiten
         choose_which_poi_categories_appear_on_the_map: Wähle aus, welche POI-Kategorien auf der Karte angezeigt werden.
-        meters_between_routes: Meter zwischen Routen
         distance_threshold_for_route_splitting: Schwellenwert für die Routenunterteilung
-        minutes_between_routes: Minuten zwischen Routen
         min: 60min
         min_2: 1min
         min_3: 90min
         min_4: 180min
         time_threshold_for_route_splitting: Schwellenwert für die Routenteilung; Lücken über diesem Wert fließen auch nicht in die Distanzstatistik ein
-        points_rendering_mode: Darstellungsmodus der Punkte
         raw_all_points: Rohdaten (alle Punkte)
         simplified_reduced_points: Vereinfacht (reduzierte Punkte)
-        speed_colored_routes: Geschwindigkeitsfarbige Routen
-        color_routes_by_speed: Routen nach Geschwindigkeit färben
         fog_of_war_radius: Radius des Kartennebels
         clear_radius_around_visited_points: Radius des aufgedeckten Bereichs um besuchte Punkte
         fog_of_war_threshold: Schwellenwert des Kartennebels
         minimum_points_to_clear_fog: Mindestanzahl an Punkten zum Aufdecken
         gps_noise_filtering: GPS-Rauschfilterung
+        track_generation: Track-Erstellung
+        track_split_distance: Entfernungsabstand zwischen Tracks
+        track_split_distance_hint: Einen neuen Track beginnen, wenn aufeinanderfolgende Punkte weiter auseinanderliegen.
+        track_split_time: Zeitabstand zwischen Tracks
+        track_split_time_hint: "Längere Pausen starten einen neuen Track und erlauben Reisen, die Aufzeichnung eines anderen Geräts zu verwenden. Nach einer Änderung auf den betroffenen Reiseseiten „Wiederberechnen“ wählen, um gespeicherte Routen und Entfernungen zu aktualisieren."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Blendet Messwerte aus, die keine echte Position darstellen können — etwa unmögliche Sprünge oder beschädigte Koordinaten. Deaktivieren, um alle Rohpunkte anzuzeigen.
         re_evaluate_past_data: Vergangene Daten erneut prüfen
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Entfernt vorhandene Anomaliemarkierungen und prüft alle Punkte mit den aktuellen Einstellungen erneut. Tracks, Statistiken und Zusammenfassungen werden anschließend im Hintergrund neu erstellt.
         recalculate_tracks_stats: Tracks & Statistiken neu berechnen
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Tracks, Statistiken und Zusammenfassungen aus deinen aktuellen Punkten neu erstellen, ohne Anomalie-Flaggen zu berühren. Nützlich nach Änderung der Routenteilungsschwellen.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Speichere diese Schwellenwerte zuerst. Neue Tracks verwenden sie automatisch; wähle „Tracks und Statistiken neu berechnen“, um sie auf bestehende Daten anzuwenden.
         city_statistics: Stadtstatistiken
         min_minutes_in_city: Min. Minuten in der Stadt
         min_5: 60 min
@@ -1193,8 +1261,8 @@ de:
         cancel: Abbrechen
         create_visit: Aufenthalt erstellen
       webgl_error:
-        webgl_is_not_available: WebGL ist nicht verfügbar
-        map_v2_requires_webgl_to_render_maps_please_enable_hardware: Map v2 benötigt WebGL, um Karten anzuzeigen. Aktiviere die Hardwarebeschleunigung in den Einstellungen deines Browsers oder versuche einen anderen Browser.
+        webgl_is_not_available: WebGL 2 ist nicht verfügbar
+        map_v2_requires_webgl_to_render_maps_please_enable_hardware: Map v2 benötigt WebGL 2, um Karten anzuzeigen. Aktiviere die Hardwarebeschleunigung in den Einstellungen deines Browsers oder versuche einen anderen Browser.
       index:
         loading: Lädt...
         pick_a_day: Wähle einen Tag aus
@@ -1413,55 +1481,27 @@ de:
       residential_roads: Wohnstraßen
       track: Track
   settings:
-    geocoding:
-      show:
-        title: Geocoding
-        provider: Geocoding provider
-        provider_hint: The provider used for reverse geocoding your points and for place and location search.
-        intro: Geocoding turns coordinates into city and country names on your points and stats, and powers place and location search.
-        host_choice: Photon server
-        choice_chibigeo: ChibiGeo hosted service
-        choice_chibigeo_desc: 'Free tier: 2,500 lookups per day. Works out of the box — just add your API key.'
-        choice_komoot: komoot public server
-        choice_komoot_desc: Free shared instance, throttled to one request per second.
-        choice_custom: Custom host
-        choice_custom_desc: Your own Photon instance or another compatible server.
-        recommended: Recommended
-        https_locked: HTTPS is always on for this host.
-        https_on: 'On'
-        https_off: 'Off'
-        chibigeo_message: ChibiGeo is a flat-rate, privacy-first geocoding service built by the Dawarich team. It works with Dawarich out of the box. An API key is required.
-        chibigeo_limits: The free Hobby plan includes 2,500 lookups per day at 1 request per second — hard caps, no overage.
-        chibigeo_key_link: Get your free API key
-        chibigeo_site_link: What is ChibiGeo?
-        disabled: Disabled
-        env_managed_notice: Geocoding is currently managed by environment variables set by your instance operator. The settings below take effect only if those variables are removed.
-        host: Host
-        host_hint: Bare hostname with optional port, e.g. photon.example.com:2322
-        api_key: API key
-        api_key_hint: Leave blank to keep the saved key.
-        api_key_saved: A key is saved for this provider.
-        clear_api_key: Remove the saved API key
-        use_https: Use HTTPS
-        rps: Requests per second
-        rps_hint_custom: Leave blank for no limit. Set this to whatever your server or plan allows.
-        rps_hint_chibigeo: Match your ChibiGeo plan - Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Asking for more than your plan allows only earns rejected lookups.
-        rps_hint_komoot: komoot enforces one request per second for everyone, so this is fixed.
-        komoot_warning: photon.komoot.io is a shared public instance with strict rate limits. Requests are throttled to one per second, and bulk geocoding will be slow. Please consider hosting your own Photon instance.
-        komoot_no_api_key: The public komoot server takes no API key — leave it unset.
-        save: Save
-        test: Test my provider
-        test_hint: Save your settings first, then test. The test runs one lookup against your own provider configuration, even when environment variables are active.
-      update:
-        updated: Geocoding settings updated.
-        disabled: Geocoding disabled.
-        invalid_provider: Unknown geocoding provider.
-      test:
-        not_configured: No geocoding provider is configured for your account. Save a provider first.
-        success: 'Success! Your provider resolved the test coordinates to: %{place}.'
-        empty: The provider responded but returned no results for the test coordinates.
-        failure: 'Test failed: %{error}'
-        rate_limited: "The provider's rate limit is busy right now — try again in a moment."
+    trek_sources:
+      select_trips:
+        title: "TREK-Reisen auswählen"
+        subtitle: "Nur ausgewählte Reisen werden in Dawarich übernommen. Du kannst die Auswahl später ändern."
+        untitled_trip: "Unbenannte Reise"
+        archived: "Archiviert"
+        dates_required: "Füge in TREK ein Start- und Enddatum hinzu, bevor du diese Reise importierst."
+        import_selected: "Ausgewählte Reisen importieren"
+        back: "Zurück"
+      create:
+        connected_choose_trips: "TREK ist verbunden. Wähle die Reisen, die Dawarich verwalten soll."
+      import_trips:
+        no_trips_selected: "Keine TREK-Reisen ausgewählt. Vorhandene Reisepläne bleiben erhalten und werden nicht mehr synchronisiert."
+        select_at_least_one_dated_trip: "Wähle mindestens eine aktive TREK-Reise mit Start- und Enddatum."
+        trips_are_now_syncing: "Die ausgewählten TREK-Reisen werden synchronisiert."
+      sync:
+        sync_queued: "Die TREK-Synchronisierung wurde eingeplant."
+        source_disabled: "TREK ist deaktiviert. Verbinde es vor dem Synchronisieren mit einem neuen API-Schlüssel."
+        source_importing: "TREK importiert noch deine ausgewählten Reisen."
+      destroy:
+        source_removed_trips_kept: "TREK wurde getrennt. Deine verwalteten Reisen bleiben erhalten und werden nicht mehr synchronisiert."
     navigation:
       general: Allgemein
       integrations: Integrationen
@@ -1469,6 +1509,7 @@ de:
       visits: Aufenthalte
       two_factor_authentication: Zwei-Faktor-Authentifizierung
       users: Benutzer
+      instance: "Instanz"
       background_jobs: Hintergrundaufgaben
     background_jobs:
       index:
@@ -1538,14 +1579,33 @@ de:
         general_settings: Allgemeine Einstellungen
         save_changes: Änderungen speichern
     integrations:
+      trek:
+        title: "TREK-Integration"
+        subtitle: "Importiere einen ausgewählten TREK-Reiseplan als Dawarich-Reise. TREK bleibt die Quelle des Plans."
+        trek_url: "TREK-URL"
+        cloud_notice: "Dawarich Cloud braucht eine öffentlich erreichbare TREK-URL. Selbst gehostetes Dawarich kann sich mit einer Instanz im LAN oder in Tailscale verbinden."
+        api_key: "TREK-API-Schlüssel"
+        api_key_help: "Erstelle in TREK unter Einstellungen → Integrationen einen API-Schlüssel mit Lesezugriff. Er beginnt mit trek_."
+        connect: "TREK verbinden"
+        reconnect: "TREK erneut verbinden"
+        importing_trips: "Ausgewählte Reisen werden importiert…"
+        last_synced: "Zuletzt synchronisiert: %{time}"
+        not_synced_yet: "Noch nicht synchronisiert"
+        choose_trips: "Reisen auswählen"
+        sync_now: "Jetzt synchronisieren"
+        disconnect: "Trennen"
+        disconnect_confirmation: "TREK trennen? Verwaltete Reisen und ihre aufgezeichneten Daten bleiben in Dawarich, werden aber nicht mehr synchronisiert."
       index:
         services_nav: Integrationsdienste
+        geocoding: "Geokodierung"
+        geocoding_moved_to_instance: "Jetzt in den Instanz-Einstellungen"
+        geocoding_managed_by_admin: "Wird von der Administration dieser Instanz eingerichtet"
         services:
-          geocoding: Geocoding
           immich: Immich
           photoprism: PhotoPrism
           airtrail: AirTrail
           teslamate: TeslaMateApi
+          trek: "TREK"
         status_connected: Verbunden
         status_failed: Letzter Verbindungsversuch fehlgeschlagen
         immich_photoprism_integrations: Immich & Photoprism-Integrationen
@@ -2178,6 +2238,8 @@ de:
     distance:
       calculating: Berechnung...
     form:
+      cancel: "Abbrechen"
+      managed_by_trek_hint: "Name und Daten kommen aus TREK und werden bei jeder Synchronisierung aktualisiert. Ändere sie in TREK."
       prohibited_this_trip_from_being_saved: 'verhindert, dass diese Reise gespeichert werden kann:'
       errors_prohibited_save:
         one: "%{count} Fehler verhindert, dass diese Reise gespeichert werden kann:"
@@ -2188,6 +2250,7 @@ de:
       recalculation_failed_try_again: Wiederberechnung fehlgeschlagen — erneut versuchen.
       recalculate_this_trip_s_path_distance_and_countries_from_your: Diese Reise wiederberechnen und den Weg, die Distanz und die Länder aus deinen neuesten Punkten ermitteln?
     trip:
+      plan: "Plan"
       no_points_found: Keine Punkte gefunden
       calculating: Berechnung...
       ndash: "–"
@@ -2198,9 +2261,7 @@ de:
         one: "%{count} Land"
         other: "%{count} Länder"
     edit:
-      back_to_trips: Zurück zu Reisen
       editing_trip: Reise bearbeiten
-      show_this_trip: Diese Reise zeigen
     index:
       new_trip: Neue Reise
       no_trips_yet: Noch keine Reisen
@@ -2208,7 +2269,6 @@ de:
       create_your_first_trip: Erstelle deine erste Reise
       trips: Reisen
     new:
-      back_to_trips: Zurück zu Reisen
       new_trip: Neue Reise
     notes:
       empty:
@@ -2228,12 +2288,44 @@ de:
         delete: Löschen
         delete_this_note: Diese Notiz löschen?
         update_note: Notiz aktualisieren
+    source_itinerary:
+      show_on_map: "Auf der Karte zeigen"
+      title: "Plan aus TREK"
+      subtitle: "Dieser Reiseplan wird in TREK verwaltet. Deine Dawarich-Trackingdaten bleiben getrennt."
+      sync_stopped: "Synchronisierung angehalten"
+      synced_ago: "Vor %{time} synchronisiert"
+      open_in_trek: "In TREK öffnen"
+      day_number: "Tag %{number}"
+      days_count:
+        one: "%{count} Tag"
+        other: "%{count} Tage"
+      stops_count:
+        one: "%{count} Stopp"
+        other: "%{count} Stopps"
+      duration_minutes:
+        one: "%{count} Min."
+        other: "%{count} Min."
+      reservation_statuses:
+        confirmed: "Bestätigt"
+        pending: "Ausstehend"
+        cancelled: "Storniert"
+      accommodations: "Unterkünfte"
+      travellers: "Reisende"
+      unscheduled_reservations: "Weitere Reservierungen"
+      unplanned_places: "Ungeplante Orte"
     show:
+      planned_route: "Geplante Route"
+      plan: "Plan"
+      toggle_plan_on_map: "Plan auf der Karte zeigen"
+      back_to_trips: "Zurück zu Reisen"
       video: "Video"
       video_unavailable: "Verfügbar, sobald die Reiseroute berechnet ist"
       create_video: "Ein Wiedergabe-Video dieser Reise erstellen"
       loading_route_data: Route-Daten werden geladen...
       trip_path_is_being_calculated: Reisepfad wird berechnet...
+      trip_has_not_started_yet: "Diese geplante Reise hat noch nicht begonnen."
+      no_locations_recorded: "Während dieser Reise wurden keine Standorte aufgezeichnet."
+      no_locations_recorded_hint: "Punkte aus diesem Zeitraum erscheinen hier."
       download_trip: Reise herunterladen
       currently_shared: Aktuell geteilt
       public: Öffentlich
@@ -2251,7 +2343,6 @@ de:
       no_data: Keine Daten
       trip_notes: Reisehinweise
       more_on: Weitere Informationen zu
-      back_to_trips: Zurück zu Reisen
       gpx: GPX
       geojson: GeoJSON
       edit_trip: Reise bearbeiten
@@ -3847,8 +3938,6 @@ de:
       anomaly_point: Anomaliepunkt
       failed_to_load_location_data_please_try_again: Daten zum Standort konnten nicht geladen werden. Bitte versuche es erneut.
       click_on_the_map_to_place_a_place: Klicke auf die Karte, um einen Ort zu platzieren
-      failed_to_reload_routes: Route konnte nicht neu geladen werden
-      failed_to_load_scratch_layer: Rubbelkartenebene konnte nicht geladen werden
       failed_to_load_photos: Fotos konnten nicht geladen werden
       some_photo_sources_unavailable: "Einige Fotoquellen sind nicht verfügbar: %{sources}"
       failed_to_load_areas: Gebiete konnten nicht geladen werden
@@ -3856,7 +3945,6 @@ de:
       failed_to_load_track_details: Track-Details konnten nicht geladen werden
       failed_to_load_flights: Flüge konnten nicht geladen werden
       failed_to_load_anomalies: Anomalien konnten nicht geladen werden
-      reloading_routes: Route wird neu geladen...
       cannot_update_recalculation_is_already_in_progress: 'Aktualisierung nicht möglich: Eine Neuberechnung läuft bereits.'
       transportation_settings_saved: Transporteinstellungen gespeichert
       globe_view_will_be_applied_after_page_reload: Globusansicht wird nach Neuladen der Seite angewendet
@@ -3911,6 +3999,18 @@ de:
       failed_to_update_visit: Aktualisierung des Aufenthalts fehlgeschlagen
       visit_deleted_successfully: Aufenthalt gelöscht
       failed_to_update_point_position_please_try_again: Aktualisierung der Punktposition fehlgeschlagen. Bitte versuche es erneut.
+      point_edit_conflict: Dieser Punkt wurde in einer anderen Sitzung geändert. Die zuletzt gespeicherte Position wird angezeigt.
+      edit_history: Bearbeitungsverlauf
+      edit_history_capacity: "Speichert deine letzten %{count} Verschiebungen"
+      redo: Wiederholen
+      point_label: "Punkt #%{id}"
+      undo_to_here: "Bis hierher rückgängig machen"
+      redo_to_here: "Bis hierher wiederholen"
+      undo: Rückgängig
+      failed_to_load_map_tiles: Kartenkacheln konnten nicht geladen werden.
+      tracks_pending: Noch keine Tracks in dieser Ansicht. Verschiebe die Karte oder erweitere den Zeitraum; ein neuer Import wird möglicherweise noch verarbeitet.
+      failed_to_load_visited_countries: Besuchte Länder konnten nicht geladen werden.
+      retry: Erneut versuchen
       failed_to_load_track_points: Die Track-Punkte konnten nicht geladen werden
       point_updated_track_will_be_recalculated: Punkt aktualisiert. Der Track wird neu berechnet.
       delete: Löschen
@@ -3923,11 +4023,10 @@ de:
       confirmed: Bestätigt
       layers: Ebenen
       points: Punkte
-      routes: Routen
       tracks: Tracks
       heatmap: Heatmap
       fog_of_war: Kartennebel
-      scratch_map: Rubbelkarte
+      scratch_map: Besuchte Länder
       areas: Gebiete
       photos: Fotos
       visits: Aufenthalte
@@ -3967,16 +4066,6 @@ de:
       show_all_days: Alle Tage anzeigen
       collapse_all_days: Alle Tage zusammenklappen
     map:
-      tiled_rendering:
-        inactive_note:
-          one: "Inaktiv, solange %{layers} aktiv ist — diese Ebene benötigt alle Punkte."
-          other: "Inaktiv, solange %{layers} aktiv sind — diese Ebenen benötigen alle Punkte."
-        editing_unavailable: "Bei gekachelter Darstellung nicht verfügbar — Vektorkacheln haben keine verschiebbaren Punkte"
-        failed: "Kartenkacheln konnten nicht geladen werden. Versuche einen kürzeren Zeitraum oder schalte die gekachelte Darstellung in den Karteneinstellungen aus."
-        tracks_pending: "Keine Tracks in diesem Ausschnitt. Routen zeigen bei gekachelter Darstellung deine erzeugten Tracks — verschiebe die Karte, erweitere den Zeitraum oder schau nach einem frischen Import später wieder vorbei."
-        splitting_unavailable: "Bei gekachelter Darstellung ohne Wirkung — Routen folgen deinen erzeugten Tracks."
-        blockers:
-          scratch: "Rubbelkarte"
       places_layer: Ortsebene
       confirm_delete_point: Möchtest du diesen Punkt wirklich löschen?
       confirm_delete_point_permanently: |-
@@ -4295,7 +4384,6 @@ de:
       radius: Radius
       reason: Grund
       route_information: Route-Informationen
-      routes: Route
       selected_point: Ausgewählter Punkt
       show_points: Punkte anzeigen
       show_points_help: Aktivieren, um Punkte anzuzeigen und zu ziehen, um den Track zu bearbeiten
@@ -4410,14 +4498,10 @@ de:
       fog_threshold: Schwellenwert des Kartennebels
       live_map: Live-Karte
       merge_threshold: Verschmelzschwellwert in Minuten
-      meters_between_routes: Meter zwischen Routen
-      minutes_between_routes: Minuten zwischen Routen
-      points_rendering_mode: Darstellung der Punkte
       raw: Rohdaten
       route_opacity: Deckkraft der Route, %
       simplified: Vereinfacht
       speed_color_scale: Geschwindigkeitsfarbskala
-      speed_colored_routes: Geschwindigkeitsfarbige Routen
       time_threshold: Zeitgrenze in Minuten
     calendar_panel:
       loading_visited_places: Lade besuchte Orte...

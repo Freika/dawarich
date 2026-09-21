@@ -1,13 +1,15 @@
 import { Controller } from "@hotwired/stimulus"
 import { MapInitializer } from "controllers/maps/maplibre/map_initializer"
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { DayRoutesLayer } from "maps_maplibre/layers/day_routes_layer"
 import { FlightsLayer } from "maps_maplibre/layers/flights_layer"
 import { PhotosLayer } from "maps_maplibre/layers/photos_layer"
+import { TripPlanLayer } from "maps_maplibre/layers/trip_plan_layer"
 import { ReplayManager } from "maps_maplibre/managers/replay_manager"
 import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { ApiClient } from "maps_maplibre/services/api_client"
+import { pointsFromDevice } from "maps_maplibre/utils/device_points"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { flightWindows, maskLines } from "maps_maplibre/utils/flight_mask"
 import { buildTripGeojson, TripProvider } from "poster_studio/data/providers"
@@ -29,6 +31,7 @@ export default class extends Controller {
     "photosToggleBtn",
     // Flights button
     "flightsToggleBtn",
+    "planToggleBtn",
     // Replay toggle button
     "replayToggleBtn",
     // Replay panel
@@ -61,6 +64,8 @@ export default class extends Controller {
     tripId: Number,
     tripName: String,
     pathData: String,
+    deviceWindows: Array,
+    plan: String,
     mapStyle: { type: String, default: "light" },
   }
 
@@ -74,6 +79,7 @@ export default class extends Controller {
     this.flightsLayer = null
     this.flightsGeoJSON = null
     this.flightsActive = false
+    this.planLayer = null
     this.mapInitializing = false
     this.overviewSourceId = "trip-overview-source"
     this.overviewLayerId = "trip-overview-layer"
@@ -82,12 +88,18 @@ export default class extends Controller {
     this.allPoints = []
     this.replayPanel = null
 
+    this.onPlanFocus = (event) => this.focusPlanStop(event.detail || {})
+    window.addEventListener("trip-plan:focus", this.onPlanFocus)
+
     if (this.hasMapTarget) {
       await this.initializeMap()
     }
   }
 
   disconnect() {
+    window.removeEventListener("trip-plan:focus", this.onPlanFocus)
+    this.planLayer?.remove()
+    this.planLayer = null
     this.replayPanel?.destroy()
     if (this.photosLayer) {
       this.photosLayer.remove()
@@ -193,10 +205,14 @@ export default class extends Controller {
     try {
       this.showLoading(true)
 
-      const { points: allPoints } = await apiClient.fetchAllPoints({
+      const { points: fetchedPoints } = await apiClient.fetchAllPoints({
         start_at: this.startedAtValue,
         end_at: this.endedAtValue,
       })
+      const allPoints = pointsFromDevice(
+        fetchedPoints || [],
+        this.deviceWindowsValue,
+      )
 
       if (!allPoints?.length) {
         this.showLoading(false)
@@ -591,6 +607,41 @@ export default class extends Controller {
         ? flightWindows(this.flightsGeoJSON)
         : []
     this.dayRoutesLayer?.maskRoutes(windows)
+  }
+
+  // ===== Planned itinerary overlay =====
+
+  togglePlan() {
+    this.setPlanVisible(!this.planLayer)
+  }
+
+  setPlanVisible(visible) {
+    if (!this.map || !this.planValue) return
+
+    if (visible) {
+      let plan
+      try {
+        plan = JSON.parse(this.planValue)
+      } catch (_e) {
+        return
+      }
+      this.planLayer = new TripPlanLayer(this.map, { numbered: true })
+      this.planLayer.add(plan)
+    } else {
+      this.planLayer?.remove()
+      this.planLayer = null
+    }
+
+    if (this.hasPlanToggleBtnTarget) {
+      this._setButtonActive(this.planToggleBtnTarget, visible)
+      this.planToggleBtnTarget.setAttribute("aria-pressed", String(visible))
+    }
+  }
+
+  focusPlanStop({ longitude, latitude }) {
+    if (!Number.isFinite(longitude) || !Number.isFinite(latitude)) return
+    if (!this.planLayer) this.setPlanVisible(true)
+    this.planLayer?.focus(longitude, latitude)
   }
 
   // ===== Note form toggling =====

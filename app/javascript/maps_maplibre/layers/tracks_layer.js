@@ -1,14 +1,16 @@
-import {
-  LAYER_COLOR_DEFAULTS,
-  SettingsManager,
-} from "maps_maplibre/utils/settings_manager"
 import { BaseLayer } from "./base_layer"
 
+const BASE_TRACKS_LAYER_ID = "tracks-mvt"
+const FLOW_PIXELS_PER_SECOND = 40
+const FLOW_MAX_PAINTS_PER_SECOND = 30
+const FLOW_MIN_CYCLE_MS = 750
+const FLOW_FALLBACK_CYCLE_MS = 3000
+const EARTH_CIRCUMFERENCE_METERS = 40075016.686
+const TILE_SIZE_PIXELS = 512
+
 /**
- * Tracks layer for saved routes with segment visualization support
- *
- * Debug feature: When a track is clicked, segments are highlighted
- * with different colors based on transportation mode.
+ * Focused Track selection and segment visualization overlay.
+ * Canonical journey lines are rendered exclusively by TracksMvtLayer.
  */
 export class TracksLayer extends BaseLayer {
   constructor(map, options = {}) {
@@ -34,53 +36,8 @@ export class TracksLayer extends BaseLayer {
     this.onSegmentLeave = null // Callback for segment leave events
   }
 
-  // Under tiled mode the MAIN track lines come from the tile layer, but the
-  // selection/flow/segment sub-layers still render the click->highlight flow —
-  // hide only the data layers, never the selection stack (a full toggle(false)
-  // would silently kill setSelectedTrack/showSegments).
-  setMainVisibility(visible) {
-    this.visible = visible
-    for (const layerId of [this.id]) {
-      if (!this.map.getLayer(layerId)) continue
-      this.map.setLayoutProperty(
-        layerId,
-        "visibility",
-        visible ? "visible" : "none",
-      )
-    }
-  }
-
-  getSourceConfig() {
-    return {
-      type: "geojson",
-      data: this.data || {
-        type: "FeatureCollection",
-        features: [],
-      },
-    }
-  }
-
   getLayerConfigs() {
     return [
-      // Main tracks layer (bottom). Track features all carry the backend's
-      // uniform default color, so the user's track color setting replaces
-      // it directly; mode-colored segments live in their own layer.
-      {
-        id: this.id,
-        type: "line",
-        source: this.sourceId,
-        layout: {
-          "line-join": "round",
-          "line-cap": "round",
-        },
-        paint: {
-          "line-color":
-            SettingsManager.getSetting("trackColor") ||
-            LAYER_COLOR_DEFAULTS.trackColor,
-          "line-width": 4,
-          "line-opacity": 0.7,
-        },
-      },
       // Selection Layer 1: White border (widest, bottom of selection stack)
       {
         id: this.selectionBorderLayerId,
@@ -113,18 +70,11 @@ export class TracksLayer extends BaseLayer {
     ]
   }
 
-  /**
-   * Override add() to create both main and selection sources
-   */
+  /** Add only the exact, focused selection source. */
   add(data) {
     this.data = data
 
-    // Add main source
-    if (!this.map.getSource(this.sourceId)) {
-      this.map.addSource(this.sourceId, this.getSourceConfig())
-    }
-
-    // Add selection source (initially empty, lineMetrics required for line-gradient)
+    // lineMetrics is required for the animated line-gradient.
     if (!this.map.getSource(this.selectionSourceId)) {
       this.map.addSource(this.selectionSourceId, {
         type: "geojson",
@@ -159,30 +109,40 @@ export class TracksLayer extends BaseLayer {
 
     if (feature) {
       this.flowTrackColor = feature.properties?.color || "#ff0000"
-      if (!preserveSegments) this.segmentsActive = false
-      this.selectedTrackLength = this._computeLineLength(
-        feature.geometry?.coordinates || [],
+      if (!preserveSegments) this.hideSegments()
+      const geometry = feature.geometry
+      const lines =
+        geometry?.type === "MultiLineString"
+          ? geometry.coordinates
+          : [geometry?.coordinates || []]
+      this.selectedTrackLength = lines.reduce(
+        (length, coordinates) => length + this._computeLineLength(coordinates),
+        0,
       )
       selectionSource.setData({
         type: "FeatureCollection",
         features: [feature],
       })
+      this._raiseSelectionAboveBaseTracks()
       this._startFlowAnimation()
-
-      // Dim all tracks to highlight the selected one
-      if (this.map.getLayer(this.id)) {
-        this.map.setPaintProperty(this.id, "line-opacity", 0.3)
-      }
     } else {
       this._stopFlowAnimation()
-      if (!preserveSegments) this.segmentsActive = false
+      if (!preserveSegments) this.hideSegments()
       this.selectedTrackLength = 0
       selectionSource.setData({ type: "FeatureCollection", features: [] })
+    }
+  }
 
-      // Restore original track opacity
-      if (this.map.getLayer(this.id)) {
-        this.map.setPaintProperty(this.id, "line-opacity", 0.7)
-      }
+  _raiseSelectionAboveBaseTracks() {
+    const ids = this.map.getStyle?.()?.layers?.map((layer) => layer.id) ?? []
+    const baseIndex = ids.indexOf(BASE_TRACKS_LAYER_ID)
+    if (baseIndex === -1) return
+
+    const layerAboveBase = ids[baseIndex + 1]
+    for (const id of [this.selectionBorderLayerId, this.flowLayerId]) {
+      const index = ids.indexOf(id)
+      if (index !== -1 && index < baseIndex)
+        this.map.moveLayer(id, layerAboveBase)
     }
   }
 
@@ -270,17 +230,16 @@ export class TracksLayer extends BaseLayer {
 
   /**
    * Start the flowing gradient animation for the selected track.
-   * Uses setPaintProperty to update the line-gradient expression each frame,
-   * which triggers MapLibre's internal gradientVersion increment and
-   * texture regeneration without the overhead of removeLayer/addLayer.
-   * Cycle duration: 3000ms (one full period shift per 3 seconds).
+   * The dashes travel at a constant on-screen speed whatever the zoom, and
+   * the gradient is rebuilt at most FLOW_MAX_PAINTS_PER_SECOND times.
    */
   _startFlowAnimation() {
     if (this.animationActive) return
     this.animationActive = true
 
-    const cycleDuration = 3000
-    let startTime = null
+    let phase = 0
+    let lastTimestamp = null
+    let lastPaintAt = Number.NEGATIVE_INFINITY
 
     const animate = (timestamp) => {
       if (!this.animationActive) return
@@ -288,34 +247,33 @@ export class TracksLayer extends BaseLayer {
         this._stopFlowAnimation()
         return
       }
-      if (!startTime) startTime = timestamp
 
-      const phase = ((timestamp - startTime) / cycleDuration) % 1
+      const numDashes = this._flowDashCount()
+      if (lastTimestamp !== null) {
+        phase =
+          (phase + (timestamp - lastTimestamp) / this._flowCycleMs(numDashes)) %
+          1
+      }
+      lastTimestamp = timestamp
 
-      try {
-        if (this.map.getLayer(this.flowLayerId)) {
-          // ~400m per dash; clamp to [4, 30] for visual consistency
-          const numDashes =
-            this.selectedTrackLength > 0
-              ? Math.max(
-                  4,
-                  Math.min(30, Math.round(this.selectedTrackLength / 400)),
-                )
-              : 6
+      if (timestamp - lastPaintAt >= 1000 / FLOW_MAX_PAINTS_PER_SECOND - 1) {
+        lastPaintAt = timestamp
+        try {
+          if (this.map.getLayer(this.flowLayerId)) {
+            // Transparent base when segments visible so their colors show through
+            const baseColor = this.segmentsActive
+              ? "rgba(255,255,255,0)"
+              : undefined
 
-          // Transparent base when segments visible so their colors show through
-          const baseColor = this.segmentsActive
-            ? "rgba(255,255,255,0)"
-            : undefined
-
-          this.map.setPaintProperty(
-            this.flowLayerId,
-            "line-gradient",
-            this._buildFlowGradient(phase, { baseColor, numDashes }),
-          )
+            this.map.setPaintProperty(
+              this.flowLayerId,
+              "line-gradient",
+              this._buildFlowGradient(phase, { baseColor, numDashes }),
+            )
+          }
+        } catch (e) {
+          console.warn("[TracksLayer] Animation frame error:", e)
         }
-      } catch (e) {
-        console.warn("[TracksLayer] Animation frame error:", e)
       }
 
       if (this.animationActive) {
@@ -324,6 +282,35 @@ export class TracksLayer extends BaseLayer {
     }
 
     this.animationFrame = requestAnimationFrame(animate)
+  }
+
+  // ~400m per dash; clamp to [4, 30] for visual consistency
+  _flowDashCount() {
+    if (!(this.selectedTrackLength > 0)) return 6
+
+    return Math.max(4, Math.min(30, Math.round(this.selectedTrackLength / 400)))
+  }
+
+  _flowCycleMs(numDashes) {
+    const zoom = this.map.getZoom?.()
+    const latitude = this.map.getCenter?.()?.lat
+    if (
+      !(this.selectedTrackLength > 0) ||
+      !Number.isFinite(zoom) ||
+      !Number.isFinite(latitude)
+    ) {
+      return FLOW_FALLBACK_CYCLE_MS
+    }
+
+    const metersPerPixel =
+      (EARTH_CIRCUMFERENCE_METERS * Math.cos((latitude * Math.PI) / 180)) /
+      (TILE_SIZE_PIXELS * 2 ** zoom)
+    const periodPixels = this.selectedTrackLength / numDashes / metersPerPixel
+
+    return Math.max(
+      FLOW_MIN_CYCLE_MS,
+      (periodPixels / FLOW_PIXELS_PER_SECOND) * 1000,
+    )
   }
 
   /**
@@ -542,68 +529,6 @@ export class TracksLayer extends BaseLayer {
    */
   setSegmentLeaveCallback(callback) {
     this.onSegmentLeave = callback
-  }
-
-  /**
-   * Update a single track feature in the layer
-   * Used when a track is recalculated after point movement
-   * @param {Object} trackFeature - The updated GeoJSON feature
-   * @param {Object} options - Options for the update
-   * @param {boolean} options.preserveSelection - If true and this track is selected, re-apply selection
-   * @returns {Object|false} - The updated feature if successful, false otherwise
-   */
-  updateTrackFeature(trackFeature, options = {}) {
-    if (!trackFeature?.properties?.id) {
-      console.warn("[TracksLayer] Cannot update track: invalid feature")
-      return false
-    }
-
-    const source = this.map.getSource(this.sourceId)
-    if (!source) {
-      console.warn("[TracksLayer] Cannot update track: source not found")
-      return false
-    }
-
-    // Get current data
-    const currentData = this.data || source._data
-    if (!currentData?.features) {
-      console.warn("[TracksLayer] Cannot update track: no data")
-      return false
-    }
-
-    // Find and update the track
-    const trackId = trackFeature.properties.id
-    const featureIndex = currentData.features.findIndex(
-      (f) => f.properties?.id === trackId,
-    )
-
-    if (featureIndex === -1) {
-      console.warn(`[TracksLayer] Track ${trackId} not found in layer`)
-      return false
-    }
-
-    // Update the feature in place
-    currentData.features[featureIndex] = trackFeature
-
-    // Update the source
-    source.setData(currentData)
-
-    // Also update our cached data reference
-    this.data = currentData
-
-    // If this track has segments displayed, update them too
-    if (options.preserveSelection && this.map.getSource(this.segmentSourceId)) {
-      const segments = trackFeature.properties?.segments || []
-      const parsedSegments =
-        typeof segments === "string" ? JSON.parse(segments) : segments
-
-      if (parsedSegments.length > 0) {
-        this.showSegments(trackFeature, parsedSegments)
-      }
-    }
-
-    console.log(`[TracksLayer] Updated track ${trackId}`)
-    return trackFeature
   }
 
   /**

@@ -38,6 +38,14 @@ RSpec.describe FeatureFlags do
       expect(Flipper.enabled?(:achievements)).to be true
     end
 
+    it 'drops the instance settings flag now that the resolver always runs' do
+      Flipper.add(:instance_settings_resolver)
+
+      described_class.apply_defaults!
+
+      expect(Flipper.exist?(:instance_settings_resolver)).to be false
+    end
+
     it 'drops flags whose feature shipped unconditionally' do
       Flipper.add(:posters)
 

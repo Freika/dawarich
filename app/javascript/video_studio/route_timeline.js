@@ -34,24 +34,35 @@ export function buildRouteTimeline(trackGeojson, { smooth = false } = {}) {
   const entries = []
   let totalDistance = 0
   const features = chronological(
-    (trackGeojson?.features ?? []).filter(
-      (feature) => feature?.geometry?.type === "LineString",
+    (trackGeojson?.features ?? []).filter((feature) =>
+      ["LineString", "MultiLineString"].includes(feature?.geometry?.type),
     ),
   )
   let seg = 0
   for (const feature of features) {
-    let coordinates = feature.geometry.coordinates ?? []
-    if (coordinates.length < 2) continue
-    if (smooth) coordinates = smoothSegmentCoords(coordinates)
-    for (let i = 0; i < coordinates.length; i += 1) {
-      const coord = coordinates[i]
-      if (i > 0) {
-        const prev = coordinates[i - 1]
-        totalDistance += haversineDistance(prev[1], prev[0], coord[1], coord[0])
+    const lines =
+      feature.geometry.type === "MultiLineString"
+        ? (feature.geometry.coordinates ?? [])
+        : [feature.geometry.coordinates ?? []]
+    for (const line of lines) {
+      let coordinates = line
+      if (coordinates.length < 2) continue
+      if (smooth) coordinates = smoothSegmentCoords(coordinates)
+      for (let i = 0; i < coordinates.length; i += 1) {
+        const coord = coordinates[i]
+        if (i > 0) {
+          const prev = coordinates[i - 1]
+          totalDistance += haversineDistance(
+            prev[1],
+            prev[0],
+            coord[1],
+            coord[0],
+          )
+        }
+        entries.push({ coord, dist: totalDistance, seg })
       }
-      entries.push({ coord, dist: totalDistance, seg })
+      seg += 1
     }
-    seg += 1
   }
   return { entries, totalDistance }
 }

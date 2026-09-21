@@ -235,21 +235,64 @@ RSpec.describe 'Settings::Integrations', type: :request do
       body[/<a[^>]*data-testid="integration-#{service}"[^>]*>/]
     end
 
-    it 'lists every service in the sidebar on self-hosted instances' do
+    it 'lists the photo services and not geocoding, which belongs to the instance' do
       get settings_integrations_path
 
-      %w[geocoding immich photoprism airtrail].each do |service|
+      %w[immich photoprism airtrail trek].each do |service|
         expect(response.body).to include(%(data-testid="integration-#{service}"))
       end
+      expect(response.body).not_to include('data-testid="integration-geocoding"')
     end
 
-    it 'hides geocoding from the sidebar on non-self-hosted instances' do
+    it 'points a self-hosted admin to Instance settings for geocoding' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      user.update!(admin: true)
+
+      get settings_integrations_path
+
+      pointer = response.body[/<a[^>]*data-testid="integration-geocoding-moved"[^>]*>/]
+      expect(pointer).to include(%(href="#{admin_settings_path}"))
+    end
+
+    it 'tells a self-hosted member that the administrator configures geocoding' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+      get settings_integrations_path
+
+      expect(response.body).to include('data-testid="integration-geocoding-moved"')
+      expect(response.body).not_to match(/<a[^>]*data-testid="integration-geocoding-moved"/)
+      expect(response.body).to include(I18n.t('settings.integrations.index.geocoding_managed_by_admin'))
+    end
+
+    it 'shows no geocoding pointer on Cloud' do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
 
       get settings_integrations_path
 
-      expect(response.body).not_to include('data-testid="integration-geocoding"')
-      expect(response.body).to include('data-testid="integration-immich"')
+      expect(response.body).not_to include('integration-geocoding-moved')
+    end
+
+    it 'sends an admin who follows an old geocoding link to Instance settings' do
+      user.update!(admin: true)
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response).to redirect_to(admin_settings_path)
+    end
+
+    it 'keeps a cloud admin on Integrations for an old geocoding link' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(admin: true)
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response).not_to be_redirect
+    end
+
+    it 'shows anyone else the first photo service for an old geocoding link' do
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).to include('name="settings[immich_url]"')
     end
 
     it 'marks a service as connected after a successful connection' do
@@ -294,11 +337,18 @@ RSpec.describe 'Settings::Integrations', type: :request do
       expect(response.body).to include('man-in-the-middle attacks')
     end
 
+    it 'renders the TREK settings pane' do
+      get settings_integrations_path(service: 'trek')
+
+      expect(response.body).to include('name="trip_source[base_url]"')
+      expect(response.body).to include('TREK integration')
+    end
+
     it 'falls back to the first available service for unknown service params' do
       get settings_integrations_path(service: 'bogus')
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(I18n.t('settings.geocoding.show.provider'))
+      expect(response.body).to include('name="settings[immich_url]"')
     end
   end
 end

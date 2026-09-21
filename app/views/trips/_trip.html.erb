@@ -11,6 +11,14 @@
             data-trip-maplibre-preview-path-value="<%= trip.path.coordinates.to_json %>"
             data-trip-maplibre-preview-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>">
       </div>
+    <% elsif (plan = trip.plan_geojson) %>
+      <div style="width: 100%; aspect-ratio: 16/10;" class="relative bg-base-200">
+        <div class="h-full w-full"
+             data-controller="trip-maplibre-preview"
+             data-trip-maplibre-preview-plan-value="<%= plan.to_json %>"
+             data-trip-maplibre-preview-map-style-value="<%= current_user.safe_settings.settings['maps_maplibre_style'] || 'light' %>"></div>
+        <span class="trip-plan-caption trip-plan-caption--compact"><%= t('.plan') %></span>
+      </div>
     <% elsif trip.distance.present? %>
       <div style="width: 100%; aspect-ratio: 16/10;" class="flex items-center justify-center bg-base-200">
         <p class="text-base-content/40 text-sm"><%= t('.no_points_found') %></p>

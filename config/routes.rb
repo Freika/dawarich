@@ -29,6 +29,12 @@ Rails.application.routes.draw do
 
   authenticate :user, ->(u) { u.admin? } do
     mount Flipper::UI.app(Flipper) => '/admin/flipper'
+
+    namespace :admin do
+      resource :settings, only: %i[show update] do
+        post :test_geocoding
+      end
+    end
   end
 
   # We want to return a nice error message if the user is not authorized to access Sidekiq.
@@ -49,12 +55,16 @@ Rails.application.routes.draw do
 
     resources :integrations, only: [:index]
     patch 'integrations', to: 'integrations#update'
+    resources :trek_sources, only: %i[create destroy] do
+      member do
+        get :select_trips
+        post :import_trips
+        post :sync
+      end
+    end
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
-    resource :geocoding, only: %i[show update], controller: 'geocoding' do
-      post :test
-    end
     resource :visits, only: %i[show update]
     resources :users, only: %i[index show create destroy edit update] do
       member do
@@ -335,6 +345,7 @@ Rails.application.routes.draw do
         end
       end
       resources :points, only: %i[index create update destroy] do
+        resource :position, only: :update, controller: 'points/positions'
         collection do
           delete :bulk_destroy
           post :reapply_anomaly_filter
@@ -381,6 +392,7 @@ Rails.application.routes.draw do
 
       namespace :countries do
         resources :borders, only: :index
+        resources :visited, only: :index
         resources :visited_cities, only: :index
       end
 

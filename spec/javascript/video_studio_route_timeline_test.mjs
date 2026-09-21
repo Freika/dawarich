@@ -81,3 +81,29 @@ test("keeps the given order when a feature carries no start time", () => {
   assert.deepEqual(entries[0].coord, MORNING[0])
   assert.deepEqual(entries[entries.length - 1].coord, EVENING[1])
 })
+
+test("animates both sides of an antimeridian MultiLineString without joining them", () => {
+  const western = [
+    [179.8, 10],
+    [179.9, 10],
+  ]
+  const eastern = [
+    [-179.9, 10],
+    [-179.8, 10],
+  ]
+  const { entries } = buildRouteTimeline(
+    collection([
+      {
+        type: "Feature",
+        properties: { startTime: 1_787_212_800 },
+        geometry: { type: "MultiLineString", coordinates: [western, eastern] },
+      },
+    ]),
+  )
+
+  assert.deepEqual(
+    entries.map(({ coord }) => coord),
+    [...western, ...eastern],
+  )
+  assert.equal(entries[1].seg + 1, entries[2].seg)
+})

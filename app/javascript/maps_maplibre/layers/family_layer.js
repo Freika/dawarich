@@ -1,5 +1,5 @@
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { escapeHtml } from "../utils/geojson_transformers"
 import { BaseLayer } from "./base_layer"
 
