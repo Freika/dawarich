@@ -7,6 +7,27 @@ import { BaseLayer } from "./base_layer"
 export class PlacesLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "places", ...options })
+    this.boundariesVisible = options.boundariesVisible === true
+  }
+
+  setBoundariesVisible(visible) {
+    this.boundariesVisible = visible
+    this.setVisibility(this.visible)
+  }
+
+  setVisibility(visible) {
+    const boundaryIds = [`${this.id}-radius-fill`, `${this.id}-radius-outline`]
+    this.getLayerIds().forEach((layerId) => {
+      if (!this.map.getLayer(layerId)) return
+
+      const shown =
+        visible && (this.boundariesVisible || !boundaryIds.includes(layerId))
+      this.map.setLayoutProperty(
+        layerId,
+        "visibility",
+        shown ? "visible" : "none",
+      )
+    })
   }
 
   getSourceConfig() {

@@ -993,6 +993,7 @@ pl:
         places: Miejsca
         show_your_saved_places: Pokaż zapisane miejsca
         enable_all_tags: Włącz wszystkie tagi
+        show_place_boundaries: Pokaż granice miejsc
         filter_by_tags: Filtruj po tagach
         untagged: "\U0001F3F7️ Bez tagu"
         click_tags_to_filter_places: Kliknij tagi, aby filtrować miejsca

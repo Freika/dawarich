@@ -67,6 +67,7 @@ export class SettingsController {
       visitsToggle: "visitsEnabled",
       photosToggle: "photosEnabled",
       placesToggle: "placesEnabled",
+      placeBoundariesToggle: "placeBoundariesEnabled",
       fogToggle: "fogEnabled",
       scratchToggle: "scratchEnabled",
       familyToggle: "familyEnabled",

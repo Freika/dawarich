@@ -1693,6 +1693,7 @@ fr:
         places: Endroits
         show_your_saved_places: Afficher vos endroits sauvegardés
         enable_all_tags: Activer toutes les étiquettes
+        show_place_boundaries: Afficher les limites des lieux
         filter_by_tags: Filtrer par étiquettes
         untagged: "\U0001F3F7️ Sans étiquette"
         click_tags_to_filter_places: Cliquez sur les étiquettes pour filtrer les endroits

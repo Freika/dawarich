@@ -69,6 +69,7 @@ export default class extends Controller {
     "visitsToggle",
     "photosToggle",
     "placesToggle",
+    "placeBoundariesToggle",
     "fogToggle",
     "scratchToggle",
     "anomaliesToggle",
@@ -1319,6 +1320,9 @@ export default class extends Controller {
   // Places Manager methods
   togglePlaces(event) {
     return this.placesManager.togglePlaces(event)
+  }
+  togglePlaceBoundaries(event) {
+    return this.placesManager.togglePlaceBoundaries(event)
   }
   filterPlacesByTags(event) {
     return this.placesManager.filterPlacesByTags(event)

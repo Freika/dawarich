@@ -54,26 +54,12 @@ module Visits
       # Area has a mapping, its Place participates in the canonical path below.
       def unmapped_containing_area(stay)
         user.areas.where.not(id: LegacyAreaPlaceMapping.select(:area_id)).find do |area|
-          distance_m(stay[:center_lat], stay[:center_lon], area.latitude, area.longitude) <= area.radius
+          distance_m(stay[:center_lat], stay[:center_lon], area.latitude, area.longitude) <= area.visit_radius
         end
       end
 
       def containing_place(stay)
-        return nil unless max_visit_radius.positive?
-
-        candidates = user.places
-                         .near([stay[:center_lat], stay[:center_lon]], max_visit_radius, :m)
-                         .containing(stay[:center_lat], stay[:center_lon])
-                         .to_a
-        return nil if candidates.empty?
-
-        candidates.min_by do |place|
-          [
-            place.visit_radius,
-            distance_m(stay[:center_lat], stay[:center_lon], place.lat, place.lon),
-            place.id
-          ]
-        end
+        user.places.attribution_for(stay[:center_lat], stay[:center_lon], search_radius: max_visit_radius)
       end
 
       def max_visit_radius

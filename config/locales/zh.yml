@@ -1001,6 +1001,7 @@ zh:
         places: 地点
         show_your_saved_places: 显示您保存的地点
         enable_all_tags: 启用所有标签
+        show_place_boundaries: 显示地点边界
         filter_by_tags: 按标签筛选
         untagged: 🏷️ 未标记
         click_tags_to_filter_places: 点击标签以筛选地点

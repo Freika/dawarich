@@ -14,6 +14,7 @@ module Places
       @report[:ambiguous_area_ids] = []
       @report[:failed_area_ids] = []
       @report[:conflicting_visit_ids] = []
+      @report[:dual_user_owned_visit_ids] = []
     end
 
     def call
@@ -25,6 +26,15 @@ module Places
       raise migration_error if migration_error
 
       report
+    end
+
+    def migrate(area)
+      migrate_area(area)
+      mapping = LegacyAreaPlaceMapping.includes(:area, :place).find_by!(area_id: area.id)
+      migrate_visits_for(mapping)
+
+      logger.info("[#{self.class}] area_id=#{area.id} #{report.to_json}")
+      mapping.place
     end
 
     private
@@ -99,7 +109,7 @@ module Places
         name: area.name,
         latitude: area.latitude,
         longitude: area.longitude,
-        visit_radius: area.radius,
+        visit_radius: area.visit_radius,
         source: :manual
       )
       place.user_named = true
@@ -115,7 +125,7 @@ module Places
         name: area.name,
         source: :manual,
         name_locked_at: place.name_locked_at || Time.current,
-        visit_radius: [place.visit_radius, area.radius].max
+        visit_radius: [place.visit_radius, area.visit_radius].max
       )
     end
 
@@ -136,33 +146,37 @@ module Places
 
     def migrate_visit_associations
       LegacyAreaPlaceMapping.includes(:area, :place).find_each(batch_size: batch_size) do |mapping|
-        Visit.where(area_id: mapping.area_id).find_each(batch_size: batch_size) do |visit|
-          migrate_visit_association(visit, mapping)
-        end
+        migrate_visits_for(mapping)
+      end
+    end
+
+    def migrate_visits_for(mapping)
+      Visit.where(area_id: mapping.area_id).find_each(batch_size: batch_size) do |visit|
+        migrate_visit_association(visit, mapping)
       end
     end
 
     def migrate_visit_association(visit, mapping)
       if visit.place_id.nil?
         if place_conflict?(visit, mapping.place_id)
-          visit.update_columns(area_id: nil)
           record_visit_conflict(visit)
         else
-          visit.update_columns(place_id: mapping.place_id, area_id: nil)
+          visit.update_columns(
+            place_id: mapping.place_id, area_id: nil, location_label: visit.location_label || mapping.area.name
+          )
           report[:area_only_visits_reassigned] += 1
         end
       elsif visit.user.visits.machine_detected.exists?(id: visit.id)
         selected = select_place_for(visit, fallback: mapping.place)
         if place_conflict?(visit, selected.id)
-          visit.update_columns(area_id: nil)
           record_visit_conflict(visit)
         else
           visit.update_columns(place_id: selected.id, area_id: nil)
           report[:dual_suggested_visits_reattributed] += 1
         end
       else
-        visit.update_columns(area_id: nil)
         report[:dual_user_owned_visits_retained] += 1
+        report[:dual_user_owned_visit_ids] << visit.id
       end
     end
 
@@ -179,24 +193,11 @@ module Places
       center = visit_center(visit)
       return fallback unless center
 
-      candidates = visit.user.places.containing(*center).to_a
-      return fallback if candidates.empty?
-
-      candidates.min_by do |place|
-        [place.visit_radius, distance_meters(center, [place.lat, place.lon]), place.id]
-      end
+      visit.user.places.attribution_for(*center) || fallback
     end
 
     def visit_center(visit)
-      coordinates = visit.points.pluck(
-        Arel.sql('ST_Y(lonlat::geometry)'),
-        Arel.sql('ST_X(lonlat::geometry)')
-      )
-      return fallback_center(visit) if coordinates.empty?
-
-      count = coordinates.length.to_f
-      [coordinates.sum { |lat, _lon| lat.to_f } / count,
-       coordinates.sum { |_lat, lon| lon.to_f } / count]
+      Visit.weighted_centers(visit.id)[visit.id] || fallback_center(visit)
     end
 
     def fallback_center(visit)
@@ -204,10 +205,6 @@ module Places
       return [visit.area.lat, visit.area.lon] if visit.area
 
       nil
-    end
-
-    def distance_meters(first, second)
-      Geocoder::Calculations.distance_between(first, second, units: :km) * 1000
     end
   end
 end

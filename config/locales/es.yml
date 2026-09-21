@@ -1043,6 +1043,7 @@ es:
         places: Lugares
         show_your_saved_places: Muestra lugares guardados
         enable_all_tags: Habilita todos los etiquetas
+        show_place_boundaries: Mostrar los límites de los lugares
         filter_by_tags: Filtrar por etiquetas
         untagged: "\U0001F3F7️ Sin etiquetar"
         click_tags_to_filter_places: Haz clic en las etiquetas para filtrar lugares

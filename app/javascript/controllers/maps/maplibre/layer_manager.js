@@ -366,6 +366,7 @@ export class LayerManager {
     if (!this.layers.placesLayer) {
       this.layers.placesLayer = new PlacesLayer(this.map, {
         visible: this.settings.placesEnabled || false,
+        boundariesVisible: this.settings.placeBoundariesEnabled || false,
       })
       this.layers.placesLayer.add(placesGeoJSON)
     } else {

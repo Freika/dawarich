@@ -57,6 +57,12 @@ export class PlacesManager {
     }
   }
 
+  togglePlaceBoundaries(event) {
+    const enabled = event.target.checked
+    SettingsManager.updateSetting("placeBoundariesEnabled", enabled)
+    this.layerManager.getLayer("places")?.setBoundariesVisible(enabled)
+  }
+
   /**
    * Initialize place tag filters (enable all by default or restore saved state)
    */

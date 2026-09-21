@@ -1043,6 +1043,7 @@ de:
         places: Orte
         show_your_saved_places: Deine gespeicherten Orte anzeigen
         enable_all_tags: Alle Tags aktivieren
+        show_place_boundaries: Ortsgrenzen anzeigen
         filter_by_tags: Nach Tags filtern
         untagged: "\U0001F3F7️ Ohne Tag"
         click_tags_to_filter_places: Klick auf Tags, um Orte zu filtern

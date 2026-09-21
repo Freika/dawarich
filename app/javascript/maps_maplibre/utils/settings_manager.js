@@ -73,6 +73,7 @@ const LAYER_NAME_MAP = {
   "Scratch map": "scratchEnabled",
   "Family Members": "familyEnabled",
   Places: "placesEnabled",
+  "Place boundaries": "placeBoundariesEnabled",
   Anomalies: "anomaliesEnabled",
 }
 

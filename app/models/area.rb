@@ -25,6 +25,10 @@ class Area < ApplicationRecord
 
   def center = [latitude.to_f, longitude.to_f]
 
+  def visit_radius
+    radius.to_i.positive? ? radius.to_i : Place.column_defaults['visit_radius']
+  end
+
   private
 
   def relabel_needed?

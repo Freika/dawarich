@@ -992,6 +992,7 @@ ca:
         places: Llocs
         show_your_saved_places: Mostra els teus llocs desats
         enable_all_tags: Activa totes les etiquetes
+        show_place_boundaries: Mostra els límits dels llocs
         filter_by_tags: Filtra per etiquetes
         untagged: "🏷️ Sense etiqueta"
         click_tags_to_filter_places: Fes clic a les etiquetes per filtrar llocs
