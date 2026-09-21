@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.15.1] - Unreleased
+
+### Fixed
+
+- Opening monthly insights no longer fails when concurrent requests create the same digest.
+
 ## [1.15.0] - 2026-09-20, Berlin
 
 ### Added
@@ -187,7 +193,6 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Opening monthly insights no longer fails when concurrent requests create the same digest.
 - Cities where you stayed but your phone reported infrequently are counted again. Time spent in a city was measured from how often your device sent points rather than from how long you were there, so a stationary phone saving battery could be credited no time at all and drop the city — including your home city — from statistics and from the map's visited-cities view. Recalculated months will generally show higher numbers than before. **Existing months keep their old numbers until recalculated: press "Update stats" on the Stats page.** (#2207)
 - Changing "Min Minutes in City" now recalculates your existing statistics, instead of leaving old numbers in place until you refreshed them by hand (#2207).
 - A GPX file holding only waypoints (such as an OsmAnd+ `favourites.gpx`) now says so when it imports 0 points, instead of reporting that the file lacks per-point timestamps. That advice was wrong: OsmAnd waypoints do carry a time, and adding more timestamps never helped. (#1261)
