@@ -10,7 +10,7 @@ const source = await readFile(
   "utf8",
 )
 const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const dependencies = 'const translate = (key) => key\n'
+const dependencies = "const translate = (key) => key\n"
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(
   `${dependencies}\n${withoutImports}`,
 ).toString("base64")}`
