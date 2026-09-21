@@ -60,6 +60,19 @@ RSpec.describe Tracks::SpeedVectorTileQuery do
     expect(rows.first['segment_speed']).to be_within(0.05).of(4.0)
   end
 
+  it 'colors only segments whose Points are inside the requested time range' do
+    track = track_with_points(longitudes: [0.001, 0.002, 0.003, 0.004], offsets: [0, 10, 20, 30])
+
+    rows = query(clip_points_scope: user.points,
+                 clip_start_at: start_at + 20.seconds,
+                 clip_end_at: start_at + 30.seconds).feature_rows
+
+    expect(rows.size).to eq(1)
+    expect(rows.first['id']).to eq(track.id)
+    expect(rows.first['start_timestamp'].to_i).to eq((start_at + 20.seconds).to_i)
+    expect(rows.first['end_timestamp'].to_i).to eq((start_at + 30.seconds).to_i)
+  end
+
   it 'does not color an invented edge across interleaved imports' do
     selected_import = create(:import, user:)
     other_import = create(:import, user:)

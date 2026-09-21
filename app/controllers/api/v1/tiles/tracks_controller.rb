@@ -5,7 +5,7 @@ class Api::V1::Tiles::TracksController < ApiController
 
   # ETag material — bump when Tracks::VectorTileQuery's SQL or its emitted
   # properties change.
-  TILE_SCHEMA_VERSION = 5
+  TILE_SCHEMA_VERSION = 6
 
   private
 
@@ -15,15 +15,9 @@ class Api::V1::Tiles::TracksController < ApiController
 
   def tile_epoch_component
     tracks_epoch = Tracks::TileEpoch.etag_component(current_api_user.id, cacheable_start_at, cacheable_end_at)
-    return tracks_epoch unless speed_coloring? || params[:import_id].present?
-
-    # Overlap semantics render whole tracks, including their portions outside
-    # the requested dates. Any year's point edits may affect an import-clipped
-    # track, so use all year tokens instead of running an import-wide MIN/MAX
-    # query for every tile request (including conditional 304s).
-    [tracks_epoch, Points::TileEpoch.etag_component(current_api_user.id,
-                                                    Time.utc(TileEpoch::MIN_YEAR).to_i,
-                                                    Time.utc(TileEpoch::MAX_YEAR).to_i)]
+    points_epoch = Points::TileEpoch.etag_component(current_api_user.id,
+                                                    cacheable_start_at, cacheable_end_at)
+    [tracks_epoch, points_epoch]
   end
 
   def tile_query
@@ -33,8 +27,12 @@ class Api::V1::Tiles::TracksController < ApiController
       x: params[:x],
       y: params[:y]
     }
-    if params[:import_id].present?
+    if cacheable_range? || params[:import_id].present?
       options[:clip_points_scope] = current_api_user.scoped_points.without_raw_data.not_anomaly
+      if cacheable_range?
+        options[:clip_start_at] = cacheable_start_at
+        options[:clip_end_at] = cacheable_end_at
+      end
       options[:clip_import_id] = params[:import_id]
     end
     return Tracks::VectorTileQuery.new(**options) unless speed_coloring?

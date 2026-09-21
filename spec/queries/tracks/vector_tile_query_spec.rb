@@ -25,9 +25,13 @@ RSpec.describe Tracks::VectorTileQuery do
     create(:track, user:, original_path: linestring_wkt(meter_pairs), **attrs)
   end
 
-  def feature_rows(z:, x:, y:, scope: user.tracks, clip_points_scope: nil, clip_import_id: nil) # rubocop:disable Naming/MethodParameterName
-    described_class.new(scope:, z:, x:, y:, clip_points_scope:, clip_import_id:).feature_rows
+  # rubocop:disable Naming/MethodParameterName
+  def feature_rows(z:, x:, y:, scope: user.tracks, clip_points_scope: nil, clip_import_id: nil,
+                   clip_start_at: nil, clip_end_at: nil)
+    described_class.new(scope:, z:, x:, y:, clip_points_scope:, clip_import_id:,
+                        clip_start_at:, clip_end_at:).feature_rows
   end
+  # rubocop:enable Naming/MethodParameterName
 
   def npoints(geom)
     ActiveRecord::Base.connection.select_value(
@@ -137,6 +141,35 @@ RSpec.describe Tracks::VectorTileQuery do
 
       expect(rows.map { |r| r['id'].to_i }).to eq([spanning.id])
       expect(rows.map { |r| r['id'].to_i }).not_to include(old.id)
+    end
+
+    it 'clips a boundary-spanning track to Points inside the requested window' do
+      range_start = Time.utc(2024, 9, 20)
+      range_end = range_start.end_of_day
+      track = create_track_at(
+        [[10, 10], [500, 500], [2_000, 2_000], [3_000, 3_000]],
+        start_at: Time.utc(2024, 9, 14), end_at: range_start + 11.hours
+      )
+      [
+        [[10, 10], Time.utc(2024, 9, 14)],
+        [[500, 500], Time.utc(2024, 9, 15)],
+        [[2_000, 2_000], range_start + 10.hours],
+        [[3_000, 3_000], range_start + 11.hours]
+      ].each do |(east, north), timestamp|
+        lon, lat = lonlat_at(east, north)
+        create(:point, user:, track:, longitude: lon, latitude: lat, timestamp: timestamp.to_i)
+      end
+      scope = user.tracks.where('end_at >= ? AND start_at <= ?', range_start, range_end)
+
+      row = feature_rows(z: 10, x: 512, y: 511, scope:, clip_points_scope: user.points,
+                         clip_start_at: range_start, clip_end_at: range_end).sole
+      xmin = ActiveRecord::Base.connection.select_value(
+        Track.sanitize_sql_array(['SELECT ST_XMin(?::geometry)', row['geom']])
+      ).to_f
+
+      expect(xmin).to be > 150
+      expect(row['start_timestamp'].to_i).to eq((range_start + 10.hours).to_i)
+      expect(row['end_timestamp'].to_i).to eq((range_start + 11.hours).to_i)
     end
   end
 
