@@ -282,47 +282,6 @@ export class LayerVisibilityManager {
   }
 
   /**
-   * Toggle areas layer
-   * Fetches areas from backend on first enable (lazy-load pattern)
-   */
-  async toggleAreas(event) {
-    const enabled = event.target.checked
-    SettingsManager.updateSetting("areasEnabled", enabled)
-
-    try {
-      const areasLayer = this.layerManager.getLayer("areas")
-      if (!areasLayer) return
-
-      if (enabled) {
-        if (areasLayer.data?.features?.length > 0) {
-          areasLayer.show()
-        } else {
-          this.controller.showProgress()
-          this.controller.updateLoadingCounts({
-            counts: { areas: 0 },
-            isComplete: false,
-          })
-
-          const areas = await this.controller.api.fetchAreas()
-
-          this.controller.updateLoadingCounts({
-            counts: { areas: areas.length },
-            isComplete: true,
-          })
-
-          areasLayer.update(this.controller.dataLoader.areasToGeoJSON(areas))
-          areasLayer.show()
-        }
-      } else {
-        areasLayer.hide()
-      }
-    } catch (error) {
-      console.error("Failed to toggle areas layer:", error)
-      Toast.error(translate("messages.failed_to_load_areas"))
-    }
-  }
-
-  /**
    * Toggle tracks layer
    * Fetches tracks from backend on first enable (lazy-load pattern)
    */

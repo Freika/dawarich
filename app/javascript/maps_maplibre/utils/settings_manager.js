@@ -98,6 +98,7 @@ const BACKEND_SETTINGS_MAP = {
   liveMapEnabled: "live_map_enabled",
 }
 
+// biome-ignore lint/complexity/noStaticOnlyClass: retain the established public API
 export class SettingsManager {
   static apiKey = null
   static cachedSettings = null
