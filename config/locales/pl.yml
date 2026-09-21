@@ -1211,8 +1211,8 @@ pl:
         cancel: Anuluj
         create_visit: Utwórz wizytę
       webgl_error:
-        webgl_is_not_available: WebGL jest niedostępny
-        map_v2_requires_webgl_to_render_maps_please_enable_hardware: Mapa v2 wymaga WebGL do renderowania map. Włącz akcelerację sprzętową w ustawieniach przeglądarki albo użyj innej przeglądarki.
+        webgl_is_not_available: WebGL 2 jest niedostępny
+        map_v2_requires_webgl_to_render_maps_please_enable_hardware: Mapa v2 wymaga WebGL 2 do renderowania map. Włącz akcelerację sprzętową w ustawieniach przeglądarki albo użyj innej przeglądarki.
       index:
         loading: Ładowanie...
         pick_a_day: Wybierz dzień

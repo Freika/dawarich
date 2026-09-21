@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { MapInitializer } from "controllers/maps/maplibre/map_initializer"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { TripPlanLayer } from "maps_maplibre/layers/trip_plan_layer"
 import { RouteSegmenter } from "maps_maplibre/utils/route_segmenter"
 

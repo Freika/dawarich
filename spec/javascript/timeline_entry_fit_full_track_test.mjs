@@ -141,3 +141,21 @@ test("opening the card of a different track drops the previous segments", async 
 
   assert.notEqual(selections.at(-1).options.preserveSegments, true)
 })
+
+test("opening a track from the timeline fetches it within the map's date range", async () => {
+  const { controller } = buildController({ selectedFeature: null })
+  const range = {
+    startAt: "2026-09-17T00:00+02:00",
+    endAt: "2026-09-17T23:59+02:00",
+  }
+  controller.layerManager.pointTileRange = range
+  const fetches = []
+  controller.api.fetchTrackWithSegments = async (...args) => {
+    fetches.push(args)
+    return fullTrack
+  }
+
+  await controller.handleEntryClick({ detail: { trackId: 39 } })
+
+  assert.deepEqual(fetches, [[39, range]])
+})
