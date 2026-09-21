@@ -73,7 +73,7 @@ RSpec.describe 'Inline rename of a suggested visit', type: :request do
   end
 
   describe 'PATCH /visits/:id with rename on a suggested visit that has no resolvable center' do
-    let(:visit) { create(:visit, user:, area: nil, place: nil, status: :suggested, name: 'Visit') }
+    let(:visit) { create(:visit, user:, place: nil, status: :suggested, name: 'Visit') }
 
     it 'renames the visit without error' do
       expect(visit.center).to eq([0, 0])

@@ -30,7 +30,7 @@ RSpec.describe 'Map Select Area returns visits attached only to an Area' do
   end
 
   let!(:place_only_visit) do
-    create(:visit, user: user, area: nil, place: place_inside,
+    create(:visit, user: user, place: place_inside,
                    started_at: 4.hours.ago, ended_at: 3.hours.ago)
   end
 

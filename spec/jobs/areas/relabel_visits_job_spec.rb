@@ -11,7 +11,7 @@ RSpec.describe Areas::RelabelVisitsJob do
   def north(meters) = meters / 111_320.0
 
   def point_backed_visit(lat, lon, **attributes)
-    visit = create(:visit, { user:, place: nil, area: nil, status: :suggested,
+    visit = create(:visit, { user:, place: nil, status: :suggested,
                              detection_version: Visits::Detection::VERSION,
                              started_at: 2.days.ago, ended_at: 2.days.ago + 1.hour }.merge(attributes))
     create(:point, user:, visit_id: visit.id, latitude: lat, longitude: lon, lonlat: "POINT(#{lon} #{lat})")

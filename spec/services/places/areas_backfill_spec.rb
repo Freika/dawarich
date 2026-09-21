@@ -167,7 +167,7 @@ RSpec.describe Places::AreasBackfill do
       place = create(:place, user: user)
       area = create(:area, user: user, name: place.name, latitude: place.lat, longitude: place.lon)
       started_at = Time.zone.parse('2026-09-01 12:00:00')
-      create(:visit, user: user, area: nil, place: place, started_at: started_at)
+      create(:visit, user: user, place: place, started_at: started_at)
       conflicting = create(:visit, user: user, area: area, place: nil, started_at: started_at)
 
       report = backfill.call

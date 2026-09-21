@@ -26,7 +26,7 @@ RSpec.describe Visit, type: :model do
     it { is_expected.to validate_presence_of(:status) }
 
     it 'allows an unplaced visit to use a location label without a custom name' do
-      visit = build(:visit, area: nil, place: nil, name: nil, location_label: 'Alexanderplatz 1')
+      visit = build(:visit, place: nil, name: nil, location_label: 'Alexanderplatz 1')
 
       expect(visit).to be_valid
     end
@@ -106,7 +106,7 @@ RSpec.describe Visit, type: :model do
   describe 'place durability' do
     let(:user) { create(:user) }
     let(:place) { create(:place, user: user, source: :photon) }
-    let!(:visit) { create(:visit, user: user, place: place, area: nil) }
+    let!(:visit) { create(:visit, user: user, place: place) }
 
     it 'preserves a place when the visit is reassigned' do
       visit.update!(place: create(:place, user: user))
@@ -145,14 +145,14 @@ RSpec.describe Visit, type: :model do
     it 'reflects a newly created visit instead of serving stale cached counts' do
       expect(summary_status_counts).to eq({}) # warms the 5-minute cache with zero visits
 
-      create(:visit, user: user, area: nil, place: nil, status: :suggested,
+      create(:visit, user: user, place: nil, status: :suggested,
                      started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
 
       expect(summary_status_counts).to include('suggested' => 1)
     end
 
     it 'reflects a status change after the cache is warm' do
-      visit = create(:visit, user: user, area: nil, place: nil, status: :suggested,
+      visit = create(:visit, user: user, place: nil, status: :suggested,
                              started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
       expect(summary_status_counts).to include('suggested' => 1) # warm cache
 
@@ -164,11 +164,11 @@ RSpec.describe Visit, type: :model do
     end
 
     it 'does not bust the cache for demo visits (the demo importer busts once at the end)' do
-      create(:visit, user: user, area: nil, place: nil, status: :confirmed,
+      create(:visit, user: user, place: nil, status: :confirmed,
                      started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
       expect(summary_status_counts).to include('confirmed' => 1) # warm cache
 
-      create(:visit, user: user, area: nil, place: nil, status: :suggested, demo: true,
+      create(:visit, user: user, place: nil, status: :suggested, demo: true,
                      started_at: in_month, ended_at: in_month + 1.hour, duration: 60)
 
       counts = summary_status_counts
