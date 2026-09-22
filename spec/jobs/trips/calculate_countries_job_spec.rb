@@ -20,8 +20,11 @@ RSpec.describe Trips::CalculateCountriesJob, type: :job do
       points # Create the points
     end
 
-    it 'finds the trip and calculates countries' do
-      expect(Trip).to receive(:find).with(trip.id).and_return(trip)
+    it 'finds the trip with an active user and calculates countries' do
+      relation = instance_double(ActiveRecord::Relation)
+      expect(Trip).to receive(:joins).with(:user).and_return(relation)
+      expect(relation).to receive(:lock).and_return(relation)
+      expect(relation).to receive(:find).with(trip.id).and_return(trip)
       expect(trip).to receive(:calculate_countries)
       expect(trip).to receive(:save!)
 

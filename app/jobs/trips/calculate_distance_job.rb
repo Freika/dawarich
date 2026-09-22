@@ -18,10 +18,12 @@ class Trips::CalculateDistanceJob < ApplicationJob
   end
 
   def perform(trip_id, distance_unit, run_token = nil)
-    trip = Trip.find(trip_id)
-
-    trip.calculate_distance
-    trip.save!
+    trip = Trip.transaction do
+      Trip.joins(:user).lock('FOR UPDATE OF trips').find(trip_id).tap do |record|
+        record.calculate_distance
+        record.save!
+      end
+    end
 
     broadcast_update(trip, distance_unit)
     Trips::CalculateAllJob.tally_completion(trip_id, run_token)
