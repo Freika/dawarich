@@ -21,14 +21,45 @@
 
       <% if section == 'map_matching' %>
         <p class="text-sm text-base-content/70 [text-wrap:pretty]"><%= t('admin.settings.show.map_matching.description') %></p>
-        <figure class="rounded-box border border-base-content/10 bg-base-100 p-4" data-testid="map-matching-example">
-          <%= image_tag 'map_matching_example.svg', class: 'w-full h-auto',
-                                                    alt: t('admin.settings.show.map_matching.example_alt') %>
-          <div class="mt-2 grid grid-cols-2 gap-4 text-xs font-medium">
-            <span class="text-warning"><%= t('admin.settings.show.map_matching.original_label') %></span>
-            <span class="text-success"><%= t('admin.settings.show.map_matching.matched_label') %></span>
+        <figure class="overflow-hidden rounded-box border border-base-content/10 bg-base-100"
+                data-controller="map-matching-demo"
+                data-testid="map-matching-example">
+          <div class="relative">
+            <div class="h-72 w-full bg-base-300 sm:h-80"
+                 role="img"
+                 aria-label="<%= t('admin.settings.show.map_matching.example_alt') %>"
+                 data-map-matching-demo-target="map"
+                 data-testid="map-matching-demo-map"></div>
+            <div class="pointer-events-none absolute inset-0 grid place-items-center bg-base-200"
+                 data-map-matching-demo-target="loading">
+              <span class="loading loading-spinner loading-md text-primary" aria-hidden="true"></span>
+            </div>
+            <div class="pointer-events-none absolute left-3 top-3 rounded-full border border-base-content/10 bg-base-100/90 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm">
+              Berlin · 2.6 km
+            </div>
+            <div class="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1 rounded-lg border border-base-content/10 bg-base-100/90 p-1 shadow-lg backdrop-blur-sm"
+                 aria-label="<%= t('admin.settings.show.map_matching.title') %>">
+              <button type="button"
+                      class="btn btn-sm btn-ghost btn-outline gap-2 whitespace-nowrap"
+                      aria-pressed="false"
+                      data-mode="original"
+                      data-map-matching-demo-target="button"
+                      data-action="map-matching-demo#select">
+                <span class="size-2.5 rounded-full bg-warning" aria-hidden="true"></span>
+                <%= t('admin.settings.show.map_matching.original_label') %>
+              </button>
+              <button type="button"
+                      class="btn btn-sm btn-success gap-2 whitespace-nowrap"
+                      aria-pressed="true"
+                      data-mode="matched"
+                      data-map-matching-demo-target="button"
+                      data-action="map-matching-demo#select">
+                <span class="size-2.5 rounded-full bg-success-content" aria-hidden="true"></span>
+                <%= t('admin.settings.show.map_matching.matched_label') %>
+              </button>
+            </div>
           </div>
-          <figcaption class="mt-3 text-xs text-base-content/70 [text-wrap:pretty]">
+          <figcaption class="border-t border-base-content/10 px-4 py-3 text-xs text-base-content/70 [text-wrap:pretty]">
             <%= t('admin.settings.show.map_matching.example_caption') %>
           </figcaption>
         </figure>

@@ -151,7 +151,9 @@ RSpec.describe 'Admin::Settings' do
       expect(response.body).to include('id="instance_settings_atlas_url"')
       expect(response.body).to include('id="instance_settings_map_matching_enabled"')
       expect(response.body).to include('data-testid="map-matching-example"')
-      expect(response.body).to include('map_matching_example-')
+      expect(response.body).to include('data-controller="map-matching-demo"')
+      expect(response.body).to include('data-testid="map-matching-demo-map"')
+      expect(response.body).to include('Berlin · 2.6 km')
       expect(response.body).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.map_matching.privacy')))
     end
 

@@ -143,7 +143,9 @@ Add a Map matching section to the existing self-hosted admin Instance settings p
 - global enable switch;
 - `Test connection` action;
 - Atlas health/version status;
-- the approved Original/Matched visual example;
+- an interactive MapLibre example using a 2.6 km route through central Berlin,
+  with an Original/Matched switch that keeps the recorded GPS drift visible as
+  context in the matched state;
 - disclosure that coordinates, timestamps, and accuracy are sent to the configured Atlas service.
 
 URL requirements:
