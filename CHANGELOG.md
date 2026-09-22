@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Point uploads now accept Unix timestamps and return a validation error for malformed timestamps instead of failing internally.
 - Account deletion no longer fails when saved posters, route videos, flights, notes, service settings, or suggested-place links remain.
+- Map v2 route-gap settings now accept custom distances and durations above the former 5,000m and 180-minute slider limits. Trip maps and shared trip links split day routes by your saved time gap instead of a fixed 60 minutes. (#3381)
 
 ## [1.15.1] - 2026-09-21, Berlin
 

@@ -143,7 +143,8 @@ class Users::SafeSettings
   end
 
   def meters_between_routes
-    settings['meters_between_routes']
+    meters = settings['meters_between_routes'].to_i
+    meters.positive? ? meters : DEFAULT_VALUES['meters_between_routes']
   end
 
   def preferred_map_layer
