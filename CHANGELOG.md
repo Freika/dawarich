@@ -4,14 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.15.2] - Unreleased
+## [1.15.2] - 2026-09-22, Berlin
 
 ### Added
 
 - Add an experimental read-only MCP endpoint at `/api/v1/mcp` for Pro and Family plans (and every self-hosted user), authenticated with the existing API key as a bearer token. MCP clients can read a timeline of up to 7 days, the latest location, and search visits by place, city, country or area name. See the [MCP documentation](https://dawarich.app/docs/features/mcp).
 - Exploration achievements: every country gets a collectible card, and 183 of them a grid of their first-level regions. A region counts as explored once time spent inside it passes your "minimum minutes spent in city" setting, so pass-throughs don't count. Earned regions are never revoked. Behind the `achievements` feature flag. (#3121)
-- Exploration achievements work through existing location history without notifications — before launch on Cloud, once the feature is enabled on self-hosted instances — and public cards show set progress and unlock dates only. (#3121)
-- Achievement cards support HTTP self-hosted installations, use the user's timezone for unlock dates and refresh after dwell-threshold changes. (#3121)
 
 ### Fixed
 
