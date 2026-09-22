@@ -143,6 +143,8 @@ fr:
       user: Utilisateur
     errors:
       models:
+        visit:
+          duplicate_place_start: 'Une visite existe déjà pour ce lieu et cette heure de début'
         service_setting:
           host_required: "%{provider} needs a host. Enter your instance's hostname, for example photon.example.com."
           host_invalid: 'The host must be a bare hostname with an optional port or path — no http:// prefix, no spaces.'
@@ -5434,6 +5436,7 @@ fr:
       suggestions: Suggestions
       suggestions_failed: Échec de récupération des suggestions
       unavailable: La recherche n'est pas disponible
+      duplicate_visit: 'Une visite existe déjà pour ce lieu et cette heure de début'
       unknown_location: Emplacement inconnu
       unnamed_location: Emplacement non nommé
       visits_load_failed: Échec de chargement des visites pour cet emplacement

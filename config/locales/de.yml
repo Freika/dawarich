@@ -113,6 +113,8 @@ de:
   activerecord:
     errors:
       models:
+        visit:
+          duplicate_place_start: 'Für diesen Ort und diese Startzeit gibt es bereits einen Besuch'
         service_setting:
           host_required: "%{provider} needs a host. Enter your instance's hostname, for example photon.example.com."
           host_invalid: 'The host must be a bare hostname with an optional port or path — no http:// prefix, no spaces.'
@@ -4228,6 +4230,7 @@ de:
       suggestions: Vorschläge
       suggestions_failed: Vorschläge konnten nicht abgerufen werden
       unavailable: Suche nicht verfügbar
+      duplicate_visit: 'Für diesen Ort und diese Startzeit gibt es bereits einen Besuch'
       unknown_location: Unbekannter Ort
       unnamed_location: Unbenannter Ort
       visits_load_failed: Aufenthalte für diesen Ort konnten nicht geladen werden

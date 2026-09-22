@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Visit < ApplicationRecord
+  DUPLICATE_PLACE_START_INDEX = 'idx_visits_user_started_at_place_unique'
+
   include Demoable
   include Notable
 
@@ -25,6 +27,7 @@ class Visit < ApplicationRecord
 
   validates :ended_at, comparison: { greater_than: :started_at }
   validates :confidence, numericality: { only_integer: true, in: 0..100 }, allow_nil: true
+  validate :place_and_start_time_are_unique, on: :update, if: :place_or_start_time_changed?
 
   enum :status, { suggested: 0, confirmed: 1, declined: 2 }
 
@@ -100,6 +103,17 @@ class Visit < ApplicationRecord
   end
 
   private
+
+  def place_or_start_time_changed?
+    place_id.present? && (
+      will_save_change_to_user_id? || will_save_change_to_started_at? || will_save_change_to_place_id?
+    )
+  end
+
+  def place_and_start_time_are_unique
+    duplicate = Visit.unscoped.where(user_id:, started_at:, place_id:).where.not(id:).exists?
+    errors.add(:base, :duplicate_place_start) if duplicate
+  end
 
   def center_from_points
     return [0, 0] if points.empty?
