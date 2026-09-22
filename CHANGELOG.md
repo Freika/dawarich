@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.15.2] - Unreleased
+
+### Fixed
+
+- GPX imports now skip track points with invalid timestamps instead of failing the entire import.
+
 ## [1.15.1] - 2026-09-21, Berlin
 
 ### Fixed
