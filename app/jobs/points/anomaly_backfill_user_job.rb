@@ -30,6 +30,7 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
       # hand every user a notification they never asked for, and rebuild: :inline
       # to keep the rebuild on the caller's queue and its failures visible to it.
       rebuild_data(user, notify: notify, rebuild: rebuild) if reset
+      rebuild_achievements(user, notify: notify) if reset
     else
       Rails.logger.info("Skipping anomaly backfill for user #{user.id} — already locked")
     end
@@ -52,6 +53,15 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
     else
       Users::RecalculateDataJob.perform_later(user.id, notify: notify)
     end
+  end
+
+  def rebuild_achievements(user, notify:)
+    return unless Flipper.enabled?(:achievements)
+
+    oldest_timestamp = user.points.minimum(:timestamp)
+    return if oldest_timestamp.nil?
+
+    Achievements::CheckJob.perform_later(user.id, notify: notify, oldest_timestamp: oldest_timestamp)
   end
 
   def reset_existing_flags(user)

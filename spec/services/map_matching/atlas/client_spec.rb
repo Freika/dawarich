@@ -8,7 +8,7 @@ RSpec.describe MapMatching::Atlas::Client do
   subject(:client) { described_class.new(base_url:) }
 
   before do
-    allow(Resolv).to receive(:getaddress).with('atlas.example.test').and_return('93.184.216.34')
+    stub_host_addresses('atlas.example.test', '93.184.216.34')
   end
 
   it 'reads health and routing readiness' do
@@ -101,7 +101,7 @@ RSpec.describe MapMatching::Atlas::Client do
 
   it 'allows private Atlas addresses on cloud deployments and pins the resolved address' do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-    allow(Resolv).to receive(:getaddress).with('atlas.example.test').and_return('10.0.0.5')
+    stub_host_addresses('atlas.example.test', '10.0.0.5')
     stub_request(:get, 'https://atlas.example.test/api/v1/version')
       .to_return(status: 200, body: { data: { version: '0.6.0' } }.to_json)
     expect(Net::HTTP).to receive(:new).with('atlas.example.test', 443, nil).and_call_original

@@ -1125,8 +1125,10 @@ de:
         gps_noise_filtering: GPS-Rauschfilterung
         track_generation: Track-Erstellung
         track_split_distance: Entfernungsabstand zwischen Tracks
+        track_split_distance_unit: m
         track_split_distance_hint: Einen neuen Track beginnen, wenn aufeinanderfolgende Punkte weiter auseinanderliegen.
         track_split_time: Zeitabstand zwischen Tracks
+        track_split_time_unit: 'Min.'
         track_split_time_hint: "Längere Pausen starten einen neuen Track und erlauben Reisen, die Aufzeichnung eines anderen Geräts zu verwenden. Nach einer Änderung auf den betroffenen Reiseseiten „Wiederberechnen“ wählen, um gespeicherte Routen und Entfernungen zu aktualisieren."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Blendet Messwerte aus, die keine echte Position darstellen können — etwa unmögliche Sprünge oder beschädigte Koordinaten. Deaktivieren, um alle Rohpunkte anzuzeigen.
         re_evaluate_past_data: Vergangene Daten erneut prüfen

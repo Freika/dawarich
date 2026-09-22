@@ -1072,8 +1072,10 @@ ca:
         gps_noise_filtering: Filtratge de soroll GPS
         track_generation: Generació de trajectes
         track_split_distance: Distància entre trajectes
+        track_split_distance_unit: m
         track_split_distance_hint: Inicia un trajecte nou quan els punts consecutius són més lluny.
         track_split_time: Temps entre trajectes
+        track_split_time_unit: min
         track_split_time_hint: "Els intervals més llargs inicien un trajecte nou i permeten als viatges utilitzar l’enregistrament d’un altre dispositiu. Després de canviar aquest valor, prem «Recalcula» a cada viatge afectat per actualitzar-ne la ruta i la distància desades."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Amaga les lectures que no poden ser una posició real — salts impossibles, coordenades incorrectes. Desactiva-ho per veure tots els punts en brut.
         re_evaluate_past_data: Torna a avaluar les dades passades

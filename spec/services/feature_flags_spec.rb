@@ -30,6 +30,23 @@ RSpec.describe FeatureFlags do
       expect(Flipper.enabled?(:poster_ordering)).to be false
     end
 
+    it 'registers achievements disabled on an install that has never seen the flag' do
+      Flipper.remove(:achievements)
+
+      described_class.apply_defaults!
+
+      expect(Flipper.exist?(:achievements)).to be true
+      expect(Flipper.enabled?(:achievements)).to be false
+    end
+
+    it 'preserves an instance that has enabled achievements' do
+      Flipper.enable(:achievements)
+
+      described_class.apply_defaults!
+
+      expect(Flipper.enabled?(:achievements)).to be true
+    end
+
     it 'drops the instance settings flag now that the resolver always runs' do
       Flipper.add(:instance_settings_resolver)
 

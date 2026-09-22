@@ -107,6 +107,8 @@ module Users
       return if @old_city_threshold == normalized_city_threshold(@user.settings[CITY_THRESHOLD_KEY])
 
       Stats::RecalculationDebouncer.new(@user.id).trigger
+      Achievements::CheckJob.schedule(@user.id) if Flipper.enabled?(:achievements)
+      @recalculation_triggered = true
     end
 
     def city_threshold_param_present?

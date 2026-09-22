@@ -99,7 +99,7 @@ RSpec.describe Users::ExportData, type: :service do
       end
 
       it 'exports a portable TREK snapshot without its database source ID' do
-        allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+        stub_host_addresses('trek.example.test', '93.184.216.34')
         source = create(:trip_source, user:)
         snapshot = { 'days' => [{ 'date' => '2024-11-27', 'day_number' => 1, 'notes' => 'Arrival' }] }
         create(:trip, user:, trip_source: source, source_identifier: '12', source_status: :active,

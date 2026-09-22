@@ -83,15 +83,19 @@ module UrlValidatable
     # #native unwraps IPv4-mapped and IPv4-compatible IPv6 addresses, which
     # would otherwise clear every IPv4 range below: IPAddr#include? is false
     # across address families while the OS still routes to the bare IPv4 host.
-    ip = IPAddr.new(Resolv.getaddress(uri.host)).native
-    if blocked_ranges(allow_private:).any? { |range| range.include?(ip) }
-      Rails.logger.warn("Integration URL #{uri.host} resolves to blocked address #{ip}")
+    addresses = Addrinfo.getaddrinfo(uri.hostname, nil, nil, :STREAM)
+                        .map { |info| IPAddr.new(info.ip_address).native }.uniq
+    raise SocketError if addresses.empty?
+
+    blocked = addresses.find { |ip| blocked_ranges(allow_private:).any? { |range| range.include?(ip) } }
+    if blocked
+      Rails.logger.warn("Integration URL #{uri.host} resolves to blocked address #{blocked}")
       raise BlockedUrlError, I18n.t('services.concerns.url_validatable.blocked_address')
     end
-    ip.to_s
+    addresses.first.to_s
   rescue URI::InvalidURIError
     raise BlockedUrlError, I18n.t('services.concerns.url_validatable.invalid_format')
-  rescue Resolv::ResolvError
+  rescue SocketError
     raise BlockedUrlError, I18n.t('services.concerns.url_validatable.unresolvable_host', host: uri.host)
   end
 

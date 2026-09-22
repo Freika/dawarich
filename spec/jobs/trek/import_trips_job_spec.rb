@@ -7,7 +7,7 @@ RSpec.describe Trek::ImportTripsJob do
   let(:source) { create(:trip_source, user: user, selection_token: 'current-selection', importing: true) }
 
   before do
-    allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+    stub_host_addresses('trek.example.test', '93.184.216.34')
   end
 
   it 'imports the selected trips and stops previously selected trips that were removed' do

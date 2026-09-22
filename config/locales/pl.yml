@@ -1075,8 +1075,10 @@ pl:
         gps_noise_filtering: Filtrowanie szumu GPS
         track_generation: Generowanie tras
         track_split_distance: Odstęp odległości między trasami
+        track_split_distance_unit: m
         track_split_distance_hint: Rozpocznij nową trasę, gdy kolejne punkty są dalej od siebie.
         track_split_time: Odstęp czasu między trasami
+        track_split_time_unit: min
         track_split_time_hint: "Dłuższe przerwy rozpoczynają nową trasę i pozwalają podróżom użyć nagrania z innego urządzenia. Po zmianie wybierz „Przelicz” na stronie każdej podróży, której dotyczy zmiana, aby zaktualizować zapisaną trasę i dystans."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Ukryj odczyty, które nie mogą być rzeczywistą pozycją - niemożliwe skoki, uszkodzone współrzędne. Wyłącz, aby zobaczyć wszystkie surowe punkty.
         re_evaluate_past_data: Ponownie oceń dane historyczne

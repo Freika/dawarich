@@ -10,6 +10,8 @@
      data-trip-maplibre-ended-at-value="<%= @trip.ended_at.iso8601 %>"
      data-trip-maplibre-trip-id-value="<%= @trip.id %>"
      data-trip-maplibre-trip-name-value="<%= @trip.name %>"
+     data-trip-maplibre-meters-between-routes-value="<%= current_user.safe_settings.meters_between_routes %>"
+     data-trip-maplibre-minutes-between-routes-value="<%= current_user.safe_settings.minutes_between_routes %>"
      data-trip-maplibre-path-data-value="<%= @trip.path&.coordinates&.to_json %>"
      data-trip-maplibre-device-windows-value="<%= @trip.primary_device_windows.to_json %>"
      <% if plan_toggle %>data-trip-maplibre-plan-value="<%= @trip_plan.to_json %>"<% end %>

@@ -1790,8 +1790,10 @@ fr:
         gps_noise_filtering: Filtrage du bruit GPS
         track_generation: Génération des trajets
         track_split_distance: Distance entre les trajets
+        track_split_distance_unit: m
         track_split_distance_hint: Commencer un nouveau trajet lorsque deux points successifs sont plus éloignés.
         track_split_time: Temps entre les trajets
+        track_split_time_unit: min
         track_split_time_hint: "Les intervalles plus longs créent un nouveau trajet et permettent aux voyages d’utiliser l’enregistrement d’un autre appareil. Après modification, choisissez « Recalculer » sur chaque voyage concerné pour actualiser le parcours et la distance enregistrés."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Masquer les
           lectures qui ne peuvent pas correspondre à une position réelle — sauts
