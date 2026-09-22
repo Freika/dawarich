@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Point uploads now accept Unix timestamps and return a validation error for malformed timestamps instead of failing internally.
 - Account deletion no longer fails when saved posters, route videos, flights, notes, service settings, or suggested-place links remain.
-- SMTP delivery now falls back to IPv4 when an SMTP host's IPv6 address is unreachable, integration URLs are checked against every address their host resolves to, and integration URLs with a bracketed IPv6 address such as `http://[fd00::5]:2283` are accepted (#3591).
+- SMTP delivery and other outgoing connections now use a host's IPv4 address when it has one, so they work on servers where IPv6 is configured but not routable. Integration URLs are checked against every address their host resolves to, and integration URLs with a bracketed IPv6 address such as `http://[fd00::5]:2283` are accepted (#3591).
 
 ## [1.15.1] - 2026-09-21, Berlin
 

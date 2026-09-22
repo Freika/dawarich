@@ -1,14 +1,17 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
-require 'resolv'
 
 RSpec.describe 'SMTP host resolution' do
-  it 'uses native resolution when the Ruby resolver returns an unreachable address' do
-    server = TCPServer.new('127.0.0.1', 0)
-    allow(Resolv).to receive(:getaddress).with('localhost').and_return('::1')
+  let(:host) { 'smtp.dual-stack.invalid' }
 
-    socket = Net::SMTP.new('localhost').send(:tcp_socket, 'localhost', server.local_address.ip_port)
+  before { Rails.cache.delete("dawarich/dns:#{host}") }
+
+  it 'connects over IPv4 when the host lists an unreachable IPv6 address first' do
+    server = TCPServer.new('127.0.0.1', 0)
+    allow(Resolv::DefaultResolver).to receive(:each_address).with(host).and_yield('::1').and_yield('127.0.0.1')
+
+    socket = Net::SMTP.new(host).send(:tcp_socket, host, server.local_address.ip_port)
 
     expect(socket.remote_address).to be_ipv4
   ensure
