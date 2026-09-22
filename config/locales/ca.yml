@@ -66,6 +66,8 @@ ca:
   activerecord:
     errors:
       models:
+        visit:
+          duplicate_place_start: "Ja existeix una visita per a aquest lloc i aquesta hora d'inici"
         service_setting:
           host_required: "%{provider} necessita un amfitrió. Introdueix el nom d'amfitrió de la teva instància, per exemple photon.example.com."
           host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals: sense prefix http://, sense espais."
@@ -4176,6 +4178,7 @@ ca:
       suggestions: Suggeriments
       suggestions_failed: No s'han pogut obtenir els suggeriments
       unavailable: Cerca no disponible
+      duplicate_visit: "Ja existeix una visita per a aquest lloc i aquesta hora d'inici"
       unknown_location: Ubicació desconeguda
       unnamed_location: Ubicació sense nom
       visits_load_failed: No s'han pogut carregar les visites d'aquesta ubicació

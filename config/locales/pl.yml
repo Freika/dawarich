@@ -66,6 +66,8 @@ pl:
   activerecord:
     errors:
       models:
+        visit:
+          duplicate_place_start: 'Wizyta w tym miejscu z tą godziną rozpoczęcia już istnieje'
         service_setting:
           host_required: "%{provider} wymaga hosta. Podaj nazwę hosta swojej instancji, na przykład photon.example.com."
           host_invalid: Host musi być samą nazwą hosta z opcjonalnym portem lub ścieżką — bez przedrostka http:// i bez spacji.
@@ -4233,6 +4235,7 @@ pl:
       suggestions: Sugestie
       suggestions_failed: Nie udało się pobrać sugestii
       unavailable: Wyszukiwanie niedostępne
+      duplicate_visit: 'Wizyta w tym miejscu z tą godziną rozpoczęcia już istnieje'
       unknown_location: Nieznana lokalizacja
       unnamed_location: Lokalizacja bez nazwy
       visits_load_failed: Nie udało się załadować wizyt dla tej lokalizacji

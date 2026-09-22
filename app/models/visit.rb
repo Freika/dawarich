@@ -2,7 +2,6 @@
 
 class Visit < ApplicationRecord
   DUPLICATE_PLACE_START_INDEX = 'idx_visits_user_started_at_place_unique'
-  DUPLICATE_PLACE_START_ERROR = 'A visit already exists for this place and start time'
 
   include Demoable
   include Notable
@@ -113,7 +112,7 @@ class Visit < ApplicationRecord
 
   def place_and_start_time_are_unique
     duplicate = Visit.unscoped.where(user_id:, started_at:, place_id:).where.not(id:).exists?
-    errors.add(:base, DUPLICATE_PLACE_START_ERROR) if duplicate
+    errors.add(:base, :duplicate_place_start) if duplicate
   end
 
   def center_from_points

@@ -23,6 +23,7 @@ RSpec.describe 'Updating a visit to a duplicate place', type: :request do
 
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.parsed_body.fetch('error')).to eq('A visit already exists for this place and start time')
+    expect(response.parsed_body.fetch('code')).to eq('duplicate_place_start')
     expect(visit.reload).to have_attributes(place_id: nil, status: 'suggested')
     expect(existing_visit.reload).to have_attributes(place_id: place.id, status: 'confirmed')
   end
@@ -40,5 +41,6 @@ RSpec.describe 'Updating a visit to a duplicate place', type: :request do
 
     expect(response).to have_http_status(:unprocessable_content)
     expect(response.parsed_body.fetch('error')).to eq('A visit already exists for this place and start time')
+    expect(response.parsed_body.fetch('code')).to eq('duplicate_place_start')
   end
 end

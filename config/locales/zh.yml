@@ -4245,6 +4245,7 @@ zh:
       suggestions: 建议
       suggestions_failed: 无法获取建议
       unavailable: 搜索不可用
+      duplicate_visit: '该地点在此开始时间已有一次访问'
       unknown_location: 未知位置
       unnamed_location: 未命名位置
       visits_load_failed: 无法加载此位置的到访记录
@@ -4617,6 +4618,8 @@ zh:
   activerecord:
     errors:
       models:
+        visit:
+          duplicate_place_start: '该地点在此开始时间已有一次访问'
         service_setting:
           host_required: '%{provider} 需要一个主机。请输入您实例的主机名，例如 photon.example.com。'
           host_invalid: 主机必须是纯主机名，可带端口或路径 — 不要 http:// 前缀，不要空格。

@@ -66,6 +66,8 @@ class Api::V1::VisitsController < ApiController
     end
 
     unless update_visit(visit, area: area)
+      return render_duplicate_place_start if visit.errors.added?(:base, :duplicate_place_start)
+
       return render json: { error: visit.errors.full_messages.to_sentence }, status: :unprocessable_content
     end
 
@@ -73,7 +75,7 @@ class Api::V1::VisitsController < ApiController
   rescue ActiveRecord::RecordNotUnique => e
     raise unless e.message.include?(Visit::DUPLICATE_PLACE_START_INDEX)
 
-    render json: { error: Visit::DUPLICATE_PLACE_START_ERROR }, status: :unprocessable_content
+    render_duplicate_place_start
   end
 
   def merge
@@ -206,6 +208,13 @@ class Api::V1::VisitsController < ApiController
 
   def bulk_update_params
     params.permit(:status, visit_ids: [])
+  end
+
+  def render_duplicate_place_start
+    render json: {
+      error: I18n.t('activerecord.errors.models.visit.duplicate_place_start'),
+      code: 'duplicate_place_start'
+    }, status: :unprocessable_content
   end
 
   def update_visit(visit, area: nil)

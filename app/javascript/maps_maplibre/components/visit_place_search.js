@@ -131,7 +131,7 @@ export class VisitPlaceSearch {
       }
       this.done()
     } catch (error) {
-      this.renderError(error.message)
+      this.renderError(error)
     }
   }
 
@@ -140,7 +140,7 @@ export class VisitPlaceSearch {
       await this.patchVisit({ area_id: area.id, status: "confirmed" })
       this.done()
     } catch (error) {
-      this.renderError(error.message)
+      this.renderError(error)
     }
   }
 
@@ -161,7 +161,7 @@ export class VisitPlaceSearch {
       })
       this.done()
     } catch (error) {
-      this.renderError(error.message)
+      this.renderError(error)
     }
   }
 
@@ -189,8 +189,11 @@ export class VisitPlaceSearch {
     })
     const data = await res.json().catch(() => ({}))
     if (!res.ok)
-      throw new Error(
-        data.error || `${method} ${url} failed with ${res.status}`,
+      throw Object.assign(
+        new Error(`${method} ${url} failed with ${res.status}`),
+        {
+          code: data.code,
+        },
       )
     return data
   }
@@ -276,9 +279,13 @@ export class VisitPlaceSearch {
       this.list.innerHTML = `<li class="px-3 py-2 text-xs text-base-content/60">${translate("search.searching")}</li>`
   }
 
-  renderError(message = translate("search.unavailable")) {
+  renderError(error) {
+    const key =
+      error?.code === "duplicate_place_start"
+        ? "search.duplicate_visit"
+        : "search.unavailable"
     if (this.list)
-      this.list.innerHTML = `<li class="px-3 py-2 text-xs text-error">${this.escape(message)}</li>`
+      this.list.innerHTML = `<li class="px-3 py-2 text-xs text-error">${this.escape(translate(key))}</li>`
   }
 
   escape(str) {

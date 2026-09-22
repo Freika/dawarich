@@ -32,25 +32,45 @@ globalThis.document = {
   },
 }
 
-test("API validation errors are shown by the visit place picker", async () => {
+test("a duplicate place and start time shows the translated duplicate message", async () => {
   const search = new VisitPlaceSearch(1, 0, 0, {})
   search.list = { innerHTML: "" }
   search.patchVisit = async () => {
-    throw new Error("A visit already exists for this place and start time")
+    throw Object.assign(new Error("A visit already exists"), {
+      code: "duplicate_place_start",
+    })
   }
 
   await search.selectArea({ id: 1 })
 
-  assert.match(search.list.innerHTML, /A visit already exists/)
+  assert.match(search.list.innerHTML, /search\.duplicate_visit/)
 })
 
-test("API error payloads become request errors", async () => {
+test("other failures keep the translated generic message instead of raw error text", async () => {
+  const search = new VisitPlaceSearch(1, 0, 0, {})
+  search.list = { innerHTML: "" }
+  search.patchVisit = async () => {
+    throw new Error("PATCH /api/v1/visits/1 failed with 500")
+  }
+
+  await search.selectArea({ id: 1 })
+
+  assert.match(search.list.innerHTML, /search\.unavailable/)
+  assert.doesNotMatch(search.list.innerHTML, /failed with/)
+})
+
+test("API error payloads keep their error code", async () => {
   globalThis.fetch = async () => ({
     ok: false,
     status: 422,
-    json: async () => ({ error: "Duplicate visit" }),
+    json: async () => ({
+      error: "Duplicate visit",
+      code: "duplicate_place_start",
+    }),
   })
   const search = new VisitPlaceSearch(1, 0, 0, {})
 
-  await assert.rejects(search.patchVisit({ place_id: 2 }), /Duplicate visit/)
+  await assert.rejects(search.patchVisit({ place_id: 2 }), {
+    code: "duplicate_place_start",
+  })
 })
