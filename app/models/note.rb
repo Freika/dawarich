@@ -23,10 +23,7 @@ class Note < ApplicationRecord
   validate :attachable_belongs_to_user
 
   scope :standalone, -> { where(attachable_id: nil) }
-  scope :attached, -> { where.not(attachable_id: nil) }
-  scope :for_trip_day, ->(trip, date) { where(attachable: trip).where('CAST(noted_at AS date) = ?', date) }
   scope :for_date, ->(date) { where('CAST(noted_at AS date) = ?', date) }
-  scope :in_date_range, ->(start_at, end_at) { where(noted_at: start_at..end_at) }
   scope :ordered, -> { order(noted_at: :desc) }
   scope :for_user, ->(user) { where(user: user) }
 
@@ -41,12 +38,6 @@ class Note < ApplicationRecord
 
   def date
     noted_at&.utc&.to_date
-  end
-
-  def date=(val)
-    return if val.blank?
-
-    self.noted_at = val.to_date.to_datetime.noon
   end
 
   def latitude
