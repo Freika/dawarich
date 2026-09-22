@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Point uploads now accept Unix timestamps and return a validation error for malformed timestamps instead of failing internally.
 - Account deletion no longer fails when saved posters, route videos, flights, notes, service settings, or suggested-place links remain.
 
 ## [1.15.1] - 2026-09-21, Berlin
