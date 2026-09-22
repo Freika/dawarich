@@ -153,7 +153,8 @@ RSpec.describe 'Admin::Settings' do
       expect(response.body).to include('data-testid="map-matching-example"')
       expect(response.body).to include('data-controller="map-matching-demo"')
       expect(response.body).to include('data-testid="map-matching-demo-map"')
-      expect(response.body).to include('Berlin · 2.6 km')
+      expect(response.body).to include('data-testid="map-matching-demo-source"')
+      expect(response.body).to include('Berlin · 2.8 km · Valhalla')
       expect(response.body).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.map_matching.privacy')))
     end
 
