@@ -8,7 +8,7 @@ module McpTools
     tool_name 'search_visits'
     title 'Search visits'
     description "Find the authenticated user's visits whose name, place, city, country or area matches " \
-                'a text query, newest first, with the total number of matches.'
+                "a text query, newest first, with the total number of matches. #{VISIT_STATUS_NOTE}"
     annotations(
       read_only_hint: true,
       destructive_hint: false,
@@ -29,7 +29,8 @@ module McpTools
           description: "Maximum number of visits to return; defaults to #{DEFAULT_LIMIT}."
         }
       },
-      required: %w[query]
+      required: %w[query],
+      additionalProperties: false
     )
     output_schema(
       type: 'object',

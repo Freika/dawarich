@@ -28,8 +28,7 @@ module Api
           version: APP_VERSION,
           instructions: "Use these read-only tools to inspect the authenticated user's own location history.",
           tools: TOOLS,
-          server_context: { user: current_api_user },
-          configuration: mcp_configuration
+          server_context: { user: current_api_user }
         )
 
         MCP::Server::Transports::StreamableHTTPTransport.new(
@@ -38,14 +37,6 @@ module Api
           enable_json_response: true,
           dns_rebinding_protection: false
         )
-      end
-
-      def mcp_configuration
-        MCP::Configuration.new(validate_tool_call_results: true).tap do |configuration|
-          configuration.exception_reporter = lambda do |exception, _context|
-            ExceptionReporter.call(exception, 'MCP request failed')
-          end
-        end
       end
     end
   end

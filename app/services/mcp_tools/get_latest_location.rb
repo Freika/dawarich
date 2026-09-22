@@ -11,7 +11,7 @@ module McpTools
       idempotent_hint: true,
       open_world_hint: false
     )
-    input_schema(properties: {})
+    input_schema(properties: {}, additionalProperties: false)
     output_schema(
       properties: {
         point: {

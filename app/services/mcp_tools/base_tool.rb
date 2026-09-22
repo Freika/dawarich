@@ -2,6 +2,9 @@
 
 module McpTools
   class BaseTool < MCP::Tool
+    VISIT_STATUS_NOTE = "Visit status 'confirmed' means the user confirmed the visit; " \
+                        "'suggested' means Dawarich detected it automatically and it is not confirmed yet."
+
     class << self
       private
 
@@ -13,12 +16,7 @@ module McpTools
       end
 
       def failure(message)
-        payload = { error: message }
-        MCP::Tool::Response.new(
-          [{ type: 'text', text: JSON.generate(payload) }],
-          error: true,
-          structured_content: payload
-        )
+        MCP::Tool::Response.new([{ type: 'text', text: message }], error: true)
       end
     end
   end

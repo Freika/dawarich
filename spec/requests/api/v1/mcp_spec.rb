@@ -102,6 +102,62 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
         'openWorldHint' => false
       )))
     end
+
+    it 'explains visit statuses in the visit tool descriptions' do
+      tools = rpc('tools/list').dig('result', 'tools').index_by { |tool| tool['name'] }
+
+      expect(tools.values_at('get_timeline', 'search_visits').pluck('description'))
+        .to all(include('suggested').and(include('confirmed')))
+    end
+
+    it 'tells the model not to add up journey continuation rows' do
+      tools = rpc('tools/list').dig('result', 'tools').index_by { |tool| tool['name'] }
+
+      expect(tools.dig('get_timeline', 'description')).to include('continuation_of_date')
+    end
+
+    {
+      'get_timeline' => { start_at: '2025-01-15', end_at: '2025-01-15' },
+      'get_latest_location' => {},
+      'search_visits' => { query: 'home' }
+    }.each do |tool_name, arguments|
+      it "returns a tool error for an unknown #{tool_name} argument" do
+        result = call_tool(tool_name, arguments.merge(timezone: 'UTC'))
+
+        expect(result.dig('result', 'isError')).to be(true)
+      end
+    end
+
+    it 'accepts DELETE as a no-op because the server keeps no sessions' do
+      delete '/api/v1/mcp', headers: headers
+
+      expect(response).to have_http_status(:ok)
+      expect(JSON.parse(response.body)).to eq('success' => true)
+    end
+
+    it 'answers GET with 405 because the server offers no event stream' do
+      get '/api/v1/mcp', headers: headers.merge('Accept' => 'text/event-stream')
+
+      expect(response).to have_http_status(:method_not_allowed)
+    end
+  end
+
+  describe 'error reporting' do
+    before { allow(Rails.logger).to receive(:error) }
+
+    it 'logs tool exceptions' do
+      allow(McpTools::GetLatestLocation).to receive(:call).and_raise(RuntimeError, 'tool exploded')
+
+      call_tool('get_latest_location', {})
+
+      expect(Rails.logger).to have_received(:error).with(a_string_including('tool exploded'))
+    end
+
+    it 'logs transport exceptions reported through the global MCP configuration' do
+      MCP.configuration.exception_reporter.call(RuntimeError.new('transport exploded'), { request: '{}' })
+
+      expect(Rails.logger).to have_received(:error).with(a_string_including('transport exploded'))
+    end
   end
 
   describe 'plan access on Dawarich Cloud' do
@@ -207,10 +263,19 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
       invalid = timeline(start_at: '')
       oversized = timeline(start_at: '2025-01-01', end_at: '2025-01-08')
       impossible = timeline(start_at: '2025-02-30T00:00:00Z', end_at: '2025-03-03T00:00:00Z')
+      reversed = timeline(start_at: '2025-01-10', end_at: '2025-01-09')
 
       expect(invalid.dig('result', 'isError')).to be(true)
       expect(oversized.dig('result', 'isError')).to be(true)
       expect(impossible.dig('result', 'isError')).to be(true)
+      expect(reversed.dig('result', 'isError')).to be(true)
+    end
+
+    it 'returns no days for a range without visits or journeys' do
+      result = timeline(start_at: '2024-06-01', end_at: '2024-06-02').fetch('result')
+
+      expect(result['isError']).to be(false)
+      expect(result['structuredContent']).to eq('days' => [])
     end
 
     it 'allows seven local calendar days across a DST transition' do
@@ -224,10 +289,33 @@ RSpec.describe 'Api::V1::Mcp', type: :request do
     it 'rejects a timeline with more than 250 entries' do
       insert_visits(250, started_at: day + 8.hours)
 
-      result = timeline
+      result = timeline.fetch('result')
 
-      expect(result.dig('result', 'isError')).to be(true)
-      expect(result.dig('result', 'structuredContent', 'error')).to include('more than 250 entries')
+      expect(result['isError']).to be(true)
+      expect(result.dig('content', 0, 'text')).to include('more than 250 entries')
+    end
+
+    it 'returns tool errors without structured content that would break the output schema' do
+      result = timeline(start_at: '2025-01-01', end_at: '2025-01-08').fetch('result')
+
+      expect(result['isError']).to be(true)
+      expect(result).not_to have_key('structuredContent')
+      expect(result.dig('content', 0, 'text')).to include('7 calendar days')
+    end
+
+    it 'reports the per-day share of a journey that continues past midnight' do
+      user.update!(settings: user.settings.merge('timezone' => 'UTC'))
+      create(:track, user: user, start_at: Time.utc(2025, 4, 27, 22), end_at: Time.utc(2025, 4, 28, 2),
+                     duration: 14_400, distance: 4000)
+
+      days = timeline(start_at: '2025-04-27', end_at: '2025-04-28').dig('result', 'structuredContent', 'days')
+      journeys = days.to_h do |timeline_day|
+        [timeline_day['date'], timeline_day['entries'].find { |entry| entry['type'] == 'journey' }]
+      end
+
+      expect(journeys['2025-04-27']).to include('continuation_of_date' => nil, 'duration_minutes' => 240.0)
+      expect(journeys['2025-04-28']).to include('continuation_of_date' => '2025-04-27',
+                                                'duration_minutes' => 120.0, 'distance' => 2.0)
     end
 
     it 'allows exactly 250 entries' do

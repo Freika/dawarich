@@ -38,6 +38,11 @@ module McpTools
         started_at: { type: 'string', format: 'date-time' },
         ended_at: { type: 'string', format: 'date-time' },
         duration_minutes: { type: 'number' },
+        continuation_of_date: {
+          type: %w[string null],
+          format: 'date',
+          description: 'Start date of a journey listed in full on that date; this row is its part after midnight.'
+        },
         place: { '$ref': '#/$defs/location' },
         area: { '$ref': '#/$defs/area' },
         distance: { type: 'number' },
@@ -129,8 +134,9 @@ module McpTools
 
       def serialize_journey(entry)
         {
-          duration_minutes: (entry.fetch(:duration).to_f / 60).round(1),
-          distance: entry.fetch(:distance).to_f,
+          continuation_of_date: entry[:continuation_of_date],
+          duration_minutes: ((entry[:day_duration] || entry.fetch(:duration)).to_f / 60).round(1),
+          distance: (entry[:day_distance] || entry.fetch(:distance)).to_f,
           distance_unit: entry.fetch(:distance_unit),
           dominant_mode: entry[:dominant_mode],
           average_speed: entry.fetch(:avg_speed).to_f,
