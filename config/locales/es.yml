@@ -1103,8 +1103,10 @@ es:
         gps_noise_filtering: Filtrado de ruido GPS
         track_generation: Generación de trayectos
         track_split_distance: Distancia entre trayectos
+        track_split_distance_unit: m
         track_split_distance_hint: Inicia un trayecto nuevo cuando los puntos consecutivos están más separados.
         track_split_time: Tiempo entre trayectos
+        track_split_time_unit: min
         track_split_time_hint: "Los intervalos más largos inician un trayecto nuevo y permiten usar la grabación de otro dispositivo en los viajes. Tras cambiar este valor, pulsa «Recalcular» en cada viaje afectado para actualizar la ruta y la distancia guardadas."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Ocultar lecturas que no pueden ser una posición real — saltos imposibles, coordenadas rotas. Desactiva para ver cada punto bruto.
         re_evaluate_past_data: Re-evaluar datos pasados
