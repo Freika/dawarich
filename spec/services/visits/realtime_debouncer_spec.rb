@@ -140,6 +140,24 @@ RSpec.describe Visits::RealtimeDebouncer do
       end
     end
 
+    context 'when Redis is unavailable' do
+      [
+        RedisClient::CannotConnectError,
+        RedisClient::ReadTimeoutError,
+        ConnectionPool::TimeoutError
+      ].each do |error_class|
+        it "skips scheduling when #{error_class} is raised" do
+          allow(Sidekiq).to receive(:redis_pool).and_raise(error_class, 'down')
+          allow(Rails.logger).to receive(:warn)
+
+          expect { debouncer.trigger }.not_to raise_error
+          expect(VisitSuggestingJob).not_to have_been_enqueued
+          expect(Rails.logger).to have_received(:warn)
+            .with(/event=visits.realtime_debounce_unavailable.*error=#{error_class}/)
+        end
+      end
+    end
+
     context 'when VisitSuggestingJob.perform_later raises' do
       let(:configured_job) { instance_double(ActiveJob::ConfiguredJob) }
 
