@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.15.2] - Unreleased
+
+### Fixed
+
+- Deploying a migration that adds a database column no longer interrupts in-flight requests or background jobs with stale prepared-statement errors.
+
 ## [1.15.1] - 2026-09-21, Berlin
 
 ### Fixed
