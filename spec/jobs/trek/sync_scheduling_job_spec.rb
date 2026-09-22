@@ -4,7 +4,7 @@ require 'rails_helper'
 
 RSpec.describe Trek::SyncSchedulingJob, type: :job do
   before do
-    allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+    stub_host_addresses('trek.example.test', '93.184.216.34')
   end
 
   it 'enqueues one job for each active TREK source' do

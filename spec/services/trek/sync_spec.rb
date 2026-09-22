@@ -50,7 +50,7 @@ RSpec.describe Trek::Sync do
   end
 
   before do
-    allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+    stub_host_addresses('trek.example.test', '93.184.216.34')
   end
 
   describe '#import!' do
