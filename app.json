@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "dokku": {
-      "predeploy": "bundle exec rails db:migrate && bundle exec rake achievements:backfill"
+      "predeploy": "bundle exec rails db:migrate"
     }
   },
   "healthchecks": {

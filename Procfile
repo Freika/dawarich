@@ -1,3 +1,3 @@
-release: bundle exec rails db:migrate && bundle exec rake achievements:backfill
+release: bundle exec rails db:migrate
 web: bundle exec puma -C config/puma.rb
 worker: bundle exec sidekiq -C config/sidekiq.yml
