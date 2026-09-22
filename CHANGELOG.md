@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [1.15.2] - Unreleased
 
+### Added
+
+- Add an experimental read-only MCP endpoint at `/api/v1/mcp` for Pro and Family plans (and every self-hosted user), authenticated with the existing API key as a bearer token. MCP clients can read a timeline of up to 7 days, the latest location, and search visits by place, city, country or area name. See the [MCP documentation](https://dawarich.app/docs/features/mcp).
+
 ### Fixed
 
 - Point uploads now accept Unix timestamps and return a validation error for malformed timestamps instead of failing internally.
