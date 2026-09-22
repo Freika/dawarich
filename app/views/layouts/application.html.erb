@@ -11,6 +11,7 @@
 
     <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
+    <%= achievement_stylesheet_tags if achievements_visible? %>
     <% if ENV['POSTHOG_ENABLED'] == 'true' %>
       <%= javascript_include_tag "posthog", "data-turbo-track": "reload" %>
     <% end %>
@@ -78,5 +79,6 @@
     <%# auto_open: false — non-map pages keep the dialog only for the navbar's
         manual "Getting started" trigger; it never pops open on load (N1). %>
     <%= render 'map/onboarding_modal', auto_open: false %>
+    <%= render 'layouts/achievement_unlock_host' %>
   </body>
 </html>

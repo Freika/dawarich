@@ -42,6 +42,8 @@ class Users::Destroy
       user.posters.destroy_all
       user.route_videos.destroy_all
       user.notifications.delete_all
+      user.achievement_progresses.delete_all
+      user.user_achievements.delete_all
       user.flights.delete_all
       user.notes.delete_all
       user.service_settings.delete_all

@@ -10,11 +10,37 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_19_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_22_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
   enable_extension "postgis"
+
+  create_table "achievement_progresses", force: :cascade do |t|
+    t.string "achievement_key", null: false
+    t.datetime "created_at", null: false
+    t.boolean "sharing_enabled", default: false, null: false
+    t.string "sharing_uuid"
+    t.jsonb "state", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["sharing_uuid"], name: "index_achievement_progresses_on_sharing_uuid", unique: true
+    t.index ["user_id", "achievement_key"], name: "index_achievement_progresses_on_user_id_and_achievement_key", unique: true
+  end
+
+  create_table "achievement_unlock_events", force: :cascade do |t|
+    t.string "claim_token"
+    t.datetime "claimed_at"
+    t.datetime "created_at", null: false
+    t.string "key", null: false
+    t.string "kind", null: false
+    t.datetime "seen_at"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "id"], name: "index_achievement_unlock_events_pending", where: "(seen_at IS NULL)"
+    t.index ["user_id", "kind", "key"], name: "index_achievement_unlock_events_on_user_kind_key", unique: true
+    t.index ["user_id"], name: "index_achievement_unlock_events_on_user_id"
+  end
 
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
@@ -536,6 +562,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_190000) do
     t.index ["user_id"], name: "index_posters_on_user_id"
   end
 
+  create_table "regions", force: :cascade do |t|
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.geometry "geom", limit: {srid: 4326, type: "multi_polygon"}, null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_regions_on_code", unique: true
+    t.index ["geom"], name: "index_regions_on_geom", using: :gist
+  end
+
   create_table "route_videos", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "expired_at"
@@ -724,6 +759,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_190000) do
     t.index ["user_id"], name: "index_trips_on_user_id"
   end
 
+  create_table "user_achievements", force: :cascade do |t|
+    t.string "achievement_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "earned_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "achievement_key"], name: "index_user_achievements_on_user_id_and_achievement_key", unique: true
+  end
+
   create_table "users", force: :cascade do |t|
     t.datetime "active_until"
     t.boolean "admin", default: false
@@ -810,6 +855,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_190000) do
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 
+  add_foreign_key "achievement_progresses", "users"
+  add_foreign_key "achievement_unlock_events", "users", on_delete: :cascade
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
@@ -853,6 +900,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_190000) do
   add_foreign_key "trip_sources", "users"
   add_foreign_key "trips", "trip_sources"
   add_foreign_key "trips", "users"
+  add_foreign_key "user_achievements", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"
