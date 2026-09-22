@@ -39,6 +39,7 @@ class Points::Move
     result = move_in_transaction
     publish(result)
     enqueue_stats_recalculation(result.point)
+    schedule_achievements_check(result.point)
     instrument(:success, started_at, result)
     result
   rescue StaleEdit => e
@@ -142,6 +143,18 @@ class Points::Move
     )
     record_post_commit_failure('stats')
     report_post_commit_failure(e, 'Failed to enqueue stats recalculation for committed map edit')
+  end
+
+  def schedule_achievements_check(point)
+    return unless Flipper.enabled?(:achievements)
+
+    Achievements::CheckJob.schedule(user.id, oldest_timestamp: point.timestamp)
+  rescue StandardError => e
+    Rails.logger.error(
+      "event=point_move.post_commit_failed operation=achievements error_class=#{e.class} point_id=#{point.id}"
+    )
+    record_post_commit_failure('achievements')
+    report_post_commit_failure(e, 'Failed to schedule achievements check for committed map edit')
   end
 
   def instrument(outcome, started_at, result = nil)
