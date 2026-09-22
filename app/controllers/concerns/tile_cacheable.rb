@@ -159,7 +159,7 @@ module TileCacheable
   # Same bounds and zone semantics as SafeTimestampParser — keeps the ETag
   # window identical to the query window and caps TileEpoch's year-key fan-out.
   def clamp_timestamp(value)
-    value.clamp(Time.zone.parse('1970-01-01').to_i, Time.zone.parse('2100-01-01').to_i)
+    value.clamp(Time.utc(1970, 1, 1).to_i, Time.utc(2100, 1, 1).to_i)
   end
 
   # Postgres bytea arrives hex-encoded, MapLibre needs raw protobuf bytes

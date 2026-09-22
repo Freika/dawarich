@@ -158,6 +158,18 @@ RSpec.describe 'Api::V1::Tiles::Points', type: :request do
                        longitude: 0.0, latitude: 0.0, lonlat: 'POINT(0 0)')
       end
 
+      it 'keys a pre-epoch start on the same window the query uses for a non-UTC user' do
+        user.update!(settings: user.settings.merge('timezone' => 'Europe/Berlin'))
+        end_at = Time.utc(2024, 12, 31).to_i.to_s
+        get path, params: { api_key: user.api_key, start_at: '1969-12-31T23:30:00Z', end_at: }
+        pre_epoch_etag = response.headers['ETag']
+
+        get path, params: { api_key: user.api_key, start_at: '1970-01-01T00:00:00Z', end_at: }
+
+        expect(pre_epoch_etag).to be_present
+        expect(pre_epoch_etag).to eq(response.headers['ETag'])
+      end
+
       it 'serves cacheable responses and honors conditional revalidation' do
         get path, params: cached_params
 
