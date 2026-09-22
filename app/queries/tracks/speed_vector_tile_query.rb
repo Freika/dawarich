@@ -36,15 +36,13 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
     return super if z < MIN_SPEED_ZOOM
 
     <<~SQL
-      WITH candidates AS MATERIALIZED (
-        SELECT * FROM (#{tile_scope.to_sql}) AS tracks
-        WHERE ST_Intersects(tracks.original_path, ST_Transform(#{margined_envelope}, 4326))
-      )#{import_paths_cte}, geometries AS MATERIALIZED (
+      WITH #{candidates_cte}#{clipped_paths_cte}, geometries AS MATERIALIZED (
         SELECT tracks.id,
           ROUND(segments.segment_speed::numeric)::double precision AS segment_speed,
-          #{speed_geometry_expression} AS geom
+          CASE WHEN tracks.clipped THEN segments.path
+            ELSE COALESCE(segments.path, tracks.original_path) END AS geom
         FROM candidates AS tracks
-        #{segment_join} LATERAL (#{segments_sql}) AS segments ON true
+        LEFT JOIN LATERAL (#{segments_sql}) AS segments ON true
       ), grouped_segments AS (
         SELECT id, segment_speed, ST_Collect(geom) AS geom
         FROM geometries
@@ -56,34 +54,39 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
                        #{EXTENT}, #{BUFFER}, true) AS geom
         FROM grouped_segments
       ), features AS (
-        SELECT #{@clip_points_scope ? import_property_columns : property_columns}, projected.segment_speed, projected.geom
+        SELECT #{property_columns}, projected.segment_speed, projected.geom
         FROM projected JOIN candidates AS tracks USING (id)
-        #{'JOIN import_paths AS import_path USING (id)' if @clip_points_scope}
-        WHERE projected.geom IS NOT NULL
+        WHERE projected.geom IS NOT NULL AND NOT tracks.clipped
+        #{clipped_features_sql}
         LIMIT #{tile_feature_limit}
       )
     SQL
   end
 
-  def import_paths_cte
+  def clipped_paths_cte
     return '' unless @clip_points_scope
 
     <<~SQL
-      , import_paths AS MATERIALIZED (
-        SELECT tracks.id, import_path.path, import_path.start_timestamp, import_path.end_timestamp
+      , clipped_paths AS MATERIALIZED (
+        SELECT tracks.id, clipped_path.path, clipped_path.start_timestamp, clipped_path.end_timestamp
         FROM candidates AS tracks
-        JOIN LATERAL (#{import_geometry_query.path_sql(track_id_sql: 'tracks.id')}) AS import_path
-          ON import_path.path IS NOT NULL
+        JOIN LATERAL (#{point_geometry_query.path_sql(track_id_sql: 'tracks.id')}) AS clipped_path
+          ON clipped_path.path IS NOT NULL
+        WHERE tracks.clipped
       )
     SQL
   end
 
-  def speed_geometry_expression
-    @clip_points_scope ? 'segments.path' : 'COALESCE(segments.path, tracks.original_path)'
-  end
+  def clipped_features_sql
+    return '' unless @clip_points_scope
 
-  def segment_join
-    @clip_points_scope ? 'JOIN' : 'LEFT JOIN'
+    <<~SQL
+      UNION ALL
+      SELECT #{clipped_property_columns}, projected.segment_speed, projected.geom
+      FROM projected JOIN candidates AS tracks USING (id)
+      JOIN clipped_paths AS clipped_path USING (id)
+      WHERE projected.geom IS NOT NULL AND tracks.clipped
+    SQL
   end
 
   # Compute neighbors before clipping: even two off-screen endpoints can have
@@ -105,6 +108,7 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
         FROM (#{point_scope_sql}) AS points
         WHERE points.track_id = tracks.id
           AND points.timestamp BETWEEN EXTRACT(EPOCH FROM tracks.start_at)::bigint AND EXTRACT(EPOCH FROM tracks.end_at)::bigint
+          #{clip_range_predicate}
         WINDOW sequence AS (ORDER BY points.timestamp, points.id)
       ) AS ordered_points
       WHERE previous_position IS NOT NULL
@@ -116,5 +120,11 @@ class Tracks::SpeedVectorTileQuery < Tracks::VectorTileQuery
     @points_scope.except(:select, :order, :includes, :preload, :eager_load)
                  .where.not(lonlat: nil)
                  .select(:id, :track_id, :timestamp, :lonlat, :import_id).to_sql
+  end
+
+  def clip_range_predicate
+    return '' unless @clip_start_at && @clip_end_at
+
+    "AND points.timestamp BETWEEN #{@clip_start_at} AND #{@clip_end_at}"
   end
 end
