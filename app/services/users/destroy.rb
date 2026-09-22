@@ -40,9 +40,11 @@ class Users::Destroy
       user.stats.delete_all
       user.exports.delete_all
       user.posters.destroy_all
+      user.route_videos.destroy_all
       user.notifications.delete_all
       user.flights.delete_all
       user.notes.delete_all
+      user.service_settings.delete_all
 
       # Delete place_visits BEFORE visits and places
       PlaceVisit.where(visit_id: user.visits.select(:id)).delete_all

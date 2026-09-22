@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Account deletion no longer fails when saved posters, flights, notes, or suggested-place links remain.
+- Account deletion no longer fails when saved posters, route videos, flights, notes, service settings, or suggested-place links remain.
 
 ## [1.15.1] - 2026-09-21, Berlin
 

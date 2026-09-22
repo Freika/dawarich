@@ -166,6 +166,8 @@ RSpec.describe Users::Destroy do
     context 'with other FK-backed user records missing from the cleanup list' do
       let!(:flight) { create(:flight, user:) }
       let!(:note) { create(:note, user:) }
+      let!(:route_video) { create(:route_video, :with_file, user:) }
+      let!(:service_setting) { create(:service_setting, user:) }
 
       it 'deletes the records before the user' do
         user_id = user.id
@@ -177,6 +179,16 @@ RSpec.describe Users::Destroy do
         expect(User.unscoped.where(id: user_id)).not_to exist
         expect(Flight.where(id: flight_id)).not_to exist
         expect(Note.where(id: note_id)).not_to exist
+      end
+
+      it 'deletes route videos with their files and service settings' do
+        blob_id = route_video.file.blob_id
+
+        expect { perform_enqueued_jobs { service.call } }.not_to raise_error
+
+        expect(RouteVideo.where(id: route_video.id)).not_to exist
+        expect(ActiveStorage::Blob.where(id: blob_id)).not_to exist
+        expect(ServiceSetting.where(id: service_setting.id)).not_to exist
       end
     end
 
