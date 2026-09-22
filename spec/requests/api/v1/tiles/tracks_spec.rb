@@ -164,30 +164,29 @@ RSpec.describe 'Api::V1::Tiles::Tracks', type: :request do
         expect(statements.grep(/MIN\(start_at\).*MAX\(end_at\)/i)).to be_empty
       end
 
-      it 'invalidates import geometry when a selected point outside the requested year changes' do
+      it 'does not invalidate clipped import geometry when a Point outside the range changes' do
         selected_import = create(:import, user:)
         track = create_track_near_origin(user, start_at: Time.utc(2024, 12, 31, 23, 59, 50),
-                                              end_at: Time.utc(2025, 1, 1, 0, 0, 10),
-                                              original_path: 'LINESTRING(0.001 0.001, 0.002 0.001)')
+                                              end_at: Time.utc(2025, 1, 1, 0, 0, 20),
+                                              original_path: 'LINESTRING(0.001 0.001, 0.0015 0.001, 0.002 0.001)')
         endpoint = create(:point, user:, track:, import: selected_import, longitude: 0.001,
                                   latitude: 0.001, timestamp: track.start_at.to_i)
+        create(:point, user:, track:, import: selected_import, longitude: 0.0015,
+                       latitude: 0.001, timestamp: Time.utc(2025, 1, 1, 0, 0, 5).to_i)
         create(:point, user:, track:, import: selected_import, longitude: 0.002,
-                       latitude: 0.001, timestamp: track.end_at.to_i)
+                       latitude: 0.001, timestamp: Time.utc(2025, 1, 1, 0, 0, 10).to_i)
         tile_path = '/api/v1/tiles/tracks/15/16384/16383.mvt'
         params = { api_key: user.api_key, import_id: selected_import.id,
                    start_at: '2025-01-01T00:00:00Z', end_at: '2025-01-02T00:00:00Z' }
         get tile_path, params: params
         expect(response).to have_http_status(:ok)
         etag = response.headers['ETag']
-        original_tile = response.body.b
-
         patch "/api/v1/points/#{endpoint.id}",
               params: { api_key: user.api_key, point: { longitude: 0.0015, latitude: 0.001 } }
         expect(response).to have_http_status(:ok)
         get tile_path, params:, headers: { 'If-None-Match' => etag }
 
-        expect(response).to have_http_status(:ok)
-        expect(response.body.b).not_to eq(original_tile)
+        expect(response).to have_http_status(:not_modified)
       end
 
       it 'separates speed tiles and invalidates them when their points change' do
@@ -218,13 +217,16 @@ RSpec.describe 'Api::V1::Tiles::Tracks', type: :request do
         expect(response.body.b).not_to eq(original_tile)
       end
 
-      it 'invalidates an overlapping track when a point outside the requested year is edited' do
+      it 'does not invalidate a clipped speed tile when a Point outside the range changes' do
         track = create_track_near_origin(user, start_at: Time.utc(2024, 12, 31, 23, 59, 50),
-                                              end_at: Time.utc(2025, 1, 1, 0, 0, 10),
-                                              original_path: 'LINESTRING(0.001 0.001, 0.002 0.001)')
+                                              end_at: Time.utc(2025, 1, 1, 0, 0, 20),
+                                              original_path: 'LINESTRING(0.001 0.001, 0.0015 0.001, 0.002 0.001)')
         endpoint = create(:point, user:, track:, longitude: 0.001, latitude: 0.001,
                                   timestamp: track.start_at.to_i)
-        create(:point, user:, track:, longitude: 0.002, latitude: 0.001, timestamp: track.end_at.to_i)
+        create(:point, user:, track:, longitude: 0.0015, latitude: 0.001,
+                       timestamp: Time.utc(2025, 1, 1, 0, 0, 5).to_i)
+        create(:point, user:, track:, longitude: 0.002, latitude: 0.001,
+                       timestamp: Time.utc(2025, 1, 1, 0, 0, 10).to_i)
         params = { api_key: user.api_key, speed_coloring: 'true',
                    start_at: '2025-01-01T00:00:00Z', end_at: '2025-01-02T00:00:00Z' }
         tile_path = '/api/v1/tiles/tracks/15/16384/16383.mvt'
@@ -237,11 +239,15 @@ RSpec.describe 'Api::V1::Tiles::Tracks', type: :request do
         expect(response).to have_http_status(:ok)
         get tile_path, params:, headers: { 'If-None-Match' => etag }
 
-        expect(response).to have_http_status(:ok)
+        expect(response).to have_http_status(:not_modified)
       end
 
       it 'serves cacheable responses, honors ETags, and invalidates on track writes' do
-        create_track_near_origin
+        track = create_track_near_origin
+        create(:point, user:, track:, longitude: 0.001, latitude: 0.001,
+                       timestamp: track.start_at.to_i)
+        create(:point, user:, track:, longitude: 20, latitude: 20,
+                       timestamp: track.start_at.to_i + 10)
 
         get path, params: range.merge(api_key: user.api_key)
         expect(response).to have_http_status(:ok)
