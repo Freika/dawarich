@@ -239,7 +239,7 @@
       </div>
     <% else %>
       <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
-        <li><%= link_to t('.login'), new_user_session_path %></li>
+        <li><%= link_to t('.login'), new_user_session_path, data: { turbo: false } %></li>
         <% if !SELF_HOSTED && defined?(devise_mapping) && devise_mapping&.registerable? %>
           <li><%= link_to t('.register'), new_user_registration_path %></li>
         <% end %>

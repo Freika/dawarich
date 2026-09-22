@@ -12,7 +12,7 @@
             <%= link_to t('.sign_up'), new_user_registration_path, class: "rounded-lg py-3 px-5 my-3 bg-blue-600 text-white block font-medium" %>
             <div class="divider"><%= t('.or') %></div>
           <% end %>
-          <%= link_to t('.sign_in'), new_user_session_path, class: "rounded-lg py-3 px-5 bg-neutral text-neutral-content block font-medium" %>
+          <%= link_to t('.sign_in'), new_user_session_path, class: "rounded-lg py-3 px-5 bg-neutral text-neutral-content block font-medium", data: { turbo: false } %>
         </div>
       </div>
     </div>
