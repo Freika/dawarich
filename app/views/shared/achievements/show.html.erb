@@ -1,5 +1,6 @@
 <% content_for :title, "#{@set.name} — Dawarich" %>
 <% content_for :head do %>
+  <%= achievement_stylesheet_tags %>
   <meta property="og:title" content="<%= @set.name %> — Dawarich">
   <meta property="og:description" content="<%= t('achievements.public.social_description', progress: t("achievements.cards.metric.#{@set.level == :country ? 'countries' : 'regions'}", count: @set.display_count, total: @set.target)) %>">
   <meta property="og:type" content="website">

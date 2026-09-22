@@ -1,6 +1,16 @@
 # frozen_string_literal: true
 
 module AchievementsHelper
+  ACHIEVEMENT_STYLESHEETS = %w[achievements achievements_spectral achievements_unlocks].freeze
+
+  def achievements_visible?
+    user_signed_in? && Flipper.enabled?(:achievements)
+  end
+
+  def achievement_stylesheet_tags
+    stylesheet_link_tag(*ACHIEVEMENT_STYLESHEETS, 'data-turbo-track': 'reload')
+  end
+
   def achievement_status_options(set)
     statuses = %w[all unlocked]
     statuses << 'in_progress' if set.level == :country

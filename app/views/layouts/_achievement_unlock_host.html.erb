@@ -1,4 +1,4 @@
-<% if user_signed_in? && Flipper.enabled?(:achievements) %>
+<% if achievements_visible? %>
   <%= tag.div id: 'achievement-unlocks', class: 'ach-unlock-host', aria: { live: 'polite' },
               data: { controller: 'achievement-unlocks',
                       achievement_unlocks_user_id_value: current_user.id,
