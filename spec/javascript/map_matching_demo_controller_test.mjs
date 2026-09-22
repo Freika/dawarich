@@ -108,6 +108,47 @@ test("the route switch updates the map and pressed state", async () => {
   assert.deepEqual(paintChanges.at(-1), {
     layer: "map-matching-demo-matched",
     property: "line-opacity",
-    value: 0,
+    value: 0.35,
   })
+})
+
+test("both paths remain visible while matched mode is selected", async () => {
+  const { default: MapMatchingDemoController } = await loadController()
+  const controller = new MapMatchingDemoController()
+  const paintChanges = []
+  controller.buttonTargets = []
+  controller.routeReady = true
+  controller.map = {
+    setPaintProperty(layer, property, value) {
+      paintChanges.push({ layer, property, value })
+    },
+  }
+
+  controller.showMode("matched")
+
+  assert.deepEqual(
+    paintChanges.filter(({ property }) => property === "line-opacity"),
+    [
+      {
+        layer: "map-matching-demo-original-halo",
+        property: "line-opacity",
+        value: 0,
+      },
+      {
+        layer: "map-matching-demo-original",
+        property: "line-opacity",
+        value: 0.9,
+      },
+      {
+        layer: "map-matching-demo-matched-halo",
+        property: "line-opacity",
+        value: 0.9,
+      },
+      {
+        layer: "map-matching-demo-matched",
+        property: "line-opacity",
+        value: 1,
+      },
+    ],
+  )
 })

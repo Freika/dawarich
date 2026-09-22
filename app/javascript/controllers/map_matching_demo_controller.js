@@ -146,22 +146,22 @@ export default class extends Controller {
     this.map.setPaintProperty(
       "map-matching-demo-original-halo",
       "line-opacity",
-      showingOriginal ? 0.85 : 0.28,
+      showingOriginal ? 0.85 : 0,
     )
     this.map.setPaintProperty(
       "map-matching-demo-original",
       "line-opacity",
-      showingOriginal ? 1 : 0.42,
+      showingOriginal ? 1 : 0.9,
     )
     this.map.setPaintProperty(
       "map-matching-demo-matched-halo",
       "line-opacity",
-      showingOriginal ? 0 : 0.9,
+      showingOriginal ? 0.25 : 0.9,
     )
     this.map.setPaintProperty(
       "map-matching-demo-matched",
       "line-opacity",
-      showingOriginal ? 0 : 1,
+      showingOriginal ? 0.35 : 1,
     )
   }
 
@@ -205,17 +205,6 @@ export default class extends Controller {
       },
     })
 
-    this.addRouteLayer("original-halo", "original", {
-      "line-color": "#ffffff",
-      "line-width": 9,
-      "line-opacity": 0.28,
-    })
-    this.addRouteLayer("original", "original", {
-      "line-color": "#f59e0b",
-      "line-width": 5,
-      "line-dasharray": [1.1, 1.1],
-      "line-opacity": 0.42,
-    })
     this.addRouteLayer("matched-halo", "matched", {
       "line-color": "#ffffff",
       "line-width": 9,
@@ -225,6 +214,20 @@ export default class extends Controller {
       "line-color": "#0d9488",
       "line-width": 5,
       "line-opacity": 1,
+    })
+    // Draw the dashed recording last so it remains visible where the two
+    // paths overlap. The buttons change emphasis, not visibility, which makes
+    // the before/after comparison readable without an extra interaction.
+    this.addRouteLayer("original-halo", "original", {
+      "line-color": "#ffffff",
+      "line-width": 8,
+      "line-opacity": 0,
+    })
+    this.addRouteLayer("original", "original", {
+      "line-color": "#f59e0b",
+      "line-width": 4,
+      "line-dasharray": [1.1, 1.1],
+      "line-opacity": 0.9,
     })
     this.map.addLayer({
       id: "map-matching-demo-endpoints",
