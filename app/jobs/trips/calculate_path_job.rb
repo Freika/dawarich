@@ -17,7 +17,7 @@ class Trips::CalculatePathJob < ApplicationJob
 
   def perform(trip_id, run_token = nil)
     trip, placeholder_shown = Trip.transaction do
-      record = Trip.joins(:user).lock.find(trip_id)
+      record = Trip.joins(:user).lock('FOR UPDATE OF trips').find(trip_id)
       blank_path = record.path.blank?
       record.calculate_path
       record.save!

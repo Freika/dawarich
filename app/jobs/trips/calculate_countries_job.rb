@@ -19,7 +19,7 @@ class Trips::CalculateCountriesJob < ApplicationJob
 
   def perform(trip_id, distance_unit, run_token = nil)
     trip = Trip.transaction do
-      Trip.joins(:user).lock.find(trip_id).tap do |record|
+      Trip.joins(:user).lock('FOR UPDATE OF trips').find(trip_id).tap do |record|
         record.calculate_countries
         record.save!
       end
