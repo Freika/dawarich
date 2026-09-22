@@ -40,6 +40,15 @@ RSpec.describe 'Api::V1::Flights', type: :request do
     expect(response.parsed_body['features'].size).to eq(1)
   end
 
+  it 'returns a flight without a departure time when the range covers its date' do
+    create(:flight, user: user, departure_time: nil, arrival_time: nil, flight_date: Date.new(2026, 4, 20))
+    create(:flight, user: user, departure_time: nil, arrival_time: nil, flight_date: Date.new(2026, 1, 15))
+
+    get '/api/v1/flights', params: { api_key: user.api_key, start_at: '2026-04-19', end_at: '2026-04-22' }
+
+    expect(response.parsed_body['features'].size).to eq(1)
+  end
+
   it 'excludes flights without airport coordinates' do
     create(:flight, user: user)
     create(:flight, user: user, from_lat: nil, from_lon: nil)

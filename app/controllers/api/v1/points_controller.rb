@@ -94,6 +94,9 @@ class Api::V1::PointsController < ApiController
     sanitized = points.map { |row| row.to_h.except('xmax') }
 
     render json: { data: sanitized }
+  rescue Points::TimestampParser::InvalidTimestampError => e
+    Rails.logger.warn("Point validation failed: #{e.message}")
+    render json: { error: e.message }, status: :unprocessable_content
   rescue StandardError => e
     Rails.logger.error("Point creation failed: #{e.class}: #{e.message}")
     Sentry.capture_exception(e) if defined?(Sentry)

@@ -4,10 +4,11 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.15.1] - Unreleased
+## [1.15.2] - Unreleased
 
 ### Added
 
+- Add an experimental read-only MCP endpoint at `/api/v1/mcp` for Pro and Family plans (and every self-hosted user), authenticated with the existing API key as a bearer token. MCP clients can read a timeline of up to 7 days, the latest location, and search visits by place, city, country or area name. See the [MCP documentation](https://dawarich.app/docs/features/mcp).
 - Exploration achievements: every country gets a collectible card, and 183 of them a grid of their first-level regions. A region counts as explored once time spent inside it passes your "minimum minutes spent in city" setting, so pass-throughs don't count. Earned regions are never revoked. Behind the `achievements` feature flag. (#3121)
 - Exploration achievements work through existing location history without notifications — before launch on Cloud, once the feature is enabled on self-hosted instances — and public cards show set progress and unlock dates only. (#3121)
 - Achievement cards support HTTP self-hosted installations, use the user's timezone for unlock dates and refresh after dwell-threshold changes. (#3121)
@@ -15,8 +16,18 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Updating a point's coordinates through `PUT /api/v1/points/:id` refreshes its country and looks its address up again, as moving it on the map already does, instead of keeping the old city. (#3121)
+- Point uploads now accept Unix timestamps and return a validation error for malformed timestamps instead of failing internally.
+- Account deletion no longer fails when saved posters, route videos, flights, notes, service settings, or suggested-place links remain.
+
+## [1.15.1] - 2026-09-21, Berlin
+
+### Fixed
+
+- Map track lines, including the highlight shown after clicking a track, now respect the selected date range, so Today and custom searches no longer show portions of overlapping tracks from outside that range. (#3679)
 - A position far off your route is now flagged as an anomaly even when the tracking app uploads one point at a time: it is judged again once the next point arrives, instead of staying on the map until the anomaly filter is re-applied. (#3664)
 - The family map no longer draws a member's points that were flagged as anomalies: their history trail, their "last seen" marker and the locations sent to OwnTracks friends skip them, as the member's own map already does. (#3663)
+- Opening monthly insights no longer fails when concurrent requests create the same digest.
+- Immich photo enrichment now interpolates positions along the globe instead of across flat latitude/longitude coordinates, so photos taken near a pole or the antimeridian receive the correct location (#3262)
 
 ## [1.15.0] - 2026-09-20, Berlin
 
