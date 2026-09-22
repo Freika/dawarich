@@ -45,6 +45,37 @@ RSpec.describe Users::Digests::CalculateMonth do
         cities = digest.time_spent_by_location['cities']
         expect(cities).to include('name' => 'Madrid', 'minutes' => 600)
       end
+
+      it 'recovers when another calculation creates the digest first' do
+        attempts = 0
+
+        allow_any_instance_of(Users::Digest).to receive(:save!).and_wrap_original do |original, *args|
+          attempts += 1
+
+          if attempts == 1
+            Users::Digest.insert_all!(
+              [
+                {
+                  user_id: user.id,
+                  year: year,
+                  month: month,
+                  period_type: Users::Digest.period_types[:monthly],
+                  sharing_uuid: SecureRandom.uuid,
+                  created_at: Time.current,
+                  updated_at: Time.current
+                }
+              ]
+            )
+            original.receiver.errors.add(:year, :taken)
+            raise ActiveRecord::RecordInvalid, original.receiver
+          end
+
+          original.call(*args)
+        end
+
+        expect(calculate_digest).to be_persisted
+        expect(user.digests.monthly.where(year: year, month: month).count).to eq(1)
+      end
     end
 
     context 'when the user is on the Lite cloud plan' do
