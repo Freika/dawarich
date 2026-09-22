@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.15.2] - Unreleased
+
+### Fixed
+
+- Real-time track generation now retries transient database failures before reporting a failure.
+
 ## [1.15.1] - 2026-09-21, Berlin
 
 ### Fixed
