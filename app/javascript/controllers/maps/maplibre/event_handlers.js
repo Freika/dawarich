@@ -437,8 +437,10 @@ export class EventHandlers {
     generation = this._trackSelectionGeneration,
   ) {
     try {
-      const trackFeature =
-        await this.controller.api.fetchTrackWithSegments(trackId)
+      const trackFeature = await this.controller.api.fetchTrackWithSegments(
+        trackId,
+        { ...this.controller.layerManager?.pointTileRange },
+      )
       if (
         generation !== this._trackSelectionGeneration ||
         this.selectedTrackFeature !== fullFeature
