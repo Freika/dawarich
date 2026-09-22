@@ -848,7 +848,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_19_190000) do
   add_foreign_key "stats", "users"
   add_foreign_key "taggings", "tags"
   add_foreign_key "tags", "users"
-  add_foreign_key "track_segments", "tracks"
+  add_foreign_key "track_segments", "tracks", on_delete: :cascade
   add_foreign_key "tracks", "users"
   add_foreign_key "trip_sources", "users"
   add_foreign_key "trips", "trip_sources"

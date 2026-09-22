@@ -34,6 +34,7 @@ class Tracks::Merger
     return false if invalid_merge?
 
     ActiveRecord::Base.transaction do
+      [@older_track, @newer_track].sort_by(&:id).each(&:lock!)
       # Auto segments are regenerated after the merge. Time-anchored corrected
       # segments survive (they are valid regardless of track boundaries);
       # legacy index-anchored ones cannot be trusted across a merge.

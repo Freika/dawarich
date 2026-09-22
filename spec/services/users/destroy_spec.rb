@@ -385,7 +385,9 @@ RSpec.describe Users::Destroy do
 
     context 'when deletion fails' do
       before do
-        allow(user.points).to receive(:delete_all).and_raise(StandardError, 'Database constraint violation')
+        points = user.points
+        allow(points).to receive(:delete_all).and_raise(StandardError, 'Database constraint violation')
+        allow(user).to receive(:points).and_return(points)
       end
 
       it 'lets the exception propagate to the caller' do
@@ -455,7 +457,7 @@ RSpec.describe Users::Destroy do
       let!(:track) { create(:track, user:) }
       let!(:segment) { create(:track_segment, track:) }
 
-      it 'deletes track_segments before tracks to respect foreign key constraints' do
+      it 'deletes track segments through the track foreign-key cascade' do
         user_id = user.id
         track_id = track.id
         segment_id = segment.id

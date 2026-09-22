@@ -19,6 +19,9 @@ class Users::Destroy
     purge_attachments_for('Points::RawDataArchive', user.raw_data_archives)
 
     ActiveRecord::Base.transaction do
+      user.lock!
+      user.tracks.order(:id).lock.load
+
       # Validate inside transaction to prevent TOCTOU race
       # (a member could join/leave between check and delete if outside)
       created_family = Family.find_by(creator_id: user_id)
@@ -57,8 +60,7 @@ class Users::Destroy
       user.trips.find_each(&:destroy!)
       user.trip_sources.delete_all
 
-      # Delete track_segments and video_exports BEFORE tracks (both have FK to tracks)
-      TrackSegment.where(track_id: user.tracks.select(:id)).delete_all
+      # Delete video_exports BEFORE tracks (it has an FK to tracks)
       delete_video_exports_for(user)
       user.tracks.delete_all
 
