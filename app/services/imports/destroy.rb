@@ -12,11 +12,13 @@ class Imports::Destroy
 
   def call
     track_ids = @import.points.where.not(track_id: nil).distinct.pluck(:track_id)
+    oldest_timestamp = @import.points.minimum(:timestamp)
 
     EnhancedImport::Destroy.new(@import).call
 
     total_deleted = delete_points_in_batches
     User.update_counters(@user.id, points_count: -total_deleted) if total_deleted.positive?
+    enqueue_achievement_recalculation(oldest_timestamp) if total_deleted.positive?
 
     @import.destroy!
 
@@ -28,6 +30,12 @@ class Imports::Destroy
   end
 
   private
+
+  def enqueue_achievement_recalculation(oldest_timestamp)
+    return unless Flipper.enabled?(:achievements)
+
+    Achievements::CheckJob.schedule(@user.id, oldest_timestamp: oldest_timestamp)
+  end
 
   def destroy_orphaned_tracks(track_ids)
     return if track_ids.empty?

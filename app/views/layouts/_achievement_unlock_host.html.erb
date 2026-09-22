@@ -1,0 +1,9 @@
+<% if achievements_visible? %>
+  <%= tag.div id: 'achievement-unlocks', class: 'ach-unlock-host', aria: { live: 'polite' },
+              data: { controller: 'achievement-unlocks',
+                      achievement_unlocks_user_id_value: current_user.id,
+                      achievement_unlocks_next_url_value: next_achievement_unlock_path,
+                      achievement_unlocks_seen_url_value: seen_achievement_unlock_path('__ID__'),
+                      achievement_unlocks_dismiss_url_value: dismiss_achievement_unlocks_path,
+                      action: 'turbo:before-cache@document->achievement-unlocks#beforeCache keydown@window->achievement-unlocks#keyDown visibilitychange@document->achievement-unlocks#resumeVisit pageshow@window->achievement-unlocks#resumeVisit' } %>
+<% end %>

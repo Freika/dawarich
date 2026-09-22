@@ -38,7 +38,7 @@ class User < ApplicationRecord
   has_many :places,         dependent: :destroy
   has_many :tags,           dependent: :destroy
   has_many :service_settings, dependent: :destroy
-  has_many :trips,  dependent: :destroy
+  has_many :trips, dependent: :destroy
   has_many :trip_sources, dependent: :destroy
   has_many :tracks, dependent: :destroy
   has_many :flights, dependent: :destroy
@@ -46,6 +46,9 @@ class User < ApplicationRecord
   has_many :digests, class_name: 'Users::Digest', dependent: :destroy
   has_many :notes, dependent: :destroy
   has_many :shared_links, dependent: :destroy
+  has_many :achievement_progresses, class_name: 'Achievements::Progress', dependent: :destroy
+  has_many :achievement_unlock_events, class_name: 'Achievements::UnlockEvent', dependent: :delete_all
+  has_many :user_achievements, dependent: :destroy
 
   after_create :create_api_key
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }

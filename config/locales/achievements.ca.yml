@@ -1,0 +1,116 @@
+ca:
+  achievements:
+    unlocks:
+      kicker: Nova descoberta
+      announcement: Carta desbloquejada
+      remaining:
+        one: Última carta d'aquesta pila
+        other: "%{count} cartes en aquesta pila"
+      next: Carta següent
+      done: Fet
+      dismiss: Tanca aquesta pila
+      view: Mostra %{name} a la col·lecció
+    ui:
+      title: Assoliments
+      summary: Resum
+      continents: Continents
+      countries: Països
+      regions: Regions
+      world_explored: Món explorat
+      collection_hint: Explora la col·lecció per continent, país i regió.
+      collection_navigation: Col·leccions d’assoliments
+      browse: Explora la col·lecció
+      breadcrumb: Fil d’Ariadna
+      getting_started: Registra o importa dades d’ubicació per començar a descobrir aquestes cartes.
+      import_data: Importa dades
+      collection_progress: "%{collection} explorada"
+      completed_on: "Desbloquejat el %{date}"
+      remaining:
+        one: En falta 1 per explorar
+        other: En falten %{count} per explorar
+      share: Comparteix
+      enable_sharing: Crea un enllaç públic
+      countries_progress: "%{count} de %{total} països visitats"
+      regions_progress: "%{count} de %{total} regions explorades"
+      browse_children: "Explora %{collection}"
+      search_children: "Cerca a %{collection}"
+      collection_pages: Pàgines de la col·lecció
+      prev_page: Pàgina anterior
+      next_page: Pàgina següent
+      disable_sharing: Desactiva la compartició
+      public_link: Enllaç públic
+      preview_hint: Selecciona la carta per veure-la de prop.
+      search_cards: Cerca cartes
+      card_status: Estat de la carta
+      apply: Aplica
+      clear: Neteja els filtres
+      page_range: "%{first}–%{last} de %{total} cartes"
+      no_results: No hi ha cartes coincidents
+      no_results_hint: Prova un altre nom o neteja els filtres per veure tota la col·lecció.
+      about_boundaries: Quant a les fronteres
+      boundaries_note: "La detecció de regions es basa en fronteres aproximades. Fonts:"
+      threshold_note:
+        one: Un lloc compta després d’%{count} minut d’estada.
+        other: Un lloc compta després de %{count} minuts d’estada.
+      status:
+        all: Totes les cartes
+        unlocked: Desbloquejades
+        in_progress: En curs
+        locked: Bloquejades
+    cards:
+      explorer_name: "Explorador de %{place}"
+      date_format: "%-d %b %Y"
+      description:
+        continent: "Passa temps als %{count} països i territoris de %{place}."
+        regions: "Passa temps a les %{count} regions de %{place}."
+        country: "Passa temps a %{place}."
+      status:
+        locked: Bloquejada
+        unlocked: Desbloquejada
+        unlocked_on: "Desbloquejada · %{date}"
+        in_progress: En curs
+        visited: Visitat
+      metric:
+        explored: Explorat
+        not_yet_explored: Encara no explorat
+        percent_explored: "%{percent} % explorat"
+        countries: "%{count}/%{total} països"
+        regions: "%{count}/%{total} regions"
+      rarity:
+        common: Comuna
+        rare: Rara
+        epic: Èpica
+        legendary: Llegendària
+      boundary_unavailable: Frontera no disponible
+      open_label: "Obre %{name} — %{status}"
+      progress_label: Progrés d'exploració
+      details_regions: "%{count}/%{total} regions"
+    modal:
+      detail: Detall de l'assoliment
+      close: Tanca
+      share: Comparteix
+      embed: Insereix
+      public_link: Enllaç públic
+      embed_code: Codi d'inserció
+      iframe_title: Assoliment de Dawarich
+      copy: Copia
+      copied: Copiat
+      stop_sharing: Deixa de compartir
+      share_error: No s'ha pogut actualitzar la compartició. Torna-ho a provar.
+      copy_error: No s'ha pogut copiar automàticament. Selecciona l'enllaç o el codi i copia'l manualment.
+    public:
+      not_found: L'assoliment compartit no existeix o ja no està disponible
+      social_description: "%{progress} explorat. Registrat amb Dawarich."
+      tracked_with_html: "Registrat amb %{link}"
+    notifications:
+      region_title: "%{region} explorada!"
+      region_content: "%{achievement}: %{count}/%{total} regions visitades."
+      country_content: "%{achievement}: %{count}/%{total} països visitats."
+      digest_title: "%{count} zones noves explorades!"
+      digest_content: Les dades més recents han desbloquejat zones noves; consulta-les a la pàgina Assoliments.
+      completion_title: "%{achievement} completat!"
+      completion_country: Has explorat aquest país.
+      completion_target_regions: "Has explorat %{count} regions."
+      completion_all_regions: "Has explorat les %{count} regions."
+      completion_target_countries: "Has explorat %{count} països."
+      completion_all_countries: "Has explorat els %{count} països."

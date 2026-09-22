@@ -53,8 +53,6 @@ export default class extends Controller {
     "enableAllPlaceTagsToggle",
     "fogRadiusValue",
     "fogThresholdValue",
-    "metersBetweenValue",
-    "minutesBetweenValue",
     "minMinutesInCityValue",
     "gpsFilteringToggle",
     // Search
@@ -1278,12 +1276,6 @@ export default class extends Controller {
   }
   updateFogThresholdDisplay(event) {
     return this.settingsController.updateFogThresholdDisplay(event)
-  }
-  updateMetersBetweenDisplay(event) {
-    return this.settingsController.updateMetersBetweenDisplay(event)
-  }
-  updateMinutesBetweenDisplay(event) {
-    return this.settingsController.updateMinutesBetweenDisplay(event)
   }
   updateMinMinutesInCityDisplay(event) {
     return this.settingsController.updateMinMinutesInCityDisplay(event)
