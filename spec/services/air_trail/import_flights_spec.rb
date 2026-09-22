@@ -10,10 +10,13 @@ RSpec.describe AirTrail::ImportFlights do
     end
   end
 
-  def airtrail_flight(id:, dep: '2026-04-20T10:00:00.000+00:00', arr: '2026-04-20T12:00:00.000+00:00')
+  def airtrail_flight(id:, dep: '2026-04-20T10:00:00.000+00:00', arr: '2026-04-20T12:00:00.000+00:00',
+                      dep_scheduled: nil, arr_scheduled: nil)
     {
       'id' => id, 'date' => '2026-04-20', 'datePrecision' => 'day',
-      'departure' => dep, 'arrival' => arr, 'flightNumber' => 'AF1235',
+      'departure' => dep, 'arrival' => arr,
+      'departureScheduled' => dep_scheduled, 'arrivalScheduled' => arr_scheduled,
+      'flightNumber' => 'AF1235',
       'aircraftReg' => 'F-GKXA', 'note' => nil, 'duration' => 7200,
       'from' => { 'icao' => 'EDDB', 'iata' => 'BER', 'lat' => 52.351, 'lon' => 13.493, 'name' => 'Berlin' },
       'to' => { 'icao' => 'LFPG', 'iata' => 'CDG', 'lat' => 49.009, 'lon' => 2.547, 'name' => 'Paris' },
@@ -37,6 +40,20 @@ RSpec.describe AirTrail::ImportFlights do
     expect(flight.seat_class).to eq('economy')
     expect(flight.distance_km).to be_within(10).of(855)
     expect(result[:created]).to eq(1)
+  end
+
+  it 'places a flight that only carries scheduled times in time' do
+    allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return(
+      [airtrail_flight(id: 8, dep: nil, arr: nil,
+                       dep_scheduled: '2026-04-20T10:00:00.000+00:00',
+                       arr_scheduled: '2026-04-20T12:00:00.000+00:00')]
+    )
+
+    described_class.new(user).call
+
+    flight = user.flights.first
+    expect(flight.departure_time).to eq(Time.utc(2026, 4, 20, 10, 0))
+    expect(flight.arrival_time).to eq(Time.utc(2026, 4, 20, 12, 0))
   end
 
   it 'updates an existing flight by external_id' do
