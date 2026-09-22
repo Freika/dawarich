@@ -24,6 +24,8 @@ class Visits::Suggest
     end
 
     visits
+  rescue ActiveRecord::ConnectionFailed
+    raise
   rescue StandardError => e
     Rails.logger.error(
       "[Visits::Suggest] user_id=#{user.id} range=#{start_at}..#{end_at} " \

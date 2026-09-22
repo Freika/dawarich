@@ -196,6 +196,18 @@ RSpec.describe Visits::Suggest do
       end
     end
 
+    it 'reraises transient database connection failures' do
+      service = described_class.new(user, start_at:, end_at:)
+      allow(service).to receive(:existing_intervals)
+        .and_raise(ActiveRecord::ConnectionFailed, 'database disconnected')
+      allow(service).to receive(:notify_failure)
+      allow(ExceptionReporter).to receive(:call)
+
+      expect { service.call }.to raise_error(ActiveRecord::ConnectionFailed, 'database disconnected')
+      expect(service).not_to have_received(:notify_failure)
+      expect(ExceptionReporter).not_to have_received(:call)
+    end
+
     # The Lite plan window is enforced inside `Visits::SmartDetect` (which is
     # what `Visits::Suggest#call` delegates to). The corresponding regression
     # test lives in spec/services/visits/smart_detect_spec.rb.

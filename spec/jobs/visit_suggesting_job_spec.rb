@@ -115,6 +115,41 @@ RSpec.describe VisitSuggestingJob, type: :job do
         described_class.perform_now(user_id: user.id, start_at: start_at, end_at: end_at)
       end
     end
+
+    it 'retries transient database connection failures' do
+      suggester = instance_double(Visits::Suggest)
+      allow(Visits::Suggest).to receive(:new).and_return(suggester)
+      allow(suggester).to receive(:call).and_raise(ActiveRecord::ConnectionFailed, 'database disconnected')
+
+      expect { subject }
+        .to have_enqueued_job(described_class)
+        .with(user_id: user.id, start_at:, end_at:)
+        .on_queue('visit_suggesting')
+    end
+
+    it 'permits a third database connection retry' do
+      suggester = instance_double(Visits::Suggest)
+      allow(Visits::Suggest).to receive(:new).and_return(suggester)
+      allow(suggester).to receive(:call).and_raise(ActiveRecord::ConnectionFailed, 'database disconnected')
+      job = described_class.new(user_id: user.id, start_at:, end_at:)
+      job.exception_executions = { '[ActiveRecord::ConnectionFailed]' => 2 }
+
+      expect { job.perform_now }
+        .to have_enqueued_job(described_class)
+        .with(user_id: user.id, start_at:, end_at:)
+        .on_queue('visit_suggesting')
+    end
+
+    it 'raises after exhausting three database connection retries' do
+      suggester = instance_double(Visits::Suggest)
+      allow(Visits::Suggest).to receive(:new).and_return(suggester)
+      allow(suggester).to receive(:call).and_raise(ActiveRecord::ConnectionFailed, 'database disconnected')
+      job = described_class.new(user_id: user.id, start_at:, end_at:)
+      job.exception_executions = { '[ActiveRecord::ConnectionFailed]' => 3 }
+
+      expect { job.perform_now }.to raise_error(ActiveRecord::ConnectionFailed, 'database disconnected')
+      expect(described_class).not_to have_been_enqueued
+    end
   end
 
   describe 'realtime debounce key' do
