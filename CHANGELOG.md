@@ -4,13 +4,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [1.15.1] - Unreleased
+## [1.15.2] - Unreleased
 
 ### Fixed
 
+- Deploying a migration that adds a database column no longer interrupts in-flight requests or background jobs with stale prepared-statement errors.
+
+## [1.15.1] - 2026-09-21, Berlin
+
+### Fixed
+
+- Map track lines, including the highlight shown after clicking a track, now respect the selected date range, so Today and custom searches no longer show portions of overlapping tracks from outside that range. (#3679)
 - A position far off your route is now flagged as an anomaly even when the tracking app uploads one point at a time: it is judged again once the next point arrives, instead of staying on the map until the anomaly filter is re-applied. (#3664)
 - The family map no longer draws a member's points that were flagged as anomalies: their history trail, their "last seen" marker and the locations sent to OwnTracks friends skip them, as the member's own map already does. (#3663)
-- Deploying a migration that adds a database column no longer interrupts in-flight requests or background jobs with stale prepared-statement errors.
+- Opening monthly insights no longer fails when concurrent requests create the same digest.
+- Immich photo enrichment now interpolates positions along the globe instead of across flat latitude/longitude coordinates, so photos taken near a pole or the antimeridian receive the correct location (#3262)
 
 ## [1.15.0] - 2026-09-20, Berlin
 
