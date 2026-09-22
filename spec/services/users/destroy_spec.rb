@@ -124,6 +124,74 @@ RSpec.describe Users::Destroy do
       end
     end
 
+    context 'with a poster' do
+      let!(:poster) { create(:poster, user:) }
+
+      before do
+        poster.image.attach(
+          io: StringIO.new('image'),
+          filename: 'poster.png',
+          content_type: 'image/png'
+        )
+        poster.print_pdf.attach(
+          io: StringIO.new('pdf'),
+          filename: 'poster.pdf',
+          content_type: 'application/pdf'
+        )
+      end
+
+      it 'deletes the poster and its attachments before the user' do
+        user_id = user.id
+        poster_id = poster.id
+        blob_ids = [poster.image.blob_id, poster.print_pdf.blob_id]
+
+        expect { perform_enqueued_jobs { service.call } }.not_to raise_error
+
+        expect(User.unscoped.where(id: user_id)).not_to exist
+        expect(Poster.where(id: poster_id)).not_to exist
+        expect(ActiveStorage::Blob.where(id: blob_ids)).to be_empty
+      end
+
+      it 'preserves the poster and its attachments when deletion rolls back' do
+        blob_ids = [poster.image.blob_id, poster.print_pdf.blob_id]
+        allow(user).to receive(:delete).and_raise(ActiveRecord::StatementInvalid, 'delete failed')
+
+        expect { service.call }.to raise_error(ActiveRecord::StatementInvalid, 'delete failed')
+
+        expect(Poster.where(id: poster.id)).to exist
+        expect(ActiveStorage::Blob.where(id: blob_ids).count).to eq(2)
+      end
+    end
+
+    context 'with other FK-backed user records missing from the cleanup list' do
+      let!(:flight) { create(:flight, user:) }
+      let!(:note) { create(:note, user:) }
+      let!(:route_video) { create(:route_video, :with_file, user:) }
+      let!(:service_setting) { create(:service_setting, user:) }
+
+      it 'deletes the records before the user' do
+        user_id = user.id
+        flight_id = flight.id
+        note_id = note.id
+
+        expect { service.call }.not_to raise_error
+
+        expect(User.unscoped.where(id: user_id)).not_to exist
+        expect(Flight.where(id: flight_id)).not_to exist
+        expect(Note.where(id: note_id)).not_to exist
+      end
+
+      it 'deletes route videos with their files and service settings' do
+        blob_id = route_video.file.blob_id
+
+        expect { perform_enqueued_jobs { service.call } }.not_to raise_error
+
+        expect(RouteVideo.where(id: route_video.id)).not_to exist
+        expect(ActiveStorage::Blob.where(id: blob_id)).not_to exist
+        expect(ServiceSetting.where(id: service_setting.id)).not_to exist
+      end
+    end
+
     context 'with scheduled jobs' do
       it 'attempts to cancel scheduled jobs for the user' do
         allow(Rails.logger).to receive(:info)
@@ -285,6 +353,19 @@ RSpec.describe Users::Destroy do
 
         expect(PlaceVisit.where(id: place_visit_id).count).to eq(0)
         expect(Visit.where(id: visit_id).count).to eq(0)
+      end
+
+      it "removes another user's links to the deleted user's place" do
+        other_user = create(:user)
+        direct_visit = create(:visit, user: other_user, place:)
+        suggested_visit = create(:visit, user: other_user)
+        other_place_visit = create(:place_visit, place:, visit: suggested_visit)
+
+        expect { service.call }.not_to raise_error
+
+        expect(PlaceVisit.where(id: other_place_visit.id)).not_to exist
+        expect(Visit.where(id: [direct_visit.id, suggested_visit.id]).count).to eq(2)
+        expect(direct_visit.reload.place_id).to be_nil
       end
     end
 
