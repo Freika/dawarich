@@ -1,0 +1,35 @@
+<% interactive = local_assigns.fetch(:interactive, true) %>
+<% attrs = set.card_attributes %>
+<% unless interactive %>
+  <% attrs = attrs.merge(earned_label: set.locked? ? t('achievements.cards.metric.not_yet_explored') : attrs[:earned_label]) %>
+<% end %>
+<div class="ach-slot">
+  <%= render 'achievements/card',
+             reveal_delay: local_assigns.fetch(:reveal_delay, 0.1),
+             **attrs %>
+
+  <% if interactive && set.total > 1 %>
+    <details class="ach-details">
+      <summary><%= t('achievements.cards.details_regions', count: set.display_count, total: set.target) %></summary>
+      <ul class="ach-regions">
+        <% set.regions.each do |region| %>
+          <li class="<%= 'ach-region--pending' unless region[:earned_at] %>">
+            <span><%= region[:name] %></span>
+            <span><%= region[:earned_at] ? l(Date.parse(region[:earned_at]), format: t('achievements.cards.date_format')) : '—' %></span>
+          </li>
+        <% end %>
+      </ul>
+    </details>
+  <% end %>
+
+  <% if interactive %>
+    <div class="ach-actions">
+      <%= button_to set.sharing_enabled? ? t('achievements.ui.disable_sharing') : t('achievements.ui.share'),
+                    toggle_sharing_achievement_path(set.definition.key),
+                    method: :patch, class: 'btn btn-sm btn-primary' %>
+      <% if set.sharing_enabled? %>
+        <%= link_to t('achievements.ui.public_link'), shared_achievement_path(set.sharing_uuid), class: 'btn btn-sm' %>
+      <% end %>
+    </div>
+  <% end %>
+</div>

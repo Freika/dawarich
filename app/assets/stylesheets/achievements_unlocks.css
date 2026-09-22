@@ -1,0 +1,216 @@
+/* A collectible, not a notification banner: the real spectral card is the hero. */
+.ach-unlock-host:not(:empty) {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 90;
+  width: min(286px, calc(100vw - 24px));
+  pointer-events: none;
+}
+
+/* An onboarding or preview dialog takes precedence over a newly unlocked card. */
+body:has(dialog[open]) .ach-unlock-host {
+  visibility: hidden;
+}
+
+.ach-unlock-reveal {
+  pointer-events: auto;
+  padding: 14px 16px 13px;
+  border: 1px solid rgb(178 191 203 / 22%);
+  border-radius: 18px;
+  color: #f2f3f2;
+  background: linear-gradient(153deg, #252b30 0%, #171b1e 44%, #101316 100%);
+  box-shadow:
+    0 22px 75px rgb(0 0 0 / 55%),
+    0 2px 8px rgb(0 0 0 / 35%);
+  animation: ach-unlock-arrive 520ms cubic-bezier(0.2, 0.85, 0.2, 1) both;
+}
+
+.ach-unlock-reveal--leaving {
+  animation: ach-unlock-leave 170ms ease-in both;
+}
+
+.ach-unlock-heading,
+.ach-unlock-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.ach-unlock-kicker {
+  display: block;
+  margin-bottom: 1px;
+  color: #d8ab5c;
+  font-size: 9px;
+  font-weight: 750;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+}
+
+.ach-unlock-heading h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 670;
+  line-height: 1.25;
+}
+
+.ach-unlock-close,
+.ach-unlock-next {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  cursor: pointer;
+}
+
+.ach-unlock-close {
+  align-self: flex-start;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  color: #aeb5b8;
+  background: rgb(255 255 255 / 6%);
+}
+
+.ach-unlock-close:hover,
+.ach-unlock-close:focus-visible {
+  color: white;
+  background: rgb(255 255 255 / 14%);
+}
+
+.ach-unlock-stack {
+  position: relative;
+  width: 190px;
+  height: 285px;
+  margin: 17px auto 18px;
+  perspective: 700px;
+}
+
+.ach-unlock-back,
+.ach-unlock-front {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 190px;
+  height: 285px;
+  border-radius: 13px;
+}
+
+.ach-unlock-back {
+  border: 1px solid #48525a;
+  background:
+    radial-gradient(ellipse at 44% 38%, rgb(35 66 75 / 40%), transparent 60%),
+    #080b0d;
+  box-shadow: 3px 11px 20px rgb(0 0 0 / 43%);
+}
+
+.ach-unlock-back--rear {
+  transform: translate(10px, -7px) rotate(6deg);
+  opacity: 0.6;
+}
+
+.ach-unlock-back--middle {
+  transform: translate(5px, -4px) rotate(3deg);
+  opacity: 0.85;
+}
+
+.ach-unlock-front {
+  color: inherit;
+  text-decoration: none;
+  animation: ach-unlock-card-arrive 650ms 110ms cubic-bezier(0.16, 1, 0.25, 1)
+    both;
+}
+
+.ach-unlock-front .ach-spectral-wrap,
+.ach-unlock-front .ach-spectral {
+  width: 100%;
+  height: 100%;
+}
+
+.ach-unlock-front:focus-visible {
+  outline: 2px solid #e2ae55;
+  outline-offset: 5px;
+}
+
+.ach-unlock-footer {
+  border-top: 1px solid rgb(255 255 255 / 9%);
+  padding-top: 11px;
+}
+
+.ach-unlock-count {
+  color: #b5bdc1;
+  font-size: 11px;
+}
+
+.ach-unlock-next {
+  gap: 5px;
+  padding: 7px 9px;
+  border-radius: 7px;
+  color: #10151a;
+  background: #e0ac55;
+  font-size: 12px;
+  font-weight: 720;
+}
+
+.ach-unlock-next:hover,
+.ach-unlock-next:focus-visible {
+  background: #f2c477;
+}
+
+@keyframes ach-unlock-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(34px, 26px, 0) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes ach-unlock-card-arrive {
+  from {
+    opacity: 0;
+    transform: translate3d(12px, 20px, 0) rotate(9deg) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(0) scale(1);
+  }
+}
+
+@keyframes ach-unlock-leave {
+  to {
+    opacity: 0;
+    transform: translate3d(20px, 9px, 0) scale(0.97);
+  }
+}
+
+@media (max-width: 480px) {
+  .ach-unlock-host:not(:empty) {
+    right: 12px;
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-height: 560px) {
+  .ach-unlock-stack {
+    width: 140px;
+    height: 210px;
+    margin: 9px auto;
+  }
+  .ach-unlock-back,
+  .ach-unlock-front {
+    width: 140px;
+    height: 210px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ach-unlock-reveal,
+  .ach-unlock-reveal--leaving,
+  .ach-unlock-front {
+    animation: none;
+  }
+}

@@ -94,7 +94,7 @@ RSpec.describe '/trips', type: :request do
     end
 
     it 'renders a read-only itinerary for a TREK-managed trip' do
-      allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      stub_host_addresses('trek.example.test', '93.184.216.34')
       source = create(:trip_source, user:)
       trip.update!(trip_source: source, source_identifier: '12', source_status: :active)
       day = trip.planned_days.create!(date: trip.started_at.to_date, position: 1, title: 'Arrival')
@@ -122,7 +122,7 @@ RSpec.describe '/trips', type: :request do
     end
 
     it 'says when a TREK plan was synced and links back to the trip in TREK' do
-      allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      stub_host_addresses('trek.example.test', '93.184.216.34')
       source = create(:trip_source, user:)
       trip.update!(trip_source: source, source_identifier: '12', source_status: :active,
                    source_synced_at: 5.minutes.ago)
@@ -199,7 +199,7 @@ RSpec.describe '/trips', type: :request do
     end
 
     it 'shows a future TREK trip as planned instead of permanently calculating its path' do
-      allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      stub_host_addresses('trek.example.test', '93.184.216.34')
       source = create(:trip_source, user:)
       trip.update!(
         trip_source: source,
@@ -471,7 +471,7 @@ RSpec.describe '/trips', type: :request do
     end
 
     it 'keeps the name and dates of a TREK-managed trip read-only and says where to change them' do
-      allow(Resolv).to receive(:getaddress).with('trek.example.test').and_return('93.184.216.34')
+      stub_host_addresses('trek.example.test', '93.184.216.34')
       trip.update!(trip_source: create(:trip_source, user:), source_identifier: '12', source_status: :active)
 
       get edit_trip_url(trip)

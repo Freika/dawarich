@@ -42,6 +42,42 @@ RSpec.describe Points::Move do
     end.to have_enqueued_job(Stats::CalculatingJob).with(user.id, 1970, 1)
   end
 
+  it 'schedules an achievements check from the moved point' do
+    Flipper.enable(:achievements)
+    clear_achievement_checks(user.id)
+
+    expect do
+      described_class.call(
+        user:, point_id: point.id, latitude: 0.01, longitude: 0.01,
+        point_revision: point.lock_version, track_revision: track.lock_version,
+        history_scope: scope
+      )
+    end.to have_enqueued_job(Achievements::CheckJob).with(user.id)
+    expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([point.timestamp])
+  ensure
+    Flipper.disable(:achievements)
+  end
+
+  it 'returns the committed move when the achievements check cannot be scheduled' do
+    Flipper.enable(:achievements)
+    allow(Achievements::CheckJob).to receive(:schedule).and_raise(Redis::CannotConnectError)
+    allow(ExceptionReporter).to receive(:call)
+
+    result = nil
+    expect do
+      result = described_class.call(
+        user:, point_id: point.id, latitude: 0.01, longitude: 0.01,
+        point_revision: point.lock_version, track_revision: track.lock_version,
+        history_scope: scope
+      )
+    end.to increment_yabeda_counter(Yabeda.dawarich_map.post_commit_failures_total)
+      .with_tags(operation: 'achievements')
+
+    expect(result.point).to have_attributes(lat: 0.01, lon: 0.01, lock_version: 1)
+  ensure
+    Flipper.disable(:achievements)
+  end
+
   it 'returns the committed move and publishes it when the stats job cannot be enqueued' do
     allow(Stats::CalculatingJob).to receive(:perform_later).and_raise(Redis::CannotConnectError)
     allow(ExceptionReporter).to receive(:call)

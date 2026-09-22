@@ -1,0 +1,120 @@
+pl:
+  achievements:
+    unlocks:
+      kicker: Nowe odkrycie
+      announcement: Karta odblokowana
+      remaining:
+        one: Ostatnia karta w tej talii
+        other: "%{count} kart w tej talii"
+      next: Następna karta
+      done: Gotowe
+      dismiss: Zamknij tę talię
+      view: Zobacz %{name} w kolekcji
+    ui:
+      title: Osiągnięcia
+      summary: Podsumowanie
+      continents: Kontynenty
+      countries: Kraje
+      regions: Regiony
+      world_explored: Odkryty świat
+      collection_hint: Przeglądaj kolekcję według kontynentu, kraju i regionu.
+      collection_navigation: Kolekcje osiągnięć
+      browse: Przeglądaj kolekcję
+      breadcrumb: Nawigacja okruszkowa
+      getting_started: Zarejestruj lub zaimportuj dane lokalizacji, aby zacząć odkrywać te karty.
+      import_data: Importuj dane
+      collection_progress: "Odkryto: %{collection}"
+      completed_on: "Odblokowano %{date}"
+      remaining:
+        one: Pozostał 1 do odkrycia
+        few: Pozostały %{count} do odkrycia
+        many: Pozostało %{count} do odkrycia
+        other: Pozostało %{count} do odkrycia
+      share: Udostępnij
+      enable_sharing: Utwórz publiczny link
+      countries_progress: "Odwiedzono %{count} z %{total} krajów"
+      regions_progress: "Odkryto %{count} z %{total} regionów"
+      browse_children: "Przeglądaj: %{collection}"
+      search_children: "Szukaj w: %{collection}"
+      collection_pages: Strony kolekcji
+      prev_page: Poprzednia strona
+      next_page: Następna strona
+      disable_sharing: Wyłącz udostępnianie
+      public_link: Publiczny link
+      preview_hint: Wybierz kartę, aby zobaczyć ją z bliska.
+      search_cards: Szukaj kart
+      card_status: Stan karty
+      apply: Zastosuj
+      clear: Wyczyść filtry
+      page_range: "%{first}–%{last} z %{total} kart"
+      no_results: Brak pasujących kart
+      no_results_hint: Spróbuj innej nazwy lub wyczyść filtry, aby zobaczyć całą kolekcję.
+      about_boundaries: Informacje o granicach
+      boundaries_note: "Wykrywanie regionów opiera się na przybliżonych granicach. Źródła:"
+      threshold_note:
+        one: Miejsce jest zaliczane po %{count} minucie pobytu.
+        few: Miejsce jest zaliczane po %{count} minutach pobytu.
+        many: Miejsce jest zaliczane po %{count} minutach pobytu.
+        other: Miejsce jest zaliczane po %{count} minuty pobytu.
+      status:
+        all: Wszystkie karty
+        unlocked: Odblokowane
+        in_progress: W toku
+        locked: Zablokowane
+    cards:
+      explorer_name: "Odkrywca: %{place}"
+      date_format: "%-d %b %Y"
+      description:
+        continent: "Spędź czas we wszystkich %{count} krajach i terytoriach: %{place}."
+        regions: "Spędź czas we wszystkich %{count} regionach: %{place}."
+        country: "Spędź czas w kraju %{place}."
+      status:
+        locked: Zablokowana
+        unlocked: Odblokowana
+        unlocked_on: "Odblokowana · %{date}"
+        in_progress: W toku
+        visited: Odwiedzono
+      metric:
+        explored: Odkryto
+        not_yet_explored: Jeszcze nie odkryto
+        percent_explored: "Odkryto %{percent}%"
+        countries: "%{count}/%{total} krajów"
+        regions: "%{count}/%{total} regionów"
+      rarity:
+        common: Zwykła
+        rare: Rzadka
+        epic: Epicka
+        legendary: Legendarna
+      boundary_unavailable: Granica niedostępna
+      open_label: "Otwórz %{name} — %{status}"
+      progress_label: Postęp odkrywania
+      details_regions: "%{count}/%{total} regionów"
+    modal:
+      detail: Szczegóły osiągnięcia
+      close: Zamknij
+      share: Udostępnij
+      embed: Osadź
+      public_link: Publiczny link
+      embed_code: Kod osadzania
+      iframe_title: Osiągnięcie Dawarich
+      copy: Kopiuj
+      copied: Skopiowano
+      stop_sharing: Zakończ udostępnianie
+      share_error: Nie udało się zaktualizować udostępniania. Spróbuj ponownie.
+      copy_error: Nie udało się skopiować automatycznie. Zaznacz link lub kod i skopiuj go ręcznie.
+    public:
+      not_found: Udostępnione osiągnięcie nie istnieje lub nie jest już dostępne
+      social_description: "Odkryto %{progress}. Zarejestrowano z Dawarich."
+      tracked_with_html: "Zarejestrowano z %{link}"
+    notifications:
+      region_title: "Odkryto %{region}!"
+      region_content: "%{achievement}: odwiedzono %{count}/%{total} regionów."
+      country_content: "%{achievement}: odwiedzono %{count}/%{total} krajów."
+      digest_title: "Odkryto nowe obszary: %{count}!"
+      digest_content: Najnowsze dane odblokowały nowe obszary — zobacz je na stronie Osiągnięcia.
+      completion_title: "Ukończono %{achievement}!"
+      completion_country: Odkryto ten kraj.
+      completion_target_regions: "Odkryto %{count} regionów."
+      completion_all_regions: "Odkryto wszystkie regiony: %{count}."
+      completion_target_countries: "Odkryto %{count} krajów."
+      completion_all_countries: "Odkryto wszystkie kraje: %{count}."

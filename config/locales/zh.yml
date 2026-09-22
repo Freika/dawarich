@@ -1061,8 +1061,10 @@ zh:
         gps_noise_filtering: GPS 噪声过滤
         track_generation: 轨迹生成
         track_split_distance: 轨迹之间的距离间隔
+        track_split_distance_unit: 米
         track_split_distance_hint: 连续点之间的距离超过此值时开始新轨迹。
         track_split_time: 轨迹之间的时间间隔
+        track_split_time_unit: 分钟
         track_split_time_hint: "超过此间隔会开始新轨迹，并允许行程使用另一台设备的记录。修改后，请在受影响的行程页面点击“重新计算”，以更新已保存的路线和距离。"
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: 隐藏不可能为真实位置的读数 — 如不可能的跳跃、损坏的坐标。禁用后显示每个原始轨迹点。
         re_evaluate_past_data: 重新评估过去的数据

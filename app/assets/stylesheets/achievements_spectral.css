@@ -1,0 +1,610 @@
+/* Spectral Cartogram v15 — scoped to achievement cards. */
+.ach-card.ach-spectral {
+  --accent: #49bfff;
+  --surface: #090b0e;
+  --radius: 26px;
+  --card-light-opacity: 1;
+  --cast-shadow-opacity: 0.82;
+  --card-light-angle: 136deg;
+  --light-spread: 57%;
+  --shadow-x: 8px;
+  --shadow-y: 16px;
+  --shadow-blur: 47px;
+  --contact-shadow-x: 1.5px;
+  --contact-shadow-y: 4.5px;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid rgba(25, 30, 34, 0.8);
+  border-radius: var(--radius);
+  color: #f2f2f0;
+  background: var(--surface);
+  box-shadow:
+    var(--shadow-x) var(--shadow-y) var(--shadow-blur) -12px
+    rgba(0, 0, 0, var(--cast-shadow-opacity)),
+    var(--contact-shadow-x) var(--contact-shadow-y) 7px -3px
+    rgba(0, 0, 0, var(--cast-shadow-opacity)),
+    0 0 0 1px rgba(0, 0, 0, 0.96),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.018);
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg))
+    scale(var(--scale, 1));
+  transition:
+    transform 160ms ease-out,
+    box-shadow 180ms ease;
+  container-type: inline-size;
+  isolation: isolate;
+}
+.ach-card.ach-spectral::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    var(--card-light-angle),
+    rgba(237, 243, 247, 0.48) 0%,
+    rgba(180, 191, 199, 0.19) 22%,
+    rgba(64, 73, 80, 0.12) 48%,
+    rgba(5, 7, 9, 0.88) 78%,
+    rgba(0, 0, 0, 0.96) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: calc(0.2 + var(--card-light-opacity) * 0.72);
+}
+.ach-card.ach-spectral::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  z-index: 6;
+  pointer-events: none;
+  border-radius: calc(var(--radius) - 1px);
+  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.48);
+  opacity: calc(0.28 + var(--card-light-opacity) * 0.64);
+}
+
+.ach-spectral .card-light {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  opacity: var(--card-light-opacity);
+  background:
+    linear-gradient(
+      var(--card-light-angle),
+      rgba(255, 255, 255, 0.13) 0%,
+      rgba(255, 255, 255, 0.038) 26%,
+      transparent var(--light-spread)
+    ),
+    linear-gradient(
+      calc(var(--card-light-angle) + 180deg),
+      rgba(0, 0, 0, 0.34) 0%,
+      transparent 43%
+    );
+}
+
+.ach-spectral .material-texture {
+  position: absolute;
+  inset: -2px;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(
+      var(--paper-light-angle, 315deg),
+      rgb(255 255 255 / var(--paper-highlight, 0.12)) 0%,
+      transparent 44%,
+      rgb(0 0 0 / var(--paper-shadow, 0.18)) 100%
+    ),
+    var(--material-texture-image);
+  background-repeat: no-repeat, no-repeat;
+  background-size:
+    100% 100%,
+    cover;
+  background-position:
+    center,
+    var(--paper-x, 50%) var(--paper-y, 50%);
+  background-blend-mode: soft-light, normal;
+  opacity: var(--material-opacity, 0.28);
+  mix-blend-mode: screen;
+  filter: grayscale(1) blur(var(--paper-blur, 0px))
+    brightness(var(--paper-brightness, 1.82))
+    contrast(var(--paper-contrast, 1.66));
+  transform: translateZ(12px) scale(var(--paper-zoom, 1));
+  transform-origin: var(--paper-x, 50%) var(--paper-y, 50%);
+}
+
+.ach-spectral .paper-surface {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  mix-blend-mode: soft-light;
+}
+.ach-spectral .paper-surface.paper-reference {
+  mix-blend-mode: normal;
+}
+
+.ach-spectral .geo-stage {
+  position: relative;
+  margin: 5.4cqw 5.8cqw 3cqw;
+  flex: 1;
+  min-height: 0;
+  max-height: calc(92cqw * var(--map-stretch, 1));
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+}
+.ach-spectral .geo-stage svg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: translateY(var(--map-y, 0px)) scale(var(--map-scale, 1));
+}
+.ach-spectral .geo-foil-composite {
+  filter: brightness(var(--foil-brightness, 1))
+    contrast(var(--foil-contrast, 1)) saturate(var(--sat, 1));
+}
+.ach-spectral .geo-relit {
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+.ach-spectral .geo-fill,
+.ach-spectral .geo-accent,
+.ach-spectral .geo-texture {
+  fill-rule: evenodd;
+  clip-rule: evenodd;
+}
+.ach-spectral .geo-accent {
+  mix-blend-mode: normal;
+  pointer-events: none;
+}
+.ach-spectral .geo-texture {
+  mix-blend-mode: overlay;
+  pointer-events: none;
+}
+.ach-spectral .geo-scan-relief,
+.ach-spectral .geo-scan-sparkle {
+  pointer-events: none;
+}
+.ach-spectral .geo-scan-relief {
+  filter: contrast(1.75) brightness(0.88);
+}
+.ach-spectral .geo-scan-sparkle {
+  filter: grayscale(1) contrast(2.8) brightness(0.48);
+}
+/* Blend clipped layers with the palette, not with an isolated image backdrop. */
+.ach-spectral .geo-scan-relief-layer {
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+.ach-spectral .geo-scan-sparkle-layer {
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+/* A neutral scan modulates the colored metal, rather than whitening it. */
+.ach-spectral .geo-scan-relief-layer.reference {
+  mix-blend-mode: overlay;
+}
+.ach-spectral .geo-scan-sparkle-layer.reference {
+  mix-blend-mode: color-dodge;
+}
+.ach-spectral .geo-scan-relief.reference {
+  filter: grayscale(1) brightness(0.85) contrast(1.15);
+}
+.ach-spectral .geo-scan-sparkle.reference {
+  filter: grayscale(1) brightness(0.65) contrast(3.2);
+}
+.ach-spectral .geo-scan-relief.metallic {
+  /* Recenter the bright scan before contrast, so silver detail isn't clipped. */
+  filter: grayscale(1) brightness(0.68) contrast(2.4);
+}
+.ach-spectral .geo-scan-sparkle.metallic {
+  filter: grayscale(1) brightness(0.65) contrast(3.6);
+}
+.ach-spectral .geo-edge-prism {
+  fill: none;
+  fill-rule: evenodd;
+  clip-rule: evenodd;
+  pointer-events: none;
+  vector-effect: non-scaling-stroke;
+}
+.ach-spectral .geo-edge-prism {
+  opacity: 0.8;
+}
+.ach-spectral .boundary {
+  fill: none;
+  stroke: rgba(4, 7, 9, 0.84);
+  stroke-width: 1.25;
+  vector-effect: non-scaling-stroke;
+}
+.ach-spectral .journey-route-shadow,
+.ach-spectral .journey-route,
+.ach-spectral .journey-route-highlight {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+.ach-spectral .journey-route-shadow {
+  stroke: rgba(0, 0, 0, 0.94);
+}
+.ach-spectral .journey-route {
+  stroke: #0a0e11;
+}
+.ach-spectral .journey-route-highlight {
+  stroke: rgba(255, 255, 255, 0.16);
+}
+.ach-spectral .journey-pin .pin-outer {
+  fill: #080a0c;
+  stroke: rgba(105, 116, 124, 0.82);
+  stroke-width: 1;
+}
+.ach-spectral .journey-pin .pin-ring {
+  fill: #1b1f22;
+  stroke: #020304;
+  stroke-width: 0.8;
+}
+.ach-spectral .journey-pin .pin-core {
+  stroke: #ffba38;
+  stroke-width: 0.7;
+}
+.ach-spectral .journey-pin .pin-glint {
+  fill: rgba(255, 255, 255, 0.88);
+}
+.ach-spectral .completion-badge .badge-shadow {
+  fill: rgba(0, 0, 0, 0.78);
+}
+.ach-spectral .completion-badge .badge-face {
+  fill: var(--accent);
+  stroke: #050708;
+  stroke-width: 2.2;
+}
+.ach-spectral .completion-badge .badge-inner {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.38);
+  stroke-width: 0.7;
+}
+.ach-spectral .completion-badge .badge-check {
+  fill: none;
+  stroke: #111518;
+  stroke-width: 3.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.ach-spectral .card-copy {
+  position: relative;
+  flex: 0 0 auto;
+  margin: 0 7.5cqw 7cqw;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding-top: max(0px, var(--copy-y, 0px));
+  padding-bottom: max(0px, calc(-1 * var(--copy-y, 0px)));
+}
+.ach-spectral .card-title {
+  width: 100%;
+  margin: 0;
+  color: #f6f0e7;
+  font-size: clamp(16px, var(--title-size, 6.7cqw), 48px);
+  font-weight: 680;
+  line-height: 1.1;
+  letter-spacing: 0.035em;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
+  text-transform: uppercase;
+}
+.ach-spectral .card-description {
+  margin: 2.8cqw 0 0;
+  color: #ddd9d3;
+  font-size: clamp(9px, 3.25cqw, 14px);
+  line-height: 1.3;
+}
+.ach-spectral .metric {
+  display: flex;
+  align-items: center;
+  gap: 2.2cqw;
+  color: #daddde;
+  font-size: clamp(10px, 2.8cqw, 14px);
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.ach-spectral .metric strong {
+  color: #f6f0e7;
+  font-size: 1.3em;
+  font-weight: 730;
+}
+.ach-spectral .metric svg {
+  width: 3.8cqw;
+  min-width: 10px;
+  color: var(--accent);
+}
+.ach-spectral .meta-row {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 2.2cqw;
+  margin-top: 4.8cqw;
+  white-space: nowrap;
+}
+.ach-spectral .meta-divider {
+  width: 1px;
+  height: 5.2cqw;
+  min-height: 14px;
+  background: rgba(211, 216, 219, 0.34);
+}
+.ach-spectral .rarity-row {
+  width: 54%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 4.6cqw;
+  color: var(--accent);
+}
+.ach-spectral .rarity {
+  font-size: clamp(10px, 3.15cqw, 15px);
+  font-weight: 550;
+  letter-spacing: 0.43em;
+  text-indent: 0.43em;
+  text-transform: uppercase;
+}
+.ach-spectral .rarity-rule {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 2.5cqw;
+  margin-top: 3.2cqw;
+}
+.ach-spectral .rarity-rule::before,
+.ach-spectral .rarity-rule::after {
+  content: "";
+  height: 1px;
+  background: #bcc1c4;
+  opacity: 0.23;
+}
+.ach-spectral .rarity-rule i {
+  width: 1.55cqw;
+  height: 1.55cqw;
+  min-width: 4px;
+  min-height: 4px;
+  background: currentColor;
+  transform: rotate(45deg);
+}
+.ach-spectral .earned {
+  display: flex;
+  align-items: center;
+  gap: 2cqw;
+  color: #d5d8d9;
+  font-size: clamp(10px, 2.8cqw, 14px);
+}
+.ach-spectral .earned svg {
+  width: 3.6cqw;
+  min-width: 10px;
+  color: var(--accent);
+}
+.ach-spectral .wordmark {
+  margin-top: 4.5cqw;
+  color: #e5e6e4;
+  font-size: clamp(7px, 2.6cqw, 11px);
+  font-weight: 660;
+  letter-spacing: 0.38em;
+  text-indent: 0.38em;
+}
+
+/* Integration: real sizes (not a scaled raster), scoped typography and states. */
+.ach-page .ach-main {
+  min-width: 0;
+}
+.ach-card.ach-spectral::before {
+  mix-blend-mode: normal;
+}
+.ach-card.ach-spectral::after {
+  background: none;
+  mix-blend-mode: normal;
+  transition: none;
+}
+.ach-spectral-wrap {
+  width: min(300px, 100%);
+  animation: none;
+}
+.ach-embed-page {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  padding: 32px 30px 38px;
+  background: #080b0e;
+}
+.ach-embed-page .ach-slot {
+  width: 300px;
+}
+.ach-card-link:has(.ach-spectral) {
+  width: 300px;
+  max-width: 100%;
+}
+.ach-spectral-wrap--sm {
+  width: 100%;
+}
+/* The child collection is flex, with both links and modal wrappers as items.
+   Bound the item itself; its nested card can then safely fill the width. */
+.ach-child-grid > .ach-card-link:has(.ach-spectral),
+.ach-child-grid > .ach-spectral-wrap {
+  flex: 0 0 auto;
+  width: min(225px, 100%);
+}
+.ach-card.ach-spectral {
+  --surface: #080a0c;
+  --radius: 7cqw;
+  --foil-brightness: 1.02;
+  --foil-contrast: 1.18;
+  --sat: 1.12;
+  --card-light-opacity: 0.45;
+  --card-light-angle: 191deg;
+  --light-spread: 59.56%;
+  --cast-shadow-opacity: 0.7826;
+  --shadow-x: -2.7px;
+  --shadow-y: 17.7px;
+  --shadow-blur: 49.9px;
+  --contact-shadow-x: -0.5px;
+  --contact-shadow-y: 5px;
+  --title-size: 7.035cqw;
+  width: 100%;
+  height: auto;
+  min-height: 0;
+  aspect-ratio: 2 / 3;
+  border-radius: 7% / 4.667%;
+  font-family: "Inter var", ui-sans-serif, system-ui, sans-serif;
+}
+.ach-spectral .spectral-material {
+  display: contents;
+}
+.ach-spectral .geo-stage {
+  max-height: 92cqw;
+}
+.ach-spectral .card-title {
+  display: block;
+  padding: 0;
+  font-family: inherit;
+}
+.ach-spectral .spectral-fallback svg {
+  fill: #788b99;
+}
+.ach-spectral .spectral-unavailable {
+  flex: 1;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  color: #8f98a2;
+  font-size: 12px;
+}
+.ach-spectral .spectral-unavailable svg {
+  width: 70px;
+  height: 70px;
+}
+.ach-card.ach-spectral--locked {
+  --accent: #899297;
+  --card-light-opacity: 0.25;
+  transform: none;
+  transition: none;
+}
+.ach-spectral.ach-spectral--locked .geo-foil-composite {
+  filter: grayscale(1) brightness(0.7) contrast(0.88);
+}
+.ach-spectral.ach-spectral--locked .geo-edge-prism {
+  filter: grayscale(1);
+  opacity: 0.16;
+}
+.ach-spectral.ach-spectral--locked .spectral-fallback svg {
+  fill: #747b7e;
+}
+.ach-spectral.ach-spectral--locked .card-title,
+.ach-spectral.ach-spectral--locked .card-description,
+.ach-spectral.ach-spectral--locked .metric,
+.ach-spectral.ach-spectral--locked .earned,
+.ach-spectral.ach-spectral--locked .wordmark {
+  color: #b4b9ba;
+}
+.ach-spectral .spectral-progress {
+  width: 60%;
+  height: 2px;
+  margin-top: 3cqw;
+  background: #ffffff15;
+}
+.ach-spectral .spectral-progress span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+.ach-spectral-wrap:focus-visible {
+  outline: 2px solid #e0a13e;
+  outline-offset: 6px;
+  border-radius: 20px;
+}
+.ach-set-hero .ach-spectral-wrap {
+  width: min(300px, 100%);
+}
+.ach-modal-stage:has(.ach-spectral) {
+  min-height: 0;
+}
+.ach-modal-stage .ach-spectral-wrap {
+  transform: none;
+  width: min(480px, calc(100vw - 2 * var(--ach-modal-clearance)), 51svh);
+}
+@container (max-width: 360px) {
+  .ach-spectral .meta-row {
+    flex-direction: column;
+  }
+  .ach-spectral .meta-divider {
+    display: none;
+  }
+}
+@container (max-width: 280px) {
+  .ach-spectral .card-description {
+    display: none;
+  }
+  .ach-spectral .card-title {
+    font-size: clamp(15px, 7cqw, 20px);
+    letter-spacing: 0.02em;
+  }
+  .ach-spectral .metric,
+  .ach-spectral .earned {
+    font-size: 12px;
+    line-height: 1.35;
+    letter-spacing: 0.025em;
+    justify-content: center;
+    white-space: normal;
+    text-wrap: balance;
+  }
+  .ach-spectral .metric svg,
+  .ach-spectral .earned svg {
+    flex-shrink: 0;
+    width: 13px;
+    min-width: 13px;
+  }
+  .ach-spectral .meta-row {
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .ach-spectral .rarity {
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-indent: 0.3em;
+  }
+  .ach-spectral .wordmark {
+    font-size: 9px;
+    letter-spacing: 0.3em;
+    text-indent: 0.3em;
+  }
+  .ach-spectral .card-copy {
+    margin-bottom: 8cqw;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ach-card.ach-spectral {
+    transform: none;
+    transition: none;
+  }
+}
