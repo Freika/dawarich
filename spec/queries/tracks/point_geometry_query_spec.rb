@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-RSpec.describe Tracks::ImportGeometryQuery do
+RSpec.describe Tracks::PointGeometryQuery do
   let(:user) { create(:user) }
   let(:track) { create(:track, user:) }
   let(:selected_import) { create(:import, user:) }

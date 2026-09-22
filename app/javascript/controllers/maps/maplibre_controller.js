@@ -999,7 +999,9 @@ export default class extends Controller {
     let feature = this._findTrackFeature(trackId, startedAt)
     if (!feature && trackId) {
       try {
-        feature = await this.api.fetchTrackWithSegments(trackId)
+        feature = await this.api.fetchTrackWithSegments(trackId, {
+          ...this.layerManager?.pointTileRange,
+        })
       } catch (error) {
         console.warn(`[Map] Failed to load timeline track ${trackId}:`, error)
         return

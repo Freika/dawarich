@@ -60,6 +60,41 @@ RSpec.describe Tracks::SpeedVectorTileQuery do
     expect(rows.first['segment_speed']).to be_within(0.05).of(4.0)
   end
 
+  it 'colors only segments whose Points are inside the requested time range' do
+    track = track_with_points(longitudes: [0.001, 0.002, 0.003, 0.004], offsets: [0, 10, 20, 30])
+
+    rows = query(clip_points_scope: user.points,
+                 clip_start_at: start_at + 20.seconds,
+                 clip_end_at: start_at + 30.seconds).feature_rows
+
+    expect(rows.size).to eq(1)
+    expect(rows.first['id']).to eq(track.id)
+    expect(rows.first['start_timestamp'].to_i).to eq((start_at + 20.seconds).to_i)
+    expect(rows.first['end_timestamp'].to_i).to eq((start_at + 30.seconds).to_i)
+  end
+
+  it 'keeps stored popup properties for a track inside the requested time range' do
+    track = track_with_points
+
+    rows = query(clip_points_scope: user.points,
+                 clip_start_at: start_at - 1.hour,
+                 clip_end_at: start_at + 2.hours).feature_rows
+
+    expect(rows.map { |row| row['id'] }.uniq).to eq([track.id])
+    expect(rows.map { |row| row['avg_speed'] }.uniq).to eq([track.avg_speed])
+  end
+
+  it 'draws the stored path of a boundary-spanning track without linked Points' do
+    track = create(:track, user:, original_path: 'LINESTRING(0.001 0.001, 0.002 0.001)',
+                           start_at:, end_at: start_at + 1.hour)
+
+    rows = query(clip_points_scope: user.points,
+                 clip_start_at: start_at + 30.minutes,
+                 clip_end_at: start_at + 2.hours).feature_rows
+
+    expect(rows.map { |row| row['id'] }).to eq([track.id])
+  end
+
   it 'does not color an invented edge across interleaved imports' do
     selected_import = create(:import, user:)
     other_import = create(:import, user:)
