@@ -166,6 +166,21 @@ RSpec.describe Points::RawData::Archiver do
       expect(empty_point.reload.raw_data_archived).to be false
     end
 
+    it 'does not repeatedly select points with inconsistent legacy archive links' do
+      stale_archive = create(:points_raw_data_archive, user: user)
+      stale_point = create(:point, user: user,
+                                   timestamp: 3.months.ago.to_i,
+                                   raw_data: { lon: 14.0, lat: 53.0 })
+      stale_point.update_columns(raw_data_archived: false, raw_data_archive_id: stale_archive.id)
+
+      expect(archiver).to receive(:archive_month_groups) do |_user_id, rows|
+        expect(rows.map(&:first)).not_to include(stale_point.id)
+        false
+      end
+
+      archiver.archive_user(user.id)
+    end
+
     context 'with points from multiple months' do
       let!(:june_points) do
         june_date = 4.months.ago.beginning_of_month
@@ -240,6 +255,14 @@ RSpec.describe Points::RawData::Archiver do
         expect(old_points.each(&:reload).map(&:raw_data_archived)).to all(be false)
         expect(newer_points.each(&:reload).map(&:raw_data_archived)).to all(be true)
       end
+
+      it 're-raises exhausted flag contention after attempting sibling months' do
+        allow(archiver).to receive(:flag_points_batched)
+          .twice
+          .and_raise(ActiveRecord::Deadlocked, 'write contention')
+
+        expect { archiver.archive_user(user.id) }.to raise_error(ActiveRecord::Deadlocked)
+      end
     end
 
     it 'stores min and max point IDs in metadata' do
@@ -312,6 +335,28 @@ RSpec.describe Points::RawData::Archiver do
 
       june_points.each(&:reload)
       expect(june_points.all?(&:raw_data_archived)).to be true
+    end
+
+    it 'does not rearchive points with inconsistent legacy archive links' do
+      stale_archive = Points::RawDataArchive.create!(
+        user: user,
+        year: test_date.year,
+        month: test_date.month,
+        chunk_number: 99,
+        point_count: 1,
+        point_ids_checksum: 'stale',
+        archived_at: Time.current
+      )
+      stale_point = june_points.first
+      stale_point.update_columns(raw_data_archived: false, raw_data_archive_id: stale_archive.id)
+
+      archiver.archive_specific_month(user.id, test_date.year, test_date.month)
+
+      expect(stale_point.reload).to have_attributes(
+        raw_data_archived: false,
+        raw_data_archive_id: stale_archive.id
+      )
+      expect(user.raw_data_archives.last.point_count).to eq(2)
     end
   end
 

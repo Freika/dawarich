@@ -25,6 +25,17 @@ module Points
         @stats
       end
 
+      def clear_user(user_id)
+        Rails.logger.info("Starting raw_data clearing for user #{user_id}...")
+
+        verified_archives(user_id: user_id).find_each do |archive|
+          clear_archive_points(archive)
+        end
+
+        Rails.logger.info("Clearing complete for user #{user_id}: #{@stats}")
+        @stats
+      end
+
       def clear_specific_archive(archive_id)
         archive = Points::RawDataArchive.find(archive_id)
 
@@ -47,9 +58,10 @@ module Points
 
       private
 
-      def verified_archives
+      def verified_archives(user_id: nil)
         # Only archives that are verified but have points with non-empty raw_data
         scope = Points::RawDataArchive.where.not(verified_at: nil)
+        scope = scope.where(user_id: user_id) if user_id
         scope = scope.where(verified_at: ..@cooling_period.ago) if @cooling_period
         scope.where(id: points_needing_clearing.select(:raw_data_archive_id).distinct)
       end
@@ -76,7 +88,7 @@ module Points
           return
         end
 
-        cleared_count = clear_points_in_batches(point_ids)
+        cleared_count = clear_points_in_batches(point_ids, archive.id)
         @stats[:cleared] += cleared_count
         Rails.logger.info("✓ Cleared #{cleared_count} points for archive #{archive.id}")
 
@@ -87,23 +99,36 @@ module Points
         Rails.logger.error("✗ Failed to clear archive #{archive.id}: #{e.message}")
 
         Yabeda.dawarich_archive.operations_total.increment({ operation: 'clear', status: 'failure' })
+        raise if Archivable::UPSERT_CONTENTION_ERRORS.any? { |error_class| e.is_a?(error_class) }
       end
 
-      def clear_points_in_batches(point_ids)
+      def clear_points_in_batches(point_ids, archive_id)
         total_cleared = 0
 
         point_ids.each_slice(BATCH_SIZE) do |batch|
           Point.transaction do
-            cleared = Point.where(id: batch, raw_data_archived: true).update_all(
-              raw_data: {},
-              lock_version: Arel.sql('lock_version')
-            )
+            archive = Points::RawDataArchive.lock.find_by(id: archive_id)
+            next unless archive_clearable?(archive)
+
+            linked_ids = Point.raw_data_lock_order
+                              .where(id: batch, raw_data_archived: true, raw_data_archive_id: archive_id)
+                              .lock
+                              .pluck(:id)
+            cleared = Point.where(id: linked_ids, raw_data_archived: true, raw_data_archive_id: archive_id)
+                           .update_all(raw_data: {}, lock_version: Arel.sql('lock_version'))
             # rubocop:enable Rails/SkipsModelValidations
             total_cleared += cleared
           end
         end
 
         total_cleared
+      end
+
+      def archive_clearable?(archive)
+        return false if archive&.verified_at.blank?
+        return true unless @cooling_period
+
+        archive.verified_at <= @cooling_period.ago
       end
     end
   end

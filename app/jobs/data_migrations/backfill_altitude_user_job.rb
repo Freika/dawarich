@@ -63,6 +63,8 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
 
       archives.each do |archive|
         process_archive(archive, batch_size, stats)
+      rescue *Archivable::UPSERT_CONTENTION_ERRORS
+        raise
       rescue StandardError => e
         Rails.logger.error("Failed to process archive #{archive.id}: #{e.message}")
       end
@@ -86,17 +88,19 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
       updates << update
 
       if updates.size >= batch_size
-        flush_updates(updates, stats)
+        flush_updates(updates, stats, archive_id: archive.id)
         updates = []
       end
     end
 
-    flush_updates(updates, stats) if updates.any?
+    flush_updates(updates, stats, archive_id: archive.id) if updates.any?
   end
 
-  def flush_updates(updates, stats)
+  def flush_updates(updates, stats, archive_id: nil)
     point_ids = updates.map { |u| u[:id] }
-    existing = Point.where(id: point_ids).pluck(:id, :altitude).to_h
+    scope = Point.where(id: point_ids)
+    scope = scope.where(raw_data_archived: true, raw_data_archive_id: archive_id) if archive_id
+    existing = scope.pluck(:id, :altitude).to_h
 
     meaningful_updates = updates.select do |u|
       next false unless existing.key?(u[:id])
@@ -105,12 +109,25 @@ class DataMigrations::BackfillAltitudeUserJob < ApplicationJob
       current.nil? || current.to_d != BigDecimal(u[:altitude].to_s)
     end
 
-    return unless meaningful_updates.any?
+    return if meaningful_updates.empty?
 
-    update_cols = [:altitude]
-    update_cols << :altitude_decimal if Point.altitude_decimal_supported?
-    Point.upsert_all(meaningful_updates, unique_by: :id, update_only: update_cols)
-    stats[:archived] += meaningful_updates.size
+    update_values = {
+      altitude: altitude_case_expression(meaningful_updates, :altitude),
+      lock_version: Arel.sql('lock_version')
+    }
+    if Point.altitude_decimal_supported?
+      update_values[:altitude_decimal] = altitude_case_expression(meaningful_updates, :altitude_decimal)
+    end
+    stats[:archived] += scope.where(id: meaningful_updates.map { |u| u[:id] }).update_all(update_values)
+  end
+
+  def altitude_case_expression(updates, column)
+    cases = updates.map do |update|
+      value = update.fetch(column, update[:altitude])
+      "WHEN #{Point.connection.quote(update[:id])} THEN #{Point.connection.quote(value)}"
+    end.join(' ')
+
+    Arel.sql("CASE id #{cases} ELSE #{column} END")
   end
 
   def build_update(point)

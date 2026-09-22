@@ -26,6 +26,7 @@ module Points
         loop do
           rows = Point
                  .where(user_id: user_id, raw_data_archived: false)
+                 .where(raw_data_archive_id: nil)
                  .where('timestamp < ?', cutoff)
                  .where('id > ?', cursor)
                  .where.not(raw_data: [nil, {}])
@@ -82,6 +83,7 @@ module Points
       # the same batch are independent and still attempted before stopping.
       def archive_month_groups(user_id, rows)
         batch_succeeded = true
+        retryable_error = nil
 
         rows.group_by { |_id, timestamp| utc_month(timestamp) }.each do |(year, month), group|
           point_ids = group.map(&:first)
@@ -98,8 +100,11 @@ module Points
             )
             ExceptionReporter.call(e, "Archive chunk failed for user #{user_id}")
             batch_succeeded = false
+            retryable_error ||= e if Archivable::UPSERT_CONTENTION_ERRORS.any? { |error_class| e.is_a?(error_class) }
           end
         end
+
+        raise retryable_error if retryable_error
 
         batch_succeeded
       end
@@ -159,6 +164,7 @@ module Points
         end_of_month = (Time.utc(year, month, 1) + 1.month).to_i
 
         Point.where(user_id: user_id, raw_data_archived: false)
+             .where(raw_data_archive_id: nil)
              .where(timestamp: start_of_month...end_of_month)
              .where.not(raw_data: [nil, {}])
              .order(:id)

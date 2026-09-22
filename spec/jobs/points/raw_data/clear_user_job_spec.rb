@@ -32,6 +32,16 @@ RSpec.describe Points::RawData::ClearUserJob, type: :job do
 
         expect(point.reload.raw_data).to eq({})
       end
+
+      it 'uses the lock-safe clearer scoped to the user' do
+        clearer = instance_double(Points::RawData::Clearer)
+        allow(Points::RawData::Clearer).to receive(:new)
+          .with(cooling_period: described_class::COOLING_PERIOD)
+          .and_return(clearer)
+        expect(clearer).to receive(:clear_user).with(user.id)
+
+        described_class.perform_now(user.id)
+      end
     end
 
     context 'when the archive was verified within the cooling period' do

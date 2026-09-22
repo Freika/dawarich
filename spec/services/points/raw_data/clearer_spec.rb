@@ -10,6 +10,50 @@ RSpec.describe Points::RawData::Clearer do
     allow(PointsChannel).to receive(:broadcast_to)
   end
 
+  describe '#clear_user' do
+    let(:clearer) { described_class.new(cooling_period: 7.days) }
+    let(:other_user) { create(:user) }
+    let!(:archive) { create(:points_raw_data_archive, user: user, verified_at: 8.days.ago) }
+    let!(:other_archive) { create(:points_raw_data_archive, user: other_user, verified_at: 8.days.ago) }
+    let!(:point) do
+      create(:point, user: user, raw_data_archived: true,
+                     raw_data_archive_id: archive.id, raw_data: { 'source' => 'selected' })
+    end
+    let!(:other_point) do
+      create(:point, user: other_user, raw_data_archived: true,
+                     raw_data_archive_id: other_archive.id, raw_data: { 'source' => 'other' })
+    end
+
+    it 'clears only archives owned by the selected user' do
+      result = clearer.clear_user(user.id)
+
+      expect(result[:cleared]).to eq(1)
+      expect(point.reload.raw_data).to eq({})
+      expect(other_point.reload.raw_data).to eq({ 'source' => 'other' })
+    end
+
+    it 'does not clear an archive reverified within the cooling period after selection' do
+      allow(Point).to receive(:transaction).and_wrap_original do |original, *args, &block|
+        archive.update_column(:verified_at, Time.current)
+        original.call(*args, &block)
+      end
+
+      result = clearer.clear_user(user.id)
+
+      expect(result[:cleared]).to eq(0)
+      expect(point.reload.raw_data).to eq({ 'source' => 'selected' })
+    end
+
+    [ActiveRecord::Deadlocked, ActiveRecord::QueryCanceled, ActiveRecord::LockWaitTimeout].each do |error_class|
+      it "re-raises #{error_class} so the scheduled job can retry" do
+        allow(clearer).to receive(:clear_points_in_batches).and_raise(error_class, 'write contention')
+        allow(ExceptionReporter).to receive(:call)
+
+        expect { clearer.clear_user(user.id) }.to raise_error(error_class)
+      end
+    end
+  end
+
   describe '#clear_specific_archive' do
     let(:test_date) { 3.months.ago.beginning_of_month.utc }
     let!(:points) do
@@ -53,6 +97,18 @@ RSpec.describe Points::RawData::Clearer do
       result = clearer.clear_specific_archive(unverified_archive.id)
 
       expect(result[:cleared]).to eq(0)
+    end
+
+    it 'does not clear an archive invalidated after selection' do
+      archive
+      allow(Point).to receive(:transaction).and_wrap_original do |original, *args, &block|
+        archive.update_column(:verified_at, nil)
+        original.call(*args, &block)
+      end
+
+      clearer.clear_specific_archive(archive.id)
+
+      expect(Point.where(user: user).pluck(:raw_data)).to all(eq({ 'lon' => 13.4, 'lat' => 52.5 }))
     end
 
     it 'is idempotent (safe to run multiple times)' do
@@ -207,6 +263,19 @@ RSpec.describe Points::RawData::Clearer do
       # The other 4 points should have been cleared
       other_points = Point.where(user: user).where.not(id: restored_point.id)
       expect(other_points.pluck(:raw_data)).to all(eq({}))
+    end
+
+    it 'does not clear a point relinked to another archive after selection' do
+      source_archive = Points::RawDataArchive.where(user: user).first
+      relinked_point = Point.where(user: user, raw_data_archive_id: source_archive.id).first
+      replacement_archive = create(:points_raw_data_archive, user: user, verified_at: Time.current)
+      relinked_point.update_columns(raw_data_archive_id: replacement_archive.id,
+                                    raw_data: { 'newer' => true })
+
+      cleared = clearer.send(:clear_points_in_batches, [relinked_point.id], source_archive.id)
+
+      expect(cleared).to eq(0)
+      expect(relinked_point.reload.raw_data).to eq({ 'newer' => true })
     end
 
     it 'increments operations_total with clear/success tags' do
