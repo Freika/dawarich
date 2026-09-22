@@ -14,13 +14,13 @@ class Points::TimestampParser
                timestamp = Integer(string, 10)
                Time.at(timestamp).utc.to_datetime
              else
-               DateTime.iso8601(string)
+               DateTime.parse(string)
              end
 
     raise InvalidTimestampError unless parsed.to_time.to_i.between?(MIN_TIMESTAMP, MAX_TIMESTAMP)
 
     parsed
   rescue ArgumentError, TypeError
-    raise InvalidTimestampError, 'Timestamp must be ISO 8601 or Unix seconds'
+    raise InvalidTimestampError, 'Timestamp must be a date and time or Unix seconds'
   end
 end

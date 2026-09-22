@@ -179,7 +179,7 @@ describe 'Overland Batches API', type: :request do
         before { allow(Sentry).to receive(:capture_exception) }
 
         run_test! do |response|
-          expect(response.parsed_body).to eq('error' => 'Timestamp must be ISO 8601 or Unix seconds')
+          expect(response.parsed_body).to eq('error' => 'Timestamp must be a date and time or Unix seconds')
           expect(Sentry).not_to have_received(:capture_exception)
         end
       end
