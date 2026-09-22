@@ -64,8 +64,18 @@ function pathLengthKm(coordinates) {
 test("the Berlin demo route is between two and three kilometres", async () => {
   const { MATCHED_PATH } = await loadController()
 
+  assert.equal(MATCHED_PATH.length, 164)
+  assert.deepEqual(MATCHED_PATH[0], [13.413474, 52.521815])
+  assert.deepEqual(MATCHED_PATH.at(-1), [13.377699, 52.51627])
   assert.ok(pathLengthKm(MATCHED_PATH) >= 2)
   assert.ok(pathLengthKm(MATCHED_PATH) <= 3)
+  assert.ok(
+    Math.max(
+      ...MATCHED_PATH.slice(1).map((point, index) =>
+        pathLengthKm([MATCHED_PATH[index], point]),
+      ),
+    ) < 0.2,
+  )
 })
 
 test("the route switch updates the map and pressed state", async () => {

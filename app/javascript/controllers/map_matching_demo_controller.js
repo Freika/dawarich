@@ -3,39 +3,79 @@ import * as maplibregl from "maplibre-gl"
 import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 
-// A synthetic 2.6 km walk through central Berlin, from Alexanderplatz to the
-// Brandenburg Gate. The original trace deliberately carries realistic GPS
-// drift; the matched trace follows Karl-Liebknecht-Straße and Unter den Linden.
-export const MATCHED_PATH = [
-  [13.41315, 52.52188],
-  [13.4107, 52.521],
-  [13.40815, 52.52005],
-  [13.40565, 52.51912],
-  [13.40305, 52.51812],
-  [13.40125, 52.51712],
-  [13.3977, 52.51702],
-  [13.39365, 52.51678],
-  [13.38925, 52.51655],
-  [13.38465, 52.51632],
-  [13.38055, 52.51622],
-  [13.37772, 52.51627],
-]
+// Privacy-safe simulated GPS trace through central Berlin, from
+// Alexanderplatz to the Brandenburg Gate. MATCHED_POLYLINE6 is the actual
+// shape returned by Valhalla for the 114-point trace. Use the shape itself —
+// matched_points are sparse correlations and do not contain the road geometry
+// between observations.
+const MATCHED_POLYLINE6 =
+  "mttdcBceuqXhHtPvKlUz@qA`I_MvF`O|@zJz@~JD|AzCxGdDlHv@uAlFpLTh@^|@v@lBb@fAxApD|@wAv[|z@hShi@zB`GfLrZlTrk@NrBf@`HRbC|HnT`@dAv@zBjBtKzA`ExJ`XjFrN^z@bAbCh@pAl@xAl@xAjApCj@rA~@{@~a@xqAj\\ldArBkC~BlH^lAbLz^hBhG~AhFrHbVbJhZp@xBhBvGz@nElAfGp@~BZhAlC~IlBx@nBzF?dEhF~Q|@tCj@rCJbBI`B]hAs@vA_InK[hDyBxBq@DQRqh@dn@_JbMyM`ReGnHs@z@qB~BRjCh@pNvAfm@JlER`H`Ah_@nCleARxHBx@NlGzAxk@L`FRxHHjD`Bvm@tAxg@J`DHpAF~@PdBXhBf@lCb@lBZbBRnBH|A~@n\\FnB`Ap]dAt_@jApa@BjAPhGNvFH|C~@n]l@dUlAtd@BjATjIThJJlD`Bhn@t@dYnBru@|@l]DdAVrJXlJHzCt@dZ^`NhAzc@R|HBt@NpFLbFD`AXdKDrBRdHp@fVP`GbAv_@bAh^h@xRfA|`@ThKRdI_C|@yAh@{@Zu@XjAfg@z@Gv@hXFpCHxCtCbdAHrCt@|K\\vMBzADhB"
+
+function decodePolyline6(encoded) {
+  const coordinates = []
+  let index = 0
+  let latitude = 0
+  let longitude = 0
+
+  while (index < encoded.length) {
+    const deltas = []
+
+    for (let axis = 0; axis < 2; axis += 1) {
+      let result = 0
+      let shift = 0
+      let byte
+
+      do {
+        byte = encoded.charCodeAt(index) - 63
+        index += 1
+        result |= (byte & 0x1f) << shift
+        shift += 5
+      } while (byte >= 0x20)
+
+      deltas.push(result & 1 ? ~(result >> 1) : result >> 1)
+    }
+
+    latitude += deltas[0]
+    longitude += deltas[1]
+    coordinates.push([longitude / 1_000_000, latitude / 1_000_000])
+  }
+
+  return coordinates
+}
+
+export const MATCHED_PATH = decodePolyline6(MATCHED_POLYLINE6)
 
 export const ORIGINAL_PATH = [
-  [13.41315, 52.52188],
-  [13.4111, 52.5215],
-  [13.409, 52.5201],
-  [13.4073, 52.5197],
-  [13.4053, 52.5196],
-  [13.4028, 52.5184],
-  [13.4009, 52.5176],
-  [13.3983, 52.5166],
-  [13.3954, 52.5173],
-  [13.3921, 52.5164],
-  [13.3889, 52.5169],
-  [13.385, 52.5159],
-  [13.3814, 52.5166],
-  [13.37772, 52.51627],
+  [13.413474, 52.521815],
+  [13.412965, 52.521176],
+  [13.411817, 52.520719],
+  [13.410784, 52.520135],
+  [13.409646, 52.519562],
+  [13.408399, 52.5191],
+  [13.40723, 52.518558],
+  [13.406137, 52.517998],
+  [13.404893, 52.517514],
+  [13.403868, 52.516966],
+  [13.402649, 52.516456],
+  [13.401397, 52.516022],
+  [13.400381, 52.516603],
+  [13.399502, 52.517321],
+  [13.398322, 52.517542],
+  [13.396859, 52.517423],
+  [13.39539, 52.517329],
+  [13.393916, 52.517273],
+  [13.392481, 52.517084],
+  [13.391013, 52.516988],
+  [13.389538, 52.516931],
+  [13.388075, 52.51681],
+  [13.386606, 52.516722],
+  [13.385132, 52.516664],
+  [13.383668, 52.51654],
+  [13.382199, 52.516451],
+  [13.380907, 52.516432],
+  [13.379527, 52.516423],
+  [13.378055, 52.516322],
+  [13.377699, 52.51627],
 ]
 
 const MODES = new Set(["original", "matched"])
