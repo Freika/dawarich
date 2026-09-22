@@ -1982,9 +1982,9 @@ fr:
         cancel: Annuler
         create_visit: Créer une visite
       webgl_error:
-        webgl_is_not_available: WebGL n'est pas disponible
+        webgl_is_not_available: WebGL 2 n'est pas disponible
         map_v2_requires_webgl_to_render_maps_please_enable_hardware: La carte v2 nécessite
-          WebGL pour afficher les cartes. Activez l'accélération matérielle dans vos
+          WebGL 2 pour afficher les cartes. Activez l'accélération matérielle dans vos
           paramètres de navigateur ou utilisez un autre navigateur.
       index:
         loading: Chargement...

@@ -34,10 +34,12 @@ class Tracks::VectorTileQuery
 
   # rubocop:disable Naming/MethodParameterName
   def initialize(scope:, z:, x:, y:, clip_points_scope: nil, clip_import_id: nil,
-                 use_matched_path: false)
+                 clip_start_at: nil, clip_end_at: nil, use_matched_path: false)
     @scope = scope
     @clip_points_scope = clip_points_scope
     @clip_import_id = clip_import_id
+    @clip_start_at = clip_start_at&.to_i
+    @clip_end_at = clip_end_at&.to_i
     @use_matched_path = use_matched_path
     @z = parse_integer(z)
     @x = parse_integer(x)
@@ -155,24 +157,49 @@ class Tracks::VectorTileQuery
 
   def clipped_with_clauses
     <<~SQL
-      WITH candidates AS MATERIALIZED (
-        SELECT * FROM (#{tile_scope.to_sql}) AS tracks
-        WHERE ST_Intersects(tracks.original_path, ST_Transform(#{margined_envelope}, 4326))
-      ), features AS (
-        SELECT #{import_property_columns},
-          #{mvt_geom_expression('import_path.path')} AS geom
+      WITH #{candidates_cte}, features AS (
+        SELECT #{property_columns}, #{mvt_geom_expression} AS geom
         FROM candidates AS tracks
-        JOIN LATERAL (#{import_geometry_query.path_sql(track_id_sql: 'tracks.id')}) AS import_path
-          ON import_path.path IS NOT NULL
-        WHERE ST_Intersects(import_path.path, ST_Transform(#{margined_envelope}, 4326))
+        WHERE NOT tracks.clipped
+        UNION ALL
+        SELECT #{clipped_property_columns},
+          #{mvt_geom_expression('clipped_path.path')} AS geom
+        FROM candidates AS tracks
+        JOIN LATERAL (#{point_geometry_query.path_sql(track_id_sql: 'tracks.id')}) AS clipped_path
+          ON clipped_path.path IS NOT NULL
+        WHERE tracks.clipped
+          AND ST_Intersects(clipped_path.path, ST_Transform(#{margined_envelope}, 4326))
         LIMIT #{TRACKS_PER_TILE_LIMIT}
       )
     SQL
   end
 
-  def import_geometry_query
-    @import_geometry_query ||= Tracks::ImportGeometryQuery.new(points_scope: @clip_points_scope,
-                                                               import_id: @clip_import_id)
+  def candidates_cte
+    <<~SQL
+      candidates AS MATERIALIZED (
+        SELECT tracks.*, #{clipped_track_predicate} AS clipped
+        FROM (#{tile_scope.to_sql}) AS tracks
+        WHERE ST_Intersects(tracks.original_path, ST_Transform(#{margined_envelope}, 4326))
+      )
+    SQL
+  end
+
+  def clipped_track_predicate
+    return 'false' unless @clip_points_scope
+    return 'true' if @clip_import_id || !(@clip_start_at && @clip_end_at)
+
+    <<~SQL.squish
+      (EXTRACT(EPOCH FROM tracks.start_at) < #{@clip_start_at}
+        OR EXTRACT(EPOCH FROM tracks.end_at) > #{@clip_end_at})
+      AND EXISTS (SELECT 1 FROM points WHERE points.track_id = tracks.id)
+    SQL
+  end
+
+  def point_geometry_query
+    @point_geometry_query ||= Tracks::PointGeometryQuery.new(
+      points_scope: @clip_points_scope, import_id: @clip_import_id,
+      start_at: @clip_start_at, end_at: @clip_end_at
+    )
   end
 
   # The exact scalar property set (keys AND types) of
@@ -196,21 +223,21 @@ class Tracks::VectorTileQuery
     SQL
   end
 
-  def import_property_columns
+  def clipped_property_columns
     <<~SQL.squish
       tracks.id AS id,
       #{Track.sanitize_sql_array(['? AS color', Tracks::GeojsonSerializer::DEFAULT_COLOR])},
-      to_char(to_timestamp(import_path.start_timestamp) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS start_at,
-      to_char(to_timestamp(import_path.end_timestamp) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS end_at,
-      import_path.start_timestamp,
-      import_path.end_timestamp,
+      to_char(to_timestamp(clipped_path.start_timestamp) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS start_at,
+      to_char(to_timestamp(clipped_path.end_timestamp) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS end_at,
+      clipped_path.start_timestamp,
+      clipped_path.end_timestamp,
       tracks.lock_version AS revision,
-      ROUND(ST_Length(import_path.path::geography))::bigint AS distance,
-      CASE WHEN import_path.end_timestamp > import_path.start_timestamp THEN
-        ST_Length(import_path.path::geography) * 3.6 /
-          (import_path.end_timestamp - import_path.start_timestamp)
+      ROUND(ST_Length(clipped_path.path::geography))::bigint AS distance,
+      CASE WHEN clipped_path.end_timestamp > clipped_path.start_timestamp THEN
+        ST_Length(clipped_path.path::geography) * 3.6 /
+          (clipped_path.end_timestamp - clipped_path.start_timestamp)
       ELSE 0 END AS avg_speed,
-      import_path.end_timestamp - import_path.start_timestamp AS duration,
+      clipped_path.end_timestamp - clipped_path.start_timestamp AS duration,
       #{mode_case_expression} AS dominant_mode,
       #{emoji_case_expression} AS dominant_mode_emoji
     SQL

@@ -43,6 +43,39 @@ test("history bounds request opts into robust bounds without affecting fog", asy
   }
 })
 
+test("focused Track forwards a requested date range", async () => {
+  const requests = []
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (url) => {
+    requests.push(new URL(url, "http://localhost"))
+    return { ok: true, json: async () => ({ features: [] }) }
+  }
+
+  try {
+    const client = new ApiClient("test-key")
+    await client.fetchTrackWithSegments(7, {
+      startAt: "2024-06-01T00:00+02:00",
+      endAt: "2024-06-01T23:59+02:00",
+    })
+    await client.fetchTrackWithSegments(7)
+
+    assert.equal(
+      requests[0].searchParams.get("start_at"),
+      "2024-06-01T00:00+02:00",
+    )
+    assert.equal(
+      requests[0].searchParams.get("end_at"),
+      "2024-06-01T23:59+02:00",
+    )
+    assert.equal(requests[0].searchParams.get("geometry"), "display")
+    assert.equal(requests[1].searchParams.get("geometry"), "display")
+    assert.equal(requests[1].searchParams.has("start_at"), false)
+    assert.equal(requests[1].searchParams.has("end_at"), false)
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test("focused Track and editor Points keep the selected import scope", async () => {
   const requests = []
   const originalFetch = globalThis.fetch
@@ -61,6 +94,7 @@ test("focused Track and editor Points keep the selected import scope", async () 
     await client.fetchTrackPointsPage(7)
 
     assert.equal(requests[0].pathname, "/api/v1/tracks/7")
+    assert.equal(requests[0].searchParams.get("geometry"), "original")
     assert.equal(requests[1].pathname, "/api/v1/tracks/7/points")
     assert.ok(
       requests.every(

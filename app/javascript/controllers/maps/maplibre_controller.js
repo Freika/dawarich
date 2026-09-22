@@ -374,7 +374,7 @@ export default class extends Controller {
   isWebGLSupported() {
     try {
       const canvas = document.createElement("canvas")
-      return !!(canvas.getContext("webgl2") || canvas.getContext("webgl"))
+      return !!canvas.getContext("webgl2")
     } catch {
       return false
     }
@@ -999,7 +999,9 @@ export default class extends Controller {
     let feature = this._findTrackFeature(trackId, startedAt)
     if (!feature && trackId) {
       try {
-        feature = await this.api.fetchTrackWithSegments(trackId)
+        feature = await this.api.fetchTrackWithSegments(trackId, {
+          ...this.layerManager?.pointTileRange,
+        })
       } catch (error) {
         console.warn(`[Map] Failed to load timeline track ${trackId}:`, error)
         return
@@ -1156,10 +1158,9 @@ export default class extends Controller {
 
     // Store override state for restoration (only on first override)
     if (!this._visitsOverride) {
-      const source = this.map.getSource(visitsLayer.sourceId)
       this._visitsOverride = {
         wasHidden,
-        previousData: source?._data || {
+        previousData: visitsLayer.data || {
           type: "FeatureCollection",
           features: [],
         },
@@ -1214,8 +1215,7 @@ export default class extends Controller {
       return selected
     }
 
-    const source = this.map.getSource(tracksLayer.sourceId)
-    const sourceData = source?._data || tracksLayer.data
+    const sourceData = tracksLayer.data
     if (!sourceData?.features) return null
 
     // Primary: match by track ID
@@ -2061,11 +2061,7 @@ export default class extends Controller {
     }
 
     const pointsSource = this.map?.getSource("points-source")
-    if (pointsSource?._data?.features) {
-      return pointsSource._data.features
-    }
-
-    return []
+    return pointsSource?.serialize?.()?.data?.features || []
   }
 
   _updateTrackReplayButton(playing) {

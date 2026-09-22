@@ -1250,8 +1250,8 @@ zh:
         cancel: 取消
         create_visit: 创建到访记录
       webgl_error:
-        webgl_is_not_available: WebGL 不可用
-        map_v2_requires_webgl_to_render_maps_please_enable_hardware: Map v2 需要使用 WebGL 渲染地图。请在浏览器设置中启用硬件加速，或尝试其他浏览器。
+        webgl_is_not_available: WebGL 2 不可用
+        map_v2_requires_webgl_to_render_maps_please_enable_hardware: Map v2 需要使用 WebGL 2 渲染地图。请在浏览器设置中启用硬件加速，或尝试其他浏览器。
       index:
         loading: 正在加载...
         pick_a_day: 选择一天

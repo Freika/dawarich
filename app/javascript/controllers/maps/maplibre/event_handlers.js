@@ -1,5 +1,5 @@
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { PointDragGesture } from "maps_maplibre/editing/point_drag_gesture"
 import {
@@ -437,8 +437,10 @@ export class EventHandlers {
     generation = this._trackSelectionGeneration,
   ) {
     try {
-      const trackFeature =
-        await this.controller.api.fetchTrackWithSegments(trackId)
+      const trackFeature = await this.controller.api.fetchTrackWithSegments(
+        trackId,
+        { ...this.controller.layerManager?.pointTileRange },
+      )
       if (
         generation !== this._trackSelectionGeneration ||
         this.selectedTrackFeature !== fullFeature

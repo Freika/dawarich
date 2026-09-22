@@ -80,9 +80,10 @@ globalThis.document ??= {
   dispatchEvent: () => {},
 }
 
-function loadSegmentsHarness(fetchedFeature) {
+function loadSegmentsHarness(fetchedFeature, pointTileRange = undefined) {
   const shown = []
   const selected = []
+  const fetches = []
   const tracksLayer = {
     setSelectedTrack: (feature) => selected.push(feature),
     showSegments: (feature) => shown.push(feature),
@@ -94,16 +95,39 @@ function loadSegmentsHarness(fetchedFeature) {
   const handlers = new EventHandlers(
     { off: () => {}, getLayer: () => null },
     {
-      api: { fetchTrackWithSegments: async () => fetchedFeature },
+      api: {
+        fetchTrackWithSegments: async (...args) => {
+          fetches.push(args)
+          return fetchedFeature
+        },
+      },
       layerManager: {
+        pointTileRange,
         getLayer: (name) => (name === "tracks" ? tracksLayer : null),
       },
       closeInfo: () => {},
     },
   )
   handlers._createTrackSegmentMarkers = () => {}
-  return { handlers, shown, selected }
+  return { handlers, shown, selected, fetches }
 }
+
+test("a tiled track click fetches the track within the map's date range", async () => {
+  const fragment = { properties: { id: 7 }, geometry: { type: "LineString" } }
+  const range = {
+    startAt: "2024-06-01T00:00+02:00",
+    endAt: "2024-06-01T23:59+02:00",
+  }
+  const { handlers, fetches } = loadSegmentsHarness(
+    { properties: { id: 7 } },
+    range,
+  )
+  handlers.selectedTrackFeature = fragment
+
+  await handlers._loadTrackSegments(7, fragment)
+
+  assert.deepEqual(fetches, [[7, range]])
+})
 
 test("a tiled track click swaps the clipped fragment for the fetched geometry", async () => {
   const fragment = { properties: { id: 7 }, geometry: { type: "LineString" } }

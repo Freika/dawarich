@@ -2977,6 +2977,8 @@ paths:
       responses:
         '201':
           description: Batch of points created
+        '422':
+          description: Invalid timestamp
         '401':
           description: Unauthorized
       requestBody:
@@ -3010,9 +3012,11 @@ paths:
                         type: object
                         properties:
                           timestamp:
-                            type: string
+                            oneOf:
+                            - type: string
+                            - type: integer
                             example: '2021-06-01T12:00:00Z'
-                            description: Timestamp in ISO 8601 format
+                            description: Timestamp in ISO 8601 format or Unix seconds
                           altitude:
                             type: number
                             example: 0
@@ -4190,6 +4194,8 @@ paths:
       responses:
         '200':
           description: Batch of points being processed
+        '422':
+          description: Invalid timestamp
         '401':
           description: Unauthorized
       requestBody:
@@ -4225,9 +4231,11 @@ paths:
                         type: object
                         properties:
                           timestamp:
-                            type: string
+                            oneOf:
+                            - type: string
+                            - type: integer
                             example: '2025-01-17T21:03:01Z'
-                            description: the timestamp of the point
+                            description: Timestamp in ISO 8601 format or Unix seconds
                           horizontal_accuracy:
                             type: number
                             example: 5

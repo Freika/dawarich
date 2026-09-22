@@ -597,11 +597,20 @@ export class ApiClient {
    */
   async fetchTrackWithSegments(
     trackId,
-    { signal, geometry = this.importId ? "original" : "display" } = {},
+    {
+      signal,
+      startAt,
+      endAt,
+      geometry = this.importId ? "original" : "display",
+    } = {},
   ) {
     const params = new URLSearchParams()
     if (this.importId) params.set("import_id", this.importId)
     params.set("geometry", geometry)
+    if (startAt && endAt) {
+      params.set("start_at", startAt)
+      params.set("end_at", endAt)
+    }
     const suffix = params.size ? `?${params}` : ""
     const url = `${this.baseURL}/tracks/${trackId}${suffix}`
 
