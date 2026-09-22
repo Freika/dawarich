@@ -12,7 +12,7 @@ module Points
     after_commit :remove_attached_file, on: :destroy
 
     validates :year, :month, :chunk_number, :point_count, presence: true
-    validates :year, numericality: { greater_than: 1970, less_than: 2100 }
+    validates :year, numericality: { greater_than_or_equal_to: 1970, less_than: 2100 }
     validates :month, numericality: { greater_than_or_equal_to: 1, less_than_or_equal_to: 12 }
     validates :chunk_number, numericality: { greater_than: 0 }
     validates :point_count, numericality: { greater_than: 0 }

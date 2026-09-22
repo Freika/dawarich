@@ -105,7 +105,7 @@ module Points
       end
 
       def utc_month(timestamp)
-        time = Time.at(timestamp).utc
+        time = Time.at([timestamp, 0].max).utc
         [time.year, time.month]
       end
 

@@ -35,19 +35,19 @@ RSpec.describe SafeTimestampParser, type: :controller do
     context 'with dates before valid range' do
       it 'clamps year 1000 to minimum timestamp (1970-01-01)' do
         get :index, params: { date: '1000-01-30' }
-        min_timestamp = Time.zone.parse('1970-01-01').to_i
+        min_timestamp = Time.utc(1970, 1, 1).to_i
         expect(response.body).to eq(min_timestamp.to_s)
       end
 
       it 'clamps year 1900 to minimum timestamp (1970-01-01)' do
         get :index, params: { date: '1900-12-25' }
-        min_timestamp = Time.zone.parse('1970-01-01').to_i
+        min_timestamp = Time.utc(1970, 1, 1).to_i
         expect(response.body).to eq(min_timestamp.to_s)
       end
 
       it 'clamps year 1969 to minimum timestamp (1970-01-01)' do
         get :index, params: { date: '1969-07-20' }
-        min_timestamp = Time.zone.parse('1970-01-01').to_i
+        min_timestamp = Time.utc(1970, 1, 1).to_i
         expect(response.body).to eq(min_timestamp.to_s)
       end
     end
@@ -55,13 +55,13 @@ RSpec.describe SafeTimestampParser, type: :controller do
     context 'with dates after valid range' do
       it 'clamps year 2150 to maximum timestamp (2100-01-01)' do
         get :index, params: { date: '2150-01-01' }
-        max_timestamp = Time.zone.parse('2100-01-01').to_i
+        max_timestamp = Time.utc(2100, 1, 1).to_i
         expect(response.body).to eq(max_timestamp.to_s)
       end
 
       it 'clamps year 3000 to maximum timestamp (2100-01-01)' do
         get :index, params: { date: '3000-12-31' }
-        max_timestamp = Time.zone.parse('2100-01-01').to_i
+        max_timestamp = Time.utc(2100, 1, 1).to_i
         expect(response.body).to eq(max_timestamp.to_s)
       end
     end
@@ -87,7 +87,7 @@ RSpec.describe SafeTimestampParser, type: :controller do
     context 'edge cases' do
       it 'handles Unix epoch exactly (1970-01-01)' do
         get :index, params: { date: '1970-01-01' }
-        expected = Time.zone.parse('1970-01-01').to_i
+        expected = Time.utc(1970, 1, 1).to_i
         expect(response.body).to eq(expected.to_s)
       end
 
