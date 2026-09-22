@@ -3,7 +3,7 @@
 require 'rails_helper'
 require 'resolv'
 
-RSpec.describe 'SMTP address fallback' do
+RSpec.describe 'SMTP host resolution' do
   it 'uses native resolution when the Ruby resolver returns an unreachable address' do
     server = TCPServer.new('127.0.0.1', 0)
     allow(Resolv).to receive(:getaddress).with('localhost').and_return('::1')

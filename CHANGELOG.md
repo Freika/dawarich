@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- SMTP delivery now falls back to IPv4 when an SMTP host's IPv6 address is unreachable (#3591).
+- SMTP delivery now falls back to IPv4 when an SMTP host's IPv6 address is unreachable, integration URLs are checked against every address their host resolves to, and integration URLs with a bracketed IPv6 address such as `http://[fd00::5]:2283` are accepted (#3591).
 
 ## [1.15.1] - 2026-09-21, Berlin
 
