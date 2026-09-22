@@ -138,9 +138,9 @@ describe 'Points API', type: :request do
                   type: :object,
                   properties: {
                     timestamp: {
-                      type: :string,
+                      oneOf: [{ type: :string }, { type: :integer }],
                       example: '2025-01-17T21:03:01Z',
-                      description: 'the timestamp of the point'
+                      description: 'Timestamp in ISO 8601 format or Unix seconds'
                     },
                     horizontal_accuracy: {
                       type: :number,
@@ -197,10 +197,31 @@ describe 'Points API', type: :request do
         let(:file_path) { 'spec/fixtures/files/points/geojson_example.json' }
         let(:file) { File.open(file_path) }
         let(:json) { JSON.parse(file.read) }
-        let(:locations) { json }
+        let(:locations) do
+          json.tap { |payload| payload['locations'].first['properties']['timestamp'] = 1_788_930_000 }
+        end
         let(:api_key) { create(:user).api_key }
 
         run_test!
+      end
+
+      response '422', 'Invalid timestamp' do
+        schema type: :object,
+               properties: { error: { type: :string } },
+               required: %w[error]
+
+        let(:locations) do
+          { locations: [{ geometry: { type: 'Point', coordinates: [13.4, 52.5] },
+                          properties: { timestamp: 'not-a-timestamp' } }] }
+        end
+        let(:api_key) { create(:user).api_key }
+
+        before { allow(Sentry).to receive(:capture_exception) }
+
+        run_test! do |response|
+          expect(response.parsed_body).to eq('error' => 'Timestamp must be a date and time or Unix seconds')
+          expect(Sentry).not_to have_received(:capture_exception)
+        end
       end
 
       response '401', 'Unauthorized' do

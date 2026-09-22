@@ -12,7 +12,8 @@ class Overland::Params
     return [] if points.blank?
 
     points.map do |point|
-      next if point[:geometry].nil? || point.dig(:properties, :timestamp).nil?
+      timestamp = Points::TimestampParser.call(point.dig(:properties, :timestamp))
+      next if point[:geometry].nil? || timestamp.nil?
 
       altitude_value = point[:properties][:altitude]
 
@@ -20,7 +21,7 @@ class Overland::Params
         lonlat:             lonlat(point),
         battery_status:     point[:properties][:battery_state],
         battery:            battery_level(point[:properties][:battery_level]),
-        timestamp:          DateTime.parse(point[:properties][:timestamp]),
+        timestamp:,
         altitude:           altitude_value,
         velocity:           point[:properties][:speed],
         tracker_id:         point[:properties][:device_id],
