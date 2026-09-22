@@ -2,7 +2,7 @@
 
 module Achievements
   class RegionSetChecker
-    CALCULATION_VERSION = 2
+    CALCULATION_VERSION = 3
 
     # Above this many newly earned regions in one run (a big import backfill),
     # collapse the per-region announcements into a single digest notification.
@@ -26,18 +26,18 @@ module Achievements
       COMMIT_ATTEMPTS.times do
         state = @progress.reload.state
         previous = state['cursor'].to_i
-        previous_point_id = state['point_id_cursor'].to_i
-        @cursor, @point_id_cursor = latest_position(previous, previous_point_id)
+        previous_inserted = state['inserted_through']
+        @cursor, @inserted_through = latest_position(previous, previous_inserted)
         break if @cursor.nil?
-        break if settled?(previous, previous_point_id, state)
+        break if settled?(previous, previous_inserted, state)
 
-        replace = recompute?(previous, previous_point_id) || calculation_changed?(state)
+        replace = recompute?(previous, previous_inserted) || calculation_changed?(state)
         deltas = if threshold_changed?(state) && @cursor <= previous && !replace
                    {}
                  else
                    collect_deltas(replace ? 0 : previous)
                  end
-        break if commit(deltas, replace: replace, expected: previous, expected_point_id: previous_point_id)
+        break if commit(deltas, replace: replace, expected: previous, expected_inserted: previous_inserted)
 
         @newly_earned.clear
       end
@@ -58,30 +58,28 @@ module Achievements
 
     attr_reader :user, :notify, :oldest_timestamp
 
-    def settled?(previous, previous_point_id, state)
-      previous.positive? && @cursor <= previous && @point_id_cursor <= previous_point_id &&
-        !recompute?(previous, previous_point_id) && !threshold_changed?(state) &&
+    def settled?(previous, previous_inserted, state)
+      previous.positive? && @cursor <= previous && @inserted_through == previous_inserted &&
+        !recompute?(previous, previous_inserted) && !threshold_changed?(state) &&
         state['calculation_version'].to_i >= CALCULATION_VERSION
     end
 
-    def commit(deltas, replace:, expected:, expected_point_id:)
+    def commit(deltas, replace:, expected:, expected_inserted:)
       committed = false
 
       @progress.with_lock do
         current_state = @progress.state
         next unless current_state['cursor'].to_i == expected &&
-                    current_state['point_id_cursor'].to_i == expected_point_id
+                    current_state['inserted_through'] == expected_inserted
 
-        # Point deletion may make either current maximum look older. Keep both
-        # watermarks monotonic so the next incremental pass cannot count old
-        # dwell again or mistake a reused historical range for unseen data.
+        # Point deletion may make the current maximum look older. Keep the
+        # cursor monotonic so the next incremental pass cannot count old dwell again.
         committed_cursor = [@cursor, expected].max
-        committed_point_id = [@point_id_cursor, expected_point_id].max
 
         new_codes = []
         @progress.update!(
           state: merged_state(current_state, deltas, new_codes, replace: replace, cursor: committed_cursor,
-                              point_id_cursor: committed_point_id)
+                              inserted_through: @inserted_through)
         )
         UnlockEvent.enqueue_geographies!(user_id: user.id, codes: new_codes) if notify
         @newly_earned.concat(new_codes)
@@ -96,31 +94,38 @@ module Achievements
     end
 
     # Timestamp alone cannot identify buffered device uploads: a newly inserted
-    # point can be older than the timestamp cursor. Track the monotonic row ID
-    # as a second watermark and rebuild when unseen rows fall behind the cursor.
-    def latest_position(cursor, point_id_cursor)
-      latest_point_id = eligible_points.maximum(:id)
-      return [nil, nil] if latest_point_id.nil? && cursor.zero? && point_id_cursor.zero?
+    # point can be older than the timestamp cursor. Track the latest insertion
+    # time as a second watermark and rebuild when unseen rows fall behind the cursor.
+    def latest_position(cursor, inserted_through)
+      latest_insert = eligible_points.maximum(:created_at)
+      return [nil, nil] if latest_insert.nil? && cursor.zero? && inserted_through.nil?
 
+      since = inserted_through && Time.iso8601(inserted_through)
       latest_timestamp = if oldest_timestamp.present?
                            eligible_points.maximum(:timestamp)
-                         elsif latest_point_id.present? && latest_point_id > point_id_cursor
-                           eligible_points.where(id: (point_id_cursor + 1)..latest_point_id).maximum(:timestamp)
+                         elsif latest_insert && (since.nil? || latest_insert > since)
+                           inserted_after(since).where('created_at <= ?', latest_insert).maximum(:timestamp)
                          end
 
-      [[cursor, [latest_timestamp.to_i, Time.current.to_i].min].max, [point_id_cursor, latest_point_id.to_i].max]
+      [[cursor, [latest_timestamp.to_i, Time.current.to_i].min].max,
+       [since, latest_insert].compact.max&.utc&.iso8601(6)]
     end
 
-    def recompute?(cursor, point_id_cursor)
+    def inserted_after(since)
+      since ? eligible_points.where('created_at > ?', since) : eligible_points
+    end
+
+    def recompute?(cursor, inserted_through)
       (oldest_timestamp.present? && cursor.positive? && oldest_timestamp <= cursor) ||
-        historical_points_inserted?(cursor, point_id_cursor)
+        historical_points_inserted?(cursor, inserted_through)
     end
 
-    def historical_points_inserted?(cursor, point_id_cursor)
-      return false unless cursor.positive? && @point_id_cursor > point_id_cursor
+    def historical_points_inserted?(cursor, inserted_through)
+      return false unless cursor.positive? && @inserted_through != inserted_through
 
-      eligible_points.where(id: (point_id_cursor + 1)..@point_id_cursor)
-                     .where('timestamp < ?', cursor).exists?
+      inserted_after(inserted_through && Time.iso8601(inserted_through))
+        .where('created_at <= ?', Time.iso8601(@inserted_through))
+        .where('timestamp < ?', cursor).exists?
     end
 
     def collect_deltas(since)
@@ -129,7 +134,7 @@ module Achievements
                                                                 through: @cursor).call)
     end
 
-    def merged_state(state, deltas, newly_earned, replace:, cursor:, point_id_cursor:)
+    def merged_state(state, deltas, newly_earned, replace:, cursor:, inserted_through:)
       dwell = replace ? {} : state.fetch('dwell', {})
       earned = state.fetch('earned', {})
 
@@ -142,9 +147,9 @@ module Achievements
         newly_earned << code
       end
 
-      state.merge(
+      state.except('point_id_cursor').merge(
         'cursor' => cursor,
-        'point_id_cursor' => point_id_cursor,
+        'inserted_through' => inserted_through,
         'dwell' => dwell,
         'earned' => earned,
         'threshold_seconds' => threshold_seconds,

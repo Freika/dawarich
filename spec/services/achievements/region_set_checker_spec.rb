@@ -37,7 +37,7 @@ RSpec.describe Achievements::RegionSetChecker do
       described_class.new(user, notify: false).call
 
       expect(exploration.state['cursor']).to eq(base_ts + (7 * 600))
-      expect(exploration.state['point_id_cursor']).to eq(user.points.maximum(:id))
+      expect(exploration.state['inserted_through']).to eq(user.points.maximum(:created_at).utc.iso8601(6))
       expect(exploration.state['calculation_version']).to eq(described_class::CALCULATION_VERSION)
       expect(exploration.state['threshold_seconds']).to eq(60.minutes.to_i)
     end
@@ -247,22 +247,59 @@ RSpec.describe Achievements::RegionSetChecker do
     end
   end
 
+  describe 'progress from calculation version 2' do
+    before { seed_germany }
+
+    it 'recomputes once and drops the id watermark' do
+      legacy_state = { 'cursor' => base_ts + (7 * 600), 'point_id_cursor' => user.points.maximum(:id),
+                       'dwell' => { 'DE-BY' => 4_200 }, 'earned' => {},
+                       'threshold_seconds' => 60.minutes.to_i, 'calculation_version' => 2 }
+      create(:achievement_progress, user:, achievement_key: 'exploration', state: legacy_state)
+
+      described_class.new(user, notify: false).call
+
+      expect(exploration.state).not_to have_key('point_id_cursor')
+      expect(exploration.state['inserted_through']).to eq(user.points.maximum(:created_at).utc.iso8601(6))
+      expect(exploration.state['calculation_version']).to eq(described_class::CALCULATION_VERSION)
+      expect(exploration.state['dwell']['DE-BY']).to eq(4_200)
+    end
+  end
+
+  describe 'insertion watermark' do
+    before { seed_germany }
+
+    it 'ignores rows committed after it read the watermark' do
+      described_class.new(user, notify: false).call
+      create(:point, user:, longitude: 11.5, latitude: 48.5, timestamp: base_ts + 5_000)
+      checker = described_class.new(user, notify: false)
+      racing = nil
+      allow(checker).to receive(:inserted_after).and_wrap_original do |original, since|
+        racing ||= create(:point, user:, longitude: 11.5, latitude: 48.5, timestamp: base_ts + 6_000)
+        original.call(since)
+      end
+
+      checker.call
+
+      expect(exploration.reload.state['cursor']).to eq(base_ts + 5_000)
+    end
+  end
+
   describe 'buffered device uploads' do
     before { seed_germany }
 
     it 'recomputes when newly inserted rows fall behind the timestamp cursor' do
       described_class.new(user, notify: false).call
-      previous_point_id = exploration.state['point_id_cursor']
+      previous_inserted = Time.iso8601(exploration.state['inserted_through'])
       france_geom = 'MULTIPOLYGON (((2.0 48.0, 2.0 49.0, 3.0 49.0, 3.0 48.0, 2.0 48.0)))'
       france = create(:country, name: 'France', iso_a2: 'FR', iso_a3: 'FRA', geom: france_geom)
       create_dwell_points(lon: 2.5, lat: 48.5, start_at: base_ts - 10_000)
-      user.points.where('id > ?', previous_point_id).update_all(country_id: france.id)
+      user.points.where(country_id: nil).update_all(country_id: france.id)
 
       described_class.new(user, notify: false).call
 
       expect(exploration.reload.state['earned']).to have_key('FR')
-      expect(exploration.state['point_id_cursor']).to eq(user.points.maximum(:id))
-      expect(exploration.state['point_id_cursor']).to be > previous_point_id
+      expect(Time.iso8601(exploration.state['inserted_through'])).to eq(user.points.maximum(:created_at))
+      expect(Time.iso8601(exploration.state['inserted_through'])).to be > previous_inserted
     end
 
     it 'recaptures both bounds before retrying a stale full recomputation' do
