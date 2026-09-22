@@ -43,4 +43,14 @@ RSpec.describe 'Updating a visit to a duplicate place', type: :request do
     expect(response.parsed_body.fetch('error')).to eq('A visit already exists for this place and start time')
     expect(response.parsed_body.fetch('code')).to eq('duplicate_place_start')
   end
+
+  it 'answers in English for a German user with a German Accept-Language header' do
+    user.update!(settings: user.settings.merge('locale' => 'de'))
+
+    patch "/api/v1/visits/#{visit.id}",
+          params: { visit: { place_id: place.id } },
+          headers: auth_headers.merge('Accept-Language' => 'de-DE,de;q=0.9')
+
+    expect(response.parsed_body.fetch('error')).to eq('A visit already exists for this place and start time')
+  end
 end
