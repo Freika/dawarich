@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [1.15.2] - Unreleased
+
+### Fixed
+
+- Malformed Google Timeline JSON, malformed GPX XML, and non-activity FIT files now fail with clear file-error messages instead of crashing the import job; malformed GPX files no longer retain points parsed before the error.
+
 ## [1.15.1] - 2026-09-21, Berlin
 
 ### Fixed

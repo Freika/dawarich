@@ -117,6 +117,271 @@ RSpec.describe Imports::Create do
           service.call
           expect(import.reload.error_message).to eq('StandardError')
         end
+
+        it 'reports unexpected failures' do
+          allow(ExceptionReporter).to receive(:call)
+
+          service.call
+
+          expect(ExceptionReporter).to have_received(:call)
+            .with(instance_of(StandardError), 'Import failed')
+        end
+      end
+    end
+
+    context 'when the uploaded file format is unsupported' do
+      let(:import) { create(:import, user:, source: nil, status: 'created') }
+
+      before do
+        import.file.attach(io: StringIO.new('{"unknown":"format"}'), filename: 'unknown.json',
+                           content_type: 'application/json')
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('Unable to detect file format')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    context 'when a GPX file contains malformed XML' do
+      let(:import) { create(:import, user:, source: 'gpx', status: 'created') }
+      let(:gpx) { '<gpx><trk><name>invalid ]]> content</name></trk></gpx>' }
+
+      before do
+        import.file.attach(
+          io: StringIO.new(gpx),
+          filename: 'malformed.gpx',
+          content_type: 'application/gpx+xml'
+        )
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to include("GPX parse error: Sequence ']]>' not allowed in content")
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+
+      context 'after a point batch has been flushed' do
+        let(:gpx) do
+          points = 1_000.times.map do |index|
+            <<~POINT
+              <trkpt lat="#{37 + (index / 10_000.0)}" lon="#{-3 - (index / 10_000.0)}">
+                <time>#{(Time.utc(2024, 1, 1) + index).iso8601}</time>
+              </trkpt>
+            POINT
+          end.join
+
+          <<~GPX
+            <gpx xmlns="http://www.topografix.com/GPX/1/1">
+              <trk><trkseg>
+                #{points}
+          GPX
+        end
+
+        it 'does not retain a partial location history' do
+          service.call
+
+          expect(import.reload).to be_failed
+          expect(import.processed).to eq(0)
+          expect(import.raw_points).to eq(0)
+          expect(import.doubles).to eq(0)
+          expect(Point.where(import_id: import.id)).to be_empty
+          expect(ExceptionReporter).not_to have_received(:call)
+        end
+      end
+    end
+
+    context 'when a FIT file contains a non-activity profile' do
+      let(:import) { create(:import, user:, source: 'fit', status: 'created') }
+
+      before do
+        import.file.attach(io: StringIO.new('synthetic FIT payload'), filename: 'metrics.fit',
+                           content_type: 'application/octet-stream')
+        allow(ExceptionReporter).to receive(:call)
+        allow(Turbo::StreamsChannel).to receive(:broadcast_replace_to)
+        allow(Import::UpdatePointsCountJob).to receive(:perform_later)
+        allow(Stats::CalculatingJob).to receive(:perform_later)
+        allow(VisitSuggestingJob).to receive(:perform_later)
+        allow(Tracks::ParallelGeneratorJob).to receive(:perform_later)
+      end
+
+      [Fit4Ruby::Monitoring_B, Fit4Ruby::Metrics].each do |profile_class|
+        it "fails #{profile_class} through the expected import lifecycle" do
+          allow(Fit4Ruby).to receive(:read).and_return(profile_class.new)
+
+          expect { service.call }.to change { user.notifications.error.where(title: 'Import failed').count }.by(1)
+
+          expect(import.reload).to be_failed
+          expect(import.error_message).to eq('This FIT file does not contain an activity with GPS records')
+          expect(ExceptionReporter).not_to have_received(:call)
+          expect(Turbo::StreamsChannel).to have_received(:broadcast_replace_to).with(
+            [user, :imports],
+            target: ActionView::RecordIdentifier.dom_id(import),
+            partial: 'imports/table_row',
+            locals: hash_including(import: import)
+          ).twice
+          expect(Import::UpdatePointsCountJob).not_to have_received(:perform_later)
+          expect(Stats::CalculatingJob).not_to have_received(:perform_later)
+          expect(VisitSuggestingJob).not_to have_received(:perform_later)
+          expect(Tracks::ParallelGeneratorJob).not_to have_received(:perform_later)
+        end
+      end
+    end
+
+    context 'when the uploaded file is empty' do
+      let(:import) { create(:import, user:, source: nil, status: 'created') }
+
+      before do
+        import.file.attach(io: StringIO.new(''), filename: 'empty.json', content_type: 'application/json')
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('Download completed but no content was received')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    context 'when a Google Timeline file contains malformed JSON' do
+      let(:import) { create(:import, user:, source: 'google_phone_takeout', status: 'created') }
+
+      before do
+        import.file.attach(
+          io: StringIO.new('{"semanticSegments":[{"startTime":"2024-01-01T00:00:00Z"}'),
+          filename: 'timeline.json',
+          content_type: 'application/json'
+        )
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('Google Timeline file contains invalid JSON')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    context 'when a Google Timeline file contains only whitespace' do
+      let(:import) { create(:import, user:, source: 'google_phone_takeout', status: 'created') }
+
+      before do
+        import.file.attach(io: StringIO.new(" \n\t"), filename: 'timeline.json', content_type: 'application/json')
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('Google Timeline file contains invalid JSON')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    context 'when a single archive entry exceeds the extraction limit' do
+      let(:import) { create(:import, user:, source: nil, status: 'created') }
+
+      before do
+        archive = Zip::OutputStream.write_buffer do |zip|
+          zip.put_next_entry('ride.gpx')
+          zip.write('x' * 100)
+        end
+        archive.rewind
+        import.file.attach(io: archive, filename: 'ride.zip', content_type: 'application/zip')
+        stub_const('Archive::Unzipper::MAX_EXTRACTED_SIZE', 10)
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('entry exceeds 10 bytes')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    context 'when a multi-entry archive exceeds the extraction limit' do
+      let(:import) { create(:import, user:, source: nil, status: 'created') }
+
+      before do
+        archive = Zip::OutputStream.write_buffer do |zip|
+          zip.put_next_entry('first.gpx')
+          zip.write('x' * 6)
+          zip.put_next_entry('second.gpx')
+          zip.write('y' * 6)
+        end
+        archive.rewind
+        import.file.attach(io: archive, filename: 'rides.zip', content_type: 'application/zip')
+        allow(ENV).to receive(:fetch).and_call_original
+        allow(ENV).to receive(:fetch).with('ZIP_MAX_EXTRACTED_SIZE', 2.gigabytes).and_return(10)
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('Archive too large (max 10 bytes)')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    context 'when a multi-entry archive exceeds the file-count limit' do
+      let(:import) { create(:import, user:, source: nil, status: 'created') }
+
+      before do
+        archive = Zip::OutputStream.write_buffer do |zip|
+          zip.put_next_entry('first.gpx')
+          zip.write('x')
+          zip.put_next_entry('second.gpx')
+          zip.write('y')
+        end
+        archive.rewind
+        import.file.attach(io: archive, filename: 'rides.zip', content_type: 'application/zip')
+        stub_const('Imports::ZipExtractor::MAX_FILES', 1)
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq('Too many files in archive (max 1)')
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+    end
+
+    context 'when a CSV is missing required columns' do
+      let(:import) { create(:import, user:, source: 'csv', status: 'created') }
+
+      before do
+        import.file.attach(io: StringIO.new("foo,bar,baz\n1,2,3\n"), filename: 'locations.csv',
+                           content_type: 'text/csv')
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'fails the import without reporting an application exception' do
+        service.call
+
+        expect(import.reload).to be_failed
+        expect(import.error_message).to eq(
+          'Could not detect required columns: latitude, longitude, timestamp. ' \
+          'Found headers must include recognized aliases for all three.'
+        )
+        expect(ExceptionReporter).not_to have_received(:call)
       end
     end
 

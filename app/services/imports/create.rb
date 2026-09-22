@@ -42,7 +42,7 @@ class Imports::Create
     import.update!(status: :failed, error_message: e.message)
     broadcast_status_update
 
-    ExceptionReporter.call(e, 'Import failed')
+    ExceptionReporter.call(e, 'Import failed') unless expected_import_failure?(e)
 
     create_import_failed_notification(import, user, e)
   ensure
@@ -60,6 +60,17 @@ class Imports::Create
   def route_user_data_archive
     import.update!(source: :user_data_archive)
     import.process_user_data_archive!
+  end
+
+  def expected_import_failure?(error)
+    error.is_a?(Imports::SourceDetector::UnknownSourceError) ||
+      error.is_a?(Imports::SecureFileDownloader::EmptyFileError) ||
+      error.is_a?(Archive::Unzipper::ArchiveTooLarge) ||
+      error.is_a?(Imports::ZipExtractor::TooManyFiles) ||
+      error.is_a?(Fit::Importer::UnsupportedProfileError) ||
+      error.is_a?(GoogleMaps::PhoneTakeoutImporter::InvalidJsonError) ||
+      error.is_a?(Gpx::TrackImporter::InvalidXmlError) ||
+      error.is_a?(Csv::Detector::DetectionError)
   end
 
   def post_import_processing

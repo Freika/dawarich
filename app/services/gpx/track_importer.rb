@@ -8,6 +8,8 @@ class Gpx::TrackImporter
   include Imports::BulkInsertable
   include Imports::FileLoader
 
+  class InvalidXmlError < Nokogiri::XML::SyntaxError; end
+
   BATCH_SIZE = 1000
   XML_BOMS = [
     "\xEF\xBB\xBF".b,
@@ -26,19 +28,24 @@ class Gpx::TrackImporter
   end
 
   def call
-    batch = []
-    handler = each_trkpt do |point_hash, tracker_id|
-      data = prepare_point(point_hash, tracker_id)
-      next unless data
-
-      batch << data
-      next if batch.size < BATCH_SIZE
-
-      flush(batch)
+    ActiveRecord::Base.transaction do
       batch = []
+      handler = each_trkpt do |point_hash, tracker_id|
+        data = prepare_point(point_hash, tracker_id)
+        next unless data
+
+        batch << data
+        next if batch.size < BATCH_SIZE
+
+        flush(batch)
+        batch = []
+      end
+      flush(batch) unless batch.empty?
+      record_element_counts(handler)
     end
-    flush(batch) unless batch.empty?
-    record_element_counts(handler)
+  rescue InvalidXmlError
+    import.reload
+    raise
   ensure
     cleanup_temp_file
   end
@@ -83,6 +90,10 @@ class Gpx::TrackImporter
   def flush(batch)
     inserted = bulk_insert_points(batch)
     broadcast_import_progress(import, inserted)
+  end
+
+  def atomic_bulk_insert?
+    true
   end
 
   def prepare_point(point, tracker_id)
@@ -228,7 +239,7 @@ class Gpx::TrackImporter
         end
       return unless fatal
 
-      raise Nokogiri::XML::SyntaxError, I18n.t('services.gpx.track_importer.parse_error', message: fatal)
+      raise InvalidXmlError, I18n.t('services.gpx.track_importer.parse_error', message: fatal)
     end
 
     def end_element_namespace(name, _prefix = nil, _uri = nil)

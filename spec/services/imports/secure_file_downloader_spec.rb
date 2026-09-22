@@ -153,5 +153,18 @@ RSpec.describe Imports::SecureFileDownloader do
         File.unlink(path) if path && File.exist?(path)
       end
     end
+
+    context 'when a non-empty blob returns no content' do
+      before do
+        allow(storage_attachment).to receive(:download)
+        allow(blob).to receive(:download).and_return('')
+      end
+
+      it 'raises a reportable download error' do
+        expect { subject.download_to_temp_file }.to raise_error(
+          RuntimeError, 'Download completed but no content was received'
+        )
+      end
+    end
   end
 end
