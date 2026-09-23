@@ -98,8 +98,9 @@ class Points::VectorTileQuery
 
   # One-pass hash aggregation — a DISTINCT ON + window-count variant paid for a
   # full sort (1.3s on a dense z11 tile). MIN() keeps the representative
-  # deterministic; count=1 cells are exact, and merged cells never show popups,
-  # so mixed MINs are invisible.
+  # deterministic; count=1 cells are exact. For merged cells, clients must fetch
+  # the selected id before showing point details because the other MIN values
+  # can belong to different points.
   def with_clauses
     <<~SQL
       WITH candidates AS (#{candidates_sql}),

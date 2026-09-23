@@ -22,11 +22,15 @@ import { SettingsManager } from "maps_maplibre/utils/settings_manager"
  * either is absent or blank, so the caller can fall back to the geometry.
  * `Number("")` is 0 and finite, so a plain isFinite check is not enough.
  */
-// A tiled feature can represent many merged points but carries ONE arbitrary
-// member's id/coords — aggregates (no id) and merged cells (count > 1) get no popup.
+// A tiled feature can represent many merged points. A merged cell has a real
+// representative id, but its other attributes may come from different points.
+// It can be selected after fetching that point; only single points can be dragged.
+export function hasSelectablePoint(properties = {}) {
+  return properties.id != null
+}
+
 export function shouldShowPointPopup(properties = {}) {
-  if (properties.id == null) return false
-  return (properties.count ?? 1) <= 1
+  return hasSelectablePoint(properties) && (properties.count ?? 1) <= 1
 }
 
 function storedCoordinates(properties) {
@@ -47,6 +51,7 @@ export class EventHandlers {
     this.controller = controller
     this.selectedTrackFeature = null // Track selection state
     this._trackSelectionGeneration = 0
+    this._pointLookupGeneration = 0
     this.trackMarkers = [] // Store segment markers for tracks
     this._infoPanelDelegationSetup = false // Track if delegation is setup
 
@@ -76,6 +81,7 @@ export class EventHandlers {
    * don't accumulate stale `dawarich:segment-mode-changed` listeners.
    */
   destroy() {
+    this._pointLookupGeneration += 1
     this.pointDrag?.detach()
     if (this._boundOnSegmentModeChanged) {
       document.removeEventListener(
@@ -108,8 +114,9 @@ export class EventHandlers {
     const mapEditor = this.controller.layerManager.getLayer("map-editor")
     if (mapEditor?.justDragged) return
 
-    const feature = e.features[0]
-    if (!shouldShowPointPopup(feature.properties)) {
+    const feature = e.features?.[0]
+    if (!feature) return
+    if (!hasSelectablePoint(feature.properties)) {
       if (feature.layer?.id === "points-mvt") {
         this.map.easeTo({
           center: e.lngLat,
@@ -120,6 +127,39 @@ export class EventHandlers {
       return
     }
 
+    if (!shouldShowPointPopup(feature.properties)) {
+      void this._selectMergedPoint(feature)
+      return
+    }
+
+    this._pointLookupGeneration += 1
+    this._showPointFeature(feature)
+  }
+
+  async _selectMergedPoint(feature) {
+    const generation = ++this._pointLookupGeneration
+    try {
+      const point = await this.controller.api.fetchPoint(feature.properties.id)
+      if (generation !== this._pointLookupGeneration) return
+
+      this._showPointFeature({
+        ...feature,
+        geometry: {
+          type: "Point",
+          coordinates: [Number(point.longitude), Number(point.latitude)],
+        },
+        properties: { ...point, count: 1 },
+      })
+    } catch (error) {
+      if (generation !== this._pointLookupGeneration) return
+      console.error("[EventHandlers] Failed to load selected point:", error)
+      Toast.error(
+        translate("messages.failed_to_load_location_data_please_try_again"),
+      )
+    }
+  }
+
+  _showPointFeature(feature) {
     if (feature.layer?.id === "points-mvt" && this._pointEditingEnabled()) {
       this._openPointEditor(feature).catch((error) => {
         console.error("[EventHandlers] Failed to open point editor:", error)
@@ -385,7 +425,16 @@ export class EventHandlers {
    * Replaces the old Tools-tab flow.
    */
   handleTrackClick(e) {
-    // Track points take priority over tracks — clicking a point shows point info, not track info
+    // MapLibre dispatches a click to every intersected layer. A point drawn
+    // above a track must keep its selection instead of opening the track.
+    if (this.map.getLayer("points-mvt")) {
+      const pointFeatures = this.map.queryRenderedFeatures(e.point, {
+        layers: ["points-mvt"],
+      })
+      if (pointFeatures.length > 0) return
+    }
+
+    // Track points are part of a selected track and take the same priority.
     if (this.map.getLayer("track-points")) {
       const trackPointFeatures = this.map.queryRenderedFeatures(e.point, {
         layers: ["track-points"],

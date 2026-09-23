@@ -16,6 +16,13 @@ canonical geometry and revisions so the editor can replace its drag preview.
   single visible copy of that track during the edit.
 - Point edit history and undo/redo live in the map's bottom-right control area,
   clear of the left sidebar. Editable points use a grab cursor on hover.
+- Vector-tile markers with a representative `id` can be selected even when
+  their `count` is greater than one. The tile's other attributes may describe
+  different members of that cell, so the map fetches the actual point through
+  `GET /api/v1/points/:id` before showing its coordinates, timestamp, and
+  Delete action. Merged markers cannot be dragged; anonymous low-zoom
+  aggregates still zoom on click. When a track crosses a point, the point
+  selection takes priority because MapLibre dispatches the click to both layers.
 
 ## Saving and country updates
 
@@ -35,9 +42,11 @@ investigating a failure, inspect the PATCH response to
 ## Verification
 
 Run the service and request specs with `bundle exec rspec
-spec/services/points/move_spec.rb spec/requests/api/v1/points/positions_spec.rb`.
+spec/services/points/move_spec.rb spec/requests/api/v1/points/positions_spec.rb
+spec/requests/api/v1/points_spec.rb`.
 Run browser regressions against a seeded development server with
-`npx playwright test e2e/map_point_editing.spec.js --project=chromium --workers=1`.
+`npx playwright test e2e/map_point_editing.spec.js
+e2e/map_point_selection.spec.js --project=chromium --workers=1`.
 The browser tests exercise the rendered MapLibre layers, selected-track
 cleanup, history placement, cursor, and a real mouse drag. Their API fixture
 keeps the browser tests deterministic; the Ruby specs cover the real endpoint.

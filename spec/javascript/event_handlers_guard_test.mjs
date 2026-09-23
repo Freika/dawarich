@@ -18,7 +18,8 @@ const stubs = `class PointDragGesture {
 }
 `
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(stubs + withoutImports).toString("base64")}`
-const { shouldShowPointPopup, EventHandlers } = await import(moduleUrl)
+const { hasSelectablePoint, shouldShowPointPopup, EventHandlers } =
+  await import(moduleUrl)
 
 test("a real single point shows its popup", () => {
   assert.equal(shouldShowPointPopup({ id: 42 }), true)
@@ -32,6 +33,7 @@ test("aggregate features without an id show no popup", () => {
 
 test("merged cells carrying an arbitrary representative show no popup", () => {
   assert.equal(shouldShowPointPopup({ id: 42, count: 2 }), false)
+  assert.equal(hasSelectablePoint({ id: 42, count: 2 }), true)
 })
 
 test("an aggregate MVT Point zooms instead of opening an editor", () => {
@@ -56,7 +58,7 @@ test("an aggregate MVT Point zooms instead of opening an editor", () => {
   handlers.handlePointClick({
     features: [
       {
-        properties: { id: 42, count: 8 },
+        properties: { count: 8 },
         layer: { id: "points-mvt" },
       },
     ],
@@ -71,6 +73,47 @@ test("an aggregate MVT Point zooms instead of opening an editor", () => {
       duration: 350,
     },
   ])
+})
+
+test("a merged tile marker fetches a canonical point before showing its actions", async () => {
+  const selected = []
+  const movements = []
+  const handlers = new EventHandlers(
+    { easeTo: (options) => movements.push(options) },
+    {
+      api: {
+        fetchPoint: async () => ({
+          id: 42,
+          longitude: "13.4",
+          latitude: "52.5",
+          timestamp: 1_700_000_000,
+        }),
+      },
+      layerManager: { getLayer: () => null },
+    },
+  )
+  handlers._showPointFeature = (feature) => selected.push(feature)
+
+  handlers.handlePointClick({
+    features: [
+      {
+        properties: {
+          id: 42,
+          count: 8,
+          timestamp: 0,
+          longitude: "0",
+          latitude: "0",
+        },
+        layer: { id: "points-mvt" },
+      },
+    ],
+  })
+  await Promise.resolve()
+
+  assert.equal(movements.length, 0)
+  assert.deepEqual(selected[0].geometry.coordinates, [13.4, 52.5])
+  assert.equal(selected[0].properties.timestamp, 1_700_000_000)
+  assert.equal(selected[0].properties.count, 1)
 })
 
 // The constructor registers document-level listeners; node has no DOM.

@@ -4305,6 +4305,50 @@ paths:
       description: Point ID
       schema:
         type: string
+    get:
+      summary: Retrieves a point
+      tags:
+      - Points
+      description: Returns a canonical point owned by the authenticated user, including
+        its stored coordinates
+      parameters:
+      - name: api_key
+        in: query
+        required: true
+        description: API Key
+        schema:
+          type: string
+      - name: import_id
+        in: query
+        required: false
+        description: Restrict the lookup to one import
+        schema:
+          type: string
+      responses:
+        '200':
+          description: point found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:
+                    type: integer
+                  longitude:
+                    type: string
+                  latitude:
+                    type: string
+                  timestamp:
+                    type: integer
+                required:
+                - id
+                - longitude
+                - latitude
+                - timestamp
+        '404':
+          description: point not found or outside the user scope
+        '401':
+          description: unauthorized
     patch:
       summary: Updates a point
       tags:

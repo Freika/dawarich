@@ -231,6 +231,51 @@ RSpec.describe 'Api::V1::Points', type: :request do
     end
   end
 
+  describe 'GET /show' do
+    it 'returns the canonical point represented by a merged map marker' do
+      point = points.first
+
+      get api_v1_point_url(point, api_key: user.api_key)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to include(
+        'id' => point.id,
+        'longitude' => point.lon.to_s,
+        'latitude' => point.lat.to_s,
+        'timestamp' => point.timestamp
+      )
+      expect(response.parsed_body).not_to have_key('raw_data')
+    end
+
+    it 'does not expose another user\'s point' do
+      other_point = create(:point, user: create(:user))
+
+      get api_v1_point_url(other_point, api_key: user.api_key)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'does not select a point from another import' do
+      selected_import = create(:import, user:)
+      other_point = create(:point, user:, import: create(:import, user:))
+
+      get api_v1_point_url(other_point, api_key: user.api_key, import_id: selected_import.id)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'respects the Lite data window' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      lite_user = create(:user)
+      lite_user.update_columns(plan: User.plans[:lite])
+      old_point = create(:point, user: lite_user, timestamp: 2.years.ago.to_i)
+
+      get api_v1_point_url(old_point, api_key: lite_user.api_key)
+
+      expect(response).to have_http_status(:not_found)
+    end
+  end
+
   describe 'POST /create' do
     it 'returns a successful response' do
       post "/api/v1/points?api_key=#{user.api_key}", params: point_params

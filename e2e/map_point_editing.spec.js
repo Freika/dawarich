@@ -162,31 +162,33 @@ test("dragged track segments keep their own colors without a duplicate base edge
 }) => {
   await openEditor(page)
   await dragMiddlePoint(page)
-  const features = await page.evaluate(
-    ({ start, moved }) => {
-      const map = window.Stimulus.getControllerForElementAndIdentifier(
-        document.querySelector("#maps-maplibre-container"),
-        "maps--maplibre",
-      ).map
-      const midpoint = map.project([
-        (start[0] + moved[0]) / 2,
-        (start[1] + moved[1]) / 2,
-      ])
-      return map
-        .queryRenderedFeatures(midpoint, {
-          layers: ["editable-track-line", "editable-track-segments"],
-        })
-        .map((feature) => ({
-          layer: feature.layer.id,
-          color: feature.properties.color,
-        }))
-    },
-    { start: START, moved: MOVED },
-  )
-  expect(features).toContainEqual({
+  const renderedFeatures = () =>
+    page.evaluate(
+      ({ start, moved }) => {
+        const map = window.Stimulus.getControllerForElementAndIdentifier(
+          document.querySelector("#maps-maplibre-container"),
+          "maps--maplibre",
+        ).map
+        const midpoint = map.project([
+          (start[0] + moved[0]) / 2,
+          (start[1] + moved[1]) / 2,
+        ])
+        return map
+          .queryRenderedFeatures(midpoint, {
+            layers: ["editable-track-line", "editable-track-segments"],
+          })
+          .map((feature) => ({
+            layer: feature.layer.id,
+            color: feature.properties.color,
+          }))
+      },
+      { start: START, moved: MOVED },
+    )
+  await expect.poll(renderedFeatures).toContainEqual({
     layer: "editable-track-segments",
     color: "#ef4444",
   })
+  const features = await renderedFeatures()
   expect(features.map((feature) => feature.layer)).not.toContain(
     "editable-track-line",
   )

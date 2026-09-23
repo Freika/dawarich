@@ -104,6 +104,14 @@ class Api::V1::PointsController < ApiController
     render json: { error: I18n.t('controllers.api.v1.points.point_creation_failed') }, status: :internal_server_error
   end
 
+  def show
+    points = scoped_points.without_raw_data.not_anomaly
+    points = points.where(import_id: params[:import_id]) if params[:import_id].present?
+    point = points.find(params[:id])
+
+    render json: Api::PointSerializer.new(point).call
+  end
+
   def update
     point = current_api_user.points.find(params[:id])
 
