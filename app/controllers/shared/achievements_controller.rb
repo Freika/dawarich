@@ -23,8 +23,9 @@ class Shared::AchievementsController < ApplicationController
     I18n.with_locale(shared_progress.user.locale) do
       state = exploration.state
       state_digest = Digest::SHA256.hexdigest(state.to_json)
+      timezone = shared_progress.user.safe_settings.timezone
       cache_key = "achievements/og/v1/#{shared_progress.id}/#{shared_progress.achievement_key}/" \
-                  "#{I18n.locale}/#{state_digest}"
+                  "#{I18n.locale}/#{timezone}/#{state_digest}"
       png = Rails.cache.fetch(cache_key, expires_in: 1.hour) do
         Achievements::OgImage.new(set_presenter).call
       end

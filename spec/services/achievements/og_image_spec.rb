@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'tmpdir'
 
 RSpec.describe Achievements::OgImage do
   let(:set) do
@@ -28,5 +29,23 @@ RSpec.describe Achievements::OgImage do
 
     expect(svg).to include('A&amp;B &lt;Explorer&gt;')
     expect(Nokogiri::XML(svg).errors).to be_empty
+  end
+
+  it 'terminates a renderer that exceeds its timeout' do
+    Dir.mktmpdir do |dir|
+      pid_file = File.join(dir, 'renderer.pid')
+      converter = File.join(dir, 'rsvg-convert')
+      File.write(converter, "#!/bin/sh\necho $$ > #{pid_file}\nsleep 30\n")
+      File.chmod(0o755, converter)
+      stub_const('Achievements::OgImage::CONVERTER', converter)
+      stub_const('Achievements::OgImage::RENDER_TIMEOUT', 1)
+
+      started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      expect { described_class.new(set).call }.to raise_error(Timeout::Error)
+      elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+
+      expect(elapsed).to be < 3
+      expect { Process.kill(0, File.read(pid_file).to_i) }.to raise_error(Errno::ESRCH)
+    end
   end
 end

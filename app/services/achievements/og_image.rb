@@ -9,6 +9,7 @@ module Achievements
     WIDTH = 1200
     HEIGHT = 630
     RENDER_TIMEOUT = 10
+    CONVERTER = 'rsvg-convert'
     TEMPLATE = Rails.root.join('app/services/achievements/og_image.svg.erb')
     ACCENTS = {
       'common' => '#aeb8c5',
@@ -22,12 +23,38 @@ module Achievements
     end
 
     def call
-      stdout, stderr, status = Timeout.timeout(RENDER_TIMEOUT) do
-        Open3.capture3('rsvg-convert', '-f', 'png', '-w', WIDTH.to_s, '-h', HEIGHT.to_s, stdin_data: svg)
-      end
-      raise "Achievement OG image render failed: #{stderr}" unless status.success?
+      svg_data = svg
+      command = [CONVERTER, '-f', 'png', '-w', WIDTH.to_s, '-h', HEIGHT.to_s]
+      Open3.popen3(*command, pgroup: true) do |stdin, stdout, stderr, wait_thr|
+        writer = Thread.new do
+          stdin.write(svg_data)
+          stdin.close
+        end
+        output_reader = Thread.new { stdout.read }
+        error_reader = Thread.new { stderr.read }
 
-      stdout
+        begin
+          png, errors, status = Timeout.timeout(RENDER_TIMEOUT) do
+            writer.value
+            [output_reader.value, error_reader.value, wait_thr.value]
+          end
+          raise "Achievement OG image render failed: #{errors}" unless status.success?
+
+          png
+        rescue StandardError
+          begin
+            Process.kill('KILL', -wait_thr.pid) if wait_thr.alive?
+          rescue Errno::ESRCH
+            nil
+          end
+          raise
+        ensure
+          stdin.close unless stdin.closed?
+          writer.join
+          output_reader.join
+          error_reader.join
+        end
+      end
     end
 
     def svg

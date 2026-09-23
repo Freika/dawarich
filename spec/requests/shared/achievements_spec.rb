@@ -121,6 +121,21 @@ RSpec.describe 'Shared achievements' do
       expect(response).to have_http_status(:not_found)
     end
 
+    it 'refreshes a completed preview when the owner changes timezone' do
+      earned = Achievements::Registry.find('country_de').region_codes.index_with { '2026-07-20T00:30:00Z' }
+      exploration.update!(state: { 'earned' => earned })
+      user.update!(settings: user.settings.merge('timezone' => 'UTC'))
+
+      get shared_achievement_image_path(progress.sharing_uuid)
+      utc_png = response.body
+
+      user.update!(settings: user.settings.merge('timezone' => 'America/Los_Angeles'))
+      get shared_achievement_image_path(progress.sharing_uuid)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to eq(utc_png)
+    end
+
     it 'redirects when sharing is disabled' do
       progress.update!(sharing_enabled: false)
 
