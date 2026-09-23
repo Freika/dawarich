@@ -4,9 +4,14 @@
   <meta property="og:title" content="<%= @set.name %> — Dawarich">
   <meta property="og:description" content="<%= t('achievements.public.social_description', progress: t("achievements.cards.metric.#{@set.level == :country ? 'countries' : 'regions'}", count: @set.display_count, total: @set.target)) %>">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="<%= request.original_url %>">
-  <meta property="og:image" content="<%= image_url('favicon/apple-touch-icon.png') %>">
-  <meta name="twitter:card" content="summary">
+  <meta property="og:url" content="<%= shared_achievement_url(params[:uuid]) %>">
+  <meta property="og:image" content="<%= shared_achievement_image_url(params[:uuid]) %>">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="<%= @set.name %> — <%= t("achievements.cards.metric.#{@set.level == :country ? 'countries' : 'regions'}", count: @set.display_count, total: @set.target) %>">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="<%= shared_achievement_image_url(params[:uuid]) %>">
 <% end %>
 
 <% if @embed %>
