@@ -12,7 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
-- Exploration achievements are available to everyone without a feature flag. Existing location history is checked in the background without sending old unlock notifications.
+- Exploration achievements and printed poster ordering are available to everyone without feature flags. Existing location history is checked in the background without sending old unlock notifications. Printed poster ordering remains unavailable when `PRINT_ORDER_URL` is blank.
 
 ### Fixed
 
