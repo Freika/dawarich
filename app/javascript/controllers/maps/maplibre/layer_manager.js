@@ -137,6 +137,15 @@ export class LayerManager {
     subscribe("mouseleave", "points-mvt", () => {
       this.map.getCanvas().style.cursor = ""
     })
+    subscribe("mousemove", "track-points", (e) => {
+      const properties = e.features?.[0]?.properties
+      this.map.getCanvas().style.cursor = handlers.canDragPoint?.(properties)
+        ? "grab"
+        : "pointer"
+    })
+    subscribe("mouseleave", "track-points", () => {
+      this.map.getCanvas().style.cursor = ""
+    })
     subscribe("mouseenter", "visits", () => {
       this.map.getCanvas().style.cursor = "pointer"
     })

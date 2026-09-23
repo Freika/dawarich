@@ -32,6 +32,21 @@ RSpec.describe Points::Move do
     expect(TracksChannel).not_to have_received(:broadcast_to)
   end
 
+  it 'does not scan all visited countries when the country is unchanged' do
+    visited_query = instance_double(Countries::VisitedQuery)
+    allow(Countries::VisitedQuery).to receive(:new).and_return(visited_query)
+    allow(visited_query).to receive(:call).and_raise(Timeout::Error)
+
+    result = described_class.call(
+      user:, point_id: point.id, latitude: 0.01, longitude: 0.01,
+      point_revision: point.lock_version, track_revision: track.lock_version,
+      history_scope: scope
+    )
+
+    expect(result.point).to have_attributes(lat: 0.01, lon: 0.01)
+    expect(result.visited_countries).to be_nil
+  end
+
   it "enqueues a monthly stats recalculation for the moved point's month" do
     expect do
       described_class.call(

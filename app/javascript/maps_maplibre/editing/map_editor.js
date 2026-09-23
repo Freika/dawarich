@@ -52,6 +52,7 @@ export class MapEditor {
     if (sessionVersion !== this.sessionVersion) return false
 
     this.forEditing = forEditing
+    if (forEditing) this._clearSelectedTrack()
     this._showTrack(trackId, track, points)
     if (this.editable) this._enableDragging()
     return true
@@ -64,8 +65,11 @@ export class MapEditor {
     if (!this.editable || this.disposed || this.mutationState.busy) return false
     this.selectPoint(feature, { forEditing: true })
     const trackId = feature.properties?.track_id
-    if (trackId != null)
+    if (trackId != null) {
+      this.trackId = Number(trackId)
+      this._excludeTiles()
       this.trackLoad = this._loadTrackDuringDrag(trackId, this.sessionVersion)
+    }
     return this.startDrag(Number(feature.properties.id))
   }
 
@@ -86,7 +90,14 @@ export class MapEditor {
       features: [
         ...(!this.importScoped
           ? [
-              { ...track, properties: { ...track.properties, kind: "track" } },
+              {
+                ...track,
+                properties: {
+                  ...track.properties,
+                  kind: "track",
+                  has_segments: (track.properties.segments || []).length > 0,
+                },
+              },
               ...(track.properties.segments || []).map(segmentFeature),
             ]
           : []),
@@ -123,6 +134,7 @@ export class MapEditor {
   selectPoint(feature, { forEditing = false } = {}) {
     this.close()
     this.forEditing = forEditing
+    if (forEditing) this._clearSelectedTrack()
     const properties = feature.properties || {}
     this.trackId = null
     this.trackRevision = null
@@ -341,7 +353,11 @@ export class MapEditor {
       const track = this._track()
       if (track) {
         track.geometry = clone(canonicalTrack.geometry)
-        track.properties = { ...canonicalTrack.properties, kind: "track" }
+        track.properties = {
+          ...canonicalTrack.properties,
+          kind: "track",
+          has_segments: (canonicalTrack.properties.segments || []).length > 0,
+        }
         this.data.features = this.data.features.filter(
           (feature) => feature.properties.kind !== "segment",
         )
@@ -452,6 +468,10 @@ export class MapEditor {
   _enableDragging() {
     this.map.off("mousedown", "track-points", this._onMouseDown)
     this.map.on("mousedown", "track-points", this._onMouseDown)
+  }
+
+  _clearSelectedTrack() {
+    this.layerManager.controller?.eventHandlers?.clearTrackSelection?.()
   }
 
   _track() {

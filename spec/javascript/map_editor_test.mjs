@@ -864,6 +864,7 @@ test("a drag started on a tile point waits for its track before saving, and send
   })
 
   assert.equal(editor.beginTileDrag(tilePoint(1, 0, 0)), true)
+  assert.deepEqual(map.getFilter("tracks-mvt"), ["!=", ["get", "id"], 10])
   editor.dragTo(0.5, 0.5)
   const saving = editor.endDrag({ lng: 1, lat: 1 })
   await Promise.resolve()
@@ -1130,10 +1131,10 @@ test("the edit history panel appears after a move and goes away when editing is 
   editor.beginTileDrag(tilePoint(7, 0, 0, { trackId: null }))
   editor.dragTo(1, 1)
   await editor.endDrag({ lng: 1, lat: 1 })
-  assert.deepEqual(controls, ["bottom-left"])
+  assert.deepEqual(controls, ["bottom-right"])
 
   editor.setEditable(false)
-  assert.deepEqual(controls, ["bottom-left", "removed"])
+  assert.deepEqual(controls, ["bottom-right", "removed"])
 })
 
 test("closing the edit history panel hides it until the next move", async () => {

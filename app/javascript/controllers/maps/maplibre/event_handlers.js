@@ -750,6 +750,10 @@ export class EventHandlers {
     )
   }
 
+  canDragPoint(properties) {
+    return this.pointDrag.canDrag(properties)
+  }
+
   async _openPointEditor(feature) {
     const editor = await this._mapEditor()
     if (feature.properties.track_id) {
