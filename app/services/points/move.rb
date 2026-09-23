@@ -74,16 +74,19 @@ class Points::Move
     raise StaleEdit, current_result(point, track) if point.track_id != track_id
 
     check_revisions!(point, track)
-    before_countries = visited_country_codes
-
+    previous_country = [point.country_id, point.country_name, point[:country]]
     assign_position_and_country(point)
+    country_changed = previous_country != [point.country_id, point.country_name, point[:country]]
+    before_countries = visited_country_codes if country_changed
     point.save!
     # The composite MapEdits event is the single canonical publication for
     # this mutation; suppress the legacy generic Track update broadcast.
     Tracks::Recalculator.call(track, broadcast: false) if track
 
-    after_countries = visited_country_codes
-    changed_countries = before_countries == after_countries ? nil : { iso_a3: after_countries }
+    changed_countries = if country_changed
+                          after_countries = visited_country_codes
+                          { iso_a3: after_countries } unless before_countries == after_countries
+                        end
 
     current_result(point, track, changed_countries)
   end

@@ -4375,6 +4375,7 @@ de:
       location_coordinates: Standort (%{latitude}, %{longitude})
       location_data: Standortdaten
       location_point: Standortpunkt
+      overlapping_points: "Diese Markierung enthält %{count} überlappende Punkte. Sie lassen sich durch weiteres Zoomen nicht trennen."
       longitude: Länge
       meters:
         one: "%{count} Meter"

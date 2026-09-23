@@ -22,8 +22,6 @@ import { SettingsManager } from "maps_maplibre/utils/settings_manager"
  * either is absent or blank, so the caller can fall back to the geometry.
  * `Number("")` is 0 and finite, so a plain isFinite check is not enough.
  */
-// A tiled feature can represent many merged points but carries ONE arbitrary
-// member's id/coords — aggregates (no id) and merged cells (count > 1) get no popup.
 export function shouldShowPointPopup(properties = {}) {
   if (properties.id == null) return false
   return (properties.count ?? 1) <= 1
@@ -108,18 +106,30 @@ export class EventHandlers {
     const mapEditor = this.controller.layerManager.getLayer("map-editor")
     if (mapEditor?.justDragged) return
 
-    const feature = e.features[0]
+    const feature = e.features?.[0]
+    if (!feature) return
+    this.clearTrackSelection()
     if (!shouldShowPointPopup(feature.properties)) {
       if (feature.layer?.id === "points-mvt") {
-        this.map.easeTo({
-          center: e.lngLat,
-          zoom: Math.min(this.map.getZoom() + 2, 18),
-          duration: 350,
-        })
+        const zoom = this.map.getZoom()
+        const nextZoom = Math.min(zoom + 2, this.map.getMaxZoom?.() ?? 22)
+        if (nextZoom > zoom) {
+          this.map.easeTo({ center: e.lngLat, zoom: nextZoom, duration: 350 })
+        } else {
+          this.controller.showInfo(
+            translate("map_info.location_point"),
+            `<p>${translate("map_info.overlapping_points", {
+              count: Number(feature.properties.count) || 2,
+            })}</p>`,
+          )
+        }
       }
       return
     }
+    this._showPointFeature(feature)
+  }
 
+  _showPointFeature(feature) {
     if (feature.layer?.id === "points-mvt" && this._pointEditingEnabled()) {
       this._openPointEditor(feature).catch((error) => {
         console.error("[EventHandlers] Failed to open point editor:", error)
@@ -385,7 +395,16 @@ export class EventHandlers {
    * Replaces the old Tools-tab flow.
    */
   handleTrackClick(e) {
-    // Track points take priority over tracks — clicking a point shows point info, not track info
+    // MapLibre dispatches a click to every intersected layer. A point drawn
+    // above a track must keep its selection instead of opening the track.
+    if (this.map.getLayer("points-mvt")) {
+      const pointFeatures = this.map.queryRenderedFeatures(e.point, {
+        layers: ["points-mvt"],
+      })
+      if (pointFeatures.length > 0) return
+    }
+
+    // Track points are part of a selected track and take the same priority.
     if (this.map.getLayer("track-points")) {
       const trackPointFeatures = this.map.queryRenderedFeatures(e.point, {
         layers: ["track-points"],
@@ -630,7 +649,7 @@ export class EventHandlers {
   /**
    * Clear track selection
    */
-  clearTrackSelection() {
+  clearTrackSelection({ preserveEditor = false } = {}) {
     if (!this.selectedTrackFeature) return
 
     this._trackSelectionGeneration += 1
@@ -650,13 +669,18 @@ export class EventHandlers {
       tracksLayer.setSegmentLeaveCallback(null)
     }
 
-    this.clearPointSelection()
+    if (preserveEditor) {
+      this.map.off("click", "track-points", this._handleTrackPointClick)
+      this._setMainPointsOpacity(1.0)
+    } else {
+      this.clearPointSelection()
+    }
 
     // Clear segment markers
     this._clearTrackMarkers()
 
     // Close info panel
-    this.controller.closeInfo({ clearSelection: false })
+    if (!preserveEditor) this.controller.closeInfo({ clearSelection: false })
   }
 
   clearPointSelection() {
@@ -748,6 +772,10 @@ export class EventHandlers {
       SettingsManager.getSetting("pointDraggingEnabled") === true &&
       !isGatedPlan(this.controller?.userPlanValue)
     )
+  }
+
+  canDragPoint(properties) {
+    return this.pointDrag.canDrag(properties)
   }
 
   async _openPointEditor(feature) {
