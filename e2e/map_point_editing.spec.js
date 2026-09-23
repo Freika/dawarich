@@ -5,7 +5,10 @@ const MIDDLE = [13.4005, 52.5]
 const END = [13.401, 52.5]
 const MOVED = [13.4005, 52.5005]
 
-async function openEditor(page, { selectedGhost = false } = {}) {
+async function openEditor(
+  page,
+  { selectedGhost = false, partialSegments = false } = {},
+) {
   await page.goto("/map/v2")
   await page.waitForFunction(() => {
     const element = document.querySelector("#maps-maplibre-container")
@@ -17,7 +20,7 @@ async function openEditor(page, { selectedGhost = false } = {}) {
   })
 
   await page.evaluate(
-    async ({ start, middle, end, selectedGhost }) => {
+    async ({ start, middle, end, selectedGhost, partialSegments }) => {
       const element = document.querySelector("#maps-maplibre-container")
       const controller = window.Stimulus.getControllerForElementAndIdentifier(
         element,
@@ -55,6 +58,8 @@ async function openEditor(page, { selectedGhost = false } = {}) {
         latitude: String(coordinates[1]),
         revision,
       })
+      if (partialSegments)
+        feature.properties.segments = feature.properties.segments.slice(0, 1)
       if (selectedGhost) {
         const ghost = {
           type: "Feature",
@@ -99,13 +104,20 @@ async function openEditor(page, { selectedGhost = false } = {}) {
                     [Number(position.longitude), Number(position.latitude)],
                   ],
                 },
-                {
-                  ...feature.properties.segments[1],
-                  coordinates: [
-                    [Number(position.longitude), Number(position.latitude)],
-                    end,
-                  ],
-                },
+                ...(!partialSegments
+                  ? [
+                      {
+                        ...feature.properties.segments[1],
+                        coordinates: [
+                          [
+                            Number(position.longitude),
+                            Number(position.latitude),
+                          ],
+                          end,
+                        ],
+                      },
+                    ]
+                  : []),
               ],
             },
           },
@@ -116,7 +128,7 @@ async function openEditor(page, { selectedGhost = false } = {}) {
       controller.eventHandlers.pointDrag.isEnabled = () => true
       await editor.selectTrack(900001, { forEditing: true })
     },
-    { start: START, middle: MIDDLE, end: END, selectedGhost },
+    { start: START, middle: MIDDLE, end: END, selectedGhost, partialSegments },
   )
   await page.waitForFunction((middle) => {
     const controller = window.Stimulus.getControllerForElementAndIdentifier(
@@ -194,6 +206,34 @@ test("dragged track segments keep their own colors without a duplicate base edge
   )
 })
 
+test("a partially segmented track keeps its uncovered edge after a point moves", async ({
+  page,
+}) => {
+  await openEditor(page, { partialSegments: true })
+  await dragMiddlePoint(page)
+  const renderedLayers = () =>
+    page.evaluate(
+      ({ moved, end }) => {
+        const map = window.Stimulus.getControllerForElementAndIdentifier(
+          document.querySelector("#maps-maplibre-container"),
+          "maps--maplibre",
+        ).map
+        const midpoint = map.project([
+          (moved[0] + end[0]) / 2,
+          (moved[1] + end[1]) / 2,
+        ])
+        return map
+          .queryRenderedFeatures(midpoint, {
+            layers: ["editable-track-line", "editable-track-segments"],
+          })
+          .map((feature) => feature.layer.id)
+      },
+      { moved: MOVED, end: END },
+    )
+  await expect.poll(renderedLayers).toContain("editable-track-line")
+  expect(await renderedLayers()).not.toContain("editable-track-segments")
+})
+
 test("moving a point clears the previously selected track and keeps old tile edges excluded", async ({
   page,
 }) => {
@@ -211,6 +251,24 @@ test("moving a point clears the previously selected track and keeps old tile edg
   })
   expect(state.selected).toBeNull()
   expect(JSON.stringify(state.filter)).toContain("900001")
+})
+
+test("turning editing off clears an editor opened after a track was selected", async ({
+  page,
+}) => {
+  await openEditor(page, { selectedGhost: true })
+  const state = await page.evaluate(() => {
+    const controller = window.Stimulus.getControllerForElementAndIdentifier(
+      document.querySelector("#maps-maplibre-container"),
+      "maps--maplibre",
+    )
+    const editor = controller.layerManager.getLayer("map-editor")
+    const editingBefore = editor.forEditing
+    editor.setEditable(false)
+    return { editingBefore, dataAfter: editor.data }
+  })
+  expect(state.editingBefore).toBe(true)
+  expect(state.dataAfter).toBeNull()
 })
 
 test("the edit history stays on the visible side of the map panel", async ({

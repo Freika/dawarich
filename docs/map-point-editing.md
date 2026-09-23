@@ -7,22 +7,21 @@ canonical geometry and revisions so the editor can replace its drag preview.
 
 ## Rendering invariants
 
-- An edited track with segments is drawn by `editable-track-segments`. Its
-  unsplit base path is excluded from `editable-track-line`, so it cannot cover
-  segment colors.
+- An edited track with segments is drawn by `editable-track-segments`. Only
+  edges outside those segments remain in `editable-track-line`; the full base
+  path is excluded so it cannot cover segment colors.
 - When editing starts, the previously selected track overlay is cleared. The
   edited track is excluded from vector tiles, including while its full geometry
   is loading after a drag starts on a tile point. The editor overlay is the
   single visible copy of that track during the edit.
 - Point edit history and undo/redo live in the map's bottom-right control area,
   clear of the left sidebar. Editable points use a grab cursor on hover.
-- Vector-tile markers with a representative `id` can be selected even when
-  their `count` is greater than one. The tile's other attributes may describe
-  different members of that cell, so the map fetches the actual point through
-  `GET /api/v1/points/:id` before showing its coordinates, timestamp, and
-  Delete action. Merged markers cannot be dragged; anonymous low-zoom
-  aggregates still zoom on click. When a track crosses a point, the point
-  selection takes priority because MapLibre dispatches the click to both layers.
+- A merged vector-tile marker zooms toward its centroid until one point can
+  be selected. Tile attributes from a merged cell may describe different
+  members, so Delete is available only on singleton markers. If points remain
+  merged at maximum zoom, the info panel shows their count without Delete.
+  When a track crosses a point, the point selection takes priority because
+  MapLibre dispatches the click to both layers.
 
 ## Saving and country updates
 
@@ -42,14 +41,13 @@ investigating a failure, inspect the PATCH response to
 ## Verification
 
 Run the service and request specs with `bundle exec rspec
-spec/services/points/move_spec.rb spec/requests/api/v1/points/positions_spec.rb
-spec/requests/api/v1/points_spec.rb`.
+spec/services/points/move_spec.rb spec/requests/api/v1/points/positions_spec.rb`.
 Run browser regressions against a seeded development server with
 `npx playwright test e2e/map_point_editing.spec.js
 e2e/map_point_selection.spec.js --project=chromium --workers=1`.
 The browser tests exercise the rendered MapLibre layers, selected-track
-cleanup, history placement, cursor, and a real mouse drag. Their API fixture
-keeps the browser tests deterministic; the Ruby specs cover the real endpoint.
+cleanup, history placement, cursor, and a real mouse drag. Synthetic map
+features keep the browser tests deterministic; Ruby specs cover the move API.
 
 The shared AFFiNE knowledge-base counterpart for this workflow should be
 linked here when the workspace search service is available.

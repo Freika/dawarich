@@ -727,28 +727,6 @@ export class ApiClient {
   }
 
   /**
-   * Fetch the canonical point behind a merged vector-tile marker.
-   * Tile aggregates can mix attributes from different points in one cell.
-   */
-  async fetchPoint(pointId) {
-    const params = new URLSearchParams()
-    if (this.importId) params.set("import_id", this.importId)
-    const query = params.toString()
-    const response = await fetch(
-      `${this.baseURL}/points/${pointId}${query ? `?${query}` : ""}`,
-      {
-        headers: this.getHeaders(),
-      },
-    )
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch point: ${response.status}`)
-    }
-
-    return response.json()
-  }
-
-  /**
    * Delete a single point
    * @param {number} pointId - Point ID to delete
    * @returns {Promise<Object>} Deleted point payload

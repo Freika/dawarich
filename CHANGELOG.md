@@ -10,6 +10,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Shared achievement links now show a preview of the achievement card with its geography and progress. (#3721)
 
+### Fixed
+
+- Map point editing keeps route colors and uncovered edges in sync, restores visible undo and redo history, and avoids stale lines and false save failures.
+- Point markers overlapping routes remain selectable. Markers with multiple points zoom until one point can be selected, and never offer to delete an arbitrary point. (#3719)
+- Insights shows the current year first with a distinct color for the previous year, and hosted settings hide the What's New notice preference.
+
 ## [1.15.2] - 2026-09-22, Berlin
 
 ### Added

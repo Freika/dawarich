@@ -22,9 +22,13 @@ export class EditableTrackLayer extends BaseLayer {
         type: "line",
         source: this.sourceId,
         filter: [
-          "all",
-          ["==", ["get", "kind"], "track"],
-          ["!=", ["get", "has_segments"], true],
+          "any",
+          [
+            "all",
+            ["==", ["get", "kind"], "track"],
+            ["!=", ["get", "has_segments"], true],
+          ],
+          ["==", ["get", "kind"], "uncovered-track"],
         ],
         layout: { "line-join": "round", "line-cap": "round" },
         paint: { "line-color": "#6366F1", "line-width": 5 },

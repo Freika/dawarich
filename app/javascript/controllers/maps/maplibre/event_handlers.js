@@ -22,15 +22,9 @@ import { SettingsManager } from "maps_maplibre/utils/settings_manager"
  * either is absent or blank, so the caller can fall back to the geometry.
  * `Number("")` is 0 and finite, so a plain isFinite check is not enough.
  */
-// A tiled feature can represent many merged points. A merged cell has a real
-// representative id, but its other attributes may come from different points.
-// It can be selected after fetching that point; only single points can be dragged.
-export function hasSelectablePoint(properties = {}) {
-  return properties.id != null
-}
-
 export function shouldShowPointPopup(properties = {}) {
-  return hasSelectablePoint(properties) && (properties.count ?? 1) <= 1
+  if (properties.id == null) return false
+  return (properties.count ?? 1) <= 1
 }
 
 function storedCoordinates(properties) {
@@ -51,7 +45,6 @@ export class EventHandlers {
     this.controller = controller
     this.selectedTrackFeature = null // Track selection state
     this._trackSelectionGeneration = 0
-    this._pointLookupGeneration = 0
     this.trackMarkers = [] // Store segment markers for tracks
     this._infoPanelDelegationSetup = false // Track if delegation is setup
 
@@ -81,7 +74,6 @@ export class EventHandlers {
    * don't accumulate stale `dawarich:segment-mode-changed` listeners.
    */
   destroy() {
-    this._pointLookupGeneration += 1
     this.pointDrag?.detach()
     if (this._boundOnSegmentModeChanged) {
       document.removeEventListener(
@@ -116,47 +108,25 @@ export class EventHandlers {
 
     const feature = e.features?.[0]
     if (!feature) return
-    if (!hasSelectablePoint(feature.properties)) {
+    this.clearTrackSelection()
+    if (!shouldShowPointPopup(feature.properties)) {
       if (feature.layer?.id === "points-mvt") {
-        this.map.easeTo({
-          center: e.lngLat,
-          zoom: Math.min(this.map.getZoom() + 2, 18),
-          duration: 350,
-        })
+        const zoom = this.map.getZoom()
+        const nextZoom = Math.min(zoom + 2, this.map.getMaxZoom?.() ?? 22)
+        if (nextZoom > zoom) {
+          this.map.easeTo({ center: e.lngLat, zoom: nextZoom, duration: 350 })
+        } else {
+          this.controller.showInfo(
+            translate("map_info.location_point"),
+            `<p>${translate("map_info.overlapping_points", {
+              count: Number(feature.properties.count) || 2,
+            })}</p>`,
+          )
+        }
       }
       return
     }
-
-    if (!shouldShowPointPopup(feature.properties)) {
-      void this._selectMergedPoint(feature)
-      return
-    }
-
-    this._pointLookupGeneration += 1
     this._showPointFeature(feature)
-  }
-
-  async _selectMergedPoint(feature) {
-    const generation = ++this._pointLookupGeneration
-    try {
-      const point = await this.controller.api.fetchPoint(feature.properties.id)
-      if (generation !== this._pointLookupGeneration) return
-
-      this._showPointFeature({
-        ...feature,
-        geometry: {
-          type: "Point",
-          coordinates: [Number(point.longitude), Number(point.latitude)],
-        },
-        properties: { ...point, count: 1 },
-      })
-    } catch (error) {
-      if (generation !== this._pointLookupGeneration) return
-      console.error("[EventHandlers] Failed to load selected point:", error)
-      Toast.error(
-        translate("messages.failed_to_load_location_data_please_try_again"),
-      )
-    }
   }
 
   _showPointFeature(feature) {
@@ -679,7 +649,7 @@ export class EventHandlers {
   /**
    * Clear track selection
    */
-  clearTrackSelection() {
+  clearTrackSelection({ preserveEditor = false } = {}) {
     if (!this.selectedTrackFeature) return
 
     this._trackSelectionGeneration += 1
@@ -699,13 +669,18 @@ export class EventHandlers {
       tracksLayer.setSegmentLeaveCallback(null)
     }
 
-    this.clearPointSelection()
+    if (preserveEditor) {
+      this.map.off("click", "track-points", this._handleTrackPointClick)
+      this._setMainPointsOpacity(1.0)
+    } else {
+      this.clearPointSelection()
+    }
 
     // Clear segment markers
     this._clearTrackMarkers()
 
     // Close info panel
-    this.controller.closeInfo({ clearSelection: false })
+    if (!preserveEditor) this.controller.closeInfo({ clearSelection: false })
   }
 
   clearPointSelection() {

@@ -18,8 +18,7 @@ const stubs = `class PointDragGesture {
 }
 `
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(stubs + withoutImports).toString("base64")}`
-const { hasSelectablePoint, shouldShowPointPopup, EventHandlers } =
-  await import(moduleUrl)
+const { shouldShowPointPopup, EventHandlers } = await import(moduleUrl)
 
 test("a real single point shows its popup", () => {
   assert.equal(shouldShowPointPopup({ id: 42 }), true)
@@ -33,7 +32,6 @@ test("aggregate features without an id show no popup", () => {
 
 test("merged cells carrying an arbitrary representative show no popup", () => {
   assert.equal(shouldShowPointPopup({ id: 42, count: 2 }), false)
-  assert.equal(hasSelectablePoint({ id: 42, count: 2 }), true)
 })
 
 test("an aggregate MVT Point zooms instead of opening an editor", () => {
@@ -75,20 +73,16 @@ test("an aggregate MVT Point zooms instead of opening an editor", () => {
   ])
 })
 
-test("a merged tile marker fetches a canonical point before showing its actions", async () => {
+test("a merged tile marker zooms without selecting its representative", () => {
   const selected = []
   const movements = []
   const handlers = new EventHandlers(
-    { easeTo: (options) => movements.push(options) },
     {
-      api: {
-        fetchPoint: async () => ({
-          id: 42,
-          longitude: "13.4",
-          latitude: "52.5",
-          timestamp: 1_700_000_000,
-        }),
-      },
+      easeTo: (options) => movements.push(options),
+      getZoom: () => 16,
+      getMaxZoom: () => 22,
+    },
+    {
       layerManager: { getLayer: () => null },
     },
   )
@@ -107,13 +101,49 @@ test("a merged tile marker fetches a canonical point before showing its actions"
         layer: { id: "points-mvt" },
       },
     ],
+    lngLat: { lng: 13.4, lat: 52.5 },
   })
-  await Promise.resolve()
 
-  assert.equal(movements.length, 0)
-  assert.deepEqual(selected[0].geometry.coordinates, [13.4, 52.5])
-  assert.equal(selected[0].properties.timestamp, 1_700_000_000)
-  assert.equal(selected[0].properties.count, 1)
+  assert.deepEqual(movements, [
+    {
+      center: { lng: 13.4, lat: 52.5 },
+      zoom: 18,
+      duration: 350,
+    },
+  ])
+  assert.deepEqual(selected, [])
+})
+
+test("overlapping points at maximum zoom show no point actions", () => {
+  const infos = []
+  globalThis.translate = (key, values) =>
+    values?.count ? `${key}: ${values.count}` : key
+  const handlers = new EventHandlers(
+    {
+      getZoom: () => 22,
+      getMaxZoom: () => 22,
+      easeTo: () => {
+        throw new Error("already at maximum zoom")
+      },
+    },
+    {
+      layerManager: { getLayer: () => null },
+      showInfo: (...args) => infos.push(args),
+    },
+  )
+
+  handlers.handlePointClick({
+    features: [
+      {
+        properties: { id: 42, count: 2 },
+        layer: { id: "points-mvt" },
+      },
+    ],
+  })
+
+  assert.deepEqual(infos, [
+    ["map_info.location_point", "<p>map_info.overlapping_points: 2</p>"],
+  ])
 })
 
 // The constructor registers document-level listeners; node has no DOM.

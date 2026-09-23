@@ -239,43 +239,6 @@ describe 'Points API', type: :request do
   path '/api/v1/points/{id}' do
     parameter name: :id, in: :path, type: :string, required: true, description: 'Point ID'
 
-    get 'Retrieves a point' do
-      tags 'Points'
-      description 'Returns a canonical point owned by the authenticated user, including its stored coordinates'
-      produces 'application/json'
-      parameter name: :api_key, in: :query, type: :string, required: true, description: 'API Key'
-      parameter name: :import_id, in: :query, type: :string, required: false,
-                description: 'Restrict the lookup to one import'
-
-      response '200', 'point found' do
-        schema type: :object,
-               properties: {
-                 id: { type: :integer },
-                 longitude: { type: :string },
-                 latitude: { type: :string },
-                 timestamp: { type: :integer }
-               },
-               required: %w[id longitude latitude timestamp]
-
-        let(:id) { create(:point, user:).id }
-
-        run_test!
-      end
-
-      response '404', 'point not found or outside the user scope' do
-        let(:id) { create(:point).id }
-
-        run_test!
-      end
-
-      response '401', 'unauthorized' do
-        let(:api_key) { 'invalid' }
-        let(:id) { create(:point).id }
-
-        run_test!
-      end
-    end
-
     patch 'Updates a point' do
       tags 'Points'
       description 'Updates the latitude and/or longitude of a point'

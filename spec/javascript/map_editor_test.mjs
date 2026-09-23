@@ -141,6 +141,118 @@ function point(id, longitude, latitude, revision = 2) {
   }
 }
 
+test("a partially segmented track keeps uncovered edges visible during a drag", async () => {
+  const track = trackFeature(
+    4,
+    [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [3, 0],
+    ],
+    [
+      {
+        id: 1,
+        start_index: 0,
+        end_index: 1,
+        coordinates: [
+          [0, 0],
+          [1, 0],
+        ],
+        color: "#ef4444",
+      },
+    ],
+  )
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {
+      fetchTrackWithSegments: async () => track,
+      fetchTrackPoints: async () => [
+        point(1, 0, 0),
+        point(2, 1, 0),
+        point(3, 2, 0),
+        point(4, 3, 0),
+      ],
+    },
+    layerManager: { getLayer: () => null },
+    historyScope: () => ({}),
+  })
+
+  await editor.selectTrack(10, { forEditing: true })
+  const uncovered = () =>
+    editor.data.features.find(
+      (feature) => feature.properties.kind === "uncovered-track",
+    )
+  assert.deepEqual(uncovered().geometry.coordinates, [
+    [
+      [1, 0],
+      [2, 0],
+      [3, 0],
+    ],
+  ])
+
+  assert.equal(editor.startDrag(2), true)
+  editor.dragTo(1, 1)
+  assert.deepEqual(uncovered().geometry.coordinates, [
+    [
+      [1, 1],
+      [2, 0],
+      [3, 0],
+    ],
+  ])
+})
+
+test("time-anchored segments leave gaps at both ends of a track", async () => {
+  const track = trackFeature(
+    4,
+    [
+      [0, 0],
+      [1, 0],
+      [2, 0],
+      [3, 0],
+    ],
+    [
+      {
+        id: 1,
+        start_time: 10,
+        end_time: 20,
+        coordinates: [
+          [1, 0],
+          [2, 0],
+        ],
+        color: "#ef4444",
+      },
+    ],
+  )
+  const editor = new MapEditor(fakeMap(), {
+    apiClient: {
+      fetchTrackWithSegments: async () => track,
+      fetchTrackPoints: async () => [
+        { ...point(1, 0, 0), timestamp: 0 },
+        { ...point(2, 1, 0), timestamp: 10 },
+        { ...point(3, 2, 0), timestamp: 20 },
+        { ...point(4, 3, 0), timestamp: 30 },
+      ],
+    },
+    layerManager: { getLayer: () => null },
+    historyScope: () => ({}),
+  })
+
+  await editor.selectTrack(10, { forEditing: true })
+  const uncovered = editor.data.features.find(
+    (feature) => feature.properties.kind === "uncovered-track",
+  )
+  assert.deepEqual(uncovered.geometry.coordinates, [
+    [
+      [0, 0],
+      [1, 0],
+    ],
+    [
+      [2, 0],
+      [3, 0],
+    ],
+  ])
+})
+
 test("import editor exposes only selected Points and keeps scoped Track geometry after a move", async () => {
   const map = fakeMap()
   const highlights = []

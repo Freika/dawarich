@@ -7,6 +7,7 @@ import {
   pointFeature,
   segmentFeature,
   snapshotCoordinates,
+  uncoveredTrackFeature,
   updateSegmentGeometry,
 } from "./editable_track_data"
 import { EditorHistory } from "./editor_history"
@@ -85,6 +86,13 @@ export class MapEditor {
 
     this.trackId = Number(trackId)
     this.trackRevision = Number(track.properties.revision || 0)
+    const pointFeatures = points.map((point) => pointFeature(point, trackId))
+    const segmentFeatures = (track.properties.segments || []).map(
+      segmentFeature,
+    )
+    const uncovered = this.importScoped
+      ? null
+      : uncoveredTrackFeature(pointFeatures, segmentFeatures)
     const data = {
       type: "FeatureCollection",
       features: [
@@ -98,10 +106,11 @@ export class MapEditor {
                   has_segments: (track.properties.segments || []).length > 0,
                 },
               },
-              ...(track.properties.segments || []).map(segmentFeature),
+              ...segmentFeatures,
+              ...(uncovered ? [uncovered] : []),
             ]
           : []),
-        ...points.map((point) => pointFeature(point, trackId)),
+        ...pointFeatures,
       ],
     }
     if (this.data) this.layer.setData(data)
@@ -243,6 +252,7 @@ export class MapEditor {
         (feature) => feature.geometry.coordinates,
       )
       this._updateSegments()
+      this._updateUncoveredTrack()
     }
     this.layer.setData(this.data)
     this._syncSelectedTrack(track)
@@ -366,6 +376,7 @@ export class MapEditor {
           0,
           ...(canonicalTrack.properties.segments || []).map(segmentFeature),
         )
+        this._updateUncoveredTrack()
       }
       this.trackRevision = Number(
         response.revision?.track ?? canonicalTrack.properties.revision,
@@ -471,7 +482,9 @@ export class MapEditor {
   }
 
   _clearSelectedTrack() {
-    this.layerManager.controller?.eventHandlers?.clearTrackSelection?.()
+    this.layerManager.controller?.eventHandlers?.clearTrackSelection?.({
+      preserveEditor: true,
+    })
   }
 
   _track() {
@@ -515,5 +528,15 @@ export class MapEditor {
 
   _updateSegments() {
     updateSegmentGeometry(this._points(), this._segments())
+  }
+
+  _updateUncoveredTrack() {
+    this.data.features = this.data.features.filter(
+      (feature) => feature.properties.kind !== "uncovered-track",
+    )
+    const track = this._track()
+    if (!track?.properties.has_segments) return
+    const uncovered = uncoveredTrackFeature(this._points(), this._segments())
+    if (uncovered) this.data.features.push(uncovered)
   }
 }

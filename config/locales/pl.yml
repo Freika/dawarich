@@ -4380,6 +4380,7 @@ pl:
       location_coordinates: Lokalizacja (%{latitude}, %{longitude})
       location_data: Dane lokalizacji
       location_point: Punkt lokalizacji
+      overlapping_points: "Ten znacznik zawiera %{count} nakładających się punktów. Powiększanie mapy ich nie rozdzieli."
       longitude: Długość geogr.
       meters:
         one: "%{count} metr"

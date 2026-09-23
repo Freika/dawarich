@@ -346,7 +346,7 @@ Rails.application.routes.draw do
           get 'suggestions'
         end
       end
-      resources :points, only: %i[index show create update destroy] do
+      resources :points, only: %i[index create update destroy] do
         resource :position, only: :update, controller: 'points/positions'
         collection do
           delete :bulk_destroy

@@ -1,4 +1,4 @@
-import { hasSelectablePoint } from "controllers/maps/maplibre/event_handlers"
+import { shouldShowPointPopup } from "controllers/maps/maplibre/event_handlers"
 import { translate } from "i18n"
 import { Toast } from "maps_maplibre/components/toast"
 import { AnomaliesLayer } from "maps_maplibre/layers/anomalies_layer"
@@ -124,14 +124,18 @@ export class LayerManager {
     })
 
     // Cursor change on hover
-    // Only low-zoom aggregates lack a selectable point id. mousemove, not
-    // mouseenter: clickable and aggregate features sit side by side
+    // mousemove, not mouseenter: single points and merged cells sit side by side
     // in this layer, and mouseenter fires only on entering the layer as a whole.
     subscribe("mousemove", "points-mvt", (e) => {
       const properties = e.features?.[0]?.properties
       let cursor = ""
-      if (hasSelectablePoint(properties))
+      if (shouldShowPointPopup(properties))
         cursor = handlers.canDragPoint?.(properties) ? "grab" : "pointer"
+      else if (properties)
+        cursor =
+          this.map.getZoom() >= (this.map.getMaxZoom?.() ?? 22)
+            ? "pointer"
+            : "zoom-in"
       this.map.getCanvas().style.cursor = cursor
     })
     subscribe("mouseleave", "points-mvt", () => {
