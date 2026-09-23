@@ -4,10 +4,6 @@ require 'rails_helper'
 
 RSpec.describe 'Shared achievements' do
   describe 'GET /shared/achievements/:uuid' do
-    before { Flipper.enable(:achievements) }
-
-    after { Flipper.disable(:achievements) }
-
     let(:user) { create(:user) }
     let!(:exploration) do
       create(:achievement_progress, user: user, achievement_key: 'exploration',
@@ -113,12 +109,14 @@ RSpec.describe 'Shared achievements' do
       expect(response).to have_http_status(:not_found)
     end
 
-    it 'does not serve a preview while achievements are disabled' do
+    it 'serves a preview even if a legacy flag was disabled' do
       Flipper.disable(:achievements)
 
       get shared_achievement_image_path(progress.sharing_uuid)
 
-      expect(response).to have_http_status(:not_found)
+      expect(response).to have_http_status(:ok)
+    ensure
+      Flipper.remove(:achievements)
     end
 
     it 'refreshes a completed preview when the owner changes timezone' do
@@ -146,14 +144,6 @@ RSpec.describe 'Shared achievements' do
 
     it 'redirects for an unknown uuid' do
       get shared_achievement_path(SecureRandom.uuid)
-
-      expect(response).to redirect_to(root_path)
-    end
-
-    it 'redirects while the feature is disabled' do
-      Flipper.disable(:achievements)
-
-      get shared_achievement_path(progress.sharing_uuid)
 
       expect(response).to redirect_to(root_path)
     end

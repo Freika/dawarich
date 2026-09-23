@@ -6,11 +6,8 @@ RSpec.describe 'Achievement unlock reveals' do
   let(:user) { create(:user) }
 
   before do
-    Flipper.enable(:achievements)
     sign_in user
   end
-
-  after { Flipper.disable(:achievements) }
 
   it 'renders a collectible deck, acknowledges each card once, and leaves no popup after the last card' do
     create(:country, name: 'France', iso_a2: 'FR', iso_a3: 'FRA',
@@ -59,11 +56,13 @@ RSpec.describe 'Achievement unlock reveals' do
     expect(response.body).to include('data-controller="achievement-unlocks"')
   end
 
-  it 'does not expose the reveal endpoint when the feature is disabled' do
+  it 'serves the reveal endpoint even if a legacy flag was disabled' do
     Flipper.disable(:achievements)
 
     post next_achievement_unlock_path, as: :json
 
-    expect(response).to have_http_status(:not_found)
+    expect(response).to have_http_status(:no_content)
+  ensure
+    Flipper.remove(:achievements)
   end
 end

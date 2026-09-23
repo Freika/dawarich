@@ -8,10 +8,7 @@ RSpec.describe 'Achievements' do
   before { sign_in user }
 
   describe 'GET /achievements' do
-    context 'when the feature flag is enabled' do
-      before { Flipper.enable(:achievements) }
-      after { Flipper.disable(:achievements) }
-
+    context 'when the user opens the collection' do
       def exploration(earned)
         create(:achievement_progress, user:, achievement_key: 'exploration', state: { 'earned' => earned })
       end
@@ -382,11 +379,16 @@ RSpec.describe 'Achievements' do
       end
     end
 
-    context 'when the feature flag is disabled' do
-      it 'redirects to root' do
+    context 'when a legacy flag was disabled' do
+      it 'still renders the collection' do
+        Flipper.disable(:achievements)
+
         get achievements_path
 
-        expect(response).to redirect_to(root_path)
+        expect(response).to have_http_status(:ok)
+        expect(Nokogiri::HTML(response.body).css(".navbar a[href='#{achievements_path}']").size).to eq(2)
+      ensure
+        Flipper.remove(:achievements)
       end
     end
   end

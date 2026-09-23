@@ -52,8 +52,6 @@ class Points::Destroyer
   end
 
   def enqueue_achievement_recalculation(destroyed)
-    return unless Flipper.enabled?(:achievements)
-
     Achievements::CheckJob.schedule(user.id, oldest_timestamp: destroyed.map(&:timestamp).min)
   end
 end

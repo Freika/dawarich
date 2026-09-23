@@ -329,7 +329,6 @@ RSpec.describe 'Api::V1::Points', type: :request do
       point = create(:point, user: user, longitude: 10.5, latitude: 10.5, country_id: old_country.id,
                              city: 'Old city', country_name: old_country.name,
                              reverse_geocoded_at: Time.current)
-      Flipper.enable(:achievements)
       clear_achievement_checks(user.id)
 
       expect do
@@ -343,8 +342,6 @@ RSpec.describe 'Api::V1::Points', type: :request do
       expect(point.country_name).to eq(new_country.name)
       expect(point.city).to be_nil
       expect(point.reverse_geocoded_at).to be_nil
-    ensure
-      Flipper.disable(:achievements)
     end
 
     context 'when user is inactive' do

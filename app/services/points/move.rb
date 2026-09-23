@@ -149,8 +149,6 @@ class Points::Move
   end
 
   def schedule_achievements_check(point)
-    return unless Flipper.enabled?(:achievements)
-
     Achievements::CheckJob.schedule(user.id, oldest_timestamp: point.timestamp)
   rescue StandardError => e
     Rails.logger.error(
