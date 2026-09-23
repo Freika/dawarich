@@ -10,6 +10,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Shared achievement links now show a preview of the achievement card with its geography and progress. (#3721)
 
+### Changed
+
+- Exploration achievements are available to everyone without a feature flag. Existing location history is checked in the background without sending old unlock notifications.
+
 ### Fixed
 
 - Map point editing keeps route colors and uncovered edges in sync, restores visible undo and redo history, and avoids stale lines and false save failures.

@@ -23,15 +23,12 @@ RSpec.describe Points::AnomalyFilter do
     it 'defers the achievement rebuild from the oldest newly excluded point to the next check' do
       point = create(:point, user: user, accuracy: 50_000, timestamp: 30.minutes.ago.to_i,
                              latitude: 52.52, longitude: 13.405, lonlat: 'POINT(13.405 52.52)')
-      Flipper.enable(:achievements)
       clear_achievement_checks(user.id)
 
       expect do
         described_class.new(user.id, start_time, end_time).call
       end.not_to have_enqueued_job(Achievements::CheckJob)
       expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([point.timestamp])
-    ensure
-      Flipper.disable(:achievements)
     end
 
     # A reported accuracy radius is a confidence estimate, not evidence that the

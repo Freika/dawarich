@@ -6,11 +6,8 @@ RSpec.describe Achievements::CheckJob do
   let(:user) { create(:user) }
 
   before do
-    Flipper.enable(:achievements)
     clear_achievement_checks(user.id)
   end
-
-  after { Flipper.disable(:achievements) }
 
   def with_current_progress
     version = Achievements::RegionSetChecker::CALCULATION_VERSION
@@ -53,22 +50,15 @@ RSpec.describe Achievements::CheckJob do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end
 
-  it 'skips computation entirely while the feature flag is disabled' do
+  it 'computes even if a legacy installation left its flag disabled' do
     Flipper.disable(:achievements)
     create(:point, user: user, timestamp: 1)
 
     described_class.perform_now(user.id, notify: true)
 
-    expect(Achievements::Progress.where(user: user)).to be_empty
-  end
-
-  it 'still computes for a forced backfill while the feature flag is disabled' do
-    Flipper.disable(:achievements)
-    create(:point, user: user, timestamp: 1)
-
-    described_class.perform_now(user.id, notify: false, force: true)
-
     expect(Achievements::Progress.where(user: user)).to be_present
+  ensure
+    Flipper.remove(:achievements)
   end
 
   describe '.schedule' do
@@ -131,11 +121,9 @@ RSpec.describe Achievements::CheckJob do
       expect(described_class.pending_timestamps(user.id)).to eq([100])
     end
 
-    it 'releases the debounce window when the feature is off' do
+    it 'releases the debounce window after a check' do
       described_class.schedule(user.id)
-      Flipper.disable(:achievements)
       described_class.perform_now(user.id)
-      Flipper.enable(:achievements)
 
       expect { described_class.schedule(user.id) }.to have_enqueued_job(described_class).with(user.id)
     end

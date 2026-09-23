@@ -3,7 +3,6 @@
 class Shared::AchievementsController < ApplicationController
   layout 'shared'
 
-  before_action :require_feature_enabled
   after_action :allow_embedding, only: :show
 
   def show
@@ -35,12 +34,6 @@ class Shared::AchievementsController < ApplicationController
   end
 
   private
-
-  def require_feature_enabled
-    return if Flipper.enabled?(:achievements)
-
-    action_name == 'image' ? head(:not_found) : redirect_to(root_path)
-  end
 
   def shared_progress
     @shared_progress ||= Achievements::Progress.find_by(sharing_uuid: params[:uuid], sharing_enabled: true)

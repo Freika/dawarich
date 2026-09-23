@@ -89,10 +89,6 @@ RSpec.describe Users::SettingsUpdater do
     end
 
     context 'when the city threshold changes' do
-      before { Flipper.enable(:achievements) }
-
-      after { Flipper.disable(:achievements) }
-
       it 'recalculates existing stats so the new value is reflected' do
         allow(user).to receive(:years_tracked).and_return([{ year: 2026, months: %w[Mar] }])
 
