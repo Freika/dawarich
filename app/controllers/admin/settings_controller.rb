@@ -13,7 +13,8 @@ module Admin
       'nominatim' => %i[nominatim_api_host nominatim_api_key nominatim_api_use_https],
       'locationiq' => %i[locationiq_api_key],
       'rate_limit' => %i[reverse_geocoding_rps],
-      'points' => %i[store_geodata]
+      'points' => %i[store_geodata],
+      'map_matching' => %i[atlas_url map_matching_enabled]
     }.freeze
 
     before_action :authenticate_user!
@@ -30,7 +31,7 @@ module Admin
 
     def update
       back = admin_settings_path(section: params[:section].presence_in(SECTIONS.keys))
-      input = InstanceSettings::GeocodingInput.new(submitted_values)
+      input = InstanceSettings::AdminInput.new(submitted_values)
       return redirect_to back, alert: input.errors.join(' '), status: :see_other unless input.valid?
 
       refused = apply_settings(input.values)
@@ -48,6 +49,17 @@ module Admin
       respond_to do |format|
         format.turbo_stream { render turbo_stream: stream_flash(type == :notice ? :notice : :error, message) }
         format.html { redirect_to admin_settings_path, type => message, status: :see_other }
+      end
+    end
+
+    def test_map_matching
+      type, message = MapMatching::Atlas::ConnectionTest.call
+
+      respond_to do |format|
+        format.turbo_stream { render turbo_stream: stream_flash(type == :notice ? :notice : :error, message) }
+        format.html do
+          redirect_to admin_settings_path(section: 'map_matching'), type => message, status: :see_other
+        end
       end
     end
 

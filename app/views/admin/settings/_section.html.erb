@@ -19,6 +19,63 @@
         <p class="text-sm text-base-content/70 [text-wrap:pretty]"><%= t("admin.settings.show.providers.#{section}") %></p>
       <% end %>
 
+      <% if section == 'map_matching' %>
+        <p class="text-sm text-base-content/70 [text-wrap:pretty]"><%= t('admin.settings.show.map_matching.description') %></p>
+        <figure class="overflow-hidden rounded-box border border-base-content/10 bg-base-100"
+                data-controller="map-matching-demo"
+                data-testid="map-matching-example">
+          <div class="relative">
+            <div class="h-72 w-full bg-base-300 sm:h-80"
+                 role="img"
+                 aria-label="<%= t('admin.settings.show.map_matching.example_alt') %>"
+                 data-map-matching-demo-target="map"
+                 data-testid="map-matching-demo-map"></div>
+            <div class="pointer-events-none absolute inset-0 grid place-items-center bg-base-200"
+                 data-map-matching-demo-target="loading">
+              <span class="loading loading-spinner loading-md text-primary" aria-hidden="true"></span>
+            </div>
+            <div class="pointer-events-none absolute left-3 top-3 rounded-full border border-base-content/10 bg-base-100/90 px-3 py-1.5 text-xs font-semibold shadow-sm backdrop-blur-sm"
+                 data-testid="map-matching-demo-source">
+              Berlin · 2.8 km · Valhalla
+            </div>
+            <div class="absolute bottom-3 left-1/2 flex -translate-x-1/2 gap-1 rounded-lg border border-base-content/10 bg-base-100/90 p-1 shadow-lg backdrop-blur-sm"
+                 aria-label="<%= t('admin.settings.show.map_matching.title') %>">
+              <button type="button"
+                      class="btn btn-sm btn-ghost btn-outline gap-2 whitespace-nowrap"
+                      aria-pressed="false"
+                      data-mode="original"
+                      data-map-matching-demo-target="button"
+                      data-action="map-matching-demo#select">
+                <span class="size-2.5 rounded-full bg-warning" aria-hidden="true"></span>
+                <%= t('admin.settings.show.map_matching.original_label') %>
+              </button>
+              <button type="button"
+                      class="btn btn-sm btn-success gap-2 whitespace-nowrap"
+                      aria-pressed="true"
+                      data-mode="matched"
+                      data-map-matching-demo-target="button"
+                      data-action="map-matching-demo#select">
+                <span class="size-2.5 rounded-full bg-success-content" aria-hidden="true"></span>
+                <%= t('admin.settings.show.map_matching.matched_label') %>
+              </button>
+            </div>
+          </div>
+          <figcaption class="border-t border-base-content/10 px-4 py-3 text-xs text-base-content/70 [text-wrap:pretty]">
+            <%= t('admin.settings.show.map_matching.example_caption') %>
+          </figcaption>
+        </figure>
+        <div role="note" class="flex items-start gap-2 text-sm">
+          <%= icon 'shield', class: 'size-4 shrink-0 mt-0.5 text-warning' %>
+          <p class="min-w-0 [text-wrap:pretty]"><%= t('admin.settings.show.map_matching.privacy') %></p>
+        </div>
+        <% if @settings.fetch(:atlas_url).value.present? %>
+          <%= button_to t('admin.settings.show.map_matching.test'), test_map_matching_admin_settings_path,
+                        class: 'btn btn-sm btn-outline self-start',
+                        form: { class: 'inline-block' },
+                        data: { turbo_submits_with: t('admin.settings.show.map_matching.testing') } %>
+        <% end %>
+      <% end %>
+
       <% if section == 'photon' %>
         <p class="text-sm text-base-content/70 [text-wrap:pretty]">
           <%= t('admin.settings.show.geocoding.chibigeo_message') %>

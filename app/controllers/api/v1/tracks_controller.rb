@@ -7,7 +7,7 @@ class Api::V1::TracksController < ApiController
     tracks_query = Tracks::IndexQuery.new(user: current_api_user, params: params)
     paginated_tracks = tracks_query.call
 
-    geojson = Tracks::GeojsonSerializer.new(paginated_tracks).call
+    geojson = Tracks::GeojsonSerializer.new(paginated_tracks, geometry: geometry_variant).call
 
     tracks_query.pagination_headers(paginated_tracks).each do |header, value|
       response.set_header(header, value)
@@ -18,7 +18,7 @@ class Api::V1::TracksController < ApiController
 
   def show
     track = current_api_user.tracks.includes(:track_segments).find(params[:id])
-    geojson = Tracks::GeojsonSerializer.new(track, include_segments: true).call
+    geojson = Tracks::GeojsonSerializer.new(track, include_segments: true, geometry: geometry_variant).call
     return render json: geojson unless clip?(track)
 
     summary = Tracks::PointGeometryQuery.new(
@@ -32,6 +32,13 @@ class Api::V1::TracksController < ApiController
   end
 
   private
+
+  def geometry_variant
+    variant = params.fetch(:geometry, 'original').to_s
+    return variant if Tracks::DisplayPath::VARIANTS.include?(variant)
+
+    'original'
+  end
 
   def clip?(track)
     return true if params[:import_id].present?

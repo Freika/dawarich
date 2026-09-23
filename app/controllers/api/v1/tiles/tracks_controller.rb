@@ -10,7 +10,7 @@ class Api::V1::Tiles::TracksController < ApiController
   private
 
   def tile_schema_version
-    [TILE_SCHEMA_VERSION, speed_coloring?]
+    [TILE_SCHEMA_VERSION, speed_coloring?, display_matched_paths?]
   end
 
   def tile_epoch_component
@@ -35,13 +35,17 @@ class Api::V1::Tiles::TracksController < ApiController
       end
       options[:clip_import_id] = params[:import_id].presence
     end
-    return Tracks::VectorTileQuery.new(**options) unless speed_coloring?
+    return Tracks::VectorTileQuery.new(**options, use_matched_path: display_matched_paths?) unless speed_coloring?
 
     Tracks::SpeedVectorTileQuery.new(points_scope: options[:clip_points_scope] || speed_points_scope, **options)
   end
 
   def speed_coloring?
     params[:speed_coloring] == 'true'
+  end
+
+  def display_matched_paths?
+    !speed_coloring? && params[:import_id].blank? && Tracks::DisplayPath.enabled?
   end
 
   def filtered_tracks

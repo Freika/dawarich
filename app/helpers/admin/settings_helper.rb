@@ -4,7 +4,7 @@ module Admin
   module SettingsHelper
     GEOCODING_SECTIONS = %w[photon geoapify nominatim locationiq rate_limit].freeze
     PROVIDER_SECTIONS = %w[photon geoapify nominatim locationiq].freeze
-    SECTION_ICONS = { 'rate_limit' => 'clock', 'points' => 'map-pin' }.freeze
+    SECTION_ICONS = { 'rate_limit' => 'clock', 'points' => 'map-pin', 'map_matching' => 'route' }.freeze
 
     CHIBIGEO_KEY_URL = 'https://chibigeo.com/docs/guides/dawarich-self-hosted-geocoding?utm_source=dawarich&utm_medium=app&utm_campaign=geocoding_settings'
 
@@ -19,7 +19,10 @@ module Admin
     def instance_section_title(section)
       return geocoding_provider_name(section) if PROVIDER_SECTIONS.include?(section)
 
-      section == 'rate_limit' ? t('admin.settings.show.geocoding.rate_limit') : t('admin.settings.show.points.title')
+      return t('admin.settings.show.geocoding.rate_limit') if section == 'rate_limit'
+      return t('admin.settings.show.map_matching.title') if section == 'map_matching'
+
+      t('admin.settings.show.points.title')
     end
 
     def instance_section_icon(section)
@@ -62,6 +65,8 @@ module Admin
         t('admin.settings.show.geocoding.https_locked') if https_locked?(setting, settings)
       when :reverse_geocoding_rps then t('admin.settings.show.fields.rps_hint')
       when :store_geodata then t('admin.settings.show.fields.store_geodata_hint')
+      when :atlas_url then t('admin.settings.show.fields.atlas_url_hint')
+      when :map_matching_enabled then t('admin.settings.show.fields.map_matching_enabled_hint')
       else
         t('admin.settings.show.fields.api_key_keep_hint') if secret_kept?(setting)
       end

@@ -42,5 +42,25 @@ RSpec.describe Tracks::GeojsonSerializer do
         revision: track.lock_version
       )
     end
+
+    it 'keeps original geometry by default and exposes display geometry explicitly' do
+      track.update!(
+        matched_path: 'MULTILINESTRING((-74.006 40.7128, -74.0065 40.7129, -74.007 40.713))',
+        map_matching_status: :matched,
+        map_matching_input_digest: 'current'
+      )
+      allow(DawarichSettings).to receive(:map_matching_enabled?).and_return(true)
+      allow(Flipper).to receive(:enabled?).with(:map_matching_shadow_mode).and_return(false)
+
+      original = described_class.new(track).call[:features].first[:geometry]
+      display = described_class.new(track, include_segments: true, geometry: 'display')
+                               .call[:features].first
+
+      expect(original[:type]).to eq('LineString')
+      expect(display[:geometry][:type]).to eq('MultiLineString')
+      expect(display[:properties]).to include(
+        map_matching_status: 'matched', map_matching_available: true
+      )
+    end
   end
 end

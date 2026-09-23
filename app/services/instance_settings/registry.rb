@@ -48,7 +48,9 @@ module InstanceSettings
       Definition.new(key: :locationiq_api_key, env_var: 'LOCATIONIQ_API_KEY', kind: :secret),
       # Blank means unlimited, so nil is a meaningful default rather than a missing one.
       Definition.new(key: :reverse_geocoding_rps, env_var: 'REVERSE_GEOCODING_RPS', kind: :float),
-      Definition.new(key: :store_geodata, env_var: 'STORE_GEODATA', kind: :boolean, default: true)
+      Definition.new(key: :store_geodata, env_var: 'STORE_GEODATA', kind: :boolean, default: true),
+      Definition.new(key: :atlas_url, env_var: 'ATLAS_URL', kind: :string),
+      Definition.new(key: :map_matching_enabled, env_var: 'MAP_MATCHING_ENABLED', kind: :boolean, default: false)
     ].index_by(&:key).freeze
 
     def self.keys

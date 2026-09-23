@@ -81,6 +81,14 @@ class DawarichSettings
       setting(:store_geodata, STORE_GEODATA)
     end
 
+    def atlas_url
+      setting(:atlas_url, ENV.fetch('ATLAS_URL', nil))
+    end
+
+    def map_matching_enabled?
+      setting(:map_matching_enabled, ENV.fetch('MAP_MATCHING_ENABLED', 'false') == 'true')
+    end
+
     # Self-hosted instances grant the family feature to everyone. On cloud it is
     # part of the Family subscription plan, so access follows the user's plan
     # rather than the hosting mode.

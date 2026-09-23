@@ -68,6 +68,7 @@ module Tracks
         create_segments(track, detector.call)
         recompute_dominant_mode(track)
       end
+      Tracks::MapMatching::Enqueuer.call(track)
     end
 
     def extract_enabled_modes(user)

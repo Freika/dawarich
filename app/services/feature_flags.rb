@@ -6,7 +6,7 @@ module FeatureFlags
   # Flags the code reads, mapped to the state a brand-new install starts in.
   # An existing flag is never touched, so an instance that switched one off
   # keeps it off.
-  DEFAULTS = { poster_ordering: true, achievements: false }.freeze
+  DEFAULTS = { poster_ordering: true, achievements: false, map_matching_shadow_mode: false }.freeze
 
   # Flags whose feature shipped unconditionally and no longer gates anything.
   RETIRED = %i[posters stay_point_detection instance_settings_resolver].freeze

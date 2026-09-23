@@ -99,6 +99,26 @@ RSpec.describe Track, type: :model do
         )
         .with_prefix(true)
     end
+
+    it do
+      is_expected.to define_enum_for(:map_matching_status)
+        .with_values(pending: 0, matched: 1, partial: 2, rejected: 3, skipped: 4, failed: 5)
+        .with_prefix(true)
+    end
+  end
+
+  describe '#map_matching_result?' do
+    let(:matched_path) { 'MULTILINESTRING((-74.006 40.7128, -74.007 40.713))' }
+
+    it 'is true for stored matched and partial results' do
+      expect(build(:track, matched_path: matched_path, map_matching_status: :matched)).to be_map_matching_result
+      expect(build(:track, matched_path: matched_path, map_matching_status: :partial)).to be_map_matching_result
+    end
+
+    it 'is false without displayable geometry' do
+      expect(build(:track, map_matching_status: :matched)).not_to be_map_matching_result
+      expect(build(:track, matched_path: matched_path, map_matching_status: :pending)).not_to be_map_matching_result
+    end
   end
 
   describe 'validations' do
@@ -368,7 +388,7 @@ RSpec.describe Track, type: :model do
         create(:track_segment, track: track, transportation_mode: :unknown,
                                distance: 200, duration: 60)
         create(:track_segment, track: track, transportation_mode: :driving,
-                               distance: 60,  duration: 30)
+                               distance: 60, duration: 30)
       end
 
       it 'prefers the real moving mode over unknown' do

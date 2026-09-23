@@ -595,9 +595,18 @@ export class ApiClient {
    * @param {number|string} trackId - The track ID
    * @returns {Promise<Object>} GeoJSON Feature with segments
    */
-  async fetchTrackWithSegments(trackId, { signal, startAt, endAt } = {}) {
+  async fetchTrackWithSegments(
+    trackId,
+    {
+      signal,
+      startAt,
+      endAt,
+      geometry = this.importId ? "original" : "display",
+    } = {},
+  ) {
     const params = new URLSearchParams()
     if (this.importId) params.set("import_id", this.importId)
+    params.set("geometry", geometry)
     if (startAt && endAt) {
       params.set("start_at", startAt)
       params.set("end_at", endAt)

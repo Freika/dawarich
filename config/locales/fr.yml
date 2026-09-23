@@ -12,6 +12,7 @@ fr:
         clear_secret: "Effacer la valeur enregistrée"
         unreadable_secret: "Une valeur enregistrée ne peut pas être déchiffrée avec les clés de cette instance. Saisissez-la à nouveau."
         sections_nav: "Sections des paramètres de l'instance"
+        maps: "Cartes"
         nav_pinned: "Défini par une variable d'environnement"
         nav_attention: "Nécessite votre attention"
         geocoding:
@@ -38,6 +39,16 @@ fr:
           locationiq: "Service hébergé. Nécessite une clé d'API."
         points:
           title: "Points"
+        map_matching:
+          title: "Recalage sur le réseau"
+          description: "Aligne les tracés enregistrés imprécis sur les routes et chemins proches. Seul l'affichage des trajets éligibles change ; les points enregistrés et le tracé d'origine restent intacts."
+          example_alt: "Un tracé original imprécis à côté du même tracé aligné sur les rues"
+          original_label: "Tracé original"
+          matched_label: "Tracé recalé"
+          example_caption: "L'original conserve la forme enregistrée. Le tracé recalé suit le réseau praticable proche et peut toujours revenir à l'original."
+          privacy: "Dawarich envoie les coordonnées, horodatages et précisions GPS au service Atlas configuré. Gardez ce service dans un réseau de confiance."
+          test: "Tester la connexion"
+          testing: "Test en cours…"
         fields:
           photon_api_host: "Hôte"
           photon_api_key: "Clé d'API"
@@ -49,21 +60,32 @@ fr:
           locationiq_api_key: "Clé d'API"
           reverse_geocoding_rps: "Requêtes par seconde"
           store_geodata: "Géocoder immédiatement les nouveaux points"
+          atlas_url: "URL d'Atlas"
+          map_matching_enabled: "Activer le recalage sur le réseau"
           host_hint: "Nom d'hôte avec port facultatif, par ex. photon.example.com:2322"
           rps_hint: "Laissez vide pour ne pas limiter. Indiquez ce que votre serveur ou votre offre autorise."
           api_key_keep_hint: "Laissez vide pour conserver la clé enregistrée."
           store_geodata_hint: "Recherche la ville et le pays à l’ajout de nouveaux points. Les recherches nocturnes continuent si un fournisseur est configuré, même lorsque cette option est désactivée."
+          atlas_url_hint: "URL de base HTTP ou HTTPS complète de votre service privé Dawarich Atlas."
+          map_matching_enabled_hint: "S'applique à toute l'instance. Les trajets existants ne sont pas traités automatiquement."
       update:
         saved: "Paramètres enregistrés."
         pinned: "Refusé : fixé par %{variables}."
         host_invalid: "L'hôte doit être un simple nom d'hôte, avec un port ou un chemin facultatif, sans espaces."
         chibigeo_key_required: "ChibiGeo nécessite une clé d'API. Le forfait gratuit Hobby inclut 2 500 requêtes par jour : obtenez votre clé sur chibigeo.com."
+        atlas_url_invalid: "L'URL d'Atlas doit être une URL HTTP ou HTTPS complète, sans identifiants, requête ni fragment."
+        atlas_url_required: "Définissez une URL d'Atlas avant d'activer le recalage sur le réseau."
       test_geocoding:
         not_configured: "Aucun fournisseur de géocodage n'est configuré. Enregistrez d'abord un fournisseur."
         success: "Votre fournisseur a résolu les coordonnées de test en : %{place}."
         empty: "Le fournisseur a répondu, mais n'a renvoyé aucun résultat pour les coordonnées de test."
         failure: "Échec du test : %{error}"
         rate_limited: "La limite de requêtes du fournisseur est atteinte pour le moment. Réessayez dans un instant."
+      test_map_matching:
+        not_configured: "Enregistrez d'abord une URL d'Atlas."
+        success: "Atlas %{version} est prêt pour le recalage sur le réseau."
+        routing_unavailable: "Atlas %{version} a répondu, mais sa fonction de routage n'est pas encore prête."
+        failure: "Échec de la connexion à Atlas (%{error})."
   route_videos:
     route_video:
       download: "Télécharger le MP4"
@@ -2034,6 +2056,10 @@ fr:
         track: Trajet n°
         dist: Dist
         avg: Moyenne
+        map_matching_pending: Amélioration du trajet…
+        map_matching_matched: Recalé sur les routes
+        map_matching_partial: Partiellement recalé
+        map_matching_partial_hint: Certaines portions utilisent le trajet enregistré d'origine.
         show_points: Afficher les points
         replay: Rejouer
         share: Partager

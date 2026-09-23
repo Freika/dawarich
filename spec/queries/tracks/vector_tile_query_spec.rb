@@ -34,9 +34,9 @@ RSpec.describe Tracks::VectorTileQuery do
 
   # rubocop:disable Naming/MethodParameterName
   def feature_rows(z:, x:, y:, scope: user.tracks, clip_points_scope: nil, clip_import_id: nil,
-                   clip_start_at: nil, clip_end_at: nil)
+                   clip_start_at: nil, clip_end_at: nil, use_matched_path: false)
     described_class.new(scope:, z:, x:, y:, clip_points_scope:, clip_import_id:,
-                        clip_start_at:, clip_end_at:).feature_rows
+                        clip_start_at:, clip_end_at:, use_matched_path:).feature_rows
   end
   # rubocop:enable Naming/MethodParameterName
 
@@ -57,6 +57,37 @@ RSpec.describe Tracks::VectorTileQuery do
       rows = feature_rows(z: 10, x: 512, y: 511)
 
       expect(rows.map { |r| r['id'].to_i }).to contain_exactly(inside_a.id, inside_b.id)
+    end
+
+    it 'uses matched geometry only for accepted rows and original geometry for fallbacks' do
+      matched_inside = create_track_at(
+        [[200_000, 200_000], [210_000, 210_000]],
+        matched_path: "MULTILINESTRING((#{linestring_wkt([[10, 10], [2_000, 2_000]])
+          .delete_prefix('LINESTRING(').delete_suffix(')')}))",
+        map_matching_status: :matched,
+        map_matching_input_digest: 'current'
+      )
+      fallback_inside = create_track_at(
+        [[4_000, 4_000], [6_000, 6_000]],
+        matched_path: "MULTILINESTRING((#{linestring_wkt([[200_000, 200_000], [210_000, 210_000]])
+          .delete_prefix('LINESTRING(').delete_suffix(')')}))",
+        map_matching_status: :pending,
+        map_matching_input_digest: 'new'
+      )
+
+      rows = feature_rows(z: 10, x: 512, y: 511, use_matched_path: true)
+
+      expect(rows.map { |row| row['id'].to_i }).to contain_exactly(matched_inside.id, fallback_inside.id)
+    end
+
+    it 'does not let unmatched tracks outside the tile consume the per-tile limit' do
+      stub_const('Tracks::VectorTileQuery::TRACKS_PER_TILE_LIMIT', 1)
+      create_track_at([[200_000, 200_000], [210_000, 210_000]])
+      unmatched_inside = create_track_at([[10, 10], [2_000, 2_000]])
+
+      rows = feature_rows(z: 10, x: 512, y: 511, use_matched_path: true)
+
+      expect(rows.map { |row| row['id'].to_i }).to eq([unmatched_inside.id])
     end
   end
 

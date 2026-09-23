@@ -7,12 +7,14 @@ RSpec.describe 'Admin::Settings' do
   let(:non_admin) { create(:user) }
 
   around do |example|
-    saved = ENV.fetch('PHOTON_API_HOST', nil)
+    saved = %w[PHOTON_API_HOST ATLAS_URL MAP_MATCHING_ENABLED].index_with { |key| ENV.fetch(key, nil) }
     ENV['PHOTON_API_HOST'] = nil
+    ENV['ATLAS_URL'] = nil
+    ENV['MAP_MATCHING_ENABLED'] = nil
     InstanceSettings::Resolver.reset!
     example.run
   ensure
-    ENV['PHOTON_API_HOST'] = saved
+    saved.each { |key, value| ENV[key] = value }
     InstanceSettings::Resolver.reset!
   end
 
@@ -113,7 +115,7 @@ RSpec.describe 'Admin::Settings' do
     it 'lists every section in the navigation' do
       get '/admin/settings'
 
-      %w[photon geoapify nominatim locationiq rate_limit points].each do |name|
+      %w[photon geoapify nominatim locationiq rate_limit points map_matching].each do |name|
         expect(section_link(name)).to be_present, "missing #{name} in the section navigation"
       end
     end
@@ -141,6 +143,19 @@ RSpec.describe 'Admin::Settings' do
       expect(response.body).to include('id="instance_settings_store_geodata"')
       expect(response.body).not_to include('id="instance_settings_photon_api_host"')
       expect(response.body).not_to include('id="instance_settings_reverse_geocoding_rps"')
+    end
+
+    it 'shows map matching as an instance-wide setting with a visual example and privacy disclosure' do
+      get '/admin/settings', params: { section: 'map_matching' }
+
+      expect(response.body).to include('id="instance_settings_atlas_url"')
+      expect(response.body).to include('id="instance_settings_map_matching_enabled"')
+      expect(response.body).to include('data-testid="map-matching-example"')
+      expect(response.body).to include('data-controller="map-matching-demo"')
+      expect(response.body).to include('data-testid="map-matching-demo-map"')
+      expect(response.body).to include('data-testid="map-matching-demo-source"')
+      expect(response.body).to include('Berlin · 2.8 km · Valhalla')
+      expect(response.body).to include(ERB::Util.html_escape(I18n.t('admin.settings.show.map_matching.privacy')))
     end
 
     it 'falls back to the default section for an unknown one' do
@@ -292,6 +307,51 @@ RSpec.describe 'Admin::Settings' do
       get '/admin/settings', params: { section: 'photon' }
 
       expect(response.body).to include('https://chibigeo.com/docs/guides/dawarich-self-hosted-geocoding?')
+    end
+  end
+
+  describe 'map matching input' do
+    before { sign_in admin }
+
+    it 'stores a valid Atlas URL and enables map matching' do
+      patch '/admin/settings', params: {
+        section: 'map_matching',
+        instance_settings: { atlas_url: 'http://atlas:4567/', map_matching_enabled: 'true' }
+      }
+
+      expect(InstanceSettings::Resolver.value(:atlas_url)).to eq('http://atlas:4567')
+      expect(InstanceSettings::Resolver.value(:map_matching_enabled)).to be(true)
+    end
+
+    it 'does not enable map matching without an Atlas URL' do
+      patch '/admin/settings', params: {
+        section: 'map_matching',
+        instance_settings: { atlas_url: '', map_matching_enabled: 'true' }
+      }
+
+      expect(InstanceSettings::Resolver.value(:map_matching_enabled)).to be(false)
+      expect(flash[:alert]).to eq(I18n.t('admin.settings.update.atlas_url_required'))
+    end
+
+    it 'rejects credentials embedded in the Atlas URL' do
+      patch '/admin/settings', params: {
+        section: 'map_matching',
+        instance_settings: { atlas_url: 'https://user:secret@atlas.example.com' }
+      }
+
+      expect(InstanceSetting.find_by(key: 'atlas_url')).to be_nil
+      expect(flash[:alert]).to eq(I18n.t('admin.settings.update.atlas_url_invalid'))
+    end
+
+    it 'renders environment-pinned settings as disabled' do
+      ENV['ATLAS_URL'] = 'https://atlas.example.com'
+      ENV['MAP_MATCHING_ENABLED'] = 'true'
+      InstanceSettings::Resolver.reset!
+
+      get '/admin/settings', params: { section: 'map_matching' }
+
+      expect(response.body).to match(/<input[^>]*id="instance_settings_atlas_url"[^>]*\sdisabled[\s>]/)
+      expect(response.body).to match(/<input[^>]*id="instance_settings_map_matching_enabled"[^>]*\sdisabled[\s>]/)
     end
   end
 
@@ -463,6 +523,28 @@ RSpec.describe 'Admin::Settings' do
       post '/admin/settings/test_geocoding'
 
       expect(flash[:alert]).to include('SocketError')
+    end
+  end
+
+  describe 'POST test_map_matching' do
+    it 'is refused for a non-admin without contacting Atlas' do
+      allow(MapMatching::Atlas::ConnectionTest).to receive(:call)
+      sign_in non_admin
+
+      post '/admin/settings/test_map_matching'
+
+      expect(response).not_to have_http_status(:ok)
+      expect(MapMatching::Atlas::ConnectionTest).not_to have_received(:call)
+    end
+
+    it 'returns the operator to map matching settings with the result' do
+      allow(MapMatching::Atlas::ConnectionTest).to receive(:call).and_return([:notice, 'Atlas is ready'])
+      sign_in admin
+
+      post '/admin/settings/test_map_matching'
+
+      expect(response).to redirect_to(admin_settings_path(section: 'map_matching'))
+      expect(flash[:notice]).to eq('Atlas is ready')
     end
   end
 

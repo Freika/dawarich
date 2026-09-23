@@ -70,4 +70,7 @@ if Sidekiq.server?
   configured = ENV['REVERSE_GEOCODING_CONCURRENCY'].presence&.to_i
 
   Sidekiq::Queue['reverse_geocoding'].limit = [configured || pool_size / 3, 1].max
+
+  map_matching_concurrency = ENV['MAP_MATCHING_CONCURRENCY'].presence&.to_i || 2
+  Sidekiq::Queue['map_matching'].limit = [map_matching_concurrency, 1].max
 end

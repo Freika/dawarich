@@ -33,9 +33,10 @@ class Tracks::GeojsonSerializer
     'unknown' => '#CBD5E1'     # Light slate
   }.freeze
 
-  def initialize(tracks, include_segments: false)
+  def initialize(tracks, include_segments: false, geometry: 'original')
     @tracks = Array.wrap(tracks)
     @include_segments = include_segments
+    @geometry_variant = geometry.to_s
   end
 
   def call
@@ -47,7 +48,7 @@ class Tracks::GeojsonSerializer
 
   private
 
-  attr_reader :tracks, :include_segments
+  attr_reader :tracks, :include_segments, :geometry_variant
 
   def feature_for(track)
     {
@@ -84,7 +85,10 @@ class Tracks::GeojsonSerializer
     props[:mode_timeline] = mode_timeline_for(track)
 
     # Only include full segments when explicitly requested (lazy-loading optimization)
-    props[:segments] = segments_for(track) if include_segments
+    if include_segments
+      props[:segments] = segments_for(track)
+      props.merge!(map_matching_properties(track))
+    end
 
     props
   end
@@ -204,7 +208,25 @@ class Tracks::GeojsonSerializer
   end
 
   def geometry_for(track)
-    geometry = RGeo::GeoJSON.encode(track.original_path)
+    geometry = RGeo::GeoJSON.encode(Tracks::DisplayPath.for(track, variant: geometry_variant))
     geometry.respond_to?(:as_json) ? geometry.as_json.deep_symbolize_keys : geometry
+  end
+
+  def map_matching_properties(track)
+    properties = {
+      map_matching_status: track.map_matching_status,
+      map_matching_available: Tracks::DisplayPath.matched?(track)
+    }
+    return properties unless geometry_variant == 'compare'
+
+    properties.merge(
+      original_geometry: encoded_geometry(track.original_path),
+      matched_geometry: encoded_geometry(Tracks::DisplayPath.for(track, variant: 'matched'))
+    )
+  end
+
+  def encoded_geometry(geometry)
+    encoded = RGeo::GeoJSON.encode(geometry)
+    encoded.respond_to?(:as_json) ? encoded.as_json.deep_symbolize_keys : encoded
   end
 end

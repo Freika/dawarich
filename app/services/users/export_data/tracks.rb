@@ -45,7 +45,12 @@ class Users::ExportData::Tracks
   end
 
   def build_track_hash(track)
-    track_hash = track.as_json(except: %w[user_id id])
+    track_hash = track.as_json(
+      except: %w[
+        user_id id matched_path map_matching_status map_matching_input_digest
+        map_matching_data map_matched_at
+      ]
+    )
 
     # Serialize original_path as WKT string
     track_hash['original_path'] = track.original_path&.as_text

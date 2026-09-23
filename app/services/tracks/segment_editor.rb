@@ -22,6 +22,7 @@ module Tracks
         )
         recompute_dominant_mode!
       end
+      Tracks::MapMatching::Enqueuer.call(@segment.track)
       Result.new(success?: true, segment: @segment, track: @segment.track)
     end
 

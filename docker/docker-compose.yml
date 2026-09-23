@@ -84,6 +84,9 @@ services:
       RAILS_LOG_TO_STDOUT: ${RAILS_LOG_TO_STDOUT:-true}
       SELF_HOSTED: ${SELF_HOSTED:-true}
       STORE_GEODATA: ${STORE_GEODATA:-true}
+      ATLAS_URL: ${ATLAS_URL:-}
+      MAP_MATCHING_ENABLED: ${MAP_MATCHING_ENABLED:-false}
+      MAP_MATCHING_CONCURRENCY: ${MAP_MATCHING_CONCURRENCY:-2}
       # One preloaded Puma worker is plenty for a household instance and
       # halves idle memory. Raise for busier instances.
       WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
@@ -150,6 +153,9 @@ services:
       RAILS_LOG_TO_STDOUT: ${RAILS_LOG_TO_STDOUT:-true}
       SELF_HOSTED: ${SELF_HOSTED:-true}
       STORE_GEODATA: ${STORE_GEODATA:-true}
+      ATLAS_URL: ${ATLAS_URL:-}
+      MAP_MATCHING_ENABLED: ${MAP_MATCHING_ENABLED:-false}
+      MAP_MATCHING_CONCURRENCY: ${MAP_MATCHING_CONCURRENCY:-2}
       ### OTP encryption keys are required if you want to use 2FA
       # OTP_ENCRYPTION_PRIMARY_KEY: ${OTP_ENCRYPTION_PRIMARY_KEY:-}
       # OTP_ENCRYPTION_DETERMINISTIC_KEY: ${OTP_ENCRYPTION_DETERMINISTIC_KEY:-}
