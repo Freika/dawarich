@@ -3,3 +3,6 @@
 +sbwtdcpu none
 +sbwtdio none
 +Bi
++S 1:1
++SDcpu 1:1
++SDio 1

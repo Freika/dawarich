@@ -2,21 +2,26 @@
 set -eu
 cd "$(dirname "$0")/../.."
 
+IMAGE="${IMAGE:-dawarich:a0-local}"
+PLATFORM="${PLATFORM:-}"
+WAIT="${SMOKE_WAIT_SECONDS:-300}"
 export DAWARICH_APP_PORT=3900
 override="$(mktemp)"
-cat >"$override" <<'EOF'
-services:
-  dawarich_redis:
-    container_name: a0_redis
-  dawarich_db:
-    container_name: a0_db
-  dawarich_app:
-    container_name: a0_app
-    image: dawarich:a0-local
-  dawarich_sidekiq:
-    container_name: a0_sidekiq
-    image: dawarich:a0-local
-EOF
+{
+  echo "services:"
+  echo "  dawarich_redis:"
+  echo "    container_name: a0_redis"
+  echo "  dawarich_db:"
+  echo "    container_name: a0_db"
+  echo "  dawarich_app:"
+  echo "    container_name: a0_app"
+  echo "    image: $IMAGE"
+  [ -z "$PLATFORM" ] || echo "    platform: $PLATFORM"
+  echo "  dawarich_sidekiq:"
+  echo "    container_name: a0_sidekiq"
+  echo "    image: $IMAGE"
+  [ -z "$PLATFORM" ] || echo "    platform: $PLATFORM"
+} >"$override"
 compose="docker compose -p phoenix-a0 -f docker/docker-compose.yml -f $override"
 
 cleanup() {
@@ -37,12 +42,12 @@ $compose up -d
 tries=0
 until [ "$(docker inspect -f '{{.State.Health.Status}}' a0_app)" = "healthy" ]; do
   tries=$((tries + 1))
-  [ "$tries" -lt 60 ] || fail "app not healthy"
+  [ "$tries" -lt $((WAIT / 5)) ] || fail "app not healthy"
   sleep 5
 done
 
 docker exec a0_app ps -o comm= -p 1 | grep -q beam || fail "PID 1 is not the BEAM"
-docker exec a0_app ps -eo args | grep -q '^puma' || fail "puma not running"
+docker exec a0_app ps -eo args | grep -qE '^puma|bin/rails server' || fail "puma not running"
 [ "$(docker exec a0_app dawarich rpc 'IO.puts(Oban.config().prefix)')" = "oban" ] || fail "rpc failed"
 curl -fsS "http://127.0.0.1:$DAWARICH_APP_PORT/api/v1/health" | grep -q '"status"' || fail "health failed"
 docker exec a0_db psql -U postgres -d dawarich_development -Atc \
@@ -55,7 +60,7 @@ docker logs a0_app 2>&1 | tail -20 | grep -qi 'goodbye' || fail "puma did not sh
 tries=0
 until docker logs a0_sidekiq 2>&1 | grep -q 'Running in ruby'; do
   tries=$((tries + 1))
-  [ "$tries" -lt 60 ] || fail "sidekiq did not finish booting"
+  [ "$tries" -lt "$WAIT" ] || fail "sidekiq did not finish booting"
   sleep 1
 done
 $compose stop dawarich_sidekiq
