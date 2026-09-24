@@ -28,3 +28,7 @@ vendor/poster_renderer/node_modules/
 
 # Local git worktrees must never end up inside the image
 .worktrees/
+
+app-phoenix/_build/
+app-phoenix/deps/
+app-phoenix/erl_crash.dump
