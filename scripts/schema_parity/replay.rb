@@ -12,7 +12,9 @@ unless data.empty?
   connection = ActiveRecord::Base.connection
   connection.execute('CREATE TABLE IF NOT EXISTS data_migrations (version varchar PRIMARY KEY)')
   data.each do |version|
-    connection.execute("INSERT INTO data_migrations (version) VALUES (#{connection.quote(version)}) ON CONFLICT DO NOTHING")
+    connection.execute(
+      "INSERT INTO data_migrations (version) VALUES (#{connection.quote(version)}) ON CONFLICT DO NOTHING"
+    )
   end
 end
 

@@ -158,7 +158,7 @@ defmodule Dawarich.ReleaseMigration do
           lock_retry(repo, fun, opts, attempt + 1)
 
         true ->
-          :not_acquired
+          {:not_acquired, error}
       end
   end
 

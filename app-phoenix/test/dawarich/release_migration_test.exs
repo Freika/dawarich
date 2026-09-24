@@ -133,7 +133,8 @@ defmodule Dawarich.ReleaseMigrationTest do
 
     assert_receive :holding, 5_000
 
-    assert :not_acquired =
+    assert {:not_acquired,
+            %Postgrex.Error{postgres: %{code: :lock_not_available, pg_code: "55P03"}}} =
              with_lock_retry(
                ScratchRepo,
                fn -> sql!(ScratchRepo, "ALTER TABLE probe ADD COLUMN x int") end,

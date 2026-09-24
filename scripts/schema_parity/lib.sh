@@ -30,9 +30,9 @@ restore_snapshot() {
 
 canon_dump() {
   recreate_db "$1_rt"
-  docker exec sp-db pg_dump -U postgres --schema-only --no-owner --no-privileges "$1" > "$tmpd/canon.sql"
+  docker exec sp-db pg_dump -U postgres --schema-only --no-owner --no-privileges --exclude-schema=phoenix --exclude-schema=oban "$1" > "$tmpd/canon.sql"
   docker exec -i sp-db psql -U postgres -q -v ON_ERROR_STOP=1 -d "$1_rt" < "$tmpd/canon.sql" >/dev/null
-  docker exec sp-db pg_dump -U postgres --schema-only --no-owner --no-privileges "$1_rt" > "$tmpd/canon.sql"
+  docker exec sp-db pg_dump -U postgres --schema-only --no-owner --no-privileges --exclude-schema=phoenix --exclude-schema=oban "$1_rt" > "$tmpd/canon.sql"
   docker exec sp-db dropdb -U postgres "$1_rt"
   "$root/scripts/schema_parity/normalize.sh" < "$tmpd/canon.sql"
 }
