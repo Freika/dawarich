@@ -72,13 +72,10 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
       expect(Rails.logger).to have_received(:warn).with(/"Atlantis"/)
     end
 
-    # Since Release D there is no per-point column to carry a name that
-    # resolves to no Country: the point is stamped as geocoded, the warn
-    # above is the only trace of the unresolvable name.
-    it 'still records the geocoding result, without a country' do
+    it 'keeps the unresolved provider name when recording the geocoding result' do
       expect { fetch_data }.to change { point.reload.reverse_geocoded_at }.from(nil)
       expect(point.reload.country_id).to be_nil
-      expect(point.country_name).to eq('')
+      expect(point.country_name).to eq('Atlantis')
     end
   end
 

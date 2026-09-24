@@ -41,7 +41,8 @@ RSpec.describe Api::PointSerializer do
     end
 
     it 'does not include excluded attributes' do
-      expect(serializer).not_to include(*all_excluded)
+      expect(serializer).not_to include(*(all_excluded - ['country_name']))
+      expect(serializer['country_name']).to eq(point.country_name)
     end
 
     it 'extracts coordinates from PostGIS geometry' do
