@@ -14,15 +14,19 @@ function initializeProductAnalyticsConsent() {
   const account = root.dataset.analyticsAccount === "true"
   const serverChoice = root.dataset.analyticsConsent
   const savedChoice = localStorage.getItem(storageKey)
-  document.querySelectorAll("[data-product-analytics-consent-field]").forEach((field) => {
-    field.value = ["true", "false"].includes(savedChoice) ? savedChoice : ""
-  })
+  document
+    .querySelectorAll("[data-product-analytics-consent-field]")
+    .forEach((field) => {
+      field.value = ["true", "false"].includes(savedChoice) ? savedChoice : ""
+    })
 
   function addScript(src, attributes = {}) {
     const script = document.createElement("script")
     script.src = src
     script.async = true
-    Object.entries(attributes).forEach(([name, value]) => script.setAttribute(name, value))
+    Object.entries(attributes).forEach(([name, value]) => {
+      script.setAttribute(name, value)
+    })
     document.head.appendChild(script)
   }
 
@@ -30,13 +34,15 @@ function initializeProductAnalyticsConsent() {
     if (window.__dawarichConsentedScriptsStarted) return
     window.__dawarichConsentedScriptsStarted = true
     addScript("https://scripts.simpleanalyticscdn.com/latest.js")
-    addScript("https://rybbit.dwri.xyz/api/script.js", { "data-site-id": "87c1f532b59f" })
+    addScript("https://rybbit.dwri.xyz/api/script.js", {
+      "data-site-id": "87c1f532b59f",
+    })
 
     const partneroId = root.dataset.partneroId
     if (partneroId) {
       function makeQueue(queue) {
-        return function () {
-          const call = { a: arguments, q: [] }
+        return (...args) => {
+          const call = { a: args, q: [] }
           const index = queue.push(call)
           return typeof index === "number" ? makeQueue(call.q) : index
         }
@@ -54,10 +60,14 @@ function initializeProductAnalyticsConsent() {
     const googleAdsId = root.dataset.googleAdsId
     if (googleAdsId && /^[A-Z]{2}-[A-Z0-9-]+$/.test(googleAdsId)) {
       window.dataLayer = window.dataLayer || []
-      window.gtag = function () { window.dataLayer.push(arguments) }
+      window.gtag = (...args) => {
+        window.dataLayer.push(args)
+      }
       window.gtag("js", new Date())
       window.gtag("config", googleAdsId, { send_page_view: false })
-      addScript(`https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(googleAdsId)}`)
+      addScript(
+        `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(googleAdsId)}`,
+      )
     }
 
     if (account && csrf) {
@@ -65,7 +75,7 @@ function initializeProductAnalyticsConsent() {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
         body: JSON.stringify({ event: "web_first_observed" }),
-        credentials: "same-origin"
+        credentials: "same-origin",
       }).catch(() => {})
     }
   }
@@ -78,7 +88,7 @@ function initializeProductAnalyticsConsent() {
           method: "PATCH",
           headers: { "Content-Type": "application/json", "X-CSRF-Token": csrf },
           body: JSON.stringify({ consent: choice }),
-          credentials: "same-origin"
+          credentials: "same-origin",
         })
         if (!response.ok) throw new Error("Consent request failed")
       }
@@ -90,9 +100,14 @@ function initializeProductAnalyticsConsent() {
   }
 
   panel?.querySelectorAll("[data-analytics-choice]").forEach((button) => {
-    button.addEventListener("click", () => save(button.dataset.analyticsChoice === "true"))
+    button.addEventListener("click", () =>
+      save(button.dataset.analyticsChoice === "true"),
+    )
   })
-  open?.addEventListener("click", () => { panel.hidden = false; panel.scrollIntoView() })
+  open?.addEventListener("click", () => {
+    panel.hidden = false
+    panel.scrollIntoView()
+  })
 
   const choice = account ? serverChoice : savedChoice
   if (choice === "true") startConsentedScripts()
@@ -101,7 +116,10 @@ function initializeProductAnalyticsConsent() {
 
 document.addEventListener("turbo:load", initializeProductAnalyticsConsent)
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", initializeProductAnalyticsConsent)
+  document.addEventListener(
+    "DOMContentLoaded",
+    initializeProductAnalyticsConsent,
+  )
 } else {
   initializeProductAnalyticsConsent()
 }
