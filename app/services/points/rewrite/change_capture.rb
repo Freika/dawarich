@@ -75,8 +75,7 @@ module Points
       # Applies one batch of logged changes; returns the number of log rows
       # consumed (0 = drained). Re-transforming by id covers INSERT and
       # UPDATE; ids gone from points are deleted from v2. A NULL-timestamp
-      # row changed mid-copy keeps its already-synthesized v2 row: a
-      # geocoding stamp on an invisible legacy point is acceptably lost.
+      # row keeps its synthesized timestamp when replaying later updates.
       # One transaction consumes exactly the log rows it applies: DELETE ...
       # RETURNING only ever hands back committed rows, so a writer whose log
       # entry commits mid-batch keeps it for the next batch instead of losing it.
@@ -92,7 +91,19 @@ module Points
           next if consumed.zero?
 
           ids_sql = point_ids.map(&:to_i).uniq.join(', ')
-          connection.execute(Sql.transform_upsert(where: "p.id IN (#{ids_sql})"))
+          missing_null_timestamp_id = connection.select_value(<<~SQL)
+            SELECT p.id FROM points p
+            LEFT JOIN points_v2 v ON v.id = p.id
+            WHERE p.id IN (#{ids_sql}) AND p."timestamp" IS NULL AND v.id IS NULL
+            LIMIT 1
+          SQL
+          if missing_null_timestamp_id
+            raise ActiveRecord::MigrationError,
+                  "point #{missing_null_timestamp_id} has a NULL timestamp and is absent from points_v2; " \
+                  'retry the rewrite so timestamp synthesis includes it'
+          end
+
+          connection.execute(Sql.captured_upsert(where: "p.id IN (#{ids_sql})"))
           connection.execute(<<~SQL)
             DELETE FROM points_v2
             WHERE id IN (#{ids_sql})

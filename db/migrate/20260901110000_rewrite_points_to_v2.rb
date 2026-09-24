@@ -18,19 +18,10 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
   disable_ddl_transaction!
 
   SWAP_LOCK_TIMEOUT = '2s'
+  SWAP_STATEMENT_TIMEOUT = '30s'
+  MAX_FINAL_CHANGES = 10_000
   SWAP_MAX_ATTEMPTS = 3
   ROWS_PER_MINUTE = 1_000_000
-  V1_FOREIGN_KEYS = {
-    'user_id' =>
-      'ALTER TABLE points ADD CONSTRAINT fk_points_v1_user FOREIGN KEY (user_id) REFERENCES users(id) NOT VALID',
-    'track_id' =>
-      'ALTER TABLE points ADD CONSTRAINT fk_points_v1_track FOREIGN KEY (track_id) REFERENCES tracks(id) NOT VALID',
-    'visit_id' =>
-      'ALTER TABLE points ADD CONSTRAINT fk_points_v1_visit FOREIGN KEY (visit_id) REFERENCES visits(id) NOT VALID',
-    'raw_data_archive_id' =>
-      'ALTER TABLE points ADD CONSTRAINT fk_points_v1_raw_data_archive FOREIGN KEY (raw_data_archive_id) ' \
-      'REFERENCES points_raw_data_archives(id) ON DELETE RESTRICT NOT VALID'
-  }.freeze
 
   def up
     # A boot interrupted after the swap resumes here.
@@ -38,7 +29,7 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
 
     raise 'points_v2 is missing - CreatePointsV2 (20260901100000) must run first' unless table_exists?(:points_v2)
 
-    ensure_source_id_column!
+    ensure_source_columns!
     log_preflight
 
     job = DataMigrations::RewritePointsV2Job.new
@@ -49,34 +40,18 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     finish_after_swap
     Rails.logger.info(
       '[RewritePointsToV2] swap complete. The old table is kept as points_legacy_d ' \
-      'for rollback; it will be dropped in a follow-up release (or manually: ' \
-      'DROP TABLE points_legacy_d;)'
+      'for supervised recovery. Compare row counts and required data before scheduling its cleanup.'
     )
   end
 
-  # The idle v2 table keeps no foreign keys (they would block every parent
-  # deletion) and no data or secondary indexes (the next migrate copies from
-  # scratch, and a clean copy beats upserting through eight indexes); the
-  # restored v1 table gets its four keys back as NOT VALID.
-  #
-  # State-driven so an interrupted rollback can simply be run again: the
-  # rename happens only while the legacy table still exists, and each v1 key
-  # is added only when its column has none.
   def down
-    if table_exists?(:points_legacy_d)
-      schema_steps.drop_foreign_keys('points')
-      with_lock_retries('rename the v1 table back in') { restore_v1_tables! }
-      clear_caches
-    elsif !(v1_points? && table_exists?(:points_v2))
-      raise ActiveRecord::IrreversibleMigration, 'points_legacy_d is gone - cannot restore v1'
+    unless v1_points?
+      raise ActiveRecord::IrreversibleMigration,
+            'points v2 may contain writes absent from points_legacy_d; restore requires supervised recovery'
     end
 
-    V1_FOREIGN_KEYS.each do |column, ddl|
-      next if schema_steps.foreign_key_on?(column, table: 'points')
-
-      schema_steps.with_lock_timeout { execute(ddl) }
-    end
-    Rails.logger.info('[RewritePointsToV2] rolled back to the v1 table; the next migrate copies from scratch')
+    Points::Rewrite::ChangeCapture.new(connection).drop
+    execute('DROP TABLE IF EXISTS points_v2_rewrite_state')
   end
 
   private
@@ -98,18 +73,25 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
   # the column the rewrite dies on PG::UndefinedColumn and cancels every later
   # migration, so the web container never starts. Take the lock here instead,
   # under the same retried discipline the rest of the swap uses.
-  def ensure_source_id_column!
-    return if column_exists?(:points, :source_id)
-
+  def ensure_source_columns!
     schema_steps.with_lock_timeout do
-      execute('ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer')
+      execute('ALTER TABLE points ADD COLUMN source_id integer') unless column_exists?(:points, :source_id)
+      unless column_exists?(:points, :lock_version)
+        execute('ALTER TABLE points ADD COLUMN lock_version integer NOT NULL DEFAULT 0')
+      end
+      {
+        country: 'character varying', country_name_legacy: 'character varying',
+        lock_version: 'integer NOT NULL DEFAULT 0', mode: 'integer',
+        ping: 'character varying', external_track_id: 'character varying'
+      }.each do |column, type|
+        execute("ALTER TABLE points_v2 ADD COLUMN #{column} #{type}") unless column_exists?(:points_v2, column)
+      end
     end
     connection.schema_cache.clear!
   rescue ActiveRecord::LockWaitTimeout, ActiveRecord::Deadlocked => e
     raise e.class,
-          '[RewritePointsToV2] points.source_id is missing and the lock to add it could not be ' \
-          "acquired (#{e.message.lines.first.strip}). Add it once traffic is quiet with: " \
-          'ALTER TABLE points ADD COLUMN IF NOT EXISTS source_id integer; then re-run the migration.'
+          '[RewritePointsToV2] the lock to prepare points columns could not be ' \
+          "acquired (#{e.message.lines.first.strip}). Re-run the migration when traffic is quiet."
   end
 
   def log_preflight
@@ -157,29 +139,21 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
     end
   end
 
-  def restore_v1_tables!
-    connection.transaction do
-      execute("SET LOCAL lock_timeout = '#{SWAP_LOCK_TIMEOUT}'")
-      execute('SET LOCAL statement_timeout = 0')
-      execute('ALTER TABLE points RENAME TO points_v2')
-      rename_indexes_of('points_v2') { |name| name.sub('points', 'points_v2')[0, 63] }
-      drop_secondary_indexes_of('points_v2')
-      execute('TRUNCATE points_v2')
-      execute('ALTER TABLE points_legacy_d RENAME TO points')
-      rename_indexes_of('points') { |name| name.sub('_legacy_d', '') }
-      execute('ALTER SEQUENCE points_id_seq OWNED BY points.id')
-    end
-  end
-
   def swap!
     capture = Points::Rewrite::ChangeCapture.new(connection)
 
     connection.transaction do
       execute("SET LOCAL lock_timeout = '#{SWAP_LOCK_TIMEOUT}'")
-      execute('SET LOCAL statement_timeout = 0')
+      execute("SET LOCAL statement_timeout = '#{SWAP_STATEMENT_TIMEOUT}'")
       lock_points!
 
-      capture.drain_fully if capture.pending_count.positive? || capture.installed?
+      pending = capture.pending_count
+      if pending > MAX_FINAL_CHANGES
+        raise ActiveRecord::MigrationError,
+              "#{pending} point changes accumulated before the swap; retry the migration to drain them without " \
+              'holding the points write lock'
+      end
+      capture.drain_fully if pending.positive? || capture.installed?
       capture.drop
       execute('DROP TABLE IF EXISTS points_v2_rewrite_state')
 
@@ -207,13 +181,6 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
 
       execute(%(ALTER INDEX "#{index}" RENAME TO "#{new_name}"))
     end
-  end
-
-  def drop_secondary_indexes_of(table)
-    connection.select_values(<<~SQL).each { |index| execute(%(DROP INDEX "#{index}")) }
-      SELECT indexname FROM pg_indexes
-      WHERE tablename = #{connection.quote(table)} AND indexname <> '#{table}_pkey'
-    SQL
   end
 
   # Only the connection-level cache: touching Point here would load the

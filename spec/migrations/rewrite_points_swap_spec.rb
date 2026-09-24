@@ -142,99 +142,49 @@ RSpec.describe RewritePointsToV2, :non_transactional do
     expect(connection.select_value('SELECT COUNT(*) FROM points').to_i).to eq(0)
   end
 
-  it 'restores the v1 table on down' do
-    seed_v1_point(timestamp: 1_700_000_600)
+  it 'adds editing revisions when upgrading a pre-editing points table' do
+    seed_v1_point(timestamp: 1_700_000_550)
+    connection.execute('ALTER TABLE points DROP COLUMN lock_version')
+
     migration.up
 
-    migration.down
-
-    expect(connection.column_exists?(:points, :country_name)).to be(true)
-    expect(connection.select_value('SELECT COUNT(*) FROM points').to_i).to eq(1)
+    expect(connection.column_exists?(:points, :lock_version)).to be(true)
+    expect(connection.select_value('SELECT lock_version FROM points LIMIT 1')).to eq(0)
   end
 
-  it 'leaves points v2-shaped with one foreign key per column after up, down, up' do
+  it 'leaves the source live when the final change backlog exceeds the swap budget' do
+    original = seed_v1_point(timestamp: 1_700_000_575)
+    allow_any_instance_of(Points::Rewrite::ChangeCapture).to receive(:pending_count)
+      .and_return(described_class::MAX_FINAL_CHANGES + 1)
+
+    expect { migration.up }.to raise_error(ActiveRecord::MigrationError, /retry the migration/)
+    expect(connection.column_exists?(:points, :country_name)).to be(true)
+    expect(connection.select_value("SELECT COUNT(*) FROM points WHERE id = #{original}").to_i).to eq(1)
+  end
+
+  it 'refuses to restore a stale legacy table after new writes' do
+    original = seed_v1_point(timestamp: 1_700_000_600)
+    migration.up
+    late = connection.select_value(<<~SQL)
+      INSERT INTO points ("timestamp", user_id, lonlat, created_at, updated_at)
+      VALUES (1700000610, #{user.id}, 'POINT(12.3712 51.3402)', NOW(), NOW())
+      RETURNING id
+    SQL
+    connection.execute("UPDATE points SET city = 'Leipzig' WHERE id = #{original}")
+
+    expect { migration.down }.to raise_error(ActiveRecord::IrreversibleMigration)
+    expect(connection.select_value("SELECT city FROM points WHERE id = #{original}")).to eq('Leipzig')
+    expect(connection.select_value("SELECT COUNT(*) FROM points WHERE id = #{late}").to_i).to eq(1)
+  end
+
+  it 'cleans up an unfinished rewrite while the original table is live' do
     seed_v1_point(timestamp: 1_700_000_650)
-    migration.up
-    migration.down
+    DataMigrations::RewritePointsV2Job.new.run_phases_through_copy
 
-    expect { migration.up }.not_to raise_error
-
-    expect(connection.column_exists?(:points, :country_name)).to be(false)
-    fk_columns = connection.select_values(<<~SQL)
-      SELECT a.attname FROM pg_constraint c
-      JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = ANY (c.conkey)
-      WHERE c.conrelid = 'points'::regclass AND c.contype = 'f'
-    SQL
-    expect(fk_columns).to match_array(%w[raw_data_archive_id track_id user_id visit_id])
-  end
-
-  it 'lets a rolled-back instance delete tracks and keeps referential integrity on v1' do
-    track = create(:track, user: user)
-    connection.execute(<<~SQL)
-      INSERT INTO points ("timestamp", user_id, track_id, lonlat, created_at, updated_at)
-      VALUES (1700000670, #{user.id}, #{track.id}, 'POINT(12.3712 51.3402)', NOW(), NOW())
-    SQL
-    migration.up
-    migration.down
-
-    v2_fks = connection.select_value(
-      "SELECT COUNT(*) FROM pg_constraint WHERE conrelid = 'points_v2'::regclass AND contype = 'f'"
-    ).to_i
-    v1_fk_targets = connection.select_values(
-      "SELECT confrelid::regclass::text FROM pg_constraint WHERE conrelid = 'points'::regclass AND contype = 'f'"
-    )
-    expect(v2_fks).to eq(0)
-    expect(v1_fk_targets).to match_array(%w[points_raw_data_archives tracks users visits])
-    expect(connection.select_value('SELECT COUNT(*) FROM points_v2').to_i).to eq(0)
-    expect { Track.find(track.id).destroy! }.not_to raise_error
-    expect(connection.select_value('SELECT track_id FROM points WHERE "timestamp" = 1700000670')).to be_nil
-  end
-
-  it 'resumes a rollback whose key re-add timed out' do
-    seed_v1_point(timestamp: 1_700_000_675)
-    migration.up
-    allow_any_instance_of(Points::Rewrite::SchemaSteps).to receive(:sleep)
-    allow(connection).to receive(:execute).and_wrap_original do |original, *args, **kwargs|
-      raise ActiveRecord::LockWaitTimeout, 'lock timeout' if args.first.include?('fk_points_v1_visit')
-
-      original.call(*args, **kwargs)
-    end
-
-    expect { migration.down }.to raise_error(ActiveRecord::LockWaitTimeout)
-    expect(connection.column_exists?(:points, :country_name)).to be(true)
-
-    allow(connection).to receive(:execute).and_call_original
     expect { migration.down }.not_to raise_error
-
-    v1_fk_targets = connection.select_values(
-      "SELECT confrelid::regclass::text FROM pg_constraint WHERE conrelid = 'points'::regclass AND contype = 'f'"
-    )
-    expect(v1_fk_targets).to match_array(%w[points_raw_data_archives tracks users visits])
-  end
-
-  it 'repairs the keys on the next migrate when a rollback failed before the rename' do
-    seed_v1_point(timestamp: 1_700_000_676)
-    migration.up
-    allow(migration).to receive(:sleep)
-    allow(connection).to receive(:execute).and_wrap_original do |original, *args, **kwargs|
-      if args.first.include?('ALTER TABLE points RENAME TO points_v2')
-        raise ActiveRecord::LockWaitTimeout, 'lock timeout'
-      end
-
-      original.call(*args, **kwargs)
-    end
-
-    expect { migration.down }.to raise_error(ActiveRecord::LockWaitTimeout)
-    expect(connection.column_exists?(:points, :country_name)).to be(false)
-
-    allow(connection).to receive(:execute).and_call_original
-    expect { migration.up }.not_to raise_error
-
-    states = connection.select_rows(
-      "SELECT conname, convalidated FROM pg_constraint WHERE conrelid = 'points'::regclass AND contype = 'f'"
-    ).to_h
-    expect(states.keys).to match_array(%w[fk_points_raw_data_archive fk_points_track fk_points_user fk_points_visit])
-    expect(states.values).to all(be(true))
+    expect(connection.column_exists?(:points, :country_name)).to be(true)
+    expect(connection.table_exists?('points_v2_changes')).to be(false)
+    expect(connection.table_exists?('points_v2_rewrite_state')).to be(false)
   end
 
   it 'validates the foreign keys after the swap even when a parent vanished during the copy' do

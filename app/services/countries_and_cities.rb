@@ -92,11 +92,16 @@ class CountriesAndCities
     (point[:velocity].to_f * MS_TO_KMH) > FLYOVER_VELOCITY_THRESHOLD_KMH
   end
 
-  # The per-point name columns are gone since the v2 rewrite; the countries
-  # table is the only naming authority. A dangling country_id groups under
-  # nil and is dropped above.
+  # Prefer the resolved country; retained legacy text covers unresolved names.
   def canonical_country_name(point)
-    country_names_by_id[point[:country_id]]
+    country_names_by_id[point[:country_id]] || point_value(point, :country_name_legacy) ||
+      point_value(point, :country_name) || point_value(point, :country)
+  end
+
+  def point_value(point, attribute)
+    return nil if point.respond_to?(:has_attribute?) && !point.has_attribute?(attribute)
+
+    point[attribute]
   end
 
   def country_names_by_id

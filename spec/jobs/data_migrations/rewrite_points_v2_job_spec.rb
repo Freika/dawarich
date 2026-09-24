@@ -70,15 +70,31 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
       expect(row['altitude']).to eq(101.25)
     end
 
-    it 'nulls a velocity that does not parse as a number and a battery out of smallint range' do
+    it 'refuses to discard an unparseable velocity or out-of-range battery' do
       point = create(:point, user: user, timestamp: 1_700_000_100)
       point.update_columns(source_id: nil, velocity: 'not-a-speed', battery: 70_000)
 
+      expect { described_class.perform_now }.to raise_error(ActiveRecord::StatementInvalid)
+
+      expect(connection.select_one("SELECT velocity, battery FROM points WHERE id = #{point.id}")).to include(
+        'velocity' => 'not-a-speed', 'battery' => 70_000
+      )
+    end
+
+    it 'keeps sparse legacy fields and optimistic-lock revisions' do
+      point = create(:point, user: user, timestamp: 1_700_000_101)
+      connection.execute(<<~SQL)
+        UPDATE points SET mode = 2, ping = 'pong', external_track_id = 'legacy-track',
+          country_name = 'Nowhereland', country = 'Noland', lock_version = 7
+        WHERE id = #{point.id}
+      SQL
+
       described_class.perform_now
 
-      row = v2_row(point.id)
-      expect(row['velocity']).to be_nil
-      expect(row['battery']).to be_nil
+      expect(v2_row(point.id)).to include(
+        'mode' => 2, 'ping' => 'pong', 'external_track_id' => 'legacy-track',
+        'country_name_legacy' => 'Nowhereland', 'country' => 'Noland', 'lock_version' => 7
+      )
     end
 
     it 'copies the int32 ceiling and v2 accepts post-Y2038 timestamps' do
@@ -209,6 +225,36 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
       expect(v2_row(late.id)).to be_present
       expect(v2_row(copied.id)['city']).to eq('Leipzig')
       expect(v2_row(doomed.id)).to be_nil
+    end
+
+    it 'replays updates to synthesized points without changing their timestamp' do
+      point = create(:point, user: user, timestamp: 1_700_001_180)
+      point.update_columns(timestamp: nil)
+
+      job = described_class.new
+      job.run_phases_through_copy
+      job.finish
+      synthesized_timestamp = v2_row(point.id)['timestamp']
+      connection.execute("UPDATE points SET city = 'Leipzig', lock_version = 8 WHERE id = #{point.id}")
+
+      Points::Rewrite::ChangeCapture.new(connection).drain_fully
+
+      expect(v2_row(point.id)).to include(
+        'timestamp' => synthesized_timestamp, 'city' => 'Leipzig', 'lock_version' => 8
+      )
+    end
+
+    it 'keeps the change log when a late timeless insert has not been synthesized' do
+      job = described_class.new
+      job.run_phases_through_copy
+      job.finish
+      point = create(:point, user: user, timestamp: 1_700_001_190)
+      point.update_columns(timestamp: nil)
+
+      capture = Points::Rewrite::ChangeCapture.new(connection)
+      expect { capture.drain_batch }.to raise_error(ActiveRecord::MigrationError, /timestamp synthesis/)
+      expect(capture.pending_count).to be_positive
+      expect(v2_row(point.id)).to be_nil
     end
   end
 

@@ -182,11 +182,11 @@ class Api::V1::PointsController < ApiController
     country = point.found_in_country
     point.assign_attributes(
       country_id: country&.id,
-      country_name: country&.name,
       city: nil,
       geodata: {},
       reverse_geocoded_at: nil
     )
+    point[:country_name_legacy] = country&.name if point.has_attribute?(:country_name_legacy)
     point[:country] = country&.name
     point.save
   end

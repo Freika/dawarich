@@ -35,9 +35,9 @@ module Stats
       end
 
       @flight_points = 0
-      return if point[:country_name].nil? || point[:city].nil?
-
       country = @country_names[point[:country_id]] || point[:country_name]
+      return if country.nil? || point[:city].nil?
+
       timestamp = point[:timestamp]
       if @run && (@run[:country] != country || @run[:city] != point[:city] ||
                   timestamp - @run[:last] > CountriesAndCities::BRIDGE_CAP_SECONDS)

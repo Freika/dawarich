@@ -21,10 +21,10 @@ RSpec.describe Gpx::TrackImporter do
         expect { parser }.to change { Point.count }.by(10)
       end
 
-      it 'stores altitude_decimal when supported' do
+      it 'stores fractional altitude in the compact altitude column' do
         parser
 
-        expect(user.points.order(:timestamp, :id).first.altitude_decimal).to eq(BigDecimal('824.93'))
+        expect(user.points.order(:timestamp, :id).first.altitude).to be_within(0.01).of(824.93)
       end
 
       it 'broadcasts importing progress' do
@@ -206,7 +206,7 @@ RSpec.describe Gpx::TrackImporter do
       it 'imports points with zero elevation' do
         expect { parser }.to change { Point.count }.by(2)
 
-        expect(user.points.order(:timestamp).pluck(:altitude_decimal)).to eq([BigDecimal('0.0'), BigDecimal('0.0')])
+        expect(user.points.order(:timestamp).pluck(:altitude)).to eq([0.0, 0.0])
       end
     end
   end

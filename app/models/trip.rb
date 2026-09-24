@@ -7,11 +7,6 @@ class Trip < ApplicationRecord
   include Notable
 
   RECALCULATE_COOLDOWN = 60.seconds
-  # A stamped point reads its device from point_sources exclusively; the
-  # legacy column serves unstamped rows (see PointDimensionReads).
-  DEVICE_SQL = 'COALESCE(CASE WHEN points.source_id IS NULL THEN points.tracker_id ' \
-               "ELSE point_sources.tracker_id END, '')"
-
   has_rich_text :description
 
   belongs_to :user
@@ -87,7 +82,7 @@ class Trip < ApplicationRecord
     scope.where(<<~SQL.squish)
       EXISTS (
         SELECT 1 FROM (VALUES #{windows.join(', ')}) AS recording_windows(tracker_id, start_at, end_at)
-        WHERE recording_windows.tracker_id = #{DEVICE_SQL}
+        WHERE recording_windows.tracker_id = #{device_sql}
           AND points.timestamp BETWEEN recording_windows.start_at AND recording_windows.end_at
       )
     SQL
@@ -152,7 +147,7 @@ class Trip < ApplicationRecord
   def device_windows
     @device_windows ||= begin
       scope = points.reorder(nil).left_joins(:source)
-                    .select("points.id, points.timestamp, #{DEVICE_SQL} AS tracker_id")
+                    .select("points.id, points.timestamp, #{device_sql} AS tracker_id")
       gap_seconds = user.safe_settings.minutes_between_routes * 60
 
       self.class.connection.select_rows(<<~SQL.squish)
@@ -173,6 +168,14 @@ class Trip < ApplicationRecord
         ORDER BY SUM(COUNT(*)) OVER (PARTITION BY tracker_id) DESC,
                  NULLIF(tracker_id, '') NULLS LAST, MIN(timestamp)
       SQL
+    end
+  end
+
+  def device_sql
+    if self.class.connection.column_exists?(:points, :tracker_id)
+      "COALESCE(CASE WHEN points.source_id IS NULL THEN points.tracker_id ELSE point_sources.tracker_id END, '')"
+    else
+      "COALESCE(point_sources.tracker_id, '')"
     end
   end
 

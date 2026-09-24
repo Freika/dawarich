@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
-# Release D, stage 1: the empty v2 points table in its frozen shape
-# (superpowers plan 2026-08-31-points-v2-column-freeze.md). Columns are
+# Release D, stage 1: the empty v2 points table. Sparse legacy values are
+# retained so a self-hosted database is never silently narrowed. Columns are
 # ordered by descending alignment; the id continues points_id_seq so rows
 # written to either table during the rewrite window can never collide.
 # Indexes and foreign keys are added by DataMigrations::RewritePointsV2Job
@@ -25,7 +25,10 @@ class CreatePointsV2 < ActiveRecord::Migration[8.0]
         updated_at          timestamp(6) without time zone NOT NULL,
         reverse_geocoded_at timestamp(6) without time zone,
         country_id          integer,
+        country             character varying,
+        country_name_legacy character varying,
         source_id           integer,
+        lock_version        integer NOT NULL DEFAULT 0,
         accuracy            integer,
         vertical_accuracy   integer,
         altitude            real,
@@ -33,6 +36,9 @@ class CreatePointsV2 < ActiveRecord::Migration[8.0]
         course              real,
         course_accuracy     real,
         battery             smallint,
+        mode                integer,
+        ping                character varying,
+        external_track_id   character varying,
         anomaly             boolean,
         raw_data_archived   boolean NOT NULL DEFAULT false,
         lonlat              geography(Point,4326),

@@ -11,12 +11,10 @@ module Points
 
       V2_COLUMNS = %w[
         id timestamp user_id track_id import_id visit_id raw_data_archive_id
-        created_at updated_at reverse_geocoded_at country_id source_id
+        created_at updated_at reverse_geocoded_at country_id country country_name_legacy source_id lock_version
         accuracy vertical_accuracy altitude velocity course course_accuracy
-        battery anomaly raw_data_archived lonlat city geodata raw_data motion_data
+        battery mode ping external_track_id anomaly raw_data_archived lonlat city geodata raw_data motion_data
       ].freeze
-
-      NUMERIC_PATTERN = '^-?[0-9]+(\.[0-9]+)?([eE][-+]?[0-9]+)?$'
 
       def column_list
         V2_COLUMNS.map { |c| %("#{c}") }.join(', ')
@@ -29,12 +27,14 @@ module Points
         <<~SQL
           p.id, #{timestamp_expression}, p.user_id, p.track_id, p.import_id, p.visit_id,
           p.raw_data_archive_id, p.created_at, p.updated_at, p.reverse_geocoded_at,
-          p.country_id::integer, p.source_id, p.accuracy, p.vertical_accuracy,
+          p.country_id::integer, p.country, p.country_name, p.source_id, p.lock_version,
+          p.accuracy, p.vertical_accuracy,
           COALESCE(p.altitude_decimal, p.altitude)::real,
-          CASE WHEN p.velocity ~ '#{NUMERIC_PATTERN}' THEN p.velocity::real END,
+          p.velocity::real,
           p.course::real, p.course_accuracy::real,
-          CASE WHEN p.battery BETWEEN 0 AND 32767 THEN p.battery::smallint END,
-          p.anomaly, p.raw_data_archived, p.lonlat, p.city, p.geodata, p.raw_data, p.motion_data
+          p.battery::smallint,
+          p.mode, p.ping, p.external_track_id, p.anomaly, p.raw_data_archived,
+          p.lonlat, p.city, p.geodata, p.raw_data, p.motion_data
         SQL
       end
 
@@ -50,6 +50,17 @@ module Points
           SELECT #{transform_select}
           FROM points p
           WHERE #{where} AND p."timestamp" IS NOT NULL
+          ON CONFLICT (id) DO UPDATE SET #{conflict_update}
+        SQL
+      end
+
+      def captured_upsert(where:)
+        <<~SQL
+          INSERT INTO points_v2 (#{column_list})
+          SELECT #{transform_select(timestamp_expression: 'COALESCE(p."timestamp"::bigint, v."timestamp")')}
+          FROM points p
+          LEFT JOIN points_v2 v ON v.id = p.id
+          WHERE #{where} AND (p."timestamp" IS NOT NULL OR v.id IS NOT NULL)
           ON CONFLICT (id) DO UPDATE SET #{conflict_update}
         SQL
       end
@@ -131,12 +142,9 @@ module Points
       end
 
       # The C-chain's country resolution, inlined here because it is the only
-      # remaining prerequisite for dropping country_name that the rewrite did
-      # not own. The chain enqueues it on Sidekiq while this migration runs
-      # inline on boot, so on a self-hosted install upgrading across releases
-      # the async walk never lands before the name columns are gone — and once
-      # they are, BackfillPointCountryIdJob short-circuits and the attribution
-      # is unrecoverable outside points_legacy_d.
+      # remaining prerequisite for resolved country IDs. The chain enqueues
+      # it on Sidekiq while this migration runs inline on boot. Unmatched
+      # names are retained separately in points_v2.
       #
       # Mirrors BackfillPointCountryIdJob#resolve_countries exactly: aliases
       # unioned in so geocoder names ("United States") reach their seeded

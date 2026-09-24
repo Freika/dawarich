@@ -249,7 +249,7 @@ RSpec.describe Points::Move do
                                geom: 'MULTIPOLYGON (((-1 -1, 1 -1, 1 1, -1 1, -1 -1)))')
     create(:country, name: 'France', iso_a2: 'FR', iso_a3: 'FRA',
                      geom: 'MULTIPOLYGON (((2 -1, 4 -1, 4 1, 2 1, 2 -1)))')
-    point.update_columns(country_id: germany.id, country_name: germany.name, country: germany.name)
+    point.update_columns(country_id: germany.id, country_name_legacy: germany.name, country: germany.name)
 
     result = described_class.call(
       user:, point_id: point.id, latitude: 0, longitude: 3,
@@ -319,10 +319,10 @@ RSpec.describe Points::Move do
                                geom: 'MULTIPOLYGON (((-1 -1, 1 -1, 1 1, -1 1, -1 -1)))')
     france = create(:country, name: 'France', iso_a2: 'FR', iso_a3: 'FRA',
                               geom: 'MULTIPOLYGON (((2 -1, 4 -1, 4 1, 2 1, 2 -1)))')
-    point.update_columns(country_id: germany.id, country_name: germany.name, country: germany.name)
-    other_point.update_columns(country_id: germany.id, country_name: germany.name, country: germany.name)
+    point.update_columns(country_id: germany.id, country_name_legacy: germany.name, country: germany.name)
+    other_point.update_columns(country_id: germany.id, country_name_legacy: germany.name, country: germany.name)
     create(:point, user:, timestamp: 1_060, longitude: 3.5, latitude: 0,
-                   country_id: france.id, country_name: france.name, country: france.name)
+                   country_id: france.id, country_name_legacy: france.name, country: france.name)
 
     result = described_class.call(
       user:, point_id: point.id, latitude: 0, longitude: 3,

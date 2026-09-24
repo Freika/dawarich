@@ -27,6 +27,7 @@ module PointsV1Schema
       import_id bigint,
       in_regions text[] DEFAULT '{}',
       inrids text[] DEFAULT '{}',
+      lock_version integer NOT NULL DEFAULT 0,
       lonlat geography(Point,4326),
       mode integer,
       motion_data jsonb NOT NULL DEFAULT '{}'::jsonb,

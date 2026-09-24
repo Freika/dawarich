@@ -487,14 +487,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
     t.boolean "anomaly"
     t.integer "battery", limit: 2
     t.string "city"
+    t.string "country"
     t.integer "country_id"
+    t.string "country_name_legacy"
     t.float "course", limit: 24
     t.float "course_accuracy", limit: 24
     t.datetime "created_at", null: false
     t.jsonb "geodata", default: {}, null: false
+    t.string "external_track_id"
     t.bigint "import_id"
+    t.integer "lock_version", default: 0, null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
     t.jsonb "motion_data", default: {}, null: false
+    t.integer "mode"
+    t.string "ping"
     t.jsonb "raw_data", default: {}
     t.bigint "raw_data_archive_id"
     t.boolean "raw_data_archived", default: false, null: false

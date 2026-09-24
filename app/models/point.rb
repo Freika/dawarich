@@ -30,14 +30,13 @@ class Point < ApplicationRecord
     index: true
   }
 
-  # battery_status/trigger/connection live on point_sources since Release D
-  # dropped the legacy columns; PointSource declares the enums (identical
-  # mappings) and PointDimensionReads serves the labels through :source.
+  # Device attributes live on point_sources; PointSource declares the enums
+  # and PointDimensionReads serves the labels through :source.
   # Ignoring the dropped columns keeps column_names identical whether a
   # process booted against the old or the new table: a Sidekiq that cached
   # v1 columns during the copy would otherwise SELECT them after the swap.
   self.ignored_columns += PointSource::COMBO_COLUMNS +
-                          %w[country_name country mode external_track_id ping altitude_decimal]
+                          %w[country_name altitude_decimal]
 
   scope :reverse_geocoded, -> { where.not(reverse_geocoded_at: nil) }
   scope :not_reverse_geocoded, -> { where(reverse_geocoded_at: nil) }
@@ -57,6 +56,10 @@ class Point < ApplicationRecord
 
   def self.without_raw_data
     select(column_names - ['raw_data'])
+  end
+
+  def self.altitude_decimal_supported?
+    connection.column_exists?(:points, :altitude_decimal)
   end
 
   # Build a key whose equivalence classes match the PostgreSQL UNIQUE index
@@ -121,10 +124,18 @@ class Point < ApplicationRecord
     Country.containing_point(lon, lat)
   end
 
-  # The physical column was dropped in Release D; the name stays as the
-  # serializer contract (the scratch map reads properties.country_name).
+  # Keep the serializer contract after the country_name column is removed.
   def country_name
-    country&.name || ''
+    country&.name || (self[:country_name_legacy] if has_attribute?(:country_name_legacy)) ||
+      (self[:country] if has_attribute?(:country)) || ''
+  end
+
+  def country_name=(name)
+    if has_attribute?(:country_name_legacy)
+      self[:country_name_legacy] = name
+    elsif has_attribute?(:country)
+      self[:country] = name
+    end
   end
 
   private

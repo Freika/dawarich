@@ -36,11 +36,16 @@ class Tracks::Recalculator
   attr_reader :track, :broadcast
 
   def snapshot
+    altitude = if Point.connection.column_exists?(:points, :altitude_decimal)
+                 'COALESCE(altitude_decimal, altitude)'
+               else
+                 'altitude'
+               end
     sql = Point.sanitize_sql_array([<<~SQL.squish, track.id])
       SELECT id, timestamp,
              ST_X(lonlat::geometry) AS longitude,
              ST_Y(lonlat::geometry) AS latitude,
-             COALESCE(altitude_decimal, altitude) AS altitude
+             #{altitude} AS altitude
       FROM points
       WHERE track_id = ? AND anomaly IS NOT TRUE
       ORDER BY timestamp ASC, id ASC
