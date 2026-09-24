@@ -15,7 +15,12 @@ trap 'release_harness "$rails_db" "$ecto_db"' EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-code_key="$(code_key)"
+if dotenv="$(local_dotenv)"; then
+  echo "$check FAIL refusing to run: $dotenv exists and dotenv would load it into the Rails side only"
+  exit 2
+fi
+list_checks > "$tmpd/checks" 2> "$tmpd/checks.err" || { echo "$check FAIL $(tr '\n' ' ' < "$tmpd/checks.err")"; exit 2; }
+code_key="$(code_key)" || fail "could not hash the Rails inputs"
 name="$(echo "$check" | tr ':+@~' '____')"
 for part in schema ledger columns rows jobs; do rm -f "$out/diffs/$name.$part.diff"; done
 kind="${check%%:*}"
@@ -99,8 +104,8 @@ rails_side() {
 
 keep_ref() {
   rails_status="$(cat "$tmpd/rails.status")"
-  if [ "$rails_status" = "${expect_status:-ok}" ]; then
-    for part in sql out jobs schema ledger columns rows waits; do
+  if [ -z "$holder_table" ] && [ "$rails_status" = "${expect_status:-ok}" ]; then
+    for part in sql out jobs schema ledger columns rows failure; do
       [ ! -f "$tmpd/rails.$part" ] || mv "$tmpd/rails.$part" "$1.$part"
     done
     mv "$tmpd/rails.status" "$1.status"
@@ -144,9 +149,13 @@ compare() {
     fail "contention had no effect: no $expect_job"
   fi
   if [ "$rails_status" != ok ]; then
-    rails_class="$(failure_class "$1.out")"
+    rails_class="$(cat "$1.failure" 2>/dev/null || echo none)"
     ecto_class="$(failure_class "$tmpd/ecto.out")"
+    [ -z "$holder_table" ] || [ "$rails_class" != none ] || fail "contended failure without a concrete failure class ($last_ecto)"
     [ "$rails_class" = "$ecto_class" ] || fail "both failed at ${rails_status#failed@}, rails with $rails_class, ecto with $ecto_class ($last_ecto)"
+  fi
+  if [ -n "$holder_table" ] && [ "$(cat "$1.waits")" -lt 1 ]; then
+    fail "contention had no effect: rails recorded no lock wait on $holder_table"
   fi
   if [ -n "$holder_table" ] && [ "$(cat "$1.waits")" != "$(cat "$tmpd/ecto.waits")" ]; then
     fail "lock attempts on $holder_table: rails $(cat "$1.waits"), ecto $(cat "$tmpd/ecto.waits")"
@@ -177,8 +186,9 @@ run_release() {
     puts states[index - 1] if index.positive?' "$root/db/release_migrations.json" "$release")" || fail "no state $release"
   snapshot=empty
   [ -z "$prev" ] || snapshot="$(snapshot_of "$prev")" || fail "no snapshot for $prev"
-  ref="$out/ref/$name.$(key_of "$snapshot" "$fixture" "$envfile")-$code_key"
-  if [ ! -s "$ref.status" ]; then
+  key="$(key_of "$snapshot" "$fixture" "$envfile")" || fail "could not hash the inputs of $check"
+  ref="$out/ref/$name.$key-$code_key"
+  if [ -n "$holder_table" ] || [ ! -s "$ref.status" ]; then
     prepare "$rails_db" "$snapshot" "" ""
     hold "$rails_db"
     rails_side "$release"
@@ -195,7 +205,8 @@ run_release() {
 
 run_upgrade() {
   resolve_label "$1"
-  ref="$out/ref/$name.$(key_of "$snapshot")-$code_key"
+  key="$(key_of "$snapshot")" || fail "could not hash the inputs of $check"
+  ref="$out/ref/$name.$key-$code_key"
   if [ ! -s "$ref.status" ]; then
     prepare "$rails_db" "$snapshot" "$upto" "$extra"
     rails_side all
@@ -223,7 +234,8 @@ run_refused() {
 }
 
 run_fresh() {
-  ref="$out/ref/$name.$(key_of "$root/db/schema.rb")-$code_key"
+  key="$(key_of "$root/db/schema.rb")" || fail "could not hash the inputs of $check"
+  ref="$out/ref/$name.$key-$code_key"
   if [ ! -s "$ref.status" ]; then
     prepare "$rails_db" "$1" "" ""
     rails_side schema

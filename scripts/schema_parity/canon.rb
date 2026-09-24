@@ -14,15 +14,6 @@ def canonical(value)
   end
 end
 
-def sqlstate(text)
-  text[/\bERROR ([0-9A-Z]{5}) \(/, 1] || begin
-    require 'pg'
-    text.scan(/\bPG::([A-Z][A-Za-z]+)\b/).flatten.filter_map do |name|
-      PG.const_defined?(name, false) && PG::ERROR_CLASSES.key(PG.const_get(name, false))
-    end.first
-  end
-end
-
 case ARGV.fetch(0)
 when 'jobs'
   $stdin.each_line { |line| puts JSON.generate(canonical(JSON.parse(line))) unless line.strip.empty? }
@@ -38,5 +29,5 @@ when 'rows'
     puts fields.join("\t")
   end
 when 'failure'
-  puts sqlstate($stdin.read) || 'none'
+  puts $stdin.read.scan(/\bERROR ([0-9A-Z]{5}) \(/).flatten.last || 'none'
 end

@@ -17,20 +17,41 @@ query() {
   docker exec -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAtc "$2"
 }
 
+checksum() {
+  sum="$(cksum < "$1")" || return 1
+  echo "$sum" | tr ' ' -
+}
+
 code_key() {
   (
-    cd "$root"
-    LC_ALL=C ls db/migrate
-    cat db/migrate/*.rb db/release_migrations.json Gemfile.lock
-    find app config lib -type f -print0 | LC_ALL=C sort -z | xargs -0 cat
-    for file in .env*; do [ ! -f "$file" ] || cat "$file"; done
-    cat scripts/schema_parity/*.sh scripts/schema_parity/*.rb scripts/schema_parity/*.tsv
-    ruby -v
-  ) | cksum | tr ' ' -
+    cd "$root" || exit 1
+    LC_ALL=C ls db/migrate || exit 1
+    cat db/migrate/*.rb db/release_migrations.json Gemfile.lock || exit 1
+    find app config lib -type f -print0 > "$tmpd/key.found" || exit 1
+    LC_ALL=C sort -z "$tmpd/key.found" > "$tmpd/key.sorted" || exit 1
+    xargs -0 cat < "$tmpd/key.sorted" || exit 1
+    for file in .env* .ruby-version .tool-versions; do [ ! -f "$file" ] || cat "$file" || exit 1; done
+    cat scripts/schema_parity/*.sh scripts/schema_parity/*.rb scripts/schema_parity/*.tsv || exit 1
+    scrubbed ruby -v || exit 1
+  ) > "$tmpd/key.input" && checksum "$tmpd/key.input"
 }
 
 key_of() {
-  { echo "$check"; for file in "$@"; do [ -z "$file" ] || [ ! -f "$file" ] || cat "$file"; done; } | cksum | tr ' ' -
+  {
+    echo "$check"
+    for file in "$@"; do [ -z "$file" ] || [ ! -f "$file" ] || cat "$file" || return 1; done
+  } > "$tmpd/key_of.input" && checksum "$tmpd/key_of.input"
+}
+
+local_dotenv() {
+  for file in .env.development.local .env.local .env; do
+    [ ! -e "$root/$file" ] || { echo "$root/$file"; return 0; }
+  done
+  return 1
+}
+
+list_checks() {
+  ruby -rjson "$root/scripts/schema_parity/list_checks.rb" "$root"
 }
 
 rows_sql="WITH objects AS (
@@ -118,7 +139,10 @@ unhold() {
   touch "$tmpd/watch.stop"
   wait "$watch_pid" || fail "the lock watcher on $holder_table failed ($(tr '\n' ' ' < "$tmpd/watch.err"))"
   watch_pid=""
-  grep -v '^$' "$tmpd/watch.log" | LC_ALL=C sort -u | wc -l | tr -d ' ' > "$2.waits"
+  grep -v '^$' "$tmpd/watch.log" > "$tmpd/watch.lines" || [ $? -eq 1 ] || fail "could not read the lock watcher's log"
+  LC_ALL=C sort -u "$tmpd/watch.lines" > "$tmpd/watch.uniq" || fail "could not count the lock waits"
+  waits="$(wc -l < "$tmpd/watch.uniq")" || fail "could not count the lock waits"
+  echo $waits > "$2.waits"
   query "$1" "SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = '$1' AND query LIKE '%pg_sleep($holder_seconds)%' AND pid <> pg_backend_pid()" >/dev/null
   wait "$holder_pid" 2>/dev/null || true
   holder_pid=""

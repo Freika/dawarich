@@ -32,6 +32,14 @@ ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
   end
 end
 
+def failure_class(error)
+  error = error.cause if error.message.start_with?('An error has occurred') && error.cause
+  error = error.cause if error.is_a?(ActiveRecord::StatementInvalid)
+  return 'none' unless error.is_a?(PG::Error)
+
+  error.result&.error_field(PG::Result::PG_DIAG_SQLSTATE) || PG::ERROR_CLASSES.key(error.class) || 'none'
+end
+
 def job_line(job)
   wait = job.scheduled_at ? (job.scheduled_at.to_f - Time.now.to_f).round : 0
   JSON.generate([job.class.name, job.serialize.fetch('arguments'), wait])
@@ -64,6 +72,9 @@ begin
       context.run(:up, version)
     end
   end
+rescue StandardError => e
+  File.write("#{out}.failure", "#{failure_class(e)}\n")
+  raise
 ensure
   body =
     if mode == 'schema'
