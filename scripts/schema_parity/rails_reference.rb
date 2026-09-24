@@ -12,6 +12,7 @@ present = context.migrations.map(&:version)
 capture = []
 baseline = []
 jobs = []
+ledger_create = /\ACREATE TABLE (?="(schema_migrations|ar_internal_metadata)")/
 
 ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
   sql = payload[:sql].strip
@@ -21,7 +22,9 @@ ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
     capture << "-- [#{payload[:name]}] #{sql.squish}"
   elsif sql.match?(/schema_migrations|ar_internal_metadata|pg_(try_)?advisory/)
     capture << "-- [ledger] #{sql.squish}"
-    baseline << [sql, binds] unless sql.match?(/\A(INSERT INTO|UPDATE|DELETE FROM) "ar_internal_metadata"/)
+    unless sql.match?(/\A(INSERT INTO|UPDATE|DELETE FROM) "ar_internal_metadata"/)
+      baseline << [sql.sub(ledger_create, 'CREATE TABLE IF NOT EXISTS '), binds]
+    end
   else
     capture << (sql.end_with?(';') ? sql : "#{sql};")
     capture << "-- binds: #{binds.inspect}" if binds.present?

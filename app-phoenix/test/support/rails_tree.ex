@@ -11,6 +11,11 @@ defmodule Dawarich.RailsTree do
     |> Map.fetch!("states")
   end
 
+  def split_at(release) do
+    {before, [at | later]} = Enum.split_while(states(), &(&1["first_release"] != release))
+    {before ++ [at], later}
+  end
+
   def versions(directory) do
     @root
     |> Path.join("db/#{directory}/*.rb")

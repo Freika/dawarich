@@ -356,7 +356,7 @@ FOREIGN KEY ("place_id")
 ALTER TABLE "visits" ADD CONSTRAINT "fk_rails_09e5e7c20b"
 FOREIGN KEY ("user_id")
   REFERENCES "users" ("id");
-CREATE TABLE "schema_migrations" ("version" character varying NOT NULL PRIMARY KEY);
+CREATE TABLE IF NOT EXISTS "schema_migrations" ("version" character varying NOT NULL PRIMARY KEY);
 INSERT INTO "schema_migrations" (version) VALUES (20260922120000);
 INSERT INTO "schema_migrations" (version) VALUES
 (20260919190000),
@@ -596,4 +596,4 @@ INSERT INTO "schema_migrations" (version) VALUES
 (20231021104257),
 (20231021104256),
 (20220325100310);
-CREATE TABLE "ar_internal_metadata" ("key" character varying NOT NULL PRIMARY KEY, "value" character varying, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL);
+CREATE TABLE IF NOT EXISTS "ar_internal_metadata" ("key" character varying NOT NULL PRIMARY KEY, "value" character varying, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL);

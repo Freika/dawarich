@@ -281,6 +281,7 @@ defmodule Dawarich.ReleaseMigratorTest do
   import Dawarich.ReleaseMigration
 
   alias Dawarich.ReleaseMigrator
+  alias Dawarich.ReleaseMigrator.Floor
 
   alias Dawarich.ReleaseMigratorTest.{
     EnqueuesOutside,
@@ -309,11 +310,19 @@ defmodule Dawarich.ReleaseMigratorTest do
     :ok
   end
 
-  defp create_ledger!(versions) do
+  defp create_ledger!(versions), do: create_raw_ledger!(Floor.versions() ++ versions)
+
+  defp create_raw_ledger!(versions) do
     sql!(ScratchRepo, @ledger_ddl)
 
-    for version <- versions,
-        do: ScratchRepo.query!("INSERT INTO schema_migrations (version) VALUES ($1)", [version])
+    ScratchRepo.query!("INSERT INTO schema_migrations (version) SELECT unnest($1::text[])", [
+      versions
+    ])
+  end
+
+  defp baseline_ledger_sql(versions) do
+    values = Enum.map_join(Floor.versions() ++ versions, ", ", &"('#{&1}')")
+    "INSERT INTO schema_migrations (version) VALUES #{values};"
   end
 
   defp column(sql) do
@@ -321,7 +330,9 @@ defmodule Dawarich.ReleaseMigratorTest do
     List.flatten(rows)
   end
 
-  defp ledger, do: column("SELECT version FROM schema_migrations ORDER BY version")
+  defp ledger,
+    do: column("SELECT version FROM schema_migrations WHERE version >= '2099' ORDER BY version")
+
   defp log, do: column("SELECT version FROM migration_log ORDER BY id")
 
   defp jobs do
@@ -553,7 +564,7 @@ defmodule Dawarich.ReleaseMigratorTest do
     baseline = """
     #{@ledger_ddl};
     CREATE TABLE r1_items (id bigserial primary key);
-    INSERT INTO schema_migrations (version) VALUES ('20990101000001');
+    #{baseline_ledger_sql(["20990101000001"])}
     """
 
     assert {:ok, %{applied: ["baseline", "20990101000002", "20990101000003"]}} =
@@ -799,5 +810,48 @@ defmodule Dawarich.ReleaseMigratorTest do
 
     assert {:error, {:rails_migrating, _}} = Task.await(waiting, 10_000)
     assert log() == []
+  end
+
+  test "an empty ledger is fresh: the baseline runs beside Rails' existing ledger tables" do
+    create_raw_ledger!([])
+
+    baseline = """
+    #{String.replace(@ledger_ddl, "CREATE TABLE", "CREATE TABLE IF NOT EXISTS")};
+    CREATE TABLE r1_items (id bigserial primary key);
+    #{baseline_ledger_sql(["20990101000001"])}
+    """
+
+    assert {:ok, %{applied: ["baseline", "20990101000002", "20990101000003"]}} =
+             ReleaseMigrator.migrate(ScratchRepo, releases: [R1, R2], baseline: baseline)
+  end
+
+  test "refuses a database below the 1.0.0 floor before taking the lease, and changes nothing" do
+    create_raw_ledger!(Floor.versions() -- ["20260103114630"])
+
+    ScratchRepo.query!(
+      "INSERT INTO phoenix.release_migrator_leases (name, holder, expires_at) VALUES ('release_migrator', 'other-host:1:1', now() + interval '1 hour')"
+    )
+
+    lease = [lease_wait_ms: 200, lease_poll_ms: 50]
+    refusal = {:error, {:below_floor, "0.37.2"}}
+    assert ReleaseMigrator.migrate(ScratchRepo, [releases: [R1]] ++ lease) == refusal
+    assert ReleaseMigrator.apply_release(ScratchRepo, R1, lease) == refusal
+    assert log() == []
+    assert ledger() == []
+  end
+
+  test "refuses a database with no Dawarich migration at all before taking the lease, and changes nothing" do
+    create_raw_ledger!(~w[10000101000001 10000101000002 10000101000003])
+
+    ScratchRepo.query!(
+      "INSERT INTO phoenix.release_migrator_leases (name, holder, expires_at) VALUES ('release_migrator', 'other-host:1:1', now() + interval '1 hour')"
+    )
+
+    lease = [lease_wait_ms: 200, lease_poll_ms: 50]
+    refusal = {:error, {:not_dawarich, 3}}
+    assert ReleaseMigrator.migrate(ScratchRepo, [releases: [R1]] ++ lease) == refusal
+    assert ReleaseMigrator.apply_release(ScratchRepo, R1, lease) == refusal
+    assert log() == []
+    assert ledger() == []
   end
 end

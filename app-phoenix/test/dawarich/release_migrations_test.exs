@@ -3,7 +3,7 @@ defmodule Dawarich.ReleaseMigrationsTest do
 
   alias Dawarich.{RailsTree, ReleaseMigration, ReleaseMigrations}
   alias Dawarich.ReleaseMigrations.Unreleased
-  alias Dawarich.ReleaseMigrator.Ledger
+  alias Dawarich.ReleaseMigrator.{Floor, Ledger}
 
   @app Path.expand("../..", __DIR__)
 
@@ -80,5 +80,26 @@ defmodule Dawarich.ReleaseMigrationsTest do
       RailsTree.states() |> Enum.flat_map(& &1["schema_added"]) |> Enum.uniq() |> Enum.sort()
 
     assert Ledger.removed_versions() == Enum.reject(listed, &(&1 in shipped))
+  end
+
+  test "the floor is 1.0.0's state and every state before it, with the migrations db/migrate still ships" do
+    {through_floor, _ported} = RailsTree.split_at(Floor.release())
+    assert "1.0.0" in List.last(through_floor)["releases"]
+    shipped = RailsTree.versions("migrate")
+
+    expected =
+      for state <- through_floor,
+          versions = state["schema_added"] |> Enum.filter(&(&1 in shipped)) |> Enum.sort(),
+          versions != [],
+          do: {state["first_release"], versions}
+
+    assert Floor.states() == expected
+  end
+
+  test "release modules exist only for states after the 1.0.0 floor" do
+    {through_floor, _ported} = RailsTree.split_at(Floor.release())
+    floor_releases = Enum.map(through_floor, & &1["first_release"])
+
+    assert Enum.filter(ReleaseMigrations.all(), &(&1.release() in floor_releases)) == []
   end
 end

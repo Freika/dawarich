@@ -55,12 +55,26 @@ defmodule Dawarich.ReleaseMigrator do
   defp preflight(repo) do
     with :ok <- Lease.require_two_connections(repo) do
       %{rows: [[timezone, schema, others]]} = repo.query!(@preflight_sql, [], log: false)
+      ledger = read_versions(repo, "schema_migrations")
 
       cond do
-        timezone != "UTC" -> {:error, {:timezone, timezone}}
-        rails = rails_migrator(repo) -> {:error, {:rails_migrating, rails}}
-        schema != "public" or others != [] -> {:error, {:foreign_schema, schema, others}}
-        true -> :ok
+        timezone != "UTC" ->
+          {:error, {:timezone, timezone}}
+
+        rails = rails_migrator(repo) ->
+          {:error, {:rails_migrating, rails}}
+
+        schema != "public" or others != [] ->
+          {:error, {:foreign_schema, schema, others}}
+
+        count = Ledger.not_dawarich(ledger) ->
+          {:error, {:not_dawarich, count}}
+
+        release = Ledger.below_floor(ledger) ->
+          {:error, {:below_floor, release}}
+
+        true ->
+          :ok
       end
     end
   end
@@ -100,8 +114,8 @@ defmodule Dawarich.ReleaseMigrator do
             error
         end
 
-      {:newer, versions} ->
-        {:error, {:newer, versions}}
+      refusal ->
+        {:error, refusal}
     end
   end
 

@@ -5,6 +5,8 @@ defmodule Mix.Tasks.Dawarich.ReleaseMigrate do
 
   @shortdoc "Runs the Ecto release migrator against PHOENIX_TEST_DATABASE"
 
+  @last_rails_release "1.15.2"
+
   @impl true
   def run(args) do
     {opts, []} = OptionParser.parse!(args, strict: [only: :string])
@@ -49,6 +51,16 @@ defmodule Mix.Tasks.Dawarich.ReleaseMigrate do
 
   def describe({:newer, versions}),
     do: "refused: newer than this image (#{Enum.join(versions, " ")})"
+
+  def describe({:below_floor, release}),
+    do:
+      "refused: this database has not reached Dawarich #{release}, and this image upgrades only from 1.0.0; " <>
+        "start the Dawarich #{@last_rails_release} image once so Rails upgrades it, then start this image"
+
+  def describe({:not_dawarich, count}),
+    do:
+      "refused: schema_migrations holds #{count} versions and none of them is a Dawarich migration; " <>
+        "check DATABASE_NAME"
 
   def describe({:foreign_schema, schema, others}),
     do: "refused: Rails tables outside public (search path #{schema}; #{Enum.join(others, " ")})"
