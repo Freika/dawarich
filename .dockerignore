@@ -28,3 +28,6 @@ vendor/poster_renderer/node_modules/
 
 # Local git worktrees must never end up inside the image
 .worktrees/
+
+/db/release_snapshots/
+/scripts/schema_parity/
