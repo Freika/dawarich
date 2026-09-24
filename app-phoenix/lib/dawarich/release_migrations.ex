@@ -1,9 +1,9 @@
 defmodule Dawarich.ReleaseMigrations do
   @moduledoc false
 
-  alias Dawarich.ReleaseMigrations.Unreleased
+  alias Dawarich.ReleaseMigrations.{Unreleased, V1_15_2}
 
-  @releases [Unreleased]
+  @releases [V1_15_2, Unreleased]
 
   def all, do: @releases
 
