@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- Self-hosted instances no longer rate-limit sign-in, sign-up, 2FA challenges and the other request limits; the magic-phrase unlock of shared links and the password check when linking a sign-in provider keep their limits.
+
 ## [1.15.2] - 2026-09-22, Berlin
 
 ### Added
