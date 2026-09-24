@@ -60,7 +60,7 @@ class DedupeVisitsBeforeUniqueIndex < ActiveRecord::Migration[8.0]
   def collapse(keeper_id, loser_ids)
     Visit.transaction do
       Point.where(visit_id: loser_ids).update_all(visit_id: keeper_id)
-      execute("DELETE FROM place_visits WHERE visit_id IN (#{loser_ids.join(',')})")
+      execute("DELETE FROM place_visits WHERE visit_id IN (#{loser_ids.join(',')})") if table_exists?(:place_visits)
       execute("DELETE FROM visits WHERE id IN (#{loser_ids.join(',')})")
     end
   end
