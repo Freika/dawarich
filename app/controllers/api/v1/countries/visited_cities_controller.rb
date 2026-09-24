@@ -8,16 +8,11 @@ class Api::V1::Countries::VisitedCitiesController < ApiController
   def index
     start_at = safe_timestamp(params[:start_at])
     end_at = safe_timestamp(params[:end_at])
-    name_column = if Point.connection.column_exists?(:points, :country_name_legacy)
-                    'COALESCE(points.country_name_legacy, points.country) AS country_name_legacy'
-                  else
-                    'points.country_name AS country_name_legacy'
-                  end
-
     points = current_api_user
              .points
              .not_anomaly
-             .select(:id, :timestamp, :city, :country_id, :velocity, Arel.sql(name_column))
+             .select(:id, :timestamp, :city, :country_id, :velocity,
+                     Arel.sql('COALESCE(points.country_name, points.country) AS country_name'))
              .where(timestamp: start_at..end_at)
              .order(timestamp: :asc)
 

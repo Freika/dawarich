@@ -16,7 +16,7 @@ RSpec.describe 'Google phone takeout numeric metadata ranges' do
     import_document(document)
 
     point = user.points.find_by!(timestamp: Time.utc(2024, 6, 15, 9).to_i)
-    expect(point.altitude_decimal).to eq(BigDecimal('-0.41'))
+    expect(point.altitude).to be_within(0.001).of(-0.40511831641197205)
     expect(point.accuracy).to eq(0)
   end
 

@@ -9,12 +9,7 @@ class Countries::VisitedQuery
   end
 
   def call
-    name_column = if Point.connection.column_exists?(:points, :country_name_legacy)
-                    :country_name_legacy
-                  else
-                    :country_name
-                  end
-    rows = relation.distinct.pluck(:country_id, name_column, :country)
+    rows = relation.distinct.pluck(:country_id, :country_name, :country)
     countries = Country.where(id: rows.filter_map(&:first).uniq).index_by(&:id)
 
     visited = rows.filter_map do |country_id, country_name, legacy_country|

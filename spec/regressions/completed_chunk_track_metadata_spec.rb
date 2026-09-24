@@ -7,9 +7,11 @@ RSpec.describe 'Completed chunk track metadata' do
   let(:base_time) { Time.utc(2026, 7, 17) }
 
   def generate_chunks(order, tracker_id: 'synthetic-device', step: 0.1)
+    source = { tracker_id: tracker_id }
+    Points::DimensionResolver.new.stamp([source]) if tracker_id
     rows = 217.times.map do |index|
       { user_id: user.id, timestamp: base_time.to_i + index * 1200,
-        lonlat: "POINT(#{13 + index * step} 52)", tracker_id: tracker_id,
+        lonlat: "POINT(#{13 + index * step} 52)", source_id: source[:source_id],
         altitude: index, anomaly: false, created_at: Time.current, updated_at: Time.current }
     end
     Point.insert_all!(rows)

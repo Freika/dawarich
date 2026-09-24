@@ -26,7 +26,7 @@ class CreatePointsV2 < ActiveRecord::Migration[8.0]
         reverse_geocoded_at timestamp(6) without time zone,
         country_id          integer,
         country             character varying,
-        country_name_legacy character varying,
+        country_name        character varying,
         source_id           integer,
         lock_version        integer NOT NULL DEFAULT 0,
         accuracy            integer,
@@ -59,6 +59,6 @@ class CreatePointsV2 < ActiveRecord::Migration[8.0]
   # v1 is recognised by a column the rewrite drops; once the swap has run,
   # points no longer has it and every stage of the rewrite becomes a no-op.
   def v1_points?
-    column_exists?(:points, :country_name)
+    column_exists?(:points, :tracker_id)
   end
 end

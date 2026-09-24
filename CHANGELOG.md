@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - The points storage rewrite keeps rarely populated legacy fields and editing revisions. Invalid numeric values stop the migration with the original table intact instead of being erased. Automatic rollback after the table swap is disabled because newer points may no longer exist in the retained old table. (#3480)
+- Country names that have no matching country record remain visible in geocoding, insights, digests, and residency reports after the points rewrite. Historical country links can still be repaired on the new table. (#3480)
 - Upgrading an existing installation rewrites its points table. Allow free disk space for a second copy, its indexes, and WAL before upgrading; the old table remains available for supervised recovery until its contents are verified and cleanup is approved. (#3480)
 
 ### Added

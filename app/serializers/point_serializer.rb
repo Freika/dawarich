@@ -3,7 +3,7 @@
 class PointSerializer
   EXCLUDED_ATTRIBUTES = %w[
     created_at updated_at visit_id id import_id user_id raw_data lonlat
-    reverse_geocoded_at country_id country_name_legacy altitude_decimal source_id lock_version
+    reverse_geocoded_at country_id country_name altitude_decimal source_id lock_version
   ].freeze
 
   def initialize(point)
@@ -16,7 +16,7 @@ class PointSerializer
       attributes['longitude'] = point.lon.to_s
       attributes['altitude'] = point.altitude
       # The scratch map reads properties.country_name; the key is computed
-      # through the countries table since the column was dropped.
+      # through the countries table with the original name as fallback.
       attributes['country_name'] = point.country_name
       # velocity stayed a string on the wire when the column went numeric.
       attributes['velocity'] = point.velocity&.to_s

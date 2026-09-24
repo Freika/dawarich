@@ -148,18 +148,21 @@ module Users
                         start_of_year.to_i
                       end
 
+        country_name = "COALESCE(countries.name, NULLIF(points.country_name, ''), NULLIF(points.country, ''))"
+
         sql = <<~SQL
           SELECT
-            DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
-            countries.name as country_name,
-            MIN(timestamp) as min_timestamp,
-            MAX(timestamp) as max_timestamp
+            DATE(to_timestamp(points.timestamp) AT TIME ZONE 'UTC') as point_date,
+            #{country_name} as country_name,
+            MIN(points.timestamp) as min_timestamp,
+            MAX(points.timestamp) as max_timestamp
           FROM points
-          JOIN countries ON countries.id = points.country_id
-          WHERE user_id = #{user.id}
-            AND timestamp >= #{lower_bound}
-            AND timestamp <= #{end_of_year.to_i}
-          GROUP BY point_date, countries.name
+          LEFT JOIN countries ON countries.id = points.country_id
+          WHERE points.user_id = #{user.id}
+            AND points.timestamp >= #{lower_bound}
+            AND points.timestamp <= #{end_of_year.to_i}
+            AND #{country_name} IS NOT NULL
+          GROUP BY point_date, #{country_name}
           ORDER BY point_date, min_timestamp
         SQL
 

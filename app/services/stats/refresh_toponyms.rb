@@ -64,14 +64,10 @@ module Stats
 
     def points
       first = ActiveSupport::TimeZone[user.timezone_iana].local(year, month, 1)
-      country_name_column = if Point.connection.column_exists?(:points, :country_name_legacy)
-                              'COALESCE(points.country_name_legacy, points.country) AS country_name'
-                            else
-                              'points.country_name'
-                            end
       user.points.not_anomaly
           .where(timestamp: first.to_i...first.next_month.to_i)
-          .select(:id, :timestamp, :city, :country_id, :velocity, Arel.sql(country_name_column))
+          .select(:id, :timestamp, :city, :country_id, :velocity,
+                  Arel.sql('COALESCE(points.country_name, points.country) AS country_name'))
           .order(:timestamp, :id)
     end
   end

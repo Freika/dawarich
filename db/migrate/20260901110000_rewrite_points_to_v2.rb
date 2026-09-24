@@ -57,7 +57,7 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
   private
 
   def v1_points?
-    column_exists?(:points, :country_name)
+    column_exists?(:points, :tracker_id)
   end
 
   def schema_steps
@@ -80,7 +80,7 @@ class RewritePointsToV2 < ActiveRecord::Migration[8.0]
         execute('ALTER TABLE points ADD COLUMN lock_version integer NOT NULL DEFAULT 0')
       end
       {
-        country: 'character varying', country_name_legacy: 'character varying',
+        country: 'character varying', country_name: 'character varying',
         lock_version: 'integer NOT NULL DEFAULT 0', mode: 'integer',
         ping: 'character varying', external_track_id: 'character varying'
       }.each do |column, type|

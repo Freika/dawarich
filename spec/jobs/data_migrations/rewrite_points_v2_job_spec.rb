@@ -93,7 +93,7 @@ RSpec.describe DataMigrations::RewritePointsV2Job, :non_transactional do
 
       expect(v2_row(point.id)).to include(
         'mode' => 2, 'ping' => 'pong', 'external_track_id' => 'legacy-track',
-        'country_name_legacy' => 'Nowhereland', 'country' => 'Noland', 'lock_version' => 7
+        'country_name' => 'Nowhereland', 'country' => 'Noland', 'lock_version' => 7
       )
     end
 

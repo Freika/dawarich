@@ -11,7 +11,7 @@ module Points
 
       V2_COLUMNS = %w[
         id timestamp user_id track_id import_id visit_id raw_data_archive_id
-        created_at updated_at reverse_geocoded_at country_id country country_name_legacy source_id lock_version
+        created_at updated_at reverse_geocoded_at country_id country country_name source_id lock_version
         accuracy vertical_accuracy altitude velocity course course_accuracy
         battery mode ping external_track_id anomaly raw_data_archived lonlat city geodata raw_data motion_data
       ].freeze

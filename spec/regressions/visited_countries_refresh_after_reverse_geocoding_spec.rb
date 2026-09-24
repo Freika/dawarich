@@ -7,7 +7,8 @@ RSpec.describe 'Visited countries after reverse geocoding', type: :request do
   let!(:germany) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
   let!(:point) do
     create(:point, user:, timestamp: 1_000).tap do |created|
-      created.update_columns(country_id: nil, country_name: nil, country: nil, city: nil, reverse_geocoded_at: nil)
+      created.update_columns(country_id: nil, country_name: nil, country: nil, city: nil,
+                             reverse_geocoded_at: nil)
     end
   end
   let(:scope) { { api_key: user.api_key, start_at: 900, end_at: 1_200 } }

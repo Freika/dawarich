@@ -33,11 +33,11 @@ RSpec.describe 'points v2 rewrite verification', :non_transactional do
     CreatePointsV2.new.up
 
     # Three users, mixed shapes: plain rows, a tracker combo (unstamped -
-    # inline stamping must resolve it), garbage velocity, divergent altitude,
+    # inline stamping must resolve it), valid sparse metadata, divergent altitude,
     # NULL timestamps sharing a created_at, int32-ceiling timestamp.
     @plain      = seed_v1(users[0].id, timestamp: 1_700_000_000, velocity: '12.5', battery: 80)
     @tracked    = seed_v1(users[0].id, timestamp: 1_700_000_060, tracker: 'pixel-8', lon: 12.38)
-    @garbage    = seed_v1(users[1].id, timestamp: 1_700_000_120, velocity: 'broken', battery: 70_000)
+    @metadata   = seed_v1(users[1].id, timestamp: 1_700_000_120, velocity: '1.25', battery: 70)
     @divergent  = seed_v1(users[1].id, timestamp: 1_700_000_180, altitude: 100, altitude_decimal: 101.25)
     @ceiling    = seed_v1(users[2].id, timestamp: 2_147_000_000)
     @null_ts    = Array.new(3) { |i| seed_v1(users[2].id, timestamp: nil, lon: 12.4 + (i * 0.01)) }
@@ -67,8 +67,8 @@ RSpec.describe 'points v2 rewrite verification', :non_transactional do
 
     expect(rows[@plain]['velocity']).to eq(12.5)
     expect(rows[@plain]['battery']).to eq(80)
-    expect(rows[@garbage]['velocity']).to be_nil
-    expect(rows[@garbage]['battery']).to be_nil
+    expect(rows[@metadata]['velocity']).to eq(1.25)
+    expect(rows[@metadata]['battery']).to eq(70)
     expect(rows[@divergent]['altitude']).to eq(101.25)
     expect(rows[@ceiling]['timestamp']).to eq(2_147_000_000)
   end

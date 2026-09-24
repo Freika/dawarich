@@ -61,7 +61,7 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
   def schema_steps = @schema_steps ||= Points::Rewrite::SchemaSteps.new(connection)
 
   def rewrite_applicable?
-    connection.table_exists?('points_v2') && connection.column_exists?(:points, :country_name)
+    connection.table_exists?('points_v2') && connection.column_exists?(:points, :tracker_id)
   end
 
   def fast_path!
@@ -91,8 +91,7 @@ class DataMigrations::RewritePointsV2Job < ApplicationJob
     end
   end
 
-  # country_name and country are dropped by the swap, so every row whose name
-  # still resolves must be resolved before it. Own bounds rather than the
+  # Resolve names against canonical country IDs during the rewrite. Own bounds rather than the
   # stamp walk's: a partially-run C chain leaves the unstamped and the
   # unresolved sets overlapping only by accident.
   def resolve_countries(batch_size)

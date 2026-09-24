@@ -6,11 +6,6 @@ class Points::SlimCollectionQuery
   end
 
   def call
-    legacy_name = if Point.connection.column_exists?(:points, :country_name_legacy)
-                    'points.country_name_legacy'
-                  else
-                    'points.country_name'
-                  end
     @relation
       .joins('LEFT JOIN countries ON countries.id = points.country_id')
       .joins('LEFT JOIN point_sources ON point_sources.id = points.source_id')
@@ -21,7 +16,7 @@ class Points::SlimCollectionQuery
         Arel.sql('points.timestamp'),
         Arel.sql('points.velocity'),
         # Mirrors Point#country_name, including the retained legacy fallback.
-        Arel.sql("COALESCE(countries.name, #{legacy_name}, points.country, '')"),
+        Arel.sql("COALESCE(countries.name, points.country_name, points.country, '')"),
         Arel.sql('point_sources.tracker_id')
       )
       .map do |id, lat, lon, timestamp, velocity, country_name, tracker_id|

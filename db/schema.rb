@@ -489,7 +489,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
     t.string "city"
     t.string "country"
     t.integer "country_id"
-    t.string "country_name_legacy"
+    t.string "country_name"
     t.float "course", limit: 24
     t.float "course_accuracy", limit: 24
     t.datetime "created_at", null: false

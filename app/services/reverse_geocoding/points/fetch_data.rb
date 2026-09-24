@@ -61,10 +61,12 @@ class ReverseGeocoding::Points::FetchData
       point.update!(
         city: response.city,
         country_id: country_record&.id,
+        country_name: response.country,
         geodata: DawarichSettings.store_geodata? ? response.data : {},
         reverse_geocoded_at: Time.current
       )
-      if point.saved_change_to_city? || point.saved_change_to_country_name? || point.saved_change_to_country_id?
+      if point.saved_change_to_city? || point.saved_change_to_country_id? ||
+         point.saved_changes.key?('country_name') || point.saved_changes.key?('country')
         user_id = point.user_id
         timestamp = point.timestamp
         ActiveRecord.after_all_transactions_commit { Stats::GeocodedDays.mark(user_id, timestamp) }

@@ -105,7 +105,7 @@ class Points::Move
       city: nil,
       reverse_geocoded_at: nil
     )
-    point[:country_name_legacy] = country&.name if point.has_attribute?(:country_name_legacy)
+    point[:country_name] = country&.name if point.has_attribute?(:country_name)
     point.write_attribute(:country, country&.name)
   end
 

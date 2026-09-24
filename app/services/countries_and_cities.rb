@@ -94,8 +94,7 @@ class CountriesAndCities
 
   # Prefer the resolved country; retained legacy text covers unresolved names.
   def canonical_country_name(point)
-    country_names_by_id[point[:country_id]] || point_value(point, :country_name_legacy) ||
-      point_value(point, :country_name) || point_value(point, :country)
+    country_names_by_id[point[:country_id]] || point_value(point, :country_name) || point_value(point, :country)
   end
 
   def point_value(point, attribute)

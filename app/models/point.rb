@@ -35,8 +35,7 @@ class Point < ApplicationRecord
   # Ignoring the dropped columns keeps column_names identical whether a
   # process booted against the old or the new table: a Sidekiq that cached
   # v1 columns during the copy would otherwise SELECT them after the swap.
-  self.ignored_columns += PointSource::COMBO_COLUMNS +
-                          %w[country_name altitude_decimal]
+  self.ignored_columns += PointSource::COMBO_COLUMNS + %w[altitude_decimal]
 
   scope :reverse_geocoded, -> { where.not(reverse_geocoded_at: nil) }
   scope :not_reverse_geocoded, -> { where(reverse_geocoded_at: nil) }
@@ -124,18 +123,14 @@ class Point < ApplicationRecord
     Country.containing_point(lon, lat)
   end
 
-  # Keep the serializer contract after the country_name column is removed.
+  # Prefer the canonical country while preserving original names on both schemas.
   def country_name
-    country&.name || (self[:country_name_legacy] if has_attribute?(:country_name_legacy)) ||
+    country&.name || (self[:country_name] if has_attribute?(:country_name)) ||
       (self[:country] if has_attribute?(:country)) || ''
   end
 
   def country_name=(name)
-    if has_attribute?(:country_name_legacy)
-      self[:country_name_legacy] = name
-    elsif has_attribute?(:country)
-      self[:country] = name
-    end
+    self[:country_name] = name if has_attribute?(:country_name)
   end
 
   private

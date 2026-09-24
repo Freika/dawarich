@@ -63,16 +63,12 @@ class Stats::CalculateMonth
   def points
     return @points if defined?(@points)
 
-    country_name_column = if Point.connection.column_exists?(:points, :country_name_legacy)
-                            'COALESCE(points.country_name_legacy, points.country) AS country_name_legacy'
-                          else
-                            'points.country_name AS country_name_legacy'
-                          end
     @points = user
               .points
               .not_anomaly
               .where(timestamp: start_timestamp..end_timestamp)
-              .select(:id, :lonlat, :timestamp, :city, :country_id, :velocity, Arel.sql(country_name_column))
+              .select(:id, :lonlat, :timestamp, :city, :country_id, :velocity,
+                      Arel.sql('COALESCE(points.country_name, points.country) AS country_name'))
               .preload(:country)
               .order(timestamp: :asc)
   end

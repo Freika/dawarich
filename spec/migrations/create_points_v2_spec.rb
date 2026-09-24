@@ -8,8 +8,8 @@ RSpec.describe CreatePointsV2, :non_transactional do
 
   let(:connection) { ActiveRecord::Base.connection }
 
-  # The frozen v2 column list, in frozen (alignment-descending) order.
-  # Authority: superpowers/plans/2026-08-31-points-v2-column-freeze.md
+  # The reviewed v2 column list, in alignment-descending order. Sparse fields
+  # remain after the original column freeze so the rewrite cannot lose values.
   let(:frozen_columns) do
     [
       ['id', 'bigint', 'NO'],
@@ -23,7 +23,10 @@ RSpec.describe CreatePointsV2, :non_transactional do
       ['updated_at',          'timestamp without time zone', 'NO'],
       ['reverse_geocoded_at', 'timestamp without time zone', 'YES'],
       ['country_id',          'integer',                     'YES'],
+      ['country',             'character varying',           'YES'],
+      ['country_name',        'character varying',           'YES'],
       ['source_id',           'integer',                     'YES'],
+      ['lock_version',        'integer',                     'NO'],
       ['accuracy',            'integer',                     'YES'],
       ['vertical_accuracy',   'integer',                     'YES'],
       ['altitude',            'real',                        'YES'],
@@ -31,6 +34,9 @@ RSpec.describe CreatePointsV2, :non_transactional do
       ['course',              'real',                        'YES'],
       ['course_accuracy',     'real',                        'YES'],
       ['battery',             'smallint',                    'YES'],
+      ['mode',                'integer',                     'YES'],
+      ['ping',                'character varying',           'YES'],
+      ['external_track_id',   'character varying',           'YES'],
       ['anomaly',             'boolean',                     'YES'],
       ['raw_data_archived',   'boolean',                     'NO'],
       ['lonlat',              'USER-DEFINED',                'YES'],

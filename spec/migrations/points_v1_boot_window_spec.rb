@@ -43,8 +43,12 @@ RSpec.describe 'new code on a v1-shaped points table', :non_transactional do
   end
 
   it 'ignores the dropped columns even though the table still has them' do
-    expect(Point.column_names).not_to include('country_name', 'tracker_id', 'altitude_decimal', 'mode')
+    expect(Point.column_names).not_to include('tracker_id', 'altitude_decimal')
+    expect(Point.column_names).to include('country_name', 'mode')
     expect(connection.column_exists?(:points, :country_name)).to be(true)
+
+    point = create(:point, user: user, country_name: 'Unresolved country')
+    expect(point.reload.country_name).to eq('Unresolved country')
   end
 
   it 'ingests through the resolver, leaving the legacy columns untouched' do

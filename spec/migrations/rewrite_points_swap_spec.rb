@@ -39,7 +39,7 @@ RSpec.describe RewritePointsToV2, :non_transactional do
 
     migration.up
 
-    expect(connection.column_exists?(:points, :country_name)).to be(false)
+    expect(connection.column_exists?(:points, :tracker_id)).to be(false)
     expect(connection.select_value(%(SELECT "timestamp" FROM points LIMIT 1))).to eq(1_700_000_000)
     expect(connection.table_exists?('points_legacy_d')).to be(true)
     expect(connection.select_value('SELECT COUNT(*) FROM points_legacy_d').to_i).to eq(1)
@@ -120,7 +120,7 @@ RSpec.describe RewritePointsToV2, :non_transactional do
     expect { migration.up }.not_to raise_error
 
     expect(deadlocked).to be(true)
-    expect(connection.column_exists?(:points, :country_name)).to be(false)
+    expect(connection.column_exists?(:points, :tracker_id)).to be(false)
     fk_names = connection.select_values(
       "SELECT conname FROM pg_constraint WHERE conrelid = 'points'::regclass AND contype = 'f'"
     )
@@ -138,7 +138,7 @@ RSpec.describe RewritePointsToV2, :non_transactional do
   it 'swaps instantly on an empty database (fresh install)' do
     migration.up
 
-    expect(connection.column_exists?(:points, :country_name)).to be(false)
+    expect(connection.column_exists?(:points, :tracker_id)).to be(false)
     expect(connection.select_value('SELECT COUNT(*) FROM points').to_i).to eq(0)
   end
 
@@ -158,7 +158,7 @@ RSpec.describe RewritePointsToV2, :non_transactional do
       .and_return(described_class::MAX_FINAL_CHANGES + 1)
 
     expect { migration.up }.to raise_error(ActiveRecord::MigrationError, /retry the migration/)
-    expect(connection.column_exists?(:points, :country_name)).to be(true)
+    expect(connection.column_exists?(:points, :tracker_id)).to be(true)
     expect(connection.select_value("SELECT COUNT(*) FROM points WHERE id = #{original}").to_i).to eq(1)
   end
 
@@ -182,7 +182,7 @@ RSpec.describe RewritePointsToV2, :non_transactional do
     DataMigrations::RewritePointsV2Job.new.run_phases_through_copy
 
     expect { migration.down }.not_to raise_error
-    expect(connection.column_exists?(:points, :country_name)).to be(true)
+    expect(connection.column_exists?(:points, :tracker_id)).to be(true)
     expect(connection.table_exists?('points_v2_changes')).to be(false)
     expect(connection.table_exists?('points_v2_rewrite_state')).to be(false)
   end
