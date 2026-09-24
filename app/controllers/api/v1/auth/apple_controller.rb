@@ -17,6 +17,7 @@ class Api::V1::Auth::AppleController < Api::V1::Auth::BaseController
       email_verified: email_verified?(claims)
     ).call
 
+    record_signup_analytics(user, method: 'apple') if created
     render_auth_success(user, status: created ? :created : :ok)
   rescue Auth::FindOrCreateOauthUser::UnverifiedEmail
     render json: {

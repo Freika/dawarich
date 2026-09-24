@@ -94,6 +94,20 @@ RSpec.describe 'Users::AppleOauth', type: :request do
       expect(response.headers['Location']).to match(%r{(/|trial/resume)\z})
     end
 
+    it 'preserves the Google Ads campaign across the cross-site Apple callback' do
+      get new_user_registration_path, params: { utm_source: 'google', utm_medium: 'cpc',
+                                                 utm_campaign: '123456789' }
+      state = perform_request_phase
+      expect(cookies['apple_signup_campaign']).to be_present
+
+      post '/users/auth/apple/callback', params: { id_token: 'fake-jwt', state: state }
+
+      user = User.find_by!(uid: '000777.web.apple')
+      expect(user.attributes.slice('utm_source', 'utm_medium', 'utm_campaign')).to eq(
+        'utm_source' => 'google', 'utm_medium' => 'cpc', 'utm_campaign' => '123456789'
+      )
+    end
+
     it 'passes APPLE_WEB_SERVICES_ID as client_id to the verifier' do
       expect(Auth::VerifyAppleToken).to receive(:new)
         .with('fake-jwt', hash_including(client_id: services_id))
@@ -105,6 +119,8 @@ RSpec.describe 'Users::AppleOauth', type: :request do
 
     it 'signs in an existing Apple user without recreating' do
       create(:user, provider: 'apple', uid: '000777.web.apple', email: 'web-user@example.com')
+      get new_user_registration_path, params: { utm_source: 'google', utm_medium: 'cpc',
+                                                 utm_campaign: '123456789' }
       state = perform_request_phase
 
       expect do
@@ -112,6 +128,8 @@ RSpec.describe 'Users::AppleOauth', type: :request do
       end.not_to change(User, :count)
 
       expect(response).to redirect_to(root_path)
+      expect(User.find_by!(uid: '000777.web.apple').utm_campaign).to be_nil
+      expect(session[:utm_campaign]).to be_nil
     end
 
     it 'shows deletion guidance when Apple omits email for an identity pending deletion' do

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="<%= I18n.locale %>" data-theme="<%= app_theme %>" data-self-hosted="<%= @self_hosted %>">
+<html lang="<%= I18n.locale %>" data-theme="<%= app_theme %>" data-self-hosted="<%= DawarichSettings.self_hosted? %>" data-analytics-account="<%= user_signed_in? %>" data-analytics-consent="<%= current_user&.product_analytics_consent.nil? ? 'unknown' : current_user.product_analytics_consent %>" data-partnero-id="<%= ENV['PARTNERO_PROGRAM_ID'] %>" data-google-ads-id="<%= ENV['GOOGLE_ADS_ID'] %>">
   <head>
     <title><%= full_title(yield(:title)) %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -7,14 +7,12 @@
     <%= action_cable_meta_tag %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <meta name="product-analytics-consent" content="<%= user_signed_in? %>:<%= current_user&.product_analytics_consent.nil? ? 'unknown' : current_user.product_analytics_consent %>" data-turbo-track="reload">
 
 
     <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
     <%= achievement_stylesheet_tags if achievements_visible? %>
-    <% if ENV['POSTHOG_ENABLED'] == 'true' %>
-      <%= javascript_include_tag "posthog", "data-turbo-track": "reload" %>
-    <% end %>
     <%= javascript_translations %>
     <%= javascript_importmap_tags %>
     <%= turbo_refreshes_with(method: :morph, scroll: :preserve) if morph_page_refreshes? %>
@@ -24,44 +22,23 @@
     <%= render 'application/favicon' %>
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
     <% if !DawarichSettings.self_hosted? %>
-      <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
-      <script src="https://rybbit.dwri.xyz/api/script.js" data-site-id="87c1f532b59f" defer></script>
       <script async src="https://cdn.paddle.com/paddle/v2/paddle.js" onload="
         Paddle.Environment.set(<%= ENV.fetch('PADDLE_BILLING_ENVIRONMENT', 'production').to_json.html_safe %>);
         Paddle.Initialize({ token: <%= (ENV['PADDLE_BILLING_CLIENT_TOKEN'] || '').to_json.html_safe %> });
       "></script>
     <% end %>
 
-    <% if !DawarichSettings.self_hosted? && ENV['PARTNERO_PROGRAM_ID'].present? %>
-      <script>
-        (function(p,t,n,e,r,o){ p['__partnerObject']=r;function f(){
-        var c={ a:arguments,q:[]};var r=this.push(c);return "number"!=typeof r?r:f.bind(c.q);}
-        f.q=f.q||[];p[r]=p[r]||f.bind(f.q);p[r].q=p[r].q||f.q;o=t.createElement(n);
-        var _=t.getElementsByTagName(n)[0];o.async=1;o.src=e+'?v'+(~~(new Date().getTime()/1e6));
-        _.parentNode.insertBefore(o,_);})(window, document, 'script', 'https://app.partnero.com/js/universal.js', 'po');
-        po('settings', 'assets_host', 'https://assets.partnero.com');
-        po('program', <%= ENV['PARTNERO_PROGRAM_ID'].to_json.html_safe %>, 'load');
-      </script>
-    <% end %>
-
-    <% if !DawarichSettings.self_hosted? && ENV['GOOGLE_ADS_ID'].present? %>
-      <script async src="https://www.googletagmanager.com/gtag/js?id=<%= j ENV['GOOGLE_ADS_ID'] %>"></script>
-      <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', <%= ENV['GOOGLE_ADS_ID'].to_json.html_safe %>, {
-          send_page_view: false,
-          linker: {
-            accept_incoming: true,
-            domains: <%= [MANAGER_HOST].compact.to_json.html_safe %>
-          }
-        });
-      </script>
-    <% end %>
   </head>
 
   <body class='min-h-screen flex flex-col'>
+    <% unless DawarichSettings.self_hosted? %>
+      <div id="product-analytics-choice" hidden class="p-4 bg-base-200 border-b border-base-300" role="region" aria-label="Product analytics choice">
+        <p class="mb-2">Help improve Dawarich Cloud? Optional analytics measures signup, trial, and subscriptions. Location history, routes, email, and API keys are never sent to product analytics. You can change this choice at any time.</p>
+        <button type="button" data-analytics-choice="true" class="btn btn-primary mr-2">Allow analytics</button>
+        <button type="button" data-analytics-choice="false" class="btn btn-outline">No thanks</button>
+        <span id="product-analytics-choice-error" hidden role="alert">Could not save your choice. Please try again.</span>
+      </div>
+    <% end %>
     <div class='container mx-auto flex flex-col flex-1'>
       <%= render 'shared/navbar' %>
       <%= render 'shared/locale_suggestion' %>
@@ -73,6 +50,9 @@
       </div>
       <div class="px-4 sm:px-5 mt-auto">
         <%= render DawarichSettings.self_hosted? ? 'shared/footer' : 'shared/legal_footer' %>
+        <% unless DawarichSettings.self_hosted? %>
+          <button type="button" id="product-analytics-choice-open" class="link mb-4">Product analytics preference</button>
+        <% end %>
       </div>
     </div>
 

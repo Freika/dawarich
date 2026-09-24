@@ -101,6 +101,19 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
 
     include_examples 'successful OAuth authentication', :google_oauth2, 'Google'
 
+    it 'keeps the Google Ads campaign on a newly created web account' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      get new_user_registration_path, params: { utm_source: 'google', utm_medium: 'cpc',
+                                                 utm_campaign: '123456789' }
+      Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:google_oauth2]
+      get '/users/auth/google_oauth2/callback'
+
+      user = User.find_by!(email: email)
+      expect(user.attributes.slice('utm_source', 'utm_medium', 'utm_campaign')).to eq(
+        'utm_source' => 'google', 'utm_medium' => 'cpc', 'utm_campaign' => '123456789'
+      )
+    end
+
     context 'when an account with the email is pending deletion' do
       before do
         create(:user, email: email).mark_as_deleted!

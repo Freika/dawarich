@@ -31,6 +31,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     if resource.persisted?
       persist_signup_locale(resource)
       post_signup_setup(resource)
+      record_product_analytics_signup(resource)
 
       # The claim happens in every branch (not in after_sign_up_path_for):
       # the reverse-trial redirect below never consults the sign-up path, and
@@ -128,6 +129,19 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   private
+
+  def record_product_analytics_signup(resource)
+    return if DawarichSettings.self_hosted?
+
+    choice = { 'true' => true, 'false' => false }[params[:product_analytics_consent]]
+    return if choice.nil?
+
+    ProductAnalyticsConsent.update!(user: resource, consent: choice)
+    return unless choice
+
+    ProductAnalytics.capture(user: resource, event: 'user_signed_up', channel: 'server',
+                             properties: { auth_method: 'email' })
+  end
 
   def handle_logged_in_with_ticket
     return unless user_signed_in? && params[:import_ticket].present?

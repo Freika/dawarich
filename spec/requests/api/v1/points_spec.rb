@@ -232,6 +232,23 @@ RSpec.describe 'Api::V1::Points', type: :request do
   end
 
   describe 'POST /create' do
+    it 'records the first confirmed nonzero mobile upload once' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('PRODUCT_POSTHOG_API_KEY').and_return('phc_test')
+      allow(ENV).to receive(:[]).with('PRODUCT_POSTHOG_PERSONAL_API_KEY').and_return('personal_test')
+      allow(ENV).to receive(:[]).with('PRODUCT_POSTHOG_PROJECT_ID').and_return('123')
+      allow(PostHog).to receive(:capture).and_return(true)
+      user.update!(product_analytics_consent: true, product_analytics_id: SecureRandom.uuid)
+
+      post "/api/v1/points?api_key=#{user.api_key}", params: point_params,
+           headers: { 'X-Dawarich-Mobile-Upload' => 'js', 'X-Dawarich-Mobile-Platform' => 'ios' }
+
+      expect(response).to have_http_status(:ok)
+      expect(user.reload.product_analytics_first_mobile_upload_at).to be_present
+      expect(PostHog).to have_received(:capture).with(hash_including(event: 'first_mobile_upload_confirmed')).once
+    end
+
     it 'returns a successful response' do
       post "/api/v1/points?api_key=#{user.api_key}", params: point_params
 
