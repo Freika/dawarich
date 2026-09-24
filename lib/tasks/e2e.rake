@@ -116,6 +116,7 @@ namespace :e2e do
   desc 'Reset demo + lite + family users to a clean state and re-seed canonical e2e data'
   task reset_and_seed: :environment do
     assert_safe_environment!
+    DawarichSettings.set_registration_enabled(true)
 
     puts '🧹 Resetting e2e users...'
     Rake::Task['e2e:reset'].invoke
