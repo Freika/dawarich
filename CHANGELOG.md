@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Changed
+
+- The web container now starts a small Elixir supervisor that runs the Rails server as its child, and creates two schemas, `phoenix` and `oban`, in the Dawarich database. If they cannot be created, the web container logs a warning and starts Rails as before. Nothing changes in `docker-compose.yml` or `.env`; the container stops with `SIGTERM` instead of `SIGINT`. `docker exec -it dawarich_app dawarich remote` opens an Elixir console for troubleshooting.
+
 ## [1.15.2] - 2026-09-22, Berlin
 
 ### Added

@@ -115,5 +115,18 @@ bundle exec rake data:migrate
 echo "Running seeds..."
 bundle exec rails db:seed
 
+echo "Running Phoenix migrations..."
+if dawarich eval 'Dawarich.Release.migrate()'; then
+  case "$1 $2" in
+    "bin/rails server"|"bin/rails s"|"rails server"|"rails s"|puma*)
+      DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec "$@")"
+      export DAWARICH_RAILS_ARGS
+      exec dawarich start
+      ;;
+  esac
+else
+  echo "Phoenix migrations failed; starting Rails without the Phoenix supervisor" >&2
+fi
+
 # run passed commands
 exec bundle exec "${@}"
