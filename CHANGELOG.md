@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Map point editing keeps route colors and uncovered edges in sync, restores visible undo and redo history, and avoids stale lines and false save failures.
 - Point markers overlapping routes remain selectable. Markers with multiple points zoom until one point can be selected, and never offer to delete an arbitrary point. (#3719)
 - Insights shows the current year first with a distinct color for the previous year, and hosted settings hide the What's New notice preference.
+- `GET /api/v1/users/me` returns the user's `id`, as the API documentation describes. The mobile app needs it to link in-app subscriptions to the right account.
 
 ## [1.15.2] - 2026-09-22, Berlin
 
