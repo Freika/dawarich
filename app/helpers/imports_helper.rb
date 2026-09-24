@@ -25,7 +25,7 @@ module ImportsHelper
   }.freeze
 
   def extraction_status_badge(import)
-    badge = EXTRACTION_STATUS_BADGES[import.additional_data_extraction_status]
+    badge = EXTRACTION_STATUS_BADGES[import.resolved_additional_data_extraction_status]
     return if badge.nil?
 
     tag.span(class: "badge badge-sm #{badge[:css]}") do

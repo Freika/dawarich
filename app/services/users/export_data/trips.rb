@@ -6,7 +6,7 @@ class Users::ExportData::Trips
   end
 
   def call
-    user.trips.as_json(except: %w[user_id id])
+    user.trips.as_json(except: %w[user_id id trip_source_id])
   end
 
   private

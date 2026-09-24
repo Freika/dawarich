@@ -3,7 +3,7 @@
 class Api::PointSerializer
   EXCLUDED_ATTRIBUTES = %w[
     created_at updated_at visit_id import_id user_id raw_data
-    country_id source_id
+    country_id source_id lock_version
   ].freeze
 
   def initialize(point)
@@ -18,6 +18,7 @@ class Api::PointSerializer
       attributes['latitude']  = lat&.to_s
       attributes['longitude'] = lon&.to_s
       attributes['country_name'] = point.country_name
+      attributes['revision'] = point.lock_version if point.has_attribute?(:lock_version)
       # velocity stayed a string on the wire when the column went numeric:
       # three mobile HTTP stacks decode this payload.
       attributes['velocity'] = point.velocity&.to_s

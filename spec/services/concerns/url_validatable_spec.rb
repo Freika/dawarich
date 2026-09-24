@@ -32,7 +32,7 @@ RSpec.describe UrlValidatable do
       end
 
       it 'rejects URLs that fail DNS resolution' do
-        allow(Resolv).to receive(:getaddress).with('nonexistent.local').and_raise(Resolv::ResolvError)
+        stub_unresolvable_host('nonexistent.local')
 
         expect { validator.validate_integration_url!('http://nonexistent.local') }
           .to raise_error(UrlValidatable::BlockedUrlError, /Could not resolve/)
@@ -48,7 +48,7 @@ RSpec.describe UrlValidatable do
           'IPv6 multicast ff00::/8'   => 'ff02::1'
         }.each do |label, ip|
           it "rejects #{label} (#{ip})" do
-            allow(Resolv).to receive(:getaddress).with('host.example').and_return(ip)
+            stub_host_addresses('host.example', ip)
             expect { validator.validate_integration_url!('http://host.example/path') }
               .to raise_error(UrlValidatable::BlockedUrlError, /blocked address/)
           end
@@ -73,21 +73,32 @@ RSpec.describe UrlValidatable do
           'public IPv4'             => '93.184.216.34'
         }.each do |label, ip|
           it "permits #{label} (#{ip})" do
-            allow(Resolv).to receive(:getaddress).with('immich.lan').and_return(ip)
+            stub_host_addresses('immich.lan', ip)
             expect { validator.validate_integration_url!('http://immich.lan:2283') }
               .not_to raise_error
           end
         end
       end
 
+      it 'accepts a bracketed IPv6 literal host' do
+        expect(validator.validate_integration_url!('http://[fd00::5]:2283')).to eq('fd00::5')
+      end
+
+      it 'rejects a LAN host that also resolves to the cloud metadata address' do
+        stub_host_addresses('nas.lan', '192.168.1.5', '169.254.169.254')
+
+        expect { validator.validate_integration_url!('http://nas.lan') }
+          .to raise_error(UrlValidatable::BlockedUrlError, /blocked address/)
+      end
+
       it 'permits Docker DNS hostnames resolving to bridge-network IPs' do
-        allow(Resolv).to receive(:getaddress).with('immich-server').and_return('172.20.0.5')
+        stub_host_addresses('immich-server', '172.20.0.5')
 
         expect { validator.validate_integration_url!('http://immich-server:2283') }.not_to raise_error
       end
 
       it 'permits URLs with embedded credentials (Immich behind nginx basic-auth is a real homelab config)' do
-        allow(Resolv).to receive(:getaddress).with('immich.lan').and_return('192.168.1.5')
+        stub_host_addresses('immich.lan', '192.168.1.5')
 
         expect { validator.validate_integration_url!('http://user:pass@immich.lan/') }.not_to raise_error
       end
@@ -99,7 +110,7 @@ RSpec.describe UrlValidatable do
       include_examples 'baseline checks'
 
       it 'allows valid public URLs' do
-        allow(Resolv).to receive(:getaddress).with('immich.example.com').and_return('93.184.216.34')
+        stub_host_addresses('immich.example.com', '93.184.216.34')
 
         expect { validator.validate_integration_url!('https://immich.example.com') }.not_to raise_error
       end
@@ -118,11 +129,38 @@ RSpec.describe UrlValidatable do
           'IPv6 ULA fc00::/7'       => 'fd00::1'
         }.each do |label, ip|
           it "rejects #{label} (#{ip})" do
-            allow(Resolv).to receive(:getaddress).with('host.example').and_return(ip)
+            stub_host_addresses('host.example', ip)
             expect { validator.validate_integration_url!('http://host.example/path') }
               .to raise_error(UrlValidatable::BlockedUrlError, /blocked address/)
           end
         end
+      end
+
+      it 'rejects a host when any of its addresses is blocked' do
+        stub_host_addresses('mixed.example.test', '93.184.216.34', '10.0.0.5')
+
+        expect { validator.validate_integration_url!('http://mixed.example.test') }
+          .to raise_error(UrlValidatable::BlockedUrlError, /blocked address/)
+      end
+
+      it 'rejects a host whose AAAA record maps to a private IPv4 address' do
+        stub_host_addresses('mapped.example.test', '93.184.216.34', '::ffff:10.0.0.5')
+
+        expect { validator.validate_integration_url!('http://mapped.example.test') }
+          .to raise_error(UrlValidatable::BlockedUrlError, /blocked address/)
+      end
+
+      it 'returns the address the system resolver prefers' do
+        stub_host_addresses('dual.example.test', '2606:2800:220:1::1', '93.184.216.34')
+
+        expect(validator.validate_integration_url!('https://dual.example.test')).to eq('2606:2800:220:1::1')
+      end
+
+      it 'rejects a host that resolves to no addresses' do
+        stub_host_addresses('empty.example.test')
+
+        expect { validator.validate_integration_url!('http://empty.example.test') }
+          .to raise_error(UrlValidatable::BlockedUrlError, /Could not resolve/)
       end
 
       it 'rejects URLs with userinfo' do

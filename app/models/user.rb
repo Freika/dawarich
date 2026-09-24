@@ -38,16 +38,19 @@ class User < ApplicationRecord
   has_many :places,         dependent: :destroy
   has_many :tags,           dependent: :destroy
   has_many :service_settings, dependent: :destroy
-  has_many :trips,  dependent: :destroy
+  has_many :trips, dependent: :destroy
+  has_many :trip_sources, dependent: :destroy
   has_many :tracks, dependent: :destroy
   has_many :flights, dependent: :destroy
   has_many :raw_data_archives, class_name: 'Points::RawDataArchive', dependent: :destroy
   has_many :digests, class_name: 'Users::Digest', dependent: :destroy
   has_many :notes, dependent: :destroy
   has_many :shared_links, dependent: :destroy
+  has_many :achievement_progresses, class_name: 'Achievements::Progress', dependent: :destroy
+  has_many :achievement_unlock_events, class_name: 'Achievements::UnlockEvent', dependent: :delete_all
+  has_many :user_achievements, dependent: :destroy
 
   after_create :create_api_key
-  after_create :seed_geocoding_settings_from_env, if: -> { DawarichSettings.self_hosted? }
   after_commit :activate, on: :create, if: -> { DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :start_trial, on: :create, if: -> { !DawarichSettings.self_hosted? && !skip_auto_trial }
   after_commit :trigger_creation_webhook, on: :create,
@@ -56,6 +59,8 @@ class User < ApplicationRecord
   after_update_commit :enqueue_family_auto_creation, if: :saved_change_to_plan?
   after_update_commit :enqueue_family_member_sync, if: :saved_change_to_subscription_state?
   after_update :reset_archival_warnings, if: :saved_change_to_plan?
+  after_update :mark_stats_for_rebucketing, if: :saved_change_to_timezone_setting?
+  after_update_commit :enqueue_stats_rebuild, if: :saved_change_to_timezone_setting?
 
   before_save :sanitize_input
 
@@ -127,7 +132,7 @@ class User < ApplicationRecord
   end
 
   def safe_settings
-    Users::SafeSettings.new(settings, plan: plan)
+    Users::SafeSettings.new(settings, plan: entitlements.full_access? ? :pro : :lite)
   end
 
   # Old rows can carry a settings container that is not an object at all, so the
@@ -402,17 +407,40 @@ class User < ApplicationRecord
 
   private
 
+  def saved_change_to_timezone_setting?
+    return false unless saved_change_to_settings?
+
+    before, after = saved_change_to_settings
+
+    before_timezone = before['timezone'] if before.is_a?(Hash)
+    after_timezone = after['timezone'] if after.is_a?(Hash)
+
+    before_timezone != after_timezone
+  end
+
+  def mark_stats_for_rebucketing
+    @stats_months_to_rebuild = stats.pluck(:year, :month)
+    return if @stats_months_to_rebuild.empty?
+
+    stats.update_all(calculation_version: 0, repair_deferred_at: Time.current)
+  end
+
+  def enqueue_stats_rebuild
+    months = @stats_months_to_rebuild
+    @stats_months_to_rebuild = nil
+    return if months.blank?
+
+    months.each do |year, month|
+      Stats::CalculatingJob
+        .set(wait: rand(0..Stats::BulkCalculator::REPAIR_JITTER.to_i).seconds)
+        .perform_later(id, year, month, notify_on_failure: false)
+    end
+  end
+
   def create_api_key
     self.api_key = SecureRandom.hex(32)
 
     save
-  end
-
-  def seed_geocoding_settings_from_env
-    Geocoding::SeedFromEnv.call(self)
-  rescue StandardError => e
-    Rails.logger.error("Failed to seed geocoding settings from ENV for user #{id}: #{e.class}: #{e.message}")
-    ExceptionReporter.call(e, 'Failed to seed geocoding settings from ENV')
   end
 
   def activate

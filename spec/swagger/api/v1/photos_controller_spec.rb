@@ -15,13 +15,13 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
       "deviceId": 'CLI',
       "libraryId": nil,
       "type": 'IMAGE',
-      "originalPath": 'upload/library/admin/2023/2023-06-08/IMG_9913.jpeg',
+      "originalPath": 'upload/library/admin/2024/2024-01-01/IMG_9913.jpeg',
       "originalFileName": 'IMG_9913.jpeg',
       "originalMimeType": 'image/jpeg',
       "thumbhash": '4RgONQaZqYaH93g3h3p3d6RfPPrG',
-      "fileCreatedAt": '2023-06-08T07:58:45.637Z',
-      "fileModifiedAt": '2023-06-08T09:58:45.000Z',
-      "localDateTime": '2024-01-01T09:58:45.637Z',
+      "fileCreatedAt": '2024-01-01T12:00:00.000Z',
+      "fileModifiedAt": '2024-01-01T12:00:00.000Z',
+      "localDateTime": '2024-01-01T13:00:00.000Z',
       "updatedAt": '2024-08-24T18:20:47.965Z',
       "isFavorite": false,
       "isArchived": false,
@@ -34,8 +34,8 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
         "exifImageHeight": 3024,
         "fileSizeInByte": 1_168_914,
         "orientation": '6',
-        "dateTimeOriginal": '2023-06-08T07:58:45.637Z',
-        "modifyDate": '2023-06-08T07:58:45.000Z',
+        "dateTimeOriginal": '2024-01-01T12:00:00.000Z',
+        "modifyDate": '2024-01-01T12:00:00.000Z',
         "timeZone": 'Europe/Berlin',
         "lensModel": 'iPhone 12 Pro back triple camera 4.2mm f/1.6',
         "fNumber": 1.6,
@@ -69,8 +69,8 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
         "facets": []
       },
       "assets": {
-        "total": 1000,
-        "count": 1000,
+        "total": 1,
+        "count": 1,
         "items": [immich_image]
       }
     }.to_json
@@ -78,7 +78,9 @@ RSpec.describe 'Api::V1::PhotosController', type: :request do
 
   before do
     stub_request(:post, "#{user.settings['immich_url']}/api/search/metadata")
-      .to_return(status: 200, body: immich_data)
+      .to_return(status: 200, body: immich_data, headers: { 'Content-Type' => 'application/json' })
+      .then.to_return(status: 200, body: { assets: { total: 1, count: 0, items: [] } }.to_json,
+                      headers: { 'Content-Type' => 'application/json' })
 
     stub_request(
       :get,
@@ -124,7 +126,7 @@ description: 'Local date and time the photo was taken' },
 
         run_test! do |response|
           data = JSON.parse(response.body)
-          expect(data).to be_an(Array)
+          expect(data.pluck('id')).to eq([immich_image[:id]])
         end
       end
     end

@@ -141,7 +141,7 @@ RSpec.describe 'Monthly stats bucketing for points near month boundary in non-UT
   context 'toponyms do not leak adjacent-month cities' do
     let(:tz) { 'Europe/Berlin' }
     let(:user) do
-      create(:user, settings: { 'timezone' => tz, 'min_minutes_spent_in_city' => 1, 'max_gap_minutes_in_city' => 120 })
+      create(:user, settings: { 'timezone' => tz, 'min_minutes_spent_in_city' => 1 })
     end
     let(:germany) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
     let(:france) { create(:country, name: 'France', iso_a2: 'FR', iso_a3: 'FRA') }
@@ -220,7 +220,7 @@ RSpec.describe 'Monthly stats bucketing for points near month boundary in non-UT
   context 'toponyms when a city visit straddles local midnight at month boundary' do
     let(:tz) { 'Europe/Berlin' }
     let(:user) do
-      create(:user, settings: { 'timezone' => tz, 'min_minutes_spent_in_city' => 60, 'max_gap_minutes_in_city' => 120 })
+      create(:user, settings: { 'timezone' => tz, 'min_minutes_spent_in_city' => 60 })
     end
     let(:germany) { create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU') }
 

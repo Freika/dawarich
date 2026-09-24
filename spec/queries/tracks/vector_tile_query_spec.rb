@@ -25,9 +25,20 @@ RSpec.describe Tracks::VectorTileQuery do
     create(:track, user:, original_path: linestring_wkt(meter_pairs), **attrs)
   end
 
-  def feature_rows(z:, x:, y:, scope: user.tracks) # rubocop:disable Naming/MethodParameterName
-    described_class.new(scope:, z:, x:, y:).feature_rows
+  def link_points(track, positions_at)
+    positions_at.each do |(east, north), timestamp|
+      lon, lat = lonlat_at(east, north)
+      create(:point, user:, track:, longitude: lon, latitude: lat, timestamp: timestamp.to_i)
+    end
   end
+
+  # rubocop:disable Naming/MethodParameterName
+  def feature_rows(z:, x:, y:, scope: user.tracks, clip_points_scope: nil, clip_import_id: nil,
+                   clip_start_at: nil, clip_end_at: nil)
+    described_class.new(scope:, z:, x:, y:, clip_points_scope:, clip_import_id:,
+                        clip_start_at:, clip_end_at:).feature_rows
+  end
+  # rubocop:enable Naming/MethodParameterName
 
   def npoints(geom)
     ActiveRecord::Base.connection.select_value(
@@ -46,6 +57,64 @@ RSpec.describe Tracks::VectorTileQuery do
       rows = feature_rows(z: 10, x: 512, y: 511)
 
       expect(rows.map { |r| r['id'].to_i }).to contain_exactly(inside_a.id, inside_b.id)
+    end
+  end
+
+  describe 'import-scoped geometry' do
+    let(:selected_import) { create(:import, user:) }
+    let(:other_import) { create(:import, user:) }
+    let(:track) { create_track_at([[10, 10], [500, 500], [2_000, 2_000]]) }
+
+    before do
+      [[10, 10], [500, 500]].each_with_index do |(east, north), index|
+        lon, lat = lonlat_at(east, north)
+        create(:point, user:, track:, import: selected_import, longitude: lon, latitude: lat,
+                       timestamp: track.start_at.to_i + index)
+      end
+      lon, lat = lonlat_at(2_000, 2_000)
+      create(:point, user:, track:, import: other_import, longitude: lon, latitude: lat,
+                     timestamp: track.start_at.to_i + 2)
+    end
+
+    it 'renders only the selected-import portion of a mixed track' do
+      full = feature_rows(z: 10, x: 512, y: 511).first
+      clipped = feature_rows(z: 10, x: 512, y: 511,
+                             clip_points_scope: user.points, clip_import_id: selected_import.id).first
+
+      expect(clipped['id'].to_i).to eq(track.id)
+      max_x = lambda do |row|
+        query = Track.sanitize_sql_array(['SELECT ST_XMax(?::geometry)', row['geom']])
+        ActiveRecord::Base.connection.select_value(query).to_f
+      end
+      expect(max_x.call(clipped)).to be < max_x.call(full)
+      expect(clipped['distance'].to_f).to be < full['distance'].to_f
+      expect(clipped['end_timestamp'].to_i).to eq(track.start_at.to_i + 1)
+    end
+
+    it 'does not draw a line for only one selected-import point' do
+      single_point = user.points.where(import_id: selected_import.id).order(:id).first
+
+      rows = feature_rows(z: 10, x: 512, y: 511,
+                          clip_points_scope: user.points.where(id: single_point.id),
+                          clip_import_id: selected_import.id)
+
+      expect(rows).to be_empty
+    end
+
+    it 'keeps interleaved import runs separate instead of inventing a shortcut' do
+      [[3_000, 3_000], [3_500, 3_500]].each_with_index do |(east, north), index|
+        lon, lat = lonlat_at(east, north)
+        create(:point, user:, track:, import: selected_import, longitude: lon, latitude: lat,
+                       timestamp: track.start_at.to_i + 3 + index)
+      end
+
+      rows = feature_rows(z: 10, x: 512, y: 511,
+                          clip_points_scope: user.points, clip_import_id: selected_import.id)
+      geometry_count = ActiveRecord::Base.connection.select_value(
+        Track.sanitize_sql_array(['SELECT ST_NumGeometries(?::geometry)', rows.first['geom']])
+      )
+
+      expect(geometry_count).to eq(2)
     end
   end
 
@@ -79,6 +148,68 @@ RSpec.describe Tracks::VectorTileQuery do
 
       expect(rows.map { |r| r['id'].to_i }).to eq([spanning.id])
       expect(rows.map { |r| r['id'].to_i }).not_to include(old.id)
+    end
+
+    it 'clips a boundary-spanning track to Points inside the requested window' do
+      range_start = Time.utc(2024, 9, 20)
+      range_end = range_start.end_of_day
+      track = create_track_at(
+        [[10, 10], [500, 500], [2_000, 2_000], [3_000, 3_000]],
+        start_at: Time.utc(2024, 9, 14), end_at: range_start + 11.hours
+      )
+      link_points(track, [
+                    [[10, 10], Time.utc(2024, 9, 14)],
+                    [[500, 500], Time.utc(2024, 9, 15)],
+                    [[2_000, 2_000], range_start + 10.hours],
+                    [[3_000, 3_000], range_start + 11.hours]
+                  ])
+      scope = user.tracks.where('end_at >= ? AND start_at <= ?', range_start, range_end)
+
+      row = feature_rows(z: 10, x: 512, y: 511, scope:, clip_points_scope: user.points,
+                         clip_start_at: range_start, clip_end_at: range_end).sole
+      xmin = ActiveRecord::Base.connection.select_value(
+        Track.sanitize_sql_array(['SELECT ST_XMin(?::geometry)', row['geom']])
+      ).to_f
+
+      expect(xmin).to be > 150
+      expect(row['start_timestamp'].to_i).to eq((range_start + 10.hours).to_i)
+      expect(row['end_timestamp'].to_i).to eq((range_start + 11.hours).to_i)
+    end
+
+    it 'keeps the stored path and stats of a track entirely inside the requested window' do
+      range_start = Time.utc(2024, 9, 20)
+      track = create_track_at([[10, 10], [3_000, 3_000]], start_at: range_start + 1.hour,
+                                                          end_at: range_start + 2.hours, distance: 12_345)
+      link_points(track, [[[10, 10], range_start + 1.hour], [[3_000, 3_000], range_start + 2.hours]])
+
+      row = feature_rows(z: 10, x: 512, y: 511, clip_points_scope: user.points,
+                         clip_start_at: range_start, clip_end_at: range_start.end_of_day).sole
+
+      expect(row['id'].to_i).to eq(track.id)
+      expect(row['distance'].to_f).to eq(12_345)
+    end
+
+    it 'falls back to the stored path of a boundary-spanning track without linked Points' do
+      range_start = Time.utc(2024, 9, 20)
+      track = create_track_at([[10, 10], [3_000, 3_000]], start_at: range_start - 2.days,
+                                                          end_at: range_start + 1.hour)
+
+      row = feature_rows(z: 10, x: 512, y: 511, clip_points_scope: user.points,
+                         clip_start_at: range_start, clip_end_at: range_start.end_of_day).sole
+
+      expect(row['id'].to_i).to eq(track.id)
+    end
+
+    it 'hides a boundary-spanning track with fewer than two linked Points inside the window' do
+      range_start = Time.utc(2024, 9, 20)
+      track = create_track_at([[10, 10], [3_000, 3_000]], start_at: range_start - 2.days,
+                                                          end_at: range_start + 1.hour)
+      link_points(track, [[[10, 10], range_start - 2.days], [[3_000, 3_000], range_start + 1.hour]])
+
+      rows = feature_rows(z: 10, x: 512, y: 511, clip_points_scope: user.points,
+                          clip_start_at: range_start, clip_end_at: range_start.end_of_day)
+
+      expect(rows).to be_empty
     end
   end
 
@@ -161,7 +292,7 @@ RSpec.describe Tracks::VectorTileQuery do
         serialized[:features].first[:properties].keys.map(&:to_s) -
         %w[mode_timeline segments]
 
-      expect(row.keys).to match_array(serializer_scalar_keys + ['geom'])
+      expect(row.keys).to match_array(serializer_scalar_keys + %w[start_timestamp end_timestamp geom])
       expect(row['start_at']).to match(/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/)
       expect(row['color']).to eq(Tracks::GeojsonSerializer::DEFAULT_COLOR)
       expect(row['dominant_mode']).to eq('driving')

@@ -1,0 +1,15 @@
+<%= link_to achievements_path, class: "ach-side-link #{'ach-side-link--active' if active_key.nil?}",
+            aria: { current: active_key.nil? ? 'page' : nil } do %>
+  <span><%= t('achievements.ui.summary') %></span>
+  <span class="ach-side-count"><%= summary.earned_countries %>/<%= summary.total_countries %></span>
+<% end %>
+<div class="ach-side-group"><%= t('achievements.ui.continents') %></div>
+<% continents.each do |set| %>
+  <%= link_to achievement_path(set.definition.key),
+              class: "ach-side-link #{'ach-side-link--active' if active_key == set.definition.key}",
+              aria: { current: active_key == set.definition.key ? 'page' : nil } do %>
+    <span><%= set.definition.continent %></span>
+    <span class="ach-side-count"><%= set.display_count %>/<%= set.target %></span>
+    <span class="ach-side-bar" aria-hidden="true"><span style="width: <%= set.percent %>%;"></span></span>
+  <% end %>
+<% end %>

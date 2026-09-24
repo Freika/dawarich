@@ -69,7 +69,8 @@ class Tracks::GeojsonSerializer
       end_at: track.end_at.iso8601,
       distance: track.distance.to_i,
       avg_speed: track.avg_speed.to_f,
-      duration: track.duration
+      duration: track.duration,
+      revision: track.lock_version
     }
   end
 
@@ -119,6 +120,7 @@ class Tracks::GeojsonSerializer
 
   def segment_identity(segment)
     {
+      id: segment.id,
       mode: segment.transportation_mode,
       emoji: emoji_for_mode(segment.transportation_mode),
       color: color_for_mode(segment.transportation_mode),

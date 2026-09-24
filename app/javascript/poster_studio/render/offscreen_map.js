@@ -1,4 +1,4 @@
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 
 // Renders `style` over `bounds` into a detached canvas at exactly width x height.
 // The GL backing store equals the target pixels (callers clamp width/height to

@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { escapeHtml } from "maps_maplibre/utils/geojson_transformers"
 import { getCurrentTheme } from "maps_maplibre/utils/popup_theme"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
@@ -71,6 +71,7 @@ export default class extends Controller {
   addMembers() {
     const locations = this.locationsValue
     if (!locations.length) return
+    const theme = getCurrentTheme()
 
     const features = locations.map((loc, i) => ({
       type: "Feature",

@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 import { createConsumer } from "@rails/actioncable"
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { RecentPointLayer } from "maps_maplibre/layers/recent_point_layer"
 import { getMapStyle } from "maps_maplibre/utils/style_manager"
 

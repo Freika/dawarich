@@ -50,6 +50,63 @@ RSpec.describe 'Api::V1::Families::Mine', type: :request do
       expect(response).to have_http_status(:not_found)
     end
 
+    context 'when the Entitlement has lapsed but the Membership survives' do
+      before do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        member.update!(plan: :lite, status: :inactive, active_until: 1.day.ago)
+        family.update!(access_until: 1.day.ago)
+      end
+
+      it 'answers successfully and says so, rather than refusing' do
+        get '/api/v1/families/mine', headers: { 'Authorization' => "Bearer #{member.api_key}" }
+
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json['lapsed']).to be true
+        expect(json['family']['name']).to eq(family.name)
+        expect(json['me']['owner']).to be false
+      end
+
+      it 'discloses nothing about the other members' do
+        get '/api/v1/families/mine', headers: { 'Authorization' => "Bearer #{member.api_key}" }
+
+        expect(response).to have_http_status(:ok)
+        json = JSON.parse(response.body)
+        expect(json).not_to have_key('members')
+        expect(json).not_to have_key('location_requests')
+        expect(response.body).not_to include(user.email)
+      end
+
+      it 'marks a lapsed Family owner as the owner, so the client can offer renewal' do
+        user.update!(plan: :family, status: :inactive, active_until: 1.day.ago)
+
+        get '/api/v1/families/mine', headers: { 'Authorization' => "Bearer #{user.api_key}" }
+
+        json = JSON.parse(response.body)
+        expect(json['lapsed']).to be true
+        expect(json['me']['owner']).to be true
+      end
+    end
+
+    it 'reports an active Family member as not lapsed' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(plan: :family, active_until: 1.year.from_now)
+      family.update!(access_until: 1.year.from_now)
+
+      get '/api/v1/families/mine', headers: { 'Authorization' => "Bearer #{member.api_key}" }
+
+      expect(JSON.parse(response.body)['lapsed']).to be false
+    end
+
+    it 'still refuses a user who is neither entitled nor in a family' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      solo = create(:user, plan: :pro)
+
+      get '/api/v1/families/mine', headers: { 'Authorization' => "Bearer #{solo.api_key}" }
+
+      expect(response).to have_http_status(:forbidden)
+    end
+
     it 'returns 401 without an API key' do
       get '/api/v1/families/mine'
 

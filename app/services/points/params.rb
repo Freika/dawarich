@@ -11,7 +11,8 @@ class Points::Params
 
   def call
     points.map do |point|
-      next unless params_valid?(point)
+      timestamp = Points::TimestampParser.call(point.dig(:properties, :timestamp))
+      next unless params_valid?(point, timestamp)
 
       altitude_value = point[:properties][:altitude]
 
@@ -19,7 +20,7 @@ class Points::Params
         lonlat: lonlat(point),
         battery_status:     point[:properties][:battery_state],
         battery:            battery_level(point[:properties][:battery_level]),
-        timestamp:          DateTime.parse(point[:properties][:timestamp]),
+        timestamp:,
         altitude:           altitude_value,
         tracker_id:         point[:properties][:device_id],
         velocity:           point[:properties][:speed],
@@ -55,11 +56,11 @@ class Points::Params
     value
   end
 
-  def params_valid?(point)
+  def params_valid?(point, timestamp)
     coordinates = point.dig(:geometry, :coordinates)
 
     coordinates.present? &&
-      point.dig(:properties, :timestamp).present? &&
+      timestamp.present? &&
       !Points::NullIsland.coordinates?(coordinates[0], coordinates[1])
   end
 

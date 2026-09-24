@@ -9,10 +9,9 @@ RSpec.describe 'Settings::Integrations', type: :request do
 
     before do
       sign_in user
-      allow(Resolv).to receive(:getaddress).and_call_original
-      allow(Resolv).to receive(:getaddress).with('immich.test').and_return('93.184.216.34')
-      allow(Resolv).to receive(:getaddress).with('photoprism.test').and_return('93.184.216.34')
-      allow(Resolv).to receive(:getaddress).with('airtrail.test').and_return('93.184.216.34')
+      stub_host_addresses('immich.test', '93.184.216.34')
+      stub_host_addresses('photoprism.test', '93.184.216.34')
+      stub_host_addresses('airtrail.test', '93.184.216.34')
     end
 
     it 'updates the user settings' do
@@ -141,6 +140,43 @@ RSpec.describe 'Settings::Integrations', type: :request do
       end
     end
 
+    context 'when TeslaMateApi settings change' do
+      let(:teslamate_url) { 'https://teslamate.test' }
+
+      before do
+        stub_host_addresses('teslamate.test', '93.184.216.34')
+      end
+
+      it 'persists settings and verifies the cars endpoint' do
+        stub_request(:get, "#{teslamate_url}/api/v1/cars")
+          .to_return(status: 200, body: { data: { cars: [] } }.to_json,
+                     headers: { 'Content-Type' => 'application/json' })
+
+        patch '/settings/integrations', params: {
+          settings: {
+            'teslamate_url' => teslamate_url,
+            'teslamate_username' => 'proxy-user',
+            'teslamate_password' => 'proxy-password',
+            'teslamate_api_token' => 'proxy-token',
+            'teslamate_skip_ssl_verification' => '1'
+          },
+          service: 'teslamate'
+        }
+
+        expect(response).to redirect_to(settings_integrations_path(service: 'teslamate'))
+        follow_redirect!
+        expect(flash[:notice]).to include('TeslaMateApi connection verified')
+        expect(user.reload.settings).to include(
+          'teslamate_url' => teslamate_url,
+          'teslamate_username' => 'proxy-user',
+          'teslamate_password' => 'proxy-password',
+          'teslamate_api_token' => 'proxy-token',
+          'teslamate_skip_ssl_verification' => true,
+          'teslamate_connection_status' => 'ok'
+        )
+      end
+    end
+
     context 'when user is on Lite plan (Cloud)' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
@@ -198,21 +234,64 @@ RSpec.describe 'Settings::Integrations', type: :request do
       body[/<a[^>]*data-testid="integration-#{service}"[^>]*>/]
     end
 
-    it 'lists every service in the sidebar on self-hosted instances' do
+    it 'lists the photo services and not geocoding, which belongs to the instance' do
       get settings_integrations_path
 
-      %w[geocoding immich photoprism airtrail].each do |service|
+      %w[immich photoprism airtrail trek].each do |service|
         expect(response.body).to include(%(data-testid="integration-#{service}"))
       end
+      expect(response.body).not_to include('data-testid="integration-geocoding"')
     end
 
-    it 'hides geocoding from the sidebar on non-self-hosted instances' do
+    it 'points a self-hosted admin to Instance settings for geocoding' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      user.update!(admin: true)
+
+      get settings_integrations_path
+
+      pointer = response.body[/<a[^>]*data-testid="integration-geocoding-moved"[^>]*>/]
+      expect(pointer).to include(%(href="#{admin_settings_path}"))
+    end
+
+    it 'tells a self-hosted member that the administrator configures geocoding' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+
+      get settings_integrations_path
+
+      expect(response.body).to include('data-testid="integration-geocoding-moved"')
+      expect(response.body).not_to match(/<a[^>]*data-testid="integration-geocoding-moved"/)
+      expect(response.body).to include(I18n.t('settings.integrations.index.geocoding_managed_by_admin'))
+    end
+
+    it 'shows no geocoding pointer on Cloud' do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
 
       get settings_integrations_path
 
-      expect(response.body).not_to include('data-testid="integration-geocoding"')
-      expect(response.body).to include('data-testid="integration-immich"')
+      expect(response.body).not_to include('integration-geocoding-moved')
+    end
+
+    it 'sends an admin who follows an old geocoding link to Instance settings' do
+      user.update!(admin: true)
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response).to redirect_to(admin_settings_path)
+    end
+
+    it 'keeps a cloud admin on Integrations for an old geocoding link' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+      user.update!(admin: true)
+
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response).not_to be_redirect
+    end
+
+    it 'shows anyone else the first photo service for an old geocoding link' do
+      get settings_integrations_path(service: 'geocoding')
+
+      expect(response.body).to include('name="settings[immich_url]"')
     end
 
     it 'marks a service as connected after a successful connection' do
@@ -248,11 +327,27 @@ RSpec.describe 'Settings::Integrations', type: :request do
       expect(response.body).not_to include('name="settings[immich_url]"')
     end
 
+    it 'renders the TeslaMateApi settings pane' do
+      get settings_integrations_path(service: 'teslamate')
+
+      expect(response.body).to include('name="settings[teslamate_url]"')
+      expect(response.body).to include('TeslaMateApi Integration')
+      expect(response.body).to include('https://github.com/tobiasehlert/teslamateapi#how-to-run-it')
+      expect(response.body).to include('man-in-the-middle attacks')
+    end
+
+    it 'renders the TREK settings pane' do
+      get settings_integrations_path(service: 'trek')
+
+      expect(response.body).to include('name="trip_source[base_url]"')
+      expect(response.body).to include('TREK integration')
+    end
+
     it 'falls back to the first available service for unknown service params' do
       get settings_integrations_path(service: 'bogus')
 
       expect(response).to have_http_status(:ok)
-      expect(response.body).to include(I18n.t('settings.geocoding.show.provider'))
+      expect(response.body).to include('name="settings[immich_url]"')
     end
   end
 end

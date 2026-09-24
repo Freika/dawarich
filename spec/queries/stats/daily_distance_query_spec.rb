@@ -362,9 +362,9 @@ RSpec.describe Stats::DailyDistanceQuery do
 
       subject { described_class.new(monthly_points, timespan, 'Etc/UTC', minutes_between_routes: 30).call }
 
-      it 'does not carry the segment across the day partition' do
+      it 'attributes the segment crossing midnight to the arrival day' do
         expect(subject.find { |day, _| day == 1 }&.last).to eq(0)
-        expect(subject.find { |day, _| day == 2 }&.last).to eq(0)
+        expect(subject.find { |day, _| day == 2 }&.last).to be_between(1_300, 1_400)
       end
     end
 

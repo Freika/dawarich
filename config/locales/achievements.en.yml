@@ -1,0 +1,116 @@
+en:
+  achievements:
+    unlocks:
+      kicker: New discovery
+      announcement: Card unlocked
+      remaining:
+        one: Last card in this deck
+        other: "%{count} cards in this deck"
+      next: Next card
+      done: Done
+      dismiss: Dismiss this deck
+      view: View %{name} in your collection
+    ui:
+      title: Achievements
+      summary: Summary
+      continents: Continents
+      countries: Countries
+      regions: Regions
+      world_explored: World explored
+      collection_hint: Explore your collection by continent, country and region.
+      collection_navigation: Achievement collections
+      browse: Browse collection
+      breadcrumb: Breadcrumb
+      getting_started: Record or import location data to start exploring these cards.
+      import_data: Import data
+      collection_progress: "%{collection} explored"
+      completed_on: "Unlocked on %{date}"
+      remaining:
+        one: 1 left to explore
+        other: "%{count} left to explore"
+      share: Share
+      enable_sharing: Create public link
+      countries_progress: "%{count} of %{total} countries visited"
+      regions_progress: "%{count} of %{total} regions explored"
+      browse_children: "Browse %{collection}"
+      search_children: "Search %{collection}"
+      collection_pages: Collection pages
+      prev_page: Previous page
+      next_page: Next page
+      disable_sharing: Disable sharing
+      public_link: Public link
+      preview_hint: Select the card for a closer look.
+      search_cards: Search cards
+      card_status: Card status
+      apply: Apply
+      clear: Clear filters
+      page_range: "%{first}–%{last} of %{total} cards"
+      no_results: No matching cards
+      no_results_hint: Try another name or clear the filters to see the full collection.
+      about_boundaries: About boundary data
+      boundaries_note: "Region detection is based on approximate boundaries. Sources:"
+      threshold_note:
+        one: A place counts after %{count} minute of dwell time.
+        other: A place counts after %{count} minutes of dwell time.
+      status:
+        all: All cards
+        unlocked: Unlocked
+        in_progress: In progress
+        locked: Locked
+    cards:
+      explorer_name: "%{place} Explorer"
+      date_format: "%-d %b %Y"
+      description:
+        continent: "Spend time in all %{count} countries and territories of %{place}."
+        regions: "Spend time in all %{count} regions of %{place}."
+        country: "Spend time in %{place}."
+      status:
+        locked: Locked
+        unlocked: Unlocked
+        unlocked_on: "Unlocked · %{date}"
+        in_progress: In progress
+        visited: Visited
+      metric:
+        explored: Explored
+        not_yet_explored: Not yet explored
+        percent_explored: "%{percent}% explored"
+        countries: "%{count}/%{total} countries"
+        regions: "%{count}/%{total} regions"
+      rarity:
+        common: Common
+        rare: Rare
+        epic: Epic
+        legendary: Legendary
+      boundary_unavailable: Boundary unavailable
+      open_label: "Open %{name} — %{status}"
+      progress_label: Exploration progress
+      details_regions: "%{count}/%{total} regions"
+    modal:
+      detail: Achievement detail
+      close: Close
+      share: Share
+      embed: Embed
+      public_link: Public link
+      embed_code: Embed code
+      iframe_title: Dawarich achievement
+      copy: Copy
+      copied: Copied
+      stop_sharing: Stop sharing
+      share_error: Couldn't update sharing. Please try again.
+      copy_error: Couldn't copy automatically. Select the link or code and copy it manually.
+    public:
+      not_found: Shared achievement not found or no longer available
+      social_description: "%{progress} explored. Tracked with Dawarich."
+      tracked_with_html: "Tracked with %{link}"
+    notifications:
+      region_title: "%{region} explored!"
+      region_content: "%{achievement}: %{count}/%{total} regions visited."
+      country_content: "%{achievement}: %{count}/%{total} countries visited."
+      digest_title: "%{count} new areas explored!"
+      digest_content: Your latest data unlocked new areas — see them all on the Achievements page.
+      completion_title: "%{achievement} completed!"
+      completion_country: You explored this country.
+      completion_target_regions: "You explored %{count} regions."
+      completion_all_regions: "You explored all %{count} regions."
+      completion_target_countries: "You explored %{count} countries."
+      completion_all_countries: "You explored all %{count} countries."

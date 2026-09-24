@@ -151,8 +151,10 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
         Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
       end
 
+      let(:geocoding_configured) { true }
+
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        configure_instance_geocoding if geocoding_configured
         allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
         allow(Tracks::IncrementalGenerator).to receive(:new).and_return(
           instance_double(Tracks::IncrementalGenerator, call: true)
@@ -189,13 +191,16 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
           .not_to have_enqueued_job(ReverseGeocodingJob)
       end
 
-      it 'does not enqueue when reverse geocoding is disabled' do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
-        create(:point, user: user, reverse_geocoded_at: nil)
-        reset_dedup_keys
+      context 'when reverse geocoding is disabled' do
+        let(:geocoding_configured) { false }
 
-        expect { described_class.perform_now(user.id) }
-          .not_to have_enqueued_job(ReverseGeocodingJob)
+        it 'does not enqueue' do
+          create(:point, user: user, reverse_geocoded_at: nil)
+          reset_dedup_keys
+
+          expect { described_class.perform_now(user.id) }
+            .not_to have_enqueued_job(ReverseGeocodingJob)
+        end
       end
     end
   end

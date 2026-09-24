@@ -32,12 +32,19 @@ class Tracks::VectorTileQuery
   # nothing at coarse zoom is correct, matching the points quantization.
   SIMPLIFY_SKIP_ZOOM = 14
 
-  def initialize(scope:, z:, x:, y:) # rubocop:disable Naming/MethodParameterName
+  # rubocop:disable Naming/MethodParameterName
+  def initialize(scope:, z:, x:, y:, clip_points_scope: nil, clip_import_id: nil,
+                 clip_start_at: nil, clip_end_at: nil)
     @scope = scope
+    @clip_points_scope = clip_points_scope
+    @clip_import_id = clip_import_id
+    @clip_start_at = clip_start_at&.to_i
+    @clip_end_at = clip_end_at&.to_i
     @z = parse_integer(z)
     @x = parse_integer(x)
     @y = parse_integer(y)
   end
+  # rubocop:enable Naming/MethodParameterName
 
   def call
     validate_tile_coordinates!
@@ -47,7 +54,7 @@ class Tracks::VectorTileQuery
     Result.new(
       tile: row['tile'],
       feature_count: row['feature_count'].to_i,
-      limit: TRACKS_PER_TILE_LIMIT
+      limit: tile_feature_limit
     )
   end
 
@@ -59,6 +66,10 @@ class Tracks::VectorTileQuery
   end
 
   private
+
+  def tile_feature_limit
+    TRACKS_PER_TILE_LIMIT
+  end
 
   attr_reader :scope, :z, :x, :y
 
@@ -89,6 +100,8 @@ class Tracks::VectorTileQuery
   # does today (a world-spanning planar line) — translating the whole line
   # would move half its vertices wrongly.
   def with_clauses
+    return clipped_with_clauses if @clip_points_scope
+
     <<~SQL
       WITH features AS (
         SELECT #{property_columns},
@@ -103,6 +116,53 @@ class Tracks::VectorTileQuery
     SQL
   end
 
+  def clipped_with_clauses
+    <<~SQL
+      WITH #{candidates_cte}, features AS (
+        SELECT #{property_columns}, #{mvt_geom_expression} AS geom
+        FROM candidates AS tracks
+        WHERE NOT tracks.clipped
+        UNION ALL
+        SELECT #{clipped_property_columns},
+          #{mvt_geom_expression('clipped_path.path')} AS geom
+        FROM candidates AS tracks
+        JOIN LATERAL (#{point_geometry_query.path_sql(track_id_sql: 'tracks.id')}) AS clipped_path
+          ON clipped_path.path IS NOT NULL
+        WHERE tracks.clipped
+          AND ST_Intersects(clipped_path.path, ST_Transform(#{margined_envelope}, 4326))
+        LIMIT #{TRACKS_PER_TILE_LIMIT}
+      )
+    SQL
+  end
+
+  def candidates_cte
+    <<~SQL
+      candidates AS MATERIALIZED (
+        SELECT tracks.*, #{clipped_track_predicate} AS clipped
+        FROM (#{tile_scope.to_sql}) AS tracks
+        WHERE ST_Intersects(tracks.original_path, ST_Transform(#{margined_envelope}, 4326))
+      )
+    SQL
+  end
+
+  def clipped_track_predicate
+    return 'false' unless @clip_points_scope
+    return 'true' if @clip_import_id || !(@clip_start_at && @clip_end_at)
+
+    <<~SQL.squish
+      (EXTRACT(EPOCH FROM tracks.start_at) < #{@clip_start_at}
+        OR EXTRACT(EPOCH FROM tracks.end_at) > #{@clip_end_at})
+      AND EXISTS (SELECT 1 FROM points WHERE points.track_id = tracks.id)
+    SQL
+  end
+
+  def point_geometry_query
+    @point_geometry_query ||= Tracks::PointGeometryQuery.new(
+      points_scope: @clip_points_scope, import_id: @clip_import_id,
+      start_at: @clip_start_at, end_at: @clip_end_at
+    )
+  end
+
   # The exact scalar property set (keys AND types) of
   # Tracks::GeojsonSerializer#base_properties + dominant_mode fields, so JS
   # click/popup/animation flows are source-agnostic. mode_timeline/segments are
@@ -113,9 +173,32 @@ class Tracks::VectorTileQuery
       #{Track.sanitize_sql_array(['? AS color', Tracks::GeojsonSerializer::DEFAULT_COLOR])},
       to_char(tracks.start_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS start_at,
       to_char(tracks.end_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS end_at,
+      EXTRACT(EPOCH FROM tracks.start_at)::bigint AS start_timestamp,
+      EXTRACT(EPOCH FROM tracks.end_at)::bigint AS end_timestamp,
+      tracks.lock_version AS revision,
       tracks.distance AS distance,
       tracks.avg_speed AS avg_speed,
       tracks.duration AS duration,
+      #{mode_case_expression} AS dominant_mode,
+      #{emoji_case_expression} AS dominant_mode_emoji
+    SQL
+  end
+
+  def clipped_property_columns
+    <<~SQL.squish
+      tracks.id AS id,
+      #{Track.sanitize_sql_array(['? AS color', Tracks::GeojsonSerializer::DEFAULT_COLOR])},
+      to_char(to_timestamp(clipped_path.start_timestamp) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS start_at,
+      to_char(to_timestamp(clipped_path.end_timestamp) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS end_at,
+      clipped_path.start_timestamp,
+      clipped_path.end_timestamp,
+      tracks.lock_version AS revision,
+      ROUND(ST_Length(clipped_path.path::geography))::bigint AS distance,
+      CASE WHEN clipped_path.end_timestamp > clipped_path.start_timestamp THEN
+        ST_Length(clipped_path.path::geography) * 3.6 /
+          (clipped_path.end_timestamp - clipped_path.start_timestamp)
+      ELSE 0 END AS avg_speed,
+      clipped_path.end_timestamp - clipped_path.start_timestamp AS duration,
       #{mode_case_expression} AS dominant_mode,
       #{emoji_case_expression} AS dominant_mode_emoji
     SQL
@@ -136,12 +219,12 @@ class Tracks::VectorTileQuery
     "CASE tracks.dominant_mode #{whens.join(' ')} ELSE '❓' END"
   end
 
-  def mvt_geom_expression
-    "ST_AsMVTGeom(#{simplified_geom}, ST_TileEnvelope(#{z}, #{x}, #{y}), #{EXTENT}, #{BUFFER}, true)"
+  def mvt_geom_expression(geometry = 'tracks.original_path')
+    "ST_AsMVTGeom(#{simplified_geom(geometry)}, ST_TileEnvelope(#{z}, #{x}, #{y}), #{EXTENT}, #{BUFFER}, true)"
   end
 
-  def simplified_geom
-    geom = 'ST_Transform(tracks.original_path, 3857)'
+  def simplified_geom(geometry)
+    geom = "ST_Transform(#{geometry}, 3857)"
     return geom if z >= SIMPLIFY_SKIP_ZOOM
 
     "ST_Simplify(#{geom}, #{simplify_tolerance})"
@@ -160,7 +243,7 @@ class Tracks::VectorTileQuery
   def tile_scope
     scope.except(:select, :order, :includes, :preload, :eager_load)
          .select(:id, :start_at, :end_at, :distance, :avg_speed, :duration,
-                 :dominant_mode, :original_path)
+                 :dominant_mode, :original_path, :lock_version)
   end
 
   def with_statement_timeout

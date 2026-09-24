@@ -5,32 +5,60 @@ class DawarichSettings
   LITE_DATA_WINDOW = 12.months
 
   class << self
+    # The geocoding predicates are deliberately NOT memoised. Two reasons: a
+    # stored value can change while the process runs, and `@x ||= false` re-runs
+    # its right-hand side on every call anyway, so the idiom never worked for
+    # the boolean settings in the first place. Resolution is a frozen-hash
+    # lookup, so calling through costs nothing.
     def reverse_geocoding_enabled?
-      @reverse_geocoding_enabled ||= photon_enabled? || geoapify_enabled? || nominatim_enabled? || locationiq_enabled?
+      photon_enabled? || geoapify_enabled? || nominatim_enabled? || locationiq_enabled?
     end
 
     def photon_enabled?
-      @photon_enabled ||= PHOTON_API_HOST.present?
+      photon_host.present?
     end
 
     def photon_https_only_host?
-      @photon_https_only_host ||= PHOTON_HTTPS_ONLY_HOSTS.include?(normalized_photon_host)
+      PHOTON_HTTPS_ONLY_HOSTS.include?(normalized_photon_host)
     end
 
     def normalized_photon_host
-      PHOTON_API_HOST.to_s.strip.downcase.split(':').first
+      photon_host.to_s.strip.downcase.split(':').first
     end
 
     def photon_use_https?
-      @photon_use_https ||= PHOTON_API_USE_HTTPS || photon_https_only_host?
+      return true if photon_https_only_host?
+
+      setting(:photon_api_use_https, PHOTON_API_USE_HTTPS)
     end
 
     def geoapify_enabled?
-      @geoapify_enabled ||= GEOAPIFY_API_KEY.present?
+      setting(:geoapify_api_key, GEOAPIFY_API_KEY).present?
     end
 
     def locationiq_enabled?
-      @locationiq_enabled ||= LOCATIONIQ_API_KEY.present?
+      setting(:locationiq_api_key, LOCATIONIQ_API_KEY).present?
+    end
+
+    def photon_host
+      setting(:photon_api_host, PHOTON_API_HOST)
+    end
+
+    # Clears the memoised boot-only values. Test support only.
+    def reset_memoization!
+      %i[@self_hosted @store_geodata].each { |ivar| remove_instance_variable(ivar) if instance_variable_defined?(ivar) }
+    end
+
+    # This class is defined in an initializer, so it can run before the autoloader
+    # or the database can answer — config/initializers/geocoder.rb calls
+    # photon_use_https? at boot, and the image build precompiles assets with no
+    # database at all. Every failure therefore falls back to the boot constant
+    # rather than taking the process down. `::` is required: without it Ruby
+    # looks for DawarichSettings::InstanceSettings and raises NameError.
+    def setting(key, constant_value)
+      ::InstanceSettings::Resolver.value(key)
+    rescue StandardError
+      constant_value
     end
 
     def self_hosted?
@@ -41,12 +69,16 @@ class DawarichSettings
       ENV['PROMETHEUS_EXPORTER_ENABLED'].to_s == 'true'
     end
 
+    def email_configured?
+      ENV['SMTP_SERVER'].present?
+    end
+
     def nominatim_enabled?
-      @nominatim_enabled ||= NOMINATIM_API_HOST.present?
+      setting(:nominatim_api_host, NOMINATIM_API_HOST).present?
     end
 
     def store_geodata?
-      @store_geodata ||= STORE_GEODATA
+      setting(:store_geodata, STORE_GEODATA)
     end
 
     # Self-hosted instances grant the family feature to everyone. On cloud it is

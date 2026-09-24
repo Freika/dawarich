@@ -29,10 +29,20 @@ Rails.application.routes.draw do
 
   authenticate :user, ->(u) { u.admin? } do
     mount Flipper::UI.app(Flipper) => '/admin/flipper'
+
+    namespace :admin do
+      resource :settings, only: %i[show update] do
+        post :test_geocoding
+      end
+    end
   end
 
-  # We want to return a nice error message if the user is not authorized to access Sidekiq
-  match '/sidekiq' => redirect { |_, request|
+  # We want to return a nice error message if the user is not authorized to access Sidekiq.
+  # A temporary (302) redirect is intentional: the auth/role/env state that gates
+  # /sidekiq can change between requests, so the outcome must be re-evaluated on
+  # every visit. A 301 would be permanently cached by browsers with no reference
+  # to the current user, locking out visitors who later become authorized.
+  match '/sidekiq' => redirect(status: 302) { |_, request|
                         request.flash[:error] = 'You are not authorized to perform this action.'
                         '/'
                       }, via: :get
@@ -41,15 +51,20 @@ Rails.application.routes.draw do
     resources :general, only: [:index]
     patch 'general', to: 'general#update'
     post 'general/verify_supporter', to: 'general#verify_supporter', as: :verify_supporter
+    post 'general/test_email', to: 'general#test_email', as: :test_email
 
     resources :integrations, only: [:index]
     patch 'integrations', to: 'integrations#update'
+    resources :trek_sources, only: %i[create destroy] do
+      member do
+        get :select_trips
+        post :import_trips
+        post :sync
+      end
+    end
 
     resources :background_jobs, only: %i[index create]
     patch 'background_jobs', to: 'background_jobs#update'
-    resource :geocoding, only: %i[show update], controller: 'geocoding' do
-      post :test
-    end
     resource :visits, only: %i[show update]
     resources :users, only: %i[index show create destroy edit update] do
       member do
@@ -97,6 +112,7 @@ Rails.application.routes.draw do
   get 'trial/welcome', to: 'trial/welcome#show', as: :trial_welcome
 
   resources :imports do
+    get :download, on: :member
     resource :extraction, only: %i[create destroy], controller: 'imports/extractions'
   end
   resources :tracks, only: [] do
@@ -202,6 +218,14 @@ Rails.application.routes.draw do
       put :update_all
     end
   end
+  post 'achievements/unlocks/next', to: 'achievements/unlocks#next', as: :next_achievement_unlock
+  post 'achievements/unlocks/:id/seen', to: 'achievements/unlocks#seen', as: :seen_achievement_unlock
+  post 'achievements/unlocks/dismiss', to: 'achievements/unlocks#dismiss', as: :dismiss_achievement_unlocks
+  resources :achievements, only: %i[index show], param: :key do
+    member do
+      patch :toggle_sharing
+    end
+  end
   resources :insights, only: :index do
     collection do
       get :details
@@ -214,6 +238,8 @@ Rails.application.routes.draw do
       as: :update_year_month_stats,
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
   get 'shared/month/:uuid', to: 'shared/stats#show', as: :shared_stat
+  get 'shared/achievements/:uuid/og.png', to: 'shared/achievements#image', as: :shared_achievement_image
+  get 'shared/achievements/:uuid', to: 'shared/achievements#show', as: :shared_achievement
 
   # Sharing management endpoint (requires auth)
   patch 'stats/:year/:month/sharing',
@@ -283,6 +309,7 @@ Rails.application.routes.draw do
 
   namespace :api do
     namespace :v1 do
+      match 'mcp', to: 'mcp#handle', via: %i[get post delete]
       get   'photos', to: 'photos#index'
       get   'health', to: 'health#index'
       patch 'settings', to: 'settings#update'
@@ -320,6 +347,7 @@ Rails.application.routes.draw do
         end
       end
       resources :points, only: %i[index create update destroy] do
+        resource :position, only: :update, controller: 'points/positions'
         collection do
           delete :bulk_destroy
           post :reapply_anomaly_filter
@@ -366,6 +394,7 @@ Rails.application.routes.draw do
 
       namespace :countries do
         resources :borders, only: :index
+        resources :visited, only: :index
         resources :visited_cities, only: :index
       end
 

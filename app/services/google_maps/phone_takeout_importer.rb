@@ -37,7 +37,6 @@ class GoogleMaps::PhoneTakeoutImporter
     parser = Oj::Parser.new(:validate)
     File.open(path, 'rb') { |io| parser.load(io) }
   rescue EncodingError, JSON::ParserError
-    @legacy_parser_required = true
     File.open(path, 'rb') { |io| Oj.saj_parse(nil, io) }
   end
 
@@ -48,8 +47,7 @@ class GoogleMaps::PhoneTakeoutImporter
     @seen_first_semantic_segment = false
     @user_location_profile = nil
     @assigned_timestamps = {}
-    @previous_tied_timestamp = nil
-    @tie_offset = 0
+    @used_timestamps = Set.new
   end
 
   def stream_entries(path)
@@ -59,11 +57,9 @@ class GoogleMaps::PhoneTakeoutImporter
     )
 
     File.open(path, 'rb') do |io|
-      if @legacy_parser_required
-        Oj.saj_parse(handler, io)
-      else
-        Oj::Parser.new(:saj, handler:).load(io)
-      end
+      # Oj 3.17's newer SAJ parser can lose the decimal point in long 0.xxx
+      # literals. The original streaming API preserves those numeric values.
+      Oj.saj_parse(handler, io)
     end
   end
 
@@ -278,14 +274,21 @@ class GoogleMaps::PhoneTakeoutImporter
     end
   end
 
+  # Every point in the file gets the first free second at or after its source
+  # timestamp, capped at MAX_TIE_OFFSET so synthetic offsets never leave the
+  # source minute. Ties within a group, a later group landing inside an
+  # earlier group's assigned range, and out-of-order segments all reduce to
+  # the same rule: never hand out a timestamp this import already used.
   def tie_break_timestamp(source_timestamp, lat, lon)
     key = [source_timestamp, lat, lon]
     return @assigned_timestamps[key] if @assigned_timestamps.key?(key)
 
-    @tie_offset = source_timestamp == @previous_tied_timestamp ? [@tie_offset + 1, MAX_TIE_OFFSET].min : 0
-    assigned = source_timestamp + @tie_offset
+    offset = 0
+    offset += 1 while offset < MAX_TIE_OFFSET && @used_timestamps.include?(source_timestamp + offset)
+
+    assigned = source_timestamp + offset
     @assigned_timestamps[key] = assigned
-    @previous_tied_timestamp = source_timestamp
+    @used_timestamps << assigned
     assigned
   end
 

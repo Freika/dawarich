@@ -10,9 +10,10 @@ class Photos::Mappable
   end
 
   def call
-    @photos.select { |p| p[:latitude].present? && p[:longitude].present? }
-           .reject { |p| within_privacy_zone?(p[:latitude], p[:longitude]) }
-           .first(@max)
+    photos = @photos.select { |p| p[:latitude].present? && p[:longitude].present? }
+                    .reject { |p| within_privacy_zone?(p[:latitude], p[:longitude]) }
+
+    @max ? photos.first(@max) : photos
   end
 
   private

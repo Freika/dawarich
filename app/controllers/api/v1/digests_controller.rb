@@ -46,7 +46,7 @@ class Api::V1::DigestsController < ApiController
   private
 
   def available_years_for_generation
-    tracked_years = current_api_user.stats.select(:year).distinct.pluck(:year)
+    tracked_years = current_api_user.scoped_stats.select(:year).distinct.pluck(:year)
     existing_digests = current_api_user.digests.yearly.pluck(:year)
 
     (tracked_years - existing_digests - [Time.current.year]).sort.reverse
@@ -55,7 +55,7 @@ class Api::V1::DigestsController < ApiController
   def valid_year?(year)
     return false if year < 1970 || year >= Time.current.year
 
-    current_api_user.stats.exists?(year: year)
+    current_api_user.scoped_stats.exists?(year: year)
   end
 
   def distance_unit

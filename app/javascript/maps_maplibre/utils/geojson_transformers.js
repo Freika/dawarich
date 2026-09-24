@@ -138,3 +138,14 @@ export function escapeHtml(value) {
   div.textContent = str
   return div.innerHTML
 }
+
+/**
+ * Escape a value for use inside a double- or single-quoted HTML attribute.
+ * escapeHtml alone leaves quotes intact, which lets a value close the
+ * attribute and start a new one.
+ * @param {*} value - Value to escape (coerced to string)
+ * @returns {string} Attribute-safe string
+ */
+export function escapeAttribute(value) {
+  return escapeHtml(value).replace(/"/g, "&quot;").replace(/'/g, "&#39;")
+}

@@ -33,9 +33,9 @@ class Track < ApplicationRecord
   after_update :recalculate_path_and_distance!, if: lambda {
     points.exists? && (saved_change_to_start_at? || saved_change_to_end_at?)
   }
-  after_create :broadcast_track_created
-  after_update :broadcast_track_updated
-  after_destroy :broadcast_track_destroyed
+  after_create_commit :broadcast_track_created
+  after_update_commit :broadcast_track_updated
+  after_destroy_commit :broadcast_track_destroyed
 
   # Track tiles carry this row's geometry and properties, so any write must
   # invalidate the tile epoch. Previous start/end years are collected in
@@ -291,10 +291,18 @@ class Track < ApplicationRecord
     Rails.logger.info "[Track#broadcast_geojson_updated] Broadcast complete for track #{id}"
   end
 
+  # Used by composite mutations which publish a richer, versioned event after
+  # commit. The flag is instance-local and consumed by the next update commit.
+  def suppress_next_update_broadcast!
+    @suppress_next_update_broadcast = true
+  end
+
   private
 
   def bump_tile_epoch
     Tracks::TileEpoch.bump_range(user_id, start_at.to_i, end_at.to_i)
+  rescue StandardError => e
+    report_post_commit_failure('tile_epoch', e)
   end
 
   def collect_tile_epoch_stamps
@@ -310,6 +318,8 @@ class Track < ApplicationRecord
     # Range, not per-stamp years: a multi-year track's INTERIOR years must
     # invalidate too, or a moved track 304s inside them.
     Tracks::TileEpoch.bump_range(user_id, stamps.min, stamps.max)
+  rescue StandardError => e
+    report_post_commit_failure('tile_epoch', e)
   end
 
   def broadcast_track_created
@@ -317,11 +327,18 @@ class Track < ApplicationRecord
   end
 
   def broadcast_track_updated
+    if @suppress_next_update_broadcast
+      @suppress_next_update_broadcast = false
+      return
+    end
+
     broadcast_track_update('updated')
   end
 
   def broadcast_track_destroyed
     TracksChannel.broadcast_to(user, { action: 'destroyed', track_id: id })
+  rescue StandardError => e
+    report_post_commit_failure('broadcast_destroyed', e)
   end
 
   def broadcast_track_update(action)
@@ -331,5 +348,24 @@ class Track < ApplicationRecord
         track: TrackSerializer.new(self).call
       }
     )
+  rescue StandardError => e
+    report_post_commit_failure("broadcast_#{action}", e)
+  end
+
+  def report_post_commit_failure(event, error)
+    Rails.logger.error(
+      "event=track.post_commit_failed operation=#{event} error_class=#{error.class} track_id=#{id}"
+    )
+    ActiveSupport::Notifications.instrument('track.post_commit_failure', operation: event)
+    record_post_commit_failure_metric(event)
+    ExceptionReporter.call(error, "Failed Track post-commit #{event}")
+  rescue StandardError
+    nil
+  end
+
+  def record_post_commit_failure_metric(event)
+    Yabeda.dawarich_map.post_commit_failures_total.increment({ operation: "track_#{event}" })
+  rescue StandardError => e
+    Rails.logger.warn("event=track.metrics_failed error_class=#{e.class}")
   end
 end

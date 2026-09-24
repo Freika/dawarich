@@ -1,3 +1,6 @@
+import { translate } from "i18n"
+import { Toast } from "maps_maplibre/components/toast"
+
 /**
  * API client for Maps V2
  * Wraps all API endpoints with consistent error handling
@@ -72,6 +75,27 @@ export class ApiClient {
 
     if (!response.ok) {
       throw new Error(`Failed to fetch fog hexagons: ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  /** Fetch a bounded extent for tile-backed Point and Track history. */
+  async fetchHistoryBounds({ start_at, end_at }) {
+    const params = new URLSearchParams({
+      start_date: start_at,
+      end_date: end_at,
+      robust: "true",
+    })
+    if (this.importId) params.set("import_id", this.importId)
+
+    const response = await fetch(
+      `${this.baseURL}/maps/hexagons/bounds?${params}`,
+      { headers: this.getHeaders() },
+    )
+    if (response.status === 404) return null
+    if (!response.ok) {
+      throw new Error(`Failed to fetch history bounds: ${response.statusText}`)
     }
 
     return response.json()
@@ -390,7 +414,17 @@ export class ApiClient {
     })
 
     if (!response.ok) {
+      Toast.error(translate("messages.failed_to_load_photos"))
       throw new Error(`Failed to fetch photos: ${response.statusText}`)
+    }
+
+    const failedSources = response.headers.get("X-Photo-Source-Errors")
+    if (failedSources) {
+      Toast.warning(
+        translate("messages.some_photo_sources_unavailable", {
+          sources: failedSources.split(",").join(", "),
+        }),
+      )
     }
 
     return response.json()
@@ -561,11 +595,19 @@ export class ApiClient {
    * @param {number|string} trackId - The track ID
    * @returns {Promise<Object>} GeoJSON Feature with segments
    */
-  async fetchTrackWithSegments(trackId) {
-    const url = `${this.baseURL}/tracks/${trackId}`
+  async fetchTrackWithSegments(trackId, { signal, startAt, endAt } = {}) {
+    const params = new URLSearchParams()
+    if (this.importId) params.set("import_id", this.importId)
+    if (startAt && endAt) {
+      params.set("start_at", startAt)
+      params.set("end_at", endAt)
+    }
+    const suffix = params.size ? `?${params}` : ""
+    const url = `${this.baseURL}/tracks/${trackId}${suffix}`
 
     const response = await fetch(url, {
       headers: this.getHeaders(),
+      signal,
     })
 
     if (!response.ok) {
@@ -840,6 +882,7 @@ export class ApiClient {
       page: page.toString(),
       per_page: per_page.toString(),
     })
+    if (this.importId) params.set("import_id", this.importId)
 
     const response = await fetch(
       `${this.baseURL}/tracks/${trackId}/points?${params}`,
@@ -897,6 +940,60 @@ export class ApiClient {
 
     pageResults.sort((a, b) => a.page - b.page)
     return pageResults.flatMap((r) => r.points)
+  }
+
+  async movePointPosition(
+    pointId,
+    { latitude, longitude, pointRevision, trackRevision, historyScope },
+  ) {
+    const response = await fetch(`${this.baseURL}/points/${pointId}/position`, {
+      method: "PATCH",
+      headers: this.getHeaders(),
+      body: JSON.stringify({
+        point: {
+          latitude: String(latitude),
+          longitude: String(longitude),
+          revision: pointRevision,
+        },
+        track_revision: trackRevision,
+        history_scope: {
+          start_at: historyScope.startAt,
+          end_at: historyScope.endAt,
+          import_id: this.importId,
+        },
+      }),
+    })
+    const payload = await response.json()
+
+    if (!response.ok) {
+      const error = new Error(
+        payload?.error?.message || `Point move failed (${response.status})`,
+      )
+      error.status = response.status
+      error.payload = payload
+      throw error
+    }
+
+    return payload
+  }
+
+  async fetchVisitedCountries({ start_at, end_at }) {
+    const params = new URLSearchParams({ start_at, end_at })
+    if (this.importId) params.set("import_id", this.importId)
+
+    const response = await fetch(
+      `${this.baseURL}/countries/visited?${params}`,
+      {
+        headers: this.getHeaders(),
+      },
+    )
+    if (!response.ok) {
+      throw new Error(
+        `Failed to fetch visited countries: ${response.statusText}`,
+      )
+    }
+
+    return response.json()
   }
 
   /**

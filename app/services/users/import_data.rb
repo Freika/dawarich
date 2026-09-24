@@ -115,10 +115,12 @@ class Users::ImportData
 
         FileUtils.mkdir_p(File.dirname(extraction_path))
 
-        # Manual extraction to bypass size validation for large files
+        # The directory size is untrusted. Bound decompressed output too;
+        # checking one extra byte detects overflow without writing past the cap.
         entry.get_input_stream do |input|
           File.open(extraction_path, 'wb') do |output|
-            IO.copy_stream(input, output)
+            IO.copy_stream(input, output, MAX_ENTRY_SIZE)
+            raise "Archive entry #{entry.name} exceeds maximum allowed size" if input.read(1)
           end
         end
       end

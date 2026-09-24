@@ -2,10 +2,11 @@
 
 module IntegrationsHelper
   SERVICE_ICONS = {
-    'geocoding' => { name: 'map-pin', library: 'lucide' },
     'immich' => { name: 'immich', library: 'brands' },
     'photoprism' => { name: 'photoprism', library: 'brands' },
-    'airtrail' => { name: 'airtrail', library: 'brands' }
+    'airtrail' => { name: 'airtrail', library: 'brands' },
+    'teslamate' => { name: 'car', library: 'lucide' },
+    'trek' => { name: 'map-pin-check', library: 'lucide' }
   }.freeze
 
   def integration_icon(service, css: 'size-5')

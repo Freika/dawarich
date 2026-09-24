@@ -46,7 +46,6 @@ class Stats::DailyDistanceQuery
           LEFT JOIN imports ON imports.id = points.import_id
         ) AS points
         WINDOW w AS (
-          PARTITION BY (to_timestamp(timestamp) AT TIME ZONE $1)::date
           ORDER BY timestamp, id
         )
       ),

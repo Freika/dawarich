@@ -5,14 +5,14 @@ class Api::V1::SettingsController < ApiController
 
   def index
     render json: {
-      settings: current_api_user.safe_settings.config,
+      settings: current_api_user.safe_settings.api_config,
       status: 'success'
     }, status: :ok
   end
 
   # NOTE: For Lite plan users, Pro-only settings (gated map layers, globe_projection)
   # are silently stripped before persistence by Users::SettingsUpdater.
-  # The response reflects the filtered state via safe_settings.config.
+  # The response reflects the filtered state via safe_settings.api_config.
   def update
     settings = settings_params
     unless valid_tiles_url?(settings)
@@ -27,7 +27,7 @@ class Api::V1::SettingsController < ApiController
     if result.success?
       render json: {
         message: I18n.t('controllers.api.v1.settings.settings_updated'),
-        settings: current_api_user.safe_settings.config,
+        settings: current_api_user.safe_settings.api_config,
         status: 'success',
         recalculation_triggered: result.recalculation_triggered?
       }, status: :ok
@@ -78,10 +78,11 @@ class Api::V1::SettingsController < ApiController
       :speed_colored_routes, :speed_color_scale, :fog_of_war_threshold, :fog_of_war_mode,
       :maps_v2_style, :maps_maplibre_style, :maps_maplibre_tiles_url,
       :maps_maplibre_tiles_fallback, :globe_projection,
-      :min_minutes_spent_in_city, :max_gap_minutes_in_city,
+      :min_minutes_spent_in_city,
       :gps_filtering_enabled,
       :point_dragging_enabled, :points_tiled_rendering,
       enabled_map_layers: [],
+      places_tag_filters: [],
       enabled_transportation_modes: [],
       maps_maplibre_custom_theme: [
         :base,

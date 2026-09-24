@@ -8,21 +8,6 @@ RSpec.describe Archivable, type: :model do
 
   describe 'associations and scopes' do
     it { expect(point).to belong_to(:raw_data_archive).optional }
-
-    describe 'scopes' do
-      let!(:archived_point) { create(:point, user: user, raw_data_archived: true) }
-      let!(:not_archived_point) { create(:point, user: user, raw_data_archived: false) }
-
-      it '.archived returns archived points' do
-        expect(Point.archived).to include(archived_point)
-        expect(Point.archived).not_to include(not_archived_point)
-      end
-
-      it '.not_archived returns non-archived points' do
-        expect(Point.not_archived).to include(not_archived_point)
-        expect(Point.not_archived).not_to include(archived_point)
-      end
-    end
   end
 
   describe '#raw_data_with_archive' do

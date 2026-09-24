@@ -1,13 +1,5 @@
-import { RoutesLayer } from "maps_maplibre/layers/routes_layer"
 import { pointsToGeoJSON } from "maps_maplibre/utils/geojson_transformers"
 import { createCircle } from "maps_maplibre/utils/geometry"
-import { performanceMonitor } from "maps_maplibre/utils/performance_monitor"
-import {
-  bulkPointsRequired,
-  SettingsManager,
-  tiledPointsActive,
-} from "maps_maplibre/utils/settings_manager"
-import { applySpeedColors } from "maps_maplibre/utils/speed_colors"
 
 /**
  * Tracks loading counts across multiple data sources
@@ -87,107 +79,47 @@ export class DataLoader {
       end_at: endDate,
     })
     const points = result.points
-    const allPointsGeoJSON = pointsToGeoJSON(points)
-    const pointsGeoJSON = this.pointsGeoJSON(points, allPointsGeoJSON)
-    let routesGeoJSON = RoutesLayer.pointsToRoutes(points, {
-      distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
-      timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
-    })
-
-    // Keep original routes before speed coloring for low-zoom rendering
-    const routesBaseGeoJSON = routesGeoJSON
-
-    if (this.settings.speedColoredRoutes) {
-      const speedColorScale =
-        this.settings.speedColorScale ||
-        "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
-      routesGeoJSON = applySpeedColors(routesGeoJSON, points, speedColorScale)
-    }
+    const pointsGeoJSON = pointsToGeoJSON(points)
 
     return {
       points,
       pointsGeoJSON,
-      allPointsGeoJSON,
-      routesGeoJSON,
-      routesBaseGeoJSON,
+      allPointsGeoJSON: pointsGeoJSON,
     }
   }
 
   /**
-   * Fetch all map data (points, visits, photos, areas, tracks)
+   * Fetch all non-tile map data (visits, photos, areas, places, flights)
    * Core data (points, visits, areas, places) loads incrementally.
-   * Heavy data (tracks, photos) loads in background via callbacks.
+   * Photos load in the background via a callback.
    *
    * @param {string} startDate
    * @param {string} endDate
    * @param {Object} callbacks
    * @param {Function} callbacks.onUpdate - Called with { counts, isComplete }
    * @param {Function} callbacks.onLayerData - Called with (source, geoJSON) when a source has renderable data
-   * @param {Function} callbacks.onTracksLoaded - Callback when tracks finish loading
    * @param {Function} callbacks.onPhotosLoaded - Callback when photos finish loading
    */
   async fetchMapData(
     startDate,
     endDate,
-    {
-      onUpdate,
-      onLayerData,
-      onTracksLoaded,
-      onPhotosLoaded,
-      viewportBounds,
-    } = {},
+    { onUpdate, onLayerData, onPhotosLoaded, viewportBounds } = {},
   ) {
     const data = {}
 
     const counter = onUpdate ? new LoadingCounter(onUpdate) : null
-
-    // Determine whether any layer that depends on points data is enabled
-    // Live cache, not this.settings: that snapshot misses layer toggles
-    const current = { ...this.settings, ...SettingsManager.getSettings() }
-    const needsPoints =
-      (!tiledPointsActive(current) && current.pointsVisible !== false) ||
-      bulkPointsRequired(current)
-
     // Register every source that will be fetched so the badge stays visible
-    // until each one finishes. Tracks and photos load in parallel after the
-    // core data resolves, but the badge must still wait for them — otherwise
-    // the badge disappears while track lines are still painting on the map.
-    // Tiled mode serves tracks (and Routes) from the tracks MVT source — the
-    // bulk GeoJSON fetch would duplicate every byte the tiles already carry.
-    const tracksViaBulk =
-      this.settings.tracksEnabled && !tiledPointsActive(current)
-
+    // until each one finishes. Photos load after the core data resolves, but
+    // the badge must still wait for them.
     if (counter) {
-      if (needsPoints) counter.expect("points")
       if (this.settings.visitsEnabled) counter.expect("visits")
       if (this.settings.placesEnabled) counter.expect("places")
       if (this.settings.areasEnabled) counter.expect("areas")
-      if (tracksViaBulk) counter.expect("tracks")
       if (this.settings.photosEnabled) counter.expect("photos")
       if (this.settings.flightsEnabled) counter.expect("flights")
     }
 
     // Start ALL core fetches in parallel for better progress granularity.
-    performanceMonitor.mark("fetch-points")
-    const pointsPromise = needsPoints
-      ? this.api.fetchAllPoints({
-          start_at: startDate,
-          end_at: endDate,
-          onProgress: counter
-            ? ({ loaded }) => counter.update("points", loaded)
-            : null,
-          onBatch: onLayerData
-            ? (accumulatedPoints) => {
-                // Stream raw points; simplification runs once on completion
-                const rawGeoJSON = pointsToGeoJSON(accumulatedPoints)
-                onLayerData("points", rawGeoJSON)
-                onLayerData("heatmap", rawGeoJSON)
-                if (counter) counter.update("points", accumulatedPoints.length)
-              }
-            : null,
-        })
-      : Promise.resolve({ points: [], totalPointsInRange: 0 })
-
     const visitsPromise = this.settings.visitsEnabled
       ? this.api
           .fetchVisits({
@@ -232,25 +164,33 @@ export class DataLoader {
           })
       : Promise.resolve([])
 
-    const placesPromise = this.settings.placesEnabled
-      ? this.api
-          .fetchPlaces()
-          .then((result) => {
-            if (counter) {
-              counter.update("places", result.length)
-              counter.complete("places")
-            }
-            if (onLayerData) {
-              onLayerData("places", this.placesToGeoJSON(result))
-            }
-            return result
-          })
-          .catch((error) => {
-            console.warn("Failed to fetch places:", error)
-            if (counter) counter.complete("places")
-            return []
-          })
+    const savedPlacesTagFilters = this.settings.placesTagFilters
+    const placesRequest = this.settings.placesEnabled
+      ? Array.isArray(savedPlacesTagFilters) &&
+        savedPlacesTagFilters.length === 0
+        ? Promise.resolve([])
+        : this.api.fetchPlaces(
+            Array.isArray(savedPlacesTagFilters)
+              ? { tag_ids: savedPlacesTagFilters }
+              : {},
+          )
       : Promise.resolve([])
+    const placesPromise = placesRequest
+      .then((result) => {
+        if (counter) {
+          counter.update("places", result.length)
+          counter.complete("places")
+        }
+        if (onLayerData) {
+          onLayerData("places", this.placesToGeoJSON(result))
+        }
+        return result
+      })
+      .catch((error) => {
+        console.warn("Failed to fetch places:", error)
+        if (counter) counter.complete("places")
+        return []
+      })
 
     const flightsPromise = this.settings.flightsEnabled
       ? this.api
@@ -277,70 +217,19 @@ export class DataLoader {
       : Promise.resolve({ type: "FeatureCollection", features: [] })
 
     // Wait for all core data
-    const [pointsResult, visits, areas, places, flights] = await Promise.all([
-      pointsPromise,
+    const [visits, areas, places, flights] = await Promise.all([
       visitsPromise,
       areasPromise,
       placesPromise,
       flightsPromise,
     ])
-    const points = pointsResult.points
-    const totalPointsInRange = pointsResult.totalPointsInRange || 0
-    performanceMonitor.measure("fetch-points")
 
     const emptyGeoJSON = { type: "FeatureCollection", features: [] }
-
-    if (needsPoints) {
-      // Mark points complete
-      if (counter) {
-        counter.update("points", points.length)
-        counter.complete("points")
-      }
-
-      // Transform points to GeoJSON
-      performanceMonitor.mark("transform-geojson")
-      data.points = points
-      const allPointsGeoJSON = pointsToGeoJSON(data.points)
-      data.pointsGeoJSON = this.pointsGeoJSON(data.points, allPointsGeoJSON)
-      data.routesGeoJSON = RoutesLayer.pointsToRoutes(data.points, {
-        distanceThresholdMeters: this.settings.metersBetweenRoutes || 500,
-        timeThresholdMinutes: this.settings.minutesBetweenRoutes || 60,
-      })
-
-      // Keep original routes before speed coloring for low-zoom rendering
-      data.routesBaseGeoJSON = data.routesGeoJSON
-
-      if (this.settings.speedColoredRoutes) {
-        const speedColorScale =
-          this.settings.speedColorScale ||
-          "0:#00ff00|15:#00ffff|30:#ff00ff|50:#ffff00|100:#ff3300"
-        data.routesGeoJSON = applySpeedColors(
-          data.routesGeoJSON,
-          data.points,
-          speedColorScale,
-        )
-      }
-      performanceMonitor.measure("transform-geojson")
-
-      // Update routes layer now that all points are available
-      if (onLayerData) {
-        onLayerData("routes", data.routesGeoJSON)
-        onLayerData("routes-base", data.routesBaseGeoJSON)
-        // Final points/heatmap update with complete dataset
-        onLayerData("points", data.pointsGeoJSON)
-        // Heatmap, fog and scratch need all points
-        onLayerData("heatmap", allPointsGeoJSON)
-        onLayerData("fog", allPointsGeoJSON)
-        onLayerData("scratch", allPointsGeoJSON)
-      }
-    } else {
-      data.points = []
-      data.pointsGeoJSON = emptyGeoJSON
-      data.routesGeoJSON = emptyGeoJSON
-      data.routesBaseGeoJSON = emptyGeoJSON
-    }
-
-    data.totalPointsInRange = totalPointsInRange
+    // Point and Track history is always tile-backed on the main map. Explicit
+    // bounded consumers call fetchPointsData() separately when they need rows.
+    data.points = []
+    data.pointsGeoJSON = emptyGeoJSON
+    data.totalPointsInRange = 0
     data.visits = visits
     data.visitsGeoJSON = this.visitsToGeoJSON(data.visits)
     data.areas = areas
@@ -352,47 +241,11 @@ export class DataLoader {
     // Initialize empty collections for background-loaded data
     data.photos = []
     data.photosGeoJSON = { type: "FeatureCollection", features: [] }
-    data.tracksGeoJSON = { type: "FeatureCollection", features: [] }
 
-    // Start background loading of heavy data (tracks, photos). We collect
-    // their promises so the caller can await "everything is truly done"
-    // (`data.backgroundReady`) before deciding whether to dismiss the
-    // loading badge — otherwise the badge can disappear while tracks are
-    // still rendering on the map.
+    // Start background photo loading. Collect its promise so the caller can
+    // await "everything is truly done" (`data.backgroundReady`) before
+    // deciding whether to dismiss the loading badge.
     const backgroundPromises = []
-
-    // Background: Fetch tracks
-    if (tracksViaBulk && onTracksLoaded) {
-      console.log("[Tracks] Starting background fetch...")
-      const tracksTask = this.api
-        .fetchTracks({
-          start_at: startDate,
-          end_at: endDate,
-          // Pushes the total tracks count into the badge as soon as page 1's
-          // X-Total-Count header arrives, so users see "342 tracks" while the
-          // rest of the pages and the on-map render catch up.
-          onTotalKnown: counter
-            ? (total) => counter.update("tracks", total)
-            : null,
-        })
-        .then((tracksGeoJSON) => {
-          const count = tracksGeoJSON.features.length
-          console.log(`[Tracks] Background fetch complete: ${count} tracks`)
-          data.tracksGeoJSON = tracksGeoJSON
-          onTracksLoaded(tracksGeoJSON)
-          if (counter) {
-            counter.update("tracks", count)
-            counter.complete("tracks")
-          }
-        })
-        .catch((error) => {
-          console.warn("[Tracks] Background fetch failed:", error.message)
-          // Always close the counter — otherwise a transient failure leaves
-          // the badge spinning forever.
-          if (counter) counter.complete("tracks")
-        })
-      backgroundPromises.push(tracksTask)
-    }
 
     // Background: Fetch photos
     if (this.settings.photosEnabled && onPhotosLoaded) {
@@ -551,35 +404,6 @@ export class DataLoader {
           },
         }
       }),
-    }
-  }
-
-  pointsGeoJSON(points, rawGeoJSON = null) {
-    if (this.settings.pointsRenderingMode !== "simplified") {
-      return rawGeoJSON || pointsToGeoJSON(points)
-    }
-
-    return pointsToGeoJSON(points, { simplified: true })
-  }
-
-  /**
-   * Convert tracks to GeoJSON
-   */
-  tracksToGeoJSON(tracks) {
-    return {
-      type: "FeatureCollection",
-      features: tracks.map((track) => ({
-        type: "Feature",
-        geometry: {
-          type: "LineString",
-          coordinates: track.coordinates,
-        },
-        properties: {
-          id: track.id,
-          name: track.name,
-          color: track.color || "#6366F1",
-        },
-      })),
     }
   }
 }

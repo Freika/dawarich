@@ -18,7 +18,7 @@ async function pickSupportedCodec() {
 `
 const withoutImports = source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(prelude + withoutImports).toString("base64")}`
-const { createMp4Encoder } = await import(moduleUrl)
+const { createMp4Encoder, probeVideoEncoderConfig } = await import(moduleUrl)
 
 // A VideoEncoder that never drains on its own, so any frame past the
 // backpressure threshold parks until the test drains, errors, or aborts it.
@@ -111,3 +111,50 @@ test(
     await pending
   },
 )
+
+test("runtime probe rejects a codec whose first encode throws", async () => {
+  let encoderClosed = false
+  let frameClosed = false
+
+  globalThis.OffscreenCanvas = class {
+    initialized = false
+
+    getContext() {
+      this.initialized = true
+    }
+  }
+  globalThis.VideoFrame = class {
+    constructor(source) {
+      if (!source.initialized) throw new DOMException("Invalid source state")
+    }
+
+    close() {
+      frameClosed = true
+    }
+  }
+  globalThis.VideoEncoder = class {
+    state = "configured"
+
+    configure() {}
+
+    encode() {
+      throw new DOMException(
+        "The given encoding is not supported.",
+        "NotSupportedError",
+      )
+    }
+
+    async flush() {}
+
+    close() {
+      this.state = "closed"
+      encoderClosed = true
+    }
+  }
+
+  const supported = await probeVideoEncoderConfig({ width: 8, height: 8 })
+
+  assert.equal(supported, false)
+  assert.equal(frameClosed, true)
+  assert.equal(encoderClosed, true)
+})

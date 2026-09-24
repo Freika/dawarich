@@ -34,10 +34,7 @@ module Families
     end
 
     def refresh_access_until
-      return unless owner&.family?
-      return if owner.active_until.blank?
-
-      family.update!(access_until: owner.active_until)
+      family.refresh_access_until!(owner)
     end
 
     def granted?

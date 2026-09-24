@@ -63,16 +63,6 @@ end_date: end_date.iso8601),
       params.fetch(:shared_link, {}).permit(:name, :magic_phrase, :start_date, :end_date, :expires_at)
     end
 
-    def default_name_from_params
-      return nil unless params[:start_date].present? && params[:end_date].present?
-
-      I18n.t(
-        'controllers.share_links.timelines.default_name',
-        start_date: params[:start_date],
-        end_date: params[:end_date]
-      )
-    end
-
     def default_name_for(attrs)
       I18n.t(
         'controllers.share_links.timelines.default_name',

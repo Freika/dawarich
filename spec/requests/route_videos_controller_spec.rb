@@ -20,6 +20,8 @@ RSpec.describe 'RouteVideos', type: :request do
       'theme' => 'noir', 'format' => 'portrait', 'duration_sec' => '15',
       'units' => 'km', 'track_width' => '120', 'hud_scale' => '140',
       'camera_mode' => 'follow', 'track_color' => '#2563EB', 'watermark' => 'true',
+      'visualization_mode' => 'fog', 'fog_opacity' => '65', 'fog_color' => '#123456',
+      'show_marker' => 'false', 'show_route' => 'true',
       'source' => 'map', 'start_at' => '2026-06-14T00:00', 'end_at' => '2026-06-16T23:59'
     }
   end

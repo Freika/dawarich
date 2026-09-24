@@ -10,11 +10,37 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
   enable_extension "postgis"
+
+  create_table "achievement_progresses", force: :cascade do |t|
+    t.string "achievement_key", null: false
+    t.datetime "created_at", null: false
+    t.boolean "sharing_enabled", default: false, null: false
+    t.string "sharing_uuid"
+    t.jsonb "state", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["sharing_uuid"], name: "index_achievement_progresses_on_sharing_uuid", unique: true
+    t.index ["user_id", "achievement_key"], name: "index_achievement_progresses_on_user_id_and_achievement_key", unique: true
+  end
+
+  create_table "achievement_unlock_events", force: :cascade do |t|
+    t.string "claim_token"
+    t.datetime "claimed_at"
+    t.datetime "created_at", null: false
+    t.string "key", null: false
+    t.string "kind", null: false
+    t.datetime "seen_at"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "id"], name: "index_achievement_unlock_events_pending", where: "(seen_at IS NULL)"
+    t.index ["user_id", "kind", "key"], name: "index_achievement_unlock_events_on_user_kind_key", unique: true
+    t.index ["user_id"], name: "index_achievement_unlock_events_on_user_id"
+  end
 
   create_table "action_text_rich_texts", force: :cascade do |t|
     t.text "body"
@@ -248,6 +274,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
     t.index ["user_id"], name: "index_imports_on_user_id"
   end
 
+  create_table "instance_settings", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "encrypted_value"
+    t.string "key", null: false
+    t.datetime "updated_at", null: false
+    t.jsonb "value"
+    t.index ["key"], name: "index_instance_settings_on_key", unique: true
+  end
+
   create_table "notes", force: :cascade do |t|
     t.bigint "attachable_id"
     t.string "attachable_type"
@@ -255,6 +290,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
     t.datetime "created_at", null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
     t.datetime "noted_at"
+    t.string "source_digest"
     t.string "title"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
@@ -308,6 +344,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
     t.boolean "demo", default: false, null: false
     t.jsonb "geodata", default: {}, null: false
     t.bigint "import_id"
+    t.integer "lock_version", default: 0, null: false
     t.decimal "latitude", precision: 10, scale: 6, null: false
     t.decimal "longitude", precision: 10, scale: 6, null: false
     t.geography "lonlat", limit: {srid: 4326, type: "st_point", geographic: true}
@@ -324,6 +361,108 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
     t.index ["import_id"], name: "idx_places_import_id_extracted", where: "(import_id IS NOT NULL)"
     t.index ["lonlat"], name: "index_places_on_lonlat", using: :gist
     t.index ["user_id"], name: "index_places_on_user_id"
+  end
+
+  create_table "planned_accommodations", force: :cascade do |t|
+    t.string "address"
+    t.string "check_in_at"
+    t.string "check_out_at"
+    t.datetime "created_at", null: false
+    t.date "ends_on"
+    t.decimal "latitude", precision: 10, scale: 6
+    t.decimal "longitude", precision: 10, scale: 6
+    t.string "name", null: false
+    t.text "notes"
+    t.date "starts_on"
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id"], name: "index_planned_accommodations_on_trip_id"
+  end
+
+  create_table "planned_day_notes", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.string "noted_at"
+    t.bigint "planned_day_id", null: false
+    t.integer "position", null: false
+    t.datetime "updated_at", null: false
+    t.index ["planned_day_id", "position"], name: "index_planned_day_notes_on_planned_day_id_and_position", unique: true
+    t.index ["planned_day_id"], name: "index_planned_day_notes_on_planned_day_id"
+  end
+
+  create_table "planned_days", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.date "date", null: false
+    t.text "notes"
+    t.integer "position", null: false
+    t.string "title"
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id", "date"], name: "index_planned_days_on_trip_id_and_date", unique: true
+    t.index ["trip_id"], name: "index_planned_days_on_trip_id"
+  end
+
+  create_table "planned_reservations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "ends_at"
+    t.string "location"
+    t.text "notes"
+    t.bigint "planned_day_id"
+    t.string "reservation_type"
+    t.datetime "starts_at"
+    t.string "status"
+    t.string "title", null: false
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["planned_day_id"], name: "index_planned_reservations_on_planned_day_id"
+    t.index ["trip_id"], name: "index_planned_reservations_on_trip_id"
+  end
+
+  create_table "planned_stops", force: :cascade do |t|
+    t.string "address"
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.integer "duration_minutes"
+    t.string "ends_at"
+    t.decimal "latitude", precision: 10, scale: 6
+    t.decimal "longitude", precision: 10, scale: 6
+    t.string "name", null: false
+    t.text "notes"
+    t.bigint "planned_day_id", null: false
+    t.integer "position", null: false
+    t.string "starts_at"
+    t.string "transport_mode"
+    t.datetime "updated_at", null: false
+    t.index ["planned_day_id", "position"], name: "index_planned_stops_on_planned_day_id_and_position", unique: true
+    t.index ["planned_day_id"], name: "index_planned_stops_on_planned_day_id"
+  end
+
+  create_table "planned_travellers", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.boolean "owner", default: false, null: false
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id"], name: "index_planned_travellers_on_trip_id"
+  end
+
+  create_table "planned_unplanned_places", force: :cascade do |t|
+    t.string "address"
+    t.string "category"
+    t.datetime "created_at", null: false
+    t.integer "duration_minutes"
+    t.string "ends_at"
+    t.decimal "latitude", precision: 10, scale: 6
+    t.decimal "longitude", precision: 10, scale: 6
+    t.string "name", null: false
+    t.text "notes"
+    t.integer "position", null: false
+    t.string "starts_at"
+    t.string "transport_mode"
+    t.bigint "trip_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["trip_id", "position"], name: "index_planned_unplanned_places_on_trip_id_and_position", unique: true
+    t.index ["trip_id"], name: "index_planned_unplanned_places_on_trip_id"
   end
 
   create_table "point_sources", id: :serial, force: :cascade do |t|
@@ -373,6 +512,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
     t.index ["lonlat"], name: "index_points_on_lonlat", using: :gist
     t.index ["raw_data_archive_id"], name: "index_points_on_raw_data_archive_id"
     t.index ["track_id", "timestamp"], name: "idx_points_track_id_timestamp"
+    t.index ["user_id", "created_at"], name: "index_points_on_user_id_and_created_at"
     t.index ["user_id", "id"], name: "index_points_on_unarchived", where: "((raw_data_archived = false) AND (raw_data <> '{}'::jsonb))"
     t.index ["user_id", "timestamp", "lonlat"], name: "index_points_on_user_id_timestamp_lonlat", unique: true
     t.index ["visit_id"], name: "index_points_on_visit_id"
@@ -404,6 +544,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id"], name: "index_posters_on_user_id"
+  end
+
+  create_table "regions", force: :cascade do |t|
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.geometry "geom", limit: {srid: 4326, type: "multi_polygon"}, null: false
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_regions_on_code", unique: true
+    t.index ["geom"], name: "index_regions_on_geom", using: :gist
   end
 
   create_table "route_videos", force: :cascade do |t|
@@ -450,12 +599,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
   end
 
   create_table "stats", force: :cascade do |t|
+    t.integer "calculation_version", default: 0, null: false
     t.datetime "created_at", null: false
     t.jsonb "daily_distance", default: {}
     t.bigint "distance", null: false
     t.bigint "flight_distance", default: 0, null: false
     t.jsonb "h3_hex_ids", default: {}
     t.integer "month", null: false
+    t.datetime "repair_deferred_at"
     t.jsonb "sharing_settings", default: {}
     t.uuid "sharing_uuid"
     t.jsonb "toponyms"
@@ -536,6 +687,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
     t.integer "elevation_min"
     t.datetime "end_at", null: false
     t.bigint "import_id"
+    t.integer "lock_version", default: 0, null: false
     t.geometry "original_path", limit: {srid: 4326, type: "line_string"}, null: false
     t.datetime "start_at", null: false
     t.string "tracker_id"
@@ -551,6 +703,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
     t.index ["user_id"], name: "index_tracks_on_user_id"
   end
 
+  create_table "trip_sources", force: :cascade do |t|
+    t.text "api_key"
+    t.string "base_url", null: false
+    t.datetime "created_at", null: false
+    t.boolean "importing", default: false, null: false
+    t.text "last_error"
+    t.datetime "last_synced_at"
+    t.string "provider", null: false
+    t.string "selection_token"
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "provider", "base_url"], name: "index_trip_sources_on_user_id_and_provider_and_base_url", unique: true
+    t.index ["user_id"], name: "index_trip_sources_on_user_id"
+  end
+
   create_table "trips", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "demo", default: false, null: false
@@ -559,12 +727,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
     t.datetime "last_recalculated_at"
     t.string "name", null: false
     t.geometry "path", limit: {srid: 4326, type: "line_string"}
+    t.string "source_digest"
+    t.string "source_identifier"
+    t.jsonb "source_snapshot", default: {}, null: false
+    t.integer "source_status"
+    t.datetime "source_synced_at"
     t.datetime "started_at", null: false
+    t.bigint "trip_source_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.jsonb "visited_countries", default: {}, null: false
     t.index ["demo"], name: "index_trips_on_demo_true", where: "(demo = true)"
+    t.index ["trip_source_id", "source_identifier"], name: "index_trips_on_source_identifier", unique: true, where: "((trip_source_id IS NOT NULL) AND (source_identifier IS NOT NULL))"
+    t.index ["trip_source_id"], name: "index_trips_on_trip_source_id"
     t.index ["user_id"], name: "index_trips_on_user_id"
+  end
+
+  create_table "user_achievements", force: :cascade do |t|
+    t.string "achievement_key", null: false
+    t.datetime "created_at", null: false
+    t.datetime "earned_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "achievement_key"], name: "index_user_achievements_on_user_id_and_achievement_key", unique: true
   end
 
   create_table "users", force: :cascade do |t|
@@ -599,6 +785,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
     t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "1000", "minutes_between_routes" => "60"}
     t.integer "sign_in_count", default: 0, null: false
     t.string "signup_variant"
+    t.datetime "stats_swept_at"
     t.integer "status", default: 0
     t.integer "subscription_source", default: 0, null: false
     t.string "theme", default: "dark", null: false
@@ -652,6 +839,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
     t.index ["user_id"], name: "index_visits_on_user_id"
   end
 
+  add_foreign_key "achievement_progresses", "users"
+  add_foreign_key "achievement_unlock_events", "users", on_delete: :cascade
   add_foreign_key "active_storage_attachments", "active_storage_blobs", column: "blob_id"
   add_foreign_key "active_storage_variant_records", "active_storage_blobs", column: "blob_id"
   add_foreign_key "areas", "users"
@@ -684,7 +873,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_01_110000) do
   add_foreign_key "tags", "users"
   add_foreign_key "track_segments", "tracks"
   add_foreign_key "tracks", "users"
+  add_foreign_key "trip_sources", "users"
+  add_foreign_key "trips", "trip_sources"
   add_foreign_key "trips", "users"
+  add_foreign_key "user_achievements", "users"
   add_foreign_key "visits", "areas"
   add_foreign_key "visits", "places"
   add_foreign_key "visits", "users"

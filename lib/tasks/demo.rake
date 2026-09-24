@@ -251,7 +251,9 @@ namespace :demo do
       )
 
       # Associate the point with the visit
-      point.update!(visit: visit)
+      # An earlier visit can update this point while it is still in the
+      # preloaded sample, so refresh its optimistic lock before assigning it.
+      point.reload.update!(visit: visit)
 
       # Find nearby points within 100 meters and associate them
       nearby_points = Point.where(user_id: user.id)
@@ -690,16 +692,16 @@ namespace :demo do
   # --------------------------------------------------------------------------
 
   TIMELINE_CATEGORIES = {
-    home:   { name: 'Home',           tag: 'home',   icon: '🏠', color: '#22c55e', lat_offset: -0.003,
-  lon_offset: 0.002, note: nil },
-    work:   { name: 'Office',         tag: 'work',   icon: '💼', color: '#3b82f6', lat_offset:  0.008,
-  lon_offset: -0.006, note: nil },
-    coffee: { name: 'Café Süd',       tag: 'coffee', icon: '☕', color: '#f59e0b', lat_offset:  0.002,
-  lon_offset: 0.015, note: 'Good wifi, quiet mornings. Almond croissant > everything.' },
-    food:   { name: 'Bäckerei Meier', tag: 'food',   icon: '🍞',  color: '#ef4444', lat_offset:  0.007,
-  lon_offset: -0.003, note: 'Cash only. Sourdough lunch special Thursdays.' },
-    gym:    { name: 'Gym',            tag: 'gym',    icon: '🏋',  color: '#8b5cf6', lat_offset: -0.008,
-  lon_offset: 0.009, note: nil }
+    home:   { name: 'Home', tag: 'home', icon: '🏠', color: '#22c55e', lat_offset: -0.003,
+lon_offset: 0.002, note: nil },
+    work:   { name: 'Office', tag: 'work', icon: '💼', color: '#3b82f6', lat_offset:  0.008,
+lon_offset: -0.006, note: nil },
+    coffee: { name: 'Café Süd', tag: 'coffee', icon: '☕', color: '#f59e0b', lat_offset:  0.002,
+lon_offset: 0.015, note: 'Good wifi, quiet mornings. Almond croissant > everything.' },
+    food:   { name: 'Bäckerei Meier', tag: 'food',   icon: '🍞', color: '#ef4444', lat_offset:  0.007,
+lon_offset: -0.003, note: 'Cash only. Sourdough lunch special Thursdays.' },
+    gym:    { name: 'Gym',            tag: 'gym', icon: '🏋', color: '#8b5cf6', lat_offset: -0.008,
+lon_offset: 0.009, note: nil }
   }.freeze
 
   def create_timeline_demo_data(user)
@@ -733,7 +735,7 @@ namespace :demo do
       add_timeline_visit(user, places[:work], yesterday.beginning_of_day + 9.hours,
                          yesterday.beginning_of_day + 17.hours,          :confirmed, 'Office', counts)
       add_timeline_visit(user, places[:gym],  yesterday.beginning_of_day + 18.hours,
-                         yesterday.beginning_of_day + 19.hours,          :declined,  'Gym',    counts)
+                         yesterday.beginning_of_day + 19.hours,          :declined, 'Gym', counts)
       add_timeline_visit(user, places[:food], yesterday.beginning_of_day + 19.hours + 30.minutes,
                          yesterday.beginning_of_day + 20.hours + 15.minutes, :suggested, nil, counts,
                          alternates: [places[:food], places[:coffee]])
@@ -748,7 +750,7 @@ namespace :demo do
 
         date = today - days_ago.days
         add_timeline_visit(user, places[:home], date.beginning_of_day, date.beginning_of_day + 8.hours,
-                           :confirmed, 'Home',   counts)
+                           :confirmed, 'Home', counts)
         add_timeline_visit(user, places[:work], date.beginning_of_day + 9.hours, date.beginning_of_day + 17.hours,
                            :confirmed, 'Office', counts)
 

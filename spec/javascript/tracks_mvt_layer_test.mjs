@@ -2,53 +2,45 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
-const baseLayerSource = await readFile(
+const base = await readFile(
   new URL(
     "../../app/javascript/maps_maplibre/layers/base_layer.js",
     import.meta.url,
   ),
   "utf8",
 )
-const tracksMvtSource = await readFile(
+const tracks = await readFile(
   new URL(
     "../../app/javascript/maps_maplibre/layers/tracks_mvt_layer.js",
     import.meta.url,
   ),
   "utf8",
 )
+const freshness = await readFile(
+  new URL(
+    "../../app/javascript/maps_maplibre/utils/tile_freshness.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
+const stripImports = (value) =>
+  value.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
+const url = `data:text/javascript;base64,${Buffer.from([base, freshness, tracks].map(stripImports).join("\n")).toString("base64")}`
+const { TracksMvtLayer, withTileVersion } = await import(url)
 
-const stripImports = (source) =>
-  source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, "")
-const combined = [baseLayerSource, tracksMvtSource].map(stripImports).join("\n")
-const moduleUrl = `data:text/javascript;base64,${Buffer.from(combined).toString("base64")}`
-const { TracksMvtLayer, parseSpeedColorScale } = await import(moduleUrl)
-
-function fakeMap(initialLayers = []) {
-  const layers = [...initialLayers]
+function fakeMap() {
+  const layers = []
   const sources = new Set()
   const paintCalls = []
-  const listeners = {}
-  let sourceFeatures = []
+  const filterCalls = []
+  const listeners = new Map()
   return {
     layers,
     paintCalls,
-    setSourceFeatures(features) {
-      sourceFeatures = features
-    },
-    on(event, callback) {
-      listeners[event] = [...(listeners[event] || []), callback]
-    },
-    off(event, callback) {
-      listeners[event] = (listeners[event] || []).filter((c) => c !== callback)
-    },
-    emit(event, payload) {
-      for (const callback of [...(listeners[event] || [])]) callback(payload)
-    },
-    listenerCount(event) {
-      return (listeners[event] || []).length
-    },
+    filterCalls,
+    sourceFeatures: [],
     querySourceFeatures() {
-      return sourceFeatures
+      return this.sourceFeatures
     },
     addSource(id) {
       sources.add(id)
@@ -59,18 +51,14 @@ function fakeMap(initialLayers = []) {
     getSource(id) {
       return sources.has(id) ? {} : undefined
     },
-    addLayer(config, beforeId) {
-      const index = beforeId ? layers.indexOf(beforeId) : -1
-      if (index === -1) {
-        if (beforeId) return
-        layers.push(config.id)
-      } else {
-        layers.splice(index, 0, config.id)
-      }
+    addLayer(config, before) {
+      const index = before ? layers.indexOf(before) : -1
+      if (index >= 0) layers.splice(index, 0, config.id)
+      else layers.push(config.id)
     },
     removeLayer(id) {
       const index = layers.indexOf(id)
-      if (index !== -1) layers.splice(index, 1)
+      if (index >= 0) layers.splice(index, 1)
     },
     getLayer(id) {
       return layers.includes(id) ? { id } : undefined
@@ -82,215 +70,148 @@ function fakeMap(initialLayers = []) {
     setPaintProperty(layerId, property, value) {
       paintCalls.push({ layerId, property, value })
     },
+    setFilter(layerId, filter) {
+      filterCalls.push({ layerId, filter })
+    },
+    on(event, callback) {
+      listeners.set(event, callback)
+    },
+    off(event, callback) {
+      if (listeners.get(event) === callback) listeners.delete(event)
+    },
+    listenerCount(event) {
+      return listeners.has(event) ? 1 : 0
+    },
+    emit(event, data) {
+      listeners.get(event)?.(data)
+    },
   }
 }
 
-function buildLayer(options = {}) {
+function build(options = {}) {
   const map = fakeMap()
   const layer = new TracksMvtLayer(map, {
     apiKey: "secret-key-123",
     startAt: "2024-01-01T00:00",
     endAt: "2024-12-31T23:59",
-    trackColor: "#6366F1",
-    routeColor: "#0000ff",
-    routeOpacity: 0.7,
+    tracksEnabled: true,
     ...options,
   })
   layer.add({})
   return { map, layer }
 }
 
-test("tile URLs point at the tracks endpoint and never carry the raw api key", () => {
-  const { layer } = buildLayer()
-  const url = layer._buildTileUrl()
-
-  assert.ok(url.startsWith("/api/v1/tiles/tracks/{z}/{x}/{y}.mvt?"))
-  assert.ok(url.includes("u="))
-  assert.ok(url.includes("start_at="))
-  assert.ok(!url.includes("secret-key-123"))
+test("track tiles are authenticated without putting the raw key in their URL", () => {
+  const { layer } = build()
+  const tileUrl = layer._buildTileUrl()
+  assert.match(tileUrl, /^\/api\/v1\/tiles\/tracks\/\{z\}\/\{x\}\/\{y\}\.mvt\?/)
+  assert.ok(tileUrl.includes("u="))
+  assert.ok(!tileUrl.includes("secret-key-123"))
 })
 
-test("visibility follows the tracks-or-routes contract", () => {
-  const table = [
-    [{ tracksEnabled: true, routesVisible: false }, true],
-    [{ tracksEnabled: false, routesVisible: true }, true],
-    [{ tracksEnabled: true, routesVisible: true }, true],
-    [{ tracksEnabled: false, routesVisible: false }, false],
-  ]
-  for (const [modes, expected] of table) {
-    const { layer } = buildLayer(modes)
-    assert.equal(layer.visible, expected, JSON.stringify(modes))
-  }
+test("track tile URLs preserve the selected import scope", () => {
+  const { layer } = build({ importId: "42" })
+  const params = new URLSearchParams(layer._buildTileUrl().split("?")[1])
+
+  assert.equal(params.get("import_id"), "42")
 })
 
-test("routes-only rendering keeps the user's route color and opacity", () => {
-  const { layer } = buildLayer({ tracksEnabled: false, routesVisible: true })
-
-  assert.equal(layer._lineColor(), "#0000ff")
-  assert.equal(layer._lineOpacity(), 0.7)
+test("visibility is controlled only by the canonical Tracks setting", () => {
+  const { layer } = build({ tracksEnabled: false, routesVisible: true })
+  assert.equal(layer.visible, false)
+  layer.setEnabled(true)
+  assert.equal(layer.visible, true)
 })
 
-test("tracks rendering uses the track color at full opacity", () => {
-  const { layer } = buildLayer({ tracksEnabled: true, routesVisible: true })
-
-  assert.equal(layer._lineColor(), "#6366F1")
-  assert.equal(layer._lineOpacity(), 1)
-})
-
-test("speed coloring produces an interpolate expression clamped to the classic scale", () => {
-  const { layer } = buildLayer({
-    tracksEnabled: false,
-    routesVisible: true,
-    speedColoredRoutes: true,
-    speedColorScale: "0:#00ff00|15:#00ffff|150:#ff0000",
-  })
-
-  const expression = layer._lineColor()
-  assert.ok(Array.isArray(expression))
-  assert.equal(expression[0], "interpolate")
-  const flattened = JSON.stringify(expression)
-  assert.ok(flattened.includes("avg_speed"))
-  assert.ok(flattened.includes('"min",150'))
-  assert.ok(flattened.includes("#00ff00"))
-})
-
-test("an invalid speed scale falls back to flat color", () => {
-  const { layer } = buildLayer({
-    tracksEnabled: true,
-    speedColoredRoutes: true,
-    speedColorScale: "garbage",
-  })
-
-  assert.equal(layer._lineColor(), "#6366F1")
-})
-
-test("parseSpeedColorScale decodes and sorts the encoded stops", () => {
-  assert.deepEqual(parseSpeedColorScale("15:#00ffff|0:#00ff00"), [
-    [0, "#00ff00"],
-    [15, "#00ffff"],
-  ])
-  assert.equal(parseSpeedColorScale(""), null)
-  assert.equal(parseSpeedColorScale("nonsense"), null)
-})
-
-test("setRouteOpacity repaints the line when routes drive the layer", () => {
-  const { map, layer } = buildLayer({
-    tracksEnabled: false,
-    routesVisible: true,
-  })
-
-  layer.setRouteOpacity(0.4)
-
-  const call = map.paintCalls.find((c) => c.property === "line-opacity")
-  assert.ok(call)
-  assert.equal(call.value, 0.4)
-})
-
-test("a zero-feature source load with routes visible reports empty tracks exactly once", () => {
-  let reports = 0
-  const { map } = buildLayer({
-    tracksEnabled: false,
-    routesVisible: true,
-    onEmptyTracks: () => {
-      reports += 1
-    },
-  })
-
-  map.setSourceFeatures([])
-  map.emit("sourcedata", {
-    sourceId: "tracks-mvt-source",
-    isSourceLoaded: true,
-  })
-  map.emit("sourcedata", {
-    sourceId: "tracks-mvt-source",
-    isSourceLoaded: true,
-  })
-
-  assert.equal(reports, 1)
-})
-
-test("a populated source load never reports empty tracks", () => {
-  let reports = 0
-  const { map } = buildLayer({
-    routesVisible: true,
-    onEmptyTracks: () => {
-      reports += 1
-    },
-  })
-
-  map.setSourceFeatures([{ id: 1 }])
-  map.emit("sourcedata", {
-    sourceId: "tracks-mvt-source",
-    isSourceLoaded: true,
-  })
-
-  assert.equal(reports, 0)
-})
-
-test("a populated source load detaches the empty-tracks watcher", () => {
-  let reports = 0
-  const { map } = buildLayer({
-    routesVisible: true,
-    onEmptyTracks: () => {
-      reports += 1
-    },
-  })
-
-  map.setSourceFeatures([{ id: 1 }])
-  map.emit("sourcedata", {
-    sourceId: "tracks-mvt-source",
-    isSourceLoaded: true,
-  })
-
-  assert.equal(map.listenerCount("sourcedata"), 0)
-
-  map.setSourceFeatures([])
-  map.emit("sourcedata", {
-    sourceId: "tracks-mvt-source",
-    isSourceLoaded: true,
-  })
-
-  assert.equal(reports, 0)
-})
-
-test("setColors repaints the line with the new colors", () => {
-  const routesOnly = buildLayer({ tracksEnabled: false, routesVisible: true })
-  routesOnly.layer.setColors({ routeColor: "#123456" })
-  const routeCall = routesOnly.map.paintCalls.findLast(
-    (c) => c.property === "line-color",
-  )
-  assert.equal(routeCall.value, "#123456")
-
-  const tracksOn = buildLayer({ tracksEnabled: true, routesVisible: false })
-  tracksOn.layer.setColors({ trackColor: "#abcdef" })
-  const trackCall = tracksOn.map.paintCalls.findLast(
-    (c) => c.property === "line-color",
-  )
-  assert.equal(trackCall.value, "#abcdef")
-})
-
-test("parseSpeedColorScale drops duplicate speed stops", () => {
-  const stops = parseSpeedColorScale(
-    "0:#111111|50:#222222|50:#333333|100:#444444",
-  )
-
-  assert.deepEqual(
-    stops.map(([speed]) => speed),
-    [0, 50, 100],
+test("track color repaints the MVT line", () => {
+  const { map, layer } = build()
+  layer.setColors({ trackColor: "#abcdef", routeColor: "#123456" })
+  assert.equal(
+    map.paintCalls.findLast((call) => call.property === "line-color").value,
+    "#abcdef",
   )
 })
 
-test("map-level listeners are torn down on remove", () => {
-  const { map, layer } = buildLayer({
-    onTileError: () => {},
-    onEmptyTracks: () => {},
-  })
+test("flight windows become a tile filter using track timestamps", () => {
+  const { map, layer } = build()
+  layer.setFlightWindows([[100, 200]])
+  assert.match(JSON.stringify(map.filterCalls.at(-1).filter), /start_timestamp/)
+  assert.match(JSON.stringify(map.filterCalls.at(-1).filter), /end_timestamp/)
+})
 
+test("refresh without in-place reloading preserves layer order", () => {
+  const { map, layer } = build()
+  map.addLayer({ id: "points-above" })
+  layer.refresh()
+  assert.deepEqual(map.layers, ["tracks-mvt", "points-above"])
+})
+
+test("map-level error listener is removed with the layer", () => {
+  const { map, layer } = build({ onTileError() {} })
   assert.equal(map.listenerCount("error"), 1)
-  assert.equal(map.listenerCount("sourcedata"), 1)
-
   layer.remove()
-
   assert.equal(map.listenerCount("error"), 0)
+})
+
+test("reports empty loaded Track tiles once and removes the listener on teardown", () => {
+  let reported = 0
+  const { map, layer } = build({
+    onEmptyTracks: () => {
+      reported += 1
+    },
+  })
+  assert.equal(map.listenerCount("sourcedata"), 1)
+  map.emit("sourcedata", { sourceId: "points-mvt", isSourceLoaded: true })
+  map.emit("sourcedata", { sourceId: layer.sourceId, isSourceLoaded: false })
+  assert.equal(reported, 0)
+  map.emit("sourcedata", { sourceId: layer.sourceId, isSourceLoaded: true })
+  map.emit("sourcedata", { sourceId: layer.sourceId, isSourceLoaded: true })
+  assert.equal(reported, 1)
+  layer.remove()
   assert.equal(map.listenerCount("sourcedata"), 0)
+})
+
+test("does not report an empty tile after Track features have loaded", () => {
+  let reported = 0
+  const { map, layer } = build({
+    onEmptyTracks: () => {
+      reported += 1
+    },
+  })
+  map.sourceFeatures = [{ id: 1 }]
+  map.emit("sourcedata", { sourceId: layer.sourceId, isSourceLoaded: true })
+  assert.equal(reported, 0)
+  assert.equal(map.listenerCount("sourcedata"), 0)
+})
+
+test("refresh reloads tiles in place with a fresh version, so rendered tracks stay on screen", () => {
+  const { map, layer } = build()
+  const reloads = []
+  map.refreshTiles = (sourceId) => reloads.push(sourceId)
+  map.removeLayer = () => assert.fail("refresh must not remove the layer")
+  map.removeSource = () => assert.fail("refresh must not remove the source")
+  const tile = () =>
+    withTileVersion(
+      new URL("/api/v1/tiles/tracks/1/2/3.mvt", "http://x.test"),
+    ).searchParams.get("_")
+  const before = tile()
+
+  layer.refresh()
+
+  assert.deepEqual(reloads, ["tracks-mvt-source"])
+  assert.notEqual(tile(), before)
+})
+
+test("a request cancelled by a newer refresh is not a tile failure", () => {
+  const reported = []
+  const { map } = build({ onTileError: () => reported.push("failed") })
+
+  map.emit("error", {
+    sourceId: "tracks-mvt-source",
+    error: new Error("AbortError"),
+  })
+  assert.deepEqual(reported, [])
+
+  map.emit("error", { sourceId: "tracks-mvt-source", error: new Error("500") })
+  assert.deepEqual(reported, ["failed"])
 })

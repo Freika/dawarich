@@ -1,10 +1,10 @@
 <%= turbo_frame_tag "residency-content" do %>
   <%
-    # Color palette: one color per country, ordered by most days
     country_colors = %w[
-      bg-primary bg-secondary bg-accent bg-info bg-success
-      bg-warning bg-error bg-primary/70 bg-secondary/70 bg-accent/70
-      bg-info/70 bg-success/70 bg-warning/70 bg-error/70
+      bg-blue-600 bg-orange-700 bg-emerald-600 bg-fuchsia-600
+      bg-amber-700 bg-cyan-700 bg-rose-600 bg-violet-500
+      bg-lime-700 bg-pink-600 bg-teal-600 bg-yellow-700
+      bg-indigo-500 bg-red-600
     ]
     color_map = @countries.each_with_index.to_h { |c, i| [c[:country_name], country_colors[i % country_colors.length]] }
   %>
@@ -13,14 +13,14 @@
     <div class="flex flex-col lg:flex-row gap-6">
       <!-- Countries, with collapsible stay periods -->
       <div class="w-full lg:w-1/4 mb-6">
-        <div class="card bg-base-200 h-full">
-          <div class="card-body p-3">
+        <div class="card bg-base-200 h-full lg:max-h-64 overflow-hidden" data-testid="residency-country-card">
+          <div class="card-body p-3 min-h-0">
             <div class="flex items-center gap-2 mb-2">
               <%= icon 'globe', class: 'w-4 h-4 text-base-content/60' %>
               <h3 class="text-base font-semibold"><%= t('.countries') %></h3>
             </div>
 
-            <div class="space-y-0.5">
+            <div class="space-y-0.5 flex-1 min-h-0 lg:overflow-y-auto lg:pr-1" data-testid="residency-country-list">
               <% @countries.each_with_index do |country, i| %>
                 <details class="group bg-base-100 rounded-lg">
                   <summary class="flex items-center gap-2 px-3 py-2 cursor-pointer list-none select-none

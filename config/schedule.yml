@@ -20,6 +20,16 @@ airtrail_flight_import_job:
   class: "AirTrail::SyncSchedulingJob"
   queue: imports
 
+teslamate_sync_job:
+  cron: "30 2 * * *" # every day at 02:30
+  class: "TeslaMate::SyncSchedulingJob"
+  queue: imports
+
+trek_sync_job:
+  cron: "0 */6 * * *" # every 6 hours
+  class: "Trek::SyncSchedulingJob"
+  queue: imports
+
 app_version_checking_job:
   cron: "0 */6 * * *" # every 6 hours
   class: "AppVersionCheckingJob"
@@ -99,8 +109,18 @@ pending_imports_cleanup:
   queue: low_priority
   description: "Sweep expired or old-claimed pending imports"
 
+achievements_bulk_check_job:
+  cron: "30 1 * * *" # every day at 01:30
+  class: "Achievements::BulkCheckJob"
+  queue: achievements
+
 route_videos_purge_job:
   cron: "45 3 * * *" # every day at 03:45 UTC
   class: "RouteVideos::PurgeJob"
   queue: route_videos
   description: "Expire stored route videos past the retention window or per-user cap"
+
+stats_toponyms_refresh_job:
+  cron: "*/5 * * * *"
+  class: "Stats::ToponymsRefreshJob"
+  queue: stats

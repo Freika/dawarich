@@ -59,7 +59,7 @@ RSpec.describe Place, type: :model do
   end
 
   describe 'enums' do
-    it { is_expected.to define_enum_for(:source).with_values(%i[manual photon]) }
+    it { is_expected.to define_enum_for(:source).with_values(%i[manual photon gpx_waypoint]) }
   end
 
   describe 'scopes' do

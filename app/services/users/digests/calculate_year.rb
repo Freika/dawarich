@@ -142,6 +142,11 @@ module Users
       def fetch_daily_country_stats
         start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
+        lower_bound = if user.plan_restricted?
+                        [start_of_year.to_i, user.data_window_start.to_i].max
+                      else
+                        start_of_year.to_i
+                      end
 
         sql = <<~SQL
           SELECT
@@ -152,7 +157,7 @@ module Users
           FROM points
           JOIN countries ON countries.id = points.country_id
           WHERE user_id = #{user.id}
-            AND timestamp >= #{start_of_year.to_i}
+            AND timestamp >= #{lower_bound}
             AND timestamp <= #{end_of_year.to_i}
           GROUP BY point_date, countries.name
           ORDER BY point_date, min_timestamp

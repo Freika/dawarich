@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Blank geocoder response marks the point as attempted' do
-  before { allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true) }
+  before { configure_instance_geocoding }
 
   subject(:fetch_data) { ReverseGeocoding::Points::FetchData.new(point.id).call }
 

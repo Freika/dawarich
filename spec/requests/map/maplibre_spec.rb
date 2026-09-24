@@ -26,6 +26,23 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       expect(response.body).to include('data-poster-studio-editor-target="dateStart"')
     end
 
+    it 'renders date and time controls for the video studio' do
+      get map_v2_path
+
+      expect(response.body).to include('data-video-studio-target="dateStart"')
+      expect(response.body).to include('data-video-studio-target="dateEnd"')
+      expect(response.body).to include('video-studio#applyDateTimeRange')
+    end
+
+    it 'exposes the user timezone as an IANA identifier' do
+      user.update!(settings: user.settings.merge('timezone' => 'Eastern Time (US & Canada)'))
+
+      get map_v2_path
+
+      expect(response.body).to include('data-maps--maplibre-timezone-value="America/New_York"')
+      expect(response.body).to include('data-map-controls-timezone-value="America/New_York"')
+    end
+
     it 'defaults the track opacity slider to 100%' do
       get map_v2_path
 
@@ -62,14 +79,6 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
         .to include('data-poster-studio-editor-print-order-url-value="http://localhost:3001/api/orders"')
     end
 
-    it 'renders the order section when the poster_ordering flag is enabled' do
-      Flipper.enable(:poster_ordering)
-
-      get map_v2_path
-
-      expect(response.body).to include('Order a printed poster')
-    end
-
     it 'renders the order section on an instance carrying no flag at all' do
       Flipper.remove(:poster_ordering)
 
@@ -78,12 +87,12 @@ RSpec.describe 'Map v2 (maplibre)', type: :request do
       expect(response.body).to include('Order a printed poster')
     end
 
-    it 'omits the order section when the poster_ordering flag is disabled' do
+    it 'renders the order section when a legacy poster_ordering flag is disabled' do
       Flipper.disable(:poster_ordering)
 
       get map_v2_path
 
-      expect(response.body).not_to include('Order a printed poster')
+      expect(response.body).to include('Order a printed poster')
     end
   end
 

@@ -25,10 +25,11 @@ RSpec.describe Immich::EnrichPhotos do
           .to_return(status: 200, body: '{}', headers: { 'content-type' => 'application/json' })
       end
 
-      it 'returns enriched count' do
+      it 'returns pending count' do
         result = service.call
 
-        expect(result[:enriched]).to eq(2)
+        expect(result[:enriched]).to eq(0)
+        expect(result[:pending]).to eq(2)
         expect(result[:failed]).to eq(0)
         expect(result[:errors]).to be_empty
       end
@@ -62,7 +63,8 @@ RSpec.describe Immich::EnrichPhotos do
       it 'returns partial results' do
         result = service.call
 
-        expect(result[:enriched]).to eq(1)
+        expect(result[:enriched]).to eq(0)
+        expect(result[:pending]).to eq(1)
         expect(result[:failed]).to eq(1)
       end
 
@@ -86,7 +88,8 @@ RSpec.describe Immich::EnrichPhotos do
       it 'continues processing remaining assets after failure' do
         result = service.call
 
-        expect(result[:enriched]).to eq(1)
+        expect(result[:enriched]).to eq(0)
+        expect(result[:pending]).to eq(1)
         expect(result[:failed]).to eq(1)
       end
     end

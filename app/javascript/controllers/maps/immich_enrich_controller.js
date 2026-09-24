@@ -1,6 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import Flash from "../flash_controller"
 
 const EXTERNAL_LINK_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>`
@@ -417,12 +417,17 @@ export default class extends Controller {
       }
 
       const message =
-        data.failed > 0
-          ? translate("immich.partially_enriched", {
-              enriched: data.enriched,
+        data.pending > 0
+          ? translate("immich.pending_enrichment", {
+              count: data.pending,
               failed: data.failed,
             })
-          : translate("immich.enriched", { count: data.enriched })
+          : data.failed > 0
+            ? translate("immich.partially_enriched", {
+                enriched: data.enriched,
+                failed: data.failed,
+              })
+            : translate("immich.enriched", { count: data.enriched })
 
       Flash.show(data.failed > 0 ? "warning" : "notice", message)
       this.removeMarkers()

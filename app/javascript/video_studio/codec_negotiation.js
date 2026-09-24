@@ -22,6 +22,7 @@ export async function pickSupportedCodec({
   height,
   fps,
   isConfigSupported,
+  probeConfig,
 }) {
   const bitrate = chooseBitrate(width, height, fps)
   for (const candidate of CODEC_CANDIDATES) {
@@ -35,7 +36,9 @@ export async function pickSupportedCodec({
     }
     try {
       const result = await isConfigSupported(config)
-      if (result?.supported) return { muxerCodec: candidate.muxerCodec, config }
+      if (!result?.supported) continue
+      if (probeConfig && !(await probeConfig(config))) continue
+      return { muxerCodec: candidate.muxerCodec, config }
     } catch {
       // An unknown codec string throws in some browsers — same as unsupported.
     }

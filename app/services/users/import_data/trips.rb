@@ -2,6 +2,10 @@
 
 class Users::ImportData::Trips
   BATCH_SIZE = 1000
+  IMPORTABLE_ATTRIBUTES = %w[
+    name started_at ended_at distance path visited_countries
+    source_identifier source_digest source_synced_at source_snapshot
+  ].freeze
 
   def initialize(user, trips_data)
     @user = user
@@ -26,7 +30,8 @@ class Users::ImportData::Trips
       Rails.logger.debug "Skipped #{valid_trips.size - deduplicated_trips.size} duplicate trips"
     end
 
-    total_created = bulk_import_trips(deduplicated_trips)
+    planned_trips, ordinary_trips = deduplicated_trips.partition { |trip| trip[:source_snapshot].present? }
+    total_created = bulk_import_trips(ordinary_trips) + planned_trips.sum { |trip| import_planned_trip(trip) }
 
     Rails.logger.info "Trips import completed. Created: #{total_created}"
     total_created
@@ -58,7 +63,10 @@ class Users::ImportData::Trips
   end
 
   def prepare_trip_attributes(trip_data)
-    attributes = trip_data.except('created_at', 'updated_at')
+    attributes = trip_data.slice(*IMPORTABLE_ATTRIBUTES)
+    attributes['source_status'] = if attributes['source_identifier'].present? || attributes['source_snapshot'].present?
+                                    :stopped
+                                  end
 
     attributes['user_id'] = user.id
     attributes['created_at'] = Time.current
@@ -126,6 +134,19 @@ class Users::ImportData::Trips
     end
 
     total_created
+  end
+
+  def import_planned_trip(attributes)
+    Trip.transaction(requires_new: true) do
+      trip = user.trips.build(attributes)
+      trip.skip_calculation_enqueue = true
+      trip.save!
+      Trek::Itinerary.new(trip, trip.source_snapshot).call
+    end
+    1
+  rescue StandardError => e
+    ExceptionReporter.call(e, 'Failed to restore trip itinerary')
+    0
   end
 
   def valid_trip_data?(trip_data)

@@ -25,7 +25,7 @@ RSpec.describe 'Curated places keep their manual source through reverse geocodin
   end
 
   before do
-    allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+    configure_instance_geocoding
     allow(Geocoder).to receive(:search).and_return([geocoded_place])
   end
 

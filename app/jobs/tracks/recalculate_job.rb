@@ -19,9 +19,7 @@ class Tracks::RecalculateJob < ApplicationJob
       return
     end
 
-    track.recalculate_path_and_distance!
-
-    track.broadcast_geojson_updated
+    Tracks::Recalculator.call(track)
   rescue StandardError => e
     ExceptionReporter.call(e, "Failed to recalculate track #{track_id}")
   end

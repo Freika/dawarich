@@ -6,10 +6,9 @@ RSpec.describe Settings::Update do
   let(:user) { create(:user) }
 
   before do
-    allow(Resolv).to receive(:getaddress).and_call_original
-    allow(Resolv).to receive(:getaddress).with('immich.test').and_return('93.184.216.34')
-    allow(Resolv).to receive(:getaddress).with('photoprism.test').and_return('93.184.216.34')
-    allow(Resolv).to receive(:getaddress).with('airtrail.test').and_return('93.184.216.34')
+    stub_host_addresses('immich.test', '93.184.216.34')
+    stub_host_addresses('photoprism.test', '93.184.216.34')
+    stub_host_addresses('airtrail.test', '93.184.216.34')
   end
 
   describe '#call' do
@@ -28,6 +27,35 @@ RSpec.describe Settings::Update do
 
         expect(result[:notices]).to include('AirTrail connection verified')
         expect(user.reload.settings['airtrail_url']).to eq('https://airtrail.test')
+      end
+    end
+
+    context 'when the TeslaMateApi URL changes' do
+      let(:settings_params) { { 'teslamate_url' => 'https://teslamate-new.test' } }
+      let(:service) { described_class.new(user, settings_params) }
+
+      before do
+        user.update!(settings: user.settings.merge(
+          'teslamate_url' => 'https://teslamate-old.test',
+          'teslamate_last_synced_at' => '2026-09-01T12:00:00Z',
+          'teslamate_last_synced_url' => 'https://teslamate-old.test',
+          'teslamate_processing_pending' => true,
+          'teslamate_processing_pending_url' => 'https://teslamate-old.test'
+        ))
+        stub_host_addresses('teslamate-new.test', '93.184.216.34')
+        allow_any_instance_of(TeslaMate::ConnectionTester).to receive(:call)
+          .and_return({ success: true, message: 'TeslaMateApi connection verified' })
+      end
+
+      it 'clears the previous source checkpoint' do
+        service.call
+
+        settings = user.reload.settings
+        expect(settings['teslamate_url']).to eq('https://teslamate-new.test')
+        expect(settings['teslamate_last_synced_at']).to be_nil
+        expect(settings['teslamate_last_synced_url']).to be_nil
+        expect(settings['teslamate_processing_pending']).to be(false)
+        expect(settings['teslamate_processing_pending_url']).to be_nil
       end
     end
 
@@ -224,7 +252,7 @@ RSpec.describe Settings::Update do
     context 'when not self-hosted and URL points to a blocked address' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
-        allow(Resolv).to receive(:getaddress).with('169.254.169.254').and_return('169.254.169.254')
+        stub_host_addresses('169.254.169.254', '169.254.169.254')
       end
 
       let(:settings_params) { { 'immich_url' => 'http://169.254.169.254/latest' } }

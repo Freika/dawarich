@@ -1,4 +1,68 @@
 ca:
+  admin:
+    settings:
+      show:
+        title: "Configuració de la instància"
+        intro: "Aquesta configuració s'aplica a tota la instància. Un paràmetre definit per una variable d'entorn es mostra només de lectura: elimina la variable per editar-lo aquí."
+        save: "Desa la configuració"
+        saving: "S'està desant…"
+        secret_set: "Hi ha un valor desat"
+        pinned_hint: "Fixat per %{variable}"
+        clear_secret: "Esborra el valor desat"
+        unreadable_secret: "Un valor desat no es pot desxifrar amb les claus d'aquesta instància. Torna a introduir-lo."
+        sections_nav: "Seccions de la configuració de la instància"
+        nav_pinned: "Definit per una variable d'entorn"
+        nav_attention: "Requereix atenció"
+        geocoding:
+          title: "Geocodificació"
+          description: "La geocodificació converteix les coordenades en noms de ciutat i de país als teus punts i estadístiques, i fa funcionar la cerca de llocs i ubicacions."
+          in_use: "En ús"
+          "off": "Desactivada"
+          none: "No hi ha cap proveïdor configurat, així que els punts nous no es geocodifiquen. Afegeix a sota un host de Photon o una clau d'API."
+          stored: "Desat en aquesta pàgina"
+          chain_hint: "Dawarich fa servir el primer proveïdor configurat, en l'ordre de sota. Un proveïdor definit per una variable d'entorn té prioritat sobre els desats aquí."
+          test: "Prova la connexió"
+          testing: "S'està provant…"
+          test_hint: "Una consulta amb la configuració desada"
+          rate_limit: "Límit de peticions"
+          chibigeo_message: "ChibiGeo és un servei de geocodificació de tarifa plana i centrat en la privadesa creat per l'equip de Dawarich. Funciona amb Dawarich sense configuració. Cal una clau d'API."
+          chibigeo_key_link: "Obtén la teva clau d'API gratuïta"
+          komoot_warning: "photon.komoot.io és una instància pública compartida amb límits de peticions estrictes. Les peticions es limiten a una per segon i la geocodificació massiva serà lenta. Considera allotjar la teva pròpia instància de Photon."
+          https_locked: "L'HTTPS sempre està activat per a aquest amfitrió."
+          legacy_user_settings: "Alguns usuaris havien configurat la seva pròpia geocodificació abans que es traslladés aquí. La seva configuració no s'ha conservat perquè no tots els usuaris en tenien o eren diferents. Configura un proveïdor a sota per tornar a activar la geocodificació per a tothom."
+        providers:
+          photon: "Geocodificador de codi obert. Fes servir un servidor allotjat o el teu."
+          geoapify: "Servei allotjat. Necessita una clau d'API."
+          nominatim: "El geocodificador d'OpenStreetMap, normalment al teu propi servidor."
+          locationiq: "Servei allotjat. Necessita una clau d'API."
+        points:
+          title: "Punts"
+        fields:
+          photon_api_host: "Amfitrió"
+          photon_api_key: "Clau d'API"
+          photon_api_use_https: "Utilitza HTTPS"
+          nominatim_api_host: "Amfitrió"
+          nominatim_api_key: "Clau d'API"
+          nominatim_api_use_https: "Utilitza HTTPS"
+          geoapify_api_key: "Clau d'API"
+          locationiq_api_key: "Clau d'API"
+          reverse_geocoding_rps: "Peticions per segon"
+          store_geodata: "Geocodifica els punts nous immediatament"
+          host_hint: "Nom d'amfitrió simple amb port opcional, p. ex. photon.example.com:2322"
+          rps_hint: "Deixa-ho en blanc per no posar-hi límit. Ajusta-ho al que permeti el teu servidor o el teu pla."
+          api_key_keep_hint: "Deixa-ho en blanc per mantenir la clau desada."
+          store_geodata_hint: "Cerca la ciutat i el país quan s’afegeixen punts nous. Les cerques nocturnes continuen si hi ha un proveïdor configurat, encara que aquesta opció estigui desactivada."
+      update:
+        saved: "Configuració desada."
+        pinned: "Rebutjat: fixat per %{variables}."
+        host_invalid: "L'amfitrió ha de ser un nom simple, amb un port o un camí opcionals i sense espais."
+        chibigeo_key_required: "ChibiGeo necessita una clau d'API. El pla gratuït Hobby inclou 2.500 cerques al dia; obtén la teva clau a chibigeo.com."
+      test_geocoding:
+        not_configured: "No hi ha cap proveïdor de geocodificació configurat. Desa primer un proveïdor."
+        success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."
+        empty: "El proveïdor ha respost, però no ha retornat cap resultat per a les coordenades de prova."
+        failure: "La prova ha fallat: %{error}"
+        rate_limited: "El límit de peticions del proveïdor està ocupat ara mateix; torna-ho a provar d'aquí a un moment."
   activerecord:
     errors:
       models:
@@ -493,6 +557,7 @@ ca:
     extraction_card:
       additional_data: Dades addicionals
       this_import_format_doesn_t_carry_visits_named_places_or: Aquest format d'importació no inclou visites, llocs amb nom ni mitjans de transport, així que no hi ha res addicional a extreure.
+      this_gpx_file_holds_no_waypoints: 'Aquest fitxer GPX només conté punts de traça enregistrats, així que no hi ha punts de referència per importar com a llocs.'
       extracted: Extret
       visits: visites,
       places: llocs,
@@ -903,9 +968,8 @@ ca:
         show_individual_location_points: Mostra els punts d'ubicació individuals
         edit_points: Edita els punts
         allow_dragging_points_to_correct_their_position: Permet arrossegar els punts per corregir-ne la posició.
-        editing_points_is_a_pro_feature_this_stays_on_for: Editar punts és una funció de Pro — es manté activat només per a la sessió actual, i els moviments no es desen al pla Lite.
+        editing_points_is_a_pro_feature_this_stays_on_for: L'edició de punts està disponible amb el pla Pro.
         allow_dragging_points_to_correct_their_position_remembered_across_sessio: Permet arrossegar els punts per corregir-ne la posició. Es recorda entre sessions.
-        routes: Rutes
         show_connected_route_lines: Mostra les línies de ruta connectades
         color_by_speed: Colora segons la velocitat
         edit_color_gradient: Edita el degradat de colors
@@ -939,8 +1003,8 @@ ca:
         show_explored_areas: Mostra les àrees explorades
         per_point: Per punt
         per_hexagon: Per hexàgon
-        scratch_map: Mapa de rascar
-        show_scratched_countries: Mostra els països rascats
+        scratch_map: Països visitats
+        show_scratched_countries: Ressalta els països visitats durant l'interval seleccionat
         family_members: Membres de la família
         show_family_member_locations: Mostra les ubicacions dels membres de la família
         click_to_center_on_member: Fes clic per centrar en el membre
@@ -971,41 +1035,37 @@ ca:
         the_custom_style_draws_no_labels_or_points_of_interest: L'estil personalitzat no dibuixa etiquetes ni punts d'interès — aquests interruptors estan desactivats mentre és actiu.
         points_of_interest: Punts d'interès
         choose_which_poi_categories_appear_on_the_map: Tria quines categories de punts d'interès apareixen al mapa.
-        meters_between_routes: Metres entre rutes
         distance_threshold_for_route_splitting: Llindar de distància per dividir rutes
-        minutes_between_routes: Minuts entre rutes
         min: 60 min
         min_2: 1 min
         min_3: 90 min
         min_4: 180 min
         time_threshold_for_route_splitting: Llindar de temps per dividir rutes
-        points_rendering_mode: Mode de representació de punts
         raw_all_points: En brut (tots els punts)
         simplified_reduced_points: Simplificat (punts reduïts)
-        speed_colored_routes: Rutes acolorides per velocitat
-        color_routes_by_speed: Colora les rutes segons la velocitat
         fog_of_war_radius: Radi de la boira de guerra
         clear_radius_around_visited_points: Radi que s'aclareix al voltant dels punts visitats
         fog_of_war_threshold: Llindar de la boira de guerra
         minimum_points_to_clear_fog: Punts mínims per aclarir la boira
         gps_noise_filtering: Filtratge de soroll GPS
+        track_generation: Generació de trajectes
+        track_split_distance: Distància entre trajectes
+        track_split_distance_unit: m
+        track_split_distance_hint: Inicia un trajecte nou quan els punts consecutius són més lluny.
+        track_split_time: Temps entre trajectes
+        track_split_time_unit: min
+        track_split_time_hint: "Els intervals més llargs inicien un trajecte nou i permeten als viatges utilitzar l’enregistrament d’un altre dispositiu. Després de canviar aquest valor, prem «Recalcula» a cada viatge afectat per actualitzar-ne la ruta i la distància desades."
         hide_readings_that_cannot_be_a_real_position_impossible_jumps: Amaga les lectures que no poden ser una posició real — salts impossibles, coordenades incorrectes. Desactiva-ho per veure tots els punts en brut.
         re_evaluate_past_data: Torna a avaluar les dades passades
         clears_existing_anomaly_flags_and_re_runs_the_filter_on: Elimina les marques d'anomalia existents i torna a executar el filtre sobre tots els teus punts amb la configuració actual. Els trajectes, estadístiques i resums es reconstruiran després. S'executa en segon pla.
         recalculate_tracks_stats: Recalcula trajectes i estadístiques
-        rebuild_tracks_stats_and_digests_from_your_current_points_without: Reconstrueix trajectes, estadístiques i resums a partir dels teus punts actuals sense tocar les marques d'anomalia. Útil després de canviar els llindars de divisió de rutes.
+        rebuild_tracks_stats_and_digests_from_your_current_points_without: Desa primer aquests llindars. Els trajectes nous els faran servir automàticament; selecciona «Recalcula trajectes i estadístiques» per aplicar-los a l'historial existent.
         city_statistics: Estadístiques de ciutat
         min_minutes_in_city: Minuts mínims a la ciutat
         min_5: 60 min
         min_6: 5 min
         min_7: 120 min
         how_long_you_must_stay_for_a_city_to_count: Quant de temps has de romandre perquè una ciutat compti a les estadístiques
-        max_gap_between_points: Interval màxim entre punts
-        min_8: 120 min
-        min_9: 30 min
-        min_10: 195 min
-        min_11: 360 min
-        max_gap_between_points_before_assuming_you_left_the_city: Interval màxim entre punts abans de suposar que vas sortir de la ciutat
         min_12: 720 min
         live_mode: Mode en directe
         show_new_points_in_real_time: Mostra els punts nous en temps real
@@ -1141,10 +1201,7 @@ ca:
         train_tracks_and_rail_lines: Vies i línies de tren
         urban_amenities: Serveis urbans
         water_labels: Etiquetes d'aigua
-        tiled_rendering: "Renderitzat per tessel·les"
         beta: "Beta"
-        tiled_rendering_description: "Dibuixa els punts, les rutes, els trajectes i la boira a partir de tessel·les vectorials mentre et desplaces, de manera que un interval de dates llarg només carrega el que es veu. Les rutes mostren els trajectes que has generat, acolorits per trajecte."
-        tiled_rendering_caveats: "Actiu mentre el Mapa de rascar està desactivat. Les zones denses s'agrupen en marcadors amb un recompte de punts: amplia per obrir els punts individualment. L'edició de punts no està disponible, les rutes s'acoloreixen per trajecte (velocitat mitjana, no un degradat), en passar el cursor per una ruta ja no se'n mostra la finestra emergent (fes clic en un trajecte) i el rastre en directe pot trigar uns minuts."
         fill_gaps_with_the_default_basemap: "Omple els buits amb el mapa base predeterminat"
         uncovered_areas_are_drawn_from_dawarich_s_default_tile_server: "Per a un conjunt de tessel·les que només cobreix una part del món. Les zones que no cobreix es dibuixen des del servidor de tessel·les predeterminat de Dawarich, de manera que, si ho actives, s'hi enviaran peticions de tessel·les."
       visit_creation_modal:
@@ -1156,8 +1213,8 @@ ca:
         cancel: Cancel·la
         create_visit: Crea la visita
       webgl_error:
-        webgl_is_not_available: WebGL no està disponible
-        map_v2_requires_webgl_to_render_maps_please_enable_hardware: El mapa v2 necessita WebGL per representar els mapes. Activa l'acceleració per maquinari a la configuració del teu navegador o prova amb un altre navegador.
+        webgl_is_not_available: WebGL 2 no està disponible
+        map_v2_requires_webgl_to_render_maps_please_enable_hardware: El mapa v2 necessita WebGL 2 per representar els mapes. Activa l'acceleració per maquinari a la configuració del teu navegador o prova amb un altre navegador.
       index:
         loading: Carregant...
         pick_a_day: Tria un dia
@@ -1320,7 +1377,15 @@ ca:
       close_studio: Tanca l'estudi
       name: Nom
       theme: Tema
+      visualization: Visualització
+      mode: Mode
+      mode_route: Reproducció de la ruta
+      mode_fog: Boira de guerra
+      fog_color: Color de la superposició
+      fog_opacity: Opacitat de la superposició
       route: Ruta
+      show_route: Mostra la ruta
+      show_marker: Mostra el marcador
       playback: Reproducció
       reset: Restableix
       format: Format
@@ -1415,6 +1480,27 @@ ca:
       residential_roads: Carrers residencials
       track: Trajecte
   settings:
+    trek_sources:
+      select_trips:
+        title: "Tria viatges de TREK"
+        subtitle: "Només es copien a Dawarich els viatges seleccionats. Pots canviar la selecció més endavant."
+        untitled_trip: "Viatge sense títol"
+        archived: "Arxivat"
+        dates_required: "Afegeix dates d'inici i de fi a TREK abans d'importar aquest viatge."
+        import_selected: "Importa els viatges seleccionats"
+        back: "Enrere"
+      create:
+        connected_choose_trips: "TREK connectat. Tria els viatges que vols que gestioni Dawarich."
+      import_trips:
+        no_trips_selected: "No s'ha seleccionat cap viatge de TREK. Els itineraris existents s'han conservat i han deixat de sincronitzar-se."
+        select_at_least_one_dated_trip: "Selecciona almenys un viatge actiu de TREK amb dates d'inici i de fi."
+        trips_are_now_syncing: "Els viatges de TREK seleccionats s'estan sincronitzant."
+      sync:
+        sync_queued: "La sincronització amb TREK s'ha posat a la cua."
+        source_disabled: "TREK està desactivat. Torna'l a connectar amb una clau API nova abans de sincronitzar."
+        source_importing: "TREK encara està important els viatges seleccionats."
+      destroy:
+        source_removed_trips_kept: "TREK s'ha desconnectat. Els teus viatges gestionats s'han conservat i ja no es sincronitzaran."
     navigation:
       general: General
       integrations: Integracions
@@ -1422,6 +1508,7 @@ ca:
       visits: Visites
       two_factor_authentication: Autenticació de dos factors
       users: Usuaris
+      instance: "Instància"
       background_jobs: Tasques en segon pla
     background_jobs:
       index:
@@ -1480,6 +1567,8 @@ ca:
         receive_an_annual_summary_on_january_2nd_with_your_year: Rep un resum anual el 2 de gener amb el teu any en retrospectiva.
         news_updates: Notícies i actualitzacions
         receive_occasional_emails_about_new_features_and_important_updates: Rep correus electrònics ocasionals sobre noves funcions i actualitzacions importants
+        send_test_email: Envia un correu de prova
+        test_email_hint: Envia un missatge de prova al correu electrònic del teu compte per verificar els paràmetres SMTP
         timezone: Fus horari
         your_timezone: El teu fus horari
         all_dates_and_times_will_be_displayed_in_this_timezone: Totes les dates i hores es mostraran en aquest fus horari
@@ -1489,6 +1578,22 @@ ca:
         general_settings: Configuració general
         save_changes: Desa els canvis
     integrations:
+      trek:
+        title: "Integració amb TREK"
+        subtitle: "Importa un itinerari de TREK seleccionat com a viatge de Dawarich. TREK continua sent la font del pla."
+        trek_url: "URL de TREK"
+        cloud_notice: "Dawarich Cloud necessita una URL de TREK accessible públicament. Dawarich autoallotjat es pot connectar a una instància a la xarxa local o a Tailscale."
+        api_key: "Clau API de TREK"
+        api_key_help: "Crea una clau API de només lectura a TREK, a Configuració → Integracions. Comença per trek_."
+        connect: "Connecta TREK"
+        reconnect: "Torna a connectar TREK"
+        importing_trips: "S'estan important els viatges seleccionats…"
+        last_synced: "Darrera sincronització: %{time}"
+        not_synced_yet: "Encara no sincronitzat"
+        choose_trips: "Tria viatges"
+        sync_now: "Sincronitza ara"
+        disconnect: "Desconnecta"
+        disconnect_confirmation: "Vols desconnectar TREK? Els viatges gestionats i les seves dades registrades es queden a Dawarich, però deixen de sincronitzar-se."
       index:
         immich_photoprism_integrations: Integracions d'Immich i Photoprism
         connect_your_photo_management_tools_to_see_your_photos_on: Connecta les teves eines de gestió fotogràfica per veure les teves fotos al mapa. Les integracions d'Immich i Photoprism estan disponibles al pla Pro.
@@ -1517,6 +1622,16 @@ ca:
         the_base_url_of_your_airtrail_instance_your_flights_are: La URL base de la teva instància d'AirTrail. Els teus vols es mostren com a arcs al mapa.
         airtrail_api_key: Clau API d'AirTrail
         create_an_api_key_in_airtrail_under_settings_rarr_security: Crea una clau API a AirTrail a Configuració → Seguretat.
+        teslamate_integration: Integració amb TeslaMateApi
+        teslamate_url: URL de TeslaMateApi
+        the_base_url_of_your_teslamateapi_instance: La URL base de la teva instància de TeslaMateApi.
+        teslamate_setup_guide: Guia de configuració (TeslaMateApi v1.25.0 o posterior)
+        teslamate_username: Nom d'usuari HTTP Basic (opcional)
+        teslamate_password: Contrasenya HTTP Basic (opcional)
+        teslamate_api_token: Token Bearer (opcional)
+        teslamate_authentication_help: Utilitza autenticació Basic per a un servidor intermediari invers protegit, o un token Bearer per a un servidor intermediari o fork compatible. Els endpoints de lectura del TeslaMateApi canònic no utilitzen l'API_TOKEN.
+        sync_teslamate_drives: Sincronitza els trajectes de TeslaMateApi
+        teslamate_sync_help: Els trajectes completats se sincronitzen automàticament una vegada al dia. Els trajectes actuals i les posicions d'estacionament no estan disponibles mitjançant TeslaMateApi.
         last_synced: 'Última sincronització:'
         connected_accounts: Comptes connectats
         you_ve_connected_your_account_using_the_following_oauth_provider: 'Has connectat el teu compte fent servir el proveïdor OAuth següent:'
@@ -1529,11 +1644,15 @@ ca:
         sync_now: Sincronitza ara
         settings: Configuració
         services_nav: "Serveis d'integració"
+        geocoding: "Geocodificació"
+        geocoding_moved_to_instance: "Ara a la configuració de la instància"
+        geocoding_managed_by_admin: "El configura l'administrador de la instància"
         services:
-          geocoding: "Geocodificació"
           immich: "Immich"
           photoprism: "PhotoPrism"
           airtrail: "AirTrail"
+          teslamate: "TeslaMateApi"
+          trek: "TREK"
         status_connected: "Connectat"
         status_failed: "L'últim intent de connexió ha fallat"
     subscriptions:
@@ -1660,55 +1779,6 @@ ca:
         minimum_points_to_count_as_a_visit: Punts mínims perquè compti com a visita
         minimum_visit_duration_minutes: Durada mínima de la visita (minuts)
         save_settings: Desa la configuració
-    geocoding:
-      show:
-        title: "Geocodificació"
-        provider: "Proveïdor de geocodificació"
-        provider_hint: "El proveïdor que s'utilitza per a la geocodificació inversa dels teus punts i per a la cerca de llocs i ubicacions."
-        intro: "La geocodificació converteix les coordenades en noms de ciutat i de país als teus punts i estadístiques, i fa funcionar la cerca de llocs i ubicacions."
-        host_choice: "Servidor Photon"
-        choice_chibigeo: "Servei allotjat de ChibiGeo"
-        choice_chibigeo_desc: "Nivell gratuït: 2.500 cerques al dia. Funciona sense configuració; només cal que hi afegeixis la teva clau d'API."
-        choice_komoot: "Servidor públic de komoot"
-        choice_komoot_desc: "Instància compartida gratuïta, limitada a una petició per segon."
-        choice_custom: "Amfitrió personalitzat"
-        choice_custom_desc: "La teva pròpia instància de Photon o un altre servidor compatible."
-        recommended: "Recomanat"
-        https_locked: "L'HTTPS sempre està activat per a aquest amfitrió."
-        https_on: "Activat"
-        https_off: "Desactivat"
-        chibigeo_message: "ChibiGeo és un servei de geocodificació de tarifa plana i centrat en la privadesa creat per l'equip de Dawarich. Funciona amb Dawarich sense configuració. Cal una clau d'API."
-        chibigeo_limits: "El pla gratuït Hobby inclou 2.500 cerques al dia a 1 petició per segon: límits estrictes, sense excedents."
-        chibigeo_key_link: "Obtén la teva clau d'API gratuïta"
-        chibigeo_site_link: "Què és ChibiGeo?"
-        disabled: "Desactivat"
-        env_managed_notice: "Actualment la geocodificació la gestionen variables d'entorn definides per l'operador de la teva instància. La configuració següent només tindrà efecte si s'eliminen aquestes variables."
-        host: "Amfitrió"
-        host_hint: "Nom d'amfitrió simple amb port opcional, p. ex. photon.example.com:2322"
-        api_key: "Clau d'API"
-        api_key_hint: "Deixa-ho en blanc per mantenir la clau desada."
-        api_key_saved: "Hi ha una clau desada per a aquest proveïdor."
-        clear_api_key: "Elimina la clau d'API desada"
-        use_https: "Utilitza HTTPS"
-        rps: "Peticions per segon"
-        rps_hint_custom: "Deixa-ho en blanc per no posar-hi límit. Ajusta-ho al que permeti el teu servidor o el teu pla."
-        rps_hint_chibigeo: "Ajusta-ho al teu pla de ChibiGeo: Hobby 1, Self-Hoster 5, Builder 10, Scale 25. Demanar més del que permet el teu pla només genera cerques rebutjades."
-        rps_hint_komoot: "komoot imposa una petició per segon a tothom, així que aquest valor és fix."
-        komoot_warning: "photon.komoot.io és una instància pública compartida amb límits de peticions estrictes. Les peticions es limiten a una per segon i la geocodificació massiva serà lenta. Considera allotjar la teva pròpia instància de Photon."
-        komoot_no_api_key: "El servidor públic de komoot no accepta cap clau d'API; deixa-la sense definir."
-        save: "Desa"
-        test: "Prova el teu proveïdor"
-        test_hint: "Desa primer la configuració i després fes la prova. La prova executa una cerca amb la configuració del teu propi proveïdor, fins i tot quan hi ha variables d'entorn actives."
-      update:
-        updated: "S'ha actualitzat la configuració de geocodificació."
-        disabled: "S'ha desactivat la geocodificació."
-        invalid_provider: "Proveïdor de geocodificació desconegut."
-      test:
-        not_configured: "No hi ha cap proveïdor de geocodificació configurat al teu compte. Desa'n un primer."
-        success: "Fet! El teu proveïdor ha convertit les coordenades de prova en: %{place}."
-        empty: "El proveïdor ha respost, però no ha retornat cap resultat per a les coordenades de prova."
-        failure: "La prova ha fallat: %{error}"
-        rate_limited: "El límit de peticions del proveïdor està ocupat ara mateix; torna-ho a provar d'aquí a un moment."
   share_links:
     hubs:
       body:
@@ -2165,6 +2235,8 @@ ca:
     distance:
       calculating: Calculant...
     form:
+      cancel: "Cancel·la"
+      managed_by_trek_hint: "El nom i les dates venen de TREK i s'actualitzen a cada sincronització. Canvia'ls a TREK."
       prohibited_this_trip_from_being_saved: 'ha impedit que es desés aquest viatge:'
       errors_prohibited_save:
         one: "%{count} error ha impedit que es desés aquest viatge:"
@@ -2175,6 +2247,7 @@ ca:
       recalculation_failed_try_again: El recàlcul ha fallat — torna-ho a provar.
       recalculate_this_trip_s_path_distance_and_countries_from_your: Recalcular el recorregut, la distància i els països d'aquest viatge a partir dels teus punts més recents?
     trip:
+      plan: "Pla"
       no_points_found: No s'ha trobat cap punt
       calculating: Calculant...
       ndash: "–"
@@ -2185,9 +2258,7 @@ ca:
         one: "%{count} dia"
         other: "%{count} dies"
     edit:
-      back_to_trips: Torna als viatges
       editing_trip: Edició del viatge
-      show_this_trip: Mostra aquest viatge
     index:
       new_trip: Nou viatge
       no_trips_yet: Encara no hi ha viatges
@@ -2195,7 +2266,6 @@ ca:
       create_your_first_trip: Crea el teu primer viatge
       trips: Viatges
     new:
-      back_to_trips: Torna als viatges
       new_trip: Nou viatge
     notes:
       empty:
@@ -2215,9 +2285,41 @@ ca:
         delete: Suprimeix
         delete_this_note: Suprimir aquesta nota?
         update_note: Actualitza la nota
+    source_itinerary:
+      show_on_map: "Mostra al mapa"
+      title: "Pla de TREK"
+      subtitle: "Aquest itinerari es gestiona a TREK. Les teves dades de seguiment de Dawarich es mantenen a part."
+      sync_stopped: "Sincronització aturada"
+      synced_ago: "Sincronitzat fa %{time}"
+      open_in_trek: "Obre a TREK"
+      day_number: "Dia %{number}"
+      days_count:
+        one: "%{count} dia"
+        other: "%{count} dies"
+      stops_count:
+        one: "%{count} parada"
+        other: "%{count} parades"
+      duration_minutes:
+        one: "%{count} min"
+        other: "%{count} min"
+      reservation_statuses:
+        confirmed: "Confirmada"
+        pending: "Pendent"
+        cancelled: "Cancel·lada"
+      accommodations: "Allotjaments"
+      travellers: "Viatgers"
+      unscheduled_reservations: "Altres reserves"
+      unplanned_places: "Llocs sense planificar"
     show:
+      planned_route: "Ruta planificada"
+      plan: "Pla"
+      toggle_plan_on_map: "Mostra el pla al mapa"
+      back_to_trips: "Torna als viatges"
       loading_route_data: Carregant les dades de la ruta...
       trip_path_is_being_calculated: S'està calculant el recorregut del viatge...
+      trip_has_not_started_yet: "Aquest viatge planificat encara no ha començat."
+      no_locations_recorded: "No s'han registrat ubicacions durant aquest viatge."
+      no_locations_recorded_hint: "Els punts registrats entre aquestes dates apareixeran aquí."
       download_trip: Descarrega el viatge
       currently_shared: Actualment compartit
       public: Públic
@@ -2235,7 +2337,6 @@ ca:
       no_data: No hi ha dades
       trip_notes: Notes del viatge
       more_on: Més a
-      back_to_trips: Torna als viatges
       gpx: GPX
       geojson: GeoJSON
       edit_trip: Edita el viatge
@@ -2497,6 +2598,9 @@ ca:
       the_lock_will_automatically_lift_after_30_minutes_no_action: El bloqueig es desactivarà automàticament d'aquí a 30 minuts. No cal fer res si has estat tu.
       didn_t_recognise_this_activity_someone_may_be_trying_to: No reconeixes aquesta activitat? És possible que algú estigui intentant accedir al teu compte. Et recomanem restablir la teva contrasenya immediatament.
       reset_your_password_2: 'Restableix la teva contrasenya:'
+    test_email:
+      body: Si pots llegir això, la configuració SMTP de la teva instància funciona.
+      sent_at: Enviat el
     welcome:
       welcome_to_dawarich: Benvingut/da a Dawarich!
       hi: Hola
@@ -2588,6 +2692,7 @@ ca:
       source:
         manual: Manual
         photon: Photon
+        gpx_waypoint: 'Punt de referència GPX'
     shared_link:
       resource_type:
         trip: Viatge
@@ -2804,11 +2909,13 @@ ca:
           apple:
             apple_has_not_verified_this_email_sign_in_with_password: Apple no ha verificat aquest correu electrònic. Inicia sessió amb contrasenya i vincula-ho des de la configuració.
             this_email_already_has_a_dawarich_account_we_sent_a: Aquest correu electrònic ja té un compte de Dawarich. Hem enviat un enllaç de confirmació a aquesta adreça — fes-hi clic per vincular el teu Apple ID.
+            verification_rate_limited: Ja s'ha enviat un enllaç de verificació a aquesta adreça recentment. Comprova la teva safata d'entrada o espera abans de tornar-ho a provar.
             we_couldn_t_find_your_existing_account_and_apple_didn: "No hem pogut trobar el teu compte existent, i Apple no ens ha compartit el teu correu electrònic aquesta vegada. Apple només el comparteix una vegada. Ves a appleid.apple.com → Iniciar sessió amb Apple, busca Dawarich, tria \"Deixa de fer servir Iniciar sessió amb Apple\" i torna-ho a provar."
             token_verification_failed: 'La verificació del token d''Apple ha fallat: %{message}'
           google:
             google_has_not_verified_this_email_sign_in_with_password: Google no ha verificat aquest correu electrònic. Inicia sessió amb contrasenya i vincula-ho des de la configuració.
             this_email_already_has_a_dawarich_account_we_sent_a: Aquest correu electrònic ja té un compte de Dawarich. Hem enviat un enllaç de confirmació a aquesta adreça — fes-hi clic per vincular el teu inici de sessió de Google.
+            verification_rate_limited: Ja s'ha enviat un enllaç de verificació a aquesta adreça recentment. Comprova la teva safata d'entrada o espera abans de tornar-ho a provar.
             token_verification_failed: 'La verificació del token de Google ha fallat: %{message}'
           otp_challenges:
             invalid_challenge: 'Repte no vàlid o caducat: %{message}'
@@ -2963,6 +3070,7 @@ ca:
         linked_sign_in_with_two_factor: "%{provider} ja està vinculat al teu compte. Inicia sessió amb la teva contrasenya i el codi d'A2F per continuar."
         incorrect_password: Contrasenya incorrecta.
         confirmation_link_sent: "Hem enviat un enllaç de confirmació a %{email}. Fes-hi clic per vincular el teu compte."
+        account_link_rate_limited: Ja s'ha enviat un enllaç de confirmació recentment. Comprova la teva safata d'entrada o espera abans de sol·licitar-ne un altre.
         already_linked_to_different_identity: Aquest compte ja està vinculat a una identitat de %{provider} diferent.
       ios:
         authentication_successful_you_can_close_this_window: Autenticació correcta! Pots tancar aquesta finestra.
@@ -3072,6 +3180,11 @@ ca:
         please_enter_an_email_address_or_github_username: Introdueix una adreça de correu electrònic o un nom d'usuari de GitHub
         verified_thank_you_for_supporting_dawarich_via_platform: "Verificat! Gràcies per donar suport a Dawarich a través de %{platform}."
         not_found_in_supporter_list_make_sure_you_re_using: No s'ha trobat a la llista de col·laboradors. Assegura't d'utilitzar el mateix correu electrònic o nom d'usuari de GitHub que a la teva plataforma de donació.
+        smtp_not_configured: L'enviament de correu electrònic mitjançant SMTP no està configurat. Configura els paràmetres SMTP d'autoallotjament per establir les preferències de correu electrònic.
+        smtp_not_configured_html: L'enviament de correu electrònic mitjançant SMTP no està configurat. Configura %{link} per establir les preferències de correu electrònic.
+        smtp_not_configured_link: els paràmetres SMTP d'autoallotjament
+        test_email_sent: Correu de prova enviat a %{email}. Comprova la teva bústia d'entrada (i la carpeta de correu no desitjat).
+        test_email_failed: 'El correu de prova ha fallat: %{error}'
       onboardings:
         demo_data_loaded: Dades de demostració carregades.
         demo_data_is_already_loaded: Les dades de demostració ja estan carregades.
@@ -3279,6 +3392,8 @@ ca:
         subject: Confirma la supressió del compte de Dawarich
       otp_account_locked:
         subject: Compte de Dawarich bloquejat temporalment
+      test_email:
+        subject: Correu de prova de Dawarich
       digests:
         year_end:
           subject: El teu any %{year} en retrospectiva - Dawarich
@@ -3314,6 +3429,11 @@ ca:
     trip:
       must_be_after_start_date: ha de ser posterior a la data d'inici
   services:
+    tesla_mate:
+      connection_tester:
+        teslamate_connection_verified: Connexió amb TeslaMateApi verificada
+        teslamate_url_is_missing: Falta la URL de TeslaMateApi
+        teslamate_connection_failed_message: 'La connexió amb TeslaMateApi ha fallat: %{message}'
     air_trail:
       connection_tester:
         airtrail_connection_verified: Connexió amb AirTrail verificada
@@ -3433,6 +3553,13 @@ ca:
         immich_api_key_missing_permission_asset_view: 'A la clau API d''Immich li falta el permís: asset.view'
         immich_thumbnail_check_failed_code: 'La comprovació de la miniatura d''Immich ha fallat: %{code}'
       enrich_photos:
+        checking_title: "Comprovant les actualitzacions d’ubicació d’Immich"
+        checking: "S’han enviat %{count} actualitzacions d’ubicació a Immich. S’està comprovant si s’han desat les coordenades."
+        result_title: "Resultats de les actualitzacions d’ubicació d’Immich"
+        confirmed:
+          one: "Ubicació desada confirmada per a %{count} foto."
+          other: "Ubicacions desades confirmades per a %{count} fotos."
+        unconfirmed: "Actualitzacions d’ubicació encara sense confirmar: %{count}. Pot ser que Immich encara estigui processant els canvis. Comprova les tasques de metadades i el permís asset.read de la clau API. A les biblioteques externes, Immich ha de poder escriure fitxers auxiliars XMP: els muntatges de només lectura o els permisos dels fitxers poden impedir que es desin. Un cop resolt, torna a cercar abans de reintentar-ho."
         http_code_message: 'HTTP %{code}: %{message}'
       enrich_scan:
         failed_to_fetch_photos_from_immich: No s'han pogut obtenir les fotos d'Immich
@@ -3462,6 +3589,12 @@ ca:
         import_completed_with_no_points: La importació ha finalitzat sense punts
         import_failed: La importació ha fallat
         zero_points_with_timestamps: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació amb marca de temps. Les importacions de GPX, KML i GeoJSON requereixen un valor de temps per a cada coordenada (&lt;time&gt;, &lt;when&gt; o una propietat timestamp)."
+        zero_points_waypoints_only:
+          one: 'El teu fitxer %{name} ha importat 0 punts. Conté %{count} waypoint (un preferit o lloc desat) però cap ruta enregistrada. Dawarich actualment només importa rutes enregistrades.'
+          other: 'El teu fitxer %{name} ha importat 0 punts. Conté %{count} waypoints (preferits o llocs desats) però cap ruta enregistrada. Dawarich actualment només importa rutes enregistrades.'
+        zero_points_route_only:
+          one: 'El teu fitxer %{name} ha importat 0 punts. Conté una ruta planificada de %{count} punt, però cap ruta enregistrada. Dawarich importa rutes enregistrades, no rutes planificades.'
+          other: 'El teu fitxer %{name} ha importat 0 punts. Conté una ruta planificada de %{count} punts, però cap ruta enregistrada. Dawarich importa rutes enregistrades, no rutes planificades.'
         zero_points: "El teu arxiu %{name} ha importat 0 punts. No s'ha trobat cap punt d'ubicació nou en aquest arxiu."
         import_failed_self_hosted: 'La importació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
         import_failed_cloud: 'La importació "%{name}" ha fallat, contacta amb nosaltres a hi@dawarich.com'
@@ -3566,9 +3699,7 @@ ca:
     visits:
       suggest:
         error_suggesting_visits_message: 'Error en suggerir visites: %{message}'
-        new_visits_suggested: S'han suggerit visites noves
         error_suggesting_visits: 'Error en suggerir visites'
-        new_visits_suggested_message: 'S''han suggerit visites noves basades en les teves dades d''ubicació del %{start_at} al %{end_at}. Les pots revisar a la pàgina <a href="%{url}" class="link">Línia de temps</a>.'
       merge_service:
         minimum_visits: Cal seleccionar almenys 2 visites per fusionar-les
       bulk_destroy:
@@ -3618,6 +3749,10 @@ ca:
         weekday_preference: Viatges més entre setmana que els caps de setmana
         with_suggestion: "%{insight} %{suggestion}"
   jobs:
+    tesla_mate:
+      sync_job:
+        teslamate_sync_failed: La sincronització amb TeslaMateApi ha fallat
+        your_teslamate_sync_failed: 'La sincronització amb TeslaMateApi ha fallat amb l''error: %{message}. Comprova la configuració de la integració i torna-ho a provar.'
     air_trail:
       import_flights_job:
         airtrail_sync_failed: La sincronització amb AirTrail ha fallat
@@ -3753,14 +3888,12 @@ ca:
       anomaly_point: Punt anòmal
       failed_to_load_location_data_please_try_again: No s'han pogut carregar les dades d'ubicació. Torna-ho a provar.
       click_on_the_map_to_place_a_place: Fes clic al mapa per col·locar un lloc
-      failed_to_reload_routes: No s'han pogut tornar a carregar les rutes
-      failed_to_load_scratch_layer: No s'ha pogut carregar la capa de mapa de rascar
       failed_to_load_photos: No s'han pogut carregar les fotos
+      some_photo_sources_unavailable: "Algunes fonts de fotos no estan disponibles: %{sources}"
       failed_to_load_areas: No s'han pogut carregar les àrees
       failed_to_load_tracks: No s'han pogut carregar els trajectes
       failed_to_load_flights: No s'han pogut carregar els vols
       failed_to_load_anomalies: No s'han pogut carregar les anomalies
-      reloading_routes: Tornant a carregar les rutes...
       cannot_update_recalculation_is_already_in_progress: 'No es pot actualitzar: ja hi ha un recàlcul en curs'
       transportation_settings_saved: Configuració de transport desada
       globe_view_will_be_applied_after_page_reload: La vista de globus s'aplicarà després de recarregar la pàgina
@@ -3815,6 +3948,18 @@ ca:
       failed_to_update_visit: No s'ha pogut actualitzar la visita
       visit_deleted_successfully: Visita suprimida correctament
       failed_to_update_point_position_please_try_again: No s'ha pogut actualitzar la posició del punt. Torna-ho a provar.
+      point_edit_conflict: Aquest punt ha canviat en una altra sessió. Es mostra la darrera posició desada.
+      edit_history: Historial de canvis
+      edit_history_capacity: "Desa els teus darrers %{count} moviments"
+      redo: Refés
+      point_label: "Punt #%{id}"
+      undo_to_here: "Desfés fins aquí"
+      redo_to_here: "Refés fins aquí"
+      undo: Desfés
+      failed_to_load_map_tiles: No s'han pogut carregar les tessel·les del mapa.
+      tracks_pending: Encara no hi ha trajectes en aquesta vista. Mou el mapa o amplia l'interval de dates; és possible que una importació recent encara s'estigui processant.
+      failed_to_load_visited_countries: No s'han pogut carregar els països visitats.
+      retry: Torna-ho a provar
       failed_to_load_track_points: No s'han pogut carregar els punts del trajecte
       point_updated_track_will_be_recalculated: Punt actualitzat. El trajecte es recalcularà.
       delete: Suprimeix
@@ -3827,11 +3972,10 @@ ca:
       confirmed: Confirmada
       layers: Capes
       points: Punts
-      routes: Rutes
       tracks: Trajectes
       heatmap: Mapa de calor
       fog_of_war: Boira de guerra
-      scratch_map: Mapa de rascar
+      scratch_map: Països visitats
       areas: Àrees
       photos: Fotos
       visits: Visites
@@ -3887,16 +4031,6 @@ ca:
         one: "%{distance} %{unit} | %{count} punt"
         other: "%{distance} %{unit} | %{count} punts"
       updating: Actualitzant el mapa...
-      tiled_rendering:
-        inactive_note:
-          one: "Inactiu mentre %{layers} està activat: necessita el conjunt complet de punts."
-          other: "Inactiu mentre %{layers} estan activats: necessiten el conjunt complet de punts."
-        editing_unavailable: "No disponible amb el renderitzat per tessel·les; les tessel·les vectorials no tenen punts arrossegables"
-        failed: "No s'han pogut carregar les tessel·les del mapa. Prova un interval de dates més curt o desactiva el renderitzat per tessel·les a la configuració del mapa."
-        tracks_pending: "No hi ha cap trajecte en aquesta vista. Amb el renderitzat per tessel·les, les rutes mostren els trajectes que has generat: desplaça't o amplia l'interval de dates, o torna-ho a mirar més tard si has importat l'historial fa poc."
-        splitting_unavailable: "No s'utilitza amb el renderitzat per tessel·les; les rutes segueixen els trajectes que has generat."
-        blockers:
-          scratch: "Mapa de rascar"
     replay:
       no_data_at_this_time: No hi ha dades en aquest moment
       pause: Pausa
@@ -4127,6 +4261,7 @@ ca:
       no_matches: No s'ha trobat cap coincidència dins de la tolerància
       open_in_immich: Obre a Immich
       partially_enriched: "S'han enriquit %{enriched} fotos. %{failed} han fallat."
+      pending_enrichment: "S’han enviat %{count} actualitzacions d’ubicació a Immich; %{failed} no s’han pogut enviar. Rebràs una notificació després de comprovar les coordenades desades."
       photos_without_gps:
         one: "%{count} foto sense GPS"
         other: "%{count} fotos sense GPS"
@@ -4188,6 +4323,7 @@ ca:
       location_coordinates: "Ubicació (%{latitude}, %{longitude})"
       location_data: Dades d'ubicació
       location_point: Punt d'ubicació
+      overlapping_points: "Aquest marcador conté %{count} punts superposats. No es poden separar ampliant el mapa."
       longitude: Longitud
       meters:
         one: "%{count} metre"
@@ -4199,7 +4335,6 @@ ca:
       radius: Radi
       reason: Motiu
       route_information: Informació de la ruta
-      routes: Rutes
       selected_point: Punt seleccionat
       show_points: Mostra els punts
       show_points_help: Activa-ho per veure i arrossegar punts per editar el trajecte
@@ -4313,6 +4448,7 @@ ca:
       loading: Carregant…
       loading_tracks: Carregant trajectes per al nou interval…
       no_location_data: No hi ha dades d'ubicació en aquest interval de dates — tria un interval amb trajectes a la barra de dates de dalt.
+      gallery_without_flights: "Els pòsters de la galeria utilitzen rutes GPS sense vols. La baixada conserva la vista actual."
       no_tracks_in_frame: No hi ha trajectes dins del marc — mou o fes zoom al mapa sobre la teva ruta per desar-la a la galeria.
       queued: A la cua — generant-se al servidor a Pòsters recents…
       rendering: Generant %{width} × %{height}px…
@@ -4334,14 +4470,10 @@ ca:
       fog_threshold: Llindar de la boira de guerra
       live_map: Mapa en directe
       merge_threshold: Minuts del llindar de fusió
-      meters_between_routes: Metres entre rutes
-      minutes_between_routes: Minuts entre rutes
-      points_rendering_mode: Mode de representació de punts
       raw: En brut
       route_opacity: "Opacitat de la ruta, %"
       simplified: Simplificat
       speed_color_scale: Escala de colors per velocitat
-      speed_colored_routes: Rutes acolorides per velocitat
       time_threshold: Minuts del llindar de temps
     calendar_panel:
       loading_visited_places: Carregant llocs visitats...

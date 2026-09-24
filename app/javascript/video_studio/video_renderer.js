@@ -2,7 +2,7 @@
 // MapLibre map is driven frame by frame (partial track via setData, camera
 // via jumpTo), each settled frame is composited with the HUD onto a canvas
 // and handed to the WebCodecs encoder.
-import maplibregl from "maplibre-gl"
+import * as maplibregl from "maplibre-gl"
 import { TRACK_SOURCE_ID } from "poster_studio/render/style_builder"
 import { trackBounds } from "poster_studio/ui/preview"
 import { followCenter, lerpCamera } from "video_studio/camera_path"
@@ -13,6 +13,7 @@ import {
 } from "video_studio/color_util"
 import { ensureHudFonts } from "video_studio/hud_fonts"
 import { drawHud } from "video_studio/hud_overlay"
+import { drawFogOverlay, drawRouteMarker } from "video_studio/map_effects"
 import { createMp4Encoder } from "video_studio/mp4_encoder"
 import { buildRenderPlan, frameFraction } from "video_studio/render_plan"
 import { buildRouteClock } from "video_studio/route_clock"
@@ -23,7 +24,6 @@ import {
 } from "video_studio/route_timeline"
 import { RENDER_CSS_SCALE, RENDER_FIT_PADDING } from "video_studio/studio_state"
 
-const HEAD_SOURCE_ID = "video-head"
 const FRESH_SOURCE_ID = "video-fresh"
 const EMPTY_FC = { type: "FeatureCollection", features: [] }
 const IDLE_TIMEOUT_MS = 400
@@ -44,24 +44,9 @@ function easeInOutCubic(t) {
   return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2
 }
 
-function headFC(head) {
-  if (!head) return EMPTY_FC
-  return {
-    type: "FeatureCollection",
-    features: [
-      {
-        type: "Feature",
-        properties: {},
-        geometry: { type: "Point", coordinates: head },
-      },
-    ],
-  }
-}
-
 function styleForVideo(style, accent, dimOpacity) {
   const prepared = JSON.parse(JSON.stringify(style))
   prepared.sources[TRACK_SOURCE_ID].data = EMPTY_FC
-  prepared.sources[HEAD_SOURCE_ID] = { type: "geojson", data: EMPTY_FC }
   prepared.sources[FRESH_SOURCE_ID] = {
     type: "geojson",
     data: EMPTY_FC,
@@ -103,20 +88,6 @@ function styleForVideo(style, accent, dimOpacity) {
     prepared.layers.push(fresh)
   }
 
-  prepared.layers.push(
-    {
-      id: "video_head_ring",
-      type: "circle",
-      source: HEAD_SOURCE_ID,
-      paint: { "circle-radius": 9, "circle-color": "#ffffff" },
-    },
-    {
-      id: "video_head_dot",
-      type: "circle",
-      source: HEAD_SOURCE_ID,
-      paint: { "circle-radius": 6, "circle-color": accent },
-    },
-  )
   return prepared
 }
 
@@ -157,6 +128,10 @@ export async function renderRouteVideo({
   fontUrls,
   labels,
   watermark = null,
+  visualizationMode = "route",
+  fogOpacity = 0.65,
+  fogColor = "#000000",
+  showMarker = true,
   onProgress,
   signal,
 }) {
@@ -211,6 +186,10 @@ export async function renderRouteVideo({
   canvas.width = width
   canvas.height = height
   const ctx = canvas.getContext("2d")
+  const fogCanvas = document.createElement("canvas")
+  fogCanvas.width = width
+  fogCanvas.height = height
+  const fogCtx = fogCanvas.getContext("2d")
 
   try {
     await new Promise((resolve, reject) => {
@@ -256,9 +235,6 @@ export async function renderRouteVideo({
           type: "FeatureCollection",
           features: freshWindow.features,
         })
-        map
-          .getSource(HEAD_SOURCE_ID)
-          .setData(headFC(fraction < 1 ? slice.head : null))
         if (follow)
           map.jumpTo({
             center: followCenter(timeline, fraction),
@@ -280,6 +256,27 @@ export async function renderRouteVideo({
       await nextIdle(map)
 
       ctx.drawImage(map.getCanvas(), 0, 0, width, height)
+      if (visualizationMode === "fog") {
+        drawFogOverlay(fogCtx, {
+          map,
+          features: slice.features,
+          head: slice.head,
+          width,
+          height,
+          opacity: fogOpacity,
+          color: fogColor,
+        })
+        ctx.drawImage(fogCanvas, 0, 0, width, height)
+      }
+      if (showMarker && fraction < 1) {
+        drawRouteMarker(ctx, {
+          map,
+          coordinate: slice.head,
+          width,
+          height,
+          accent,
+        })
+      }
       drawHud(ctx, {
         width,
         height,

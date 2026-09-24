@@ -1,6 +1,10 @@
 import { translate } from "i18n"
-import maplibregl from "maplibre-gl"
-import { formatTimestamp } from "../utils/geojson_transformers"
+import * as maplibregl from "maplibre-gl"
+import {
+  escapeAttribute,
+  escapeHtml,
+  formatTimestamp,
+} from "../utils/geojson_transformers"
 import { getCurrentTheme, getThemeColors } from "../utils/popup_theme"
 import { BaseLayer } from "./base_layer"
 
@@ -19,6 +23,17 @@ export class PhotosLayer extends BaseLayer {
     this._syncMarkers = this._syncMarkers.bind(this)
     this._onClusterClick = this._onClusterClick.bind(this)
     this._onMoveEnd = this._onMoveEnd.bind(this)
+    this._onClusterEnter = () => {
+      this.map.getCanvas().style.cursor = "pointer"
+    }
+    this._onClusterLeave = () => {
+      this.map.getCanvas().style.cursor = ""
+    }
+    this._onSourceData = (event) => {
+      if (event.sourceId === this.sourceId && event.isSourceLoaded) {
+        this._syncMarkers()
+      }
+    }
   }
 
   getSourceConfig() {
@@ -84,23 +99,15 @@ export class PhotosLayer extends BaseLayer {
     this.map.on("click", "photos-clusters", this._onClusterClick)
 
     // Cursor changes on cluster hover
-    this.map.on("mouseenter", "photos-clusters", () => {
-      this.map.getCanvas().style.cursor = "pointer"
-    })
-    this.map.on("mouseleave", "photos-clusters", () => {
-      this.map.getCanvas().style.cursor = ""
-    })
+    this.map.on("mouseenter", "photos-clusters", this._onClusterEnter)
+    this.map.on("mouseleave", "photos-clusters", this._onClusterLeave)
 
     // Sync DOM markers when data loads or map moves;
     // also clear any spiderfied cluster expansion on move
     this.map.on("moveend", this._onMoveEnd)
 
     // Also sync when source data finishes loading
-    this.map.on("data", (e) => {
-      if (e.sourceId === this.sourceId && e.isSourceLoaded) {
-        this._syncMarkers()
-      }
-    })
+    this.map.on("data", this._onSourceData)
 
     // Initial sync
     this._syncMarkers()
@@ -560,18 +567,18 @@ export class PhotosLayer extends BaseLayer {
       <div class="photo-popup" style="font-family: system-ui, -apple-system, sans-serif; max-width: 350px;">
         <div style="width: 100%; border-radius: 8px; overflow: hidden; margin-bottom: 12px; background: ${colors.backgroundAlt};">
           <img
-            src="${thumbnail_url}"
-            alt="${filename || translate("map_info.photo")}"
+            src="${escapeAttribute(thumbnail_url)}"
+            alt="${escapeAttribute(filename || translate("map_info.photo"))}"
             style="width: 100%; height: auto; max-height: 350px; object-fit: contain; display: block;"
             loading="lazy"
           />
         </div>
         <div style="font-size: 13px;">
-          ${filename ? `<div style="font-weight: 600; color: ${colors.textPrimary}; margin-bottom: 6px; word-wrap: break-word;">${filename}</div>` : ""}
+          ${filename ? `<div style="font-weight: 600; color: ${colors.textPrimary}; margin-bottom: 6px; word-wrap: break-word;">${escapeHtml(filename)}</div>` : ""}
           <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📅 ${takenDate}</div>
-          <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📍 ${location}</div>
+          <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">📍 ${escapeHtml(location)}</div>
           <div style="color: ${colors.textMuted}; font-size: 12px; margin-bottom: 6px;">${translate("map_info.coordinates")}: ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-          ${source ? `<div style="color: ${colors.textSecondary}; font-size: 11px; margin-bottom: 6px;">${translate("map_info.source")}: ${source}</div>` : ""}
+          ${source ? `<div style="color: ${colors.textSecondary}; font-size: 11px; margin-bottom: 6px;">${translate("map_info.source")}: ${escapeHtml(source)}</div>` : ""}
           <div style="font-size: 14px; margin-top: 8px; color: ${colors.textPrimary};">${mediaType}</div>
         </div>
       </div>
@@ -641,6 +648,9 @@ export class PhotosLayer extends BaseLayer {
     this._clearSpiderfiedMarkers()
     this.map.off("moveend", this._onMoveEnd)
     this.map.off("click", "photos-clusters", this._onClusterClick)
+    this.map.off("mouseenter", "photos-clusters", this._onClusterEnter)
+    this.map.off("mouseleave", "photos-clusters", this._onClusterLeave)
+    this.map.off("data", this._onSourceData)
     super.remove()
   }
 }

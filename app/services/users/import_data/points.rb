@@ -203,6 +203,7 @@ class Users::ImportData::Points
 
     ensure_lonlat_field(attributes, point_data)
     deserialize_array_columns(attributes)
+    deserialize_jsonb_columns(attributes)
 
     attributes.delete('longitude')
     attributes.delete('latitude')
@@ -298,6 +299,15 @@ class Users::ImportData::Points
       # longer knows their type, so a Point-based deserialize would pass the
       # PG literal ('{home}') through and poison the dimension digest.
       attributes[column] = PointSource.type_for_attribute(column).deserialize(value) if value.is_a?(String)
+    end
+  end
+
+  # SQL-backed exports encode these JSONB values as JSON text inside JSONL.
+  # Decode before upsert_all, otherwise its serializer stores string scalars.
+  def deserialize_jsonb_columns(attributes)
+    %w[geodata raw_data].each do |column|
+      value = attributes[column]
+      attributes[column] = Point.type_for_attribute(column).deserialize(value) if value.is_a?(String)
     end
   end
 

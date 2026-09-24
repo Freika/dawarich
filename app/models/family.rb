@@ -18,6 +18,20 @@ class Family < ApplicationRecord
     owner_holds_plan?
   end
 
+  # A live family subscription supplies its current period. After a downgrade,
+  # retain already paid access but never extend it from a non-family renewal.
+  # A callback without a date must not erase the previously recorded period.
+  def refresh_access_until!(subscription_owner)
+    return if DawarichSettings.self_hosted? || subscription_owner&.active_until.blank?
+
+    period_end = if subscription_owner.family?
+                   subscription_owner.active_until
+                 elsif access_until
+                   [access_until, subscription_owner.active_until].min
+                 end
+    update!(access_until: period_end) unless access_until == period_end
+  end
+
   def can_add_members?
     return true if DawarichSettings.self_hosted?
 

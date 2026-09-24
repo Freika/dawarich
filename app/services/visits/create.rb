@@ -106,8 +106,8 @@ module Visits
         return false
       end
 
-      if ended_at < started_at
-        @errors = 'Failed to create visit: ended_at is before started_at'
+      if ended_at <= started_at
+        @errors = 'Failed to create visit: ended_at must be after started_at'
         return false
       end
 

@@ -185,6 +185,13 @@ RSpec.describe Imports::Create do
             expect { service.call }.to have_enqueued_job(VisitSuggestingJob)
           end
         end
+
+        it 'schedules an achievements check from the oldest imported point' do
+          clear_achievement_checks(user.id)
+
+          expect { service.call }.to have_enqueued_job(Achievements::CheckJob).with(user.id)
+          expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([import.points.minimum(:timestamp)])
+        end
       end
 
       context 'when import fails' do
@@ -410,6 +417,44 @@ RSpec.describe Imports::Create do
 
         it 'delegates to ZipExtractor which spawns per-entry sub-imports' do
           expect { service.call }.to change { user.imports.count }.by(1) # +2 -1 destroyed
+        end
+      end
+
+      context 'when the stored blob is a Dawarich profile export' do
+        let(:import) { create(:import, user:) }
+        let(:zip_path) do
+          path = Rails.root.join('tmp', "profile_#{SecureRandom.hex(4)}.zip").to_s
+          manifest = {
+            format_version: 2,
+            dawarich_version: '1.9.1',
+            exported_at: '2026-09-14T12:00:00Z',
+            counts: { points: 0 },
+            files: { points: [] }
+          }
+
+          ::Zip::File.open(path, create: true) do |zf|
+            zf.get_output_stream('manifest.json') { |f| f.write(manifest.to_json) }
+            zf.get_output_stream('settings.jsonl') { |f| f.write("{}\n") }
+          end
+          path
+        end
+
+        before do
+          import.file.attach(io: File.open(zip_path), filename: 'user_data_export.zip',
+                             content_type: 'application/zip')
+          clear_enqueued_jobs
+        end
+
+        after { File.delete(zip_path) if File.exist?(zip_path) }
+
+        it 'routes the existing import to the user data importer' do
+          expect(Imports::ZipExtractor).not_to receive(:new)
+
+          expect { service.call }
+            .to have_enqueued_job(Users::ImportDataJob).with(import.id)
+
+          expect(import.reload.source).to eq('user_data_archive')
+          expect(import.status).to eq('created')
         end
       end
 

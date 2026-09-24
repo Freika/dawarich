@@ -74,11 +74,11 @@ RSpec.describe Visits::Suggest do
       expect(visit.ended_at).to eq(start_at + 190.minutes)
     end
 
-    it 'creates visits notification' do
-      expect { subject }.to change(Notification, :count).by(1)
+    it 'does not notify the user about newly suggested visits' do
+      expect { subject }.not_to change(Notification, :count)
     end
 
-    it 'does not notify again when a re-run merely regenerates the same stays' do
+    it 'does not notify when a re-run merely regenerates the same stays' do
       described_class.new(user, start_at:, end_at:).call
       create(:point, :with_known_location, user:, timestamp: start_at + 191.minutes)
 
@@ -100,7 +100,7 @@ RSpec.describe Visits::Suggest do
       end
 
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+        configure_instance_geocoding
         allow(Geocoder).to receive(:search).and_return([venue_result])
 
         create_visit_points(user, reverse_geocoding_start_at)
@@ -121,7 +121,6 @@ RSpec.describe Visits::Suggest do
 
     context 'when reverse geocoding is disabled' do
       before do
-        allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(false)
         clear_enqueued_jobs
       end
 

@@ -31,7 +31,7 @@ RSpec.describe Places::NameFetcher do
     end
 
     before do
-      allow(DawarichSettings).to receive(:reverse_geocoding_enabled?).and_return(true)
+      configure_instance_geocoding
       allow(Geocoder).to receive(:search).and_return([geocoder_result])
     end
 
