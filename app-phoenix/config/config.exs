@@ -5,7 +5,8 @@ config :dawarich, ecto_repos: [Dawarich.Repo]
 config :dawarich, Dawarich.Repo,
   migration_source: "phoenix_schema_migrations",
   migration_default_prefix: "phoenix",
-  prepare: :unnamed
+  prepare: :unnamed,
+  parameters: [timezone: "UTC"]
 
 config :dawarich, Oban,
   repo: Dawarich.Repo,

@@ -13,4 +13,11 @@ defmodule Dawarich.RepoTest do
 
     assert exists
   end
+
+  test "sessions run in UTC set by the connection's startup parameter" do
+    assert %{rows: [["UTC", "client"]]} =
+             Dawarich.Repo.query!(
+               "SELECT setting, source FROM pg_settings WHERE name = 'TimeZone'"
+             )
+  end
 end

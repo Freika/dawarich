@@ -9,6 +9,10 @@ defmodule Dawarich.ReleaseTest do
     %{baseline: SchemaFingerprint.public()}
   end
 
+  setup do
+    Dawarich.MigrationModules.purge()
+  end
+
   test "installs the ledger and oban schemas without touching public", %{baseline: baseline} do
     Repo.query!("DROP SCHEMA IF EXISTS oban CASCADE")
     Repo.query!("DROP SCHEMA IF EXISTS phoenix CASCADE")
