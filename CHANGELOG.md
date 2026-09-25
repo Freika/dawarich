@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
+## [Unreleased]
+
+### Fixed
+
+- Delete Family, Leave Family, Remove member and Cancel invitation now ask for confirmation first and send a single request once confirmed; cancelling the confirmation no longer carries out the action.
+
 ## [1.15.2] - 2026-09-22, Berlin
 
 ### Added
