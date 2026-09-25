@@ -31,6 +31,24 @@ defmodule Dawarich.ReleaseMigration do
   ORDER BY i.relname
   """
 
+  @foreign_key_sql """
+  SELECT c.conname::text
+  FROM pg_constraint c
+  JOIN pg_class t1 ON c.conrelid = t1.oid
+  JOIN pg_class t2 ON c.confrelid = t2.oid
+  JOIN pg_namespace n ON c.connamespace = n.oid
+  WHERE c.contype = 'f' AND t1.relname = $1 AND n.nspname = ANY (current_schemas(false))
+    AND t2.oid::regclass::text = $2
+    AND ARRAY(
+      SELECT a.attname::text
+      FROM generate_subscripts(c.conkey, 1) AS idx
+      JOIN pg_attribute a ON a.attrelid = t1.oid AND a.attnum = c.conkey[idx]
+      ORDER BY idx
+    ) = ARRAY[$3::text]
+  ORDER BY c.conname
+  LIMIT 1
+  """
+
   @index_name_sql """
   SELECT 1 FROM pg_class t
   JOIN pg_index d ON t.oid = d.indrelid
@@ -101,6 +119,31 @@ defmodule Dawarich.ReleaseMigration do
 
   def index_name?(repo, table, name), do: exists?(repo, @index_name_sql, [table, name])
 
+  def foreign_key_name(repo, from_table, to_table, column),
+    do: select_value(repo, @foreign_key_sql, [from_table, to_table, column])
+
+  def quote_ident(name), do: ~s("#{String.replace(name, ~s("), ~s(""))}")
+
+  def remove_index_by_columns(repo, table, columns, opts) do
+    opts = Keyword.validate!(opts, [:algorithm, if_exists: false])
+    algorithm = Map.fetch!(%{nil => "", concurrently: "CONCURRENTLY"}, opts[:algorithm])
+
+    case index_names(repo, table, columns) do
+      [] ->
+        if opts[:if_exists],
+          do: :ok,
+          else: raise(ArgumentError, "No indexes found on #{table} with the options provided.")
+
+      [name] ->
+        sql!(repo, "DROP INDEX #{algorithm} #{quote_ident(name)};")
+
+      names ->
+        raise ArgumentError,
+              "Multiple indexes found on #{table} columns [#{Enum.map_join(columns, ", ", &":#{&1}")}]. " <>
+                "Specify an index name from #{Enum.join(names, ", ")}"
+    end
+  end
+
   def select_value(repo, sql, params \\ []) do
     case repo.query!(sql, params, log: false).rows do
       [[value | _] | _] -> value
@@ -116,7 +159,7 @@ defmodule Dawarich.ReleaseMigration do
 
   def remove_index_concurrently_if_exists(repo, table, name) do
     if index?(repo, table, name: name),
-      do: sql!(repo, ~s|DROP INDEX CONCURRENTLY "#{String.replace(name, ~s("), ~s(""))}";|)
+      do: sql!(repo, "DROP INDEX CONCURRENTLY #{quote_ident(name)};")
   end
 
   def with_lock_retry(repo, fun, opts) do

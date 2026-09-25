@@ -109,6 +109,89 @@ defmodule Dawarich.ReleaseMigrationTest do
     assert index_names(ScratchRepo, "missing", ["user_id"]) == []
   end
 
+  test "remove_index_by_columns is Rails' remove_index by columns: if_exists, one drop, or index_name_for_remove's errors" do
+    scratch_sql!("""
+    CREATE TABLE probe (id bigserial primary key, user_id bigint, name text);
+    CREATE INDEX probe_user ON probe (user_id);
+    CREATE INDEX probe_user_name ON probe (user_id, name);
+    CREATE INDEX probe_user_name_b ON probe (user_id, name);
+    CREATE INDEX probe_id_a ON probe (id);
+    CREATE INDEX probe_id_b ON probe (id);
+    CREATE INDEX "probe ""quoted\""" ON probe (name);
+    """)
+
+    assert_raise ArgumentError,
+                 "Multiple indexes found on probe columns [:user_id, :name]. Specify an index name from probe_user_name, probe_user_name_b",
+                 fn -> remove_index_by_columns(ScratchRepo, "probe", ["user_id", "name"], []) end
+
+    assert_raise ArgumentError,
+                 "Multiple indexes found on probe columns [:id]. Specify an index name from probe_id_a, probe_id_b",
+                 fn ->
+                   remove_index_by_columns(ScratchRepo, "probe", ["id"],
+                     algorithm: :concurrently,
+                     if_exists: true
+                   )
+                 end
+
+    assert index_names(ScratchRepo, "probe", ["id"]) == ["probe_id_a", "probe_id_b"]
+
+    assert {:ok, :ok} =
+             ScratchRepo.transaction(fn ->
+               remove_index_by_columns(ScratchRepo, "probe", ["user_id"], if_exists: true)
+             end)
+
+    refute index_name?(ScratchRepo, "probe", "probe_user")
+    assert remove_index_by_columns(ScratchRepo, "probe", ["user_id"], if_exists: true) == :ok
+
+    assert_raise ArgumentError, "No indexes found on probe with the options provided.", fn ->
+      remove_index_by_columns(ScratchRepo, "probe", ["user_id"], algorithm: :concurrently)
+    end
+
+    assert_raise Postgrex.Error, ~r/cannot run inside a transaction block/, fn ->
+      ScratchRepo.transaction(fn ->
+        remove_index_by_columns(ScratchRepo, "probe", ["name"], algorithm: :concurrently)
+      end)
+    end
+
+    assert remove_index_by_columns(ScratchRepo, "probe", ["name"], algorithm: :concurrently) ==
+             :ok
+
+    refute index_name?(ScratchRepo, "probe", ~s(probe "quoted"))
+  end
+
+  test "foreign_key_name is Rails' foreign_key_for: the first foreign key by name from the table to the table on exactly that column" do
+    scratch_sql!("""
+    CREATE TABLE probe_parent (id bigserial primary key, code text, UNIQUE (id, code));
+    CREATE TABLE probe_other (id bigserial primary key);
+    CREATE TABLE probe (id bigserial primary key, parent_id bigint, other_id bigint, code text);
+    CREATE TABLE sibling (parent_id bigint);
+    ALTER TABLE probe ADD CONSTRAINT probe_fk_b FOREIGN KEY (parent_id) REFERENCES probe_parent (id);
+    ALTER TABLE probe ADD CONSTRAINT probe_fk_a FOREIGN KEY (parent_id) REFERENCES probe_parent (id) NOT VALID;
+    ALTER TABLE probe ADD CONSTRAINT probe_fk_0 FOREIGN KEY (parent_id, code) REFERENCES probe_parent (id, code);
+    ALTER TABLE probe ADD CONSTRAINT probe_fk_other FOREIGN KEY (other_id) REFERENCES probe_other (id);
+    ALTER TABLE sibling ADD CONSTRAINT a_sibling_fk FOREIGN KEY (parent_id) REFERENCES probe_parent (id);
+    """)
+
+    assert foreign_key_name(ScratchRepo, "probe", "probe_parent", "parent_id") == "probe_fk_a"
+    assert foreign_key_name(ScratchRepo, "probe", "probe_other", "other_id") == "probe_fk_other"
+    assert foreign_key_name(ScratchRepo, "probe", "probe_other", "parent_id") == nil
+    assert foreign_key_name(ScratchRepo, "probe", "probe_parent", "code") == nil
+    assert foreign_key_name(ScratchRepo, "sibling", "probe_parent", "parent_id") == "a_sibling_fk"
+    assert foreign_key_name(ScratchRepo, "missing", "probe_parent", "parent_id") == nil
+
+    scratch_sql!("ALTER TABLE probe DROP CONSTRAINT probe_fk_a, DROP CONSTRAINT probe_fk_b;")
+    assert foreign_key_name(ScratchRepo, "probe", "probe_parent", "parent_id") == nil
+  end
+
+  test "quote_ident quotes an identifier as Rails' quote_column_name does, doubling embedded quotes" do
+    assert quote_ident("points") == ~s("points")
+    assert quote_ident(~s(a"b)) == ~s("a""b")
+    assert quote_ident(~s("")) == ~s("""""")
+
+    scratch_sql!("CREATE TABLE #{quote_ident(~s(o"k "x))} (id int);")
+    assert table?(ScratchRepo, ~s(o"k "x))
+  end
+
   test "normalize/1 reads the step's transaction flag" do
     fun = fn _repo -> :ok end
     assert normalize({"20990101000001", fun}) == {"20990101000001", fun, true}
@@ -376,9 +459,9 @@ defmodule Dawarich.ReleaseMigrationTest do
           {"false", "", false},
           {nil, "", true},
           {nil, " \t\n\v\f\r", true},
-          {nil, " 　 \u0085", true},
-          {nil, "᠎", false},
-          {nil, "​", false},
+          {nil, "\u00A0\u3000\u2028\u0085", true},
+          {nil, "\u180E", false},
+          {nil, "\u200B", false},
           {nil, "1", false},
           {nil, "false", false},
           {nil, "0", false},
@@ -403,10 +486,10 @@ defmodule Dawarich.ReleaseMigrationTest do
           {nil, false},
           {"", false},
           {" \t\n\v\f\r", false},
-          {" 　 \u0085", false},
-          {"     ", false},
-          {"᠎", true},
-          {"​", true},
+          {" \u3000 \u0085", false},
+          {"\u00A0\u2028\u202F\u205F\u1680", false},
+          {"\u180E", true},
+          {"\u200B", true},
           {"1", true},
           {"false", true},
           {" x ", true}

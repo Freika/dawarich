@@ -32,7 +32,7 @@ defmodule Dawarich.ReleaseMigrations.V1_0_2 do
       sql!(repo, ~S|ALTER TABLE "digests" ADD "month" integer;|)
     end
 
-    remove_digests_user_year_period_type_index(repo)
+    remove_index_by_columns(repo, "digests", ~w[user_id year period_type], if_exists: true)
 
     sql!(
       repo,
@@ -115,19 +115,4 @@ defmodule Dawarich.ReleaseMigrations.V1_0_2 do
   end
 
   defp ids(repo, sql), do: Enum.map(repo.query!(sql, [], log: false).rows, &hd/1)
-
-  defp remove_digests_user_year_period_type_index(repo) do
-    case index_names(repo, "digests", ~w[user_id year period_type]) do
-      [] ->
-        :ok
-
-      [name] ->
-        sql!(repo, ~s|DROP INDEX  "#{String.replace(name, ~s("), ~s(""))}";|)
-
-      names ->
-        raise ArgumentError,
-              "Multiple indexes found on digests columns [:user_id, :year, :period_type]. " <>
-                "Specify an index name from #{Enum.join(names, ", ")}"
-    end
-  end
 end

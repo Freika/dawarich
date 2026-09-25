@@ -21,10 +21,11 @@ defmodule Dawarich.ReleaseMigrations.V1_3_3 do
   end
 
   defp drop_redundant_indexes(repo) do
-    remove_index_on_column(repo, "points", "user_id")
-    remove_index_on_column(repo, "points", "timestamp")
-    remove_index_on_column(repo, "track_segments", "track_id")
-    remove_index_on_column(repo, "track_segments", "transportation_mode")
+    opts = [algorithm: :concurrently, if_exists: true]
+    remove_index_by_columns(repo, "points", ["user_id"], opts)
+    remove_index_by_columns(repo, "points", ["timestamp"], opts)
+    remove_index_by_columns(repo, "track_segments", ["track_id"], opts)
+    remove_index_by_columns(repo, "track_segments", ["transportation_mode"], opts)
   end
 
   defp add_composite_indexes_and_drop_low_selectivity(repo) do
@@ -72,20 +73,5 @@ defmodule Dawarich.ReleaseMigrations.V1_3_3 do
     SELECT UpdateGeometrySRID('tracks', 'original_path', 4326);
     SELECT UpdateGeometrySRID('trips', 'path', 4326);
     """)
-  end
-
-  defp remove_index_on_column(repo, table, column) do
-    case index_names(repo, table, [column]) do
-      [] ->
-        :ok
-
-      [name] ->
-        sql!(repo, ~s|DROP INDEX CONCURRENTLY "#{String.replace(name, ~s("), ~s(""))}";|)
-
-      names ->
-        raise ArgumentError,
-              "Multiple indexes found on #{table} columns [:#{column}]. " <>
-                "Specify an index name from #{Enum.join(names, ", ")}"
-    end
   end
 end

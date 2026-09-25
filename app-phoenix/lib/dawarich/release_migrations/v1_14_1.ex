@@ -4,24 +4,6 @@ defmodule Dawarich.ReleaseMigrations.V1_14_1 do
 
   import Dawarich.ReleaseMigration
 
-  @points_track_foreign_key """
-  SELECT c.conname::text
-  FROM pg_constraint c
-  JOIN pg_class t1 ON c.conrelid = t1.oid
-  JOIN pg_class t2 ON c.confrelid = t2.oid
-  JOIN pg_namespace n ON c.connamespace = n.oid
-  WHERE c.contype = 'f' AND t1.relname = 'points' AND n.nspname = ANY (current_schemas(false))
-    AND t2.oid::regclass::text = 'tracks'
-    AND ARRAY(
-      SELECT a.attname::text
-      FROM generate_subscripts(c.conkey, 1) AS idx
-      JOIN pg_attribute a ON a.attrelid = t1.oid AND a.attnum = c.conkey[idx]
-      ORDER BY idx
-    ) = ARRAY['track_id']
-  ORDER BY c.conname
-  LIMIT 1
-  """
-
   @trips_distance_bigint """
   SELECT 1 FROM pg_attribute
   WHERE attrelid = '"trips"'::regclass AND attname = 'distance' AND attnum > 0 AND NOT attisdropped
@@ -79,7 +61,7 @@ defmodule Dawarich.ReleaseMigrations.V1_14_1 do
 
       sql!(
         repo,
-        ~s|ALTER TABLE "points" VALIDATE CONSTRAINT "#{String.replace(name, ~s("), ~s(""))}";|
+        ~s|ALTER TABLE "points" VALIDATE CONSTRAINT #{quote_ident(name)};|
       )
     end
   end
@@ -94,7 +76,8 @@ defmodule Dawarich.ReleaseMigrations.V1_14_1 do
     end
   end
 
-  defp points_track_foreign_key(repo), do: select_value(repo, @points_track_foreign_key)
+  defp points_track_foreign_key(repo),
+    do: foreign_key_name(repo, "points", "tracks", "track_id")
 
   defp lock_retry!(repo, fun),
     do: with_lock_retry!(repo, fun, lock_timeout: "5s", attempts: 5, backoff_seconds: 5)

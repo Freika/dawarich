@@ -66,7 +66,7 @@ defmodule Dawarich.ReleaseMigrations.V1_13_0 do
 
   defp drop_invalid_indexes_on_points(repo) do
     for [name] <- repo.query!(@invalid_points_indexes, [], log: false).rows do
-      sql!(repo, ~s|DROP INDEX CONCURRENTLY IF EXISTS "#{String.replace(name, ~s("), ~s(""))}";|)
+      sql!(repo, "DROP INDEX CONCURRENTLY IF EXISTS #{quote_ident(name)};")
     end
   end
 

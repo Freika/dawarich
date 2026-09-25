@@ -4,24 +4,6 @@ defmodule Dawarich.ReleaseMigrations.V1_4_0 do
 
   import Dawarich.ReleaseMigration
 
-  @archive_foreign_key """
-  SELECT c.conname::text
-  FROM pg_constraint c
-  JOIN pg_class t1 ON c.conrelid = t1.oid
-  JOIN pg_class t2 ON c.confrelid = t2.oid
-  JOIN pg_namespace n ON c.connamespace = n.oid
-  WHERE c.contype = 'f' AND t1.relname = 'points' AND n.nspname = ANY (current_schemas(false))
-    AND t2.oid::regclass::text = 'points_raw_data_archives'
-    AND ARRAY(
-      SELECT a.attname::text
-      FROM generate_subscripts(c.conkey, 1) AS idx
-      JOIN pg_attribute a ON a.attrelid = t1.oid AND a.attnum = c.conkey[idx]
-      ORDER BY idx
-    ) = ARRAY['raw_data_archive_id']
-  ORDER BY c.conname
-  LIMIT 1
-  """
-
   @impl true
   def release, do: "1.4.0"
 
@@ -40,7 +22,7 @@ defmodule Dawarich.ReleaseMigrations.V1_4_0 do
 
   defp change_archive_fk_to_restrict(repo) do
     if name = archive_foreign_key(repo) do
-      sql!(repo, ~s|ALTER TABLE "points" DROP CONSTRAINT #{quote_name(name)};|)
+      sql!(repo, ~s|ALTER TABLE "points" DROP CONSTRAINT #{quote_ident(name)};|)
     end
 
     sql!(repo, ~S"""
@@ -75,10 +57,9 @@ defmodule Dawarich.ReleaseMigrations.V1_4_0 do
       archive_foreign_key(repo) ||
         raise ArgumentError, "Table 'points' has no foreign key for points_raw_data_archives"
 
-    sql!(repo, ~s|ALTER TABLE "points" VALIDATE CONSTRAINT #{quote_name(name)};|)
+    sql!(repo, ~s|ALTER TABLE "points" VALIDATE CONSTRAINT #{quote_ident(name)};|)
   end
 
-  defp archive_foreign_key(repo), do: select_value(repo, @archive_foreign_key)
-
-  defp quote_name(name), do: ~s("#{String.replace(name, ~s("), ~s(""))}")
+  defp archive_foreign_key(repo),
+    do: foreign_key_name(repo, "points", "points_raw_data_archives", "raw_data_archive_id")
 end
