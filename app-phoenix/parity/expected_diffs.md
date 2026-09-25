@@ -1,0 +1,7 @@
+# Expected differences between Rails and Phoenix
+
+A Phoenix page, endpoint or email may differ from Rails only when the difference is listed here with a reason (roadmap Slice Recipe, step 4). A Track B step records a Rails behavior here when a spec cannot or should not pin it; the Track A slice that ports the surface decides the Phoenix side and closes the entry.
+
+| ID | Surface | Rails today | Phoenix | Owner | Status |
+|---|---|---|---|---|---|
+| ED-001 | Throttled browser form posts: `POST /users/sign_in`, `POST /users`, `POST /users/otp_challenge`, `POST /auth/account_link/challenge`, `POST /s/:id/unlock` | rack-attack's `Rack::Attack.throttled_responder` (`config/initializers/rack_attack.rb`) answers every throttle, browser forms included, with HTTP 429, `Content-Type: application/json`, `Cache-Control: no-store`, `Retry-After` (seconds to the end of the window) and the body `{"error":"rate_limit_exceeded","message":"API rate limit exceeded. Please wait before making more requests.","upgrade_url":"<MANAGER_URL>/pricing"}`; the browser shows the JSON instead of the form. Since `fix/self-hosted-no-throttles` self-hosted instances throttle only the last two paths; Cloud throttles all five. Not pinned by a spec: reaching a throttle spends a budget every other spec shares. | Decided by A11 (sign-in, sign-up, OTP, account link) and A9 (shared-link unlock): reproduce the JSON 429, or render the form with an error and record the reason here. | A11 | open |
