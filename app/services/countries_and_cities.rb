@@ -47,7 +47,7 @@ class CountriesAndCities
 
   def runs_within(segment)
     segment
-      .reject { |point| point[:country_name].nil? || point[:city].nil? }
+      .reject { |point| canonical_country_name(point).nil? || point[:city].nil? }
       .slice_when { |previous, current| separate_runs?(previous, current) }
       .map { |run_points| build_run(run_points) }
   end
@@ -92,11 +92,15 @@ class CountriesAndCities
     (point[:velocity].to_f * MS_TO_KMH) > FLYOVER_VELOCITY_THRESHOLD_KMH
   end
 
+  # Prefer the resolved country; retained legacy text covers unresolved names.
   def canonical_country_name(point)
-    country_id = point[:country_id]
-    return point[:country_name] if country_id.blank?
+    country_names_by_id[point[:country_id]] || point_value(point, :country_name) || point_value(point, :country)
+  end
 
-    country_names_by_id[country_id] || point[:country_name]
+  def point_value(point, attribute)
+    return nil if point.respond_to?(:has_attribute?) && !point.has_attribute?(attribute)
+
+    point[attribute]
   end
 
   def country_names_by_id

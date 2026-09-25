@@ -1,0 +1,187 @@
+# frozen_string_literal: true
+
+# The v1 → v2 transform statements for the Release-D points rewrite.
+# Every statement is plain SQL over `points` (v1) and `points_v2`; the copy
+# and the change-capture catch-up share transform_upsert so a row transforms
+# identically no matter which path carries it.
+module Points
+  module Rewrite
+    module Sql
+      module_function
+
+      V2_COLUMNS = %w[
+        id timestamp user_id track_id import_id visit_id raw_data_archive_id
+        created_at updated_at reverse_geocoded_at country_id country country_name source_id lock_version
+        accuracy vertical_accuracy altitude velocity course course_accuracy
+        battery mode ping external_track_id anomaly raw_data_archived lonlat city geodata raw_data motion_data
+      ].freeze
+
+      def column_list
+        V2_COLUMNS.map { |c| %("#{c}") }.join(', ')
+      end
+
+      # The SELECT list transforming a v1 row. `timestamp_expression` lets the
+      # NULL-timestamp synthesis pass swap in its computed value; every other
+      # caller reads the real column.
+      def transform_select(timestamp_expression: 'p."timestamp"::bigint')
+        <<~SQL
+          p.id, #{timestamp_expression}, p.user_id, p.track_id, p.import_id, p.visit_id,
+          p.raw_data_archive_id, p.created_at, p.updated_at, p.reverse_geocoded_at,
+          p.country_id::integer, p.country, p.country_name, p.source_id, p.lock_version,
+          p.accuracy, p.vertical_accuracy,
+          COALESCE(p.altitude_decimal, p.altitude)::real,
+          p.velocity::real,
+          p.course::real, p.course_accuracy::real,
+          p.battery::smallint,
+          p.mode, p.ping, p.external_track_id, p.anomaly, p.raw_data_archived,
+          p.lonlat, p.city, p.geodata, p.raw_data, p.motion_data
+        SQL
+      end
+
+      def conflict_update
+        (V2_COLUMNS - %w[id]).map { |c| %("#{c}" = EXCLUDED."#{c}") }.join(', ')
+      end
+
+      # Copy for a bounded id range; NULL timestamps are handled by the
+      # synthesis pass, never here.
+      def transform_upsert(where:)
+        <<~SQL
+          INSERT INTO points_v2 (#{column_list})
+          SELECT #{transform_select}
+          FROM points p
+          WHERE #{where} AND p."timestamp" IS NOT NULL
+          ON CONFLICT (id) DO UPDATE SET #{conflict_update}
+        SQL
+      end
+
+      def captured_upsert(where:)
+        <<~SQL
+          INSERT INTO points_v2 (#{column_list})
+          SELECT #{transform_select(timestamp_expression: 'COALESCE(p."timestamp"::bigint, v."timestamp")')}
+          FROM points p
+          LEFT JOIN points_v2 v ON v.id = p.id
+          WHERE #{where} AND (p."timestamp" IS NOT NULL OR v.id IS NOT NULL)
+          ON CONFLICT (id) DO UPDATE SET #{conflict_update}
+        SQL
+      end
+
+      # ONE global pass over every NULL-timestamp row. The row_number MUST
+      # span the whole set: restarting it per batch reproduces the collision
+      # the offset exists to avoid (imports sharing created_at seconds).
+      # Insert-only: a row already in v2 keeps its timestamp, so a resume after
+      # the unique index moved a colliding row cannot move it back.
+      def synthesis_upsert
+        <<~SQL
+          INSERT INTO points_v2 (#{column_list})
+          SELECT #{transform_select(timestamp_expression: 'n.synthesized_timestamp')}
+          FROM points p
+          JOIN (
+            SELECT id,
+                   EXTRACT(EPOCH FROM created_at)::bigint +
+                     ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY id) AS synthesized_timestamp
+            FROM points
+            WHERE "timestamp" IS NULL
+          ) n ON n.id = p.id
+          WHERE NOT EXISTS (SELECT 1 FROM points_v2 v WHERE v.id = p.id)
+          ON CONFLICT (id) DO NOTHING
+        SQL
+      end
+
+      # A synthesized timestamp can land on a real row's (user, timestamp,
+      # lonlat), or two synthesized rows can meet when a lower id carries a
+      # later created_at. Every colliding synthesized row of a user moves past
+      # the user's whole synthesized run by its rank in (timestamp, id) order:
+      # timestamps are non-decreasing along that order and the rank strictly
+      # increasing, so no moved row can land on another moved row.
+      def bump_synthesized_collisions
+        <<~SQL
+          WITH synthesized AS (
+            SELECT v.id, v.user_id, v."timestamp", (v.lonlat::geometry)::bytea AS lonlat_bytes,
+                   COUNT(*) OVER (PARTITION BY v.user_id) AS run_length
+            FROM points_v2 v
+            JOIN points p ON p.id = v.id
+            WHERE p."timestamp" IS NULL
+          ), colliding AS (
+            SELECT DISTINCT s.id, s.user_id, s."timestamp", s.run_length
+            FROM synthesized s
+            JOIN points_v2 o
+              ON o.user_id = s.user_id
+             AND o."timestamp" = s."timestamp"
+             AND (o.lonlat::geometry)::bytea = s.lonlat_bytes
+             AND o.id <> s.id
+          ), shifts AS (
+            SELECT id,
+                   run_length + ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY "timestamp", id) - 1 AS shift
+            FROM colliding
+          )
+          UPDATE points_v2 SET "timestamp" = points_v2."timestamp" + shifts.shift
+          FROM shifts
+          WHERE points_v2.id = shifts.id
+        SQL
+      end
+
+      # The C backfill's seed/stamp pair, scoped to still-unstamped rows so
+      # SKIP_POINT_DIMENSION_BACKFILL installs upgrade in one shot. Digest
+      # byte-parity with ingest comes from sharing PointSource.digest_sql.
+      def combo_column_list
+        PointSource::COMBO_COLUMNS.map { |c| %("#{c}") }.join(', ')
+      end
+
+      def seed_sources(start_id, end_id)
+        <<~SQL
+          INSERT INTO point_sources (digest, #{combo_column_list}, created_at, updated_at)
+          SELECT t.digest, #{combo_column_list}, NOW(), NOW()
+          FROM (
+            SELECT DISTINCT #{PointSource.digest_sql('points')} AS digest, #{combo_column_list}
+            FROM points
+            WHERE id BETWEEN #{start_id.to_i} AND #{end_id.to_i} AND source_id IS NULL
+          ) t
+          WHERE NOT EXISTS (SELECT 1 FROM point_sources ps WHERE ps.digest = t.digest)
+          ON CONFLICT (digest) DO NOTHING
+        SQL
+      end
+
+      # The C-chain's country resolution, inlined here because it is the only
+      # remaining prerequisite for resolved country IDs. The chain enqueues
+      # it on Sidekiq while this migration runs inline on boot. Unmatched
+      # names are retained separately in points_v2.
+      #
+      # Mirrors BackfillPointCountryIdJob#resolve_countries exactly: aliases
+      # unioned in so geocoder names ("United States") reach their seeded
+      # canonical ("United States of America"), duplicate names resolved to the
+      # lowest id for determinism, and a name matching nothing stays NULL
+      # rather than falling through to the legacy country column.
+      def resolve_countries(start_id, end_id)
+        <<~SQL
+          UPDATE points p
+          SET country_id = c.id
+          FROM (
+            SELECT MIN(id) AS id, name FROM (
+              SELECT countries.id, countries.name FROM countries
+              UNION ALL
+              SELECT countries.id, aliases.alias AS name
+              FROM countries
+              JOIN #{Countries::NameAliases.values_sql} AS aliases(alias, canonical)
+                ON countries.name = aliases.canonical
+            ) named
+            GROUP BY name
+          ) c
+          WHERE p.id BETWEEN #{start_id.to_i} AND #{end_id.to_i}
+            AND p.country_id IS NULL
+            AND c.name = COALESCE(p.country_name, p.country)
+        SQL
+      end
+
+      def stamp_sources(start_id, end_id)
+        <<~SQL
+          UPDATE points p
+          SET source_id = ps.id
+          FROM point_sources ps
+          WHERE p.id BETWEEN #{start_id.to_i} AND #{end_id.to_i}
+            AND p.source_id IS NULL
+            AND ps.digest = #{PointSource.digest_sql('p')}
+        SQL
+      end
+    end
+  end
+end

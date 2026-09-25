@@ -5,6 +5,10 @@ require 'rails_helper'
 RSpec.describe 'Retroactive point ingestion schedules historical track generation' do
   let(:user) { create(:user) }
 
+  # The scheduler's debounce keys live in Sidekiq's Redis for six hours and
+  # survive the example transaction; a rebuilt database reuses user ids.
+  before { Tracks::BackfillScheduler.pop_range(user.id) }
+
   def params_for(timestamps)
     {
       locations: timestamps.each_with_index.map do |ts, index|

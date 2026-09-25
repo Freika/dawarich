@@ -42,6 +42,10 @@ class DemoData::PointsSeeder
       }
     end
 
+    # The combo keys (battery_status, tracker_id, ...) live on the
+    # point_sources dimension; the resolver stamps source_id and strips them
+    # so the insert matches the v2 column set.
+    Points::DimensionResolver.new.stamp(rows)
     Point.insert_all(rows, returning: false)
     backfill_country_ids
   end

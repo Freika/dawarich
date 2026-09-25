@@ -1,9 +1,8 @@
 # frozen_string_literal: true
 
-# Resolves points.country_name (and the legacy points.country string) against
-# countries.id, one id-range batch per invocation. Prerequisite for dropping
-# country_name in the table rewrite; unmatched names stay NULL and keep
-# resolving through Point#country_name's fallback chain.
+# Resolves the retained country name (or the v1 country_name column) and the
+# legacy country string against countries.id, one id-range batch per invocation.
+# Unmatched names stay readable through Point#country_name's fallback chain.
 class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
   queue_as :data_migrations
 
@@ -105,7 +104,7 @@ class DataMigrations::BackfillPointCountryIdJob < ApplicationJob
     )
   end
 
-  # country_name wins when it is set and the legacy country column is the
+  # The retained country name wins when set and the legacy country column is the
   # fallback, which is exactly COALESCE — one pass instead of two, so a row is
   # never rewritten twice. A name that matches no country stays NULL rather
   # than falling through to the legacy value, matching how the columns were

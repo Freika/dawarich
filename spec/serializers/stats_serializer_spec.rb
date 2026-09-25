@@ -33,7 +33,7 @@ RSpec.describe StatsSerializer do
           create(:point, :with_geodata,
                  timestamp: Time.zone.local(2020, 1, 1).to_i + i.hours,
                  user:,
-                 country_name: 'Test Country',
+                 country: 'Test Country',
                  city: 'Test City',
                  reverse_geocoded_at: Time.current)
         end
@@ -43,7 +43,7 @@ RSpec.describe StatsSerializer do
           create(:point, :with_geodata,
                  timestamp: Time.zone.local(2021, 1, 1).to_i + i.hours,
                  user:,
-                 country_name: 'Test Country',
+                 country: 'Test Country',
                  city: 'Test City',
                  reverse_geocoded_at: Time.current)
         end

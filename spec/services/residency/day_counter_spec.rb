@@ -23,7 +23,7 @@ RSpec.describe Residency::DayCounter do
         [1, 2, 3].each do |day|
           create(:point,
                  user:,
-                 country_name: 'Germany',
+                 country: 'Germany',
                  timestamp: Time.zone.local(2025, 1, day, 12, 0).to_i)
         end
       end
@@ -51,7 +51,7 @@ RSpec.describe Residency::DayCounter do
         (1..5).each do |day|
           create(:point,
                  user:,
-                 country_name: 'Germany',
+                 country: 'Germany',
                  timestamp: Time.zone.local(2025, 1, day, 12, 0).to_i)
         end
 
@@ -59,7 +59,7 @@ RSpec.describe Residency::DayCounter do
         (10..12).each do |day|
           create(:point,
                  user:,
-                 country_name: 'France',
+                 country: 'France',
                  timestamp: Time.zone.local(2025, 1, day, 12, 0).to_i)
         end
       end
@@ -96,7 +96,7 @@ RSpec.describe Residency::DayCounter do
         (1..3).each do |day|
           create(:point,
                  user:,
-                 country_name: 'Germany',
+                 country: 'Germany',
                  timestamp: Time.zone.local(2025, 1, day, 12, 0).to_i)
         end
 
@@ -104,7 +104,7 @@ RSpec.describe Residency::DayCounter do
         (10..15).each do |day|
           create(:point,
                  user:,
-                 country_name: 'Germany',
+                 country: 'Germany',
                  timestamp: Time.zone.local(2025, 1, day, 12, 0).to_i)
         end
       end
@@ -124,11 +124,11 @@ RSpec.describe Residency::DayCounter do
         # Same day, two countries
         create(:point,
                user:,
-               country_name: 'Germany',
+               country: 'Germany',
                timestamp: Time.zone.local(2025, 3, 15, 8, 0).to_i)
         create(:point,
                user:,
-               country_name: 'France',
+               country: 'France',
                timestamp: Time.zone.local(2025, 3, 15, 18, 0).to_i)
       end
 
@@ -152,7 +152,7 @@ RSpec.describe Residency::DayCounter do
           date = Date.new(2025, 1, 1) + (i - 1).days
           create(:point,
                  user:,
-                 country_name: 'Germany',
+                 country: 'Germany',
                  timestamp: Time.zone.local(date.year, date.month, date.day, 12, 0).to_i)
         end
       end
@@ -170,7 +170,7 @@ RSpec.describe Residency::DayCounter do
           date = Date.new(2025, 1, 1) + (i - 1).days
           create(:point,
                  user:,
-                 country_name: 'Germany',
+                 country: 'Germany',
                  timestamp: Time.zone.local(date.year, date.month, date.day, 12, 0).to_i)
         end
       end
@@ -184,9 +184,9 @@ RSpec.describe Residency::DayCounter do
 
     context 'when points have blank country_name' do
       before do
-        create(:point, user:, country_name: '', timestamp: Time.zone.local(2025, 1, 1, 12, 0).to_i)
-        create(:point, user:, country_name: nil, timestamp: Time.zone.local(2025, 1, 2, 12, 0).to_i)
-        create(:point, user:, country_name: 'Germany', timestamp: Time.zone.local(2025, 1, 3, 12, 0).to_i)
+        create(:point, user:, country: '', timestamp: Time.zone.local(2025, 1, 1, 12, 0).to_i)
+        create(:point, user:, country: nil, timestamp: Time.zone.local(2025, 1, 2, 12, 0).to_i)
+        create(:point, user:, country: 'Germany', timestamp: Time.zone.local(2025, 1, 3, 12, 0).to_i)
       end
 
       it 'excludes points without country_name' do
@@ -200,7 +200,7 @@ RSpec.describe Residency::DayCounter do
       before do
         create(:point,
                user:,
-               country_name: 'Germany',
+               country: 'Germany',
                timestamp: Time.zone.local(2025, 6, 1, 12, 0).to_i)
       end
 

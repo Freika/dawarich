@@ -24,7 +24,7 @@ RSpec.describe 'Trip countries card empty-state honesty' do
         create(:point,
                user: user,
                timestamp: trip.started_at.to_i + (i + 1) * 3600,
-               country_name: nil,
+               country: nil,
                city: nil,
                reverse_geocoded_at: nil)
       end
@@ -49,7 +49,7 @@ RSpec.describe 'Trip countries card empty-state honesty' do
       create(:point,
              user: user,
              timestamp: trip.started_at.to_i + 3600,
-             country_name: 'Germany',
+             country: 'Germany',
              city: 'Berlin',
              reverse_geocoded_at: Time.current)
       trip.calculate_countries

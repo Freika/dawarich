@@ -17,11 +17,13 @@ RSpec.describe DropSupersededPointsIndexes, :non_transactional do
   let(:replacement_index_name) { 'index_points_on_user_id_timestamp_lonlat' }
 
   before do
+    PointsV1Schema.install_v1_points
     migration.down
   end
 
   after do
     migration.up
+    PointsV1Schema.restore_real_points
   end
 
   describe '#up' do

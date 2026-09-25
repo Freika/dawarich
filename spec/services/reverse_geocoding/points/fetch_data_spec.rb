@@ -7,7 +7,7 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
 
   let(:point) do
     pt = create(:point)
-    pt.update_columns(country_id: nil, country_name: nil, city: nil)
+    pt.update_columns(country_id: nil, city: nil)
     pt.reload
   end
 
@@ -72,9 +72,10 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
       expect(Rails.logger).to have_received(:warn).with(/"Atlantis"/)
     end
 
-    it 'still records the geocoding result' do
-      expect { fetch_data }.to change { point.reload.country_name }.to('Atlantis')
+    it 'keeps the unresolved provider name when recording the geocoding result' do
+      expect { fetch_data }.to change { point.reload.reverse_geocoded_at }.from(nil)
       expect(point.reload.country_id).to be_nil
+      expect(point.country_name).to eq('Atlantis')
     end
   end
 
@@ -290,12 +291,9 @@ RSpec.describe ReverseGeocoding::Points::FetchData do
   end
 
   context 'when point has nil timestamp' do
-    let(:point) { create(:point) }
-
-    before do
-      # Bypass validations to simulate legacy data with nil timestamp
-      point.update_column(:timestamp, nil)
-    end
+    # v2 forbids NULL timestamps, but during the D2 boot window this code
+    # runs against v1 rows that still carry them - the guard must hold.
+    let(:point) { build(:point, timestamp: nil) }
 
     it 'skips geocoding without raising' do
       expect(Geocoder).not_to receive(:search)

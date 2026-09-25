@@ -35,7 +35,7 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         it 'stamps the per-import tracker id on every point' do
           parser
 
-          expect(Point.distinct.pluck(:tracker_id)).to eq(["google-phone-#{import.id}"])
+          expect(Point.joins(:source).distinct.pluck('point_sources.tracker_id')).to eq(["google-phone-#{import.id}"])
         end
       end
     end
@@ -130,9 +130,9 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         expect(raw_signal_point).to be_present
 
         expect(raw_signal_point.altitude).to eq(35.0)
-        expect(raw_signal_point.altitude_decimal).to eq(35.0)
+        expect(raw_signal_point.altitude).to eq(35.0)
         expect(raw_signal_point.accuracy).to eq(15)
-        expect(raw_signal_point.velocity).to eq('0.0')
+        expect(raw_signal_point.velocity).to eq(0.0)
       end
 
       it 'does not persist raw_data for imported points' do
@@ -307,8 +307,8 @@ RSpec.describe GoogleMaps::PhoneTakeoutImporter do
         described_class.new(import, user.id, raw_signals_file.path).call
 
         point = user.points.sole
-        expect(point.altitude).to eq(170.02)
-        expect(point[:altitude]).to eq(170)
+        expect(point.altitude).to be_within(0.001).of(170.02252)
+        expect(point[:altitude]).to be_within(0.001).of(170.02252)
         expect(point.accuracy).to eq(20)
       end
     end

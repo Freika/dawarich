@@ -8,11 +8,11 @@ class Api::V1::Countries::VisitedCitiesController < ApiController
   def index
     start_at = safe_timestamp(params[:start_at])
     end_at = safe_timestamp(params[:end_at])
-
     points = current_api_user
              .points
              .not_anomaly
-             .select(:id, :timestamp, :city, :country_name, :country_id, :velocity)
+             .select(:id, :timestamp, :city, :country_id, :velocity,
+                     Arel.sql('COALESCE(points.country_name, points.country) AS country_name'))
              .where(timestamp: start_at..end_at)
              .order(timestamp: :asc)
 

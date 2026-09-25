@@ -21,6 +21,19 @@ RSpec.describe Exports::PointGeojsonSerializer do
       result.close!
     end
 
+    it 'loads countries once per batch instead of once per point' do
+      country = create(:country, name: 'Germany')
+      points.each { |point| point.update_columns(country_id: country.id) }
+      country_queries = 0
+      counter = lambda do |_name, _start, _finish, _id, payload|
+        country_queries += 1 if payload[:sql].include?('"countries"') && payload[:name] != 'SCHEMA'
+      end
+
+      ActiveSupport::Notifications.subscribed(counter, 'sql.active_record') { serializer.call.close! }
+
+      expect(country_queries).to eq(1)
+    end
+
     it 'produces valid GeoJSON FeatureCollection' do
       result = serializer.call
       json = JSON.parse(result.read)

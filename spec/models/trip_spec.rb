@@ -350,8 +350,9 @@ RSpec.describe Trip, type: :model do
       end
 
       before do
+        watch = create(:point_source, tracker_id: 'watch')
         points.each_with_index do |point, i|
-          point.update!(tracker_id: 'watch', timestamp: trip.started_at.to_i + 5.hours + ((i + 1) * 5.minutes))
+          point.update!(source: watch, timestamp: trip.started_at.to_i + 5.hours + ((i + 1) * 5.minutes))
         end
         berlin_phone
         create(:point, user:, tracker_id: 'watch', lonlat: 'POINT(12.38 51.34)',
@@ -383,7 +384,8 @@ RSpec.describe Trip, type: :model do
 
     describe 'with devices recording one after another' do
       before do
-        points.each { |point| point.update!(tracker_id: 'gpx-trk-0-seg-0') }
+        source = create(:point_source, tracker_id: 'gpx-trk-0-seg-0')
+        points.each { |point| point.update!(source: source) }
         [0, 1, 2, 3, 4, 5].each do |i|
           create(:point, user:, tracker_id: 'gpx-trk-0-seg-1', lonlat: "POINT(13.40#{i} 52.52)",
                          timestamp: trip.ended_at.to_i - 1.hour + (i * 5.minutes))

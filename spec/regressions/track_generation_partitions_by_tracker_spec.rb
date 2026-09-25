@@ -3,6 +3,13 @@
 require 'rails_helper'
 
 RSpec.describe 'Track generation partitions points by tracker_id' do
+  def tracker(name)
+    @trackers ||= {}
+    @trackers[name] ||= PointSource.find_or_create_by!(
+      digest: Digest::MD5.hexdigest("spec-tracker-#{name}")
+    ) { |source| source.tracker_id = name }
+  end
+
   let(:user) do
     create(:user, settings: {
              'minutes_between_routes' => 30,
@@ -21,14 +28,14 @@ RSpec.describe 'Track generation partitions points by tracker_id' do
       create(
         :point,
         user: user,
-        tracker_id: 'iphone',
+        source: tracker('iphone'),
         timestamp: base_time + (i * 60),
         lonlat: "POINT(#{berlin_lon + (i * 0.0001)} #{berlin_lat + (i * 0.0001)})"
       )
       create(
         :point,
         user: user,
-        tracker_id: 'watch',
+        source: tracker('watch'),
         timestamp: base_time + (i * 60) + 30,
         lonlat: "POINT(#{paris_lon + (i * 0.0001)} #{paris_lat + (i * 0.0001)})"
       )
@@ -46,7 +53,7 @@ RSpec.describe 'Track generation partitions points by tracker_id' do
     Tracks::IncrementalGenerator.new(user).call
 
     user.tracks.each do |track|
-      tracker_ids_in_track = track.points.pluck(:tracker_id).uniq
+      tracker_ids_in_track = track.points.joins(:source).distinct.pluck('point_sources.tracker_id')
       expect(tracker_ids_in_track).to eq([track.tracker_id])
     end
   end

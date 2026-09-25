@@ -1,6 +1,17 @@
 # frozen_string_literal: true
 
 namespace :demo do
+  # Device context lives on the point_sources dimension since the v2 rewrite;
+  # resolve through the ingest resolver so digests match real data.
+  def demo_tracker_source_id(tracker_id, battery_status: nil)
+    @demo_tracker_sources ||= {}
+    key = [tracker_id, battery_status]
+    @demo_tracker_sources[key] ||= begin
+      row = { tracker_id: tracker_id, battery_status: battery_status }.compact
+      Points::DimensionResolver.new.stamp([row])
+      row[:source_id]
+    end
+  end
   desc 'Seed demo data: user, points from GeoJSON, visits, and areas'
   task :seed_data, [:geojson_path] => :environment do |_t, args|
     geojson_path = args[:geojson_path] || Rails.root.join('tmp/demo_data.geojson').to_s
@@ -406,8 +417,8 @@ namespace :demo do
             altitude: base_point.altitude || 0,
             velocity: rand(0..50),
             battery: rand(20..100),
-            battery_status: %w[charging connected_not_charging full].sample,
-            tracker_id: "demo_tracker_#{member.id}",
+            source_id: demo_tracker_source_id("demo_tracker_#{member.id}",
+                                              battery_status: %w[charging connected_not_charging full].sample),
             import_id: nil
           )
         end
@@ -634,7 +645,7 @@ namespace :demo do
         altitude: rand(30..80),
         velocity: rand(0..30),
         battery: rand(30..100),
-        tracker_id: "lite_demo_#{user.id}"
+        source_id: demo_tracker_source_id("lite_demo_#{user.id}")
       )
       created += 1
     end
@@ -659,7 +670,7 @@ namespace :demo do
         altitude: rand(30..80),
         velocity: rand(0..30),
         battery: rand(30..100),
-        tracker_id: "lite_demo_#{user.id}"
+        source_id: demo_tracker_source_id("lite_demo_#{user.id}")
       )
       created += 1
     end

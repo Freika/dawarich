@@ -8,7 +8,7 @@ require 'rails_helper'
 # into the UI, so every reachable value needs an entry.
 RSpec.describe 'I18n enum translation coverage' do
   {
-    'battery_statuses' => -> { Point.battery_statuses.keys },
+    'battery_statuses' => -> { PointSource.battery_statuses.keys },
     'transportation_modes' => -> { Track::TRANSPORTATION_MODES.keys.map(&:to_s) },
     'visit_statuses' => -> { Visit.statuses.keys },
     'enums.import.source' => -> { Import.sources.keys },

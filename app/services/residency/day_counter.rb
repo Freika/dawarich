@@ -116,20 +116,21 @@ module Residency
       @daily_country_counts ||= begin
         start_of_year = Time.zone.local(year, 1, 1, 0, 0, 0)
         end_of_year = start_of_year.end_of_year
+        country_name = "COALESCE(countries.name, NULLIF(points.country_name, ''), NULLIF(points.country, ''))"
 
         sql = <<~SQL.squish
           SELECT
-            DATE(to_timestamp(timestamp) AT TIME ZONE 'UTC') as point_date,
-            country_name,
+            DATE(to_timestamp(points.timestamp) AT TIME ZONE 'UTC') as point_date,
+            #{country_name} as country_name,
             COUNT(*) as point_count
           FROM points
-          WHERE user_id = $1
-            AND timestamp >= $2
-            AND timestamp <= $3
-            AND country_name IS NOT NULL
-            AND country_name != ''
-            AND (anomaly IS NOT TRUE)
-          GROUP BY point_date, country_name
+          LEFT JOIN countries ON countries.id = points.country_id
+          WHERE points.user_id = $1
+            AND points.timestamp >= $2
+            AND points.timestamp <= $3
+            AND (points.anomaly IS NOT TRUE)
+            AND #{country_name} IS NOT NULL
+          GROUP BY point_date, #{country_name}
           ORDER BY point_date
         SQL
 

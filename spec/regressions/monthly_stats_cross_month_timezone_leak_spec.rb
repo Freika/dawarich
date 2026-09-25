@@ -148,16 +148,16 @@ RSpec.describe 'Monthly stats bucketing for points near month boundary in non-UT
 
     before do
       create(:point, user: user, lonlat: 'POINT(13.4 52.5)', city: 'Berlin',
-                     country_name: 'Germany', country_id: germany.id, velocity: '0',
+                     country: 'Germany', country_id: germany.id, velocity: '0',
                      timestamp: Time.utc(2026, 3, 15, 9, 0, 0).to_i)
       create(:point, user: user, lonlat: 'POINT(13.5 52.6)', city: 'Berlin',
-                     country_name: 'Germany', country_id: germany.id, velocity: '0',
+                     country: 'Germany', country_id: germany.id, velocity: '0',
                      timestamp: Time.utc(2026, 3, 15, 9, 30, 0).to_i)
       create(:point, user: user, lonlat: 'POINT(2.35 48.85)', city: 'Paris',
-                     country_name: 'France', country_id: france.id, velocity: '0',
+                     country: 'France', country_id: france.id, velocity: '0',
                      timestamp: Time.utc(2026, 3, 31, 23, 30, 0).to_i)
       create(:point, user: user, lonlat: 'POINT(2.36 48.86)', city: 'Paris',
-                     country_name: 'France', country_id: france.id, velocity: '0',
+                     country: 'France', country_id: france.id, velocity: '0',
                      timestamp: Time.utc(2026, 3, 31, 23, 45, 0).to_i)
     end
 
@@ -234,7 +234,7 @@ RSpec.describe 'Monthly stats bucketing for points near month boundary in non-UT
         Time.utc(2026, 3, 1, 1, 30, 0)
       ].each_with_index do |t, i|
         create(:point, user: user, lonlat: "POINT(#{13.4 + i * 0.001} 52.5)",
-                       city: 'Berlin', country_name: 'Germany', country_id: germany.id,
+                       city: 'Berlin', country: 'Germany', country_id: germany.id,
                        velocity: '0', timestamp: t.to_i)
       end
     end

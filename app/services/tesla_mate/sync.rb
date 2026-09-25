@@ -132,11 +132,10 @@ module TeslaMate
       return if latitude.nil? || longitude.nil?
 
       elevation = finite_number(detail['elevation'])
-      {
+      payload = {
         lonlat: "POINT(#{longitude} #{latitude})",
         timestamp: timestamp,
-        altitude: elevation&.to_i,
-        altitude_decimal: elevation,
+        altitude: Point.altitude_decimal_supported? ? elevation&.to_i : elevation,
         velocity: velocity(detail['speed'], units['unit_of_length']),
         battery: detail['usable_battery_level'] || detail['battery_level'],
         tracker_id: "teslamate-car-#{car_id}",
@@ -147,6 +146,8 @@ module TeslaMate
           'teslamate_detail_id' => detail['detail_id']
         )
       }
+      payload[:altitude_decimal] = elevation if Point.altitude_decimal_supported?
+      payload
     rescue KeyError, ArgumentError, TypeError
       nil
     end

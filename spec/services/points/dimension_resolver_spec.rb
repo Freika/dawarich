@@ -24,90 +24,60 @@ RSpec.describe Points::DimensionResolver do
     }
   end
 
-  let!(:point) do
-    create(:point, user: user, **combo_attrs.slice(*%i[tracker_id topic ssid bssid motion_data]),
-                   connection: 'wifi', trigger: 'manual_event', battery_status: 'unplugged',
-                   inrids: %w[home office], in_regions: %w[berlin])
-  end
+  describe 'digest stability' do
+    it 'resolves the same combo to one dimension row across resolver instances' do
+      first = resolver.stamp([combo_attrs.dup]).first[:source_id]
 
-  def backfill!
-    DataMigrations::BackfillPointDimensionsJob.perform_now
-  end
-
-  describe 'digest parity with the backfill' do
-    it 'reuses the source row the backfill created rather than adding a second' do
-      backfill!
-      seeded = PointSource.count
-      expected_id = point.reload.source_id
-
-      resolved = nil
-      expect { resolved = resolver.stamp([combo_attrs.dup]).first[:source_id] }
-        .not_to change(PointSource, :count).from(seeded)
-
-      expect(resolved).to eq(expected_id)
-    end
-
-    # The reverse order matters too: ingest may see a combo before the backfill
-    # cursor reaches the rows carrying it.
-    it 'lets the backfill reuse a row ingest created first' do
-      resolver.stamp([combo_attrs.dup])
-
-      expect { backfill! }.not_to change(PointSource, :count)
-      expect(point.reload.source_id).to eq(PointSource.first.id)
+      second = nil
+      expect { second = described_class.new.stamp([combo_attrs.dup]).first[:source_id] }
+        .not_to change(PointSource, :count)
+      expect(second).to eq(first)
     end
   end
 
   describe 'value normalisation' do
-    it 'matches on enum labels, which are stored as integers' do
-      backfill!
-
+    it 'stores enum labels as their integers' do
       resolved = resolver.stamp([combo_attrs.dup]).first[:source_id]
 
       expect(PointSource.find(resolved).battery_status_before_type_cast).to eq(1)
     end
 
-    # The factory fills every combo column, so a genuinely sparse row has to be
-    # written past it — otherwise this asserts against 'MyString', not NULL.
-    let(:bare_point) do
-      create(:point, user: user).tap do |p|
-        p.update_columns(tracker_id: 'bare-device', topic: nil, ssid: nil, bssid: nil,
-                         connection: nil, trigger: nil, battery_status: nil,
-                         inrids: [], in_regions: [], motion_data: {})
-      end
+    it 'treats a missing array key as the empty array the column defaults to' do
+      omitted = resolver.stamp([{ tracker_id: 'bare-device' }]).first[:source_id]
+      explicit = resolver.stamp([{ tracker_id: 'bare-device', inrids: [], in_regions: [] }])
+                         .first[:source_id]
+
+      expect(omitted).to eq(explicit)
     end
 
-    it 'treats a missing array column as the empty array the column defaults to' do
-      bare_point
-      backfill!
-
-      resolved = resolver.stamp([{ tracker_id: 'bare-device' }]).first[:source_id]
-
-      expect(resolved).to eq(bare_point.reload.source_id)
-    end
-
-    # Real rows carry BOTH NULL and `{}` in these columns, and
-    # jsonb_build_object renders them as `null` and `[]` — distinct digests.
-    # Flattening nil into [] forked the dimension table on ~0.5% of a 1.6M-row
-    # dataset before this was fixed.
+    # jsonb_build_object renders nil and [] as `null` and `[]` — different
+    # digests. Flattening nil into [] forked the dimension on ~0.5% of a
+    # 1.6M-row dataset before this was fixed.
     it 'keeps a NULL array distinct from an empty one' do
-      sparse = { topic: nil, ssid: nil, bssid: nil, connection: nil,
-                 trigger: nil, battery_status: nil }
-      null_arrays = create(:point, user: user).tap do |p|
-        p.update_columns(tracker_id: 'null-arrays', inrids: nil, in_regions: nil, **sparse)
-      end
-      empty_arrays = create(:point, user: user).tap do |p|
-        p.update_columns(tracker_id: 'null-arrays', inrids: [], in_regions: [], **sparse)
-      end
-      backfill!
-
       resolved_null = resolver.stamp([{ tracker_id: 'null-arrays', inrids: nil, in_regions: nil }])
                               .first[:source_id]
       resolved_empty = resolver.stamp([{ tracker_id: 'null-arrays', inrids: [], in_regions: [] }])
                                .first[:source_id]
 
-      expect(resolved_null).to eq(null_arrays.reload.source_id)
-      expect(resolved_empty).to eq(empty_arrays.reload.source_id)
       expect(resolved_null).not_to eq(resolved_empty)
+    end
+  end
+
+  describe 'combo key stripping' do
+    it 'removes the combo keys from the row hash once source_id is resolved' do
+      row = { user_id: 1, timestamp: 1_700_000_000, tracker_id: 'pixel-8',
+              topic: 't', ssid: 's', bssid: 'b', connection: 1, trigger: 5,
+              battery_status: 1, inrids: %w[home], in_regions: %w[berlin],
+              battery: 80, velocity: 12.5 }
+
+      resolver.stamp([row])
+
+      expect(row[:source_id]).to be_present
+      PointSource::COMBO_COLUMNS.each do |column|
+        expect(row).not_to have_key(column.to_sym), "expected #{column} to be stripped"
+      end
+      expect(row[:battery]).to eq(80)
+      expect(row[:velocity]).to eq(12.5)
     end
   end
 
@@ -160,7 +130,9 @@ RSpec.describe Points::DimensionResolver do
       described_class.reset_column_availability!
       rows = [combo_attrs.dup]
 
-      expect(resolver.stamp(rows).first).not_to have_key(:source_id)
+      stamped = resolver.stamp(rows).first
+      expect(stamped).not_to have_key(:source_id)
+      expect(stamped[:tracker_id]).to eq('pixel-8')
     ensure
       Point.reset_column_information
       described_class.reset_column_availability!

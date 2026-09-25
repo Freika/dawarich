@@ -9,10 +9,10 @@ RSpec.describe Trips::CalculateCountriesJob, type: :job do
     let(:distance_unit) { 'km' }
     let(:points) do
       [
-        create(:point, user: user, country_name: 'Germany', timestamp: trip.started_at.to_i + 1.hour),
-        create(:point, user: user, country_name: 'France', timestamp: trip.started_at.to_i + 2.hours),
-        create(:point, user: user, country_name: 'Germany', timestamp: trip.started_at.to_i + 3.hours),
-        create(:point, user: user, country_name: 'Italy', timestamp: trip.started_at.to_i + 4.hours)
+        create(:point, user: user, country: 'Germany', timestamp: trip.started_at.to_i + 1.hour),
+        create(:point, user: user, country: 'France', timestamp: trip.started_at.to_i + 2.hours),
+        create(:point, user: user, country: 'Germany', timestamp: trip.started_at.to_i + 3.hours),
+        create(:point, user: user, country: 'Italy', timestamp: trip.started_at.to_i + 4.hours)
       ]
     end
 
@@ -62,9 +62,9 @@ RSpec.describe Trips::CalculateCountriesJob, type: :job do
     context 'when points have nil country names' do
       let(:points_with_nil_countries) do
         [
-          create(:point, user: user, country_name: 'Germany', timestamp: trip.started_at.to_i + 1.hour),
-          create(:point, user: user, country_name: nil, timestamp: trip.started_at.to_i + 2.hours),
-          create(:point, user: user, country_name: 'France', timestamp: trip.started_at.to_i + 3.hours)
+          create(:point, user: user, country: 'Germany', timestamp: trip.started_at.to_i + 1.hour),
+          create(:point, user: user, country: nil, timestamp: trip.started_at.to_i + 2.hours),
+          create(:point, user: user, country: 'France', timestamp: trip.started_at.to_i + 3.hours)
         ]
       end
 

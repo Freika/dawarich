@@ -62,8 +62,8 @@ RSpec.describe 'GPX import tracker_id is stable across re-imports of the same de
     attach_and_import(import_a, path_a, 'day_a.gpx')
     attach_and_import(import_b, path_b, 'day_b.gpx')
 
-    ids_a = Point.where(import_id: import_a.id).pluck(:tracker_id).uniq
-    ids_b = Point.where(import_id: import_b.id).pluck(:tracker_id).uniq
+    ids_a = Point.where(import_id: import_a.id).joins(:source).pluck('point_sources.tracker_id').uniq
+    ids_b = Point.where(import_id: import_b.id).joins(:source).pluck('point_sources.tracker_id').uniq
 
     expect(ids_a).to eq(ids_b)
     expect(ids_a.first).to start_with('gpx-')
@@ -75,7 +75,7 @@ RSpec.describe 'GPX import tracker_id is stable across re-imports of the same de
     path = write_gpx('identity', 1.hour.ago)
     attach_and_import(import_a, path, 'identity.gpx')
 
-    tracker_id = Point.where(import_id: import_a.id).pick(:tracker_id)
+    tracker_id = Point.where(import_id: import_a.id).joins(:source).pick('point_sources.tracker_id')
     name_hash = Digest::SHA1.hexdigest('Morning Run')[0, 16]
     src_hash = Digest::SHA1.hexdigest('Garmin Forerunner 245')[0, 16]
 
@@ -90,8 +90,8 @@ RSpec.describe 'GPX import tracker_id is stable across re-imports of the same de
     attach_and_import(import_a, path_a, 'shared_a.gpx')
     attach_and_import(import_b, path_b, 'shared_b.gpx')
 
-    id_a = Point.where(import_id: import_a.id).pick(:tracker_id)
-    id_b = Point.where(import_id: import_b.id).pick(:tracker_id)
+    id_a = Point.where(import_id: import_a.id).joins(:source).pick('point_sources.tracker_id')
+    id_b = Point.where(import_id: import_b.id).joins(:source).pick('point_sources.tracker_id')
 
     expect(id_a).not_to eq(id_b)
     expect(id_a).to start_with('gpx-')

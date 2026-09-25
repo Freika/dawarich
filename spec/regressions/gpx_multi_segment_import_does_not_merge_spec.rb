@@ -55,7 +55,7 @@ RSpec.describe 'GPX multi-segment import does not merge segments into one track'
   end
 
   it 'tags each segment with a distinct synthetic tracker_id' do
-    tracker_ids = Point.where(import_id: import.id).pluck(:tracker_id).uniq
+    tracker_ids = Point.where(import_id: import.id).joins(:source).pluck('point_sources.tracker_id').uniq
     expect(tracker_ids.size).to eq(2)
     expect(tracker_ids).to all(start_with('gpx-'))
     expect(tracker_ids).to all(match(/-trk-0-seg-[01]\z/))
@@ -72,7 +72,7 @@ RSpec.describe 'GPX multi-segment import does not merge segments into one track'
     Tracks::IncrementalGenerator.new(user).call
 
     user.tracks.each do |track|
-      tracker_ids_in_track = track.points.pluck(:tracker_id).uniq
+      tracker_ids_in_track = track.points.joins(:source).pluck('point_sources.tracker_id').uniq
       expect(tracker_ids_in_track.size).to eq(1)
       expect(tracker_ids_in_track.first).to eq(track.tracker_id)
     end

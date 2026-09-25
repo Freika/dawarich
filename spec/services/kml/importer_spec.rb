@@ -94,7 +94,7 @@ RSpec.describe Kml::Importer do
 
         point = user.points.first
 
-        expect(point.velocity).to eq('5.5')
+        expect(point.velocity).to eq(5.5)
       end
 
       it 'does not persist raw_data for imported points' do

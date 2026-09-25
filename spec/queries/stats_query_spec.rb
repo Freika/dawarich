@@ -14,13 +14,11 @@ RSpec.describe StatsQuery do
     # Written past the factory and the model callbacks: the factory fills city
     # and Point recomputes country_id spatially on save, so a point built the
     # obvious way does not hold the values these examples are asserting on.
-    def point_with(geocoded:, city: nil, country_name: nil, country: nil, country_id: nil)
+    def point_with(geocoded:, city: nil, country_id: nil)
       create(:point, user: user, import: import).tap do |point|
         point.update_columns(
           reverse_geocoded_at: geocoded ? Time.current : nil,
           city: city,
-          country_name: country_name,
-          country: country,
           country_id: country_id
         )
       end
@@ -61,17 +59,6 @@ RSpec.describe StatsQuery do
 
     context 'when a point is geocoded and only the country resolved' do
       before { point_with(geocoded: true, country_id: create(:country).id) }
-
-      it 'does not count it as missing data' do
-        expect(points_stats).to include(without_data: 0)
-      end
-    end
-
-    # Rows from before country_name superseded the legacy country string: they
-    # carry a name and no country_id until the country backfill derives it, and
-    # forever on installs that skipped the backfill — but they have data.
-    context 'when a point only carries the legacy country string' do
-      before { point_with(geocoded: true, country: 'Germany') }
 
       it 'does not count it as missing data' do
         expect(points_stats).to include(without_data: 0)

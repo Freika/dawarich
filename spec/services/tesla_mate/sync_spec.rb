@@ -34,7 +34,7 @@ RSpec.describe TeslaMate::Sync do
       expect { described_class.new(user).call }.not_to(change { user.points.count })
     end
 
-    metric = user.points.find_by!(tracker_id: 'teslamate-car-1')
+    metric = user.points.joins(:source).find_by!(point_sources: { tracker_id: 'teslamate-car-1' })
     expect(metric.timestamp).to eq(Time.iso8601('2026-09-01T10:00:00+02:00').to_i)
     expect(metric.lon).to be_within(0.000_001).of(13.405)
     expect(metric.lat).to be_within(0.000_001).of(52.52)
@@ -45,7 +45,7 @@ RSpec.describe TeslaMate::Sync do
     expect(metric.raw_data).to include('teslamate_car_id' => 1, 'teslamate_drive_id' => 11,
                                        'teslamate_detail_id' => 111)
 
-    imperial = user.points.find_by!(tracker_id: 'teslamate-car-2')
+    imperial = user.points.joins(:source).find_by!(point_sources: { tracker_id: 'teslamate-car-2' })
     expect(imperial.velocity.to_f).to be_within(0.000_001).of(4.4704)
     expect(imperial.battery).to eq(70)
     expect(user.reload.settings).to include(

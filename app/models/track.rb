@@ -144,19 +144,21 @@ class Track < ApplicationRecord
     sql = <<~SQL
       WITH points_with_gaps AS (
         SELECT
-          id,
-          timestamp,
-          lonlat,
-          tracker_id,
-          LAG(lonlat) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_lonlat,
-          LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp) as prev_timestamp,
+          points.id,
+          points.timestamp,
+          points.lonlat,
+          ps.tracker_id,
+          LAG(points.lonlat) OVER per_device as prev_lonlat,
+          LAG(points.timestamp) OVER per_device as prev_timestamp,
           ST_Distance(
-            lonlat::geography,
-            LAG(lonlat) OVER (PARTITION BY tracker_id ORDER BY timestamp)::geography
+            points.lonlat::geography,
+            LAG(points.lonlat) OVER per_device::geography
           ) as distance_meters,
-          (timestamp - LAG(timestamp) OVER (PARTITION BY tracker_id ORDER BY timestamp)) as time_diff_seconds
+          (points.timestamp - LAG(points.timestamp) OVER per_device) as time_diff_seconds
         FROM points
+        LEFT JOIN point_sources ps ON ps.id = points.source_id
         #{where_clause}
+        WINDOW per_device AS (PARTITION BY ps.tracker_id ORDER BY points.timestamp)
       ),
       segment_breaks AS (
         SELECT *,

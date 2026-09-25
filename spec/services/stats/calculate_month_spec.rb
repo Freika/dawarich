@@ -115,13 +115,13 @@ RSpec.describe Stats::CalculateMonth do
           let!(:berlin_points) do
             [
               create(:point, user:, import:, timestamp: timestamp_base,
-                     city: 'Berlin', country_name: 'Germany',
+                     city: 'Berlin', country: 'Germany',
                      lonlat: 'POINT(13.404954 52.520008)'),
               create(:point, user:, import:, timestamp: timestamp_base + 30.minutes,
-                     city: 'Berlin', country_name: 'Germany',
+                     city: 'Berlin', country: 'Germany',
                      lonlat: 'POINT(13.404954 52.520008)'),
               create(:point, user:, import:, timestamp: timestamp_base + 70.minutes,
-                     city: 'Berlin', country_name: 'Germany',
+                     city: 'Berlin', country: 'Germany',
                      lonlat: 'POINT(13.404954 52.520008)')
             ]
           end
@@ -141,13 +141,13 @@ RSpec.describe Stats::CalculateMonth do
           let!(:prague_points) do
             [
               create(:point, user:, import:, timestamp: timestamp_base,
-                     city: 'Prague', country_name: 'Czechia',
+                     city: 'Prague', country: 'Czechia',
                      lonlat: 'POINT(14.4378 50.0755)'),
               create(:point, user:, import:, timestamp: timestamp_base + 10.minutes,
-                     city: 'Prague', country_name: 'Czechia',
+                     city: 'Prague', country: 'Czechia',
                      lonlat: 'POINT(14.4378 50.0755)'),
               create(:point, user:, import:, timestamp: timestamp_base + 20.minutes,
-                     city: 'Prague', country_name: 'Czechia',
+                     city: 'Prague', country: 'Czechia',
                      lonlat: 'POINT(14.4378 50.0755)')
             ]
           end
@@ -171,36 +171,36 @@ RSpec.describe Stats::CalculateMonth do
               # Berlin: 70 minutes with continuous presence (should be included)
               # Points every 35 minutes: 0, 35, 70 = 70 min total
               create(:point, user:, import:, timestamp: timestamp_base,
-                     city: 'Berlin', country_name: 'Germany',
+                     city: 'Berlin', country: 'Germany',
                      lonlat: 'POINT(13.404954 52.520008)'),
               create(:point, user:, import:, timestamp: timestamp_base + 35.minutes,
-                     city: 'Berlin', country_name: 'Germany',
+                     city: 'Berlin', country: 'Germany',
                      lonlat: 'POINT(13.404954 52.520008)'),
               create(:point, user:, import:, timestamp: timestamp_base + 70.minutes,
-                     city: 'Berlin', country_name: 'Germany',
+                     city: 'Berlin', country: 'Germany',
                      lonlat: 'POINT(13.404954 52.520008)'),
 
               # Prague: 20 minutes (should be excluded)
               create(:point, user:, import:, timestamp: timestamp_base + 100.minutes,
-                     city: 'Prague', country_name: 'Czechia',
+                     city: 'Prague', country: 'Czechia',
                      lonlat: 'POINT(14.4378 50.0755)'),
               create(:point, user:, import:, timestamp: timestamp_base + 120.minutes,
-                     city: 'Prague', country_name: 'Czechia',
+                     city: 'Prague', country: 'Czechia',
                      lonlat: 'POINT(14.4378 50.0755)'),
 
               # Vienna: 90 minutes with continuous presence (should be included)
               # Points every 30 minutes: 150, 180, 210, 240 = 90 min total
               create(:point, user:, import:, timestamp: timestamp_base + 150.minutes,
-                     city: 'Vienna', country_name: 'Austria',
+                     city: 'Vienna', country: 'Austria',
                      lonlat: 'POINT(16.3738 48.2082)'),
               create(:point, user:, import:, timestamp: timestamp_base + 180.minutes,
-                     city: 'Vienna', country_name: 'Austria',
+                     city: 'Vienna', country: 'Austria',
                      lonlat: 'POINT(16.3738 48.2082)'),
               create(:point, user:, import:, timestamp: timestamp_base + 210.minutes,
-                     city: 'Vienna', country_name: 'Austria',
+                     city: 'Vienna', country: 'Austria',
                      lonlat: 'POINT(16.3738 48.2082)'),
               create(:point, user:, import:, timestamp: timestamp_base + 240.minutes,
-                     city: 'Vienna', country_name: 'Austria',
+                     city: 'Vienna', country: 'Austria',
                      lonlat: 'POINT(16.3738 48.2082)')
             ]
           end

@@ -67,7 +67,7 @@ class Api::V1::PointsController < ApiController
                         else
                           # The serializer reads the device combo through each
                           # point's source; preloading keeps that one query.
-                          points.preload(:source).map { |point| point_serializer.new(point).call }
+                          points.preload(:source, :country).map { |point| point_serializer.new(point).call }
                         end
 
     total_count = cache_count.to_i
@@ -182,11 +182,11 @@ class Api::V1::PointsController < ApiController
     country = point.found_in_country
     point.assign_attributes(
       country_id: country&.id,
-      country_name: country&.name,
       city: nil,
       geodata: {},
       reverse_geocoded_at: nil
     )
+    point[:country_name] = country&.name if point.has_attribute?(:country_name)
     point[:country] = country&.name
     point.save
   end

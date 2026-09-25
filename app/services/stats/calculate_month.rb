@@ -67,7 +67,9 @@ class Stats::CalculateMonth
               .points
               .not_anomaly
               .where(timestamp: start_timestamp..end_timestamp)
-              .select(:id, :lonlat, :timestamp, :city, :country_name, :country_id, :velocity)
+              .select(:id, :lonlat, :timestamp, :city, :country_id, :velocity,
+                      Arel.sql('COALESCE(points.country_name, points.country) AS country_name'))
+              .preload(:country)
               .order(timestamp: :asc)
   end
 

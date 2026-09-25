@@ -3,7 +3,7 @@
 class Api::PointSerializer
   EXCLUDED_ATTRIBUTES = %w[
     created_at updated_at visit_id import_id user_id raw_data
-    country_id source_id lock_version
+    country_id country_name source_id lock_version
   ].freeze
 
   def initialize(point)
@@ -19,10 +19,11 @@ class Api::PointSerializer
       attributes['longitude'] = lon&.to_s
       attributes['country_name'] = point.country_name
       attributes['revision'] = point.lock_version if point.has_attribute?(:lock_version)
-      # The device/importer combo reads through point_sources on stamped
-      # rows: `attributes` alone would emit the raw legacy columns, which
-      # the table rewrite drops. Re-assigning existing keys keeps the
-      # payload's key order, so the output stays byte-identical.
+      # velocity stayed a string on the wire when the column went numeric:
+      # three mobile HTTP stacks decode this payload.
+      attributes['velocity'] = point.velocity&.to_s
+      # The device/importer combo lives on point_sources; `attributes` alone
+      # no longer carries these keys at all.
       PointDimensionReads::DIMENSION_ATTRIBUTES.each do |attribute|
         attributes[attribute] = point.public_send(attribute)
       end

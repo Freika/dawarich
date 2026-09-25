@@ -14,6 +14,10 @@ RSpec.describe Api::PointSerializer do
         attributes['longitude'] = point.lon.to_s
         attributes['country_name'] = point.country_name
         attributes['revision'] = point.lock_version
+        attributes['velocity'] = point.velocity&.to_s
+        PointDimensionReads::DIMENSION_ATTRIBUTES.each do |attribute|
+          attributes[attribute] = point.public_send(attribute)
+        end
       end
     end
 
@@ -21,7 +25,7 @@ RSpec.describe Api::PointSerializer do
       before do
         source = PointSource.create!(digest: 'a' * 32, tracker_id: 'dimension-device',
                                      connection: 'wifi')
-        point.update_columns(source_id: source.id, tracker_id: 'legacy-device', connection: 0)
+        point.update_columns(source_id: source.id)
         point.reload
       end
 
@@ -37,7 +41,8 @@ RSpec.describe Api::PointSerializer do
     end
 
     it 'does not include excluded attributes' do
-      expect(serializer).not_to include(*all_excluded)
+      expect(serializer).not_to include(*(all_excluded - ['country_name']))
+      expect(serializer['country_name']).to eq(point.country_name)
     end
 
     it 'extracts coordinates from PostGIS geometry' do

@@ -59,7 +59,7 @@ RSpec.describe DataMigrations::BackfillAltitudeUserJob do
         it 'updates altitude from properties' do
           described_class.new.perform(user.id)
 
-          expect(point.reload.altitude.to_f).to eq(17.63)
+          expect(point.reload.altitude).to be_within(0.001).of(17.634)
         end
       end
 

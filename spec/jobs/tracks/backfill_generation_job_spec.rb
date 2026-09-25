@@ -6,6 +6,12 @@ RSpec.describe Tracks::BackfillGenerationJob do
   let(:user) { create(:user) }
   let(:old_time) { Time.zone.local(2024, 6, 15, 10, 0, 0) }
 
+  # Ranges live in Sidekiq's Redis for six hours and transactional examples
+  # never roll them back; a rebuilt database reuses user ids, so start clean.
+  before do
+    Tracks::BackfillScheduler.pop_range(user.id)
+  end
+
   after do
     Tracks::BackfillScheduler.pop_range(user.id)
   end

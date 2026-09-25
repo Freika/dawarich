@@ -67,7 +67,8 @@ RSpec.describe Stats::RefreshToponyms do
     start = Time.utc(2014, 6, 1).to_i
     Point.insert_all!(4001.times.map do |id|
       { user_id: user.id, timestamp: start + id, lonlat: 'POINT(13.4 52.5)', city: 'Berlin',
-        country_name: 'Germany', velocity: '0', anomaly: false, created_at: Time.current, updated_at: Time.current }
+        country_name: 'Germany', velocity: 0, anomaly: false, created_at: Time.current,
+        updated_at: Time.current }
     end)
     Point.cache { described_class.new(user, 2014, 6).call }
     expect(stat.reload.toponyms.first['cities'].first['points']).to eq(4002)

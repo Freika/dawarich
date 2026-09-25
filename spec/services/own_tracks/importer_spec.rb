@@ -27,27 +27,26 @@ RSpec.describe OwnTracks::Importer do
         expect(point.lonlat.x).to be_within(0.001).of(13.332)
         expect(point.lonlat.y).to be_within(0.001).of(52.225)
         expect(point.attributes.except('lonlat')).to include(
-          'battery_status' => 'charging',
           'battery' => 94,
-          'ping' => '100.266',
           'altitude' => 36,
           'accuracy' => 10,
           'vertical_accuracy' => 4,
-          'velocity' => '1.4',
-          'connection' => 'wifi',
-          'ssid' => 'Home Wifi',
-          'bssid' => 'b0:f2:8:45:94:33',
-          'trigger' => 'background_event',
-          'tracker_id' => 'RO',
+          'velocity' => 1.4,
           'timestamp' => 1_709_283_789,
-          'inrids' => ['5f1d1b'],
-          'in_regions' => ['home'],
-          'topic' => 'owntracks/test/iPhone 12 Pro',
           'visit_id' => nil,
           'user_id' => user.id,
-          'country' => nil,
           'motion_data' => { 'm' => 1, '_type' => 'location' }
         )
+        # The device combo reads through the point_sources dimension.
+        expect(point.battery_status).to eq('charging')
+        expect(point.connection).to eq('wifi')
+        expect(point.ssid).to eq('Home Wifi')
+        expect(point.bssid).to eq('b0:f2:8:45:94:33')
+        expect(point.trigger).to eq('background_event')
+        expect(point.tracker_id).to eq('RO')
+        expect(point.inrids).to eq(['5f1d1b'])
+        expect(point.in_regions).to eq(['home'])
+        expect(point.topic).to eq('owntracks/test/iPhone 12 Pro')
       end
 
       it 'does not persist raw_data for imported points' do
@@ -59,7 +58,7 @@ RSpec.describe OwnTracks::Importer do
       it 'correctly converts speed' do
         parser
 
-        expect(user.points.first.velocity).to eq('1.4')
+        expect(user.points.first.velocity).to eq(1.4)
       end
 
       it 'updates the import processed counter' do

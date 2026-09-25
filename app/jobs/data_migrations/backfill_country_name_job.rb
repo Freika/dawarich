@@ -8,6 +8,11 @@ class DataMigrations::BackfillCountryNameJob < ApplicationJob
   BATCH_SIZE = 1000
 
   def perform(batch_size: BATCH_SIZE)
+    unless Point.column_names.include?('country_name')
+      Rails.logger.info('[BackfillCountryName] country_name is no longer a points column - nothing to backfill')
+      return
+    end
+
     Rails.logger.info('Starting country_name backfill job')
 
     processed_count = 0
