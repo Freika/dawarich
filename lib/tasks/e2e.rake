@@ -182,6 +182,9 @@ namespace :e2e do
         settings: (user.settings || {}).merge('onboarding_completed' => true)
       )
     end
+
+    puts "\n📊 Seeding the stats and insights fixture users..."
+    Rake::Task['e2e:seed_stats_fixtures'].invoke
   end
 
   desc 'Plant a deterministic set of anomaly points on the demo user (idempotent).'
