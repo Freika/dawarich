@@ -143,7 +143,7 @@ module Achievements
       dwell.each do |code, seconds|
         next if earned.key?(code) || seconds < threshold_seconds
 
-        earned[code] = Time.current.iso8601
+        earned[code] = (first_seen_at(code) || Time.current).utc.iso8601
         newly_earned << code
       end
 
@@ -155,6 +155,28 @@ module Achievements
         'threshold_seconds' => threshold_seconds,
         'calculation_version' => CALCULATION_VERSION
       )
+    end
+
+    # The dwell threshold can be crossed long after a region was first
+    # visited (e.g. a backfill processing years of history in one pass), so
+    # the unlock timestamp comes from the earliest matching point instead of
+    # wall-clock "now".
+    def first_seen_at(code)
+      table, column = Registry.subdivision_codes.include?(code) ? %w[regions code] : %w[countries iso_a2]
+
+      sql = ActiveRecord::Base.sanitize_sql_array([<<~SQL.squish, { user_id: user.id, through: @cursor, code: code }])
+        SELECT MIN(p.timestamp)
+        FROM points p
+        JOIN #{table} s ON ST_Intersects(s.geom, p.lonlat::geometry)
+        WHERE p.user_id = :user_id
+          AND p.timestamp <= :through
+          AND p.lonlat IS NOT NULL
+          AND (p.anomaly IS DISTINCT FROM TRUE)
+          AND s.#{column} = :code
+      SQL
+
+      ts = ApplicationRecord.connection.select_value(sql)
+      Time.at(ts.to_i).utc if ts
     end
 
     def threshold_changed?(state)
