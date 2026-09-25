@@ -1,0 +1,92 @@
+# Dawarich Cloud staging on the existing gigawarich Dokploy host.
+# Create and restore dedicated staging PostGIS and Redis services before deploying
+# this Compose service. See docs/dokploy-staging.md for the release and cutover order.
+name: dawarich-staging
+
+x-app: &app
+  image: ${DAWARICH_IMAGE:?set DAWARICH_IMAGE to an immutable image digest}
+  pull_policy: always
+  init: true
+  entrypoint: ["cloud-entrypoint.sh"]
+  env_file: .env
+  environment:
+    RAILS_ENV: production
+    RACK_ENV: production
+    SELF_HOSTED: "false"
+    STORAGE_BACKEND: s3
+    APPLICATION_PROTOCOL: https
+    DOMAIN: ${STAGING_HOST:?set STAGING_HOST}
+    APPLICATION_HOSTS: ${APPLICATION_HOSTS:?set APPLICATION_HOSTS}
+    DAWARICH_URL: https://${STAGING_HOST:?set STAGING_HOST}
+    MANAGER_URL: ${MANAGER_URL:?set staging MANAGER_URL}
+    DATABASE_HOST: ${DATABASE_HOST:?set staging DATABASE_HOST}
+    DATABASE_PORT: ${DATABASE_PORT:?set staging DATABASE_PORT}
+    DATABASE_NAME: ${DATABASE_NAME:?set staging DATABASE_NAME}
+    DATABASE_USERNAME: ${DATABASE_USERNAME:?set staging DATABASE_USERNAME}
+    DATABASE_PASSWORD: ${DATABASE_PASSWORD:?set staging DATABASE_PASSWORD}
+    REDIS_URL: ${REDIS_URL:?set staging REDIS_URL}
+    RAILS_MASTER_KEY: ${RAILS_MASTER_KEY:?set RAILS_MASTER_KEY}
+    SECRET_KEY_BASE: ${SECRET_KEY_BASE:?set SECRET_KEY_BASE}
+    AUTH_JWT_SECRET_KEY: ${AUTH_JWT_SECRET_KEY:?set AUTH_JWT_SECRET_KEY}
+    JWT_SECRET_KEY: ${JWT_SECRET_KEY:?set JWT_SECRET_KEY}
+    SUBSCRIPTION_WEBHOOK_SECRET: ${SUBSCRIPTION_WEBHOOK_SECRET:?set SUBSCRIPTION_WEBHOOK_SECRET}
+    AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:?set staging R2 AWS_ACCESS_KEY_ID}
+    AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:?set staging R2 AWS_SECRET_ACCESS_KEY}
+    AWS_REGION: ${AWS_REGION:?set staging R2 AWS_REGION}
+    AWS_BUCKET: ${AWS_BUCKET:?set staging R2 AWS_BUCKET}
+    AWS_ENDPOINT_URL: ${AWS_ENDPOINT_URL:?set staging R2 AWS_ENDPOINT_URL}
+    WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
+    RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
+    BACKGROUND_PROCESSING_CONCURRENCY: ${BACKGROUND_PROCESSING_CONCURRENCY:-3}
+    SIDEKIQ_METRICS_URL: http://worker:9394/metrics
+  volumes:
+    - watched-imports:/var/app/tmp/imports/watched
+  networks:
+    - dokploy-network
+
+networks:
+  dokploy-network:
+    external: true
+
+volumes:
+  watched-imports:
+
+services:
+  web:
+    <<: *app
+    command: ["puma", "-C", "config/puma.rb"]
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--header", "X-Forwarded-Proto: https", "http://127.0.0.1:3000/api/v1/health"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+    stop_grace_period: 60s
+    deploy:
+      replicas: ${WEB_REPLICAS:?set WEB_REPLICAS to 0 before restore, then 1}
+
+  worker:
+    <<: *app
+    command: ["sidekiq", "-C", "config/sidekiq.yml"]
+    expose:
+      - "9394"
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f '[s]idekiq' >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      start_period: 60s
+      retries: 5
+    restart: unless-stopped
+    stop_grace_period: 120s
+    deploy:
+      replicas: ${WORKER_REPLICAS:?set WORKER_REPLICAS to 0 until Dokku workers stop, then 1}
+
+  # Explicit one-off release task. It is excluded from ordinary Dokploy deploys.
+  release:
+    <<: *app
+    profiles: ["release"]
+    command: ["rails", "db:migrate"]
+    restart: "no"
