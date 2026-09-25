@@ -3,6 +3,30 @@
 require 'rails_helper'
 
 RSpec.describe 'Shared::Links', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  describe 'expiring and permanent links' do
+    after { travel_back }
+
+    it 'keeps the expiry-free link available after a timed link expires' do
+      travel_to(Time.zone.local(2026, 9, 25, 12))
+      owner = create(:user)
+      timed = create(:shared_link, :live, user: owner, expires_at: 1.hour.from_now)
+      permanent = create(:shared_link, :live, user: owner, expires_at: nil)
+
+      [timed, permanent].each do |link|
+        get public_shared_link_path(link.id)
+        expect(response).to have_http_status(:ok)
+      end
+
+      travel 1.hour + 1.second
+      get public_shared_link_path(timed.id)
+      expect(response).to have_http_status(:not_found)
+      get public_shared_link_path(permanent.id)
+      expect(response).to have_http_status(:ok)
+    end
+  end
+
   describe 'GET /s/:id' do
     it 'returns 404 when the link does not exist' do
       get '/s/00000000-0000-0000-0000-000000000000'
