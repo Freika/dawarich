@@ -137,6 +137,10 @@ defmodule Dawarich.ReleaseMigration do
     |> then(&(&1 in ~w[true 1 yes on t]))
   end
 
+  def backfill_allowed? do
+    self_hosted?() and String.trim(System.get_env("SKIP_POINT_DIMENSION_BACKFILL", "")) == ""
+  end
+
   defp lock_retry(repo, fun, opts, attempt) do
     repo.transaction(fn ->
       repo.query!("SET LOCAL lock_timeout = '#{Keyword.fetch!(opts, :lock_timeout)}'", [],

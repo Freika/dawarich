@@ -76,10 +76,6 @@ defmodule Dawarich.ReleaseMigrations.V1_13_1 do
     end
   end
 
-  defp backfill_allowed? do
-    self_hosted?() and String.trim(System.get_env("SKIP_POINT_DIMENSION_BACKFILL", "")) == ""
-  end
-
   defp add_gist_index_to_tracks_original_path(repo) do
     require_zero_lock_timeout!(repo)
 

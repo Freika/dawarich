@@ -53,10 +53,6 @@ defmodule Dawarich.ReleaseMigrations.V1_14_4 do
     end
   end
 
-  defp backfill_allowed? do
-    self_hosted?() and String.trim(System.get_env("SKIP_POINT_DIMENSION_BACKFILL", "")) == ""
-  end
-
   defp repair_invalid_stats_unique_index(repo) do
     valid =
       case repo.query!(@stats_index_valid, [], log: false) do

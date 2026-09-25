@@ -236,4 +236,34 @@ defmodule Dawarich.ReleaseMigrationTest do
       assert self_hosted?() == expected, inspect(value)
     end
   end
+
+  test "backfill_allowed? is add_point_dimension_columns_job.rb:28-32: self-hosted and SKIP_POINT_DIMENSION_BACKFILL blank?" do
+    saved = Map.new(~w[SELF_HOSTED SKIP_POINT_DIMENSION_BACKFILL], &{&1, System.get_env(&1)})
+
+    on_exit(fn ->
+      Enum.each(saved, fn
+        {name, nil} -> System.delete_env(name)
+        {name, value} -> System.put_env(name, value)
+      end)
+    end)
+
+    for {self_hosted, skip, expected} <- [
+          {nil, nil, true},
+          {"false", nil, false},
+          {"false", "", false},
+          {nil, "", true},
+          {nil, " \t\n\v\f\r", true},
+          {nil, " 　 \u0085", true},
+          {nil, "᠎", false},
+          {nil, "​", false},
+          {nil, "1", false},
+          {nil, "false", false},
+          {nil, "0", false}
+        ] do
+      for {name, value} <- [{"SELF_HOSTED", self_hosted}, {"SKIP_POINT_DIMENSION_BACKFILL", skip}],
+          do: if(value, do: System.put_env(name, value), else: System.delete_env(name))
+
+      assert backfill_allowed?() == expected, inspect({self_hosted, skip})
+    end
+  end
 end

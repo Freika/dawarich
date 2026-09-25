@@ -1,6 +1,7 @@
 ecto_env="MIX_ENV=test DATABASE_HOST=127.0.0.1 DATABASE_PORT=55532 DATABASE_USERNAME=postgres DATABASE_PASSWORD=parity"
 expectations="$root/scripts/schema_parity/ecto_expectations.tsv"
 holder_seconds=150
+parts="schema ledger columns invalid rows jobs"
 holder_pid=""
 watch_pid=""
 
@@ -54,6 +55,11 @@ list_checks() {
   ruby -rjson "$root/scripts/schema_parity/list_checks.rb" "$root"
 }
 
+invalid_sql="SELECT i.indrelid::regclass::text, i.indexrelid::regclass::text, pg_get_indexdef(i.indexrelid)
+FROM pg_index i JOIN pg_class c ON c.oid = i.indrelid JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE NOT i.indisvalid AND n.nspname NOT IN ('phoenix', 'oban')
+ORDER BY i.indrelid::regclass::text COLLATE \"C\", i.indexrelid::regclass::text COLLATE \"C\""
+
 rows_sql="WITH objects AS (
   SELECT c.relname, c.relkind FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
   WHERE n.nspname = 'public' AND c.relkind IN ('r', 'p', 'S') AND NOT c.relispartition
@@ -76,6 +82,7 @@ record() {
     : > "$2.ledger"
   fi
   query "$1" "SELECT table_name || '.' || column_name FROM information_schema.columns WHERE table_schema = 'public' ORDER BY table_name, ordinal_position" > "$2.columns"
+  query "$1" "$invalid_sql" > "$2.invalid"
   query "$1" "$rows_sql" > "$tmpd/rows.copy"
   docker exec -i -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt < "$tmpd/rows.copy" > "$tmpd/rows.raw" \
     || fail "could not copy the rows of $1"

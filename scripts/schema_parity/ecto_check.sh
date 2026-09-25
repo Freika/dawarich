@@ -22,7 +22,7 @@ fi
 list_checks > "$tmpd/checks" 2> "$tmpd/checks.err" || { echo "$check FAIL $(tr '\n' ' ' < "$tmpd/checks.err")"; exit 2; }
 code_key="$(code_key)" || fail "could not hash the Rails inputs"
 name="$(echo "$check" | tr ':+@~' '____')"
-for part in schema ledger columns rows jobs; do rm -f "$out/diffs/$name.$part.diff"; done
+for part in $parts; do rm -f "$out/diffs/$name.$part.diff"; done
 kind="${check%%:*}"
 arg="${check#*:}"
 fixture=""
@@ -105,7 +105,7 @@ rails_side() {
 keep_ref() {
   rails_status="$(cat "$tmpd/rails.status")"
   if [ -z "$holder_table" ] && [ "$rails_status" = "${expect_status:-ok}" ]; then
-    for part in sql out jobs schema ledger columns rows failure; do
+    for part in sql out failure $parts; do
       [ ! -f "$tmpd/rails.$part" ] || mv "$tmpd/rails.$part" "$1.$part"
     done
     mv "$tmpd/rails.status" "$1.status"
@@ -160,7 +160,7 @@ compare() {
   if [ -n "$holder_table" ] && [ "$(cat "$1.waits")" != "$(cat "$tmpd/ecto.waits")" ]; then
     fail "lock attempts on $holder_table: rails $(cat "$1.waits"), ecto $(cat "$tmpd/ecto.waits")"
   fi
-  diff_parts "$1" "$tmpd/ecto" schema ledger columns rows jobs
+  diff_parts "$1" "$tmpd/ecto" $parts
   [ -z "$failures" ] || fail "${failures# }"
   if [ "$rails_status" = ok ]; then echo "$check ok"; else echo "$check ok ($rails_status)"; fi
 }
@@ -228,7 +228,7 @@ run_refused() {
     *"refused: this database has not reached Dawarich $expect_refusal,"*) ;;
     *) fail "expected refused below_floor $expect_refusal ($last_ecto)" ;;
   esac
-  diff_parts "$tmpd/before" "$tmpd/ecto" schema ledger columns rows jobs
+  diff_parts "$tmpd/before" "$tmpd/ecto" $parts
   [ -z "$failures" ] || fail "changed$failures"
   echo "$check ok (refused below_floor $expect_refusal)"
 }

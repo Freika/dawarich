@@ -76,10 +76,6 @@ defmodule Dawarich.ReleaseMigrations.V1_14_0 do
     end
   end
 
-  defp backfill_allowed? do
-    self_hosted?() and String.trim(System.get_env("SKIP_POINT_DIMENSION_BACKFILL", "")) == ""
-  end
-
   defp create_route_videos(repo) do
     sql!(repo, ~S"""
     CREATE TABLE IF NOT EXISTS "route_videos" ("id" bigserial primary key, "user_id" bigint NOT NULL, "name" character varying NOT NULL, "status" integer DEFAULT 0 NOT NULL, "settings" jsonb DEFAULT '{}' NOT NULL, "expired_at" timestamp(6), "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL, CONSTRAINT "fk_rails_02b56b6dae"
