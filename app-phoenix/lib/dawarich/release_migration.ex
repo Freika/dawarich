@@ -28,6 +28,7 @@ defmodule Dawarich.ReleaseMigration do
   LEFT JOIN pg_namespace n ON n.oid = t.relnamespace
   WHERE i.relkind IN ('i', 'I') AND NOT d.indisprimary AND t.relname = $1
     AND n.nspname = ANY (current_schemas(false))
+  ORDER BY i.relname
   """
 
   @index_name_sql """
@@ -92,6 +93,10 @@ defmodule Dawarich.ReleaseMigration do
     Enum.any?(rows, fn [index, index_columns] ->
       (is_nil(name) or index == name) and (is_nil(columns) or index_columns == columns)
     end)
+  end
+
+  def index_names(repo, table, columns) do
+    for [index, ^columns] <- repo.query!(@indexes_sql, [table], log: false).rows, do: index
   end
 
   def index_name?(repo, table, name), do: exists?(repo, @index_name_sql, [table, name])
@@ -162,9 +167,9 @@ defmodule Dawarich.ReleaseMigration do
     |> then(&(&1 in ~w[true 1 yes on t]))
   end
 
-  def backfill_allowed? do
-    self_hosted?() and String.trim(System.get_env("SKIP_POINT_DIMENSION_BACKFILL", "")) == ""
-  end
+  def env_present?(name), do: String.trim(System.get_env(name, "")) != ""
+
+  def backfill_allowed?, do: self_hosted?() and not env_present?("SKIP_POINT_DIMENSION_BACKFILL")
 
   defp lock_retry(repo, fun, opts, attempt) do
     repo.transaction(fn ->

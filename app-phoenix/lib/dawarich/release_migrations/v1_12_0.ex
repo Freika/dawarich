@@ -113,7 +113,7 @@ defmodule Dawarich.ReleaseMigrations.V1_12_0 do
   end
 
   defp enqueue_visits_fleet_redetection(_repo) do
-    if self_hosted?() and String.trim(System.get_env("SKIP_VISITS_FLEET_REDETECT", "")) == "",
+    if self_hosted?() and not env_present?("SKIP_VISITS_FLEET_REDETECT"),
       do: {:jobs, [job("Visits::FleetRedetectJob")]}
   end
 

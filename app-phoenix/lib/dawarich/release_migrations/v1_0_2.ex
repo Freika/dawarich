@@ -8,23 +8,6 @@ defmodule Dawarich.ReleaseMigrations.V1_0_2 do
   @user_delay_seconds 30
   @import_delay_seconds 10
 
-  @index_names_on_columns """
-  SELECT i.relname::text
-  FROM pg_class t
-  JOIN pg_index d ON t.oid = d.indrelid
-  JOIN pg_class i ON d.indexrelid = i.oid
-  LEFT JOIN pg_namespace n ON n.oid = t.relnamespace
-  WHERE i.relkind IN ('i', 'I') AND NOT d.indisprimary AND t.relname = $1
-    AND n.nspname = ANY (current_schemas(false))
-    AND NOT 0 = ANY (d.indkey::int2[])
-    AND ARRAY(SELECT a.attname::text
-              FROM unnest(d.indkey::int2[]) WITH ORDINALITY AS k(attnum, ord)
-              JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
-              WHERE k.ord <= d.indnkeyatts
-              ORDER BY k.ord) = $2::text[]
-  ORDER BY i.relname
-  """
-
   @impl true
   def release, do: "1.0.2"
 
@@ -97,27 +80,7 @@ defmodule Dawarich.ReleaseMigrations.V1_0_2 do
     )
   end
 
-  defp enqueue_transportation_mode_backfill_jobs(repo),
-    do: {:jobs, user_backfill_jobs(repo) ++ import_backfill_jobs(repo)}
-
-  defp user_backfill_jobs(repo) do
-    rescue_sql(
-      repo,
-      fn ->
-        repo
-        |> ids("SELECT id FROM users WHERE deleted_at IS NULL")
-        |> Enum.with_index(fn user_id, index ->
-          job(
-            "TransportationModes::BackfillJob",
-            [user_id],
-            @initial_delay_seconds + index * @user_delay_seconds
-          )
-        end)
-      end,
-      :any,
-      fn _error -> [] end
-    )
-  end
+  defp enqueue_transportation_mode_backfill_jobs(repo), do: {:jobs, import_backfill_jobs(repo)}
 
   defp import_backfill_jobs(repo) do
     rescue_sql(
@@ -154,19 +117,17 @@ defmodule Dawarich.ReleaseMigrations.V1_0_2 do
   defp ids(repo, sql), do: Enum.map(repo.query!(sql, [], log: false).rows, &hd/1)
 
   defp remove_digests_user_year_period_type_index(repo) do
-    case repo.query!(@index_names_on_columns, ["digests", ~w[user_id year period_type]],
-           log: false
-         ).rows do
+    case index_names(repo, "digests", ~w[user_id year period_type]) do
       [] ->
         :ok
 
-      [[name]] ->
+      [name] ->
         sql!(repo, ~s|DROP INDEX  "#{String.replace(name, ~s("), ~s(""))}";|)
 
-      rows ->
+      names ->
         raise ArgumentError,
               "Multiple indexes found on digests columns [:user_id, :year, :period_type]. " <>
-                "Specify an index name from #{rows |> List.flatten() |> Enum.join(", ")}"
+                "Specify an index name from #{Enum.join(names, ", ")}"
     end
   end
 end

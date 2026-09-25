@@ -4,23 +4,6 @@ defmodule Dawarich.ReleaseMigrations.V1_3_3 do
 
   import Dawarich.ReleaseMigration
 
-  @index_names_on_columns """
-  SELECT i.relname::text
-  FROM pg_class t
-  JOIN pg_index d ON t.oid = d.indrelid
-  JOIN pg_class i ON d.indexrelid = i.oid
-  LEFT JOIN pg_namespace n ON n.oid = t.relnamespace
-  WHERE i.relkind IN ('i', 'I') AND NOT d.indisprimary AND t.relname = $1
-    AND n.nspname = ANY (current_schemas(false))
-    AND NOT 0 = ANY (d.indkey::int2[])
-    AND ARRAY(SELECT a.attname::text
-              FROM unnest(d.indkey::int2[]) WITH ORDINALITY AS k(attnum, ord)
-              JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
-              WHERE k.ord <= d.indnkeyatts
-              ORDER BY k.ord) = $2::text[]
-  ORDER BY i.relname
-  """
-
   @impl true
   def release, do: "1.3.3"
 
@@ -92,17 +75,17 @@ defmodule Dawarich.ReleaseMigrations.V1_3_3 do
   end
 
   defp remove_index_on_column(repo, table, column) do
-    case repo.query!(@index_names_on_columns, [table, [column]], log: false).rows do
+    case index_names(repo, table, [column]) do
       [] ->
         :ok
 
-      [[name]] ->
+      [name] ->
         sql!(repo, ~s|DROP INDEX CONCURRENTLY "#{String.replace(name, ~s("), ~s(""))}";|)
 
-      rows ->
+      names ->
         raise ArgumentError,
               "Multiple indexes found on #{table} columns [:#{column}]. " <>
-                "Specify an index name from #{rows |> List.flatten() |> Enum.join(", ")}"
+                "Specify an index name from #{Enum.join(names, ", ")}"
     end
   end
 end

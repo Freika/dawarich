@@ -88,6 +88,27 @@ defmodule Dawarich.ReleaseMigrationTest do
     refute index?(ScratchRepo, "probe", columns: ["name", "user_id"])
   end
 
+  test "index_names lists the table's indexes on exactly these key columns by name, as Rails' index_name_for_remove matches them" do
+    scratch_sql!("""
+    CREATE TABLE probe (id bigserial primary key, user_id bigint, name text);
+    CREATE TABLE other (user_id bigint);
+    CREATE INDEX probe_z_user ON probe (user_id);
+    CREATE INDEX probe_a_user ON probe (user_id) WHERE name IS NOT NULL;
+    CREATE INDEX probe_user_name ON probe (user_id, name);
+    CREATE INDEX probe_name_include ON probe (name) INCLUDE (user_id);
+    CREATE INDEX probe_lower_name ON probe (lower(name));
+    CREATE INDEX other_user ON other (user_id);
+    """)
+
+    assert index_names(ScratchRepo, "probe", ["user_id"]) == ["probe_a_user", "probe_z_user"]
+    assert index_names(ScratchRepo, "probe", ["user_id", "name"]) == ["probe_user_name"]
+    assert index_names(ScratchRepo, "probe", ["name", "user_id"]) == []
+    assert index_names(ScratchRepo, "probe", ["name"]) == ["probe_name_include"]
+    assert index_names(ScratchRepo, "probe", ["id"]) == []
+    assert index_names(ScratchRepo, "other", ["user_id"]) == ["other_user"]
+    assert index_names(ScratchRepo, "missing", ["user_id"]) == []
+  end
+
   test "normalize/1 reads the step's transaction flag" do
     fun = fn _repo -> :ok end
     assert normalize({"20990101000001", fun}) == {"20990101000001", fun, true}
@@ -371,6 +392,27 @@ defmodule Dawarich.ReleaseMigrationTest do
           do: if(value, do: System.put_env(name, value), else: System.delete_env(name))
 
       assert backfill_allowed?() == expected, inspect({self_hosted, skip})
+    end
+  end
+
+  test "env_present? is Ruby's ENV[name].present?: set and not only whitespace" do
+    name = "DAWARICH_RELEASE_MIGRATION_ENV_PROBE"
+    on_exit(fn -> System.delete_env(name) end)
+
+    for {value, expected} <- [
+          {nil, false},
+          {"", false},
+          {" \t\n\v\f\r", false},
+          {" 　 \u0085", false},
+          {"     ", false},
+          {"᠎", true},
+          {"​", true},
+          {"1", true},
+          {"false", true},
+          {" x ", true}
+        ] do
+      if value, do: System.put_env(name, value), else: System.delete_env(name)
+      assert env_present?(name) == expected, inspect(value)
     end
   end
 end
