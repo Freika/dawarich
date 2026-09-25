@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 describe 'e2e:seed_b11_achievements' do
-  let!(:demo_user) { User.find_by(email: 'demo@dawarich.app') || create(:user, email: 'demo@dawarich.app') }
+  let(:collection_user) { User.find_by!(email: 'b11-collection@dawarich.test') }
 
   around do |example|
     original = ENV['E2E_B9_B11_FIXTURES']
@@ -15,8 +15,8 @@ describe 'e2e:seed_b11_achievements' do
 
   after { Flipper.disable(:achievements) }
 
-  it 'refuses a non-isolated database before changing the achievement flag' do
-    allow(ActiveRecord::Base).to receive(:connection_db_config).and_return(double(database: 'dawarich_development'))
+  it 'refuses to seed in production before changing the achievement flag' do
+    allow(Rails.env).to receive(:production?).and_return(true)
 
     expect { Rake::Task['e2e:seed_b11_achievements'].execute }.to raise_error(SystemExit)
     expect(Flipper.enabled?(:achievements)).to be(false)
@@ -25,7 +25,7 @@ describe 'e2e:seed_b11_achievements' do
   it 'enables the flag and creates one synthetic exploration record' do
     Rake::Task['e2e:seed_b11_achievements'].execute
 
-    progress = demo_user.achievement_progresses.find_by!(achievement_key: 'exploration')
+    progress = collection_user.achievement_progresses.find_by!(achievement_key: 'exploration')
     expect(Flipper.enabled?(:achievements)).to be(true)
     expect(progress.state.fetch('earned').keys).to contain_exactly('DE', 'DE-BY')
     expect(progress.state['calculation_version']).to eq(Achievements::RegionSetChecker::CALCULATION_VERSION)
@@ -35,7 +35,16 @@ describe 'e2e:seed_b11_achievements' do
     Rake::Task['e2e:seed_b11_achievements'].execute
     Rake::Task['e2e:seed_b11_achievements'].execute
 
-    expect(demo_user.achievement_progresses.where(achievement_key: 'exploration').count).to eq(1)
+    expect(collection_user.achievement_progresses.where(achievement_key: 'exploration').count).to eq(1)
+  end
+
+  it 'leaves the shared demo user achievements unchanged' do
+    demo = User.find_by(email: 'demo@dawarich.app') || create(:user, email: 'demo@dawarich.app')
+    before = demo.achievement_progresses.count
+
+    Rake::Task['e2e:seed_b11_achievements'].execute
+
+    expect(demo.achievement_progresses.count).to eq(before)
   end
 
   it 'prepares one pending unlock for a separate synthetic user' do

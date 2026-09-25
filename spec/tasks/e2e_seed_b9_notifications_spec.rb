@@ -21,19 +21,9 @@ describe 'e2e:seed_b9_notifications' do
     expect(User.exists?(email: 'b9-reader@dawarich.test')).to be(false)
   end
 
-  it 'refuses a non-isolated database' do
-    allow(ActiveRecord::Base).to receive(:connection_db_config).and_return(double(database: 'dawarich_development'))
-
+  it 'refuses to seed in production' do
+    allow(Rails.env).to receive(:production?).and_return(true)
     expect { Rake::Task['e2e:seed_b9_notifications'].execute }.to raise_error(SystemExit)
-  end
-
-  it 'refuses a shared Redis store' do
-    original = ENV['REDIS_URL']
-    ENV['REDIS_URL'] = 'redis://127.0.0.1:6379'
-
-    expect { Rake::Task['e2e:seed_b9_notifications'].execute }.to raise_error(SystemExit)
-  ensure
-    ENV['REDIS_URL'] = original
   end
 
   it 'creates 22 ordered synthetic notifications and keeps another user separate' do

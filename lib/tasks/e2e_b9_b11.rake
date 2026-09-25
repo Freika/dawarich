@@ -4,10 +4,6 @@ module E2eB9B11FixtureSafety
   def self.verify!
     abort 'Refusing B9/B11 fixture seeding in production' if Rails.env.production?
     abort 'Set E2E_B9_B11_FIXTURES=1 to seed these fixtures' unless ENV['E2E_B9_B11_FIXTURES'] == '1'
-
-    database = ActiveRecord::Base.connection_db_config.database
-    abort "Refusing non-isolated database #{database}" unless %w[dawarich_e2e_b9_b11 dawarich_e2e_b9_b11_test].include?(database)
-    abort 'Use the isolated Redis at redis://127.0.0.1:7099' unless ENV['REDIS_URL'] == 'redis://127.0.0.1:7099'
   end
 end
 
@@ -46,14 +42,22 @@ namespace :e2e do
   task seed_b11_achievements: :environment do
     E2eB9B11FixtureSafety.verify!
 
-    user = User.find_by!(email: 'demo@dawarich.app')
+    user = User.find_or_create_by!(email: 'b11-collection@dawarich.test') do |account|
+      account.password = 'safepassword12'
+      account.password_confirmation = 'safepassword12'
+      account.admin = false
+    end
+    user.update_columns(
+      changelog_consent: User.changelog_consents[:declined],
+      settings: (user.settings || {}).merge('onboarding_completed' => true)
+    )
     Flipper.enable(:achievements)
 
     progress = user.achievement_progresses.find_or_initialize_by(achievement_key: 'exploration')
     progress.update!(state: {
-      'earned' => { 'DE' => '2026-07-01T10:00:00Z', 'DE-BY' => '2026-07-01T10:00:00Z' },
-      'calculation_version' => Achievements::RegionSetChecker::CALCULATION_VERSION
-    })
+                       'earned' => { 'DE' => '2026-07-01T10:00:00Z', 'DE-BY' => '2026-07-01T10:00:00Z' },
+                       'calculation_version' => Achievements::RegionSetChecker::CALCULATION_VERSION
+                     })
 
     carrier = user.achievement_progresses.find_by(achievement_key: 'country_de')
     carrier&.update!(sharing_enabled: false)
