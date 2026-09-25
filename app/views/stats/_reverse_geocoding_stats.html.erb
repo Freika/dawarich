@@ -15,20 +15,31 @@
   </div>
 <% end %>
 
-<div class="stat text-center">
-  <div class="stat-value text-warning underline hover:no-underline  hover:cursor-pointer" onclick="countries_visited.showModal()">
+<div class="stat text-center"
+     data-controller="stats-countries-map"
+     data-stats-countries-map-visited-countries-value="<%= @visited_countries_map_data.to_json %>">
+  <div class="stat-value text-warning underline hover:no-underline hover:cursor-pointer"
+       data-action="click->stats-countries-map#open">
     <%= number_with_delimiter current_user.total_countries %>
   </div>
   <div class="stat-title"><%= t('.countries_visited') %></div>
 
-  <dialog id="countries_visited" class="modal">
-    <div class="modal-box">
+  <dialog id="countries_visited" class="modal" data-stats-countries-map-target="dialog">
+    <div class="modal-box max-w-4xl">
       <h3 class="font-bold text-lg"><%= t('.countries_visited') %></h3>
-      <p class="py-4">
+      <div class="relative mt-4 h-64 overflow-hidden rounded-box bg-base-300 sm:h-80">
+        <div data-stats-countries-map-target="map" class="h-full w-full"></div>
+        <div data-stats-countries-map-target="status"
+             class="absolute inset-0 flex items-center justify-center p-4 text-center text-sm"
+             role="status"
+             aria-live="polite"></div>
+      </div>
+
+      <div class="mt-6 max-h-64 overflow-y-auto">
         <% current_user.countries_visited.each do |country| %>
           <p><%= country %></p>
         <% end %>
-      </p>
+      </div>
     </div>
     <form method="dialog" class="modal-backdrop">
       <button><%= t('.close') %></button>
