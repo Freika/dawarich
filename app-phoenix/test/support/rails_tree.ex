@@ -11,6 +11,8 @@ defmodule Dawarich.RailsTree do
     |> Map.fetch!("states")
   end
 
+  def read(relative), do: @root |> Path.join(relative) |> File.read!()
+
   def split_at(release) do
     {before, [at | later]} = Enum.split_while(states(), &(&1["first_release"] != release))
     {before ++ [at], later}
