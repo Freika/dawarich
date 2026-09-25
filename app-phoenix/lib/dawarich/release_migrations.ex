@@ -3,6 +3,7 @@ defmodule Dawarich.ReleaseMigrations do
 
   alias Dawarich.ReleaseMigrations.{
     Unreleased,
+    V1_11_0,
     V1_12_0,
     V1_12_2,
     V1_13_0,
@@ -17,6 +18,7 @@ defmodule Dawarich.ReleaseMigrations do
   }
 
   @releases [
+    V1_11_0,
     V1_12_0,
     V1_12_2,
     V1_13_0,
