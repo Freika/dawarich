@@ -1,0 +1,1 @@
+DROP INDEX index_points_on_user_id_timestamp_lonlat;

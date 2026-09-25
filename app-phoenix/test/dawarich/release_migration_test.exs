@@ -148,6 +148,101 @@ defmodule Dawarich.ReleaseMigrationTest do
     refute column?(ScratchRepo, "probe", "x")
   end
 
+  test "with_lock_retry! returns :ok once acquired and raises the last lock error after its attempts" do
+    sql!(ScratchRepo, "CREATE TABLE probe (id int)")
+
+    assert with_lock_retry!(
+             ScratchRepo,
+             fn -> sql!(ScratchRepo, "ALTER TABLE probe ADD COLUMN x int") end,
+             lock_timeout: "1s",
+             attempts: 1,
+             backoff_seconds: 0
+           ) == :ok
+
+    parent = self()
+
+    holder =
+      Task.async(fn ->
+        ScratchRepo.transaction(fn ->
+          ScratchRepo.query!("SELECT 1 FROM probe")
+          send(parent, :holding)
+
+          receive do
+            :release -> :ok
+          end
+        end)
+      end)
+
+    assert_receive :holding, 5_000
+
+    error =
+      assert_raise Postgrex.Error, fn ->
+        with_lock_retry!(
+          ScratchRepo,
+          fn -> sql!(ScratchRepo, "ALTER TABLE probe ADD COLUMN y int") end,
+          lock_timeout: "50ms",
+          attempts: 2,
+          backoff_seconds: 0
+        )
+      end
+
+    assert error.postgres.code == :lock_not_available
+    send(holder.pid, :release)
+    Task.await(holder)
+    assert column?(ScratchRepo, "probe", "x")
+    refute column?(ScratchRepo, "probe", "y")
+  end
+
+  test "select_value is Rails' select_value: the first column of the first row, or nil" do
+    assert select_value(ScratchRepo, "SELECT * FROM (VALUES (1, 2), (3, 4)) v ORDER BY 1") == 1
+    assert select_value(ScratchRepo, "SELECT 1 WHERE false") == nil
+    assert select_value(ScratchRepo, "SELECT NULL::boolean") == nil
+    assert select_value(ScratchRepo, "SELECT false") == false
+    assert select_value(ScratchRepo, "SELECT $1::text || 'b'", ["a"]) == "ab"
+  end
+
+  test "repeat_until_zero reruns a batch until it affects no row, each batch committed on its own" do
+    scratch_sql!("""
+    CREATE TABLE probe (id int);
+    INSERT INTO probe SELECT generate_series(1, 5);
+    CREATE TABLE seen (id int, xid bigint);
+    """)
+
+    assert repeat_until_zero(
+             ScratchRepo,
+             """
+             WITH gone AS (
+               DELETE FROM probe WHERE id IN (SELECT id FROM probe ORDER BY id LIMIT $1) RETURNING id
+             )
+             INSERT INTO seen SELECT id, txid_current() FROM gone
+             """,
+             [2]
+           ) == :ok
+
+    assert select_value(ScratchRepo, "SELECT count(*) FROM probe") == 0
+    assert select_value(ScratchRepo, "SELECT count(*) FROM seen") == 5
+    assert select_value(ScratchRepo, "SELECT count(DISTINCT xid) FROM seen") == 3
+  end
+
+  test "remove_index_concurrently_if_exists drops a named index of the table only when index? sees it" do
+    scratch_sql!("""
+    CREATE TABLE probe (id bigserial primary key, user_id bigint);
+    CREATE TABLE other (id bigint);
+    CREATE INDEX probe_user_id ON probe (user_id);
+    CREATE INDEX "probe ""quoted\""" ON probe (id, user_id);
+    """)
+
+    assert remove_index_concurrently_if_exists(ScratchRepo, "other", "probe_user_id") == nil
+    assert remove_index_concurrently_if_exists(ScratchRepo, "probe", "probe_pkey") == nil
+    assert index_name?(ScratchRepo, "probe", "probe_user_id")
+    assert index_name?(ScratchRepo, "probe", "probe_pkey")
+    assert remove_index_concurrently_if_exists(ScratchRepo, "probe", "probe_user_id") == :ok
+    refute index_name?(ScratchRepo, "probe", "probe_user_id")
+    assert remove_index_concurrently_if_exists(ScratchRepo, "probe", "probe_user_id") == nil
+    assert remove_index_concurrently_if_exists(ScratchRepo, "probe", ~s(probe "quoted")) == :ok
+    refute index_name?(ScratchRepo, "probe", ~s(probe "quoted"))
+  end
+
   test "with_lock_retry and rescue_sql refuse to run inside a transaction" do
     assert_raise ArgumentError, fn ->
       ScratchRepo.transaction(fn ->
@@ -215,7 +310,7 @@ defmodule Dawarich.ReleaseMigrationTest do
     assert job("Tracks::DeduplicationJob", [7], 300) == {"Tracks::DeduplicationJob", [7], 300}
   end
 
-  test "self_hosted? parses SELF_HOSTED like config/initializers/01_constants.rb:5" do
+  test "self_hosted? parses SELF_HOSTED like config/initializers/01_constants.rb:5, stripping as Ruby 3.4's String#strip" do
     original = System.get_env("SELF_HOSTED")
 
     on_exit(fn ->
@@ -230,7 +325,14 @@ defmodule Dawarich.ReleaseMigrationTest do
           {"'yes'", true},
           {" 1 ", true},
           {"\"T\"", true},
-          {"no", false}
+          {"no", false},
+          {"", false},
+          {"\t\n\v\f\r true \t\n\v\f\r", true},
+          {"true\u00A0", false},
+          {"\u00A0true", false},
+          {"true\u0085", false},
+          {"\u3000on", false},
+          {"t\u2028", false}
         ] do
       if value, do: System.put_env("SELF_HOSTED", value), else: System.delete_env("SELF_HOSTED")
       assert self_hosted?() == expected, inspect(value)
@@ -258,7 +360,12 @@ defmodule Dawarich.ReleaseMigrationTest do
           {nil, "​", false},
           {nil, "1", false},
           {nil, "false", false},
-          {nil, "0", false}
+          {nil, "0", false},
+          {"true", nil, true},
+          {"true\u00A0", nil, false},
+          {"\u3000true", "", false},
+          {"\vtrue\r", " ", true},
+          {"true\u00A0", "\u00A0", false}
         ] do
       for {name, value} <- [{"SELF_HOSTED", self_hosted}, {"SKIP_POINT_DIMENSION_BACKFILL", skip}],
           do: if(value, do: System.put_env(name, value), else: System.delete_env(name))

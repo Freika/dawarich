@@ -6,3 +6,5 @@ contended:1.15.0:points	failed@20260914090000	-
 refused:0.0.8	refused	0.0.9
 refused:0.34.0.schemarb	refused	0.34.1
 refused:0.36.3@20251227000001	refused	0.37.0
+rows:1.13.0--no-replacement	failed@20260816120000	-
+rows:1.13.0--no-replacement~shifted	failed@20260816120000	-

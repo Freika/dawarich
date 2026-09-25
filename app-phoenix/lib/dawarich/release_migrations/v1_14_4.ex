@@ -54,14 +54,10 @@ defmodule Dawarich.ReleaseMigrations.V1_14_4 do
   end
 
   defp repair_invalid_stats_unique_index(repo) do
-    valid =
-      case repo.query!(@stats_index_valid, [], log: false) do
-        %{rows: [[valid] | _]} -> valid
-        %{rows: []} -> nil
-      end
+    valid = select_value(repo, @stats_index_valid)
 
     unless valid do
-      delete_duplicate_stats(repo)
+      repeat_until_zero(repo, @delete_duplicate_stats)
 
       if valid == false do
         sql!(repo, ~S"""
@@ -73,10 +69,5 @@ defmodule Dawarich.ReleaseMigrations.V1_14_4 do
       CREATE UNIQUE INDEX CONCURRENTLY "index_stats_on_user_id_year_month" ON "stats" ("user_id", "year", "month");
       """)
     end
-  end
-
-  defp delete_duplicate_stats(repo) do
-    if repo.query!(@delete_duplicate_stats, [], log: false).num_rows > 0,
-      do: delete_duplicate_stats(repo)
   end
 end

@@ -6,6 +6,7 @@ defmodule Dawarich.ReleaseMigrationsTest do
   alias Dawarich.ReleaseMigrator.{Floor, Ledger}
 
   @app Path.expand("../..", __DIR__)
+  @session_setting ~r/(\A|[;'|(\[{<]|(?<!\w)"|~[a-zA-Z]+["\/])\s*(RESET|SET)\b(?!\s+LOCAL\b)|set_config\s*\((?:[^()]|(?<p>\((?:[^()]|(?&p))*\)))*,\s*false\s*\)/i
 
   test "finds a registered release by name and keeps Unreleased last" do
     assert ReleaseMigrations.find("unreleased") == Unreleased
@@ -66,11 +67,46 @@ defmodule Dawarich.ReleaseMigrationsTest do
       ["lib/dawarich/release_migrations/**/*.ex", "priv/release_migrations/**/*.sql"]
       |> Enum.flat_map(&Path.wildcard(Path.join(@app, &1)))
       |> Enum.filter(fn path ->
-        File.read!(path) =~
-          ~r/(\A|[;'|(\[{<]|(?<!\w)")\s*(RESET|SET)\b(?!\s+LOCAL\b)|set_config\s*\((?:[^()]|(?<p>\((?:[^()]|(?&p))*\)))*,\s*false\s*\)/i
+        File.read!(path) =~ @session_setting
       end)
 
     assert offenders == []
+  end
+
+  test "the session-setting pattern flags SET and RESET in every string and sigil form, and passes SET clauses" do
+    flagged = [
+      ~S|sql!(repo, "SET lock_timeout = 0")|,
+      ~s|sql!(repo, """\n  SET lock_timeout TO 0\n""")|,
+      "; RESET lock_timeout",
+      ~S|sql!(repo, "RESET lock_timeout")|,
+      "set_config('search_path', coalesce(current_setting('search_path', true), 'public'), false)",
+      ~S|sql!(repo, ~s"SET lock_timeout = 0")|,
+      ~S|sql!(repo, ~S"RESET lock_timeout")|,
+      ~S|sql!(repo, ~s/SET lock_timeout = 0/)|,
+      ~S|sql!(repo, ~S(RESET lock_timeout))|,
+      ~S|sql!(repo, ~s[SET lock_timeout = 0])|,
+      ~S|sql!(repo, ~s{SET lock_timeout = 0})|,
+      ~S|sql!(repo, ~s<SET lock_timeout = 0>)|,
+      ~S|sql!(repo, ~s'SET lock_timeout = 0')|,
+      ~S[sql!(repo, ~s|SET lock_timeout = 0|)],
+      ~s|sql!(repo, ~S"""\nSET lock_timeout = 0\n""")|
+    ]
+
+    passed = [
+      ~S|sql!(repo, ~s(ALTER TABLE "places" ALTER COLUMN "user_id" SET NOT NULL))|,
+      ~S|sql!(repo, ~s(UPDATE "trips" SET distance = 1))|,
+      ~S|sql!(repo, ~s(ALTER TABLE "t" ALTER COLUMN "x" SET DEFAULT 0))|,
+      ~S|sql!(repo, ~s(ALTER TABLE "t" ALTER COLUMN "x" SET DATA TYPE bigint))|,
+      ~S|sql!(repo, "SET LOCAL lock_timeout = 0")|,
+      "UPDATE trips SET distance = 1",
+      "SELECT set_config('a', 'b', true)",
+      ~S|sql!(repo, ~s"SET LOCAL lock_timeout = 0")|,
+      ~S|sql!(repo, ~s"UPDATE trips SET distance = 1")|,
+      ~S|sql!(repo, ~s/ALTER TABLE t ALTER COLUMN x SET NOT NULL/)|
+    ]
+
+    assert Enum.reject(flagged, &(&1 =~ @session_setting)) == []
+    assert Enum.filter(passed, &(&1 =~ @session_setting)) == []
   end
 
   test "the removed-version list is every listed migration db/migrate no longer ships" do

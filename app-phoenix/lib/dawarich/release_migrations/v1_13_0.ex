@@ -60,9 +60,8 @@ defmodule Dawarich.ReleaseMigrations.V1_13_0 do
     drop_invalid_indexes_on_points(repo)
     ensure_replacement_index_usable!(repo)
 
-    for name <- @superseded_points_indexes, index?(repo, "points", name: name) do
-      sql!(repo, ~s|DROP INDEX CONCURRENTLY "#{name}";|)
-    end
+    for name <- @superseded_points_indexes,
+        do: remove_index_concurrently_if_exists(repo, "points", name)
   end
 
   defp drop_invalid_indexes_on_points(repo) do
@@ -85,12 +84,7 @@ defmodule Dawarich.ReleaseMigrations.V1_13_0 do
     unless usable, do: raise(@replacement_index_unusable)
   end
 
-  defp replacement_index_valid(repo) do
-    case repo.query!(@replacement_index_valid, [], log: false) do
-      %{rows: [[valid] | _]} -> valid
-      %{rows: []} -> nil
-    end
-  end
+  defp replacement_index_valid(repo), do: select_value(repo, @replacement_index_valid)
 
   defp repair_replacement_index(repo) do
     rescue_sql(

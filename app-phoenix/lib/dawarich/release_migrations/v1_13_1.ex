@@ -56,11 +56,7 @@ defmodule Dawarich.ReleaseMigrations.V1_13_1 do
   end
 
   defp drop_visit_null_partial_index(repo) do
-    if index?(repo, "points", name: "idx_points_user_visit_null_timestamp") do
-      sql!(repo, ~S"""
-      DROP INDEX CONCURRENTLY "idx_points_user_visit_null_timestamp";
-      """)
-    end
+    remove_index_concurrently_if_exists(repo, "points", "idx_points_user_visit_null_timestamp")
   end
 
   defp enqueue_point_dimension_backfills(repo) do
@@ -79,23 +75,12 @@ defmodule Dawarich.ReleaseMigrations.V1_13_1 do
   defp add_gist_index_to_tracks_original_path(repo) do
     require_zero_lock_timeout!(repo)
 
-    if original_path_index_invalid?(repo) and
-         index?(repo, "tracks", name: "index_tracks_on_original_path") do
-      sql!(repo, ~S"""
-      DROP INDEX CONCURRENTLY "index_tracks_on_original_path";
-      """)
-    end
+    if select_value(repo, @original_path_index_invalid),
+      do: remove_index_concurrently_if_exists(repo, "tracks", "index_tracks_on_original_path")
 
     sql!(repo, ~S"""
     CREATE INDEX CONCURRENTLY IF NOT EXISTS "index_tracks_on_original_path" ON "tracks" USING gist ("original_path");
     """)
-  end
-
-  defp original_path_index_invalid?(repo) do
-    case repo.query!(@original_path_index_invalid, [], log: false) do
-      %{rows: [[invalid] | _]} -> invalid == true
-      %{rows: []} -> false
-    end
   end
 
   defp create_service_settings(repo) do

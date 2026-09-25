@@ -32,8 +32,12 @@ ActiveSupport::Notifications.subscribe('sql.active_record') do |*, payload|
   end
 end
 
+def migration_error(error)
+  error.message.start_with?('An error has occurred') && error.cause ? error.cause : error
+end
+
 def failure_class(error)
-  error = error.cause if error.message.start_with?('An error has occurred') && error.cause
+  error = migration_error(error)
   error = error.cause if error.is_a?(ActiveRecord::StatementInvalid)
   return 'none' unless error.is_a?(PG::Error)
 
@@ -74,6 +78,7 @@ begin
   end
 rescue StandardError => e
   File.write("#{out}.failure", "#{failure_class(e)}\n")
+  File.write("#{out}.message", migration_error(e).message)
   raise
 ensure
   body =

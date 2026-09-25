@@ -96,9 +96,34 @@ defmodule Dawarich.ReleaseMigration do
 
   def index_name?(repo, table, name), do: exists?(repo, @index_name_sql, [table, name])
 
+  def select_value(repo, sql, params \\ []) do
+    case repo.query!(sql, params, log: false).rows do
+      [[value | _] | _] -> value
+      _ -> nil
+    end
+  end
+
+  def repeat_until_zero(repo, sql, params \\ []) do
+    if repo.query!(sql, params, log: false).num_rows > 0,
+      do: repeat_until_zero(repo, sql, params),
+      else: :ok
+  end
+
+  def remove_index_concurrently_if_exists(repo, table, name) do
+    if index?(repo, table, name: name),
+      do: sql!(repo, ~s|DROP INDEX CONCURRENTLY "#{String.replace(name, ~s("), ~s(""))}";|)
+  end
+
   def with_lock_retry(repo, fun, opts) do
     outside_transaction!(repo, :with_lock_retry)
     lock_retry(repo, fun, Keyword.put_new(opts, :on, [:lock_not_available]), 1)
+  end
+
+  def with_lock_retry!(repo, fun, opts) do
+    case with_lock_retry(repo, fun, opts) do
+      :acquired -> :ok
+      {:not_acquired, error} -> raise error
+    end
   end
 
   def rescue_sql(repo, fun, codes, fallback) do
@@ -132,7 +157,7 @@ defmodule Dawarich.ReleaseMigration do
   def self_hosted? do
     System.get_env("SELF_HOSTED", "true")
     |> String.replace(["\"", "'"], "")
-    |> String.trim()
+    |> then(&Regex.replace(~r/\A[\x00\x09-\x0D ]+|[\x00\x09-\x0D ]+\z/, &1, ""))
     |> String.downcase()
     |> then(&(&1 in ~w[true 1 yes on t]))
   end

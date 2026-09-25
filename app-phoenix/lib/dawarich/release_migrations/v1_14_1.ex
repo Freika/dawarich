@@ -71,7 +71,7 @@ defmodule Dawarich.ReleaseMigrations.V1_14_1 do
 
   defp validate_points_track_foreign_key(repo) do
     if points_track_foreign_key(repo) do
-      detach_dangling_points(repo)
+      repeat_until_zero(repo, @detach_dangling_points)
 
       name =
         points_track_foreign_key(repo) ||
@@ -84,11 +84,6 @@ defmodule Dawarich.ReleaseMigrations.V1_14_1 do
     end
   end
 
-  defp detach_dangling_points(repo) do
-    if repo.query!(@detach_dangling_points, [], log: false).num_rows > 0,
-      do: detach_dangling_points(repo)
-  end
-
   defp change_trips_distance_to_bigint(repo) do
     unless exists?(repo, @trips_distance_bigint) do
       lock_retry!(repo, fn ->
@@ -99,17 +94,8 @@ defmodule Dawarich.ReleaseMigrations.V1_14_1 do
     end
   end
 
-  defp points_track_foreign_key(repo) do
-    case repo.query!(@points_track_foreign_key, [], log: false) do
-      %{rows: [[name]]} -> name
-      %{rows: []} -> nil
-    end
-  end
+  defp points_track_foreign_key(repo), do: select_value(repo, @points_track_foreign_key)
 
-  defp lock_retry!(repo, fun) do
-    case with_lock_retry(repo, fun, lock_timeout: "5s", attempts: 5, backoff_seconds: 5) do
-      :acquired -> :ok
-      {:not_acquired, error} -> raise error
-    end
-  end
+  defp lock_retry!(repo, fun),
+    do: with_lock_retry!(repo, fun, lock_timeout: "5s", attempts: 5, backoff_seconds: 5)
 end

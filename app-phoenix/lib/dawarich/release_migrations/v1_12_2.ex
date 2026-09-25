@@ -41,8 +41,7 @@ defmodule Dawarich.ReleaseMigrations.V1_12_2 do
   end
 
   defp drop_redundant_points_indexes(repo) do
-    for name <- @redundant_points_indexes, index?(repo, "points", name: name) do
-      sql!(repo, ~s|DROP INDEX CONCURRENTLY "#{name}";|)
-    end
+    for name <- @redundant_points_indexes,
+        do: remove_index_concurrently_if_exists(repo, "points", name)
   end
 end

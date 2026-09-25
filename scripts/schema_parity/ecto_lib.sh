@@ -99,6 +99,10 @@ canon_jobs() {
   ruby "$root/scripts/schema_parity/canon.rb" jobs < "$1" > "$2" || fail "canon.rb jobs failed on $1"
 }
 
+canon_message() {
+  ruby "$root/scripts/schema_parity/canon.rb" message "$started" "$(date -u +%s)" < "$1" > "$2" || fail "canon.rb message failed on $1"
+}
+
 failure_class() {
   ruby "$root/scripts/schema_parity/canon.rb" failure < "$1" || fail "canon.rb failure failed on $1"
 }

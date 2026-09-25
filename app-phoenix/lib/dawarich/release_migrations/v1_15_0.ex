@@ -111,14 +111,11 @@ defmodule Dawarich.ReleaseMigrations.V1_15_0 do
 
   defp add_lock_versions_to_points_and_tracks(repo) do
     for table <- ~w[points tracks] do
-      case with_lock_retry(repo, fn -> add_lock_version(repo, table) end,
-             lock_timeout: "5s",
-             attempts: 5,
-             backoff_seconds: 5
-           ) do
-        :acquired -> :ok
-        {:not_acquired, error} -> raise error
-      end
+      with_lock_retry!(repo, fn -> add_lock_version(repo, table) end,
+        lock_timeout: "5s",
+        attempts: 5,
+        backoff_seconds: 5
+      )
     end
   end
 

@@ -100,12 +100,14 @@ rails_side() {
   [ -f "$tmpd/rails.jobs" ] || fail "rails_reference.rb wrote no jobs file ($(tail -n 1 "$tmpd/rails.out"))"
   canon_jobs "$tmpd/rails.jobs" "$tmpd/rails.canon"
   mv "$tmpd/rails.canon" "$tmpd/rails.jobs"
+  [ ! -f "$tmpd/rails.message" ] || canon_message "$tmpd/rails.message" "$tmpd/rails.canon"
+  [ ! -f "$tmpd/rails.message" ] || mv "$tmpd/rails.canon" "$tmpd/rails.message"
 }
 
 keep_ref() {
   rails_status="$(cat "$tmpd/rails.status")"
   if [ -z "$holder_table" ] && [ "$rails_status" = "${expect_status:-ok}" ]; then
-    for part in sql out failure $parts; do
+    for part in sql out failure message $parts; do
       [ ! -f "$tmpd/rails.$part" ] || mv "$tmpd/rails.$part" "$1.$part"
     done
     mv "$tmpd/rails.status" "$1.status"
@@ -127,6 +129,10 @@ ecto_side() {
   fi
   canon_jobs "$tmpd/ecto.raw" "$tmpd/ecto.jobs"
   last_ecto="$(grep -v '^[[:space:]]*$' "$tmpd/ecto.out" | tail -n 1)"
+  failed_step='.*failed [^ ]* [0-9][0-9]*: \*\* (\([^)]*\)) \(.*\)'
+  ecto_exception="$(sed -n "s/$failed_step/\\1/p" "$tmpd/ecto.out" | tail -n 1)"
+  sed -n "s/$failed_step/\\2/p" "$tmpd/ecto.out" | tail -n 1 > "$tmpd/ecto.raw"
+  canon_message "$tmpd/ecto.raw" "$tmpd/ecto.message"
 }
 
 compare() {
@@ -153,6 +159,9 @@ compare() {
     ecto_class="$(failure_class "$tmpd/ecto.out")"
     [ -z "$holder_table" ] || [ "$rails_class" != none ] || fail "contended failure without a concrete failure class ($last_ecto)"
     [ "$rails_class" = "$ecto_class" ] || fail "both failed at ${rails_status#failed@}, rails with $rails_class, ecto with $ecto_class ($last_ecto)"
+    [ "$ecto_exception" != Dawarich.ReleaseMigration.UnportedEffect ] || fail "both failed at ${rails_status#failed@}, ecto with an unported effect ($last_ecto)"
+    [ "$rails_class" != none ] || cmp -s "$1.message" "$tmpd/ecto.message" \
+      || fail "both failed at ${rails_status#failed@} with no Postgres error: rails \"$(cat "$1.message" 2>/dev/null)\", ecto \"$(cat "$tmpd/ecto.message")\""
   fi
   if [ -n "$holder_table" ] && [ "$(cat "$1.waits")" -lt 1 ]; then
     fail "contention had no effect: rails recorded no lock wait on $holder_table"
