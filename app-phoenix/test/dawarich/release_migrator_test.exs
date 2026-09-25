@@ -593,11 +593,11 @@ defmodule Dawarich.ReleaseMigratorTest do
              ReleaseMigrator.migrate(ScratchRepo, releases: [R1, R2])
   end
 
-  test "apply_release runs only that release's missing versions" do
+  test "apply_release_for_proof runs only that release's missing versions" do
     create_ledger!(~w[20990101000001])
 
     assert {:ok, %{applied: ["20990101000003"], pending_data: []}} =
-             ReleaseMigrator.apply_release(ScratchRepo, R1)
+             ReleaseMigrator.apply_release_for_proof(ScratchRepo, R1)
 
     assert log() == ["20990101000003"]
   end
@@ -691,6 +691,24 @@ defmodule Dawarich.ReleaseMigratorTest do
              lease_wait_ms: 200,
              lease_poll_ms: 50
            ) == {:error, {:locked, "other-host:1:1"}}
+  end
+
+  test "a live lease is not shared with a migrator that builds the same holder string" do
+    create_ledger!([])
+
+    ScratchRepo.query!(
+      "INSERT INTO phoenix.release_migrator_leases (name, holder, expires_at) VALUES ('release_migrator', 'same-host:1:1', now() + interval '1 hour')"
+    )
+
+    assert ReleaseMigrator.migrate(ScratchRepo,
+             releases: [R1],
+             holder: "same-host:1:1",
+             lease_wait_ms: 200,
+             lease_poll_ms: 50
+           ) == {:error, {:locked, "same-host:1:1"}}
+
+    assert log() == []
+    assert ledger() == []
   end
 
   test "takes over an expired lease" do
@@ -835,7 +853,7 @@ defmodule Dawarich.ReleaseMigratorTest do
     lease = [lease_wait_ms: 200, lease_poll_ms: 50]
     refusal = {:error, {:below_floor, "0.37.2"}}
     assert ReleaseMigrator.migrate(ScratchRepo, [releases: [R1]] ++ lease) == refusal
-    assert ReleaseMigrator.apply_release(ScratchRepo, R1, lease) == refusal
+    assert ReleaseMigrator.apply_release_for_proof(ScratchRepo, R1, lease) == refusal
     assert log() == []
     assert ledger() == []
   end
@@ -850,7 +868,7 @@ defmodule Dawarich.ReleaseMigratorTest do
     lease = [lease_wait_ms: 200, lease_poll_ms: 50]
     refusal = {:error, {:not_dawarich, 3}}
     assert ReleaseMigrator.migrate(ScratchRepo, [releases: [R1]] ++ lease) == refusal
-    assert ReleaseMigrator.apply_release(ScratchRepo, R1, lease) == refusal
+    assert ReleaseMigrator.apply_release_for_proof(ScratchRepo, R1, lease) == refusal
     assert log() == []
     assert ledger() == []
   end

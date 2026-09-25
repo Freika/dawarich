@@ -31,6 +31,16 @@ defmodule Mix.Tasks.Dawarich.ReleaseMigrateTest do
     assert [_, "20260730210150"] = Regex.run(@harness_failed_version, "** (Mix) " <> message)
   end
 
+  test "a connection error from the two-connection probe is refused with its message" do
+    postgrex = %Postgrex.Error{message: "too many connections for role \"dawarich\""}
+    connection = DBConnection.ConnectionError.exception("tcp recv: closed")
+
+    assert ReleaseMigrate.describe(postgrex) ==
+             "refused: too many connections for role \"dawarich\""
+
+    assert ReleaseMigrate.describe(connection) == "refused: tcp recv: closed"
+  end
+
   test "an unknown release is named the way the porting procedure expects" do
     assert ReleaseMigrate.describe({:unknown_release, "1.15.2"}) ==
              "no Ecto release module for 1.15.2"

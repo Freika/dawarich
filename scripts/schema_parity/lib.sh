@@ -33,6 +33,10 @@ dexec() {
   dexec_for "$exec_timeout" "$@"
 }
 
+checksum() {
+  git -C "$root" hash-object --no-filters -- "$1"
+}
+
 snapshot_of() {
   for kind in image replay; do
     if [ -e "$snapshots/$1.$kind.sql.gz" ]; then
@@ -62,7 +66,7 @@ restore_snapshot() {
 canon_dump() {
   dexec sp-db pg_dump -U postgres --schema-only --no-owner --no-privileges --exclude-schema=phoenix --exclude-schema=oban "$1" > "$tmpd/canon.sql"
   grep -vE '^\\(un)?restrict ' "$tmpd/canon.sql" | cat - "$root/scripts/schema_parity/lib.sh" "$root/scripts/schema_parity/normalize.sh" > "$tmpd/canon.key"
-  memo="$work/canon/$(git -C "$root" hash-object --no-filters -- "$tmpd/canon.key")"
+  memo="$work/canon/$(checksum "$tmpd/canon.key")"
   if [ ! -s "$memo" ]; then
     recreate_db "$1_rt"
     dexec -i sp-db psql -U postgres -q -v ON_ERROR_STOP=1 -d "$1_rt" < "$tmpd/canon.sql" >/dev/null

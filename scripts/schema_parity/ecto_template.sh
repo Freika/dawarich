@@ -3,14 +3,14 @@ template_name() {
     echo "template upto=$2 extra=$3 shift=$shift_to boot=$4"
     case "$1" in
       none | empty) echo "$1" ;;
-      *) git -C "$root" hash-object --no-filters -- "$1" || return 1 ;;
+      *) checksum "$1" || return 1 ;;
     esac
     for file in "$fixture" "$envfile"; do
-      if [ -f "$file" ]; then git -C "$root" hash-object --no-filters -- "$file" || return 1; else echo -; fi
+      if [ -f "$file" ]; then checksum "$file" || return 1; else echo -; fi
     done
     echo "$code_key"
   } > "$tmpd/template.input" || return 1
-  sum="$(git -C "$root" hash-object --no-filters -- "$tmpd/template.input")" || return 1
+  sum="$(checksum "$tmpd/template.input")" || return 1
   echo "sp_t_$sum"
 }
 

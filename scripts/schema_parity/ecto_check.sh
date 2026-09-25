@@ -21,7 +21,7 @@ if dotenv="$(local_dotenv)"; then
   echo "$check FAIL refusing to run: $dotenv exists and dotenv would load it into the Rails side only"
   exit 2
 fi
-list_checks > "$tmpd/checks" 2> "$tmpd/checks.err" || { echo "$check FAIL $(tr '\n' ' ' < "$tmpd/checks.err")"; exit 2; }
+list_checks > /dev/null 2> "$tmpd/checks.err" || { echo "$check FAIL $(tr '\n' ' ' < "$tmpd/checks.err")"; exit 2; }
 code_key="$(code_key)" || fail "could not hash the Rails inputs"
 name="$(echo "$check" | tr ':+@~' '____')"
 for part in $parts; do rm -f "$out/diffs/$name.$part.diff"; done

@@ -21,10 +21,6 @@ query() {
   dexec -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAtc "$2"
 }
 
-checksum() {
-  git -C "$root" hash-object --no-filters -- "$1"
-}
-
 code_key() {
   (
     cd "$root" || exit 1

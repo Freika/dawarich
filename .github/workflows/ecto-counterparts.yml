@@ -66,7 +66,7 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
             git cat-file -e "$BASE_SHA^{commit}" || { echo "base commit '$BASE_SHA' is not in the checkout"; exit 1; }
             git diff --no-renames --name-only "$BASE_SHA"...HEAD \
-              | ruby scripts/schema_parity/pr_checks.rb "$RUNNER_TEMP/list.txt" > "$RUNNER_TEMP/checks.txt"
+              | ruby scripts/schema_parity/pr_checks.rb "$RUNNER_TEMP/list.txt" "$BASE_SHA...HEAD" > "$RUNNER_TEMP/checks.txt"
           else
             ruby scripts/schema_parity/pr_checks.rb "$RUNNER_TEMP/list.txt" < /dev/null > /dev/null
             cp "$RUNNER_TEMP/list.txt" "$RUNNER_TEMP/checks.txt"

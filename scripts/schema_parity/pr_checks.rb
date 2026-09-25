@@ -33,7 +33,8 @@ end
 
 machinery = %r{
   \Aapp-phoenix/lib/dawarich/(release_migrations?\.ex|release_migrator\.ex|release_migrator/|release\.ex|repo\.ex)
-  |\Aapp-phoenix/priv/(release_migrations/baseline\.sql\z|repo/)
+  |\Aapp-phoenix/lib/dawarich/release_migrations/(?!(?:v[\d_]+|unreleased)\.ex\z)
+  |\Aapp-phoenix/priv/(release_migrations/(?!(?:unreleased|[\d.]+)/)|repo/)
   |\Aapp-phoenix/test/support/mix/tasks/dawarich\.release_migrate\.ex\z
   |\Aapp-phoenix/(config/|mix\.(exs|lock)\z|\.tool-versions\z)
   |\Adb/(release_migrations\.json\z|release_snapshots/)
@@ -68,7 +69,16 @@ older_than_a_module = lambda do |check|
   start = check[/\Aupgrade:(\d+(?:\.\d+)*)/, 1] or next false
   modules.any? { _1 == 'unreleased' || Gem::Version.new(start) < Gem::Version.new(_1) }
 end
-full = changed.any? { _1.match?(machinery) }
+migrator_gems = %w[rails activerecord activesupport activemodel railties pg strong_migrations data_migrate]
+migrator_gems_bumped = changed.include?('Gemfile.lock') && begin
+  range = ARGV[1].to_s
+  abort 'Gemfile.lock changed: pass the diff range <base>...<head> as the second argument' if range.empty?
+  lock_diff, status = Open3.capture2('git', '-C', root, 'diff', '--no-color', '--no-ext-diff', '--no-renames', range,
+                                     '--', 'Gemfile.lock')
+  abort "git diff #{range} -- Gemfile.lock failed" unless status.success?
+  lock_diff.match?(/^[-+] {4}(?:#{migrator_gems.join('|')}) \(/)
+end
+full = migrator_gems_bumped || changed.any? { _1.match?(machinery) }
 picked = listed.select do |check|
   release = check[/\A(?:step|rows|contended):([^:~]+?)(?:--|~|:|\z)/, 1]
   full || (release && releases.include?(release)) || fixture_checks.include?(check) ||

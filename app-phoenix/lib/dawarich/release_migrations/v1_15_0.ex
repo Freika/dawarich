@@ -52,7 +52,7 @@ defmodule Dawarich.ReleaseMigrations.V1_15_0 do
     end
   end
 
-  defp env_set?(name), do: not Regex.match?(~r/\A[\x00\x09-\x0D ]*\z/, System.get_env(name, ""))
+  defp env_set?(name), do: ruby_strip(System.get_env(name, "")) != ""
 
   defp create_trip_sources_and_planned_itineraries(repo) do
     sql!(repo, ~S"""

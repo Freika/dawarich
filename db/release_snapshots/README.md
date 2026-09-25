@@ -417,6 +417,18 @@ reference `Dawarich.ReleaseMigrator`; today its only entry is the test-env mix t
       parameter, and `Dawarich.Release.migrate/0` (lease and outbox tables) runs first.
     - The release that removes Rails ships the upgrade note for databases older than 1.0.0, naming the last Rails
       release, and its release command prints the floor message with that release.
+    - The operator layer lives only in the test-only mix task (`test/support/mix/tasks/dawarich.release_migrate.ex`).
+      A12 moves it to `lib/`: `describe/1` with every refusal text (including the generic `refused: <message>` for a
+      connection error from the two-connection probe), `@last_rails_release`, and the repo overrides (a pool of ≥ 2,
+      `timeout: :infinity`, `DBConnection.ConnectionPool` instead of the test sandbox).
+      `ReleaseMigrator.apply_release_for_proof/3` (`--only`) is harness-only; the release command calls `migrate/2`.
+    - Only a step's own error comes back as `{:error, {:failed, …}}`. Other query errors raise out of `migrate/2`: the
+      preflight and classification reads, the ledger re-read after the baseline (`run/5`'s recursion),
+      `pending_data`, the lease acquire and the lease `DELETE` in `with_lease`'s `after`. A12's release command
+      rescues them and reports a failure instead of crashing.
+    - The lease timings (TTL 60 s, renewal every 20 s, renewal query timeout 20 s) are too tight for slow self-hosted
+      storage. Eugene agreed (2026-09-25) to raise the TTL, for example to 5 minutes; A12 sets the values and keeps
+      the renewal interval and its timeout well inside the TTL.
 
 ### Porting rules (Tasks 7–18 and every future Rails migration)
 
@@ -802,8 +814,10 @@ is unproven.
   `ran <n> checks, <f> failed`.
   - The lines go to `tmp/schema_parity/ecto/summary.txt` (`summary.K-N.txt` for a shard) in `--list` order. `all`
     starts a fresh file for its own shard; explicit checks append, so remove `summary*.txt` first, as the CI job does.
-  - Exit 0 only when every check passed; exit 2 and `ABORTED …` in the summary on an abort (duplicate check names, a
-    bad option, a list error).
+  - Exit 0 only when every check passed. A run aborted before its checks start (duplicate check names, a list error,
+    no check selected, a local `.env`, `mix compile` failing) exits 2 and writes `ABORTED …` to the summary. A bad
+    `--shard` or `--jobs` value, a missing argument and any `--list` error exit 2 with a message on stderr and write no
+    summary line.
   - `== start|end <epoch> <check>` lines go to `tmp/schema_parity/ecto/prove.log`.
 - `--jobs N` runs N lanes over the non-contended checks (default: half the cores, at least 1), then the contended
   checks one at a time, alone. With `--shard`, each shard runs its own contended checks alone at its end.
@@ -820,7 +834,8 @@ is unproven.
 - Declared outcomes (`failed@V`, contended, refused) are in `scripts/schema_parity/ecto_expectations.tsv`.
   Contended checks hold `ROW EXCLUSIVE` on their table for 150 s.
 - `inventory.rb [versions…]` prints `state<TAB>version<TAB>tags` per migration after the floor;
-  `pr_checks.rb <list>` reads changed paths on stdin and prints the checks they select.
+  `pr_checks.rb <list> [<base>...<head>]` reads changed paths on stdin and prints the checks they select (see "What CI
+  runs"); the range is required when `Gemfile.lock` changed.
 
 **Prerequisites:** `scripts/schema_parity/infra.sh up` (sp-db is `postgis/postgis:17-3.5` pinned at
 `sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6`, PostgreSQL 17.5, with `fsync`,
@@ -857,6 +872,35 @@ the refusal sample, and nothing older, each restored into PostgreSQL 14 and 17. 
 output with `SET transaction_timeout = 0;`, which PostgreSQL 16 and older reject under `ON_ERROR_STOP` (see "What C2
 must not assume"); the C4 plan's "PG14 restore compatibility fix" item covers it. `postgis/postgis:14-3.5` has no arm64 image, which matters only locally. The nightly activates when
 `feat/phoenix-port` merges into the default branch.
+
+### What CI runs
+
+`.github/workflows/ecto-counterparts.yml` runs `ecto_prove.sh --jobs 2` on the checks
+`scripts/schema_parity/pr_checks.rb` selects, and fails unless the summary lists exactly those checks, each with an
+`ok` line:
+- **Pushes** to `dev` and `master` run every check, and no later push cancels them. **Pull requests** run `fresh` plus
+  what their diff against the merge base (`git diff --name-only <base>...HEAD`) selects; a newer push to the same pull
+  request cancels the older run. A base commit missing from the checkout fails the job.
+- **Shared inputs select every check:** `release_migration.ex` (the step helpers), `release_migrations.ex` (the
+  registry), `release_migrator.ex` and everything under `release_migrator/`, `release.ex`, `repo.ex`, any file under
+  `app-phoenix/lib/dawarich/release_migrations/` that is not a release module (a shared helper), any file under
+  `app-phoenix/priv/release_migrations/` outside a release directory (`baseline.sql`), `priv/repo/`, the harness mix
+  task, `app-phoenix/config/`, `mix.exs`, `mix.lock`, `app-phoenix/.tool-versions`, `db/release_migrations.json`,
+  `db/release_snapshots/`, `.env.development`, `.ruby-version`, the workflow file and every script directly in
+  `scripts/schema_parity/`.
+- **`Gemfile.lock`:** a diff that changes the version of `rails`, `activerecord`, `activesupport`, `activemodel`,
+  `railties`, `pg`, `strong_migrations` or `data_migrate` selects every check. Any other `Gemfile.lock` change, and Rails
+  app code (`app/`, `lib/`, `config/`), select only `fresh`; the released migrations are then proven by the push run
+  after the merge.
+- **A release module** (`v<release>.ex`, `unreleased.ex`, or a file under `priv/release_migrations/<release>/`) selects
+  that release's `step:`, `rows:` and `contended:` checks plus every `upgrade:` check that starts from an older state
+  (for `unreleased`, every `upgrade:` check).
+- **A `db/migrate` file** selects its state's checks (`unreleased` when no released state lists it). A migration at or
+  before the floor selects every `refused:` check.
+- **A fixture** (`fixtures/<name>.sql` or `.env`) selects `rows:<name>`, `rows:<name>~shifted` and its release's checks.
+  A fixture that maps to no listed check of a release after the floor fails the select step.
+- **An unreleased migration that needs a fixture it lacks** (`inventory.rb` decides) fails the select step, on pull
+  requests and pushes alike.
 
 ### At a release
 

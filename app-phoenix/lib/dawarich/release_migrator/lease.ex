@@ -79,7 +79,6 @@ defmodule Dawarich.ReleaseMigrator.Lease do
         VALUES ($1, $2, clock_timestamp() + make_interval(secs => $3))
         ON CONFLICT (name) DO UPDATE SET holder = EXCLUDED.holder, expires_at = EXCLUDED.expires_at
         WHERE phoenix.release_migrator_leases.expires_at < clock_timestamp()
-           OR phoenix.release_migrator_leases.holder = EXCLUDED.holder
         """,
         [@name, lease.holder, lease.ttl_seconds],
         log: false
@@ -124,6 +123,6 @@ defmodule Dawarich.ReleaseMigrator.Lease do
 
   defp holder do
     {:ok, host} = :inet.gethostname()
-    "#{host}:#{System.pid()}:#{System.unique_integer([:positive])}"
+    "#{host}:#{System.pid()}:#{Base.encode16(:crypto.strong_rand_bytes(8))}"
   end
 end

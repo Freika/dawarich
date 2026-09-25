@@ -31,7 +31,7 @@ defmodule Dawarich.ReleaseMigrator do
     end
   end
 
-  def apply_release(repo, module, opts \\ []) do
+  def apply_release_for_proof(repo, module, opts \\ []) do
     with :ok <- preflight(repo) do
       Lease.with_lease(repo, opts, fn lease ->
         ledger = read_versions(repo, "schema_migrations") || MapSet.new()
