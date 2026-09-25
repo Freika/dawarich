@@ -53,11 +53,15 @@ export default class extends Controller {
       const style = await getMapStyle(getCurrentTheme())
       if (this.disconnected || !this.dialogTarget.open) return
 
+      const latestCountry = this.visitedCountriesValue.find(
+        (country) => country.center,
+      )
+
       this.map = new maplibregl.Map({
         container: this.mapTarget,
         style,
-        center: [0, 20],
-        zoom: 1.2,
+        center: latestCountry?.center || [0, 20],
+        zoom: latestCountry ? 3.2 : 1.2,
         minZoom: 1,
         attributionControl: false,
       })
