@@ -19,7 +19,11 @@ RSpec.describe 'Shared::Links', type: :request do
         expect(response).to have_http_status(:ok)
       end
 
-      travel 1.hour + 1.second
+      travel 1.hour - 1.second
+      get public_shared_link_path(timed.id)
+      expect(response).to have_http_status(:ok)
+
+      travel 2.seconds
       get public_shared_link_path(timed.id)
       expect(response).to have_http_status(:not_found)
       get public_shared_link_path(permanent.id)
