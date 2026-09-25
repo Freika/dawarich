@@ -138,4 +138,18 @@ defmodule Dawarich.ReleaseMigrationsTest do
 
     assert Enum.filter(ReleaseMigrations.all(), &(&1.release() in floor_releases)) == []
   end
+
+  test "every Rails migration after the 1.0.0 floor has exactly one Ecto counterpart, and none up to it" do
+    {through_floor, ported} = RailsTree.split_at(Floor.release())
+    floor_schema = Enum.flat_map(through_floor, & &1["schema_added"])
+    floor_data = Enum.flat_map(through_floor, & &1["data_added"])
+
+    assert Enum.map(ReleaseMigrations.all(), & &1.release()) ==
+             Enum.map(ported, & &1["first_release"]) ++ ["unreleased"]
+
+    schema = ReleaseMigrations.all() |> Enum.flat_map(&ReleaseMigration.versions/1) |> Enum.sort()
+    data = ReleaseMigrations.all() |> Enum.flat_map(& &1.data_versions()) |> Enum.sort()
+    assert schema == Enum.reject(RailsTree.versions("migrate"), &(&1 in floor_schema))
+    assert data == Enum.reject(RailsTree.versions("data"), &(&1 in floor_data))
+  end
 end

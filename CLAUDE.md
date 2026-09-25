@@ -382,7 +382,7 @@ Even in these cases, wrap the integration in a Stimulus controller and connect i
 4. **Testing**: Include both unit and integration tests for location-based features
 5. **Performance**: Consider database indexes for geographic queries
 6. **Security**: Never log or expose user location data inappropriately
-7. **Migrations**: Put all migrations (schema and data) in `db/migrate/`, not `db/data/`. Data manipulation migrations use the same `ActiveRecord::Migration` class and should run in the standard migration sequence.
+7. **Migrations**: Put all migrations (schema and data) in `db/migrate/`, not `db/data/`. Data manipulation migrations use the same `ActiveRecord::Migration` class and should run in the standard migration sequence. Every new migration also needs its Ecto step in `app-phoenix/lib/dawarich/release_migrations/unreleased.ex` (and `transaction: false` when it calls `disable_ddl_transaction!`), written with the porting rules in `db/release_snapshots/README.md` ("Ecto counterparts"). A migration that changes rows, enqueues depending on data or configuration, or validates data also needs `scripts/schema_parity/fixtures/unreleased--<version>[-<variant>].sql` (`ruby scripts/schema_parity/inventory.rb <version>` tells which). CI's `ecto-counterparts` job proves them against Rails; `mix test` in `app-phoenix/` fails when the step is missing.
 8. **Public Sharing**: When implementing features that interact with stats, consider public sharing access patterns:
    - Use `public_accessible?` method to check if a stat can be publicly accessed
    - Support UUID-based access in API endpoints when appropriate

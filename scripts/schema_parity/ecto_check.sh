@@ -1,13 +1,15 @@
 #!/bin/sh
 set -eu
+exec 3>&1
 check="${1:?usage: ecto_check.sh <check>}"
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$root/scripts/schema_parity/lib.sh"
 . "$root/scripts/schema_parity/ecto_lib.sh"
+. "$root/scripts/schema_parity/ecto_template.sh"
 out="$work/ecto"
 mkdir -p "$out/ref" "$out/diffs" "$work/capture"
 tmpd="$(mktemp -d "$work/.tmp.XXXXXX")"
-run_id="$(basename "$tmpd" | tr -dc 'a-zA-Z0-9' | tr 'A-Z' 'a-z')"
+run_id="$$x$(basename "$tmpd" | tr -dc 'a-zA-Z0-9' | tr 'A-Z' 'a-z')"
 rails_db="sp_r_$run_id"
 ecto_db="sp_e_$run_id"
 started="$(date -u +%s)"
@@ -19,7 +21,7 @@ if dotenv="$(local_dotenv)"; then
   echo "$check FAIL refusing to run: $dotenv exists and dotenv would load it into the Rails side only"
   exit 2
 fi
-list_checks > "$tmpd/checks" 2> "$tmpd/checks.err" || { echo "$check FAIL $(tr '\n' ' ' < "$tmpd/checks.err")"; exit 2; }
+list_checks > /dev/null 2> "$tmpd/checks.err" || { echo "$check FAIL $(tr '\n' ' ' < "$tmpd/checks.err")"; exit 2; }
 code_key="$(code_key)" || fail "could not hash the Rails inputs"
 name="$(echo "$check" | tr ':+@~' '____')"
 for part in $parts; do rm -f "$out/diffs/$name.$part.diff"; done
@@ -75,21 +77,6 @@ ecto_in() {
   (cd "$root/app-phoenix" && scrubbed $ecto_env $fixture_env PHOENIX_TEST_DATABASE="$db" mix dawarich.release_migrate "$@")
 }
 
-prepare() {
-  recreate_db "$1"
-  docker exec sp-db psql -U postgres -qc "ALTER DATABASE $1 SET timezone TO 'Pacific/Chatham'" >/dev/null
-  case "$2" in
-    none) ;;
-    empty) rails_in "$1" runner 'ActiveRecord::Base.connection_pool.schema_migration.create_table; ActiveRecord::Base.connection_pool.internal_metadata.create_table' >/dev/null ;;
-    *) restore_snapshot "$2" "$1" ;;
-  esac
-  [ -z "$3" ] || rails_in "$1" runner "ActiveRecord::Base.connection_pool.migration_context.migrate($3)" >/dev/null
-  [ -z "$4" ] || query "$1" "INSERT INTO schema_migrations (version) VALUES ('$4')" >/dev/null
-  [ "$shift_to" = 0 ] || query "$1" "SELECT setval(c.oid::regclass, $shift_to) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind = 'S' AND n.nspname = 'public'" >/dev/null
-  [ -z "$fixture" ] || docker exec -i sp-db psql -U postgres -q -v ON_ERROR_STOP=1 -d "$1" < "$fixture" >/dev/null
-  [ "$kind" = refused ] || rails_in "$1" runner 'nil' >/dev/null
-}
-
 rails_side() {
   if rails_in "$rails_db" runner scripts/schema_parity/rails_reference.rb "$1" "$tmpd/rails" > "$tmpd/rails.out" 2>&1; then
     echo ok > "$tmpd/rails.status"
@@ -124,7 +111,8 @@ ecto_side() {
   fi
   record "$ecto_db" "$tmpd/ecto"
   : > "$tmpd/ecto.raw"
-  if [ "$(query "$ecto_db" "SELECT to_regclass('phoenix.release_migration_jobs') IS NOT NULL")" = t ]; then
+  has_jobs="$(query "$ecto_db" "SELECT to_regclass('phoenix.release_migration_jobs') IS NOT NULL")" || fail "could not look for the job table of $ecto_db"
+  if [ "$has_jobs" = t ]; then
     query "$ecto_db" 'SELECT json_build_array(job_class, arguments, wait_seconds) FROM phoenix.release_migration_jobs ORDER BY id' > "$tmpd/ecto.raw"
   fi
   canon_jobs "$tmpd/ecto.raw" "$tmpd/ecto.jobs"

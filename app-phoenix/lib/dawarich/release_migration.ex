@@ -205,10 +205,12 @@ defmodule Dawarich.ReleaseMigration do
   def self_hosted? do
     System.get_env("SELF_HOSTED", "true")
     |> String.replace(["\"", "'"], "")
-    |> then(&Regex.replace(~r/\A[\x00\x09-\x0D ]+|[\x00\x09-\x0D ]+\z/, &1, ""))
+    |> ruby_strip()
     |> String.downcase()
     |> then(&(&1 in ~w[true 1 yes on t]))
   end
+
+  def ruby_strip(value), do: Regex.replace(~r/\A[\x00\x09-\x0D ]+|[\x00\x09-\x0D ]+\z/, value, "")
 
   def env_present?(name), do: String.trim(System.get_env(name, "")) != ""
 

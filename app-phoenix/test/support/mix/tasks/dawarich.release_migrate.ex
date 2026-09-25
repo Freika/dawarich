@@ -32,7 +32,7 @@ defmodule Mix.Tasks.Dawarich.ReleaseMigrate do
   defp migrate(repo, release) do
     case ReleaseMigrations.find(release) do
       nil -> {:error, {:unknown_release, release}}
-      module -> ReleaseMigrator.apply_release(repo, module)
+      module -> ReleaseMigrator.apply_release_for_proof(repo, module)
     end
   end
 
@@ -76,4 +76,6 @@ defmodule Mix.Tasks.Dawarich.ReleaseMigrate do
     do:
       "refused: a Rails migrator holds its advisory lock (backend #{pid}); stop it, or if no Rails process runs, " <>
         "wait for PgBouncer's server_lifetime or restart PgBouncer"
+
+  def describe(error) when is_exception(error), do: "refused: #{Exception.message(error)}"
 end

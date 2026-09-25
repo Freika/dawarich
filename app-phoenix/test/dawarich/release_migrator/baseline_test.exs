@@ -71,4 +71,10 @@ defmodule Dawarich.ReleaseMigrator.BaselineTest do
     refute table?(ScratchRepo, "points")
     assert %{rows: []} = ScratchRepo.query!("SELECT version FROM schema_migrations")
   end
+
+  test "a fresh database reaches every Rails migration through the baseline and the release modules" do
+    assert {:ok, %{applied: ["baseline" | _]}} = ReleaseMigrator.migrate(ScratchRepo)
+    %{rows: rows} = ScratchRepo.query!("SELECT version FROM schema_migrations ORDER BY version")
+    assert List.flatten(rows) == RailsTree.versions("migrate")
+  end
 end

@@ -1,0 +1,14 @@
+INSERT INTO users (email, created_at, updated_at, visits_redetected_at) VALUES ('default-settings@example.test', '2026-09-01 00:00:00', '2026-09-01 00:00:00', '2026-09-01 00:00:00');
+INSERT INTO users (email, settings, created_at, updated_at, visits_redetected_at) VALUES ('custom-settings@example.test', '{"fog_of_war_meters": "100", "meters_between_routes": "250", "minutes_between_routes": "15"}', '2026-09-01 00:00:00', '2026-09-01 00:00:00', '2026-09-01 00:00:00');
+INSERT INTO tracks (start_at, end_at, user_id, original_path, created_at, updated_at) SELECT '2026-09-02 08:00:00', '2026-09-02 09:00:00', id, ST_GeomFromText('LINESTRING(12.37 51.34, 12.38 51.35)', 4326), '2026-09-02 09:00:00', '2026-09-02 09:00:00' FROM users WHERE email = 'default-settings@example.test';
+INSERT INTO imports (name, user_id, source, created_at, updated_at) SELECT 'phone-takeout.json', id, 3, '2026-09-03 00:00:00', '2026-09-03 00:00:00' FROM users WHERE email = 'default-settings@example.test';
+INSERT INTO imports (name, user_id, source, created_at, updated_at) SELECT 'ride.gpx', id, 4, '2026-09-03 00:00:00', '2026-09-03 00:00:00' FROM users WHERE email = 'default-settings@example.test';
+INSERT INTO imports (name, user_id, source, created_at, updated_at) SELECT 'semantic.json', id, 0, '2026-09-03 00:00:00', '2026-09-03 00:00:00' FROM users WHERE email = 'custom-settings@example.test';
+INSERT INTO imports (name, user_id, source, created_at, updated_at) SELECT 'immich', id, 5, '2026-09-03 00:00:00', '2026-09-03 00:00:00' FROM users WHERE email = 'custom-settings@example.test';
+INSERT INTO imports (name, user_id, source, created_at, updated_at) SELECT 'no-source.json', id, NULL, '2026-09-03 00:00:00', '2026-09-03 00:00:00' FROM users WHERE email = 'default-settings@example.test';
+INSERT INTO imports (name, user_id, source, created_at, updated_at) SELECT 'export.geojson', id, 6, '2026-09-03 00:00:00', '2026-09-03 00:00:00' FROM users WHERE email = 'default-settings@example.test';
+INSERT INTO imports (name, user_id, source, created_at, updated_at) SELECT 'owntracks.rec', id, 1, '2026-09-03 00:00:00', '2026-09-03 00:00:00' FROM users WHERE email = 'custom-settings@example.test';
+INSERT INTO imports (name, user_id, source, created_at, updated_at) SELECT 'photoprism', id, 7, '2026-09-03 00:00:00', '2026-09-03 00:00:00' FROM users WHERE email = 'custom-settings@example.test';
+INSERT INTO imports (name, user_id, source, created_at, updated_at) SELECT 'records.json', id, 2, '2026-09-03 00:00:00', '2026-09-03 00:00:00' FROM users WHERE email = 'default-settings@example.test';
+INSERT INTO imports (name, user_id, source, created_at, updated_at) SELECT 'trip.zip', id, 13, '2026-09-03 00:00:00', '2026-09-03 00:00:00' FROM users WHERE email = 'custom-settings@example.test';
+UPDATE imports SET status = 2, updated_at = '2026-09-04 00:00:00' WHERE name = 'phone-takeout.json';
