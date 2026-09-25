@@ -26,6 +26,24 @@ RSpec.describe '/stats', type: :request do
 
     before { sign_in user }
 
+    describe 'GET /month' do
+      it 'shows an empty state when the month has no calculated stat' do
+        get '/stats/2024/2'
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include('No location data available for this month')
+      end
+
+      it 'continues to render a calculated month' do
+        create(:stat, user:, year: 2024, month: 2)
+
+        get '/stats/2024/2'
+
+        expect(response).to have_http_status(:ok)
+        expect(response.body).to include('February 2024 Monthly Digest')
+      end
+    end
+
     describe 'GET /index' do
       it 'renders a successful response' do
         get stats_url

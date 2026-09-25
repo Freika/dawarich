@@ -9,10 +9,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Changed
 
 - The web container now starts a small Elixir supervisor that runs the Rails server as its child, and creates two schemas, `phoenix` and `oban`, in the Dawarich database. If they cannot be created, the web container logs a warning and starts Rails as before. Nothing changes in `docker-compose.yml` or `.env`; the container stops with `SIGTERM` instead of `SIGINT`. `docker exec -it dawarich_app dawarich remote` opens an Elixir console for troubleshooting. The supervisor's BEAM runs with one scheduler by default to keep it lightweight; set `ERL_FLAGS=+S 4:4` (or similar) in the web container's environment to raise it without rebuilding the image.
+- Self-hosted instances no longer rate-limit sign-in, sign-up, 2FA challenges and the other request limits; the magic-phrase unlock of shared links and the password check when linking a sign-in provider keep their limits.
 
 ### Fixed
 
 - Upgrading an installation originally created from release 0.9.12–0.11.1 no longer fails when its database has no place_visits table.
+- Delete Family, Leave Family, Remove member and Cancel invitation now ask for confirmation first and send a single request once confirmed; cancelling the confirmation no longer carries out the action.
 
 ## [1.15.2] - 2026-09-22, Berlin
 

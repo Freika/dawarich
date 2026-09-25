@@ -17,6 +17,15 @@ RSpec.describe 'Family::Invitations', type: :request do
       expect(response).to have_http_status(:ok)
     end
 
+    it 'leaves the cancel link to a confirmed Turbo delete' do
+      invitation
+      get '/family/invitations'
+      link = Nokogiri::HTML(response.body).at_css(%(a[href="#{family_invitation_path(invitation.token)}"]))
+      expect(link['data-turbo-method']).to eq('delete')
+      expect(link['data-turbo-confirm']).to eq(I18n.t('family_invitations.index.cancel_confirm'))
+      expect(link['data-method']).to be_nil
+    end
+
     context 'when user is not in the family' do
       let(:outsider) { create(:user) }
 

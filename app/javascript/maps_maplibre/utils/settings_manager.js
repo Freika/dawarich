@@ -15,6 +15,7 @@ export const LAYER_COLOR_DEFAULTS = {
 // early save can't wipe the stored values with empty arrays.
 const DEFAULT_SETTINGS = {
   mapStyle: "light",
+  distance_unit: "km",
   vectorTilesUrl: null,
   tilesFallback: false,
   ...LAYER_COLOR_DEFAULTS,
@@ -46,6 +47,7 @@ const DEFAULT_SETTINGS = {
   minMinutesSpentInCity: 60,
   gpsFilteringEnabled: true,
   pointDraggingEnabled: false,
+  liveMapEnabled: true,
   enabledTransportationModes: [
     "unknown",
     "stationary",
@@ -419,7 +421,16 @@ export class SettingsManager {
       SettingsManager.cachedSettings = null
 
       if (SettingsManager.apiKey) {
-        await SettingsManager.saveToBackend(DEFAULT_SETTINGS)
+        const previousSave = SettingsManager.saveQueue.catch(() => null)
+        const save = previousSave.then(() =>
+          SettingsManager.saveToBackend({
+            ...DEFAULT_SETTINGS,
+            hiddenTileCategories: [],
+            disabledPoiGroups: [],
+          }),
+        )
+        SettingsManager.saveQueue = save
+        await save
       }
     } catch (error) {
       console.error("Failed to reset settings:", error)

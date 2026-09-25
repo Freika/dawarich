@@ -176,7 +176,7 @@ end
 Dawarich includes a comprehensive public sharing system that allows users to share their monthly statistics with others without requiring authentication. This feature enables users to showcase their location data while maintaining privacy control through configurable expiration settings.
 
 ### Key Features
-- **Time-based expiration**: Share links can expire after 1 hour, 12 hours, 24 hours, or be permanent
+- **Time-based expiration**: Share links expire after 1 hour, 12 hours, 24 hours, 1 week or 1 month; there is no permanent option
 - **UUID-based access**: Each shared stat has a unique, unguessable UUID for security
 - **Public API endpoints**: Hexagon map data can be accessed via API without authentication when sharing is enabled
 - **Automatic cleanup**: Expired shares are automatically inaccessible
