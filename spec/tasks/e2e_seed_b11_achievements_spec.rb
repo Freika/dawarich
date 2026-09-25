@@ -55,4 +55,13 @@ describe 'e2e:seed_b11_achievements' do
     expect(user.achievement_progresses.find_by!(achievement_key: 'exploration').state.fetch('earned')).to have_key('DE')
     expect(user.achievement_unlock_events.pending.pluck(:key)).to eq(['DE'])
   end
+
+  it 'prepares independent unlock events for five browser repetitions' do
+    Rake::Task['e2e:seed_b11_achievements'].execute
+
+    1.upto(4) do |number|
+      user = User.find_by!(email: "b11-unlock-repeat#{number}@dawarich.test")
+      expect(user.achievement_unlock_events.pending.pluck(:key)).to eq(['DE'])
+    end
+  end
 end

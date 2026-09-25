@@ -45,4 +45,13 @@ describe 'e2e:seed_b9_notifications' do
     expect(reader.notifications.where('title LIKE ?', 'B9 fixture%').count).to eq(22)
     expect(reader.notifications).to include(unrelated)
   end
+
+  it 'prepares independent readers for five browser repetitions' do
+    Rake::Task['e2e:seed_b9_notifications'].execute
+
+    1.upto(4) do |number|
+      repeat_reader = User.find_by!(email: "b9-reader-repeat#{number}@dawarich.test")
+      expect(repeat_reader.notifications.where('title LIKE ?', 'B9 fixture%').count).to eq(22)
+    end
+  end
 end
