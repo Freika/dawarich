@@ -396,6 +396,7 @@ export class EventHandlers {
     const clickedFeature = e.features[0]
     if (!clickedFeature) return
 
+    e.preventDefault?.()
     const properties = clickedFeature.properties
     const fullFeature = clickedFeature
     const generation = ++this._trackSelectionGeneration
