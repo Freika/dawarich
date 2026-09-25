@@ -96,7 +96,7 @@ status: :see_other
   end
 
   def build_stats
-    columns = %i[id year month distance updated_at user_id]
+    columns = %i[id year month distance flight_distance updated_at user_id]
     columns << :toponyms if Geocoding::Config.for(current_user).enabled?
 
     current_user.scoped_stats

@@ -15,6 +15,20 @@ RSpec.describe Stats::CalculateMonth do
         expect { calculate_stats }.not_to(change { Stat.count })
       end
 
+      context 'when the month has flights but no existing stat' do
+        let!(:flight) do
+          create(:flight, user: user, flight_date: Date.new(year, month, 5), distance_km: 633.4)
+        end
+
+        it 'creates a stat carrying the flight distance' do
+          expect { calculate_stats }.to change { Stat.count }.by(1)
+
+          stat = Stat.last
+          expect(stat.flight_distance).to eq(633_400)
+          expect(stat.distance).to eq(633_400)
+        end
+      end
+
       context 'when stats already exist for the month' do
         let!(:stat) { create(:stat, user: user, year: year, month: month, distance: 5000) }
 
@@ -265,15 +279,14 @@ RSpec.describe Stats::CalculateMonth do
         expect(Stat.last.flight_distance).to eq(633_400)
       end
 
-      it 'leaves the tracked distance untouched' do
+      it 'includes the flight distance in the tracked distance total' do
         calculate_stats
         distance_with_flight = Stat.last.distance
 
         Flight.delete_all
         described_class.new(user.id, year, month).call
 
-        expect(Stat.last.distance).to eq(distance_with_flight)
-        expect(distance_with_flight).to be < 633_400
+        expect(Stat.last.distance).to eq(distance_with_flight - 633_400)
       end
 
       it 'ignores flights belonging to another user' do
@@ -291,11 +304,11 @@ RSpec.describe Stats::CalculateMonth do
         create(:flight, user: user, flight_date: Date.new(year, month, 5), distance_km: 633.4)
       end
 
-      it 'keeps the flight distance current instead of zeroing it' do
+      it 'keeps the flight distance current and reflects it in the tracked distance' do
         calculate_stats
 
         expect(stat.reload.flight_distance).to eq(633_400)
-        expect(stat.distance).to eq(0)
+        expect(stat.distance).to eq(633_400)
       end
     end
   end

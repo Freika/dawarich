@@ -24,6 +24,17 @@
       <div class="text-sm text-base-content/60"><%= t('.total_distance') %></div>
     </div>
 
+    <% if stat.flight_distance.positive? %>
+      <div>
+        <div class="text-sm font-medium text-info flex items-center gap-1">
+          <%= icon 'plane' %>
+          <%= number_with_delimiter Stat.convert_distance(stat.flight_distance, current_user.safe_settings.distance_unit).round %>
+          <span class="font-normal text-base-content/60"><%= current_user.safe_settings.distance_unit %></span>
+        </div>
+        <div class="text-sm text-base-content/60"><%= t('.flight_distance') %></div>
+      </div>
+    <% end %>
+
     <!-- Location Summary -->
     <div class="text-sm text-gray-600">
       <%= countries_and_cities_stat_for_month(stat) %>
