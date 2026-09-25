@@ -260,3 +260,641 @@ From the repository root. Nothing here touches the development or test database 
    `tmp/schema_parity/summary_schemarb.txt`; diffs in `tmp/schema_parity/diffs/`. It exits non-zero if any
    comparison could not run.
 7. `scripts/schema_parity/infra.sh down`.
+
+## Ecto counterparts (C2)
+
+Roadmap step C2 ports every Rails schema migration after the 1.0.0 floor to Ecto and proves each port against current
+Rails on these snapshots. The spec is ADR 0015 with its two 2026-09-24 amendments
+(`docs/adr/0015-port-every-rails-migration-to-ecto-squashed-per-release.md` at the workspace root); the plan is
+`superpowers/plans/2026-09-24-phoenix-c2-ecto-migrator-plan.md` there. Deliberate differences from Rails are in
+`app-phoenix/parity/expected_diffs.md`.
+
+### What exists
+
+Paths are relative to the repository root.
+
+| Path | Responsibility |
+|---|---|
+| `app-phoenix/priv/repo/migrations/20260924120000_create_release_migrator_tables.exs` | Lease (`phoenix.release_migrator_leases`) and outbox (`phoenix.release_migration_jobs`) tables, in the `phoenix` schema |
+| `app-phoenix/config/config.exs`, `config/test.exs` | `Dawarich.Repo` gets `parameters: [timezone: "UTC"]`; the test env adds `Dawarich.ScratchRepo` |
+| `app-phoenix/lib/dawarich/release_migration.ex` | Release-module behaviour and the step helpers (the porting DSL) |
+| `app-phoenix/lib/dawarich/release_migrator.ex` | Preflight, classification, per-version execution, fenced ledger and outbox writes, baseline, pending data |
+| `app-phoenix/lib/dawarich/release_migrator/ledger.ex` | Pure classification of a ledger |
+| `app-phoenix/lib/dawarich/release_migrator/floor.ex` | The 1.0.0 floor: every state through `0.37.2` with the migrations `db/migrate` still ships |
+| `app-phoenix/lib/dawarich/release_migrator/lease.ex` | Lease row, renewal, fencing, two-connection probe |
+| `app-phoenix/lib/dawarich/release_migrations.ex` | Ordered registry of release modules (`@releases`) |
+| `app-phoenix/lib/dawarich/release_migrations/v*.ex`, `unreleased.ex` | One module per C1 state after the floor (38: `1.0.1` … `1.15.2`, 146 versions), plus `Unreleased` |
+| `app-phoenix/priv/release_migrations/baseline.sql` | Generated baseline for fresh installs |
+| `app-phoenix/priv/release_migrations/<release>/<version>.sql` | Only for a module that would pass 300 lines; none today |
+| `app-phoenix/test/support/scratch_repo.ex`, `scratch_case.ex`, `rails_tree.ex`, `migration_modules.ex` | Scratch repo, per-test reset, reading `db/` and `app/` of the Rails tree, purging test-defined modules |
+| `app-phoenix/test/support/mix/tasks/dawarich.release_migrate.ex` | `mix dawarich.release_migrate [--only <release>]` (test env only): the harness's Ecto entry, and the refusal texts (`describe/1`) |
+| `app-phoenix/test/mix/dawarich_release_migrate_test.exs` | Pins the refusal and failure messages the harness parses |
+| `app-phoenix/test/dawarich/release_migration_test.exs`, `release_migrator_test.exs`, `release_migrations_test.exs` | Helpers, migrator (lease, fencing, refusals, outbox), counterpart coverage and completeness |
+| `app-phoenix/test/dawarich/release_migrator/ledger_test.exs`, `real_ledger_test.exs`, `baseline_test.exs` | Classification, real ledgers around the floor, baseline and fresh install end to end |
+| `app-phoenix/test/dawarich/release_migrations/v1_0_2_test.exs`, `v1_1_0_test.exs`, `v1_11_0_test.exs`, `v1_13_0_test.exs`, `v1_15_0_test.exs` | Rescued-SQL unit tests and the `InstanceSettings::Registry` guard test |
+| `app-phoenix/parity/expected_diffs.md` | Deliberate differences from Rails (`ED-002` onward) |
+| `scripts/schema_parity/rails_reference.rb` | Rails side of every check; captures SQL, jobs and the baseline |
+| `scripts/schema_parity/baseline.sh` | Regenerates `baseline.sql` |
+| `scripts/schema_parity/canon.rb` | Canonical jobs, time-window masking of rows |
+| `scripts/schema_parity/inventory.rb` | Prism inventory of `db/migrate` after the floor |
+| `scripts/schema_parity/list_checks.rb` | The check list, shared by both scripts below |
+| `scripts/schema_parity/ecto_check.sh`, `ecto_prove.sh`, `ecto_lib.sh`, `ecto_template.sh` | One check; listing, running and summarising checks (C4's interface); shared helpers; template databases |
+| `scripts/schema_parity/ecto_expectations.tsv` | Declared outcomes: `failed@V`, contended and refused checks |
+| `scripts/schema_parity/pr_checks.rb` | Checks a pull request must pass; fixture gate for unreleased migrations |
+| `scripts/schema_parity/lib.sh`, `infra.sh` | C1's helpers: `canon_dump` excludes `phoenix` and `oban` and is memoised; bounded `docker exec`; `infra.sh up` pins sp-db and turns off its durability |
+| `scripts/schema_parity/fixtures/<release>[--<variant>].sql` / `.env` | Row fixtures and their environments (84 `.sql`, 12 `.env`) |
+| `.github/workflows/ecto-counterparts.yml` | The `ecto-counterparts` job: the checks a change selects on pull requests, every check on pushes to `dev` and `master` |
+
+**Nothing calls the migrator before A12.** The application, `Dawarich.Release`, the entrypoint and the image never
+reference `Dawarich.ReleaseMigrator`; today its only entry is the test-env mix task the harness runs.
+
+### How a database is migrated
+
+1. **Unit of porting vs unit of execution.** One module per C1 state after the floor, registered in JSON order in
+   `Dawarich.ReleaseMigrations`, is the unit that is ported, reviewed and proven. Execution is per version, in global
+   version order across all modules, exactly as Rails' `db:migrate` orders pending migrations.
+   - A version runs its step, its ledger row and its outbox rows in one transaction.
+   - A version whose Rails file calls `disable_ddl_transaction!` is `transaction: false`: its step runs outside a
+     transaction (each statement commits on its own, `CONCURRENTLY`, lock retries and batch commits as Rails wrote
+     them), then its ledger and outbox rows are written in a short transaction.
+2. **Ledger = Rails' ledger.** State comes only from `public.schema_migrations`. Each version writes its own row. There
+   is no Ecto ledger for release migrations, and `ar_internal_metadata` is never written.
+3. **Classification** (`Ledger.classify/2`, pure), after the preflight below:
+   - no `public.schema_migrations`, or an empty one → `:fresh`. **Empty-ledger rule:** when `public` holds nothing but
+     Rails' ledger tables, the baseline builds the schema beside them. When an application table is present, the
+     baseline stops at the first one it would create and changes nothing, in one transaction: the same outcome as a
+     missing ledger with leftover tables.
+   - a non-empty ledger holding no floor version → `{:not_dawarich, count}`;
+   - a ledger lacking any floor version → `{:below_floor, release}`, where `release` is the `first_release` of the
+     oldest state the ledger has not completed;
+   - versions no module knows → `{:newer, versions}`. Tolerated: every floor version, the removed `20251228163703`
+     (installs that passed through 0.37.0–1.7.1 keep it), and the schema.rb define versions `20241030152025` and
+     `20250930150256`;
+   - otherwise the missing known versions → `{:pending, sorted}`, or `:current`. A database stopped part-way through
+     a release resumes from its first missing version.
+4. **The 1.0.0 floor** (`Dawarich.ReleaseMigrator.Floor`). Release 1.0.0 shares its schema state with 0.37.2 and
+   0.37.3, so the floor is state `0.37.2`: every migration `db/migrate` still ships of the 40 states through it (92
+   versions). A ledger lacking one is refused before the lease and before any change, with this message
+   (`describe/1` in the mix task, reused verbatim by the harness and `expected_diffs.md`):
+
+   `refused: this database has not reached Dawarich <release>, and this image upgrades only from 1.0.0; start the Dawarich 1.15.2 image once so Rails upgrades it, then start this image`
+
+   The remedy names one release, `@last_rails_release` in the mix task, rather than "any image from 1.0.0": 1.3.2
+   and 1.7.0–1.7.2 crash on upgrades from 1.0.0 or earlier (see "Why the fallbacks exist") after the floor versions
+   commit and before `rake data:migrate`, and a database left there would pass the floor with its old data migrations
+   never run. A12 bumps `@last_rails_release` to the last Rails release, and the upgrade note of the release that
+   removes Rails names it.
+5. **Refusals**, checked in this order, each before any change:
+
+   | Refusal | Message | Remedy |
+   |---|---|---|
+   | A pool under two connections (a second checkout is attempted while one is held) | `refused: the repo pool needs two connections` | Run the migrator on a repo with ≥ 2 connections (A12) |
+   | A session time zone other than UTC | `refused: session time zone is <value>, not UTC` | Pass the `timezone` startup parameter; behind PgBouncer, make sure `TimeZone` is passed through |
+   | A Rails migrator holding Rails' session advisory lock (key `2053462845 * crc32(current_database())`, read from `pg_locks`) | `refused: a Rails migrator holds its advisory lock (backend <pid>); stop it, or if no Rails process runs, wait for PgBouncer's server_lifetime or restart PgBouncer` | As the message says. Also checked before every `transaction: false` step and inside every ledger transaction; a lock that appears mid-run rolls that version back. Self-hosted only: Cloud sets `DATABASE_ADVISORY_LOCKS=false`, so its deploy must guarantee no Rails migrator runs |
+   | Rails tables outside `public` (`current_schema()` is not `public`, or a `schema_migrations` table exists in another schema) | `refused: Rails tables outside public (search path <schema>; <schemas>)` | Reset the role's `search_path`, or move Rails' tables to `public` |
+   | A ledger with no Dawarich version | `refused: schema_migrations holds <count> versions and none of them is a Dawarich migration; check DATABASE_NAME` | Point `DATABASE_NAME` at the Dawarich database |
+   | A database below the floor | the floor message above | Start the named Rails image once, then this image |
+   | A live lease held by another migrator, after a 15-minute wait (poll 2 s) | `refused: another migrator holds the lease (<holder>)` | Let the other migrator finish; a dead holder's lease expires 60 s after its last renewal |
+   | Unknown versions | `refused: newer than this image (<versions>)` | Start the Dawarich image that created them, or restore the pre-upgrade backup |
+
+   A version that fails ends the run with `failed <release> <version>: <error>`. A DDL-transaction version rolls back;
+   a `transaction: false` version keeps the statements it committed, as in Rails. Either way the next start resumes
+   at that version. A lost lease ends it with `refused: lease lost by <holder>`.
+6. **Lease, not advisory lock; fenced.**
+   - `phoenix.release_migrator_leases` holds one row, `release_migrator` (holder, `expires_at`, TTL 60 s).
+   - Every expiry is `clock_timestamp() + TTL`, never `now()`, which is the transaction start.
+   - A linked process renews it every 20 s. It exits `:lease_lost` when its `UPDATE` matches no row and crashes when a
+     renewal takes longer than one interval; either way the link kills the migrator.
+   - Every ledger write renews the lease by holder inside its own transaction, after the step's work; if that
+     `UPDATE` matches anything but one row, the version rolls back. The baseline fences after its SQL.
+   - The row is deleted at the end. It serialises every step, including those outside a transaction, and is
+     PgBouncer-safe.
+7. **Jobs are never lost.** A step's jobs go to `phoenix.release_migration_jobs` (`version`, `job_class`,
+   `arguments jsonb`, `wait_seconds`, `recorded_at`) in the same transaction as the version's ledger row, in enqueue
+   order. Nothing is enqueued before C3/A12, and nothing reads the table yet. **Argument format:** `arguments` holds
+   ActiveJob-serialized arguments, exactly what Rails puts in the Sidekiq payload, and the harness compares them with
+   `job.serialize["arguments"]`:
+   - JSON scalars and arrays as-is;
+   - a plain Hash with `"_aj_symbol_keys": [its symbol keys]`, always present, possibly empty;
+   - keyword arguments as a trailing Hash with `"_aj_ruby2_keywords": [keys]` instead (1.14.4:
+     `[null, 50000, {"repair_collisions": true, "_aj_ruby2_keywords": ["repair_collisions"]}]`);
+   - `HashWithIndifferentAccess` with `"_aj_hash_with_indifferent_access": true`;
+   - Symbol, Time, Duration and other serializer-backed values as `{"_aj_serialized": "<Serializer>", …}`;
+   - records as `{"_aj_globalid": "gid://dawarich/Model/id"}`.
+
+   `wait_seconds` is `.set(wait: n)`, `0` when none.
+8. **App code stays out of C2.** Where Rails calls app code synchronously, the step calls `unported!(name)` behind the
+   migration's guards and a no-work condition at least as broad as Rails'. The version then stops with
+   `UnportedEffect`. There are seven sites (see "Handed to C3"); C3 replaces them.
+9. **Data ledger: read, never written.** `data_versions/0` is `[]` for every module, so `pending_data` is `[]` on
+   every supported database: all 27 `db/data` migrations belong to states at or before the floor, and
+   `docker/web-entrypoint.sh` runs `rake data:migrate` on every start. The migrator never writes `data_migrations`.
+10. **Baseline.** `baseline.sql` is the SQL Rails sends during `db:schema:load` of current `db/schema.rb`, captured by
+    `baseline.sh` (`rails_reference.rb schema`): what a real fresh install runs, unqualified, valid on PostgreSQL 14+.
+    - It omits Rails' `DROP TABLE IF EXISTS … CASCADE` and the `ar_internal_metadata` rows, so leftover tables make it
+      fail instead of being overwritten.
+    - It creates `schema_migrations` and `ar_internal_metadata` with `CREATE TABLE IF NOT EXISTS` (Rails checks
+      `table_exists?` in Ruby first), so an empty ledger in an otherwise empty `public` takes it.
+    - A fresh install is the baseline in one transaction, then every known version the baseline lacks.
+    - Regenerate it at every release cut and whenever `fresh` fails: a stale baseline plus later steps diverges from
+      Rails whenever a future `db/schema.rb` drifts from its migrations, as 29 shipped ones did.
+11. **Connection.** `prepare: :unnamed`; no advisory lock is ever taken (the migrator only reads `pg_locks`); only
+    `SET LOCAL`, never a session `SET` or `RESET` (a test scans every module); UTC through the Postgrex startup
+    parameter `timezone`, which PgBouncer tracks, instead of Rails' `SET SESSION timezone TO 'UTC'`; a repo-level
+    `timeout: :infinity`; no temporary tables, and the scratch tables Rails creates and drops within one migration stay
+    `UNLOGGED`, as Rails creates them.
+12. **A12 preconditions** (recorded here, enforced there):
+    - No Rails process may run `db:migrate` against a database the Phoenix migrator touches: an old image, a replica,
+      a rollback. The `pg_locks` refusal guards self-hosted installs; on Cloud the deploy procedure must.
+    - Rails' boot-time data writes (`FeatureFlags.apply_defaults!` and any other initializer that writes rows) are
+      ported to Phoenix, never into a release module. Rails' release step boots the app, running them, before it
+      migrates, and the harness proves that order. So Phoenix's release step runs the ported defaults (when the
+      Flipper tables exist) before `ReleaseMigrator.migrate`, sequentially in the same process, and web boot runs them
+      again, as Rails does. The two must never run concurrently (`expected_diffs.md` ED-016, ED-020).
+    - Killing the migrator (lease lost, renewer timeout) does not cancel a statement already running on the server.
+      The release command must say so and wait for, or `pg_cancel_backend`, that backend before retrying.
+    - The production repo used for migrating has ≥ 2 connections, `timeout: :infinity` and the UTC `timezone`
+      parameter, and `Dawarich.Release.migrate/0` (lease and outbox tables) runs first.
+    - The release that removes Rails ships the upgrade note for databases older than 1.0.0, naming the last Rails
+      release, and its release command prints the floor message with that release.
+
+### Porting rules (Tasks 7–18 and every future Rails migration)
+
+A release module is `app-phoenix/lib/dawarich/release_migrations/v<release with dots as underscores>.ex`, `Dawarich.ReleaseMigrations.V<same>`, `@behaviour Dawarich.ReleaseMigration`. It defines:
+- `release/0`: the state's `first_release`.
+- `steps/0`: one entry per Rails file in the state's `schema_added` still in `db/migrate`, sorted by version. It is `{version, &fun/1}`, or `{version, &fun/1, transaction: false}` exactly when the Rails file calls `disable_ddl_transaction!` (a test enforces this).
+- `data_versions/0`: the state's `data_added` still in `db/data`, sorted.
+
+A step receives the repo; a `{:jobs, [job(...)]}` return reports enqueues.
+
+| Rails source | Ecto step |
+|---|---|
+| Statements a migration emits (`create_table`, `add_column`, `add_index`, `add_reference`, `change_column*`, `rename_*`, `remove_*`, `add_foreign_key`, `validate_*`, `add_check_constraint`, `execute`) | The statements the fixture-free capture `tmp/schema_parity/capture/<release>.sql` shows under `-- version <v>`, verbatim, **including `CONCURRENTLY`**. In a DDL-transaction step, several may share one `sql!(repo, ~S"""…""")`. **In a `transaction: false` step, one `sql!` per Rails call.** A multi-statement simple query is one implicit transaction: `… CONCURRENTLY` fails inside it, and the other statements lose Rails' commit-per-statement. A single Rails `execute` that itself holds several statements becomes one `sql!` inside `repo.transaction(fn -> … end)`. `sql!` raises outside a transaction when given more than one statement; semicolons inside `'…'` strings and `$$` bodies do not count. Its known miscounts (a `;` in a comment, an `E'…'` string with escaped quotes, a quoted identifier) fail loudly, never silently: split the statement or wrap it as above |
+| `disable_ddl_transaction!` | `transaction: false` on the step; each `sql!` then commits on its own, as in Rails |
+| An inner `transaction do … end` | `repo.transaction(fn -> … end)` around the same statements |
+| `ensure` (e.g. `DROP TABLE IF EXISTS visit_dedupe_plan` / `visit_straggler_losers`) | `try do … after … end` with the same statements in `after` |
+| Batch loops that repeat until zero rows | The same loop: `repo.query!(sql, params).num_rows` until 0; outside a transaction each batch commits, as in Rails. The repo's `timeout: :infinity` covers long batches |
+| Rails boot-time data writes (`FeatureFlags.apply_defaults!` and other initializers) | Nothing. They are not migrations; the harness boots Rails on both sides, and A12 ports them to Phoenix boot |
+| Ruby decisions: `table_exists?`, `column_exists?`, `index_exists?`, `index_name_exists?`, `foreign_key_exists?`, `check_constraint_exists?`, `connection.columns(...)`, `select_value` / `select_all` / `select_values`, `return if/unless`, `raise` | The same decision, same order, same short-circuiting: `table?/2`, `column?/3`, `index?/3` (Rails' `index_exists?` for `name:` / `columns:` exactly as passed, primary keys excluded; any other option such as `unique:`, `valid:` or `include:` raises, so write that check with `exists?/3` on `pg_index`), `index_name?/3` (Rails' `index_name_exists?`: name only, primary keys included), `exists?/3`; `raise` keeps its message |
+| Guards Rails evaluates in Ruby, so the capture shows the SQL unconditionally. Line numbers are in activerecord-8.1.3.1 `connection_adapters/abstract/schema_statements.rb` unless noted: `add_column … if_not_exists:` (`:674`), `remove_column … if_exists:` (`:719`), `remove_index … if_exists:` (`postgresql/schema_statements.rb:577`, name **and** columns when both are given), `add_foreign_key … if_not_exists:` (`:1209`), `remove_foreign_key … if_exists:` (`:1249`), `add_check_constraint … if_not_exists:` (`:1330`), `remove_check_constraint … if_exists:` (`:1360`) | An explicit `unless column?` / `if column?` / `if index?(repo, t, name: …, columns: […])` / `exists?` on `pg_constraint` around the statement |
+| Guards Rails writes into the SQL (`create_table if_not_exists:`, `add_index if_not_exists:`, `drop_table if_exists:`) | Verbatim |
+| Lock-timeout retry (`transaction do SET LOCAL lock_timeout …; <DDL> end`, `rescue ActiveRecord::LockWaitTimeout` [+ `QueryAborted`], `sleep`, `retry`) | `with_lock_retry(repo, fn -> … end, lock_timeout:, attempts:, backoff_seconds:, on: [:lock_not_available] or [:lock_not_available, :query_canceled])` in a `transaction: false` step. Each attempt is its own transaction; `SET LOCAL statement_timeout = 0` inside the Rails block goes inside the fun. It returns `{:not_acquired, %Postgrex.Error{}}` (the last 55P03) after the last attempt; do what Rails does there: `{:not_acquired, error} -> raise error` where Rails re-raises (`20260827200000`, `20260827210000`, `20260914090000`; the harness compares SQLSTATE and the number of lock waits), a job or nothing via `{:not_acquired, _}` |
+| `rescue` around SQL (`ActiveRecord::RecordNotUnique`, `StatementInvalid`, …) | `rescue_sql(repo, fn -> … end, [postgres_error_codes] or :any, fn error -> … end)` in the same place: `unique_violation` for `RecordNotUnique`, `:any` for `StatementInvalid`. The step is `transaction: false` wherever Rails runs it outside a transaction (all current sites). A future site inside a transaction needs a savepoint variant first. **Each site gets an ExUnit unit test** |
+| `rescue StandardError` around `perform_later` only | Nothing: the outbox write cannot fail on its own |
+| Session `execute 'SET lock_timeout = 0'` / `'RESET lock_timeout'` (`20260816120000`, `20260818201239`, there so `CONCURRENTLY` is not aborted) | Dropped. At that point call `require_zero_lock_timeout!(repo)`, which fails with a clear message when the role or database sets a non-zero `lock_timeout` (expected_diffs; question for Eugene) |
+| `Job.perform_later(args)` / `.set(wait: n)` | `{:jobs, [job("Job", serialized_args, n_seconds)]}` after the step's SQL, in enqueue order, behind the same conditions. Arguments use the ActiveJob serialization in "How a database is migrated", item 7 |
+| `Job.perform_now`, app classes that read or write rows | `unported!("Class::Name")` at the same place, behind the guards and a **broad** no-work condition (cite the class's `file:line`). Prefer a condition that does not copy an app list (e.g. "a `users` row exists"). Where it must copy one (e.g. `InstanceSettings::Registry` variable names), add an ExUnit guard test that reads the Rails file through `RailsTree` and fails when the list drifts |
+| Thin model calls that are one statement (`Model.where(…).update_all(…)`, `delete_all`, `none?`, `count`, `Flipper.enable`) | The captured statement with its binds inlined, except values that come from data or the clock (next row) |
+| **Values Ruby computed from query results or the clock** (ids, `loser_ids.join(',')`, `Time.current`, Flipper's `created_at`) | Computed in the step at run time: ids from the same query, passed as parameters; times as `now()` (the session is UTC, like Rails', so `now()` in a `timestamp` column equals Rails' UTC write). A literal id or timestamp copied from a capture is a bug; the `rows:…~shifted` checks catch ids |
+| `DawarichSettings.self_hosted?` | `self_hosted?()` |
+| Other `ENV` / config reads | `System.get_env/2` with the Rails name, default, parsing and production semantics. Ruby's `present?` / `blank?` treat `nil`, `""` and whitespace-only strings alike, so `ENV['X'].present?` becomes `String.trim(System.get_env("X") \|\| "") != ""` (`SKIP_*`, Registry variables) |
+| `DawarichSettings.<setting>` backed by `InstanceSettings` (e.g. `reverse_geocoding_enabled?` via `photon_host` …) | `InstanceSettings::Resolver.get` order (`app/services/instance_settings/resolver.rb`): **the environment first** (a non-blank variable pins it), then a stored `instance_settings` row, then the registry default. Any database error degrades to environment + default: before 1.15.0 `instance_settings` does not exist, so only the environment and defaults decide. `DawarichSettings.setting` falls back to the constant on any error |
+| `Rails.logger`, `say`, `puts`, comments, `down` | Nothing |
+| A migration of a state at or before the floor (`0.37.2`), including the removed `20251228163703` | Nothing: no module, no step. `Floor` lists the shipped ones and the preflight refuses a ledger that lacks one; `20251228163703` stays in `Ledger.removed_versions/0` |
+
+A module that would pass 300 lines moves its longest SQL into `app-phoenix/priv/release_migrations/<release>/<version>.sql` and embeds it at compile time:
+- `@<name>_path Path.expand("../../../priv/release_migrations/<release>/<version>.sql", __DIR__)`
+- `@external_resource @<name>_path`
+- `@<name> File.read!(@<name>_path)`
+
+#### Rules added while porting
+
+The porting rules above are the plan's. Porting 1.0.1–1.15.2 added these, and every later port follows them:
+
+- **Use the helpers in `Dawarich.ReleaseMigration`** instead of hand-rolling their pattern: `sql!/2`, `exists?/3`,
+  `table?/2`, `column?/3`, `index?/3`, `index_name?/3`, `index_names/3` (Rails' index lookup by columns),
+  `remove_index_by_columns/4` (Rails' `remove_index` by columns, including its "Multiple indexes found" error),
+  `remove_index_concurrently_if_exists/3`, `foreign_key_name/4` (Rails' `foreign_key_for`), `quote_ident/1`,
+  `select_value/3`, `repeat_until_zero/3`, `with_lock_retry/3` and `with_lock_retry!/3` (raises the last 55P03 after
+  the last attempt), `rescue_sql/4`, `require_zero_lock_timeout!/1`, `job/3`, `unported!/1`, `self_hosted?/0` (Rails'
+  `SELF_HOSTED` parsing, with Ruby 3.4's `strip`), `env_present?/1` (`ENV[…].present?`) and `backfill_allowed?/0`.
+- **The capture wins over the plan.** Guards are evaluated where Rails evaluates them, and the capture shows where
+  (for example, 1.14.x's lock-retry guards run once, before the first attempt).
+- **Stop conditions are list-free by default**, e.g. "a `users` row exists" or "any row in `achievement_progresses`
+  or `user_achievements`". A copied app list stays only where no list-free condition is at least as broad without
+  stopping real upgrades (1.15.0's `InstanceSettings::Registry` variables, pinned by its guard test).
+- **Each part of an either/or stop gets its own fixture and mutation.** A second variant for the same version takes a
+  middle tag: `<release>--<tag>--unported-<version>` (for example `1.15.2--awards--unported-20260720160000`).
+- **Every guard's skip branch is exercised by a fixture.** Fixtures use no clock defaults, and fixture tables have
+  Rails' real shape.
+- **The main `rows:<release>` fixture runs every version of the release.** A fixture that writes ledger rows models a
+  drifted database both runtimes accept (a version recorded without its effect) and is a variant, never the main
+  fixture.
+- **`pg_dump` omits invalid indexes**, so the harness compares an `invalid` part (`pg_index.indisvalid = false`, per
+  table, name and definition) next to the schema.
+- **A mutation runner must give each restored file a new modification time**: Mix keeps a mutated `.beam` when the
+  restored file is older than the build and the same size.
+
+### Proof rules
+
+- **Checks** (`ecto_prove.sh --list` prints them all). Only states after the floor get `step:` / `rows:` / `contended:`, and only snapshots at or after it get `upgrade:`:
+  - `fresh`: an empty database, Rails' `db:schema:load` vs the Ecto migrator (baseline).
+  - `fresh:empty`: Rails' ledger tables and nothing else (the old `upgrade:empty` database). Rails loads `db/schema.rb` onto it; the Ecto migrator treats the empty ledger as fresh and runs the baseline. Rails' own `db:migrate` would instead run every migration from the first, a pre-floor path (expected_diffs).
+  - `step:<R>`: R's versions on the previous state's snapshot, Rails vs Ecto.
+  - `rows:<R>[--<variant>][~shifted]`: `step:` after loading `scripts/schema_parity/fixtures/<R>[--<variant>].sql` into both databases, with that fixture's `.env` (if any) in both environments.
+  - `contended:<R>:<table>`: `step:` while a second session holds `LOCK TABLE <table> IN ROW EXCLUSIVE MODE`.
+    - That lock conflicts with the `SHARE ROW EXCLUSIVE` (foreign keys) and `ACCESS EXCLUSIVE` (column changes) requests the lock retries guard, so those retries time out.
+    - Ordinary writes proceed. `CREATE/DROP INDEX CONCURRENTLY` waits for transactions holding conflicting locks, and `ROW EXCLUSIVE` conflicts, so a `CONCURRENTLY` step in the same release blocks until the holder ends. The results stay valid, but `contended:1.10.1:points` and `contended:1.13.1:points` take ≥ ~5 min each.
+    - The holder's `pg_sleep` (150 s) must exceed the longest retry budget in the contended versions (75 s today); raise it when a new retry budget is longer.
+    - Each contended check has a declared expected result in `ecto_expectations.tsv`: a status, and a job where Rails hands off. A check whose contention changes nothing fails.
+  - `upgrade:<label>`: the state's snapshot, then everything pending, Rails `migrate` vs the full Ecto migrator. `label` is a state from `0.37.2` on, `<release>.schemarb` from `0.37.2` on, `<state>+<version>` (one extra ledger row), or `<state>@<version>` (Rails first migrates up to that version: an interrupted upgrade). `upgrade:0.37.2`, a 1.0.0 database and the lowest supported state, is a required pass.
+  - `refused:<label>`: a database below the floor, with the same label syntax. It is Ecto only: Rails does not run, and the Ecto side does not boot Rails.
+    - It expects the migrator to stop with `refused: this database has not reached Dawarich <R>,` and to leave `public` and the outbox unchanged: schema, ledger, columns, rows, jobs.
+    - `ecto_expectations.tsv` declares R per check: `refused:0.0.8` → `0.0.9` (the oldest state), `refused:0.34.0.schemarb` → `0.34.1` (a schema.rb install, phantom define version included), `refused:0.36.3@20251227000001` → `0.37.0` (the database stuck part-way through 0.37.0).
+- **What is compared:**
+  - the C1-canonicalised schema, with `phoenix` and `oban` excluded;
+  - the ledger;
+  - `public` column order (`information_schema.columns.ordinal_position`, which C1's `normalize.sh` hides);
+  - `public` rows (timestamps inside the run's time window become `<now>`, those written while the check's template database was built `<template>`);
+  - jobs (canonical JSON, in order).
+- **Rails boots on both sides.** After the fixture, the template build runs `bin/rails runner 'nil'`, and both sides are cloned from that template, so Rails' boot-time rows are on both sides before either migrates. These are the `poster_ordering` and `achievements` Flipper features and a gate from `FeatureFlags.apply_defaults!`, written on every snapshot from 1.7.0 on.
+  - Fixture authors: that boot runs **after** your fixture, and `apply_defaults!` also deletes retired flags. A fixture row that is a retired flag disappears before either side migrates, so no row a check relies on may be one.
+  - For `Flipper.enable(:poster_ordering)` (1.11.0), seed a pre-existing *disabled* `poster_ordering`, so the step has something to change.
+- **Outcomes:**
+  - Rails and Ecto must end the same way. Both succeed, or both fail at the same version, with the whole state compared either way.
+  - A failure whose version cannot be read (`failed@` with nothing after it) is always a FAIL.
+  - A `--unported-<V>` variant instead expects Rails to succeed and Ecto to stop with `UnportedEffect` at V.
+  - A `refused:` check passes as `ok (refused below_floor <R>)`.
+- **Time zone and ids.** Every harness database has `timezone = 'Pacific/Chatham'` as its default, so a step that writes local time instead of UTC shows up as a row diff. Every `rows:` check also runs `~shifted`, with all `public` sequences advanced to 100000 before the fixture, so an id inlined from a capture shows up as a diff.
+- **Fixture files.** `fixtures/<R>[--<variant>].sql` is plain SQL on the previous state's snapshot, run as the `sp-db` superuser.
+  - Timestamps are fixed; ids are never written explicitly.
+  - At least one row each statement changes and one it keeps.
+  - It never reaches an `unported!` unless the variant is `--unported-<V>`.
+  - Invalid-index branches: `UPDATE pg_index SET indisvalid = false WHERE indexrelid = '<index>'::regclass`.
+  - Rows that violate a `NOT VALID` constraint: `ALTER TABLE <t> DISABLE TRIGGER ALL` around the insert.
+  - `fixtures/<R>[--<variant>].env` holds `NAME=value` lines (no spaces), for example the dummy `OTP_ENCRYPTION_*` values C1's `snapshot.sh` uses.
+- **Captures** come only from fixture-free `step:` runs.
+- **Porting procedure per release R:**
+  - **Red.** `step:R` fails with `no Ecto release module for R`, and the capture appears.
+  - **Port.** Read every file and the capture, then write the module and register it.
+  - **Green.** `step:R` is `ok`.
+  - Write the fixtures the task's inventory requires, and make every `rows:` / `contended:` check of R `ok`.
+  - A check that cannot be made green without changing a Rails file, the harness, or another release's module is a **STOP**: report it.
+
+### Proof inventory
+
+`scripts/schema_parity/inventory.rb` (Task 6) builds this from `db/migrate` with Prism, ignoring `down` and comments. It skips the versions of states at or before the floor. Tasks 7–18 turn every flagged version into a required check. Legend:
+- `rows`: changes rows.
+- `validates`: the result depends on data (`validate_*`, `SET NOT NULL`, raise-on-duplicates).
+- `job`: enqueues.
+- `effect`: an unported app call.
+- `env`: reads configuration.
+- `notx`: `disable_ddl_transaction!`.
+- `lockretry`: lock-timeout retry.
+- `rescue`: rescued SQL.
+- `sessionset`: session `SET`.
+- `invalid`: an invalid-index branch.
+
+Unconditional enqueues are proven by `step:` on the empty snapshot; everything else needs a row fixture, an env variant, or a contended check.
+
+The proof inventory tables list only flagged versions; every other version needs only `step:`. Every `rows:` check listed implies its `~shifted` twin, except `--unported-` variants. Each task also names the mutation that proved its checks can fail.
+
+#### Task 7: 1.15.2
+
+| Version | Tags | Required checks |
+|---|---|---|
+| `20260714224647` | effect (`Achievements::LoadRegions` when countries exist and `regions` is empty) | `rows:1.15.2--unported-20260714224647` |
+| `20260720160000` | effect (`Achievements::MigrateExplorationState` when legacy progress keys or renamed award keys exist) | `rows:1.15.2--unported-20260720160000` |
+| `20260720170000` | rows (`DELETE` of codes without `-`), effect (`LoadRegions` when countries exist) | `rows:1.15.2` (+ `~shifted`), `rows:1.15.2--unported-20260720170000` |
+| `20260922120000` | job | `step:1.15.2` |
+
+#### Task 8: 1.15.0, 1.14.4
+
+| Release | Version | Tags | Required checks |
+|---|---|---|---|
+| 1.15.0 | `20260901150000` | effect (`InstanceSettings::Backfill`). Broad no-work condition: `unported!` when a `users` row exists or any `InstanceSettings::Registry` variable is non-blank (Ruby `present?`). The variable list is a module attribute with a **guard test** `test/dawarich/release_migrations/v1_15_0_test.exs` that reads `app/services/instance_settings/registry.rb` through `RailsTree` and fails when its `env_var` names differ | `rows:1.15.0--unported-20260901150000` with `.env` `PHOTON_API_HOST=photon.example.test` + dummy `OTP_ENCRYPTION_*` |
+| 1.15.0 | `20260914090000` | notx, lockretry (5 s, 5 attempts, `sleep(attempts * 5)`, raise after the last; `add_column … if_not_exists` → `unless column?` inside each attempt) | `contended:1.15.0:points` → expected `ok (failed@20260914090000)` |
+| 1.14.4 | `20260901070000` | job+env (`backfill_allowed?` = `self_hosted?()` and `SKIP_POINT_DIMENSION_BACKFILL` blank, `add_point_dimension_columns_job.rb:28-32`; gate `EXISTS (SELECT 1 FROM point_sources)`; arguments `[nil, BATCH_SIZE, {"repair_collisions" => true, "_aj_ruby2_keywords" => ["repair_collisions"]}]`) | `rows:1.14.4` (a `point_sources` row → the job), `rows:1.14.4--skip-backfill` (`.env` `SKIP_POINT_DIMENSION_BACKFILL=1`) |
+| 1.14.4 | `20260906103000` | rows, notx, conc, invalid | `rows:1.14.4` also carries its duplicate `stats` rows: the fixture drops the existing unique index first so the duplicates can be inserted. `rows:1.14.4--invalid-index` |
+
+Mutation: return no job from `20260901070000` when `point_sources` has rows → `rows:1.14.4 FAIL jobs`.
+
+#### Task 9: 1.14.3, 1.14.2, 1.14.1
+
+| Release | Version | Tags | Required checks |
+|---|---|---|---|
+| 1.14.3 | all four | guard, conc | `step:` |
+| 1.14.2 | `20260828100000`, `20260831120000` | job | `step:` |
+| 1.14.2 | `20260901120000` | rows | `rows:1.14.2` |
+| 1.14.1 | `20260827200000` | notx, lockretry (`foreign_key_exists?(:points, :tracks, column: :track_id)` guard; raise after the last attempt) | `contended:1.14.1:points` → expected `ok (failed@20260827200000)` |
+| 1.14.1 | `20260827200100` | notx, rows+validates (dangling `points.track_id` detach loop, then `VALIDATE`) | `rows:1.14.1` (points pointing to missing tracks, inserted with `DISABLE TRIGGER ALL`) |
+| 1.14.1 | `20260827210000` | notx, lockretry (`connection.columns(:trips)` sql_type guard) | `contended:1.14.1:trips` → expected `ok (failed@20260827210000)` |
+
+Mutation: change the settings key in 1.14.2's `20260901120000` UPDATE → `rows:1.14.2 FAIL`.
+
+#### Task 10: 1.14.0
+
+| Version | Tags | Required checks |
+|---|---|---|
+| `20260815100000` | guard | `step:` |
+| `20260815100001` | notx, validates+effect (the migration's own `userless_count` check, then `unported!("DataMigrations::BackfillPlacesUserIdJob")`; the curated `raise`; `check_constraint` by name via `pg_constraint`) | `rows:1.14.0--unported-20260815100001` (a place with `user_id NULL` and a visit) |
+| `20260823190000` | notx, rows+job (stamp-clearing UPDATE, then `RecalculateAnomaliesJob`) | `rows:1.14.0` |
+| `20260825120000` | job+env (`backfill_allowed?`) | `rows:1.14.0--skip-backfill` (`.env` `SKIP_POINT_DIMENSION_BACKFILL=1`) |
+| `20260825120100` | guard | `step:` |
+
+Mutation: drop one condition from the WHERE of `20260823190000` → `rows:1.14.0 FAIL`.
+
+#### Task 11: 1.13.1, 1.13.0, 1.12.2
+
+| Release | Version | Tags | Required checks |
+|---|---|---|---|
+| 1.13.1 | `20260816150000` | notx, lockretry (1 s, 5 attempts, backoff 2, `on: [:lock_not_available, :query_canceled]`, `:not_acquired` → nothing) | `contended:1.13.1:points` → expected `ok` with `AddPointDimensionColumnsJob` (enqueued by `20260816150200` when `source_id` is missing) |
+| 1.13.1 | `20260816150100` | conc, guard | `step:` |
+| 1.13.1 | `20260816150200` | job+env | `step:` (default branch → `BackfillPointDimensionsJob`), `rows:1.13.1--skip-backfill` (`.env`) |
+| 1.13.1 | `20260818201239` | notx, conc, session `SET`/`RESET lock_timeout` (both dropped, `require_zero_lock_timeout!` in their place), invalid (own gist index) | `rows:1.13.1--invalid-index` |
+| 1.13.1 | `20260819120000` | guard | `step:` |
+| 1.13.1 | `20260819120100` | effect+env (`Geocoding::SeedFromEnv` only when `self_hosted?()`, `reverse_geocoding_enabled?` and a `users` row exists). `reverse_geocoding_enabled?` follows `InstanceSettings::Resolver`: environment first, then a stored row, then the default. At 1.13.1 `instance_settings` does not exist yet, so the lookup degrades to environment + default: any geocoding host or key variable that is non-blank enables it | `rows:1.13.1--unported-20260819120100` (`.env` `PHOTON_API_HOST=photon.example.test` + dummy `OTP_ENCRYPTION_*`, one user) |
+| 1.13.0 | `20260816120000` | notx, conc, session `SET lock_timeout = 0` (dropped, `require_zero_lock_timeout!` in its place), invalid (drops other invalid points indexes; replacement invalid → `REINDEX INDEX CONCURRENTLY`), rescue (`StatementInvalid` → `rescue_sql(…, :any, …)`, then the curated `MigrationError`) | `rows:1.13.0--invalid-index` (one unrelated index and the replacement index marked invalid); **unit test** `test/dawarich/release_migrations/v1_13_0_test.exs`: the replacement index invalid over duplicate rows → the step raises the curated message (`… is missing on \`points\`, or invalid and could not be rebuilt automatically.`) |
+| 1.12.2 | `20260811120000` | notx, rows+job | `rows:1.12.2` |
+| 1.12.2 | `20260813120000`, `20260813120100` | conc, guard | `step:` |
+
+Mutation: in `V1_13_0`, remove the `rescue_sql` wrapper → the unit test fails with the raw Postgres error.
+
+#### Task 12: 1.12.0
+
+| Version | Tags | Required checks |
+|---|---|---|
+| `20260804085722` | notx, conc, invalid | `rows:1.12.0--invalid-index` |
+| `20260804085723` | job | `step:` |
+| `20260804093200`, `20260809085900`, `20260809090100` | rows | `rows:1.12.0` |
+| `20260805120001` | notx, rows (batched soft delete), guard | `rows:1.12.0` |
+| `20260808120000` | guard | `step:` |
+| `20260809090000` | job+env (`self_hosted?()`, `SKIP_VISITS_FLEET_REDETECT` present → no job; `defined?(Visits::FleetRedetectJob)` is true on `dev`) | `rows:1.12.0--skip-redetect` (`.env` `SKIP_VISITS_FLEET_REDETECT=1`), `rows:1.12.0--cloud` (`.env` `SELF_HOSTED=false`) |
+
+Mutation: skip the `SKIP_VISITS_FLEET_REDETECT` read → `rows:1.12.0--skip-redetect FAIL jobs`.
+
+#### Task 13: 1.11.0
+
+Requires `f7325c68c` in the base.
+
+| Version | Tags | Required checks |
+|---|---|---|
+| `20260730160000`, `20260802120000` | job | `step:` |
+| `20260730200000` | rows (`Flipper.enable(:poster_ordering)`: timestamps as `now()`) | `rows:1.11.0`: the fixture seeds a pre-existing *disabled* `poster_ordering`; the boot after it deletes retired flags, so no kept row is one |
+| `20260730210000`, `20260730210400`, `20260730220000` | notx, conc, guard (`210400`: invalid) | `rows:1.11.0--invalid-index` |
+| `20260730210100` | notx, rows (`Import.where(…).update_all`) | `rows:1.11.0` |
+| `20260730210150` | notx, rows (visits dedupe; `loser_ids` computed in the step; `place_visits` delete only when the table exists, per `233a70ebe`) | `rows:1.11.0`, `rows:1.11.0--no-place-visits` (fixture drops `place_visits`) |
+| `20260730210200`, `20260730210300` | notx, rows, conc, invalid, rescue (`RecordNotUnique` → `rescue_sql(…, [:unique_violation], …)`: drop the invalid index, collapse stragglers or delete duplicate segments, rebuild; `collapse_stragglers` deletes from `place_visits` only when the table exists, per `f7325c68c`) | `rows:1.11.0` (duplicates removed by the dedupe steps first); **unit tests** `test/dawarich/release_migrations/v1_11_0_test.exs`, one per site plus one for the guard. Duplicates present when the step starts → the index ends valid, one row per key, points moved to the keeper. For `20260730210200` without a `place_visits` table, the rescue path still succeeds |
+| `20260730210250` | notx, rows (track segment dedupe) | `rows:1.11.0` |
+
+Mutation: keep the wrong visit in `20260730210150` → `rows:1.11.0 FAIL`.
+
+#### Task 14: 1.10.2, 1.10.1
+
+Port 1.10.2 first (newest first).
+
+| Version | Tags | Required checks |
+|---|---|---|
+| `20260727120000` (1.10.2) | guard | `step:1.10.2` |
+| `20260727130000` (1.10.2) | job | `step:1.10.2` |
+| `20260714090000` | notx, rows (batched lonlat backfill from legacy `latitude`/`longitude`), lockretry (1 s, 3 attempts, backoff 3, `on: [:lock_not_available, :query_canceled]`; `SET LOCAL statement_timeout = 0` inside the attempt; `:not_acquired` → `{:jobs, [job("DataMigrations::DropLegacyLatLonJob")]}`) | `rows:1.10.1` (points with `lonlat IS NULL` and legacy columns), `contended:1.10.1:points` → expected `ok` with `DataMigrations::DropLegacyLatLonJob` (the handoff) and the legacy columns still present |
+| `20260719180000`, `20260719190000` | job | `step:` |
+| `20260719185000` | conc, guard | `step:` |
+
+Mutation: return nothing on `:not_acquired` → `contended:1.10.1:points FAIL jobs`.
+
+#### Task 15: 1.10.0, 1.9.1, 1.9.0, 1.8.1, 1.8.0, 1.7.11
+
+| Release | Version | Tags | Required checks |
+|---|---|---|---|
+| 1.9.1 | `20260622090000` | notx, conc, validates (curated `raise` on duplicate attachable dates) | `rows:1.9.1--violation` (duplicate notes → both fail at `20260622090000`) |
+| 1.9.0 | `20260207075817`, `20260208223255` | rows | `rows:1.9.0` |
+| 1.8.1 | `20260610090000` | notx, rows, conc, invalid | `rows:1.8.1`, `rows:1.8.1--invalid-index` |
+| 1.8.0 | `20260604120000` | job | `step:` |
+| 1.7.11, 1.10.0 | all | conc / guard | `step:` |
+
+Mutation: drop the duplicate check in `20260622090000` → `rows:1.9.1--violation FAIL`.
+
+#### Task 16: 1.7.8, 1.7.7, 1.7.6, 1.7.5, 1.7.2, 1.7.1, 1.7.0, 1.6.0, 1.5.0, 1.4.0
+
+| Release | Version | Tags | Required checks |
+|---|---|---|---|
+| 1.7.8 | `20260508093702`, `20260514120100` | job gated by `has_pending` queries | `rows:1.7.8` (places with `user_id NULL`; tracks the second query counts) |
+| 1.7.6 | `20260508193900` | notx, effect (`DedupeTracksForUniqueIndexJob.perform_now`; work iff `users_with_duplicates` in `app/jobs/data_migrations/dedupe_tracks_for_unique_index_job.rb` returns a row) | `rows:1.7.6--unported-20260508193900` (duplicate tracks) |
+| 1.7.2 | `20260429180000` | drops the RailsPulse tables (`if_exists`, `CASCADE`) | `step:` |
+| 1.5.0 | `20260323000002` | job | `step:` |
+| 1.4.0 | `20260322000001` | validates (`validate_foreign_key :points, :points_raw_data_archives`) | `rows:1.4.0--violation` (a point pointing to a missing archive, inserted with `DISABLE TRIGGER ALL`) |
+| others | | conc / guard | `step:` |
+
+Mutation: invert the first `column?` guard in `V1_7_0` → `step:1.7.0 FAIL`.
+
+#### Task 17: 1.3.4, 1.3.3, 1.3.2, 1.3.1, 1.3.0
+
+Requires `f7325c68c` in the base.
+
+| Release | Version | Tags | Required checks |
+|---|---|---|---|
+| 1.3.4 | `20260314000001`, `20260315000001` | job | `step:` |
+| 1.3.3 | `20260310000003` | notx, rows (duplicate `place_visits` delete), conc; returns early without `place_visits` (`233a70ebe`, in `f7325c68c`) | `rows:1.3.3`, `rows:1.3.3--no-place-visits` |
+| 1.3.2 | `20260301202147` | rows+env (`self_hosted?()`; raw SQL since #2576) | `rows:1.3.2`, `rows:1.3.2--cloud` (`.env` `SELF_HOSTED=false`) |
+| 1.3.0 | `20260217000001` | job | `step:` |
+| 1.3.1, 1.3.0 | others | conc / guard | `step:` |
+
+Mutation: replace `self_hosted?()` with `not self_hosted?()` → `rows:1.3.2 FAIL`.
+
+#### Task 18: 1.1.0, 1.0.2, 1.0.1
+
+| Release | Version | Tags | Required checks |
+|---|---|---|---|
+| 1.1.0 | `20260206202634` | notx, job per user with duplicates, staggered `wait` | `rows:1.1.0` |
+| 1.0.2 | `20260125100000` | notx, jobs per user and per import, staggered `wait` | `rows:1.0.2` |
+| 1.0.1 | `20260112192240`, `20260113230537` | rows | `rows:1.0.1` |
+
+`step:1.0.1` runs on the `0.37.2` snapshot, the floor itself.
+
+Mutation: compute `wait` from the wrong index in `20260125100000` → `rows:1.0.2 FAIL jobs`.
+
+#### Where execution differs from these tables
+
+The tables are the plan's required minimum; `ecto_prove.sh --list` is the complete list. Execution added fixtures for
+guard skip branches and drifted databases, and corrected these rows:
+
+- **1.15.2:** the stops are list-free (`20260720160000`: any row in `achievement_progresses` or `user_achievements`),
+  and `rows:1.15.2--awards--unported-20260720160000` proves the `user_achievements` half.
+- **1.13.1 `20260819120100`:** the stop is list-free, `self_hosted?()` and a `users` row, broader than Rails' work
+  condition (it does not read `reverse_geocoding_enabled?`).
+- **1.13.0:** `rows:1.13.0--no-replacement` (the replacement index missing) is declared `failed@20260816120000`.
+- **1.11.0:** no priv SQL was needed (the module is 267 lines); `rows:1.11.0--rescue` and `rows:1.11.0--batches`
+  (5001 imports) prove the rescued unique-violation fallback and the `== 5000` batch continuation.
+- **1.4.0:** `rows:1.4.0--fk-recorded` (`20260318000001` recorded without its foreign key) is declared
+  `failed@20260322000001`, like `--violation`.
+- **1.1.0 `20260206202634`:** one `Tracks::DeduplicationJob` per non-deleted user, not per user with duplicates
+  (current Rails has no duplicates gate).
+- **1.0.2 `20260125100000`:** current Rails enqueues nothing: the user half names `TransportationModes::BackfillJob`,
+  deleted in `b1de9ea6a` (a `NameError` its `rescue` swallows), and the import half compares the integer
+  `imports.source` with strings (an SQL error it swallows). The port enqueues nothing, and its unit test pins that.
+- **`step:1.0.1`** is declared `failed@20260112192240` (see "Proof results").
+
+### Proof results
+
+The whole matrix (`ecto_prove.sh all`, 262 checks) ran seven times on 2026-09-25: twice on the sequential harness
+and five times on the template harness, the last one cold on the harness as committed. All seven `summary.txt` files
+are byte-identical:
+
+| Checks | ok | ok, both fail at V | ok, unported | ok, refused below the floor | FAIL |
+|---|---|---|---|---|---|
+| 262 | 234 | 16 | 9 | 3 | 0 |
+
+The 262 are 2 `fresh`, 38 `step:`, 159 `rows:`, 5 `contended:`, 55 `upgrade:` and 3 `refused:`.
+
+**Both fail at the same version** (`ok (failed@V)`), with the whole state compared and Rails' error from its reference
+`.out`; each `rows:` line also holds for its `~shifted` twin:
+
+- `step:1.0.1` at `20260112192240`: `PG::UndefinedColumn: ERROR: column "deleted_at" does not exist`. A harness
+  artefact: the migration reads `users.deleted_at`, which `20260108192905` adds, a lower version that belongs to state
+  1.3.1. On the 0.37.2 snapshot alone both runtimes fail identically; a real upgrade runs `20260108192905` first
+  (global version order), which the `upgrade:` checks prove.
+- `rows:1.0.2--multiple-indexes` at `20260120193124`: `Multiple indexes found on digests columns [:user_id, :year,
+  :period_type]. Specify an index name from index_digests_legacy_user_year_period,
+  index_digests_on_user_id_and_year_and_period_type`.
+- `rows:1.3.3--multiple-indexes` at `20260310000001`: `Multiple indexes found on points columns [:user_id]. Specify an
+  index name from index_points_on_user_id, index_points_on_user_id_unarchived`.
+- `rows:1.4.0--violation` at `20260322000001`: `PG::ForeignKeyViolation: ERROR: insert or update on table "points"
+  violates foreign key constraint "fk_rails_98d7bdf4ad" DETAIL: Key (raw_data_archive_id)=(1) is not present in table
+  "points_raw_data_archives".`
+- `rows:1.4.0--fk-recorded` at `20260322000001`: `Table 'points' has no foreign key for points_raw_data_archives`.
+- `rows:1.9.1--violation` at `20260622090000`: `Cannot create unique index index_notes_on_attachable_and_noted_date: 2
+  duplicate (attachable_type, attachable_id, noted_at::date) group(s) exist in the notes table. Resolve the duplicates
+  and re-run this migration.`
+- `rows:1.13.0--no-replacement` at `20260816120000`: ``index_points_on_user_id_timestamp_lonlat is missing on
+  `points`, or invalid and could not be rebuilt automatically. …`` (the curated message, with the repair SQL).
+- `contended:1.14.1:points` at `20260827200000`, `contended:1.14.1:trips` at `20260827210000` and
+  `contended:1.15.0:points` at `20260914090000`: `PG::LockNotAvailable: ERROR: canceling statement due to lock
+  timeout`, after the fifth attempt on both sides (the harness compares the SQLSTATE and the number of lock waits).
+
+**Stops at an unported effect** (`ok (unported@V)`: Rails does the work, Ecto stops with `UnportedEffect` at V):
+`rows:1.7.6--unported-20260508193900`, `rows:1.13.1--unported-20260819120100`,
+`rows:1.14.0--unported-20260815100001`, `rows:1.15.0--unported-20260901150000`,
+`rows:1.15.0--users--unported-20260901150000`, `rows:1.15.2--unported-20260714224647`,
+`rows:1.15.2--unported-20260720160000`, `rows:1.15.2--awards--unported-20260720160000` and
+`rows:1.15.2--unported-20260720170000`.
+
+**Upgrades.** All 55 `upgrade:` checks are plain `ok`, including the required `upgrade:0.37.2` (a 1.0.0 database, the
+lowest supported state), `upgrade:0.37.2+20241030152025` (the phantom define version: tolerated by Ecto, ignored by
+Rails), and both interrupted upgrades, `upgrade:0.37.2@20260108192905` and `upgrade:1.3.1@20260301201446`. The 13
+schema.rb variants at or after the floor (`0.37.2`, `1.0.1`, `1.0.2`, `1.1.0`, `1.3.0`, `1.3.1`, `1.3.2`, `1.3.3`,
+`1.3.4`, `1.4.0`, `1.5.0`, `1.6.0`, `1.7.7`) are the ones none of which converges under current Rails (the last column
+of "Shipped schema.rb drift"): Ecto reproduces each (`upgrade:<release>.schemarb ok`), leaving exactly the
+differences Rails leaves.
+
+**Refusals** (`ok (refused below_floor R)`, Ecto only, `public` and the outbox unchanged):
+- `refused:0.0.8` → 0.0.9: a migration-built database from the oldest state;
+- `refused:0.34.0.schemarb` → 0.34.1: a schema.rb fresh install, its phantom define version `20250930150256`
+  included;
+- `refused:0.36.3@20251227000001` → 0.37.0: the database stuck part-way through 0.37.0 (the `safety_assured` crash).
+
+**Column order.** C1's `normalize.sh` sorts the columns inside every `CREATE TABLE`, so the schema part cannot see
+column order. The `columns` part (`information_schema.columns` in `ordinal_position` order) restores it.
+
+**The proven configuration** is the self-hosted default: `SELF_HOSTED`, `SKIP_POINT_DIMENSION_BACKFILL`,
+`SKIP_VISITS_FLEET_REDETECT` and every geocoding variable unset. On top of it, the `.env` fixtures prove
+`SELF_HOSTED=false` (`--cloud`: 1.3.2, 1.12.0, 1.13.1, 1.14.0, 1.14.4), `SKIP_POINT_DIMENSION_BACKFILL=1`
+(`--skip-backfill`: 1.13.1, 1.14.0, 1.14.4), `SKIP_VISITS_FLEET_REDETECT=1` (`--skip-redetect`: 1.12.0), and
+`PHOTON_API_HOST` with dummy `OTP_ENCRYPTION_*` values (the unported 1.13.1 and 1.15.0 fixtures). Any other combination
+is unproven.
+
+### Interface for C4
+
+**`ecto_prove.sh [--shard K/N] [--jobs N] --list | all | <check>...`**, from the repository root:
+- `--list` prints every check (262 today), one per line, in a stable order. `--shard K/N` keeps lines K, K+N, K+2N….
+- `all` or a list of checks prints one line per check: `ok`, `ok (failed@V)`, `ok (unported@V)`,
+  `ok (refused below_floor R)`, or `FAIL …` (including `FAIL timed out: …` and `FAIL no result`). Then
+  `ran <n> checks, <f> failed`.
+  - The lines go to `tmp/schema_parity/ecto/summary.txt` (`summary.K-N.txt` for a shard) in `--list` order. `all`
+    starts a fresh file for its own shard; explicit checks append, so remove `summary*.txt` first, as the CI job does.
+  - Exit 0 only when every check passed; exit 2 and `ABORTED …` in the summary on an abort (duplicate check names, a
+    bad option, a list error).
+  - `== start|end <epoch> <check>` lines go to `tmp/schema_parity/ecto/prove.log`.
+- `--jobs N` runs N lanes over the non-contended checks (default: half the cores, at least 1), then the contended
+  checks one at a time, alone. With `--shard`, each shard runs its own contended checks alone at its end.
+- Diffs go to `tmp/schema_parity/ecto/diffs/`. Rails references are cached in `tmp/schema_parity/ecto/ref/`, keyed
+  by the check's own inputs (snapshot, fixture, `.env`) and the code key: the SHA-1 of the working-tree bytes of
+  `db/migrate`, `db/release_migrations.json`, `app` (without `app/assets`), `config`, `lib`, `Gemfile.lock`,
+  `.ruby-version`, `.tool-versions` and the harness scripts, plus the `.env*` files and `ruby -v`. The canonical-dump
+  memo `tmp/schema_parity/canon/` is content-addressed. The CI job caches both under `ecto-ref-<os>-<code key>`.
+- Each starting point (snapshot, migrated-to version, extra ledger row, `~shifted`, fixture, `.env`) is built once as
+  a template database `sp_t_<sha1>`, with Rails booted on it (except for `refused:`), and every side of every check
+  is its own clone. A complete `all` run drops unused templates and the databases of dead runs.
+- Every `docker exec` is bounded at 300 s (`SP_EXEC_TIMEOUT`), the lock holder and its watcher at 150 + 300 s; a stuck
+  call fails its check instead of hanging.
+- Declared outcomes (`failed@V`, contended, refused) are in `scripts/schema_parity/ecto_expectations.tsv`.
+  Contended checks hold `ROW EXCLUSIVE` on their table for 150 s.
+- `inventory.rb [versions…]` prints `state<TAB>version<TAB>tags` per migration after the floor;
+  `pr_checks.rb <list>` reads changed paths on stdin and prints the checks they select.
+
+**Prerequisites:** `scripts/schema_parity/infra.sh up` (sp-db is `postgis/postgis:17-3.5` pinned at
+`sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6`, PostgreSQL 17.5, with `fsync`,
+`full_page_writes` and `synchronous_commit` off; and sp-redis), `bundle check`, `mix deps.get` in `app-phoenix/`, the
+`en_US.UTF-8` locale, and no `.env`, `.env.local` or `.env.development.local` in the checkout (the harness refuses
+them: dotenv would load them into the Rails side only).
+
+**Timings** (Apple M5 Pro, 18 cores, OrbStack, other sessions loading the machine; 9 lanes unless noted):
+
+| Run | Wall | Lanes phase | Contended phase |
+|---|---|---|---|
+| Whole matrix, cold | 1719–1844 s (29–31 min) | 594 s | 1118 s |
+| Whole matrix, cached | 1306 s (22 min) | 211 s | 1095 s |
+| One release (1.14.0, 11 checks), cold / cached | 34 s / 11 s | | |
+| PR job dry run, 207 checks, 2 lanes, cold | 2474 s (41 min) | 1373 s | 1100 s |
+| Old sequential harness, idle machine: cold (sum of check times) / cached | 6945 s / 3936 s | | |
+
+The contended phase is the floor: its Rails side always reruns under the 150 s holder, and its length is set by the
+migrations' own retry budgets (1.10.1 and 1.13.1 about 310 s each, the three failing ones about 165 s each).
+Re-measure per kind on any run's slice of `prove.log`:
+
+```bash
+awk '$2 == "start" { s[$4] = $3 } $2 == "end" { split($4, k, ":"); t[k[1]] += $3 - s[$4]; c[k[1]]++ } END { for (x in t) printf "%s %d checks, %.0f s average, %.0f s total\n", x, c[x], t[x] / c[x], t[x] }' tmp/schema_parity/ecto/prove.log
+```
+
+**Shard sizing.** The non-contended checks need about 5250 lane-seconds cold and the contended ones about 1120 s.
+With the default 2 lanes of a 4-core runner, one shard per PostgreSQL version needs about 5250 / 2 + 1120 ≈ 3750 s
+(≈ 1 h). Use one shard per PostgreSQL version with a 180-minute job timeout until the first nightly calibrates it;
+if a shard then goes over 1.5 h, use two. The runner's Docker Engine has not been measured.
+
+**C4's matrix** covers the states at or after the floor (every `step:`, `rows:`, `contended:` and `upgrade:` check),
+the refusal sample, and nothing older, each restored into PostgreSQL 14 and 17. The harness talks to one server,
+`sp-db`, pinned to PostgreSQL 17.5, so a PostgreSQL 14 run needs its own server. The snapshots are `pg_dump` 17.5
+output with `SET transaction_timeout = 0;`, which PostgreSQL 16 and older reject under `ON_ERROR_STOP` (see "What C2
+must not assume"); the C4 plan's "PG14 restore compatibility fix" item covers it. `postgis/postgis:14-3.5` has no arm64 image, which matters only locally. The nightly activates when
+`feat/phoenix-port` merges into the default branch.
+
+### At a release
+
+1. Eugene tags the release and fetches the tags.
+2. `LANG=en_US.UTF-8 DATABASE_NAME=sp_unused RAILS_ENV=test bin/rails schema_parity:release_map`, then
+   `LANG=en_US.UTF-8 scripts/schema_parity/snapshot_all.sh` for the new state (see "Regenerate").
+3. Rename `app-phoenix/lib/dawarich/release_migrations/unreleased.ex` to `v<release with dots as underscores>.ex`,
+   rename the module to `Dawarich.ReleaseMigrations.V<same>`, set `release/0` to the state's `first_release`, and
+   create a new empty `Unreleased` (`release/0` `"unreleased"`, `steps/0` and `data_versions/0` `[]`).
+4. Rename `scripts/schema_parity/fixtures/unreleased*` to `<release>*`, and rename the `unreleased` checks in
+   `ecto_expectations.tsv` the same way.
+5. Update `@releases` in `app-phoenix/lib/dawarich/release_migrations.ex`: the new module goes before `Unreleased`.
+6. `scripts/schema_parity/baseline.sh` (required).
+7. `ecto_prove.sh fresh step:<release> upgrade:<previous state>` plus the new `rows:` checks, and `mix test` in
+   `app-phoenix/`.
+
+### Handed to C3
+
+- **The seven `unported!` sites** (`rg -n 'unported!\(' app-phoenix/lib/dawarich/release_migrations`). Each stops the
+  version with `UnportedEffect` until C3 replaces it with the port of its effect, behind the same guards:
+
+  | Site | Version | Rails effect | Stops when |
+  |---|---|---|---|
+  | `v1_7_6.ex:30` | `20260508193900` | `DataMigrations::DedupeTracksForUniqueIndexJob.perform_now` | tracks are duplicated on `(user_id, start_at, end_at)` |
+  | `v1_13_1.ex:100` | `20260819120100` | `Geocoding::SeedFromEnv` | self-hosted and a `users` row exists |
+  | `v1_14_0.ex:45` | `20260815100001` | `DataMigrations::BackfillPlacesUserIdJob.perform_now` | a place has `user_id IS NULL` |
+  | `v1_15_0.ex:51` | `20260901150000` | `InstanceSettings::Backfill` | a `users` row exists or an `InstanceSettings::Registry` variable is set |
+  | `v1_15_2.ex:62` | `20260714224647` | `Achievements::LoadRegions` | `countries` has rows and `regions` is empty |
+  | `v1_15_2.ex:70` | `20260720160000` | `Achievements::MigrateExplorationState` | `achievement_progresses` or `user_achievements` has rows |
+  | `v1_15_2.ex:80` | `20260720170000` | `Achievements::LoadRegions` | `countries` has rows |
+
+  At `v1_14_0.ex:45`, Rails recounts after the job and raises `ActiveRecord::MigrationError` with
+  `[Migration] places_user_id_backfill remaining=<n>. List them with: SELECT id FROM places WHERE user_id IS NULL;
+  assign an owner to those places or delete them, then migrate again` when places are left
+  (`db/migrate/20260815100001_validate_places_user_id_not_null.rb`). That check is dead behind `unported!` today; C3
+  adds it, with the exact message, when it ports the job.
+- **The job specs** (`rg -n '\bjob\(' app-phoenix/lib/dawarich/release_migrations`; the per-user and per-import jobs
+  of 1.0.2 and 1.1.0 are built across several lines) and the outbox argument format above. The outbox
+  (`phoenix.release_migration_jobs`) has no consumer yet: C3 and A12 relay it to Oban.
+- **No `db/data` migration to port.** All 27 predate the floor, and `pending_data` is `[]` on every supported
+  database. C3 ports only the app code that supported migrations call.
