@@ -8,3 +8,5 @@ refused:0.34.0.schemarb	refused	0.34.1
 refused:0.36.3@20251227000001	refused	0.37.0
 rows:1.13.0--no-replacement	failed@20260816120000	-
 rows:1.13.0--no-replacement~shifted	failed@20260816120000	-
+rows:1.9.1--violation	failed@20260622090000	-
+rows:1.9.1--violation~shifted	failed@20260622090000	-
