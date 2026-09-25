@@ -34,9 +34,7 @@ RSpec.describe '/stats', type: :request do
       end
 
       context 'with a stat to show' do
-        before do
-          create(:stat, user:, year: 2024)
-        end
+        let!(:stat) { create(:stat, user:, year: 2024) }
 
         it 'renders the geocoding stats when the instance has a geocoding provider' do
           configure_instance_geocoding
@@ -52,6 +50,21 @@ RSpec.describe '/stats', type: :request do
 
           expect(response.status).to eq(200)
           expect(response.body).not_to include(I18n.t('stats.reverse_geocoding_stats.reverse_geocoded_points'))
+          expect(response.body).not_to include(I18n.t('stats.reverse_geocoding_stats.countries_visited'))
+        end
+
+        it 'includes visited country metadata for the Stats map' do
+          create(:country, name: 'Germany', iso_a2: 'DE', iso_a3: 'DEU')
+          stat.update!(toponyms: [
+            { 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin', 'stayed_for' => 60 }] }
+          ])
+
+          configure_instance_geocoding
+          get stats_url
+
+          expect(response.body).to include('data-controller="stats-countries-map"')
+          expect(response.body).to include('DEU')
+          expect(response.body).to include('Germany')
         end
       end
     end
