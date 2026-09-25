@@ -164,7 +164,7 @@ jobs:
 
           if [ "$IS_PRERELEASE" = "true" ]; then
             TAGS="${TAGS},${IMAGE}:rc"
-          else
+          elif [ "$GITHUB_EVENT_NAME" = "release" ]; then
             TAGS="${TAGS},${IMAGE}:latest"
           fi
 
