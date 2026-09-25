@@ -23,7 +23,7 @@ class Cache::PreheatInsightsDigests
 
   def recent_years_with_stats
     # Preheat current + previous year (most commonly viewed)
-    user.stats.distinct.pluck(:year).sort.reverse.first(2)
+    user.stats.where(year: ...Time.current.year).distinct.pluck(:year).sort.reverse.first(2)
   end
 
   def preheat_year(year)
