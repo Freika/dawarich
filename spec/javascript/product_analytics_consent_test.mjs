@@ -79,7 +79,9 @@ test("account refusal overrides an older browser acceptance", () => {
 
 test("product consent alone loads only self-hosted visit analytics", () => {
   const result = visit({ account: true, serverChoice: "true" })
-  assert.ok(result.scripts.some((url) => url.includes("rybbit.dwri.xyz")))
+  assert.ok(
+    result.scripts.some((url) => new URL(url).hostname === "rybbit.dwri.xyz"),
+  )
   assert.ok(
     result.scripts.every(
       (url) => !/googletagmanager|partnero|simpleanalytics/.test(url),
@@ -94,6 +96,12 @@ test("advertising and affiliate scripts require both product and site consent", 
     serverChoice: "true",
     siteChoice: true,
   })
-  assert.ok(result.scripts.some((url) => url.includes("googletagmanager.com")))
-  assert.ok(result.scripts.some((url) => url.includes("partnero.com")))
+  assert.ok(
+    result.scripts.some(
+      (url) => new URL(url).hostname === "www.googletagmanager.com",
+    ),
+  )
+  assert.ok(
+    result.scripts.some((url) => new URL(url).hostname === "app.partnero.com"),
+  )
 })
