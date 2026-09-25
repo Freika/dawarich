@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Upgrading an installation originally created from release 0.9.12–0.11.1 no longer fails when its database has no place_visits table.
+- Delete Family, Leave Family, Remove member and Cancel invitation now ask for confirmation first and send a single request once confirmed; cancelling the confirmation no longer carries out the action.
 
 ## [1.15.2] - 2026-09-22, Berlin
 
