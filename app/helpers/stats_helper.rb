@@ -5,6 +5,10 @@ module StatsHelper
     Stat.convert_distance(year_data.sum { _1[1] }, user.safe_settings.distance_unit)
   end
 
+  def year_flight_distance_stat(stats, user)
+    Stat.convert_distance(stats.sum(&:flight_distance), user.safe_settings.distance_unit)
+  end
+
   def countries_and_cities_stat_for_year(year, stats)
     year_stats = stats.select { _1.year == year }
     countries, cities = collect_countries_and_cities(year_stats)
