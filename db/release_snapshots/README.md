@@ -302,7 +302,7 @@ Paths are relative to the repository root.
 | `scripts/schema_parity/ecto_expectations.tsv` | Declared outcomes: `failed@V`, contended and refused checks |
 | `scripts/schema_parity/pr_checks.rb` | Checks a pull request must pass; fixture gate for unreleased migrations |
 | `scripts/schema_parity/lib.sh`, `infra.sh` | C1's helpers: `canon_dump` excludes `phoenix` and `oban` and is memoised; bounded `docker exec`; `infra.sh up` pins sp-db and turns off its durability |
-| `scripts/schema_parity/fixtures/<release>[--<variant>].sql` / `.env` | Row fixtures and their environments (84 `.sql`, 12 `.env`) |
+| `scripts/schema_parity/fixtures/<release>[--<variant>].sql` / `.env` | Row fixtures and their environments (86 `.sql`, 12 `.env`) |
 | `.github/workflows/ecto-counterparts.yml` | The `ecto-counterparts` job: the checks a change selects on pull requests, every check on pushes to `dev` and `master` |
 
 **Nothing calls the migrator before A12.** The application, `Dawarich.Release`, the entrypoint and the image never
@@ -808,7 +808,7 @@ is unproven.
 ### Interface for C4
 
 **`ecto_prove.sh [--shard K/N] [--jobs N] --list | all | <check>...`**, from the repository root:
-- `--list` prints every check (262 today), one per line, in a stable order. `--shard K/N` keeps lines K, K+N, K+2N….
+- `--list` prints every check (267 today), one per line, in a stable order. `--shard K/N` keeps lines K, K+N, K+2N….
 - `all` or a list of checks prints one line per check: `ok`, `ok (failed@V)`, `ok (unported@V)`,
   `ok (refused below_floor R)`, or `FAIL …` (including `FAIL timed out: …` and `FAIL no result`). Then
   `ran <n> checks, <f> failed`.
