@@ -304,6 +304,8 @@ Rails.application.routes.draw do
   end
 
   # Backward compatibility redirects
+  patch '/product_analytics_consent', to: 'product_analytics_consents#update'
+  post '/product_analytics_events', to: 'product_analytics_events#create'
   get '/map', to: 'map/maplibre#index'
   get '/maps/v2', to: redirect('/map/v2')
 
@@ -322,6 +324,8 @@ Rails.application.routes.draw do
 
       namespace :users do
         scope 'me' do
+          resource :analytics_consent, only: %i[show update], controller: 'analytics_consent'
+          resources :analytics_events, only: %i[create], controller: 'analytics_events'
           resource :two_factor, only: %i[destroy], controller: 'two_factor' do
             post :setup
             post :confirm
@@ -461,6 +465,7 @@ Rails.application.routes.draw do
       end
 
       post 'subscriptions/callback', to: 'subscriptions#callback'
+      post 'subscriptions/analytics_events', to: 'subscriptions/analytics_events#create'
       post 'users/exist', to: 'users#exist'
 
       namespace :auth do

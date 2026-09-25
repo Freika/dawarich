@@ -2,6 +2,7 @@
 
 class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
   include PendingImportClaimable
+  include UtmTrackable
 
   def github
     handle_auth(I18n.t('oauth_providers.github'))
@@ -58,7 +59,10 @@ class Users::OmniauthCallbacksController < Devise::OmniauthCallbacksController
       # from_omniauth both finds and creates, so only a record born in this
       # request is a signup — otherwise a returning customer arriving through a
       # different affiliate link would be re-credited to the wrong partner.
-      attribute_partnero_signup(@user) if @user.oauth_newly_created
+      if @user.oauth_newly_created
+        assign_utm_params(@user) unless DawarichSettings.self_hosted?
+        attribute_partnero_signup(@user)
+      end
       flash[:notice] = I18n.t 'devise.omniauth_callbacks.success', kind: provider
       sign_in_and_redirect @user, event: :authentication
     elsif @user.nil?

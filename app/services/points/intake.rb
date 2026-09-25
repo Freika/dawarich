@@ -24,6 +24,7 @@ module Points
       return [] if upserted.empty?
 
       bump_points_count(upserted)
+      enqueue_product_analytics_check(upserted)
       register_arrival(upserted) if mode == :realtime
 
       upserted
@@ -65,6 +66,14 @@ module Points
       inserted = upserted.count { |row| row['xmax'].to_i.zero? }
 
       User.update_counters(user_id, points_count: inserted) if inserted.positive?
+    end
+
+    def enqueue_product_analytics_check(upserted)
+      return if DawarichSettings.self_hosted? || !ProductAnalytics.configured?
+      return unless upserted.any? { |row| row['xmax'].to_i.zero? }
+      return unless User.where(id: user_id, product_analytics_consent: true).exists?
+
+      ProductAnalyticsActivationJob.perform_later(user_id)
     end
 
     def timestamps

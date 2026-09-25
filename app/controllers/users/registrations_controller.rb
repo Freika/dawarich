@@ -31,6 +31,7 @@ class Users::RegistrationsController < Devise::RegistrationsController
     if resource.persisted?
       persist_signup_locale(resource)
       post_signup_setup(resource)
+      record_product_analytics_signup(resource)
 
       # The claim happens in every branch (not in after_sign_up_path_for):
       # the reverse-trial redirect below never consults the sign-up path, and
@@ -129,6 +130,13 @@ class Users::RegistrationsController < Devise::RegistrationsController
 
   private
 
+  def record_product_analytics_signup(resource)
+    return if DawarichSettings.self_hosted? || !resource.product_analytics_consent?
+
+    ProductAnalytics.capture(user: resource, event: 'user_signed_up', channel: 'server',
+                             properties: { auth_method: 'email' })
+  end
+
   def handle_logged_in_with_ticket
     return unless user_signed_in? && params[:import_ticket].present?
 
@@ -139,10 +147,18 @@ class Users::RegistrationsController < Devise::RegistrationsController
   end
 
   def post_signup_setup(resource)
+    apply_product_analytics_signup_consent(resource)
     assign_utm_params(resource)
     attribute_partnero_signup(resource)
     store_signup_intent(resource)
     accept_invitation_for_user(resource) if @invitation
+  end
+
+  def apply_product_analytics_signup_consent(resource)
+    return if DawarichSettings.self_hosted?
+
+    choice = { 'true' => true, 'false' => false }[params[:product_analytics_consent]]
+    ProductAnalyticsConsent.update!(user: resource, consent: choice) unless choice.nil?
   end
 
   # Only a language the reader actually picked is worth pinning to the account.
@@ -159,11 +175,17 @@ class Users::RegistrationsController < Devise::RegistrationsController
   def manager_checkout_url(user)
     url = "#{MANAGER_URL}/checkout?token=#{user.generate_subscription_token(variant: 'reverse_trial')}"
     linker = session.delete(:gads_linker)
-    url += "&_gl=#{CGI.escape(linker)}" if linker.present?
+    if campaign_tracking_consented? && user.product_analytics_consent? && linker.present?
+      url += "&_gl=#{CGI.escape(linker)}"
+    end
     url
   end
 
   def store_gads_linker
+    unless campaign_tracking_consented?
+      session.delete(:gads_linker)
+      return
+    end
     return if params[:_gl].blank?
 
     session[:gads_linker] = params[:_gl].to_s.byteslice(0, 1024)
