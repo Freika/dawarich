@@ -6,6 +6,36 @@ describe 'e2e:seed_b9_notifications' do
   let(:reader) { User.find_by!(email: 'b9-reader@dawarich.test') }
   let(:other_user) { User.find_by!(email: 'b9-other@dawarich.test') }
 
+  around do |example|
+    original = ENV['E2E_B9_B11_FIXTURES']
+    ENV['E2E_B9_B11_FIXTURES'] = '1'
+    example.run
+  ensure
+    ENV['E2E_B9_B11_FIXTURES'] = original
+  end
+
+  it 'refuses to write without explicit fixture opt-in' do
+    ENV.delete('E2E_B9_B11_FIXTURES')
+
+    expect { Rake::Task['e2e:seed_b9_notifications'].execute }.to raise_error(SystemExit)
+    expect(User.exists?(email: 'b9-reader@dawarich.test')).to be(false)
+  end
+
+  it 'refuses a non-isolated database' do
+    allow(ActiveRecord::Base).to receive(:connection_db_config).and_return(double(database: 'dawarich_development'))
+
+    expect { Rake::Task['e2e:seed_b9_notifications'].execute }.to raise_error(SystemExit)
+  end
+
+  it 'refuses a shared Redis store' do
+    original = ENV['REDIS_URL']
+    ENV['REDIS_URL'] = 'redis://127.0.0.1:6379'
+
+    expect { Rake::Task['e2e:seed_b9_notifications'].execute }.to raise_error(SystemExit)
+  ensure
+    ENV['REDIS_URL'] = original
+  end
+
   it 'creates 22 ordered synthetic notifications and keeps another user separate' do
     Rake::Task['e2e:seed_b9_notifications'].execute
 

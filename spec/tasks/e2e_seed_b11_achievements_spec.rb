@@ -5,7 +5,22 @@ require 'rails_helper'
 describe 'e2e:seed_b11_achievements' do
   let!(:demo_user) { User.find_by(email: 'demo@dawarich.app') || create(:user, email: 'demo@dawarich.app') }
 
+  around do |example|
+    original = ENV['E2E_B9_B11_FIXTURES']
+    ENV['E2E_B9_B11_FIXTURES'] = '1'
+    example.run
+  ensure
+    ENV['E2E_B9_B11_FIXTURES'] = original
+  end
+
   after { Flipper.disable(:achievements) }
+
+  it 'refuses a non-isolated database before changing the achievement flag' do
+    allow(ActiveRecord::Base).to receive(:connection_db_config).and_return(double(database: 'dawarich_development'))
+
+    expect { Rake::Task['e2e:seed_b11_achievements'].execute }.to raise_error(SystemExit)
+    expect(Flipper.enabled?(:achievements)).to be(false)
+  end
 
   it 'enables the flag and creates one synthetic exploration record' do
     Rake::Task['e2e:seed_b11_achievements'].execute

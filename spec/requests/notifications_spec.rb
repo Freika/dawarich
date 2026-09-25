@@ -35,6 +35,14 @@ RSpec.describe '/notifications', type: :request do
         expect(response).to be_successful
       end
 
+      it 'marks an opened unread notification as read' do
+        notification.update!(read_at: nil)
+
+        get notification_url(notification)
+
+        expect(notification.reload.read_at).to be_present
+      end
+
       it 'does not render a notification owned by another user' do
         other_notification = create(:notification, user: create(:user))
 

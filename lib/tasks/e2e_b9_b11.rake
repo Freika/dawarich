@@ -1,9 +1,20 @@
 # frozen_string_literal: true
 
+module E2eB9B11FixtureSafety
+  def self.verify!
+    abort 'Refusing B9/B11 fixture seeding in production' if Rails.env.production?
+    abort 'Set E2E_B9_B11_FIXTURES=1 to seed these fixtures' unless ENV['E2E_B9_B11_FIXTURES'] == '1'
+
+    database = ActiveRecord::Base.connection_db_config.database
+    abort "Refusing non-isolated database #{database}" unless %w[dawarich_e2e_b9_b11 dawarich_e2e_b9_b11_test].include?(database)
+    abort 'Use the isolated Redis at redis://127.0.0.1:7099' unless ENV['REDIS_URL'] == 'redis://127.0.0.1:7099'
+  end
+end
+
 namespace :e2e do
   desc 'Seed isolated B9 notification characterization fixtures'
   task seed_b9_notifications: :environment do
-    abort 'Refusing B9 fixture seeding in production' if Rails.env.production?
+    E2eB9B11FixtureSafety.verify!
 
     reader = User.find_or_create_by!(email: 'b9-reader@dawarich.test') do |user|
       user.password = 'safepassword12'
@@ -33,7 +44,7 @@ namespace :e2e do
 
   desc 'Seed isolated B11 achievement characterization fixtures'
   task seed_b11_achievements: :environment do
-    abort 'Refusing B11 fixture seeding in production' if Rails.env.production?
+    E2eB9B11FixtureSafety.verify!
 
     user = User.find_by!(email: 'demo@dawarich.app')
     Flipper.enable(:achievements)
