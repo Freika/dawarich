@@ -148,6 +148,34 @@ RSpec.describe 'Family', type: :request do
     end
   end
 
+  describe 'delete, leave and remove links' do
+    let(:member) { create(:user) }
+    let!(:member_membership) { create(:family_membership, user: member, family: family) }
+
+    def expect_turbo_only_delete_link(href)
+      link = Nokogiri::HTML(response.body).at_css(%(a[href="#{href}"][data-turbo-method="delete"]))
+      expect(link).not_to be_nil
+      expect(link['data-method']).to be_nil
+    end
+
+    it 'leaves the owner remove and delete links on the family page to Turbo alone' do
+      get '/family'
+      expect_turbo_only_delete_link(family_member_path(member_membership))
+      expect_turbo_only_delete_link(family_path)
+    end
+
+    it 'leaves the member leave link to Turbo alone' do
+      sign_in member
+      get '/family'
+      expect_turbo_only_delete_link(family_member_path(member_membership))
+    end
+
+    it 'leaves the delete link on the edit page to Turbo alone' do
+      get '/family/edit'
+      expect_turbo_only_delete_link(family_path)
+    end
+  end
+
   describe 'PATCH /family' do
     let(:new_attributes) { { family: { name: 'Updated Family Name' } } }
 

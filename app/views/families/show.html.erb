@@ -134,7 +134,6 @@
                 </div>
                 <% if current_user.family_owner? && member != current_user && !member.family_membership.owner? %>
                   <%= link_to family_member_path(member.family_membership),
-                        method: :delete,
                         data: {
                           turbo_confirm: t('.remove_email_from_the_family', email: member.email),
                           turbo_method: :delete
@@ -227,7 +226,6 @@
       <div class="flex gap-2 justify-end">
         <% if !current_user.family_owner? && current_user.family_membership %>
           <%= link_to family_member_path(current_user.family_membership),
-                method: :delete,
                 data: { turbo_confirm: t('.are_you_sure_you_want_to_leave_this_family'), turbo_method: :delete },
                 class: "btn btn-ghost btn-xs text-warning" do %>
             <%= t('.leave_family') %>
@@ -235,7 +233,6 @@
         <% end %>
         <% if policy(@family).destroy? %>
           <%= link_to family_path,
-                method: :delete,
                 data: { turbo_confirm: t('.delete_this_family_this_cannot_be_undone'), turbo_method: :delete },
                 class: "btn btn-ghost btn-xs text-error" do %>
             <%= icon 'trash-2', class: 'w-3.5 h-3.5' %> <%= t('.delete_family') %>

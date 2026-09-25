@@ -87,7 +87,6 @@
 
           <% if policy(@family).destroy? %>
             <%= link_to family_path,
-                  method: :delete,
                   data: { turbo_confirm: t('.are_you_sure_you_want_to_delete_this_family_this'), turbo_method: :delete },
                   class: "btn btn-outline btn-error" do %>
               <%= icon 'trash-2', class: "inline-block w-4" %>
