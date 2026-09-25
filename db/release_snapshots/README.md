@@ -549,6 +549,7 @@ The porting rules above are the plan's. Porting 1.0.1–1.15.2 added these, and 
 - `rows`: changes rows.
 - `validates`: the result depends on data (`validate_*`, `SET NOT NULL`, raise-on-duplicates).
 - `job`: enqueues.
+- `gated`: the enqueue or change depends on a query of existing rows (`select_value`, `exists?`, `EXISTS (…)`), so both branches need a fixture.
 - `effect`: an unported app call.
 - `env`: reads configuration.
 - `notx`: `disable_ddl_transaction!`.
