@@ -17,10 +17,16 @@ RSpec.describe 'Shared::Stats', type: :request do
         get shared_stat_path(stat.sharing_uuid)
         expect(response).to have_http_status(:ok)
 
-        travel duration + 1.second
+        travel duration - 1.second
+        get shared_stat_path(stat.sharing_uuid)
+        expect(response).to have_http_status(:ok)
+
+        travel 2.seconds
         get shared_stat_path(stat.sharing_uuid)
         expect(response).to redirect_to(root_path)
         get '/api/v1/maps/hexagons', params: { uuid: stat.sharing_uuid }
+        expect(response).to have_http_status(:not_found)
+        get '/api/v1/maps/hexagons/bounds', params: { uuid: stat.sharing_uuid }
         expect(response).to have_http_status(:not_found)
       end
     end

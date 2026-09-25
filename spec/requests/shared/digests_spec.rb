@@ -17,7 +17,11 @@ RSpec.describe 'Shared::Digests', type: :request do
         get shared_users_digest_path(digest.sharing_uuid)
         expect(response).to have_http_status(:ok)
 
-        travel duration + 1.second
+        travel duration - 1.second
+        get shared_users_digest_path(digest.sharing_uuid)
+        expect(response).to have_http_status(:ok)
+
+        travel 2.seconds
         get shared_users_digest_path(digest.sharing_uuid)
         expect(response).to redirect_to(root_path)
       end
