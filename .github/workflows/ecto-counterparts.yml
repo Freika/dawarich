@@ -1,0 +1,108 @@
+name: Ecto counterparts
+
+on:
+  pull_request:
+  push:
+    branches: [master, dev]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ecto-counterparts-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  ecto-counterparts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+
+    env:
+      MIX_ENV: test
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgeos-dev
+          sudo locale-gen en_US.UTF-8
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.3.4.1"
+          elixir-version: "1.18.3"
+          version-type: strict
+
+      - name: Cache Mix
+        uses: actions/cache@v6
+        with:
+          path: |
+            app-phoenix/deps
+            app-phoenix/_build
+          key: mix-${{ runner.os }}-${{ hashFiles('app-phoenix/mix.lock') }}
+
+      - name: Fetch Elixir dependencies
+        working-directory: app-phoenix
+        run: mix deps.get
+
+      - name: Select the checks this change must pass
+        id: select
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          scripts/schema_parity/ecto_prove.sh --list > "$RUNNER_TEMP/list.txt"
+          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
+            git cat-file -e "$BASE_SHA^{commit}" || { echo "base commit '$BASE_SHA' is not in the checkout"; exit 1; }
+            git diff --no-renames --name-only "$BASE_SHA"...HEAD \
+              | ruby scripts/schema_parity/pr_checks.rb "$RUNNER_TEMP/list.txt" > "$RUNNER_TEMP/checks.txt"
+          else
+            ruby scripts/schema_parity/pr_checks.rb "$RUNNER_TEMP/list.txt" < /dev/null > /dev/null
+            cp "$RUNNER_TEMP/list.txt" "$RUNNER_TEMP/checks.txt"
+          fi
+          cat "$RUNNER_TEMP/checks.txt"
+          root="$PWD"
+          tmpd="$RUNNER_TEMP"
+          . scripts/schema_parity/lib.sh
+          . scripts/schema_parity/ecto_lib.sh
+          key="$(code_key)"
+          echo "code-key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Cache the Rails references
+        uses: actions/cache@v6
+        with:
+          path: |
+            tmp/schema_parity/ecto/ref
+            tmp/schema_parity/canon
+          key: ecto-ref-${{ runner.os }}-${{ steps.select.outputs.code-key }}
+
+      - name: Start the scratch databases
+        run: scripts/schema_parity/infra.sh up
+
+      - name: Prove the fresh install and every migration this change touches
+        shell: bash
+        run: |
+          rm -f tmp/schema_parity/ecto/summary*.txt
+          scripts/schema_parity/ecto_prove.sh --jobs 2 $(cat "$RUNNER_TEMP/checks.txt")
+          cut -d ' ' -f 1 tmp/schema_parity/ecto/summary.txt | cmp - "$RUNNER_TEMP/checks.txt"
+          if grep -Ev '^[^ ]+ ok( \(.+\))?$' tmp/schema_parity/ecto/summary.txt; then exit 1; fi
+
+      - name: Upload proof diffs
+        if: failure() || cancelled()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ecto-proof
+          path: |
+            tmp/schema_parity/ecto/
+            !tmp/schema_parity/ecto/ref/
