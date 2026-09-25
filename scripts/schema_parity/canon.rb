@@ -16,9 +16,13 @@ end
 
 STAMP = /(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d(?:\.\d+)?)(?:\+00(?::00)?)?/
 
+STARTED, ENDED, BUILT_FROM, BUILT_TO = ARGV.drop(1).map { |arg| Integer(arg) }
+
 def now(found)
   moment = Time.parse("#{found[1]} UTC").to_i
-  '<now>' if moment.between?(Integer(ARGV.fetch(1)) - 60, Integer(ARGV.fetch(2)) + 60)
+  return '<template>' if BUILT_TO && moment.between?(BUILT_FROM, BUILT_TO)
+
+  '<now>' if moment.between?([STARTED - 60, BUILT_TO.to_i + 1].max, ENDED + 60)
 end
 
 case ARGV.fetch(0)

@@ -4,6 +4,9 @@ holder_seconds=150
 parts="schema ledger columns invalid rows jobs"
 holder_pid=""
 watch_pid=""
+build_db=""
+releasing=""
+template_window=""
 
 fail() {
   echo "$check FAIL $*"
@@ -15,24 +18,25 @@ scrubbed() {
 }
 
 query() {
-  docker exec -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAtc "$2"
+  dexec -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAtc "$2"
 }
 
 checksum() {
-  sum="$(cksum < "$1")" || return 1
-  echo "$sum" | tr ' ' -
+  git -C "$root" hash-object --no-filters -- "$1"
 }
 
 code_key() {
   (
     cd "$root" || exit 1
-    LC_ALL=C ls db/migrate || exit 1
-    cat db/migrate/*.rb db/release_migrations.json Gemfile.lock || exit 1
-    find app config lib -type f -print0 > "$tmpd/key.found" || exit 1
-    LC_ALL=C sort -z "$tmpd/key.found" > "$tmpd/key.sorted" || exit 1
-    xargs -0 cat < "$tmpd/key.sorted" || exit 1
-    for file in .env* .ruby-version .tool-versions; do [ ! -f "$file" ] || cat "$file" || exit 1; done
-    cat scripts/schema_parity/*.sh scripts/schema_parity/*.rb scripts/schema_parity/*.tsv || exit 1
+    set -- db/migrate db/release_migrations.json app ':(exclude)app/assets' config lib Gemfile.lock .ruby-version \
+      .tool-versions scripts/schema_parity/*.sh scripts/schema_parity/*.rb
+    git -c core.quotepath=off ls-files -c -o --exclude-standard -- "$@" > "$tmpd/key.files" || exit 1
+    git -c core.quotepath=off ls-files -d -- "$@" > "$tmpd/key.deleted" || exit 1
+    grep -vxF -f "$tmpd/key.deleted" "$tmpd/key.files" > "$tmpd/key.present" || [ $? -eq 1 ] || exit 1
+    git hash-object --no-filters --stdin-paths < "$tmpd/key.present" > "$tmpd/key.blobs" || exit 1
+    paste "$tmpd/key.present" "$tmpd/key.blobs" || exit 1
+    sed 's/$/ deleted/' "$tmpd/key.deleted" || exit 1
+    for file in .env*; do [ ! -f "$file" ] || cat "$file" || exit 1; done
     scrubbed ruby -v || exit 1
   ) > "$tmpd/key.input" && checksum "$tmpd/key.input"
 }
@@ -76,7 +80,8 @@ SELECT format('SELECT %L || (%s);', '#rows ', coalesce(string_agg(CASE relkind W
 
 record() {
   canon_dump "$1" > "$2.schema"
-  if [ "$(query "$1" "SELECT to_regclass('public.schema_migrations') IS NOT NULL")" = t ]; then
+  has_ledger="$(query "$1" "SELECT to_regclass('public.schema_migrations') IS NOT NULL")" || fail "could not look for the ledger of $1"
+  if [ "$has_ledger" = t ]; then
     query "$1" 'SELECT version FROM public.schema_migrations ORDER BY version' > "$2.ledger"
   else
     : > "$2.ledger"
@@ -84,11 +89,11 @@ record() {
   query "$1" "SELECT table_name || '.' || column_name FROM information_schema.columns WHERE table_schema = 'public' ORDER BY table_name, ordinal_position" > "$2.columns"
   query "$1" "$invalid_sql" > "$2.invalid"
   query "$1" "$rows_sql" > "$tmpd/rows.copy"
-  docker exec -i -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt < "$tmpd/rows.copy" > "$tmpd/rows.raw" \
+  dexec -i -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt < "$tmpd/rows.copy" > "$tmpd/rows.raw" \
     || fail "could not copy the rows of $1"
   expected="$(sed -n 's/^#rows //p' "$tmpd/rows.raw")"
   grep -v '^#rows ' "$tmpd/rows.raw" > "$tmpd/rows.data" || [ $? -eq 1 ]
-  ruby "$root/scripts/schema_parity/canon.rb" rows "$started" "$(date -u +%s)" < "$tmpd/rows.data" > "$tmpd/rows.canon" \
+  ruby "$root/scripts/schema_parity/canon.rb" rows "$started" "$(date -u +%s)" $template_window < "$tmpd/rows.data" > "$tmpd/rows.canon" \
     || fail "canon.rb rows failed on $1"
   LC_ALL=C sort "$tmpd/rows.canon" > "$2.rows"
   recorded="$(wc -l < "$2.rows" | tr -d ' ')"
@@ -100,7 +105,7 @@ canon_jobs() {
 }
 
 canon_message() {
-  ruby "$root/scripts/schema_parity/canon.rb" message "$started" "$(date -u +%s)" < "$1" > "$2" || fail "canon.rb message failed on $1"
+  ruby "$root/scripts/schema_parity/canon.rb" message "$started" "$(date -u +%s)" $template_window < "$1" > "$2" || fail "canon.rb message failed on $1"
 }
 
 failure_class() {
@@ -123,9 +128,9 @@ diff_parts() {
 
 hold() {
   [ -n "$holder_table" ] || return 0
-  docker exec sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qc \
+  dexec_for "$((holder_seconds + exec_timeout))" sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qc \
     "BEGIN; LOCK TABLE $holder_table IN ROW EXCLUSIVE MODE; SELECT pg_sleep($holder_seconds); COMMIT;" \
-    > /dev/null 2> "$tmpd/holder.err" &
+    > /dev/null 2> "$tmpd/holder.err" 3>&- &
   holder_pid=$!
   waited=0
   until [ "$(query "$1" "SELECT count(*) FROM pg_locks l JOIN pg_class c ON c.oid = l.relation WHERE c.relname = '$holder_table' AND l.mode = 'RowExclusiveLock' AND l.granted AND l.pid <> pg_backend_pid() AND l.database = (SELECT oid FROM pg_database WHERE datname = '$1')")" -ge 1 ]; do
@@ -141,7 +146,7 @@ hold() {
       echo "SELECT l.pid || ' ' || a.xact_start FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE l.locktype = 'relation' AND NOT l.granted AND l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND l.relation = '$holder_table'::regclass;"
       sleep 0.2
     done
-  ) | docker exec -i -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt > "$tmpd/watch.log" 2> "$tmpd/watch.err" &
+  ) 3>&- | dexec_for "$((holder_seconds + exec_timeout))" -i -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt > "$tmpd/watch.log" 2> "$tmpd/watch.err" 3>&- &
   watch_pid=$!
 }
 
@@ -159,12 +164,17 @@ unhold() {
   holder_pid=""
 }
 
+drop_sql() {
+  for db in "$@"; do
+    printf 'ALTER DATABASE %s IS_TEMPLATE false;\nDROP DATABASE IF EXISTS %s WITH (FORCE);\n' "$db" "$db"
+  done
+}
+
 release_harness() {
+  releasing=1
+  [ ! -s "$tmpd/timed_out" ] || echo "$check FAIL timed out: $(cat "$tmpd/timed_out")" >&3
   [ -z "$watch_pid" ] || { touch "$tmpd/watch.stop"; kill "$watch_pid" >/dev/null 2>&1 || true; }
   [ -z "$holder_pid" ] || kill "$holder_pid" >/dev/null 2>&1 || true
+  drop_sql "$@" $build_db $(printf '%s_rt ' "$@") | dexec -i sp-db psql -U postgres -q >/dev/null 2>&1 || true
   rm -rf "$tmpd"
-  for scratch in "$@"; do
-    docker exec sp-db dropdb -U postgres --if-exists --force "$scratch" >/dev/null 2>&1 || true
-    docker exec sp-db dropdb -U postgres --if-exists "${scratch}_rt" >/dev/null 2>&1 || true
-  done
 }
