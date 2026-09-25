@@ -30,8 +30,11 @@ RSpec.describe 'Api::V1::Users::AnalyticsConsent', type: :request do
     first_id = response.parsed_body.fetch('analytics_id')
     expect(first_id).to match(/\A[0-9a-f-]{36}\z/)
 
+    user.update!(utm_source: 'google', utm_medium: 'cpc', utm_campaign: '123456789')
+
     patch '/api/v1/users/me/analytics_consent', params: { consent: false }, headers: headers
     expect(response.parsed_body).to eq('consent' => false, 'analytics_id' => nil)
+    expect(user.reload.utm_campaign).to be_nil
     expect(ProductAnalyticsErasureJob).to have_been_enqueued.with(first_id)
 
     patch '/api/v1/users/me/analytics_consent', params: { consent: true }, headers: headers

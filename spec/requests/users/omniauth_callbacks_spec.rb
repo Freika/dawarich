@@ -101,7 +101,7 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
 
     include_examples 'successful OAuth authentication', :google_oauth2, 'Google'
 
-    it 'keeps the Google Ads campaign on a newly created web account' do
+    it 'does not attach a Google Ads campaign to an OAuth account without analytics consent' do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       get new_user_registration_path, params: { utm_source: 'google', utm_medium: 'cpc',
                                                  utm_campaign: '123456789' }
@@ -109,9 +109,7 @@ RSpec.describe 'Users::OmniauthCallbacks', type: :request do
       get '/users/auth/google_oauth2/callback'
 
       user = User.find_by!(email: email)
-      expect(user.attributes.slice('utm_source', 'utm_medium', 'utm_campaign')).to eq(
-        'utm_source' => 'google', 'utm_medium' => 'cpc', 'utm_campaign' => '123456789'
-      )
+      expect(user.attributes.slice('utm_source', 'utm_medium', 'utm_campaign').values).to all(be_nil)
     end
 
     context 'when an account with the email is pending deletion' do

@@ -21,8 +21,13 @@ class ProductAnalyticsConsent
         product_analytics_consented_at: consent ? (user.product_analytics_consented_at || Time.current) : nil,
         product_analytics_revoked_at: consent ? nil : Time.current,
         product_analytics_web_observed_at: consent ? user.product_analytics_web_observed_at : nil,
-        product_analytics_first_point_at: first_point_at,
-        product_analytics_activated_at: activated_at
+        product_analytics_first_point_at: consent ? first_point_at : nil,
+        product_analytics_activated_at: consent ? activated_at : nil,
+        utm_source: consent ? user.utm_source : nil,
+        utm_medium: consent ? user.utm_medium : nil,
+        utm_campaign: consent ? user.utm_campaign : nil,
+        utm_term: consent ? user.utm_term : nil,
+        utm_content: consent ? user.utm_content : nil
       )
     end
     ProductAnalyticsErasureJob.set(wait: 1.minute).perform_later(old_id) if old_id

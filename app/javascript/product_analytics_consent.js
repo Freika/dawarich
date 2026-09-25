@@ -14,12 +14,6 @@ function initializeProductAnalyticsConsent() {
   const account = root.dataset.analyticsAccount === "true"
   const serverChoice = root.dataset.analyticsConsent
   const savedChoice = localStorage.getItem(storageKey)
-  document
-    .querySelectorAll("[data-product-analytics-consent-field]")
-    .forEach((field) => {
-      field.value = ["true", "false"].includes(savedChoice) ? savedChoice : ""
-    })
-
   function addScript(src, attributes = {}) {
     const script = document.createElement("script")
     script.src = src
@@ -33,41 +27,54 @@ function initializeProductAnalyticsConsent() {
   function startConsentedScripts() {
     if (window.__dawarichConsentedScriptsStarted) return
     window.__dawarichConsentedScriptsStarted = true
-    addScript("https://scripts.simpleanalyticscdn.com/latest.js")
     addScript("https://rybbit.dwri.xyz/api/script.js", {
       "data-site-id": "87c1f532b59f",
     })
 
-    const partneroId = root.dataset.partneroId
-    if (partneroId) {
-      function makeQueue(queue) {
-        return (...args) => {
-          const call = { a: args, q: [] }
-          const index = queue.push(call)
-          return typeof index === "number" ? makeQueue(call.q) : index
+    // Product analytics consent alone does not authorize advertising or
+    // affiliate tracking. Those also require the site's marketing choice.
+    const marketingConsent = document.cookie
+      .split("; ")
+      .includes("dawarichAttributionConsent=true")
+    if (marketingConsent) {
+      const partneroId = root.dataset.partneroId
+      if (partneroId) {
+        function makeQueue(queue) {
+          return (...args) => {
+            const call = { a: args, q: [] }
+            const index = queue.push(call)
+            return typeof index === "number" ? makeQueue(call.q) : index
+          }
         }
+        const calls = []
+        const po = makeQueue(calls)
+        po.q = calls
+        window.__partnerObject = "po"
+        window.po = po
+        addScript("https://app.partnero.com/js/universal.js")
+        po("settings", "assets_host", "https://assets.partnero.com")
+        po("program", partneroId, "load")
       }
-      const calls = []
-      const po = makeQueue(calls)
-      po.q = calls
-      window.__partnerObject = "po"
-      window.po = po
-      addScript("https://app.partnero.com/js/universal.js")
-      po("settings", "assets_host", "https://assets.partnero.com")
-      po("program", partneroId, "load")
-    }
 
-    const googleAdsId = root.dataset.googleAdsId
-    if (googleAdsId && /^[A-Z]{2}-[A-Z0-9-]+$/.test(googleAdsId)) {
-      window.dataLayer = window.dataLayer || []
-      window.gtag = (...args) => {
-        window.dataLayer.push(args)
+      const googleAdsId = root.dataset.googleAdsId
+      if (googleAdsId && /^[A-Z]{2}-[A-Z0-9-]+$/.test(googleAdsId)) {
+        window.dataLayer = window.dataLayer || []
+        window.gtag = function () {
+          // biome-ignore lint/complexity/noArguments: Google Consent Mode requires an Arguments object.
+          window.dataLayer.push(arguments)
+        }
+        window.gtag("consent", "default", {
+          ad_storage: "granted",
+          ad_user_data: "granted",
+          ad_personalization: "granted",
+          analytics_storage: "granted",
+        })
+        window.gtag("js", new Date())
+        window.gtag("config", googleAdsId, { send_page_view: false })
+        addScript(
+          `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(googleAdsId)}`,
+        )
       }
-      window.gtag("js", new Date())
-      window.gtag("config", googleAdsId, { send_page_view: false })
-      addScript(
-        `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(googleAdsId)}`,
-      )
     }
 
     if (account && csrf) {
@@ -93,6 +100,11 @@ function initializeProductAnalyticsConsent() {
         if (!response.ok) throw new Error("Consent request failed")
       }
       localStorage.setItem(storageKey, String(choice))
+      if (!choice) {
+        for (const key of ["rybbit-visitor-id", "_gcl_ls"]) {
+          localStorage.removeItem(key)
+        }
+      }
       location.reload()
     } catch {
       error.hidden = false

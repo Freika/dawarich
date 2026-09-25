@@ -31,7 +31,6 @@
 
     <div class="card flex-shrink-0 w-full max-w-sm shadow-lg bg-base-100 px-5 py-5">
       <%= form_for(resource, as: resource_name, url: registration_path(resource_name), class: 'form-body', html: { data: { turbo: false } }) do |f| %>
-        <%= hidden_field_tag :product_analytics_consent, '', data: { product_analytics_consent_field: true } %>
         <%= render "devise/shared/error_messages", resource: resource %>
         <% if @invitation %>
           <%= f.hidden_field :invitation_token, value: params[:invitation_token] %>
@@ -83,6 +82,16 @@
           <% end %>
 
           <div class="cf-turnstile mt-4" data-sitekey="<%= ENV['TURNSTILE_SITE_KEY'] %>" data-theme="auto"></div>
+        <% end %>
+
+        <% unless DawarichSettings.self_hosted? %>
+          <div class="form-control mt-4">
+            <label class="label cursor-pointer items-start gap-3">
+              <%= check_box_tag :product_analytics_consent, 'true', false, class: 'checkbox checkbox-primary mt-1' %>
+              <span class="label-text leading-relaxed">Allow optional Cloud analytics (PostHog and Rybbit). If you also accepted marketing tracking on dawarich.app, Google Ads and Partnero may run. You can withdraw this choice later.</span>
+            </label>
+            <a href="https://dawarich.app/privacy-policy#cookies" class="link text-sm ml-9">Privacy details</a>
+          </div>
         <% end %>
 
         <div class="form-control mt-6">

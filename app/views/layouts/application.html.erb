@@ -21,19 +21,12 @@
 
     <%= render 'application/favicon' %>
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
-    <% if !DawarichSettings.self_hosted? %>
-      <script async src="https://cdn.paddle.com/paddle/v2/paddle.js" onload="
-        Paddle.Environment.set(<%= ENV.fetch('PADDLE_BILLING_ENVIRONMENT', 'production').to_json.html_safe %>);
-        Paddle.Initialize({ token: <%= (ENV['PADDLE_BILLING_CLIENT_TOKEN'] || '').to_json.html_safe %> });
-      "></script>
-    <% end %>
-
   </head>
 
   <body class='min-h-screen flex flex-col'>
     <% unless DawarichSettings.self_hosted? %>
       <div id="product-analytics-choice" hidden class="p-4 bg-base-200 border-b border-base-300" role="region" aria-label="Product analytics choice">
-        <p class="mb-2">Help improve Dawarich Cloud? Optional analytics measures signup, trial, and subscriptions. Location history, routes, email, and API keys are never sent to product analytics. You can change this choice at any time.</p>
+        <p class="mb-2">Allow optional product analytics? PostHog receives signup, trial, and subscription events. Self-hosted Rybbit measures visits. If you also accepted marketing tracking on dawarich.app, Google Ads and Partnero may run here. Location history, routes, email, and API keys are not sent to product analytics. You can withdraw this choice at any time.</p>
         <button type="button" data-analytics-choice="true" class="btn btn-primary mr-2">Allow analytics</button>
         <button type="button" data-analytics-choice="false" class="btn btn-outline">No thanks</button>
         <span id="product-analytics-choice-error" hidden role="alert">Could not save your choice. Please try again.</span>

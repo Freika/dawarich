@@ -94,18 +94,16 @@ RSpec.describe 'Users::AppleOauth', type: :request do
       expect(response.headers['Location']).to match(%r{(/|trial/resume)\z})
     end
 
-    it 'preserves the Google Ads campaign across the cross-site Apple callback' do
+    it 'does not attach a campaign without explicit analytics consent' do
       get new_user_registration_path, params: { utm_source: 'google', utm_medium: 'cpc',
                                                  utm_campaign: '123456789' }
       state = perform_request_phase
-      expect(cookies['apple_signup_campaign']).to be_present
+      expect(cookies['apple_signup_campaign']).to be_blank
 
       post '/users/auth/apple/callback', params: { id_token: 'fake-jwt', state: state }
 
       user = User.find_by!(uid: '000777.web.apple')
-      expect(user.attributes.slice('utm_source', 'utm_medium', 'utm_campaign')).to eq(
-        'utm_source' => 'google', 'utm_medium' => 'cpc', 'utm_campaign' => '123456789'
-      )
+      expect(user.attributes.slice('utm_source', 'utm_medium', 'utm_campaign').values).to all(be_nil)
     end
 
     it 'passes APPLE_WEB_SERVICES_ID as client_id to the verifier' do

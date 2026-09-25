@@ -1,6 +1,6 @@
 # Dawarich Cloud product analytics
 
-**Status:** Local implementation; existing PostHog project available, credentials and production deployment pending (2026-09-24).
+**Status:** Draft PR; consent gate and production verification pending (2026-09-25).
 
 The product analytics contract is defined in `/Users/frey/projects/multiplatform-app/docs/posthog-product-funnel-design.md`. Cloud owns account consent, a random PostHog distinct ID, and the event/property allowlist in `app/services/product_analytics.rb`. Mobile sends safe UI milestones to authenticated API endpoints. Rails emits signup, activation, and first confirmed mobile upload. Manager owns billing events and sends a signed callback; Cloud checks current consent before capture.
 
@@ -23,15 +23,19 @@ The following endpoints are added:
 - `PATCH /product_analytics_consent` and `POST /product_analytics_events` for session-based web choice and first observation.
 - `POST /api/v1/subscriptions/analytics_events` for a Manager-signed billing event. It accepts the existing subscription webhook secret and a JWT with purpose `product_analytics_billing`.
 
-The web application and map layouts load legacy website measurement scripts only after consent. The PostHog Ruby final send hook strips request URL, IP, user agent, and any field outside the event allowlist. The mobile app must not contain PostHog credentials.
+The web application and map layouts load self-hosted Rybbit only after product analytics consent. Google Ads and Partnero additionally require the site's shared attribution consent cookie. The unused global Paddle script was removed from the Cloud layout; payment checkout remains in Manager. The PostHog Ruby final send hook strips request URL, IP, user agent, and any field outside the event allowlist. The mobile app must not contain PostHog credentials.
 
 ## Google Ads attribution
 
 Set the **Final URL suffix** on each active Google Ads Search campaign to
 `utm_source=google&utm_medium=cpc&utm_campaign={campaignid}`. Google replaces
 `{campaignid}` with the numeric campaign ID. The marketing site keeps the
-landing UTM values on links to `my.dawarich.app`; Cloud stores those values on
-the user at web signup. For consenting users, `user_signed_up`, `trial_started`,
+landing UTM values on links to `my.dawarich.app` only after site consent. Site
+sets a first-party `dawarichAttributionConsent` cookie on `.dawarich.app` after
+acceptance. Cloud ignores UTM and `_gl` without that cookie, and stores UTM on
+the account only after a separate, unchecked-by-default product analytics checkbox at email signup.
+OAuth signups currently have no account opt-in before callback, so they are
+intentionally unattributed. For consenting users, `user_signed_up`, `trial_started`,
 `paid_conversion`, `payment_charged`, and `payment_refunded` events include
 `ad_source=google_ads` and, when valid, `ad_campaign_id`. Only a decimal campaign
 ID of at most 20 digits is sent; free-form UTM text and Google click IDs are
@@ -50,6 +54,7 @@ the same pseudonymous ID and campaign ID. Check a declined signup sends none.
 1. Run migrations in Cloud and Manager. Ensure their worker queues run.
 2. Confirm no event for undecided/declined accounts or self-hosted instances. Grant consent, capture a safe event, and inspect the actual EU PostHog payload.
 3. Withdraw consent and verify both immediate capture refusal and successful asynchronous deletion of the old distinct ID and its events.
+   Withdrawal also clears campaign fields from the account and the Rybbit ID from browser storage.
 4. Run the consent, activation, and billing callback request specs. Check signup, import completion, ten non-import points, and first nonzero mobile upload with iOS and Android headers.
 5. Inspect `ProductAnalyticsErasureJob` retry failures and billing callback failures. Reconcile the consenting PostHog cohort against Manager's all-customer ledger without treating their denominators as identical.
 
