@@ -1,6 +1,6 @@
 # Dawarich Cloud staging on the existing gigawarich Dokploy host.
 # Create and restore dedicated staging PostGIS and Redis services before deploying
-# this Compose service. See docs/dokploy-staging.md for the release and cutover order.
+# this Compose service. Run the release task once after restoring staging data.
 name: dawarich-staging
 
 x-app: &app
@@ -39,17 +39,12 @@ x-app: &app
     RAILS_MAX_THREADS: ${RAILS_MAX_THREADS:-5}
     BACKGROUND_PROCESSING_CONCURRENCY: ${BACKGROUND_PROCESSING_CONCURRENCY:-3}
     SIDEKIQ_METRICS_URL: http://worker:9394/metrics
-  volumes:
-    - watched-imports:/var/app/tmp/imports/watched
   networks:
     - dokploy-network
 
 networks:
   dokploy-network:
     external: true
-
-volumes:
-  watched-imports:
 
 services:
   web:
@@ -58,7 +53,7 @@ services:
     expose:
       - "3000"
     healthcheck:
-      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--header", "X-Forwarded-Proto: https", "http://127.0.0.1:3000/api/v1/health"]
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "--header", "Host: ${STAGING_HOST:?set STAGING_HOST}", "--header", "X-Forwarded-Proto: https", "http://127.0.0.1:3000/api/v1/ready"]
       interval: 15s
       timeout: 5s
       start_period: 60s
