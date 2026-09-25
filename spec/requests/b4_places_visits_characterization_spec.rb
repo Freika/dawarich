@@ -28,6 +28,25 @@ RSpec.describe 'B4 places and visits characterization', type: :request do
     end
   end
 
+  describe 'DELETE /places/:id' do
+    it 'returns to the requested page, which shows the empty state once its last place is gone' do
+      places = create_list(:place, 21, user:)
+      get places_path, params: { page: 2 }
+      last_name = Nokogiri::HTML(response.body).at_css('tbody tr td:first-child').text
+      last_place = places.find { |place| place.name == last_name }
+
+      delete place_path(last_place, page: 2)
+
+      expect(response).to redirect_to(places_url(page: 2))
+      expect(response).to have_http_status(:see_other)
+      follow_redirect!
+      list = Nokogiri::HTML(response.body).at_css('#places')
+      expect(list.css('h1').map { |heading| heading.text.strip }).to eq(['Hello there!'])
+      expect(list.css('table')).to be_empty
+      expect(user.places.count).to eq(20)
+    end
+  end
+
   describe 'GET /places/:id' do
     it 'shows only active visits in the drawer and active visit count' do
       place = create(:place, user:, name: 'B4 Cafe')
