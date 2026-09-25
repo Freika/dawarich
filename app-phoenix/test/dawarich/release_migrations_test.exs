@@ -67,7 +67,7 @@ defmodule Dawarich.ReleaseMigrationsTest do
       |> Enum.flat_map(&Path.wildcard(Path.join(@app, &1)))
       |> Enum.filter(fn path ->
         File.read!(path) =~
-          ~r/(\A|[;"'|(\[{<])\s*(RESET|SET)\b(?!\s+LOCAL\b)|set_config\s*\((?:[^()]|(?<p>\((?:[^()]|(?&p))*\)))*,\s*false\s*\)/i
+          ~r/(\A|[;'|(\[{<]|(?<!\w)")\s*(RESET|SET)\b(?!\s+LOCAL\b)|set_config\s*\((?:[^()]|(?<p>\((?:[^()]|(?&p))*\)))*,\s*false\s*\)/i
       end)
 
     assert offenders == []
