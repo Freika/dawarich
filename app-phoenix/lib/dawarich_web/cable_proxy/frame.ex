@@ -50,6 +50,10 @@ defmodule DawarichWeb.CableProxy.Frame do
 
   defp frame(_buffer), do: :more
 
+  defp known(fin, opcode, payload, _rest)
+       when opcode >= 8 and (fin == 0 or byte_size(payload) > 125),
+       do: :error
+
   defp known(fin, opcode, payload, rest) do
     case Map.fetch(@kinds, opcode) do
       {:ok, kind} -> {:ok, {fin == 1, kind, payload}, rest}

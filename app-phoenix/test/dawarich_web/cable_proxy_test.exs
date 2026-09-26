@@ -2,6 +2,7 @@ defmodule DawarichWeb.CableProxyTest do
   use ExUnit.Case, async: true
 
   import Dawarich.Test.RawHTTP
+  import ExUnit.CaptureLog
 
   alias Dawarich.Test.FakeCable
   alias DawarichWeb.{CableProxy, RailsProxy}
@@ -15,7 +16,9 @@ defmodule DawarichWeb.CableProxyTest do
     {"X-Dawarich-Remote-Addr", "6.6.6.6"}
   ]
 
-  defp proxy(upstream_port) do
+  @key "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+
+  defp serve(upstream_port) do
     bandit =
       start_supervised!(
         {Bandit,
@@ -24,8 +27,10 @@ defmodule DawarichWeb.CableProxyTest do
       )
 
     {:ok, {_ip, port}} = ThousandIsland.listener_info(bandit)
-    port
+    {bandit, port}
   end
+
+  defp proxy(upstream_port), do: upstream_port |> serve() |> elem(1)
 
   test "the upgrade reaches Puma with the client's headers, and Puma's subprotocol reaches the client" do
     port = proxy(FakeCable.start(self()))
@@ -50,6 +55,38 @@ defmodule DawarichWeb.CableProxyTest do
     assert {"x-forwarded-for", "203.0.113.9"} in upstream
     assert {"host", "127.0.0.1:#{port}"} in upstream
     assert for({"x-dawarich-remote-addr", value} <- upstream, do: value) == ["127.0.0.1"]
+    assert for({"connection", value} <- upstream, do: value) == ["Upgrade"]
+  end
+
+  for {form, version, headers} <- [
+        {"without a key", "HTTP/1.1", "Sec-WebSocket-Version: 13\r\n"},
+        {"of version 8", "HTTP/1.1", "Sec-WebSocket-Version: 8\r\n" <> @key},
+        {"over HTTP/1.0", "HTTP/1.0", "Sec-WebSocket-Version: 13\r\n" <> @key}
+      ] do
+    test "an upgrade #{form} gets 400 and never reaches Puma" do
+      upstream = listen()
+      {bandit, port} = serve(upstream.port)
+      client = connect(port)
+
+      log =
+        capture_log([level: :error], fn ->
+          send_raw(client, [
+            "GET /cable #{unquote(version)}\r\nHost: a\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n",
+            unquote(headers),
+            "\r\n"
+          ])
+
+          assert {400, _headers, _rest} = read_response_head(client)
+          {:ok, pids} = ThousandIsland.connection_pids(bandit)
+          refs = Enum.map(pids, &Process.monitor/1)
+          :ok = :gen_tcp.close(client)
+          for ref <- refs, do: assert_receive({:DOWN, ^ref, :process, _, _}, 5_000)
+        end)
+
+      assert :gen_tcp.accept(upstream.listen, 100) == {:error, :timeout}
+      refute log =~ "UpgradeError"
+      refute log =~ "DawarichWeb"
+    end
   end
 
   test "frames flow both ways and Puma's close code reaches the client" do

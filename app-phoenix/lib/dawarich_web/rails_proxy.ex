@@ -25,14 +25,16 @@ defmodule DawarichWeb.RailsProxy do
 
   @impl true
   def call(conn, upstream) do
-    case Upstream.open(upstream) do
-      {:ok, socket} ->
-        if Headers.websocket_upgrade?(conn),
-          do: DawarichWeb.CableProxy.upgrade(conn, socket),
-          else: forward(conn, socket)
+    if Headers.websocket_upgrade?(conn),
+      do: DawarichWeb.CableProxy.upgrade(conn, upstream),
+      else: with_upstream(conn, upstream, &forward/2)
+  end
 
-      {:error, reason} ->
-        bad_gateway(conn, reason)
+  @doc false
+  def with_upstream(conn, upstream, fun) do
+    case Upstream.open(upstream) do
+      {:ok, socket} -> fun.(conn, socket)
+      {:error, reason} -> bad_gateway(conn, reason)
     end
   end
 

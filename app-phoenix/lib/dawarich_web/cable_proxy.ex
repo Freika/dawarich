@@ -10,7 +10,17 @@ defmodule DawarichWeb.CableProxy do
 
   def upgrade_options, do: [timeout: :infinity, compress: false]
 
-  def upgrade(conn, socket) do
+  def upgrade(conn, upstream) do
+    case WebSockAdapter.UpgradeValidation.validate_upgrade(conn) do
+      :ok ->
+        RailsProxy.with_upstream(conn, upstream, &handshake/2)
+
+      {:error, _reason} ->
+        conn |> put_resp_content_type("text/plain") |> send_resp(400, "Bad Request") |> halt()
+    end
+  end
+
+  defp handshake(conn, socket) do
     with :ok <- Upstream.send_head(socket, "GET", Headers.target(conn), upgrade_headers(conn)),
          {:ok, 101, headers, rest} <- Upstream.read_head(socket) do
       %{conn | resp_headers: subprotocol(headers)}
@@ -31,7 +41,9 @@ defmodule DawarichWeb.CableProxy do
   end
 
   defp upgrade_headers(conn) do
-    Enum.reject(Headers.request(conn), fn {name, _} -> name == "sec-websocket-extensions" end) ++
+    Enum.reject(Headers.request(conn), fn {name, _} ->
+      name in ["connection", "sec-websocket-extensions"]
+    end) ++
       [{"connection", "Upgrade"}, {"upgrade", "websocket"}]
   end
 
