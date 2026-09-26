@@ -21,7 +21,7 @@ module NonTransactionalConcurrency
 
   def self.delete_users_created_after(user_id)
     created = User.unscoped.where('id > ?', user_id)
-    Import.where(user_id: created.select(:id)).delete_all
+    [Import, Export, Place].each { |model| model.where(user_id: created.select(:id)).delete_all }
     created.delete_all
   end
 end
