@@ -12,6 +12,28 @@ rel=_build/prod/rel/dawarich/bin/dawarich
 work="$(mktemp -d)"
 export DAWARICH_COOKIE_FILE="$work/cookie"
 export DATABASE_NAME="${PHOENIX_TEST_DATABASE:-dawarich_phoenix_test}"
+
+status3_db="${DATABASE_NAME}_a0c_status3"
+PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" \
+  -U "${DATABASE_USERNAME:-postgres}" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $status3_db" >/dev/null
+PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" \
+  -U "${DATABASE_USERNAME:-postgres}" -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $status3_db" >/dev/null
+set +e
+DATABASE_NAME="$status3_db" "$rel" eval 'Dawarich.Release.halt_unless_ready()' >"$work/status3.out" 2>&1
+status3=$?
+set -e
+PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" \
+  -U "${DATABASE_USERNAME:-postgres}" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $status3_db" >/dev/null
+[ "$status3" -eq 3 ] \
+  || { echo "halt_unless_ready did not exit 3 for a database missing the phoenix schema (got $status3)"; cat "$work/status3.out" >&2; exit 1; }
+
+set +e
+DATABASE_PORT=1 "$rel" eval 'Dawarich.Release.halt_unless_ready()' >"$work/status5.out" 2>&1
+status5=$?
+set -e
+[ "$status5" -eq 5 ] \
+  || { echo "halt_unless_ready did not exit 5 without a database connection (got $status5)"; cat "$work/status5.out" >&2; exit 1; }
+
 DAWARICH_RAILS_ARGS="$(printf '%s\037' sh -c 'printf "M\303\274nchen\n"; echo "args:[$1][$2][$3] $#"; echo "cookie:${RELEASE_COOKIE:-unset}"; while [ ! -f "$0" ]; do sleep 0.1; done; exit 7' "$work/go" "" x "")"
 export DAWARICH_RAILS_ARGS
 
