@@ -7,10 +7,10 @@ RSpec.describe 'Generation never builds a track across or inside a kept track of
   let(:import) { create(:import, user: user, source: :owntracks, name: 'phone.rec') }
   let(:base) { 3.days.ago.beginning_of_hour.to_i }
 
-  def points_at(offsets, import_id: nil, tracker_id: 'phone')
+  def points_at(offsets, import_id: nil, tracker_id: 'phone', lat: 52.5)
     offsets.map do |offset|
       create(:point, user: user, import_id: import_id, tracker_id: tracker_id, timestamp: base + offset,
-                     lonlat: "POINT(#{13.4 + (offset * 0.00001)} 52.5)")
+                     lonlat: "POINT(#{13.4 + (offset * 0.00001)} #{lat})")
     end
   end
 
@@ -64,6 +64,16 @@ RSpec.describe 'Generation never builds a track across or inside a kept track of
 
     expect(track_ids(orphans).uniq.size).to eq(1)
     expect(track_ids(orphans)).to all(be_present)
+  end
+
+  it 'builds no track from orphans recorded at exactly the kept track timestamps' do
+    kept = corrected_track([0, 60, 120, 180])
+    duplicates = points_at([0, 60, 120, 180], import_id: import.id, lat: 52.5001)
+
+    run_leftover_generation
+
+    expect(overlapping(kept)).to be_empty
+    expect(track_ids(duplicates)).to all(be_nil)
   end
 
   shared_examples 'orphans interleaved with a kept track' do
