@@ -80,6 +80,8 @@ def evaluate(dir, declared)
   summaries = matches(dir, 'summary*.txt')
   summary = only(summaries, 'summary*.txt', problems)
   aborted, results = lines_of(summary).partition { _1.start_with?('ABORTED') }
+  preflight = lines_of(only(matches(dir, 'inventory_preflight.out'), 'inventory_preflight.out', problems))
+  problems.concat(preflight.grep(/\Amatrix inventory preflight: (?!ok,)/))
   problems << harness_problem(proof) if harness_problem(proof)
   problems << 'no --list selection' if listed.empty?
   problems << 'no summary file' if summaries.empty?

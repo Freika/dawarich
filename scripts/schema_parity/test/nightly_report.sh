@@ -45,6 +45,7 @@ leg() {
   printf 'exit=%s\nstarted=1000\nfinished=4723\nrefs_reused=3\nrefs_computed=1\n' "$2" > "$dir/nightly/proof.env"
   printf '%s\n' "$3" > "$dir/ecto/summary.$shard-2.txt"
   echo "total 5" > "$dir/inventory_preflight.txt"
+  echo "matrix inventory preflight: ok, 5 checks" > "$dir/inventory_preflight.out"
 }
 
 all_green() {
@@ -213,6 +214,15 @@ rm "$scratch/artifacts/pg14-shard1/nightly/proof.env"
 output="$(LANG=en_US.UTF-8 ruby "$report" leg "$scratch/artifacts/pg14-shard1" 2>&1)"
 [ $? -eq 1 ] && contains "$output" "no proof record"
 verdict $? "leg mode fails a shard whose proof never ran"
+
+all_green
+rm -rf "$scratch/artifacts/pg17-shard2/nightly" "$scratch/artifacts/pg17-shard2/ecto"
+echo 'matrix inventory preflight: supported state 1.14.0 has no snapshot (expected 1.14.0.image.sql.gz)' \
+  > "$scratch/artifacts/pg17-shard2/inventory_preflight.out"
+aggregate
+[ "$status" -eq 1 ] &&
+  contains "$output" "pg17-shard2: matrix inventory preflight: supported state 1.14.0 has no snapshot"
+verdict $? "a failed preflight is named in the report"
 
 echo "$failures failed"
 [ "$failures" -eq 0 ]

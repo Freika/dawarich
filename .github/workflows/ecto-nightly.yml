@@ -101,7 +101,10 @@ jobs:
           [ "$(docker exec sp-redis redis-cli ping | tr -d '\r')" = PONG ] || { echo "sp-redis is not ready"; exit 1; }
 
       - name: Check the matrix inventory
-        run: ruby scripts/schema_parity/matrix_inventory_preflight.rb
+        run: |
+          mkdir -p tmp/schema_parity
+          ruby scripts/schema_parity/matrix_inventory_preflight.rb 2>&1 | tee tmp/schema_parity/inventory_preflight.out
+          exit "${PIPESTATUS[0]}"
 
       - name: Prove shard ${{ matrix.shard }} of ${{ env.SHARDS }} on PostgreSQL ${{ matrix.pg }}
         id: prove
@@ -127,6 +130,7 @@ jobs:
           overwrite: true
           path: |
             tmp/schema_parity/inventory_preflight.txt
+            tmp/schema_parity/inventory_preflight.out
             tmp/schema_parity/nightly/
             tmp/schema_parity/ecto/summary.*.txt
             tmp/schema_parity/ecto/prove.log

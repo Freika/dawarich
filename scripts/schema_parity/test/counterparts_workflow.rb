@@ -41,7 +41,7 @@ check('every action is pinned to a commit with its version in a comment') do
   uses = text.lines.grep(/^\s*(?:- )?uses:/)
   uses.any? && uses.all? { _1.match?(PIN) }
 end
-check('every action shared with ecto-nightly.yml uses the same commit and version') do
+check('every action is also pinned in ecto-nightly.yml, at the same commit and version') do
   theirs = nightly.scan(PIN).to_h
   shared = text.scan(PIN).select { theirs.key?(_1.first) }
   shared.any? && shared.size == text.scan(PIN).size && shared.all? { |action, pin| theirs[action] == pin }
@@ -72,9 +72,10 @@ check('the server starts after the selection and before the proof, which runs th
     step.call('Prove the upgrade sample')['run'].strip ==
       'exec scripts/schema_parity/ci/prove_shard.sh $(cat "$RUNNER_TEMP/sample.txt")'
 end
-check('the summary needs one ok line per sampled check and no unported result, compared even after a failure') do
+check('the proved list is the sample, with one ok line per check and no unported result, even after a failure') do
   verify = step.call('Compare the summary')
   verify['if'] == 'always()' && verify['id'] == 'verify' &&
+    verify['run'].include?('cmp "$RUNNER_TEMP/sample.txt" tmp/schema_parity/nightly/list.txt') &&
     verify['run'].include?('ruby scripts/schema_parity/ci/nightly_report.rb leg tmp/schema_parity') &&
     verify['run'].include?("grep -F 'unported@' tmp/schema_parity/ecto/summary.txt")
 end
@@ -108,12 +109,13 @@ check('the harness self-tests need no Docker, no Bundler and no path filter, und
   ruby = tests['steps'].find { _1['uses'].to_s.start_with?('ruby/setup-ruby@') }
   ruby && !ruby.fetch('with', {}).key?('bundler-cache') && tests.dig('env', 'LANG') == 'en_US.UTF-8' &&
     test_runs.none? { _1.match?(/docker|infra\.sh|pg_major|bundle/) } && !tests.key?('services') &&
-    !tests.key?('needs') && !tests.key?('if')
+    !tests.key?('needs')
 end
 check('pg_major.sh runs in its own Docker job') do
   docker_tests.fetch('steps').filter_map { _1['run'] }.map(&:strip) == ['sh scripts/schema_parity/test/pg_major.sh'] &&
     docker_tests.dig('env', 'LANG') == 'en_US.UTF-8'
 end
+check('no job has a job-level if that could skip it') { jobs.values.none? { _1.key?('if') } }
 check('no step is allowed to fail softly and no secret is used') do
   !text.include?('continue-on-error') && !text.include?('secrets.')
 end

@@ -71,10 +71,19 @@ end
 check('no step is allowed to fail softly and no secret is used') do
   !text.include?('continue-on-error') && !text.include?('secrets.')
 end
+check('only the report has a job-level if, and it runs always') do
+  jobs.keys.sort == %w[prove report] && !prove.key?('if') && report['if'] == 'always()'
+end
 check('the servers start and are checked before the preflight, which runs before the proof') do
   index.call('Start PostgreSQL') < index.call('Check the server') &&
     index.call('Check the server') < index.call('Check the matrix inventory') &&
     index.call('Check the matrix inventory') < index.call('Prove shard')
+end
+check('the preflight output is kept for the evidence, and the preflight status still fails the step') do
+  run = step.call('Check the matrix inventory')['run']
+  run.include?('matrix_inventory_preflight.rb 2>&1 | tee tmp/schema_parity/inventory_preflight.out') &&
+    run.include?('exit "${PIPESTATUS[0]}"') &&
+    step.call('Upload the shard').dig('with', 'path').split("\n").include?('tmp/schema_parity/inventory_preflight.out')
 end
 check('the proof step becomes the shard wrapper, so a cancel reaches it, and the summary is compared anyway') do
   step.call('Prove shard')['run'].strip == 'exec scripts/schema_parity/ci/prove_shard.sh' &&

@@ -78,7 +78,16 @@ migrator_gems_bumped = changed.include?('Gemfile.lock') && begin
   abort "git diff #{range} -- Gemfile.lock failed" unless status.success?
   lock_diff.match?(/^[-+] {4}(?:#{migrator_gems.join('|')}) \(/)
 end
-full = migrator_gems_bumped || changed.any? { _1.match?(machinery) }
+pin_bumped = lambda do |path|
+  range = ARGV[1].to_s
+  next false if range.empty? || !%w[ecto-counterparts ecto-nightly].map { ".github/workflows/#{_1}.yml" }.include?(path)
+
+  diff, status = Open3.capture2('git', '-C', root, 'diff', '--no-color', '--no-ext-diff', '--no-renames', '-U0', range,
+                                '--', path, err: File::NULL)
+  lines = diff.lines(chomp: true).drop_while { !_1.start_with?('@@') }.grep(/\A[-+]/)
+  status.success? && lines.any? && lines.all?(/\A[-+]\s*(?:-\s+)?uses:\s+\S+(?:\s+#.*)?\z/)
+end
+full = migrator_gems_bumped || changed.any? { _1.match?(machinery) && !pin_bumped.call(_1) }
 picked = listed.select do |check|
   release = check[/\A(?:step|rows|contended):([^:~]+?)(?:--|~|:|\z)/, 1]
   full || (release && releases.include?(release)) || fixture_checks.include?(check) ||

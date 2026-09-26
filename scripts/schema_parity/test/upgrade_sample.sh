@@ -88,7 +88,7 @@ contains "$output" "upgrade:0.37.2@20260108192905"
 verdict $? "the interrupted upgrade loses its snapshot with the floor (said: $output)"
 
 fresh_copy
-rm "$repo/db/release_snapshots/$latest.image.sql.gz"
+rm -f "$repo/db/release_snapshots/$latest.image.sql.gz" "$repo/db/release_snapshots/$latest.replay.sql.gz"
 expect_refusal "removing the newest state's snapshot" "upgrade:$latest"
 
 fresh_copy

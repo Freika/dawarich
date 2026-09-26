@@ -29,7 +29,7 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-mkdir -p "$scratch/bin"
+mkdir -p "$scratch/bin" "$scratch/tmp"
 cat > "$scratch/bin/docker" <<EOF
 #!/bin/sh
 case "\$*" in
@@ -54,7 +54,8 @@ step() {
   (
     cd "$step_root" || exit 1
     env PATH="$scratch/bin:$PATH" LANG=en_US.UTF-8 SP_PG_MAJOR=17 SP_DB_CONTAINER="$run-db" SP_DB_PORT=1 \
-      SP_REDIS_CONTAINER="$run-redis" SP_REDIS_PORT=2 SP_NETWORK="$run" SP_WORK="$work" SHARD=1 SHARDS=67 "$@" \
+      SP_REDIS_CONTAINER="$run-redis" SP_REDIS_PORT=2 SP_NETWORK="$run" SP_WORK="$work" TMPDIR="$scratch/tmp" \
+      SHARD=1 SHARDS=67 "$@" \
       perl -e '$SIG{INT} = "DEFAULT"; exec @ARGV' sh -c 'echo $$ > "$0"; exec bash -e "$1"' "$scratch/pid" "$scratch/step.sh"
   ) > "$scratch/step.out" 2>&1 &
   launched=$!
@@ -122,6 +123,8 @@ wait "$launched"
 [ -n "$guard" ] && kill -TERM "$guard"
 [ -n "$(record started)" ] && [ -z "$(record exit)" ]
 verdict $? "a killed step leaves a proof record without an exit ($(tr '\n' ' ' < "$work/nightly/proof.env" 2>&1))"
+ls -d "$scratch/tmp"/sp-prove-shard.* >/dev/null 2>&1
+verdict $? "the killed wrapper's temporary directory is left inside the test's scratch, which the test removes"
 output="$(LANG=en_US.UTF-8 ruby "$lib/ci/nightly_report.rb" leg "$work" 2>&1)"
 case "$output" in
   *"the proof step stopped before the harness exited"*) pass "the report names the interrupted proof" ;;

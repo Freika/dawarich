@@ -835,7 +835,8 @@ is unproven.
 - Diffs go to `tmp/schema_parity/ecto/diffs/`. Rails references are cached in `tmp/schema_parity/ecto/ref/`, keyed
   by the check's own inputs (snapshot, fixture, `.env`) and the code key: the SHA-1 of the working-tree bytes of
   `db/migrate`, `db/release_migrations.json`, `app` (without `app/assets`), `config`, `lib`, `Gemfile.lock`,
-  `.ruby-version`, `.tool-versions` and the harness scripts, plus the `.env*` files, `ruby -v` and `SP_PG_MAJOR`, so
+  `.ruby-version`, `.tool-versions` and the harness scripts (every `.sh` and `.rb` under `scripts/schema_parity/`,
+  `ci/` and `test/` included), plus the `.env*` files, `ruby -v` and `SP_PG_MAJOR`, so
   each PostgreSQL major keeps its own references and CI cache. The canonical-dump
   memo `tmp/schema_parity/canon/` is content-addressed. The CI job caches both under `ecto-ref-<os>-<code key>`.
 - Each starting point (snapshot, migrated-to version, extra ledger row, `~shifted`, fixture, `.env`) is built once as
@@ -874,9 +875,10 @@ awk '$2 == "start" { s[$4] = $3 } $2 == "end" { split($4, k, ":"); t[k[1]] += $3
 
 **Shard sizing.** The non-contended checks need about 5250 lane-seconds cold and the contended ones about 1120 s.
 With the default 2 lanes of a 4-core runner, one shard per PostgreSQL version needs about 5250 / 2 + 1120 ≈ 3750 s
-(≈ 1 h). The nightly (see "Nightly matrix") starts with two shards per PostgreSQL version under a 180-minute job
-timeout, because PostgreSQL 14 and the runner's Docker Engine are unmeasured. Keep two only if the first cold Actions
-run keeps every job under 90 min; otherwise use four and measure again.
+(≈ 1 h). The nightly (see "Nightly matrix") runs two shards per PostgreSQL version under a 180-minute job timeout.
+PostgreSQL 14 has been measured locally and is as fast as 17 (see "Calibration" there); the runner's Docker Engine
+is still unmeasured. Keep two only if the first cold Actions run keeps every job under 90 min; otherwise use four
+and measure again.
 
 **PostgreSQL major.** `SP_PG_MAJOR` selects the server; every harness script, `infra.sh` included, reads it and
 rejects anything but `14` or `17` (an empty value too). Unset means `17`.
@@ -935,6 +937,11 @@ activates when `feat/phoenix-port` merges into the default branch.
   task, `app-phoenix/config/`, `mix.exs`, `mix.lock`, `app-phoenix/.tool-versions`, `db/release_migrations.json`,
   `db/release_snapshots/`, `.env.development`, `.ruby-version`, the workflow file and every script directly in
   `scripts/schema_parity/`.
+- **Action pin bumps:** a diff to `ecto-counterparts.yml` or `ecto-nightly.yml` whose changed lines are all `uses:`
+  lines (what Dependabot sends) selects only `fresh`; the upgrade sample and the harness jobs below still run. Any
+  other edit to `ecto-counterparts.yml` selects every check. When the diff range is missing or git cannot read the
+  diff, the file is treated as edited (every check). `ecto-nightly.yml` is not a shared input: its edits select only
+  `fresh`, and `harness-tests` checks its structure.
 - **`Gemfile.lock`:** a diff that changes the version of `rails`, `activerecord`, `activesupport`, `activemodel`,
   `railties`, `pg`, `strong_migrations` or `data_migrate` selects every check. Any other `Gemfile.lock` change, and Rails
   app code (`app/`, `lib/`, `config/`), select only `fresh`; the released migrations are then proven by the push run
@@ -962,8 +969,8 @@ The same workflow has three more jobs, which run whatever the diff:
   running fewer. To retire one of those snapshots, change the sample in that file in the same pull request. The proof
   step is `exec scripts/schema_parity/ci/prove_shard.sh <checks>`: the nightly wrapper, which proves the given checks
   instead of a shard, keeps the TERM relay and writes the same `nightly/` record. `ci/nightly_report.rb leg` then
-  requires one `ok` line per check, in order, with no `ABORTED` line, and any `unported@` in the summary fails the
-  step as well: a declared unported effect is not acceptable on these paths. The cache follows the nightly: only
+  requires one `ok` line per check, in order, with no `ABORTED` line; `cmp` requires the list the wrapper recorded
+  to be the selected sample byte for byte; and any `unported@` in the summary fails the step as well: a declared unported effect is not acceptable on these paths. The cache follows the nightly: only
   `tmp/schema_parity/ecto/ref`, under the exact key
   `ecto-ref-sample-v<REF_CACHE_FORMAT>-<os>-<runner image>-<ISO year-week>-pg<major>-<inputs>` with the nightly's
   `ci/ref_cache_key.sh` inputs, saved only after a green leg on a miss. Each leg uploads `upgrade-sample-pg<major>`
@@ -971,7 +978,8 @@ The same workflow has three more jobs, which run whatever the diff:
   changed-release checks stay with the selection above.
 - **Harness tests** (`harness-tests`) run every script under `scripts/schema_parity/test/` except `pg_major.sh`:
   `prove_term.sh`, `prove_shard.sh`, `nightly_report.sh`, `nightly_workflow.rb`, `counterparts_workflow.rb`,
-  `matrix_inventory_preflight.sh` and `upgrade_sample.sh`. They need no Docker, Bundler or database and take about a
+  `matrix_inventory_preflight.sh`, `upgrade_sample.sh` and `pr_checks.sh` (the pin-bump rule above, on synthetic
+  diffs in a throwaway repository). They need no Docker, Bundler or database and take about a
   minute, so the job can be a required check.
 - **Harness tests (Docker)** (`harness-docker-tests`) run `pg_major.sh`, which starts PostgreSQL 14 and 17 containers
   of its own. It runs here rather than in the nightly because `infra.sh` and `lib.sh` change in pull requests, and
@@ -1021,12 +1029,42 @@ on manual dispatch, with a read-only token. A newer run of the same ref cancels 
 - **Activation.** GitHub runs `schedule` only from the default branch, so nothing runs before `feat/phoenix-port` is
   merged there. GitHub may also delay or drop a scheduled run, and a dropped run leaves no report behind. Check the
   schedule history (`gh run list --workflow ecto-nightly.yml --event schedule`) rather than trusting the absence of
-  a red run.
+  a red run. `workflow_dispatch` also needs the file on the default branch, so until the merge the nightly has no
+  GitHub run at all: the evidence is the pull request's `ecto-counterparts`, `ecto-upgrade-sample`, `harness-tests`
+  and `harness-docker-tests` jobs plus local shard runs (see "Calibration"). Do not describe a nightly as running
+  before the schedule history shows one.
 - **Matrix.** Four jobs, `pg14-shard1`, `pg14-shard2`, `pg17-shard1` and `pg17-shard2`, each on its own runner with the
   default `sp-db`/`sp-redis`. `fail-fast` is off, so every server and shard reports. Each job has 180 minutes.
+- **Calibration** (local, 2026-09-26, 267 checks). Each shard ran the workflow's own step blocks in order
+  (`SHARD=k SHARDS=2`, `exec ci/prove_shard.sh`, two lanes) on containers of its own, with a fresh stack and work
+  directory per run and the reference cache emulated under the exact key. The two majors ran side by side on an
+  18-core M5 Pro (OrbStack; the `linux/amd64` images run emulated) with other sessions loading the machine. Setup is
+  `infra.sh up`, the server check and the preflight; the Actions setup steps (apt, Ruby, BEAM, Mix) are not in it.
+  Peak memory is the harness's process tree plus the PostgreSQL container, sampled every ~13 s.
+
+  | Run | PG | Shard | Checks | Setup | Proof | Lanes / contended phase | Refs reused / computed | Peak memory |
+  |---|---|---|---|---|---|---|---|---|
+  | cold | 14 | 1 | 134 | 10 s | 1777 s (29.6 min) | 1136 s / 638 s | 0 / 129 | 464 + 314 MB |
+  | cold | 14 | 2 | 133 | 11 s | 1562 s (26.0 min) | 1086 s / 473 s | 0 / 130 | 389 + 280 MB |
+  | cold | 17 | 1 | 134 | 11 s | 1762 s (29.4 min) | 1124 s / 636 s | 0 / 129 | 449 + 334 MB |
+  | cold | 17 | 2 | 133 | 11 s | 1555 s (25.9 min) | 1080 s / 473 s | 0 / 130 | 395 + 302 MB |
+  | warm | 14 | 1 | 134 | 13 s | 1454 s (24.2 min) | 815 s / 638 s | 129 / 0 | 333 + 377 MB |
+  | warm | 14 | 2 | 133 | 13 s | 1256 s (20.9 min) | 783 s / 471 s | 130 / 0 | 391 + 288 MB |
+  | warm | 17 | 1 | 134 | 11 s | 1443 s (24.1 min) | 802 s / 638 s | 129 / 0 | 394 + 271 MB |
+  | warm | 17 | 2 | 133 | 11 s | 1251 s (20.9 min) | 777 s / 471 s | 130 / 0 | 396 + 266 MB |
+
+  Warm references only save the Rails side of the non-contended checks (lanes about 28 % faster). Contended checks
+  always rerun their Rails side, and templates are rebuilt on a fresh runner.
+
+  Every run was green, with the same outcomes on both majors: 239 `ok`, 16 `ok (failed@…)`, 3 `ok (refused …)` and 9
+  `ok (unported@…)`. A cold shard needs about 2200 lane-seconds plus its contended checks (638 s for shard 1, which
+  holds 1.10.1, 473 s for shard 2, which holds 1.13.1). With the runner's two lanes that is the same ≈ 30 min per
+  shard; with lanes twice as slow as this machine's, ≈ 50 min, plus about 5 min of Actions setup. C3a's list (358
+  checks) adds about a third to the lane work: ≈ 36–62 min. Two shards stay; the first cold Actions run decides.
 - **One job.** Ruby comes from `.ruby-version`, OTP/Elixir from `app-phoenix/.tool-versions`, and GEOS from apt, with
   the Bundler and Mix caches. `infra.sh up` starts the job's PostgreSQL. The job then asserts the server major, that
-  PostGIS is available and that Redis answers `PING`, before running the matrix inventory preflight.
+  PostGIS is available and that Redis answers `PING`, before running the matrix inventory preflight, whose output
+  also goes to `inventory_preflight.out` (the step still fails with the preflight's exit status).
   The proof step is `exec scripts/schema_parity/ci/prove_shard.sh`, so the runner's cancel signal reaches the
   wrapper itself. The wrapper saves the shard's `--list`, writes `started=` to `nightly/proof.env`, and runs
   `timeout -k 60 150m ecto_prove.sh --shard K/2 --jobs 2 all` in the background into `nightly/proof.out`,
@@ -1051,12 +1089,14 @@ on manual dispatch, with a read-only token. A newer run of the same ref cancels 
   code key, or with a per-check key the check rejected, does not count. The report shows `-` for a shard whose
   harness did not exit 0.
 - **Evidence.** On success and on failure, each job uploads `pg<major>-shard<k>`: the summary, `prove.log`, the
-  diffs, `inventory_preflight.txt` and `nightly/` (list, harness output, `proof.env`). Neither this artifact nor the
+  diffs, `inventory_preflight.txt`, `inventory_preflight.out` and `nightly/` (list, harness output, `proof.env`).
+  Neither this artifact nor the
   report sets a retention, so both follow the repository's retention setting.
 - **Report.** The `nightly report` job runs after the four jobs whatever their outcome, with `actions: read`. It
   lists the job results and artifact ids through the API and runs `ci/nightly_report.rb report`. It fails, naming the
   shard, when:
   - a job's result is anything but success, including cancelled or timed out;
+  - the matrix inventory preflight failed (its message is quoted from `inventory_preflight.out`);
   - an artifact or a proof record is missing, the proof record has no exit (the wrapper was killed), or the harness
     exited non-zero (124 means GNU `timeout`);
   - more than one file matches a proof record, list or summary, instead of one being picked;
@@ -1082,8 +1122,11 @@ on manual dispatch, with a read-only token. A newer run of the same ref cancels 
   `sh scripts/schema_parity/test/nightly_report.sh` runs the report over synthetic
   artifacts. `ruby scripts/schema_parity/test/nightly_workflow.rb [file]` is a structural check of the
   workflow, used in place of `actionlint`. The `harness-tests` job of `ecto-counterparts.yml` runs all of them on
-  every pull request and push (see "What CI runs"). The `ci/` scripts sit in a subdirectory, outside the code key and
-  `pr_checks.rb`'s shared inputs: editing them neither invalidates references nor selects checks.
+  every pull request and push (see "What CI runs"). The `ci/` scripts sit in a subdirectory, outside
+  `pr_checks.rb`'s shared inputs, so editing them selects no checks. They are inside the code key, though, and so is
+  `test/`: the key's pathspec `scripts/schema_parity/*.sh` (and `*.rb`) also matches subdirectories, because a git
+  pathspec `*` crosses `/`. Editing a `ci/` or `test/` script therefore invalidates every reference and every
+  reference-cache entry once. That errs on the safe side and is left as it is.
 
 ### At a release
 

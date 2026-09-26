@@ -186,6 +186,7 @@ jobs:
         if: always()
         run: |
           ruby scripts/schema_parity/ci/nightly_report.rb leg tmp/schema_parity
+          cmp "$RUNNER_TEMP/sample.txt" tmp/schema_parity/nightly/list.txt
           if grep -F 'unported@' tmp/schema_parity/ecto/summary.txt; then
             echo "the upgrade sample allows no unported effect"
             exit 1
@@ -245,6 +246,9 @@ jobs:
 
       - name: Upgrade sample selector
         run: sh scripts/schema_parity/test/upgrade_sample.sh
+
+      - name: Pull request check selection
+        run: sh scripts/schema_parity/test/pr_checks.sh
 
   harness-docker-tests:
     name: harness tests (Docker)
