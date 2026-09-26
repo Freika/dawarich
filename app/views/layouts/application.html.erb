@@ -11,7 +11,7 @@
 
     <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "application", "data-turbo-track": "reload" %>
-    <%= achievement_stylesheet_tags if achievements_visible? %>
+    <%= achievement_stylesheet_tags %>
     <% if ENV['POSTHOG_ENABLED'] == 'true' %>
       <%= javascript_include_tag "posthog", "data-turbo-track": "reload" %>
     <% end %>
