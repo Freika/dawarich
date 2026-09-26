@@ -1,0 +1,188 @@
+name: Ecto nightly matrix
+
+on:
+  schedule:
+    - cron: '41 1 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ecto-nightly-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  SHARDS: 2
+  REF_CACHE_FORMAT: 1
+
+jobs:
+  prove:
+    name: pg${{ matrix.pg }}-shard${{ matrix.shard }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        pg: [14, 17]
+        shard: [1, 2]
+
+    env:
+      LANG: en_US.UTF-8
+      MIX_ENV: test
+      SP_PG_MAJOR: ${{ matrix.pg }}
+      SHARD: ${{ matrix.shard }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgeos-dev
+          sudo locale-gen en_US.UTF-8
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
+        with:
+          bundler-cache: true
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+        with:
+          version-file: app-phoenix/.tool-versions
+          version-type: strict
+
+      - name: Cache Mix
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            app-phoenix/deps
+            app-phoenix/_build
+          key: mix-${{ runner.os }}-${{ hashFiles('app-phoenix/.tool-versions', 'app-phoenix/mix.lock') }}
+
+      - name: Fetch Elixir dependencies
+        working-directory: app-phoenix
+        run: mix deps.get
+
+      - name: Key the Rails reference cache
+        id: key
+        run: |
+          inputs="$(scripts/schema_parity/ci/ref_cache_key.sh)"
+          echo "key=ecto-ref-nightly-v$REF_CACHE_FORMAT-$RUNNER_OS-pg$SP_PG_MAJOR-shard$SHARD-of-$SHARDS-$inputs" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Rails references
+        id: restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tmp/schema_parity/ecto/ref
+          key: ${{ steps.key.outputs.key }}
+
+      - name: Start PostgreSQL ${{ matrix.pg }} and Redis
+        run: scripts/schema_parity/infra.sh up
+
+      - name: Check the server versions and readiness
+        run: |
+          version="$(docker exec sp-db psql -U postgres -Atc 'SHOW server_version_num')"
+          postgis="$(docker exec sp-db psql -U postgres -Atc "SELECT default_version FROM pg_available_extensions WHERE name = 'postgis'")"
+          redis="$(docker exec sp-redis redis-cli INFO server | tr -d '\r' | sed -n 's/^redis_version://p')"
+          echo "PostgreSQL $version, PostGIS $postgis, Redis $redis"
+          case "$version" in
+            "$SP_PG_MAJOR"[0-9][0-9][0-9][0-9]) ;;
+            *) echo "sp-db is not PostgreSQL $SP_PG_MAJOR"; exit 1 ;;
+          esac
+          [ -n "$postgis" ] || { echo "sp-db has no PostGIS"; exit 1; }
+          [ -n "$redis" ] || { echo "sp-redis reported no version"; exit 1; }
+          docker exec sp-db pg_isready -h 127.0.0.1 -U postgres
+          [ "$(docker exec sp-redis redis-cli ping | tr -d '\r')" = PONG ] || { echo "sp-redis is not ready"; exit 1; }
+
+      - name: Check the matrix inventory
+        run: ruby scripts/schema_parity/matrix_inventory_preflight.rb
+
+      - name: Prove shard ${{ matrix.shard }} of ${{ env.SHARDS }} on PostgreSQL ${{ matrix.pg }}
+        id: prove
+        run: scripts/schema_parity/ci/prove_shard.sh
+
+      - name: Compare the summary with the shard's --list
+        id: verify
+        if: always()
+        run: ruby scripts/schema_parity/ci/nightly_report.rb leg tmp/schema_parity
+
+      - name: Save the Rails references
+        if: steps.prove.outcome == 'success' && steps.verify.outcome == 'success' && steps.restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tmp/schema_parity/ecto/ref
+          key: ${{ steps.key.outputs.key }}
+
+      - name: Upload the shard's evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: pg${{ matrix.pg }}-shard${{ matrix.shard }}
+          overwrite: true
+          path: |
+            tmp/schema_parity/inventory_preflight.txt
+            tmp/schema_parity/nightly/
+            tmp/schema_parity/ecto/summary.*.txt
+            tmp/schema_parity/ecto/prove.log
+            tmp/schema_parity/ecto/diffs/
+
+  report:
+    name: nightly report
+    needs: prove
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      actions: read
+      contents: read
+
+    env:
+      LANG: en_US.UTF-8
+      LEGS: pg14-shard1 pg14-shard2 pg17-shard1 pg17-shard2
+      PROVE_RESULT: ${{ needs.prove.result }}
+      RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
+
+      - name: Download the shard evidence
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: pg*-shard*
+          path: artifacts
+
+      - name: List the job results and artifacts
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs" \
+            --jq '.jobs[] | [.name, .status, (.conclusion // "none")] | @tsv' > "$RUNNER_TEMP/jobs.tsv"
+          gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" \
+            --jq '.artifacts[] | [.name, (.id | tostring)] | @tsv' > "$RUNNER_TEMP/artifacts.tsv"
+
+      - name: Write the report
+        if: always()
+        run: |
+          status=0
+          ruby scripts/schema_parity/ci/nightly_report.rb report artifacts \
+            "$RUNNER_TEMP/jobs.tsv" "$RUNNER_TEMP/artifacts.tsv" > nightly-report.md || status=$?
+          cat nightly-report.md >> "$GITHUB_STEP_SUMMARY"
+          cat nightly-report.md
+          exit "$status"
+
+      - name: Upload the report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: nightly-report
+          overwrite: true
+          path: nightly-report.md

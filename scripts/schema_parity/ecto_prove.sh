@@ -45,6 +45,15 @@ abort_run() {
   exit 2
 }
 
+terminated() {
+  trap '' TERM
+  unfinished="$(awk '$1 == "==" && $2 == "start" { s[$4] = 1 } $1 == "==" && $2 == "end" { delete s[$4] }
+    END { for (c in s) print c }' "$lanes"/log.* 2>/dev/null | LC_ALL=C sort | paste -s -d ' ' -)"
+  echo "ABORTED terminated $phase${unfinished:+ (unfinished: $unfinished)}" >> "$summary"
+  echo "terminated $phase" >&2
+  exit 2
+}
+
 duplicates_in() {
   printf '%s\n' "$@" | LC_ALL=C sort | uniq -d | paste -s -d ' ' -
 }
@@ -71,6 +80,7 @@ case "${1:-}" in
     ;;
   "") echo "$usage" >&2; exit 2 ;;
 esac
+trap 'abort_run "terminated before the checks started"' TERM
 duplicates="$(duplicates_in "$@")"
 [ -z "$duplicates" ] || abort_run "duplicate checks: $duplicates"
 
@@ -79,7 +89,7 @@ if dotenv="$(local_dotenv)"; then
 fi
 trap 'abort_run "timed out reading the PostgreSQL version of $db_container"' TERM
 mismatch="$(check_server_major)" || abort_run "$mismatch"
-trap - TERM
+trap 'abort_run "terminated during mix compile in app-phoenix"' TERM
 if ! (cd "$root/app-phoenix" && scrubbed $ecto_env mix compile) >> "$work/ecto/prove.log" 2>&1; then
   abort_run "mix compile failed in app-phoenix (see ${work#"$root/"}/ecto/prove.log)"
 fi
@@ -99,6 +109,7 @@ run_check() {
 }
 
 run_lane() {
+  trap - TERM
   lane="$1"
   shift
   index=0
@@ -111,6 +122,8 @@ run_lane() {
 
 lanes="$(mktemp -d "$work/ecto/.lanes.XXXXXX")" || abort_run "could not create a lane directory under $work/ecto"
 trap 'cat "$lanes"/log.* >> "$work/ecto/prove.log" 2>/dev/null; rm -rf "$lanes"' EXIT
+phase="while running the checks"
+trap terminated TERM
 printf '%s\n' "$@" > "$lanes/order"
 parallel="$(grep -v '^contended:' "$lanes/order")"
 lane=1
@@ -120,7 +133,8 @@ while [ "$lane" -le "$jobs" ]; do
 done
 wait
 for check in $(grep '^contended:' "$lanes/order"); do
-  run_check "$check" "$lanes/summary.serial" "$lanes/log.serial"
+  (trap - TERM; run_check "$check" "$lanes/summary.serial" "$lanes/log.serial") &
+  wait $!
 done
 failed="$(awk -v summary="$summary" '
   { file = FILENAME; sub(/.*\//, "", file) }
@@ -131,6 +145,7 @@ failed="$(awk -v summary="$summary" '
     if (!($0 in lines) || status[$0] != "0") failed++
   }
   END { print failed + 0 }' "$lanes"/log.* "$lanes"/summary.* "$lanes/order")" || failed="$#"
+phase="while dropping the stale scratch databases"
 if [ "${picked+set}" = set ] && [ -z "$shard" ] && ! prune_databases; then
   echo "could not drop the stale scratch databases" >&2
 fi

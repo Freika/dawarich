@@ -822,6 +822,12 @@ is unproven.
     `mix compile` failing) exits 2 and
     writes `ABORTED …` to the summary. A bad `--shard` or `--jobs` value, a missing argument and any `--list` error
     exit 2 with a message on stderr and write no summary line.
+  - A TERM signal exits 2 as well, so a killed run always leaves a line to name. Before the checks start it writes
+    `ABORTED terminated …` like the aborts above (`… during mix compile in app-phoenix`, or the version-check
+    timeout). Once they have started it appends `ABORTED terminated while running the checks (unfinished: <checks>)`,
+    or `… while dropping the stale scratch databases` when a `docker exec` times out during that cleanup, after the
+    lines already there. The lanes and the serial contended check reset TERM, and a second TERM is ignored, so the
+    line appears once. The nightly job sends TERM through GNU `timeout`, which signals the whole process group.
   - `== start|end <epoch> <check>` lines go to `tmp/schema_parity/ecto/prove.log`.
 - `--jobs N` runs N lanes over the non-contended checks (default: half the cores, at least 1), then the contended
   checks one at a time, alone. With `--shard`, each shard runs its own contended checks alone at its end.
@@ -867,8 +873,9 @@ awk '$2 == "start" { s[$4] = $3 } $2 == "end" { split($4, k, ":"); t[k[1]] += $3
 
 **Shard sizing.** The non-contended checks need about 5250 lane-seconds cold and the contended ones about 1120 s.
 With the default 2 lanes of a 4-core runner, one shard per PostgreSQL version needs about 5250 / 2 + 1120 ≈ 3750 s
-(≈ 1 h). Use one shard per PostgreSQL version with a 180-minute job timeout until the first nightly calibrates it;
-if a shard then goes over 1.5 h, use two. The runner's Docker Engine has not been measured.
+(≈ 1 h). The nightly (see "Nightly matrix") starts with two shards per PostgreSQL version under a 180-minute job
+timeout, because PostgreSQL 14 and the runner's Docker Engine are unmeasured. Keep two only if the first cold Actions
+run keeps every job under 90 min; otherwise use four and measure again.
 
 **PostgreSQL major.** `SP_PG_MAJOR` selects the server; every harness script, `infra.sh` included, reads it and
 rejects anything but `14` or `17` (an empty value too). Unset means `17`.
@@ -909,8 +916,8 @@ carry only `linux/amd64`; Apple silicon runs them under emulation.
   `sh scripts/schema_parity/test/pg_major.sh` prints one `ok`/`not ok` line per assertion and exits non-zero on any.
 
 **C4's matrix** covers the states at or after the floor (every `step:`, `rows:`, `contended:` and `upgrade:` check),
-the refusal sample, and nothing older, each restored into PostgreSQL 14 and 17. The nightly activates when
-`feat/phoenix-port` merges into the default branch.
+the refusal sample, and nothing older, each restored into PostgreSQL 14 and 17. The nightly (see "Nightly matrix")
+activates when `feat/phoenix-port` merges into the default branch.
 
 ### What CI runs
 
@@ -972,6 +979,61 @@ except `unreleased--<version>[-<variant>]` fixtures, which the preflight matches
 several for the same release is not caught; deleting every fixture a release needs is. Fixture names such as
 `--unported-<version>` are not load-bearing for this rule — C3a is expected to rename them to data names
 (`1.7.6--duplicate-tracks`) as it ports each effect.
+
+### Nightly matrix
+
+`.github/workflows/ecto-nightly.yml` runs the whole `--list` on PostgreSQL 14 and 17 every night at 01:41 UTC and
+on manual dispatch, with a read-only token. A newer run of the same ref cancels an older one.
+
+- **Activation.** GitHub runs `schedule` only from the default branch, so nothing runs before `feat/phoenix-port` is
+  merged there. GitHub may also delay or drop a scheduled run, and a dropped run leaves no report behind. Check the
+  schedule history (`gh run list --workflow ecto-nightly.yml --event schedule`) rather than trusting the absence of
+  a red run.
+- **Matrix.** Four jobs, `pg14-shard1`, `pg14-shard2`, `pg17-shard1` and `pg17-shard2`, each on its own runner with the
+  default `sp-db`/`sp-redis`. `fail-fast` is off, so every server and shard reports. Each job has 180 minutes.
+- **One job.** Ruby comes from `.ruby-version`, OTP/Elixir from `app-phoenix/.tool-versions`, and GEOS from apt, with
+  the Bundler and Mix caches. `infra.sh up` starts the job's PostgreSQL. The job then asserts the server major, that
+  PostGIS is available and that Redis answers `PING`, before running the matrix inventory preflight.
+  `scripts/schema_parity/ci/prove_shard.sh` saves the shard's `--list` and runs
+  `timeout -k 60 160m ecto_prove.sh --shard K/2 --jobs 2 all`. It records the exit code, the start and end times and
+  the reference counts in `nightly/proof.env`. `ci/nightly_report.rb leg` then compares the summary with that
+  list.
+- **Cache.** Only `tmp/schema_parity/ecto/ref` is cached. Scratch databases, templates, diffs, `.env` files and the
+  canonical-dump memo never are. The key is exact, with no `restore-keys`:
+  `ecto-ref-nightly-v<REF_CACHE_FORMAT>-<os>-pg<major>-shard<k>-of-<n>-<inputs>`. `<inputs>` comes from
+  `ci/ref_cache_key.sh`: the code key above (Rails inputs, `ruby -v`, `SP_PG_MAJOR`, every harness script including
+  `canon.rb` and `normalize.sh`) plus the bytes of `db/release_snapshots/`, `scripts/schema_parity/fixtures/` and
+  `ecto_expectations.tsv`. Separate keys per major and shard keep four jobs from racing to write one entry. A job
+  saves its entry only after a green shard, and only on a miss. Each check's own reference key stays the final
+  test: a restored reference made under another code key is ignored and recomputed. Bump `REF_CACHE_FORMAT` in
+  the workflow to discard every entry.
+- **Reference counts.** `refs_computed` counts the references this run wrote. `refs_reused` counts the ones present
+  at the start that carry the current code key. Under these exact keys, those are the references a completed shard
+  used. The report shows `-` for a shard whose harness did not exit 0.
+- **Evidence.** On success and on failure, each job uploads `pg<major>-shard<k>`: the summary, `prove.log`, the
+  diffs, `inventory_preflight.txt` and `nightly/` (list, harness output, `proof.env`). Neither this artifact nor the
+  report sets a retention, so both follow the repository's retention setting.
+- **Report.** The `nightly report` job runs after the four jobs whatever their outcome, with `actions: read`. It
+  lists the job results and artifact ids through the API and runs `ci/nightly_report.rb report`. It fails, naming the
+  shard, when:
+  - a job's result is anything but success, including cancelled or timed out;
+  - an artifact or a proof record is missing, or the harness exited non-zero (124 means GNU `timeout`);
+  - the summary is missing, has an `ABORTED` line, or has a line whose status differs from the declared outcome
+    (`ecto_expectations.tsv`, or `ok (unported@V)` for a `--unported-V` fixture). The report prints the expected and
+    actual status;
+  - a listed check has no line, a line repeats or is not listed, or the lines are out of `--list` order;
+  - the matrix result is not success.
+
+  The step summary and the `nightly-report` artifact hold one table row per shard: PG major, shard, job result,
+  checks run, elapsed time, references reused/computed, failures, declared unported effects and the artifact link.
+  A list of failures and the unported checks follows. A green night with unported effects is only an interim
+  result: A12 needs zero. The report job's `LEGS` must match the matrix; the workflow test enforces this.
+- **Tests.** `sh scripts/schema_parity/test/prove_term.sh [dash]` covers the TERM paths with a fake `docker`: GNU
+  `timeout` during the lanes, a TERM during the serial contended phase, a TERM during `mix compile`, and a
+  `docker exec` timeout during the database cleanup. `sh scripts/schema_parity/test/nightly_report.sh` runs the report
+  over synthetic artifacts. `ruby scripts/schema_parity/test/nightly_workflow.rb [file]` is a structural check of the
+  workflow, used in place of `actionlint`. The `ci/` scripts sit in a subdirectory, outside the code key and
+  `pr_checks.rb`'s shared inputs: editing them neither invalidates references nor selects checks.
 
 ### At a release
 
