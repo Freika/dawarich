@@ -104,6 +104,21 @@ RSpec.describe StaleJobsRecoveryJob do
       end
     end
 
+    context 'when the extraction monitor fails' do
+      it 'still recovers stale exports and imports and then reports the failure' do
+        export = create(:export, user: user, status: :processing, start_at: 1.week.ago, end_at: Time.current)
+        export.update_column(:processing_started_at, 3.hours.ago)
+        import = create(:import, user: user, status: :processing)
+        import.update_column(:processing_started_at, 7.hours.ago)
+        allow(Import).to receive(:extraction_in_flight).and_raise(ActiveRecord::StatementInvalid, 'boom')
+
+        expect { described_class.new.perform }.to raise_error(ActiveRecord::StatementInvalid, 'boom')
+
+        expect(export.reload.status).to eq('failed')
+        expect(import.reload.status).to eq('failed')
+      end
+    end
+
     context 'with no stale jobs' do
       it 'does not create any notifications' do
         expect { described_class.new.perform }.not_to(change { Notification.count })

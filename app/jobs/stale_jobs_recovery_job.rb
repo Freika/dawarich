@@ -9,6 +9,7 @@ class StaleJobsRecoveryJob < ApplicationJob
 
   def perform
     Imports::ExtractionMonitor.new.call
+  ensure
     recover_stale_exports
     recover_stale_imports
   end
