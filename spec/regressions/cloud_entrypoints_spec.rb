@@ -2,6 +2,7 @@
 
 require 'spec_helper'
 require 'fileutils'
+require 'json'
 require 'open3'
 require 'tmpdir'
 
@@ -224,5 +225,15 @@ RSpec.describe 'Cloud entrypoints' do
     expect(web).to include('. "$(dirname "$0")/entrypoint-common.sh"')
     expect(web).to include('exec_under_phoenix "$@"')
     expect(web).not_to include('DAWARICH_RAILS_ARGS')
+  end
+
+  it 'defines the Cloud web health check with the keys Dokku reads and no predeploy migration' do
+    cloud = JSON.parse(File.read(File.join(root, 'app.cloud.json')))
+    check = cloud.dig('healthchecks', 'web', 0)
+
+    expect(check).to include('type' => 'startup', 'path' => '/api/v1/health', 'port' => 5000,
+                             'attempts' => 10, 'wait' => 10)
+    expect(check).not_to have_key('interval')
+    expect(cloud).not_to have_key('scripts')
   end
 end
