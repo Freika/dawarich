@@ -26,7 +26,9 @@ defmodule Dawarich.MixProject do
       {:ecto_sql, "~> 3.13"},
       {:postgrex, ">= 0.0.0"},
       {:oban, "~> 2.20"},
-      {:jason, "~> 1.4"}
+      {:jason, "~> 1.4"},
+      {:phoenix, "~> 1.8.1"},
+      {:bandit, "~> 1.12"}
     ]
   end
 

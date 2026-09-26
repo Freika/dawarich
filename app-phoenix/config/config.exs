@@ -17,4 +17,13 @@ config :dawarich, Oban,
   queues: [],
   plugins: []
 
+config :dawarich, DawarichWeb.Endpoint,
+  adapter: Bandit.PhoenixAdapter,
+  url: [host: "localhost"],
+  server: false,
+  pubsub_server: Dawarich.PubSub,
+  render_errors: [formats: [html: DawarichWeb.ErrorHTML], layout: false]
+
+config :phoenix, :json_library, Jason
+
 import_config "#{config_env()}.exs"

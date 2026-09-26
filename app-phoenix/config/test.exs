@@ -28,4 +28,7 @@ config :dawarich,
 
 config :dawarich, Oban, testing: :manual
 
+config :dawarich, DawarichWeb.Endpoint,
+  secret_key_base: String.duplicate("phoenix-a2-test-endpoint-secret-", 3)
+
 config :logger, level: :warning
