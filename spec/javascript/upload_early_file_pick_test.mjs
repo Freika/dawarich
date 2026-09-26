@@ -56,3 +56,24 @@ test("reconnecting with the same selected file does not upload it again", () => 
   fixture.input.dispatchEvent(new Event("change"))
   assert.equal(fixture.uploads(), 1)
 })
+
+test("reconnecting does not rebind a second submit listener", () => {
+  const fixture = controllerWithFiles([{ name: "resubmit.gpx" }])
+  const form = new EventTarget()
+  fixture.controller.hasFormTarget = true
+  fixture.controller.formTarget = form
+  fixture.controller.connect()
+  fixture.controller.disconnect()
+  fixture.controller.connect()
+  fixture.controller.isUploading = true
+
+  const event = new Event("submit", { cancelable: true })
+  let preventDefaultCalls = 0
+  const originalPreventDefault = event.preventDefault.bind(event)
+  event.preventDefault = () => {
+    preventDefaultCalls++
+    originalPreventDefault()
+  }
+  form.dispatchEvent(event)
+  assert.equal(preventDefaultCalls, 1)
+})
