@@ -10,7 +10,7 @@ class DataMigrations::DedupeTracksForUniqueIndexJob < ApplicationJob
     Rails.logger.info "[DataMigrations::DedupeTracksForUniqueIndex] Deduplicating tracks for #{user_ids.size} user(s)"
 
     user_ids.each do |user_id|
-      user = User.find_by(id: user_id)
+      user = User.unscoped.find_by(id: user_id)
       next unless user
 
       removed = Tracks::Deduplicator.new(user).call
