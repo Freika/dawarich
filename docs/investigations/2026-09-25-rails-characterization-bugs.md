@@ -1,6 +1,6 @@
 # Rails defects found during Phoenix characterization and C2
 
-Date: 2026-09-25. Updated: 2026-09-26. Initial base: local `dev` at `f73605cb9`. The places fix is based on `feat/phoenix-port` and remains local to `fix/places-direct-open` pending integration.
+Date: 2026-09-25. Updated: 2026-09-26. Initial base: local `dev` at `f73605cb9`. The places fix (`fix/places-direct-open`) is merged into `feat/phoenix-port`.
 
 | Defect | Cause | Rails repair |
 |---|---|---|
