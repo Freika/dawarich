@@ -95,12 +95,25 @@ RSpec.describe EnhancedImport::ExtractJob do
       expect(Tracks::ParallelGeneratorJob).to have_been_enqueued.with(*generation_arguments)
     end
 
-    it 'schedules generation when the extraction fails' do
+    it 'retries a failed extraction without scheduling generation' do
       attach_file('{"semanticSegments": [{"startTime": ')
 
-      expect { described_class.perform_now(import.id) }.to raise_error(Oj::ParseError)
+      described_class.perform_now(import.id)
 
+      expect(described_class).to have_been_enqueued.with(import.id)
+      expect(Tracks::ParallelGeneratorJob).not_to have_been_enqueued
+    end
+
+    it 'schedules generation once the third failed attempt exhausts the retries' do
+      attach_file('{"semanticSegments": [{"startTime": ')
+      job = described_class.new(import.id)
+      job.exception_executions = { '[StandardError]' => 2 }
+
+      job.perform_now
+
+      expect(described_class).not_to have_been_enqueued
       expect(import.reload.additional_data_extraction_status).to eq('failed')
+      expect(import.extraction_error_message).to be_present
       expect(Tracks::ParallelGeneratorJob).to have_been_enqueued.with(*generation_arguments)
     end
 
