@@ -77,7 +77,7 @@ RUN apt-get update -qq \
 
 # Install Node.js from Debian repositories (supports all architectures including armv7)
 RUN apt-get update -qq \
-    && apt-get install -y nodejs npm \
+    && apt-get install -y --no-install-recommends nodejs npm \
     && npm install -g yarn \
     && rm -rf /var/lib/apt/lists/*
 
