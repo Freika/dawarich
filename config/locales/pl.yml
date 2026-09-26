@@ -3754,6 +3754,8 @@ pl:
         enable_at_least_one_transportation_mode: Włącz co najmniej jeden tryb transportu
         recalculation_in_progress: Trwa przeliczanie trybów transportu. Poczekaj na zakończenie.
     visits:
+      create:
+        duplicate_at_place_and_time: W tym miejscu i o tej godzinie istnieje już wizyta
       suggest:
         error_suggesting_visits_message: 'Błąd podczas sugerowania wizyt: %{message}'
         error_suggesting_visits: Błąd podczas sugerowania wizyt

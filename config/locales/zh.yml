@@ -3765,6 +3765,8 @@ zh:
         enable_at_least_one_transportation_mode: 至少启用一种交通方式
         recalculation_in_progress: 正在重新计算交通方式，请等待完成。
     visits:
+      create:
+        duplicate_at_place_and_time: 此地点和时间已存在一条到访记录
       suggest:
         error_suggesting_visits_message: 生成到访建议时出错：%{message}
         error_suggesting_visits: 生成到访建议时出错

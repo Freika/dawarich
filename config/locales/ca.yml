@@ -3697,6 +3697,8 @@ ca:
         enable_at_least_one_transportation_mode: Activa almenys un mitjà de transport
         recalculation_in_progress: El recàlcul de mitjans de transport està en curs. Espera fins que finalitzi.
     visits:
+      create:
+        duplicate_at_place_and_time: Ja existeix una visita en aquest lloc i hora
       suggest:
         error_suggesting_visits_message: 'Error en suggerir visites: %{message}'
         error_suggesting_visits: 'Error en suggerir visites'

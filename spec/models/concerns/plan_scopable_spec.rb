@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe PlanScopable do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
 
   describe '#plan_restricted?' do
@@ -112,6 +114,8 @@ RSpec.describe PlanScopable do
     end
 
     context 'when point is exactly at boundary' do
+      around { |example| freeze_time { example.run } }
+
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
         user.update!(plan: :lite)
