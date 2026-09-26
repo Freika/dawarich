@@ -178,4 +178,74 @@ RSpec.describe 'Points waiting for source extraction belong to their own import'
       expect(track_ids(pending_points)).to all(be_nil)
     end
   end
+
+  describe 'an extraction that starts between choosing and claiming a point' do
+    it 'keeps a chunk from attaching a single orphan it chose before the extraction was queued' do
+      mark_extraction(sibling_import, :completed)
+      kept_points = create_points(import: sibling_import, tracker_id: 'phone', offset: 0, count: 4)
+      kept_track = create(:track, user: user, import_id: sibling_import.id, tracker_id: 'phone',
+                                  start_at: Time.zone.at(kept_points.first.timestamp),
+                                  end_at: Time.zone.at(kept_points.last.timestamp))
+      Point.where(id: kept_points.map(&:id)).update_all(track_id: kept_track.id)
+      orphan = create_points(import: pending_import, tracker_id: 'phone', offset: 240, count: 1).first
+      mark_extraction(pending_import, :not_attempted)
+      allow(Tracks::OrphanPointAttacher).to receive(:new).and_wrap_original do |original, *args, **kwargs|
+        mark_extraction(pending_import, :pending)
+        original.call(*args, **kwargs)
+      end
+
+      Tracks::ParallelGenerator.new(user, start_at: Time.zone.at(base - 3600), end_at: Time.zone.at(base + 3600),
+                                          mode: :bulk).call
+      perform_enqueued_jobs(only: Tracks::TimeChunkProcessorJob)
+
+      expect(Tracks::OrphanPointAttacher).to have_received(:new)
+      expect(orphan.reload.track_id).to be_nil
+    end
+
+    context 'when reabsorbing orphans into a recent track' do
+      let(:recent_start) { 2.hours.ago.to_i }
+      let(:recent_track) do
+        live_points = create_points(import: nil, tracker_id: 'phone', offset: 0, start: recent_start, count: 10)
+        track = create(:track, user: user, tracker_id: 'phone',
+                               start_at: Time.zone.at(live_points.first.timestamp),
+                               end_at: Time.zone.at(live_points.last.timestamp))
+        Point.where(id: live_points.map(&:id)).update_all(track_id: track.id)
+        track
+      end
+      let!(:orphans) do
+        points = create_points(import: pending_import, tracker_id: 'phone', offset: 90, start: recent_start, count: 3)
+        Point.where(id: points.map(&:id)).update_all(created_at: 10.minutes.ago)
+        points
+      end
+
+      def between_choosing_and_claiming(&block)
+        allow_any_instance_of(Tracks::OrphanReabsorber).to receive(:orphan_point_ids_for)
+          .and_wrap_original do |original, track|
+            original.call(track).tap { block.call }
+          end
+      end
+
+      before do
+        recent_track
+        mark_extraction(pending_import, :not_attempted)
+      end
+
+      it 'does not claim orphans whose import became held in between' do
+        between_choosing_and_claiming { mark_extraction(pending_import, :pending) }
+
+        expect(Tracks::BoundaryDetector.new(user).reabsorb_orphan_points).to eq(0)
+
+        expect(track_ids(orphans)).to all(be_nil)
+      end
+
+      it 'does not take orphans another track claimed in between' do
+        other_track = create(:track, user: user, tracker_id: 'phone', start_at: 3.hours.ago, end_at: 3.hours.ago)
+        between_choosing_and_claiming { Point.where(id: orphans.map(&:id)).update_all(track_id: other_track.id) }
+
+        expect(Tracks::BoundaryDetector.new(user).reabsorb_orphan_points).to eq(0)
+
+        expect(track_ids(orphans)).to all(eq(other_track.id))
+      end
+    end
+  end
 end

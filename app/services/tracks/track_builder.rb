@@ -132,7 +132,7 @@ module Tracks::TrackBuilder
 
     return track unless singleton
 
-    Tracks::OrphanPointAttacher.new(user, singleton, points).call
+    Tracks::OrphanPointAttacher.new(user, singleton, points, claimable: claimable_points).call
   end
 
   def contiguous_runs(points, orphans)
