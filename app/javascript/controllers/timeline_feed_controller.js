@@ -68,6 +68,7 @@ export default class extends Controller {
     document.addEventListener("timeline:open-track", this.boundOpenTrack)
 
     if (this.hasVisitListFrameTarget) {
+      this.clearNavigationPending()
       this.boundFrameLoad = this.handleVisitFrameLoad.bind(this)
       this.visitListFrameTarget.addEventListener(
         "turbo:frame-load",
@@ -151,11 +152,17 @@ export default class extends Controller {
           this.boundNavigationSettled,
         )
       }
+      this.clearNavigationPending()
     }
   }
 
   handleNavigationSettled(event) {
-    if (event.target !== this.visitListFrameTarget) return
+    if (event.target === this.visitListFrameTarget) {
+      this.clearNavigationPending()
+    }
+  }
+
+  clearNavigationPending() {
     this.visitListFrameTarget.removeAttribute("data-navigation-pending")
   }
 
