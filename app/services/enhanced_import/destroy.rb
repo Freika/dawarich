@@ -16,6 +16,7 @@ module EnhancedImport
       destroy_in_batches(owned(Visit))
       destroy_in_batches(owned(Track))
       destroy_orphaned_places(place_ids)
+      reclassify_annotated_tracks
 
       reset_extraction_state
 
@@ -48,6 +49,13 @@ module EnhancedImport
       relation.in_batches(of: BATCH_SIZE) do |batch|
         ActiveRecord::Base.transaction { batch.each(&:destroy) }
       end
+    end
+
+    def reclassify_annotated_tracks
+      track_ids = TrackSegment.auto_classified.where(source: import.source)
+                              .where(track_id: import.points.where.not(track_id: nil).select(:track_id))
+                              .distinct.pluck(:track_id)
+      ActiveJob.perform_all_later(track_ids.map { |id| TransportationModes::ReclassifyTrackJob.new(id) })
     end
 
     def reset_extraction_state
