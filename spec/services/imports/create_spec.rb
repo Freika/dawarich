@@ -410,7 +410,10 @@ RSpec.describe Imports::Create do
           end
 
           before do
-            import.update_columns(additional_data_extraction_status: Import.additional_data_extraction_statuses[status])
+            import.update_columns(
+              additional_data_extraction_status: Import.additional_data_extraction_statuses[status],
+              additional_data_extraction: { 'started_at' => Time.current.iso8601 }
+            )
           end
 
           it 'leaves track generation to the extraction in flight' do

@@ -12,7 +12,8 @@ class Tracks::ParallelGeneratorJob < ApplicationJob
     )
   end
 
-  def perform(user_id, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day, untracked_only: false)
+  def perform(user_id, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day, untracked_only: false,
+              import_id: nil)
     user = find_user_or_skip(user_id) || return
 
     Tracks::ParallelGenerator.new(
@@ -21,7 +22,8 @@ class Tracks::ParallelGeneratorJob < ApplicationJob
       end_at: end_at,
       mode: mode,
       chunk_size: chunk_size,
-      untracked_only: untracked_only
+      untracked_only: untracked_only,
+      import_id: import_id
     ).call
   rescue Tracks::PerUserLock::AcquisitionTimeout
     raise

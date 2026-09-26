@@ -32,7 +32,8 @@ RSpec.describe 'Imports schedule track generation for the imported point range' 
       start_at: Time.zone.at(min_ts),
       end_at: Time.zone.at(max_ts),
       mode: :bulk,
-      untracked_only: true
+      untracked_only: true,
+      import_id: import.id
     )
   end
 

@@ -58,7 +58,7 @@ module EnhancedImport
     rescue ActiveRecord::Deadlocked
       raise
     rescue StandardError => e
-      mark_failed!(import, e)
+      mark_retrying!(import, e)
       raise
     end
 
@@ -105,7 +105,7 @@ module EnhancedImport
           counts[:tracks] += 1 if track
           if track && source_segments_take_over
             item.segments.each do |segment|
-              written_segment, = segment_writer.upsert(track, segment)
+              written_segment, = segment_writer.upsert(track, segment, window: item.start_at.to_i..item.end_at.to_i)
               counts[:segments] += 1 if written_segment
             end
             track.update_dominant_mode!
@@ -160,6 +160,16 @@ module EnhancedImport
       )
       broadcast_card(import)
       schedule_track_generation(import)
+    end
+
+    def mark_retrying!(import, error)
+      import.update_columns(
+        additional_data_extraction_status: Import.additional_data_extraction_statuses[:pending],
+        additional_data_extraction: import.additional_data_extraction.merge(
+          'started_at' => Time.current.iso8601, 'error_message' => error.message
+        )
+      )
+      broadcast_card(import)
     end
 
     def mark_failed!(import, error)

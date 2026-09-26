@@ -3,36 +3,70 @@
 module EnhancedImport
   module Writers
     class SegmentWriter
-      def upsert(track, extracted)
+      def upsert(track, extracted, window: nil)
         return nil if track.nil?
 
-        existing = TrackSegment.find_by(track_id: track.id, start_index: extracted.start_index)
-        return [existing, false] if existing
+        points = track.points.order(:timestamp, :id).select(:id, :timestamp, :lonlat).to_a
+        range = index_range(points, extracted, window)
+        return nil if range.nil?
 
-        segment = track.track_segments.create!(
-          start_index: extracted.start_index,
-          end_index: resolve_end_index(track, extracted),
-          transportation_mode: extracted.transportation_mode,
-          confidence: confidence_level(extracted.confidence),
-          source: extracted.source_label
-        )
-        [segment, true]
+        keep = kept_segments(track, extracted.source_label)
+        pieces = uncovered_pieces(points, range, keep)
+        return nil if pieces.empty?
+
+        existing = pieces.map { |piece| own_segment_at(track, extracted, points[piece.first]) }
+        return [existing.first, false] if existing.all?
+
+        [write_pieces(track, extracted, points, range, pieces, keep), true]
       rescue ActiveRecord::RecordNotUnique
-        existing = TrackSegment.find_by(track_id: track.id, start_index: extracted.start_index)
-        [existing, false]
+        Rails.logger.warn(
+          "event=enhanced_import.segment_write_conflict track_id=#{track.id} source=#{extracted.source_label}"
+        )
+        [own_segment_at(track, extracted, points[pieces.first.first]), false]
       end
 
       private
 
-      # Google emits one activity per track without point offsets, so a source
-      # segment arrives as 0..0 and must be stretched over the track it describes.
-      def resolve_end_index(track, extracted)
-        return extracted.end_index if extracted.end_index > extracted.start_index
+      def index_range(points, extracted, window)
+        inside = points.each_index.select { |i| window.nil? || window.cover?(points[i].timestamp) }
+        offsets = extracted.start_index..extracted.end_index
+        inside = inside[offsets] || [] if offsets.size > 1
+        inside.first..inside.last if inside.any?
+      end
 
-        last_index = track.points.count - 1
-        return extracted.end_index if last_index <= extracted.start_index
+      def kept_segments(track, source_label)
+        track.track_segments.outranking_inference.reject { |s| !s.manually_corrected? && s.source == source_label }
+      end
 
-        last_index
+      def uncovered_pieces(points, range, keep)
+        timestamps = points.map(&:timestamp)
+        covered = keep.flat_map { |segment| segment.covered_indices(timestamps) }.to_set
+
+        range.reject { |i| covered.include?(i) }
+             .slice_when { |a, b| b != a + 1 }
+             .map { |run| run.first..run.last }
+      end
+
+      def own_segment_at(track, extracted, point)
+        track.track_segments.find_by(start_at: Time.zone.at(point.timestamp), source: extracted.source_label)
+      end
+
+      def write_pieces(track, extracted, points, range, pieces, keep)
+        TrackSegment.transaction do
+          TrackSegments::RangeClearer.new(track, points, range, keep: keep).call
+          pieces.map { |piece| create_piece(track, extracted, points, piece) }.first
+        end
+      end
+
+      def create_piece(track, extracted, points, piece)
+        segment = track.track_segments.new(
+          start_at: Time.zone.at(points[piece.first].timestamp),
+          end_at: Time.zone.at(points[piece.last].timestamp),
+          transportation_mode: extracted.transportation_mode,
+          confidence: confidence_level(extracted.confidence),
+          source: extracted.source_label
+        )
+        TrackSegments::GeometryRecalculator.apply(segment, points)
       end
 
       STRING_CONFIDENCE = { 'high' => :high, 'medium' => :medium, 'low' => :low }.freeze

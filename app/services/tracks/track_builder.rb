@@ -115,22 +115,29 @@ module Tracks::TrackBuilder
   def create_track_from_orphan_points(points, tracker_id:, skip_segment_detection:)
     singleton = nil
     track = Point.transaction do
-      orphans = Point.where(user_id: user.id, id: points.map(&:id), track_id: nil)
-                     .order(:id).lock.to_a.sort_by { |point| [point.timestamp, point.id] }
+      orphans = claimable_points.where(user_id: user.id, id: points.map(&:id), track_id: nil)
+                                .order(:id).lock.to_a.sort_by { |point| [point.timestamp, point.id] }
       if orphans.one?
         singleton = orphans.first
         next
       end
-      next if orphans.empty?
 
-      distance = Point.calculate_distance_for_array_geocoder(orphans, :m)
-      create_track_from_points(orphans, distance, tracker_id: tracker_id,
-                               skip_segment_detection: skip_segment_detection)
+      contiguous_runs(points, orphans).filter_map do |run|
+        next if run.size < 2
+
+        distance = Point.calculate_distance_for_array_geocoder(run, :m)
+        create_track_from_points(run, distance, tracker_id: tracker_id, skip_segment_detection: skip_segment_detection)
+      end.first
     end
 
     return track unless singleton
 
     Tracks::OrphanPointAttacher.new(user, singleton, points).call
+  end
+
+  def contiguous_runs(points, orphans)
+    position = points.sort_by { |point| [point.timestamp, point.id] }.each_with_index.to_h { |point, i| [point.id, i] }
+    orphans.slice_when { |a, b| position[b.id] != position[a.id] + 1 }.to_a
   end
 
   def reuse_existing_track(track, points, original_error)
@@ -158,7 +165,7 @@ module Tracks::TrackBuilder
     # path/distance were computed from its own point set, and stretching it
     # silently corrupts the track's metadata. Points outside the window stay
     # orphaned (track_id: nil) and get picked up by the next generation pass.
-    Point.where(
+    claimable_points.where(
       id: points.map(&:id),
       track_id: nil,
       timestamp: existing.start_at.to_i..existing.end_at.to_i
@@ -271,6 +278,10 @@ module Tracks::TrackBuilder
   end
 
   private
+
+  def claimable_points
+    Point.all
+  end
 
   def user
     raise NotImplementedError, 'Including class must implement user method'

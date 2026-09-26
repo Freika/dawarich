@@ -68,7 +68,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
                    .order(:timestamp)
                    .preload(:source)
     relation = relation.where(track_id: nil) if chunk_data[:untracked_only]
-    relation
+    chunk_data[:import_id] ? relation.where(import_id: chunk_data[:import_id]) : relation.not_held_by_extraction
   end
 
   def segment_chunk_points(points)
@@ -80,7 +80,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
                .flat_map { |bucket| split_points_into_segments_geocoder(bucket) }
 
     segments.select do |segment|
-      segment_overlaps_chunk_range?(segment)
+      segment_overlaps_chunk_range?(segment) && segment.any? { |point| point.track_id.nil? }
     end
   end
 
@@ -121,6 +121,10 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
     rescue StandardError
       nil
     end
+  end
+
+  def claimable_points
+    chunk_data[:import_id] ? Point.all : Point.not_held_by_extraction
   end
 
   def update_session_progress(tracks_created)

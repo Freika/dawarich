@@ -60,21 +60,13 @@ module EnhancedImport
 
         return nil unless track_ids.size == 1
 
-        track = Track.find_by(id: track_ids.first, user_id: user.id)
-        return nil if track.nil?
-
-        # This track belongs to Dawarich's own generation, not to the
-        # extraction, so its segmentation is never overwritten and undo can
-        # never reach it. Only classify it when it carries none of its own.
-        return nil if track.track_segments.exists?
-
-        track
+        Track.find_by(id: track_ids.first, user_id: user.id)
       end
 
       # A re-extraction may flip "trust the source app's classification", so the
       # existing segments are rebuilt to match whichever side the user picked.
       def rebuild_segments(track, skip_segment_detection)
-        track.track_segments.destroy_all
+        track.track_segments.auto_classified.destroy_all
 
         unless skip_segment_detection
           points = track.points.order(:timestamp).to_a

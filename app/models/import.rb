@@ -49,6 +49,18 @@ class Import < ApplicationRecord
   after_commit :enqueue_additional_data_extraction, on: :update,
                if: :should_enqueue_additional_data_extraction?
 
+  scope :extraction_in_flight, -> { where(additional_data_extraction_status: %i[pending running]) }
+  scope :awaiting_extraction, lambda {
+    extraction_in_flight.or(
+      where(status: :processing, additional_data_extraction_status: :not_attempted,
+            source: EnhancedImport::Translator::SUPPORTED_SOURCES)
+    )
+  }
+
+  def self.awaiting_extraction_for(foreign_key)
+    awaiting_extraction.where(arel_table[:id].eq(foreign_key)).arel.exists
+  end
+
   def process!
     if user_data_archive?
       process_user_data_archive!
@@ -106,7 +118,8 @@ class Import < ApplicationRecord
       start_at: Time.zone.at(min_ts),
       end_at: Time.zone.at(max_ts),
       mode: :bulk,
-      untracked_only: true
+      untracked_only: true,
+      import_id: id
     )
   end
 
@@ -144,12 +157,14 @@ class Import < ApplicationRecord
   def extraction_stalled?
     return false unless extraction_in_flight?
 
-    started_at = additional_data_extraction['started_at']
-    return false if started_at.blank?
+    started_at = extraction_started_at
+    started_at.nil? || started_at <= EXTRACTION_STALE_AFTER.ago
+  end
 
-    Time.zone.parse(started_at.to_s) <= EXTRACTION_STALE_AFTER.ago
+  def extraction_started_at
+    Time.zone.parse(additional_data_extraction['started_at'].to_s)
   rescue ArgumentError, TypeError
-    false
+    nil
   end
 
   def trust_source_for_extraction?

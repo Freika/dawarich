@@ -24,9 +24,26 @@ class TrackSegment < ApplicationRecord
 
   scope :auto_classified, -> { where(corrected_at: nil) }
   scope :manually_corrected, -> { where.not(corrected_at: nil) }
+  scope :outranking_inference, lambda {
+    manually_corrected.or(where(source: EnhancedImport::Translator::SEGMENT_SOURCE_LABELS))
+  }
+
+  def self.outranking_inference_on(track_id)
+    outranking_inference.where(arel_table[:track_id].eq(track_id)).arel.exists
+  end
 
   def manually_corrected?
     corrected_at.present?
+  end
+
+  def covered_indices(timestamps)
+    if start_at && end_at
+      timestamps.each_index.select { |i| timestamps[i].between?(start_at.to_i, end_at.to_i) }
+    elsif start_index && end_index
+      (start_index..end_index).to_a
+    else
+      []
+    end
   end
 
   private

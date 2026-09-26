@@ -1,0 +1,135 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+
+RSpec.describe 'Generic track regeneration never deletes source or corrected tracks' do
+  let(:user) { create(:user) }
+  let(:base) { 3.days.ago.beginning_of_hour.to_i }
+  let(:import) { create(:import, user: user, source: :google_phone_takeout) }
+
+  def create_points(tracker_id:, offset:, import_id: nil)
+    Array.new(6) do |i|
+      create(:point, user: user, import_id: import_id, tracker_id: tracker_id, timestamp: base + offset + (i * 60),
+                     lonlat: "POINT(#{13.4 + (offset / 100_000.0) + (i * 0.0005)} 52.5)")
+    end
+  end
+
+  def track_for(points, **attrs)
+    track = create(:track, user: user, tracker_id: points.first.tracker_id,
+                           start_at: Time.zone.at(points.first.timestamp),
+                           end_at: Time.zone.at(points.last.timestamp), **attrs)
+    Point.where(id: points.map(&:id)).update_all(track_id: track.id)
+    track
+  end
+
+  def segment_on(track, **attrs)
+    create(:track_segment, track: track, start_index: 0, end_index: 5, transportation_mode: :cycling, **attrs)
+  end
+
+  def run_daily_after(&)
+    user.update!(points_count: user.points.count)
+    Tracks::DailyGenerationJob.perform_now
+    yield
+    perform_enqueued_jobs(only: Tracks::ParallelGeneratorJob)
+    perform_enqueued_jobs(only: Tracks::TimeChunkProcessorJob)
+  end
+
+  it 'keeps a source track the extraction wrote once the extraction has finished' do
+    points = create_points(tracker_id: 'takeout', offset: 0, import_id: import.id)
+    source_track = nil
+
+    run_daily_after do
+      source_track = track_for(points, import_id: import.id)
+      import.update_columns(additional_data_extraction_status: Import.additional_data_extraction_statuses[:completed])
+    end
+
+    expect(Track.exists?(source_track.id)).to be(true)
+    expect(Point.where(id: points.map(&:id)).pluck(:track_id)).to all(eq(source_track.id))
+  end
+
+  it 'keeps a generated track carrying a manual correction and still rebuilds a plain one' do
+    corrected_points = create_points(tracker_id: 'phone', offset: 0)
+    plain_points = create_points(tracker_id: 'watch', offset: 30)
+    corrected_track = plain_track = nil
+
+    run_daily_after do
+      corrected_track = track_for(corrected_points)
+      segment_on(corrected_track, source: 'user', corrected_at: 1.day.ago)
+      plain_track = track_for(plain_points)
+      segment_on(plain_track, source: 'inferred')
+    end
+
+    expect(Track.exists?(corrected_track.id)).to be(true)
+    expect(Track.exists?(plain_track.id)).to be(false)
+    expect(Point.where(id: plain_points.map(&:id)).pluck(:track_id)).to all(be_present)
+  end
+
+  describe 'a recalculation with orphans on both sides of a kept track' do
+    it 'never builds a generated track across the kept one' do
+      before_points = create_points(tracker_id: 'phone', offset: 0).first(4)
+      kept_points = create_points(tracker_id: 'phone', offset: 240, import_id: import.id).first(4)
+      after_points = create_points(tracker_id: 'phone', offset: 480).first(4)
+      source_track = track_for(kept_points, import_id: import.id, tracker_id: "import-#{import.id}-activity-1")
+      source_track.update_columns(created_at: 3.hours.ago)
+
+      Tracks::ParallelGenerator.new(user, start_at: Time.zone.at(base - 3600), end_at: Time.zone.at(base + 3600),
+                                          mode: :bulk).call
+      perform_enqueued_jobs(only: Tracks::TimeChunkProcessorJob)
+      perform_enqueued_jobs(only: Tracks::BoundaryResolverJob)
+
+      expect(Track.exists?(source_track.id)).to be(true)
+      overlapping = user.tracks.where.not(id: source_track.id)
+                        .where('start_at < ? AND end_at > ?', source_track.end_at, source_track.start_at)
+      expect(overlapping).to be_empty
+      expect(Point.where(id: (before_points + after_points).map(&:id)).pluck(:track_id)).to all(be_present)
+    end
+  end
+
+  describe 'boundary resolution after the run' do
+    def run_daily_and_resolve(kept_track)
+      user.update!(points_count: user.points.count)
+      kept_track.update_columns(created_at: 3.hours.ago)
+      Tracks::DailyGenerationJob.perform_now
+      perform_enqueued_jobs(only: Tracks::ParallelGeneratorJob)
+      perform_enqueued_jobs(only: Tracks::TimeChunkProcessorJob)
+      perform_enqueued_jobs(only: Tracks::BoundaryResolverJob)
+    end
+
+    it 'does not merge away a corrected track next to a regenerated one' do
+      corrected_track = track_for(create_points(tracker_id: 'phone', offset: 0))
+      segment_on(corrected_track, source: 'user', corrected_at: 1.day.ago)
+      following = create_points(tracker_id: 'phone', offset: 420)
+
+      run_daily_and_resolve(corrected_track)
+
+      expect(Track.exists?(corrected_track.id)).to be(true)
+      expect(corrected_track.track_segments.manually_corrected).to exist
+      following_track_ids = Point.where(id: following.map(&:id)).pluck(:track_id)
+      expect(following_track_ids).to all(be_present)
+      expect(following_track_ids).not_to include(corrected_track.id)
+    end
+
+    it 'does not merge away a generated track carrying source segments' do
+      adopted_track = track_for(create_points(tracker_id: 'phone', offset: 0, import_id: import.id))
+      segment_on(adopted_track, source: 'google_phone_takeout')
+      create_points(tracker_id: 'phone', offset: 420)
+
+      run_daily_and_resolve(adopted_track)
+
+      expect(Track.exists?(adopted_track.id)).to be(true)
+      expect(adopted_track.track_segments.where(source: 'google_phone_takeout')).to exist
+    end
+  end
+
+  it 'keeps a generated track carrying source segments' do
+    points = create_points(tracker_id: 'phone', offset: 0, import_id: import.id)
+    adopted_track = nil
+
+    run_daily_after do
+      adopted_track = track_for(points)
+      segment_on(adopted_track, source: 'google_phone_takeout')
+    end
+
+    expect(Track.exists?(adopted_track.id)).to be(true)
+  end
+end
