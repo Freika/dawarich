@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Insights shows the current year first with a distinct color for the previous year, and hosted settings hide the What's New notice preference.
 - `GET /api/v1/users/me` returns the user's `id`, as the API documentation describes. The mobile app needs it to link in-app subscriptions to the right account.
 - Opening a place link directly now shows the place on the map instead of an error page.
+- Saving map settings no longer re-processes every track's transportation mode when the transportation mode filter was already left at its default (all modes).
 
 ## [1.15.2] - 2026-09-22, Berlin
 
