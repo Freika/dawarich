@@ -16,6 +16,8 @@ after_floor = ['unreleased', *states[(floor + 1)..].map { _1.fetch('first_releas
 present = Dir[File.join(root, 'db/migrate/*.rb')].filter_map { File.basename(_1)[/\A(\d+)_/, 1] }
 unreleased = present - state_of.keys
 fixtures = Dir[File.join(root, 'scripts/schema_parity/fixtures/unreleased--*.sql')].map { File.basename(_1) }
+inline_effects = File.readlines(File.join(root, 'scripts/schema_parity/inline_effects.tsv'), chomp: true)
+                     .map { _1.split("\t") }
 
 unless unreleased.empty?
   inventory, status = Open3.capture2('ruby', File.join(root, 'scripts/schema_parity/inventory.rb'), *unreleased)
@@ -33,6 +35,8 @@ end
 
 machinery = %r{
   \Aapp-phoenix/lib/dawarich/(release_migrations?\.ex|release_migrator\.ex|release_migrator/|release\.ex|repo\.ex)
+  |\Aapp-phoenix/lib/dawarich/active_record_encryption(\.ex\z|/)
+  |\Aapp-phoenix/priv/ruby_encodings\.txt\z
   |\Aapp-phoenix/lib/dawarich/release_migrations/(?!(?:v[\d_]+|unreleased)\.ex\z)
   |\Aapp-phoenix/priv/(release_migrations/(?!(?:unreleased|[\d.]+)/)|repo/)
   |\Aapp-phoenix/test/support/mix/tasks/dawarich\.release_migrate\.ex\z
@@ -65,11 +69,18 @@ changed.each do |path|
   end
 end
 
+inline_effects.each do |path, release|
+  next unless changed.include?(path)
+
+  releases << release
+  modules << release
+end
+
 older_than_a_module = lambda do |check|
   start = check[/\Aupgrade:(\d+(?:\.\d+)*)/, 1] or next false
   modules.any? { _1 == 'unreleased' || Gem::Version.new(start) < Gem::Version.new(_1) }
 end
-migrator_gems = %w[rails activerecord activesupport activemodel railties pg strong_migrations data_migrate]
+migrator_gems = %w[rails activerecord activesupport activemodel railties pg strong_migrations data_migrate oj json]
 migrator_gems_bumped = changed.include?('Gemfile.lock') && begin
   range = ARGV[1].to_s
   abort 'Gemfile.lock changed: pass the diff range <base>...<head> as the second argument' if range.empty?

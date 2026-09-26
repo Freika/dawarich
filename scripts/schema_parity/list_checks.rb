@@ -36,7 +36,7 @@ end
 checks << 'step:unreleased' if (present - listed).any?
 fixtures.each do |fixture|
   checks << "rows:#{fixture}"
-  checks << "rows:#{fixture}~shifted" unless fixture.include?('--unported-')
+  checks << "rows:#{fixture}~shifted"
 end
 checks.concat(names.grep(/\Acontended:/))
 states[floor..].each { |state| checks << "upgrade:#{state.fetch('first_release')}" }

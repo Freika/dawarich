@@ -37,6 +37,7 @@ RUN mix deps.compile
 
 COPY app-phoenix/lib lib
 COPY app-phoenix/priv priv
+COPY lib/assets/admin1_world.geojson priv/admin1_world.geojson
 COPY app-phoenix/rel rel
 COPY app-phoenix/config/runtime.exs config/
 RUN mix release
