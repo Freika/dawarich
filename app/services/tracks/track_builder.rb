@@ -246,7 +246,7 @@ module Tracks::TrackBuilder
     detector = TransportationModes::Detector.new(
       track,
       enabled_modes: safe_settings.enabled_transportation_modes,
-      preserved: track.track_segments.manually_corrected.to_a
+      preserved: track.track_segments.outranking_inference.to_a
     )
     segment_data = detector.call
 

@@ -56,7 +56,7 @@ module EnhancedImport
                              .where(track_id: import.points.where.not(track_id: nil).select(:track_id))
       track_ids = segments.distinct.pluck(:track_id)
       segments.delete_all
-      jobs = track_ids.map { |id| TransportationModes::ReclassifyTrackJob.new(id, keep_source: true) }
+      jobs = track_ids.map { |id| TransportationModes::ReclassifyTrackJob.new(id) }
       ActiveJob.perform_all_later(jobs)
     end
 
