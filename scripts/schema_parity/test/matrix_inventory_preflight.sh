@@ -79,5 +79,28 @@ ruby -rjson -e '
 ' "$repo/db/release_migrations.json"
 expect_fail "an unfixtured post-floor data_added version" "20270101000000"
 
+fresh_copy
+ruby -e '
+  path = ARGV[0]
+  prefix = "c40a98bf2edd9e43becbd6418b6e6fd8f580c20b\t1.7.7\t1.7.7\t"
+  lines = File.readlines(path)
+  lines.map! { |l| l.start_with?(prefix) ? l.sub("differs", "EXTRA\tdiffers") : l }
+  File.write(path, lines.join)
+' "$repo/db/release_snapshots/schemarb.tsv"
+rm "$repo/db/release_snapshots/1.7.7.schemarb.sql.gz"
+expect_fail "an extra schemarb.tsv column plus a deleted variant (reviewer repro)" "schemarb.tsv"
+
+fresh_copy
+rm "$repo/db/release_snapshots/schemarb.tsv"
+output="$(preflight)"
+status=$?
+[ "$status" -ne 0 ]
+verdict $? "a missing schemarb.tsv fails ($output)"
+first_line="$(printf '%s\n' "$output" | head -n 1)"
+case "$first_line" in
+  "matrix inventory preflight:"*) pass "a missing schemarb.tsv reports itself first, not a raw backtrace" ;;
+  *) flunk "a missing schemarb.tsv reports itself first, not a raw backtrace (said: $output)" ;;
+esac
+
 echo "$failures failed"
 [ "$failures" -eq 0 ]

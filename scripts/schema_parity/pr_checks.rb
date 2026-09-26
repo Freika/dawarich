@@ -2,6 +2,7 @@
 
 require 'json'
 require 'open3'
+require_relative 'inventory_tags'
 
 root = File.expand_path('../..', __dir__)
 listed = File.readlines(ARGV.fetch(0), chomp: true)
@@ -23,8 +24,7 @@ unless unreleased.empty?
   missing = inventory.lines.filter_map do |line|
     _state, version, tags = line.chomp.split("\t")
     tags = tags.to_s.split(',')
-    data_dependent = tags.intersect?(%w[rows validates env effect invalid]) || (%w[job gated] - tags).empty?
-    version if data_dependent && fixtures.none? { _1.include?(version) }
+    version if data_dependent?(tags) && fixtures.none? { _1.include?(version) }
   end
   if missing.any?
     abort "add scripts/schema_parity/fixtures/unreleased--<version>[-<variant>].sql for each of: #{missing.join(' ')}"

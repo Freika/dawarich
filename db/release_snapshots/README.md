@@ -941,6 +941,38 @@ the refusal sample, and nothing older, each restored into PostgreSQL 14 and 17. 
 - **An unreleased migration that needs a fixture it lacks** (`inventory.rb` decides) fails the select step, on pull
   requests and pushes alike.
 
+### Matrix inventory preflight
+
+`scripts/schema_parity/matrix_inventory_preflight.rb` proves the matrix described above cannot silently shrink. It
+reads `db/release_migrations.json`, `db/release_snapshots/schemarb.tsv`, `scripts/schema_parity/ecto_expectations.tsv`
+and `scripts/schema_parity/inventory.rb`'s output, and cross-checks each against `ecto_prove.sh --list`. It touches
+no database and starts no container.
+
+- Every state at or after the floor (`0.37.2`) must have both an `upgrade:<release>` check in `--list` and an
+  `<release>.image.sql.gz` or `<release>.replay.sql.gz` snapshot on disk.
+- Every `differs` row of `schemarb.tsv` at or after the floor must have both its named `.schemarb.sql.gz` file on
+  disk and its `upgrade:<release>.schemarb` check in `--list`. `schemarb.tsv`'s header and column count are
+  validated first, so a reshuffled or added column fails loudly instead of making `result` silently read the wrong
+  field.
+- Every `refused:` line of `ecto_expectations.tsv` must have its backing snapshot on disk and appear in `--list`.
+- Every version `inventory.rb` flags `rows`/`validates`/`env`/`effect`/`invalid`, or both `job` and `gated`, must
+  have a fixture belonging to its release; the same holds for any `data_added` version of a floor-or-later state.
+
+Run it with `LANG=en_US.UTF-8 ruby scripts/schema_parity/matrix_inventory_preflight.rb`. On success it writes the
+check count by kind and the exact ordered list to `$SP_WORK/inventory_preflight.txt` (`tmp/schema_parity/` by
+default, never committed); on any gap, or a malformed input file, it aborts with a `matrix inventory preflight: …`
+message naming the release, check or version, never a raw backtrace. No total check count is hard-coded; the gate
+is that `db/release_migrations.json`, the tsv files and `--list` agree, so the total is free to grow.
+
+**Known limit.** Fixture coverage is per release, not per version or per gated branch, for `rows`/`validates`/`env`/
+`invalid`/`job+gated`/`effect` versions: a release qualifies once any one of its fixtures exists (its main
+`<release>.sql`/`.env`, or any `<release>--…` variant), because fixture names do not carry the migration version —
+except `unreleased--<version>[-<variant>]` fixtures, which the preflight matches by version instead, and any
+`data_added` version, which likewise requires its version in the fixture name. Deleting one variant fixture out of
+several for the same release is not caught; deleting every fixture a release needs is. Fixture names such as
+`--unported-<version>` are not load-bearing for this rule — C3a is expected to rename them to data names
+(`1.7.6--duplicate-tracks`) as it ports each effect.
+
 ### At a release
 
 1. Eugene tags the release and fetches the tags.
