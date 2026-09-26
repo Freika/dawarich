@@ -4,6 +4,8 @@ defmodule Dawarich.ReleaseMigrations.V1_14_0 do
 
   import Dawarich.ReleaseMigration
 
+  alias Dawarich.ReleaseMigrations.Effects.BackfillPlacesUserId
+
   @places_check_constraint """
   SELECT 1 FROM pg_constraint WHERE conrelid = 'places'::regclass AND contype = 'c' AND conname = 'places_user_id_not_null'
   """
@@ -41,8 +43,7 @@ defmodule Dawarich.ReleaseMigrations.V1_14_0 do
 
   defp validate_places_user_id_not_null(repo) do
     unless exists?(repo, @places_user_id_not_null) do
-      if exists?(repo, "SELECT 1 FROM places WHERE user_id IS NULL"),
-        do: unported!("DataMigrations::BackfillPlacesUserIdJob")
+      drain_userless_places(repo)
 
       if exists?(repo, @places_check_constraint) do
         sql!(repo, ~S"""
@@ -59,6 +60,19 @@ defmodule Dawarich.ReleaseMigrations.V1_14_0 do
       sql!(repo, ~S"""
       ALTER TABLE "places" DROP CONSTRAINT "places_user_id_not_null";
       """)
+    end
+  end
+
+  defp drain_userless_places(repo) do
+    if exists?(repo, "SELECT 1 FROM places WHERE user_id IS NULL") do
+      BackfillPlacesUserId.run(repo)
+      remaining = select_value(repo, "SELECT count(*) FROM places WHERE user_id IS NULL")
+
+      if remaining > 0 do
+        raise "[Migration] places_user_id_backfill remaining=#{remaining}. " <>
+                "List them with: SELECT id FROM places WHERE user_id IS NULL; " <>
+                "assign an owner to those places or delete them, then migrate again"
+      end
     end
   end
 

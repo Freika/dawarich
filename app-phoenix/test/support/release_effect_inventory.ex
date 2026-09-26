@@ -116,22 +116,10 @@ defmodule Dawarich.ReleaseEffectInventory do
 
   @unported_sites [
     %{
-      site: "v1_7_6.ex:30",
-      class: "DataMigrations::DedupeTracksForUniqueIndexJob",
-      task: 3,
-      rails_file: "app/jobs/data_migrations/dedupe_tracks_for_unique_index_job.rb"
-    },
-    %{
       site: "v1_13_1.ex:100",
       class: "Geocoding::SeedFromEnv",
       task: 4,
       rails_file: "app/services/geocoding/seed_from_env.rb"
-    },
-    %{
-      site: "v1_14_0.ex:45",
-      class: "DataMigrations::BackfillPlacesUserIdJob",
-      task: 3,
-      rails_file: "app/jobs/data_migrations/backfill_places_user_id_job.rb"
     },
     %{
       site: "v1_15_0.ex:51",

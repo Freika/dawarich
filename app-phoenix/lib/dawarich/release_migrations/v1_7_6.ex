@@ -4,7 +4,7 @@ defmodule Dawarich.ReleaseMigrations.V1_7_6 do
 
   import Dawarich.ReleaseMigration
 
-  @duplicate_tracks "SELECT 1 FROM tracks GROUP BY user_id, start_at, end_at HAVING COUNT(*) > 1"
+  alias Dawarich.ReleaseMigrations.Effects.DedupeTracksForUniqueIndex
 
   @impl true
   def release, do: "1.7.6"
@@ -25,10 +25,7 @@ defmodule Dawarich.ReleaseMigrations.V1_7_6 do
     sql!(repo, ~S|ALTER TABLE "trips" ADD "last_recalculated_at" timestamp(6);|)
   end
 
-  defp dedupe_tracks_for_unique_index(repo) do
-    if exists?(repo, @duplicate_tracks),
-      do: unported!("DataMigrations::DedupeTracksForUniqueIndexJob")
-  end
+  defp dedupe_tracks_for_unique_index(repo), do: DedupeTracksForUniqueIndex.run(repo)
 
   defp add_unique_index_to_tracks(repo) do
     unless index_name?(repo, "tracks", "index_tracks_on_user_start_end_unique") do
