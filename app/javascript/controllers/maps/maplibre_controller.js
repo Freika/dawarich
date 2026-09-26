@@ -39,6 +39,8 @@ export default class extends Controller {
     userPlan: { type: String, default: "pro" },
     upgradeUrl: { type: String, default: "" },
     importId: { type: String, default: "" },
+    placeLatitude: Number,
+    placeLongitude: Number,
   }
 
   static targets = [
@@ -157,6 +159,10 @@ export default class extends Controller {
     if (urlParams.get("panel") === "timeline") {
       this.settings.visitsEnabled = true
       this.settingsController.settings.visitsEnabled = true
+    }
+    if (this.hasPlaceLatitudeValue && this.hasPlaceLongitudeValue) {
+      this.settings.placesEnabled = true
+      this.settingsController.settings.placesEnabled = true
     }
 
     // Sync toggle states with loaded settings
@@ -337,7 +343,7 @@ export default class extends Controller {
       })
     }
 
-    this.loadMapData().then(() => {
+    this.loadMapData({ fitBounds: !this.hasPlaceLatitudeValue }).then(() => {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()
       }
@@ -403,6 +409,12 @@ export default class extends Controller {
         vectorTilesUrl: this.settings.vectorTilesUrl,
         tilesFallback: this.settings.tilesFallback === true,
         ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
+        ...(this.hasPlaceLatitudeValue && this.hasPlaceLongitudeValue
+          ? {
+              center: [this.placeLongitudeValue, this.placeLatitudeValue],
+              zoom: 13,
+            }
+          : {}),
       },
       this.apiKeyValue,
     )
@@ -491,6 +503,7 @@ export default class extends Controller {
 
   async navigateTimelineDateRange({ startAt, endAt, fitBounds = true }) {
     if (!startAt || !endAt) return
+    const timelineNavigating = this.timelineNavigationPending()
 
     const toApiDate = (local) => {
       const d = new Date(local)
@@ -510,7 +523,7 @@ export default class extends Controller {
     if (this.settings?.anomaliesEnabled) {
       this.layerVisibilityManager.refreshAnomalies({ enabled: true })
     }
-    this.refreshTimelineFeedIfActive?.()
+    if (!timelineNavigating) this.refreshTimelineFeedIfActive?.()
     this.debouncedLoadFamilyHistory?.()
   }
 
@@ -735,10 +748,12 @@ export default class extends Controller {
    * Called when the timeline-feed tab becomes active.
    * Sets the Turbo Frame src to trigger server-rendered HTML load.
    */
-  loadTimelineFeed() {
+  loadTimelineFeed({ reload = false } = {}) {
     if (!this.hasTimelineFeedContainerTarget) return
+    if (this.timelineNavigationPending()) return
 
     const frame = this.timelineFeedContainerTarget
+    if (reload) frame.removeAttribute("src")
     const url = `/map/timeline_feeds?start_at=${encodeURIComponent(this.startDateValue)}&end_at=${encodeURIComponent(this.endDateValue)}`
 
     if (frame.getAttribute("src") !== url) {
@@ -758,11 +773,14 @@ export default class extends Controller {
     const activeTab = this.element.querySelector(
       '.tab-content.active[data-tab-content="timeline-feed"]',
     )
-    if (activeTab && this.hasTimelineFeedContainerTarget) {
-      // Force reload by clearing cached src
-      this.timelineFeedContainerTarget.removeAttribute("src")
-      this.loadTimelineFeed()
-    }
+    if (activeTab) this.loadTimelineFeed({ reload: true })
+  }
+
+  timelineNavigationPending() {
+    return (
+      this.hasTimelineFeedContainerTarget &&
+      this.timelineFeedContainerTarget.hasAttribute("data-navigation-pending")
+    )
   }
 
   /**
@@ -1330,6 +1348,10 @@ export default class extends Controller {
   }
   filterPlacesByTags(event) {
     return this.placesManager.filterPlacesByTags(event)
+  }
+
+  handlePlaceDeleted(event) {
+    return this.placesManager.handlePlaceDeleted(event)
   }
   toggleAllPlaceTags(event) {
     return this.placesManager.toggleAllPlaceTags(event)

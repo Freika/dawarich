@@ -277,6 +277,16 @@ RSpec.describe 'API Rate Limiting', type: :request do
       get '/trial/welcome?token=x'
       expect(response).to have_http_status(:too_many_requests)
     end
+
+    context 'on a self-hosted instance' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'does not throttle GET /trial/welcome' do
+        31.times { get '/trial/welcome?token=x' }
+
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
+    end
   end
 
   describe 'signup throttle' do
@@ -298,6 +308,117 @@ RSpec.describe 'API Rate Limiting', type: :request do
       end
 
       expect(response).to have_http_status(:too_many_requests)
+    end
+
+    context 'on a self-hosted instance' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'does not throttle POST /users at 5/min/IP' do
+        6.times do
+          post '/users', params: { user: { email: "sh-burst-#{SecureRandom.hex(3)}@example.com", password: 'x' } }
+        end
+
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
+
+      it 'does not throttle POST /users at 20/hour/IP' do
+        21.times do
+          post '/users', params: { user: { email: "sh-hourly-#{SecureRandom.hex(3)}@example.com", password: 'x' } }
+        end
+
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
+    end
+  end
+
+  describe 'web login throttle' do
+    context 'on a cloud instance' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'throttles POST /users/sign_in at 5/min/email' do
+        5.times do
+          post '/users/sign_in', params: { user: { email: 'attacker@example.com', password: 'wrong' } }
+        end
+
+        post '/users/sign_in', params: { user: { email: 'attacker@example.com', password: 'wrong' } }
+        expect(response).to have_http_status(:too_many_requests)
+      end
+
+      it 'throttles POST /users/sign_in at 20/min/IP' do
+        20.times do |i|
+          post '/users/sign_in', params: { user: { email: "attacker-#{i}@example.com", password: 'wrong' } }
+        end
+
+        post '/users/sign_in', params: { user: { email: 'attacker-final@example.com', password: 'wrong' } }
+        expect(response).to have_http_status(:too_many_requests)
+      end
+    end
+
+    context 'on a self-hosted instance' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'does not throttle repeated failed logins by email' do
+        6.times do
+          post '/users/sign_in', params: { user: { email: 'attacker@example.com', password: 'wrong' } }
+        end
+
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
+
+      it 'does not throttle repeated failed logins by IP' do
+        21.times do |i|
+          post '/users/sign_in', params: { user: { email: "attacker-#{i}@example.com", password: 'wrong' } }
+        end
+
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
+    end
+  end
+
+  describe 'web OTP challenge throttle' do
+    context 'on a cloud instance' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'throttles POST /users/otp_challenge' do
+        21.times { post user_otp_challenge_path, params: { otp_attempt: '000000' } }
+
+        expect(response).to have_http_status(:too_many_requests)
+      end
+    end
+
+    context 'on a self-hosted instance' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'does not throttle POST /users/otp_challenge' do
+        21.times { post user_otp_challenge_path, params: { otp_attempt: '000000' } }
+
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
+    end
+  end
+
+  describe 'imports claim throttle' do
+    let!(:pending) { create(:pending_import, :with_file) }
+
+    context 'on a cloud instance' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
+      it 'throttles GET /users/sign_up?import_ticket= at 30/hour/IP' do
+        30.times { get "/users/sign_up?import_ticket=#{pending.claim_ticket}" }
+
+        get "/users/sign_up?import_ticket=#{pending.claim_ticket}"
+        expect(response).to have_http_status(:too_many_requests)
+      end
+    end
+
+    context 'on a self-hosted instance' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+      it 'does not throttle GET /users/sign_up?import_ticket=' do
+        31.times { get "/users/sign_up?import_ticket=#{pending.claim_ticket}" }
+
+        expect(response).not_to have_http_status(:too_many_requests)
+      end
     end
   end
 end

@@ -12,6 +12,8 @@ class PlacesController < ApplicationController
 
   def show
     @place = current_user.places.includes(:tags).find(params[:id])
+    return redirect_to map_v2_path(place_id: @place.id) unless drawer_request?
+
     @recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
 
     render layout: false
@@ -49,27 +51,21 @@ class PlacesController < ApplicationController
       @place = current_user.places.includes(:tags, :active_visits).find(@place.id)
 
       respond_to do |format|
+        format.html { redirect_to map_v2_path(place_id: @place.id), status: :see_other }
         format.turbo_stream do
-          if drawer_request?
-            recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
-            render turbo_stream: [
-              turbo_stream.replace(
-                'place-drawer',
-                partial: 'places/drawer',
-                locals: { place: @place, recent_visits: recent_visits }
-              ),
-              stream_flash(:success, I18n.t('controllers.places.updated'))
-            ]
-          else
-            render turbo_stream: [
-              turbo_stream.replace('place-creation-data', html: place_data_element(updated: true)),
-              stream_flash(:success, I18n.t('controllers.places.updated'))
-            ]
+          streams = [drawer_stream, stream_flash(:success, I18n.t('controllers.places.updated'))]
+          unless drawer_request?
+            streams.unshift(turbo_stream.replace('place-creation-data', html: place_data_element(updated: true)))
           end
+          render turbo_stream: streams
         end
       end
     else
       respond_to do |format|
+        format.html do
+          redirect_to map_v2_path(place_id: @place.id),
+                      alert: @place.errors.full_messages.join(', '), status: :see_other
+        end
         format.turbo_stream do
           render turbo_stream: stream_flash(:error, @place.errors.full_messages.join(', '))
         end
@@ -97,9 +93,10 @@ class PlacesController < ApplicationController
 
   def destroy
     @place.destroy!
+    notice = I18n.t('controllers.places.place_was_successfully_destroyed')
+    return render turbo_stream: stream_flash(:success, notice) if drawer_request?
 
-    redirect_to places_url(page: params[:page]), notice: I18n.t('controllers.places.place_was_successfully_destroyed'),
-status: :see_other
+    redirect_to places_url(page: params[:page]), notice:, status: :see_other
   end
 
   private
@@ -110,6 +107,11 @@ status: :see_other
 
   def drawer_request?
     request.headers['Turbo-Frame'] == 'place-drawer'
+  end
+
+  def drawer_stream
+    recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
+    turbo_stream.update('place-drawer', partial: 'places/drawer', locals: { place: @place, recent_visits: })
   end
 
   def place_params

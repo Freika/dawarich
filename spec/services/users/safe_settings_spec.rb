@@ -3,6 +3,12 @@
 require 'rails_helper'
 
 RSpec.describe Users::SafeSettings do
+  it 'matches the database defaults for track splitting' do
+    defaults = User.column_defaults.fetch('settings')
+
+    expect(defaults['meters_between_routes']).to eq(described_class.new.meters_between_routes.to_s)
+    expect(defaults['minutes_between_routes']).to eq(described_class.new.minutes_between_routes.to_s)
+  end
   describe '#initialize' do
     it 'falls back to defaults for malformed settings containers' do
       [nil, false, []].each do |settings|

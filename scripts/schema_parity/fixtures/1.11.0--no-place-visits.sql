@@ -1,0 +1,8 @@
+DROP TABLE place_visits;
+INSERT INTO users (email, created_at, updated_at) VALUES ('no-place-visits@example.test', '2026-01-01 00:00:00', '2026-01-01 00:00:00');
+INSERT INTO places (name, longitude, latitude, user_id, created_at, updated_at) SELECT 'Library', 12.370000, 51.340000, id, '2026-01-02 00:00:00', '2026-01-02 00:00:00' FROM users WHERE email = 'no-place-visits@example.test';
+INSERT INTO visits (user_id, place_id, started_at, ended_at, duration, name, created_at, updated_at) SELECT u.id, p.id, '2026-01-05 10:00:00', '2026-01-05 11:00:00', 60, 'Library keeper', '2026-01-05 12:00:00', '2026-01-05 12:00:00' FROM users u JOIN places p ON p.user_id = u.id;
+INSERT INTO visits (user_id, place_id, started_at, ended_at, duration, name, created_at, updated_at) SELECT u.id, p.id, '2026-01-05 10:00:00', '2026-01-05 11:30:00', 90, 'Library loser', '2026-01-05 12:00:00', '2026-01-05 12:00:00' FROM users u JOIN places p ON p.user_id = u.id;
+INSERT INTO visits (user_id, place_id, started_at, ended_at, duration, name, created_at, updated_at) SELECT u.id, p.id, '2026-01-06 10:00:00', '2026-01-06 11:00:00', 60, 'Library next day', '2026-01-06 12:00:00', '2026-01-06 12:00:00' FROM users u JOIN places p ON p.user_id = u.id;
+INSERT INTO points (user_id, visit_id, "timestamp", created_at, updated_at) SELECT user_id, id, 1767607800, '2026-01-05 12:00:00', '2026-01-05 12:00:00' FROM visits WHERE name = 'Library loser';
+INSERT INTO points (user_id, visit_id, "timestamp", created_at, updated_at) SELECT user_id, id, 1767693600, '2026-01-06 12:00:00', '2026-01-06 12:00:00' FROM visits WHERE name = 'Library next day';

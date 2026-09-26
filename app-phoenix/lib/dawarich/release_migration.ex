@@ -1,0 +1,261 @@
+defmodule Dawarich.ReleaseMigration do
+  @moduledoc false
+
+  @type job :: {String.t(), list(), non_neg_integer()}
+  @type step ::
+          {String.t(), (module() -> term())} | {String.t(), (module() -> term()), keyword()}
+
+  @callback release() :: String.t()
+  @callback steps() :: [step()]
+  @callback data_versions() :: [String.t()]
+
+  @indexes_sql """
+  SELECT i.relname,
+         CASE WHEN 0 = ANY (d.indkey::int2[]) THEN NULL ELSE
+           ARRAY(SELECT a.attname::text
+                 FROM unnest(d.indkey::int2[]) WITH ORDINALITY AS k(attnum, ord)
+                 JOIN pg_attribute a ON a.attrelid = t.oid AND a.attnum = k.attnum
+                 WHERE k.ord <= d.indnkeyatts
+                 ORDER BY k.ord)
+         END
+  FROM pg_class t
+  JOIN pg_index d ON t.oid = d.indrelid
+  JOIN pg_class i ON d.indexrelid = i.oid
+  LEFT JOIN pg_namespace n ON n.oid = t.relnamespace
+  WHERE i.relkind IN ('i', 'I') AND NOT d.indisprimary AND t.relname = $1
+    AND n.nspname = ANY (current_schemas(false))
+  ORDER BY i.relname
+  """
+
+  @foreign_key_sql """
+  SELECT c.conname::text
+  FROM pg_constraint c
+  JOIN pg_class t1 ON c.conrelid = t1.oid
+  JOIN pg_class t2 ON c.confrelid = t2.oid
+  JOIN pg_namespace n ON c.connamespace = n.oid
+  WHERE c.contype = 'f' AND t1.relname = $1 AND n.nspname = ANY (current_schemas(false))
+    AND t2.oid::regclass::text = $2
+    AND ARRAY(
+      SELECT a.attname::text
+      FROM generate_subscripts(c.conkey, 1) AS idx
+      JOIN pg_attribute a ON a.attrelid = t1.oid AND a.attnum = c.conkey[idx]
+      ORDER BY idx
+    ) = ARRAY[$3::text]
+  ORDER BY c.conname
+  LIMIT 1
+  """
+
+  @index_name_sql """
+  SELECT 1 FROM pg_class t
+  JOIN pg_index d ON t.oid = d.indrelid
+  JOIN pg_class i ON d.indexrelid = i.oid
+  LEFT JOIN pg_namespace n ON n.oid = t.relnamespace
+  WHERE i.relkind IN ('i', 'I') AND t.relname = $1 AND i.relname = $2
+    AND n.nspname = ANY (current_schemas(false))
+  """
+
+  def normalize({version, fun}), do: {version, fun, true}
+  def normalize({version, fun, opts}), do: {version, fun, Keyword.fetch!(opts, :transaction)}
+
+  def versions(module), do: Enum.map(module.steps(), &elem(&1, 0))
+
+  def sql!(repo, sql) do
+    if not repo.in_transaction?() and statements(sql) > 1 do
+      raise ArgumentError,
+            "one statement per sql! outside a transaction: #{String.slice(sql, 0, 80)}"
+    end
+
+    repo.query!(sql, [], query_type: :text, log: false)
+    :ok
+  end
+
+  def exists?(repo, sql, params \\ []) do
+    %{rows: [[found]]} = repo.query!("SELECT EXISTS (#{sql})", params, log: false)
+
+    found
+  end
+
+  def table?(repo, table) do
+    exists?(
+      repo,
+      """
+      SELECT 1 FROM pg_class c LEFT JOIN pg_namespace n ON n.oid = c.relnamespace
+      WHERE n.nspname = ANY (current_schemas(false)) AND c.relname = $1
+        AND c.relkind IN ('r', 'p')
+      """,
+      [table]
+    )
+  end
+
+  def column?(repo, table, column) do
+    exists?(
+      repo,
+      """
+      SELECT 1 FROM pg_attribute
+      WHERE attrelid = $1::text::regclass AND attname = $2 AND attnum > 0 AND NOT attisdropped
+      """,
+      [table, column]
+    )
+  end
+
+  def index?(repo, table, opts) do
+    opts = Keyword.validate!(opts, [:name, :columns])
+    name = Keyword.get(opts, :name)
+    columns = Keyword.get(opts, :columns)
+    %{rows: rows} = repo.query!(@indexes_sql, [table], log: false)
+
+    Enum.any?(rows, fn [index, index_columns] ->
+      (is_nil(name) or index == name) and (is_nil(columns) or index_columns == columns)
+    end)
+  end
+
+  def index_names(repo, table, columns) do
+    for [index, ^columns] <- repo.query!(@indexes_sql, [table], log: false).rows, do: index
+  end
+
+  def index_name?(repo, table, name), do: exists?(repo, @index_name_sql, [table, name])
+
+  def foreign_key_name(repo, from_table, to_table, column),
+    do: select_value(repo, @foreign_key_sql, [from_table, to_table, column])
+
+  def quote_ident(name), do: ~s("#{String.replace(name, ~s("), ~s(""))}")
+
+  def remove_index_by_columns(repo, table, columns, opts) do
+    opts = Keyword.validate!(opts, [:algorithm, if_exists: false])
+    algorithm = Map.fetch!(%{nil => "", concurrently: "CONCURRENTLY"}, opts[:algorithm])
+
+    case index_names(repo, table, columns) do
+      [] ->
+        if opts[:if_exists],
+          do: :ok,
+          else: raise(ArgumentError, "No indexes found on #{table} with the options provided.")
+
+      [name] ->
+        sql!(repo, "DROP INDEX #{algorithm} #{quote_ident(name)};")
+
+      names ->
+        raise ArgumentError,
+              "Multiple indexes found on #{table} columns [#{Enum.map_join(columns, ", ", &":#{&1}")}]. " <>
+                "Specify an index name from #{Enum.join(names, ", ")}"
+    end
+  end
+
+  def select_value(repo, sql, params \\ []) do
+    case repo.query!(sql, params, log: false).rows do
+      [[value | _] | _] -> value
+      _ -> nil
+    end
+  end
+
+  def repeat_until_zero(repo, sql, params \\ []) do
+    if repo.query!(sql, params, log: false).num_rows > 0,
+      do: repeat_until_zero(repo, sql, params),
+      else: :ok
+  end
+
+  def remove_index_concurrently_if_exists(repo, table, name) do
+    if index?(repo, table, name: name),
+      do: sql!(repo, "DROP INDEX CONCURRENTLY #{quote_ident(name)};")
+  end
+
+  def with_lock_retry(repo, fun, opts) do
+    outside_transaction!(repo, :with_lock_retry)
+    lock_retry(repo, fun, Keyword.put_new(opts, :on, [:lock_not_available]), 1)
+  end
+
+  def with_lock_retry!(repo, fun, opts) do
+    case with_lock_retry(repo, fun, opts) do
+      :acquired -> :ok
+      {:not_acquired, error} -> raise error
+    end
+  end
+
+  def rescue_sql(repo, fun, codes, fallback) do
+    outside_transaction!(repo, :rescue_sql)
+
+    try do
+      fun.()
+    rescue
+      error in Postgrex.Error ->
+        if codes == :any or error.postgres[:code] in codes,
+          do: fallback.(error),
+          else: reraise(error, __STACKTRACE__)
+    end
+  end
+
+  def require_zero_lock_timeout!(repo) do
+    %{rows: [[value]]} = repo.query!("SELECT current_setting('lock_timeout')", [], log: false)
+
+    if value != "0" do
+      raise "lock_timeout is #{value} for this database role; CREATE INDEX CONCURRENTLY needs 0. " <>
+              "Run ALTER ROLE <role> SET lock_timeout = 0 or migrate without a connection pooler, then start again"
+    end
+
+    :ok
+  end
+
+  def job(class, args \\ [], wait_seconds \\ 0), do: {class, args, wait_seconds}
+
+  def self_hosted? do
+    System.get_env("SELF_HOSTED", "true")
+    |> String.replace(["\"", "'"], "")
+    |> ruby_strip()
+    |> String.downcase()
+    |> then(&(&1 in ~w[true 1 yes on t]))
+  end
+
+  def ruby_strip(value), do: Regex.replace(~r/\A[\x00\x09-\x0D ]+|[\x00\x09-\x0D ]+\z/, value, "")
+
+  def env_present?(name), do: String.trim(System.get_env(name, "")) != ""
+
+  def backfill_allowed?, do: self_hosted?() and not env_present?("SKIP_POINT_DIMENSION_BACKFILL")
+
+  defp lock_retry(repo, fun, opts, attempt) do
+    repo.transaction(fn ->
+      repo.query!("SET LOCAL lock_timeout = '#{Keyword.fetch!(opts, :lock_timeout)}'", [],
+        log: false
+      )
+
+      fun.()
+    end)
+
+    :acquired
+  rescue
+    error in Postgrex.Error ->
+      cond do
+        error.postgres[:code] not in Keyword.fetch!(opts, :on) ->
+          reraise error, __STACKTRACE__
+
+        attempt < Keyword.fetch!(opts, :attempts) ->
+          Process.sleep(Keyword.fetch!(opts, :backoff_seconds) * attempt * 1000)
+          lock_retry(repo, fun, opts, attempt + 1)
+
+        true ->
+          {:not_acquired, error}
+      end
+  end
+
+  defp statements(sql) do
+    code =
+      Regex.replace(
+        ~r/\$(\w*)\$.*?\$\1\$|(?<![\w$])[eE]'(?:[^'\\]|\\.|'')*'|'(?:[^']|'')*'|"(?:[^"]|"")*"|--[^\n]*|\/\*.*?\*\//s,
+        sql,
+        " "
+      )
+
+    if String.contains?(code, ["'", "\"", "$$", "/*"]) do
+      raise ArgumentError, "cannot count the statements in sql!: #{String.slice(sql, 0, 80)}"
+    end
+
+    code
+    |> String.trim()
+    |> String.trim_trailing(";")
+    |> String.split(";")
+    |> length()
+  end
+
+  defp outside_transaction!(repo, name) do
+    if repo.in_transaction?(),
+      do: raise(ArgumentError, "#{name} runs only in a step with transaction: false")
+  end
+end

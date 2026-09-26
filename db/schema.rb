@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_25_100100) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -798,7 +798,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
     t.string "reset_password_token"
-    t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "1000", "minutes_between_routes" => "60"}
+    t.jsonb "settings", default: {"fog_of_war_meters" => "100", "meters_between_routes" => "500", "minutes_between_routes" => "30"}
     t.integer "sign_in_count", default: 0, null: false
     t.string "signup_variant"
     t.datetime "stats_swept_at"

@@ -1,0 +1,210 @@
+{
+  "oj": "3.17.6",
+  "cases": [
+    {
+      "name": "block comment",
+      "input_base64": "eyJhcGlfa2V5IjoiayIgLyogYyAqL30=",
+      "rails": "ok"
+    },
+    {
+      "name": "line comment",
+      "input_base64": "eyJhcGlfa2V5IjoiayIgLy8gYwp9",
+      "rails": "ok"
+    },
+    {
+      "name": "comment before value",
+      "input_base64": "LyogYyAqLyB7ImFwaV9rZXkiOiJrIn0=",
+      "rails": "ok"
+    },
+    {
+      "name": "hash comment",
+      "input_base64": "eyJhcGlfa2V5IjoiayIgIyBjCn0=",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "raw tab in string",
+      "input_base64": "eyJhcGlfa2V5IjoiYQliIn0=",
+      "rails": "ok"
+    },
+    {
+      "name": "raw newline in string",
+      "input_base64": "eyJhcGlfa2V5IjoiYQpiIn0=",
+      "rails": "ok"
+    },
+    {
+      "name": "raw control char in string",
+      "input_base64": "eyJhcGlfa2V5IjoiYQFiIn0=",
+      "rails": "ok"
+    },
+    {
+      "name": "float overflow",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsIngiOjFlNDAwfQ==",
+      "rails": "ok"
+    },
+    {
+      "name": "negative float overflow",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsIngiOi0xZTQwMH0=",
+      "rails": "ok"
+    },
+    {
+      "name": "NaN literal",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsIngiOk5hTn0=",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "Infinity literal",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsIngiOkluZmluaXR5fQ==",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "lone high surrogate",
+      "input_base64": "eyJhcGlfa2V5IjoiXHVkODAwIn0=",
+      "rails": "ok"
+    },
+    {
+      "name": "lone low surrogate",
+      "input_base64": "eyJhcGlfa2V5IjoiXHVkYzAwIn0=",
+      "rails": "ok"
+    },
+    {
+      "name": "invalid utf-8",
+      "input_base64": "eyJhcGlfa2V5Ijoi/yJ9",
+      "rails": "ok"
+    },
+    {
+      "name": "bom",
+      "input_base64": "77u/eyJhcGlfa2V5IjoiayJ9",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "trailing garbage",
+      "input_base64": "eyJhcGlfa2V5IjoiayJ9eA==",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "two documents",
+      "input_base64": "eyJhcGlfa2V5IjoiayJ9eyJiIjoxfQ==",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "trailing comma object",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsfQ==",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "trailing comma array",
+      "input_base64": "WyJrIixd",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "single quotes",
+      "input_base64": "eydhcGlfa2V5Jzonayd9",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "unquoted key",
+      "input_base64": "e2FwaV9rZXk6ImsifQ==",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "leading zero",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsIngiOjAxfQ==",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "plus sign",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsIngiOisxfQ==",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "leading dot",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsIngiOi41fQ==",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "trailing dot",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsIngiOjEufQ==",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "hex number",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsIngiOjB4MUF9",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "bad escape",
+      "input_base64": "eyJhcGlfa2V5IjoiXHgifQ==",
+      "rails": "ok"
+    },
+    {
+      "name": "short unicode escape",
+      "input_base64": "eyJhcGlfa2V5IjoiXHUxMiJ9",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "not json",
+      "input_base64": "bm90IGpzb24=",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "bare word true",
+      "input_base64": "dHJ1ZQ==",
+      "rails": "ok"
+    },
+    {
+      "name": "unterminated",
+      "input_base64": "eyJhcGlfa2V5IjoiayI=",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "empty object",
+      "input_base64": "e30=",
+      "rails": "ok"
+    },
+    {
+      "name": "null",
+      "input_base64": "bnVsbA==",
+      "rails": "ok"
+    },
+    {
+      "name": "escaped slash",
+      "input_base64": "eyJhcGlfa2V5IjoiYVwvYiJ9",
+      "rails": "ok"
+    },
+    {
+      "name": "long decimal",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsIngiOjAuMTIzNDU2Nzg5MDEyMzQ1Njc4OX0=",
+      "rails": "ok"
+    },
+    {
+      "name": "big exponent integer",
+      "input_base64": "eyJhcGlfa2V5IjoiayIsIngiOjFlMjB9",
+      "rails": "ok"
+    },
+    {
+      "name": "vertical tab whitespace",
+      "input_base64": "eyJhcGlfa2V5IjoiayILfQ==",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "form feed whitespace",
+      "input_base64": "eyJhcGlfa2V5IjoiayIMfQ==",
+      "rails": "ok"
+    },
+    {
+      "name": "nbsp whitespace",
+      "input_base64": "eyJhcGlfa2V5IjoiayLCoH0=",
+      "rails": "JSON::ParserError"
+    },
+    {
+      "name": "nul byte outside",
+      "input_base64": "eyJhcGlfa2V5IjoiayJ9AA==",
+      "rails": "ok"
+    },
+    {
+      "name": "deep nesting 101",
+      "input_base64": "W1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tbW1tdXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXV1dXQ==",
+      "rails": "JSON::NestingError"
+    }
+  ]
+}

@@ -50,12 +50,23 @@ class DemoData::PointsSeeder
 
   def backfill_country_ids
     ActiveRecord::Base.connection.execute(<<~SQL.squish)
+      WITH bounds AS MATERIALIZED (
+        SELECT ST_SetSRID(ST_Extent(lonlat::geometry)::geometry, 4326) AS geom
+        FROM points
+        WHERE import_id = #{@import.id.to_i}
+      ), country_parts AS MATERIALIZED (
+        SELECT countries.id, part.geom
+        FROM countries
+        JOIN bounds ON countries.geom && bounds.geom
+        CROSS JOIN LATERAL ST_Subdivide(countries.geom, 256) AS part(geom)
+      )
       UPDATE points
-      SET country_id = countries.id
-      FROM countries
+      SET country_id = country_parts.id
+      FROM country_parts
       WHERE points.import_id = #{@import.id.to_i}
         AND points.country_id IS NULL
-        AND ST_Intersects(countries.geom, points.lonlat::geometry)
+        AND country_parts.geom && points.lonlat::geometry
+        AND ST_Intersects(country_parts.geom, points.lonlat::geometry)
     SQL
   end
 end

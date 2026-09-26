@@ -152,6 +152,12 @@ globalThis.document ??= {
   removeEventListener: () => {},
   dispatchEvent: () => {},
 }
+globalThis.CustomEvent ??= class {
+  constructor(type, init = {}) {
+    this.type = type
+    this.detail = init.detail
+  }
+}
 
 function loadSegmentsHarness(fetchedFeature, pointTileRange = undefined) {
   const shown = []
@@ -341,4 +347,30 @@ test("tearing down track interactions removes segment markers", () => {
   assert.deepEqual(removed, [1, 2])
   assert.deepEqual(handlers.trackMarkers, [])
   assert.equal(handlers.selectedTrackFeature, null)
+})
+
+test("a track click claims the map click so the empty-map handler keeps the selection", () => {
+  const handlers = new EventHandlers(
+    { getLayer: () => undefined },
+    {
+      layerManager: { getLayer: () => undefined },
+      api: { fetchTrackWithSegments: () => new Promise(() => {}) },
+    },
+  )
+  let prevented = false
+
+  handlers.handleTrackClick({
+    point: { x: 1, y: 1 },
+    preventDefault: () => {
+      prevented = true
+    },
+    features: [
+      {
+        properties: { id: 7, start_at: "2025-10-15T10:00:00Z" },
+        geometry: { type: "LineString", coordinates: [] },
+      },
+    ],
+  })
+
+  assert.equal(prevented, true)
 })

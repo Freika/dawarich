@@ -368,6 +368,98 @@ RSpec.describe Imports::Create do
       end
     end
 
+    describe 'track generation scheduling' do
+      let(:import) { create(:import, user: user, source: source, name: File.basename(file_path)) }
+
+      before do
+        import.file.attach(io: File.open(file_path), filename: File.basename(file_path),
+                           content_type: 'application/octet-stream')
+      end
+
+      shared_examples 'generation deferred to the extraction' do
+        it 'enqueues the extraction and no track generation' do
+          service.call
+
+          expect(EnhancedImport::ExtractJob).to have_been_enqueued.with(import.id)
+          expect(Tracks::ParallelGeneratorJob).not_to have_been_enqueued
+        end
+      end
+
+      shared_examples 'generation scheduled at import' do
+        it 'schedules track generation for the untracked points and no extraction' do
+          service.call
+
+          expect(Tracks::ParallelGeneratorJob).to have_been_enqueued
+            .with(user.id, hash_including(mode: :bulk, untracked_only: true))
+          expect(EnhancedImport::ExtractJob).not_to have_been_enqueued
+        end
+      end
+
+      context 'with a phone Takeout file' do
+        let(:source) { 'google_phone_takeout' }
+        let(:file_path) { Rails.root.join('spec/fixtures/files/enhanced_import/google_phone_takeout_extractable.json') }
+
+        include_examples 'generation deferred to the extraction'
+      end
+
+      %i[pending running].each do |status|
+        context "with a phone Takeout file whose extraction is already #{status}" do
+          let(:source) { 'google_phone_takeout' }
+          let(:file_path) do
+            Rails.root.join('spec/fixtures/files/enhanced_import/google_phone_takeout_extractable.json')
+          end
+
+          before do
+            import.update_columns(additional_data_extraction_status: Import.additional_data_extraction_statuses[status])
+          end
+
+          it 'leaves track generation to the extraction in flight' do
+            service.call
+
+            expect(Tracks::ParallelGeneratorJob).not_to have_been_enqueued
+            expect(EnhancedImport::ExtractJob).not_to have_been_enqueued
+          end
+        end
+      end
+
+      context 'with a phone Takeout file whose extraction has stalled' do
+        let(:source) { 'google_phone_takeout' }
+        let(:file_path) do
+          Rails.root.join('spec/fixtures/files/enhanced_import/google_phone_takeout_extractable.json')
+        end
+
+        before do
+          import.update_columns(
+            additional_data_extraction_status: Import.additional_data_extraction_statuses[:running],
+            additional_data_extraction: { 'started_at' => (Import::EXTRACTION_STALE_AFTER + 1.hour).ago.iso8601 }
+          )
+        end
+
+        include_examples 'generation scheduled at import'
+      end
+
+      context 'with a GPX file that carries waypoints' do
+        let(:source) { 'gpx' }
+        let(:file_path) { Rails.root.join('spec/fixtures/files/gpx/gpx_mixed_track_and_waypoints.gpx') }
+
+        include_examples 'generation deferred to the extraction'
+      end
+
+      context 'with a GPX file without waypoints' do
+        let(:source) { 'gpx' }
+        let(:file_path) { Rails.root.join('spec/fixtures/files/gpx/gpx_track_single_segment.gpx') }
+
+        include_examples 'generation scheduled at import'
+      end
+
+      context 'with an OwnTracks file' do
+        let(:source) { 'owntracks' }
+        let(:file_path) { Rails.root.join('spec/fixtures/files/owntracks/2024-03.rec') }
+
+        include_examples 'generation scheduled at import'
+      end
+    end
+
     describe 'archive dispatch' do
       let(:gpx_content) do
         File.read(Rails.root.join('spec/fixtures/files/gpx/gpx_track_single_segment.gpx'))

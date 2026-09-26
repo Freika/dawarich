@@ -1,0 +1,1416 @@
+{
+  "states": [
+    {
+      "first_release": "0.0.8",
+      "releases": [
+        "0.0.8"
+      ],
+      "schema_added": [
+        "20220325100310",
+        "20231021104256",
+        "20231021104257",
+        "20231021104258",
+        "20240315213523",
+        "20240315215423",
+        "20240317171559",
+        "20240323125126",
+        "20240323160300",
+        "20240323161049",
+        "20240323190039"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.0.9",
+      "releases": [
+        "0.0.9",
+        "0.1.0",
+        "0.1.1",
+        "0.1.2",
+        "0.1.3"
+      ],
+      "schema_added": [
+        "20240324161309",
+        "20240324161800",
+        "20240324173315"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.1.4",
+      "releases": [
+        "0.1.4",
+        "0.1.4.1",
+        "0.1.5",
+        "0.1.6",
+        "0.1.6.1",
+        "0.1.6.2",
+        "0.1.6.3",
+        "0.1.7",
+        "0.1.7.1",
+        "0.1.7.3",
+        "0.1.7.4",
+        "0.1.8",
+        "0.1.8.1"
+      ],
+      "schema_added": [
+        "20240404154959"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.1.9",
+      "releases": [
+        "0.1.9",
+        "0.1.9.1",
+        "0.2.0"
+      ],
+      "schema_added": [
+        "20240425200155"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.2.1",
+      "releases": [
+        "0.2.1",
+        "0.2.3",
+        "0.2.4",
+        "0.2.5",
+        "0.3.1",
+        "0.3.2"
+      ],
+      "schema_added": [
+        "20240518095848"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.4.0",
+      "releases": [
+        "0.4.0",
+        "0.4.1",
+        "0.4.2",
+        "0.4.3",
+        "0.5.0",
+        "0.5.1",
+        "0.5.2"
+      ],
+      "schema_added": [
+        "20240525110244"
+      ],
+      "schema_removed": [],
+      "data_added": [
+        "20240525110530"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.5.3",
+      "releases": [
+        "0.5.3"
+      ],
+      "schema_added": [],
+      "schema_removed": [],
+      "data_added": [
+        "20240610170930"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.6.0",
+      "releases": [
+        "0.6.0",
+        "0.6.1",
+        "0.6.2",
+        "0.6.3",
+        "0.6.4",
+        "0.7.0"
+      ],
+      "schema_added": [
+        "20240612152451"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.7.1",
+      "releases": [
+        "0.7.1"
+      ],
+      "schema_added": [
+        "20240620205120"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.8.0",
+      "releases": [
+        "0.8.0"
+      ],
+      "schema_added": [],
+      "schema_removed": [],
+      "data_added": [
+        "20240625201842"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.8.1",
+      "releases": [
+        "0.8.1",
+        "0.8.2"
+      ],
+      "schema_added": [
+        "20240630093005"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.8.3",
+      "releases": [
+        "0.8.3",
+        "0.8.4",
+        "0.8.5",
+        "0.8.6",
+        "0.8.7"
+      ],
+      "schema_added": [
+        "20240703105734"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.9.0",
+      "releases": [
+        "0.9.0",
+        "0.9.1",
+        "0.9.2"
+      ],
+      "schema_added": [
+        "20240712141303"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.9.3",
+      "releases": [
+        "0.9.3",
+        "0.9.4"
+      ],
+      "schema_added": [
+        "20240713103051"
+      ],
+      "schema_removed": [],
+      "data_added": [
+        "20240713103122"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.9.5",
+      "releases": [
+        "0.9.5",
+        "0.9.6",
+        "0.9.7",
+        "0.9.8"
+      ],
+      "schema_added": [
+        "20240721165313",
+        "20240721183005",
+        "20240721183116"
+      ],
+      "schema_removed": [],
+      "data_added": [
+        "20240724141417"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.9.9",
+      "releases": [
+        "0.9.9",
+        "0.9.10",
+        "0.9.11"
+      ],
+      "schema_added": [],
+      "schema_removed": [],
+      "data_added": [
+        "20240730130922"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.9.12",
+      "releases": [
+        "0.9.12",
+        "0.10.0",
+        "0.11.0",
+        "0.11.1"
+      ],
+      "schema_added": [],
+      "schema_removed": [],
+      "data_added": [
+        "20240815174852"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.12.0",
+      "releases": [
+        "0.12.0",
+        "0.12.1",
+        "0.12.2",
+        "0.12.3",
+        "0.13.0",
+        "0.13.1",
+        "0.13.2",
+        "0.13.3",
+        "0.13.4",
+        "0.13.5",
+        "0.13.6",
+        "0.13.7",
+        "0.14.0",
+        "0.14.1",
+        "0.14.3",
+        "0.14.4",
+        "0.14.5",
+        "0.14.6",
+        "0.14.7",
+        "0.15.0",
+        "0.15.1",
+        "0.15.2",
+        "0.15.3",
+        "0.15.4",
+        "0.15.5",
+        "0.15.6",
+        "0.15.7"
+      ],
+      "schema_added": [
+        "20240805150111",
+        "20240808102348",
+        "20240808102425",
+        "20240808121027",
+        "20240822092405"
+      ],
+      "schema_removed": [],
+      "data_added": [
+        "20240808133112",
+        "20240822094532"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.15.8",
+      "releases": [
+        "0.15.8",
+        "0.15.9",
+        "0.15.10",
+        "0.15.11",
+        "0.15.12",
+        "0.15.13"
+      ],
+      "schema_added": [],
+      "schema_removed": [],
+      "data_added": [
+        "20241022100309"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.16.0",
+      "releases": [
+        "0.16.0",
+        "0.16.1",
+        "0.16.2",
+        "0.16.3",
+        "0.16.4",
+        "0.16.5",
+        "0.16.6",
+        "0.16.7",
+        "0.16.8",
+        "0.16.9",
+        "0.17.0",
+        "0.17.1",
+        "0.17.2"
+      ],
+      "schema_added": [],
+      "schema_removed": [],
+      "data_added": [
+        "20241107112451"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.18.0",
+      "releases": [
+        "0.18.0",
+        "0.18.1",
+        "0.18.2",
+        "0.19.0",
+        "0.19.1"
+      ],
+      "schema_added": [
+        "20241127161621",
+        "20241128095325"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.19.2",
+      "releases": [
+        "0.19.2"
+      ],
+      "schema_added": [
+        "20241205160055"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.19.3",
+      "releases": [
+        "0.19.3"
+      ],
+      "schema_added": [],
+      "schema_removed": [],
+      "data_added": [
+        "20241206163450"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.19.4",
+      "releases": [
+        "0.19.4",
+        "0.19.5"
+      ],
+      "schema_added": [
+        "20241202114820"
+      ],
+      "schema_removed": [],
+      "data_added": [
+        "20241202125248"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.19.6",
+      "releases": [
+        "0.19.6",
+        "0.19.7",
+        "0.20.0",
+        "0.20.1",
+        "0.20.2",
+        "0.21.0",
+        "0.21.1",
+        "0.21.2"
+      ],
+      "schema_added": [
+        "20241211113119"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.21.3",
+      "releases": [
+        "0.21.3",
+        "0.21.4",
+        "0.21.5",
+        "0.21.6",
+        "0.22.0",
+        "0.22.1",
+        "0.22.2",
+        "0.22.3",
+        "0.22.4"
+      ],
+      "schema_added": [],
+      "schema_removed": [],
+      "data_added": [
+        "20250104204852"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.23.0",
+      "releases": [
+        "0.23.0",
+        "0.23.1",
+        "0.23.2",
+        "0.23.3"
+      ],
+      "schema_added": [
+        "20250120152014",
+        "20250120152540",
+        "20250120154555"
+      ],
+      "schema_removed": [],
+      "data_added": [
+        "20250120154554"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.23.5",
+      "releases": [
+        "0.23.5"
+      ],
+      "schema_added": [
+        "20241226202204",
+        "20241226202831"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.23.6",
+      "releases": [
+        "0.23.6",
+        "0.24.0",
+        "0.24.1"
+      ],
+      "schema_added": [
+        "20250123145155",
+        "20250123151657"
+      ],
+      "schema_removed": [],
+      "data_added": [
+        "20250123151849"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.25.0",
+      "releases": [
+        "0.25.0",
+        "0.25.1",
+        "0.25.2",
+        "0.25.3"
+      ],
+      "schema_added": [
+        "20250219195822",
+        "20250221181805",
+        "20250221185032",
+        "20250221194430",
+        "20250221194509",
+        "20250303194009",
+        "20250303194043"
+      ],
+      "schema_removed": [],
+      "data_added": [
+        "20250222213848",
+        "20250226192005",
+        "20250303194123"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.25.4",
+      "releases": [
+        "0.25.4",
+        "0.25.5",
+        "0.25.6",
+        "0.25.7",
+        "0.25.8",
+        "0.25.9",
+        "0.25.10",
+        "0.26.0"
+      ],
+      "schema_added": [
+        "20250324180755",
+        "20250404182437"
+      ],
+      "schema_removed": [],
+      "data_added": [
+        "20250403204658",
+        "20250404182629"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.26.1",
+      "releases": [
+        "0.26.1"
+      ],
+      "schema_added": [
+        "20250513164521",
+        "20250515190752",
+        "20250515192211"
+      ],
+      "schema_removed": [],
+      "data_added": [
+        "20250516180933"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.26.2",
+      "releases": [
+        "0.26.2",
+        "0.26.3",
+        "0.26.4",
+        "0.26.5",
+        "0.26.6",
+        "0.26.7",
+        "0.27.0",
+        "0.27.1",
+        "0.27.2",
+        "0.27.3",
+        "0.27.4",
+        "0.28.0",
+        "0.28.1"
+      ],
+      "schema_added": [],
+      "schema_removed": [],
+      "data_added": [
+        "20250518173936",
+        "20250518174305"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.29.0",
+      "releases": [
+        "0.29.0",
+        "0.29.1"
+      ],
+      "schema_added": [
+        "20250625185030",
+        "20250627184017"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.30.0",
+      "releases": [
+        "0.30.0"
+      ],
+      "schema_added": [
+        "20250703193656",
+        "20250703193657"
+      ],
+      "schema_removed": [],
+      "data_added": [
+        "20250704185707",
+        "20250709195003",
+        "20250720171241"
+      ],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.30.1",
+      "releases": [
+        "0.30.1",
+        "0.30.2"
+      ],
+      "schema_added": [
+        "20250721204404"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.30.3",
+      "releases": [
+        "0.30.3",
+        "0.30.4",
+        "0.30.5"
+      ],
+      "schema_added": [
+        "20250723164055"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.30.6",
+      "releases": [
+        "0.30.6",
+        "0.30.7",
+        "0.30.8",
+        "0.30.9",
+        "0.30.10"
+      ],
+      "schema_added": [
+        "20250728191359"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.30.11",
+      "releases": [
+        "0.30.11"
+      ],
+      "schema_added": [
+        "20250823125940"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.30.12",
+      "releases": [
+        "0.30.12",
+        "0.31.0"
+      ],
+      "schema_added": [
+        "20250821192219"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.32.0",
+      "releases": [
+        "0.32.0"
+      ],
+      "schema_added": [
+        "20250905120121",
+        "20250910224538",
+        "20250910224714"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.33.0",
+      "releases": [
+        "0.33.0",
+        "0.33.1"
+      ],
+      "schema_added": [
+        "20250918215512"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.34.0",
+      "releases": [
+        "0.34.0"
+      ],
+      "schema_added": [
+        "20250926220114",
+        "20250926220135",
+        "20250926220158",
+        "20250926220345"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.34.1",
+      "releases": [
+        "0.34.1",
+        "0.34.2",
+        "0.35.0",
+        "0.35.1"
+      ],
+      "schema_added": [
+        "20251030190924"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.36.0",
+      "releases": [
+        "0.36.0",
+        "0.36.1"
+      ],
+      "schema_added": [
+        "20251028130433",
+        "20251116184506",
+        "20251116184514",
+        "20251116184520",
+        "20251118204141",
+        "20251118210506"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.36.2",
+      "releases": [
+        "0.36.2"
+      ],
+      "schema_added": [
+        "20251201192510"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.36.3",
+      "releases": [
+        "0.36.3",
+        "0.36.4"
+      ],
+      "schema_added": [
+        "20251206000001",
+        "20251206000002",
+        "20251206000004",
+        "20251208210410",
+        "20251210193532"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.37.0",
+      "releases": [
+        "0.37.0",
+        "0.37.1"
+      ],
+      "schema_added": [
+        "20251226170919",
+        "20251227000001",
+        "20251227223614",
+        "20251228000000",
+        "20251228100000",
+        "20251228163703"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "0.37.2",
+      "releases": [
+        "0.37.2",
+        "0.37.3",
+        "1.0.0"
+      ],
+      "schema_added": [
+        "20260103114630"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.0.1",
+      "releases": [
+        "1.0.1"
+      ],
+      "schema_added": [
+        "20260112192240",
+        "20260113230537"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.0.2",
+      "releases": [
+        "1.0.2",
+        "1.0.3",
+        "1.0.4"
+      ],
+      "schema_added": [
+        "20260120193124",
+        "20260120193200",
+        "20260120193336",
+        "20260120193401",
+        "20260120193501",
+        "20260124221434",
+        "20260125100000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.1.0",
+      "releases": [
+        "1.1.0",
+        "1.2.0"
+      ],
+      "schema_added": [
+        "20260201000001",
+        "20260201000002",
+        "20260206202634"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.3.0",
+      "releases": [
+        "1.3.0"
+      ],
+      "schema_added": [
+        "20260216190000",
+        "20260217000000",
+        "20260217000001",
+        "20260222215414"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.3.1",
+      "releases": [
+        "1.3.1"
+      ],
+      "schema_added": [
+        "20260108192905"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.3.2",
+      "releases": [
+        "1.3.2"
+      ],
+      "schema_added": [
+        "20260301201446",
+        "20260301202147"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.3.3",
+      "releases": [
+        "1.3.3"
+      ],
+      "schema_added": [
+        "20260310000001",
+        "20260310000002",
+        "20260310000003",
+        "20260310000006"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.3.4",
+      "releases": [
+        "1.3.4"
+      ],
+      "schema_added": [
+        "20260313134546",
+        "20260314000001",
+        "20260315000001"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.4.0",
+      "releases": [
+        "1.4.0"
+      ],
+      "schema_added": [
+        "20260318000001",
+        "20260320000001",
+        "20260320000002",
+        "20260322000001"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.5.0",
+      "releases": [
+        "1.5.0",
+        "1.5.1"
+      ],
+      "schema_added": [
+        "20260322000002",
+        "20260323000001",
+        "20260323000002",
+        "20260325183025",
+        "20260326192648"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.6.0",
+      "releases": [
+        "1.6.0",
+        "1.6.1"
+      ],
+      "schema_added": [
+        "20260328205912",
+        "20260328210500"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.7.0",
+      "releases": [
+        "1.7.0"
+      ],
+      "schema_added": [
+        "20260420190307",
+        "20260420211352",
+        "20260421200002",
+        "20260421230359",
+        "20260426204917"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.7.1",
+      "releases": [
+        "1.7.1"
+      ],
+      "schema_added": [
+        "20260421200001",
+        "20260428200000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.7.2",
+      "releases": [
+        "1.7.2",
+        "1.7.3",
+        "1.7.4"
+      ],
+      "schema_added": [
+        "20260429180000"
+      ],
+      "schema_removed": [
+        "20251228163703"
+      ],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.7.5",
+      "releases": [
+        "1.7.5"
+      ],
+      "schema_added": [
+        "20260503111800"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.7.6",
+      "releases": [
+        "1.7.6"
+      ],
+      "schema_added": [
+        "20260508030000",
+        "20260508193900",
+        "20260508193923"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.7.7",
+      "releases": [
+        "1.7.7"
+      ],
+      "schema_added": [
+        "20260504120000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.7.8",
+      "releases": [
+        "1.7.8",
+        "1.7.9",
+        "1.7.10"
+      ],
+      "schema_added": [
+        "20260430000001",
+        "20260508093702",
+        "20260508120000",
+        "20260508120100",
+        "20260509163901",
+        "20260514120000",
+        "20260514120100"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.7.11",
+      "releases": [
+        "1.7.11"
+      ],
+      "schema_added": [
+        "20260521223000",
+        "20260528102209",
+        "20260528102210",
+        "20260528102211",
+        "20260528102212",
+        "20260529185458"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.8.0",
+      "releases": [
+        "1.8.0"
+      ],
+      "schema_added": [
+        "20260520111503",
+        "20260531000000",
+        "20260602125716",
+        "20260604120000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.8.1",
+      "releases": [
+        "1.8.1"
+      ],
+      "schema_added": [
+        "20260610090000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.9.0",
+      "releases": [
+        "1.9.0"
+      ],
+      "schema_added": [
+        "20260207075817",
+        "20260208223255",
+        "20260521121115",
+        "20260529120000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.9.1",
+      "releases": [
+        "1.9.1",
+        "1.9.2"
+      ],
+      "schema_added": [
+        "20260622090000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.10.0",
+      "releases": [
+        "1.10.0"
+      ],
+      "schema_added": [
+        "20260521121527",
+        "20260611135333"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.10.1",
+      "releases": [
+        "1.10.1"
+      ],
+      "schema_added": [
+        "20260714090000",
+        "20260719180000",
+        "20260719185000",
+        "20260719190000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": [
+        "20240610170930",
+        "20250120154554",
+        "20250222213848"
+      ]
+    },
+    {
+      "first_release": "1.10.2",
+      "releases": [
+        "1.10.2",
+        "1.10.3"
+      ],
+      "schema_added": [
+        "20260727120000",
+        "20260727130000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.11.0",
+      "releases": [
+        "1.11.0"
+      ],
+      "schema_added": [
+        "20260730160000",
+        "20260730200000",
+        "20260730210000",
+        "20260730210100",
+        "20260730210150",
+        "20260730210200",
+        "20260730210250",
+        "20260730210300",
+        "20260730210400",
+        "20260730220000",
+        "20260802120000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.12.0",
+      "releases": [
+        "1.12.0",
+        "1.12.1"
+      ],
+      "schema_added": [
+        "20260804085722",
+        "20260804085723",
+        "20260804093200",
+        "20260805120000",
+        "20260805120001",
+        "20260808120000",
+        "20260809085900",
+        "20260809085930",
+        "20260809090000",
+        "20260809090100"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.12.2",
+      "releases": [
+        "1.12.2"
+      ],
+      "schema_added": [
+        "20260811120000",
+        "20260813120000",
+        "20260813120100"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.13.0",
+      "releases": [
+        "1.13.0"
+      ],
+      "schema_added": [
+        "20260816120000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.13.1",
+      "releases": [
+        "1.13.1"
+      ],
+      "schema_added": [
+        "20260816150000",
+        "20260816150100",
+        "20260816150200",
+        "20260818201239",
+        "20260819120000",
+        "20260819120100"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.14.0",
+      "releases": [
+        "1.14.0"
+      ],
+      "schema_added": [
+        "20260815100000",
+        "20260815100001",
+        "20260823190000",
+        "20260825120000",
+        "20260825120100"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.14.1",
+      "releases": [
+        "1.14.1"
+      ],
+      "schema_added": [
+        "20260827120000",
+        "20260827200000",
+        "20260827200100",
+        "20260827210000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.14.2",
+      "releases": [
+        "1.14.2"
+      ],
+      "schema_added": [
+        "20260828090000",
+        "20260828100000",
+        "20260831120000",
+        "20260901120000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.14.3",
+      "releases": [
+        "1.14.3"
+      ],
+      "schema_added": [
+        "20260901184613",
+        "20260901203451",
+        "20260901204555",
+        "20260905140000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.14.4",
+      "releases": [
+        "1.14.4",
+        "1.14.5"
+      ],
+      "schema_added": [
+        "20260901070000",
+        "20260906103000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.15.0",
+      "releases": [
+        "1.15.0",
+        "1.15.1"
+      ],
+      "schema_added": [
+        "20260901140000",
+        "20260901150000",
+        "20260911150000",
+        "20260914090000",
+        "20260914120000",
+        "20260914130000",
+        "20260914140000",
+        "20260919190000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    },
+    {
+      "first_release": "1.15.2",
+      "releases": [
+        "1.15.2"
+      ],
+      "schema_added": [
+        "20260714000001",
+        "20260714212634",
+        "20260714224647",
+        "20260720160000",
+        "20260720170000",
+        "20260918103000",
+        "20260922120000"
+      ],
+      "schema_removed": [],
+      "data_added": [],
+      "data_removed": []
+    }
+  ]
+}

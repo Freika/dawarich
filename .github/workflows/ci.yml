@@ -76,3 +76,71 @@ jobs:
 
       - name: Run RSpec
         run: bundle exec rspec
+
+  phoenix:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgis/postgis:17-3.5
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dawarich_phoenix_test
+        ports:
+          - 5432:5432
+        options: --health-cmd="pg_isready -U postgres" --health-interval=10s --health-timeout=5s --health-retries=5
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+
+    env:
+      RAILS_ENV: test
+      MIX_ENV: test
+      DATABASE_HOST: localhost
+      DATABASE_PORT: "5432"
+      DATABASE_USERNAME: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: dawarich_phoenix_test
+      PHOENIX_TEST_DATABASE: dawarich_phoenix_test
+      REDIS_URL: redis://localhost:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v7.0.1
+
+      - name: Install native dependencies
+        run: sudo apt-get update && sudo apt-get install -y libgeos-dev
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+
+      - name: Load the Rails schema
+        run: bundle exec rails db:schema:load
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          otp-version: "27.3.4.1"
+          elixir-version: "1.18.3"
+          version-type: strict
+
+      - name: Cache Mix
+        uses: actions/cache@v6
+        with:
+          path: |
+            app-phoenix/deps
+            app-phoenix/_build
+          key: mix-${{ runner.os }}-${{ hashFiles('app-phoenix/mix.lock') }}
+
+      - name: Test Phoenix
+        working-directory: app-phoenix
+        run: |
+          mix deps.get
+          mix format --check-formatted
+          mix compile --warnings-as-errors
+          mix test
+          scripts/release_smoke.sh

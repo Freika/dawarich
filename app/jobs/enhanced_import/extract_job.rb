@@ -4,6 +4,8 @@ module EnhancedImport
   class ExtractJob < ApplicationJob
     queue_as :extractions
 
+    MAX_ATTEMPTS = 3
+
     # Each requeue rewrites started_at, which is what extraction_stalled? reads,
     # so an unbounded wait would keep the import on "Queued…" forever with
     # nothing in the UI to act on. Give up loudly instead: the card then offers
@@ -11,19 +13,23 @@ module EnhancedImport
     MAX_LOCK_ATTEMPTS = 60
     LOCK_RETRY_WAIT = 1.minute
 
+    retry_on StandardError, wait: :polynomially_longer, attempts: MAX_ATTEMPTS do |job, error|
+      job.fail_after_retries(error)
+    end
+
     # A deadlock here is transient — the extractor and track generation contend
     # for the same rows. Retry silently rather than red-carding an import the
     # user cannot act on; only surface it once the retries are spent.
-    retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: 3 do |job, error|
-      job.fail_after_deadlock_retries(error)
+    retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: MAX_ATTEMPTS do |job, error|
+      job.fail_after_retries(error)
     end
 
-    def fail_after_deadlock_retries(error)
+    def fail_after_retries(error)
       import = Import.find_by(id: arguments.first)
       return if import.nil?
 
-      mark_failed!(import, error)
       ExceptionReporter.call(error)
+      fail_finally!(import, error)
     end
 
     def perform(import_id, attempt: 1)
@@ -33,14 +39,10 @@ module EnhancedImport
       return unless EnhancedImport::Translator.supported?(import.source)
 
       run(import, attempt)
-    rescue ActiveRecord::RecordNotFound => e
-      ExceptionReporter.call(e)
     end
 
     private
 
-    # Import completion schedules track generation too, and both claim the same
-    # untracked points. The generator already serialises on this lock.
     def run(import, attempt)
       mark_running!(import)
 
@@ -57,7 +59,6 @@ module EnhancedImport
       raise
     rescue StandardError => e
       mark_failed!(import, e)
-      ExceptionReporter.call(e)
       raise
     end
 
@@ -67,7 +68,7 @@ module EnhancedImport
           "[EnhancedImport::ExtractJob] import #{import.id} could not get the user lock after " \
           "#{attempt} attempts; giving up."
         )
-        return mark_failed!(import, error)
+        return fail_finally!(import, error)
       end
 
       import.update_columns(
@@ -158,6 +159,7 @@ module EnhancedImport
         additional_data_extraction: payload
       )
       broadcast_card(import)
+      schedule_track_generation(import)
     end
 
     def mark_failed!(import, error)
@@ -170,6 +172,17 @@ module EnhancedImport
         additional_data_extraction: payload
       )
       broadcast_card(import)
+    end
+
+    def fail_finally!(import, error)
+      mark_failed!(import, error)
+      schedule_track_generation(import)
+    end
+
+    def schedule_track_generation(import)
+      import.schedule_untracked_track_generation
+    rescue StandardError => e
+      ExceptionReporter.call(e, 'Failed to schedule track generation after extraction')
     end
   end
 end
