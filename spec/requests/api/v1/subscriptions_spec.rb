@@ -181,6 +181,29 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
     end
 
     context 'subscription_source handling' do
+      %w[apple_iap google_play].each do |source|
+        it "exposes a Family callback from #{source} in the plan API" do
+          active_until = 45.days.from_now.change(usec: 0)
+          token = build_token(
+            user_id: user.id,
+            plan: 'family',
+            status: 'active',
+            active_until: active_until.iso8601,
+            subscription_source: source,
+            event_timestamp_ms: Time.current.to_i * 1000
+          )
+
+          post '/api/v1/subscriptions/callback', params: { token: token }, headers: webhook_headers
+          expect(response).to have_http_status(:ok)
+
+          get api_v1_plan_url(api_key: user.reload.api_key)
+          expect(response).to have_http_status(:ok)
+          body = JSON.parse(response.body)
+          expect(body).to include('plan' => 'family', 'status' => 'active', 'subscription_source' => source)
+          expect(Time.iso8601(body.fetch('active_until')).to_i).to eq(active_until.to_i)
+        end
+      end
+
       it 'updates subscription_source when present in the token' do
         token = build_token(
           user_id: user.id,
