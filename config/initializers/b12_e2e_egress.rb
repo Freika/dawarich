@@ -11,6 +11,7 @@ module B12E2EEgress
     require 'webmock'
     WebMock.enable!
     WebMock.disable_net_connect!(allow: ->(uri) { %w[127.0.0.1 ::1].include?(uri.host) })
+    ActionMailer::Base.raise_delivery_errors = true
   end
 end
 
