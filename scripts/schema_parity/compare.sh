@@ -3,13 +3,14 @@ set -eu
 release="$1"
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$root/scripts/schema_parity/lib.sh"
+require_pg17
 mkdir -p "$work/diffs"
 tmpd="$(mktemp -d "$work/.tmp.XXXXXX")"
 cleanup() {
   rm -rf "$tmpd"
   for scratch in sp_fresh sp_upgrade sp_replay sp_image; do
-    docker exec sp-db dropdb -U postgres --if-exists "$scratch" >/dev/null 2>&1 || true
-    docker exec sp-db dropdb -U postgres --if-exists "${scratch}_rt" >/dev/null 2>&1 || true
+    docker exec "$db_container" dropdb -U postgres --if-exists "$scratch" >/dev/null 2>&1 || true
+    docker exec "$db_container" dropdb -U postgres --if-exists "${scratch}_rt" >/dev/null 2>&1 || true
   done
 }
 trap cleanup EXIT

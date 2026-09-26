@@ -3,6 +3,7 @@ set -eu
 release="$1"
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$root/scripts/schema_parity/lib.sh"
+require_pg17
 out_dir="$snapshots"
 provenance="$out_dir/provenance.tsv"
 mkdir -p "$out_dir"
@@ -15,12 +16,12 @@ pulled=""
 cleanup() {
   rm -f "$tmp_sql" "$tmp_sql.gz" "$run_log" "$provenance.tmp"
   [ -z "$pulled" ] || docker rmi "freikin/dawarich:$pulled" >/dev/null 2>&1 || true
-  docker exec sp-db dropdb -U postgres --if-exists "$db" >/dev/null 2>&1 || true
+  docker exec "$db_container" dropdb -U postgres --if-exists "$db" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
-docker exec sp-db dropdb -U postgres --if-exists "$db"
+docker exec "$db_container" dropdb -U postgres --if-exists "$db"
 
 hub_digest() {
   response="$(curl -s --max-time 30 -w '\n%{http_code}' "https://hub.docker.com/v2/repositories/freikin/dawarich/tags/$1")" || {
@@ -39,15 +40,15 @@ hub_digest() {
 }
 
 migrate_in_image() {
-  docker run --rm --pull never --network schema-parity --entrypoint "" \
+  docker run --rm --pull never --network "$network" --entrypoint "" \
     -e RAILS_ENV=production -e SECRET_KEY_BASE="$(od -An -N64 -tx1 /dev/urandom | tr -d ' \n')" \
-    -e DATABASE_HOST=sp-db -e DATABASE_PORT=5432 -e DATABASE_USERNAME=postgres -e DATABASE_PASSWORD=parity \
-    -e DATABASE_NAME="$db" -e DATABASE_URL="$db_adapter://postgres:parity@sp-db:5432/$db" \
+    -e DATABASE_HOST="$db_container" -e DATABASE_PORT=5432 -e DATABASE_USERNAME=postgres -e DATABASE_PASSWORD=parity \
+    -e DATABASE_NAME="$db" -e DATABASE_URL="$db_adapter://postgres:parity@$db_container:5432/$db" \
     -e SCHEMA=/tmp/schema_parity_no_fast_path.rb \
     -e OTP_ENCRYPTION_PRIMARY_KEY=schema-parity-primary-key \
     -e OTP_ENCRYPTION_DETERMINISTIC_KEY=schema-parity-deterministic-key \
     -e OTP_ENCRYPTION_KEY_DERIVATION_SALT=schema-parity-key-derivation-salt \
-    -e REDIS_URL=redis://sp-redis:6379 -e APPLICATION_HOSTS=localhost -e SELF_HOSTED=true \
+    -e REDIS_URL=redis://$redis_container:6379 -e APPLICATION_HOSTS=localhost -e SELF_HOSTED=true \
     "freikin/dawarich:$1" sh -c "
       bundle exec rails $2 db:migrate &&
       if bundle exec rake -T 2>/dev/null | grep -q 'rake data:migrate '; then
@@ -109,7 +110,7 @@ build_with_image() {
   attempt_failure=""
   pull_image "$image"
   db_adapter="$(docker run --rm --pull never --entrypoint sh "freikin/dawarich:$image" -c "grep -m1 '  adapter:' config/database.yml" | awk '{print $2}')"
-  docker exec sp-db dropdb -U postgres --if-exists "$db"
+  docker exec "$db_container" dropdb -U postgres --if-exists "$db"
   if migrate_in_image "$image" db:create; then
     built=yes
   else
@@ -123,10 +124,10 @@ build_with_image() {
     [ -z "$prev" ] || prev_snapshot="$(snapshot_of "$prev" 2>/dev/null)" || true
     if [ -n "$prev_snapshot" ]; then
       echo "$image cannot migrate $attempt_failure; upgrading $(basename "$prev_snapshot") with the $image image instead" >&2
-      docker exec sp-db dropdb -U postgres --if-exists "$db"
-      docker exec sp-db createdb -U postgres "$db"
+      docker exec "$db_container" dropdb -U postgres --if-exists "$db"
+      docker exec "$db_container" createdb -U postgres "$db"
       gunzip -c "$prev_snapshot" > "$tmp_sql"
-      docker exec -i sp-db psql -U postgres -q -v ON_ERROR_STOP=1 -d "$db" < "$tmp_sql" >/dev/null
+      docker exec -i "$db_container" psql -U postgres -q -v ON_ERROR_STOP=1 -d "$db" < "$tmp_sql" >/dev/null
       if migrate_in_image "$image" ""; then
         built=yes
         upgraded_from="$prev"
@@ -174,7 +175,7 @@ else
   image=-
   upgraded_from=""
   digest=-
-  docker exec sp-db createdb -U postgres "$db"
+  docker exec "$db_container" createdb -U postgres "$db"
   (cd "$root" && env $rails_env DATABASE_NAME="$db" bin/rails runner scripts/schema_parity/replay.rb "$release")
 fi
 
