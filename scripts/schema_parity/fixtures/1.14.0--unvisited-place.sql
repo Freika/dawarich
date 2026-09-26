@@ -6,3 +6,11 @@ INSERT INTO places (name, longitude, latitude, user_id, created_at, updated_at)
 INSERT INTO visits (user_id, place_id, started_at, ended_at, duration, name, created_at, updated_at)
   SELECT u.id, p.id, '2026-01-03 10:00:00', '2026-01-03 11:00:00', 60, 'Visited cafe', '2026-01-03 11:00:00', '2026-01-03 11:00:00'
   FROM users u, places p WHERE u.email = 'visitor@example.test' AND p.name = 'Visited cafe';
+INSERT INTO tags (name, user_id, created_at, updated_at)
+  SELECT 'Favourite', id, '2026-01-02 00:00:00', '2026-01-02 00:00:00' FROM users WHERE email = 'visitor@example.test';
+INSERT INTO taggings (taggable_type, taggable_id, tag_id, created_at, updated_at)
+  SELECT 'Place', p.id, t.id, '2026-01-02 00:00:00', '2026-01-02 00:00:00'
+  FROM places p, tags t WHERE p.name = 'Unvisited cafe' AND t.name = 'Favourite';
+INSERT INTO notes (user_id, title, body, attachable_type, attachable_id, noted_at, created_at, updated_at)
+  SELECT u.id, 'Closed', 'Closed on Mondays', 'Place', p.id, '2026-01-02 12:00:00', '2026-01-02 12:00:00', '2026-01-02 12:00:00'
+  FROM users u, places p WHERE u.email = 'visitor@example.test' AND p.name = 'Unvisited cafe';

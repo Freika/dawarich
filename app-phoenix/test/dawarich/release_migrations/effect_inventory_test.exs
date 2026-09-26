@@ -77,7 +77,7 @@ defmodule Dawarich.ReleaseMigrations.EffectInventoryTest do
   end
 
   defp release_module_paths do
-    @app |> Path.join("lib/dawarich/release_migrations/*.ex") |> Path.wildcard() |> Enum.sort()
+    @app |> Path.join("lib/dawarich/release_migrations/**/*.ex") |> Path.wildcard() |> Enum.sort()
   end
 
   defp mismatch_message(found, inventory) do

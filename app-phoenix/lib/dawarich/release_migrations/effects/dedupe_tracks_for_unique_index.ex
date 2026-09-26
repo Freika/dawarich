@@ -12,7 +12,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.DedupeTracksForUniqueIndex do
   )
   """
 
-  @active_user "SELECT 1 FROM users WHERE deleted_at IS NULL AND id = $1"
+  @user "SELECT 1 FROM users WHERE id = $1"
 
   @keeper_ids "SELECT MAX(id) FROM tracks WHERE user_id = $1 GROUP BY start_at, end_at"
 
@@ -20,7 +20,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.DedupeTracksForUniqueIndex do
 
   def run(repo) do
     for [user_id] <- repo.query!(@users_with_duplicates, [], log: false).rows,
-        exists?(repo, @active_user, [user_id]) do
+        exists?(repo, @user, [user_id]) do
       repo.transaction(fn ->
         repo.query!("DELETE FROM track_segments WHERE track_id IN (#{@loser_ids})", [user_id],
           log: false

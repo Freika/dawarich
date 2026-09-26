@@ -16,6 +16,8 @@ after_floor = ['unreleased', *states[(floor + 1)..].map { _1.fetch('first_releas
 present = Dir[File.join(root, 'db/migrate/*.rb')].filter_map { File.basename(_1)[/\A(\d+)_/, 1] }
 unreleased = present - state_of.keys
 fixtures = Dir[File.join(root, 'scripts/schema_parity/fixtures/unreleased--*.sql')].map { File.basename(_1) }
+inline_effects = File.readlines(File.join(root, 'scripts/schema_parity/inline_effects.tsv'), chomp: true)
+                     .map { _1.split("\t") }
 
 unless unreleased.empty?
   inventory, status = Open3.capture2('ruby', File.join(root, 'scripts/schema_parity/inventory.rb'), *unreleased)
@@ -63,6 +65,13 @@ changed.each do |path|
     fixture_checks.concat(twins)
     releases << release
   end
+end
+
+inline_effects.each do |path, release|
+  next unless changed.include?(path)
+
+  releases << release
+  modules << release
 end
 
 older_than_a_module = lambda do |check|

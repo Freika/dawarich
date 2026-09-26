@@ -18,8 +18,6 @@ rows:1.4.0--fk-recorded	failed@20260322000001	-
 rows:1.4.0--fk-recorded~shifted	failed@20260322000001	-
 rows:1.4.0--violation	failed@20260322000001	-
 rows:1.4.0--violation~shifted	failed@20260322000001	-
-rows:1.7.6--deleted-user	failed@20260508193923	-
-rows:1.7.6--deleted-user~shifted	failed@20260508193923	-
 rows:1.9.1--violation	failed@20260622090000	-
 rows:1.9.1--violation~shifted	failed@20260622090000	-
 step:1.0.1	failed@20260112192240	-

@@ -47,7 +47,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.DedupeTracksForUniqueIndexTest do
     assert column("SELECT track_id FROM points ORDER BY id") == [nil, nil, 3]
   end
 
-  test "leaves a soft-deleted user's duplicates alone, as User.find_by does" do
+  test "dedupes a soft-deleted user's tracks too, as User.unscoped.find_by does" do
     scratch_sql!("""
     UPDATE users SET deleted_at = '2026-01-04 00:00' WHERE id = 1;
     INSERT INTO tracks (user_id, start_at, end_at) VALUES
@@ -59,9 +59,9 @@ defmodule Dawarich.ReleaseMigrations.Effects.DedupeTracksForUniqueIndexTest do
 
     DedupeTracksForUniqueIndex.run(ScratchRepo)
 
-    assert column("SELECT id FROM tracks ORDER BY id") == [1, 2, 4]
-    assert column("SELECT track_id FROM track_segments ORDER BY id") == [1]
-    assert column("SELECT track_id FROM points ORDER BY id") == [1, nil]
+    assert column("SELECT id FROM tracks ORDER BY id") == [2, 4]
+    assert column("SELECT track_id FROM track_segments ORDER BY id") == []
+    assert column("SELECT track_id FROM points ORDER BY id") == [nil, nil]
   end
 
   test "changes nothing when no key is duplicated" do
