@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Loading demo data from onboarding no longer leaves "Creating your demo data…" spinning: the map refreshes track tiles once per second instead of once per created track.
 - Upgrading an installation originally created from release 0.9.12–0.11.1 no longer fails when its database has no place_visits table.
 
 ## [1.15.2] - 2026-09-22, Berlin
