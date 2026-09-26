@@ -162,12 +162,16 @@ RUN ln -s /opt/dawarich/bin/dawarich /usr/local/bin/dawarich \
 
 # Copy entrypoint scripts and grant execution permissions
 COPY ./docker/entrypoint-env-guard.sh /usr/local/bin/entrypoint-env-guard.sh
+COPY ./docker/entrypoint-common.sh /usr/local/bin/entrypoint-common.sh
 
 COPY ./docker/web-entrypoint.sh /usr/local/bin/web-entrypoint.sh
 RUN chmod +x /usr/local/bin/web-entrypoint.sh
 
 COPY ./docker/sidekiq-entrypoint.sh /usr/local/bin/sidekiq-entrypoint.sh
 RUN chmod +x /usr/local/bin/sidekiq-entrypoint.sh
+
+COPY ./docker/cloud-entrypoint.sh ./docker/cloud-sidekiq-entrypoint.sh ./docker/release.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/cloud-entrypoint.sh /usr/local/bin/cloud-sidekiq-entrypoint.sh /usr/local/bin/release.sh
 
 EXPOSE $RAILS_PORT
 

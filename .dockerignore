@@ -35,3 +35,4 @@ app-phoenix/erl_crash.dump
 app-phoenix/priv/admin1_world.geojson
 /db/release_snapshots/
 /scripts/schema_parity/
+.superpowers/
