@@ -1,0 +1,187 @@
+{
+  "rails": "activerecord 8.1.3.1",
+  "environments": [
+    {
+      "name": "explicit keys",
+      "env": {
+        "RAILS_ENV": "development",
+        "OTP_ENCRYPTION_PRIMARY_KEY": "schema-parity-primary-key",
+        "OTP_ENCRYPTION_DETERMINISTIC_KEY": "schema-parity-deterministic-key",
+        "OTP_ENCRYPTION_KEY_DERIVATION_SALT": "schema-parity-key-derivation-salt"
+      },
+      "rails_env": "development",
+      "credentials": {
+        "primary_key": "schema-parity-primary-key",
+        "deterministic_key": "schema-parity-deterministic-key",
+        "key_derivation_salt": "schema-parity-key-derivation-salt"
+      },
+      "vectors": [
+        {
+          "name": "service credentials json",
+          "attribute": "ServiceSetting#credentials",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "instance secret",
+          "attribute": "InstanceSetting#encrypted_value",
+          "ciphertext": "{\"p\":\"H6bwLNoEmWVAwsvZLHBW5Lqpd8O/YacRn+19\",\"h\":{\"iv\":\"E+Z3jRpmFsCpZSn6\",\"at\":\"yjjsxWntSr/3aMl69pn6JA==\"}}",
+          "plaintext": "schema-parity-dummy-api-key"
+        },
+        {
+          "name": "trip source api key",
+          "attribute": "TripSource#api_key",
+          "ciphertext": "{\"p\":\"wiyEhHzHyYR37Wt0NHXIgVI+KyE5hNicG5oIPQ==\",\"h\":{\"iv\":\"WigA0N3nsgJOSzuS\",\"at\":\"B7afhF1q1c99lwshv3SniQ==\"}}",
+          "plaintext": "schema-parity-dummy-trek-key"
+        },
+        {
+          "name": "empty",
+          "attribute": "InstanceSetting#encrypted_value",
+          "ciphertext": "{\"p\":\"\",\"h\":{\"iv\":\"GQZahT0pwIMnfSKy\",\"at\":\"BbXd+/h5fwJEH8qXd29dog==\"}}",
+          "plaintext": ""
+        },
+        {
+          "name": "140 bytes, not compressed",
+          "attribute": "InstanceSetting#encrypted_value",
+          "ciphertext": "{\"p\":\"kR+mOjg4vXMj0oHpt8vEDUP72yMJcoxmlafynO98y1HBOB5e4sNvYMs5PtcvygytKbZPlByg7P/qix5J3h1pqMqoPNRhD/te1xgk5NWLJYxglgzilZmReQIb5pe3QdcASDgWCOripEo5539s1rvxm/OUEmLjPESB6o7KLaKg8rHBf8PbUKpbnrUVDQQ=\",\"h\":{\"iv\":\"zapEeCv8lIn2UQCg\",\"at\":\"5SVzfPfXj3mfUjVaWGsYpg==\"}}",
+          "plaintext": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        {
+          "name": "141 bytes, compressed",
+          "attribute": "InstanceSetting#encrypted_value",
+          "ciphertext": "{\"p\":\"EfdrnQ6jPhNGR58O\",\"h\":{\"iv\":\"Orl1IEMYpwYQf0f6\",\"at\":\"qgbpmVl1dnnmtucvrL9Twg==\",\"c\":true}}",
+          "plaintext": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        },
+        {
+          "name": "long credentials json, compressed",
+          "attribute": "ServiceSetting#credentials",
+          "ciphertext": "{\"p\":\"DYfXwTnlxH6245HO3jYoabewt9Rh90stJNC0kJAwIn+x+40zWWHlZLkX9qUC02BEsoDIN0EoraO3dS5+DyPDIYOP\",\"h\":{\"iv\":\"iCOFyIFX+DRxEYoS\",\"at\":\"ADeXkTWwqR3f9wAk6FbhGg==\",\"c\":true}}",
+          "plaintext": "{\"api_key\":\"schema-parity-long-dummy-key-long-dummy-key-long-dummy-key-long-dummy-key-long-dummy-key-long-dummy-key-long-dummy-key-long-dummy-key-long-dummy-key-long-dummy-key-long-dummy-key-long-dummy-key-end\",\"note\":\"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\"}"
+        },
+        {
+          "name": "non-ascii",
+          "attribute": "InstanceSetting#encrypted_value",
+          "ciphertext": "{\"p\":\"F1j4bFjUnJCohG770HTmr+V8eUkOHkH57gInqZ+5pRU95kE=\",\"h\":{\"iv\":\"tlzh9bjdRLo5U21M\",\"at\":\"PnnK1KXFyZC+S9YRD/2xcw==\"}}",
+          "plaintext": "Zürich — 東京 🗺️ ключ"
+        },
+        {
+          "name": "non-ascii, compressed",
+          "attribute": "InstanceSetting#encrypted_value",
+          "ciphertext": "{\"p\":\"lgmQVcQ6eQ393Bs5laLD0WBhA59YDweBO96uMQBhgXuHpAGiWwvK1F1YHY0buC3lCC0=\",\"h\":{\"iv\":\"IFrn+sc2v/7B/QVv\",\"at\":\"WzyJDPXbIU9rwtwN9bKgNw==\",\"c\":true}}",
+          "plaintext": "Zürich — 東京 🗺️ ключ Zürich — 東京 🗺️ ключ Zürich — 東京 🗺️ ключ Zürich — 東京 🗺️ ключ Zürich — 東京 🗺️ ключ Zürich — 東京 🗺️ ключ Zürich — 東京 🗺️ ключ Zürich — 東京 🗺️ ключ "
+        },
+        {
+          "name": "ascii-8bit bytes",
+          "attribute": "InstanceSetting#encrypted_value",
+          "ciphertext": "{\"p\":\"PH5dwqBFs8VPT7W6\",\"h\":{\"iv\":\"FmxeDw9D/2zksMs0\",\"at\":\"pz0FB0qBo8OCueuc3k4HNA==\",\"e\":\"QVNDSUktOEJJVA==\"}}",
+          "plaintext_base64": "cmF3Lf8ALWJ5dGVz"
+        },
+        {
+          "name": "us-ascii",
+          "attribute": "InstanceSetting#encrypted_value",
+          "ciphertext": "{\"p\":\"FBKViscvMteu4IMGZ2Rz0SY=\",\"h\":{\"iv\":\"aNE6Y+3tbLTUnK8d\",\"at\":\"fcbiIXg8UKntO+e+lAYVhg==\",\"e\":\"VVMtQVNDSUk=\"}}",
+          "plaintext": "plain-ascii-value"
+        }
+      ]
+    },
+    {
+      "name": "development defaults",
+      "env": {
+        "RAILS_ENV": "development"
+      },
+      "rails_env": "development",
+      "credentials": {
+        "primary_key": "dawarich-dev-primary-key-not-for-production",
+        "deterministic_key": "dawarich-dev-deterministic-not-for-prod",
+        "key_derivation_salt": "dawarich-dev-salt-not-for-production"
+      },
+      "vectors": [
+        {
+          "name": "service credentials json",
+          "attribute": "ServiceSetting#credentials",
+          "ciphertext": "{\"p\":\"ZfizK/ly73CAnQVpquUpmjNz2rawD/GTBlMWF6p2rHcQhJNtGP3Cd99GZA==\",\"h\":{\"iv\":\"dd6owusp+6KkUl0N\",\"at\":\"cUSdOVzx7u07R/ZWI7HzHA==\"}}",
+          "plaintext": "{\"api_key\":\"schema-parity-development-key\"}"
+        }
+      ]
+    },
+    {
+      "name": "production keys derived from SECRET_KEY_BASE",
+      "env": {
+        "RAILS_ENV": "production",
+        "SECRET_KEY_BASE": "schema-parity-dummy-secret-key-base"
+      },
+      "rails_env": "production",
+      "credentials": {
+        "primary_key": "86ab24cbb43a6859b8a94facd8c1fa4c7d76d20dd68ef591ad08da204a66b182",
+        "deterministic_key": "63cf17f200d08d20aeee9f1ce80cc1de2afe06f8f7d16aad9b076fb5c62dcebe",
+        "key_derivation_salt": "f4c67af4a606e401c708601e30bced19d441e24ccde0aeb8e3e0e21088e49b14"
+      },
+      "vectors": [
+        {
+          "name": "service credentials json",
+          "attribute": "ServiceSetting#credentials",
+          "ciphertext": "{\"p\":\"AITwdeThi6Gs028c2+bgx4wgUl2mrgu1vZTOdKLoCVrJIelRV1Yzd4AV\",\"h\":{\"iv\":\"LqQmo4E9gg9Fwn1i\",\"at\":\"S+XFfgQne7JND2U2m1T2UQ==\"}}",
+          "plaintext": "{\"api_key\":\"schema-parity-production-key\"}"
+        }
+      ]
+    },
+    {
+      "name": "production with SECRET_KEY_BASE_DUMMY",
+      "env": {
+        "RAILS_ENV": "production",
+        "SECRET_KEY_BASE_DUMMY": "1"
+      },
+      "rails_env": "production",
+      "credentials": {
+        "primary_key": "dawarich-dev-primary-key-not-for-production",
+        "deterministic_key": "dawarich-dev-deterministic-not-for-prod",
+        "key_derivation_salt": "dawarich-dev-salt-not-for-production"
+      },
+      "vectors": [
+        {
+          "name": "service credentials json",
+          "attribute": "ServiceSetting#credentials",
+          "ciphertext": "{\"p\":\"LaZklsuDUQ29vyQICV1xG6Y2tueLK1jXOVZzOAkMToLCuez8bA==\",\"h\":{\"iv\":\"HYUF/TsjLkT/XJMj\",\"at\":\"cgQ0NvQ6YuHwiG0JT8v1qQ==\"}}",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-key\"}"
+        }
+      ]
+    },
+    {
+      "name": "RACK_ENV production",
+      "env": {
+        "RACK_ENV": "production",
+        "SECRET_KEY_BASE": "schema-parity-dummy-secret-key-base"
+      },
+      "rails_env": "production",
+      "credentials": {
+        "primary_key": "86ab24cbb43a6859b8a94facd8c1fa4c7d76d20dd68ef591ad08da204a66b182",
+        "deterministic_key": "63cf17f200d08d20aeee9f1ce80cc1de2afe06f8f7d16aad9b076fb5c62dcebe",
+        "key_derivation_salt": "f4c67af4a606e401c708601e30bced19d441e24ccde0aeb8e3e0e21088e49b14"
+      },
+      "vectors": [
+        {
+          "name": "service credentials json",
+          "attribute": "ServiceSetting#credentials",
+          "ciphertext": "{\"p\":\"IpTDYbuUMUuatjSt/w22emhb+cvG5nHVG9Qek6qnb/Zqk0JO\",\"h\":{\"iv\":\"P6ggOBfhE0ZBMOle\",\"at\":\"dsvnB3xKK8wEG4Q8777YRA==\"}}",
+          "plaintext": "{\"api_key\":\"schema-parity-rack-key\"}"
+        }
+      ]
+    },
+    {
+      "name": "production without keys or SECRET_KEY_BASE",
+      "env": {
+        "RAILS_ENV": "production"
+      },
+      "error": "OTP_ENCRYPTION_PRIMARY_KEY required in production"
+    },
+    {
+      "name": "blank primary key",
+      "env": {
+        "RAILS_ENV": "production",
+        "SECRET_KEY_BASE": "schema-parity-dummy-secret-key-base",
+        "OTP_ENCRYPTION_PRIMARY_KEY": ""
+      },
+      "error": "Missing Active Record encryption credential: active_record_encryption.primary_key"
+    }
+  ]
+}

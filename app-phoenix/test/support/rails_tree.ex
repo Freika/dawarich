@@ -13,6 +13,14 @@ defmodule Dawarich.RailsTree do
 
   def read(relative), do: @root |> Path.join(relative) |> File.read!()
 
+  def wildcard(pattern) do
+    @root
+    |> Path.join(pattern)
+    |> Path.wildcard()
+    |> Enum.map(&Path.relative_to(&1, @root))
+    |> Enum.sort()
+  end
+
   def split_at(release) do
     {before, [at | later]} = Enum.split_while(states(), &(&1["first_release"] != release))
     {before ++ [at], later}

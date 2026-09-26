@@ -518,6 +518,8 @@ The porting rules above are the plan's. Porting 1.0.1–1.15.2 added these, and 
   - the ledger;
   - `public` column order (`information_schema.columns.ordinal_position`, which C1's `normalize.sh` hides);
   - `public` rows (timestamps inside the run's time window become `<now>`, those written while the check's template database was built `<template>`);
+    - Encrypted columns (`scripts/schema_parity/encrypted_columns.tsv`) compare as plaintext, since each encryption uses a random IV. When one holds a value, Rails boots on that side's database in a read-only session (`decrypt_columns.rb`) and decrypts every value with the model's own attribute type and the check's `.env` keys. The row copy then reads the plaintext inside a transaction it rolls back. A value Rails cannot decrypt fails the check, naming table, column, id and side, so this also proves that Rails reads what Phoenix writes.
+    - `encrypted_columns_test.exs` fails when a Rails model gains or loses an `encrypts`, or gives one options that `Dawarich.ActiveRecordEncryption` does not implement.
   - jobs (canonical JSON, in order).
 - **Rails boots on both sides.** After the fixture, the template build runs `bin/rails runner 'nil'`, and both sides are cloned from that template, so Rails' boot-time rows are on both sides before either migrates. These are the `poster_ordering` and `achievements` Flipper features and a gate from `FeatureFlags.apply_defaults!`, written on every snapshot from 1.7.0 on.
   - Fixture authors: that boot runs **after** your fixture, and `apply_defaults!` also deletes retired flags. A fixture row that is a retired flag disappears before either side migrates, so no row a check relies on may be one.
