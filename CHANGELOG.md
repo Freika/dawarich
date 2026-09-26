@@ -20,6 +20,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Loading demo data from onboarding no longer leaves "Creating your demo data…" spinning: the map refreshes track tiles once per second instead of once per created track.
+- Loading demo data from onboarding takes seconds instead of more than a minute.
 - Clicking a track on the map keeps it selected and shows its transportation-mode segments; the same click no longer clears the selection.
 - Clicking a track opens its day in the timeline reliably; the map no longer reloads the timeline over it.
 - Google Takeout, Polarsteps and GPX-with-waypoints imports no longer sometimes report "0 tracks" and lose the source app's transportation modes: Dawarich now generates tracks for the remaining points only after the import's extraction finishes or gives up. A failing extraction is retried twice within about half a minute instead of for up to three weeks.
