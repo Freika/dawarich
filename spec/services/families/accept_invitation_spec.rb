@@ -10,6 +10,8 @@ RSpec.describe Families::AcceptInvitation do
 
   describe '#call' do
     context 'when invitation can be accepted' do
+      before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
       it 'creates membership for user' do
         expect { service.call }.to change(Family::Membership, :count).by(1)
         membership = invitee.reload.family_membership
@@ -88,6 +90,18 @@ RSpec.describe Families::AcceptInvitation do
         expect(invitee.plan).to eq('pro')
         expect(invitee).to be_active
         expect(invitee.active_until).to be_within(1.second).of(owner.active_until)
+      end
+
+      it 'converts its reserved invitation when all five seats are occupied' do
+        invitation
+        3.times do |index|
+          create(:family_invitation, family: family, email: "pending#{index}@example.com")
+        end
+        expect(family.reload.full?).to be(true)
+
+        expect(service.call).to be(true)
+        expect(invitation.reload).to be_accepted
+        expect(family.reload.member_count + family.pending_invitations_count).to eq(5)
       end
     end
 
