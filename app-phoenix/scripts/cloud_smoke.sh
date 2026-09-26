@@ -183,7 +183,7 @@ fi
 [ "$(curl -s -m 10 -o /dev/null -w '%{http_code}' http://127.0.0.1:3901/users/sign_in)" = 200 ] \
   || fail "a Rails page did not come through Phoenix and PgBouncer"
 docker exec a0c_web curl -sS -m 10 -i --output - -H 'Origin: http://127.0.0.1:5000' \
-  -H 'Sec-WebSocket-Protocol: actioncable-v1-json' ws://127.0.0.1:5000/cable 2>/dev/null | tr -d '\r' >"$work/cable" || true
+  -H 'Sec-WebSocket-Protocol: actioncable-v1-json' ws://127.0.0.1:5000/cable 2>/dev/null | LC_ALL=C tr -d '\r' >"$work/cable" || true
 grep -q '^HTTP/1.1 101' "$work/cable" || fail "the Cloud /cable upgrade did not come through Phoenix"
 [ "$(docker exec a0c_web ps -o user=,comm= -C beam.smp | tr -s ' ' | sed 's/^ //')" = "32767 beam.smp" ] \
   || fail "the BEAM is missing or runs as root"
