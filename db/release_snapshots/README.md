@@ -1077,9 +1077,9 @@ on manual dispatch, with a read-only token. A newer run of the same ref cancels 
   merged there. GitHub may also delay or drop a scheduled run, and a dropped run leaves no report behind. Check the
   schedule history (`gh run list --workflow ecto-nightly.yml --event schedule`) rather than trusting the absence of
   a red run. `workflow_dispatch` also needs the file on the default branch, so until the merge the nightly has no
-  GitHub run at all: the evidence is the pull request's `ecto-counterparts`, `ecto-upgrade-sample`, `harness-tests`
-  and `harness-docker-tests` jobs plus local shard runs (see "Calibration"). Do not describe a nightly as running
-  before the schedule history shows one.
+  GitHub run apart from the two calibration runs below: the evidence is the pull request's `ecto-counterparts`,
+  `ecto-upgrade-sample`, `harness-tests` and `harness-docker-tests` jobs plus local shard runs (see "Calibration").
+  Do not describe a nightly as running before the schedule history shows one.
 - **Matrix.** Four jobs, `pg14-shard1`, `pg14-shard2`, `pg17-shard1` and `pg17-shard2`, each on its own runner with the
   default `sp-db`/`sp-redis`. `fail-fast` is off, so every server and shard reports. Each job has 180 minutes.
 - **Calibration** (local, 2026-09-26, before C3a: the 267-check list). Each shard ran the workflow's own step blocks in order
@@ -1107,7 +1107,18 @@ on manual dispatch, with a read-only token. A newer run of the same ref cancels 
   C2 effect stops, which C3a has since turned into row comparisons. A cold shard needs about 2200 lane-seconds plus its contended checks (638 s for shard 1, which
   holds 1.10.1, 473 s for shard 2, which holds 1.13.1). With the runner's two lanes that is the same ≈ 30 min per
   shard; with lanes twice as slow as this machine's, ≈ 50 min, plus about 5 min of Actions setup. C3a's list (358
-  checks) adds about a third to the lane work: ≈ 36–62 min. Two shards stay; the first cold Actions run decides.
+  checks) adds about a third to the lane work: ≈ 36–62 min. Two shards stay; the first cold Actions run confirmed it.
+- **GitHub calibration** (2026-09-26, 360 checks, through a `pull_request` trigger on draft PR #3744 that was added
+  for these two runs and then reverted). Each job ran 180 checks with 0 failed. Setup took about a minute per job.
+
+  | Run | pg14-shard1 | pg14-shard2 | pg17-shard1 | pg17-shard2 |
+  |---|---|---|---|---|
+  | cold, `36243570745` (no reference cache yet) | 27.5 min | 30.7 min | 26.4 min | 29.7 min |
+  | warm, `36247645747` | 26.7 min | 29.4 min | 26.2 min | 30.1 min |
+
+  The warm run is no faster: on the standard runner the lanes spend their time on the Ecto side and on templates,
+  so the reference cache saves little. Every job stays far below the 90-minute limit, so two shards per major
+  stay. The pull request's `ecto-counterparts` job runs all 360 checks on one runner in about 56 min.
 - **One job.** Ruby comes from `.ruby-version`, OTP/Elixir from `app-phoenix/.tool-versions`, and GEOS from apt, with
   the Bundler and Mix caches. `infra.sh up` starts the job's PostgreSQL. The job then asserts the server major, that
   PostGIS is available and that Redis answers `PING`, before running the matrix inventory preflight, whose output
