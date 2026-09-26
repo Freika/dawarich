@@ -85,6 +85,7 @@ module EnhancedImport
       visit_writer = Writers::VisitWriter.new(user, import)
       track_writer = Writers::TrackWriter.new(user, import)
       segment_writer = Writers::SegmentWriter.new
+      SourceSegmentsReset.new(import).call unless trust_source?(import)
 
       EnhancedImport::Translator.new(import).translate do |item|
         case item
