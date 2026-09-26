@@ -38,6 +38,10 @@ fail() {
   exit 1
 }
 
+owner="$(docker run --rm ${PLATFORM:+--platform "$PLATFORM"} --user 0 --entrypoint sh "$IMAGE" -c \
+  'mkdir -p /tmp/owned && chown 1000:1000 /tmp/owned && DAWARICH_COOKIE_FILE=/tmp/owned/cookie dawarich eval "IO.puts(:ok)" >/dev/null && stat -c %u:%g /tmp/owned/cookie')"
+[ "$owner" = "1000:1000" ] || fail "a cookie created by root belongs to $owner, not to its directory's owner"
+
 $compose up -d
 tries=0
 until [ "$(docker inspect -f '{{.State.Health.Status}}' a0_app)" = "healthy" ]; do
