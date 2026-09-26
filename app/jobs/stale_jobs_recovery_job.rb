@@ -10,6 +10,7 @@ class StaleJobsRecoveryJob < ApplicationJob
   def perform
     recover_stale_exports
     recover_stale_imports
+    Imports::ExtractionMonitor.new.call
   end
 
   private

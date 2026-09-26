@@ -151,12 +151,14 @@ class Import < ApplicationRecord
   def extraction_stalled?
     return false unless extraction_in_flight?
 
-    started_at = additional_data_extraction['started_at']
-    return false if started_at.blank?
+    started_at = extraction_started_at
+    started_at.nil? || started_at <= EXTRACTION_STALE_AFTER.ago
+  end
 
-    Time.zone.parse(started_at.to_s) <= EXTRACTION_STALE_AFTER.ago
+  def extraction_started_at
+    Time.zone.parse(additional_data_extraction['started_at'].to_s)
   rescue ArgumentError, TypeError
-    false
+    nil
   end
 
   def trust_source_for_extraction?

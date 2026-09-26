@@ -109,5 +109,57 @@ RSpec.describe StaleJobsRecoveryJob do
         expect { described_class.new.perform }.not_to(change { Notification.count })
       end
     end
+
+    context 'with extractions in flight' do
+      let(:metrics) { Yabeda.dawarich_imports }
+
+      def extraction(status, started_at)
+        import = create(:import, user: user, source: :google_phone_takeout)
+        payload = started_at ? { 'started_at' => started_at.iso8601 } : {}
+        import.update_columns(
+          additional_data_extraction_status: Import.additional_data_extraction_statuses[status],
+          additional_data_extraction: payload
+        )
+        import
+      end
+
+      let!(:stalled_pending) { extraction(:pending, 7.hours.ago) }
+      let!(:running_without_start) { extraction(:running, nil) }
+
+      before do
+        extraction(:pending, 10.minutes.ago)
+        extraction(:running, 2.hours.ago)
+        extraction(:completed, 30.hours.ago)
+        allow(Rails.logger).to receive(:warn).and_call_original
+      end
+
+      it 'reports the oldest age per state and the stalled count without changing any extraction' do
+        expect { described_class.new.perform }
+          .not_to(change { Import.order(:id).pluck(:additional_data_extraction_status, :additional_data_extraction) })
+
+        expect(metrics.extraction_oldest_age_seconds.get(state: 'pending')).to be_within(60).of(7.hours.to_i)
+        expect(metrics.extraction_oldest_age_seconds.get(state: 'running')).to be_within(60).of(2.hours.to_i)
+        expect(metrics.extractions_stalled.get).to eq(2)
+      end
+
+      it 'logs only the stalled import ids' do
+        described_class.new.perform
+
+        ids = [stalled_pending.id, running_without_start.id].sort.join(',')
+        expect(Rails.logger).to have_received(:warn)
+          .with("event=imports.extractions_stalled count=2 import_ids=#{ids}")
+      end
+
+      it 'drops back to zero once nothing is in flight' do
+        described_class.new.perform
+        Import.update_all(additional_data_extraction_status: Import.additional_data_extraction_statuses[:completed])
+
+        described_class.new.perform
+
+        expect(metrics.extraction_oldest_age_seconds.get(state: 'pending')).to eq(0)
+        expect(metrics.extraction_oldest_age_seconds.get(state: 'running')).to eq(0)
+        expect(metrics.extractions_stalled.get).to eq(0)
+      end
+    end
   end
 end

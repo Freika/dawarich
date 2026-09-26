@@ -73,6 +73,15 @@ Yabeda.configure do
               tags: %i[layer outcome],
               buckets: [0.01, 0.05, 0.1, 0.25, 0.5, 1, 2, 3, 5]
   end
+
+  group :dawarich_imports do
+    gauge :extraction_oldest_age_seconds,
+          comment: 'Age of the oldest additional-data extraction in each in-flight state',
+          tags: %i[state]
+
+    gauge :extractions_stalled,
+          comment: 'In-flight extractions past the stall window or without a readable start time'
+  end
 end
 
 Yabeda.configure! if defined?(Yabeda)
