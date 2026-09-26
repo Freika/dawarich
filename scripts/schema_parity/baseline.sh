@@ -6,7 +6,7 @@ mkdir -p "$work"
 tmpd="$(mktemp -d "$work/.tmp.XXXXXX")"
 cleanup() {
   rm -rf "$tmpd"
-  docker exec sp-db dropdb -U postgres --if-exists sp_baseline >/dev/null 2>&1 || true
+  docker exec "$db_container" dropdb -U postgres --if-exists sp_baseline >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 trap 'exit 130' INT

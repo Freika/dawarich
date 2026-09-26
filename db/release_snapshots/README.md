@@ -202,7 +202,8 @@ A real install's `schema_migrations` and `data_migrations` are supersets of the 
 - Restoring into any PostgreSQL. The dumps come from `pg_dump` 17.5 and contain `SET transaction_timeout = 0;`, which
   PostgreSQL 16 and older reject, so `psql -v ON_ERROR_STOP=1` fails there. The default compose files ran
   `postgres:14.2-alpine` up to 0.23.6, `postgis/postgis:14-3.5-alpine` from 0.24.0 to 0.25.x and
-  `postgis/postgis:17-3.5-alpine` from 0.26.0. The snapshots record no extension versions.
+  `postgis/postgis:17-3.5-alpine` from 0.26.0. The snapshots record no extension versions. The harness's
+  `restore_snapshot` handles it for `SP_PG_MAJOR=14` (see "Interface for C4").
 
 ## Map anomalies
 
@@ -246,9 +247,9 @@ From the repository root. Nothing here touches the development or test database 
 
 1. `docker login` (recommended: anonymous Docker Hub pulls are limited to about 10 an hour; `snapshot.sh` retries a
    rate-limited pull 12 times, 360 s apart, tunable with `SNAPSHOT_PULL_RETRIES` and `SNAPSHOT_PULL_WAIT`).
-2. `scripts/schema_parity/infra.sh up`: `sp-db` (`postgis/postgis:17-3.5`, used here at
-   `sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6`, PostgreSQL 17.5) on `127.0.0.1:55532` and
-   `sp-redis` (`redis:7.4-alpine`) on `127.0.0.1:56479`, on the Docker network `schema-parity`.
+2. `scripts/schema_parity/infra.sh up`, with the default `SP_PG_MAJOR=17`: `sp-db` (`postgis/postgis:17-3.5`, used
+   here at `sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6`, PostgreSQL 17.5) on
+   `127.0.0.1:55532` and `sp-redis` (`redis:7.4-alpine`) on `127.0.0.1:56479`, on the Docker network `schema-parity`.
 3. `git fetch --tags`, then `LANG=en_US.UTF-8 DATABASE_NAME=sp_unused RAILS_ENV=test bin/rails schema_parity:release_map`.
    It rewrites `db/release_migrations.json` and refuses to when a release the committed map lists has no local tag.
 4. `LANG=en_US.UTF-8 scripts/schema_parity/snapshot_all.sh`, twice. Existing snapshots are skipped, so the second run
@@ -301,7 +302,7 @@ Paths are relative to the repository root.
 | `scripts/schema_parity/ecto_check.sh`, `ecto_prove.sh`, `ecto_lib.sh`, `ecto_template.sh` | One check; listing, running and summarising checks (C4's interface); shared helpers; template databases |
 | `scripts/schema_parity/ecto_expectations.tsv` | Declared outcomes: `failed@V`, contended and refused checks |
 | `scripts/schema_parity/pr_checks.rb` | Checks a pull request must pass; fixture gate for unreleased migrations |
-| `scripts/schema_parity/lib.sh`, `infra.sh` | C1's helpers: `canon_dump` excludes `phoenix` and `oban` and is memoised; bounded `docker exec`; `infra.sh up` pins sp-db and turns off its durability |
+| `scripts/schema_parity/lib.sh`, `infra.sh` | C1's helpers: `canon_dump` excludes `phoenix` and `oban` and is memoised; bounded `docker exec`; the PostgreSQL 14 restore rule; `infra.sh up` starts the pinned server `SP_PG_MAJOR` selects and turns off its durability |
 | `scripts/schema_parity/fixtures/<release>[--<variant>].sql` / `.env` | Row fixtures and their environments (86 `.sql`, 12 `.env`) |
 | `.github/workflows/ecto-counterparts.yml` | The `ecto-counterparts` job: the checks a change selects on pull requests, every check on pushes to `dev` and `master` |
 
@@ -816,16 +817,17 @@ is unproven.
   - The lines go to `tmp/schema_parity/ecto/summary.txt` (`summary.K-N.txt` for a shard) in `--list` order. `all`
     starts a fresh file for its own shard; explicit checks append, so remove `summary*.txt` first, as the CI job does.
   - Exit 0 only when every check passed. A run aborted before its checks start (duplicate check names, a list error,
-    no check selected, a local `.env`, `mix compile` failing) exits 2 and writes `ABORTED …` to the summary. A bad
-    `--shard` or `--jobs` value, a missing argument and any `--list` error exit 2 with a message on stderr and write no
-    summary line.
+    no check selected, a local `.env`, a server whose major is not `SP_PG_MAJOR`, `mix compile` failing) exits 2 and
+    writes `ABORTED …` to the summary. A bad `--shard` or `--jobs` value, a missing argument and any `--list` error
+    exit 2 with a message on stderr and write no summary line.
   - `== start|end <epoch> <check>` lines go to `tmp/schema_parity/ecto/prove.log`.
 - `--jobs N` runs N lanes over the non-contended checks (default: half the cores, at least 1), then the contended
   checks one at a time, alone. With `--shard`, each shard runs its own contended checks alone at its end.
 - Diffs go to `tmp/schema_parity/ecto/diffs/`. Rails references are cached in `tmp/schema_parity/ecto/ref/`, keyed
   by the check's own inputs (snapshot, fixture, `.env`) and the code key: the SHA-1 of the working-tree bytes of
   `db/migrate`, `db/release_migrations.json`, `app` (without `app/assets`), `config`, `lib`, `Gemfile.lock`,
-  `.ruby-version`, `.tool-versions` and the harness scripts, plus the `.env*` files and `ruby -v`. The canonical-dump
+  `.ruby-version`, `.tool-versions` and the harness scripts, plus the `.env*` files, `ruby -v` and `SP_PG_MAJOR`, so
+  each PostgreSQL major keeps its own references and CI cache. The canonical-dump
   memo `tmp/schema_parity/canon/` is content-addressed. The CI job caches both under `ecto-ref-<os>-<code key>`.
 - Each starting point (snapshot, migrated-to version, extra ledger row, `~shifted`, fixture, `.env`) is built once as
   a template database `sp_t_<sha1>`, with Rails booted on it (except for `refused:`), and every side of every check
@@ -838,9 +840,8 @@ is unproven.
   `pr_checks.rb <list> [<base>...<head>]` reads changed paths on stdin and prints the checks they select (see "What CI
   runs"); the range is required when `Gemfile.lock` changed.
 
-**Prerequisites:** `scripts/schema_parity/infra.sh up` (sp-db is `postgis/postgis:17-3.5` pinned at
-`sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6`, PostgreSQL 17.5, with `fsync`,
-`full_page_writes` and `synchronous_commit` off; and sp-redis), `bundle check`, `mix deps.get` in `app-phoenix/`, the
+**Prerequisites:** `scripts/schema_parity/infra.sh up` (sp-db with `fsync`, `full_page_writes` and
+`synchronous_commit` off, and sp-redis), `bundle check`, `mix deps.get` in `app-phoenix/`, the
 `en_US.UTF-8` locale, and no `.env`, `.env.local` or `.env.development.local` in the checkout (the harness refuses
 them: dotenv would load them into the Rails side only).
 
@@ -867,11 +868,38 @@ With the default 2 lanes of a 4-core runner, one shard per PostgreSQL version ne
 (≈ 1 h). Use one shard per PostgreSQL version with a 180-minute job timeout until the first nightly calibrates it;
 if a shard then goes over 1.5 h, use two. The runner's Docker Engine has not been measured.
 
+**PostgreSQL major.** `SP_PG_MAJOR` selects the server; every harness script, `infra.sh` included, reads it and
+rejects anything but `14` or `17` (an empty value too). Unset means `17`.
+
+| `SP_PG_MAJOR` | Image, pinned by index digest | Server |
+|---|---|---|
+| `17` (default) | `postgis/postgis:17-3.5@sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6` | 17.5, PostGIS 3.5.2 |
+| `14` | `postgis/postgis:14-3.5@sha256:2543ae2bc9497ca62cd740268be228f7a6974020207634e2b189fe36be82b749` | 14.18, PostGIS 3.5.2 |
+
+PostGIS 3.5 is the newest minor published for both majors (`14-3.6` and `17-3.6` do not exist), matches the pinned 17
+image, and is what the compose files shipped with PostgreSQL 14 (0.24.0–0.25.x) and 17 (from 0.26.0). Both indexes
+carry only `linux/amd64`; Apple silicon runs them under emulation.
+
+- `infra.sh up` reuses a container that already has the name, so it reads `SHOW server_version_num` and fails when the
+  server is not the selected major; `ecto_prove.sh` makes the same check before any check starts. Each server compares
+  Rails and Ecto on itself; references are not shared between majors (see the code key above).
+- `SP_DB_CONTAINER`, `SP_DB_PORT`, `SP_REDIS_CONTAINER`, `SP_REDIS_PORT` and `SP_NETWORK` override `sp-db`, `55532`,
+  `sp-redis`, `56479` and `schema-parity` for every script, so a second harness can run beside the first. CI keeps the
+  defaults: each job has its own runner.
+- **PostgreSQL 14 restores.** The snapshots are `pg_dump` 17.5 output with one `SET transaction_timeout = 0;` per
+  `pg_dump` preamble (two per file: schema and ledger rows), which PostgreSQL 16 and older reject under
+  `ON_ERROR_STOP`. With `SP_PG_MAJOR=14`, `restore_snapshot` (used by `ecto_prove.sh`, `compare.sh` and
+  `schemarb_all.sh`) requires that line to appear exactly once per preamble, drops only that exact line, writes
+  `restoring <snapshot> into PostgreSQL 14 without its 2 'SET transaction_timeout = 0;' lines: <SHA-1 of the filtered
+  SQL>` to stderr (`prove.log` for `ecto_prove.sh`), and restores the rest with `ON_ERROR_STOP`, so any other
+  incompatible statement still fails. The compressed snapshot is not touched. PostgreSQL 17 gets the bytes unchanged.
+  `snapshot.sh` still restores unfiltered: snapshots are produced on 17 only.
+- `scripts/schema_parity/test/pg_major.sh` proves all of this on its own containers (`sp-test-db-14`/`-17` on
+  55714/55717, `sp-test-redis` on 56717, network `sp-test`), which it removes afterwards: `sh
+  scripts/schema_parity/test/pg_major.sh` prints one `ok`/`not ok` line per assertion and exits non-zero on any.
+
 **C4's matrix** covers the states at or after the floor (every `step:`, `rows:`, `contended:` and `upgrade:` check),
-the refusal sample, and nothing older, each restored into PostgreSQL 14 and 17. The harness talks to one server,
-`sp-db`, pinned to PostgreSQL 17.5, so a PostgreSQL 14 run needs its own server. The snapshots are `pg_dump` 17.5
-output with `SET transaction_timeout = 0;`, which PostgreSQL 16 and older reject under `ON_ERROR_STOP` (see "What C2
-must not assume"); the C4 plan's "PG14 restore compatibility fix" item covers it. `postgis/postgis:14-3.5` has no arm64 image, which matters only locally. The nightly activates when
+the refusal sample, and nothing older, each restored into PostgreSQL 14 and 17. The nightly activates when
 `feat/phoenix-port` merges into the default branch.
 
 ### What CI runs

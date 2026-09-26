@@ -77,6 +77,7 @@ duplicates="$(duplicates_in "$@")"
 if dotenv="$(local_dotenv)"; then
   abort_run "refusing to run: $dotenv exists and dotenv would load it into the Rails side only"
 fi
+mismatch="$(check_server_major)" || abort_run "$mismatch"
 if ! (cd "$root/app-phoenix" && scrubbed $ecto_env mix compile) >> "$work/ecto/prove.log" 2>&1; then
   abort_run "mix compile failed in app-phoenix (see tmp/schema_parity/ecto/prove.log)"
 fi

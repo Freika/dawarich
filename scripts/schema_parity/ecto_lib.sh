@@ -1,4 +1,4 @@
-ecto_env="MIX_ENV=test DATABASE_HOST=127.0.0.1 DATABASE_PORT=55532 DATABASE_USERNAME=postgres DATABASE_PASSWORD=parity"
+ecto_env="MIX_ENV=test DATABASE_HOST=127.0.0.1 DATABASE_PORT=$db_port DATABASE_USERNAME=postgres DATABASE_PASSWORD=parity"
 expectations="$root/scripts/schema_parity/ecto_expectations.tsv"
 holder_seconds=150
 parts="schema ledger columns invalid rows jobs"
@@ -18,7 +18,7 @@ scrubbed() {
 }
 
 query() {
-  dexec -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAtc "$2"
+  dexec -e PGTZ=UTC "$db_container" psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAtc "$2"
 }
 
 code_key() {
@@ -33,6 +33,7 @@ code_key() {
     paste "$tmpd/key.present" "$tmpd/key.blobs" || exit 1
     sed 's/$/ deleted/' "$tmpd/key.deleted" || exit 1
     for file in .env*; do [ ! -f "$file" ] || cat "$file" || exit 1; done
+    echo "postgres $pg_major"
     scrubbed ruby -v || exit 1
   ) > "$tmpd/key.input" && checksum "$tmpd/key.input"
 }
@@ -85,7 +86,7 @@ record() {
   query "$1" "SELECT table_name || '.' || column_name FROM information_schema.columns WHERE table_schema = 'public' ORDER BY table_name, ordinal_position" > "$2.columns"
   query "$1" "$invalid_sql" > "$2.invalid"
   query "$1" "$rows_sql" > "$tmpd/rows.copy"
-  dexec -i -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt < "$tmpd/rows.copy" > "$tmpd/rows.raw" \
+  dexec -i -e PGTZ=UTC "$db_container" psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt < "$tmpd/rows.copy" > "$tmpd/rows.raw" \
     || fail "could not copy the rows of $1"
   expected="$(sed -n 's/^#rows //p' "$tmpd/rows.raw")"
   grep -v '^#rows ' "$tmpd/rows.raw" > "$tmpd/rows.data" || [ $? -eq 1 ]
@@ -124,7 +125,7 @@ diff_parts() {
 
 hold() {
   [ -n "$holder_table" ] || return 0
-  dexec_for "$((holder_seconds + exec_timeout))" sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qc \
+  dexec_for "$((holder_seconds + exec_timeout))" "$db_container" psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qc \
     "BEGIN; LOCK TABLE $holder_table IN ROW EXCLUSIVE MODE; SELECT pg_sleep($holder_seconds); COMMIT;" \
     > /dev/null 2> "$tmpd/holder.err" 3>&- &
   holder_pid=$!
@@ -142,7 +143,7 @@ hold() {
       echo "SELECT l.pid || ' ' || a.xact_start FROM pg_locks l JOIN pg_stat_activity a ON a.pid = l.pid WHERE l.locktype = 'relation' AND NOT l.granted AND l.database = (SELECT oid FROM pg_database WHERE datname = current_database()) AND l.relation = '$holder_table'::regclass;"
       sleep 0.2
     done
-  ) 3>&- | dexec_for "$((holder_seconds + exec_timeout))" -i -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt > "$tmpd/watch.log" 2> "$tmpd/watch.err" 3>&- &
+  ) 3>&- | dexec_for "$((holder_seconds + exec_timeout))" -i -e PGTZ=UTC "$db_container" psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt > "$tmpd/watch.log" 2> "$tmpd/watch.err" 3>&- &
   watch_pid=$!
 }
 
@@ -171,6 +172,6 @@ release_harness() {
   [ ! -s "$tmpd/timed_out" ] || echo "$check FAIL timed out: $(cat "$tmpd/timed_out")" >&3
   [ -z "$watch_pid" ] || { touch "$tmpd/watch.stop"; kill "$watch_pid" >/dev/null 2>&1 || true; }
   [ -z "$holder_pid" ] || kill "$holder_pid" >/dev/null 2>&1 || true
-  drop_sql "$@" $build_db $(printf '%s_rt ' "$@") | dexec -i sp-db psql -U postgres -q >/dev/null 2>&1 || true
+  drop_sql "$@" $build_db $(printf '%s_rt ' "$@") | dexec -i "$db_container" psql -U postgres -q >/dev/null 2>&1 || true
   rm -rf "$tmpd"
 }
