@@ -94,7 +94,7 @@ class Tracks::BoundaryDetector
   end
 
   def orphan_point_ids_for(track)
-    Point.where(user_id: user.id)
+    Point.not_held_by_extraction.where(user_id: user.id)
          .where('COALESCE(tracker_id, ?) = COALESCE(?, ?)', '', track.tracker_id, '')
          .where(track_id: nil)
          .where('anomaly IS NOT TRUE')

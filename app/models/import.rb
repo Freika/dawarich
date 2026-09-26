@@ -49,6 +49,12 @@ class Import < ApplicationRecord
   after_commit :enqueue_additional_data_extraction, on: :update,
                if: :should_enqueue_additional_data_extraction?
 
+  scope :extraction_in_flight, -> { where(additional_data_extraction_status: %i[pending running]) }
+
+  def self.extraction_in_flight_for(foreign_key)
+    extraction_in_flight.where(arel_table[:id].eq(foreign_key)).arel.exists
+  end
+
   def process!
     if user_data_archive?
       process_user_data_archive!
@@ -106,7 +112,8 @@ class Import < ApplicationRecord
       start_at: Time.zone.at(min_ts),
       end_at: Time.zone.at(max_ts),
       mode: :bulk,
-      untracked_only: true
+      untracked_only: true,
+      import_id: id
     )
   end
 

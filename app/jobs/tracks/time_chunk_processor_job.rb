@@ -68,7 +68,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
                    .order(:timestamp)
                    .preload(:source)
     relation = relation.where(track_id: nil) if chunk_data[:untracked_only]
-    relation
+    chunk_data[:import_id] ? relation.where(import_id: chunk_data[:import_id]) : relation.not_held_by_extraction
   end
 
   def segment_chunk_points(points)

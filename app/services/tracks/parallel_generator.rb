@@ -6,13 +6,13 @@ class Tracks::ParallelGenerator
   include Tracks::Segmentation
   include Tracks::TrackBuilder
 
-  attr_reader :user, :start_at, :end_at, :mode, :chunk_size, :untracked_only, :job_queue
+  attr_reader :user, :start_at, :end_at, :mode, :chunk_size, :untracked_only, :job_queue, :import_id
 
   # job_queue moves the chunk fan-out off :tracks, where it would otherwise
   # compete with Tracks::RealtimeGenerationJob. Housekeeping callers that are
   # rebuilding whole histories pass :low_priority so live tracking stays ahead.
   def initialize(user, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day, untracked_only: false,
-                 job_queue: nil)
+                 job_queue: nil, import_id: nil)
     @user = user
     @start_at = start_at
     @end_at = end_at
@@ -20,6 +20,7 @@ class Tracks::ParallelGenerator
     @chunk_size = chunk_size
     @untracked_only = untracked_only
     @job_queue = job_queue
+    @import_id = import_id
   end
 
   def call
@@ -81,7 +82,7 @@ class Tracks::ParallelGenerator
       enqueue_on(Tracks::TimeChunkProcessorJob).perform_later(
         user.id,
         session_id,
-        chunk.merge(untracked_only: untracked_only)
+        chunk.merge(untracked_only: untracked_only, import_id: import_id)
       )
     end
   end
@@ -105,15 +106,11 @@ class Tracks::ParallelGenerator
   end
 
   def clean_existing_tracks
+    tracks = user.tracks.where(Import.extraction_in_flight_for(Track.arel_table[:import_id]).not)
     if time_range_defined?
-      user.tracks.where(
-        '(start_at, end_at) OVERLAPS (?, ?)',
-        start_at&.in_time_zone,
-        end_at&.in_time_zone
-      ).destroy_all
-    else
-      user.tracks.destroy_all
+      tracks = tracks.where('(start_at, end_at) OVERLAPS (?, ?)', start_at&.in_time_zone, end_at&.in_time_zone)
     end
+    tracks.destroy_all
   end
 
   def time_range_defined?

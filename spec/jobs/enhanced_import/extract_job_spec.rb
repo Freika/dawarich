@@ -72,7 +72,7 @@ RSpec.describe EnhancedImport::ExtractJob do
     let(:first_timestamp) { Time.zone.parse('2025-04-01T10:00:00Z').to_i }
     let(:generation_arguments) do
       [user.id, { start_at: Time.zone.at(first_timestamp), end_at: Time.zone.at(first_timestamp + 120),
-                  mode: :bulk, untracked_only: true }]
+                  mode: :bulk, untracked_only: true, import_id: import.id }]
     end
 
     before do
