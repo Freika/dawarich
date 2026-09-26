@@ -50,6 +50,46 @@ defmodule Dawarich.ReleaseCloudTest do
 
       assert with_pool(pool, &Release.readiness/0) == :no_connection
     end
+
+    test "never waits for the migration table lock a real migration run holds" do
+      assert Release.migrate() == :ok
+
+      parent = self()
+
+      holder =
+        spawn(fn ->
+          Repo.transaction(
+            fn ->
+              Repo.query!(
+                "LOCK TABLE phoenix.phoenix_schema_migrations IN SHARE UPDATE EXCLUSIVE MODE"
+              )
+
+              send(parent, :locked)
+
+              receive do
+                :release -> :ok
+              end
+            end,
+            timeout: :infinity
+          )
+        end)
+
+      on_exit(fn ->
+        ref = Process.monitor(holder)
+        send(holder, :release)
+
+        receive do
+          {:DOWN, ^ref, :process, ^holder, _} -> :ok
+        after
+          2_000 -> :ok
+        end
+      end)
+
+      assert_receive :locked, 2_000
+
+      task = Task.async(&Release.readiness/0)
+      assert Task.yield(task, 2_000) == {:ok, :ready}
+    end
   end
 
   describe "a role without CREATE on the database" do
