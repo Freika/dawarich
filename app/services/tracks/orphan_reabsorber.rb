@@ -70,7 +70,7 @@ module Tracks
 
     def orphan_point_ids_for(track)
       Point.not_held_by_extraction.where(user_id: user.id)
-           .where('COALESCE(tracker_id, ?) = COALESCE(?, ?)', '', track.tracker_id, '')
+           .recorded_by(track.tracker_id)
            .where(track_id: nil)
            .where('anomaly IS NOT TRUE')
            .where(timestamp: track.start_at.to_i..track.end_at.to_i)
