@@ -31,7 +31,7 @@ index = ->(name) { steps.index(step.call(name)) }
 matrix = prove.dig('strategy', 'matrix')
 
 check('the workflow parses and runs on a schedule and on manual dispatch only') do
-  triggers.keys.sort == %w[pull_request schedule workflow_dispatch]
+  triggers.keys.sort == %w[schedule workflow_dispatch]
 end
 check('the schedule is one daily cron entry away from the top of the hour') do
   crons = triggers['schedule'].map { _1['cron'] }
