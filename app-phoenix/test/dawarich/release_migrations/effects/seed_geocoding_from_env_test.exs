@@ -189,19 +189,25 @@ defmodule Dawarich.ReleaseMigrations.Effects.SeedGeocodingFromEnvTest do
     end
   end
 
-  test "a later failure reports the Decryption Rails raises while restoring an earlier undecryptable winner" do
+  test "a later user's failure keeps its own message after an earlier undecryptable winner activated" do
     first = user("first@example.test")
     second = user("second@example.test")
     setting(first, "photon", %{"host" => "photon.example.test"}, credentials: flipped_tag("{}"))
     setting(second, "geoapify", %{})
 
-    assert_raise Ruby.Error, "ActiveRecord::Encryption::Errors::Decryption", fn ->
+    assert_raise Ruby.Error, "Validation failed: Geoapify needs an API key.", fn ->
       seed(env(%{"NOMINATIM_API_HOST" => "nominatim.example.test"}))
     end
+  end
 
-    Dawarich.ScratchRepo.query!("UPDATE service_settings SET credentials = NULL")
+  test "fails the step on a komoot key it cannot parse the way Oj would" do
+    owner = user("oj-komoot@example.test")
 
-    assert_raise Ruby.Error, "Validation failed: Geoapify needs an API key.", fn ->
+    setting(owner, "photon", %{"host" => "photon.komoot.io"},
+      credentials: encrypted(~s({"api_key":"k" /* comment */}))
+    )
+
+    assert_raise Ruby.Unreproducible, ~r/Oj's JSON.parse may accept/, fn ->
       seed(env(%{"NOMINATIM_API_HOST" => "nominatim.example.test"}))
     end
   end

@@ -26,7 +26,7 @@ statements = File.readlines(list, chomp: true).flat_map do |line|
   rows.map do |id, ciphertext|
     text =
       begin
-        type.deserialize(ciphertext).dup.force_encoding(Encoding::UTF_8)
+        "plaintext: #{type.deserialize(ciphertext).dup.force_encoding(Encoding::UTF_8)}"
       rescue StandardError => e
         "undecryptable (#{e.class}): #{ciphertext}"
       end

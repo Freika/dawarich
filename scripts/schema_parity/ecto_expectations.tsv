@@ -12,8 +12,6 @@ rows:1.13.0--no-replacement	failed@20260816120000	-
 rows:1.13.0--no-replacement~shifted	failed@20260816120000	-
 rows:1.13.1--malformed-winner	failed@20260819120100	-
 rows:1.13.1--malformed-winner~shifted	failed@20260819120100	-
-rows:1.13.1--rollback-restores-winner	failed@20260819120100	-
-rows:1.13.1--rollback-restores-winner~shifted	failed@20260819120100	-
 rows:1.13.1--undecryptable-komoot	failed@20260819120100	-
 rows:1.13.1--undecryptable-komoot~shifted	failed@20260819120100	-
 rows:1.13.1--undecryptable-winner	failed@20260819120100	-

@@ -14,20 +14,15 @@ defmodule Dawarich.ReleaseMigrations.Effects.SeedGeocodingFromEnv do
 
   def run(repo, env \\ System.get_env()) do
     if self_hosted?() and reverse_geocoding_enabled?(env) do
-      attributes = env_provider_attributes(env)
       key = ActiveRecordEncryption.key(env)
 
-      repo.query!("SELECT id FROM users WHERE deleted_at IS NULL ORDER BY id", [], log: false).rows
-      |> Enum.reduce(nil, fn [user_id], restore ->
-        try do
-          Enum.each(attributes, &create_setting(repo, user_id, &1, key))
-          winner_restore = activate_chain_winner(repo, user_id, key)
-          restore || winner_restore
-        rescue
-          error ->
-            reraise(if(restore, do: %Ruby.Error{message: restore}, else: error), __STACKTRACE__)
-        end
-      end)
+      for [user_id] <-
+            repo.query!("SELECT id FROM users WHERE deleted_at IS NULL ORDER BY id", [],
+              log: false
+            ).rows do
+        Enum.each(env_provider_attributes(env), &create_setting(repo, user_id, &1, key))
+        activate_chain_winner(repo, user_id, key)
+      end
     end
 
     :ok
@@ -86,7 +81,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.SeedGeocodingFromEnv do
   defp activate_chain_winner(repo, user_id, key) do
     unless geocoding_exists?(repo, user_id, "active = TRUE", []) do
       case Enum.find_value(ServiceSetting.chain(), &ServiceSetting.find_by(repo, user_id, &1)) do
-        nil -> nil
+        nil -> :ok
         winner -> ServiceSetting.activate!(repo, winner, key)
       end
     end

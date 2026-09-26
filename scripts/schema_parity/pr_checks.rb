@@ -80,7 +80,7 @@ older_than_a_module = lambda do |check|
   start = check[/\Aupgrade:(\d+(?:\.\d+)*)/, 1] or next false
   modules.any? { _1 == 'unreleased' || Gem::Version.new(start) < Gem::Version.new(_1) }
 end
-migrator_gems = %w[rails activerecord activesupport activemodel railties pg strong_migrations data_migrate]
+migrator_gems = %w[rails activerecord activesupport activemodel railties pg strong_migrations data_migrate oj json]
 migrator_gems_bumped = changed.include?('Gemfile.lock') && begin
   range = ARGV[1].to_s
   abort 'Gemfile.lock changed: pass the diff range <base>...<head> as the second argument' if range.empty?

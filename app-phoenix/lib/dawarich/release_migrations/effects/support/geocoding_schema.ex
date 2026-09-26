@@ -33,7 +33,11 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.GeocodingSchema do
     host = Ruby.index(config, "host")
 
     unless is_map(config),
-      do: raise(Ruby.Error, "cannot reproduce Ruby's normalization of #{Ruby.instance(config)}")
+      do:
+        raise(
+          Ruby.Unreproducible,
+          "cannot reproduce Ruby's normalization of #{Ruby.instance(config)}"
+        )
 
     config = if Ruby.blank?(host), do: config, else: Map.put(config, "host", normalize_host(host))
     host = Ruby.index(config, "host")

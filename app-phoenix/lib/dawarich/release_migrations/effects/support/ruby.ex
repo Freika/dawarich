@@ -3,6 +3,9 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.Ruby do
 
   import Dawarich.ReleaseMigration, only: [ruby_strip: 1]
 
+  alias Dawarich.ActiveRecordEncryption.Message
+  alias Dawarich.ReleaseMigrations.Effects.Support.RubyFloat
+
   @decimal ~r/\A([+-]?)((?:\d+(?:_\d+)*)?)(?:\.((?:\d+(?:_\d+)*)?))?(?:[eE]([+-]?\d+(?:_\d+)*))?\z/
   @hex ~r/\A([+-]?)0[xX]((?:[0-9a-fA-F]+(?:_[0-9a-fA-F]+)*)?)(?:\.([0-9a-fA-F]*))?(?:[pP]([+-]?\d+))?\z/
   @signed_hex ~r/\A[\x09-\x0D ]*([+-])0[xX]((?:[0-9a-fA-F]+(?:_[0-9a-fA-F]+)*)?)(?:\.([0-9a-fA-F]*))?(?:[pP]([+-]?\d+))?/
@@ -12,11 +15,15 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.Ruby do
     defexception [:message]
   end
 
-  def strip(value), do: ruby_strip(value)
+  defmodule Unreproducible do
+    defexception [:message]
+  end
+
+  def strip(value), do: value |> valid!() |> ruby_strip()
 
   def blank?(nil), do: true
   def blank?(false), do: true
-  def blank?(value) when is_binary(value), do: String.trim(value) == ""
+  def blank?(value) when is_binary(value), do: String.trim(valid!(value)) == ""
   def blank?(value) when is_map(value), do: map_size(value) == 0
   def blank?(value) when is_list(value), do: value == []
   def blank?({:object, pairs}), do: pairs == []
@@ -41,10 +48,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.Ruby do
     end
   end
 
-  def instance(nil), do: "nil"
-  def instance(true), do: "true"
-  def instance(false), do: "false"
-  def instance(value), do: "an instance of " <> class(value)
+  defdelegate instance(value), to: Message
 
   def index(map, key) when is_map(map), do: Map.get(map, key)
 
@@ -67,9 +71,10 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.Ruby do
 
   def to_s(value) when is_binary(value), do: value
   def to_s(value) when is_integer(value) or is_boolean(value), do: to_string(value)
+  def to_s(value) when is_float(value), do: RubyFloat.to_s(value)
 
   def to_s(value),
-    do: raise(Error, "cannot reproduce Ruby's to_s of #{instance(value)}")
+    do: raise(Unreproducible, "cannot reproduce Ruby's to_s of #{instance(value)}")
 
   def json(value) when is_binary(value), do: [?", Enum.map(String.codepoints(value), &char/1), ?"]
   def json(value) when is_map(value), do: json_object(Enum.sort(value))
@@ -78,8 +83,8 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.Ruby do
   def json(value) when is_list(value),
     do: [?[, Enum.intersperse(Enum.map(value, &json/1), ?,), ?]]
 
-  def json(value) when is_float(value),
-    do: raise(Error, "cannot reproduce Ruby's JSON of #{value}")
+  def json(value) when is_float(value), do: RubyFloat.json(value)
+  def json(value) when value in [:infinity, :neg_infinity], do: "null"
 
   def json(value), do: Jason.encode!(value)
 
@@ -103,12 +108,9 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.Ruby do
   defp char(<<0x2029::utf8>>), do: "\\u2029"
   defp char(other), do: other
 
-  defp class(value) when is_integer(value), do: "Integer"
-  defp class(value) when is_float(value), do: "Float"
-  defp class(value) when is_binary(value), do: "String"
-  defp class(value) when is_list(value), do: "Array"
-  defp class(value) when is_map(value), do: "Hash"
-  defp class({:object, _pairs}), do: "Hash"
+  defp valid!(value) do
+    if String.valid?(value), do: value, else: raise(Error, "invalid byte sequence in UTF-8")
+  end
 
   defp groups(regex, string) do
     case Regex.run(regex, string) do
