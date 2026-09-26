@@ -864,9 +864,9 @@ since C3a, geocoding and `InstanceSettings::Registry` variables with dummy `OTP_
 `sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6`, PostgreSQL 17.5, with `fsync`,
 `full_page_writes` and `synchronous_commit` off; and sp-redis), `bundle check`, `mix deps.get` in `app-phoenix/`, the
 `en_US.UTF-8` locale, and no `.env`, `.env.local` or `.env.development.local` in the checkout (the harness refuses
-them: dotenv would load them into the Rails side only). Run no other `mix` command in `app-phoenix/` during a run:
-the Ecto sides share `_build/test` with it, and a concurrent compile or protocol consolidation fails whichever check
-is booting.
+them: dotenv would load them into the Rails side only). The Ecto sides compile into their own build directory
+(`MIX_BUILD_PATH=app-phoenix/_build/parity`), so `mix test` in `app-phoenix/` can run alongside a proof: a shared
+`_build/test` let a concurrent compile or protocol consolidation fail whichever check was booting.
 
 **Timings** (Apple M5 Pro, 18 cores, OrbStack, other sessions loading the machine; 9 lanes unless noted):
 
