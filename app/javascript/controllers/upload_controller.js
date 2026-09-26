@@ -1,24 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 import { DirectUpload } from "@rails/activestorage"
 import { translate } from "i18n"
-import { shouldZip, zipSingleFile } from "services/zip_file"
+import { ACCEPTED_EXTENSIONS } from "services/upload_rules"
+import { prepareFilesForUpload, shouldZip } from "services/zip_file"
 import Flash from "./flash_controller"
 
 const MAX_FILE_SIZE = 11 * 1024 * 1024 // 11MB
 const VALID_ZIP_TYPES = ["application/zip", "application/x-zip-compressed"]
-
-const ACCEPTED_EXTENSIONS = [
-  "json",
-  "geojson",
-  "gpx",
-  "kml",
-  "kmz",
-  "tcx",
-  "fit",
-  "csv",
-  "rec",
-  "zip",
-]
 
 export default class extends Controller {
   static targets = ["input", "progress", "progressBar", "submit", "form"]
@@ -37,13 +25,35 @@ export default class extends Controller {
     this.isUploading = false
     this.fileProgress = {}
     this.totalBytes = 0
-    this.inputTarget.addEventListener("change", this.upload.bind(this))
+    this.onFileChange = this.onFileChange || this.handleFileSelection.bind(this)
+    this.inputTarget.addEventListener("change", this.onFileChange)
     if (this.hasFormTarget) {
       this.formTarget.addEventListener("submit", this.onSubmit.bind(this))
     }
     if (this.hasSubmitTarget) {
       this.submitTarget.disabled = !this.hasUploadedFiles()
     }
+    this.handleFileSelection()
+  }
+
+  disconnect() {
+    this.inputTarget.removeEventListener("change", this.onFileChange)
+  }
+
+  handleFileSelection() {
+    const files = Array.from(this.inputTarget.files)
+    if (files.length === 0) {
+      this.selectedFiles = null
+      return
+    }
+    if (
+      this.selectedFiles?.length === files.length &&
+      files.every((file, index) => file === this.selectedFiles[index])
+    )
+      return
+
+    this.selectedFiles = files
+    this.upload()
   }
 
   onSubmit(event) {
@@ -82,7 +92,20 @@ export default class extends Controller {
         : translate("upload.uploading", { count: filesToUpload.length }),
     )
 
-    const prepared = await this.prepareForUpload(filesToUpload)
+    const prepared = await prepareFilesForUpload(
+      filesToUpload,
+      (original, err) => {
+        console.error(
+          "Client-side zip failed, uploading raw:",
+          original.name,
+          err,
+        )
+        Flash.show(
+          "warning",
+          translate("upload.compression_failed", { name: original.name }),
+        )
+      },
+    )
 
     this.totalBytes = prepared.reduce(
       (sum, upload) => sum + upload.file.size,
@@ -119,44 +142,6 @@ export default class extends Controller {
         if (completed === prepared.length) this.uploadComplete()
       })
     })
-  }
-
-  async prepareForUpload(files) {
-    const result = []
-    for (const original of files) {
-      if (!shouldZip(original)) {
-        result.push({
-          file: original,
-          originalFilename: original.name,
-          clientWrapped: false,
-        })
-        continue
-      }
-      try {
-        const zipped = await zipSingleFile(original)
-        result.push({
-          file: zipped,
-          originalFilename: original.name,
-          clientWrapped: true,
-        })
-      } catch (err) {
-        console.error(
-          "Client-side zip failed, uploading raw:",
-          original.name,
-          err,
-        )
-        Flash.show(
-          "warning",
-          translate("upload.compression_failed", { name: original.name }),
-        )
-        result.push({
-          file: original,
-          originalFilename: original.name,
-          clientWrapped: false,
-        })
-      }
-    }
-    return result
   }
 
   validateFiles(files) {
