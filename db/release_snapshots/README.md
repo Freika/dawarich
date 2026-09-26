@@ -317,6 +317,7 @@ reference `Dawarich.ReleaseMigrator`; today its only entry is the test-env mix t
    - A version whose Rails file calls `disable_ddl_transaction!` is `transaction: false`: its step runs outside a
      transaction (each statement commits on its own, `CONCURRENTLY`, lock retries and batch commits as Rails wrote
      them), then its ledger and outbox rows are written in a short transaction.
+   - The release step must run with the Rails app's environment (`RAILS_ENV`, `OTP_ENCRYPTION_*`, `SECRET_KEY_BASE`): `Dawarich.ActiveRecordEncryption` resolves the Active Record Encryption keys from it exactly as `config/application.rb` does (a development install without `OTP_ENCRYPTION_*` uses Rails' dev keys), so any other environment gives other keys, and Phoenix would write ciphertext Rails cannot read and treat every stored secret as unreadable. No committed dotenv file may carry these keys either, since dotenv loads them into Rails only (`active_record_encryption_test.exs`).
 2. **Ledger = Rails' ledger.** State comes only from `public.schema_migrations`. Each version writes its own row. There
    is no Ecto ledger for release migrations, and `ar_internal_metadata` is never written.
 3. **Classification** (`Ledger.classify/2`, pure), after the preflight below:

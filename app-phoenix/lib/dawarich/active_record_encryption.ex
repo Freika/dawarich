@@ -12,6 +12,12 @@ defmodule Dawarich.ActiveRecordEncryption do
     "OTP_ENCRYPTION_KEY_DERIVATION_SALT" => "dawarich-dev-salt-not-for-production"
   }
   @compression_threshold 140
+  @max_nesting 100
+  @external_resource encodings = Path.expand("../../priv/ruby_encodings.txt", __DIR__)
+  @ruby_encodings encodings
+                  |> File.read!()
+                  |> String.split("\n", trim: true)
+                  |> MapSet.new(&String.upcase(&1, :ascii))
 
   def credentials(env \\ System.get_env()) do
     Enum.reduce_while(@variables, {:ok, %{}}, fn {name, var}, {:ok, resolved} ->
@@ -46,7 +52,9 @@ defmodule Dawarich.ActiveRecordEncryption do
   def decrypt(ciphertext, key) when is_binary(ciphertext) and byte_size(key) == 32 do
     with {:ok, data} <- json(ciphertext),
          {:ok, payload, headers} <- message(data, 1),
+         :ok <- key_reference(headers["i"], key),
          {:ok, iv, tag} <- iv_and_tag(headers),
+         :ok <- encoding(headers["e"]),
          {:ok, clear} <- open(key, iv, payload, tag) do
       uncompress(clear, headers["c"])
     end
@@ -97,10 +105,37 @@ defmodule Dawarich.ActiveRecordEncryption do
   defp compress(text), do: {text, false}
 
   defp json(ciphertext) do
-    case Jason.decode(ciphertext) do
-      {:ok, data} -> {:ok, data}
-      {:error, _} -> {:error, :invalid_json}
+    with {:ok, data} <- Jason.decode(ciphertext, objects: :ordered_objects),
+         {:ok, data} <- unordered(data, 1) do
+      {:ok, data}
+    else
+      _ -> {:error, :invalid_json}
     end
+  end
+
+  defp unordered(value, depth)
+       when (is_list(value) or is_struct(value, Jason.OrderedObject)) and depth > @max_nesting,
+       do: :error
+
+  defp unordered(%Jason.OrderedObject{values: pairs}, depth) do
+    {keys, values} = Enum.unzip(pairs)
+
+    with {:ok, values} <- unordered_all(values, depth + 1),
+         do: {:ok, Map.new(Enum.zip(keys, values))}
+  end
+
+  defp unordered(list, depth) when is_list(list), do: unordered_all(list, depth + 1)
+  defp unordered(value, _depth), do: {:ok, value}
+
+  defp unordered_all(items, depth) do
+    items
+    |> Enum.reverse()
+    |> Enum.reduce_while({:ok, []}, fn item, {:ok, done} ->
+      case unordered(item, depth) do
+        {:ok, item} -> {:cont, {:ok, [item | done]}}
+        :error -> {:halt, :error}
+      end
+    end)
   end
 
   defp message(%{"p" => payload} = data, level) when level <= 2 do
@@ -137,11 +172,31 @@ defmodule Dawarich.ActiveRecordEncryption do
   defp header(value, _level), do: {:ok, value}
 
   defp base64(value) do
-    case Base.decode64(value) do
-      {:ok, decoded} -> {:ok, decoded}
-      :error -> {:error, :invalid_base64}
+    with {:ok, decoded} <- Base.decode64(value),
+         ^value <- Base.encode64(decoded) do
+      {:ok, decoded}
+    else
+      _ -> {:error, :invalid_base64}
     end
   end
+
+  defp key_reference(id, _key) when id in [nil, false], do: :ok
+
+  defp key_reference(id, key) do
+    if id == :sha |> :crypto.hash(key) |> Base.encode16(case: :lower) |> binary_part(0, 4),
+      do: :ok,
+      else: {:error, :unknown_key}
+  end
+
+  defp encoding(name) when name in [nil, false], do: :ok
+
+  defp encoding(name) when is_binary(name) do
+    if MapSet.member?(@ruby_encodings, String.upcase(name, :ascii)),
+      do: :ok,
+      else: {:error, :unknown_encoding}
+  end
+
+  defp encoding(_name), do: {:error, :unknown_encoding}
 
   defp iv_and_tag(%{"iv" => <<_::binary-size(12)>> = iv, "at" => <<_::binary-size(16)>> = tag}),
     do: {:ok, iv, tag}

@@ -13,6 +13,11 @@ defmodule Dawarich.RailsTree do
 
   def read(relative), do: @root |> Path.join(relative) |> File.read!()
 
+  def tracked(pattern) do
+    {listed, 0} = System.cmd("git", ["ls-files", "-z", "--", pattern], cd: @root)
+    listed |> String.split(<<0>>, trim: true) |> Enum.sort()
+  end
+
   def wildcard(pattern) do
     @root
     |> Path.join(pattern)
