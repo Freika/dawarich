@@ -31,7 +31,7 @@ cleanup() {
       docker logs --tail 40 "$c" 2>&1 | sed "s/^/[$c] /" >&2 || true
     done
   fi
-  docker rm -f $(docker ps -aq --filter "label=$run") >/dev/null 2>&1 || true
+  docker rm -fv $(docker ps -aq --filter "label=$run") >/dev/null 2>&1 || true
   docker network rm $(docker network ls -q --filter "label=$run") >/dev/null 2>&1 || true
   docker rmi -f a0c-pgbouncer:local >/dev/null 2>&1 || true
   rm -rf "$work"
