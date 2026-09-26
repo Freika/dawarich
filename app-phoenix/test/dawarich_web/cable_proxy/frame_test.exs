@@ -25,6 +25,15 @@ defmodule DawarichWeb.CableProxy.FrameTest do
     assert Frame.decode(<<1::1, 0::3, 3::4, 0::1, 1::7, "x">>) == :error
   end
 
+  test "control frames from Puma over 125 bytes or fragmented are refused" do
+    ping = :binary.copy("p", 126)
+    assert Frame.decode(<<1::1, 0::3, 9::4, 0::1, 126::7, 126::16, ping::binary>>) == :error
+    assert Frame.decode(<<0::1, 0::3, 8::4, 0::1, 2::7, 1000::16>>) == :error
+
+    assert Frame.decode(<<1::1, 0::3, 10::4, 0::1, 125::7, :binary.copy("p", 125)::binary>>) ==
+             {:ok, [{true, :pong, :binary.copy("p", 125)}], ""}
+  end
+
   test "frames to Puma are masked and carry their length" do
     for size <- [0, 125, 126, 65_536] do
       payload = :binary.copy("z", size)
