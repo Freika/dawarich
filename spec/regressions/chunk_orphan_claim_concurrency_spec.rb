@@ -50,6 +50,5 @@ RSpec.describe 'Chunk orphan claims under concurrency', :non_transactional, thre
     threads&.each { |thread| thread.kill if thread.alive? }
     threads&.each(&:join)
     NonTransactionalConcurrency.truncate_all
-    User.unscoped.where(id: user.id).delete_all
   end
 end
