@@ -10,20 +10,25 @@ module EnhancedImport
     # "Retry extraction".
     MAX_LOCK_ATTEMPTS = 60
     LOCK_RETRY_WAIT = 1.minute
+    MAX_ATTEMPTS = 3
+
+    retry_on StandardError, wait: :polynomially_longer, attempts: MAX_ATTEMPTS do |job, error|
+      job.fail_after_retries(error)
+    end
 
     # A deadlock here is transient — the extractor and track generation contend
     # for the same rows. Retry silently rather than red-carding an import the
     # user cannot act on; only surface it once the retries are spent.
-    retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: 3 do |job, error|
-      job.fail_after_deadlock_retries(error)
+    retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: MAX_ATTEMPTS do |job, error|
+      job.fail_after_retries(error)
+      ExceptionReporter.call(error)
     end
 
-    def fail_after_deadlock_retries(error)
+    def fail_after_retries(error)
       import = Import.find_by(id: arguments.first)
       return if import.nil?
 
-      mark_failed!(import, error)
-      ExceptionReporter.call(error)
+      fail_finally!(import, error)
     end
 
     def perform(import_id, attempt: 1)
@@ -66,7 +71,7 @@ module EnhancedImport
           "[EnhancedImport::ExtractJob] import #{import.id} could not get the user lock after " \
           "#{attempt} attempts; giving up."
         )
-        return mark_failed!(import, error)
+        return fail_finally!(import, error)
       end
 
       import.update_columns(
@@ -170,6 +175,10 @@ module EnhancedImport
         additional_data_extraction: payload
       )
       broadcast_card(import)
+    end
+
+    def fail_finally!(import, error)
+      mark_failed!(import, error)
       schedule_track_generation(import)
     end
 
