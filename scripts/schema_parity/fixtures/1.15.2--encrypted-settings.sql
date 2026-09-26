@@ -1,4 +1,4 @@
-INSERT INTO users (email, created_at, updated_at) VALUES ('encrypted@example.test', '2026-01-01 00:00:00', '2026-01-01 00:00:00');
+INSERT INTO users (email, otp_secret, created_at, updated_at) VALUES ('encrypted@example.test', '{"p":"ZhQNn7aAvWsTyE8G3Jw+Ng==","h":{"iv":"3KGFcJUEz9JcQJ/I","at":"q+HNHW9PFScpNzekULIW3g==","i":"ODIxMA=="}}', '2026-01-01 00:00:00', '2026-01-01 00:00:00');
 INSERT INTO service_settings (user_id, service, provider, config, credentials, active, created_at, updated_at)
   SELECT id, 0, 'locationiq', '{}', '{"p":"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=","h":{"iv":"fBYqkmdEcRGCOd0n","at":"REYewMt067RANXlsIB0J3g=="}}', true, '2026-01-01 00:00:00', '2026-01-01 00:00:00'
   FROM users WHERE email = 'encrypted@example.test';

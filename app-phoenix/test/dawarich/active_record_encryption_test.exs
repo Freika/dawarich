@@ -3,11 +3,11 @@ defmodule Dawarich.ActiveRecordEncryptionTest do
 
   alias Dawarich.{ActiveRecordEncryption, RailsTree}
 
-  @environments "../fixtures/active_record_encryption.json"
-                |> Path.expand(__DIR__)
-                |> File.read!()
-                |> Jason.decode!()
-                |> Map.fetch!("environments")
+  @fixture "../fixtures/active_record_encryption.json"
+           |> Path.expand(__DIR__)
+           |> File.read!()
+           |> Jason.decode!()
+  @environments @fixture["environments"]
 
   @explicit Enum.find(@environments, &(&1["name"] == "explicit keys"))
   @development Enum.find(@environments, &(&1["name"] == "development defaults"))
@@ -83,6 +83,23 @@ defmodule Dawarich.ActiveRecordEncryptionTest do
            ]
   end
 
+  test "Rails still parses messages and names encodings the way the recorded cases show" do
+    assert RailsTree.read("config/initializers/oj.rb") =~ ~r/^Oj\.optimize_rails$/m
+    assert String.trim(RailsTree.read(".ruby-version")) == @fixture["ruby"]
+  end
+
+  test "no committed dotenv file hands Rails keys the release would not see" do
+    files = RailsTree.tracked(".env*")
+
+    assert ".env.development" in files
+
+    for path <- files do
+      refute RailsTree.read(path) =~
+               ~r/^\s*(export\s+)?(OTP_ENCRYPTION_|SECRET_KEY_BASE)\w*\s*=/m,
+             "#{path} sets an encryption key or SECRET_KEY_BASE"
+    end
+  end
+
   test "encrypts each plaintext into the message shape Rails wrote for it" do
     key = key!(@explicit)
 
@@ -109,60 +126,29 @@ defmodule Dawarich.ActiveRecordEncryptionTest do
     end
   end
 
-  test "a tampered ciphertext, a wrong key or a value that is no Rails message is an error" do
+  test "accepts and refuses each crafted message exactly as Rails did" do
     key = key!(@explicit)
-    [vector | _] = @explicit["vectors"]
-    message = Jason.decode!(vector["ciphertext"])
-    %{"p" => payload, "h" => %{"iv" => iv, "at" => tag}} = message
+    crafted = @explicit["crafted"]
 
-    invalid = [
-      "not json",
-      "",
-      "42",
-      ~s("a string"),
-      ~s({"h":{}}),
-      ~s({"p":"","h":"headers"}),
-      ~s({"p":"","h":[]}),
-      encode(message, ["p"], flip(payload)),
-      encode(message, ["h", "iv"], flip(iv)),
-      encode(message, ["h", "at"], flip(tag)),
-      encode(message, ["h", "iv"], Base.encode64(<<0::64>>)),
-      encode(message, ["h", "at"], Base.encode64(<<0::64>>)),
-      encode(message, ["h", "iv"], nil),
-      encode(message, ["h", "at"], 16),
-      encode(message, ["p"], "not base64!"),
-      encode(message, ["p"], 5),
-      encode(message, ["h", "e"], "not base64!"),
-      encode(message, ["h", "x"], [1]),
-      encode(message, ["h", "k"], %{"h" => %{}}),
-      encode(message, ["h", "k"], %{"p" => "", "h" => %{"n" => %{"p" => ""}}}),
-      encode(message, ["h", "c"], true)
-    ]
+    assert Enum.any?(crafted, &(&1["rails"] == "ok"))
+    assert Enum.any?(crafted, &(&1["rails"] != "ok"))
 
-    for input <- invalid do
-      assert {:error, _} = ActiveRecordEncryption.decrypt(input, key), input
+    for %{"name" => name, "ciphertext" => ciphertext, "rails" => rails} = recorded <- crafted do
+      if rails == "ok" do
+        assert ActiveRecordEncryption.decrypt(ciphertext, key) == {:ok, recorded["plaintext"]},
+               name
+      else
+        assert {:error, _} = ActiveRecordEncryption.decrypt(ciphertext, key),
+               "#{name}: Rails raised #{rails}"
+      end
     end
-
-    assert {:error, _} = ActiveRecordEncryption.decrypt(vector["ciphertext"], key!(@development))
-    assert {:error, _} = ActiveRecordEncryption.decrypt(nil, key)
   end
 
-  test "accepts the header values Rails accepts and ignores" do
-    key = key!(@explicit)
+  test "a wrong key or a value that is not a string is an error" do
     [vector | _] = @explicit["vectors"]
-    message = Jason.decode!(vector["ciphertext"])
 
-    for {name, value} <- [
-          {"c", false},
-          {"c", nil},
-          {"e", Base.encode64("UTF-8")},
-          {"k", %{"p" => Base.encode64("wrapped")}},
-          {"n", 7}
-        ] do
-      assert ActiveRecordEncryption.decrypt(encode(message, ["h", name], value), key) ==
-               {:ok, plaintext(vector)},
-             "#{name}: #{inspect(value)}"
-    end
+    assert {:error, _} = ActiveRecordEncryption.decrypt(vector["ciphertext"], key!(@development))
+    assert {:error, _} = ActiveRecordEncryption.decrypt(nil, key!(@explicit))
   end
 
   test "every truncation of a ciphertext is an error, never an exception" do
@@ -185,12 +171,5 @@ defmodule Dawarich.ActiveRecordEncryptionTest do
 
   defp header_names(ciphertext) do
     ciphertext |> Jason.decode!() |> Map.fetch!("h") |> Map.keys() |> Enum.sort()
-  end
-
-  defp encode(message, path, value), do: message |> put_in(path, value) |> Jason.encode!()
-
-  defp flip(encoded) do
-    <<first, rest::binary>> = Base.decode64!(encoded)
-    Base.encode64(<<Bitwise.bxor(first, 1), rest::binary>>)
   end
 end

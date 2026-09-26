@@ -1,5 +1,6 @@
 {
   "rails": "activerecord 8.1.3.1",
+  "ruby": "3.4.9",
   "environments": [
     {
       "name": "explicit keys",
@@ -81,6 +82,313 @@
           "attribute": "InstanceSetting#encrypted_value",
           "ciphertext": "{\"p\":\"FBKViscvMteu4IMGZ2Rz0SY=\",\"h\":{\"iv\":\"aNE6Y+3tbLTUnK8d\",\"at\":\"fcbiIXg8UKntO+e+lAYVhg==\",\"e\":\"VVMtQVNDSUk=\"}}",
           "plaintext": "plain-ascii-value"
+        }
+      ],
+      "crafted": [
+        {
+          "name": "not json",
+          "ciphertext": "not json",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "empty string",
+          "ciphertext": "",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "json number",
+          "ciphertext": "42",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "json string",
+          "ciphertext": "\"a string\"",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "no payload",
+          "ciphertext": "{\"h\":{}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "headers are a string",
+          "ciphertext": "{\"p\":\"\",\"h\":\"headers\"}",
+          "rails": "NoMethodError"
+        },
+        {
+          "name": "headers are an empty list",
+          "ciphertext": "{\"p\":\"\",\"h\":[]}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "flipped payload",
+          "ciphertext": "{\"p\":\"mtJxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "flipped iv",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fRYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "flipped tag",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"RUYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "8-byte iv",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"AAAAAAAAAAA=\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "8-byte tag",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"AAAAAAAAAAA=\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "null iv",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":null,\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "numeric tag",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":16}}",
+          "rails": "NoMethodError"
+        },
+        {
+          "name": "payload not base64",
+          "ciphertext": "{\"p\":\"not base64!\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "numeric payload",
+          "ciphertext": "{\"p\":5,\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "list header",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"x\":[1]}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "nested header without payload",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"k\":{\"h\":{}}}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "header nested three levels",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"k\":{\"p\":\"\",\"h\":{\"n\":{\"p\":\"\"}}}}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "compressed flag on uncompressed data",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"c\":true}}",
+          "rails": "Zlib::DataError"
+        },
+        {
+          "name": "c false",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"c\":false}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "c null",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"c\":null}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "nested message header",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"k\":{\"p\":\"d3JhcHBlZA==\"}}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "numeric header",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"n\":7}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "untouched",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "written with store_key_references",
+          "ciphertext": "{\"p\":\"8Vaz036VlxM7nQI50DoCkQfzdlfQVypVofLxczn+4B8PHqJFi/ZJzko=\",\"h\":{\"iv\":\"9E3AQAuq61KLQGqL\",\"at\":\"FS9K/P7dUUlgFL/PJIWy+g==\",\"i\":\"ODIxMA==\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-key-reference\"}"
+        },
+        {
+          "name": "i names this key",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"i\":\"ODIxMA==\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "i names another key",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"i\":\"ZmZmZg==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "i numeric",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"i\":7}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "i false",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"i\":false}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "i null",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"i\":null}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "i not base64",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"i\":\"not base64!\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "i with non-zero padding bits",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"i\":\"ODIxMB==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "payload with non-zero padding bits",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I5=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "tag with non-zero padding bits",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3h==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "e with non-zero padding bits",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"VVRGLTh=\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "e not base64",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"not base64!\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "e UTF-8",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"VVRGLTg=\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "e utf-8 in lower case",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"dXRmLTg=\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "e US-ASCII",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"VVMtQVNDSUk=\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "e dummy encoding UTF-7",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"VVRGLTc=\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "e locale",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"bG9jYWxl\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "e unknown encoding",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"Tk9QRQ==\"}}",
+          "rails": "ArgumentError"
+        },
+        {
+          "name": "e non-ascii name",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"w5xURi04\"}}",
+          "rails": "ArgumentError"
+        },
+        {
+          "name": "e numeric",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":7}}",
+          "rails": "TypeError"
+        },
+        {
+          "name": "e true",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":true}}",
+          "rails": "TypeError"
+        },
+        {
+          "name": "e false",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":false}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "e nested message",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":{\"p\":\"VVRGLTg=\"}}}",
+          "rails": "TypeError"
+        },
+        {
+          "name": "duplicate p, the last one real",
+          "ciphertext": "{\"p\":\"AAAA\",\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "duplicate p, the first one real",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"p\":\"AAAA\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "duplicate tag, the last one real",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"RUYewMt067RANXlsIB0J3g==\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "duplicate tag, the first one real",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"at\":\"RUYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "nesting depth 100 in an ignored value",
+          "ciphertext": "{\"x\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]],\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "nesting depth 101 in an ignored value",
+          "ciphertext": "{\"x\":[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]],\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "nesting depth 101 in objects",
+          "ciphertext": "{\"x\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":{\"a\":1}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}}},\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "duplicate key in an ignored value",
+          "ciphertext": "{\"x\":{\"a\":1,\"a\":2},\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "extra top-level key",
+          "ciphertext": "{\"x\":[1,{\"a\":1}],\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
         }
       ]
     },

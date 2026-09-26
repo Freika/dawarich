@@ -30,6 +30,11 @@ statements = File.readlines(list, chomp: true).flat_map do |line|
       rescue StandardError => e
         abort "decrypt_columns.rb: #{table}.#{column} id=#{id} cannot be decrypted on the #{side} side (#{e.class})"
       end
+    text = plaintext.dup.force_encoding(Encoding::UTF_8)
+    unless text.valid_encoding? && !text.include?("\0")
+      abort "decrypt_columns.rb: #{table}.#{column} id=#{id} decrypts on the #{side} side to bytes a text column " \
+            "cannot hold (#{text.valid_encoding? ? 'a NUL byte' : 'not UTF-8'})"
+    end
     "UPDATE public.#{quoted_table} SET #{quoted_column} = " \
       "convert_from(decode('#{Base64.strict_encode64(plaintext)}', 'base64'), 'UTF8') WHERE id = #{Integer(id)};\n"
   end
