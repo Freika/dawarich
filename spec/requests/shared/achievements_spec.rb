@@ -4,10 +4,6 @@ require 'rails_helper'
 
 RSpec.describe 'Shared achievements' do
   describe 'GET /shared/achievements/:uuid' do
-    before { Flipper.enable(:achievements) }
-
-    after { Flipper.disable(:achievements) }
-
     let(:user) { create(:user) }
     let!(:exploration) do
       create(:achievement_progress, user: user, achievement_key: 'exploration',
@@ -79,10 +75,63 @@ RSpec.describe 'Shared achievements' do
     it 'carries social preview metadata' do
       get shared_achievement_path(progress.sharing_uuid)
 
-      expect(response.body).to include('property="og:title"')
-      expect(response.body).to include('Germany Explorer')
-      expect(response.body).to include('property="og:description"')
+      head = Nokogiri::HTML(response.body).at_css('head')
+      expected_image_url = shared_achievement_image_url(progress.sharing_uuid)
+      expect(head.at_css('meta[property="og:title"]')['content']).to include('Germany Explorer')
+      expect(head.at_css('meta[property="og:description"]')).to be_present
+      expect(head.at_css('meta[property="og:image"]')['content']).to eq(expected_image_url)
+      expect(head.at_css('meta[property="og:image:type"]')['content']).to eq('image/png')
+      expect(head.at_css('meta[property="og:image:width"]')['content']).to eq('1200')
+      expect(head.at_css('meta[property="og:image:height"]')['content']).to eq('630')
+      expect(head.at_css('meta[name="twitter:card"]')['content']).to eq('summary_large_image')
+      expect(head.at_css('meta[name="twitter:image"]')['content']).to eq(expected_image_url)
       expect(response.body).to include('<title>Germany Explorer — Dawarich</title>')
+    end
+
+    it 'serves a PNG preview with the card contents' do
+      get shared_achievement_image_path(progress.sharing_uuid)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.media_type).to eq('image/png')
+      expect(response.body.b).to start_with("\x89PNG\r\n\x1A\n".b)
+      expect(response.body.byteslice(16, 8).unpack('NN')).to eq([1200, 630])
+      expect(response.headers['Cache-Control']).to include('no-store')
+    end
+
+    it 'does not serve a preview after sharing is disabled' do
+      get shared_achievement_image_path(progress.sharing_uuid)
+      expect(response).to have_http_status(:ok)
+
+      progress.update!(sharing_enabled: false)
+
+      get shared_achievement_image_path(progress.sharing_uuid)
+
+      expect(response).to have_http_status(:not_found)
+    end
+
+    it 'serves a preview even if a legacy flag was disabled' do
+      Flipper.disable(:achievements)
+
+      get shared_achievement_image_path(progress.sharing_uuid)
+
+      expect(response).to have_http_status(:ok)
+    ensure
+      Flipper.remove(:achievements)
+    end
+
+    it 'refreshes a completed preview when the owner changes timezone' do
+      earned = Achievements::Registry.find('country_de').region_codes.index_with { '2026-07-20T00:30:00Z' }
+      exploration.update!(state: { 'earned' => earned })
+      user.update!(settings: user.settings.merge('timezone' => 'UTC'))
+
+      get shared_achievement_image_path(progress.sharing_uuid)
+      utc_png = response.body
+
+      user.update!(settings: user.settings.merge('timezone' => 'America/Los_Angeles'))
+      get shared_achievement_image_path(progress.sharing_uuid)
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).not_to eq(utc_png)
     end
 
     it 'redirects when sharing is disabled' do
@@ -95,14 +144,6 @@ RSpec.describe 'Shared achievements' do
 
     it 'redirects for an unknown uuid' do
       get shared_achievement_path(SecureRandom.uuid)
-
-      expect(response).to redirect_to(root_path)
-    end
-
-    it 'redirects while the feature is disabled' do
-      Flipper.disable(:achievements)
-
-      get shared_achievement_path(progress.sharing_uuid)
 
       expect(response).to redirect_to(root_path)
     end

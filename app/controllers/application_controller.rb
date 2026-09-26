@@ -14,7 +14,7 @@ class ApplicationController < ActionController::Base
   around_action :set_user_time_zone
   before_action :unread_notifications, :set_self_hosted_status, :store_client_header
 
-  helper_method :current_user_safe_settings, :poster_ordering_enabled?, :family_feature_available?,
+  helper_method :current_user_safe_settings, :family_feature_available?,
                 :current_user_features, :family_home_path, :locale_native_name, :locale_flag,
                 :suggested_locale, :locale_path, :morph_page_refreshes?, :reverse_geocoding_enabled_for?
 
@@ -53,18 +53,6 @@ class ApplicationController < ActionController::Base
   # #show would bounce and overwrite the flash.
   def family_home_path
     family_feature_available? ? family_path : new_family_path
-  end
-
-  # Ordering is on unless this instance turned the flag off, so an install
-  # that never registered the flag — or lost it — still offers prints rather
-  # than silently hiding a shipped feature.
-  def poster_ordering_enabled?
-    return true unless Flipper.exist?(:poster_ordering)
-
-    Flipper.enabled?(:poster_ordering, current_user)
-  rescue StandardError => e
-    Rails.logger.warn("[poster_ordering] Flipper unavailable: #{e.class}: #{e.message}")
-    true
   end
 
   protected

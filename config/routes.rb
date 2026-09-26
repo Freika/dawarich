@@ -238,6 +238,7 @@ Rails.application.routes.draw do
       as: :update_year_month_stats,
       constraints: { year: /\d{4}/, month: /\d{1,2}|all/ }
   get 'shared/month/:uuid', to: 'shared/stats#show', as: :shared_stat
+  get 'shared/achievements/:uuid/og.png', to: 'shared/achievements#image', as: :shared_achievement_image
   get 'shared/achievements/:uuid', to: 'shared/achievements#show', as: :shared_achievement
 
   # Sharing management endpoint (requires auth)
@@ -311,6 +312,7 @@ Rails.application.routes.draw do
       match 'mcp', to: 'mcp#handle', via: %i[get post delete]
       get   'photos', to: 'photos#index'
       get   'health', to: 'health#index'
+      get   'ready', to: 'health#ready'
       patch 'settings', to: 'settings#update'
       get   'settings', to: 'settings#index'
       get   'settings/transportation_recalculation_status', to: 'settings#transportation_recalculation_status'

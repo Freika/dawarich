@@ -40,10 +40,9 @@ module Achievements
       "achievements_check:user:#{user_id}:oldest"
     end
 
-    def perform(user_id, notify: true, oldest_timestamp: nil, force: false)
+    # Older queued jobs still send force:, which no longer changes behavior.
+    def perform(user_id, notify: true, oldest_timestamp: nil, force: false) # rubocop:disable Lint/UnusedMethodArgument
       Sidekiq.redis { |redis| redis.del(self.class.lock_key(user_id)) }
-      return unless force || Flipper.enabled?(:achievements)
-
       user = User.find_by(id: user_id)
       return unless user
 

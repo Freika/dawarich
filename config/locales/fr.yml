@@ -5606,6 +5606,7 @@ fr:
       location_coordinates: Emplacement (%{latitude}, %{longitude})
       location_data: Données d'emplacement
       location_point: Point d'emplacement
+      overlapping_points: "Ce marqueur contient %{count} points superposés. Le zoom ne permet pas de les séparer."
       longitude: Longitude
       meters:
         one: "%{count} mètre"

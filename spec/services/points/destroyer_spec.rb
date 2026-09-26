@@ -48,14 +48,11 @@ RSpec.describe Points::Destroyer do
       end
 
       it 'rebuilds achievement dwell from the oldest deleted point' do
-        Flipper.enable(:achievements)
         clear_achievement_checks(user.id)
 
         expect { described_class.new(user, point_ids).call }
           .to have_enqueued_job(Achievements::CheckJob).with(user.id)
         expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([may_point.timestamp])
-      ensure
-        Flipper.disable(:achievements)
       end
 
       it 'returns the destroyed points' do
@@ -88,12 +85,9 @@ RSpec.describe Points::Destroyer do
       end
 
       before do
-        Flipper.enable(:achievements)
         clear_achievement_checks(user.id)
         Achievements::RegionSetChecker.new(user, notify: false).call
       end
-
-      after { Flipper.disable(:achievements) }
 
       it 'executes an exact rebuild when the deleted timestamp equals the cursor' do
         progress = Achievements::Progress.find_by!(user: user, achievement_key: 'exploration')
