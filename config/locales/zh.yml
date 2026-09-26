@@ -4392,6 +4392,7 @@ zh:
       location_coordinates: 位置（%{latitude}、%{longitude}）
       location_data: 位置数据
       location_point: 位置点
+      overlapping_points: "此标记包含 %{count} 个重叠的点，继续放大也无法将它们分开。"
       longitude: 经度
       meters:
         one: "%{count} 米"

@@ -4319,6 +4319,7 @@ es:
       location_coordinates: Ubicación (%{latitude}, %{longitude})
       location_data: Datos de ubicación
       location_point: Punto de ubicación
+      overlapping_points: "Este marcador contiene %{count} puntos superpuestos. No se pueden separar ampliando el mapa."
       longitude: Longitud
       meters:
         one: "%{count} metro"

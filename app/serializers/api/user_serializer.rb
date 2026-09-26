@@ -8,6 +8,7 @@ class Api::UserSerializer
   def call
     data = {
       user: {
+        id:        user.id,
         email:     user.email,
         theme:     user.theme,
         created_at: user.created_at,

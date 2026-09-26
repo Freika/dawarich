@@ -196,8 +196,6 @@ class Imports::Create
       Stats::CalculatingJob.perform_later(user_id, year, month)
     end
 
-    return unless Flipper.enabled?(:achievements)
-
     Achievements::CheckJob.schedule(user_id, oldest_timestamp: import.points.minimum(:timestamp))
   end
 

@@ -646,8 +646,7 @@ export default class extends Controller {
   }
 
   syncOrderAvailability() {
-    // The "Order a print" zone is server-rendered only behind the
-    // poster_ordering flag, and appears only when ordering is configured.
+    // The "Order a print" zone appears only when ordering is configured.
     if (!this.hasOrderSectionTarget) return
 
     this.orderSectionTarget.classList.toggle(

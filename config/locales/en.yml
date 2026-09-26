@@ -4314,6 +4314,7 @@ en:
       location_coordinates: Location (%{latitude}, %{longitude})
       location_data: Location Data
       location_point: Location Point
+      overlapping_points: "This marker contains %{count} overlapping points. Zooming cannot separate them, so no point can be selected here."
       longitude: Longitude
       meters:
         one: "%{count} meter"
