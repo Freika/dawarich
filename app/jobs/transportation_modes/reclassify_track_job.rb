@@ -7,10 +7,10 @@ module TransportationModes
     queue_as :tracks
     sidekiq_options retry: 1
 
-    def perform(track_id, report_progress: false, user_id: nil)
+    def perform(track_id, report_progress: false, user_id: nil, keep_source: false)
       track = Track.find_by(id: track_id)
       @report_user_id = user_id || track&.user_id
-      reclassify(track) if track
+      reclassify(track, keep_source) if track
     ensure
       # Progress must advance even on failure or a deleted track, or the
       # recalculation status never completes and mode settings stay locked
@@ -21,10 +21,11 @@ module TransportationModes
 
     private
 
-    def reclassify(track)
+    def reclassify(track, keep_source)
       Track.transaction do
-        preserved = track.track_segments.manually_corrected.to_a
-        track.track_segments.auto_classified.delete_all
+        kept = keep_source ? track.track_segments.outranking_inference : track.track_segments.manually_corrected
+        preserved = kept.to_a
+        track.track_segments.where.not(id: preserved.map(&:id)).delete_all
 
         detector = Detector.new(
           track,

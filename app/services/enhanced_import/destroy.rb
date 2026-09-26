@@ -52,10 +52,12 @@ module EnhancedImport
     end
 
     def reclassify_annotated_tracks
-      track_ids = TrackSegment.auto_classified.where(source: import.source)
-                              .where(track_id: import.points.where.not(track_id: nil).select(:track_id))
-                              .distinct.pluck(:track_id)
-      ActiveJob.perform_all_later(track_ids.map { |id| TransportationModes::ReclassifyTrackJob.new(id) })
+      segments = TrackSegment.auto_classified.where(source: import.source)
+                             .where(track_id: import.points.where.not(track_id: nil).select(:track_id))
+      track_ids = segments.distinct.pluck(:track_id)
+      segments.delete_all
+      jobs = track_ids.map { |id| TransportationModes::ReclassifyTrackJob.new(id, keep_source: true) }
+      ActiveJob.perform_all_later(jobs)
     end
 
     def reset_extraction_state

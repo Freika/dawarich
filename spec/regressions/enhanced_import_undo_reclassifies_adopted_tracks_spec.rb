@@ -46,8 +46,9 @@ RSpec.describe 'Undoing an extraction reclassifies the generated tracks it class
 
     EnhancedImport::Destroy.new(import.reload).call
 
-    expect(TransportationModes::ReclassifyTrackJob).to have_been_enqueued.with(adopted_track.id)
-    expect(TransportationModes::ReclassifyTrackJob).not_to have_been_enqueued.with(untouched_track.id)
+    expect(TransportationModes::ReclassifyTrackJob).to have_been_enqueued.with(adopted_track.id, keep_source: true)
+    expect(TransportationModes::ReclassifyTrackJob)
+      .not_to have_been_enqueued.with(untouched_track.id, keep_source: true)
   end
 
   it 'leaves those tracks classified by inference with the manual correction intact' do
@@ -58,5 +59,17 @@ RSpec.describe 'Undoing an extraction reclassifies the generated tracks it class
     expect(segments.where(source: 'google_phone_takeout')).not_to exist
     expect(segments.auto_classified).to exist
     expect(segments.manually_corrected.pluck(:transportation_mode)).to eq(['bus'])
+  end
+
+  it "keeps another import's source segments on those tracks" do
+    other = create(:track_segment, track: adopted_track, start_index: nil, end_index: nil, transportation_mode: :train,
+                                   start_at: Time.zone.at(points[7].timestamp),
+                                   end_at: Time.zone.at(points[8].timestamp), source: 'google_semantic_history')
+
+    EnhancedImport::Destroy.new(import.reload).call
+    perform_enqueued_jobs(only: TransportationModes::ReclassifyTrackJob)
+
+    expect(TrackSegment.exists?(other.id)).to be(true)
+    expect(adopted_track.track_segments.where(source: 'google_phone_takeout')).not_to exist
   end
 end
