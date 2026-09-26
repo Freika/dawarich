@@ -21,6 +21,12 @@ drop_privileges() {
   _uid="$1"
   _gid="$2"
   shift 2
+  case "$_uid" in
+    '' | *[!0-9]* | 0*)
+      echo "Refusing to drop privileges to uid '$_uid': PUID must be a numeric uid other than 0" >&2
+      exit 1
+      ;;
+  esac
   for _path in "$APP_PATH/tmp" "$APP_PATH/storage"; do
     [ -d "$_path" ] || continue
     if [ "$(ls -nd "$_path" | awk '{print $3}')" != "$_uid" ]; then
@@ -40,10 +46,10 @@ wait_for_database() {
   fi
 
   _tries=1
-  until PGCONNECT_TIMEOUT=5 PGPASSWORD="${DATABASE_PASSWORD:-}" psql "$@" -c '\q' 2>/dev/null; do
+  until PGCONNECT_TIMEOUT=5 PGPASSWORD="${DATABASE_PASSWORD:-}" psql "$@" -c 'SELECT 1' >/dev/null 2>&1; do
     if [ "$_max" -gt 0 ] && [ "$_tries" -ge "$_max" ]; then
       echo "PostgreSQL is still unavailable after $_max attempts:" >&2
-      PGCONNECT_TIMEOUT=5 PGPASSWORD="${DATABASE_PASSWORD:-}" psql "$@" -c '\q'
+      PGCONNECT_TIMEOUT=5 PGPASSWORD="${DATABASE_PASSWORD:-}" psql "$@" -c 'SELECT 1' >/dev/null
       return
     fi
     _tries=$((_tries + 1))

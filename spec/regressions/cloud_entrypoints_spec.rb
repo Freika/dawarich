@@ -16,8 +16,9 @@ RSpec.describe 'Cloud entrypoints' do
   after { FileUtils.remove_entry(stubs) }
 
   before do
+    stub_command('id', 'echo 1000')
     stub_command('psql', <<~SH)
-      printf '%s\\n' "psql[${PGCONNECT_TIMEOUT:-}] $*" >> "#{calls_file}"
+      printf '%s\\n' "psql[${PGCONNECT_TIMEOUT:-}] PGPASSWORD=${PGPASSWORD:-} $*" >> "#{calls_file}"
       n=$(($(cat "#{psql_count}" 2>/dev/null || echo 0) + 1))
       echo "$n" > "#{psql_count}"
       [ "$n" -gt "${STUB_PSQL_FAILURES:-0}" ]
@@ -89,6 +90,7 @@ RSpec.describe 'Cloud entrypoints' do
 
       expect(result[:status]).not_to be_success
       expect(result[:psql].size).to eq(61)
+      expect(result[:psql]).to all(eq('psql[5] PGPASSWORD=secret -h db -p 6432 -U app -d dawarich -c SELECT 1'))
       expect(result[:app_calls]).to be_empty
     end
   end
@@ -131,7 +133,8 @@ RSpec.describe 'Cloud entrypoints' do
       result = run_script('cloud-sidekiq-entrypoint.sh', 'sidekiq', '-C', 'config/sidekiq.yml')
 
       expect(result[:calls]).to eq(
-        ['psql[5] -h db -p 6432 -U app -d dawarich -c \q', 'bundle exec sidekiq -C config/sidekiq.yml']
+        ['psql[5] PGPASSWORD=secret -h db -p 6432 -U app -d dawarich -c SELECT 1',
+         'bundle exec sidekiq -C config/sidekiq.yml']
       )
     end
   end
@@ -188,11 +191,24 @@ RSpec.describe 'Cloud entrypoints' do
     end
 
     it 'leaves directories alone that the target user already owns' do
-      result = run_script('cloud-entrypoint.sh', 'x', PUID: Process.uid.to_s, PGID: Process.gid.to_s)
+      owner = Process.uid.zero? ? 1000 : Process.uid
+      FileUtils.chown(owner, nil, [File.join(stubs, 'tmp'), File.join(stubs, 'storage')])
+
+      result = run_script('cloud-entrypoint.sh', 'x', PUID: owner.to_s, PGID: Process.gid.to_s)
 
       expect(result[:calls]).to eq(
-        ["gosu #{Process.uid}:#{Process.gid} env HOME=#{stubs}/tmp #{File.join(root, 'docker/cloud-entrypoint.sh')} x"]
+        ["gosu #{owner}:#{Process.gid} env HOME=#{stubs}/tmp #{File.join(root, 'docker/cloud-entrypoint.sh')} x"]
       )
+    end
+
+    %w[0 root].each do |puid|
+      it "refuses PUID=#{puid}, which would keep re-running itself as root" do
+        result = run_script('cloud-entrypoint.sh', 'x', PUID: puid)
+
+        expect(result[:status].exitstatus).to eq(1)
+        expect(result[:stderr]).to include("uid '#{puid}'")
+        expect(result[:calls]).to be_empty
+      end
     end
   end
 
@@ -200,7 +216,9 @@ RSpec.describe 'Cloud entrypoints' do
     it 'hands DATABASE_URL to psql with the postgis scheme rewritten' do
       result = run_script('release.sh', DATABASE_URL: 'postgis://app:p%40ss@db:6432/dawarich?sslmode=disable')
 
-      expect(result[:psql].first).to eq('psql[5] postgres://app:p%40ss@db:6432/dawarich?sslmode=disable -c \q')
+      expect(result[:psql].first).to eq(
+        'psql[5] PGPASSWORD=secret postgres://app:p%40ss@db:6432/dawarich?sslmode=disable -c SELECT 1'
+      )
     end
   end
 
