@@ -3685,6 +3685,8 @@ en:
         enable_at_least_one_transportation_mode: Enable at least one transportation mode
         recalculation_in_progress: Transportation mode recalculation is in progress. Please wait until it completes.
     visits:
+      create:
+        duplicate_at_place_and_time: A visit already exists at this place and time
       suggest:
         error_suggesting_visits_message: 'Error suggesting visits: %{message}'
         error_suggesting_visits: 'Error suggesting visits'

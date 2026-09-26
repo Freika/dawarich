@@ -3759,6 +3759,8 @@ de:
         v2_handler:
           manifest_missing: 'Manifest-Datei nicht im Archiv gefunden: manifest.json'
     visits:
+      create:
+        duplicate_at_place_and_time: An diesem Ort und zu dieser Zeit existiert bereits ein Aufenthalt
       suggest:
         error_suggesting_visits_message: 'Fehler beim Vorschlagen von Aufenthalten: %{message}'
         error_suggesting_visits: 'Fehler beim Vorschlagen von Aufenthalten'

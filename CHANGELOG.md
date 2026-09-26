@@ -34,6 +34,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `GET /api/v1/users/me` returns the user's `id`, as the API documentation describes. The mobile app needs it to link in-app subscriptions to the right account.
 - Opening a place link directly now shows the place on the map instead of an error page.
 - Saving map settings no longer re-processes every track's transportation mode when the transportation mode filter was already left at its default (all modes).
+- Creating a visit for a place and time that already has a different visit now shows a clear error instead of silently reporting success and returning the old visit's data.
 
 ## [1.15.2] - 2026-09-22, Berlin
 

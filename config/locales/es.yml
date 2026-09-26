@@ -3704,6 +3704,8 @@ es:
         v2_handler:
           manifest_missing: 'No se encontró el archivo de manifest en la carpeta: manifest.json'
     visits:
+      create:
+        duplicate_at_place_and_time: Ya existe una visita en este lugar y a esta hora
       suggest:
         error_suggesting_visits_message: 'Error al sugerir visitas: %{message}'
         error_suggesting_visits: 'Error al sugerir visitas'
