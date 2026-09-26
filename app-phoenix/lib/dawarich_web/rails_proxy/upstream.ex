@@ -1,7 +1,7 @@
 defmodule DawarichWeb.RailsProxy.Upstream do
   @moduledoc false
 
-  @socket [:binary, active: false, packet: :raw, nodelay: true]
+  @socket [:binary, active: false, packet: :raw, nodelay: true, buffer: 65_536]
 
   def open({host, port}), do: :gen_tcp.connect(to_charlist(host), port, @socket, 30_000)
 

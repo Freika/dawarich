@@ -211,6 +211,30 @@ defmodule DawarichWeb.RailsProxyTest do
     assert values(headers, "content-encoding") == []
   end
 
+  test "a long response is read from Puma in large pieces, not 1460-byte ones", ctx do
+    client = connect(ctx.port)
+    send_raw(client, "GET /export HTTP/1.1\r\nHost: a\r\n\r\n")
+    puma = accept(ctx.upstream)
+    _ = read_head(puma)
+    mib = :binary.copy("z", 1_048_576)
+
+    sender =
+      Task.async(fn ->
+        reply(puma, [
+          "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n100000\r\n",
+          mib,
+          "\r\n0\r\n\r\n"
+        ])
+      end)
+
+    {200, _headers, rest} = read_response_head(client)
+    pieces = chunks(client, rest)
+    Task.await(sender)
+
+    assert IO.iodata_to_binary(pieces) == mib
+    assert length(pieces) <= 128
+  end
+
   test "a large upload reaches Puma while the client is still sending", ctx do
     client = connect(ctx.port)
     mib = :binary.copy("y", 1_048_576)

@@ -43,19 +43,21 @@ defmodule Dawarich.Test.RawHTTP do
   def read_at_least(_socket, acc, n) when byte_size(acc) >= n, do: acc
   def read_at_least(socket, acc, n), do: read_at_least(socket, acc <> recv(socket), n)
 
-  def dechunk(socket, acc) do
+  def dechunk(socket, acc), do: socket |> chunks(acc) |> IO.iodata_to_binary()
+
+  def chunks(socket, acc) do
     acc = read_until(socket, acc, "\r\n")
     [size, rest] = :binary.split(acc, "\r\n")
 
     case String.to_integer(size, 16) do
       0 ->
-        ""
+        []
 
       length ->
         <<chunk::binary-size(length), "\r\n", tail::binary>> =
           read_at_least(socket, rest, length + 2)
 
-        chunk <> dechunk(socket, tail)
+        [chunk | chunks(socket, tail)]
     end
   end
 
