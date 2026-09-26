@@ -46,9 +46,9 @@ RSpec.describe 'Undoing an extraction reclassifies the generated tracks it class
 
     EnhancedImport::Destroy.new(import.reload).call
 
-    expect(TransportationModes::ReclassifyTrackJob).to have_been_enqueued.with(adopted_track.id, keep_source: true)
+    expect(TransportationModes::ReclassifyTrackJob).to have_been_enqueued.with(adopted_track.id)
     expect(TransportationModes::ReclassifyTrackJob)
-      .not_to have_been_enqueued.with(untouched_track.id, keep_source: true)
+      .not_to have_been_enqueued.with(untouched_track.id)
   end
 
   it 'leaves those tracks classified by inference with the manual correction intact' do

@@ -18,7 +18,7 @@ RSpec.describe DataMigrations::PrefillPointsCounterCacheJob do
     end
 
     it 'stops partway through when the worker is shutting down' do
-      described_class.perform_later(batch_size: 2)
+      described_class.perform_later(batch_size: 1)
 
       interrupt_job_during_step(described_class, :prefill, cursor: users[3].id) do
         perform_enqueued_jobs
@@ -28,7 +28,7 @@ RSpec.describe DataMigrations::PrefillPointsCounterCacheJob do
     end
 
     it 'finishes the remaining users when it resumes' do
-      described_class.perform_later(batch_size: 2)
+      described_class.perform_later(batch_size: 1)
 
       interrupt_job_during_step(described_class, :prefill, cursor: users[3].id) do
         perform_enqueued_jobs

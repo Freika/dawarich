@@ -32,6 +32,12 @@ class TrackSegment < ApplicationRecord
     outranking_inference.where(arel_table[:track_id].eq(track_id)).arel.exists
   end
 
+  def self.clear_inference
+    kept = outranking_inference.to_a
+    where.not(id: kept.map(&:id)).delete_all
+    kept
+  end
+
   def manually_corrected?
     corrected_at.present?
   end

@@ -14,6 +14,16 @@ module NonTransactionalConcurrency
 
     conn.execute("TRUNCATE TABLE #{existing.join(', ')} RESTART IDENTITY CASCADE")
   end
+
+  def self.newest_user_id
+    User.unscoped.maximum(:id).to_i
+  end
+
+  def self.delete_users_created_after(user_id)
+    created = User.unscoped.where('id > ?', user_id)
+    [Import, Export, Place].each { |model| model.where(user_id: created.select(:id)).delete_all }
+    created.delete_all
+  end
 end
 
 RSpec.configure do |config|
@@ -55,5 +65,12 @@ RSpec.configure do |config|
 
   config.after(:each, :non_transactional) do
     NonTransactionalConcurrency.truncate_all
+  end
+
+  config.around(:each, :non_transactional) do |example|
+    newest_user_id = NonTransactionalConcurrency.newest_user_id
+    example.run
+  ensure
+    NonTransactionalConcurrency.delete_users_created_after(newest_user_id)
   end
 end

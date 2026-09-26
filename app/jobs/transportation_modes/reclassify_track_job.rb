@@ -2,15 +2,15 @@
 
 module TransportationModes
   # Reclassifies one track with the current detection pipeline. Idempotent:
-  # auto segments are replaced, manually corrected segments preserved.
+  # inferred segments are replaced, corrections and source segments preserved.
   class ReclassifyTrackJob < ApplicationJob
     queue_as :tracks
     sidekiq_options retry: 1
 
-    def perform(track_id, report_progress: false, user_id: nil, keep_source: false)
+    def perform(track_id, report_progress: false, user_id: nil)
       track = Track.find_by(id: track_id)
       @report_user_id = user_id || track&.user_id
-      reclassify(track, keep_source) if track
+      reclassify(track) if track
     ensure
       # Progress must advance even on failure or a deleted track, or the
       # recalculation status never completes and mode settings stay locked
@@ -21,11 +21,9 @@ module TransportationModes
 
     private
 
-    def reclassify(track, keep_source)
+    def reclassify(track)
       Track.transaction do
-        kept = keep_source ? track.track_segments.outranking_inference : track.track_segments.manually_corrected
-        preserved = kept.to_a
-        track.track_segments.where.not(id: preserved.map(&:id)).delete_all
+        preserved = track.track_segments.clear_inference
 
         detector = Detector.new(
           track,

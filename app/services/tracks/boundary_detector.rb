@@ -184,12 +184,21 @@ class Tracks::BoundaryDetector
       return false if time_gap > max_gap
     end
 
-    !spans_kept_track?(sorted_tracks)
+    !bridges_kept_track?(sorted_tracks)
   end
 
-  def spans_kept_track?(sorted_tracks)
-    user.tracks.where(Tracks::KeptTracks.condition)
-        .where('start_at < ? AND end_at > ?', sorted_tracks.last.end_at, sorted_tracks.first.start_at)
+  def bridges_kept_track?(sorted_tracks)
+    sorted_tracks.each_cons(2).any? do |earlier, later|
+      later.start_at > earlier.end_at && kept_points_between?(earlier.end_at, later.start_at, earlier.tracker_id)
+    end
+  end
+
+  def kept_points_between?(from, to, tracker_id)
+    owned_by_kept_track = Track.where(Tracks::KeptTracks.condition)
+                               .where(Track.arel_table[:id].eq(Point.arel_table[:track_id])).arel.exists
+    user.points.where('timestamp > ? AND timestamp < ?', from.to_i, to.to_i)
+        .recorded_by(tracker_id)
+        .where(owned_by_kept_track)
         .exists?
   end
 
