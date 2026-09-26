@@ -32,7 +32,6 @@ envfile=""
 fixture_env=""
 shift_to=0
 holder_table=""
-expect_unported=""
 expect_job=""
 expect_refusal=""
 read -r expect_status expect_detail <<EOF
@@ -46,9 +45,6 @@ if [ "$kind" = rows ]; then
   [ -f "$fixture" ] || fail "no fixture $fixture"
   envfile="${fixture%.sql}.env"
   [ ! -f "$envfile" ] || fixture_env="$(cat "$envfile")"
-  case "$arg" in
-    *--unported-*) expect_unported="${arg##*--unported-}" ;;
-  esac
   arg="${arg%%--*}"
 fi
 if [ "$kind" = contended ]; then
@@ -118,7 +114,6 @@ ecto_side() {
   canon_jobs "$tmpd/ecto.raw" "$tmpd/ecto.jobs"
   last_ecto="$(grep -v '^[[:space:]]*$' "$tmpd/ecto.out" | tail -n 1)"
   failed_step='.*failed [^ ]* [0-9][0-9]*: \*\* (\([^)]*\)) \(.*\)'
-  ecto_exception="$(sed -n "s/$failed_step/\\1/p" "$tmpd/ecto.out" | tail -n 1)"
   sed -n "s/$failed_step/\\2/p" "$tmpd/ecto.out" | tail -n 1 > "$tmpd/ecto.raw"
   canon_message "$tmpd/ecto.raw" "$tmpd/ecto.message"
 }
@@ -126,13 +121,6 @@ ecto_side() {
 compare() {
   rails_status="$(cat "$1.status")"
   ecto_status="$(cat "$tmpd/ecto.status")"
-  if [ -n "$expect_unported" ]; then
-    if [ "$rails_status" = ok ] && [ "$ecto_status" = "failed@$expect_unported" ] && grep -q 'has no Phoenix port yet' "$tmpd/ecto.out"; then
-      echo "$check ok (unported@$expect_unported)"
-      return 0
-    fi
-    fail "rails:$rails_status ecto:$ecto_status, expected unported@$expect_unported ($last_ecto)"
-  fi
   if [ "$rails_status" != "$ecto_status" ] || [ "$rails_status" = "failed@" ]; then
     fail "rails:$rails_status ecto:$ecto_status ($last_ecto)"
   fi
@@ -147,7 +135,6 @@ compare() {
     ecto_class="$(failure_class "$tmpd/ecto.out")"
     [ -z "$holder_table" ] || [ "$rails_class" != none ] || fail "contended failure without a concrete failure class ($last_ecto)"
     [ "$rails_class" = "$ecto_class" ] || fail "both failed at ${rails_status#failed@}, rails with $rails_class, ecto with $ecto_class ($last_ecto)"
-    [ "$ecto_exception" != Dawarich.ReleaseMigration.UnportedEffect ] || fail "both failed at ${rails_status#failed@}, ecto with an unported effect ($last_ecto)"
     [ "$rails_class" != none ] || cmp -s "$1.message" "$tmpd/ecto.message" \
       || fail "both failed at ${rails_status#failed@} with no Postgres error: rails \"$(cat "$1.message" 2>/dev/null)\", ecto \"$(cat "$tmpd/ecto.message")\""
   fi

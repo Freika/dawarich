@@ -200,7 +200,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.MigrateExplorationStateTest do
            ]
   end
 
-  test "raises where Ruby would: a nil earned hash, and timestamps it cannot compare" do
+  test "raises where Ruby would, and fails as unreproducible where Phoenix cannot match Ruby's error" do
     progress(1, "explorer_germany", %{"earned" => nil})
 
     assert_raise Ruby.Error, "undefined method 'each' for nil", fn ->
@@ -211,9 +211,34 @@ defmodule Dawarich.ReleaseMigrations.Effects.MigrateExplorationStateTest do
     progress(1, "explorer_germany", %{"earned" => %{"DE-BE" => "2026-01-02T00:00:00Z"}})
     progress(1, "explorer_europe", %{"earned" => %{"DE-BE" => 1}})
 
-    assert_raise Ruby.Error, ~r/cannot reproduce Ruby's comparison/, fn ->
+    assert_raise Ruby.Unreproducible, ~r/cannot reproduce Ruby's comparison/, fn ->
       MigrateExplorationState.run(ScratchRepo)
     end
+
+    scratch_sql!("DELETE FROM achievement_progresses")
+    progress(1, "explorer_germany", %{"earned" => ["DE-BE"]})
+
+    assert_raise Ruby.Unreproducible, ~r/cannot reproduce Ruby's each/, fn ->
+      MigrateExplorationState.run(ScratchRepo)
+    end
+  end
+
+  test "writes floats into the exploration state the way Rails' Oj encoder does" do
+    scratch_sql!("""
+    INSERT INTO achievement_progresses (user_id, achievement_key, state, created_at, updated_at) VALUES
+      (1, 'exploration', '{"earned": {"AT-9": 10000000000000000.0}, "dwell": {}, "cursor": 0}', '2026-01-01', '2026-01-01'),
+      (1, 'explorer_germany', '{"earned": {"DE-BE": 0.00005}}', '2026-01-01', '2026-01-01'),
+      (2, 'explorer_usa', '{"earned": {"US-NY": 1.5, "NL-NH": 1767225600.0}}', '2026-01-01', '2026-01-01')
+    """)
+
+    MigrateExplorationState.run(ScratchRepo)
+
+    assert column(
+             "SELECT state::text FROM achievement_progresses WHERE achievement_key = 'exploration' ORDER BY user_id"
+           ) == [
+             ~s({"dwell": {}, "cursor": 0, "earned": {"AT-9": 10000000000000000.0, "DE-BE": 0.00005}}),
+             ~s({"dwell": {}, "cursor": 0, "earned": {"NL-NH": 1767225600.0, "US-NY": 1.5}})
+           ]
   end
 
   test "20260720160000 runs the migration whenever achievement_progresses exists" do

@@ -5,9 +5,8 @@ defmodule Dawarich.ReleaseMigrations.EffectInventoryTest do
 
   @app Path.expand("../../..", __DIR__)
   @job_class ~r/\bjob\(\s*"([^"]+)"/
-  @unported_class ~r/unported!\(\s*"([^"]+)"\)/
-  @effect_call ~r/\b(?:job|unported!)\(/
-  @literal_effect_call ~r/\b(?:job|unported!)\(\s*"[^"]+"/
+  @effect_call ~r/\bjob\(/
+  @literal_effect_call ~r/\bjob\(\s*"[^"]+"/
 
   test "every job/2,3 class the release modules pass is classified in the inventory" do
     found = MapSet.new(found_job_classes())
@@ -16,8 +15,10 @@ defmodule Dawarich.ReleaseMigrations.EffectInventoryTest do
     assert MapSet.equal?(found, inventory), mismatch_message(found, inventory)
   end
 
-  test "no release module stops at an unported!/1 effect" do
-    assert found_unported_sites() == []
+  test "the release migrator has no unported-effect stop, so a call to one cannot compile" do
+    Code.ensure_loaded!(Dawarich.ReleaseMigration)
+    refute function_exported?(Dawarich.ReleaseMigration, :unported!, 1)
+    refute Code.ensure_loaded?(Dawarich.ReleaseMigration.UnportedEffect)
   end
 
   test "every inventoried class's Rails file exists and defines that class" do
@@ -28,7 +29,7 @@ defmodule Dawarich.ReleaseMigrations.EffectInventoryTest do
     end
   end
 
-  test "every job/unported! call names its class as a string literal" do
+  test "every job call names its class as a string literal" do
     for path <- release_module_paths() do
       source = File.read!(path)
 
@@ -58,14 +59,6 @@ defmodule Dawarich.ReleaseMigrations.EffectInventoryTest do
     |> Enum.flat_map(&Regex.scan(@job_class, File.read!(&1), capture: :all_but_first))
     |> List.flatten()
     |> Enum.uniq()
-  end
-
-  defp found_unported_sites do
-    for path <- release_module_paths(),
-        {line, index} <- path |> File.read!() |> String.split("\n") |> Enum.with_index(1),
-        [class] <- Regex.scan(@unported_class, line, capture: :all_but_first) do
-      {"#{Path.basename(path)}:#{index}", class}
-    end
   end
 
   defp release_module_paths do
