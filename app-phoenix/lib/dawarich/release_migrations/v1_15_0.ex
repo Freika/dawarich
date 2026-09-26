@@ -4,18 +4,7 @@ defmodule Dawarich.ReleaseMigrations.V1_15_0 do
 
   import Dawarich.ReleaseMigration
 
-  @registry_variables ~w[
-    PHOTON_API_HOST
-    PHOTON_API_KEY
-    PHOTON_API_USE_HTTPS
-    NOMINATIM_API_HOST
-    NOMINATIM_API_KEY
-    NOMINATIM_API_USE_HTTPS
-    GEOAPIFY_API_KEY
-    LOCATIONIQ_API_KEY
-    REVERSE_GEOCODING_RPS
-    STORE_GEODATA
-  ]
+  alias Dawarich.ReleaseMigrations.Effects
 
   @impl true
   def release, do: "1.15.0"
@@ -37,8 +26,6 @@ defmodule Dawarich.ReleaseMigrations.V1_15_0 do
     ]
   end
 
-  def registry_variables, do: @registry_variables
-
   defp create_instance_settings(repo) do
     sql!(repo, ~S"""
     CREATE TABLE "instance_settings" ("id" bigserial primary key, "key" character varying NOT NULL, "value" jsonb, "encrypted_value" text, "created_at" timestamp(6) NOT NULL, "updated_at" timestamp(6) NOT NULL);
@@ -46,13 +33,7 @@ defmodule Dawarich.ReleaseMigrations.V1_15_0 do
     """)
   end
 
-  defp backfill_instance_settings(repo) do
-    if exists?(repo, "SELECT 1 FROM users") or Enum.any?(@registry_variables, &env_set?/1) do
-      unported!("InstanceSettings::Backfill")
-    end
-  end
-
-  defp env_set?(name), do: ruby_strip(System.get_env(name, "")) != ""
+  defp backfill_instance_settings(repo), do: Effects.BackfillInstanceSettings.run(repo)
 
   defp create_trip_sources_and_planned_itineraries(repo) do
     sql!(repo, ~S"""

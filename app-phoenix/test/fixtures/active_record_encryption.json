@@ -113,7 +113,8 @@
         {
           "name": "headers are a string",
           "ciphertext": "{\"p\":\"\",\"h\":\"headers\"}",
-          "rails": "NoMethodError"
+          "rails": "NoMethodError",
+          "message": "undefined method 'each' for an instance of String"
         },
         {
           "name": "headers are an empty list",
@@ -153,7 +154,8 @@
         {
           "name": "numeric tag",
           "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":16}}",
-          "rails": "NoMethodError"
+          "rails": "NoMethodError",
+          "message": "undefined method 'length' for an instance of Integer"
         },
         {
           "name": "payload not base64",
@@ -183,7 +185,8 @@
         {
           "name": "compressed flag on uncompressed data",
           "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"c\":true}}",
-          "rails": "Zlib::DataError"
+          "rails": "Zlib::DataError",
+          "message": "incorrect header check"
         },
         {
           "name": "c false",
@@ -312,22 +315,26 @@
         {
           "name": "e unknown encoding",
           "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"Tk9QRQ==\"}}",
-          "rails": "ArgumentError"
+          "rails": "ArgumentError",
+          "message": "unknown encoding name - NOPE"
         },
         {
           "name": "e non-ascii name",
           "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"w5xURi04\"}}",
-          "rails": "ArgumentError"
+          "rails": "ArgumentError",
+          "message": "unknown encoding name - ÜTF-8"
         },
         {
           "name": "e numeric",
           "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":7}}",
-          "rails": "TypeError"
+          "rails": "TypeError",
+          "message": "no implicit conversion of Integer into String"
         },
         {
           "name": "e true",
           "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":true}}",
-          "rails": "TypeError"
+          "rails": "TypeError",
+          "message": "no implicit conversion of true into String"
         },
         {
           "name": "e false",
@@ -338,7 +345,8 @@
         {
           "name": "e nested message",
           "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":{\"p\":\"VVRGLTg=\"}}}",
-          "rails": "TypeError"
+          "rails": "TypeError",
+          "message": "no implicit conversion of ActiveRecord::Encryption::Message into String"
         },
         {
           "name": "duplicate p, the last one real",
@@ -389,6 +397,330 @@
           "ciphertext": "{\"x\":[1,{\"a\":1}],\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
           "rails": "ok",
           "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "headers are true",
+          "ciphertext": "{\"p\":\"\",\"h\":true}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'each' for true"
+        },
+        {
+          "name": "headers are false",
+          "ciphertext": "{\"p\":\"\",\"h\":false}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'each' for false"
+        },
+        {
+          "name": "headers are a number",
+          "ciphertext": "{\"p\":\"\",\"h\":5}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'each' for an instance of Integer"
+        },
+        {
+          "name": "headers are null",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":null}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "list headers of pairs",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"]]}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "list headers with a bare string element",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"],\"x\"]}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "list headers with a three-element pair",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[[\"iv\",\"fBYqkmdEcRGCOd0n\",\"extra\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"]]}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "list headers with a numeric key",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"],[1,\"QQ==\"]]}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'to_sym' for an instance of Integer"
+        },
+        {
+          "name": "list headers with an empty pair",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[[],[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"]]}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'to_sym' for nil"
+        },
+        {
+          "name": "list headers with a null element",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[null,[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"]]}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'to_sym' for nil"
+        },
+        {
+          "name": "list headers with an object element",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[{\"a\":1},[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"]]}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'to_sym' for an instance of Hash"
+        },
+        {
+          "name": "list headers with a duplicate key",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"]]}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "list headers with a list value",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"],[\"x\",[1]]]}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "list headers, numeric key before a list value",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[[1,\"QQ==\"],[\"x\",[1]],[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"]]}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "list headers with a nested message value",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[[\"k\",{\"p\":\"eA==\"}],[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"]]}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "list headers with a value not base64",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":[[1,\"not base64!\"],[\"iv\",\"fBYqkmdEcRGCOd0n\"],[\"at\",\"REYewMt067RANXlsIB0J3g==\"]]}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "null payload",
+          "ciphertext": "{\"p\":null,\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'empty?' for nil"
+        },
+        {
+          "name": "null payload with an 8-byte tag",
+          "ciphertext": "{\"p\":null,\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"AAAAAAAAAAA=\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "null payload with a null iv",
+          "ciphertext": "{\"p\":null,\"h\":{\"iv\":null,\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "null payload with a flipped tag",
+          "ciphertext": "{\"p\":null,\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"RUYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'empty?' for nil"
+        },
+        {
+          "name": "null payload with another key id",
+          "ciphertext": "{\"p\":null,\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"i\":\"ZmZmZg==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "empty payload",
+          "ciphertext": "{\"p\":\"\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "tag true",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":true}}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'bytes' for true"
+        },
+        {
+          "name": "tag false",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":false}}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'bytes' for false"
+        },
+        {
+          "name": "tag float",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":1.5}}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'length' for an instance of Float"
+        },
+        {
+          "name": "tag nested message",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":{\"p\":\"REYewMt067RANXlsIB0J3g==\"}}}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'bytes' for an instance of ActiveRecord::Encryption::Message"
+        },
+        {
+          "name": "numeric tag with an 8-byte iv",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"AAAAAAAAAAA=\",\"at\":16}}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'length' for an instance of Integer"
+        },
+        {
+          "name": "numeric tag with another key id",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":16,\"i\":\"ZmZmZg==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "iv numeric",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":7,\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "iv true",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":true,\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "iv nested message",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":{\"p\":\"fBYqkmdEcRGCOd0n\"},\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "e float",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":1.5}}",
+          "rails": "TypeError",
+          "message": "no implicit conversion of Float into String"
+        },
+        {
+          "name": "e empty name",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":\"\"}}",
+          "rails": "ArgumentError",
+          "message": "unknown encoding name - "
+        },
+        {
+          "name": "e unknown with a flipped tag",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"RUYewMt067RANXlsIB0J3g==\",\"e\":\"Tk9QRQ==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "e numeric with c true",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"e\":7,\"c\":true}}",
+          "rails": "TypeError",
+          "message": "no implicit conversion of Integer into String"
+        },
+        {
+          "name": "c zero",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"c\":0}}",
+          "rails": "Zlib::DataError",
+          "message": "incorrect header check"
+        },
+        {
+          "name": "c a string",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"c\":\"eA==\"}}",
+          "rails": "Zlib::DataError",
+          "message": "incorrect header check"
+        },
+        {
+          "name": "c true with a flipped tag",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"RUYewMt067RANXlsIB0J3g==\",\"c\":true}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "nested message whose headers are a string",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"k\":{\"p\":\"\",\"h\":\"x\"}}}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'each' for an instance of String"
+        },
+        {
+          "name": "list header before a nested message with string headers",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"a\":[1],\"k\":{\"p\":\"\",\"h\":\"x\"},\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "nested message with string headers before a list header",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"k\":{\"p\":\"\",\"h\":\"x\"},\"a\":[1],\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\"}}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'each' for an instance of String"
+        },
+        {
+          "name": "numeric payload with string headers",
+          "ciphertext": "{\"p\":5,\"h\":\"x\"}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'each' for an instance of String"
+        },
+        {
+          "name": "payload not base64 with string headers",
+          "ciphertext": "{\"p\":\"not base64!\",\"h\":\"x\"}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "nested message with a numeric payload",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"k\":{\"p\":5}}}",
+          "rails": "ActiveRecord::Encryption::Errors::Decryption"
+        },
+        {
+          "name": "nested message with list headers of a numeric key",
+          "ciphertext": "{\"p\":\"m9JxX7FGbeWPbIWiKEQF87yMr26xGbUjdN9SdJLIpRh6fG6tocBa9I4=\",\"h\":{\"iv\":\"fBYqkmdEcRGCOd0n\",\"at\":\"REYewMt067RANXlsIB0J3g==\",\"k\":{\"p\":\"\",\"h\":[[1,null]]}}}",
+          "rails": "NoMethodError",
+          "message": "undefined method 'to_sym' for an instance of Integer"
+        },
+        {
+          "name": "zlib: one byte",
+          "ciphertext": "{\"p\":\"Pw==\",\"h\":{\"iv\":\"cr1+vxorHR/EXRUV\",\"at\":\"Zh5twyMyttfaD/SrcCbGPQ==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "Zlib::BufError",
+          "message": "buffer error"
+        },
+        {
+          "name": "zlib: header only",
+          "ciphertext": "{\"p\":\"Rf8=\",\"h\":{\"iv\":\"X4vHL6XJIvzXu13u\",\"at\":\"KkWBC51CjZLZlA1xGKW1XQ==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "Zlib::BufError",
+          "message": "buffer error"
+        },
+        {
+          "name": "zlib: truncated stream",
+          "ciphertext": "{\"p\":\"5bJfGm8AXuCjTw8B8cXqiOqAAE92AQ49482zXga6NZ826TFVRHTreQ==\",\"h\":{\"iv\":\"xJKJFUdT8y2iYnzb\",\"at\":\"wLzNA1pDXXVIDQH3TWhWlw==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "Zlib::BufError",
+          "message": "buffer error"
+        },
+        {
+          "name": "zlib: stream without its checksum",
+          "ciphertext": "{\"p\":\"bAkrSElGzrBCOBV3HqpIyj1iKm3C8I1hOwql/IT1leV31IkS47kr8vM=\",\"h\":{\"iv\":\"vaCfnXtKTqLyZfMc\",\"at\":\"4wly74E5Uq1RO4UuJkrHZg==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "Zlib::BufError",
+          "message": "buffer error"
+        },
+        {
+          "name": "zlib: trailing bytes after the stream",
+          "ciphertext": "{\"p\":\"6STMPjF470Ktc4t7sJKdfgPea/erdAAkl2ZYn1sik5EqRMh9UrvAhRKfno6cAwWg\",\"h\":{\"iv\":\"AJ1Fr4qqVEDMcqTb\",\"at\":\"65iTvhebopEbpl9sxSpqWg==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "ok",
+          "plaintext": "{\"api_key\":\"schema-parity-dummy-api-key\"}"
+        },
+        {
+          "name": "zlib: wrong checksum",
+          "ciphertext": "{\"p\":\"pqdY1wO8DfCyjS3S3i1wjObP3Pape+sTSfNlOdT3k/+MJcQF78wD4FqAjFaQ\",\"h\":{\"iv\":\"cYlk2/LNtCrAhmg2\",\"at\":\"1IOumisY00a94MeW2StXkw==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "Zlib::DataError",
+          "message": "incorrect data check"
+        },
+        {
+          "name": "zlib: unknown compression method",
+          "ciphertext": "{\"p\":\"uKXvnLCvtKEPw035snHKb4ABe5wnmtSLwVB9wdakfFW3clYznRwnnmOVXstX\",\"h\":{\"iv\":\"kqhXxibiN1FtPEKa\",\"at\":\"vTyTLVhUx15/YftMwq6Psw==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "Zlib::DataError",
+          "message": "unknown compression method"
+        },
+        {
+          "name": "zlib: invalid window size",
+          "ciphertext": "{\"p\":\"q1X+5ulDp+XMHfLzplr+sIBxU3oSLirEAeMrKxpjr3KYSlP2Vzp5aAlf3xz3\",\"h\":{\"iv\":\"05kYaqx+UJmThkgu\",\"at\":\"TObBsmYAH0sdxB0anCRL/A==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "Zlib::DataError",
+          "message": "invalid window size"
+        },
+        {
+          "name": "zlib: preset dictionary",
+          "ciphertext": "{\"p\":\"3sZoPOJ6ktyXGoek8xyCWtuNh2CNOnmoKJbDx79if6GHQXUoZaYcyQCVFPo1SCzFfA==\",\"h\":{\"iv\":\"aTRyqEuOudNrGQze\",\"at\":\"1XrJWkzZUGrIfV2YUuxU5w==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "Zlib::NeedDict",
+          "message": "need dictionary"
+        },
+        {
+          "name": "zlib: preset dictionary, truncated id",
+          "ciphertext": "{\"p\":\"6Tyq+A==\",\"h\":{\"iv\":\"I5FMp7fYdyL1ilTQ\",\"at\":\"bk7IwDSZdRIa0pSP3mtzDQ==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "Zlib::BufError",
+          "message": "buffer error"
+        },
+        {
+          "name": "zlib: invalid block type",
+          "ciphertext": "{\"p\":\"G5m/OWaenhWwfjxh4w==\",\"h\":{\"iv\":\"DcrpEaCV4lkb6Ril\",\"at\":\"ej4pAC+aw5KOnW+r0DBdVg==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "Zlib::DataError",
+          "message": "invalid block type"
+        },
+        {
+          "name": "zlib: valid empty stream",
+          "ciphertext": "{\"p\":\"/d7evA4UHx8=\",\"h\":{\"iv\":\"bky9sDuStSXWQu1F\",\"at\":\"0uVm9iXLe6Y0rlw2e2idzw==\",\"e\":\"QVNDSUktOEJJVA==\",\"c\":true}}",
+          "rails": "ok",
+          "plaintext": ""
         }
       ]
     },

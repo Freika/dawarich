@@ -1,6 +1,8 @@
 defmodule Dawarich.ActiveRecordEncryption do
   @moduledoc false
 
+  alias Dawarich.ActiveRecordEncryption.{Message, Zlib}
+
   @variables [
     primary_key: "OTP_ENCRYPTION_PRIMARY_KEY",
     deterministic_key: "OTP_ENCRYPTION_DETERMINISTIC_KEY",
@@ -12,7 +14,6 @@ defmodule Dawarich.ActiveRecordEncryption do
     "OTP_ENCRYPTION_KEY_DERIVATION_SALT" => "dawarich-dev-salt-not-for-production"
   }
   @compression_threshold 140
-  @max_nesting 100
   @external_resource encodings = Path.expand("../../priv/ruby_encodings.txt", __DIR__)
   @ruby_encodings encodings
                   |> File.read!()
@@ -50,17 +51,18 @@ defmodule Dawarich.ActiveRecordEncryption do
   end
 
   def decrypt(ciphertext, key) when is_binary(ciphertext) and byte_size(key) == 32 do
-    with {:ok, data} <- json(ciphertext),
-         {:ok, payload, headers} <- message(data, 1),
+    with {:ok, {:message, payload, headers}} <- Message.parse(ciphertext),
          :ok <- key_reference(headers["i"], key),
-         {:ok, iv, tag} <- iv_and_tag(headers),
-         :ok <- encoding(headers["e"]),
-         {:ok, clear} <- open(key, iv, payload, tag) do
+         {:ok, tag} <- auth_tag(headers["at"]),
+         {:ok, iv} <- iv(headers["iv"]),
+         {:ok, payload} <- payload(payload),
+         {:ok, clear} <- open(key, iv, payload, tag),
+         :ok <- encoding(headers["e"]) do
       uncompress(clear, headers["c"])
     end
   end
 
-  def decrypt(_ciphertext, _key), do: {:error, :invalid_message}
+  def decrypt(_ciphertext, _key), do: Message.rescued(:invalid_message)
 
   defp setting(env, var) do
     cond do
@@ -104,117 +106,59 @@ defmodule Dawarich.ActiveRecordEncryption do
 
   defp compress(text), do: {text, false}
 
-  defp json(ciphertext) do
-    with {:ok, data} <- Jason.decode(ciphertext, objects: :ordered_objects),
-         {:ok, data} <- unordered(data, 1) do
-      {:ok, data}
-    else
-      _ -> {:error, :invalid_json}
-    end
-  end
-
-  defp unordered(value, depth)
-       when (is_list(value) or is_struct(value, Jason.OrderedObject)) and depth > @max_nesting,
-       do: :error
-
-  defp unordered(%Jason.OrderedObject{values: pairs}, depth) do
-    {keys, values} = Enum.unzip(pairs)
-
-    with {:ok, values} <- unordered_all(values, depth + 1),
-         do: {:ok, Map.new(Enum.zip(keys, values))}
-  end
-
-  defp unordered(list, depth) when is_list(list), do: unordered_all(list, depth + 1)
-  defp unordered(value, _depth), do: {:ok, value}
-
-  defp unordered_all(items, depth) do
-    items
-    |> Enum.reverse()
-    |> Enum.reduce_while({:ok, []}, fn item, {:ok, done} ->
-      case unordered(item, depth) do
-        {:ok, item} -> {:cont, {:ok, [item | done]}}
-        :error -> {:halt, :error}
-      end
-    end)
-  end
-
-  defp message(%{"p" => payload} = data, level) when level <= 2 do
-    with {:ok, payload} <- payload(payload),
-         {:ok, headers} <- headers(Map.get(data, "h"), level) do
-      {:ok, payload, headers}
-    end
-  end
-
-  defp message(_data, _level), do: {:error, :invalid_message}
-
-  defp payload(value) when is_binary(value), do: base64(value)
-  defp payload(_value), do: {:error, :invalid_message}
-
-  defp headers(nil, _level), do: {:ok, %{}}
-
-  defp headers(headers, level) when is_map(headers) do
-    Enum.reduce_while(headers, {:ok, %{}}, fn {name, value}, {:ok, decoded} ->
-      case header(value, level) do
-        {:ok, value} -> {:cont, {:ok, Map.put(decoded, name, value)}}
-        error -> {:halt, error}
-      end
-    end)
-  end
-
-  defp headers(_headers, _level), do: {:error, :invalid_message}
-
-  defp header(value, level) when is_map(value) do
-    with {:ok, payload, headers} <- message(value, level + 1), do: {:ok, {payload, headers}}
-  end
-
-  defp header(value, _level) when is_binary(value), do: base64(value)
-  defp header(value, _level) when is_list(value), do: {:error, :invalid_message}
-  defp header(value, _level), do: {:ok, value}
-
-  defp base64(value) do
-    with {:ok, decoded} <- Base.decode64(value),
-         ^value <- Base.encode64(decoded) do
-      {:ok, decoded}
-    else
-      _ -> {:error, :invalid_base64}
-    end
-  end
-
   defp key_reference(id, _key) when id in [nil, false], do: :ok
 
   defp key_reference(id, key) do
     if id == :sha |> :crypto.hash(key) |> Base.encode16(case: :lower) |> binary_part(0, 4),
       do: :ok,
-      else: {:error, :unknown_key}
+      else: Message.rescued(:unknown_key)
+  end
+
+  defp auth_tag(nil), do: Message.rescued(:missing_tag)
+  defp auth_tag(<<_::binary-size(16)>> = tag), do: {:ok, tag}
+  defp auth_tag(tag) when is_binary(tag), do: Message.rescued(:invalid_tag)
+  defp auth_tag(tag) when is_number(tag), do: no_method("length", tag)
+  defp auth_tag(tag), do: no_method("bytes", tag)
+
+  defp iv(<<_::binary-size(12)>> = iv), do: {:ok, iv}
+  defp iv(_iv), do: Message.rescued(:invalid_iv)
+
+  defp payload(nil), do: no_method("empty?", nil)
+  defp payload(payload), do: {:ok, payload}
+
+  defp open(key, iv, payload, tag) do
+    case :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, payload, "", tag, false) do
+      clear when is_binary(clear) -> {:ok, clear}
+      :error -> Message.rescued(:authentication_failed)
+    end
   end
 
   defp encoding(name) when name in [nil, false], do: :ok
 
   defp encoding(name) when is_binary(name) do
-    if MapSet.member?(@ruby_encodings, String.upcase(name, :ascii)),
-      do: :ok,
-      else: {:error, :unknown_encoding}
-  end
+    cond do
+      String.contains?(name, <<0>>) ->
+        Message.raised("ArgumentError", "invalid encoding name (NUL byte)")
 
-  defp encoding(_name), do: {:error, :unknown_encoding}
+      MapSet.member?(@ruby_encodings, String.upcase(name, :ascii)) ->
+        :ok
 
-  defp iv_and_tag(%{"iv" => <<_::binary-size(12)>> = iv, "at" => <<_::binary-size(16)>> = tag}),
-    do: {:ok, iv, tag}
-
-  defp iv_and_tag(_headers), do: {:error, :invalid_message}
-
-  defp open(key, iv, payload, tag) do
-    case :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, payload, "", tag, false) do
-      clear when is_binary(clear) -> {:ok, clear}
-      :error -> {:error, :authentication_failed}
+      true ->
+        Message.raised("ArgumentError", "unknown encoding name - " <> name)
     end
   end
 
-  defp uncompress(clear, compressed) when compressed in [nil, false], do: {:ok, clear}
+  defp encoding(name),
+    do:
+      Message.raised(
+        "TypeError",
+        "no implicit conversion of #{Message.conversion(name)} into String"
+      )
 
-  defp uncompress(clear, _compressed) do
-    {:ok, :zlib.uncompress(clear)}
-  rescue
-    ErlangError -> {:error, :invalid_compression}
-  end
+  defp no_method(name, value),
+    do:
+      Message.raised("NoMethodError", "undefined method '#{name}' for #{Message.instance(value)}")
+
+  defp uncompress(clear, compressed) when compressed in [nil, false], do: {:ok, clear}
+  defp uncompress(clear, _compressed), do: Zlib.inflate(clear)
 end

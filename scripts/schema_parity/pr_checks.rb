@@ -35,6 +35,8 @@ end
 
 machinery = %r{
   \Aapp-phoenix/lib/dawarich/(release_migrations?\.ex|release_migrator\.ex|release_migrator/|release\.ex|repo\.ex)
+  |\Aapp-phoenix/lib/dawarich/active_record_encryption(\.ex\z|/)
+  |\Aapp-phoenix/priv/ruby_encodings\.txt\z
   |\Aapp-phoenix/lib/dawarich/release_migrations/(?!(?:v[\d_]+|unreleased)\.ex\z)
   |\Aapp-phoenix/priv/(release_migrations/(?!(?:unreleased|[\d.]+)/)|repo/)
   |\Aapp-phoenix/test/support/mix/tasks/dawarich\.release_migrate\.ex\z
