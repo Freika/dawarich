@@ -184,7 +184,13 @@ class Tracks::BoundaryDetector
       return false if time_gap > max_gap
     end
 
-    true
+    !spans_kept_track?(sorted_tracks)
+  end
+
+  def spans_kept_track?(sorted_tracks)
+    user.tracks.where(Tracks::KeptTracks.condition)
+        .where('start_at < ? AND end_at > ?', sorted_tracks.last.end_at, sorted_tracks.first.start_at)
+        .exists?
   end
 
   def merge_boundary_tracks(track_group)

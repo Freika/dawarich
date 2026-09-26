@@ -80,7 +80,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
                .flat_map { |bucket| split_points_into_segments_geocoder(bucket) }
 
     segments.select do |segment|
-      segment_overlaps_chunk_range?(segment)
+      segment_overlaps_chunk_range?(segment) && segment.any? { |point| point.track_id.nil? }
     end
   end
 

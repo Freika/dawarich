@@ -64,6 +64,27 @@ RSpec.describe 'Generic track regeneration never deletes source or corrected tra
     expect(Point.where(id: plain_points.map(&:id)).pluck(:track_id)).to all(be_present)
   end
 
+  describe 'a recalculation with orphans on both sides of a kept track' do
+    it 'never builds a generated track across the kept one' do
+      before_points = create_points(tracker_id: 'phone', offset: 0).first(4)
+      kept_points = create_points(tracker_id: 'phone', offset: 240, import_id: import.id).first(4)
+      after_points = create_points(tracker_id: 'phone', offset: 480).first(4)
+      source_track = track_for(kept_points, import_id: import.id, tracker_id: "import-#{import.id}-activity-1")
+      source_track.update_columns(created_at: 3.hours.ago)
+
+      Tracks::ParallelGenerator.new(user, start_at: Time.zone.at(base - 3600), end_at: Time.zone.at(base + 3600),
+                                          mode: :bulk).call
+      perform_enqueued_jobs(only: Tracks::TimeChunkProcessorJob)
+      perform_enqueued_jobs(only: Tracks::BoundaryResolverJob)
+
+      expect(Track.exists?(source_track.id)).to be(true)
+      overlapping = user.tracks.where.not(id: source_track.id)
+                        .where('start_at < ? AND end_at > ?', source_track.end_at, source_track.start_at)
+      expect(overlapping).to be_empty
+      expect(Point.where(id: (before_points + after_points).map(&:id)).pluck(:track_id)).to all(be_present)
+    end
+  end
+
   describe 'boundary resolution after the run' do
     def run_daily_and_resolve(kept_track)
       user.update!(points_count: user.points.count)
