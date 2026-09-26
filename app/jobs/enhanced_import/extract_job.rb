@@ -58,7 +58,7 @@ module EnhancedImport
     rescue ActiveRecord::Deadlocked
       raise
     rescue StandardError => e
-      mark_failed!(import, e)
+      mark_retrying!(import, e)
       raise
     end
 
@@ -160,6 +160,16 @@ module EnhancedImport
       )
       broadcast_card(import)
       schedule_track_generation(import)
+    end
+
+    def mark_retrying!(import, error)
+      import.update_columns(
+        additional_data_extraction_status: Import.additional_data_extraction_statuses[:pending],
+        additional_data_extraction: import.additional_data_extraction.merge(
+          'started_at' => Time.current.iso8601, 'error_message' => error.message
+        )
+      )
+      broadcast_card(import)
     end
 
     def mark_failed!(import, error)

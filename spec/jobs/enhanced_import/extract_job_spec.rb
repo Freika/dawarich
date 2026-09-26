@@ -20,12 +20,12 @@ RSpec.describe EnhancedImport::ExtractJob do
       expect(import.additional_data_extraction['completed_at']).to be_present
     end
 
-    it 'marks the import as failed and re-raises when the translator blows up' do
+    it 'keeps the import in flight and re-raises when the translator blows up' do
       allow_any_instance_of(EnhancedImport::Translator).to receive(:translate).and_raise('boom')
 
       expect { described_class.new.perform(import.id) }.to raise_error(/boom/)
 
-      expect(import.reload.additional_data_extraction_status).to eq('failed')
+      expect(import.reload.additional_data_extraction_status).to eq('pending')
       expect(import.extraction_error_message).to eq('boom')
     end
 
@@ -102,6 +102,16 @@ RSpec.describe EnhancedImport::ExtractJob do
 
       expect(described_class).to have_been_enqueued.with(import.id)
       expect(Tracks::ParallelGeneratorJob).not_to have_been_enqueued
+    end
+
+    it 'keeps holding the points between attempts' do
+      attach_file('{"semanticSegments": [{"startTime": ')
+
+      described_class.perform_now(import.id)
+
+      expect(import.reload.additional_data_extraction_status).to eq('pending')
+      expect(Import.awaiting_extraction).to include(import)
+      expect(Imports::ExtractionPolicy.new(user, import).create?).to be(false)
     end
 
     it 'schedules generation once the third failed attempt exhausts the retries' do
