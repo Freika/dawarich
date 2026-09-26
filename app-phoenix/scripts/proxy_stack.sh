@@ -23,6 +23,12 @@ stack() {
 if [ "${1:-}" = --down ]; then
   [ -f "$pidfile" ] && kill "$(cat "$pidfile")" 2>/dev/null || true
   pkill -f "$sidekiq" 2>/dev/null || true
+  tries=0
+  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || pgrep -f "$sidekiq" >/dev/null 2>&1; do
+    tries=$((tries + 1))
+    [ "$tries" -lt 60 ] || { echo "the stack did not stop" >&2; exit 1; }
+    sleep 1
+  done
   redis-cli -p "$REDIS_PORT" shutdown nosave >/dev/null 2>&1 || true
   rm -f "$pidfile"
   exit 0
@@ -49,8 +55,8 @@ stack bin/rails db:prepare >/dev/null
 [ -n "$(ls -A public/assets 2>/dev/null)" ] || stack bin/rails assets:precompile >/dev/null
 (cd app-phoenix && env PATH="$HOME/.asdf/shims:$PATH" MIX_ENV=prod mix release --overwrite >/dev/null)
 stack "$rel" eval 'Dawarich.Release.migrate()'
-stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$PORT")" nohup "$rel" start >>"$log" 2>&1 &
-echo $! >"$pidfile"
+stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$PORT")" \
+  sh -c 'echo $$ >"$1"; exec nohup "$2" start' _ "$pidfile" "$rel" >>"$log" 2>&1 &
 
 tries=0
 until [ "$(curl -s -o /dev/null -w '%{http_code}' -m 5 "http://127.0.0.1:$PORT/users/sign_in")" = 200 ]; do
@@ -64,7 +70,7 @@ else
   grep -q "Phoenix listens on 127.0.0.1:$PORT and proxies to Puma" "$log" || { echo "Phoenix is not in front" >&2; exit 1; }
 fi
 
-pgrep -f "$sidekiq" >/dev/null 2>&1 || { stack bundle exec sidekiq >>"$root/log/proxy_stack_sidekiq.log" 2>&1 & }
+pgrep -f "$sidekiq" >/dev/null 2>&1 || { stack nohup bundle exec sidekiq >>"$root/log/proxy_stack_sidekiq.log" 2>&1 & }
 tries=0
 until grep -q 'Running in ruby' "$root/log/proxy_stack_sidekiq.log" 2>/dev/null; do
   tries=$((tries + 1))
