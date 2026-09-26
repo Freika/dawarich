@@ -5,6 +5,7 @@ cd "$(dirname "$0")/../.."
 IMAGE="${IMAGE:-dawarich:a0c-local}"
 WAIT="${SMOKE_WAIT_SECONDS:-300}"
 net=a0c-cloud
+run="a0c-smoke=$$"
 
 fail() {
   echo "$1" >&2
@@ -15,9 +16,9 @@ fail() {
 if docker ps -a --format '{{.Names}}' | grep -q '^a0c_'; then
   fail "a0c_* containers already exist; remove them first"
 fi
-if curl -s -o /dev/null http://127.0.0.1:3901/; then
-  fail "port 3901 is in use"
-fi
+port=0
+curl -s -m 5 -o /dev/null http://127.0.0.1:3901/ || port=$?
+[ "$port" = 7 ] || fail "port 3901 is in use"
 
 work="$(mktemp -d)"
 cleanup() {
@@ -27,13 +28,14 @@ cleanup() {
       docker logs --tail 40 "$c" 2>&1 | sed "s/^/[$c] /" >&2 || true
     done
   fi
-  docker rm -f a0c_probe a0c_web a0c_worker a0c_bouncer a0c_redis a0c_db >/dev/null 2>&1 || true
-  docker network rm "$net" >/dev/null 2>&1 || true
+  docker rm -f $(docker ps -aq --filter "label=$run") >/dev/null 2>&1 || true
+  docker network rm $(docker network ls -q --filter "label=$run") >/dev/null 2>&1 || true
+  docker rmi -f a0c-pgbouncer:local >/dev/null 2>&1 || true
   rm -rf "$work"
   exit "$ec"
 }
 trap cleanup EXIT
-trap 'exit 1' INT TERM
+trap 'exit 1' HUP INT TERM
 
 procfile() {
   sed -n "s/^$1: //p" Procfile.cloud
@@ -44,7 +46,7 @@ sql() {
 }
 
 app() {
-  docker run --init --network "$net" --env-file "$work/env" "$@"
+  docker run --init --label "$run" --network "$net" --env-file "$work/env" "$@"
 }
 
 proc_user() {
@@ -64,11 +66,11 @@ wait_until() {
   done
 }
 
-healthy='curl -fsS http://127.0.0.1:3901/api/v1/health 2>/dev/null | grep -q "\"status\""'
+healthy='curl -fsS -m 5 http://127.0.0.1:3901/api/v1/health 2>/dev/null | grep -q "\"status\""'
 
-docker network create "$net" >/dev/null
-docker run -d --name a0c_db --network "$net" -e POSTGRES_PASSWORD=postgres postgis/postgis:17-3.5-alpine >/dev/null
-docker run -d --name a0c_redis --network "$net" redis:7.4-alpine >/dev/null
+docker network create --label "$run" "$net" >/dev/null
+docker run -d --name a0c_db --label "$run" --network "$net" -e POSTGRES_PASSWORD=postgres postgis/postgis:17-3.5-alpine >/dev/null
+docker run -d --name a0c_redis --label "$run" --network "$net" redis:7.4-alpine >/dev/null
 
 mkdir "$work/bouncer"
 cat >"$work/bouncer/pgbouncer.ini" <<'EOF'
@@ -98,7 +100,7 @@ USER nobody
 CMD ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]
 EOF
 docker build -q -t a0c-pgbouncer:local "$work/bouncer" >/dev/null
-docker run -d --name a0c_bouncer --network "$net" a0c-pgbouncer:local >/dev/null
+docker run -d --name a0c_bouncer --label "$run" --network "$net" a0c-pgbouncer:local >/dev/null
 
 wait_until '[ "$(docker logs a0c_db 2>&1 | grep -c "ready to accept connections")" -ge 2 ]' "database did not start"
 docker exec -i a0c_db psql -v ON_ERROR_STOP=1 -q -U postgres <<'EOF'
@@ -137,11 +139,13 @@ docker rm a0c_probe >/dev/null
 docker exec a0c_db psql -w "host=a0c_bouncer port=6432 dbname=dawarich_cloud user=dawarich_cloud" -c 'SELECT 1' 2>&1 \
   | grep -q 'no password supplied' || fail "PgBouncer accepts a login without a password"
 
-docker run --rm --network "$net" --env-file "$work/admin.env" "$IMAGE" bin/rails db:schema:load >/dev/null
+docker run --rm --label "$run" --network "$net" --env-file "$work/admin.env" "$IMAGE" bin/rails db:schema:load >/dev/null
 sql "DO \$\$ DECLARE t record; BEGIN FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' AND tablename <> 'spatial_ref_sys' LOOP EXECUTE format('ALTER TABLE public.%I OWNER TO dawarich_cloud', t.tablename); END LOOP; END \$\$" >/dev/null
 
 app --rm "$IMAGE" $(procfile release) >"$work/release1.log" 2>&1 || { cat "$work/release1.log" >&2; fail "release failed"; }
 grep -q 'Phoenix migrations failed' "$work/release1.log" || fail "release hid the Phoenix failure"
+grep -q 'permission denied for database dawarich_cloud' "$work/release1.log" \
+  || { cat "$work/release1.log" >&2; fail "the release's Phoenix failure is not the missing CREATE privilege"; }
 [ "$(sql "SELECT to_regnamespace('phoenix') IS NULL AND to_regnamespace('oban') IS NULL")" = t ] \
   || fail "Phoenix schemas appeared without the CREATE privilege"
 
@@ -171,13 +175,13 @@ wait_until "$healthy" "web did not come up under Phoenix"
 under_beam a0c_web || fail "Puma is missing or not a descendant of the BEAM"
 [ "$(proc_user a0c_web '^puma [0-9]')" = 32767 ] || fail "Puma runs as root"
 [ "$(docker exec a0c_web stat -c %u /var/app/tmp/dawarich.cookie)" = 32767 ] || fail "cookie not owned by the app user"
-[ "$(docker exec a0c_web dawarich rpc 'IO.puts(Oban.config().prefix)')" = oban ] || fail "rpc failed"
+[ "$(docker exec a0c_web timeout 30 dawarich rpc 'IO.puts(Oban.config().prefix)')" = oban ] || fail "rpc failed"
 docker stop a0c_web >/dev/null
 [ "$(docker inspect -f '{{.State.ExitCode}}' a0c_web)" = 0 ] || fail "unclean web stop"
 docker logs a0c_web 2>&1 | tail -20 | grep -qi goodbye || fail "puma did not shut down gracefully"
 
 app -d --name a0c_worker "$IMAGE" $(procfile worker) >/dev/null
-wait_until 'docker logs a0c_worker 2>&1 | grep -q "Running in ruby"' "sidekiq did not boot"
+wait_until 'docker exec a0c_worker pgrep -f "^sidekiq [0-9]" >/dev/null' "sidekiq did not boot"
 [ "$(proc_user a0c_worker '^sidekiq [0-9]')" = 32767 ] || fail "Sidekiq runs as root or is missing"
 docker stop a0c_worker >/dev/null
 [ "$(docker inspect -f '{{.State.ExitCode}}' a0c_worker)" = 0 ] || fail "unclean sidekiq stop"
