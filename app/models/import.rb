@@ -50,9 +50,15 @@ class Import < ApplicationRecord
                if: :should_enqueue_additional_data_extraction?
 
   scope :extraction_in_flight, -> { where(additional_data_extraction_status: %i[pending running]) }
+  scope :awaiting_extraction, lambda {
+    extraction_in_flight.or(
+      where(status: :processing, additional_data_extraction_status: :not_attempted,
+            source: EnhancedImport::Translator::SUPPORTED_SOURCES)
+    )
+  }
 
-  def self.extraction_in_flight_for(foreign_key)
-    extraction_in_flight.where(arel_table[:id].eq(foreign_key)).arel.exists
+  def self.awaiting_extraction_for(foreign_key)
+    awaiting_extraction.where(arel_table[:id].eq(foreign_key)).arel.exists
   end
 
   def process!

@@ -107,6 +107,38 @@ RSpec.describe 'Points waiting for source extraction belong to their own import'
     end
   end
 
+  describe 'an import that is still being imported' do
+    let(:owntracks_import) { create(:import, user: user, source: :owntracks, name: 'phone.rec') }
+
+    before do
+      pending_import.update_columns(status: Import.statuses[:processing])
+      owntracks_import.update_columns(status: Import.statuses[:processing])
+    end
+
+    it 'is skipped by the daily generator when its source will be extracted' do
+      processing_points = create_points(import: pending_import, tracker_id: 'takeout', offset: 0)
+      owntracks_points = create_points(import: owntracks_import, tracker_id: 'phone', offset: 30)
+      user.update!(points_count: user.points.count)
+
+      Tracks::DailyGenerationJob.perform_now
+      run_generation
+
+      expect(track_ids(processing_points)).to all(be_nil)
+      expect(track_ids(owntracks_points)).to all(be_present)
+    end
+
+    it 'is skipped by a backfill slice when its source will be extracted' do
+      processing_points = create_points(import: pending_import, tracker_id: 'takeout', offset: 0)
+      owntracks_points = create_points(import: owntracks_import, tracker_id: 'phone', offset: 30)
+
+      Tracks::ThrottledBackfillJob.new.perform(user.id, nil)
+      perform_enqueued_jobs(only: Tracks::TimeChunkProcessorJob)
+
+      expect(track_ids(processing_points)).to all(be_nil)
+      expect(track_ids(owntracks_points)).to all(be_present)
+    end
+  end
+
   describe 'orphan reabsorption after a generation run' do
     it 'does not pull pending points into a recent track' do
       recent_start = 2.hours.ago.to_i
