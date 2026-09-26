@@ -33,8 +33,8 @@ module Tracks
     end
 
     def enclosed?(owned, run)
-      after = owned.bsearch_index { |timestamp, _| timestamp > run.last.timestamp }
-      before = (owned.bsearch_index { |timestamp, _| timestamp >= run.first.timestamp } || owned.size) - 1
+      after = owned.bsearch_index { |timestamp, _| timestamp >= run.last.timestamp }
+      before = (owned.bsearch_index { |timestamp, _| timestamp > run.first.timestamp } || owned.size) - 1
       after.present? && before >= 0 && owned[before][1] == owned[after][1]
     end
   end
