@@ -285,7 +285,7 @@ Paths are relative to the repository root.
 | `app-phoenix/lib/dawarich/release_migrations.ex` | Ordered registry of release modules (`@releases`) |
 | `app-phoenix/lib/dawarich/release_migrations/v*.ex`, `unreleased.ex` | One module per C1 state after the floor (38: `1.0.1` … `1.15.2`, 146 versions), plus `Unreleased` |
 | `app-phoenix/lib/dawarich/release_migrations/effects/*.ex` | C3a: the Phoenix ports of the app code migrations call synchronously, one module per Rails effect (see "C3a: inline effects, and what is handed on") |
-| `app-phoenix/lib/dawarich/release_migrations/effects/support/*.ex` | Ruby semantics the ports share: `Ruby` (`blank?`, `strip`, `to_s`, JSON writing; `Ruby.Error` for an error Ruby raises, `Ruby.Unreproducible`, never rescued, where Phoenix cannot reproduce Ruby's exact failure), `RubyFloat` (`Float#to_s` and Oj's Rails float format), service settings, the geocoding schema and `InstanceSettings::Registry` |
+| `app-phoenix/lib/dawarich/release_migrations/effects/support/*.ex` | Ruby semantics the ports share: `Ruby` (`blank?`, `strip`, `to_s`, JSON writing; `Ruby.Error` for an error Ruby raises, with Ruby's exact message except ED-025; `Ruby.Unreproducible`, never rescued, where Phoenix cannot reproduce Ruby's behaviour), `RubyFloat` (`Float#to_s` and Oj's Rails float format), service settings, the geocoding schema and `InstanceSettings::Registry` |
 | `app-phoenix/lib/dawarich/active_record_encryption.ex`, `active_record_encryption/*.ex`, `app-phoenix/priv/ruby_encodings.txt` | Rails-compatible Active Record Encryption: keys from the Rails environment, messages Rails reads, and Rails' rescued and raised decryption failures |
 | `app-phoenix/priv/admin1_world.geojson` | A link to `lib/assets/admin1_world.geojson` (`Achievements::LoadRegions`). `mix release` copies it as a file, and the image copies the Rails file in before `mix release`. `scripts/release_smoke.sh` fails unless the built release holds a byte-identical regular file |
 | `app-phoenix/priv/release_migrations/baseline.sql` | Generated baseline for fresh installs |
@@ -751,16 +751,17 @@ guard skip branches and drifted databases, and corrected these rows:
 
 ### Proof results
 
-**After C3a (2026-09-26).** `ecto_prove.sh --jobs 6 all` ran once, cold, in 2174 s (36 min) on the loaded machine:
+**After C3a (2026-09-26).** `ecto_prove.sh --jobs 6 all` ran cold in 2163 s (36 min) on the loaded machine, after
+the Ecto sides moved to their own build path (5ad4e6da1), with two `mix test --force` runs in `app-phoenix/_build/test`
+during it:
 
 | Checks | ok | ok, both fail at V | ok, refused below the floor | FAIL |
 |---|---|---|---|---|
 | 358 | 323 | 32 | 3 | 0 |
 
-The 358 are 2 `fresh`, 39 `step:`, 254 `rows:`, 5 `contended:`, 55 `upgrade:` and 3 `refused:`. On that run
-`step:1.8.0` failed with `ecto:failed@`: a `mix test` started by hand in the same `app-phoenix/_build/test`
-re-consolidated the protocols (written 07:25:01) while its Ecto side booted (07:24:36–07:25:04). Run alone afterwards
-it is `ok`; see "Prerequisites". C3a adds 16 checks that fail at the same version on both sides, each fixture with its
+The 358 are 2 `fresh`, 39 `step:`, 254 `rows:`, 5 `contended:`, 55 `upgrade:` and 3 `refused:`. An earlier run on the
+shared `_build/test` failed `step:1.8.0` once, because a concurrent `mix test` re-consolidated the protocols while
+that check's Ecto side booted; the separate build path removed the cause. C3a adds 16 checks that fail at the same version on both sides, each fixture with its
 `~shifted` twin: `rows:1.13.1--malformed-winner`, `--undecryptable-komoot` and `--undecryptable-winner` at
 `20260819120100`, `rows:1.14.0--unresolvable-places` at `20260815100001` (the curated `remaining=<n>` error),
 `rows:1.15.0--malformed-key` and `--missing-encryption-key` at `20260901150000`, and `rows:1.15.2--carrier-collision`
@@ -923,7 +924,10 @@ must not assume"); the C4 plan's "PG14 restore compatibility fix" item covers it
   `scripts/schema_parity/inline_effects.tsv`, and a change to it selects that release's checks like a change to its
   module (for example `app/services/achievements/migrate_exploration_state.rb` or `config/initializers/oj.rb` →
   1.15.2). Other app code selects only `fresh`; the released migrations are then proven by the push run after the
-  merge.
+  merge. Deliberately unmapped, because they change often and a push run after the merge proves them:
+  `app/models/user.rb` (its `SoftDeletable` scope, `admin`, `service_settings`), `app/models/place.rb` (1.14.0),
+  `app/models/country.rb` and `app/models/region.rb` (1.15.2); `config/locales/en.yml` (the 1.13.1 validation
+  messages) is pinned by `geocoding_rails_pins_test.exs`, which runs on every PR.
 - **A release module** (`v<release>.ex`, `unreleased.ex`, or a file under `priv/release_migrations/<release>/`) selects
   that release's `step:`, `rows:` and `contended:` checks plus every `upgrade:` check that starts from an older state
   (for `unreleased`, every `upgrade:` check).
