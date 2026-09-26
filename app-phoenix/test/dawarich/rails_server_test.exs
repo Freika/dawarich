@@ -117,4 +117,29 @@ defmodule Dawarich.RailsServerTest do
         false
     end
   end
+
+  test "sets and removes environment variables for the command only" do
+    test = self()
+    System.put_env("DAWARICH_A2_PROBE_REMOVED", "inherited")
+    on_exit(fn -> System.delete_env("DAWARICH_A2_PROBE_REMOVED") end)
+
+    start_supervised!(
+      {Dawarich.RailsServer,
+       argv: ["sh", "-c", ~S(echo "[${DAWARICH_A2_PROBE_REMOVED:-}][${DAWARICH_A2_PROBE_SET:-}]")],
+       env: [{"DAWARICH_A2_PROBE_REMOVED", false}, {"DAWARICH_A2_PROBE_SET", "1"}],
+       sink: &send(test, {:out, &1}),
+       on_exit: &send(test, {:exit, &1})}
+    )
+
+    assert_receive {:exit, 0}, 5_000
+    assert collected_output() == "[][1]\n"
+  end
+
+  defp collected_output(acc \\ "") do
+    receive do
+      {:out, data} -> collected_output(acc <> data)
+    after
+      0 -> acc
+    end
+  end
 end
