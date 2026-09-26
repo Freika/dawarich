@@ -168,5 +168,14 @@ RSpec.describe 'Settings', type: :request do
 
       expect(response.body).to include('Turn off notices')
     end
+
+    it 'hides the notices panel on cloud' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+
+      get settings_general_index_path
+
+      expect(response.body).not_to include('changelog-consent-setting')
+      expect(response.body).not_to include("What's New notices")
+    end
   end
 end

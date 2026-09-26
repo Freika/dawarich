@@ -32,6 +32,21 @@ RSpec.describe Points::Move do
     expect(TracksChannel).not_to have_received(:broadcast_to)
   end
 
+  it 'does not scan all visited countries when the country is unchanged' do
+    visited_query = instance_double(Countries::VisitedQuery)
+    allow(Countries::VisitedQuery).to receive(:new).and_return(visited_query)
+    allow(visited_query).to receive(:call).and_raise(Timeout::Error)
+
+    result = described_class.call(
+      user:, point_id: point.id, latitude: 0.01, longitude: 0.01,
+      point_revision: point.lock_version, track_revision: track.lock_version,
+      history_scope: scope
+    )
+
+    expect(result.point).to have_attributes(lat: 0.01, lon: 0.01)
+    expect(result.visited_countries).to be_nil
+  end
+
   it "enqueues a monthly stats recalculation for the moved point's month" do
     expect do
       described_class.call(
@@ -43,7 +58,6 @@ RSpec.describe Points::Move do
   end
 
   it 'schedules an achievements check from the moved point' do
-    Flipper.enable(:achievements)
     clear_achievement_checks(user.id)
 
     expect do
@@ -54,12 +68,9 @@ RSpec.describe Points::Move do
       )
     end.to have_enqueued_job(Achievements::CheckJob).with(user.id)
     expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([point.timestamp])
-  ensure
-    Flipper.disable(:achievements)
   end
 
   it 'returns the committed move when the achievements check cannot be scheduled' do
-    Flipper.enable(:achievements)
     allow(Achievements::CheckJob).to receive(:schedule).and_raise(Redis::CannotConnectError)
     allow(ExceptionReporter).to receive(:call)
 
@@ -74,8 +85,6 @@ RSpec.describe Points::Move do
       .with_tags(operation: 'achievements')
 
     expect(result.point).to have_attributes(lat: 0.01, lon: 0.01, lock_version: 1)
-  ensure
-    Flipper.disable(:achievements)
   end
 
   it 'returns the committed move and publishes it when the stats job cannot be enqueued' do

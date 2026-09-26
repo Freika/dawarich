@@ -4,7 +4,6 @@ class AchievementsController < ApplicationController
   ROWS_PER_PAGE = 12
 
   before_action :authenticate_user!
-  before_action :require_feature_enabled
   before_action :load_exploration, only: %i[index show]
 
   def index
@@ -143,10 +142,6 @@ class AchievementsController < ApplicationController
       keys.each { |key| celebrated[key] = Time.current.iso8601 }
       @exploration.update!(state: @exploration.state.merge('celebrated' => celebrated))
     end
-  end
-
-  def require_feature_enabled
-    redirect_to root_path unless Flipper.enabled?(:achievements)
   end
 
   # An explicit `enabled` param sets sharing to that state (idempotent, so a

@@ -4323,6 +4323,7 @@ ca:
       location_coordinates: "Ubicació (%{latitude}, %{longitude})"
       location_data: Dades d'ubicació
       location_point: Punt d'ubicació
+      overlapping_points: "Aquest marcador conté %{count} punts superposats. No es poden separar ampliant el mapa."
       longitude: Longitud
       meters:
         one: "%{count} metre"
