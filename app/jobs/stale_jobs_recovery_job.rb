@@ -8,9 +8,9 @@ class StaleJobsRecoveryJob < ApplicationJob
   IMPORT_TIMEOUT = 6.hours
 
   def perform
+    Imports::ExtractionMonitor.new.call
     recover_stale_exports
     recover_stale_imports
-    Imports::ExtractionMonitor.new.call
   end
 
   private

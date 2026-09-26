@@ -150,6 +150,15 @@ RSpec.describe StaleJobsRecoveryJob do
           .with("event=imports.extractions_stalled count=2 import_ids=#{ids}")
       end
 
+      it 'still reports when the stale-export recovery fails' do
+        metrics.extractions_stalled.set({}, 0)
+        allow(Export).to receive(:processing).and_raise(ActiveRecord::StatementInvalid, 'boom')
+
+        expect { described_class.new.perform }.to raise_error(ActiveRecord::StatementInvalid)
+
+        expect(metrics.extractions_stalled.get).to eq(2)
+      end
+
       it 'drops back to zero once nothing is in flight' do
         described_class.new.perform
         Import.update_all(additional_data_extraction_status: Import.additional_data_extraction_statuses[:completed])
