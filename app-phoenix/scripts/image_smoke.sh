@@ -165,9 +165,10 @@ if [ "${SOAK_MINUTES:-0}" -gt 0 ]; then
     curl -sS -o /dev/null -b "$jar" -c "$jar" --data-urlencode "authenticity_token=$token" \
       --data-urlencode "user[email]=a2-smoke@example.com" --data-urlencode "user[password]=phoenix-a2-smoke-password" \
       http://127.0.0.1:3000/users/sign_in
+    cookie="$(awk -F "\t" "NF == 7 { printf \"%s%s=%s\", s, \$6, \$7; s = \"; \" }" "$jar")"
     i=0
     while [ $i -lt 100 ]; do
-      curl -s -N -m $(($1 * 60)) -b "$jar" -H "Origin: http://127.0.0.1:3000" ws://127.0.0.1:3000/cable -o /dev/null &
+      curl -s -N -m $(($1 * 60)) -H "Cookie: $cookie" -H "Origin: http://127.0.0.1:3000" ws://127.0.0.1:3000/cable -o /dev/null &
       i=$((i + 1))
     done
     end=$(($(date +%s) + $1 * 60))
@@ -175,7 +176,9 @@ if [ "${SOAK_MINUTES:-0}" -gt 0 ]; then
     wait' _ "$SOAK_MINUTES" &
   soak=$!
   sleep 60
-  echo "soak: $(beam ':erlang.system_info(:process_count)') processes, $(beam ':erlang.memory(:total)') bytes with 100 cable connections open"
+  open="$(docker exec a0_app sh -c 'cat /proc/net/tcp /proc/net/tcp6' | awk '$4 == "01" && $2 ~ /:0BB8$/' | wc -l | tr -d ' ')"
+  echo "soak: $(beam ':erlang.system_info(:process_count)') processes, $(beam ':erlang.memory(:total)') bytes with $open connections open on 3000"
+  [ "$open" -ge 100 ] || fail "the soak's cable connections did not stay open"
   wait "$soak"
   sleep 30
   procs1="$(beam ':erlang.system_info(:process_count)')"
