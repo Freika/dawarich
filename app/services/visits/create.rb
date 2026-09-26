@@ -70,7 +70,10 @@ module Visits
       end
 
       if revivable?(@visit)
-        @visit.update!(deleted_at: nil, status: :confirmed)
+        @visit.update!(
+          deleted_at: nil, status: :confirmed, name: params[:name].presence || @visit.place&.name || @visit.name,
+          ended_at: ended_at, duration: ((ended_at - started_at) / 60).to_i
+        )
         @duplicate = true
         return @visit
       end

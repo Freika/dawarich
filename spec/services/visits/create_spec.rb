@@ -43,6 +43,20 @@ RSpec.describe Visits::Create do
         expect(service.visit.status).to eq('confirmed')
       end
 
+      it 'gives a resurrected visit the name and end time of the re-creation' do
+        first = described_class.new(user, valid_params)
+        first.call
+        first.visit.soft_delete!
+
+        recreated = described_class.new(user, valid_params.merge(name: 'Renamed', ended_at: '2023-12-01T11:00:00Z'))
+
+        expect(recreated.call).to be_truthy
+        expect(recreated.visit.id).to eq(first.visit.id)
+        expect(recreated.visit.reload).to have_attributes(
+          name: 'Renamed', ended_at: DateTime.parse('2023-12-01T11:00:00Z'), duration: 60, deleted_at: nil
+        )
+      end
+
       it 'resurrects a declined (hidden but not tombstoned) visit on re-creation' do
         first = described_class.new(user, valid_params)
         first.call
