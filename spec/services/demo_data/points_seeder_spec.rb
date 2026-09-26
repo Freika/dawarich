@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'tempfile'
 
 RSpec.describe DemoData::PointsSeeder do
   let(:user) { create(:user) }
@@ -37,6 +38,32 @@ RSpec.describe DemoData::PointsSeeder do
 
       with_country = Point.where(user_id: user.id).where.not(country_id: nil).count
       expect(with_country).to be > 0
+    end
+
+    it 'assigns points to both matching countries and leaves unmatched points unset' do
+      west = Country.create!(
+        name: 'Demo West', iso_a2: 'XW', iso_a3: 'XWW',
+        geom: 'MULTIPOLYGON(((-151 -31, -149 -31, -149 -29, -151 -29, -151 -31)))'
+      )
+      east = Country.create!(
+        name: 'Demo East', iso_a2: 'XE', iso_a3: 'XEE',
+        geom: 'MULTIPOLYGON(((-121 -31, -119 -31, -119 -29, -121 -29, -121 -31)))'
+      )
+      fixture = {
+        'seed_date' => '2026-05-28T00:00:00Z',
+        'features' => [-150, -120, -90].each_with_index.map do |lon, index|
+          { 'properties' => { 'latitude' => -30, 'longitude' => lon, 'timestamp' => 1_779_926_400 + index } }
+        end
+      }
+
+      Tempfile.create(['demo-points', '.json.gz']) do |file|
+        Zlib::GzipWriter.open(file.path) { |gz| gz.write(Oj.dump(fixture)) }
+        stub_const('DemoData::PointsSeeder::FIXTURE', file.path)
+
+        described_class.new(user, import, anchor).call
+      end
+
+      expect(import.points.order(:timestamp).pluck(:country_id)).to eq([west.id, east.id, nil])
     end
   end
 end
