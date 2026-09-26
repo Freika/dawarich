@@ -21,7 +21,7 @@ db_port="${SP_DB_PORT:-55532}"
 redis_port="${SP_REDIS_PORT:-56479}"
 work="${SP_WORK:-$root/tmp/schema_parity}"
 snapshots="$root/db/release_snapshots"
-rails_env="DATABASE_HOST=127.0.0.1 DATABASE_PORT=$db_port DATABASE_USERNAME=postgres DATABASE_PASSWORD=parity REDIS_URL=redis://127.0.0.1:$redis_port SCHEMA=$work/throwaway_schema.rb RAILS_ENV=development"
+rails_env="SECRET_KEY_BASE=schema-parity-development DATABASE_HOST=127.0.0.1 DATABASE_PORT=$db_port DATABASE_USERNAME=postgres DATABASE_PASSWORD=parity REDIS_URL=redis://127.0.0.1:$redis_port SCHEMA=$work/throwaway_schema.rb RAILS_ENV=development"
 exec_timeout="${SP_EXEC_TIMEOUT:-300}"
 
 exec_timed_out() {

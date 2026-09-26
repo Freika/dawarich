@@ -28,5 +28,8 @@ grep -v -x -F -f "$scratch/defaults" "$scratch/found" > "$scratch/hits"
 [ ! -s "$scratch/hits" ]
 verdict $? "no harness script names sp-db, sp-redis, 55532 or 56479 outside lib.sh's defaults ($(tr '\n' ' ' < "$scratch/hits"))"
 
+(. "$root/scripts/schema_parity/lib.sh" && case " $rails_env " in *" SECRET_KEY_BASE="?*) ;; *) exit 1 ;; esac)
+verdict $? "the harness's Rails env sets SECRET_KEY_BASE, so parallel Rails boots never race on tmp/local_secret.txt"
+
 echo "$failures failed"
 [ "$failures" -eq 0 ]
