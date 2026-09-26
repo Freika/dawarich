@@ -5,6 +5,7 @@ import { ReplayPanel } from "maps_maplibre/managers/replay_panel"
 import { TimelineSegmentHover } from "maps_maplibre/managers/timeline_segment_hover"
 import { ApiClient } from "maps_maplibre/services/api_client"
 import { CleanupHelper } from "maps_maplibre/utils/cleanup_helper"
+import { familyMemberColor } from "maps_maplibre/utils/family_member_color"
 import { featureToPhoto } from "maps_maplibre/utils/feature_to_photo"
 import { cancelAllPreviews } from "maps_maplibre/utils/layer_gate"
 import { loadLastView, saveView } from "maps_maplibre/utils/map_view_store"
@@ -1560,10 +1561,6 @@ export default class extends Controller {
       const familyLayer = this.layerManager.getLayer("family")
       if (familyLayer) {
         if (members.length > 0) {
-          // Assign colors consistent with member markers
-          for (const member of members) {
-            member.color = this.getFamilyMemberColor(member.user_id)
-          }
           familyLayer.loadMemberHistory(members)
         } else {
           familyLayer.clearHistory()
@@ -1622,7 +1619,7 @@ export default class extends Controller {
     container.replaceChildren(
       ...locations.map((location) => {
         const emailInitial = location.email?.charAt(0)?.toUpperCase() || "?"
-        const color = this.getFamilyMemberColor(location.user_id)
+        const color = familyMemberColor(location.user_id)
         const lastSeen = new Date(location.updated_at).toLocaleString(
           document.documentElement.lang || undefined,
           {
@@ -1676,23 +1673,6 @@ export default class extends Controller {
         return row
       }),
     )
-  }
-
-  getFamilyMemberColor(userId) {
-    const colors = [
-      "#3b82f6",
-      "#10b981",
-      "#f59e0b",
-      "#ef4444",
-      "#8b5cf6",
-      "#ec4899",
-    ]
-    // Use user ID to get consistent color
-    const hash = userId
-      .toString()
-      .split("")
-      .reduce((acc, char) => acc + char.charCodeAt(0), 0)
-    return colors[hash % colors.length]
   }
 
   centerOnFamilyMember(event) {
