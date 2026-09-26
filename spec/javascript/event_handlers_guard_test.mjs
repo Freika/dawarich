@@ -152,6 +152,12 @@ globalThis.document ??= {
   removeEventListener: () => {},
   dispatchEvent: () => {},
 }
+globalThis.CustomEvent ??= class {
+  constructor(type, init = {}) {
+    this.type = type
+    this.detail = init.detail
+  }
+}
 
 function loadSegmentsHarness(fetchedFeature, pointTileRange = undefined) {
   const shown = []
