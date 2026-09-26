@@ -2079,7 +2079,7 @@ en:
       upgrade_to_pro: Upgrade to Pro
     month:
       flight_distance: Flight distance
-      from_airtrail_not_counted_in_distance: From AirTrail, not counted in distance
+      from_airtrail_included_in_distance: From AirTrail, included in distance traveled
       monthly_digest: Monthly Digest
       share: Share
       distance_traveled: Distance traveled
@@ -2111,14 +2111,17 @@ en:
       cities_visited: Cities visited
     stat:
       total_distance: Total distance
+      flight_distance: Flight distance
       year_month: "%{year}/%{month}"
     year:
       map: "[Map]"
       days: Days
       distance: Distance
+      flight_distance: Flight distance
     index:
       year_end_digests: Year-End Digests
       total_distance: Total distance
+      flight_distance: Flight distance
       geopoints_tracked: Geopoints tracked
       all_stats_data_above_except_for_total_distance_and_number: All stats data above except for total distance and number of geopoints tracked is being updated daily
       last_update: 'Last update:'
@@ -2132,7 +2135,7 @@ en:
       countries_count_countries_cities_count_cities: "%{countries_count} countries, %{cities_count} cities"
     public_month:
       flight_distance: Flight distance
-      from_airtrail_not_counted_in_distance: From AirTrail, not counted in distance
+      from_airtrail_included_in_distance: From AirTrail, included in distance traveled
       monthly_digest: Monthly Digest
       distance_traveled: Distance traveled
       total_distance_for_this_month: Total distance for this month

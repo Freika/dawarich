@@ -2,6 +2,13 @@
   <%= link_to year, "/stats/#{year}", class: "underline hover:no-underline text-#{header_colors.sample}" %>
   <%= link_to t('.map'), preferred_map_path(year_timespan(year)), class: 'underline hover:no-underline' %>
 </h2>
+<% year_flight_distance = stats.sum(&:flight_distance) %>
+<% if year_flight_distance.positive? %>
+  <p class="text-sm text-info flex items-center gap-1 mt-1">
+    <%= icon 'plane' %>
+    <%= number_with_delimiter year_flight_distance_stat(stats, current_user).round %> <%= current_user.safe_settings.distance_unit %> <%= t('.flight_distance') %>
+  </p>
+<% end %>
 <div class='my-10'>
   <%= column_chart(
     @year_distances[year].map { |month_name, distance_meters|
