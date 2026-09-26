@@ -20,7 +20,6 @@ config :dawarich, Oban,
 config :dawarich, DawarichWeb.Endpoint,
   adapter: Bandit.PhoenixAdapter,
   url: [host: "localhost"],
-  server: false,
   pubsub_server: Dawarich.PubSub,
   render_errors: [formats: [html: DawarichWeb.ErrorHTML], layout: false]
 
