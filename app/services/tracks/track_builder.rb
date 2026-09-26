@@ -115,8 +115,8 @@ module Tracks::TrackBuilder
   def create_track_from_orphan_points(points, tracker_id:, skip_segment_detection:)
     singleton = nil
     track = Point.transaction do
-      orphans = Point.where(user_id: user.id, id: points.map(&:id), track_id: nil)
-                     .order(:id).lock.to_a.sort_by { |point| [point.timestamp, point.id] }
+      orphans = claimable_points.where(user_id: user.id, id: points.map(&:id), track_id: nil)
+                                .order(:id).lock.to_a.sort_by { |point| [point.timestamp, point.id] }
       if orphans.one?
         singleton = orphans.first
         next
@@ -165,7 +165,7 @@ module Tracks::TrackBuilder
     # path/distance were computed from its own point set, and stretching it
     # silently corrupts the track's metadata. Points outside the window stay
     # orphaned (track_id: nil) and get picked up by the next generation pass.
-    Point.where(
+    claimable_points.where(
       id: points.map(&:id),
       track_id: nil,
       timestamp: existing.start_at.to_i..existing.end_at.to_i
@@ -278,6 +278,10 @@ module Tracks::TrackBuilder
   end
 
   private
+
+  def claimable_points
+    Point.all
+  end
 
   def user
     raise NotImplementedError, 'Including class must implement user method'

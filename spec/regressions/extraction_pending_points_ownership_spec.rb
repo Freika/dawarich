@@ -93,6 +93,27 @@ RSpec.describe 'Points waiting for source extraction belong to their own import'
     end
   end
 
+  describe 'an extraction that starts while a chunk is running' do
+    it 'keeps the chunk from claiming points it loaded before the extraction was queued' do
+      live_points = create_points(import: nil, tracker_id: 'phone', offset: 0)
+      pending_points = create_points(import: pending_import, tracker_id: 'takeout', offset: 30)
+      mark_extraction(pending_import, :not_attempted)
+      user.update!(points_count: user.points.count)
+      allow_any_instance_of(Tracks::TimeChunkProcessorJob).to receive(:segment_chunk_points)
+        .and_wrap_original do |original, points|
+          points.load
+          mark_extraction(pending_import, :pending)
+          original.call(points)
+        end
+
+      Tracks::DailyGenerationJob.perform_now
+      run_generation
+
+      expect(track_ids(pending_points)).to all(be_nil)
+      expect(track_ids(live_points)).to all(be_present)
+    end
+  end
+
   describe 'the Cloud large-history backfill' do
     it 'leaves a pending range untouched when a slice reaches it' do
       live_points = create_points(import: nil, tracker_id: 'phone', offset: 0)

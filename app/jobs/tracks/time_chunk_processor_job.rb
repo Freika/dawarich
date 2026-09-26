@@ -123,6 +123,10 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
     end
   end
 
+  def claimable_points
+    chunk_data[:import_id] ? Point.all : Point.not_held_by_extraction
+  end
+
   def update_session_progress(tracks_created)
     session_manager.increment_completed_chunks
     session_manager.increment_tracks_created(tracks_created) if tracks_created.positive?
