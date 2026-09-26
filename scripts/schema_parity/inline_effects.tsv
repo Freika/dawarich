@@ -27,4 +27,5 @@ config/initializers/01_constants.rb	1.13.1
 config/initializers/03_dawarich_settings.rb	1.13.1
 config/initializers/oj.rb	1.13.1
 config/initializers/oj.rb	1.15.0
+config/initializers/oj.rb	1.15.2
 lib/assets/admin1_world.geojson	1.15.2

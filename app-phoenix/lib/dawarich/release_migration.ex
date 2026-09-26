@@ -9,10 +9,6 @@ defmodule Dawarich.ReleaseMigration do
   @callback steps() :: [step()]
   @callback data_versions() :: [String.t()]
 
-  defmodule UnportedEffect do
-    defexception [:message]
-  end
-
   @indexes_sql """
   SELECT i.relname,
          CASE WHEN 0 = ANY (d.indkey::int2[]) THEN NULL ELSE
@@ -199,8 +195,6 @@ defmodule Dawarich.ReleaseMigration do
   end
 
   def job(class, args \\ [], wait_seconds \\ 0), do: {class, args, wait_seconds}
-
-  def unported!(effect), do: raise(UnportedEffect, "#{effect} has no Phoenix port yet")
 
   def self_hosted? do
     System.get_env("SELF_HOSTED", "true")

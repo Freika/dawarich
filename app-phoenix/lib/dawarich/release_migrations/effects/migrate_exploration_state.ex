@@ -90,8 +90,8 @@ defmodule Dawarich.ReleaseMigrations.Effects.MigrateExplorationState do
 
         if new_state != state do
           repo.query!(
-            "UPDATE achievement_progresses SET state = $1, updated_at = NOW() WHERE id = $2",
-            [new_state, id],
+            "UPDATE achievement_progresses SET state = $1::text::jsonb, updated_at = NOW() WHERE id = $2",
+            [json(new_state), id],
             log: false
           )
         end
@@ -101,8 +101,8 @@ defmodule Dawarich.ReleaseMigrations.Effects.MigrateExplorationState do
                do: raise(Ruby.Error, "Validation failed: User must exist")
 
         repo.query!(
-          "INSERT INTO achievement_progresses (user_id, achievement_key, state, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW())",
-          [user_id, @exploration, exploration_state(%{}, earned)],
+          "INSERT INTO achievement_progresses (user_id, achievement_key, state, created_at, updated_at) VALUES ($1, $2, $3::text::jsonb, NOW(), NOW())",
+          [user_id, @exploration, json(exploration_state(%{}, earned))],
           log: false
         )
     end
@@ -166,7 +166,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.MigrateExplorationState do
   defp each_pair(map) when is_map(map), do: map
 
   defp each_pair(value) when is_list(value),
-    do: raise(Ruby.Error, "cannot reproduce Ruby's each over #{Ruby.instance(value)}")
+    do: raise(Ruby.Unreproducible, "cannot reproduce Ruby's each over #{Ruby.instance(value)}")
 
   defp each_pair(value), do: Ruby.no_method!("each", value)
 
@@ -182,7 +182,9 @@ defmodule Dawarich.ReleaseMigrations.Effects.MigrateExplorationState do
   defp earlier(a, b), do: cannot_compare!(a, b)
 
   defp cannot_compare!(a, b) do
-    raise Ruby.Error,
+    raise Ruby.Unreproducible,
           "cannot reproduce Ruby's comparison of #{Ruby.instance(a)} with #{Ruby.instance(b)}"
   end
+
+  defp json(state), do: IO.iodata_to_binary(Ruby.json(state))
 end

@@ -3,8 +3,6 @@ defmodule Dawarich.ReleaseMigrationTest do
 
   import Dawarich.ReleaseMigration
 
-  alias Dawarich.ReleaseMigration.UnportedEffect
-
   test "the connection runs in UTC like a Rails session" do
     assert %{rows: [["UTC"]]} = ScratchRepo.query!("SHOW timezone")
   end
@@ -400,12 +398,6 @@ defmodule Dawarich.ReleaseMigrationTest do
         ScratchRepo.query!("SET LOCAL lock_timeout = '1s'")
         require_zero_lock_timeout!(ScratchRepo)
       end)
-    end
-  end
-
-  test "unported! stops the step with the effect's name" do
-    assert_raise UnportedEffect, "Achievements::LoadRegions has no Phoenix port yet", fn ->
-      unported!("Achievements::LoadRegions")
     end
   end
 
