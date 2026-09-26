@@ -4,8 +4,8 @@ module Tracks
   # Reprocesses tracks to update transportation mode segments.
   # Can reprocess tracks for a specific import or individual tracks.
   #
-  # Manually corrected segments are preserved: the Detector subtracts their
-  # time ranges from the auto-classified output.
+  # Corrections and source segments are preserved: the Detector subtracts their
+  # time ranges from the inferred output.
   class Reprocessor
     def initialize(import: nil, track: nil)
       @import = import
@@ -56,8 +56,7 @@ module Tracks
 
     def reprocess_track!(track, fallback: true)
       Track.transaction do
-        preserved = track.track_segments.manually_corrected.to_a
-        track.track_segments.auto_classified.delete_all
+        preserved = track.track_segments.clear_inference
 
         detector = TransportationModes::Detector.new(
           track,
