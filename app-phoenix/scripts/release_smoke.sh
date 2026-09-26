@@ -12,6 +12,28 @@ rel=_build/prod/rel/dawarich/bin/dawarich
 work="$(mktemp -d)"
 export DAWARICH_COOKIE_FILE="$work/cookie"
 export DATABASE_NAME="${PHOENIX_TEST_DATABASE:-dawarich_phoenix_test}"
+
+status3_db="${DATABASE_NAME}_a0c_status3"
+PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" \
+  -U "${DATABASE_USERNAME:-postgres}" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $status3_db" >/dev/null
+PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" \
+  -U "${DATABASE_USERNAME:-postgres}" -d postgres -v ON_ERROR_STOP=1 -c "CREATE DATABASE $status3_db" >/dev/null
+set +e
+DATABASE_NAME="$status3_db" "$rel" eval 'Dawarich.Release.halt_unless_ready()' >"$work/status3.out" 2>&1
+status3=$?
+set -e
+PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" \
+  -U "${DATABASE_USERNAME:-postgres}" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $status3_db" >/dev/null
+[ "$status3" -eq 3 ] \
+  || { echo "halt_unless_ready did not exit 3 for a database missing the phoenix schema (got $status3)"; cat "$work/status3.out" >&2; exit 1; }
+
+set +e
+DATABASE_PORT=1 "$rel" eval 'Dawarich.Release.halt_unless_ready()' >"$work/status5.out" 2>&1
+status5=$?
+set -e
+[ "$status5" -eq 5 ] \
+  || { echo "halt_unless_ready did not exit 5 without a database connection (got $status5)"; cat "$work/status5.out" >&2; exit 1; }
+
 DAWARICH_RAILS_ARGS="$(printf '%s\037' sh -c 'printf "M\303\274nchen\n"; echo "args:[$1][$2][$3] $#"; echo "cookie:${RELEASE_COOKIE:-unset}"; while [ ! -f "$0" ]; do sleep 0.1; done; exit 7' "$work/go" "" x "")"
 export DAWARICH_RAILS_ARGS
 
@@ -49,4 +71,62 @@ set -e
 grep -qF "$(printf 'M\303\274nchen')" "$work/out" || { echo "non-ASCII output was re-encoded"; exit 1; }
 grep -qxF 'args:[][x][] 3' "$work/out" || { echo "empty arguments were dropped"; exit 1; }
 grep -qxF 'cookie:unset' "$work/out" || { echo "RELEASE_COOKIE reached the Rails server"; exit 1; }
+
+env_sh="$(ls _build/prod/rel/dawarich/releases/*/env.sh)"
+mkdir -p "$work/stubs" "$work/owned" "$work/locked"
+printf '#!/bin/sh\necho 0\n' >"$work/stubs/id"
+printf '#!/bin/sh\necho "$*" >"%s/chown.args"\n' "$work" >"$work/stubs/chown"
+chmod +x "$work/stubs/id" "$work/stubs/chown"
+PATH="$work/stubs:$PATH" DAWARICH_COOKIE_FILE="$work/owned/cookie" sh "$env_sh"
+[ "$(cat "$work/chown.args" 2>/dev/null)" = "-h $(ls -nd "$work/owned" | awk '{print $3":"$4}') $work/owned/cookie" ] \
+  || { echo "a cookie created as root was not handed to its directory's owner"; exit 1; }
+
+printf x >"$work/locked/cookie"
+chmod 000 "$work/locked/cookie"
+set +e
+DAWARICH_COOKIE_FILE="$work/locked/cookie" sh "$env_sh" 2>/dev/null
+locked=$?
+set -e
+chmod 600 "$work/locked/cookie"
+[ "$locked" -eq 4 ] || { echo "an unreadable cookie exited $locked, not 4"; exit 1; }
+
+rm -f "$work/chown.args"
+ln -s "$work/locked/target" "$work/owned/linked"
+set +e
+PATH="$work/stubs:$PATH" DAWARICH_COOKIE_FILE="$work/owned/linked" sh "$env_sh" 2>/dev/null
+linked=$?
+set -e
+[ "$linked" -eq 4 ] && [ ! -e "$work/locked/target" ] && [ ! -e "$work/chown.args" ] \
+  || { echo "a symlinked cookie path was followed (exit $linked)"; exit 1; }
+
+mkdir -p "$work/racestubs" "$work/race"
+cat >"$work/racestubs/rm" <<RMEOF
+#!/bin/sh
+/bin/rm "\$@"
+for a; do
+  case "\$a" in
+    -*) continue ;;
+  esac
+  printf '%s' racer > "\$a"
+done
+RMEOF
+chmod +x "$work/racestubs/rm"
+set +e
+PATH="$work/racestubs:$PATH" DAWARICH_COOKIE_FILE="$work/race/cookie" sh -c 'set -e; . "$1"' sh "$env_sh"
+raced=$?
+set -e
+[ "$raced" -eq 0 ] && [ "$(cat "$work/race/cookie" 2>/dev/null)" = racer ] \
+  || { echo "a cookie recreated between rm and the write was overwritten or aborted the script (exit $raced)"; exit 1; }
+
+mkdir -p "$work/rootstubs" "$work/rootlike"
+printf '#!/bin/sh\necho 0\n' >"$work/rootstubs/id"
+printf '#!/bin/sh\nexit 1\n' >"$work/rootstubs/chown"
+chmod +x "$work/rootstubs/id" "$work/rootstubs/chown"
+set +e
+PATH="$work/rootstubs:$PATH" DAWARICH_COOKIE_FILE="$work/rootlike/cookie" sh -c 'set -e; . "$1"' sh "$env_sh"
+chownfail=$?
+set -e
+[ "$chownfail" -eq 0 ] \
+  || { echo "a failing chown aborted env.sh instead of falling through to the cookie read (exit $chownfail)"; exit 1; }
+
 echo "release smoke: ok"

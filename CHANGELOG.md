@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Self-hosted instances no longer rate-limit sign-in, sign-up, 2FA challenges and the other request limits; the magic-phrase unlock of shared links and the password check when linking a sign-in provider keep their limits.
 - Exploration achievements and printed poster ordering are available to everyone without feature flags. Existing location history is checked in the background without sending old unlock notifications. Printed poster ordering remains unavailable when `PRINT_ORDER_URL` is blank.
 - Clicking a place on the map opens its details panel instead of a popup. The panel's Edit button changes the place's name and tags.
+- The `phoenix` and `oban` schemas no longer need the database-level `CREATE` privilege once they exist: with a database user that lacks it, have an administrator run `CREATE SCHEMA phoenix AUTHORIZATION <user>` and `CREATE SCHEMA oban AUTHORIZATION <user>` once.
+- The image also ships `release.sh`, `cloud-entrypoint.sh` and `cloud-sidekiq-entrypoint.sh` for platforms that run migrations as a separate release step. With them the web container neither migrates nor seeds, every process drops from root to uid 32767 (or `PUID`/`PGID`), and the Elixir supervisor starts only once `release.sh` has installed its schemas. `docker-compose.yml` setups are not affected.
 
 ### Fixed
 

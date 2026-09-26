@@ -65,6 +65,7 @@ services:
 
   worker:
     <<: *app
+    entrypoint: ["cloud-sidekiq-entrypoint.sh"]
     command: ["sidekiq", "-C", "config/sidekiq.yml"]
     expose:
       - "9394"
@@ -83,5 +84,5 @@ services:
   release:
     <<: *app
     profiles: ["release"]
-    command: ["rails", "db:migrate"]
+    command: ["release.sh"]
     restart: "no"
