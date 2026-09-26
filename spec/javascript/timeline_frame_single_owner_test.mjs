@@ -411,3 +411,25 @@ test("a month change while the timeline's day load is pending keeps the timeline
 
   assert.equal(page.frame.inFlight, timelineDayUrl)
 })
+
+test("a timeline disconnected while its day load is pending no longer blocks the map's feed load", async (t) => {
+  const page = buildPage(t, { panelFirst: true, mapRange: SEPTEMBER })
+  page.timeline.navigateToDay(TRACK_DAY)
+  await page.finishLoadingMapData()
+
+  page.timeline.disconnect()
+  page.openTimelineTab()
+
+  assert.equal(page.frame.inFlight, mapRangeUrl(page.map))
+})
+
+test("a timeline connecting to a frame restored with a pending mark does not block the map's feed load", (t) => {
+  const page = buildPage(t, { panelFirst: true, mapRange: SEPTEMBER })
+  page.timeline.disconnect()
+  page.frame.setAttribute("data-navigation-pending", "")
+
+  page.timeline.connect()
+  page.openTimelineTab()
+
+  assert.equal(page.frame.inFlight, mapRangeUrl(page.map))
+})
