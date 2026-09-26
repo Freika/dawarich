@@ -15,18 +15,28 @@ code="$(code_key)" || exit 2
 references() {
   find "$work/ecto/ref" -name '*.status' 2>/dev/null | LC_ALL=C sort
 }
-references > "$out/refs.before"
-started="$(date -u +%s)"
-{
-  timeout -k 60 160m "$prove" --shard "$shard" --jobs 2 all 2>&1
-  echo $? > "$out/proof.exit"
-} | tee "$out/proof.out"
-finished="$(date -u +%s)"
-references > "$out/refs.after"
-status="$(cat "$out/proof.exit")"
-reused="$(grep -c -- "-$code\.status\$" "$out/refs.before")"
-computed="$(comm -13 "$out/refs.before" "$out/refs.after" | wc -l | tr -d ' ')"
-printf 'exit=%s\nstarted=%s\nfinished=%s\nrefs_reused=%s\nrefs_computed=%s\n' \
-  "$status" "$started" "$finished" "$reused" "$computed" > "$out/proof.env"
-rm -f "$out/refs.before" "$out/refs.after" "$out/proof.exit"
+checks_of() {
+  sed 's|.*/||; s/\.[0-9a-f]\{40\}-[0-9a-f]\{40\}\.status$//' | LC_ALL=C sort -u
+}
+references > "$tmpd/refs.before"
+echo "started=$(date -u +%s)" > "$out/proof.env"
+timeout -k 60 150m "$prove" --shard "$shard" --jobs 2 all > "$out/proof.out" 2>&1 &
+pid=$!
+trap 'kill -TERM "$pid" 2>/dev/null' INT TERM
+tail -f --pid="$pid" "$out/proof.out" &
+wait "$pid"
+status=$?
+while kill -0 "$pid" 2>/dev/null; do
+  wait "$pid"
+  status=$?
+done
+wait
+references > "$tmpd/refs.after"
+tr ':+@~' '____' < "$out/list.txt" | LC_ALL=C sort -u > "$tmpd/listed"
+grep -e "-$code\.status\$" "$tmpd/refs.before" | checks_of > "$tmpd/valid"
+LC_ALL=C comm -13 "$tmpd/refs.before" "$tmpd/refs.after" > "$tmpd/new"
+checks_of < "$tmpd/new" > "$tmpd/recomputed"
+LC_ALL=C comm -12 "$tmpd/valid" "$tmpd/listed" | LC_ALL=C comm -23 - "$tmpd/recomputed" > "$tmpd/reused"
+printf 'exit=%s\nfinished=%s\nrefs_reused=%s\nrefs_computed=%s\n' "$status" "$(date -u +%s)" \
+  "$(wc -l < "$tmpd/reused" | tr -d ' ')" "$(wc -l < "$tmpd/new" | tr -d ' ')" >> "$out/proof.env"
 exit "$status"

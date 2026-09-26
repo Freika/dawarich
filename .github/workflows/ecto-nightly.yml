@@ -71,7 +71,9 @@ jobs:
         id: key
         run: |
           inputs="$(scripts/schema_parity/ci/ref_cache_key.sh)"
-          echo "key=ecto-ref-nightly-v$REF_CACHE_FORMAT-$RUNNER_OS-pg$SP_PG_MAJOR-shard$SHARD-of-$SHARDS-$inputs" >> "$GITHUB_OUTPUT"
+          week="$(date -u +%G-W%V)"
+          prefix="ecto-ref-nightly-v$REF_CACHE_FORMAT-$RUNNER_OS-${ImageOS:-no-image}-$week"
+          echo "key=$prefix-pg$SP_PG_MAJOR-shard$SHARD-of-$SHARDS-$inputs" >> "$GITHUB_OUTPUT"
 
       - name: Restore the Rails references
         id: restore
@@ -103,7 +105,7 @@ jobs:
 
       - name: Prove shard ${{ matrix.shard }} of ${{ env.SHARDS }} on PostgreSQL ${{ matrix.pg }}
         id: prove
-        run: scripts/schema_parity/ci/prove_shard.sh
+        run: exec scripts/schema_parity/ci/prove_shard.sh
 
       - name: Compare the summary with the shard's --list
         id: verify
@@ -169,12 +171,16 @@ jobs:
           gh api --paginate "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/artifacts" \
             --jq '.artifacts[] | [.name, (.id | tostring)] | @tsv' > "$RUNNER_TEMP/artifacts.tsv"
 
+      - name: List every check
+        if: always()
+        run: ruby scripts/schema_parity/list_checks.rb . > "$RUNNER_TEMP/checks.txt"
+
       - name: Write the report
         if: always()
         run: |
           status=0
           ruby scripts/schema_parity/ci/nightly_report.rb report artifacts \
-            "$RUNNER_TEMP/jobs.tsv" "$RUNNER_TEMP/artifacts.tsv" > nightly-report.md || status=$?
+            "$RUNNER_TEMP/jobs.tsv" "$RUNNER_TEMP/artifacts.tsv" "$RUNNER_TEMP/checks.txt" > nightly-report.md || status=$?
           cat nightly-report.md >> "$GITHUB_STEP_SUMMARY"
           cat nightly-report.md
           exit "$status"

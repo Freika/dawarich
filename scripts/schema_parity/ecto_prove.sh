@@ -47,6 +47,9 @@ abort_run() {
 
 terminated() {
   trap '' TERM
+  [ "$phase" != "while running the checks" ] || awk '{ file = FILENAME; sub(/.*\//, "", file) }
+    file ~ /^summary\./ { lines[$1] = lines[$1] $0 "\n"; next }
+    ($0 in lines) { printf "%s", lines[$0] }' "$lanes"/summary.* "$lanes/order" >> "$summary" 2>/dev/null
   unfinished="$(awk '$1 == "==" && $2 == "start" { s[$4] = 1 } $1 == "==" && $2 == "end" { delete s[$4] }
     END { for (c in s) print c }' "$lanes"/log.* 2>/dev/null | LC_ALL=C sort | paste -s -d ' ' -)"
   echo "ABORTED terminated $phase${unfinished:+ (unfinished: $unfinished)}" >> "$summary"

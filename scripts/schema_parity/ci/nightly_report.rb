@@ -3,7 +3,7 @@
 ROOT = File.expand_path('../../..', __dir__)
 MISSING_NAMED = 10
 
-Shard = Struct.new(:problems, :listed, :ran, :unported, :elapsed, :reused, :computed, keyword_init: true)
+Shard = Struct.new(:problems, :checks, :ran, :unported, :elapsed, :reused, :computed, keyword_init: true)
 
 def declared_outcomes
   File.readlines(File.join(ROOT, 'scripts/schema_parity/ecto_expectations.tsv'), chomp: true).to_h do |line|
@@ -23,21 +23,27 @@ def expected_status(check, declared)
   unported ? "ok (unported@#{unported})" : declared.fetch(check, 'ok')
 end
 
-def locate(dir, pattern)
-  Dir.glob(File.join(dir, '**', pattern)).reject { _1.include?('/ref/') }.min
+def matches(dir, pattern)
+  Dir.glob(File.join(dir, '**', pattern)).reject { _1.include?('/ref/') }.sort
+end
+
+def only(found, pattern, problems)
+  problems << "#{found.size} files match #{pattern}: #{found.map { File.basename(_1) }.join(', ')}" if found.size > 1
+  found.first if found.size == 1
+end
+
+def sample(items)
+  shown = items.first(MISSING_NAMED).join(', ')
+  items.size > MISSING_NAMED ? "#{shown} and #{items.size - MISSING_NAMED} more" : shown
 end
 
 def lines_of(path)
   path && File.file?(path) ? File.read(path, encoding: 'UTF-8').scrub.lines(chomp: true).reject(&:empty?) : []
 end
 
-def proof_record(dir)
-  path = locate(dir, 'proof.env')
-  path && lines_of(path).to_h { _1.split('=', 2) }
-end
-
 def harness_problem(proof)
   return 'no proof record: the proof step never ran' unless proof
+  return 'the proof step stopped before the harness exited (nightly/proof.env has no exit)' unless proof.key?('exit')
   return if proof['exit'] == '0'
   return 'the harness timed out (GNU timeout, exit 124)' if proof['exit'] == '124'
 
@@ -67,13 +73,16 @@ def missing_problems(missing, listed, declared, detailed)
 end
 
 def evaluate(dir, declared)
-  proof = proof_record(dir)
-  listed = lines_of(locate(dir, 'list.txt'))
-  summary = locate(dir, 'summary*.txt')
+  problems = []
+  proof_path = only(matches(dir, 'proof.env'), 'proof.env', problems)
+  proof = proof_path && lines_of(proof_path).to_h { _1.split('=', 2) }
+  listed = lines_of(only(matches(dir, 'list.txt'), 'list.txt', problems))
+  summaries = matches(dir, 'summary*.txt')
+  summary = only(summaries, 'summary*.txt', problems)
   aborted, results = lines_of(summary).partition { _1.start_with?('ABORTED') }
-  problems = [harness_problem(proof)].compact
+  problems << harness_problem(proof) if harness_problem(proof)
   problems << 'no --list selection' if listed.empty?
-  problems << 'no summary file' unless summary
+  problems << 'no summary file' if summaries.empty?
   problems.concat(aborted)
   checked, missing = line_problems(listed, results, declared)
   problems.concat(checked)
@@ -81,7 +90,7 @@ def evaluate(dir, declared)
   seen = results.map { _1.split(' ', 2).first }
   problems << 'the summary is not in --list order' if problems.empty? && seen != listed
   Shard.new(
-    problems: problems, listed: listed.size, ran: (seen & listed).size,
+    problems: problems, checks: listed, ran: (seen & listed).size,
     unported: results.grep(/ ok \(unported@/).map { _1.split(' ', 2).first },
     elapsed: proof && elapsed(proof), reused: (proof['refs_reused'] if proof && proof['exit'] == '0'),
     computed: proof&.fetch('refs_computed', nil)
@@ -111,26 +120,52 @@ end
 
 def shard_row(name, dir, job, artifact_id, declared)
   pg, number = name.match(/\Apg(\d+)-shard(\d+)\z/)&.captures || [name, '?']
-  shard = Dir.exist?(dir) ? evaluate(dir, declared) : Shard.new(problems: [], listed: 0, ran: 0, unported: [])
+  shard = Dir.exist?(dir) ? evaluate(dir, declared) : Shard.new(problems: [], checks: [], ran: 0, unported: [])
   problems = [job_problem(job)].compact
   problems << 'no artifact: the job was cancelled, timed out or failed before its upload' unless Dir.exist?(dir)
   problems.concat(shard.problems)
   link = artifact_id ? "[#{name}](#{ENV.fetch('RUN_URL')}/artifacts/#{artifact_id})" : 'none'
-  cells = [pg, number, job&.last || 'none', "#{shard.ran} / #{shard.listed}", shard.elapsed || '-',
+  cells = [pg, number, job&.last || 'none', "#{shard.ran} / #{shard.checks.size}", shard.elapsed || '-',
            "#{shard.reused || '-'} / #{shard.computed || '-'}", problems.size, shard.unported.size, link]
-  ["| #{cells.join(' | ')} |", problems.map { "#{name}: #{_1}" }, shard.unported.map { "#{name}: #{_1}" }]
+  ["| #{cells.join(' | ')} |", problems.map { "#{name}: #{_1}" }, shard.unported.map { "#{name}: #{_1}" }, shard.checks]
+end
+
+def coverage_problems(legs, lists, full)
+  return ['no full check list (scripts/schema_parity/list_checks.rb failed or was not run)'] if full.empty?
+
+  legs.group_by { _1[/\Apg(\d+)-/, 1] || _1 }.flat_map do |major, names|
+    owners = Hash.new { |hash, check| hash[check] = [] }
+    names.each { |name| lists.fetch(name).each { owners[_1] << name } }
+    uncovered = full - owners.keys
+    shared = owners.select { |_, shards| shards.size > 1 }.map { |check, shards| "#{check} (#{shards.join(', ')})" }
+    unknown = owners.keys - full
+    problems = []
+    problems << "#{uncovered.size} of #{full.size} checks are in no shard: #{sample(uncovered)}" if uncovered.any?
+    problems << "#{count(shared, 'check is', 'checks are')} in more than one shard: #{sample(shared)}" if shared.any?
+    if unknown.any?
+      problems << "#{count(unknown, 'shard check is', 'shard checks are')} not in the full check list: " \
+                  "#{sample(unknown)}"
+    end
+    problems.map { "pg#{major}: #{_1}" }
+  end
+end
+
+def count(items, one, many)
+  "#{items.size} #{items.size == 1 ? one : many}"
 end
 
 def section(title, items)
   items.empty? ? [] : ['', title, '', *items.map { |item| "- #{item}" }]
 end
 
-def report(artifacts, jobs_path, artifact_ids_path)
+def report(artifacts, jobs_path, artifact_ids_path, checks_path)
   declared = declared_outcomes
   jobs = table_of(jobs_path)
   ids = table_of(artifact_ids_path)
-  rows = ENV.fetch('LEGS').split.map { shard_row(_1, File.join(artifacts, _1), jobs[_1], ids[_1]&.first, declared) }
+  legs = ENV.fetch('LEGS').split
+  rows = legs.map { shard_row(_1, File.join(artifacts, _1), jobs[_1], ids[_1]&.first, declared) }
   failures = rows.flat_map { _1[1] }
+  failures.concat(coverage_problems(legs, legs.zip(rows.map(&:last)).to_h, lines_of(checks_path)))
   failures << "matrix result: #{ENV.fetch('PROVE_RESULT')}" unless ENV.fetch('PROVE_RESULT') == 'success'
   unported = rows.flat_map { _1[2] }
   puts '## Ecto nightly matrix', '', failures.empty? ? '**Pass.**' : "**Fail: #{failures.size} problems.**", ''
@@ -144,7 +179,7 @@ end
 def leg(dir)
   shard = evaluate(dir, declared_outcomes)
   shard.problems.each { puts "problem: #{_1}" }
-  puts "#{shard.ran} of #{shard.listed} checks, #{shard.unported.size} unported, references " \
+  puts "#{shard.ran} of #{shard.checks.size} checks, #{shard.unported.size} unported, references " \
        "#{shard.reused || '-'} reused / #{shard.computed || '-'} computed, #{shard.problems.size} problems"
   shard.problems.empty?
 end
@@ -152,9 +187,9 @@ end
 begin
   passed =
     case ARGV[0]
-    when 'report' then report(*ARGV[1, 3])
+    when 'report' then report(*ARGV[1, 4])
     when 'leg' then leg(ARGV.fetch(1))
-    else abort 'usage: nightly_report.rb report <artifacts> <jobs.tsv> <artifacts.tsv> | leg <work dir>'
+    else abort 'usage: nightly_report.rb report <artifacts> <jobs.tsv> <artifacts.tsv> <checks.txt> | leg <work dir>'
     end
   exit(passed ? 0 : 1)
 rescue StandardError => e

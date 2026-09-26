@@ -39,7 +39,11 @@ case "\$*" in
 esac
 if [ -n "\${FAKE_HANG_ON:-}" ]; then
   case "\$*" in
-    *"\$FAKE_HANG_ON"*) echo \$\$ >> "$scratch/hang.pids"; exec sleep 60 ;;
+    *"\$FAKE_HANG_ON"*)
+      seen=\$(cat "$scratch/hang.count" 2>/dev/null || echo 0)
+      echo \$((seen + 1)) > "$scratch/hang.count"
+      [ "\$seen" -lt "\${FAKE_HANG_SKIP:-0}" ] || { echo \$\$ >> "$scratch/hang.pids"; exec sleep 60; }
+      ;;
   esac
 fi
 exit 1
@@ -67,7 +71,7 @@ harness() {
 
 fresh_case() {
   [ ! -s "$scratch/hang.pids" ] || kill $(cat "$scratch/hang.pids") 2>/dev/null
-  rm -rf "$work" "$scratch/hang.pids" "$scratch/docker.log" "$scratch/pid"
+  rm -rf "$work" "$scratch/hang.pids" "$scratch/hang.count" "$scratch/docker.log" "$scratch/pid"
 }
 
 launch() {
@@ -149,6 +153,20 @@ verdict $? "it exits 2 naming only the started check (exit $status: $(summary))"
 finish $children
 [ "$(grep -cF "$template_query" "$scratch/docker.log")" = 1 ]
 verdict $? "the lane started no further check ($(grep -cF "$template_query" "$scratch/docker.log") template lookups)"
+
+fresh_case
+launch "$scratch/bin" env FAKE_HANG_ON="$template_query" FAKE_HANG_SKIP=1 "$gnu_timeout" -k 30 600 $shell "$prove" \
+  --jobs 1 fresh upgrade:0.37.2
+wait_until 120 hung
+verdict $? "the second check reached its first docker exec after the first one failed"
+kill -TERM "$(cat "$scratch/pid")"
+wait "$launched"
+status=$?
+expected="$(printf '%s\n' "fresh FAIL error (see ${work#"$root/"}/ecto/prove.log)" \
+  'ABORTED terminated while running the checks (unfinished: upgrade:0.37.2)')"
+[ "$status" -eq 2 ] && [ "$(summary)" = "$expected" ]
+verdict $? "a FAIL that finished before the TERM stays in the summary (exit $status: $(summary | tr '\n' '|'))"
+finish $(cat "$scratch/hang.pids")
 
 fresh_case
 harness "$scratch/hangbin" "$gnu_timeout" -k 30 8 $shell "$prove" upgrade:0.37.2 > "$scratch/out" 2>&1

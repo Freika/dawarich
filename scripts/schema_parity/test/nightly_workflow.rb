@@ -76,8 +76,8 @@ check('the servers start and are checked before the preflight, which runs before
     index.call('Check the server') < index.call('Check the matrix inventory') &&
     index.call('Check the matrix inventory') < index.call('Prove shard')
 end
-check('the proof runs the shard wrapper and the summary is compared even when it fails') do
-  step.call('Prove shard')['run'].strip == 'scripts/schema_parity/ci/prove_shard.sh' &&
+check('the proof step becomes the shard wrapper, so a cancel reaches it, and the summary is compared anyway') do
+  step.call('Prove shard')['run'].strip == 'exec scripts/schema_parity/ci/prove_shard.sh' &&
     step.call('Compare the summary')['if'] == 'always()'
 end
 check('the reference cache holds only tmp/schema_parity/ecto/ref under one exact key per major and shard') do
@@ -88,6 +88,10 @@ check('the reference cache holds only tmp/schema_parity/ecto/ref under one exact
   [restore, save].all? { _1['with'] == cache } &&
     key.include?('pg$SP_PG_MAJOR-shard$SHARD-of-$SHARDS') && key.include?('v$REF_CACHE_FORMAT') &&
     !text.include?('restore-keys')
+end
+check('the reference cache key expires with the runner image and the ISO week') do
+  key = step.call('Key the Rails reference cache')['run']
+  key.include?('${ImageOS') && key.include?('date -u +%G-W%V') && key.include?('$week')
 end
 check('the references are saved only after a green shard and never over an existing entry') do
   step.call('Save the Rails references')['if'] ==
@@ -103,6 +107,14 @@ check('the report runs after every shard, whatever happened, with read-only acce
   report['needs'] == 'prove' && report['if'] == 'always()' &&
     report['permissions'] == { 'actions' => 'read', 'contents' => 'read' } &&
     report.dig('env', 'PROVE_RESULT') == '${{ needs.prove.result }}'
+end
+check('the report compares the shards against the full check list') do
+  steps = report['steps']
+  listing = steps.index { _1['name'] == 'List every check' }
+  writing = steps.index { _1['name'] == 'Write the report' }
+  listing && writing && listing < writing &&
+    steps[listing]['run'].include?('ruby scripts/schema_parity/list_checks.rb . > "$RUNNER_TEMP/checks.txt"') &&
+    steps[writing]['run'].include?('"$RUNNER_TEMP/checks.txt"')
 end
 check('every report step after the download runs even when the download fails') do
   report['steps'].drop_while { !_1['name'].start_with?('Download') }.drop(1).all? { _1['if'] == 'always()' }
