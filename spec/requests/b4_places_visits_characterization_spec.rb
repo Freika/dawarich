@@ -53,7 +53,7 @@ RSpec.describe 'B4 places and visits characterization', type: :request do
       create(:visit, place:, user:, name: 'Active visit', status: 'confirmed', area: nil)
       create(:visit, place:, user:, name: 'Deleted visit', status: 'confirmed', deleted_at: 1.day.ago, area: nil)
 
-      get place_path(place)
+      get place_path(place), headers: { 'Turbo-Frame' => 'place-drawer' }
 
       expect(response).to have_http_status(:ok)
       expect(response.body).to include('Active visit')

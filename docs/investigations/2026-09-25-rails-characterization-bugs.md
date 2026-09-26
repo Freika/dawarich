@@ -1,6 +1,6 @@
 # Rails defects found during Phoenix characterization and C2
 
-Date: 2026-09-25. Base: local `dev` at `f73605cb9`. Each fix is on its own local branch; none has been pushed or merged.
+Date: 2026-09-25. Updated: 2026-09-26. Initial base: local `dev` at `f73605cb9`. The places fix is based on `feat/phoenix-port` and remains local to `fix/places-direct-open` pending integration.
 
 | Defect | Cause | Rails repair |
 |---|---|---|
@@ -10,6 +10,13 @@ Date: 2026-09-25. Base: local `dev` at `f73605cb9`. Each fix is on its own local
 | Track-split defaults disagree | The `users.settings` column still defaults to 1000 m and 60 min while SafeSettings and the map panel use 500 m and 30 min. | A new migration changes the column default for new users; existing saved settings remain untouched. |
 | Map “Reset to defaults” can lose its save and retain miles | The controller reloads before the asynchronous save finishes, and the reset payload lacks `distance_unit`. | Queue the reset after earlier saves, await it before reload, and explicitly reset distance and nested map filters. |
 | Manual image build publishes `latest` | `workflow_dispatch` has no prerelease flag and takes the stable-release tag branch. | Add `latest` only for release events. |
+| Direct `/places/:id` opens a bare fragment and an HTML Notes save fails | The route always renders a Turbo-frame body without a map host; `PlacesController#update` handles only Turbo Stream. The map has no place deep link or detail drawer host. | On `fix/places-direct-open`, redirect direct GET and HTML PATCH to `/map/v2?place_id=<id>`, keep `Turbo-Frame: place-drawer` GET and Turbo Stream PATCH, and make the map host the drawer at the place coordinates. A place marker opens the same drawer. Scope the deep link to the current user's places. |
+
+## Place deep-link contract
+
+`/places/:id` with `Turbo-Frame: place-drawer` remains the drawer fragment. A normal browser GET redirects to `/map/v2?place_id=<id>`; the map renders a `place-drawer` Turbo frame pointing at that fragment, centers on the place, and opens the places layer for that session. An HTML PATCH redirects there after success or validation failure, so a direct Notes submission cannot produce `UnknownFormat`. Place ownership is checked before either redirect or map rendering. The drawer's Notes field uses a distinct element ID because the map's place creation modal also contains a `place[note]` field.
+
+The drawer's Edit button opens the map's place editor, which changes the name, tags and note; it replaces the popup a place marker used to show. A Turbo Stream PATCH, from Notes or from the editor, updates the contents of the `place-drawer` frame instead of replacing the frame, so Close and later marker clicks keep working after a save. The drawer's Delete button sends `DELETE /places/:id` from the frame (it used to post to `/places.<id>`, which has no route); the frame request gets a Turbo Stream flash instead of the places-index redirect, and on success the drawer closes and the place's marker is removed from the places layer. The map controller exposes the deep-linked place as `@drawer_place`, not `@place`, because the creation modal's `form_with scope: :place` would otherwise prefill its fields with that place.
 
 ## Ecto port consequence
 
