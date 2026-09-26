@@ -55,7 +55,12 @@ dexec_for() {
   perl -e 'my $limit = shift; my $pid = fork() // die "fork: $!"; if (!$pid) { exec(@ARGV) or die "exec: $!" }
     local $SIG{ALRM} = sub { kill "TERM", $pid; sleep 5; kill "KILL", $pid; exit 124 }; alarm $limit;
     waitpid($pid, 0); exit($? & 127 ? 128 + ($? & 127) : $? >> 8)' "$((dexec_limit + 10))" docker exec "$@" || dexec_status=$?
-  [ "$dexec_status" -ne 124 ] || exec_timed_out "docker exec $* (after ${dexec_limit}s)"
+  [ "$dexec_status" -ne 124 ] || {
+    docker exec "$db_container" timeout 20 psql -U postgres -qAtc "SELECT 'activity', pid, datname, state, wait_event_type,
+      wait_event, pg_blocking_pids(pid), now() - query_start, left(query, 160) FROM pg_stat_activity
+      WHERE datname IS NOT NULL AND pid <> pg_backend_pid()" >&2 || true
+    exec_timed_out "docker exec $* (after ${dexec_limit}s)"
+  }
   return "$dexec_status"
 }
 
