@@ -1,4 +1,6 @@
 app-phoenix/priv/admin1_world.geojson	1.15.2
+app/jobs/application_job.rb	1.14.0
+app/jobs/application_job.rb	1.7.6
 app/jobs/data_migrations/backfill_places_user_id_job.rb	1.14.0
 app/jobs/data_migrations/dedupe_tracks_for_unique_index_job.rb	1.7.6
 app/models/achievements/progress.rb	1.15.2
