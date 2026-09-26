@@ -77,9 +77,11 @@ duplicates="$(duplicates_in "$@")"
 if dotenv="$(local_dotenv)"; then
   abort_run "refusing to run: $dotenv exists and dotenv would load it into the Rails side only"
 fi
+trap 'abort_run "timed out reading the PostgreSQL version of $db_container"' TERM
 mismatch="$(check_server_major)" || abort_run "$mismatch"
+trap - TERM
 if ! (cd "$root/app-phoenix" && scrubbed $ecto_env mix compile) >> "$work/ecto/prove.log" 2>&1; then
-  abort_run "mix compile failed in app-phoenix (see tmp/schema_parity/ecto/prove.log)"
+  abort_run "mix compile failed in app-phoenix (see ${work#"$root/"}/ecto/prove.log)"
 fi
 [ "${picked+set}" != set ] || : > "$summary"
 [ "${picked+set}" != set ] || [ -n "$shard" ] || : > "$work/ecto/templates.used"
@@ -90,7 +92,7 @@ run_check() {
     status=0
   else
     status=1
-    [ -n "$line" ] || line="$1 FAIL error (see tmp/schema_parity/ecto/prove.log)"
+    [ -n "$line" ] || line="$1 FAIL error (see ${work#"$root/"}/ecto/prove.log)"
   fi
   echo "== end $(date -u +%s) $1 $status" >> "$3"
   echo "$line" | tee -a "$2"

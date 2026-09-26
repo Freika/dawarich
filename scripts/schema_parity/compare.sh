@@ -3,6 +3,7 @@ set -eu
 release="$1"
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$root/scripts/schema_parity/lib.sh"
+require_pg17
 mkdir -p "$work/diffs"
 tmpd="$(mktemp -d "$work/.tmp.XXXXXX")"
 cleanup() {

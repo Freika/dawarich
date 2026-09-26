@@ -247,9 +247,10 @@ From the repository root. Nothing here touches the development or test database 
 
 1. `docker login` (recommended: anonymous Docker Hub pulls are limited to about 10 an hour; `snapshot.sh` retries a
    rate-limited pull 12 times, 360 s apart, tunable with `SNAPSHOT_PULL_RETRIES` and `SNAPSHOT_PULL_WAIT`).
-2. `scripts/schema_parity/infra.sh up`, with the default `SP_PG_MAJOR=17`: `sp-db` (`postgis/postgis:17-3.5`, used
-   here at `sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6`, PostgreSQL 17.5) on
-   `127.0.0.1:55532` and `sp-redis` (`redis:7.4-alpine`) on `127.0.0.1:56479`, on the Docker network `schema-parity`.
+2. `scripts/schema_parity/infra.sh up`, with the default `SP_PG_MAJOR=17` (the scripts below refuse any other):
+   `sp-db` (`postgis/postgis:17-3.5`, used here at
+   `sha256:01a6a70e41e6c4467c8f55f6063555ed72db2d6662cd0d571040d42eadaeb6f6`, PostgreSQL 17.5) on `127.0.0.1:55532`
+   and `sp-redis` (`redis:7.4-alpine`) on `127.0.0.1:56479`, on the Docker network `schema-parity`.
 3. `git fetch --tags`, then `LANG=en_US.UTF-8 DATABASE_NAME=sp_unused RAILS_ENV=test bin/rails schema_parity:release_map`.
    It rewrites `db/release_migrations.json` and refuses to when a release the committed map lists has no local tag.
 4. `LANG=en_US.UTF-8 scripts/schema_parity/snapshot_all.sh`, twice. Existing snapshots are skipped, so the second run
@@ -817,7 +818,8 @@ is unproven.
   - The lines go to `tmp/schema_parity/ecto/summary.txt` (`summary.K-N.txt` for a shard) in `--list` order. `all`
     starts a fresh file for its own shard; explicit checks append, so remove `summary*.txt` first, as the CI job does.
   - Exit 0 only when every check passed. A run aborted before its checks start (duplicate check names, a list error,
-    no check selected, a local `.env`, a server whose major is not `SP_PG_MAJOR`, `mix compile` failing) exits 2 and
+    no check selected, a local `.env`, a server whose major is not `SP_PG_MAJOR` or whose version check timed out,
+    `mix compile` failing) exits 2 and
     writes `ABORTED …` to the summary. A bad `--shard` or `--jobs` value, a missing argument and any `--list` error
     exit 2 with a message on stderr and write no summary line.
   - `== start|end <epoch> <check>` lines go to `tmp/schema_parity/ecto/prove.log`.
@@ -884,19 +886,27 @@ carry only `linux/amd64`; Apple silicon runs them under emulation.
   server is not the selected major; `ecto_prove.sh` makes the same check before any check starts. Each server compares
   Rails and Ecto on itself; references are not shared between majors (see the code key above).
 - `SP_DB_CONTAINER`, `SP_DB_PORT`, `SP_REDIS_CONTAINER`, `SP_REDIS_PORT` and `SP_NETWORK` override `sp-db`, `55532`,
-  `sp-redis`, `56479` and `schema-parity` for every script, so a second harness can run beside the first. CI keeps the
-  defaults: each job has its own runner.
+  `sp-redis`, `56479` and `schema-parity` for every script, so a second harness can run beside the first. Set all five,
+  none empty, or none: any other combination exits 2 before a single `docker` call, naming the missing ones, because
+  the unset ones would fall back to the default stack. `infra.sh up` also refuses a reused container that does not
+  publish exactly `127.0.0.1:$SP_DB_PORT` (PostgreSQL) or `127.0.0.1:$SP_REDIS_PORT` (Redis). `SP_WORK` moves the work
+  directory (`tmp/schema_parity` by default) and everything the harness writes there. CI keeps the defaults: each job
+  has its own runner.
 - **PostgreSQL 14 restores.** The snapshots are `pg_dump` 17.5 output with one `SET transaction_timeout = 0;` per
   `pg_dump` preamble (two per file: schema and ledger rows), which PostgreSQL 16 and older reject under
-  `ON_ERROR_STOP`. With `SP_PG_MAJOR=14`, `restore_snapshot` (used by `ecto_prove.sh`, `compare.sh` and
-  `schemarb_all.sh`) requires that line to appear exactly once per preamble, drops only that exact line, writes
+  `ON_ERROR_STOP`. With `SP_PG_MAJOR=14`, `restore_snapshot` (the nightly path, through `ecto_prove.sh`) requires that
+  line to appear exactly once per preamble, drops only that exact line, writes
   `restoring <snapshot> into PostgreSQL 14 without its 2 'SET transaction_timeout = 0;' lines: <SHA-1 of the filtered
   SQL>` to stderr (`prove.log` for `ecto_prove.sh`), and restores the rest with `ON_ERROR_STOP`, so any other
-  incompatible statement still fails. The compressed snapshot is not touched. PostgreSQL 17 gets the bytes unchanged.
-  `snapshot.sh` still restores unfiltered: snapshots are produced on 17 only.
-- `scripts/schema_parity/test/pg_major.sh` proves all of this on its own containers (`sp-test-db-14`/`-17` on
-  55714/55717, `sp-test-redis` on 56717, network `sp-test`), which it removes afterwards: `sh
-  scripts/schema_parity/test/pg_major.sh` prints one `ok`/`not ok` line per assertion and exits non-zero on any.
+  incompatible statement still fails. A failing `grep` or checksum fails the restore. The compressed snapshot is not
+  touched. PostgreSQL 17 gets the bytes unchanged.
+- **PostgreSQL 17 only:** `snapshot.sh`, `snapshot_all.sh`, `schemarb_all.sh` and `baseline.sh` write committed files
+  (snapshots, `schemarb.tsv`, `baseline.sql`), and `compare.sh`/`compare_all.sh` keep a fresh-install cache keyed by
+  the migrations alone. All six exit 2 unless `SP_PG_MAJOR` is `17` and exit 1 when the server is not PostgreSQL 17.
+- `scripts/schema_parity/test/pg_major.sh` proves all of this on containers of its own, named `sp-test-<pid>-…` with
+  free ports probed from 55700 up and `SP_WORK` in its temporary directory, all removed afterwards; two runs can share
+  a machine. Every refusal case runs against a logging fake `docker`, so a broken guard cannot reach a real container:
+  `sh scripts/schema_parity/test/pg_major.sh` prints one `ok`/`not ok` line per assertion and exits non-zero on any.
 
 **C4's matrix** covers the states at or after the floor (every `step:`, `rows:`, `contended:` and `upgrade:` check),
 the refusal sample, and nothing older, each restored into PostgreSQL 14 and 17. The nightly activates when

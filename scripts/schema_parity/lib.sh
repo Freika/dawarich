@@ -3,12 +3,23 @@ case "$pg_major" in
   14 | 17) ;;
   *) echo "SP_PG_MAJOR must be 14 or 17, got '$pg_major'" >&2; exit 2 ;;
 esac
+sp_set=0
+sp_missing=""
+for sp_var in SP_DB_CONTAINER SP_DB_PORT SP_REDIS_CONTAINER SP_REDIS_PORT SP_NETWORK; do
+  eval "sp_flag=\${$sp_var+set} sp_value=\${$sp_var-}"
+  [ -z "$sp_flag" ] || sp_set=$((sp_set + 1))
+  [ -n "$sp_value" ] || sp_missing="$sp_missing $sp_var"
+done
+if [ "$sp_set" -gt 0 ] && [ -n "$sp_missing" ]; then
+  echo "set all of SP_DB_CONTAINER, SP_DB_PORT, SP_REDIS_CONTAINER, SP_REDIS_PORT and SP_NETWORK, or none; missing or empty:$sp_missing" >&2
+  exit 2
+fi
 db_container="${SP_DB_CONTAINER:-sp-db}"
 redis_container="${SP_REDIS_CONTAINER:-sp-redis}"
 network="${SP_NETWORK:-schema-parity}"
 db_port="${SP_DB_PORT:-55532}"
 redis_port="${SP_REDIS_PORT:-56479}"
-work="$root/tmp/schema_parity"
+work="${SP_WORK:-$root/tmp/schema_parity}"
 snapshots="$root/db/release_snapshots"
 rails_env="DATABASE_HOST=127.0.0.1 DATABASE_PORT=$db_port DATABASE_USERNAME=postgres DATABASE_PASSWORD=parity REDIS_URL=redis://127.0.0.1:$redis_port SCHEMA=$work/throwaway_schema.rb RAILS_ENV=development"
 exec_timeout="${SP_EXEC_TIMEOUT:-300}"
@@ -24,11 +35,20 @@ dexec_for() {
   dexec_limit="$1"
   shift
   dexec_n=$#
+  dexec_next=container
   while [ "$dexec_n" -gt 0 ]; do
     dexec_arg="$1"
     shift
     set -- "$@" "$dexec_arg"
-    [ "$dexec_arg" != "$db_container" ] || set -- "$@" timeout "$dexec_limit"
+    case "$dexec_next:$dexec_arg" in
+      value:*) dexec_next=container ;;
+      container:-e | container:-u | container:-w) dexec_next=value ;;
+      container:-*) ;;
+      container:*)
+        [ "$dexec_arg" != "$db_container" ] || set -- "$@" timeout "$dexec_limit"
+        dexec_next=command
+        ;;
+    esac
     dexec_n=$((dexec_n - 1))
   done
   dexec_status=0
@@ -48,6 +68,11 @@ check_server_major() {
     || { echo "could not read the PostgreSQL version of $db_container"; return 1; }
   [ "$((server_version / 10000))" = "$pg_major" ] \
     || { echo "$db_container runs PostgreSQL $((server_version / 10000)), but SP_PG_MAJOR selects $pg_major"; return 1; }
+}
+
+require_pg17() {
+  [ "$pg_major" = 17 ] || { echo "$(basename "$0") runs on PostgreSQL 17 only, not SP_PG_MAJOR=$pg_major" >&2; exit 2; }
+  mismatch="$(check_server_major)" || { echo "$mismatch" >&2; exit 1; }
 }
 
 checksum() {
@@ -72,15 +97,16 @@ recreate_db() {
 
 drop_transaction_timeout() {
   timeout_set='SET transaction_timeout = 0;'
-  set_lines="$(grep -cxF "$timeout_set" "$tmpd/restore.sql")" || true
-  preambles="$(grep -c '^-- Dumped by pg_dump version ' "$tmpd/restore.sql")" || true
+  set_lines="$(grep -cxF "$timeout_set" "$tmpd/restore.sql")" || [ $? -eq 1 ] || exit 1
+  preambles="$(grep -c '^-- Dumped by pg_dump version ' "$tmpd/restore.sql")" || [ $? -eq 1 ] || exit 1
   if [ "$set_lines" -lt 1 ] || [ "$set_lines" != "$preambles" ]; then
     echo "$(basename "$1"): expected one '$timeout_set' per pg_dump preamble, found $set_lines for $preambles pg_dump preambles" >&2
     exit 1
   fi
-  grep -vxF "$timeout_set" "$tmpd/restore.sql" > "$tmpd/restore.filtered.sql"
-  mv "$tmpd/restore.filtered.sql" "$tmpd/restore.sql"
-  echo "restoring $(basename "$1") into PostgreSQL $pg_major without its $set_lines '$timeout_set' lines: $(checksum "$tmpd/restore.sql")" >&2
+  grep -vxF "$timeout_set" "$tmpd/restore.sql" > "$tmpd/restore.filtered.sql" || exit 1
+  mv "$tmpd/restore.filtered.sql" "$tmpd/restore.sql" || exit 1
+  filtered_sum="$(checksum "$tmpd/restore.sql")" || exit 1
+  echo "restoring $(basename "$1") into PostgreSQL $pg_major without its $set_lines '$timeout_set' lines: $filtered_sum" >&2
 }
 
 restore_snapshot() {
