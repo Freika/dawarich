@@ -2,13 +2,14 @@
 set -eu
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$root/scripts/schema_parity/lib.sh"
+require_pg17
 mkdir -p "$work/diffs"
 tmpd="$(mktemp -d "$work/.tmp.XXXXXX")"
 cleanup() {
   rm -rf "$tmpd"
   for scratch in sp_schemarb sp_schemarb_state; do
-    docker exec sp-db dropdb -U postgres --if-exists "$scratch" >/dev/null 2>&1 || true
-    docker exec sp-db dropdb -U postgres --if-exists "${scratch}_rt" >/dev/null 2>&1 || true
+    docker exec "$db_container" dropdb -U postgres --if-exists "$scratch" >/dev/null 2>&1 || true
+    docker exec "$db_container" dropdb -U postgres --if-exists "${scratch}_rt" >/dev/null 2>&1 || true
   done
 }
 trap cleanup EXIT
@@ -50,7 +51,7 @@ load_blob() {
   if (cd "$root" && env $rails_env SKIP_TEST_DATABASE=true SCHEMA="$tmpd/schema.rb" DATABASE_NAME=sp_schemarb \
     bin/rails db:schema:load) > "$tmpd/load.log" 2>&1; then
     ledger_sql "$2" "$tmpd/schema.rb" > "$tmpd/ledger.sql"
-    docker exec -i sp-db psql -U postgres -q -v ON_ERROR_STOP=1 -d sp_schemarb < "$tmpd/ledger.sql" >/dev/null
+    docker exec -i "$db_container" psql -U postgres -q -v ON_ERROR_STOP=1 -d sp_schemarb < "$tmpd/ledger.sql" >/dev/null
     canon_dump sp_schemarb > "$tmpd/blob.sql"
     load_result=ok
   else
@@ -64,7 +65,7 @@ canon_state() {
   recreate_db sp_schemarb_state
   restore_snapshot "$snapshot" sp_schemarb_state
   canon_dump sp_schemarb_state > "$tmpd/state.$1.sql"
-  docker exec sp-db dropdb -U postgres sp_schemarb_state
+  docker exec "$db_container" dropdb -U postgres sp_schemarb_state
 }
 
 mkdir -p "$tmpd/out"

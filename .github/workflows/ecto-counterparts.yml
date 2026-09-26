@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7.0.1
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
@@ -33,24 +33,24 @@ jobs:
           sudo locale-gen en_US.UTF-8
 
       - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
         with:
           bundler-cache: true
 
       - name: Set up Elixir
-        uses: erlef/setup-beam@v1
+        uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
         with:
           otp-version: "27.3.4.1"
           elixir-version: "1.18.3"
           version-type: strict
 
       - name: Cache Mix
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             app-phoenix/deps
             app-phoenix/_build
-          key: mix-${{ runner.os }}-${{ hashFiles('app-phoenix/mix.lock') }}
+          key: mix-parity-${{ runner.os }}-${{ hashFiles('app-phoenix/.tool-versions', 'app-phoenix/mix.lock') }}
 
       - name: Fetch Elixir dependencies
         working-directory: app-phoenix
@@ -80,7 +80,7 @@ jobs:
           echo "code-key=$key" >> "$GITHUB_OUTPUT"
 
       - name: Cache the Rails references
-        uses: actions/cache@v6
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             tmp/schema_parity/ecto/ref
@@ -100,9 +100,169 @@ jobs:
 
       - name: Upload proof diffs
         if: failure() || cancelled()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: ecto-proof
           path: |
             tmp/schema_parity/ecto/
             !tmp/schema_parity/ecto/ref/
+
+  ecto-upgrade-sample:
+    name: upgrade sample pg${{ matrix.pg }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        pg: [14, 17]
+
+    env:
+      LANG: en_US.UTF-8
+      MIX_ENV: test
+      SP_PG_MAJOR: ${{ matrix.pg }}
+      REF_CACHE_FORMAT: 1
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgeos-dev
+          sudo locale-gen en_US.UTF-8
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
+        with:
+          bundler-cache: true
+
+      - name: Set up Elixir
+        uses: erlef/setup-beam@54075bcc5e249e4758d363f27d099f55d843f124 # v1.24.1
+        with:
+          otp-version: "27.3.4.1"
+          elixir-version: "1.18.3"
+          version-type: strict
+
+      - name: Cache Mix
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            app-phoenix/deps
+            app-phoenix/_build
+          key: mix-parity-${{ runner.os }}-${{ hashFiles('app-phoenix/.tool-versions', 'app-phoenix/mix.lock') }}
+
+      - name: Fetch Elixir dependencies
+        working-directory: app-phoenix
+        run: mix deps.get
+
+      - name: Select the upgrade sample
+        id: select
+        run: |
+          scripts/schema_parity/ecto_prove.sh --list > "$RUNNER_TEMP/list.txt"
+          ruby scripts/schema_parity/ci/upgrade_sample.rb "$RUNNER_TEMP/list.txt" > "$RUNNER_TEMP/sample.txt"
+          cat "$RUNNER_TEMP/sample.txt"
+          inputs="$(scripts/schema_parity/ci/ref_cache_key.sh)"
+          week="$(date -u +%G-W%V)"
+          prefix="ecto-ref-sample-v$REF_CACHE_FORMAT-$RUNNER_OS-${ImageOS:-no-image}-$week"
+          echo "key=$prefix-pg$SP_PG_MAJOR-$inputs" >> "$GITHUB_OUTPUT"
+
+      - name: Restore the Rails references
+        id: restore
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tmp/schema_parity/ecto/ref
+          key: ${{ steps.select.outputs.key }}
+
+      - name: Start PostgreSQL ${{ matrix.pg }} and Redis
+        run: scripts/schema_parity/infra.sh up
+
+      - name: Prove the upgrade sample on PostgreSQL ${{ matrix.pg }}
+        id: prove
+        run: exec scripts/schema_parity/ci/prove_shard.sh $(cat "$RUNNER_TEMP/sample.txt")
+
+      - name: Compare the summary with the sample
+        id: verify
+        if: always()
+        run: |
+          ruby scripts/schema_parity/ci/nightly_report.rb leg tmp/schema_parity
+          cmp "$RUNNER_TEMP/sample.txt" tmp/schema_parity/nightly/list.txt
+
+      - name: Save the Rails references
+        if: steps.prove.outcome == 'success' && steps.verify.outcome == 'success' && steps.restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: tmp/schema_parity/ecto/ref
+          key: ${{ steps.select.outputs.key }}
+
+      - name: Upload the sample's evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: upgrade-sample-pg${{ matrix.pg }}
+          overwrite: true
+          path: |
+            tmp/schema_parity/nightly/
+            tmp/schema_parity/ecto/summary.txt
+            tmp/schema_parity/ecto/prove.log
+            tmp/schema_parity/ecto/diffs/
+
+  harness-tests:
+    name: harness tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      LANG: en_US.UTF-8
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
+
+      - name: TERM paths of ecto_prove.sh
+        run: sh scripts/schema_parity/test/prove_term.sh
+
+      - name: Nightly shard wrapper
+        run: sh scripts/schema_parity/test/prove_shard.sh
+
+      - name: Nightly report
+        run: sh scripts/schema_parity/test/nightly_report.sh
+
+      - name: Nightly workflow structure
+        run: ruby scripts/schema_parity/test/nightly_workflow.rb
+
+      - name: Counterparts workflow structure
+        run: ruby scripts/schema_parity/test/counterparts_workflow.rb
+
+      - name: Matrix inventory preflight
+        run: sh scripts/schema_parity/test/matrix_inventory_preflight.sh
+
+      - name: Upgrade sample selector
+        run: sh scripts/schema_parity/test/upgrade_sample.sh
+
+      - name: Pull request check selection
+        run: sh scripts/schema_parity/test/pr_checks.sh
+
+      - name: Default container names and ports
+        run: sh scripts/schema_parity/test/default_names.sh
+
+  harness-docker-tests:
+    name: harness tests (Docker)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    env:
+      LANG: en_US.UTF-8
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@afeafc3d1ab54a631816aba4c914a0081c12ff2f # v1.310.0
+
+      - name: PostgreSQL major selection and PostgreSQL 14 restores
+        run: sh scripts/schema_parity/test/pg_major.sh

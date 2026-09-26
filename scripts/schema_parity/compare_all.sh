@@ -2,6 +2,7 @@
 set -u
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$root/scripts/schema_parity/lib.sh"
+require_pg17
 mkdir -p "$work"
 releases="$(ruby -rjson -e 'puts JSON.parse(File.read(ARGV[0])).fetch("states").map { _1.fetch("first_release") }' "$root/db/release_migrations.json")" || {
   echo "cannot read the states from db/release_migrations.json" >&2

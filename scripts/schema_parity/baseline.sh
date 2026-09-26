@@ -2,11 +2,12 @@
 set -eu
 root="$(cd "$(dirname "$0")/../.." && pwd)"
 . "$root/scripts/schema_parity/lib.sh"
+require_pg17
 mkdir -p "$work"
 tmpd="$(mktemp -d "$work/.tmp.XXXXXX")"
 cleanup() {
   rm -rf "$tmpd"
-  docker exec sp-db dropdb -U postgres --if-exists sp_baseline >/dev/null 2>&1 || true
+  docker exec "$db_container" dropdb -U postgres --if-exists sp_baseline >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 trap 'exit 130' INT
