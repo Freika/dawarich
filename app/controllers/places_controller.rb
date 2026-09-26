@@ -12,6 +12,8 @@ class PlacesController < ApplicationController
 
   def show
     @place = current_user.places.includes(:tags).find(params[:id])
+    return redirect_to map_v2_path(place_id: @place.id) unless drawer_request?
+
     @recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
 
     render layout: false
@@ -49,6 +51,7 @@ class PlacesController < ApplicationController
       @place = current_user.places.includes(:tags, :active_visits).find(@place.id)
 
       respond_to do |format|
+        format.html { redirect_to map_v2_path(place_id: @place.id), status: :see_other }
         format.turbo_stream do
           if drawer_request?
             recent_visits = @place.visits.active.order(started_at: :desc).limit(5)
@@ -70,6 +73,10 @@ class PlacesController < ApplicationController
       end
     else
       respond_to do |format|
+        format.html do
+          redirect_to map_v2_path(place_id: @place.id),
+                      alert: @place.errors.full_messages.join(', '), status: :see_other
+        end
         format.turbo_stream do
           render turbo_stream: stream_flash(:error, @place.errors.full_messages.join(', '))
         end

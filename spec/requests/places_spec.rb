@@ -187,20 +187,20 @@ RSpec.describe '/places', type: :request do
 
     context 'when authenticated' do
       it 'returns a successful response' do
-        get place_url(place)
+        get place_url(place), headers: { 'Turbo-Frame' => 'place-drawer' }
 
         expect(response).to have_http_status(:ok)
       end
 
       it 'wraps the body in the place-drawer turbo-frame' do
-        get place_url(place)
+        get place_url(place), headers: { 'Turbo-Frame' => 'place-drawer' }
 
         expect(response.body).to include('turbo-frame')
         expect(response.body).to include('id="place-drawer"')
       end
 
       it 'renders the place name, city, and country' do
-        get place_url(place)
+        get place_url(place), headers: { 'Turbo-Frame' => 'place-drawer' }
 
         expect(response.body).to include('Test Cafe')
         expect(response.body).to include('Berlin')
@@ -210,7 +210,7 @@ RSpec.describe '/places', type: :request do
       it 'renders the total visit count' do
         create_list(:visit, 3, place:, user:, duration: 60, area: nil)
 
-        get place_url(place)
+        get place_url(place), headers: { 'Turbo-Frame' => 'place-drawer' }
 
         expect(response.body).to include('3 visits').or include('>3<')
       end
@@ -229,7 +229,7 @@ RSpec.describe '/places', type: :request do
           )
         end
 
-        get place_url(place)
+        get place_url(place), headers: { 'Turbo-Frame' => 'place-drawer' }
 
         # 3 visits * 60 minutes = 180 minutes = 3.0 hours
         expect(response.body).to include('3.0')
@@ -249,7 +249,7 @@ RSpec.describe '/places', type: :request do
           )
         end
 
-        get place_url(place)
+        get place_url(place), headers: { 'Turbo-Frame' => 'place-drawer' }
 
         # avg = 90 min = 1h 30m
         expect(response.body).to include('1h 30m')
@@ -262,7 +262,7 @@ RSpec.describe '/places', type: :request do
         create(:visit, place:, user:, name: 'Ghost Visit', area: nil, deleted_at: 1.day.ago,
                        started_at: base_time + 1.hour, ended_at: base_time + 90.minutes)
 
-        get place_url(place)
+        get place_url(place), headers: { 'Turbo-Frame' => 'place-drawer' }
 
         expect(response.body).to include('Living Visit')
         expect(response.body).not_to include('Ghost Visit')
@@ -283,7 +283,7 @@ RSpec.describe '/places', type: :request do
           )
         end
 
-        get place_url(place)
+        get place_url(place), headers: { 'Turbo-Frame' => 'place-drawer' }
 
         # Most recent is Visit 6; oldest two (0, 1) should not appear in the body
         # of the drawer's recent-visits list
@@ -318,7 +318,7 @@ RSpec.describe '/places', type: :request do
         end
 
         ActiveSupport::Notifications.subscribed(sub, 'sql.active_record') do
-          get place_url(place)
+          get place_url(place), headers: { 'Turbo-Frame' => 'place-drawer' }
         end
 
         expect(response).to have_http_status(:ok)
@@ -382,7 +382,7 @@ RSpec.describe '/places', type: :request do
       place = create(:place, user: user, name: Place::DEFAULT_NAME)
       place.update!(name: "Mum's house")
 
-      get place_path(place)
+      get place_path(place), headers: { 'Turbo-Frame' => 'place-drawer' }
 
       expect(response.body).to include('place-name-lock')
     end
@@ -410,7 +410,7 @@ RSpec.describe '/places', type: :request do
     it 'shows no lock indicator for an auto-named place' do
       place = create(:place, user: user, name: Place::DEFAULT_NAME)
 
-      get place_path(place)
+      get place_path(place), headers: { 'Turbo-Frame' => 'place-drawer' }
 
       expect(response.body).not_to include('place-name-lock')
     end

@@ -39,6 +39,8 @@ export default class extends Controller {
     userPlan: { type: String, default: "pro" },
     upgradeUrl: { type: String, default: "" },
     importId: { type: String, default: "" },
+    placeLatitude: Number,
+    placeLongitude: Number,
   }
 
   static targets = [
@@ -157,6 +159,10 @@ export default class extends Controller {
     if (urlParams.get("panel") === "timeline") {
       this.settings.visitsEnabled = true
       this.settingsController.settings.visitsEnabled = true
+    }
+    if (this.hasPlaceLatitudeValue && this.hasPlaceLongitudeValue) {
+      this.settings.placesEnabled = true
+      this.settingsController.settings.placesEnabled = true
     }
 
     // Sync toggle states with loaded settings
@@ -337,7 +343,7 @@ export default class extends Controller {
       })
     }
 
-    this.loadMapData().then(() => {
+    this.loadMapData({ fitBounds: !this.hasPlaceLatitudeValue }).then(() => {
       if (this.settings?.familyEnabled) {
         this.loadFamilyMembers()
       }
@@ -403,6 +409,12 @@ export default class extends Controller {
         vectorTilesUrl: this.settings.vectorTilesUrl,
         tilesFallback: this.settings.tilesFallback === true,
         ...(lastView ? { center: lastView.center, zoom: lastView.zoom } : {}),
+        ...(this.hasPlaceLatitudeValue && this.hasPlaceLongitudeValue
+          ? {
+              center: [this.placeLongitudeValue, this.placeLatitudeValue],
+              zoom: 13,
+            }
+          : {}),
       },
       this.apiKeyValue,
     )
