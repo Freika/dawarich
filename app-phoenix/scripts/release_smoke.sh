@@ -78,7 +78,7 @@ printf '#!/bin/sh\necho 0\n' >"$work/stubs/id"
 printf '#!/bin/sh\necho "$*" >"%s/chown.args"\n' "$work" >"$work/stubs/chown"
 chmod +x "$work/stubs/id" "$work/stubs/chown"
 PATH="$work/stubs:$PATH" DAWARICH_COOKIE_FILE="$work/owned/cookie" sh "$env_sh"
-[ "$(cat "$work/chown.args" 2>/dev/null)" = "$(ls -nd "$work/owned" | awk '{print $3":"$4}') $work/owned/cookie" ] \
+[ "$(cat "$work/chown.args" 2>/dev/null)" = "-h $(ls -nd "$work/owned" | awk '{print $3":"$4}') $work/owned/cookie" ] \
   || { echo "a cookie created as root was not handed to its directory's owner"; exit 1; }
 
 printf x >"$work/locked/cookie"
@@ -98,5 +98,35 @@ linked=$?
 set -e
 [ "$linked" -eq 4 ] && [ ! -e "$work/locked/target" ] && [ ! -e "$work/chown.args" ] \
   || { echo "a symlinked cookie path was followed (exit $linked)"; exit 1; }
+
+mkdir -p "$work/racestubs" "$work/race"
+cat >"$work/racestubs/rm" <<RMEOF
+#!/bin/sh
+/bin/rm "\$@"
+for a; do
+  case "\$a" in
+    -*) continue ;;
+  esac
+  printf '%s' racer > "\$a"
+done
+RMEOF
+chmod +x "$work/racestubs/rm"
+set +e
+PATH="$work/racestubs:$PATH" DAWARICH_COOKIE_FILE="$work/race/cookie" sh -c 'set -e; . "$1"' sh "$env_sh"
+raced=$?
+set -e
+[ "$raced" -eq 0 ] && [ "$(cat "$work/race/cookie" 2>/dev/null)" = racer ] \
+  || { echo "a cookie recreated between rm and the write was overwritten or aborted the script (exit $raced)"; exit 1; }
+
+mkdir -p "$work/rootstubs" "$work/rootlike"
+printf '#!/bin/sh\necho 0\n' >"$work/rootstubs/id"
+printf '#!/bin/sh\nexit 1\n' >"$work/rootstubs/chown"
+chmod +x "$work/rootstubs/id" "$work/rootstubs/chown"
+set +e
+PATH="$work/rootstubs:$PATH" DAWARICH_COOKIE_FILE="$work/rootlike/cookie" sh -c 'set -e; . "$1"' sh "$env_sh"
+chownfail=$?
+set -e
+[ "$chownfail" -eq 0 ] \
+  || { echo "a failing chown aborted env.sh instead of falling through to the cookie read (exit $chownfail)"; exit 1; }
 
 echo "release smoke: ok"
