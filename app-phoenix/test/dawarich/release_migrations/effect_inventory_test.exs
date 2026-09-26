@@ -16,19 +16,12 @@ defmodule Dawarich.ReleaseMigrations.EffectInventoryTest do
     assert MapSet.equal?(found, inventory), mismatch_message(found, inventory)
   end
 
-  test "every unported!/1 site the release modules call is classified in the inventory" do
-    found = MapSet.new(found_unported_sites())
-    inventory = MapSet.new(ReleaseEffectInventory.unported_sites(), &{&1.site, &1.class})
-
-    assert MapSet.equal?(found, inventory), mismatch_message(found, inventory)
+  test "no release module stops at an unported!/1 effect" do
+    assert found_unported_sites() == []
   end
 
   test "every inventoried class's Rails file exists and defines that class" do
-    entries =
-      Enum.uniq_by(
-        ReleaseEffectInventory.job_classes() ++ ReleaseEffectInventory.unported_sites(),
-        &{&1.class, &1.rails_file}
-      )
+    entries = Enum.uniq_by(ReleaseEffectInventory.job_classes(), &{&1.class, &1.rails_file})
 
     for %{class: class, rails_file: file} <- entries do
       assert RailsTree.defines_class?(file, class), "#{class} is not defined in #{file}"
@@ -46,8 +39,7 @@ defmodule Dawarich.ReleaseMigrations.EffectInventoryTest do
   end
 
   test "every inventoried class lives at its Zeitwerk path" do
-    for %{class: class, rails_file: file} <-
-          ReleaseEffectInventory.job_classes() ++ ReleaseEffectInventory.unported_sites() do
+    for %{class: class, rails_file: file} <- ReleaseEffectInventory.job_classes() do
       path = class |> String.replace("::", ".") |> Macro.underscore()
 
       assert file =~ ~r{\Aapp/[a-z_]+/} and String.ends_with?(file, "/" <> path <> ".rb"),
