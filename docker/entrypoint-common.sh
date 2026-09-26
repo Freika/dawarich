@@ -27,6 +27,12 @@ drop_privileges() {
       exit 1
       ;;
   esac
+  case "$_gid" in
+    '' | *[!0-9]* | 0*)
+      echo "Refusing to drop privileges to gid '$_gid': PGID must be a numeric gid other than 0" >&2
+      exit 1
+      ;;
+  esac
   for _path in "$APP_PATH/tmp" "$APP_PATH/storage"; do
     [ -d "$_path" ] || continue
     if [ "$(ls -nd "$_path" | awk '{print $3}')" != "$_uid" ]; then

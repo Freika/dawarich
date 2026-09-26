@@ -201,14 +201,32 @@ RSpec.describe 'Cloud entrypoints' do
       )
     end
 
-    %w[0 root].each do |puid|
-      it "refuses PUID=#{puid}, which would keep re-running itself as root" do
-        result = run_script('cloud-entrypoint.sh', 'x', PUID: puid)
+    %w[0 root].each do |value|
+      it "refuses PUID=#{value}, which would keep re-running itself as root" do
+        result = run_script('cloud-entrypoint.sh', 'x', PUID: value)
 
         expect(result[:status].exitstatus).to eq(1)
-        expect(result[:stderr]).to include("uid '#{puid}'")
+        expect(result[:stderr]).to include("uid '#{value}'")
         expect(result[:calls]).to be_empty
       end
+
+      it "refuses PGID=#{value}, which would run under the root group" do
+        result = run_script('cloud-entrypoint.sh', 'x', PGID: value)
+
+        expect(result[:status].exitstatus).to eq(1)
+        expect(result[:stderr]).to include("gid '#{value}'")
+        expect(result[:calls]).to be_empty
+      end
+    end
+
+    it 'defaults an empty PGID to 32767, same as an unset one' do
+      result = run_script('cloud-entrypoint.sh', 'x', PGID: '')
+
+      expect(result[:calls]).to eq(
+        ["chown -R 32767:32767 #{stubs}/tmp",
+         "chown -R 32767:32767 #{stubs}/storage",
+         "gosu 32767:32767 env HOME=#{stubs}/tmp #{File.join(root, 'docker/cloud-entrypoint.sh')} x"]
+      )
     end
   end
 
