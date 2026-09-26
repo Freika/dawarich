@@ -1321,7 +1321,7 @@ en:
       rarr: "→"
       'on': 'on'
       no_visits_yet: No visits yet
-      rename: Rename
+      edit: Edit
       merge: Merge
       notes: Notes
       save: Save

@@ -2080,7 +2080,7 @@ fr:
       rarr: "→"
       'on': sur
       no_visits_yet: Aucune visite pour le moment
-      rename: Renommer
+      edit: Modifier
       merge: Fusionner
       notes: Notes
       save: Enregistrer

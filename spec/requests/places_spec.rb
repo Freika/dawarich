@@ -354,7 +354,7 @@ RSpec.describe '/places', type: :request do
   describe 'PATCH /update from drawer frame' do
     let!(:place) { create(:place, user:, name: 'Drawer Place') }
 
-    it 'returns a turbo_stream that replaces the place-drawer frame' do
+    it 'returns a turbo_stream that refreshes the place-drawer frame in place' do
       patch place_url(place),
             params: { place: { note: 'Updated note' } },
             headers: { 'Turbo-Frame' => 'place-drawer' },
@@ -362,7 +362,7 @@ RSpec.describe '/places', type: :request do
 
       expect(place.reload.note).to eq('Updated note')
       expect_turbo_stream_response
-      expect_turbo_stream_action('replace', 'place-drawer')
+      expect_turbo_stream_action('update', 'place-drawer')
     end
   end
 

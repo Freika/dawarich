@@ -13,6 +13,15 @@ export default class extends Controller {
     window.history.replaceState(window.history.state, "", url)
   }
 
+  deleted({ detail, params }) {
+    if (!detail.success) return
+
+    this.close()
+    document.dispatchEvent(
+      new CustomEvent("place:deleted", { detail: { id: params.id } }),
+    )
+  }
+
   close() {
     this.frameTarget.removeAttribute("src")
     this.frameTarget.replaceChildren()
