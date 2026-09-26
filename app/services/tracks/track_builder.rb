@@ -116,7 +116,7 @@ module Tracks::TrackBuilder
         next []
       end
 
-      contiguous_runs(points, orphans).filter_map do |run|
+      Tracks::OrphanRuns.new(user, orphans).call.filter_map do |run|
         next if run.size < 2
 
         distance = Point.calculate_distance_for_array_geocoder(run, :m)
@@ -127,11 +127,6 @@ module Tracks::TrackBuilder
     return tracks unless singleton
 
     [Tracks::OrphanPointAttacher.new(user, singleton, points, claimable: claimable_points).call].compact
-  end
-
-  def contiguous_runs(points, orphans)
-    position = points.sort_by { |point| [point.timestamp, point.id] }.each_with_index.to_h { |point, i| [point.id, i] }
-    orphans.slice_when { |a, b| position[b.id] != position[a.id] + 1 }.to_a
   end
 
   def reuse_existing_track(track, points, original_error)
