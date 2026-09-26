@@ -32,8 +32,6 @@ class Imports::Destroy
   private
 
   def enqueue_achievement_recalculation(oldest_timestamp)
-    return unless Flipper.enabled?(:achievements)
-
     Achievements::CheckJob.schedule(@user.id, oldest_timestamp: oldest_timestamp)
   end
 

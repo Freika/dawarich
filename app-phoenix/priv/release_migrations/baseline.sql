@@ -360,6 +360,7 @@ CREATE TABLE IF NOT EXISTS "schema_migrations" ("version" character varying NOT 
 INSERT INTO "schema_migrations" (version) VALUES (20260925100100);
 INSERT INTO "schema_migrations" (version) VALUES
 (20260925100000),
+(20260923180000),
 (20260922120000),
 (20260919190000),
 (20260918103000),

@@ -6,10 +6,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+### Added
+
+- Shared achievement links now show a preview of the achievement card with its geography and progress. (#3721)
+
 ### Changed
 
 - The web container now starts a small Elixir supervisor that runs the Rails server as its child, and creates two schemas, `phoenix` and `oban`, in the Dawarich database. If they cannot be created, the web container logs a warning and starts Rails as before. Nothing changes in `docker-compose.yml` or `.env`; the container stops with `SIGTERM` instead of `SIGINT`. `docker exec -it dawarich_app dawarich remote` opens an Elixir console for troubleshooting. The supervisor's BEAM runs with one scheduler by default to keep it lightweight; set `ERL_FLAGS=+S 4:4` (or similar) in the web container's environment to raise it without rebuilding the image.
 - Self-hosted instances no longer rate-limit sign-in, sign-up, 2FA challenges and the other request limits; the magic-phrase unlock of shared links and the password check when linking a sign-in provider keep their limits.
+- Exploration achievements and printed poster ordering are available to everyone without feature flags. Existing location history is checked in the background without sending old unlock notifications. Printed poster ordering remains unavailable when `PRINT_ORDER_URL` is blank.
 
 ### Fixed
 
@@ -21,6 +26,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Delete Family, Leave Family, Remove member and Cancel invitation now ask for confirmation first and send a single request once confirmed; cancelling the confirmation no longer carries out the action.
 - Upgrading across 1.7.6 no longer fails with a duplicate-key error when a deleted account has duplicate tracks.
 - Choosing an import file right after the imports page opens is no longer silently ignored.
+- Map point editing keeps route colors and uncovered edges in sync, restores visible undo and redo history, and avoids stale lines and false save failures.
+- Point markers overlapping routes remain selectable. Markers with multiple points zoom until one point can be selected, and never offer to delete an arbitrary point. (#3719)
+- Insights shows the current year first with a distinct color for the previous year, and hosted settings hide the What's New notice preference.
+- `GET /api/v1/users/me` returns the user's `id`, as the API documentation describes. The mobile app needs it to link in-app subscriptions to the right account.
 
 ## [1.15.2] - 2026-09-22, Berlin
 
