@@ -322,9 +322,11 @@ export default class extends Controller {
     // Format initial dates
     this.startDateValue = DateManager.formatDateForAPI(
       new Date(this.startDateValue),
+      this.timezoneValue,
     )
     this.endDateValue = DateManager.formatDateForAPI(
       new Date(this.endDateValue),
+      this.timezoneValue,
     )
 
     // Snapshot the load-time window so realtime filtering can tell the default
@@ -474,6 +476,7 @@ export default class extends Controller {
   monthChanged(event) {
     const { startDate, endDate } = DateManager.parseMonthSelector(
       event.target.value,
+      this.timezoneValue,
     )
     this.startDateValue = startDate
     this.endDateValue = endDate
@@ -505,13 +508,8 @@ export default class extends Controller {
     if (!startAt || !endAt) return
     const timelineNavigating = this.timelineNavigationPending()
 
-    const toApiDate = (local) => {
-      const d = new Date(local)
-      if (Number.isNaN(d.getTime())) return null
-      return DateManager.formatDateForAPI(d)
-    }
-    const start = toApiDate(startAt)
-    const end = toApiDate(endAt)
+    const start = DateManager.formatLocalDateForAPI(startAt, this.timezoneValue)
+    const end = DateManager.formatLocalDateForAPI(endAt, this.timezoneValue)
     if (!start || !end) return
 
     this.startDateValue = start
