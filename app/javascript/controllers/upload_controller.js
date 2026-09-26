@@ -27,8 +27,9 @@ export default class extends Controller {
     this.totalBytes = 0
     this.onFileChange = this.onFileChange || this.handleFileSelection.bind(this)
     this.inputTarget.addEventListener("change", this.onFileChange)
+    this.boundOnSubmit = this.boundOnSubmit || this.onSubmit.bind(this)
     if (this.hasFormTarget) {
-      this.formTarget.addEventListener("submit", this.onSubmit.bind(this))
+      this.formTarget.addEventListener("submit", this.boundOnSubmit)
     }
     if (this.hasSubmitTarget) {
       this.submitTarget.disabled = !this.hasUploadedFiles()
@@ -38,6 +39,8 @@ export default class extends Controller {
 
   disconnect() {
     this.inputTarget.removeEventListener("change", this.onFileChange)
+    if (this.hasFormTarget)
+      this.formTarget.removeEventListener("submit", this.boundOnSubmit)
   }
 
   handleFileSelection() {
