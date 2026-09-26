@@ -50,13 +50,7 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
     segments = segment_chunk_points(points)
     return 0 if segments.empty?
 
-    # Create tracks from segments
-    tracks_created = 0
-    segments.each do |segment_points|
-      tracks_created += 1 if create_track_from_points_array(segment_points)
-    end
-
-    tracks_created
+    segments.sum { |segment_points| create_tracks_from_segment(segment_points).size }
   end
 
   def load_chunk_points
@@ -96,8 +90,8 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
     segment_start <= chunk_end && segment_end >= chunk_start
   end
 
-  def create_track_from_points_array(points)
-    return nil if points.size < 2
+  def create_tracks_from_segment(points)
+    return [] if points.size < 2
 
     begin
       # Calculate distance using Geocoder with validation
@@ -108,18 +102,18 @@ class Tracks::TimeChunkProcessorJob < ApplicationJob
         Rails.logger.error(
           "Invalid distance calculated (#{distance}) for #{points.size} points in chunk #{chunk_data[:chunk_id]}"
         )
-        return nil
+        return []
       end
 
-      track = create_track_from_points(points, distance * 1000, orphan_only: true) # Convert km to meters
+      tracks = create_tracks_from_orphan_points(points)
 
-      unless track
+      if tracks.empty?
         Rails.logger.warn "Failed to create track from #{points.size} points with distance #{distance.round(2)} km"
       end
 
-      track
+      tracks
     rescue StandardError
-      nil
+      []
     end
   end
 
