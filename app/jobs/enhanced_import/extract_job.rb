@@ -39,8 +39,7 @@ module EnhancedImport
 
     private
 
-    # Import completion schedules track generation too, and both claim the same
-    # untracked points. The generator already serialises on this lock.
+    # The generator already serialises on this lock.
     def run(import, attempt)
       mark_running!(import)
 
@@ -158,6 +157,7 @@ module EnhancedImport
         additional_data_extraction: payload
       )
       broadcast_card(import)
+      schedule_track_generation(import)
     end
 
     def mark_failed!(import, error)
@@ -170,6 +170,13 @@ module EnhancedImport
         additional_data_extraction: payload
       )
       broadcast_card(import)
+      schedule_track_generation(import)
+    end
+
+    def schedule_track_generation(import)
+      import.schedule_untracked_track_generation
+    rescue StandardError => e
+      ExceptionReporter.call(e, 'Failed to schedule track generation after extraction')
     end
   end
 end
