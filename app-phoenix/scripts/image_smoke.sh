@@ -67,7 +67,7 @@ upstream="$(docker logs a0_app 2>&1 | sed -n 's/.*Phoenix listens on \[::\]:3000
 
 docker exec a0_app sh -c 'cat /proc/net/tcp /proc/net/tcp6' | awk '$4 == "0A" {print $2}' >"$work/listeners"
 grep -q ':0BB8$' "$work/listeners" || fail "nothing listens on 3000"
-if grep -v ':0BB8$' "$work/listeners" | grep -vqE '^(0100007F|00000000000000000000000001000000):'; then
+if grep -v ':0BB8$' "$work/listeners" | grep -vqE '^([0-9A-F]{6}7F|00000000000000000000000001000000):'; then
   fail "a listener other than Phoenix's is reachable from outside the container"
 fi
 
