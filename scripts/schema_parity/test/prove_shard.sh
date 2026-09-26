@@ -142,6 +142,7 @@ cat > "$fake_root/scripts/schema_parity/ecto_prove.sh" <<EOF
 case "\$*" in
   *--list*) printf '%s\n' fresh upgrade:0.37.2 rows:1.7.8~shifted contended:1.10.1:points ;;
   *)
+    echo "\$*" > "\$SP_WORK/prove.args"
     touch "\$SP_WORK/ecto/ref/fresh.$(hex 2)-$code.status" "\$SP_WORK/ecto/ref/rows_1.7.8_shifted.$(hex 3)-$code.status"
     echo "ran 4 checks, 0 failed"
     ;;
@@ -158,6 +159,20 @@ wait "$launched"
 status=$?
 [ "$status" -eq 0 ] && [ "$(record refs_reused)" = 1 ] && [ "$(record refs_computed)" = 2 ]
 verdict $? "only references the per-check key accepted count as reused (exit $status: $(tr '\n' ' ' < "$work/nightly/proof.env" 2>&1))"
+[ "$(cat "$work/prove.args" 2>&1)" = "--jobs 2 --shard 1/67 all" ]
+verdict $? "without arguments it proves shard SHARD of SHARDS ($(cat "$work/prove.args" 2>&1))"
+
+echo "exec ${shell:+$shell }scripts/schema_parity/ci/prove_shard.sh upgrade:0.37.2 fresh" > "$scratch/step.sh"
+fresh_case
+mkdir -p "$work/ecto/ref"
+step "$fake_root" SHARD= SHARDS=
+wait "$launched"
+status=$?
+[ "$status" -eq 0 ] && [ "$(cat "$work/prove.args" 2>&1)" = "--jobs 2 upgrade:0.37.2 fresh" ]
+verdict $? "with checks as arguments it proves exactly those, without SHARD or SHARDS (exit $status: $(cat "$work/prove.args" 2>&1))"
+[ "$(tr '\n' ' ' < "$work/nightly/list.txt" 2>&1)" = "upgrade:0.37.2 fresh " ] && [ "$(record exit)" = 0 ] &&
+  [ "$(record refs_computed)" = 2 ]
+verdict $? "their list and proof record are written as for a shard ($(tr '\n' ' ' < "$work/nightly/proof.env" 2>&1))"
 
 echo "$failures failed"
 [ "$failures" -eq 0 ]

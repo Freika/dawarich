@@ -4,6 +4,7 @@ require 'json'
 require 'open3'
 require 'fileutils'
 require_relative 'inventory_tags'
+require_relative 'snapshot_paths'
 
 LANG_ENV = { 'LANG' => 'en_US.UTF-8' }.freeze
 SCHEMARB_HEADER = %w[blob state releases result diff_lines snapshot note].freeze
@@ -14,15 +15,6 @@ def capture!(env, *cmd)
   abort "matrix inventory preflight: #{cmd.join(' ')} failed: #{err}#{out}" unless status.success?
 
   out
-end
-
-def snapshot_paths(label, snapshots_dir)
-  if label.end_with?('.schemarb')
-    [File.join(snapshots_dir, "#{label.delete_suffix('.schemarb')}.schemarb.sql.gz")]
-  else
-    release = label.split(/[@+]/, 2).first
-    %w[image replay].map { |kind| File.join(snapshots_dir, "#{release}.#{kind}.sql.gz") }
-  end
 end
 
 def release_fixtures(fixtures, release)

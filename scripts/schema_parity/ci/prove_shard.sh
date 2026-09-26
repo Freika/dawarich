@@ -5,10 +5,15 @@ root="$(cd "$(dirname "$0")/../../.." && pwd)"
 . "$root/scripts/schema_parity/ecto_lib.sh"
 prove="$root/scripts/schema_parity/ecto_prove.sh"
 out="$work/nightly"
-shard="${SHARD:?}/${SHARDS:?}"
 mkdir -p "$out"
 rm -f "$work"/ecto/summary*.txt "$out"/*
-"$prove" --shard "$shard" --list > "$out/list.txt" || exit 2
+if [ "$#" -gt 0 ]; then
+  printf '%s\n' "$@" > "$out/list.txt"
+else
+  shard="${SHARD:?}/${SHARDS:?}"
+  "$prove" --shard "$shard" --list > "$out/list.txt" || exit 2
+  set -- --shard "$shard" all
+fi
 tmpd="$(mktemp -d "${TMPDIR:-/tmp}/sp-prove-shard.XXXXXX")" || exit 2
 trap 'rm -rf "$tmpd"' EXIT
 code="$(code_key)" || exit 2
@@ -20,7 +25,7 @@ checks_of() {
 }
 references > "$tmpd/refs.before"
 echo "started=$(date -u +%s)" > "$out/proof.env"
-timeout -k 60 150m "$prove" --shard "$shard" --jobs 2 all > "$out/proof.out" 2>&1 &
+timeout -k 60 150m "$prove" --jobs 2 "$@" > "$out/proof.out" 2>&1 &
 pid=$!
 trap 'kill -TERM "$pid" 2>/dev/null' INT TERM
 tail -f --pid="$pid" "$out/proof.out" &

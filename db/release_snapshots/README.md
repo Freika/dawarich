@@ -949,6 +949,38 @@ activates when `feat/phoenix-port` merges into the default branch.
 - **An unreleased migration that needs a fixture it lacks** (`inventory.rb` decides) fails the select step, on pull
   requests and pushes alike.
 
+The same workflow has three more jobs, which run whatever the diff:
+- **Upgrade sample** (`ecto-upgrade-sample`, one leg per PostgreSQL major, 14 and 17, `fail-fast` off). The selection
+  above never runs an `upgrade:` check for a change that touches no release, so this job always proves four fixed
+  entry states. `scripts/schema_parity/ci/upgrade_sample.rb` picks them from `ecto_prove.sh --list`:
+  - the floor, `upgrade:0.37.2`, which runs the whole supported migration path;
+  - the newest state in `db/release_migrations.json` (a new release moves it automatically);
+  - the shipped `schema.rb` variant `upgrade:1.0.1.schemarb`, a real-install drift;
+  - the interrupted upgrade `upgrade:0.37.2@20260108192905`, a resume.
+
+  The selector fails, naming the check, when one of the four is not in `--list` or has no snapshot, rather than
+  running fewer. To retire one of those snapshots, change the sample in that file in the same pull request. The proof
+  step is `exec scripts/schema_parity/ci/prove_shard.sh <checks>`: the nightly wrapper, which proves the given checks
+  instead of a shard, keeps the TERM relay and writes the same `nightly/` record. `ci/nightly_report.rb leg` then
+  requires one `ok` line per check, in order, with no `ABORTED` line, and any `unported@` in the summary fails the
+  step as well: a declared unported effect is not acceptable on these paths. The cache follows the nightly: only
+  `tmp/schema_parity/ecto/ref`, under the exact key
+  `ecto-ref-sample-v<REF_CACHE_FORMAT>-<os>-<runner image>-<ISO year-week>-pg<major>-<inputs>` with the nightly's
+  `ci/ref_cache_key.sh` inputs, saved only after a green leg on a miss. Each leg uploads `upgrade-sample-pg<major>`
+  (list, harness output, proof record, summary, `prove.log`, diffs) on success and failure. Fresh, unreleased and
+  changed-release checks stay with the selection above.
+- **Harness tests** (`harness-tests`) run every script under `scripts/schema_parity/test/` except `pg_major.sh`:
+  `prove_term.sh`, `prove_shard.sh`, `nightly_report.sh`, `nightly_workflow.rb`, `counterparts_workflow.rb`,
+  `matrix_inventory_preflight.sh` and `upgrade_sample.sh`. They need no Docker, Bundler or database and take about a
+  minute, so the job can be a required check.
+- **Harness tests (Docker)** (`harness-docker-tests`) run `pg_major.sh`, which starts PostgreSQL 14 and 17 containers
+  of its own. It runs here rather than in the nightly because `infra.sh` and `lib.sh` change in pull requests, and
+  the nightly cannot run before `feat/phoenix-port` reaches the default branch.
+
+Every action in the workflow is pinned to a commit with its version in a comment, with the same pins as
+`ecto-nightly.yml`. `ruby scripts/schema_parity/test/counterparts_workflow.rb [file]` checks this, the three jobs
+above, and that every new file under `test/` is wired into `harness-tests`.
+
 ### Matrix inventory preflight
 
 `scripts/schema_parity/matrix_inventory_preflight.rb` proves the matrix described above cannot silently shrink. It
@@ -1046,9 +1078,11 @@ on manual dispatch, with a read-only token. A newer run of the same ref cancels 
   during `mix compile`, and a `docker exec` timeout during the database cleanup.
   `sh scripts/schema_parity/test/prove_shard.sh [dash]` runs the proof step as the workflow does
   (`exec …/prove_shard.sh` under `bash -e`). It sends the step SIGINT, SIGTERM and SIGKILL, and checks the reference
-  counts on a fake harness. `sh scripts/schema_parity/test/nightly_report.sh` runs the report over synthetic
+  counts on a fake harness, and that check names given as arguments are proved instead of a shard.
+  `sh scripts/schema_parity/test/nightly_report.sh` runs the report over synthetic
   artifacts. `ruby scripts/schema_parity/test/nightly_workflow.rb [file]` is a structural check of the
-  workflow, used in place of `actionlint`. The `ci/` scripts sit in a subdirectory, outside the code key and
+  workflow, used in place of `actionlint`. The `harness-tests` job of `ecto-counterparts.yml` runs all of them on
+  every pull request and push (see "What CI runs"). The `ci/` scripts sit in a subdirectory, outside the code key and
   `pr_checks.rb`'s shared inputs: editing them neither invalidates references nor selects checks.
 
 ### At a release
