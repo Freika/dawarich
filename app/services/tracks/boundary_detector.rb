@@ -197,7 +197,7 @@ class Tracks::BoundaryDetector
     owned_by_kept_track = Track.where(Tracks::KeptTracks.condition)
                                .where(Track.arel_table[:id].eq(Point.arel_table[:track_id])).arel.exists
     user.points.where('timestamp > ? AND timestamp < ?', from.to_i, to.to_i)
-        .where('COALESCE(tracker_id, ?) = COALESCE(?, ?)', '', tracker_id, '')
+        .recorded_by(tracker_id)
         .where(owned_by_kept_track)
         .exists?
   end

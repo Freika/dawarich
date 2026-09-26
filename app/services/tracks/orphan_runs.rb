@@ -20,7 +20,7 @@ module Tracks
     def owned_points
       window = @user.safe_settings.minutes_between_routes.to_i.minutes.to_i
       Point.where(user_id: @user.id)
-           .where('COALESCE(tracker_id, ?) = COALESCE(?, ?)', '', @orphans.first.tracker_id, '')
+           .recorded_by(@orphans.first.tracker_id)
            .where.not(track_id: nil)
            .where(timestamp: (@orphans.first.timestamp - window)..(@orphans.last.timestamp + window))
            .order(:timestamp)
