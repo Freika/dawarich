@@ -17,7 +17,7 @@ RSpec.describe 'Polarsteps step points' do
 
     expect do
       Imports::Create.new(user, import).call
-    end.to have_enqueued_job(Tracks::ParallelGeneratorJob)
+    end.to have_enqueued_job(EnhancedImport::ExtractJob).with(import.id)
 
     expect(import.reload).to be_completed
     expect(import.source).to eq('polarsteps')
