@@ -24,6 +24,13 @@ class TrackSegment < ApplicationRecord
 
   scope :auto_classified, -> { where(corrected_at: nil) }
   scope :manually_corrected, -> { where.not(corrected_at: nil) }
+  scope :outranking_inference, lambda {
+    manually_corrected.or(where(source: EnhancedImport::Translator::SUPPORTED_SOURCES))
+  }
+
+  def self.outranking_inference_on(track_id)
+    outranking_inference.where(arel_table[:track_id].eq(track_id)).arel.exists
+  end
 
   def manually_corrected?
     corrected_at.present?
