@@ -313,7 +313,7 @@ Paths are relative to the repository root.
 | `scripts/schema_parity/inline_effects.tsv` | The Rails files each inline port reproduces, and the release whose checks a change to one selects |
 | `scripts/schema_parity/encrypted_columns.tsv`, `decrypt_columns.rb` | The encrypted attributes; Rails decrypts both sides before the row comparison |
 | `scripts/schema_parity/lib.sh`, `infra.sh` | C1's helpers: `canon_dump` excludes `phoenix` and `oban` and is memoised; bounded `docker exec`; the PostgreSQL 14 restore rule; `infra.sh up` starts the pinned server `SP_PG_MAJOR` selects and turns off its durability |
-| `scripts/schema_parity/fixtures/<release>[--<variant>].sql` / `.env` | Row fixtures and their environments (127 `.sql`, 36 `.env`) |
+| `scripts/schema_parity/fixtures/<release>[--<variant>].sql` / `.env` | Row fixtures and their environments (128 `.sql`, 36 `.env`) |
 | `scripts/schema_parity/matrix_inventory_preflight.rb`, `inventory_tags.rb`, `snapshot_paths.rb` | The matrix inventory preflight (see "Matrix inventory preflight"); the `inventory.rb` tags that need a fixture, shared with `pr_checks.rb`; the snapshot files a check label restores from |
 | `scripts/schema_parity/ci/*` | CI helpers: `prove_shard.sh` (the nightly and sample proof wrapper), `nightly_report.rb` (`leg` and `report`), `upgrade_sample.rb`, `ref_cache_key.sh` |
 | `scripts/schema_parity/test/*` | Harness self-tests (see "What CI runs" and the nightly's "Tests") |
