@@ -8,4 +8,12 @@ RSpec.describe 'B12 outbound HTTP guard' do
     expect(WebMock.net_connect_allowed?(URI('http://127.0.0.1:3103/health'))).to be(true)
     expect(WebMock.net_connect_allowed?(URI('https://example.invalid/'))).to be(false)
   end
+
+  it 'fails a B12 run when local SMTP delivery fails' do
+    expect(ActionMailer::Base.raise_delivery_errors).to be(true)
+  end
+
+  it 'keeps job arguments out of B12 Sidekiq logs' do
+    expect(Sidekiq.default_configuration.logger.level).to eq(Logger::WARN)
+  end
 end

@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Users::DestroyConfirmations', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   describe 'GET /users/me/destroy/confirm' do
     let(:user) { create(:user) }
 
@@ -81,6 +83,30 @@ RSpec.describe 'Users::DestroyConfirmations', type: :request do
 
       expect(response).to redirect_to(new_user_session_path)
       expect(flash[:alert]).to match(/invalid|expired/i)
+    end
+
+    it 'rejects a token after its one-hour expiry' do
+      token = Users::IssueDestroyToken.new(user).call
+
+      travel_to(Users::IssueDestroyToken::TTL.from_now + 1.second) do
+        get '/users/me/destroy/confirm', params: { token: token }
+      end
+
+      expect(user.reload.deleted_at).to be_nil
+      expect(flash[:alert]).to match(/invalid|expired/i)
+    end
+
+    it 'deletes only the token owner when another account is signed in' do
+      other = create(:user)
+      sign_in(other)
+      token = Users::IssueDestroyToken.new(user).call
+
+      get '/users/me/destroy/confirm', params: { token: token }
+
+      expect(user.reload.deleted_at).to be_present
+      expect(other.reload.deleted_at).to be_nil
+      get '/api/v1/plan', params: { api_key: other.api_key }
+      expect(response).to have_http_status(:ok)
     end
   end
 end

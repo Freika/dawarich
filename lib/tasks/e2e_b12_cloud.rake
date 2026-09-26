@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'fileutils'
+
 namespace :e2e do
   namespace :b12 do
     def assert_b12_database!
@@ -32,12 +34,34 @@ namespace :e2e do
       user.reload
     end
 
+    def b12_output(payload)
+      root = Rails.root.join('tmp/b12-fixtures')
+      output = Pathname.new(ENV.fetch('B12_FIXTURE_OUTPUT'))
+      unless output.dirname == root && output.basename.to_s.match?(/\A[a-z0-9-]+\.json\z/)
+        abort('Invalid B12 fixture output path')
+      end
+
+      FileUtils.mkdir_p(root)
+      File.open(output, File::WRONLY | File::CREAT | File::EXCL, 0o600) { |file| file.write(payload.to_json) }
+    end
+
     desc 'Create or return an isolated synthetic Cloud user'
     task :user, %i[email plan admin] => :environment do |_, args|
       assert_b12_database!
       user = b12_user(args[:email], args[:plan] || 'lite', args[:admin])
       payload = { id: user.id, email: user.email, api_key: user.api_key, plan: user.plan }
-      puts "B12_FIXTURE=#{payload.to_json}"
+      b12_output(payload)
+    end
+
+    desc 'Issue a deletion link for one user while leaving another user active'
+    task :deletion_pair, %i[first_email second_email] => :environment do |_, args|
+      assert_b12_database!
+      owner, other = [args[:first_email], args[:second_email]].map { |email| b12_user(email, 'lite', 'false') }
+      token = Users::IssueDestroyToken.new(owner).call
+      payload = { owner_id: owner.id, owner_api_key: owner.api_key,
+                  other: { id: other.id, email: other.email, api_key: other.api_key },
+                  link: "/users/me/destroy/confirm?token=#{token}" }
+      b12_output(payload)
     end
 
     desc 'Create points on either side of the Lite calendar cutoff'
@@ -56,7 +80,7 @@ namespace :e2e do
       end
       user.update_column(:points_count, user.points.count)
       payload = { id: user.id, api_key: user.api_key, inside_id: ids[:inside], outside_id: ids[:outside] }
-      puts "B12_FIXTURE=#{payload.to_json}"
+      b12_output(payload)
     end
 
     desc 'Set the isolated Cloud registration switch'
@@ -65,7 +89,7 @@ namespace :e2e do
       enabled = args[:enabled] == 'true'
       DawarichSettings.set_registration_enabled(enabled)
       payload = { registration_enabled: enabled }
-      puts "B12_FIXTURE=#{payload.to_json}"
+      b12_output(payload)
     end
   end
 end
