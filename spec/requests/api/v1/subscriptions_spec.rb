@@ -201,6 +201,10 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
           body = JSON.parse(response.body)
           expect(body).to include('plan' => 'family', 'status' => 'active', 'subscription_source' => source)
           expect(Time.iso8601(body.fetch('active_until')).to_i).to eq(active_until.to_i)
+
+          get '/api/v1/users/me', params: { api_key: user.api_key }
+          expect(response).to have_http_status(:ok)
+          expect(JSON.parse(response.body).dig('subscription', 'subscription_source')).to eq(source)
         end
       end
 
