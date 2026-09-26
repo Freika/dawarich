@@ -16,9 +16,14 @@ defmodule Dawarich.ReleaseMigrations.Unreleased do
   @impl true
   def steps do
     [
+      {"20260923180000", &enqueue_ungated_achievements_backfill/1},
       {"20260925100000", &align_track_split_settings_defaults/1},
       {"20260925100100", &reenqueue_transportation_mode_backfills/1, transaction: false}
     ]
+  end
+
+  defp enqueue_ungated_achievements_backfill(_repo) do
+    {:jobs, [job("DataMigrations::BackfillAchievementsJob")]}
   end
 
   defp align_track_split_settings_defaults(repo) do
