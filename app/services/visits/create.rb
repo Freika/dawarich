@@ -29,12 +29,7 @@ module Visits
 
       result
     rescue ActiveRecord::RecordNotUnique
-      @duplicate = true
-      @visit = existing_visit
-      @visit.update!(deleted_at: nil, status: :confirmed) if @visit && revivable?(@visit)
-      @errors = 'Failed to create visit: duplicate visit' unless @visit
-
-      @visit || false
+      handle_duplicate
     rescue ActiveRecord::RecordInvalid => e
       report_exception(e, "Failed to create visit: #{e.message}")
 
@@ -64,6 +59,37 @@ module Visits
       return false if suggested?
 
       visit.soft_deleted? || visit.declined?
+    end
+
+    def handle_duplicate
+      @visit = existing_visit
+
+      unless @visit
+        @errors = 'Failed to create visit: duplicate visit'
+        return false
+      end
+
+      if revivable?(@visit)
+        @visit.update!(deleted_at: nil, status: :confirmed)
+        @duplicate = true
+        return @visit
+      end
+
+      if conflicting_attributes?(@visit)
+        @visit = nil
+        @errors = I18n.t('services.visits.create.duplicate_at_place_and_time')
+        return false
+      end
+
+      @duplicate = true
+      @visit
+    end
+
+    def conflicting_attributes?(visit)
+      effective_name = params[:name].to_s.presence || visit.place&.name
+      effective_status = params[:status].to_s.presence || 'confirmed'
+
+      visit.name != effective_name || visit.ended_at != ended_at || visit.status != effective_status
     end
 
     def coordinates_usable?

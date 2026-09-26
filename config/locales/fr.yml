@@ -4874,6 +4874,8 @@ fr:
           manifest_missing: 'Le fichier de manifeste n''a pas été trouvé dans l''archive :
             manifest.json'
     visits:
+      create:
+        duplicate_at_place_and_time: Une visite existe déjà à cet endroit et à cette heure
       suggest:
         error_suggesting_visits_message: 'Erreur lors de la suggestion de visites :
           %{message}'

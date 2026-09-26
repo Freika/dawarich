@@ -353,6 +353,49 @@ RSpec.describe Visits::Create do
       end
     end
 
+    context 'when a duplicate collides with a visit that has different attributes' do
+      before { described_class.new(user, valid_params).call }
+
+      it 'rejects a conflicting name instead of returning the stale visit' do
+        service = described_class.new(user, valid_params.merge(name: 'Different Name'))
+
+        expect(service.call).to be(false)
+        expect(service.errors).to eq(I18n.t('services.visits.create.duplicate_at_place_and_time'))
+      end
+
+      it 'rejects a conflicting ended_at' do
+        service = described_class.new(user, valid_params.merge(ended_at: '2023-12-01T13:00:00Z'))
+
+        expect(service.call).to be(false)
+      end
+
+      it 'rejects a conflicting status' do
+        service = described_class.new(user, valid_params.merge(status: 'suggested'))
+
+        expect(service.call).to be(false)
+      end
+
+      it 'does not modify the existing visit' do
+        described_class.new(user, valid_params.merge(name: 'Different Name')).call
+
+        expect(Visit.find_by(name: 'Test Visit')).to be_present
+      end
+
+      it 'is not reported as a duplicate on the rejected attempt' do
+        service = described_class.new(user, valid_params.merge(name: 'Different Name'))
+        service.call
+
+        expect(service).not_to be_duplicate
+      end
+
+      it 'still returns the existing visit for a truly identical repeat' do
+        service = described_class.new(user, valid_params)
+
+        expect(service.call).to be_truthy
+        expect(service.visit.name).to eq('Test Visit')
+      end
+    end
+
     context 'when the place name fetch cannot be enqueued' do
       before do
         configure_instance_geocoding
