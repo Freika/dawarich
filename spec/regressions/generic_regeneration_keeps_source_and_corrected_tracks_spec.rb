@@ -10,7 +10,7 @@ RSpec.describe 'Generic track regeneration never deletes source or corrected tra
   def create_points(tracker_id:, offset:, import_id: nil)
     Array.new(6) do |i|
       create(:point, user: user, import_id: import_id, tracker_id: tracker_id, timestamp: base + offset + (i * 60),
-                     lonlat: "POINT(#{13.4 + (offset / 1000.0) + (i * 0.0005)} 52.5)")
+                     lonlat: "POINT(#{13.4 + (offset / 100_000.0) + (i * 0.0005)} 52.5)")
     end
   end
 
@@ -62,6 +62,42 @@ RSpec.describe 'Generic track regeneration never deletes source or corrected tra
     expect(Track.exists?(corrected_track.id)).to be(true)
     expect(Track.exists?(plain_track.id)).to be(false)
     expect(Point.where(id: plain_points.map(&:id)).pluck(:track_id)).to all(be_present)
+  end
+
+  describe 'boundary resolution after the run' do
+    def run_daily_and_resolve(kept_track)
+      user.update!(points_count: user.points.count)
+      kept_track.update_columns(created_at: 3.hours.ago)
+      Tracks::DailyGenerationJob.perform_now
+      perform_enqueued_jobs(only: Tracks::ParallelGeneratorJob)
+      perform_enqueued_jobs(only: Tracks::TimeChunkProcessorJob)
+      perform_enqueued_jobs(only: Tracks::BoundaryResolverJob)
+    end
+
+    it 'does not merge away a corrected track next to a regenerated one' do
+      corrected_track = track_for(create_points(tracker_id: 'phone', offset: 0))
+      segment_on(corrected_track, source: 'user', corrected_at: 1.day.ago)
+      following = create_points(tracker_id: 'phone', offset: 420)
+
+      run_daily_and_resolve(corrected_track)
+
+      expect(Track.exists?(corrected_track.id)).to be(true)
+      expect(corrected_track.track_segments.manually_corrected).to exist
+      following_track_ids = Point.where(id: following.map(&:id)).pluck(:track_id)
+      expect(following_track_ids).to all(be_present)
+      expect(following_track_ids).not_to include(corrected_track.id)
+    end
+
+    it 'does not merge away a generated track carrying source segments' do
+      adopted_track = track_for(create_points(tracker_id: 'phone', offset: 0, import_id: import.id))
+      segment_on(adopted_track, source: 'google_phone_takeout')
+      create_points(tracker_id: 'phone', offset: 420)
+
+      run_daily_and_resolve(adopted_track)
+
+      expect(Track.exists?(adopted_track.id)).to be(true)
+      expect(adopted_track.track_segments.where(source: 'google_phone_takeout')).to exist
+    end
   end
 
   it 'keeps a generated track carrying source segments' do

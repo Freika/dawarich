@@ -25,7 +25,7 @@ class TrackSegment < ApplicationRecord
   scope :auto_classified, -> { where(corrected_at: nil) }
   scope :manually_corrected, -> { where.not(corrected_at: nil) }
   scope :outranking_inference, lambda {
-    manually_corrected.or(where(source: EnhancedImport::Translator::SUPPORTED_SOURCES))
+    manually_corrected.or(where(source: EnhancedImport::Translator::SEGMENT_SOURCE_LABELS))
   }
 
   def self.outranking_inference_on(track_id)

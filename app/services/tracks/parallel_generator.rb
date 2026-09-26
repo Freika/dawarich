@@ -106,7 +106,7 @@ class Tracks::ParallelGenerator
   end
 
   def clean_existing_tracks
-    tracks = user.tracks.where(import_id: nil).where(TrackSegment.outranking_inference_on(Track.arel_table[:id]).not)
+    tracks = user.tracks.where(Tracks::KeptTracks.condition.not)
     if time_range_defined?
       tracks = tracks.where('(start_at, end_at) OVERLAPS (?, ?)', start_at&.in_time_zone, end_at&.in_time_zone)
     end

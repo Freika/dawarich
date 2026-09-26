@@ -38,10 +38,10 @@ class Tracks::BoundaryDetector
   private
 
   def find_boundary_track_candidates
-    recent_tracks = user.tracks
-                        .where('created_at > ?', 1.hour.ago)
-                        .order(:start_at)
-                        .to_a
+    recent_tracks = mergeable_tracks
+                    .where('created_at > ?', 1.hour.ago)
+                    .order(:start_at)
+                    .to_a
 
     return [] if recent_tracks.empty?
 
@@ -95,10 +95,14 @@ class Tracks::BoundaryDetector
     sql = conditions.map(&:first).join(' OR ')
     bindings = conditions.flat_map { |c| c[1..] }
 
-    user.tracks
-        .where(tracker_id: tracker_ids)
-        .where(sql, *bindings)
-        .to_a
+    mergeable_tracks
+      .where(tracker_id: tracker_ids)
+      .where(sql, *bindings)
+      .to_a
+  end
+
+  def mergeable_tracks
+    user.tracks.where(Tracks::KeptTracks.condition.not)
   end
 
   # Time gap that still counts as "adjacent" for boundary merging.
