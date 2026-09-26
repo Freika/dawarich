@@ -116,18 +116,6 @@ defmodule Dawarich.ReleaseEffectInventory do
 
   @unported_sites [
     %{
-      site: "v1_13_1.ex:100",
-      class: "Geocoding::SeedFromEnv",
-      task: 4,
-      rails_file: "app/services/geocoding/seed_from_env.rb"
-    },
-    %{
-      site: "v1_15_0.ex:51",
-      class: "InstanceSettings::Backfill",
-      task: 4,
-      rails_file: "app/services/instance_settings/backfill.rb"
-    },
-    %{
       site: "v1_15_2.ex:62",
       class: "Achievements::LoadRegions",
       task: 5,

@@ -11,6 +11,7 @@ defmodule Dawarich.ActiveRecordEncryptionTest do
 
   @explicit Enum.find(@environments, &(&1["name"] == "explicit keys"))
   @development Enum.find(@environments, &(&1["name"] == "development defaults"))
+  @zlib_text_unknown ["zlib: invalid block type"]
 
   test "decrypts every ciphertext Rails wrote, with the keys each environment resolves to" do
     for %{"name" => name, "env" => env, "vectors" => vectors} <- @environments do
@@ -126,29 +127,38 @@ defmodule Dawarich.ActiveRecordEncryptionTest do
     end
   end
 
-  test "accepts and refuses each crafted message exactly as Rails did" do
+  test "decrypts, skips and raises each crafted message exactly as Rails did" do
     key = key!(@explicit)
     crafted = @explicit["crafted"]
+    verdicts = Enum.map(crafted, & &1["rails"])
 
-    assert Enum.any?(crafted, &(&1["rails"] == "ok"))
-    assert Enum.any?(crafted, &(&1["rails"] != "ok"))
+    assert "ok" in verdicts
+    assert "ActiveRecord::Encryption::Errors::Decryption" in verdicts
+
+    assert Enum.any?(
+             verdicts,
+             &(&1 not in ["ok", "ActiveRecord::Encryption::Errors::Decryption"])
+           )
 
     for %{"name" => name, "ciphertext" => ciphertext, "rails" => rails} = recorded <- crafted do
-      if rails == "ok" do
-        assert ActiveRecordEncryption.decrypt(ciphertext, key) == {:ok, recorded["plaintext"]},
-               name
-      else
-        assert {:error, _} = ActiveRecordEncryption.decrypt(ciphertext, key),
-               "#{name}: Rails raised #{rails}"
-      end
+      expected =
+        case rails do
+          "ok" -> {:ok, recorded["plaintext"]}
+          "ActiveRecord::Encryption::Errors::Decryption" -> :rescued
+          class -> {:raised, class, rails_message(recorded)}
+        end
+
+      assert verdict(ActiveRecordEncryption.decrypt(ciphertext, key)) == expected, name
     end
   end
 
   test "a wrong key or a value that is not a string is an error" do
     [vector | _] = @explicit["vectors"]
 
-    assert {:error, _} = ActiveRecordEncryption.decrypt(vector["ciphertext"], key!(@development))
-    assert {:error, _} = ActiveRecordEncryption.decrypt(nil, key!(@explicit))
+    assert {:error, {:rescued, _}} =
+             ActiveRecordEncryption.decrypt(vector["ciphertext"], key!(@development))
+
+    assert {:error, {:rescued, _}} = ActiveRecordEncryption.decrypt(nil, key!(@explicit))
   end
 
   test "every truncation of a ciphertext is an error, never an exception" do
@@ -160,6 +170,13 @@ defmodule Dawarich.ActiveRecordEncryptionTest do
       assert {:error, _} = ActiveRecordEncryption.decrypt(binary_part(ciphertext, 0, size), key)
     end
   end
+
+  defp verdict({:ok, plaintext}), do: {:ok, plaintext}
+  defp verdict({:error, {:rescued, _reason}}), do: :rescued
+  defp verdict({:error, {:raised, class, message}}), do: {:raised, class, message}
+
+  defp rails_message(%{"name" => name}) when name in @zlib_text_unknown, do: nil
+  defp rails_message(%{"message" => message}), do: message
 
   defp key!(environment) do
     {:ok, key} = ActiveRecordEncryption.key(environment["env"])

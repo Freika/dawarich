@@ -10,7 +10,7 @@ end
 
 statements = File.readlines(list, chomp: true).flat_map do |line|
   table, column = line.split("\t")
-  next [] unless connection.column_exists?(table, column)
+  next [] unless connection.table_exists?(table) && connection.column_exists?(table, column)
 
   model = table.classify.constantize
   unless model.table_name == table && model.encrypted_attributes.include?(column.to_sym)
@@ -24,19 +24,18 @@ statements = File.readlines(list, chomp: true).flat_map do |line|
     "SELECT id, #{quoted_column} FROM public.#{quoted_table} WHERE #{quoted_column} IS NOT NULL ORDER BY id"
   )
   rows.map do |id, ciphertext|
-    plaintext =
+    text =
       begin
-        type.deserialize(ciphertext)
+        type.deserialize(ciphertext).dup.force_encoding(Encoding::UTF_8)
       rescue StandardError => e
-        abort "decrypt_columns.rb: #{table}.#{column} id=#{id} cannot be decrypted on the #{side} side (#{e.class})"
+        "undecryptable (#{e.class}): #{ciphertext}"
       end
-    text = plaintext.dup.force_encoding(Encoding::UTF_8)
     unless text.valid_encoding? && !text.include?("\0")
       abort "decrypt_columns.rb: #{table}.#{column} id=#{id} decrypts on the #{side} side to bytes a text column " \
             "cannot hold (#{text.valid_encoding? ? 'a NUL byte' : 'not UTF-8'})"
     end
     "UPDATE public.#{quoted_table} SET #{quoted_column} = " \
-      "convert_from(decode('#{Base64.strict_encode64(plaintext)}', 'base64'), 'UTF8') WHERE id = #{Integer(id)};\n"
+      "convert_from(decode('#{Base64.strict_encode64(text)}', 'base64'), 'UTF8') WHERE id = #{Integer(id)};\n"
   end
 end
 
