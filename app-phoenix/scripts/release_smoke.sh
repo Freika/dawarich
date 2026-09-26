@@ -49,4 +49,32 @@ set -e
 grep -qF "$(printf 'M\303\274nchen')" "$work/out" || { echo "non-ASCII output was re-encoded"; exit 1; }
 grep -qxF 'args:[][x][] 3' "$work/out" || { echo "empty arguments were dropped"; exit 1; }
 grep -qxF 'cookie:unset' "$work/out" || { echo "RELEASE_COOKIE reached the Rails server"; exit 1; }
+
+env_sh="$(ls _build/prod/rel/dawarich/releases/*/env.sh)"
+mkdir -p "$work/stubs" "$work/owned" "$work/locked"
+printf '#!/bin/sh\necho 0\n' >"$work/stubs/id"
+printf '#!/bin/sh\necho "$*" >"%s/chown.args"\n' "$work" >"$work/stubs/chown"
+chmod +x "$work/stubs/id" "$work/stubs/chown"
+PATH="$work/stubs:$PATH" DAWARICH_COOKIE_FILE="$work/owned/cookie" sh "$env_sh"
+[ "$(cat "$work/chown.args" 2>/dev/null)" = "$(ls -nd "$work/owned" | awk '{print $3":"$4}') $work/owned/cookie" ] \
+  || { echo "a cookie created as root was not handed to its directory's owner"; exit 1; }
+
+printf x >"$work/locked/cookie"
+chmod 000 "$work/locked/cookie"
+set +e
+DAWARICH_COOKIE_FILE="$work/locked/cookie" sh "$env_sh" 2>/dev/null
+locked=$?
+set -e
+chmod 600 "$work/locked/cookie"
+[ "$locked" -eq 4 ] || { echo "an unreadable cookie exited $locked, not 4"; exit 1; }
+
+rm -f "$work/chown.args"
+ln -s "$work/locked/target" "$work/owned/linked"
+set +e
+PATH="$work/stubs:$PATH" DAWARICH_COOKIE_FILE="$work/owned/linked" sh "$env_sh" 2>/dev/null
+linked=$?
+set -e
+[ "$linked" -eq 4 ] && [ ! -e "$work/locked/target" ] && [ ! -e "$work/chown.args" ] \
+  || { echo "a symlinked cookie path was followed (exit $linked)"; exit 1; }
+
 echo "release smoke: ok"
