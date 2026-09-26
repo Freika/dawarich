@@ -114,27 +114,5 @@ defmodule Dawarich.ReleaseEffectInventory do
     }
   ]
 
-  @unported_sites [
-    %{
-      site: "v1_15_2.ex:62",
-      class: "Achievements::LoadRegions",
-      task: 5,
-      rails_file: "app/services/achievements/load_regions.rb"
-    },
-    %{
-      site: "v1_15_2.ex:70",
-      class: "Achievements::MigrateExplorationState",
-      task: 5,
-      rails_file: "app/services/achievements/migrate_exploration_state.rb"
-    },
-    %{
-      site: "v1_15_2.ex:80",
-      class: "Achievements::LoadRegions",
-      task: 5,
-      rails_file: "app/services/achievements/load_regions.rb"
-    }
-  ]
-
   def job_classes, do: @job_classes
-  def unported_sites, do: @unported_sites
 end

@@ -4,6 +4,8 @@ defmodule Dawarich.ReleaseMigrations.V1_15_2 do
 
   import Dawarich.ReleaseMigration
 
+  alias Dawarich.ReleaseMigrations.Effects
+
   @impl true
   def release, do: "1.15.2"
 
@@ -59,16 +61,12 @@ defmodule Dawarich.ReleaseMigrations.V1_15_2 do
   defp seed_achievement_regions(repo) do
     if table?(repo, "regions") and exists?(repo, "SELECT 1 FROM countries") and
          not exists?(repo, "SELECT 1 FROM regions") do
-      unported!("Achievements::LoadRegions")
+      Effects.LoadRegions.run(repo)
     end
   end
 
   defp merge_exploration_progress(repo) do
-    if table?(repo, "achievement_progresses") and
-         (exists?(repo, "SELECT 1 FROM achievement_progresses") or
-            exists?(repo, "SELECT 1 FROM user_achievements")) do
-      unported!("Achievements::MigrateExplorationState")
-    end
+    if table?(repo, "achievement_progresses"), do: Effects.MigrateExplorationState.run(repo)
   end
 
   defp seed_planet_regions(repo) do
@@ -77,7 +75,7 @@ defmodule Dawarich.ReleaseMigrations.V1_15_2 do
       DELETE FROM "regions" WHERE NOT ((code LIKE '%-%'));
       """)
 
-      if exists?(repo, "SELECT 1 FROM countries"), do: unported!("Achievements::LoadRegions")
+      if exists?(repo, "SELECT 1 FROM countries"), do: Effects.LoadRegions.run(repo)
     end
   end
 

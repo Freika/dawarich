@@ -24,6 +24,10 @@ rows:1.15.0--malformed-key	failed@20260901150000	-
 rows:1.15.0--malformed-key~shifted	failed@20260901150000	-
 rows:1.15.0--missing-encryption-key	failed@20260901150000	-
 rows:1.15.0--missing-encryption-key~shifted	failed@20260901150000	-
+rows:1.15.2--carrier-collision	failed@20260720160000	-
+rows:1.15.2--carrier-collision~shifted	failed@20260720160000	-
+rows:1.15.2--deleted-user-progress	failed@20260720160000	-
+rows:1.15.2--deleted-user-progress~shifted	failed@20260720160000	-
 rows:1.3.3--multiple-indexes	failed@20260310000001	-
 rows:1.3.3--multiple-indexes~shifted	failed@20260310000001	-
 rows:1.4.0--fk-recorded	failed@20260322000001	-
