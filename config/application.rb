@@ -68,7 +68,7 @@ module Dawarich
     end
 
     config.active_record.encryption.primary_key =
-      env_or_dev_default('OTP_ENCRYPTION_PRIMARY_KEY',       'dawarich-dev-primary-key-not-for-production')
+      env_or_dev_default('OTP_ENCRYPTION_PRIMARY_KEY', 'dawarich-dev-primary-key-not-for-production')
     config.active_record.encryption.deterministic_key =
       env_or_dev_default('OTP_ENCRYPTION_DETERMINISTIC_KEY', 'dawarich-dev-deterministic-not-for-prod')
     config.active_record.encryption.key_derivation_salt =
