@@ -4,10 +4,11 @@ module Tracks
   class OrphanPointAttacher
     include Tracks::TrackBuilder
 
-    def initialize(user, point, segment_points)
+    def initialize(user, point, segment_points, claimable: Point.all)
       @user = user
       @point = point
       @segment_ids = segment_points.map(&:id)
+      @claimable = claimable
     end
 
     def call
@@ -33,13 +34,19 @@ module Tracks
 
     attr_reader :user, :point
 
+    def claimable_points
+      @claimable
+    end
+
     def attachable?(neighbor, track)
       return false unless point && neighbor && point.track_id.nil? && neighbor.track_id == track.id
       return false if point.anomaly? || neighbor.anomaly?
       return false unless point.tracker_id.to_s == track.tracker_id.to_s
       return false unless neighbor.tracker_id.to_s == point.tracker_id.to_s
 
-      (point.timestamp - neighbor.timestamp).abs <= user.safe_settings.minutes_between_routes.to_i.minutes
+      within_gap = (point.timestamp - neighbor.timestamp).abs <= user.safe_settings.minutes_between_routes.to_i.minutes
+
+      within_gap && claimable_points.exists?(id: point.id)
     end
 
     def refresh_track(track)

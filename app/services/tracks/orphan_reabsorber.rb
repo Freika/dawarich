@@ -35,12 +35,12 @@ module Tracks
       orphan_ids = orphan_point_ids_for(track)
       return 0 if orphan_ids.empty?
 
-      succeeded = false
+      claimed = 0
       ActiveRecord::Base.transaction(requires_new: true) do
-        Point.where(id: orphan_ids).update_all(track_id: track.id)
+        claimed = Point.not_held_by_extraction.where(id: orphan_ids, track_id: nil).update_all(track_id: track.id)
+        raise ActiveRecord::Rollback if claimed.zero?
 
         bounds = Point.where(track_id: track.id).pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
-        raise ActiveRecord::Rollback if bounds.nil?
 
         new_start = Time.zone.at(bounds[0])
         new_end = Time.zone.at(bounds[1])
@@ -50,11 +50,9 @@ module Tracks
         else
           track.recalculate_path_and_distance!
         end
-
-        succeeded = true
       end
 
-      succeeded ? orphan_ids.size : 0
+      claimed
     rescue ActiveRecord::RecordNotUnique
       Rails.logger.warn(
         'event=tracks.reabsorb_orphan_points_failed reason=unique_violation ' \
@@ -72,7 +70,7 @@ module Tracks
 
     def orphan_point_ids_for(track)
       Point.not_held_by_extraction.where(user_id: user.id)
-           .where('COALESCE(tracker_id, ?) = COALESCE(?, ?)', '', track.tracker_id, '')
+           .recorded_by(track.tracker_id)
            .where(track_id: nil)
            .where('anomaly IS NOT TRUE')
            .where(timestamp: track.start_at.to_i..track.end_at.to_i)
