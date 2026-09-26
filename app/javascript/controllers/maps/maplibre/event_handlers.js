@@ -266,37 +266,15 @@ export class EventHandlers {
    * Handle place click
    */
   handlePlaceClick(e) {
-    const feature = e.features[0]
-    const properties = feature.properties
+    const place = e.features[0]
+    if (!place?.properties?.id) return
 
-    const content = `
-      <div class="space-y-2">
-        ${properties.tag ? `<div class="badge badge-sm badge-primary">${escapeHtml(properties.tag)}</div>` : ""}
-        ${properties.description ? `<div>${escapeHtml(properties.description)}</div>` : ""}
-        ${
-          properties.nameLocked
-            ? `<div class="text-xs opacity-70" data-testid="place-name-lock">${translate("map_info.place_name_locked")}</div>`
-            : ""
-        }
-      </div>
-    `
-
-    const actions = properties.id
-      ? [
-          {
-            type: "button",
-            handler: "handleEdit",
-            id: properties.id,
-            entityType: "place",
-            label: translate("messages.edit"),
-          },
-        ]
-      : []
-
-    this.controller.showInfo(
-      escapeHtml(properties.name) || translate("map_info.place"),
-      content,
-      actions,
+    this.map.flyTo({
+      center: place.geometry.coordinates,
+      zoom: Math.max(this.map.getZoom(), 13),
+    })
+    document.dispatchEvent(
+      new CustomEvent("place:open", { detail: { id: place.properties.id } }),
     )
   }
 

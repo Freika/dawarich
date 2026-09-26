@@ -3,7 +3,8 @@
 <%= render 'shared/map/date_navigation_v2', start_at: @start_at, end_at: @end_at %>
 
 <div id="maps-maplibre-container"
-     data-controller="maps--maplibre area-drawer maps--maplibre-realtime"
+     data-controller="maps--maplibre area-drawer maps--maplibre-realtime place-detail"
+     data-action="place:open@document->place-detail#open place:deleted@document->maps--maplibre#handlePlaceDeleted"
      data-maps--maplibre-api-key-value="<%= current_user.api_key %>"
      data-maps--maplibre-start-date-value="<%= @start_at.iso8601 %>"
      data-maps--maplibre-end-date-value="<%= @end_at.iso8601 %>"
@@ -13,6 +14,10 @@
      data-maps--maplibre-upgrade-url-value="<%= upgrade_url(utm_medium: 'map', utm_content: 'maplibre') %>"
      data-maps--maplibre-realtime-enabled-value="true"
      data-maps--maplibre-realtime-live-mode-value="<%= current_user.safe_settings.live_map_enabled %>"
+     <% if @drawer_place %>
+     data-maps--maplibre-place-latitude-value="<%= @drawer_place.lat %>"
+     data-maps--maplibre-place-longitude-value="<%= @drawer_place.lon %>"
+     <% end %>
      data-family-members-features-value="<%= current_user_features.to_json %>"
      style="width: 100%; height: 100%; position: relative;">
 
@@ -59,5 +64,7 @@
 
   <!-- Place creation modal (shared) -->
   <%= render 'shared/place_creation_modal' %>
+
+  <%= turbo_frame_tag 'place-drawer', src: (@drawer_place && place_path(@drawer_place)), data: { place_detail_target: 'frame' } %>
 
 </div>

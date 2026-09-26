@@ -1321,7 +1321,7 @@ pl:
       rarr: "→"
       'on': dnia
       no_visits_yet: Brak wizyt
-      rename: Zmień nazwę
+      edit: Edytuj
       merge: Scal
       notes: Notatki
       save: Zapisz
