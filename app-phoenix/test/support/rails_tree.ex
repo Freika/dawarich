@@ -40,4 +40,17 @@ defmodule Dawarich.RailsTree do
     |> Enum.reject(&String.starts_with?(String.trim_leading(&1), "#"))
     |> Enum.any?(&String.contains?(&1, "disable_ddl_transaction!"))
   end
+
+  def defines_class?(relative_path, class_name) do
+    path = Path.join(@root, relative_path)
+    File.exists?(path) and class_defined?(File.read!(path), String.split(class_name, "::"))
+  end
+
+  defp class_defined?(source, parts) do
+    {namespaces, [name]} = Enum.split(parts, -1)
+
+    Regex.match?(~r/^\s*class\s+#{Regex.escape(Enum.join(parts, "::"))}\b/m, source) or
+      (Regex.match?(~r/^\s*class\s+#{Regex.escape(name)}\b/m, source) and
+         Enum.all?(namespaces, &Regex.match?(~r/^\s*module\s+#{Regex.escape(&1)}\b/m, source)))
+  end
 end
