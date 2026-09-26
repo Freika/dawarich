@@ -81,7 +81,7 @@ diff "$work/direct-names" "$work/through-names" || fail "proxied page header nam
 [ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3900/phoenix/reference)" = 404 ] || fail "the test-only reference route exists in the image"
 
 docker exec a0_app curl --version | grep -q ' ws ' || fail "the image's curl cannot speak WebSocket; this check needs another client"
-docker exec a0_app curl -sS -m 10 -i --output - -H 'Origin: http://127.0.0.1:3000' \
+docker exec a0_app curl -sS -m 10 -D - --output - -H 'Origin: http://127.0.0.1:3000' \
   -H 'Sec-WebSocket-Protocol: actioncable-v1-json, actioncable-unsupported' ws://127.0.0.1:3000/cable 2>/dev/null \
   | LC_ALL=C tr -d '\r' >"$work/cable" || true
 grep -q '^HTTP/1.1 101' "$work/cable" || fail "the /cable upgrade did not come through Phoenix"
