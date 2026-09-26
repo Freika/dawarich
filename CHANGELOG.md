@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - The web container now starts a small Elixir supervisor that runs the Rails server as its child, and creates two schemas, `phoenix` and `oban`, in the Dawarich database. If they cannot be created, the web container logs a warning and starts Rails as before. Nothing changes in `docker-compose.yml` or `.env`; the container stops with `SIGTERM` instead of `SIGINT`. `docker exec -it dawarich_app dawarich remote` opens an Elixir console for troubleshooting. The supervisor's BEAM runs with one scheduler by default to keep it lightweight; set `ERL_FLAGS=+S 4:4` (or similar) in the web container's environment to raise it without rebuilding the image.
 - Self-hosted instances no longer rate-limit sign-in, sign-up, 2FA challenges and the other request limits; the magic-phrase unlock of shared links and the password check when linking a sign-in provider keep their limits.
+- The `phoenix` and `oban` schemas no longer need the database-level `CREATE` privilege once they exist: with a database user that lacks it, have an administrator run `CREATE SCHEMA phoenix AUTHORIZATION <user>` and `CREATE SCHEMA oban AUTHORIZATION <user>` once.
+- The image also ships `release.sh`, `cloud-entrypoint.sh` and `cloud-sidekiq-entrypoint.sh` for platforms that run migrations as a separate release step. With them the web container neither migrates nor seeds, every process drops from root to uid 32767 (or `PUID`/`PGID`), and the Elixir supervisor starts only once `release.sh` has installed its schemas. `docker-compose.yml` setups are not affected.
 
 ### Fixed
 
