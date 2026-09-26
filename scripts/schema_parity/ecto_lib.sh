@@ -1,4 +1,4 @@
-ecto_env="MIX_ENV=test DATABASE_HOST=127.0.0.1 DATABASE_PORT=55532 DATABASE_USERNAME=postgres DATABASE_PASSWORD=parity"
+ecto_env="MIX_ENV=test MIX_BUILD_PATH=$root/app-phoenix/_build/parity DATABASE_HOST=127.0.0.1 DATABASE_PORT=55532 DATABASE_USERNAME=postgres DATABASE_PASSWORD=parity"
 expectations="$root/scripts/schema_parity/ecto_expectations.tsv"
 encrypted_columns="$root/scripts/schema_parity/encrypted_columns.tsv"
 holder_seconds=150
