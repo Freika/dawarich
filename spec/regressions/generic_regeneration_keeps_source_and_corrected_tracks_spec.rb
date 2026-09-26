@@ -65,16 +65,29 @@ RSpec.describe 'Generic track regeneration never deletes source or corrected tra
   end
 
   describe 'a recalculation with orphans on both sides of a kept track' do
-    it 'never builds a generated track across the kept one' do
-      before_points = create_points(tracker_id: 'phone', offset: 0, count: 4)
-      kept_points = create_points(tracker_id: 'phone', offset: 240, import_id: import.id, count: 4)
-      after_points = create_points(tracker_id: 'phone', offset: 480, count: 4)
-      source_track = track_for(kept_points, import_id: import.id, tracker_id: "import-#{import.id}-activity-1")
-      source_track.update_columns(created_at: 3.hours.ago)
+    let!(:before_points) { create_points(tracker_id: 'phone', offset: 0, count: 4) }
+    let!(:kept_points) { create_points(tracker_id: 'phone', offset: 240, import_id: import.id, count: 4) }
+    let!(:after_points) { create_points(tracker_id: 'phone', offset: 480, count: 4) }
+    let!(:source_track) do
+      track_for(kept_points, import_id: import.id, tracker_id: "import-#{import.id}-activity-1")
+        .tap { |track| track.update_columns(created_at: 3.hours.ago) }
+    end
 
+    def recalculate
       Tracks::ParallelGenerator.new(user, start_at: Time.zone.at(base - 3600), end_at: Time.zone.at(base + 3600),
                                           mode: :bulk).call
-      perform_enqueued_jobs(only: Tracks::TimeChunkProcessorJob)
+                               .tap { perform_enqueued_jobs(only: Tracks::TimeChunkProcessorJob) }
+    end
+
+    it 'counts every track it builds around the kept one' do
+      session = recalculate
+
+      expect(user.tracks.where.not(id: source_track.id).count).to eq(2)
+      expect(session.get_session_data['tracks_created']).to eq(2)
+    end
+
+    it 'never builds a generated track across the kept one' do
+      recalculate
       perform_enqueued_jobs(only: Tracks::BoundaryResolverJob)
 
       expect(Track.exists?(source_track.id)).to be(true)

@@ -56,13 +56,7 @@ module Tracks::TrackBuilder
   # but bad data is rarely useful.
   MAX_DISTANCE_METERS = 100_000_000
 
-  def create_track_from_points(points, pre_calculated_distance, tracker_id: nil,
-                               skip_segment_detection: false, orphan_only: false)
-    if orphan_only
-      return create_track_from_orphan_points(points, tracker_id: tracker_id,
-                                            skip_segment_detection: skip_segment_detection)
-    end
-
+  def create_track_from_points(points, pre_calculated_distance, tracker_id: nil, skip_segment_detection: false)
     return nil if points.size < 2
 
     resolved_tracker_id = tracker_id || points.first.tracker_id
@@ -112,14 +106,14 @@ module Tracks::TrackBuilder
   # Lock in ID order, then re-read ownership under the lock before calculating
   # metadata. Filtering only the final UPDATE would leave a phantom path/track.
   # Boundary merges deliberately use the default path to move owned points.
-  def create_track_from_orphan_points(points, tracker_id:, skip_segment_detection:)
+  def create_tracks_from_orphan_points(points, tracker_id: nil, skip_segment_detection: false)
     singleton = nil
-    track = Point.transaction do
+    tracks = Point.transaction do
       orphans = claimable_points.where(user_id: user.id, id: points.map(&:id), track_id: nil)
                                 .order(:id).lock.to_a.sort_by { |point| [point.timestamp, point.id] }
       if orphans.one?
         singleton = orphans.first
-        next
+        next []
       end
 
       contiguous_runs(points, orphans).filter_map do |run|
@@ -127,12 +121,12 @@ module Tracks::TrackBuilder
 
         distance = Point.calculate_distance_for_array_geocoder(run, :m)
         create_track_from_points(run, distance, tracker_id: tracker_id, skip_segment_detection: skip_segment_detection)
-      end.first
+      end
     end
 
-    return track unless singleton
+    return tracks unless singleton
 
-    Tracks::OrphanPointAttacher.new(user, singleton, points, claimable: claimable_points).call
+    [Tracks::OrphanPointAttacher.new(user, singleton, points, claimable: claimable_points).call].compact
   end
 
   def contiguous_runs(points, orphans)
