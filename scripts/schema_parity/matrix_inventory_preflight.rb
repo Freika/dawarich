@@ -10,8 +10,8 @@ SCHEMARB_HEADER = %w[blob state releases result diff_lines snapshot note].freeze
 SCHEMARB_RESULTS = %w[identical differs unloadable].freeze
 
 def capture!(env, *cmd)
-  out, status = Open3.capture2e(env, *cmd)
-  abort "matrix inventory preflight: #{cmd.join(' ')} failed: #{out}" unless status.success?
+  out, err, status = Open3.capture3(env, *cmd)
+  abort "matrix inventory preflight: #{cmd.join(' ')} failed: #{err}#{out}" unless status.success?
 
   out
 end
