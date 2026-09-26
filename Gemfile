@@ -92,6 +92,7 @@ group :development, :test, :staging do
   gem 'pry-rails'
   gem 'rspec-rails', '>= 8.0.1'
   gem 'rswag-specs'
+  gem 'webmock'
 end
 
 group :test do
@@ -101,7 +102,6 @@ group :test do
   gem 'shoulda-matchers'
   gem 'simplecov', require: false
   gem 'super_diff'
-  gem 'webmock'
 end
 
 group :development do
