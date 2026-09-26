@@ -17,7 +17,7 @@ defmodule DawarichWeb.RailsProxyTest do
       )
 
     {:ok, {_ip, port}} = ThousandIsland.listener_info(bandit)
-    %{upstream: upstream, port: port}
+    %{upstream: upstream, port: port, bandit: bandit}
   end
 
   test "Puma receives the request as the client sent it, plus Phoenix's client address", ctx do
@@ -96,7 +96,42 @@ defmodule DawarichWeb.RailsProxyTest do
     {head, rest} = read_head(puma)
 
     assert header(head, "content-length") == ["#{byte_size(smuggled)}"]
+    assert header(head, "connection") == ["close"]
     assert read_at_least(puma, rest, byte_size(smuggled)) == smuggled
+    reply(puma, "HTTP/1.1 204 No Content\r\n\r\n")
+    assert {204, _, ""} = read_response(client)
+  end
+
+  test "a client cannot strip the chunked framing of its body", ctx do
+    client = connect(ctx.port)
+
+    send_raw(client, [
+      "POST / HTTP/1.1\r\nHost: a\r\nConnection: transfer-encoding\r\n",
+      "Transfer-Encoding: chunked\r\n\r\n4\r\nabcd\r\n0\r\n\r\n"
+    ])
+
+    puma = accept(ctx.upstream)
+    {head, rest} = read_head(puma)
+
+    assert header(head, "transfer-encoding") == ["chunked"]
+    assert header(head, "content-length") == []
+    assert dechunk(puma, rest) == "abcd"
+    reply(puma, "HTTP/1.1 204 No Content\r\n\r\n")
+    assert {204, _, ""} = read_response(client)
+  end
+
+  test "a client cannot nominate the recorded address away", ctx do
+    client = connect(ctx.port)
+
+    send_raw(client, [
+      "GET / HTTP/1.1\r\nHost: a\r\nConnection: x-dawarich-remote-addr\r\n",
+      "X-Dawarich-Remote-Addr: 6.6.6.6\r\n\r\n"
+    ])
+
+    puma = accept(ctx.upstream)
+    {head, _} = read_head(puma)
+
+    assert header(head, "x-dawarich-remote-addr") == ["127.0.0.1"]
     reply(puma, "HTTP/1.1 204 No Content\r\n\r\n")
     assert {204, _, ""} = read_response(client)
   end
@@ -306,6 +341,8 @@ defmodule DawarichWeb.RailsProxyTest do
         ])
 
         {200, _headers, _rest} = read_response_head(client)
+        {:ok, [handler]} = ThousandIsland.connection_pids(ctx.bandit)
+        monitor = Process.monitor(handler)
         :ok = :gen_tcp.close(client)
         :ok = :inet.setopts(puma, send_timeout: 5_000)
 
@@ -313,12 +350,13 @@ defmodule DawarichWeb.RailsProxyTest do
                  send_until_closed(puma, :binary.copy("y", 65_536), 64 * 1_048_576)
 
         assert reason in [:closed, :econnreset]
+        assert_receive {:DOWN, ^monitor, :process, _, _}, 5_000
       end)
 
-    refute log =~ "[error]"
+    refute log =~ ~r/Puma closed|Puma did not answer|Bandit/
   end
 
-  test "requests Puma accepts reach it unchanged, with no header added", ctx do
+  test "requests Puma accepts reach it unchanged, with only Phoenix's headers added", ctx do
     cases = [
       {"GET /search?q=a|b{}^`\\&t=\xC3\xBC HTTP/1.1",
        [
@@ -339,7 +377,8 @@ defmodule DawarichWeb.RailsProxyTest do
 
       assert String.split(head, "\r\n") ==
                [String.replace_suffix(line, "HTTP/1.0", "HTTP/1.1")] ++
-                 Enum.map(headers, &downcase_name/1) ++ ["x-dawarich-remote-addr: 127.0.0.1"]
+                 Enum.map(headers, &downcase_name/1) ++
+                 ["connection: close", "x-dawarich-remote-addr: 127.0.0.1"]
 
       reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
       assert {200, _, ""} = read_response(client)

@@ -12,7 +12,7 @@ defmodule DawarichWeb.RailsProxy.Headers do
     nominated = Enum.reject(connection_tokens(conn.req_headers), &(&1 == "content-length"))
     dropped = [@remote_addr | @hop_by_hop] ++ nominated
     kept = Enum.reject(conn.req_headers, fn {name, _} -> name in dropped end)
-    kept ++ framing(conn) ++ [{@remote_addr, peer(conn.remote_ip)}]
+    kept ++ framing(conn) ++ [{"connection", "close"}, {@remote_addr, peer(conn.remote_ip)}]
   end
 
   def response(headers) do
