@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Loading demo data from onboarding no longer leaves "Creating your demo data…" spinning: the map refreshes track tiles once per second instead of once per created track.
 - Clicking a track on the map keeps it selected and shows its transportation-mode segments; the same click no longer clears the selection.
+- Clicking a track opens its day in the timeline reliably; the map no longer reloads the timeline over it.
 - Upgrading an installation originally created from release 0.9.12–0.11.1 no longer fails when its database has no place_visits table.
 - Delete Family, Leave Family, Remove member and Cancel invitation now ask for confirmation first and send a single request once confirmed; cancelling the confirmation no longer carries out the action.
 - Upgrading across 1.7.6 no longer fails with a duplicate-key error when a deleted account has duplicate tracks.
