@@ -91,6 +91,25 @@ class Import < ApplicationRecord
     !additional_data_extraction_supported?
   end
 
+  def extracts_on_completion?
+    additional_data_extraction_supported? &&
+      additional_data_extraction_not_attempted? &&
+      !gpx_without_waypoints?
+  end
+
+  def schedule_untracked_track_generation
+    count, min_ts, max_ts = points.pick(Arel.sql('COUNT(*), MIN(timestamp), MAX(timestamp)'))
+    return if min_ts.nil? || count < 2
+
+    Tracks::ParallelGeneratorJob.perform_later(
+      user_id,
+      start_at: Time.zone.at(min_ts),
+      end_at: Time.zone.at(max_ts),
+      mode: :bulk,
+      untracked_only: true
+    )
+  end
+
   def gpx_without_waypoints?
     return false unless gpx?
 
@@ -201,12 +220,7 @@ class Import < ApplicationRecord
   end
 
   def should_enqueue_additional_data_extraction?
-    return false unless saved_change_to_status? && completed?
-    return false unless additional_data_extraction_supported?
-    return false unless additional_data_extraction_not_attempted?
-    return false if gpx_without_waypoints?
-
-    true
+    saved_change_to_status? && completed? && extracts_on_completion?
   end
 
   def enqueue_additional_data_extraction

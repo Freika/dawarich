@@ -65,10 +65,10 @@ RSpec.describe 'GPX import tracker_id is stable across re-imports of the same de
     ids_a = Point.where(import_id: import_a.id).pluck(:tracker_id).uniq
     ids_b = Point.where(import_id: import_b.id).pluck(:tracker_id).uniq
 
+    src_hash = Digest::SHA1.hexdigest('Garmin Forerunner 245')[0, 16]
+
     expect(ids_a).to eq(ids_b)
-    expect(ids_a.first).to start_with('gpx-')
-    expect(ids_a.first).not_to include(import_a.id.to_s)
-    expect(ids_a.first).not_to include(import_b.id.to_s)
+    expect(ids_a).to eq(["gpx-#{src_hash}-trk-0-seg-0"])
   end
 
   it 'prefers <src> over <name> for device identity' do

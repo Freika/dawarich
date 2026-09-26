@@ -67,7 +67,7 @@ class Imports::Create
     run_post_import_step('filter_anomalies') { filter_anomalies(user, import) }
     run_post_import_step('schedule_stats') { schedule_stats_creating(user.id) }
     run_post_import_step('schedule_visit_suggesting') { schedule_visit_suggesting(user.id, import) }
-    run_post_import_step('schedule_track_generation') { schedule_track_generation(user.id, import) }
+    run_post_import_step('schedule_track_generation') { schedule_track_generation(import) }
     run_post_import_step('update_points_count') { update_import_points_count(import) }
     run_post_import_step('notify_if_all_skipped') { notify_if_all_skipped(import) }
   end
@@ -210,29 +210,22 @@ class Imports::Create
     VisitSuggestingJob.perform_later(user_id:, start_at: summary[:start_at], end_at: summary[:end_at])
   end
 
-  def schedule_track_generation(user_id, import)
-    summary = import_points_summary(import)
-    return if summary.nil? || summary[:count] < 2
+  def schedule_track_generation(import)
+    return if import.extracts_on_completion? || (import.extraction_in_flight? && !import.extraction_stalled?)
 
-    Tracks::ParallelGeneratorJob.perform_later(
-      user_id,
-      start_at: summary[:start_at],
-      end_at: summary[:end_at],
-      mode: :bulk,
-      untracked_only: true
-    )
+    import.schedule_untracked_track_generation
   end
 
   def import_points_summary(import)
     return @import_points_summary if defined?(@import_points_summary)
 
-    count, min_ts, max_ts = import.points.pick(Arel.sql('COUNT(*), MIN(timestamp), MAX(timestamp)'))
+    min_ts, max_ts = import.points.pick(Arel.sql('MIN(timestamp), MAX(timestamp)'))
 
     @import_points_summary =
       if min_ts.nil? || max_ts.nil?
         nil
       else
-        { count: count, start_at: Time.zone.at(min_ts), end_at: Time.zone.at(max_ts) }
+        { start_at: Time.zone.at(min_ts), end_at: Time.zone.at(max_ts) }
       end
   end
 
