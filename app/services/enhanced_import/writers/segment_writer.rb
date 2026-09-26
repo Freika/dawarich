@@ -3,36 +3,78 @@
 module EnhancedImport
   module Writers
     class SegmentWriter
-      def upsert(track, extracted)
+      def upsert(track, extracted, window: nil)
         return nil if track.nil?
 
-        existing = TrackSegment.find_by(track_id: track.id, start_index: extracted.start_index)
-        return [existing, false] if existing
+        timestamps = track.points.order(:timestamp, :id).pluck(:timestamp)
+        range = index_range(timestamps, extracted, window)
+        return nil if range.nil?
 
-        segment = track.track_segments.create!(
-          start_index: extracted.start_index,
-          end_index: resolve_end_index(track, extracted),
-          transportation_mode: extracted.transportation_mode,
-          confidence: confidence_level(extracted.confidence),
-          source: extracted.source_label
-        )
-        [segment, true]
+        pieces = uncorrected_pieces(track, timestamps, range)
+        return nil if pieces.empty?
+
+        existing = pieces.map { |piece| TrackSegment.find_by(track_id: track.id, start_index: piece.first) }
+        return [existing.first, false] if existing.all?
+
+        [write_pieces(track, extracted, timestamps, range, pieces), true]
       rescue ActiveRecord::RecordNotUnique
-        existing = TrackSegment.find_by(track_id: track.id, start_index: extracted.start_index)
-        [existing, false]
+        [TrackSegment.find_by(track_id: track.id, start_index: pieces.first.first), false]
       end
 
       private
 
       # Google emits one activity per track without point offsets, so a source
       # segment arrives as 0..0 and must be stretched over the track it describes.
-      def resolve_end_index(track, extracted)
-        return extracted.end_index if extracted.end_index > extracted.start_index
+      def index_range(timestamps, extracted, window)
+        offsets = extracted.start_index..extracted.end_index
+        inside = timestamps.each_index.select do |i|
+          offsets.size > 1 ? offsets.cover?(i) : window.nil? || window.cover?(timestamps[i])
+        end
+        inside.first..inside.last if inside.any?
+      end
 
-        last_index = track.points.count - 1
-        return extracted.end_index if last_index <= extracted.start_index
+      def uncorrected_pieces(track, timestamps, range)
+        corrected = track.track_segments.manually_corrected.flat_map { |s| covered_indices(s, timestamps) }.to_set
 
-        last_index
+        range.reject { |i| corrected.include?(i) }
+             .slice_when { |a, b| b != a + 1 }
+             .map { |run| run.first..run.last }
+      end
+
+      def covered_indices(segment, timestamps)
+        if segment.start_at && segment.end_at
+          timestamps.each_index.select { |i| timestamps[i].between?(segment.start_at.to_i, segment.end_at.to_i) }
+        elsif segment.start_index && segment.end_index
+          (segment.start_index..segment.end_index).to_a
+        else
+          []
+        end
+      end
+
+      def write_pieces(track, extracted, timestamps, range, pieces)
+        TrackSegment.transaction do
+          overlapping_auto_segments(track, timestamps, range).delete_all
+          pieces.map { |piece| create_piece(track, extracted, piece) }.first
+        end
+      end
+
+      def overlapping_auto_segments(track, timestamps, range)
+        track.track_segments.auto_classified.where(
+          '(start_at IS NOT NULL AND start_at < :to AND end_at > :from) OR ' \
+          '(start_at IS NULL AND start_index <= :last AND end_index >= :first)',
+          from: Time.zone.at(timestamps[range.first]), to: Time.zone.at(timestamps[range.last]),
+          first: range.first, last: range.last
+        )
+      end
+
+      def create_piece(track, extracted, piece)
+        track.track_segments.create!(
+          start_index: piece.first,
+          end_index: piece.last,
+          transportation_mode: extracted.transportation_mode,
+          confidence: confidence_level(extracted.confidence),
+          source: extracted.source_label
+        )
       end
 
       STRING_CONFIDENCE = { 'high' => :high, 'medium' => :medium, 'low' => :low }.freeze
