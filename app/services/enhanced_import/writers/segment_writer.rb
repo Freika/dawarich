@@ -6,7 +6,8 @@ module EnhancedImport
       def upsert(track, extracted, window: nil)
         return nil if track.nil?
 
-        timestamps = track.points.order(:timestamp, :id).pluck(:timestamp)
+        points = track.points.order(:timestamp, :id).select(:id, :timestamp, :lonlat).to_a
+        timestamps = points.map(&:timestamp)
         range = index_range(timestamps, extracted, window)
         return nil if range.nil?
 
@@ -16,7 +17,7 @@ module EnhancedImport
         existing = pieces.map { |piece| TrackSegment.find_by(track_id: track.id, start_index: piece.first) }
         return [existing.first, false] if existing.all?
 
-        [write_pieces(track, extracted, timestamps, range, pieces), true]
+        [write_pieces(track, extracted, points, range, pieces), true]
       rescue ActiveRecord::RecordNotUnique
         [TrackSegment.find_by(track_id: track.id, start_index: pieces.first.first), false]
       end
@@ -51,20 +52,11 @@ module EnhancedImport
         end
       end
 
-      def write_pieces(track, extracted, timestamps, range, pieces)
+      def write_pieces(track, extracted, points, range, pieces)
         TrackSegment.transaction do
-          overlapping_auto_segments(track, timestamps, range).delete_all
+          TrackSegments::RangeClearer.new(track, points, range).call
           pieces.map { |piece| create_piece(track, extracted, piece) }.first
         end
-      end
-
-      def overlapping_auto_segments(track, timestamps, range)
-        track.track_segments.auto_classified.where(
-          '(start_at IS NOT NULL AND start_at < :to AND end_at > :from) OR ' \
-          '(start_at IS NULL AND start_index <= :last AND end_index >= :first)',
-          from: Time.zone.at(timestamps[range.first]), to: Time.zone.at(timestamps[range.last]),
-          first: range.first, last: range.last
-        )
       end
 
       def create_piece(track, extracted, piece)

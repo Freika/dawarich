@@ -85,6 +85,34 @@ RSpec.describe 'Source segments replace inferred ones but never a manual correct
     )
   end
 
+  def inferred_spans(track)
+    track.track_segments.reload.where(source: 'inferred').order(:start_at)
+         .map { |s| [s.transportation_mode, s.start_at.to_i, s.end_at.to_i, s.duration] }
+  end
+
+  def span(mode, first, last)
+    [mode, points[first].timestamp, points[last].timestamp, points[last].timestamp - points[first].timestamp]
+  end
+
+  it 'trims inferred segments that cross the window edges to the part outside the window' do
+    segment(generated_track, 0, 4, :walking)
+    segment(generated_track, 5, 9, :driving)
+
+    extract(activity('cycling', 2, 7))
+
+    expect(inferred_spans(generated_track)).to eq([span('walking', 0, 1), span('driving', 8, 9)])
+    expect(generated_track.track_segments.where(source: 'google_phone_takeout').pluck(:start_index, :end_index))
+      .to eq([[2, 7]])
+  end
+
+  it 'splits an inferred segment that spans the whole window into the parts on either side' do
+    segment(generated_track, 0, 9, :walking)
+
+    extract(activity('cycling', 3, 6))
+
+    expect(inferred_spans(generated_track)).to eq([span('walking', 0, 2), span('walking', 7, 9)])
+  end
+
   it "keeps a correction on the import's own track when it is extracted again" do
     source_track = create(:track, user: user, import_id: import.id,
                                   tracker_id: "import-#{import.id}-activity-#{at(0).to_i}",
