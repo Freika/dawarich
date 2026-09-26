@@ -83,12 +83,13 @@
   </section>
 
   <footer class="place-drawer__actions">
-    <button type="button" class="place-drawer__action place-drawer__action--rename" disabled><%= t('.rename') %></button>
+    <button type="button" class="place-drawer__action place-drawer__action--edit" data-action="maps--maplibre#handleEdit" data-id="<%= place.id %>" data-entity-type="place"><%= t('.edit') %></button>
     <button type="button" class="place-drawer__action place-drawer__action--merge" disabled><%= t('.merge') %></button>
     <%= button_to t('.delete'),
-                  places_path(place),
+                  place_path(place),
                   method: :delete,
                   class: 'place-drawer__action place-drawer__action--delete',
+                  form: { data: { action: 'turbo:submit-end->place-detail#deleted', place_detail_id_param: place.id } },
                   data: { turbo_confirm: t('.delete_this_place_this_cannot_be_undone') } %>
   </footer>
 </div>

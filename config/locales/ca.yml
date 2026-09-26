@@ -1321,7 +1321,7 @@ ca:
       rarr: "→"
       'on': el
       no_visits_yet: Encara no hi ha visites
-      rename: Canvia el nom
+      edit: Edita
       merge: Fusiona
       notes: Notes
       save: Desa

@@ -1371,7 +1371,7 @@ es:
       rarr: "→"
       'on': encendido
       no_visits_yet: No hay visitas aún
-      rename: Renombrar
+      edit: Editar
       merge: Unir
       notes: Notas
       save: Guardar

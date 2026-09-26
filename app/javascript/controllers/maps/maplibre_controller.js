@@ -1343,6 +1343,10 @@ export default class extends Controller {
   filterPlacesByTags(event) {
     return this.placesManager.filterPlacesByTags(event)
   }
+
+  handlePlaceDeleted(event) {
+    return this.placesManager.handlePlaceDeleted(event)
+  }
   toggleAllPlaceTags(event) {
     return this.placesManager.toggleAllPlaceTags(event)
   }
