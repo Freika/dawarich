@@ -3,6 +3,8 @@ defmodule Dawarich.ActiveRecordEncryption.Message do
 
   @max_nesting 100
   @message_class "ActiveRecord::Encryption::Message"
+  @oj_leniency "cannot reproduce Ruby: Oj's JSON.parse may accept this text, which Jason rejects"
+  @oj_outside ~r/[\/\x00-\x08\x0B\x0C\x0E-\x1F]|[eE][+-]?\d{3,}|\d{300,}/
 
   def parse(ciphertext) do
     with {:ok, data} <- decode_json(ciphertext), do: message(data, 1)
@@ -23,6 +25,7 @@ defmodule Dawarich.ActiveRecordEncryption.Message do
   defp class(value) when is_float(value), do: "Float"
   defp class(value) when is_binary(value), do: "String"
   defp class(value) when is_list(value), do: "Array"
+  defp class(value) when is_map(value), do: "Hash"
   defp class({:object, _pairs}), do: "Hash"
   defp class({:message, _payload, _headers}), do: @message_class
 
@@ -31,9 +34,36 @@ defmodule Dawarich.ActiveRecordEncryption.Message do
          {:ok, data} <- ruby_json(data, 1) do
       {:ok, data}
     else
-      _ -> rescued(:invalid_json)
+      {:error, %Jason.DecodeError{}} ->
+        if oj_may_accept?(text),
+          do: {:error, {:unreproducible, @oj_leniency}},
+          else: rescued(:invalid_json)
+
+      :error ->
+        rescued(:invalid_json)
     end
   end
+
+  def oj_may_accept?(text), do: not String.valid?(text) or outside(text, [])
+
+  defp outside(<<?", rest::binary>>, seen), do: inside(rest, seen)
+  defp outside(<<byte, rest::binary>>, seen), do: outside(rest, [byte | seen])
+
+  defp outside(<<>>, seen),
+    do: seen |> Enum.reverse() |> IO.iodata_to_binary() |> String.match?(@oj_outside)
+
+  defp inside(<<?\\, ?u, hex::binary-size(4), rest::binary>>, seen) do
+    if hex =~ ~r/\A[dD][89a-fA-F][0-9a-fA-F]{2}\z/, do: true, else: inside(rest, seen)
+  end
+
+  defp inside(<<?\\, byte, rest::binary>>, seen) when byte in ~c'"\\/bfnrtu',
+    do: inside(rest, seen)
+
+  defp inside(<<?\\, _byte, _rest::binary>>, _seen), do: true
+  defp inside(<<?", rest::binary>>, seen), do: outside(rest, seen)
+  defp inside(<<byte, _rest::binary>>, _seen) when byte < 0x20, do: true
+  defp inside(<<_byte, rest::binary>>, seen), do: inside(rest, seen)
+  defp inside(<<>>, _seen), do: false
 
   defp ruby_json(value, depth)
        when (is_list(value) or is_struct(value, Jason.OrderedObject)) and depth > @max_nesting,

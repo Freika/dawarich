@@ -232,6 +232,55 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
                  end
   end
 
+  test "writes floats the way Oj's Rails encoder formats them" do
+    BackfillInstanceSettings.run(ScratchRepo, env(%{"REVERSE_GEOCODING_RPS" => "0.00005"}))
+    assert raw_value("reverse_geocoding_rps") == "0.00005"
+
+    Dawarich.ScratchRepo.query!("TRUNCATE instance_settings")
+
+    for email <- ["a@example.test", "b@example.test"] do
+      setting(
+        user(email),
+        "photon",
+        %{"host" => "photon.example.test", "rps" => 0.30000000000000004},
+        active: true
+      )
+    end
+
+    BackfillInstanceSettings.run(ScratchRepo, env())
+    assert raw_value("reverse_geocoding_rps") == "0.3"
+  end
+
+  test "fails the step on decrypted credentials that are not UTF-8, as Ruby's blank? does" do
+    setting(user("a@example.test"), "geoapify", %{},
+      credentials: encrypted(<<0xFF>>),
+      active: true
+    )
+
+    assert_raise Ruby.Error, "invalid byte sequence in UTF-8", fn ->
+      BackfillInstanceSettings.run(ScratchRepo, env())
+    end
+  end
+
+  test "fails the step on credentials Oj might parse and Jason cannot, and skips ones Oj rejects too" do
+    setting(user("a@example.test"), "geoapify", %{},
+      credentials: encrypted(~s({"api_key":"k" // comment\n})),
+      active: true
+    )
+
+    assert_raise Ruby.Unreproducible, ~r/Oj's JSON.parse may accept/, fn ->
+      BackfillInstanceSettings.run(ScratchRepo, env())
+    end
+
+    Dawarich.ScratchRepo.query!("UPDATE service_settings SET credentials = $1", [
+      encrypted("not json")
+    ])
+
+    BackfillInstanceSettings.run(ScratchRepo, env())
+
+    assert instance_settings() == []
+  end
+
   test "the 20260901150000 step runs the backfill" do
     {_, step, _} =
       V1_15_0.steps()

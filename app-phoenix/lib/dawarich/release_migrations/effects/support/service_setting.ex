@@ -8,6 +8,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.ServiceSetting do
   @chain ~w[photon geoapify nominatim locationiq]
   @columns "id, user_id, provider, config, credentials"
   @decryption_error "ActiveRecord::Encryption::Errors::Decryption"
+  @unknown_zlib_error "Zlib::DataError (zlib's message is not available in Phoenix)"
 
   def chain, do: @chain
 
@@ -27,24 +28,13 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.ServiceSetting do
   end
 
   def find_by(repo, user_id, provider) do
-    case repo.query!(
-           "SELECT #{@columns} FROM service_settings WHERE user_id = $1 AND service = 0 AND provider = $2 LIMIT 1",
-           [user_id, provider],
-           log: false
-         ).rows do
-      [[id, user_id, provider, config, stored]] ->
-        %{
-          id: id,
-          user_id: user_id,
-          provider: provider,
-          config: config,
-          stored: stored,
-          credentials: :stored
-        }
-
-      [] ->
-        nil
-    end
+    repo.query!(
+      "SELECT #{@columns} FROM service_settings WHERE user_id = $1 AND service = 0 AND provider = $2 LIMIT 1",
+      [user_id, provider],
+      log: false
+    ).rows
+    |> Enum.map(&loaded/1)
+    |> List.first()
   end
 
   def active_geocoding(repo) do
@@ -53,16 +43,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.ServiceSetting do
       [],
       log: false
     ).rows
-    |> Enum.map(fn [id, user_id, provider, config, stored] ->
-      %{
-        id: id,
-        user_id: user_id,
-        provider: provider,
-        config: config,
-        stored: stored,
-        credentials: :stored
-      }
-    end)
+    |> Enum.map(&loaded/1)
   end
 
   def credentials(%{credentials: {:assigned, plaintext}}, _key), do: {:ok, plaintext}
@@ -87,8 +68,8 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.ServiceSetting do
   def insert!(repo, setting, key) do
     repo.query!(
       "INSERT INTO service_settings (user_id, service, provider, config, credentials, active, created_at, updated_at) " <>
-        "VALUES ($1, 0, $2, $3, $4, FALSE, now(), now())",
-      [setting.user_id, setting.provider, setting.config, encrypt(setting, key)],
+        "VALUES ($1, 0, $2, $3::text::jsonb, $4, FALSE, now(), now())",
+      [setting.user_id, setting.provider, encode(setting.config), encrypt(setting, key)],
       log: false
     )
   end
@@ -115,11 +96,9 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.ServiceSetting do
         log: false
       )
     rescue
-      error ->
+      error in [Ruby.Error, Postgrex.Error] ->
         reraise(if(restore, do: %Ruby.Error{message: restore}, else: error), __STACKTRACE__)
     end
-
-    restore
   end
 
   def rollback_error(%{stored: nil}, _key), do: nil
@@ -138,14 +117,17 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.ServiceSetting do
   def key!({:error, message}), do: raise(Ruby.Error, message)
 
   defp changes(loaded, saved, key) do
-    config = if saved.config == loaded.config, do: [], else: [{"config", saved.config}]
+    config =
+      if saved.config == loaded.config,
+        do: [],
+        else: [{"config", "::text::jsonb", encode(saved.config)}]
 
     credentials =
       case saved.credentials do
         {:assigned, plaintext} ->
           if original(loaded, key) == plaintext,
             do: [],
-            else: [{"credentials", encrypt(saved, key)}]
+            else: [{"credentials", "", encrypt(saved, key)}]
 
         :stored ->
           []
@@ -153,7 +135,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.ServiceSetting do
 
     (config ++ credentials)
     |> Enum.with_index(2)
-    |> Enum.map(fn {{column, value}, index} -> {"#{column} = $#{index}", value} end)
+    |> Enum.map(fn {{column, cast, value}, index} -> {"#{column} = $#{index}#{cast}", value} end)
     |> Enum.unzip()
   end
 
@@ -170,7 +152,9 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.ServiceSetting do
     case ActiveRecordEncryption.decrypt(ciphertext, key!(key)) do
       {:ok, plaintext} -> {:ok, plaintext}
       {:error, {:rescued, _reason}} -> :unreadable
-      {:error, {:raised, _class, message}} -> raise Ruby.Error, message || "Zlib inflate failed"
+      {:error, {:raised, _class, nil}} -> raise Ruby.Error, @unknown_zlib_error
+      {:error, {:raised, _class, message}} -> raise Ruby.Error, message
+      {:error, {:unreproducible, message}} -> raise Ruby.Unreproducible, message
     end
   end
 
@@ -192,8 +176,20 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.ServiceSetting do
   defp parse(plaintext) do
     case Message.decode_json(plaintext) do
       {:ok, term} -> term
-      {:error, _reason} -> {:object, []}
+      {:error, {:rescued, _reason}} -> {:object, []}
+      {:error, {:unreproducible, message}} -> raise Ruby.Unreproducible, message
     end
+  end
+
+  defp loaded([id, user_id, provider, config, stored]) do
+    %{
+      id: id,
+      user_id: user_id,
+      provider: provider,
+      config: config,
+      stored: stored,
+      credentials: :stored
+    }
   end
 
   defp encode(term), do: IO.iodata_to_binary(Ruby.json(term))

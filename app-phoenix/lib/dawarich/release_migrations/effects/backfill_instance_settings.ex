@@ -149,6 +149,5 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettings do
     end
   end
 
-  defp json(value) when value in [:infinity, :neg_infinity], do: "null"
-  defp json(value), do: Jason.encode!(value)
+  defp json(value), do: IO.iodata_to_binary(Ruby.json(value))
 end

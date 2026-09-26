@@ -1,6 +1,7 @@
 defmodule Dawarich.ReleaseMigrations.Effects.GeocodingRailsPinsTest do
   use ExUnit.Case, async: true
 
+  alias Dawarich.ActiveRecordEncryption.Message
   alias Dawarich.RailsTree
   alias Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettings
 
@@ -8,6 +9,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.GeocodingRailsPinsTest do
     GeocodingSchema,
     InstanceSettingsRegistry,
     Ruby,
+    RubyFloat,
     ServiceSetting
   }
 
@@ -15,6 +17,12 @@ defmodule Dawarich.ReleaseMigrations.Effects.GeocodingRailsPinsTest do
            |> Path.expand(__DIR__)
            |> File.read!()
            |> Jason.decode!()
+  @floats "../../../fixtures/ruby_floats.json"
+          |> Path.expand(__DIR__)
+          |> File.read!()
+          |> Jason.decode!()
+  @oj "../../../fixtures/oj_parse.json" |> Path.expand(__DIR__) |> File.read!() |> Jason.decode!()
+  @oj_rejects_but_flagged ["vertical tab whitespace"]
 
   test "the registry equals InstanceSettings::Registry, in order, with kinds and defaults" do
     source = RailsTree.read("app/services/instance_settings/registry.rb")
@@ -106,6 +114,40 @@ defmodule Dawarich.ReleaseMigrations.Effects.GeocodingRailsPinsTest do
     end
   end
 
+  test "formats floats exactly as Ruby's Float#to_s and Oj's Rails encoder did" do
+    assert @floats["oj"] == oj_version()
+
+    for [hex, to_s, json] <- @floats["floats"] do
+      <<value::float>> = Base.decode16!(hex, case: :lower)
+      assert RubyFloat.to_s(value) == to_s, hex
+      assert RubyFloat.json(value) == json, hex
+    end
+  end
+
+  test "never reads as {} a text Oj parses, and reads as {} what Oj rejects" do
+    assert @oj["oj"] == oj_version()
+
+    for %{"name" => name, "input_base64" => input, "rails" => rails} <- @oj["cases"] do
+      verdict =
+        case Message.decode_json(Base.decode64!(input)) do
+          {:ok, _term} -> :parsed
+          {:error, {:rescued, _reason}} -> :rejected
+          {:error, {:unreproducible, _message}} -> :unreproducible
+        end
+
+      cond do
+        rails == "ok" -> assert verdict in [:parsed, :unreproducible], name
+        name in @oj_rejects_but_flagged -> assert verdict == :unreproducible, name
+        true -> assert verdict == :rejected, name
+      end
+    end
+  end
+
+  test "keeps \"cannot reproduce Ruby\" apart from errors Ruby raises" do
+    assert_raise Ruby.Unreproducible, fn -> Ruby.to_s(%{"a" => 1}) end
+    assert Ruby.to_s(1.0e20) == "1.0e+20"
+  end
+
   test "treats blank values the way ActiveSupport's blank? does" do
     for value <- [nil, false, "", " \t", "\u00A0", "\u3000", [], %{}, {:object, []}] do
       assert Ruby.blank?(value), inspect(value)
@@ -114,6 +156,11 @@ defmodule Dawarich.ReleaseMigrations.Effects.GeocodingRailsPinsTest do
     for value <- [true, 0, 0.0, "a", [nil], %{"a" => 1}, {:object, [{"a", 1}]}] do
       refute Ruby.blank?(value), inspect(value)
     end
+  end
+
+  defp oj_version do
+    [_, version] = Regex.run(~r/^    oj \((\S+)\)$/m, RailsTree.read("Gemfile.lock"))
+    version
   end
 
   defp ruby(:infinity), do: "Infinity"
