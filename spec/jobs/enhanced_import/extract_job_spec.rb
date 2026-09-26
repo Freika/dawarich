@@ -145,5 +145,95 @@ RSpec.describe EnhancedImport::ExtractJob do
       expect(import.reload.additional_data_extraction_status).to eq('failed')
       expect(Tracks::ParallelGeneratorJob).to have_been_enqueued.with(*generation_arguments)
     end
+
+    describe 'reporting the final failure' do
+      def exhausted_job
+        described_class.new(import.id).tap { |job| job.exception_executions = { '[StandardError]' => 2 } }
+      end
+
+      def fail_first_import_lookup(then_return: :original)
+        lookups = 0
+        allow(Import).to receive(:find_by).and_wrap_original do |original, *args, **kwargs|
+          lookups += 1
+          raise ActiveRecord::ConnectionNotEstablished, 'connection lost' if lookups == 1
+
+          then_return == :original ? original.call(*args, **kwargs) : then_return
+        end
+      end
+
+      before { allow(ExceptionReporter).to receive(:call) }
+
+      it 'does not report a failed attempt that will be retried' do
+        attach_file('{"semanticSegments": [{"startTime": ')
+
+        described_class.perform_now(import.id)
+
+        expect(ExceptionReporter).not_to have_received(:call)
+      end
+
+      it 'reports the error of the attempt that exhausts the retries once' do
+        attach_file('{"semanticSegments": [{"startTime": ')
+
+        exhausted_job.perform_now
+
+        expect(ExceptionReporter).to have_received(:call).once.with(instance_of(Oj::ParseError))
+      end
+
+      it 'reports an error raised before the extraction starts once the retries are exhausted' do
+        fail_first_import_lookup
+
+        exhausted_job.perform_now
+
+        expect(ExceptionReporter).to have_received(:call).once.with(instance_of(ActiveRecord::ConnectionNotEstablished))
+        expect(import.reload.additional_data_extraction_status).to eq('failed')
+        expect(Tracks::ParallelGeneratorJob).to have_been_enqueued.with(*generation_arguments)
+      end
+
+      it 'stays silent when the import is gone by the time the retries are exhausted' do
+        fail_first_import_lookup(then_return: nil)
+
+        exhausted_job.perform_now
+
+        expect(ExceptionReporter).not_to have_received(:call)
+        expect(Tracks::ParallelGeneratorJob).not_to have_been_enqueued
+      end
+
+      it 'reports exhausted deadlock retries once' do
+        allow_any_instance_of(EnhancedImport::Translator).to receive(:translate)
+          .and_raise(ActiveRecord::Deadlocked, 'deadlock detected')
+        job = described_class.new(import.id)
+        job.exception_executions = { '[ActiveRecord::Deadlocked]' => 2 }
+
+        job.perform_now
+
+        expect(ExceptionReporter).to have_received(:call).once.with(instance_of(ActiveRecord::Deadlocked))
+      end
+    end
+
+    describe 'a record that disappears during the extraction' do
+      before do
+        allow_any_instance_of(EnhancedImport::Translator).to receive(:translate)
+          .and_raise(ActiveRecord::RecordNotFound, 'gone')
+        allow(ExceptionReporter).to receive(:call)
+      end
+
+      it 'is retried like any other failure' do
+        described_class.perform_now(import.id)
+
+        expect(described_class).to have_been_enqueued.with(import.id)
+        expect(Tracks::ParallelGeneratorJob).not_to have_been_enqueued
+      end
+
+      it 'schedules generation and reports once when the retries are exhausted' do
+        job = described_class.new(import.id)
+        job.exception_executions = { '[StandardError]' => 2 }
+
+        job.perform_now
+
+        expect(import.reload.additional_data_extraction_status).to eq('failed')
+        expect(Tracks::ParallelGeneratorJob).to have_been_enqueued.with(*generation_arguments)
+        expect(ExceptionReporter).to have_received(:call).once.with(instance_of(ActiveRecord::RecordNotFound))
+      end
+    end
   end
 end
