@@ -4,13 +4,14 @@ module EnhancedImport
   class ExtractJob < ApplicationJob
     queue_as :extractions
 
+    MAX_ATTEMPTS = 3
+
     # Each requeue rewrites started_at, which is what extraction_stalled? reads,
     # so an unbounded wait would keep the import on "Queued…" forever with
     # nothing in the UI to act on. Give up loudly instead: the card then offers
     # "Retry extraction".
     MAX_LOCK_ATTEMPTS = 60
     LOCK_RETRY_WAIT = 1.minute
-    MAX_ATTEMPTS = 3
 
     retry_on StandardError, wait: :polynomially_longer, attempts: MAX_ATTEMPTS do |job, error|
       job.fail_after_retries(error)
@@ -21,13 +22,13 @@ module EnhancedImport
     # user cannot act on; only surface it once the retries are spent.
     retry_on ActiveRecord::Deadlocked, wait: :polynomially_longer, attempts: MAX_ATTEMPTS do |job, error|
       job.fail_after_retries(error)
-      ExceptionReporter.call(error)
     end
 
     def fail_after_retries(error)
       import = Import.find_by(id: arguments.first)
       return if import.nil?
 
+      ExceptionReporter.call(error)
       fail_finally!(import, error)
     end
 
@@ -38,13 +39,10 @@ module EnhancedImport
       return unless EnhancedImport::Translator.supported?(import.source)
 
       run(import, attempt)
-    rescue ActiveRecord::RecordNotFound => e
-      ExceptionReporter.call(e)
     end
 
     private
 
-    # The generator already serialises on this lock.
     def run(import, attempt)
       mark_running!(import)
 
@@ -61,7 +59,6 @@ module EnhancedImport
       raise
     rescue StandardError => e
       mark_failed!(import, e)
-      ExceptionReporter.call(e)
       raise
     end
 

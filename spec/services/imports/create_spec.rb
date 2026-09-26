@@ -411,6 +411,42 @@ RSpec.describe Imports::Create do
         include_examples 'generation deferred to the extraction'
       end
 
+      %i[pending running].each do |status|
+        context "with a phone Takeout file whose extraction is already #{status}" do
+          let(:source) { 'google_phone_takeout' }
+          let(:file_path) do
+            Rails.root.join('spec/fixtures/files/enhanced_import/google_phone_takeout_extractable.json')
+          end
+
+          before do
+            import.update_columns(additional_data_extraction_status: Import.additional_data_extraction_statuses[status])
+          end
+
+          it 'leaves track generation to the extraction in flight' do
+            service.call
+
+            expect(Tracks::ParallelGeneratorJob).not_to have_been_enqueued
+            expect(EnhancedImport::ExtractJob).not_to have_been_enqueued
+          end
+        end
+      end
+
+      context 'with a phone Takeout file whose extraction has stalled' do
+        let(:source) { 'google_phone_takeout' }
+        let(:file_path) do
+          Rails.root.join('spec/fixtures/files/enhanced_import/google_phone_takeout_extractable.json')
+        end
+
+        before do
+          import.update_columns(
+            additional_data_extraction_status: Import.additional_data_extraction_statuses[:running],
+            additional_data_extraction: { 'started_at' => (Import::EXTRACTION_STALE_AFTER + 1.hour).ago.iso8601 }
+          )
+        end
+
+        include_examples 'generation scheduled at import'
+      end
+
       context 'with a GPX file that carries waypoints' do
         let(:source) { 'gpx' }
         let(:file_path) { Rails.root.join('spec/fixtures/files/gpx/gpx_mixed_track_and_waypoints.gpx') }

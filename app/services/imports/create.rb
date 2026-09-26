@@ -211,7 +211,7 @@ class Imports::Create
   end
 
   def schedule_track_generation(import)
-    return if import.extracts_on_completion?
+    return if import.extracts_on_completion? || (import.extraction_in_flight? && !import.extraction_stalled?)
 
     import.schedule_untracked_track_generation
   end
