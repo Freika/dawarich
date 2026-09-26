@@ -177,7 +177,7 @@ docker logs a0c_web 2>&1 | grep -q 'Phoenix listens on .*:5000 and proxies to Pu
   || fail "Phoenix does not front Puma on 5000"
 docker exec a0c_web sh -c 'cat /proc/net/tcp /proc/net/tcp6' | awk '$4 == "0A" {print $2}' >"$work/listeners"
 grep -q ':1388$' "$work/listeners" || fail "nothing listens on 5000"
-if grep -v ':1388$' "$work/listeners" | grep -vqE '^(0100007F|00000000000000000000000001000000):'; then
+if grep -v ':1388$' "$work/listeners" | grep -vqE '^([0-9A-F]{6}7F|00000000000000000000000001000000):'; then
   fail "a listener other than Phoenix's is reachable from outside the Cloud container"
 fi
 [ "$(curl -s -m 10 -o /dev/null -w '%{http_code}' http://127.0.0.1:3901/users/sign_in)" = 200 ] \
