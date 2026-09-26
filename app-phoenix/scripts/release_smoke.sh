@@ -4,6 +4,10 @@ cd "$(dirname "$0")/.."
 export LC_ALL=C.UTF-8
 
 MIX_ENV=prod mix release --overwrite >/dev/null
+for asset in _build/prod/rel/dawarich/lib/dawarich-*/priv/admin1_world.geojson; do
+  [ -f "$asset" ] && [ ! -L "$asset" ] && cmp -s "$asset" ../lib/assets/admin1_world.geojson \
+    || { echo "the release does not carry lib/assets/admin1_world.geojson as priv/admin1_world.geojson"; exit 1; }
+done
 rel=_build/prod/rel/dawarich/bin/dawarich
 work="$(mktemp -d)"
 export DAWARICH_COOKIE_FILE="$work/cookie"

@@ -4,6 +4,8 @@ defmodule Dawarich.ReleaseMigrations.V1_13_1 do
 
   import Dawarich.ReleaseMigration
 
+  alias Dawarich.ReleaseMigrations.Effects
+
   @original_path_index_invalid """
   SELECT NOT i.indisvalid
   FROM pg_class c
@@ -95,8 +97,5 @@ defmodule Dawarich.ReleaseMigrations.V1_13_1 do
     """)
   end
 
-  defp seed_geocoding_service_settings_from_env(repo) do
-    if self_hosted?() and exists?(repo, "SELECT 1 FROM users"),
-      do: unported!("Geocoding::SeedFromEnv")
-  end
+  defp seed_geocoding_service_settings_from_env(repo), do: Effects.SeedGeocodingFromEnv.run(repo)
 end

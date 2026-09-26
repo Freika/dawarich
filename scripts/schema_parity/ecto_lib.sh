@@ -1,5 +1,6 @@
-ecto_env="MIX_ENV=test DATABASE_HOST=127.0.0.1 DATABASE_PORT=55532 DATABASE_USERNAME=postgres DATABASE_PASSWORD=parity"
+ecto_env="MIX_ENV=test MIX_BUILD_PATH=$root/app-phoenix/_build/parity DATABASE_HOST=127.0.0.1 DATABASE_PORT=55532 DATABASE_USERNAME=postgres DATABASE_PASSWORD=parity"
 expectations="$root/scripts/schema_parity/ecto_expectations.tsv"
+encrypted_columns="$root/scripts/schema_parity/encrypted_columns.tsv"
 holder_seconds=150
 parts="schema ledger columns invalid rows jobs"
 holder_pid=""
@@ -25,7 +26,7 @@ code_key() {
   (
     cd "$root" || exit 1
     set -- db/migrate db/release_migrations.json app ':(exclude)app/assets' config lib Gemfile.lock .ruby-version \
-      .tool-versions scripts/schema_parity/*.sh scripts/schema_parity/*.rb
+      .tool-versions scripts/schema_parity/*.sh scripts/schema_parity/*.rb scripts/schema_parity/encrypted_columns.tsv
     git -c core.quotepath=off ls-files -c -o --exclude-standard -- "$@" > "$tmpd/key.files" || exit 1
     git -c core.quotepath=off ls-files -d -- "$@" > "$tmpd/key.deleted" || exit 1
     grep -vxF -f "$tmpd/key.deleted" "$tmpd/key.files" > "$tmpd/key.present" || [ $? -eq 1 ] || exit 1
@@ -74,6 +75,30 @@ UNION ALL
 SELECT format('SELECT %L || (%s);', '#rows ', coalesce(string_agg(CASE relkind WHEN 'S' THEN '1'
   ELSE format('(SELECT count(*) FROM public.%I)', relname) END, ' + '), '0')) FROM objects"
 
+encrypted_sql() {
+  enc_values=""
+  while IFS="$(printf '\t')" read -r enc_table enc_column; do
+    enc_values="$enc_values${enc_values:+, }('$enc_table', '$enc_column')"
+  done < "$encrypted_columns"
+  [ -n "$enc_values" ] || return 1
+  echo "SELECT format('SELECT 1 FROM public.%I WHERE %I IS NOT NULL LIMIT 1;', table_name, column_name)
+FROM information_schema.columns
+WHERE table_schema = 'public' AND (table_name::text, column_name::text) IN (VALUES $enc_values)"
+}
+
+decrypted_columns() {
+  : > "$tmpd/decrypt.sql"
+  enc_checks="$(encrypted_sql)" || fail "could not read the encrypted columns in $encrypted_columns"
+  query "$1" "$enc_checks" > "$tmpd/encrypted.sql" || fail "could not look for encrypted columns in $1"
+  dexec -i -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt < "$tmpd/encrypted.sql" \
+    > "$tmpd/encrypted.found" || fail "could not look for encrypted values in $1"
+  [ -s "$tmpd/encrypted.found" ] || return 0
+  (cd "$root" && scrubbed $rails_env $fixture_env PGOPTIONS='-c default_transaction_read_only=on' DATABASE_NAME="$1" \
+    bin/rails runner scripts/schema_parity/decrypt_columns.rb "$2" "$encrypted_columns" "$tmpd/decrypt.sql") \
+    > "$tmpd/decrypt.out" 2>&1 \
+    || fail "$(grep -m 1 '^decrypt_columns.rb: ' "$tmpd/decrypt.out" || tail -n 1 "$tmpd/decrypt.out")"
+}
+
 record() {
   canon_dump "$1" > "$2.schema"
   has_ledger="$(query "$1" "SELECT to_regclass('public.schema_migrations') IS NOT NULL")" || fail "could not look for the ledger of $1"
@@ -85,7 +110,9 @@ record() {
   query "$1" "SELECT table_name || '.' || column_name FROM information_schema.columns WHERE table_schema = 'public' ORDER BY table_name, ordinal_position" > "$2.columns"
   query "$1" "$invalid_sql" > "$2.invalid"
   query "$1" "$rows_sql" > "$tmpd/rows.copy"
-  dexec -i -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt < "$tmpd/rows.copy" > "$tmpd/rows.raw" \
+  decrypted_columns "$1" "$(basename "$2")"
+  { echo 'BEGIN;'; cat "$tmpd/decrypt.sql" "$tmpd/rows.copy"; echo 'ROLLBACK;'; } > "$tmpd/rows.sql"
+  dexec -i -e PGTZ=UTC sp-db psql -U postgres -d "$1" -v ON_ERROR_STOP=1 -qAt < "$tmpd/rows.sql" > "$tmpd/rows.raw" \
     || fail "could not copy the rows of $1"
   expected="$(sed -n 's/^#rows //p' "$tmpd/rows.raw")"
   grep -v '^#rows ' "$tmpd/rows.raw" > "$tmpd/rows.data" || [ $? -eq 1 ]
