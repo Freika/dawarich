@@ -2,6 +2,7 @@
 
 unset BUNDLE_PATH
 unset BUNDLE_BIN
+unset DAWARICH_BEHIND_PHOENIX
 
 set -e
 
