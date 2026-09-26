@@ -6,6 +6,8 @@ defmodule Dawarich.ReleaseMigrations.EffectInventoryTest do
   @app Path.expand("../../..", __DIR__)
   @job_class ~r/\bjob\(\s*"([^"]+)"/
   @unported_class ~r/unported!\(\s*"([^"]+)"\)/
+  @effect_call ~r/\b(?:job|unported!)\(/
+  @literal_effect_call ~r/\b(?:job|unported!)\(\s*"[^"]+"/
 
   test "every job/2,3 class the release modules pass is classified in the inventory" do
     found = MapSet.new(found_job_classes())
@@ -30,6 +32,26 @@ defmodule Dawarich.ReleaseMigrations.EffectInventoryTest do
 
     for %{class: class, rails_file: file} <- entries do
       assert RailsTree.defines_class?(file, class), "#{class} is not defined in #{file}"
+    end
+  end
+
+  test "every job/unported! call names its class as a string literal" do
+    for path <- release_module_paths() do
+      source = File.read!(path)
+
+      assert length(Regex.scan(@effect_call, source)) ==
+               length(Regex.scan(@literal_effect_call, source)),
+             "#{Path.basename(path)} builds an effect class name dynamically"
+    end
+  end
+
+  test "every inventoried class lives at its Zeitwerk path" do
+    for %{class: class, rails_file: file} <-
+          ReleaseEffectInventory.job_classes() ++ ReleaseEffectInventory.unported_sites() do
+      path = class |> String.replace("::", ".") |> Macro.underscore()
+
+      assert file =~ ~r{\Aapp/[a-z_]+/} and String.ends_with?(file, "/" <> path <> ".rb"),
+             "#{class} should live at app/<dir>/#{path}.rb, not #{file}"
     end
   end
 
