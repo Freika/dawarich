@@ -40,6 +40,12 @@ const { PlacesManager } = await loadModule(
 const mapView = await read("views/map/maplibre/index.html.erb")
 const drawerView = await read("views/places/_drawer.html.erb")
 
+globalThis.CustomEvent ??= class extends Event {
+  constructor(type, init = {}) {
+    super(type, init)
+    this.detail = init.detail ?? null
+  }
+}
 globalThis.document = Object.assign(new EventTarget(), {
   createElement: () => ({}),
 })
