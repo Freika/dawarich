@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Clicking a track on the map keeps it selected and shows its transportation-mode segments; the same click no longer clears the selection.
 - Upgrading an installation originally created from release 0.9.12–0.11.1 no longer fails when its database has no place_visits table.
 
 ## [1.15.2] - 2026-09-22, Berlin
