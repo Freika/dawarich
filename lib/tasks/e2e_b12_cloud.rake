@@ -91,5 +91,27 @@ namespace :e2e do
       payload = { registration_enabled: enabled }
       b12_output(payload)
     end
+
+    desc 'Issue a one-use local trial welcome link'
+    task :trial_welcome, [:email] => :environment do |_, args|
+      assert_b12_database!
+      user = b12_user(args[:email], 'lite', 'false')
+      user.update_columns(status: User.statuses[:trial], active_until: 7.days.from_now,
+                          signup_variant: 'reverse_trial')
+      token = JWT.encode({ user_id: user.id, purpose: 'trial_welcome', jti: SecureRandom.uuid,
+                           exp: 30.minutes.from_now.to_i }, ENV.fetch('JWT_SECRET_KEY'), 'HS256')
+      b12_output({ link: "/trial/welcome?token=#{token}", email: user.email, api_key: user.api_key })
+    end
+
+    desc 'Issue a matching invitation for isolated API registration'
+    task :family_invitation, %i[owner_email invitee_email] => :environment do |_, args|
+      assert_b12_database!
+      abort('B12 fixture email required') unless args[:invitee_email].to_s.match?(/\A[a-z0-9-]+@b12\.dawarich\.test\z/)
+      owner = b12_user(args[:owner_email], 'family', 'false')
+      Families::AutoCreate.new(user: owner).call unless owner.reload.in_family?
+      invitation = Family::Invitation.create!(family: owner.reload.family, invited_by: owner,
+                                              email: args[:invitee_email])
+      b12_output({ invitation_token: invitation.token, owner_api_key: owner.api_key })
+    end
   end
 end
