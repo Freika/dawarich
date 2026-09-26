@@ -12,7 +12,10 @@ fail() {
   exit 1
 }
 
-[ "$(docker context show)" = orbstack ] || fail "docker context is not orbstack; never run this against dawarich-swarm"
+case "${DOCKER_HOST:-$(docker context inspect --format '{{.Endpoints.docker.Host}}' 2>/dev/null)}" in
+  unix://*) ;;
+  *) fail "the Docker engine is not local; never run this against a remote engine such as dawarich-swarm" ;;
+esac
 if docker ps -a --format '{{.Names}}' | grep -q '^a0c_'; then
   fail "a0c_* containers already exist; remove them first"
 fi
