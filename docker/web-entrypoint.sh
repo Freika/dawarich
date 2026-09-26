@@ -8,6 +8,7 @@ set -e
 echo "⚠️ Starting Rails environment: $RAILS_ENV ⚠️"
 
 . "$(dirname "$0")/entrypoint-env-guard.sh"
+. "$(dirname "$0")/entrypoint-common.sh"
 sanitize_integer_env WEB_CONCURRENCY 1
 
 # Optional privilege drop. When PUID/PGID are set and the container starts as
@@ -117,13 +118,9 @@ bundle exec rails db:seed
 
 echo "Running Phoenix migrations..."
 if dawarich eval 'Dawarich.Release.migrate()'; then
-  case "$1 $2" in
-    "bin/rails server"|"bin/rails s"|"rails server"|"rails s"|puma*)
-      DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec "$@")"
-      export DAWARICH_RAILS_ARGS
-      exec dawarich start
-      ;;
-  esac
+  if is_server_command "$@"; then
+    exec_under_phoenix "$@"
+  fi
 else
   echo "Phoenix migrations failed; starting Rails without the Phoenix supervisor" >&2
 fi
