@@ -46,9 +46,23 @@ RSpec.describe 'Source segments replace inferred ones but never a manual correct
     EnhancedImport::ExtractJob.new.perform(import.id)
   end
 
+  def index_at(time)
+    points.index { |point| point.timestamp == time.to_i }
+  end
+
+  def segment_row(segment)
+    bounds = [segment.start_index, segment.end_index]
+    bounds = [index_at(segment.start_at), index_at(segment.end_at)] if segment.start_at
+    [segment.transportation_mode, segment.source, *bounds]
+  end
+
   def segments_of(track)
-    track.track_segments.reload.order(Arel.sql('COALESCE(start_index, 0)'), :start_at)
-         .map { |s| [s.transportation_mode, s.source, s.start_index, s.end_index] }
+    track.track_segments.reload.map { |segment| segment_row(segment) }.sort_by { |row| row[2] }
+  end
+
+  def legacy_segment(first, last, mode)
+    create(:track_segment, track: generated_track, transportation_mode: mode, start_index: first, end_index: last,
+                           start_at: at(first), end_at: at(last), source: 'inferred')
   end
 
   it 'replaces the inferred segments of a generated track with the source classification' do
@@ -58,6 +72,8 @@ RSpec.describe 'Source segments replace inferred ones but never a manual correct
     extract(activity('cycling', 0, 9))
 
     expect(segments_of(generated_track)).to eq([['cycling', 'google_phone_takeout', 0, 9]])
+    expect(generated_track.track_segments.sole)
+      .to have_attributes(start_index: nil, end_index: nil, distance: be_positive, duration: 540)
     expect(generated_track.reload.dominant_mode).to eq('cycling')
     expect(import.reload.extraction_counts[:tracks]).to eq(1)
   end
@@ -70,8 +86,8 @@ RSpec.describe 'Source segments replace inferred ones but never a manual correct
     extract(activity('driving', 0, 9))
 
     expect(corrected.reload).to have_attributes(transportation_mode: 'bus', corrected_at: be_present)
-    expect(segments_of(generated_track) - [['bus', 'user', nil, nil]]).to eq(
-      [['driving', 'google_phone_takeout', 0, 3], ['driving', 'google_phone_takeout', 7, 9]]
+    expect(segments_of(generated_track)).to eq(
+      [['driving', 'google_phone_takeout', 0, 3], ['bus', 'user', 4, 6], ['driving', 'google_phone_takeout', 7, 9]]
     )
   end
 
@@ -101,8 +117,7 @@ RSpec.describe 'Source segments replace inferred ones but never a manual correct
     extract(activity('cycling', 2, 7))
 
     expect(inferred_spans(generated_track)).to eq([span('walking', 0, 1), span('driving', 8, 9)])
-    expect(generated_track.track_segments.where(source: 'google_phone_takeout').pluck(:start_index, :end_index))
-      .to eq([[2, 7]])
+    expect(segments_of(generated_track)).to include(['cycling', 'google_phone_takeout', 2, 7])
   end
 
   it 'splits an inferred segment that spans the whole window into the parts on either side' do
@@ -111,6 +126,41 @@ RSpec.describe 'Source segments replace inferred ones but never a manual correct
     extract(activity('cycling', 3, 6))
 
     expect(inferred_spans(generated_track)).to eq([span('walking', 0, 2), span('walking', 7, 9)])
+  end
+
+  it "leaves another import's source segments in place" do
+    segment(generated_track, 0, 4, :walking, source: 'google_semantic_history')
+    segment(generated_track, 5, 9, :walking)
+
+    extract(activity('driving', 0, 9))
+
+    expect(segments_of(generated_track)).to eq(
+      [['walking', 'google_semantic_history', 0, 4], ['driving', 'google_phone_takeout', 5, 9]]
+    )
+  end
+
+  it 'splits an older segment that carries both point indexes and times' do
+    legacy_segment(0, 9, :walking)
+
+    extract(activity('cycling', 3, 6))
+
+    expect(segments_of(generated_track)).to eq(
+      [['walking', 'inferred', 0, 2], ['cycling', 'google_phone_takeout', 3, 6], ['walking', 'inferred', 7, 9]]
+    )
+    expect(generated_track.track_segments.where(source: 'inferred').pluck(:start_index, :end_index))
+      .to all(eq([nil, nil]))
+  end
+
+  it 'writes the source over an older segment that starts at the same point' do
+    legacy_segment(0, 4, :walking)
+    legacy_segment(5, 9, :driving)
+
+    extract(activity('cycling', 0, 6))
+
+    expect(segments_of(generated_track)).to eq(
+      [['cycling', 'google_phone_takeout', 0, 6], ['driving', 'inferred', 7, 9]]
+    )
+    expect(import.reload.extraction_counts[:segments]).to eq(1)
   end
 
   it "keeps a correction on the import's own track when it is extracted again" do

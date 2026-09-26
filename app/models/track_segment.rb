@@ -36,6 +36,16 @@ class TrackSegment < ApplicationRecord
     corrected_at.present?
   end
 
+  def covered_indices(timestamps)
+    if start_at && end_at
+      timestamps.each_index.select { |i| timestamps[i].between?(start_at.to_i, end_at.to_i) }
+    elsif start_index && end_index
+      (start_index..end_index).to_a
+    else
+      []
+    end
+  end
+
   private
 
   def anchored_by_time_or_indexes
