@@ -94,8 +94,8 @@ defmodule DawarichWeb.CableProxyTest do
       {bandit, port} = serve(upstream.port)
       client = connect(port)
 
-      log =
-        capture_log([level: :error], fn ->
+      {pids, log} =
+        with_log([level: :error, metadata: [:pid]], fn ->
           send_raw(client, [
             "GET /cable #{unquote(version)}\r\nHost: a\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n",
             unquote(headers),
@@ -106,12 +106,24 @@ defmodule DawarichWeb.CableProxyTest do
           {:ok, pids} = ThousandIsland.connection_pids(bandit)
           refs = Enum.map(pids, &Process.monitor/1)
           :ok = :gen_tcp.close(client)
-          for ref <- refs, do: assert_receive({:DOWN, ^ref, :process, _, _}, 5_000)
+
+          for ref <- refs do
+            assert_receive({:DOWN, ^ref, :process, _, reason}, 5_000)
+
+            assert reason in [:normal, :noproc] or match?({:shutdown, _}, reason),
+                   "connection process for #{unquote(form)} exited with #{inspect(reason)} instead of a normal shutdown"
+          end
+
+          pids
         end)
 
       assert :gen_tcp.accept(upstream.listen, 100) == {:error, :timeout}
-      refute log =~ "UpgradeError"
-      refute log =~ "DawarichWeb"
+
+      for pid <- pids do
+        own_log = log_for_pid(log, pid)
+        refute own_log =~ "UpgradeError"
+        refute own_log =~ "DawarichWeb"
+      end
     end
   end
 
