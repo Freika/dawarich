@@ -53,7 +53,12 @@ RSpec.describe JobOwnership do
   describe 'the lock protocol' do
     self.use_transactional_tests = false
 
-    after { ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE') }
+    after do
+      ActiveRecord::Base.transaction do
+        ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '2s'")
+        ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
+      end
+    end
 
     it 'makes an owner change wait for a gate that holds the row' do
       phoenix_tables!
@@ -70,16 +75,21 @@ RSpec.describe JobOwnership do
           end
         end
       end
-      holding.pop
 
-      expect do
-        ActiveRecord::Base.transaction do
-          ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '50ms'")
-          ActiveRecord::Base.connection.execute("UPDATE phoenix.job_owners SET owner = 'oban' WHERE key = '#{key}'")
-        end
-      end.to raise_error(ActiveRecord::LockWaitTimeout)
+      begin
+        holding.pop
 
-      release << true
+        expect do
+          ActiveRecord::Base.transaction do
+            ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '50ms'")
+            ActiveRecord::Base.connection.execute("UPDATE phoenix.job_owners SET owner = 'oban' WHERE key = '#{key}'")
+          end
+        end.to raise_error(ActiveRecord::LockWaitTimeout)
+      ensure
+        release << true
+        raise 'holder thread did not finish: still holding the row lock' unless holder.join(5)
+      end
+
       expect(holder.value).to eq(:effect_done)
       described_class.put!(key, :oban, pinned: false, by: 'spec')
       expect(described_class.with_owner(key) { :late }).to eq(:not_owner)
