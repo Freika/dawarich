@@ -98,19 +98,13 @@ test("initial map instant is rendered with the profile offset", () => {
 
 test("click days use the profile timezone when one is configured", () => {
   assert.equal(
-    DateManager.dayInTimeZone(
-      "2020-04-18T05:00:00Z",
-      "America/Los_Angeles",
-    ),
+    DateManager.dayInTimeZone("2020-04-18T05:00:00Z", "America/Los_Angeles"),
     "2020-04-17",
   )
 })
 
 test("click days retain their timestamp date without a profile timezone", () => {
-  assert.equal(
-    DateManager.dayInTimeZone("2020-04-18T05:00:00Z"),
-    "2020-04-18",
-  )
+  assert.equal(DateManager.dayInTimeZone("2020-04-18T05:00:00Z"), "2020-04-18")
 })
 
 test("click days are null for missing timestamps", () => {

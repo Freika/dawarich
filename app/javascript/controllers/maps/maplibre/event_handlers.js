@@ -2,7 +2,6 @@ import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { PointDragGesture } from "maps_maplibre/editing/point_drag_gesture"
-import { DateManager } from "./date_manager"
 import {
   formatDistance,
   formatSpeed,
@@ -14,6 +13,7 @@ import {
 } from "maps_maplibre/utils/geojson_transformers"
 import { isGatedPlan } from "maps_maplibre/utils/layer_gate"
 import { SettingsManager } from "maps_maplibre/utils/settings_manager"
+import { DateManager } from "./date_manager"
 
 /**
  * Handles map interaction events (clicks, info display)

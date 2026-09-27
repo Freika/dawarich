@@ -6,7 +6,10 @@ export class DateManager {
     if (!isoString) return null
     if (!timeZone) return isoString.slice(0, 10)
 
-    return DateManager.formatDateForAPI(new Date(isoString), timeZone).slice(0, 10)
+    return DateManager.formatDateForAPI(new Date(isoString), timeZone).slice(
+      0,
+      10,
+    )
   }
 
   static formatDateForAPI(date, timeZone) {
