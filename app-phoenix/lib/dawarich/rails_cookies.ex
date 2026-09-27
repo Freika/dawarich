@@ -24,7 +24,7 @@ defmodule Dawarich.RailsCookies do
       _ -> :error
     end
   rescue
-    _ -> :error
+    _ in [ArgumentError, ErlangError] -> :error
   end
 
   def verify(value, name, secret, now) do
@@ -36,7 +36,7 @@ defmodule Dawarich.RailsCookies do
       _ -> :error
     end
   rescue
-    _ -> :error
+    _ in [ArgumentError, ErlangError] -> :error
   end
 
   defp unwrap(plain, name, now) do
