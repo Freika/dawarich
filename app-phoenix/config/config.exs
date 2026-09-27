@@ -21,7 +21,9 @@ config :dawarich, DawarichWeb.Endpoint,
   adapter: Bandit.PhoenixAdapter,
   url: [host: "localhost"],
   pubsub_server: Dawarich.PubSub,
-  render_errors: [formats: [html: DawarichWeb.ErrorHTML], layout: false]
+  render_errors: [formats: [html: DawarichWeb.ErrorHTML], layout: false],
+  check_origin: {DawarichWeb.Origin, :allowed?, []},
+  live_view: [signing_salt: "dawarich live view"]
 
 config :phoenix, :json_library, Jason
 
