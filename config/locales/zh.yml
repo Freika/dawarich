@@ -3513,7 +3513,7 @@ zh:
         export_name_successfully_finished: 导出“%{name}”已成功完成。
         export_failed: 导出失败
         export_name_failed_message_stacktrace_n: 导出“%{name}”失败：%{message}，堆栈跟踪：%{backtrace}
-        unsupported_file_format: 不支持的文件格式：%{format}
+        unsupported_file_format: 不支持的文件格式：%{file_format}
     families:
       auto_create:
         default_name: 我的家庭

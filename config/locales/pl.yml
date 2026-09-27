@@ -3512,7 +3512,7 @@ pl:
         export_name_successfully_finished: Eksport "%{name}" zakończył się pomyślnie.
         export_failed: Eksport nie powiódł się
         export_name_failed_message_stacktrace_n: 'Eksport "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
-        unsupported_file_format: 'Nieobsługiwany format pliku: %{format}'
+        unsupported_file_format: 'Nieobsługiwany format pliku: %{file_format}'
     families:
       auto_create:
         default_name: Moja rodzina
