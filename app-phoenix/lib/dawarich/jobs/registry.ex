@@ -1,7 +1,15 @@
 defmodule Dawarich.Jobs.Registry do
   @moduledoc false
 
-  @entries []
+  @entries [
+    %{
+      key: "cron:app_version_checking_job",
+      kind: :cron,
+      expression: "0 */6 * * *",
+      worker: Dawarich.AppVersion.CheckWorker,
+      claimable: false
+    }
+  ]
 
   def entries, do: @entries
 
