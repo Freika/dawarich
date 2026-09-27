@@ -45,6 +45,7 @@ if epmd -names 2>/dev/null | grep -q '^name dawarich at'; then
   exit 1
 fi
 if curl -s -m 2 -o /dev/null "http://127.0.0.1:$PORT/"; then echo "port $PORT is in use" >&2; exit 1; fi
+if pgrep -f "$sidekiq" >/dev/null 2>&1; then echo "a Sidekiq from an earlier run is still up; run $0 --down first" >&2; exit 1; fi
 mkdir -p "$root/log" "$root/tmp/pids"
 touch "$log" "$sidekiq_log"
 log_from=$(($(wc -c <"$log") + 1))
@@ -73,15 +74,13 @@ else
   tail -c "+$log_from" "$log" | grep -q "Phoenix listens on 127.0.0.1:$PORT and proxies to Puma" || { echo "Phoenix is not in front" >&2; exit 1; }
 fi
 
-if ! pgrep -f "$sidekiq" >/dev/null 2>&1; then
-  sidekiq_from=$(($(wc -c <"$sidekiq_log") + 1))
-  stack nohup bundle exec sidekiq >>"$sidekiq_log" 2>&1 &
-  tries=0
-  until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
-    tries=$((tries + 1))
-    [ "$tries" -lt 60 ] || { echo "sidekiq did not boot" >&2; exit 1; }
-    sleep 1
-  done
-fi
+sidekiq_from=$(($(wc -c <"$sidekiq_log") + 1))
+stack nohup bundle exec sidekiq >>"$sidekiq_log" 2>&1 &
+tries=0
+until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
+  tries=$((tries + 1))
+  [ "$tries" -lt 60 ] || { echo "sidekiq did not boot" >&2; exit 1; }
+  sleep 1
+done
 stack bin/rails e2e:reset_and_seed >"$root/log/proxy_stack_seed.log" 2>&1 || { tail -20 "$root/log/proxy_stack_seed.log" >&2; exit 1; }
 echo "BASE_URL=http://127.0.0.1:$PORT"
