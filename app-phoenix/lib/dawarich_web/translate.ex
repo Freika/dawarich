@@ -3,11 +3,19 @@ defmodule DawarichWeb.Translate do
 
   import Phoenix.HTML, only: [html_escape: 1, safe_to_string: 1]
 
-  def t(locale, key, bindings) do
+  def t(locale, key, bindings), do: translate(locale, key, bindings, &Dawarich.I18n.t/3)
+
+  def t(tree, locale, key, bindings) do
+    translate(locale, key, bindings, fn locale, key, bindings ->
+      Dawarich.I18n.lookup(tree, locale, key, bindings)
+    end)
+  end
+
+  defp translate(locale, key, bindings, lookup) do
     bindings = Map.new(bindings, fn {name, value} -> {to_string(name), value} end)
     html? = String.ends_with?(key, "_html") or String.ends_with?(key, ".html")
 
-    case Dawarich.I18n.t(locale, key, if(html?, do: escape(bindings), else: bindings)) do
+    case lookup.(locale, key, if(html?, do: escape(bindings), else: bindings)) do
       {:ok, text} when html? -> {:safe, text}
       {:ok, text} -> text
       {:error, {:reserved_interpolation_key, reserved}} -> raise_reserved(locale, key, reserved)
