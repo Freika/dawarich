@@ -6,7 +6,6 @@ import { BaseLayer } from "./base_layer"
 
 /**
  * Family layer showing family member locations
- * Each member has unique color
  */
 export class FamilyLayer extends BaseLayer {
   constructor(map, options = {}) {
