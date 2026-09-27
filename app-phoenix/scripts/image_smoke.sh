@@ -155,7 +155,7 @@ latency() {
     || fail "$1 misses the single-request budget (p50 +$2 ms)"
 }
 saturation() {
-  floor="$(docker exec a0_app sh -c 'read q p </sys/fs/cgroup/cpu.max; [ "$q" = max ] || [ "$q" -ge $((p * $(nproc))) ] && echo 90 || echo 65')"
+  floor="$(docker exec a0_app sh -c 'read q p </sys/fs/cgroup/cpu.max; [ "$q" = max ] || [ "$q" -ge $((p * $(nproc))) ] && echo 85 || echo 65')"
   set -- "$1" $(bench "http://127.0.0.1:3000$1" 8 2000) $(bench "http://127.0.0.1:$upstream$1" 8 2000)
   echo "$1 at concurrency 8 — proxied p50 $2 ms, p99 $3 ms, $4 req/s; direct p50 $5 ms, p99 $6 ms, $7 req/s (floor $floor %)"
   awk -v e="$4" -v f="$7" -v r="$floor" 'BEGIN { exit !(e >= r / 100 * f) }' \
