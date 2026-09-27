@@ -3,6 +3,13 @@ defmodule Dawarich.RailsCookies do
 
   @encrypted_salt "authenticated encrypted cookie"
   @signed_salt "signed cookie"
+  @json_escapes %{
+    "&" => ~S(\u0026),
+    "<" => ~S(\u003c),
+    ">" => ~S(\u003e),
+    "\u2028" => ~S(\u2028),
+    "\u2029" => ~S(\u2029)
+  }
 
   def decrypt(value, name, secret, now) do
     with [data, iv, tag] <- value |> URI.decode_www_form() |> String.split("--"),
@@ -25,6 +32,17 @@ defmodule Dawarich.RailsCookies do
     end
   rescue
     _ in [ArgumentError, ErlangError] -> :error
+  end
+
+  def encrypt(value, name, secret) do
+    json = String.replace(Jason.encode!(value), Map.keys(@json_escapes), &@json_escapes[&1])
+    message = Base.encode64(json)
+    meta = Jason.OrderedObject.new(message: message, exp: nil, pur: "cookie." <> name)
+    envelope = Jason.encode!(%{"_rails" => meta})
+    iv = :crypto.strong_rand_bytes(12)
+    key = key(secret, @encrypted_salt, 32)
+    {data, tag} = :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, envelope, "", true)
+    [data, iv, tag] |> Enum.map_join("--", &Base.encode64/1) |> URI.encode_www_form()
   end
 
   def verify(value, name, secret, now) do
