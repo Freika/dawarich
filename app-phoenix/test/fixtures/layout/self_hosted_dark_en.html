@@ -1,0 +1,391 @@
+<body class="min-h-screen flex flex-col">
+    <div class="container mx-auto flex flex-col flex-1">
+      <div class="navbar bg-base-100 h-16">
+  <div class="navbar-start">
+    <details class="dropdown xl:hidden">
+      <summary class="btn btn-ghost list-none" aria-label="Open navigation menu" aria-controls="mobile-navigation-menu">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"></path></svg>
+      </summary>
+      <ul id="mobile-navigation-menu" class="menu menu-sm dropdown-content mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52">
+        <li><a class="" href="/map/v2">Map</a></li>
+        <li><a class="" href="http://www.example.com/trips">Trips</a></li>
+        <li><a class="" href="http://www.example.com/stats">Stats</a></li>
+        <li><a class="" href="http://www.example.com/insights">Insights<sup>α</sup></a></li>
+        <li><a class="" href="/achievements">Achievements</a></li>
+          <li>
+              <a class="" href="/family/new">Family<sup>α</sup></a>
+          </li>
+        <li>
+          <details>
+            <summary>My data</summary>
+            <ul class="p-2 bg-base-100">
+              <li><a class="" href="http://www.example.com/points">Points</a></li>
+              <li><a class="" href="http://www.example.com/places">Places</a></li>
+              <li><a class="" href="http://www.example.com/imports">Imports</a></li>
+              <li><a class="" href="http://www.example.com/exports">Exports</a></li>
+              <li><a class="" href="http://www.example.com/tags">Tags</a></li>
+            </ul>
+          </details>
+        </li>
+          <div class="divider my-1"></div>
+          <li><a data-turbo="false" class="flex items-center gap-2" href="/settings/theme?theme=light">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+    <span>Light mode</span>
+</a></li>
+          <li>
+            <details>
+              <summary><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg> Help</summary>
+              <ul class="p-2 bg-base-100">
+                <li><p>Need help? Ping us! <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M15 11a1 1 0 0 0 1 1h2.939a1 1 0 0 1 .75 1.811l-6.835 6.836a1.207 1.207 0 0 1-1.707 0L4.31 13.81a1 1 0 0 1 .75-1.811H8a1 1 0 0 0 1-1V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1z"></path></svg></p></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://x.com/freymakesstuff">X (Twitter)</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://mastodon.social/@dawarich">Mastodon</a></li>
+<li><a href="mailto:hi@dawarich.app">Email</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://discourse.dawarich.app">Forum</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://discord.gg/pHsBjpt5J8">Discord</a></li>
+
+              </ul>
+            </details>
+          </li>
+      </ul>
+    </details>
+    <a class="btn btn-ghost normal-case text-xl gap-2" href="/map/v2">
+      <img alt="Dawarich logo" class="h-8 w-8 rounded-[20%]" src="/assets/logo-e019d04aed76f3c68a9289e687cc788067b9c0a283949e7cac9a6ba6aef8b2fc.svg">
+      <span>Dawarich<sup>β</sup></span>
+</a>    <div id="version-indicator" class="relative inline-flex items-center">
+  <div class="badge mx-4 ">
+    <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
+        <span class="hidden sm:inline">1.15.2</span>
+    </a>
+  </div>
+
+    <div class="dropdown dropdown-end dropdown-open">
+  <div class="card card-compact w-72 bg-base-100 shadow-lg border border-base-300 absolute right-0 mt-2 z-[60]">
+    <div class="card-body">
+      <h3 class="font-semibold text-sm">Stay up to date?</h3>
+      <p class="text-xs opacity-80">
+        Get a "What's New" notice when a new Dawarich version ships, including security fixes. The notice loads a small widget from my.chibichange.com. Like any web request, that host sees your IP address, browser, and the page URL, plus your Dawarich version — never your account, email, or location. You can change this anytime.
+      </p>
+      <div class="card-actions justify-end mt-1">
+        <form data-turbo-stream="true" class="button_to" method="post" action="/settings/changelog_consent"><input type="hidden" name="_method" value="patch"><button class="btn btn-ghost btn-xs" type="submit">No thanks</button><input type="hidden" name="decision" value="declined"></form>
+        <form data-turbo-stream="true" class="button_to" method="post" action="/settings/changelog_consent"><input type="hidden" name="_method" value="patch"><button class="btn btn-primary btn-xs" type="submit">Yes, notify me</button><input type="hidden" name="decision" value="granted"></form>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+
+      <div class="hidden xl:block">
+        <a data-turbo="false" class="btn btn-ghost" href="/settings/theme?theme=light">
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
+</a>
+      </div>
+  </div>
+  <div class="navbar-center hidden xl:flex">
+    <ul class="menu menu-horizontal px-1">
+      <li><a class="mx-1 " href="/map/v2">Map</a></li>
+      <li><a class="mx-1 " href="http://www.example.com/trips">Trips</a></li>
+      <li><a class="mx-1 " href="http://www.example.com/stats">Stats</a></li>
+      <li><a class="mx-1 " href="http://www.example.com/insights">Insights<sup>α</sup></a></li>
+      <li><a class="mx-1 " href="/achievements">Achievements</a></li>
+        <li>
+            <a class="mx-1 " href="/family/new">Family<sup>α</sup></a>
+        </li>
+      <li>
+        <details>
+          <summary>My data</summary>
+          <ul class="p-2 bg-base-100 rounded-box shadow-md z-[50]">
+            <li><a class="" href="http://www.example.com/points">Points</a></li>
+            <li><a class="" href="http://www.example.com/places">Places</a></li>
+            <li><a class="" href="http://www.example.com/imports">Imports</a></li>
+            <li><a class="" href="http://www.example.com/exports">Exports</a></li>
+            <li><a class="" href="http://www.example.com/tags">Tags</a></li>
+          </ul>
+        </details>
+      </li>
+    </ul>
+  </div>
+  <div class="navbar-end">
+      <div class="flex items-center gap-1 xl:hidden">
+
+        <a class="btn btn-ghost btn-sm relative" href="/notifications">
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+</a>
+        <div class="dropdown dropdown-end">
+          <label tabindex="0" class="btn btn-ghost btn-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+              <span class="indicator-item badge badge-secondary badge-xs"></span>
+          </label>
+          <ul tabindex="0" class="dropdown-content menu menu-sm mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52">
+            <li><a href="/users/edit">Account</a></li>
+            <li><a href="/settings/general">Settings</a></li>
+            <li>
+              <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
+                Get started
+                  <span class="badge badge-secondary badge-xs absolute right-2 top-1/2 -translate-y-1/2"></span>
+              </a>
+            </li>
+            <li><a data-turbo="false" rel="nofollow" data-method="delete" href="/users/sign_out">Logout</a></li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="hidden xl:flex items-center gap-2 flex-nowrap">
+
+        <ul class="menu menu-horizontal px-1 flex-nowrap">
+          <turbo-cable-stream-source channel="Turbo::StreamsChannel" signed-stream-name="SIGNED"></turbo-cable-stream-source>
+          <li data-controller="notifications">
+            <details>
+              <summary class="relative">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
+                <span id="notifications-badge" class="badge badge-xs badge-primary absolute top-0 right-0 hidden">
+  0
+</span>
+
+              </summary>
+              <ul class="p-2 bg-base-100 rounded-t-none z-[50] min-w-52" id="notifications-list">
+                <li><a href="/notifications">See all</a></li>
+              </ul>
+            </details>
+          </li>
+          <li>
+            <details>
+              <summary><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg></summary>
+              <ul class="p-2 bg-base-100 rounded-box shadow-md z-[50] w-52">
+                <li><p>Need help? Ping us! <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M15 11a1 1 0 0 0 1 1h2.939a1 1 0 0 1 .75 1.811l-6.835 6.836a1.207 1.207 0 0 1-1.707 0L4.31 13.81a1 1 0 0 1 .75-1.811H8a1 1 0 0 0 1-1V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1z"></path></svg></p></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://x.com/freymakesstuff">X (Twitter)</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://mastodon.social/@dawarich">Mastodon</a></li>
+<li><a href="mailto:hi@dawarich.app">Email</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://discourse.dawarich.app">Forum</a></li>
+<li><a target="_blank" rel="noopener noreferrer" href="https://discord.gg/pHsBjpt5J8">Discord</a></li>
+
+              </ul>
+            </details>
+          </li>
+          <li>
+            <details>
+              <summary>
+                <span class="inline"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>
+                  <span class="indicator-item badge badge-secondary badge-xs"></span>
+              </summary>
+              <ul class="p-2 bg-base-100 rounded-t-none z-[50]">
+                <li><a href="/users/edit">Account</a></li>
+                <li><a href="/settings/general">Settings</a></li>
+                <li>
+                  <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
+                    Get started
+                      <span class="badge badge-secondary badge-xs absolute right-2 top-1/2 -translate-y-1/2"></span>
+                  </a>
+                </li>
+
+                <li><a data-turbo="false" rel="nofollow" data-method="delete" href="/users/sign_out">Logout</a></li>
+              </ul>
+            </details>
+          </li>
+        </ul>
+      </div>
+  </div>
+</div>
+
+      
+      <div class="fixed top-5 right-5 flex flex-col gap-2 z-50" id="flash-messages">
+</div>
+
+      <div class="w-full px-4 sm:px-5 flex-1">
+        <div class="flex w-full min-w-0 gap-5"></div>
+      </div>
+      <div class="px-4 sm:px-5 mt-auto">
+        <footer class="footer bg-base-200 text-content-neutral p-4">
+  <aside>
+    <p><a href="https://dawarich.app/" class="link hover:no-underline" target="_blank">Dawarich</a> 2023-2026</p>
+  </aside>
+</footer>
+
+      </div>
+    </div>
+
+    <div data-controller="onboarding-modal" data-onboarding-modal-auto-value="false" data-onboarding-modal-showable-value="true" data-onboarding-modal-onboarding-url-value="/settings/onboarding" data-onboarding-modal-user-trial-value="false" data-onboarding-modal-imports-count-value="0" data-onboarding-modal-demo-data-url-value="/settings/onboarding/demo_data" data-onboarding-modal-has-demo-data-value="false" data-onboarding-modal-user-id-value="37">
+  <dialog id="getting_started" class="modal" data-onboarding-modal-target="modal">
+    <div class="modal-box max-w-2xl bg-base-200">
+
+      <div data-onboarding-modal-target="choiceScreen">
+        <div class="text-center mb-6">
+          <h3 class="text-2xl font-bold text-primary mb-2">Welcome to Dawarich!</h3>
+          <p class="text-base-content/70">
+            Your map starts with your next step — literally.
+          </p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-primary/40 hover:border-primary sm:col-span-2" data-action="onboarding-modal#showTrack">
+            <div class="card-body p-5">
+              <div class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-primary"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect><path d="M12 18h.01"></path></svg>
+                <h4 class="text-lg font-semibold">Start tracking now</h4>
+                <span class="badge badge-primary badge-sm">2 minutes</span>
+              </div>
+              <p class="text-sm text-base-content/70">
+                Get the app, scan a QR code, and watch your first points appear on the map today.
+              </p>
+            </div>
+          </button>
+
+          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-secondary" data-action="onboarding-modal#showImport">
+            <div class="card-body p-5">
+              <div class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-secondary"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M12 12v6"></path><path d="m15 15-3-3-3 3"></path></svg>
+                <h4 class="text-lg font-semibold">I have data</h4>
+              </div>
+              <p class="text-sm text-base-content/70">
+                Import Google Takeout, GPX, KML, GeoJSON, or OwnTracks files.
+              </p>
+            </div>
+          </button>
+
+          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-accent" data-action="onboarding-modal#loadDemoData" data-onboarding-modal-target="demoButton">
+            <div class="card-body p-5">
+              <div class="flex items-center gap-2 mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-accent">
+  <path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"></path>
+  <path d="M15 5.764v15"></path>
+  <path d="M9 3.236v15"></path>
+</svg>
+                <h4 class="text-lg font-semibold">Explore with demo data</h4>
+              </div>
+              <p class="text-sm text-base-content/70">
+                Load sample location data (3 days in Berlin) to see what your map could look like. You can delete it anytime.
+              </p>
+            </div>
+          </button>
+            <a class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-info sm:col-span-2" data-action="onboarding-modal#dismiss" href="/family">
+              <div class="card-body p-5">
+                <div class="flex items-center gap-2 mb-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-info"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><path d="M16 3.128a4 4 0 0 1 0 7.744"></path><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><circle cx="9" cy="7" r="4"></circle></svg>
+                  <h4 class="text-lg font-semibold">Invite your family</h4>
+                </div>
+                <p class="text-sm text-base-content/70">
+                  Add your family and see each other on the map.
+                </p>
+              </div>
+</a>        </div>
+
+        <div class="text-center mt-6">
+          <button class="btn btn-ghost btn-sm" data-action="onboarding-modal#dismiss">
+            Skip for now
+          </button>
+        </div>
+      </div>
+
+      <div data-onboarding-modal-target="importScreen" class="hidden">
+        <div class="flex items-center gap-2 mb-4">
+          <button class="btn btn-ghost btn-sm btn-circle" data-action="onboarding-modal#showChoice">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+          </button>
+          <h3 class="text-xl font-bold">Import your data</h3>
+        </div>
+
+        <div class="card bg-base-100 shadow-sm mb-4">
+          <div class="card-body p-4">
+            <h4 class="card-title text-sm">Supported formats</h4>
+            <ul class="text-xs space-y-1">
+              <li><strong>Google Maps:</strong> Records.json, Semantic History, Phone Takeout (.json)</li>
+              <li><strong>GPX:</strong> Track files (.gpx)</li>
+              <li><strong>GeoJSON:</strong> Feature collections (.json)</li>
+              <li><strong>OwnTracks:</strong> Recorder files (.rec)</li>
+              <li><strong>KML:</strong> KML files (.kml, .kmz)</li>
+            </ul>
+            <div class="text-xs text-base-content/60 mt-2">
+              File format is automatically detected during upload.
+            </div>
+          </div>
+        </div>
+
+        <form class="contents" data-controller="upload" data-upload-url-value="http://www.example.com/rails/active_storage/direct_uploads" data-upload-field-name-value="import[files][]" data-upload-multiple-value="true" data-upload-user-trial-value="false" data-upload-max-imports-value="5" data-upload-current-imports-count-value="0" data-upload-preserve-original-filename-value="true" data-upload-target="form" enctype="multipart/form-data" action="/imports" accept-charset="UTF-8" method="post">
+          <label class="form-control w-full mb-4">
+            <div class="label">
+              <span class="label-text">Select one or multiple files</span>
+            </div>
+            <input name="import[files][]" type="hidden" value=""><input multiple="multiple" name="import[files][]" class="file-input file-input-bordered w-full" data-upload-target="input" data-direct-upload-url="http://www.example.com/rails/active_storage/direct_uploads" type="file" id="files">
+            <div class="text-xs text-base-content/60 mt-2">
+              Files will be uploaded directly to storage. Please be patient during upload.
+            </div>
+          </label>
+
+          <div class="flex justify-end">
+            <input type="submit" name="commit" value="Import files" class="btn btn-primary" data-upload-target="submit" data-disable-with="Import files">
+          </div>
+</form>      </div>
+
+      <div data-onboarding-modal-target="trackScreen" class="hidden">
+        <div class="flex items-center gap-2 mb-4">
+          <button class="btn btn-ghost btn-sm btn-circle" data-action="onboarding-modal#showChoice">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
+          </button>
+          <h3 class="text-xl font-bold">Start tracking</h3>
+        </div>
+
+        <div class="card bg-base-100 shadow-sm">
+          <div class="card-body p-4 space-y-4">
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <div class="badge badge-primary badge-sm">1</div>
+                <h4 class="font-semibold">Download the app</h4>
+              </div>
+              <div class="flex justify-center items-center gap-3 flex-wrap">
+                <a class="inline-block rounded-lg border-2 border-transparent hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:scale-105" href="https://apps.apple.com/de/app/dawarich/id6739544999?itscg=30200&amp;itsct=apps_box_badge&amp;mttnsubad=6739544999">
+                  <img class="h-[40px] transition-opacity duration-300" src="/assets/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917-8db899f713fdb059d268a83321cb5ccc8b8b03cf21f6e8e4fbc6e7d16e032b7d.svg">
+</a>                <a class="inline-block rounded-lg border-2 border-transparent hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:scale-105" target="_blank" rel="noopener" href="https://play.google.com/store/apps/details?id=app.dawarich.Dawarich">
+                  <img class="h-[40px] transition-opacity duration-300" src="/assets/GetItOnGooglePlay_Badge_Web_color_English-606564f97820b0f1aae2b2829d847e1df6e1ed3d96b3ca014b3babba975b34d0.svg">
+</a>              </div>
+            </div>
+
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <div class="badge badge-primary badge-sm">2</div>
+                <h4 class="font-semibold">Scan QR code to connect</h4>
+              </div>
+              <p class="text-sm text-base-content/70 mb-3">
+                Scan this QR code with the Dawarich app to automatically configure your connection.
+              </p>
+              <div class="flex justify-center">
+                <div class="bg-white p-3 rounded-lg shadow-inner">
+                  <!--?xml version="1.0" standalone="yes"?--><svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events" width="100%" height="100%" viewBox="0 0 181 181" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges"><rect width="181" height="181" x="0" y="0" fill="#fff"></rect><path d="M0 0h7v7h-7zM8 0h1v2h1v-2h3v2h3v-2h1v1h1v1h-2v1h-1v1h-1v-1h-2v1h-1v-1h-1v3h-1v2h1v-2h1v2h1v1h-1v1h2v1h1v1h-2v-1h-2v-2h-1v2h1v1h2v1h1v1h-2v1h2v-1h1v-2h1v1h1v-1h1v-1h-1v-1h-2v-1h-1v-2h-1v-3h1v1h1v1h-1v1h1v-1h1v2h-1v1h2v1h1v-1h1v-1h1v-1h-1v-2h-1v-1h1v1h1v2h1v-3h-1v-2h1v1h1v-1h1v-1h1v1h2v2h2v-1h2v1h2v1h1v-2h-1v-1h2v-1h-3v1h-1v-2h5v2h-1v1h1v-1h1v1h-1v1h-1v4h-2v2h-1v-1h-1v1h-1v-1h-2v-1h-1v-1h-1v-1h-1v-1h1v-1h-1v-1h-1v1h-1v3h-1v1h-1v1h-1v3h-1v1h-1v1h2v1h-1v2h1v-2h1v2h-1v1h-3v-2h1v-1h-1v-1h-1v4h1v2h-2v-1h-2v-2h-2v-1h-1v1h-2v-1h-1v-2h-2v-1h-1v-1h-1v-2h-1v-1h2v-1h3v1h-2v2h-1v1h1v-1h1v-1h3v-1h-1v-1h1v1h1v-4h1v-2h-1zM14 0h1v1h-1zM24 0h1v1h-1zM26 0h1v1h-1zM36 0h1v1h2v1h2v-1h-1v-1h8v5h-1v-2h-2v-2h-1v3h-1v-3h-1v3h-1v-1h-3v-1h-2zM50 0h7v7h-7zM1 1v5h5v-5zM46 1v1h1v-1zM51 1v5h5v-5zM2 2h3v3h-3zM52 2h3v3h-3zM37 3h1v2h-1zM39 4h1v1h-1zM42 4h1v1h-1zM44 4h1v1h-1zM27 5v3h3v-3zM34 5h2v1h-1v2h-1zM38 5h1v2h1v-1h1v2h-3v1h-1v-2h-1v-1h1v1h1zM45 5h2v2h-1v-1h-1zM16 6h1v2h-1zM22 6h1v1h-1zM25 6v1h1v-1zM28 6h1v1h-1zM31 6v1h1v-1zM42 6h1v1h-1zM44 6h1v1h1v2h-1v-1h-2v-1h1zM48 6h1v2h-1v1h-1v-2h1zM24 8h1v1h1v1h-2v1h-1v-1h-1v-1h2zM33 8h1v1h-1zM35 8h1v1h1v1h-1v1h-1zM41 8h2v2h-1v-1h-1zM49 8h3v2h-1v-1h-1v1h1v2h-3v-1h-2v1h2v1h-3v-1h-8v-1h2v-2h1v1h2v1h1v-1h1v1h1v-1h3v-1h1zM54 8h3v1h-1v3h-4v-1h1v-2h1zM20 9h1v1h-1zM7 10v1h-1v1h-1v-1h-1v1h-1v1h1v-1h1v2h2v-1h-1v-1h2v-2zM26 10h2v1h-1v1h-1zM31 10h2v1h-2zM48 10v1h1v-1zM19 11h3v1h2v1h-1v1h1v-1h3v1h-3v1h-3v-3h-2zM28 11h3v1h-1v1h2v-1h1v1h-1v1h-3v-2h-1zM34 11h1v1h-1zM35 12h1v1h-1zM56 12h1v2h-1zM0 13h2v2h1v1h-1v2h-1v-1h-1v-1h1v-2h-1zM8 13v1h2v-1zM19 13h1v1h-1zM34 13h1v4h-2v-2h1zM39 13h5v2h2v-1h2v-1h2v1h-2v1h-1v1h1v-1h2v-1h1v-1h4v1h-3v1h3v-1h1v2h-5v-1h-1v3h1v1h-1v1h-2v-1h1v-1h-1v-1h-2v1h1v1h-1v1h-4v-1h-1v1h-2v-1h-2v1h1v2h1v-1h2v-1h1v1h-1v1h-1v1h-2v1h-1v2h2v-1h2v1h-1v1h-4v2h2v-1h2v-1h1v-1h1v-2h1v-2h-1v-1h2v2h1v-1h2v-1h-1v-1h1v1h3v-1h1v-1h2v-1h-1v-1h1v1h1v-1h1v1h-1v1h-1v1h-2v1h-1v1h-3v1h1v2h-2v1h1v1h-1v1h1v1h-2v-1h-1v-1h1v-1h-1v-1h1v-1h-2v2h-1v3h2v1h4v-5h1v-1h1v-2h2v1h-1v1h-1v1h-1v1h2v-2h1v-1h1v1h-1v1h1v-1h1v-2h1v-1h1v-2h1v3h-1v1h-1v1h-1v1h3v1h-2v1h1v2h-1v-1h-1v1h-1v2h-2v1h-2v-1h-1v1h-1v-1h-1v3h-1v1h1v-1h1v1h-1v1h1v-1h4v-1h-1v-1h1v-1h2v-1h2v-1h-1v-1h1v1h1v-1h1v1h-1v1h-1v1h-2v1h-2v1h1v2h1v-3h1v1h1v-2h1v-1h1v1h-1v1h1v1h-2v1h2v1h-3v3h1v-1h1v-1h1v1h-1v2h-3v1h-2v-1h-1v-1h-2v-1h-1v-1h-1v1h-1v-2h-1v3h-1v-1h-1v-1h1v-1h-1v-1h-1v-1h-2v-2h1v-1h-2v-1h-4v1h2v1h1v-1h1v3h-1v1h1v-1h1v1h-1v3h-2v-1h1v-1h-2v1h-1v-2h-1v-1h-1v1h1v2h1v1h-1v4h-1v-2h-1v1h-2v-1h-1v-1h3v-2h-1v-1h1v-1h-2v2h-1v-1h-2v-1h-2v3h-1v-1h-1v2h1v2h-1v2h1v-1h3v-1h1v1h-1v1h-3v1h-1v1h1v1h-2v-2h-1v2h-2v1h2v-1h1v2h-2v1h-1v-1h-1v-3h-2v-1h3v1h1v-2h-1v-1h1v1h2v-6h-2v-1h-1v-2h-1v-1h1v1h2v2h1v-3h-1v-1h-5v-1h-1v-1h-1v-1h1v-1h-1v-4h-1v2h-1v-3h-1v-1h-1v-1h-1v-1h-1v-1h-1v-1h3v1h-1v1h1v1h1v-1h2v1h-1v2h2v1h2v-1h-1v-2h1v-1h1v-1h2v-1h1v-1h2v-1h3v-1h2v4h1v-2h1v1h1v-1h1v-1h-3v-2h1v1h2v1h1v-1h1v5h-1v3h1v1h-1v1h5v-2h-1v1h-1v-2h-2v-1h2v1h1v-1h1v-1h-2v-1h-1v-1h1v1h2v-2h1v-1h-1v-2h1v1h1v-1h1zM40 14v1h1v1h-2v-1h-1v3h1v-1h2v1h1v-2h1v-2zM6 15v1h1v-1zM9 15v1h1v-1zM12 16v2h1v-2zM24 16v1h1v-1zM43 16v1h1v1h-2v1h3v-3zM48 16v1h1v-1zM3 17h1v2h-1zM21 17v1h1v1h-2v-1h-1v1h-1v1h1v-1h1v1h-1v1h-2v2h-1v-2h-1v2h1v1h3v1h2v-1h-1v-1h-2v-1h1v-1h1v-1h2v-1h3v-1h-2v-1zM30 17v1h1v-1zM56 17h1v1h-1zM0 18h1v2h-1zM39 18v1h1v-1zM2 19h1v2h3v-1h-1v-1h1v1h1v1h-1v1h1v-1h1v1h1v1h-1v1h-1v-1h-1v1h-1v1h-2v1h2v-1h1v-1h1v1h-1v1h1v-1h1v-1h2v2h1v1h-2v1h1v1h-1v1h3v1h1v2h-1v-1h-3v1h-1v1h2v-1h2v1h-2v1h-1v1h-2v-1h-1v1h1v1h-1v1h-2v-1h1v-3h-2v-1h2v-1h-2v-1h-1v-1h-2v-1h1v-1h-1v-2h1v-1h-1v-2h1v-1h-1v-1h2zM28 19v1h-1v1h-2v-1h-2v1h-1v1h1v1h-1v2h-1v1h-2v2h1v-1h1v-1h1v1h-1v1h-1v1h1v-1h1v-1h1v-1h1v2h-2v1h-1v1h-1v2h1v1h1v-1h1v-1h-2v-1h2v1h1v-3h1v1h1v-6h-1v-1h2v1h1v1h-1v2h1v-1h1v-1h1v-1h-1v-1h1v-2h-1v-1zM54 19h1v1h-1zM28 20h1v1h-1zM53 20h1v1h-1zM12 21h1v1h-1zM2 22v1h-1v1h2v-1h2v-1zM36 22v1h1v-1zM41 22h1v1h-1zM40 23h1v1h-1zM24 24h1v1h-1zM8 25v1h1v-1zM14 25v3h1v-1h1v-1h-1v-1zM16 25v1h1v1h-1v1h-1v1h-1v1h1v-1h1v1h-1v1h1v-1h2v-5zM1 26v2h2v-1h-1v-1zM32 26v2h2v-1h-1v-1zM5 27v3h3v-3zM27 27v3h3v-3zM49 27v3h3v-3zM3 28v1h1v-1zM6 28h1v1h-1zM11 28h1v1h-1zM28 28h1v1h-1zM40 28v1h1v-1zM50 28h1v1h-1zM31 29v2h-1v1h-1v-1h-3v-1h-1v2h-2v1h1v1h2v-1h1v-1h2v2h2v-2h2v-2h-1v-1zM38 29v1h1v-1zM18 30v1h1v-1zM40 30v1h1v-1zM42 30v1h1v-1zM1 31h1v2h-1v1h2v1h-3v-3h1zM5 31v1h3v-1zM14 32h1v2h-1zM40 32v1h1v-1zM42 32v1h1v-1zM44 32v1h1v-1zM6 33v1h1v-1zM27 33v1h-1v1h1v-1h1v-1zM34 33v2h1v-2zM12 34h1v1h-1zM22 34v2h1v-2zM42 34v1h1v-1zM3 35h1v1h-1zM10 35h2v3h-1v-1h-2v-1h1zM14 35h1v1h-1zM16 35h1v2h-1v1h-2v-1h-1v-1h1v1h1v-1h1zM40 35h1v1h-1zM0 36h1v1h1v-1h1v1h-1v1h-1v1h-1zM25 36h1v2h-1zM39 36h1v1h-1zM47 36v1h1v-1zM50 36v1h-2v1h2v-1h1v-1zM8 37h1v2h1v-1h1v1h1v3h-2v1h-1v-1h-2v-1h-1v-1h1v-1h-1v-1h2zM51 37v1h-1v1h2v-1h1v-1zM13 38h1v1h-1zM16 38h1v1h-1zM18 38h2v2h-1v-1h-1zM34 38h2v1h-2zM38 38h3v1h2v1h-3v-1h-1v1h1v1h-1v1h-3v-1h-1v-1h1v1h2v-1h-1v-1h1zM46 38h1v1h-1zM4 39h1v2h-1zM15 39h1v2h-2v1h-1v-2h2zM17 39h1v1h-1zM24 39h2v1h-2zM44 39h2v1h-2zM47 39h1v1h-1zM7 40v1h1v-1zM9 40v1h1v-1zM18 40h1v1h-1zM43 40h1v2h-2v-1h1zM48 40h1v1h2v1h-1v1h-1v-1h-1zM56 40h1v2h-1zM1 41h2v1h-2zM28 41h1v1h3v1h1v-1h1v-1h1v1h-1v1h-1v1h-5v-1h-1v-1h1zM40 41h1v1h-1zM45 41h1v1h-1zM53 41h2v1h1v1h-1v1h-1v-1h-1zM0 42h1v1h-1zM3 42h1v2h-1zM6 42h1v1h-1zM12 42h1v1h1v1h-1v1h2v3h-1v-1h-1v-1h-1v-2h-1v-1h1zM15 42h1v1h-1zM35 42h1v1h1v1h2v-2h1v1h1v-1h1v1h1v1h-3v2h-1v-1h-4zM44 42h1v2h-1zM46 42h1v1h-1zM51 42h1v2h-2v-1h1zM5 43h1v1h-1zM47 43h2v1h-2zM4 44h1v2h-1zM6 44h5v2h-2v1h-1v1h-1v-1h-2v-1h3v-1h-2zM26 44h2v1h-2zM33 44h1v1h-1zM43 44h1v1h-1zM45 44h2v1h-2zM49 44h1v1h-1zM52 44h2v1h-2zM2 45h1v2h2v1h-5v-2h1v1h1zM25 45h1v2h-1zM31 45h1v1h-1zM42 45h1v1h-1zM44 45h1v1h-1zM47 45h1v1h-1zM54 45h1v1h-1zM56 45h1v1h-1zM11 46h1v1h-1zM23 46h1v2h2v-1h1v1h1v-1h2v-1h1v1h1v-1h1v2h-2v4h1v2h-2v-1h-2v1h-1v-1h-1v-1h-1v2h-1v-3h1v-2h-3v1h1v1h-1v1h-1v1h-1v-2h1v-1h-2v-1h2v-1h2zM35 46h1v2h-2v-1h1zM37 46h2v1h-2zM40 46h2v1h1v-1h1v1h1v-1h2v1h1v-1h2v1h1v-1h1v1h1v1h1v-1h1v-1h1v1h-1v1h-1v1h-1v2h1v-2h2v-1h1v2h-2v2h-2v2h-1v1h-1v-2h-1v2h-1v1h-2v-1h-1v1h1v1h-2v-1h-1v-1h-1v-1h-2v-1h2v1h1v1h1v-1h2v1h1v-1h1v-1h-1v-1h-1v1h-1v-2h-1v-1h-3v-2h-2v1h-1v-2h1zM10 47h1v1h3v1h-2v1h-4v-1h2zM45 47v1h-2v1h3v-2zM48 47v1h-1v1h-1v1h1v-1h1v-1h1v-1zM6 48h1v1h-1zM16 48h1v1h-1zM36 48h2v1h-2zM14 49h1v1h-1zM17 49h1v1h-1zM27 49v3h3v-3zM32 49h1v2h-1zM35 49h1v1h2v1h-1v1h-2v2h1v-1h1v-1h2v1h-2v1h1v1h-2v1h-3v-1h1v-2h-1v-2h2zM40 49h1v1h-1zM49 49v3h3v-3zM0 50h7v7h-7zM13 50h1v1h-1zM15 50h2v2h-1v-1h-1zM18 50h1v1h-1zM28 50h1v1h-1zM41 50h1v1h3v1h-5v-1h1zM47 50v1h1v-1zM50 50h1v1h-1zM1 51v5h5v-5zM11 51h1v1h1v1h1v-2h1v1h1v1h-1v1h-1v1h-1v1h-1v1h-3v-2h-1v-3h1v2h1v1h1v-2h-1v-1h1zM56 51h1v1h-1zM2 52h3v3h-3zM18 52h1v1h-1zM17 53h1v1h1v-1h1v1h-1v2h-2zM21 53h2v1h-1v2h-1zM54 53h1v3h-1v-1h-1v-1h1zM26 54h1v3h-4v-1h1v-1h2zM28 54h1v1h-1zM30 55h1v2h-2v-1h1zM39 55h2v1h-1v1h-2v-1h1zM42 55h1v1h-1zM52 55h1v1h1v1h-4v-1h2zM13 56h2v1h-2zM19 56h2v1h-2zM36 56h1v1h-1zM41 56h1v1h-1zM43 56h1v1h-1zM55 56h1v1h-1z" fill="#000" transform="translate(5,5) scale(3)"></path></svg>
+                </div>
+              </div>
+            </div>
+
+            <div class="divider text-xs">OR</div>
+            <p class="text-sm text-base-content/70">
+              Grab your API key from
+              <a class="link link-primary font-medium" href="/settings/general">Settings</a>
+              and follow the
+              <a class="link link-primary font-medium" target="_blank" rel="noopener" href="https://dawarich.app/docs/tutorials/track-your-location?utm_source=app&amp;utm_medium=referral&amp;utm_campaign=onboarding">setup guide</a>.
+            </p>
+
+            <p class="text-xs text-base-content/60">
+              Have old location history, like a Google Takeout? Tracking works right away — you can <button type="button" class="link link-primary" data-action="onboarding-modal#showImport">import your history anytime</button>.
+            </p>
+          </div>
+        </div>
+
+        <div class="flex justify-end mt-4">
+          <button class="btn btn-primary" data-action="onboarding-modal#dismiss">
+            Got it, let's start!
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <form method="dialog" class="modal-backdrop">
+      <button>close</button>
+    </form>
+  </dialog>
+</div>
+
+      <div id="achievement-unlocks" class="ach-unlock-host" aria-live="polite" data-controller="achievement-unlocks" data-achievement-unlocks-user-id-value="37" data-achievement-unlocks-next-url-value="/achievements/unlocks/next" data-achievement-unlocks-seen-url-value="/achievements/unlocks/__ID__/seen" data-achievement-unlocks-dismiss-url-value="/achievements/unlocks/dismiss" data-action="turbo:before-cache@document->achievement-unlocks#beforeCache keydown@window->achievement-unlocks#keyDown visibilitychange@document->achievement-unlocks#resumeVisit pageshow@window->achievement-unlocks#resumeVisit"></div>
+
+  
+
+</body>
