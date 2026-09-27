@@ -170,6 +170,90 @@ defmodule DawarichWeb.EndpointTest do
     assert System.monotonic_time(:millisecond) - started < 5_000
   end
 
+  test "stopping the production listener drains every acceptor within one shutdown budget", ctx do
+    plan =
+      {:proxy,
+       %{
+         public: {{127, 0, 0, 1}, 0},
+         upstream: ctx.upstream.port,
+         puma_argv: ~w(bundle exec puma)
+       }}
+
+    :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
+    on_exit(fn -> Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint) end)
+
+    sup =
+      start_supervised!(
+        %{
+          id: :production_listener,
+          start:
+            {Supervisor, :start_link,
+             [Enum.drop(Dawarich.Front.children(plan), 1), [strategy: :one_for_one]]},
+          type: :supervisor
+        },
+        restart: :temporary
+      )
+
+    on_exit(fn ->
+      if Process.alive?(sup), do: Supervisor.stop(sup, :shutdown, 0)
+    end)
+
+    bandit = endpoint_bandit()
+    {:ok, {_ip, port}} = ThousandIsland.listener_info(bandit)
+
+    clients =
+      for _ <- 1..3 do
+        client = connect(port)
+        send_raw(client, "GET /slow HTTP/1.1\r\nHost: a\r\n\r\n")
+        client
+      end
+
+    pumas = for _ <- clients, do: accept(ctx.upstream)
+    assert acceptor_connection_count(bandit) == 3
+
+    listener = ThousandIsland.Server.listener_pid(bandit)
+    listener_ref = Process.monitor(listener)
+    started = System.monotonic_time(:millisecond)
+    stopping = Task.async(fn -> Supervisor.stop(sup) end)
+
+    assert_receive {:DOWN, ^listener_ref, :process, ^listener, _reason}, 1_000
+    assert refused(port)
+    assert Task.yield(stopping, 6_500) == {:ok, :ok}
+    assert System.monotonic_time(:millisecond) - started < 6_500
+
+    Enum.each(clients ++ pumas, &:gen_tcp.close/1)
+  end
+
+  defp endpoint_bandit do
+    {:ok, bandit} = Bandit.PhoenixAdapter.bandit_pid(DawarichWeb.Endpoint)
+    bandit
+  end
+
+  defp acceptor_connection_count(bandit) do
+    bandit
+    |> ThousandIsland.Server.acceptor_pool_supervisor_pid()
+    |> ThousandIsland.AcceptorPoolSupervisor.acceptor_supervisor_pids()
+    |> Enum.count(fn acceptor ->
+      acceptor
+      |> ThousandIsland.AcceptorSupervisor.connection_sup_pid()
+      |> DynamicSupervisor.count_children()
+      |> Map.fetch!(:active)
+      |> Kernel.>(0)
+    end)
+  end
+
+  defp refused(port) do
+    case :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], 100) do
+      {:error, reason} ->
+        reason in [:econnrefused, :econnreset]
+
+      {:ok, socket} ->
+        :ok = :gen_tcp.send(socket, "GET /slow HTTP/1.1\r\nHost: a\r\n\r\n")
+        assert {:error, reason} = :gen_tcp.recv(socket, 0, 1_000)
+        reason in [:closed, :econnreset]
+    end
+  end
+
   defp refused_soon?(port, attempts \\ 200) do
     case :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], 100) do
       {:error, :econnrefused} ->
