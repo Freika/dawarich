@@ -29,7 +29,7 @@ defmodule Dawarich.RailsServer do
         :exit_status,
         :stderr_to_stdout,
         args: args,
-        env: [{~c"RELEASE_COOKIE", false}]
+        env: [{~c"RELEASE_COOKIE", false} | port_env(Keyword.get(opts, :env, []))]
       ])
 
     {:ok,
@@ -47,6 +47,9 @@ defmodule Dawarich.RailsServer do
   end
 
   defp default_signal(os_pid, sig), do: System.cmd("kill", [sig, os_pid], stderr_to_stdout: true)
+
+  defp port_env(env),
+    do: Enum.map(env, fn {name, value} -> {to_charlist(name), value && to_charlist(value)} end)
 
   @impl true
   def handle_info({port, {:data, data}}, %{port: port} = state) do
