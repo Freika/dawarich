@@ -25,4 +25,11 @@ defmodule Dawarich.Jobs.RegistryTest do
 
     assert Registry.command("nope") == :error
   end
+
+  test "the app-version cron has one source: the registry matches config/schedule.yml" do
+    schedule = File.read!(Path.expand("../../../../config/schedule.yml", __DIR__))
+    [_, expression] = Regex.run(~r/app_version_checking_job:\n\s+cron: "([^"]+)"/, schedule)
+
+    assert {expression, Dawarich.AppVersion.CheckWorker} in Registry.crontab()
+  end
 end

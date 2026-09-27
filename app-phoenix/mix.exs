@@ -15,7 +15,7 @@ defmodule Dawarich.MixProject do
   end
 
   def application do
-    [mod: {Dawarich.Application, []}, extra_applications: [:logger]]
+    [mod: {Dawarich.Application, []}, extra_applications: [:logger, :inets, :ssl]]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
