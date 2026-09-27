@@ -224,6 +224,54 @@ defmodule DawarichWeb.EndpointTest do
     Enum.each(clients ++ pumas, &:gen_tcp.close/1)
   end
 
+  test "stopping the production listener closes a proxied cable connection normally", ctx do
+    plan =
+      {:proxy,
+       %{
+         public: {{127, 0, 0, 1}, 0},
+         upstream: ctx.upstream.port,
+         puma_argv: ~w(bundle exec puma)
+       }}
+
+    :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
+    on_exit(fn -> Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint) end)
+
+    sup =
+      start_supervised!(
+        %{
+          id: :production_listener,
+          start:
+            {Supervisor, :start_link,
+             [Enum.drop(Dawarich.Front.children(plan), 1), [strategy: :one_for_one]]},
+          type: :supervisor
+        },
+        restart: :temporary
+      )
+
+    on_exit(fn ->
+      if Process.alive?(sup), do: Supervisor.stop(sup, :shutdown, 0)
+    end)
+
+    bandit = endpoint_bandit()
+    {:ok, {_ip, port}} = ThousandIsland.listener_info(bandit)
+    client = ws_request(port, "/cable", [{"Origin", "http://127.0.0.1:#{port}"}])
+    puma = accept(ctx.upstream)
+    {head, _rest} = read_head(puma)
+    key = head |> header("sec-websocket-key") |> hd()
+    accept_key = Base.encode64(:crypto.hash(:sha, key <> "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
+
+    reply(
+      puma,
+      "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: #{accept_key}\r\n\r\n"
+    )
+
+    {101, _headers, rest} = read_response_head(client)
+    stopping = Task.async(fn -> Supervisor.stop(sup) end)
+
+    assert {{:close, <<1000::16>>}, _rest} = ws_recv(client, rest)
+    assert Task.await(stopping, 6_500) == :ok
+  end
+
   defp endpoint_bandit do
     {:ok, bandit} = Bandit.PhoenixAdapter.bandit_pid(DawarichWeb.Endpoint)
     bandit
@@ -244,13 +292,24 @@ defmodule DawarichWeb.EndpointTest do
 
   defp refused(port) do
     case :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], 100) do
-      {:error, reason} ->
-        reason in [:econnrefused, :econnreset]
+      {:error, _reason} ->
+        true
 
       {:ok, socket} ->
-        :ok = :gen_tcp.send(socket, "GET /slow HTTP/1.1\r\nHost: a\r\n\r\n")
-        assert {:error, reason} = :gen_tcp.recv(socket, 0, 1_000)
-        reason in [:closed, :econnreset]
+        try do
+          case :gen_tcp.send(socket, "GET /slow HTTP/1.1\r\nHost: a\r\n\r\n") do
+            :ok ->
+              case :gen_tcp.recv(socket, 0, 1_000) do
+                {:error, reason} -> reason in [:closed, :econnreset]
+                {:ok, _data} -> false
+              end
+
+            {:error, reason} ->
+              reason in [:closed, :econnreset]
+          end
+        after
+          :gen_tcp.close(socket)
+        end
     end
   end
 
