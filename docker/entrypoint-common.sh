@@ -1,7 +1,7 @@
 #!/bin/sh
 
 bootstrap() {
-  unset BUNDLE_PATH BUNDLE_BIN
+  unset BUNDLE_PATH BUNDLE_BIN DAWARICH_BEHIND_PHOENIX
   if [ "$(id -u)" = 0 ]; then
     drop_privileges "${PUID:-32767}" "${PGID:-32767}" "$@"
   fi

@@ -4,16 +4,17 @@ defmodule Dawarich.Application do
 
   @impl true
   def start(_type, _args) do
+    plan = Dawarich.Front.plan(Application.get_env(:dawarich, :rails_argv), System.get_env())
+    Dawarich.Front.log(plan)
+    Application.put_env(:dawarich, :rails_upstream, Dawarich.Front.upstream(plan))
+
     children =
-      [Dawarich.Repo, {Oban, Application.fetch_env!(:dawarich, Oban)}] ++ rails_server()
+      [
+        Dawarich.Repo,
+        {Oban, Application.fetch_env!(:dawarich, Oban)},
+        {Phoenix.PubSub, name: Dawarich.PubSub}
+      ] ++ Dawarich.Front.children(plan)
 
     Supervisor.start_link(children, strategy: :one_for_one, name: Dawarich.Supervisor)
-  end
-
-  defp rails_server do
-    case Application.get_env(:dawarich, :rails_argv) do
-      [_ | _] = argv -> [{Dawarich.RailsServer, argv: argv}]
-      _ -> []
-    end
   end
 end

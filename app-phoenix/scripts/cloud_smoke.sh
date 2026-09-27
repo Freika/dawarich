@@ -31,7 +31,7 @@ cleanup() {
       docker logs --tail 40 "$c" 2>&1 | sed "s/^/[$c] /" >&2 || true
     done
   fi
-  docker rm -f $(docker ps -aq --filter "label=$run") >/dev/null 2>&1 || true
+  docker rm -fv $(docker ps -aq --filter "label=$run") >/dev/null 2>&1 || true
   docker network rm $(docker network ls -q --filter "label=$run") >/dev/null 2>&1 || true
   docker rmi -f a0c-pgbouncer:local >/dev/null 2>&1 || true
   rm -rf "$work"
@@ -173,6 +173,18 @@ fi
 
 app -d --name a0c_web -p 127.0.0.1:3901:5000 "$IMAGE" $(procfile web) >/dev/null
 wait_until "$healthy" "web did not come up under Phoenix"
+docker logs a0c_web 2>&1 | grep -q 'Phoenix listens on .*:5000 and proxies to Puma on 127\.0\.0\.1:' \
+  || fail "Phoenix does not front Puma on 5000"
+docker exec a0c_web sh -c 'cat /proc/net/tcp /proc/net/tcp6' | awk '$4 == "0A" {print $2}' >"$work/listeners"
+grep -q ':1388$' "$work/listeners" || fail "nothing listens on 5000"
+if grep -v ':1388$' "$work/listeners" | grep -vqE '^([0-9A-F]{6}7F|00000000000000000000000001000000):'; then
+  fail "a listener other than Phoenix's is reachable from outside the Cloud container"
+fi
+[ "$(curl -s -m 10 -o /dev/null -w '%{http_code}' http://127.0.0.1:3901/users/sign_in)" = 200 ] \
+  || fail "a Rails page did not come through Phoenix and PgBouncer"
+docker exec a0c_web curl -sS -m 10 -D - --output - -H 'Origin: http://127.0.0.1:5000' \
+  -H 'Sec-WebSocket-Protocol: actioncable-v1-json' ws://127.0.0.1:5000/cable 2>/dev/null | LC_ALL=C tr -d '\r' >"$work/cable" || true
+grep -q '^HTTP/1.1 101' "$work/cable" || fail "the Cloud /cable upgrade did not come through Phoenix"
 [ "$(docker exec a0c_web ps -o user=,comm= -C beam.smp | tr -s ' ' | sed 's/^ //')" = "32767 beam.smp" ] \
   || fail "the BEAM is missing or runs as root"
 under_beam a0c_web || fail "Puma is missing or not a descendant of the BEAM"
@@ -182,6 +194,13 @@ under_beam a0c_web || fail "Puma is missing or not a descendant of the BEAM"
 docker stop a0c_web >/dev/null
 [ "$(docker inspect -f '{{.State.ExitCode}}' a0c_web)" = 0 ] || fail "unclean web stop"
 docker logs a0c_web 2>&1 | tail -20 | grep -qi goodbye || fail "puma did not shut down gracefully"
+docker rm a0c_web >/dev/null
+app -d --name a0c_web -e DAWARICH_PROXY=off -p 127.0.0.1:3901:5000 "$IMAGE" $(procfile web) >/dev/null
+wait_until "$healthy" "web did not come up with DAWARICH_PROXY=off"
+docker logs a0c_web 2>&1 | grep -q 'Phoenix proxy off (DAWARICH_PROXY=off)' || fail "the Cloud kill switch was not honoured"
+under_beam a0c_web || fail "Puma is not under the BEAM with the kill switch"
+docker stop a0c_web >/dev/null
+[ "$(docker inspect -f '{{.State.ExitCode}}' a0c_web)" = 0 ] || fail "unclean web stop with the kill switch"
 
 app -d --name a0c_worker "$IMAGE" $(procfile worker) >/dev/null
 wait_until 'docker exec a0c_worker pgrep -f "^sidekiq [0-9]" >/dev/null' "sidekiq did not boot"

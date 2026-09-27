@@ -18,6 +18,8 @@ worker_timeout 3600 if ENV.fetch('RAILS_ENV', 'development') == 'development'
 #
 port ENV.fetch('PORT', 3000)
 
+set_remote_address header: 'X-Dawarich-Remote-Addr' if ENV['DAWARICH_BEHIND_PHOENIX'] == '1'
+
 # Specifies the `environment` that Puma will run in.
 #
 environment ENV.fetch('RAILS_ENV', 'development')
