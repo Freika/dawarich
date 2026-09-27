@@ -3,6 +3,8 @@ defmodule DawarichWeb.RailsCsrf do
 
   @global "!real_csrf_token"
 
+  def new_token, do: Base.url_encode64(:crypto.strong_rand_bytes(32), padding: false)
+
   def masked_token(%{"_csrf_token" => real}) when is_binary(real) do
     case Base.url_decode64(real, padding: false) do
       {:ok, raw} ->
