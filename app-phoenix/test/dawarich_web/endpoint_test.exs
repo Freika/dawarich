@@ -43,12 +43,14 @@ defmodule DawarichWeb.EndpointTest do
 
   test "a /cable upgrade goes to Puma as an upgrade", ctx do
     port = serve()
-    _client = ws_request(port, "/cable", [{"Origin", "http://127.0.0.1:#{port}"}])
+    client = ws_request(port, "/cable", [{"Origin", "http://127.0.0.1:#{port}"}])
     puma = accept(ctx.upstream)
     {head, _} = read_head(puma)
 
     assert request_line(head) == "GET /cable HTTP/1.1"
     assert header(head, "upgrade") == ["websocket"]
+    reply(puma, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n")
+    assert {404, _, ""} = read_response(client)
   end
 
   @tag :tmp_dir
