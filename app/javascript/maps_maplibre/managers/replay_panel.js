@@ -643,6 +643,7 @@ export class ReplayPanel {
           this.replayManager.nextDay()
           this.updateDayDisplay()
           this.updateDayCount()
+          this.updateScrubberRange()
           this.renderDensity()
           this.syncAccordion()
           this.replayPoints = this.replayManager.getPointsForDay(
