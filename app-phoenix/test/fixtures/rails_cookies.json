@@ -2,22 +2,33 @@
   "rails_test_secret": "phoenix-a2-cookie-fixture-secret-not-for-production",
   "now": "2026-09-26T12:00:00.000000Z",
   "remember_for_seconds": 1209600,
+  "lockable": true,
+  "unlock_strategy": "both",
+  "time_unlock": true,
+  "unlock_in_seconds": 3600,
   "user": {
-    "id": 2,
+    "id": 3,
     "email": "phoenix-cookies@dawarich.test",
-    "encrypted_password": "$2a$04$vj0PBanxs8EQo6gTXLAc7.DY3dpVeIDh114B5U5v14jmrleRoS6R6",
+    "encrypted_password": "$2a$04$/wicn18kh42lkZZ/jMIXdOvJEmsv/NPUMAKc4Nwbq7MuGTBJJkWfe",
     "remember_created_at": "2026-09-26T11:59:00.000000Z"
   },
-  "session_cookie": "IQU8ve7xep9O6ePm1n%2F%2Fsdy3IvUAUS1RqzEKhqJtwJzP80Qol9WhgSk08TKLO2Q8DFvIhWXhOUIfH9zsj9fmECUJRKe%2F7oGPVR4v0XPRXOXgROjp5n5gsDTVE2C3ON%2FZy5cdaoQWfg0Lca5qkDYh8T8uvgRx9YmO6k51CiuRXz8iYuTvg%2FmvPSc3WmvpkunyL7I1S4DzXpjn%2BHZufkouTYCtsAjBw6%2FDR%2B66Mv7cR9sCeAUNVKrSrg7vKGk8fD2zhfbjmOmyghvvZ9S%2BEv3j7zY9B4qKsJjbiYh0Nk0J77KdAZn8C8C6hHr%2FwN8MLDUxe0PgbXp%2F8Hey%2FXG61S1wKdb7aUnGDIMn1yoh66uYx9a0dKE2iZQSy38uKTLfzm0NYm83HLfww8YmPiCFEOaHWpZBbYku--JwTsoWzyjg%2FAbxc%2F--%2FmChrYNosF58oLQLks0QmA%3D%3D",
-  "remember_cookie": "eyJfcmFpbHMiOnsibWVzc2FnZSI6Ilcxc3lYU3dpSkRKaEpEQTBKSFpxTUZCQ1lXNTRjemhGVVc4MloxUllURUZqTnk0aUxDSXhOemt3TkRJME1EQXdMakFpWFE9PSIsImV4cCI6IjIwMjYtMTAtMTBUMTI6MDA6MDAuMDAwWiIsInB1ciI6ImNvb2tpZS5yZW1lbWJlcl91c2VyX3Rva2VuIn19--a91d32f89811b272bf8e94b68ca9dd70a90e2430",
-  "other_purpose_cookie": "K0B5qFuDbdqYaPVMnDQnyE0wtE%2FZH5lD2s3HVxC5q2M3zrvxhbQPfA6kbpvLhP8R2XKpQLxaoZEy64H6QERRXxskMJ0Xk57XkIFVN%2B0SaBow--nj46Ou%2F1fhgJdfm2--gR%2B5xpdgyF525r4L5ImPfg%3D%3D",
+  "other_user": {
+    "id": 4,
+    "email": "phoenix-cookies-other@dawarich.test",
+    "encrypted_password": "$2a$04$yeAOZIcnphhDDG7RVV8XO.zVr4UMGDUr2WUF8TNEI0PSJo.i/WTKi",
+    "remember_created_at": "2026-09-26T11:59:00.000000Z"
+  },
+  "other_remember_cookie": "eyJfcmFpbHMiOnsibWVzc2FnZSI6IlcxczBYU3dpSkRKaEpEQTBKSGxsUVU5YVNXTnVjR2hvUkVSSE4xSldWamhZVHk0aUxDSXhOemt3TkRJME1EQXdMakFpWFE9PSIsImV4cCI6IjIwMjYtMTAtMTBUMTI6MDA6MDAuMDAwWiIsInB1ciI6ImNvb2tpZS5yZW1lbWJlcl91c2VyX3Rva2VuIn19--7fb0472600881eabc0b5e1ae1b3851e10fc93fc6",
+  "session_cookie": "jQRk%2BRyb3ik30muXz%2BkkN8qXgcU0j6AY2rB4kbAXnLR3pLO8nr6U1QSFLimAk%2BKkTBuWR7z%2BaYXA258Vd8Fg488P6CnWRzNV7sfM56NGefuwq%2FEpRmRTN5gC82lcb5Wz2BENprdTfRe70l7c1r%2FkMfRjlMhohOkA0ETo2OX5GZpBVqvvi3%2BapQZJiY%2FOAps6N%2BycXYTGhs%2FJ1ntX29JW1f8z5GIP7JNSVebrkvkTOild5uHe1zhopoeKiOEeWfPaltdRIbMKOWqvQObArgaoxYUNCRfUVLc3z5n1lzJgFQC8iLzB9sFBffuynvpilRCx9jVibzPObglLmAPZKUOfZdGe%2FKoX%2Bs8HoXdUaqSvQ8dIGTlUYJCYcHZed%2BWLgqkZmlm00uKtMYo%2BnANpkFfO4wqi7CyH--9tg9M%2B4vfSmhbmv6--RjnY9GyZRFwNhRQbxkuuSQ%3D%3D",
+  "remember_cookie": "eyJfcmFpbHMiOnsibWVzc2FnZSI6Ilcxc3pYU3dpSkRKaEpEQTBKQzkzYVdOdU1UaHJhRFF5Ykd0YVdpOXFUVWxZWkU4aUxDSXhOemt3TkRJME1EQXdMakFpWFE9PSIsImV4cCI6IjIwMjYtMTAtMTBUMTI6MDA6MDAuMDAwWiIsInB1ciI6ImNvb2tpZS5yZW1lbWJlcl91c2VyX3Rva2VuIn19--edbe9ef5f07b610c5b5cd733f5246395a918d247",
+  "other_purpose_cookie": "%2BC8vNKkgmy%2Bq%2BDeRGtcJD2VGF4dt60miyDoeeTauDoL9q4fpfklUMNN%2FCCVfptZATVpMxxerqIVE7eRZsUTJRwViRFFYg8fU9TBVvx6RaiTL--cVG%2BN%2BlyqKOJjZae--kP72w1R5y2u7XTswEw5aeg%3D%3D",
   "expected_session": {
-    "session_id": "4eccd8f429059f38b83d27c4b582df27",
+    "session_id": "99afcdeb54709a8ab13b7c77c84fd2d3",
     "warden.user.user.key": [
       [
-        2
+        3
       ],
-      "$2a$04$vj0PBanxs8EQo6gTXLAc7."
+      "$2a$04$/wicn18kh42lkZZ/jMIXdO"
     ],
     "flash": {
       "discard": [],
@@ -28,13 +39,13 @@
   },
   "expected_remember": [
     [
-      2
+      3
     ],
-    "$2a$04$vj0PBanxs8EQo6gTXLAc7.",
+    "$2a$04$/wicn18kh42lkZZ/jMIXdO",
     "1790424000.0"
   ],
   "csrf": {
-    "session_cookie": "x4yiM4k1%2FpSNc5ODwrQrTYCQNqw0hRVjM%2F%2B1%2FuUgFxL0EefuSam5MLrq4Xgtm7%2BsBSdHo4s8c7XS3I%2FrxSxLO%2BwzVUfWKKxO%2F%2FYPJLXHYn9hGTrA8W6rbfefIKH9KUjykAMLtdqWfc2QL%2BtCBQdbIaAtafmaHgDqeF3rISlYCxJ9px7d6tpzUynEy7SLM8b%2BsXPTb4y3UAxQO0vAervcKkDuRd759bdoeplfTAHm%2F4R1Q%2BhIXMx3MsapI6z080uCL%2FoBVmTivPKL7p4j09X%2B0tIKqagMi6tRIoe3nkiLwrgpzDHWYq1t3%2BDzd4OtnOZcgh%2FxPcbuuCS4I9yq8GMoPBhr2JOUUYu57geXS3HkoAcIp%2BsHTlYmO%2BF%2BdrbWTGtPD4g4Q4uKx41k--bvI33HGvs6dDbl2S--xG2NcPfLLARhdWRpDy30Xg%3D%3D",
-    "masked_token": "DKw4kyP_1GboS7nZg7sz1DtSJ-TXPPXxVrs88Unx4Y6V_Chu3-yyMcu3oF2f1VpF4LV48nitgIbmeF7FQUvHXA"
+    "session_cookie": "HITw%2BjxzPE7ngXIo%2Be7yw0Hrxu3OfDGwfhk7PmoJkiC1HUEvVjv630qRYWR6OUjuZxDeSaygxTs6uJ%2FbiujRTsULFw4iD6yxwFld6%2Bpy9%2FfSNod9Q3AMuBgmljpv04Bo6s%2Fv%2FbVg9tOdHBqkrLdaIdCJVs%2BATlNu8UeIHuIa9K9xJAMJukfWPauBAbY7FwsHw9dq6wqkfYnG5RtOpoPl8OGICEm0XmeLvk4u1jzVMkaHhVbpqefmn2BOXkRQOE8GpJPtaV4KUAgwlF3Cb0PrFrNpCP3NEuk2tpGWHfOmO4bskWCa%2BWvVc1GboyAGU1lf00CSEU9zk48uv8q5%2F1XSEY%2FrnBQZvnk9Nlo%2FBygk%2B9y03lh5CFVQoaaR5NSeUkbDF6eAD7V%2FSgfW--4yHOfw1neuy76zWw--QSgvkF7%2F97N%2FR5HRDmKjvA%3D%3D",
+    "masked_token": "rJ-AFnSvwgwEnVN8bF_vOkSSqimFzX9d_F7pDCzqzrhuO7qLSy6aJ-qhwuFVYzx7Ub6qV5yj61RAfd8O5JkXGQ"
   }
 }

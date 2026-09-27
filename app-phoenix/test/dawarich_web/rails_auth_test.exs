@@ -48,6 +48,25 @@ defmodule DawarichWeb.RailsAuthTest do
   defp session_cookie, do: [{"_dawarich_session", @fixture["session_cookie"]}]
   defp remember_cookie, do: [{"remember_user_token", @fixture["remember_cookie"]}]
   defp remember_payload, do: @fixture["expected_remember"]
+  defp other_remember_cookie, do: [{"remember_user_token", @fixture["other_remember_cookie"]}]
+
+  defp insert_other_user do
+    other = @fixture["other_user"]
+    stamp = NaiveDateTime.utc_now()
+
+    Repo.insert_all("users", [
+      %{
+        id: other["id"],
+        email: other["email"],
+        encrypted_password: other["encrypted_password"],
+        remember_created_at: naive(other["remember_created_at"]),
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    other["id"]
+  end
 
   defp csrf_session do
     {:ok, session} =
@@ -160,10 +179,45 @@ defmodule DawarichWeb.RailsAuthTest do
   end
 
   describe "refusals and secrecy" do
+    test "a locked account's session signs nobody in, even beside another account's remember cookie" do
+      other_id = insert_other_user()
+      assert %{id: ^other_id} = current_user(other_remember_cookie())
+
+      update_user(locked_at: @now |> DateTime.add(-30 * 60) |> DateTime.to_naive())
+      assert current_user(session_cookie() ++ other_remember_cookie()) == nil
+    end
+
+    test "a locked account's remember cookie signs nobody in until the lock is an hour old" do
+      update_user(locked_at: @now |> DateTime.add(-30 * 60) |> DateTime.to_naive())
+      assert current_user(remember_cookie()) == nil
+
+      update_user(locked_at: @now |> DateTime.add(-61 * 60) |> DateTime.to_naive())
+      assert %{} = current_user(remember_cookie())
+    end
+
+    test "a session Rails cannot resolve falls through to the remember cookie, as Warden does" do
+      other_id = insert_other_user()
+
+      update_user(encrypted_password: "$2a$12$" <> String.duplicate("z", 53))
+      assert %{id: ^other_id} = current_user(session_cookie() ++ other_remember_cookie())
+
+      update_user(locked_at: @now |> DateTime.add(-30 * 60) |> DateTime.to_naive())
+      assert %{id: ^other_id} = current_user(session_cookie() ++ other_remember_cookie())
+
+      update_user(deleted_at: NaiveDateTime.utc_now(), locked_at: NaiveDateTime.utc_now())
+      assert %{id: ^other_id} = current_user(session_cookie() ++ other_remember_cookie())
+    end
+
+    test "a lock expires after Devise's unlock_in, because Devise unlocks by time" do
+      assert @fixture["lockable"]
+      assert @fixture["time_unlock"]
+      assert Accounts.unlock_in() == @fixture["unlock_in_seconds"]
+    end
+
     test "a session whose salt is not the user's is nobody" do
       assert Accounts.from_session(%{"warden.user.user.key" => [[@user["id"]], @salt]}, @now)
 
-      wrong = String.replace_suffix(@salt, ".", "/")
+      wrong = binary_part(@salt, 0, 28) <> if(String.ends_with?(@salt, "a"), do: "b", else: "a")
       refute Accounts.from_session(%{"warden.user.user.key" => [[@user["id"]], wrong]}, @now)
       refute Accounts.from_session(%{"warden.user.user.key" => [[@user["id"]], nil]}, @now)
       refute Accounts.from_session(%{"warden.user.user.key" => [[@user["id"]], [@salt]]}, @now)

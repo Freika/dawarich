@@ -10,13 +10,14 @@ defmodule Dawarich.Accounts do
   @unlock_in 60 * 60
 
   def remember_for, do: @remember_for
+  def unlock_in, do: @unlock_in
 
   def from_session(%{"warden.user.user.key" => [[id], salt]}, now)
       when is_integer(id) and is_binary(salt) do
-    with %User{} = user <- active(id, now),
+    with %User{} = user <- find(id),
          value when is_binary(value) <- salt(user),
          true <- Plug.Crypto.secure_compare(value, salt) do
-      user
+      if unlocked?(user, now), do: user, else: :locked
     else
       _ -> nil
     end
@@ -26,7 +27,8 @@ defmodule Dawarich.Accounts do
 
   def from_remember_cookie([[id], token, generated_at], now)
       when is_integer(id) and is_binary(token) do
-    with %User{} = user <- active(id, now),
+    with %User{} = user <- find(id),
+         true <- unlocked?(user, now),
          value when is_binary(value) and value != "" <- salt(user),
          true <- Plug.Crypto.secure_compare(value, token),
          {:ok, at} <- generated(generated_at),
@@ -41,19 +43,12 @@ defmodule Dawarich.Accounts do
 
   def from_remember_cookie(_payload, _now), do: nil
 
-  defp active(id, now) do
-    User
-    |> where([u], u.id == ^id and is_nil(u.deleted_at))
-    |> Repo.one()
-    |> unlocked(now)
-  end
+  defp find(id), do: User |> where([u], u.id == ^id and is_nil(u.deleted_at)) |> Repo.one()
 
-  defp unlocked(nil, _now), do: nil
-  defp unlocked(%User{locked_at: nil} = user, _now), do: user
+  defp unlocked?(%User{locked_at: nil}, _now), do: true
 
-  defp unlocked(%User{locked_at: at} = user, now) do
-    if DateTime.compare(at, DateTime.add(now, -@unlock_in)) == :lt, do: user
-  end
+  defp unlocked?(%User{locked_at: at}, now),
+    do: DateTime.compare(at, DateTime.add(now, -@unlock_in)) == :lt
 
   defp salt(%User{encrypted_password: nil}), do: nil
   defp salt(%User{encrypted_password: password}), do: String.slice(password, 0, 29)
