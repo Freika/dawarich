@@ -28,6 +28,7 @@ defmodule Dawarich.MixProject do
       {:oban, "~> 2.20"},
       {:jason, "~> 1.4"},
       {:phoenix, "~> 1.8.1"},
+      {:phoenix_html, "~> 4.2"},
       {:bandit, "~> 1.12"}
     ]
   end
