@@ -77,7 +77,7 @@ defmodule Dawarich.Jobs.Dispatch do
   end
 
   defp insert(oban, changeset) do
-    case Oban.insert(oban, changeset) do
+    case Oban.insert(oban, changeset, retry: false) do
       {:ok, job} -> {:ok, job}
       {:error, _invalid} -> {:error, "invalid_job"}
     end
