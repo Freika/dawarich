@@ -12,7 +12,7 @@ defmodule DawarichWeb.RailsProxy.Headers do
   end
 
   def response(headers) do
-    headers = Enum.map(headers, fn {name, value} -> {String.downcase(name), value} end)
+    headers = Enum.map(headers, fn {name, value} -> {String.downcase(name, :ascii), value} end)
     dropped = @hop_by_hop ++ connection_tokens(headers)
     Enum.reject(headers, fn {name, _} -> name in dropped end)
   end
@@ -44,6 +44,6 @@ defmodule DawarichWeb.RailsProxy.Headers do
   defp tokens(headers, name) do
     for {^name, value} <- headers,
         token <- Plug.Conn.Utils.list(value),
-        do: String.downcase(token)
+        do: String.downcase(token, :ascii)
   end
 end

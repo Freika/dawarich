@@ -4,6 +4,7 @@ defmodule Dawarich.FrontTest do
   import ExUnit.CaptureLog
 
   alias Dawarich.{Front, RailsServer}
+  alias DawarichWeb.RailsProxy.Upstream
 
   @prod %{"RAILS_ENV" => "production"}
   @opts [upstream_port: 41_000, ipv6?: false]
@@ -30,7 +31,26 @@ defmodule Dawarich.FrontTest do
              plan = Front.plan(rails_command(port), @prod, @opts)
 
     assert puma == ~w(bundle exec bin/rails server -b 127.0.0.1 -p 41000)
-    assert Front.upstream(plan) == {"127.0.0.1", 41_000}
+    assert Front.upstream(plan) == {{127, 0, 0, 1}, 41_000}
+  end
+
+  test "the stored upstream is an address tuple that opens a TCP connection" do
+    {:ok, listener} = :gen_tcp.listen(0, ip: {127, 0, 0, 1}, active: false)
+    {:ok, port} = :inet.port(listener)
+    on_exit(fn -> :gen_tcp.close(listener) end)
+
+    plan =
+      Front.plan(rails_command(free_port()), @prod,
+        upstream_port: port,
+        ipv6?: false
+      )
+
+    assert {:proxy, _} = plan
+    assert {{127, 0, 0, 1}, ^port} = Front.upstream(plan)
+    assert {:ok, socket} = Upstream.open(Front.upstream(plan))
+    assert {:ok, accepted} = :gen_tcp.accept(listener)
+    :ok = :gen_tcp.close(socket)
+    :ok = :gen_tcp.close(accepted)
   end
 
   test "DAWARICH_PROXY=off runs Puma exactly as the command says" do

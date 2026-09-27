@@ -24,7 +24,7 @@ defmodule DawarichWeb.CableProxyTest do
     bandit =
       start_supervised!(
         {Bandit,
-         [plug: {RailsProxy, upstream: {"127.0.0.1", upstream_port}}] ++
+         [plug: {RailsProxy, upstream: {{127, 0, 0, 1}, upstream_port}}] ++
            Dawarich.Front.http_options({127, 0, 0, 1}, 0)}
       )
 
