@@ -2032,7 +2032,10 @@ export default class extends Controller {
     await this.replayPanel.ensureOpen()
     if (!this.replayPanel.manager?.hasData()) return
 
-    const targetDay = `${trackDate.getFullYear()}-${String(trackDate.getMonth() + 1).padStart(2, "0")}-${String(trackDate.getDate()).padStart(2, "0")}`
+    const targetDay = DateManager.formatDateForAPI(
+      trackDate,
+      this.timezoneValue,
+    ).slice(0, 10)
     this.replayPanel.goToDay(targetDay)
 
     const startMinute = trackDate.getHours() * 60 + trackDate.getMinutes()

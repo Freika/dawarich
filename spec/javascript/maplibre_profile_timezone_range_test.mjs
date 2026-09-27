@@ -96,6 +96,27 @@ test("initial map instant is rendered with the profile offset", () => {
   )
 })
 
+test("click days use the profile timezone when one is configured", () => {
+  assert.equal(
+    DateManager.dayInTimeZone(
+      "2020-04-18T05:00:00Z",
+      "America/Los_Angeles",
+    ),
+    "2020-04-17",
+  )
+})
+
+test("click days retain their timestamp date without a profile timezone", () => {
+  assert.equal(
+    DateManager.dayInTimeZone("2020-04-18T05:00:00Z"),
+    "2020-04-18",
+  )
+})
+
+test("click days are null for missing timestamps", () => {
+  assert.equal(DateManager.dayInTimeZone(null, "America/Los_Angeles"), null)
+})
+
 test("Friday navigation requests Friday in the profile timezone", async (t) => {
   const { map, frame } = buildMap(t)
   await map.navigateTimelineDateRange({
@@ -238,4 +259,28 @@ test("expanding a day highlights the profile day", (t) => {
     Date.UTC(2020, 3, 17, 7, 0, 0) / 1000,
     Date.UTC(2020, 3, 18, 6, 59, 59) / 1000,
   ])
+})
+
+test("replay tracks map an instant to the profile day", async (t) => {
+  const { map } = buildMap(t)
+  const days = []
+  Object.assign(map, {
+    hasReplayPanelTarget: true,
+    replayPanelTarget: { classList: { contains: () => true } },
+    _ensureReplayPanel() {},
+    replayPanel: {
+      isPlaying: false,
+      manager: { hasData: () => true },
+      ensureOpen: async () => {},
+      goToDay: (day) => days.push(day),
+      setMinute() {},
+      startPlayback() {},
+    },
+  })
+
+  await map.replayTrack({
+    currentTarget: { dataset: { trackStart: "2020-04-18T05:00:00Z" } },
+  })
+
+  assert.deepEqual(days, ["2020-04-17"])
 })
