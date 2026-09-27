@@ -2,7 +2,7 @@ defmodule DawarichWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :dawarich
 
   @session_options [
-    store: :cookie,
+    store: DawarichWeb.SessionStore,
     key: "_dawarich_phoenix",
     signing_salt: "dawarich phoenix session",
     encryption_salt: "dawarich phoenix session encryption",
