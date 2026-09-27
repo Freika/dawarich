@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe User, type: :model do
+  include ActiveSupport::Testing::TimeHelpers
+
   describe '#preferred_locale' do
     it 'normalizes a supported string locale' do
       user = build(:user, settings: { 'locale' => ' FR ' })
@@ -460,6 +462,35 @@ RSpec.describe User, type: :model do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
         ActiveJob::Base.queue_adapter = :test
+        JobOutbox.delete_all
+      end
+
+      context 'when Oban owns the explore_features mail' do
+        before { job_owner!('command:users.explore_features_mail', :oban) }
+
+        it 'writes the delayed command to the outbox instead of Sidekiq, and keeps welcome on Sidekiq' do
+          travel_to(Time.zone.local(2026, 9, 27, 12)) do
+            expect { create(:user, :inactive) }
+              .to have_enqueued_job(Users::MailerSendingJob).with(an_instance_of(Integer), 'welcome')
+
+            row = JobOutbox.sole
+            expect(row).to have_attributes(command_type: 'users.explore_features_mail', command_version: 1,
+                                           aggregate_id: User.last.id)
+            expect(row.payload).to eq('user_id' => User.last.id, 'locale' => 'en')
+            expect(row.scheduled_at).to eq(2.days.from_now)
+            expect(Users::MailerSendingJob).not_to have_been_enqueued.with(User.last.id, 'explore_features')
+          end
+        end
+      end
+
+      it 'keeps the two-day Sidekiq schedule while Sidekiq owns the mail' do
+        travel_to(Time.zone.local(2026, 9, 27, 12)) do
+          expect { create(:user, :inactive) }
+            .to have_enqueued_job(Users::MailerSendingJob)
+            .with(an_instance_of(Integer), 'explore_features')
+            .at(2.days.from_now)
+          expect(JobOutbox.count).to eq(0)
+        end
       end
 
       it 'sets trial status and active_until to 7 days from now' do
