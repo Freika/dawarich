@@ -14,6 +14,12 @@ defmodule Dawarich.Jobs.Registry do
       kind: :command,
       worker: Dawarich.Mail.ExploreFeaturesWorker,
       claimable: false
+    },
+    %{
+      key: "command:trips.calculate",
+      kind: :command,
+      worker: Dawarich.Trips.CalculateWorker,
+      claimable: false
     }
   ]
 
