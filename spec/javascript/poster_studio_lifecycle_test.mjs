@@ -79,7 +79,7 @@ test("poster Today preset starts at the profile's midnight", () => {
   const RealDate = globalThis.Date
   globalThis.Date = class extends RealDate {
     constructor(...args) {
-      super(...(args.length ? args : ["2020-04-17T19:00:00Z"]))
+      super(...(args.length ? args : ["2020-04-18T05:00:00Z"]))
     }
   }
   try {
@@ -91,9 +91,24 @@ test("poster Today preset starts at the profile's midnight", () => {
 
     controller.presetRange({ currentTarget: { dataset: { range: "today" } } })
 
-    assert.equal(controller.dateStartTarget.value, "2020-04-17T00:00")
-    assert.equal(controller.dateEndTarget.value, "2020-04-17T12:00")
+    assert.deepEqual(
+      [controller.dateStartTarget.value, controller.dateEndTarget.value],
+      ["2020-04-17T00:00", "2020-04-17T22:00"],
+    )
   } finally {
     globalThis.Date = RealDate
   }
+})
+
+test("poster subtitle names the selected day in the profile timezone", () => {
+  const controller = new PosterStudioController()
+  controller.provider = {
+    dateRange: () => ({
+      startAt: "2020-04-17T00:00-07:00",
+      endAt: "2020-04-17T23:59-07:00",
+    }),
+    timeZone: () => "America/Los_Angeles",
+  }
+
+  assert.equal(controller.dateRangeLabel(), "17 Apr 2020 – 17 Apr 2020")
 })

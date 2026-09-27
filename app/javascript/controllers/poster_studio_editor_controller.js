@@ -468,7 +468,12 @@ export default class extends Controller {
   dateRangeLabel() {
     const { startAt, endAt } = this.provider?.dateRange() ?? {}
     if (!startAt || !endAt) return ""
-    const options = { day: "numeric", month: "short", year: "numeric" }
+    const options = {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: this.provider?.timeZone?.(),
+    }
     const start = new Date(startAt)
     const end = new Date(endAt)
     return `${start.toLocaleDateString("en-GB", options)} – ${end.toLocaleDateString("en-GB", options)}`

@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
-- Map timeline day and month ranges, including the Poster Studio date controls, now use the profile timezone when the browser uses a different timezone.
+- When the browser uses a different timezone from the profile, the map timeline's day and month ranges, the highlight of an expanded timeline day, and the Poster Studio date controls and default subtitle now use the profile timezone.
 - Loading demo data from onboarding no longer leaves "Creating your demo data…" spinning: the map refreshes track tiles once per second instead of once per created track.
 - Loading demo data from onboarding takes seconds instead of more than a minute.
 - Clicking a track on the map keeps it selected and shows its transportation-mode segments; the same click no longer clears the selection.

@@ -827,8 +827,12 @@ export default class extends Controller {
     const DIM = 0.04
 
     // Compute day boundaries as Unix seconds
-    const dayStart = new Date(`${day}T00:00:00`).getTime() / 1000
-    const dayEnd = new Date(`${day}T23:59:59`).getTime() / 1000
+    const unixSeconds = (wallTime) =>
+      new Date(
+        DateManager.formatLocalDateForAPI(wallTime, this.timezoneValue),
+      ).getTime() / 1000
+    const dayStart = unixSeconds(`${day}T00:00:00`)
+    const dayEnd = unixSeconds(`${day}T23:59:00`) + 59
 
     // ISO boundaries for visit layers (lexicographic comparison)
     const isoStart = `${day}T00:00:00`
