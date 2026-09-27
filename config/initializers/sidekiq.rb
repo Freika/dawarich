@@ -3,7 +3,7 @@
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
   config.logger = Sidekiq::Logger.new($stdout)
-  config.logger.level = Logger::WARN if ENV['E2E_B12_EGRESS'] == '1'
+  config.logger.level = Logger::WARN if B12E2EEgress.enabled?
 
   # The worker process caches instance settings independently of the web
   # process, so it needs its own subscriber to notice a change made in the UI.
@@ -50,8 +50,6 @@ end
 Sidekiq.configure_client do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
 end
-
-Sidekiq.default_configuration.logger.level = Logger::WARN if ENV['E2E_B12_EGRESS'] == '1'
 
 # Reverse geocoding paces itself by sleeping the calling thread
 # (Geocoding::RateLimiter). A thread parked there adds no throughput - the rate
