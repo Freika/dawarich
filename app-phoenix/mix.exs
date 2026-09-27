@@ -29,7 +29,8 @@ defmodule Dawarich.MixProject do
       {:jason, "~> 1.4"},
       {:phoenix, "~> 1.8.1"},
       {:phoenix_html, "~> 4.2"},
-      {:bandit, "~> 1.12"}
+      {:bandit, "~> 1.12"},
+      {:gen_smtp, "~> 1.3"}
     ]
   end
 

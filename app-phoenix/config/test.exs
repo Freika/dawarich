@@ -31,6 +31,7 @@ config :dawarich, Oban, testing: :manual
 config :dawarich, :jobs_runtime, false
 config :dawarich, :jobs_repo, Dawarich.ScratchRepo
 config :dawarich, :app_version_file, Path.expand("../../.app_version", __DIR__)
+config :dawarich, :mail_transport, Dawarich.Mail.TestTransport
 
 config :dawarich, DawarichWeb.Endpoint,
   secret_key_base: String.duplicate("phoenix-a2-test-endpoint-secret-", 3)

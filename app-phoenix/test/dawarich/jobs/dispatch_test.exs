@@ -114,6 +114,25 @@ defmodule Dawarich.Jobs.DispatchTest do
     assert jobs() == []
   end
 
+  test "a mail command with extra payload keys is quarantined rather than dispatched" do
+    id =
+      outbox!(
+        command_type: "users.explore_features_mail",
+        payload: %{"user_id" => 5, "locale" => "de", "unexpected" => true}
+      )
+
+    assert Dispatch.run(
+             repo: ScratchRepo,
+             oban: @oban,
+             commands: &Dawarich.Jobs.Registry.command/1
+           ) == %{
+             quarantined: 1
+           }
+
+    assert [["quarantined", nil, "invalid_payload"]] = outbox_state(id)
+    assert jobs() == []
+  end
+
   test "a decoder that raises quarantines only its own row; the rest of the batch is delivered" do
     bad =
       outbox!(command_type: "test.raises", scheduled_at: DateTime.add(DateTime.utc_now(), -60))
