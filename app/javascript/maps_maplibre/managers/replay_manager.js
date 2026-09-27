@@ -125,6 +125,12 @@ export class ReplayManager {
     })
   }
 
+  minuteOfDay(date) {
+    const parts = this._getDateParts(date)
+    if (!parts) return null
+    return parts.hour * 60 + parts.minute
+  }
+
   /**
    * Get array of minute ranges that have data
    * Each range is { start: number, end: number }
