@@ -33,6 +33,25 @@ defmodule DawarichWeb.LiveSocketTest do
     refute Origin.allowed?(URI.parse("http://127.0.0.1:3000"), nil)
   end
 
+  test "a dotted entry allows the apex or exactly one label, not deeper, like Rails' host authorization" do
+    hosts = ".family.example"
+
+    assert Origin.allowed?(URI.parse("https://family.example"), hosts)
+    assert Origin.allowed?(URI.parse("https://a.family.example"), hosts)
+    refute Origin.allowed?(URI.parse("https://a.b.family.example"), hosts)
+    refute Origin.allowed?(URI.parse("https://evilfamily.example"), hosts)
+    refute Origin.allowed?(URI.parse("https://a_b.family.example"), hosts)
+  end
+
+  test "host matching is case-insensitive, like Rails' host authorization" do
+    assert Origin.allowed?(URI.parse("https://dawarich.app"), "Dawarich.App")
+    assert Origin.allowed?(URI.parse("https://DAWARICH.APP"), "dawarich.app")
+  end
+
+  test "an IPv6 entry written with brackets matches the bracket-less host URI.parse gives" do
+    assert Origin.allowed?(URI.parse("http://[::1]:3000"), "[::1]")
+  end
+
   test "behind a TLS-terminating proxy the socket accepts its own https Origin and refuses a foreign one",
        ctx do
     System.put_env("APPLICATION_HOSTS", "dawarich.example")

@@ -12,6 +12,15 @@ defmodule DawarichWeb.Origin do
 
   def allowed?(_uri, _application_hosts), do: false
 
-  defp matches?(host, "." <> domain), do: host == domain or String.ends_with?(host, "." <> domain)
-  defp matches?(host, entry), do: host == entry
+  defp matches?(host, entry) do
+    host = String.downcase(host)
+
+    case entry |> strip_brackets() |> String.downcase() do
+      "." <> domain -> Regex.match?(~r/\A(?:[a-z0-9-]+\.)?#{Regex.escape(domain)}\z/, host)
+      plain -> host == plain
+    end
+  end
+
+  defp strip_brackets("[" <> rest), do: String.trim_trailing(rest, "]")
+  defp strip_brackets(entry), do: entry
 end
