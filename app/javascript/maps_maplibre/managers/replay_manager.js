@@ -16,6 +16,7 @@ export class ReplayManager {
     this.pinnedPoint = null
     this.cycleIndex = 0 // For multi-point minutes
     this.onStateChange = options.onStateChange || (() => {})
+    this.dayBounds = {}
   }
 
   /**
@@ -24,6 +25,7 @@ export class ReplayManager {
    */
   setPoints(points) {
     this.points = points || []
+    this.dayBounds = {}
     this.groupPointsByDay()
     this.currentDayIndex = 0
     this.pinnedPoint = null
@@ -112,10 +114,8 @@ export class ReplayManager {
       const date = this._parseTimestamp(timestamp)
       if (!date || Number.isNaN(date.getTime())) return
 
-      const parts = this._getDateParts(date)
-      if (!parts) return
-
-      const minuteOfDay = parts.hour * 60 + parts.minute
+      const minuteOfDay = this.minuteOfDay(date)
+      if (minuteOfDay === null) return
 
       if (!this.pointsByMinute[minuteOfDay]) {
         this.pointsByMinute[minuteOfDay] = []
@@ -128,7 +128,37 @@ export class ReplayManager {
   minuteOfDay(date) {
     const parts = this._getDateParts(date)
     if (!parts) return null
-    return parts.hour * 60 + parts.minute
+    const bounds = this._getDayBounds(this._formatDayKey(parts))
+    return Math.floor((date.getTime() - bounds.start) / 60000)
+  }
+
+  getCurrentDayLengthMinutes() {
+    const day = this.getCurrentDay()
+    return day ? this._getDayBounds(day).length : 1440
+  }
+
+  formatCurrentMinute(minute) {
+    const day = this.getCurrentDay()
+    if (!day) return ReplayManager.formatMinuteToTime(minute)
+
+    const date = new Date(this._getDayBounds(day).start + minute * 60000)
+    const parts = this._getDateParts(date)
+    if (!parts) return ReplayManager.formatMinuteToTime(minute)
+
+    const time = `${parts.hour.toString().padStart(2, "0")}:${parts.minute
+      .toString()
+      .padStart(2, "0")}`
+    const previous = this._getDateParts(new Date(date.getTime() - 3600000))
+    const next = this._getDateParts(new Date(date.getTime() + 3600000))
+    if (
+      (this._sameClockTime(parts, previous) ||
+        this._sameClockTime(parts, next)) &&
+      this._formatDayKey(parts) === day
+    ) {
+      const zone = this._timeZoneName(date)
+      return zone ? `${time} ${zone}` : time
+    }
+    return time
   }
 
   /**
@@ -167,7 +197,7 @@ export class ReplayManager {
    */
   getDataDensity(segments = 48) {
     const density = new Array(segments).fill(0)
-    const minutesPerSegment = 1440 / segments
+    const minutesPerSegment = this.getCurrentDayLengthMinutes() / segments
 
     this.minutesWithData.forEach((minute) => {
       const segmentIndex = Math.floor(minute / minutesPerSegment)
@@ -238,7 +268,7 @@ export class ReplayManager {
     if (this.minutesWithData.has(minute)) return minute
 
     // Search outward from target minute
-    const maxMinute = 1439
+    const maxMinute = this.getCurrentDayLengthMinutes() - 1
     for (let offset = 1; offset <= maxMinute; offset++) {
       // Check forward
       if (
@@ -613,6 +643,65 @@ export class ReplayManager {
     const mm = month.toString().padStart(2, "0")
     const dd = day.toString().padStart(2, "0")
     return `${year}-${mm}-${dd}`
+  }
+
+  _getDayBounds(dayKey) {
+    if (this.dayBounds[dayKey]) return this.dayBounds[dayKey]
+
+    const [year, month, day] = dayKey.split("-").map(Number)
+    const start = this._localMidnightInstant(year, month, day)
+    const nextDate = new Date(Date.UTC(year, month - 1, day + 1))
+    const next = this._localMidnightInstant(
+      nextDate.getUTCFullYear(),
+      nextDate.getUTCMonth() + 1,
+      nextDate.getUTCDate(),
+    )
+    const bounds = { start, length: Math.round((next - start) / 60000) }
+    this.dayBounds[dayKey] = bounds
+    return bounds
+  }
+
+  _localMidnightInstant(year, month, day) {
+    const target = Date.UTC(year, month - 1, day)
+    let instant = target
+    for (let i = 0; i < 3; i++) {
+      const parts = this._getDateParts(new Date(instant))
+      const actual = Date.UTC(
+        parts.year,
+        parts.month - 1,
+        parts.day,
+        parts.hour,
+        parts.minute,
+      )
+      const delta = target - actual
+      if (delta === 0) return instant
+      instant += delta
+    }
+    return instant
+  }
+
+  _sameClockTime(first, second) {
+    return (
+      second &&
+      first.year === second.year &&
+      first.month === second.month &&
+      first.day === second.day &&
+      first.hour === second.hour &&
+      first.minute === second.minute
+    )
+  }
+
+  _timeZoneName(date) {
+    try {
+      return new Intl.DateTimeFormat("en-US", {
+        timeZone: this.timezone || "UTC",
+        timeZoneName: "short",
+      })
+        .formatToParts(date)
+        .find((part) => part.type === "timeZoneName")?.value
+    } catch (_err) {
+      return ""
+    }
   }
 
   /**

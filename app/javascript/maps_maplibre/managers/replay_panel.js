@@ -185,13 +185,17 @@ export class ReplayPanel {
   setInitialScrubberPosition() {
     if (!this.c.hasReplayScrubberTarget || !this.replayManager) return
 
+    this.updateScrubberRange()
     const firstMinute = this.replayManager.findNearestMinuteWithPoints(0)
     if (firstMinute !== null) {
       this.c.replayScrubberTarget.value = firstMinute
       this.handleMinuteChange(firstMinute)
     } else {
-      this.c.replayScrubberTarget.value = 720
-      this.updateTimeDisplay(720, true)
+      const midpoint = Math.floor(
+        this.replayManager.getCurrentDayLengthMinutes() / 2,
+      )
+      this.c.replayScrubberTarget.value = midpoint
+      this.updateTimeDisplay(midpoint, true)
     }
   }
 
@@ -314,7 +318,14 @@ export class ReplayPanel {
     this.updateDayDisplay()
     this.updateDayCount()
     this.updateDayButtons()
+    this.updateScrubberRange()
     this.renderDensity()
+  }
+
+  updateScrubberRange() {
+    if (!this.c.hasReplayScrubberTarget || !this.replayManager) return
+    this.c.replayScrubberTarget.max =
+      this.replayManager.getCurrentDayLengthMinutes() - 1
   }
 
   cyclePrev() {
@@ -362,7 +373,7 @@ export class ReplayPanel {
   updateTimeDisplay(minute, showNoData = false) {
     if (this.c.hasReplayTimeDisplayTarget) {
       this.c.replayTimeDisplayTarget.textContent =
-        ReplayManager.formatMinuteToTime(minute)
+        this.replayManager.formatCurrentMinute(minute)
     }
     if (this.c.hasReplayDataIndicatorTarget) {
       if (showNoData) {
