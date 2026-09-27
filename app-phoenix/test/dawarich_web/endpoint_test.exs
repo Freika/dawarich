@@ -52,7 +52,8 @@ defmodule DawarichWeb.EndpointTest do
   end
 
   @tag :tmp_dir
-  test "a crashed listener comes back on its port and leaves Puma running", %{tmp_dir: tmp_dir} do
+  test "a crashed listener comes back on its port while its old socket lingers, and leaves Puma running",
+       %{tmp_dir: tmp_dir} do
     pidfile = Path.join(tmp_dir, "puma.pid")
     {:ok, probe} = :gen_tcp.listen(0, ip: {127, 0, 0, 1})
     {:ok, port} = :inet.port(probe)
@@ -75,12 +76,22 @@ defmodule DawarichWeb.EndpointTest do
 
     puma = wait_for_file(pidfile)
     bandit = listener()
+    lingering = hold_listen_socket(bandit)
     Process.exit(bandit, :kill)
 
     assert restarted_soon?(bandit)
+    :ok = :socket.close(lingering)
     assert accepting_soon?(port)
     assert File.read!(pidfile) == puma
     assert {_, 0} = System.cmd("kill", ["-0", String.trim(puma)])
+  end
+
+  defp hold_listen_socket(bandit) do
+    {:listener, listener, _, _} = List.keyfind(Supervisor.which_children(bandit), :listener, 0)
+    socket = Enum.find(Port.list(), &(Port.info(&1, :connected) == {:connected, listener}))
+    {:ok, fd} = :inet.getfd(socket)
+    {:ok, held} = :socket.open(fd, %{domain: :inet})
+    held
   end
 
   defp wait_for_file(path, attempts \\ 200) do
