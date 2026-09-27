@@ -141,6 +141,8 @@ class ApiController < ApplicationController
   end
 
   def current_api_user
+    return if api_key.blank?
+
     @current_api_user ||= User.find_by(api_key:)
   end
 
