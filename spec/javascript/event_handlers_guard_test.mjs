@@ -176,12 +176,13 @@ test("a visit click opens the profile day", (t) => {
   t.after(() => {
     globalThis.document.dispatchEvent = originalDispatch
   })
-  const handlers = new EventHandlers({}, { timezoneValue: "America/Los_Angeles" })
+  const handlers = new EventHandlers(
+    {},
+    { timezoneValue: "America/Los_Angeles" },
+  )
 
   handlers.handleVisitClick({
-    features: [
-      { properties: { id: 7, started_at: "2020-04-18T05:00:00Z" } },
-    ],
+    features: [{ properties: { id: 7, started_at: "2020-04-18T05:00:00Z" } }],
   })
 
   assert.deepEqual(opened, [{ visitId: 7, date: "2020-04-17" }])
