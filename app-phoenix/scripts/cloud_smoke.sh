@@ -126,6 +126,8 @@ DATABASE_NAME=dawarich_cloud
 DATABASE_ADVISORY_LOCKS=false
 REDIS_URL=redis://a0c_redis:6379
 SECRET_KEY_BASE=$(od -An -N64 -tx1 /dev/urandom | tr -d ' \n')
+AUTH_JWT_SECRET_KEY=$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')
+SUBSCRIPTION_WEBHOOK_SECRET=$(od -An -N32 -tx1 /dev/urandom | tr -d ' \n')
 APPLICATION_HOSTS=localhost,127.0.0.1
 WEB_CONCURRENCY=1
 EOF
@@ -149,7 +151,10 @@ if app --rm -e SELF_HOSTED=false "$IMAGE" $(procfile release) >"$work/release1.l
   cat "$work/release1.log" >&2
   fail "a Cloud release succeeded although the Phoenix migrations could not run"
 fi
-grep -q 'Phoenix migrations failed; the deploy stops here' "$work/release1.log" || fail "the Cloud release hid the Phoenix failure"
+cat "$work/release1.log" >&2
+if ! grep -q 'Phoenix migrations failed; the deploy stops here' "$work/release1.log"; then
+  fail "the Cloud release hid the Phoenix failure"
+fi
 app --rm "$IMAGE" $(procfile release) >"$work/release1-self-hosted.log" 2>&1 \
   || { cat "$work/release1-self-hosted.log" >&2; fail "a self-hosted release failed on the missing CREATE privilege"; }
 grep -q 'Phoenix migrations failed; web containers will start Rails without the Phoenix supervisor' "$work/release1-self-hosted.log" \
@@ -175,7 +180,9 @@ if grep -q 'Phoenix migrations failed' "$work/release2.log"; then
   cat "$work/release2.log" >&2
   fail "Phoenix migrations failed with pre-created schemas"
 fi
-[ "$(sql "SELECT count(*) FROM oban.phoenix_schema_migrations")" = 1 ] || fail "oban ledger incomplete"
+oban_ledger_count="$(sql "SELECT count(*) FROM oban.phoenix_schema_migrations")"
+oban_migration_count="$(find app-phoenix/priv/repo/oban_migrations -name '*.exs' -type f | wc -l | tr -d ' ')"
+[ "$oban_ledger_count" = "$oban_migration_count" ] || fail "oban ledger incomplete: expected $oban_migration_count, got $oban_ledger_count"
 [ "$(sql "SELECT to_regclass('phoenix.phoenix_schema_migrations') IS NOT NULL")" = t ] || fail "phoenix ledger missing"
 
 app -d --name a0c_web -p 127.0.0.1:3901:5000 "$IMAGE" $(procfile web) >/dev/null
