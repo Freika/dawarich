@@ -1,6 +1,8 @@
 defmodule DawarichWeb.CableProxyTest do
   use ExUnit.Case, async: true
 
+  @moduletag :capture_log
+
   import Dawarich.Test.RawHTTP
   import ExUnit.CaptureLog
 
