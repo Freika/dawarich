@@ -76,7 +76,9 @@ RSpec.describe JobCommands do
     JobOutbox.create!(event_id: SecureRandom.uuid, command_type: 'users.explore_features_mail', command_version: 1,
                       payload: { 'user_id' => 6, 'locale' => 'en' }, scheduled_at: at, state: 'dispatched')
 
-    expect { expect(described_class.rehome!('users.explore_features_mail', by: 'spec')).to eq(1) }
+    expect do
+      expect(described_class.rehome!('users.explore_features_mail', by: 'spec')).to eq({ moved: 1, left: 0 })
+    end
       .to have_enqueued_job(Users::MailerSendingJob).with(5, 'explore_features').at(at)
     expect(enqueued_jobs.last['locale']).to eq('de')
     expect(JobOutbox.pluck(:state)).to eq(['dispatched'])
@@ -87,7 +89,7 @@ RSpec.describe JobCommands do
     produce_trip
     JobOutbox.update_all(command_version: 2)
 
-    expect { expect(described_class.rehome!('trips.calculate', by: 'spec')).to eq(0) }
+    expect { expect(described_class.rehome!('trips.calculate', by: 'spec')).to eq({ moved: 0, left: 0 }) }
       .not_to have_enqueued_job(Trips::CalculateAllJob)
     expect(JobOutbox.pluck(:command_version, :state)).to eq([[2, 'pending']])
   end
@@ -118,6 +120,54 @@ RSpec.describe JobCommands do
     expect(ActiveRecord::Base.connection.select_rows('SELECT actor, reason FROM phoenix.job_outbox_replays'))
       .to eq([['rake:eugene', 'decoder fixed']])
     expect { described_class.replay!(row.event_id, actor: 'x', reason: 'y') }.to raise_error(ArgumentError, /pending/)
+  end
+
+  describe 'rehome! while a relay holds a pending command' do
+    self.use_transactional_tests = false
+
+    let(:event_ids) { [SecureRandom.uuid, SecureRandom.uuid] }
+
+    after do
+      JobOutbox.where(event_id: event_ids).delete_all
+      ActiveRecord::Base.transaction do
+        ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '2s'")
+        ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
+      end
+    end
+
+    it 'moves unlocked commands and reports the pending command left behind by the relay' do
+      job_owner!('command:trips.calculate', :oban)
+      event_ids.each_with_index do |event_id, index|
+        described_class.forward('trips.calculate', { 'trip_id' => index + 1, 'distance_unit' => 'km' }, event_id:,
+                                aggregate_id: index + 1, producer: 'spec')
+      end
+      holding = Queue.new
+      release = Queue.new
+      holder = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do |connection|
+          connection.transaction do
+            connection.execute("SET LOCAL lock_timeout = '2s'")
+            connection.execute("SELECT 1 FROM job_outbox WHERE event_id = '#{event_ids.first}' FOR UPDATE")
+            holding << true
+            release.pop
+          end
+        end
+      end
+
+      begin
+        Timeout.timeout(5) { holding.pop }
+
+        expect do
+          expect(described_class.rehome!('trips.calculate', by: 'spec')).to eq({ moved: 1, left: 1 })
+        end.to have_enqueued_job(Trips::CalculateAllJob).with(2, 'km')
+        expect(JobOutbox.where(event_id: event_ids)).to contain_exactly(
+          have_attributes(event_id: event_ids.first, state: 'pending')
+        )
+      ensure
+        release << true
+        raise 'holder thread did not finish: still holding the outbox row lock' unless holder.join(5)
+      end
+    end
   end
 
   describe 'produce joining the caller transaction across a real commit/rollback' do

@@ -22,8 +22,13 @@ namespace :dawarich do
       abort('usage: bin/rails "dawarich:jobs:rehome[command:<type>]"') unless key.start_with?('command:')
 
       type = key.delete_prefix('command:')
-      count = JobCommands.rehome!(type, by: JobOwnership.operator)
-      puts "#{key}: sidekiq (pinned), #{count} command(s) re-homed to Sidekiq"
+      result = JobCommands.rehome!(type, by: JobOwnership.operator)
+      puts "#{key}: sidekiq (pinned), #{result[:moved]} command(s) re-homed to Sidekiq, " \
+           "#{result[:left]} command(s) left in Phoenix"
+      if result[:left].positive?
+        puts 'Commands left in Phoenix will finish in Phoenix. Wait until dawarich:jobs:status shows ' \
+             'no pending commands and no incomplete Oban jobs for this worker before rolling back.'
+      end
       JobOutbox.pending.where(command_type: type).group(:command_version).count.each do |version, left|
         puts "#{left} rows with command_version #{version} left pending"
       end
