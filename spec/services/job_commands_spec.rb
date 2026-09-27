@@ -82,6 +82,16 @@ RSpec.describe JobCommands do
     expect(JobOutbox.pluck(:state)).to eq(['dispatched'])
   end
 
+  it 'leaves a pending command with a mismatched command_version untouched' do
+    job_owner!('command:trips.calculate', :oban)
+    produce_trip
+    JobOutbox.update_all(command_version: 2)
+
+    expect { expect(described_class.rehome!('trips.calculate', by: 'spec')).to eq(0) }
+      .not_to have_enqueued_job(Trips::CalculateAllJob)
+    expect(JobOutbox.pluck(:command_version, :state)).to eq([[2, 'pending']])
+  end
+
   it 'releases the key to a pinned Sidekiq owner in the same transaction, so the re-homed job runs in Sidekiq' do
     job_owner!('command:users.explore_features_mail', :oban)
     described_class.produce('users.explore_features_mail', { 'user_id' => 5, 'locale' => 'en' },
@@ -108,5 +118,36 @@ RSpec.describe JobCommands do
     expect(ActiveRecord::Base.connection.select_rows('SELECT actor, reason FROM phoenix.job_outbox_replays'))
       .to eq([['rake:eugene', 'decoder fixed']])
     expect { described_class.replay!(row.event_id, actor: 'x', reason: 'y') }.to raise_error(ArgumentError, /pending/)
+  end
+
+  describe 'produce joining the caller transaction across a real commit/rollback' do
+    self.use_transactional_tests = false
+
+    after do
+      JobOutbox.where(command_type: 'trips.calculate', aggregate_id: 42).delete_all
+      ActiveRecord::Base.transaction do
+        ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '2s'")
+        ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
+      end
+    end
+
+    it 'leaves no outbox row when the caller transaction rolls back' do
+      job_owner!('command:trips.calculate', :oban)
+
+      ActiveRecord::Base.transaction do
+        produce_trip
+        raise ActiveRecord::Rollback
+      end
+
+      expect(JobOutbox.count).to eq(0)
+    end
+
+    it 'writes exactly one outbox row when the caller transaction commits' do
+      job_owner!('command:trips.calculate', :oban)
+
+      ActiveRecord::Base.transaction { produce_trip }
+
+      expect(JobOutbox.count).to eq(1)
+    end
   end
 end
