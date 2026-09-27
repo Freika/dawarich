@@ -75,6 +75,22 @@ RSpec.describe 'dawarich:jobs' do
     expect(JobOwnership.with_owner('command:trips.calculate') { :sidekiq_runs }).to eq(:sidekiq_runs)
   end
 
+  it 'reports commands left in Phoenix and the rollback wait condition' do
+    allow(JobCommands).to receive(:rehome!).and_return({ moved: 2, left: 1 })
+    Rake::Task['dawarich:jobs:rehome'].reenable
+    expected_output = Regexp.new(
+      [
+        '2 command\\(s\\) re-homed to Sidekiq, 1 command\\(s\\) left in Phoenix',
+        'will finish in Phoenix.*dawarich:jobs:status.*no pending commands',
+        'no incomplete Oban jobs.*before rolling back'
+      ].join('.*'), Regexp::MULTILINE
+    )
+
+    expect { Rake::Task['dawarich:jobs:rehome'].invoke('command:trips.calculate') }
+      .to output(expected_output).to_stdout
+    expect(JobCommands).to have_received(:rehome!).with('trips.calculate', by: JobOwnership.operator)
+  end
+
   it 'prints the health summary and gauges' do
     job_owner!('command:trips.calculate', :oban)
 

@@ -52,10 +52,12 @@ module JobCommands
     command = COMMANDS.fetch(type)
     ActiveRecord::Base.transaction do
       JobOwnership.release!("command:#{type}", by:)
-      rows = JobOutbox.pending.where(command_type: type, command_version: command.fetch(:version))
-                      .lock('FOR UPDATE SKIP LOCKED').to_a
+      pending = JobOutbox.pending.where(command_type: type, command_version: command.fetch(:version))
+      total = pending.count
+      rows = pending.lock('FOR UPDATE SKIP LOCKED').to_a
       rows.each { |row| command.fetch(:sidekiq).call(row.payload, row.scheduled_at) }
       JobOutbox.where(event_id: rows.map(&:event_id)).delete_all
+      { moved: rows.size, left: total - rows.size }
     end
   end
 
