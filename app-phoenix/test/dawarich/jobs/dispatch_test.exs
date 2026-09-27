@@ -176,6 +176,32 @@ defmodule Dawarich.Jobs.DispatchTest do
     assert dispatch() == %{dispatched: 1}
   end
 
+  test "a database error inside the Oban insert surfaces as itself, without Oban's retries" do
+    id = outbox!(payload: %{"n" => 15})
+    parent = self()
+
+    holder =
+      Task.async(fn ->
+        ScratchRepo.transaction(fn ->
+          ScratchRepo.query!("LOCK TABLE oban.oban_jobs IN SHARE MODE", [], log: false)
+          send(parent, :holding)
+
+          receive do
+            :release -> :ok
+          end
+        end)
+      end)
+
+    assert_receive :holding, 5_000
+    error = assert_raise Postgrex.Error, fn -> with_lock_timeout(fn -> dispatch() end) end
+    send(holder.pid, :release)
+    assert Task.await(holder) == {:ok, :ok}
+
+    assert error.postgres.code == :lock_not_available
+    assert jobs() == []
+    assert [["pending", nil, nil]] = outbox_state(id)
+  end
+
   test "an Oban unique conflict still acknowledges, pointing at the existing job" do
     first = outbox!(payload: %{"n" => 7})
     second = outbox!(payload: %{"n" => 7})
