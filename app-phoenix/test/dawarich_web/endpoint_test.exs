@@ -51,8 +51,9 @@ defmodule DawarichWeb.EndpointTest do
     assert header(head, "upgrade") == ["websocket"]
   end
 
-  test "a crashed listener comes back on its port and leaves Puma running" do
-    pidfile = Path.join(System.tmp_dir!(), "a2-puma-#{System.unique_integer([:positive])}.pid")
+  @tag :tmp_dir
+  test "a crashed listener comes back on its port and leaves Puma running", %{tmp_dir: tmp_dir} do
+    pidfile = Path.join(tmp_dir, "puma.pid")
     {:ok, probe} = :gen_tcp.listen(0, ip: {127, 0, 0, 1})
     {:ok, port} = :inet.port(probe)
     :ok = :gen_tcp.close(probe)
@@ -61,7 +62,16 @@ defmodule DawarichWeb.EndpointTest do
 
     :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
     on_exit(fn -> Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint) end)
-    {:ok, sup} = Supervisor.start_link(Dawarich.Front.children(plan), strategy: :one_for_one)
+
+    start_supervised!(
+      %{
+        id: :front,
+        type: :supervisor,
+        start:
+          {Supervisor, :start_link, [Dawarich.Front.children(plan), [strategy: :one_for_one]]}
+      },
+      restart: :temporary
+    )
 
     puma = wait_for_file(pidfile)
     bandit = listener()
@@ -71,8 +81,6 @@ defmodule DawarichWeb.EndpointTest do
     assert accepting_soon?(port)
     assert File.read!(pidfile) == puma
     assert {_, 0} = System.cmd("kill", ["-0", String.trim(puma)])
-
-    :ok = Supervisor.stop(sup)
   end
 
   defp wait_for_file(path, attempts \\ 200) do
