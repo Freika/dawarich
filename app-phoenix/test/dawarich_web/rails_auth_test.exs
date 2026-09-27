@@ -187,6 +187,14 @@ defmodule DawarichWeb.RailsAuthTest do
       assert current_user(session_cookie() ++ other_remember_cookie()) == nil
     end
 
+    test "a locked session user comes back tagged, never as a bare user" do
+      id = @user["id"]
+      update_user(locked_at: @now |> DateTime.add(-30 * 60) |> DateTime.to_naive())
+
+      assert {:locked, %Dawarich.Accounts.User{id: ^id}} =
+               Accounts.from_session(%{"warden.user.user.key" => [[id], @salt]}, @now)
+    end
+
     test "a locked account's remember cookie signs nobody in until the lock is an hour old" do
       update_user(locked_at: @now |> DateTime.add(-30 * 60) |> DateTime.to_naive())
       assert current_user(remember_cookie()) == nil

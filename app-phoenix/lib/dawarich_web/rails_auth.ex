@@ -37,7 +37,7 @@ defmodule DawarichWeb.RailsAuth do
 
   defp current_user(conn, session, secret, now) do
     case Accounts.from_session(session, now) do
-      :locked -> nil
+      {:locked, _user} -> nil
       nil -> remembered(conn, secret, now)
       user -> user
     end

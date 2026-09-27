@@ -12,12 +12,13 @@ defmodule Dawarich.Accounts do
   def remember_for, do: @remember_for
   def unlock_in, do: @unlock_in
 
+  @spec from_session(map(), DateTime.t()) :: %User{} | {:locked, %User{}} | nil
   def from_session(%{"warden.user.user.key" => [[id], salt]}, now)
       when is_integer(id) and is_binary(salt) do
     with %User{} = user <- find(id),
          value when is_binary(value) <- salt(user),
          true <- Plug.Crypto.secure_compare(value, salt) do
-      if unlocked?(user, now), do: user, else: :locked
+      if unlocked?(user, now), do: user, else: {:locked, user}
     else
       _ -> nil
     end
@@ -25,6 +26,7 @@ defmodule Dawarich.Accounts do
 
   def from_session(_session, _now), do: nil
 
+  @spec from_remember_cookie(term(), DateTime.t()) :: %User{} | nil
   def from_remember_cookie([[id], token, generated_at], now)
       when is_integer(id) and is_binary(token) do
     with %User{} = user <- find(id),
