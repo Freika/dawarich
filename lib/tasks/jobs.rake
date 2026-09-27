@@ -21,8 +21,12 @@ namespace :dawarich do
       key = args[:key].to_s
       abort('usage: bin/rails "dawarich:jobs:rehome[command:<type>]"') unless key.start_with?('command:')
 
-      count = JobCommands.rehome!(key.delete_prefix('command:'), by: JobOwnership.operator)
+      type = key.delete_prefix('command:')
+      count = JobCommands.rehome!(type, by: JobOwnership.operator)
       puts "#{key}: sidekiq (pinned), #{count} command(s) re-homed to Sidekiq"
+      JobOutbox.pending.where(command_type: type).group(:command_version).count.each do |version, left|
+        puts "#{left} rows with command_version #{version} left pending"
+      end
     end
 
     desc 'Send a quarantined outbox command through the relay again, keeping its event id'

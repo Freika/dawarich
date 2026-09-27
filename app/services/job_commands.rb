@@ -42,6 +42,8 @@ module JobCommands
     ).length
   end
 
+  private_class_method :insert
+
   def cancel_pending(type, aggregate_id)
     JobOutbox.pending.where(command_type: type, aggregate_id:).delete_all
   end
@@ -50,7 +52,8 @@ module JobCommands
     command = COMMANDS.fetch(type)
     ActiveRecord::Base.transaction do
       JobOwnership.release!("command:#{type}", by:)
-      rows = JobOutbox.pending.where(command_type: type).lock('FOR UPDATE SKIP LOCKED').to_a
+      rows = JobOutbox.pending.where(command_type: type, command_version: command.fetch(:version))
+                      .lock('FOR UPDATE SKIP LOCKED').to_a
       rows.each { |row| command.fetch(:sidekiq).call(row.payload, row.scheduled_at) }
       JobOutbox.where(event_id: rows.map(&:event_id)).delete_all
     end
