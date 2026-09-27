@@ -183,6 +183,7 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
     context 'subscription_source handling' do
       %w[apple_iap google_play].each do |source|
         it "exposes a Family callback from #{source} in the plan API" do
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
           active_until = 45.days.from_now.change(usec: 0)
           token = build_token(
             user_id: user.id,
@@ -201,10 +202,6 @@ RSpec.describe 'Api::V1::Subscriptions', type: :request do
           body = JSON.parse(response.body)
           expect(body).to include('plan' => 'family', 'status' => 'active', 'subscription_source' => source)
           expect(Time.iso8601(body.fetch('active_until')).to_i).to eq(active_until.to_i)
-
-          get '/api/v1/users/me', params: { api_key: user.api_key }
-          expect(response).to have_http_status(:ok)
-          expect(JSON.parse(response.body).dig('subscription', 'subscription_source')).to eq(source)
         end
       end
 

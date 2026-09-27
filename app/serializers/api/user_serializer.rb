@@ -54,8 +54,7 @@ class Api::UserSerializer
     {
       status: user.status,
       active_until: user.active_until,
-      plan: user.plan,
-      subscription_source: user.subscription_source
+      plan: user.plan
     }
   end
 end
