@@ -127,10 +127,8 @@ module Posters
     def process_group_alive?(process_group_id)
       Process.kill(0, -process_group_id)
       true
-    rescue Errno::ESRCH
+    rescue Errno::ESRCH, Errno::EPERM
       false
-    rescue Errno::EPERM
-      true
     end
 
     def default_command
