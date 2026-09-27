@@ -18,7 +18,7 @@ stack() {
     OTP_ENCRYPTION_PRIMARY_KEY=e2e-otp-primary-key-not-a-secret \
     OTP_ENCRYPTION_DETERMINISTIC_KEY=e2e-otp-deterministic-key-not-a-secret \
     OTP_ENCRYPTION_KEY_DERIVATION_SALT=e2e-otp-derivation-salt-not-a-secret \
-    WEB_CONCURRENCY=0 RAILS_MAX_THREADS=10 DAWARICH_COOKIE_FILE="$root/tmp/proxy_stack.cookie" \
+    WEB_CONCURRENCY=0 RAILS_MAX_THREADS=10 APPLICATION_HOSTS="${APPLICATION_HOSTS:-localhost,127.0.0.1}" DAWARICH_COOKIE_FILE="$root/tmp/proxy_stack.cookie" \
     DAWARICH_REFERENCE_LIVE="${DAWARICH_REFERENCE_LIVE:-}" "$@"
 }
 
@@ -59,7 +59,7 @@ cd "$root"
 stack bin/rails db:prepare >/dev/null
 stack bin/rails phoenix:i18n >/dev/null
 [ -n "$(ls -A public/assets 2>/dev/null)" ] || stack bin/rails assets:precompile >/dev/null
-(cd app-phoenix && env PATH="$HOME/.asdf/shims:$PATH" MIX_ENV=prod DAWARICH_REFERENCE_LIVE="${DAWARICH_REFERENCE_LIVE:-}" mix release --overwrite >/dev/null)
+(cd app-phoenix && env PATH="$HOME/.asdf/shims:$PATH" MIX_ENV=prod DAWARICH_REFERENCE_LIVE="${DAWARICH_REFERENCE_LIVE:-}" sh -c 'mix compile --force >/dev/null && mix release --overwrite >/dev/null')
 stack "$rel" eval 'Dawarich.Release.migrate()'
 stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$PORT")" \
   sh -c 'echo $$ >"$1"; exec nohup "$2" start' _ "$pidfile" "$rel" >>"$log" 2>&1 &
