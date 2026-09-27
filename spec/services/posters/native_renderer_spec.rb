@@ -133,15 +133,27 @@ RSpec.describe Posters::NativeRenderer do
       pid_file&.close!
     end
 
-    it 'still raises the timeout error when the OS recycles the child pid mid-teardown' do
-      # Under heavy fork/exec churn (a full-suite run spawns thousands of
-      # subprocesses), the process group id can be reaped and reassigned by
-      # the OS between our liveness check and the TERM/KILL signal. Process.kill
-      # then raises EPERM (permission denied on the new owner) instead of
-      # ESRCH (no such process) — the only errno the old code rescued.
+    it 'does not escalate to KILL when the process group probe returns EPERM' do
+      stub_const("#{described_class}::RENDER_TIMEOUT", 0.05)
+      process_group_id = nil
+      kill_calls = []
+      allow(Process).to receive(:kill).and_wrap_original do |original, signal, pid|
+        process_group_id ||= pid.abs if signal == 'TERM' && pid.negative?
+        kill_calls << [signal, pid]
+        raise Errno::EPERM if signal == 0 && pid == -process_group_id
+
+        original.call(signal, pid)
+      end
+      renderer = build_renderer(command: ['ruby', '-e', 'sleep 0.3'])
+
+      expect { renderer.call }.to raise_error(described_class::Error, /timed out after 0.05 seconds/)
+      expect(kill_calls).not_to include(['KILL', -process_group_id])
+    end
+
+    it 'raises the timeout error when TERM returns EPERM' do
       stub_const("#{described_class}::RENDER_TIMEOUT", 0.05)
       allow(Process).to receive(:kill).and_wrap_original do |original, signal, pid|
-        raise Errno::EPERM if %w[TERM KILL].include?(signal)
+        raise Errno::EPERM if signal == 'TERM' && pid.negative?
 
         original.call(signal, pid)
       end
