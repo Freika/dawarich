@@ -29,4 +29,15 @@ Ecto.Migrator.run(
   log: false
 )
 
+Dawarich.ScratchRepo.query!("CREATE SCHEMA IF NOT EXISTS oban", [], log: false)
+
+Ecto.Migrator.run(
+  Dawarich.ScratchRepo,
+  Path.expand("../priv/repo/oban_migrations", __DIR__),
+  :up,
+  all: true,
+  prefix: "oban",
+  log: false
+)
+
 Dawarich.MigrationModules.purge()

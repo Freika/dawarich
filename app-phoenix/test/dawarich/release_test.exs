@@ -21,7 +21,7 @@ defmodule Dawarich.ReleaseTest do
 
     assert SchemaFingerprint.public() == baseline
     assert ledger_versions("phoenix") == source_versions("migrations")
-    assert ledger_versions("oban") == [20_260_904_103_515]
+    assert ledger_versions("oban") == [20_260_904_103_515, 20_260_927_120_200]
     refute relation?("public.phoenix_schema_migrations")
     refute relation?("public.oban_jobs")
   end
