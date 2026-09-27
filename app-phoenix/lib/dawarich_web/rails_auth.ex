@@ -21,7 +21,7 @@ defmodule DawarichWeb.RailsAuth do
 
     conn
     |> assign(:rails_session, session)
-    |> assign(:current_user, Accounts.from_session(session, now) || remembered(conn, secret, now))
+    |> assign(:current_user, current_user(conn, session, secret, now))
   end
 
   def user_id(conn) do
@@ -33,6 +33,14 @@ defmodule DawarichWeb.RailsAuth do
 
   def live_session(conn) do
     %{"rails_user_id" => conn.assigns[:current_user] && conn.assigns.current_user.id}
+  end
+
+  defp current_user(conn, session, secret, now) do
+    case Accounts.from_session(session, now) do
+      :locked -> nil
+      nil -> remembered(conn, secret, now)
+      user -> user
+    end
   end
 
   defp rails_session(conn, secret, now) do
