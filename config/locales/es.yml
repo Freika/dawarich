@@ -3464,7 +3464,7 @@ es:
         export_name_successfully_finished: La exportación "%{name}" ha finalizado con éxito.
         export_failed: No se pudo exportar
         export_name_failed_message_stacktrace_n: 'La exportación "%{name}" ha fallado: %{message}, stacktrace: %{backtrace}'
-        unsupported_file_format: 'Formato de archivo no soportado: %{format}'
+        unsupported_file_format: 'Formato de archivo no soportado: %{file_format}'
     families:
       auto_create:
         default_name: Mi familia
