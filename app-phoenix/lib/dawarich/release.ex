@@ -22,6 +22,15 @@ defmodule Dawarich.Release do
     end
   end
 
+  def check_runtime_apps! do
+    check_runtime_apps!(Application.spec(@app, :applications) || [], &Application.load/1)
+  end
+
+  def check_runtime_apps!(root_apps, loader) when is_list(root_apps) and is_function(loader, 1) do
+    Enum.reduce(root_apps, MapSet.new(), &check_runtime_app(&1, &2, loader, false))
+    :ok
+  end
+
   @doc false
   def ledger_schema, do: @ledger_schema
 
@@ -85,6 +94,52 @@ defmodule Dawarich.Release do
   defp oban_migrations_path do
     Application.app_dir(@app, "priv/repo/oban_migrations")
   end
+
+  defp check_runtime_app(app, seen, loader, optional?) do
+    if MapSet.member?(seen, app) do
+      seen
+    else
+      case loader.(app) do
+        :ok ->
+          check_runtime_app_spec(app, seen, loader)
+
+        {:error, {:already_loaded, _}} ->
+          check_runtime_app_spec(app, seen, loader)
+
+        {:error, reason} ->
+          if optional? and not_found_application?(reason) do
+            seen
+          else
+            raise "failed to load runtime application #{app}: #{inspect(reason)}"
+          end
+      end
+    end
+  end
+
+  defp check_runtime_app_spec(app, seen, loader) do
+    case Application.spec(app) do
+      nil ->
+        raise "runtime application #{app} has no specification"
+
+      spec ->
+        Enum.each(Keyword.get(spec, :modules, []), fn module ->
+          case Code.ensure_loaded(module) do
+            {:module, ^module} -> :ok
+            {:error, _} -> raise "runtime application #{app} is missing module #{inspect(module)}"
+          end
+        end)
+
+        optional_apps = MapSet.new(Keyword.get(spec, :optional_applications, []))
+
+        Enum.reduce(Keyword.get(spec, :applications, []), MapSet.put(seen, app), fn dependency,
+                                                                                    acc ->
+          check_runtime_app(dependency, acc, loader, MapSet.member?(optional_apps, dependency))
+        end)
+    end
+  end
+
+  defp not_found_application?({~c"no such file or directory", _}), do: true
+  defp not_found_application?(_), do: false
 
   defp load_app do
     Application.ensure_all_started(:ssl)
