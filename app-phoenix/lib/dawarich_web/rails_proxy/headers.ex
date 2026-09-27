@@ -6,8 +6,6 @@ defmodule DawarichWeb.RailsProxy.Headers do
   @remote_addr "x-dawarich-remote-addr"
   @hop_by_hop ~w(connection keep-alive proxy-connection te trailer transfer-encoding upgrade expect http2-settings)
 
-  def remote_addr_header, do: @remote_addr
-
   def request(conn) do
     kept = Enum.reject(conn.req_headers, fn {name, _} -> name in [@remote_addr | @hop_by_hop] end)
     kept ++ framing(conn) ++ [{"connection", "close"}, {@remote_addr, peer(conn.remote_ip)}]
