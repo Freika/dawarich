@@ -15,6 +15,22 @@ defmodule DawarichWeb.Endpoint do
     websocket: [connect_info: [session: @session_options]],
     longpoll: false
 
+  plug Plug.Static,
+    at: "/phoenix/js",
+    from: {:phoenix, "priv/static"},
+    only: ~w(phoenix.mjs)
+
+  plug Plug.Static,
+    at: "/phoenix/js",
+    from: {:phoenix_live_view, "priv/static"},
+    only: ~w(phoenix_live_view.esm.js)
+
+  plug Plug.Static,
+    at: "/phoenix/js",
+    from: {:dawarich, "priv/static/js"},
+    only: ~w(app.js)
+
+  plug DawarichWeb.PublicFiles
   plug DawarichWeb.Strangler
   plug DawarichWeb.Router
 end
