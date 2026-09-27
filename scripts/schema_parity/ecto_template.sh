@@ -27,7 +27,7 @@ build_template() {
   [ -z "$3" ] || rails_in "$build_db" runner "ActiveRecord::Base.connection_pool.migration_context.migrate($3)" >/dev/null
   [ -z "$4" ] || query "$build_db" "INSERT INTO schema_migrations (version) VALUES ('$4')" >/dev/null
   [ "$shift_to" = 0 ] || query "$build_db" "SELECT setval(c.oid::regclass, $shift_to) FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace WHERE c.relkind = 'S' AND n.nspname = 'public'" >/dev/null
-  [ ! -s "$fixture" ] || dexec -i "$db_container" psql -U postgres -q -v ON_ERROR_STOP=1 -d "$build_db" < "$fixture" >/dev/null
+  [ ! -s "$fixture" ] || dexec -i -e PGTZ=UTC "$db_container" psql -U postgres -q -v ON_ERROR_STOP=1 -d "$build_db" < "$fixture" >/dev/null
   [ "$5" = no ] || rails_in "$build_db" runner 'nil' >/dev/null
   built_to="$(date -u +%s)"
   sleep 1
