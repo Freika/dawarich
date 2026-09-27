@@ -71,9 +71,10 @@ defmodule Dawarich.I18nTest do
     assert I18n.t("en", "datetime.distance_in_words.x_days", %{"count" => 3}) == {:ok, "3 days"}
   end
 
-  test "the real unsupported_file_format key is refused exactly like Rails, format being reserved" do
-    assert I18n.t("en", "services.exports.create.unsupported_file_format", %{"format" => "CSV"}) ==
-             {:error, {:reserved_interpolation_key, "format"}}
+  test "the real unsupported_file_format key interpolates file_format" do
+    assert I18n.t("en", "services.exports.create.unsupported_file_format", %{
+             "file_format" => "CSV"
+           }) == {:ok, "Unsupported file format: CSV"}
   end
 
   test "the reserved keys pinned from the i18n gem match the fixture Rails generated" do
@@ -141,9 +142,9 @@ defmodule Dawarich.I18nTest do
              {:safe, "Your family now has <strong>3</strong> members."}
   end
 
-  test "Translate.t raises ArgumentError for a reserved interpolation key, like Rails" do
+  test "Translate.t raises ArgumentError for a reserved interpolation key from a crafted tree" do
     assert_raise ArgumentError, fn ->
-      Translate.t("en", "services.exports.create.unsupported_file_format", %{"format" => "CSV"})
+      Translate.t(@tree, "en", "a.reserved", %{"format" => "CSV"})
     end
   end
 
