@@ -63,4 +63,15 @@ RSpec.describe 'dawarich:jobs' do
     expect { Rake::Task['dawarich:jobs:release'].invoke('cron:app_version_checking_job') }
       .to raise_error(RuntimeError, /phoenix\.job_owners does not exist/)
   end
+
+  it 're-homes the pending commands of a key' do
+    job_owner!('command:trips.calculate', :oban)
+    JobCommands.produce('trips.calculate', { 'trip_id' => 9, 'distance_unit' => 'mi' },
+                        aggregate_id: 9, dedupe_key: '9', producer: 'spec')
+
+    expect { run('dawarich:jobs:rehome', 'command:trips.calculate') }
+      .to have_enqueued_job(Trips::CalculateAllJob).with(9, 'mi')
+    expect(JobOutbox.count).to eq(0)
+    expect(JobOwnership.with_owner('command:trips.calculate') { :sidekiq_runs }).to eq(:sidekiq_runs)
+  end
 end
