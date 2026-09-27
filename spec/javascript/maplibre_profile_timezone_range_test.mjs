@@ -239,3 +239,27 @@ test("expanding a day highlights the profile day", (t) => {
     Date.UTC(2020, 3, 18, 6, 59, 59) / 1000,
   ])
 })
+
+test("replay tracks map an instant to the profile day", async (t) => {
+  const { map } = buildMap(t)
+  const days = []
+  Object.assign(map, {
+    hasReplayPanelTarget: true,
+    replayPanelTarget: { classList: { contains: () => true } },
+    _ensureReplayPanel() {},
+    replayPanel: {
+      isPlaying: false,
+      manager: { hasData: () => true },
+      ensureOpen: async () => {},
+      goToDay: (day) => days.push(day),
+      setMinute() {},
+      startPlayback() {},
+    },
+  })
+
+  await map.replayTrack({
+    currentTarget: { dataset: { trackStart: "2020-04-18T05:00:00Z" } },
+  })
+
+  assert.deepEqual(days, ["2020-04-17"])
+})
