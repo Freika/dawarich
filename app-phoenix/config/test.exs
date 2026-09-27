@@ -34,3 +34,5 @@ config :dawarich, DawarichWeb.Endpoint,
 config :logger, level: :warning
 
 config :dawarich, :rails_secret, "phoenix-a2-cookie-fixture-secret-not-for-production"
+
+config :dawarich, :i18n_path, Path.expand("../tmp/i18n.json", __DIR__)
