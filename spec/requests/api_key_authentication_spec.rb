@@ -20,4 +20,16 @@ RSpec.describe 'API key authentication', type: :request do
     expect(response).to have_http_status(:success)
     expect(user_queries).to be_empty
   end
+
+  it 'looks up an unknown api_key user once per request' do
+    user_queries = []
+    collect = ->(*, payload) { user_queries << payload[:sql] if payload[:sql].match?(/\busers\b/) }
+
+    ActiveSupport::Notifications.subscribed(collect, 'sql.active_record') do
+      get '/api/v1/health', params: { api_key: 'unknown' }
+    end
+
+    expect(response).to have_http_status(:success)
+    expect(user_queries.count).to eq(1)
+  end
 end
