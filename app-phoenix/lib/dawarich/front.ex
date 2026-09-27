@@ -15,10 +15,9 @@ defmodule Dawarich.Front do
   def plan(nil, _env, _opts), do: :none
 
   def plan(argv, env, opts) do
-    upstream = Keyword.get_lazy(opts, :upstream_port, &free_loopback_port/0)
-    ipv6? = Keyword.get_lazy(opts, :ipv6?, &ipv6_available?/0)
-
     with :ok <- enabled(env),
+         upstream = Keyword.get_lazy(opts, :upstream_port, &free_loopback_port/0),
+         ipv6? = Keyword.get_lazy(opts, :ipv6?, &ipv6_available?/0),
          {:ok, public, puma_argv} <- Command.parse(argv, env, upstream, ipv6?),
          :ok <- bindable(public) do
       {:proxy, %{public: public, upstream: upstream, puma_argv: puma_argv}}

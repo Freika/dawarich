@@ -44,6 +44,29 @@ defmodule Dawarich.FrontTest do
     end
   end
 
+  test "DAWARICH_PROXY=off decides before Phoenix binds anything" do
+    argv = rails_command(free_port())
+    env = Map.put(@prod, "DAWARICH_PROXY", "off")
+    test = self()
+    :erlang.trace_pattern({:gen_tcp, :listen, 2}, true, [:local])
+    on_exit(fn -> :erlang.trace_pattern({:gen_tcp, :listen, 2}, false, [:local]) end)
+
+    planner =
+      spawn(fn ->
+        receive do
+          :go -> send(test, {:plan, Front.plan(argv, env, ipv6?: false)})
+        end
+      end)
+
+    :erlang.trace(planner, true, [:call])
+    send(planner, :go)
+
+    assert_receive {:plan, {:direct, ^argv, "DAWARICH_PROXY=off"}}
+    ref = :erlang.trace_delivered(planner)
+    assert_receive {:trace_delivered, ^planner, ^ref}
+    refute_received {:trace, ^planner, :call, {:gen_tcp, :listen, _}}
+  end
+
   test "an occupied public port runs Puma directly and names the address" do
     {:ok, busy} = :gen_tcp.listen(0, ip: {127, 0, 0, 1})
     {:ok, port} = :inet.port(busy)
