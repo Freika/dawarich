@@ -67,6 +67,9 @@ CREATE INDEX "index_imports_on_status" ON "imports" ("status");
 CREATE INDEX "index_imports_on_user_id" ON "imports" ("user_id");
 CREATE TABLE "instance_settings" ("id" bigserial primary key, "created_at" timestamp(6) NOT NULL, "encrypted_value" text, "key" character varying NOT NULL, "updated_at" timestamp(6) NOT NULL, "value" jsonb);
 CREATE UNIQUE INDEX "index_instance_settings_on_key" ON "instance_settings" ("key");
+CREATE TABLE "job_outbox" ("event_id" uuid NOT NULL PRIMARY KEY, "aggregate_id" bigint, "command_type" character varying NOT NULL, "command_version" integer NOT NULL, "created_at" timestamptz DEFAULT now() NOT NULL, "dedupe_key" character varying, "dispatched_at" timestamptz, "error_code" character varying, "metadata" jsonb DEFAULT '{}' NOT NULL, "oban_job_id" bigint, "payload" jsonb NOT NULL, "scheduled_at" timestamptz NOT NULL, "state" character varying DEFAULT 'pending' NOT NULL, CONSTRAINT job_outbox_command_version_positive CHECK (command_version > 0), CONSTRAINT job_outbox_payload_object CHECK (jsonb_typeof(payload) = 'object'::text AND octet_length(payload::text) <= 8192), CONSTRAINT job_outbox_state_known CHECK (state::text = ANY (ARRAY['pending'::character varying, 'dispatched'::character varying, 'quarantined'::character varying]::text[])));
+CREATE UNIQUE INDEX "index_job_outbox_on_pending_dedupe" ON "job_outbox" ("command_type", "dedupe_key") WHERE (((state)::text = 'pending'::text) AND (dedupe_key IS NOT NULL));
+CREATE INDEX "index_job_outbox_on_due" ON "job_outbox" ("scheduled_at", "event_id") WHERE ((state)::text = 'pending'::text);
 CREATE TABLE "notes" ("id" bigserial primary key, "attachable_id" bigint, "attachable_type" character varying, "body" text, "created_at" timestamp(6) NOT NULL, "lonlat" geography(POINT,4326), "noted_at" timestamp(6), "source_digest" character varying, "title" character varying, "updated_at" timestamp(6) NOT NULL, "user_id" bigint NOT NULL);
 CREATE UNIQUE INDEX "index_notes_on_attachable_and_noted_date" ON "notes" (attachable_type, attachable_id, ((noted_at)::date)) WHERE (attachable_id IS NOT NULL);
 CREATE INDEX "index_notes_on_attachable_type_and_attachable_id" ON "notes" ("attachable_type", "attachable_id");
@@ -357,8 +360,9 @@ ALTER TABLE "visits" ADD CONSTRAINT "fk_rails_09e5e7c20b"
 FOREIGN KEY ("user_id")
   REFERENCES "users" ("id");
 CREATE TABLE IF NOT EXISTS "schema_migrations" ("version" character varying NOT NULL PRIMARY KEY);
-INSERT INTO "schema_migrations" (version) VALUES (20260925100100);
+INSERT INTO "schema_migrations" (version) VALUES (20260927120000);
 INSERT INTO "schema_migrations" (version) VALUES
+(20260925100100),
 (20260925100000),
 (20260923180000),
 (20260922120000),
