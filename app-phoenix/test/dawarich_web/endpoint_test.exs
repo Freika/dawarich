@@ -1,6 +1,8 @@
 defmodule DawarichWeb.EndpointTest do
   use ExUnit.Case, async: false
 
+  @moduletag :capture_log
+
   import Dawarich.Test.RawHTTP
 
   setup do
