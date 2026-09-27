@@ -93,6 +93,15 @@ defmodule Dawarich.Test.RawHTTP do
     {status, headers, body}
   end
 
+  def log_for_pid(log, pid) do
+    marker = "pid=" <> String.trim_leading(inspect(pid), "#PID")
+
+    log
+    |> String.split(~r/\n(?=\d{2}:\d{2}:\d{2}\.\d{3})/)
+    |> Enum.filter(&String.contains?(&1, marker))
+    |> Enum.join("\n")
+  end
+
   def read_until_closed(socket, acc \\ "") do
     case :gen_tcp.recv(socket, 0, 5_000) do
       {:ok, data} -> read_until_closed(socket, acc <> data)

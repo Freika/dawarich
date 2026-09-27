@@ -375,8 +375,8 @@ defmodule DawarichWeb.RailsProxyTest do
   test "a client that aborts a download closes Puma's connection and logs nothing", ctx do
     client = connect(ctx.port)
 
-    log =
-      capture_log(fn ->
+    {handler, log} =
+      with_log([metadata: [:pid]], fn ->
         send_raw(client, "GET /export.zip HTTP/1.1\r\nHost: a\r\n\r\n")
         puma = accept(ctx.upstream)
         _ = read_head(puma)
@@ -396,10 +396,15 @@ defmodule DawarichWeb.RailsProxyTest do
                  send_until_closed(puma, :binary.copy("y", 65_536), 64 * 1_048_576)
 
         assert reason in [:closed, :econnreset]
-        assert_receive {:DOWN, ^monitor, :process, _, _}, 5_000
+        assert_receive {:DOWN, ^monitor, :process, _, down_reason}, 5_000
+
+        assert down_reason == :normal or match?({:shutdown, _}, down_reason),
+               "connection process exited with #{inspect(down_reason)} instead of a normal shutdown"
+
+        handler
       end)
 
-    refute log =~ ~r/Puma closed|Puma did not answer|Bandit/
+    refute log_for_pid(log, handler) =~ ~r/Puma closed|Puma did not answer|Bandit/
   end
 
   test "requests Puma accepts reach it unchanged, with only Phoenix's headers added", ctx do
