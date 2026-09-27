@@ -12,15 +12,20 @@ export class DateManager {
     let tzOffset = -date.getTimezoneOffset()
 
     if (timeZone) {
-      const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone,
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-        hourCycle: "h23",
-      }).formatToParts(date)
+      let parts
+      try {
+        parts = new Intl.DateTimeFormat("en-US", {
+          timeZone,
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+          hour: "2-digit",
+          minute: "2-digit",
+          hourCycle: "h23",
+        }).formatToParts(date)
+      } catch {
+        return DateManager.formatDateForAPI(date)
+      }
       const values = Object.fromEntries(
         parts.map(({ type, value }) => [type, value]),
       )
@@ -62,6 +67,7 @@ export class DateManager {
     const [, year, month, day, hour, minute, second = "0"] = parts
     const wallTime = Date.UTC(year, month - 1, day, hour, minute, second)
     let instant = wallTime
+    let previous = wallTime
     for (let attempt = 0; attempt < 4; attempt++) {
       const zoned = DateManager.formatDateForAPI(new Date(instant), timeZone)
       const offset = zoned.match(/([+-])(\d{2}):(\d{2})$/)
@@ -69,10 +75,14 @@ export class DateManager {
         (offset[1] === "+" ? 1 : -1) *
         (Number(offset[2]) * 60 + Number(offset[3]))
       const next = wallTime - minutes * 60000
-      if (next === instant) break
+      if (next === instant) return zoned
+      previous = instant
       instant = next
     }
-    return DateManager.formatDateForAPI(new Date(instant), timeZone)
+    return DateManager.formatDateForAPI(
+      new Date(Math.max(instant, previous)),
+      timeZone,
+    )
   }
 
   static parseMonthSelector(value, timeZone) {
