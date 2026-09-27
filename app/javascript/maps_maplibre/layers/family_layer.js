@@ -1,16 +1,15 @@
 import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
+import { familyMemberColor } from "../utils/family_member_color"
 import { escapeHtml } from "../utils/geojson_transformers"
 import { BaseLayer } from "./base_layer"
 
 /**
  * Family layer showing family member locations
- * Each member has unique color
  */
 export class FamilyLayer extends BaseLayer {
   constructor(map, options = {}) {
     super(map, { id: "family", ...options })
-    this.memberColors = {}
     this._historyFeatures = []
     this._popup = new maplibregl.Popup({
       closeButton: false,
@@ -201,7 +200,7 @@ export class FamilyLayer extends BaseLayer {
     }
 
     const coords = [lon, lat]
-    const color = member.color || this.getMemberColor(memberId)
+    const color = familyMemberColor(memberId)
 
     // Find existing or add new
     const index = features.findIndex((f) => f.properties.id === memberId)
@@ -295,25 +294,6 @@ export class FamilyLayer extends BaseLayer {
   }
 
   /**
-   * Get consistent color for member
-   */
-  getMemberColor(memberId) {
-    if (!this.memberColors[memberId]) {
-      const colors = [
-        "#3b82f6",
-        "#10b981",
-        "#f59e0b",
-        "#ef4444",
-        "#8b5cf6",
-        "#ec4899",
-      ]
-      const index = Object.keys(this.memberColors).length % colors.length
-      this.memberColors[memberId] = colors[index]
-    }
-    return this.memberColors[memberId]
-  }
-
-  /**
    * Remove family member
    */
   removeMember(memberId) {
@@ -346,7 +326,7 @@ export class FamilyLayer extends BaseLayer {
         id: location.user_id,
         name: location.email || translate("common.unknown"),
         email: location.email,
-        color: location.color || this.getMemberColor(location.user_id),
+        color: familyMemberColor(location.user_id),
         lastUpdate: Date.now(),
         battery: location.battery,
         batteryStatus: location.battery_status,
@@ -379,7 +359,7 @@ export class FamilyLayer extends BaseLayer {
         },
         properties: {
           userId: member.user_id,
-          color: member.color || this.getMemberColor(member.user_id),
+          color: familyMemberColor(member.user_id),
         },
       }))
 
