@@ -114,7 +114,7 @@ namespace :e2e do
   end
 
   desc 'Reset demo + lite + family users to a clean state and re-seed canonical e2e data'
-  task reset_and_seed: :environment do
+  task reset_and_seed: %i[environment seed_instance] do
     assert_safe_environment!
     DawarichSettings.set_registration_enabled(true)
 
