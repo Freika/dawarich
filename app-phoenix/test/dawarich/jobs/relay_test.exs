@@ -149,19 +149,27 @@ defmodule Dawarich.Jobs.RelayTest do
     assert %{paused: true} = Oban.check_queue(name, queue: :default)
   end
 
-  test "the jobs supervisor keeps Drain outside a transient workers subtree that tolerates 1 000 restarts a minute and stops the relay within 1 s" do
-    assert {:ok, {_flags, [drain, workers]}} = Dawarich.Jobs.Supervisor.init(node: "n")
+  test "the jobs supervisor keeps Drain outside a transient workers subtree that tolerates 1 000 restarts a minute, stops the relay within 1 s and holds the claimer" do
+    assert {:ok, {_flags, [drain, workers]}} =
+             Dawarich.Jobs.Supervisor.init(node: "n", oban: @oban, repo: ScratchRepo)
+
     assert drain.id == Dawarich.Jobs.Drain
 
     assert %{
              id: :workers,
              type: :supervisor,
              restart: :transient,
-             start: {Supervisor, :start_link, [[relay], flags]}
+             start: {Supervisor, :start_link, [[relay, claimer], flags]}
            } = workers
 
     assert flags[:max_restarts] == 1_000 and flags[:max_seconds] == 60
     assert %{id: Dawarich.Jobs.Relay, shutdown: 1_000} = relay
+
+    assert %{
+             id: Dawarich.Jobs.Claimer,
+             restart: :transient,
+             start: {Dawarich.Jobs.Claimer, :start_link, [[oban: @oban, repo: ScratchRepo]]}
+           } = Supervisor.child_spec(claimer, [])
   end
 
   test "the relay writes through its Oban instance's repo unless given another" do

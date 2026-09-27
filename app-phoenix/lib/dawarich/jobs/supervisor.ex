@@ -6,7 +6,10 @@ defmodule Dawarich.Jobs.Supervisor do
 
   @impl true
   def init(opts) do
-    workers = [Supervisor.child_spec({Dawarich.Jobs.Relay, opts}, shutdown: 1_000)]
+    workers = [
+      Supervisor.child_spec({Dawarich.Jobs.Relay, opts}, shutdown: 1_000),
+      {Dawarich.Jobs.Claimer, Keyword.take(opts, [:oban, :repo])}
+    ]
 
     children = [
       {Dawarich.Jobs.Drain, Keyword.take(opts, [:oban])},
