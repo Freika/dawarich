@@ -49,7 +49,10 @@ defmodule Dawarich.Front do
       ip: ip,
       port: port,
       startup_log: false,
-      thousand_island_options: [shutdown_timeout: 5_000, transport_options: family(ip)],
+      thousand_island_options: [
+        shutdown_timeout: 5_000,
+        transport_options: [reuseport: true] ++ family(ip)
+      ],
       http_options: [compress: false],
       http_1_options: [
         max_request_line_length: 12_320,
