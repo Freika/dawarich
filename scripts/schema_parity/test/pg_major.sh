@@ -286,6 +286,34 @@ gzip -n "$scratch/variant.sql"
 refused "any other transaction_timeout statement still fails on PostgreSQL 14" 3 \
   'unrecognized configuration parameter "transaction_timeout"' restore 14 sp_test_variant "$scratch/variant.sql.gz"
 
+cat > "$scratch/stamps.sql" <<'EOF'
+CREATE TABLE public.stamps (id bigserial PRIMARY KEY, fixed timestamp(6) without time zone,
+  stamped timestamp(6) without time zone DEFAULT CURRENT_TIMESTAMP);
+INSERT INTO public.stamps (fixed) VALUES ('2026-01-01 00:00:00');
+EOF
+template_side() {
+  in_harness 17 17 '. "$root/scripts/schema_parity/ecto_lib.sh"
+    . "$root/scripts/schema_parity/ecto_template.sh"
+    check=template-time kind=refused fixture="$2" envfile="" shift_to=0 code_key=template-time run_id="$1$$"
+    started="$(date -u +%s)"
+    mkdir -p "$work/ecto"
+    prepare "sp_test_$1" none "" ""
+    query "sp_test_$1" "SELECT stamped FROM public.stamps"
+    record "sp_test_$1" "$tmpd/$1"
+    drop_sql "sp_test_$1" "$template" | dexec -i "$db_container" psql -U postgres -q -v ON_ERROR_STOP=1 >/dev/null' \
+    "$1" "$scratch/stamps.sql"
+}
+reference_stamp="$(template_side reference 2> "$scratch/template.err")"
+verdict $? "a fixture builds the reference's template ($(tail -n 1 "$scratch/template.err"))"
+counterpart_stamp="$(template_side counterpart 2> "$scratch/template.err")"
+verdict $? "the same fixture rebuilds the template for the counterpart ($(tail -n 1 "$scratch/template.err"))"
+[ -n "$reference_stamp" ] && [ -n "$counterpart_stamp" ] && [ "$reference_stamp" != "$counterpart_stamp" ]
+verdict $? "the two builds stamped different times ($reference_stamp, $counterpart_stamp)"
+grep -qxF "$(printf 'stamps\t1\t2026-01-01 00:00:00\t<template>')" "$scratch/17/reference.rows"
+verdict $? "a fixture's CURRENT_TIMESTAMP default records as <template> ($(grep '^stamps' "$scratch/17/reference.rows"))"
+cmp -s "$scratch/17/reference.rows" "$scratch/17/counterpart.rows"
+verdict $? "a reference and a counterpart cloned from templates built at different times record the same rows"
+
 after="$(git -C "$root" hash-object --no-filters "$image_snapshot" "$schemarb_snapshot")"
 [ "$before" = "$after" ] && git -C "$root" diff --quiet -- "$image_snapshot" "$schemarb_snapshot"
 verdict $? "the compressed snapshots are unchanged"
