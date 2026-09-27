@@ -3457,7 +3457,7 @@ ca:
         export_name_successfully_finished: "L'exportació \"%{name}\" ha finalitzat correctament."
         export_failed: Exportació fallida
         export_name_failed_message_stacktrace_n: 'L''exportació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
-        unsupported_file_format: 'Format d''arxiu no compatible: %{format}'
+        unsupported_file_format: 'Format d''arxiu no compatible: %{file_format}'
     families:
       auto_create:
         default_name: La meva família

@@ -104,6 +104,17 @@ RSpec.describe Exports::Create do
       end
     end
 
+    context 'when file format is unsupported' do
+      let(:file_format) { :archive }
+
+      it 'raises a readable argument error' do
+        service = described_class.new(export:)
+
+        expect { service.send(:build_export_tempfile) }
+          .to raise_error(ArgumentError, 'Unsupported file format: archive')
+      end
+    end
+
     context 'when an error occurs' do
       before do
         allow_any_instance_of(Exports::PointGeojsonSerializer)
