@@ -1,6 +1,8 @@
 defmodule Dawarich.Jobs.Dispatch do
   @moduledoc false
 
+  require Logger
+
   alias Dawarich.Jobs.{Outbox, Registry}
 
   def run(opts) do
@@ -60,13 +62,18 @@ defmodule Dawarich.Jobs.Dispatch do
   defp changeset(commands, row) do
     with {:ok, worker} <- lookup(commands, row.command_type),
          {:ok, args} <- worker.args_from_command(row.command_version, row.payload) do
-      {:ok,
-       worker.new(Map.put(args, "event_id", row.event_id),
-         meta: %{"command_version" => row.command_version}
-       )}
+      args = Map.put(args, "event_id", row.event_id)
+      _ = Jason.encode_to_iodata!(args)
+      {:ok, worker.new(args, meta: %{"command_version" => row.command_version})}
     end
   rescue
-    _exception -> {:error, "decoder_error"}
+    exception ->
+      Logger.warning(
+        "job_outbox #{row.event_id} (#{row.command_type}) quarantined as decoder_error: " <>
+          inspect(exception.__struct__)
+      )
+
+      {:error, "decoder_error"}
   end
 
   defp lookup(commands, type) do

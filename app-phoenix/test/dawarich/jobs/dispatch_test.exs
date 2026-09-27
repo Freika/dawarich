@@ -1,7 +1,19 @@
 defmodule Dawarich.Jobs.DispatchTest do
   use Dawarich.JobsCase
 
+  import ExUnit.CaptureLog
+
   alias Dawarich.Jobs.{Dispatch, Outbox, TestEchoWorker}
+
+  defmodule PoisonWorker do
+    @moduledoc false
+    use Oban.Worker, queue: :default
+
+    def args_from_command(_version, _payload), do: {:ok, %{"at" => {:not, :json}}}
+
+    @impl Oban.Worker
+    def perform(_job), do: :ok
+  end
 
   @oban Dawarich.DispatchTestOban
   @live Dawarich.DispatchTestLiveOban
@@ -12,6 +24,7 @@ defmodule Dawarich.Jobs.DispatchTest do
   end
 
   defp commands("test.echo"), do: {:ok, TestEchoWorker}
+  defp commands("test.poison"), do: {:ok, PoisonWorker}
   defp commands(_type), do: :error
 
   defp dispatch(extra \\ []),
@@ -112,12 +125,30 @@ defmodule Dawarich.Jobs.DispatchTest do
       type -> commands(type)
     end
 
-    assert Dispatch.run(repo: ScratchRepo, oban: @oban, commands: raising) == %{
-             dispatched: 1,
-             quarantined: 1
-           }
+    log =
+      capture_log(fn ->
+        assert Dispatch.run(repo: ScratchRepo, oban: @oban, commands: raising) == %{
+                 dispatched: 1,
+                 quarantined: 1
+               }
+      end)
 
     assert [["quarantined", nil, "decoder_error"]] = outbox_state(bad)
+    assert [["dispatched", _, nil]] = outbox_state(good)
+    assert log =~ bad
+    assert log =~ "ArgumentError"
+    refute log =~ "decoder bug"
+  end
+
+  @tag :capture_log
+  test "a row whose decoded args cannot be encoded is quarantined alone; the rest of the batch is delivered" do
+    poison =
+      outbox!(command_type: "test.poison", scheduled_at: DateTime.add(DateTime.utc_now(), -60))
+
+    good = outbox!(payload: %{"n" => 16})
+
+    assert dispatch() == %{dispatched: 1, quarantined: 1}
+    assert [["quarantined", nil, "decoder_error"]] = outbox_state(poison)
     assert [["dispatched", _, nil]] = outbox_state(good)
   end
 
