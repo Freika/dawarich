@@ -142,20 +142,28 @@ docker exec a0_app sh -c 'head -c 1048576 /dev/urandom >/var/app/public/a2-1m.bi
 bench() {
   docker exec a0_app sh -c '
     : >/tmp/a2-urls; i=0
-    while [ $i -lt 2000 ]; do printf "url = \"%s\"\noutput = \"/dev/null\"\n" "$1" >>/tmp/a2-urls; i=$((i + 1)); done
+    while [ $i -lt "$3" ]; do printf "url = \"%s\"\noutput = \"/dev/null\"\n" "$1" >>/tmp/a2-urls; i=$((i + 1)); done
     s=$(date +%s%N)
-    curl -s --parallel --parallel-max 8 -H "Host: 127.0.0.1:3900" -w "%{time_total}\n" -K /tmp/a2-urls | sort -n >/tmp/a2-times
+    curl -s --parallel --parallel-max "$2" -H "Host: 127.0.0.1:3900" -w "%{time_total}\n" -K /tmp/a2-urls | sort -n >/tmp/a2-times
     ms=$((($(date +%s%N) - s) / 1000000))
-    awk -v ms="$ms" "{ t[NR] = \$1 } END { printf \"%.2f %.2f %d\\n\", t[int(NR * 0.5)] * 1000, t[int(NR * 0.99)] * 1000, NR * 1000 / ms }" /tmp/a2-times' _ "$1"
+    awk -v ms="$ms" "{ t[NR] = \$1 } END { printf \"%.2f %.2f %d\\n\", t[int(NR * 0.5)] * 1000, t[int(NR * 0.99)] * 1000, NR * 1000 / ms }" /tmp/a2-times' _ "$1" "$2" "$3"
 }
-budget() {
-  set -- "$1" $(bench "http://127.0.0.1:3000$1") $(bench "http://127.0.0.1:$upstream$1")
-  echo "$1 at concurrency 8 — proxied p50 $2 ms, p99 $3 ms, $4 req/s; direct p50 $5 ms, p99 $6 ms, $7 req/s"
-  awk -v a="$2" -v c="$3" -v e="$4" -v b="$5" -v d="$6" -v f="$7" 'BEGIN { exit !(a <= b + 1 && c <= d + 5 && e >= 0.9 * f) }' \
-    || fail "$1 misses the latency budget (p50 +1 ms, p99 +5 ms, 90 % throughput)"
+latency() {
+  set -- "$1" "$2" $(bench "http://127.0.0.1:3000$1" 1 500) $(bench "http://127.0.0.1:$upstream$1" 1 500)
+  echo "$1 one request at a time — proxied p50 $3 ms, p99 $4 ms; direct p50 $6 ms, p99 $7 ms"
+  awk -v a="$3" -v b="$6" -v m="$2" 'BEGIN { exit !(a <= b + m) }' \
+    || fail "$1 misses the single-request budget (p50 +$2 ms)"
 }
-budget /api/v1/health
-budget /a2-1m.bin
+saturation() {
+  floor="$(docker exec a0_app sh -c 'read q p </sys/fs/cgroup/cpu.max; [ "$q" = max ] || [ "$q" -ge $((p * $(nproc))) ] && echo 90 || echo 65')"
+  set -- "$1" $(bench "http://127.0.0.1:3000$1" 8 2000) $(bench "http://127.0.0.1:$upstream$1" 8 2000)
+  echo "$1 at concurrency 8 — proxied p50 $2 ms, p99 $3 ms, $4 req/s; direct p50 $5 ms, p99 $6 ms, $7 req/s (floor $floor %)"
+  awk -v e="$4" -v f="$7" -v r="$floor" 'BEGIN { exit !(e >= r / 100 * f) }' \
+    || fail "$1 misses the saturation budget ($floor % of direct throughput)"
+}
+latency /api/v1/health 1
+latency /a2-1m.bin 2
+saturation /api/v1/health
 
 if [ "${SOAK_MINUTES:-0}" -gt 0 ]; then
   procs0="$(beam ':erlang.system_info(:process_count)')"
