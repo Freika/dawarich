@@ -87,14 +87,21 @@ defmodule Dawarich.FrontTest do
     plan =
       {:proxy, %{public: {{0, 0, 0, 0}, 3000}, upstream: 41_000, puma_argv: ~w(bundle exec puma)}}
 
-    assert [{RailsServer, puma}, {DawarichWeb.Endpoint, endpoint}] = Front.children(plan)
+    assert [{RailsServer, puma}, endpoint, {Dawarich.Front.Drainer, []}] = Front.children(plan)
     assert puma[:argv] == ~w(bundle exec puma)
     assert puma[:env] == [{"DAWARICH_BEHIND_PHOENIX", "1"}]
-    assert endpoint[:server] == true
-    assert endpoint[:http][:ip] == {0, 0, 0, 0}
-    assert endpoint[:http][:port] == 3000
-    assert get_in(endpoint, [:http, :thousand_island_options, :shutdown_timeout]) == 5_000
-    assert byte_size(endpoint[:secret_key_base]) >= 64
+
+    assert %{
+             id: DawarichWeb.Endpoint,
+             shutdown: 5_000,
+             start: {DawarichWeb.Endpoint, :start_link, [opts]}
+           } = endpoint
+
+    assert opts[:server] == true
+    assert opts[:http][:ip] == {0, 0, 0, 0}
+    assert opts[:http][:port] == 3000
+    assert get_in(opts, [:http, :thousand_island_options, :shutdown_timeout]) == 5_000
+    assert byte_size(opts[:secret_key_base]) >= 64
   end
 
   test "Bandit never compresses, never speaks HTTP/2 and accepts what Puma accepts" do
