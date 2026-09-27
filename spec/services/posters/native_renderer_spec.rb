@@ -133,6 +133,23 @@ RSpec.describe Posters::NativeRenderer do
       pid_file&.close!
     end
 
+    it 'still raises the timeout error when the OS recycles the child pid mid-teardown' do
+      # Under heavy fork/exec churn (a full-suite run spawns thousands of
+      # subprocesses), the process group id can be reaped and reassigned by
+      # the OS between our liveness check and the TERM/KILL signal. Process.kill
+      # then raises EPERM (permission denied on the new owner) instead of
+      # ESRCH (no such process) — the only errno the old code rescued.
+      stub_const("#{described_class}::RENDER_TIMEOUT", 0.05)
+      allow(Process).to receive(:kill).and_wrap_original do |original, signal, pid|
+        raise Errno::EPERM if %w[TERM KILL].include?(signal)
+
+        original.call(signal, pid)
+      end
+      renderer = build_renderer(command: ['ruby', '-e', 'sleep 0.3'])
+
+      expect { renderer.call }.to raise_error(described_class::Error, /timed out after 0.05 seconds/)
+    end
+
     it 'raises when the theme tokens are unknown' do
       poster.settings['theme'] = 'nonexistent_theme'
 
