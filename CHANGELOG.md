@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Replay scrubber and playback now stay in chronological order through daylight-saving clock changes.
 - Replay scrubber controls use the profile timezone when it differs from the browser timezone.
 - An API request with an empty `api_key` parameter is refused instead of being matched against accounts whose key was never set, and an unauthenticated `GET /api/v1/health` no longer queries the database for a user.
 - Replay and track or visit clicks on the map now select the day in the profile timezone when it differs from the browser timezone.
