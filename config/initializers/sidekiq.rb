@@ -3,6 +3,7 @@
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
   config.logger = Sidekiq::Logger.new($stdout)
+  config.logger.level = Logger::WARN if B12E2EEgress.enabled?
 
   # The worker process caches instance settings independently of the web
   # process, so it needs its own subscriber to notice a change made in the UI.
