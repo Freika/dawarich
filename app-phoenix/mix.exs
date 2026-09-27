@@ -41,7 +41,12 @@ defmodule Dawarich.MixProject do
       "ecto.reset": fn _ ->
         Mix.raise("Rails owns the Dawarich database; Phoenix never resets it")
       end,
-      test: ["app.config", fn _ -> Dawarich.Release.migrate_oban() end, "test"]
+      test: [
+        "app.config",
+        fn _ -> Dawarich.Release.migrate_oban() end,
+        "dawarich.i18n",
+        "test"
+      ]
     ]
   end
 end
