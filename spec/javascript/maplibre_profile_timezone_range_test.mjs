@@ -264,7 +264,7 @@ test("replay tracks map an instant to the profile day", async (t) => {
     _ensureReplayPanel() {},
     replayPanel: {
       isPlaying: false,
-      manager: { hasData: () => true },
+      manager: { hasData: () => true, minuteOfDay: () => 1320 },
       ensureOpen: async () => {},
       goToDay: (day) => days.push(day),
       setMinute() {},

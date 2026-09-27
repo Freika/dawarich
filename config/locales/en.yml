@@ -3445,7 +3445,7 @@ en:
         export_name_successfully_finished: Export "%{name}" successfully finished.
         export_failed: Export failed
         export_name_failed_message_stacktrace_n: 'Export "%{name}" failed: %{message}, stacktrace: %{backtrace}'
-        unsupported_file_format: 'Unsupported file format: %{format}'
+        unsupported_file_format: 'Unsupported file format: %{file_format}'
     families:
       auto_create:
         default_name: My Family

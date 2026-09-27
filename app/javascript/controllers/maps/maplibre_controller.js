@@ -2038,7 +2038,7 @@ export default class extends Controller {
     ).slice(0, 10)
     this.replayPanel.goToDay(targetDay)
 
-    const startMinute = trackDate.getHours() * 60 + trackDate.getMinutes()
+    const startMinute = this.replayPanel.manager.minuteOfDay(trackDate)
     this.replayPanel.setMinute(startMinute)
     this.replayPanel.startPlayback()
   }

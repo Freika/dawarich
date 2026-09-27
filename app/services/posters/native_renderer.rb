@@ -120,17 +120,15 @@ module Posters
 
     def signal_process_group(signal, process_group_id)
       Process.kill(signal, -process_group_id)
-    rescue Errno::ESRCH
+    rescue Errno::ESRCH, Errno::EPERM
       nil
     end
 
     def process_group_alive?(process_group_id)
       Process.kill(0, -process_group_id)
       true
-    rescue Errno::ESRCH
+    rescue Errno::ESRCH, Errno::EPERM
       false
-    rescue Errno::EPERM
-      true
     end
 
     def default_command

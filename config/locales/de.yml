@@ -3519,7 +3519,7 @@ de:
         export_name_successfully_finished: Export „%{name}“ wurde erfolgreich beendet.
         export_failed: Export fehlgeschlagen
         export_name_failed_message_stacktrace_n: 'Export „%{name}“ fehlgeschlagen: %{message}, Stapelverfolgung: %{backtrace}'
-        unsupported_file_format: 'Nicht unterstütztes Dateiformat: %{format}'
+        unsupported_file_format: 'Nicht unterstütztes Dateiformat: %{file_format}'
     families:
       auto_create:
         default_name: Meine Familie
