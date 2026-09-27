@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class Country < ApplicationRecord
+  NAMES_TO_ISO_A2_CACHE_KEY = 'countries_names_to_iso_a2'
+
   has_many :points, dependent: :nullify
 
   validates :name, :iso_a2, :iso_a3, :geom, presence: true
@@ -21,7 +23,7 @@ class Country < ApplicationRecord
   end
 
   def self.names_to_iso_a2
-    Rails.cache.fetch('countries_names_to_iso_a2', expires_in: 1.day) do
+    Rails.cache.fetch(NAMES_TO_ISO_A2_CACHE_KEY, expires_in: 1.day) do
       pluck(:name, :iso_a2).to_h
     end
   end
