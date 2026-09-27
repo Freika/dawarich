@@ -5,14 +5,19 @@ class Trips::CalculateAllJob < ApplicationJob
 
   PENDING_KEY_PREFIX = 'trips:recalc:pending'
   PENDING_TTL = 10.minutes
+  OWNER_KEY = 'command:trips.calculate'
 
   def perform(trip_id, distance_unit = 'km')
-    run_token = SecureRandom.uuid
-    Rails.cache.write(self.class.pending_key(trip_id, run_token), 3, expires_in: PENDING_TTL, raw: true)
+    result = JobOwnership.with_owner(OWNER_KEY) { fan_out(trip_id, distance_unit) }
+    self.class.forward(trip_id, distance_unit, job_id) if result == :not_owner
+  end
 
-    Trips::CalculatePathJob.perform_later(trip_id, run_token)
-    Trips::CalculateDistanceJob.perform_later(trip_id, distance_unit, run_token)
-    Trips::CalculateCountriesJob.perform_later(trip_id, distance_unit, run_token)
+  def self.forward(trip_id, distance_unit, token)
+    JobCommands.forward(
+      'trips.calculate', { 'trip_id' => trip_id, 'distance_unit' => distance_unit },
+      event_id: Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "trips.calculate:#{trip_id}:#{token}"),
+      aggregate_id: trip_id, dedupe_key: trip_id.to_s, producer: name
+    )
   end
 
   def self.pending_key(trip_id, run_token)
@@ -49,5 +54,16 @@ class Trips::CalculateAllJob < ApplicationJob
       partial: 'trips/recalculate_button',
       locals: { trip: trip, error: error }
     )
+  end
+
+  private
+
+  def fan_out(trip_id, distance_unit)
+    run_token = SecureRandom.uuid
+    Rails.cache.write(self.class.pending_key(trip_id, run_token), 3, expires_in: PENDING_TTL, raw: true)
+
+    Trips::CalculatePathJob.perform_later(trip_id, run_token)
+    Trips::CalculateDistanceJob.perform_later(trip_id, distance_unit, run_token)
+    Trips::CalculateCountriesJob.perform_later(trip_id, distance_unit, run_token)
   end
 end
