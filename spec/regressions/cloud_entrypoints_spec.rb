@@ -71,11 +71,22 @@ RSpec.describe 'Cloud entrypoints' do
       expect(result[:app_calls]).to eq(['bundle exec rails db:migrate', 'dawarich eval Dawarich.Release.migrate()'])
     end
 
-    it 'succeeds with a warning when the Phoenix migrations fail' do
-      result = run_script('release.sh', STUB_DAWARICH_STATUS: '1')
+    it 'fails a Cloud deploy when the Phoenix migrations fail' do
+      result = run_script('release.sh', STUB_DAWARICH_STATUS: '1', SELF_HOSTED: 'false')
 
-      expect(result[:status]).to be_success
-      expect(result[:stderr]).to include('Phoenix migrations failed')
+      expect(result[:status]).not_to be_success
+      expect(result[:stderr]).to include('Phoenix migrations failed; the deploy stops here')
+    end
+
+    [nil, ' "True" '].each do |self_hosted|
+      it "warns and goes on with a self-hosted deploy when Phoenix fails (SELF_HOSTED=#{self_hosted.inspect})" do
+        result = run_script('release.sh', STUB_DAWARICH_STATUS: '1', SELF_HOSTED: self_hosted)
+
+        expect(result[:status]).to be_success
+        expect(result[:stderr]).to include(
+          'Phoenix migrations failed; web containers will start Rails without the Phoenix supervisor'
+        )
+      end
     end
 
     it 'fails before the Phoenix migrations when the Rails migrations fail' do
@@ -275,21 +286,24 @@ RSpec.describe 'Cloud entrypoints' do
 
   describe 'the proxy marker' do
     before do
-      stub_command('bundle', %(printf '%s\\n' "bundle marker=[${DAWARICH_BEHIND_PHOENIX:-}] $*" >> "#{calls_file}"))
+      stub_command('bundle', <<~SH)
+        printf '%s\\n' "bundle marker=[${DAWARICH_BEHIND_PHOENIX:-}] node=[${DAWARICH_PHOENIX_NODE:-}] $*" >> "#{calls_file}"
+      SH
       stub_command('createdb', 'exit 0')
     end
 
-    it 'never reaches a Rails server the Cloud entrypoint starts without Phoenix' do
-      result = run_script('cloud-entrypoint.sh', *server, STUB_DAWARICH_STATUS: '3', DAWARICH_BEHIND_PHOENIX: '1')
+    it 'never reaches a Rails server the Cloud entrypoint starts without Phoenix, nor does a Phoenix node name' do
+      result = run_script('cloud-entrypoint.sh', *server, STUB_DAWARICH_STATUS: '3', DAWARICH_BEHIND_PHOENIX: '1',
+                                                         DAWARICH_PHOENIX_NODE: 'web-1')
 
-      expect(result[:app_calls].last).to eq('bundle marker=[] exec puma -C config/puma.rb -p 5000')
+      expect(result[:app_calls].last).to eq('bundle marker=[] node=[] exec puma -C config/puma.rb -p 5000')
     end
 
-    it 'never reaches a Rails server the self-hosted entrypoint starts without Phoenix' do
+    it 'never reaches a Rails server the self-hosted entrypoint starts without Phoenix, nor does a Phoenix node name' do
       result = run_script('web-entrypoint.sh', 'bin/rails', 'server', '-p', '3000', '-b', '::',
-                          STUB_DAWARICH_STATUS: '1', DAWARICH_BEHIND_PHOENIX: '1')
+                          STUB_DAWARICH_STATUS: '1', DAWARICH_BEHIND_PHOENIX: '1', DAWARICH_PHOENIX_NODE: 'web-1')
 
-      expect(result[:app_calls].last).to eq('bundle marker=[] exec bin/rails server -p 3000 -b ::')
+      expect(result[:app_calls].last).to eq('bundle marker=[] node=[] exec bin/rails server -p 3000 -b ::')
     end
   end
 end
