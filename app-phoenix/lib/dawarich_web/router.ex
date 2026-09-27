@@ -16,6 +16,20 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
+  if Application.compile_env(:dawarich, :reference_live, false) do
+    scope "/phoenix/reference" do
+      pipe_through :browser
+
+      live_session :reference,
+        session: {DawarichWeb.RailsAuth, :live_session, []},
+        on_mount: DawarichWeb.LiveAuth,
+        root_layout: {DawarichWeb.Layouts, :root},
+        layout: {DawarichWeb.Layouts, :app} do
+        live "/", DawarichWeb.ReferenceLive, :index, container: {:div, class: "contents"}
+      end
+    end
+  end
+
   defp phoenix_session(conn, _opts) do
     opts =
       Keyword.put(

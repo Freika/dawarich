@@ -12,6 +12,16 @@ defmodule Dawarich.Accounts do
   def remember_for, do: @remember_for
   def unlock_in, do: @unlock_in
 
+  @spec get(integer()) :: %User{} | nil
+  def get(id) when is_integer(id) do
+    case find(id) do
+      %User{} = user -> if unlocked?(user, DateTime.utc_now()), do: user
+      nil -> nil
+    end
+  end
+
+  def get(_id), do: nil
+
   @spec from_session(map(), DateTime.t()) :: %User{} | {:locked, %User{}} | nil
   def from_session(%{"warden.user.user.key" => [[id], salt]}, now)
       when is_integer(id) and is_binary(salt) do
