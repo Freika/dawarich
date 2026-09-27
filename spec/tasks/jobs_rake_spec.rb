@@ -22,4 +22,45 @@ RSpec.describe 'dawarich:jobs' do
              "SELECT pinned FROM phoenix.job_owners WHERE key = 'cron:app_version_checking_job'"
            )).to be(false)
   end
+
+  it 'exits 1 with a usage message when release is given a blank key' do
+    Rake::Task['dawarich:jobs:release'].reenable
+
+    expect do
+      expect { Rake::Task['dawarich:jobs:release'].invoke('') }.to raise_error(SystemExit) do |error|
+        expect(error.status).to eq(1)
+      end
+    end.to output(%r{usage: bin/rails "dawarich:jobs:release\[<key>\]"}).to_stderr
+  end
+
+  it 'exits 1 with a usage message when unpin is given a blank key' do
+    Rake::Task['dawarich:jobs:unpin'].reenable
+
+    expect do
+      expect { Rake::Task['dawarich:jobs:unpin'].invoke('') }.to raise_error(SystemExit) do |error|
+        expect(error.status).to eq(1)
+      end
+    end.to output(%r{usage: bin/rails "dawarich:jobs:unpin\[<key>\]"}).to_stderr
+  end
+
+  it 'releases and unpins an unknown key without raising, upserting a fresh pinned row' do
+    phoenix_tables!
+
+    run('dawarich:jobs:release', 'command:no.such.job')
+    expect(ActiveRecord::Base.connection.select_rows(
+             "SELECT owner, pinned FROM phoenix.job_owners WHERE key = 'command:no.such.job'"
+           )).to eq([['sidekiq', true]])
+
+    run('dawarich:jobs:unpin', 'command:no.such.job')
+    expect(ActiveRecord::Base.connection.select_value(
+             "SELECT pinned FROM phoenix.job_owners WHERE key = 'command:no.such.job'"
+           )).to be(false)
+  end
+
+  it 'propagates a RuntimeError from release when Phoenix has never migrated the database' do
+    Rake::Task['dawarich:jobs:release'].reenable
+
+    expect { Rake::Task['dawarich:jobs:release'].invoke('cron:app_version_checking_job') }
+      .to raise_error(RuntimeError, /phoenix\.job_owners does not exist/)
+  end
 end
