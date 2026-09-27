@@ -67,8 +67,9 @@ RSpec.describe 'Phoenix fixture: the cookies Rails issues at sign-in', type: :re
       fixture = {
         rails_test_secret: secret,
         now: Time.current.utc.iso8601(6),
-        remember_for_seconds: Devise.remember_for.to_i,
+        remember_for_seconds: User.remember_for.to_i,
         lockable: User.devise_modules.include?(:lockable),
+        lock_strategy: User.lock_strategy.to_s,
         unlock_strategy: User.unlock_strategy.to_s,
         time_unlock: User.unlock_strategy_enabled?(:time),
         unlock_in_seconds: User.unlock_in.to_i,
