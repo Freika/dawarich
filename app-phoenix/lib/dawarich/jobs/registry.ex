@@ -8,6 +8,12 @@ defmodule Dawarich.Jobs.Registry do
       expression: "0 */6 * * *",
       worker: Dawarich.AppVersion.CheckWorker,
       claimable: false
+    },
+    %{
+      key: "command:users.explore_features_mail",
+      kind: :command,
+      worker: Dawarich.Mail.ExploreFeaturesWorker,
+      claimable: false
     }
   ]
 
