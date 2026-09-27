@@ -136,7 +136,8 @@ defmodule DawarichWeb.RailsProxyTest do
     assert {204, _, ""} = read_response(client)
   end
 
-  test "hop-by-hop request headers stop at Phoenix", ctx do
+  test "hop-by-hop request headers stop at Phoenix, and a header the client names in Connection goes on",
+       ctx do
     client = connect(ctx.port)
 
     send_raw(client, [
@@ -147,12 +148,33 @@ defmodule DawarichWeb.RailsProxyTest do
     puma = accept(ctx.upstream)
     {head, _} = read_head(puma)
 
-    for name <- ~w(x-hop keep-alive te proxy-connection upgrade transfer-encoding expect),
+    for name <- ~w(keep-alive te proxy-connection upgrade transfer-encoding expect),
         do: assert(header(head, name) == [], "#{name} was forwarded")
 
+    assert header(head, "x-hop") == ["1"]
     assert header(head, "x-end-to-end") == ["kept"]
     reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
     assert {200, _, ""} = read_response(client)
+  end
+
+  test "a client cannot erase the forwarding headers by naming them in Connection", ctx do
+    client = connect(ctx.port)
+
+    send_raw(client, [
+      "GET / HTTP/1.1\r\nHost: a\r\nConnection: X-Forwarded-For, X-Forwarded-Proto, Forwarded, Host\r\n",
+      "X-Forwarded-For: 203.0.113.9\r\nX-Forwarded-Proto: https\r\nForwarded: for=198.51.100.1\r\n\r\n"
+    ])
+
+    puma = accept(ctx.upstream)
+    {head, _} = read_head(puma)
+
+    assert header(head, "host") == ["a"]
+    assert header(head, "x-forwarded-for") == ["203.0.113.9"]
+    assert header(head, "x-forwarded-proto") == ["https"]
+    assert header(head, "forwarded") == ["for=198.51.100.1"]
+    assert header(head, "connection") == ["close"]
+    reply(puma, "HTTP/1.1 204 No Content\r\n\r\n")
+    assert {204, _, ""} = read_response(client)
   end
 
   test "response headers reach the client as Puma sent them, repeated Set-Cookie included", ctx do

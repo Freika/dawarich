@@ -60,6 +60,30 @@ defmodule DawarichWeb.CableProxyTest do
     assert for({"connection", value} <- upstream, do: value) == ["Upgrade"]
   end
 
+  test "a client cannot erase the forwarding headers of an upgrade by naming them in Connection" do
+    upstream = listen()
+    port = proxy(upstream.port)
+    client = connect(port)
+
+    send_raw(client, [
+      "GET /cable HTTP/1.1\r\nHost: a\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\n",
+      @key,
+      "Connection: Upgrade, X-Forwarded-For, X-Forwarded-Proto, Forwarded, Host\r\n",
+      "X-Forwarded-For: 203.0.113.9\r\nX-Forwarded-Proto: https\r\nForwarded: for=198.51.100.1\r\n\r\n"
+    ])
+
+    puma = accept(upstream)
+    {head, _} = read_head(puma)
+
+    assert header(head, "host") == ["a"]
+    assert header(head, "x-forwarded-for") == ["203.0.113.9"]
+    assert header(head, "x-forwarded-proto") == ["https"]
+    assert header(head, "forwarded") == ["for=198.51.100.1"]
+    assert header(head, "connection") == ["Upgrade"]
+    reply(puma, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n")
+    assert {404, _, ""} = read_response(client)
+  end
+
   for {form, version, headers} <- [
         {"without a key", "HTTP/1.1", "Sec-WebSocket-Version: 13\r\n"},
         {"of version 8", "HTTP/1.1", "Sec-WebSocket-Version: 8\r\n" <> @key},
