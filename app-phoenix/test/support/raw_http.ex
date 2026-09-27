@@ -14,8 +14,8 @@ defmodule Dawarich.Test.RawHTTP do
     socket
   end
 
-  def connect(port) do
-    {:ok, socket} = :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false])
+  def connect(port, timeout \\ 5_000) do
+    {:ok, socket} = :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], timeout)
     socket
   end
 

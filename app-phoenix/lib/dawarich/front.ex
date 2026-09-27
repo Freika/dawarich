@@ -3,7 +3,7 @@ defmodule Dawarich.Front do
 
   require Logger
 
-  alias Dawarich.Front.Command
+  alias Dawarich.Front.{Command, Drainer}
   alias Dawarich.{RailsSecret, RailsServer}
 
   @off ~w(off false 0 no)
@@ -37,6 +37,8 @@ defmodule Dawarich.Front do
        server: true,
        secret_key_base: RailsSecret.endpoint_secret(RailsSecret.fetch()),
        http: http_options(ip, port)}
+      |> Supervisor.child_spec(shutdown: 5_000),
+      {Drainer, []}
     ]
   end
 
