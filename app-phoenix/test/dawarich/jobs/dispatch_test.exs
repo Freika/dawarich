@@ -4,6 +4,7 @@ defmodule Dawarich.Jobs.DispatchTest do
   alias Dawarich.Jobs.{Dispatch, Outbox, TestEchoWorker}
 
   @oban Dawarich.DispatchTestOban
+  @live Dawarich.DispatchTestLiveOban
 
   setup do
     start_oban(@oban)
@@ -14,9 +15,17 @@ defmodule Dawarich.Jobs.DispatchTest do
   defp commands(_type), do: :error
 
   defp dispatch(extra \\ []),
-    do: Dispatch.run([repo: ScratchRepo, oban: @oban, commands: &commands/1] ++ extra)
+    do:
+      Dispatch.run(Keyword.merge([repo: ScratchRepo, oban: @oban, commands: &commands/1], extra))
 
-  defp jobs, do: rows("SELECT id, args FROM oban.oban_jobs ORDER BY id")
+  defp with_lock_timeout(fun) do
+    ScratchRepo.transaction(fn ->
+      ScratchRepo.query!("SET LOCAL lock_timeout = '50ms'", [], log: false)
+      fun.()
+    end)
+  end
+
+  defp jobs, do: rows("SELECT id, args, meta FROM oban.oban_jobs ORDER BY id")
 
   defp outbox_state(id),
     do:
@@ -28,16 +37,27 @@ defmodule Dawarich.Jobs.DispatchTest do
     id = outbox!(payload: %{"n" => 1})
 
     assert dispatch() == %{dispatched: 1}
-    assert [[job_id, %{"n" => 1, "event_id" => ^id}]] = jobs()
+    assert [[job_id, %{"n" => 1, "event_id" => ^id}, %{"command_version" => 1}]] = jobs()
     assert [["dispatched", ^job_id, nil]] = outbox_state(id)
   end
 
-  test "a row scheduled in the future waits in the outbox" do
+  test "a row scheduled in the future waits in the outbox until the relay's clock reaches it" do
     id = outbox!(payload: %{"n" => 2}, scheduled_at: DateTime.add(DateTime.utc_now(), 3600))
 
     assert dispatch() == %{}
     assert jobs() == []
     assert [["pending", nil, nil]] = outbox_state(id)
+
+    later = DateTime.add(DateTime.utc_now(), 7200)
+
+    assert dispatch(now: later) == %{dispatched: 1}
+
+    assert [[dispatched_at]] =
+             rows("SELECT dispatched_at FROM public.job_outbox WHERE event_id = $1", [
+               Ecto.UUID.dump!(id)
+             ])
+
+    assert DateTime.compare(dispatched_at, later) == :eq
   end
 
   test "running again after a commit delivers nothing twice" do
@@ -122,14 +142,15 @@ defmodule Dawarich.Jobs.DispatchTest do
         )
       end)
 
-    assert_receive :holding
-    assert dispatch() == %{}
+    assert_receive :holding, 5_000
+    assert with_lock_timeout(fn -> dispatch() end) == {:ok, %{}}
     send(first.pid, :go)
     assert Task.await(first) == %{dispatched: 1}
     assert [["dispatched", _, nil]] = outbox_state(id)
     assert length(jobs()) == 1
   end
 
+  @tag :capture_log
   test "a connection dropped between insert and acknowledgement rolls both back" do
     id = outbox!(payload: %{"n" => 6})
 
@@ -160,9 +181,44 @@ defmodule Dawarich.Jobs.DispatchTest do
     second = outbox!(payload: %{"n" => 7})
 
     assert dispatch() == %{dispatched: 2}
-    assert [[job_id, _]] = jobs()
+    assert [[job_id, _, _]] = jobs()
     assert [["dispatched", ^job_id, nil]] = outbox_state(first)
     assert [["dispatched", ^job_id, nil]] = outbox_state(second)
+  end
+
+  test "a unique job another relay's open transaction holds is acknowledged as deduped_locked" do
+    start_oban(@live, testing: :disabled, stager: false, peer: false)
+    held = outbox!(payload: %{"n" => 14}, scheduled_at: DateTime.add(DateTime.utc_now(), -60))
+    other = outbox!(payload: %{"n" => 14})
+    parent = self()
+
+    first =
+      Task.async(fn ->
+        dispatch(
+          oban: @live,
+          limit: 1,
+          hook: fn
+            :inserted, _row ->
+              send(parent, :holding)
+
+              receive do
+                :go -> :ok
+              end
+
+            _stage, _row ->
+              :ok
+          end
+        )
+      end)
+
+    assert_receive :holding, 5_000
+    assert with_lock_timeout(fn -> dispatch(oban: @live) end) == {:ok, %{dispatched: 1}}
+    send(first.pid, :go)
+    assert Task.await(first) == %{dispatched: 1}
+
+    assert [[job_id, %{"n" => 14}, _meta]] = jobs()
+    assert [["dispatched", ^job_id, nil]] = outbox_state(held)
+    assert [["dispatched", nil, "deduped_locked"]] = outbox_state(other)
   end
 
   test "the relay writes delivery columns only" do
