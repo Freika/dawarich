@@ -1,0 +1,19 @@
+{
+  "reserved_keys": [
+    "cascade",
+    "deep_interpolation",
+    "default",
+    "exception_handler",
+    "fallback",
+    "fallback_in_progress",
+    "fallback_original_locale",
+    "format",
+    "object",
+    "raise",
+    "resolve",
+    "scope",
+    "separator",
+    "skip_interpolation",
+    "throw"
+  ]
+}
