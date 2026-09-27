@@ -10,6 +10,8 @@ defmodule DawarichWeb.ForceSSL do
   @hsts "max-age=63072000; includeSubDomains"
   @env ~w(APPLICATION_PROTOCOL RAILS_ENV RACK_ENV)
 
+  def hsts, do: @hsts
+
   def enabled?(env \\ Map.new(@env, &{&1, System.get_env(&1)})) do
     String.downcase(env["APPLICATION_PROTOCOL"] || "http") == "https" and
       RailsSecret.rails_env(env) != "test"

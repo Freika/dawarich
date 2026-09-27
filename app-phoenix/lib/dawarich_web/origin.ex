@@ -12,6 +12,24 @@ defmodule DawarichWeb.Origin do
 
   def allowed?(_uri, _application_hosts), do: false
 
+  def authorized_host?(host, application_hosts) do
+    (application_hosts || "localhost")
+    |> String.split(",")
+    |> Enum.map(&ruby_strip/1)
+    |> Enum.filter(&(&1 != "" and ascii?(&1)))
+    |> Enum.any?(&Regex.match?(host_pattern(&1), host))
+  end
+
+  defp host_pattern("." <> domain),
+    do: Regex.compile!("\\A(?:[a-z0-9-]+\\.)?#{Regex.escape(domain)}(?::\\d+)?\\z", "i")
+
+  defp host_pattern(entry), do: Regex.compile!("\\A#{Regex.escape(entry)}(?::\\d+)?\\z", "i")
+
+  defp ascii?(value), do: value =~ ~r/\A[\x20-\x7e]*\z/
+
+  defp ruby_strip(value),
+    do: String.replace(value, ~r/\A[\x00\t\n\x0b\f\r ]+|[\x00\t\n\x0b\f\r ]+\z/, "")
+
   defp matches?(host, entry) do
     host = String.downcase(host)
 
