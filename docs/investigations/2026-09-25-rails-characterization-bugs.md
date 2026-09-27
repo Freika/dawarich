@@ -1,6 +1,6 @@
 # Rails defects found during Phoenix characterization and C2
 
-Date: 2026-09-25. Updated: 2026-09-26. Initial base: local `dev` at `f73605cb9`. The places fix (`fix/places-direct-open`) is merged into `feat/phoenix-port`.
+Date: 2026-09-25. Updated: 2026-09-27. Initial base: local `dev` at `f73605cb9`. The places fix (`fix/places-direct-open`) is merged into `feat/phoenix-port`.
 
 | Defect | Cause | Rails repair |
 |---|---|---|
@@ -11,6 +11,8 @@ Date: 2026-09-25. Updated: 2026-09-26. Initial base: local `dev` at `f73605cb9`.
 | Map “Reset to defaults” can lose its save and retain miles | The controller reloads before the asynchronous save finishes, and the reset payload lacks `distance_unit`. | Queue the reset after earlier saves, await it before reload, and explicitly reset distance and nested map filters. |
 | Manual image build publishes `latest` | `workflow_dispatch` has no prerelease flag and takes the stable-release tag branch. | Add `latest` only for release events. |
 | Direct `/places/:id` opens a bare fragment and an HTML Notes save fails | The route always renders a Turbo-frame body without a map host; `PlacesController#update` handles only Turbo Stream. The map has no place deep link or detail drawer host. | On `fix/places-direct-open`, redirect direct GET and HTML PATCH to `/map/v2?place_id=<id>`, keep `Turbo-Frame: place-drawer` GET and Turbo Stream PATCH, and make the map host the drawer at the place coordinates. A place marker opens the same drawer. Scope the deep link to the current user's places. |
+| Cloud Family invitee cannot accept once five seats are counted | `Families::AcceptInvitation#validate_family_capacity` refused whenever `Family#full?`, which is true at five members plus pending invitations. The invitee's own pending invitation is one of the five, so with the owner and four pending invitations nobody could accept. | On `test/b12-cloud-mode` (B12), Cloud acceptance allows members plus pending invitations up to five, because the invitee's invitation already holds a seat; a sixth acceptance is still refused. Self-hosted families remain unlimited. |
+| Lite Visited Countries preview toast reads "Previewing layers.scratch_map" | `LayerVisibilityManager` translated `layers.scratch_map`, a key missing from the JavaScript locale namespace, so `translate` returned the key itself. | On `test/b12-cloud-mode` (B12), use the existing `messages.scratch_map` key, present in all seven locales. |
 
 ## Place deep-link contract
 

@@ -103,6 +103,16 @@ RSpec.describe Families::AcceptInvitation do
         expect(invitation.reload).to be_accepted
         expect(family.reload.member_count + family.pending_invitations_count).to eq(5)
       end
+
+      it 'refuses a sixth member once five members hold every seat' do
+        invitation
+        create_list(:family_membership, 4, family: family, role: :member)
+
+        expect(service.call).to be(false)
+        expect(service.error_message).to eq('This family has reached the maximum number of members.')
+        expect(invitation.reload).to be_pending
+        expect(invitee.reload.family_membership).to be_nil
+      end
     end
 
     context 'when user is already in another family' do
