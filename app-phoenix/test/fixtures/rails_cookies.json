@@ -1,0 +1,40 @@
+{
+  "rails_test_secret": "phoenix-a2-cookie-fixture-secret-not-for-production",
+  "now": "2026-09-26T12:00:00.000000Z",
+  "remember_for_seconds": 1209600,
+  "user": {
+    "id": 2,
+    "email": "phoenix-cookies@dawarich.test",
+    "encrypted_password": "$2a$04$vj0PBanxs8EQo6gTXLAc7.DY3dpVeIDh114B5U5v14jmrleRoS6R6",
+    "remember_created_at": "2026-09-26T11:59:00.000000Z"
+  },
+  "session_cookie": "IQU8ve7xep9O6ePm1n%2F%2Fsdy3IvUAUS1RqzEKhqJtwJzP80Qol9WhgSk08TKLO2Q8DFvIhWXhOUIfH9zsj9fmECUJRKe%2F7oGPVR4v0XPRXOXgROjp5n5gsDTVE2C3ON%2FZy5cdaoQWfg0Lca5qkDYh8T8uvgRx9YmO6k51CiuRXz8iYuTvg%2FmvPSc3WmvpkunyL7I1S4DzXpjn%2BHZufkouTYCtsAjBw6%2FDR%2B66Mv7cR9sCeAUNVKrSrg7vKGk8fD2zhfbjmOmyghvvZ9S%2BEv3j7zY9B4qKsJjbiYh0Nk0J77KdAZn8C8C6hHr%2FwN8MLDUxe0PgbXp%2F8Hey%2FXG61S1wKdb7aUnGDIMn1yoh66uYx9a0dKE2iZQSy38uKTLfzm0NYm83HLfww8YmPiCFEOaHWpZBbYku--JwTsoWzyjg%2FAbxc%2F--%2FmChrYNosF58oLQLks0QmA%3D%3D",
+  "remember_cookie": "eyJfcmFpbHMiOnsibWVzc2FnZSI6Ilcxc3lYU3dpSkRKaEpEQTBKSFpxTUZCQ1lXNTRjemhGVVc4MloxUllURUZqTnk0aUxDSXhOemt3TkRJME1EQXdMakFpWFE9PSIsImV4cCI6IjIwMjYtMTAtMTBUMTI6MDA6MDAuMDAwWiIsInB1ciI6ImNvb2tpZS5yZW1lbWJlcl91c2VyX3Rva2VuIn19--a91d32f89811b272bf8e94b68ca9dd70a90e2430",
+  "other_purpose_cookie": "K0B5qFuDbdqYaPVMnDQnyE0wtE%2FZH5lD2s3HVxC5q2M3zrvxhbQPfA6kbpvLhP8R2XKpQLxaoZEy64H6QERRXxskMJ0Xk57XkIFVN%2B0SaBow--nj46Ou%2F1fhgJdfm2--gR%2B5xpdgyF525r4L5ImPfg%3D%3D",
+  "expected_session": {
+    "session_id": "4eccd8f429059f38b83d27c4b582df27",
+    "warden.user.user.key": [
+      [
+        2
+      ],
+      "$2a$04$vj0PBanxs8EQo6gTXLAc7."
+    ],
+    "flash": {
+      "discard": [],
+      "flashes": {
+        "notice": "Signed in successfully."
+      }
+    }
+  },
+  "expected_remember": [
+    [
+      2
+    ],
+    "$2a$04$vj0PBanxs8EQo6gTXLAc7.",
+    "1790424000.0"
+  ],
+  "csrf": {
+    "session_cookie": "x4yiM4k1%2FpSNc5ODwrQrTYCQNqw0hRVjM%2F%2B1%2FuUgFxL0EefuSam5MLrq4Xgtm7%2BsBSdHo4s8c7XS3I%2FrxSxLO%2BwzVUfWKKxO%2F%2FYPJLXHYn9hGTrA8W6rbfefIKH9KUjykAMLtdqWfc2QL%2BtCBQdbIaAtafmaHgDqeF3rISlYCxJ9px7d6tpzUynEy7SLM8b%2BsXPTb4y3UAxQO0vAervcKkDuRd759bdoeplfTAHm%2F4R1Q%2BhIXMx3MsapI6z080uCL%2FoBVmTivPKL7p4j09X%2B0tIKqagMi6tRIoe3nkiLwrgpzDHWYq1t3%2BDzd4OtnOZcgh%2FxPcbuuCS4I9yq8GMoPBhr2JOUUYu57geXS3HkoAcIp%2BsHTlYmO%2BF%2BdrbWTGtPD4g4Q4uKx41k--bvI33HGvs6dDbl2S--xG2NcPfLLARhdWRpDy30Xg%3D%3D",
+    "masked_token": "DKw4kyP_1GboS7nZg7sz1DtSJ-TXPPXxVrs88Unx4Y6V_Chu3-yyMcu3oF2f1VpF4LV48nitgIbmeF7FQUvHXA"
+  }
+}
