@@ -14,8 +14,8 @@ defmodule Dawarich.Test.RawHTTP do
     socket
   end
 
-  def connect(port) do
-    {:ok, socket} = :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false])
+  def connect(port, timeout \\ 5_000) do
+    {:ok, socket} = :gen_tcp.connect({127, 0, 0, 1}, port, [:binary, active: false], timeout)
     socket
   end
 
@@ -91,6 +91,15 @@ defmodule Dawarich.Test.RawHTTP do
       end
 
     {status, headers, body}
+  end
+
+  def log_for_pid(log, pid) do
+    marker = "pid=" <> String.trim_leading(inspect(pid), "#PID")
+
+    log
+    |> String.split(~r/\n(?=\d{2}:\d{2}:\d{2}\.\d{3})/)
+    |> Enum.filter(&String.contains?(&1, marker))
+    |> Enum.join("\n")
   end
 
   def read_until_closed(socket, acc \\ "") do

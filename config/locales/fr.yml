@@ -4526,7 +4526,7 @@ fr:
         export_failed: Export échoué
         export_name_failed_message_stacktrace_n: 'L''export "%{name}" a échoué : %{message},
           trace d''exécution : %{backtrace}'
-        unsupported_file_format: 'Format de fichier non pris en charge : %{format}'
+        unsupported_file_format: 'Format de fichier non pris en charge : %{file_format}'
     families:
       auto_create:
         default_name: Ma famille
