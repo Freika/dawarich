@@ -2,9 +2,18 @@ import assert from "node:assert/strict"
 import { readFile } from "node:fs/promises"
 import test from "node:test"
 
+process.env.TZ = "Europe/Berlin"
+
 const source = await readFile(
   new URL(
     "../../app/javascript/controllers/maps/maplibre/event_handlers.js",
+    import.meta.url,
+  ),
+  "utf8",
+)
+const dateManagerSource = await readFile(
+  new URL(
+    "../../app/javascript/controllers/maps/maplibre/date_manager.js",
     import.meta.url,
   ),
   "utf8",
@@ -16,6 +25,7 @@ const stubs = `class PointDragGesture {
   cancel() {}
   canDrag() { return false }
 }
+${dateManagerSource.replace("export class", "class")}
 `
 const moduleUrl = `data:text/javascript;base64,${Buffer.from(stubs + withoutImports).toString("base64")}`
 const { shouldShowPointPopup, EventHandlers } = await import(moduleUrl)
@@ -158,6 +168,89 @@ globalThis.CustomEvent ??= class {
     this.detail = init.detail
   }
 }
+
+test("a visit click opens the profile day", (t) => {
+  const opened = []
+  const originalDispatch = globalThis.document.dispatchEvent
+  globalThis.document.dispatchEvent = (event) => opened.push(event.detail)
+  t.after(() => {
+    globalThis.document.dispatchEvent = originalDispatch
+  })
+  const handlers = new EventHandlers({}, { timezoneValue: "America/Los_Angeles" })
+
+  handlers.handleVisitClick({
+    features: [
+      { properties: { id: 7, started_at: "2020-04-18T05:00:00Z" } },
+    ],
+  })
+
+  assert.deepEqual(opened, [{ visitId: 7, date: "2020-04-17" }])
+})
+
+test("a track click opens the profile day", (t) => {
+  const opened = []
+  const originalDispatch = globalThis.document.dispatchEvent
+  globalThis.document.dispatchEvent = (event) => opened.push(event.detail)
+  t.after(() => {
+    globalThis.document.dispatchEvent = originalDispatch
+  })
+  const handlers = new EventHandlers(
+    { getLayer: () => undefined },
+    {
+      timezoneValue: "America/Los_Angeles",
+      layerManager: { getLayer: () => undefined },
+      api: { fetchTrackWithSegments: () => new Promise(() => {}) },
+    },
+  )
+
+  handlers.handleTrackClick({
+    point: { x: 1, y: 1 },
+    features: [
+      {
+        properties: { id: 7, start_at: "2020-04-18T05:00:00Z" },
+        geometry: { type: "LineString", coordinates: [] },
+      },
+    ],
+  })
+
+  assert.deepEqual(opened, [
+    { trackId: 7, date: "2020-04-17", startAt: "2020-04-18T05:00:00Z" },
+  ])
+})
+
+test("map clicks keep their timestamp day without a profile timezone", (t) => {
+  const opened = []
+  const originalDispatch = globalThis.document.dispatchEvent
+  globalThis.document.dispatchEvent = (event) => opened.push(event.detail)
+  t.after(() => {
+    globalThis.document.dispatchEvent = originalDispatch
+  })
+  const controller = {
+    layerManager: { getLayer: () => undefined },
+    api: { fetchTrackWithSegments: () => new Promise(() => {}) },
+  }
+  const handlers = new EventHandlers({ getLayer: () => undefined }, controller)
+
+  handlers.handleVisitClick({
+    features: [
+      { properties: { id: 7, started_at: "2020-04-18T00:30:00+10:00" } },
+    ],
+  })
+  handlers.handleTrackClick({
+    point: { x: 1, y: 1 },
+    features: [
+      {
+        properties: { id: 8, start_at: "2020-04-18T00:30:00+10:00" },
+        geometry: { type: "LineString", coordinates: [] },
+      },
+    ],
+  })
+
+  assert.deepEqual(opened, [
+    { visitId: 7, date: "2020-04-18" },
+    { trackId: 8, date: "2020-04-18", startAt: "2020-04-18T00:30:00+10:00" },
+  ])
+})
 
 function loadSegmentsHarness(fetchedFeature, pointTileRange = undefined) {
   const shown = []

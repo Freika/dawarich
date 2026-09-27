@@ -2,6 +2,7 @@ import { translate } from "i18n"
 import * as maplibregl from "maplibre-gl"
 import { Toast } from "maps_maplibre/components/toast"
 import { PointDragGesture } from "maps_maplibre/editing/point_drag_gesture"
+import { DateManager } from "./date_manager"
 import {
   formatDistance,
   formatSpeed,
@@ -236,7 +237,12 @@ export class EventHandlers {
     const visitId = Number(properties.id)
     const startedAt =
       typeof properties.started_at === "string" ? properties.started_at : null
-    const date = startedAt ? startedAt.slice(0, 10) : null
+    const date = startedAt && this.controller.timezoneValue
+      ? DateManager.formatDateForAPI(
+          new Date(startedAt),
+          this.controller.timezoneValue,
+        ).slice(0, 10)
+      : startedAt?.slice(0, 10) ?? null
 
     document.dispatchEvent(
       new CustomEvent("timeline:open-visit", {
@@ -411,11 +417,14 @@ export class EventHandlers {
     }
     this._loadTrackSegments(properties.id, fullFeature, generation)
 
-    // Derive the day from the track's start. `start_at` comes from our own
-    // serializer as an ISO8601 string — safe to slice the date portion.
     const startAt =
       typeof properties.start_at === "string" ? properties.start_at : null
-    const date = startAt ? startAt.slice(0, 10) : null
+    const date = startAt && this.controller.timezoneValue
+      ? DateManager.formatDateForAPI(
+          new Date(startAt),
+          this.controller.timezoneValue,
+        ).slice(0, 10)
+      : startAt?.slice(0, 10) ?? null
     const trackId = Number(properties.id)
 
     document.dispatchEvent(
