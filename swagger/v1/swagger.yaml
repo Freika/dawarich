@@ -1776,6 +1776,20 @@ paths:
                     type: string
                     example: ok
                     description: Application health status
+                  phoenix:
+                    type: object
+                    properties:
+                      status:
+                        type: string
+                        enum:
+                        - ok
+                        - stale
+                        - absent
+                        - unknown
+                        description: Phoenix in this container
+                      alarm:
+                        type: boolean
+                        description: Jobs owned by Phoenix are not being processed
   "/api/v1/immich/enrich/scan":
     post:
       summary: Scans Immich for photos missing geodata

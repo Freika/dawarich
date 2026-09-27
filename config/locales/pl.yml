@@ -1,6 +1,12 @@
 pl:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Zadania Phoenix"
+        ok: "Phoenix przetwarza swoje zadania."
+        alarm: "Phoenix nie przetwarza swoich zadań; czekają, aż uruchomi się proces Phoenix."
+        not_installed: "Phoenix nie utworzył jeszcze swoich tabel w tej bazie danych; wszystkie zadania działają w Sidekiq."
+        unknown: "Nie udało się odczytać stanu zadań Phoenix z bazy danych; odśwież stronę, aby spróbować ponownie."
       show:
         title: "Ustawienia instancji"
         intro: "Te ustawienia dotyczą całej instancji. Ustawienie pochodzące ze zmiennej środowiskowej jest wyświetlane tylko do odczytu: usuń zmienną, aby edytować je tutaj."

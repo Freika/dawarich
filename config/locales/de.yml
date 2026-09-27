@@ -1,6 +1,12 @@
 de:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Phoenix-Jobs"
+        ok: "Phoenix verarbeitet seine Jobs."
+        alarm: "Phoenix verarbeitet seine Jobs nicht; sie warten, bis ein Phoenix-Prozess läuft."
+        not_installed: "Phoenix hat seine Tabellen in dieser Datenbank noch nicht angelegt; alle Jobs laufen in Sidekiq."
+        unknown: "Der Status der Phoenix-Jobs konnte nicht aus der Datenbank gelesen werden; lade die Seite neu, um es erneut zu versuchen."
       show:
         title: "Instanz-Einstellungen"
         intro: "Diese Einstellungen gelten für die gesamte Instanz. Eine Einstellung, die über eine Umgebungsvariable gesetzt ist, wird schreibgeschützt angezeigt: Entferne die Variable, um sie hier zu bearbeiten."
