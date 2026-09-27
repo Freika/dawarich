@@ -123,7 +123,8 @@ net="$(docker inspect -f '{{range $name, $_ := .NetworkSettings.Networks}}{{$nam
 sign_in='jar="$(mktemp)"
   token="$(curl -fsS -c "$jar" -H "Host: 127.0.0.1:3900" "$1/users/sign_in" | sed -n "s/.*name=\"authenticity_token\" value=\"\([^\"]*\)\".*/\1/p" | head -1)"
   if [ -n "$2" ]; then xff="X-Forwarded-For: $2"; else xff="X-A2-Smoke: 1"; fi
-  curl -sS -o /dev/null -w "%{http_code}" -b "$jar" -c "$jar" -H "Host: 127.0.0.1:3900" -H "$xff" \
+  if [ -n "${3:-}" ]; then nominated="Connection: $3"; else nominated="X-A2-Smoke-Connection: 1"; fi
+  curl -sS -o /dev/null -w "%{http_code}" -b "$jar" -c "$jar" -H "Host: 127.0.0.1:3900" -H "$xff" -H "$nominated" \
     --data-urlencode "authenticity_token=$token" --data-urlencode "user[email]=a2-smoke@example.com" \
     --data-urlencode "user[password]=phoenix-a2-smoke-password" "$1/users/sign_in"'
 signed_in_from() {
@@ -137,6 +138,12 @@ signed_in_from proxied >"$work/ips-proxied"
 read -r direct_ip proxied_client <"$work/ips-proxied"
 [ "$proxied_client" = 203.0.113.7 ] || fail "behind Phoenix, a trusted proxy's X-Forwarded-For client was recorded as $proxied_client"
 case "$direct_ip" in ''|127.0.0.1|::ffff:*|::1) fail "behind Phoenix, a direct client was recorded as '$direct_ip'" ;; esac
+case "$(docker run --rm --network "$net" --entrypoint sh "$IMAGE" -c "$sign_in" _ http://dawarich_app:3000 203.0.113.8 X-Forwarded-For)" in
+  302|303) ;; *) fail "sign-in through a proxy container with Connection: X-Forwarded-For failed" ;;
+esac
+nominated_client="$(docker exec a0_app bin/rails runner 'puts User.find_by!(email: "a2-smoke@example.com").current_sign_in_ip' 2>/dev/null | tail -1)"
+[ "$nominated_client" = 203.0.113.8 ] \
+  || fail "behind Phoenix, a client that named X-Forwarded-For in Connection was recorded as $nominated_client"
 
 docker exec a0_app sh -c 'head -c 1048576 /dev/urandom >/var/app/public/a2-1m.bin'
 bench() {
