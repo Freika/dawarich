@@ -237,12 +237,10 @@ export class EventHandlers {
     const visitId = Number(properties.id)
     const startedAt =
       typeof properties.started_at === "string" ? properties.started_at : null
-    const date = startedAt && this.controller.timezoneValue
-      ? DateManager.formatDateForAPI(
-          new Date(startedAt),
-          this.controller.timezoneValue,
-        ).slice(0, 10)
-      : startedAt?.slice(0, 10) ?? null
+    const date = DateManager.dayInTimeZone(
+      startedAt,
+      this.controller.timezoneValue,
+    )
 
     document.dispatchEvent(
       new CustomEvent("timeline:open-visit", {
@@ -419,12 +417,10 @@ export class EventHandlers {
 
     const startAt =
       typeof properties.start_at === "string" ? properties.start_at : null
-    const date = startAt && this.controller.timezoneValue
-      ? DateManager.formatDateForAPI(
-          new Date(startAt),
-          this.controller.timezoneValue,
-        ).slice(0, 10)
-      : startAt?.slice(0, 10) ?? null
+    const date = DateManager.dayInTimeZone(
+      startAt,
+      this.controller.timezoneValue,
+    )
     const trackId = Number(properties.id)
 
     document.dispatchEvent(
