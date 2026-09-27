@@ -36,3 +36,5 @@ config :dawarich, DawarichWeb.Endpoint,
   secret_key_base: String.duplicate("phoenix-a2-test-endpoint-secret-", 3)
 
 config :logger, level: :warning
+
+config :dawarich, :i18n_path, Path.expand("../tmp/i18n.json", __DIR__)
