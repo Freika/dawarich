@@ -125,6 +125,41 @@ defmodule DawarichWeb.PublicFilesTest do
     end
   end
 
+  test "serves from the boot configuration after the process cwd changes", %{
+    root: root,
+    tmp_dir: tmp_dir
+  } do
+    previous = Application.get_env(:dawarich, :public_files)
+    previous_rails_env = System.get_env("RAILS_ENV")
+    Application.put_env(:dawarich, :public_files, %{root: root, env: env("plain")})
+
+    original_cwd = File.cwd!()
+
+    on_exit(fn ->
+      File.cd!(original_cwd)
+
+      if previous,
+        do: Application.put_env(:dawarich, :public_files, previous),
+        else: Application.delete_env(:dawarich, :public_files)
+
+      if previous_rails_env,
+        do: System.put_env("RAILS_ENV", previous_rails_env),
+        else: System.delete_env("RAILS_ENV")
+    end)
+
+    changed_cwd = Path.join(tmp_dir, "cwd")
+    File.mkdir_p!(changed_cwd)
+    File.cd!(changed_cwd)
+    System.put_env("RAILS_ENV", "development")
+
+    conn =
+      Plug.Test.conn(:get, "/robots.txt")
+      |> then(&%{&1 | req_headers: [{"host", "dawarich.example"}]})
+      |> PublicFiles.call([])
+
+    assert conn.status == 200
+  end
+
   test "the endpoint serves public/ before the Strangler and leaves the rest to Puma", %{
     root: root
   } do
@@ -133,6 +168,7 @@ defmodule DawarichWeb.PublicFilesTest do
     previous =
       Map.new(~w(RAILS_ENV APPLICATION_HOSTS APPLICATION_PROTOCOL), &{&1, System.get_env(&1)})
 
+    previous_public_files = Application.get_env(:dawarich, :public_files)
     Application.put_env(:dawarich, :rails_upstream, {"127.0.0.1", upstream.port})
     Application.put_env(:dawarich, :public_root, root)
 
@@ -142,9 +178,15 @@ defmodule DawarichWeb.PublicFilesTest do
       "APPLICATION_PROTOCOL" => "http"
     })
 
+    Application.put_env(:dawarich, :public_files, PublicFiles.boot_config())
+
     on_exit(fn ->
       Application.put_env(:dawarich, :rails_upstream, nil)
       Application.delete_env(:dawarich, :public_root)
+
+      if previous_public_files,
+        do: Application.put_env(:dawarich, :public_files, previous_public_files),
+        else: Application.delete_env(:dawarich, :public_files)
 
       Enum.each(previous, fn {name, value} ->
         if value, do: System.put_env(name, value), else: System.delete_env(name)

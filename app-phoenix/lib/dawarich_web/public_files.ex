@@ -39,6 +39,13 @@ defmodule DawarichWeb.PublicFiles do
   @compressible ~r/\A(?:text\/|application\/javascript|image\/svg\+xml)/
   @encodings [{"br", ".br", ~r/\bbr\b/i}, {"gzip", ".gz", ~r/\bgzip\b/i}]
 
+  def boot_config do
+    %{
+      env: Map.new(@env, &{&1, System.get_env(&1)}),
+      root: Application.get_env(:dawarich, :public_root) || Path.join(File.cwd!(), "public")
+    }
+  end
+
   def content_types, do: @types
 
   @impl true
@@ -46,8 +53,9 @@ defmodule DawarichWeb.PublicFiles do
 
   @impl true
   def call(%{method: method} = conn, opts) when method in ["GET", "HEAD"] do
-    env = Keyword.get_lazy(opts, :env, fn -> Map.new(@env, &{&1, System.get_env(&1)}) end)
-    root = Keyword.get_lazy(opts, :root, &default_root/0)
+    %{env: default_env, root: default_root} = Application.fetch_env!(:dawarich, :public_files)
+    env = Keyword.get(opts, :env, default_env)
+    root = Keyword.get(opts, :root, default_root)
 
     with true <- RailsSecret.rails_env(env) in @serving_envs,
          [] <- get_req_header(conn, "range"),
@@ -62,9 +70,6 @@ defmodule DawarichWeb.PublicFiles do
   end
 
   def call(conn, _opts), do: conn
-
-  defp default_root,
-    do: Application.get_env(:dawarich, :public_root) || Path.join(File.cwd!(), "public")
 
   defp header(conn, name) do
     case get_req_header(conn, name) do
