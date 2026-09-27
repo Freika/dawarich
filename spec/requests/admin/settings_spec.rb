@@ -16,6 +16,39 @@ RSpec.describe 'Admin::Settings' do
     InstanceSettings::Resolver.reset!
   end
 
+  describe 'the Phoenix jobs card' do
+    before { JobHealth.reset! }
+
+    it 'says every job runs in Sidekiq before Phoenix ever migrated' do
+      sign_in admin
+
+      get '/admin/settings'
+
+      expect(response.body).to include(I18n.t('admin.settings.phoenix_jobs.not_installed'))
+    end
+
+    it 'shows the alarm when Phoenix owns work and does not run' do
+      job_owner!('command:trips.calculate', :oban)
+      sign_in admin
+
+      get '/admin/settings'
+
+      expect(response.body).to include(I18n.t('admin.settings.phoenix_jobs.alarm'))
+      expect(response.body).to include('command:trips.calculate')
+    end
+
+    it 'says the status is unknown instead of failing the page when the database errors' do
+      phoenix_tables!
+      ActiveRecord::Base.connection.execute('DROP TABLE job_outbox')
+      sign_in admin
+
+      get '/admin/settings'
+
+      expect(response).to have_http_status(:ok)
+      expect(response.body).to include(I18n.t('admin.settings.phoenix_jobs.unknown'))
+    end
+  end
+
   describe 'authorisation' do
     it 'does not serve the page to a non-admin' do
       sign_in non_admin

@@ -74,4 +74,11 @@ RSpec.describe 'dawarich:jobs' do
     expect(JobOutbox.count).to eq(0)
     expect(JobOwnership.with_owner('command:trips.calculate') { :sidekiq_runs }).to eq(:sidekiq_runs)
   end
+
+  it 'prints the health summary and gauges' do
+    job_owner!('command:trips.calculate', :oban)
+
+    Rake::Task['dawarich:jobs:status'].reenable
+    expect { Rake::Task['dawarich:jobs:status'].invoke }.to output(/"alarm": true.*command:trips.calculate/m).to_stdout
+  end
 end

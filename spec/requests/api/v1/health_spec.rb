@@ -29,6 +29,65 @@ RSpec.describe 'Api::V1::Healths', type: :request do
 
       expect(response.headers['X-Dawarich-Version']).to eq(APP_VERSION)
     end
+
+    context 'with the Phoenix field' do
+      before { JobHealth.reset! }
+
+      it 'reports this container and the alarm without changing the status code' do
+        JobHealth.refresh!
+
+        get '/api/v1/health'
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body).to eq('status' => 'ok', 'phoenix' => { 'status' => 'absent', 'alarm' => false })
+      end
+
+      it 'raises the alarm when Oban owns a key and no Phoenix beats' do
+        job_owner!('command:trips.calculate', :oban)
+        JobHealth.refresh!
+
+        get '/api/v1/health'
+
+        expect(response).to have_http_status(:success)
+        expect(response.parsed_body['phoenix']).to eq('status' => 'absent', 'alarm' => true)
+      end
+
+      it 'answers unknown before the first refresh and sends no query at all on the request path' do
+        job_owner!('command:trips.calculate', :oban)
+        statements = []
+        callback = ->(*, payload) { statements << payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { get '/api/v1/health' }
+
+        expect(response.parsed_body['phoenix']).to eq('status' => 'unknown', 'alarm' => false)
+        expect(statements).to eq([])
+      end
+
+      it 'sends no query even with feature flags stored in the database, as outside the test environment' do
+        Flipper.instance = Flipper.new(Flipper::Adapters::ActiveRecord.new)
+        statements = []
+        callback = ->(*, payload) { statements << payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { get '/api/v1/health' }
+
+        expect(response).to have_http_status(:success)
+        expect(statements).to eq([])
+      ensure
+        Flipper.instance = nil
+      end
+
+      it 'still preloads the feature flags once for every other request' do
+        Flipper.instance = Flipper.new(Flipper::Adapters::ActiveRecord.new)
+        statements = []
+        callback = ->(*, payload) { statements << payload[:sql] }
+
+        ActiveSupport::Notifications.subscribed(callback, 'sql.active_record') { get '/api/v1/points' }
+
+        expect(statements.grep(/flipper_features/).size).to eq(1)
+      ensure
+        Flipper.instance = nil
+      end
+    end
   end
 
   describe 'GET /ready' do

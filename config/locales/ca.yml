@@ -1,6 +1,12 @@
 ca:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Tasques de Phoenix"
+        ok: "Phoenix està processant les seves tasques."
+        alarm: "Phoenix no està processant les seves tasques; esperen fins que s'executi un procés de Phoenix."
+        not_installed: "Phoenix encara no ha creat les seves taules en aquesta base de dades; totes les tasques s'executen a Sidekiq."
+        unknown: "No s'ha pogut llegir l'estat de les tasques de Phoenix a la base de dades; torna a carregar la pàgina per tornar-ho a provar."
       show:
         title: "Configuració de la instància"
         intro: "Aquesta configuració s'aplica a tota la instància. Un paràmetre definit per una variable d'entorn es mostra només de lectura: elimina la variable per editar-lo aquí."

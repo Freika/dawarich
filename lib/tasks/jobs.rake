@@ -38,5 +38,11 @@ namespace :dawarich do
       JobCommands.replay!(args[:event_id], actor: JobOwnership.operator, reason: args[:reason])
       puts "#{args[:event_id]}: pending"
     end
+
+    desc 'Show who runs each job key, the outbox, Phoenix heartbeats and Oban job counts'
+    task status: :environment do
+      summary = JobHealth.compute(ENV.fetch('DAWARICH_PHOENIX_NODE', nil))
+      puts JSON.pretty_generate(summary:, gauges: JobHealth.gauges)
+    end
   end
 end

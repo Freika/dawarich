@@ -59,6 +59,10 @@ rescue StandardError => e
   Rails.logger.warn("[InstanceSettings] subscriber failed to start: #{e.class}: #{e.message}")
 end
 
+after_booted do
+  JobHealth.warn_if_absent
+end
+
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart
 
