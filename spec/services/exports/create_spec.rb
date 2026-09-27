@@ -108,10 +108,10 @@ RSpec.describe Exports::Create do
       let(:file_format) { :archive }
 
       it 'raises a readable argument error' do
-        service = described_class.new(export:)
+        create_export
 
-        expect { service.send(:build_export_tempfile) }
-          .to raise_error(ArgumentError, 'Unsupported file format: archive')
+        expect(export.reload).to be_failed
+        expect(export.error_message).to eq('Unsupported file format: archive')
       end
     end
 
