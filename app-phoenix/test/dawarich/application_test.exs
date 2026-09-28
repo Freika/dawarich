@@ -28,7 +28,15 @@ defmodule Dawarich.ApplicationTest do
 
     assert ids(:none) == base ++ [DawarichWeb.Endpoint, Dawarich.Jobs.Supervisor]
     assert ids(@direct) == base ++ [RailsServer, Dawarich.Jobs.Supervisor]
-    assert ids(@proxy) == base ++ [RailsServer, DawarichWeb.Endpoint, Dawarich.Jobs.Supervisor]
+
+    assert ids(@proxy) ==
+             base ++
+               [
+                 RailsServer,
+                 DawarichWeb.Endpoint,
+                 Dawarich.Front.Drainer,
+                 Dawarich.Jobs.Supervisor
+               ]
   end
 
   test "leaves the jobs out when the jobs runtime is off" do
@@ -39,7 +47,8 @@ defmodule Dawarich.ApplicationTest do
              Oban,
              Phoenix.PubSub.Supervisor,
              RailsServer,
-             DawarichWeb.Endpoint
+             DawarichWeb.Endpoint,
+             Dawarich.Front.Drainer
            ]
   end
 
