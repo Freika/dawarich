@@ -57,6 +57,30 @@ RSpec.describe JobCommands do
     expect(described_class.forward('users.explore_features_mail', args[0], **args[1])).to eq(0)
   end
 
+  it 'registers achievements.check and areas.relabel_visits at version 1' do
+    versions = described_class::COMMANDS.slice('achievements.check', 'areas.relabel_visits')
+                                      .transform_values { _1.fetch(:version) }
+
+    expect(versions).to eq('achievements.check' => 1, 'areas.relabel_visits' => 1)
+  end
+
+  it 're-homes pending achievement and relabel commands to their Sidekiq jobs' do
+    user = create(:user)
+    area = create(:area, user: user)
+    job_owner!('command:achievements.check', :oban)
+    job_owner!('command:areas.relabel_visits', :oban)
+    described_class.forward('achievements.check', { 'user_id' => user.id, 'notify' => true, 'oldest_timestamp' => 50 },
+                            event_id: SecureRandom.uuid, aggregate_id: user.id, producer: 'spec')
+    described_class.forward('areas.relabel_visits', { 'area_id' => area.id }, event_id: SecureRandom.uuid,
+                            aggregate_id: area.id, dedupe_key: area.id.to_s, producer: 'spec')
+
+    expect { described_class.rehome!('achievements.check', by: 'spec') }
+      .to have_enqueued_job(Achievements::CheckJob).with(user.id, notify: true, oldest_timestamp: 50)
+    expect { described_class.rehome!('areas.relabel_visits', by: 'spec') }
+      .to have_enqueued_job(Areas::RelabelVisitsJob).with(area.id)
+    expect(JobOutbox.pending.count).to eq(0)
+  end
+
   it 'cancels only the pending commands of one aggregate' do
     job_owner!('command:users.explore_features_mail', :oban)
     %w[7 8].each do |id|

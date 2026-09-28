@@ -9,7 +9,19 @@ class Areas::RelabelVisitsJob < ApplicationJob
   queue_as :visit_suggesting
   sidekiq_options retry: 1
 
+  OWNER_KEY = 'command:areas.relabel_visits'
+
+  def self.forward(area_id, token)
+    JobCommands.forward(
+      'areas.relabel_visits', { 'area_id' => area_id },
+      event_id: Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "areas.relabel_visits:#{area_id}:#{token}"),
+      aggregate_id: area_id, dedupe_key: area_id.to_s, producer: name
+    )
+  end
+
   def perform(area_id)
+    return self.class.forward(area_id, job_id) if JobOwnership.with_owner(OWNER_KEY) { :owned } == :not_owner
+
     area = Area.find_by(id: area_id)
     return unless area
 
