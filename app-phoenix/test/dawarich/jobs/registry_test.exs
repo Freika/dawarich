@@ -49,6 +49,18 @@ defmodule Dawarich.Jobs.RegistryTest do
     assert Dawarich.Lite.ArchivalWarningWorker.key() == "cron:lite_archival_warning_job"
   end
 
+  test "the wave-3 command keys are exactly these and unclaimable" do
+    entries =
+      for %{key: "command:" <> type} = entry <- Registry.entries(),
+          type in ~w(achievements.check areas.relabel_visits),
+          do: entry
+
+    assert length(entries) == 2
+    assert Enum.all?(entries, &(&1.claimable == false))
+    assert Registry.command("achievements.check") == {:ok, Dawarich.Achievements.CheckWorker}
+    assert Registry.command("areas.relabel_visits") == {:ok, Dawarich.Areas.RelabelWorker}
+  end
+
   test "commands resolve by type and unknown types do not" do
     for %{kind: :command, key: "command:" <> type, worker: worker} <- Registry.entries() do
       assert Registry.command(type) == {:ok, worker}
