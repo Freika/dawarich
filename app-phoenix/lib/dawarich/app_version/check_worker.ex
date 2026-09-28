@@ -23,16 +23,10 @@ defmodule Dawarich.AppVersion.CheckWorker do
   defp rails_env, do: System.get_env("RAILS_ENV") || System.get_env("RACK_ENV") || "development"
 
   defp fetch(url) do
-    request =
-      {String.to_charlist(url),
-       [{~c"user-agent", ~c"Dawarich"}, {~c"accept", ~c"application/json"}]}
-
-    options = [connect_timeout: 5_000, timeout: 5_000, ssl: ssl(url)]
-
-    with {:ok, {{_, status, _}, _headers, body}} when status in 200..299 <-
-           :httpc.request(:get, request, options, body_format: :binary),
+    with {:ok, status, body} when status in 200..299 <-
+           Dawarich.Http.get(url, [{"user-agent", "Dawarich"}, {"accept", "application/json"}]),
          {:ok, tags} when is_list(tags) <- Jason.decode(body) do
-      {:ok, Enum.find_value(tags, running_version(), &release_name/1)}
+      {:ok, Enum.find_value(tags, Dawarich.AppVersion.current(), &release_name/1)}
     else
       _ -> :error
     end
@@ -40,23 +34,6 @@ defmodule Dawarich.AppVersion.CheckWorker do
 
   defp release_name(%{"name" => name}) when is_binary(name), do: if(name =~ @release, do: name)
   defp release_name(_tag), do: nil
-
-  defp running_version do
-    :dawarich
-    |> Application.get_env(:app_version_file, ".app_version")
-    |> File.read!()
-    |> String.trim()
-  end
-
-  defp ssl("https:" <> _) do
-    [
-      verify: :verify_peer,
-      cacerts: :public_key.cacerts_get(),
-      customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]
-    ]
-  end
-
-  defp ssl(_url), do: []
 
   defp store(version) do
     repo = Dawarich.Jobs.repo()

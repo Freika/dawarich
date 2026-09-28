@@ -1,0 +1,10 @@
+{
+  "secret": "phoenix-a5-jwt-fixture-secret-not-for-production",
+  "user_id": 1,
+  "email": "token@dawarich.test",
+  "now": 1790424000,
+  "jti": "00000000-0000-4000-8000-000000000000",
+  "header": "{\"alg\":\"HS256\"}",
+  "payload": "{\"user_id\":1,\"email\":\"token@dawarich.test\",\"purpose\":\"checkout\",\"jti\":\"00000000-0000-4000-8000-000000000000\",\"exp\":1790425800}",
+  "signature": "19ee166db8b7a5ea2302c82361f8da45e3528d155eee3100e227aeadad35263d"
+}

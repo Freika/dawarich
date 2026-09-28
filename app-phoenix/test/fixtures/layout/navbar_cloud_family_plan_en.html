@@ -12,6 +12,9 @@
         <li><a class="" href="http://www.example.com/stats">Stats</a></li>
         <li><a class="" href="http://www.example.com/insights">Insights<sup>α</sup></a></li>
         <li><a class="" href="/achievements">Achievements</a></li>
+          <li>
+              <a class="" href="/family/new">Family<sup>α</sup></a>
+          </li>
         <li>
           <details>
             <summary>My data</summary>
@@ -24,9 +27,6 @@
             </ul>
           </details>
         </li>
-          <li>
-            <a class="btn btn-sm btn-success" href="/auth/dawarich?token=REDACTED">Subscribe</a>
-          </li>
           <div class="divider my-1"></div>
           <li><a data-turbo="false" class="flex items-center gap-2" href="/settings/theme?theme=light">
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
@@ -74,6 +74,9 @@
       <li><a class="mx-1 " href="http://www.example.com/stats">Stats</a></li>
       <li><a class="mx-1 " href="http://www.example.com/insights">Insights<sup>α</sup></a></li>
       <li><a class="mx-1 " href="/achievements">Achievements</a></li>
+        <li>
+            <a class="mx-1 " href="/family/new">Family<sup>α</sup></a>
+        </li>
       <li>
         <details>
           <summary>My data</summary>
@@ -90,9 +93,7 @@
   </div>
   <div class="navbar-end">
       <div class="flex items-center gap-1 xl:hidden">
-          <a class="btn btn-xs btn-info" href="/auth/dawarich?token=REDACTED">
-            7d left
-</a>
+
         <a class="btn btn-ghost btn-sm relative" href="/notifications">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
 </a>
@@ -103,7 +104,7 @@
           <ul tabindex="0" class="dropdown-content menu menu-sm mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52">
             <li><a href="/users/edit">Account</a></li>
             <li><a href="/settings/general">Settings</a></li>
-              <li><a href="/auth/dawarich?token=REDACTED">Subscription</a></li>
+              <li><a href="https://manager.dawarich.test/auth/dawarich?token=REDACTED">Subscription</a></li>
             <li>
               <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
                 Get started
@@ -115,15 +116,7 @@
       </div>
 
       <div class="hidden xl:flex items-center gap-2 flex-nowrap">
-          <a class="join flex-nowrap" href="/auth/dawarich?token=REDACTED">
-            <span class="join-item btn btn-sm btn-info">
-                  <span class="tooltip tooltip-bottom" data-tip="Your trial will end in 7 days" title="Your trial will end in 7 days">
-                    7 days remaining
-                  </span>
-            </span><span class="join-item btn btn-sm btn-success">
-              Subscribe
-            </span>
-</a>
+
         <ul class="menu menu-horizontal px-1 flex-nowrap">
           <turbo-cable-stream-source channel="Turbo::StreamsChannel" signed-stream-name="SIGNED"></turbo-cable-stream-source>
           <li data-controller="notifications">
@@ -162,7 +155,7 @@
               <ul class="p-2 bg-base-100 rounded-t-none z-[50]">
                 <li><a href="/users/edit">Account</a></li>
                 <li><a href="/settings/general">Settings</a></li>
-                  <li><a href="/auth/dawarich?token=REDACTED">Subscription</a></li>
+                  <li><a href="https://manager.dawarich.test/auth/dawarich?token=REDACTED">Subscription</a></li>
                 <li>
                   <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
                     Get started

@@ -1,8 +1,8 @@
 {
   "state": {
     "user": {
-      "id": 1888365821,
-      "email": "layout-cloud@dawarich.test",
+      "id": 2100723155,
+      "email": "navbar-family-plan@dawarich.test",
       "theme": "dark",
       "settings": {
         "maps": {
@@ -17,16 +17,17 @@
         "merge_threshold_minutes": "15"
       },
       "admin": false,
-      "status": 2,
-      "plan": 1,
-      "active_until": "2026-10-03T12:00:00.000000Z",
+      "status": 1,
+      "plan": 2,
+      "active_until": "2027-07-23T12:00:00.000000Z",
       "subscription_source": 0,
       "changelog_consent": 0
     },
     "notifications": [],
     "family": null,
-    "self_hosted": false,
     "accept_language": null,
+    "self_hosted": false,
+    "manager_url": "https://manager.dawarich.test",
     "path": "/notifications"
   },
   "html": {

@@ -3,6 +3,7 @@ defmodule DawarichWeb.Layouts do
   use Phoenix.Component
   import DawarichWeb.Chrome
   import DawarichWeb.Head
+  import DawarichWeb.Navbar, only: [navbar: 1]
   import DawarichWeb.Translate, only: [t: 3]
   embed_templates "layouts/*"
 

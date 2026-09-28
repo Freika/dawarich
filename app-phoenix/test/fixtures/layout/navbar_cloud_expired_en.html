@@ -25,7 +25,7 @@
           </details>
         </li>
           <li>
-            <a class="btn btn-sm btn-success" href="/auth/dawarich?token=REDACTED">Subscribe</a>
+            <a class="btn btn-sm btn-success" href="https://manager.dawarich.test/auth/dawarich?token=REDACTED">Subscribe</a>
           </li>
           <div class="divider my-1"></div>
           <li><a data-turbo="false" class="flex items-center gap-2" href="/settings/theme?theme=light">
@@ -90,8 +90,8 @@
   </div>
   <div class="navbar-end">
       <div class="flex items-center gap-1 xl:hidden">
-          <a class="btn btn-xs btn-info" href="/auth/dawarich?token=REDACTED">
-            7d left
+          <a class="btn btn-xs btn-error" href="https://manager.dawarich.test/auth/dawarich?token=REDACTED">
+            Expired
 </a>
         <a class="btn btn-ghost btn-sm relative" href="/notifications">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
@@ -103,7 +103,7 @@
           <ul tabindex="0" class="dropdown-content menu menu-sm mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52">
             <li><a href="/users/edit">Account</a></li>
             <li><a href="/settings/general">Settings</a></li>
-              <li><a href="/auth/dawarich?token=REDACTED">Subscription</a></li>
+              <li><a href="https://manager.dawarich.test/auth/dawarich?token=REDACTED">Subscription</a></li>
             <li>
               <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
                 Get started
@@ -115,11 +115,9 @@
       </div>
 
       <div class="hidden xl:flex items-center gap-2 flex-nowrap">
-          <a class="join flex-nowrap" href="/auth/dawarich?token=REDACTED">
-            <span class="join-item btn btn-sm btn-info">
-                  <span class="tooltip tooltip-bottom" data-tip="Your trial will end in 7 days" title="Your trial will end in 7 days">
-                    7 days remaining
-                  </span>
+          <a class="join flex-nowrap" href="https://manager.dawarich.test/auth/dawarich?token=REDACTED">
+            <span class="join-item btn btn-sm btn-error">
+                  <span class="tooltip tooltip-bottom" data-tip="Trial expired" title="Trial expired">Trial expired 🥺</span>
             </span><span class="join-item btn btn-sm btn-success">
               Subscribe
             </span>
@@ -162,7 +160,7 @@
               <ul class="p-2 bg-base-100 rounded-t-none z-[50]">
                 <li><a href="/users/edit">Account</a></li>
                 <li><a href="/settings/general">Settings</a></li>
-                  <li><a href="/auth/dawarich?token=REDACTED">Subscription</a></li>
+                  <li><a href="https://manager.dawarich.test/auth/dawarich?token=REDACTED">Subscription</a></li>
                 <li>
                   <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
                     Get started

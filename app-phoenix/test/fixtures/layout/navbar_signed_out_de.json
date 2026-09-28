@@ -3,10 +3,11 @@
     "user": null,
     "self_hosted": true,
     "accept_language": null,
-    "path": "/users/sign_in"
+    "locale": "de",
+    "path": "/users/sign_in?locale=de"
   },
   "html": {
-    "lang": "en",
+    "lang": "de",
     "data-theme": "dawarich-dark",
     "data-self-hosted": "true"
   },

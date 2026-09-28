@@ -3,43 +3,50 @@
       <div class="navbar bg-base-100 h-16">
   <div class="navbar-start">
     <details class="dropdown xl:hidden">
-      <summary class="btn btn-ghost list-none" aria-label="Open navigation menu" aria-controls="mobile-navigation-menu">
+      <summary class="btn btn-ghost list-none" aria-label="Navigationsmenü öffnen" aria-controls="mobile-navigation-menu">
         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"></path></svg>
       </summary>
       <ul id="mobile-navigation-menu" class="menu menu-sm dropdown-content mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52">
-        <li><a class="" href="/map/v2">Map</a></li>
-        <li><a class="" href="http://www.example.com/trips">Trips</a></li>
-        <li><a class="" href="http://www.example.com/stats">Stats</a></li>
-        <li><a class="" href="http://www.example.com/insights">Insights<sup>α</sup></a></li>
-        <li><a class="" href="/achievements">Achievements</a></li>
+        <li><a class="" href="/map/v2">Karte</a></li>
+        <li><a class="" href="http://www.example.com/trips">Reisen</a></li>
+        <li><a class="" href="http://www.example.com/stats">Statistiken</a></li>
+        <li><a class="" href="http://www.example.com/insights">Einblicke<sup>α</sup></a></li>
+        <li><a class="" href="/achievements">Erfolge</a></li>
+          <li>
+              <a class=" flex items-center space-x-2" href="/family">
+                <span>Familie</span>
+                <turbo-frame id="family-navbar-indicator">
+  <div data-controller="family-navbar-indicator" data-family-navbar-indicator-enabled-value="true">
+    <div data-family-navbar-indicator-target="indicator" class="tooltip tooltip-bottom w-2 h-2 bg-green-500 animate-pulse rounded-full" data-tip="Standort wird mit deiner Familie geteilt">
+    </div>
+  </div>
+</turbo-frame>
+</a>          </li>
         <li>
           <details>
-            <summary>My data</summary>
+            <summary>Meine Daten</summary>
             <ul class="p-2 bg-base-100">
-              <li><a class="" href="http://www.example.com/points">Points</a></li>
-              <li><a class="" href="http://www.example.com/places">Places</a></li>
-              <li><a class="" href="http://www.example.com/imports">Imports</a></li>
-              <li><a class="" href="http://www.example.com/exports">Exports</a></li>
+              <li><a class="" href="http://www.example.com/points">Punkte</a></li>
+              <li><a class="" href="http://www.example.com/places">Orte</a></li>
+              <li><a class="" href="http://www.example.com/imports">Importe</a></li>
+              <li><a class="" href="http://www.example.com/exports">Exporte</a></li>
               <li><a class="" href="http://www.example.com/tags">Tags</a></li>
             </ul>
           </details>
         </li>
-          <li>
-            <a class="btn btn-sm btn-success" href="/auth/dawarich?token=REDACTED">Subscribe</a>
-          </li>
           <div class="divider my-1"></div>
           <li><a data-turbo="false" class="flex items-center gap-2" href="/settings/theme?theme=light">
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2"></path><path d="M12 20v2"></path><path d="m4.93 4.93 1.41 1.41"></path><path d="m17.66 17.66 1.41 1.41"></path><path d="M2 12h2"></path><path d="M20 12h2"></path><path d="m6.34 17.66-1.41 1.41"></path><path d="m19.07 4.93-1.41 1.41"></path></svg>
-    <span>Light mode</span>
+    <span>Hellmodus</span>
 </a></li>
           <li>
             <details>
-              <summary><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg> Help</summary>
+              <summary><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg> Hilfe</summary>
               <ul class="p-2 bg-base-100">
-                <li><p>Need help? Ping us! <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M15 11a1 1 0 0 0 1 1h2.939a1 1 0 0 1 .75 1.811l-6.835 6.836a1.207 1.207 0 0 1-1.707 0L4.31 13.81a1 1 0 0 1 .75-1.811H8a1 1 0 0 0 1-1V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1z"></path></svg></p></li>
+                <li><p>Hilfe benötigt? Ping uns! <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M15 11a1 1 0 0 0 1 1h2.939a1 1 0 0 1 .75 1.811l-6.835 6.836a1.207 1.207 0 0 1-1.707 0L4.31 13.81a1 1 0 0 1 .75-1.811H8a1 1 0 0 0 1-1V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1z"></path></svg></p></li>
 <li><a target="_blank" rel="noopener noreferrer" href="https://x.com/freymakesstuff">X (Twitter)</a></li>
 <li><a target="_blank" rel="noopener noreferrer" href="https://mastodon.social/@dawarich">Mastodon</a></li>
-<li><a href="mailto:hi@dawarich.app">Email</a></li>
+<li><a href="mailto:hi@dawarich.app">E-Mail</a></li>
 <li><a target="_blank" rel="noopener noreferrer" href="https://discourse.dawarich.app">Forum</a></li>
 <li><a target="_blank" rel="noopener noreferrer" href="https://discord.gg/pHsBjpt5J8">Discord</a></li>
 
@@ -49,7 +56,7 @@
       </ul>
     </details>
     <a class="btn btn-ghost normal-case text-xl gap-2" href="/map/v2">
-      <img alt="Dawarich logo" class="h-8 w-8 rounded-[20%]" src="/assets/logo-e019d04aed76f3c68a9289e687cc788067b9c0a283949e7cac9a6ba6aef8b2fc.svg">
+      <img alt="Dawarich-Logo" class="h-8 w-8 rounded-[20%]" src="/assets/logo-e019d04aed76f3c68a9289e687cc788067b9c0a283949e7cac9a6ba6aef8b2fc.svg">
       <span>Dawarich<sup>β</sup></span>
 </a>    <div id="version-indicator" class="relative inline-flex items-center">
   <div class="badge mx-4 ">
@@ -69,19 +76,29 @@
   </div>
   <div class="navbar-center hidden xl:flex">
     <ul class="menu menu-horizontal px-1">
-      <li><a class="mx-1 " href="/map/v2">Map</a></li>
-      <li><a class="mx-1 " href="http://www.example.com/trips">Trips</a></li>
-      <li><a class="mx-1 " href="http://www.example.com/stats">Stats</a></li>
-      <li><a class="mx-1 " href="http://www.example.com/insights">Insights<sup>α</sup></a></li>
-      <li><a class="mx-1 " href="/achievements">Achievements</a></li>
+      <li><a class="mx-1 " href="/map/v2">Karte</a></li>
+      <li><a class="mx-1 " href="http://www.example.com/trips">Reisen</a></li>
+      <li><a class="mx-1 " href="http://www.example.com/stats">Statistiken</a></li>
+      <li><a class="mx-1 " href="http://www.example.com/insights">Einblicke<sup>α</sup></a></li>
+      <li><a class="mx-1 " href="/achievements">Erfolge</a></li>
+        <li>
+            <a class="mx-1  flex items-center space-x-2" href="/family">
+              <span>Familie<sup>α</sup></span>
+              <turbo-frame id="family-navbar-indicator">
+  <div data-controller="family-navbar-indicator" data-family-navbar-indicator-enabled-value="true">
+    <div data-family-navbar-indicator-target="indicator" class="tooltip tooltip-bottom w-2 h-2 bg-green-500 animate-pulse rounded-full" data-tip="Standort wird mit deiner Familie geteilt">
+    </div>
+  </div>
+</turbo-frame>
+</a>        </li>
       <li>
         <details>
-          <summary>My data</summary>
+          <summary>Meine Daten</summary>
           <ul class="p-2 bg-base-100 rounded-box shadow-md z-[50]">
-            <li><a class="" href="http://www.example.com/points">Points</a></li>
-            <li><a class="" href="http://www.example.com/places">Places</a></li>
-            <li><a class="" href="http://www.example.com/imports">Imports</a></li>
-            <li><a class="" href="http://www.example.com/exports">Exports</a></li>
+            <li><a class="" href="http://www.example.com/points">Punkte</a></li>
+            <li><a class="" href="http://www.example.com/places">Orte</a></li>
+            <li><a class="" href="http://www.example.com/imports">Importe</a></li>
+            <li><a class="" href="http://www.example.com/exports">Exporte</a></li>
             <li><a class="" href="http://www.example.com/tags">Tags</a></li>
           </ul>
         </details>
@@ -90,9 +107,7 @@
   </div>
   <div class="navbar-end">
       <div class="flex items-center gap-1 xl:hidden">
-          <a class="btn btn-xs btn-info" href="/auth/dawarich?token=REDACTED">
-            7d left
-</a>
+
         <a class="btn btn-ghost btn-sm relative" href="/notifications">
           <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path></svg>
 </a>
@@ -101,29 +116,20 @@
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
           </label>
           <ul tabindex="0" class="dropdown-content menu menu-sm mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52">
-            <li><a href="/users/edit">Account</a></li>
-            <li><a href="/settings/general">Settings</a></li>
-              <li><a href="/auth/dawarich?token=REDACTED">Subscription</a></li>
+            <li><a href="/users/edit">Konto</a></li>
+            <li><a href="/settings/general">Einstellungen</a></li>
             <li>
               <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
-                Get started
+                Loslegen
               </a>
             </li>
-            <li><a data-turbo="false" rel="nofollow" data-method="delete" href="/users/sign_out">Logout</a></li>
+            <li><a data-turbo="false" rel="nofollow" data-method="delete" href="/users/sign_out">Abmelden</a></li>
           </ul>
         </div>
       </div>
 
       <div class="hidden xl:flex items-center gap-2 flex-nowrap">
-          <a class="join flex-nowrap" href="/auth/dawarich?token=REDACTED">
-            <span class="join-item btn btn-sm btn-info">
-                  <span class="tooltip tooltip-bottom" data-tip="Your trial will end in 7 days" title="Your trial will end in 7 days">
-                    7 days remaining
-                  </span>
-            </span><span class="join-item btn btn-sm btn-success">
-              Subscribe
-            </span>
-</a>
+
         <ul class="menu menu-horizontal px-1 flex-nowrap">
           <turbo-cable-stream-source channel="Turbo::StreamsChannel" signed-stream-name="SIGNED"></turbo-cable-stream-source>
           <li data-controller="notifications">
@@ -136,7 +142,7 @@
 
               </summary>
               <ul class="p-2 bg-base-100 rounded-t-none z-[50] min-w-52" id="notifications-list">
-                <li><a href="/notifications">See all</a></li>
+                <li><a href="/notifications">Alle ansehen</a></li>
               </ul>
             </details>
           </li>
@@ -144,10 +150,10 @@
             <details>
               <summary><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M2.992 16.342a2 2 0 0 1 .094 1.167l-1.065 3.29a1 1 0 0 0 1.236 1.168l3.413-.998a2 2 0 0 1 1.099.092 10 10 0 1 0-4.777-4.719"></path><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><path d="M12 17h.01"></path></svg></summary>
               <ul class="p-2 bg-base-100 rounded-box shadow-md z-[50] w-52">
-                <li><p>Need help? Ping us! <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M15 11a1 1 0 0 0 1 1h2.939a1 1 0 0 1 .75 1.811l-6.835 6.836a1.207 1.207 0 0 1-1.707 0L4.31 13.81a1 1 0 0 1 .75-1.811H8a1 1 0 0 0 1-1V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1z"></path></svg></p></li>
+                <li><p>Hilfe benötigt? Ping uns! <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M15 11a1 1 0 0 0 1 1h2.939a1 1 0 0 1 .75 1.811l-6.835 6.836a1.207 1.207 0 0 1-1.707 0L4.31 13.81a1 1 0 0 1 .75-1.811H8a1 1 0 0 0 1-1V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1z"></path></svg></p></li>
 <li><a target="_blank" rel="noopener noreferrer" href="https://x.com/freymakesstuff">X (Twitter)</a></li>
 <li><a target="_blank" rel="noopener noreferrer" href="https://mastodon.social/@dawarich">Mastodon</a></li>
-<li><a href="mailto:hi@dawarich.app">Email</a></li>
+<li><a href="mailto:hi@dawarich.app">E-Mail</a></li>
 <li><a target="_blank" rel="noopener noreferrer" href="https://discourse.dawarich.app">Forum</a></li>
 <li><a target="_blank" rel="noopener noreferrer" href="https://discord.gg/pHsBjpt5J8">Discord</a></li>
 
@@ -160,16 +166,15 @@
                 <span class="inline"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>
               </summary>
               <ul class="p-2 bg-base-100 rounded-t-none z-[50]">
-                <li><a href="/users/edit">Account</a></li>
-                <li><a href="/settings/general">Settings</a></li>
-                  <li><a href="/auth/dawarich?token=REDACTED">Subscription</a></li>
+                <li><a href="/users/edit">Konto</a></li>
+                <li><a href="/settings/general">Einstellungen</a></li>
                 <li>
                   <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
-                    Get started
+                    Loslegen
                   </a>
                 </li>
 
-                <li><a data-turbo="false" rel="nofollow" data-method="delete" href="/users/sign_out">Logout</a></li>
+                <li><a data-turbo="false" rel="nofollow" data-method="delete" href="/users/sign_out">Abmelden</a></li>
               </ul>
             </details>
           </li>
@@ -187,38 +192,9 @@
       </div>
       <div class="px-4 sm:px-5 mt-auto">
         <footer class="footer bg-base-200 text-content-neutral p-4">
-  <nav>
-    <h6 class="footer-title"><strong>Dawarich</strong></h6>
-    <p>
-      Made and hosted in 🇪🇺 Europe
-    </p>
-    <p>
-      Copyright © 2026 ZeitFlow UG
-    </p>
-  </nav>
-  <nav>
-    <h6 class="footer-title"><strong>Community</strong></h6>
-    <a class="hover:underline" href="https://discord.gg/pHsBjpt5J8" target="_blank">Discord</a>
-    <a class="hover:underline" href="https://x.com/freymakesstuff" target="_blank">X</a>
-    <a class="hover:underline" href="https://github.com/Freika/dawarich" target="_blank">Github</a>
-    <a class="hover:underline" href="https://mastodon.social/@dawarich" target="_blank">Mastodon</a>
-  </nav>
-  <nav>
-    <h6 class="footer-title"><strong>Docs</strong></h6>
-    <a class="hover:underline" href="https://dawarich.app/docs/intro" target="_blank">Tutorial</a>
-    <a class="hover:underline" href="https://dawarich.app/docs/tutorials/import-existing-data" target="_blank">Import existing data</a>
-    <a class="hover:underline" href="https://dawarich.app/docs/tutorials/export-your-data" target="_blank">Exporting data</a>
-    <a class="hover:underline" href="https://dawarich.app/docs/FAQ" target="_blank">FAQ</a>
-    <a class="hover:underline" href="https://dawarich.app/contact" target="_blank">Contact</a>
-  </nav>
-  <nav>
-    <h6 class="footer-title"><strong>More</strong></h6>
-    <a class="hover:underline" href="https://dawarich.app/privacy-policy" target="_blank">Privacy policy</a>
-    <a class="hover:underline" href="https://dawarich.app/terms-and-conditions" target="_blank">Terms and Conditions</a>
-    <a class="hover:underline" href="https://dawarich.app/refund-policy" target="_blank">Refund policy</a>
-    <a class="hover:underline" href="https://dawarich.app/impressum" target="_blank">Impressum</a>
-    <a class="hover:underline" href="https://dawarich.app/blog" target="_blank">Blog</a>
-  </nav>
+  <aside>
+    <p><a href="https://dawarich.app/" class="link hover:no-underline" target="_blank">Dawarich</a> 2023-2026</p>
+  </aside>
 </footer>
 
       </div>
