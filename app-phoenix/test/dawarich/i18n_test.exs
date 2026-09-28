@@ -62,13 +62,15 @@ defmodule Dawarich.I18nTest do
              {:error, {:reserved_interpolation_key, "format"}}
   end
 
-  test "reads the tree Rails exported, gem locale files included" do
+  test "reads the tree Rails exported, gem locale files and the mail keys included" do
     export = export()
 
     assert I18n.t("de", "shared.navbar.logout") ==
              {:ok, get_in(export, ~w(de shared navbar logout))}
 
     assert I18n.t("en", "datetime.distance_in_words.x_days", %{"count" => 3}) == {:ok, "3 days"}
+    assert {:ok, _subject} = I18n.t("de", "mailers.users.explore_features.subject")
+    assert Enum.sort(I18n.available_locales()) == ~w(ca de en es fr pl zh)
   end
 
   test "the real unsupported_file_format key interpolates file_format" do

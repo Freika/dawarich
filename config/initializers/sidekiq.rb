@@ -13,6 +13,14 @@ Sidekiq.configure_server do |config|
     Rails.logger.warn("[InstanceSettings] subscriber failed to start: #{e.class}: #{e.message}")
   end
 
+  config.on(:startup) do
+    Trips::CalculationEventsBroadcaster.start
+  rescue StandardError => e
+    Rails.logger.warn("[Trips] calculation events broadcaster failed to start: #{e.class}: #{e.message}")
+  end
+
+  config.on(:shutdown) { Trips::CalculationEventsBroadcaster.stop }
+
   next unless DawarichSettings.prometheus_exporter_enabled?
 
   # yabeda-sidekiq auto-registers server middleware and the death handler on require.

@@ -1,6 +1,12 @@
 es:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Tareas de Phoenix"
+        ok: "Phoenix está procesando sus tareas."
+        alarm: "Phoenix no está procesando sus tareas; esperan hasta que se ejecute un proceso de Phoenix."
+        not_installed: "Phoenix aún no ha creado sus tablas en esta base de datos; todas las tareas se ejecutan en Sidekiq."
+        unknown: "No se pudo leer el estado de las tareas de Phoenix en la base de datos; recarga la página para volver a intentarlo."
       show:
         title: "Ajustes de la instancia"
         intro: "Estos ajustes se aplican a toda la instancia. Un ajuste definido por una variable de entorno se muestra en modo de solo lectura: elimina la variable para editarlo aquí."

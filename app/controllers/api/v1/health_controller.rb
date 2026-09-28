@@ -6,7 +6,7 @@ class Api::V1::HealthController < ApiController
   skip_after_action :set_rate_limit_headers, only: :ready
 
   def index
-    render json: { status: 'ok' }
+    render json: { status: 'ok', phoenix: JobHealth.summary }
   end
 
   def ready

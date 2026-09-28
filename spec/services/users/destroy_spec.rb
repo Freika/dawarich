@@ -11,6 +11,20 @@ RSpec.describe Users::Destroy do
       user.mark_as_deleted!
     end
 
+    it 'cancels the pending explore_features command of the deleted user only' do
+      other = create(:user)
+      JobOutbox.delete_all
+      job_owner!('command:users.explore_features_mail', :oban)
+      [user, other].each do |owner|
+        JobCommands.produce('users.explore_features_mail', { 'user_id' => owner.id, 'locale' => 'en' },
+                            aggregate_id: owner.id, scheduled_at: 2.days.from_now, producer: 'spec')
+      end
+
+      described_class.new(user).call
+
+      expect(JobOutbox.pluck(:aggregate_id)).to eq([other.id])
+    end
+
     context 'with minimal user data' do
       it 'hard deletes the user record' do
         expect { service.call }.to change { User.unscoped.count }.by(-1)
@@ -409,6 +423,17 @@ RSpec.describe Users::Destroy do
           # Family and memberships should still exist
           expect(Family.where(id: family.id).count).to eq(1)
           expect(Family::Membership.where(family_id: family.id).count).to eq(2)
+        end
+
+        it 'keeps the pending explore_features command when deletion is rolled back' do
+          JobOutbox.delete_all
+          job_owner!('command:users.explore_features_mail', :oban)
+          JobCommands.produce('users.explore_features_mail', { 'user_id' => user.id, 'locale' => 'en' },
+                              aggregate_id: user.id, scheduled_at: 2.days.from_now, producer: 'spec')
+
+          expect { service.call }.to raise_error(ActiveRecord::RecordInvalid)
+
+          expect(JobOutbox.where(command_type: 'users.explore_features_mail', aggregate_id: user.id)).to exist
         end
 
         it 'logs the validation failure' do

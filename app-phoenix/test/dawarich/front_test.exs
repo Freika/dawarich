@@ -139,6 +139,33 @@ defmodule Dawarich.FrontTest do
     assert opts[:env] == [{"DAWARICH_BEHIND_PHOENIX", false}]
   end
 
+  test "a Puma environment entry named like the proxy marker cannot flip it" do
+    argv = ["sh", "-c", ~S(echo "[${DAWARICH_BEHIND_PHOENIX:-unset}]")]
+    proxy = {:proxy, %{public: {{127, 0, 0, 1}, 3000}, upstream: 41_000, puma_argv: argv}}
+    test = self()
+
+    for {plan, puma_env, expected} <- [
+          {{:direct, argv, "cause"}, [{"DAWARICH_BEHIND_PHOENIX", "1"}], "[unset]\n"},
+          {proxy, [{"DAWARICH_BEHIND_PHOENIX", false}], "[1]\n"}
+        ] do
+      {RailsServer, opts} = List.keyfind(Front.children(plan, puma_env), RailsServer, 0)
+      capture = [sink: &send(test, {:out, &1}), on_exit: &send(test, {:exited, &1})]
+
+      start_supervised!({RailsServer, opts ++ capture}, id: expected)
+
+      assert_receive {:exited, 0}, 5_000
+      assert collected_output() == expected
+    end
+  end
+
+  defp collected_output(acc \\ "") do
+    receive do
+      {:out, data} -> collected_output(acc <> data)
+    after
+      0 -> acc
+    end
+  end
+
   test "falling back is logged in one line that names the cause" do
     log = capture_log([level: :warning], fn -> Front.log({:direct, [], "DAWARICH_PROXY=off"}) end)
 

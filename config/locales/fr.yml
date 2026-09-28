@@ -2,6 +2,12 @@
 fr:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Tâches Phoenix"
+        ok: "Phoenix traite ses tâches."
+        alarm: "Phoenix ne traite pas ses tâches ; elles attendent qu'un processus Phoenix s'exécute."
+        not_installed: "Phoenix n'a pas encore créé ses tables dans cette base de données ; toutes les tâches s'exécutent dans Sidekiq."
+        unknown: "L'état des tâches Phoenix n'a pas pu être lu dans la base de données ; rechargez la page pour réessayer."
       show:
         title: "Paramètres de l'instance"
         intro: "Ces paramètres s'appliquent à toute l'instance. Un paramètre fourni par une variable d'environnement est affiché en lecture seule : supprimez la variable pour le modifier ici."

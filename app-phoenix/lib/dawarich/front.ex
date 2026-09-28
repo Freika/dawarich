@@ -26,13 +26,16 @@ defmodule Dawarich.Front do
     end
   end
 
-  def children(:none), do: [DawarichWeb.Endpoint]
+  def children(plan, puma_env \\ [])
 
-  def children({:direct, argv, _cause}), do: [{RailsServer, argv: argv, env: [{@marker, false}]}]
+  def children(:none, _puma_env), do: [DawarichWeb.Endpoint]
 
-  def children({:proxy, %{public: {ip, port}, puma_argv: puma_argv}}) do
+  def children({:direct, argv, _cause}, puma_env),
+    do: [{RailsServer, argv: argv, env: puma_env ++ [{@marker, false}]}]
+
+  def children({:proxy, %{public: {ip, port}, puma_argv: puma_argv}}, puma_env) do
     [
-      {RailsServer, argv: puma_argv, env: [{@marker, "1"}]},
+      {RailsServer, argv: puma_argv, env: puma_env ++ [{@marker, "1"}]},
       {DawarichWeb.Endpoint,
        server: true,
        secret_key_base: RailsSecret.endpoint_secret(RailsSecret.fetch()),

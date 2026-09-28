@@ -1,6 +1,12 @@
 en:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Phoenix jobs"
+        ok: "Phoenix is processing its jobs."
+        alarm: "Phoenix is not processing its jobs; they wait until a Phoenix process runs."
+        not_installed: "Phoenix has not set up its tables in this database; every job runs in Sidekiq."
+        unknown: "The Phoenix job status could not be read from the database; reload the page to try again."
       show:
         title: "Instance settings"
         intro: "These settings apply to this whole instance. A setting supplied by an environment variable is shown read-only: remove the variable to edit it here."
