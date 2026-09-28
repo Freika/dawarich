@@ -19,11 +19,9 @@ class Users::Destroy
     purge_attachments_for('Points::RawDataArchive', user.raw_data_archives)
 
     ActiveRecord::Base.transaction do
-      JobCommands.cancel_pending('users.explore_features_mail', user.id)
-      %w[mail.user.welcome mail.user.archival_approaching mail.user.oauth_account_link
-         mail.user.account_destroy_confirmation mail.family_lapse].each do |type|
-        JobCommands.cancel_pending(type, user.id)
-      end
+      JobCommands.cancel_pending(
+        ['users.explore_features_mail', 'mail.family_lapse', *UserMailCommands::TYPES.values], user.id
+      )
 
       # Validate inside transaction to prevent TOCTOU race
       # (a member could join/leave between check and delete if outside)

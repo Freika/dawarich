@@ -69,6 +69,26 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
         expect(archival_warnings(lite_user)).to include('11_5mo')
       end
 
+      it 'skips a user whose threshold another runtime marked after the batch was loaded' do
+        create(:point, user: lite_user, timestamp: (11.months + 15.days).ago.to_i)
+        phoenix_marks = { '11mo' => '2026-01-01T00:00:00Z', '11_5mo' => '2026-01-01T00:00:00Z' }
+        allow(JobOwnership).to receive(:with_owner).and_wrap_original do |original, *args, &block|
+          User.where(id: lite_user.id).update_all(settings: { 'archival_warnings' => phoenix_marks })
+          original.call(*args, &block)
+        end
+
+        expect { described_class.perform_now }.not_to have_enqueued_job(Users::MailerSendingJob)
+        expect(archival_warnings(lite_user)).to eq(phoenix_marks)
+      end
+
+      it 'still acts on a threshold whose marker is blank' do
+        create(:point, user: lite_user, timestamp: (11.months + 15.days).ago.to_i)
+        lite_user.update_column(:settings, { 'archival_warnings' => { '11mo' => 'x', '11_5mo' => '' } })
+
+        expect { described_class.perform_now }.to have_enqueued_job(Users::MailerSendingJob)
+        expect(archival_warnings(lite_user)['11_5mo']).to be_present
+      end
+
       it '11_5mo produces mail.user.archival_approaching with epoch = the written mark (oban) ' \
          'or enqueues MailerSendingJob with epoch (sidekiq)' do
         create(:point, user: lite_user, timestamp: (11.months + 15.days).ago.to_i)

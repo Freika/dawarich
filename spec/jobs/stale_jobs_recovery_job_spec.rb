@@ -39,6 +39,18 @@ RSpec.describe StaleJobsRecoveryJob do
         expect(recent_export.reload.status).to eq('processing')
       end
 
+      it 'leaves an export that completed after the stale batch was read' do
+        timed_out = 'jobs.stale_jobs_recovery_job.export_timed_out_after_being_stuck_in_processing'
+        allow(I18n).to receive(:t).and_call_original
+        allow(I18n).to receive(:t).with(timed_out).and_wrap_original do |original, *args|
+          Export.where(id: stale_export.id).update_all(status: Export.statuses[:completed])
+          original.call(*args)
+        end
+
+        expect { described_class.new.perform }.not_to change(Notification, :count)
+        expect(stale_export.reload).to have_attributes(status: 'completed', error_message: nil)
+      end
+
       it 'creates a notification for stale exports' do
         expect { described_class.new.perform }.to change { Notification.count }.by(1)
       end

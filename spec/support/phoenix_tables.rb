@@ -5,8 +5,6 @@ module PhoenixTables
 
   def phoenix_tables!
     connection = ActiveRecord::Base.connection
-    return if connection.select_value("SELECT to_regclass('phoenix.notification_events') IS NOT NULL")
-
     connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
     SQL_FILES.each do |file|
       File.read(file).split(";\n").map(&:strip).reject(&:empty?).each { |statement| connection.execute(statement) }

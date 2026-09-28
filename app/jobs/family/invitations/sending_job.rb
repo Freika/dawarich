@@ -6,7 +6,7 @@ class Family::Invitations::SendingJob < ApplicationJob
   OWNERSHIP_KEY = 'command:mail.family_invitation'
 
   def perform(invitation_id)
-    return forward(invitation_id) if JobOwnership.with_owner(OWNERSHIP_KEY) { true } == :not_owner
+    return forward(invitation_id) if JobOwnership.lock_owner(OWNERSHIP_KEY) == :oban
 
     invitation = Family::Invitation.find_by(id: invitation_id)
 
