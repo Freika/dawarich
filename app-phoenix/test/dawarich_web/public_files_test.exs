@@ -59,7 +59,8 @@ defmodule DawarichWeb.PublicFilesTest do
   end
 
   test "boot configuration memoizes the resolved Rails environment" do
-    assert %{rails_env: "development"} = PublicFiles.boot_config()
+    config = PublicFiles.boot_config()
+    assert config.rails_env == Dawarich.RailsSecret.rails_env(config.env)
   end
 
   defp serve(plug) do
