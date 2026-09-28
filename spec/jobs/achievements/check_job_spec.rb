@@ -74,6 +74,24 @@ RSpec.describe Achievements::CheckJob do
       expect(JobOutbox.pending.count).to eq(1)
     end
 
+    it 'a retry whose command is already written keeps every pending timestamp for the next check' do
+      described_class.defer(user.id, oldest_timestamp: 50)
+      members = described_class.pending_members(user.id)
+      job = described_class.new(user.id, notify: true)
+      job.perform_now
+      Sidekiq.redis { |redis| members.each { redis.call('ZADD', described_class.pending_key(user.id), _1.to_i, _1) } }
+      described_class.defer(user.id, oldest_timestamp: 40)
+
+      job.perform_now
+
+      expect(described_class.pending_timestamps(user.id)).to contain_exactly(50, 40)
+
+      described_class.perform_now(user.id, notify: true)
+
+      expect(JobOutbox.pending.map { _1.payload['oldest_timestamp'] }).to contain_exactly(50, 40)
+      expect(described_class.pending_members(user.id)).to be_empty
+    end
+
     it 'writes a separate command per job for the same user' do
       2.times { described_class.perform_now(user.id, notify: true) }
 
