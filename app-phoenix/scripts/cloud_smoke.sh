@@ -191,6 +191,12 @@ under_beam a0c_web || fail "Puma is missing or not a descendant of the BEAM"
 [ "$(proc_user a0c_web '^puma [0-9]')" = 32767 ] || fail "Puma runs as root"
 [ "$(docker exec a0c_web stat -c %u /var/app/tmp/dawarich.cookie)" = 32767 ] || fail "cookie not owned by the app user"
 [ "$(docker exec a0c_web timeout 30 dawarich rpc 'IO.puts(Oban.config().prefix)')" = oban ] || fail "rpc failed"
+i=0
+while [ "$i" -lt 20 ]; do
+  [ "$(docker exec a0c_web timeout 30 dawarich rpc 'IO.inspect(Dawarich.Accounts.get(1))')" = nil ] \
+    || fail "a Phoenix user lookup failed through PgBouncer"
+  i=$((i + 1))
+done
 docker stop a0c_web >/dev/null
 [ "$(docker inspect -f '{{.State.ExitCode}}' a0c_web)" = 0 ] || fail "unclean web stop"
 docker logs a0c_web 2>&1 | tail -20 | grep -qi goodbye || fail "puma did not shut down gracefully"

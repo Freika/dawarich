@@ -7,6 +7,7 @@ defmodule Dawarich.Application do
     plan = Dawarich.Front.plan(Application.get_env(:dawarich, :rails_argv), System.get_env())
     Dawarich.Front.log(plan)
     Application.put_env(:dawarich, :rails_upstream, Dawarich.Front.upstream(plan))
+    Application.put_env(:dawarich, :public_files, DawarichWeb.PublicFiles.boot_config())
 
     children =
       [

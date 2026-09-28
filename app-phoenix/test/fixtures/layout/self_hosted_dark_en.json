@@ -1,0 +1,38 @@
+{
+  "state": {
+    "user": {
+      "id": 37,
+      "email": "layout-dark@dawarich.test",
+      "theme": "dark",
+      "settings": {
+        "route_opacity": 60,
+        "meters_between_routes": "500",
+        "minutes_between_routes": "30",
+        "fog_of_war_meters": "100",
+        "time_threshold_minutes": "30",
+        "merge_threshold_minutes": "15",
+        "maps": {
+          "distance_unit": "km"
+        }
+      },
+      "admin": false,
+      "status": "active",
+      "plan": "pro",
+      "active_until": "3026-09-26T13:00:00.000000Z"
+    },
+    "self_hosted": true,
+    "accept_language": null
+  },
+  "html": {
+    "lang": "en",
+    "data-theme": "dawarich-dark",
+    "data-self-hosted": "true"
+  },
+  "headers": {
+    "x-frame-options": "SAMEORIGIN",
+    "x-xss-protection": "0",
+    "x-content-type-options": "nosniff",
+    "x-permitted-cross-domain-policies": "none",
+    "referrer-policy": "strict-origin-when-cross-origin"
+  }
+}

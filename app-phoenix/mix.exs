@@ -28,6 +28,9 @@ defmodule Dawarich.MixProject do
       {:oban, "~> 2.20"},
       {:jason, "~> 1.4"},
       {:phoenix, "~> 1.8.1"},
+      {:phoenix_html, "~> 4.2"},
+      {:phoenix_live_view, "~> 1.1"},
+      {:lazy_html, "~> 0.1.0", only: :test},
       {:bandit, "~> 1.12"}
     ]
   end
@@ -41,7 +44,12 @@ defmodule Dawarich.MixProject do
       "ecto.reset": fn _ ->
         Mix.raise("Rails owns the Dawarich database; Phoenix never resets it")
       end,
-      test: ["app.config", fn _ -> Dawarich.Release.migrate_oban() end, "test"]
+      test: [
+        "app.config",
+        fn _ -> Dawarich.Release.migrate_oban() end,
+        "dawarich.i18n",
+        "test"
+      ]
     ]
   end
 end

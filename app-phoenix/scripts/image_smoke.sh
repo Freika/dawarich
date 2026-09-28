@@ -162,7 +162,7 @@ latency() {
     || fail "$1 misses the single-request budget (p50 +$2 ms)"
 }
 saturation() {
-  floor="$(docker exec a0_app sh -c 'read q p </sys/fs/cgroup/cpu.max; [ "$q" = max ] || [ "$q" -ge $((p * $(nproc))) ] && echo 85 || echo 65')"
+  floor="${2:-$(docker exec a0_app sh -c 'read q p </sys/fs/cgroup/cpu.max; [ "$q" = max ] || [ "$q" -ge $((p * $(nproc))) ] && echo 85 || echo 65')}"
   set -- "$1" $(bench "http://127.0.0.1:3000$1" 8 2000) $(bench "http://127.0.0.1:$upstream$1" 8 2000)
   echo "$1 at concurrency 8 — proxied p50 $2 ms, p99 $3 ms, $4 req/s; direct p50 $5 ms, p99 $6 ms, $7 req/s (floor $floor %)"
   awk -v e="$4" -v f="$7" -v r="$floor" 'BEGIN { exit !(e >= r / 100 * f) }' \
@@ -171,6 +171,7 @@ saturation() {
 latency /api/v1/health 1
 latency /a2-1m.bin 2
 saturation /api/v1/health
+saturation /a2-1m.bin 90
 
 if [ "${SOAK_MINUTES:-0}" -gt 0 ]; then
   procs0="$(beam ':erlang.system_info(:process_count)')"

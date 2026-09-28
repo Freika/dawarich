@@ -1,0 +1,99 @@
+<body class="min-h-screen flex flex-col">
+    <div class="container mx-auto flex flex-col flex-1">
+      <div class="navbar bg-base-100 h-16">
+  <div class="navbar-start">
+    <details class="dropdown xl:hidden">
+      <summary class="btn btn-ghost list-none" aria-label="Open navigation menu" aria-controls="mobile-navigation-menu">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"></path></svg>
+      </summary>
+      <ul id="mobile-navigation-menu" class="menu menu-sm dropdown-content mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52">
+        <li><a class="" href="/map/v2">Map</a></li>
+        <li><a class="" href="http://www.example.com/trips">Trips</a></li>
+        <li><a class="" href="http://www.example.com/stats">Stats</a></li>
+        <li><a class="" href="http://www.example.com/insights">Insights<sup>α</sup></a></li>
+        <li><a class="" href="/achievements">Achievements</a></li>
+        <li>
+          <details>
+            <summary>My data</summary>
+            <ul class="p-2 bg-base-100">
+              <li><a class="" href="http://www.example.com/points">Points</a></li>
+              <li><a class="" href="http://www.example.com/places">Places</a></li>
+              <li><a class="" href="http://www.example.com/imports">Imports</a></li>
+              <li><a class="" href="http://www.example.com/exports">Exports</a></li>
+              <li><a class="" href="http://www.example.com/tags">Tags</a></li>
+            </ul>
+          </details>
+        </li>
+      </ul>
+    </details>
+    <a class="btn btn-ghost normal-case text-xl gap-2" href="/">
+      <img alt="Dawarich logo" class="h-8 w-8 rounded-[20%]" src="/assets/logo-e019d04aed76f3c68a9289e687cc788067b9c0a283949e7cac9a6ba6aef8b2fc.svg">
+      <span>Dawarich<sup>β</sup></span>
+</a>    <div id="version-indicator" class="relative inline-flex items-center">
+  <div class="badge mx-4 ">
+    <a href="https://github.com/Freika/dawarich/releases/latest" target="_blank" class="inline-flex items-center">
+        <span class="hidden sm:inline">1.15.2</span>
+    </a>
+  </div>
+
+</div>
+
+
+  </div>
+  <div class="navbar-center hidden xl:flex">
+    <ul class="menu menu-horizontal px-1">
+      <li><a class="mx-1 " href="/map/v2">Map</a></li>
+      <li><a class="mx-1 " href="http://www.example.com/trips">Trips</a></li>
+      <li><a class="mx-1 " href="http://www.example.com/stats">Stats</a></li>
+      <li><a class="mx-1 " href="http://www.example.com/insights">Insights<sup>α</sup></a></li>
+      <li><a class="mx-1 " href="/achievements">Achievements</a></li>
+      <li>
+        <details>
+          <summary>My data</summary>
+          <ul class="p-2 bg-base-100 rounded-box shadow-md z-[50]">
+            <li><a class="" href="http://www.example.com/points">Points</a></li>
+            <li><a class="" href="http://www.example.com/places">Places</a></li>
+            <li><a class="" href="http://www.example.com/imports">Imports</a></li>
+            <li><a class="" href="http://www.example.com/exports">Exports</a></li>
+            <li><a class="" href="http://www.example.com/tags">Tags</a></li>
+          </ul>
+        </details>
+      </li>
+    </ul>
+  </div>
+  <div class="navbar-end">
+      <ul class="menu menu-horizontal bg-base-100 rounded-box px-1">
+        <li><a href="/users/sign_in">Login</a></li>
+      </ul>
+  </div>
+</div>
+
+        <div class="alert alert-info rounded-none py-2 px-4 text-sm flex items-start gap-2" data-testid="locale-suggestion" data-controller="dismissible" data-dismissible-key-value="locale_suggestion_de" lang="de">
+    <span class="flex-1">
+      Dawarich ist auch auf Deutsch verfügbar.
+      <a lang="de" class="link link-primary font-medium" href="/users/sign_in?locale=de">Auf Deutsch wechseln</a>
+    </span>
+    <button type="button" class="btn btn-ghost btn-xs btn-circle" data-action="dismissible#dismiss" aria-label="Schließen">✕</button>
+  </div>
+
+      <div class="fixed top-5 right-5 flex flex-col gap-2 z-50" id="flash-messages">
+</div>
+
+      <div class="w-full px-4 sm:px-5 flex-1">
+        <div class="flex w-full min-w-0 gap-5"></div>
+      </div>
+      <div class="px-4 sm:px-5 mt-auto">
+        <footer class="footer bg-base-200 text-content-neutral p-4">
+  <aside>
+    <p><a href="https://dawarich.app/" class="link hover:no-underline" target="_blank">Dawarich</a> 2023-2026</p>
+  </aside>
+</footer>
+
+      </div>
+    </div>
+
+    
+    
+  
+
+</body>
