@@ -16,7 +16,8 @@ defmodule Dawarich.Mail.Smtp do
     do:
       :mimemail.encode(
         {"multipart", "alternative",
-         [{"From", message.from || ""}, {"To", message.to}, {"Subject", message.subject}], %{},
+         [{"From", message.from || ""}, {"To", message.to}, {"Subject", message.subject}] ++
+           if(message[:message_id], do: [{"Message-ID", message.message_id}], else: []), %{},
          [part("plain", message.text), part("html", message.html)]}
       )
 
