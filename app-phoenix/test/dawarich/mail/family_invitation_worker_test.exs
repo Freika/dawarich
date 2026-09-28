@@ -99,6 +99,21 @@ defmodule Dawarich.Mail.FamilyInvitationWorkerTest do
              [["family-invitation:#{invitation_id}", true]]
   end
 
+  test "invitation N of a recreated database (another token) gets another Message-ID at DOMAIN" do
+    invitation_id = invitation!(user!("inviter@example.test", %{}))
+
+    assert perform_job(FamilyInvitationWorker, args(invitation_id)) == :ok
+    assert_received {:mail, %{message_id: first}}
+    assert first =~ ~r/\A<[0-9a-f]{64}@invite\.example\.test>\z/
+
+    rows("TRUNCATE phoenix.delivery_claims")
+    rows("UPDATE family_invitations SET token = 'invite-token-2' WHERE id = $1", [invitation_id])
+
+    assert perform_job(FamilyInvitationWorker, args(invitation_id)) == :ok
+    assert_received {:mail, %{message_id: second}}
+    refute first == second
+  end
+
   test "a soft-deleted inviter cancels the job (ED-080); a missing invitation is a no-op" do
     inviter = user!("inviter@example.test", %{}, DateTime.utc_now())
     invitation_id = invitation!(inviter)

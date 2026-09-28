@@ -2,9 +2,11 @@ defmodule Dawarich.Mail.DeliveryTest do
   use Dawarich.JobsCase
 
   alias Dawarich.Mail.{Delivery, Smtp}
+  alias Dawarich.RailsSecret
 
   @handler "mail.test"
   @key "welcome:1"
+  @record "2026-09-28T10:00:00.123456"
 
   defp build,
     do:
@@ -17,7 +19,8 @@ defmodule Dawarich.Mail.DeliveryTest do
          html: "<p>Hi</p>"
        }}
 
-  defp deliver(event_id), do: Delivery.deliver(ScratchRepo, @handler, @key, event_id, &build/0)
+  defp deliver(event_id),
+    do: Delivery.deliver(ScratchRepo, @handler, @key, @record, event_id, &build/0)
 
   defp claim_row,
     do:
@@ -48,13 +51,13 @@ defmodule Dawarich.Mail.DeliveryTest do
     Process.put(:transport_result, {:error, {:temporary_failure, "451"}})
 
     assert {:error, _} = deliver(event_id)
-    assert_received {:mail, _}
+    assert_received {:mail, %{message_id: first}}
     assert delivered_at() == nil
 
     Process.delete(:transport_result)
 
     assert deliver(event_id) == :ok
-    assert_received {:mail, _}
+    assert_received {:mail, %{message_id: ^first}}
     refute_received {:mail, _}
     assert %DateTime{} = delivered_at()
   end
@@ -140,16 +143,63 @@ defmodule Dawarich.Mail.DeliveryTest do
     assert %DateTime{} = delivered_at()
   end
 
-  test "Message-ID is deterministic per handler and key and appears in the encoded mail" do
-    message_id = Delivery.message_id(@handler, @key)
+  test "Message-ID: HMAC under the install secret of handler, key and a per-record value, at DOMAIN" do
+    env = %{"DOMAIN" => "dawarich.example.test"}
+    message_id = Delivery.message_id(@handler, @key, @record, env, "install-a")
+    mac = :crypto.mac(:hmac, :sha256, "install-a", "#{@handler}:#{@key}:#{@record}")
 
-    assert message_id == Delivery.message_id(@handler, @key)
-    assert message_id =~ ~r/\A<[0-9a-f]{64}@dawarich\.mail>\z/
-    refute message_id == Delivery.message_id(@handler, "welcome:2")
-    refute message_id == Delivery.message_id("mail.other", @key)
+    assert message_id == "<#{Base.encode16(mac, case: :lower)}@dawarich.example.test>"
+    assert message_id == Delivery.message_id(@handler, @key, @record, env, "install-a")
+    refute message_id == Delivery.message_id(@handler, @key, @record, env, "install-b")
+
+    refute message_id ==
+             Delivery.message_id(@handler, @key, "2026-10-01T08:00:00.000001", env, "install-a")
+
+    refute message_id == Delivery.message_id(@handler, "welcome:2", @record, env, "install-a")
+    refute message_id == Delivery.message_id("mail.other", @key, @record, env, "install-a")
+
+    assert Delivery.message_id(
+             @handler,
+             @key,
+             @record,
+             %{"DOMAIN" => "dawarich.example.test:8443"},
+             "install-a"
+           ) ==
+             message_id
+
+    for unset <- [%{}, %{"DOMAIN" => ""}],
+        do:
+          assert(
+            Delivery.message_id(@handler, @key, @record, unset, "install-a") =~
+              ~r/@dawarich\.mail>\z/
+          )
+  end
+
+  test "the sent Message-ID uses the Rails secret and DOMAIN and is kept by a takeover of the same delivery" do
+    previous = System.get_env("DOMAIN")
+    System.put_env("DOMAIN", "mail.example.test")
+
+    on_exit(fn ->
+      if previous, do: System.put_env("DOMAIN", previous), else: System.delete_env("DOMAIN")
+    end)
+
+    message_id =
+      Delivery.message_id(@handler, @key, @record, System.get_env(), RailsSecret.fetch())
+
+    Process.put(:transport_result, {:error, {:temporary_failure, "451"}})
+
+    assert {:error, _} = deliver(Ecto.UUID.generate())
+    assert_received {:mail, %{message_id: ^message_id}}
+    Process.delete(:transport_result)
+
+    rows(
+      "UPDATE phoenix.delivery_claims SET claimed_at = claimed_at - interval '11 minutes' WHERE provider_key = $1",
+      [@key]
+    )
 
     assert deliver(Ecto.UUID.generate()) == :ok
     assert_received {:mail, %{message_id: ^message_id} = message}
+    assert message_id =~ ~r/@mail\.example\.test>\z/
 
     {"multipart", "alternative", headers, _params, _parts} =
       message |> Smtp.encode() |> :mimemail.decode(encoding: :none)

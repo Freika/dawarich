@@ -23,7 +23,7 @@ defmodule Dawarich.Mail.Wave2 do
 
   @utm "&utm_source=email&utm_medium=email&utm_campaign=archival_approaching&utm_content=upgrade"
 
-  @link_url "SELECT payload->>'link_url' FROM job_outbox WHERE event_id = $1"
+  @link_url "SELECT payload->>'link_url' FROM public.job_outbox WHERE event_id = $1"
 
   for surface <- Map.keys(@surfaces), format <- [:html, :text] do
     file = Path.join(@dir, "wave2/#{surface}.#{format}.eex")
@@ -157,7 +157,9 @@ defmodule Dawarich.Mail.Wave2 do
       user ->
         locale = ExploreFeatures.locale(user.settings, args["locale"])
 
-        Delivery.deliver(repo, handler, key, args["event_id"], fn ->
+        record = NaiveDateTime.to_iso8601(user.created_at)
+
+        Delivery.deliver(repo, handler, key, record, args["event_id"], fn ->
           build.(user, locale, System.get_env())
         end)
     end

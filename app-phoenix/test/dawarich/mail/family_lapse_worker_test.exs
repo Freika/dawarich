@@ -117,6 +117,31 @@ defmodule Dawarich.Mail.FamilyLapseWorkerTest do
     assert family_settings(member) == %{}
   end
 
+  test "lapse: a kill during the SMTP send leaves the notice to the retry of that command only" do
+    {member, family_id} = setup_family!()
+    job = args(member, family_id)
+    parent = self()
+
+    sender =
+      spawn(fn ->
+        Process.put(:hang_in_transport, parent)
+        perform_job(FamilyLapseWorker, job)
+      end)
+
+    assert_receive :in_transport
+    Process.exit(sender, :kill)
+    assert %{"plan_lapse_notified_at" => _} = family_settings(member)
+
+    assert perform_job(FamilyLapseWorker, %{job | "event_id" => Ecto.UUID.generate()}) == :ok
+    refute_received {:mail, _}
+
+    assert perform_job(FamilyLapseWorker, job) == :ok
+    assert_received {:mail, %{to: "member@example.test"}}
+
+    assert perform_job(FamilyLapseWorker, job) == :ok
+    refute_received {:mail, _}
+  end
+
   test "a missing member or family is a silent no-op" do
     {member, family_id} = setup_family!()
     rows("UPDATE users SET deleted_at = now() WHERE id = $1", [member])

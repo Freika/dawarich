@@ -3,6 +3,7 @@ defmodule Dawarich.Mail.WelcomeWorkerTest do
   use Oban.Testing, repo: Dawarich.ScratchRepo
 
   alias Dawarich.Mail.{Delivery, WelcomeWorker}
+  alias Dawarich.RailsSecret
 
   defp user!(attrs \\ %{}) do
     [[id]] =
@@ -25,7 +26,16 @@ defmodule Dawarich.Mail.WelcomeWorkerTest do
     user_id = user!()
     event_id = Ecto.UUID.generate()
     key = "welcome:#{user_id}"
-    message_id = Delivery.message_id("mail.user.welcome", key)
+    [[created_at]] = rows("SELECT created_at FROM users WHERE id = $1", [user_id])
+
+    message_id =
+      Delivery.message_id(
+        "mail.user.welcome",
+        key,
+        NaiveDateTime.to_iso8601(created_at),
+        System.get_env(),
+        RailsSecret.fetch()
+      )
 
     assert perform_job(WelcomeWorker, args(user_id, event_id)) == :ok
     assert_received {:mail, %{to: "welcome@example.test", message_id: ^message_id} = mail}
@@ -38,6 +48,23 @@ defmodule Dawarich.Mail.WelcomeWorkerTest do
 
     assert perform_job(WelcomeWorker, args(user_id)) == :ok
     refute_received {:mail, _}
+  end
+
+  test "user N of a recreated database (another created_at) gets another Message-ID" do
+    user_id = user!()
+
+    assert perform_job(WelcomeWorker, args(user_id)) == :ok
+    assert_received {:mail, %{message_id: first}}
+
+    rows("TRUNCATE phoenix.delivery_claims")
+
+    rows("UPDATE users SET created_at = created_at + interval '1 microsecond' WHERE id = $1", [
+      user_id
+    ])
+
+    assert perform_job(WelcomeWorker, args(user_id)) == :ok
+    assert_received {:mail, %{message_id: second}}
+    refute first == second
   end
 
   test "a missing or soft-deleted user is a silent no-op with no claim" do

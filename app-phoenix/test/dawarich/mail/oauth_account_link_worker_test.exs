@@ -67,6 +67,15 @@ defmodule Dawarich.Mail.OauthAccountLinkWorkerTest do
     assert claims() == [["oauth-link:#{user_id}:#{args["link_token_sha256"]}"]]
   end
 
+  test "the link is read from public.job_outbox whatever the search_path" do
+    {_event_id, args} = command!(user!())
+
+    assert ScratchRepo.transaction(fn ->
+             ScratchRepo.query!("SELECT set_config('search_path', 'pg_catalog', true)")
+             Dawarich.Mail.Wave2.link_url(ScratchRepo, args)
+           end) == {:ok, {:ok, @link_url}}
+  end
+
   test "OAuth: an expired link, a pruned outbox row or a digest mismatch sends nothing" do
     user_id = user!()
 
