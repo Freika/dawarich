@@ -16,8 +16,7 @@ defmodule Dawarich.JobsCase do
 
   setup do
     unless rows("SELECT to_regclass('public.job_outbox') IS NOT NULL") == [[true]] do
-      ScratchRepo.query!("DROP SCHEMA IF EXISTS public CASCADE", [], log: false)
-      ScratchRepo.query!("CREATE SCHEMA public", [], log: false)
+      Dawarich.ScratchCase.recreate_public!()
 
       ScratchRepo.query!(Dawarich.ReleaseMigrator.baseline_sql(), [],
         query_type: :text,
