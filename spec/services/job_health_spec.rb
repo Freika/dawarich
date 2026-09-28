@@ -69,6 +69,39 @@ RSpec.describe JobHealth do
       .to eq([{ 'worker' => 'Dawarich.Trips.CalculateWorker', 'state' => 'cancelled', 'count' => 1 }])
   end
 
+  it 'counts due, leased, retrying and dead reverse-outbox rows' do
+    phoenix_tables!
+    connection = ActiveRecord::Base.connection
+    connection.execute(<<~SQL.squish)
+      INSERT INTO phoenix.rails_commands (kind, payload, attempts, available_at)
+      VALUES ('visit_months_changed', '{}', 0, now()), ('visit_months_changed', '{}', 3, now()),
+             ('visit_months_changed', '{}', 1, now()),
+             ('visit_months_changed', '{}', 0, now() + interval '1 hour')
+    SQL
+    connection.execute("UPDATE phoenix.rails_commands SET leased_until = now() + interval '1 minute' WHERE attempts = 1 AND available_at <= now()")
+    connection.execute(<<~SQL.squish)
+      INSERT INTO phoenix.rails_commands_dead (id, kind, payload, attempts, last_error, created_at)
+      VALUES (999_999, 'visit_months_changed', '{}', 25, 'RuntimeError: cache down', now())
+    SQL
+
+    gauges = described_class.gauges
+
+    expect(gauges[:rails_commands]).to include('due' => 2, 'leased' => 1, 'retrying' => 1, 'dead' => 1)
+    expect(gauges[:rails_commands]['oldest_due_seconds']).to be >= 0
+  end
+
+  it 'reports no reverse-outbox gauge before Phoenix migrated its tables' do
+    connection = ActiveRecord::Base.connection
+    connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
+    job_control = Rails.root.join('app-phoenix/priv/repo/sql/20260927120100_job_control.sql')
+    File.read(job_control).split(";\n").map(&:strip).reject(&:empty?).each { connection.execute(_1) }
+
+    gauges = described_class.gauges
+
+    expect(gauges[:tables]).to be(true)
+    expect(gauges[:rails_commands]).to be_nil
+  end
+
   it 'warns once at boot when this container runs Puma without Phoenix' do
     allow(Rails.logger).to receive(:warn)
 

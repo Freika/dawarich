@@ -79,7 +79,8 @@ module JobHealth
         outbox: connection.select_one(OUTBOX_SQL),
         owners: connection.select_all(OWNERS_SQL).to_a,
         nodes: connection.select_all(NODES_SQL).to_a,
-        oban: oban_counts
+        oban: oban_counts,
+        rails_commands: rails_commands_counts
       }
     end
   rescue StandardError => e
@@ -100,6 +101,12 @@ module JobHealth
     return [] unless connection.select_value("SELECT to_regclass('oban.oban_jobs') IS NOT NULL")
 
     connection.select_all(OBAN_SQL).to_a
+  end
+
+  def rails_commands_counts
+    return nil unless connection.select_value("SELECT to_regclass('phoenix.rails_commands_dead') IS NOT NULL")
+
+    connection.select_one(RAILS_COMMANDS_SQL)
   end
 
   def read(&)
@@ -131,6 +138,18 @@ module JobHealth
 
   OBAN_SQL = <<~SQL.squish
     SELECT worker, state, count(*)::integer AS count FROM oban.oban_jobs GROUP BY worker, state ORDER BY worker, state
+  SQL
+
+  RAILS_COMMANDS_SQL = <<~SQL.squish
+    SELECT
+      (SELECT count(*) FROM phoenix.rails_commands
+         WHERE available_at <= now() AND (leased_until IS NULL OR leased_until < now()))::integer AS due,
+      (SELECT count(*) FROM phoenix.rails_commands WHERE leased_until >= now())::integer AS leased,
+      (SELECT count(*) FROM phoenix.rails_commands
+         WHERE attempts > 0 AND (leased_until IS NULL OR leased_until < now()))::integer AS retrying,
+      (SELECT count(*) FROM phoenix.rails_commands_dead)::integer AS dead,
+      (SELECT EXTRACT(EPOCH FROM now() - min(available_at))::integer FROM phoenix.rails_commands
+         WHERE available_at <= now() AND (leased_until IS NULL OR leased_until < now())) AS oldest_due_seconds
   SQL
 
   OUTBOX_SQL = <<~SQL.squish

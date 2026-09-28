@@ -14,6 +14,17 @@ module JobCommands
       version: 1,
       sidekiq: ->(payload, _at) { Trips::CalculateAllJob.perform_later(payload['trip_id'], payload['distance_unit']) }
     },
+    'achievements.check' => {
+      version: 1,
+      sidekiq: lambda { |payload, _at|
+        Achievements::CheckJob.perform_later(payload['user_id'], notify: payload['notify'],
+                                                                   oldest_timestamp: payload['oldest_timestamp'])
+      }
+    },
+    'areas.relabel_visits' => {
+      version: 1,
+      sidekiq: ->(payload, _at) { Areas::RelabelVisitsJob.perform_later(payload['area_id']) }
+    },
     'exports.points' => {
       version: 1,
       sidekiq: lambda { |payload, _at|
