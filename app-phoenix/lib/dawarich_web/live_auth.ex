@@ -21,12 +21,13 @@ defmodule DawarichWeb.LiveAuth do
        socket
        |> assign_new(:current_user, fn -> rendered && Dawarich.Accounts.get(rendered) end)
        |> assign(:now, DateTime.utc_now())
-       |> assign(:navbar, [])
+       |> assign(:navbar, nil)
        |> assign(:page_title, nil)
        |> assign(:flash_messages, [])
        |> assign(for(key <- @layout, do: {key, session[Atom.to_string(key)]}))
        |> rails_flash(session["flash_messages"] || [])
-       |> attach_hook(:rails_user, :handle_event, &still_signed_in/3)}
+       |> attach_hook(:rails_user, :handle_event, &still_signed_in/3)
+       |> DawarichWeb.NavbarHooks.attach()}
     else
       {:halt, redirect(socket, to: "/users/sign_in")}
     end

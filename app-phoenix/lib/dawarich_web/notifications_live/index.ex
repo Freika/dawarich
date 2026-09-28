@@ -21,8 +21,7 @@ defmodule DawarichWeb.NotificationsLive.Index do
   def handle_params(params, uri, socket) do
     page = max(DawarichWeb.Params.ruby_to_i(params["page"]), 1)
     query = URI.decode_query(URI.parse(uri).query || "")
-    user = socket.assigns.current_user
-    now = DateTime.utc_now()
+    %{current_user: user, now: now} = socket.assigns
 
     result =
       Map.update!(
@@ -31,7 +30,7 @@ defmodule DawarichWeb.NotificationsLive.Index do
         &Notifications.localize(&1, user.settings, now)
       )
 
-    {:noreply, socket |> assign(page: page, query: query, now: now) |> assign(result)}
+    {:noreply, socket |> assign(page: page, query: query) |> assign(result)}
   end
 
   @impl true

@@ -104,6 +104,10 @@ defmodule DawarichWeb.NotificationsLiveTest do
         set: [locked_at: NaiveDateTime.utc_now()]
       )
 
+  defp consent(user),
+    do:
+      Dawarich.Repo.one(from(u in "users", where: u.id == ^user.id, select: u.changelog_consent))
+
   defp redirect_flash(%{flash: token}),
     do: Phoenix.LiveView.Utils.verify_flash(@endpoint, token)
 
@@ -166,6 +170,17 @@ defmodule DawarichWeb.NotificationsLiveTest do
 
     assert Dawarich.Test.ParityHTML.fragment(render(view), "footer") ==
              Dawarich.Test.ParityHTML.fragment(rails, "footer")
+  end
+
+  test "the offered language follows the query of the latest patch", %{user: user} do
+    {:ok, view, _html} =
+      RailsUser.signed_in(user.id)
+      |> RailsUser.connecting_as(user.id)
+      |> Plug.Conn.put_req_header("accept-language", "de")
+      |> live("/notifications?x[]=1&x[]=2")
+
+    assert render_patch(view, "/notifications?page=2&x[]=1&x[]=2") =~
+             ~s(href="/notifications?locale=de&amp;page=2&amp;x%5B%5D=1&amp;x%5B%5D=2")
   end
 
   describe "the index" do
@@ -389,6 +404,77 @@ defmodule DawarichWeb.NotificationsLiveTest do
       assert render(view) =~ "From Rails"
       view |> element("#flash-messages [role=alert] button") |> render_click()
       refute render(view) =~ "From Rails"
+    end
+  end
+
+  describe "the navbar" do
+    setup %{user: user} do
+      now = NaiveDateTime.utc_now()
+
+      Dawarich.Repo.insert_all(
+        "notifications",
+        for(
+          n <- 1..2,
+          do: %{
+            user_id: user.id,
+            title: "Nav #{n}",
+            content: "c",
+            kind: 0,
+            created_at: now,
+            updated_at: now
+          }
+        )
+      )
+
+      :ok
+    end
+
+    test "shows the unread badge, refreshes it on each tick and after mark all", %{user: user} do
+      {:ok, view, _html} = live_as(user)
+      assert has_element?(view, "#notifications-badge", "2")
+      now = NaiveDateTime.utc_now()
+
+      Dawarich.Repo.insert_all("notifications", [
+        %{
+          user_id: user.id,
+          title: "Nav 3",
+          content: "c",
+          kind: 0,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+
+      send(view.pid, :navbar_refresh)
+      assert has_element?(view, "#notifications-badge", "3")
+      assert has_element?(view, "#notifications-list a", "Nav 3")
+      view |> element("a", "Mark all as read") |> render_click()
+      assert has_element?(view, "#notifications-badge.hidden")
+    end
+
+    test "the changelog prompt saves the reader's choice", %{user: user} do
+      System.put_env("SELF_HOSTED", "true")
+      on_exit(fn -> System.delete_env("SELF_HOSTED") end)
+      {:ok, view, _html} = live_as(user)
+      assert has_element?(view, "h3", "Stay up to date?")
+      render_submit(view, "changelog_consent", %{"decision" => "maybe"})
+      assert has_element?(view, "h3", "Stay up to date?")
+      assert consent(user) == nil
+      render_submit(view, "changelog_consent", %{"decision" => "declined"})
+      refute has_element?(view, "h3", "Stay up to date?")
+      assert Dawarich.Accounts.get(user.id).changelog_consent == 0
+    end
+
+    test "a choice from an account locked since the page opened is not saved", %{user: user} do
+      System.put_env("SELF_HOSTED", "true")
+      on_exit(fn -> System.delete_env("SELF_HOSTED") end)
+      {:ok, view, _html} = live_as(user)
+      lock(user)
+
+      assert {:error, {:redirect, %{to: "/notifications"}}} =
+               render_submit(view, "changelog_consent", %{"decision" => "granted"})
+
+      assert consent(user) == nil
     end
   end
 end
