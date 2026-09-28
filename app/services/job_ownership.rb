@@ -75,7 +75,7 @@ module JobOwnership
     end
   end
 
-  private_class_method :joint_keys, :with_lock_timeout
+  private_class_method :with_lock_timeout
 
   def table?
     ActiveRecord::Base.connection.select_value("SELECT to_regclass('phoenix.job_owners') IS NOT NULL")
