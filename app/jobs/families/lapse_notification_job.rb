@@ -6,7 +6,7 @@ class Families::LapseNotificationJob < ApplicationJob
   OWNERSHIP_KEY = 'command:mail.family_lapse'
 
   def perform(user_id, family_id)
-    return forward(user_id, family_id) if JobOwnership.with_owner(OWNERSHIP_KEY) { true } == :not_owner
+    return forward(user_id, family_id) if JobOwnership.lock_owner(OWNERSHIP_KEY) == :oban
 
     user = User.find_by(id: user_id)
     family = Family.find_by(id: family_id)

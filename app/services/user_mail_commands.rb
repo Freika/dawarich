@@ -1,19 +1,13 @@
 # frozen_string_literal: true
 
 module UserMailCommands
-  TYPES = {
-    'welcome' => 'mail.user.welcome',
-    'archival_approaching' => 'mail.user.archival_approaching',
-    'oauth_account_link' => 'mail.user.oauth_account_link',
-    'account_destroy_confirmation' => 'mail.user.account_destroy_confirmation'
-  }.freeze
-
   LEGACY_OPTIONS = {
     'welcome' => [],
     'archival_approaching' => %w[epoch],
     'oauth_account_link' => %w[provider_label link_url],
     'account_destroy_confirmation' => %w[link_url]
   }.freeze
+  TYPES = LEGACY_OPTIONS.keys.index_with { |email_type| "mail.user.#{email_type}" }.freeze
 
   module_function
 

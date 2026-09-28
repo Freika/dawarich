@@ -39,7 +39,8 @@ class Lite::ArchivalWarningJob < ApplicationJob
     return if unsent_crossed.empty?
 
     marked_at = Time.zone.now.iso8601
-    unsent_crossed.each { |threshold| mark_warning_sent(user, threshold[:key], marked_at) }
+    return unless mark_warnings_sent(user, unsent_crossed, marked_at)
+
     send(unsent_crossed.last[:action], user, marked_at)
   end
 
@@ -69,17 +70,18 @@ class Lite::ArchivalWarningJob < ApplicationJob
     end
   end
 
-  def mark_warning_sent(user, key, marked_at)
-    User.where(id: user.id).update_all(
-      ActiveRecord::Base.sanitize_sql_array(
-        [
-          "settings = COALESCE(settings, '{}'::jsonb) || " \
-          "jsonb_build_object('archival_warnings', " \
-          "COALESCE(settings->'archival_warnings', '{}'::jsonb) || " \
-          'jsonb_build_object(?, ?))',
-          key, marked_at
-        ]
-      )
-    )
+  def mark_warnings_sent(user, thresholds, marked_at)
+    marks = thresholds.to_h { |threshold| [threshold[:key], marked_at] }
+    User.where(id: user.id)
+        .where("COALESCE(settings->'archival_warnings'->>?, '') = ''", thresholds.last[:key])
+        .update_all(
+          ActiveRecord::Base.sanitize_sql_array(
+            [
+              "settings = COALESCE(settings, '{}'::jsonb) || jsonb_build_object('archival_warnings', " \
+              "COALESCE(settings->'archival_warnings', '{}'::jsonb) || ?::jsonb)",
+              marks.to_json
+            ]
+          )
+        ) == 1
   end
 end

@@ -36,13 +36,7 @@ module JobCommands
         end
       }
     },
-    'mail.user.welcome' => { version: 1, sidekiq: UserMailCommands.legacy('welcome') },
-    'mail.user.archival_approaching' => { version: 1, sidekiq: UserMailCommands.legacy('archival_approaching') },
-    'mail.user.oauth_account_link' => { version: 1, sidekiq: UserMailCommands.legacy('oauth_account_link') },
-    'mail.user.account_destroy_confirmation' => {
-      version: 1,
-      sidekiq: UserMailCommands.legacy('account_destroy_confirmation')
-    }
+    **UserMailCommands::TYPES.to_h { |email_type, type| [type, { version: 1, sidekiq: UserMailCommands.legacy(email_type) }] }
   }.freeze
 
   module_function
