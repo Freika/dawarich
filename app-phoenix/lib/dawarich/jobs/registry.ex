@@ -20,6 +20,27 @@ defmodule Dawarich.Jobs.Registry do
       kind: :command,
       worker: Dawarich.Trips.CalculateWorker,
       claimable: false
+    },
+    %{
+      key: Dawarich.Families.InvitationCleanupWorker.key(),
+      kind: :cron,
+      expression: "30 2 * * *",
+      worker: Dawarich.Families.InvitationCleanupWorker,
+      claimable: false
+    },
+    %{
+      key: Dawarich.Families.LocationRequestExpiryWorker.key(),
+      kind: :cron,
+      expression: "30 * * * *",
+      worker: Dawarich.Families.LocationRequestExpiryWorker,
+      claimable: false
+    },
+    %{
+      key: Dawarich.Users.PointsCounterCorrectionWorker.key(),
+      kind: :cron,
+      expression: "0 */6 * * *",
+      worker: Dawarich.Users.PointsCounterCorrectionWorker,
+      claimable: false
     }
   ]
 
