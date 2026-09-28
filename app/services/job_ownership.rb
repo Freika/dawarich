@@ -2,6 +2,8 @@
 
 module JobOwnership
   OWNERS = %i[sidekiq oban].freeze
+  LOCK_TIMEOUT = '5s'
+  JOINT_KEYS = [%w[cron:lite_archival_warning_job command:mail.user.archival_approaching]].freeze
 
   module_function
 
@@ -32,10 +34,14 @@ module JobOwnership
 
   def unpin!(key, by:)
     require_table!
-    ActiveRecord::Base.connection.update(ActiveRecord::Base.sanitize_sql_array(
-                                           ['UPDATE phoenix.job_owners SET pinned = false, updated_at = now(), ' \
-                                            'updated_by = ? WHERE key = ?', by, key]
-                                         ))
+    keys = joint_keys(key)
+    with_lock_timeout do
+      ActiveRecord::Base.connection.update(ActiveRecord::Base.sanitize_sql_array(
+                                             ['UPDATE phoenix.job_owners SET pinned = false, updated_at = now(), ' \
+                                              'updated_by = ? WHERE key IN (?)', by, keys]
+                                           ))
+    end
+    keys
   end
 
   def put!(key, owner, pinned:, by:)
@@ -47,8 +53,29 @@ module JobOwnership
       ON CONFLICT (key) DO UPDATE SET owner = EXCLUDED.owner, pinned = EXCLUDED.pinned,
         updated_at = EXCLUDED.updated_at, updated_by = EXCLUDED.updated_by
     SQL
-    ActiveRecord::Base.connection.execute(ActiveRecord::Base.sanitize_sql_array([sql, key, owner.to_s, pinned, by]))
+    keys = joint_keys(key)
+    with_lock_timeout do
+      keys.each do |joint_key|
+        ActiveRecord::Base.connection.execute(
+          ActiveRecord::Base.sanitize_sql_array([sql, joint_key, owner.to_s, pinned, by])
+        )
+      end
+    end
+    keys
   end
+
+  def joint_keys(key)
+    JOINT_KEYS.find { |keys| keys.include?(key) } || [key]
+  end
+
+  def with_lock_timeout
+    ActiveRecord::Base.transaction do
+      ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '#{LOCK_TIMEOUT}'")
+      yield
+    end
+  end
+
+  private_class_method :joint_keys, :with_lock_timeout
 
   def table?
     ActiveRecord::Base.connection.select_value("SELECT to_regclass('phoenix.job_owners') IS NOT NULL")

@@ -105,6 +105,32 @@ RSpec.describe 'dawarich:jobs' do
     end.to reported.and(stopped)
   end
 
+  it 'fails with a clear message when the owner row stays locked by another transaction' do
+    allow(JobOwnership).to receive(:release!).and_raise(ActiveRecord::LockWaitTimeout)
+    allow(JobOwnership).to receive(:unpin!).and_raise(ActiveRecord::LockWaitTimeout)
+    allow(JobCommands).to receive(:rehome!).and_raise(ActiveRecord::LockWaitTimeout)
+
+    { 'release' => 'cron:app_version_checking_job', 'unpin' => 'cron:app_version_checking_job',
+      'rehome' => 'command:exports.points' }.each do |task, key|
+      Rake::Task["dawarich:jobs:#{task}"].reenable
+
+      expect do
+        expect { Rake::Task["dawarich:jobs:#{task}"].invoke(key) }
+          .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
+      end.to output(/#{Regexp.escape(key)}: .*locked by another transaction.*Nothing changed/m).to_stderr
+    end
+  end
+
+  it 'releases the Lite archival cron together with its mail key and says so' do
+    job_owner!('cron:lite_archival_warning_job', :oban)
+    job_owner!('command:mail.user.archival_approaching', :oban)
+    Rake::Task['dawarich:jobs:release'].reenable
+
+    expect { Rake::Task['dawarich:jobs:release'].invoke('cron:lite_archival_warning_job') }
+      .to output(/cron:lite_archival_warning_job: sidekiq \(pinned\).*command:mail\.user\.archival_approaching: /m)
+      .to_stdout
+  end
+
   it 'prints the health summary and gauges' do
     job_owner!('command:trips.calculate', :oban)
 
