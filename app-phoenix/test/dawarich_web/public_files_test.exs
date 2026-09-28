@@ -58,6 +58,10 @@ defmodule DawarichWeb.PublicFilesTest do
     }
   end
 
+  test "boot configuration memoizes the resolved Rails environment" do
+    assert %{rails_env: "development"} = PublicFiles.boot_config()
+  end
+
   defp serve(plug) do
     options = [plug: plug] ++ Dawarich.Front.http_options({127, 0, 0, 1}, 0)
     bandit = start_supervised!({Bandit, options}, id: make_ref())

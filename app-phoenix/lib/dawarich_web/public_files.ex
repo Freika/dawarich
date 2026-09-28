@@ -40,8 +40,11 @@ defmodule DawarichWeb.PublicFiles do
   @encodings [{"br", ".br", ~r/\bbr\b/i}, {"gzip", ".gz", ~r/\bgzip\b/i}]
 
   def boot_config do
+    env = Map.new(@env, &{&1, System.get_env(&1)})
+
     %{
-      env: Map.new(@env, &{&1, System.get_env(&1)}),
+      env: env,
+      rails_env: RailsSecret.rails_env(env),
       root: Application.get_env(:dawarich, :public_root) || Path.join(File.cwd!(), "public")
     }
   end
@@ -55,11 +58,16 @@ defmodule DawarichWeb.PublicFiles do
   def call(%{request_path: <<"/api/", _::binary>>} = conn, _opts), do: conn
 
   def call(%{method: method} = conn, opts) when method in ["GET", "HEAD"] do
-    %{env: default_env, root: default_root} = Application.fetch_env!(:dawarich, :public_files)
+    config = Application.fetch_env!(:dawarich, :public_files)
+    %{env: default_env, root: default_root} = config
     env = Keyword.get(opts, :env, default_env)
     root = Keyword.get(opts, :root, default_root)
+    default_rails_env = Map.get(config, :rails_env) || RailsSecret.rails_env(default_env)
 
-    with true <- RailsSecret.rails_env(env) in @serving_envs,
+    rails_env =
+      if Keyword.has_key?(opts, :env), do: RailsSecret.rails_env(env), else: default_rails_env
+
+    with true <- rails_env in @serving_envs,
          [] <- get_req_header(conn, "range"),
          {:ok, segments} <- segments(conn.request_path),
          {path, info, headers} <- find(root, segments, header(conn, "accept-encoding") || ""),
@@ -105,7 +113,12 @@ defmodule DawarichWeb.PublicFiles do
   end
 
   defp segments(request_path) do
-    case request_path |> String.replace_suffix("/", "") |> URI.decode() |> String.split("/") do
+    path =
+      request_path
+      |> String.replace_suffix("/", "")
+      |> decode_path()
+
+    case String.split(path, "/") do
       ["" | [_ | _] = segments] ->
         if Enum.all?(segments, &plain_segment?/1), do: {:ok, segments}, else: :error
 
@@ -114,13 +127,17 @@ defmodule DawarichWeb.PublicFiles do
     end
   end
 
+  defp decode_path(path) do
+    if String.contains?(path, "%"), do: URI.decode(path), else: path
+  end
+
   defp plain_segment?(segment), do: segment != "" and not String.starts_with?(segment, ".")
 
   defp find(root, segments, accept) do
     {dirs, [name]} = Enum.split(segments, -1)
 
-    with {:ok, dir} <- walk(root, dirs),
-         {:ok, type} <- Map.fetch(@types, String.downcase(Path.extname(name))) do
+    with {:ok, type} <- Map.fetch(@types, String.downcase(Path.extname(name))),
+         {:ok, dir} <- walk(root, dirs) do
       Enum.find_value(candidates(name, type), fn {subdirs, file, type} ->
         case walk(dir, subdirs) do
           {:ok, subdir} -> try_file(Path.join(subdir, file), type, accept)
