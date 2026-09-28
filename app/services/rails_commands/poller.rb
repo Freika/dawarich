@@ -30,30 +30,33 @@ module RailsCommands
 
     def drain_safely
       sleep(POLL_SECONDS) if drain_once.zero?
-    rescue ActiveRecord::ActiveRecordError, PG::Error => e
+    rescue StandardError => e
       Rails.logger.warn("[RailsCommands] poll: #{e.class}")
       sleep(5)
     end
 
     def drain_once
       Rails.application.executor.wrap do
-        rows = claim
-        rows.each { |row| run(row) }
-        rows.size
+        ran = 0
+        while ran < BATCH && (row = claim)
+          run(row)
+          ran += 1
+        end
+        ran
       end
     end
 
     def claim
       connection = ActiveRecord::Base.connection
-      return [] unless connection.select_value("SELECT to_regclass('phoenix.rails_commands_dead') IS NOT NULL")
+      return unless connection.select_value("SELECT to_regclass('phoenix.rails_commands_dead') IS NOT NULL")
 
-      connection.exec_query(<<~SQL.squish).to_a.sort_by { _1['id'] }
+      connection.exec_query(<<~SQL.squish).first
         UPDATE phoenix.rails_commands
         SET leased_until = now() + make_interval(secs => #{LEASE_SECONDS}), attempts = attempts + 1
-        WHERE id IN (
+        WHERE id = (
           SELECT id FROM phoenix.rails_commands
           WHERE available_at <= now() AND (leased_until IS NULL OR leased_until < now())
-          ORDER BY id LIMIT #{BATCH} FOR UPDATE SKIP LOCKED)
+          ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)
         RETURNING id, kind, payload::text AS payload, attempts, leased_until::text AS lease
       SQL
     end
@@ -84,9 +87,7 @@ module RailsCommands
     def complete(row)
       result = execute('DELETE FROM phoenix.rails_commands WHERE id = ? AND leased_until = ?::timestamptz',
                        row['id'], row['lease'])
-      return unless result.cmd_tuples.zero?
-
-      Rails.logger.warn("[RailsCommands] #{row['id']} (#{row['kind']}) finished after its lease; it will run again")
+      lease_lost(row, 'finished') if result.cmd_tuples.zero?
     end
 
     def fail_attempt(row, error)
@@ -104,15 +105,23 @@ module RailsCommands
 
     def bury(row, attempts, error)
       last_error = "#{error.class}: #{error.message}".truncate(1000)
-      execute(<<~SQL.squish, row['id'], row['lease'], attempts, last_error)
+      result = execute(<<~SQL.squish, row['id'], row['lease'], attempts, last_error)
         WITH moved AS (
           DELETE FROM phoenix.rails_commands WHERE id = ? AND leased_until = ?::timestamptz
           RETURNING id, kind, payload, created_at)
         INSERT INTO phoenix.rails_commands_dead (id, kind, payload, attempts, last_error, created_at)
         SELECT id, kind, payload, ?, ?, created_at FROM moved
       SQL
+      return lease_lost(row, 'failed') if result.cmd_tuples.zero?
+
       Rails.logger.error(
         "[RailsCommands] #{row['id']} (#{row['kind']}) dead after #{attempts} attempts: #{error.class}"
+      )
+    end
+
+    def lease_lost(row, outcome)
+      Rails.logger.warn(
+        "[RailsCommands] #{row['id']} (#{row['kind']}) #{outcome} after its lease passed on; nothing settled"
       )
     end
 
