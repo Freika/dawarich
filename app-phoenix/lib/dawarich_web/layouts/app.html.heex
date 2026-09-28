@@ -1,0 +1,34 @@
+<div class="container mx-auto flex flex-col flex-1">
+  {render_slot(@navbar)}
+  <%= if @suggested_locale do %>
+    <div
+      class="alert alert-info rounded-none py-2 px-4 text-sm flex items-start gap-2"
+      data-testid="locale-suggestion"
+      lang={@suggested_locale}
+    >
+      <span class="flex-1">{t(@suggested_locale, "shared.locale_suggestion.message", %{
+        locale: @suggested_locale
+      })}
+      <a
+        href={locale_path(@request_path, @query_params, @suggested_locale)}
+        lang={@suggested_locale}
+        class="link link-primary font-medium"
+      >{t(@suggested_locale, "shared.locale_suggestion.switch", %{locale: @suggested_locale})}</a></span><button
+        type="button"
+        class="btn btn-ghost btn-xs btn-circle"
+        aria-label={
+          t(@suggested_locale, "shared.locale_suggestion.dismiss", %{locale: @suggested_locale})
+        }
+      >✕</button>
+    </div>
+  <% end %>
+  <.flash locale={@locale} flash={@flash} flash_messages={@flash_messages} />
+  <div class="w-full px-4 sm:px-5 flex-1">
+    <div class="flex w-full min-w-0 gap-5">{@inner_content}</div>
+  </div>
+  <div class="px-4 sm:px-5 mt-auto">
+    {if @self_hosted,
+      do: footer(%{locale: @locale, now: @now}),
+      else: legal_footer(%{locale: @locale, now: @now})}
+  </div>
+</div>

@@ -1,4 +1,5 @@
 [
   import_deps: [:ecto, :ecto_sql, :phoenix],
-  inputs: ["*.{ex,exs}", "{config,lib,test,priv}/**/*.{ex,exs}"]
+  plugins: [Phoenix.LiveView.HTMLFormatter],
+  inputs: ["*.{heex,ex,exs}", "{config,lib,test,priv}/**/*.{heex,ex,exs}"]
 ]

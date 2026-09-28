@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang={@locale} data-theme={theme(@current_user)} data-self-hosted={to_string(@self_hosted)}>
+  <head>
+    <title>{page_title(@locale, @page_title)}</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <.pwa_meta locale={@locale} />
+    <meta name="action-cable-url" content="/cable" />
+    <%= if @rails_csrf_token do %>
+      <meta name="csrf-param" content="authenticity_token" /><meta
+        name="csrf-token"
+        content={@rails_csrf_token}
+      />
+    <% end %>
+    <meta name="phoenix-csrf-token" content={Phoenix.Controller.get_csrf_token()} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("tailwind.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("inter-font.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("application.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements_spectral.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements_unlocks.css")} />
+    <%= if @current_user do %>
+      <meta name="turbo-refresh-method" content="morph" /><meta
+        name="turbo-refresh-scroll"
+        content="preserve"
+      />
+    <% end %>
+    <script type="importmap">
+      <%= Phoenix.HTML.raw(importmap()) %>
+    </script>
+    <script type="module">
+      import "app"
+    </script>
+    <.favicon />
+    <.head_scripts self_hosted={@self_hosted} />
+  </head>
+  <body class="min-h-screen flex flex-col">{@inner_content}</body>
+</html>
