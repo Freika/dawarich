@@ -26,11 +26,8 @@ module Users
         token: token, host: @host, protocol: @protocol
       )
 
-      Users::MailerSendingJob.perform_later(
-        @user.id,
-        'account_destroy_confirmation',
-        link_url: link_url
-      )
+      UserMailCommands.produce('account_destroy_confirmation', @user.id, producer: self.class.name,
+                                                                link_url: link_url)
 
       Result.new(status: :sent, message: SENT_MESSAGE)
     end

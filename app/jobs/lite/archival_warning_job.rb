@@ -3,6 +3,8 @@
 class Lite::ArchivalWarningJob < ApplicationJob
   queue_as :archival
 
+  OWNERSHIP_KEY = 'cron:lite_archival_warning_job'
+
   # Thresholds checked daily for all Lite users.
   # Each threshold defines the cutoff duration and a dedup key.
   THRESHOLDS = [
@@ -17,7 +19,8 @@ class Lite::ArchivalWarningJob < ApplicationJob
     User.where(plan: :lite).find_each do |user|
       next if user.full_access?
 
-      I18n.with_locale(user.locale) { check_thresholds(user) }
+      result = JobOwnership.with_owner(OWNERSHIP_KEY) { I18n.with_locale(user.locale) { check_thresholds(user) } }
+      break if result == :not_owner
     end
   end
 
@@ -28,7 +31,6 @@ class Lite::ArchivalWarningJob < ApplicationJob
     oldest_timestamp = user.points.minimum(:timestamp)
     return unless oldest_timestamp
 
-    # Find all crossed thresholds that haven't been sent yet
     unsent_crossed = THRESHOLDS.select do |threshold|
       cutoff = threshold[:duration].ago.to_i
       oldest_timestamp <= cutoff && warnings_sent[threshold[:key]].blank?
@@ -36,13 +38,12 @@ class Lite::ArchivalWarningJob < ApplicationJob
 
     return if unsent_crossed.empty?
 
-    # Only send the most severe (last in the ordered list), mark all as sent
-    most_severe = unsent_crossed.last
-    send(most_severe[:action], user)
-    unsent_crossed.each { |threshold| mark_warning_sent(user, threshold[:key]) }
+    marked_at = Time.zone.now.iso8601
+    unsent_crossed.each { |threshold| mark_warning_sent(user, threshold[:key], marked_at) }
+    send(unsent_crossed.last[:action], user, marked_at)
   end
 
-  def notify_approaching(user)
+  def notify_approaching(user, _marked_at)
     I18n.with_locale(user.locale) do
       Notification.create!(
         user: user,
@@ -53,11 +54,11 @@ class Lite::ArchivalWarningJob < ApplicationJob
     end
   end
 
-  def notify_email(user)
-    Users::MailerSendingJob.perform_later(user.id, 'archival_approaching')
+  def notify_email(user, marked_at)
+    UserMailCommands.produce('archival_approaching', user.id, producer: self.class.name, epoch: marked_at)
   end
 
-  def notify_archived(user)
+  def notify_archived(user, _marked_at)
     I18n.with_locale(user.locale) do
       Notification.create!(
         user: user,
@@ -68,9 +69,7 @@ class Lite::ArchivalWarningJob < ApplicationJob
     end
   end
 
-  def mark_warning_sent(user, key)
-    # Atomic JSONB merge at the SQL level to avoid read-modify-write race conditions
-    # when multiple job workers process the same user concurrently.
+  def mark_warning_sent(user, key, marked_at)
     User.where(id: user.id).update_all(
       ActiveRecord::Base.sanitize_sql_array(
         [
@@ -78,7 +77,7 @@ class Lite::ArchivalWarningJob < ApplicationJob
           "jsonb_build_object('archival_warnings', " \
           "COALESCE(settings->'archival_warnings', '{}'::jsonb) || " \
           'jsonb_build_object(?, ?))',
-          key, Time.zone.now.iso8601
+          key, marked_at
         ]
       )
     )
