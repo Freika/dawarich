@@ -19,6 +19,13 @@ defmodule DawarichWeb.Strangler do
 
   defp owned?(conn) do
     method = if conn.method == "HEAD", do: "GET", else: conn.method
-    Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host) != :error
+
+    Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host) != :error and
+      not handed_back?(conn.path_info)
   end
+
+  defp handed_back?([segment | _]),
+    do: segment in Application.get_env(:dawarich, :rails_routes, [])
+
+  defp handed_back?([]), do: false
 end

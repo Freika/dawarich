@@ -19,7 +19,7 @@ stack() {
     OTP_ENCRYPTION_DETERMINISTIC_KEY=e2e-otp-deterministic-key-not-a-secret \
     OTP_ENCRYPTION_KEY_DERIVATION_SALT=e2e-otp-derivation-salt-not-a-secret \
     WEB_CONCURRENCY=0 RAILS_MAX_THREADS=10 APPLICATION_HOSTS="${APPLICATION_HOSTS:-localhost,127.0.0.1}" DAWARICH_COOKIE_FILE="$root/tmp/proxy_stack.cookie" \
-    DAWARICH_REFERENCE_LIVE="${DAWARICH_REFERENCE_LIVE:-}" "$@"
+    DAWARICH_RAILS_ROUTES="${DAWARICH_RAILS_ROUTES:-}" "$@"
 }
 
 if [ "${1:-}" = --down ]; then
@@ -33,6 +33,13 @@ if [ "${1:-}" = --down ]; then
   done
   redis-cli -p "$REDIS_PORT" shutdown nosave >/dev/null 2>&1 || true
   rm -f "$pidfile"
+  exit 0
+fi
+
+if [ "${1:-}" = --seed ]; then
+  cd "$root"
+  stack env E2E_B9_B11_FIXTURES=1 bin/rails ${EXTRA_SEEDS:?EXTRA_SEEDS names the seed tasks} >>"$root/log/proxy_stack_seed.log" 2>&1 \
+    || { tail -20 "$root/log/proxy_stack_seed.log" >&2; exit 1; }
   exit 0
 fi
 
@@ -59,7 +66,7 @@ cd "$root"
 stack bin/rails db:prepare >/dev/null
 stack bin/rails phoenix:i18n >/dev/null
 [ -n "$(ls -A public/assets 2>/dev/null)" ] || stack bin/rails assets:precompile >/dev/null
-(cd app-phoenix && env PATH="$HOME/.asdf/shims:$PATH" MIX_ENV=prod DAWARICH_REFERENCE_LIVE="${DAWARICH_REFERENCE_LIVE:-}" sh -c 'mix compile --force >/dev/null && mix release --overwrite >/dev/null')
+(cd app-phoenix && env PATH="$HOME/.asdf/shims:$PATH" MIX_ENV=prod sh -c 'mix compile --force >/dev/null && mix release --overwrite >/dev/null')
 stack "$rel" eval 'Dawarich.Release.migrate()'
 stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$PORT")" \
   sh -c 'echo $$ >"$1"; exec nohup "$2" start' _ "$pidfile" "$rel" >>"$log" 2>&1 &
@@ -85,4 +92,5 @@ until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
   sleep 1
 done
 stack bin/rails e2e:reset_and_seed >"$root/log/proxy_stack_seed.log" 2>&1 || { tail -20 "$root/log/proxy_stack_seed.log" >&2; exit 1; }
+[ -z "${EXTRA_SEEDS:-}" ] || "$0" --seed
 echo "BASE_URL=http://127.0.0.1:$PORT"
