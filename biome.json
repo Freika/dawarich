@@ -17,6 +17,7 @@
       "!!public/maplibre/**",
       "!!app/javascript/posthog.js",
       "!!spec/fixtures/files/**",
+      "!!app-phoenix/test/fixtures/**",
       "!!db/release_migrations.json"
     ]
   },

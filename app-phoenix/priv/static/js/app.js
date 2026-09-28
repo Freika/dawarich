@@ -16,7 +16,9 @@ const removeFlash = (flash) => flash.remove()
 const scheduleFlashRemoval = () => {
   document
     .querySelectorAll("[data-removals-timeout-value='5000']")
-    .forEach((flash) => window.setTimeout(() => removeFlash(flash), 5000))
+    .forEach((flash) => {
+      window.setTimeout(() => removeFlash(flash), 5000)
+    })
 }
 
 document.addEventListener("DOMContentLoaded", scheduleFlashRemoval)
