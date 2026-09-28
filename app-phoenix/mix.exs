@@ -47,7 +47,7 @@ defmodule Dawarich.MixProject do
       end,
       test: [
         "app.config",
-        fn _ -> Dawarich.Release.migrate() end,
+        fn _ -> Dawarich.Release.migrate_oban() end,
         "dawarich.i18n",
         "test"
       ]
