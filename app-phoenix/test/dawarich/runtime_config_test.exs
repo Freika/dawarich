@@ -2,7 +2,7 @@ defmodule Dawarich.RuntimeConfigTest do
   use ExUnit.Case, async: false
 
   @runtime Path.expand("../../config/runtime.exs", __DIR__)
-  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS)
+  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS DAWARICH_RAILS_ROUTES)
 
   setup do
     saved = Map.new(@vars, &{&1, System.get_env(&1)})
@@ -26,12 +26,24 @@ defmodule Dawarich.RuntimeConfigTest do
     {repo, oban} = prod()
 
     assert oban[:queues] == [app_version_checking: 1, mailers: 2, trips: 2, maintenance: 1]
-    assert repo[:pool_size] == 9
+    assert repo[:pool_size] == 11
     assert oban[:peer] == Oban.Peers.Database
     assert oban[:stager] == {Oban.Stager, []}
     assert oban[:pruner] == [max_age: {1, :day}]
     assert oban[:lifeline] == [rescue_after: {60, :minute}]
     assert oban[:shutdown_grace_period] == 12_000
+  end
+
+  test "reads the routes handed back to Rails, trimmed and without blanks" do
+    System.put_env("DAWARICH_RAILS_ROUTES", " notifications, ,stats ")
+
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:rails_routes] == [
+             "notifications",
+             "stats"
+           ]
+
+    System.delete_env("DAWARICH_RAILS_ROUTES")
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:rails_routes] == []
   end
 
   test "falls back to the host name when HOSTNAME is missing or not a single word" do

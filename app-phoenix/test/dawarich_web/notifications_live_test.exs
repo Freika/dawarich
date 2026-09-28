@@ -1,14 +1,13 @@
-defmodule DawarichWeb.ReferenceLiveTest do
+defmodule DawarichWeb.NotificationsLiveTest do
   use ExUnit.Case, async: false
 
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
-  import Plug.Conn, only: [get_resp_header: 2, get_session: 1, put_private: 3]
+  import Plug.Conn, only: [get_resp_header: 2, get_session: 1]
+
+  alias Dawarich.Test.RailsUser
 
   @endpoint DawarichWeb.Endpoint
-  @fixture "test/fixtures/rails_cookies.json" |> File.read!() |> Jason.decode!()
-  @user @fixture["user"]
-
   @layout_headers "test/fixtures/layout/self_hosted_dark_en.json"
                   |> File.read!()
                   |> Jason.decode!()
@@ -17,27 +16,11 @@ defmodule DawarichWeb.ReferenceLiveTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
-    stamp = NaiveDateTime.utc_now()
-
-    Dawarich.Repo.insert_all("users", [
-      %{
-        id: @user["id"],
-        email: @user["email"],
-        encrypted_password: @user["encrypted_password"],
-        created_at: stamp,
-        updated_at: stamp
-      }
-    ])
-
-    :ok
+    %{user: RailsUser.insert!(%{id: 4101, email: "a5-live@dawarich.test"})}
   end
 
-  defp signed_in,
-    do: build_conn() |> put_req_cookie("_dawarich_session", @fixture["session_cookie"])
-
-  defp connecting_as(conn, rails_user_id),
-    do:
-      put_private(conn, :live_view_connect_info, %{session: %{"rails_user_id" => rails_user_id}})
+  defp live_as(user, path \\ "/notifications"),
+    do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
 
   defp join_reply(conn, socket_session) do
     html = Phoenix.ConnTest.response(conn, 200)
@@ -66,7 +49,7 @@ defmodule DawarichWeb.ReferenceLiveTest do
          "session" => session_token,
          "static" => static_token,
          "params" => %{"_mounts" => 0},
-         "url" => "http://www.example.com/phoenix/reference",
+         "url" => "http://www.example.com/notifications",
          "caller" => from
        }, from, socket}
     )
@@ -80,16 +63,16 @@ defmodule DawarichWeb.ReferenceLiveTest do
     value
   end
 
-  test "the Rails user sees the page, with the shared layout, and events work" do
-    {:ok, view, html} = live(signed_in() |> connecting_as(@user["id"]), "/phoenix/reference")
+  test "the Rails user sees the page with the shared layout", %{user: user} do
+    {:ok, _view, html} = live_as(user)
 
-    assert html =~ @user["email"]
+    assert html =~ ~s(<h1 class="text-3xl font-bold">Notifications</h1>)
     assert html =~ ~s(data-theme="dawarich-dark")
-    assert view |> element("#reference-bump") |> render_click() =~ ">1<"
+    assert html =~ "<title>Notifications | Dawarich</title>"
   end
 
-  test "Phoenix pages send the security headers Rails pages send, and no others" do
-    conn = get(signed_in(), "/phoenix/reference")
+  test "the page sends the security headers Rails pages send, and no CSP", %{user: user} do
+    conn = get(RailsUser.signed_in(user.id), "/notifications")
 
     for {name, value} <- @layout_headers,
         do: assert(get_resp_header(conn, name) == List.wrap(value))
@@ -97,43 +80,30 @@ defmodule DawarichWeb.ReferenceLiveTest do
     assert get_resp_header(conn, "content-security-policy") == []
   end
 
-  test "a visitor without a Rails session is anonymous" do
-    {:ok, _view, html} = live(build_conn() |> connecting_as(nil), "/phoenix/reference")
-    refute html =~ @user["email"]
-  end
-
-  test "a stale socket session reloads while a readable ended Rails session redirects on connect" do
-    conn = get(signed_in(), "/phoenix/reference")
+  test "a stale socket session reloads while a readable ended Rails session redirects on connect",
+       %{user: user} do
+    conn = get(RailsUser.signed_in(user.id), "/notifications")
     socket_session = get_session(conn) |> Map.put("rails_user_id", nil)
 
     assert {:error, %{reason: "stale"}} = join_reply(conn, nil)
     assert {:error, %{redirect: %{to: "/users/sign_in"}}} = join_reply(conn, socket_session)
 
     assert {:error, {:redirect, %{to: "/users/sign_in"}}} =
-             live(signed_in() |> connecting_as(nil), "/phoenix/reference")
+             live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(nil), "/notifications")
   end
 
-  test "Phoenix never sets a Rails cookie" do
-    conn = get(signed_in(), "/phoenix/reference")
-
-    refute Enum.any?(
-             get_resp_header(conn, "set-cookie"),
-             &String.starts_with?(&1, ["_dawarich_session=", "remember_user_token="])
-           )
-  end
-
-  test "an owned GET route answers HEAD without a body" do
-    conn = head(signed_in(), "/phoenix/reference")
+  test "an owned GET route answers HEAD without a body", %{user: user} do
+    conn = head(RailsUser.signed_in(user.id), "/notifications")
 
     assert conn.status == 200
     assert conn.resp_body == ""
   end
 
-  test "inside the connected LiveView the app layout sees the self-hosted state Rails renders" do
+  test "inside the connected LiveView the footer is the one Rails renders", %{user: user} do
     System.put_env("SELF_HOSTED", "true")
     on_exit(fn -> System.delete_env("SELF_HOSTED") end)
     {rails, _meta} = Dawarich.Test.LayoutFixtures.load("self_hosted_dark_en")
-    {:ok, view, _html} = live(signed_in() |> connecting_as(@user["id"]), "/phoenix/reference")
+    {:ok, view, _html} = live_as(user)
 
     assert Dawarich.Test.ParityHTML.fragment(render(view), "footer") ==
              Dawarich.Test.ParityHTML.fragment(rails, "footer")

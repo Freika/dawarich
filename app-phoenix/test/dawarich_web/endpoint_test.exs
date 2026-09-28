@@ -53,6 +53,27 @@ defmodule DawarichWeb.EndpointTest do
     assert {404, _, ""} = read_response(client)
   end
 
+  test "Phoenix answers /notifications itself" do
+    client = connect(serve())
+    send_raw(client, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n")
+
+    assert {200, headers, _body} = read_response(client)
+    assert values(headers, "x-frame-options") == ["SAMEORIGIN"]
+  end
+
+  test "a route handed back to Rails goes to Puma although Phoenix routes it", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["notifications"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    client = connect(serve())
+    send_raw(client, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n")
+
+    puma = accept(ctx.upstream)
+    {head, _} = read_head(puma)
+    assert request_line(head) == "GET /notifications HTTP/1.1"
+    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+    assert {200, _headers, "ok"} = read_response(client)
+  end
+
   @tag :tmp_dir
   test "a crashed listener comes back on its port while its old socket lingers, and leaves Puma running",
        %{tmp_dir: tmp_dir} do
