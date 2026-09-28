@@ -45,7 +45,7 @@ defmodule Dawarich.Mail.FamilyInvitationWorker do
         settings = if recipient_id, do: recipient_settings, else: inviter_settings
         locale = ExploreFeatures.locale(settings, args["locale"])
 
-        Delivery.deliver(repo, @handler, provider_key(args), args["event_id"], fn ->
+        Delivery.deliver(repo, @handler, provider_key(args), token, args["event_id"], fn ->
           Wave2.family_invitation(email, locale, token, family, inviter_email, System.get_env())
         end)
 

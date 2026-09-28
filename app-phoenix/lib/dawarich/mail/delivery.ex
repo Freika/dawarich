@@ -31,7 +31,7 @@ defmodule Dawarich.Mail.Delivery do
     :ok
   end
 
-  def deliver(repo, handler, key, event_id, build) when is_function(build, 0) do
+  def deliver(repo, handler, key, record, event_id, build) when is_function(build, 0) do
     case claim(repo, handler, key, event_id) do
       :delivered ->
         :ok
@@ -40,19 +40,27 @@ defmodule Dawarich.Mail.Delivery do
         {:snooze, @takeover_seconds}
 
       :send ->
+        env = System.get_env()
+
         with {:ok, message} <- build.(),
-             message = Map.put(message, :message_id, message_id(handler, key)),
-             :ok <- transport().deliver(message, System.get_env()) do
+             message = Map.put(message, :message_id, message_id(handler, key, record, env)),
+             :ok <- transport().deliver(message, env) do
           delivered!(repo, handler, key, event_id)
         end
     end
   end
 
-  def message_id(handler, key),
-    do:
-      "<" <>
-        Base.encode16(:crypto.hash(:sha256, handler <> ":" <> key), case: :lower) <>
-        "@dawarich.mail>"
+  def message_id(handler, key, record, env, secret \\ Dawarich.RailsSecret.fetch()) do
+    mac = :crypto.mac(:hmac, :sha256, secret || "", Enum.join([handler, key, record], ":"))
+    "<" <> Base.encode16(mac, case: :lower) <> "@" <> id_domain(env["DOMAIN"]) <> ">"
+  end
+
+  defp id_domain(domain) do
+    case URI.parse("//" <> String.trim(domain || "")).host do
+      host when host in [nil, ""] -> "dawarich.mail"
+      host -> host
+    end
+  end
 
   defp delivered?(repo, handler, key) do
     repo.query!(

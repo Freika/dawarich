@@ -2,8 +2,15 @@ defmodule Dawarich.Mail.FamilyLapseWorker do
   @moduledoc false
   use Oban.Worker, queue: :mailers, max_attempts: 20
 
-  alias Dawarich.Mail.{ExploreFeatures, Wave2}
+  alias Dawarich.Mail.{Delivery, ExploreFeatures, Wave2}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
+
+  @handler "mail.family_lapse"
+
+  @pending """
+  SELECT 1 FROM phoenix.delivery_claims
+  WHERE handler = $1 AND provider_key = $2 AND event_id = $3 AND delivered_at IS NULL
+  """
 
   @payload %{
     "user_id" => :integer,
@@ -40,13 +47,16 @@ defmodule Dawarich.Mail.FamilyLapseWorker do
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"user_id" => user_id, "family_id" => family_id} = args}) do
     repo = Dawarich.Jobs.repo()
+    event_id = args["event_id"]
 
-    case claim(repo, user_id, family_id) do
-      {:ok, [email, settings, family, owner_email]} ->
+    case claim(repo, user_id, family_id, event_id) do
+      {:ok, {key, [email, settings, family, owner_email]}} ->
         locale = ExploreFeatures.locale(settings, args["locale"])
 
         send_notice(repo, user_id, fn env ->
-          Wave2.family_lapse(email, locale, family, owner_email, env)
+          with {:ok, message} <- Wave2.family_lapse(email, locale, family, owner_email, env),
+               :ok <- transport().deliver(message, env),
+               do: Delivery.delivered!(repo, @handler, key, event_id)
         end)
 
       {:error, _skipped} ->
@@ -54,13 +64,22 @@ defmodule Dawarich.Mail.FamilyLapseWorker do
     end
   end
 
-  defp claim(repo, user_id, family_id) do
+  defp claim(repo, user_id, family_id, event_id) do
     repo.transaction(fn ->
       case repo.query!(@lock, [user_id, family_id], log: false).rows do
         [[_email, settings | _] = row] ->
-          if Ruby.present?(notified_at(settings)),
-            do: repo.rollback(:notified),
-            else: mark!(repo, user_id, row)
+          notified_at = notified_at(settings)
+
+          cond do
+            not Ruby.present?(notified_at) ->
+              {mark!(repo, user_id, event_id), row}
+
+            is_binary(notified_at) and pending?(repo, key(user_id, notified_at), event_id) ->
+              {key(user_id, notified_at), row}
+
+            true ->
+              repo.rollback(:notified)
+          end
 
         [] ->
           repo.rollback(:missing)
@@ -68,19 +87,23 @@ defmodule Dawarich.Mail.FamilyLapseWorker do
     end)
   end
 
-  defp mark!(repo, user_id, row) do
+  defp mark!(repo, user_id, event_id) do
     marked_at = DateTime.utc_now() |> DateTime.to_iso8601()
     repo.query!(@mark, [user_id, marked_at, NaiveDateTime.utc_now()], log: false)
-    row
+    :send = Delivery.claim(repo, @handler, key(user_id, marked_at), event_id)
+    key(user_id, marked_at)
   end
 
-  defp send_notice(repo, user_id, build) do
-    env = System.get_env()
+  defp pending?(repo, key, event_id),
+    do: repo.query!(@pending, [@handler, key, Ecto.UUID.dump!(event_id)], log: false).rows != []
 
-    with {:ok, message} <- build.(env),
-         :ok <- transport().deliver(message, env) do
-      :ok
-    else
+  defp key(user_id, notified_at), do: "family-lapse:#{user_id}:#{notified_at}"
+
+  defp send_notice(repo, user_id, send) do
+    case send.(System.get_env()) do
+      :ok ->
+        :ok
+
       {:error, reason} ->
         clear!(repo, user_id)
         {:error, reason}
