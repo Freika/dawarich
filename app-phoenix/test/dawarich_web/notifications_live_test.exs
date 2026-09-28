@@ -22,6 +22,34 @@ defmodule DawarichWeb.NotificationsLiveTest do
   defp live_as(user, path \\ "/notifications"),
     do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
 
+  test "a year-old notification renders in the user's zone on both pages" do
+    user =
+      RailsUser.insert!(%{
+        id: 4103,
+        email: "a5-zone@dawarich.test",
+        settings: %{"timezone" => "Pacific/Kiritimati"}
+      })
+
+    now = NaiveDateTime.utc_now()
+
+    Dawarich.Repo.insert_all("notifications", [
+      %{
+        id: 41_950,
+        user_id: 4103,
+        title: "Old",
+        content: "x",
+        kind: 0,
+        created_at: NaiveDateTime.add(now, -400 * 86_400),
+        updated_at: now
+      }
+    ])
+
+    for path <- ["/notifications", "/notifications/41950"] do
+      {:ok, _view, html} = live_as(user, path)
+      assert html =~ "about 1 year ago"
+    end
+  end
+
   defp join_reply(conn, socket_session) do
     html = Phoenix.ConnTest.response(conn, 200)
     session_token = html_attribute(html, "data-phx-session")

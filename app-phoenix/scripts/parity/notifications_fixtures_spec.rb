@@ -10,6 +10,80 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
 
   def write_json(name, data) = File.write(fixtures.join(name), "#{JSON.pretty_generate(data)}\n")
 
+  around do |example|
+    ActionController::Base.allow_forgery_protection = true
+    example.run
+  ensure
+    ActionController::Base.allow_forgery_protection = false
+  end
+
+  def reader(email, locale = nil)
+    user = create(:user, email:, changelog_consent: :declined)
+    user.update_columns(settings: user.settings.merge({ 'onboarding_completed' => true, 'locale' => locale }.compact))
+    user
+  end
+
+  def seed(user, count)
+    1.upto(count).each do |number|
+      error = number == count
+      user.notifications.create!(title: format('Parity %02d', number),
+                                 kind: error ? :error : %i[info warning][number % 2],
+                                 content: error ? 'Error <b>detail</b> <script>x()</script>' : "Detail #{number}",
+                                 read_at: number <= 3 ? now : nil, created_at: now - number.minutes)
+    end
+  end
+
+  def page(name, user, path)
+    get path
+    expect(response).to have_http_status(:ok)
+    doc = Nokogiri::HTML5(response.body)
+    doc.css('input[name="authenticity_token"]').each { |node| node['value'] = 'CSRF' }
+    File.write(fixtures.join("notifications/#{name}.html"),
+               doc.at_css('body > div.container > div.w-full > div.flex').inner_html)
+    notifications = user.notifications.order(:id).map do |n|
+      { id: n.id, title: n.title, content: n.content, kind: Notification.kinds[n.kind], read: n.read_at.present?,
+        offset: (now - n.created_at).round }
+    end
+    write_json("notifications/#{name}.json",
+               { path:, title: doc.at_css('title').text,
+                 user: { id: user.id, email: user.email, settings: user.reload.settings }, notifications: })
+  end
+
+  it 'writes the notification pages' do
+    FileUtils.mkdir_p(fixtures.join('notifications'))
+    travel_to now do
+      en = reader('parity-en@dawarich.test')
+      seed(en, 22)
+      sign_in en
+      page('index_first_en', en, '/notifications')
+      page('index_second_en', en, '/notifications?page=2')
+      page('show_error_en', en, "/notifications/#{en.notifications.find_by(kind: :error).id}")
+      page('show_info_en', en, "/notifications/#{en.notifications.order(:id).first.id}")
+      sign_out en
+
+      de = reader('parity-de@dawarich.test', 'de')
+      seed(de, 3)
+      sign_in de
+      page('index_de', de, '/notifications')
+      page('show_de', de, "/notifications/#{de.notifications.order(:id).last.id}")
+      sign_out de
+
+      many = reader('parity-many@dawarich.test')
+      Notification.insert_all(Array.new(250) do |i|
+        { user_id: many.id, title: "Many #{i}", content: 'x', kind: 0, read_at: now,
+          created_at: now - (i + 1).minutes, updated_at: now }
+      end)
+      sign_in many
+      page('index_page7_en', many, '/notifications?page=7')
+      page('index_page20_en', many, '/notifications?page=20&locale=en')
+      sign_out many
+
+      empty = reader('parity-empty@dawarich.test')
+      sign_in empty
+      page('index_empty_en', empty, '/notifications')
+    end
+  end
+
   it 'writes the sanitize corpus' do
     inputs = [
       'plain text & more', 'B9 safe detail <script>window.b9Xss=true</script>',
@@ -50,5 +124,24 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
       end
     end
     write_json('time_ago.json', corpus)
+  end
+
+  it 'writes the zoned distance-in-words corpus across a leap-year February' do
+    spans = [%w[2028-02-29T23:30:00Z 2029-03-01T00:30:00Z], %w[2028-03-01T02:00:00Z 2029-03-01T04:00:00Z]]
+    system_zone = ENV.fetch('TZ', nil)
+    ENV['TZ'] = 'UTC'
+    zones = %w[UTC Europe/Berlin America/New_York Pacific/Kiritimati]
+    corpus = spans.product(zones, %w[en de]).map do |(from, to), zone, locale|
+      words = travel_to(Time.iso8601(to)) do
+        Time.use_zone(zone) do
+          created_at = Time.iso8601(from).in_time_zone
+          I18n.with_locale(locale) { ApplicationController.helpers.relative_distance_in_words(created_at) }
+        end
+      end
+      { zone:, locale:, from:, to:, words: }
+    end
+    write_json('time_ago_zones.json', corpus)
+  ensure
+    ENV['TZ'] = system_zone
   end
 end
