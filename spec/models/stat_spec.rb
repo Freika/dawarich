@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Stat, type: :model do
+  include ActiveSupport::Testing::TimeHelpers
+
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
     it { is_expected.to validate_presence_of(:year) }
@@ -459,6 +461,10 @@ RSpec.describe Stat, type: :model do
         end
 
         context 'when expires_at is 1 second in the future' do
+          around do |example|
+            travel_to(Time.zone.parse('2026-01-01 12:00:00')) { example.run }
+          end
+
           before do
             stat.update(sharing_settings: {
                           'enabled' => true,
