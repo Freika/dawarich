@@ -1,14 +1,16 @@
 # frozen_string_literal: true
 
 module PhoenixTables
-  SQL_FILE = Rails.root.join('app-phoenix/priv/repo/sql/20260927120100_job_control.sql')
+  SQL_FILES = Dir[Rails.root.join('app-phoenix/priv/repo/sql/*.sql')].sort.freeze
 
   def phoenix_tables!
     connection = ActiveRecord::Base.connection
-    return if connection.select_value("SELECT to_regclass('phoenix.job_owners') IS NOT NULL")
+    return if connection.select_value("SELECT to_regclass('phoenix.notification_events') IS NOT NULL")
 
     connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
-    File.read(SQL_FILE).split(";\n").map(&:strip).reject(&:empty?).each { |statement| connection.execute(statement) }
+    SQL_FILES.each do |file|
+      File.read(file).split(";\n").map(&:strip).reject(&:empty?).each { |statement| connection.execute(statement) }
+    end
   end
 
   def job_owner!(key, owner, pinned: false)

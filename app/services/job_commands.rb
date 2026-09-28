@@ -5,7 +5,7 @@ module JobCommands
     'users.explore_features_mail' => {
       version: 1,
       sidekiq: lambda { |payload, at|
-        I18n.with_locale(payload['locale']) do
+        JobCommands.enqueue_after_commit(payload['locale']) do
           Users::MailerSendingJob.set(wait_until: at).perform_later(payload['user_id'], 'explore_features')
         end
       }
@@ -13,6 +13,33 @@ module JobCommands
     'trips.calculate' => {
       version: 1,
       sidekiq: ->(payload, _at) { Trips::CalculateAllJob.perform_later(payload['trip_id'], payload['distance_unit']) }
+    },
+    'exports.points' => {
+      version: 1,
+      sidekiq: ->(payload, _at) { ExportJob.perform_later(payload.fetch('export_id')) }
+    },
+    'mail.family_invitation' => {
+      version: 1,
+      sidekiq: lambda { |payload, _at|
+        JobCommands.enqueue_after_commit(payload['locale']) do
+          Family::Invitations::SendingJob.perform_later(payload.fetch('invitation_id'))
+        end
+      }
+    },
+    'mail.family_lapse' => {
+      version: 1,
+      sidekiq: lambda { |payload, _at|
+        JobCommands.enqueue_after_commit(payload['locale']) do
+          Families::LapseNotificationJob.perform_later(payload.fetch('user_id'), payload.fetch('family_id'))
+        end
+      }
+    },
+    'mail.user.welcome' => { version: 1, sidekiq: UserMailCommands.legacy('welcome') },
+    'mail.user.archival_approaching' => { version: 1, sidekiq: UserMailCommands.legacy('archival_approaching') },
+    'mail.user.oauth_account_link' => { version: 1, sidekiq: UserMailCommands.legacy('oauth_account_link') },
+    'mail.user.account_destroy_confirmation' => {
+      version: 1,
+      sidekiq: UserMailCommands.legacy('account_destroy_confirmation')
     }
   }.freeze
 
@@ -29,6 +56,10 @@ module JobCommands
         :sidekiq
       end
     end
+  end
+
+  def enqueue_after_commit(locale, &enqueue)
+    ActiveRecord.after_all_transactions_commit { I18n.with_locale(locale, &enqueue) }
   end
 
   def forward(type, payload, event_id:, aggregate_id:, producer:, scheduled_at: Time.current, dedupe_key: nil)

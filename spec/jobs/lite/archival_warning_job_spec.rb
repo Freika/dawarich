@@ -14,6 +14,72 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
     end
 
+    describe 'ownership gate and mark-then-effect order' do
+      let(:second_lite_user) { create(:user).tap { |u| u.update_column(:plan, User.plans[:lite]) } }
+
+      def archival_warnings(user)
+        user.reload.settings&.dig('archival_warnings')
+      end
+
+      it 'takes the ownership gate once per user' do
+        second_lite_user
+        expect(JobOwnership).to receive(:with_owner).with(described_class::OWNERSHIP_KEY).twice.and_call_original
+
+        described_class.perform_now
+      end
+
+      it 'cron key owned by oban: nothing is marked, notified or produced' do
+        create(:point, user: lite_user, timestamp: (11.months + 15.days).ago.to_i)
+        create(:point, user: second_lite_user, timestamp: 12.months.ago.to_i)
+        job_owner!(described_class::OWNERSHIP_KEY, :oban)
+        JobOutbox.delete_all
+        clear_enqueued_jobs
+        expect(JobOwnership).to receive(:with_owner).once.and_call_original
+
+        expect { described_class.perform_now }.not_to change(Notification, :count)
+        expect(Users::MailerSendingJob).not_to have_been_enqueued
+        expect(JobOutbox.count).to eq(0)
+        expect([archival_warnings(lite_user), archival_warnings(second_lite_user)]).to eq([nil, nil])
+      end
+
+      it 'a failing effect rolls back the marks' do
+        create(:point, user: lite_user, timestamp: 11.months.ago.to_i)
+        marks_seen_by_effect = nil
+        allow(Notification).to receive(:create!) do
+          marks_seen_by_effect = archival_warnings(lite_user)
+          raise ActiveRecord::StatementInvalid, 'notification insert failed'
+        end
+
+        expect { described_class.perform_now }.to raise_error(ActiveRecord::StatementInvalid)
+        expect(marks_seen_by_effect).to include('11mo')
+        expect(archival_warnings(lite_user)).to be_nil
+      end
+
+      it '11_5mo produces mail.user.archival_approaching with epoch = the written mark (oban) ' \
+         'or enqueues MailerSendingJob with epoch (sidekiq)' do
+        create(:point, user: lite_user, timestamp: (11.months + 15.days).ago.to_i)
+        create(:point, user: second_lite_user, timestamp: (11.months + 15.days).ago.to_i)
+        job_owner!('command:mail.user.archival_approaching', :oban)
+        JobOutbox.delete_all
+        second_lite_user.update_column(:plan, User.plans[:pro])
+
+        described_class.perform_now
+
+        expect(JobOutbox.sole).to have_attributes(
+          command_type: 'mail.user.archival_approaching', aggregate_id: lite_user.id,
+          payload: { 'user_id' => lite_user.id, 'locale' => 'en', 'epoch' => archival_warnings(lite_user)['11_5mo'] }
+        )
+
+        job_owner!('command:mail.user.archival_approaching', :sidekiq)
+        second_lite_user.update_column(:plan, User.plans[:lite])
+
+        described_class.perform_now
+
+        expect(Users::MailerSendingJob).to have_been_enqueued
+          .with(second_lite_user.id, 'archival_approaching', epoch: archival_warnings(second_lite_user)['11_5mo'])
+      end
+    end
+
     context 'when running on a self-hosted instance' do
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
@@ -86,7 +152,7 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
       it 'enqueues an archival warning email' do
         expect { described_class.perform_now }
           .to have_enqueued_job(Users::MailerSendingJob)
-          .with(lite_user.id, 'archival_approaching')
+          .with(lite_user.id, 'archival_approaching', epoch: an_instance_of(String))
       end
 
       it 'does not send the email twice for the same threshold' do
