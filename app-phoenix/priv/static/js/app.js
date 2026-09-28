@@ -26,9 +26,18 @@ const liveSocket = new LiveSocket("/phoenix/live", Socket, {
 liveSocket.connect()
 window.liveSocket = liveSocket
 
+const joined = () => liveSocket.main?.isConnected() === true
+
 window.addEventListener("dawarich:flash-timeout", (event) => {
   window.setTimeout(() => event.target.querySelector("button")?.click(), 5000)
 })
+
+window.setTimeout(() => {
+  if (joined()) return
+  for (const button of document.querySelectorAll("[data-removals-timeout-value='5000'] button")) {
+    button.click()
+  }
+}, 5000)
 
 const confirmMessage = (element) =>
   element?.getAttribute("data-turbo-confirm") ??
@@ -73,7 +82,7 @@ document.addEventListener(
     if (!link) return
     const message = confirmMessage(link)
     if (message !== null && !window.confirm(message)) return stop(event)
-    if (link.hasAttribute("phx-click")) return event.preventDefault()
+    if (link.hasAttribute("phx-click") && joined()) return event.preventDefault()
     stop(event)
     submitMethodLink(link, link.getAttribute("data-turbo-method") || link.getAttribute("data-method"))
   },
@@ -84,7 +93,8 @@ document.addEventListener(
   "submit",
   (event) => {
     const message = confirmMessage(event.submitter) ?? confirmMessage(event.target)
-    if (message !== null && !window.confirm(message)) stop(event)
+    if (message !== null && !window.confirm(message)) return stop(event)
+    if (event.target.hasAttribute?.("phx-submit") && !joined()) event.stopImmediatePropagation()
   },
   true,
 )

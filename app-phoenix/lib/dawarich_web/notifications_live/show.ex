@@ -12,7 +12,9 @@ defmodule DawarichWeb.NotificationsLive.Show do
 
     case Notifications.get(user_id, DawarichWeb.Params.ruby_to_i(id)) do
       nil ->
-        raise DawarichWeb.NotFoundError
+        if connected?(socket),
+          do: {:ok, redirect(socket, to: "/notifications/#{id}")},
+          else: raise(DawarichWeb.NotFoundError)
 
       notification ->
         [notification] =
@@ -28,16 +30,18 @@ defmodule DawarichWeb.NotificationsLive.Show do
 
   @impl true
   def handle_event("destroy", _params, socket) do
-    Notifications.delete(socket.assigns.current_user.id, socket.assigns.notification.id)
+    %{current_user: user, notification: notification, locale: locale} = socket.assigns
 
-    message =
-      t(
-        socket.assigns.locale,
-        "controllers.notifications.notification_was_successfully_destroyed",
-        %{}
-      )
+    case Notifications.delete(user.id, notification.id) do
+      {0, _} ->
+        {:noreply, redirect(socket, to: "/notifications/#{notification.id}")}
 
-    {:noreply, socket |> put_flash(:notice, message) |> redirect(to: "/notifications")}
+      _deleted ->
+        message =
+          t(locale, "controllers.notifications.notification_was_successfully_destroyed", %{})
+
+        {:noreply, socket |> put_flash(:notice, message) |> redirect(to: "/notifications")}
+    end
   end
 
   @impl true
