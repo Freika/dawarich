@@ -52,6 +52,8 @@ defmodule DawarichWeb.PublicFiles do
   def init(opts), do: opts
 
   @impl true
+  def call(%{request_path: <<"/api/", _::binary>>} = conn, _opts), do: conn
+
   def call(%{method: method} = conn, opts) when method in ["GET", "HEAD"] do
     %{env: default_env, root: default_root} = Application.fetch_env!(:dawarich, :public_files)
     env = Keyword.get(opts, :env, default_env)
