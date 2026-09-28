@@ -7,7 +7,7 @@ defmodule DawarichWeb.RailsSession do
   alias DawarichWeb.ForceSSL
 
   @name "_dawarich_session"
-  @writable ["flash", "_csrf_token", "locale"]
+  @writable ["flash", "_csrf_token", "locale", "user_return_to"]
   @max_size 4096
 
   defmodule Overflow do
@@ -33,6 +33,19 @@ defmodule DawarichWeb.RailsSession do
       :unchanged ->
         conn
     end
+  end
+
+  def stage(conn, changes) do
+    validate!(changes)
+    pending = Map.merge(conn.private[:dawarich_rails_session_changes] || %{}, changes)
+    conn = put_private(conn, :dawarich_rails_session_changes, pending)
+
+    if Map.has_key?(conn.private, :dawarich_rails_session_staged),
+      do: conn,
+      else:
+        conn
+        |> put_private(:dawarich_rails_session_staged, true)
+        |> register_before_send(&put(&1, &1.private.dawarich_rails_session_changes))
   end
 
   def rewrite(cookie, changes, secret) do
