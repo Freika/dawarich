@@ -1,7 +1,7 @@
 defmodule Dawarich.Trips.Calculation do
   @moduledoc false
 
-  alias Dawarich.RubyFloat
+  alias Dawarich.{RubyFloat, RubyInteger}
   alias Dawarich.Trips.{DeviceWindows, Queries}
 
   def run(repo, trip_id, unit, hook \\ fn _step -> :ok end) do
@@ -44,7 +44,7 @@ defmodule Dawarich.Trips.Calculation do
   end
 
   def minutes_between_routes(settings) do
-    minutes = ruby_to_i(if is_map(settings), do: settings["minutes_between_routes"])
+    minutes = RubyInteger.to_i(if is_map(settings), do: settings["minutes_between_routes"])
     minutes = if minutes > 0, do: minutes, else: 30
     minutes |> max(1) |> min(1440)
   end
@@ -93,16 +93,4 @@ defmodule Dawarich.Trips.Calculation do
         nil
     end
   end
-
-  defp ruby_to_i(value) when is_integer(value), do: value
-  defp ruby_to_i(value) when is_float(value), do: trunc(value)
-
-  defp ruby_to_i(value) when is_binary(value) do
-    case Integer.parse(String.trim_leading(value)) do
-      {number, _rest} -> number
-      :error -> 0
-    end
-  end
-
-  defp ruby_to_i(_value), do: 0
 end
