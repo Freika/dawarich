@@ -15,7 +15,14 @@ defmodule DawarichWeb.NotificationsLive.Show do
         raise DawarichWeb.NotFoundError
 
       notification ->
-        {:ok, assign(socket, :notification, Notifications.mark_read(user_id, notification))}
+        [notification] =
+          Notifications.localize(
+            [Notifications.mark_read(user_id, notification)],
+            socket.assigns.current_user.settings,
+            socket.assigns.now
+          )
+
+        {:ok, assign(socket, :notification, notification)}
     end
   end
 

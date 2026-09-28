@@ -94,6 +94,52 @@ defmodule Dawarich.NotificationsTest do
     refute row(43_100).read_at
   end
 
+  for %{"zone" => zone, "locale" => locale, "from" => from, "to" => to, "words" => words} <-
+        "test/fixtures/time_ago_zones.json" |> File.read!() |> Jason.decode!() do
+    @entry {zone, locale, from, to, words}
+    test "a notification from #{from} in #{zone} reads #{locale} at #{to} as Rails does" do
+      {zone, locale, from, to, words} = @entry
+      {:ok, from, 0} = DateTime.from_iso8601(from)
+      {:ok, to, 0} = DateTime.from_iso8601(to)
+
+      [notification] =
+        Notifications.localize(
+          [%{created_at: DateTime.to_naive(from)}],
+          %{"timezone" => zone},
+          to
+        )
+
+      assert DawarichWeb.TimeAgo.words(locale, notification.created_at, to) == words
+    end
+  end
+
+  describe "a zone Postgres does not list" do
+    setup do
+      {:ok, from, 0} = DateTime.from_iso8601("2028-02-29T23:30:00Z")
+      {:ok, to, 0} = DateTime.from_iso8601("2029-03-01T00:30:00Z")
+      %{from: DateTime.to_naive(from), to: to}
+    end
+
+    test "falls back to Rails' default zone, not to the user's default", %{from: from, to: to} do
+      [notification] =
+        Notifications.localize([%{created_at: from}], %{"timezone" => "Mars/Base"}, to)
+
+      assert DawarichWeb.TimeAgo.words("en", notification.created_at, to) == "about 1 year"
+    end
+
+    test "a missing zone reads as UTC", %{from: from, to: to} do
+      [notification] = Notifications.localize([%{created_at: from}], %{}, to)
+      assert DawarichWeb.TimeAgo.words("en", notification.created_at, to) == "almost 1 year"
+    end
+  end
+
+  test "rows younger than a year keep their UTC timestamp" do
+    rows = Notifications.page(4301, 1).notifications
+
+    assert Notifications.localize(rows, %{"timezone" => "Europe/Berlin"}, DateTime.utc_now()) ==
+             rows
+  end
+
   test "deleting removes only the owner's rows" do
     Notifications.delete(4301, 43_100)
     assert row(43_100)

@@ -8,6 +8,7 @@ defmodule Dawarich.Notifications do
   @per_page 20
   @kinds %{0 => "info", 1 => "warning", 2 => "error"}
   @max_id 9_223_372_036_854_775_807
+  @year_bucket_days 364
 
   def page(user_id, page) do
     offset = (page - 1) * @per_page
@@ -57,6 +58,39 @@ defmodule Dawarich.Notifications do
     do:
       from(n in "notifications", where: n.user_id == ^user_id and is_nil(n.read_at))
       |> Repo.update_all(set: [read_at: NaiveDateTime.utc_now()])
+
+  def localize(notifications, settings, now) do
+    cutoff = now |> DateTime.to_naive() |> NaiveDateTime.add(-@year_bucket_days * 86_400)
+    old = for %{created_at: at} <- notifications, NaiveDateTime.before?(at, cutoff), do: at
+    local = if old == [], do: %{}, else: zoned(old, settings)
+    Enum.map(notifications, &Map.update!(&1, :created_at, fn at -> Map.get(local, at, at) end))
+  end
+
+  defp zoned(times, settings) do
+    %{rows: rows} =
+      Repo.query!(
+        """
+        SELECT extract(epoch FROM ((t AT TIME ZONE 'UTC') AT TIME ZONE z.name) - t)::int, z.name
+        FROM unnest($1::timestamp[]) WITH ORDINALITY AS u(t, i),
+          (SELECT coalesce(
+            (SELECT name FROM pg_timezone_names WHERE name = $2),
+            (SELECT name FROM pg_timezone_names WHERE name = $3),
+            'UTC') AS name) z
+        ORDER BY i
+        """,
+        [times, zone(settings), System.get_env("TIME_ZONE", "Europe/Berlin")]
+      )
+
+    times
+    |> Enum.zip(rows)
+    |> Map.new(fn {at, [offset, name]} ->
+      local = DateTime.from_naive!(NaiveDateTime.add(at, offset), "Etc/UTC")
+      {at, %{local | time_zone: name, zone_abbr: name, utc_offset: offset}}
+    end)
+  end
+
+  defp zone(%{"timezone" => zone}) when is_binary(zone), do: zone
+  defp zone(_settings), do: System.get_env("TIME_ZONE", "UTC")
 
   def delete(user_id, id),
     do:

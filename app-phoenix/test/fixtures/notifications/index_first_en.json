@@ -1,0 +1,198 @@
+{
+  "path": "/notifications",
+  "title": "Notifications | Dawarich",
+  "user": {
+    "id": 13,
+    "email": "parity-en@dawarich.test",
+    "settings": {
+      "maps": {
+        "distance_unit": "km"
+      },
+      "route_opacity": 60,
+      "fog_of_war_meters": "100",
+      "onboarding_completed": true,
+      "meters_between_routes": "500",
+      "minutes_between_routes": "30",
+      "time_threshold_minutes": "30",
+      "merge_threshold_minutes": "15"
+    }
+  },
+  "notifications": [
+    {
+      "id": 826,
+      "title": "Parity 01",
+      "content": "Detail 1",
+      "kind": 1,
+      "read": true,
+      "offset": 60
+    },
+    {
+      "id": 827,
+      "title": "Parity 02",
+      "content": "Detail 2",
+      "kind": 0,
+      "read": true,
+      "offset": 120
+    },
+    {
+      "id": 828,
+      "title": "Parity 03",
+      "content": "Detail 3",
+      "kind": 1,
+      "read": true,
+      "offset": 180
+    },
+    {
+      "id": 829,
+      "title": "Parity 04",
+      "content": "Detail 4",
+      "kind": 0,
+      "read": false,
+      "offset": 240
+    },
+    {
+      "id": 830,
+      "title": "Parity 05",
+      "content": "Detail 5",
+      "kind": 1,
+      "read": false,
+      "offset": 300
+    },
+    {
+      "id": 831,
+      "title": "Parity 06",
+      "content": "Detail 6",
+      "kind": 0,
+      "read": false,
+      "offset": 360
+    },
+    {
+      "id": 832,
+      "title": "Parity 07",
+      "content": "Detail 7",
+      "kind": 1,
+      "read": false,
+      "offset": 420
+    },
+    {
+      "id": 833,
+      "title": "Parity 08",
+      "content": "Detail 8",
+      "kind": 0,
+      "read": false,
+      "offset": 480
+    },
+    {
+      "id": 834,
+      "title": "Parity 09",
+      "content": "Detail 9",
+      "kind": 1,
+      "read": false,
+      "offset": 540
+    },
+    {
+      "id": 835,
+      "title": "Parity 10",
+      "content": "Detail 10",
+      "kind": 0,
+      "read": false,
+      "offset": 600
+    },
+    {
+      "id": 836,
+      "title": "Parity 11",
+      "content": "Detail 11",
+      "kind": 1,
+      "read": false,
+      "offset": 660
+    },
+    {
+      "id": 837,
+      "title": "Parity 12",
+      "content": "Detail 12",
+      "kind": 0,
+      "read": false,
+      "offset": 720
+    },
+    {
+      "id": 838,
+      "title": "Parity 13",
+      "content": "Detail 13",
+      "kind": 1,
+      "read": false,
+      "offset": 780
+    },
+    {
+      "id": 839,
+      "title": "Parity 14",
+      "content": "Detail 14",
+      "kind": 0,
+      "read": false,
+      "offset": 840
+    },
+    {
+      "id": 840,
+      "title": "Parity 15",
+      "content": "Detail 15",
+      "kind": 1,
+      "read": false,
+      "offset": 900
+    },
+    {
+      "id": 841,
+      "title": "Parity 16",
+      "content": "Detail 16",
+      "kind": 0,
+      "read": false,
+      "offset": 960
+    },
+    {
+      "id": 842,
+      "title": "Parity 17",
+      "content": "Detail 17",
+      "kind": 1,
+      "read": false,
+      "offset": 1020
+    },
+    {
+      "id": 843,
+      "title": "Parity 18",
+      "content": "Detail 18",
+      "kind": 0,
+      "read": false,
+      "offset": 1080
+    },
+    {
+      "id": 844,
+      "title": "Parity 19",
+      "content": "Detail 19",
+      "kind": 1,
+      "read": false,
+      "offset": 1140
+    },
+    {
+      "id": 845,
+      "title": "Parity 20",
+      "content": "Detail 20",
+      "kind": 0,
+      "read": false,
+      "offset": 1200
+    },
+    {
+      "id": 846,
+      "title": "Parity 21",
+      "content": "Detail 21",
+      "kind": 1,
+      "read": false,
+      "offset": 1260
+    },
+    {
+      "id": 847,
+      "title": "Parity 22",
+      "content": "Error <b>detail</b> <script>x()</script>",
+      "kind": 2,
+      "read": false,
+      "offset": 1320
+    }
+  ]
+}

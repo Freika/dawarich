@@ -8,8 +8,8 @@ defmodule DawarichWeb.TimeAgo do
   @three_quarters 394_200
 
   def words(locale, from, now) do
-    {from, to} = ordered(naive(from), naive(now))
-    minutes = round(NaiveDateTime.diff(to, from, :microsecond) / 60_000_000)
+    {from, to} = ordered(instant(from), instant(now))
+    minutes = round(DateTime.diff(to, from, :microsecond) / 60_000_000)
     {key, count} = bucket(minutes, from, to)
 
     scope =
@@ -20,10 +20,10 @@ defmodule DawarichWeb.TimeAgo do
     t(locale, scope <> "." <> key, %{count: count})
   end
 
-  defp naive(%DateTime{} = time), do: DateTime.to_naive(time)
-  defp naive(%NaiveDateTime{} = time), do: time
+  defp instant(%DateTime{} = time), do: time
+  defp instant(%NaiveDateTime{} = time), do: DateTime.from_naive!(time, "Etc/UTC")
 
-  defp ordered(a, b), do: if(NaiveDateTime.compare(a, b) == :gt, do: {b, a}, else: {a, b})
+  defp ordered(a, b), do: if(DateTime.compare(a, b) == :gt, do: {b, a}, else: {a, b})
 
   defp bucket(0, _from, _to), do: {"less_than_x_minutes", 1}
   defp bucket(minutes, _from, _to) when minutes < 45, do: {"x_minutes", minutes}
