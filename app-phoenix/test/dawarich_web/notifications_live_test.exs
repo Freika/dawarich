@@ -171,5 +171,66 @@ defmodule DawarichWeb.NotificationsLiveTest do
       assert rows(view) == 0
       refute has_element?(view, "a", "Delete all")
     end
+
+    test "opening a notification marks it read and shows safe content with the error hint", %{
+      user: user
+    } do
+      {:ok, view, html} = live_as(user, "/notifications/41022")
+      assert html =~ ~s(id="detail_notification_41022")
+      assert html =~ "B9 safe detail"
+      refute html =~ "<script>window.b9Xss"
+      assert html =~ "Github Issues"
+      assert has_element?(view, "#detail_notification_41022 a.text-gray-600")
+      assert Dawarich.Notifications.get(user.id, 41_022).read_at
+    end
+
+    test "destroying redirects to the list with Rails' notice", %{user: user} do
+      {:ok, view, _html} = live_as(user, "/notifications/41022")
+
+      assert {:error, {:redirect, %{to: "/notifications"}}} =
+               view |> form("form.button_to") |> render_submit()
+
+      assert Dawarich.Notifications.get(user.id, 41_022) == nil
+    end
+
+    test "another user's notification answers Rails' 404 page", %{user: user} do
+      RailsUser.insert!(%{id: 4102, email: "a5-live-other@dawarich.test"})
+      now = NaiveDateTime.utc_now()
+
+      Dawarich.Repo.insert_all("notifications", [
+        %{
+          id: 41_900,
+          user_id: 4102,
+          title: "x",
+          content: "x",
+          kind: 0,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+
+      {404, _headers, body} =
+        assert_error_sent(404, fn -> get(RailsUser.signed_in(user.id), "/notifications/41900") end)
+
+      assert body == File.read!(Dawarich.RailsRoot.join("public/404.html"))
+    end
+
+    test "a Rails flash is cleared through LiveView like a LiveView flash", %{user: user} do
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.put_req_cookie(
+          "_dawarich_session",
+          RailsUser.cookie(
+            RailsUser.session(user.id, %{
+              "flash" => %{"discard" => [], "flashes" => %{"notice" => "From Rails"}}
+            })
+          )
+        )
+
+      {:ok, view, _html} = live(RailsUser.connecting_as(conn, user.id), "/notifications")
+      assert render(view) =~ "From Rails"
+      view |> element("#flash-messages [role=alert] button") |> render_click()
+      refute render(view) =~ "From Rails"
+    end
   end
 end
