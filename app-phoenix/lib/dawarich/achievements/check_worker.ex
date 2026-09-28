@@ -1,6 +1,6 @@
 defmodule Dawarich.Achievements.CheckWorker do
   @moduledoc false
-  use Oban.Worker, queue: :projections, max_attempts: 3
+  use Oban.Worker, queue: :projections, max_attempts: 25
 
   def args_from_command(
         1,

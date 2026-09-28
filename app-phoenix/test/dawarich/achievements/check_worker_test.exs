@@ -45,7 +45,7 @@ defmodule Dawarich.Achievements.CheckWorkerTest do
              [
                "Dawarich.Achievements.CheckWorker",
                "projections",
-               3,
+               25,
                %{
                  "user_id" => 7,
                  "notify" => false,
