@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_25_100100) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_27_120000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -281,6 +281,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_25_100100) do
     t.datetime "updated_at", null: false
     t.jsonb "value"
     t.index ["key"], name: "index_instance_settings_on_key", unique: true
+  end
+
+  create_table "job_outbox", primary_key: "event_id", id: :uuid, default: nil, force: :cascade do |t|
+    t.bigint "aggregate_id"
+    t.string "command_type", null: false
+    t.integer "command_version", null: false
+    t.timestamptz "created_at", default: -> { "now()" }, null: false
+    t.string "dedupe_key"
+    t.timestamptz "dispatched_at"
+    t.string "error_code"
+    t.jsonb "metadata", default: {}, null: false
+    t.bigint "oban_job_id"
+    t.jsonb "payload", null: false
+    t.timestamptz "scheduled_at", null: false
+    t.string "state", default: "pending", null: false
+    t.index ["command_type", "dedupe_key"], name: "index_job_outbox_on_pending_dedupe", unique: true, where: "(((state)::text = 'pending'::text) AND (dedupe_key IS NOT NULL))"
+    t.index ["scheduled_at", "event_id"], name: "index_job_outbox_on_due", where: "((state)::text = 'pending'::text)"
+    t.check_constraint "command_version > 0", name: "job_outbox_command_version_positive"
+    t.check_constraint "jsonb_typeof(payload) = 'object'::text AND octet_length(payload::text) <= 8192", name: "job_outbox_payload_object"
+    t.check_constraint "state::text = ANY (ARRAY['pending'::character varying, 'dispatched'::character varying, 'quarantined'::character varying]::text[])", name: "job_outbox_state_known"
   end
 
   create_table "notes", force: :cascade do |t|

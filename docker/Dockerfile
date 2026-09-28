@@ -90,7 +90,7 @@ RUN apt-get update -qq \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update -qq \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends erlang-base erlang-ssl procps \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends erlang-base erlang-inets erlang-ssl procps \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=mbgl_libs /out /opt/mbgl-libs
@@ -157,6 +157,8 @@ RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
 RUN cp -r public $APP_PATH/public_dist
 
 COPY --from=phoenix_builder /build/_build/prod/rel/dawarich /opt/dawarich
+RUN DAWARICH_COOKIE_FILE=/tmp/build-cookie /opt/dawarich/bin/dawarich eval 'Dawarich.Release.check_runtime_apps!()' \
+    && rm -f /tmp/build-cookie
 RUN ln -s /opt/dawarich/bin/dawarich /usr/local/bin/dawarich \
     && rm -f /opt/dawarich/releases/COOKIE \
     && DAWARICH_COOKIE_FILE=/tmp/build-cookie dawarich eval '{:ok, _} = Application.ensure_all_started(:postgrex); IO.puts(:ok)' | grep -qx ok \

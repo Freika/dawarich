@@ -570,6 +570,25 @@ RSpec.describe '/trips', type: :request do
     end
   end
 
+  describe 'calculation commands once Oban owns trips' do
+    let!(:trip) { create(:trip, user:, path: nil, distance: nil) }
+
+    before { job_owner!('command:trips.calculate', :oban) }
+
+    it 'adds one pending command however often the page is viewed' do
+      3.times { get trip_path(trip) }
+
+      expect(JobOutbox.pending.where(command_type: 'trips.calculate', aggregate_id: trip.id).count).to eq(1)
+    end
+
+    it 'marks the cooldown and produces the command together' do
+      post recalculate_trip_path(trip), as: :turbo_stream
+
+      expect(trip.reload.last_recalculated_at).to be_present
+      expect(JobOutbox.pending.where(aggregate_id: trip.id).count).to eq(1)
+    end
+  end
+
   describe 'DELETE /destroy' do
     let!(:trip) { create(:trip, :with_points, user:) }
 

@@ -15,7 +15,7 @@ defmodule Dawarich.MixProject do
   end
 
   def application do
-    [mod: {Dawarich.Application, []}, extra_applications: [:logger]]
+    [mod: {Dawarich.Application, []}, extra_applications: [:logger, :inets, :ssl]]
   end
 
   defp elixirc_paths(:test), do: ["lib", "test/support"]
@@ -31,7 +31,8 @@ defmodule Dawarich.MixProject do
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.1"},
       {:lazy_html, "~> 0.1.0", only: :test},
-      {:bandit, "~> 1.12"}
+      {:bandit, "~> 1.12"},
+      {:gen_smtp, "~> 1.3"}
     ]
   end
 

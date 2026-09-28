@@ -50,6 +50,51 @@ RSpec.describe Users::MailerSendingJob, type: :job do
       end
     end
 
+    describe 'explore_features after Oban took the mail over' do
+      before do
+        job_owner!('command:users.explore_features_mail', :sidekiq)
+        user
+        job_owner!('command:users.explore_features_mail', :oban)
+        JobOutbox.delete_all
+        ActiveJob::Base.queue_adapter.enqueued_jobs.clear
+      end
+
+      it 'forwards the queued job to the outbox under its own job id instead of mailing, once per job' do
+        job = described_class.new(user.id, 'explore_features')
+
+        expect { job.perform(user.id, 'explore_features') }.not_to have_enqueued_mail(UsersMailer, :explore_features)
+        job.perform(user.id, 'explore_features')
+
+        expect(JobOutbox.sole).to have_attributes(event_id: job.job_id, command_type: 'users.explore_features_mail',
+                                                  aggregate_id: user.id,
+                                                  payload: { 'user_id' => user.id, 'locale' => 'en' })
+      end
+
+      it 'forwards a serialized queued locale once even when the worker locale differs' do
+        queued_job = I18n.with_locale(:fr) do
+          described_class.perform_later(user.id, 'explore_features')
+          ActiveJob::Base.queue_adapter.enqueued_jobs.last
+        end
+
+        I18n.with_locale(:de) { perform_enqueued_jobs(only: described_class) }
+
+        expect(JobOutbox.sole).to have_attributes(event_id: queued_job['job_id'],
+                                                  payload: { 'user_id' => user.id, 'locale' => 'fr' })
+
+        I18n.with_locale(:en) { ActiveJob::Base.execute(queued_job) }
+
+        expect(JobOutbox.count).to eq(1)
+      end
+
+      it 'still sends every other type through Sidekiq' do
+        user
+        JobOutbox.delete_all
+
+        expect { described_class.perform_now(user.id, 'welcome') }.to have_enqueued_mail(UsersMailer, :welcome)
+        expect(JobOutbox.count).to eq(0)
+      end
+    end
+
     context 'with additional options' do
       it 'merges options with user params' do
         custom_options = { custom_data: 'test', priority: :high }

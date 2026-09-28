@@ -1,0 +1,100 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+require 'rake'
+
+RSpec.describe 'dawarich:jobs' do
+  before(:all) { Rails.application.load_tasks unless Rake::Task.task_defined?('dawarich:jobs:release') }
+
+  def run(task, *args)
+    Rake::Task[task].reenable
+    expect { Rake::Task[task].invoke(*args) }.to output.to_stdout
+  end
+
+  it 'releases a key to Sidekiq, pinned, and unpins it' do
+    job_owner!('cron:app_version_checking_job', :oban)
+
+    run('dawarich:jobs:release', 'cron:app_version_checking_job')
+    expect(JobOwnership.with_owner('cron:app_version_checking_job') { :sidekiq_runs }).to eq(:sidekiq_runs)
+
+    run('dawarich:jobs:unpin', 'cron:app_version_checking_job')
+    expect(ActiveRecord::Base.connection.select_value(
+             "SELECT pinned FROM phoenix.job_owners WHERE key = 'cron:app_version_checking_job'"
+           )).to be(false)
+  end
+
+  it 'exits 1 with a usage message when release is given a blank key' do
+    Rake::Task['dawarich:jobs:release'].reenable
+
+    expect do
+      expect { Rake::Task['dawarich:jobs:release'].invoke('') }.to raise_error(SystemExit) do |error|
+        expect(error.status).to eq(1)
+      end
+    end.to output(%r{usage: bin/rails "dawarich:jobs:release\[<key>\]"}).to_stderr
+  end
+
+  it 'exits 1 with a usage message when unpin is given a blank key' do
+    Rake::Task['dawarich:jobs:unpin'].reenable
+
+    expect do
+      expect { Rake::Task['dawarich:jobs:unpin'].invoke('') }.to raise_error(SystemExit) do |error|
+        expect(error.status).to eq(1)
+      end
+    end.to output(%r{usage: bin/rails "dawarich:jobs:unpin\[<key>\]"}).to_stderr
+  end
+
+  it 'releases and unpins an unknown key without raising, upserting a fresh pinned row' do
+    phoenix_tables!
+
+    run('dawarich:jobs:release', 'command:no.such.job')
+    expect(ActiveRecord::Base.connection.select_rows(
+             "SELECT owner, pinned FROM phoenix.job_owners WHERE key = 'command:no.such.job'"
+           )).to eq([['sidekiq', true]])
+
+    run('dawarich:jobs:unpin', 'command:no.such.job')
+    expect(ActiveRecord::Base.connection.select_value(
+             "SELECT pinned FROM phoenix.job_owners WHERE key = 'command:no.such.job'"
+           )).to be(false)
+  end
+
+  it 'propagates a RuntimeError from release when Phoenix has never migrated the database' do
+    Rake::Task['dawarich:jobs:release'].reenable
+
+    expect { Rake::Task['dawarich:jobs:release'].invoke('cron:app_version_checking_job') }
+      .to raise_error(RuntimeError, /phoenix\.job_owners does not exist/)
+  end
+
+  it 're-homes the pending commands of a key' do
+    job_owner!('command:trips.calculate', :oban)
+    JobCommands.produce('trips.calculate', { 'trip_id' => 9, 'distance_unit' => 'mi' },
+                        aggregate_id: 9, dedupe_key: '9', producer: 'spec')
+
+    expect { run('dawarich:jobs:rehome', 'command:trips.calculate') }
+      .to have_enqueued_job(Trips::CalculateAllJob).with(9, 'mi')
+    expect(JobOutbox.count).to eq(0)
+    expect(JobOwnership.with_owner('command:trips.calculate') { :sidekiq_runs }).to eq(:sidekiq_runs)
+  end
+
+  it 'reports commands left in Phoenix and the rollback wait condition' do
+    allow(JobCommands).to receive(:rehome!).and_return({ moved: 2, left: 1 })
+    Rake::Task['dawarich:jobs:rehome'].reenable
+    expected_output = Regexp.new(
+      [
+        '2 command\\(s\\) re-homed to Sidekiq, 1 command\\(s\\) left in Phoenix',
+        'will finish in Phoenix.*dawarich:jobs:status.*no pending commands',
+        'no incomplete Oban jobs.*before rolling back'
+      ].join('.*'), Regexp::MULTILINE
+    )
+
+    expect { Rake::Task['dawarich:jobs:rehome'].invoke('command:trips.calculate') }
+      .to output(expected_output).to_stdout
+    expect(JobCommands).to have_received(:rehome!).with('trips.calculate', by: JobOwnership.operator)
+  end
+
+  it 'prints the health summary and gauges' do
+    job_owner!('command:trips.calculate', :oban)
+
+    Rake::Task['dawarich:jobs:status'].reenable
+    expect { Rake::Task['dawarich:jobs:status'].invoke }.to output(/"alarm": true.*command:trips.calculate/m).to_stdout
+  end
+end

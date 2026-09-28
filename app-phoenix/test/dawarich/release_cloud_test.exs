@@ -1,7 +1,7 @@
 defmodule Dawarich.ReleaseCloudTest do
   use ExUnit.Case, async: false
 
-  alias Dawarich.{Release, Repo}
+  alias Dawarich.{Release, ReleaseMigration, Repo}
 
   @role "dawarich_phoenix_nocreate"
   @password "nocreate"
@@ -127,10 +127,50 @@ defmodule Dawarich.ReleaseCloudTest do
     end
   end
 
-  test "Oban peers stay off until each container has its own node name" do
-    config = Application.fetch_env!(:dawarich, Oban)
+  test "Oban peers lead only with a per-container node name taken from HOSTNAME" do
+    previous = System.get_env("HOSTNAME")
+    System.put_env("HOSTNAME", "3f2a9c1d7b44")
 
-    assert config[:peer] == false or is_binary(config[:node])
+    try do
+      oban =
+        Config.Reader.read!(Path.expand("../../config/runtime.exs", __DIR__), env: :prod)[
+          :dawarich
+        ][Oban]
+
+      assert oban[:node] == "3f2a9c1d7b44"
+      assert oban[:peer] == Oban.Peers.Database
+    after
+      if previous, do: System.put_env("HOSTNAME", previous), else: System.delete_env("HOSTNAME")
+    end
+  end
+
+  test "release.sh tells a Cloud deploy from a self-hosted one by ReleaseMigration.self_hosted?/0's rule" do
+    docker = Path.expand("../../../docker", __DIR__)
+    decision = ~S(env_value_is_truthy "${SELF_HOSTED-true}")
+    previous = System.get_env("SELF_HOSTED")
+
+    assert File.read!(Path.join(docker, "release.sh")) =~ decision
+
+    try do
+      for value <-
+            [nil, "", "true", "TRUE", " yes ", "1", "on", "t", ~s("true"), "'false'"] ++
+              ["false", "0", "no", "off", "tru"] do
+        if value, do: System.put_env("SELF_HOSTED", value), else: System.delete_env("SELF_HOSTED")
+
+        {_, status} =
+          System.cmd("sh", [
+            "-c",
+            ~S(. "$0"; ) <> decision,
+            Path.join(docker, "entrypoint-env-guard.sh")
+          ])
+
+        assert status == 0 == ReleaseMigration.self_hosted?(), "SELF_HOSTED=#{inspect(value)}"
+      end
+    after
+      if previous,
+        do: System.put_env("SELF_HOSTED", previous),
+        else: System.delete_env("SELF_HOSTED")
+    end
   end
 
   defp with_pool(pool, fun) do

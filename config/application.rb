@@ -30,6 +30,7 @@ module Dawarich
     config.time_zone = ENV.fetch('TIME_ZONE', 'Europe/Berlin')
     config.i18n.available_locales = %i[en de es fr pl ca zh]
     config.i18n.default_locale = :en
+    config.flipper.memoize = ->(request) { !request.path.start_with?('/api/v1/health') }
     # config.eager_load_paths << Rails.root.join("extras")
 
     # Don't generate system test files.

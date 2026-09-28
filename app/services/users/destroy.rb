@@ -19,6 +19,8 @@ class Users::Destroy
     purge_attachments_for('Points::RawDataArchive', user.raw_data_archives)
 
     ActiveRecord::Base.transaction do
+      JobCommands.cancel_pending('users.explore_features_mail', user.id)
+
       # Validate inside transaction to prevent TOCTOU race
       # (a member could join/leave between check and delete if outside)
       created_family = Family.find_by(creator_id: user_id)

@@ -5,6 +5,8 @@ class Users::MailerSendingJob < ApplicationJob
 
   class UnknownEmailType < StandardError; end
 
+  EXPLORE_FEATURES_KEY = 'command:users.explore_features_mail'
+
   MAILER_REGISTRY = {
     'welcome'                     => ['UsersMailer', :welcome],
     'explore_features'            => ['UsersMailer', :explore_features],
@@ -21,6 +23,15 @@ class Users::MailerSendingJob < ApplicationJob
   ].freeze
 
   def perform(user_id, email_type, **options)
+    return send_mail(user_id, email_type, options) unless email_type.to_s == 'explore_features'
+
+    result = JobOwnership.with_owner(EXPLORE_FEATURES_KEY) { send_mail(user_id, email_type, options) }
+    forward_explore_features(user_id) if result == :not_owner
+  end
+
+  private
+
+  def send_mail(user_id, email_type, options)
     user = find_user_or_skip(user_id) || return
 
     if LEGACY_MANAGER_EMAIL_TYPES.include?(email_type.to_s)
@@ -36,5 +47,10 @@ class Users::MailerSendingJob < ApplicationJob
 
     params = { user: user }.merge(options)
     mailer_class_name.constantize.with(params).public_send(action).deliver_later
+  end
+
+  def forward_explore_features(user_id)
+    JobCommands.forward('users.explore_features_mail', { 'user_id' => user_id, 'locale' => I18n.locale.to_s },
+                        event_id: job_id, aggregate_id: user_id, producer: self.class.name)
   end
 end

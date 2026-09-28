@@ -21,7 +21,8 @@ class Trips::CalculateCountriesJob < ApplicationJob
     trip = Trip.find(trip_id)
 
     trip.calculate_countries
-    trip.save!
+    result = JobOwnership.with_owner(Trips::CalculateAllJob::OWNER_KEY) { trip.save! }
+    return Trips::CalculateAllJob.forward(trip_id, distance_unit, run_token || job_id) if result == :not_owner
 
     broadcast_update(trip, distance_unit)
     Trips::CalculateAllJob.tally_completion(trip_id, run_token)

@@ -3,6 +3,12 @@ zh:
   language_flag: cn
   admin:
     settings:
+      phoenix_jobs:
+        title: "Phoenix 任务"
+        ok: "Phoenix 正在处理其任务。"
+        alarm: "Phoenix 未在处理其任务；这些任务将等待 Phoenix 进程运行。"
+        not_installed: "Phoenix 尚未在此数据库中创建其数据表；所有任务都在 Sidekiq 中运行。"
+        unknown: "无法从数据库读取 Phoenix 任务状态；请重新加载页面后重试。"
       show:
         title: "实例设置"
         intro: "这些设置作用于整个实例。由环境变量提供的设置显示为只读：删除该变量后才能在此编辑。"
