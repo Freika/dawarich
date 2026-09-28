@@ -6,7 +6,7 @@ defmodule Dawarich.Exports.PointsWorker do
     max_attempts: 3,
     unique: [keys: [:export_id], states: :incomplete, period: :infinity]
 
-  alias Dawarich.{Exports, Storage}
+  alias Dawarich.{Exports, Storage, TimeZoneName}
 
   def args_from_command(1, %{"export_id" => export_id, "user_id" => user_id} = payload)
       when is_integer(export_id) and is_integer(user_id) and map_size(payload) == 2,
@@ -62,7 +62,7 @@ defmodule Dawarich.Exports.PointsWorker do
             repo,
             export,
             dir,
-            System.get_env("TIME_ZONE", "Europe/Berlin")
+            TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
           )
 
         {:ok, Storage.put!(config, zip, export.name <> ".zip", "application/zip")}

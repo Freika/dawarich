@@ -150,6 +150,40 @@ defmodule Dawarich.Exports.PointsWorkerTest do
     assert {~s(unsupported STORAGE_BACKEND "azure"), _} = failed!(id)
   end
 
+  test "TIME_ZONE=Berlin writes the same GPX <time> offset as Europe/Berlin", %{
+    root: root,
+    storage: storage,
+    user_id: user_id
+  } do
+    saved = System.get_env("TIME_ZONE")
+
+    on_exit(fn ->
+      if saved, do: System.put_env("TIME_ZONE", saved), else: System.delete_env("TIME_ZONE")
+    end)
+
+    times =
+      for zone <- ["Europe/Berlin", "Berlin"] do
+        System.put_env("TIME_ZONE", zone)
+        id = export!(user_id, 1)
+
+        assert perform!(root, user_id, id) == :ok
+        assert rows("SELECT status FROM exports WHERE id = $1", [id]) == [[2]], zone
+
+        [[key]] =
+          rows(
+            "SELECT b.key FROM active_storage_blobs b JOIN active_storage_attachments a ON a.blob_id = b.id WHERE a.record_id = $1",
+            [id]
+          )
+
+        [path] = Enum.filter(objects(storage), &(Path.basename(&1) == key))
+        {:ok, [{_, payload}]} = :zip.unzip(to_charlist(path), [:memory])
+        Regex.run(~r/<time>[^<]+<\/time>/, payload)
+      end
+
+    time = ["<time>2026-03-29T03:46:40+02:00</time>"]
+    assert times == [time, time]
+  end
+
   test "decoder: exact payload only; other versions unsupported; args hold no personal data" do
     payload = @payloads["exports.points"]
 
