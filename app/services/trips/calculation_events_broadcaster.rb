@@ -2,40 +2,18 @@
 
 module Trips
   module CalculationEventsBroadcaster
-    POLL_SECONDS = 1
+    extend PhoenixEventsPoller
+
     BATCH = 100
     THREAD_NAME = 'trip-calculation-events'
-    THREAD_LOCK = Mutex.new
+    LOG_TAG = '[Trips] calculation events'
 
     module_function
 
-    def start
-      return if Rails.env.test?
-
-      THREAD_LOCK.synchronize do
-        Thread.list.find { |thread| thread.name == THREAD_NAME } || spawn
-      end
-    end
-
-    def stop
-      thread = Thread.list.find { |candidate| candidate.name == THREAD_NAME }
-      thread&.kill
-      thread&.join
-    end
-
-    def drain_safely
-      sleep(POLL_SECONDS) if drain_once.zero?
-    rescue ActiveRecord::ActiveRecordError, PG::Error => e
-      Rails.logger.warn("[Trips] calculation events: #{e.class}")
-      sleep(5)
-    end
-
     def drain_once
-      Rails.application.executor.wrap do
-        events = claim
-        events.each { |event| broadcast(event) }
-        events.size
-      end
+      events = claim
+      events.each { |event| broadcast(event) }
+      events.size
     end
 
     def claim
@@ -66,12 +44,5 @@ module Trips
                                                          locals: { trip:, error: event['failed'] })
       end
     end
-
-    def spawn
-      thread = Thread.new { loop { drain_safely } }
-      thread.name = THREAD_NAME
-      thread
-    end
-    private_class_method :spawn
   end
 end
