@@ -81,8 +81,8 @@ defmodule Dawarich.NotificationsTest do
   end
 
   test "opening an unread notification marks it read and bumps updated_at", %{now: now} do
-    notification = Notifications.get(4301, 43_010)
-    assert Notifications.mark_read(4301, notification).read_at
+    Notifications.mark_read(4301, Notifications.get(4301, 43_010))
+    assert row(43_010).read_at
     assert NaiveDateTime.compare(row(43_010).updated_at, now) == :gt
   end
 

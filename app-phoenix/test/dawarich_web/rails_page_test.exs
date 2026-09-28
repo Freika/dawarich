@@ -168,6 +168,8 @@ defmodule DawarichWeb.RailsPageTest do
     for {name, value} <- [
           {"sec-fetch-site", "cross-site"},
           {"sec-purpose", "prefetch"},
+          {"x-sec-purpose", "prefetch"},
+          {"purpose", "prefetch"},
           {"x-moz", "PREFETCH"}
         ] do
       conn =

@@ -92,5 +92,5 @@ until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
   sleep 1
 done
 stack bin/rails e2e:reset_and_seed >"$root/log/proxy_stack_seed.log" 2>&1 || { tail -20 "$root/log/proxy_stack_seed.log" >&2; exit 1; }
-[ -z "${EXTRA_SEEDS:-}" ] || "$0" --seed
+[ -z "${EXTRA_SEEDS:-}" ] || "$root/app-phoenix/scripts/proxy_stack.sh" --seed
 echo "BASE_URL=http://127.0.0.1:$PORT"

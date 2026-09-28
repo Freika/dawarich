@@ -17,16 +17,16 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
     ActionController::Base.allow_forgery_protection = false
   end
 
-  def reader(email, locale = nil)
-    user = create(:user, email:, changelog_consent: :declined)
+  def reader(id, email, locale = nil)
+    user = create(:user, id:, email:, changelog_consent: :declined)
     user.update_columns(settings: user.settings.merge({ 'onboarding_completed' => true, 'locale' => locale }.compact))
     user
   end
 
-  def seed(user, count)
+  def seed(user, count, first_id)
     1.upto(count).each do |number|
       error = number == count
-      user.notifications.create!(title: format('Parity %02d', number),
+      user.notifications.create!(id: first_id + number, title: format('Parity %02d', number),
                                  kind: error ? :error : %i[info warning][number % 2],
                                  content: error ? 'Error <b>detail</b> <script>x()</script>' : "Detail #{number}",
                                  read_at: number <= 3 ? now : nil, created_at: now - number.minutes)
@@ -52,8 +52,8 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
   it 'writes the notification pages' do
     FileUtils.mkdir_p(fixtures.join('notifications'))
     travel_to now do
-      en = reader('parity-en@dawarich.test')
-      seed(en, 22)
+      en = reader(9101, 'parity-en@dawarich.test')
+      seed(en, 22, 910_000)
       sign_in en
       page('index_first_en', en, '/notifications')
       page('index_second_en', en, '/notifications?page=2')
@@ -61,16 +61,16 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
       page('show_info_en', en, "/notifications/#{en.notifications.order(:id).first.id}")
       sign_out en
 
-      de = reader('parity-de@dawarich.test', 'de')
-      seed(de, 3)
+      de = reader(9102, 'parity-de@dawarich.test', 'de')
+      seed(de, 3, 920_000)
       sign_in de
       page('index_de', de, '/notifications')
       page('show_de', de, "/notifications/#{de.notifications.order(:id).last.id}")
       sign_out de
 
-      many = reader('parity-many@dawarich.test')
+      many = reader(9103, 'parity-many@dawarich.test')
       Notification.insert_all(Array.new(250) do |i|
-        { user_id: many.id, title: "Many #{i}", content: 'x', kind: 0, read_at: now,
+        { id: 930_001 + i, user_id: many.id, title: "Many #{i}", content: 'x', kind: 0, read_at: now,
           created_at: now - (i + 1).minutes, updated_at: now }
       end)
       sign_in many
@@ -78,7 +78,7 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
       page('index_page20_en', many, '/notifications?page=20&locale=en')
       sign_out many
 
-      empty = reader('parity-empty@dawarich.test')
+      empty = reader(9104, 'parity-empty@dawarich.test')
       sign_in empty
       page('index_empty_en', empty, '/notifications')
     end
