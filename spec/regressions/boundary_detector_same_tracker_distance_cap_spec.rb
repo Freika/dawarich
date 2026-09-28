@@ -3,6 +3,12 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::BoundaryDetector do
+  include ActiveSupport::Testing::TimeHelpers
+
+  around do |example|
+    travel_to(Time.zone.local(2026, 4, 1, 12, 0, 0)) { example.run }
+  end
+
   let(:user) do
     create(:user, settings: {
              'minutes_between_routes' => 30,

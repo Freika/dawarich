@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::BoundaryDetector do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:detector) { described_class.new(user) }
   let(:safe_settings) { user.safe_settings }
@@ -26,6 +28,10 @@ RSpec.describe Tracks::BoundaryDetector do
 
   describe '#resolve_cross_chunk_tracks' do
     context 'when no recent tracks exist' do
+      around do |example|
+        travel_to(Time.zone.local(2026, 4, 1, 12, 0, 0)) { example.run }
+      end
+
       it 'returns 0' do
         expect(detector.resolve_cross_chunk_tracks).to eq(0)
       end
@@ -38,8 +44,16 @@ RSpec.describe Tracks::BoundaryDetector do
     end
 
     context 'when no boundary candidates are found' do
-      let!(:track1) { create(:track, user: user, created_at: 30.minutes.ago) }
-      let!(:track2) { create(:track, user: user, created_at: 25.minutes.ago) }
+      around do |example|
+        travel_to(Time.zone.local(2026, 4, 1, 12, 0, 0)) { example.run }
+      end
+
+      let!(:track1) do
+        create(:track, user: user, created_at: 30.minutes.ago, start_at: 2.hours.ago, end_at: 1.5.hours.ago)
+      end
+      let!(:track2) do
+        create(:track, user: user, created_at: 25.minutes.ago, start_at: 1.hour.ago, end_at: 30.minutes.ago)
+      end
 
       before do
         # Create points that are far apart (no spatial connection)
@@ -56,6 +70,10 @@ RSpec.describe Tracks::BoundaryDetector do
     end
 
     context 'when boundary candidates exist' do
+      around do |example|
+        travel_to(Time.zone.local(2026, 4, 1, 12, 0, 0)) { example.run }
+      end
+
       let!(:track1) do
         create(:track, user: user, created_at: 30.minutes.ago, start_at: 2.hours.ago, end_at: 1.5.hours.ago)
       end
@@ -104,6 +122,10 @@ RSpec.describe Tracks::BoundaryDetector do
     end
 
     context 'when a newly created track is adjacent to a track created hours earlier' do
+      around do |example|
+        travel_to(Time.zone.local(2026, 4, 1, 12, 0, 0)) { example.run }
+      end
+
       let(:track_a_end) { 30.minutes.ago }
       let(:track_b_start) { track_a_end + 5.seconds }
 
