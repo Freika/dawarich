@@ -57,7 +57,8 @@ defmodule DawarichWeb.EndpointTest do
     client = connect(serve())
     send_raw(client, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n")
 
-    assert {200, headers, _body} = read_response(client)
+    assert {302, headers, _body} = read_response(client)
+    assert values(headers, "location") == ["http://a/users/sign_in"]
     assert values(headers, "x-frame-options") == ["SAMEORIGIN"]
   end
 
@@ -85,7 +86,7 @@ defmodule DawarichWeb.EndpointTest do
     plan = {:proxy, %{public: {{127, 0, 0, 1}, port}, upstream: 1, puma_argv: puma_argv}}
 
     :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
-    on_exit(fn -> Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint) end)
+    on_exit(&restart_endpoint/0)
 
     start_supervised!(
       %{
@@ -201,7 +202,7 @@ defmodule DawarichWeb.EndpointTest do
        }}
 
     :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
-    on_exit(fn -> Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint) end)
+    on_exit(&restart_endpoint/0)
 
     sup =
       start_supervised!(
@@ -255,7 +256,7 @@ defmodule DawarichWeb.EndpointTest do
        }}
 
     :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
-    on_exit(fn -> Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint) end)
+    on_exit(&restart_endpoint/0)
 
     sup =
       start_supervised!(
@@ -291,6 +292,20 @@ defmodule DawarichWeb.EndpointTest do
 
     assert {{:close, <<1000::16>>}, _rest} = ws_recv(client, rest)
     assert Task.await(stopping, 6_500) == :ok
+  end
+
+  defp restart_endpoint do
+    for name <- Process.registered(),
+        String.starts_with?(Atom.to_string(name), "Elixir.DawarichWeb.Endpoint"),
+        pid = Process.whereis(name) do
+      ref = Process.monitor(pid)
+
+      receive do
+        {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
+      end
+    end
+
+    {:ok, _pid} = Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
   end
 
   defp endpoint_bandit do

@@ -101,7 +101,9 @@ defmodule DawarichWeb.RailsSessionTest do
              })
   end
 
-  test "only flash, _csrf_token and locale may be written" do
+  test "only flash, _csrf_token, locale and user_return_to may be written" do
+    assert {:ok, _} = RailsSession.rewrite(nil, %{"user_return_to" => "/notifications"}, @secret)
+
     assert_raise ArgumentError, fn ->
       RailsSession.rewrite(nil, %{"warden.user.user.key" => [[1], "x"]}, @secret)
     end

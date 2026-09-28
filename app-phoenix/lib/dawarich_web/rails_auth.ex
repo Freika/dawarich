@@ -8,7 +8,7 @@ defmodule DawarichWeb.RailsAuth do
 
   @session "_dawarich_session"
   @remember "remember_user_token"
-  @layout ~w(locale suggested_locale self_hosted request_path query_params flash_messages rails_csrf_token)a
+  @layout ~w(locale suggested_locale self_hosted request_path query_params flash_messages rails_csrf_token base_url)a
 
   @impl true
   def init(opts), do: opts
@@ -19,17 +19,22 @@ defmodule DawarichWeb.RailsAuth do
     secret = Keyword.get_lazy(opts, :secret, &RailsSecret.fetch/0)
     now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
     session = rails_session(conn, secret, now)
+    user = current_user(conn, session, secret, now)
 
     conn
     |> assign(:rails_session, session)
-    |> assign(:current_user, current_user(conn, session, secret, now))
+    |> assign(:current_user, user)
+    |> put_private(:dawarich_rails_user, user)
   end
 
   def user_id(conn) do
-    case call(conn, []).assigns.current_user do
-      nil -> nil
-      user -> user.id
-    end
+    user =
+      case Map.fetch(conn.private, :dawarich_rails_user) do
+        {:ok, user} -> user
+        :error -> call(conn, []).assigns.current_user
+      end
+
+    user && user.id
   end
 
   def live_session(conn) do

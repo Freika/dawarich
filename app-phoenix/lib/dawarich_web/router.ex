@@ -5,10 +5,12 @@ defmodule DawarichWeb.Router do
   pipeline :browser do
     plug :accepts, ["html"]
     plug DawarichWeb.ForceSSL
+    plug :fetch_query_params
+    plug DawarichWeb.TurboVisit
+    plug DawarichWeb.RailsAuth
     plug :phoenix_session
     plug :fetch_session
     plug :fetch_live_flash
-    plug DawarichWeb.RailsAuth
     plug DawarichWeb.Locale
     plug DawarichWeb.LayoutAssigns
     plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
@@ -16,8 +18,12 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
+  pipeline :rails_user do
+    plug DawarichWeb.RequireUser
+  end
+
   scope "/notifications" do
-    pipe_through :browser
+    pipe_through [:browser, :rails_user]
 
     live_session :rails_pages,
       session: {DawarichWeb.RailsAuth, :live_session, []},

@@ -22,6 +22,26 @@ defmodule Dawarich.Accounts do
 
   def get(_id), do: nil
 
+  def persist_locale(id, locale) do
+    %{rows: rows} =
+      Repo.query!(
+        """
+        UPDATE public.users
+        SET settings = CASE WHEN jsonb_typeof(settings) = 'object' THEN settings ELSE '{}'::jsonb END
+          || jsonb_build_object('locale', $1::text),
+          updated_at = $2
+        WHERE id = $3
+        RETURNING settings
+        """,
+        [locale, NaiveDateTime.utc_now(), id]
+      )
+
+    case rows do
+      [[settings]] -> settings
+      [] -> nil
+    end
+  end
+
   @spec from_session(map(), DateTime.t()) :: %User{} | {:locked, %User{}} | nil
   def from_session(%{"warden.user.user.key" => [[id], salt]}, now)
       when is_integer(id) and is_binary(salt) do
