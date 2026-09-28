@@ -56,6 +56,30 @@ RSpec.describe Notifications::EventsBroadcaster do
     expect(connection.select_value('SELECT count(*) FROM phoenix.notification_events')).to eq(0)
   end
 
+  it 'logs a failing broadcast by class and still broadcasts the next batch' do
+    phoenix_tables!
+    connection = ActiveRecord::Base.connection
+    first, second = %w[First Second].map do |title|
+      Notification.create!(user: user, kind: :info, title: title, content: 'World')
+    end
+    connection.execute("INSERT INTO phoenix.notification_events (notification_id) VALUES (#{first.id})")
+    allow(described_class).to receive(:sleep)
+    allow(Rails.logger).to receive(:warn)
+    broadcasted = []
+    allow(Turbo::StreamsChannel).to receive(:broadcast_prepend_to) do |_streamable, locals:, **|
+      raise RedisClient::CannotConnectError, 'redis down' if locals[:notification] == first
+
+      broadcasted << locals[:notification]
+    end
+
+    expect { described_class.drain_safely }.not_to raise_error
+    connection.execute("INSERT INTO phoenix.notification_events (notification_id) VALUES (#{second.id})")
+    described_class.drain_safely
+
+    expect(broadcasted).to eq([second])
+    expect(Rails.logger).to have_received(:warn).with('[Notifications] events: RedisClient::CannotConnectError')
+  end
+
   it 'start is idempotent and stop joins the thread' do
     allow(Rails.env).to receive(:test?).and_return(false)
     allow(described_class).to receive(:drain_safely) { sleep(0.01) }
