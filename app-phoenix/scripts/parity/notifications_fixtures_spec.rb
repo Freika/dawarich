@@ -36,4 +36,19 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
     corpus = inputs.map { |input| { input:, output: ApplicationController.helpers.sanitize(input).to_s } }
     write_json('sanitize.json', corpus)
   end
+
+  it 'writes the distance-in-words corpus' do
+    offsets = [0, 29, 30, 59, 89, 90, 119, 2669, 2670, 5369, 5370, 86_369, 86_370, 151_169, 151_170, 2_591_969,
+               2_591_970, 5_183_969, 5_183_970, 31_535_969, 31_536_000, 47_304_000, 63_072_000, 94_608_000,
+               126_230_400, 315_360_000]
+    corpus = travel_to(now) do
+      %w[en de].flat_map do |locale|
+        offsets.map do |seconds|
+          words = I18n.with_locale(locale) { ApplicationController.helpers.relative_distance_in_words(now - seconds) }
+          { locale:, seconds:, words: }
+        end
+      end
+    end
+    write_json('time_ago.json', corpus)
+  end
 end
