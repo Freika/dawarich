@@ -173,6 +173,19 @@ defmodule Dawarich.NavbarTest do
     refute Navbar.load(non_member, now: @now, self_hosted: true).family.sharing
   end
 
+  test "trial days fall back to UTC when neither zone is one Postgres lists" do
+    System.put_env("TIME_ZONE", "Berlin")
+
+    user =
+      user(4436, %{
+        status: 2,
+        active_until: ~N[2026-09-27 05:00:00],
+        settings: %{"timezone" => "Mars/Base"}
+      })
+
+    assert Navbar.load(user, now: @now, self_hosted: false).subscription.days == 1
+  end
+
   test "trial days are counted in the user's zone, and a name Postgres does not know falls back" do
     until = ~N[2026-09-27 05:00:00]
     utc = user(4430, %{status: 2, active_until: until})
