@@ -3,7 +3,6 @@
 class Families::LapseNotificationJob < ApplicationJob
   queue_as :families
 
-  self.enqueue_after_transaction_commit = true
   OWNERSHIP_KEY = 'command:mail.family_lapse'
 
   def perform(user_id, family_id)

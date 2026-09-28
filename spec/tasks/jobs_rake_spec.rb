@@ -91,6 +91,20 @@ RSpec.describe 'dawarich:jobs' do
     expect(JobCommands).to have_received(:rehome!).with('trips.calculate', by: JobOwnership.operator)
   end
 
+  it 'reports what moved and what is left when a Sidekiq enqueue stops the re-home, and exits 1' do
+    allow(JobCommands).to receive(:rehome!)
+      .and_return({ moved: 1, left: 2, error: 'RedisClient::CannotConnectError' })
+    Rake::Task['dawarich:jobs:rehome'].reenable
+
+    reported = output(/1 command\(s\) re-homed to Sidekiq, 2 command\(s\) left in Phoenix/).to_stdout
+    stopped = output(/RedisClient::CannotConnectError.*dawarich:jobs:rehome\[command:exports\.points\].*again/m).to_stderr
+
+    expect do
+      expect { Rake::Task['dawarich:jobs:rehome'].invoke('command:exports.points') }
+        .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
+    end.to reported.and(stopped)
+  end
+
   it 'prints the health summary and gauges' do
     job_owner!('command:trips.calculate', :oban)
 

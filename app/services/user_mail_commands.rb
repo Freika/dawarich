@@ -54,7 +54,7 @@ module UserMailCommands
   def legacy(email_type)
     lambda do |payload, at|
       options = LEGACY_OPTIONS.fetch(email_type).to_h { |key| [key.to_sym, payload.fetch(key)] }
-      JobCommands.enqueue_after_commit(payload['locale']) do
+      I18n.with_locale(payload['locale']) do
         Users::MailerSendingJob.set(wait_until: at).perform_later(payload['user_id'], email_type, **options)
       end
     end

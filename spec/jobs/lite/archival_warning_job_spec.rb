@@ -55,6 +55,20 @@ RSpec.describe Lite::ArchivalWarningJob, type: :job do
         expect(archival_warnings(lite_user)).to be_nil
       end
 
+      it 'sidekiq arm: an enqueue error rolls the marks back, so the next run sends the mail' do
+        create(:point, user: lite_user, timestamp: (11.months + 15.days).ago.to_i)
+        adapter = Users::MailerSendingJob.queue_adapter
+        allow(adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError, 'redis down')
+
+        expect { described_class.perform_now }.to raise_error(RedisClient::CannotConnectError)
+        expect(archival_warnings(lite_user)).to be_nil
+
+        allow(adapter).to receive(:enqueue_at).and_call_original
+        expect { described_class.perform_now }.to have_enqueued_job(Users::MailerSendingJob)
+          .with(lite_user.id, 'archival_approaching', epoch: an_instance_of(String))
+        expect(archival_warnings(lite_user)).to include('11_5mo')
+      end
+
       it '11_5mo produces mail.user.archival_approaching with epoch = the written mark (oban) ' \
          'or enqueues MailerSendingJob with epoch (sidekiq)' do
         create(:point, user: lite_user, timestamp: (11.months + 15.days).ago.to_i)

@@ -32,6 +32,11 @@ namespace :dawarich do
       JobOutbox.pending.where(command_type: type).group(:command_version).count.each do |version, left|
         puts "#{left} rows with command_version #{version} left pending"
       end
+      if result[:error]
+        abort("Re-homing stopped: a Sidekiq enqueue raised #{result[:error]}. The commands not re-homed stay " \
+              "pending and finish in Phoenix unless you run bin/rails \"dawarich:jobs:rehome[#{key}]\" again " \
+              "once Sidekiq's Redis is reachable.")
+      end
     end
 
     desc 'Send a quarantined outbox command through the relay again, keeping its event id'

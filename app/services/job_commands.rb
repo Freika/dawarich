@@ -5,7 +5,7 @@ module JobCommands
     'users.explore_features_mail' => {
       version: 1,
       sidekiq: lambda { |payload, at|
-        JobCommands.enqueue_after_commit(payload['locale']) do
+        I18n.with_locale(payload['locale']) do
           Users::MailerSendingJob.set(wait_until: at).perform_later(payload['user_id'], 'explore_features')
         end
       }
@@ -16,12 +16,14 @@ module JobCommands
     },
     'exports.points' => {
       version: 1,
-      sidekiq: ->(payload, _at) { ExportJob.perform_later(payload.fetch('export_id')) }
+      sidekiq: lambda { |payload, _at|
+        JobCommands.enqueue_after_commit(nil) { ExportJob.perform_later(payload.fetch('export_id')) }
+      }
     },
     'mail.family_invitation' => {
       version: 1,
       sidekiq: lambda { |payload, _at|
-        JobCommands.enqueue_after_commit(payload['locale']) do
+        I18n.with_locale(payload['locale']) do
           Family::Invitations::SendingJob.perform_later(payload.fetch('invitation_id'))
         end
       }
@@ -59,6 +61,8 @@ module JobCommands
   end
 
   def enqueue_after_commit(locale, &enqueue)
+    return I18n.with_locale(locale, &enqueue) if ActiveSupport::IsolatedExecutionState[:job_commands_inline]
+
     ActiveRecord.after_all_transactions_commit { I18n.with_locale(locale, &enqueue) }
   end
 
@@ -86,11 +90,27 @@ module JobCommands
       pending = JobOutbox.pending.where(command_type: type, command_version: command.fetch(:version))
       total = pending.count
       rows = pending.lock('FOR UPDATE SKIP LOCKED').to_a
-      rows.each { |row| command.fetch(:sidekiq).call(row.payload, row.scheduled_at) }
-      JobOutbox.where(event_id: rows.map(&:event_id)).delete_all
-      { moved: rows.size, left: total - rows.size }
+      pushed, error = push_inline(rows, command.fetch(:sidekiq))
+      JobOutbox.where(event_id: pushed).delete_all
+      { moved: pushed.size, left: total - pushed.size, error: }.compact
     end
   end
+
+  def push_inline(rows, enqueue)
+    pushed = []
+    ActiveSupport::IsolatedExecutionState[:job_commands_inline] = true
+    rows.each do |row|
+      enqueue.call(row.payload, row.scheduled_at)
+      pushed << row.event_id
+    end
+    [pushed, nil]
+  rescue StandardError => e
+    [pushed, e.class.name]
+  ensure
+    ActiveSupport::IsolatedExecutionState[:job_commands_inline] = nil
+  end
+
+  private_class_method :push_inline
 
   def replay!(event_id, actor:, reason:)
     ActiveRecord::Base.transaction do
