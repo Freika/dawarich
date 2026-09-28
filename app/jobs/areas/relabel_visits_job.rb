@@ -20,7 +20,7 @@ class Areas::RelabelVisitsJob < ApplicationJob
   end
 
   def perform(area_id)
-    return self.class.forward(area_id, job_id) if JobOwnership.with_owner(OWNER_KEY) { :owned } == :not_owner
+    return if forwarded?(area_id)
 
     area = Area.find_by(id: area_id)
     return unless area
@@ -41,6 +41,15 @@ class Areas::RelabelVisitsJob < ApplicationJob
   end
 
   private
+
+  def forwarded?(area_id)
+    ActiveRecord::Base.transaction do
+      next false unless JobOwnership.lock_owner(OWNER_KEY) == :oban
+
+      self.class.forward(area_id, job_id)
+      true
+    end
+  end
 
   def candidate_visits(area)
     area.user.visits.active.where(area_id: nil).includes(:place)
