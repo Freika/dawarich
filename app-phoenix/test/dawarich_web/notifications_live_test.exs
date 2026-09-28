@@ -299,7 +299,7 @@ defmodule DawarichWeb.NotificationsLiveTest do
                index |> element("a", "Delete all") |> render_click()
 
       assert {:error, {:redirect, %{to: "/notifications/41022"}}} =
-               show |> form("form.button_to") |> render_submit()
+               show |> form(~s(form.button_to[action="/notifications/41022"])) |> render_submit()
 
       assert Notifications.page(user.id, 1).notifications |> length() == 20
     end
@@ -324,7 +324,7 @@ defmodule DawarichWeb.NotificationsLiveTest do
       Notifications.delete(user.id, 41_022)
 
       assert {:error, {:redirect, %{to: "/notifications/41022"} = redirect}} =
-               view |> form("form.button_to") |> render_submit()
+               view |> form(~s(form.button_to[action="/notifications/41022"])) |> render_submit()
 
       assert redirect_flash(redirect) == %{}
     end
@@ -345,7 +345,7 @@ defmodule DawarichWeb.NotificationsLiveTest do
       {:ok, view, _html} = live_as(user, "/notifications/41022")
 
       assert {:error, {:redirect, %{to: "/notifications"} = redirect}} =
-               view |> form("form.button_to") |> render_submit()
+               view |> form(~s(form.button_to[action="/notifications/41022"])) |> render_submit()
 
       assert redirect_flash(redirect) == %{"notice" => "Notification was successfully destroyed."}
       assert Dawarich.Notifications.get(user.id, 41_022) == nil
