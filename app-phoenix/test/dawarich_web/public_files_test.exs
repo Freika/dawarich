@@ -169,7 +169,7 @@ defmodule DawarichWeb.PublicFilesTest do
       Map.new(~w(RAILS_ENV APPLICATION_HOSTS APPLICATION_PROTOCOL), &{&1, System.get_env(&1)})
 
     previous_public_files = Application.get_env(:dawarich, :public_files)
-    Application.put_env(:dawarich, :rails_upstream, {"127.0.0.1", upstream.port})
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
     Application.put_env(:dawarich, :public_root, root)
 
     System.put_env(%{
