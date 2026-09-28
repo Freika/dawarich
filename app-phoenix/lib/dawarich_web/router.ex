@@ -31,6 +31,7 @@ defmodule DawarichWeb.Router do
       root_layout: {DawarichWeb.Layouts, :root},
       layout: {DawarichWeb.Layouts, :app} do
       live "/", DawarichWeb.NotificationsLive.Index, :index, container: {:div, class: "contents"}
+      live "/:id", DawarichWeb.NotificationsLive.Show, :show, container: {:div, class: "contents"}
     end
   end
 
