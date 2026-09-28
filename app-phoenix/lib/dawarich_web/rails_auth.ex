@@ -19,11 +19,12 @@ defmodule DawarichWeb.RailsAuth do
     secret = Keyword.get_lazy(opts, :secret, &RailsSecret.fetch/0)
     now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
     session = rails_session(conn, secret, now)
-    user = current_user(conn, session, secret, now)
+    {user, locked} = current_user(conn, session, secret, now)
 
     conn
     |> assign(:rails_session, session)
     |> assign(:current_user, user)
+    |> assign(:rails_locked, locked)
     |> put_private(:dawarich_rails_user, user)
   end
 
@@ -46,11 +47,14 @@ defmodule DawarichWeb.RailsAuth do
 
   defp current_user(conn, session, secret, now) do
     case Accounts.from_session(session, now) do
-      {:locked, _user} -> nil
-      nil -> remembered(conn, secret, now)
-      user -> user
+      {:locked, _user} -> {nil, :session}
+      nil -> conn |> remembered(secret, now) |> remembered_user()
+      user -> {user, nil}
     end
   end
+
+  defp remembered_user({:locked, _user}), do: {nil, :cookie}
+  defp remembered_user(user), do: {user, nil}
 
   defp rails_session(conn, secret, now) do
     with true <- is_binary(secret),

@@ -49,4 +49,17 @@ defmodule DawarichWeb.PaginatorTest do
         ],
         do: assert(Params.ruby_to_i(input) == value)
   end
+
+  test "to_query encodes nested params as Rails' Hash#to_query does" do
+    for {params, query} <- [
+          {%{"x" => ["1"], "locale" => "de"}, "locale=de&x%5B%5D=1"},
+          {%{"page" => "2", "x" => %{"b" => "1", "a" => "2"}, "locale" => "de"},
+           "locale=de&page=2&x%5Ba%5D=2&x%5Bb%5D=1"},
+          {%{"a b" => "1", "a" => "2", "locale" => "de"}, "a+b=1&a=2&locale=de"},
+          {%{"e" => [], "h" => %{}, "n" => %{"y" => []}, "locale" => "de"}, "&locale=de"},
+          {%{"q" => "Straße & ~*", "locale" => "de"}, "locale=de&q=Stra%C3%9Fe+%26+~%2A"},
+          {%{"x" => ["2", "1"], "locale" => "de"}, "locale=de&x%5B%5D=2&x%5B%5D=1"}
+        ],
+        do: assert(Params.to_query(params) == query)
+  end
 end

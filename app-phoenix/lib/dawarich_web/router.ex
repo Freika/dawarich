@@ -3,6 +3,7 @@ defmodule DawarichWeb.Router do
   import Phoenix.LiveView.Router
 
   pipeline :browser do
+    plug DawarichWeb.HostAuthorization
     plug :accepts, ["html"]
     plug DawarichWeb.ForceSSL
     plug :fetch_query_params

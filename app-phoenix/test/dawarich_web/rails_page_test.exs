@@ -69,6 +69,26 @@ defmodule DawarichWeb.RailsPageTest do
     assert session["locale"] == "de"
   end
 
+  test "a locked account goes to sign in with Devise's locked alert, signed out of Rails",
+       %{user: user} do
+    Repo.update_all(from(u in "users", where: u.id == ^user.id),
+      set: [locked_at: NaiveDateTime.utc_now()]
+    )
+
+    conn = get(RailsUser.signed_in(user.id), "/notifications")
+
+    assert redirected_to(conn, 302) == "http://www.example.com/users/sign_in"
+    session = rails_session(conn)
+    assert Translate.t("en", "devise.failure.locked", %{}) == "Your account is locked."
+
+    assert session["flash"]["flashes"] == %{
+             "alert" => Translate.t("en", "devise.failure.locked", %{})
+           }
+
+    refute Map.has_key?(session, "warden.user.user.key")
+    assert session["user_return_to"] == "/notifications"
+  end
+
   test "every Rails session decision of one request lands in one cookie" do
     stale = RailsUser.cookie(%{"flash" => %{"discard" => [], "flashes" => %{"notice" => "old"}}})
 
@@ -108,6 +128,19 @@ defmodule DawarichWeb.RailsPageTest do
     assert body =~ "Saved &amp; done"
     refute body =~ "stale"
     refute Map.has_key?(rails_session(conn), "flash")
+  end
+
+  test "a 404 leaves the Rails session alone, flash and locale included, as Rails' exception does",
+       %{user: user} do
+    flash = %{"discard" => [], "flashes" => %{"notice" => "Saved"}}
+    session = user.id |> RailsUser.session(%{"flash" => flash}) |> Map.delete("_csrf_token")
+
+    {404, headers, _body} =
+      assert_error_sent(404, fn -> get(with_session(session), "/notifications/999?locale=de") end)
+
+    refute Enum.any?(headers, fn {name, value} ->
+             name == "set-cookie" and String.starts_with?(value, "_dawarich_session=")
+           end)
   end
 
   test "a session without a CSRF token gets one that Rails accepts", %{user: user} do
@@ -156,6 +189,18 @@ defmodule DawarichWeb.RailsPageTest do
       |> get("/notifications")
 
     assert html_response(conn, 200) =~ ~s(href="/notifications?locale=de")
+  end
+
+  test "the offered language keeps list and nested query params as Rails writes them", %{
+    user: user
+  } do
+    conn =
+      RailsUser.signed_in(user.id)
+      |> put_req_header("accept-language", "de")
+      |> get("/notifications?x[]=1&y[b]=2")
+
+    assert html_response(conn, 200) =~
+             ~s(href="/notifications?locale=de&amp;x%5B%5D=1&amp;y%5Bb%5D=2")
   end
 
   test "a Turbo fetch from a Rails page gets a reload stub and changes nothing", %{user: user} do
