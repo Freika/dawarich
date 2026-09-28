@@ -1,6 +1,8 @@
 defmodule Dawarich.Mail.DeliveryTest do
   use Dawarich.JobsCase
 
+  import ExUnit.CaptureLog
+
   alias Dawarich.Mail.{Delivery, Smtp}
   alias Dawarich.RailsSecret
 
@@ -173,6 +175,55 @@ defmodule Dawarich.Mail.DeliveryTest do
             Delivery.message_id(@handler, @key, @record, unset, "install-a") =~
               ~r/@dawarich\.mail>\z/
           )
+  end
+
+  defp without_rails_secret(fun) do
+    secret = Application.get_env(:dawarich, :rails_secret)
+    cached = :persistent_term.get(RailsSecret, nil)
+    env = Map.take(System.get_env(), ["SECRET_KEY_BASE", "RAILS_ENV"])
+    Application.delete_env(:dawarich, :rails_secret)
+    :persistent_term.erase(RailsSecret)
+    System.delete_env("SECRET_KEY_BASE")
+    System.put_env("RAILS_ENV", "production")
+
+    try do
+      fun.()
+    after
+      Application.put_env(:dawarich, :rails_secret, secret)
+      if cached, do: :persistent_term.put(RailsSecret, cached)
+      System.delete_env("RAILS_ENV")
+      System.put_env(env)
+    end
+  end
+
+  test "the HMAC key comes from the Rails cookie secret resolver; without one it falls back to an empty key" do
+    secret = Application.get_env(:dawarich, :rails_secret)
+    Application.put_env(:dawarich, :rails_secret, "install-x")
+    on_exit(fn -> Application.put_env(:dawarich, :rails_secret, secret) end)
+
+    assert Delivery.message_id(@handler, @key, @record, %{}) ==
+             Delivery.message_id(@handler, @key, @record, %{}, "install-x")
+
+    without_rails_secret(fn ->
+      assert RailsSecret.fetch() == nil
+
+      assert Delivery.message_id(@handler, @key, @record, %{}) ==
+               Delivery.message_id(@handler, @key, @record, %{}, "")
+
+      refute Delivery.message_id(@handler, @key, @record, %{}) ==
+               Delivery.message_id(@handler, @key, "2026-10-01T08:00:00.000001", %{})
+    end)
+  end
+
+  test "the jobs runtime warns once at boot, without a value, when no Rails secret resolves" do
+    init = fn -> Dawarich.Jobs.Supervisor.init(node: "n", oban: Oban, repo: ScratchRepo) end
+
+    assert capture_log(init) == ""
+
+    log = without_rails_secret(fn -> capture_log(init) end)
+
+    assert [_warning] = Regex.scan(~r/SECRET_KEY_BASE could not be resolved/, log)
+    assert log =~ "[warning]"
   end
 
   test "the sent Message-ID uses the Rails secret and DOMAIN and is kept by a takeover of the same delivery" do

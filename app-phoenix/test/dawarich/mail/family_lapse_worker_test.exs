@@ -128,7 +128,8 @@ defmodule Dawarich.Mail.FamilyLapseWorkerTest do
         perform_job(FamilyLapseWorker, job)
       end)
 
-    assert_receive :in_transport
+    assert_receive {:in_transport, %{message_id: message_id}}
+    assert message_id =~ ~r/\A<[0-9a-f]{64}@/
     Process.exit(sender, :kill)
     assert %{"plan_lapse_notified_at" => _} = family_settings(member)
 
@@ -136,10 +137,34 @@ defmodule Dawarich.Mail.FamilyLapseWorkerTest do
     refute_received {:mail, _}
 
     assert perform_job(FamilyLapseWorker, job) == :ok
-    assert_received {:mail, %{to: "member@example.test"}}
+    assert_received {:mail, %{to: "member@example.test", message_id: ^message_id}}
 
     assert perform_job(FamilyLapseWorker, job) == :ok
     refute_received {:mail, _}
+  end
+
+  test "lapse Message-ID: a resend of the command keeps it, a later lapse gets another" do
+    {member, family_id} = setup_family!()
+    job = args(member, family_id)
+    Process.put(:crash_after_send, true)
+
+    assert_raise RuntimeError, fn -> perform_job(FamilyLapseWorker, job) end
+    assert_received {:mail, %{message_id: first}}
+    Process.delete(:crash_after_send)
+
+    assert perform_job(FamilyLapseWorker, job) == :ok
+    assert_received {:mail, %{message_id: ^first}}
+
+    rows(
+      "UPDATE users SET settings = settings #- '{family,plan_lapse_notified_at}' WHERE id = $1",
+      [
+        member
+      ]
+    )
+
+    assert perform_job(FamilyLapseWorker, args(member, family_id)) == :ok
+    assert_received {:mail, %{message_id: later}}
+    refute later == first
   end
 
   test "a missing member or family is a silent no-op" do
