@@ -90,6 +90,18 @@ defmodule Dawarich.Jobs.Registry do
       expression: "0 3 * * *",
       worker: Dawarich.Lite.ArchivalWarningWorker,
       claimable: false
+    },
+    %{
+      key: "command:achievements.check",
+      kind: :command,
+      worker: Dawarich.Achievements.CheckWorker,
+      claimable: false
+    },
+    %{
+      key: "command:areas.relabel_visits",
+      kind: :command,
+      worker: Dawarich.Areas.RelabelWorker,
+      claimable: false
     }
   ]
 
