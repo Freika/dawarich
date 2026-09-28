@@ -3,11 +3,14 @@
 module AirTrail
   class ImportFlightsJob < ApplicationJob
     queue_as :imports
+    self.enqueue_after_transaction_commit = true
 
     def perform(user_id)
       user = find_user_or_skip(user_id) || return
+      return forward(user_id) if JobOwnership.with_owner(ImportCommands::AIRTRAIL_FLIGHTS_KEY) { :owned } == :not_owner
 
-      AirTrail::ImportFlights.new(user).call
+      result = AirTrail::ImportFlights.new(user).call
+      forward(user_id) if result == :not_owner
     rescue AirTrail::Client::Error => e
       ExceptionReporter.call(e, "AirTrail sync failed for user #{user_id}")
       notify_sync_failed(user, e)
@@ -16,6 +19,10 @@ module AirTrail
     end
 
     private
+
+    def forward(user_id)
+      ImportCommands.forward_airtrail_flights(user_id, event_id: job_id)
+    end
 
     def notify_sync_failed(user, error)
       I18n.with_locale(user.locale) do
