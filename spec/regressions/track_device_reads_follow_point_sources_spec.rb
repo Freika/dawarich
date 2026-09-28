@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Track generation reads the device of stamped points from point_sources' do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:import) { create(:import, user: user, source: :owntracks, name: 'phone.rec') }
   let(:base) { 3.days.ago.beginning_of_hour.to_i }
@@ -48,13 +50,15 @@ RSpec.describe 'Track generation reads the device of stamped points from point_s
   end
 
   it 'does not merge boundary tracks across a kept track of the same device' do
-    earlier = track_over(stamped_points([0, 60, 120, 180]))
-    later = track_over(stamped_points([480, 540, 600, 660]))
-    corrected_track([240, 300, 360, 420])
+    travel_to(Time.zone.local(2026, 4, 1, 12, 0, 0)) do
+      earlier = track_over(stamped_points([0, 60, 120, 180]))
+      later = track_over(stamped_points([480, 540, 600, 660]))
+      corrected_track([240, 300, 360, 420])
 
-    Tracks::BoundaryDetector.new(user).resolve_cross_chunk_tracks
+      Tracks::BoundaryDetector.new(user).resolve_cross_chunk_tracks
 
-    expect(user.tracks.where(id: [earlier.id, later.id]).count).to eq(2)
+      expect(user.tracks.where(id: [earlier.id, later.id]).count).to eq(2)
+    end
   end
 
   it 'reabsorbs orphans of the same device into a recent track' do

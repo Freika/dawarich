@@ -3,6 +3,12 @@
 require 'rails_helper'
 
 RSpec.describe 'Boundary merges skip only a gap that holds a kept track of the same device' do
+  include ActiveSupport::Testing::TimeHelpers
+
+  around do |example|
+    travel_to(Time.zone.local(2026, 4, 1, 12, 0, 0)) { example.run }
+  end
+
   let(:user) { create(:user) }
   let(:import) { create(:import, user: user, source: :google_phone_takeout) }
   let(:base) { 3.days.ago.beginning_of_hour.to_i }
