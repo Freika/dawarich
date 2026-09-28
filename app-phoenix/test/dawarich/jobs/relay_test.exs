@@ -109,6 +109,17 @@ defmodule Dawarich.Jobs.RelayTest do
            (gen_random_uuid(), 'h', now())
     """)
 
+    rows("""
+    INSERT INTO phoenix.rails_commands (kind, available_at, created_at)
+    VALUES ('k', now() - interval '40 days', now() - interval '40 days')
+    """)
+
+    rows("""
+    INSERT INTO phoenix.rails_commands_dead (id, kind, payload, attempts, last_error, created_at, died_at)
+    VALUES (1, 'k', '{}', 25, 'boom', now() - interval '60 days', now() - interval '31 days'),
+           (2, 'k', '{}', 25, 'boom', now() - interval '60 days', now() - interval '29 days')
+    """)
+
     old = outbox!(payload: %{"n" => 1})
     outbox!(payload: %{"n" => 2})
 
@@ -126,6 +137,8 @@ defmodule Dawarich.Jobs.RelayTest do
     assert rows("SELECT trip_id FROM phoenix.trip_events") == [[2]]
     assert rows("SELECT count(*) FROM phoenix.processed_commands") == [[2]]
     assert rows("SELECT payload->>'n' FROM public.job_outbox") == [["2"]]
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[1]]
+    assert rows("SELECT id FROM phoenix.rails_commands_dead") == [[2]]
   end
 
   test "stopping the drain pauses local queues so no job starts during Puma's drain" do
