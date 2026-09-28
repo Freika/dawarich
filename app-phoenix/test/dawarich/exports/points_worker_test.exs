@@ -4,6 +4,28 @@ defmodule Dawarich.Exports.PointsWorkerTest do
 
   alias Dawarich.Exports.PointsWorker
 
+  defmodule AmbiguousCommitRepo do
+    @moduledoc false
+    alias Dawarich.ScratchRepo
+
+    def query!(sql, params, opts) do
+      if sql =~ "SET status = 2", do: Process.put(:commit_armed, true)
+      ScratchRepo.query!(sql, params, opts)
+    end
+
+    def rollback(value), do: ScratchRepo.rollback(value)
+
+    def transaction(fun) do
+      outer? = not ScratchRepo.in_transaction?()
+      result = ScratchRepo.transaction(fun)
+
+      if outer? and Process.delete(:commit_armed),
+        do: raise(DBConnection.ConnectionError, "connection closed while awaiting COMMIT")
+
+      result
+    end
+  end
+
   @payloads "test/fixtures/wave2/payloads.json" |> File.read!() |> Jason.decode!()
 
   setup do
@@ -122,6 +144,24 @@ defmodule Dawarich.Exports.PointsWorkerTest do
     assert rows("SELECT count(*) FROM active_storage_blobs") == [[0]]
     assert rows("SELECT status FROM exports WHERE id = $1", [id]) == [[3]]
     assert rows("SELECT count(*) FROM notifications") == [[0]]
+  end
+
+  test "an unknown COMMIT outcome keeps the object: the landed completion still downloads", %{
+    root: root,
+    storage: storage,
+    user_id: user_id
+  } do
+    Application.put_env(:dawarich, :jobs_repo, AmbiguousCommitRepo)
+    on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, ScratchRepo) end)
+    id = export!(user_id)
+
+    assert_raise DBConnection.ConnectionError, fn -> perform!(root, user_id, id) end
+
+    assert rows("SELECT status FROM exports WHERE id = $1", [id]) == [[2]]
+    assert [[key]] = rows("SELECT key FROM active_storage_blobs")
+    assert [path] = objects(storage)
+    assert Path.basename(path) == key
+    assert temp_dirs(storage) == []
   end
 
   test "perform generation error: failed, error notification, no object, no temp dir, returns :ok",
