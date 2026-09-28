@@ -1,11 +1,14 @@
 defmodule DawarichWeb.NotificationsLiveTest do
   use ExUnit.Case, async: false
 
+  import Ecto.Query, only: [from: 2]
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
   import Plug.Conn, only: [get_resp_header: 2, get_session: 1]
 
+  alias Dawarich.Notifications
   alias Dawarich.Test.RailsUser
+  alias DawarichWeb.RailsCsrf
 
   @endpoint DawarichWeb.Endpoint
   @layout_headers "test/fixtures/layout/self_hosted_dark_en.json"
@@ -50,7 +53,7 @@ defmodule DawarichWeb.NotificationsLiveTest do
     end
   end
 
-  defp join_reply(conn, socket_session) do
+  defp join_reply(conn, socket_session, mounts \\ 0) do
     html = Phoenix.ConnTest.response(conn, 200)
     session_token = html_attribute(html, "data-phx-session")
     static_token = html_attribute(html, "data-phx-static")
@@ -76,7 +79,7 @@ defmodule DawarichWeb.NotificationsLiveTest do
        %{
          "session" => session_token,
          "static" => static_token,
-         "params" => %{"_mounts" => 0},
+         "params" => %{"_mounts" => mounts},
          "url" => "http://www.example.com/notifications",
          "caller" => from
        }, from, socket}
@@ -85,6 +88,26 @@ defmodule DawarichWeb.NotificationsLiveTest do
     assert_receive {^ref, reply}
     reply
   end
+
+  defp rails_flash_conn(user, flashes) do
+    session = RailsUser.session(user.id, %{"flash" => %{"discard" => [], "flashes" => flashes}})
+
+    Phoenix.ConnTest.build_conn()
+    |> Phoenix.ConnTest.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+    |> RailsUser.connecting_as(user.id)
+  end
+
+  defp lock(user),
+    do:
+      Dawarich.Repo.update_all(
+        from(u in "users", where: u.id == ^user.id),
+        set: [locked_at: NaiveDateTime.utc_now()]
+      )
+
+  defp redirect_flash(%{flash: token}),
+    do: Phoenix.LiveView.Utils.verify_flash(@endpoint, token)
+
+  defp redirect_flash(_redirect), do: %{}
 
   defp html_attribute(html, name) do
     [_, value] = Regex.run(~r/#{name}="([^"]+)"/, html)
@@ -188,16 +211,122 @@ defmodule DawarichWeb.NotificationsLiveTest do
 
     test "mark all and delete all show Rails' notices and patch to /notifications", %{user: user} do
       {:ok, view, _html} = live_as(user)
+      assert has_element?(view, "a", "Mark all as read")
+      render_patch(view, "/notifications?page=2")
 
-      view |> element("a", "Mark all as read") |> render_click()
+      render_click(view, "mark_all_as_read", %{})
       assert_patch(view, "/notifications")
       assert render(view) =~ "All notifications marked as read."
       refute has_element?(view, "a", "Mark all as read")
 
+      render_patch(view, "/notifications?page=2")
       view |> element("a", "Delete all") |> render_click()
+      assert_patch(view, "/notifications")
       assert render(view) =~ "All notifications where successfully destroyed."
       assert rows(view) == 0
       refute has_element?(view, "a", "Delete all")
+    end
+
+    test "without a socket every action posts to the Rails endpoint with a token Rails accepts",
+         %{user: user} do
+      session = RailsUser.session(user.id)
+
+      conn =
+        Phoenix.ConnTest.build_conn()
+        |> Phoenix.ConnTest.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+
+      index = conn |> get("/notifications") |> html_response(200) |> LazyHTML.from_document()
+
+      for path <- ~w(/notifications/mark_as_read /notifications/destroy_all) do
+        assert index
+               |> LazyHTML.query(~s(a[href="#{path}"][data-turbo-method="post"]))
+               |> Enum.count() == 1
+      end
+
+      assert index
+             |> LazyHTML.query(~s(meta[name="csrf-param"][content="authenticity_token"]))
+             |> Enum.count() == 1
+
+      [token] =
+        index |> LazyHTML.query(~s(meta[name="csrf-token"])) |> LazyHTML.attribute("content")
+
+      assert RailsCsrf.valid?(session, token)
+
+      show = conn |> get("/notifications/41022") |> html_response(200) |> LazyHTML.from_document()
+
+      form =
+        LazyHTML.query(show, ~s(form.button_to[method="post"][action="/notifications/41022"]))
+
+      assert form |> LazyHTML.query(~s(input[name="_method"][value="delete"])) |> Enum.count() ==
+               1
+
+      [token] =
+        form
+        |> LazyHTML.query(~s(input[name="authenticity_token"]))
+        |> LazyHTML.attribute("value")
+
+      assert RailsCsrf.valid?(session, token)
+    end
+
+    test "time ago is read against the clock of the latest page view, not the first mount", %{
+      user: user
+    } do
+      {:ok, view, _html} = live_as(user)
+
+      :sys.replace_state(view.pid, fn state ->
+        put_in(state.socket.assigns.now, DateTime.add(DateTime.utc_now(), -3600))
+      end)
+
+      assert render_patch(view, "/notifications?page=2") =~ "22 minutes ago"
+    end
+
+    test "a Rails flash comes back on the first connect only, never on a reconnect", %{user: user} do
+      conn = get(rails_flash_conn(user, %{"notice" => "From Rails"}), "/notifications")
+      socket_session = conn |> get_session() |> Map.put("rails_user_id", user.id)
+
+      assert {:ok, first} = join_reply(conn, socket_session, 0)
+      assert inspect(first) =~ "From Rails"
+      assert {:ok, again} = join_reply(conn, socket_session, 1)
+      refute inspect(again) =~ "From Rails"
+    end
+
+    test "an event from an account locked since the page opened is not carried out", %{user: user} do
+      {:ok, index, _html} = live_as(user)
+      {:ok, show, _html} = live_as(user, "/notifications/41022")
+      lock(user)
+
+      assert {:error, {:redirect, %{to: "/notifications"}}} =
+               index |> element("a", "Delete all") |> render_click()
+
+      assert {:error, {:redirect, %{to: "/notifications/41022"}}} =
+               show |> form("form.button_to") |> render_submit()
+
+      assert Notifications.page(user.id, 1).notifications |> length() == 20
+    end
+
+    test "a notification deleted before the socket connects reloads into the 404 without a crash",
+         %{user: user} do
+      conn =
+        get(
+          RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id),
+          "/notifications/41022"
+        )
+
+      Notifications.delete(user.id, 41_022)
+
+      assert {:error, {:redirect, %{to: "/notifications/41022"}}} = live(conn)
+    end
+
+    test "destroying a notification removed meanwhile answers the 404, not the notice", %{
+      user: user
+    } do
+      {:ok, view, _html} = live_as(user, "/notifications/41022")
+      Notifications.delete(user.id, 41_022)
+
+      assert {:error, {:redirect, %{to: "/notifications/41022"} = redirect}} =
+               view |> form("form.button_to") |> render_submit()
+
+      assert redirect_flash(redirect) == %{}
     end
 
     test "opening a notification marks it read and shows safe content with the error hint", %{
@@ -215,9 +344,10 @@ defmodule DawarichWeb.NotificationsLiveTest do
     test "destroying redirects to the list with Rails' notice", %{user: user} do
       {:ok, view, _html} = live_as(user, "/notifications/41022")
 
-      assert {:error, {:redirect, %{to: "/notifications"}}} =
+      assert {:error, {:redirect, %{to: "/notifications"} = redirect}} =
                view |> form("form.button_to") |> render_submit()
 
+      assert redirect_flash(redirect) == %{"notice" => "Notification was successfully destroyed."}
       assert Dawarich.Notifications.get(user.id, 41_022) == nil
     end
 
