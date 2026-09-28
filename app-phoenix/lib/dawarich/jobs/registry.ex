@@ -102,6 +102,18 @@ defmodule Dawarich.Jobs.Registry do
       kind: :command,
       worker: Dawarich.Areas.RelabelWorker,
       claimable: false
+    },
+    %{
+      key: "command:imports.update_points_count",
+      kind: :command,
+      worker: Dawarich.Imports.UpdatePointsCountWorker,
+      claimable: false
+    },
+    %{
+      key: "command:imports.airtrail_flights",
+      kind: :command,
+      worker: Dawarich.AirTrail.ImportFlightsWorker,
+      claimable: false
     }
   ]
 
