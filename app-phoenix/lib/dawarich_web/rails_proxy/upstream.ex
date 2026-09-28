@@ -3,7 +3,7 @@ defmodule DawarichWeb.RailsProxy.Upstream do
 
   @socket [:binary, active: false, packet: :raw, nodelay: true, buffer: 65_536]
 
-  def open({host, port}), do: :gen_tcp.connect(to_charlist(host), port, @socket, 30_000)
+  def open({address, port}), do: :gen_tcp.connect(address, port, @socket, 30_000)
 
   def send_head(socket, method, target, headers) do
     :gen_tcp.send(socket, [
@@ -30,7 +30,7 @@ defmodule DawarichWeb.RailsProxy.Upstream do
   end
 
   def framing(headers) do
-    headers = Enum.map(headers, fn {name, value} -> {String.downcase(name), value} end)
+    headers = Enum.map(headers, fn {name, value} -> {String.downcase(name, :ascii), value} end)
 
     case {List.keyfind(headers, "transfer-encoding", 0),
           List.keyfind(headers, "content-length", 0)} do

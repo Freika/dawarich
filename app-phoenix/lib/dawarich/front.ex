@@ -42,7 +42,7 @@ defmodule Dawarich.Front do
     ]
   end
 
-  def upstream({:proxy, %{upstream: port}}), do: {"127.0.0.1", port}
+  def upstream({:proxy, %{upstream: port}}), do: {{127, 0, 0, 1}, port}
   def upstream(_plan), do: nil
 
   def http_options(ip, port) do
