@@ -108,6 +108,32 @@ RSpec.describe JobCommands do
     expect(JobOwnership.with_owner('command:users.explore_features_mail') { :sidekiq_runs }).to eq(:sidekiq_runs)
   end
 
+  {
+    'exports.points' => ->(id) { { 'export_id' => id, 'user_id' => 1 } },
+    'mail.family_lapse' => ->(id) { { 'user_id' => id, 'family_id' => 1, 'locale' => 'de', 'lapse_at' => 'none' } }
+  }.each do |type, payload|
+    it "re-homes #{type} inline, so an enqueue error keeps the unsent command for the next run" do
+      job_owner!("command:#{type}", :oban)
+      [1, 2].each do |id|
+        described_class.forward(type, payload.call(id), event_id: SecureRandom.uuid, aggregate_id: id, producer: 'spec')
+      end
+      pushes = 0
+      allow(ExportJob.queue_adapter).to receive(:enqueue).and_wrap_original do |original, job|
+        pushes += 1
+        raise RedisClient::CannotConnectError, 'redis down' if pushes == 2
+
+        original.call(job)
+      end
+
+      expect(described_class.rehome!(type, by: 'spec'))
+        .to eq({ moved: 1, left: 1, error: 'RedisClient::CannotConnectError' })
+      expect([JobOutbox.pending.count, enqueued_jobs.size]).to eq([1, 1])
+
+      expect(described_class.rehome!(type, by: 'spec')).to eq({ moved: 1, left: 0 })
+      expect([JobOutbox.count, enqueued_jobs.size]).to eq([0, 2])
+    end
+  end
+
   it 'replays only quarantined commands, keeping the event id and auditing who and why' do
     phoenix_tables!
     row = JobOutbox.create!(event_id: SecureRandom.uuid, command_type: 'trips.calculate', command_version: 1,

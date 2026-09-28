@@ -26,6 +26,24 @@ defmodule Dawarich.Jobs.Housekeeping do
       DateTime.add(now, -30 * @day)
     )
 
+    delete!(
+      repo,
+      "DELETE FROM phoenix.notification_events WHERE created_at < $1",
+      DateTime.add(now, -@day)
+    )
+
+    delete!(
+      repo,
+      "DELETE FROM phoenix.delivery_claims WHERE claimed_at < $1",
+      DateTime.add(now, -30 * @day)
+    )
+
+    delete!(
+      repo,
+      "DELETE FROM phoenix.export_claims WHERE claimed_at < $1",
+      DateTime.add(now, -30 * @day)
+    )
+
     :ok
   end
 

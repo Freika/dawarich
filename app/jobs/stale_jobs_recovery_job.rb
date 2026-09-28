@@ -20,7 +20,8 @@ class StaleJobsRecoveryJob < ApplicationJob
     Export.processing.where(processing_started_at: ...EXPORT_TIMEOUT.ago).find_each do |export|
       I18n.with_locale(export.user.locale) do
         error_message = I18n.t('jobs.stale_jobs_recovery_job.export_timed_out_after_being_stuck_in_processing')
-        export.update!(status: :failed, error_message: error_message)
+        next unless Export.where(id: export.id, status: :processing)
+                          .update_all(status: :failed, error_message:, updated_at: Time.current) == 1
 
         Notifications::Create.new(
           user: export.user,

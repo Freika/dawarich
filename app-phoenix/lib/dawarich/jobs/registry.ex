@@ -41,6 +41,55 @@ defmodule Dawarich.Jobs.Registry do
       expression: "0 */6 * * *",
       worker: Dawarich.Users.PointsCounterCorrectionWorker,
       claimable: false
+    },
+    %{
+      key: "command:exports.points",
+      kind: :command,
+      worker: Dawarich.Exports.PointsWorker,
+      claimable: false
+    },
+    %{
+      key: "command:mail.family_invitation",
+      kind: :command,
+      worker: Dawarich.Mail.FamilyInvitationWorker,
+      claimable: false
+    },
+    %{
+      key: "command:mail.family_lapse",
+      kind: :command,
+      worker: Dawarich.Mail.FamilyLapseWorker,
+      claimable: false
+    },
+    %{
+      key: "command:mail.user.welcome",
+      kind: :command,
+      worker: Dawarich.Mail.WelcomeWorker,
+      claimable: false
+    },
+    %{
+      key: "command:mail.user.archival_approaching",
+      kind: :command,
+      worker: Dawarich.Mail.ArchivalApproachingWorker,
+      claimable: false
+    },
+    %{
+      key: "command:mail.user.oauth_account_link",
+      kind: :command,
+      worker: Dawarich.Mail.OauthAccountLinkWorker,
+      claimable: false
+    },
+    %{
+      key: "command:mail.user.account_destroy_confirmation",
+      kind: :command,
+      worker: Dawarich.Mail.AccountDestroyConfirmationWorker,
+      claimable: false
+    },
+    %{
+      key: Dawarich.Lite.ArchivalWarningWorker.key(),
+      kind: :cron,
+      expression: "0 3 * * *",
+      worker: Dawarich.Lite.ArchivalWarningWorker,
+      claimable: false
     }
   ]
 
