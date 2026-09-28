@@ -7,8 +7,14 @@ defmodule Mix.Tasks.Dawarich.Achievements do
     target = Application.fetch_env!(:dawarich, :achievements_path)
 
     sources =
-      ["../Gemfile.lock", "../config/achievements.yml", "../config/achievements/planet.yml"] ++
-        Path.wildcard("../config/locales/**/*.yml")
+      [
+        "../Gemfile.lock",
+        "../config/achievements.yml",
+        "../config/achievements/planet.yml",
+        "../app/services/achievements/registry.rb",
+        "../app/services/achievements/set_presenter.rb",
+        "../lib/tasks/phoenix.rake"
+      ] ++ Path.wildcard("../config/locales/**/*.yml")
 
     if Mix.Tasks.Dawarich.I18n.stale?(target, sources) do
       {_, 0} =

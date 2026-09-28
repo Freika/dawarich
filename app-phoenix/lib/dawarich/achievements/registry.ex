@@ -11,8 +11,6 @@ defmodule Dawarich.Achievements.Registry do
       else: Map.has_key?(data().subdivision_parents, code)
   end
 
-  def reset!, do: :persistent_term.erase(__MODULE__)
-
   defp data do
     case :persistent_term.get(__MODULE__, nil) do
       nil -> tap(load(), &:persistent_term.put(__MODULE__, &1))
