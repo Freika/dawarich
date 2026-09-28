@@ -78,7 +78,10 @@ RSpec.describe JobHealth do
              ('visit_months_changed', '{}', 1, now()),
              ('visit_months_changed', '{}', 0, now() + interval '1 hour')
     SQL
-    connection.execute("UPDATE phoenix.rails_commands SET leased_until = now() + interval '1 minute' WHERE attempts = 1 AND available_at <= now()")
+    connection.execute(<<~SQL.squish)
+      UPDATE phoenix.rails_commands SET leased_until = now() + interval '1 minute'
+      WHERE attempts = 1 AND available_at <= now()
+    SQL
     connection.execute(<<~SQL.squish)
       INSERT INTO phoenix.rails_commands_dead (id, kind, payload, attempts, last_error, created_at)
       VALUES (999_999, 'visit_months_changed', '{}', 25, 'RuntimeError: cache down', now())

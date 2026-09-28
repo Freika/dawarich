@@ -59,7 +59,7 @@ RSpec.describe JobCommands do
 
   it 'registers achievements.check and areas.relabel_visits at version 1' do
     versions = described_class::COMMANDS.slice('achievements.check', 'areas.relabel_visits')
-                                      .transform_values { _1.fetch(:version) }
+                                        .transform_values { _1.fetch(:version) }
 
     expect(versions).to eq('achievements.check' => 1, 'areas.relabel_visits' => 1)
   end

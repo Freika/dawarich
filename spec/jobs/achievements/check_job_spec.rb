@@ -60,8 +60,8 @@ RSpec.describe Achievements::CheckJob do
       described_class.perform_now(user.id, notify: true, oldest_timestamp: 70)
 
       expect(JobOutbox.pending.sole).to have_attributes(
-        command_type: 'achievements.check', payload: { 'user_id' => user.id, 'notify' => true, 'oldest_timestamp' => 50 },
-        dedupe_key: nil, aggregate_id: user.id
+        command_type: 'achievements.check', dedupe_key: nil, aggregate_id: user.id,
+        payload: { 'user_id' => user.id, 'notify' => true, 'oldest_timestamp' => 50 }
       )
       expect(described_class.pending_members(user.id)).to be_empty
     end

@@ -26,7 +26,11 @@ RSpec.describe RailsCommands::Poller do
 
   def commands = sql('SELECT * FROM phoenix.rails_commands ORDER BY id').to_a
   def dead = sql('SELECT * FROM phoenix.rails_commands_dead ORDER BY id').to_a
-  def expire_leases! = sql("UPDATE phoenix.rails_commands SET leased_until = now() - interval '1 second' WHERE leased_until IS NOT NULL")
+
+  def expire_leases!
+    sql("UPDATE phoenix.rails_commands SET leased_until = now() - interval '1 second' WHERE leased_until IS NOT NULL")
+  end
+
   def make_due! = sql('UPDATE phoenix.rails_commands SET available_at = now()')
   def month_key(user) = Timeline::MonthSummary.cache_key_for(user, Date.new(2026, 6, 1))
   def months(user) = { 'user_id' => user.id, 'started_at' => ['2026-06-15T10:00:00Z'] }
@@ -94,7 +98,8 @@ RSpec.describe RailsCommands::Poller do
     new = described_class.claim.first
     expect(new).to include('id' => old['id'], 'attempts' => 2)
     sql("UPDATE phoenix.rails_commands SET leased_until = now() + interval '2 minutes' WHERE id = #{new['id']}")
-    new['lease'] = sql("SELECT leased_until::text AS lease FROM phoenix.rails_commands WHERE id = #{new['id']}").first['lease']
+    new['lease'] =
+      sql("SELECT leased_until::text AS lease FROM phoenix.rails_commands WHERE id = #{new['id']}").first['lease']
 
     allow(Rails.logger).to receive(:warn)
     described_class.complete(old)
@@ -183,8 +188,10 @@ RSpec.describe RailsCommands::Poller do
   it 'no row is lost: every claimed row ends deleted, backed off or dead' do
     phoenix_tables!
     users = create_list(:user, 10)
-    users.each_with_index { |candidate, index| command!('visit_months_changed', months(candidate), attempts: index.zero? ? 24 : 0) }
-    command!('visit_months_changed', { 'user_id' => 0, 'started_at' => ['2026-06-15T10:00:00Z'] })
+    ids = users.each_with_index.map do |candidate, index|
+      command!('visit_months_changed', months(candidate), attempts: index.zero? ? 24 : 0)
+    end
+    ids << command!('visit_months_changed', { 'user_id' => 0, 'started_at' => ['2026-06-15T10:00:00Z'] })
     failing = users.first(5)
     stub_bust.and_wrap_original do |method, candidate, times|
       raise 'cache down' if failing.include?(candidate)
@@ -193,13 +200,12 @@ RSpec.describe RailsCommands::Poller do
     end
 
     expect(described_class.drain_once).to eq(11)
-    expect(dead.size).to eq(1)
-    expect(commands.size).to eq(4)
+    expect(dead.map { _1['id'] }).to eq([ids.first])
+    expect(commands.map { _1['id'] }).to eq(ids[1..4])
     expect(commands).to all(include('attempts' => 1, 'leased_until' => nil))
     users.last(5).each do |candidate|
       expect(Visits::Detection::MachineVisitWipe).to have_received(:bust_month_caches).with(candidate, kind_of(Array))
     end
-    expect(1 + 4 + 5 + 1).to eq(11)
   end
 
   it 'an unknown kind backs off like a failure' do
