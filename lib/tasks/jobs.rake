@@ -2,18 +2,25 @@
 
 namespace :dawarich do
   namespace :jobs do
+    owner_row_locked = lambda do |key|
+      abort("#{key}: the owner row stayed locked by another transaction (for example a long user-data import) " \
+            "for #{JobOwnership::LOCK_TIMEOUT}. Nothing changed; run the task again once that transaction ends.")
+    end
+
     desc 'Route a job key back to Sidekiq and pin it so Phoenix does not claim it again'
     task :release, [:key] => :environment do |_task, args|
       key = args[:key].presence || abort('usage: bin/rails "dawarich:jobs:release[<key>]"')
-      JobOwnership.release!(key, by: JobOwnership.operator)
-      puts "#{key}: sidekiq (pinned)"
+      JobOwnership.release!(key, by: JobOwnership.operator).each { |moved| puts "#{moved}: sidekiq (pinned)" }
+    rescue ActiveRecord::LockWaitTimeout
+      owner_row_locked.call(key)
     end
 
     desc 'Let Phoenix claim a released job key again at its next boot'
     task :unpin, [:key] => :environment do |_task, args|
       key = args[:key].presence || abort('usage: bin/rails "dawarich:jobs:unpin[<key>]"')
-      JobOwnership.unpin!(key, by: JobOwnership.operator)
-      puts "#{key}: claimable"
+      JobOwnership.unpin!(key, by: JobOwnership.operator).each { |unpinned| puts "#{unpinned}: claimable" }
+    rescue ActiveRecord::LockWaitTimeout
+      owner_row_locked.call(key)
     end
 
     desc 'Release a command key to Sidekiq (pinned) and hand its pending outbox commands to Sidekiq'
@@ -37,6 +44,8 @@ namespace :dawarich do
               "pending and finish in Phoenix unless you run bin/rails \"dawarich:jobs:rehome[#{key}]\" again " \
               "once Sidekiq's Redis is reachable.")
       end
+    rescue ActiveRecord::LockWaitTimeout
+      owner_row_locked.call(key)
     end
 
     desc 'Send a quarantined outbox command through the relay again, keeping its event id'
