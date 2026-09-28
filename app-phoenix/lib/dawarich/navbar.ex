@@ -3,7 +3,7 @@ defmodule Dawarich.Navbar do
 
   import Ecto.Query
 
-  alias Dawarich.{AppVersion, Repo, Supporters}
+  alias Dawarich.{AppVersion, Repo, Supporters, UserTimeZone}
   alias Dawarich.Accounts.User
 
   @kinds %{0 => "info", 1 => "warning", 2 => "error"}
@@ -118,19 +118,17 @@ defmodule Dawarich.Navbar do
 
   defp days_between(until, now, settings) do
     %{rows: [[days]]} =
-      Repo.query!(
+      UserTimeZone.query!(
         """
         SELECT ($1::timestamptz AT TIME ZONE z.name)::date - ($2::timestamptz AT TIME ZONE z.name)::date
-        FROM (SELECT coalesce((SELECT name FROM pg_timezone_names WHERE name = $3), $4) AS name) z
+        FROM z
         """,
-        [until, now, zone(settings), System.get_env("TIME_ZONE", "Europe/Berlin")]
+        [until, now],
+        settings
       )
 
     days
   end
-
-  defp zone(%{"timezone" => zone}) when is_binary(zone), do: zone
-  defp zone(_settings), do: System.get_env("TIME_ZONE", "UTC")
 
   defp version(user, self_hosted, now), do: version(user, self_hosted, now, AppVersion.current())
 

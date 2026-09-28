@@ -3,7 +3,7 @@ defmodule Dawarich.Notifications do
 
   import Ecto.Query
 
-  alias Dawarich.Repo
+  alias Dawarich.{Repo, UserTimeZone}
 
   @per_page 20
   @kinds %{0 => "info", 1 => "warning", 2 => "error"}
@@ -68,17 +68,14 @@ defmodule Dawarich.Notifications do
 
   defp zoned(times, settings) do
     %{rows: rows} =
-      Repo.query!(
+      UserTimeZone.query!(
         """
         SELECT extract(epoch FROM ((t AT TIME ZONE 'UTC') AT TIME ZONE z.name) - t)::int, z.name
-        FROM unnest($1::timestamp[]) WITH ORDINALITY AS u(t, i),
-          (SELECT coalesce(
-            (SELECT name FROM pg_timezone_names WHERE name = $2),
-            (SELECT name FROM pg_timezone_names WHERE name = $3),
-            'UTC') AS name) z
+        FROM unnest($1::timestamp[]) WITH ORDINALITY AS u(t, i), z
         ORDER BY i
         """,
-        [times, zone(settings), System.get_env("TIME_ZONE", "Europe/Berlin")]
+        [times],
+        settings
       )
 
     times
@@ -88,9 +85,6 @@ defmodule Dawarich.Notifications do
       {at, %{local | time_zone: name, zone_abbr: name, utc_offset: offset}}
     end)
   end
-
-  defp zone(%{"timezone" => zone}) when is_binary(zone), do: zone
-  defp zone(_settings), do: System.get_env("TIME_ZONE", "UTC")
 
   def delete(user_id, id),
     do:
