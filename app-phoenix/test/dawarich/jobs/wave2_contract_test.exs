@@ -19,11 +19,24 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
   )
 
   test "Rails COMMANDS and the registry name the same command types" do
-    rails =
+    commands =
       ~r/^\s*'([a-z0-9_.]+)' => \{/m
       |> Regex.scan(RailsTree.read("app/services/job_commands.rb"), capture: :all_but_first)
       |> List.flatten()
-      |> MapSet.new()
+
+    [legacy_options] =
+      Regex.run(
+        ~r/LEGACY_OPTIONS = \{(.*?)\}\.freeze/s,
+        RailsTree.read("app/services/user_mail_commands.rb"),
+        capture: :all_but_first
+      )
+
+    mails =
+      ~r/^\s*'([a-z_]+)' =>/m
+      |> Regex.scan(legacy_options, capture: :all_but_first)
+      |> Enum.map(fn [email_type] -> "mail.user." <> email_type end)
+
+    rails = MapSet.new(commands ++ mails)
 
     phoenix =
       for %{kind: :command, key: "command:" <> type} <- Registry.entries(),
