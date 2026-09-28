@@ -1,0 +1,22 @@
+<%= @t.("your_data_history_is_filling_up") %>
+
+<%= @t.("hi") %> <%= @email %><%= @t.("this_is_evgenii_from_dawarich") %>
+
+<%= @t.("heads_up_your_oldest_location_data_will_be_archived_in") %>
+
+<%= @t.("on_the_lite_plan_your_most_recent_12_months_of") %>
+
+<%= @t.("upgrade_to_pro_to_keep_your_full_history") %>
+<%= @t.("unlimited_searchable_history_every_month_every_year_2") %>
+<%= @t.("heatmap_fog_of_war_and_globe_view_2") %>
+<%= @t.("full_write_api_access_2") %>
+<%= @t.("immich_and_photoprism_integrations_2") %>
+
+<%= @t.("upgrade_now") %> <%= @upgrade_url %>
+
+<%= @t.("your_data_is_always_yours_pro_simply_makes_all_of") %>
+
+<%= @t.("questions_drop_me_a_message_at_hi_dawarich_app_or") %>
+
+<%= @t.("best_regards") %>
+<%= @t.("evgenii_from_dawarich") %>
