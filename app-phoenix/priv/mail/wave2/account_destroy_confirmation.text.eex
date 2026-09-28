@@ -1,0 +1,11 @@
+<%= @t.("confirm_account_deletion") %>
+
+<%= @t.("hi") %> <%= @email %>,
+
+<%= @t.("we_received_a_request_to_delete_your_dawarich_account_this_2") %>
+
+<%= @t.("permanently_delete_my_account_2") %> <%= @link_url %>
+
+<%= @t.("didn_t_request_this_ignore_this_email_the_link_expires_2") %>
+
+<%= @t.("if_you_have_an_active_apple_or_google_subscription_remember") %>
