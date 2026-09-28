@@ -75,6 +75,16 @@ RSpec.describe 'dawarich:jobs' do
     expect(JobOwnership.with_owner('command:trips.calculate') { :sidekiq_runs }).to eq(:sidekiq_runs)
   end
 
+  it 're-homing the archival mail key names the Lite cron key it releases with it' do
+    job_owner!('cron:lite_archival_warning_job', :oban)
+    job_owner!('command:mail.user.archival_approaching', :oban)
+
+    Rake::Task['dawarich:jobs:rehome'].reenable
+
+    expect { Rake::Task['dawarich:jobs:rehome'].invoke('command:mail.user.archival_approaching') }
+      .to output(/cron:lite_archival_warning_job: sidekiq \(pinned\)/).to_stdout
+  end
+
   it 'reports commands left in Phoenix and the rollback wait condition' do
     allow(JobCommands).to receive(:rehome!).and_return({ moved: 2, left: 1 })
     Rake::Task['dawarich:jobs:rehome'].reenable

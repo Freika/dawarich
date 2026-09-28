@@ -32,6 +32,7 @@ namespace :dawarich do
       result = JobCommands.rehome!(type, by: JobOwnership.operator)
       puts "#{key}: sidekiq (pinned), #{result[:moved]} command(s) re-homed to Sidekiq, " \
            "#{result[:left]} command(s) left in Phoenix"
+      JobOwnership.joint_keys(key).without(key).each { |moved| puts "#{moved}: sidekiq (pinned)" }
       if result[:left].positive?
         puts 'Commands left in Phoenix will finish in Phoenix. Wait until dawarich:jobs:status shows ' \
              'no pending commands and no incomplete Oban jobs for this worker before rolling back.'
