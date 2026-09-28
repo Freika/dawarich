@@ -12,7 +12,7 @@ defmodule DawarichWeb.RailsProxyTest do
     bandit =
       start_supervised!(
         {Bandit,
-         [plug: {RailsProxy, upstream: {"127.0.0.1", upstream.port}}] ++
+         [plug: {RailsProxy, upstream: {{127, 0, 0, 1}, upstream.port}}] ++
            Dawarich.Front.http_options({127, 0, 0, 1}, 0)}
       )
 
@@ -197,6 +197,18 @@ defmodule DawarichWeb.RailsProxyTest do
     assert values(headers, "cache-control") == []
     assert values(headers, "keep-alive") == []
     assert values(headers, "x-private") == []
+  end
+
+  test "response header matching is ASCII case-insensitive without changing a non-ASCII value" do
+    headers =
+      DawarichWeb.RailsProxy.Headers.response([
+        {"cOnNeCtIoN", "X-pRiVaTe"},
+        {"X-pRiVaTe", "1"},
+        {"X-Device-Name", "München"}
+      ])
+
+    refute {"x-private", "1"} in headers
+    assert {"x-device-name", "München"} in headers
   end
 
   test "a long response streams to the client with its length and without buffering", ctx do
@@ -441,7 +453,7 @@ defmodule DawarichWeb.RailsProxyTest do
     bandit =
       start_supervised!(
         {Bandit,
-         [plug: {RailsProxy, upstream: {"127.0.0.1", ctx.upstream.port}}] ++
+         [plug: {RailsProxy, upstream: {{127, 0, 0, 1}, ctx.upstream.port}}] ++
            Dawarich.Front.http_options({0, 0, 0, 0, 0, 0, 0, 0}, 0)},
         id: :dual_stack
       )
