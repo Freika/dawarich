@@ -56,18 +56,17 @@ defmodule Dawarich.Accounts do
 
   def from_session(_session, _now), do: nil
 
-  @spec from_remember_cookie(term(), DateTime.t()) :: %User{} | nil
+  @spec from_remember_cookie(term(), DateTime.t()) :: %User{} | {:locked, %User{}} | nil
   def from_remember_cookie([[id], token, generated_at], now)
       when is_integer(id) and is_binary(token) do
     with %User{} = user <- find(id),
-         true <- unlocked?(user, now),
          value when is_binary(value) and value != "" <- salt(user),
          true <- Plug.Crypto.secure_compare(value, token),
          {:ok, at} <- generated(generated_at),
          :gt <- DateTime.compare(at, DateTime.add(now, -@remember_for)),
          %DateTime{} = created <- user.remember_created_at,
          :gt <- DateTime.compare(at, created) do
-      user
+      if unlocked?(user, now), do: user, else: {:locked, user}
     else
       _ -> nil
     end

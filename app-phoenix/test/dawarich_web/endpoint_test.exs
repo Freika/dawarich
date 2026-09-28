@@ -62,6 +62,66 @@ defmodule DawarichWeb.EndpointTest do
     assert values(headers, "x-frame-options") == ["SAMEORIGIN"]
   end
 
+  defp answered_by_puma(port, upstream, request) do
+    client = connect(port)
+    send_raw(client, request)
+    puma = accept(upstream)
+    {head, _rest} = read_head(puma)
+    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+    assert {200, _headers, "puma"} = read_response(client)
+    request_line(head)
+  end
+
+  defp answered_by_phoenix(port, request) do
+    client = connect(port)
+    send_raw(client, request)
+    {status, _headers, _body} = read_response(client)
+    status
+  end
+
+  test "Rails answers what a browser page is not asked for: JSON, XHR, a format", ctx do
+    port = serve()
+    get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
+
+    for {target, headers} <- [
+          {"/notifications", "Accept: application/json\r\n"},
+          {"/notifications", "Accept: text/html, application/json\r\n"},
+          {"/notifications", "Accept: text/plain\r\n"},
+          {"/notifications", "Accept: application/xhtml+xml\r\n"},
+          {"/notifications", "X-Requested-With: XMLHttpRequest\r\n"},
+          {"/notifications/5.json", ""},
+          {"/notifications?format=json", ""},
+          {"/notifications?page=2&form%61t=json", ""}
+        ],
+        do: assert(answered_by_puma(port, ctx.upstream, get.(target, headers)) =~ target)
+
+    for {target, headers} <- [
+          {"/notifications", ""},
+          {"/notifications", "Accept: */*\r\n"},
+          {"/notifications", "Accept: application/json, */*;q=0.1\r\n"},
+          {"/notifications",
+           "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"},
+          {"/notifications",
+           "Accept: text/vnd.turbo-stream.html, text/html, application/xhtml+xml\r\n"},
+          {"/notifications/5", "Accept: text/html\r\n"}
+        ],
+        do: assert(answered_by_phoenix(port, get.(target, headers)) == 302, target <> headers)
+  end
+
+  test "the no-socket fallbacks of the notification pages post to Puma", ctx do
+    port = serve()
+
+    for target <- ~w(/notifications/mark_as_read /notifications/destroy_all /notifications/5) do
+      body = "_method=post&authenticity_token=x"
+
+      request =
+        "POST #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+      assert answered_by_puma(port, ctx.upstream, request) == "POST #{target} HTTP/1.1"
+    end
+  end
+
   test "a route handed back to Rails goes to Puma although Phoenix routes it", ctx do
     Application.put_env(:dawarich, :rails_routes, ["notifications"])
     on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)

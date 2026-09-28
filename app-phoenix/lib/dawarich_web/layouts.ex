@@ -29,7 +29,7 @@ defmodule DawarichWeb.Layouts do
   end
 
   def locale_path(path, query_params, locale) do
-    query = query_params |> Map.put("locale", locale) |> URI.encode_query()
+    query = query_params |> Map.put("locale", locale) |> DawarichWeb.Params.to_query()
     path <> "?" <> query
   end
 end

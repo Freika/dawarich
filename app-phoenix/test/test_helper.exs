@@ -1,4 +1,5 @@
 ExUnit.start()
+Application.put_env(:dawarich, :allowed_hosts, [])
 Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :manual)
 
 scratch = Dawarich.ScratchRepo.config()

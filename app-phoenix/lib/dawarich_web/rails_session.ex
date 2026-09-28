@@ -8,6 +8,7 @@ defmodule DawarichWeb.RailsSession do
 
   @name "_dawarich_session"
   @writable ["flash", "_csrf_token", "locale", "user_return_to"]
+  @deletable ["warden.user.user.key", "warden.user.user.session"]
   @max_size 4096
 
   defmodule Overflow do
@@ -45,8 +46,11 @@ defmodule DawarichWeb.RailsSession do
       else:
         conn
         |> put_private(:dawarich_rails_session_staged, true)
-        |> register_before_send(&put(&1, &1.private.dawarich_rails_session_changes))
+        |> register_before_send(&commit/1)
   end
+
+  defp commit(%{status: status} = conn) when status >= 400, do: conn
+  defp commit(conn), do: put(conn, conn.private.dawarich_rails_session_changes)
 
   def rewrite(cookie, changes, secret) do
     validate!(changes)
@@ -57,16 +61,20 @@ defmodule DawarichWeb.RailsSession do
   end
 
   defp validate!(changes) when is_map(changes) do
-    case Map.keys(changes) -- @writable do
+    case for({key, value} <- changes, not writable?(key, value), do: key) do
       [] ->
         :ok
 
       keys ->
-        raise ArgumentError, "only #{inspect(@writable)} may be written, got #{inspect(keys)}"
+        raise ArgumentError,
+              "only #{inspect(@writable)} may be written and #{inspect(@deletable)} deleted, " <>
+                "got #{inspect(keys)}"
     end
   end
 
   defp validate!(_changes), do: raise(ArgumentError, "changes must be a map")
+
+  defp writable?(key, value), do: key in @writable or (key in @deletable and is_nil(value))
 
   defp read(cookie, secret) when is_binary(cookie) do
     case RailsCookies.decrypt(cookie, @name, secret, DateTime.utc_now()) do

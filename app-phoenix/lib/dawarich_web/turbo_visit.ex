@@ -10,7 +10,7 @@ defmodule DawarichWeb.TurboVisit do
   def init(opts), do: opts
 
   @impl true
-  def call(%{method: "GET"} = conn, _opts) do
+  def call(conn, _opts) do
     case get_req_header(conn, "x-turbo-request-id") do
       [] ->
         conn
@@ -23,6 +23,4 @@ defmodule DawarichWeb.TurboVisit do
         |> halt()
     end
   end
-
-  def call(conn, _opts), do: conn
 end
