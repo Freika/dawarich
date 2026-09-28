@@ -27,7 +27,7 @@ defmodule Dawarich.AppVersion.CheckWorker do
       {String.to_charlist(url),
        [{~c"user-agent", ~c"Dawarich"}, {~c"accept", ~c"application/json"}]}
 
-    options = [connect_timeout: 5_000, timeout: 5_000, ssl: ssl(url)]
+    options = [connect_timeout: 5_000, timeout: 5_000, ssl: Dawarich.Http.ssl_options(url)]
 
     with {:ok, {{_, status, _}, _headers, body}} when status in 200..299 <-
            :httpc.request(:get, request, options, body_format: :binary),
@@ -47,16 +47,6 @@ defmodule Dawarich.AppVersion.CheckWorker do
     |> File.read!()
     |> String.trim()
   end
-
-  defp ssl("https:" <> _) do
-    [
-      verify: :verify_peer,
-      cacerts: :public_key.cacerts_get(),
-      customize_hostname_check: [match_fun: :public_key.pkix_verify_hostname_match_fun(:https)]
-    ]
-  end
-
-  defp ssl(_url), do: []
 
   defp store(version) do
     repo = Dawarich.Jobs.repo()
