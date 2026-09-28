@@ -55,7 +55,8 @@ defmodule Dawarich.Mail.FamilyLapseWorker do
 
         send_notice(repo, user_id, fn env ->
           with {:ok, message} <- Wave2.family_lapse(email, locale, family, owner_email, env),
-               :ok <- transport().deliver(message, env),
+               id = Delivery.message_id(@handler, dedupe_key(args), event_id, env),
+               :ok <- transport().deliver(Map.put(message, :message_id, id), env),
                do: Delivery.delivered!(repo, @handler, key, event_id)
         end)
 
@@ -98,6 +99,9 @@ defmodule Dawarich.Mail.FamilyLapseWorker do
     do: repo.query!(@pending, [@handler, key, Ecto.UUID.dump!(event_id)], log: false).rows != []
 
   defp key(user_id, notified_at), do: "family-lapse:#{user_id}:#{notified_at}"
+
+  defp dedupe_key(args),
+    do: "family-lapse:#{args["family_id"]}:#{args["user_id"]}:#{args["lapse_at"]}"
 
   defp send_notice(repo, user_id, send) do
     case send.(System.get_env()) do

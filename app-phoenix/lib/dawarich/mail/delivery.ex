@@ -1,5 +1,6 @@
 defmodule Dawarich.Mail.Delivery do
   @moduledoc false
+  require Logger
 
   @takeover_seconds 600
 
@@ -54,6 +55,14 @@ defmodule Dawarich.Mail.Delivery do
     mac = :crypto.mac(:hmac, :sha256, secret || "", Enum.join([handler, key, record], ":"))
     "<" <> Base.encode16(mac, case: :lower) <> "@" <> id_domain(env["DOMAIN"]) <> ">"
   end
+
+  def warn_if_unkeyed(nil),
+    do:
+      Logger.warning(
+        "SECRET_KEY_BASE could not be resolved; mail Message-IDs are keyed by the record alone"
+      )
+
+  def warn_if_unkeyed(_secret), do: :ok
 
   defp id_domain(domain) do
     case URI.parse("//" <> String.trim(domain || "")).host do

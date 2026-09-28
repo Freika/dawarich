@@ -5,7 +5,7 @@ defmodule Dawarich.Mail.TestTransport do
     send(self(), {:mail, message})
 
     if watcher = Process.get(:hang_in_transport) do
-      send(watcher, :in_transport)
+      send(watcher, {:in_transport, message})
       Process.sleep(:infinity)
     end
 
