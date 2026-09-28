@@ -483,6 +483,21 @@ RSpec.describe User, type: :model do
         end
       end
 
+      it 'start_trial produces mail.user.welcome (oban) or enqueues MailerSendingJob welcome (sidekiq)' do
+        sidekiq_user = create(:user, :inactive)
+        expect(Users::MailerSendingJob).to have_been_enqueued.with(sidekiq_user.id, 'welcome')
+
+        job_owner!('command:mail.user.welcome', :oban)
+        clear_enqueued_jobs
+        oban_user = create(:user, :inactive)
+
+        expect(Users::MailerSendingJob).not_to have_been_enqueued.with(oban_user.id, 'welcome')
+        expect(JobOutbox.find_by!(command_type: 'mail.user.welcome')).to have_attributes(
+          aggregate_id: oban_user.id, dedupe_key: "welcome:#{oban_user.id}",
+          payload: { 'user_id' => oban_user.id, 'locale' => 'en' }
+        )
+      end
+
       it 'keeps the two-day Sidekiq schedule while Sidekiq owns the mail' do
         travel_to(Time.zone.local(2026, 9, 27, 12)) do
           expect { create(:user, :inactive) }

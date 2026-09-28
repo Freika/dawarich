@@ -352,6 +352,23 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       expect(flash[:alert]).to be_nil
     end
 
+    it 'email fallback produces the same command' do
+      trigger_collision
+      JobOutbox.delete_all
+      job_owner!('command:mail.user.oauth_account_link', :oban)
+
+      expect { post email_fallback_auth_account_link_path }.not_to have_enqueued_job(Users::MailerSendingJob)
+
+      row = JobOutbox.sole
+      token = Rack::Utils.parse_query(URI.parse(row.payload.fetch('link_url')).query).fetch('token')
+      digest = Digest::SHA256.hexdigest(token)
+      expect(row).to have_attributes(command_type: 'mail.user.oauth_account_link', aggregate_id: user.id,
+                                     dedupe_key: "oauth-link:#{user.id}:#{digest}")
+      expect(row.payload).to include('user_id' => user.id, 'provider_label' => 'OpenID Connect',
+                                     'link_token_sha256' => digest,
+                                     'link_expires_at' => JWT.decode(token, nil, false).first.fetch('exp'))
+    end
+
     it 'does not re-send within the rate-limit window' do
       trigger_collision
       post email_fallback_auth_account_link_path

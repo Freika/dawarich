@@ -75,6 +75,16 @@ RSpec.describe 'dawarich:jobs' do
     expect(JobOwnership.with_owner('command:trips.calculate') { :sidekiq_runs }).to eq(:sidekiq_runs)
   end
 
+  it 're-homing the archival mail key names the Lite cron key it releases with it' do
+    job_owner!('cron:lite_archival_warning_job', :oban)
+    job_owner!('command:mail.user.archival_approaching', :oban)
+
+    Rake::Task['dawarich:jobs:rehome'].reenable
+
+    expect { Rake::Task['dawarich:jobs:rehome'].invoke('command:mail.user.archival_approaching') }
+      .to output(/cron:lite_archival_warning_job: sidekiq \(pinned\)/).to_stdout
+  end
+
   it 'reports commands left in Phoenix and the rollback wait condition' do
     allow(JobCommands).to receive(:rehome!).and_return({ moved: 2, left: 1 })
     Rake::Task['dawarich:jobs:rehome'].reenable
@@ -89,6 +99,46 @@ RSpec.describe 'dawarich:jobs' do
     expect { Rake::Task['dawarich:jobs:rehome'].invoke('command:trips.calculate') }
       .to output(expected_output).to_stdout
     expect(JobCommands).to have_received(:rehome!).with('trips.calculate', by: JobOwnership.operator)
+  end
+
+  it 'reports what moved and what is left when a Sidekiq enqueue stops the re-home, and exits 1' do
+    allow(JobCommands).to receive(:rehome!)
+      .and_return({ moved: 1, left: 2, error: 'RedisClient::CannotConnectError' })
+    Rake::Task['dawarich:jobs:rehome'].reenable
+
+    reported = output(/1 command\(s\) re-homed to Sidekiq, 2 command\(s\) left in Phoenix/).to_stdout
+    stopped = output(/RedisClient::CannotConnectError.*dawarich:jobs:rehome\[command:exports\.points\].*again/m).to_stderr
+
+    expect do
+      expect { Rake::Task['dawarich:jobs:rehome'].invoke('command:exports.points') }
+        .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
+    end.to reported.and(stopped)
+  end
+
+  it 'fails with a clear message when the owner row stays locked by another transaction' do
+    allow(JobOwnership).to receive(:release!).and_raise(ActiveRecord::LockWaitTimeout)
+    allow(JobOwnership).to receive(:unpin!).and_raise(ActiveRecord::LockWaitTimeout)
+    allow(JobCommands).to receive(:rehome!).and_raise(ActiveRecord::LockWaitTimeout)
+
+    { 'release' => 'cron:app_version_checking_job', 'unpin' => 'cron:app_version_checking_job',
+      'rehome' => 'command:exports.points' }.each do |task, key|
+      Rake::Task["dawarich:jobs:#{task}"].reenable
+
+      expect do
+        expect { Rake::Task["dawarich:jobs:#{task}"].invoke(key) }
+          .to raise_error(SystemExit) { |error| expect(error.status).to eq(1) }
+      end.to output(/#{Regexp.escape(key)}: .*locked by another transaction.*Nothing changed/m).to_stderr
+    end
+  end
+
+  it 'releases the Lite archival cron together with its mail key and says so' do
+    job_owner!('cron:lite_archival_warning_job', :oban)
+    job_owner!('command:mail.user.archival_approaching', :oban)
+    Rake::Task['dawarich:jobs:release'].reenable
+
+    expect { Rake::Task['dawarich:jobs:release'].invoke('cron:lite_archival_warning_job') }
+      .to output(/cron:lite_archival_warning_job: sidekiq \(pinned\).*command:mail\.user\.archival_approaching: /m)
+      .to_stdout
   end
 
   it 'prints the health summary and gauges' do

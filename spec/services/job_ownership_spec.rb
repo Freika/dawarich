@@ -50,6 +50,29 @@ RSpec.describe JobOwnership do
     end
   end
 
+  context 'with the Lite archival cron and its mail key' do
+    let(:lite_keys) { %w[command:mail.user.archival_approaching cron:lite_archival_warning_job] }
+
+    def lite_rows
+      ActiveRecord::Base.connection.select_rows(ActiveRecord::Base.sanitize_sql_array(
+                                                  ['SELECT key, owner, pinned FROM phoenix.job_owners ' \
+                                                   'WHERE key IN (?) ORDER BY key', lite_keys]
+                                                ))
+    end
+
+    it 'never gives the two keys different owners: release and unpin move them together' do
+      lite_keys.each do |released|
+        lite_keys.each { |key| job_owner!(key, :oban) }
+
+        expect(described_class.release!(released, by: 'spec')).to match_array(lite_keys)
+        expect(lite_rows).to eq(lite_keys.map { |key| [key, 'sidekiq', true] }), released
+
+        expect(described_class.unpin!(released, by: 'spec')).to match_array(lite_keys)
+        expect(lite_rows).to eq(lite_keys.map { |key| [key, 'sidekiq', false] }), released
+      end
+    end
+  end
+
   describe 'the lock protocol' do
     self.use_transactional_tests = false
 
@@ -93,6 +116,46 @@ RSpec.describe JobOwnership do
       expect(holder.value).to eq(:effect_done)
       described_class.put!(key, :oban, pinned: false, by: 'spec')
       expect(described_class.with_owner(key) { :late }).to eq(:not_owner)
+    end
+
+    it 'gives up on an owner change after a bounded wait behind a transaction that holds the row' do
+      stub_const('JobOwnership::LOCK_TIMEOUT', '100ms')
+      job_owner!(key, :oban)
+      holding = Queue.new
+      release = Queue.new
+
+      holder = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          ActiveRecord::Base.transaction do
+            described_class.lock_owner(key)
+            holding << true
+            release.pop
+          end
+        end
+      end
+
+      attempt = nil
+      begin
+        Timeout.timeout(5) { holding.pop }
+        attempt = Thread.new do
+          ActiveRecord::Base.connection_pool.with_connection do
+            %i[release! unpin!].map do |change|
+              described_class.public_send(change, key, by: 'spec')
+              :changed
+            rescue ActiveRecord::LockWaitTimeout
+              :gave_up
+            end
+          end
+        end
+
+        expect(attempt.join(3)&.value).to eq(%i[gave_up gave_up])
+      ensure
+        release << true
+        raise 'holder thread did not finish: still holding the row lock' unless holder.join(5)
+        raise 'owner change did not finish after the holder released the row' unless attempt.nil? || attempt.join(5)
+      end
+
+      expect(described_class.lock_owner(key)).to eq(:oban)
     end
   end
 end

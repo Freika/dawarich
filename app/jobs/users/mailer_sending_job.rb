@@ -23,10 +23,13 @@ class Users::MailerSendingJob < ApplicationJob
   ].freeze
 
   def perform(user_id, email_type, **options)
-    return send_mail(user_id, email_type, options) unless email_type.to_s == 'explore_features'
+    type = email_type.to_s
+    return explore_features(user_id, type, options) if type == 'explore_features'
+    return send_mail(user_id, type, options) unless UserMailCommands::TYPES.key?(type)
 
-    result = JobOwnership.with_owner(EXPLORE_FEATURES_KEY) { send_mail(user_id, email_type, options) }
-    forward_explore_features(user_id) if result == :not_owner
+    key = "command:#{UserMailCommands::TYPES.fetch(type)}"
+    result = JobOwnership.with_owner(key) { send_mail(user_id, type, options) }
+    forward(user_id, type, options) if result == :not_owner
   end
 
   private
@@ -47,6 +50,20 @@ class Users::MailerSendingJob < ApplicationJob
 
     params = { user: user }.merge(options)
     mailer_class_name.constantize.with(params).public_send(action).deliver_later
+  end
+
+  def explore_features(user_id, type, options)
+    result = JobOwnership.with_owner(EXPLORE_FEATURES_KEY) { send_mail(user_id, type, options) }
+    forward_explore_features(user_id) if result == :not_owner
+  end
+
+  def forward(user_id, type, options)
+    options = options.merge(epoch: archival_epoch(user_id)) if type == 'archival_approaching' && !options.key?(:epoch)
+    UserMailCommands.forward(type, user_id, event_id: job_id, producer: self.class.name, **options)
+  end
+
+  def archival_epoch(user_id)
+    User.find_by(id: user_id)&.settings&.dig('archival_warnings', '11_5mo').presence || Time.zone.now.iso8601
   end
 
   def forward_explore_features(user_id)

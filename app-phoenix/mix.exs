@@ -32,7 +32,8 @@ defmodule Dawarich.MixProject do
       {:phoenix_live_view, "~> 1.1"},
       {:lazy_html, "~> 0.1.0", only: :test},
       {:bandit, "~> 1.12"},
-      {:gen_smtp, "~> 1.3"}
+      {:gen_smtp, "~> 1.3"},
+      {:ex_aws, "~> 2.7"}
     ]
   end
 
