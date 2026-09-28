@@ -23,4 +23,15 @@ RSpec.describe AirTrail::SyncSchedulingJob, type: :job do
 
     expect { described_class.perform_now }.not_to have_enqueued_job(AirTrail::ImportFlightsJob)
   end
+
+  it 'writes one outbox row per configured user while Oban owns the command' do
+    job_owner!(ImportCommands::AIRTRAIL_FLIGHTS_KEY, :oban)
+    configured = create(:user, settings: { 'airtrail_url' => 'https://a.example', 'airtrail_api_key' => 'k' })
+    create(:user)
+
+    described_class.perform_now
+
+    expect(JobOutbox.pending.pluck(:aggregate_id)).to eq([configured.id])
+    expect(AirTrail::ImportFlightsJob).not_to have_been_enqueued
+  end
 end

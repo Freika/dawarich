@@ -14,6 +14,14 @@ module JobCommands
       version: 1,
       sidekiq: ->(payload, _at) { Trips::CalculateAllJob.perform_later(payload['trip_id'], payload['distance_unit']) }
     },
+    'imports.update_points_count' => {
+      version: 1,
+      sidekiq: ->(payload, _at) { Import::UpdatePointsCountJob.perform_later(payload['import_id']) }
+    },
+    'imports.airtrail_flights' => {
+      version: 1,
+      sidekiq: ->(payload, _at) { AirTrail::ImportFlightsJob.perform_later(payload['user_id']) }
+    },
     'achievements.check' => {
       version: 1,
       sidekiq: lambda { |payload, _at|
