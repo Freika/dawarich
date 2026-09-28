@@ -87,6 +87,18 @@ defmodule Dawarich.Storage.S3Test do
     {path, bin}
   end
 
+  defp failing_part_upload(root, failure) do
+    {path, _bin} = big_file(root)
+
+    fail = fn
+      {:part, "2"} -> failure.()
+      _ -> nil
+    end
+
+    config = config(root, multipart_responder(fail))
+    fn -> Storage.put!(config, path, "big.zip", "application/zip") end
+  end
+
   test "S3 addressing matches aws-sdk-s3 for every fixture combination", %{root: root} do
     for address <- @fixture["addresses"] do
       config =
@@ -163,6 +175,18 @@ defmodule Dawarich.Storage.S3Test do
     config = config(root, multipart_responder(fail))
 
     assert_raise RuntimeError, fn -> Storage.put!(config, path, "big.zip", "application/zip") end
+    assert {:delete, _path, %{"uploadId" => "up-1"}, _headers, ""} = List.last(received())
+  end
+
+  test "a part upload whose HTTP client raises or exits aborts the upload and re-raises", %{
+    root: root
+  } do
+    put = failing_part_upload(root, fn -> raise "socket closed" end)
+    assert %RuntimeError{message: "socket closed"} = catch_error(put.())
+    assert {:delete, _path, %{"uploadId" => "up-1"}, _headers, ""} = List.last(received())
+
+    put = failing_part_upload(root, fn -> exit(:timeout) end)
+    assert catch_exit(put.()) == :timeout
     assert {:delete, _path, %{"uploadId" => "up-1"}, _headers, ""} = List.last(received())
   end
 

@@ -92,9 +92,5 @@ defmodule Dawarich.Exports.PointsWorker do
       :ok -> :ok
       :lost -> Storage.delete(config, blob.key)
     end
-  rescue
-    error ->
-      _ = Storage.delete(config, blob.key)
-      reraise error, __STACKTRACE__
   end
 end

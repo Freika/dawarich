@@ -1,7 +1,7 @@
 defmodule Dawarich.Exports.Points do
   @moduledoc false
 
-  alias Dawarich.Exports.OjCompat
+  alias Dawarich.Exports.{OjCompat, Zip}
   alias Dawarich.ReleaseMigrations.Effects.Support.{Ruby, RubyFloat}
 
   @page 1000
@@ -32,16 +32,10 @@ defmodule Dawarich.Exports.Points do
                 @time
 
   def write_zip!(repo, export, dir, time_zone) do
-    name = entry_name!(export.name)
-    payload_dir = Path.join(dir, "payload")
-    payload = Path.join(payload_dir, name)
-    File.mkdir_p!(Path.dirname(payload))
+    payload = Path.join(dir, "payload")
     write_payload!(repo, export, payload, time_zone)
     zip = Path.join(dir, "export.zip")
-
-    {:ok, _} =
-      :zip.create(to_charlist(zip), [to_charlist(name)], cwd: to_charlist(payload_dir))
-
+    Zip.write!(zip, payload, export.name)
     zip
   end
 
@@ -201,13 +195,6 @@ defmodule Dawarich.Exports.Points do
   defp xml_text(text),
     do:
       String.replace(text, ["&", "<", ">"], &%{"&" => "&amp;", "<" => "&lt;", ">" => "&gt;"}[&1])
-
-  defp entry_name!(name) do
-    case Path.safe_relative(name) do
-      {:ok, relative} when relative not in ["", "."] -> relative
-      _ -> raise ArgumentError, "unsafe export name"
-    end
-  end
 
   defp unsupported(export, format),
     do:

@@ -205,14 +205,28 @@ defmodule Dawarich.Exports.PointsTest do
              File.read!(zip)
   end
 
-  test "an export name that would leave the temp dir raises before writing", %{dir: dir} do
+  test "a name over 255 bytes or with .. segments becomes the entry name, as in Rails; nothing lands outside the temp dir",
+       %{dir: dir} do
     user!(42)
     work = Path.join(dir, "work")
+    File.mkdir_p!(work)
+    long = "trip_" <> String.duplicate("a", 300) <> "_2026-03-29.gpx"
 
-    assert_raise ArgumentError, fn ->
-      Points.write_zip!(ScratchRepo, %{export(1) | name: "../../escaped"}, work, "Etc/UTC")
+    for name <- [long, "../../escaped"] do
+      zip = Points.write_zip!(ScratchRepo, %{export(1) | name: name}, work, "Etc/UTC")
+
+      assert <<_::binary-26, size::little-16, _::16, ^name::binary-size(size), _::binary>> =
+               File.read!(zip)
     end
 
-    refute File.exists?(Path.join(dir, "escaped"))
+    assert File.ls!(dir) == ["work"]
+  end
+
+  test "a name with a leading / fails like rubyzip's EntryNameError", %{dir: dir} do
+    user!(42)
+
+    assert_raise ArgumentError, "invalid zip entry name", fn ->
+      Points.write_zip!(ScratchRepo, %{export(1) | name: "/etc/passwd"}, dir, "Etc/UTC")
+    end
   end
 end

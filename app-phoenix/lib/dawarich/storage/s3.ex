@@ -87,10 +87,10 @@ defmodule Dawarich.Storage.S3 do
         )
 
       if body =~ "<Error>", do: raise("CompleteMultipartUpload failed")
-    rescue
-      error ->
+    catch
+      kind, reason ->
         _ = request(config, :delete, key, nil, %{"uploadId" => upload_id}, "", %{})
-        reraise error, __STACKTRACE__
+        :erlang.raise(kind, reason, __STACKTRACE__)
     end
   end
 
