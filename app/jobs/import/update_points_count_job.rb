@@ -2,7 +2,6 @@
 
 class Import::UpdatePointsCountJob < ApplicationJob
   queue_as :imports
-  self.enqueue_after_transaction_commit = true
 
   def perform(import_id)
     import = Import.find_by(id: import_id)

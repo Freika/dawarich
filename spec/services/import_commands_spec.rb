@@ -72,4 +72,18 @@ RSpec.describe ImportCommands do
       .to have_enqueued_job(AirTrail::ImportFlightsJob).with(user.id)
     expect(JobOutbox.pending.count).to eq(0)
   end
+
+  { update_points_count: [:import, Import::UpdatePointsCountJob],
+    airtrail_flights: [:user, AirTrail::ImportFlightsJob] }.each do |command, (record, job)|
+    it "keeps the pending #{command} command when rehome! cannot push it" do
+      type = "imports.#{command}"
+      job_owner!("command:#{type}", :oban)
+      described_class.public_send(command, public_send(record).id, producer: 'spec')
+      allow(job.queue_adapter).to receive(:enqueue).and_raise(RedisClient::CannotConnectError, 'redis down')
+
+      expect(JobCommands.rehome!(type, by: 'spec'))
+        .to eq({ moved: 0, left: 1, error: 'RedisClient::CannotConnectError' })
+      expect(JobOutbox.pending.pluck(:command_type)).to eq([type])
+    end
+  end
 end

@@ -3,7 +3,6 @@
 module AirTrail
   class ImportFlightsJob < ApplicationJob
     queue_as :imports
-    self.enqueue_after_transaction_commit = true
 
     def perform(user_id)
       user = find_user_or_skip(user_id) || return
