@@ -18,6 +18,12 @@ defmodule Dawarich.Jobs.RegistryTest do
     end
   end
 
+  test "catch_up is a boolean and appears only on cron entries" do
+    for e <- Registry.entries(),
+        Map.has_key?(e, :catch_up),
+        do: assert(e.kind == :cron and is_boolean(e.catch_up))
+  end
+
   test "registry lists the seven wave-2 commands and the Lite cron, all unclaimable" do
     wave2 = %{
       "command:exports.points" => Dawarich.Exports.PointsWorker,
