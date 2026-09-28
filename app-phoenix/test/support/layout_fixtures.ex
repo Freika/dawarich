@@ -25,9 +25,17 @@ defmodule Dawarich.Test.LayoutFixtures do
   def flash_messages,
     do: @dir |> Path.join("flash_messages.json") |> File.read!() |> Jason.decode!()
 
+  alias Dawarich.{Jobs, Repo}
+
+  @now ~U[2026-09-26 12:00:00Z]
+
   def render(state) do
-    user = insert_user(state["user"])
-    locale = DawarichWeb.Locale.resolve(nil, user, %{})
+    user = insert(state)
+    locale = DawarichWeb.Locale.resolve(state["locale"], user, %{})
+
+    if url = state["manager_url"],
+      do: System.put_env("MANAGER_URL", url),
+      else: System.delete_env("MANAGER_URL")
 
     assigns = %{
       current_user: user,
@@ -37,12 +45,13 @@ defmodule Dawarich.Test.LayoutFixtures do
       self_hosted: state["self_hosted"],
       flash: %{},
       flash_messages: [],
-      now: ~U[2026-09-26 12:00:00Z],
-      request_path: if(user, do: "/notifications", else: "/users/sign_in"),
+      now: @now,
+      request_path: URI.parse(state["path"]).path,
       query_params: %{},
       rails_csrf_token: nil,
+      base_url: "http://www.example.com",
       page_title: page_title(locale, user),
-      navbar: []
+      navbar: Dawarich.Navbar.load(user, now: @now, self_hosted: state["self_hosted"])
     }
 
     inner = render_component(&DawarichWeb.Layouts.app/1, Map.put(assigns, :inner_content, ""))
@@ -57,15 +66,116 @@ defmodule Dawarich.Test.LayoutFixtures do
   defp page_title("de", _user), do: "Benachrichtigungen"
   defp page_title(_locale, _user), do: "Notifications"
 
-  defp insert_user(nil), do: nil
+  defp insert(%{"user" => nil}), do: nil
 
-  defp insert_user(state) do
+  defp insert(%{"user" => user} = state) do
+    insert_user(user)
+    insert_family(state["family"], user["id"])
+
+    Repo.insert_all(
+      "notifications",
+      for n <- state["notifications"] do
+        at = naive(n["created_at"])
+
+        %{
+          id: n["id"],
+          user_id: user["id"],
+          title: n["title"],
+          content: "x",
+          kind: kind(n["kind"]),
+          read_at: if(n["read"], do: at),
+          created_at: at,
+          updated_at: at
+        }
+      end
+    )
+
+    if state["supporter"] do
+      hash =
+        Base.encode16(:crypto.hash(:sha256, user["settings"]["supporter_email"]), case: :lower)
+
+      Jobs.repo().query!(
+        "INSERT INTO phoenix.supporter_checks (cache_key, result, checked_at) VALUES ($1, $2, $3)",
+        ["dawarich/supporter:" <> hash, %{"supporter" => true}, @now]
+      )
+    end
+
+    Dawarich.Accounts.get(user["id"])
+  end
+
+  defp insert_user(user) do
+    stamp = ~N[2026-09-01 00:00:00]
+
     struct(Dawarich.Accounts.User,
-      id: state["id"],
-      email: state["email"],
-      theme: state["theme"],
-      settings: state["settings"],
-      admin: state["admin"]
+      id: user["id"],
+      email: user["email"],
+      theme: user["theme"],
+      settings: user["settings"],
+      admin: user["admin"]
+    )
+    |> then(fn _ ->
+      Repo.insert_all("users", [
+        %{
+          id: user["id"],
+          email: user["email"],
+          encrypted_password: "",
+          theme: user["theme"] || "dark",
+          settings: user["settings"] || %{},
+          admin: user["admin"] || false,
+          status: user["status"] || 1,
+          plan: user["plan"] || 1,
+          active_until: naive(user["active_until"]),
+          subscription_source: user["subscription_source"] || 0,
+          changelog_consent: user["changelog_consent"],
+          created_at: stamp,
+          updated_at: stamp
+        }
+      ])
+    end)
+  end
+
+  defp insert_family(nil, _user_id), do: :ok
+
+  defp insert_family(family, user_id) do
+    stamp = ~N[2026-09-01 00:00:00]
+    creator = family["creator"]
+    if creator["id"] != user_id, do: insert_user(creator)
+
+    Repo.insert_all("families", [
+      %{
+        id: family["id"],
+        name: "F",
+        creator_id: creator["id"],
+        access_until: naive(family["access_until"]),
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    members = [
+      {user_id, family["role"]} | if(creator["id"] != user_id, do: [{creator["id"], 0}], else: [])
+    ]
+
+    Repo.insert_all(
+      "family_memberships",
+      for(
+        {id, role} <- members,
+        do: %{
+          family_id: family["id"],
+          user_id: id,
+          role: role,
+          created_at: stamp,
+          updated_at: stamp
+        }
+      )
     )
   end
+
+  defp naive(nil), do: nil
+  defp naive(iso), do: NaiveDateTime.from_iso8601!(iso)
+
+  defp kind("info"), do: 0
+  defp kind("warning"), do: 1
+  defp kind("error"), do: 2
+  defp kind(kind) when kind in 0..2, do: kind
 end

@@ -4,7 +4,7 @@ defmodule Dawarich.JobsCase do
 
   alias Dawarich.ScratchRepo
 
-  @phoenix ~w(job_owners job_outbox_replays processed_commands runtime_nodes app_version trip_events)
+  @phoenix ~w(job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events)
   @oban ~w(oban_jobs oban_peers)
 
   using do
