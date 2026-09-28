@@ -63,7 +63,8 @@ if config_env() != :test do
     trips: 2,
     maintenance: 1,
     exports: 1,
-    projections: 1
+    projections: 1,
+    imports: 1
   ]
 
   config :dawarich,
