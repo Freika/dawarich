@@ -3,7 +3,6 @@
 class ExportJob < ApplicationJob
   queue_as :exports
   sidekiq_options retry: 2
-  self.enqueue_after_transaction_commit = true
 
   OWNERSHIP_KEY = 'command:exports.points'
 

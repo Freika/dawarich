@@ -43,6 +43,16 @@ RSpec.describe Families::Invite do
       end
     end
 
+    context 'when Sidekiq owns command:mail.family_invitation' do
+      it 'an enqueue error rolls the invitation back, so the inviter can send it again' do
+        allow(Family::Invitations::SendingJob.queue_adapter).to receive(:enqueue)
+          .and_raise(RedisClient::CannotConnectError, 'redis down')
+
+        expect(service.call).to be false
+        expect(Family::Invitation.count).to eq(0)
+      end
+    end
+
     context 'when Oban owns command:mail.family_invitation' do
       before do
         owner_membership
