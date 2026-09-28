@@ -42,3 +42,4 @@ config :dawarich, :rails_secret, "phoenix-a2-cookie-fixture-secret-not-for-produ
 config :dawarich, :reference_live, true
 
 config :dawarich, :i18n_path, Path.expand("../tmp/i18n.json", __DIR__)
+config :dawarich, :achievements_path, Path.expand("../tmp/achievements.json", __DIR__)
