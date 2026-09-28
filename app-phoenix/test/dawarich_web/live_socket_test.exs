@@ -7,7 +7,7 @@ defmodule DawarichWeb.LiveSocketTest do
 
   setup do
     upstream = listen()
-    Application.put_env(:dawarich, :rails_upstream, {"127.0.0.1", upstream.port})
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
     on_exit(fn -> Application.put_env(:dawarich, :rails_upstream, nil) end)
 
     bandit =
