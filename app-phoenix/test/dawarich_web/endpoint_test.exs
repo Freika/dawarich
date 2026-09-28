@@ -362,6 +362,8 @@ defmodule DawarichWeb.EndpointTest do
 
       receive do
         {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
+      after
+        10_000 -> flunk("#{inspect(name)} outlived the endpoint shutdown")
       end
     end
 
