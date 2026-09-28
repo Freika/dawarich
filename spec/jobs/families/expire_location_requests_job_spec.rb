@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Families::ExpireLocationRequestsJob, type: :job do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:family) { create(:family) }
   let(:requester) { family.creator }
   let(:target_user) { create(:user) }
@@ -73,6 +75,31 @@ RSpec.describe Families::ExpireLocationRequestsJob, type: :job do
       described_class.perform_now
 
       expect(expired.reload).to be_expired
+    end
+
+    it 'expires a request whose expiry is exactly now and stamps updated_at' do
+      freeze_time do
+        request = create(:family_location_request,
+                         requester: requester, target_user: target_user, family: family,
+                         status: :pending, expires_at: Time.current)
+        request.update_columns(updated_at: 1.day.ago)
+
+        described_class.perform_now
+
+        expect(request.reload).to be_expired
+        expect(request.updated_at).to eq(Time.current)
+      end
+    end
+
+    it 'changes nothing while Oban owns the cron entry' do
+      job_owner!('cron:family_location_requests_expiry_job', :oban)
+      request = create(:family_location_request,
+                       requester: requester, target_user: target_user, family: family,
+                       status: :pending, expires_at: 1.hour.ago)
+
+      described_class.perform_now
+
+      expect(request.reload).to be_pending
     end
   end
 end
