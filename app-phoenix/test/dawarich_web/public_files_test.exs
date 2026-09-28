@@ -125,6 +125,19 @@ defmodule DawarichWeb.PublicFilesTest do
     end
   end
 
+  test "leaves API requests to Puma even when a matching public file exists", %{root: root} do
+    path = Path.join(root, "api/v1/health")
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, "static")
+
+    conn =
+      Plug.Test.conn(:get, "/api/v1/health")
+      |> then(&%{&1 | req_headers: [{"host", "dawarich.example"}]})
+      |> PublicFiles.call(root: root, env: env("plain"))
+
+    refute conn.halted
+  end
+
   test "serves from the boot configuration after the process cwd changes", %{
     root: root,
     tmp_dir: tmp_dir
