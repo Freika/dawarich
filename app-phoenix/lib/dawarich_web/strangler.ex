@@ -19,6 +19,11 @@ defmodule DawarichWeb.Strangler do
 
   defp owned?(conn) do
     method = if conn.method == "HEAD", do: "GET", else: conn.method
-    Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host) != :error
+
+    case Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host) do
+      :error -> false
+      %{slice: slice} -> DawarichWeb.Slices.owned?(slice)
+      _route -> true
+    end
   end
 end

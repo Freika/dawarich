@@ -16,6 +16,22 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
+  pipeline :api_ingest do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.Api.Body
+    plug DawarichWeb.Api.Auth
+  end
+
+  scope "/api/v1", DawarichWeb.Api do
+    pipe_through :api_ingest
+
+    post "/points", IngestController, :points, metadata: %{slice: :ingest}
+    post "/overland/batches", IngestController, :overland, metadata: %{slice: :ingest}
+    post "/owntracks/points", IngestController, :owntracks, metadata: %{slice: :ingest}
+    post "/traccar/points", IngestController, :traccar, metadata: %{slice: :ingest}
+  end
+
   if Application.compile_env(:dawarich, :reference_live, false) do
     scope "/phoenix/reference" do
       pipe_through :browser
