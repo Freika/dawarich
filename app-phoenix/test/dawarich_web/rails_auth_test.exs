@@ -203,6 +203,23 @@ defmodule DawarichWeb.RailsAuthTest do
       assert %{} = current_user(remember_cookie())
     end
 
+    test "a locked account is told apart from a visitor by where Rails would have found it" do
+      locked = fn cookies ->
+        conn =
+          Enum.reduce(cookies, conn(:get, "/"), fn {name, value}, conn ->
+            put_req_cookie(conn, name, value)
+          end)
+
+        RailsAuth.call(conn, RailsAuth.init(now: @now)).assigns.rails_locked
+      end
+
+      assert locked.(session_cookie()) == nil
+      update_user(locked_at: @now |> DateTime.add(-30 * 60) |> DateTime.to_naive())
+      assert locked.(session_cookie()) == :session
+      assert locked.(remember_cookie()) == :cookie
+      assert locked.([]) == nil
+    end
+
     test "a session Rails cannot resolve falls through to the remember cookie, as Warden does" do
       other_id = insert_other_user()
 

@@ -87,4 +87,19 @@ defmodule DawarichWeb.LocaleTest do
     for value <- ["false", "0", "no", ""],
         do: refute(DawarichWeb.LayoutAssigns.self_hosted?(%{"SELF_HOSTED" => value}))
   end
+
+  test "the parameter and the session match Rails' supported_locale: downcased, never split or trimmed" do
+    assert Locale.resolve("DE", nil, %{}) == "de"
+    assert Locale.resolve("de-DE", nil, %{}) == "en"
+    assert Locale.resolve(" de", nil, %{}) == "en"
+    assert Locale.resolve(nil, nil, %{"locale" => "de-DE"}) == "en"
+    assert Locale.resolve(nil, %User{settings: %{"locale" => "fr-CA"}}, %{}) == "en"
+  end
+
+  test "any present parameter or session value suppresses the suggestion, as in Rails" do
+    assert Locale.suggest("de", "xx", nil, %{}, "en") == nil
+    assert Locale.suggest("de", nil, nil, %{"locale" => "xx"}, "en") == nil
+    assert Locale.suggest("de", "", nil, %{}, "en") == "de"
+    assert Locale.suggest("de", nil, nil, %{"locale" => " "}, "en") == "de"
+  end
 end

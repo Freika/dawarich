@@ -2,7 +2,10 @@ defmodule DawarichWeb.Strangler do
   @moduledoc false
   @behaviour Plug
 
-  import Plug.Conn, only: [halt: 1]
+  import Plug.Conn, only: [get_req_header: 2, halt: 1]
+
+  @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
+  @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
 
   @impl true
   def init(opts), do: opts
@@ -21,9 +24,44 @@ defmodule DawarichWeb.Strangler do
     method = if conn.method == "HEAD", do: "GET", else: conn.method
 
     case Phoenix.Router.route_info(DawarichWeb.Router, method, conn.path_info, conn.host) do
-      :error -> false
-      %{slice: slice} -> DawarichWeb.Slices.owned?(slice)
-      _route -> true
+      :error ->
+        false
+
+      %{pipe_through: pipelines} = route ->
+        not handed_back?(conn.path_info) and slice_owned?(route) and
+          (:browser not in pipelines or page_request?(conn))
     end
   end
+
+  defp slice_owned?(%{slice: slice}), do: DawarichWeb.Slices.owned?(slice)
+  defp slice_owned?(_route), do: true
+
+  defp handed_back?([segment | _]),
+    do: segment in Application.get_env(:dawarich, :rails_routes, [])
+
+  defp handed_back?([]), do: false
+
+  defp page_request?(conn) do
+    not String.contains?(List.last(conn.path_info) || "", ".") and
+      not String.match?(header(conn, "x-requested-with"), ~r/XMLHttpRequest/i) and
+      not format_param?(conn.query_string) and
+      page_accept?(header(conn, "accept"))
+  end
+
+  defp format_param?(query) do
+    Map.has_key?(Plug.Conn.Query.decode(query), "format")
+  rescue
+    Plug.Conn.InvalidQueryError -> true
+  end
+
+  defp page_accept?(accept) do
+    types =
+      for entry <- String.split(accept, ","),
+          do: entry |> String.split(";") |> hd() |> String.trim() |> String.downcase()
+
+    String.trim(accept) == "" or accept =~ @browser_like or
+      (Enum.all?(types, &(&1 in @page_types)) and Enum.any?(types, &(&1 in ~w(text/html */*))))
+  end
+
+  defp header(conn, name), do: conn |> get_req_header(name) |> Enum.join(", ")
 end

@@ -4,8 +4,7 @@ defmodule DawarichWeb.Api.Auth do
 
   import Plug.Conn
 
-  alias Dawarich.{Accounts, I18n, RailsCookies, RailsSecret}
-  alias Dawarich.AppVersion.CheckWorker
+  alias Dawarich.{Accounts, AppVersion, I18n, RailsCookies, RailsSecret}
   alias DawarichWeb.Api.{Body, Respond}
 
   @bearer ~r/\ABearer\s+(\S+)\z/i
@@ -218,7 +217,7 @@ defmodule DawarichWeb.Api.Auth do
 
   defp version do
     with nil <- :persistent_term.get({__MODULE__, :version}, nil) do
-      tap(CheckWorker.running_version(), &:persistent_term.put({__MODULE__, :version}, &1))
+      tap(AppVersion.current(), &:persistent_term.put({__MODULE__, :version}, &1))
     end
   end
 
