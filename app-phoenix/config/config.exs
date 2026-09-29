@@ -1,7 +1,6 @@
 import Config
 
 config :dawarich, ecto_repos: [Dawarich.Repo]
-config :dawarich, :reference_live, System.get_env("DAWARICH_REFERENCE_LIVE") == "1"
 
 config :dawarich, Dawarich.Repo,
   migration_source: "phoenix_schema_migrations",

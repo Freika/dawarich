@@ -35,6 +35,7 @@ config :dawarich, :redis,
 config :dawarich, :jobs_runtime, false
 config :dawarich, :jobs_repo, Dawarich.ScratchRepo
 config :dawarich, :app_version_file, Path.expand("../../.app_version", __DIR__)
+config :dawarich, :rails_root, Path.expand("../..", __DIR__)
 config :dawarich, :mail_transport, Dawarich.Mail.TestTransport
 
 config :dawarich, DawarichWeb.Endpoint,
@@ -43,7 +44,6 @@ config :dawarich, DawarichWeb.Endpoint,
 config :logger, level: :warning
 
 config :dawarich, :rails_secret, "phoenix-a2-cookie-fixture-secret-not-for-production"
-config :dawarich, :reference_live, true
 
 config :dawarich, :i18n_path, Path.expand("../tmp/i18n.json", __DIR__)
 config :dawarich, :achievements_path, Path.expand("../tmp/achievements.json", __DIR__)

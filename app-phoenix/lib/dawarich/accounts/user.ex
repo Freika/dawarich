@@ -13,5 +13,10 @@ defmodule Dawarich.Accounts.User do
     field :theme, :string
     field :settings, :map
     field :admin, :boolean
+    field :status, :integer
+    field :plan, :integer
+    field :active_until, :utc_datetime_usec
+    field :subscription_source, :integer
+    field :changelog_consent, :integer
   end
 end

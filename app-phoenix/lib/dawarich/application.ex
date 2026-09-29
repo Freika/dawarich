@@ -14,6 +14,7 @@ defmodule Dawarich.Application do
     Front.log(plan)
     Application.put_env(:dawarich, :rails_upstream, Front.upstream(plan))
     Application.put_env(:dawarich, :public_files, DawarichWeb.PublicFiles.boot_config())
+    Application.put_env(:dawarich, :allowed_hosts, DawarichWeb.HostAuthorization.boot_config())
 
     Supervisor.start_link(children(plan), strategy: :one_for_one, name: Dawarich.Supervisor)
   end

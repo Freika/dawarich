@@ -30,7 +30,7 @@ defmodule Dawarich.MixProject do
       {:phoenix, "~> 1.8.1"},
       {:phoenix_html, "~> 4.2"},
       {:phoenix_live_view, "~> 1.1"},
-      {:lazy_html, "~> 0.1.0", only: :test},
+      {:lazy_html, "~> 0.1.0"},
       {:bandit, "~> 1.12"},
       {:redix, "~> 1.5"},
       {:gen_smtp, "~> 1.3"},

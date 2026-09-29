@@ -77,7 +77,8 @@ if config_env() != :test do
                  System.get_env("PGSSLROOTCERT")
                ),
              socket_options: socket_options.(host),
-             pool_size: Enum.sum(Keyword.values(queues)) + 3
+             pool_size:
+               Enum.sum(Keyword.values(queues)) + 3 + env_integer.("RAILS_MAX_THREADS", 5)
            ]
 
   config :dawarich, Oban,
@@ -93,6 +94,13 @@ if config_env() != :test do
     url: System.get_env("REDIS_URL"),
     database: env_integer.("RAILS_JOB_QUEUE_DB", 1)
 end
+
+config :dawarich,
+       :rails_routes,
+       (System.get_env("DAWARICH_RAILS_ROUTES") || "")
+       |> String.split(",")
+       |> Enum.map(&String.trim/1)
+       |> Enum.reject(&(&1 == ""))
 
 case System.get_env("DAWARICH_RAILS_ARGS") do
   args when args in [nil, ""] ->

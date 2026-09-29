@@ -56,6 +56,8 @@ done
 docker exec a0_app ps -o comm= -p 1 | grep -q beam || fail "PID 1 is not the BEAM"
 docker exec a0_app ps -eo args | grep -qE '^puma|bin/rails server' || fail "puma not running"
 [ "$(docker exec a0_app dawarich rpc 'IO.puts(Oban.config().prefix)')" = "oban" ] || fail "rpc failed"
+[ "$(docker exec a0_app dawarich rpc 'IO.puts(Dawarich.HtmlSanitizer.sanitize("<b>x</b><script>y</script>"))')" = "<b>x</b>y" ] \
+  || fail "the image's lazy_html NIF cannot sanitize HTML"
 curl -fsS "http://127.0.0.1:$DAWARICH_APP_PORT/api/v1/health" | grep -q '"status"' || fail "health failed"
 docker exec a0_db psql -U postgres -d dawarich_development -Atc \
   "SELECT string_agg(nspname, ',' ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('oban','phoenix')" \
@@ -78,7 +80,9 @@ diff "$work/direct" "$work/through" || fail "proxied health headers differ from 
 curl -fsS -D - -o /dev/null http://127.0.0.1:3900/users/sign_in | norm | cut -d: -f1 >"$work/through-names"
 docker exec a0_app curl -fsS -D - -o /dev/null -H 'Host: 127.0.0.1:3900' "http://127.0.0.1:$upstream/users/sign_in" | norm | cut -d: -f1 >"$work/direct-names"
 diff "$work/direct-names" "$work/through-names" || fail "proxied page header names differ from Puma's"
-[ "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3900/phoenix/reference)" = 404 ] || fail "the test-only reference route exists in the image"
+notifications_head="$(curl -s -o /dev/null -D - http://127.0.0.1:3900/notifications)"
+printf '%s' "$notifications_head" | grep -qi '^location: http://127.0.0.1:3900/users/sign_in' || fail "a signed-out /notifications does not redirect to sign in"
+if printf '%s' "$notifications_head" | grep -qi '^x-runtime:'; then fail "Rails answered /notifications, not Phoenix"; fi
 
 docker exec a0_app curl --version | grep -q ' ws ' || fail "the image's curl cannot speak WebSocket; this check needs another client"
 docker exec a0_app curl -sS -m 10 -D - --output - -H 'Origin: http://127.0.0.1:3000' \

@@ -19,7 +19,7 @@ module RailsCommands
                'and cache invalidation per month, which every Rails AirTrail sync already pays',
         call: ->(payload) { AirTrail::StatsFollowUp.call(payload) }
       }
-    }.freeze
+    }.merge(Points::ArrivalCommands::HANDLERS).freeze
 
     module_function
 

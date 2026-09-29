@@ -15,6 +15,11 @@ defmodule Dawarich.I18n do
   def t(locale, key, bindings \\ %{}, opts \\ []),
     do: lookup(translations(), locale, key, bindings, opts)
 
+  def en!(key) do
+    {:ok, value} = t("en", key)
+    value
+  end
+
   def available_locales, do: Map.keys(translations())
 
   def lookup(tree, locale, key, bindings, opts \\ []) do

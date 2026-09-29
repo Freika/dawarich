@@ -3,6 +3,7 @@ defmodule DawarichWeb.Chrome do
   use Phoenix.Component
   import DawarichWeb.Translate, only: [t: 3]
   alias DawarichWeb.Icon
+  alias Phoenix.LiveView.JS
 
   attr :locale, :string, required: true
   attr :flash_messages, :list, default: []
@@ -37,6 +38,7 @@ defmodule DawarichWeb.Chrome do
     <div
       data-controller="removals"
       data-removals-timeout-value={@timeout}
+      phx-mounted={@timeout == 5000 && JS.dispatch("dawarich:flash-timeout")}
       role="alert"
       class={"alert #{@class} shadow-lg z-[6000]"}
     >
@@ -46,6 +48,7 @@ defmodule DawarichWeb.Chrome do
       <button
         type="button"
         data-action="click->removals#remove"
+        phx-click={dismiss(@type)}
         class="btn btn-sm btn-circle btn-ghost"
         aria-label={t(@locale, "shared.flash_message.close", %{})}
       >
@@ -175,6 +178,11 @@ defmodule DawarichWeb.Chrome do
       </nav>
     </footer>
     """
+
+  defp dismiss(type) do
+    JS.hide(to: {:closest, "[role='alert']"}, transition: "fade-out", time: 150)
+    |> JS.push("lv:clear-flash", value: %{key: to_string(type)})
+  end
 
   defp flash_class(type) when type in [:notice, :success, "notice", "success"],
     do: "alert-success"
