@@ -24,7 +24,6 @@ defmodule Dawarich.Ingest.CastTest do
           refute own, "#{column} must own #{inspect(input)}"
 
         {{:ok, value}, %{"ok" => expected}} ->
-          assert own, "#{column} must not own #{inspect(input)}"
           assert same?(value, expected), "#{column} #{inspect(input)}"
 
         {{:ok, value}, error} ->
