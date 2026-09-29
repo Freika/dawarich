@@ -13,7 +13,9 @@ defmodule DawarichWeb.NotificationsLive.Show do
     case Notifications.get(user_id, DawarichWeb.Params.ruby_to_i(id)) do
       nil ->
         if connected?(socket),
-          do: {:ok, redirect(socket, to: "/notifications/#{id}")},
+          do:
+            {:ok,
+             redirect(socket, to: "/notifications/#{URI.encode(id, &URI.char_unreserved?/1)}")},
           else: raise(DawarichWeb.NotFoundError)
 
       notification ->

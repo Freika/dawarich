@@ -332,6 +332,18 @@ defmodule DawarichWeb.NotificationsLiveTest do
       assert {:error, {:redirect, %{to: "/notifications/41022"}}} = live(conn)
     end
 
+    test "a not-found redirect URI-encodes an id needing escaping", %{user: user} do
+      conn =
+        get(
+          RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id),
+          "/notifications/41022%20"
+        )
+
+      Notifications.delete(user.id, 41_022)
+
+      assert {:error, {:redirect, %{to: "/notifications/41022%20"}}} = live(conn)
+    end
+
     test "destroying a notification removed meanwhile answers the 404, not the notice", %{
       user: user
     } do
