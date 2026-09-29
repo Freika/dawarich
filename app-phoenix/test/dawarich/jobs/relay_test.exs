@@ -141,6 +141,31 @@ defmodule Dawarich.Jobs.RelayTest do
     assert rows("SELECT id FROM phoenix.rails_commands_dead") == [[2]]
   end
 
+  test "housekeeping prunes generations after a day and cascades chunks" do
+    rows("""
+    WITH gen AS (
+      INSERT INTO phoenix.track_generations
+        (id, user_id, mode, untracked_only, low_priority, status, total_chunks, created_at)
+      VALUES (gen_random_uuid(), 999, 'bulk', false, false, 'completed', 2, now() - interval '2 days')
+      RETURNING id
+    )
+    INSERT INTO phoenix.track_generation_chunks
+      (generation_id, chunk_id, start_ts, end_ts, buffer_start_ts, buffer_end_ts)
+    SELECT gen.id, s, 0, 1, 0, 1 FROM gen, generate_series(0, 1) AS s
+    """)
+
+    rows("""
+    INSERT INTO phoenix.track_generations
+      (id, user_id, mode, untracked_only, low_priority, status, total_chunks, created_at)
+    VALUES (gen_random_uuid(), 1, 'bulk', false, false, 'running', 1, now())
+    """)
+
+    :ok = Housekeeping.run!(ScratchRepo, DateTime.utc_now())
+
+    assert rows("SELECT user_id FROM phoenix.track_generations") == [[1]]
+    assert rows("SELECT count(*) FROM phoenix.track_generation_chunks") == [[0]]
+  end
+
   test "stopping the drain pauses local queues so no job starts during Puma's drain" do
     name = Dawarich.DrainTestOban
 
