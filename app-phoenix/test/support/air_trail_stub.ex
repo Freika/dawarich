@@ -3,10 +3,14 @@ defmodule Dawarich.AirTrailStub do
   @behaviour Plug
   import Plug.Conn
 
-  def start(test_pid, status, body) do
+  def start(test_pid, status, body), do: serve({test_pid, status, body})
+
+  def redirect(location), do: serve({:redirect, location})
+
+  defp serve(opts) do
     pid =
       ExUnit.Callbacks.start_supervised!(
-        {Bandit, plug: {__MODULE__, {test_pid, status, body}}, ip: {127, 0, 0, 1}, port: 0}
+        {Bandit, plug: {__MODULE__, opts}, ip: {127, 0, 0, 1}, port: 0}
       )
 
     {:ok, {_ip, port}} = ThousandIsland.listener_info(pid)
@@ -53,6 +57,9 @@ defmodule Dawarich.AirTrailStub do
   def init(opts), do: opts
 
   @impl Plug
+  def call(conn, {:redirect, location}),
+    do: conn |> put_resp_header("location", location) |> send_resp(302, "")
+
   def call(conn, {test_pid, status, body}) do
     send(
       test_pid,

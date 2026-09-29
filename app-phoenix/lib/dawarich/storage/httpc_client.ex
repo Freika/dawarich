@@ -10,7 +10,7 @@ defmodule Dawarich.Storage.HttpcClient do
       Enum.split_with(headers, fn {name, _} -> String.downcase(name) == "content-type" end)
 
     headers = for {name, value} <- headers, do: {to_charlist(name), to_charlist(value)}
-    options = [ssl: Dawarich.Http.ssl_options(url)] ++ @options
+    options = [ssl: Dawarich.Http.ssl_options()] ++ @options
 
     request =
       if method in [:put, :post] do
