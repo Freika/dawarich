@@ -18,7 +18,7 @@ cleanup() {
 trap cleanup EXIT
 
 docker network create "$run" >/dev/null
-docker run -d --name "$run-db" --network "$run" -e POSTGRES_PASSWORD=postgres \
+docker run -d --platform linux/amd64 --name "$run-db" --network "$run" -e POSTGRES_PASSWORD=postgres \
   postgis/postgis:17-3.5-alpine -c timezone=Europe/Berlin >/dev/null
 
 cat >"$work/pgbouncer.ini" <<INI
@@ -52,7 +52,7 @@ docker run -d --name "$run-bouncer" --network "$run" -p 127.0.0.1::6432 a1-pgbou
 port="$(docker port "$run-bouncer" 6432/tcp | head -1 | sed 's/.*://')"
 
 tries=0
-until docker exec "$run-db" pg_isready -U postgres >/dev/null 2>&1; do
+until docker exec "$run-db" pg_isready -h 127.0.0.1 -U postgres >/dev/null 2>&1; do
   tries=$((tries + 1))
   [ "$tries" -lt 60 ] || { echo "jobs pooler smoke: PostgreSQL did not start" >&2; exit 1; }
   sleep 1
