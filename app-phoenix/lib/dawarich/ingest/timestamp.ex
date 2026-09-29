@@ -22,6 +22,7 @@ defmodule Dawarich.Ingest.Timestamp do
 
     cond do
       string =~ ~r/\A\d+\z/ -> string |> String.to_integer() |> milliseconds()
+      string =~ ~r/\A-\d+\z/ -> negative_traccar!(String.to_integer(string))
       blank?(string) -> nil
       true -> datetime(string)
     end
@@ -29,12 +30,22 @@ defmodule Dawarich.Ingest.Timestamp do
     Invalid -> nil
   end
 
+  defp negative_traccar!(-2_147_483_648), do: nil
+  defp negative_traccar!(_value), do: unsupported!("negative epoch outside the owned boundary")
+
   defp milliseconds(n) when n > 10_000_000_000, do: div(n, 1000)
   defp milliseconds(n), do: n
 
   defp points_epoch(string) do
-    if string =~ ~r/\A-?\d+\z/, do: String.to_integer(string), else: datetime(string)
+    cond do
+      string =~ ~r/\A\d+\z/ -> String.to_integer(string)
+      string =~ ~r/\A-\d+\z/ -> negative_epoch!(String.to_integer(string))
+      true -> datetime(string)
+    end
   end
+
+  defp negative_epoch!(-2_147_483_648), do: -2_147_483_648
+  defp negative_epoch!(_value), do: unsupported!("negative epoch outside the owned boundary")
 
   defp in_range!(epoch) when epoch in @range, do: epoch
   defp in_range!(_epoch), do: raise(Invalid)
