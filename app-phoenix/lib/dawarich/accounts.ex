@@ -22,6 +22,15 @@ defmodule Dawarich.Accounts do
 
   def get(_id), do: nil
 
+  def by_api_key(key) when is_binary(key) do
+    from(u in "users",
+      where: u.api_key == ^key and is_nil(u.deleted_at),
+      limit: 1,
+      select: %{id: u.id, status: u.status, active_until: u.active_until}
+    )
+    |> Repo.one()
+  end
+
   @spec from_session(map(), DateTime.t()) :: %User{} | {:locked, %User{}} | nil
   def from_session(%{"warden.user.user.key" => [[id], salt]}, now)
       when is_integer(id) and is_binary(salt) do
