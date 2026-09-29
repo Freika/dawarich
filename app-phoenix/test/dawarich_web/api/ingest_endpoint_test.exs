@@ -1,6 +1,8 @@
 defmodule DawarichWeb.Api.IngestEndpointTest do
   use Dawarich.IngestCase, async: false
   import Dawarich.Test.RawHTTP
+  import ExUnit.CaptureLog
+  require Logger
 
   @moduletag :capture_log
 
@@ -95,13 +97,22 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
        %{port: port, upstream: upstream} do
     Repo.query!("ALTER TABLE phoenix.rails_commands RENAME TO rails_commands_away")
 
-    assert {500, headers, ~s({"error":"Batch creation failed"})} =
-             port |> post("/api/v1/overland/batches") |> read_response()
+    {{status, headers, body}, log} =
+      with_log([], fn -> port |> post("/api/v1/overland/batches") |> read_response() end)
 
+    assert {status, body} == {500, ~s({"error":"Batch creation failed"})}
     assert values(headers, "content-type") == ["application/json; charset=utf-8"]
     assert values(headers, "cache-control") == ["no-cache"]
     no_upstream!(upstream)
     assert [[0]] = Repo.query!("SELECT count(*) FROM points").rows
+
+    assert [request_id] = values(headers, "x-request-id")
+
+    assert log =~
+             "[ingest] /api/v1/overland/batches write failed: Postgrex.Error sqlstate=undefined_table request_id=#{request_id}"
+
+    refute log =~ "relation"
+    refute log =~ "does not exist"
   end
 
   test "write boundary (c): a failure after slice 1 committed gets Rails' 500 and keeps slice 1, with no hand-off",
@@ -148,5 +159,88 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
 
     no_upstream!(upstream)
     assert [[0]] = Repo.query!("SELECT count(*) FROM points").rows
+  end
+
+  defp with_info_log(fun) do
+    previous = Logger.level()
+    Logger.configure(level: :info)
+
+    try do
+      capture_log([level: :info], fun)
+    after
+      Logger.configure(level: previous)
+    end
+  end
+
+  test "a 201 Phoenix answers logs one line at info, with no api key or coordinate in it",
+       %{port: port} do
+    log =
+      with_info_log(fn ->
+        assert {201, _, _} = port |> post("/api/v1/overland/batches") |> read_response()
+      end)
+
+    assert log =~
+             ~r/\[ingest\] POST \/api\/v1\/overland\/batches 201 \d+ms request_id=[0-9a-f-]{36}/
+
+    refute log =~ "phoenix-a3-endpoint-key"
+    refute log =~ "13.4"
+    refute log =~ "52.5"
+  end
+
+  test "a 401 Phoenix answers logs one line at info, with no api key or coordinate in it",
+       %{port: port} do
+    log =
+      with_info_log(fn ->
+        client = connect(port)
+
+        send_raw(
+          client,
+          "POST /api/v1/points HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nContent-Length: #{byte_size(@body)}\r\n\r\n#{@body}"
+        )
+
+        assert {401, _, ""} = read_response(client)
+      end)
+
+    assert log =~ ~r/\[ingest\] POST \/api\/v1\/points 401 \d+ms request_id=[0-9a-f-]{36}/
+    refute log =~ "phoenix-a3-endpoint-key"
+    refute log =~ "13.4"
+    refute log =~ "52.5"
+  end
+
+  describe "boundary plugs are plugged into :api_ingest" do
+    test "a foreign Host on a production host list is refused with 403", %{port: port} do
+      Application.put_env(
+        :dawarich,
+        :allowed_hosts,
+        DawarichWeb.HostAuthorization.boot_config(%{
+          "RAILS_ENV" => "production",
+          "APPLICATION_HOSTS" => "dawarich.example"
+        })
+      )
+
+      on_exit(fn -> Application.put_env(:dawarich, :allowed_hosts, []) end)
+
+      client = connect(port)
+
+      send_raw(
+        client,
+        "POST /api/v1/points HTTP/1.1\r\nHost: evil.example\r\nContent-Type: application/json\r\nAuthorization: Bearer phoenix-a3-endpoint-key\r\nContent-Length: #{byte_size(@body)}\r\n\r\n#{@body}"
+      )
+
+      assert {403, _, ""} = read_response(client)
+      assert [[0]] = Repo.query!("SELECT count(*) FROM points").rows
+    end
+
+    test "APPLICATION_PROTOCOL=https redirects a plain request as Rails' ForceSSL does",
+         %{port: port} do
+      System.put_env("APPLICATION_PROTOCOL", "https")
+      on_exit(fn -> System.delete_env("APPLICATION_PROTOCOL") end)
+
+      client = post(port, "/api/v1/points")
+      assert {308, headers, ""} = read_response(client)
+      assert [location] = values(headers, "location")
+      assert location =~ ~r{\Ahttps://[^/]+/api/v1/points\z}
+      assert [[0]] = Repo.query!("SELECT count(*) FROM points").rows
+    end
   end
 end

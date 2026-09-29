@@ -7,6 +7,8 @@ defmodule DawarichWeb.Strangler do
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
 
+  def browser_like?(value), do: value =~ @browser_like
+
   @impl true
   def init(opts), do: opts
 
@@ -59,7 +61,7 @@ defmodule DawarichWeb.Strangler do
       for entry <- String.split(accept, ","),
           do: entry |> String.split(";") |> hd() |> String.trim() |> String.downcase()
 
-    String.trim(accept) == "" or accept =~ @browser_like or
+    String.trim(accept) == "" or browser_like?(accept) or
       (Enum.all?(types, &(&1 in @page_types)) and Enum.any?(types, &(&1 in ~w(text/html */*))))
   end
 

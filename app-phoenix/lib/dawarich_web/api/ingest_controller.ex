@@ -5,7 +5,7 @@ defmodule DawarichWeb.Api.IngestController do
   require Logger
 
   alias Dawarich.I18n
-  alias Dawarich.Ingest.{Friends, GeoJSON, Intake, OwnTracks, Timestamp, Traccar}
+  alias Dawarich.Ingest.{Friends, GeoJSON, Intake, OwnTracks, Timestamp, Traccar, Unsupported}
   alias DawarichWeb.Api.{Body, Respond}
 
   @failed %{
@@ -48,7 +48,7 @@ defmodule DawarichWeb.Api.IngestController do
   defp run(:traccar, conn, params, user) do
     case prepare(conn, fn -> params |> Traccar.payloads() |> Intake.prepare(user) end) do
       {:ok, []} ->
-        Respond.json(conn, 422, {:object, [{"error", t(@failed.traccar)}]})
+        Respond.json(conn, 422, {:object, [{"error", I18n.en!(@failed.traccar)}]})
 
       {:ok, prepared} ->
         with {:ok, _rows} <- write(conn, :traccar, prepared, user),
@@ -63,16 +63,23 @@ defmodule DawarichWeb.Api.IngestController do
     {:ok, fun.()}
   rescue
     error in Timestamp.Invalid -> Respond.json(conn, 422, {:object, [{"error", error.message}]})
-    error -> Body.replay(conn, Exception.message(error))
+    error in Unsupported -> Body.replay(conn, error.reason)
+    error -> Body.replay(conn, inspect(error.__struct__))
   end
 
   defp write(conn, action, prepared, user) do
     {:ok, Intake.write(prepared, user)}
   rescue
     error ->
-      Logger.error("[ingest] #{conn.request_path} write failed: #{inspect(error.__struct__)}")
-      Respond.json(conn, 500, {:object, [{"error", t(@failed[action])}]})
+      Logger.error(
+        "[ingest] #{conn.request_path} write failed: #{inspect(error.__struct__)} sqlstate=#{sqlstate(error)} request_id=#{conn.assigns.api_request_id}"
+      )
+
+      Respond.json(conn, 500, {:object, [{"error", I18n.en!(@failed[action])}]})
   end
+
+  defp sqlstate(%{postgres: %{code: code}}), do: code
+  defp sqlstate(_error), do: "none"
 
   defp row(row),
     do:
@@ -83,9 +90,4 @@ defmodule DawarichWeb.Api.IngestController do
          {"longitude", row.longitude},
          {"latitude", row.latitude}
        ]}
-
-  defp t(key) do
-    {:ok, value} = I18n.t("en", key)
-    value
-  end
 end
