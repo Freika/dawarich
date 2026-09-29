@@ -61,11 +61,16 @@ defmodule DawarichWeb.Api.PlanGoldenTest do
     %{"status" => status, "headers" => expected, "body" => body} = kase["response"]
     {got_status, headers, got_body} = read_response(client)
 
+    ignore = kase["ignore"] || []
+
     names =
-      headers |> Enum.map(&elem(&1, 0)) |> Enum.uniq() |> Kernel.--(["date", "content-length"])
+      headers
+      |> Enum.map(&elem(&1, 0))
+      |> Enum.uniq()
+      |> Kernel.--(["date", "content-length" | ignore])
 
     assert {got_status, got_body} == {status, body}
-    assert Enum.sort(names) == Enum.sort(Map.keys(expected))
+    assert Enum.sort(names) == Enum.sort(Map.keys(expected) -- ignore)
 
     for name <- names -- ["x-request-id", "x-runtime"],
         do: assert(values(headers, name) == [expected[name]], name)
