@@ -6,14 +6,6 @@ defmodule DawarichWeb.Api.Respond do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.RailsHeaders
 
-  @types %{
-    json: "application/json",
-    xml: "application/xml",
-    text: "text/plain",
-    html: "text/html",
-    all: "text/html"
-  }
-
   def json(conn, status, term) do
     body = term |> Ruby.json() |> IO.iodata_to_binary()
     conn = frame(conn, "application/json; charset=utf-8")
@@ -24,7 +16,7 @@ defmodule DawarichWeb.Api.Respond do
   def head(conn, status),
     do:
       conn
-      |> frame(@types[conn.assigns.api_format])
+      |> frame("text/html")
       |> cache(status, "")
       |> send_resp(status, "")
       |> halt()
