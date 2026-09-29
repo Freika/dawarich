@@ -9,7 +9,19 @@ class Areas::RelabelVisitsJob < ApplicationJob
   queue_as :visit_suggesting
   sidekiq_options retry: 1
 
+  OWNER_KEY = 'command:areas.relabel_visits'
+
+  def self.forward(area_id, token)
+    JobCommands.forward(
+      'areas.relabel_visits', { 'area_id' => area_id },
+      event_id: Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "areas.relabel_visits:#{area_id}:#{token}"),
+      aggregate_id: area_id, dedupe_key: area_id.to_s, producer: name
+    )
+  end
+
   def perform(area_id)
+    return if forwarded?(area_id)
+
     area = Area.find_by(id: area_id)
     return unless area
 
@@ -29,6 +41,15 @@ class Areas::RelabelVisitsJob < ApplicationJob
   end
 
   private
+
+  def forwarded?(area_id)
+    ActiveRecord::Base.transaction do
+      next false unless JobOwnership.lock_owner(OWNER_KEY) == :oban
+
+      self.class.forward(area_id, job_id)
+      true
+    end
+  end
 
   def candidate_visits(area)
     area.user.visits.active.where(area_id: nil).includes(:place)

@@ -7,6 +7,7 @@ module Achievements
     DEBOUNCE_DELAY = 1.minute
     LOCK_TTL = 1.hour
     PENDING_TTL = 3.days
+    OWNER_KEY = 'command:achievements.check'
 
     def self.schedule(user_id, oldest_timestamp: nil)
       defer(user_id, oldest_timestamp: oldest_timestamp)
@@ -47,11 +48,34 @@ module Achievements
       return unless user
 
       pending = self.class.pending_members(user_id)
-      notify &&= Progress.current_exploration.exists?(user_id: user_id)
       oldest_timestamp = [oldest_timestamp, *pending.map(&:to_i)].compact.min
-      Achievements::RegionSetChecker.new(user, notify: notify, oldest_timestamp: oldest_timestamp).call
+      consumed = check_or_forward(user, notify, oldest_timestamp)
 
-      Sidekiq.redis { |redis| redis.zrem(self.class.pending_key(user_id), pending) } if pending.any?
+      Sidekiq.redis { |redis| redis.zrem(self.class.pending_key(user_id), pending) } if consumed && pending.any?
+    end
+
+    private
+
+    def check_or_forward(user, notify, oldest_timestamp)
+      inserted = forward(user.id, notify, oldest_timestamp)
+      return inserted.positive? if inserted
+
+      notify &&= Progress.current_exploration.exists?(user_id: user.id)
+      Achievements::RegionSetChecker.new(user, notify: notify, oldest_timestamp: oldest_timestamp).call
+      true
+    end
+
+    def forward(user_id, notify, oldest_timestamp)
+      ActiveRecord::Base.transaction do
+        next unless JobOwnership.lock_owner(OWNER_KEY) == :oban
+
+        JobCommands.forward(
+          'achievements.check',
+          { 'user_id' => user_id, 'notify' => notify ? true : false, 'oldest_timestamp' => oldest_timestamp },
+          event_id: Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "achievements.check:#{user_id}:#{job_id}"),
+          aggregate_id: user_id, producer: self.class.name
+        )
+      end
     end
   end
 end

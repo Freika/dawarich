@@ -18,6 +18,12 @@ defmodule Dawarich.Jobs.RegistryTest do
     end
   end
 
+  test "catch_up is a boolean and appears only on cron entries" do
+    for e <- Registry.entries(),
+        Map.has_key?(e, :catch_up),
+        do: assert(e.kind == :cron and is_boolean(e.catch_up))
+  end
+
   test "registry lists the seven wave-2 commands and the Lite cron, all unclaimable" do
     wave2 = %{
       "command:exports.points" => Dawarich.Exports.PointsWorker,
@@ -41,6 +47,18 @@ defmodule Dawarich.Jobs.RegistryTest do
              entries["cron:lite_archival_warning_job"]
 
     assert Dawarich.Lite.ArchivalWarningWorker.key() == "cron:lite_archival_warning_job"
+  end
+
+  test "the wave-3 command keys are exactly these and unclaimable" do
+    entries =
+      for %{key: "command:" <> type} = entry <- Registry.entries(),
+          type in ~w(achievements.check areas.relabel_visits),
+          do: entry
+
+    assert length(entries) == 2
+    assert Enum.all?(entries, &(&1.claimable == false))
+    assert Registry.command("achievements.check") == {:ok, Dawarich.Achievements.CheckWorker}
+    assert Registry.command("areas.relabel_visits") == {:ok, Dawarich.Areas.RelabelWorker}
   end
 
   test "commands resolve by type and unknown types do not" do

@@ -50,6 +50,63 @@ RSpec.describe Achievements::CheckJob do
     expect { described_class.perform_now(-1) }.not_to raise_error
   end
 
+  describe 'when Oban owns achievement checks' do
+    before { job_owner!('command:achievements.check', :oban) }
+
+    it 'forwards one achievements.check command with the merged oldest timestamp when Oban owns the key' do
+      described_class.defer(user.id, oldest_timestamp: 50)
+
+      expect(Achievements::RegionSetChecker).not_to receive(:new)
+      described_class.perform_now(user.id, notify: true, oldest_timestamp: 70)
+
+      expect(JobOutbox.pending.sole).to have_attributes(
+        command_type: 'achievements.check', dedupe_key: nil, aggregate_id: user.id,
+        payload: { 'user_id' => user.id, 'notify' => true, 'oldest_timestamp' => 50 }
+      )
+      expect(described_class.pending_members(user.id)).to be_empty
+    end
+
+    it 'forwards a retried job once' do
+      job = described_class.new(user.id, notify: true)
+
+      2.times { job.perform_now }
+
+      expect(JobOutbox.pending.count).to eq(1)
+    end
+
+    it 'a retry whose command is already written keeps every pending timestamp for the next check' do
+      described_class.defer(user.id, oldest_timestamp: 50)
+      members = described_class.pending_members(user.id)
+      job = described_class.new(user.id, notify: true)
+      job.perform_now
+      Sidekiq.redis { |redis| members.each { redis.call('ZADD', described_class.pending_key(user.id), _1.to_i, _1) } }
+      described_class.defer(user.id, oldest_timestamp: 40)
+
+      job.perform_now
+
+      expect(described_class.pending_timestamps(user.id)).to contain_exactly(50, 40)
+
+      described_class.perform_now(user.id, notify: true)
+
+      expect(JobOutbox.pending.map { _1.payload['oldest_timestamp'] }).to contain_exactly(50, 40)
+      expect(described_class.pending_members(user.id)).to be_empty
+    end
+
+    it 'writes a separate command per job for the same user' do
+      2.times { described_class.perform_now(user.id, notify: true) }
+
+      expect(JobOutbox.pending.count).to eq(2)
+    end
+
+    it 'keeps the pending timestamps when forwarding raises' do
+      described_class.defer(user.id, oldest_timestamp: 50)
+      allow(JobOutbox).to receive(:insert_all).and_raise(ActiveRecord::StatementInvalid, 'outbox down')
+
+      expect { described_class.perform_now(user.id) }.to raise_error(ActiveRecord::StatementInvalid, 'outbox down')
+      expect(described_class.pending_members(user.id)).not_to be_empty
+    end
+  end
+
   it 'computes even if a legacy installation left its flag disabled' do
     Flipper.disable(:achievements)
     create(:point, user: user, timestamp: 1)
