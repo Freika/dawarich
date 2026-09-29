@@ -43,6 +43,39 @@ RSpec.describe Families::Invite do
       end
     end
 
+    context 'when Sidekiq owns command:mail.family_invitation' do
+      it 'an enqueue error rolls the invitation back, so the inviter can send it again' do
+        allow(Family::Invitations::SendingJob.queue_adapter).to receive(:enqueue)
+          .and_raise(RedisClient::CannotConnectError, 'redis down')
+
+        expect(service.call).to be false
+        expect(Family::Invitation.count).to eq(0)
+      end
+    end
+
+    context 'when Oban owns command:mail.family_invitation' do
+      before do
+        owner_membership
+        JobOutbox.delete_all
+        job_owner!('command:mail.family_invitation', :oban)
+      end
+
+      it 'oban owner: invitation and mail.family_invitation commit together; rollback leaves neither' do
+        expect(service.call).to be true
+        invitation = Family::Invitation.sole
+        expect(JobOutbox.sole).to have_attributes(command_type: 'mail.family_invitation', aggregate_id: invitation.id,
+                                                  dedupe_key: "family-invitation:#{invitation.id}",
+                                                  payload: { 'invitation_id' => invitation.id, 'locale' => 'en' })
+
+        invitation.destroy!
+        JobOutbox.delete_all
+        allow(JobOutbox).to receive(:insert_all).and_raise(ActiveRecord::StatementInvalid, 'outbox unavailable')
+
+        expect(described_class.new(family: family, email: 'second@example.com', invited_by: owner).call).to be false
+        expect([Family::Invitation.count, JobOutbox.count]).to eq([0, 0])
+      end
+    end
+
     context 'when inviter is not family owner' do
       let(:member) { create(:user) }
       let!(:member_membership) { create(:family_membership, user: member, family: family, role: :member) }

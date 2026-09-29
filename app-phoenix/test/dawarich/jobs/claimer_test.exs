@@ -97,6 +97,14 @@ defmodule Dawarich.Jobs.ClaimerTest do
     assert rows("SELECT worker FROM oban.oban_jobs") == [["Dawarich.Jobs.ClaimerTest.CronWorker"]]
   end
 
+  test "a seasonal cron entry is claimed without a catch-up job" do
+    seasonal = Map.put(%{@cron | key: "cron:seasonal_echo"}, :catch_up, false)
+
+    assert Claimer.claim_all(ScratchRepo, @oban, [seasonal]) == [{"cron:seasonal_echo", :claimed}]
+    assert owner("cron:seasonal_echo") == [["oban", false]]
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
+  end
+
   test "the catch-up job commits or rolls back with the flip" do
     assert {:error, :outer} =
              ScratchRepo.transaction(fn ->

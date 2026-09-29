@@ -13,7 +13,41 @@ module JobCommands
     'trips.calculate' => {
       version: 1,
       sidekiq: ->(payload, _at) { Trips::CalculateAllJob.perform_later(payload['trip_id'], payload['distance_unit']) }
-    }
+    },
+    'achievements.check' => {
+      version: 1,
+      sidekiq: lambda { |payload, _at|
+        Achievements::CheckJob.perform_later(payload['user_id'], notify: payload['notify'],
+                                                                   oldest_timestamp: payload['oldest_timestamp'])
+      }
+    },
+    'areas.relabel_visits' => {
+      version: 1,
+      sidekiq: ->(payload, _at) { Areas::RelabelVisitsJob.perform_later(payload['area_id']) }
+    },
+    'exports.points' => {
+      version: 1,
+      sidekiq: lambda { |payload, _at|
+        JobCommands.enqueue_after_commit(nil) { ExportJob.perform_later(payload.fetch('export_id')) }
+      }
+    },
+    'mail.family_invitation' => {
+      version: 1,
+      sidekiq: lambda { |payload, _at|
+        I18n.with_locale(payload['locale']) do
+          Family::Invitations::SendingJob.perform_later(payload.fetch('invitation_id'))
+        end
+      }
+    },
+    'mail.family_lapse' => {
+      version: 1,
+      sidekiq: lambda { |payload, _at|
+        JobCommands.enqueue_after_commit(payload['locale']) do
+          Families::LapseNotificationJob.perform_later(payload.fetch('user_id'), payload.fetch('family_id'))
+        end
+      }
+    },
+    **UserMailCommands::TYPES.to_h { |email_type, type| [type, { version: 1, sidekiq: UserMailCommands.legacy(email_type) }] }
   }.freeze
 
   module_function
@@ -29,6 +63,12 @@ module JobCommands
         :sidekiq
       end
     end
+  end
+
+  def enqueue_after_commit(locale, &enqueue)
+    return I18n.with_locale(locale, &enqueue) if ActiveSupport::IsolatedExecutionState[:job_commands_inline]
+
+    ActiveRecord.after_all_transactions_commit { I18n.with_locale(locale, &enqueue) }
   end
 
   def forward(type, payload, event_id:, aggregate_id:, producer:, scheduled_at: Time.current, dedupe_key: nil)
@@ -55,11 +95,27 @@ module JobCommands
       pending = JobOutbox.pending.where(command_type: type, command_version: command.fetch(:version))
       total = pending.count
       rows = pending.lock('FOR UPDATE SKIP LOCKED').to_a
-      rows.each { |row| command.fetch(:sidekiq).call(row.payload, row.scheduled_at) }
-      JobOutbox.where(event_id: rows.map(&:event_id)).delete_all
-      { moved: rows.size, left: total - rows.size }
+      pushed, error = push_inline(rows, command.fetch(:sidekiq))
+      JobOutbox.where(event_id: pushed).delete_all
+      { moved: pushed.size, left: total - pushed.size, error: }.compact
     end
   end
+
+  def push_inline(rows, enqueue)
+    pushed = []
+    ActiveSupport::IsolatedExecutionState[:job_commands_inline] = true
+    rows.each do |row|
+      enqueue.call(row.payload, row.scheduled_at)
+      pushed << row.event_id
+    end
+    [pushed, nil]
+  rescue StandardError => e
+    [pushed, e.class.name]
+  ensure
+    ActiveSupport::IsolatedExecutionState[:job_commands_inline] = nil
+  end
+
+  private_class_method :push_inline
 
   def replay!(event_id, actor:, reason:)
     ActiveRecord::Base.transaction do

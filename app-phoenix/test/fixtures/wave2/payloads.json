@@ -1,0 +1,40 @@
+{
+  "exports.points": {
+    "export_id": 11,
+    "user_id": 42
+  },
+  "mail.family_invitation": {
+    "invitation_id": 12,
+    "locale": "de"
+  },
+  "mail.family_lapse": {
+    "user_id": 42,
+    "family_id": 13,
+    "locale": "de",
+    "lapse_at": "2026-03-29T01:30:00Z"
+  },
+  "mail.user.welcome": {
+    "user_id": 42,
+    "locale": "de"
+  },
+  "mail.user.archival_approaching": {
+    "user_id": 42,
+    "locale": "de",
+    "epoch": "2026-03-29T01:30:00Z"
+  },
+  "mail.user.oauth_account_link": {
+    "user_id": 42,
+    "locale": "de",
+    "provider_label": "Google",
+    "link_url": "https://dawarich.example.test/auth?token=eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3NzQ3NDcwMDAsImp0aSI6IjExMTExMTExLTExMTEtNDExMS04MTExLTExMTExMTExMTExMSJ9.DBZM7AYR8AR2LpuxyyjEIWqHKul5fJJ-vsBSbybYsho",
+    "link_token_sha256": "d52d0dfe8c237434e757944f3e99c3e286f7b91d1a308d7eb3464e3c5833cb7a",
+    "link_expires_at": 1774747000
+  },
+  "mail.user.account_destroy_confirmation": {
+    "user_id": 42,
+    "locale": "de",
+    "link_url": "https://dawarich.example.test/auth?token=eyJhbGciOiJIUzI1NiJ9.eyJleHAiOjE3NzQ3NDcwMDAsImp0aSI6IjExMTExMTExLTExMTEtNDExMS04MTExLTExMTExMTExMTExMSJ9.DBZM7AYR8AR2LpuxyyjEIWqHKul5fJJ-vsBSbybYsho",
+    "link_token_sha256": "d52d0dfe8c237434e757944f3e99c3e286f7b91d1a308d7eb3464e3c5833cb7a",
+    "link_expires_at": 1774747000
+  }
+}

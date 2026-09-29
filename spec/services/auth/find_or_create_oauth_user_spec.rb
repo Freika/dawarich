@@ -57,6 +57,24 @@ RSpec.describe Auth::FindOrCreateOauthUser do
       expect(existing.reload.uid).to be_nil
     end
 
+    it 'collision produces mail.user.oauth_account_link with link data in the payload' do
+      JobOutbox.delete_all
+      job_owner!('command:mail.user.oauth_account_link', :oban)
+
+      expect do
+        build(claims: { sub: 'apple-2', email: 'taken@example.com' }, email_verified: true).call
+      end.to raise_error(Auth::FindOrCreateOauthUser::LinkVerificationSent)
+
+      row = JobOutbox.sole
+      token = Rack::Utils.parse_query(URI.parse(row.payload.fetch('link_url')).query).fetch('token')
+      digest = Digest::SHA256.hexdigest(token)
+      expect(row).to have_attributes(command_type: 'mail.user.oauth_account_link', aggregate_id: existing.id,
+                                     dedupe_key: "oauth-link:#{existing.id}:#{digest}")
+      expect(row.payload).to include('user_id' => existing.id, 'locale' => 'en',
+                                     'provider_label' => 'Sign in with Apple', 'link_token_sha256' => digest,
+                                     'link_expires_at' => JWT.decode(token, nil, false).first.fetch('exp'))
+    end
+
     it 'carries rate_limited=false on the genuine first send' do
       error = nil
       expect do

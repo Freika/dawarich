@@ -6,6 +6,8 @@ defmodule Dawarich.Jobs.Supervisor do
 
   @impl true
   def init(opts) do
+    Dawarich.Mail.Delivery.warn_if_unkeyed(Dawarich.RailsSecret.fetch())
+
     workers = [
       Supervisor.child_spec({Dawarich.Jobs.Relay, opts}, shutdown: 1_000),
       {Dawarich.Jobs.Claimer, Keyword.take(opts, [:oban, :repo])}

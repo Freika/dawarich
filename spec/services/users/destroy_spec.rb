@@ -25,6 +25,25 @@ RSpec.describe Users::Destroy do
       expect(JobOutbox.pluck(:aggregate_id)).to eq([other.id])
     end
 
+    it 'cancels pending wave-2 user commands inside the destroy transaction' do
+      other = create(:user)
+      JobOutbox.delete_all
+      wave2_types = %w[mail.user.welcome mail.user.archival_approaching mail.user.oauth_account_link
+                       mail.user.account_destroy_confirmation mail.family_lapse]
+      outbox_row = lambda do |type, aggregate_id, state = 'pending'|
+        JobOutbox.create!(event_id: SecureRandom.uuid, command_type: type, command_version: 1, payload: {},
+                          aggregate_id:, scheduled_at: Time.current, state:).event_id
+      end
+      wave2_types.each { |type| outbox_row.call(type, user.id) }
+      kept = wave2_types.map { |type| outbox_row.call(type, other.id) } +
+             [outbox_row.call('mail.user.welcome', user.id, 'dispatched'),
+              outbox_row.call('mail.family_invitation', user.id)]
+
+      described_class.new(user).call
+
+      expect(JobOutbox.pluck(:event_id)).to match_array(kept)
+    end
+
     context 'with minimal user data' do
       it 'hard deletes the user record' do
         expect { service.call }.to change { User.unscoped.count }.by(-1)
