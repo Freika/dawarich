@@ -1,12 +1,12 @@
 defmodule Dawarich.Tracks.FixturesTest do
-  use ExUnit.Case, async: false
+  use Dawarich.JobsCase
 
   alias Dawarich.Tracks.TracksFixtures
 
   @tables ~w[users point_sources imports points tracks track_segments]
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+    Dawarich.TracksCase.truncate!()
   end
 
   for name <- TracksFixtures.names() do
@@ -14,7 +14,7 @@ defmodule Dawarich.Tracks.FixturesTest do
 
     test "every fixture loads into the scratch database: #{name}" do
       counts = TracksFixtures.input_counts(@name)
-      result = TracksFixtures.load!(Dawarich.Repo, @name)
+      result = TracksFixtures.load!(ScratchRepo, @name)
 
       assert is_map(result.expected)
       assert is_list(result.call)
@@ -23,7 +23,7 @@ defmodule Dawarich.Tracks.FixturesTest do
         ids = Map.fetch!(counts, table)
 
         %{rows: [[count]]} =
-          Dawarich.Repo.query!("SELECT count(*) FROM #{table} WHERE id = ANY($1::bigint[])", [ids])
+          ScratchRepo.query!("SELECT count(*) FROM #{table} WHERE id = ANY($1::bigint[])", [ids])
 
         assert count == length(ids),
                "expected #{length(ids)} #{table} rows for #{@name}, got #{count}"
@@ -32,15 +32,15 @@ defmodule Dawarich.Tracks.FixturesTest do
   end
 
   test "sequences advance past inserted fixture ids so a fresh INSERT can proceed" do
-    Dawarich.Repo.query!("SELECT setval(pg_get_serial_sequence('tracks', 'id'), 1, false)")
+    ScratchRepo.query!("SELECT setval(pg_get_serial_sequence('tracks', 'id'), 1, false)")
 
-    TracksFixtures.load!(Dawarich.Repo, "range_dst")
+    TracksFixtures.load!(ScratchRepo, "range_dst")
 
-    %{rows: [[user_id]]} = Dawarich.Repo.query!("SELECT id FROM users ORDER BY id LIMIT 1")
-    %{rows: [[max_track_id]]} = Dawarich.Repo.query!("SELECT COALESCE(MAX(id), 0) FROM tracks")
+    %{rows: [[user_id]]} = ScratchRepo.query!("SELECT id FROM users ORDER BY id LIMIT 1")
+    %{rows: [[max_track_id]]} = ScratchRepo.query!("SELECT COALESCE(MAX(id), 0) FROM tracks")
 
     %{rows: [[track_id]]} =
-      Dawarich.Repo.query!(
+      ScratchRepo.query!(
         "INSERT INTO tracks (user_id, tracker_id, start_at, end_at, original_path, distance, avg_speed, " <>
           "duration, elevation_gain, elevation_loss, elevation_max, elevation_min, created_at, updated_at) " <>
           "VALUES ($1, 'seq-check', now(), now(), " <>
