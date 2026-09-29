@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- On self-hosted installations the OwnTracks, Overland, Traccar and `/api/v1/points` endpoints are now answered by the Elixir supervisor instead of Rails. Responses and stored points are unchanged; live-map updates and track generation are started by the Sidekiq container up to a second after the points are saved. Requests in unusual formats are still answered by Rails. Set `DAWARICH_RAILS_SLICES=ingest` on the web container to hand the endpoints back to Rails without changing the image. Cloud keeps using Rails for now.
 - The notifications pages and the navbar they show are now served by the Phoenix side of the application. Nothing changes in how they look or work. Setting `DAWARICH_RAILS_ROUTES=notifications` hands the pages back to the Rails side without changing the image.
 - Background jobs can now run in the Phoenix supervisor that already starts with the web container. In this release nothing moves yet: every job keeps running in Sidekiq, and the next release lets Phoenix take over the app-version check, the "explore features" email and trip calculations by itself once it is running. Installations where Phoenix does not start keep using Sidekiq. `/api/v1/health` gains a `phoenix` field, and the admin settings page shows whether Phoenix processes its jobs.
 - Family invitation cleanup, family location-request expiry and the points-counter correction are ready to move to Phoenix (Oban); they keep running in Sidekiq until a later release enables it.

@@ -146,7 +146,10 @@ defmodule DawarichWeb.EndpointTest do
     plan = {:proxy, %{public: {{127, 0, 0, 1}, port}, upstream: 1, puma_argv: puma_argv}}
 
     :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
-    on_exit(&restart_endpoint/0)
+
+    on_exit(fn ->
+      {:ok, _} = Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
+    end)
 
     start_supervised!(
       %{
@@ -262,7 +265,10 @@ defmodule DawarichWeb.EndpointTest do
        }}
 
     :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
-    on_exit(&restart_endpoint/0)
+
+    on_exit(fn ->
+      {:ok, _} = Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
+    end)
 
     sup =
       start_supervised!(
@@ -295,12 +301,15 @@ defmodule DawarichWeb.EndpointTest do
 
     listener = ThousandIsland.Server.listener_pid(bandit)
     listener_ref = Process.monitor(listener)
+    live_socket = Process.whereis(DawarichWeb.Endpoint.Phoenix.LiveView.Socket)
+    live_socket_ref = Process.monitor(live_socket)
     started = System.monotonic_time(:millisecond)
     stopping = Task.async(fn -> Supervisor.stop(sup) end)
 
     assert_receive {:DOWN, ^listener_ref, :process, ^listener, _reason}, 1_000
     assert refused(port)
     assert Task.yield(stopping, 6_500) == {:ok, :ok}
+    assert_receive {:DOWN, ^live_socket_ref, :process, ^live_socket, _reason}, 1_000
     assert System.monotonic_time(:millisecond) - started < 6_500
 
     Enum.each(clients ++ pumas, &:gen_tcp.close/1)
@@ -316,7 +325,10 @@ defmodule DawarichWeb.EndpointTest do
        }}
 
     :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
-    on_exit(&restart_endpoint/0)
+
+    on_exit(fn ->
+      {:ok, _} = Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
+    end)
 
     sup =
       start_supervised!(
@@ -348,26 +360,13 @@ defmodule DawarichWeb.EndpointTest do
     )
 
     {101, _headers, rest} = read_response_head(client)
+    live_socket = Process.whereis(DawarichWeb.Endpoint.Phoenix.LiveView.Socket)
+    live_socket_ref = Process.monitor(live_socket)
     stopping = Task.async(fn -> Supervisor.stop(sup) end)
 
     assert {{:close, <<1000::16>>}, _rest} = ws_recv(client, rest)
     assert Task.await(stopping, 6_500) == :ok
-  end
-
-  defp restart_endpoint do
-    for name <- Process.registered(),
-        String.starts_with?(Atom.to_string(name), "Elixir.DawarichWeb.Endpoint"),
-        pid = Process.whereis(name) do
-      ref = Process.monitor(pid)
-
-      receive do
-        {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
-      after
-        10_000 -> flunk("#{inspect(name)} outlived the endpoint shutdown")
-      end
-    end
-
-    {:ok, _pid} = Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
+    assert_receive {:DOWN, ^live_socket_ref, :process, ^live_socket, _reason}, 1_000
   end
 
   defp endpoint_bandit do

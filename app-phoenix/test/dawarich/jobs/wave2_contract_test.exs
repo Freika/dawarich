@@ -75,7 +75,16 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
     assert {expression, ArchivalWarningWorker} in Registry.crontab()
   end
 
-  test "every worker's queue is in the runtime queue literal, and the pool is Σ + 3 + 2" do
+  test "every worker's queue is in the runtime queue literal, and the pool is Σ + 3 + Puma threads" do
+    saved = System.get_env("RAILS_MAX_THREADS")
+    System.delete_env("RAILS_MAX_THREADS")
+
+    on_exit(fn ->
+      if saved,
+        do: System.put_env("RAILS_MAX_THREADS", saved),
+        else: System.delete_env("RAILS_MAX_THREADS")
+    end)
+
     config = Config.Reader.read!(@runtime, env: :prod)[:dawarich]
     queues = config[Oban][:queues]
 
@@ -83,7 +92,7 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
       assert Keyword.has_key?(queues, worker.__opts__()[:queue]), inspect(worker)
     end
 
-    assert config[Dawarich.Repo][:pool_size] == Enum.sum(Keyword.values(queues)) + 3 + 2
+    assert config[Dawarich.Repo][:pool_size] == Enum.sum(Keyword.values(queues)) + 3 + 5
     assert Keyword.fetch!(queues, :exports) == 1
   end
 

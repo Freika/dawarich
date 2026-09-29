@@ -22,6 +22,15 @@ defmodule Dawarich.Accounts do
 
   def get(_id), do: nil
 
+  def by_api_key(key) when is_binary(key) do
+    from(u in "users",
+      where: u.api_key == ^key and is_nil(u.deleted_at),
+      limit: 1,
+      select: %{id: u.id, status: u.status, active_until: u.active_until}
+    )
+    |> Repo.one()
+  end
+
   def persist_locale(id, locale) do
     %{rows: rows} =
       Repo.query!(

@@ -77,7 +77,8 @@ if config_env() != :test do
                  System.get_env("PGSSLROOTCERT")
                ),
              socket_options: socket_options.(host),
-             pool_size: Enum.sum(Keyword.values(queues)) + 3 + 2
+             pool_size:
+               Enum.sum(Keyword.values(queues)) + 3 + env_integer.("RAILS_MAX_THREADS", 5)
            ]
 
   config :dawarich, Oban,
