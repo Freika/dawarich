@@ -128,7 +128,7 @@ defmodule DawarichWeb.Api.Auth do
           :ok
       end
     else
-      _ -> {:replay, "unreadable session"}
+      _ -> if remember?, do: {:replay, "remember-me cookie"}, else: :ok
     end
   rescue
     error -> {:replay, "session lookup failed: " <> inspect(error.__struct__)}

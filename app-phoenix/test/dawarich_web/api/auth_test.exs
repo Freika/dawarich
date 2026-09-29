@@ -47,7 +47,7 @@ defmodule DawarichWeb.Api.AuthTest do
     assert header(conn, "vary") == nil
 
     assert header(run(%{}, [{"accept", "application/json"}]), "content-type") ==
-             "application/json"
+             "text/html"
   end
 
   test "a key param wins over Bearer even when blank; an integer key is a string" do
@@ -132,7 +132,7 @@ defmodule DawarichWeb.Api.AuthTest do
 
     conn = run(%{"format" => "json"})
 
-    assert {401, "application/json", nil} =
+    assert {401, "text/html", nil} =
              {conn.status, header(conn, "content-type"), header(conn, "vary")}
   end
 
@@ -162,7 +162,7 @@ defmodule DawarichWeb.Api.AuthTest do
              admission(%{}, [{"x-requested-with", "XMLHttpRequest"}])
   end
 
-  test "a readable session without a signed-in user passes through with no Set-Cookie; remember-me without a session user, or an unreadable session, goes to Rails" do
+  test "a readable session without a signed-in user passes through with no Set-Cookie; remember-me without a session user goes to Rails; an unreadable session is harmless, like no session" do
     session =
       RailsCookies.encrypt(
         %{"session_id" => "phoenix-a3"},
@@ -181,8 +181,11 @@ defmodule DawarichWeb.Api.AuthTest do
     assert {:replay, "remember-me cookie"} =
              admission(%{}, [{"cookie", "_dawarich_session=#{session}; remember_user_token=x"}])
 
-    assert {:replay, "unreadable session"} =
+    assert {:ok, :html, false, nil} =
              admission(%{}, [{"cookie", "_dawarich_session=garbage"}])
+
+    assert {:replay, "remember-me cookie"} =
+             admission(%{}, [{"cookie", "_dawarich_session=garbage; remember_user_token=x"}])
   end
 
   test "a valid signed-in session passes while deleted users and mismatched salts go to Rails" do
