@@ -4,7 +4,7 @@ defmodule Dawarich.RailsTime do
   alias Dawarich.Repo
   alias Dawarich.TimeZoneName
 
-  @zone ~r{\A(?:UTC|[A-Z][A-Za-z_\-]*(?:/[A-Za-z0-9_+\-]+)+)\z}
+  @zone ~r{\A[A-Z][A-Za-z_\-]*(?:/[A-Za-z0-9_+\-]+)+\z}
 
   @format """
   SELECT to_char($1::timestamp + make_interval(secs => extract(timezone FROM i.at)::double precision),

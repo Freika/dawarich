@@ -1,6 +1,10 @@
 defmodule DawarichWeb.Api.PlanEndpointTest do
   use Dawarich.IngestCase, async: false
   import Dawarich.Test.RawHTTP
+  import ExUnit.CaptureLog
+  require Logger
+
+  @moduletag :capture_log
 
   @key "phoenix-a4-plan-key"
   @full ~s({"heatmap":true,"fog_of_war":true,"scratch_map":true,"globe_view":true,"integrations":true,"write_api":true,"sharing":true,"full_digest":true,"data_window":null})
@@ -196,5 +200,49 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
 
       assert {200, _, _} = read_response(client, method: method)
     end
+  end
+
+  defp with_info_log(fun) do
+    previous = Logger.level()
+    Logger.configure(level: :info)
+
+    try do
+      capture_log([level: :info], fun)
+    after
+      Logger.configure(level: previous)
+    end
+  end
+
+  test "the answered line is tagged [api] and carries the final status, 304 included", %{
+    port: port
+  } do
+    user!(%{api_key: @key})
+
+    log =
+      with_info_log(fn ->
+        assert {200, first, _} = port |> request("/api/v1/plan", bearer()) |> read_response()
+        [etag] = values(first, "etag")
+
+        assert {304, _, ""} =
+                 port
+                 |> request("/api/v1/plan", bearer() ++ [{"If-None-Match", etag}])
+                 |> read_response()
+      end)
+
+    assert log =~ ~r/\[api\] GET \/api\/v1\/plan 200 \d+ms request_id=[0-9a-f-]{36}/
+    assert log =~ ~r/\[api\] GET \/api\/v1\/plan 304 \d+ms request_id=[0-9a-f-]{36}/
+  end
+
+  test "a hand-off to Rails logs at info, tagged [api]", %{port: port, upstream: upstream} do
+    user!(%{api_key: "phoenix-a4-enum-log", plan: 7})
+
+    log =
+      with_info_log(fn ->
+        client = request(port, "/api/v1/plan", bearer("phoenix-a4-enum-log"))
+        assert puma(upstream) == "GET /api/v1/plan HTTP/1.1"
+        assert {200, _, "rails"} = read_response(client)
+      end)
+
+    assert log =~ "[api] /api/v1/plan handed to Rails: enum value 7"
   end
 end

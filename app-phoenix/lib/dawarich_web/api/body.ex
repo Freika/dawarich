@@ -26,10 +26,12 @@ defmodule DawarichWeb.Api.Body do
   end
 
   def replay(conn, reason) do
-    Logger.info("[ingest] #{conn.request_path} handed to Rails: #{reason}")
+    Logger.info("[#{tag(conn)}] #{conn.request_path} handed to Rails: #{reason}")
 
     conn |> RailsProxy.call(upstream()) |> halt()
   end
+
+  defp tag(conn), do: Map.get(conn.assigns, :api_tag, "ingest")
 
   @doc false
   def kind(conn), do: conn |> classify() |> elem(0)

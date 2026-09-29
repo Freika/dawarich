@@ -48,6 +48,8 @@ defmodule DawarichWeb.Api.PlanController do
     else
       {:replay, reason} -> Body.replay(conn, reason)
     end
+  rescue
+    error -> Body.replay(conn, inspect(error.__struct__))
   end
 
   defp label(labels, value) do

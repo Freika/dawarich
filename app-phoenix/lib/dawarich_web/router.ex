@@ -20,6 +20,7 @@ defmodule DawarichWeb.Router do
   end
 
   pipeline :api_ingest do
+    plug :put_api_tag, "ingest"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
     plug DawarichWeb.Api.Body
@@ -36,6 +37,7 @@ defmodule DawarichWeb.Router do
   end
 
   pipeline :api_foundation do
+    plug :put_api_tag, "api"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
     plug DawarichWeb.Api.Body
@@ -64,6 +66,8 @@ defmodule DawarichWeb.Router do
       live "/:id", DawarichWeb.NotificationsLive.Show, :show, container: {:div, class: "contents"}
     end
   end
+
+  defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
 
   defp phoenix_session(conn, _opts) do
     opts =
