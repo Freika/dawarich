@@ -1,0 +1,114 @@
+[
+  {
+    "zone": "UTC",
+    "locale": "en",
+    "from": "2028-02-29T23:30:00Z",
+    "to": "2029-03-01T00:30:00Z",
+    "words": "almost 1 year"
+  },
+  {
+    "zone": "UTC",
+    "locale": "de",
+    "from": "2028-02-29T23:30:00Z",
+    "to": "2029-03-01T00:30:00Z",
+    "words": "fast einem Jahr"
+  },
+  {
+    "zone": "Europe/Berlin",
+    "locale": "en",
+    "from": "2028-02-29T23:30:00Z",
+    "to": "2029-03-01T00:30:00Z",
+    "words": "about 1 year"
+  },
+  {
+    "zone": "Europe/Berlin",
+    "locale": "de",
+    "from": "2028-02-29T23:30:00Z",
+    "to": "2029-03-01T00:30:00Z",
+    "words": "etwa einem Jahr"
+  },
+  {
+    "zone": "America/New_York",
+    "locale": "en",
+    "from": "2028-02-29T23:30:00Z",
+    "to": "2029-03-01T00:30:00Z",
+    "words": "almost 1 year"
+  },
+  {
+    "zone": "America/New_York",
+    "locale": "de",
+    "from": "2028-02-29T23:30:00Z",
+    "to": "2029-03-01T00:30:00Z",
+    "words": "fast einem Jahr"
+  },
+  {
+    "zone": "Pacific/Kiritimati",
+    "locale": "en",
+    "from": "2028-02-29T23:30:00Z",
+    "to": "2029-03-01T00:30:00Z",
+    "words": "about 1 year"
+  },
+  {
+    "zone": "Pacific/Kiritimati",
+    "locale": "de",
+    "from": "2028-02-29T23:30:00Z",
+    "to": "2029-03-01T00:30:00Z",
+    "words": "etwa einem Jahr"
+  },
+  {
+    "zone": "UTC",
+    "locale": "en",
+    "from": "2028-03-01T02:00:00Z",
+    "to": "2029-03-01T04:00:00Z",
+    "words": "about 1 year"
+  },
+  {
+    "zone": "UTC",
+    "locale": "de",
+    "from": "2028-03-01T02:00:00Z",
+    "to": "2029-03-01T04:00:00Z",
+    "words": "etwa einem Jahr"
+  },
+  {
+    "zone": "Europe/Berlin",
+    "locale": "en",
+    "from": "2028-03-01T02:00:00Z",
+    "to": "2029-03-01T04:00:00Z",
+    "words": "about 1 year"
+  },
+  {
+    "zone": "Europe/Berlin",
+    "locale": "de",
+    "from": "2028-03-01T02:00:00Z",
+    "to": "2029-03-01T04:00:00Z",
+    "words": "etwa einem Jahr"
+  },
+  {
+    "zone": "America/New_York",
+    "locale": "en",
+    "from": "2028-03-01T02:00:00Z",
+    "to": "2029-03-01T04:00:00Z",
+    "words": "almost 1 year"
+  },
+  {
+    "zone": "America/New_York",
+    "locale": "de",
+    "from": "2028-03-01T02:00:00Z",
+    "to": "2029-03-01T04:00:00Z",
+    "words": "fast einem Jahr"
+  },
+  {
+    "zone": "Pacific/Kiritimati",
+    "locale": "en",
+    "from": "2028-03-01T02:00:00Z",
+    "to": "2029-03-01T04:00:00Z",
+    "words": "about 1 year"
+  },
+  {
+    "zone": "Pacific/Kiritimati",
+    "locale": "de",
+    "from": "2028-03-01T02:00:00Z",
+    "to": "2029-03-01T04:00:00Z",
+    "words": "etwa einem Jahr"
+  }
+]

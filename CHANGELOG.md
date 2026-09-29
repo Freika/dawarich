@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- The notifications pages and the navbar they show are now served by the Phoenix side of the application. Nothing changes in how they look or work. Setting `DAWARICH_RAILS_ROUTES=notifications` hands the pages back to the Rails side without changing the image.
 - Background jobs can now run in the Phoenix supervisor that already starts with the web container. In this release nothing moves yet: every job keeps running in Sidekiq, and the next release lets Phoenix take over the app-version check, the "explore features" email and trip calculations by itself once it is running. Installations where Phoenix does not start keep using Sidekiq. `/api/v1/health` gains a `phoenix` field, and the admin settings page shows whether Phoenix processes its jobs.
 - Family invitation cleanup, family location-request expiry and the points-counter correction are ready to move to Phoenix (Oban); they keep running in Sidekiq until a later release enables it.
 - Points exports (JSON and GPX), family invitation and plan-lapse emails, the welcome, archival-warning, account-linking and account-deletion emails, and the Lite archival warnings are ready to move to Phoenix (Oban); they keep running in Sidekiq until a later release enables it.

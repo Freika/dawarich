@@ -91,6 +91,13 @@ if config_env() != :test do
     shutdown_grace_period: 12_000
 end
 
+config :dawarich,
+       :rails_routes,
+       (System.get_env("DAWARICH_RAILS_ROUTES") || "")
+       |> String.split(",")
+       |> Enum.map(&String.trim/1)
+       |> Enum.reject(&(&1 == ""))
+
 case System.get_env("DAWARICH_RAILS_ARGS") do
   args when args in [nil, ""] ->
     :ok

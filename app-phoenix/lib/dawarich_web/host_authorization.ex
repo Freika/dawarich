@@ -3,87 +3,104 @@ defmodule DawarichWeb.HostAuthorization do
   @behaviour Plug
 
   import Plug.Conn
-  import Dawarich.ReleaseMigration, only: [ruby_strip: 1]
+
+  require Logger
 
   alias Dawarich.RailsSecret
+  alias DawarichWeb.Origin
 
-  @env ~w(RAILS_ENV RACK_ENV APPLICATION_HOSTS)
+  @env ~w(RAILS_ENV RACK_ENV APPLICATION_HOSTS RAILS_DEVELOPMENT_HOSTS)
   @ip [
     ~r/\A(\d+\.\d+\.\d+\.\d+)(?::\d+)?\z/,
     ~r/\A([a-f0-9]*:[a-f0-9.:]+)\z/i,
     ~r/\A\[([a-f0-9]*:[a-f0-9.:]+)\](?::\d+)?\z/i
   ]
 
+  def boot_config(env \\ Map.new(@env, &{&1, System.get_env(&1)})) do
+    application = split(env["APPLICATION_HOSTS"] || "localhost")
+
+    case RailsSecret.rails_env(env) do
+      rails when rails in ["production", "staging"] ->
+        Enum.map(application, &Origin.host_pattern/1)
+
+      "development" ->
+        development = [".localhost", ".test" | split(env["RAILS_DEVELOPMENT_HOSTS"] || "")]
+        [:ip | Enum.map(development ++ application, &Origin.host_pattern/1)]
+
+      _ ->
+        []
+    end
+  end
+
   @impl true
   def init(opts), do: opts
 
   @impl true
-  def call(conn, opts) do
-    env = Keyword.get_lazy(opts, :env, fn -> Map.new(@env, &{&1, System.get_env(&1)}) end)
+  def call(conn, _opts) do
+    case Application.get_env(:dawarich, :allowed_hosts, []) do
+      [] ->
+        conn
 
-    case hosts(env) do
-      [] -> conn
-      hosts -> if Enum.all?(requested(conn), &allowed?(&1, hosts)), do: conn, else: blocked(conn)
+      hosts ->
+        case Enum.reject(requested(conn), &allowed?(&1, hosts)) do
+          [] -> conn
+          blocked -> block(conn, blocked)
+        end
     end
   end
 
-  defp hosts(env) do
-    list = split(env["APPLICATION_HOSTS"] || "localhost")
-
-    case RailsSecret.rails_env(env) do
-      rails when rails in ["production", "staging"] -> Enum.map(list, &pattern/1)
-      "development" -> [:ip | Enum.map([".localhost", ".test" | list], &pattern/1)]
-      _test -> []
-    end
+  defp split(value) do
+    value
+    |> String.split(",")
+    |> Enum.reverse()
+    |> Enum.drop_while(&(&1 == ""))
+    |> Enum.reverse()
+    |> Enum.map(&Dawarich.ReleaseMigration.ruby_strip/1)
   end
-
-  defp split(value),
-    do:
-      value
-      |> String.split(",")
-      |> Enum.reverse()
-      |> Enum.drop_while(&(&1 == ""))
-      |> Enum.reverse()
-      |> Enum.map(&ruby_strip/1)
-
-  defp pattern("." <> rest),
-    do: Regex.compile!("\\A(?:[a-z0-9-]+\\.)?#{Regex.escape(rest)}(?::\\d+)?\\z", "i")
-
-  defp pattern(host), do: Regex.compile!("\\A#{Regex.escape(host)}(?::\\d+)?\\z", "i")
 
   defp requested(conn) do
-    origin = conn |> get_req_header("host") |> List.first()
+    host = conn |> get_req_header("host") |> List.first()
 
-    case conn
-         |> get_req_header("x-forwarded-host")
-         |> Enum.join(", ")
-         |> String.split(~r/,\s?/)
-         |> List.last() do
-      forwarded when forwarded in [nil, ""] -> [origin]
-      forwarded -> [origin, forwarded]
-    end
+    forwarded =
+      conn
+      |> get_req_header("x-forwarded-host")
+      |> Enum.join(", ")
+      |> String.split(~r/,\s?/)
+      |> Enum.reverse()
+      |> Enum.drop_while(&(&1 == ""))
+      |> List.first()
+
+    if forwarded in [nil, ""] or String.trim(forwarded) == "",
+      do: [host],
+      else: [host, forwarded]
   end
 
   defp allowed?(nil, _hosts), do: false
-  defp allowed?(host, hosts), do: Enum.any?(hosts, &host_matches?(host, &1))
+  defp allowed?(host, hosts), do: Enum.any?(hosts, &matches?(host, &1))
 
-  defp host_matches?(host, :ip),
-    do: Enum.any?(@ip, &ip?(Regex.run(&1, host, capture: :all_but_first)))
+  defp matches?(host, :ip) do
+    address =
+      Enum.find_value(@ip, host, fn pattern ->
+        with [captured] <- Regex.run(pattern, host, capture: :all_but_first), do: captured
+      end)
 
-  defp host_matches?(host, regex), do: host =~ regex
+    match?({:ok, _}, :inet.parse_strict_address(:binary.bin_to_list(address)))
+  end
 
-  defp ip?([address]), do: match?({:ok, _}, :inet.parse_address(String.to_charlist(address)))
-  defp ip?(_nil), do: false
+  defp matches?(host, pattern), do: host =~ pattern
 
-  defp blocked(conn) do
-    type =
-      if conn |> get_req_header("x-requested-with") |> Enum.join() =~ ~r/XMLHttpRequest/i,
-        do: "text/plain",
-        else: "text/html"
+  defp block(conn, blocked) do
+    Logger.error("[#{inspect(__MODULE__)}] Blocked hosts: #{Enum.join(blocked, ", ")}")
 
-    conn
-    |> delete_resp_header("cache-control")
-    |> put_resp_header("content-type", type <> "; charset=UTF-8")
+    xhr? =
+      conn
+      |> get_req_header("x-requested-with")
+      |> Enum.join(", ")
+      |> String.match?(~r/XMLHttpRequest/i)
+
+    type = if xhr?, do: "text/plain", else: "text/html"
+
+    %{conn | resp_headers: [{"content-type", type <> "; charset=UTF-8"}]}
     |> send_resp(403, "")
     |> halt()
   end

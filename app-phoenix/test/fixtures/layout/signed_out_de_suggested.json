@@ -2,7 +2,8 @@
   "state": {
     "user": null,
     "self_hosted": true,
-    "accept_language": "de-DE,de;q=0.9"
+    "accept_language": "de-DE,de;q=0.9",
+    "path": "/users/sign_in"
   },
   "html": {
     "lang": "en",

@@ -20,10 +20,10 @@ defmodule DawarichWeb.Origin do
     |> Enum.any?(&Regex.match?(host_pattern(&1), host))
   end
 
-  defp host_pattern("." <> domain),
+  def host_pattern("." <> domain),
     do: Regex.compile!("\\A(?:[a-z0-9-]+\\.)?#{Regex.escape(domain)}(?::\\d+)?\\z", "i")
 
-  defp host_pattern(entry), do: Regex.compile!("\\A#{Regex.escape(entry)}(?::\\d+)?\\z", "i")
+  def host_pattern(entry), do: Regex.compile!("\\A#{Regex.escape(entry)}(?::\\d+)?\\z", "i")
 
   defp ascii?(value), do: value =~ ~r/\A[\x20-\x7e]*\z/
 

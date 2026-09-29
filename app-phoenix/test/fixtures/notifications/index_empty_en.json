@@ -1,0 +1,21 @@
+{
+  "path": "/notifications",
+  "title": "Notifications | Dawarich",
+  "user": {
+    "id": 9104,
+    "email": "parity-empty@dawarich.test",
+    "settings": {
+      "maps": {
+        "distance_unit": "km"
+      },
+      "route_opacity": 60,
+      "fog_of_war_meters": "100",
+      "onboarding_completed": true,
+      "meters_between_routes": "500",
+      "minutes_between_routes": "30",
+      "time_threshold_minutes": "30",
+      "merge_threshold_minutes": "15"
+    }
+  },
+  "notifications": []
+}

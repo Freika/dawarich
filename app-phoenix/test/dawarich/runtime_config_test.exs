@@ -2,7 +2,7 @@ defmodule Dawarich.RuntimeConfigTest do
   use ExUnit.Case, async: false
 
   @runtime Path.expand("../../config/runtime.exs", __DIR__)
-  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS RAILS_MAX_THREADS)
+  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS DAWARICH_RAILS_ROUTES RAILS_MAX_THREADS)
 
   setup do
     saved = Map.new(@vars, &{&1, System.get_env(&1)})
@@ -49,6 +49,18 @@ defmodule Dawarich.RuntimeConfigTest do
 
     assert {repo, _} = prod(%{"RAILS_MAX_THREADS" => ""})
     assert repo[:pool_size] == 17
+  end
+
+  test "reads the routes handed back to Rails, trimmed and without blanks" do
+    System.put_env("DAWARICH_RAILS_ROUTES", " notifications, ,stats ")
+
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:rails_routes] == [
+             "notifications",
+             "stats"
+           ]
+
+    System.delete_env("DAWARICH_RAILS_ROUTES")
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:rails_routes] == []
   end
 
   test "wave-4 workers run on a configured queue and time out before Lifeline" do

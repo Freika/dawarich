@@ -1,0 +1,874 @@
+{
+  "state": {
+    "user": {
+      "id": 842183093,
+      "email": "navbar-flood@dawarich.test",
+      "theme": "dark",
+      "settings": {},
+      "admin": false,
+      "status": 1,
+      "plan": 1,
+      "active_until": "3026-09-26T13:00:00.000000Z",
+      "subscription_source": 0,
+      "changelog_consent": 0
+    },
+    "notifications": [
+      {
+        "id": 3000000,
+        "title": "Flood 0",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T12:00:00.000000Z"
+      },
+      {
+        "id": 3000001,
+        "title": "Flood 1",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:59:00.000000Z"
+      },
+      {
+        "id": 3000002,
+        "title": "Flood 2",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:58:00.000000Z"
+      },
+      {
+        "id": 3000003,
+        "title": "Flood 3",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:57:00.000000Z"
+      },
+      {
+        "id": 3000004,
+        "title": "Flood 4",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:56:00.000000Z"
+      },
+      {
+        "id": 3000005,
+        "title": "Flood 5",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:55:00.000000Z"
+      },
+      {
+        "id": 3000006,
+        "title": "Flood 6",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:54:00.000000Z"
+      },
+      {
+        "id": 3000007,
+        "title": "Flood 7",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:53:00.000000Z"
+      },
+      {
+        "id": 3000008,
+        "title": "Flood 8",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:52:00.000000Z"
+      },
+      {
+        "id": 3000009,
+        "title": "Flood 9",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:51:00.000000Z"
+      },
+      {
+        "id": 3000010,
+        "title": "Flood 10",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:50:00.000000Z"
+      },
+      {
+        "id": 3000011,
+        "title": "Flood 11",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:49:00.000000Z"
+      },
+      {
+        "id": 3000012,
+        "title": "Flood 12",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:48:00.000000Z"
+      },
+      {
+        "id": 3000013,
+        "title": "Flood 13",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:47:00.000000Z"
+      },
+      {
+        "id": 3000014,
+        "title": "Flood 14",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:46:00.000000Z"
+      },
+      {
+        "id": 3000015,
+        "title": "Flood 15",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:45:00.000000Z"
+      },
+      {
+        "id": 3000016,
+        "title": "Flood 16",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:44:00.000000Z"
+      },
+      {
+        "id": 3000017,
+        "title": "Flood 17",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:43:00.000000Z"
+      },
+      {
+        "id": 3000018,
+        "title": "Flood 18",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:42:00.000000Z"
+      },
+      {
+        "id": 3000019,
+        "title": "Flood 19",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:41:00.000000Z"
+      },
+      {
+        "id": 3000020,
+        "title": "Flood 20",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:40:00.000000Z"
+      },
+      {
+        "id": 3000021,
+        "title": "Flood 21",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:39:00.000000Z"
+      },
+      {
+        "id": 3000022,
+        "title": "Flood 22",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:38:00.000000Z"
+      },
+      {
+        "id": 3000023,
+        "title": "Flood 23",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:37:00.000000Z"
+      },
+      {
+        "id": 3000024,
+        "title": "Flood 24",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:36:00.000000Z"
+      },
+      {
+        "id": 3000025,
+        "title": "Flood 25",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:35:00.000000Z"
+      },
+      {
+        "id": 3000026,
+        "title": "Flood 26",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:34:00.000000Z"
+      },
+      {
+        "id": 3000027,
+        "title": "Flood 27",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:33:00.000000Z"
+      },
+      {
+        "id": 3000028,
+        "title": "Flood 28",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:32:00.000000Z"
+      },
+      {
+        "id": 3000029,
+        "title": "Flood 29",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:31:00.000000Z"
+      },
+      {
+        "id": 3000030,
+        "title": "Flood 30",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:30:00.000000Z"
+      },
+      {
+        "id": 3000031,
+        "title": "Flood 31",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:29:00.000000Z"
+      },
+      {
+        "id": 3000032,
+        "title": "Flood 32",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:28:00.000000Z"
+      },
+      {
+        "id": 3000033,
+        "title": "Flood 33",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:27:00.000000Z"
+      },
+      {
+        "id": 3000034,
+        "title": "Flood 34",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:26:00.000000Z"
+      },
+      {
+        "id": 3000035,
+        "title": "Flood 35",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:25:00.000000Z"
+      },
+      {
+        "id": 3000036,
+        "title": "Flood 36",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:24:00.000000Z"
+      },
+      {
+        "id": 3000037,
+        "title": "Flood 37",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:23:00.000000Z"
+      },
+      {
+        "id": 3000038,
+        "title": "Flood 38",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:22:00.000000Z"
+      },
+      {
+        "id": 3000039,
+        "title": "Flood 39",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:21:00.000000Z"
+      },
+      {
+        "id": 3000040,
+        "title": "Flood 40",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:20:00.000000Z"
+      },
+      {
+        "id": 3000041,
+        "title": "Flood 41",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:19:00.000000Z"
+      },
+      {
+        "id": 3000042,
+        "title": "Flood 42",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:18:00.000000Z"
+      },
+      {
+        "id": 3000043,
+        "title": "Flood 43",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:17:00.000000Z"
+      },
+      {
+        "id": 3000044,
+        "title": "Flood 44",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:16:00.000000Z"
+      },
+      {
+        "id": 3000045,
+        "title": "Flood 45",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:15:00.000000Z"
+      },
+      {
+        "id": 3000046,
+        "title": "Flood 46",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:14:00.000000Z"
+      },
+      {
+        "id": 3000047,
+        "title": "Flood 47",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:13:00.000000Z"
+      },
+      {
+        "id": 3000048,
+        "title": "Flood 48",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:12:00.000000Z"
+      },
+      {
+        "id": 3000049,
+        "title": "Flood 49",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:11:00.000000Z"
+      },
+      {
+        "id": 3000050,
+        "title": "Flood 50",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:10:00.000000Z"
+      },
+      {
+        "id": 3000051,
+        "title": "Flood 51",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:09:00.000000Z"
+      },
+      {
+        "id": 3000052,
+        "title": "Flood 52",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:08:00.000000Z"
+      },
+      {
+        "id": 3000053,
+        "title": "Flood 53",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:07:00.000000Z"
+      },
+      {
+        "id": 3000054,
+        "title": "Flood 54",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:06:00.000000Z"
+      },
+      {
+        "id": 3000055,
+        "title": "Flood 55",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:05:00.000000Z"
+      },
+      {
+        "id": 3000056,
+        "title": "Flood 56",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:04:00.000000Z"
+      },
+      {
+        "id": 3000057,
+        "title": "Flood 57",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:03:00.000000Z"
+      },
+      {
+        "id": 3000058,
+        "title": "Flood 58",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:02:00.000000Z"
+      },
+      {
+        "id": 3000059,
+        "title": "Flood 59",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:01:00.000000Z"
+      },
+      {
+        "id": 3000060,
+        "title": "Flood 60",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:00:00.000000Z"
+      },
+      {
+        "id": 3000061,
+        "title": "Flood 61",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:59:00.000000Z"
+      },
+      {
+        "id": 3000062,
+        "title": "Flood 62",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:58:00.000000Z"
+      },
+      {
+        "id": 3000063,
+        "title": "Flood 63",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:57:00.000000Z"
+      },
+      {
+        "id": 3000064,
+        "title": "Flood 64",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:56:00.000000Z"
+      },
+      {
+        "id": 3000065,
+        "title": "Flood 65",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:55:00.000000Z"
+      },
+      {
+        "id": 3000066,
+        "title": "Flood 66",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:54:00.000000Z"
+      },
+      {
+        "id": 3000067,
+        "title": "Flood 67",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:53:00.000000Z"
+      },
+      {
+        "id": 3000068,
+        "title": "Flood 68",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:52:00.000000Z"
+      },
+      {
+        "id": 3000069,
+        "title": "Flood 69",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:51:00.000000Z"
+      },
+      {
+        "id": 3000070,
+        "title": "Flood 70",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:50:00.000000Z"
+      },
+      {
+        "id": 3000071,
+        "title": "Flood 71",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:49:00.000000Z"
+      },
+      {
+        "id": 3000072,
+        "title": "Flood 72",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:48:00.000000Z"
+      },
+      {
+        "id": 3000073,
+        "title": "Flood 73",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:47:00.000000Z"
+      },
+      {
+        "id": 3000074,
+        "title": "Flood 74",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:46:00.000000Z"
+      },
+      {
+        "id": 3000075,
+        "title": "Flood 75",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:45:00.000000Z"
+      },
+      {
+        "id": 3000076,
+        "title": "Flood 76",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:44:00.000000Z"
+      },
+      {
+        "id": 3000077,
+        "title": "Flood 77",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:43:00.000000Z"
+      },
+      {
+        "id": 3000078,
+        "title": "Flood 78",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:42:00.000000Z"
+      },
+      {
+        "id": 3000079,
+        "title": "Flood 79",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:41:00.000000Z"
+      },
+      {
+        "id": 3000080,
+        "title": "Flood 80",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:40:00.000000Z"
+      },
+      {
+        "id": 3000081,
+        "title": "Flood 81",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:39:00.000000Z"
+      },
+      {
+        "id": 3000082,
+        "title": "Flood 82",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:38:00.000000Z"
+      },
+      {
+        "id": 3000083,
+        "title": "Flood 83",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:37:00.000000Z"
+      },
+      {
+        "id": 3000084,
+        "title": "Flood 84",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:36:00.000000Z"
+      },
+      {
+        "id": 3000085,
+        "title": "Flood 85",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:35:00.000000Z"
+      },
+      {
+        "id": 3000086,
+        "title": "Flood 86",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:34:00.000000Z"
+      },
+      {
+        "id": 3000087,
+        "title": "Flood 87",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:33:00.000000Z"
+      },
+      {
+        "id": 3000088,
+        "title": "Flood 88",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:32:00.000000Z"
+      },
+      {
+        "id": 3000089,
+        "title": "Flood 89",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:31:00.000000Z"
+      },
+      {
+        "id": 3000090,
+        "title": "Flood 90",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:30:00.000000Z"
+      },
+      {
+        "id": 3000091,
+        "title": "Flood 91",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:29:00.000000Z"
+      },
+      {
+        "id": 3000092,
+        "title": "Flood 92",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:28:00.000000Z"
+      },
+      {
+        "id": 3000093,
+        "title": "Flood 93",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:27:00.000000Z"
+      },
+      {
+        "id": 3000094,
+        "title": "Flood 94",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:26:00.000000Z"
+      },
+      {
+        "id": 3000095,
+        "title": "Flood 95",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:25:00.000000Z"
+      },
+      {
+        "id": 3000096,
+        "title": "Flood 96",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:24:00.000000Z"
+      },
+      {
+        "id": 3000097,
+        "title": "Flood 97",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:23:00.000000Z"
+      },
+      {
+        "id": 3000098,
+        "title": "Flood 98",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:22:00.000000Z"
+      },
+      {
+        "id": 3000099,
+        "title": "Flood 99",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:21:00.000000Z"
+      },
+      {
+        "id": 3000100,
+        "title": "Flood 100",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:20:00.000000Z"
+      },
+      {
+        "id": 3000101,
+        "title": "Flood 101",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:19:00.000000Z"
+      },
+      {
+        "id": 3000102,
+        "title": "Flood 102",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:18:00.000000Z"
+      },
+      {
+        "id": 3000103,
+        "title": "Flood 103",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:17:00.000000Z"
+      },
+      {
+        "id": 3000104,
+        "title": "Flood 104",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:16:00.000000Z"
+      },
+      {
+        "id": 3000105,
+        "title": "Flood 105",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:15:00.000000Z"
+      },
+      {
+        "id": 3000106,
+        "title": "Flood 106",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:14:00.000000Z"
+      },
+      {
+        "id": 3000107,
+        "title": "Flood 107",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:13:00.000000Z"
+      },
+      {
+        "id": 3000108,
+        "title": "Flood 108",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:12:00.000000Z"
+      },
+      {
+        "id": 3000109,
+        "title": "Flood 109",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:11:00.000000Z"
+      },
+      {
+        "id": 3000110,
+        "title": "Flood 110",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:10:00.000000Z"
+      },
+      {
+        "id": 3000111,
+        "title": "Flood 111",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:09:00.000000Z"
+      },
+      {
+        "id": 3000112,
+        "title": "Flood 112",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:08:00.000000Z"
+      },
+      {
+        "id": 3000113,
+        "title": "Flood 113",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:07:00.000000Z"
+      },
+      {
+        "id": 3000114,
+        "title": "Flood 114",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:06:00.000000Z"
+      },
+      {
+        "id": 3000115,
+        "title": "Flood 115",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:05:00.000000Z"
+      },
+      {
+        "id": 3000116,
+        "title": "Flood 116",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:04:00.000000Z"
+      },
+      {
+        "id": 3000117,
+        "title": "Flood 117",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:03:00.000000Z"
+      },
+      {
+        "id": 3000118,
+        "title": "Flood 118",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:02:00.000000Z"
+      },
+      {
+        "id": 3000119,
+        "title": "Flood 119",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T10:01:00.000000Z"
+      }
+    ],
+    "family": null,
+    "accept_language": null,
+    "self_hosted": true,
+    "path": "/notifications"
+  },
+  "html": {
+    "lang": "en",
+    "data-theme": "dawarich-dark",
+    "data-self-hosted": "true"
+  },
+  "headers": {
+    "x-frame-options": "SAMEORIGIN",
+    "x-xss-protection": "0",
+    "x-content-type-options": "nosniff",
+    "x-permitted-cross-domain-policies": "none",
+    "referrer-policy": "strict-origin-when-cross-origin"
+  }
+}

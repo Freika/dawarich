@@ -7,7 +7,7 @@ defmodule DawarichWeb.Icon do
 
   def icon(assigns) do
     name = Path.basename(assigns.name)
-    path = Path.expand("../app/assets/svg/icons/lucide/outline/#{name}.svg", File.cwd!())
+    path = Dawarich.RailsRoot.join("app/assets/svg/icons/lucide/outline/#{name}.svg")
 
     assigns =
       assign(
