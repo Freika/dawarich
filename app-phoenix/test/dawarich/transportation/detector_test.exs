@@ -1,6 +1,8 @@
 defmodule Dawarich.Transportation.DetectorTest do
   use Dawarich.JobsCase
 
+  import ExUnit.CaptureLog
+
   alias Dawarich.Tracks.TracksFixtures
   alias Dawarich.Transportation.Detector
 
@@ -41,14 +43,19 @@ defmodule Dawarich.Transportation.DetectorTest do
       )
     end
 
-    segments =
-      Detector.call(ScratchRepo, track,
-        enabled_modes: @all_modes,
-        decode_fn: raising_decoder,
-        fallback: true
-      )
+    log =
+      capture_log(fn ->
+        segments =
+          Detector.call(ScratchRepo, track,
+            enabled_modes: @all_modes,
+            decode_fn: raising_decoder,
+            fallback: true
+          )
 
-    assert [%{mode: "unknown", source: "default"}] = segments
+        assert [%{mode: "unknown", source: "default"}] = segments
+      end)
+
+    assert log =~ "Transportation mode detection failed for track #{track.id}: boom"
   end
 
   test "falls back to all modes when enabled_modes is empty (Ruby's .presence)" do

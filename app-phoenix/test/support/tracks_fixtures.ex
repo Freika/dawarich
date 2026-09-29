@@ -12,8 +12,12 @@ defmodule Dawarich.Tracks.TracksFixtures do
     |> Enum.sort()
   end
 
+  def read!(name, opts \\ []) do
+    @dir |> Path.join(name <> ".json") |> File.read!() |> Jason.decode!(opts)
+  end
+
   def load!(repo, name) do
-    fixture = @dir |> Path.join(name <> ".json") |> File.read!() |> Jason.decode!()
+    fixture = read!(name)
     input = fixture["input"]
 
     Enum.each(input["users"], &insert_user(repo, name, &1))
@@ -28,7 +32,7 @@ defmodule Dawarich.Tracks.TracksFixtures do
   end
 
   def input_counts(name) do
-    fixture = @dir |> Path.join(name <> ".json") |> File.read!() |> Jason.decode!()
+    fixture = read!(name)
 
     Map.new(fixture["input"], fn {table, rows} -> {table, Enum.map(rows, & &1["id"])} end)
   end

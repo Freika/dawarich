@@ -33,62 +33,62 @@ defmodule Dawarich.Transportation.Emissions do
   }
 
   @mode_profiles %{
-    "stationary" => %{
+    "stationary" => [
       speed_p50: %{ln: {0.4, 1.2}, w: 1.0},
       speed_p95: %{ln: {1.5, 1.5}, w: 0.7},
       heading_change_rate: nil,
       motion_variance: nil,
       stop_fraction: %{n: {0.9, 0.15}, w: 0.6}
-    },
-    "walking" => %{
+    ],
+    "walking" => [
       speed_p50: %{ln: {4.5, 0.35}, w: 1.0},
       speed_p95: %{ln: {6.5, 0.4}, w: 0.7},
       heading_change_rate: %{n: {12.0, 8.0}, w: 0.8},
       motion_variance: %{n: {1.5, 1.5}, w: 0.25},
       stop_fraction: %{n: {0.15, 0.2}, w: 0.4}
-    },
-    "running" => %{
+    ],
+    "running" => [
       speed_p50: %{ln: {10.0, 0.25}, w: 1.0},
       speed_p95: %{ln: {14.0, 0.3}, w: 0.7},
       heading_change_rate: %{n: {6.0, 5.0}, w: 0.8},
       motion_variance: %{n: {2.5, 2.0}, w: 0.25},
       stop_fraction: %{n: {0.05, 0.1}, w: 0.4}
-    },
-    "cycling" => %{
+    ],
+    "cycling" => [
       speed_p50: %{ln: {17.0, 0.35}, w: 1.0},
       speed_p95: %{ln: {28.0, 0.35}, w: 0.7},
       heading_change_rate: %{n: {3.0, 3.0}, w: 0.8},
       motion_variance: %{n: {4.0, 3.0}, w: 0.25},
       stop_fraction: %{n: {0.08, 0.15}, w: 0.4}
-    },
-    "driving" => %{
+    ],
+    "driving" => [
       speed_p50: %{ln: {55.0, 0.75}, w: 1.0},
       speed_p95: %{ln: {110.0, 0.6}, w: 0.7},
       heading_change_rate: %{n: {1.2, 1.5}, w: 0.8},
       motion_variance: %{n: {14.0, 10.0}, w: 0.25},
       stop_fraction: %{n: {0.15, 0.2}, w: 0.4}
-    },
-    "train" => %{
+    ],
+    "train" => [
       speed_p50: %{ln: {110.0, 0.45}, w: 1.0},
       speed_p95: %{ln: {170.0, 0.5}, w: 0.7},
       heading_change_rate: %{n: {0.3, 0.5}, w: 0.8},
       motion_variance: %{n: {8.0, 6.0}, w: 0.25},
       stop_fraction: %{n: {0.05, 0.1}, w: 0.4}
-    },
-    "flying" => %{
+    ],
+    "flying" => [
       speed_p50: %{ln: {500.0, 0.5}, w: 1.0},
       speed_p95: %{ln: {750.0, 0.4}, w: 0.7},
       heading_change_rate: %{n: {0.1, 0.3}, w: 0.8},
       motion_variance: %{n: {30.0, 25.0}, w: 0.25},
       stop_fraction: %{n: {0.01, 0.05}, w: 0.4}
-    },
-    "boat" => %{
+    ],
+    "boat" => [
       speed_p50: %{ln: {15.0, 0.9}, w: 1.0},
       speed_p95: nil,
       heading_change_rate: nil,
       motion_variance: nil,
       stop_fraction: nil
-    }
+    ]
   }
 
   @sparse_sigma_factor 1.5

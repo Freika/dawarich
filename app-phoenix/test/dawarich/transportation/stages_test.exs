@@ -8,6 +8,7 @@ defmodule Dawarich.Transportation.StagesTest do
     Detector,
     FeatureExtractor,
     Preprocessor,
+    SegmentAssembler,
     SpeedCalibrator,
     Windower
   }
@@ -26,6 +27,7 @@ defmodule Dawarich.Transportation.StagesTest do
 
   test "each stage reproduces Rails on every fixture track" do
     %{expected: expected} = TracksFixtures.load!(ScratchRepo, "transport_stages")
+    ordered = ordered_windows()
 
     Enum.each(expected, fn {name, data} ->
       rows = FeatureExtractor.rows(ScratchRepo, data["track"]["id"])
@@ -42,15 +44,40 @@ defmodule Dawarich.Transportation.StagesTest do
       preprocessed_rows = Enum.map(data["preprocessor"], &atomize_preprocessed_row/1)
 
       windows = Windower.call(preprocessed_rows)
-      assert_close(stringify_windows(windows), data["windower"], "#{name}.windower")
+      expected_windows = with_ordered_hints(data["windower"], ordered[name])
+      assert_close(stringify_windows(windows), expected_windows, "#{name}.windower")
 
-      windows_input = Enum.map(data["windower"], &atomize_window/1)
+      windows_input = Enum.map(expected_windows, &atomize_window/1)
 
       decoded = Decoder.call(windows_input, @all_modes)
       assert_close(stringify(decoded), data["decoder"], "#{name}.decoder")
 
       segments = Detector.call(ScratchRepo, track_map(data["track"]), enabled_modes: @all_modes)
       assert_close(stringify(segments), data["segments"], "#{name}.segments")
+    end)
+  end
+
+  test "SegmentAssembler reproduces Rails from the fixture's own stage inputs" do
+    %{"expected" => expected} = TracksFixtures.read!("transport_stages")
+    ordered = ordered_windows()
+
+    assembled_tracks =
+      Enum.reject(expected, fn {_name, data} ->
+        match?([%{"source" => "default"}], data["segments"])
+      end)
+
+    assert length(assembled_tracks) == map_size(expected) - 1
+
+    Enum.each(assembled_tracks, fn {name, data} ->
+      rows = Enum.map(data["preprocessor"], &atomize_preprocessed_row/1)
+
+      windows =
+        data["windower"] |> with_ordered_hints(ordered[name]) |> Enum.map(&atomize_window/1)
+
+      decoded = Enum.map(data["decoder"], &%{mode: &1["mode"], posterior: &1["posterior"]})
+
+      assembled = SegmentAssembler.call(rows, windows, decoded, [])
+      assert_close(stringify(assembled), data["segments"], "#{name}.segment_assembler")
     end)
   end
 
@@ -78,7 +105,23 @@ defmodule Dawarich.Transportation.StagesTest do
     {"1_", nil},
     {"", nil},
     {"abc", nil},
-    {nil, nil}
+    {nil, nil},
+    {"0x1p3", 8.0},
+    {"0x1.8", 1.5},
+    {"0x1.8p1", 3.0},
+    {"0xFFp2", 1020.0},
+    {"-0x.8p1", -1.0},
+    {"0x0 ", nil},
+    {"0x1p-1075", 0.0},
+    {"\u00A05", nil},
+    {"5\u2003", nil},
+    {"\u00855", nil},
+    {"\t5\v", 5.0},
+    {"\f5\r", 5.0},
+    {"1e400", nil},
+    {"-1e400", nil},
+    {"0x1p1024", nil},
+    {"0x" <> String.duplicate("F", 260), nil}
   ]
 
   test "parse_velocity follows Ruby 3.4's Float()" do
@@ -133,7 +176,22 @@ defmodule Dawarich.Transportation.StagesTest do
     window =
       Map.new(@window_keys, fn key -> {key, Map.fetch!(json_window, Atom.to_string(key))} end)
 
-    Map.put(window, :hints, Map.to_list(json_window["hints"]))
+    Map.put(window, :hints, Enum.map(json_window["hints"], fn [mode, value] -> {mode, value} end))
+  end
+
+  defp ordered_windows do
+    ordered = TracksFixtures.read!("transport_stages", objects: :ordered_objects)
+
+    Map.new(ordered["expected"].values, fn {name, data} ->
+      {name, Enum.map(data["windower"], &hint_pairs(&1["hints"]))}
+    end)
+  end
+
+  defp hint_pairs(%Jason.OrderedObject{values: values}),
+    do: Enum.map(values, fn {mode, value} -> [mode, value] end)
+
+  defp with_ordered_hints(windows, ordered_hints) do
+    Enum.zip_with(windows, ordered_hints, &Map.put(&1, "hints", &2))
   end
 
   defp stringify(map) when is_map(map),
@@ -144,7 +202,9 @@ defmodule Dawarich.Transportation.StagesTest do
 
   defp stringify_windows(windows) do
     windows
-    |> Enum.map(&Map.update!(&1, :hints, fn hints -> Map.new(hints) end))
+    |> Enum.map(fn window ->
+      Map.update!(window, :hints, &Enum.map(&1, fn h -> Tuple.to_list(h) end))
+    end)
     |> stringify()
   end
 

@@ -14,8 +14,13 @@ defmodule Dawarich.Transportation.FeatureExtractor do
   """
 
   @digits "\\d(?:_?\\d)*"
-  @decimal_regex ~r/^[+-]?(?:#{@digits}(?:\.(?:#{@digits})?)?|\.#{@digits})(?:[eE][+-]?#{@digits})?$/
-  @hex_regex ~r/^[+-]?0[xX][0-9a-fA-F](?:_?[0-9a-fA-F])*$/
+  @xdigits "[0-9a-fA-F](?:_?[0-9a-fA-F])*"
+  @decimal_regex ~r/\A[+-]?(?:#{@digits}(?:\.(?:#{@digits})?)?|\.#{@digits})(?:[eE][+-]?#{@digits})?\z/
+  @hex_regex ~r/\A(?<sign>[+-]?)0[xX](?<int>#{@xdigits})?(?:(?<dot>\.)(?<frac>#{@xdigits})?)?(?:[pP](?<exp>[+-]?#{@digits}))?\z/
+  @zero_run_regex ~r/\A[+-]?0[xX]0++(?![0-9a-fA-F.])/
+  @bare_zero_run_regex ~r/\A[+-]?0[xX]0+(?:[pP][+-]?\d+)?\z/
+  @leading_space ~r/\A[ \t\n\x0B\f\r]+/
+  @trailing_space ~r/[ \t\n\x0B\f\r]+\z/
 
   def rows(repo, track_id) do
     repo.query!(@sql, [track_id], log: false).rows
@@ -56,29 +61,88 @@ defmodule Dawarich.Transportation.FeatureExtractor do
   def parse_velocity(""), do: nil
 
   def parse_velocity(raw) when is_binary(raw) do
-    trimmed = String.trim(raw)
+    unpadded = Regex.replace(@leading_space, raw, "")
+    trimmed = Regex.replace(@trailing_space, unpadded, "")
 
     cond do
-      Regex.match?(@hex_regex, trimmed) -> parse_hex(trimmed)
-      Regex.match?(@decimal_regex, trimmed) -> parse_decimal(trimmed)
-      true -> nil
+      Regex.match?(@zero_run_regex, unpadded) and
+          not Regex.match?(@bare_zero_run_regex, unpadded) ->
+        nil
+
+      captures = Regex.named_captures(@hex_regex, trimmed) ->
+        parse_hex(captures)
+
+      Regex.match?(@decimal_regex, trimmed) ->
+        parse_decimal(trimmed)
+
+      true ->
+        nil
     end
   end
 
-  defp parse_hex(str) do
-    {sign, digits} =
-      case str do
-        "+" <> rest -> {1, rest}
-        "-" <> rest -> {-1, rest}
-        rest -> {1, rest}
+  defp parse_hex(%{"int" => "", "dot" => ""}), do: nil
+
+  defp parse_hex(%{"sign" => sign, "int" => int, "frac" => frac, "exp" => exponent}) do
+    value = int |> strip() |> String.trim_leading("0") |> hex_value(strip(frac), exponent)
+    if value && sign == "-", do: -value, else: value
+  end
+
+  defp hex_value(int, frac, exponent) do
+    {adj, aadj, nd0} =
+      int |> hex_digits() |> Enum.reduce({0.0, 1.0, -4}, &accumulate_int/2)
+
+    {frac, nd0} =
+      if int == "" do
+        zeros = byte_size(frac) - byte_size(String.trim_leading(frac, "0"))
+        {String.trim_leading(frac, "0"), nd0 - 4 * zeros}
+      else
+        {frac, nd0}
       end
 
-    hex_digits = digits |> String.slice(2..-1//1) |> String.replace("_", "")
+    {adj, _aadj} = frac |> hex_digits() |> Enum.reduce_while({adj, aadj}, &accumulate_frac/2)
+    exponent = if exponent == "", do: 0, else: String.to_integer(strip(exponent))
 
-    case Integer.parse(hex_digits, 16) do
-      {value, ""} -> sign * value * 1.0
-      _ -> nil
-    end
+    ldexp(adj, nd0 + exponent)
+  end
+
+  defp strip(digits), do: String.replace(digits, "_", "")
+
+  defp hex_digits(digits), do: for(<<d::binary-1 <- digits>>, do: String.to_integer(d, 16))
+
+  defp accumulate_int(d, {adj, aadj, nd0}), do: {adj + aadj * d, aadj / 16, nd0 + 4}
+
+  defp accumulate_frac(d, {adj, aadj}) do
+    adj = adj + aadj * d
+    aadj = aadj / 16
+    if aadj == 0.0, do: {:halt, {adj, aadj}}, else: {:cont, {adj, aadj}}
+  end
+
+  defp ldexp(adj, _n) when adj == 0.0, do: 0.0
+
+  defp ldexp(adj, n) do
+    <<0::1, e::11, f::52>> = <<adj::float>>
+    {m, k} = if e == 0, do: {f, n - 1074}, else: {f + 0x10000000000000, n + e - 1075}
+    scale(m, k)
+  end
+
+  defp scale(m, k) when k >= -1074 do
+    if length(Integer.digits(m, 2)) + k > 1024, do: nil, else: m * :math.pow(2, k)
+  end
+
+  defp scale(_m, k) when k < -1074 - 54, do: 0.0
+
+  defp scale(m, k) do
+    divisor = Bitwise.bsl(1, -1074 - k)
+    {q, r} = {div(m, divisor), rem(m, divisor)}
+
+    n =
+      cond do
+        2 * r > divisor -> q + 1
+        2 * r == divisor and rem(q, 2) == 1 -> q + 1
+        true -> q
+      end
+
+    n * :math.pow(2, -1074)
   end
 
   defp parse_decimal(str) do
