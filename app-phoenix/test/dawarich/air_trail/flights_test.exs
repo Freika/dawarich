@@ -26,7 +26,7 @@ defmodule Dawarich.AirTrail.FlightsTest do
   end
 
   defp store!(user_id, flights, time_zone \\ @berlin),
-    do: Flights.store!(ScratchRepo, user_id, flights, Ecto.UUID.generate(), time_zone)
+    do: :ok = Flights.store(ScratchRepo, user_id, flights, Ecto.UUID.generate(), time_zone)
 
   defp column(user_id, name) do
     rows("SELECT #{name} FROM flights WHERE user_id = $1 ORDER BY external_id", [user_id])
@@ -145,7 +145,7 @@ defmodule Dawarich.AirTrail.FlightsTest do
     )
 
     event_id = Ecto.UUID.generate()
-    assert Flights.store!(ScratchRepo, user_id, [flight()], event_id, @berlin) == :ok
+    assert Flights.store(ScratchRepo, user_id, [flight()], event_id, @berlin) == :ok
 
     assert column(user_id, "external_id") == [1]
 
@@ -163,15 +163,31 @@ defmodule Dawarich.AirTrail.FlightsTest do
            ]) == [["imports.airtrail_flights"]]
   end
 
+  test "departure epochs round down, so a flight just before midnight keeps its month", %{
+    user_id: user_id
+  } do
+    rows(
+      "INSERT INTO flights (user_id, external_id, departure_time, created_at, updated_at) VALUES ($1, 11, '2026-02-28 22:59:59.6', now(), now())",
+      [user_id]
+    )
+
+    store!(user_id, [])
+
+    assert rows("SELECT payload->'departure_epochs' FROM phoenix.rails_commands") == [
+             [[DateTime.to_unix(~U[2026-02-28 22:59:59Z])]]
+           ]
+  end
+
   test "rolls everything back when the transaction fails", %{user_id: user_id} do
     rows(
       "INSERT INTO flights (user_id, external_id, flight_number, created_at, updated_at) VALUES ($1, 2, 'KEPT', now(), now())",
       [user_id]
     )
 
-    assert_raise Postgrex.Error, ~r/not_null_violation|null value/, fn ->
-      store!(user_id, [flight(%{"id" => nil})])
-    end
+    event_id = Ecto.UUID.generate()
+
+    assert Flights.store(ScratchRepo, user_id, [flight(%{"id" => nil})], event_id, @berlin) ==
+             {:error, {:store_failed, :not_null_violation}}
 
     assert rows("SELECT external_id, flight_number FROM flights WHERE user_id = $1", [user_id]) ==
              [[2, "KEPT"]]

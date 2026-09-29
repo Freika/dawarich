@@ -2,6 +2,8 @@ defmodule Dawarich.AirTrail.ImportFlightsWorkerTest do
   use Dawarich.JobsCase
   use Oban.Testing, repo: Dawarich.ScratchRepo
 
+  import ExUnit.CaptureLog
+
   alias Dawarich.AirTrail.ImportFlightsWorker
   alias Dawarich.AirTrailStub
   alias Dawarich.Jobs.Processed
@@ -27,7 +29,8 @@ defmodule Dawarich.AirTrail.ImportFlightsWorkerTest do
   defp run(user_id, event_id \\ Ecto.UUID.generate()),
     do: perform_job(ImportFlightsWorker, %{"event_id" => event_id, "user_id" => user_id})
 
-  defp fixture_body, do: Jason.encode!(%{"success" => true, "flights" => [AirTrailStub.flight()]})
+  defp fixture_body(flight \\ AirTrailStub.flight()),
+    do: Jason.encode!(%{"success" => true, "flights" => [flight]})
 
   test "syncs a configured user and returns :ok" do
     user_id = configured!(AirTrailStub.start(self(), 200, fixture_body()))
@@ -80,12 +83,46 @@ defmodule Dawarich.AirTrail.ImportFlightsWorkerTest do
            ]
   end
 
-  test "the job's error term carries no URL or key" do
+  test "neither the job's error nor the notification carries the URL or key" do
     url = AirTrailStub.start(self(), 500, "{}")
     user_id = configured!(url, %{"airtrail_api_key" => "secret-key"})
 
-    assert {:error, reason} = run(user_id)
-    assert reason === :airtrail_sync_failed
+    result = inspect(run(user_id))
+    [[content]] = rows("SELECT content FROM notifications WHERE user_id = $1", [user_id])
+
+    for text <- [result, content], secret <- ["secret-key", url], do: refute(text =~ secret)
+  end
+
+  test "reads offset-less times in the IANA zone of a Rails TIME_ZONE alias" do
+    saved = System.get_env("TIME_ZONE")
+
+    on_exit(fn ->
+      if saved, do: System.put_env("TIME_ZONE", saved), else: System.delete_env("TIME_ZONE")
+    end)
+
+    System.put_env("TIME_ZONE", "Berlin")
+    flight = AirTrailStub.flight(%{"departure" => "2026-04-20T12:00:00"})
+    user_id = configured!(AirTrailStub.start(self(), 200, fixture_body(flight)))
+
+    assert run(user_id) == :ok
+    [[departure]] = rows("SELECT departure_time FROM flights WHERE user_id = $1", [user_id])
+    assert NaiveDateTime.truncate(departure, :second) == ~N[2026-04-20 10:00:00]
+  end
+
+  test "a flight the store rejects fails with a fixed reason and logs no flight data" do
+    flight = AirTrailStub.flight(%{"id" => nil})
+    user_id = configured!(AirTrailStub.start(self(), 200, fixture_body(flight)))
+    Oban.Telemetry.attach_default_logger(level: :warning, events: [:job])
+    on_exit(fn -> Oban.Telemetry.detach_default_logger() end)
+
+    log =
+      capture_log(fn ->
+        assert run(user_id) == {:error, {:store_failed, :not_null_violation}}
+      end)
+
+    assert log =~ "store_failed"
+    for leak <- ["Failing row", "52.351", "EDDB", "Air France"], do: refute(log =~ leak)
+    assert rows("SELECT count(*) FROM notifications") == [[0]]
   end
 
   test "decodes only the exact v1 payload" do
