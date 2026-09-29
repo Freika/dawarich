@@ -9,10 +9,11 @@ defmodule Dawarich.AirTrail.Client do
       {String.to_charlist(target),
        [
          {~c"authorization", String.to_charlist("Bearer " <> api_key)},
-         {~c"accept", ~c"application/json"}
+         {~c"accept", ~c"application/json"},
+         {~c"connection", ~c"close"}
        ]}
 
-    options = [connect_timeout: 15_000, timeout: 15_000, ssl: ssl(target, skip)]
+    options = [connect_timeout: 15_000, timeout: 15_000, ssl: ssl(skip)]
 
     case :httpc.request(:get, request, options, body_format: :binary) do
       {:ok, {{_, status, _}, _headers, body}} when status in 200..299 -> decode(body)
@@ -44,12 +45,10 @@ defmodule Dawarich.AirTrail.Client do
 
   defp flights_list(_other), do: {:error, "AirTrail returned an unsuccessful response"}
 
-  defp ssl(_target, true), do: [verify: :verify_none]
-  defp ssl(target, false), do: Dawarich.Http.ssl_options(target)
+  defp ssl(true), do: [verify: :verify_none]
+  defp ssl(false), do: Dawarich.Http.ssl_options()
 
-  defp connection_message(reason) when reason in [:timeout, :connect_timeout],
-    do: "AirTrail request timed out"
-
+  defp connection_message(:timeout), do: "AirTrail request timed out"
   defp connection_message({:failed_connect, _details}), do: "Could not connect to AirTrail"
   defp connection_message(_reason), do: "AirTrail request failed"
 end
