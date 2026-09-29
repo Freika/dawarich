@@ -4,6 +4,8 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
   import ExUnit.CaptureLog
   require Logger
 
+  alias DawarichWeb.Api.PlanController
+
   @moduletag :capture_log
 
   @key "phoenix-a4-plan-key"
@@ -244,5 +246,42 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
       end)
 
     assert log =~ "[api] /api/v1/plan handed to Rails: enum value 7"
+  end
+
+  test "a DB error raised while gathering fields hands off to Rails instead of crashing", %{
+    upstream: upstream
+  } do
+    api_user = %{
+      plan: 1,
+      status: 1,
+      subscription_source: 0,
+      active_until: ~N[2099-01-01 00:00:00],
+      timezone: nil
+    }
+
+    conn =
+      Plug.Test.conn(:get, "/api/v1/plan")
+      |> Plug.Conn.assign(:api_user, api_user)
+      |> Plug.Conn.assign(:api_tag, "api")
+      |> Plug.Conn.put_private(:dawarich_raw_body, "")
+
+    Ecto.Adapters.SQL.Sandbox.checkin(Repo)
+
+    puma =
+      Task.async(fn ->
+        socket = accept(upstream)
+        {head, _rest} = read_head(socket)
+        reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
+        request_line(head)
+      end)
+
+    log =
+      with_info_log(fn ->
+        result = PlanController.call(conn, :show)
+        assert Task.await(puma) == "GET /api/v1/plan HTTP/1.1"
+        assert result.halted
+      end)
+
+    assert log =~ "[api] /api/v1/plan handed to Rails: DBConnection.OwnershipError"
   end
 end

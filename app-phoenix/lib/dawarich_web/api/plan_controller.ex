@@ -26,30 +26,30 @@ defmodule DawarichWeb.Api.PlanController do
 
   @impl true
   def call(conn, :show) do
-    user = conn.assigns.api_user
+    case fields(conn.assigns.api_user) do
+      {:ok, body} -> Respond.json(conn, 200, body)
+      {:replay, reason} -> Body.replay(conn, reason)
+    end
+  end
 
+  defp fields(user) do
     with {:ok, plan} <- label(@plans, user.plan),
          {:ok, status} <- label(@statuses, user.status),
          {:ok, source} <- label(@sources, user.subscription_source),
          {:ok, until} <- RailsTime.iso8601(user.active_until, user.timezone) do
-      Respond.json(
-        conn,
-        200,
-        {:object,
-         [
-           {"plan", plan},
-           {"effective_plan", plan},
-           {"status", status},
-           {"subscription_source", source},
-           {"active_until", until},
-           {"features", @features}
-         ]}
-      )
-    else
-      {:replay, reason} -> Body.replay(conn, reason)
+      {:ok,
+       {:object,
+        [
+          {"plan", plan},
+          {"effective_plan", plan},
+          {"status", status},
+          {"subscription_source", source},
+          {"active_until", until},
+          {"features", @features}
+        ]}}
     end
   rescue
-    error -> Body.replay(conn, inspect(error.__struct__))
+    error -> {:replay, inspect(error.__struct__)}
   end
 
   defp label(labels, value) do

@@ -37,11 +37,9 @@ defmodule DawarichWeb.Api.Respond do
 
   defp log(conn, status) do
     Logger.info(
-      "[#{tag(conn)}] #{conn.method} #{conn.request_path} #{status} #{elapsed_ms(conn)}ms request_id=#{conn.assigns.api_request_id}"
+      "[#{conn.assigns.api_tag}] #{conn.method} #{conn.request_path} #{status} #{elapsed_ms(conn)}ms request_id=#{conn.assigns.api_request_id}"
     )
   end
-
-  defp tag(conn), do: Map.get(conn.assigns, :api_tag, "ingest")
 
   defp elapsed_ms(conn),
     do:

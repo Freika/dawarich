@@ -22,6 +22,7 @@ defmodule DawarichWeb.Api.AuthTest do
     conn(:post, "/api/v1/points")
     |> Map.update!(:req_headers, &(&1 ++ headers))
     |> assign(:api_params, params)
+    |> assign(:api_tag, "ingest")
     |> put_private(:dawarich_raw_body, "")
     |> Auth.call([])
   end
@@ -299,6 +300,7 @@ defmodule DawarichWeb.Api.AuthTest do
     conn(:get, "/api/v1/plan")
     |> Map.update!(:req_headers, &(&1 ++ headers))
     |> assign(:api_params, params)
+    |> assign(:api_tag, "api")
     |> put_private(:dawarich_raw_body, "")
     |> Auth.call(reject_pending: false, require_active: false)
   end
@@ -384,6 +386,7 @@ defmodule DawarichWeb.Api.AuthTest do
       conn(:get, "/api/v1/plan")
       |> Map.update!(:req_headers, &(&1 ++ headers))
       |> assign(:api_params, params)
+      |> assign(:api_tag, "api")
       |> put_private(:dawarich_raw_body, "")
       |> assign(:api_started, System.monotonic_time())
       |> fetch_cookies()
