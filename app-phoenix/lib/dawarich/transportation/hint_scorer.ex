@@ -41,10 +41,10 @@ defmodule Dawarich.Transportation.HintScorer do
 
   def call(motion_data) when is_map(motion_data) and map_size(motion_data) > 0 do
     hints = google_hints(motion_data)
-    if hints == %{}, do: overland_hints(motion_data), else: hints
+    if hints == [], do: overland_hints(motion_data), else: hints
   end
 
-  def call(_motion_data), do: %{}
+  def call(_motion_data), do: []
 
   defp google_hints(data) do
     activity_record = data["activityRecord"]
@@ -73,11 +73,11 @@ defmodule Dawarich.Transportation.HintScorer do
 
     if is_binary(type) do
       case Map.get(@google_mode_map, String.upcase(type)) do
-        nil -> %{}
-        mode -> expand_generic_vehicle(%{mode => boost(@default_probability)}, type)
+        nil -> []
+        mode -> expand_generic_vehicle([{mode, boost(@default_probability)}], type)
       end
     else
-      %{}
+      []
     end
   end
 
@@ -85,7 +85,7 @@ defmodule Dawarich.Transportation.HintScorer do
     activities
     |> List.wrap()
     |> Enum.filter(&is_map/1)
-    |> Enum.reduce(%{}, fn activity, acc ->
+    |> Enum.reduce([], fn activity, acc ->
       type = activity["activityType"] || activity["type"]
       mode = type && Map.get(@google_mode_map, type |> to_string() |> String.upcase())
 
@@ -97,8 +97,7 @@ defmodule Dawarich.Transportation.HintScorer do
           probability =
             to_float(activity["probability"] || activity["confidence"] || @default_probability)
 
-          value = boost(probability)
-          Map.update(acc, mode, value, &max(&1, value))
+          put_max(acc, mode, boost(probability))
       end
     end)
     |> strongest_only()
@@ -110,10 +109,10 @@ defmodule Dawarich.Transportation.HintScorer do
         raw_entries = Enum.map(motion, &(&1 |> to_string() |> String.downcase()))
 
         hints =
-          Enum.reduce(raw_entries, %{}, fn entry, acc ->
+          Enum.reduce(raw_entries, [], fn entry, acc ->
             case Map.get(@overland_mode_map, entry) do
               nil -> acc
-              mode -> Map.put(acc, mode, overland_boost())
+              mode -> put(acc, mode, overland_boost())
             end
           end)
 
@@ -125,21 +124,28 @@ defmodule Dawarich.Transportation.HintScorer do
         expand_generic_vehicle(strongest_only(hints), generic)
 
       _ ->
-        %{}
+        []
     end
   end
 
   defp overland_boost, do: :math.log(9)
 
-  defp strongest_only(hints) when map_size(hints) <= 1, do: hints
+  defp strongest_only(hints) when length(hints) <= 1, do: hints
 
   defp strongest_only(hints) do
-    {mode, value} = Enum.max_by(hints, fn {_mode, v} -> v end)
-    %{mode => value}
+    {mode, value} =
+      Enum.reduce(hints, nil, fn {mode, value}, best ->
+        case best do
+          nil -> {mode, value}
+          {_best_mode, best_value} -> if value > best_value, do: {mode, value}, else: best
+        end
+      end)
+
+    [{mode, value}]
   end
 
   defp expand_generic_vehicle(hints, source_type) do
-    driving_boost = Map.get(hints, "driving")
+    driving_boost = get_value(hints, "driving")
 
     if is_nil(driving_boost) or not generic_vehicle_source?(source_type) do
       hints
@@ -147,9 +153,33 @@ defmodule Dawarich.Transportation.HintScorer do
       candidate = driving_boost * @train_share_of_vehicle_hint
 
       new_value =
-        if existing = Map.get(hints, "train"), do: max(existing, candidate), else: candidate
+        case get_value(hints, "train") do
+          nil -> candidate
+          existing -> max(existing, candidate)
+        end
 
-      Map.put(hints, "train", new_value)
+      put(hints, "train", new_value)
+    end
+  end
+
+  defp get_value(list, mode) do
+    case List.keyfind(list, mode, 0) do
+      {^mode, value} -> value
+      nil -> nil
+    end
+  end
+
+  defp put(list, mode, value) do
+    case List.keyfind(list, mode, 0) do
+      {^mode, _} -> List.keyreplace(list, mode, 0, {mode, value})
+      nil -> list ++ [{mode, value}]
+    end
+  end
+
+  defp put_max(list, mode, value) do
+    case List.keyfind(list, mode, 0) do
+      {^mode, existing} -> List.keyreplace(list, mode, 0, {mode, max(existing, value)})
+      nil -> list ++ [{mode, value}]
     end
   end
 

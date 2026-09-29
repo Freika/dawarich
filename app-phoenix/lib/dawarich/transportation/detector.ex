@@ -18,7 +18,12 @@ defmodule Dawarich.Transportation.Detector do
   @all_modes ~w(unknown stationary walking running cycling driving bus train flying boat motorcycle)
 
   def call(repo, track, opts \\ []) do
-    enabled_modes = Keyword.get(opts, :enabled_modes) || @all_modes
+    enabled_modes =
+      case Keyword.get(opts, :enabled_modes) do
+        modes when modes in [nil, []] -> @all_modes
+        modes -> modes
+      end
+
     preserved = Keyword.get(opts, :preserved, [])
     decode_fn = Keyword.get(opts, :decode_fn, &Decoder.call/2)
 

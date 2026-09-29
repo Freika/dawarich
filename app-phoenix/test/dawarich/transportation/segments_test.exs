@@ -43,6 +43,25 @@ defmodule Dawarich.Transportation.SegmentsTest do
     assert corrected.distance == 400
   end
 
+  test "clear_inference deletes a NULL-source auto segment but keeps corrected and outranking-source rows" do
+    %{expected: expected} = TracksFixtures.load!(ScratchRepo, "transport_reclassify")
+    track_id = List.first(expected["tracks"])["id"]
+    settings = user_settings(track_id)
+
+    null_source_id = insert_raw_segment(track_id, 5, 100, 200, nil, nil)
+    semantic_id = insert_raw_segment(track_id, 3, 300, 400, "google_semantic_history", nil)
+
+    {:ok, _mode} =
+      ScratchRepo.transaction(fn ->
+        Segments.reclassify!(ScratchRepo, track_id, settings, fallback: false)
+      end)
+
+    remaining_ids = load_segment_ids(track_id)
+    refute null_source_id in remaining_ids
+    assert semantic_id in remaining_ids
+    assert Enum.any?(load_segments(track_id), &(&1.corrected_at == 1_796_104_800))
+  end
+
   test "anchor_now anchors a legacy index-only correction" do
     TracksFixtures.load!(ScratchRepo, "transport_reclassify")
 
@@ -95,13 +114,58 @@ defmodule Dawarich.Transportation.SegmentsTest do
     assert {:ok, :ok} = result
   end
 
+  test "enabled_modes follows Ruby's Array(raw) semantics" do
+    assert Segments.enabled_modes(%{"enabled_transportation_modes" => "walking"}) == ["walking"]
+
+    assert Segments.enabled_modes(%{"enabled_transportation_modes" => ["walking", "driving"]}) ==
+             ["walking", "driving"]
+
+    assert Segments.enabled_modes(%{}) == Segments.mode_names()
+
+    assert Segments.enabled_modes(%{"enabled_transportation_modes" => nil}) ==
+             Segments.mode_names()
+
+    assert Segments.enabled_modes(%{"enabled_transportation_modes" => []}) ==
+             Segments.mode_names()
+
+    assert Segments.enabled_modes(%{"enabled_transportation_modes" => ["bogus"]}) ==
+             Segments.mode_names()
+
+    refute_raise(fn ->
+      Segments.enabled_modes(%{"enabled_transportation_modes" => [%{"a" => 1}, "walking"]})
+    end)
+
+    assert Segments.enabled_modes(%{"enabled_transportation_modes" => [%{"a" => 1}, "walking"]}) ==
+             ["walking"]
+  end
+
+  defp refute_raise(fun) do
+    fun.()
+  rescue
+    error -> flunk("expected no error, got #{inspect(error)}")
+  end
+
   test "pick_dominant_mode keeps first-seen order on ties" do
-    segments = [
+    driving_train = [
       %{transportation_mode: "driving", distance: 5000, duration: 600},
       %{transportation_mode: "train", distance: 5000, duration: 600}
     ]
 
-    assert Segments.pick_dominant_mode(segments) == "driving"
+    assert Segments.pick_dominant_mode(driving_train) == "driving"
+
+    train_driving = [
+      %{transportation_mode: "train", distance: 5000, duration: 600},
+      %{transportation_mode: "driving", distance: 5000, duration: 600}
+    ]
+
+    assert Segments.pick_dominant_mode(train_driving) == "train"
+
+    unknown_stationary = [
+      %{transportation_mode: "unknown", distance: 0, duration: 600},
+      %{transportation_mode: "stationary", distance: 0, duration: 600}
+    ]
+
+    assert Segments.pick_dominant_mode(unknown_stationary) == "unknown"
   end
 
   defp insert_user_and_track(base_ts) do
@@ -167,6 +231,26 @@ defmodule Dawarich.Transportation.SegmentsTest do
       ).rows
 
     id
+  end
+
+  defp insert_raw_segment(track_id, mode_int, start_at, end_at, source, corrected_at) do
+    [[id]] =
+      ScratchRepo.query!(
+        "INSERT INTO track_segments (track_id, transportation_mode, start_at, end_at, source, " <>
+          "corrected_at, created_at, updated_at) VALUES ($1, $2, to_timestamp($3), to_timestamp($4), " <>
+          "$5, to_timestamp($6), now(), now()) RETURNING id",
+        [track_id, mode_int, start_at, end_at, source, corrected_at],
+        log: false
+      ).rows
+
+    id
+  end
+
+  defp load_segment_ids(track_id) do
+    ScratchRepo.query!("SELECT id FROM track_segments WHERE track_id = $1", [track_id],
+      log: false
+    ).rows
+    |> Enum.map(&List.first/1)
   end
 
   defp load_track(track_id) do

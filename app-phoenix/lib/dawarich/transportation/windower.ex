@@ -152,13 +152,16 @@ defmodule Dawarich.Transportation.Windower do
     n = length(rows)
 
     rows
-    |> Enum.reduce(%{}, fn row, acc ->
+    |> Enum.reduce([], fn row, acc ->
       row.motion_data
       |> HintScorer.call()
       |> Enum.reduce(acc, fn {mode, value}, acc2 ->
-        Map.update(acc2, mode, [value], &[value | &1])
+        case List.keyfind(acc2, mode, 0) do
+          {^mode, values} -> List.keyreplace(acc2, mode, 0, {mode, values ++ [value]})
+          nil -> acc2 ++ [{mode, [value]}]
+        end
       end)
     end)
-    |> Map.new(fn {mode, values} -> {mode, RubyFloat.sum(values) / n} end)
+    |> Enum.map(fn {mode, values} -> {mode, RubyFloat.sum(values) / n} end)
   end
 end

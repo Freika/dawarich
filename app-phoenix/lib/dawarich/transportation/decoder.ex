@@ -41,7 +41,7 @@ defmodule Dawarich.Transportation.Decoder do
 
   defp decode_chain(chain, enabled) do
     emissions = Enum.map(chain, &Emissions.log_likelihoods(&1, enabled))
-    modes = emissions |> Enum.flat_map(&Map.keys/1) |> Enum.uniq()
+    modes = emissions |> Enum.flat_map(&emission_modes/1) |> Enum.uniq()
 
     if modes == [] do
       Enum.map(chain, fn _ -> %{mode: "unknown", posterior: 0.0} end)
@@ -57,6 +57,8 @@ defmodule Dawarich.Transportation.Decoder do
       end)
     end
   end
+
+  defp emission_modes(emission), do: Enum.map(emission, fn {mode, _score} -> mode end)
 
   defp viterbi(emissions, modes) do
     emissions_tuple = List.to_tuple(emissions)
@@ -97,9 +99,9 @@ defmodule Dawarich.Transportation.Decoder do
     for i <- 0..(n - 1)//1 do
       fwd = elem(forward, i)
       bwd = elem(backward, i)
-      joint = Map.new(modes, fn m -> {m, fwd[m] + bwd[m]} end)
-      total = logsumexp(Map.values(joint))
-      Map.new(joint, fn {m, v} -> {m, :math.exp(v - total)} end)
+      ordered_values = Enum.map(modes, fn m -> fwd[m] + bwd[m] end)
+      total = logsumexp(ordered_values)
+      Map.new(modes, fn m -> {m, :math.exp(fwd[m] + bwd[m] - total)} end)
     end
   end
 
@@ -141,7 +143,12 @@ defmodule Dawarich.Transportation.Decoder do
     |> List.to_tuple()
   end
 
-  defp emission_score(emission, mode), do: Map.get(emission, mode, -1.0e4)
+  defp emission_score(emission, mode) do
+    case List.keyfind(emission, mode, 0) do
+      {^mode, score} -> score
+      nil -> -1.0e4
+    end
+  end
 
   defp logsumexp(values) do
     max = Enum.max(values)

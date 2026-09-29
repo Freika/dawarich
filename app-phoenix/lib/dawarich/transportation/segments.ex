@@ -271,7 +271,7 @@ defmodule Dawarich.Transportation.Segments do
     end)
   end
 
-  defp enabled_modes(settings) do
+  def enabled_modes(settings) do
     raw = normalize_raw(settings["enabled_transportation_modes"])
 
     case raw do
@@ -285,6 +285,11 @@ defmodule Dawarich.Transportation.Segments do
   end
 
   defp normalize_raw(nil), do: []
-  defp normalize_raw(list) when is_list(list), do: Enum.map(list, &to_string/1)
-  defp normalize_raw(_), do: []
+  defp normalize_raw(list) when is_list(list), do: Enum.map(list, &safe_to_string/1)
+  defp normalize_raw(map) when is_map(map), do: Enum.map(map, &safe_to_string/1)
+  defp normalize_raw(other), do: [safe_to_string(other)]
+
+  defp safe_to_string(v) when is_binary(v), do: v
+  defp safe_to_string(v) when is_atom(v) or is_number(v), do: to_string(v)
+  defp safe_to_string(v), do: inspect(v)
 end

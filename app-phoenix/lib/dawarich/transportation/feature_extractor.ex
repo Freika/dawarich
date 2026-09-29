@@ -13,7 +13,9 @@ defmodule Dawarich.Transportation.FeatureExtractor do
   ORDER BY p.timestamp, p.id
   """
 
-  @float_regex ~r/^[+-]?(?:\d+(?:_\d+)*)(?:\.\d+(?:_\d+)*)?(?:[eE][+-]?\d+(?:_\d+)*)?$/
+  @digits "\\d(?:_?\\d)*"
+  @decimal_regex ~r/^[+-]?(?:#{@digits}(?:\.(?:#{@digits})?)?|\.#{@digits})(?:[eE][+-]?#{@digits})?$/
+  @hex_regex ~r/^[+-]?0[xX][0-9a-fA-F](?:_?[0-9a-fA-F])*$/
 
   def rows(repo, track_id) do
     repo.query!(@sql, [track_id], log: false).rows
@@ -56,41 +58,64 @@ defmodule Dawarich.Transportation.FeatureExtractor do
   def parse_velocity(raw) when is_binary(raw) do
     trimmed = String.trim(raw)
 
-    if Regex.match?(@float_regex, trimmed) do
-      trimmed
-      |> String.replace("_", "")
-      |> normalize_float_literal()
-      |> Float.parse()
-      |> case do
-        {value, ""} -> value
-        _ -> nil
-      end
-    else
-      nil
+    cond do
+      Regex.match?(@hex_regex, trimmed) -> parse_hex(trimmed)
+      Regex.match?(@decimal_regex, trimmed) -> parse_decimal(trimmed)
+      true -> nil
     end
   end
 
-  defp normalize_float_literal(s) do
-    if String.contains?(s, ".") do
-      s
-    else
-      case String.split(s, ~r/[eE]/, parts: 2) do
-        [mantissa, exponent] -> mantissa <> ".0e" <> exponent
-        [mantissa] -> mantissa <> ".0"
+  defp parse_hex(str) do
+    {sign, digits} =
+      case str do
+        "+" <> rest -> {1, rest}
+        "-" <> rest -> {-1, rest}
+        rest -> {1, rest}
       end
+
+    hex_digits = digits |> String.slice(2..-1//1) |> String.replace("_", "")
+
+    case Integer.parse(hex_digits, 16) do
+      {value, ""} -> sign * value * 1.0
+      _ -> nil
+    end
+  end
+
+  defp parse_decimal(str) do
+    {sign, rest} =
+      case str do
+        "+" <> tail -> {"", tail}
+        "-" <> tail -> {"-", tail}
+        tail -> {"", tail}
+      end
+
+    rest = String.replace(rest, "_", "")
+
+    {mantissa, exponent} =
+      case String.split(rest, ~r/[eE]/, parts: 2) do
+        [m, e] -> {m, e}
+        [m] -> {m, nil}
+      end
+
+    mantissa = normalize_mantissa(mantissa)
+    normalized = sign <> mantissa <> if(exponent, do: "e" <> exponent, else: "")
+
+    case Float.parse(normalized) do
+      {value, ""} -> value
+      _ -> nil
+    end
+  end
+
+  defp normalize_mantissa(mantissa) do
+    cond do
+      String.starts_with?(mantissa, ".") -> "0" <> mantissa
+      String.ends_with?(mantissa, ".") -> mantissa <> "0"
+      not String.contains?(mantissa, ".") -> mantissa <> ".0"
+      true -> mantissa
     end
   end
 
   def parse_motion_data(nil), do: %{}
   def parse_motion_data(""), do: %{}
-
-  def parse_motion_data(raw) when is_binary(raw) do
-    case Jason.decode(raw) do
-      {:ok, value} -> value
-      {:error, _} -> %{}
-    end
-  end
-
-  def parse_motion_data(raw) when is_map(raw), do: raw
-  def parse_motion_data(_raw), do: %{}
+  def parse_motion_data(raw), do: raw
 end

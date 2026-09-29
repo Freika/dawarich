@@ -51,6 +51,22 @@ defmodule Dawarich.Transportation.DetectorTest do
     assert [%{mode: "unknown", source: "default"}] = segments
   end
 
+  test "falls back to all modes when enabled_modes is empty (Ruby's .presence)" do
+    %{expected: expected} = TracksFixtures.load!(ScratchRepo, "transport_stages")
+    track = track_map(expected["walk_drive_walk"]["track"])
+    test_pid = self()
+
+    spy_decoder = fn windows, enabled ->
+      send(test_pid, {:enabled, enabled})
+      Dawarich.Transportation.Decoder.call(windows, enabled)
+    end
+
+    Detector.call(ScratchRepo, track, enabled_modes: [], decode_fn: spy_decoder)
+
+    assert_received {:enabled, enabled}
+    assert enabled == @all_modes
+  end
+
   defp track_map(track) do
     %{
       id: track["id"],

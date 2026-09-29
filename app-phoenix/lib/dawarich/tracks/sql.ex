@@ -14,7 +14,8 @@ defmodule Dawarich.Tracks.Sql do
 
   def outranking(segment),
     do:
-      "(#{segment}.corrected_at IS NOT NULL OR #{segment}.source IN ('google_phone_takeout', 'google_semantic_history', 'polarsteps'))"
+      "(#{segment}.corrected_at IS NOT NULL OR " <>
+        "COALESCE(#{segment}.source IN ('google_phone_takeout', 'google_semantic_history', 'polarsteps'), false))"
 
   def kept(track),
     do:

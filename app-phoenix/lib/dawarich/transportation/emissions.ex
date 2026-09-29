@@ -99,13 +99,14 @@ defmodule Dawarich.Transportation.Emissions do
   def log_likelihoods(window, enabled) do
     window
     |> candidate_modes(enabled)
-    |> Map.new(fn mode -> {mode, score_mode(mode, window)} end)
+    |> Enum.map(fn mode -> {mode, score_mode(mode, window)} end)
   end
 
   defp candidate_modes(window, enabled) do
     inferred = intersect(@inferred_modes, enabled)
     hint_only_enabled = intersect(@hint_only_modes, enabled)
-    hinted = intersect(Map.keys(window.hints), hint_only_enabled)
+    hint_keys = Enum.map(window.hints, fn {mode, _value} -> mode end)
+    hinted = intersect(hint_keys, hint_only_enabled)
 
     Enum.uniq(inferred ++ hinted)
   end
@@ -122,7 +123,13 @@ defmodule Dawarich.Transportation.Emissions do
         Enum.map(profile, fn {feature, spec} -> feature_score(spec, window, feature) end)
       )
 
-    total + Map.get(@mode_priors, mode, 0.0) + Map.get(window.hints, mode, 0.0)
+    hint_value =
+      case List.keyfind(window.hints, mode, 0) do
+        {^mode, value} -> value
+        nil -> 0.0
+      end
+
+    total + Map.get(@mode_priors, mode, 0.0) + hint_value
   end
 
   defp feature_score(nil, _window, _feature), do: 0.0

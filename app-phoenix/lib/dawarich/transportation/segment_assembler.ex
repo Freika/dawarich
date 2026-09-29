@@ -45,7 +45,7 @@ defmodule Dawarich.Transportation.SegmentAssembler do
         end_ts: interval_end,
         mode: decoded_entry.mode,
         posterior: decoded_entry.posterior,
-        hinted: window.hints != %{},
+        hinted: window.hints != [],
         gap_before: window.gap_before
       }
     end)
