@@ -58,18 +58,28 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
     membership = user.family_membership
     creator = membership&.family&.creator
     { user: { id: user.id, email: user.email, theme: user.theme, settings: user.settings, admin: user.admin,
-              status: User.statuses[user.status], plan: User.plans[user.plan], active_until: user.active_until&.utc&.iso8601(6),
+              status: User.statuses[user.status], plan: User.plans[user.plan],
+              active_until: user.active_until&.utc&.iso8601(6),
               subscription_source: User.subscription_sources[user.subscription_source],
               changelog_consent: User.changelog_consents[user.changelog_consent] },
-      notifications: user.notifications.order(:id).map { |n| { id: n.id, title: n.title, kind: Notification.kinds[n.kind], read: n.read_at.present?, created_at: n.created_at.utc.iso8601(6) } },
+      notifications: user.notifications.order(:id).map do |n|
+        { id: n.id, title: n.title, kind: Notification.kinds[n.kind], read: n.read_at.present?,
+          created_at: n.created_at.utc.iso8601(6) }
+      end,
       family: membership && { id: membership.family_id, role: Family::Membership.roles[membership.role],
                               access_until: membership.family.access_until&.utc&.iso8601(6),
-                              creator: creator && { id: creator.id, email: creator.email, plan: User.plans[creator.plan], active_until: creator.active_until&.utc&.iso8601(6) } } }.merge(extra)
+                              creator: creator && creator_fixture(creator) } }.merge(extra)
+  end
+
+  def creator_fixture(creator)
+    { id: creator.id, email: creator.email, plan: User.plans[creator.plan],
+      active_until: creator.active_until&.utc&.iso8601(6) }
   end
 
   def navbar_user(email, **columns)
     user = create(:user, id: Zlib.crc32(email), email:)
-    user.update_columns({ changelog_consent: User.changelog_consents[:declined], settings: user.settings.merge('onboarding_completed' => true) }.merge(columns))
+    user.update_columns({ changelog_consent: User.changelog_consents[:declined],
+settings: user.settings.merge('onboarding_completed' => true) }.merge(columns))
     user
   end
 
@@ -144,11 +154,17 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
       allow_any_instance_of(User).to receive(:supporter?).and_call_original
 
       reader = navbar_user('navbar-reader@dawarich.test', changelog_consent: User.changelog_consents[:granted])
-      1.upto(13) { |n| reader.notifications.create!(id: 2_000_000 + n, title: "Navbar #{n}", content: 'x', kind: n % 3, read_at: n == 13 ? now : nil, created_at: now - n.minutes) }
+      1.upto(13) do |n|
+        reader.notifications.create!(id: 2_000_000 + n, title: "Navbar #{n}", content: 'x', kind: n % 3,
+                                     read_at: n == 13 ? now : nil, created_at: now - n.minutes)
+      end
       shot('navbar_unread_12_en', reader, self_hosted: true)
 
       flood = navbar_user('navbar-flood@dawarich.test', settings: {})
-      Notification.insert_all(Array.new(120) { |i| { id: 3_000_000 + i, user_id: flood.id, title: "Flood #{i}", content: 'x', kind: 0, created_at: now - i.minutes, updated_at: now } })
+      Notification.insert_all(Array.new(120) do |i|
+        { id: 3_000_000 + i, user_id: flood.id, title: "Flood #{i}", content: 'x', kind: 0, created_at: now - i.minutes,
+       updated_at: now }
+      end)
       shot('navbar_unread_120_onboarding_en', flood, self_hosted: true)
 
       owner = navbar_user('navbar-owner@dawarich.test')
@@ -156,7 +172,9 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
       Family::Membership.create!(family:, user: owner, role: :owner)
       member = navbar_user('navbar-member@dawarich.test')
       Family::Membership.create!(family:, user: member, role: :member)
-      member.update_columns(settings: member.settings.merge('locale' => 'de', 'family' => { 'location_sharing' => { 'enabled' => true, 'expires_at' => (now + 1.day).iso8601 } }))
+      member.update_columns(settings: member.settings.merge('locale' => 'de',
+                                                            'family' => { 'location_sharing' => { 'enabled' => true,
+'expires_at' => (now + 1.day).iso8601 } }))
       shot('navbar_family_sharing_de', member, self_hosted: true)
       shot('navbar_family_owner_en', owner, self_hosted: true)
       shot('navbar_active_stats_en', navbar_user('navbar-stats@dawarich.test'), '/stats', self_hosted: true)
@@ -165,13 +183,17 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
       stub_const('SELF_HOSTED', false)
       stub_const('MANAGER_URL', 'https://manager.dawarich.test')
       cloud = { self_hosted: false, manager_url: 'https://manager.dawarich.test' }
-      shot('navbar_cloud_trial_en', navbar_user('navbar-trial@dawarich.test', status: 2, active_until: now + 5.days), **cloud)
+      shot('navbar_cloud_trial_en', navbar_user('navbar-trial@dawarich.test', status: 2, active_until: now + 5.days),
+           **cloud)
       trial_de = navbar_user('navbar-trial-de@dawarich.test', status: 2, active_until: now + 2.days)
       trial_de.update_columns(settings: trial_de.settings.merge('locale' => 'de'))
       shot('navbar_cloud_trial_de', trial_de, **cloud)
-      shot('navbar_cloud_pending_en', navbar_user('navbar-pending@dawarich.test', status: 3, active_until: nil), **cloud)
-      shot('navbar_cloud_expired_en', navbar_user('navbar-expired@dawarich.test', status: 1, active_until: now - 3.days), **cloud)
-      shot('navbar_cloud_family_plan_en', navbar_user('navbar-family-plan@dawarich.test', status: 1, plan: 2, active_until: now + 300.days), **cloud)
+      shot('navbar_cloud_pending_en', navbar_user('navbar-pending@dawarich.test', status: 3, active_until: nil),
+           **cloud)
+      shot('navbar_cloud_expired_en',
+           navbar_user('navbar-expired@dawarich.test', status: 1, active_until: now - 3.days), **cloud)
+      shot('navbar_cloud_family_plan_en',
+           navbar_user('navbar-family-plan@dawarich.test', status: 1, plan: 2, active_until: now + 300.days), **cloud)
       lapsed_owner = navbar_user('navbar-lapsed-owner@dawarich.test', status: 1, plan: 1, active_until: now + 300.days)
       lapsed_family = Family.create!(id: 1_000_002, name: 'Lapsed', creator: lapsed_owner)
       Family::Membership.create!(family: lapsed_family, user: lapsed_owner, role: :owner)

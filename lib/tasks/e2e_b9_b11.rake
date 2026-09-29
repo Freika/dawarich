@@ -53,11 +53,12 @@ namespace :e2e do
         account.password_confirmation = 'safepassword12'
         account.admin = false
       end
-      user.update_columns(theme: 'dark', changelog_consent: nil, settings: (user.settings || {}).merge('onboarding_completed' => true))
+      user.update_columns(theme: 'dark', changelog_consent: nil,
+                          settings: (user.settings || {}).merge('onboarding_completed' => true))
       user.notifications.where('title LIKE ?', 'A5 navbar%').delete_all
       1.upto(12) do |number|
-        user.notifications.create!(title: format('A5 navbar %02d', number), content: "A5 navbar detail #{number}", kind: :info,
-                                   created_at: Time.current - number.minutes)
+        user.notifications.create!(title: format('A5 navbar %02d', number), content: "A5 navbar detail #{number}",
+                                   kind: :info, created_at: Time.current - number.minutes)
       end
     end
   end
