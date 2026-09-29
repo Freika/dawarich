@@ -3,6 +3,8 @@ defmodule DawarichWeb.Api.Respond do
 
   import Plug.Conn
 
+  require Logger
+
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.RailsHeaders
 
@@ -10,16 +12,29 @@ defmodule DawarichWeb.Api.Respond do
     body = term |> Ruby.json() |> IO.iodata_to_binary()
     conn = frame(conn, "application/json; charset=utf-8")
     conn = if conn.assigns.api_vary, do: put_resp_header(conn, "vary", "Accept"), else: conn
+    log(conn, status)
     conn |> cache(status, body) |> send_resp(status, body) |> halt()
   end
 
-  def head(conn, status),
+  def head(conn, status) do
+    conn = frame(conn, "text/html")
+    log(conn, status)
+    conn |> cache(status, "") |> send_resp(status, "") |> halt()
+  end
+
+  defp log(conn, status) do
+    Logger.info(
+      "[ingest] #{conn.method} #{conn.request_path} #{status} #{elapsed_ms(conn)}ms request_id=#{conn.assigns.api_request_id}"
+    )
+  end
+
+  defp elapsed_ms(conn),
     do:
-      conn
-      |> frame("text/html")
-      |> cache(status, "")
-      |> send_resp(status, "")
-      |> halt()
+      System.convert_time_unit(
+        System.monotonic_time() - conn.assigns.api_started,
+        :native,
+        :millisecond
+      )
 
   defp frame(conn, type) do
     elapsed =

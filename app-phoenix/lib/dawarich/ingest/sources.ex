@@ -74,6 +74,6 @@ defmodule Dawarich.Ingest.Sources do
   end
 
   defp element(nil), do: nil
-  defp element(value) when is_binary(value) or is_integer(value), do: value
+  defp element(value) when is_binary(value), do: value
   defp element(_value), do: Ruby.unsupported!("non-string array element")
 end

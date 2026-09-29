@@ -4,8 +4,22 @@ defmodule DawarichWeb.Api.BodyTest do
   import Plug.Conn
   import Plug.Test
   import Dawarich.Test.RawHTTP
+  import ExUnit.CaptureLog
+
+  require Logger
 
   alias DawarichWeb.Api.Body
+
+  defp with_info_log(fun) do
+    previous = Logger.level()
+    Logger.configure(level: :info)
+
+    try do
+      capture_log([level: :info], fun)
+    after
+      Logger.configure(level: previous)
+    end
+  end
 
   setup do
     upstream = listen()
@@ -118,6 +132,23 @@ defmodule DawarichWeb.Api.BodyTest do
 
     assert {{"POST /api/v1/points HTTP/1.1", ^body}, %{halted: true}} =
              forwarded(upstream, conn)
+  end
+
+  test "an unread proxy branch (oversized or other content type) logs a hand-off reason", %{
+    upstream: upstream
+  } do
+    oversized = :binary.copy("x", 2_097_153)
+
+    cases = [
+      {request("/api/v1/points", "application/json", oversized), "body larger than 2 MiB"},
+      {request("/api/v1/points", "multipart/form-data; boundary=X", "--X--"),
+       "content type multipart/form-data"}
+    ]
+
+    for {conn, expected} <- cases do
+      log = with_info_log(fn -> {_puma, _result} = forwarded(upstream, conn) end)
+      assert log =~ "[ingest] /api/v1/points handed to Rails: #{expected}", expected
+    end
   end
 
   test "form pairs after an ampersand space decode as Rack does" do

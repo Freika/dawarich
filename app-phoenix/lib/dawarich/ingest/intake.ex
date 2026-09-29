@@ -31,7 +31,6 @@ defmodule Dawarich.Ingest.Intake do
 
   def write(prepared, user_id, opts) do
     repo = Keyword.get(opts, :repo, Repo)
-    now = NaiveDateTime.utc_now()
     sleep = Keyword.get(opts, :sleep, &Process.sleep/1)
 
     {rows, _cache} =
@@ -39,7 +38,7 @@ defmodule Dawarich.Ingest.Intake do
       |> Enum.chunk_every(@slice)
       |> Enum.flat_map_reduce(%{}, fn chunk, cache ->
         retry(
-          fn -> commit!(repo, fn -> slice(repo, chunk, cache, user_id, now) end) end,
+          fn -> commit!(repo, fn -> slice(repo, chunk, cache, user_id) end) end,
           sleep,
           0
         )
@@ -73,7 +72,7 @@ defmodule Dawarich.Ingest.Intake do
     result
   end
 
-  defp slice(repo, chunk, cache, user_id, now) do
+  defp slice(repo, chunk, cache, user_id) do
     {values, cache} =
       if Sources.available?(repo),
         do: Enum.map_reduce(chunk, cache, &source(repo, &1, &2)),
@@ -82,7 +81,7 @@ defmodule Dawarich.Ingest.Intake do
     sorted =
       chunk |> Enum.zip(values) |> Enum.sort_by(fn {p, _} -> p.key end) |> Enum.map(&elem(&1, 1))
 
-    rows = upsert!(repo, sorted, now)
+    rows = upsert!(repo, sorted)
 
     RailsCommands.insert!(repo, "points.tile_epoch", %{
       "user_id" => user_id,
@@ -97,17 +96,17 @@ defmodule Dawarich.Ingest.Intake do
     {Map.put(values, :source_id, id), if(id, do: Map.put(cache, combo, id), else: cache)}
   end
 
-  defp upsert!(repo, rows, now) do
+  defp upsert!(repo, rows) do
     columns = rows |> hd() |> Map.keys() |> Enum.sort()
     all = columns ++ [:created_at, :updated_at]
-    width = length(all)
+    width = length(columns)
 
     values =
       Enum.map_join(Enum.with_index(rows), ", ", fn {_row, i} ->
         "(" <>
-          Enum.map_join(Enum.with_index(all), ", ", fn {c, j} ->
+          Enum.map_join(Enum.with_index(columns), ", ", fn {c, j} ->
             "$#{i * width + j + 1}#{Map.get(@typed, c, "")}"
-          end) <> ")"
+          end) <> ", CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)"
       end)
 
     set =
@@ -119,9 +118,7 @@ defmodule Dawarich.Ingest.Intake do
       ~s[INSERT INTO points (#{Enum.map_join(all, ", ", &~s("#{&1}"))}) VALUES #{values} ] <>
         ~s[ON CONFLICT (user_id, timestamp, lonlat) DO UPDATE SET #{Enum.join(set, ", ")} RETURNING #{@returning}]
 
-    repo.query!(sql, Enum.flat_map(rows, &(Enum.map(columns, fn c -> &1[c] end) ++ [now, now])),
-      log: false
-    ).rows
+    repo.query!(sql, Enum.flat_map(rows, &Enum.map(columns, fn c -> &1[c] end)), log: false).rows
     |> Enum.map(fn [id, xmax, ts, lon, lat] ->
       %{id: id, xmax: xmax, timestamp: ts, longitude: lon, latitude: lat}
     end)

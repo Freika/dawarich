@@ -121,6 +121,12 @@ defmodule Dawarich.Ingest.IntakeTest do
     assert Enum.at(Sources.combo(%{tracker_id: "t", inrids: [nil, "a"]}), 7) == [nil, "a"]
   end
 
+  test "combo/1 rejects an integer array element exactly as Cast.array/1 does, since the request is handed off anyway" do
+    assert_raise Dawarich.Ingest.Unsupported, fn ->
+      Sources.combo(%{tracker_id: "t", inrids: [1]})
+    end
+  end
+
   test "retries a transaction three times on contention, then gives up" do
     parent = self()
 
@@ -347,6 +353,29 @@ defmodule Dawarich.Ingest.IntakeTest do
                "SELECT id, tracker_id FROM point_sources WHERE tracker_id = $1",
                [tracker]
              ).rows
+  end
+
+  defmodule CaptureUpsert do
+    def transaction(fun), do: Dawarich.Repo.transaction(fun)
+
+    def query!(sql, params, opts) do
+      if String.starts_with?(sql, "INSERT INTO points") do
+        Process.put(:a3_captured_upsert, {sql, params})
+      end
+
+      Dawarich.Repo.query!(sql, params, opts)
+    end
+  end
+
+  test "created_at and updated_at are written as the database's CURRENT_TIMESTAMP in each VALUES tuple, with no Elixir-bound value" do
+    user = user!()
+    p = payload(13.4, 52.5, 1)
+    bound_columns = p |> Map.keys() |> length()
+
+    assert [_] = ingest(user, [p], repo: CaptureUpsert)
+    assert {sql, params} = Process.get(:a3_captured_upsert)
+    assert sql =~ ~r/CURRENT_TIMESTAMP, CURRENT_TIMESTAMP\)/
+    assert length(params) in [bound_columns + 1, bound_columns + 2]
   end
 
   test "an absent source_id is rechecked after 60 s, and the first write after it appears is stamped" do

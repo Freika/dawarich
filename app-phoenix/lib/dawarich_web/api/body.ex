@@ -19,9 +19,9 @@ defmodule DawarichWeb.Api.Body do
 
   @impl true
   def call(conn, _opts) do
-    case kind(conn) do
-      :proxy -> conn |> RailsProxy.call(upstream()) |> halt()
-      kind -> decode(conn, kind)
+    case classify(conn) do
+      {:proxy, reason} -> replay(conn, reason)
+      {kind, nil} -> decode(conn, kind)
     end
   end
 
@@ -32,7 +32,9 @@ defmodule DawarichWeb.Api.Body do
   end
 
   @doc false
-  def kind(conn) do
+  def kind(conn), do: conn |> classify() |> elem(0)
+
+  defp classify(conn) do
     length = conn |> get_req_header("content-length") |> List.first()
 
     type =
@@ -45,12 +47,23 @@ defmodule DawarichWeb.Api.Body do
       |> String.downcase()
 
     cond do
-      RailsProxy.Headers.chunked?(conn) -> :proxy
-      length in [nil, "0"] -> :none
-      not (length =~ ~r/\A\d+\z/) or String.to_integer(length) > @max -> :proxy
-      type in @json -> :json
-      type == @form -> :form
-      true -> :proxy
+      RailsProxy.Headers.chunked?(conn) ->
+        {:proxy, "chunked request body"}
+
+      length in [nil, "0"] ->
+        {:none, nil}
+
+      not (length =~ ~r/\A\d+\z/) or String.to_integer(length) > @max ->
+        {:proxy, "body larger than 2 MiB"}
+
+      type in @json ->
+        {:json, nil}
+
+      type == @form ->
+        {:form, nil}
+
+      true ->
+        {:proxy, "content type #{type}"}
     end
   end
 
