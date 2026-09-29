@@ -24,17 +24,25 @@ defmodule Dawarich.Ingest.TimestampTest do
         if ruby == %{"error" => "invalid_timestamp"}, do: :invalid, else: {:ok, ruby["ok"]}
 
       case points(input) do
-        :unsupported -> refute own, "Phoenix must own #{inspect(input)}"
-        result -> assert result == expected, inspect(input)
+        :unsupported ->
+          refute own, "Phoenix must own #{inspect(input)}"
+
+        result ->
+          assert own, "Phoenix must not own #{inspect(input)}"
+          assert result == expected, inspect(input)
       end
     end
   end
 
   test "Traccar's parse agrees with Rails or goes to Rails" do
-    for %{"input" => input, "traccar" => %{"ok" => ruby}} <- @units["timestamps"] do
+    for %{"input" => input, "own" => own, "traccar" => %{"ok" => ruby}} <- @units["timestamps"] do
       case traccar(input) do
-        :unsupported -> :ok
-        {:ok, value} -> assert value == ruby, inspect(input)
+        :unsupported ->
+          refute own, "Phoenix must own #{inspect(input)}"
+
+        {:ok, value} ->
+          assert own, "Phoenix must not own #{inspect(input)}"
+          assert value == ruby, inspect(input)
       end
     end
 
