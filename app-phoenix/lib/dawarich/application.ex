@@ -23,12 +23,15 @@ defmodule Dawarich.Application do
     node = oban[:node] || Oban.Config.node_name()
     cron = [crontab: Dawarich.Jobs.Registry.crontab(), timezone: "Etc/UTC"]
 
-    [
-      Dawarich.Repo,
-      {Oban, Keyword.put(oban, :cron, cron)},
-      {Phoenix.PubSub, name: Dawarich.PubSub}
-    ] ++ Front.children(plan, [{"DAWARICH_PHOENIX_NODE", node}]) ++ jobs(node)
+    [Dawarich.Repo] ++
+      redis() ++
+      [
+        {Oban, Keyword.put(oban, :cron, cron)},
+        {Phoenix.PubSub, name: Dawarich.PubSub}
+      ] ++ Front.children(plan, [{"DAWARICH_PHOENIX_NODE", node}]) ++ jobs(node)
   end
+
+  defp redis, do: if(jobs_runtime?(), do: Dawarich.Redis.child_specs(), else: [])
 
   defp jobs(node) do
     if jobs_runtime?(), do: [{Dawarich.Jobs.Supervisor, node: node}], else: []

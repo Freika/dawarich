@@ -88,6 +88,10 @@ if config_env() != :test do
     pruner: [max_age: {1, :day}],
     lifeline: [rescue_after: {60, :minute}],
     shutdown_grace_period: 12_000
+
+  config :dawarich, :redis,
+    url: System.get_env("REDIS_URL"),
+    database: env_integer.("RAILS_JOB_QUEUE_DB", 1)
 end
 
 case System.get_env("DAWARICH_RAILS_ARGS") do

@@ -2,7 +2,7 @@ defmodule Dawarich.RuntimeConfigTest do
   use ExUnit.Case, async: false
 
   @runtime Path.expand("../../config/runtime.exs", __DIR__)
-  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS)
+  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS REDIS_URL RAILS_JOB_QUEUE_DB)
 
   setup do
     saved = Map.new(@vars, &{&1, System.get_env(&1)})
@@ -20,6 +20,11 @@ defmodule Dawarich.RuntimeConfigTest do
     Enum.each(env, fn {name, value} -> System.put_env(name, value) end)
     config = Config.Reader.read!(@runtime, env: :prod)[:dawarich]
     {config[Dawarich.Repo], config[Oban]}
+  end
+
+  defp redis(env) do
+    Enum.each(env, fn {name, value} -> System.put_env(name, value) end)
+    Config.Reader.read!(@runtime, env: :prod)[:dawarich][:redis]
   end
 
   test "sizes the pool from the queue limits and enables Oban's services" do
@@ -95,6 +100,13 @@ defmodule Dawarich.RuntimeConfigTest do
              prod(%{"PGSSLMODE" => "verify-ca", "PGSSLROOTCERT" => "/etc/ssl/db-root.crt"})
 
     assert repo[:ssl] == [cacertfile: "/etc/ssl/db-root.crt"]
+  end
+
+  test "Redis uses Sidekiq's database" do
+    assert redis(%{"REDIS_URL" => "redis://r:6379"}) == [url: "redis://r:6379", database: 1]
+
+    assert redis(%{"REDIS_URL" => "redis://r:6379", "RAILS_JOB_QUEUE_DB" => "4"}) ==
+             [url: "redis://r:6379", database: 4]
   end
 
   test "connects over IPv6 when the database host has no IPv4 address" do
