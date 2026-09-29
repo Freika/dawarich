@@ -75,7 +75,7 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
     assert {expression, ArchivalWarningWorker} in Registry.crontab()
   end
 
-  test "every worker's queue is in the runtime queue literal, and the pool is Σ + 3 = 10" do
+  test "every worker's queue is in the runtime queue literal, and the pool is Σ + 3" do
     config = Config.Reader.read!(@runtime, env: :prod)[:dawarich]
     queues = config[Oban][:queues]
 
@@ -84,7 +84,7 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
     end
 
     assert config[Dawarich.Repo][:pool_size] == Enum.sum(Keyword.values(queues)) + 3
-    assert config[Dawarich.Repo][:pool_size] == 10
+    assert Keyword.fetch!(queues, :exports) == 1
   end
 
   test "housekeeping prunes events after a day and claims after 30 days" do

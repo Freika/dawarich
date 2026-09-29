@@ -123,6 +123,7 @@ defmodule Dawarich.Jobs.Claimer do
   end
 
   defp catch_up(_repo, _oban, %{kind: :command}), do: :ok
+  defp catch_up(_repo, _oban, %{kind: :cron, catch_up: false}), do: :ok
 
   defp catch_up(repo, oban, %{kind: :cron, worker: worker}) do
     case Oban.insert(oban, worker.new(%{}), retry: false) do

@@ -50,6 +50,7 @@ defmodule Dawarich.MixProject do
         "app.config",
         fn _ -> Dawarich.Release.migrate_oban() end,
         "dawarich.i18n",
+        "dawarich.achievements",
         "test"
       ]
     ]

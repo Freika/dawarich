@@ -30,10 +30,11 @@ defmodule Dawarich.RuntimeConfigTest do
              mailers: 2,
              trips: 2,
              maintenance: 1,
-             exports: 1
+             exports: 1,
+             projections: 1
            ]
 
-    assert repo[:pool_size] == 10
+    assert repo[:pool_size] == 11
     assert oban[:peer] == Oban.Peers.Database
     assert oban[:stager] == {Oban.Stager, []}
     assert oban[:pruner] == [max_age: {1, :day}]
