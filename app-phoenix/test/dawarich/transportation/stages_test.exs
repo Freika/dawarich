@@ -28,10 +28,17 @@ defmodule Dawarich.Transportation.StagesTest do
   test "each stage reproduces Rails on every fixture track" do
     %{expected: expected} = TracksFixtures.load!(ScratchRepo, "transport_stages")
     ordered = ordered_windows()
+    same_postgis? = same_postgis?()
 
     Enum.each(expected, fn {name, data} ->
       rows = FeatureExtractor.rows(ScratchRepo, data["track"]["id"])
-      assert_close(stringify(rows), data["feature_extractor"], "#{name}.feature_extractor")
+
+      assert_extracted(
+        rows,
+        data["feature_extractor"],
+        same_postgis?,
+        "#{name}.feature_extractor"
+      )
 
       fx_rows = Enum.map(data["feature_extractor"], &atomize_row/1)
 
@@ -83,10 +90,17 @@ defmodule Dawarich.Transportation.StagesTest do
 
   test "FeatureExtractor SQL returns Rails' rows" do
     %{expected: expected} = TracksFixtures.load!(ScratchRepo, "transport_stages")
+    same_postgis? = same_postgis?()
 
     Enum.each(expected, fn {name, data} ->
       rows = FeatureExtractor.rows(ScratchRepo, data["track"]["id"])
-      assert_close(stringify(rows), data["feature_extractor"], "#{name}.feature_extractor")
+
+      assert_extracted(
+        rows,
+        data["feature_extractor"],
+        same_postgis?,
+        "#{name}.feature_extractor"
+      )
     end)
   end
 
@@ -207,6 +221,41 @@ defmodule Dawarich.Transportation.StagesTest do
     end)
     |> stringify()
   end
+
+  defp same_postgis? do
+    TracksFixtures.postgis_build(ScratchRepo) ==
+      TracksFixtures.read!("transport_stages")["postgis_build"]
+  end
+
+  @distance_step 1.0e-8
+
+  defp assert_extracted(rows, expected, same_postgis?, path) do
+    actual = stringify(rows)
+    assert length(actual) == length(expected), "length mismatch at #{path}"
+
+    actual
+    |> Enum.zip(expected)
+    |> Enum.with_index()
+    |> Enum.each(fn {{a, e}, i} ->
+      assert_distance(a["dist_m"], e["dist_m"], same_postgis?, "#{path}[#{i}].dist_m")
+    end)
+
+    assert_close(
+      Enum.map(actual, &Map.delete(&1, "dist_m")),
+      Enum.map(expected, &Map.delete(&1, "dist_m")),
+      path
+    )
+  end
+
+  defp assert_distance(actual, expected, same_postgis?, path) do
+    assert actual === expected or (not same_postgis? and one_distance_step?(actual, expected)),
+           "distance mismatch at #{path}: #{inspect(actual)} != #{inspect(expected)}"
+  end
+
+  defp one_distance_step?(actual, expected) when is_float(actual) and is_float(expected),
+    do: abs(round(actual / @distance_step) - round(expected / @distance_step)) <= 1
+
+  defp one_distance_step?(_actual, _expected), do: false
 
   @rounded_fields ~w(distance avg_speed max_speed confidence_score posterior)
 

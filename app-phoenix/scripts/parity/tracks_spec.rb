@@ -62,6 +62,13 @@ RSpec.describe 'Phoenix fixture: track generation as Rails computes it' do
     File.write(path, "#{exact_json(plain(data))}\n")
   end
 
+  def postgis_build
+    Point.connection.select_value(
+      "SELECT concat_ws(' | ', version(), 'PostGIS ' || postgis_lib_version(), " \
+      "'PROJ ' || split_part(postgis_proj_version(), ' ', 1))"
+    )
+  end
+
   def coord(index, lon_step: 0.0008, lat_step: 0.0005)
     [(TracksFixtureOracle::LON + (index * lon_step)).round(6), (TracksFixtureOracle::LAT + (index * lat_step)).round(6)]
   end
@@ -814,7 +821,7 @@ RSpec.describe 'Phoenix fixture: track generation as Rails computes it' do
                     windower: d[:windower], decoder: d[:decoder], segments: d[:segments] }]
     end
 
-    write_fixture('transport_stages', { input: input, expected: expected, call: [] })
+    write_fixture('transport_stages', { input: input, expected: expected, call: [], postgis_build: postgis_build })
   end
 
   it 'writes transport_reclassify.json' do

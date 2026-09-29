@@ -22,6 +22,18 @@ defmodule Dawarich.Tracks.TracksFixtures do
     |> String.starts_with?("aarch64-apple-darwin")
   end
 
+  def postgis_build(repo) do
+    %{rows: [[build]]} =
+      repo.query!(
+        "SELECT concat_ws(' | ', version(), 'PostGIS ' || postgis_lib_version(), " <>
+          "'PROJ ' || split_part(postgis_proj_version(), ' ', 1))",
+        [],
+        log: false
+      )
+
+    build
+  end
+
   def float_matches?(actual, expected) do
     if generating_platform?(),
       do: <<actual::float>> == <<expected::float>>,
