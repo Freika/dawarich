@@ -2,30 +2,10 @@ defmodule Dawarich.TracksCase do
   @moduledoc false
   use ExUnit.CaseTemplate
 
-  alias Dawarich.ScratchRepo
-  alias Dawarich.Tracks.{Builder, Destroy, Points, Settings}
+  alias Dawarich.{Redis, ScratchRepo}
+  alias Dawarich.Tracks.{ChunkWorker, RangeWorker, Settings}
 
-  @chunk_sql """
-  WITH bounds AS (
-    SELECT COALESCE($1::timestamptz, (SELECT to_timestamp(min(timestamp)) FROM points WHERE user_id = $3)) AS g_start,
-           COALESCE($2::timestamptz, CASE WHEN $1::timestamptz IS NULL
-             THEN (SELECT to_timestamp(max(timestamp)) FROM points WHERE user_id = $3) ELSE now() END) AS g_end
-  ), edges AS (
-    SELECT gs AS c_start, LEAST(gs + interval '1 day', b.g_end) AS c_end, b.g_start, b.g_end
-    FROM bounds b, generate_series(b.g_start, b.g_end, interval '1 day') AS gs
-    WHERE gs < b.g_end
-  ), chunks AS (
-    SELECT floor(extract(epoch FROM c_start))::bigint AS start_ts,
-           floor(extract(epoch FROM c_end))::bigint AS end_ts,
-           floor(extract(epoch FROM GREATEST(c_start - interval '6 hours', g_start)))::bigint AS buffer_start_ts,
-           floor(extract(epoch FROM LEAST(c_end + interval '6 hours', g_end)))::bigint AS buffer_end_ts
-    FROM edges
-  )
-  SELECT start_ts, end_ts, buffer_start_ts, buffer_end_ts
-  FROM chunks c
-  WHERE EXISTS (SELECT 1 FROM points p WHERE p.user_id = $3 AND p.timestamp BETWEEN c.buffer_start_ts AND c.buffer_end_ts)
-  ORDER BY start_ts
-  """
+  @oban Dawarich.TracksCase.Oban
 
   using do
     quote do
@@ -35,6 +15,7 @@ defmodule Dawarich.TracksCase do
 
       setup do
         Dawarich.TracksCase.truncate!()
+        Dawarich.TracksCase.start_services!()
       end
     end
   end
@@ -47,6 +28,21 @@ defmodule Dawarich.TracksCase do
     )
 
     :ok
+  end
+
+  def oban, do: @oban
+
+  def start_services! do
+    Dawarich.JobsCase.start_oban(@oban)
+    ExUnit.Callbacks.start_supervised!(hd(Redis.child_specs()))
+    {:ok, "OK"} = Redis.command(["FLUSHDB"])
+    :ok
+  end
+
+  def rails_redis! do
+    config = Application.fetch_env!(:dawarich, :redis)
+    {:ok, conn} = Redix.start_link(config[:url], database: config[:database])
+    conn
   end
 
   def tracks_changed do
@@ -116,41 +112,46 @@ defmodule Dawarich.TracksCase do
   end
 
   def generate_chunks!(user, call) do
-    if call["mode"] in ["bulk", "daily"] and not call["untracked_only"],
-      do: Destroy.clean_range!(ScratchRepo, user.id, call["start_at"], call["end_at"])
+    id = Ecto.UUID.generate()
 
-    for [start_ts, end_ts, buffer_start, buffer_end] <- chunks(user, call) do
-      ScratchRepo
-      |> Points.load_chunk(user.id, buffer_start, buffer_end,
-        untracked_only: call["untracked_only"],
-        import_id: call["import_id"]
-      )
-      |> Points.segments(Settings.minutes_between_routes(user))
-      |> Enum.filter(fn segment ->
-        hd(segment).timestamp <= end_ts and List.last(segment).timestamp >= start_ts and
-          Enum.any?(segment, &is_nil(&1.track_id))
-      end)
-      |> Enum.each(
-        &Builder.create_from_orphans!(ScratchRepo, user, &1, claim_all: call["import_id"] != nil)
-      )
-    end
+    :ok =
+      RangeWorker.run(ScratchRepo, @oban, %{
+        "event_id" => id,
+        "user_id" => user.id,
+        "start_at" => iso(call["start_at"]),
+        "end_at" => iso(call["end_at"]),
+        "time_zone" => call["zone"],
+        "mode" => call["mode"],
+        "untracked_only" => call["untracked_only"],
+        "import_id" => call["import_id"],
+        "low_priority" => false
+      })
+
+    for [args] <- chunk_jobs(id), do: :ok = ChunkWorker.run(ScratchRepo, @oban, args)
+    id
   end
 
-  defp chunks(user, call) do
-    to_time = fn ts -> ts && DateTime.from_unix!(ts) end
+  def chunk_jobs(generation_id) do
+    ScratchRepo.query!(
+      "SELECT args FROM oban.oban_jobs WHERE worker = $1 AND args->>'generation_id' = $2 " <>
+        "ORDER BY (args->>'chunk_id')::int",
+      [inspect(ChunkWorker), generation_id],
+      log: false
+    ).rows
+  end
 
-    {:ok, rows} =
-      ScratchRepo.transaction(fn ->
-        ScratchRepo.query!("SELECT set_config('TimeZone', $1, true)", [call["zone"]], log: false)
+  def iso(nil), do: nil
 
-        ScratchRepo.query!(
-          @chunk_sql,
-          [to_time.(call["start_at"]), to_time.(call["end_at"]), user.id],
-          log: false
-        ).rows
-      end)
+  def iso(epoch),
+    do: epoch |> DateTime.from_unix!() |> Map.put(:microsecond, {0, 6}) |> DateTime.to_iso8601()
 
-    rows
+  def generation(id) do
+    ScratchRepo.query!(
+      "SELECT status, total_chunks, completed_chunks, poll_count, stall_count, error " <>
+        "FROM phoenix.track_generations WHERE id = $1",
+      [Ecto.UUID.dump!(id)],
+      log: false
+    ).rows
   end
 
   def actual_segments do

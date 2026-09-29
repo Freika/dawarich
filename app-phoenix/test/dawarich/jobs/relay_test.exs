@@ -141,12 +141,13 @@ defmodule Dawarich.Jobs.RelayTest do
     assert rows("SELECT id FROM phoenix.rails_commands_dead") == [[2]]
   end
 
-  test "housekeeping prunes generations after a day and cascades chunks" do
+  test "housekeeping prunes generations a day after their last write and cascades chunks" do
     rows("""
     WITH gen AS (
       INSERT INTO phoenix.track_generations
-        (id, user_id, mode, untracked_only, low_priority, status, total_chunks, created_at)
-      VALUES (gen_random_uuid(), 999, 'bulk', false, false, 'completed', 2, now() - interval '2 days')
+        (id, user_id, mode, untracked_only, low_priority, status, total_chunks, created_at, updated_at)
+      VALUES (gen_random_uuid(), 999, 'bulk', false, false, 'completed', 2, now() - interval '3 days',
+        now() - interval '2 days')
       RETURNING id
     )
     INSERT INTO phoenix.track_generation_chunks
@@ -156,13 +157,18 @@ defmodule Dawarich.Jobs.RelayTest do
 
     rows("""
     INSERT INTO phoenix.track_generations
-      (id, user_id, mode, untracked_only, low_priority, status, total_chunks, created_at)
-    VALUES (gen_random_uuid(), 1, 'bulk', false, false, 'running', 1, now())
+      (id, user_id, mode, untracked_only, low_priority, status, total_chunks, created_at, updated_at)
+    VALUES
+      (gen_random_uuid(), 1, 'bulk', false, false, 'running', 1, now(), now()),
+      (gen_random_uuid(), 2, 'bulk', false, true, 'running', 900, now() - interval '2 days',
+        now() - interval '1 minute'),
+      (gen_random_uuid(), 998, 'bulk', false, false, 'running', 1, now() - interval '2 days',
+        now() - interval '25 hours')
     """)
 
     :ok = Housekeeping.run!(ScratchRepo, DateTime.utc_now())
 
-    assert rows("SELECT user_id FROM phoenix.track_generations") == [[1]]
+    assert rows("SELECT user_id FROM phoenix.track_generations ORDER BY user_id") == [[1], [2]]
     assert rows("SELECT count(*) FROM phoenix.track_generation_chunks") == [[0]]
   end
 
