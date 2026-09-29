@@ -6,7 +6,7 @@ module AirTrail
 
     def perform
       User.where("settings->>'airtrail_url' <> '' AND settings->>'airtrail_api_key' <> ''")
-          .find_each { |user| AirTrail::ImportFlightsJob.perform_later(user.id) }
+          .find_each { |user| ImportCommands.airtrail_flights(user.id, producer: self.class.name) }
     end
   end
 end

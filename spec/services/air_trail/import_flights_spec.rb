@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe AirTrail::ImportFlights do
-  let(:user) do
+  let!(:user) do
     create(:user).tap do |u|
       u.update!(settings: u.settings.merge('airtrail_url' => 'https://a.example',
                                            'airtrail_api_key' => 'k'))
@@ -116,6 +116,43 @@ RSpec.describe AirTrail::ImportFlights do
     expect(user.reload.settings['other_key']).to eq('x')
     expect(user.settings['airtrail_last_synced_at']).to be_present
   end
+
+  it 'calls AirTrail before the owner lock and writes only after it' do
+    phoenix_tables!
+    events = []
+    allow_any_instance_of(AirTrail::Client).to receive(:flights) do
+      events << :fetch
+      [airtrail_flight(id: 1)]
+    end
+    write = /\A\s*(INSERT INTO "flights"|UPDATE "flights"|DELETE FROM "flights"|UPDATE "users")/
+    record = lambda do |*, payload|
+      events << :lock if payload[:sql].include?('FOR SHARE')
+      events << :write if payload[:sql].match?(write)
+    end
+
+    ActiveSupport::Notifications.subscribed(record, 'sql.active_record') { described_class.new(user).call }
+
+    expect(events.first(2)).to eq(%i[fetch lock])
+    expect(events.drop(2).uniq).to eq([:write])
+  end
+
+  it 'returns :not_owner and writes nothing while Oban owns the command' do
+    job_owner!(ImportCommands::AIRTRAIL_FLIGHTS_KEY, :oban)
+    allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
+
+    expect { expect(described_class.new(user).call).to eq(:not_owner) }
+      .not_to have_enqueued_job(Stats::CalculatingJob)
+    expect(user.flights.count).to eq(0)
+    expect(user.reload.settings['airtrail_last_synced_at']).to be_nil
+  end
+
+  it 'derives months with the user zone for flights without a date' do
+    zone = 'America/New_York'
+    pairs = [[nil, Time.utc(2026, 2, 1, 3)], [Date.new(2026, 4, 20), nil]]
+
+    expect(described_class.months_for(pairs, zone)).to eq([[2026, 1], [2026, 4]])
+  end
+
   describe 'stats recalculation' do
     it 'enqueues a stats recalculation for the month a synced flight falls in' do
       allow_any_instance_of(AirTrail::Client).to receive(:flights).and_return([airtrail_flight(id: 1)])
