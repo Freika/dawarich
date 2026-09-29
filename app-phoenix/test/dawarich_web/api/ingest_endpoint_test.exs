@@ -116,19 +116,37 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
 
     for {path, body} <- [
           {"/api/v1/points", ~s({"error":"Point creation failed"})},
-          {"/api/v1/owntracks/points", ~s({"error":"Point creation failed"})}
+          {"/api/v1/owntracks/points", ~s({"error":"Point creation failed"})},
+          {"/api/v1/traccar/points", ~s({"error":"Point creation failed"})}
         ] do
       request =
-        if path =~ "owntracks",
-          do: ~s({"_type":"location","lat":52.6,"lon":13.5,"tst":1790000001}),
-          else:
+        cond do
+          path =~ "owntracks" ->
+            ~s({"_type":"location","lat":52.6,"lon":13.5,"tst":1790000001})
+
+          path =~ "traccar" ->
+            ~s({"device_id":"phone","location":{"timestamp":1790000002,"latitude":52.7,"longitude":13.6}})
+
+          true ->
             ~s({"locations":[{"geometry":{"coordinates":[13.4,52.5]},"properties":{"timestamp":1790000000}}]})
+        end
 
       assert {500, _, ^body} = port |> post(path, request) |> read_response()
     end
 
     no_upstream!(upstream)
-    assert [[2]] = Repo.query!("SELECT count(*) FROM points").rows
-    assert ["points.tile_epoch", "points.tile_epoch"] = Enum.map(commands(), &hd/1)
+    assert [[3]] = Repo.query!("SELECT count(*) FROM points").rows
+
+    assert ["points.tile_epoch", "points.tile_epoch", "points.tile_epoch"] =
+             Enum.map(commands(), &hd/1)
+  end
+
+  test "Traccar's empty batch answers Rails' 422, with no hand-off and no rows",
+       %{port: port, upstream: upstream} do
+    assert {422, _, ~s({"error":"Point creation failed"})} =
+             port |> post("/api/v1/traccar/points", ~s({"device_id":"phone"})) |> read_response()
+
+    no_upstream!(upstream)
+    assert [[0]] = Repo.query!("SELECT count(*) FROM points").rows
   end
 end

@@ -1,6 +1,8 @@
 defmodule Dawarich.ReleaseTest do
   use ExUnit.Case, async: false
 
+  import ExUnit.CaptureLog
+
   alias Dawarich.{Release, Repo, SchemaFingerprint}
 
   setup_all do
@@ -195,6 +197,20 @@ defmodule Dawarich.ReleaseTest do
       Repo.query!("SELECT version FROM #{prefix}.phoenix_schema_migrations ORDER BY version")
 
     Enum.map(rows, fn [version] -> version end)
+  end
+
+  test "purge frees a reloaded migration module without logging a purge warning" do
+    source = "defmodule Dawarich.Repo.Migrations.ZzPurgeProbe do\nend\n"
+
+    log =
+      capture_log(fn ->
+        Code.compile_string(source)
+        Code.compile_string(source)
+        Dawarich.MigrationModules.purge()
+      end)
+
+    refute log =~ "must be purged"
+    assert :code.is_loaded(Dawarich.Repo.Migrations.ZzPurgeProbe) == false
   end
 
   defp source_versions(directory) do

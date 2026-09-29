@@ -188,6 +188,39 @@ defmodule DawarichWeb.Api.AuthTest do
              admission(%{}, [{"cookie", "_dawarich_session=garbage; remember_user_token=x"}])
   end
 
+  defp without_rails_secret(fun) do
+    secret = Application.get_env(:dawarich, :rails_secret)
+    cached = :persistent_term.get(RailsSecret, nil)
+    env = Map.take(System.get_env(), ["SECRET_KEY_BASE", "RAILS_ENV"])
+    Application.delete_env(:dawarich, :rails_secret)
+    :persistent_term.erase(RailsSecret)
+    System.delete_env("SECRET_KEY_BASE")
+    System.put_env("RAILS_ENV", "production")
+
+    try do
+      fun.()
+    after
+      Application.put_env(:dawarich, :rails_secret, secret)
+      if cached, do: :persistent_term.put(RailsSecret, cached)
+      System.delete_env("RAILS_ENV")
+      System.put_env(env)
+    end
+  end
+
+  test "a missing cookie secret always hands off to Rails, with or without remember-me" do
+    without_rails_secret(fn ->
+      assert RailsSecret.fetch() == nil
+
+      assert {:replay, "no cookie secret"} =
+               admission(%{}, [{"cookie", "_dawarich_session=whatever"}])
+
+      assert {:replay, "no cookie secret"} =
+               admission(%{}, [
+                 {"cookie", "_dawarich_session=whatever; remember_user_token=x"}
+               ])
+    end)
+  end
+
   test "a valid signed-in session passes while deleted users and mismatched salts go to Rails" do
     password = "$2a$12$" <> String.duplicate("a", 53)
     id = user!(%{encrypted_password: password})
