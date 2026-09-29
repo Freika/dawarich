@@ -31,4 +31,32 @@ defmodule Dawarich.RubyFloatTest do
              inspect({input, digits})
     end
   end
+
+  @ruby_bare_round [
+    {2.5, 3},
+    {-2.5, -3},
+    {0.5, 1},
+    {-0.5, -1},
+    {4.4, 4},
+    {4.6, 5},
+    {9.0, 9},
+    {0.0, 0},
+    {-0.0, 0},
+    {1.005, 1},
+    {2.675, 3},
+    {100_000.5, 100_001},
+    {-100_000.5, -100_001}
+  ]
+
+  test "round/1 rounds exactly as Ruby's Float#round with no arguments" do
+    for {input, ruby} <- @ruby_bare_round do
+      assert Dawarich.RubyFloat.round(input) == ruby, inspect(input)
+    end
+  end
+
+  test "sum/1 matches Ruby's Array#sum for floats" do
+    assert Dawarich.RubyFloat.sum([0.1, 0.2]) == 0.30000000000000004
+    assert Dawarich.RubyFloat.sum([1.0, 2.0, 3.0]) == 6.0
+    assert Dawarich.RubyFloat.sum([]) == 0.0
+  end
 end

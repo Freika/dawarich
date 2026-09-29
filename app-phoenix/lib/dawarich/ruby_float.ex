@@ -1,6 +1,26 @@
 defmodule Dawarich.RubyFloat do
   @moduledoc false
 
+  def round(x) when is_float(x), do: :erlang.round(x)
+
+  def sum(values) do
+    {total, compensation} =
+      Enum.reduce(values, {0.0, 0.0}, fn x, {sum, c} ->
+        t = sum + x
+
+        c =
+          if abs(sum) >= abs(x) do
+            c + (sum - t + x)
+          else
+            c + (x - t + sum)
+          end
+
+        {t, c}
+      end)
+
+    total + compensation
+  end
+
   def round(x, digits) when is_float(x) and is_integer(digits) and digits > 0 do
     cond do
       x == 0.0 -> x
