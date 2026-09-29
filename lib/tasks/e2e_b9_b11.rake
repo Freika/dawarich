@@ -43,6 +43,26 @@ namespace :e2e do
     other.notifications.create!(title: 'B9 fixture other user', content: 'B9 other user only', kind: :info)
   end
 
+  desc 'Seed isolated A5 navbar characterization fixtures'
+  task seed_a5_navbar: :environment do
+    E2eB9B11FixtureSafety.verify!
+
+    (['a5-navbar@dawarich.test'] + (1..4).map { |number| "a5-navbar-repeat#{number}@dawarich.test" }).each do |email|
+      user = User.find_or_create_by!(email:) do |account|
+        account.password = 'safepassword12'
+        account.password_confirmation = 'safepassword12'
+        account.admin = false
+      end
+      user.update_columns(theme: 'dark', changelog_consent: nil,
+                          settings: (user.settings || {}).merge('onboarding_completed' => true))
+      user.notifications.where('title LIKE ?', 'A5 navbar%').delete_all
+      1.upto(12) do |number|
+        user.notifications.create!(title: format('A5 navbar %02d', number), content: "A5 navbar detail #{number}",
+                                   kind: :info, created_at: Time.current - number.minutes)
+      end
+    end
+  end
+
   desc 'Seed isolated B10 administrator characterization fixture'
   task seed_b10_admin: :environment do
     E2eB9B11FixtureSafety.verify!

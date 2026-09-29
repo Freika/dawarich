@@ -77,7 +77,7 @@ if config_env() != :test do
                  System.get_env("PGSSLROOTCERT")
                ),
              socket_options: socket_options.(host),
-             pool_size: Enum.sum(Keyword.values(queues)) + 3
+             pool_size: Enum.sum(Keyword.values(queues)) + 3 + 2
            ]
 
   config :dawarich, Oban,
@@ -89,6 +89,13 @@ if config_env() != :test do
     lifeline: [rescue_after: {60, :minute}],
     shutdown_grace_period: 12_000
 end
+
+config :dawarich,
+       :rails_routes,
+       (System.get_env("DAWARICH_RAILS_ROUTES") || "")
+       |> String.split(",")
+       |> Enum.map(&String.trim/1)
+       |> Enum.reject(&(&1 == ""))
 
 case System.get_env("DAWARICH_RAILS_ARGS") do
   args when args in [nil, ""] ->
