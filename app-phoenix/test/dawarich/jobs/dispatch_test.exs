@@ -114,6 +114,57 @@ defmodule Dawarich.Jobs.DispatchTest do
     assert jobs() == []
   end
 
+  test "each wave-5 command dispatches to its worker" do
+    payloads = %{
+      "tracks.generate_range" => %{
+        "user_id" => 1,
+        "start_at" => "2026-01-01T00:00:00.000000+00:00",
+        "end_at" => "2026-01-01T01:00:00.000000+00:00",
+        "time_zone" => "Europe/Berlin",
+        "mode" => "bulk",
+        "untracked_only" => false,
+        "import_id" => nil,
+        "low_priority" => false
+      },
+      "tracks.generate_realtime" => %{"user_id" => 1},
+      "tracks.recalculate" => %{"track_id" => 1},
+      "transportation.reclassify_track" => %{
+        "track_id" => 1,
+        "report_progress" => false,
+        "user_id" => nil
+      }
+    }
+
+    workers = %{
+      "tracks.generate_range" => Dawarich.Tracks.RangeWorker,
+      "tracks.generate_realtime" => Dawarich.Tracks.RealtimeWorker,
+      "tracks.recalculate" => Dawarich.Tracks.RecalculateWorker,
+      "transportation.reclassify_track" => Dawarich.Transportation.ReclassifyTrackWorker
+    }
+
+    ids =
+      Map.new(payloads, fn {type, payload} ->
+        {type, outbox!(command_type: type, payload: payload)}
+      end)
+
+    assert Dispatch.run(
+             repo: ScratchRepo,
+             oban: @oban,
+             commands: &Dawarich.Jobs.Registry.command/1
+           ) == %{dispatched: 4}
+
+    for {type, worker} <- workers do
+      id = ids[type]
+      payload = payloads[type]
+
+      assert [[worker_name, args]] =
+               rows("SELECT worker, args FROM oban.oban_jobs WHERE args->>'event_id' = $1", [id])
+
+      assert worker_name == inspect(worker)
+      assert args == Map.merge(payload, %{"event_id" => id})
+    end
+  end
+
   test "a mail command with extra payload keys is quarantined rather than dispatched" do
     id =
       outbox!(

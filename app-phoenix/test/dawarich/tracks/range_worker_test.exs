@@ -65,6 +65,18 @@ defmodule Dawarich.Tracks.RangeWorkerTest do
     assert Redix.command!(rails, ["GET", PerUserLock.key(user.id)]) == "rails-token"
   end
 
+  test "an untracked-only run skips the per-user lock" do
+    user = user_with_points!()
+    rails = rails_redis!()
+    Redix.command!(rails, ["SET", PerUserLock.key(user.id), "rails-token", "PX", "60000"])
+    args = args(user, %{"untracked_only" => true})
+
+    assert RangeWorker.run(ScratchRepo, oban(), args, lock: [timeout_ms: 200]) == :ok
+    assert rows("SELECT count(*) FROM phoenix.track_generations") == [[1]]
+    assert length(chunk_jobs(args["event_id"])) == 1
+    assert Redix.command!(rails, ["GET", PerUserLock.key(user.id)]) == "rails-token"
+  end
+
   test "low-priority generations schedule priority-3 jobs" do
     user = user_with_points!()
 

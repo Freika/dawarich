@@ -37,10 +37,11 @@ defmodule Dawarich.RuntimeConfigTest do
              maintenance: 1,
              exports: 1,
              projections: 1,
-             imports: 1
+             imports: 1,
+             tracks: 2
            ]
 
-    assert repo[:pool_size] == 17
+    assert repo[:pool_size] == 19
     assert oban[:peer] == Oban.Peers.Database
     assert oban[:stager] == {Oban.Stager, []}
     assert oban[:pruner] == [max_age: {1, :day}]
@@ -50,10 +51,10 @@ defmodule Dawarich.RuntimeConfigTest do
 
   test "the pool also covers Phoenix-served requests, one connection per Puma thread" do
     assert {repo, _} = prod(%{"RAILS_MAX_THREADS" => "10"})
-    assert repo[:pool_size] == 22
+    assert repo[:pool_size] == 24
 
     assert {repo, _} = prod(%{"RAILS_MAX_THREADS" => ""})
-    assert repo[:pool_size] == 17
+    assert repo[:pool_size] == 19
   end
 
   test "reads the routes handed back to Rails, trimmed and without blanks" do
@@ -74,6 +75,21 @@ defmodule Dawarich.RuntimeConfigTest do
     for worker <- [
           Dawarich.Imports.UpdatePointsCountWorker,
           Dawarich.AirTrail.ImportFlightsWorker
+        ] do
+      assert Keyword.has_key?(oban[:queues], worker.__opts__()[:queue])
+      assert worker.timeout(%Oban.Job{}) < :timer.minutes(60)
+    end
+  end
+
+  test "every wave-5 worker's queue is configured and times out before Lifeline" do
+    {_repo, oban} = prod()
+
+    for worker <- [
+          Dawarich.Tracks.RangeWorker,
+          Dawarich.Tracks.RealtimeWorker,
+          Dawarich.Tracks.RecalculateWorker,
+          Dawarich.Tracks.DailyWorker,
+          Dawarich.Transportation.ReclassifyTrackWorker
         ] do
       assert Keyword.has_key?(oban[:queues], worker.__opts__()[:queue])
       assert worker.timeout(%Oban.Job{}) < :timer.minutes(60)

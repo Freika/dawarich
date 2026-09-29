@@ -36,7 +36,17 @@ defmodule Dawarich.Tracks.RangeWorker do
   @impl Oban.Worker
   def timeout(_job), do: :timer.minutes(30)
 
-  def run(repo, oban, %{"user_id" => user_id} = args, opts \\ []) do
+  def run(repo, oban, args, opts \\ [])
+
+  def run(repo, oban, %{"user_id" => user_id, "untracked_only" => true} = args, opts) do
+    hook = Keyword.get(opts, :hook, fn _stage -> :ok end)
+
+    if Settings.find(repo, user_id),
+      do: generate(repo, oban, args, hook, opts),
+      else: :ok
+  end
+
+  def run(repo, oban, %{"user_id" => user_id} = args, opts) do
     hook = Keyword.get(opts, :hook, fn _stage -> :ok end)
 
     if Settings.find(repo, user_id) do

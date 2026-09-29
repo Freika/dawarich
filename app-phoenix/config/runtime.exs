@@ -64,7 +64,8 @@ if config_env() != :test do
     maintenance: 1,
     exports: 1,
     projections: 1,
-    imports: 1
+    imports: 1,
+    tracks: 2
   ]
 
   config :dawarich,
