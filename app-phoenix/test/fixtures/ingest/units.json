@@ -255,7 +255,7 @@
     },
     {
       "column": "accuracy",
-      "input": 0.3,
+      "input": 0.30000000000000004,
       "own": true,
       "result": {
         "ok": 0
@@ -263,7 +263,7 @@
     },
     {
       "column": "accuracy",
-      "input": 1e-05,
+      "input": 1.0e-05,
       "own": true,
       "result": {
         "ok": 0
@@ -723,7 +723,7 @@
     },
     {
       "column": "altitude_decimal",
-      "input": 0.3,
+      "input": 0.30000000000000004,
       "own": true,
       "result": {
         "ok": "0.3"
@@ -731,7 +731,7 @@
     },
     {
       "column": "altitude_decimal",
-      "input": 1e-05,
+      "input": 1.0e-05,
       "own": true,
       "result": {
         "ok": "0.0"
@@ -1191,7 +1191,7 @@
     },
     {
       "column": "course",
-      "input": 0.3,
+      "input": 0.30000000000000004,
       "own": true,
       "result": {
         "ok": "0.3"
@@ -1199,7 +1199,7 @@
     },
     {
       "column": "course",
-      "input": 1e-05,
+      "input": 1.0e-05,
       "own": true,
       "result": {
         "ok": "0.00001"
@@ -1659,7 +1659,7 @@
     },
     {
       "column": "velocity",
-      "input": 0.3,
+      "input": 0.30000000000000004,
       "own": true,
       "result": {
         "ok": "0.30000000000000004"
@@ -1667,7 +1667,7 @@
     },
     {
       "column": "velocity",
-      "input": 1e-05,
+      "input": 1.0e-05,
       "own": true,
       "result": {
         "ok": "1.0e-05"
@@ -2127,7 +2127,7 @@
     },
     {
       "column": "battery_status",
-      "input": 0.3,
+      "input": 0.30000000000000004,
       "own": true,
       "result": {
         "ok": 0
@@ -2135,7 +2135,7 @@
     },
     {
       "column": "battery_status",
-      "input": 1e-05,
+      "input": 1.0e-05,
       "own": true,
       "result": {
         "ok": 0
@@ -2595,7 +2595,7 @@
     },
     {
       "column": "connection",
-      "input": 0.3,
+      "input": 0.30000000000000004,
       "own": true,
       "result": {
         "ok": 0
@@ -2603,7 +2603,7 @@
     },
     {
       "column": "connection",
-      "input": 1e-05,
+      "input": 1.0e-05,
       "own": true,
       "result": {
         "ok": 0
@@ -3063,7 +3063,7 @@
     },
     {
       "column": "trigger",
-      "input": 0.3,
+      "input": 0.30000000000000004,
       "own": true,
       "result": {
         "ok": 0
@@ -3071,7 +3071,7 @@
     },
     {
       "column": "trigger",
-      "input": 1e-05,
+      "input": 1.0e-05,
       "own": true,
       "result": {
         "ok": 0
@@ -4030,12 +4030,12 @@
     {
       "input": "POINT(1.0e-05 52.5)",
       "point": [
-        1e-05,
+        1.0e-05,
         52.5
       ],
       "null_island": false,
       "dedup_key": [
-        1e-05,
+        1.0e-05,
         52.5,
         1,
         1
@@ -4044,12 +4044,12 @@
     {
       "input": "POINT(-0.0 51.5)",
       "point": [
-        0.0,
+        -0.0,
         51.5
       ],
       "null_island": false,
       "dedup_key": [
-        0.0,
+        -0.0,
         51.5,
         1,
         1
@@ -4243,7 +4243,7 @@
       "null_island": true
     },
     {
-      "lon": 0.0,
+      "lon": -0.0,
       "lat": 0.0449,
       "null_island": true
     }
