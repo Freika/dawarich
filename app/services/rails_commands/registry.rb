@@ -13,7 +13,7 @@ module RailsCommands
           Visits::Detection::MachineVisitWipe.bust_month_caches(user, times)
         }
       }
-    }.freeze
+    }.merge(Points::ArrivalCommands::HANDLERS).freeze
 
     module_function
 
