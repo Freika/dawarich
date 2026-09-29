@@ -16,18 +16,9 @@ defmodule Dawarich.Tracks.Reprocessor do
 
     if segment_data != [], do: Segments.insert!(repo, track.id, segment_data)
 
-    segments =
-      repo.query!(
-        "SELECT transportation_mode, distance, duration FROM track_segments WHERE track_id = $1 ORDER BY id",
-        [track.id],
-        log: false
-      ).rows
-
     mode =
-      segments
-      |> Enum.map(fn [mode, distance, duration] ->
-        %{transportation_mode: Segments.int_to_mode(mode), distance: distance, duration: duration}
-      end)
+      repo
+      |> Segments.load_segments_for_dominant_mode!(track.id)
       |> DominantMode.pick()
 
     if mode,

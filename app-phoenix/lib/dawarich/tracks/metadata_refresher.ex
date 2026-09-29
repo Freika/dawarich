@@ -31,7 +31,16 @@ defmodule Dawarich.Tracks.MetadataRefresher do
       end)
 
     if result.skipped > 0 do
-      json = Jason.encode!(%{result | reasons: Jason.OrderedObject.new(result.reasons)})
+      json =
+        Jason.encode!(
+          Jason.OrderedObject.new(
+            refreshed: result.refreshed,
+            skipped: result.skipped,
+            reasons: Jason.OrderedObject.new(result.reasons),
+            sample_ids: result.sample_ids
+          )
+        )
+
       Logger.warning("event=tracks.metadata_refresh_incomplete user_id=#{user.id} result=#{json}")
     end
 

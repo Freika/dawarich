@@ -25,4 +25,26 @@ defmodule Dawarich.Tracks.GenerationParityTest do
       assert Enum.sort(events(known)) == Enum.sort(expected_events(expected))
     end
   end
+
+  test "the attached singleton is saved like point.update!" do
+    %{call: [call]} = TracksFixtures.load!(ScratchRepo, "range_orphans")
+    user = Settings.load!(ScratchRepo, 1)
+
+    [singleton] =
+      for p <- TracksFixtures.read!("range_orphans")["input"]["points"],
+          p["tracker_id"] == "device-e" and p["track_id"] == nil,
+          do: p["id"]
+
+    before = Map.new(rows("SELECT id, updated_at FROM points"), &List.to_tuple/1)
+
+    generate_chunks!(user, call)
+
+    after_run = rows("SELECT id, lock_version, updated_at FROM points ORDER BY id")
+
+    assert [[^singleton, 1, updated_at]] =
+             Enum.filter(after_run, fn [_, version, _] -> version > 0 end)
+
+    assert NaiveDateTime.compare(updated_at, before[singleton]) == :gt
+    assert point_track_ids()[singleton] != nil
+  end
 end

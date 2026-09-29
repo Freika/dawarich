@@ -258,7 +258,7 @@ defmodule Dawarich.Transportation.Segments do
     mode
   end
 
-  defp load_segments_for_dominant_mode!(repo, track_id) do
+  def load_segments_for_dominant_mode!(repo, track_id) do
     result =
       repo.query!(
         "SELECT transportation_mode, distance, duration FROM track_segments WHERE track_id = $1 ORDER BY id",

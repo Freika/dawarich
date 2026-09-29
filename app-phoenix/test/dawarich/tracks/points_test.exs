@@ -75,4 +75,17 @@ defmodule Dawarich.Tracks.PointsTest do
     send(claim.pid, :release)
     assert {:ok, :ok} = Task.await(claim)
   end
+
+  test "an omitted untracked_only loads tracked points too, as Rails' nil does" do
+    TracksFixtures.load!(ScratchRepo, "range_kept")
+    tracked = for {id, track_id} <- point_track_ids(), track_id != nil, do: id
+
+    loaded =
+      ScratchRepo
+      |> Points.load_chunk(1, 1_780_290_000, 1_780_308_000, import_id: nil)
+      |> Enum.map(& &1.id)
+
+    assert tracked != []
+    assert Enum.sort(loaded) == Enum.sort(tracked)
+  end
 end

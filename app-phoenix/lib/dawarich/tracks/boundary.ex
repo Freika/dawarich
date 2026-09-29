@@ -122,7 +122,7 @@ defmodule Dawarich.Tracks.Boundary do
   defp spatially_connected?(track1, track2, endpoints, user) do
     with {start1, end1} <- endpoints[track1.id], {start2, end2} <- endpoints[track2.id] do
       threshold =
-        if track1.tracker_id not in [nil, ""] and track1.tracker_id == track2.tracker_id,
+        if present?(track1.tracker_id) and track1.tracker_id == track2.tracker_id,
           do: @same_tracker_max_gap_m,
           else: Settings.meters_between_routes(user)
 
@@ -133,6 +133,9 @@ defmodule Dawarich.Tracks.Boundary do
       _ -> false
     end
   end
+
+  defp present?(nil), do: false
+  defp present?(value), do: not Regex.match?(~r/\A[[:space:]]*\z/u, value)
 
   defp valid_group?(repo, user, group) do
     sorted = Enum.sort_by(group, & &1.start_at)

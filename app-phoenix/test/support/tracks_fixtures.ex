@@ -16,6 +16,18 @@ defmodule Dawarich.Tracks.TracksFixtures do
     @dir |> Path.join(name <> ".json") |> File.read!() |> Jason.decode!(opts)
   end
 
+  def generating_platform? do
+    :erlang.system_info(:system_architecture)
+    |> to_string()
+    |> String.starts_with?("aarch64-apple-darwin")
+  end
+
+  def float_matches?(actual, expected) do
+    if generating_platform?(),
+      do: <<actual::float>> == <<expected::float>>,
+      else: abs(actual - expected) <= abs(expected) * 1.0e-12
+  end
+
   def load!(repo, name) do
     fixture = read!(name)
     input = fixture["input"]

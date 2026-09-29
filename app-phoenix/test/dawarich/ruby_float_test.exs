@@ -61,7 +61,14 @@ defmodule Dawarich.RubyFloatTest do
     pairs = Enum.map(pairs, &{{&1["lat1"], &1["lon1"]}, {&1["lat2"], &1["lon2"]}})
 
     assert <<Dawarich.RubyFloat.sum(values)::float>> == <<ruby_sum::float>>
-    assert <<Dawarich.Geo.pairs_distance_m(pairs)::float>> == <<ruby_sum::float>>
+
+    platform_distances =
+      Enum.map(pairs, fn {from, to} -> Dawarich.Geo.safe_distance_m(from, to) end)
+
+    array_distance = Dawarich.Geo.pairs_distance_m(pairs)
+
+    assert Dawarich.Tracks.TracksFixtures.float_matches?(array_distance, ruby_sum)
+    assert <<array_distance::float>> == <<Dawarich.RubyFloat.sum(platform_distances)::float>>
     refute Enum.sum(values) == ruby_sum
   end
 

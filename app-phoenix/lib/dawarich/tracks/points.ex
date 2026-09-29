@@ -96,7 +96,14 @@ defmodule Dawarich.Tracks.Points do
   end
 
   def load_chunk(repo, user_id, from_ts, to_ts, opts) do
-    params = [user_id, from_ts, to_ts, opts[:untracked_only], opts[:import_id]]
+    params = [
+      user_id,
+      from_ts,
+      to_ts,
+      opts[:untracked_only] not in [nil, false],
+      opts[:import_id]
+    ]
+
     repo |> query!(@chunk_sql, params) |> Enum.map(&to_point/1)
   end
 

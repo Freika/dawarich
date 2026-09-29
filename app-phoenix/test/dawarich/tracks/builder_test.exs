@@ -156,4 +156,35 @@ defmodule Dawarich.Tracks.BuilderTest do
     assert Enum.all?(points, &(point_track_ids()[&1.id] == id))
     assert [%{"created" => [^id]}] = tracks_changed()
   end
+
+  test "a race lost in a later run rolls back the whole orphan claim" do
+    user = user!()
+    t = 1_790_900_000
+    owner = track!(user.id, nil, t + 120, t + 130)
+    first_run = [point!(user.id, t, 12.3731, 51.3397), point!(user.id, t + 60, 12.3735, 51.3399)]
+    owned = point!(user.id, t + 120, 12.3739, 51.3401, track_id: owner)
+
+    second_run = [
+      point!(user.id, t + 180, 12.3743, 51.3403),
+      point!(user.id, t + 240, 12.3747, 51.3405)
+    ]
+
+    track!(user.id, "", t + 180, t + 240)
+
+    points =
+      Points.load_chunk(ScratchRepo, user.id, t, t + 240, untracked_only: false, import_id: nil)
+
+    {result, log} =
+      with_log(fn ->
+        Builder.create_from_orphans!(ScratchRepo, user, points, skip_segment_detection: true)
+      end)
+
+    assert rows("SELECT count(*) FROM tracks WHERE user_id = $1", [user.id]) == [[2]]
+    owners = point_track_ids()
+    assert Enum.map(first_run ++ second_run, &owners[&1]) == [nil, nil, nil, nil]
+    assert owners[owned] == owner
+    assert tracks_changed() == []
+    assert result == {:error, :race_lost}
+    assert log =~ "event=tracks.race_winner_not_visible user_id=#{user.id}"
+  end
 end

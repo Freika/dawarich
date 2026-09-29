@@ -182,6 +182,61 @@ defmodule Dawarich.TracksCase do
     |> Enum.sort()
   end
 
+  def user!(settings \\ %{}) do
+    %{rows: [[id]]} =
+      ScratchRepo.query!(
+        "INSERT INTO users (email, settings, created_at, updated_at) VALUES ($1, $2, now(), now()) RETURNING id",
+        ["tracks-#{System.unique_integer([:positive])}@example.test", settings],
+        log: false
+      )
+
+    Settings.load!(ScratchRepo, id)
+  end
+
+  def point!(user_id, timestamp, lon, lat, opts \\ []) do
+    %{rows: [[id]]} =
+      ScratchRepo.query!(
+        "INSERT INTO points (user_id, timestamp, lonlat, tracker_id, track_id, created_at, updated_at) " <>
+          "VALUES ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography, $5, $6, " <>
+          "to_timestamp($7::bigint) AT TIME ZONE 'UTC', to_timestamp($7::bigint) AT TIME ZONE 'UTC') RETURNING id",
+        [
+          user_id,
+          timestamp,
+          lon,
+          lat,
+          opts[:tracker_id],
+          opts[:track_id],
+          Keyword.get(opts, :created_at, timestamp)
+        ],
+        log: false
+      )
+
+    id
+  end
+
+  def track!(user_id, tracker_id, start_at, end_at) do
+    %{rows: [[id]]} =
+      ScratchRepo.query!(
+        "INSERT INTO tracks (user_id, tracker_id, start_at, end_at, original_path, distance, duration, avg_speed, " <>
+          "created_at, updated_at) VALUES ($1, $2, to_timestamp($3::bigint) AT TIME ZONE 'UTC', " <>
+          "to_timestamp($4::bigint) AT TIME ZONE 'UTC', " <>
+          "ST_GeomFromText('LINESTRING(12.3731 51.3397,12.3741 51.3407)', 4326), 100, 300, 1.2, now(), now()) RETURNING id",
+        [user_id, tracker_id, start_at, end_at],
+        log: false
+      )
+
+    id
+  end
+
+  def track_rows do
+    ScratchRepo.query!(
+      "SELECT id, tracker_id, start_at, end_at, ST_AsText(original_path), distance, duration, avg_speed, " <>
+        "lock_version, updated_at FROM tracks ORDER BY id",
+      [],
+      log: false
+    ).rows
+  end
+
   def point_track_ids do
     ScratchRepo.query!("SELECT id, track_id FROM points ORDER BY id", [], log: false).rows
     |> Map.new(fn [id, track_id] -> {id, track_id} end)

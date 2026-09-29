@@ -14,7 +14,7 @@ defmodule Dawarich.GeoTest do
     |> Enum.zip(distances)
     |> Enum.each(fn {pair, expected} ->
       actual = Geo.distance_m({pair["lat1"], pair["lon1"]}, {pair["lat2"], pair["lon2"]})
-      assert <<actual::float>> == <<expected::float>>, inspect({pair, actual, expected})
+      assert TracksFixtures.float_matches?(actual, expected), inspect({pair, actual, expected})
     end)
   end
 

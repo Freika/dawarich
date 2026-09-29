@@ -65,7 +65,7 @@ defmodule Dawarich.Tracks.OrphanAttacher do
       Segments.anchor_now!(repo, List.flatten(unanchored))
 
       repo.query!(
-        "UPDATE points SET track_id = $1, updated_at = now() WHERE id = $2",
+        "UPDATE points SET track_id = $1, updated_at = now(), lock_version = lock_version + 1 WHERE id = $2",
         [track.id, point_id],
         log: false
       )
