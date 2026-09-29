@@ -3,7 +3,6 @@ defmodule Dawarich.Areas do
 
   alias Dawarich.RailsCommands
 
-  @earth_radius_km 6371.0
   @candidates """
   SELECT v.id,
          CASE WHEN pl.id IS NOT NULL THEN COALESCE(ST_Y(pl.lonlat::geometry), pl.latitude::float8) END,
@@ -41,19 +40,7 @@ defmodule Dawarich.Areas do
     end
   end
 
-  def distance_m({lat1, lon1}, {lat2, lon2}) do
-    r = :math.pi() / 180
-    p1 = lat1 * r
-    l1 = lon1 * r
-    p2 = lat2 * r
-    l2 = lon2 * r
-
-    a =
-      :math.pow(:math.sin((p2 - p1) / 2), 2) +
-        :math.cos(p1) * :math.pow(:math.sin((l2 - l1) / 2), 2) * :math.cos(p2)
-
-    2 * :math.atan2(:math.sqrt(a), :math.sqrt(1 - a)) * @earth_radius_km * 1000
-  end
+  defdelegate distance_m(from, to), to: Dawarich.Geo
 
   defp area(repo, id) do
     case repo.query!(

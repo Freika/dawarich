@@ -54,6 +54,27 @@ defmodule Dawarich.RubyFloatTest do
     end
   end
 
+  test "sum is Ruby's compensated sum" do
+    %{"expected" => %{"pairs" => pairs, "distances" => values, "distance_sum" => ruby_sum}} =
+      Dawarich.Tracks.TracksFixtures.read!("ruby_math")
+
+    pairs = Enum.map(pairs, &{{&1["lat1"], &1["lon1"]}, {&1["lat2"], &1["lon2"]}})
+
+    assert <<Dawarich.RubyFloat.sum(values)::float>> == <<ruby_sum::float>>
+    assert <<Dawarich.Geo.pairs_distance_m(pairs)::float>> == <<ruby_sum::float>>
+    refute Enum.sum(values) == ruby_sum
+  end
+
+  test "round/2 matches the fixture's Float#round(5) cases" do
+    %{"expected" => %{"round5_cases" => cases}} =
+      Dawarich.Tracks.TracksFixtures.read!("ruby_math")
+
+    for %{"input" => input, "rounded" => rounded} <- cases do
+      assert <<Dawarich.RubyFloat.round(input * 1.0, 5)::float>> == <<rounded * 1.0::float>>,
+             inspect(input)
+    end
+  end
+
   test "sum/1 matches Ruby's Array#sum for floats" do
     assert Dawarich.RubyFloat.sum([0.1, 0.2]) == 0.30000000000000004
     assert Dawarich.RubyFloat.sum([1.0, 2.0, 3.0]) == 6.0
