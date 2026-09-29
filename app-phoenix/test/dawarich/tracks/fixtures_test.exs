@@ -14,9 +14,10 @@ defmodule Dawarich.Tracks.FixturesTest do
 
     test "every fixture loads into the scratch database: #{name}" do
       counts = TracksFixtures.input_counts(@name)
-      expected = TracksFixtures.load!(Dawarich.Repo, @name)
+      result = TracksFixtures.load!(Dawarich.Repo, @name)
 
-      assert is_map(expected)
+      assert is_map(result.expected)
+      assert is_list(result.call)
 
       for table <- @tables do
         ids = Map.fetch!(counts, table)
@@ -28,5 +29,23 @@ defmodule Dawarich.Tracks.FixturesTest do
                "expected #{length(ids)} #{table} rows for #{@name}, got #{count}"
       end
     end
+  end
+
+  test "sequences advance past inserted fixture ids so a fresh INSERT can proceed" do
+    TracksFixtures.load!(Dawarich.Repo, "range_dst")
+
+    %{rows: [[user_id]]} = Dawarich.Repo.query!("SELECT id FROM users ORDER BY id LIMIT 1")
+
+    %{rows: [[track_id]]} =
+      Dawarich.Repo.query!(
+        "INSERT INTO tracks (user_id, tracker_id, start_at, end_at, original_path, distance, avg_speed, " <>
+          "duration, elevation_gain, elevation_loss, elevation_max, elevation_min, created_at, updated_at) " <>
+          "VALUES ($1, 'seq-check', now(), now(), " <>
+          "ST_GeomFromText('LINESTRING(12.3731 51.3397, 12.3741 51.3407)', 4326), 0, 0, 0, 0, 0, 0, 0, now(), " <>
+          "now()) RETURNING id",
+        [user_id]
+      )
+
+    assert is_integer(track_id)
   end
 end

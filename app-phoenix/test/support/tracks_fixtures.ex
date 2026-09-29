@@ -2,6 +2,7 @@ defmodule Dawarich.Tracks.TracksFixtures do
   @moduledoc false
 
   @dir "test/fixtures/tracks"
+  @tables ~w[tracks track_segments points users imports point_sources]
 
   def names do
     @dir
@@ -21,8 +22,9 @@ defmodule Dawarich.Tracks.TracksFixtures do
     Enum.each(input["tracks"], &insert_track(repo, &1))
     Enum.each(input["points"], &insert_point(repo, &1))
     Enum.each(input["track_segments"], &insert_track_segment(repo, &1))
+    advance_sequences!(repo)
 
-    fixture["expected"]
+    %{expected: fixture["expected"], call: fixture["call"]}
   end
 
   def input_counts(name) do
@@ -31,9 +33,20 @@ defmodule Dawarich.Tracks.TracksFixtures do
     Map.new(fixture["input"], fn {table, rows} -> {table, Enum.map(rows, & &1["id"])} end)
   end
 
+  defp advance_sequences!(repo) do
+    Enum.each(@tables, fn table ->
+      repo.query!(
+        "SELECT setval(pg_get_serial_sequence($1, 'id'), " <>
+          "GREATEST((SELECT COALESCE(MAX(id), 0) FROM #{table}), 1))",
+        [table]
+      )
+    end)
+  end
+
   defp insert_user(repo, name, row) do
     repo.query!(
-      "INSERT INTO users (id, email, settings, created_at, updated_at) VALUES ($1, $2, $3, now(), now())",
+      "INSERT INTO users (id, email, settings, created_at, updated_at) " <>
+        "VALUES ($1, $2, $3, now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')",
       [row["id"], "fixture-#{name}-#{row["id"]}@example.test", row["settings"]]
     )
   end
@@ -43,7 +56,7 @@ defmodule Dawarich.Tracks.TracksFixtures do
 
     repo.query!(
       "INSERT INTO point_sources (id, tracker_id, digest, created_at, updated_at) " <>
-        "VALUES ($1, $2, $3, now(), now())",
+        "VALUES ($1, $2, $3, now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')",
       [row["id"], row["tracker_id"], digest]
     )
   end
@@ -51,7 +64,8 @@ defmodule Dawarich.Tracks.TracksFixtures do
   defp insert_import(repo, name, row) do
     repo.query!(
       "INSERT INTO imports (id, user_id, name, status, source, additional_data_extraction_status, " <>
-        "created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, now(), now())",
+        "created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, now() AT TIME ZONE 'UTC', " <>
+        "now() AT TIME ZONE 'UTC')",
       [
         row["id"],
         row["user_id"],
@@ -68,7 +82,7 @@ defmodule Dawarich.Tracks.TracksFixtures do
       "INSERT INTO points (id, timestamp, lonlat, track_id, altitude, altitude_decimal, tracker_id, " <>
         "source_id, user_id, anomaly, import_id, velocity, accuracy, motion_data, created_at, updated_at) " <>
         "VALUES ($1, $2, ST_GeomFromText($3, 4326)::geography, $4, $5, $6::numeric, $7, $8, $9, $10, $11, " <>
-        "$12, $13, $14, now(), now())",
+        "$12, $13, $14, to_timestamp($15) AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')",
       [
         row["id"],
         row["timestamp"],
@@ -83,7 +97,8 @@ defmodule Dawarich.Tracks.TracksFixtures do
         row["import_id"],
         row["velocity"],
         row["accuracy"],
-        row["motion_data"]
+        row["motion_data"],
+        row["created_at"]
       ]
     )
   end
@@ -92,8 +107,9 @@ defmodule Dawarich.Tracks.TracksFixtures do
     repo.query!(
       "INSERT INTO tracks (id, user_id, tracker_id, start_at, end_at, original_path, distance, duration, " <>
         "avg_speed, elevation_gain, elevation_loss, elevation_max, elevation_min, dominant_mode, import_id, " <>
-        "created_at, updated_at) VALUES ($1, $2, $3, to_timestamp($4), to_timestamp($5), " <>
-        "ST_GeomFromText($6, 4326), $7, $8, $9, $10, $11, $12, $13, $14, $15, now(), now())",
+        "created_at, updated_at) VALUES ($1, $2, $3, to_timestamp($4) AT TIME ZONE 'UTC', " <>
+        "to_timestamp($5) AT TIME ZONE 'UTC', ST_GeomFromText($6, 4326), $7, $8, $9, $10, $11, $12, $13, $14, " <>
+        "$15, now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')",
       [
         row["id"],
         row["user_id"],
@@ -119,7 +135,8 @@ defmodule Dawarich.Tracks.TracksFixtures do
       "INSERT INTO track_segments (id, track_id, transportation_mode, start_at, end_at, start_index, " <>
         "end_index, path, distance, duration, avg_speed, max_speed, confidence, confidence_score, source, " <>
         "corrected_at, created_at, updated_at) VALUES ($1, $2, $3, to_timestamp($4), to_timestamp($5), $6, " <>
-        "$7, ST_GeomFromText($8, 4326), $9, $10, $11, $12, $13, $14, $15, to_timestamp($16), now(), now())",
+        "$7, ST_GeomFromText($8, 4326), $9, $10, $11, $12, $13, $14, $15, to_timestamp($16) AT TIME ZONE 'UTC', " <>
+        "now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')",
       [
         row["id"],
         row["track_id"],
