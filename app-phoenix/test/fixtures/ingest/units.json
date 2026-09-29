@@ -1,0 +1,6492 @@
+{
+  "strings": [
+    {
+      "input": "0",
+      "to_i": 0,
+      "to_d": "0.0"
+    },
+    {
+      "input": "12",
+      "to_i": 12,
+      "to_d": "12.0"
+    },
+    {
+      "input": " 12",
+      "to_i": 12,
+      "to_d": "12.0"
+    },
+    {
+      "input": "\t9",
+      "to_i": 9,
+      "to_d": "9.0"
+    },
+    {
+      "input": "9 ",
+      "to_i": 9,
+      "to_d": "9.0"
+    },
+    {
+      "input": "12abc",
+      "to_i": 12,
+      "to_d": "12.0"
+    },
+    {
+      "input": "-7",
+      "to_i": -7,
+      "to_d": "-7.0"
+    },
+    {
+      "input": "+7",
+      "to_i": 7,
+      "to_d": "7.0"
+    },
+    {
+      "input": "1_000",
+      "to_i": 1000,
+      "to_d": "1000.0"
+    },
+    {
+      "input": "1__0",
+      "to_i": 1,
+      "to_d": "1.0"
+    },
+    {
+      "input": "_1",
+      "to_i": 0,
+      "to_d": "0.0"
+    },
+    {
+      "input": "12.9",
+      "to_i": 12,
+      "to_d": "12.9"
+    },
+    {
+      "input": "-12.9",
+      "to_i": -12,
+      "to_d": "-12.9"
+    },
+    {
+      "input": "abc",
+      "to_i": 0,
+      "to_d": "0.0"
+    },
+    {
+      "input": "",
+      "to_i": 0,
+      "to_d": "0.0"
+    },
+    {
+      "input": " ",
+      "to_i": 0,
+      "to_d": "0.0"
+    },
+    {
+      "input": "0x1A",
+      "to_i": 0,
+      "to_d": "0.0"
+    },
+    {
+      "input": "1e3",
+      "to_i": 1,
+      "to_d": "1000.0"
+    },
+    {
+      "input": "0.5",
+      "to_i": 0,
+      "to_d": "0.5"
+    },
+    {
+      "input": ".5",
+      "to_i": 0,
+      "to_d": "0.5"
+    },
+    {
+      "input": "5.",
+      "to_i": 5,
+      "to_d": "5.0"
+    },
+    {
+      "input": "1.2.3",
+      "to_i": 1,
+      "to_d": "1.2"
+    },
+    {
+      "input": "- 1",
+      "to_i": 0,
+      "to_d": "-0.0"
+    }
+  ],
+  "casts": [
+    {
+      "column": "accuracy",
+      "input": null,
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 0,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 5,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": -5,
+      "own": true,
+      "result": {
+        "ok": -5
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 5.5,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": -5.5,
+      "own": true,
+      "result": {
+        "ok": -5
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 5.999,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 12,
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 2147483647,
+      "own": false,
+      "result": {
+        "ok": 2147483647
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 2147483648,
+      "own": false,
+      "result": {
+        "error": "ActiveModel::RangeError"
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": -2147483648,
+      "own": false,
+      "result": {
+        "ok": -2147483648
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": -2147483649,
+      "own": false,
+      "result": {
+        "error": "ActiveModel::RangeError"
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 1.005,
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 2.675,
+      "own": true,
+      "result": {
+        "ok": 2
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 123.456,
+      "own": true,
+      "result": {
+        "ok": 123
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 999.999,
+      "own": true,
+      "result": {
+        "ok": 999
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 1234.5678,
+      "own": true,
+      "result": {
+        "ok": 1234
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 0.3,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 1e-05,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 1.2345649999,
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": 99999999.995,
+      "own": true,
+      "result": {
+        "ok": 99999999
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "0",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "12",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": " 12",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "\t9",
+      "own": true,
+      "result": {
+        "ok": 9
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "9 ",
+      "own": true,
+      "result": {
+        "ok": 9
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "12abc",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "-7",
+      "own": true,
+      "result": {
+        "ok": -7
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "+7",
+      "own": true,
+      "result": {
+        "ok": 7
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "1_000",
+      "own": true,
+      "result": {
+        "ok": 1000
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "1__0",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "_1",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "12.9",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "-12.9",
+      "own": true,
+      "result": {
+        "ok": -12
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "abc",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": " ",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "0x1A",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "1e3",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "0.5",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": ".5",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "5.",
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "1.2.3",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "- 1",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "unplugged",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "charging",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "full",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "unknown",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "wifi",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "mobile",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "offline",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "manual_event",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "bogus",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": "2",
+      "own": true,
+      "result": {
+        "ok": 2
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": true,
+      "own": false,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": false,
+      "own": false,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": [
+        1
+      ],
+      "own": false,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "accuracy",
+      "input": {
+        "a": 1
+      },
+      "own": false,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": null,
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 0,
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 5,
+      "own": true,
+      "result": {
+        "ok": "5.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": -5,
+      "own": true,
+      "result": {
+        "ok": "-5.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 5.5,
+      "own": true,
+      "result": {
+        "ok": "5.5"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": -5.5,
+      "own": true,
+      "result": {
+        "ok": "-5.5"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 5.999,
+      "own": true,
+      "result": {
+        "ok": "6.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 12,
+      "own": true,
+      "result": {
+        "ok": "12.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 2147483647,
+      "own": false,
+      "result": {
+        "ok": "2147483647.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 2147483648,
+      "own": false,
+      "result": {
+        "ok": "2147483648.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": -2147483648,
+      "own": false,
+      "result": {
+        "ok": "-2147483648.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": -2147483649,
+      "own": false,
+      "result": {
+        "ok": "-2147483649.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 1.005,
+      "own": true,
+      "result": {
+        "ok": "1.01"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 2.675,
+      "own": true,
+      "result": {
+        "ok": "2.68"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 123.456,
+      "own": true,
+      "result": {
+        "ok": "123.46"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 999.999,
+      "own": true,
+      "result": {
+        "ok": "1000.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 1234.5678,
+      "own": true,
+      "result": {
+        "ok": "1234.57"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 0.3,
+      "own": true,
+      "result": {
+        "ok": "0.3"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 1e-05,
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 1.2345649999,
+      "own": true,
+      "result": {
+        "ok": "1.23"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": 99999999.995,
+      "own": true,
+      "result": {
+        "ok": "100000000.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "0",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "12",
+      "own": true,
+      "result": {
+        "ok": "12.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": " 12",
+      "own": true,
+      "result": {
+        "ok": "12.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "\t9",
+      "own": true,
+      "result": {
+        "ok": "9.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "9 ",
+      "own": true,
+      "result": {
+        "ok": "9.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "12abc",
+      "own": true,
+      "result": {
+        "ok": "12.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "-7",
+      "own": true,
+      "result": {
+        "ok": "-7.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "+7",
+      "own": true,
+      "result": {
+        "ok": "7.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "1_000",
+      "own": true,
+      "result": {
+        "ok": "1000.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "1__0",
+      "own": true,
+      "result": {
+        "ok": "1.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "_1",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "12.9",
+      "own": true,
+      "result": {
+        "ok": "12.9"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "-12.9",
+      "own": true,
+      "result": {
+        "ok": "-12.9"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "abc",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": " ",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "0x1A",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "1e3",
+      "own": true,
+      "result": {
+        "ok": "1000.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "0.5",
+      "own": true,
+      "result": {
+        "ok": "0.5"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": ".5",
+      "own": true,
+      "result": {
+        "ok": "0.5"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "5.",
+      "own": true,
+      "result": {
+        "ok": "5.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "1.2.3",
+      "own": true,
+      "result": {
+        "ok": "1.2"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "- 1",
+      "own": true,
+      "result": {
+        "ok": "-0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "unplugged",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "charging",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "full",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "unknown",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "wifi",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "mobile",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "offline",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "manual_event",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "bogus",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": "2",
+      "own": true,
+      "result": {
+        "ok": "2.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": true,
+      "own": false,
+      "result": {
+        "ok": "1.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": false,
+      "own": false,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": [
+        1
+      ],
+      "own": false,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "altitude_decimal",
+      "input": {
+        "a": 1
+      },
+      "own": false,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": null,
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "course",
+      "input": 0,
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": 5,
+      "own": true,
+      "result": {
+        "ok": "5.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": -5,
+      "own": true,
+      "result": {
+        "ok": "-5.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": 5.5,
+      "own": true,
+      "result": {
+        "ok": "5.5"
+      }
+    },
+    {
+      "column": "course",
+      "input": -5.5,
+      "own": true,
+      "result": {
+        "ok": "-5.5"
+      }
+    },
+    {
+      "column": "course",
+      "input": 5.999,
+      "own": true,
+      "result": {
+        "ok": "5.999"
+      }
+    },
+    {
+      "column": "course",
+      "input": 12,
+      "own": true,
+      "result": {
+        "ok": "12.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": 2147483647,
+      "own": false,
+      "result": {
+        "ok": "2147483647.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": 2147483648,
+      "own": false,
+      "result": {
+        "ok": "2147483648.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": -2147483648,
+      "own": false,
+      "result": {
+        "ok": "-2147483648.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": -2147483649,
+      "own": false,
+      "result": {
+        "ok": "-2147483649.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": 1.005,
+      "own": true,
+      "result": {
+        "ok": "1.005"
+      }
+    },
+    {
+      "column": "course",
+      "input": 2.675,
+      "own": true,
+      "result": {
+        "ok": "2.675"
+      }
+    },
+    {
+      "column": "course",
+      "input": 123.456,
+      "own": true,
+      "result": {
+        "ok": "123.456"
+      }
+    },
+    {
+      "column": "course",
+      "input": 999.999,
+      "own": true,
+      "result": {
+        "ok": "999.999"
+      }
+    },
+    {
+      "column": "course",
+      "input": 1234.5678,
+      "own": true,
+      "result": {
+        "ok": "1234.5678"
+      }
+    },
+    {
+      "column": "course",
+      "input": 0.3,
+      "own": true,
+      "result": {
+        "ok": "0.3"
+      }
+    },
+    {
+      "column": "course",
+      "input": 1e-05,
+      "own": true,
+      "result": {
+        "ok": "0.00001"
+      }
+    },
+    {
+      "column": "course",
+      "input": 1.2345649999,
+      "own": true,
+      "result": {
+        "ok": "1.23456"
+      }
+    },
+    {
+      "column": "course",
+      "input": 99999999.995,
+      "own": true,
+      "result": {
+        "ok": "100000000.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "0",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "12",
+      "own": true,
+      "result": {
+        "ok": "12.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": " 12",
+      "own": true,
+      "result": {
+        "ok": "12.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "\t9",
+      "own": true,
+      "result": {
+        "ok": "9.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "9 ",
+      "own": true,
+      "result": {
+        "ok": "9.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "12abc",
+      "own": true,
+      "result": {
+        "ok": "12.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "-7",
+      "own": true,
+      "result": {
+        "ok": "-7.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "+7",
+      "own": true,
+      "result": {
+        "ok": "7.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "1_000",
+      "own": true,
+      "result": {
+        "ok": "1000.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "1__0",
+      "own": true,
+      "result": {
+        "ok": "1.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "_1",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "12.9",
+      "own": true,
+      "result": {
+        "ok": "12.9"
+      }
+    },
+    {
+      "column": "course",
+      "input": "-12.9",
+      "own": true,
+      "result": {
+        "ok": "-12.9"
+      }
+    },
+    {
+      "column": "course",
+      "input": "abc",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "course",
+      "input": " ",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "course",
+      "input": "0x1A",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "1e3",
+      "own": true,
+      "result": {
+        "ok": "1000.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "0.5",
+      "own": true,
+      "result": {
+        "ok": "0.5"
+      }
+    },
+    {
+      "column": "course",
+      "input": ".5",
+      "own": true,
+      "result": {
+        "ok": "0.5"
+      }
+    },
+    {
+      "column": "course",
+      "input": "5.",
+      "own": true,
+      "result": {
+        "ok": "5.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "1.2.3",
+      "own": true,
+      "result": {
+        "ok": "1.2"
+      }
+    },
+    {
+      "column": "course",
+      "input": "- 1",
+      "own": true,
+      "result": {
+        "ok": "-0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "unplugged",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "charging",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "full",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "unknown",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "wifi",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "mobile",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "offline",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "manual_event",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "bogus",
+      "own": true,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": "2",
+      "own": true,
+      "result": {
+        "ok": "2.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": true,
+      "own": false,
+      "result": {
+        "ok": "1.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": false,
+      "own": false,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": [
+        1
+      ],
+      "own": false,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "course",
+      "input": {
+        "a": 1
+      },
+      "own": false,
+      "result": {
+        "ok": "0.0"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": null,
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 0,
+      "own": true,
+      "result": {
+        "ok": "0"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 5,
+      "own": true,
+      "result": {
+        "ok": "5"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": -5,
+      "own": true,
+      "result": {
+        "ok": "-5"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 5.5,
+      "own": true,
+      "result": {
+        "ok": "5.5"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": -5.5,
+      "own": true,
+      "result": {
+        "ok": "-5.5"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 5.999,
+      "own": true,
+      "result": {
+        "ok": "5.999"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 12,
+      "own": true,
+      "result": {
+        "ok": "12"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 2147483647,
+      "own": false,
+      "result": {
+        "ok": "2147483647"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 2147483648,
+      "own": false,
+      "result": {
+        "ok": "2147483648"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": -2147483648,
+      "own": false,
+      "result": {
+        "ok": "-2147483648"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": -2147483649,
+      "own": false,
+      "result": {
+        "ok": "-2147483649"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 1.005,
+      "own": true,
+      "result": {
+        "ok": "1.005"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 2.675,
+      "own": true,
+      "result": {
+        "ok": "2.675"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 123.456,
+      "own": true,
+      "result": {
+        "ok": "123.456"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 999.999,
+      "own": true,
+      "result": {
+        "ok": "999.999"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 1234.5678,
+      "own": true,
+      "result": {
+        "ok": "1234.5678"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 0.3,
+      "own": true,
+      "result": {
+        "ok": "0.30000000000000004"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 1e-05,
+      "own": true,
+      "result": {
+        "ok": "1.0e-05"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 1.2345649999,
+      "own": true,
+      "result": {
+        "ok": "1.2345649999"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": 99999999.995,
+      "own": true,
+      "result": {
+        "ok": "99999999.995"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "0",
+      "own": true,
+      "result": {
+        "ok": "0"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "12",
+      "own": true,
+      "result": {
+        "ok": "12"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": " 12",
+      "own": true,
+      "result": {
+        "ok": " 12"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "\t9",
+      "own": true,
+      "result": {
+        "ok": "\t9"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "9 ",
+      "own": true,
+      "result": {
+        "ok": "9 "
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "12abc",
+      "own": true,
+      "result": {
+        "ok": "12abc"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "-7",
+      "own": true,
+      "result": {
+        "ok": "-7"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "+7",
+      "own": true,
+      "result": {
+        "ok": "+7"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "1_000",
+      "own": true,
+      "result": {
+        "ok": "1_000"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "1__0",
+      "own": true,
+      "result": {
+        "ok": "1__0"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "_1",
+      "own": true,
+      "result": {
+        "ok": "_1"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "12.9",
+      "own": true,
+      "result": {
+        "ok": "12.9"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "-12.9",
+      "own": true,
+      "result": {
+        "ok": "-12.9"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "abc",
+      "own": true,
+      "result": {
+        "ok": "abc"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "",
+      "own": true,
+      "result": {
+        "ok": ""
+      }
+    },
+    {
+      "column": "velocity",
+      "input": " ",
+      "own": true,
+      "result": {
+        "ok": " "
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "0x1A",
+      "own": true,
+      "result": {
+        "ok": "0x1A"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "1e3",
+      "own": true,
+      "result": {
+        "ok": "1e3"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "0.5",
+      "own": true,
+      "result": {
+        "ok": "0.5"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": ".5",
+      "own": true,
+      "result": {
+        "ok": ".5"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "5.",
+      "own": true,
+      "result": {
+        "ok": "5."
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "1.2.3",
+      "own": true,
+      "result": {
+        "ok": "1.2.3"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "- 1",
+      "own": true,
+      "result": {
+        "ok": "- 1"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "unplugged",
+      "own": true,
+      "result": {
+        "ok": "unplugged"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "charging",
+      "own": true,
+      "result": {
+        "ok": "charging"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "full",
+      "own": true,
+      "result": {
+        "ok": "full"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "unknown",
+      "own": true,
+      "result": {
+        "ok": "unknown"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "wifi",
+      "own": true,
+      "result": {
+        "ok": "wifi"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "mobile",
+      "own": true,
+      "result": {
+        "ok": "mobile"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "offline",
+      "own": true,
+      "result": {
+        "ok": "offline"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "manual_event",
+      "own": true,
+      "result": {
+        "ok": "manual_event"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "bogus",
+      "own": true,
+      "result": {
+        "ok": "bogus"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": "2",
+      "own": true,
+      "result": {
+        "ok": "2"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": true,
+      "own": false,
+      "result": {
+        "ok": "t"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": false,
+      "own": false,
+      "result": {
+        "ok": "f"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": [
+        1
+      ],
+      "own": false,
+      "result": {
+        "ok": "[1]"
+      }
+    },
+    {
+      "column": "velocity",
+      "input": {
+        "a": 1
+      },
+      "own": false,
+      "result": {
+        "ok": "{\"a\" => 1}"
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": null,
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 0,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 5,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": -5,
+      "own": true,
+      "result": {
+        "ok": -5
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 5.5,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": -5.5,
+      "own": true,
+      "result": {
+        "ok": -5
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 5.999,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 12,
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 2147483647,
+      "own": false,
+      "result": {
+        "ok": 2147483647
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 2147483648,
+      "own": false,
+      "result": {
+        "error": "ActiveModel::RangeError"
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": -2147483648,
+      "own": false,
+      "result": {
+        "ok": -2147483648
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": -2147483649,
+      "own": false,
+      "result": {
+        "error": "ActiveModel::RangeError"
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 1.005,
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 2.675,
+      "own": true,
+      "result": {
+        "ok": 2
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 123.456,
+      "own": true,
+      "result": {
+        "ok": 123
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 999.999,
+      "own": true,
+      "result": {
+        "ok": 999
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 1234.5678,
+      "own": true,
+      "result": {
+        "ok": 1234
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 0.3,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 1e-05,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 1.2345649999,
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": 99999999.995,
+      "own": true,
+      "result": {
+        "ok": 99999999
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "0",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "12",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": " 12",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "\t9",
+      "own": true,
+      "result": {
+        "ok": 9
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "9 ",
+      "own": true,
+      "result": {
+        "ok": 9
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "12abc",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "-7",
+      "own": true,
+      "result": {
+        "ok": -7
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "+7",
+      "own": true,
+      "result": {
+        "ok": 7
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "1_000",
+      "own": true,
+      "result": {
+        "ok": 1000
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "1__0",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "_1",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "12.9",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "-12.9",
+      "own": true,
+      "result": {
+        "ok": -12
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "abc",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": " ",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "0x1A",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "1e3",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "0.5",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": ".5",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "5.",
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "1.2.3",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "- 1",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "unplugged",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "charging",
+      "own": true,
+      "result": {
+        "ok": 2
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "full",
+      "own": true,
+      "result": {
+        "ok": 3
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "unknown",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "wifi",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "mobile",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "offline",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "manual_event",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "bogus",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": "2",
+      "own": true,
+      "result": {
+        "ok": 2
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": true,
+      "own": false,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": false,
+      "own": false,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": [
+        1
+      ],
+      "own": false,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "battery_status",
+      "input": {
+        "a": 1
+      },
+      "own": false,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": null,
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": 0,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "connection",
+      "input": 5,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "connection",
+      "input": -5,
+      "own": true,
+      "result": {
+        "ok": -5
+      }
+    },
+    {
+      "column": "connection",
+      "input": 5.5,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "connection",
+      "input": -5.5,
+      "own": true,
+      "result": {
+        "ok": -5
+      }
+    },
+    {
+      "column": "connection",
+      "input": 5.999,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "connection",
+      "input": 12,
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "connection",
+      "input": 2147483647,
+      "own": false,
+      "result": {
+        "ok": 2147483647
+      }
+    },
+    {
+      "column": "connection",
+      "input": 2147483648,
+      "own": false,
+      "result": {
+        "error": "ActiveModel::RangeError"
+      }
+    },
+    {
+      "column": "connection",
+      "input": -2147483648,
+      "own": false,
+      "result": {
+        "ok": -2147483648
+      }
+    },
+    {
+      "column": "connection",
+      "input": -2147483649,
+      "own": false,
+      "result": {
+        "error": "ActiveModel::RangeError"
+      }
+    },
+    {
+      "column": "connection",
+      "input": 1.005,
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "connection",
+      "input": 2.675,
+      "own": true,
+      "result": {
+        "ok": 2
+      }
+    },
+    {
+      "column": "connection",
+      "input": 123.456,
+      "own": true,
+      "result": {
+        "ok": 123
+      }
+    },
+    {
+      "column": "connection",
+      "input": 999.999,
+      "own": true,
+      "result": {
+        "ok": 999
+      }
+    },
+    {
+      "column": "connection",
+      "input": 1234.5678,
+      "own": true,
+      "result": {
+        "ok": 1234
+      }
+    },
+    {
+      "column": "connection",
+      "input": 0.3,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "connection",
+      "input": 1e-05,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "connection",
+      "input": 1.2345649999,
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "connection",
+      "input": 99999999.995,
+      "own": true,
+      "result": {
+        "ok": 99999999
+      }
+    },
+    {
+      "column": "connection",
+      "input": "0",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "connection",
+      "input": "12",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "connection",
+      "input": " 12",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "connection",
+      "input": "\t9",
+      "own": true,
+      "result": {
+        "ok": 9
+      }
+    },
+    {
+      "column": "connection",
+      "input": "9 ",
+      "own": true,
+      "result": {
+        "ok": 9
+      }
+    },
+    {
+      "column": "connection",
+      "input": "12abc",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "connection",
+      "input": "-7",
+      "own": true,
+      "result": {
+        "ok": -7
+      }
+    },
+    {
+      "column": "connection",
+      "input": "+7",
+      "own": true,
+      "result": {
+        "ok": 7
+      }
+    },
+    {
+      "column": "connection",
+      "input": "1_000",
+      "own": true,
+      "result": {
+        "ok": 1000
+      }
+    },
+    {
+      "column": "connection",
+      "input": "1__0",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "connection",
+      "input": "_1",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": "12.9",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "connection",
+      "input": "-12.9",
+      "own": true,
+      "result": {
+        "ok": -12
+      }
+    },
+    {
+      "column": "connection",
+      "input": "abc",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": "",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": " ",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": "0x1A",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "connection",
+      "input": "1e3",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "connection",
+      "input": "0.5",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "connection",
+      "input": ".5",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": "5.",
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "connection",
+      "input": "1.2.3",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "connection",
+      "input": "- 1",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": "unplugged",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": "charging",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": "full",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": "unknown",
+      "own": true,
+      "result": {
+        "ok": 4
+      }
+    },
+    {
+      "column": "connection",
+      "input": "wifi",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "connection",
+      "input": "mobile",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "connection",
+      "input": "offline",
+      "own": true,
+      "result": {
+        "ok": 2
+      }
+    },
+    {
+      "column": "connection",
+      "input": "manual_event",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": "bogus",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": "2",
+      "own": true,
+      "result": {
+        "ok": 2
+      }
+    },
+    {
+      "column": "connection",
+      "input": true,
+      "own": false,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "connection",
+      "input": false,
+      "own": false,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": [
+        1
+      ],
+      "own": false,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "connection",
+      "input": {
+        "a": 1
+      },
+      "own": false,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": null,
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 0,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 5,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "trigger",
+      "input": -5,
+      "own": true,
+      "result": {
+        "ok": -5
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 5.5,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "trigger",
+      "input": -5.5,
+      "own": true,
+      "result": {
+        "ok": -5
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 5.999,
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 12,
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 2147483647,
+      "own": false,
+      "result": {
+        "ok": 2147483647
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 2147483648,
+      "own": false,
+      "result": {
+        "error": "ActiveModel::RangeError"
+      }
+    },
+    {
+      "column": "trigger",
+      "input": -2147483648,
+      "own": false,
+      "result": {
+        "ok": -2147483648
+      }
+    },
+    {
+      "column": "trigger",
+      "input": -2147483649,
+      "own": false,
+      "result": {
+        "error": "ActiveModel::RangeError"
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 1.005,
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 2.675,
+      "own": true,
+      "result": {
+        "ok": 2
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 123.456,
+      "own": true,
+      "result": {
+        "ok": 123
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 999.999,
+      "own": true,
+      "result": {
+        "ok": 999
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 1234.5678,
+      "own": true,
+      "result": {
+        "ok": 1234
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 0.3,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 1e-05,
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 1.2345649999,
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "trigger",
+      "input": 99999999.995,
+      "own": true,
+      "result": {
+        "ok": 99999999
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "0",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "12",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "trigger",
+      "input": " 12",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "\t9",
+      "own": true,
+      "result": {
+        "ok": 9
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "9 ",
+      "own": true,
+      "result": {
+        "ok": 9
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "12abc",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "-7",
+      "own": true,
+      "result": {
+        "ok": -7
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "+7",
+      "own": true,
+      "result": {
+        "ok": 7
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "1_000",
+      "own": true,
+      "result": {
+        "ok": 1000
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "1__0",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "_1",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "12.9",
+      "own": true,
+      "result": {
+        "ok": 12
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "-12.9",
+      "own": true,
+      "result": {
+        "ok": -12
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "abc",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": " ",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "0x1A",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "1e3",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "0.5",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "trigger",
+      "input": ".5",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "5.",
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "1.2.3",
+      "own": true,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "- 1",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "unplugged",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "charging",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "full",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "unknown",
+      "own": true,
+      "result": {
+        "ok": 0
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "wifi",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "mobile",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "offline",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "manual_event",
+      "own": true,
+      "result": {
+        "ok": 5
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "bogus",
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": "2",
+      "own": true,
+      "result": {
+        "ok": 2
+      }
+    },
+    {
+      "column": "trigger",
+      "input": true,
+      "own": false,
+      "result": {
+        "ok": 1
+      }
+    },
+    {
+      "column": "trigger",
+      "input": false,
+      "own": false,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": [
+        1
+      ],
+      "own": false,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "trigger",
+      "input": {
+        "a": 1
+      },
+      "own": false,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "inrids",
+      "input": null,
+      "own": true,
+      "result": {
+        "ok": null
+      }
+    },
+    {
+      "column": "inrids",
+      "input": [],
+      "own": true,
+      "result": {
+        "ok": []
+      }
+    },
+    {
+      "column": "inrids",
+      "input": [
+        "home"
+      ],
+      "own": true,
+      "result": {
+        "ok": [
+          "home"
+        ]
+      }
+    },
+    {
+      "column": "inrids",
+      "input": [
+        "home",
+        "work"
+      ],
+      "own": true,
+      "result": {
+        "ok": [
+          "home",
+          "work"
+        ]
+      }
+    },
+    {
+      "column": "inrids",
+      "input": [
+        "a",
+        1
+      ],
+      "own": false,
+      "result": {
+        "ok": [
+          "a",
+          "1"
+        ]
+      }
+    },
+    {
+      "column": "inrids",
+      "input": [
+        1.5
+      ],
+      "own": false,
+      "result": {
+        "ok": [
+          "1.5"
+        ]
+      }
+    },
+    {
+      "column": "inrids",
+      "input": [
+        true
+      ],
+      "own": false,
+      "result": {
+        "ok": [
+          "t"
+        ]
+      }
+    },
+    {
+      "column": "inrids",
+      "input": [
+        [
+          "x"
+        ]
+      ],
+      "own": false,
+      "result": {
+        "ok": [
+          [
+            "x"
+          ]
+        ]
+      }
+    },
+    {
+      "column": "inrids",
+      "input": "home",
+      "own": false,
+      "result": {
+        "ok": []
+      }
+    }
+  ],
+  "timestamps": [
+    {
+      "input": "2024-01-01T12:00:00Z",
+      "own": true,
+      "points": {
+        "ok": 1704110400
+      },
+      "traccar": {
+        "ok": 1704110400
+      }
+    },
+    {
+      "input": "2024-01-01T12:00:00.999Z",
+      "own": true,
+      "points": {
+        "ok": 1704110400
+      },
+      "traccar": {
+        "ok": 1704110400
+      }
+    },
+    {
+      "input": "2024-01-01T12:00:00+02:00",
+      "own": true,
+      "points": {
+        "ok": 1704103200
+      },
+      "traccar": {
+        "ok": 1704103200
+      }
+    },
+    {
+      "input": "2024-01-01T12:00:00+0200",
+      "own": true,
+      "points": {
+        "ok": 1704103200
+      },
+      "traccar": {
+        "ok": 1704103200
+      }
+    },
+    {
+      "input": "2024-01-01T12:00:00-07",
+      "own": true,
+      "points": {
+        "ok": 1704135600
+      },
+      "traccar": {
+        "ok": 1704135600
+      }
+    },
+    {
+      "input": "2024-01-01 12:00:00",
+      "own": true,
+      "points": {
+        "ok": 1704110400
+      },
+      "traccar": {
+        "ok": 1704110400
+      }
+    },
+    {
+      "input": "2024-01-01 12:00:00 +0200",
+      "own": true,
+      "points": {
+        "ok": 1704103200
+      },
+      "traccar": {
+        "ok": 1704103200
+      }
+    },
+    {
+      "input": "2024-01-01T12:00",
+      "own": true,
+      "points": {
+        "ok": 1704110400
+      },
+      "traccar": {
+        "ok": 1704110400
+      }
+    },
+    {
+      "input": "2024-01-01T12:00Z",
+      "own": true,
+      "points": {
+        "ok": 1704110400
+      },
+      "traccar": {
+        "ok": 1704110400
+      }
+    },
+    {
+      "input": "2024-01-01",
+      "own": true,
+      "points": {
+        "ok": 1704067200
+      },
+      "traccar": {
+        "ok": 1704067200
+      }
+    },
+    {
+      "input": "1969-12-31T23:59:59.5Z",
+      "own": true,
+      "points": {
+        "ok": -1
+      },
+      "traccar": {
+        "ok": -1
+      }
+    },
+    {
+      "input": "Mon, 01 Jan 2024 12:00:00 GMT",
+      "own": true,
+      "points": {
+        "ok": 1704110400
+      },
+      "traccar": {
+        "ok": 1704110400
+      }
+    },
+    {
+      "input": "01 Jan 2024 12:00:00 +0100",
+      "own": true,
+      "points": {
+        "ok": 1704106800
+      },
+      "traccar": {
+        "ok": 1704106800
+      }
+    },
+    {
+      "input": "Tue, 31 Dec 2024 23:59:59 UT",
+      "own": true,
+      "points": {
+        "ok": 1735689599
+      },
+      "traccar": {
+        "ok": 1735689599
+      }
+    },
+    {
+      "input": "2026-02-30T12:00:00Z",
+      "own": true,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": null
+      }
+    },
+    {
+      "input": "2023-02-29",
+      "own": true,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": null
+      }
+    },
+    {
+      "input": "2024-04-31T00:00:00Z",
+      "own": true,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": null
+      }
+    },
+    {
+      "input": "1788930000",
+      "own": true,
+      "points": {
+        "ok": 1788930000
+      },
+      "traccar": {
+        "ok": 1788930000
+      }
+    },
+    {
+      "input": "-2147483648",
+      "own": true,
+      "points": {
+        "ok": -2147483648
+      },
+      "traccar": {
+        "ok": null
+      }
+    },
+    {
+      "input": "2147483647",
+      "own": true,
+      "points": {
+        "ok": 2147483647
+      },
+      "traccar": {
+        "ok": 2147483647
+      }
+    },
+    {
+      "input": "2147483648",
+      "own": true,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": 2147483648
+      }
+    },
+    {
+      "input": "007",
+      "own": true,
+      "points": {
+        "ok": 7
+      },
+      "traccar": {
+        "ok": 7
+      }
+    },
+    {
+      "input": 1788930000,
+      "own": true,
+      "points": {
+        "ok": 1788930000
+      },
+      "traccar": {
+        "ok": 1788930000
+      }
+    },
+    {
+      "input": 1788930000000,
+      "own": true,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": 1788930000
+      }
+    },
+    {
+      "input": "2038-01-19T03:14:07Z",
+      "own": true,
+      "points": {
+        "ok": 2147483647
+      },
+      "traccar": {
+        "ok": 2147483647
+      }
+    },
+    {
+      "input": "2038-01-19T03:14:08Z",
+      "own": true,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": 2147483648
+      }
+    },
+    {
+      "input": "1901-12-13T20:45:52Z",
+      "own": true,
+      "points": {
+        "ok": -2147483648
+      },
+      "traccar": {
+        "ok": -2147483648
+      }
+    },
+    {
+      "input": "1901-12-13T20:45:51Z",
+      "own": true,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": -2147483649
+      }
+    },
+    {
+      "input": "2015-10-01T08:00:00-0700",
+      "own": true,
+      "points": {
+        "ok": 1443711600
+      },
+      "traccar": {
+        "ok": 1443711600
+      }
+    },
+    {
+      "input": "2024-01-01T12:00:00.000+00:00",
+      "own": true,
+      "points": {
+        "ok": 1704110400
+      },
+      "traccar": {
+        "ok": 1704110400
+      }
+    },
+    {
+      "input": null,
+      "own": true,
+      "points": {
+        "ok": null
+      },
+      "traccar": {
+        "ok": null
+      }
+    },
+    {
+      "input": "",
+      "own": true,
+      "points": {
+        "ok": null
+      },
+      "traccar": {
+        "ok": null
+      }
+    },
+    {
+      "input": "not-a-timestamp",
+      "own": false,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": null
+      }
+    },
+    {
+      "input": "Sat Aug 28 02:55:50 2021",
+      "own": false,
+      "points": {
+        "ok": 1630119350
+      },
+      "traccar": {
+        "ok": 1630119350
+      }
+    },
+    {
+      "input": "2024/01/01 12:00:00",
+      "own": false,
+      "points": {
+        "ok": 1704110400
+      },
+      "traccar": {
+        "ok": 1704110400
+      }
+    },
+    {
+      "input": "12:00",
+      "own": false,
+      "points": {
+        "ok": 1790683200
+      },
+      "traccar": {
+        "ok": 1790683200
+      }
+    },
+    {
+      "input": "1700000000.5",
+      "own": false,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": null
+      }
+    },
+    {
+      "input": 1700000000.5,
+      "own": false,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": null
+      }
+    },
+    {
+      "input": "Tue, 01 Jan 2024 12:00:00 GMT",
+      "own": false,
+      "points": {
+        "ok": 1704110400
+      },
+      "traccar": {
+        "ok": 1704110400
+      }
+    },
+    {
+      "input": "2024-01-01T24:00:00Z",
+      "own": false,
+      "points": {
+        "ok": 1704153600
+      },
+      "traccar": {
+        "ok": 1704153600
+      }
+    },
+    {
+      "input": "2024-01-01T12:00:60Z",
+      "own": false,
+      "points": {
+        "ok": 1704110459
+      },
+      "traccar": {
+        "ok": 1704110459
+      }
+    },
+    {
+      "input": "2024-01-01T12:00:00+25:00",
+      "own": false,
+      "points": {
+        "ok": 1704110400
+      },
+      "traccar": {
+        "ok": 1704110400
+      }
+    },
+    {
+      "input": "2024-01-01t12:00:00z",
+      "own": false,
+      "points": {
+        "ok": 1704110400
+      },
+      "traccar": {
+        "ok": 1704110400
+      }
+    },
+    {
+      "input": "Jan 1 2024",
+      "own": false,
+      "points": {
+        "ok": 1704067200
+      },
+      "traccar": {
+        "ok": 1704067200
+      }
+    },
+    {
+      "input": "true",
+      "own": false,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": null
+      }
+    },
+    {
+      "input": "-5",
+      "own": false,
+      "points": {
+        "ok": -5
+      },
+      "traccar": {
+        "ok": null
+      }
+    },
+    {
+      "input": true,
+      "own": false,
+      "points": {
+        "error": "invalid_timestamp"
+      },
+      "traccar": {
+        "ok": null
+      }
+    }
+  ],
+  "wkts": [
+    {
+      "input": "POINT(13.4 52.5)",
+      "point": [
+        13.4,
+        52.5
+      ],
+      "null_island": false,
+      "dedup_key": [
+        13.4,
+        52.5,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(190.5 95)",
+      "point": [
+        -169.5,
+        90.0
+      ],
+      "null_island": false,
+      "dedup_key": [
+        190.5,
+        95.0,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(-540 10)",
+      "point": [
+        180.0,
+        10.0
+      ],
+      "null_island": false,
+      "dedup_key": [
+        -540.0,
+        10.0,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(540 -95.5)",
+      "point": [
+        180.0,
+        -90.0
+      ],
+      "null_island": false,
+      "dedup_key": [
+        540.0,
+        -95.5,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(1.0e-05 52.5)",
+      "point": [
+        1e-05,
+        52.5
+      ],
+      "null_island": false,
+      "dedup_key": [
+        1e-05,
+        52.5,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(-0.0 51.5)",
+      "point": [
+        0.0,
+        51.5
+      ],
+      "null_island": false,
+      "dedup_key": [
+        0.0,
+        51.5,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(0 0)",
+      "point": [
+        0.0,
+        0.0
+      ],
+      "null_island": true,
+      "dedup_key": [
+        0.0,
+        0.0,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(0.0 0.0)",
+      "point": [
+        0.0,
+        0.0
+      ],
+      "null_island": true,
+      "dedup_key": [
+        0.0,
+        0.0,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(0.01 0.01)",
+      "point": [
+        0.01,
+        0.01
+      ],
+      "null_island": true,
+      "dedup_key": [
+        0.01,
+        0.01,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(0.04 0.03)",
+      "point": [
+        0.04,
+        0.03
+      ],
+      "null_island": false,
+      "dedup_key": [
+        0.04,
+        0.03,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(.5 5.)",
+      "point": [
+        0.5,
+        5.0
+      ],
+      "null_island": false,
+      "dedup_key": [
+        5.0,
+        5.0,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(+13 52)",
+      "point": [
+        13.0,
+        52.0
+      ],
+      "null_island": false,
+      "dedup_key": [
+        13.0,
+        52.0,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(1E2 3)",
+      "point": [
+        100.0,
+        3.0
+      ],
+      "null_island": false,
+      "dedup_key": [
+        100.0,
+        3.0,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(abc 52)",
+      "point": null,
+      "null_island": false,
+      "dedup_key": [
+        52.0,
+        null,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(13.4 )",
+      "point": null,
+      "null_island": false,
+      "dedup_key": [
+        13.4,
+        null,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(1 2 3)",
+      "point": null,
+      "null_island": false,
+      "dedup_key": [
+        1.0,
+        2.0,
+        1,
+        1
+      ]
+    },
+    {
+      "input": "POINT(-122.40530871 37.74430413)",
+      "point": [
+        -122.40530871,
+        37.74430413
+      ],
+      "null_island": false,
+      "dedup_key": [
+        -122.40530871,
+        37.74430413,
+        1,
+        1
+      ]
+    }
+  ],
+  "pairs": [
+    {
+      "lon": 13.4,
+      "lat": 52.5,
+      "null_island": false
+    },
+    {
+      "lon": 0,
+      "lat": 0,
+      "null_island": true
+    },
+    {
+      "lon": 0.04,
+      "lat": 0.03,
+      "null_island": false
+    },
+    {
+      "lon": "0.01",
+      "lat": "0.01",
+      "null_island": true
+    },
+    {
+      "lon": null,
+      "lat": 0,
+      "null_island": true
+    },
+    {
+      "lon": 0,
+      "lat": null,
+      "null_island": true
+    },
+    {
+      "lon": 45,
+      "lat": 0.04,
+      "null_island": false
+    },
+    {
+      "lon": 0.0449,
+      "lat": 0.0,
+      "null_island": true
+    },
+    {
+      "lon": 0.0,
+      "lat": 0.0449,
+      "null_island": true
+    }
+  ],
+  "accepts": [
+    {
+      "accept": null,
+      "format": null,
+      "first": "html",
+      "vary": false,
+      "head": "text/html"
+    },
+    {
+      "accept": "",
+      "format": null,
+      "first": "html",
+      "vary": false,
+      "head": "text/html"
+    },
+    {
+      "accept": "*/*",
+      "format": null,
+      "first": "*/*",
+      "vary": true,
+      "head": "text/html"
+    },
+    {
+      "accept": "application/json",
+      "format": null,
+      "first": "json",
+      "vary": true,
+      "head": "application/json"
+    },
+    {
+      "accept": "application/json; charset=utf-8",
+      "format": null,
+      "first": "json",
+      "vary": true,
+      "head": "application/json"
+    },
+    {
+      "accept": "application/json;q=0.9",
+      "format": null,
+      "first": "json",
+      "vary": true,
+      "head": "application/json"
+    },
+    {
+      "accept": "text/x-json",
+      "format": null,
+      "first": "json",
+      "vary": true,
+      "head": "application/json"
+    },
+    {
+      "accept": "text/html",
+      "format": null,
+      "first": "html",
+      "vary": true,
+      "head": "text/html"
+    },
+    {
+      "accept": "text/plain",
+      "format": null,
+      "first": "text",
+      "vary": true,
+      "head": "text/plain"
+    },
+    {
+      "accept": "application/xml",
+      "format": null,
+      "first": "xml",
+      "vary": true,
+      "head": "application/xml"
+    },
+    {
+      "accept": "image/png",
+      "format": null,
+      "first": "png",
+      "vary": true,
+      "head": "image/png"
+    },
+    {
+      "accept": "Application/JSON",
+      "format": null,
+      "first": null,
+      "vary": true,
+      "head": "text/html"
+    },
+    {
+      "accept": "application/json, text/plain, */*",
+      "format": null,
+      "first": "html",
+      "vary": false,
+      "head": "text/html"
+    },
+    {
+      "accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "format": null,
+      "first": "html",
+      "vary": false,
+      "head": "text/html"
+    },
+    {
+      "accept": "application/json, text/plain",
+      "format": null,
+      "first": "json",
+      "vary": true,
+      "head": "application/json"
+    },
+    {
+      "accept": null,
+      "format": "json",
+      "first": "json",
+      "vary": false,
+      "head": "application/json"
+    },
+    {
+      "accept": "text/html",
+      "format": "json",
+      "first": "json",
+      "vary": false,
+      "head": "application/json"
+    },
+    {
+      "accept": null,
+      "format": "xml",
+      "first": "xml",
+      "vary": false,
+      "head": "application/xml"
+    },
+    {
+      "accept": null,
+      "format": "png",
+      "first": "png",
+      "vary": false,
+      "head": "image/png"
+    }
+  ],
+  "hosts": [
+    {
+      "application_hosts": "localhost,::1,127.0.0.1",
+      "rails_env": "production",
+      "host": "localhost:3000",
+      "forwarded": null,
+      "xhr": false,
+      "result": "allowed"
+    },
+    {
+      "application_hosts": "localhost,::1,127.0.0.1",
+      "rails_env": "production",
+      "host": "[::1]:3000",
+      "forwarded": null,
+      "xhr": false,
+      "result": {
+        "status": 403,
+        "content-type": "text/html; charset=UTF-8",
+        "body": ""
+      }
+    },
+    {
+      "application_hosts": "localhost,::1,127.0.0.1",
+      "rails_env": "production",
+      "host": "127.0.0.1",
+      "forwarded": null,
+      "xhr": false,
+      "result": "allowed"
+    },
+    {
+      "application_hosts": "localhost,::1,127.0.0.1",
+      "rails_env": "production",
+      "host": "evil.example",
+      "forwarded": null,
+      "xhr": false,
+      "result": {
+        "status": 403,
+        "content-type": "text/html; charset=UTF-8",
+        "body": ""
+      }
+    },
+    {
+      "application_hosts": "localhost,::1,127.0.0.1",
+      "rails_env": "production",
+      "host": "evil.example",
+      "forwarded": null,
+      "xhr": true,
+      "result": {
+        "status": 403,
+        "content-type": "text/plain; charset=UTF-8",
+        "body": ""
+      }
+    },
+    {
+      "application_hosts": "dawarich.example.com",
+      "rails_env": "production",
+      "host": "dawarich.example.com",
+      "forwarded": "evil.example",
+      "xhr": false,
+      "result": {
+        "status": 403,
+        "content-type": "text/html; charset=UTF-8",
+        "body": ""
+      }
+    },
+    {
+      "application_hosts": "dawarich.example.com",
+      "rails_env": "production",
+      "host": "dawarich.example.com",
+      "forwarded": "a.example, dawarich.example.com",
+      "xhr": false,
+      "result": "allowed"
+    },
+    {
+      "application_hosts": ".example.com",
+      "rails_env": "production",
+      "host": "maps.example.com:8443",
+      "forwarded": null,
+      "xhr": false,
+      "result": "allowed"
+    },
+    {
+      "application_hosts": ".example.com",
+      "rails_env": "production",
+      "host": "example.com",
+      "forwarded": null,
+      "xhr": false,
+      "result": "allowed"
+    },
+    {
+      "application_hosts": "dawarich.example.com",
+      "rails_env": "production",
+      "host": "DAWARICH.example.com",
+      "forwarded": null,
+      "xhr": false,
+      "result": "allowed"
+    },
+    {
+      "application_hosts": "dawarich.example.com",
+      "rails_env": "staging",
+      "host": null,
+      "forwarded": null,
+      "xhr": false,
+      "result": {
+        "status": 403,
+        "content-type": "text/html; charset=UTF-8",
+        "body": ""
+      }
+    },
+    {
+      "application_hosts": "",
+      "rails_env": "production",
+      "host": "anything.example",
+      "forwarded": null,
+      "xhr": false,
+      "result": "allowed"
+    },
+    {
+      "application_hosts": "a, ",
+      "rails_env": "production",
+      "host": "a",
+      "forwarded": null,
+      "xhr": false,
+      "result": "allowed"
+    },
+    {
+      "application_hosts": "localhost",
+      "rails_env": "development",
+      "host": "192.168.1.20:3000",
+      "forwarded": null,
+      "xhr": false,
+      "result": "allowed"
+    },
+    {
+      "application_hosts": "localhost",
+      "rails_env": "development",
+      "host": "[fe80::1]:3000",
+      "forwarded": null,
+      "xhr": false,
+      "result": "allowed"
+    },
+    {
+      "application_hosts": "localhost",
+      "rails_env": "development",
+      "host": "box.test",
+      "forwarded": null,
+      "xhr": false,
+      "result": "allowed"
+    },
+    {
+      "application_hosts": "localhost",
+      "rails_env": "development",
+      "host": "box.lan",
+      "forwarded": null,
+      "xhr": false,
+      "result": {
+        "status": 403,
+        "content-type": "text/html; charset=UTF-8",
+        "body": ""
+      }
+    },
+    {
+      "application_hosts": "localhost",
+      "rails_env": "test",
+      "host": "box.lan",
+      "forwarded": null,
+      "xhr": false,
+      "result": "allowed"
+    }
+  ],
+  "params": [
+    {
+      "endpoint": "points",
+      "own": true,
+      "input": {
+        "api_key": "k",
+        "batch": {
+          "id": 1
+        },
+        "locations": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.4,
+                52.5
+              ]
+            },
+            "properties": {
+              "timestamp": "2024-01-01T12:00:00Z",
+              "battery_state": "charging",
+              "battery_level": 0.555,
+              "altitude": 12.5,
+              "device_id": "phone",
+              "speed": 3,
+              "wifi": "home",
+              "horizontal_accuracy": 5.7,
+              "vertical_accuracy": "7",
+              "course": 12.345678,
+              "course_accuracy": 1234.5,
+              "motion": [
+                "driving"
+              ],
+              "activity": "automotive",
+              "action": false
+            }
+          }
+        ]
+      },
+      "permit": {
+        "ok": {
+          "locations": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  13.4,
+                  52.5
+                ]
+              },
+              "properties": {
+                "timestamp": "2024-01-01T12:00:00Z",
+                "battery_state": "charging",
+                "battery_level": 0.555,
+                "altitude": 12.5,
+                "device_id": "phone",
+                "speed": 3,
+                "wifi": "home",
+                "horizontal_accuracy": 5.7,
+                "vertical_accuracy": "7",
+                "course": 12.345678,
+                "course_accuracy": 1234.5,
+                "motion": [
+                  "driving"
+                ],
+                "activity": "automotive",
+                "action": false
+              }
+            }
+          ],
+          "batch": {
+            "id": 1
+          }
+        }
+      },
+      "payloads": {
+        "ok": [
+          {
+            "lonlat": "POINT(13.4 52.5)",
+            "battery_status": "charging",
+            "battery": 55,
+            "timestamp": 1704110400,
+            "altitude": 12.5,
+            "tracker_id": "phone",
+            "velocity": 3,
+            "ssid": "home",
+            "accuracy": 5.7,
+            "vertical_accuracy": "7",
+            "course_accuracy": null,
+            "course": 12.345678,
+            "motion_data": {
+              "motion": [
+                "driving"
+              ],
+              "activity": "automotive"
+            },
+            "raw_data": {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  13.4,
+                  52.5
+                ]
+              },
+              "properties": {
+                "timestamp": "2024-01-01T12:00:00Z",
+                "battery_state": "charging",
+                "battery_level": 0.555,
+                "altitude": 12.5,
+                "device_id": "phone",
+                "speed": 3,
+                "wifi": "home",
+                "horizontal_accuracy": 5.7,
+                "vertical_accuracy": "7",
+                "course": 12.345678,
+                "course_accuracy": 1234.5,
+                "motion": [
+                  "driving"
+                ],
+                "activity": "automotive",
+                "action": false
+              }
+            },
+            "user_id": 1,
+            "altitude_decimal": 12.5
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "points",
+      "own": true,
+      "input": {
+        "locations": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                0,
+                0
+              ]
+            },
+            "properties": {
+              "timestamp": 1788930000
+            }
+          },
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                0.04,
+                0.03
+              ]
+            },
+            "properties": {
+              "timestamp": "1788930000"
+            }
+          },
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": null
+            },
+            "properties": {
+              "timestamp": 1
+            }
+          },
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.4,
+                52.5
+              ]
+            },
+            "properties": {
+              "timestamp": ""
+            }
+          },
+          {
+            "geometry": {
+              "coordinates": [
+                1,
+                2
+              ]
+            }
+          },
+          "scalar",
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.4,
+                52.5
+              ]
+            },
+            "properties": {}
+          }
+        ]
+      },
+      "permit": {
+        "ok": {
+          "locations": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  0,
+                  0
+                ]
+              },
+              "properties": {
+                "timestamp": 1788930000
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  0.04,
+                  0.03
+                ]
+              },
+              "properties": {
+                "timestamp": "1788930000"
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": null
+              },
+              "properties": {
+                "timestamp": 1
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  13.4,
+                  52.5
+                ]
+              },
+              "properties": {
+                "timestamp": ""
+              }
+            },
+            {
+              "geometry": {
+                "coordinates": [
+                  1,
+                  2
+                ]
+              }
+            },
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  13.4,
+                  52.5
+                ]
+              },
+              "properties": {}
+            }
+          ]
+        }
+      },
+      "payloads": {
+        "ok": [
+          {
+            "lonlat": "POINT(0.04 0.03)",
+            "battery_status": null,
+            "battery": null,
+            "timestamp": 1788930000,
+            "altitude": null,
+            "tracker_id": null,
+            "velocity": null,
+            "ssid": null,
+            "accuracy": null,
+            "vertical_accuracy": null,
+            "course_accuracy": null,
+            "course": null,
+            "motion_data": {},
+            "raw_data": {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  0.04,
+                  0.03
+                ]
+              },
+              "properties": {
+                "timestamp": "1788930000"
+              }
+            },
+            "user_id": 1,
+            "altitude_decimal": null
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "points",
+      "own": true,
+      "input": {
+        "locations": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.4,
+                52.5
+              ]
+            },
+            "properties": {
+              "timestamp": "2026-02-30T12:00:00Z"
+            }
+          }
+        ]
+      },
+      "permit": {
+        "ok": {
+          "locations": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  13.4,
+                  52.5
+                ]
+              },
+              "properties": {
+                "timestamp": "2026-02-30T12:00:00Z"
+              }
+            }
+          ]
+        }
+      },
+      "payloads": {
+        "error": "invalid_timestamp"
+      }
+    },
+    {
+      "endpoint": "points",
+      "own": true,
+      "input": {
+        "locations": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                "13.40",
+                "52.5"
+              ]
+            },
+            "properties": {
+              "timestamp": "2024-01-01T12:00:00Z",
+              "course": "0x1A",
+              "battery_level": "0.5"
+            }
+          }
+        ]
+      },
+      "permit": {
+        "ok": {
+          "locations": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  "13.40",
+                  "52.5"
+                ]
+              },
+              "properties": {
+                "timestamp": "2024-01-01T12:00:00Z",
+                "course": "0x1A",
+                "battery_level": "0.5"
+              }
+            }
+          ]
+        }
+      },
+      "payloads": {
+        "ok": [
+          {
+            "lonlat": "POINT(13.40 52.5)",
+            "battery_status": null,
+            "battery": 50,
+            "timestamp": 1704110400,
+            "altitude": null,
+            "tracker_id": null,
+            "velocity": null,
+            "ssid": null,
+            "accuracy": null,
+            "vertical_accuracy": null,
+            "course_accuracy": null,
+            "course": "0x1A",
+            "motion_data": {},
+            "raw_data": {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  "13.40",
+                  "52.5"
+                ]
+              },
+              "properties": {
+                "timestamp": "2024-01-01T12:00:00Z",
+                "course": "0x1A",
+                "battery_level": "0.5"
+              }
+            },
+            "user_id": 1,
+            "altitude_decimal": null
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "points",
+      "own": true,
+      "input": {
+        "locations": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                190.5,
+                95,
+                7
+              ]
+            },
+            "properties": {
+              "timestamp": "2024-01-01T12:00:00Z",
+              "departure_date": "2024-01-01T12:00:00Z"
+            }
+          }
+        ]
+      },
+      "permit": {
+        "ok": {
+          "locations": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  190.5,
+                  95,
+                  7
+                ]
+              },
+              "properties": {
+                "timestamp": "2024-01-01T12:00:00Z",
+                "departure_date": "2024-01-01T12:00:00Z"
+              }
+            }
+          ]
+        }
+      },
+      "payloads": {
+        "ok": [
+          {
+            "lonlat": "POINT(190.5 95)",
+            "battery_status": null,
+            "battery": null,
+            "timestamp": 1704110400,
+            "altitude": null,
+            "tracker_id": null,
+            "velocity": null,
+            "ssid": null,
+            "accuracy": null,
+            "vertical_accuracy": null,
+            "course_accuracy": null,
+            "course": null,
+            "motion_data": {
+              "departure_date": "2024-01-01T12:00:00Z"
+            },
+            "raw_data": {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  190.5,
+                  95,
+                  7
+                ]
+              },
+              "properties": {
+                "timestamp": "2024-01-01T12:00:00Z",
+                "departure_date": "2024-01-01T12:00:00Z"
+              }
+            },
+            "user_id": 1,
+            "altitude_decimal": null
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "points",
+      "own": true,
+      "input": {
+        "locations": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.4,
+                null,
+                52.5
+              ]
+            },
+            "properties": {
+              "timestamp": "2024-01-01T12:00:00Z",
+              "motion": [
+                "walking",
+                null
+              ]
+            }
+          }
+        ]
+      },
+      "permit": {
+        "ok": {
+          "locations": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  13.4,
+                  52.5
+                ]
+              },
+              "properties": {
+                "timestamp": "2024-01-01T12:00:00Z",
+                "motion": [
+                  "walking"
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "payloads": {
+        "ok": [
+          {
+            "lonlat": "POINT(13.4 52.5)",
+            "battery_status": null,
+            "battery": null,
+            "timestamp": 1704110400,
+            "altitude": null,
+            "tracker_id": null,
+            "velocity": null,
+            "ssid": null,
+            "accuracy": null,
+            "vertical_accuracy": null,
+            "course_accuracy": null,
+            "course": null,
+            "motion_data": {
+              "motion": [
+                "walking"
+              ]
+            },
+            "raw_data": {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  13.4,
+                  52.5
+                ]
+              },
+              "properties": {
+                "timestamp": "2024-01-01T12:00:00Z",
+                "motion": [
+                  "walking"
+                ]
+              }
+            },
+            "user_id": 1,
+            "altitude_decimal": null
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "points",
+      "own": false,
+      "input": {
+        "locations": {
+          "geometry": {
+            "coordinates": [
+              1,
+              2
+            ]
+          }
+        }
+      },
+      "permit": {
+        "ok": {
+          "locations": {
+            "geometry": {
+              "coordinates": [
+                1,
+                2
+              ]
+            }
+          }
+        }
+      },
+      "payloads": {
+        "error": "TypeError"
+      }
+    },
+    {
+      "endpoint": "points",
+      "own": false,
+      "input": {
+        "locations": {
+          "0": {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                13.4,
+                52.5
+              ]
+            },
+            "properties": {
+              "timestamp": 1
+            }
+          }
+        }
+      },
+      "permit": {
+        "ok": {
+          "locations": {
+            "0": {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  13.4,
+                  52.5
+                ]
+              },
+              "properties": {
+                "timestamp": 1
+              }
+            }
+          }
+        }
+      },
+      "payloads": {
+        "error": "TypeError"
+      }
+    },
+    {
+      "endpoint": "points",
+      "own": false,
+      "input": {
+        "locations": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": "13,52"
+            },
+            "properties": {
+              "timestamp": "2024-01-01T12:00:00Z"
+            }
+          }
+        ]
+      },
+      "permit": {
+        "ok": {
+          "locations": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": "13,52"
+              },
+              "properties": {
+                "timestamp": "2024-01-01T12:00:00Z"
+              }
+            }
+          ]
+        }
+      },
+      "payloads": {
+        "ok": [
+          {
+            "lonlat": "POINT(1 3)",
+            "battery_status": null,
+            "battery": null,
+            "timestamp": 1704110400,
+            "altitude": null,
+            "tracker_id": null,
+            "velocity": null,
+            "ssid": null,
+            "accuracy": null,
+            "vertical_accuracy": null,
+            "course_accuracy": null,
+            "course": null,
+            "motion_data": {},
+            "raw_data": {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": "13,52"
+              },
+              "properties": {
+                "timestamp": "2024-01-01T12:00:00Z"
+              }
+            },
+            "user_id": 1,
+            "altitude_decimal": null
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "points",
+      "own": false,
+      "input": {},
+      "permit": {
+        "ok": {}
+      },
+      "payloads": {
+        "error": "NoMethodError"
+      }
+    },
+    {
+      "endpoint": "overland",
+      "own": true,
+      "input": {
+        "locations": [
+          {
+            "type": "Feature",
+            "geometry": {
+              "type": "Point",
+              "coordinates": [
+                -122.030581,
+                37.3318
+              ]
+            },
+            "properties": {
+              "timestamp": "2015-10-01T08:00:00-0700",
+              "altitude": 0,
+              "speed": 4,
+              "horizontal_accuracy": 30,
+              "vertical_accuracy": -1,
+              "motion": [
+                "driving",
+                "stationary"
+              ],
+              "pauses": false,
+              "activity": "other_navigation",
+              "desired_accuracy": 100,
+              "deferred": 1000,
+              "significant_change": "disabled",
+              "locations_in_payload": 1,
+              "device_id": "",
+              "wifi": "launchpad",
+              "battery_state": "charging",
+              "battery_level": 0.89
+            }
+          },
+          {
+            "type": "Feature",
+            "properties": {
+              "wifi": "",
+              "timestamp": "2024-07-07T17:46:39Z",
+              "device_id": "iphone",
+              "battery_state": "unplugged",
+              "battery_level": 0.55,
+              "action": "will_terminate"
+            }
+          }
+        ]
+      },
+      "permit": {
+        "ok": {
+          "locations": [
+            {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  -122.030581,
+                  37.3318
+                ]
+              },
+              "properties": {
+                "timestamp": "2015-10-01T08:00:00-0700",
+                "altitude": 0,
+                "speed": 4,
+                "horizontal_accuracy": 30,
+                "vertical_accuracy": -1,
+                "motion": [
+                  "driving",
+                  "stationary"
+                ],
+                "pauses": false,
+                "activity": "other_navigation",
+                "desired_accuracy": 100,
+                "deferred": 1000,
+                "significant_change": "disabled",
+                "locations_in_payload": 1,
+                "device_id": "",
+                "wifi": "launchpad",
+                "battery_state": "charging",
+                "battery_level": 0.89
+              }
+            },
+            {
+              "type": "Feature",
+              "properties": {
+                "wifi": "",
+                "timestamp": "2024-07-07T17:46:39Z",
+                "device_id": "iphone",
+                "battery_state": "unplugged",
+                "battery_level": 0.55,
+                "action": "will_terminate"
+              }
+            }
+          ]
+        }
+      },
+      "payloads": {
+        "ok": [
+          {
+            "lonlat": "POINT(-122.030581 37.3318)",
+            "battery_status": "charging",
+            "battery": 89,
+            "timestamp": 1443711600,
+            "altitude": 0,
+            "velocity": 4,
+            "tracker_id": "",
+            "ssid": "launchpad",
+            "accuracy": 30,
+            "vertical_accuracy": -1,
+            "motion_data": {
+              "motion": [
+                "driving",
+                "stationary"
+              ],
+              "activity": "other_navigation"
+            },
+            "raw_data": {
+              "type": "Feature",
+              "geometry": {
+                "type": "Point",
+                "coordinates": [
+                  -122.030581,
+                  37.3318
+                ]
+              },
+              "properties": {
+                "timestamp": "2015-10-01T08:00:00-0700",
+                "altitude": 0,
+                "speed": 4,
+                "horizontal_accuracy": 30,
+                "vertical_accuracy": -1,
+                "motion": [
+                  "driving",
+                  "stationary"
+                ],
+                "pauses": false,
+                "activity": "other_navigation",
+                "desired_accuracy": 100,
+                "deferred": 1000,
+                "significant_change": "disabled",
+                "locations_in_payload": 1,
+                "device_id": "",
+                "wifi": "launchpad",
+                "battery_state": "charging",
+                "battery_level": 0.89
+              }
+            },
+            "altitude_decimal": 0
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "overland",
+      "own": true,
+      "input": {
+        "locations": {
+          "geometry": {
+            "coordinates": [
+              13.4,
+              52.5
+            ]
+          },
+          "properties": {
+            "timestamp": "2024-01-01T12:00:00Z"
+          }
+        }
+      },
+      "permit": {
+        "ok": {
+          "locations": {
+            "geometry": {
+              "coordinates": [
+                13.4,
+                52.5
+              ]
+            },
+            "properties": {
+              "timestamp": "2024-01-01T12:00:00Z"
+            }
+          }
+        }
+      },
+      "payloads": {
+        "ok": [
+          {
+            "lonlat": "POINT(13.4 52.5)",
+            "battery_status": null,
+            "battery": null,
+            "timestamp": 1704110400,
+            "altitude": null,
+            "velocity": null,
+            "tracker_id": null,
+            "ssid": null,
+            "accuracy": null,
+            "vertical_accuracy": null,
+            "motion_data": {},
+            "raw_data": {
+              "geometry": {
+                "coordinates": [
+                  13.4,
+                  52.5
+                ]
+              },
+              "properties": {
+                "timestamp": "2024-01-01T12:00:00Z"
+              }
+            },
+            "altitude_decimal": null
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "overland",
+      "own": true,
+      "input": {
+        "_json": [
+          1,
+          2
+        ]
+      },
+      "permit": {
+        "ok": {}
+      },
+      "payloads": {
+        "ok": []
+      }
+    },
+    {
+      "endpoint": "overland",
+      "own": true,
+      "input": {
+        "locations": [
+          {
+            "geometry": {
+              "coordinates": [
+                0,
+                0
+              ]
+            },
+            "properties": {
+              "timestamp": 1
+            }
+          },
+          {
+            "geometry": {},
+            "properties": {
+              "timestamp": 1
+            }
+          }
+        ]
+      },
+      "permit": {
+        "ok": {
+          "locations": [
+            {
+              "geometry": {
+                "coordinates": [
+                  0,
+                  0
+                ]
+              },
+              "properties": {
+                "timestamp": 1
+              }
+            },
+            {
+              "geometry": {},
+              "properties": {
+                "timestamp": 1
+              }
+            }
+          ]
+        }
+      },
+      "payloads": {
+        "ok": [
+          {
+            "lonlat": "POINT(0 0)",
+            "battery_status": null,
+            "battery": null,
+            "timestamp": 1,
+            "altitude": null,
+            "velocity": null,
+            "tracker_id": null,
+            "ssid": null,
+            "accuracy": null,
+            "vertical_accuracy": null,
+            "motion_data": {},
+            "raw_data": {
+              "geometry": {
+                "coordinates": [
+                  0,
+                  0
+                ]
+              },
+              "properties": {
+                "timestamp": 1
+              }
+            },
+            "altitude_decimal": null
+          },
+          {
+            "lonlat": null,
+            "battery_status": null,
+            "battery": null,
+            "timestamp": 1,
+            "altitude": null,
+            "velocity": null,
+            "tracker_id": null,
+            "ssid": null,
+            "accuracy": null,
+            "vertical_accuracy": null,
+            "motion_data": {},
+            "raw_data": {
+              "geometry": {},
+              "properties": {
+                "timestamp": 1
+              }
+            },
+            "altitude_decimal": null
+          }
+        ]
+      }
+    },
+    {
+      "endpoint": "overland",
+      "own": false,
+      "input": {
+        "locations": [
+          {
+            "properties": {
+              "timestamp": "bad"
+            }
+          }
+        ]
+      },
+      "permit": {
+        "ok": {
+          "locations": [
+            {
+              "properties": {
+                "timestamp": "bad"
+              }
+            }
+          ]
+        }
+      },
+      "payloads": {
+        "error": "invalid_timestamp"
+      }
+    },
+    {
+      "endpoint": "overland",
+      "own": true,
+      "input": {},
+      "permit": {
+        "ok": {}
+      },
+      "payloads": {
+        "ok": []
+      }
+    },
+    {
+      "endpoint": "owntracks",
+      "own": true,
+      "input": {
+        "_type": "location",
+        "lat": 52.5,
+        "lon": 13.4,
+        "tst": 1788930000,
+        "tid": "ab",
+        "batt": 85,
+        "bs": 2,
+        "conn": "w",
+        "t": "u",
+        "vel": 50,
+        "alt": 34,
+        "acc": 10,
+        "vac": 3,
+        "SSID": "home",
+        "BSSID": "aa:bb",
+        "inregions": [
+          "home"
+        ],
+        "inrids": [
+          "r1"
+        ],
+        "m": 1,
+        "p": 101.3,
+        "extra": "x"
+      },
+      "permit": {
+        "ok": {
+          "_type": "location",
+          "lat": 52.5,
+          "lon": 13.4,
+          "tst": 1788930000,
+          "tid": "ab",
+          "t": "u",
+          "bs": 2,
+          "batt": 85,
+          "p": 101.3,
+          "acc": 10,
+          "vac": 3,
+          "vel": 50,
+          "alt": 34,
+          "SSID": "home",
+          "BSSID": "aa:bb",
+          "conn": "w",
+          "m": 1,
+          "inregions": [
+            "home"
+          ],
+          "inrids": [
+            "r1"
+          ]
+        }
+      },
+      "payloads": {
+        "ok": {
+          "lonlat": "POINT(13.4 52.5)",
+          "battery": 85,
+          "ping": 101.3,
+          "altitude": 34,
+          "accuracy": 10,
+          "vertical_accuracy": 3,
+          "velocity": 50,
+          "ssid": "home",
+          "bssid": "aa:bb",
+          "tracker_id": "ab",
+          "timestamp": 1788930000,
+          "inrids": [
+            "r1"
+          ],
+          "in_regions": [
+            "home"
+          ],
+          "topic": null,
+          "battery_status": "charging",
+          "connection": "wifi",
+          "trigger": "manual_event",
+          "motion_data": {
+            "m": 1,
+            "_type": "location"
+          },
+          "raw_data": {
+            "_type": "location",
+            "lat": 52.5,
+            "lon": 13.4,
+            "tst": 1788930000,
+            "tid": "ab",
+            "t": "u",
+            "bs": 2,
+            "batt": 85,
+            "p": 101.3,
+            "acc": 10,
+            "vac": 3,
+            "vel": 50,
+            "alt": 34,
+            "SSID": "home",
+            "BSSID": "aa:bb",
+            "conn": "w",
+            "m": 1,
+            "inregions": [
+              "home"
+            ],
+            "inrids": [
+              "r1"
+            ]
+          },
+          "altitude_decimal": 34
+        }
+      }
+    },
+    {
+      "endpoint": "owntracks",
+      "own": true,
+      "input": {
+        "_type": "location",
+        "lat": "52.5",
+        "lon": "13.4",
+        "tst": "1788930000",
+        "topic": "owntracks/u/d",
+        "vel": 50,
+        "bs": "9",
+        "conn": "x",
+        "t": "z"
+      },
+      "permit": {
+        "ok": {
+          "_type": "location",
+          "lat": "52.5",
+          "lon": "13.4",
+          "tst": "1788930000",
+          "t": "z",
+          "bs": "9",
+          "vel": 50,
+          "topic": "owntracks/u/d",
+          "conn": "x"
+        }
+      },
+      "payloads": {
+        "ok": {
+          "lonlat": "POINT(13.4 52.5)",
+          "battery": null,
+          "ping": null,
+          "altitude": null,
+          "accuracy": null,
+          "vertical_accuracy": null,
+          "velocity": "13.9",
+          "ssid": null,
+          "bssid": null,
+          "tracker_id": null,
+          "timestamp": 1788930000,
+          "inrids": null,
+          "in_regions": null,
+          "topic": "owntracks/u/d",
+          "battery_status": "unknown",
+          "connection": "unknown",
+          "trigger": "unknown",
+          "motion_data": {},
+          "raw_data": {
+            "_type": "location",
+            "lat": "52.5",
+            "lon": "13.4",
+            "tst": "1788930000",
+            "t": "z",
+            "bs": "9",
+            "vel": 50,
+            "topic": "owntracks/u/d",
+            "conn": "x"
+          },
+          "altitude_decimal": null
+        }
+      }
+    },
+    {
+      "endpoint": "owntracks",
+      "own": true,
+      "input": {
+        "_type": "waypoint",
+        "lat": 52.5,
+        "lon": 13.4,
+        "tst": 1
+      },
+      "permit": {
+        "ok": {
+          "_type": "waypoint",
+          "lat": 52.5,
+          "lon": 13.4,
+          "tst": 1
+        }
+      },
+      "payloads": {
+        "ok": null
+      }
+    },
+    {
+      "endpoint": "owntracks",
+      "own": true,
+      "input": {
+        "_type": "transition",
+        "lat": 52.5,
+        "lon": 13.4,
+        "tst": 1788930000,
+        "event": "enter"
+      },
+      "permit": {
+        "ok": {
+          "_type": "transition",
+          "lat": 52.5,
+          "lon": 13.4,
+          "tst": 1788930000
+        }
+      },
+      "payloads": {
+        "ok": {
+          "lonlat": "POINT(13.4 52.5)",
+          "battery": null,
+          "ping": null,
+          "altitude": null,
+          "accuracy": null,
+          "vertical_accuracy": null,
+          "velocity": null,
+          "ssid": null,
+          "bssid": null,
+          "tracker_id": null,
+          "timestamp": 1788930000,
+          "inrids": null,
+          "in_regions": null,
+          "topic": null,
+          "battery_status": "unknown",
+          "connection": "mobile",
+          "trigger": "unknown",
+          "motion_data": {},
+          "raw_data": {
+            "_type": "transition",
+            "lat": 52.5,
+            "lon": 13.4,
+            "tst": 1788930000
+          },
+          "altitude_decimal": null
+        }
+      }
+    },
+    {
+      "endpoint": "owntracks",
+      "own": true,
+      "input": {
+        "_type": "location",
+        "lat": 52.5,
+        "lon": 13.4
+      },
+      "permit": {
+        "ok": {
+          "_type": "location",
+          "lat": 52.5,
+          "lon": 13.4
+        }
+      },
+      "payloads": {
+        "ok": null
+      }
+    },
+    {
+      "endpoint": "owntracks",
+      "own": true,
+      "input": {
+        "_type": "location",
+        "lat": 52.5,
+        "lon": 13.4,
+        "tst": "abc",
+        "vel": 0,
+        "topic": "x"
+      },
+      "permit": {
+        "ok": {
+          "_type": "location",
+          "lat": 52.5,
+          "lon": 13.4,
+          "tst": "abc",
+          "vel": 0,
+          "topic": "x"
+        }
+      },
+      "payloads": {
+        "ok": {
+          "lonlat": "POINT(13.4 52.5)",
+          "battery": null,
+          "ping": null,
+          "altitude": null,
+          "accuracy": null,
+          "vertical_accuracy": null,
+          "velocity": "0.0",
+          "ssid": null,
+          "bssid": null,
+          "tracker_id": null,
+          "timestamp": 0,
+          "inrids": null,
+          "in_regions": null,
+          "topic": "x",
+          "battery_status": "unknown",
+          "connection": "mobile",
+          "trigger": "unknown",
+          "motion_data": {},
+          "raw_data": {
+            "_type": "location",
+            "lat": 52.5,
+            "lon": 13.4,
+            "tst": "abc",
+            "vel": 0,
+            "topic": "x"
+          },
+          "altitude_decimal": null
+        }
+      }
+    },
+    {
+      "endpoint": "owntracks",
+      "own": false,
+      "input": {
+        "lat": 52.5,
+        "lon": 13.4,
+        "tst": 1788930000,
+        "inregions": "home"
+      },
+      "permit": {
+        "ok": {
+          "lat": 52.5,
+          "lon": 13.4,
+          "tst": 1788930000,
+          "inregions": "home"
+        }
+      },
+      "payloads": {
+        "ok": {
+          "lonlat": "POINT(13.4 52.5)",
+          "battery": null,
+          "ping": null,
+          "altitude": null,
+          "accuracy": null,
+          "vertical_accuracy": null,
+          "velocity": null,
+          "ssid": null,
+          "bssid": null,
+          "tracker_id": null,
+          "timestamp": 1788930000,
+          "inrids": null,
+          "in_regions": "home",
+          "topic": null,
+          "battery_status": "unknown",
+          "connection": "mobile",
+          "trigger": "unknown",
+          "motion_data": {},
+          "raw_data": {
+            "lat": 52.5,
+            "lon": 13.4,
+            "tst": 1788930000,
+            "inregions": "home"
+          },
+          "altitude_decimal": null
+        }
+      }
+    },
+    {
+      "endpoint": "owntracks",
+      "own": false,
+      "input": {
+        "lat": 52.5,
+        "lon": 13.4,
+        "tst": 1788930000,
+        "inregions": [
+          {
+            "a": 1
+          }
+        ],
+        "batt": true
+      },
+      "permit": {
+        "ok": {
+          "lat": 52.5,
+          "lon": 13.4,
+          "tst": 1788930000,
+          "batt": true
+        }
+      },
+      "payloads": {
+        "ok": {
+          "lonlat": "POINT(13.4 52.5)",
+          "battery": true,
+          "ping": null,
+          "altitude": null,
+          "accuracy": null,
+          "vertical_accuracy": null,
+          "velocity": null,
+          "ssid": null,
+          "bssid": null,
+          "tracker_id": null,
+          "timestamp": 1788930000,
+          "inrids": null,
+          "in_regions": null,
+          "topic": null,
+          "battery_status": "unknown",
+          "connection": "mobile",
+          "trigger": "unknown",
+          "motion_data": {},
+          "raw_data": {
+            "lat": 52.5,
+            "lon": 13.4,
+            "tst": 1788930000,
+            "batt": true
+          },
+          "altitude_decimal": null
+        }
+      }
+    },
+    {
+      "endpoint": "traccar",
+      "own": true,
+      "input": {
+        "device_id": "phone",
+        "battery": {
+          "level": 0.8,
+          "is_charging": false
+        },
+        "activity": {
+          "type": "walking"
+        },
+        "location": {
+          "timestamp": "2024-01-01T12:00:00.000Z",
+          "latitude": 52.5,
+          "longitude": 13.4,
+          "accuracy": 5,
+          "speed": 1.5,
+          "altitude": 30,
+          "is_moving": true,
+          "event": "motionchange"
+        }
+      },
+      "permit": {
+        "ok": {
+          "device_id": "phone",
+          "location": {
+            "timestamp": "2024-01-01T12:00:00.000Z",
+            "latitude": 52.5,
+            "longitude": 13.4,
+            "accuracy": 5,
+            "speed": 1.5,
+            "altitude": 30,
+            "is_moving": true,
+            "event": "motionchange"
+          },
+          "battery": {
+            "level": 0.8,
+            "is_charging": false
+          },
+          "activity": {
+            "type": "walking"
+          }
+        }
+      },
+      "payloads": {
+        "ok": {
+          "lonlat": "POINT(13.4 52.5)",
+          "timestamp": 1704110400,
+          "altitude": 30,
+          "accuracy": 5,
+          "velocity": "1.5",
+          "tracker_id": "phone",
+          "battery": 80,
+          "battery_status": "unplugged",
+          "motion_data": {
+            "activity": "walking",
+            "is_moving": true,
+            "event": "motionchange"
+          },
+          "raw_data": {
+            "device_id": "phone",
+            "location": {
+              "timestamp": "2024-01-01T12:00:00.000Z",
+              "latitude": 52.5,
+              "longitude": 13.4,
+              "accuracy": 5,
+              "speed": 1.5,
+              "altitude": 30,
+              "is_moving": true,
+              "event": "motionchange"
+            },
+            "battery": {
+              "level": 0.8,
+              "is_charging": false
+            },
+            "activity": {
+              "type": "walking"
+            }
+          },
+          "altitude_decimal": 30
+        }
+      }
+    },
+    {
+      "endpoint": "traccar",
+      "own": true,
+      "input": {
+        "device_id": "phone",
+        "location": {
+          "timestamp": 1788930000000,
+          "is_moving": false,
+          "coords": {
+            "latitude": "52.5",
+            "longitude": "13.4",
+            "speed": 2
+          },
+          "battery": {
+            "level": 0.5,
+            "is_charging": "false"
+          },
+          "activity": {
+            "type": "still"
+          }
+        }
+      },
+      "permit": {
+        "ok": {
+          "device_id": "phone",
+          "location": {
+            "timestamp": 1788930000000,
+            "is_moving": false,
+            "coords": {
+              "latitude": "52.5",
+              "longitude": "13.4",
+              "speed": 2
+            },
+            "battery": {
+              "level": 0.5,
+              "is_charging": "false"
+            },
+            "activity": {
+              "type": "still"
+            }
+          }
+        }
+      },
+      "payloads": {
+        "ok": {
+          "lonlat": "POINT(13.4 52.5)",
+          "timestamp": 1788930000,
+          "altitude": null,
+          "accuracy": null,
+          "velocity": "2",
+          "tracker_id": "phone",
+          "battery": 50,
+          "battery_status": "charging",
+          "motion_data": {
+            "activity": "still",
+            "is_moving": false
+          },
+          "raw_data": {
+            "device_id": "phone",
+            "location": {
+              "timestamp": 1788930000000,
+              "is_moving": false,
+              "coords": {
+                "latitude": "52.5",
+                "longitude": "13.4",
+                "speed": 2
+              },
+              "battery": {
+                "level": 0.5,
+                "is_charging": "false"
+              },
+              "activity": {
+                "type": "still"
+              }
+            }
+          },
+          "altitude_decimal": null
+        }
+      }
+    },
+    {
+      "endpoint": "traccar",
+      "own": true,
+      "input": {
+        "id": "osmand",
+        "lat": "52.5",
+        "lon": "13.4",
+        "timestamp": "1788930000",
+        "speed": "10",
+        "batt": "80",
+        "charge": "true",
+        "alarm": "sos",
+        "bearing": "90"
+      },
+      "permit": {
+        "ok": {
+          "id": "osmand",
+          "lat": "52.5",
+          "lon": "13.4",
+          "timestamp": "1788930000",
+          "speed": "10",
+          "bearing": "90",
+          "batt": "80",
+          "charge": "true",
+          "alarm": "sos"
+        }
+      },
+      "payloads": {
+        "ok": {
+          "lonlat": "POINT(13.4 52.5)",
+          "timestamp": 1788930000,
+          "altitude": null,
+          "accuracy": null,
+          "velocity": "5.144456333854638",
+          "tracker_id": "osmand",
+          "battery": 80,
+          "battery_status": "charging",
+          "motion_data": {
+            "event": "sos"
+          },
+          "raw_data": {
+            "id": "osmand",
+            "lat": "52.5",
+            "lon": "13.4",
+            "timestamp": "1788930000",
+            "speed": "10",
+            "bearing": "90",
+            "batt": "80",
+            "charge": "true",
+            "alarm": "sos"
+          },
+          "altitude_decimal": null
+        }
+      }
+    },
+    {
+      "endpoint": "traccar",
+      "own": true,
+      "input": {
+        "id": "osmand",
+        "lat": "52.5",
+        "lon": "13.4",
+        "timestamp": "1788930000",
+        "charge": "0"
+      },
+      "permit": {
+        "ok": {
+          "id": "osmand",
+          "lat": "52.5",
+          "lon": "13.4",
+          "timestamp": "1788930000",
+          "charge": "0"
+        }
+      },
+      "payloads": {
+        "ok": {
+          "lonlat": "POINT(13.4 52.5)",
+          "timestamp": 1788930000,
+          "altitude": null,
+          "accuracy": null,
+          "velocity": null,
+          "tracker_id": "osmand",
+          "battery": null,
+          "battery_status": "unplugged",
+          "motion_data": {},
+          "raw_data": {
+            "id": "osmand",
+            "lat": "52.5",
+            "lon": "13.4",
+            "timestamp": "1788930000",
+            "charge": "0"
+          },
+          "altitude_decimal": null
+        }
+      }
+    },
+    {
+      "endpoint": "traccar",
+      "own": true,
+      "input": {
+        "device_id": "x",
+        "location": {
+          "timestamp": "2024-01-01T12:00:00Z",
+          "latitude": 95,
+          "longitude": 13.4
+        }
+      },
+      "permit": {
+        "ok": {
+          "device_id": "x",
+          "location": {
+            "timestamp": "2024-01-01T12:00:00Z",
+            "latitude": 95,
+            "longitude": 13.4
+          }
+        }
+      },
+      "payloads": {
+        "ok": null
+      }
+    },
+    {
+      "endpoint": "traccar",
+      "own": true,
+      "input": {
+        "device_id": "x",
+        "location": {
+          "latitude": 52.5,
+          "longitude": 13.4
+        }
+      },
+      "permit": {
+        "ok": {
+          "device_id": "x",
+          "location": {
+            "latitude": 52.5,
+            "longitude": 13.4
+          }
+        }
+      },
+      "payloads": {
+        "ok": null
+      }
+    },
+    {
+      "endpoint": "traccar",
+      "own": false,
+      "input": {
+        "device_id": "x",
+        "location": {
+          "timestamp": "not-a-date",
+          "latitude": 52.5,
+          "longitude": 13.4
+        }
+      },
+      "permit": {
+        "ok": {
+          "device_id": "x",
+          "location": {
+            "timestamp": "not-a-date",
+            "latitude": 52.5,
+            "longitude": 13.4
+          }
+        }
+      },
+      "payloads": {
+        "ok": null
+      }
+    },
+    {
+      "endpoint": "traccar",
+      "own": true,
+      "input": {
+        "device_id": "x",
+        "location": {
+          "timestamp": "2026-02-30T12:00:00Z",
+          "latitude": 52.5,
+          "longitude": 13.4
+        }
+      },
+      "permit": {
+        "ok": {
+          "device_id": "x",
+          "location": {
+            "timestamp": "2026-02-30T12:00:00Z",
+            "latitude": 52.5,
+            "longitude": 13.4
+          }
+        }
+      },
+      "payloads": {
+        "ok": null
+      }
+    },
+    {
+      "endpoint": "traccar",
+      "own": true,
+      "input": {
+        "device_id": "x",
+        "location": "scalar",
+        "lat": "1",
+        "lon": "2",
+        "timestamp": "5"
+      },
+      "permit": {
+        "ok": {
+          "device_id": "x",
+          "lat": "1",
+          "lon": "2",
+          "timestamp": "5"
+        }
+      },
+      "payloads": {
+        "ok": {
+          "lonlat": "POINT(2.0 1.0)",
+          "timestamp": 5,
+          "altitude": null,
+          "accuracy": null,
+          "velocity": null,
+          "tracker_id": null,
+          "battery": null,
+          "battery_status": "unknown",
+          "motion_data": {},
+          "raw_data": {
+            "device_id": "x",
+            "lat": "1",
+            "lon": "2",
+            "timestamp": "5"
+          },
+          "altitude_decimal": null
+        }
+      }
+    }
+  ]
+}
