@@ -16,4 +16,14 @@ defmodule DawarichWeb.IconTest do
     assert html =~ ~s(class="size-6")
     assert html =~ "<path"
   end
+
+  test "a brand icon is rails_icons' brands SVG with the given class and no stroke width" do
+    html = render_component(&DawarichWeb.Icon.brand/1, name: "google", class: "w-4 h-4")
+
+    assert hd(Regex.run(~r/<svg[^>]*>/, html)) ==
+             ~s(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" class="w-4 h-4">)
+
+    assert length(String.split(html, "<path")) == 5
+    refute html =~ "stroke-width"
+  end
 end

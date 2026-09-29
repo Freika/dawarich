@@ -85,7 +85,7 @@ defmodule Dawarich.RailsCookies do
       |> :crypto.mac(:sha, key(secret, @signed_salt, 64), data)
       |> Base.encode16(case: :lower)
 
-  defp key(secret, salt, length) do
+  def key(secret, salt, length) do
     id = {__MODULE__, :crypto.hash(:sha256, secret), salt, length}
 
     case :persistent_term.get(id, nil) do
