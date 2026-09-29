@@ -10,7 +10,7 @@ class EnqueueBackgroundJob < ApplicationJob
     when 'start_photoprism_import'
       Import::PhotoprismGeodataJob.perform_later(user_id)
     when 'start_airtrail_import'
-      AirTrail::ImportFlightsJob.perform_later(user_id)
+      ImportCommands.airtrail_flights(user_id, producer: self.class.name)
     when 'start_teslamate_sync'
       TeslaMate::SyncJob.perform_later(user_id)
     when 'start_reverse_geocoding', 'continue_reverse_geocoding'

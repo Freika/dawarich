@@ -12,6 +12,12 @@ module RailsCommands
           times = payload.fetch('started_at').map { Time.iso8601(_1) }
           Visits::Detection::MachineVisitWipe.bust_month_caches(user, times)
         }
+      },
+      'airtrail_stats' => {
+        guard: 'Converges: each Stats::CalculatingJob recomputes its month from current points and flights ' \
+               'under stat.lock!, so a repeat enqueues the same months again; the cost is one more recalculation ' \
+               'and cache invalidation per month, which every Rails AirTrail sync already pays',
+        call: ->(payload) { AirTrail::StatsFollowUp.call(payload) }
       }
     }.freeze
 

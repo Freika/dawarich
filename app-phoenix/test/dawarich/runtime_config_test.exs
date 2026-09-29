@@ -31,10 +31,11 @@ defmodule Dawarich.RuntimeConfigTest do
              trips: 2,
              maintenance: 1,
              exports: 1,
-             projections: 1
+             projections: 1,
+             imports: 1
            ]
 
-    assert repo[:pool_size] == 13
+    assert repo[:pool_size] == 14
     assert oban[:peer] == Oban.Peers.Database
     assert oban[:stager] == {Oban.Stager, []}
     assert oban[:pruner] == [max_age: {1, :day}]
@@ -52,6 +53,18 @@ defmodule Dawarich.RuntimeConfigTest do
 
     System.delete_env("DAWARICH_RAILS_ROUTES")
     assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:rails_routes] == []
+  end
+
+  test "wave-4 workers run on a configured queue and time out before Lifeline" do
+    {_repo, oban} = prod()
+
+    for worker <- [
+          Dawarich.Imports.UpdatePointsCountWorker,
+          Dawarich.AirTrail.ImportFlightsWorker
+        ] do
+      assert Keyword.has_key?(oban[:queues], worker.__opts__()[:queue])
+      assert worker.timeout(%Oban.Job{}) < :timer.minutes(60)
+    end
   end
 
   test "falls back to the host name when HOSTNAME is missing or not a single word" do
