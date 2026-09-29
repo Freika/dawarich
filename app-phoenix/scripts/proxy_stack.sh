@@ -64,7 +64,7 @@ curl -fsS -m 2 http://127.0.0.1:8025/api/v1/info >/dev/null 2>&1 \
 
 cd "$root"
 stack bin/rails db:prepare >/dev/null
-stack bin/rails phoenix:i18n >/dev/null
+stack bin/rails phoenix:i18n phoenix:achievements >/dev/null
 [ -n "$(ls -A public/assets 2>/dev/null)" ] || stack bin/rails assets:precompile >/dev/null
 (cd app-phoenix && env PATH="$HOME/.asdf/shims:$PATH" MIX_ENV=prod sh -c 'mix compile --force >/dev/null && mix release --overwrite >/dev/null')
 stack "$rel" eval 'Dawarich.Release.migrate()'

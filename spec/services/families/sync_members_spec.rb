@@ -147,6 +147,45 @@ RSpec.describe Families::SyncMembers do
     end
   end
 
+  describe 'when the owner plan lapses and Oban owns command:mail.family_lapse' do
+    let!(:member) { add_member(plan: :pro, status: :active, active_until: 7.days.from_now) }
+
+    before do
+      owner.update!(status: :inactive, active_until: 1.day.ago)
+      JobOutbox.delete_all
+      job_owner!('command:mail.family_lapse', :oban)
+    end
+
+    it 'lapse produces one mail.family_lapse with lapse_at = access_until inside the family lock' do
+      ActiveRecord::Base.transaction do
+        service.call
+        raise ActiveRecord::Rollback
+      end
+      expect([JobOutbox.count, member.reload.plan]).to eq([0, 'pro'])
+
+      service.call
+
+      lapse_at = family.reload.access_until.utc.iso8601
+      expect(member.reload).to be_lite
+      expect(JobOutbox.sole).to have_attributes(
+        command_type: 'mail.family_lapse', aggregate_id: member.id,
+        dedupe_key: "family-lapse:#{family.id}:#{member.id}:#{lapse_at}",
+        payload: { 'user_id' => member.id, 'family_id' => family.id, 'locale' => 'en', 'lapse_at' => lapse_at }
+      )
+    end
+
+    it 'an already-notified member produces nothing; notify: false marks without producing' do
+      Families::LapseNotice.mark(member)
+      described_class.new(family: family.reload).call
+      expect(JobOutbox.count).to eq(0)
+
+      Families::LapseNotice.clear(member)
+      described_class.new(family: family.reload, notify: false).call
+      expect(JobOutbox.count).to eq(0)
+      expect(Families::LapseNotice.notified?(member.reload)).to be true
+    end
+  end
+
   describe 'a member who pays for their own subscription' do
     let!(:member) do
       add_member(plan: :pro, status: :active, active_until: 1.year.from_now, subscription_source: :paddle)

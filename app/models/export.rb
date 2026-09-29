@@ -17,7 +17,7 @@ class Export < ApplicationRecord
 
   before_save :set_processing_started_at, if: :status_changed_to_processing?
 
-  after_commit -> { ExportJob.perform_later(id) }, on: :create, unless: -> { user_data? || archive? }
+  after_create :produce_points_command, if: -> { points? && created? && !archive? }
   after_commit -> { remove_attached_file }, on: :destroy
 
   def process!
@@ -44,6 +44,12 @@ class Export < ApplicationRecord
 
   def set_processing_started_at
     self.processing_started_at = Time.current
+  end
+
+  def produce_points_command
+    JobCommands.produce('exports.points', { 'export_id' => id, 'user_id' => user_id }, aggregate_id: id,
+                                                                                     producer: 'Export#after_create',
+                                                                                     dedupe_key: "points-export:#{id}")
   end
 
   def status_changed_to_processing?

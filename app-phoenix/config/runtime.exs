@@ -57,7 +57,14 @@ if config_env() != :test do
          query["sslmode"]}
     end
 
-  queues = [app_version_checking: 1, mailers: 2, trips: 2, maintenance: 1]
+  queues = [
+    app_version_checking: 1,
+    mailers: 2,
+    trips: 2,
+    maintenance: 1,
+    exports: 1,
+    projections: 1
+  ]
 
   config :dawarich,
          Dawarich.Repo,

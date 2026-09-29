@@ -6,7 +6,8 @@ defmodule Dawarich.Notifications do
   alias Dawarich.{Repo, UserTimeZone}
 
   @per_page 20
-  @kinds %{0 => "info", 1 => "warning", 2 => "error"}
+  @kind_names %{0 => "info", 1 => "warning", 2 => "error"}
+  @kind_codes %{info: 0, warning: 1, error: 2}
   @max_id 9_223_372_036_854_775_807
   @year_bucket_days 364
 
@@ -105,6 +106,26 @@ defmodule Dawarich.Notifications do
       created_at: n.created_at
     })
     |> Repo.all()
-    |> Enum.map(&%{&1 | kind: @kinds[&1.kind]})
+    |> Enum.map(&%{&1 | kind: @kind_names[&1.kind]})
+  end
+
+  def create!(repo, user_id, kind, title, content, now \\ NaiveDateTime.utc_now()) do
+    {:ok, id} =
+      repo.transaction(fn ->
+        %{rows: [[id]]} =
+          repo.query!(
+            "INSERT INTO notifications (user_id, kind, title, content, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $5) RETURNING id",
+            [user_id, Map.fetch!(@kind_codes, kind), title, content, now],
+            log: false
+          )
+
+        repo.query!("INSERT INTO phoenix.notification_events (notification_id) VALUES ($1)", [id],
+          log: false
+        )
+
+        id
+      end)
+
+    id
   end
 end

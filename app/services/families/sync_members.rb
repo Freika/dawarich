@@ -13,16 +13,15 @@ module Families
       return false if DawarichSettings.self_hosted?
       return false if family.blank?
 
-      to_notify = []
-
       family.with_lock do
         refresh_access_until
         syncable_members.each do |member|
-          granted? ? grant(member) : to_notify << lapse(member)
+          next grant(member) if granted?
+
+          lapsed = lapse(member)
+          produce_lapse_notice(lapsed) if lapsed
         end
       end
-
-      to_notify.compact.each { |member| Families::LapseNotificationJob.perform_later(member.id, family.id) }
 
       true
     end
@@ -62,6 +61,17 @@ module Families
       return Families::LapseNotice.mark(member) && nil unless @notify
 
       member
+    end
+
+    def produce_lapse_notice(member)
+      lapse_at = family.access_until&.utc&.iso8601 || 'none'
+      JobCommands.produce('mail.family_lapse', {
+                            'user_id' => member.id,
+                            'family_id' => family.id,
+                            'locale' => I18n.locale.to_s,
+                            'lapse_at' => lapse_at
+                          }, aggregate_id: member.id, producer: 'Families::SyncMembers',
+                             dedupe_key: "family-lapse:#{family.id}:#{member.id}:#{lapse_at}")
     end
   end
 end

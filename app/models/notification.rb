@@ -28,8 +28,6 @@ class Notification < ApplicationRecord
     )
   end
 
-  private
-
   def broadcast_notification
     broadcast_prepend_to(
       [user, :notifications],

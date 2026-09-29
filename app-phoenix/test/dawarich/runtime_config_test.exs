@@ -25,8 +25,16 @@ defmodule Dawarich.RuntimeConfigTest do
   test "sizes the pool from the queue limits and enables Oban's services" do
     {repo, oban} = prod()
 
-    assert oban[:queues] == [app_version_checking: 1, mailers: 2, trips: 2, maintenance: 1]
-    assert repo[:pool_size] == 11
+    assert oban[:queues] == [
+             app_version_checking: 1,
+             mailers: 2,
+             trips: 2,
+             maintenance: 1,
+             exports: 1,
+             projections: 1
+           ]
+
+    assert repo[:pool_size] == 13
     assert oban[:peer] == Oban.Peers.Database
     assert oban[:stager] == {Oban.Stager, []}
     assert oban[:pruner] == [max_age: {1, :day}]

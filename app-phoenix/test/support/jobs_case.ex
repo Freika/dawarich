@@ -4,7 +4,7 @@ defmodule Dawarich.JobsCase do
 
   alias Dawarich.ScratchRepo
 
-  @phoenix ~w(job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events)
+  @phoenix ~w(job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events notification_events delivery_claims export_claims rails_commands rails_commands_dead)
   @oban ~w(oban_jobs oban_peers)
 
   using do
@@ -16,8 +16,7 @@ defmodule Dawarich.JobsCase do
 
   setup do
     unless rows("SELECT to_regclass('public.job_outbox') IS NOT NULL") == [[true]] do
-      ScratchRepo.query!("DROP SCHEMA IF EXISTS public CASCADE", [], log: false)
-      ScratchRepo.query!("CREATE SCHEMA public", [], log: false)
+      Dawarich.ScratchCase.recreate_public!()
 
       ScratchRepo.query!(Dawarich.ReleaseMigrator.baseline_sql(), [],
         query_type: :text,
@@ -26,7 +25,7 @@ defmodule Dawarich.JobsCase do
     end
 
     ScratchRepo.query!(
-      "TRUNCATE public.job_outbox, public.users, public.point_sources CASCADE",
+      "TRUNCATE public.job_outbox, public.exports, public.users, public.point_sources, public.active_storage_attachments, public.active_storage_blobs, public.family_invitations, public.families CASCADE",
       [],
       log: false
     )

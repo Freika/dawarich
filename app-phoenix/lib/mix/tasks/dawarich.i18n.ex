@@ -18,7 +18,7 @@ defmodule Mix.Tasks.Dawarich.I18n do
     end
   end
 
-  defp stale?(target, sources) do
+  def stale?(target, sources) do
     case File.stat(target, time: :posix) do
       {:ok, %{mtime: built}} -> Enum.any?(sources, &(File.stat!(&1, time: :posix).mtime > built))
       {:error, _} -> true
