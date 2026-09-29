@@ -41,7 +41,7 @@ defmodule Dawarich.AppVersion.CheckWorker do
   defp release_name(%{"name" => name}) when is_binary(name), do: if(name =~ @release, do: name)
   defp release_name(_tag), do: nil
 
-  defp running_version do
+  def running_version do
     :dawarich
     |> Application.get_env(:app_version_file, ".app_version")
     |> File.read!()
