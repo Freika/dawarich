@@ -321,7 +321,10 @@ RSpec.describe RailsCommands::Poller do
   end
 
   it 'every registered kind declares a repeat guard and a callable' do
-    expect(RailsCommands::Registry::HANDLERS.keys).to eq(['visit_months_changed'])
+    expect(RailsCommands::Registry::HANDLERS.keys).to eq(
+      %w[visit_months_changed points.tile_epoch points.anomaly_filter tracks.realtime tracks.backfill
+         visits.realtime points.live_broadcast]
+    )
     RailsCommands::Registry::HANDLERS.each_value do |handler|
       expect(handler[:guard]).to be_a(String).and be_present
       expect(handler[:call]).to respond_to(:call)
