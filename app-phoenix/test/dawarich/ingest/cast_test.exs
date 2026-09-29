@@ -8,10 +8,7 @@ defmodule Dawarich.Ingest.CastTest do
   test "every column cast agrees with ActiveModel's SerializeCastValue for owned inputs" do
     Code.ensure_loaded!(Cast)
 
-    # velocity/0.3: units.json fixture defect, see task-5-report.md
-    for %{"column" => column, "input" => input, "own" => own, "result" => ruby} <-
-          @units["casts"],
-        {column, input} != {"velocity", 0.3} do
+    for %{"column" => column, "input" => input, "own" => own, "result" => ruby} <- @units["casts"] do
       phoenix =
         try do
           {:ok, Cast.column(String.to_existing_atom(column), input)}
@@ -27,6 +24,7 @@ defmodule Dawarich.Ingest.CastTest do
           refute own, "#{column} must own #{inspect(input)}"
 
         {{:ok, value}, %{"ok" => expected}} ->
+          assert own, "#{column} must not own #{inspect(input)}"
           assert same?(value, expected), "#{column} #{inspect(input)}"
 
         {{:ok, value}, error} ->
