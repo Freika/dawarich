@@ -61,6 +61,8 @@ done
 docker exec "$run-bouncer" pgbouncer --version | head -1
 docker exec "$run-db" psql -U postgres -tAc 'SHOW TimeZone'
 docker exec "$run-db" createdb -U postgres a1_pooler
+docker exec -i "$run-db" psql -q -X -v ON_ERROR_STOP=1 -U postgres -d a1_pooler \
+  <"$root/priv/release_migrations/baseline.sql" >/dev/null
 
 cd "$root"
 [ "$#" -gt 0 ] || set -- test/dawarich/jobs test/dawarich/trips test/dawarich/mail test/dawarich/app_version test/dawarich/ruby_float_test.exs
