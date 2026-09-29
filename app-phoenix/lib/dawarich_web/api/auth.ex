@@ -5,7 +5,7 @@ defmodule DawarichWeb.Api.Auth do
   import Plug.Conn
 
   alias Dawarich.{Accounts, AppVersion, I18n, RailsCookies, RailsSecret}
-  alias DawarichWeb.Api.{Body, Respond}
+  alias DawarichWeb.Api.{Body, Headers, Respond}
   alias DawarichWeb.Strangler
 
   @bearer ~r/\ABearer\s+(\S+)\z/i
@@ -35,11 +35,7 @@ defmodule DawarichWeb.Api.Auth do
         conn
         |> assign(:api_vary, vary)
         |> assign(:api_request_id, request_id(conn))
-        |> assign(:api_version, version())
-        |> assign(
-          :api_response,
-          if(user, do: "Hey, I'm alive and authenticated!", else: "Hey, I'm alive!")
-        )
+        |> assign(:api_headers, Headers.dawarich(user != nil, version()))
         |> admit(user)
 
       {:replay, reason} ->

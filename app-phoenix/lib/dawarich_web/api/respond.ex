@@ -47,8 +47,7 @@ defmodule DawarichWeb.Api.Respond do
     conn
     |> RailsHeaders.call([])
     |> put_resp_header("content-type", type)
-    |> put_resp_header("x-dawarich-response", conn.assigns.api_response)
-    |> put_resp_header("x-dawarich-version", conn.assigns.api_version)
+    |> merge_resp_headers(conn.assigns.api_headers)
     |> put_resp_header("x-request-id", conn.assigns.api_request_id)
     |> put_resp_header("x-runtime", :erlang.float_to_binary(elapsed / 1_000_000, decimals: 6))
   end
