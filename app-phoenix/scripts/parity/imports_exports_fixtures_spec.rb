@@ -256,6 +256,7 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
   end
 
   it 'writes the blob path corpus' do
+    previous_host = Rails.application.routes.default_url_options[:host]
     expect(Rails.application.secret_key_base).to eq(secret)
     Rails.application.routes.default_url_options[:host] = 'www.example.com'
     names = ['export_from_2024-03-01_to_2024-03-31.json.zip', 'a b.gpx.zip', 'ümlaut ß.json.zip', 'q?x.zip',
@@ -273,5 +274,7 @@ RSpec.describe 'Phoenix fixtures: the imports and exports lists as Rails renders
         path: Rails.application.routes.url_helpers.rails_blob_path(blob, disposition: 'attachment') }
     end
     write_json('blob_paths.json', corpus)
+  ensure
+    Rails.application.routes.default_url_options[:host] = previous_host
   end
 end
