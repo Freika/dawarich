@@ -27,8 +27,9 @@ RSpec.describe RailsCommands::Poller do
   def commands = sql('SELECT * FROM phoenix.rails_commands ORDER BY id').to_a
   def dead = sql('SELECT * FROM phoenix.rails_commands_dead ORDER BY id').to_a
 
-  def expire_leases! = sql("UPDATE phoenix.rails_commands SET leased_until = now() - interval '1 second' " \
-                           'WHERE leased_until IS NOT NULL')
+  def expire_leases!
+    sql("UPDATE phoenix.rails_commands SET leased_until = now() - interval '1 second' WHERE leased_until IS NOT NULL")
+  end
 
   def make_due! = sql('UPDATE phoenix.rails_commands SET available_at = now()')
   def month_key(user) = Timeline::MonthSummary.cache_key_for(user, Date.new(2026, 6, 1))
@@ -58,13 +59,12 @@ RSpec.describe RailsCommands::Poller do
     expect(dead).to be_empty
   end
 
-  it 'the claim leases due rows for 60 s and counts the attempt' do
+  it 'the claim leases the oldest due row for 60 s and counts the attempt' do
     phoenix_tables!
     id = command!('visit_months_changed', months(user))
+    command!('visit_months_changed', months(create(:user)))
 
-    rows = described_class.claim
-
-    expect(rows).to include(a_hash_including('id' => id, 'attempts' => 1, 'lease' => be_present))
+    expect(described_class.claim).to include('id' => id, 'attempts' => 1, 'lease' => be_present)
     row = commands.first
     expect(row['leased_until']).to be_within(2.seconds).of(60.seconds.from_now)
     expect(row['attempts']).to eq(1)
@@ -89,21 +89,22 @@ RSpec.describe RailsCommands::Poller do
 
   it 'a slow producer does not double-run within its lease, and a late finish deletes nothing' do
     phoenix_tables!
-    old = command!('visit_months_changed', months(user)).then { described_class.claim.first }
+    old = command!('visit_months_changed', months(user)).then { described_class.claim }
 
-    expect(described_class.claim).to eq([])
+    expect(described_class.claim).to be_nil
 
     expire_leases!
-    new = described_class.claim.first
+    new = described_class.claim
     expect(new).to include('id' => old['id'], 'attempts' => 2)
     sql("UPDATE phoenix.rails_commands SET leased_until = now() + interval '2 minutes' WHERE id = #{new['id']}")
-    new['lease'] = sql('SELECT leased_until::text AS lease FROM phoenix.rails_commands ' \
-                       "WHERE id = #{new['id']}").first['lease']
+    new['lease'] =
+      sql("SELECT leased_until::text AS lease FROM phoenix.rails_commands WHERE id = #{new['id']}").first['lease']
 
     allow(Rails.logger).to receive(:warn)
     described_class.complete(old)
     expect(commands).not_to be_empty
-    expect(Rails.logger).to have_received(:warn).with(/finished after its lease/)
+    expect(Rails.logger).to have_received(:warn)
+      .with("[RailsCommands] #{old['id']} (visit_months_changed) finished after its lease passed on; nothing settled")
 
     described_class.complete(new)
     expect(commands).to be_empty
@@ -113,7 +114,8 @@ RSpec.describe RailsCommands::Poller do
     phoenix_tables!
     command!('visit_months_changed', months(user))
     command!('visit_months_changed', months(create(:user)))
-    first, second = described_class.claim
+    first = described_class.claim
+    second = described_class.claim
     sql("UPDATE phoenix.rails_commands SET leased_until = now() + interval '2 minutes' WHERE id = #{second['id']}")
 
     described_class.complete(first)
@@ -167,6 +169,43 @@ RSpec.describe RailsCommands::Poller do
     expect(dead.first).to include('attempts' => 25, 'last_error' => a_string_starting_with('RailsCommands::Poller::LeaseExpired'))
   end
 
+  it 'a bury that lost its lease moves nothing and logs no death' do
+    phoenix_tables!
+    command!('visit_months_changed', months(user))
+    stale = described_class.claim
+    expire_leases!
+    described_class.claim
+    sql("UPDATE phoenix.rails_commands SET leased_until = now() + interval '2 minutes'")
+    allow(Rails.logger).to receive(:warn)
+    expect(Rails.logger).not_to receive(:error)
+
+    described_class.bury(stale, 25, RuntimeError.new('cache down'))
+
+    expect(dead).to be_empty
+    expect(commands.sole['attempts']).to eq(2)
+    expect(Rails.logger).to have_received(:warn)
+      .with("[RailsCommands] #{stale['id']} (visit_months_changed) failed after its lease passed on; nothing settled")
+  end
+
+  it 'a non-database error in one batch is logged and the next batch still runs' do
+    phoenix_tables!
+    command!('visit_months_changed', months(user))
+    allow(described_class).to receive(:sleep)
+    calls = 0
+    allow(ActiveRecord::Base.connection).to receive(:exec_query).and_wrap_original do |method, *args, **options|
+      calls += 1
+      raise IOError, 'socket closed' if calls == 1
+
+      method.call(*args, **options)
+    end
+    expect(Rails.logger).to receive(:warn).with('[RailsCommands] poll: IOError')
+
+    expect { described_class.drain_safely }.not_to raise_error
+    described_class.drain_safely
+
+    expect(commands).to be_empty
+  end
+
   it 'a settle statement that fails leaves the row to its lease and loses nothing' do
     phoenix_tables!
     stub_bust
@@ -187,10 +226,10 @@ RSpec.describe RailsCommands::Poller do
   it 'no row is lost: every claimed row ends deleted, backed off or dead' do
     phoenix_tables!
     users = create_list(:user, 10)
-    users.each_with_index do |candidate, index|
+    ids = users.each_with_index.map do |candidate, index|
       command!('visit_months_changed', months(candidate), attempts: index.zero? ? 24 : 0)
     end
-    command!('visit_months_changed', { 'user_id' => 0, 'started_at' => ['2026-06-15T10:00:00Z'] })
+    ids << command!('visit_months_changed', { 'user_id' => 0, 'started_at' => ['2026-06-15T10:00:00Z'] })
     failing = users.first(5)
     stub_bust.and_wrap_original do |method, candidate, times|
       raise 'cache down' if failing.include?(candidate)
@@ -199,13 +238,54 @@ RSpec.describe RailsCommands::Poller do
     end
 
     expect(described_class.drain_once).to eq(11)
-    expect(dead.size).to eq(1)
-    expect(commands.size).to eq(4)
+    expect(dead.map { _1['id'] }).to eq([ids.first])
+    expect(commands.map { _1['id'] }).to eq(ids[1..4])
     expect(commands).to all(include('attempts' => 1, 'leased_until' => nil))
     users.last(5).each do |candidate|
       expect(Visits::Detection::MachineVisitWipe).to have_received(:bust_month_caches).with(candidate, kind_of(Array))
     end
-    expect(1 + 4 + 5 + 1).to eq(11)
+  end
+
+  it 'a slow row leases only itself, so another poller never runs the rows behind it twice' do
+    phoenix_tables!
+    users = create_list(:user, 3)
+    users.each { command!('visit_months_changed', months(_1)) }
+    runs = Hash.new(0)
+    taken_over = nil
+    stub_bust.and_wrap_original do |_method, candidate, _times|
+      runs[candidate.id] += 1
+      next unless candidate == users[1] && runs[candidate.id] == 1
+
+      expire_leases!
+      taken_over = described_class.drain_once
+    end
+
+    described_class.drain_once
+
+    expect(taken_over).to eq(2)
+    expect(runs.values_at(*users.map(&:id))).to eq([1, 2, 1])
+    expect(commands).to be_empty
+    expect(dead).to be_empty
+  end
+
+  it 'a poller killed mid-batch costs the rows it had not started no attempt' do
+    phoenix_tables!
+    users = create_list(:user, 3)
+    ids = users.map { command!('visit_months_changed', months(_1)) }
+    sql("UPDATE phoenix.rails_commands SET attempts = 24 WHERE id = #{ids.last}")
+    killed = Class.new(Exception) # rubocop:disable Lint/InheritException
+    stub_bust.and_invoke(->(*) {}, ->(*) { raise killed }, ->(*) {}, ->(*) {})
+
+    expect { described_class.drain_once }.to raise_error(killed)
+    expect(commands.map { _1.slice('id', 'attempts', 'leased_until') })
+      .to match([include('id' => ids[1], 'attempts' => 1, 'leased_until' => be_present),
+                 { 'id' => ids[2], 'attempts' => 24, 'leased_until' => nil }])
+
+    expire_leases!
+
+    expect(described_class.drain_once).to eq(2)
+    expect(commands).to be_empty
+    expect(dead).to be_empty
   end
 
   it 'an unknown kind backs off like a failure' do
@@ -229,7 +309,7 @@ RSpec.describe RailsCommands::Poller do
     expect([1, 2, 24].map { described_class.backoff_seconds(_1) }).to eq([16, 31, 331_791])
   end
 
-  it 'rows run in id order within a claim' do
+  it 'rows run in id order within a batch' do
     phoenix_tables!
     users = create_list(:user, 3)
     users.each { command!('visit_months_changed', months(_1)) }

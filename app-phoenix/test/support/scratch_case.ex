@@ -14,9 +14,16 @@ defmodule Dawarich.ScratchCase do
     :ok
   end
 
-  setup do
+  def recreate_public! do
     Dawarich.ScratchRepo.query!("DROP SCHEMA IF EXISTS public CASCADE", [], log: false)
     Dawarich.ScratchRepo.query!("CREATE SCHEMA public", [], log: false)
+    :ok = Supervisor.terminate_child(Dawarich.ScratchSupervisor, Dawarich.ScratchRepo)
+    {:ok, _} = Supervisor.restart_child(Dawarich.ScratchSupervisor, Dawarich.ScratchRepo)
+    :ok
+  end
+
+  setup do
+    recreate_public!()
 
     Dawarich.ScratchRepo.query!(
       "TRUNCATE phoenix.release_migration_jobs, phoenix.release_migrator_leases",

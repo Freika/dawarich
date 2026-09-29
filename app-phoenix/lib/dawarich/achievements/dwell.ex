@@ -96,7 +96,8 @@ defmodule Dawarich.Achievements.Dwell do
       )
 
   def countries(repo, user_id, since, through) do
-    rows = repo.query!(@country_sql, [user_id, since, through], log: false).rows
+    rows =
+      repo.query!(@country_sql, [user_id, since, through], log: false, timeout: :infinity).rows
 
     coverage =
       case Enum.find(rows, &match?([nil | _], &1)) do
@@ -110,7 +111,10 @@ defmodule Dawarich.Achievements.Dwell do
   end
 
   def grid(repo, source, user_id, since, through) do
-    repo.query!(Map.fetch!(@grid_sql, source), [user_id, since, through], log: false).rows
+    repo.query!(Map.fetch!(@grid_sql, source), [user_id, since, through],
+      log: false,
+      timeout: :infinity
+    ).rows
     |> Map.new(fn [code, dwell] -> {code, dwell} end)
   end
 end

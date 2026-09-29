@@ -138,11 +138,16 @@ RSpec.describe 'Phoenix wave 2 fixtures' do
     end
 
     {
-      'points_column_order' => Point.column_names,
+      'points_column_order' => fresh_install_point_columns,
       'point_sources' => sources.map { |source| source.attributes.slice(*PointSource.column_names) },
       'points' => points.sort_by(&:id).map { |point| point.attributes.slice(*Point.column_names) },
       'exports' => payloads
     }
+  end
+
+  def fresh_install_point_columns
+    table = Rails.root.join('db/schema.rb').read[/^  create_table "points".*?^  end$/m]
+    ['id', *table.scan(/^    t\.\w+ "(\w+)"/).flatten]
   end
 
   def ties_by_id(scope)

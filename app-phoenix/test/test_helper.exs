@@ -17,7 +17,13 @@ Dawarich.ScratchRepo.query!(
 )
 
 :ok = Dawarich.ScratchRepo.stop()
-{:ok, _} = Dawarich.ScratchRepo.start_link()
+
+{:ok, _} =
+  Supervisor.start_link([Dawarich.ScratchRepo],
+    strategy: :one_for_one,
+    name: Dawarich.ScratchSupervisor
+  )
+
 Dawarich.ScratchRepo.query!("CREATE SCHEMA IF NOT EXISTS phoenix", [], log: false)
 
 Ecto.Migrator.run(
