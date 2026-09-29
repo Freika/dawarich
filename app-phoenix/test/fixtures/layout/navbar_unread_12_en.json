@@ -1,0 +1,136 @@
+{
+  "state": {
+    "user": {
+      "id": 561159724,
+      "email": "navbar-reader@dawarich.test",
+      "theme": "dark",
+      "settings": {
+        "maps": {
+          "distance_unit": "km"
+        },
+        "route_opacity": 60,
+        "fog_of_war_meters": "100",
+        "onboarding_completed": true,
+        "meters_between_routes": "500",
+        "minutes_between_routes": "30",
+        "time_threshold_minutes": "30",
+        "merge_threshold_minutes": "15"
+      },
+      "admin": false,
+      "status": 1,
+      "plan": 1,
+      "active_until": "3026-09-26T13:00:00.000000Z",
+      "subscription_source": 0,
+      "changelog_consent": 1
+    },
+    "notifications": [
+      {
+        "id": 2000001,
+        "title": "Navbar 1",
+        "kind": 1,
+        "read": false,
+        "created_at": "2026-09-26T11:59:00.000000Z"
+      },
+      {
+        "id": 2000002,
+        "title": "Navbar 2",
+        "kind": 2,
+        "read": false,
+        "created_at": "2026-09-26T11:58:00.000000Z"
+      },
+      {
+        "id": 2000003,
+        "title": "Navbar 3",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:57:00.000000Z"
+      },
+      {
+        "id": 2000004,
+        "title": "Navbar 4",
+        "kind": 1,
+        "read": false,
+        "created_at": "2026-09-26T11:56:00.000000Z"
+      },
+      {
+        "id": 2000005,
+        "title": "Navbar 5",
+        "kind": 2,
+        "read": false,
+        "created_at": "2026-09-26T11:55:00.000000Z"
+      },
+      {
+        "id": 2000006,
+        "title": "Navbar 6",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:54:00.000000Z"
+      },
+      {
+        "id": 2000007,
+        "title": "Navbar 7",
+        "kind": 1,
+        "read": false,
+        "created_at": "2026-09-26T11:53:00.000000Z"
+      },
+      {
+        "id": 2000008,
+        "title": "Navbar 8",
+        "kind": 2,
+        "read": false,
+        "created_at": "2026-09-26T11:52:00.000000Z"
+      },
+      {
+        "id": 2000009,
+        "title": "Navbar 9",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:51:00.000000Z"
+      },
+      {
+        "id": 2000010,
+        "title": "Navbar 10",
+        "kind": 1,
+        "read": false,
+        "created_at": "2026-09-26T11:50:00.000000Z"
+      },
+      {
+        "id": 2000011,
+        "title": "Navbar 11",
+        "kind": 2,
+        "read": false,
+        "created_at": "2026-09-26T11:49:00.000000Z"
+      },
+      {
+        "id": 2000012,
+        "title": "Navbar 12",
+        "kind": 0,
+        "read": false,
+        "created_at": "2026-09-26T11:48:00.000000Z"
+      },
+      {
+        "id": 2000013,
+        "title": "Navbar 13",
+        "kind": 1,
+        "read": true,
+        "created_at": "2026-09-26T11:47:00.000000Z"
+      }
+    ],
+    "family": null,
+    "accept_language": null,
+    "self_hosted": true,
+    "path": "/notifications"
+  },
+  "html": {
+    "lang": "en",
+    "data-theme": "dawarich-dark",
+    "data-self-hosted": "true"
+  },
+  "headers": {
+    "x-frame-options": "SAMEORIGIN",
+    "x-xss-protection": "0",
+    "x-content-type-options": "nosniff",
+    "x-permitted-cross-domain-policies": "none",
+    "referrer-policy": "strict-origin-when-cross-origin"
+  }
+}

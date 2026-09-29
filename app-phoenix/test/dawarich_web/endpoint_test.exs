@@ -53,6 +53,88 @@ defmodule DawarichWeb.EndpointTest do
     assert {404, _, ""} = read_response(client)
   end
 
+  test "Phoenix answers /notifications itself" do
+    client = connect(serve())
+    send_raw(client, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n")
+
+    assert {302, headers, _body} = read_response(client)
+    assert values(headers, "location") == ["http://a/users/sign_in"]
+    assert values(headers, "x-frame-options") == ["SAMEORIGIN"]
+  end
+
+  defp answered_by_puma(port, upstream, request) do
+    client = connect(port)
+    send_raw(client, request)
+    puma = accept(upstream)
+    {head, _rest} = read_head(puma)
+    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+    assert {200, _headers, "puma"} = read_response(client)
+    request_line(head)
+  end
+
+  defp answered_by_phoenix(port, request) do
+    client = connect(port)
+    send_raw(client, request)
+    {status, _headers, _body} = read_response(client)
+    status
+  end
+
+  test "Rails answers what a browser page is not asked for: JSON, XHR, a format", ctx do
+    port = serve()
+    get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
+
+    for {target, headers} <- [
+          {"/notifications", "Accept: application/json\r\n"},
+          {"/notifications", "Accept: text/html, application/json\r\n"},
+          {"/notifications", "Accept: text/plain\r\n"},
+          {"/notifications", "Accept: application/xhtml+xml\r\n"},
+          {"/notifications", "X-Requested-With: XMLHttpRequest\r\n"},
+          {"/notifications/5.json", ""},
+          {"/notifications?format=json", ""},
+          {"/notifications?page=2&form%61t=json", ""}
+        ],
+        do: assert(answered_by_puma(port, ctx.upstream, get.(target, headers)) =~ target)
+
+    for {target, headers} <- [
+          {"/notifications", ""},
+          {"/notifications", "Accept: */*\r\n"},
+          {"/notifications", "Accept: application/json, */*;q=0.1\r\n"},
+          {"/notifications",
+           "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8\r\n"},
+          {"/notifications",
+           "Accept: text/vnd.turbo-stream.html, text/html, application/xhtml+xml\r\n"},
+          {"/notifications/5", "Accept: text/html\r\n"}
+        ],
+        do: assert(answered_by_phoenix(port, get.(target, headers)) == 302, target <> headers)
+  end
+
+  test "the no-socket fallbacks of the notification pages post to Puma", ctx do
+    port = serve()
+
+    for target <- ~w(/notifications/mark_as_read /notifications/destroy_all /notifications/5) do
+      body = "_method=post&authenticity_token=x"
+
+      request =
+        "POST #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+      assert answered_by_puma(port, ctx.upstream, request) == "POST #{target} HTTP/1.1"
+    end
+  end
+
+  test "a route handed back to Rails goes to Puma although Phoenix routes it", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["notifications"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    client = connect(serve())
+    send_raw(client, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n")
+
+    puma = accept(ctx.upstream)
+    {head, _} = read_head(puma)
+    assert request_line(head) == "GET /notifications HTTP/1.1"
+    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+    assert {200, _headers, "ok"} = read_response(client)
+  end
+
   @tag :tmp_dir
   test "a crashed listener comes back on its port while its old socket lingers, and leaves Puma running",
        %{tmp_dir: tmp_dir} do
@@ -64,7 +146,7 @@ defmodule DawarichWeb.EndpointTest do
     plan = {:proxy, %{public: {{127, 0, 0, 1}, port}, upstream: 1, puma_argv: puma_argv}}
 
     :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
-    on_exit(fn -> Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint) end)
+    on_exit(&restart_endpoint/0)
 
     start_supervised!(
       %{
@@ -180,7 +262,7 @@ defmodule DawarichWeb.EndpointTest do
        }}
 
     :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
-    on_exit(fn -> Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint) end)
+    on_exit(&restart_endpoint/0)
 
     sup =
       start_supervised!(
@@ -234,7 +316,7 @@ defmodule DawarichWeb.EndpointTest do
        }}
 
     :ok = Supervisor.terminate_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
-    on_exit(fn -> Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint) end)
+    on_exit(&restart_endpoint/0)
 
     sup =
       start_supervised!(
@@ -270,6 +352,22 @@ defmodule DawarichWeb.EndpointTest do
 
     assert {{:close, <<1000::16>>}, _rest} = ws_recv(client, rest)
     assert Task.await(stopping, 6_500) == :ok
+  end
+
+  defp restart_endpoint do
+    for name <- Process.registered(),
+        String.starts_with?(Atom.to_string(name), "Elixir.DawarichWeb.Endpoint"),
+        pid = Process.whereis(name) do
+      ref = Process.monitor(pid)
+
+      receive do
+        {:DOWN, ^ref, :process, ^pid, _reason} -> :ok
+      after
+        10_000 -> flunk("#{inspect(name)} outlived the endpoint shutdown")
+      end
+    end
+
+    {:ok, _pid} = Supervisor.restart_child(Dawarich.Supervisor, DawarichWeb.Endpoint)
   end
 
   defp endpoint_bandit do

@@ -1,0 +1,47 @@
+{
+  "path": "/notifications/920003",
+  "title": "Dawarich",
+  "user": {
+    "id": 9102,
+    "email": "parity-de@dawarich.test",
+    "settings": {
+      "maps": {
+        "distance_unit": "km"
+      },
+      "locale": "de",
+      "route_opacity": 60,
+      "fog_of_war_meters": "100",
+      "onboarding_completed": true,
+      "meters_between_routes": "500",
+      "minutes_between_routes": "30",
+      "time_threshold_minutes": "30",
+      "merge_threshold_minutes": "15"
+    }
+  },
+  "notifications": [
+    {
+      "id": 920001,
+      "title": "Parity 01",
+      "content": "Detail 1",
+      "kind": 1,
+      "read": true,
+      "offset": 60
+    },
+    {
+      "id": 920002,
+      "title": "Parity 02",
+      "content": "Detail 2",
+      "kind": 0,
+      "read": true,
+      "offset": 120
+    },
+    {
+      "id": 920003,
+      "title": "Parity 03",
+      "content": "Error <b>detail</b> <script>x()</script>",
+      "kind": 2,
+      "read": true,
+      "offset": 180
+    }
+  ]
+}

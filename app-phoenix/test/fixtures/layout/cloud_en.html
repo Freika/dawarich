@@ -58,7 +58,6 @@
     </a>
   </div>
 
-    <div id="chgtool-mount" class="inline-flex items-center" data-controller="changelog-widget" data-changelog-widget-src-value="https://my.chibichange.com/w/v1/loader.js" data-changelog-widget-slug-value="dawarich-cloud" data-changelog-widget-version-value="1.15.2"></div>
 </div>
 
 
@@ -100,7 +99,6 @@
         <div class="dropdown dropdown-end">
           <label tabindex="0" class="btn btn-ghost btn-sm">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-              <span class="indicator-item badge badge-secondary badge-xs"></span>
           </label>
           <ul tabindex="0" class="dropdown-content menu menu-sm mt-3 z-[50] p-2 shadow bg-base-100 rounded-box w-52">
             <li><a href="/users/edit">Account</a></li>
@@ -109,7 +107,6 @@
             <li>
               <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
                 Get started
-                  <span class="badge badge-secondary badge-xs absolute right-2 top-1/2 -translate-y-1/2"></span>
               </a>
             </li>
             <li><a data-turbo="false" rel="nofollow" data-method="delete" href="/users/sign_out">Logout</a></li>
@@ -161,7 +158,6 @@
             <details>
               <summary>
                 <span class="inline"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg></span>
-                  <span class="indicator-item badge badge-secondary badge-xs"></span>
               </summary>
               <ul class="p-2 bg-base-100 rounded-t-none z-[50]">
                 <li><a href="/users/edit">Account</a></li>
@@ -170,7 +166,6 @@
                 <li>
                   <a onclick="getting_started.showModal()" class="relative whitespace-nowrap">
                     Get started
-                      <span class="badge badge-secondary badge-xs absolute right-2 top-1/2 -translate-y-1/2"></span>
                   </a>
                 </li>
 
@@ -183,7 +178,7 @@
   </div>
 </div>
 
-      
+
       <div class="fixed top-5 right-5 flex flex-col gap-2 z-50" id="flash-messages">
 </div>
 
@@ -229,180 +224,10 @@
       </div>
     </div>
 
-    <div data-controller="onboarding-modal" data-onboarding-modal-auto-value="false" data-onboarding-modal-showable-value="true" data-onboarding-modal-onboarding-url-value="/settings/onboarding" data-onboarding-modal-user-trial-value="true" data-onboarding-modal-imports-count-value="0" data-onboarding-modal-demo-data-url-value="/settings/onboarding/demo_data" data-onboarding-modal-has-demo-data-value="false" data-onboarding-modal-user-id-value="39">
-  <dialog id="getting_started" class="modal" data-onboarding-modal-target="modal">
-    <div class="modal-box max-w-2xl bg-base-200">
 
-      <div data-onboarding-modal-target="choiceScreen">
-        <div class="text-center mb-6">
-          <h3 class="text-2xl font-bold text-primary mb-2">Welcome to Dawarich!</h3>
-          <p class="text-base-content/70">
-            Your map starts with your next step — literally.
-          </p>
-        </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-primary/40 hover:border-primary sm:col-span-2" data-action="onboarding-modal#showTrack">
-            <div class="card-body p-5">
-              <div class="flex items-center gap-2 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-primary"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect><path d="M12 18h.01"></path></svg>
-                <h4 class="text-lg font-semibold">Start tracking now</h4>
-                <span class="badge badge-primary badge-sm">2 minutes</span>
-              </div>
-              <p class="text-sm text-base-content/70">
-                Get the app, scan a QR code, and watch your first points appear on the map today.
-              </p>
-            </div>
-          </button>
 
-          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-secondary" data-action="onboarding-modal#showImport">
-            <div class="card-body p-5">
-              <div class="flex items-center gap-2 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-secondary"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"></path><path d="M14 2v4a2 2 0 0 0 2 2h4"></path><path d="M12 12v6"></path><path d="m15 15-3-3-3 3"></path></svg>
-                <h4 class="text-lg font-semibold">I have data</h4>
-              </div>
-              <p class="text-sm text-base-content/70">
-                Import Google Takeout, GPX, KML, GeoJSON, or OwnTracks files.
-              </p>
-            </div>
-          </button>
 
-          <button class="card bg-base-100 shadow-sm hover:shadow-md transition-shadow cursor-pointer text-left border-2 border-transparent hover:border-accent" data-action="onboarding-modal#loadDemoData" data-onboarding-modal-target="demoButton">
-            <div class="card-body p-5">
-              <div class="flex items-center gap-2 mb-2">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-6 h-6 text-accent">
-  <path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"></path>
-  <path d="M15 5.764v15"></path>
-  <path d="M9 3.236v15"></path>
-</svg>
-                <h4 class="text-lg font-semibold">Explore with demo data</h4>
-              </div>
-              <p class="text-sm text-base-content/70">
-                Load sample location data (3 days in Berlin) to see what your map could look like. You can delete it anytime.
-              </p>
-            </div>
-          </button>
-        </div>
 
-        <div class="text-center mt-6">
-          <button class="btn btn-ghost btn-sm" data-action="onboarding-modal#dismiss">
-            Skip for now
-          </button>
-        </div>
-      </div>
-
-      <div data-onboarding-modal-target="importScreen" class="hidden">
-        <div class="flex items-center gap-2 mb-4">
-          <button class="btn btn-ghost btn-sm btn-circle" data-action="onboarding-modal#showChoice">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
-          </button>
-          <h3 class="text-xl font-bold">Import your data</h3>
-        </div>
-
-        <div class="card bg-base-100 shadow-sm mb-4">
-          <div class="card-body p-4">
-            <h4 class="card-title text-sm">Supported formats</h4>
-            <ul class="text-xs space-y-1">
-              <li><strong>Google Maps:</strong> Records.json, Semantic History, Phone Takeout (.json)</li>
-              <li><strong>GPX:</strong> Track files (.gpx)</li>
-              <li><strong>GeoJSON:</strong> Feature collections (.json)</li>
-              <li><strong>OwnTracks:</strong> Recorder files (.rec)</li>
-              <li><strong>KML:</strong> KML files (.kml, .kmz)</li>
-            </ul>
-            <div class="text-xs text-base-content/60 mt-2">
-              File format is automatically detected during upload.
-            </div>
-              <div class="text-xs text-warning mt-2 font-medium">
-                Trial limitations: Max 5 imports, 10MB per file. Current imports: 0/5
-              </div>
-          </div>
-        </div>
-
-        <form class="contents" data-controller="upload" data-upload-url-value="http://www.example.com/rails/active_storage/direct_uploads" data-upload-field-name-value="import[files][]" data-upload-multiple-value="true" data-upload-user-trial-value="true" data-upload-max-imports-value="5" data-upload-current-imports-count-value="0" data-upload-preserve-original-filename-value="true" data-upload-target="form" enctype="multipart/form-data" action="/imports" accept-charset="UTF-8" method="post">
-          <label class="form-control w-full mb-4">
-            <div class="label">
-              <span class="label-text">Select one or multiple files</span>
-            </div>
-            <input name="import[files][]" type="hidden" value=""><input multiple="multiple" name="import[files][]" class="file-input file-input-bordered w-full" data-upload-target="input" data-direct-upload-url="http://www.example.com/rails/active_storage/direct_uploads" type="file" id="files">
-            <div class="text-xs text-base-content/60 mt-2">
-              Files will be uploaded directly to storage. Please be patient during upload.
-            </div>
-          </label>
-
-          <div class="flex justify-end">
-            <input type="submit" name="commit" value="Import files" class="btn btn-primary" data-upload-target="submit" data-disable-with="Import files">
-          </div>
-</form>      </div>
-
-      <div data-onboarding-modal-target="trackScreen" class="hidden">
-        <div class="flex items-center gap-2 mb-4">
-          <button class="btn btn-ghost btn-sm btn-circle" data-action="onboarding-modal#showChoice">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="m12 19-7-7 7-7"></path><path d="M19 12H5"></path></svg>
-          </button>
-          <h3 class="text-xl font-bold">Start tracking</h3>
-        </div>
-
-        <div class="card bg-base-100 shadow-sm">
-          <div class="card-body p-4 space-y-4">
-            <div>
-              <div class="flex items-center gap-2 mb-2">
-                <div class="badge badge-primary badge-sm">1</div>
-                <h4 class="font-semibold">Download the app</h4>
-              </div>
-              <div class="flex justify-center items-center gap-3 flex-wrap">
-                <a class="inline-block rounded-lg border-2 border-transparent hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:scale-105" href="https://apps.apple.com/de/app/dawarich/id6739544999?itscg=30200&amp;itsct=apps_box_badge&amp;mttnsubad=6739544999">
-                  <img class="h-[40px] transition-opacity duration-300" src="/assets/Download_on_the_App_Store_Badge_US-UK_RGB_blk_092917-8db899f713fdb059d268a83321cb5ccc8b8b03cf21f6e8e4fbc6e7d16e032b7d.svg">
-</a>                <a class="inline-block rounded-lg border-2 border-transparent hover:border-primary hover:shadow-lg hover:shadow-primary/20 transition-all duration-300 ease-in-out transform hover:scale-105" target="_blank" rel="noopener" href="https://play.google.com/store/apps/details?id=app.dawarich.Dawarich">
-                  <img class="h-[40px] transition-opacity duration-300" src="/assets/GetItOnGooglePlay_Badge_Web_color_English-606564f97820b0f1aae2b2829d847e1df6e1ed3d96b3ca014b3babba975b34d0.svg">
-</a>              </div>
-            </div>
-
-            <div>
-              <div class="flex items-center gap-2 mb-2">
-                <div class="badge badge-primary badge-sm">2</div>
-                <h4 class="font-semibold">Scan QR code to connect</h4>
-              </div>
-              <p class="text-sm text-base-content/70 mb-3">
-                Scan this QR code with the Dawarich app to automatically configure your connection.
-              </p>
-              <div class="flex justify-center">
-                <div class="bg-white p-3 rounded-lg shadow-inner">
-                  <!--?xml version="1.0" standalone="yes"?--><svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events" width="100%" height="100%" viewBox="0 0 181 181" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges"><rect width="181" height="181" x="0" y="0" fill="#fff"></rect><path d="M0 0h7v7h-7zM9 0h1v2h-1zM11 0h2v3h-1v-1h-1zM14 0h1v1h-1zM16 0h1v2h1v-2h2v1h-1v1h-1v1h1v-1h2v1h-1v3h-1v-1h-2v-2h-1v-1h-1v-1h1zM24 0h1v2h-1v1h1v-1h1v-2h1v1h1v1h1v-1h3v1h-1v1h-1v-1h-1v1h-2v-1h-1v1h-1v1h-1v2h-1v-2h-2v-1h2v-2h1zM35 0h1v2h-2v-1h1zM39 0h9v5h-1v-2h-1v-1h-3v1h-1v2h-1v2h1v-2h2v1h-1v1h-1v1h-1v1h-1v2h-1v1h-1v-2h1v-2h1v-2h-1v1h-1v-1h-1v1h1v1h-1v2h-1v1h-1v-2h-1v-1h-1v-1h-1v-2h1v-1h-1v-2h2v4h-1v1h1v-1h1v-1h2v-1h-1v-1h3v2h1v-1h1v-2h1v-1h-2v1h-1zM50 0h7v7h-7zM1 1v5h5v-5zM37 1h1v1h-1zM46 1v1h1v-1zM51 1v5h5v-5zM2 2h3v3h-3zM10 2h1v2h1v2h-1v1h1v-1h1v-3h1v-1h1v1h-1v1h2v1h1v2h1v-1h1v1h1v-1h1v1h-1v1h-3v1h-1v1h1v-1h1v1h-1v1h1v-1h1v-1h1v-1h1v-1h1v-1h1v1h1v-1h1v1h1v-2h-1v-1h4v-1h1v1h1v3h1v2h-3v1h1v1h1v-1h1v2h-1v1h1v-1h1v-2h1v2h-1v1h4v1h1v-1h1v2h-1v1h1v-1h1v-2h1v3h-1v1h-3v-2h-2v-1h-1v1h-1v-1h-1v1h-1v2h-1v-2h-1v-1h-1v-1h-1v-1h-3v-2h-1v1h-1v1h-1v-1h-2v1h-3v1h-2v-1h1v-1h-2v-1h-1v1h-1v2h1v-2h1v4h-1v-1h-3v-2h1v-1h-2v3h-1v-1h-2v2h-1v-3h-2v1h1v1h-2v-1h-1v-1h1v-1h1v-1h1v1h1v1h3v-1h-1v-1h-1v-1h1v-1h2v-2h1v1h1v-2h-2v-1h2zM52 2h3v3h-3zM43 3h1v1h-1zM45 4h1v1h-1zM27 5v3h3v-3zM46 5h1v2h-1zM13 6v1h-1v1h1v-1h1v-1zM15 6v1h-1v1h1v-1h1v-1zM28 6h1v1h-1zM35 6v3h1v-3zM44 6h1v1h-1zM48 6h1v1h-1zM45 7h1v1h1v-1h1v1h3v1h-1v2h-2v-2h-3zM2 8h2v1h-2zM9 8v1h-3v1h4v-1h1v-1zM22 8v1h3v-1zM42 8h1v3h-2v-2h1zM52 8h1v1h-1zM14 9v1h1v-1zM20 9v1h1v-1zM26 9v1h-1v1h2v-2zM51 9h1v3h-2v-1h1zM54 9h2v1h1v1h-2v-1h-1zM44 10h1v2h-1v1h1v-1h1v-2h1v3h-1v2h1v-1h1v1h1v-2h2v2h-1v1h1v1h-3v-1h-1v3h-2v-1h1v-2h-1v1h-2v-1h-1v-2h1v-1h-1v-1h1v-1h1zM53 10h1v1h-1zM36 11h1v1h-1zM19 12h2v1h2v-1h1v1h-1v2h-1v-1h-3v2h-1v-1h-2v1h2v1h1v1h-4v-4h2v-1h2zM28 12v1h2v-1zM53 12h1v1h-1zM56 12h1v1h-1zM24 13h1v4h-1v-1h-1v-1h1zM26 13h1v1h1v3h-1v-2h-1zM52 13h1v1h1v1h2v1h-1v1h-1v2h-1v-3h-1zM0 14h1v1h-1zM6 14h1v1h-1zM8 14h1v1h-1zM1 15h1v1h1v-1h1v3h-2v-1h-1zM5 15h1v1h-1zM10 15h2v1h-1v1h1v-1h1v-1h1v1h-1v4h1v1h-1v2h-1v2h-1v-1h-1v1h-1v3h1v-3h1v3h-1v1h-1v2h-3v1h1v1h-1v1h-2v1h-1v-3h-1v-3h-2v-1h1v-1h1v-1h-2v-2h1v-1h-1v-3h3v-1h1v-1h1v1h-1v1h-1v1h-1v2h1v-2h1v-1h1v1h1v-1h1v-1h-1v-1h1v1h2v-2h1zM32 15h1v1h-1zM43 15v1h1v-1zM6 16h2v1h-2zM20 16h3v1h1v1h1v1h-3v-1h-1v1h1v1h2v1h-1v1h1v-1h1v-1h1v-2h3v1h-1v1h-2v1h2v-1h1v-1h2v-2h1v1h3v-1h-2v-1h3v2h-1v1h-4v1h-2v2h-1v1h-1v-1h-1v1h-1v-1h-1v1h-1v1h-1v-3h-1v1h-1v1h1v1h-2v-1h-1v-2h-1v-2h1v1h1v-1h1zM56 16h1v2h-2v-1h1zM0 17h1v2h-1zM51 17h1v2h-1v1h1v-1h1v2h-4v1h1v3h-1v-1h-1v2h-1v-1h-2v-1h-1v-3h-1v2h-1v-3h1v-2h1v3h1v-1h1v1h-1v3h2v-1h-1v-1h1v-1h1v-1h-1v-1h1v1h2v-1h-1v-1h2zM14 18h1v1h-1zM36 18h3v2h-1v-1h-2zM40 18h2v1h-1v3h-2v-2h1zM10 19v1h1v-1zM31 20h4v1h3v2h-2v-1h-2v1h-1v-1h-3v-1h1zM54 20h3v3h-1v1h-1v-2h-1v2h-1v-3h1zM6 21v1h-2v1h-1v1h2v-1h1v-1h1v-1zM8 21v2h-2v1h-1v1h-1v1h-1v-1h-1v1h1v1h-1v2h1v-2h1v-1h3v-1h-1v-1h1v1h1v-1h1v-1h1v-2zM11 21v1h1v-1zM16 21h1v2h1v1h1v1h-1v2h-1v-3h-1zM13 23h1v1h2v2h-3v1h-1v-2h1zM26 23h1v1h-1zM28 23h1v1h-1zM32 23h1v3h-2v-1h-2v-1h3zM39 23h1v1h-1zM51 23h1v2h-1zM21 24h1v2h-1zM23 24h2v1h-1v1h-1zM36 24h2v1h-2zM19 25h1v2h-1zM25 25h2v1h4v1h2v-1h1v-1h1v1h1v2h-1v-1h-2v1h2v1h1v-1h1v1h-1v1h-5v1h2v1h1v1h-4v-2h-3v2h-1v-2h-1v-1h-1v-3h1v1h1v-2h-1zM38 25h1v2h-1zM40 25h2v1h1v1h-1v1h-2zM44 25h1v1h-1zM50 25h1v1h1v-1h1v1h1v1h1v-2h1v3h-1v1h-1v-1h-1v3h-1v3h-1v-3h-1v3h-1v-1h-1v-2h-1v2h-1v1h2v1h1v1h-3v1h-1v-1h-1v-1h-2v-1h-2v3h2v1h-1v2h-1v-2h-1v2h-2v-1h-1v-1h-1v-1h-1v-1h-1v1h-1v1h-1v1h1v-1h2v1h-1v1h-3v1h3v-1h1v4h-1v-2h-1v4h-3v-1h-1v-1h-1v1h-1v1h1v-1h1v1h-1v2h4v-1h2v-1h1v1h-1v2h2v2h1v-1h1v2h1v3h-1v1h-1v-1h-1v-1h-1v-1h-1v-1h1v-2h-2v3h-2v2h-1v-2h-1v2h1v1h1v-1h1v-1h1v1h-1v1h1v1h-5v-2h-2v-2h-1v1h-1v-3h-1v-1h-1v-1h1v-2h1v-1h-1v-2h-1v2h-1v-4h-1v4h1v1h1v1h-2v-1h-1v-1h-2v-1h-1v-4h2v-2h1v2h-1v1h-1v3h1v-2h1v-2h1v-1h1v-1h-1v-2h1v-2h1v2h1v3h2v-3h-1v-2h3v2h2v-1h1v1h-1v1h1v-1h1v-2h1v-1h3v2h1v1h1v1h1v-2h1v1h1v-5h-1v-1h-1v-2h1v1h2v-1h2v-1h1v1h-1v2h-1v1h2v-2h2v1h-1v1h-1v1h2v-1h1v-4h-1v1h-1v-2h2v1h2v-2h2zM22 26h1v2h-1zM5 27v3h3v-3zM13 27h1v1h-1zM16 27h1v1h-1zM18 27h1v2h-1zM20 27h1v2h2v2h-1v2h2v-1h-1v-1h2v2h-1v1h-4v-1h-5v1h1v2h1v-1h2v1h-1v2h-1v-1h-2v-2h-1v3h-1v1h-1v2h-4v-1h-1v-1h-2v-1h-2v-1h-2v1h-1v-2h3v1h1v-2h2v-1h1v-1h1v-1h1v-1h2v1h1v1h-1v1h-1v-2h-1v1h-1v2h-2v1h-1v2h2v-1h-1v-1h2v-1h1v1h-1v2h-1v1h2v-3h1v-1h2v1h1v-2h-1v-1h1v-1h1v-2h1v-1h1v1h-1v2h2v-1h-1v-1h1v1h1v1h2v-1h-1v-1h1zM27 27v3h3v-3zM49 27v3h3v-3zM6 28h1v1h-1zM28 28h1v1h-1zM50 28h1v1h-1zM56 28h1v2h-1zM3 29v1h1v-1zM25 29v1h1v-1zM47 29v1h1v-1zM0 30h1v1h-1zM12 30h1v1h-1zM3 31v1h1v-1zM35 31h1v1h-1zM39 31v1h1v-1zM55 31h2v4h-2v-1h1v-1h-2v-1h1zM0 32h2v1h-1v1h-1zM20 32v1h1v-1zM36 32h2v1h-1v1h-2v-1h1zM13 33v1h1v-1zM28 33h1v2h-1zM53 33h1v1h-1zM1 34h1v1h-1zM37 34h1v1h-1zM44 34v1h1v-1zM50 34h1v1h3v2h-2v2h1v-1h1v-1h2v-1h1v1h-1v3h-1v1h-2v1h-1v1h-1v-1h-1v-2h-2v1h1v1h-2v1h-1v-2h1v-2h1v-1h2v-1h-1v-1h1zM31 35v1h1v-1zM24 36v1h1v-1zM43 36h1v1h1v1h-2zM50 36v1h1v-1zM11 37v1h-1v1h1v-1h1v-1zM15 38h1v2h-2v-1h1zM20 38v1h1v-1zM26 38v2h-1v1h1v-1h2v-1h-1v-1zM29 38v1h1v-1zM42 38h1v1h2v-1h1v1h-1v3h-1v-2h-1v1h-1v1h-1v-2h1zM50 38v1h1v-1zM0 39h3v1h-1v2h1v1h-2v-1h-1zM3 40h4v1h-1v1h-2v-1h-1zM13 40h1v2h-1zM20 40v2h1v-2zM28 40v2h1v-2zM35 40h2v4h-1v1h-2v-1h1v-1h1v-2h-1zM51 40v1h1v-1zM56 40h1v2h-1v1h-1v-2h1zM7 41h1v1h2v2h-1v-1h-1v1h1v1h2v-1h2v-1h1v1h-1v2h-1v-1h-1v1h-1v2h-2v1h-2v-1h1v-1h-2v-1h2v-1h-1v-1h1v-1h-1v-1h1zM22 41v1h-1v1h1v-1h2v-1zM38 41h1v1h-1zM26 42v1h-1v1h-1v5h-1v1h1v1h1v2h1v-6h-1v-3h1v-1h1v-1zM29 42v1h1v-1zM39 42h1v1h-1zM43 42h1v3h-1v2h-1v1h-1v-1h-2v-2h-1v1h-1v-2h1v-1h1v2h1v-2h1v2h-1v1h1v-1h1v-1h1zM49 42h1v1h-1zM53 42h1v1h-1zM0 43h1v1h-1zM3 43h1v1h1v1h-2zM45 43h1v1h-1zM56 43h1v1h-1zM29 44v1h2v-1zM48 44h1v2h-1v1h1v-1h2v2h2v-2h1v-2h2v1h-1v1h1v-1h1v2h-1v1h-1v-1h-1v1h-1v3h2v-2h1v-1h1v1h-1v2h-1v2h-1v1h1v-1h1v-2h1v2h-1v1h-1v1h-2v-2h-4v1h1v1h-2v-2h-1v2h-2v-1h-2v-2h-1v1h-1v-1h-1v-1h-1v-1h-1v-1h-1v-1h-3v-1h4v2h1v-1h1v1h1v2h1v-1h1v-1h-1v-1h1v-1h1v-1h1v1h1v-1h1v-1h1zM51 44h1v1h-1zM0 45h3v2h2v1h-5zM1 46v1h1v-1zM11 46h1v1h1v-1h2v1h1v1h-1v2h-1v-1h-1v2h-1v-2h-1v1h-1v-2h1zM17 47h1v1h-1zM46 47v1h-2v1h1v3h1v-1h1v-2h-1v-1h1v-1zM49 47v1h1v-1zM16 48h1v3h1v-3h1v1h1v2h-2v1h-1v1h2v1h-1v1h1v2h-2v-2h-1v1h-1v1h-1v-2h-3v-1h-2v1h-1v-2h1v-1h1v1h2v1h1v-1h1v2h1v-1h1v-1h-1v-1h-2v-1h2v1h1zM47 48v1h1v-1zM8 49h1v1h1v1h-2zM27 49v3h3v-3zM49 49v3h3v-3zM0 50h7v7h-7zM28 50h1v1h-1zM50 50h1v1h-1zM1 51v5h5v-5zM11 51h1v1h-1zM20 51h2v4h-1v-3h-1zM43 51v1h1v-1zM2 52h3v3h-3zM39 52h1v1h1v1h-2zM26 53v1h1v-1zM35 53v1h2v-1zM41 54h1v2h-1v1h-1v-2h1zM51 54h1v1h1v1h-2v1h-3v-1h2v-1h1zM20 55h1v1h5v1h-6zM33 55h1v1h-1zM38 55h1v2h-2v-1h1zM43 55h1v2h-1zM56 55h1v1h-1zM9 56h1v1h-1zM11 56h2v1h-2zM54 56h1v1h-1z" fill="#000" transform="translate(5,5) scale(3)"></path></svg>
-                </div>
-              </div>
-            </div>
-
-            <div class="divider text-xs">OR</div>
-            <p class="text-sm text-base-content/70">
-              Grab your API key from
-              <a class="link link-primary font-medium" href="/settings/general">Settings</a>
-              and follow the
-              <a class="link link-primary font-medium" target="_blank" rel="noopener" href="https://dawarich.app/docs/tutorials/track-your-location?utm_source=app&amp;utm_medium=referral&amp;utm_campaign=onboarding">setup guide</a>.
-            </p>
-
-            <p class="text-xs text-base-content/60">
-              Have old location history, like a Google Takeout? Tracking works right away — you can <button type="button" class="link link-primary" data-action="onboarding-modal#showImport">import your history anytime</button>.
-            </p>
-          </div>
-        </div>
-
-        <div class="flex justify-end mt-4">
-          <button class="btn btn-primary" data-action="onboarding-modal#dismiss">
-            Got it, let's start!
-          </button>
-        </div>
-      </div>
-
-    </div>
-
-    <form method="dialog" class="modal-backdrop">
-      <button>close</button>
-    </form>
-  </dialog>
-</div>
-
-      <div id="achievement-unlocks" class="ach-unlock-host" aria-live="polite" data-controller="achievement-unlocks" data-achievement-unlocks-user-id-value="39" data-achievement-unlocks-next-url-value="/achievements/unlocks/next" data-achievement-unlocks-seen-url-value="/achievements/unlocks/__ID__/seen" data-achievement-unlocks-dismiss-url-value="/achievements/unlocks/dismiss" data-action="turbo:before-cache@document->achievement-unlocks#beforeCache keydown@window->achievement-unlocks#keyDown visibilitychange@document->achievement-unlocks#resumeVisit pageshow@window->achievement-unlocks#resumeVisit"></div>
-
-  
 
 </body>

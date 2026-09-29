@@ -1,27 +1,33 @@
 {
   "state": {
     "user": {
-      "id": 39,
+      "id": 1888365821,
       "email": "layout-cloud@dawarich.test",
       "theme": "dark",
       "settings": {
-        "route_opacity": 60,
-        "meters_between_routes": "500",
-        "minutes_between_routes": "30",
-        "fog_of_war_meters": "100",
-        "time_threshold_minutes": "30",
-        "merge_threshold_minutes": "15",
         "maps": {
           "distance_unit": "km"
-        }
+        },
+        "route_opacity": 60,
+        "fog_of_war_meters": "100",
+        "onboarding_completed": true,
+        "meters_between_routes": "500",
+        "minutes_between_routes": "30",
+        "time_threshold_minutes": "30",
+        "merge_threshold_minutes": "15"
       },
       "admin": false,
-      "status": "trial",
-      "plan": "pro",
-      "active_until": "2026-10-03T12:00:00.000000Z"
+      "status": 2,
+      "plan": 1,
+      "active_until": "2026-10-03T12:00:00.000000Z",
+      "subscription_source": 0,
+      "changelog_consent": 0
     },
+    "notifications": [],
+    "family": null,
     "self_hosted": false,
-    "accept_language": null
+    "accept_language": null,
+    "path": "/notifications"
   },
   "html": {
     "lang": "en",

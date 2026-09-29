@@ -1,0 +1,170 @@
+[
+  {
+    "input": "plain text & more",
+    "output": "plain text &amp; more"
+  },
+  {
+    "input": "B9 safe detail <script>window.b9Xss=true</script>",
+    "output": "B9 safe detail window.b9Xss=true"
+  },
+  {
+    "input": "joined the family '<script>window.xss=true</script><img src=x onerror=alert(1)>'",
+    "output": "joined the family 'window.xss=true<img src=\"x\">'"
+  },
+  {
+    "input": "<a href=\"https://dawarich.app/x?a=1&b=2\" target=\"_blank\" onclick=\"x()\">link</a>",
+    "output": "<a href=\"https://dawarich.app/x?a=1&amp;b=2\">link</a>"
+  },
+  {
+    "input": "<a href=\"javascript:alert(1)\">js</a>",
+    "output": "<a>js</a>"
+  },
+  {
+    "input": "<a href=\"JaVaScRiPt:alert(1)\">js</a>",
+    "output": "<a>js</a>"
+  },
+  {
+    "input": "<a href=\"java&#x09;script:alert(1)\">js</a>",
+    "output": "<a>js</a>"
+  },
+  {
+    "input": "<a href=\"java&#58script:alert(1)\">js</a>",
+    "output": "<a>js</a>"
+  },
+  {
+    "input": "<a href=\"javascript&colon;alert(1)\">js</a>",
+    "output": "<a>js</a>"
+  },
+  {
+    "input": "<a href=\"&amp;#106avascript:alert(1)\">js</a>",
+    "output": "<a>js</a>"
+  },
+  {
+    "input": "<a href=\"/relative path\">rel</a>",
+    "output": "<a href=\"/relative%20path\">rel</a>"
+  },
+  {
+    "input": "<a href=\"mailto:hi@dawarich.app\" name=\"n m\">mail</a>",
+    "output": "<a href=\"mailto:hi@dawarich.app\" name=\"n%20m\">mail</a>"
+  },
+  {
+    "input": "<a href=\"a\"b\">quote</a>",
+    "output": "<a href=\"a\">quote</a>"
+  },
+  {
+    "input": "<img src=\"data:image/png;base64,AAAA\" alt=\"ok\">",
+    "output": "<img src=\"data:image/png;base64,AAAA\" alt=\"ok\">"
+  },
+  {
+    "input": "<img src=\"data:text/html;base64,AAAA\">",
+    "output": "<img>"
+  },
+  {
+    "input": "<img src=\"data&#58;text/html,x\">",
+    "output": "<img>"
+  },
+  {
+    "input": "<img src=\"  \" alt=\"blank\">",
+    "output": "<img alt=\"blank\">"
+  },
+  {
+    "input": "<img src=\"x\" width=\"10\" height=\"5\" title=\"t\">",
+    "output": "<img src=\"x\" width=\"10\" height=\"5\" title=\"t\">"
+  },
+  {
+    "input": "<p style=\"color:red\" class=\"c\">styled</p>",
+    "output": "<p class=\"c\">styled</p>"
+  },
+  {
+    "input": "<div><span lang=\"de\" xml:lang=\"de\">Hallo</span></div>",
+    "output": "<div><span lang=\"de\" xml:lang=\"de\">Hallo</span></div>"
+  },
+  {
+    "input": "<ul><li>one<li>two</ul>",
+    "output": "<ul><li>one</li><li>two</li></ul>"
+  },
+  {
+    "input": "<b>bold <i>both</b> italic</i>",
+    "output": "<b>bold <i>both</i></b><i> italic</i>"
+  },
+  {
+    "input": "<table><tr><td>cell</td></tr></table>",
+    "output": "cell"
+  },
+  {
+    "input": "<iframe src=\"https://evil.example\"></iframe>after",
+    "output": "after"
+  },
+  {
+    "input": "<style>p{color:red}</style>kept",
+    "output": "p{color:red}kept"
+  },
+  {
+    "input": "<svg><a href=\"x\">in svg</a></svg>tail",
+    "output": "tail"
+  },
+  {
+    "input": "<math><mi>x</mi></math>tail",
+    "output": "tail"
+  },
+  {
+    "input": "<!-- comment -->visible",
+    "output": "visible"
+  },
+  {
+    "input": "<template><b>t</b></template>after",
+    "output": "<b>t</b>after"
+  },
+  {
+    "input": "<noscript><b>n</b></noscript>after",
+    "output": "<b>n</b>after"
+  },
+  {
+    "input": "Line<br>break<br/>again",
+    "output": "Line<br>break<br>again"
+  },
+  {
+    "input": "<h1>H</h1><h6>H6</h6><hr>",
+    "output": "<h1>H</h1><h6>H6</h6><hr>"
+  },
+  {
+    "input": "<code>x &lt; y</code>",
+    "output": "<code>x &lt; y</code>"
+  },
+  {
+    "input": "<pre>  pre  </pre>",
+    "output": "<pre>  pre  </pre>"
+  },
+  {
+    "input": "<time datetime=\"2026-09-28\">today</time>",
+    "output": "<time datetime=\"2026-09-28\">today</time>"
+  },
+  {
+    "input": "<blockquote cite=\"javascript:x\">q</blockquote>",
+    "output": "<blockquote>q</blockquote>"
+  },
+  {
+    "input": "<form action=\"/x\"><input value=\"v\"></form>text",
+    "output": "text"
+  },
+  {
+    "input": "a < b and c > d",
+    "output": "a &lt; b and c &gt; d"
+  },
+  {
+    "input": "unclosed <b>bold",
+    "output": "unclosed <b>bold</b>"
+  },
+  {
+    "input": "<del>d</del><ins>i</ins><mark>m</mark><sub>s</sub><sup>s</sup>",
+    "output": "<del>d</del><ins>i</ins><mark>m</mark><sub>s</sub><sup>s</sup>"
+  },
+  {
+    "input": "<a href=\"https://x.example/?q=a b\">space</a>",
+    "output": "<a href=\"https://x.example/?q=a%20b\">space</a>"
+  },
+  {
+    "input": "<abbr title=\"t\" abbr=\"a\">A</abbr><cite>c</cite><dfn>d</dfn>",
+    "output": "<abbr title=\"t\" abbr=\"a\">A</abbr><cite>c</cite><dfn>d</dfn>"
+  }
+]

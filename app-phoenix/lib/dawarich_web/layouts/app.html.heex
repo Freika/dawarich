@@ -1,9 +1,19 @@
 <div class="container mx-auto flex flex-col flex-1">
-  {render_slot(@navbar)}
+  <.navbar
+    current_user={@current_user}
+    data={navbar_data(assigns)}
+    locale={@locale}
+    request_path={@request_path}
+    base_url={assigns[:base_url] || ""}
+    self_hosted={@self_hosted}
+    rails_csrf_token={@rails_csrf_token}
+    now={@now}
+  />
   <%= if @suggested_locale do %>
     <div
       class="alert alert-info rounded-none py-2 px-4 text-sm flex items-start gap-2"
       data-testid="locale-suggestion"
+      data-dismissible-key-value={"locale_suggestion_#{@suggested_locale}"}
       lang={@suggested_locale}
     >
       <span class="flex-1">{t(@suggested_locale, "shared.locale_suggestion.message", %{
