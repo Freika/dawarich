@@ -31,9 +31,8 @@ defmodule DawarichWeb.Api.Auth do
     conn = conn |> assign(:api_started, System.monotonic_time()) |> fetch_cookies()
 
     case admission(conn) do
-      {:ok, format, vary, user} ->
+      {:ok, _format, vary, user} ->
         conn
-        |> assign(:api_format, format)
         |> assign(:api_vary, vary)
         |> assign(:api_request_id, request_id(conn))
         |> assign(:api_version, version())
@@ -113,22 +112,29 @@ defmodule DawarichWeb.Api.Auth do
   defp session(value, remember?) do
     now = DateTime.utc_now()
 
-    with secret when is_binary(secret) <- RailsSecret.fetch(),
-         {:ok, %{} = session} <- RailsCookies.decrypt(value, "_dawarich_session", secret, now) do
-      cond do
-        Map.has_key?(session, "warden.user.user.key") ->
-          if match?(%Accounts.User{}, Accounts.from_session(session, now)),
-            do: :ok,
-            else: {:replay, "stale session"}
+    case RailsSecret.fetch() do
+      nil ->
+        {:replay, "no cookie secret"}
 
-        remember? ->
-          {:replay, "remember-me cookie"}
+      secret ->
+        case RailsCookies.decrypt(value, "_dawarich_session", secret, now) do
+          {:ok, %{} = session} ->
+            cond do
+              Map.has_key?(session, "warden.user.user.key") ->
+                if match?(%Accounts.User{}, Accounts.from_session(session, now)),
+                  do: :ok,
+                  else: {:replay, "stale session"}
 
-        true ->
-          :ok
-      end
-    else
-      _ -> if remember?, do: {:replay, "remember-me cookie"}, else: :ok
+              remember? ->
+                {:replay, "remember-me cookie"}
+
+              true ->
+                :ok
+            end
+
+          _ ->
+            if remember?, do: {:replay, "remember-me cookie"}, else: :ok
+        end
     end
   rescue
     error -> {:replay, "session lookup failed: " <> inspect(error.__struct__)}
