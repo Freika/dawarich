@@ -6,7 +6,8 @@ defmodule Dawarich.Tracks.PerUserLock do
   alias Dawarich.Redis
 
   @namespace "tracks:per_user_lock"
-  @defaults [ttl_ms: 60_000, timeout_ms: 30_000, poll_ms: 100, renew_ms: 20_000]
+  @defaults [ttl_ms: 60_000, timeout_ms: 30_000, poll_ms: 100]
+  @renew_divisor 3
   @max_renew_errors 3
   @release_lua ~S"""
   if redis.call("get", KEYS[1]) == ARGV[1] then
@@ -26,7 +27,7 @@ defmodule Dawarich.Tracks.PerUserLock do
   def key(user_id), do: "#{@namespace}:#{user_id}"
 
   def with_user_lock(user_id, fun, opts \\ []) when is_function(fun, 0) do
-    opts = Keyword.merge(@defaults, opts)
+    opts = with_renew_default(Keyword.merge(@defaults, opts))
     key = key(user_id)
     token = Ecto.UUID.generate()
 
@@ -51,6 +52,9 @@ defmodule Dawarich.Tracks.PerUserLock do
       Redis.command(["EVAL", @renew_lua, "1", key, token, Integer.to_string(ttl_ms)]) == {:ok, 1}
 
   def release(key, token), do: Redis.command(["EVAL", @release_lua, "1", key, token])
+
+  defp with_renew_default(opts),
+    do: Keyword.put_new(opts, :renew_ms, max(div(opts[:ttl_ms], @renew_divisor), opts[:poll_ms]))
 
   defp acquire(key, token, deadline, opts) do
     case Redis.command(["SET", key, token, "NX", "PX", Integer.to_string(opts[:ttl_ms])]) do

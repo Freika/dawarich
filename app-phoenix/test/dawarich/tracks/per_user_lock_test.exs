@@ -77,12 +77,27 @@ defmodule Dawarich.Tracks.PerUserLockTest do
              PerUserLock.with_user_lock(
                @user_id,
                fn ->
-                 assert :ok = await_renewal(rails, @key)
-                 assert {:ok, _} = Redix.command(rails, ["GET", @key])
+                 assert :ok = await_renewal(rails, @key, 400, 50)
+                 assert {:ok, token} = Redix.command(rails, ["GET", @key])
+                 refute is_nil(token)
                  :ran
                end,
                ttl_ms: 400,
                renew_ms: 50
+             )
+  end
+
+  test "derives renew_ms from ttl_ms like Rails when the caller omits it", %{rails: rails} do
+    assert {:ok, :ran} =
+             PerUserLock.with_user_lock(
+               @user_id,
+               fn ->
+                 await_elapsed(350)
+                 assert {:ok, token} = Redix.command(rails, ["GET", @key])
+                 refute is_nil(token)
+                 :ran
+               end,
+               ttl_ms: 300
              )
   end
 
@@ -100,19 +115,37 @@ defmodule Dawarich.Tracks.PerUserLockTest do
     assert {:error, {:redis, _}} = PerUserLock.with_user_lock(@user_id, fn -> :ran end)
   end
 
-  defp await_renewal(conn, key), do: await_renewal(conn, key, false, 0)
+  defp await_renewal(conn, key, ttl_ms, renew_ms) do
+    deadline = System.monotonic_time(:millisecond) + ttl_ms * 2
+    await_renewal(conn, key, ttl_ms - renew_ms, false, deadline)
+  end
 
-  defp await_renewal(_conn, _key, _decayed?, 2_000),
-    do: flunk("PTTL never renewed above 350ms after decaying at or below it")
+  defp await_renewal(conn, key, threshold, decayed?, deadline) do
+    if System.monotonic_time(:millisecond) >= deadline do
+      flunk("PTTL never renewed above #{threshold}ms after decaying at or below it")
+    else
+      case Redix.command!(conn, ["PTTL", key]) do
+        ttl when ttl > threshold and decayed? ->
+          :ok
 
-  defp await_renewal(conn, key, decayed?, count) do
-    case Redix.command!(conn, ["PTTL", key]) do
-      ttl when ttl > 350 and decayed? ->
-        :ok
+        ttl ->
+          :erlang.yield()
+          await_renewal(conn, key, threshold, decayed? or ttl <= threshold, deadline)
+      end
+    end
+  end
 
-      ttl ->
-        :erlang.yield()
-        await_renewal(conn, key, decayed? or ttl <= 350, count + 1)
+  defp await_elapsed(ms) do
+    deadline = System.monotonic_time(:millisecond) + ms
+    wait_until(deadline)
+  end
+
+  defp wait_until(deadline) do
+    if System.monotonic_time(:millisecond) >= deadline do
+      :ok
+    else
+      :erlang.yield()
+      wait_until(deadline)
     end
   end
 end
