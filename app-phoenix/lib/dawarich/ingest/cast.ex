@@ -6,6 +6,7 @@ defmodule Dawarich.Ingest.Cast do
   alias Dawarich.RubyFloat
 
   @limit 2_147_483_648
+  @plausible 1000
   @enums %{
     battery_status: %{
       "unknown" => 0,
@@ -44,7 +45,7 @@ defmodule Dawarich.Ingest.Cast do
   def column(column, value) when is_map_key(@enums, column), do: enum(column, value)
 
   def integer(nil), do: nil
-  def integer(value) when is_integer(value), do: in_range(value)
+  def integer(value) when is_integer(value), do: plausible(value)
   def integer(value) when is_float(value), do: in_range(trunc(value))
 
   def integer(value) when is_binary(value),
@@ -53,7 +54,7 @@ defmodule Dawarich.Ingest.Cast do
   def integer(_value), do: Ruby.unsupported!("boolean or container in an integer column")
 
   def enum(_column, nil), do: nil
-  def enum(_column, value) when is_integer(value), do: in_range(value)
+  def enum(_column, value) when is_integer(value), do: plausible(value)
   def enum(_column, value) when is_float(value), do: in_range(trunc(value))
 
   def enum(column, value) when is_binary(value) do
@@ -66,10 +67,13 @@ defmodule Dawarich.Ingest.Cast do
   def enum(_column, _value), do: Ruby.unsupported!("boolean or container in an enum column")
 
   def string(nil), do: nil
-  def string(true), do: "t"
-  def string(false), do: "f"
-  def string(value) when is_binary(value) or is_number(value), do: Ruby.to_s(value)
-  def string(_value), do: Ruby.unsupported!("container in a string column")
+  def string(value) when is_integer(value) and abs(value) < @plausible, do: Ruby.to_s(value)
+
+  def string(value) when is_integer(value),
+    do: Ruby.unsupported!("integer implausible for this column")
+
+  def string(value) when is_binary(value) or is_float(value), do: Ruby.to_s(value)
+  def string(_value), do: Ruby.unsupported!("boolean or container in a string column")
 
   def array(nil), do: nil
   def array(list) when is_list(list), do: Enum.map(list, &element/1)
@@ -101,7 +105,6 @@ defmodule Dawarich.Ingest.Cast do
 
   defp element(nil), do: nil
   defp element(value) when is_binary(value), do: value
-  defp element(value) when is_integer(value), do: Integer.to_string(value)
   defp element(_value), do: Ruby.unsupported!("non-string array element")
 
   defp numeric_string(value) do
@@ -114,4 +117,7 @@ defmodule Dawarich.Ingest.Cast do
 
   defp in_range(number) when number >= -@limit and number < @limit, do: number
   defp in_range(_number), do: Ruby.unsupported!("integer out of range")
+
+  defp plausible(number) when abs(number) < @plausible, do: in_range(number)
+  defp plausible(_number), do: Ruby.unsupported!("integer implausible for this column")
 end

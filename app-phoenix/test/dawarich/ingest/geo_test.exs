@@ -9,12 +9,17 @@ defmodule Dawarich.Ingest.GeoTest do
     for %{"input" => wkt, "point" => point, "null_island" => island, "dedup_key" => key} <-
           @units["wkts"] do
       case point do
-        nil -> assert_raise Unsupported, fn -> Geo.point(wkt) end
-        [x, y] -> assert Geo.point(wkt) == {x, y}, wkt
+        nil ->
+          assert_raise Unsupported, fn -> Geo.point(wkt) end
+
+        [x, y] ->
+          assert exact(Tuple.to_list(Geo.point(wkt))) == exact([x, y]), wkt
       end
 
       assert Geo.null_island_wkt?(wkt) == island, wkt
-      assert Tuple.to_list(Geo.dedup_key(%{lonlat: wkt, timestamp: 1, user_id: 1})) == key, wkt
+
+      phoenix_key = Geo.dedup_key(%{lonlat: wkt, timestamp: 1, user_id: 1}) |> Tuple.to_list()
+      assert dedup_exact(phoenix_key) == dedup_exact(key), wkt
     end
   end
 
@@ -42,4 +47,15 @@ defmodule Dawarich.Ingest.GeoTest do
              )
            ) == 1
   end
+
+  defp bit(x) when is_float(x), do: <<x::float>>
+  defp bit(x), do: x
+
+  defp exact(list), do: Enum.map(list, &bit/1)
+
+  defp dedup_exact([lon, lat, timestamp, user_id]),
+    do: [bit(zeroed(lon)), bit(zeroed(lat)), timestamp, user_id]
+
+  defp zeroed(x) when is_number(x) and x == 0, do: 0.0
+  defp zeroed(x), do: x
 end
