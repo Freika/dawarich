@@ -211,6 +211,11 @@ defmodule Dawarich.AreasTest do
              [Integer.to_string(user_id)]
            ]
 
+    assert rows("SELECT payload->'started_at' FROM phoenix.rails_commands ORDER BY id") == [
+             [["2026-06-01T10:00:00.000000Z", "2026-06-01T10:00:00.000000Z"]],
+             [["2026-06-01T10:00:00.000000Z"]]
+           ]
+
     assert rows("SELECT count(*) FROM visits WHERE id = ANY($1) AND area_id = $2", [ids, area_id]) ==
              [[3]]
   end

@@ -5,9 +5,11 @@ defmodule Dawarich.RubyInteger do
   def to_i(value) when is_float(value), do: trunc(value)
 
   def to_i(value) when is_binary(value) do
-    case Integer.parse(String.trim_leading(value)) do
-      {number, _rest} -> number
-      :error -> 0
+    case Regex.run(~r/\A[\t\n\x0B\f\r ]*([+-]?[0-9]+(?:_[0-9]+)*)/, value,
+           capture: :all_but_first
+         ) do
+      [digits] -> digits |> String.replace("_", "") |> String.to_integer()
+      nil -> 0
     end
   end
 

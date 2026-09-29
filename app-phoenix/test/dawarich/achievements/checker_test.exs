@@ -24,10 +24,21 @@ defmodule Dawarich.Achievements.CheckerTest do
     end
   end
 
+  defmodule ScanTimeoutRepo do
+    @moduledoc false
+    alias Dawarich.ScratchRepo
+
+    def transaction(fun), do: ScratchRepo.transaction(fun)
+
+    def query!(sql, params, opts) do
+      if sql =~ "FROM points", do: send(self(), {:points_scan, sql, opts[:timeout]})
+      ScratchRepo.query!(sql, params, opts)
+    end
+  end
+
   @fixture Path.expand("../../fixtures/achievements/check.json", __DIR__)
 
   setup do
-    ScratchRepo.put_dynamic_repo(start_supervised!({ScratchRepo, name: nil, pool_size: 2}))
     rows("TRUNCATE public.countries, public.regions RESTART IDENTITY")
     fixture = @fixture |> File.read!() |> Jason.decode!()
     %{fixture: fixture, uid: fixture["user"]["id"], steps: fixture["steps"]}
@@ -158,6 +169,32 @@ defmodule Dawarich.Achievements.CheckerTest do
     assert snapshot(uid) == Enum.at(steps, 3)["expected"]
     refute Map.has_key?(snapshot(uid)["state"]["dwell"], "DE-ST")
     assert "DE-ST" in snapshot(uid)["state"]["earned"]
+  end
+
+  test "every points scan runs without a query timeout, as Rails sets no statement timeout", %{
+    fixture: fixture,
+    uid: uid,
+    steps: steps
+  } do
+    load!(fixture)
+    replay!(uid, Enum.take(steps, 3))
+    step = Enum.at(steps, 3)
+    apply!(uid, step)
+
+    assert Checker.run(ScanTimeoutRepo, uid, step["notify"], step["oldest"]) == :ok
+
+    scans = collect_points_scans([])
+    assert Enum.any?(scans, fn {sql, _} -> sql =~ "LEAD(" end)
+    assert Enum.any?(scans, fn {sql, _} -> sql =~ ~s|max("timestamp")| end)
+    assert Enum.all?(scans, fn {_, timeout} -> timeout == :infinity end)
+  end
+
+  defp collect_points_scans(acc) do
+    receive do
+      {:points_scan, sql, timeout} -> collect_points_scans([{sql, timeout} | acc])
+    after
+      0 -> acc
+    end
   end
 
   test "a second run of the same step announces nothing and writes no event", %{

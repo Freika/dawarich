@@ -1,12 +1,11 @@
 defmodule Dawarich.Achievements.Checker do
   @moduledoc false
 
-  alias Dawarich.Achievements.{Dwell, Notices}
+  alias Dawarich.Achievements.{Dwell, Notices, Position}
   alias Dawarich.RubyInteger
 
   @calculation_version 3
   @commit_attempts 2
-  @eligible ~s|user_id = $1 AND lonlat IS NOT NULL AND (anomaly IS DISTINCT FROM TRUE)|
 
   def run(repo, user_id, notify, oldest, hook \\ fn _stage -> :ok end) do
     case settings(repo, user_id) do
@@ -18,20 +17,18 @@ defmodule Dawarich.Achievements.Checker do
 
         case progress_id(repo, user_id) do
           nil ->
-            if scalar(repo, "SELECT EXISTS (SELECT 1 FROM points WHERE " <> @eligible <> ")", [
-                 user_id
-               ]),
-               do:
-                 check(
-                   repo,
-                   user_id,
-                   settings,
-                   create_progress!(repo, user_id),
-                   notify,
-                   oldest,
-                   hook
-                 ),
-               else: :ok
+            if Position.points?(repo, user_id),
+              do:
+                check(
+                  repo,
+                  user_id,
+                  settings,
+                  create_progress!(repo, user_id),
+                  notify,
+                  oldest,
+                  hook
+                ),
+              else: :ok
 
           id ->
             check(repo, user_id, settings, id, notify, oldest, hook)
@@ -101,7 +98,7 @@ defmodule Dawarich.Achievements.Checker do
     previous = RubyInteger.to_i(state["cursor"])
     previous_inserted = state["inserted_through"]
 
-    case latest_position(repo, user_id, previous, previous_inserted, oldest) do
+    case Position.latest(repo, user_id, previous, previous_inserted, oldest) do
       {nil, nil} ->
         []
 
@@ -117,7 +114,7 @@ defmodule Dawarich.Achievements.Checker do
         if settled?(repo, user_id, pos, state, threshold) do
           []
         else
-          replace = recompute?(repo, user_id, pos) or calculation_changed?(state)
+          replace = Position.recompute?(repo, user_id, pos) or calculation_changed?(state)
 
           deltas =
             if threshold_changed?(state, threshold) and cursor <= previous and not replace,
@@ -134,58 +131,9 @@ defmodule Dawarich.Achievements.Checker do
     end
   end
 
-  defp latest_position(repo, user_id, cursor, inserted_through, oldest) do
-    latest_insert =
-      scalar(repo, "SELECT max(created_at) FROM points WHERE " <> @eligible, [user_id])
-
-    if is_nil(latest_insert) and cursor == 0 and is_nil(inserted_through) do
-      {nil, nil}
-    else
-      since = inserted_through && parse!(inserted_through)
-
-      latest_timestamp =
-        cond do
-          not is_nil(oldest) ->
-            scalar(repo, ~s|SELECT max("timestamp") FROM points WHERE | <> @eligible, [user_id])
-
-          latest_insert && (is_nil(since) or NaiveDateTime.compare(latest_insert, since) == :gt) ->
-            scalar(
-              repo,
-              ~s|SELECT max("timestamp") FROM points WHERE | <>
-                @eligible <>
-                " AND ($2::timestamp IS NULL OR created_at > $2) AND created_at <= $3",
-              [user_id, since, latest_insert]
-            )
-
-          true ->
-            nil
-        end
-
-      {max(cursor, min(RubyInteger.to_i(latest_timestamp), System.os_time(:second))),
-       watermark([since, latest_insert])}
-    end
-  end
-
-  defp recompute?(repo, user_id, pos) do
-    (not is_nil(pos.oldest) and pos.previous > 0 and pos.oldest <= pos.previous) or
-      (pos.previous > 0 and pos.inserted != pos.previous_inserted and
-         scalar(
-           repo,
-           "SELECT EXISTS (SELECT 1 FROM points WHERE " <>
-             @eligible <>
-             ~s| AND ($2::timestamp IS NULL OR created_at > $2) AND created_at <= $3 AND "timestamp" < $4)|,
-           [
-             user_id,
-             pos.previous_inserted && parse!(pos.previous_inserted),
-             parse!(pos.inserted),
-             pos.previous
-           ]
-         ))
-  end
-
   defp settled?(repo, user_id, pos, state, threshold) do
     pos.previous > 0 and pos.cursor <= pos.previous and pos.inserted == pos.previous_inserted and
-      not recompute?(repo, user_id, pos) and not threshold_changed?(state, threshold) and
+      not Position.recompute?(repo, user_id, pos) and not threshold_changed?(state, threshold) and
       RubyInteger.to_i(state["calculation_version"]) >= @calculation_version
   end
 
@@ -222,26 +170,6 @@ defmodule Dawarich.Achievements.Checker do
       end)
 
     outcome
-  end
-
-  defp watermark(times) do
-    case Enum.reject(times, &is_nil/1) do
-      [] ->
-        nil
-
-      present ->
-        %NaiveDateTime{microsecond: {us, _}} = latest = Enum.max(present, NaiveDateTime)
-
-        latest
-        |> Map.put(:microsecond, {us, 6})
-        |> DateTime.from_naive!("Etc/UTC")
-        |> DateTime.to_iso8601()
-    end
-  end
-
-  defp parse!(iso) do
-    {:ok, datetime, _offset} = DateTime.from_iso8601(iso)
-    DateTime.to_naive(datetime)
   end
 
   defp settings(repo, user_id) do

@@ -49,23 +49,25 @@ module Achievements
 
       pending = self.class.pending_members(user_id)
       oldest_timestamp = [oldest_timestamp, *pending.map(&:to_i)].compact.min
-      check_or_forward(user, notify, oldest_timestamp)
+      consumed = check_or_forward(user, notify, oldest_timestamp)
 
-      Sidekiq.redis { |redis| redis.zrem(self.class.pending_key(user_id), pending) } if pending.any?
+      Sidekiq.redis { |redis| redis.zrem(self.class.pending_key(user_id), pending) } if consumed && pending.any?
     end
 
     private
 
     def check_or_forward(user, notify, oldest_timestamp)
-      return if forwarded?(user.id, notify, oldest_timestamp)
+      inserted = forward(user.id, notify, oldest_timestamp)
+      return inserted.positive? if inserted
 
       notify &&= Progress.current_exploration.exists?(user_id: user.id)
       Achievements::RegionSetChecker.new(user, notify: notify, oldest_timestamp: oldest_timestamp).call
+      true
     end
 
-    def forwarded?(user_id, notify, oldest_timestamp)
+    def forward(user_id, notify, oldest_timestamp)
       ActiveRecord::Base.transaction do
-        next false unless JobOwnership.lock_owner(OWNER_KEY) == :oban
+        next unless JobOwnership.lock_owner(OWNER_KEY) == :oban
 
         JobCommands.forward(
           'achievements.check',
@@ -73,7 +75,6 @@ module Achievements
           event_id: Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "achievements.check:#{user_id}:#{job_id}"),
           aggregate_id: user_id, producer: self.class.name
         )
-        true
       end
     end
   end
