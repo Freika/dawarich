@@ -31,7 +31,7 @@ defmodule Dawarich.Ingest.Intake do
 
   def write(prepared, user_id, opts) do
     repo = Keyword.get(opts, :repo, Repo)
-    now = Keyword.get_lazy(opts, :now, &NaiveDateTime.utc_now/0)
+    now = NaiveDateTime.utc_now()
     sleep = Keyword.get(opts, :sleep, &Process.sleep/1)
 
     {rows, _cache} =
