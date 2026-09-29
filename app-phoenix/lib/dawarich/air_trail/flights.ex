@@ -15,7 +15,7 @@ defmodule Dawarich.AirTrail.Flights do
     COALESCE((SELECT jsonb_agg(DISTINCT jsonb_build_array(EXTRACT(YEAR FROM flight_date)::integer,
                                                           EXTRACT(MONTH FROM flight_date)::integer))
               FROM flights WHERE user_id = $1 AND flight_date IS NOT NULL), '[]'::jsonb),
-    COALESCE((SELECT jsonb_agg(EXTRACT(EPOCH FROM departure_time)::bigint)
+    COALESCE((SELECT jsonb_agg(floor(EXTRACT(EPOCH FROM departure_time))::bigint)
               FROM flights WHERE user_id = $1 AND flight_date IS NULL AND departure_time IS NOT NULL), '[]'::jsonb)
   """
 
@@ -83,7 +83,7 @@ defmodule Dawarich.AirTrail.Flights do
 
   @delete_unseen ~S"""
   DELETE FROM flights WHERE user_id = $1 AND external_id NOT IN (
-    SELECT (f->>'id')::integer FROM jsonb_array_elements($2::jsonb) AS f WHERE f->>'id' IS NOT NULL)
+    SELECT id::integer FROM jsonb_array_elements_text($2::jsonb) AS e(id) WHERE id IS NOT NULL)
   """
 
   @synced_at ~S"""
@@ -108,7 +108,7 @@ defmodule Dawarich.AirTrail.Flights do
     end
   end
 
-  def store!(repo, user_id, flights, event_id, time_zone) do
+  def store(repo, user_id, flights, event_id, time_zone) do
     distances = Enum.map(flights, &distance_km/1)
 
     {:ok, :ok} =
@@ -116,7 +116,7 @@ defmodule Dawarich.AirTrail.Flights do
         repo.query!("SELECT set_config('TimeZone', $1, true)", [time_zone], log: false)
         %{rows: [[months, epochs]]} = repo.query!(@months_before, [user_id], log: false)
         repo.query!(@upsert, [user_id, flights, distances, @iso], log: false)
-        repo.query!(@delete_unseen, [user_id, flights], log: false)
+        repo.query!(@delete_unseen, [user_id, Enum.map(flights, & &1["id"])], log: false)
         repo.query!(@synced_at, [user_id], log: false)
 
         :ok =
@@ -130,6 +130,8 @@ defmodule Dawarich.AirTrail.Flights do
       end)
 
     :ok
+  rescue
+    error in Postgrex.Error -> {:error, {:store_failed, error.postgres[:code]}}
   end
 
   def fail!(repo, user_id, message) do
