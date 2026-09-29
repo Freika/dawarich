@@ -35,6 +35,19 @@ defmodule DawarichWeb.Router do
     post "/traccar/points", IngestController, :traccar, metadata: %{slice: :ingest}
   end
 
+  pipeline :api_foundation do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.Api.Body
+    plug DawarichWeb.Api.Auth, reject_pending: false, require_active: false
+  end
+
+  scope "/api/v1", DawarichWeb.Api do
+    pipe_through :api_foundation
+
+    get "/plan", PlanController, :show, metadata: %{slice: :api_foundation}
+  end
+
   pipeline :rails_user do
     plug DawarichWeb.RequireUser
   end
