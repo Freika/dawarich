@@ -155,13 +155,30 @@ defmodule DawarichWeb.ExportsLiveTest do
   end
 
   describe "head" do
-    test "Turbo's morph metas come with the imports page but not the exports page, as Rails' controllers decide",
+    test "Turbo's morph metas come with the notifications and imports pages but not the exports page, as Rails' controllers decide",
          %{user: user} do
+      now = NaiveDateTime.utc_now()
+
+      Dawarich.Repo.insert_all("notifications", [
+        %{
+          id: 720_199,
+          user_id: user.id,
+          title: "x",
+          content: "x",
+          kind: 0,
+          created_at: now,
+          updated_at: now
+        }
+      ])
+
       refute html_response(get(RailsUser.signed_in(user.id), "/exports"), 200) =~
                "turbo-refresh-method"
 
-      assert html_response(get(RailsUser.signed_in(user.id), "/imports"), 200) =~
-               ~s(name="turbo-refresh-method")
+      for path <- ["/notifications", "/notifications/720199", "/imports"] do
+        html = html_response(get(RailsUser.signed_in(user.id), path), 200)
+        assert html =~ ~s(name="turbo-refresh-method"), path
+        assert html =~ ~s(name="turbo-refresh-scroll"), path
+      end
     end
   end
 end

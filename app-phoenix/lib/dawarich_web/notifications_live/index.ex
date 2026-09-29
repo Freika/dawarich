@@ -11,10 +11,9 @@ defmodule DawarichWeb.NotificationsLive.Index do
   def mount(_params, _session, socket),
     do:
       {:ok,
-       assign(
-         socket,
-         :page_title,
-         t(socket.assigns.locale, "notifications.index.notifications", %{})
+       assign(socket,
+         page_title: t(socket.assigns.locale, "notifications.index.notifications", %{}),
+         morph_page_refreshes: true
        )}
 
   @impl true

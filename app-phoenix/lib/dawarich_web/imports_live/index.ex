@@ -24,7 +24,12 @@ defmodule DawarichWeb.ImportsLive.Index do
 
   @impl true
   def mount(_params, _session, socket),
-    do: {:ok, assign(socket, :page_title, t(socket.assigns.locale, "imports.index.imports", %{}))}
+    do:
+      {:ok,
+       assign(socket,
+         page_title: t(socket.assigns.locale, "imports.index.imports", %{}),
+         morph_page_refreshes: true
+       )}
 
   @impl true
   def handle_params(params, uri, socket) do

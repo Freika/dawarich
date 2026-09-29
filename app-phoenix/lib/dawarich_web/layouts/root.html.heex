@@ -18,7 +18,7 @@
     <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements.css")} />
     <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements_spectral.css")} />
     <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements_unlocks.css")} />
-    <%= if @current_user && assigns[:morph_page_refreshes] != false do %>
+    <%= if @current_user && assigns[:morph_page_refreshes] == true do %>
       <meta name="turbo-refresh-method" content="morph" /><meta
         name="turbo-refresh-scroll"
         content="preserve"

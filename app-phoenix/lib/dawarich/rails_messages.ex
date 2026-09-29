@@ -7,13 +7,27 @@ defmodule Dawarich.RailsMessages do
   defp sign(salt, json, digest, secret) do
     data = Base.encode64(json)
 
-    key =
-      Plug.Crypto.KeyGenerator.generate(secret, salt,
-        iterations: 1000,
-        length: 64,
-        digest: :sha256
-      )
+    data <>
+      "--" <> Base.encode16(:crypto.mac(:hmac, digest, key(salt, secret), data), case: :lower)
+  end
 
-    data <> "--" <> Base.encode16(:crypto.mac(:hmac, digest, key, data), case: :lower)
+  defp key(salt, secret) do
+    id = {__MODULE__, :crypto.hash(:sha256, secret), salt}
+
+    case :persistent_term.get(id, nil) do
+      nil ->
+        key =
+          Plug.Crypto.KeyGenerator.generate(secret, salt,
+            iterations: 1000,
+            length: 64,
+            digest: :sha256
+          )
+
+        :persistent_term.put(id, key)
+        key
+
+      key ->
+        key
+    end
   end
 end

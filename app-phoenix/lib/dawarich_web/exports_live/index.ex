@@ -14,7 +14,6 @@ defmodule DawarichWeb.ExportsLive.Index do
     {:ok,
      assign(socket,
        page_title: t(socket.assigns.locale, "exports.index.exports", %{}),
-       morph_page_refreshes: false,
        points_url: (socket.assigns[:base_url] || "") <> "/points",
        columns: columns(socket.assigns.locale)
      )}
