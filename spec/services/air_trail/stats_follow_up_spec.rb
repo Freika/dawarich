@@ -26,8 +26,10 @@ RSpec.describe AirTrail::StatsFollowUp do
     expect(Stats::CalculatingJob).not_to have_been_enqueued.with(user.id, 2026, 2)
   end
 
-  it 'does nothing for a deleted user' do
-    expect { described_class.call(payload.merge('user_id' => -1)) }.not_to have_enqueued_job
+  it 'does nothing for a soft-deleted user' do
+    user.mark_as_deleted!
+
+    expect { described_class.call(payload) }.not_to have_enqueued_job
   end
 
   it 'is dispatched by the reverse-outbox poller' do
