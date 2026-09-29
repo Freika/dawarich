@@ -32,9 +32,12 @@ defmodule Dawarich.Tracks.FixturesTest do
   end
 
   test "sequences advance past inserted fixture ids so a fresh INSERT can proceed" do
+    Dawarich.Repo.query!("SELECT setval(pg_get_serial_sequence('tracks', 'id'), 1, false)")
+
     TracksFixtures.load!(Dawarich.Repo, "range_dst")
 
     %{rows: [[user_id]]} = Dawarich.Repo.query!("SELECT id FROM users ORDER BY id LIMIT 1")
+    %{rows: [[max_track_id]]} = Dawarich.Repo.query!("SELECT COALESCE(MAX(id), 0) FROM tracks")
 
     %{rows: [[track_id]]} =
       Dawarich.Repo.query!(
@@ -46,6 +49,6 @@ defmodule Dawarich.Tracks.FixturesTest do
         [user_id]
       )
 
-    assert is_integer(track_id)
+    assert track_id > max_track_id
   end
 end

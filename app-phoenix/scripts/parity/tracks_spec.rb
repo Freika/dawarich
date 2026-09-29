@@ -194,7 +194,7 @@ RSpec.describe 'Phoenix fixture: track generation as Rails computes it' do
     points.map do |point|
       record = Point.find(point.id)
       track = record.track_id && Track.find_by(id: record.track_id)
-      { timestamp: record.timestamp, track: track && track_identity(track) }
+      { id: remap_id(:points, record.id), timestamp: record.timestamp, track: track && track_identity(track) }
     end
   end
 
@@ -418,10 +418,11 @@ RSpec.describe 'Phoenix fixture: track generation as Rails computes it' do
     scoped_start = Time.zone.at(pending_min_ts)
     scoped_end = Time.zone.at(pending_max_ts)
     calls = [
-      { service: 'Tracks::ParallelGenerator', start_at: daily_start, end_at: daily_end, zone: 'Europe/Berlin',
-        mode: 'daily', untracked_only: false, import_id: nil },
-      { service: 'Tracks::ParallelGenerator', start_at: scoped_start, end_at: scoped_end, zone: 'UTC',
-        mode: 'bulk', untracked_only: true, import_id: remap_id(:imports, import_pending.id) }
+      { service: 'Tracks::ParallelGenerator', start_at: daily_start, end_at: daily_end,
+        zone: daily_start.time_zone.name, mode: 'daily', untracked_only: false, import_id: nil },
+      { service: 'Tracks::ParallelGenerator', start_at: scoped_start, end_at: scoped_end,
+        zone: scoped_start.time_zone.name, mode: 'bulk', untracked_only: true,
+        import_id: remap_id(:imports, import_pending.id) }
     ]
 
     events, = capture_track_events do
@@ -527,6 +528,7 @@ RSpec.describe 'Phoenix fixture: track generation as Rails computes it' do
                       altitude: 60)
 
     points = [e_point, singleton, f_before, mid1, mid2, f_after]
+    seed_remap!(:points, points.map(&:id))
     seed_remap!(:tracks, [e_track.id, f_track.id])
     input = empty_input.merge(users: [dump_user(user)], imports: [dump_import(import)],
                               tracks: [e_track, f_track].map { |t| dump_track(t) },
@@ -587,7 +589,20 @@ RSpec.describe 'Phoenix fixture: track generation as Rails computes it' do
     i_singleton = make_point(user: user, tracker_id: 'device-i', time: base + 2.hours + 5.minutes, lon: is_lon,
                              lat: is_lat, altitude: 60)
 
-    points = g_points + [h_before, h_mid1, h_mid2, h_after, i_tracked, i_singleton]
+    j1_lon, j1_lat = coord(30)
+    j2_lon, j2_lat = coord(31)
+    j3_lon, j3_lat = coord(32)
+    j_points = [
+      make_point(user: user, tracker_id: 'device-j', time: base + 2.hours + 30.minutes, lon: j1_lon, lat: j1_lat,
+                 altitude: 60),
+      make_point(user: user, tracker_id: 'device-j', time: base + 2.hours + 40.minutes, lon: j2_lon, lat: j2_lat,
+                 altitude: 60),
+      make_point(user: user, tracker_id: 'device-j', time: base + 2.hours + 50.minutes, lon: j3_lon, lat: j3_lat,
+                 altitude: 60)
+    ]
+
+    points = g_points + [h_before, h_mid1, h_mid2, h_after, i_tracked, i_singleton] + j_points
+    seed_remap!(:points, points.map(&:id))
     seed_remap!(:tracks, [g_track.id, h_track.id, i_track.id])
     input = empty_input.merge(users: [dump_user(user)],
                               tracks: [g_track, h_track, i_track].map { |t| dump_track(t) },
@@ -730,6 +745,8 @@ RSpec.describe 'Phoenix fixture: track generation as Rails computes it' do
       make_point(user: user, tracker_id: 'device-elev', time: base + 15.minutes, lon: l3[0], lat: l3[1], altitude: 60,
                  altitude_decimal: 45.2)
     ]
+    input = empty_input.merge(users: [dump_user(user)], points: mixed_points.map { |p| dump_point(p) })
+
     distance = Point.calculate_distance_for_array_geocoder(mixed_points, :m)
     elevation_track = builder.create_track_from_points(mixed_points, distance, tracker_id: 'device-elev',
                                                                                 skip_segment_detection: true)
@@ -745,13 +762,13 @@ RSpec.describe 'Phoenix fixture: track generation as Rails computes it' do
       { distance: distance_m, duration: duration_s, avg_speed_kmh: Track.avg_speed_kmh(distance_m, duration_s) }
     end
 
-    input = empty_input.merge(users: [dump_user(user)], tracks: [dump_track(elevation_track)],
-                              points: mixed_points.map { |p| dump_point(p) })
+    calls = [{ service: 'Tracks::TrackBuilder#create_track_from_points', tracker_id: 'device-elev',
+               pre_calculated_distance: distance, skip_segment_detection: true }]
 
     write_fixture('elevation', { input: input, expected: {
                     elevation_track: dump_track(elevation_track), clamp_cases: clamp_cases,
                     avg_speed_cases: avg_speed_cases
-                  }, call: [{ service: 'Tracks::TrackBuilder#create_track_from_points', tracker_id: 'device-elev' }] })
+                  }, call: calls })
   end
 
   it 'writes transport_stages.json' do
@@ -847,7 +864,7 @@ RSpec.describe 'Phoenix fixture: track generation as Rails computes it' do
 
     write_fixture('transport_reclassify', { input: input, expected: dump_all_tracks_and_segments(user).merge(
       points: point_track_map(points), events: events,
-      dominant_mode_tie: { input: tie_input, output: Track.pick_dominant_mode(tie_segments) }
+      dominant_mode_tie: { input: tie_input, output: Track.dominant_modes[Track.pick_dominant_mode(tie_segments)] }
     ), call: calls })
   end
 
