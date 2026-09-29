@@ -458,8 +458,9 @@ class User < ApplicationRecord
   def start_trial
     update(status: :trial, active_until: 7.days.from_now)
 
-    Users::MailerSendingJob.perform_later(id, 'welcome')
-    Users::MailerSendingJob.set(wait: 2.days).perform_later(id, 'explore_features')
+    UserMailCommands.produce('welcome', id, producer: 'User#start_trial')
+    JobCommands.produce('users.explore_features_mail', { 'user_id' => id, 'locale' => I18n.locale.to_s },
+                        aggregate_id: id, scheduled_at: 2.days.from_now, producer: 'User#start_trial')
 
     Users::CreationWebhookJob.perform_later(id)
   end

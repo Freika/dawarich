@@ -1,0 +1,20 @@
+{
+  "state": {
+    "user": null,
+    "self_hosted": true,
+    "accept_language": null,
+    "path": "/users/sign_in"
+  },
+  "html": {
+    "lang": "en",
+    "data-theme": "dawarich-dark",
+    "data-self-hosted": "true"
+  },
+  "headers": {
+    "x-frame-options": "SAMEORIGIN",
+    "x-xss-protection": "0",
+    "x-content-type-options": "nosniff",
+    "x-permitted-cross-domain-policies": "none",
+    "referrer-policy": "strict-origin-when-cross-origin"
+  }
+}

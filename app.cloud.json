@@ -1,0 +1,16 @@
+{
+  "name": "dawarich",
+  "healthchecks": {
+    "web": [
+      {
+        "type": "startup",
+        "name": "web check",
+        "description": "Checking if the app responds to the /api/v1/health endpoint",
+        "path": "/api/v1/health",
+        "port": 5000,
+        "attempts": 10,
+        "wait": 10
+      }
+    ]
+  }
+}

@@ -1,6 +1,12 @@
 es:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Tareas de Phoenix"
+        ok: "Phoenix está procesando sus tareas."
+        alarm: "Phoenix no está procesando sus tareas; esperan hasta que se ejecute un proceso de Phoenix."
+        not_installed: "Phoenix aún no ha creado sus tablas en esta base de datos; todas las tareas se ejecutan en Sidekiq."
+        unknown: "No se pudo leer el estado de las tareas de Phoenix en la base de datos; recarga la página para volver a intentarlo."
       show:
         title: "Ajustes de la instancia"
         intro: "Estos ajustes se aplican a toda la instancia. Un ajuste definido por una variable de entorno se muestra en modo de solo lectura: elimina la variable para editarlo aquí."
@@ -1371,7 +1377,7 @@ es:
       rarr: "→"
       'on': encendido
       no_visits_yet: No hay visitas aún
-      rename: Renombrar
+      edit: Editar
       merge: Unir
       notes: Notas
       save: Guardar
@@ -3464,7 +3470,7 @@ es:
         export_name_successfully_finished: La exportación "%{name}" ha finalizado con éxito.
         export_failed: No se pudo exportar
         export_name_failed_message_stacktrace_n: 'La exportación "%{name}" ha fallado: %{message}, stacktrace: %{backtrace}'
-        unsupported_file_format: 'Formato de archivo no soportado: %{format}'
+        unsupported_file_format: 'Formato de archivo no soportado: %{file_format}'
     families:
       auto_create:
         default_name: Mi familia
@@ -3704,6 +3710,8 @@ es:
         v2_handler:
           manifest_missing: 'No se encontró el archivo de manifest en la carpeta: manifest.json'
     visits:
+      create:
+        duplicate_at_place_and_time: Ya existe una visita en este lugar y a esta hora
       suggest:
         error_suggesting_visits_message: 'Error al sugerir visitas: %{message}'
         error_suggesting_visits: 'Error al sugerir visitas'

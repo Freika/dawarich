@@ -1,0 +1,1 @@
+DROP INDEX index_points_on_reverse_geocoded_at;

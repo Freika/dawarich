@@ -299,6 +299,46 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
     end
   end
 
+  describe 'brute-force guard on /auth/account_link/challenge — kept on self-hosted' do
+    before do
+      Rack::Attack.enabled = true
+      Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
+      Rack::Attack.reset!
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+    end
+
+    after { Rack::Attack.enabled = false }
+
+    it 'throttles auth/account_link_challenge_session at 5/15min for the same pending link' do
+      6.times do
+        reset!
+        trigger_collision
+        post confirm_auth_account_link_path, params: { password: 'wrong-password' }
+      end
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+
+    it 'throttles auth/account_link_challenge_ip at 20/15min across different pending links' do
+      21.times do |i|
+        reset!
+        other_user = create(:user, email: "ip-guard-#{i}@example.com", password: password, provider: nil, uid: nil)
+        OmniAuth.config.mock_auth[:openid_connect] = OmniAuth::AuthHash.new(
+          provider: 'openid_connect',
+          uid: "ip-guard-sub-#{i}",
+          info: { email: other_user.email, name: 'Test' },
+          extra: { raw_info: { email_verified: true } }
+        )
+        Rails.application.env_config['omniauth.auth'] = OmniAuth.config.mock_auth[:openid_connect]
+        get '/users/auth/openid_connect/callback'
+
+        post confirm_auth_account_link_path, params: { password: 'wrong-password' }
+      end
+
+      expect(response).to have_http_status(:too_many_requests)
+    end
+  end
+
   describe 'POST /auth/account_link/email' do
     it 'enqueues the OAuth link mailer and flashes the affirmative notice on the genuine first send' do
       trigger_collision
@@ -310,6 +350,23 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       expect(response).to redirect_to(new_user_session_path)
       expect(flash[:notice]).to match(/we sent a confirmation link/i)
       expect(flash[:alert]).to be_nil
+    end
+
+    it 'email fallback produces the same command' do
+      trigger_collision
+      JobOutbox.delete_all
+      job_owner!('command:mail.user.oauth_account_link', :oban)
+
+      expect { post email_fallback_auth_account_link_path }.not_to have_enqueued_job(Users::MailerSendingJob)
+
+      row = JobOutbox.sole
+      token = Rack::Utils.parse_query(URI.parse(row.payload.fetch('link_url')).query).fetch('token')
+      digest = Digest::SHA256.hexdigest(token)
+      expect(row).to have_attributes(command_type: 'mail.user.oauth_account_link', aggregate_id: user.id,
+                                     dedupe_key: "oauth-link:#{user.id}:#{digest}")
+      expect(row.payload).to include('user_id' => user.id, 'provider_label' => 'OpenID Connect',
+                                     'link_token_sha256' => digest,
+                                     'link_expires_at' => JWT.decode(token, nil, false).first.fetch('exp'))
     end
 
     it 'does not re-send within the rate-limit window' do

@@ -20,6 +20,22 @@ RSpec.describe Users::RequestAccountDestroy do
     expect(@result.status).to eq(:sent)
   end
 
+  it 'produces mail.user.account_destroy_confirmation' do
+    user
+    JobOutbox.delete_all
+    job_owner!('command:mail.user.account_destroy_confirmation', :oban)
+
+    expect(call_service.status).to eq(:sent)
+
+    row = JobOutbox.sole
+    token = Rack::Utils.parse_query(URI.parse(row.payload.fetch('link_url')).query).fetch('token')
+    digest = Digest::SHA256.hexdigest(token)
+    expect(row).to have_attributes(command_type: 'mail.user.account_destroy_confirmation', aggregate_id: user.id,
+                                   dedupe_key: "destroy-confirmation:#{user.id}:#{digest}")
+    expect(row.payload).to include('user_id' => user.id, 'link_token_sha256' => digest,
+                                   'link_expires_at' => JWT.decode(token, nil, false).first.fetch('exp'))
+  end
+
   it 'embeds a verifiable destroy token in the link_url' do
     call_service
     enqueued = ActiveJob::Base.queue_adapter.enqueued_jobs.find do |j|

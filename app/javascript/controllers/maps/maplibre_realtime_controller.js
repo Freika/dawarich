@@ -51,6 +51,8 @@ export default class extends Controller {
   disconnect() {
     clearTimeout(this.liveRefreshTimer)
     this.liveRefreshTimer = null
+    clearTimeout(this.trackRefreshTimer)
+    this.trackRefreshTimer = null
     this.channels?.unsubscribeAll()
   }
 
@@ -184,6 +186,15 @@ export default class extends Controller {
   }
 
   handleTrackUpdate() {
+    if (this.trackRefreshTimer) return
+
+    this.trackRefreshTimer = setTimeout(() => {
+      this.trackRefreshTimer = null
+      this.refreshTrackLayers()
+    }, LIVE_REFRESH_DELAY_MS)
+  }
+
+  refreshTrackLayers() {
     const mapsController = this.mapsV2Controller
     if (!mapsController) return
 

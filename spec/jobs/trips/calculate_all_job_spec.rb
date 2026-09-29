@@ -88,6 +88,99 @@ RSpec.describe Trips::CalculateAllJob, type: :job do
     end
   end
 
+  describe 'after Oban took trip calculations over' do
+    let!(:trip) { create(:trip, skip_calculation_enqueue: true) }
+
+    before { job_owner!(Trips::CalculateAllJob::OWNER_KEY, :oban) }
+
+    def relay_dispatched_everything!
+      JobOutbox.pending.update_all(state: 'dispatched')
+    end
+
+    def event_id(token)
+      Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "trips.calculate:#{trip.id}:#{token}")
+    end
+
+    it 'forwards a queued run to the outbox instead of fanning out, once per job' do
+      job = described_class.new(trip.id, 'mi')
+
+      expect { job.perform_now }.not_to have_enqueued_job(Trips::CalculatePathJob)
+      expect(JobOutbox.sole).to have_attributes(event_id: event_id(job.job_id),
+                                                payload: { 'trip_id' => trip.id, 'distance_unit' => 'mi' })
+
+      relay_dispatched_everything!
+      job.perform_now
+
+      expect(JobOutbox.count).to eq(1)
+    end
+
+    it 'forwards the three children of one run as one command, even after the first was dispatched' do
+      token = SecureRandom.uuid
+
+      Trips::CalculatePathJob.perform_now(trip.id, token)
+      relay_dispatched_everything!
+      Trips::CalculateDistanceJob.perform_now(trip.id, 'km', token)
+      Trips::CalculateCountriesJob.perform_now(trip.id, 'km', token)
+
+      expect(JobOutbox.sole.event_id).to eq(event_id(token))
+      expect(trip.reload.distance).to eq(100)
+    end
+
+    it 'fans out in Sidekiq after rehome, although Oban owned the key' do
+      JobCommands.produce('trips.calculate', { 'trip_id' => trip.id, 'distance_unit' => 'km' },
+                          aggregate_id: trip.id, dedupe_key: trip.id.to_s, producer: 'spec')
+      JobCommands.rehome!('trips.calculate', by: 'spec')
+
+      perform_enqueued_jobs(only: described_class)
+
+      expect(Trips::CalculatePathJob).to have_been_enqueued.with(trip.id, an_instance_of(String))
+      expect(JobOutbox.count).to eq(0)
+    end
+  end
+
+  describe 'the gate while Sidekiq owns trips (release N keeps today\'s behaviour)' do
+    let!(:trip) { create(:trip, :with_points, path: nil, skip_calculation_enqueue: true) }
+    let(:events) { [] }
+
+    before do
+      job_owner!(Trips::CalculateAllJob::OWNER_KEY, :sidekiq)
+      %i[broadcast_refresh_to broadcast_update_to].each do |method|
+        allow(Turbo::StreamsChannel).to receive(method) { events << :broadcast }
+      end
+    end
+
+    def record(&block)
+      callback = ->(*, payload) { events << payload[:sql] }
+      ActiveSupport::Notifications.subscribed(callback, 'sql.active_record', &block)
+    end
+
+    def first_index(from = 0, &block)
+      (from...events.size).find { |index| events[index].is_a?(String) && block.call(events[index]) }
+    end
+
+    {
+      Trips::CalculatePathJob => ->(trip) { [trip.id] },
+      Trips::CalculateDistanceJob => ->(trip) { [trip.id, 'km'] },
+      Trips::CalculateCountriesJob => ->(trip) { [trip.id, 'km'] }
+    }.each do |job_class, args|
+      it "#{job_class.name.demodulize} computes before the gate, saves under it and broadcasts after its commit" do
+        record { job_class.perform_now(*args.call(trip)) }
+
+        reads = events.each_index.select do |index|
+          events[index].is_a?(String) && events[index].include?('FROM "points"')
+        end
+        lock = first_index { _1.include?('FOR SHARE') }
+        update = first_index(lock) { _1.start_with?('UPDATE "trips"') }
+        commit = first_index(update) { _1.match?(/\A(RELEASE SAVEPOINT|COMMIT)/) }
+
+        expect(reads).not_to be_empty
+        expect(reads.max).to be < lock
+        expect(first_index(lock) { _1.match?(/\A(RELEASE SAVEPOINT|COMMIT)/) }).to eq(commit)
+        expect(events.index(:broadcast)).to be > commit
+      end
+    end
+  end
+
   def trip_record_for(id)
     satisfy { |arg| arg.is_a?(Trip) && arg.id == id }
   end

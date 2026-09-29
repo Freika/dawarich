@@ -1,0 +1,262 @@
+[
+  {
+    "locale": "en",
+    "seconds": 0,
+    "words": "less than a minute"
+  },
+  {
+    "locale": "en",
+    "seconds": 29,
+    "words": "less than a minute"
+  },
+  {
+    "locale": "en",
+    "seconds": 30,
+    "words": "1 minute"
+  },
+  {
+    "locale": "en",
+    "seconds": 59,
+    "words": "1 minute"
+  },
+  {
+    "locale": "en",
+    "seconds": 89,
+    "words": "1 minute"
+  },
+  {
+    "locale": "en",
+    "seconds": 90,
+    "words": "2 minutes"
+  },
+  {
+    "locale": "en",
+    "seconds": 119,
+    "words": "2 minutes"
+  },
+  {
+    "locale": "en",
+    "seconds": 2669,
+    "words": "44 minutes"
+  },
+  {
+    "locale": "en",
+    "seconds": 2670,
+    "words": "about 1 hour"
+  },
+  {
+    "locale": "en",
+    "seconds": 5369,
+    "words": "about 1 hour"
+  },
+  {
+    "locale": "en",
+    "seconds": 5370,
+    "words": "about 2 hours"
+  },
+  {
+    "locale": "en",
+    "seconds": 86369,
+    "words": "about 24 hours"
+  },
+  {
+    "locale": "en",
+    "seconds": 86370,
+    "words": "1 day"
+  },
+  {
+    "locale": "en",
+    "seconds": 151169,
+    "words": "1 day"
+  },
+  {
+    "locale": "en",
+    "seconds": 151170,
+    "words": "2 days"
+  },
+  {
+    "locale": "en",
+    "seconds": 2591969,
+    "words": "30 days"
+  },
+  {
+    "locale": "en",
+    "seconds": 2591970,
+    "words": "about 1 month"
+  },
+  {
+    "locale": "en",
+    "seconds": 5183969,
+    "words": "about 2 months"
+  },
+  {
+    "locale": "en",
+    "seconds": 5183970,
+    "words": "2 months"
+  },
+  {
+    "locale": "en",
+    "seconds": 31535969,
+    "words": "12 months"
+  },
+  {
+    "locale": "en",
+    "seconds": 31536000,
+    "words": "about 1 year"
+  },
+  {
+    "locale": "en",
+    "seconds": 47304000,
+    "words": "over 1 year"
+  },
+  {
+    "locale": "en",
+    "seconds": 63072000,
+    "words": "about 2 years"
+  },
+  {
+    "locale": "en",
+    "seconds": 94608000,
+    "words": "almost 3 years"
+  },
+  {
+    "locale": "en",
+    "seconds": 126230400,
+    "words": "about 4 years"
+  },
+  {
+    "locale": "en",
+    "seconds": 315360000,
+    "words": "almost 10 years"
+  },
+  {
+    "locale": "de",
+    "seconds": 0,
+    "words": "weniger als einer Minute"
+  },
+  {
+    "locale": "de",
+    "seconds": 29,
+    "words": "weniger als einer Minute"
+  },
+  {
+    "locale": "de",
+    "seconds": 30,
+    "words": "einer Minute"
+  },
+  {
+    "locale": "de",
+    "seconds": 59,
+    "words": "einer Minute"
+  },
+  {
+    "locale": "de",
+    "seconds": 89,
+    "words": "einer Minute"
+  },
+  {
+    "locale": "de",
+    "seconds": 90,
+    "words": "2 Minuten"
+  },
+  {
+    "locale": "de",
+    "seconds": 119,
+    "words": "2 Minuten"
+  },
+  {
+    "locale": "de",
+    "seconds": 2669,
+    "words": "44 Minuten"
+  },
+  {
+    "locale": "de",
+    "seconds": 2670,
+    "words": "etwa einer Stunde"
+  },
+  {
+    "locale": "de",
+    "seconds": 5369,
+    "words": "etwa einer Stunde"
+  },
+  {
+    "locale": "de",
+    "seconds": 5370,
+    "words": "etwa 2 Stunden"
+  },
+  {
+    "locale": "de",
+    "seconds": 86369,
+    "words": "etwa 24 Stunden"
+  },
+  {
+    "locale": "de",
+    "seconds": 86370,
+    "words": "einem Tag"
+  },
+  {
+    "locale": "de",
+    "seconds": 151169,
+    "words": "einem Tag"
+  },
+  {
+    "locale": "de",
+    "seconds": 151170,
+    "words": "2 Tagen"
+  },
+  {
+    "locale": "de",
+    "seconds": 2591969,
+    "words": "30 Tagen"
+  },
+  {
+    "locale": "de",
+    "seconds": 2591970,
+    "words": "etwa einem Monat"
+  },
+  {
+    "locale": "de",
+    "seconds": 5183969,
+    "words": "etwa 2 Monaten"
+  },
+  {
+    "locale": "de",
+    "seconds": 5183970,
+    "words": "2 Monaten"
+  },
+  {
+    "locale": "de",
+    "seconds": 31535969,
+    "words": "12 Monaten"
+  },
+  {
+    "locale": "de",
+    "seconds": 31536000,
+    "words": "etwa einem Jahr"
+  },
+  {
+    "locale": "de",
+    "seconds": 47304000,
+    "words": "mehr als einem Jahr"
+  },
+  {
+    "locale": "de",
+    "seconds": 63072000,
+    "words": "etwa 2 Jahren"
+  },
+  {
+    "locale": "de",
+    "seconds": 94608000,
+    "words": "fast 3 Jahren"
+  },
+  {
+    "locale": "de",
+    "seconds": 126230400,
+    "words": "etwa 4 Jahren"
+  },
+  {
+    "locale": "de",
+    "seconds": 315360000,
+    "words": "fast 10 Jahren"
+  }
+]

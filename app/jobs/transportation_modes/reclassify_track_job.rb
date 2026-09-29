@@ -2,7 +2,7 @@
 
 module TransportationModes
   # Reclassifies one track with the current detection pipeline. Idempotent:
-  # auto segments are replaced, manually corrected segments preserved.
+  # inferred segments are replaced, corrections and source segments preserved.
   class ReclassifyTrackJob < ApplicationJob
     queue_as :tracks
     sidekiq_options retry: 1
@@ -23,8 +23,7 @@ module TransportationModes
 
     def reclassify(track)
       Track.transaction do
-        preserved = track.track_segments.manually_corrected.to_a
-        track.track_segments.auto_classified.delete_all
+        preserved = track.track_segments.clear_inference
 
         detector = Detector.new(
           track,

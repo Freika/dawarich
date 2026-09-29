@@ -32,6 +32,7 @@ class Area < ApplicationRecord
   end
 
   def schedule_visit_relabel
-    Areas::RelabelVisitsJob.perform_later(id)
+    JobCommands.produce('areas.relabel_visits', { 'area_id' => id },
+                        aggregate_id: id, dedupe_key: id.to_s, producer: 'Area#schedule_visit_relabel')
   end
 end

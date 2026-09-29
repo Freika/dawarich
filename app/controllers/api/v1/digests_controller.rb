@@ -4,7 +4,7 @@ class Api::V1::DigestsController < ApiController
   before_action :authenticate_active_api_user!, only: %i[create destroy]
 
   def index
-    digests = current_api_user.digests.yearly.order(year: :desc)
+    digests = current_api_user.digests.yearly.where(year: ...Time.current.year).order(year: :desc)
     available_years = available_years_for_generation
 
     render json: Api::DigestListSerializer.new(digests: digests, available_years: available_years).call

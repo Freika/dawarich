@@ -3,6 +3,7 @@
 Sidekiq.configure_server do |config|
   config.redis = { url: ENV['REDIS_URL'], db: ENV.fetch('RAILS_JOB_QUEUE_DB', 1) }
   config.logger = Sidekiq::Logger.new($stdout)
+  config.logger.level = Logger::WARN if B12E2EEgress.enabled?
 
   # The worker process caches instance settings independently of the web
   # process, so it needs its own subscriber to notice a change made in the UI.
@@ -11,6 +12,30 @@ Sidekiq.configure_server do |config|
   rescue StandardError => e
     Rails.logger.warn("[InstanceSettings] subscriber failed to start: #{e.class}: #{e.message}")
   end
+
+  config.on(:startup) do
+    Trips::CalculationEventsBroadcaster.start
+  rescue StandardError => e
+    Rails.logger.warn("[Trips] calculation events broadcaster failed to start: #{e.class}: #{e.message}")
+  end
+
+  config.on(:shutdown) { Trips::CalculationEventsBroadcaster.stop }
+
+  config.on(:startup) do
+    Notifications::EventsBroadcaster.start
+  rescue StandardError => e
+    Rails.logger.warn("[Notifications] events broadcaster failed to start: #{e.class}: #{e.message}")
+  end
+
+  config.on(:shutdown) { Notifications::EventsBroadcaster.stop }
+
+  config.on(:startup) do
+    RailsCommands::Poller.start
+  rescue StandardError => e
+    Rails.logger.warn("[RailsCommands] poller failed to start: #{e.class}: #{e.message}")
+  end
+
+  config.on(:shutdown) { RailsCommands::Poller.stop }
 
   next unless DawarichSettings.prometheus_exporter_enabled?
 

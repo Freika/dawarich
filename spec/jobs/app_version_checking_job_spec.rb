@@ -24,4 +24,27 @@ RSpec.describe AppVersionCheckingJob, type: :job do
     expect(CheckAppVersion.new.call).to be true
     expect(Rails.cache.read(CheckAppVersion::VERSION_CACHE_KEY)).to eq('1.0.0')
   end
+
+  it 'leaves the refresh to Phoenix while Oban owns the entry' do
+    job_owner!('cron:app_version_checking_job', :oban)
+
+    described_class.perform_now
+
+    expect(Rails.cache.read(CheckAppVersion::VERSION_CACHE_KEY)).to be_nil
+  end
+
+  it 'calls GitHub before it opens the gate transaction, never inside it' do
+    job_owner!('cron:app_version_checking_job', :sidekiq)
+    outside = ActiveRecord::Base.connection.open_transactions
+    depth = nil
+    stub_request(:get, 'https://api.github.com/repos/Freika/dawarich/tags').to_return do
+      depth = ActiveRecord::Base.connection.open_transactions
+      { body: '[{"name":"1.0.0"}]' }
+    end
+
+    described_class.perform_now
+
+    expect(depth).to eq(outside)
+    expect(Rails.cache.read(CheckAppVersion::VERSION_CACHE_KEY)).to eq('1.0.0')
+  end
 end

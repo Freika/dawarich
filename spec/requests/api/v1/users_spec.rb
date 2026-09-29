@@ -14,6 +14,7 @@ RSpec.describe 'Api::V1::Users', type: :request do
     end
 
     it 'returns only the keys and values stated in the serializer' do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
       get '/api/v1/users/me', headers: headers
 
       json = JSON.parse(response.body, symbolize_names: true)

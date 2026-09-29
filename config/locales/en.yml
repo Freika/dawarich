@@ -1,6 +1,12 @@
 en:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Phoenix jobs"
+        ok: "Phoenix is processing its jobs."
+        alarm: "Phoenix is not processing its jobs; they wait until a Phoenix process runs."
+        not_installed: "Phoenix has not set up its tables in this database; every job runs in Sidekiq."
+        unknown: "The Phoenix job status could not be read from the database; reload the page to try again."
       show:
         title: "Instance settings"
         intro: "These settings apply to this whole instance. A setting supplied by an environment variable is shown read-only: remove the variable to edit it here."
@@ -1321,7 +1327,7 @@ en:
       rarr: "→"
       'on': 'on'
       no_visits_yet: No visits yet
-      rename: Rename
+      edit: Edit
       merge: Merge
       notes: Notes
       save: Save
@@ -3445,7 +3451,7 @@ en:
         export_name_successfully_finished: Export "%{name}" successfully finished.
         export_failed: Export failed
         export_name_failed_message_stacktrace_n: 'Export "%{name}" failed: %{message}, stacktrace: %{backtrace}'
-        unsupported_file_format: 'Unsupported file format: %{format}'
+        unsupported_file_format: 'Unsupported file format: %{file_format}'
     families:
       auto_create:
         default_name: My Family
@@ -3685,6 +3691,8 @@ en:
         enable_at_least_one_transportation_mode: Enable at least one transportation mode
         recalculation_in_progress: Transportation mode recalculation is in progress. Please wait until it completes.
     visits:
+      create:
+        duplicate_at_place_and_time: A visit already exists at this place and time
       suggest:
         error_suggesting_visits_message: 'Error suggesting visits: %{message}'
         error_suggesting_visits: 'Error suggesting visits'

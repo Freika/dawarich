@@ -1,0 +1,1006 @@
+{
+  "rails_test_secret": "phoenix-a2-cookie-fixture-secret-not-for-production",
+  "rails_settings": {
+    "ssl_default_redirect_status": 308,
+    "ssl_options": {
+      "hsts": {
+        "subdomains": true
+      }
+    },
+    "assume_ssl": false,
+    "session_store": "ActionDispatch::Session::CookieStore",
+    "session_options": {
+      "key": "_dawarich_session",
+      "cookie_only": true,
+      "same_site": {}
+    },
+    "cookies_same_site_protection": "lax",
+    "cookies_serializer": "json",
+    "environments": {
+      "development": [
+        "config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'"
+      ],
+      "production": [
+        "config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'"
+      ],
+      "staging": [
+        "config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'"
+      ],
+      "test": []
+    }
+  },
+  "rails_cookie_json": [
+    [
+      "\u0000",
+      "[\"\\u0000\"]"
+    ],
+    [
+      "\u0001",
+      "[\"\\u0001\"]"
+    ],
+    [
+      "\u0002",
+      "[\"\\u0002\"]"
+    ],
+    [
+      "\u0003",
+      "[\"\\u0003\"]"
+    ],
+    [
+      "\u0004",
+      "[\"\\u0004\"]"
+    ],
+    [
+      "\u0005",
+      "[\"\\u0005\"]"
+    ],
+    [
+      "\u0006",
+      "[\"\\u0006\"]"
+    ],
+    [
+      "\u0007",
+      "[\"\\u0007\"]"
+    ],
+    [
+      "\b",
+      "[\"\\b\"]"
+    ],
+    [
+      "\t",
+      "[\"\\t\"]"
+    ],
+    [
+      "\n",
+      "[\"\\n\"]"
+    ],
+    [
+      "\u000b",
+      "[\"\\u000b\"]"
+    ],
+    [
+      "\f",
+      "[\"\\f\"]"
+    ],
+    [
+      "\r",
+      "[\"\\r\"]"
+    ],
+    [
+      "\u000e",
+      "[\"\\u000e\"]"
+    ],
+    [
+      "\u000f",
+      "[\"\\u000f\"]"
+    ],
+    [
+      "\u0010",
+      "[\"\\u0010\"]"
+    ],
+    [
+      "\u0011",
+      "[\"\\u0011\"]"
+    ],
+    [
+      "\u0012",
+      "[\"\\u0012\"]"
+    ],
+    [
+      "\u0013",
+      "[\"\\u0013\"]"
+    ],
+    [
+      "\u0014",
+      "[\"\\u0014\"]"
+    ],
+    [
+      "\u0015",
+      "[\"\\u0015\"]"
+    ],
+    [
+      "\u0016",
+      "[\"\\u0016\"]"
+    ],
+    [
+      "\u0017",
+      "[\"\\u0017\"]"
+    ],
+    [
+      "\u0018",
+      "[\"\\u0018\"]"
+    ],
+    [
+      "\u0019",
+      "[\"\\u0019\"]"
+    ],
+    [
+      "\u001a",
+      "[\"\\u001a\"]"
+    ],
+    [
+      "\u001b",
+      "[\"\\u001b\"]"
+    ],
+    [
+      "\u001c",
+      "[\"\\u001c\"]"
+    ],
+    [
+      "\u001d",
+      "[\"\\u001d\"]"
+    ],
+    [
+      "\u001e",
+      "[\"\\u001e\"]"
+    ],
+    [
+      "\u001f",
+      "[\"\\u001f\"]"
+    ],
+    [
+      " ",
+      "[\" \"]"
+    ],
+    [
+      "!",
+      "[\"!\"]"
+    ],
+    [
+      "\"",
+      "[\"\\\"\"]"
+    ],
+    [
+      "#",
+      "[\"#\"]"
+    ],
+    [
+      "$",
+      "[\"$\"]"
+    ],
+    [
+      "%",
+      "[\"%\"]"
+    ],
+    [
+      "&",
+      "[\"\\u0026\"]"
+    ],
+    [
+      "'",
+      "[\"'\"]"
+    ],
+    [
+      "(",
+      "[\"(\"]"
+    ],
+    [
+      ")",
+      "[\")\"]"
+    ],
+    [
+      "*",
+      "[\"*\"]"
+    ],
+    [
+      "+",
+      "[\"+\"]"
+    ],
+    [
+      ",",
+      "[\",\"]"
+    ],
+    [
+      "-",
+      "[\"-\"]"
+    ],
+    [
+      ".",
+      "[\".\"]"
+    ],
+    [
+      "/",
+      "[\"/\"]"
+    ],
+    [
+      "0",
+      "[\"0\"]"
+    ],
+    [
+      "1",
+      "[\"1\"]"
+    ],
+    [
+      "2",
+      "[\"2\"]"
+    ],
+    [
+      "3",
+      "[\"3\"]"
+    ],
+    [
+      "4",
+      "[\"4\"]"
+    ],
+    [
+      "5",
+      "[\"5\"]"
+    ],
+    [
+      "6",
+      "[\"6\"]"
+    ],
+    [
+      "7",
+      "[\"7\"]"
+    ],
+    [
+      "8",
+      "[\"8\"]"
+    ],
+    [
+      "9",
+      "[\"9\"]"
+    ],
+    [
+      ":",
+      "[\":\"]"
+    ],
+    [
+      ";",
+      "[\";\"]"
+    ],
+    [
+      "<",
+      "[\"\\u003c\"]"
+    ],
+    [
+      "=",
+      "[\"=\"]"
+    ],
+    [
+      ">",
+      "[\"\\u003e\"]"
+    ],
+    [
+      "?",
+      "[\"?\"]"
+    ],
+    [
+      "@",
+      "[\"@\"]"
+    ],
+    [
+      "A",
+      "[\"A\"]"
+    ],
+    [
+      "B",
+      "[\"B\"]"
+    ],
+    [
+      "C",
+      "[\"C\"]"
+    ],
+    [
+      "D",
+      "[\"D\"]"
+    ],
+    [
+      "E",
+      "[\"E\"]"
+    ],
+    [
+      "F",
+      "[\"F\"]"
+    ],
+    [
+      "G",
+      "[\"G\"]"
+    ],
+    [
+      "H",
+      "[\"H\"]"
+    ],
+    [
+      "I",
+      "[\"I\"]"
+    ],
+    [
+      "J",
+      "[\"J\"]"
+    ],
+    [
+      "K",
+      "[\"K\"]"
+    ],
+    [
+      "L",
+      "[\"L\"]"
+    ],
+    [
+      "M",
+      "[\"M\"]"
+    ],
+    [
+      "N",
+      "[\"N\"]"
+    ],
+    [
+      "O",
+      "[\"O\"]"
+    ],
+    [
+      "P",
+      "[\"P\"]"
+    ],
+    [
+      "Q",
+      "[\"Q\"]"
+    ],
+    [
+      "R",
+      "[\"R\"]"
+    ],
+    [
+      "S",
+      "[\"S\"]"
+    ],
+    [
+      "T",
+      "[\"T\"]"
+    ],
+    [
+      "U",
+      "[\"U\"]"
+    ],
+    [
+      "V",
+      "[\"V\"]"
+    ],
+    [
+      "W",
+      "[\"W\"]"
+    ],
+    [
+      "X",
+      "[\"X\"]"
+    ],
+    [
+      "Y",
+      "[\"Y\"]"
+    ],
+    [
+      "Z",
+      "[\"Z\"]"
+    ],
+    [
+      "[",
+      "[\"[\"]"
+    ],
+    [
+      "\\",
+      "[\"\\\\\"]"
+    ],
+    [
+      "]",
+      "[\"]\"]"
+    ],
+    [
+      "^",
+      "[\"^\"]"
+    ],
+    [
+      "_",
+      "[\"_\"]"
+    ],
+    [
+      "`",
+      "[\"`\"]"
+    ],
+    [
+      "a",
+      "[\"a\"]"
+    ],
+    [
+      "b",
+      "[\"b\"]"
+    ],
+    [
+      "c",
+      "[\"c\"]"
+    ],
+    [
+      "d",
+      "[\"d\"]"
+    ],
+    [
+      "e",
+      "[\"e\"]"
+    ],
+    [
+      "f",
+      "[\"f\"]"
+    ],
+    [
+      "g",
+      "[\"g\"]"
+    ],
+    [
+      "h",
+      "[\"h\"]"
+    ],
+    [
+      "i",
+      "[\"i\"]"
+    ],
+    [
+      "j",
+      "[\"j\"]"
+    ],
+    [
+      "k",
+      "[\"k\"]"
+    ],
+    [
+      "l",
+      "[\"l\"]"
+    ],
+    [
+      "m",
+      "[\"m\"]"
+    ],
+    [
+      "n",
+      "[\"n\"]"
+    ],
+    [
+      "o",
+      "[\"o\"]"
+    ],
+    [
+      "p",
+      "[\"p\"]"
+    ],
+    [
+      "q",
+      "[\"q\"]"
+    ],
+    [
+      "r",
+      "[\"r\"]"
+    ],
+    [
+      "s",
+      "[\"s\"]"
+    ],
+    [
+      "t",
+      "[\"t\"]"
+    ],
+    [
+      "u",
+      "[\"u\"]"
+    ],
+    [
+      "v",
+      "[\"v\"]"
+    ],
+    [
+      "w",
+      "[\"w\"]"
+    ],
+    [
+      "x",
+      "[\"x\"]"
+    ],
+    [
+      "y",
+      "[\"y\"]"
+    ],
+    [
+      "z",
+      "[\"z\"]"
+    ],
+    [
+      "{",
+      "[\"{\"]"
+    ],
+    [
+      "|",
+      "[\"|\"]"
+    ],
+    [
+      "}",
+      "[\"}\"]"
+    ],
+    [
+      "~",
+      "[\"~\"]"
+    ],
+    [
+      "",
+      "[\"\"]"
+    ],
+    [
+      " ",
+      "[\" \"]"
+    ],
+    [
+      "é",
+      "[\"é\"]"
+    ],
+    [
+      "\u2028",
+      "[\"\\u2028\"]"
+    ],
+    [
+      "\u2029",
+      "[\"\\u2029\"]"
+    ],
+    [
+      "﻿",
+      "[\"﻿\"]"
+    ],
+    [
+      "😀",
+      "[\"😀\"]"
+    ]
+  ],
+  "overflow": {
+    "unit": "&<>\u2028\u2029",
+    "units": 60,
+    "extra": "&",
+    "fits": {
+      "30": true,
+      "31": true,
+      "32": true,
+      "33": true,
+      "34": true,
+      "35": true,
+      "36": true,
+      "37": true,
+      "38": true,
+      "39": true,
+      "40": true,
+      "41": true,
+      "42": true,
+      "43": true,
+      "44": true,
+      "45": true,
+      "46": true,
+      "47": true,
+      "48": true,
+      "49": true,
+      "50": true,
+      "51": true,
+      "52": true,
+      "53": true,
+      "54": true,
+      "55": true,
+      "56": true,
+      "57": true,
+      "58": true,
+      "59": true,
+      "60": true,
+      "61": true,
+      "62": false,
+      "63": false,
+      "64": false,
+      "65": false,
+      "66": false,
+      "67": false,
+      "68": false,
+      "69": false,
+      "70": false,
+      "71": false,
+      "72": false,
+      "73": false,
+      "74": false,
+      "75": false,
+      "76": false,
+      "77": false,
+      "78": false,
+      "79": false,
+      "80": false,
+      "81": false,
+      "82": false,
+      "83": false,
+      "84": false,
+      "85": false,
+      "86": false,
+      "87": false,
+      "88": false,
+      "89": false,
+      "90": false
+    }
+  },
+  "session_cookie": "bCz98OnXXl7xT2Ts3mKTdSqBH4tA%2FwYAxBl8MLUfyL13OC1iAvrEWXnvbQYb8O4tqK8M1qXAdKVib%2F2uZ8i3D6tDH3rmUxvP4l0ovrKwbmAE44uDSwwOyWIvQL9KEVydDkn95TGdIaXCbj2%2B4L1nFqzzFmwot6Q6fZp3YZAlvG7z2fa3KybPfbQwnXOgblJ%2BGBTIvdf541CxwcYhLangiszZl4NDiXEy%2Fl4jqHheRTGHqkQ4szF8D4Xa%2Fv%2Bf%2F0skceCbAyq0kV%2BPT753MM5TduUh0U4Lleu20%2BUmOCNkW2sq28XXH7HUF5WV8pHm3X3AnVWjJGmNwlce%2FzzBcT5aK%2FatuxPl4XQCY35nPlqUcJCCGdradhmM70mGUJq81I1HsfAOG4nIvd7mzfXqvzS%2FVJd%2FzHm7jlGFcw%3D%3D--ANFWUYPqpYCfkFuc--egm3UP6N9GXBJGICdfTWfg%3D%3D",
+  "set_cookie": "_dawarich_session=bCz98OnXXl7xT2Ts3mKTdSqBH4tA%2FwYAxBl8MLUfyL13OC1iAvrEWXnvbQYb8O4tqK8M1qXAdKVib%2F2uZ8i3D6tDH3rmUxvP4l0ovrKwbmAE44uDSwwOyWIvQL9KEVydDkn95TGdIaXCbj2%2B4L1nFqzzFmwot6Q6fZp3YZAlvG7z2fa3KybPfbQwnXOgblJ%2BGBTIvdf541CxwcYhLangiszZl4NDiXEy%2Fl4jqHheRTGHqkQ4szF8D4Xa%2Fv%2Bf%2F0skceCbAyq0kV%2BPT753MM5TduUh0U4Lleu20%2BUmOCNkW2sq28XXH7HUF5WV8pHm3X3AnVWjJGmNwlce%2FzzBcT5aK%2FatuxPl4XQCY35nPlqUcJCCGdradhmM70mGUJq81I1HsfAOG4nIvd7mzfXqvzS%2FVJd%2FzHm7jlGFcw%3D%3D--ANFWUYPqpYCfkFuc--egm3UP6N9GXBJGICdfTWfg%3D%3D; path=/; httponly; samesite=lax",
+  "phoenix_session_cookie": "SFGUTfZF2BhaSZE24RLgn1iQlkTAihp8RdAJ6YbllclI65jrVj2SYUAw01V0bi9WRDzrcZSt8qea5kGy1%2BcQe7%2BEZQs72aMdPl7YaO8WGePI3HP%2Bq6eK5aHpU73JYus%2BKmeWwk94c6ryt%2FWgbjbeYTNddNwI4Ey4p2jcE9Qxl5l7%2BZwOHaUFW5Avi3lz9SfIbSv7YgQZxsHw3fcg3L1VtVnnwuqfn9%2BDMxicGx8ZH9%2BqQD%2Byqyfx%2B62CrxpZcG%2BzUQgbtd3es%2FsUp9B4r8gD4%2BJSoYgxhQNak1aAKTts3Rq4iyQUpFJb%2Fy8bXdZ1Q95feXeEUP66Cm%2BEmmRtBb4K7SibBhLRGh%2Bq5Pc3vxTAPW1QuoZw8eb2VHe0B7G7m9X%2BKOzyRhs9j5JI%2FkSYeQXu6QoNiNULoYjpVSNF8htQcFt%2Fth70shj%2ByRzO3qihNpGcQHWn19pK6yrHzt6N17PXS0%2FpBUvq48tUDkMflSHbJ1I86iamgCc%2BNvYbmqmUwl2ZUDTDgo3p1VesQrYJYlK61gDXrPYYxEBb1TQfpaJLGGGwbJNLf9bYp6MpeEWlOUlOV05XVwNN4jJmuPxJ34a%2BV42foRRf6%2FWCwlgBFVM%3D--8B%2FrZzMLQAtqKKV%2B--8vihuBJfu1HNo4OT3SOa5g%3D%3D",
+  "phoenix_changes": {
+    "locale": "de",
+    "_csrf_token": "2KDMIBwl8TcwY-f_nk684OIPwuqerUyFF_WzQy1xoSs",
+    "flash": {
+      "discard": [],
+      "flashes": {
+        "notice": "Phoenix wrote this ??? notice &<b>\u2028\u2029"
+      }
+    }
+  },
+  "force_ssl": {
+    "set_cookie": "_dawarich_session=bCz98OnXXl7xT2Ts3mKTdSqBH4tA%2FwYAxBl8MLUfyL13OC1iAvrEWXnvbQYb8O4tqK8M1qXAdKVib%2F2uZ8i3D6tDH3rmUxvP4l0ovrKwbmAE44uDSwwOyWIvQL9KEVydDkn95TGdIaXCbj2%2B4L1nFqzzFmwot6Q6fZp3YZAlvG7z2fa3KybPfbQwnXOgblJ%2BGBTIvdf541CxwcYhLangiszZl4NDiXEy%2Fl4jqHheRTGHqkQ4szF8D4Xa%2Fv%2Bf%2F0skceCbAyq0kV%2BPT753MM5TduUh0U4Lleu20%2BUmOCNkW2sq28XXH7HUF5WV8pHm3X3AnVWjJGmNwlce%2FzzBcT5aK%2FatuxPl4XQCY35nPlqUcJCCGdradhmM70mGUJq81I1HsfAOG4nIvd7mzfXqvzS%2FVJd%2FzHm7jlGFcw%3D%3D--ANFWUYPqpYCfkFuc--egm3UP6N9GXBJGICdfTWfg%3D%3D; path=/; httponly; samesite=lax; secure",
+    "hsts": "max-age=63072000; includeSubDomains",
+    "requests": [
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map?a=1",
+        "headers": {},
+        "status": 301,
+        "location": "https://dawarich.example/map?a=1",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "POST",
+        "url": "http://dawarich.example/imports",
+        "headers": {},
+        "status": 308,
+        "location": "https://dawarich.example/imports",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "GET",
+        "url": "http://localhost:3000/map",
+        "headers": {},
+        "status": 301,
+        "location": "https://localhost:3000/map",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "HEAD",
+        "url": "http://dawarich.example/map",
+        "headers": {},
+        "status": 301,
+        "location": "https://dawarich.example/map",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "GET",
+        "url": "https://dawarich.example/map",
+        "headers": {},
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "https://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "http"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "https"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "http"
+        },
+        "status": 301,
+        "location": "https://dawarich.example/map",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "http, https"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "https, http"
+        },
+        "status": 301,
+        "location": "https://dawarich.example/map",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "https,bogus"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "http https"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "wss"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "HTTPS"
+        },
+        "status": 301,
+        "location": "https://dawarich.example/map",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "HTTPS",
+          "x-forwarded-scheme": "https"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-ssl": "on"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-ssl": "ON"
+        },
+        "status": 301,
+        "location": "https://dawarich.example/map",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-ssl": "on",
+          "x-forwarded-proto": "http"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "forwarded": "proto=https"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "forwarded": "proto=\"https\""
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "forwarded": "proto=\"htt\\ps\""
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "forwarded": "for=192.0.2.1;proto=https, for=198.51.100.2;proto=http"
+        },
+        "status": 301,
+        "location": "https://dawarich.example/map",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "forwarded": "proto=http",
+          "x-forwarded-proto": "https"
+        },
+        "status": 301,
+        "location": "https://dawarich.example/map",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "forwarded": "proto=bogus",
+          "x-forwarded-proto": "https"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "forwarded": "for=192.0.2.1",
+          "x-forwarded-proto": "https"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "forwarded": "PROTO=https"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "forwarded": "proto=HTTPS"
+        },
+        "status": 301,
+        "location": "https://dawarich.example/map",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "forwarded": "nonce=1;proto=https"
+        },
+        "status": 301,
+        "location": "https://dawarich.example/map",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-scheme": "https"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "bogus",
+          "x-forwarded-scheme": "https"
+        },
+        "status": 200,
+        "location": null,
+        "hsts": "max-age=63072000; includeSubDomains",
+        "content_type": null
+      },
+      {
+        "method": "GET",
+        "url": "http://dawarich.example/map",
+        "headers": {
+          "x-forwarded-proto": "http",
+          "x-forwarded-scheme": "https"
+        },
+        "status": 301,
+        "location": "https://dawarich.example/map",
+        "hsts": null,
+        "content_type": "text/html; charset=utf-8"
+      }
+    ],
+    "forwarded_host": {
+      "method": "GET",
+      "url": "http://dawarich.example/map",
+      "headers": {
+        "x-forwarded-host": "evil.example"
+      },
+      "status": 301,
+      "location": "https://evil.example/map",
+      "hsts": null,
+      "content_type": "text/html; charset=utf-8"
+    }
+  }
+}

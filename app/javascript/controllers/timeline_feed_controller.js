@@ -1,6 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
 import { translate } from "i18n"
 
+const NAVIGATION_SETTLED_EVENTS = [
+  "turbo:frame-load",
+  "turbo:fetch-request-error",
+  "turbo:frame-missing",
+]
+
 /**
  * Timeline Feed Controller (Unified Timeline)
  *
@@ -62,11 +68,19 @@ export default class extends Controller {
     document.addEventListener("timeline:open-track", this.boundOpenTrack)
 
     if (this.hasVisitListFrameTarget) {
+      this.clearNavigationPending()
       this.boundFrameLoad = this.handleVisitFrameLoad.bind(this)
       this.visitListFrameTarget.addEventListener(
         "turbo:frame-load",
         this.boundFrameLoad,
       )
+      this.boundNavigationSettled = this.handleNavigationSettled.bind(this)
+      for (const type of NAVIGATION_SETTLED_EVENTS) {
+        this.visitListFrameTarget.addEventListener(
+          type,
+          this.boundNavigationSettled,
+        )
+      }
     }
 
     // The calendar is rendered into a lazy turbo-frame, so the cell for the
@@ -132,7 +146,24 @@ export default class extends Controller {
         "turbo:frame-load",
         this.boundFrameLoad,
       )
+      for (const type of NAVIGATION_SETTLED_EVENTS) {
+        this.visitListFrameTarget.removeEventListener(
+          type,
+          this.boundNavigationSettled,
+        )
+      }
+      this.clearNavigationPending()
     }
+  }
+
+  handleNavigationSettled(event) {
+    if (event.target === this.visitListFrameTarget) {
+      this.clearNavigationPending()
+    }
+  }
+
+  clearNavigationPending() {
+    this.visitListFrameTarget.removeAttribute("data-navigation-pending")
   }
 
   handleOpenVisit(event) {
@@ -162,13 +193,11 @@ export default class extends Controller {
       return
     }
 
-    // If the clicked track is on the already-selected day, the journey
-    // entry is already rendered — expand it immediately. Otherwise navigate
-    // to the day; the frame-load handler consumes the pending target once the
-    // new day's entries render.
     this.keepCameraOnDate = date || this.selectedDate
     if (date && date !== this.selectedDate) {
       this.navigateToDay(date, { fitBounds: false })
+    } else if (date) {
+      this.applySelectedDayUI(date)
     } else {
       this._tryExpandPendingTrack()
     }
@@ -393,6 +422,7 @@ export default class extends Controller {
       // an in-flight request can otherwise leave the frame showing stale
       // entries when the user nudges day-by-day with the arrow keys).
       const frame = this.visitListFrameTarget
+      frame.setAttribute("data-navigation-pending", "")
       if (frame.getAttribute("src") === newSrc) {
         frame.reload?.()
       } else {

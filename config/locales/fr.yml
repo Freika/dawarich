@@ -2,6 +2,12 @@
 fr:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Tâches Phoenix"
+        ok: "Phoenix traite ses tâches."
+        alarm: "Phoenix ne traite pas ses tâches ; elles attendent qu'un processus Phoenix s'exécute."
+        not_installed: "Phoenix n'a pas encore créé ses tables dans cette base de données ; toutes les tâches s'exécutent dans Sidekiq."
+        unknown: "L'état des tâches Phoenix n'a pas pu être lu dans la base de données ; rechargez la page pour réessayer."
       show:
         title: "Paramètres de l'instance"
         intro: "Ces paramètres s'appliquent à toute l'instance. Un paramètre fourni par une variable d'environnement est affiché en lecture seule : supprimez la variable pour le modifier ici."
@@ -2080,7 +2086,7 @@ fr:
       rarr: "→"
       'on': sur
       no_visits_yet: Aucune visite pour le moment
-      rename: Renommer
+      edit: Modifier
       merge: Fusionner
       notes: Notes
       save: Enregistrer
@@ -4526,7 +4532,7 @@ fr:
         export_failed: Export échoué
         export_name_failed_message_stacktrace_n: 'L''export "%{name}" a échoué : %{message},
           trace d''exécution : %{backtrace}'
-        unsupported_file_format: 'Format de fichier non pris en charge : %{format}'
+        unsupported_file_format: 'Format de fichier non pris en charge : %{file_format}'
     families:
       auto_create:
         default_name: Ma famille
@@ -4874,6 +4880,8 @@ fr:
           manifest_missing: 'Le fichier de manifeste n''a pas été trouvé dans l''archive :
             manifest.json'
     visits:
+      create:
+        duplicate_at_place_and_time: Une visite existe déjà à cet endroit et à cette heure
       suggest:
         error_suggesting_visits_message: 'Erreur lors de la suggestion de visites :
           %{message}'

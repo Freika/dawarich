@@ -1,6 +1,12 @@
 ca:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Tasques de Phoenix"
+        ok: "Phoenix està processant les seves tasques."
+        alarm: "Phoenix no està processant les seves tasques; esperen fins que s'executi un procés de Phoenix."
+        not_installed: "Phoenix encara no ha creat les seves taules en aquesta base de dades; totes les tasques s'executen a Sidekiq."
+        unknown: "No s'ha pogut llegir l'estat de les tasques de Phoenix a la base de dades; torna a carregar la pàgina per tornar-ho a provar."
       show:
         title: "Configuració de la instància"
         intro: "Aquesta configuració s'aplica a tota la instància. Un paràmetre definit per una variable d'entorn es mostra només de lectura: elimina la variable per editar-lo aquí."
@@ -1321,7 +1327,7 @@ ca:
       rarr: "→"
       'on': el
       no_visits_yet: Encara no hi ha visites
-      rename: Canvia el nom
+      edit: Edita
       merge: Fusiona
       notes: Notes
       save: Desa
@@ -3457,7 +3463,7 @@ ca:
         export_name_successfully_finished: "L'exportació \"%{name}\" ha finalitzat correctament."
         export_failed: Exportació fallida
         export_name_failed_message_stacktrace_n: 'L''exportació "%{name}" ha fallat: %{message}, traça: %{backtrace}'
-        unsupported_file_format: 'Format d''arxiu no compatible: %{format}'
+        unsupported_file_format: 'Format d''arxiu no compatible: %{file_format}'
     families:
       auto_create:
         default_name: La meva família
@@ -3697,6 +3703,8 @@ ca:
         enable_at_least_one_transportation_mode: Activa almenys un mitjà de transport
         recalculation_in_progress: El recàlcul de mitjans de transport està en curs. Espera fins que finalitzi.
     visits:
+      create:
+        duplicate_at_place_and_time: Ja existeix una visita en aquest lloc i a aquesta hora
       suggest:
         error_suggesting_visits_message: 'Error en suggerir visites: %{message}'
         error_suggesting_visits: 'Error en suggerir visites'

@@ -1,0 +1,101 @@
+{
+  "semanticSegments": [
+    {
+      "startTime": "2025-03-11T08:00:00.000Z",
+      "endTime": "2025-03-11T09:30:00.000Z",
+      "visit": {
+        "topCandidate": {
+          "placeId": "ChIJ_E2E_LEIPZIG_HOME",
+          "semanticType": "INFERRED_HOME",
+          "probability": 0.95,
+          "placeLocation": {
+            "latLng": "51.340200°, 12.371200°"
+          }
+        }
+      }
+    },
+    {
+      "startTime": "2025-03-11T09:30:00.000Z",
+      "endTime": "2025-03-11T10:10:00.000Z",
+      "activity": {
+        "start": { "latLng": "51.340200°, 12.371200°" },
+        "end": { "latLng": "51.345000°, 12.381000°" },
+        "distanceMeters": 4200,
+        "topCandidate": {
+          "type": "IN_PASSENGER_VEHICLE",
+          "probability": 0.88
+        }
+      }
+    },
+    {
+      "startTime": "2025-03-11T09:30:00.000Z",
+      "endTime": "2025-03-11T10:10:00.000Z",
+      "timelinePath": [
+        { "point": "51.340400°, 12.371900°", "time": "2025-03-11T09:32:00.000Z" },
+        { "point": "51.341600°, 12.374300°", "time": "2025-03-11T09:42:00.000Z" },
+        { "point": "51.342900°, 12.376800°", "time": "2025-03-11T09:52:00.000Z" },
+        { "point": "51.344100°, 12.379200°", "time": "2025-03-11T10:02:00.000Z" },
+        { "point": "51.344900°, 12.380800°", "time": "2025-03-11T10:08:00.000Z" }
+      ]
+    },
+    {
+      "startTime": "2025-03-11T10:10:00.000Z",
+      "endTime": "2025-03-11T12:00:00.000Z",
+      "visit": {
+        "topCandidate": {
+          "placeId": "ChIJ_E2E_LEIPZIG_WORK",
+          "semanticType": "INFERRED_WORK",
+          "probability": 0.91,
+          "placeLocation": {
+            "latLng": "51.345000°, 12.381000°"
+          }
+        }
+      }
+    },
+    {
+      "startTime": "2025-03-11T12:00:00.000Z",
+      "endTime": "2025-03-11T12:30:00.000Z",
+      "activity": {
+        "start": { "latLng": "51.345000°, 12.381000°" },
+        "end": { "latLng": "51.347800°, 12.377400°" },
+        "distanceMeters": 1500,
+        "topCandidate": {
+          "type": "WALKING",
+          "probability": 0.79
+        }
+      }
+    },
+    {
+      "startTime": "2025-03-11T12:00:00.000Z",
+      "endTime": "2025-03-11T12:30:00.000Z",
+      "timelinePath": [
+        { "point": "51.345200°, 12.380600°", "time": "2025-03-11T12:03:00.000Z" },
+        { "point": "51.345900°, 12.379500°", "time": "2025-03-11T12:11:00.000Z" },
+        { "point": "51.346800°, 12.378300°", "time": "2025-03-11T12:20:00.000Z" },
+        { "point": "51.347700°, 12.377500°", "time": "2025-03-11T12:28:00.000Z" }
+      ]
+    }
+  ],
+  "userLocationProfile": {
+    "frequentPlaces": [
+      {
+        "placeId": "ChIJ_E2E_LEIPZIG_HOME",
+        "label": "E2E Leipzig Home",
+        "placeLocation": "51.340200°, 12.371200°",
+        "semanticType": "INFERRED_HOME"
+      },
+      {
+        "placeId": "ChIJ_E2E_LEIPZIG_WORK",
+        "label": "E2E Leipzig Work",
+        "placeLocation": "51.345000°, 12.381000°",
+        "semanticType": "INFERRED_WORK"
+      },
+      {
+        "placeId": "ChIJ_E2E_LEIPZIG_CAFE",
+        "label": "E2E Leipzig Cafe",
+        "placeLocation": "51.339500°, 12.373800°",
+        "semanticType": "TYPE_CAFE"
+      }
+    ]
+  }
+}

@@ -3,6 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe '/digests', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
   context 'when user is not signed in' do
     describe 'GET /index' do
       it 'redirects to the sign in page' do
@@ -55,6 +56,16 @@ RSpec.describe '/digests', type: :request do
         get users_digests_url
 
         expect(response.body).to include('2024')
+      end
+
+      it 'does not list a yearly digest for the unfinished year' do
+        travel_to Time.utc(2026, 6, 15) do
+          create(:users_digest, user:, year: 2026)
+
+          get users_digests_url
+
+          expect(response.body).to include('No Year-End Digests Yet')
+        end
       end
 
       it 'shows empty state when no digests exist' do

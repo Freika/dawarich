@@ -61,7 +61,7 @@ RSpec.describe 'Empty monthly calculation after historical points arrive', type:
       Cache::InvalidateUserCaches.new(owner.id).call
       Point.where(user_id: owner.id).delete_all
       Stat.where(user_id: owner.id).delete_all
-      owner.destroy!
+      User.unscoped.where(id: owner.id).delete_all
     end
     country&.destroy! if defined?(existing_country) && existing_country.nil?
     InstanceSetting.delete_all

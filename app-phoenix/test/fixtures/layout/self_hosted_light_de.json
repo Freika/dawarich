@@ -1,0 +1,45 @@
+{
+  "state": {
+    "user": {
+      "id": 2599712706,
+      "email": "layout-light@dawarich.test",
+      "theme": "light",
+      "settings": {
+        "maps": {
+          "distance_unit": "km"
+        },
+        "locale": "de",
+        "route_opacity": 60,
+        "fog_of_war_meters": "100",
+        "onboarding_completed": true,
+        "meters_between_routes": "500",
+        "minutes_between_routes": "30",
+        "time_threshold_minutes": "30",
+        "merge_threshold_minutes": "15"
+      },
+      "admin": false,
+      "status": 1,
+      "plan": 1,
+      "active_until": "3026-09-26T13:00:00.000000Z",
+      "subscription_source": 0,
+      "changelog_consent": 0
+    },
+    "notifications": [],
+    "family": null,
+    "self_hosted": true,
+    "accept_language": null,
+    "path": "/notifications"
+  },
+  "html": {
+    "lang": "de",
+    "data-theme": "dawarich",
+    "data-self-hosted": "true"
+  },
+  "headers": {
+    "x-frame-options": "SAMEORIGIN",
+    "x-xss-protection": "0",
+    "x-content-type-options": "nosniff",
+    "x-permitted-cross-domain-policies": "none",
+    "referrer-policy": "strict-origin-when-cross-origin"
+  }
+}

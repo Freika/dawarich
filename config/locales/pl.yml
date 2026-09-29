@@ -1,6 +1,12 @@
 pl:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Zadania Phoenix"
+        ok: "Phoenix przetwarza swoje zadania."
+        alarm: "Phoenix nie przetwarza swoich zadań; czekają, aż uruchomi się proces Phoenix."
+        not_installed: "Phoenix nie utworzył jeszcze swoich tabel w tej bazie danych; wszystkie zadania działają w Sidekiq."
+        unknown: "Nie udało się odczytać stanu zadań Phoenix z bazy danych; odśwież stronę, aby spróbować ponownie."
       show:
         title: "Ustawienia instancji"
         intro: "Te ustawienia dotyczą całej instancji. Ustawienie pochodzące ze zmiennej środowiskowej jest wyświetlane tylko do odczytu: usuń zmienną, aby edytować je tutaj."
@@ -1321,7 +1327,7 @@ pl:
       rarr: "→"
       'on': dnia
       no_visits_yet: Brak wizyt
-      rename: Zmień nazwę
+      edit: Edytuj
       merge: Scal
       notes: Notatki
       save: Zapisz
@@ -3512,7 +3518,7 @@ pl:
         export_name_successfully_finished: Eksport "%{name}" zakończył się pomyślnie.
         export_failed: Eksport nie powiódł się
         export_name_failed_message_stacktrace_n: 'Eksport "%{name}" nie powiódł się: %{message}, stacktrace: %{backtrace}'
-        unsupported_file_format: 'Nieobsługiwany format pliku: %{format}'
+        unsupported_file_format: 'Nieobsługiwany format pliku: %{file_format}'
     families:
       auto_create:
         default_name: Moja rodzina
@@ -3754,6 +3760,8 @@ pl:
         enable_at_least_one_transportation_mode: Włącz co najmniej jeden tryb transportu
         recalculation_in_progress: Trwa przeliczanie trybów transportu. Poczekaj na zakończenie.
     visits:
+      create:
+        duplicate_at_place_and_time: W tym miejscu i o tej godzinie istnieje już wizyta
       suggest:
         error_suggesting_visits_message: 'Błąd podczas sugerowania wizyt: %{message}'
         error_suggesting_visits: Błąd podczas sugerowania wizyt

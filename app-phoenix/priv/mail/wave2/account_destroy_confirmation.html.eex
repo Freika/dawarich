@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { background: #b91c1c; color: white; padding: 20px; text-align: center; }
+    .content { padding: 20px; background: #f9fafb; }
+    .cta { background: #b91c1c; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin: 20px 0; }
+    .notice { background: #fef3c7; border: 1px solid #f59e0b; padding: 12px; border-radius: 6px; margin: 16px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1><%= @t.("confirm_account_deletion") %></h1>
+    </div>
+    <div class="content">
+      <p><%= @t.("hi") %> <%= h(@email) %>,</p>
+
+      <p><%= @t.("we_received_a_request_to_delete_your_dawarich_account") %> <strong><%= @t.("this_is_your_last_chance_to_stop_the_deletion") %></strong> <%= @t.("once_confirmed_all_your_location_history_tracks_areas_visits_trips") %></p>
+
+      <p><a href="<%= h(@link_url) %>" class="cta"><%= @t.("permanently_delete_my_account") %></a></p>
+
+      <div class="notice">
+        <p><strong><%= @t.("didn_t_request_this") %></strong> <%= @t.("ignore_this_email_the_link_expires_in_1_hour_and") %></p>
+      </div>
+
+      <p><%= @t.("if_you_have_an_active_apple_or_google_subscription_remember") %></p>
+
+      <p style="font-size: 12px; color: #6b7280;"><%= @t.("link") %> <%= h(@link_url) %></p>
+    </div>
+  </div>
+</body>
+</html>

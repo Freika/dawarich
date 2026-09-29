@@ -1,0 +1,3627 @@
+{
+  "rails_settings": {
+    "environments": {
+      "production": [
+        "config.public_file_server.enabled = true",
+        "config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'",
+        "config.host_authorization = { exclude: ->(request) { request.path == '/api/v1/health' } }",
+        "hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',').map(&:strip)",
+        "config.hosts.concat(hosts) if hosts.present?"
+      ],
+      "staging": [
+        "config.public_file_server.enabled = true",
+        "config.force_ssl = ENV.fetch('APPLICATION_PROTOCOL', 'http').downcase == 'https'",
+        "config.host_authorization = { exclude: ->(request) { request.path == '/api/v1/health' } }",
+        "hosts = ENV.fetch('APPLICATION_HOSTS', 'localhost').split(',').map(&:strip)",
+        "config.hosts.concat(hosts) if hosts.present?"
+      ]
+    },
+    "middleware_before_static": [
+      "Rack::Cors",
+      "Rack::Sendfile"
+    ],
+    "index_name": "index",
+    "default_static_extension": ".html",
+    "precompressed": [
+      "br",
+      "gzip",
+      "identity"
+    ],
+    "compressible_content_types": "\\A(?:text/|application/javascript|image/svg\\+xml)"
+  },
+  "rails_mime_types": {
+    "": null,
+    ".bin": "application/octet-stream",
+    ".br": null,
+    ".css": "text/css",
+    ".gif": "image/gif",
+    ".gz": "application/x-gzip",
+    ".html": "text/html",
+    ".ico": "image/vnd.microsoft.icon",
+    ".jpeg": "image/jpeg",
+    ".jpg": "image/jpeg",
+    ".js": "text/javascript",
+    ".json": "application/json",
+    ".map": null,
+    ".mjs": "text/javascript",
+    ".pdf": "application/pdf",
+    ".pmtiles": null,
+    ".png": "image/png",
+    ".svg": "image/svg+xml",
+    ".ttf": "font/ttf",
+    ".txt": "text/plain",
+    ".webmanifest": "application/manifest+json",
+    ".webp": "image/webp",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".xyz": "chemical/x-xyz"
+  },
+  "application_hosts": "dawarich.example, .example.org",
+  "tree": {
+    "files": [
+      {
+        "path": "../outside.txt",
+        "content": "b3V0c2lkZSBwdWJsaWMv",
+        "mtime": 1788264000
+      },
+      {
+        "path": ".hidden.txt",
+        "content": "aGlkZGVu",
+        "mtime": 1788264000
+      },
+      {
+        "path": ".well-known/apple-app-site-association",
+        "content": "e30=",
+        "mtime": 1788264000
+      },
+      {
+        "path": "UPPER.CSS",
+        "content": "cCB7fQ==",
+        "mtime": 1788264000
+      },
+      {
+        "path": "anim.gif",
+        "content": "iVBORw0KGgoAAAANSUhEUmFuaW0uZ2lm",
+        "mtime": 1788264000
+      },
+      {
+        "path": "app.css",
+        "content": "Ym9keSB7IGNvbG9yOiByZWQ7IH0K",
+        "mtime": 1788264000
+      },
+      {
+        "path": "app.css.br",
+        "content": "YnJvdGxpIGNzcw==",
+        "mtime": 1788264000
+      },
+      {
+        "path": "app.css.gz",
+        "content": "Z3ppcHBlZCBjc3M=",
+        "mtime": 1788267600
+      },
+      {
+        "path": "app.js",
+        "content": "Y29uc29sZS5sb2coJ2FwcCcpCg==",
+        "mtime": 1788264000
+      },
+      {
+        "path": "app.js.gz",
+        "content": "Z3ppcHBlZCBqcw==",
+        "mtime": 1788264000
+      },
+      {
+        "path": "app.js.map",
+        "content": "eyJ2ZXJzaW9uIjozfQ==",
+        "mtime": 1788264000
+      },
+      {
+        "path": "blob.bin",
+        "content": "iVBORw0KGgoAAAANSUhEUmJsb2IuYmlu",
+        "mtime": 1788264000
+      },
+      {
+        "path": "data.json",
+        "content": "eyJhIjoxfQ==",
+        "mtime": 1788264000
+      },
+      {
+        "path": "data.json.gz",
+        "content": "Z3ppcHBlZCBqc29u",
+        "mtime": 1788264000
+      },
+      {
+        "path": "doc.pdf",
+        "content": "JVBERi0xLjQ=",
+        "mtime": 1788264000
+      },
+      {
+        "path": "docs/index.html",
+        "content": "PHA+ZG9jczwvcD4=",
+        "mtime": 1788264000
+      },
+      {
+        "path": "docs/index.html.gz",
+        "content": "Z3ppcHBlZCBkb2Nz",
+        "mtime": 1788264000
+      },
+      {
+        "path": "empty.txt",
+        "content": "",
+        "mtime": 1788264000
+      },
+      {
+        "path": "favicon.ico",
+        "content": "iVBORw0KGgoAAAANSUhEUmZhdmljb24uaWNv",
+        "mtime": 1788264000
+      },
+      {
+        "path": "font.ttf",
+        "content": "iVBORw0KGgoAAAANSUhEUmZvbnQudHRm",
+        "mtime": 1788264000
+      },
+      {
+        "path": "font.woff",
+        "content": "iVBORw0KGgoAAAANSUhEUmZvbnQud29mZg==",
+        "mtime": 1788264000
+      },
+      {
+        "path": "font.woff2",
+        "content": "iVBORw0KGgoAAAANSUhEUmZvbnQud29mZjI=",
+        "mtime": 1788264000
+      },
+      {
+        "path": "icon.png",
+        "content": "iVBORw0KGgoAAAANSUhEUmljb24ucG5n",
+        "mtime": 1788264000
+      },
+      {
+        "path": "icon.png.gz",
+        "content": "iVBORw0KGgoAAAANSUhEUmljb24ucG5nLmd6",
+        "mtime": 1788264000
+      },
+      {
+        "path": "image.webp",
+        "content": "iVBORw0KGgoAAAANSUhEUmltYWdlLndlYnA=",
+        "mtime": 1788264000
+      },
+      {
+        "path": "logo.svg",
+        "content": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4=",
+        "mtime": 1788264000
+      },
+      {
+        "path": "logo.svg.br",
+        "content": "YnJvdGxpIHN2Zw==",
+        "mtime": 1788264000
+      },
+      {
+        "path": "module.mjs",
+        "content": "ZXhwb3J0IHt9",
+        "mtime": 1788264000
+      },
+      {
+        "path": "noext",
+        "content": "bm8gZXh0ZW5zaW9u",
+        "mtime": 1788264000
+      },
+      {
+        "path": "only-gz.css.gz",
+        "content": "Z3ppcHBlZCBvbmx5",
+        "mtime": 1788264000
+      },
+      {
+        "path": "page.html",
+        "content": "PHA+cGFnZTwvcD4=",
+        "mtime": 1788264000
+      },
+      {
+        "path": "photo.jpeg",
+        "content": "iVBORw0KGgoAAAANSUhEUnBob3RvLmpwZWc=",
+        "mtime": 1788264000
+      },
+      {
+        "path": "photo.jpg",
+        "content": "iVBORw0KGgoAAAANSUhEUnBob3RvLmpwZw==",
+        "mtime": 1788264000
+      },
+      {
+        "path": "robots.txt",
+        "content": "VXNlci1hZ2VudDogKgo=",
+        "mtime": 1788264000
+      },
+      {
+        "path": "site.webmanifest",
+        "content": "eyJuYW1lIjoiRGF3YXJpY2gifQ==",
+        "mtime": 1788264000
+      },
+      {
+        "path": "space name.txt",
+        "content": "c3BhY2Vk",
+        "mtime": 1788264000
+      },
+      {
+        "path": "sub%5Cdeep.txt",
+        "content": "cGVyY2VudCBpbiBuYW1l",
+        "mtime": 1788264000
+      },
+      {
+        "path": "sub/deep/file.txt",
+        "content": "ZGVlcA==",
+        "mtime": 1788264000
+      },
+      {
+        "path": "tiles.pmtiles",
+        "content": "iVBORw0KGgoAAAANSUhEUnRpbGVzLnBtdGlsZXM=",
+        "mtime": 1788264000
+      },
+      {
+        "path": "weird.xyz",
+        "content": "dW5rbm93biBleHRlbnNpb24=",
+        "mtime": 1788264000
+      }
+    ],
+    "symlinks": [
+      {
+        "path": "link.txt",
+        "target": "robots.txt"
+      },
+      {
+        "path": "escape.txt",
+        "target": "../outside.txt"
+      },
+      {
+        "path": "linkdir",
+        "target": "sub"
+      }
+    ]
+  },
+  "requests": [
+    {
+      "name": "robots",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "robots-head",
+      "stack": "plain",
+      "method": "HEAD",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "robots-query",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt?vsn=1",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "robots-trailing-slash",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt/",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "robots-escaped",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/%72obots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "css",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "21"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Ym9keSB7IGNvbG9yOiByZWQ7IH0K"
+      }
+    },
+    {
+      "name": "css-gzip",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "gzip"
+          ],
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 13:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Z3ppcHBlZCBjc3M="
+      }
+    },
+    {
+      "name": "css-br",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "br"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "br"
+          ],
+          [
+            "content-length",
+            "10"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "YnJvdGxpIGNzcw=="
+      }
+    },
+    {
+      "name": "css-browser",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip, deflate, br, zstd"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "br"
+          ],
+          [
+            "content-length",
+            "10"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "YnJvdGxpIGNzcw=="
+      }
+    },
+    {
+      "name": "css-br-q0",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "br;q=0"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "br"
+          ],
+          [
+            "content-length",
+            "10"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "YnJvdGxpIGNzcw=="
+      }
+    },
+    {
+      "name": "css-star",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "*"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "21"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Ym9keSB7IGNvbG9yOiByZWQ7IH0K"
+      }
+    },
+    {
+      "name": "css-brotli-word",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "brotli"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "21"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Ym9keSB7IGNvbG9yOiByZWQ7IH0K"
+      }
+    },
+    {
+      "name": "css-x-gzip",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "x-gzip"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "gzip"
+          ],
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 13:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Z3ppcHBlZCBjc3M="
+      }
+    },
+    {
+      "name": "css-upper",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "GZIP"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "gzip"
+          ],
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 13:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Z3ppcHBlZCBjc3M="
+      }
+    },
+    {
+      "name": "css-parameter",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "identity;q=gzip"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "21"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Ym9keSB7IGNvbG9yOiByZWQ7IH0K"
+      }
+    },
+    {
+      "name": "css-head-gzip",
+      "stack": "plain",
+      "method": "HEAD",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "gzip"
+          ],
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 13:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "css-two-accepts",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "deflate"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "gzip"
+          ],
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 13:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Z3ppcHBlZCBjc3M="
+      }
+    },
+    {
+      "name": "js-br",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.js",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "br"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "19"
+          ],
+          [
+            "content-type",
+            "text/javascript"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Y29uc29sZS5sb2coJ2FwcCcpCg=="
+      }
+    },
+    {
+      "name": "js-gzip",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.js",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "gzip"
+          ],
+          [
+            "content-length",
+            "10"
+          ],
+          [
+            "content-type",
+            "text/javascript"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Z3ppcHBlZCBqcw=="
+      }
+    },
+    {
+      "name": "only-gz",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/only-gz.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "gzip"
+          ],
+          [
+            "content-length",
+            "12"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Z3ppcHBlZCBvbmx5"
+      }
+    },
+    {
+      "name": "svg-br",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/logo.svg",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "br"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "br"
+          ],
+          [
+            "content-length",
+            "10"
+          ],
+          [
+            "content-type",
+            "image/svg+xml"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "YnJvdGxpIHN2Zw=="
+      }
+    },
+    {
+      "name": "svg",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/logo.svg",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "41"
+          ],
+          [
+            "content-type",
+            "image/svg+xml"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciLz4="
+      }
+    },
+    {
+      "name": "png-gzip",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/icon.png",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "24"
+          ],
+          [
+            "content-type",
+            "image/png"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "iVBORw0KGgoAAAANSUhEUmljb24ucG5n"
+      }
+    },
+    {
+      "name": "json-gzip",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/data.json",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "7"
+          ],
+          [
+            "content-type",
+            "application/json"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "eyJhIjoxfQ=="
+      }
+    },
+    {
+      "name": "map",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.js.map",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "13"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "eyJ2ZXJzaW9uIjozfQ=="
+      }
+    },
+    {
+      "name": "webmanifest",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/site.webmanifest",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "19"
+          ],
+          [
+            "content-type",
+            "application/manifest+json"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "eyJuYW1lIjoiRGF3YXJpY2gifQ=="
+      }
+    },
+    {
+      "name": "pmtiles",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/tiles.pmtiles",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "29"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "iVBORw0KGgoAAAANSUhEUnRpbGVzLnBtdGlsZXM="
+      }
+    },
+    {
+      "name": "mjs",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/module.mjs",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "9"
+          ],
+          [
+            "content-type",
+            "text/javascript"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "ZXhwb3J0IHt9"
+      }
+    },
+    {
+      "name": "page",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/page",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/html"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "PHA+cGFnZTwvcD4="
+      }
+    },
+    {
+      "name": "page-html",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/page.html",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/html"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "PHA+cGFnZTwvcD4="
+      }
+    },
+    {
+      "name": "docs",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/docs",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/html"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "PHA+ZG9jczwvcD4="
+      }
+    },
+    {
+      "name": "docs-slash",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/docs/",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/html"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "PHA+ZG9jczwvcD4="
+      }
+    },
+    {
+      "name": "docs-gzip",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/docs",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "gzip"
+          ],
+          [
+            "content-length",
+            "12"
+          ],
+          [
+            "content-type",
+            "text/html"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Z3ppcHBlZCBkb2Nz"
+      }
+    },
+    {
+      "name": "docs-index",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/docs/index.html",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/html"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "PHA+ZG9jczwvcD4="
+      }
+    },
+    {
+      "name": "noext",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/noext",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "12"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "bm8gZXh0ZW5zaW9u"
+      }
+    },
+    {
+      "name": "upper",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/UPPER.CSS",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "4"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "cCB7fQ=="
+      }
+    },
+    {
+      "name": "space",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/space%20name.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "6"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "c3BhY2Vk"
+      }
+    },
+    {
+      "name": "percent-name",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/sub%255Cdeep.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "15"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "cGVyY2VudCBpbiBuYW1l"
+      }
+    },
+    {
+      "name": "font.woff2",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/font.woff2",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "26"
+          ],
+          [
+            "content-type",
+            "font/woff2"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "iVBORw0KGgoAAAANSUhEUmZvbnQud29mZjI="
+      }
+    },
+    {
+      "name": "font.woff",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/font.woff",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "25"
+          ],
+          [
+            "content-type",
+            "font/woff"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "iVBORw0KGgoAAAANSUhEUmZvbnQud29mZg=="
+      }
+    },
+    {
+      "name": "font.ttf",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/font.ttf",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "24"
+          ],
+          [
+            "content-type",
+            "font/ttf"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "iVBORw0KGgoAAAANSUhEUmZvbnQudHRm"
+      }
+    },
+    {
+      "name": "image.webp",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/image.webp",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "26"
+          ],
+          [
+            "content-type",
+            "image/webp"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "iVBORw0KGgoAAAANSUhEUmltYWdlLndlYnA="
+      }
+    },
+    {
+      "name": "photo.jpg",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/photo.jpg",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "25"
+          ],
+          [
+            "content-type",
+            "image/jpeg"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "iVBORw0KGgoAAAANSUhEUnBob3RvLmpwZw=="
+      }
+    },
+    {
+      "name": "photo.jpeg",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/photo.jpeg",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "26"
+          ],
+          [
+            "content-type",
+            "image/jpeg"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "iVBORw0KGgoAAAANSUhEUnBob3RvLmpwZWc="
+      }
+    },
+    {
+      "name": "anim.gif",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/anim.gif",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "24"
+          ],
+          [
+            "content-type",
+            "image/gif"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "iVBORw0KGgoAAAANSUhEUmFuaW0uZ2lm"
+      }
+    },
+    {
+      "name": "favicon.ico",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/favicon.ico",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "27"
+          ],
+          [
+            "content-type",
+            "image/vnd.microsoft.icon"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "iVBORw0KGgoAAAANSUhEUmZhdmljb24uaWNv"
+      }
+    },
+    {
+      "name": "blob.bin",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/blob.bin",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "24"
+          ],
+          [
+            "content-type",
+            "application/octet-stream"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "iVBORw0KGgoAAAANSUhEUmJsb2IuYmlu"
+      }
+    },
+    {
+      "name": "empty",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/empty.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "empty-head",
+      "stack": "plain",
+      "method": "HEAD",
+      "target": "/empty.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "deep",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/sub/deep/file.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "4"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "ZGVlcA=="
+      }
+    },
+    {
+      "name": "encoded-slash",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/sub%2Fdeep%2Ffile.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "4"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "ZGVlcA=="
+      }
+    },
+    {
+      "name": "ims-exact",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "If-Modified-Since",
+          "Tue, 01 Sep 2026 12:00:00 GMT"
+        ]
+      ],
+      "response": {
+        "status": 304,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "ims-exact-head",
+      "stack": "plain",
+      "method": "HEAD",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "If-Modified-Since",
+          "Tue, 01 Sep 2026 12:00:00 GMT"
+        ]
+      ],
+      "response": {
+        "status": 304,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "ims-other",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "If-Modified-Since",
+          "Tue, 01 Sep 2026 11:59:59 GMT"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "ims-twice",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "If-Modified-Since",
+          "Tue, 01 Sep 2026 12:00:00 GMT"
+        ],
+        [
+          "If-Modified-Since",
+          "Tue, 01 Sep 2026 12:00:00 GMT"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "ims-variant-stale",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip"
+        ],
+        [
+          "If-Modified-Since",
+          "Tue, 01 Sep 2026 12:00:00 GMT"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "gzip"
+          ],
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 13:00:00 GMT"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Z3ppcHBlZCBjc3M="
+      }
+    },
+    {
+      "name": "ims-variant",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip"
+        ],
+        [
+          "If-Modified-Since",
+          "Tue, 01 Sep 2026 13:00:00 GMT"
+        ]
+      ],
+      "response": {
+        "status": 304,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "host-port",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example:3000"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "host-subdomain",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "maps.example.org"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "host-apex",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "example.org:8080"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "host-upper",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "DAWARICH.EXAMPLE"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "forwarded-host",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "X-Forwarded-Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "forwarded-host-list",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "X-Forwarded-Host",
+          "evil.example, dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "forwarded-host-comma",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "X-Forwarded-Host",
+          "dawarich.example,"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "forwarded-host-blank",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "X-Forwarded-Host",
+          " "
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "cors-origin",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Origin",
+          "https://dawarich.app"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "ssl-css-gzip",
+      "stack": "force_ssl",
+      "method": "GET",
+      "target": "/app.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Accept-Encoding",
+          "gzip"
+        ],
+        [
+          "X-Forwarded-Proto",
+          "https"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-encoding",
+            "gzip"
+          ],
+          [
+            "content-length",
+            "11"
+          ],
+          [
+            "content-type",
+            "text/css"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 13:00:00 GMT"
+          ],
+          [
+            "strict-transport-security",
+            "max-age=63072000; includeSubDomains"
+          ],
+          [
+            "vary",
+            "accept-encoding"
+          ]
+        ],
+        "body": "Z3ppcHBlZCBjc3M="
+      }
+    },
+    {
+      "name": "ssl-forwarded-ssl",
+      "stack": "force_ssl",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "X-Forwarded-Ssl",
+          "on"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ],
+          [
+            "strict-transport-security",
+            "max-age=63072000; includeSubDomains"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "ssl-ims",
+      "stack": "force_ssl",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "X-Forwarded-Proto",
+          "https"
+        ],
+        [
+          "If-Modified-Since",
+          "Tue, 01 Sep 2026 12:00:00 GMT"
+        ]
+      ],
+      "response": {
+        "status": 304,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ],
+          [
+            "strict-transport-security",
+            "max-age=63072000; includeSubDomains"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "post",
+      "stack": "plain",
+      "method": "POST",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Content-Length",
+          "0"
+        ]
+      ],
+      "response": {
+        "status": 404,
+        "headers": [
+          [
+            "content-length",
+            "9"
+          ],
+          [
+            "x-phoenix-fixture",
+            "rails-app"
+          ]
+        ],
+        "body": "cmFpbHMgYXBw"
+      }
+    },
+    {
+      "name": "options",
+      "stack": "plain",
+      "method": "OPTIONS",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 404,
+        "headers": [
+          [
+            "content-length",
+            "9"
+          ],
+          [
+            "x-phoenix-fixture",
+            "rails-app"
+          ]
+        ],
+        "body": "cmFpbHMgYXBw"
+      }
+    },
+    {
+      "name": "range",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Range",
+          "bytes=0-3"
+        ]
+      ],
+      "response": {
+        "status": 206,
+        "headers": [
+          [
+            "content-length",
+            "4"
+          ],
+          [
+            "content-range",
+            "bytes 0-3/14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlcg=="
+      }
+    },
+    {
+      "name": "range-multi",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "Range",
+          "bytes=0-1,3-4"
+        ]
+      ],
+      "response": {
+        "status": 206,
+        "headers": [
+          [
+            "content-length",
+            "156"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "DQotLUFhQjAzeA0KY29udGVudC10eXBlOiB0ZXh0L3BsYWluDQpjb250ZW50LXJhbmdlOiBieXRlcyAwLTEvMTQNCg0KVXMNCi0tQWFCMDN4DQpjb250ZW50LXR5cGU6IHRleHQvcGxhaW4NCmNvbnRlbnQtcmFuZ2U6IGJ5dGVzIDMtNC8xNA0KDQpyLQ0KLS1BYUIwM3gtLQ0K"
+      }
+    },
+    {
+      "name": "dotdot",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/../robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "dotdot-encoded",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/%2e%2e/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "dot-segment",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/./robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "docs-dotdot",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/docs/../robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "double-slash",
+      "stack": "plain",
+      "method": "GET",
+      "target": "//robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "inner-double-slash",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/sub//deep/file.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "4"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "ZGVlcA=="
+      }
+    },
+    {
+      "name": "dotfile",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/.hidden.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "6"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "aGlkZGVu"
+      }
+    },
+    {
+      "name": "dotdir",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/.well-known/apple-app-site-association",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "2"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "e30="
+      }
+    },
+    {
+      "name": "symlink",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/link.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "14"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "VXNlci1hZ2VudDogKgo="
+      }
+    },
+    {
+      "name": "symlink-escape",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/escape.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "15"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "b3V0c2lkZSBwdWJsaWMv"
+      }
+    },
+    {
+      "name": "symlink-dir",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/linkdir/deep/file.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "4"
+          ],
+          [
+            "content-type",
+            "text/plain"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "ZGVlcA=="
+      }
+    },
+    {
+      "name": "nul",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt%00",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 404,
+        "headers": [
+          [
+            "content-length",
+            "9"
+          ],
+          [
+            "x-phoenix-fixture",
+            "rails-app"
+          ]
+        ],
+        "body": "cmFpbHMgYXBw"
+      }
+    },
+    {
+      "name": "bad-escape",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/%zz",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 404,
+        "headers": [
+          [
+            "content-length",
+            "9"
+          ],
+          [
+            "x-phoenix-fixture",
+            "rails-app"
+          ]
+        ],
+        "body": "cmFpbHMgYXBw"
+      }
+    },
+    {
+      "name": "invalid-utf8",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/%ff.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 404,
+        "headers": [
+          [
+            "content-length",
+            "9"
+          ],
+          [
+            "x-phoenix-fixture",
+            "rails-app"
+          ]
+        ],
+        "body": "cmFpbHMgYXBw"
+      }
+    },
+    {
+      "name": "backslash",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/sub%5Cdeep.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 404,
+        "headers": [
+          [
+            "content-length",
+            "9"
+          ],
+          [
+            "x-phoenix-fixture",
+            "rails-app"
+          ]
+        ],
+        "body": "cmFpbHMgYXBw"
+      }
+    },
+    {
+      "name": "unknown-extension",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/weird.xyz",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "17"
+          ],
+          [
+            "content-type",
+            "chemical/x-xyz"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "dW5rbm93biBleHRlbnNpb24="
+      }
+    },
+    {
+      "name": "pdf",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/doc.pdf",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 200,
+        "headers": [
+          [
+            "content-length",
+            "8"
+          ],
+          [
+            "content-type",
+            "application/pdf"
+          ],
+          [
+            "last-modified",
+            "Tue, 01 Sep 2026 12:00:00 GMT"
+          ]
+        ],
+        "body": "JVBERi0xLjQ="
+      }
+    },
+    {
+      "name": "missing",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/missing.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 404,
+        "headers": [
+          [
+            "content-length",
+            "9"
+          ],
+          [
+            "x-phoenix-fixture",
+            "rails-app"
+          ]
+        ],
+        "body": "cmFpbHMgYXBw"
+      }
+    },
+    {
+      "name": "only-gz-plain",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/only-gz.css",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 404,
+        "headers": [
+          [
+            "content-length",
+            "9"
+          ],
+          [
+            "x-phoenix-fixture",
+            "rails-app"
+          ]
+        ],
+        "body": "cmFpbHMgYXBw"
+      }
+    },
+    {
+      "name": "root",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 404,
+        "headers": [
+          [
+            "content-length",
+            "9"
+          ],
+          [
+            "x-phoenix-fixture",
+            "rails-app"
+          ]
+        ],
+        "body": "cmFpbHMgYXBw"
+      }
+    },
+    {
+      "name": "dir-without-index",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/sub",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 404,
+        "headers": [
+          [
+            "content-length",
+            "9"
+          ],
+          [
+            "x-phoenix-fixture",
+            "rails-app"
+          ]
+        ],
+        "body": "cmFpbHMgYXBw"
+      }
+    },
+    {
+      "name": "host-blocked",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "evil.example"
+        ]
+      ],
+      "response": {
+        "status": 403,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ],
+          [
+            "content-type",
+            "text/html; charset=UTF-8"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "no-host",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.0",
+      "headers": [],
+      "response": {
+        "status": 403,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ],
+          [
+            "content-type",
+            "text/html; charset=UTF-8"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "forwarded-host-blocked",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "X-Forwarded-Host",
+          "evil.example"
+        ]
+      ],
+      "response": {
+        "status": 403,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ],
+          [
+            "content-type",
+            "text/html; charset=UTF-8"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "forwarded-host-list-blocked",
+      "stack": "plain",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "X-Forwarded-Host",
+          "dawarich.example, evil.example"
+        ]
+      ],
+      "response": {
+        "status": 403,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ],
+          [
+            "content-type",
+            "text/html; charset=UTF-8"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "ssl-http",
+      "stack": "force_ssl",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ]
+      ],
+      "response": {
+        "status": 301,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ],
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "location",
+            "https://dawarich.example/robots.txt"
+          ]
+        ],
+        "body": ""
+      }
+    },
+    {
+      "name": "ssl-forwarded-http",
+      "stack": "force_ssl",
+      "method": "GET",
+      "target": "/robots.txt",
+      "version": "1.1",
+      "headers": [
+        [
+          "Host",
+          "dawarich.example"
+        ],
+        [
+          "X-Forwarded-Proto",
+          "http"
+        ]
+      ],
+      "response": {
+        "status": 301,
+        "headers": [
+          [
+            "content-length",
+            "0"
+          ],
+          [
+            "content-type",
+            "text/html; charset=utf-8"
+          ],
+          [
+            "location",
+            "https://dawarich.example/robots.txt"
+          ]
+        ],
+        "body": ""
+      }
+    }
+  ]
+}

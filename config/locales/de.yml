@@ -1,6 +1,12 @@
 de:
   admin:
     settings:
+      phoenix_jobs:
+        title: "Phoenix-Jobs"
+        ok: "Phoenix verarbeitet seine Jobs."
+        alarm: "Phoenix verarbeitet seine Jobs nicht; sie warten, bis ein Phoenix-Prozess läuft."
+        not_installed: "Phoenix hat seine Tabellen in dieser Datenbank noch nicht angelegt; alle Jobs laufen in Sidekiq."
+        unknown: "Der Status der Phoenix-Jobs konnte nicht aus der Datenbank gelesen werden; lade die Seite neu, um es erneut zu versuchen."
       show:
         title: "Instanz-Einstellungen"
         intro: "Diese Einstellungen gelten für die gesamte Instanz. Eine Einstellung, die über eine Umgebungsvariable gesetzt ist, wird schreibgeschützt angezeigt: Entferne die Variable, um sie hier zu bearbeiten."
@@ -1371,7 +1377,7 @@ de:
       rarr: "→"
       'on': auf
       no_visits_yet: Noch keine Aufenthalte
-      rename: Umbenennen
+      edit: Bearbeiten
       merge: Verbinden
       notes: Notizen
       save: Speichern
@@ -3519,7 +3525,7 @@ de:
         export_name_successfully_finished: Export „%{name}“ wurde erfolgreich beendet.
         export_failed: Export fehlgeschlagen
         export_name_failed_message_stacktrace_n: 'Export „%{name}“ fehlgeschlagen: %{message}, Stapelverfolgung: %{backtrace}'
-        unsupported_file_format: 'Nicht unterstütztes Dateiformat: %{format}'
+        unsupported_file_format: 'Nicht unterstütztes Dateiformat: %{file_format}'
     families:
       auto_create:
         default_name: Meine Familie
@@ -3759,6 +3765,8 @@ de:
         v2_handler:
           manifest_missing: 'Manifest-Datei nicht im Archiv gefunden: manifest.json'
     visits:
+      create:
+        duplicate_at_place_and_time: An diesem Ort und zu dieser Zeit existiert bereits ein Aufenthalt
       suggest:
         error_suggesting_visits_message: 'Fehler beim Vorschlagen von Aufenthalten: %{message}'
         error_suggesting_visits: 'Fehler beim Vorschlagen von Aufenthalten'

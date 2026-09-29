@@ -1,0 +1,16 @@
+ALTER TABLE "users" ADD "deleted_at" timestamp(6);
+CREATE INDEX "index_users_on_deleted_at" ON "users" ("deleted_at");
+INSERT INTO users (email, settings, created_at, updated_at) VALUES ('no-settings@example.test', NULL, '2026-01-01 00:00:00', '2026-01-01 00:00:00');
+INSERT INTO users (email, settings, created_at, updated_at) VALUES ('no-maps@example.test', '{"fog_of_war_meters": "100"}', '2026-01-02 00:00:00', '2026-01-02 00:00:00');
+INSERT INTO users (email, settings, created_at, updated_at) VALUES ('map-units@example.test', '{"maps": {"distance_unit": "mi"}}', '2026-01-03 00:00:00', '2026-01-03 00:00:00');
+INSERT INTO users (email, settings, created_at, updated_at) VALUES ('map-v2@example.test', '{"maps": {"preferred_version": "v2", "distance_unit": "km"}}', '2026-01-04 00:00:00', '2026-01-04 00:00:00');
+INSERT INTO users (email, settings, created_at, updated_at, deleted_at) VALUES ('deleted@example.test', NULL, '2026-01-05 00:00:00', '2026-01-05 00:00:00', '2026-01-06 00:00:00');
+INSERT INTO users (email, settings, created_at, updated_at, deleted_at) VALUES ('deleted-maps@example.test', '{"maps": {"distance_unit": "km"}}', '2026-01-05 00:00:00', '2026-01-05 00:00:00', '2026-01-06 00:00:00');
+INSERT INTO points ("timestamp", raw_data, created_at, updated_at) VALUES (NULL, '{"properties": {"date": "2024-05-01T10:00:00Z"}}', '2026-01-07 00:00:00', '2026-01-07 00:00:00');
+INSERT INTO points ("timestamp", raw_data, created_at, updated_at) VALUES (NULL, '{"properties": {"date": "2024-05-01T10:00:00"}}', '2026-01-07 00:00:00', '2026-01-07 00:00:00');
+INSERT INTO points ("timestamp", raw_data, created_at, updated_at) VALUES (NULL, '{"properties": {"date": "2024-05-01T12:30:00+02:00"}}', '2026-01-07 00:00:00', '2026-01-07 00:00:00');
+INSERT INTO points ("timestamp", raw_data, created_at, updated_at) VALUES (NULL, '{"properties": {"date": "May 1st"}}', '2026-01-07 00:00:00', '2026-01-07 00:00:00');
+INSERT INTO points ("timestamp", raw_data, created_at, updated_at) VALUES (NULL, '{"properties": {"name": "no date"}}', '2026-01-07 00:00:00', '2026-01-07 00:00:00');
+INSERT INTO points ("timestamp", raw_data, created_at, updated_at) VALUES (NULL, '{"type": "Feature"}', '2026-01-07 00:00:00', '2026-01-07 00:00:00');
+INSERT INTO points ("timestamp", raw_data, created_at, updated_at) VALUES (NULL, NULL, '2026-01-07 00:00:00', '2026-01-07 00:00:00');
+INSERT INTO points ("timestamp", raw_data, created_at, updated_at) VALUES (1700000000, '{"properties": {"date": "2024-05-01T10:00:00Z"}}', '2026-01-07 00:00:00', '2026-01-07 00:00:00');

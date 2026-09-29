@@ -49,6 +49,11 @@ class Point < ApplicationRecord
   # Ingest, cleanup and the anomaly filter must all agree on what counts as a
   # broken coordinate; Points::NullIsland owns that definition.
   scope :null_island, -> { where(Points::NullIsland.sql_predicate) }
+  scope :not_held_by_extraction, -> { where(Import.awaiting_extraction_for(arel_table[:import_id]).not) }
+  scope :recorded_by, lambda { |tracker_id|
+    joins('LEFT JOIN point_sources ON point_sources.id = points.source_id')
+      .where("#{Trip::DEVICE_SQL} = COALESCE(?, '')", tracker_id)
+  }
 
   after_create :async_reverse_geocode, if: -> { DawarichSettings.store_geodata? && !reverse_geocoded? }
   after_create :set_country

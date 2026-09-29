@@ -16,6 +16,7 @@ module EnhancedImport
       destroy_in_batches(owned(Visit))
       destroy_in_batches(owned(Track))
       destroy_orphaned_places(place_ids)
+      SourceSegmentsReset.new(import).call
 
       reset_extraction_state
 

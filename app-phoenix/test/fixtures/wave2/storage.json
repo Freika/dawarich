@@ -1,0 +1,142 @@
+{
+  "addresses": [
+    {
+      "region": "eu-central-1",
+      "endpoint": "https://s3.example.test",
+      "bucket": "dawarich",
+      "host": "dawarich.s3.example.test",
+      "path": "/abc"
+    },
+    {
+      "region": "eu-central-1",
+      "endpoint": "https://s3.example.test",
+      "bucket": "my.bucket",
+      "host": "s3.example.test",
+      "path": "/my.bucket/abc"
+    },
+    {
+      "region": "eu-central-1",
+      "endpoint": "https://s3.example.test",
+      "bucket": "Bad_Bucket",
+      "host": "s3.example.test",
+      "path": "/Bad_Bucket/abc"
+    },
+    {
+      "region": "eu-central-1",
+      "endpoint": "http://minio:9000",
+      "bucket": "dawarich",
+      "host": "dawarich.minio",
+      "path": "/abc"
+    },
+    {
+      "region": "eu-central-1",
+      "endpoint": "http://minio:9000",
+      "bucket": "my.bucket",
+      "host": "minio",
+      "path": "/my.bucket/abc"
+    },
+    {
+      "region": "eu-central-1",
+      "endpoint": "http://minio:9000",
+      "bucket": "Bad_Bucket",
+      "host": "minio",
+      "path": "/Bad_Bucket/abc"
+    },
+    {
+      "region": "eu-central-1",
+      "endpoint": "http://10.0.0.5:9000",
+      "bucket": "dawarich",
+      "host": "10.0.0.5",
+      "path": "/dawarich/abc"
+    },
+    {
+      "region": "eu-central-1",
+      "endpoint": "http://10.0.0.5:9000",
+      "bucket": "my.bucket",
+      "host": "10.0.0.5",
+      "path": "/my.bucket/abc"
+    },
+    {
+      "region": "eu-central-1",
+      "endpoint": "http://10.0.0.5:9000",
+      "bucket": "Bad_Bucket",
+      "host": "10.0.0.5",
+      "path": "/Bad_Bucket/abc"
+    },
+    {
+      "region": "us-east-1",
+      "endpoint": "https://s3.example.test",
+      "bucket": "dawarich",
+      "host": "dawarich.s3.example.test",
+      "path": "/abc"
+    },
+    {
+      "region": "us-east-1",
+      "endpoint": "https://s3.example.test",
+      "bucket": "my.bucket",
+      "host": "s3.example.test",
+      "path": "/my.bucket/abc"
+    },
+    {
+      "region": "us-east-1",
+      "endpoint": "https://s3.example.test",
+      "bucket": "Bad_Bucket",
+      "host": "s3.example.test",
+      "path": "/Bad_Bucket/abc"
+    },
+    {
+      "region": "us-east-1",
+      "endpoint": "http://minio:9000",
+      "bucket": "dawarich",
+      "host": "dawarich.minio",
+      "path": "/abc"
+    },
+    {
+      "region": "us-east-1",
+      "endpoint": "http://minio:9000",
+      "bucket": "my.bucket",
+      "host": "minio",
+      "path": "/my.bucket/abc"
+    },
+    {
+      "region": "us-east-1",
+      "endpoint": "http://minio:9000",
+      "bucket": "Bad_Bucket",
+      "host": "minio",
+      "path": "/Bad_Bucket/abc"
+    },
+    {
+      "region": "us-east-1",
+      "endpoint": "http://10.0.0.5:9000",
+      "bucket": "dawarich",
+      "host": "10.0.0.5",
+      "path": "/dawarich/abc"
+    },
+    {
+      "region": "us-east-1",
+      "endpoint": "http://10.0.0.5:9000",
+      "bucket": "my.bucket",
+      "host": "10.0.0.5",
+      "path": "/my.bucket/abc"
+    },
+    {
+      "region": "us-east-1",
+      "endpoint": "http://10.0.0.5:9000",
+      "bucket": "Bad_Bucket",
+      "host": "10.0.0.5",
+      "path": "/Bad_Bucket/abc"
+    }
+  ],
+  "content_dispositions": {
+    "report.zip": "attachment; filename=\"report.zip\"; filename*=UTF-8''report.zip",
+    "report name.zip": "attachment; filename=\"report name.zip\"; filename*=UTF-8''report%20name.zip",
+    " leading.zip": "attachment; filename=\"leading.zip\"; filename*=UTF-8''leading.zip",
+    "100%.zip": "attachment; filename=\"100-.zip\"; filename*=UTF-8''100-.zip",
+    "semi;colon.zip": "attachment; filename=\"semi-colon.zip\"; filename*=UTF-8''semi-colon.zip",
+    "slash/name.zip": "attachment; filename=\"slash-name.zip\"; filename*=UTF-8''slash-name.zip",
+    "quote\"name.zip": "attachment; filename=\"quote-name.zip\"; filename*=UTF-8''quote-name.zip",
+    "apostrophe'name.zip": "attachment; filename=\"apostrophe%27name.zip\"; filename*=UTF-8''apostrophe%27name.zip",
+    "two  spaces.zip": "attachment; filename=\"two  spaces.zip\"; filename*=UTF-8''two%20%20spaces.zip",
+    "brackets[1].zip": "attachment; filename=\"brackets%5B1%5D.zip\"; filename*=UTF-8''brackets%5B1%5D.zip"
+  }
+}

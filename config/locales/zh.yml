@@ -3,6 +3,12 @@ zh:
   language_flag: cn
   admin:
     settings:
+      phoenix_jobs:
+        title: "Phoenix 任务"
+        ok: "Phoenix 正在处理其任务。"
+        alarm: "Phoenix 未在处理其任务；这些任务将等待 Phoenix 进程运行。"
+        not_installed: "Phoenix 尚未在此数据库中创建其数据表；所有任务都在 Sidekiq 中运行。"
+        unknown: "无法从数据库读取 Phoenix 任务状态；请重新加载页面后重试。"
       show:
         title: "实例设置"
         intro: "这些设置作用于整个实例。由环境变量提供的设置显示为只读：删除该变量后才能在此编辑。"
@@ -1338,7 +1344,7 @@ zh:
       rarr: →
       'on': 于
       no_visits_yet: 尚无到访记录
-      rename: 重命名
+      edit: 编辑
       merge: 合并
       notes: 备注
       save: 保存
@@ -3513,7 +3519,7 @@ zh:
         export_name_successfully_finished: 导出“%{name}”已成功完成。
         export_failed: 导出失败
         export_name_failed_message_stacktrace_n: 导出“%{name}”失败：%{message}，堆栈跟踪：%{backtrace}
-        unsupported_file_format: 不支持的文件格式：%{format}
+        unsupported_file_format: 不支持的文件格式：%{file_format}
     families:
       auto_create:
         default_name: 我的家庭
@@ -3765,6 +3771,8 @@ zh:
         enable_at_least_one_transportation_mode: 至少启用一种交通方式
         recalculation_in_progress: 正在重新计算交通方式，请等待完成。
     visits:
+      create:
+        duplicate_at_place_and_time: 此地点和时间已存在一条到访记录
       suggest:
         error_suggesting_visits_message: 生成到访建议时出错：%{message}
         error_suggesting_visits: 生成到访建议时出错

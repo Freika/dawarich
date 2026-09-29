@@ -12,14 +12,51 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- On self-hosted installations the OwnTracks, Overland, Traccar and `/api/v1/points` endpoints are now answered by the Elixir supervisor instead of Rails. Responses and stored points are unchanged; live-map updates and track generation are started by the Sidekiq container up to a second after the points are saved. Requests in unusual formats are still answered by Rails. Set `DAWARICH_RAILS_SLICES=ingest` on the web container to hand the endpoints back to Rails without changing the image. Cloud keeps using Rails for now.
+- The notifications pages and the navbar they show are now served by the Phoenix side of the application. Nothing changes in how they look or work. Setting `DAWARICH_RAILS_ROUTES=notifications` hands the pages back to the Rails side without changing the image.
+- Background jobs can now run in the Phoenix supervisor that already starts with the web container. In this release nothing moves yet: every job keeps running in Sidekiq, and the next release lets Phoenix take over the app-version check, the "explore features" email and trip calculations by itself once it is running. Installations where Phoenix does not start keep using Sidekiq. `/api/v1/health` gains a `phoenix` field, and the admin settings page shows whether Phoenix processes its jobs.
+- Family invitation cleanup, family location-request expiry and the points-counter correction are ready to move to Phoenix (Oban); they keep running in Sidekiq until a later release enables it.
+- Points exports (JSON and GPX), family invitation and plan-lapse emails, the welcome, archival-warning, account-linking and account-deletion emails, and the Lite archival warnings are ready to move to Phoenix (Oban); they keep running in Sidekiq until a later release enables it.
+- Achievement checks and area relabelling can run on Phoenix (Oban) once a later release claims them; they keep running in Sidekiq until then. A reverse outbox lets Phoenix hand work back to Rails for the effects only Rails can run, such as busting the timeline month-summary cache after a relabel.
+- The import points recount and the AirTrail flight sync can run on Phoenix (Oban) once claimed; both ship unclaimed, so they keep running in Sidekiq until a later release claims them.
+- **Rollback floor:** once the next release has run, do not go back to an image older than this one while `bin/rails dawarich:jobs:status` shows pending commands; hand jobs back to Sidekiq with `bin/rails "dawarich:jobs:release[<key>]"` first.
+- The web container now starts a small Elixir supervisor that runs the Rails server as its child, and creates two schemas, `phoenix` and `oban`, in the Dawarich database. If they cannot be created, the web container logs a warning and starts Rails as before. Nothing changes in `docker-compose.yml` or `.env`; the container stops with `SIGTERM` instead of `SIGINT`. `docker exec -it dawarich_app dawarich remote` opens an Elixir console for troubleshooting. The supervisor's BEAM runs with one scheduler by default to keep it lightweight; set `ERL_FLAGS=+S 4:4` (or similar) in the web container's environment to raise it without rebuilding the image.
+- Self-hosted instances no longer rate-limit sign-in, sign-up, 2FA challenges and the other request limits; the magic-phrase unlock of shared links and the password check when linking a sign-in provider keep their limits.
 - Exploration achievements and printed poster ordering are available to everyone without feature flags. Existing location history is checked in the background without sending old unlock notifications. Printed poster ordering remains unavailable when `PRINT_ORDER_URL` is blank.
+- Clicking a place on the map opens its details panel instead of a popup. The panel's Edit button changes the place's name and tags.
+- The `phoenix` and `oban` schemas no longer need the database-level `CREATE` privilege once they exist: with a database user that lacks it, have an administrator run `CREATE SCHEMA phoenix AUTHORIZATION <user>` and `CREATE SCHEMA oban AUTHORIZATION <user>` once.
+- The image also ships `release.sh`, `cloud-entrypoint.sh` and `cloud-sidekiq-entrypoint.sh` for platforms that run migrations as a separate release step. With them the web container neither migrates nor seeds, every process drops from root to uid 32767 (or `PUID`/`PGID`), and the Elixir supervisor starts only once `release.sh` has installed its schemas. When `release.sh` cannot install them, it logs a warning and web containers start Rails without the Elixir supervisor; with `SELF_HOSTED=false` it stops the deploy instead. `docker-compose.yml` setups are not affected.
 
 ### Fixed
 
+- Cloud layouts now initialize Paddle after its script loads.
+- Replay scrubber and playback now stay in chronological order through daylight-saving clock changes.
+- Replay scrubber controls use the profile timezone when it differs from the browser timezone.
+- An API request with an empty `api_key` parameter is refused instead of being matched against accounts whose key was never set, and an unauthenticated `GET /api/v1/health` no longer queries the database for a user.
+- Replay and track or visit clicks on the map now select the day in the profile timezone when it differs from the browser timezone.
+- When the browser uses a different timezone from the profile, the map timeline's day and month ranges, the highlight of an expanded timeline day, and the Poster Studio date controls and default subtitle now use the profile timezone.
+- Loading demo data from onboarding no longer leaves "Creating your demo data…" spinning: the map refreshes track tiles once per second instead of once per created track.
+- Loading demo data from onboarding takes seconds instead of more than a minute.
+- Clicking a track on the map keeps it selected and shows its transportation-mode segments; the same click no longer clears the selection.
+- Clicking a track opens its day in the timeline reliably; the map no longer reloads the timeline over it.
+- Google Takeout, Polarsteps and GPX-with-waypoints imports no longer sometimes report "0 tracks" and lose the source app's transportation modes: Dawarich now generates tracks for the remaining points only after the import's extraction finishes or gives up. A failing extraction is retried twice within about half a minute instead of for up to three weeks.
+- While an import is still being imported or its visits, places and transportation modes are still being extracted, its points stay with it: another import from the same Takeout, the scheduled track run and the Cloud history backfill no longer turn them into plain tracks. Building or rebuilding tracks no longer deletes, merges away, draws a line across or builds a track inside a track the extraction wrote or one that carries the source app's modes or your own corrections.
+- Extracting data from an older import puts the source app's transportation modes on its existing tracks only where the source covers them and never changes a mode you corrected by hand; undoing the extraction, or extracting again without trusting the source app, puts Dawarich's own guesses back on those tracks. An extraction that stays queued and never starts now offers Start over.
+- Recalculating transportation modes, changing which modes are detected, resetting a corrected segment and Dawarich's automatic mode updates keep the source app's modes and your own corrections; only Dawarich's own guesses are recalculated.
+- Upgrading an installation originally created from release 0.9.12–0.11.1 no longer fails when its database has no place_visits table.
+- Delete Family, Leave Family, Remove member and Cancel invitation now ask for confirmation first and send a single request once confirmed; cancelling the confirmation no longer carries out the action.
+- Upgrading across 1.7.6 no longer fails with a duplicate-key error when a deleted account has duplicate tracks.
+- Choosing an import file right after the imports page opens is no longer silently ignored.
 - Map point editing keeps route colors and uncovered edges in sync, restores visible undo and redo history, and avoids stale lines and false save failures.
 - Point markers overlapping routes remain selectable. Markers with multiple points zoom until one point can be selected, and never offer to delete an arbitrary point. (#3719)
 - Insights shows the current year first with a distinct color for the previous year, and hosted settings hide the What's New notice preference.
 - `GET /api/v1/users/me` returns the user's `id`, as the API documentation describes. The mobile app needs it to link in-app subscriptions to the right account.
+- Opening a place link directly now shows the place on the map instead of an error page.
+- Saving map settings no longer re-processes every track's transportation mode when the transportation mode filter was already left at its default (all modes).
+- Creating a visit for a place and time that already has a different visit now shows a clear error instead of silently reporting success and returning the old visit's data.
+- A family member has the same color on their map marker, their location history and the family members list, including after a realtime update.
+- On Dawarich Cloud, an invited person can join a Family whose five seats are all taken by members and pending invitations: their own invitation already holds one of those seats, so accepting it no longer reports the family as full.
+- The Cloud Lite preview of the Visited Countries map layer reads "Previewing Visited Countries" instead of "Previewing layers.scratch_map".
 
 ## [1.15.2] - 2026-09-22, Berlin
 

@@ -185,6 +185,38 @@ RSpec.describe 'Api::V1::Visits', type: :request do
         expect(response).to have_http_status(:unauthorized)
       end
     end
+
+    context 'when a duplicate visit is submitted' do
+      it 'returns the existing visit with 200 on an identical repeat' do
+        post '/api/v1/visits', params: valid_create_params, headers: auth_headers
+        first_id = JSON.parse(response.body)['id']
+
+        post '/api/v1/visits', params: valid_create_params, headers: auth_headers
+
+        expect(response).to have_http_status(:ok)
+        expect(JSON.parse(response.body)['id']).to eq(first_id)
+      end
+
+      it 'returns 422 with a clear error when the repeat has a different name' do
+        post '/api/v1/visits', params: valid_create_params, headers: auth_headers
+
+        conflicting_params = valid_create_params.deep_merge(visit: { name: 'Different Name' })
+        post '/api/v1/visits', params: conflicting_params, headers: auth_headers
+
+        expect(response).to have_http_status(:unprocessable_content)
+        expect(JSON.parse(response.body)['error']).to eq(I18n.t('services.visits.create.duplicate_at_place_and_time'))
+      end
+
+      it 'does not overwrite the existing visit when attributes differ' do
+        post '/api/v1/visits', params: valid_create_params, headers: auth_headers
+
+        conflicting_params = valid_create_params.deep_merge(visit: { name: 'Different Name' })
+        post '/api/v1/visits', params: conflicting_params, headers: auth_headers
+
+        expect(Visit.find_by(name: 'Test Visit')).to be_present
+        expect(Visit.find_by(name: 'Different Name')).to be_nil
+      end
+    end
   end
 
   describe 'PUT /api/v1/visits/:id' do

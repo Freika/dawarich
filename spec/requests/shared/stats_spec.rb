@@ -3,6 +3,50 @@
 require 'rails_helper'
 
 RSpec.describe 'Shared::Stats', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
+  describe 'bounded public sharing expiry' do
+    after { travel_back }
+
+    let(:not_found) { { 'error' => 'Shared stats not found or no longer available' } }
+
+    def expect_public_month(uuid)
+      get shared_stat_path(uuid)
+      expect(response).to have_http_status(:ok)
+      get '/api/v1/maps/hexagons', params: { uuid: }
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body['type']).to eq('FeatureCollection')
+      get '/api/v1/maps/hexagons/bounds', params: { uuid: }
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body['point_count']).to eq(3)
+    end
+
+    { '1h' => 1.hour, '12h' => 12.hours, '24h' => 24.hours }.each do |term, duration|
+      it "serves a #{term} link and its hexagons until expiry and refuses all three after it" do
+        travel_to(Time.zone.local(2026, 9, 25, 12))
+        stat = create(:stat, year: 2024, month: 3)
+        3.times { |i| create(:point, user: stat.user, timestamp: Time.zone.local(2024, 3, 15, 12, i).to_i) }
+        stat.enable_sharing!(expiration: term)
+
+        expect_public_month(stat.sharing_uuid)
+
+        travel duration - 1.second
+        expect_public_month(stat.sharing_uuid)
+
+        travel 2.seconds
+        get shared_stat_path(stat.sharing_uuid)
+        expect(response).to redirect_to(root_path)
+        expect(flash[:alert]).to eq('Shared stats not found or no longer available')
+        get '/api/v1/maps/hexagons', params: { uuid: stat.sharing_uuid }
+        expect(response).to have_http_status(:not_found)
+        expect(response.parsed_body).to eq(not_found)
+        get '/api/v1/maps/hexagons/bounds', params: { uuid: stat.sharing_uuid }
+        expect(response).to have_http_status(:not_found)
+        expect(response.parsed_body).to eq(not_found)
+      end
+    end
+  end
+
   context 'public sharing' do
     let(:user) { create(:user) }
     let(:stat) { create(:stat, :with_sharing_enabled, user:, year: 2024, month: 6) }

@@ -281,10 +281,10 @@ RSpec.describe Tracks::ParallelGenerator do
         generator.send(:enqueue_chunk_jobs, session_id, chunks)
 
         expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
-          user.id, session_id, chunks[0].merge(untracked_only: false)
+          user.id, session_id, chunks[0].merge(untracked_only: false, import_id: nil)
         )
         expect(Tracks::TimeChunkProcessorJob).to have_been_enqueued.with(
-          user.id, session_id, chunks[1].merge(untracked_only: false)
+          user.id, session_id, chunks[1].merge(untracked_only: false, import_id: nil)
         )
       end
     end

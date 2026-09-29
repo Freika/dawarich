@@ -61,7 +61,7 @@ class Users::ImportData::Imports
   end
 
   def prepare_import_attributes(import_data)
-    import_data.except(
+    attributes = import_data.except(
       'file_name',
       'original_filename',
       'file_size',
@@ -69,6 +69,13 @@ class Users::ImportData::Imports
       'file_error',
       'updated_at'
     ).merge(user: user)
+    attributes['status'] = 'failed' if attributes['status'].to_s == 'processing'
+    attributes['additional_data_extraction_status'] = 'not_attempted' if in_flight_extraction?(attributes)
+    attributes
+  end
+
+  def in_flight_extraction?(attributes)
+    %w[pending running].include?(attributes['additional_data_extraction_status'].to_s)
   end
 
   def restore_import_file(import_record, import_data)

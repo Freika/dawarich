@@ -706,9 +706,9 @@ export class SettingsController {
   /**
    * Reset settings to defaults
    */
-  resetSettings() {
+  async resetSettings() {
     if (confirm(translate("settings.confirm_reset"))) {
-      SettingsManager.resetToDefaults()
+      await SettingsManager.resetToDefaults()
       window.location.reload()
     }
   }

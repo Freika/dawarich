@@ -16,7 +16,9 @@
       "!!app/assets/stylesheets/maplibre-gl.css",
       "!!public/maplibre/**",
       "!!app/javascript/posthog.js",
-      "!!spec/fixtures/files/**"
+      "!!spec/fixtures/files/**",
+      "!!app-phoenix/test/fixtures/**",
+      "!!db/release_migrations.json"
     ]
   },
   "formatter": {
