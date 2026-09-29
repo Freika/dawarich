@@ -2,38 +2,52 @@
 
 module AirTrail
   class ImportFlights
+    def self.recalculate_stats(user_id, months)
+      months.each { |year, month| Stats::CalculatingJob.perform_later(user_id, year, month) }
+    end
+
+    def self.months_for(pairs, zone)
+      pairs.filter_map do |flight_date, departure_time|
+        local_date = flight_date || departure_time&.in_time_zone(zone)&.to_date
+        [local_date.year, local_date.month] if local_date
+      end.uniq
+    end
+
     def initialize(user)
       @user = user
       @settings = user.safe_settings
     end
 
     def call
-      url = @settings.airtrail_url
-      api_key = @settings.airtrail_api_key
-      return { skipped: true } if url.blank? || api_key.blank?
+      payload = fetch
+      return { skipped: true } if payload.nil?
 
-      payload = AirTrail::Client.new(
-        url, api_key, skip_ssl_verification: @settings.airtrail_skip_ssl_verification
-      ).flights
+      result = JobOwnership.with_owner(ImportCommands::AIRTRAIL_FLIGHTS_KEY) { store(payload) }
+      return result if result == :not_owner
 
-      months_before_sync = affected_months
-      counts = upsert(payload)
-      record_synced_at
-      recalculate_stats(months_before_sync | affected_months)
-      counts
+      self.class.recalculate_stats(@user.id, result.delete(:months))
+      result
+    end
+
+    def affected_months
+      self.class.months_for(@user.flights.pluck(:flight_date, :departure_time), @user.timezone_iana)
     end
 
     private
 
-    def affected_months
-      @user.flights.pluck(:flight_date, :departure_time).filter_map do |flight_date, departure_time|
-        local_date = flight_date || departure_time&.in_time_zone(@user.timezone_iana)&.to_date
-        [local_date.year, local_date.month] if local_date
-      end.uniq
+    def fetch
+      url = @settings.airtrail_url
+      api_key = @settings.airtrail_api_key
+      return if url.blank? || api_key.blank?
+
+      AirTrail::Client.new(url, api_key, skip_ssl_verification: @settings.airtrail_skip_ssl_verification).flights
     end
 
-    def recalculate_stats(months)
-      months.each { |year, month| Stats::CalculatingJob.perform_later(@user.id, year, month) }
+    def store(payload)
+      months_before_sync = affected_months
+      counts = upsert(payload)
+      record_synced_at
+      counts.merge(months: months_before_sync | affected_months)
     end
 
     def upsert(payload)

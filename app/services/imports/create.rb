@@ -129,7 +129,7 @@ class Imports::Create
   end
 
   def update_import_points_count(import)
-    Import::UpdatePointsCountJob.perform_later(import.id)
+    ImportCommands.update_points_count(import.id, producer: self.class.name)
   end
 
   def notify_if_all_skipped(import)
