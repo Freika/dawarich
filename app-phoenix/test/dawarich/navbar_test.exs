@@ -173,8 +173,8 @@ defmodule Dawarich.NavbarTest do
     refute Navbar.load(non_member, now: @now, self_hosted: true).family.sharing
   end
 
-  test "trial days fall back to UTC when neither zone is one Postgres lists" do
-    System.put_env("TIME_ZONE", "Berlin")
+  test "trial days fall back to UTC when neither zone is one Postgres lists or a known alias" do
+    System.put_env("TIME_ZONE", "Nowhere/Colony")
 
     user =
       user(4436, %{
@@ -186,7 +186,20 @@ defmodule Dawarich.NavbarTest do
     assert Navbar.load(user, now: @now, self_hosted: false).subscription.days == 1
   end
 
-  test "trial days are counted in the user's zone, and a name Postgres does not know falls back" do
+  test "TIME_ZONE given as a Rails alias resolves through to_iana before the Postgres lookup" do
+    System.put_env("TIME_ZONE", "Berlin")
+
+    user =
+      user(4437, %{
+        status: 2,
+        active_until: ~N[2026-09-27 23:30:00],
+        settings: %{"timezone" => "Mars/Base"}
+      })
+
+    assert Navbar.load(user, now: @now, self_hosted: false).subscription.days == 2
+  end
+
+  test "trial days are counted in the user's zone, a Rails alias resolves, and an unknown name falls back" do
     until = ~N[2026-09-27 05:00:00]
     utc = user(4430, %{status: 2, active_until: until})
 
@@ -197,12 +210,16 @@ defmodule Dawarich.NavbarTest do
         settings: %{"timezone" => "Pacific/Kiritimati"}
       })
 
-    rails_name =
-      user(4432, %{status: 2, active_until: until, settings: %{"timezone" => "Berlin"}})
+    unknown_zone =
+      user(4432, %{status: 2, active_until: until, settings: %{"timezone" => "Mars/Colony"}})
+
+    rails_alias =
+      user(4438, %{status: 2, active_until: until, settings: %{"timezone" => "Berlin"}})
 
     assert Navbar.load(utc, now: @now, self_hosted: false).subscription.days == 0
     assert Navbar.load(east, now: @now, self_hosted: false).subscription.days == 0
-    assert Navbar.load(rails_name, now: @now, self_hosted: false).subscription.days == 0
+    assert Navbar.load(unknown_zone, now: @now, self_hosted: false).subscription.days == 0
+    assert Navbar.load(rails_alias, now: @now, self_hosted: false).subscription.days == 1
     assert Navbar.load(utc, now: @now, self_hosted: true).subscription == nil
 
     assert Navbar.load(user(4433, %{status: 2, active_until: until, subscription_source: 1}),

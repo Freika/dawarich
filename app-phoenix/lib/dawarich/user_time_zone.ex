@@ -13,7 +13,11 @@ defmodule Dawarich.UserTimeZone do
         (SELECT name FROM pg_timezone_names WHERE name = $#{n + 2}),
         'UTC') AS name)
       """ <> sql,
-      params ++ [zone(settings), System.get_env("TIME_ZONE", "Europe/Berlin")]
+      params ++
+        [
+          Dawarich.TimeZoneName.to_iana(zone(settings)),
+          Dawarich.TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
+        ]
     )
   end
 

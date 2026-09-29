@@ -34,7 +34,9 @@ window.addEventListener("dawarich:flash-timeout", (event) => {
 
 window.setTimeout(() => {
   if (joined()) return
-  for (const button of document.querySelectorAll("[data-removals-timeout-value='5000'] button")) {
+  for (const button of document.querySelectorAll(
+    "[data-removals-timeout-value='5000'] button",
+  )) {
     button.click()
   }
 }, 5000)
@@ -65,7 +67,11 @@ const submitMethodLink = (link, method) => {
   if (link.target) form.target = link.target
   form.style.display = "none"
   field("_method", method)
-  if (param && token && new URL(link.href, window.location.href).origin === window.location.origin) {
+  if (
+    param &&
+    token &&
+    new URL(link.href, window.location.href).origin === window.location.origin
+  ) {
     field(param, token)
   }
   const submit = document.createElement("input")
@@ -82,9 +88,14 @@ document.addEventListener(
     if (!link) return
     const message = confirmMessage(link)
     if (message !== null && !window.confirm(message)) return stop(event)
-    if (link.hasAttribute("phx-click") && joined()) return event.preventDefault()
+    if (link.hasAttribute("phx-click") && joined())
+      return event.preventDefault()
     stop(event)
-    submitMethodLink(link, link.getAttribute("data-turbo-method") || link.getAttribute("data-method"))
+    submitMethodLink(
+      link,
+      link.getAttribute("data-turbo-method") ||
+        link.getAttribute("data-method"),
+    )
   },
   true,
 )
@@ -92,9 +103,28 @@ document.addEventListener(
 document.addEventListener(
   "submit",
   (event) => {
-    const message = confirmMessage(event.submitter) ?? confirmMessage(event.target)
+    const message =
+      confirmMessage(event.submitter) ?? confirmMessage(event.target)
     if (message !== null && !window.confirm(message)) return stop(event)
-    if (event.target.hasAttribute?.("phx-submit") && !joined()) event.stopImmediatePropagation()
+    if (event.target.hasAttribute?.("phx-submit") && !joined())
+      event.stopImmediatePropagation()
   },
   true,
 )
+
+const dismissibleKey = (el) => `dismissed:${el.dataset.dismissibleKeyValue}`
+
+for (const el of document.querySelectorAll("[data-dismissible-key-value]")) {
+  try {
+    if (localStorage.getItem(dismissibleKey(el)) === "1") el.remove()
+  } catch (_e) {}
+}
+
+document.addEventListener("click", (event) => {
+  const el = event.target.closest?.("[data-dismissible-key-value]")
+  if (!el || !event.target.closest?.("button")) return
+  try {
+    localStorage.setItem(dismissibleKey(el), "1")
+  } catch (_e) {}
+  el.remove()
+})

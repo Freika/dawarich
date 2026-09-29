@@ -56,6 +56,8 @@ done
 docker exec a0_app ps -o comm= -p 1 | grep -q beam || fail "PID 1 is not the BEAM"
 docker exec a0_app ps -eo args | grep -qE '^puma|bin/rails server' || fail "puma not running"
 [ "$(docker exec a0_app dawarich rpc 'IO.puts(Oban.config().prefix)')" = "oban" ] || fail "rpc failed"
+[ "$(docker exec a0_app dawarich rpc 'IO.puts(Dawarich.HtmlSanitizer.sanitize("<b>x</b><script>y</script>"))')" = "<b>x</b>y" ] \
+  || fail "the image's lazy_html NIF cannot sanitize HTML"
 curl -fsS "http://127.0.0.1:$DAWARICH_APP_PORT/api/v1/health" | grep -q '"status"' || fail "health failed"
 docker exec a0_db psql -U postgres -d dawarich_development -Atc \
   "SELECT string_agg(nspname, ',' ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('oban','phoenix')" \

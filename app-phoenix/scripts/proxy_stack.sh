@@ -72,7 +72,9 @@ stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$P
   sh -c 'echo $$ >"$1"; exec nohup "$2" start' _ "$pidfile" "$rel" >>"$log" 2>&1 &
 
 tries=0
-until [ "$(curl -s -o /dev/null -w '%{http_code}' -m 5 "http://127.0.0.1:$PORT/users/sign_in")" = 200 ]; do
+until [ "$(curl -s -o /dev/null -w '%{http_code}' -m 5 \
+  -H "Host: ${PROXY_READY_HOST:-127.0.0.1:$PORT}" -H "X-Forwarded-Proto: ${APPLICATION_PROTOCOL:-http}" \
+  "http://127.0.0.1:$PORT/users/sign_in")" = 200 ]; do
   tries=$((tries + 1))
   [ "$tries" -lt 60 ] || { tail -40 "$log" >&2; exit 1; }
   sleep 3

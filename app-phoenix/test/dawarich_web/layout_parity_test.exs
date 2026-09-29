@@ -35,7 +35,7 @@ defmodule DawarichWeb.LayoutParityTest do
     assert ParityHTML.normalize(auth_one) == ParityHTML.normalize(auth_two)
   end
 
-  test "the app layout renders without preloaded navbar data or base_url" do
+  test "the app layout renders the real navbar for a nil user without preloaded navbar data or base_url" do
     html =
       render_component(&DawarichWeb.Layouts.app/1,
         current_user: nil,
@@ -51,7 +51,25 @@ defmodule DawarichWeb.LayoutParityTest do
         inner_content: ""
       )
 
-    assert html =~ "navbar"
+    assert html =~ ~s(id="version-indicator")
+  end
+
+  test "the app layout never queries the navbar inline for a signed-in user" do
+    assert_raise RuntimeError, ~r/was not preloaded/, fn ->
+      render_component(&DawarichWeb.Layouts.app/1,
+        current_user: %{id: 1},
+        locale: "en",
+        suggested_locale: nil,
+        self_hosted: true,
+        flash: %{},
+        flash_messages: [],
+        now: ~U[2026-09-26 12:00:00Z],
+        request_path: "/notifications",
+        query_params: %{},
+        rails_csrf_token: nil,
+        inner_content: ""
+      )
+    end
   end
 
   test "self_hosted_dark_en renders the changelog prompt" do
@@ -98,6 +116,25 @@ defmodule DawarichWeb.LayoutParityTest do
              |> LazyHTML.query("html")
              |> LazyHTML.attribute("data-self-hosted") == [meta["html"]["data-self-hosted"]]
     end
+  end
+
+  test "the locale suggestion banner carries a dismissible key matching Rails' localStorage format" do
+    html =
+      render_component(&DawarichWeb.Layouts.app/1,
+        current_user: nil,
+        locale: "en",
+        suggested_locale: "de",
+        self_hosted: true,
+        flash: %{},
+        flash_messages: [],
+        now: ~U[2026-09-26 12:00:00Z],
+        request_path: "/notifications",
+        query_params: %{},
+        rails_csrf_token: nil,
+        inner_content: ""
+      )
+
+    assert html =~ ~s(data-dismissible-key-value="locale_suggestion_de")
   end
 
   for {name, lang} <- [{"signed_out_en", "en"}, {"navbar_signed_out_de", "de"}] do
