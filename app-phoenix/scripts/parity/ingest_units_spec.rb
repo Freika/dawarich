@@ -235,6 +235,26 @@ RSpec.describe 'Phoenix fixture: ingestion building blocks as Rails computes the
 
   def munged(input) = ActionDispatch::Request::Utils.normalize_encode_params(input.deep_dup)
 
+  def exact_json(value, depth = 0)
+    pad = '  ' * (depth + 1)
+    case value
+    when Hash
+      return '{}' if value.empty?
+
+      entries = value.map { |k, v| "#{pad}#{Oj.dump(k.to_s, mode: :strict)}: #{exact_json(v, depth + 1)}" }
+      "{\n#{entries.join(",\n")}\n#{'  ' * depth}}"
+    when Array
+      return '[]' if value.empty?
+
+      entries = value.map { |v| "#{pad}#{exact_json(v, depth + 1)}" }
+      "[\n#{entries.join(",\n")}\n#{'  ' * depth}]"
+    when Float
+      value.to_s
+    else
+      Oj.dump(value, mode: :strict)
+    end
+  end
+
   def params_case(endpoint, own, input, filters, &build)
     permitted = ActionController::Parameters.new(munged(input)).permit(*filters)
     { 'endpoint' => endpoint, 'own' => own, 'input' => input, 'permit' => run { permitted },
@@ -350,6 +370,6 @@ RSpec.describe 'Phoenix fixture: ingestion building blocks as Rails computes the
 
     path = Rails.root.join('app-phoenix/test/fixtures/ingest/units.json')
     FileUtils.mkdir_p(path.dirname)
-    File.write(path, "#{JSON.pretty_generate(fixture)}\n")
+    File.write(path, "#{exact_json(fixture)}\n")
   end
 end
