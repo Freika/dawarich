@@ -27,7 +27,7 @@ defmodule Dawarich.AppVersion.CheckWorker do
       {String.to_charlist(url),
        [{~c"user-agent", ~c"Dawarich"}, {~c"accept", ~c"application/json"}]}
 
-    options = [connect_timeout: 5_000, timeout: 5_000, ssl: Dawarich.Http.ssl_options(url)]
+    options = [connect_timeout: 5_000, timeout: 5_000, ssl: Dawarich.Http.ssl_options()]
 
     with {:ok, {{_, status, _}, _headers, body}} when status in 200..299 <-
            :httpc.request(:get, request, options, body_format: :binary),
