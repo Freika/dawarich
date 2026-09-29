@@ -58,8 +58,8 @@ defmodule Dawarich.Ingest.Ruby do
             digits(int) <> "." <> digits(frac) <> "e" <> digits(exp)
         )
 
-      _none ->
-        Decimal.new(0)
+      [sign, _int, _frac, _exp] ->
+        Decimal.new(if(sign == "-", do: "-0", else: "0"))
     end
   end
 

@@ -8,7 +8,10 @@ defmodule Dawarich.Ingest.RubyTest do
   test "String#to_i and String#to_d match Ruby on the oracle's strings" do
     for %{"input" => input, "to_i" => to_i, "to_d" => to_d} <- @units["strings"] do
       assert Ruby.to_i(input) == to_i, inspect(input)
-      assert Decimal.equal?(Ruby.to_d(input), Decimal.new(to_d)), inspect(input)
+
+      result = Ruby.to_d(input)
+      expected = Decimal.new(to_d)
+      assert Decimal.equal?(result, expected) and result.sign == expected.sign, inspect(input)
     end
   end
 
