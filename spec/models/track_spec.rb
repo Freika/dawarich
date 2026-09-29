@@ -3,6 +3,11 @@
 require 'rails_helper'
 
 RSpec.describe Track, type: :model do
+  it 'broadcast helpers are public' do
+    expect(described_class.new).to respond_to(:broadcast_track_update)
+    expect(described_class).to respond_to(:broadcast_destroyed)
+  end
+
   describe 'associations' do
     it { is_expected.to belong_to(:user) }
     it { is_expected.to have_many(:points).dependent(:nullify) }
@@ -368,7 +373,7 @@ RSpec.describe Track, type: :model do
         create(:track_segment, track: track, transportation_mode: :unknown,
                                distance: 200, duration: 60)
         create(:track_segment, track: track, transportation_mode: :driving,
-                               distance: 60,  duration: 30)
+                               distance: 60, duration: 30)
       end
 
       it 'prefers the real moving mode over unknown' do

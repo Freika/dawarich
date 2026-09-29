@@ -37,6 +37,42 @@ module JobCommands
       version: 1,
       sidekiq: ->(payload, _at) { Areas::RelabelVisitsJob.perform_later(payload['area_id']) }
     },
+    'tracks.generate_range' => {
+      version: 1,
+      sidekiq: lambda { |payload, at|
+        JobCommands.enqueue_after_commit(nil) do
+          Tracks::ParallelGeneratorJob.set(wait_until: at)
+                                      .perform_later(payload.fetch('user_id'),
+                                                     **Tracks::GenerationCommand.job_options(payload))
+        end
+      }
+    },
+    'tracks.generate_realtime' => {
+      version: 1,
+      sidekiq: lambda { |payload, at|
+        JobCommands.enqueue_after_commit(nil) do
+          Tracks::RealtimeGenerationJob.set(wait_until: at).perform_later(payload.fetch('user_id'))
+        end
+      }
+    },
+    'tracks.recalculate' => {
+      version: 1,
+      sidekiq: lambda { |payload, at|
+        JobCommands.enqueue_after_commit(nil) do
+          Tracks::RecalculateJob.set(wait_until: at).perform_later(payload.fetch('track_id'))
+        end
+      }
+    },
+    'transportation.reclassify_track' => {
+      version: 1,
+      sidekiq: lambda { |payload, at|
+        JobCommands.enqueue_after_commit(nil) do
+          TransportationModes::ReclassifyTrackJob.set(wait_until: at).perform_later(
+            payload.fetch('track_id'), report_progress: payload.fetch('report_progress'), user_id: payload['user_id']
+          )
+        end
+      }
+    },
     'exports.points' => {
       version: 1,
       sidekiq: lambda { |payload, _at|

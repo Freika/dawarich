@@ -19,8 +19,9 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
 
     context 'with a specific year' do
       let(:year) { 2024 }
+      let(:job) { described_class.new(user.id, year: year) }
 
-      subject { described_class.perform_now(user.id, year: year) }
+      subject { job.perform_now }
 
       before do
         allow(user).to receive(:years_tracked).and_return([{ year: 2023, months: %w[Jan Feb] },
@@ -43,7 +44,8 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
           user,
           start_at: Time.use_zone('UTC') { Time.zone.local(year, 1, 1).beginning_of_day },
           end_at: Time.use_zone('UTC') { Time.zone.local(year, 12, 31).end_of_day },
-          mode: :bulk
+          mode: :bulk,
+          event_id: Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "tracks.generate_range:#{job.job_id}:#{year}")
         )
       end
 
@@ -62,7 +64,9 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
     end
 
     context 'without a specific year (all time)' do
-      subject { described_class.perform_now(user.id) }
+      let(:job) { described_class.new(user.id) }
+
+      subject { job.perform_now }
 
       before do
         allow_any_instance_of(User).to receive(:years_tracked).and_return([
@@ -90,9 +94,23 @@ RSpec.describe Users::RecalculateDataJob, type: :job do
             user,
             start_at: Time.use_zone('UTC') { Time.zone.local(y, 1, 1).beginning_of_day },
             end_at: Time.use_zone('UTC') { Time.zone.local(y, 12, 31).end_of_day },
-            mode: :bulk
+            mode: :bulk,
+            event_id: Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "tracks.generate_range:#{job.job_id}:#{y}")
           )
         end
+      end
+
+      it 'Oban-owned tracks step forwards one command per year with distinct stable ids' do
+        job_owner!(Tracks::GenerationCommand::OWNER_KEY, :oban)
+        allow_any_instance_of(Tracks::ParallelGenerator).to receive(:call).and_call_original
+
+        subject
+
+        expected_ids = [2023, 2024].map do |y|
+          Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "tracks.generate_range:#{job.job_id}:#{y}")
+        end
+        expect(JobOutbox.pluck(:event_id)).to match_array(expected_ids)
+        expect(JobOutbox.pluck(:command_type)).to all(eq('tracks.generate_range'))
       end
 
       it 'recalculates digests for all tracked years' do

@@ -70,6 +70,19 @@ RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
           newest_point.timestamp - described_class::SLICE.to_i
         )
       end
+
+      it 'Oban-owned slice forwards with low priority and still advances the cursor' do
+        job_owner!(Tracks::GenerationCommand::OWNER_KEY, :oban)
+        job = described_class.new(user.id, nil)
+
+        job.perform_now
+
+        payload = JobOutbox.sole.payload
+        expect(payload).to include('low_priority' => true, 'untracked_only' => true)
+        expect(JobOutbox.sole.event_id).to eq(job.job_id)
+        next_cursor = newest_point.timestamp - described_class::SLICE.to_i
+        expect(described_class).to have_been_enqueued.with(user.id, next_cursor)
+      end
     end
 
     context 'when history has a gap below the cursor' do

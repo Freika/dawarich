@@ -64,6 +64,54 @@ RSpec.describe JobCommands do
     expect(versions).to eq('achievements.check' => 1, 'areas.relabel_visits' => 1)
   end
 
+  it 'each wave-5 lambda enqueues today’s job with its delay' do
+    user = create(:user)
+    track = create(:track, user: user)
+    at = Time.zone.parse('2026-03-29 12:34:56 UTC')
+    range_payload = Tracks::GenerationCommand.payload(user.id, start_at: at, end_at: at + 1.hour, mode: :daily,
+                                                               untracked_only: false, import_id: nil, job_queue: nil)
+
+    described_class::COMMANDS.fetch('tracks.generate_range').fetch(:sidekiq).call(range_payload, at)
+    described_class::COMMANDS.fetch('tracks.generate_realtime').fetch(:sidekiq).call({ 'user_id' => user.id }, at)
+    described_class::COMMANDS.fetch('tracks.recalculate').fetch(:sidekiq).call({ 'track_id' => track.id }, at)
+    described_class::COMMANDS.fetch('transportation.reclassify_track').fetch(:sidekiq).call(
+      { 'track_id' => track.id, 'report_progress' => true, 'user_id' => user.id }, at
+    )
+
+    expect(Tracks::ParallelGeneratorJob).to have_been_enqueued.with(user.id, hash_including(mode: :daily)).at(at)
+    expect(Tracks::RealtimeGenerationJob).to have_been_enqueued.with(user.id).at(at)
+    expect(Tracks::RecalculateJob).to have_been_enqueued.with(track.id).at(at)
+    expect(TransportationModes::ReclassifyTrackJob).to have_been_enqueued
+      .with(track.id, report_progress: true, user_id: user.id).at(at)
+  end
+
+  it 'rehome moves pending wave-5 rows to their jobs' do
+    user = create(:user)
+    track = create(:track, user: user)
+    at = Time.zone.parse('2026-03-29 12:34:56 UTC')
+    range_payload = Tracks::GenerationCommand.payload(user.id, start_at: at, end_at: at + 1.hour, mode: :daily,
+                                                               untracked_only: false, import_id: nil, job_queue: nil)
+    payloads = {
+      'tracks.generate_range' => [range_payload, user.id],
+      'tracks.generate_realtime' => [{ 'user_id' => user.id }, user.id],
+      'tracks.recalculate' => [{ 'track_id' => track.id }, track.id],
+      'transportation.reclassify_track' => [
+        { 'track_id' => track.id, 'report_progress' => true, 'user_id' => user.id }, track.id
+      ]
+    }
+
+    payloads.each do |type, (payload, aggregate_id)|
+      job_owner!("command:#{type}", :oban)
+      described_class.forward(type, payload, event_id: SecureRandom.uuid, aggregate_id:, producer: 'spec',
+                              scheduled_at: at)
+      expect(described_class.rehome!(type, by: 'spec')).to eq({ moved: 1, left: 0 })
+    end
+
+    expect(JobOutbox.pending).to be_empty
+    expect(enqueued_jobs.map { _1[:job] }).to include(Tracks::ParallelGeneratorJob, Tracks::RealtimeGenerationJob,
+                                                      Tracks::RecalculateJob, TransportationModes::ReclassifyTrackJob)
+  end
+
   it 're-homes pending achievement and relabel commands to their Sidekiq jobs' do
     user = create(:user)
     area = create(:area, user: user)

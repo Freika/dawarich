@@ -33,7 +33,7 @@ RSpec.describe Tracks::ParallelGeneratorJob do
       it 'calls Tracks::ParallelGenerator with correct parameters' do
         expect(Tracks::ParallelGenerator).to receive(:new)
           .with(user, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day, untracked_only: false,
-                import_id: nil)
+                import_id: nil, job_queue: nil, event_id: job.job_id)
           .and_call_original
 
         job.perform(user_id)
@@ -47,10 +47,21 @@ RSpec.describe Tracks::ParallelGeneratorJob do
 
         expect(Tracks::ParallelGenerator).to receive(:new)
           .with(user, start_at: start_at, end_at: end_at, mode: mode, chunk_size: chunk_size, untracked_only: false,
-                import_id: nil)
+                import_id: nil, job_queue: nil, event_id: job.job_id)
           .and_call_original
 
         job.perform(user_id, start_at: start_at, end_at: end_at, mode: mode, chunk_size: chunk_size)
+      end
+
+      it 'a retry forwards the same event once' do
+        job_owner!(Tracks::GenerationCommand::OWNER_KEY, :oban)
+        event_id = SecureRandom.uuid
+        retrying_job = described_class.new(user_id)
+        allow(retrying_job).to receive(:job_id).and_return(event_id)
+
+        2.times { retrying_job.perform_now }
+
+        expect(JobOutbox.all).to contain_exactly(have_attributes(event_id:, command_type: 'tracks.generate_range'))
       end
     end
 
@@ -122,7 +133,7 @@ RSpec.describe Tracks::ParallelGeneratorJob do
       it 'handles bulk mode' do
         expect(Tracks::ParallelGenerator).to receive(:new)
           .with(user, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day, untracked_only: false,
-                import_id: nil)
+                import_id: nil, job_queue: nil, event_id: job.job_id)
           .and_call_original
 
         job.perform(user_id, mode: :bulk)
@@ -131,7 +142,7 @@ RSpec.describe Tracks::ParallelGeneratorJob do
       it 'handles incremental mode' do
         expect(Tracks::ParallelGenerator).to receive(:new)
           .with(user, start_at: nil, end_at: nil, mode: :incremental, chunk_size: 1.day, untracked_only: false,
-                import_id: nil)
+                import_id: nil, job_queue: nil, event_id: job.job_id)
           .and_call_original
 
         job.perform(user_id, mode: :incremental)
@@ -141,7 +152,7 @@ RSpec.describe Tracks::ParallelGeneratorJob do
         start_at = Date.current
         expect(Tracks::ParallelGenerator).to receive(:new)
           .with(user, start_at: start_at, end_at: nil, mode: :daily, chunk_size: 1.day, untracked_only: false,
-                import_id: nil)
+                import_id: nil, job_queue: nil, event_id: job.job_id)
           .and_call_original
 
         job.perform(user_id, start_at: start_at, mode: :daily)
@@ -156,7 +167,7 @@ RSpec.describe Tracks::ParallelGeneratorJob do
       it 'passes time range to generator' do
         expect(Tracks::ParallelGenerator).to receive(:new)
           .with(user, start_at: start_at, end_at: end_at, mode: :bulk, chunk_size: 1.day, untracked_only: false,
-                import_id: nil)
+                import_id: nil, job_queue: nil, event_id: job.job_id)
           .and_call_original
 
         job.perform(user_id, start_at: start_at, end_at: end_at)
@@ -170,7 +181,7 @@ RSpec.describe Tracks::ParallelGeneratorJob do
       it 'passes chunk size to generator' do
         expect(Tracks::ParallelGenerator).to receive(:new)
           .with(user, start_at: nil, end_at: nil, mode: :bulk, chunk_size: chunk_size, untracked_only: false,
-                import_id: nil)
+                import_id: nil, job_queue: nil, event_id: job.job_id)
           .and_call_original
 
         job.perform(user_id, chunk_size: chunk_size)
