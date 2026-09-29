@@ -53,33 +53,45 @@ defmodule Dawarich.Tracks.DailyWorker do
     Ecto.UUID.load!(<<a::48, 5::4, b::12, 2::2, c::62>>)
   end
 
-  def run(repo, oban, slot), do: sweep(repo, oban, slot, 0)
+  def run(repo, oban, slot, opts \\ []), do: sweep(repo, oban, slot, opts, 0)
 
-  defp sweep(repo, oban, slot, after_id) do
-    case Ownership.with_owner(repo, @key, :oban, fn -> batch(repo, oban, slot, after_id) end) do
-      {:ok, {:next, last_id}} -> sweep(repo, oban, slot, last_id)
+  defp sweep(repo, oban, slot, opts, after_id) do
+    case Ownership.with_owner(repo, @key, :oban, fn ->
+           batch(repo, oban, slot, opts, after_id)
+         end) do
+      {:ok, {:next, last_id}} -> sweep(repo, oban, slot, opts, last_id)
       {:ok, :done} -> :ok
       {:skip, _owner} -> {:cancel, :not_owner}
+      {:error, reason} -> {:error, reason}
     end
   end
 
-  defp batch(repo, oban, slot, after_id) do
+  defp batch(repo, oban, slot, opts, after_id) do
     users = repo.query!(@batch, [after_id, slot], log: false).rows
-    Enum.each(users, &process_safely(repo, oban, slot, &1))
+    Enum.each(users, &process_safely(repo, oban, slot, opts, &1))
 
     if length(users) == @batch_size, do: {:next, users |> List.last() |> hd()}, else: :done
   end
 
-  defp process_safely(repo, oban, slot, [user_id | _] = row) do
-    {:ok, _} = repo.transaction(fn -> process(repo, oban, slot, row) end)
-  rescue
-    error ->
-      Logger.error(
-        "Failed to process daily tracks for user #{user_id}: #{Exception.message(error)}"
-      )
+  defp process_safely(repo, oban, slot, opts, [user_id | _] = row) do
+    repo.query!("SAVEPOINT daily_user", [], log: false)
+
+    try do
+      process(repo, oban, slot, opts, row)
+      Keyword.get(opts, :hook, fn _user_id -> :ok end).(user_id)
+      repo.query!("RELEASE SAVEPOINT daily_user", [], log: false)
+    rescue
+      error ->
+        repo.query!("ROLLBACK TO SAVEPOINT daily_user", [], log: false)
+        repo.query!("RELEASE SAVEPOINT daily_user", [], log: false)
+
+        Logger.error(
+          "Failed to process daily tracks for user #{user_id}: #{Exception.message(error)}"
+        )
+    end
   end
 
-  defp process(repo, oban, slot, [user_id, start_ts, has_tracks, timezone]) do
+  defp process(repo, oban, slot, opts, [user_id, start_ts, has_tracks, timezone]) do
     cond do
       not one!(repo, @due, [user_id, start_ts]) ->
         :skipped
@@ -88,12 +100,9 @@ defmodule Dawarich.Tracks.DailyWorker do
         RailsCommands.insert!(repo, "tracks_throttled_backfill", %{"user_id" => user_id})
 
       true ->
-        start(
-          repo,
-          oban,
-          payload(repo, user_id, start_ts, slot, timezone),
-          event_id(slot, user_id)
-        )
+        now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
+        payload = payload(repo, user_id, start_ts, now, timezone)
+        start(repo, oban, payload, event_id(slot, user_id))
     end
   end
 
@@ -109,11 +118,11 @@ defmodule Dawarich.Tracks.DailyWorker do
     end
   end
 
-  defp payload(repo, user_id, start_ts, slot, timezone) do
+  defp payload(repo, user_id, start_ts, now, timezone) do
     %{
       "user_id" => user_id,
-      "start_at" => iso(start_ts),
-      "end_at" => iso(slot),
+      "start_at" => start_ts |> DateTime.from_unix!() |> iso(),
+      "end_at" => iso(now),
       "time_zone" => one!(repo, @zone, [[timezone, System.get_env("TIME_ZONE"), "UTC"]]),
       "mode" => "daily",
       "untracked_only" => false,
@@ -122,8 +131,8 @@ defmodule Dawarich.Tracks.DailyWorker do
     }
   end
 
-  defp iso(epoch),
-    do: epoch |> DateTime.from_unix!() |> Map.put(:microsecond, {0, 6}) |> DateTime.to_iso8601()
+  defp iso(%DateTime{microsecond: {us, _precision}} = at),
+    do: DateTime.to_iso8601(%{at | microsecond: {us, 6}})
 
   defp one!(repo, sql, params) do
     [[value]] = repo.query!(sql, params, log: false).rows

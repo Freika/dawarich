@@ -36,41 +36,42 @@ defmodule Dawarich.Tracks.RangeWorker do
   @impl Oban.Worker
   def timeout(_job), do: :timer.minutes(30)
 
-  def run(repo, oban, %{"event_id" => id, "user_id" => user_id} = args, opts \\ []) do
-    cond do
-      Settings.find(repo, user_id) == nil -> :ok
-      Generation.exists?(repo, id) -> :ok
-      true -> generate(repo, oban, args, opts)
-    end
-  end
+  def run(repo, oban, %{"user_id" => user_id} = args, opts \\ []) do
+    hook = Keyword.get(opts, :hook, fn _stage -> :ok end)
 
-  defp generate(repo, oban, args, opts) do
-    start_at = parse(args["start_at"])
-    end_at = parse(args["end_at"])
+    if Settings.find(repo, user_id) do
+      hook.(:locking)
 
-    with :ok <- clean(repo, args, start_at, end_at, opts) do
-      case Chunker.chunks(repo, args["user_id"], start_at, end_at, args["time_zone"]) do
-        [] ->
-          :ok
-
-        chunks ->
-          Generation.start!(repo, oban, args, chunks, opts)
-          :ok
+      case PerUserLock.with_user_lock(
+             user_id,
+             fn -> generate(repo, oban, args, hook, opts) end,
+             Keyword.get(opts, :lock, [])
+           ) do
+        {:ok, :ok} -> :ok
+        {:error, :timeout} -> {:error, :lock_busy}
+        {:error, reason} -> {:error, reason}
       end
+    else
+      :ok
     end
   end
 
-  defp clean(repo, %{"untracked_only" => false, "user_id" => user_id}, start_at, end_at, opts) do
-    clean_range = fn -> Destroy.clean_range!(repo, user_id, unix(start_at), unix(end_at)) end
+  defp generate(repo, oban, %{"event_id" => id, "user_id" => user_id} = args, hook, opts) do
+    if Generation.exists?(repo, id) do
+      :ok
+    else
+      hook.(:checked)
+      start_at = parse(args["start_at"])
+      end_at = parse(args["end_at"])
+      chunks = Chunker.chunks(repo, user_id, start_at, end_at, args["time_zone"])
 
-    case PerUserLock.with_user_lock(user_id, clean_range, Keyword.get(opts, :lock, [])) do
-      {:ok, _destroyed} -> :ok
-      {:error, :timeout} -> {:error, :lock_busy}
-      {:error, reason} -> {:error, reason}
+      if args["untracked_only"] == false,
+        do: Destroy.clean_range!(repo, user_id, unix(start_at), unix(end_at))
+
+      if chunks != [], do: Generation.start!(repo, oban, args, chunks, opts)
+      :ok
     end
   end
-
-  defp clean(_repo, _args, _start_at, _end_at, _opts), do: :ok
 
   defp parse(nil), do: nil
 

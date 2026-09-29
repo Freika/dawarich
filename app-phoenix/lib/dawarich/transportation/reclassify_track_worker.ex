@@ -2,18 +2,12 @@ defmodule Dawarich.Transportation.ReclassifyTrackWorker do
   @moduledoc false
   use Oban.Worker, queue: :tracks, max_attempts: 2
 
+  alias Dawarich.Jobs.Processed
   alias Dawarich.RailsCommands
-  alias Dawarich.Tracks.Effects
+  alias Dawarich.Tracks.{Effects, Settings, Store}
   alias Dawarich.Transportation.Segments
 
-  @track "SELECT t.user_id, floor(extract(epoch FROM t.start_at))::bigint, floor(extract(epoch FROM t.end_at))::bigint FROM tracks t WHERE t.id = $1"
-
-  @settings "SELECT COALESCE(settings, '{}'::jsonb) FROM users WHERE id = $1 AND deleted_at IS NULL"
-
-  @guard """
-  INSERT INTO phoenix.processed_commands (event_id, handler, processed_at) VALUES ($1, 'transportation.reclassify_track', now())
-  ON CONFLICT (event_id) DO NOTHING RETURNING event_id
-  """
+  @handler "transportation.reclassify_track"
 
   def args_from_command(
         1,
@@ -34,7 +28,7 @@ defmodule Dawarich.Transportation.ReclassifyTrackWorker do
   def timeout(_job), do: :timer.minutes(10)
 
   def run(repo, _oban, %{"track_id" => track_id} = args, opts \\ []) do
-    track = track(repo, track_id)
+    track = Store.get(repo, track_id)
     report_user = args["user_id"] || (track && track.user_id)
     hook = Keyword.get(opts, :hook, fn _stage -> :ok end)
 
@@ -49,7 +43,7 @@ defmodule Dawarich.Transportation.ReclassifyTrackWorker do
     error ->
       if args["report_progress"] and
            Keyword.get(opts, :attempt, 1) >= Keyword.get(opts, :max_attempts, 2) do
-        user_id = args["user_id"] || (track(repo, track_id) || %{user_id: nil}).user_id
+        user_id = args["user_id"] || (Store.get(repo, track_id) || %{user_id: nil}).user_id
         {:ok, _} = repo.transaction(fn -> progress!(repo, user_id, args["event_id"]) end)
       end
 
@@ -57,11 +51,7 @@ defmodule Dawarich.Transportation.ReclassifyTrackWorker do
   end
 
   defp reclassify!(repo, track_id, track, hook) do
-    settings =
-      case repo.query!(@settings, [track.user_id], log: false).rows do
-        [[settings]] -> settings
-        [] -> %{}
-      end
+    settings = (Settings.find(repo, track.user_id) || %{settings: %{}}).settings
 
     Segments.reclassify!(repo, track_id, settings, fallback: false)
     Effects.write!(repo, track.user_id, %{stamps: [track.start_at, track.end_at]})
@@ -71,22 +61,11 @@ defmodule Dawarich.Transportation.ReclassifyTrackWorker do
   defp progress!(_repo, nil, _event_id), do: :ok
 
   defp progress!(repo, user_id, event_id) do
-    case repo.query!(@guard, [Ecto.UUID.dump!(event_id)], log: false).rows do
-      [_] ->
+    if Processed.claim!(repo, event_id, @handler),
+      do:
         RailsCommands.insert!(repo, "transport_progress", %{
           "user_id" => user_id,
           "event_id" => event_id
         })
-
-      [] ->
-        :ok
-    end
-  end
-
-  defp track(repo, track_id) do
-    case repo.query!(@track, [track_id], log: false).rows do
-      [[user_id, start_at, end_at]] -> %{user_id: user_id, start_at: start_at, end_at: end_at}
-      [] -> nil
-    end
   end
 end

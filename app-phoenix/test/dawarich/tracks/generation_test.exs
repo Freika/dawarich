@@ -154,4 +154,34 @@ defmodule Dawarich.Tracks.GenerationTest do
     assert [["failed" | _]] = generation(failed)
     assert [["completed", 1, 1, 0, 0, nil]] = generation(completed)
   end
+
+  test "chunk jobs are inserted in bounded batches" do
+    parent = self()
+    name = oban()
+    handler = "generation-insert-batches-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach(
+      handler,
+      [:oban, :engine, :insert_all_jobs, :start],
+      fn _event, _measurements, %{conf: conf, changesets: changesets}, _config ->
+        if conf.name == name, do: send(parent, {:insert_all, length(changesets)})
+      end,
+      nil
+    )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+
+    {:started, id} = start!(5, insert_batch: 2)
+
+    assert_received {:insert_all, 2}
+    assert_received {:insert_all, 2}
+    assert_received {:insert_all, 1}
+    refute_received {:insert_all, _}
+
+    assert rows(
+             "SELECT count(*) FROM oban.oban_jobs WHERE worker = 'Dawarich.Tracks.ChunkWorker' " <>
+               "AND args->>'generation_id' = $1",
+             [id]
+           ) == [[5]]
+  end
 end

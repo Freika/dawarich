@@ -12,18 +12,24 @@ defmodule Dawarich.Tracks.BoundaryWorker do
   def backoff(%Oban.Job{attempt: attempt}), do: Integer.pow(attempt, 4) + 2
 
   @impl Oban.Worker
+  def timeout(%Oban.Job{attempt: attempt, max_attempts: max_attempts})
+      when attempt >= max_attempts,
+      do: :infinity
+
   def timeout(_job), do: :timer.minutes(30)
 
   def run(repo, oban, %{"generation_id" => id, "poll_count" => poll_count}, opts \\ []) do
-    case Generation.get(repo, id) do
-      %{status: "running", completed_chunks: done, total_chunks: total} = generation
-      when done < total ->
+    generation = Generation.get(repo, id)
+    Keyword.get(opts, :hook, fn _stage -> :ok end).(:loaded)
+
+    case generation do
+      %{status: "running", completed_chunks: done, total_chunks: total} when done < total ->
         case Generation.poll!(repo, oban, generation, poll_count) do
           :missed -> finish_if_done(repo, id, opts)
           _outcome -> :ok
         end
 
-      %{status: "running"} = generation ->
+      %{status: "running"} ->
         finish(repo, generation, opts)
 
       _ ->
@@ -47,33 +53,33 @@ defmodule Dawarich.Tracks.BoundaryWorker do
   end
 
   defp finish(repo, generation, opts) do
-    with %{} = user <- Settings.find(repo, generation.user_id) do
-      resolve = fn ->
-        Boundary.resolve(repo, user)
-        MetadataRefresher.run(repo, user)
-      end
+    case Settings.find(repo, generation.user_id) do
+      nil ->
+        Generation.fail!(repo, generation.id, "User #{generation.user_id} not found")
+        :ok
 
-      case PerUserLock.with_user_lock(user.id, resolve, Keyword.get(opts, :lock, [])) do
-        {:ok, _refresh} ->
-          Generation.complete!(repo, generation.id)
-          :ok
+      user ->
+        resolve = fn ->
+          Boundary.resolve(repo, user)
+          MetadataRefresher.run(repo, user)
+        end
 
-        {:error, :timeout} ->
-          if final?(opts),
-            do:
-              Generation.fail!(
-                repo,
-                generation.id,
-                "Tracks::PerUserLock: could not acquire lock for user_id=#{user.id}"
-              )
+        case PerUserLock.with_user_lock(user.id, resolve, Keyword.get(opts, :lock, [])) do
+          {:ok, _refresh} ->
+            Generation.complete!(repo, generation.id)
+            :ok
 
-          {:error, :lock_busy}
+          {:error, reason} ->
+            if final?(opts),
+              do:
+                Generation.fail!(
+                  repo,
+                  generation.id,
+                  "Tracks::PerUserLock: could not acquire lock for user_id=#{user.id}"
+                )
 
-        {:error, reason} ->
-          {:error, reason}
-      end
-    else
-      nil -> :ok
+            {:error, if(reason == :timeout, do: :lock_busy, else: reason)}
+        end
     end
   end
 

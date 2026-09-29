@@ -51,6 +51,10 @@ defmodule Dawarich.Tracks.Destroy do
     rows
   end
 
+  def clean_range!(_repo, _user_id, start_ts, end_ts)
+      when is_integer(start_ts) and is_integer(end_ts) and start_ts > end_ts,
+      do: []
+
   def clean_range!(repo, user_id, start_ts, end_ts) do
     ids = repo.query!(@clean_sql, [user_id, start_ts, end_ts], log: false).rows |> List.flatten()
     destroy!(repo, user_id, ids)

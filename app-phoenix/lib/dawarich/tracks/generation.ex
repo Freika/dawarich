@@ -4,6 +4,7 @@ defmodule Dawarich.Tracks.Generation do
   alias Dawarich.Tracks.{BoundaryWorker, ChunkWorker}
 
   @stalled "Max retries (5) exceeded waiting for chunks to complete"
+  @insert_batch 1_000
 
   @exists "SELECT 1 FROM phoenix.track_generations WHERE id = $1"
 
@@ -87,15 +88,14 @@ defmodule Dawarich.Tracks.Generation do
           [_] ->
             rows(repo, @insert_chunks, [dump(id) | columns(chunks)])
 
-            Oban.insert_all(
-              oban,
-              Enum.map(
-                chunks,
-                &ChunkWorker.new(%{"generation_id" => id, "chunk_id" => &1.chunk_id},
-                  priority: priority
-                )
+            chunks
+            |> Enum.map(
+              &ChunkWorker.new(%{"generation_id" => id, "chunk_id" => &1.chunk_id},
+                priority: priority
               )
             )
+            |> Enum.chunk_every(Keyword.get(opts, :insert_batch, @insert_batch))
+            |> Enum.each(&Oban.insert_all(oban, &1))
 
             Oban.insert!(
               oban,

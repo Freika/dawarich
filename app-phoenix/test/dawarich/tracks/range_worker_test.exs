@@ -114,4 +114,64 @@ defmodule Dawarich.Tracks.RangeWorkerTest do
 
     assert RangeWorker.args_from_command(2, payload) == {:error, "unsupported_version"}
   end
+
+  test "an inverted range cleans nothing" do
+    user = user_with_points!()
+    track = track!(user.id, "late", @t - 600, @t + 120)
+
+    rows(
+      "INSERT INTO shared_links (name, resource_type, resource_id, user_id, created_at, updated_at) " <>
+        "VALUES ('trip', 1, $1, $2, now(), now())",
+      [track, user.id]
+    )
+
+    args = args(user, %{"start_at" => iso(@t + 121), "end_at" => iso(@t)})
+
+    assert RangeWorker.run(ScratchRepo, oban(), args) == :ok
+    assert track_ids() == [track]
+    assert rows("SELECT resource_id FROM shared_links") == [[track]]
+    assert tracks_changed() == []
+    assert rows("SELECT count(*) FROM phoenix.track_generations") == [[0]]
+  end
+
+  test "two runs of one event clean and start once" do
+    user = user_with_points!()
+    args = args(user)
+    parent = self()
+
+    first_hook = fn
+      :checked ->
+        send(parent, {:checked, :first, self()})
+        receive do: (:go -> :ok)
+
+      _stage ->
+        :ok
+    end
+
+    second_hook = fn
+      :locking -> send(parent, :second_locking)
+      :checked -> send(parent, {:checked, :second, self()})
+      _stage -> :ok
+    end
+
+    first = Task.async(fn -> RangeWorker.run(ScratchRepo, oban(), args, hook: first_hook) end)
+    assert_receive {:checked, :first, first_pid}, 5_000
+
+    second =
+      Task.async(fn ->
+        RangeWorker.run(ScratchRepo, oban(), args,
+          hook: second_hook,
+          lock: [timeout_ms: 10_000, poll_ms: 10]
+        )
+      end)
+
+    assert_receive :second_locking, 5_000
+    send(first_pid, :go)
+
+    assert Task.await(first, 10_000) == :ok
+    assert Task.await(second, 10_000) == :ok
+    refute_received {:checked, :second, _}
+    assert rows("SELECT count(*) FROM phoenix.track_generations") == [[1]]
+    assert length(chunk_jobs(args["event_id"])) == 1
+  end
 end

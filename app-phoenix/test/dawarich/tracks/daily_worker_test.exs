@@ -5,6 +5,7 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
   alias Dawarich.Tracks.{DailyWorker, RangeWorker}
 
   @slot 1_759_050_000
+  @now ~U[2025-09-28 09:05:00.123456Z]
   @cron_key "cron:daily_track_generation_job"
   @range_key "command:tracks.generate_range"
 
@@ -41,7 +42,7 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
     %{
       "user_id" => user_id,
       "start_at" => iso(start_ts),
-      "end_at" => iso(@slot),
+      "end_at" => "2025-09-28T09:05:00.123456Z",
       "time_zone" => zone,
       "mode" => "daily",
       "untracked_only" => false,
@@ -58,7 +59,12 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
   defp commands,
     do: rows("SELECT kind, payload FROM phoenix.rails_commands ORDER BY id")
 
-  defp run, do: DailyWorker.run(ScratchRepo, oban(), @slot)
+  defp run(opts \\ []), do: DailyWorker.run(ScratchRepo, oban(), @slot, [now: @now] ++ opts)
+
+  defp owned! do
+    :ok = Ownership.put!(ScratchRepo, @cron_key, :oban)
+    :ok = Ownership.put!(ScratchRepo, @range_key, :oban)
+  end
 
   test "event_id equals Rails' uuid_v5" do
     assert DailyWorker.event_id(1_759_050_000, 42) == "9aa38e8c-dd08-56d2-9de5-bc6a4e5dbab5"
@@ -99,10 +105,12 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
     assert rows("SELECT id FROM phoenix.track_generations ORDER BY user_id") ==
              Enum.map(expected, &[Ecto.UUID.dump!(&1["event_id"])])
 
+    assert rows("SELECT user_id, total_chunks FROM phoenix.track_generations ORDER BY user_id") ==
+             [[fresh, 1], [caught_up, 2]]
+
     assert rows(
              "SELECT count(*) FROM oban.oban_jobs WHERE worker = 'Dawarich.Tracks.ChunkWorker'"
-           ) ==
-             [[2]]
+           ) == [[3]]
   end
 
   test "a blocked history writes tracks_throttled_backfill" do
@@ -151,5 +159,45 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
              {rails_name, "UTC"},
              {iana, "Europe/Berlin"}
            ]
+  end
+
+  test "one user's SQL error rolls back only that user" do
+    owned!()
+
+    [first, failing, last] =
+      for _ <- 1..3, do: daily_user!() |> with_points!([@slot - 7_200, @slot - 7_140])
+
+    fail_one = fn
+      ^failing -> ScratchRepo.query!("SELECT 1 / 0", [], log: false)
+      _user_id -> :ok
+    end
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn -> assert run(hook: fail_one) == :ok end)
+
+    assert log =~ "Failed to process daily tracks for user #{failing}"
+    assert Enum.map(range_jobs(), & &1["user_id"]) == [first, last]
+  end
+
+  test "a user whose latest track ends after the slot keeps it" do
+    owned!()
+    user = daily_user!() |> with_points!([@slot + 200, @slot + 260])
+    track = track!(user, "realtime", @slot - 600, @slot + 120)
+
+    rows(
+      "INSERT INTO shared_links (name, resource_type, resource_id, user_id, created_at, updated_at) " <>
+        "VALUES ('trip', 1, $1, $2, now(), now())",
+      [track, user]
+    )
+
+    assert run() == :ok
+    assert [%{"start_at" => start_at, "end_at" => end_at} = args] = range_jobs()
+    assert {start_at, end_at} == {iso(@slot + 121), "2025-09-28T09:05:00.123456Z"}
+
+    assert RangeWorker.run(ScratchRepo, oban(), args) == :ok
+
+    assert rows("SELECT id FROM tracks") == [[track]]
+    assert rows("SELECT resource_id FROM shared_links") == [[track]]
+    assert [["running", 1, 0, 0, 0, nil]] = generation(args["event_id"])
   end
 end
