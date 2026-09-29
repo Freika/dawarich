@@ -300,9 +300,9 @@ defmodule DawarichWeb.NotificationsLiveTest do
       socket_session = conn |> get_session() |> Map.put("rails_user_id", user.id)
 
       assert {:ok, first} = join_reply(conn, socket_session, 0)
-      assert inspect(first) =~ "From Rails"
+      assert inspect(first, limit: :infinity) =~ "From Rails"
       assert {:ok, again} = join_reply(conn, socket_session, 1)
-      refute inspect(again) =~ "From Rails"
+      refute inspect(again, limit: :infinity) =~ "From Rails"
     end
 
     test "an event from an account locked since the page opened is not carried out", %{user: user} do
