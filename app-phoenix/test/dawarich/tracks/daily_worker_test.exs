@@ -70,6 +70,10 @@ defmodule Dawarich.Tracks.DailyWorkerTest do
     assert DailyWorker.event_id(1_759_050_000, 42) == "9aa38e8c-dd08-56d2-9de5-bc6a4e5dbab5"
   end
 
+  test "runs on the maintenance queue, not tracks, so its fan-out never crowds realtime" do
+    assert DailyWorker.__opts__()[:queue] == :maintenance
+  end
+
   test "the slot is the cron minute the job was inserted in" do
     assert DailyWorker.slot(%Oban.Job{inserted_at: ~U[2025-09-28 09:00:07.512345Z]}) == @slot
   end

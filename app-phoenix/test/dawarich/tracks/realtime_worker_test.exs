@@ -18,6 +18,19 @@ defmodule Dawarich.Tracks.RealtimeWorkerTest do
         opts
       )
 
+  test "a second insert while the first is still available dedupes to one queued job at priority 0" do
+    user = user!()
+
+    assert {:ok, first} = Oban.insert(oban(), RealtimeWorker.new(%{"user_id" => user.id}))
+    assert {:ok, second} = Oban.insert(oban(), RealtimeWorker.new(%{"user_id" => user.id}))
+
+    assert first.id == second.id
+
+    assert rows("SELECT count(*), max(priority) FROM oban.oban_jobs WHERE worker = $1", [
+             inspect(RealtimeWorker)
+           ]) == [[1, 0]]
+  end
+
   test "a held lock writes tracks_realtime_retrigger and returns :ok" do
     user = user!()
     rows("UPDATE users SET status = 1 WHERE id = $1", [user.id])

@@ -195,7 +195,7 @@ defmodule Dawarich.Tracks.Generation do
       )
 
   defp priority(true), do: 3
-  defp priority(_), do: 0
+  defp priority(_), do: 1
 
   defp dump(id), do: Ecto.UUID.dump!(id)
 

@@ -77,7 +77,7 @@ defmodule Dawarich.Tracks.RangeWorkerTest do
     assert Redix.command!(rails, ["GET", PerUserLock.key(user.id)]) == "rails-token"
   end
 
-  test "low-priority generations schedule priority-3 jobs" do
+  test "low-priority generations schedule priority-3 jobs; daily/bulk generations schedule priority-1" do
     user = user_with_points!()
 
     for low_priority <- [true, false],
@@ -90,8 +90,8 @@ defmodule Dawarich.Tracks.RangeWorkerTest do
            ) == [
              ["Dawarich.Tracks.ChunkWorker", true, 3],
              ["Dawarich.Tracks.BoundaryWorker", false, 3],
-             ["Dawarich.Tracks.ChunkWorker", true, 0],
-             ["Dawarich.Tracks.BoundaryWorker", false, 0]
+             ["Dawarich.Tracks.ChunkWorker", true, 1],
+             ["Dawarich.Tracks.BoundaryWorker", false, 1]
            ]
   end
 

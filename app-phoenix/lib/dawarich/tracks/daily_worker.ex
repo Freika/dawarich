@@ -1,7 +1,7 @@
 defmodule Dawarich.Tracks.DailyWorker do
   @moduledoc false
   use Oban.Worker,
-    queue: :tracks,
+    queue: :maintenance,
     max_attempts: 3,
     unique: [period: :infinity, states: :incomplete]
 

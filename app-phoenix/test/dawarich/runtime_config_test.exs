@@ -89,7 +89,9 @@ defmodule Dawarich.RuntimeConfigTest do
           Dawarich.Tracks.RealtimeWorker,
           Dawarich.Tracks.RecalculateWorker,
           Dawarich.Tracks.DailyWorker,
-          Dawarich.Transportation.ReclassifyTrackWorker
+          Dawarich.Transportation.ReclassifyTrackWorker,
+          Dawarich.Tracks.ChunkWorker,
+          Dawarich.Tracks.BoundaryWorker
         ] do
       assert Keyword.has_key?(oban[:queues], worker.__opts__()[:queue])
       assert worker.timeout(%Oban.Job{}) < :timer.minutes(60)

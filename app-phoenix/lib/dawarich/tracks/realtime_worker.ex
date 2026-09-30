@@ -1,6 +1,9 @@
 defmodule Dawarich.Tracks.RealtimeWorker do
   @moduledoc false
-  use Oban.Worker, queue: :tracks, max_attempts: 1
+  use Oban.Worker,
+    queue: :tracks,
+    max_attempts: 1,
+    unique: [period: :infinity, keys: [:user_id], states: [:available, :scheduled]]
 
   require Logger
 

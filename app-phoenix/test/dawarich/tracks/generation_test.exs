@@ -62,12 +62,12 @@ defmodule Dawarich.Tracks.GenerationTest do
     {:started, id} = start!(2)
 
     assert [
-             ["Dawarich.Tracks.ChunkWorker", %{"generation_id" => ^id, "chunk_id" => 0}, 0, 0],
-             ["Dawarich.Tracks.ChunkWorker", %{"generation_id" => ^id, "chunk_id" => 1}, 0, 0],
+             ["Dawarich.Tracks.ChunkWorker", %{"generation_id" => ^id, "chunk_id" => 0}, 1, 0],
+             ["Dawarich.Tracks.ChunkWorker", %{"generation_id" => ^id, "chunk_id" => 1}, 1, 0],
              [
                "Dawarich.Tracks.BoundaryWorker",
                %{"generation_id" => ^id, "poll_count" => 0},
-               0,
+               1,
                300
              ]
            ] = jobs()
