@@ -24,12 +24,8 @@ const bridges = new WeakMap()
 const appendRailsFlash = (content) => {
   const container = document.getElementById("flash-messages")
   if (!container) return
-  for (const alert of [...content.querySelectorAll("[role='alert']")]) {
+  for (const alert of [...content.querySelectorAll("[role='alert']")])
     container.appendChild(alert)
-    if (alert.getAttribute("data-removals-timeout-value") === "5000") {
-      window.setTimeout(() => alert.remove(), 5000)
-    }
-  }
 }
 
 const controllerIdentifiers = (root) =>
@@ -52,8 +48,10 @@ const registerControllers = async (app, root) => {
 
 const startStimulus = async (element) => {
   const { Application } = await import("@hotwired/stimulus")
+  const { lazyLoadControllersFrom } = await import("@hotwired/stimulus-loading")
   const app = Application.start(element)
   await registerControllers(app, element)
+  lazyLoadControllersFrom("controllers", app, element)
   return app
 }
 
@@ -133,13 +131,48 @@ const bootRailsBridges = () => {
     railsBridge(element)
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", bootRailsBridges)
-} else {
+const expireRailsAlert = (node) => {
+  if (
+    node instanceof Element &&
+    node.getAttribute("data-removals-timeout-value") === "5000" &&
+    !node.querySelector("[phx-click]")
+  )
+    window.setTimeout(() => node.remove(), 5000)
+}
+
+const watchFlashes = () => {
+  const container = document.getElementById("flash-messages")
+  if (!container) return
+  new MutationObserver((mutations) => {
+    for (const { addedNodes } of mutations) addedNodes.forEach(expireRailsAlert)
+  }).observe(container, { childList: true })
+}
+
+const bootTurboFrames = () => {
+  if (!document.querySelector("turbo-frame[src]")) return
+  import("@hotwired/turbo-rails").then(({ Turbo }) => {
+    Turbo.session.drive = false
+  })
+}
+
+const boot = () => {
   bootRailsBridges()
+  bootTurboFrames()
+  watchFlashes()
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot)
+} else {
+  boot()
 }
 
 const joined = () => liveSocket.main?.isConnected() === true
+
+document.addEventListener("click", (event) => {
+  if (!joined() && event.target.closest?.("a[data-phx-link]"))
+    event.stopPropagation()
+})
 
 window.addEventListener("dawarich:flash-timeout", (event) => {
   window.setTimeout(() => event.target.querySelector("button")?.click(), 5000)
@@ -243,9 +276,9 @@ document.addEventListener("click", (event) => {
 })
 
 document.addEventListener("click", (event) => {
-  if (joined()) return
-  event.target
-    .closest?.("[data-action~='click->removals#remove']")
-    ?.closest("[data-controller~='removals']")
-    ?.remove()
+  const button = event.target.closest?.(
+    "[data-action~='click->removals#remove']",
+  )
+  if (!button || (joined() && button.hasAttribute("phx-click"))) return
+  button.closest("[data-controller~='removals']")?.remove()
 })

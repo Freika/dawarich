@@ -7,6 +7,25 @@ module E2eB9B11FixtureSafety
   end
 end
 
+module E2eUnlockFixtures
+  def self.prepare!(email)
+    user = User.find_or_create_by!(email:) do |account|
+      account.password = 'safepassword12'
+      account.password_confirmation = 'safepassword12'
+      account.admin = false
+    end
+    user.update_columns(
+      changelog_consent: User.changelog_consents[:declined],
+      settings: (user.settings || {}).merge('onboarding_completed' => true)
+    )
+    user.achievement_progresses.find_or_initialize_by(achievement_key: 'exploration').update!(
+      state: { 'earned' => { 'DE' => '2026-07-01T10:00:00Z' } }
+    )
+    user.achievement_unlock_events.delete_all
+    user.achievement_unlock_events.create!(kind: 'geography', key: 'DE')
+  end
+end
+
 namespace :e2e do
   desc 'Seed isolated B9 notification characterization fixtures'
   task seed_b9_notifications: :environment do
@@ -104,21 +123,25 @@ namespace :e2e do
     carrier&.update!(sharing_enabled: false)
 
     unlock_emails = ['b11-unlock@dawarich.test'] + (1..4).map { |number| "b11-unlock-repeat#{number}@dawarich.test" }
-    unlock_emails.each do |email|
-      unlock_user = User.find_or_create_by!(email:) do |account|
-        account.password = 'safepassword12'
-        account.password_confirmation = 'safepassword12'
-        account.admin = false
-      end
-      unlock_user.update_columns(
-        changelog_consent: User.changelog_consents[:declined],
-        settings: (unlock_user.settings || {}).merge('onboarding_completed' => true)
-      )
-      unlock_user.achievement_progresses.find_or_initialize_by(achievement_key: 'exploration').update!(
-        state: { 'earned' => { 'DE' => '2026-07-01T10:00:00Z' } }
-      )
-      unlock_user.achievement_unlock_events.delete_all
-      unlock_user.achievement_unlock_events.create!(kind: 'geography', key: 'DE')
+    unlock_emails.each { |email| E2eUnlockFixtures.prepare!(email) }
+  end
+
+  desc 'Seed isolated A5-1b onboarding and unlock fixtures'
+  task seed_a5_1b: :environment do
+    E2eB9B11FixtureSafety.verify!
+
+    user = User.find_or_create_by!(email: 'a51b-onboarding@dawarich.test') do |account|
+      account.password = 'safepassword12'
+      account.password_confirmation = 'safepassword12'
+      account.admin = false
     end
+    user.update_columns(changelog_consent: User.changelog_consents[:declined],
+                        settings: (user.settings || {}).merge('onboarding_completed' => true))
+    Import.where(user:).delete_all
+    Import.insert_all([{ user_id: user.id, name: 'A5-1b demo', demo: true, status: Import.statuses[:completed],
+                         created_at: Time.current, updated_at: Time.current }])
+
+    (['a51b-unlock@dawarich.test'] + (1..4).map { |number| "a51b-unlock-repeat#{number}@dawarich.test" })
+      .each { |email| E2eUnlockFixtures.prepare!(email) }
   end
 end

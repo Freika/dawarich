@@ -21,6 +21,7 @@ defmodule Dawarich.Navbar do
 
     %{
       unread: unread(user.id),
+      imports: imports(user.id),
       family: family(user, now, self_hosted),
       subscription: subscription(user, now, self_hosted),
       version: version(user, self_hosted, now, running_version),
@@ -43,6 +44,17 @@ defmodule Dawarich.Navbar do
       count: rows |> List.first({nil, nil, nil, 0}) |> elem(3),
       items: for({id, title, kind, _} <- rows, do: %{id: id, title: title, kind: @kinds[kind]})
     }
+  end
+
+  defp imports(user_id) do
+    {count, demo} =
+      from(i in "imports",
+        where: i.user_id == ^user_id,
+        select: {count(i.id), fragment("coalesce(bool_or(?), false)", i.demo)}
+      )
+      |> Repo.one()
+
+    %{count: count, demo: demo}
   end
 
   def put_changelog_consent(%User{} = user, decision) do
@@ -127,6 +139,11 @@ defmodule Dawarich.Navbar do
     days
   end
 
+  def changelog_host do
+    host = System.get_env("CHIBICHANGE_WIDGET_HOST", "https://my.chibichange.com")
+    URI.parse(host).host || host
+  end
+
   defp version(user, self_hosted, now), do: version(user, self_hosted, now, AppVersion.current())
 
   defp version(user, self_hosted, now, running_version) do
@@ -138,7 +155,7 @@ defmodule Dawarich.Navbar do
       state: state,
       update: state != :widget and AppVersion.update_available?(now, running_version),
       widget_src: host <> "/w/v1/loader.js",
-      widget_host: URI.parse(host).host || host,
+      widget_host: changelog_host(),
       slug:
         if(self_hosted,
           do: System.get_env("CHIBICHANGE_SLUG", "dawarich"),

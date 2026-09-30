@@ -91,6 +91,20 @@ defmodule Dawarich.Test.LayoutFixtures do
       end
     )
 
+    Repo.insert_all(
+      "imports",
+      for i <- state["imports"] || [] do
+        %{
+          id: i["id"],
+          user_id: user["id"],
+          name: i["name"],
+          demo: i["demo"],
+          created_at: ~N[2026-09-01 00:00:00],
+          updated_at: ~N[2026-09-01 00:00:00]
+        }
+      end
+    )
+
     if state["supporter"] do
       hash =
         Base.encode16(:crypto.hash(:sha256, user["settings"]["supporter_email"]), case: :lower)
@@ -128,6 +142,7 @@ defmodule Dawarich.Test.LayoutFixtures do
           active_until: naive(user["active_until"]),
           subscription_source: user["subscription_source"] || 0,
           changelog_consent: user["changelog_consent"],
+          api_key: user["api_key"] || "",
           created_at: stamp,
           updated_at: stamp
         }

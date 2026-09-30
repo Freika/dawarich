@@ -6,12 +6,13 @@ defmodule Dawarich.Accounts.User do
 
   schema "users" do
     field :email, :string
+    field :provider, :string
     field :encrypted_password, :string, redact: true
     field :remember_created_at, :utc_datetime_usec
     field :locked_at, :utc_datetime_usec
     field :deleted_at, :utc_datetime_usec
     field :theme, :string
-    field :settings, :map
+    field :settings, :map, redact: true
     field :admin, :boolean
     field :status, :integer
     field :plan, :integer

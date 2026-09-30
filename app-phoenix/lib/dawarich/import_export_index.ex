@@ -4,7 +4,6 @@ defmodule Dawarich.ImportExportIndex do
   alias Dawarich.UserTimeZone
 
   @per_page 25
-  @utc_zones ~w(UTC Etc/UTC UCT Etc/UCT Universal Etc/Universal Zulu Etc/Zulu)
   @import_statuses %{
     0 => "created",
     1 => "processing",
@@ -79,9 +78,6 @@ defmodule Dawarich.ImportExportIndex do
     |> page(user, list, &export_row/1)
   end
 
-  def zoned(at, offset, zone),
-    do: %{local: NaiveDateTime.add(at, offset), offset: offset, utc: zone in @utc_zones}
-
   defp page(sql, user, list, row) do
     %{rows: rows} =
       UserTimeZone.query!(sql, [user.id, (list.page - 1) * @per_page], user.settings)
@@ -129,7 +125,7 @@ defmodule Dawarich.ImportExportIndex do
       extraction: @extraction[extraction],
       updated_at: updated_at,
       byte_size: byte_size,
-      created: zoned(created_at, offset, zone)
+      created: UserTimeZone.zoned(created_at, offset, zone)
     }
   end
 
@@ -160,7 +156,7 @@ defmodule Dawarich.ImportExportIndex do
       blob_id: blob_id,
       filename: filename,
       byte_size: byte_size,
-      created: zoned(created_at, offset, zone)
+      created: UserTimeZone.zoned(created_at, offset, zone)
     }
   end
 end

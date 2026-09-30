@@ -93,4 +93,56 @@ defmodule Dawarich.SupportersTest do
     refute_received {:verify, _, _}
     refute Supporters.badge?(%{}, DateTime.utc_now())
   end
+
+  describe "info/2" do
+    defp cached(key, result),
+      do:
+        Dawarich.Jobs.repo().query!(
+          "INSERT INTO phoenix.supporter_checks (cache_key, result, checked_at) VALUES ($1, $2, $3)",
+          [key, result, DateTime.utc_now()]
+        )
+
+    defp email_key(email),
+      do: "dawarich/supporter:" <> Base.encode16(:crypto.hash(:sha256, email), case: :lower)
+
+    test "a truthy email answer wins without asking GitHub, as Rails' supporter_info" do
+      cached(email_key("a5s3-fan@dawarich.test"), %{"supporter" => "yes", "platform" => "patreon"})
+
+      cached("dawarich/supporter_gh:a5s3-octo", %{"supporter" => true, "platform" => "github"})
+
+      settings = %{
+        "supporter_email" => "a5s3-fan@dawarich.test",
+        "supporter_github_username" => "a5s3-octo"
+      }
+
+      assert Supporters.info(settings, DateTime.utc_now()) == %{
+               "supporter" => "yes",
+               "platform" => "patreon"
+             }
+
+      refute Supporters.badge?(settings, DateTime.utc_now())
+      refute_received {:verify, _, _}
+    end
+
+    test "a false email answer falls through to GitHub" do
+      cached(email_key("a5s3-fan@dawarich.test"), %{"supporter" => false})
+      cached("dawarich/supporter_gh:a5s3-octo", %{"supporter" => true, "platform" => "github"})
+
+      settings = %{
+        "supporter_email" => "a5s3-fan@dawarich.test",
+        "supporter_github_username" => " A5S3-Octo "
+      }
+
+      assert Supporters.info(settings, DateTime.utc_now())["platform"] == "github"
+    end
+
+    test "no identifiers is not a supporter and asks nobody" do
+      assert Supporters.info(%{"supporter_email" => " "}, DateTime.utc_now()) == %{
+               "supporter" => false
+             }
+
+      assert Supporters.info(nil, DateTime.utc_now()) == %{"supporter" => false}
+      refute_received {:verify, _, _}
+    end
+  end
 end
