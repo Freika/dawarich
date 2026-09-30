@@ -38,6 +38,11 @@ defmodule Dawarich.Accounts do
     |> Repo.one()
   end
 
+  def settings(user_id) do
+    [[settings]] = Repo.query!("SELECT settings FROM users WHERE id = $1", [user_id]).rows
+    settings
+  end
+
   def persist_locale(id, locale) do
     %{rows: rows} =
       Repo.query!(
