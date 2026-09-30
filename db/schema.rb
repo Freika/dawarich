@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_24_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pgcrypto"
@@ -262,6 +262,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
     t.integer "points_count", default: 0
     t.integer "processed", default: 0
     t.datetime "processing_started_at"
+    t.datetime "product_analytics_reported_at"
     t.jsonb "raw_data"
     t.integer "raw_points", default: 0
     t.integer "source"
@@ -794,6 +795,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
     t.string "otp_secret"
     t.integer "plan", default: 1, null: false
     t.integer "points_count", default: 0, null: false
+    t.datetime "product_analytics_activated_at"
+    t.boolean "product_analytics_consent"
+    t.datetime "product_analytics_consented_at"
+    t.datetime "product_analytics_first_mobile_upload_at"
+    t.datetime "product_analytics_first_point_at"
+    t.uuid "product_analytics_id"
+    t.datetime "product_analytics_revoked_at"
+    t.datetime "product_analytics_web_observed_at"
     t.string "provider"
     t.datetime "remember_created_at"
     t.datetime "reset_password_sent_at"
@@ -819,6 +828,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_23_180000) do
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["otp_locked_at"], name: "index_users_on_otp_locked_at_not_null", where: "(otp_locked_at IS NOT NULL)"
     t.index ["plan"], name: "index_users_on_plan"
+    t.index ["product_analytics_id"], name: "index_users_on_product_analytics_id", unique: true
     t.index ["provider", "uid"], name: "index_users_on_provider_and_uid_present", unique: true, where: "((provider IS NOT NULL) AND (uid IS NOT NULL))"
     t.index ["reset_password_token"], name: "index_users_on_reset_password_token", unique: true
     t.index ["signup_variant"], name: "index_users_on_signup_variant_reverse_trial", where: "((signup_variant)::text = 'reverse_trial'::text)"

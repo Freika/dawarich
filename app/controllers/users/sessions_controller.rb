@@ -14,6 +14,11 @@ class Users::SessionsController < Devise::SessionsController
   protected
 
   def after_sign_in_path_for(resource)
+    unless DawarichSettings.self_hosted?
+      ProductAnalytics.capture(user: resource, event: 'cloud_login_succeeded',
+                               channel: 'web', platform: 'web',
+                               properties: { auth_method: 'email' })
+    end
     claim_pending_import_for(resource)
     super
   end

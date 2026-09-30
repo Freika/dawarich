@@ -875,6 +875,41 @@ RSpec.describe 'Users::Registrations', type: :request do
 
       before do
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        cookies[:dawarichAttributionConsent] = 'true'
+      end
+
+      it 'does not persist campaign parameters without an explicit site choice' do
+        cookies[:dawarichAttributionConsent] = 'false'
+        get new_user_registration_path, params: utm_params
+
+        expect(session[:utm_campaign]).to be_nil
+      end
+
+      it 'does not attach a consented site campaign to an account that declines product analytics' do
+        get new_user_registration_path, params: utm_params
+        post user_registration_path, params: {
+          product_analytics_consent: 'false',
+          user: { email: 'no-analytics-campaign@example.com', password: 'password123456',
+                  password_confirmation: 'password123456' }
+        }
+
+        expect(User.find_by!(email: 'no-analytics-campaign@example.com').utm_campaign).to be_nil
+        expect(session[:utm_campaign]).to be_nil
+      end
+
+      it 'leaves the signup analytics choice unchecked and stores no campaign without opt-in' do
+        get new_user_registration_path, params: utm_params
+        expect(response.body).to include('type="checkbox" name="product_analytics_consent"')
+        expect(response.body).not_to include('type="checkbox" name="product_analytics_consent" value="true" checked')
+
+        post user_registration_path, params: {
+          user: { email: 'no-choice-campaign@example.com', password: 'password123456',
+                  password_confirmation: 'password123456' }
+        }
+
+        user = User.find_by!(email: 'no-choice-campaign@example.com')
+        expect(user.product_analytics_consent).to be_nil
+        expect(user.utm_campaign).to be_nil
       end
 
       it 'captures UTM parameters from registration page URL' do
@@ -895,6 +930,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         # Create account
         unique_email = "utm-user-#{Time.current.to_i}@example.com"
         post user_registration_path, params: {
+          product_analytics_consent: 'true',
           user: {
             email: unique_email,
             password: 'password123456',
@@ -918,6 +954,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         # Create account
         unique_email = "utm-cleanup-#{Time.current.to_i}@example.com"
         post user_registration_path, params: {
+          product_analytics_consent: 'true',
           user: {
             email: unique_email,
             password: 'password123456',
@@ -940,6 +977,7 @@ RSpec.describe 'Users::Registrations', type: :request do
 
         unique_email = "partial-utm-#{Time.current.to_i}@example.com"
         post user_registration_path, params: {
+          product_analytics_consent: 'true',
           user: {
             email: unique_email,
             password: 'password123456',
@@ -966,6 +1004,7 @@ RSpec.describe 'Users::Registrations', type: :request do
 
         unique_email = "empty-utm-#{Time.current.to_i}@example.com"
         post user_registration_path, params: {
+          product_analytics_consent: 'true',
           user: {
             email: unique_email,
             password: 'password123456',
@@ -983,6 +1022,7 @@ RSpec.describe 'Users::Registrations', type: :request do
         get new_user_registration_path, params: utm_params.merge(invitation_token: invitation.token)
 
         post user_registration_path, params: {
+          product_analytics_consent: 'true',
           user: {
             email: invitation.email,
             password: 'password123456',

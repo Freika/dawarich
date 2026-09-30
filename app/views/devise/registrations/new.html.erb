@@ -84,6 +84,16 @@
           <div class="cf-turnstile mt-4" data-sitekey="<%= ENV['TURNSTILE_SITE_KEY'] %>" data-theme="auto"></div>
         <% end %>
 
+        <% unless DawarichSettings.self_hosted? %>
+          <div class="form-control mt-4">
+            <label class="label cursor-pointer items-start gap-3">
+              <%= check_box_tag :product_analytics_consent, 'true', false, class: 'checkbox checkbox-primary mt-1' %>
+              <span class="label-text leading-relaxed">Allow optional Cloud analytics (PostHog and Rybbit). If you also accepted marketing tracking on dawarich.app, Google Ads and Partnero may run. You can withdraw this choice later.</span>
+            </label>
+            <a href="https://dawarich.app/privacy-policy#cookies" class="link text-sm ml-9">Privacy details</a>
+          </div>
+        <% end %>
+
         <div class="form-control mt-6">
           <%= f.submit (@invitation ? t('.create_account_join_family') : t('.sign_up')),
                 class: 'btn btn-primary' %>

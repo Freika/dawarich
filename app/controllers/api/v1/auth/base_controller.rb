@@ -15,6 +15,21 @@ class Api::V1::Auth::BaseController < ApiController
 
   private
 
+  def record_signup_analytics(user, method:)
+    return if DawarichSettings.self_hosted?
+
+    consent = { true => true, false => false, 'true' => true, 'false' => false }[params[:product_analytics_consent]]
+    return if consent.nil?
+
+    user.update!(product_analytics_consent: consent,
+                 product_analytics_id: consent ? SecureRandom.uuid : nil,
+                 product_analytics_consented_at: consent ? Time.current : nil)
+    return unless consent
+
+    ProductAnalytics.capture(user: user, event: 'user_signed_up', channel: 'server',
+                             properties: { auth_method: method })
+  end
+
   def render_auth_success(user, status: :ok)
     render json: {
       user_id: user.id,

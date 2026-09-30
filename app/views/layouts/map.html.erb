@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="<%= I18n.locale %>" data-theme="<%= app_theme %>" data-self-hosted="<%= @self_hosted %>">
+<html lang="<%= I18n.locale %>" data-theme="<%= app_theme %>" data-self-hosted="<%= DawarichSettings.self_hosted? %>" data-analytics-account="<%= user_signed_in? %>" data-analytics-consent="<%= current_user&.product_analytics_consent.nil? ? 'unknown' : current_user.product_analytics_consent %>" data-partnero-id="<%= ENV['PARTNERO_PROGRAM_ID'] %>" data-google-ads-id="<%= ENV['GOOGLE_ADS_ID'] %>">
   <head>
     <title><%= full_title(yield(:title)) %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
@@ -7,6 +7,7 @@
     <%= action_cable_meta_tag %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <meta name="product-analytics-consent" content="<%= user_signed_in? %>:<%= current_user&.product_analytics_consent.nil? ? 'unknown' : current_user.product_analytics_consent %>" data-turbo-track="reload">
 
 
     <%= stylesheet_link_tag "tailwind", "inter-font", "data-turbo-track": "reload" %>
@@ -18,13 +19,18 @@
 
     <%= render 'application/favicon' %>
     <%= Sentry.get_trace_propagation_meta.html_safe if Sentry.initialized? %>
-    <% if !DawarichSettings.self_hosted? %>
-      <script async src="https://scripts.simpleanalyticscdn.com/latest.js"></script>
-      <script src="https://rybbit.dwri.xyz/api/script.js" data-site-id="87c1f532b59f" defer></script>
-    <% end %>
   </head>
 
   <body class='h-screen !h-[100dvh] overflow-hidden relative'>
+    <% unless DawarichSettings.self_hosted? %>
+      <div id="product-analytics-choice" hidden class="fixed top-0 left-0 right-0 z-50 p-4 bg-base-200 border-b border-base-300" role="region" aria-label="Product analytics choice">
+        <p class="mb-2">Allow optional product analytics? PostHog receives signup, trial, and subscription events. Self-hosted Rybbit measures visits. If you also accepted marketing tracking on dawarich.app, Google Ads and Partnero may run here. Location history, routes, email, and API keys are not sent to product analytics. You can withdraw this choice at any time.</p>
+        <button type="button" data-analytics-choice="true" class="btn btn-primary mr-2">Allow analytics</button>
+        <button type="button" data-analytics-choice="false" class="btn btn-outline">No thanks</button>
+        <span id="product-analytics-choice-error" hidden role="alert">Could not save your choice. Please try again.</span>
+      </div>
+      <button type="button" id="product-analytics-choice-open" class="fixed bottom-3 right-3 z-40 btn btn-xs">Analytics preference</button>
+    <% end %>
     <!-- Fixed Navbar -->
     <div class='fixed w-full z-40 h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] border-b border-base-content/10'>
       <div class='container mx-auto h-full w-full flex items-center'>
