@@ -121,18 +121,44 @@ RSpec.describe 'Phoenix fixture: Rails visit detection' do
     detection_result(user.reload, returned, first_request)
   end
 
+  def exact_json(value, depth = 0)
+    pad = '  ' * (depth + 1)
+    case value
+    when Hash
+      return '{}' if value.empty?
+
+      entries = value.map { |k, v| "#{pad}#{Oj.dump(k.to_s, mode: :strict)}: #{exact_json(v, depth + 1)}" }
+      "{\n#{entries.join(",\n")}\n#{'  ' * depth}}"
+    when Array
+      return '[]' if value.empty?
+
+      entries = value.map { |v| "#{pad}#{exact_json(v, depth + 1)}" }
+      "[\n#{entries.join(",\n")}\n#{'  ' * depth}]"
+    when Float
+      value.to_s
+    else
+      Oj.dump(value, mode: :strict)
+    end
+  end
+
+  def write_stage_fixture(dir, name, data)
+    path = Rails.root.join("app-phoenix/test/fixtures/#{dir}/#{name}.json")
+    FileUtils.mkdir_p(path.dirname)
+    File.write(path, "#{exact_json(data.merge('postgis_build' => postgis_build))}\n")
+  end
+
   def detection_fixture(name, user, from, to, runs: 1, via: :detect)
     input = visits_input(user)
     policy = policy_dump(user)
     first = run_detection(user, from, to, via)
-    stage_dumps = JSON.parse(stages.to_json)
+    stage_dumps = plain(stages)
     rerun = runs > 1 ? { 'rerun' => run_detection(user, from, to, via) } : {}
     fixture = {
       'input' => input, 'policy' => policy,
       'run' => { 'via' => via.to_s, 'start_at' => from, 'end_at' => to, 'time_zone' => Time.zone.tzinfo.name },
       'stages' => stage_dumps, 'expected' => first
     }
-    write_fixture('visits', name, fixture.merge(rerun))
+    write_stage_fixture('visits', name, fixture.merge(rerun))
   end
 
   def dwell(user, lat_offset, start_ts, count: 6, step: 600, geodata: {})

@@ -35,22 +35,25 @@ defmodule Dawarich.Visits.DetectionTest do
         log: false
       )
 
-      f = load_visits!("detection_pipeline")
-      uid = user_id(f)
+      Wave5bFixtures.load_input!(ScratchRepo, %{"users" => [%{"id" => 1}]})
+      uid = 1
+      now = System.os_time(:second)
+      old_ts = now - 400 * 86_400
+      recent_ts = now - 86_400
 
-      for i <- 0..5 do
+      for base <- [old_ts, recent_ts], i <- 0..5 do
         rows(
           "INSERT INTO points (user_id, timestamp, lonlat, accuracy, created_at, updated_at) VALUES " <>
             "($1, $2, ST_GeomFromText('POINT(12.3731 51.3397)', 4326)::geography, 10, now(), now())",
-          [uid, 1_700_000_000 + i * 600]
+          [uid, base + i * 600]
         )
       end
 
       args = %{"time_zone" => "Europe/Berlin", "plan_restricted" => restricted}
-      SmartDetect.run(ScratchRepo, uid, 1_699_990_000, f["run"]["end_at"], args)
+      SmartDetect.run(ScratchRepo, uid, old_ts - 10_000, recent_ts + 7200, args)
       started = for v <- visits(uid), do: v["started_at"]
 
-      assert started == if(restricted, do: [1_790_000_000], else: [1_700_000_000, 1_790_000_000])
+      assert started == if(restricted, do: [recent_ts], else: [old_ts, recent_ts])
     end
   end
 
@@ -129,6 +132,7 @@ defmodule Dawarich.Visits.DetectionTest do
   test "a unique collision drops one stay" do
     f = load_visits!("suggest_geocoding_disabled")
     uid = user_id(f)
+    fresh_place_id = Enum.find(f["input"]["places"], &(&1["name"] == "Fresh Place"))["id"]
     :persistent_term.put({__MODULE__, :collided}, false)
     on_exit(fn -> :persistent_term.erase({__MODULE__, :collided}) end)
 
@@ -139,8 +143,8 @@ defmodule Dawarich.Visits.DetectionTest do
 
         ScratchRepo.query!(
           "INSERT INTO visits (user_id, place_id, started_at, ended_at, duration, name, status, demo, " <>
-            "created_at, updated_at) VALUES ($1, 864, $2, $3, 10, 'Collider', 1, false, now(), now())",
-          [uid, epoch(1_790_010_800), epoch(1_790_011_400)]
+            "created_at, updated_at) VALUES ($1, $2, $3, $4, 10, 'Collider', 1, false, now(), now())",
+          [uid, fresh_place_id, epoch(1_790_010_800), epoch(1_790_011_400)]
         )
       end
     end)

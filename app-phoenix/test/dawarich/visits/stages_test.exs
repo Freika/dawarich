@@ -27,11 +27,11 @@ defmodule Dawarich.Visits.StagesTest do
       expected_keys = expected_place_keys(f)
 
       for stage <- ~w(fragments bridged reconciled stays) do
-        assert {stage, oj16(plain(actual[stage] || []))} == {stage, oj16(f["stages"][stage])}
+        assert {stage, plain(actual[stage] || [])} == {stage, f["stages"][stage]}
       end
 
-      assert oj16(attributed(actual["attributed"] || [], actual_place_keys())) ==
-               oj16(attributed(f["stages"]["attributed"], expected_keys))
+      assert attributed(actual["attributed"] || [], actual_place_keys()) ==
+               attributed(f["stages"]["attributed"], expected_keys)
     end
   end
 
@@ -102,6 +102,33 @@ defmodule Dawarich.Visits.StagesTest do
 
     assert Enum.map(evidence.points, &{&1.timestamp, &1.lat, &1.lon, &1.accuracy}) ==
              [{1100, 51.3397, 12.3731, 7}, {1400, 0.001, 0.001, 7}]
+  end
+
+  test "the 100,000-point candidate cap is honoured" do
+    ScratchRepo.query!("TRUNCATE users, points, visits RESTART IDENTITY CASCADE", [], log: false)
+    Wave5bFixtures.load_input!(ScratchRepo, %{"users" => [%{"id" => 1}]})
+
+    rows(
+      "INSERT INTO points (user_id, timestamp, lonlat, accuracy, created_at, updated_at) " <>
+        "SELECT 1, g, ST_SetSRID(ST_MakePoint(12.3731, 51.3397), 4326)::geography, 10, now(), now() " <>
+        "FROM generate_series(1, 100_000) AS g",
+      []
+    )
+
+    at_cap = CandidateLoader.load(ScratchRepo, 1, 0, 200_000)
+    assert at_cap.skipped == false
+    assert length(at_cap.points) == 100_000
+
+    rows(
+      "INSERT INTO points (user_id, timestamp, lonlat, accuracy, created_at, updated_at) VALUES " <>
+        "(1, 100_001, ST_SetSRID(ST_MakePoint(12.3731, 51.3397), 4326)::geography, 10, now(), now())",
+      []
+    )
+
+    over_cap = CandidateLoader.load(ScratchRepo, 1, 0, 200_000)
+    assert over_cap.skipped == true
+    assert over_cap.points == []
+    assert over_cap.segments == []
   end
 
   test "the window widens to overlapping machine visits only" do
@@ -182,13 +209,6 @@ defmodule Dawarich.Visits.StagesTest do
       end
     end
   end
-
-  defp oj16(value) when is_float(value),
-    do: value |> :erlang.float_to_binary(scientific: 15) |> String.to_float()
-
-  defp oj16(value) when is_list(value), do: Enum.map(value, &oj16/1)
-  defp oj16(%{} = map), do: Map.new(map, fn {k, v} -> {k, oj16(v)} end)
-  defp oj16(value), do: value
 
   defp plain(value) when is_list(value), do: Enum.map(value, &plain/1)
 

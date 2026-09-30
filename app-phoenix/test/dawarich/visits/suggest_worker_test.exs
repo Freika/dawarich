@@ -111,6 +111,7 @@ defmodule Dawarich.Visits.SuggestWorkerTest do
 
   test "fresh visits request place geocoding once per place" do
     fresh = load_visits!("suggest_fresh_vs_covered")
+    fresh_place_id = Enum.find(fresh["input"]["places"], &(&1["name"] == "Fresh Place"))["id"]
 
     assert Suggest.run(
              ScratchRepo,
@@ -120,7 +121,7 @@ defmodule Dawarich.Visits.SuggestWorkerTest do
              run_args(fresh)
            ) == :ok
 
-    assert effects(actual_place_keys())["reverse_geocode_place_ids"] == [862]
+    assert effects(actual_place_keys())["reverse_geocode_place_ids"] == [fresh_place_id]
 
     ScratchRepo.query!(
       "TRUNCATE users, points, visits, places, place_visits, tags, taggings, notes, " <>
