@@ -39,6 +39,7 @@ class Families::Locations
   def family_members_with_sharing_enabled
     user.family.members
         .includes(:family_membership)
+        .reject { _1.id == user.id }
         .select(&:family_sharing_enabled?)
   end
 

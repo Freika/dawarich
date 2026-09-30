@@ -165,7 +165,7 @@ RSpec.describe Families::Locations do
       end
 
       it 'does not include current user in results' do
-        user.update_family_location_sharing!(true, duration: 'permanent')
+        user.update_family_location_sharing!(true, duration: 'permanent', share_history: true)
         user.update!(
           settings: user.settings.deep_merge(
             'family' => { 'location_sharing' => { 'started_at' => 1.week.ago.iso8601 } }

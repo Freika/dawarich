@@ -52,3 +52,9 @@ Ran the exact JumpToDateModal Jest suite: 17 tests passed. The component support
 ## Combined PR verification
 
 Full clean-database RSpec: 10,684 examples, zero failures. JavaScript: 507 tests passed. Playwright E2E: 11 tests passed using installed Chrome and an isolated demo fixture with onboarding completed. RuboCop: 39 changed Ruby files, zero offenses. New strings cover all seven supported locales. No live SMTP or Immich server and no native iOS 2.6 build were exercised. Screenshots are in docs/images/.
+
+## Family layer follow-up: exclude the viewer
+
+Family location and history payloads now exclude the requesting user even when their location/history sharing is enabled. FamilyLocationsChannel filters the subscriber's own broadcasts while delivering other members' updates. This keeps the viewer's position and routes on their existing recent-position and Tracks layers, without a duplicate family marker, route or member-list row. Sharing with other family members is preserved. No database migration or frontend API-shape change.
+
+Verification: 49 RSpec examples passed across family locations service/API, realtime channel and OwnTracks friends formatting; RuboCop checked five changed Ruby files without offenses. The history regression explicitly enables the viewer's history sharing. Channel coverage checks numeric/string own IDs and delivery of another member's update. Earlier full-suite results above predate this follow-up.
