@@ -50,4 +50,43 @@ defmodule DawarichWeb.Icon do
     {@svg}
     """
   end
+
+  attr :code, :string, required: true
+  attr :title, :string, required: true
+
+  def flag(assigns) do
+    title = assigns.title |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+
+    svg =
+      "app/assets/svg/icons/flags/landscape/#{Path.basename(assigns.code)}.svg"
+      |> Dawarich.RailsRoot.join()
+      |> File.read!()
+      |> then(
+        &Regex.replace(
+          ~r/<svg([^>]*)>/,
+          &1,
+          fn _, attrs ->
+            ~s(<svg#{attrs} class="inline-block rounded-sm h-4 w-auto" title="#{title}">)
+          end,
+          global: false
+        )
+      )
+
+    assigns = assign(assigns, :svg, Phoenix.HTML.raw(svg))
+
+    ~H"""
+    {@svg}
+    """
+  end
+
+  attr :name, :any, required: true
+  attr :table, :list, required: true
+
+  def country_flag(assigns) do
+    assigns = assign(assigns, :code, Dawarich.CountryNames.flag_code(assigns.name, assigns.table))
+
+    ~H"""
+    <.flag :if={@code} code={@code} title={@name} />
+    """
+  end
 end

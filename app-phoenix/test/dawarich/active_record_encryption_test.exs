@@ -48,6 +48,18 @@ defmodule Dawarich.ActiveRecordEncryptionTest do
     end
   end
 
+  test "the derived key is memoized in :persistent_term, not recomputed on every call" do
+    env = @development["env"]
+
+    assert {:ok, key} = ActiveRecordEncryption.key(env)
+    assert {:ok, ^key} = ActiveRecordEncryption.key(env)
+
+    assert Enum.any?(:persistent_term.get(), fn
+             {{ActiveRecordEncryption, _hash}, ^key} -> true
+             _ -> false
+           end)
+  end
+
   test "Rails still derives its keys the way this module does" do
     source = RailsTree.read("config/application.rb") |> String.replace(~r/\s+/, "")
     {:ok, defaults} = ActiveRecordEncryption.credentials(%{})

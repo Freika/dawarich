@@ -70,6 +70,16 @@ defmodule DawarichWeb.Router do
 
       live "/imports", DawarichWeb.ImportsLive.Index, :index, container: {:div, class: "contents"}
       live "/exports", DawarichWeb.ExportsLive.Index, :index, container: {:div, class: "contents"}
+      live "/stats", DawarichWeb.StatsLive.Index, :index, container: {:div, class: "contents"}
+      live "/stats/:year", DawarichWeb.StatsLive.Year, :show, container: {:div, class: "contents"}
+
+      live "/stats/:year/:month", DawarichWeb.StatsLive.Month, :month,
+        container: {:div, class: "contents"}
+
+      live "/digests", DawarichWeb.DigestsLive.Index, :index, container: {:div, class: "contents"}
+
+      live "/digests/:year", DawarichWeb.DigestsLive.Show, :show,
+        container: {:div, class: "contents"}
     end
   end
 

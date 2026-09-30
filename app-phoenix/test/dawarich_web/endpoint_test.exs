@@ -479,4 +479,57 @@ defmodule DawarichWeb.EndpointTest do
         refused_soon?(port, attempts - 1)
     end
   end
+
+  test "Phoenix answers the stats and digest pages itself" do
+    port = serve()
+
+    for target <-
+          ~w(/stats /stats/2024 /stats/2024/3 /stats/2024/03 /stats/2024/12 /digests /digests/2024) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302, target
+    end
+  end
+
+  test "stats and digest paths outside Rails' constraints, and every other method, go to Puma",
+       ctx do
+    port = serve()
+
+    for target <-
+          ~w(/stats/abcd /stats/202 /stats/20245 /stats/update_all /stats/2024/0 /stats/2024/00 /stats/2024/13 /stats/2024/1a /digests/new /digests/24 /stats/2024.json),
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+              "GET #{target} HTTP/1.1"
+          )
+
+    for {method, target} <- [
+          {"PUT", "/stats/update_all"},
+          {"PUT", "/stats/2024/3/update"},
+          {"PUT", "/stats/2024/all/update"},
+          {"PATCH", "/stats/2024/3/sharing"},
+          {"POST", "/digests?year=2023"},
+          {"DELETE", "/digests/2023"},
+          {"PATCH", "/digests/2023/sharing"}
+        ] do
+      body = "authenticity_token=x"
+
+      request =
+        "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+    end
+  end
+
+  test "DAWARICH_RAILS_ROUTES hands the stats and digest pages back", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["stats", "digests"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+
+    for target <- ~w(/stats /stats/2024/3 /digests/2024),
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+              "GET #{target} HTTP/1.1"
+          )
+  end
 end

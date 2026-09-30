@@ -145,7 +145,7 @@ RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
 RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
     && rm -rf node_modules tmp/cache
 
-RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake phoenix:i18n phoenix:achievements
+RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake phoenix:i18n phoenix:achievements phoenix:importmap
 
 # Ensure tmp directory exists and is writable by any user (for custom uid:gid support)
 RUN mkdir -p tmp/pids tmp/cache tmp/sockets \
