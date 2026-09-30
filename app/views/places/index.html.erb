@@ -37,7 +37,7 @@
           <tbody>
             <% @places.each do |place| %>
               <tr>
-                <td><%= place.name %></td>
+                <td><%= link_to place.name, place_path(place) %></td>
                 <td><%= human_datetime(place.created_at, current_user.safe_settings.timezone) %></td>
                 <td><%= "#{place.lat}, #{place.lon}" %></td>
                 <td>
