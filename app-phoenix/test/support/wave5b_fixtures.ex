@@ -74,7 +74,7 @@ defmodule Dawarich.Wave5bFixtures do
         row["source"],
         row["additional_data_extraction_status"],
         jsonb(row["additional_data_extraction"]) || "{}",
-        jsonb(row["raw_data"]) || "null"
+        jsonb(row["raw_data"])
       ]
     )
   end

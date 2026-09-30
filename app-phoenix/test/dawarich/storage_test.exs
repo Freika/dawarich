@@ -150,6 +150,57 @@ defmodule Dawarich.StorageTest do
     end
   end
 
+  defmodule RangeClient do
+    @moduledoc false
+    @behaviour ExAws.Request.HttpClient
+
+    @impl true
+    def request(:get, _url, _body, headers, opts) do
+      object = Keyword.fetch!(opts, :object)
+      {_, range} = Enum.find(headers, fn {name, _} -> String.downcase(name) == "range" end)
+      send(self(), {:range, range})
+      [from, to] = Regex.run(~r/\Abytes=(\d+)-(\d+)\z/, range, capture: :all_but_first)
+      {from, to} = {String.to_integer(from), min(String.to_integer(to), byte_size(object) - 1)}
+
+      {:ok,
+       %{
+         status_code: 206,
+         headers: [{"Content-Range", "bytes #{from}-#{to}/#{byte_size(object)}"}],
+         body: binary_part(object, from, to - from + 1)
+       }}
+    end
+  end
+
+  test "download! copies a local blob; S3 assembles 8 MiB ranges", %{
+    rails_root: root,
+    config: config
+  } do
+    key = Storage.generate_key()
+    File.mkdir_p!(Path.dirname(Storage.disk_path(config.root, key)))
+    File.write!(Storage.disk_path(config.root, key), "local bytes")
+    local = Path.join(root, "local.out")
+
+    Storage.download!(config, key, local)
+    assert File.read!(local) == "local bytes"
+
+    object = :crypto.strong_rand_bytes(20 * 1024 * 1024)
+    s3 = Storage.config!(Map.put(@aws, "STORAGE_BACKEND", "s3"), root)
+
+    s3 = %{
+      s3
+      | ex_aws: Keyword.merge(s3.ex_aws, http_client: RangeClient, http_opts: [object: object])
+    }
+
+    dest = Path.join(root, "s3.out")
+    Storage.download!(s3, "the-key", dest)
+
+    assert_received {:range, "bytes=0-8388607"}
+    assert_received {:range, "bytes=8388608-16777215"}
+    assert_received {:range, "bytes=16777216-25165823"}
+    refute_received {:range, _}
+    assert File.read!(dest) == object
+  end
+
   test "delete/2 removes a local object and ignores a missing key", %{config: config} do
     key = Storage.generate_key()
     path = Storage.disk_path(config.root, key)
