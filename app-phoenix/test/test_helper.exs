@@ -7,6 +7,9 @@ scratch_repos = [Dawarich.ScratchRepo, Dawarich.ScratchCaseRepo, Dawarich.Tracks
 for repo <- scratch_repos do
   scratch = repo.config()
 
+  if byte_size(scratch[:database]) > 63,
+    do: raise("#{scratch[:database]} exceeds Postgres' 63-byte identifier limit")
+
   case repo.__adapter__().storage_up(scratch) do
     :ok -> :ok
     {:error, :already_up} -> :ok
@@ -54,3 +57,5 @@ for repo <- scratch_repos do
 
   Dawarich.MigrationModules.purge()
 end
+
+Dawarich.LaneGuard.attach!()

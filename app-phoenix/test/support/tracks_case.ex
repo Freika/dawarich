@@ -8,13 +8,17 @@ defmodule Dawarich.TracksCase do
 
   @oban Dawarich.TracksCase.Oban
 
-  using do
+  using opts do
+    if opts[:async] && opts[:group] != :tracks_db,
+      do: raise(ArgumentError, "async TracksCase modules need group: :tracks_db")
+
     quote do
       alias Dawarich.TracksScratchRepo, as: ScratchRepo
       alias Dawarich.Tracks.TracksFixtures
       import Dawarich.TracksCase
 
       setup do
+        Dawarich.LaneGuard.guard!(:tracks_db)
         Dawarich.JobsCase.reset!(ScratchRepo)
         Dawarich.TracksCase.truncate!()
         Dawarich.TracksCase.start_services!()

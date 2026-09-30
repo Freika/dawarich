@@ -4,7 +4,10 @@ defmodule Dawarich.ScratchCase do
 
   alias Dawarich.ScratchCaseRepo
 
-  using do
+  using opts do
+    if opts[:async] && opts[:group] != :scratch_case_db,
+      do: raise(ArgumentError, "async ScratchCase modules need group: :scratch_case_db")
+
     quote do
       alias Dawarich.ScratchCaseRepo, as: ScratchRepo
       import Dawarich.ScratchCase, only: [scratch_sql!: 1]
@@ -25,6 +28,7 @@ defmodule Dawarich.ScratchCase do
   end
 
   setup do
+    Dawarich.LaneGuard.guard!(:scratch_case_db)
     recreate_public!(ScratchCaseRepo)
 
     ScratchCaseRepo.query!(
