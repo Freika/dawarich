@@ -1,0 +1,53 @@
+name: Copilot Triage
+
+on:
+  issues:
+    types: [opened, reopened]
+  issue_comment:
+    types: [created]
+  discussion:
+    types: [created]
+  discussion_comment:
+    types: [created]
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: Report type to preview
+        type: choice
+        options: [issue, discussion]
+        default: issue
+      number:
+        description: Issue or discussion number to preview
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  issues: write
+  discussions: write
+
+concurrency:
+  group: >-
+    triage-${{ inputs.kind || (github.event.discussion && 'discussion' || 'issue') }}-${{ inputs.number || github.event.issue.number || github.event.discussion.number }}-${{ github.event.discussion && (github.event.comment.parent_id || github.event.comment.id) || 'report' }}
+  cancel-in-progress: false
+
+jobs:
+  triage:
+    if: (github.event.sender.type != 'Bot' || github.event_name == 'issues') && !github.event.issue.pull_request
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check Copilot authentication
+        env:
+          COPILOT_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+        run: |
+          if [ -z "$COPILOT_TOKEN" ]; then
+            echo "::error::Add the COPILOT_GITHUB_TOKEN repository secret with Copilot Requests permission before running triage."
+            exit 1
+          fi
+      - uses: crmne/copilot-triage@2c1636ec994f3d1e07650d1dcc4f9245d9fbe2be # v0.6.2
+        with:
+          copilot-token: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          kind: ${{ inputs.kind || (github.event.discussion && 'discussion' || 'issue') }}
+          number: ${{ inputs.number || github.event.issue.number || github.event.discussion.number }}
+          dry-run: ${{ github.event_name == 'workflow_dispatch' }}
