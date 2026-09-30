@@ -16,8 +16,7 @@ defmodule DawarichWeb.TripsLive.Index do
      assign(socket,
        page_title: t(socket.assigns.locale, "trips.index.trips", %{}),
        rails_js: true,
-       rails_charts: false,
-       morph_page_refreshes: false
+       rails_charts: false
      ), temporary_assigns: [entries: []]}
   end
 

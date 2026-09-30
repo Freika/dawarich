@@ -60,4 +60,10 @@ defmodule Dawarich.TripListTest do
     assert TripList.load(user, 1) == :rails
     assert TripList.gate(user, 1) == :rails
   end
+
+  test "a page past the guard is Rails', same as Kaminari's own out-of-range page", %{
+    user: user
+  } do
+    assert TripList.load(user, 1_000_000_000_001) == :rails
+  end
 end
