@@ -63,7 +63,7 @@ class Immich::RequestPhotos
       page += 1
     end
 
-    data.flatten
+    data.flatten.reject { |photo| photo['isArchived'] == true || photo['visibility'] == 'archive' }
   rescue *Photos::ConnectionErrors::HANDLED => e
     Rails.logger.error("Immich photo fetch failed: #{e.message}")
     raise if @raise_on_connection_error && Photos::ConnectionErrors.retryable?(e)
@@ -85,7 +85,9 @@ class Immich::RequestPhotos
       size: 1000,
       page: page,
       order: 'asc',
-      withExif: true
+      withExif: true,
+      isArchived: false,
+      visibility: 'timeline'
     }
 
     return body unless end_date

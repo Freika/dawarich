@@ -3,17 +3,17 @@
   <h3 class="font-bold text-lg"><%= t('.sharing') %></h3>
   <span class="badge badge-success badge-sm gap-1">
     <span class="w-1.5 h-1.5 rounded-full bg-success-content/80"></span>
-    <%= t('.public') %>
+    <%= share.family_only? ? t('shared_links.family.label') : t('.public') %>
   </span>
 </div>
 
 <% if local_assigns[:subtitle].present? %>
-  <p class="text-sm text-base-content/70 mb-5"><%= subtitle %></p>
+  <p class="text-sm text-base-content/70 mb-5"><%= share.family_only? ? t('shared_links.family.shared_trip', trip: share.resource&.name || share.name) : subtitle %></p>
 <% end %>
 
 <div class="space-y-4">
   <div>
-    <label class="text-xs font-medium text-base-content/60 uppercase tracking-wide" for="share-url"><%= t('.public_link') %></label>
+    <label class="text-xs font-medium text-base-content/60 uppercase tracking-wide" for="share-url"><%= share.family_only? ? t('shared_links.family.link') : t('.public_link') %></label>
     <div class="join w-full mt-1">
       <input id="share-url" type="text" readonly value="<%= public_shared_link_url(share.id) %>"
              class="input input-bordered join-item flex-1 font-mono text-sm" onclick="this.select();">
@@ -22,7 +22,7 @@
               data-clipboard-text-value="<%= public_shared_link_url(share.id) %>"
               data-action="click->clipboard#copy"
               title="<%= t('.copy_link') %>"
-              aria-label="<%= t('.copy_public_link') %>">
+              aria-label="<%= share.family_only? ? t('.copy_link') : t('.copy_public_link') %>">
         <%= icon 'copy', class: 'w-4 h-4' %>
       </button>
       <%= link_to public_shared_link_url(share.id), target: '_blank', rel: 'noopener',
@@ -33,7 +33,7 @@
     </div>
   </div>
 
-  <% if share.magic_phrase.present? %>
+  <% if share.magic_phrase.present? && !share.family_only? %>
     <div>
       <label class="text-xs font-medium text-base-content/60 uppercase tracking-wide" for="share-phrase"><%= t('.magic_phrase') %></label>
       <div class="join w-full mt-1">
@@ -70,11 +70,13 @@
                     data: { turbo_confirm: t('.generate_a_new_url_the_current_url_will_stop_working') } do %>
         <%= icon 'refresh-ccw', class: 'w-4 h-4' %> <%= t('.regenerate_url') %>
       <% end %>
-      <%= button_to paths[:regenerate_phrase], method: :post,
-                    form: { data: { turbo_frame: "share-link-modal" } },
-                    class: "btn btn-outline btn-sm",
-                    data: { turbo_confirm: t('.generate_a_new_phrase') } do %>
-        <%= icon 'refresh-ccw', class: 'w-4 h-4' %> <%= t('.regenerate_phrase') %>
+      <% unless share.family_only? %>
+        <%= button_to paths[:regenerate_phrase], method: :post,
+                      form: { data: { turbo_frame: "share-link-modal" } },
+                      class: "btn btn-outline btn-sm",
+                      data: { turbo_confirm: t('.generate_a_new_phrase') } do %>
+          <%= icon 'refresh-ccw', class: 'w-4 h-4' %> <%= t('.regenerate_phrase') %>
+        <% end %>
       <% end %>
     </div>
     <%= button_to paths[:revoke], method: :patch,

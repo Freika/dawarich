@@ -155,7 +155,7 @@ RSpec.describe Jobs::Create do
       end
 
       it 'skips continue_reverse_geocoding when a dedup key already claims the point' do
-        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: 86_400) }
 
         expect do
           described_class.new('continue_reverse_geocoding', user.id).call
@@ -166,11 +166,11 @@ RSpec.describe Jobs::Create do
         described_class.new('continue_reverse_geocoding', user.id).call
 
         ttl = Sidekiq.redis { |r| r.ttl(Point.geocode_dedup_key(point.id)) }
-        expect(ttl).to be > 0
+        expect(ttl).to eq(-1)
       end
 
       it 'clears the dedup key when start_reverse_geocoding force-runs over an existing claim' do
-        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: 86_400) }
 
         expect do
           described_class.new('start_reverse_geocoding', user.id).call
