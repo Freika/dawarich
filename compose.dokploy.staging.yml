@@ -10,8 +10,8 @@ x-app: &app
   entrypoint: ["cloud-entrypoint.sh"]
   env_file: .env
   environment:
-    RAILS_ENV: production
-    RACK_ENV: production
+    RAILS_ENV: staging
+    RACK_ENV: staging
     SELF_HOSTED: "false"
     STORAGE_BACKEND: s3
     APPLICATION_PROTOCOL: https
