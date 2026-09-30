@@ -165,7 +165,7 @@ defmodule Dawarich.ReleaseMigratorTest.LosesLease do
       {"20990801000001",
        fn _repo ->
          fn ->
-           Dawarich.ScratchRepo.query!(
+           Dawarich.ScratchCaseRepo.query!(
              "UPDATE phoenix.release_migrator_leases SET holder = 'thief'"
            )
          end
@@ -276,7 +276,7 @@ defmodule Dawarich.ReleaseMigratorTest.Throws do
 end
 
 defmodule Dawarich.ReleaseMigratorTest do
-  use Dawarich.ScratchCase, async: true, group: :scratch_db
+  use Dawarich.ScratchCase, async: true, group: :scratch_case_db
 
   import Dawarich.ReleaseMigration
 
@@ -752,23 +752,23 @@ defmodule Dawarich.ReleaseMigratorTest do
 
   test "refuses to start with a single-connection pool" do
     create_ledger!([])
-    {:ok, small} = Dawarich.ScratchRepo.start_link(name: nil, pool_size: 1)
-    Dawarich.ScratchRepo.put_dynamic_repo(small)
-    on_exit(fn -> Dawarich.ScratchRepo.put_dynamic_repo(Dawarich.ScratchRepo) end)
+    {:ok, small} = Dawarich.ScratchCaseRepo.start_link(name: nil, pool_size: 1)
+    Dawarich.ScratchCaseRepo.put_dynamic_repo(small)
+    on_exit(fn -> Dawarich.ScratchCaseRepo.put_dynamic_repo(Dawarich.ScratchCaseRepo) end)
 
     assert ReleaseMigrator.migrate(ScratchRepo, releases: [R1]) == {:error, :pool_too_small}
   end
 
   test "refuses a session whose time zone is not UTC" do
     {:ok, berlin} =
-      Dawarich.ScratchRepo.start_link(
+      Dawarich.ScratchCaseRepo.start_link(
         name: nil,
         pool_size: 2,
         parameters: [timezone: "Europe/Berlin"]
       )
 
-    Dawarich.ScratchRepo.put_dynamic_repo(berlin)
-    on_exit(fn -> Dawarich.ScratchRepo.put_dynamic_repo(Dawarich.ScratchRepo) end)
+    Dawarich.ScratchCaseRepo.put_dynamic_repo(berlin)
+    on_exit(fn -> Dawarich.ScratchCaseRepo.put_dynamic_repo(Dawarich.ScratchCaseRepo) end)
 
     assert ReleaseMigrator.migrate(ScratchRepo, releases: [R1]) ==
              {:error, {:timezone, "Europe/Berlin"}}

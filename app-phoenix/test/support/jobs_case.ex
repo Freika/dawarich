@@ -16,7 +16,7 @@ defmodule Dawarich.JobsCase do
 
   setup do
     unless rows("SELECT to_regclass('public.job_outbox') IS NOT NULL") == [[true]] do
-      Dawarich.ScratchCase.recreate_public!()
+      Dawarich.ScratchCase.recreate_public!(ScratchRepo)
 
       ScratchRepo.query!(Dawarich.ReleaseMigrator.baseline_sql(), [],
         query_type: :text,

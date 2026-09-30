@@ -1,5 +1,5 @@
 defmodule Dawarich.FamiliesTest do
-  use Dawarich.ScratchCase, async: true, group: :scratch_db
+  use Dawarich.ScratchCase, async: true, group: :scratch_case_db
 
   alias Dawarich.Families
 

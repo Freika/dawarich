@@ -1,5 +1,5 @@
 defmodule Dawarich.ReleaseMigrations.Effects.MigrateExplorationStateTest do
-  use Dawarich.ScratchCase, async: true, group: :scratch_db
+  use Dawarich.ScratchCase, async: true, group: :scratch_case_db
 
   alias Dawarich.ReleaseMigrations.Effects.MigrateExplorationState
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby

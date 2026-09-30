@@ -41,7 +41,7 @@ defmodule Dawarich.GeocodingFixtures do
 
   def user(email, opts \\ []) do
     %{rows: [[id]]} =
-      Dawarich.ScratchRepo.query!(
+      Dawarich.ScratchCaseRepo.query!(
         "INSERT INTO users (email, admin, deleted_at) VALUES ($1, $2, $3) RETURNING id",
         [email, Keyword.get(opts, :admin, false), if(opts[:deleted], do: ~N[2026-01-01 00:00:00])]
       )
@@ -50,7 +50,7 @@ defmodule Dawarich.GeocodingFixtures do
   end
 
   def setting(user_id, provider, config, opts \\ []) do
-    Dawarich.ScratchRepo.query!(
+    Dawarich.ScratchCaseRepo.query!(
       "INSERT INTO service_settings (user_id, service, provider, config, credentials, active, created_at, updated_at) " <>
         "VALUES ($1, 0, $2, $3, $4, $5, '2026-01-01', '2026-01-01')",
       [user_id, provider, config, opts[:credentials], Keyword.get(opts, :active, false)]
@@ -58,7 +58,7 @@ defmodule Dawarich.GeocodingFixtures do
   end
 
   def settings do
-    Dawarich.ScratchRepo.query!(
+    Dawarich.ScratchCaseRepo.query!(
       "SELECT user_id, provider, config, credentials, active FROM service_settings ORDER BY id"
     ).rows
     |> Enum.map(fn [user_id, provider, config, credentials, active] ->
@@ -67,7 +67,7 @@ defmodule Dawarich.GeocodingFixtures do
   end
 
   def instance_settings do
-    Dawarich.ScratchRepo.query!(
+    Dawarich.ScratchCaseRepo.query!(
       "SELECT key, value, encrypted_value FROM instance_settings ORDER BY id"
     ).rows
     |> Enum.map(fn

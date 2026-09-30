@@ -1,5 +1,5 @@
 defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
-  use Dawarich.ScratchCase, async: true, group: :scratch_db
+  use Dawarich.ScratchCase, async: true, group: :scratch_case_db
 
   import Dawarich.GeocodingFixtures
 
@@ -37,7 +37,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
     assert instance_settings() == [{"reverse_geocoding_rps", nil}]
     assert raw_value("reverse_geocoding_rps") == "null"
 
-    Dawarich.ScratchRepo.query!("TRUNCATE instance_settings")
+    Dawarich.ScratchCaseRepo.query!("TRUNCATE instance_settings")
     BackfillInstanceSettings.run(ScratchRepo, env(%{"REVERSE_GEOCODING_RPS" => "fast"}))
     assert instance_settings() == []
   end
@@ -148,7 +148,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
     BackfillInstanceSettings.run(ScratchRepo, env())
     assert instance_settings() == []
 
-    Dawarich.ScratchRepo.query!("TRUNCATE service_settings, users CASCADE")
+    Dawarich.ScratchCaseRepo.query!("TRUNCATE service_settings, users CASCADE")
 
     setting(user("covered@example.test"), "geoapify", %{},
       credentials: encrypted(~s({"api_key":"k"})),
@@ -216,7 +216,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
       BackfillInstanceSettings.run(ScratchRepo, env())
     end
 
-    Dawarich.ScratchRepo.query!("TRUNCATE service_settings, users CASCADE")
+    Dawarich.ScratchCaseRepo.query!("TRUNCATE service_settings, users CASCADE")
 
     assert_raise Ruby.Error,
                  "Missing Active Record encryption credential: active_record_encryption.primary_key",
@@ -236,7 +236,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
     BackfillInstanceSettings.run(ScratchRepo, env(%{"REVERSE_GEOCODING_RPS" => "0.00005"}))
     assert raw_value("reverse_geocoding_rps") == "0.00005"
 
-    Dawarich.ScratchRepo.query!("TRUNCATE instance_settings")
+    Dawarich.ScratchCaseRepo.query!("TRUNCATE instance_settings")
 
     for email <- ["a@example.test", "b@example.test"] do
       setting(
@@ -272,7 +272,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
       BackfillInstanceSettings.run(ScratchRepo, env())
     end
 
-    Dawarich.ScratchRepo.query!("UPDATE service_settings SET credentials = $1", [
+    Dawarich.ScratchCaseRepo.query!("UPDATE service_settings SET credentials = $1", [
       encrypted("not json")
     ])
 
@@ -293,7 +293,9 @@ defmodule Dawarich.ReleaseMigrations.Effects.BackfillInstanceSettingsTest do
   end
 
   defp raw_value(key) do
-    Dawarich.ScratchRepo.query!("SELECT value::text FROM instance_settings WHERE key = $1", [key]).rows
+    Dawarich.ScratchCaseRepo.query!("SELECT value::text FROM instance_settings WHERE key = $1", [
+      key
+    ]).rows
     |> List.first()
     |> List.first()
   end
