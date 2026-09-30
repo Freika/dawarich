@@ -1,0 +1,32 @@
+pl:
+  devise:
+    registrations:
+      edit:
+        first_name: "Imię"
+        last_name: "Nazwisko"
+  controllers:
+    settings:
+      general:
+        test_email_queued: "E-mail testowy dla %{email} dodano do kolejki. Sprawdź skrzynkę odbiorczą i błędy wysyłania w Sidekiq."
+  settings:
+    general:
+      index:
+        test_email_worker_hint: "Dodaje wiadomość testową do kolejki tego samego procesu w tle, który wysyła e-maile systemowe"
+  shared_links:
+    family:
+      audience: "Kto może zobaczyć tę podróż?"
+      public_link: "Każdy, kto ma link"
+      only: "Tylko członkowie rodziny"
+      label: "Rodzina"
+      link: "Link rodzinny"
+      shared_trip: "%{trip} jest udostępniana Twojej rodzinie."
+      trips: "Podróże udostępnione Twojej rodzinie"
+      hint: "Podróże rodzinne pojawiają się na liście podróży Twojej rodziny. Członkowie muszą się zalogować. Tajna fraza jest używana tylko w linkach publicznych."
+      choose_audience: "Wybierz, kto może zobaczyć tę podróż i jakie szczegóły uwzględnić."
+      sections: "Zawartość udostępnionej strony"
+      unavailable: "Dołącz do aktywnej rodziny, zanim udostępnisz podróż jej członkom."
+      back_to_trips: "Powrót do podróży"
+      your_map: "Twoja mapa dla tych dat"
+  trips:
+    show:
+      open_in_map: "Otwórz na mapie"
