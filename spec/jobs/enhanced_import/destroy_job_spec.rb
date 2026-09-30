@@ -10,12 +10,14 @@ RSpec.describe EnhancedImport::DestroyJob do
     it 'a GPX import without visits or tracks forwards' do
       job_owner!('command:enhanced_import.destroy_gpx', :oban)
       allow(EnhancedImport::Destroy).to receive(:new)
+      allow(EnhancedImport::CardBroadcaster).to receive(:call)
 
       described_class.new.perform(import.id)
 
       row = JobOutbox.sole
       expect(row.payload).to eq('import_id' => import.id)
       expect(EnhancedImport::Destroy).not_to have_received(:new)
+      expect(EnhancedImport::CardBroadcaster).not_to have_received(:call)
     end
 
     it 'a GPX import owning a visit runs Rails instead of forwarding' do

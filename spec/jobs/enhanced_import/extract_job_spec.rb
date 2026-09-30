@@ -72,12 +72,14 @@ RSpec.describe EnhancedImport::ExtractJob do
     it 'forwards a GPX import and writes nothing to the import' do
       job_owner!('command:enhanced_import.extract_gpx', :oban)
       gpx_import = create(:import, user: user, source: :gpx)
+      allow(EnhancedImport::CardBroadcaster).to receive(:call)
 
       described_class.new.perform(gpx_import.id, attempt: 7)
 
       row = JobOutbox.sole
       expect(row.payload).to eq('import_id' => gpx_import.id, 'lock_attempt' => 7)
       expect(gpx_import.reload.additional_data_extraction_status).to eq('not_attempted')
+      expect(EnhancedImport::CardBroadcaster).not_to have_received(:call)
     end
 
     it 'runs Rails for a Takeout import rather than forwarding' do
