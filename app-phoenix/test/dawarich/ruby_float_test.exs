@@ -31,4 +31,60 @@ defmodule Dawarich.RubyFloatTest do
              inspect({input, digits})
     end
   end
+
+  @ruby_bare_round [
+    {2.5, 3},
+    {-2.5, -3},
+    {0.5, 1},
+    {-0.5, -1},
+    {4.4, 4},
+    {4.6, 5},
+    {9.0, 9},
+    {0.0, 0},
+    {-0.0, 0},
+    {1.005, 1},
+    {2.675, 3},
+    {100_000.5, 100_001},
+    {-100_000.5, -100_001}
+  ]
+
+  test "round/1 rounds exactly as Ruby's Float#round with no arguments" do
+    for {input, ruby} <- @ruby_bare_round do
+      assert Dawarich.RubyFloat.round(input) == ruby, inspect(input)
+    end
+  end
+
+  test "sum is Ruby's compensated sum" do
+    %{"expected" => %{"pairs" => pairs, "distances" => values, "distance_sum" => ruby_sum}} =
+      Dawarich.Tracks.TracksFixtures.read!("ruby_math")
+
+    pairs = Enum.map(pairs, &{{&1["lat1"], &1["lon1"]}, {&1["lat2"], &1["lon2"]}})
+
+    assert <<Dawarich.RubyFloat.sum(values)::float>> == <<ruby_sum::float>>
+
+    platform_distances =
+      Enum.map(pairs, fn {from, to} -> Dawarich.Geo.safe_distance_m(from, to) end)
+
+    array_distance = Dawarich.Geo.pairs_distance_m(pairs)
+
+    assert Dawarich.Tracks.TracksFixtures.float_matches?(array_distance, ruby_sum)
+    assert <<array_distance::float>> == <<Dawarich.RubyFloat.sum(platform_distances)::float>>
+    refute Enum.sum(values) == ruby_sum
+  end
+
+  test "round/2 matches the fixture's Float#round(5) cases" do
+    %{"expected" => %{"round5_cases" => cases}} =
+      Dawarich.Tracks.TracksFixtures.read!("ruby_math")
+
+    for %{"input" => input, "rounded" => rounded} <- cases do
+      assert <<Dawarich.RubyFloat.round(input * 1.0, 5)::float>> == <<rounded * 1.0::float>>,
+             inspect(input)
+    end
+  end
+
+  test "sum/1 matches Ruby's Array#sum for floats" do
+    assert Dawarich.RubyFloat.sum([0.1, 0.2]) == 0.30000000000000004
+    assert Dawarich.RubyFloat.sum([1.0, 2.0, 3.0]) == 6.0
+    assert Dawarich.RubyFloat.sum([]) == 0.0
+  end
 end

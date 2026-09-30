@@ -54,7 +54,8 @@ class Tracks::ThrottledBackfillJob < ApplicationJob
       end_at: Time.zone.at(slice_end),
       mode: :bulk,
       untracked_only: true,
-      job_queue: :low_priority
+      job_queue: :low_priority,
+      event_id: job_id
     ).call
 
     refresh_key(user_id)

@@ -2,7 +2,7 @@ defmodule Dawarich.RuntimeConfigTest do
   use ExUnit.Case, async: false
 
   @runtime Path.expand("../../config/runtime.exs", __DIR__)
-  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS DAWARICH_RAILS_ROUTES RAILS_MAX_THREADS)
+  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS DAWARICH_RAILS_ROUTES RAILS_MAX_THREADS REDIS_URL RAILS_JOB_QUEUE_DB)
 
   setup do
     saved = Map.new(@vars, &{&1, System.get_env(&1)})
@@ -22,6 +22,11 @@ defmodule Dawarich.RuntimeConfigTest do
     {config[Dawarich.Repo], config[Oban]}
   end
 
+  defp redis(env) do
+    Enum.each(env, fn {name, value} -> System.put_env(name, value) end)
+    Config.Reader.read!(@runtime, env: :prod)[:dawarich][:redis]
+  end
+
   test "sizes the pool from the queue limits and enables Oban's services" do
     {repo, oban} = prod()
 
@@ -32,10 +37,11 @@ defmodule Dawarich.RuntimeConfigTest do
              maintenance: 1,
              exports: 1,
              projections: 1,
-             imports: 1
+             imports: 1,
+             tracks: 2
            ]
 
-    assert repo[:pool_size] == 17
+    assert repo[:pool_size] == 19
     assert oban[:peer] == Oban.Peers.Database
     assert oban[:stager] == {Oban.Stager, []}
     assert oban[:pruner] == [max_age: {1, :day}]
@@ -45,10 +51,10 @@ defmodule Dawarich.RuntimeConfigTest do
 
   test "the pool also covers Phoenix-served requests, one connection per Puma thread" do
     assert {repo, _} = prod(%{"RAILS_MAX_THREADS" => "10"})
-    assert repo[:pool_size] == 22
+    assert repo[:pool_size] == 24
 
     assert {repo, _} = prod(%{"RAILS_MAX_THREADS" => ""})
-    assert repo[:pool_size] == 17
+    assert repo[:pool_size] == 19
   end
 
   test "reads the routes handed back to Rails, trimmed and without blanks" do
@@ -69,6 +75,23 @@ defmodule Dawarich.RuntimeConfigTest do
     for worker <- [
           Dawarich.Imports.UpdatePointsCountWorker,
           Dawarich.AirTrail.ImportFlightsWorker
+        ] do
+      assert Keyword.has_key?(oban[:queues], worker.__opts__()[:queue])
+      assert worker.timeout(%Oban.Job{}) < :timer.minutes(60)
+    end
+  end
+
+  test "every wave-5 worker's queue is configured and times out before Lifeline" do
+    {_repo, oban} = prod()
+
+    for worker <- [
+          Dawarich.Tracks.RangeWorker,
+          Dawarich.Tracks.RealtimeWorker,
+          Dawarich.Tracks.RecalculateWorker,
+          Dawarich.Tracks.DailyWorker,
+          Dawarich.Transportation.ReclassifyTrackWorker,
+          Dawarich.Tracks.ChunkWorker,
+          Dawarich.Tracks.BoundaryWorker
         ] do
       assert Keyword.has_key?(oban[:queues], worker.__opts__()[:queue])
       assert worker.timeout(%Oban.Job{}) < :timer.minutes(60)
@@ -115,6 +138,13 @@ defmodule Dawarich.RuntimeConfigTest do
              prod(%{"PGSSLMODE" => "verify-ca", "PGSSLROOTCERT" => "/etc/ssl/db-root.crt"})
 
     assert repo[:ssl] == [cacertfile: "/etc/ssl/db-root.crt"]
+  end
+
+  test "Redis uses Sidekiq's database" do
+    assert redis(%{"REDIS_URL" => "redis://r:6379"}) == [url: "redis://r:6379", database: 1]
+
+    assert redis(%{"REDIS_URL" => "redis://r:6379", "RAILS_JOB_QUEUE_DB" => "4"}) ==
+             [url: "redis://r:6379", database: 4]
   end
 
   test "connects over IPv6 when the database host has no IPv4 address" do

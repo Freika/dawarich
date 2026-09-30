@@ -40,6 +40,12 @@ defmodule Dawarich.Jobs.Housekeeping do
 
     delete!(
       repo,
+      "DELETE FROM phoenix.track_generations WHERE updated_at < $1",
+      DateTime.add(now, -@day)
+    )
+
+    delete!(
+      repo,
       "DELETE FROM phoenix.delivery_claims WHERE claimed_at < $1",
       DateTime.add(now, -30 * @day)
     )

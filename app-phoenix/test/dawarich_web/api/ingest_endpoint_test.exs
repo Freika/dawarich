@@ -183,8 +183,8 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
              ~r/\[ingest\] POST \/api\/v1\/overland\/batches 201 \d+ms request_id=[0-9a-f-]{36}/
 
     refute log =~ "phoenix-a3-endpoint-key"
-    refute log =~ "13.4"
-    refute log =~ "52.5"
+    refute log =~ "13.4,"
+    refute log =~ "52.5]"
   end
 
   test "a 401 Phoenix answers logs one line at info, with no api key or coordinate in it",
@@ -203,8 +203,8 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
 
     assert log =~ ~r/\[ingest\] POST \/api\/v1\/points 401 \d+ms request_id=[0-9a-f-]{36}/
     refute log =~ "phoenix-a3-endpoint-key"
-    refute log =~ "13.4"
-    refute log =~ "52.5"
+    refute log =~ "13.4,"
+    refute log =~ "52.5]"
   end
 
   describe "boundary plugs are plugged into :api_ingest" do

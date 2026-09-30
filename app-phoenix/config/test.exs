@@ -28,6 +28,10 @@ config :dawarich,
 
 config :dawarich, Oban, testing: :manual
 
+config :dawarich, :redis,
+  url: System.get_env("PHOENIX_TEST_REDIS_URL", "redis://127.0.0.1:7153"),
+  database: 1
+
 config :dawarich, :jobs_runtime, false
 config :dawarich, :jobs_repo, Dawarich.ScratchRepo
 config :dawarich, :app_version_file, Path.expand("../../.app_version", __DIR__)

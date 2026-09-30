@@ -89,7 +89,8 @@ class Users::RecalculateDataJob < ApplicationJob
       options = { start_at: start_at, end_at: end_at, mode: :bulk }
       options[:job_queue] = job_queue if job_queue
 
-      Tracks::ParallelGenerator.new(user, **options).call
+      event_id = Digest::UUID.uuid_v5(Digest::UUID::URL_NAMESPACE, "tracks.generate_range:#{job_id}:#{y}")
+      Tracks::ParallelGenerator.new(user, **options, event_id:).call
     end
 
     Rails.logger.info "Recalculated tracks for user #{user.id}, years: #{years_to_process.join(', ')}"

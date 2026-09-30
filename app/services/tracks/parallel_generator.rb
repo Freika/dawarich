@@ -12,7 +12,7 @@ class Tracks::ParallelGenerator
   # compete with Tracks::RealtimeGenerationJob. Housekeeping callers that are
   # rebuilding whole histories pass :low_priority so live tracking stays ahead.
   def initialize(user, start_at: nil, end_at: nil, mode: :bulk, chunk_size: 1.day, untracked_only: false,
-                 job_queue: nil, import_id: nil)
+                 job_queue: nil, import_id: nil, event_id: nil)
     @user = user
     @start_at = start_at
     @end_at = end_at
@@ -21,9 +21,13 @@ class Tracks::ParallelGenerator
     @untracked_only = untracked_only
     @job_queue = job_queue
     @import_id = import_id
+    @event_id = event_id
   end
 
   def call
+    owner = JobOwnership.with_owner(Tracks::GenerationCommand::OWNER_KEY) { :sidekiq }
+    return forward_to_phoenix if owner == :not_owner
+
     Tracks::PerUserLock.with_user_lock(user.id) { clean_existing_tracks } if mode.in?(%i[bulk daily]) && !untracked_only
 
     time_chunks = generate_time_chunks
@@ -47,6 +51,13 @@ class Tracks::ParallelGenerator
   end
 
   private
+
+  def forward_to_phoenix
+    payload = Tracks::GenerationCommand.payload(user.id, start_at:, end_at:, mode:, untracked_only:, import_id:,
+                                                         job_queue:)
+    Tracks::GenerationCommand.forward(payload, event_id: @event_id || SecureRandom.uuid, producer: self.class.name)
+    :forwarded
+  end
 
   def generate_time_chunks
     chunker = Tracks::TimeChunker.new(

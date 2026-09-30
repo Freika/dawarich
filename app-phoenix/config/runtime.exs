@@ -64,7 +64,8 @@ if config_env() != :test do
     maintenance: 1,
     exports: 1,
     projections: 1,
-    imports: 1
+    imports: 1,
+    tracks: 2
   ]
 
   config :dawarich,
@@ -89,6 +90,10 @@ if config_env() != :test do
     pruner: [max_age: {1, :day}],
     lifeline: [rescue_after: {60, :minute}],
     shutdown_grace_period: 12_000
+
+  config :dawarich, :redis,
+    url: System.get_env("REDIS_URL"),
+    database: env_integer.("RAILS_JOB_QUEUE_DB", 1)
 end
 
 config :dawarich,

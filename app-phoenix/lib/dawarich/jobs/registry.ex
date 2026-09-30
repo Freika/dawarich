@@ -114,6 +114,37 @@ defmodule Dawarich.Jobs.Registry do
       kind: :command,
       worker: Dawarich.AirTrail.ImportFlightsWorker,
       claimable: false
+    },
+    %{
+      key: "command:tracks.generate_range",
+      kind: :command,
+      worker: Dawarich.Tracks.RangeWorker,
+      claimable: false
+    },
+    %{
+      key: "command:tracks.generate_realtime",
+      kind: :command,
+      worker: Dawarich.Tracks.RealtimeWorker,
+      claimable: false
+    },
+    %{
+      key: "command:tracks.recalculate",
+      kind: :command,
+      worker: Dawarich.Tracks.RecalculateWorker,
+      claimable: false
+    },
+    %{
+      key: "command:transportation.reclassify_track",
+      kind: :command,
+      worker: Dawarich.Transportation.ReclassifyTrackWorker,
+      claimable: false
+    },
+    %{
+      key: "cron:daily_track_generation_job",
+      kind: :cron,
+      expression: "0 */12 * * *",
+      worker: Dawarich.Tracks.DailyWorker,
+      claimable: false
     }
   ]
 

@@ -8,6 +8,11 @@ defmodule Dawarich.Jobs.ControlTablesTest do
                         __DIR__
                       )
   @rails_commands_sha256 "7efd39608949f81eb3d750262a3df4365b7406d0caa622923008759381a0a571"
+  @track_generations_sql Path.expand(
+                           "../../../priv/repo/sql/20260928150000_track_generations.sql",
+                           __DIR__
+                         )
+  @track_generations_sha256 "c22d472f6e342d7746693f55b401be8e1e068b1e34760e0879c01f31d06be090"
 
   test "the migration creates the six phoenix tables" do
     for table <-
@@ -82,6 +87,71 @@ defmodule Dawarich.Jobs.ControlTablesTest do
              SELECT unnest(setconfig) FROM pg_db_role_setting
              WHERE setdatabase = (SELECT oid FROM pg_database WHERE datname = current_database())
              """)
+  end
+
+  test "the wave-5 migration creates both generation tables" do
+    assert columns("track_generations") == [
+             ["id", "uuid", "NO"],
+             ["user_id", "bigint", "NO"],
+             ["mode", "text", "NO"],
+             ["untracked_only", "boolean", "NO"],
+             ["import_id", "bigint", "YES"],
+             ["low_priority", "boolean", "NO"],
+             ["status", "text", "NO"],
+             ["total_chunks", "integer", "NO"],
+             ["completed_chunks", "integer", "NO"],
+             ["tracks_created", "integer", "NO"],
+             ["poll_count", "integer", "NO"],
+             ["stall_count", "integer", "NO"],
+             ["seen_completed", "integer", "NO"],
+             ["error", "text", "YES"],
+             ["created_at", "timestamp with time zone", "NO"],
+             ["updated_at", "timestamp with time zone", "NO"]
+           ]
+
+    assert columns("track_generation_chunks") == [
+             ["generation_id", "uuid", "NO"],
+             ["chunk_id", "integer", "NO"],
+             ["start_ts", "bigint", "NO"],
+             ["end_ts", "bigint", "NO"],
+             ["buffer_start_ts", "bigint", "NO"],
+             ["buffer_end_ts", "bigint", "NO"],
+             ["status", "text", "NO"],
+             ["tracks_created", "integer", "NO"]
+           ]
+
+    assert [["c"]] =
+             rows("""
+             SELECT confdeltype::text FROM pg_constraint
+             WHERE conrelid = 'phoenix.track_generation_chunks'::regclass AND contype = 'f'
+             """)
+  end
+
+  test "status checks reject unknown states" do
+    rows("""
+    INSERT INTO phoenix.track_generations (id, user_id, mode, untracked_only, low_priority, status, total_chunks)
+    VALUES (gen_random_uuid(), 1, 'bulk', false, false, 'running', 1)
+    """)
+
+    assert_raise Postgrex.Error, ~r/track_generations_status_check/, fn ->
+      rows("""
+      INSERT INTO phoenix.track_generations (id, user_id, mode, untracked_only, low_priority, status, total_chunks)
+      VALUES (gen_random_uuid(), 1, 'bulk', false, false, 'queued', 1)
+      """)
+    end
+
+    assert_raise Postgrex.Error, ~r/track_generations_total_chunks_check/, fn ->
+      rows("""
+      INSERT INTO phoenix.track_generations (id, user_id, mode, untracked_only, low_priority, status, total_chunks)
+      VALUES (gen_random_uuid(), 1, 'bulk', false, false, 'running', 0)
+      """)
+    end
+  end
+
+  test "the track-generations SQL file is frozen" do
+    assert :crypto.hash(:sha256, File.read!(@track_generations_sql))
+           |> Base.encode16(case: :lower) ==
+             @track_generations_sha256
   end
 
   defp columns(table) do

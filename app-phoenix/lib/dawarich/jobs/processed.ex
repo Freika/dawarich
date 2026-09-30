@@ -12,12 +12,18 @@ defmodule Dawarich.Jobs.Processed do
   end
 
   def mark!(repo, event_id, handler) do
-    repo.query!(
-      "INSERT INTO phoenix.processed_commands (event_id, handler, processed_at) VALUES ($1, $2, $3) ON CONFLICT (event_id) DO NOTHING",
-      [Ecto.UUID.dump!(event_id), handler, DateTime.utc_now()],
-      log: false
-    )
-
+    claim!(repo, event_id, handler)
     :ok
+  end
+
+  def claim!(repo, event_id, handler) do
+    %{num_rows: rows} =
+      repo.query!(
+        "INSERT INTO phoenix.processed_commands (event_id, handler, processed_at) VALUES ($1, $2, $3) ON CONFLICT (event_id) DO NOTHING RETURNING event_id",
+        [Ecto.UUID.dump!(event_id), handler, DateTime.utc_now()],
+        log: false
+      )
+
+    rows == 1
   end
 end

@@ -69,6 +69,31 @@ defmodule Dawarich.Jobs.RegistryTest do
     assert Registry.command("nope") == :error
   end
 
+  test "wave-5 keys are exact and unclaimable" do
+    wave5 = %{
+      "command:tracks.generate_range" => Dawarich.Tracks.RangeWorker,
+      "command:tracks.generate_realtime" => Dawarich.Tracks.RealtimeWorker,
+      "command:tracks.recalculate" => Dawarich.Tracks.RecalculateWorker,
+      "command:transportation.reclassify_track" => Dawarich.Transportation.ReclassifyTrackWorker,
+      "cron:daily_track_generation_job" => Dawarich.Tracks.DailyWorker
+    }
+
+    entries = Map.new(Registry.entries(), &{&1.key, &1})
+
+    for {key, worker} <- wave5 do
+      assert %{worker: ^worker, claimable: false} = entries[key], key
+    end
+
+    assert Registry.claimable() == []
+
+    schedule = File.read!(Path.expand("../../../../config/schedule.yml", __DIR__))
+
+    [_, expression] =
+      Regex.run(~r/daily_track_generation_job:\n\s+cron: "([^"]+)"/, schedule)
+
+    assert {expression, Dawarich.Tracks.DailyWorker} in Registry.crontab()
+  end
+
   test "the app-version cron has one source: the registry matches config/schedule.yml" do
     schedule = File.read!(Path.expand("../../../../config/schedule.yml", __DIR__))
     [_, expression] = Regex.run(~r/app_version_checking_job:\n\s+cron: "([^"]+)"/, schedule)

@@ -37,6 +37,27 @@ RSpec.describe Tracks::DailyGenerationJob, type: :job do
         have_enqueued_job(Tracks::ParallelGeneratorJob).twice
     end
 
+    it 'Oban-owned cron does nothing in Rails' do
+      job_owner!(described_class::OWNER_KEY, :oban)
+
+      described_class.perform_now
+
+      expect(Tracks::ParallelGeneratorJob).not_to have_been_enqueued
+      expect(Tracks::ThrottledBackfillJob).not_to have_been_enqueued
+    end
+
+    it 'one user’s database error does not stop the batch' do
+      allow_any_instance_of(described_class).to receive(:start_timestamp).and_wrap_original do |original, user|
+        ActiveRecord::Base.connection.execute('SELECT 1/0') if user == active_user
+
+        original.call(user)
+      end
+
+      described_class.perform_now
+
+      expect(Tracks::ParallelGeneratorJob).to have_been_enqueued.with(trial_user.id, hash_including(mode: 'daily'))
+    end
+
     it 'does not process inactive users' do
       # Clear points and tracks to make destruction possible
       Point.destroy_all

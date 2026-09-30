@@ -251,6 +251,8 @@ RSpec.describe Tracks::BoundaryDetector do
     end
 
     describe '#find_connected_tracks' do
+      around { |example| freeze_time { example.run } }
+
       let!(:base_track) { create(:track, user: user, start_at: 2.hours.ago, end_at: 1.5.hours.ago) }
       let!(:connected_track) { create(:track, user: user, start_at: 1.hour.ago, end_at: 30.minutes.ago) }
       let!(:distant_track) { create(:track, user: user, start_at: 5.hours.ago, end_at: 4.hours.ago) }
@@ -279,7 +281,7 @@ RSpec.describe Tracks::BoundaryDetector do
       end
 
       it 'handles tracks with no points' do
-        track_no_points = create(:track, user: user, start_at: 1.hour.ago, end_at: 30.minutes.ago)
+        track_no_points = create(:track, user: user, start_at: 55.minutes.ago, end_at: 25.minutes.ago)
         all_tracks_with_empty = all_tracks + [track_no_points]
 
         expect do

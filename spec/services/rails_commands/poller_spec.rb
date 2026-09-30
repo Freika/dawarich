@@ -321,14 +321,120 @@ RSpec.describe RailsCommands::Poller do
   end
 
   it 'every registered kind declares a repeat guard and a callable' do
-    expect(RailsCommands::Registry::HANDLERS.keys).to eq(
-      %w[visit_months_changed airtrail_stats points.tile_epoch points.anomaly_filter tracks.realtime
-         tracks.backfill visits.realtime points.live_broadcast]
-    )
+    expected_kinds = %w[
+      visit_months_changed airtrail_stats tracks_changed tracks_generate_range tracks_throttled_backfill
+      tracks_realtime_retrigger geocode_recent_points transport_progress points.tile_epoch points.anomaly_filter
+      tracks.realtime tracks.backfill visits.realtime points.live_broadcast
+    ]
+    expect(RailsCommands::Registry::HANDLERS.keys).to eq(expected_kinds)
     RailsCommands::Registry::HANDLERS.each_value do |handler|
       expect(handler[:guard]).to be_a(String).and be_present
       expect(handler[:call]).to respond_to(:call)
     end
+  end
+
+  it 'tracks_changed broadcasts created, updated and destroyed and bumps the epoch' do
+    phoenix_tables!
+    start_at = Time.zone.parse('2026-03-29 12:00:00 UTC')
+    created = create(:track, user:, start_at:, end_at: start_at + 10.minutes)
+    updated = create(:track, user:, start_at: start_at + 20.minutes, end_at: start_at + 30.minutes)
+    before = Tracks::TileEpoch.etag_component(user.id, start_at.to_i, (start_at + 1.hour).to_i)
+    payload = {
+      'user_id' => user.id, 'created' => [created.id], 'updated' => [updated.id], 'destroyed' => [999],
+      'min_ts' => start_at.to_i, 'max_ts' => (start_at + 1.hour).to_i
+    }
+    command!('tracks_changed', payload)
+    expect(TracksChannel).to receive(:broadcast_to)
+      .with(user, hash_including(action: 'created', track: hash_including(id: created.id))).once
+    expect(TracksChannel).to receive(:broadcast_to)
+      .with(user, hash_including(action: 'updated', track: hash_including(id: updated.id))).once
+    expect(TracksChannel).to receive(:broadcast_to).with(user, hash_including(action: 'destroyed', track_id: 999)).once
+
+    described_class.drain_once
+
+    expect(Tracks::TileEpoch.etag_component(user.id, start_at.to_i, (start_at + 1.hour).to_i)).not_to eq(before)
+  end
+
+  it 'tracks_changed with only a range bumps the epoch without broadcasting' do
+    phoenix_tables!
+    start_at = Time.zone.parse('2026-03-29 12:00:00 UTC')
+    before = Tracks::TileEpoch.etag_component(user.id, start_at.to_i, (start_at + 1.hour).to_i)
+    payload = {
+      'user_id' => user.id, 'created' => [], 'updated' => [], 'destroyed' => [],
+      'min_ts' => start_at.to_i, 'max_ts' => (start_at + 1.hour).to_i
+    }
+    command!('tracks_changed', payload)
+
+    expect { described_class.drain_once }.not_to have_broadcasted_to(user).from_channel(TracksChannel)
+    expect(Tracks::TileEpoch.etag_component(user.id, start_at.to_i, (start_at + 1.hour).to_i)).not_to eq(before)
+  end
+
+  it 'tracks_generate_range enqueues today’s job' do
+    phoenix_tables!
+    at = Time.zone.parse('2026-03-29 12:34:56 UTC')
+    payload = Tracks::GenerationCommand.payload(user.id, start_at: at, end_at: at + 1.hour, mode: :daily,
+                                                 untracked_only: false, import_id: nil, job_queue: nil)
+    command!('tracks_generate_range', payload)
+
+    expect { described_class.drain_once }.to have_enqueued_job(Tracks::ParallelGeneratorJob)
+      .with(user.id, hash_including(mode: :daily))
+  end
+
+  it 'tracks_throttled_backfill schedules once' do
+    phoenix_tables!
+    command!('tracks_throttled_backfill', { 'user_id' => user.id })
+    command!('tracks_throttled_backfill', { 'user_id' => user.id })
+
+    expect { described_class.drain_once }.to have_enqueued_job(Tracks::ThrottledBackfillJob).once.with(user.id, nil)
+  end
+
+  it 'tracks_realtime_retrigger arms the debouncer' do
+    phoenix_tables!
+    command!('tracks_realtime_retrigger', { 'user_id' => user.id })
+
+    expect { described_class.drain_once }.to have_enqueued_job(Tracks::RealtimeGenerationJob).with(user.id)
+    expect(Sidekiq.redis { |redis| redis.get("track_realtime:user:#{user.id}") }).to eq('1')
+  end
+
+  it 'geocode_recent_points uses the payload’s since' do
+    phoenix_tables!
+    since = Time.zone.parse('2026-03-29 12:00:00 UTC')
+    older = create(:point, user:, longitude: 12.37, latitude: 51.34, created_at: since + 3.minutes)
+    newer = create(:point, user:, longitude: 12.371, latitude: 51.341, created_at: since + 11.minutes)
+    config = instance_double(Geocoding::Config, enabled?: true)
+    allow(Geocoding::Config).to receive(:for).with(user.id).and_return(config)
+    command!('geocode_recent_points', { 'user_id' => user.id, 'since' => (since + 5.minutes).to_i })
+
+    expect { described_class.drain_once }
+      .to have_enqueued_job(ReverseGeocodingJob).with('Point', newer.id, force: false)
+    unexpected_job = hash_including(job: ReverseGeocodingJob, args: ['Point', older.id, { force: false }])
+    expect(enqueued_jobs).not_to include(unexpected_job)
+  end
+
+  it 'transport_progress counts a repeated delivery once' do
+    phoenix_tables!
+    status = Tracks::TransportationRecalculationStatus.new(user.id)
+    status.start(total_tracks: 2)
+    payload = { 'user_id' => user.id, 'event_id' => 'e1' }
+    command!('transport_progress', payload)
+    command!('transport_progress', payload)
+
+    described_class.drain_once
+
+    expect(status.data).to include('processed_tracks' => 1, 'status' => 'processing')
+    command!('transport_progress', { 'user_id' => user.id, 'event_id' => 'e2' })
+    described_class.drain_once
+    expect(status.data['status']).to eq('completed')
+  end
+
+  it 'missing users complete without retrying' do
+    phoenix_tables!
+    command!('tracks_throttled_backfill', { 'user_id' => 0 })
+    command!('geocode_recent_points', { 'user_id' => 0, 'since' => Time.current.to_i })
+
+    expect { described_class.drain_once }.not_to have_enqueued_job(Tracks::ThrottledBackfillJob)
+    expect(commands).to be_empty
+    expect(dead).to be_empty
   end
 
   it 'starts one named poller thread even when started twice' do

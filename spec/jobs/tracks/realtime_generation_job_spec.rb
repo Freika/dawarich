@@ -6,12 +6,6 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
   describe '#perform' do
     let(:user) { create(:user, settings: { 'minutes_between_routes' => 30, 'meters_between_routes' => 500 }) }
 
-    before do
-      allow(Tracks::RealtimeDebouncer).to receive(:new).and_return(
-        instance_double(Tracks::RealtimeDebouncer, clear: true)
-      )
-    end
-
     context 'when user exists and is active' do
       it 'clears the debounce key' do
         debouncer = instance_double(Tracks::RealtimeDebouncer, clear: true)
@@ -29,6 +23,32 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
         described_class.perform_now(user.id)
 
         expect(generator).to have_received(:call)
+      end
+
+      it 'Oban-owned: clears the debounce key, forwards, generates nothing' do
+        key = "track_realtime:user:#{user.id}"
+        Sidekiq.redis { |redis| redis.set(key, 1) }
+        job_owner!(described_class::OWNER_KEY, :oban)
+        allow(Tracks::IncrementalGenerator).to receive(:new)
+        job = described_class.new(user.id)
+
+        job.perform_now
+
+        expect(Sidekiq.redis { |redis| redis.exists(key) }).to eq(0)
+        expect(JobOutbox.sole).to have_attributes(command_type: 'tracks.generate_realtime', aggregate_id: user.id,
+                                                  event_id: job.job_id)
+        expect(Tracks::IncrementalGenerator).not_to have_received(:new)
+      end
+
+      it 'Sidekiq path still enqueues geocoding through the follow-up' do
+        job_owner!(described_class::OWNER_KEY, :sidekiq)
+        allow(Tracks::RealtimeGeocodeFollowUp).to receive(:call)
+        generator = instance_double(Tracks::IncrementalGenerator, call: true)
+        allow(Tracks::IncrementalGenerator).to receive(:new).with(user).and_return(generator)
+
+        described_class.perform_now(user.id)
+
+        expect(Tracks::RealtimeGeocodeFollowUp).to have_received(:call).with(user)
       end
     end
 
