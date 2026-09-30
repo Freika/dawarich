@@ -48,4 +48,23 @@ RSpec.describe Imports::BulkInsertable do
     expect(user.points.count).to eq(1)
     expect(user.points.first.lon).to eq(13.5)
   end
+
+  it 'skips records with a nil timestamp' do
+    inserted = harness_class.new(import).insert(
+      [record(13.5, 52.4, nil), record(13.6, 52.5, 1_700_000_060)]
+    )
+
+    expect(inserted).to eq(1)
+    expect(user.points.pluck(:timestamp)).to eq([1_700_000_060])
+  end
+
+  it 'skips records with a nil lonlat' do
+    batch = [{ lonlat: nil, timestamp: 1_700_000_000, user_id: user.id, import_id: import.id },
+             record(13.6, 52.5, 1_700_000_060)]
+
+    inserted = harness_class.new(import).insert(batch)
+
+    expect(inserted).to eq(1)
+    expect(user.points.count).to eq(1)
+  end
 end
