@@ -1,7 +1,7 @@
 defmodule Dawarich.EnhancedImport.ExtractGpxWorkerTest do
   use Dawarich.EnhancedImportCase
 
-  alias Dawarich.EnhancedImport.ExtractGpxWorker
+  alias Dawarich.EnhancedImport.{Extract, ExtractGpxWorker}
   alias Dawarich.Tracks.PerUserLock
 
   @extracted ~w(decimal_cast_waypoint name_over_limit tag_reuse_and_privacy writer_dedup zipped_single_entry)
@@ -94,6 +94,44 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorkerTest do
       assert taggings() == expected_taggings(expected), name
       assert kinds() == expected["effects"]["kinds"], name
       assert Enum.map(writes(), &elem(&1, 0)) == expected["effects"]["card_statuses"], name
+    end
+  end
+
+  test "extracts in chunks of 500 with one external-id lookup per chunk", %{storage: storage} do
+    waypoints =
+      for i <- 0..499,
+          do:
+            ~s(<wpt lat="#{51.2 + div(i, 25) * 0.001}" lon="#{12.3 + rem(i, 25) * 0.001}"><name>P#{i}</name></wpt>)
+
+    xml = "<gpx>" <> Enum.join(waypoints ++ [hd(waypoints)]) <> "</gpx>"
+
+    attach!(storage, %{
+      "import_id" => 9,
+      "filename" => "chunks.gpx",
+      "content_type" => "application/gpx+xml",
+      "byte_size" => byte_size(xml),
+      "checksum" => Base.encode64(:crypto.hash(:md5, xml)),
+      "base64" => Base.encode64(xml)
+    })
+
+    HookRepo.set_hook(fn sql, _params ->
+      if sql =~ "geodata ->> 'external_place_id' =", do: send(self(), :lookup)
+      :ok
+    end)
+
+    deadline = %{at: System.monotonic_time(:millisecond) + 60_000, minutes: 1}
+    import = %{id: 9, user_id: 1, raw_data: nil}
+
+    assert Extract.process(HookRepo, import, storage, "chunks", deadline) == %{"places" => 501}
+    assert rows("SELECT count(*) FROM places") == [[500]]
+    assert lookups() == 2
+  end
+
+  defp lookups do
+    receive do
+      :lookup -> 1 + lookups()
+    after
+      0 -> 0
     end
   end
 

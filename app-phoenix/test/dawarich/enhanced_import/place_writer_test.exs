@@ -89,4 +89,92 @@ defmodule Dawarich.EnhancedImport.PlaceWriterTest do
     assert MapSet.member?(state.claimed, raced_id)
     assert taggings() == [["Cafe", "Other Writer", "POINT(12.3731 51.3397)", "Place"]]
   end
+
+  defp pins!(pins) do
+    truncate!()
+    user_id = user!()
+
+    for {id, name} <- pins do
+      rows(
+        "INSERT INTO places (user_id, name, latitude, longitude, lonlat, source, geodata, created_at, updated_at) " <>
+          "VALUES ($1, $2, 51.3397, 12.3731, ST_SetSRID(ST_MakePoint(12.3731, 51.3397), 4326)::geography, " <>
+          "2, jsonb_build_object('external_place_id', $3::text), now(), now())",
+        [user_id, name, id]
+      )
+    end
+
+    %{id: 7, user_id: user_id}
+  end
+
+  defp pin(id, name, tag), do: %{tagged(id) | name: name, semantic_type: tag, tag_name: tag}
+
+  test "a prefetched chunk ends as one-by-one writes do" do
+    cases = [
+      {[{"gpx:old", "Old"}], [pin("gpx:new", "New", nil), pin("gpx:old", "Old", nil)]},
+      {[{"gpx:one", "One"}, {"gpx:two", "Two"}],
+       [pin("gpx:dup", nil, "Cafe"), pin("gpx:two", "Two", nil), pin("gpx:dup", nil, "Cafe")]}
+    ]
+
+    for {pins, items} <- cases do
+      one_by_one = run(ScratchRepo, pins!(pins), items)
+      expected = {places(), taggings(), one_by_one.count}
+
+      state = PlaceWriter.prefetch(ScratchRepo, PlaceWriter.new(pins!(pins)), items)
+      chunked = Enum.reduce(items, state, &PlaceWriter.upsert(ScratchRepo, &2, &1))
+
+      assert {places(), taggings(), chunked.count} == expected, inspect(pins)
+    end
+  end
+
+  test "renamed and nearby lookups never walk the user's places when statistics are stale" do
+    user_id = user!()
+    pin = "ST_SetSRID(ST_MakePoint(12.3505, 51.3005), 4326)::geography"
+
+    grid =
+      "ST_SetSRID(ST_MakePoint(12.3 + (g % 100) * 0.001, 51.3 + (g / 100) * 0.001), 4326)::geography"
+
+    {:error, plans} =
+      ScratchRepo.transaction(fn ->
+        rows(
+          "INSERT INTO places (user_id, name, latitude, longitude, lonlat, source, geodata, created_at, updated_at) " <>
+            "SELECT 1000000 + g, 'Other', 51.3, 12.3, #{pin}, 2, '{}', now(), now() " <>
+            "FROM generate_series(1, 2000) g"
+        )
+
+        rows("ANALYZE places")
+
+        rows(
+          "INSERT INTO places (user_id, name, latitude, longitude, lonlat, source, geodata, created_at, updated_at) " <>
+            "SELECT $1, 'Mine', 51.3, 12.3, #{grid}, 2, jsonb_build_object('external_place_id', 'gpx:' || g), " <>
+            "now(), now() FROM generate_series(1, 500) g",
+          [user_id]
+        )
+
+        HookRepo.set_hook(fn sql, params ->
+          if sql =~ "ST_DWithin",
+            do:
+              send(
+                self(),
+                {:plan, rows("EXPLAIN " <> sql, params) |> List.flatten() |> Enum.join("\n")}
+              )
+
+          :ok
+        end)
+
+        place = %{tagged("gpx:fresh") | latitude: 51.3005, longitude: 12.3505, tag_name: nil}
+        run(HookRepo, %{id: 7, user_id: user_id}, [place])
+        ScratchRepo.rollback(plans())
+      end)
+
+    assert length(plans) == 2
+    refute Enum.any?(plans, &(&1 =~ "index_places_on_user_id")), Enum.join(plans, "\n\n")
+  end
+
+  defp plans do
+    receive do
+      {:plan, plan} -> [plan | plans()]
+    after
+      0 -> []
+    end
+  end
 end

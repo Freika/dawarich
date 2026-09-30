@@ -4,15 +4,16 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias Dawarich.RubyDecimal
 
-  @columns "SELECT id, geodata, name_locked_at IS NOT NULL FROM places"
+  @columns "SELECT id, geodata, name_locked_at IS NOT NULL FROM"
   @by_external @columns <>
-                 " WHERE user_id = $1 AND geodata ->> 'external_place_id' = $2 ORDER BY id LIMIT 1"
-  @renamed @columns <>
-             " WHERE user_id = $1 AND source = 2 AND ST_DWithin(lonlat::geography, " <>
-             "ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, 1) LIMIT 10"
-  @nearby @columns <>
-            " WHERE user_id = $1 AND LOWER(places.name) = $2 AND ST_DWithin(places.lonlat::geography, " <>
-            "ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography, 75) ORDER BY places.lonlat::geography <-> " <>
+                 " places WHERE user_id = $1 AND geodata ->> 'external_place_id' = ANY($2)"
+  @renamed "WITH near AS MATERIALIZED (SELECT id, user_id, source, geodata, name_locked_at FROM places " <>
+             "WHERE ST_DWithin(lonlat::geography, ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography, 1)) " <>
+             @columns <> " near WHERE user_id = $1 AND source = 2 LIMIT 10"
+  @nearby "WITH near AS MATERIALIZED (SELECT id, user_id, name, lonlat, geodata, name_locked_at FROM places " <>
+            "WHERE ST_DWithin(lonlat::geography, ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography, 75)) " <>
+            @columns <>
+            " near WHERE user_id = $1 AND LOWER(name) = $2 ORDER BY lonlat::geography <-> " <>
             "ST_SetSRID(ST_MakePoint($3, $4), 4326)::geography LIMIT 1"
   @adopt "UPDATE places SET geodata = geodata || jsonb_build_object('external_place_id', $2::text), " <>
            "updated_at = now()"
@@ -31,7 +32,24 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
             "VALUES ($1, 'Place', $2, now(), now()) ON CONFLICT (taggable_type, taggable_id, tag_id) DO NOTHING"
 
   def new(%{id: import_id, user_id: user_id}),
-    do: %{user_id: user_id, import_id: import_id, claimed: MapSet.new(), tags: %{}, count: 0}
+    do: %{
+      user_id: user_id,
+      import_id: import_id,
+      claimed: MapSet.new(),
+      tags: %{},
+      known: %{},
+      count: 0
+    }
+
+  def prefetch(repo, state, places) do
+    ids = places |> Enum.map(& &1.external_place_id) |> Enum.uniq()
+    rows = query(repo, @by_external, [state.user_id, ids])
+
+    found =
+      Map.new(rows, fn [_id, geodata, _locked] = row -> {geodata["external_place_id"], row} end)
+
+    %{state | known: Map.merge(Map.new(ids, &{&1, nil}), found)}
+  end
 
   def upsert(repo, state, place) do
     {:ok, state} = repo.transaction(fn -> write(repo, state, place) end)
@@ -40,8 +58,8 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
 
   defp write(repo, state, place) do
     case find(repo, state, place) do
-      {kind, [id, geodata, locked]} ->
-        adopt(repo, kind, id, geodata, locked, place)
+      {kind, [id | _] = row} ->
+        state = adopt(repo, state, kind, row, place)
         found(repo, state, id, place)
 
       nil ->
@@ -58,8 +76,15 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
     end
   end
 
-  defp by_external(repo, state, place),
-    do: one(repo, @by_external, [state.user_id, place.external_place_id])
+  defp by_external(repo, state, place) do
+    case Map.fetch(state.known, place.external_place_id) do
+      {:ok, row} -> row
+      :error -> fetch_external(repo, state, place)
+    end
+  end
+
+  defp fetch_external(repo, state, place),
+    do: one(repo, @by_external, [state.user_id, [place.external_place_id]])
 
   defp renamed(repo, state, place) do
     rows = query(repo, @renamed, [state.user_id, place.longitude, place.latitude])
@@ -81,21 +106,35 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
         place.latitude
       ])
 
-  defp adopt(repo, :renamed, id, _geodata, true, place),
-    do: savepoint(repo, @adopt <> " WHERE id = $1", [id, place.external_place_id])
+  defp adopt(repo, state, :renamed, [id, _geodata, locked] = row, place) do
+    {set, params} =
+      if locked,
+        do: {"", [id, place.external_place_id]},
+        else: {", name = $3", [id, place.external_place_id, place_name(place.name)]}
 
-  defp adopt(repo, :renamed, id, _geodata, false, place),
-    do:
-      savepoint(repo, @adopt <> ", name = $3 WHERE id = $1", [
-        id,
-        place.external_place_id,
-        place_name(place.name)
-      ])
-
-  defp adopt(repo, :existing, id, geodata, _locked, place) do
-    if Ruby.blank?(geodata["external_place_id"]),
-      do: savepoint(repo, @adopt <> " WHERE id = $1", [id, place.external_place_id])
+    repo |> savepoint(@adopt <> set <> " WHERE id = $1", params) |> adopted(state, row, place)
   end
+
+  defp adopt(repo, state, :existing, [id, geodata, _locked] = row, place) do
+    if Ruby.blank?(geodata["external_place_id"]),
+      do:
+        repo
+        |> savepoint(@adopt <> " WHERE id = $1", [id, place.external_place_id])
+        |> adopted(state, row, place),
+      else: state
+  end
+
+  defp adopted(:conflict, state, _row, _place), do: state
+
+  defp adopted(:ok, state, [id, geodata, locked], place) do
+    old = geodata["external_place_id"]
+    known = with %{^old => [^id | _]} <- state.known, do: %{state.known | old => nil}
+    geodata = Map.put(geodata, "external_place_id", place.external_place_id)
+    remember(%{state | known: known}, place, [id, geodata, locked])
+  end
+
+  defp remember(state, place, row),
+    do: %{state | known: Map.replace(state.known, place.external_place_id, row)}
 
   defp insert(repo, state, place) do
     geodata =
@@ -117,11 +156,11 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
 
     case query(repo, @insert, params) do
       [[id]] ->
-        found(repo, state, id, place)
+        found(repo, remember(state, place, [id, geodata, false]), id, place)
 
       [] ->
-        case by_external(repo, state, place) do
-          [id | _] -> found(repo, state, id, place)
+        case fetch_external(repo, state, place) do
+          [id | _] = row -> found(repo, remember(state, place, row), id, place)
           nil -> state
         end
     end
@@ -194,11 +233,13 @@ defmodule Dawarich.EnhancedImport.PlaceWriter do
     try do
       repo.query!(sql, params, log: false)
       repo.query!("RELEASE SAVEPOINT place_adopt", [], log: false)
+      :ok
     rescue
       error in Postgrex.Error ->
         if error.postgres[:code] != :unique_violation, do: reraise(error, __STACKTRACE__)
         repo.query!("ROLLBACK TO SAVEPOINT place_adopt", [], log: false)
         repo.query!("RELEASE SAVEPOINT place_adopt", [], log: false)
+        :conflict
     end
   end
 
