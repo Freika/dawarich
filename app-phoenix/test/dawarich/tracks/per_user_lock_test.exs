@@ -72,6 +72,20 @@ defmodule Dawarich.Tracks.PerUserLockTest do
     assert ttl > 4_000
   end
 
+  test "renew_reply distinguishes a foreign token from an error" do
+    token = Ecto.UUID.generate()
+    assert {:ok, "OK"} = Redis.command(["SET", @key, token, "PX", "5000"])
+
+    assert PerUserLock.renew_reply(@key, token, 5_000) == {:ok, 1}
+    assert PerUserLock.renew(@key, token, 5_000)
+
+    assert PerUserLock.renew_reply(@key, "someone-else-token", 5_000) == {:ok, 0}
+    refute PerUserLock.renew(@key, "someone-else-token", 5_000)
+
+    stop_supervised!(Redix)
+    assert {:error, _} = PerUserLock.renew_reply(@key, token, 5_000)
+  end
+
   test "the heartbeat renews during a long body", %{rails: rails} do
     assert {:ok, :ran} =
              PerUserLock.with_user_lock(
