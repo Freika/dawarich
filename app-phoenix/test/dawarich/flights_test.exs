@@ -90,6 +90,14 @@ defmodule Dawarich.FlightsTest do
            ]
   end
 
+  test "the range's text cast is parsed in the session zone, not UTC" do
+    id = user!()
+    x = flight!(id, %{departure_time: ~N[2024-02-29 23:30:00]})
+
+    assert ids(flights(id, {"2024-03-01", nil}, "Europe/Berlin")) == [x]
+    assert ids(flights(id, {"2024-03-01", nil}, "UTC")) == []
+  end
+
   test "one open side: the start falls back to the epoch, the end to now" do
     id = user!()
     early = flight!(id, %{departure_time: ~N[2023-06-01 10:00:00]})
