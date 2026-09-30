@@ -81,10 +81,6 @@ defmodule Dawarich.Digests.ApiTest do
       }
     })
 
-    # Rails writes a Float's jsonb text with its decimal point kept ("25000000.0"); Postgrex's
-    # own jsonb encoder picks scientific notation for this exact value ("2.5e7"), which Postgres
-    # then normalizes to a plain integer, losing the float-ness the assertion below exercises.
-    # Pin the literal jsonb text here so the fixture matches what Rails actually persists.
     Repo.query!(
       "UPDATE digests SET all_time_stats = " <>
         "'{\"total_countries\": 3, \"total_cities\": 5, \"total_distance\": 25000000.0}'::jsonb " <>
