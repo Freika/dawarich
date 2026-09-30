@@ -117,7 +117,7 @@ defmodule Dawarich.Residency do
          Map.update(dates, name, [date], &[date | &1])}
       end)
 
-    names |> Enum.reverse() |> Enum.map(&{&1, Enum.uniq(dates[&1])})
+    names |> Enum.reverse() |> Enum.map(&{&1, dates[&1]})
   end
 
   defp periods([first | rest]) do

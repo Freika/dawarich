@@ -165,7 +165,7 @@ defmodule Dawarich.ResidencyTest do
     assert {CountryNames.iso_codes("Atlantis"), CountryNames.iso_codes(""),
             CountryNames.iso_codes(nil)} == {{nil, nil}, {nil, nil}, {nil, nil}}
 
-    assert {CountryNames.flag("de"), CountryNames.flag("DE"), CountryNames.flag("XX")} ==
-             {"🇩🇪", "🇩🇪", nil}
+    assert {CountryNames.flag("de"), CountryNames.flag("DE"), CountryNames.flag("XX"),
+            CountryNames.flag(nil), CountryNames.flag("")} == {"🇩🇪", "🇩🇪", nil, nil, nil}
   end
 end

@@ -22,11 +22,15 @@ defmodule Dawarich.CountryNames do
   end
 
   def flag(iso2) do
-    code = String.upcase(iso2)
+    if Ruby.blank?(iso2) do
+      nil
+    else
+      code = String.upcase(iso2)
 
-    Enum.find_value(@codes, fn [_name, candidate, _iso3, flag] ->
-      if candidate == code, do: flag
-    end)
+      Enum.find_value(@codes, fn [_name, candidate, _iso3, flag] ->
+        if candidate == code, do: flag
+      end)
+    end
   end
 
   def table(repo \\ Dawarich.Repo),
