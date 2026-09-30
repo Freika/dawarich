@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Two-factor management', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user, password: 'secret123456', status: :active) }
   let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
@@ -183,8 +185,12 @@ RSpec.describe 'Two-factor management', type: :request do
       before do
         Rack::Attack.enabled = true
         allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        freeze_time
       end
-      after { Rack::Attack.enabled = false }
+      after do
+        Rack::Attack.enabled = false
+        travel_back
+      end
 
       it 'throttles repeated disable attempts keyed on the Authorization header' do
         5.times do
