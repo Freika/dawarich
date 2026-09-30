@@ -1,5 +1,5 @@
 defmodule Dawarich.DigestsTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Dawarich.Test.StatsSeeds
 

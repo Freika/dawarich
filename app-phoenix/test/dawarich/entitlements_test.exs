@@ -1,5 +1,5 @@
 defmodule Dawarich.EntitlementsTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   alias Dawarich.{Entitlements, Repo}
   alias Dawarich.Test.RailsUser
