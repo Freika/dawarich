@@ -57,8 +57,8 @@ defmodule Dawarich.Wave5bFixtures do
   defp insert("instance_settings", repo, row) do
     repo.query!(
       "INSERT INTO instance_settings (id, key, value, encrypted_value, created_at, updated_at) " <>
-        "VALUES ($1, $2, $3::jsonb, $4, #{@now}, #{@now})",
-      [row["id"], row["key"], row["value"], row["encrypted_value"]]
+        "VALUES ($1, $2, $3::text::jsonb, $4, #{@now}, #{@now})",
+      [row["id"], row["key"], jsonb(row["value"]), row["encrypted_value"]]
     )
   end
 
@@ -66,7 +66,7 @@ defmodule Dawarich.Wave5bFixtures do
     repo.query!(
       "INSERT INTO imports (id, user_id, name, source, additional_data_extraction_status, " <>
         "additional_data_extraction, raw_data, created_at, updated_at) VALUES " <>
-        "($1, $2, $3, $4, $5, $6::jsonb, $7::jsonb, #{@now}, #{@now})",
+        "($1, $2, $3, $4, $5, $6::text::jsonb, $7::text::jsonb, #{@now}, #{@now})",
       [
         row["id"],
         row["user_id"],
@@ -74,7 +74,7 @@ defmodule Dawarich.Wave5bFixtures do
         row["source"],
         row["additional_data_extraction_status"],
         jsonb(row["additional_data_extraction"]) || "{}",
-        row["raw_data"] || "null"
+        jsonb(row["raw_data"]) || "null"
       ]
     )
   end
@@ -101,7 +101,7 @@ defmodule Dawarich.Wave5bFixtures do
       "INSERT INTO places (id, user_id, name, latitude, longitude, lonlat, city, country, source, import_id, " <>
         "demo, note, geodata, name_locked_at, reverse_geocoded_at, created_at, updated_at) VALUES " <>
         "($1, $2, $3, $4::text::numeric, $5::text::numeric, ST_GeomFromText($6, 4326)::geography, $7, $8, $9, $10, $11, " <>
-        "$12, $13::jsonb, $14, $15, #{@now}, #{@now})",
+        "$12, $13::text::jsonb, $14, $15, #{@now}, #{@now})",
       [
         row["id"],
         row["user_id"],
@@ -149,7 +149,7 @@ defmodule Dawarich.Wave5bFixtures do
     repo.query!(
       "INSERT INTO visits (id, user_id, area_id, place_id, started_at, ended_at, duration, name, status, " <>
         "confidence, confidence_breakdown, detection_version, demo, import_id, deleted_at, created_at, " <>
-        "updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14, $15, " <>
+        "updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::text::jsonb, $12, $13, $14, $15, " <>
         "#{@now}, #{@now})",
       [
         row["id"],
@@ -197,7 +197,7 @@ defmodule Dawarich.Wave5bFixtures do
     repo.query!(
       "INSERT INTO points (id, user_id, timestamp, lonlat, accuracy, anomaly, visit_id, city, country_name, " <>
         "country_id, geodata, reverse_geocoded_at, lock_version, created_at, updated_at) VALUES " <>
-        "($1, $2, $3, ST_GeomFromText($4, 4326)::geography, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, " <>
+        "($1, $2, $3, ST_GeomFromText($4, 4326)::geography, $5, $6, $7, $8, $9, $10, $11::text::jsonb, $12, $13, " <>
         "#{@now}, #{@now})",
       [
         row["id"],

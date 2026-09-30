@@ -5,8 +5,9 @@ defmodule Dawarich.Wave5bFixturesTest do
   alias Dawarich.Wave5bFixtures
 
   @allowed_public_hosts ~w(photon.komoot.io app.chibigeo.com api.geoapify.com us1.locationiq.com)
-  @point_sql "SELECT lock_version, timestamp, ST_AsText(lonlat) FROM points WHERE id = $1"
-  @place_sql "SELECT latitude::text, longitude::text, ST_AsText(lonlat) FROM places WHERE id = $1"
+  @point_sql "SELECT lock_version, timestamp, ST_AsText(lonlat), geodata::text FROM points WHERE id = $1"
+  @place_sql "SELECT latitude::text, longitude::text, ST_AsText(lonlat), geodata::text FROM places WHERE id = $1"
+  @setting_sql "SELECT key, value::text, encrypted_value FROM instance_settings WHERE id = $1"
   @visit_sql "SELECT floor(extract(epoch FROM started_at))::bigint, " <>
                "floor(extract(epoch FROM ended_at))::bigint FROM visits WHERE id = $1"
 
@@ -59,14 +60,25 @@ defmodule Dawarich.Wave5bFixturesTest do
       assert loaded(@point_sql, row["id"]) == [
                row["lock_version"] || 0,
                row["timestamp"],
-               row["lonlat_wkt"]
+               row["lonlat_wkt"],
+               row["geodata"] || "{}"
              ],
              "#{path}: point #{row["id"]} did not load as recorded"
     end
 
     for %{"latitude" => lat} = row <- input["places"] || [] do
-      assert loaded(@place_sql, row["id"]) == [lat, row["longitude"], row["lonlat_wkt"]],
+      assert loaded(@place_sql, row["id"]) == [
+               lat,
+               row["longitude"],
+               row["lonlat_wkt"],
+               row["geodata"] || "{}"
+             ],
              "#{path}: place #{row["id"]} did not load as recorded"
+    end
+
+    for row <- input["instance_settings"] || [] do
+      assert loaded(@setting_sql, row["id"]) == [row["key"], row["value"], row["encrypted_value"]],
+             "#{path}: instance setting #{row["id"]} did not load as recorded"
     end
 
     for row <- input["visits"] || [] do
