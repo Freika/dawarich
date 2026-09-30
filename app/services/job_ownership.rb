@@ -51,6 +51,8 @@ module JobOwnership
   def put!(key, owner, pinned:, by:)
     raise ArgumentError, "unknown owner #{owner}" unless OWNERS.include?(owner.to_sym)
 
+    Geocoding::RateLimiter.guard_claim!(key) if owner.to_sym == :oban
+
     require_table!
     sql = <<~SQL.squish
       INSERT INTO phoenix.job_owners (key, owner, pinned, updated_at, updated_by) VALUES (?, ?, ?, now(), ?)
