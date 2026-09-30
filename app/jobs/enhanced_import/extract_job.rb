@@ -53,6 +53,8 @@ module EnhancedImport
       # Sibling imports from one archive all finish together; wait our turn
       # rather than surfacing a red card the user can do nothing about.
       requeue(import, attempt, e)
+    rescue Oj::ParseError => e
+      mark_failed!(import, e)
     rescue ActiveRecord::Deadlocked
       raise
     rescue StandardError => e
