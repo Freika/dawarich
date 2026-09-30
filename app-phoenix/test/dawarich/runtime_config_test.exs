@@ -2,7 +2,7 @@ defmodule Dawarich.RuntimeConfigTest do
   use ExUnit.Case, async: false
 
   @runtime Path.expand("../../config/runtime.exs", __DIR__)
-  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS DAWARICH_RAILS_ROUTES RAILS_MAX_THREADS REDIS_URL RAILS_JOB_QUEUE_DB)
+  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS DAWARICH_RAILS_ROUTES RAILS_MAX_THREADS REDIS_URL RAILS_JOB_QUEUE_DB RAILS_CACHE_DB)
 
   setup do
     saved = Map.new(@vars, &{&1, System.get_env(&1)})
@@ -141,10 +141,17 @@ defmodule Dawarich.RuntimeConfigTest do
   end
 
   test "Redis uses Sidekiq's database" do
-    assert redis(%{"REDIS_URL" => "redis://r:6379"}) == [url: "redis://r:6379", database: 1]
+    assert redis(%{"REDIS_URL" => "redis://r:6379"}) ==
+             [url: "redis://r:6379", database: 1, cache_database: 0]
 
     assert redis(%{"REDIS_URL" => "redis://r:6379", "RAILS_JOB_QUEUE_DB" => "4"}) ==
-             [url: "redis://r:6379", database: 4]
+             [url: "redis://r:6379", database: 4, cache_database: 0]
+  end
+
+  test "cache database defaults to 0 and follows RAILS_CACHE_DB" do
+    assert redis(%{"REDIS_URL" => "redis://r"})[:cache_database] == 0
+
+    assert redis(%{"REDIS_URL" => "redis://r", "RAILS_CACHE_DB" => "3"})[:cache_database] == 3
   end
 
   test "connects over IPv6 when the database host has no IPv4 address" do

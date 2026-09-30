@@ -32,7 +32,12 @@ defmodule Dawarich.Application do
       ] ++ Front.children(plan, [{"DAWARICH_PHOENIX_NODE", node}]) ++ jobs(node)
   end
 
-  defp redis, do: if(jobs_runtime?(), do: Dawarich.Redis.child_specs(), else: [])
+  defp redis,
+    do:
+      if(jobs_runtime?(),
+        do: Dawarich.Redis.child_specs() ++ Dawarich.Redis.cache_child_specs(),
+        else: []
+      )
 
   defp jobs(node) do
     if jobs_runtime?(), do: [{Dawarich.Jobs.Supervisor, node: node}], else: []

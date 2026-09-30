@@ -93,7 +93,8 @@ if config_env() != :test do
 
   config :dawarich, :redis,
     url: System.get_env("REDIS_URL"),
-    database: env_integer.("RAILS_JOB_QUEUE_DB", 1)
+    database: env_integer.("RAILS_JOB_QUEUE_DB", 1),
+    cache_database: env_integer.("RAILS_CACHE_DB", 0)
 end
 
 config :dawarich,
