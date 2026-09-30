@@ -5,7 +5,7 @@ defmodule DawarichWeb.Api.Auth do
   import Plug.Conn
 
   alias Dawarich.{Accounts, AppVersion, I18n, RailsCookies, RailsSecret}
-  alias DawarichWeb.Api.{Body, Respond}
+  alias DawarichWeb.Api.{Body, Headers, Respond}
   alias DawarichWeb.Strangler
 
   @bearer ~r/\ABearer\s+(\S+)\z/i
@@ -27,7 +27,7 @@ defmodule DawarichWeb.Api.Auth do
   def init(opts), do: opts
 
   @impl true
-  def call(conn, _opts) do
+  def call(conn, opts) do
     conn = conn |> assign(:api_started, System.monotonic_time()) |> fetch_cookies()
 
     case admission(conn) do
@@ -35,12 +35,9 @@ defmodule DawarichWeb.Api.Auth do
         conn
         |> assign(:api_vary, vary)
         |> assign(:api_request_id, request_id(conn))
-        |> assign(:api_version, version())
-        |> assign(
-          :api_response,
-          if(user, do: "Hey, I'm alive and authenticated!", else: "Hey, I'm alive!")
-        )
-        |> admit(user)
+        |> assign(:api_headers, Headers.dawarich(user != nil, version()))
+        |> assign(:api_if_none_match, joined(conn, "if-none-match"))
+        |> admit(user, opts)
 
       {:replay, reason} ->
         Body.replay(conn, reason)
@@ -65,40 +62,47 @@ defmodule DawarichWeb.Api.Auth do
        else: :ok
   end
 
-  defp admit(conn, %{status: 3}),
-    do:
-      Respond.json(
-        conn,
-        402,
-        {:object,
-         [
-           {"error", "payment_required"},
-           {"message", t("complete_your_subscription_to_continue")},
-           {"resume_url", nil}
-         ]}
-      )
+  @doc false
+  def admit(conn, nil, _opts), do: Respond.head(conn, 401)
 
-  defp admit(conn, %{status: 0}),
-    do: Respond.json(conn, 401, {:object, [{"error", t("user_account_is_not_active")}]})
+  def admit(conn, user, opts) do
+    active? = Keyword.get(opts, :require_active, true)
 
-  defp admit(conn, %{active_until: until} = user) do
-    case until do
-      nil ->
-        assign(conn, :api_user, user)
+    cond do
+      user.status == 3 and Keyword.get(opts, :reject_pending, true) ->
+        Respond.json(
+          conn,
+          402,
+          {:object,
+           [
+             {"error", "payment_required"},
+             {"message", t("complete_your_subscription_to_continue")},
+             {"resume_url", nil}
+           ]}
+        )
 
-      %NaiveDateTime{} ->
-        if NaiveDateTime.compare(until, NaiveDateTime.utc_now()) == :lt,
-          do:
-            Respond.json(conn, 401, {:object, [{"error", t("user_subscription_is_not_active")}]}),
-          else: assign(conn, :api_user, user)
+      active? and user.status == 0 ->
+        Respond.json(conn, 401, {:object, [{"error", t("user_account_is_not_active")}]})
 
-      _ ->
+      active? and not known_active_until?(user.active_until) ->
         Respond.head(conn, 401)
+
+      active? and expired?(user.active_until) ->
+        Respond.json(conn, 401, {:object, [{"error", t("user_subscription_is_not_active")}]})
+
+      true ->
+        assign(conn, :api_user, user)
     end
   end
 
-  defp admit(conn, nil), do: Respond.head(conn, 401)
-  defp admit(conn, _user), do: Respond.head(conn, 401)
+  defp known_active_until?(nil), do: true
+  defp known_active_until?(%NaiveDateTime{}), do: true
+  defp known_active_until?(_other), do: false
+
+  defp expired?(%NaiveDateTime{} = until),
+    do: NaiveDateTime.compare(until, NaiveDateTime.utc_now()) == :lt
+
+  defp expired?(nil), do: false
 
   defp cookies(%{cookies: cookies}) do
     remember? = Map.has_key?(cookies, "remember_user_token")

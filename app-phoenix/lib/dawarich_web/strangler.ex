@@ -30,13 +30,15 @@ defmodule DawarichWeb.Strangler do
         false
 
       %{pipe_through: pipelines} = route ->
-        not handed_back?(conn.path_info) and slice_owned?(route) and
+        not handed_back?(conn.path_info) and slice_owned?(route, conn) and
           (:browser not in pipelines or page_request?(conn))
     end
   end
 
-  defp slice_owned?(%{slice: slice}), do: DawarichWeb.Slices.owned?(slice)
-  defp slice_owned?(_route), do: true
+  defp slice_owned?(%{slice: slice}, conn),
+    do: conn.method != "HEAD" and DawarichWeb.Slices.owned?(slice)
+
+  defp slice_owned?(_route, _conn), do: true
 
   defp handed_back?([segment | _]),
     do: segment in Application.get_env(:dawarich, :rails_routes, [])

@@ -20,6 +20,7 @@ defmodule DawarichWeb.Router do
   end
 
   pipeline :api_ingest do
+    plug :put_api_tag, "ingest"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
     plug DawarichWeb.Api.Body
@@ -33,6 +34,20 @@ defmodule DawarichWeb.Router do
     post "/overland/batches", IngestController, :overland, metadata: %{slice: :ingest}
     post "/owntracks/points", IngestController, :owntracks, metadata: %{slice: :ingest}
     post "/traccar/points", IngestController, :traccar, metadata: %{slice: :ingest}
+  end
+
+  pipeline :api_foundation do
+    plug :put_api_tag, "api"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.Api.Body
+    plug DawarichWeb.Api.Auth, reject_pending: false, require_active: false
+  end
+
+  scope "/api/v1", DawarichWeb.Api do
+    pipe_through :api_foundation
+
+    get "/plan", PlanController, :show, metadata: %{slice: :api_foundation}
   end
 
   pipeline :rails_user do
@@ -51,6 +66,8 @@ defmodule DawarichWeb.Router do
       live "/:id", DawarichWeb.NotificationsLive.Show, :show, container: {:div, class: "contents"}
     end
   end
+
+  defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
 
   defp phoenix_session(conn, _opts) do
     opts =

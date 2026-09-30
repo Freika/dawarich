@@ -26,7 +26,14 @@ defmodule Dawarich.Accounts do
     from(u in "users",
       where: u.api_key == ^key and is_nil(u.deleted_at),
       limit: 1,
-      select: %{id: u.id, status: u.status, active_until: u.active_until}
+      select: %{
+        id: u.id,
+        status: u.status,
+        active_until: u.active_until,
+        plan: u.plan,
+        subscription_source: u.subscription_source,
+        timezone: fragment("?->'timezone'", u.settings)
+      }
     )
     |> Repo.one()
   end
