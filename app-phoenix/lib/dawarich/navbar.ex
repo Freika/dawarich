@@ -21,6 +21,7 @@ defmodule Dawarich.Navbar do
 
     %{
       unread: unread(user.id),
+      imports: imports(user.id),
       family: family(user, now, self_hosted),
       subscription: subscription(user, now, self_hosted),
       version: version(user, self_hosted, now, running_version),
@@ -43,6 +44,17 @@ defmodule Dawarich.Navbar do
       count: rows |> List.first({nil, nil, nil, 0}) |> elem(3),
       items: for({id, title, kind, _} <- rows, do: %{id: id, title: title, kind: @kinds[kind]})
     }
+  end
+
+  defp imports(user_id) do
+    {count, demo} =
+      from(i in "imports",
+        where: i.user_id == ^user_id,
+        select: {count(i.id), fragment("coalesce(bool_or(?), false)", i.demo)}
+      )
+      |> Repo.one()
+
+    %{count: count, demo: demo}
   end
 
   def put_changelog_consent(%User{} = user, decision) do

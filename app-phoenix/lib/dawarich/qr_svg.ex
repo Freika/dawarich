@@ -4,16 +4,19 @@ defmodule Dawarich.QrSvg do
   @deltas %{up: {0, -1}, down: {0, 1}, left: {-1, 0}, right: {1, 0}}
   @commands %{up: "v-", down: "v", left: "h-", right: "h"}
 
-  def api_key(root_url, api_key),
-    do: svg(~s|{"server_url":#{json(root_url)},"api_key":#{json(api_key)}}|)
+  def api_key(root_url, api_key, size \\ 6),
+    do: svg(~s|{"server_url":#{json(root_url)},"api_key":#{json(api_key)}}|, size)
 
-  def svg(data) do
-    Dawarich.QrCache.fetch(data, fn ->
-      rows = Dawarich.QrCode.modules(data)
-      width = length(rows) * 6 + 10
+  def svg(data, size \\ 6) do
+    {count, path} =
+      Dawarich.QrCache.fetch(data, fn ->
+        rows = Dawarich.QrCode.modules(data)
+        {length(rows), path(rows)}
+      end)
 
-      ~s|<?xml version="1.0" standalone="yes"?><svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events" width="100%" height="100%" viewBox="0 0 #{width} #{width}" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges"><rect width="#{width}" height="#{width}" x="0" y="0" fill="#fff"/><path d="#{path(rows)}" fill="#000" transform="translate(5,5) scale(6)"/></svg>|
-    end)
+    width = count * size + 10
+
+    ~s|<?xml version="1.0" standalone="yes"?><svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events" width="100%" height="100%" viewBox="0 0 #{width} #{width}" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges"><rect width="#{width}" height="#{width}" x="0" y="0" fill="#fff"/><path d="#{path}" fill="#000" transform="translate(5,5) scale(#{size})"/></svg>|
   end
 
   defp json(value) do

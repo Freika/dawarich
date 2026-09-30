@@ -4,6 +4,7 @@ defmodule DawarichWeb.Layouts do
   import DawarichWeb.Chrome
   import DawarichWeb.Head
   import DawarichWeb.Navbar, only: [navbar: 1]
+  import DawarichWeb.OnboardingModal, only: [onboarding_modal: 1]
   import DawarichWeb.Translate, only: [t: 3]
   embed_templates "layouts/*"
 
@@ -31,6 +32,9 @@ defmodule DawarichWeb.Layouts do
 
     Jason.encode!(%{"imports" => imports})
   end
+
+  def rails_modules?(assigns),
+    do: assigns[:rails_js] == true or not is_nil(assigns[:current_user])
 
   def rails_translations(locale) do
     base =

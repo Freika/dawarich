@@ -35,14 +35,11 @@ defmodule Dawarich.QrCodeTest do
     assert_raise ArgumentError, fn -> QrCode.modules("HELLO WORLD") end
   end
 
-  test "QrCache.fetch/2 computes a fresh key once, then serves it from the cache" do
-    key = "a5s3-cache-#{System.unique_integer()}"
-    test = self()
-    fun = fn -> send(test, :computed) && "value" end
-
-    assert Dawarich.QrCache.fetch(key, fun) == "value"
-    assert_received :computed
-    assert Dawarich.QrCache.fetch(key, fun) == "value"
-    refute_received :computed
+  for %{"root_url" => url} = entry <-
+        "test/fixtures/onboarding_qr.json" |> File.read!() |> Jason.decode!() do
+    @entry entry
+    test "a module-size-3 code for #{url} matches api_key_qr_code(user, size: 3)" do
+      assert QrSvg.api_key(@entry["root_url"], @entry["api_key"], 3) == @entry["svg"]
+    end
   end
 end

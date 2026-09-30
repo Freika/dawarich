@@ -3,19 +3,21 @@ defmodule Dawarich.QrCache do
 
   @max 1_000
 
+  def create_table,
+    do: :ets.new(__MODULE__, [:named_table, :public, :set, read_concurrency: true])
+
   def fetch(payload, fun) do
     key = :crypto.hash(:sha256, payload)
-    cache = :persistent_term.get(__MODULE__, %{})
 
-    case cache do
-      %{^key => svg} -> svg
-      _ -> store(cache, key, fun.())
+    case :ets.lookup(__MODULE__, key) do
+      [{^key, value}] -> value
+      [] -> store(key, fun.())
     end
   end
 
-  defp store(cache, key, svg) do
-    cache = if map_size(cache) >= @max, do: %{}, else: cache
-    :persistent_term.put(__MODULE__, Map.put(cache, key, svg))
-    svg
+  defp store(key, value) do
+    if :ets.info(__MODULE__, :size) >= @max, do: :ets.delete_all_objects(__MODULE__)
+    :ets.insert(__MODULE__, {key, value})
+    value
   end
 end

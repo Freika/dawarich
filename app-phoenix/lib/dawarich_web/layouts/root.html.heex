@@ -25,24 +25,24 @@
       />
     <% end %>
     <script type="importmap">
-      <%= Phoenix.HTML.raw(importmap(assigns[:rails_js])) %>
+      <%= Phoenix.HTML.raw(importmap(rails_modules?(assigns))) %>
     </script>
     <script type="module">
       import "app"
     </script>
-    <%= if assigns[:rails_js] do %>
+    <%= if rails_modules?(assigns) do %>
       <script
         id="i18n-translations"
         type="application/json"
         data-turbo-track="reload"
         phx-no-format
       ><%= Phoenix.HTML.raw(rails_translations(@locale)) %></script>
-      <%= if assigns[:rails_charts] != false do %>
-        <script type="module">
-          import "chartkick"
-          import "Chart.bundle"
-        </script>
-      <% end %>
+    <% end %>
+    <%= if assigns[:rails_js] == true and assigns[:rails_charts] != false do %>
+      <script type="module">
+        import "chartkick"
+        import "Chart.bundle"
+      </script>
     <% end %>
     <.favicon />
     <.head_scripts self_hosted={@self_hosted} />

@@ -33,7 +33,6 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
   end
 
   def scrub!(doc)
-    doc.css('[data-controller~="onboarding-modal"], #achievement-unlocks').remove
     doc.css('[signed-stream-name]').each { |node| node['signed-stream-name'] = 'SIGNED' }
     doc.css('meta[name="csrf-token"]').each { |node| node['content'] = 'CSRF' }
 
@@ -55,9 +54,12 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
 
   def navbar_state(user, **extra)
     user.reload
+    raise "#{user.email} carries a factory API key" unless user.api_key.match?(/\Aa51b-k-\d{4}\z/)
+
     membership = user.family_membership
     creator = membership&.family&.creator
-    { user: { id: user.id, email: user.email, theme: user.theme, settings: user.settings, admin: user.admin,
+    { user: { id: user.id, email: user.email, api_key: user.api_key, theme: user.theme, settings: user.settings,
+              admin: user.admin,
               status: User.statuses[user.status], plan: User.plans[user.plan],
               active_until: user.active_until&.utc&.iso8601(6),
               subscription_source: User.subscription_sources[user.subscription_source],
@@ -66,6 +68,7 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
         { id: n.id, title: n.title, kind: Notification.kinds[n.kind], read: n.read_at.present?,
           created_at: n.created_at.utc.iso8601(6) }
       end,
+      imports: user.imports.order(:id).map { |import| { id: import.id, name: import.name, demo: import.demo } },
       family: membership && { id: membership.family_id, role: Family::Membership.roles[membership.role],
                               access_until: membership.family.access_until&.utc&.iso8601(6),
                               creator: creator && creator_fixture(creator) } }.merge(extra)
@@ -79,7 +82,8 @@ RSpec.describe 'Phoenix fixtures: the application layout as Rails renders it', t
   def navbar_user(email, **columns)
     user = create(:user, id: Zlib.crc32(email), email:)
     user.update_columns({ changelog_consent: User.changelog_consents[:declined],
-settings: user.settings.merge('onboarding_completed' => true) }.merge(columns))
+                          settings: user.settings.merge('onboarding_completed' => true),
+                          api_key: format('a51b-k-%04d', Zlib.crc32(email) % 10_000) }.merge(columns))
     user
   end
 
@@ -188,6 +192,16 @@ settings: user.settings.merge('onboarding_completed' => true) }.merge(columns))
       trial_de = navbar_user('navbar-trial-de@dawarich.test', status: 2, active_until: now + 2.days)
       trial_de.update_columns(settings: trial_de.settings.merge('locale' => 'de'))
       shot('navbar_cloud_trial_de', trial_de, **cloud)
+      imports_user = navbar_user('navbar-onboarding-imports@dawarich.test', status: 2, active_until: now + 5.days,
+                                                                             settings: {})
+      Import.insert_all([{ id: 4_000_001, user_id: imports_user.id, name: 'Onboarding one', demo: false,
+                           created_at: now, updated_at: now },
+                         { id: 4_000_002, user_id: imports_user.id, name: 'Onboarding demo', demo: true,
+                           created_at: now, updated_at: now }])
+      shot('navbar_onboarding_trial_imports_en', imports_user, **cloud)
+      shot('navbar_onboarding_trial_store_en',
+           navbar_user('navbar-onboarding-store@dawarich.test', status: 2, active_until: now + 5.days,
+                                                                 subscription_source: 1), **cloud)
       shot('navbar_cloud_pending_en', navbar_user('navbar-pending@dawarich.test', status: 3, active_until: nil),
            **cloud)
       shot('navbar_cloud_expired_en',
@@ -216,5 +230,15 @@ settings: user.settings.merge('onboarding_completed' => true) }.merge(columns))
       secret:, user_id: user.id, email: user.email, now: now.to_i, jti: '00000000-0000-4000-8000-000000000000',
       header: decode.call(header), payload: decode.call(payload), signature: decode.call(signature).unpack1('H*')
     )}\n")
+  end
+
+  it 'writes the size-3 QR codes the onboarding modal renders' do
+    corpus = [['http://www.example.com/', 'a51b-k-0001'], ['https://a.test:8443/?a=1&b=<2>', 'a51b-k-0002']]
+             .map do |url, key|
+      { root_url: url, api_key: key,
+        svg: ResponsiveQrSvg.call({ 'server_url' => url, 'api_key' => key }.to_json, size: 3) }
+    end
+
+    File.write(dir.join('../onboarding_qr.json'), "#{JSON.pretty_generate(corpus)}\n")
   end
 end
