@@ -3,7 +3,7 @@ defmodule Dawarich.Navbar do
 
   import Ecto.Query
 
-  alias Dawarich.{AppVersion, Repo, Supporters, UserTimeZone}
+  alias Dawarich.{AppVersion, Entitlements, Repo, Supporters, UserTimeZone}
   alias Dawarich.Accounts.User
 
   @kinds %{0 => "info", 1 => "warning", 2 => "error"}
@@ -68,17 +68,14 @@ defmodule Dawarich.Navbar do
       )
       |> Repo.one() || {false, nil, nil, nil}
 
-    inherited = member and inherited?(access_until, owner_plan, owner_until, now)
+    inherited = member and Entitlements.inherited?(access_until, owner_plan, owner_until, now)
 
     available =
-      self_hosted or inherited or (user.plan == @family_plan and future?(user.active_until, now))
+      self_hosted or inherited or
+        (user.plan == @family_plan and Entitlements.future?(user.active_until, now))
 
     %{member: member, available: available, sharing: member and sharing?(user.settings, now)}
   end
-
-  defp inherited?(nil, @family_plan, owner_until, now), do: future?(owner_until, now)
-  defp inherited?(nil, _plan, _owner_until, _now), do: false
-  defp inherited?(access_until, _plan, _owner_until, now), do: future?(access_until, now)
 
   defp sharing?(%{"family" => %{"location_sharing" => %{"enabled" => true} = sharing}}, now) do
     case sharing["expires_at"] do
@@ -100,7 +97,7 @@ defmodule Dawarich.Navbar do
   defp subscription(_user, _now, true), do: nil
 
   defp subscription(user, now, false) do
-    active = future?(user.active_until, now)
+    active = Entitlements.future?(user.active_until, now)
     trial = user.status == @trial
 
     if (trial or not active) and not (trial and active and user.subscription_source != 0) do
@@ -160,11 +157,4 @@ defmodule Dawarich.Navbar do
 
   defp onboarding?(%{"onboarding_completed" => done}), do: done in [nil, false]
   defp onboarding?(_settings), do: true
-
-  defp future?(nil, _now), do: false
-
-  defp future?(%NaiveDateTime{} = time, now),
-    do: NaiveDateTime.compare(time, DateTime.to_naive(now)) == :gt
-
-  defp future?(%DateTime{} = time, now), do: DateTime.compare(time, now) == :gt
 end

@@ -21,6 +21,28 @@ defmodule DawarichWeb.Assets do
     }
   end
 
+  def rails_imports do
+    case :persistent_term.get({__MODULE__, :rails_imports}, nil) do
+      nil ->
+        tap(
+          read_imports(Dawarich.RailsRoot.join("tmp/phoenix/importmap.json")),
+          &:persistent_term.put({__MODULE__, :rails_imports}, &1)
+        )
+
+      imports ->
+        imports
+    end
+  end
+
+  def read_imports(path) do
+    with {:ok, json} <- File.read(path),
+         {:ok, %{"imports" => %{} = imports}} <- Jason.decode(json) do
+      imports
+    else
+      _ -> %{}
+    end
+  end
+
   defp manifest do
     case :persistent_term.get(__MODULE__, nil) do
       nil -> tap(read_manifest(File.cwd!()), &:persistent_term.put(__MODULE__, &1))

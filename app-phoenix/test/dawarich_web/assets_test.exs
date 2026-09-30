@@ -41,4 +41,21 @@ defmodule DawarichWeb.AssetsTest do
   test "app.js carries no comments" do
     refute File.read!("priv/static/js/app.js") =~ ~r{^\s*//}m
   end
+
+  @tag :tmp_dir
+  test "Rails' imports come from the phoenix:importmap export, or are empty without one", %{
+    tmp_dir: dir
+  } do
+    path = Path.join(dir, "importmap.json")
+    assert Assets.read_imports(path) == %{}
+
+    File.write!(
+      path,
+      Jason.encode!(%{"imports" => %{"chartkick" => "/assets/chartkick-0123abcd.js"}})
+    )
+
+    assert Assets.read_imports(path) == %{"chartkick" => "/assets/chartkick-0123abcd.js"}
+    File.write!(path, "{")
+    assert Assets.read_imports(path) == %{}
+  end
 end

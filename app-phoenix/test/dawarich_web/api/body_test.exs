@@ -32,6 +32,7 @@ defmodule DawarichWeb.Api.BodyTest do
     conn(:post, target, body)
     |> put_req_header("content-type", type)
     |> put_req_header("content-length", Integer.to_string(byte_size(body)))
+    |> assign(:api_tag, "ingest")
   end
 
   defp forwarded(upstream, conn) do

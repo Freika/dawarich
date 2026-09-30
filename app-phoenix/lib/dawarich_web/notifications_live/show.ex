@@ -26,7 +26,7 @@ defmodule DawarichWeb.NotificationsLive.Show do
             socket.assigns.now
           )
 
-        {:ok, assign(socket, :notification, notification)}
+        {:ok, assign(socket, notification: notification, morph_page_refreshes: true)}
     end
   end
 

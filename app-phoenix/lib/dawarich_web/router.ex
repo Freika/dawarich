@@ -20,6 +20,7 @@ defmodule DawarichWeb.Router do
   end
 
   pipeline :api_ingest do
+    plug :put_api_tag, "ingest"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
     plug DawarichWeb.Api.Body
@@ -35,11 +36,25 @@ defmodule DawarichWeb.Router do
     post "/traccar/points", IngestController, :traccar, metadata: %{slice: :ingest}
   end
 
+  pipeline :api_foundation do
+    plug :put_api_tag, "api"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.Api.Body
+    plug DawarichWeb.Api.Auth, reject_pending: false, require_active: false
+  end
+
+  scope "/api/v1", DawarichWeb.Api do
+    pipe_through :api_foundation
+
+    get "/plan", PlanController, :show, metadata: %{slice: :api_foundation}
+  end
+
   pipeline :rails_user do
     plug DawarichWeb.RequireUser
   end
 
-  scope "/notifications" do
+  scope "/" do
     pipe_through [:browser, :rails_user]
 
     live_session :rails_pages,
@@ -47,10 +62,28 @@ defmodule DawarichWeb.Router do
       on_mount: DawarichWeb.LiveAuth,
       root_layout: {DawarichWeb.Layouts, :root},
       layout: {DawarichWeb.Layouts, :app} do
-      live "/", DawarichWeb.NotificationsLive.Index, :index, container: {:div, class: "contents"}
-      live "/:id", DawarichWeb.NotificationsLive.Show, :show, container: {:div, class: "contents"}
+      live "/notifications", DawarichWeb.NotificationsLive.Index, :index,
+        container: {:div, class: "contents"}
+
+      live "/notifications/:id", DawarichWeb.NotificationsLive.Show, :show,
+        container: {:div, class: "contents"}
+
+      live "/imports", DawarichWeb.ImportsLive.Index, :index, container: {:div, class: "contents"}
+      live "/exports", DawarichWeb.ExportsLive.Index, :index, container: {:div, class: "contents"}
+      live "/stats", DawarichWeb.StatsLive.Index, :index, container: {:div, class: "contents"}
+      live "/stats/:year", DawarichWeb.StatsLive.Year, :show, container: {:div, class: "contents"}
+
+      live "/stats/:year/:month", DawarichWeb.StatsLive.Month, :month,
+        container: {:div, class: "contents"}
+
+      live "/digests", DawarichWeb.DigestsLive.Index, :index, container: {:div, class: "contents"}
+
+      live "/digests/:year", DawarichWeb.DigestsLive.Show, :show,
+        container: {:div, class: "contents"}
     end
   end
+
+  defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
 
   defp phoenix_session(conn, _opts) do
     opts =

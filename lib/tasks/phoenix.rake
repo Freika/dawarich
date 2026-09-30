@@ -25,4 +25,11 @@ namespace :phoenix do
     FileUtils.mkdir_p(File.dirname(path))
     File.write(path, JSON.generate('definitions' => definitions))
   end
+
+  desc 'Export the importmap with its resolved asset paths as JSON for Phoenix'
+  task :importmap, [:path] => :environment do |_task, args|
+    path = args[:path].presence || Rails.root.join('tmp/phoenix/importmap.json').to_s
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, Rails.application.importmap.to_json(resolver: ActionController::Base.helpers))
+  end
 end

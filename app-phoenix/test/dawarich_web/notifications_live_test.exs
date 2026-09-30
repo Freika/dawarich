@@ -183,6 +183,23 @@ defmodule DawarichWeb.NotificationsLiveTest do
              ~s(href="/notifications?locale=de&amp;page=2&amp;x%5B%5D=1&amp;x%5B%5D=2")
   end
 
+  test "a non-string page parameter renders page 1, not a crash", %{user: user} do
+    Dawarich.Repo.insert_all("notifications", [
+      %{
+        id: 41_960,
+        user_id: user.id,
+        title: "Only one",
+        content: "x",
+        kind: 0,
+        created_at: NaiveDateTime.utc_now(:second),
+        updated_at: NaiveDateTime.utc_now(:second)
+      }
+    ])
+
+    {:ok, view, _html} = live_as(user, "/notifications?page[]=2")
+    assert has_element?(view, "#notification_41960")
+  end
+
   describe "the index" do
     setup %{user: user} do
       now = NaiveDateTime.add(NaiveDateTime.utc_now(:second), -60)

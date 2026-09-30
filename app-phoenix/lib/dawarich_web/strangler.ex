@@ -7,6 +7,12 @@ defmodule DawarichWeb.Strangler do
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
 
+  @constraints %{
+    "/stats/:year" => %{"year" => ~r/\A\d{4}\z/},
+    "/stats/:year/:month" => %{"year" => ~r/\A\d{4}\z/, "month" => ~r/\A(0?[1-9]|1[0-2])\z/},
+    "/digests/:year" => %{"year" => ~r/\A\d{4}\z/}
+  }
+
   def browser_like?(value), do: value =~ @browser_like
 
   @impl true
@@ -30,13 +36,22 @@ defmodule DawarichWeb.Strangler do
         false
 
       %{pipe_through: pipelines} = route ->
-        not handed_back?(conn.path_info) and slice_owned?(route) and
+        not handed_back?(conn.path_info) and slice_owned?(route, conn) and
+          rails_constraints?(route) and
           (:browser not in pipelines or page_request?(conn))
     end
   end
 
-  defp slice_owned?(%{slice: slice}), do: DawarichWeb.Slices.owned?(slice)
-  defp slice_owned?(_route), do: true
+  defp slice_owned?(%{slice: slice}, conn),
+    do: conn.method != "HEAD" and DawarichWeb.Slices.owned?(slice)
+
+  defp slice_owned?(_route, _conn), do: true
+
+  defp rails_constraints?(%{route: route, path_params: params}),
+    do:
+      Enum.all?(Map.get(@constraints, route, %{}), fn {name, pattern} ->
+        Regex.match?(pattern, params[name])
+      end)
 
   defp handed_back?([segment | _]),
     do: segment in Application.get_env(:dawarich, :rails_routes, [])

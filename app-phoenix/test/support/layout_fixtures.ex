@@ -49,6 +49,7 @@ defmodule Dawarich.Test.LayoutFixtures do
       request_path: URI.parse(state["path"]).path,
       query_params: %{},
       rails_csrf_token: nil,
+      morph_page_refreshes: URI.parse(state["path"]).path == "/notifications",
       base_url: "http://www.example.com",
       page_title: page_title(locale, user),
       navbar: Dawarich.Navbar.load(user, now: @now, self_hosted: state["self_hosted"])

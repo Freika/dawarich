@@ -27,6 +27,19 @@ defmodule Dawarich.Test.ParityHTML do
     tree |> prune(drop) |> normalize()
   end
 
+  def stimulus(html) do
+    html
+    |> LazyHTML.from_fragment()
+    |> LazyHTML.query(
+      "[data-controller], [data-action], [data-stat-page-target], [data-sharing-modal-target]"
+    )
+    |> LazyHTML.to_tree()
+    |> Enum.map(fn {tag, attrs, _children} ->
+      {tag,
+       attrs |> Enum.filter(fn {name, _} -> String.starts_with?(name, "data-") end) |> Enum.sort()}
+    end)
+  end
+
   defp node({:comment, _}), do: []
 
   defp node(text) when is_binary(text),
@@ -57,6 +70,10 @@ defmodule Dawarich.Test.ParityHTML do
   defp value("meta", "content", value, %{"name" => "msapplication-config"}), do: undigest(value)
 
   defp value("input", "value", _value, %{"name" => "authenticity_token"}), do: "CSRF"
+
+  defp value(_tag, "style", value, _attrs),
+    do: Regex.replace(~r/url\('([^']*)'\)/, value, fn _, url -> "url('#{undigest(url)}')" end)
+
   defp value(_tag, "class", value, _attrs), do: value |> String.split() |> Enum.join(" ")
   defp value(_tag, name, value, _attrs) when name in ["href", "src"], do: undigest(value)
   defp value(_tag, _name, value, _attrs), do: value

@@ -22,6 +22,7 @@ defmodule DawarichWeb.Api.AuthTest do
     conn(:post, "/api/v1/points")
     |> Map.update!(:req_headers, &(&1 ++ headers))
     |> assign(:api_params, params)
+    |> assign(:api_tag, "ingest")
     |> put_private(:dawarich_raw_body, "")
     |> Auth.call([])
   end
@@ -293,5 +294,120 @@ defmodule DawarichWeb.Api.AuthTest do
               Enum.sort(@base ++ ["vary"]),
             key
           )
+  end
+
+  defp plan_run(params, headers \\ []) do
+    conn(:get, "/api/v1/plan")
+    |> Map.update!(:req_headers, &(&1 ++ headers))
+    |> assign(:api_params, params)
+    |> assign(:api_tag, "api")
+    |> put_private(:dawarich_raw_body, "")
+    |> Auth.call(reject_pending: false, require_active: false)
+  end
+
+  defp tag(body),
+    do:
+      ~s(W/") <>
+        binary_part(Base.encode16(:crypto.hash(:sha256, body), case: :lower), 0, 32) <> ~s(")
+
+  test "reject_pending: false and require_active: false admit pending, inactive and expired users; no key is still 401" do
+    for {key, attrs} <- [
+          {"phoenix-a4-p", %{status: 3}},
+          {"phoenix-a4-i", %{status: 0, active_until: ~N[2099-01-01 00:00:00]}},
+          {"phoenix-a4-e", %{status: 1, active_until: ~N[2001-01-01 00:00:00]}}
+        ] do
+      user!(Map.put(attrs, :api_key, key))
+      conn = plan_run(%{"api_key" => key})
+      refute conn.halted, key
+      assert conn.assigns.api_user.status == attrs.status
+    end
+
+    assert plan_run(%{}).status == 401
+    assert plan_run(%{"api_key" => "phoenix-a4-nobody"}).status == 401
+  end
+
+  test "api_user carries plan, subscription source and the raw time-zone setting" do
+    user!(%{
+      api_key: "phoenix-a4-fields",
+      plan: 0,
+      subscription_source: 2,
+      settings: %{"timezone" => "Asia/Kolkata"}
+    })
+
+    assert %{plan: 0, subscription_source: 2, timezone: "Asia/Kolkata"} =
+             plan_run(%{"api_key" => "phoenix-a4-fields"}).assigns.api_user
+
+    user!(%{api_key: "phoenix-a4-nozone", settings: %{"other" => 1}})
+    assert plan_run(%{"api_key" => "phoenix-a4-nozone"}).assigns.api_user.timezone == nil
+  end
+
+  test "a GET 200 whose ETag equals If-None-Match becomes Rails' 304; another tag, a POST or another status does not" do
+    user!(%{api_key: "phoenix-a4-etag"})
+    etag = tag(~s({"k":"v"}))
+    term = {:object, [{"k", "v"}]}
+
+    sent =
+      Respond.json(
+        plan_run(%{"api_key" => "phoenix-a4-etag"}, [
+          {"accept", "application/json"},
+          {"if-none-match", etag}
+        ]),
+        200,
+        term
+      )
+
+    assert {304, ""} == {sent.status, sent.resp_body}
+    assert header(sent, "content-type") == nil
+
+    assert {etag, "max-age=0, private, must-revalidate", "Accept"} ==
+             {header(sent, "etag"), header(sent, "cache-control"), header(sent, "vary")}
+
+    assert Respond.json(
+             plan_run(%{"api_key" => "phoenix-a4-etag"}, [{"if-none-match", ~s(W/"0")}]),
+             200,
+             term
+           ).status == 200
+
+    assert Respond.json(
+             plan_run(%{"api_key" => "phoenix-a4-etag"}, [{"if-none-match", etag}]),
+             201,
+             term
+           ).status == 201
+
+    assert Respond.json(
+             run(%{"api_key" => "phoenix-a4-etag"}, [{"if-none-match", etag}]),
+             200,
+             term
+           ).status == 200
+  end
+
+  defp preadmitted(params, headers \\ []) do
+    conn =
+      conn(:get, "/api/v1/plan")
+      |> Map.update!(:req_headers, &(&1 ++ headers))
+      |> assign(:api_params, params)
+      |> assign(:api_tag, "api")
+      |> put_private(:dawarich_raw_body, "")
+      |> assign(:api_started, System.monotonic_time())
+      |> fetch_cookies()
+
+    {:ok, _format, vary, user} = Auth.admission(conn)
+
+    conn =
+      conn
+      |> assign(:api_vary, vary)
+      |> assign(:api_request_id, "phoenix-a4-badshape-test")
+      |> assign(:api_headers, DawarichWeb.Api.Headers.dawarich(user != nil, "test"))
+      |> assign(:api_if_none_match, "")
+
+    {conn, user}
+  end
+
+  test "admit/3 fails closed with a 401 head for an active_until shape it does not recognize, instead of crashing" do
+    user!(%{api_key: "phoenix-a4-badshape"})
+    {conn, user} = preadmitted(%{"api_key" => "phoenix-a4-badshape"})
+
+    sent = Auth.admit(conn, %{user | active_until: "garbage"}, [])
+    assert {sent.status, sent.resp_body} == {401, ""}
   end
 end

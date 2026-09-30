@@ -18,5 +18,7 @@ defmodule Dawarich.Accounts.User do
     field :active_until, :utc_datetime_usec
     field :subscription_source, :integer
     field :changelog_consent, :integer
+    field :api_key, :string, redact: true
+    field :points_count, :integer
   end
 end

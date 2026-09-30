@@ -52,6 +52,7 @@ defmodule DawarichWeb.Api.IngestControllerTest do
       conn(:post, "/api/v1/points")
       |> assign(:api_params, [52.9, 13.4])
       |> assign(:api_user, %{id: user})
+      |> assign(:api_tag, "ingest")
 
     log =
       with_info_log(fn ->
@@ -74,6 +75,7 @@ defmodule DawarichWeb.Api.IngestControllerTest do
       conn(:post, "/api/v1/points")
       |> assign(:api_params, Jason.decode!(body))
       |> assign(:api_user, %{id: user})
+      |> assign(:api_tag, "ingest")
 
     log =
       with_info_log(fn ->

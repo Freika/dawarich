@@ -17,16 +17,37 @@ defmodule DawarichWeb.Layouts do
     t(locale, "helpers.application.full_title", %{page_title: title, app_name: app_name})
   end
 
-  def importmap do
+  def importmap(rails_js \\ false) do
     versions = DawarichWeb.Assets.script_versions()
 
-    Jason.encode!(%{
-      "imports" => %{
-        "app" => "/phoenix/js/app.js?vsn=#{versions.app}",
-        "phoenix" => "/phoenix/js/phoenix.mjs?vsn=#{versions.phoenix}",
-        "phoenix_live_view" => "/phoenix/js/phoenix_live_view.esm.js?vsn=#{versions.live_view}"
-      }
-    })
+    phoenix = %{
+      "app" => "/phoenix/js/app.js?vsn=#{versions.app}",
+      "phoenix" => "/phoenix/js/phoenix.mjs?vsn=#{versions.phoenix}",
+      "phoenix_live_view" => "/phoenix/js/phoenix_live_view.esm.js?vsn=#{versions.live_view}"
+    }
+
+    imports =
+      if rails_js, do: Map.merge(DawarichWeb.Assets.rails_imports(), phoenix), else: phoenix
+
+    Jason.encode!(%{"imports" => imports})
+  end
+
+  def rails_translations(locale) do
+    base =
+      case Dawarich.I18n.t(locale, "javascript") do
+        {:ok, %{} = tree} -> tree
+        _ -> %{}
+      end
+
+    extra =
+      Map.new(~w(transportation_modes visit_statuses battery_statuses), fn key ->
+        case Dawarich.I18n.t(locale, key) do
+          {:ok, value} -> {key, value}
+          _ -> {key, %{}}
+        end
+      end)
+
+    base |> Map.merge(extra) |> Jason.encode!(escape: :html_safe)
   end
 
   def locale_path(path, query_params, locale) do

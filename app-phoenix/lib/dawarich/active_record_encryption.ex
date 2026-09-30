@@ -33,7 +33,21 @@ defmodule Dawarich.ActiveRecordEncryption do
     with {:ok, %{primary_key: primary, key_derivation_salt: salt}} <- credentials(env),
          :ok <- present(primary, "primary_key"),
          :ok <- present(salt, "key_derivation_salt") do
-      {:ok, :crypto.pbkdf2_hmac(:sha256, primary, salt, 65_536, 32)}
+      {:ok, cached_key(primary, salt)}
+    end
+  end
+
+  defp cached_key(primary, salt) do
+    id = {__MODULE__, :crypto.hash(:sha256, primary <> "\0" <> salt)}
+
+    case :persistent_term.get(id, nil) do
+      nil ->
+        key = :crypto.pbkdf2_hmac(:sha256, primary, salt, 65_536, 32)
+        :persistent_term.put(id, key)
+        key
+
+      key ->
+        key
     end
   end
 
