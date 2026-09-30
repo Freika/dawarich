@@ -177,6 +177,16 @@ RSpec.describe 'Api::V1::Shared::Points', type: :request do
       get "/api/v1/shared/#{link.id}/points"
       expect(JSON.parse(response.body)).to eq([])
     end
+
+    it 'honors a longer freshness window via LIVE_SHARE_FRESHNESS_SECONDS' do
+      stub_const('Api::V1::Shared::PointsController::LIVE_FRESHNESS_SECONDS', 1.hour.to_i)
+      create(:point, user: owner, timestamp: 30.minutes.ago.to_i, latitude: 60.0, longitude: 10.0)
+
+      get "/api/v1/shared/#{link.id}/points"
+      body = JSON.parse(response.body)
+      expect(body.size).to eq(1)
+      expect(body.first[1]).to be_within(0.0001).of(60.0)
+    end
   end
 
   context 'for a timeline share' do
