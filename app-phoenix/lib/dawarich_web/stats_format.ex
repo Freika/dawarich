@@ -3,10 +3,10 @@ defmodule DawarichWeb.StatsFormat do
 
   import DawarichWeb.Translate, only: [t: 3]
 
+  alias Dawarich.Distance
   alias Dawarich.Stats.Toponyms
   alias DawarichWeb.{LocalizedDate, NumberFormat, Params}
 
-  @units %{"km" => 1000, "mi" => 1609.34, "m" => 1, "ft" => 0.3048, "yd" => 0.9144}
   @header_colors ~w(info success warning error accent secondary primary)
   @icons [
     {1..2, "snowflake"},
@@ -28,10 +28,11 @@ defmodule DawarichWeb.StatsFormat do
   def convert(nil, _unit), do: 0.0
 
   def convert(meters, unit) do
-    case Map.fetch(@units, to_string(unit)) do
-      {:ok, factor} -> meters / factor
-      :error -> raise ArgumentError, "Invalid unit '#{unit}'. Supported units: km, mi, m, ft, yd"
-    end
+    unit = to_string(unit)
+
+    if Distance.unit?(unit),
+      do: Distance.convert(meters, unit),
+      else: raise(ArgumentError, "Invalid unit '#{unit}'. Supported units: km, mi, m, ft, yd")
   end
 
   def rounded(meters, unit), do: round(convert(meters, unit))

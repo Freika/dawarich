@@ -79,7 +79,7 @@ defmodule Dawarich.Digests do
     }
   end
 
-  defp available_years(user_id, context) do
+  def available_years(user_id, context) do
     tracked =
       for [year, month] <-
             Repo.query!("SELECT DISTINCT year, month FROM stats WHERE user_id = $1", [user_id]).rows,

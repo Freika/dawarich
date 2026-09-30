@@ -69,4 +69,67 @@ defmodule Dawarich.RailsTimeTest do
     assert RailsTime.iso8601(~N[2027-07-01 10:00:00], "Europe/Berlin") ==
              {:ok, "2027-07-01T12:00:00+02:00"}
   end
+
+  test "with_zone runs the function in the resolved zone: an IANA name as given, a Rails alias mapped, nil through TIME_ZONE to UTC" do
+    assert RailsTime.with_zone("America/New_York", fn ->
+             Repo.query!("SELECT current_setting('TimeZone'), ($1::timestamptz)::date", [
+               ~U[2027-01-01 03:00:00Z]
+             ]).rows
+           end) == [["America/New_York", ~D[2026-12-31]]]
+
+    zone = fn setting ->
+      RailsTime.with_zone(setting, fn ->
+        Repo.query!("SELECT current_setting('TimeZone')").rows
+      end)
+    end
+
+    assert {zone.("Berlin"), zone.(nil)} == {[["Europe/Berlin"]], [["Etc/UTC"]]}
+  end
+
+  test "with_zone hands other spellings, other shapes and unknown zones to Rails without calling the function" do
+    for setting <- ["europe/berlin", "Mars/Olympus_Mons", "", 1] do
+      assert {:replay, _} =
+               RailsTime.with_zone(setting, fn -> flunk("called for #{inspect(setting)}") end),
+             inspect(setting)
+    end
+
+    assert RailsTime.with_zone("Europe/Berlin", fn -> :ok end) == :ok
+  end
+
+  test "sql/2 prints Rails' iso8601 (0) and JSON time (3) of a UTC timestamp in the session zone" do
+    row = fn zone, at ->
+      RailsTime.with_zone(zone, fn ->
+        hd(
+          Repo.query!(
+            "SELECT #{RailsTime.sql("$1::timestamp", 0)}, #{RailsTime.sql("$1::timestamp", 3)}, #{RailsTime.sql("NULL::timestamp", 3)}",
+            [at]
+          ).rows
+        )
+      end)
+    end
+
+    assert row.("Europe/Berlin", ~N[2027-07-01 10:00:00.987654]) == [
+             "2027-07-01T12:00:00+02:00",
+             "2027-07-01T12:00:00.987+02:00",
+             nil
+           ]
+
+    assert row.("UTC", ~N[2027-07-01 10:00:00.000999]) == [
+             "2027-07-01T10:00:00Z",
+             "2027-07-01T10:00:00.000Z",
+             nil
+           ]
+
+    assert row.("Europe/London", ~N[2027-01-15 10:00:00]) == [
+             "2027-01-15T10:00:00+00:00",
+             "2027-01-15T10:00:00.000+00:00",
+             nil
+           ]
+
+    assert row.("America/St_Johns", ~N[2027-01-15 10:00:00]) == [
+             "2027-01-15T06:30:00-03:30",
+             "2027-01-15T06:30:00.000-03:30",
+             nil
+           ]
+  end
 end

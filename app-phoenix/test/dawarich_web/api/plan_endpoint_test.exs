@@ -1,8 +1,5 @@
 defmodule DawarichWeb.Api.PlanEndpointTest do
-  use Dawarich.IngestCase, async: false
-  import Dawarich.Test.RawHTTP
-  import ExUnit.CaptureLog
-  require Logger
+  use Dawarich.ApiEndpointCase
 
   alias DawarichWeb.Api.PlanController
 
@@ -11,52 +8,8 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
   @key "phoenix-a4-plan-key"
   @full ~s({"heatmap":true,"fog_of_war":true,"scratch_map":true,"globe_view":true,"integrations":true,"write_api":true,"sharing":true,"full_digest":true,"data_window":null})
 
-  setup do
-    upstream = listen()
-    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
-
-    bandit =
-      start_supervised!(
-        {Bandit, [plug: DawarichWeb.Endpoint] ++ Dawarich.Front.http_options({127, 0, 0, 1}, 0)}
-      )
-
-    {:ok, {_ip, port}} = ThousandIsland.listener_info(bandit)
-    previous = System.get_env("TIME_ZONE")
-    System.delete_env("TIME_ZONE")
-
-    on_exit(fn ->
-      Application.put_env(:dawarich, :rails_upstream, nil)
-      Enum.each(~w(SELF_HOSTED DAWARICH_RAILS_SLICES), &System.delete_env/1)
-      if previous, do: System.put_env("TIME_ZONE", previous)
-    end)
-
-    %{port: port, upstream: upstream}
-  end
-
-  defp request(port, target, headers, method \\ "GET") do
-    client = connect(port)
-
-    send_raw(client, [
-      "#{method} #{target} HTTP/1.1\r\nHost: localhost\r\n",
-      Enum.map(headers, fn {n, v} -> "#{n}: #{v}\r\n" end),
-      "\r\n"
-    ])
-
-    client
-  end
-
   defp bearer(key \\ @key),
     do: [{"Authorization", "Bearer #{key}"}, {"Accept", "application/json"}]
-
-  defp puma(upstream, body \\ "rails") do
-    socket = accept(upstream)
-    {head, _rest} = read_head(socket)
-    reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: #{byte_size(body)}\r\n\r\n#{body}")
-    request_line(head)
-  end
-
-  defp no_upstream!(upstream),
-    do: assert({:error, :timeout} = :gen_tcp.accept(upstream.listen, 0))
 
   test "Phoenix answers the mobile app's request with Rails' bytes", %{
     port: port,
@@ -201,17 +154,6 @@ defmodule DawarichWeb.Api.PlanEndpointTest do
                "#{method} #{target} HTTP/1.1"
 
       assert {200, _, _} = read_response(client, method: method)
-    end
-  end
-
-  defp with_info_log(fun) do
-    previous = Logger.level()
-    Logger.configure(level: :info)
-
-    try do
-      capture_log([level: :info], fun)
-    after
-      Logger.configure(level: previous)
     end
   end
 
