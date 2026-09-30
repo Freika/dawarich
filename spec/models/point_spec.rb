@@ -153,9 +153,10 @@ RSpec.describe Point, type: :model do
       end
 
       context 'when point is imported' do
-        let(:point) { build(:point, import_id: 1) }
+        let(:point) { create(:point, import: create(:import)) }
 
         it 'enqueues ReverseGeocodeJob' do
+          clear_dedup_key(point.id)
           expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
         end
       end
@@ -178,12 +179,11 @@ RSpec.describe Point, type: :model do
           expect { point.async_reverse_geocode }.not_to have_enqueued_job(ReverseGeocodingJob)
         end
 
-        it 'sets a 24h-TTL Redis key for the point id' do
+        it 'keeps the Redis claim until the pending job finishes' do
           point.save
 
           ttl = Sidekiq.redis { |r| r.ttl(Point.geocode_dedup_key(point.id)) }
-          expect(ttl).to be > 0
-          expect(ttl).to be <= 86_400
+          expect(ttl).to eq(-1)
         end
       end
 
