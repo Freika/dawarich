@@ -41,32 +41,12 @@ defmodule DawarichWeb.Icon do
       |> Dawarich.RailsRoot.join()
       |> File.read!()
       |> then(
-        &Regex.replace(~r/<svg([^>]*)>/, &1, ~s(<svg\\1 class="#{assigns.class}">), global: false)
-      )
-
-    assigns = assign(assigns, :svg, Phoenix.HTML.raw(svg))
-
-    ~H"""
-    {@svg}
-    """
-  end
-
-  attr :code, :string, required: true
-  attr :title, :string, required: true
-
-  def flag(assigns) do
-    title = assigns.title |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
-
-    svg =
-      "app/assets/svg/icons/flags/landscape/#{Path.basename(assigns.code)}.svg"
-      |> Dawarich.RailsRoot.join()
-      |> File.read!()
-      |> then(
         &Regex.replace(
           ~r/<svg([^>]*)>/,
           &1,
           fn _, attrs ->
-            ~s(<svg#{attrs} class="inline-block rounded-sm h-4 w-auto" title="#{title}">)
+            attrs = Regex.replace(~r/\sclass="[^"]*"/, attrs, "")
+            ~s(<svg#{attrs} class="#{assigns.class}">)
           end,
           global: false
         )
@@ -77,6 +57,52 @@ defmodule DawarichWeb.Icon do
     ~H"""
     {@svg}
     """
+  end
+
+  attr :code, :string, required: true
+  attr :class, :string, default: "inline-block rounded-sm h-4 w-auto"
+  attr :title, :string, default: nil
+
+  def flag(assigns) do
+    title =
+      if assigns.title,
+        do:
+          ~s( title="#{assigns.title |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()}"),
+        else: ""
+
+    svg =
+      assigns.code
+      |> raw_flag_svg()
+      |> then(
+        &Regex.replace(
+          ~r/<svg([^>]*)>/,
+          &1,
+          fn _, attrs -> ~s(<svg#{attrs} class="#{assigns.class}"#{title}>) end,
+          global: false
+        )
+      )
+
+    assigns = assign(assigns, :svg, Phoenix.HTML.raw(svg))
+
+    ~H"""
+    {@svg}
+    """
+  end
+
+  defp raw_flag_svg(code) do
+    case :persistent_term.get({__MODULE__, :flag, code}, nil) do
+      nil ->
+        svg =
+          "app/assets/svg/icons/flags/landscape/#{Path.basename(code)}.svg"
+          |> Dawarich.RailsRoot.join()
+          |> File.read!()
+
+        :persistent_term.put({__MODULE__, :flag, code}, svg)
+        svg
+
+      svg ->
+        svg
+    end
   end
 
   attr :name, :any, required: true

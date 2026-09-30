@@ -27,12 +27,12 @@ defmodule Dawarich.Test.ParityHTML do
     tree |> prune(drop) |> normalize()
   end
 
-  def stimulus(html) do
+  @stimulus "[data-controller], [data-action], [data-stat-page-target], [data-sharing-modal-target]"
+
+  def stimulus(html, selector \\ @stimulus) do
     html
     |> LazyHTML.from_fragment()
-    |> LazyHTML.query(
-      "[data-controller], [data-action], [data-stat-page-target], [data-sharing-modal-target]"
-    )
+    |> LazyHTML.query(selector)
     |> LazyHTML.to_tree()
     |> Enum.map(fn {tag, attrs, _children} ->
       {tag,

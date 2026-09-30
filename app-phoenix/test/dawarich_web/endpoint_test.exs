@@ -586,4 +586,63 @@ defmodule DawarichWeb.EndpointTest do
                "GET #{target} HTTP/1.1"
     end
   end
+
+  test "Phoenix answers the settings, account and insights pages itself" do
+    port = serve()
+
+    for target <-
+          ~w(/settings/general /settings/integrations /settings/integrations?service=trek /users/edit /insights /insights?year=all&month=3) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302, target
+    end
+  end
+
+  test "every other settings, account and insights path, and every write, goes to Puma", ctx do
+    port = serve()
+
+    for target <-
+          ~w(/settings /settings/theme?theme=light /settings/visits /settings/two_factor /settings/background_jobs /settings/users /settings/users/export /settings/trek_sources/1/select_trips /insights/details?year=2024 /map/residency?year=2024 /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+              "GET #{target} HTTP/1.1"
+          )
+
+    for {method, target} <- [
+          {"PATCH", "/settings/general"},
+          {"POST", "/settings/general/verify_supporter"},
+          {"POST", "/settings/general/test_email"},
+          {"PATCH", "/settings/integrations"},
+          {"POST", "/settings/trek_sources"},
+          {"DELETE", "/settings/trek_sources/1"},
+          {"POST", "/settings/background_jobs?job_name=start_airtrail_import"},
+          {"PATCH", "/settings/changelog_consent"},
+          {"POST", "/settings/generate_api_key"},
+          {"POST", "/settings/users/export"},
+          {"POST", "/settings/users/import"},
+          {"PUT", "/users"},
+          {"DELETE", "/users"}
+        ] do
+      body = "authenticity_token=x"
+
+      request =
+        "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+    end
+  end
+
+  test "DAWARICH_RAILS_ROUTES hands the settings, account and insights pages back", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["settings", "users", "insights"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+
+    for target <-
+          ~w(/settings/general /settings/integrations?service=immich /users/edit /insights?year=2024),
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+              "GET #{target} HTTP/1.1"
+          )
+  end
 end

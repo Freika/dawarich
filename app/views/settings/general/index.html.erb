@@ -126,11 +126,7 @@
                     <span class="label-text font-medium"><%= t('.your_timezone') %></span>
                   </label>
                   <%= f.select :timezone,
-                               ActiveSupport::TimeZone.all
-                                 .map { |tz| [tz.tzinfo.name, tz.formatted_offset, tz.utc_offset] }
-                                 .uniq(&:first)
-                                 .sort_by { |_, _, seconds| seconds }
-                                 .map { |iana, offset, _| ["(GMT#{offset}) #{iana}", iana] },
+                               settings_time_zone_options,
                                { selected: current_user.timezone },
                                class: "select select-bordered w-full" %>
                   <p class="text-sm text-base-content/70 mt-1">

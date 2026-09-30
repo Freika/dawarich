@@ -32,4 +32,11 @@ namespace :phoenix do
     FileUtils.mkdir_p(File.dirname(path))
     File.write(path, Rails.application.importmap.to_json(resolver: ActionController::Base.helpers))
   end
+
+  desc 'Export the time zone choices of Settings > General as JSON for Phoenix'
+  task :time_zones, [:path] => :environment do |_task, args|
+    path = args[:path].presence || Rails.root.join('tmp/phoenix/time_zones.json').to_s
+    FileUtils.mkdir_p(File.dirname(path))
+    File.write(path, JSON.generate('options' => Object.new.extend(UserHelper).settings_time_zone_options))
+  end
 end

@@ -127,6 +127,11 @@ defmodule Dawarich.Navbar do
     days
   end
 
+  def changelog_host do
+    host = System.get_env("CHIBICHANGE_WIDGET_HOST", "https://my.chibichange.com")
+    URI.parse(host).host || host
+  end
+
   defp version(user, self_hosted, now), do: version(user, self_hosted, now, AppVersion.current())
 
   defp version(user, self_hosted, now, running_version) do
@@ -138,7 +143,7 @@ defmodule Dawarich.Navbar do
       state: state,
       update: state != :widget and AppVersion.update_available?(now, running_version),
       widget_src: host <> "/w/v1/loader.js",
-      widget_host: URI.parse(host).host || host,
+      widget_host: changelog_host(),
       slug:
         if(self_hosted,
           do: System.get_env("CHIBICHANGE_SLUG", "dawarich"),

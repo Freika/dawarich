@@ -133,10 +133,22 @@ const bootRailsBridges = () => {
     railsBridge(element)
 }
 
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", bootRailsBridges)
-} else {
+const bootTurboFrames = () => {
+  if (!document.querySelector("turbo-frame[src]")) return
+  import("@hotwired/turbo-rails").then(({ Turbo }) => {
+    Turbo.session.drive = false
+  })
+}
+
+const boot = () => {
   bootRailsBridges()
+  bootTurboFrames()
+}
+
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", boot)
+} else {
+  boot()
 }
 
 const joined = () => liveSocket.main?.isConnected() === true

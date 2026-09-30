@@ -26,4 +26,14 @@ defmodule DawarichWeb.IconTest do
     assert length(String.split(html, "<path")) == 5
     refute html =~ "stroke-width"
   end
+
+  test "a brand icon with a class baked into its own source keeps only the caller's class" do
+    html = render_component(&DawarichWeb.Icon.brand/1, name: "airtrail", class: "size-5 shrink-0")
+    tag = hd(Regex.run(~r/<svg[^>]*>/, html))
+
+    assert Regex.scan(~r/\sclass="/, tag) |> length() == 1
+    assert tag =~ ~s(class="size-5 shrink-0">)
+    refute tag =~ "lucide-tower-control"
+    assert tag =~ ~s(stroke="#3c83f6")
+  end
 end
