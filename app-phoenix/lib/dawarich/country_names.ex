@@ -10,6 +10,25 @@ defmodule Dawarich.CountryNames do
   @aliases @data["aliases"]
   @territories @data["territories"]
 
+  @codes_source Path.expand("../../priv/country_codes.json", __DIR__)
+  @external_resource @codes_source
+  @codes @codes_source |> File.read!() |> Jason.decode!() |> Map.fetch!("countries")
+
+  def iso_codes(name) do
+    case code_row(name) do
+      [_name, iso2, iso3, _flag] -> {iso2, iso3}
+      nil -> {nil, nil}
+    end
+  end
+
+  def flag(iso2) do
+    code = String.upcase(iso2)
+
+    Enum.find_value(@codes, fn [_name, candidate, _iso3, flag] ->
+      if candidate == code, do: flag
+    end)
+  end
+
   def table(repo \\ Dawarich.Repo),
     do:
       for(
@@ -55,6 +74,22 @@ defmodule Dawarich.CountryNames do
   end
 
   def flag_code(_name, _table), do: nil
+
+  defp code_row(name) do
+    if Ruby.blank?(name) do
+      nil
+    else
+      down = String.downcase(name)
+
+      exact_row(name) || (@aliases[name] && exact_row(@aliases[name])) ||
+        Enum.find(@codes, fn [candidate | _] -> String.downcase(candidate) == down end) ||
+        Enum.find(@codes, fn [candidate | _] ->
+          either_contains?(String.downcase(candidate), down)
+        end)
+    end
+  end
+
+  defp exact_row(name), do: Enum.find(@codes, fn [candidate | _] -> candidate == name end)
 
   defp either_contains?(a, b), do: String.contains?(a, b) or String.contains?(b, a)
 
