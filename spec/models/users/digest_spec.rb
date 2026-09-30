@@ -32,10 +32,67 @@ RSpec.describe Users::Digest, type: :model do
         expect(other_digest).to be_valid
       end
     end
+
+    describe 'weekly grain' do
+      let(:user) { create(:user) }
+
+      it 'requires a week' do
+        digest = build(:users_digest, :weekly, user: user, week: nil)
+
+        expect(digest).not_to be_valid
+        expect(digest.errors[:week]).to include("can't be blank")
+      end
+
+      it 'rejects a week outside 1..53' do
+        digest = build(:users_digest, :weekly, user: user, week: 54)
+
+        expect(digest).not_to be_valid
+      end
+
+      it 'persists two weekly digests in different weeks of the same year' do
+        create(:users_digest, :weekly, user: user, year: 2026, week: 30)
+        second = build(:users_digest, :weekly, user: user, year: 2026, week: 31)
+
+        expect(second).to be_valid
+        expect { second.save! }.to change { user.digests.weekly.count }.from(1).to(2)
+      end
+
+      it 'rejects a duplicate week for the same user and year' do
+        create(:users_digest, :weekly, user: user, year: 2026, week: 30)
+        duplicate = build(:users_digest, :weekly, user: user, year: 2026, week: 30)
+
+        expect(duplicate).not_to be_valid
+        expect(duplicate.errors[:year]).to include('has already been taken')
+      end
+
+      it 'rejects a duplicate week at the database level' do
+        create(:users_digest, :weekly, user: user, year: 2026, week: 30)
+        duplicate = build(:users_digest, :weekly, user: user, year: 2026, week: 30)
+
+        expect { duplicate.save!(validate: false) }.to raise_error(ActiveRecord::RecordNotUnique)
+      end
+
+      it 'allows a weekly digest alongside a yearly digest for the same year' do
+        create(:users_digest, user: user, year: 2026, period_type: :yearly)
+        weekly = build(:users_digest, :weekly, user: user, year: 2026, week: 30)
+
+        expect(weekly).to be_valid
+        expect { weekly.save! }.not_to raise_error
+      end
+
+      it 'still rejects a duplicate yearly digest once weekly rows exist' do
+        create(:users_digest, :weekly, user: user, year: 2026, week: 30)
+        create(:users_digest, user: user, year: 2026, period_type: :yearly)
+        duplicate = build(:users_digest, user: user, year: 2026, period_type: :yearly)
+
+        expect(duplicate).not_to be_valid
+        expect { duplicate.save!(validate: false) }.to raise_error(ActiveRecord::RecordNotUnique)
+      end
+    end
   end
 
   describe 'enums' do
-    it { is_expected.to define_enum_for(:period_type).with_values(monthly: 0, yearly: 1) }
+    it { is_expected.to define_enum_for(:period_type).with_values(monthly: 0, yearly: 1, weekly: 2) }
   end
 
   describe 'callbacks' do

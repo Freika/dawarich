@@ -11,13 +11,15 @@ class Users::Digest < ApplicationRecord
   belongs_to :user
 
   validates :year, :period_type, presence: true
-  validates :year, uniqueness: { scope: %i[user_id month period_type] }
+  validates :year, uniqueness: { scope: %i[user_id month week period_type] }
   validates :month, presence: true, if: :monthly?
   validates :month, inclusion: { in: 1..12 }, allow_nil: true
+  validates :week, presence: true, if: :weekly?
+  validates :week, inclusion: { in: 1..53 }, allow_nil: true
 
   before_create :generate_sharing_uuid
 
-  enum :period_type, { monthly: 0, yearly: 1 }
+  enum :period_type, { monthly: 0, yearly: 1, weekly: 2 }
 
   def sharing_enabled?
     sharing_settings.try(:[], 'enabled') == true
