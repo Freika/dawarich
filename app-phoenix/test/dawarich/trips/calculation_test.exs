@@ -3,10 +3,11 @@ defmodule Dawarich.Trips.CalculationTest do
 
   alias Dawarich.Trips.Calculation
 
-  defmodule LockTimeoutRepo do
+  defmodule BackendReportingRepo do
     def transaction(fun) do
       ScratchRepo.transaction(fn ->
-        ScratchRepo.query!("SET LOCAL lock_timeout = '50ms'", [], log: false)
+        %{rows: [[backend]]} = ScratchRepo.query!("SELECT pg_backend_pid()", [], log: false)
+        send(hd(Process.get(:"$callers")), {:calculation_backend, backend})
         fun.()
       end)
     end
@@ -51,6 +52,23 @@ defmodule Dawarich.Trips.CalculationTest do
       )
 
   defp events, do: rows("SELECT kind, distance_unit, failed FROM phoenix.trip_events ORDER BY id")
+
+  defp blocked_by?(waiting, holding),
+    do: rows("SELECT $2::int = ANY(pg_blocking_pids($1::int))", [waiting, holding]) == [[true]]
+
+  defp wait_until(fun, deadline \\ System.monotonic_time(:millisecond) + 5_000) do
+    cond do
+      fun.() ->
+        :ok
+
+      System.monotonic_time(:millisecond) > deadline ->
+        flunk("condition not reached within 5 s")
+
+      true ->
+        Process.sleep(20)
+        wait_until(fun, deadline)
+    end
+  end
 
   test "computes the path, distance and countries Rails computes for the same rows, and reports each step" do
     fixture = load!()
@@ -103,9 +121,9 @@ defmodule Dawarich.Trips.CalculationTest do
     holder =
       Task.async(fn ->
         ScratchRepo.transaction(fn ->
-          ScratchRepo.query!("SET LOCAL lock_timeout = '50ms'", [], log: false)
           ScratchRepo.query!("SELECT id FROM trips WHERE id = $1 FOR UPDATE", [id], log: false)
-          send(parent, :holding_trip_lock)
+          %{rows: [[backend]]} = ScratchRepo.query!("SELECT pg_backend_pid()", [], log: false)
+          send(parent, {:holding_trip_lock, backend})
 
           receive do
             :update_and_release ->
@@ -122,17 +140,18 @@ defmodule Dawarich.Trips.CalculationTest do
       if Process.alive?(holder.pid), do: send(holder.pid, :update_and_release)
     end)
 
-    assert_receive :holding_trip_lock
+    assert_receive {:holding_trip_lock, holder_backend}
 
     calculating =
       Task.async(fn ->
-        Calculation.run(LockTimeoutRepo, id, "km", fn
+        Calculation.run(BackendReportingRepo, id, "km", fn
           :path_computed -> send(parent, :path_computed)
         end)
       end)
 
     assert_receive :path_computed
-    assert Task.yield(calculating, 25) == nil
+    assert_receive {:calculation_backend, calculation_backend}
+    wait_until(fn -> blocked_by?(calculation_backend, holder_backend) end)
 
     send(holder.pid, :update_and_release)
     assert {:ok, %{num_rows: 1}} = Task.await(holder)

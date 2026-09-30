@@ -1,5 +1,5 @@
 defmodule Dawarich.Tracks.PerUserLockTest do
-  use ExUnit.Case, async: true, group: :tracks_db
+  use ExUnit.Case, async: false
 
   alias Dawarich.Redis
   alias Dawarich.Tracks.PerUserLock

@@ -20,24 +20,10 @@ defmodule Dawarich.Jobs.TwoNodeTest do
         "SELECT count(*) FROM oban.oban_jobs WHERE worker = 'Dawarich.TwoNodeHarness.CronWorker'"
       )
 
-  defp eventually(fun, remaining \\ 100)
-  defp eventually(fun, 0), do: fun.()
-
-  defp eventually(fun, remaining) do
-    if fun.() do
-      true
-    else
-      receive do
-      after
-        10 -> eventually(fun, remaining - 1)
-      end
-    end
-  end
-
   test "two BEAMs with distinct Oban nodes elect one leader and insert one cron job per evaluation" do
     peers = [start_node("web-a"), start_node("web-b")]
 
-    assert eventually(fn -> length(leaders(peers)) == 1 end)
+    assert length(leaders(peers)) == 1
     assert [[node]] = rows("SELECT node FROM oban.oban_peers WHERE name = 'Dawarich.TwoNodeOban'")
     assert node in ["web-a", "web-b"]
 
@@ -49,7 +35,7 @@ defmodule Dawarich.Jobs.TwoNodeTest do
   test "identical node names make both BEAMs leaders" do
     peers = [start_node("same"), start_node("same")]
 
-    assert eventually(fn -> length(leaders(peers)) == 2 end)
+    assert length(leaders(peers)) == 2
 
     for peer <- peers, do: :ok = :peer.call(peer, TwoNodeHarness, :evaluate_cron, [])
 

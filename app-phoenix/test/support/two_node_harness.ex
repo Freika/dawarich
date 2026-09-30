@@ -19,6 +19,14 @@ defmodule Dawarich.TwoNodeHarness do
       {:ok, _} = Application.ensure_all_started(:postgrex)
       {:ok, _} = Application.ensure_all_started(:oban)
 
+      :ok =
+        :telemetry.attach(
+          __MODULE__,
+          [:oban, :peer, :election, :stop],
+          &__MODULE__.elected/4,
+          parent
+        )
+
       {:ok, _} =
         Supervisor.start_link(
           [
@@ -48,7 +56,14 @@ defmodule Dawarich.TwoNodeHarness do
     receive do
       :booted -> :ok
     end
+
+    receive do
+      :elected -> :telemetry.detach(__MODULE__)
+    end
   end
+
+  def elected(_event, _measurements, %{conf: %{name: @name}}, parent), do: send(parent, :elected)
+  def elected(_event, _measurements, _metadata, _parent), do: :ok
 
   def leader?, do: Oban.Peer.leader?(@name)
 
