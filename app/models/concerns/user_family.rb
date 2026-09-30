@@ -25,12 +25,6 @@ module UserFamily
     family_membership.present?
   end
 
-  def family_map_sharing_active?
-    return false unless in_family?
-
-    family.members.any?(&:family_sharing_enabled?)
-  end
-
   def family_owner?
     family_membership&.owner? == true
   end
