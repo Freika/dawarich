@@ -4,6 +4,7 @@ defmodule DawarichWeb.EndpointTest do
   @moduletag :capture_log
 
   import Dawarich.Test.RawHTTP
+  import ExUnit.CaptureLog
 
   setup do
     upstream = listen()
@@ -77,6 +78,17 @@ defmodule DawarichWeb.EndpointTest do
     send_raw(client, request)
     {status, _headers, _body} = read_response(client)
     status
+  end
+
+  defp with_info_log(fun) do
+    previous = Logger.level()
+    Logger.configure(level: :info)
+
+    try do
+      capture_log([level: :info], fun)
+    after
+      Logger.configure(level: previous)
+    end
   end
 
   test "Rails answers what a browser page is not asked for: JSON, XHR, a format", ctx do
@@ -191,7 +203,12 @@ defmodule DawarichWeb.EndpointTest do
       "POST /exports HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
         "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
 
-    assert answered_by_puma(port, ctx.upstream, post) == "POST /exports HTTP/1.1"
+    log =
+      with_info_log(fn ->
+        assert answered_by_puma(port, ctx.upstream, post) == "POST /exports HTTP/1.1"
+      end)
+
+    refute log =~ "[form]"
   end
 
   @tag :tmp_dir
