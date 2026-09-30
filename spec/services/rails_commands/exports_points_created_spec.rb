@@ -16,17 +16,36 @@ RSpec.describe 'RailsCommands exports.points_created' do
   def payload = { 'export_id' => export.id, 'user_id' => user.id, 'locale' => 'de' }
   def run(value = payload) = RailsCommands::Registry.handler('exports.points_created').call(value)
 
-  it 'enqueues the ExportJob that Export#after_create enqueues, in the locale of the request' do
-    I18n.with_locale(:de) { user.exports.create!(name: 'rails.json', status: :created, file_format: :json) }
+  it 'enqueues the ExportJob that Export#after_create enqueues, in the locale and time zone of the request' do
+    user.update!(settings: user.settings.merge('timezone' => 'America/New_York'))
+
+    Time.use_zone('America/New_York') do
+      I18n.with_locale(:de) { user.exports.create!(name: 'rails.json', status: :created, file_format: :json) }
+    end
     rails_job = enqueued_jobs.sole
     clear_enqueued_jobs
 
     run
 
     job = enqueued_jobs.sole
-    expect([job[:job], job[:queue], job['locale']]).to eq([rails_job[:job], rails_job[:queue], rails_job['locale']])
+    expect([job[:job], job[:queue], job['locale'], job['timezone']])
+      .to eq([rails_job[:job], rails_job[:queue], rails_job['locale'], rails_job['timezone']])
     expect(rails_job['locale']).to eq('de')
+    expect(rails_job['timezone']).to eq('America/New_York')
     expect(job[:args]).to eq([export.id])
+  end
+
+  it "matches Rails' fallback zone for a user with no saved time zone" do
+    Time.use_zone(user.timezone) do
+      user.exports.create!(name: 'rails.json', status: :created, file_format: :json)
+    end
+    rails_job = enqueued_jobs.sole
+    clear_enqueued_jobs
+
+    run
+
+    expect(enqueued_jobs.sole['timezone']).to eq(rails_job['timezone'])
+    expect(rails_job['timezone']).to eq(ENV.fetch('TIME_ZONE', 'UTC'))
   end
 
   it 'writes one pending exports.points outbox command instead once Oban owns the key' do
