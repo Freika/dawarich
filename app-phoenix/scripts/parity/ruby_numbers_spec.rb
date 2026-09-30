@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'wave5b_fixture_support'
 
 FLOAT_STRING_PROBES = [
   '12.3731', '-51.3402', '0', '0.0', '+5.5', '1e10', '1E-10', '1_000.5', '  12.5  ', '.5',
@@ -12,12 +13,7 @@ FLOAT_STRING_PROBES = [
 ].freeze
 
 RSpec.describe 'Phoenix fixture: Ruby float and Float() parity probes' do
-  def postgis_build
-    full = ActiveRecord::Base.connection.select_value('SELECT postgis_full_version()')
-    postgis = full[/POSTGIS="([^"\s]+)/, 1]
-    proj = full[/PROJ="([^"\s]+)/, 1]
-    "POSTGIS=#{postgis} PROJ=#{proj}"
-  end
+  include Wave5bFixtureSupport
 
   def leipzig_coord(rng, base, spread)
     (base + (rng.rand * spread)).round(6)
@@ -33,7 +29,6 @@ RSpec.describe 'Phoenix fixture: Ruby float and Float() parity probes' do
     (sign * rng.rand * 0.0001).round(9)
   end
 
-  # Deterministic across runs: a fixed seed, no wall-clock or process state.
   def build_floats
     rng = Random.new(20_260_928)
     floats = []
@@ -64,11 +59,6 @@ RSpec.describe 'Phoenix fixture: Ruby float and Float() parity probes' do
       }
     end
 
-    # Recorded as text only: Rails' Oj-optimized JSON encoder re-rounds a
-    # handful of these extreme-magnitude probes (Float::MAX, the smallest
-    # denormal) to a mantissa some JSON parsers reject, so a raw numeric
-    # field here would make the fixture unparseable rather than prove Ruby's
-    # Float() behavior.
     string_rows = FLOAT_STRING_PROBES.map do |s|
       value = Float(s)
       { 'input' => s, 'ok' => true, 'to_s' => value.to_s }
@@ -77,9 +67,6 @@ RSpec.describe 'Phoenix fixture: Ruby float and Float() parity probes' do
     end
 
     path = Rails.root.join('app-phoenix/test/fixtures/ruby_numbers.json')
-    # An earlier, unrelated task already owns this exact filename for its own
-    # "ruby"/"cases" keys (Dawarich.ReleaseMigrations.Effects.GeocodingRailsPinsTest
-    # reads them). Preserve them untouched; only this task's own keys are added.
     legacy = File.exist?(path) ? JSON.parse(File.read(path)).slice('ruby', 'cases') : {}
 
     fixture = legacy.merge(

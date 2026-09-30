@@ -4,19 +4,11 @@ defmodule Dawarich.Wave5bFixturesTest do
   alias Dawarich.ScratchRepo
   alias Dawarich.Wave5bFixtures
 
-  @tables ~w(users points places areas visits imports tags taggings instance_settings countries)
-
-  # The four providers' own default public hosts, plus ChibiGeo: its
-  # host-specific rate-limit metering (Geocoding::Providers.chibigeo?) is
-  # gated on this exact literal hostname, so the fixture that proves it
-  # cannot use a synthetic stand-in.
-  @allowed_public_hosts ~w(
-    photon.komoot.io
-    app.chibigeo.com
-    api.geoapify.com
-    nominatim.openstreetmap.org
-    us1.locationiq.com
-  )
+  @allowed_public_hosts ~w(photon.komoot.io app.chibigeo.com api.geoapify.com us1.locationiq.com)
+  @point_sql "SELECT lock_version, timestamp, ST_AsText(lonlat) FROM points WHERE id = $1"
+  @place_sql "SELECT latitude::text, longitude::text, ST_AsText(lonlat) FROM places WHERE id = $1"
+  @visit_sql "SELECT floor(extract(epoch FROM started_at))::bigint, " <>
+               "floor(extract(epoch FROM ended_at))::bigint FROM visits WHERE id = $1"
 
   setup do
     unless ScratchRepo.query!("SELECT to_regclass('public.users') IS NOT NULL", [], log: false).rows ==
@@ -37,49 +29,75 @@ defmodule Dawarich.Wave5bFixturesTest do
     for path <- Wave5bFixtures.names() do
       raw = File.read!(path)
       refute raw =~ "Johannisthal", "#{path} must never contain Johannisthal"
-      assert_synthetic_hosts!(path)
-
-      %{fixture: fixture, row_counts: row_counts} = Wave5bFixtures.load!(ScratchRepo, path)
+      fixture = Wave5bFixtures.read!(path)
+      assert_synthetic_hosts!(path, fixture)
 
       assert is_binary(fixture["postgis_build"]) and fixture["postgis_build"] != "",
              "#{path} is missing postgis_build"
 
-      input = fixture["input"] || %{}
+      for input <- inputs(fixture) do
+        row_counts = Wave5bFixtures.load_input!(ScratchRepo, input)
 
-      for table <- @tables, Map.has_key?(input, table) do
-        assert row_counts[table] == length(input[table]),
-               "#{path}: #{table} row count mismatch (loaded #{row_counts[table]}, fixture has #{length(input[table])})"
+        for table <- Wave5bFixtures.tables(), Map.has_key?(input, table) do
+          assert row_counts[table] == length(input[table]),
+                 "#{path}: #{table} row count mismatch (loaded #{row_counts[table]}, fixture has #{length(input[table])})"
+        end
+
+        assert_round_trip!(path, input)
+        truncate!()
       end
-
-      truncate!()
     end
   end
 
-  defp assert_synthetic_hosts!(path) do
-    fixture = Wave5bFixtures.read!(path)
+  defp inputs(fixture) do
+    cases = for %{"input" => input} <- fixture["cases"] || [], do: input
+    [fixture["input"] || %{} | cases]
+  end
 
-    hosts =
-      (config_hosts(fixture) ++ request_hosts(fixture))
-      |> Enum.reject(&is_nil/1)
+  defp assert_round_trip!(path, input) do
+    for row <- input["points"] || [] do
+      assert loaded(@point_sql, row["id"]) == [
+               row["lock_version"] || 0,
+               row["timestamp"],
+               row["lonlat_wkt"]
+             ],
+             "#{path}: point #{row["id"]} did not load as recorded"
+    end
 
-    for host <- hosts do
+    for %{"latitude" => lat} = row <- input["places"] || [] do
+      assert loaded(@place_sql, row["id"]) == [lat, row["longitude"], row["lonlat_wkt"]],
+             "#{path}: place #{row["id"]} did not load as recorded"
+    end
+
+    for row <- input["visits"] || [] do
+      assert loaded(@visit_sql, row["id"]) == [row["started_at"], row["ended_at"]],
+             "#{path}: visit #{row["id"]} did not load as recorded"
+    end
+  end
+
+  defp loaded(sql, id), do: ScratchRepo.query!(sql, [id], log: false).rows |> List.first()
+
+  defp assert_synthetic_hosts!(path, fixture) do
+    for host <- hosts(fixture) do
       assert synthetic?(host), "#{path}: non-synthetic host #{inspect(host)}"
     end
   end
 
-  defp config_hosts(fixture) do
-    case get_in(fixture, ["config", "host"]) do
-      nil -> []
-      host -> [host |> String.split("/") |> List.first()]
-    end
+  defp hosts(%{} = map) do
+    Enum.flat_map(map, fn
+      {"host", host} when is_binary(host) ->
+        [host |> String.split("/") |> hd() |> String.split(":") |> hd()]
+
+      {"url", url} when is_binary(url) ->
+        [URI.parse(url).host]
+
+      {_key, value} ->
+        hosts(value)
+    end)
   end
 
-  defp request_hosts(fixture) do
-    fixture
-    |> Map.get("requests", [])
-    |> List.wrap()
-    |> Enum.map(fn request -> request["url"] |> URI.parse() |> Map.get(:host) end)
-  end
+  defp hosts(list) when is_list(list), do: Enum.flat_map(list, &hosts/1)
+  defp hosts(_value), do: []
 
   defp synthetic?(host) do
     host == "example.test" or String.ends_with?(host, ".example.test") or
@@ -87,7 +105,9 @@ defmodule Dawarich.Wave5bFixturesTest do
   end
 
   defp truncate! do
-    ScratchRepo.query!("TRUNCATE #{Enum.join(@tables, ", ")} RESTART IDENTITY CASCADE", [],
+    ScratchRepo.query!(
+      "TRUNCATE #{Enum.join(Wave5bFixtures.tables(), ", ")} RESTART IDENTITY CASCADE",
+      [],
       log: false
     )
   end

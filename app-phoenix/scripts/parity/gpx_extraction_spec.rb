@@ -1,73 +1,34 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'wave5b_fixture_support'
 
 RSpec.describe 'Phoenix fixture: Rails GPX extraction' do
-  def postgis_build
-    full = ActiveRecord::Base.connection.select_value('SELECT postgis_full_version()')
-    postgis = full[/POSTGIS="([^"\s]+)/, 1]
-    proj = full[/PROJ="([^"\s]+)/, 1]
-    "POSTGIS=#{postgis} PROJ=#{proj}"
-  end
+  include Wave5bFixtureSupport
+  include ActiveSupport::Testing::TimeHelpers
 
-  def rows(sql, *binds)
-    ActiveRecord::Base.connection.select_values(ActiveRecord::Base.sanitize_sql_array([sql, *binds])).map do |json|
-      JSON.parse(json)
+  let!(:effects) { capture_import_effects! }
+
+  def capture_import_effects!
+    captured = { 'kinds' => [], 'card_statuses' => [] }
+    allow(EnhancedImport::CardBroadcaster).to receive(:call).and_wrap_original do |original, import|
+      captured['kinds'] << import_kind('enhanced_import_card', import)
+      captured['card_statuses'] << Import.where(id: import.id).pick(Arel.sql('additional_data_extraction_status'))
+      original.call(import)
     end
+    allow_any_instance_of(Import).to receive(:schedule_untracked_track_generation).and_wrap_original do |original|
+      captured['kinds'] << import_kind('schedule_untracked_tracks', original.receiver)
+      original.call
+    end
+    captured
   end
 
-  def user_row(user)
-    rows('SELECT row_to_json(x)::text FROM (SELECT id, email, settings FROM users WHERE id = ?) x', user.id).first
+  def import_kind(kind, import)
+    { 'kind' => kind, 'payload' => { 'user_id' => import.user_id, 'import_id' => import.id } }
   end
 
-  def area_row(area)
-    rows('SELECT row_to_json(x)::text FROM (SELECT id, user_id, name, latitude, longitude, radius FROM areas ' \
-         'WHERE id = ?) x', area.id).first
-  end
-
-  def place_row(place)
-    rows('SELECT row_to_json(x)::text FROM (SELECT id, user_id, name, ST_AsText(lonlat) AS lonlat_wkt, source, ' \
-         'import_id, geodata::text AS geodata FROM places WHERE id = ?) x', place.id).first
-  end
-
-  def places_for(user)
-    rows('SELECT row_to_json(x)::text FROM (SELECT id, user_id, name, ST_AsText(lonlat) AS lonlat_wkt, source, ' \
-         'import_id, geodata::text AS geodata FROM places WHERE user_id = ? ORDER BY id) x', user.id)
-  end
-
-  def tag_row(tag)
-    rows('SELECT row_to_json(x)::text FROM (SELECT id, user_id, name, color, privacy_radius_meters FROM tags ' \
-         'WHERE id = ?) x', tag.id).first
-  end
-
-  def tags_for(user)
-    rows('SELECT row_to_json(x)::text FROM (SELECT id, user_id, name, color, privacy_radius_meters FROM tags ' \
-         'WHERE user_id = ? ORDER BY id) x', user.id)
-  end
-
-  def visit_row(visit)
-    rows('SELECT row_to_json(x)::text FROM (SELECT id, user_id, area_id, place_id, started_at::text AS ' \
-         'started_at, ended_at::text AS ended_at, duration, name, status FROM visits WHERE id = ?) x',
-         visit.id).first
-  end
-
-  def taggings_for(user)
-    rows(<<~SQL.squish, user.id)
-      SELECT row_to_json(x)::text FROM (
-        SELECT tg.id, tg.tag_id, tg.taggable_type, tg.taggable_id
-        FROM taggings tg JOIN tags t ON t.id = tg.tag_id WHERE t.user_id = ? ORDER BY tg.id
-      ) x
-    SQL
-  end
-
-  # Rails sets started_at/completed_at from the wall clock; only whether the
-  # call touched them is deterministic, never the value itself.
-  def clock_state(value)
-    value.present? ? 'set' : nil
-  end
-
-  def import_row(imp)
-    row = rows(<<~SQL.squish, imp.id).first
+  def import_row(import)
+    row = rows(<<~SQL.squish, import.id).first
       SELECT row_to_json(x)::text FROM (
         SELECT id, user_id, name, source, additional_data_extraction_status,
                additional_data_extraction::text AS additional_data_extraction, raw_data::text AS raw_data
@@ -79,25 +40,61 @@ RSpec.describe 'Phoenix fixture: Rails GPX extraction' do
     row.merge('additional_data_extraction' => extraction)
   end
 
-  def write_fixture(name, data)
-    path = Rails.root.join("app-phoenix/test/fixtures/enhanced_import/#{name}.json")
-    FileUtils.mkdir_p(path.dirname)
-    File.write(path, "#{JSON.pretty_generate(data.merge('postgis_build' => postgis_build))}\n")
+  def file_row(import)
+    blob = import.file.blob
+    { 'import_id' => import.id, 'filename' => blob.filename.to_s, 'content_type' => blob.content_type,
+      'byte_size' => blob.byte_size, 'checksum' => blob.checksum, 'base64' => Base64.strict_encode64(blob.download) }
   end
 
-  def gpx_import(user, name, bytes, content_type: 'application/gpx+xml')
-    import = create(:import, user: user, name: name, source: :gpx)
-    import.file.attach(io: StringIO.new(bytes), filename: name, content_type: content_type)
+  def visit_rows(user)
+    rows('SELECT row_to_json(x)::text FROM (SELECT id, user_id, area_id, place_id, ' \
+         'floor(extract(epoch FROM started_at))::bigint AS started_at, ' \
+         'floor(extract(epoch FROM ended_at))::bigint AS ended_at, duration, name, status ' \
+         'FROM visits WHERE user_id = ? ORDER BY id) x', user.id)
+  end
+
+  def place_visit_rows(user)
+    rows('SELECT row_to_json(x)::text FROM (SELECT pv.id, pv.place_id, pv.visit_id FROM place_visits pv ' \
+         'JOIN places p ON p.id = pv.place_id WHERE p.user_id = ? ORDER BY pv.id) x', user.id)
+  end
+
+  def note_rows(user)
+    rows('SELECT row_to_json(x)::text FROM (SELECT id, user_id, attachable_type, attachable_id, body, ' \
+         'floor(extract(epoch FROM noted_at))::bigint AS noted_at FROM notes WHERE user_id = ? ORDER BY id) x',
+         user.id)
+  end
+
+  def gpx_import(user, name, bytes, content_type: 'application/gpx+xml', raw_data: nil)
+    import = create(:import, user:, name:, source: :gpx, raw_data:)
+    import.file.attach(io: StringIO.new(bytes), filename: name, content_type:)
     import
   end
 
-  def extract_only(import)
-    EnhancedImport::Adapters::GpxAdapter.new(import).translate.to_a
+  def extracted_items(import)
+    EnhancedImport::Adapters::GpxAdapter.new(import).translate.to_a.map { |place| plain(place.to_h) }
   end
 
-  def run_extraction(import)
+  def extract_fixture(name, user, imports)
+    input = { 'users' => [user_row(user)], 'imports' => imports.map { |import| import_row(import) } }
+    extracted = imports.map { |import| { 'import_id' => import.id, 'items' => extracted_items(import) } }
+    fixture = { 'input' => input, 'files' => imports.map { |import| file_row(import) },
+                'expected' => { 'extracted' => extracted } }
+    write_fixture('enhanced_import', name, fixture)
+  end
+
+  def writer_snapshot(user)
+    { 'places' => places_for(user), 'tags' => tags_for(user), 'taggings' => taggings_for(user) }
+  end
+
+  def writer_fixture(name, user, import, extra_expected = {})
+    input = { 'users' => [user_row(user)], 'imports' => [import_row(import)] }.merge(writer_snapshot(user))
+    files = [file_row(import)]
+    extracted = extracted_items(import)
     EnhancedImport::ExtractJob.perform_now(import.id)
-    import.reload
+    expected = { 'import' => import_row(import.reload) }.merge(writer_snapshot(user), 'effects' => effects)
+    fixture = { 'input' => input.reject { |_table, table_rows| table_rows.empty? }, 'files' => files,
+                'extracted' => extracted, 'expected' => expected.merge(extra_expected) }
+    write_fixture('enhanced_import', name, fixture)
   end
 
   def wpt(lat:, lon:, name: nil, type: nil, color: nil)
@@ -112,71 +109,67 @@ RSpec.describe 'Phoenix fixture: Rails GPX extraction' do
     "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<gpx version=\"1.1\">#{waypoints.join}</gpx>"
   end
 
-  it 'seeks past a UTF-8 BOM and past leading junk before the document start' do
-    user = create(:user, email: 'w5b-gpx-envelope@example.test')
-    bom_body = "\xEF\xBB\xBF".b + gpx_doc(wpt(lat: 51.3397, lon: 12.3731, name: 'BOM Place'))
-    junk_body = "garbage-before-xml\n#{gpx_doc(wpt(lat: 51.34, lon: 12.38, name: 'Junk Place'))}"
-
-    bom_import = gpx_import(user, 'w5b-bom.gpx', bom_body)
-    junk_import = gpx_import(user, 'w5b-junk.gpx', junk_body)
-
-    bom_places = extract_only(bom_import)
-    junk_places = extract_only(junk_import)
-
-    fixture = {
-      'input' => { 'users' => [user_row(user)], 'imports' => [import_row(bom_import), import_row(junk_import)] },
-      'expected' => {
-        'bom_names' => bom_places.map(&:name),
-        'junk_names' => junk_places.map(&:name)
-      }
-    }
-    write_fixture('envelope_recovery', fixture)
+  def zip_bytes(entries)
+    path = Rails.root.join('tmp', "w5b-zip-#{SecureRandom.hex(4)}.zip")
+    travel_to(Time.utc(2026, 9, 1)) do
+      Zip::File.open(path.to_s, create: true) do |zip|
+        entries.each { |entry, body| body.nil? ? zip.mkdir(entry) : zip.get_output_stream(entry) { |f| f.write(body) } }
+      end
+    end
+    File.binread(path)
+  ensure
+    File.delete(path) if path && File.exist?(path)
   end
 
-  it 'reads a g: namespaced wpt and an ISO-8859-1 encoded name' do
+  it 'seeks past a UTF-8 BOM and past leading junk before the document start' do
+    user = create(:user, email: 'w5b-gpx-envelope@example.test')
+    bom = gpx_import(user, 'w5b-bom.gpx',
+                     "\xEF\xBB\xBF".b + gpx_doc(wpt(lat: 51.3397, lon: 12.3731, name: 'BOM Place')))
+    junk = gpx_import(user, 'w5b-junk.gpx', "garbage-before-xml\n#{gpx_doc(wpt(lat: 51.34, lon: 12.38, name: 'Junk'))}")
+    extract_fixture('envelope_recovery', user, [bom, junk])
+  end
+
+  it 'reads a g: namespaced wpt, an ISO-8859-1 encoded name and a UTF-16 document with a BOM' do
     user = create(:user, email: 'w5b-gpx-namespace-encoding@example.test')
-    ns_body = <<~GPX
+    namespaced = gpx_import(user, 'w5b-namespace.gpx', <<~GPX)
       <?xml version="1.0"?>
       <g:gpx xmlns:g="http://www.topografix.com/GPX/1/1">
         <g:wpt lat="51.3397" lon="12.3731"><g:name>Namespaced Place</g:name></g:wpt>
       </g:gpx>
     GPX
-    latin1_name = 'Café Mitte'.encode('ISO-8859-1')
-    encoding_body = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n" \
-      "<gpx><wpt lat=\"51.34\" lon=\"12.38\"><name>#{latin1_name}</name></wpt></gpx>".encode('ISO-8859-1')
+    latin1 = "<?xml version=\"1.0\" encoding=\"ISO-8859-1\"?>\n" \
+             '<gpx><wpt lat="51.34" lon="12.38"><name>Café Mitte</name></wpt></gpx>'.encode('ISO-8859-1')
+    utf16 = "\uFEFF<?xml version=\"1.0\" encoding=\"UTF-16\"?>\n" \
+            '<gpx><wpt lat="51.345" lon="12.385"><name>Wide Place</name></wpt></gpx>'.encode('UTF-16LE')
+    imports = [namespaced, gpx_import(user, 'w5b-latin1.gpx', latin1.b), gpx_import(user, 'w5b-utf16.gpx', utf16.b)]
+    extract_fixture('namespace_and_encoding', user, imports)
+  end
 
-    ns_import = gpx_import(user, 'w5b-namespace.gpx', ns_body)
-    encoding_import = gpx_import(user, 'w5b-latin1.gpx', encoding_body.b)
-
-    ns_places = extract_only(ns_import)
-    encoding_places = extract_only(encoding_import)
-
-    fixture = {
-      'input' => { 'users' => [user_row(user)], 'imports' => [import_row(ns_import), import_row(encoding_import)] },
-      'expected' => {
-        'namespaced_name' => ns_places.first&.name,
-        'iso_8859_1_name' => encoding_places.first&.name
-      }
+  it 'stops at a truncated attribute, a mismatched end tag and an undefined entity, and drops a CDATA name' do
+    user = create(:user, email: 'w5b-gpx-malformed@example.test')
+    first = wpt(lat: 51.3397, lon: 12.3731, name: 'Before The Break')
+    documents = {
+      'w5b-truncated-attribute.gpx' => "#{gpx_doc(first)[0..-7]}<wpt lat=\"51.34",
+      'w5b-mismatched-end.gpx' => gpx_doc(first, '<wpt lat="51.34" lon="12.38"><name>Broken</nam></wpt>',
+                                          wpt(lat: 51.35, lon: 12.39, name: 'After')),
+      'w5b-undefined-entity.gpx' => gpx_doc(first, '<wpt lat="51.34" lon="12.38"><name>Caf&eacute;</name></wpt>',
+                                            wpt(lat: 51.35, lon: 12.39, name: 'After')),
+      'w5b-cdata-name.gpx' => gpx_doc('<wpt lat="51.3397" lon="12.3731"><name><![CDATA[Cdata <Place>]]></name></wpt>')
     }
-    write_fixture('namespace_and_encoding', fixture)
+    imports = documents.map { |name, body| gpx_import(user, name, body) }
+    extract_fixture('malformed_documents', user, imports)
   end
 
   it 'normalizes three colour shapes and drops one it cannot read' do
     user = create(:user, email: 'w5b-gpx-colours@example.test')
     body = gpx_doc(
-      wpt(lat: 51.3397, lon: 12.3731, name: 'Three Digit', type: 'Food', color: '#0fc'),
-      wpt(lat: 51.34, lon: 12.38, name: 'Six Digit', type: 'Food', color: '#10c0f0'),
-      wpt(lat: 51.35, lon: 12.39, name: 'Eight Digit OsmAnd', type: 'Food', color: '#ffeecc22'),
+      wpt(lat: 51.3397, lon: 12.3731, name: 'Three', type: 'Food', color: '#0fc'),
+      wpt(lat: 51.34, lon: 12.38, name: 'Six', type: 'Food', color: '#10c0f0'),
+      wpt(lat: 51.35, lon: 12.39, name: 'Eight', type: 'Food', color: '#ffeecc22'),
       wpt(lat: 51.36, lon: 12.40, name: 'Unreadable', type: 'Food', color: 'chartreuse')
     )
     import = gpx_import(user, 'w5b-colours.gpx', body)
-    places = extract_only(import)
-
-    fixture = {
-      'input' => { 'users' => [user_row(user)], 'imports' => [import_row(import)] },
-      'expected' => { 'colours' => places.map { |p| { 'name' => p.name, 'tag_color' => p.tag_color } } }
-    }
-    write_fixture('colour_normalization', fixture)
+    extract_fixture('colour_normalization', user, [import])
   end
 
   it 'skips null island and a missing lat, but parses an underscore-separated and a hex coordinate' do
@@ -188,160 +181,140 @@ RSpec.describe 'Phoenix fixture: Rails GPX extraction' do
       wpt(lat: '0x1a', lon: '12.39', name: 'Hex Coordinate')
     )
     import = gpx_import(user, 'w5b-coordinates.gpx', body)
-    places = extract_only(import)
-
-    fixture = {
-      'input' => { 'users' => [user_row(user)], 'imports' => [import_row(import)] },
-      'expected' => {
-        'emitted' => places.map { |p| { 'name' => p.name, 'latitude' => p.latitude, 'longitude' => p.longitude } }
-      }
-    }
-    write_fixture('coordinate_edge_cases', fixture)
+    extract_fixture('coordinate_edge_cases', user, [import])
   end
 
-  it 'proves the decimal-cast divergence on a waypoint at the Finding-13 probe latitude' do
+  it 'proves the decimal-cast divergence on a waypoint at the probe latitude' do
     user = create(:user, email: 'w5b-gpx-decimal-cast@example.test')
-    probe_lat = '51.33971249996'
-    body = gpx_doc(wpt(lat: probe_lat, lon: '12.3731', name: 'Decimal Cast Probe'))
-    import = gpx_import(user, 'w5b-decimal-cast.gpx', body)
-
+    probe = Float('51.33971249996')
     column_type = Place.type_for_attribute('latitude')
-    parsed_lat = Float(probe_lat)
-    expect(BigDecimal(parsed_lat, 10).round(6)).not_to eq(column_type.cast(parsed_lat))
-
-    run_extraction(import)
-    place = Place.where(user_id: user.id).order(:id).last
-
-    fixture = {
-      'input' => { 'users' => [user_row(user)], 'imports' => [import_row(import)] },
-      'decimal_cast' => { 'parsed_lat' => parsed_lat,
-                          'bigdecimal_round6' => BigDecimal(parsed_lat, 10).round(6).to_s('F'),
-                          'column_cast' => column_type.cast(parsed_lat).to_s('F') },
-      'expected' => { 'place_lonlat_wkt' => places_for(user).first['lonlat_wkt'], 'place_id_present' => !place.nil? }
-    }
-    write_fixture('decimal_cast_waypoint', fixture)
+    expect(BigDecimal(probe, 10).round(6)).not_to eq(column_type.cast(probe))
+    import = gpx_import(user, 'w5b-decimal-cast.gpx', gpx_doc(wpt(lat: '51.33971249996', lon: '12.3731',
+                                                                  name: 'Decimal Cast Probe')))
+    writer_fixture('decimal_cast_waypoint', user, import,
+                   'decimal_cast' => { 'parsed_lat' => probe,
+                                       'bigdecimal_round6' => BigDecimal(probe, 10).round(6).to_s('F'),
+                                       'column_cast' => column_type.cast(probe).to_s('F') })
   end
 
   it 'folds a repeated waypoint, renames a pin within 1 m, and reuses a same-name place within 75 m' do
     user = create(:user, email: 'w5b-gpx-writer-dedup@example.test')
-
-    existing_pin = create(:place, user: user, name: 'Old Pin Name', latitude: 51.3397, longitude: 12.3731,
-                                   source: :gpx_waypoint)
-    existing_named = create(:place, user: user, name: 'Shared Name', latitude: 51.4000, longitude: 12.5000,
-                                     source: :manual)
-    places_before = [place_row(existing_pin), place_row(existing_named)]
-
+    create(:place, user:, name: 'Old Pin Name', latitude: 51.3397, longitude: 12.3731, source: :gpx_waypoint)
+    create(:place, user:, name: 'Shared Name', latitude: 51.3500, longitude: 12.3800, source: :manual)
     body = gpx_doc(
       wpt(lat: 51.3402, lon: 12.3735, name: 'Repeat Me'),
       wpt(lat: 51.3402, lon: 12.3735, name: 'Repeat Me'),
       wpt(lat: 51.3397, lon: 12.3731, name: 'Renamed Pin'),
-      wpt(lat: 51.40003, lon: 12.50004, name: 'Shared Name')
+      wpt(lat: 51.35003, lon: 12.38004, name: 'Shared Name')
     )
     import = gpx_import(user, 'w5b-writer-dedup.gpx', body)
-    run_extraction(import)
-
-    fixture = {
-      'input' => { 'users' => [user_row(user)], 'imports' => [import_row(import)], 'places' => places_before },
-      'expected' => { 'places' => places_for(user) }
-    }
-    write_fixture('writer_dedup', fixture)
+    writer_fixture('writer_dedup', user, import)
   end
 
   it 'reuses an existing tag by case-insensitive name and skips attaching a privacy-zone tag' do
     user = create(:user, email: 'w5b-gpx-tags@example.test')
-    reused_tag = create(:tag, user: user, name: 'Cafe', color: '#112233')
-    privacy_tag = create(:tag, user: user, name: 'Home Zone', color: '#334455', privacy_radius_meters: 100)
-    tags_before = [tag_row(reused_tag), tag_row(privacy_tag)]
-
+    create(:tag, user:, name: 'Cafe', color: '#112233', icon: '📍')
+    create(:tag, user:, name: 'Home Zone', color: '#334455', icon: '📍', privacy_radius_meters: 100)
     body = gpx_doc(
       wpt(lat: 51.3397, lon: 12.3731, name: 'Case Insensitive Tag', type: 'CAFE'),
-      wpt(lat: 51.35, lon: 12.39, name: 'Privacy Zone Place', type: 'Home Zone')
+      wpt(lat: 51.35, lon: 12.39, name: 'Privacy Zone Place', type: 'Home Zone'),
+      wpt(lat: 51.36, lon: 12.40, name: 'New Tag Place', type: 'Museum', color: '#abc')
     )
     import = gpx_import(user, 'w5b-tags.gpx', body)
-    run_extraction(import)
-
-    fixture = {
-      'input' => { 'users' => [user_row(user)], 'imports' => [import_row(import)], 'tags' => tags_before },
-      'expected' => { 'tags' => tags_for(user), 'taggings' => taggings_for(user), 'places' => places_for(user) }
-    }
-    write_fixture('tag_reuse_and_privacy', fixture)
+    writer_fixture('tag_reuse_and_privacy', user, import)
   end
 
   it 'truncates a name over 255 characters instead of raising' do
     user = create(:user, email: 'w5b-gpx-long-name@example.test')
-    long_name = 'B' * 300
-    body = gpx_doc(wpt(lat: 51.3397, lon: 12.3731, name: long_name))
-    import = gpx_import(user, 'w5b-long-name.gpx', body)
-    run_extraction(import)
-
-    fixture = {
-      'input' => { 'users' => [user_row(user)], 'imports' => [import_row(import)] },
-      'expected' => { 'places' => places_for(user) }
-    }
-    write_fixture('name_over_limit', fixture)
+    import = gpx_import(user, 'w5b-long-name.gpx', gpx_doc(wpt(lat: 51.3397, lon: 12.3731, name: 'B' * 300)))
+    writer_fixture('name_over_limit', user, import)
   end
 
   it 'extracts a zipped single entry whose first archive member is a directory' do
     user = create(:user, email: 'w5b-gpx-zip@example.test')
-    body = gpx_doc(wpt(lat: 51.3397, lon: 12.3731, name: 'Zipped Place'))
-    zip_path = Rails.root.join('tmp', "w5b-zip-#{SecureRandom.hex(4)}.zip")
-    Zip::File.open(zip_path.to_s, create: true) do |zf|
-      zf.mkdir('waypoints/')
-      zf.get_output_stream('favourites.gpx') { |f| f.write(body) }
-    end
-    zip_bytes = File.binread(zip_path)
-    File.delete(zip_path)
-
-    import = gpx_import(user, 'w5b-zip.gpx', zip_bytes, content_type: 'application/zip')
-    run_extraction(import)
-
-    fixture = {
-      'input' => { 'users' => [user_row(user)], 'imports' => [import_row(import)] },
-      'expected' => { 'places' => places_for(user) }
-    }
-    write_fixture('zipped_single_entry', fixture)
+    bytes = zip_bytes([['waypoints/', nil], ['favourites.gpx', gpx_doc(wpt(lat: 51.3397, lon: 12.3731,
+                                                                           name: 'Zipped Place'))]])
+    writer_fixture('zipped_single_entry', user, gpx_import(user, 'w5b-zip.gpx', bytes, content_type: 'application/zip'))
   end
 
-  it 'skips extraction entirely when raw_data already records zero waypoints seen' do
+  it 'skips the download when raw_data records zero waypoints seen' do
     user = create(:user, email: 'w5b-gpx-zero-waypoints@example.test')
-    body = gpx_doc(wpt(lat: 51.3397, lon: 12.3731, name: 'Should Not Extract'))
-    import = create(:import, user: user, name: 'w5b-zero-waypoints.gpx', source: :gpx,
-                             raw_data: { 'waypoints_seen' => 0 })
-    import.file.attach(io: StringIO.new(body), filename: 'w5b-zero-waypoints.gpx',
-                       content_type: 'application/gpx+xml')
-    import_before = import_row(import)
-
-    run_extraction(import)
-
-    fixture = {
-      'input' => { 'users' => [user_row(user)], 'imports' => [import_before] },
-      'expected' => { 'places' => places_for(user), 'import' => import_row(import) }
-    }
-    write_fixture('waypoints_seen_zero', fixture)
+    import = gpx_import(user, 'w5b-zero-waypoints.gpx', gpx_doc(wpt(lat: 51.3397, lon: 12.3731, name: 'Not Extracted')),
+                        raw_data: { 'waypoints_seen' => 0, 'trackpoints_seen' => 9 })
+    writer_fixture('waypoints_seen_zero', user, import)
   end
 
-  it 'undoes an extraction but keeps a place a visit has since claimed' do
-    user = create(:user, email: 'w5b-gpx-undo@example.test')
-    body = gpx_doc(
-      wpt(lat: 51.3397, lon: 12.3731, name: 'Kept By Visit'),
-      wpt(lat: 51.40, lon: 12.50, name: 'Removed On Undo')
-    )
-    import = gpx_import(user, 'w5b-undo.gpx', body)
-    run_extraction(import)
+  def source_file_case(name, import)
+    Imports::SecureFileDownloader.new(import.file).download_to_temp_file.then { |path| File.delete(path) }
+    { 'name' => name, 'raised' => nil }
+  rescue StandardError => e
+    { 'name' => name, 'raised' => e.class.name, 'message' => e.message }
+  end
 
-    kept_place = Place.where(user_id: user.id, name: 'Kept By Visit').first
-    area = create(:area, user: user, latitude: 51.3397, longitude: 12.3731, radius: 50)
-    visit = create(:visit, user: user, area: area, place: kept_place, status: :confirmed,
-                           started_at: Time.zone.at(1_790_000_000), ended_at: Time.zone.at(1_790_003_600))
-
-    places_before = places_for(user)
-    EnhancedImport::Destroy.new(import).call
-
+  it "raises Rails' verification messages for a truncated, a mismatched, an empty and a missing file" do
+    user = create(:user, email: 'w5b-gpx-source-file@example.test')
+    body = gpx_doc(wpt(lat: 51.3397, lon: 12.3731, name: 'Verified'))
+    truncated = gpx_import(user, 'w5b-truncated.gpx', body)
+    truncated.file.blob.update_columns(byte_size: body.bytesize + 10)
+    mismatched = gpx_import(user, 'w5b-checksum.gpx', body)
+    mismatched.file.blob.update_columns(checksum: Base64.strict_encode64(Digest::MD5.digest('w5b-other-bytes')))
+    empty = gpx_import(user, 'w5b-empty.gpx', '')
+    missing = create(:import, user:, name: 'w5b-missing.gpx', source: :gpx)
+    imports = [truncated, mismatched, empty]
+    cases = [source_file_case('truncated', truncated), source_file_case('checksum_mismatch', mismatched),
+             source_file_case('zero_byte', empty), source_file_case('no_attachment', missing)]
     fixture = {
-      'input' => { 'users' => [user_row(user)], 'areas' => [area_row(area)], 'imports' => [import_row(import)],
-                   'places' => places_before, 'visits' => [visit_row(visit)] },
-      'expected' => { 'places_after' => places_for(user) }
+      'input' => { 'users' => [user_row(user)], 'imports' => (imports + [missing]).map { |i| import_row(i) } },
+      'files' => imports.map { |import| file_row(import.reload) }, 'expected' => { 'cases' => cases }
     }
-    write_fixture('undo_keeps_visited_place', fixture)
+    write_fixture('enhanced_import', 'source_file_messages', fixture)
+  end
+
+  def zip_case(name, import)
+    { 'name' => name, 'import_id' => import.id, 'items' => extracted_items(import) }
+  rescue StandardError => e
+    { 'name' => name, 'import_id' => import.id, 'raised' => e.class.name, 'message' => e.message }
+  end
+
+  it 'unwraps a single-entry zip, refusing an oversized entry and passing an unsafe entry name through' do
+    user = create(:user, email: 'w5b-gpx-zip-safety@example.test')
+    body = gpx_doc(wpt(lat: 51.3397, lon: 12.3731, name: 'Zip Safety'))
+    oversized = gpx_import(user, 'w5b-oversized.gpx', zip_bytes([['big.gpx', body]]), content_type: 'application/zip')
+    unsafe = gpx_import(user, 'w5b-unsafe.gpx', zip_bytes([['../x.gpx', body]]), content_type: 'application/zip')
+    unsafe_case = zip_case('unsafe_entry_name', unsafe)
+    stub_const('Archive::Unzipper::MAX_EXTRACTED_SIZE', 10)
+    cases = [zip_case('entry_over_max_extracted_size', oversized), unsafe_case]
+    fixture = {
+      'input' => { 'users' => [user_row(user)], 'imports' => [oversized, unsafe].map { |i| import_row(i) } },
+      'files' => [oversized, unsafe].map { |import| file_row(import) },
+      'zip_max_extracted_size' => Archive::Unzipper::MAX_EXTRACTED_SIZE, 'expected' => { 'cases' => cases }
+    }
+    write_fixture('enhanced_import', 'zip_safety', fixture)
+  end
+
+  it 'undoes an extraction, removing unreferenced places with their joins but keeping a visited place' do
+    user = create(:user, email: 'w5b-gpx-undo@example.test')
+    import = gpx_import(user, 'w5b-undo.gpx', gpx_doc(wpt(lat: 51.3397, lon: 12.3731, name: 'Kept By Visit'),
+                                                      wpt(lat: 51.35, lon: 12.38, name: 'Removed On Undo')))
+    files = [file_row(import)]
+    EnhancedImport::ExtractJob.perform_now(import.id)
+    kept = Place.find_by!(user_id: user.id, name: 'Kept By Visit')
+    removed = Place.find_by!(user_id: user.id, name: 'Removed On Undo')
+    create(:visit, user:, area: nil, place: kept, status: :confirmed, name: 'Kept By Visit', duration: 60,
+                   started_at: Time.zone.at(base_ts), ended_at: Time.zone.at(base_ts + 3600))
+    joined = create(:visit, user:, area: nil, place: nil, status: :confirmed, name: 'Joined Visit', duration: 60,
+                            started_at: Time.zone.at(base_ts + 7200), ended_at: Time.zone.at(base_ts + 10_800))
+    PlaceVisit.create!(place: removed, visit: joined)
+    Tagging.create!(tag: create(:tag, user:, name: 'Undo Tag', color: '#445566', icon: '📍'), taggable: removed)
+    Note.create!(user:, attachable: removed, body: 'Undo note', noted_at: Time.zone.at(base_ts))
+    effects['kinds'].clear
+    effects['card_statuses'].clear
+    input = { 'users' => [user_row(user)], 'imports' => [import_row(import.reload)], 'visits' => visit_rows(user),
+              'place_visits' => place_visit_rows(user), 'notes' => note_rows(user) }.merge(writer_snapshot(user))
+    EnhancedImport::DestroyJob.perform_now(import.id)
+    expected = { 'import' => import_row(import.reload), 'visits' => visit_rows(user),
+                 'place_visits' => place_visit_rows(user), 'notes' => note_rows(user), 'effects' => effects }
+    fixture = { 'input' => input, 'files' => files, 'expected' => expected.merge(writer_snapshot(user)) }
+    write_fixture('enhanced_import', 'undo_keeps_visited_place', fixture)
   end
 end
