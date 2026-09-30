@@ -1,5 +1,5 @@
 defmodule Dawarich.ReleaseMigrations.Effects.SeedGeocodingFromEnvTest do
-  use Dawarich.ScratchCase
+  use Dawarich.ScratchCase, async: true, group: :scratch_case_db
 
   import Dawarich.GeocodingFixtures
 
@@ -55,7 +55,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.SeedGeocodingFromEnvTest do
 
     assert active_providers() == [{geoapify_user, "geoapify"}]
 
-    Dawarich.ScratchRepo.query!("TRUNCATE service_settings")
+    Dawarich.ScratchCaseRepo.query!("TRUNCATE service_settings")
     seed(env(%{"NOMINATIM_API_HOST" => "nominatim.example.test", "LOCATIONIQ_API_KEY" => "l"}))
 
     assert active_providers() == [{geoapify_user, "nominatim"}]
@@ -173,7 +173,9 @@ defmodule Dawarich.ReleaseMigrations.Effects.SeedGeocodingFromEnvTest do
       seed(env(%{"LOCATIONIQ_API_KEY" => "l"}))
     end
 
-    Dawarich.ScratchRepo.query!("UPDATE service_settings SET credentials = $1", [string_headers()])
+    Dawarich.ScratchCaseRepo.query!("UPDATE service_settings SET credentials = $1", [
+      string_headers()
+    ])
 
     assert_raise Ruby.Error, "undefined method 'each' for an instance of String", fn ->
       seed(env(%{"LOCATIONIQ_API_KEY" => "l"}))
@@ -235,7 +237,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.SeedGeocodingFromEnvTest do
   end
 
   defp active_providers do
-    Dawarich.ScratchRepo.query!(
+    Dawarich.ScratchCaseRepo.query!(
       "SELECT user_id, provider FROM service_settings WHERE active ORDER BY id"
     ).rows
     |> Enum.map(&List.to_tuple/1)

@@ -1,5 +1,5 @@
 defmodule Dawarich.Areas.RelabelWorkerTest do
-  use Dawarich.JobsCase
+  use Dawarich.JobsCase, async: true, group: :scratch_db
   use Oban.Testing, repo: Dawarich.ScratchRepo
 
   alias Dawarich.Areas.RelabelWorker

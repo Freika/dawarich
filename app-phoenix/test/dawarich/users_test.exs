@@ -1,5 +1,5 @@
 defmodule Dawarich.UsersTest do
-  use Dawarich.ScratchCase
+  use Dawarich.ScratchCase, async: true, group: :scratch_case_db
 
   alias Dawarich.Users
 

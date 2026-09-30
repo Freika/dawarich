@@ -1,5 +1,5 @@
 defmodule DawarichWeb.ListFormatTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest, only: [render_component: 2]
 

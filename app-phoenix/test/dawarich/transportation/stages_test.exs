@@ -1,5 +1,5 @@
 defmodule Dawarich.Transportation.StagesTest do
-  use Dawarich.JobsCase
+  use Dawarich.JobsCase, async: true, group: :scratch_db
 
   alias Dawarich.Tracks.TracksFixtures
 

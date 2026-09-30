@@ -1,5 +1,5 @@
 defmodule Dawarich.Jobs.ControlTablesTest do
-  use Dawarich.JobsCase
+  use Dawarich.JobsCase, async: true, group: :scratch_db
 
   @sql_file Path.expand("../../../priv/repo/sql/20260927120100_job_control.sql", __DIR__)
   @sha256 "400326b0bf4b2bd9712f38628e8351b641ceb4b042c9d320f018a3496a036694"

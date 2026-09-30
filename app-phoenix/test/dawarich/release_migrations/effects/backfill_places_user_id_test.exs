@@ -1,5 +1,5 @@
 defmodule Dawarich.ReleaseMigrations.Effects.BackfillPlacesUserIdTest do
-  use Dawarich.ScratchCase
+  use Dawarich.ScratchCase, async: true, group: :scratch_case_db
 
   alias Dawarich.ReleaseMigrations.Effects.BackfillPlacesUserId
   alias Dawarich.ReleaseMigrations.V1_14_0

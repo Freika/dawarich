@@ -1,5 +1,5 @@
 defmodule Dawarich.TimeZoneNameTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: true, group: :scratch_db
 
   alias Dawarich.TimeZoneName
 

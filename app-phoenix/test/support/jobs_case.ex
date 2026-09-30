@@ -7,7 +7,10 @@ defmodule Dawarich.JobsCase do
   @phoenix ~w(job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events notification_events delivery_claims export_claims rails_commands rails_commands_dead track_generations track_generation_chunks stats_point_counts)
   @oban ~w(oban_jobs oban_peers)
 
-  using do
+  using opts do
+    if opts[:async] && opts[:group] != :scratch_db,
+      do: raise(ArgumentError, "async JobsCase modules need group: :scratch_db")
+
     quote do
       alias Dawarich.ScratchRepo
       import Dawarich.JobsCase
@@ -15,23 +18,28 @@ defmodule Dawarich.JobsCase do
   end
 
   setup do
-    unless rows("SELECT to_regclass('public.job_outbox') IS NOT NULL") == [[true]] do
-      Dawarich.ScratchCase.recreate_public!()
+    reset!(ScratchRepo)
+  end
 
-      ScratchRepo.query!(Dawarich.ReleaseMigrator.baseline_sql(), [],
+  def reset!(repo) do
+    unless repo.query!("SELECT to_regclass('public.job_outbox') IS NOT NULL", [], log: false).rows ==
+             [[true]] do
+      Dawarich.ScratchCase.recreate_public!(repo)
+
+      repo.query!(Dawarich.ReleaseMigrator.baseline_sql(), [],
         query_type: :text,
         log: false
       )
     end
 
-    ScratchRepo.query!(
+    repo.query!(
       "TRUNCATE public.job_outbox, public.exports, public.users, public.point_sources, public.active_storage_attachments, public.active_storage_blobs, public.family_invitations, public.families CASCADE",
       [],
       log: false
     )
 
     tables = Enum.map(@phoenix, &("phoenix." <> &1)) ++ Enum.map(@oban, &("oban." <> &1))
-    ScratchRepo.query!("TRUNCATE #{Enum.join(tables, ", ")} RESTART IDENTITY", [], log: false)
+    repo.query!("TRUNCATE #{Enum.join(tables, ", ")} RESTART IDENTITY", [], log: false)
     :ok
   end
 

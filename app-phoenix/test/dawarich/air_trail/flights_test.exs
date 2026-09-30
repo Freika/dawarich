@@ -1,5 +1,5 @@
 defmodule Dawarich.AirTrail.FlightsTest do
-  use Dawarich.JobsCase
+  use Dawarich.JobsCase, async: true, group: :scratch_db
 
   import Dawarich.AirTrailStub, only: [flight: 0, flight: 1]
 
