@@ -50,6 +50,30 @@ defmodule DawarichWeb.Router do
     get "/plan", PlanController, :show, metadata: %{slice: :api_foundation}
   end
 
+  pipeline :api_stats do
+    plug :put_api_tag, "api"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.Api.Body
+    plug DawarichWeb.Api.Auth, require_active: false
+  end
+
+  scope "/api/v1", DawarichWeb.Api do
+    pipe_through :api_stats
+
+    get "/stats", StatsController, :index, metadata: %{slice: :api_stats}
+    get "/insights", StatsController, :insights, metadata: %{slice: :api_stats}
+    get "/insights/details", StatsController, :details, metadata: %{slice: :api_stats}
+    get "/residency", StatsController, :residency, metadata: %{slice: :api_stats}
+    get "/digests", DigestsController, :index, metadata: %{slice: :api_stats}
+    get "/digests/:year", DigestsController, :show, metadata: %{slice: :api_stats}
+
+    get "/countries/visited_cities", GeoController, :visited_cities,
+      metadata: %{slice: :api_stats}
+
+    get "/flights", GeoController, :flights, metadata: %{slice: :api_stats}
+  end
+
   pipeline :rails_user do
     plug DawarichWeb.RequireUser
   end

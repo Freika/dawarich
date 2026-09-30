@@ -10,7 +10,8 @@ defmodule DawarichWeb.Strangler do
   @constraints %{
     "/stats/:year" => %{"year" => ~r/\A\d{4}\z/},
     "/stats/:year/:month" => %{"year" => ~r/\A\d{4}\z/, "month" => ~r/\A(0?[1-9]|1[0-2])\z/},
-    "/digests/:year" => %{"year" => ~r/\A\d{4}\z/}
+    "/digests/:year" => %{"year" => ~r/\A\d{4}\z/},
+    "/api/v1/digests/:year" => %{"year" => ~r/\A\d{4}\z/}
   }
 
   def browser_like?(value), do: value =~ @browser_like
