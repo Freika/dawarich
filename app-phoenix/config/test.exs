@@ -30,6 +30,10 @@ config :dawarich,
        Dawarich.ScratchCaseRepo,
        [database: test_database <> "_scratch_case"] ++ scratch
 
+config :dawarich,
+       Dawarich.TracksScratchRepo,
+       [database: test_database <> "_scratch_tracks"] ++ scratch
+
 config :dawarich, Oban, testing: :manual
 
 config :dawarich, :redis,

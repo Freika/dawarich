@@ -1,5 +1,5 @@
 defmodule Dawarich.Tracks.RecalculatorTest do
-  use Dawarich.TracksCase, async: true, group: :scratch_db
+  use Dawarich.TracksCase, async: true, group: :tracks_db
 
   alias Dawarich.Tracks.Recalculator
 

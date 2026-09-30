@@ -1,5 +1,5 @@
 defmodule Dawarich.Tracks.GenerationTest do
-  use Dawarich.TracksCase, async: true, group: :scratch_db
+  use Dawarich.TracksCase, async: true, group: :tracks_db
 
   alias Dawarich.Tracks.{BoundaryWorker, Generation}
 

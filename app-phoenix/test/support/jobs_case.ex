@@ -15,23 +15,28 @@ defmodule Dawarich.JobsCase do
   end
 
   setup do
-    unless rows("SELECT to_regclass('public.job_outbox') IS NOT NULL") == [[true]] do
-      Dawarich.ScratchCase.recreate_public!(ScratchRepo)
+    reset!(ScratchRepo)
+  end
 
-      ScratchRepo.query!(Dawarich.ReleaseMigrator.baseline_sql(), [],
+  def reset!(repo) do
+    unless repo.query!("SELECT to_regclass('public.job_outbox') IS NOT NULL", [], log: false).rows ==
+             [[true]] do
+      Dawarich.ScratchCase.recreate_public!(repo)
+
+      repo.query!(Dawarich.ReleaseMigrator.baseline_sql(), [],
         query_type: :text,
         log: false
       )
     end
 
-    ScratchRepo.query!(
+    repo.query!(
       "TRUNCATE public.job_outbox, public.exports, public.users, public.point_sources, public.active_storage_attachments, public.active_storage_blobs, public.family_invitations, public.families CASCADE",
       [],
       log: false
     )
 
     tables = Enum.map(@phoenix, &("phoenix." <> &1)) ++ Enum.map(@oban, &("oban." <> &1))
-    ScratchRepo.query!("TRUNCATE #{Enum.join(tables, ", ")} RESTART IDENTITY", [], log: false)
+    repo.query!("TRUNCATE #{Enum.join(tables, ", ")} RESTART IDENTITY", [], log: false)
     :ok
   end
 

@@ -2,7 +2,7 @@ ExUnit.start()
 Application.put_env(:dawarich, :allowed_hosts, [])
 Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :manual)
 
-scratch_repos = [Dawarich.ScratchRepo, Dawarich.ScratchCaseRepo]
+scratch_repos = [Dawarich.ScratchRepo, Dawarich.ScratchCaseRepo, Dawarich.TracksScratchRepo]
 
 for repo <- scratch_repos do
   scratch = repo.config()
