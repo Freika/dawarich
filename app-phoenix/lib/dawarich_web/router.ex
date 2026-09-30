@@ -54,7 +54,7 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RequireUser
   end
 
-  scope "/notifications" do
+  scope "/" do
     pipe_through [:browser, :rails_user]
 
     live_session :rails_pages,
@@ -62,8 +62,14 @@ defmodule DawarichWeb.Router do
       on_mount: DawarichWeb.LiveAuth,
       root_layout: {DawarichWeb.Layouts, :root},
       layout: {DawarichWeb.Layouts, :app} do
-      live "/", DawarichWeb.NotificationsLive.Index, :index, container: {:div, class: "contents"}
-      live "/:id", DawarichWeb.NotificationsLive.Show, :show, container: {:div, class: "contents"}
+      live "/notifications", DawarichWeb.NotificationsLive.Index, :index,
+        container: {:div, class: "contents"}
+
+      live "/notifications/:id", DawarichWeb.NotificationsLive.Show, :show,
+        container: {:div, class: "contents"}
+
+      live "/imports", DawarichWeb.ImportsLive.Index, :index, container: {:div, class: "contents"}
+      live "/exports", DawarichWeb.ExportsLive.Index, :index, container: {:div, class: "contents"}
     end
   end
 

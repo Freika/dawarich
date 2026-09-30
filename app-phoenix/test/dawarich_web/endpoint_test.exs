@@ -135,6 +135,57 @@ defmodule DawarichWeb.EndpointTest do
     assert {200, _headers, "ok"} = read_response(client)
   end
 
+  test "Phoenix answers the imports and exports lists itself" do
+    port = serve()
+
+    for target <- ~w(/imports /exports /imports?page=2 /exports?order_by=asc&sort_by=name) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302, target
+    end
+  end
+
+  test "every other import and export route, and every other method, goes to Puma", ctx do
+    port = serve()
+
+    for target <-
+          ~w(/imports/new /imports/5 /imports/5/edit /imports/5/download /imports/5/extraction /imports.json /exports.json /imports?format=json /exports/5) do
+      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+               "GET #{target} HTTP/1.1"
+    end
+
+    for {method, target} <- [
+          {"POST", "/imports"},
+          {"POST", "/imports/5"},
+          {"PATCH", "/imports/5"},
+          {"PUT", "/imports/5"},
+          {"DELETE", "/imports/5"},
+          {"POST", "/imports/5/extraction"},
+          {"DELETE", "/imports/5/extraction"},
+          {"POST", "/exports"},
+          {"POST", "/exports/5"},
+          {"DELETE", "/exports/5"},
+          {"POST", "/settings/background_jobs?job_name=start_immich_import"}
+        ] do
+      body = "_method=delete&authenticity_token=x"
+
+      request =
+        "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+    end
+  end
+
+  test "DAWARICH_RAILS_ROUTES hands the imports and exports lists back with their query", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["imports", "exports"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+
+    for target <- ~w(/imports /imports?order_by=asc&page=2&sort_by=name /exports?page=2) do
+      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+               "GET #{target} HTTP/1.1"
+    end
+  end
+
   @tag :tmp_dir
   test "a crashed listener comes back on its port while its old socket lingers, and leaves Puma running",
        %{tmp_dir: tmp_dir} do
