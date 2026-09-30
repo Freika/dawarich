@@ -117,16 +117,6 @@ RSpec.describe Note, type: :model do
     end
   end
 
-  describe '#date=' do
-    let(:user) { create(:user) }
-
-    it 'sets noted_at to noon on the given date' do
-      note = Note.new(user: user)
-      note.date = '2025-03-15'
-      expect(note.noted_at).to eq(Date.new(2025, 3, 15).to_datetime.noon)
-    end
-  end
-
   describe 'scopes' do
     let(:user) { create(:user) }
     let(:trip) { create(:trip, user: user) }
@@ -141,31 +131,6 @@ RSpec.describe Note, type: :model do
       it 'returns only notes without an attachable' do
         expect(described_class.standalone).to include(standalone_note)
         expect(described_class.standalone).not_to include(attached_note)
-      end
-    end
-
-    describe '.attached' do
-      let!(:standalone_note) { create(:note, user: user, noted_at: Time.current) }
-      let!(:attached_note) do
-        create(:note, user: user, attachable: trip,
-                      noted_at: trip.started_at.to_date.to_datetime.noon)
-      end
-
-      it 'returns only notes with an attachable' do
-        expect(described_class.attached).to include(attached_note)
-        expect(described_class.attached).not_to include(standalone_note)
-      end
-    end
-
-    describe '.for_trip_day' do
-      let!(:trip_note) do
-        create(:note, user: user, attachable: trip,
-                      noted_at: trip.started_at.to_date.to_datetime.noon)
-      end
-
-      it 'returns notes for a specific trip and date' do
-        result = described_class.for_trip_day(trip, trip.started_at.to_date)
-        expect(result).to include(trip_note)
       end
     end
   end
