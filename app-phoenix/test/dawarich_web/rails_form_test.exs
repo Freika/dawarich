@@ -5,6 +5,7 @@ defmodule DawarichWeb.RailsFormTest do
   import Plug.Conn
   import Plug.Test
 
+  alias Dawarich.Accounts
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.{RailsCsrf, RailsForm}
 
@@ -14,11 +15,21 @@ defmodule DawarichWeb.RailsFormTest do
     %{session: session, token: RailsCsrf.masked_token(session)}
   end
 
-  defp admission(session, params, headers \\ [], query \\ %{}) do
+  defp resolved_user(session) do
+    case Accounts.from_session(session, DateTime.utc_now()) do
+      %Accounts.User{} = user -> user
+      _ -> nil
+    end
+  end
+
+  defp admission(session, params, headers \\ [], query \\ %{}, current_user \\ :resolve) do
+    user = if current_user == :resolve, do: resolved_user(session), else: current_user
+
     %{conn(:post, "/exports") | req_headers: headers}
     |> assign(:api_params, params)
     |> assign(:api_query, query)
     |> assign(:rails_session, session)
+    |> assign(:current_user, user)
     |> RailsForm.admission()
   end
 
@@ -153,5 +164,12 @@ defmodule DawarichWeb.RailsFormTest do
     ]
 
     assert admission(ctx.session, %{}, headers) == {:replay, "content type"}
+  end
+
+  test "a user RailsAuth resolved as nil is refused even though a fresh session lookup would now succeed",
+       ctx do
+    header = [{"x-csrf-token", ctx.token}]
+
+    assert admission(ctx.session, %{}, header, %{}, nil) == {:replay, "not signed in by session"}
   end
 end

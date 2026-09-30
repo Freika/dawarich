@@ -27,7 +27,7 @@ defmodule DawarichWeb.RailsForm do
          :ok <- headers(conn),
          :ok <- method(conn),
          :ok <- session_writers(conn),
-         :ok <- signed_in(conn.assigns.rails_session),
+         :ok <- signed_in(conn),
          :ok <- origin(get_req_header(conn, "origin"), conn),
          do: token(conn)
   end
@@ -61,10 +61,14 @@ defmodule DawarichWeb.RailsForm do
        else: :ok
   end
 
-  defp signed_in(session) do
-    if match?(%Accounts.User{}, Accounts.from_session(session, DateTime.utc_now())),
-      do: :ok,
-      else: {:replay, "not signed in by session"}
+  defp signed_in(conn) do
+    with %Accounts.User{id: id} <- conn.assigns.current_user,
+         %Accounts.User{id: ^id} <-
+           Accounts.from_session(conn.assigns.rails_session, DateTime.utc_now()) do
+      :ok
+    else
+      _ -> {:replay, "not signed in by session"}
+    end
   rescue
     error -> {:replay, "session lookup failed: " <> inspect(error.__struct__)}
   end
