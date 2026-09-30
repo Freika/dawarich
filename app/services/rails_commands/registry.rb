@@ -75,6 +75,20 @@ module RailsCommands
 
           Tracks::TransportationRecalculationStatus.new(payload.fetch('user_id')).increment_processed!
         }
+      },
+      'exports.points_created' => {
+        guard: 'Re-produces exports.points only while the export is still created: ExportJob claims ' \
+               'created -> processing by compare-and-set and the outbox keeps one pending points-export:<id>',
+        call: lambda { |payload|
+          export = Export.find_by(id: payload.fetch('export_id'), user_id: payload.fetch('user_id'))
+          next unless export&.created?
+
+          I18n.with_locale(payload.fetch('locale')) do
+            JobCommands.produce('exports.points', { 'export_id' => export.id, 'user_id' => export.user_id },
+                                aggregate_id: export.id, producer: 'Phoenix ExportsCreate',
+                                dedupe_key: "points-export:#{export.id}")
+          end
+        }
       }
     }.merge(Points::ArrivalCommands::HANDLERS).freeze
 
