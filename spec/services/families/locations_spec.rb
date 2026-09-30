@@ -52,6 +52,17 @@ RSpec.describe Families::Locations do
       result = described_class.new(user).call
       expect(result.length).to eq(1)
       expect(result.first[:user_id]).to eq(other_user.id)
+      expect(result.first[:name]).to eq(other_user.email)
+    end
+
+    it 'uses profile names for the location and history payloads' do
+      other_user.update!(first_name: 'Ada', last_name: 'Lovelace')
+      other_user.update_family_location_sharing!(true, duration: 'permanent', share_history: true)
+      create(:point, user: other_user, timestamp: now.to_i)
+
+      expect(described_class.new(user).call.first[:name]).to eq('Ada Lovelace')
+      history = described_class.new(user).history(start_at: now - 1.hour, end_at: now + 1.hour)
+      expect(history.first[:name]).to eq('Ada Lovelace')
     end
 
     # A point with a NULL timestamp sorts
