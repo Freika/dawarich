@@ -145,6 +145,42 @@ defmodule Dawarich.Jobs.Registry do
       expression: "0 */12 * * *",
       worker: Dawarich.Tracks.DailyWorker,
       claimable: false
+    },
+    %{
+      key: "command:geocoding.reverse_point",
+      kind: :command,
+      worker: Dawarich.Geocoding.ReversePointWorker,
+      claimable: false
+    },
+    %{
+      key: "command:geocoding.reverse_place",
+      kind: :command,
+      worker: Dawarich.Geocoding.ReversePlaceWorker,
+      claimable: false
+    },
+    %{
+      key: "command:visits.suggest",
+      kind: :command,
+      worker: Dawarich.Visits.SuggestWorker,
+      claimable: false
+    },
+    %{
+      key: "command:visits.full_history_redetect",
+      kind: :command,
+      worker: Dawarich.Visits.RedetectWorker,
+      claimable: false
+    },
+    %{
+      key: "command:enhanced_import.extract_gpx",
+      kind: :command,
+      worker: Dawarich.EnhancedImport.ExtractGpxWorker,
+      claimable: false
+    },
+    %{
+      key: "command:enhanced_import.destroy_gpx",
+      kind: :command,
+      worker: Dawarich.EnhancedImport.DestroyGpxWorker,
+      claimable: false
     }
   ]
 
