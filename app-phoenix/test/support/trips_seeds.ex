@@ -229,7 +229,7 @@ defmodule Dawarich.Test.TripsSeeds do
         resource_type: l["resource_type"],
         trip_id: l["trip_id"],
         user_id: l["user_id"],
-        revoked_at: l["revoked"] && NaiveDateTime.add(now, -86_400),
+        revoked_at: if(l["revoked"], do: NaiveDateTime.add(now, -86_400)),
         expires_at: l["expires_offset"] && NaiveDateTime.add(now, l["expires_offset"])
       })
     end
