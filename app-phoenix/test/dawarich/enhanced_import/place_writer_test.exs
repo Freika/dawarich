@@ -112,7 +112,9 @@ defmodule Dawarich.EnhancedImport.PlaceWriterTest do
     cases = [
       {[{"gpx:old", "Old"}], [pin("gpx:new", "New", nil), pin("gpx:old", "Old", nil)]},
       {[{"gpx:one", "One"}, {"gpx:two", "Two"}],
-       [pin("gpx:dup", nil, "Cafe"), pin("gpx:two", "Two", nil), pin("gpx:dup", nil, "Cafe")]}
+       [pin("gpx:dup", nil, "Cafe"), pin("gpx:two", "Two", nil), pin("gpx:dup", nil, "Cafe")]},
+      {[{nil, "Cafe"}, {"gpx:r2", "Other"}],
+       [pin("gpx:x", "Cafe", "Cafe"), pin("gpx:x", "Cafe", "Cafe")]}
     ]
 
     for {pins, items} <- cases do
@@ -168,6 +170,50 @@ defmodule Dawarich.EnhancedImport.PlaceWriterTest do
 
     assert length(plans) == 2
     refute Enum.any?(plans, &(&1 =~ "index_places_on_user_id")), Enum.join(plans, "\n\n")
+  end
+
+  test "renamed and nearby lookups use the lonlat index when other places are spread out" do
+    user_id = user!()
+
+    grid =
+      "ST_SetSRID(ST_MakePoint(12.3 + (g % 100) * 0.001, 51.3 + (g / 100) * 0.001), 4326)::geography"
+
+    {:error, plans} =
+      ScratchRepo.transaction(fn ->
+        rows(
+          "INSERT INTO places (user_id, name, latitude, longitude, lonlat, source, geodata, created_at, updated_at) " <>
+            "SELECT 1000000 + g, 'Other', 51.3, 12.3, #{grid}, 2, '{}', now(), now() " <>
+            "FROM generate_series(1, 2000) g"
+        )
+
+        rows("ANALYZE places")
+
+        rows(
+          "INSERT INTO places (user_id, name, latitude, longitude, lonlat, source, geodata, created_at, updated_at) " <>
+            "SELECT $1, 'Mine', 51.3, 12.3, #{grid}, 2, jsonb_build_object('external_place_id', 'gpx:' || g), " <>
+            "now(), now() FROM generate_series(1, 500) g",
+          [user_id]
+        )
+
+        HookRepo.set_hook(fn sql, params ->
+          if sql =~ "ST_DWithin",
+            do:
+              send(
+                self(),
+                {:plan, rows("EXPLAIN " <> sql, params) |> List.flatten() |> Enum.join("\n")}
+              )
+
+          :ok
+        end)
+
+        place = %{tagged("gpx:fresh") | latitude: 51.3005, longitude: 12.3505, tag_name: nil}
+        run(HookRepo, %{id: 7, user_id: user_id}, [place])
+        ScratchRepo.rollback(plans())
+      end)
+
+    assert length(plans) == 2
+    refute Enum.any?(plans, &(&1 =~ "index_places_on_user_id")), Enum.join(plans, "\n\n")
+    assert Enum.all?(plans, &(&1 =~ "index_places_on_lonlat")), Enum.join(plans, "\n\n")
   end
 
   defp plans do
