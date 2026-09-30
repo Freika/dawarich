@@ -48,6 +48,24 @@ test("the bundled country source overzooms a native maxzoom-8 PMTiles archive", 
   )
 })
 
+test("static membership can render without a history API", async () => {
+  const filters = []
+  const layer = new ScratchLayer(
+    {
+      getLayer: () => true,
+      setFilter: (_id, filter) => filters.push(filter),
+    },
+    { visitedIsoA3: ["DEU", "POL"] },
+  )
+
+  await layer.add()
+
+  assert.equal(filters.length, 4)
+  assert.deepEqual(filters[0], visitedCountryFilter(["DEU", "POL"]))
+  assert.deepEqual(layer.visitedIsoA3, ["DEU", "POL"])
+  assert.equal(layer.staticMembership, true)
+})
+
 test("a failed PMTiles source episode is reported once and can use a fresh archive URL", () => {
   const handlers = new Map()
   const map = {
