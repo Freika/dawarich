@@ -12,6 +12,7 @@ defmodule DawarichWeb.PointExportsParityTest do
   @data @fixture |> File.read!() |> Jason.decode!()
   @headers ~w(location content-type cache-control vary x-frame-options x-xss-protection x-content-type-options x-permitted-cross-domain-policies referrer-policy)
   @ed108_headers ~w(etag x-request-id x-runtime)
+  @wire_only ~w(content-length)
   @columns ~w(name status file_format file_type start_at end_at url error_message processing_started_at)
 
   setup do
@@ -62,14 +63,15 @@ defmodule DawarichWeb.PointExportsParityTest do
   defp assert_like_rails(conn, data) do
     rails = data["rails"]
     assert conn.status == rails["status"]
+    assert conn.resp_body == ""
+
+    assert MapSet.new(resp_header_names(conn)) ==
+             rails["header_set"]
+             |> MapSet.new()
+             |> MapSet.difference(MapSet.new(@ed108_headers ++ @wire_only))
 
     for name <- @headers,
         do: assert(get_resp_header(conn, name) == List.wrap(rails["headers"][name]), name)
-
-    assert Enum.all?(
-             resp_header_names(conn),
-             &(&1 in rails["header_set"] or &1 in @ed108_headers)
-           )
 
     assert cookie_attribute_names(conn) == rails["set_cookie"]
 
@@ -82,6 +84,8 @@ defmodule DawarichWeb.PointExportsParityTest do
              ).rows
 
     assert @columns |> Enum.zip(Enum.map(row, &iso/1)) |> Map.new() == rails["export"]
+
+    assert rails["export_jobs"] == 1 == (commands() != [])
 
     assert commands() == [
              [
