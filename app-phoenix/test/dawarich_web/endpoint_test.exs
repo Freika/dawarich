@@ -184,6 +184,14 @@ defmodule DawarichWeb.EndpointTest do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
+
+    body = "start_at=x&file_format=json"
+
+    post =
+      "POST /exports HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+        "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+    assert answered_by_puma(port, ctx.upstream, post) == "POST /exports HTTP/1.1"
   end
 
   @tag :tmp_dir
