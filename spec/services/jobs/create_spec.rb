@@ -186,6 +186,18 @@ RSpec.describe Jobs::Create do
 
         expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
       end
+
+      it 'Oban-owned continue_reverse_geocoding writes a batch instead of enqueueing' do
+        job_owner!('command:geocoding.reverse_point', :oban)
+
+        expect do
+          described_class.new('continue_reverse_geocoding', user.id).call
+        end.not_to have_enqueued_job(ReverseGeocodingJob)
+
+        row = JobOutbox.sole
+        expect(row).to have_attributes(command_type: 'geocoding.reverse_point', aggregate_id: user.id)
+        expect(row.payload).to eq('user_id' => user.id, 'point_ids' => [point.id], 'force' => false)
+      end
     end
   end
 end

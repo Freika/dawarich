@@ -95,7 +95,60 @@ module JobCommands
         end
       }
     },
-    **UserMailCommands::TYPES.to_h { |email_type, type| [type, { version: 1, sidekiq: UserMailCommands.legacy(email_type) }] }
+    **UserMailCommands::TYPES.to_h do |email_type, type|
+      [type, { version: 1, sidekiq: UserMailCommands.legacy(email_type) }]
+    end,
+    'geocoding.reverse_point' => {
+      version: 1,
+      sidekiq: lambda { |payload, _at|
+        JobCommands.enqueue_after_commit(nil) do
+          force = payload.fetch('force')
+          jobs = payload.fetch('point_ids').map { |id| ReverseGeocodingJob.new('Point', id, force:) }
+          ActiveJob.perform_all_later(jobs)
+        end
+      }
+    },
+    'geocoding.reverse_place' => {
+      version: 1,
+      sidekiq: lambda { |payload, at|
+        JobCommands.enqueue_after_commit(nil) do
+          ReverseGeocodingJob.set(wait_until: at).perform_later('place', payload.fetch('place_id'))
+        end
+      }
+    },
+    'visits.suggest' => {
+      version: 1,
+      sidekiq: lambda { |payload, at|
+        JobCommands.enqueue_after_commit(nil) do
+          VisitSuggestingJob.set(wait_until: at).perform_later(**Visits::Commands.job_arguments(payload))
+        end
+      }
+    },
+    'visits.full_history_redetect' => {
+      version: 1,
+      sidekiq: lambda { |payload, at|
+        JobCommands.enqueue_after_commit(nil) do
+          Visits::FullHistoryRedetectJob.set(wait_until: at).perform_later(payload.fetch('user_id'))
+        end
+      }
+    },
+    'enhanced_import.extract_gpx' => {
+      version: 1,
+      sidekiq: lambda { |payload, at|
+        JobCommands.enqueue_after_commit(nil) do
+          EnhancedImport::ExtractJob.set(wait_until: at).perform_later(payload.fetch('import_id'),
+                                                                       attempt: payload.fetch('lock_attempt'))
+        end
+      }
+    },
+    'enhanced_import.destroy_gpx' => {
+      version: 1,
+      sidekiq: lambda { |payload, at|
+        JobCommands.enqueue_after_commit(nil) do
+          EnhancedImport::DestroyJob.set(wait_until: at).perform_later(payload.fetch('import_id'))
+        end
+      }
+    }
   }.freeze
 
   module_function

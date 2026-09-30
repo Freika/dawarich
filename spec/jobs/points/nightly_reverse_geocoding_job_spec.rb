@@ -18,7 +18,7 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
       end
 
       it 'does not process any points' do
-        expect_any_instance_of(Point).not_to receive(:async_reverse_geocode)
+        expect(Geocoding::ReverseCommands).not_to receive(:enqueue_points)
 
         described_class.perform_now
       end
@@ -60,7 +60,7 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
         end
 
         it 'does not process any points' do
-          expect_any_instance_of(Point).not_to receive(:async_reverse_geocode)
+          expect(Geocoding::ReverseCommands).not_to receive(:enqueue_points)
 
           described_class.perform_now
         end
@@ -114,14 +114,14 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
             .to have_enqueued_job(ReverseGeocodingJob).exactly(3).times
         end
 
-        it 'uses find_each with correct batch size' do
+        it 'uses in_batches with correct batch size' do
           relation_mock = double('ActiveRecord::Relation')
           allow(Point).to receive(:not_reverse_geocoded).and_return(relation_mock)
-          allow(relation_mock).to receive(:find_each).with(batch_size: 1000)
+          allow(relation_mock).to receive(:in_batches).with(of: 1000)
 
           described_class.perform_now
 
-          expect(relation_mock).to have_received(:find_each).with(batch_size: 1000)
+          expect(relation_mock).to have_received(:in_batches).with(of: 1000)
         end
 
         it 'invalidates caches for all affected users' do
@@ -167,6 +167,28 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
       end
     end
 
+    describe 'Oban-owned sweep' do
+      before { configure_instance_geocoding }
+
+      it 'writes per-user batches' do
+        job_owner!('command:geocoding.reverse_point', :oban)
+        user_a = create(:user)
+        user_b = create(:user)
+        create_list(:point, 150, user: user_a, reverse_geocoded_at: nil)
+        create_list(:point, 30, user: user_b, reverse_geocoded_at: nil)
+        allow(Cache::InvalidateUserCaches).to receive(:new).and_call_original
+
+        expect { described_class.perform_now }.not_to have_enqueued_job(ReverseGeocodingJob)
+
+        rows = JobOutbox.where(command_type: 'geocoding.reverse_point').order(:created_at)
+        expect(rows.map { |r| [r.payload['user_id'], r.payload['point_ids'].size] })
+          .to contain_exactly([user_a.id, 100], [user_a.id, 50], [user_b.id, 30])
+        expect(rows.map { |r| r.payload['force'] }.uniq).to eq([true])
+        expect(Cache::InvalidateUserCaches).to have_received(:new).with(user_a.id).once
+        expect(Cache::InvalidateUserCaches).to have_received(:new).with(user_b.id).once
+      end
+    end
+
     describe 'queue configuration' do
       it 'uses the reverse_geocoding queue' do
         expect(described_class.queue_name).to eq('reverse_geocoding')
@@ -182,10 +204,10 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
 
       context 'when a point fails to reverse geocode' do
         before do
-          allow_any_instance_of(Point).to receive(:async_reverse_geocode).and_raise(StandardError, 'API error')
+          allow(Geocoding::ReverseCommands).to receive(:enqueue_points).and_raise(StandardError, 'API error')
         end
 
-        it 'continues processing other points despite individual failures' do
+        it 'propagates the failure instead of silently dropping the batch' do
           expect { described_class.perform_now }.to raise_error(StandardError, 'API error')
         end
       end

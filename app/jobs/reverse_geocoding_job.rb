@@ -5,17 +5,21 @@ class ReverseGeocodingJob < ApplicationJob
   sidekiq_options retry: 3
 
   def perform(klass, id, force: false)
+    forwarded = false
     record = klass.to_s.classify.constantize.find_by(id: id)
     return if record.nil?
 
     config = Geocoding::Config.for(record.user_id)
     return unless config.enabled?
 
+    forwarded = Geocoding::ReverseCommands.forward(record, force:, event_id: job_id)
+    return if forwarded
+
     # Pacing lives in Geocoding::RateLimiter, one layer down: sleeping here
     # only spaced out a single thread while the rest of the pool kept firing.
     data_fetcher(klass, id, force).call
   ensure
-    release_dedup_key(klass, id, force)
+    release_dedup_key(klass, id, force) unless forwarded
   end
 
   private

@@ -68,6 +68,29 @@ RSpec.describe EnhancedImport::ExtractJob do
     end
   end
 
+  describe 'Oban-owned forwarding' do
+    it 'forwards a GPX import and writes nothing to the import' do
+      job_owner!('command:enhanced_import.extract_gpx', :oban)
+      gpx_import = create(:import, user: user, source: :gpx)
+
+      described_class.new.perform(gpx_import.id, attempt: 7)
+
+      row = JobOutbox.sole
+      expect(row.payload).to eq('import_id' => gpx_import.id, 'lock_attempt' => 7)
+      expect(gpx_import.reload.additional_data_extraction_status).to eq('not_attempted')
+    end
+
+    it 'runs Rails for a Takeout import rather than forwarding' do
+      job_owner!('command:enhanced_import.extract_gpx', :oban)
+      allow_any_instance_of(EnhancedImport::Translator).to receive(:translate) { |&_block| }
+
+      described_class.new.perform(import.id)
+
+      expect(JobOutbox.count).to eq(0)
+      expect(import.reload.additional_data_extraction_status).to eq('completed')
+    end
+  end
+
   describe 'track generation for the points the extraction leaves untracked' do
     let(:first_timestamp) { Time.zone.parse('2025-04-01T10:00:00Z').to_i }
     let(:generation_arguments) do

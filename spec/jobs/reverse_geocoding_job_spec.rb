@@ -93,6 +93,79 @@ RSpec.describe ReverseGeocodingJob, type: :job do
     end
   end
 
+  describe 'Oban-owned forwarding' do
+    let(:user) { create(:user) }
+
+    before { configure_instance_geocoding }
+
+    it 'a point forwards once with the job id and keeps the dedupe key' do
+      job_owner!('command:geocoding.reverse_point', :oban)
+      point = create(:point, user:, reverse_geocoded_at: nil)
+      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+      allow(ReverseGeocoding::Points::FetchData).to receive(:new)
+      job = described_class.new
+
+      job.perform('Point', point.id)
+      job.perform('Point', point.id)
+
+      row = JobOutbox.sole
+      expect(row).to have_attributes(payload: { 'user_id' => point.user_id, 'point_ids' => [point.id],
+                                                'force' => false }, event_id: job.job_id)
+      expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(1)
+      expect(ReverseGeocoding::Points::FetchData).not_to have_received(:new)
+    end
+
+    it 'a place forwards for the lowercase class' do
+      job_owner!('command:geocoding.reverse_place', :oban)
+      place = create(:place, user:)
+
+      described_class.new.perform('place', place.id)
+
+      row = JobOutbox.sole
+      expect(row.payload).to eq('place_id' => place.id)
+    end
+
+    it 'a failing forward releases the key and raises' do
+      job_owner!('command:geocoding.reverse_point', :oban)
+      point = create(:point, user:, reverse_geocoded_at: nil)
+      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+      allow(JobCommands).to receive(:forward).and_raise(ActiveRecord::StatementInvalid, 'boom')
+
+      expect { described_class.new.perform('Point', point.id) }.to raise_error(ActiveRecord::StatementInvalid)
+
+      expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
+    end
+
+    it 'force forwards and never touches the key' do
+      job_owner!('command:geocoding.reverse_point', :oban)
+      point = create(:point, user:, reverse_geocoded_at: nil)
+      foreign_key_owner_id = create(:point, user:, reverse_geocoded_at: nil).id
+      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(foreign_key_owner_id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+
+      described_class.new.perform('Point', point.id, force: true)
+
+      expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(foreign_key_owner_id)) }).to eq(1)
+    end
+
+    it 'a missing record writes no row' do
+      job_owner!('command:geocoding.reverse_point', :oban)
+
+      described_class.new.perform('Point', -1)
+
+      expect(JobOutbox.count).to eq(0)
+    end
+
+    it 'a disabled config writes no row' do
+      job_owner!('command:geocoding.reverse_point', :oban)
+      allow(Geocoding::Config).to receive(:for).and_return(instance_double(Geocoding::Config, enabled?: false))
+      point = create(:point, user:, reverse_geocoded_at: nil)
+
+      described_class.new.perform('Point', point.id)
+
+      expect(JobOutbox.count).to eq(0)
+    end
+  end
+
   describe 'sidekiq options' do
     it 'caps Sidekiq retries at 3 to bound the retry set' do
       expect(described_class.get_sidekiq_options['retry']).to eq(3)

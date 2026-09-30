@@ -19,6 +19,10 @@ module JobOwnership
     end
   end
 
+  def oban?(key)
+    with_owner(key) { :sidekiq } == :not_owner
+  end
+
   def lock_owner(key)
     return :sidekiq unless table?
 

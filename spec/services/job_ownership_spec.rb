@@ -26,6 +26,14 @@ RSpec.describe JobOwnership do
       expect(described_class.with_owner(key) { :ran }).to eq(:ran)
     end
 
+    it 'oban? reports true only when Oban owns the key' do
+      job_owner!(key, :oban)
+      expect(described_class.oban?(key)).to be(true)
+
+      job_owner!(key, :sidekiq)
+      expect(described_class.oban?(key)).to be(false)
+    end
+
     it 'skips and logs when Oban owns the key' do
       job_owner!(key, :oban)
       allow(Rails.logger).to receive(:info).and_call_original
