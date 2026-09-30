@@ -41,11 +41,12 @@ class Stats::CalculateMonth
       stat.lock!
       pending = Stats::GeocodedDays.snapshot_month(user, year, month)
       distance_by_day = stat.distance_by_day
+      flight_dist = flight_distance
 
       stat.assign_attributes(
         daily_distance: distance_by_day,
-        distance: distance(distance_by_day),
-        flight_distance: flight_distance,
+        distance: distance(distance_by_day) + flight_dist,
+        flight_distance: flight_dist,
         toponyms: toponyms,
         h3_hex_ids: calculate_h3_hex_ids,
         calculation_version: CALCULATION_VERSION
@@ -119,7 +120,6 @@ class Stats::CalculateMonth
   def reset_month_stats(year, month)
     Stat.transaction do
       stat = Stat.lock.find_by(year:, month:, user:)
-      return unless stat
 
       # Points may arrive after the initial empty check while another calculation
       # finishes. Recheck under the same lock without the earlier query cache.
@@ -128,10 +128,15 @@ class Stats::CalculateMonth
         return
       end
 
+      flight_dist = flight_distance
+      return if stat.nil? && flight_dist.zero?
+
+      stat ||= Stat.find_or_create_by!(year:, month:, user:) { |record| record.distance = 0 }
+
       stat.update!(
         daily_distance: {},
-        distance: 0,
-        flight_distance: flight_distance,
+        distance: flight_dist,
+        flight_distance: flight_dist,
         toponyms: [],
         h3_hex_ids: {},
         calculation_version: CALCULATION_VERSION

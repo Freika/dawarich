@@ -61,6 +61,13 @@
           <p>
             <%= number_with_delimiter year_distance_stat(@year_distances[year], current_user).round %> <%= current_user.safe_settings.distance_unit %>
           </p>
+          <% year_flight_distance = stats.sum(&:flight_distance) %>
+          <% if year_flight_distance.positive? %>
+            <p class="text-sm text-info flex items-center gap-1">
+              <%= icon 'plane' %>
+              <%= number_with_delimiter year_flight_distance_stat(stats, current_user).round %> <%= current_user.safe_settings.distance_unit %> <%= t('.flight_distance') %>
+            </p>
+          <% end %>
           <% if reverse_geocoding_enabled_for?(current_user) %>
             <div class="card-actions justify-end">
               <% location_data = countries_and_cities_stat_for_year(year, stats) %>
