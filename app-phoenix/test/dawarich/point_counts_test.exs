@@ -1,5 +1,5 @@
 defmodule Dawarich.Stats.PointCountsTest do
-  use Dawarich.JobsCase, async: false
+  use Dawarich.JobsCase, async: true, group: :scratch_db
 
   import Dawarich.Test.StatsSeeds
 

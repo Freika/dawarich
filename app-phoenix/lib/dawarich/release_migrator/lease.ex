@@ -29,8 +29,9 @@ defmodule Dawarich.ReleaseMigrator.Lease do
     }
 
     deadline = System.monotonic_time(:millisecond) + Keyword.get(opts, :lease_wait_ms, 900_000)
+    sleep = Keyword.get(opts, :lease_sleep, &Process.sleep/1)
 
-    case acquire(repo, lease, deadline, Keyword.get(opts, :lease_poll_ms, 2_000)) do
+    case acquire(repo, lease, deadline, Keyword.get(opts, :lease_poll_ms, 2_000), sleep) do
       :ok ->
         dynamic = repo.get_dynamic_repo()
         renew_ms = Keyword.get(opts, :lease_renew_ms, 20_000)
@@ -38,7 +39,7 @@ defmodule Dawarich.ReleaseMigrator.Lease do
         renewer =
           spawn_link(fn ->
             repo.put_dynamic_repo(dynamic)
-            renew(repo, lease, renew_ms)
+            renew(repo, lease, renew_ms, sleep)
           end)
 
         try do
@@ -71,7 +72,7 @@ defmodule Dawarich.ReleaseMigrator.Lease do
     rows == 1
   end
 
-  defp acquire(repo, lease, deadline, poll_ms) do
+  defp acquire(repo, lease, deadline, poll_ms, sleep) do
     %{num_rows: taken} =
       repo.query!(
         """
@@ -92,15 +93,15 @@ defmodule Dawarich.ReleaseMigrator.Lease do
         {:error, {:locked, current_holder(repo)}}
 
       true ->
-        Process.sleep(poll_ms)
-        acquire(repo, lease, deadline, poll_ms)
+        sleep.(poll_ms)
+        acquire(repo, lease, deadline, poll_ms, sleep)
     end
   end
 
-  defp renew(repo, lease, renew_ms) do
-    Process.sleep(renew_ms)
+  defp renew(repo, lease, renew_ms, sleep) do
+    sleep.(renew_ms)
     unless fenced?(repo, lease, renew_ms), do: exit(:lease_lost)
-    renew(repo, lease, renew_ms)
+    renew(repo, lease, renew_ms, sleep)
   end
 
   defp current_holder(repo) do

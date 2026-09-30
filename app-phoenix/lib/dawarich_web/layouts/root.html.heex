@@ -37,10 +37,12 @@
         data-turbo-track="reload"
         phx-no-format
       ><%= Phoenix.HTML.raw(rails_translations(@locale)) %></script>
-      <script type="module">
-        import "chartkick"
-        import "Chart.bundle"
-      </script>
+      <%= if assigns[:rails_charts] != false do %>
+        <script type="module">
+          import "chartkick"
+          import "Chart.bundle"
+        </script>
+      <% end %>
     <% end %>
     <.favicon />
     <.head_scripts self_hosted={@self_hosted} />

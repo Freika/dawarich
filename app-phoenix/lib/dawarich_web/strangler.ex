@@ -4,13 +4,16 @@ defmodule DawarichWeb.Strangler do
 
   import Plug.Conn, only: [get_req_header: 2, halt: 1]
 
+  require Logger
+
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
 
   @constraints %{
     "/stats/:year" => %{"year" => ~r/\A\d{4}\z/},
     "/stats/:year/:month" => %{"year" => ~r/\A\d{4}\z/, "month" => ~r/\A(0?[1-9]|1[0-2])\z/},
-    "/digests/:year" => %{"year" => ~r/\A\d{4}\z/}
+    "/digests/:year" => %{"year" => ~r/\A\d{4}\z/},
+    "/api/v1/digests/:year" => %{"year" => ~r/\A\d{4}\z/}
   }
 
   def browser_like?(value), do: value =~ @browser_like
@@ -38,7 +41,7 @@ defmodule DawarichWeb.Strangler do
       %{pipe_through: pipelines} = route ->
         not handed_back?(conn.path_info) and slice_owned?(route, conn) and
           rails_constraints?(route) and
-          (:browser not in pipelines or page_request?(conn))
+          (:browser not in pipelines or page_request?(conn)) and gate_open?(route, conn)
     end
   end
 
@@ -46,6 +49,22 @@ defmodule DawarichWeb.Strangler do
     do: conn.method != "HEAD" and DawarichWeb.Slices.owned?(slice)
 
   defp slice_owned?(_route, _conn), do: true
+
+  def gate_open?(%{rails_gate: {module, function}, path_params: params}, conn) do
+    apply(module, function, [conn, params])
+  rescue
+    error -> handed_to_rails(conn, inspect(error.__struct__))
+  catch
+    :exit, reason -> handed_to_rails(conn, inspect(reason))
+  end
+
+  def gate_open?(%{rails_gate: _}, _conn), do: false
+  def gate_open?(_route, _conn), do: true
+
+  defp handed_to_rails(conn, detail) do
+    Logger.info("[strangler] #{conn.request_path} handed to Rails: #{detail}")
+    false
+  end
 
   defp rails_constraints?(%{route: route, path_params: params}),
     do:

@@ -165,7 +165,7 @@ defmodule Dawarich.ReleaseMigratorTest.LosesLease do
       {"20990801000001",
        fn _repo ->
          fn ->
-           Dawarich.ScratchRepo.query!(
+           Dawarich.ScratchCaseRepo.query!(
              "UPDATE phoenix.release_migrator_leases SET holder = 'thief'"
            )
          end
@@ -276,7 +276,7 @@ defmodule Dawarich.ReleaseMigratorTest.Throws do
 end
 
 defmodule Dawarich.ReleaseMigratorTest do
-  use Dawarich.ScratchCase
+  use Dawarich.ScratchCase, async: true, group: :scratch_case_db
 
   import Dawarich.ReleaseMigration
 
@@ -379,6 +379,18 @@ defmodule Dawarich.ReleaseMigratorTest do
       """)
 
     found
+  end
+
+  defp paused_sleep(name) do
+    parent = self()
+
+    fn _ms ->
+      send(parent, {:asleep, name, self()})
+
+      receive do
+        :wake -> :ok
+      end
+    end
   end
 
   defp lease_expiry do
@@ -626,23 +638,34 @@ defmodule Dawarich.ReleaseMigratorTest do
   test "a transactional step that outlasts the lease TTL keeps the lease through its commit" do
     create_ledger!([])
     gate = hold_gate()
-    opts = [releases: [OutlastsLease], lease_ttl_ms: 300, lease_renew_ms: 100, lease_poll_ms: 20]
+    first_opts = [releases: [OutlastsLease], lease_sleep: paused_sleep(:first)]
+    second_opts = [releases: [OutlastsLease], lease_sleep: paused_sleep(:second)]
 
     first =
-      Task.async(fn -> {ReleaseMigrator.migrate(ScratchRepo, opts), System.monotonic_time()} end)
+      Task.async(fn ->
+        {ReleaseMigrator.migrate(ScratchRepo, first_opts), System.monotonic_time()}
+      end)
 
+    assert_receive {:asleep, :first, renewer}, 5_000
     wait_until(&waiting_on_gate?/0)
     started = lease_expiry()
 
-    second =
-      Task.async(fn -> {ReleaseMigrator.migrate(ScratchRepo, opts), System.monotonic_time()} end)
+    send(renewer, :wake)
+    assert_receive {:asleep, :first, ^renewer}, 5_000
+    assert DateTime.compare(lease_expiry(), started) == :gt
 
-    wait_until(fn -> DateTime.diff(lease_expiry(), started, :millisecond) > 400 end)
+    second =
+      Task.async(fn ->
+        {ReleaseMigrator.migrate(ScratchRepo, second_opts), System.monotonic_time()}
+      end)
+
+    assert_receive {:asleep, :second, poller}, 5_000
     open_gate(gate)
 
     assert {{:ok, %{applied: ~w[20990901000001 20990901000002]}}, first_done} =
              Task.await(first, 10_000)
 
+    send(poller, :wake)
     assert {{:ok, %{applied: []}}, second_done} = Task.await(second, 10_000)
     assert second_done > first_done
   end
@@ -736,39 +759,47 @@ defmodule Dawarich.ReleaseMigratorTest do
   test "the renewer stops a migrator whose lease was taken over during a long step" do
     create_ledger!([])
     parent = self()
+    sleep = paused_sleep(:renewer)
 
     pid =
       spawn(fn ->
         send(
           parent,
-          ReleaseMigrator.migrate(ScratchRepo, releases: [LosesLease], lease_renew_ms: 100)
+          ReleaseMigrator.migrate(ScratchRepo, releases: [LosesLease], lease_sleep: sleep)
         )
       end)
 
     ref = Process.monitor(pid)
+    assert_receive {:asleep, :renewer, renewer}, 5_000
+
+    wait_until(fn ->
+      column("SELECT holder FROM phoenix.release_migrator_leases") == ["thief"]
+    end)
+
+    send(renewer, :wake)
     assert_receive {:DOWN, ^ref, :process, ^pid, :lease_lost}, 5_000
     assert ledger() == []
   end
 
   test "refuses to start with a single-connection pool" do
     create_ledger!([])
-    {:ok, small} = Dawarich.ScratchRepo.start_link(name: nil, pool_size: 1)
-    Dawarich.ScratchRepo.put_dynamic_repo(small)
-    on_exit(fn -> Dawarich.ScratchRepo.put_dynamic_repo(Dawarich.ScratchRepo) end)
+    {:ok, small} = Dawarich.ScratchCaseRepo.start_link(name: nil, pool_size: 1)
+    Dawarich.ScratchCaseRepo.put_dynamic_repo(small)
+    on_exit(fn -> Dawarich.ScratchCaseRepo.put_dynamic_repo(Dawarich.ScratchCaseRepo) end)
 
     assert ReleaseMigrator.migrate(ScratchRepo, releases: [R1]) == {:error, :pool_too_small}
   end
 
   test "refuses a session whose time zone is not UTC" do
     {:ok, berlin} =
-      Dawarich.ScratchRepo.start_link(
+      Dawarich.ScratchCaseRepo.start_link(
         name: nil,
         pool_size: 2,
         parameters: [timezone: "Europe/Berlin"]
       )
 
-    Dawarich.ScratchRepo.put_dynamic_repo(berlin)
-    on_exit(fn -> Dawarich.ScratchRepo.put_dynamic_repo(Dawarich.ScratchRepo) end)
+    Dawarich.ScratchCaseRepo.put_dynamic_repo(berlin)
+    on_exit(fn -> Dawarich.ScratchCaseRepo.put_dynamic_repo(Dawarich.ScratchCaseRepo) end)
 
     assert ReleaseMigrator.migrate(ScratchRepo, releases: [R1]) ==
              {:error, {:timezone, "Europe/Berlin"}}

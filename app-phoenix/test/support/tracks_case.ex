@@ -2,23 +2,31 @@ defmodule Dawarich.TracksCase do
   @moduledoc false
   use ExUnit.CaseTemplate
 
-  alias Dawarich.{Redis, ScratchRepo}
+  alias Dawarich.Redis
   alias Dawarich.Tracks.{ChunkWorker, RangeWorker, Settings}
+  alias Dawarich.TracksScratchRepo, as: ScratchRepo
 
   @oban Dawarich.TracksCase.Oban
 
-  using do
+  using opts do
+    if opts[:async] && opts[:group] != :tracks_db,
+      do: raise(ArgumentError, "async TracksCase modules need group: :tracks_db")
+
     quote do
-      use Dawarich.JobsCase
+      alias Dawarich.TracksScratchRepo, as: ScratchRepo
       alias Dawarich.Tracks.TracksFixtures
       import Dawarich.TracksCase
 
       setup do
+        Dawarich.LaneGuard.guard!(:tracks_db)
+        Dawarich.JobsCase.reset!(ScratchRepo)
         Dawarich.TracksCase.truncate!()
         Dawarich.TracksCase.start_services!()
       end
     end
   end
+
+  def rows(sql, params \\ []), do: ScratchRepo.query!(sql, params, log: false).rows
 
   def truncate! do
     ScratchRepo.query!(
@@ -33,7 +41,7 @@ defmodule Dawarich.TracksCase do
   def oban, do: @oban
 
   def start_services! do
-    Dawarich.JobsCase.start_oban(@oban)
+    Dawarich.JobsCase.start_oban(@oban, repo: ScratchRepo)
     ExUnit.Callbacks.start_supervised!(hd(Redis.child_specs()))
     {:ok, "OK"} = Redis.command(["FLUSHDB"])
     :ok

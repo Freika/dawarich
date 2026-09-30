@@ -13,18 +13,26 @@ config :dawarich,
        Dawarich.Repo,
        connection ++ [database: test_database, pool: Ecto.Adapters.SQL.Sandbox, pool_size: 5]
 
+scratch =
+  connection ++
+    [
+      pool_size: 5,
+      timeout: :infinity,
+      prepare: :unnamed,
+      parameters: [timezone: "UTC"],
+      migration_source: "phoenix_schema_migrations",
+      migration_default_prefix: "phoenix"
+    ]
+
+config :dawarich, Dawarich.ScratchRepo, [database: test_database <> "_scratch"] ++ scratch
+
 config :dawarich,
-       Dawarich.ScratchRepo,
-       connection ++
-         [
-           database: test_database <> "_scratch",
-           pool_size: 5,
-           timeout: :infinity,
-           prepare: :unnamed,
-           parameters: [timezone: "UTC"],
-           migration_source: "phoenix_schema_migrations",
-           migration_default_prefix: "phoenix"
-         ]
+       Dawarich.ScratchCaseRepo,
+       [database: test_database <> "_scratch_case"] ++ scratch
+
+config :dawarich,
+       Dawarich.TracksScratchRepo,
+       [database: test_database <> "_scratch_tracks"] ++ scratch
 
 config :dawarich, Oban, testing: :manual
 

@@ -1,5 +1,5 @@
 defmodule Dawarich.Tracks.ChunkWorkerTest do
-  use Dawarich.TracksCase
+  use Dawarich.TracksCase, async: true, group: :tracks_db
 
   alias Dawarich.Tracks.{BoundaryWorker, ChunkWorker, RangeWorker, Settings}
 

@@ -532,4 +532,58 @@ defmodule DawarichWeb.EndpointTest do
               "GET #{target} HTTP/1.1"
           )
   end
+
+  test "Phoenix answers the trips list for a signed-out visitor with Rails' sign-in redirect" do
+    port = serve()
+
+    for target <- ~w(/trips /trips?page=2) do
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302, target
+    end
+  end
+
+  test "every other trip route, format and method goes to Puma", ctx do
+    port = serve()
+
+    for target <-
+          ~w(/trips/new /trips/5/edit /trips/abc /trips/12abc /trips/1234567890123456789 /trips.json /trips/5.json /trips?format=json /trips/5/share_link/new) do
+      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+               "GET #{target} HTTP/1.1"
+    end
+
+    for {method, target} <- [
+          {"POST", "/trips"},
+          {"PATCH", "/trips/5"},
+          {"PUT", "/trips/5"},
+          {"DELETE", "/trips/5"},
+          {"POST", "/trips/5/recalculate"},
+          {"POST", "/trips/5/export?file_format=gpx"},
+          {"POST", "/trips/5/notes"},
+          {"PATCH", "/trips/5/notes/7"},
+          {"DELETE", "/trips/5/notes/7"},
+          {"POST", "/trips/5/share_link"},
+          {"DELETE", "/trips/5/share_link"},
+          {"PATCH", "/trips/5/share_link/revoke"},
+          {"POST", "/trips/5/share_link/regenerate"},
+          {"POST", "/trips/5/share_link/regenerate_phrase"}
+        ] do
+      body = "_method=delete&authenticity_token=x"
+
+      request =
+        "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+    end
+  end
+
+  test "DAWARICH_RAILS_ROUTES=trips hands both pages back with their query", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["trips"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+
+    for target <- ~w(/trips /trips?page=2 /trips/5) do
+      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+               "GET #{target} HTTP/1.1"
+    end
+  end
 end
