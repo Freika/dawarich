@@ -35,6 +35,7 @@ config :dawarich, :redis,
 
 config :dawarich, :jobs_runtime, false
 config :dawarich, :jobs_repo, Dawarich.ScratchRepo
+config :dawarich, :geocoding_http, Dawarich.Geocoding.FakeHttp
 config :dawarich, :app_version_file, Path.expand("../../.app_version", __DIR__)
 config :dawarich, :rails_root, Path.expand("../..", __DIR__)
 config :dawarich, :mail_transport, Dawarich.Mail.TestTransport
