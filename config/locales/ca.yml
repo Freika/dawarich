@@ -201,6 +201,8 @@ ca:
         importing: Important...
         delete_my_account: Suprimeix el meu compte
         email_me_the_confirmation_link: Envia'm l'enllaç de confirmació
+        first_name: Nom
+        last_name: Cognoms
       new:
         join_family: "Uneix-te a %{family}!"
         you_ve_been_invited_by: T'ha convidat
@@ -1577,6 +1579,7 @@ ca:
         display_a_gem_icon_next_to_your_profile_to_show: Mostra una icona de gemma al costat del teu perfil per indicar el teu estat de col·laborador
         general_settings: Configuració general
         save_changes: Desa els canvis
+        test_email_worker_hint: Afegeix un missatge de prova a la cua del mateix procés en segon pla que els correus del sistema
     integrations:
       trek:
         title: "Integració amb TREK"
@@ -2073,6 +2076,20 @@ ca:
       photos_on_map: Fotos al mapa
       route_map: Mapa de la ruta
       trip_description: Descripció del viatge
+    family:
+      audience: Qui pot veure aquest viatge?
+      public_link: Qualsevol persona amb l’enllaç
+      only: Només membres de la família
+      label: Família
+      link: Enllaç familiar
+      shared_trip: '%{trip} es comparteix amb la teva família.'
+      trips: Viatges compartits amb la teva família
+      hint: Els viatges familiars apareixen a la llista de viatges de la teva família. Els membres han d’iniciar sessió. La frase secreta només s’utilitza per als enllaços públics.
+      choose_audience: Tria qui pot veure aquest viatge i quins detalls incloure.
+      sections: Contingut de la pàgina compartida
+      unavailable: Uneix-te a una família activa abans de compartir un viatge amb els seus membres.
+      back_to_trips: Torna als viatges
+      your_map: El teu mapa per a aquestes dates
   stats:
     locked_year_card:
       available_on_pro: Disponible a Pro
@@ -2349,6 +2366,7 @@ ca:
       video_unavailable: Disponible un cop calculada la ruta del viatge
       create_video: Crea un vídeo d'aquest viatge
       more_on_source: Més a %{source}
+      open_in_map: Obre al mapa
     share_links:
       new:
         share_trip: "Comparteix %{trip}"
@@ -3185,6 +3203,7 @@ ca:
         smtp_not_configured_link: els paràmetres SMTP d'autoallotjament
         test_email_sent: Correu de prova enviat a %{email}. Comprova la teva bústia d'entrada (i la carpeta de correu no desitjat).
         test_email_failed: 'El correu de prova ha fallat: %{error}'
+        test_email_queued: Correu de prova per a %{email} afegit a la cua. Comprova la safata d’entrada i els errors d’enviament a Sidekiq.
       onboardings:
         demo_data_loaded: Dades de demostració carregades.
         demo_data_is_already_loaded: Les dades de demostració ja estan carregades.
@@ -4323,6 +4342,7 @@ ca:
       location_coordinates: "Ubicació (%{latitude}, %{longitude})"
       location_data: Dades d'ubicació
       location_point: Punt d'ubicació
+      overlapping_points: "Aquest marcador conté %{count} punts superposats. No es poden separar ampliant el mapa."
       longitude: Longitud
       meters:
         one: "%{count} metre"

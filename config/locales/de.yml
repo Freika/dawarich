@@ -248,6 +248,8 @@ de:
         importing: Wird importiert …
         delete_my_account: Mein Konto löschen
         email_me_the_confirmation_link: Sende mir den Bestätigungslink per E-Mail
+        first_name: Vorname
+        last_name: Nachname
       new:
         join: Beitreten
         you_ve_been_invited_by: Du wurdest von
@@ -1580,6 +1582,7 @@ de:
         display_a_gem_icon_next_to_your_profile_to_show: Zeigt ein Edelstein-Symbol neben deinem Profil an, das deinen Unterstützerstatus kennzeichnet
         general_settings: Allgemeine Einstellungen
         save_changes: Änderungen speichern
+        test_email_worker_hint: Stellt eine Testnachricht über denselben Hintergrundprozess wie System-E-Mails in die Warteschlange
     integrations:
       trek:
         title: "TREK-Integration"
@@ -2078,6 +2081,20 @@ de:
       photos_on_map: Fotos auf Karte
       route_map: Route-Karte
       trip_description: Reisebeschreibung
+    family:
+      audience: Wer kann diese Reise ansehen?
+      public_link: Alle mit dem Link
+      only: Nur Familienmitglieder
+      label: Familie
+      link: Familienlink
+      shared_trip: '%{trip} wird mit deiner Familie geteilt.'
+      trips: Mit deiner Familie geteilte Reisen
+      hint: Familienreisen erscheinen in der Reiseliste deiner Familie. Mitglieder müssen sich anmelden. Die Geheimphrase wird nur für öffentliche Links verwendet.
+      choose_audience: Wähle, wer diese Reise ansehen kann und welche Details angezeigt werden.
+      sections: Inhalt der geteilten Seite
+      unavailable: Tritt einer aktiven Familie bei, bevor du eine Reise mit Familienmitgliedern teilst.
+      back_to_trips: Zurück zu den Reisen
+      your_map: Deine Karte für diese Daten
   stats:
     locked_year_card:
       available_on_pro: Verfügbar auf Pro
@@ -2354,6 +2371,7 @@ de:
       poster_unavailable: Verfügbar sobald der Reiseweg berechnet ist
       create_poster: Poster dieser Reise erstellen
       more_on_source: Weitere Informationen zu %{source}
+      open_in_map: Auf der Karte öffnen
     share_links:
       new:
         share_trip: Teile %{trip}
@@ -3245,6 +3263,7 @@ de:
         smtp_not_configured_link: die selbst gehosteten SMTP-Einstellungen
         test_email_sent: Test-E-Mail an %{email} gesendet. Prüfe deinen Posteingang (und den Spam-Ordner).
         test_email_failed: 'Test-E-Mail fehlgeschlagen: %{error}'
+        test_email_queued: Test-E-Mail für %{email} in die Warteschlange gestellt. Prüfe deinen Posteingang und fehlgeschlagene Zustellungen in Sidekiq.
       onboardings:
         demo_data_loaded: Demo-Daten geladen.
         demo_data_is_already_loaded: Demo-Daten sind bereits geladen.
@@ -4375,6 +4394,7 @@ de:
       location_coordinates: Standort (%{latitude}, %{longitude})
       location_data: Standortdaten
       location_point: Standortpunkt
+      overlapping_points: "Diese Markierung enthält %{count} überlappende Punkte. Sie lassen sich durch weiteres Zoomen nicht trennen."
       longitude: Länge
       meters:
         one: "%{count} Meter"

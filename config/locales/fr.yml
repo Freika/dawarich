@@ -682,6 +682,8 @@ fr:
         importing: Importation en cours...
         delete_my_account: Supprimer mon compte.
         email_me_the_confirmation_link: Envoyez-moi le lien de confirmation par e-mail.
+        first_name: Prénom
+        last_name: Nom
       new:
         join_family: Rejoindre %{family} !
         you_ve_been_invited_by: Vous avez été invité par
@@ -2344,6 +2346,7 @@ fr:
         language: "Langue"
         your_language: "Votre langue"
         the_interface_emails_and_notifications_will_use_this_language: "L'interface, les e-mails et les notifications utiliseront cette langue."
+        test_email_worker_hint: Ajoute un message de test à la file du même processus en arrière-plan que les e-mails système
     integrations:
       trek:
         title: "Intégration TREK"
@@ -2935,6 +2938,20 @@ fr:
       photos_on_map: Photos sur la carte
       route_map: Carte de la route
       trip_description: Description du voyage
+    family:
+      audience: Qui peut voir ce voyage ?
+      public_link: Toute personne disposant du lien
+      only: Membres de la famille uniquement
+      label: Famille
+      link: Lien familial
+      shared_trip: '%{trip} est partagé avec votre famille.'
+      trips: Voyages partagés avec votre famille
+      hint: Les voyages familiaux apparaissent dans la liste des voyages de votre famille. Les membres doivent se connecter. La phrase secrète sert uniquement aux liens publics.
+      choose_audience: Choisissez qui peut voir ce voyage et les détails à inclure.
+      sections: Contenu de la page partagée
+      unavailable: Rejoignez une famille active avant de partager un voyage avec ses membres.
+      back_to_trips: Retour aux voyages
+      your_map: Votre carte pour ces dates
   stats:
     locked_year_card:
       available_on_pro: Disponible sur Pro
@@ -3231,6 +3248,7 @@ fr:
       poster_unavailable: Disponible une fois que la route du voyage est calculée
       create_poster: Créer une affiche de ce voyage
       more_on_source: En savoir plus sur %{source}
+      open_in_map: Ouvrir sur la carte
     share_links:
       new:
         share_trip: Partager %{trip}
@@ -4163,6 +4181,7 @@ fr:
         test_email_sent: E-mail de test envoyé à %{email}. Vérifiez votre boîte de
           réception (et le dossier spam).
         test_email_failed: "L'e-mail de test a échoué : %{error}"
+        test_email_queued: E-mail de test pour %{email} ajouté à la file. Vérifiez votre boîte de réception et les échecs d’envoi dans Sidekiq.
       onboardings:
         demo_data_loaded: Données de démo chargées.
         demo_data_is_already_loaded: Les données de démo sont déjà chargées.
@@ -5606,6 +5625,7 @@ fr:
       location_coordinates: Emplacement (%{latitude}, %{longitude})
       location_data: Données d'emplacement
       location_point: Point d'emplacement
+      overlapping_points: "Ce marqueur contient %{count} points superposés. Le zoom ne permet pas de les séparer."
       longitude: Longitude
       meters:
         one: "%{count} mètre"

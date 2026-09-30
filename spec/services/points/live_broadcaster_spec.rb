@@ -136,6 +136,15 @@ RSpec.describe Points::LiveBroadcaster do
           described_class.new(user.id, upserted_results, payloads).call
         end
 
+        it 'includes profile names in realtime family updates' do
+          user.update!(first_name: 'Ada', last_name: 'Lovelace')
+          expect(FamilyLocationsChannel).to receive(:broadcast_to).with(
+            family, hash_including(name: 'Ada Lovelace', email: user.email)
+          )
+
+          described_class.new(user.id, upserted_results, payloads).call
+        end
+
         it 'broadcasts even when live_map_enabled is false' do
           user.settings['live_map_enabled'] = false
           user.save!

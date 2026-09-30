@@ -23,7 +23,7 @@
         <%= render 'shared_links/modal_active', share: share, paths: paths, subtitle: local_assigns[:subtitle] %>
       <% else %>
         <h3 class="font-bold text-lg mb-1"><%= title %></h3>
-        <p class="text-sm text-base-content/70 mb-5"><%= t('.anyone_with_the_link_will_be_able_to_view_this') %></p>
+        <p class="text-sm text-base-content/70 mb-5"><%= resource.is_a?(Trip) ? t('shared_links.family.choose_audience') : t('.anyone_with_the_link_will_be_able_to_view_this') %></p>
         <%= render create_form_partial, resource: resource, paths: paths, close_path: close_path %>
       <% end %>
     </div>

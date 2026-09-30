@@ -201,6 +201,8 @@ pl:
         importing: Importowanie...
         delete_my_account: Usuń moje konto
         email_me_the_confirmation_link: Wyślij mi link potwierdzający
+        first_name: Imię
+        last_name: Nazwisko
       new:
         join_family: Dołącz do rodziny %{family}!
         you_ve_been_invited_by: Zaproszenie od
@@ -1577,6 +1579,7 @@ pl:
         display_a_gem_icon_next_to_your_profile_to_show: Wyświetl ikonę klejnotu obok profilu, aby pokazać status wspierającego
         general_settings: Ustawienia ogólne
         save_changes: Zapisz zmiany
+        test_email_worker_hint: Dodaje wiadomość testową do kolejki tego samego procesu w tle, który wysyła e-maile systemowe
     integrations:
       trek:
         title: "Integracja z TREK"
@@ -2073,6 +2076,20 @@ pl:
       photos_on_map: Zdjęcia na mapie
       route_map: Mapa trasy
       trip_description: Opis podróży
+    family:
+      audience: Kto może zobaczyć tę podróż?
+      public_link: Każdy, kto ma link
+      only: Tylko członkowie rodziny
+      label: Rodzina
+      link: Link rodzinny
+      shared_trip: '%{trip} jest udostępniana Twojej rodzinie.'
+      trips: Podróże udostępnione Twojej rodzinie
+      hint: Podróże rodzinne pojawiają się na liście podróży Twojej rodziny. Członkowie muszą się zalogować. Tajna fraza jest używana tylko w linkach publicznych.
+      choose_audience: Wybierz, kto może zobaczyć tę podróż i jakie szczegóły uwzględnić.
+      sections: Zawartość udostępnionej strony
+      unavailable: Dołącz do aktywnej rodziny, zanim udostępnisz podróż jej członkom.
+      back_to_trips: Powrót do podróży
+      your_map: Twoja mapa dla tych dat
   stats:
     locked_year_card:
       available_on_pro: Dostępne w planie Pro
@@ -2349,6 +2366,7 @@ pl:
       video_unavailable: Dostępne po obliczeniu trasy podróży
       create_video: Utwórz film z tej podróży
       more_on_source: Więcej na %{source}
+      open_in_map: Otwórz na mapie
     share_links:
       new:
         share_trip: Udostępnij %{trip}
@@ -3240,6 +3258,7 @@ pl:
         smtp_not_configured_link: ustawienia SMTP dla self-hostingu
         test_email_sent: Testowy e-mail wysłano na adres %{email}. Sprawdź swoją skrzynkę odbiorczą (i folder spam).
         test_email_failed: 'Nie udało się wysłać testowego e-maila: %{error}'
+        test_email_queued: E-mail testowy dla %{email} dodano do kolejki. Sprawdź skrzynkę odbiorczą i błędy wysyłania w Sidekiq.
       onboardings:
         demo_data_loaded: Dane demo zostały załadowane.
         demo_data_is_already_loaded: Dane demo są już załadowane.
@@ -4380,6 +4399,7 @@ pl:
       location_coordinates: Lokalizacja (%{latitude}, %{longitude})
       location_data: Dane lokalizacji
       location_point: Punkt lokalizacji
+      overlapping_points: "Ten znacznik zawiera %{count} nakładających się punktów. Powiększanie mapy ich nie rozdzieli."
       longitude: Długość geogr.
       meters:
         one: "%{count} metr"

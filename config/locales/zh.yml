@@ -192,6 +192,8 @@ zh:
         importing: 正在导入...
         delete_my_account: 删除我的帐户
         email_me_the_confirmation_link: 通过邮件向我发送确认链接
+        first_name: 名
+        last_name: 姓
       new:
         join_family: 加入 %{family}！
         you_ve_been_invited_by: 邀请人：
@@ -1552,6 +1554,7 @@ zh:
         display_a_gem_icon_next_to_your_profile_to_show: 在个人资料旁显示宝石图标，用于标识您的支持者身份
         general_settings: 常规设置
         save_changes: 保存更改
+        test_email_worker_hint: 通过发送系统邮件的同一后台进程将测试邮件加入队列
     integrations:
       trek:
         title: "TREK 集成"
@@ -2101,6 +2104,20 @@ zh:
       photos_on_map: 地图上的照片
       route_map: 路线图
       trip_description: 行程描述
+    family:
+      audience: 谁可以查看此行程？
+      public_link: 任何持有链接的人
+      only: 仅限家庭成员
+      label: 家庭
+      link: 家庭链接
+      shared_trip: '%{trip} 已与您的家庭共享。'
+      trips: 与您的家庭共享的行程
+      hint: 家庭行程会显示在家庭的行程列表中。成员必须登录。密码短语仅用于公开链接。
+      choose_audience: 选择谁可以查看此行程以及要包含哪些详情。
+      sections: 共享页面的内容
+      unavailable: 请先加入一个有效的家庭，再与家庭成员共享行程。
+      back_to_trips: 返回行程列表
+      your_map: 这些日期的个人地图
   stats:
     locked_year_card:
       available_on_pro: 在 Pro 上可用
@@ -2377,6 +2394,7 @@ zh:
       video: 视频
       video_unavailable: 行程路线计算完成后可用
       create_video: 为此行程创建回放视频
+      open_in_map: 在地图中打开
     share_links:
       new:
         share_trip: 共享 %{trip}
@@ -3234,6 +3252,7 @@ zh:
         smtp_not_configured_link: 自托管 SMTP 设置
         test_email_sent: 测试邮件已发送至 %{email}。请检查您的收件箱（以及垃圾邮件文件夹）。
         test_email_failed: '测试邮件发送失败：%{error}'
+        test_email_queued: 已将发送至 %{email} 的测试邮件加入队列。请检查收件箱和 Sidekiq 中的发送失败记录。
       onboardings:
         demo_data_loaded: 演示数据已加载。
         demo_data_is_already_loaded: 演示数据已加载。
@@ -4392,6 +4411,7 @@ zh:
       location_coordinates: 位置（%{latitude}、%{longitude}）
       location_data: 位置数据
       location_point: 位置点
+      overlapping_points: "此标记包含 %{count} 个重叠的点，继续放大也无法将它们分开。"
       longitude: 经度
       meters:
         one: "%{count} 米"

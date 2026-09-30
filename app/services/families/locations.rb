@@ -39,6 +39,7 @@ class Families::Locations
   def family_members_with_sharing_enabled
     user.family.members
         .includes(:family_membership)
+        .reject { _1.id == user.id }
         .select(&:family_sharing_enabled?)
   end
 
@@ -50,6 +51,7 @@ class Families::Locations
       {
         user_id: point.user_id,
         email: point.user.email,
+        name: point.user.display_name,
         email_initial: point.user.email.first.upcase,
         latitude: point.lat,
         longitude: point.lon,
@@ -80,6 +82,7 @@ class Families::Locations
       {
         user_id: member.id,
         email: member.email,
+        name: member.display_name,
         email_initial: member.email.first.upcase,
         sharing_since: member.family_sharing_started_at&.iso8601,
         points: sampled.pluck(

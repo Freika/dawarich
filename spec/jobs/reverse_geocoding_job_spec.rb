@@ -61,7 +61,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       before { configure_instance_geocoding }
 
       it 'releases the claim after a non-forced run' do
-        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: 86_400) }
 
         described_class.new.perform('Point', point.id)
 
@@ -69,7 +69,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       end
 
       it 'leaves a concurrent claim intact when the run is forced' do
-        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: 86_400) }
 
         described_class.new.perform('Point', point.id, force: true)
 
@@ -85,7 +85,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
     end
 
     it 'leaves point claims alone when the job runs for a place' do
-      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: 86_400) }
 
       described_class.new.perform('place', point.id)
 

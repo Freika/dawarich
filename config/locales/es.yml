@@ -248,6 +248,8 @@ es:
         importing: Importando...
         delete_my_account: Eliminar mi cuenta
         email_me_the_confirmation_link: Envíame el enlace de confirmación por correo electrónico
+        first_name: Nombre
+        last_name: Apellidos
       new:
         join: Unirte
         you_ve_been_invited_by: Has recibido una invitación de
@@ -1580,6 +1582,7 @@ es:
         display_a_gem_icon_next_to_your_profile_to_show: Mostrar un icono de gema junto a tu perfil para mostrar tu estado de apoyo.
         general_settings: Ajustes generales
         save_changes: Guardar cambios
+        test_email_worker_hint: Añade un mensaje de prueba a la cola del mismo proceso en segundo plano que los correos del sistema
     integrations:
       trek:
         title: "Integración con TREK"
@@ -2078,6 +2081,20 @@ es:
       photos_on_map: Fotos en el mapa
       route_map: Mapa de la ruta
       trip_description: Descripción de la travesía
+    family:
+      audience: ¿Quién puede ver este viaje?
+      public_link: Cualquiera con el enlace
+      only: Solo miembros de la familia
+      label: Familia
+      link: Enlace familiar
+      shared_trip: '%{trip} se comparte con tu familia.'
+      trips: Viajes compartidos con tu familia
+      hint: Los viajes familiares aparecen en la lista de viajes de tu familia. Los miembros deben iniciar sesión. La frase secreta solo se usa para enlaces públicos.
+      choose_audience: Elige quién puede ver este viaje y qué detalles incluir.
+      sections: Contenido de la página compartida
+      unavailable: Únete a una familia activa antes de compartir un viaje con sus miembros.
+      back_to_trips: Volver a los viajes
+      your_map: Tu mapa para estas fechas
   stats:
     locked_year_card:
       available_on_pro: Disponible en Pro
@@ -2354,6 +2371,7 @@ es:
       poster_unavailable: Disponible una vez que se calcula el recorrido del viaje
       create_poster: Crear un póster de este viaje
       more_on_source: Más sobre %{source}
+      open_in_map: Abrir en el mapa
     share_links:
       new:
         share_trip: Compartir %{trip}
@@ -3190,6 +3208,7 @@ es:
         smtp_not_configured_link: los ajustes SMTP de autoalojamiento
         test_email_sent: Correo de prueba enviado a %{email}. Revisa tu bandeja de entrada (y la carpeta de spam).
         test_email_failed: 'El correo de prueba falló: %{error}'
+        test_email_queued: Correo de prueba para %{email} añadido a la cola. Revisa tu bandeja de entrada y los fallos de envío en Sidekiq.
       onboardings:
         demo_data_loaded: Datos de demostración cargados.
         demo_data_is_already_loaded: Los datos de demostración ya están cargados.
@@ -4319,6 +4338,7 @@ es:
       location_coordinates: Ubicación (%{latitude}, %{longitude})
       location_data: Datos de ubicación
       location_point: Punto de ubicación
+      overlapping_points: "Este marcador contiene %{count} puntos superpuestos. No se pueden separar ampliando el mapa."
       longitude: Longitud
       meters:
         one: "%{count} metro"

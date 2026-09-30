@@ -1,0 +1,58 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="background" x2="1" y2="1">
+      <stop offset="0" stop-color="#121820"/>
+      <stop offset="1" stop-color="#080b10"/>
+    </linearGradient>
+    <linearGradient id="card" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#262d37"/>
+      <stop offset="0.55" stop-color="#121820"/>
+      <stop offset="1" stop-color="#090c11"/>
+    </linearGradient>
+    <linearGradient id="foil" x2="1" y2="1">
+      <stop offset="0" stop-color="#f7fafc"/>
+      <stop offset="0.45" stop-color="<%= muted_accent %>"/>
+      <stop offset="1" stop-color="#33414e"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="<%= muted_accent %>" stop-opacity="0.25"/>
+      <stop offset="1" stop-color="<%= muted_accent %>" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="card-clip"><rect x="57" y="39" width="390" height="552" rx="25"/></clipPath>
+  </defs>
+
+  <rect width="1200" height="630" fill="url(#background)"/>
+  <circle cx="320" cy="280" r="340" fill="url(#glow)"/>
+  <path d="M0 568 H1200" stroke="#29313b"/>
+
+  <g clip-path="url(#card-clip)">
+    <rect x="57" y="39" width="390" height="552" fill="url(#card)"/>
+    <path d="M76 65 H428 M76 505 H428" stroke="<%= muted_accent %>" stroke-opacity="0.5"/>
+    <% if (shape = attributes[:silhouette]) %>
+      <svg x="87" y="94" width="330" height="280" viewBox="<%= escape(shape[:viewbox]) %>" preserveAspectRatio="xMidYMid meet">
+        <path d="<%= escape(shape[:path]) %>" fill="url(#foil)" fill-rule="evenodd" opacity="<%= @set.locked? ? '0.45' : '0.96' %>"/>
+      </svg>
+    <% else %>
+      <circle cx="252" cy="240" r="112" fill="none" stroke="<%= muted_accent %>" stroke-width="3" opacity="0.5"/>
+      <path d="M140 240 H364 M252 128 C192 180 192 300 252 352 M252 128 C312 180 312 300 252 352" fill="none" stroke="<%= muted_accent %>" stroke-width="2" opacity="0.5"/>
+    <% end %>
+    <text x="83" y="430" fill="#f1f3f5" font-family="DejaVu Sans, sans-serif" font-size="32" font-weight="700"<% if @set.name.length > 18 %> textLength="328" lengthAdjust="spacingAndGlyphs"<% end %>><%= escape(@set.name) %></text>
+    <text x="83" y="472" fill="#b5bfca" font-family="DejaVu Sans, sans-serif" font-size="19"<% if attributes[:metric_label].length > 25 %> textLength="328" lengthAdjust="spacingAndGlyphs"<% end %>><%= escape(attributes[:metric_label]) %></text>
+    <text x="83" y="549" fill="<%= muted_accent %>" font-family="DejaVu Sans, sans-serif" font-size="16" font-weight="700" letter-spacing="3">DAWARICH</text>
+  </g>
+  <rect x="57" y="39" width="390" height="552" rx="25" fill="none" stroke="<%= muted_accent %>" stroke-width="3"/>
+
+  <text x="516" y="120" fill="<%= muted_accent %>" font-family="DejaVu Sans, sans-serif" font-size="24" font-weight="700" letter-spacing="4"><%= escape(rarity_label.upcase) %> · DAWARICH</text>
+  <% title_lines.each_with_index do |line, index| %>
+    <text x="512" y="<%= 216 + index * 73 %>" fill="#f4f6f8" font-family="DejaVu Sans, sans-serif" font-size="60" font-weight="700"<% if line.length > 19 %> textLength="610" lengthAdjust="spacingAndGlyphs"<% end %>><%= escape(line) %></text>
+  <% end %>
+  <text x="516" y="<%= title_lines.size > 1 ? 372 : 300 %>" fill="#aeb8c5" font-family="DejaVu Sans, sans-serif" font-size="27"><%= escape(status_label) %></text>
+
+  <rect x="512" y="423" width="619" height="104" rx="18" fill="#1b2530" stroke="#334354"/>
+  <rect x="512" y="423" width="8" height="104" rx="4" fill="<%= muted_accent %>"/>
+  <text x="548" y="490" fill="#f4f6f8" font-family="DejaVu Sans, sans-serif" font-size="37" font-weight="700"<% if attributes[:metric_label].length > 25 %> textLength="540" lengthAdjust="spacingAndGlyphs"<% end %>><%= escape(attributes[:metric_label]) %></text>
+  <% if @set.percent.positive? && !@set.completed? %>
+    <rect x="512" y="552" width="619" height="8" rx="4" fill="#293542"/>
+    <rect x="512" y="552" width="<%= (619 * @set.percent / 100.0).round %>" height="8" rx="4" fill="<%= muted_accent %>"/>
+  <% end %>
+</svg>

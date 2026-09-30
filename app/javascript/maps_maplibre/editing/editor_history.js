@@ -59,7 +59,7 @@ export class EditorHistory {
       !this.closed &&
       entries.length + undone.length > 0
     if (shown && !this.panel.container)
-      map.addControl?.(this.panel, "bottom-left")
+      map.addControl?.(this.panel, "bottom-right")
     else if (!shown && this.panel.container) map.removeControl?.(this.panel)
     this.panel.render({
       entries,

@@ -34,6 +34,18 @@ RSpec.describe '/trips', type: :request do
     sign_in user
   end
 
+  it 'links a trip to the full map with its exact date range' do
+    trip = create(:trip, user: user, started_at: Time.utc(2024, 11, 27, 17, 16, 21),
+                                     ended_at: Time.utc(2024, 11, 29, 9, 45, 12))
+    get trip_path(trip)
+
+    link = Nokogiri::HTML(response.body).at_css('a[data-testid="trip-open-map"]')
+    expect(link).to be_present
+    query = Rack::Utils.parse_query(URI.parse(link['href']).query)
+    expect(Time.iso8601(query['start_at'])).to eq(trip.started_at)
+    expect(Time.iso8601(query['end_at'])).to eq(trip.ended_at)
+  end
+
   describe 'GET /index' do
     it 'previews the plan of a trip that has no recorded path yet' do
       planned = create(:trip, user:, path: nil, distance: nil, started_at: 1.day.from_now, ended_at: 2.days.from_now)

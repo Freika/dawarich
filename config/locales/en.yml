@@ -201,6 +201,8 @@ en:
         importing: Importing...
         delete_my_account: Delete my account
         email_me_the_confirmation_link: Email me the confirmation link
+        first_name: First name
+        last_name: Last name
       new:
         join_family: Join %{family}!
         you_ve_been_invited_by: You've been invited by
@@ -1556,6 +1558,7 @@ en:
         display_a_gem_icon_next_to_your_profile_to_show: Display a gem icon next to your profile to show your supporter status
         general_settings: General settings
         save_changes: Save changes
+        test_email_worker_hint: Queues a test message through the same background worker as system emails
     integrations:
       index:
         services_nav: Integration services
@@ -2073,6 +2076,20 @@ en:
       photos_on_map: Photos on map
       route_map: Route map
       trip_description: Trip description
+    family:
+      audience: Who can view this trip?
+      public_link: Anyone with the link
+      only: Family members only
+      label: Family
+      link: Family link
+      shared_trip: '%{trip} is shared with your family.'
+      trips: Trips shared with your family
+      hint: Family trips appear in your family's trip list. Members must sign in. The magic phrase is only used for public links.
+      choose_audience: Choose who can view this trip and which details to include.
+      sections: What to include on the shared page
+      unavailable: Join an active family before sharing a trip with family members.
+      back_to_trips: Back to trips
+      your_map: Your map for these dates
   stats:
     locked_year_card:
       available_on_pro: Available on Pro
@@ -2349,6 +2366,7 @@ en:
       video_unavailable: Available once the trip route is calculated
       create_video: Create a replay video of this trip
       more_on_source: More on %{source}
+      open_in_map: Open in Map
     share_links:
       new:
         share_trip: Share %{trip}
@@ -3173,6 +3191,7 @@ en:
         smtp_not_configured_link: self-hosted SMTP settings
         test_email_sent: Test email sent to %{email}. Check your inbox (and spam folder).
         test_email_failed: 'Test email failed: %{error}'
+        test_email_queued: Test email queued for %{email}. Delivery will be checked by the background worker; check your inbox and Sidekiq for failures.
       onboardings:
         demo_data_loaded: Demo data loaded.
         demo_data_is_already_loaded: Demo data is already loaded.
@@ -4314,6 +4333,7 @@ en:
       location_coordinates: Location (%{latitude}, %{longitude})
       location_data: Location Data
       location_point: Location Point
+      overlapping_points: "This marker contains %{count} overlapping points. Zooming cannot separate them, so no point can be selected here."
       longitude: Longitude
       meters:
         one: "%{count} meter"

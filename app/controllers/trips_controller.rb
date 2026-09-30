@@ -12,6 +12,10 @@ class TripsController < ApplicationController
     @trips = current_user.trips
                          .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
                          .order(started_at: :desc).page(params[:page]).per(6)
+    @family_trip_links = SharedLink.family_trips_for(current_user).index_by(&:resource_id)
+    @family_trips = Trip.where(id: @family_trip_links.keys)
+                        .includes(:planned_accommodations, :planned_unplanned_places, planned_days: :planned_stops)
+                        .order(started_at: :desc).page(params[:family_page]).per(6)
   end
 
   def show

@@ -62,7 +62,7 @@
                       <%= link_to t('.send_test_email'), settings_test_email_path,
                                   data: { turbo: true, turbo_method: :post },
                                   class: 'btn btn-outline btn-sm' %>
-                      <span class="text-sm text-base-content/70"><%= t('.test_email_hint') %></span>
+                      <span class="text-sm text-base-content/70"><%= t('.test_email_worker_hint') %></span>
                     </div>
                   </div>
                 <% end %>
@@ -173,6 +173,6 @@
 
     <%= render 'settings/general/supporter_status' %>
 
-    <%= render 'settings/general/changelog_consent' %>
+    <%= render 'settings/general/changelog_consent' if DawarichSettings.self_hosted? %>
   </div>
 </div>
