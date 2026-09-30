@@ -108,6 +108,7 @@ RSpec.describe 'Phoenix fixtures: POST /exports as Rails answers it', type: :req
   end
 
   def rails_answer(user_id, params, path: '/exports')
+    reset!
     sign_in User.find(user_id)
     clear_enqueued_jobs
     post path, params: params
@@ -145,6 +146,8 @@ RSpec.describe 'Phoenix fixtures: POST /exports as Rails answers it', type: :req
       cases.each { _1[:rails] = rails_answer(_1[:user_id], _1[:params], path: _1[:path] || '/exports') }
 
       expect(cases.select { _1[:expect] == 'phoenix' }.map { _1[:rails][:status] }.uniq).to eq([302])
+      expect(cases.map { _1[:rails][:flash].keys }).to all(satisfy { |keys| keys.size <= 1 })
+      expect(cases.find { _1[:name] == 'method override to delete' }.dig(:rails, :flash)).to eq({})
       write_json('cases.json', { users:, cases: })
     end
   end
