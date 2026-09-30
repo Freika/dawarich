@@ -1,5 +1,5 @@
 defmodule Dawarich.MaintenanceContractTest do
-  use Dawarich.ScratchCase
+  use Dawarich.ScratchCase, async: true, group: :scratch_db
 
   alias Dawarich.{RailsTree, ReleaseMigrator}
   alias Dawarich.Families.{InvitationCleanupWorker, LocationRequestExpiryWorker}

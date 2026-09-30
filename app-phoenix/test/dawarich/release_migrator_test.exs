@@ -276,7 +276,7 @@ defmodule Dawarich.ReleaseMigratorTest.Throws do
 end
 
 defmodule Dawarich.ReleaseMigratorTest do
-  use Dawarich.ScratchCase
+  use Dawarich.ScratchCase, async: true, group: :scratch_db
 
   import Dawarich.ReleaseMigration
 

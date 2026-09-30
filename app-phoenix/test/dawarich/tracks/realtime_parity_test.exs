@@ -1,5 +1,5 @@
 defmodule Dawarich.Tracks.RealtimeParityTest do
-  use Dawarich.TracksCase
+  use Dawarich.TracksCase, async: true, group: :scratch_db
 
   alias Dawarich.Tracks.{Boundary, Builder, Merger, Points, Settings}
 

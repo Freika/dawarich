@@ -25,7 +25,7 @@ defmodule Dawarich.ReleaseMigrator.BaselineTest.PostFloor do
 end
 
 defmodule Dawarich.ReleaseMigrator.BaselineTest do
-  use Dawarich.ScratchCase
+  use Dawarich.ScratchCase, async: true, group: :scratch_db
 
   import Dawarich.ReleaseMigration
 

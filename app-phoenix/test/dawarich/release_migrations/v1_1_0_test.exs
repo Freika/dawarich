@@ -1,5 +1,5 @@
 defmodule Dawarich.ReleaseMigrations.V1_1_0Test do
-  use Dawarich.ScratchCase
+  use Dawarich.ScratchCase, async: true, group: :scratch_db
 
   alias Dawarich.ReleaseMigrations.V1_1_0
 

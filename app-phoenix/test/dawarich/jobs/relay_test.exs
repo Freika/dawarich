@@ -1,5 +1,5 @@
 defmodule Dawarich.Jobs.RelayTest do
-  use Dawarich.JobsCase
+  use Dawarich.JobsCase, async: true, group: :scratch_db
 
   import ExUnit.CaptureLog
 

@@ -1,5 +1,5 @@
 defmodule Dawarich.Tracks.MetadataRefresherTest do
-  use Dawarich.TracksCase
+  use Dawarich.TracksCase, async: true, group: :scratch_db
 
   import ExUnit.CaptureLog
 

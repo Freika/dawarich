@@ -1,5 +1,5 @@
 defmodule Dawarich.ReleaseMigrations.V1_13_0Test do
-  use Dawarich.ScratchCase
+  use Dawarich.ScratchCase, async: true, group: :scratch_db
 
   import Dawarich.ReleaseMigration, only: [index_name?: 3]
 

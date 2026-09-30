@@ -1,5 +1,5 @@
 defmodule Dawarich.Trips.CalculationTest do
-  use Dawarich.JobsCase
+  use Dawarich.JobsCase, async: true, group: :scratch_db
 
   alias Dawarich.Trips.Calculation
 

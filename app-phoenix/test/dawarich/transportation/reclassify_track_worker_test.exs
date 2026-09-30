@@ -1,5 +1,5 @@
 defmodule Dawarich.Transportation.ReclassifyTrackWorkerTest do
-  use Dawarich.TracksCase
+  use Dawarich.TracksCase, async: true, group: :scratch_db
 
   alias Dawarich.Transportation.ReclassifyTrackWorker
 

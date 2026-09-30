@@ -1,5 +1,5 @@
 defmodule Dawarich.ReleaseMigrations.Effects.LoadRegionsTest do
-  use Dawarich.ScratchCase
+  use Dawarich.ScratchCase, async: true, group: :scratch_db
 
   alias Dawarich.RailsTree
   alias Dawarich.ReleaseMigrations.Effects.LoadRegions

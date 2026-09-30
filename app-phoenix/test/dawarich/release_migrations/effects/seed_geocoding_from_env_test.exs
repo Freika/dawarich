@@ -1,5 +1,5 @@
 defmodule Dawarich.ReleaseMigrations.Effects.SeedGeocodingFromEnvTest do
-  use Dawarich.ScratchCase
+  use Dawarich.ScratchCase, async: true, group: :scratch_db
 
   import Dawarich.GeocodingFixtures
 

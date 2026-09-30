@@ -1,5 +1,5 @@
 defmodule Dawarich.Tracks.ChunkerTest do
-  use Dawarich.TracksCase
+  use Dawarich.TracksCase, async: true, group: :scratch_db
 
   alias Dawarich.Tracks.Chunker
 

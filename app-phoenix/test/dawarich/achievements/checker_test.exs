@@ -1,5 +1,5 @@
 defmodule Dawarich.Achievements.CheckerTest do
-  use Dawarich.JobsCase
+  use Dawarich.JobsCase, async: true, group: :scratch_db
 
   alias Dawarich.Achievements.{Checker, Registry}
 
