@@ -80,6 +80,10 @@ defmodule DawarichWeb.Router do
 
       live "/digests/:year", DawarichWeb.DigestsLive.Show, :show,
         container: {:div, class: "contents"}
+
+      live "/trips", DawarichWeb.TripsLive.Index, :index,
+        container: {:div, class: "contents"},
+        metadata: %{rails_gate: {DawarichWeb.TripsGate, :index?}}
     end
   end
 

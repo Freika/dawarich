@@ -4,6 +4,8 @@ defmodule DawarichWeb.Strangler do
 
   import Plug.Conn, only: [get_req_header: 2, halt: 1]
 
+  require Logger
+
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
 
@@ -38,7 +40,7 @@ defmodule DawarichWeb.Strangler do
       %{pipe_through: pipelines} = route ->
         not handed_back?(conn.path_info) and slice_owned?(route, conn) and
           rails_constraints?(route) and
-          (:browser not in pipelines or page_request?(conn))
+          (:browser not in pipelines or page_request?(conn)) and gate_open?(route, conn)
     end
   end
 
@@ -46,6 +48,19 @@ defmodule DawarichWeb.Strangler do
     do: conn.method != "HEAD" and DawarichWeb.Slices.owned?(slice)
 
   defp slice_owned?(_route, _conn), do: true
+
+  defp gate_open?(%{rails_gate: {module, function}, path_params: params}, conn) do
+    apply(module, function, [conn, params])
+  rescue
+    error ->
+      Logger.info(
+        "[strangler] #{conn.request_path} handed to Rails: #{inspect(error.__struct__)}"
+      )
+
+      false
+  end
+
+  defp gate_open?(_route, _conn), do: true
 
   defp rails_constraints?(%{route: route, path_params: params}),
     do:
