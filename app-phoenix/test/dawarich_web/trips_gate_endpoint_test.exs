@@ -67,4 +67,48 @@ defmodule DawarichWeb.TripsGateEndpointTest do
     assert {"GET /trips HTTP/1.1", [_cookie]} =
              answered_by_puma(port, ctx.upstream, request("/trips", ctx.cookie))
   end
+
+  test "a page the read model rejects goes to Puma; the page before it stays with Phoenix", ctx do
+    for n <- 1..6,
+        do:
+          TripsSeeds.trip!(%{
+            id: 881_101 + n,
+            user_id: 8811,
+            path: [[12.37, 51.338], [12.381, 51.341]],
+            started_at: NaiveDateTime.add(~N[2026-05-09 06:00:00], n * 86_400),
+            ended_at: NaiveDateTime.add(~N[2026-05-12 20:00:00], n * 86_400)
+          })
+
+    TripsSeeds.trip!(%{
+      id: 881_108,
+      user_id: 8811,
+      path: nil,
+      started_at: ~N[2020-01-01 08:00:00],
+      ended_at: ~N[2020-01-02 08:00:00]
+    })
+
+    TripsSeeds.planned!("planned_days", 881_108)
+
+    port = serve()
+    client = connect(port)
+    send_raw(client, request("/trips", ctx.cookie))
+    assert {200, _headers, body} = read_response(client)
+    assert body =~ "data-phx-main"
+
+    assert {line, [cookie]} =
+             answered_by_puma(port, ctx.upstream, request("/trips?page=2", ctx.cookie))
+
+    assert line == "GET /trips?page=2 HTTP/1.1"
+    assert "_dawarich_session=" <> _ = cookie
+  end
+
+  test "a signed-in user whose timezone Rails would reject is answered by Puma", ctx do
+    TripsSeeds.user!(8812, %{"timezone" => "Europe/Atlantis"})
+    cookie = "_dawarich_session=" <> RailsUser.cookie(RailsUser.session(8812))
+
+    assert {"GET /trips HTTP/1.1", [returned_cookie]} =
+             answered_by_puma(serve(), ctx.upstream, request("/trips", cookie))
+
+    assert "_dawarich_session=" <> _ = returned_cookie
+  end
 end

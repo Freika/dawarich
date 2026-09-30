@@ -49,18 +49,21 @@ defmodule DawarichWeb.Strangler do
 
   defp slice_owned?(_route, _conn), do: true
 
-  defp gate_open?(%{rails_gate: {module, function}, path_params: params}, conn) do
+  def gate_open?(%{rails_gate: {module, function}, path_params: params}, conn) do
     apply(module, function, [conn, params])
   rescue
-    error ->
-      Logger.info(
-        "[strangler] #{conn.request_path} handed to Rails: #{inspect(error.__struct__)}"
-      )
-
-      false
+    error -> handed_to_rails(conn, inspect(error.__struct__))
+  catch
+    :exit, reason -> handed_to_rails(conn, inspect(reason))
   end
 
-  defp gate_open?(_route, _conn), do: true
+  def gate_open?(%{rails_gate: _}, _conn), do: false
+  def gate_open?(_route, _conn), do: true
+
+  defp handed_to_rails(conn, detail) do
+    Logger.info("[strangler] #{conn.request_path} handed to Rails: #{detail}")
+    false
+  end
 
   defp rails_constraints?(%{route: route, path_params: params}),
     do:

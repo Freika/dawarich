@@ -29,7 +29,7 @@ defmodule Dawarich.Test.TripsSeeds do
         id: id,
         email: "a8-#{id}@dawarich.test",
         settings: settings,
-        api_key: "a8s1-fixture-key-#{id}"
+        api_key: "a8-k-#{id}"
       })
 
   def trip!(attrs) do

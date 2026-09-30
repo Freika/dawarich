@@ -66,4 +66,10 @@ defmodule Dawarich.TripListTest do
   } do
     assert TripList.load(user, 1_000_000_000_001) == :rails
   end
+
+  test "load/2 rejects a timezone Rails would reject, same as the gate" do
+    bad = TripsSeeds.user!(8852, %{"timezone" => "Europe/Atlantis"})
+    TripsSeeds.trip!(%{id: 885_401, user_id: 8852})
+    assert TripList.load(bad, 1) == :rails
+  end
 end

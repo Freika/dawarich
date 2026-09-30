@@ -46,7 +46,8 @@ defmodule Dawarich.TripList do
          ((t.ended_at AT TIME ZONE 'UTC') AT TIME ZONE z.name)::date,
          (extract(epoch FROM t.ended_at - t.started_at) * 1000000)::bigint,
          #{@rails},
-         (SELECT count(*) FROM trips c WHERE c.user_id = $1)
+         (SELECT count(*) FROM trips c WHERE c.user_id = $1),
+         z.name
   FROM #{@trips} CROSS JOIN z
   ORDER BY t.started_at DESC
   """
@@ -56,7 +57,8 @@ defmodule Dawarich.TripList do
   def load(user, page) do
     with {:ok, settings} <- TripSettings.read(user.settings),
          %{rows: rows} <- UserTimeZone.query!(@page, [user.id, offset(page)], user.settings),
-         false <- Enum.any?(rows, &Enum.at(&1, 8)) do
+         false <- Enum.any?(rows, &Enum.at(&1, 8)),
+         true <- zone_ok?(user.settings, rows) do
       {:ok,
        %{entries: Enum.map(rows, &entry/1), total_pages: total_pages(rows), settings: settings}}
     else
@@ -64,7 +66,19 @@ defmodule Dawarich.TripList do
     end
   end
 
-  defp entry([id, name, distance, countries, path, started_on, ended_on, span_us, _rails, _total]) do
+  defp entry([
+         id,
+         name,
+         distance,
+         countries,
+         path,
+         started_on,
+         ended_on,
+         span_us,
+         _rails,
+         _total,
+         _zone
+       ]) do
     %{
       id: id,
       name: name,
@@ -77,6 +91,9 @@ defmodule Dawarich.TripList do
     }
   end
 
+  defp zone_ok?(_settings, []), do: true
+  defp zone_ok?(settings, [row | _]), do: TripSettings.zone?(settings, List.last(row))
+
   defp total_pages([]), do: 0
-  defp total_pages([row | _]), do: div(List.last(row) + @per_page - 1, @per_page)
+  defp total_pages([row | _]), do: div(Enum.at(row, 9) + @per_page - 1, @per_page)
 end

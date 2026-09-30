@@ -64,6 +64,33 @@ defmodule Dawarich.TripGateTest do
       assert TripList.gate(user, 1) == :rails
     end
 
+    test "a null inside the countries array sends the page to Rails too", %{foreign: foreign} do
+      TripsSeeds.trip!(%{
+        id: 880_602,
+        user_id: foreign.id,
+        path: @path,
+        visited_countries: [nil],
+        started_at: ~N[2027-02-03 08:00:00],
+        ended_at: ~N[2027-02-04 08:00:00]
+      })
+
+      assert TripList.gate(foreign, 1) == :rails
+    end
+
+    test "a planned_unplanned_places row alone also sends a path-less trip's page to Rails", %{
+      user: user
+    } do
+      trip!(880_701, %{
+        path: nil,
+        started_at: ~N[2027-03-01 08:00:00],
+        ended_at: ~N[2027-03-02 08:00:00]
+      })
+
+      TripsSeeds.planned!("planned_unplanned_places", 880_701)
+
+      assert TripList.gate(user, 1) == :rails
+    end
+
     test "a zone PostgreSQL does not list or a timezone that is not a string sends the list to Rails" do
       assert TripList.gate(TripsSeeds.user!(8805, %{"timezone" => "Europe/Atlantis"}), 1) ==
                :rails
