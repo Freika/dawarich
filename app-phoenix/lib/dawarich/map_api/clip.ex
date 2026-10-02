@@ -2,7 +2,7 @@ defmodule Dawarich.MapApi.Clip do
   @moduledoc false
 
   alias Dawarich.{RailsTime, Repo}
-  alias Dawarich.MapApi.{Params, Segments}
+  alias Dawarich.MapApi.{Params, PointRecord, Segments}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   @summary """
@@ -58,7 +58,7 @@ defmodule Dawarich.MapApi.Clip do
   defp update({:object, fields}, json, distance, start, stop, user) do
     {:ok, from} = RailsTime.iso8601(naive(start), user.timezone)
     {:ok, to} = RailsTime.iso8601(naive(stop), user.timezone)
-    geometry = Jason.decode!(json)
+    geometry = PointRecord.ordered_json(json)
     duration = stop - start
 
     changes = %{
@@ -74,8 +74,7 @@ defmodule Dawarich.MapApi.Clip do
     {:object,
      Enum.map(fields, fn
        {"geometry", _} ->
-         {"geometry",
-          {:object, [{"type", geometry["type"]}, {"coordinates", geometry["coordinates"]}]}}
+         {"geometry", geometry}
 
        {"properties", {:object, properties}} ->
          {"properties",

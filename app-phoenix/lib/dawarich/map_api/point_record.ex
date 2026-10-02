@@ -37,9 +37,16 @@ defmodule Dawarich.MapApi.PointRecord do
     do:
       " LEFT JOIN countries c ON c.id = p.country_id LEFT JOIN point_sources s ON s.id = p.source_id "
 
-  def select_sql do
-    Enum.map_join(@serialized -- ["lonlat"], ", ", &(expression(&1) <> " AS " <> &1)) <>
-      ", ST_X(p.lonlat::geometry) AS longitude, ST_Y(p.lonlat::geometry) AS latitude, p.lock_version AS revision"
+  def select_sql(true), do: select(~w(id timestamp velocity country_name tracker_id), "")
+
+  def select_sql(false),
+    do: select(@serialized -- ["lonlat"], ", p.lock_version AS revision")
+
+  def ordered_json(text), do: text |> Jason.decode!(objects: :ordered_objects) |> json_term()
+
+  defp select(names, extra) do
+    Enum.map_join(names, ", ", &(expression(&1) <> " AS " <> &1)) <>
+      ", ST_X(p.lonlat::geometry) AS longitude, ST_Y(p.lonlat::geometry) AS latitude" <> extra
   end
 
   def term(row, _columns, true), do: object(@slim, row)
@@ -66,8 +73,7 @@ defmodule Dawarich.MapApi.PointRecord do
   defp value(name, number) when name in ~w(latitude longitude), do: RubyFloat.to_s(number)
   defp value(_name, nil), do: nil
 
-  defp value(name, text) when name in ~w(geodata motion_data),
-    do: text |> Jason.decode!(objects: :ordered_objects) |> json_term()
+  defp value(name, text) when name in ~w(geodata motion_data), do: ordered_json(text)
 
   defp value(_name, %Decimal{} = number) do
     text = number |> Decimal.normalize() |> Decimal.to_string(:normal)

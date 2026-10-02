@@ -28,7 +28,7 @@ defmodule Dawarich.MapApi.Points do
 
       term = fn ->
         RailsTime.with_zone(user.timezone, fn ->
-          Enum.map(rows(sql, args), &PointRecord.term(&1, columns, slim?))
+          Enum.map(rows(sql, args, slim?), &PointRecord.term(&1, columns, slim?))
         end)
       end
 
@@ -79,14 +79,14 @@ defmodule Dawarich.MapApi.Points do
       {where, args} = import(where, args, params["import_id"])
       {suffix, headers} = paginate(where, args, params)
       sql = where <> " ORDER BY p.timestamp ASC, p.id ASC" <> suffix
-      {:ok, Enum.map(rows(sql, args), &PointRecord.term(&1, columns, false)), headers, 200}
+      {:ok, Enum.map(rows(sql, args, false), &PointRecord.term(&1, columns, false)), headers, 200}
     end
   end
 
-  defp rows(where, args) do
+  defp rows(where, args, slim?) do
     result =
       Repo.query!(
-        "SELECT #{PointRecord.select_sql()} FROM points p " <> PointRecord.joins() <> where,
+        "SELECT #{PointRecord.select_sql(slim?)} FROM points p " <> PointRecord.joins() <> where,
         args
       )
 
