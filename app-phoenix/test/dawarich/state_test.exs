@@ -1,6 +1,8 @@
 defmodule Dawarich.StateTest do
   use Dawarich.JobsCase, async: true, group: :scratch_db
 
+  import Dawarich.LockRace
+
   alias Dawarich.State
 
   test "a key is claimed once until its claim expires, then it can be claimed again" do
@@ -95,6 +97,23 @@ defmodule Dawarich.StateTest do
     for key <- keys, do: assert(State.count(ScratchRepo, key) == Map.get(model, key, 0))
   end
 
+  test "a claim and an increment that race an open transaction on the same keys stay atomic" do
+    holder =
+      hold(fn ->
+        true = State.claim(ScratchRepo, "o:atomic", 60)
+        2 = State.increment(ScratchRepo, "c:atomic", 2, 60)
+      end)
+
+    claimer = Task.async(fn -> State.claim(ScratchRepo, "o:atomic", 60) end)
+    adder = Task.async(fn -> State.increment(ScratchRepo, "c:atomic", 3, 60) end)
+    wait_until(fn -> blocked("INSERT INTO phoenix.") == 2 end)
+    commit(holder)
+
+    refute Task.await(claimer)
+    assert Task.await(adder) == 5
+    assert State.count(ScratchRepo, "c:atomic") == 5
+  end
+
   test "epoch_tokens seeds a missing key once and returns the same token afterwards" do
     key = "points:tile_epoch:1:2025"
     assert %{^key => token} = State.epoch_tokens(ScratchRepo, [key])
@@ -123,6 +142,36 @@ defmodule Dawarich.StateTest do
     end)
 
     assert State.epoch_tokens(ScratchRepo, ["e:2:all"]) == %{"e:2:all" => token}
+  end
+
+  test "two bumps naming overlapping keys in opposite orders both apply without a deadlock" do
+    before = State.epoch_tokens(ScratchRepo, ["e:a", "e:b"])
+    holder = hold(fn -> :ok = State.bump_epochs(ScratchRepo, ["e:a"]) end)
+
+    forward = attempt(fn -> State.bump_epochs(ScratchRepo, ["e:a", "e:b"]) end)
+    wait_until(fn -> blocked("INSERT INTO phoenix.epochs AS e") == 1 end)
+    backward = attempt(fn -> State.bump_epochs(ScratchRepo, ["e:b", "e:a"]) end)
+    wait_until(fn -> blocked("INSERT INTO phoenix.epochs AS e") == 2 end)
+    commit(holder)
+
+    assert Task.await(forward) == {:ok, :ok}
+    assert Task.await(backward) == {:ok, :ok}
+    bumped = State.epoch_tokens(ScratchRepo, ["e:a", "e:b"])
+    refute bumped["e:a"] == before["e:a"]
+    refute bumped["e:b"] == before["e:b"]
+  end
+
+  test "two first reads seeding overlapping keys in different orders do not wait on each other" do
+    holder = hold(fn -> State.epoch_tokens(ScratchRepo, ["s:c"]) end)
+
+    wide = attempt(fn -> State.epoch_tokens(ScratchRepo, ["s:y", "s:c", "s:x"]) end)
+    wait_until(fn -> blocked("INSERT INTO phoenix.epochs (key") == 1 end)
+    narrow = attempt(fn -> State.epoch_tokens(ScratchRepo, ["s:x", "s:y"]) end)
+    outcome = settle(narrow, "INSERT INTO phoenix.epochs (key", 1)
+    commit(holder)
+
+    assert {:ok, %{"s:c" => _, "s:x" => x, "s:y" => y}} = Task.await(wide)
+    assert {:finished, {:ok, %{"s:x" => ^x, "s:y" => ^y}}} = outcome
   end
 
   test "registration follows the given default until it is stored, then the stored value" do

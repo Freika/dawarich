@@ -64,7 +64,7 @@ defmodule Dawarich.State do
   def epoch_tokens(repo, keys) when is_list(keys) do
     found = tokens(repo, keys)
 
-    case keys |> Enum.reject(&Map.has_key?(found, &1)) |> Enum.uniq() do
+    case keys |> Enum.reject(&Map.has_key?(found, &1)) |> lock_order() do
       [] ->
         found
 
@@ -75,7 +75,7 @@ defmodule Dawarich.State do
   end
 
   def bump_epochs(repo, keys) when is_list(keys) do
-    keys = Enum.uniq(keys)
+    keys = lock_order(keys)
     repo.query!(@bump, [keys, Enum.map(keys, fn _ -> token() end)], log: false)
     :ok
   end
@@ -95,6 +95,8 @@ defmodule Dawarich.State do
   defp tokens(repo, keys),
     do:
       Map.new(repo.query!(@tokens, [keys], log: false).rows, fn [key, token] -> {key, token} end)
+
+  defp lock_order(keys), do: keys |> Enum.uniq() |> Enum.sort()
 
   defp token, do: Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
 end
