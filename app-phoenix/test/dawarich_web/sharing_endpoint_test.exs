@@ -10,6 +10,7 @@ defmodule DawarichWeb.SharingEndpointTest do
 
   @live "a9500000-0000-4000-8000-000000000001"
   @protected "a9500000-0000-4000-8000-000000000002"
+  @timeline "a9500000-0000-4000-8000-000000000003"
   @gone_trip "a9500000-0000-4000-8000-000000000007"
   @throttle SharingSeeds.fixture("throttle.json")
 
@@ -77,6 +78,15 @@ defmodule DawarichWeb.SharingEndpointTest do
     signed_in = "Cookie: _dawarich_session=#{RailsUser.cookie(RailsUser.session(9901))}\r\n"
     flash = %{"flash" => %{"discard" => [], "flashes" => %{"notice" => "Hi"}}}
     flashed = "Cookie: _dawarich_session=#{RailsUser.cookie(flash)}\r\n"
+    stale = "Cookie: _dawarich_session=#{RailsUser.cookie(RailsUser.session(9999))}\r\n"
+
+    RailsUser.insert!(%{
+      id: 9902,
+      email: "a9s-9902@dawarich.test",
+      locked_at: NaiveDateTime.utc_now()
+    })
+
+    locked = "Cookie: _dawarich_session=#{RailsUser.cookie(RailsUser.session(9902))}\r\n"
 
     for request <- [
           "HEAD /s/#{@live} HTTP/1.1\r\nHost: a\r\n\r\n",
@@ -87,6 +97,11 @@ defmodule DawarichWeb.SharingEndpointTest do
           get("/s/#{String.upcase(@live)}"),
           get("/s/#{@live}?client=ios"),
           get("/s/#{@live}", "X-Dawarich-Client: ios\r\n"),
+          get("/s/#{@live}", stale),
+          get("/s/#{@live}", locked),
+          get("/s/#{@live}?format=json"),
+          get("/s/#{@live}", "X-Requested-With: XMLHttpRequest\r\n"),
+          get("/s/#{@live}", "Accept: application/json\r\n"),
           get(
             "/s/#{@live}",
             "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: 9\r\n"
@@ -124,7 +139,11 @@ defmodule DawarichWeb.SharingEndpointTest do
           {~s({"phrase":"x"}), "application/json", ""},
           {"phrase=x&locale=de", "application/x-www-form-urlencoded", ""},
           {"phrase=x&client=ios", "application/x-www-form-urlencoded", ""},
-          {"phrase=x&_method=patch", "application/x-www-form-urlencoded", ""}
+          {"phrase=x&_method=patch", "application/x-www-form-urlencoded", ""},
+          {"phrase=x&format=json", "application/x-www-form-urlencoded", ""},
+          {"phrase=x", "application/x-www-form-urlencoded", "X-HTTP-Method-Override: PATCH\r\n"},
+          {"phrase=x", "application/x-www-form-urlencoded",
+           "X-Requested-With: XMLHttpRequest\r\n"}
         ] do
       assert {"POST /s/#{@protected}/unlock HTTP/1.1", ^body} =
                puma(port, ctx.upstream, post("/s/#{@protected}/unlock", body, type, headers))
@@ -149,15 +168,13 @@ defmodule DawarichWeb.SharingEndpointTest do
     assert status == 429
     assert body == @throttle["throttled"]["body"]
 
-    assert for(
-             {name, value} <- headers,
-             name in ~w(cache-control content-type),
-             do: {name, value}
-           ) ==
+    wire = ~w(cache-control content-type retry-after)
+
+    assert for({name, value} <- headers, name in wire, do: {name, name == "retry-after" || value}) ==
              for(
                [name, value] <- @throttle["raw"]["headers"],
-               String.downcase(name) in ~w(cache-control content-type),
-               do: {String.downcase(name), value}
+               (name = String.downcase(name)) in wire,
+               do: {name, name == "retry-after" || value}
              )
 
     assert hd(values(headers, "retry-after")) in Enum.map(
@@ -200,14 +217,60 @@ defmodule DawarichWeb.SharingEndpointTest do
     assert @throttle["seeded"]["status"] == 429
   end
 
-  test "an unreachable Rack::Attack store does not throttle, as Rails' failsafe does not" do
+  test "an unlock goes to Puma with its body, uncounted, when the Rack::Attack connection is not running",
+       ctx do
     port = serve()
 
-    statuses =
-      for _ <- 1..7,
-          do: port |> phoenix(post("/s/#{@protected}/unlock", "phrase=falsch")) |> elem(0)
+    assert {"POST /s/#{@protected}/unlock HTTP/1.1", "phrase=falsch"} ==
+             puma(port, ctx.upstream, post("/s/#{@protected}/unlock", "phrase=falsch"))
+  end
 
-    assert statuses == List.duplicate(401, 7)
+  test "an unlock goes to Puma with its body when the Rack::Attack store cannot be reached",
+       ctx do
+    closed = listen()
+    :gen_tcp.close(closed.listen)
+
+    start_supervised!(
+      {Redix,
+       {"redis://127.0.0.1:#{closed.port}",
+        [name: Dawarich.Redis.rack_attack(), sync_connect: false, exit_on_disconnection: false]}}
+    )
+
+    port = serve()
+
+    assert {"POST /s/#{@protected}/unlock HTTP/1.1", "phrase=falsch"} ==
+             puma(port, ctx.upstream, post("/s/#{@protected}/unlock", "phrase=falsch"))
+  end
+
+  test "a page that stops being native after the gate reaches Puma without Phoenix's session cookie",
+       ctx do
+    Dawarich.Repo.query!(
+      "UPDATE shared_links SET settings = $2 WHERE id = $1::text::uuid",
+      [@timeline, %{"start_date" => "9 May 2026", "end_date" => "2026-05-12"}]
+    )
+
+    rails =
+      Task.async(fn ->
+        puma = accept(ctx.upstream)
+        read_head(puma)
+
+        reply(
+          puma,
+          "HTTP/1.1 200 OK\r\nSet-Cookie: _dawarich_session=rails\r\nContent-Length: 4\r\n\r\npuma"
+        )
+      end)
+
+    conn =
+      Phoenix.ConnTest.build_conn(:get, "/s/#{@timeline}")
+      |> DawarichWeb.Router.call(DawarichWeb.Router.init([]))
+
+    Task.await(rails)
+
+    assert for({"set-cookie", value} <- conn.resp_headers, do: value) == [
+             "_dawarich_session=rails"
+           ]
+
+    assert SharingSeeds.view_count(@timeline) == 0
   end
 
   test "a Turbo visit gets the reload stub and does not count the view" do

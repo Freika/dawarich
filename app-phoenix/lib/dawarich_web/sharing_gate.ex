@@ -14,7 +14,7 @@ defmodule DawarichWeb.SharingGate do
   def unlock?(conn, %{"id" => id}),
     do:
       open?(conn, id) and Enum.all?(@forwarded, &(get_req_header(conn, &1) == [])) and
-        is_binary(Application.get_env(:dawarich, :redis, [])[:url])
+        is_pid(Process.whereis(Dawarich.Redis.rack_attack()))
 
   defp open?(conn, id) do
     conn.method != "HEAD" and LayoutAssigns.self_hosted?() and SharedLinks.canonical?(id) and
@@ -25,8 +25,7 @@ defmodule DawarichWeb.SharingGate do
 
   defp anonymous?(conn),
     do:
-      is_nil(conn.assigns.current_user) and is_nil(conn.assigns.rails_locked) and
-        is_nil(conn.cookies["remember_user_token"]) and
+      is_nil(conn.assigns.current_user) and is_nil(conn.cookies["remember_user_token"]) and
         Enum.all?(
           ~w(warden.user.user.key flash),
           &(not Map.has_key?(conn.assigns.rails_session, &1))

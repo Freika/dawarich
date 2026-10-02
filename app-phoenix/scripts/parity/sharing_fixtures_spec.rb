@@ -137,7 +137,7 @@ RSpec.describe 'Phoenix fixtures: the public shared-link pages as Rails renders 
                                           'CONTENT_TYPE' => 'application/x-www-form-urlencoded')
     status, headers, = Rails.application.call(env)
     volatile = %w[x-request-id x-runtime]
-    { status:, headers: headers.to_a.sort.map { |k, v| [k, volatile.include?(k) ? 'VOLATILE' : v] } }
+    { status:, headers: headers.to_a.map { |k, v| [k, volatile.include?(k) ? 'VOLATILE' : v] } }
   end
 
   def unmask(value)
