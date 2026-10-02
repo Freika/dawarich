@@ -45,6 +45,8 @@ module PhoenixBuildInputs
     end
   end
 
+  CORE_SCALAR = /\A(?:~|null|true|false|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?)?\z/
+
   module_function
 
   def gem_file(gem, path)
@@ -94,5 +96,36 @@ module PhoenixBuildInputs
   def write(path, content)
     FileUtils.mkdir_p(File.dirname(path))
     File.write(path, content)
+  end
+
+  def yaml_problems(file)
+    scanner = Psych::ScalarScanner.new(Psych::ClassLoader.new)
+    problems = []
+    visit = lambda do |node, key|
+      where = "#{file}:#{node.start_line + 1}"
+      marked = node.is_a?(Psych::Nodes::Alias) || node.try(:anchor) || node.try(:tag)
+      problems << "#{where} anchor, alias or tag" if marked
+      case node
+      when Psych::Nodes::Scalar
+        moved = node.plain && !node.quoted && !core_scalar?(scanner.tokenize(node.value), node.value, key)
+        problems << "#{where} #{node.value.inspect}" if moved
+      when Psych::Nodes::Mapping
+        keys = node.children.each_slice(2).map { |k, _| k.try(:value) }
+        problems << "#{where} duplicate or merge key" if keys.uniq.size < keys.size || keys.include?('<<')
+        node.children.each_slice(2) do |k, v|
+          visit.call(k, true)
+          visit.call(v, false)
+        end
+      else
+        node.children&.each { |child| visit.call(child, false) }
+      end
+    end
+    visit.call(Psych.parse_stream(File.read(file)), false)
+    problems
+  end
+
+  def core_scalar?(value, text, key)
+    core = text.match?(CORE_SCALAR)
+    value.is_a?(String) ? !core : !key && core
   end
 end
