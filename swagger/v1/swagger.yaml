@@ -5485,6 +5485,351 @@ paths:
           description: track not found
         '401':
           description: unauthorized
+  "/api/v1/tracks/{track_id}/segments":
+    get:
+      summary: Lists a track's transportation-mode segments
+      tags:
+      - Tracks
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      - name: track_id
+        in: path
+        required: true
+        description: Track ID
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: segments found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  track_id:
+                    type: integer
+                  dominant_mode:
+                    type: string
+                    nullable: true
+                  enabled_modes:
+                    type: array
+                    items:
+                      type: string
+                    description: Transportation modes enabled in the user's settings;
+                      the only valid override values
+                  segments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        track_id:
+                          type: integer
+                        transportation_mode:
+                          type: string
+                          example: cycling
+                        start_at:
+                          type: string
+                          format: datetime
+                          nullable: true
+                        end_at:
+                          type: string
+                          format: datetime
+                          nullable: true
+                        start_index:
+                          type: integer
+                          nullable: true
+                        end_index:
+                          type: integer
+                          nullable: true
+                        distance:
+                          type: integer
+                          nullable: true
+                          description: Meters
+                        duration:
+                          type: integer
+                          nullable: true
+                          description: Seconds
+                        avg_speed:
+                          type: number
+                          nullable: true
+                          description: km/h
+                        max_speed:
+                          type: number
+                          nullable: true
+                          description: km/h
+                        confidence:
+                          type: string
+                          nullable: true
+                          enum:
+                          -
+                          - low
+                          - medium
+                          - high
+                        confidence_score:
+                          type: number
+                          nullable: true
+                        source:
+                          type: string
+                          nullable: true
+                          example: inferred
+                        corrected_at:
+                          type: string
+                          format: datetime
+                          nullable: true
+                        manually_corrected:
+                          type: boolean
+                      required:
+                      - id
+                      - track_id
+                      - transportation_mode
+                      - source
+                      - corrected_at
+                      - manually_corrected
+                required:
+                - track_id
+                - dominant_mode
+                - enabled_modes
+                - segments
+        '404':
+          description: track not found
+        '401':
+          description: unauthorized
+  "/api/v1/tracks/{track_id}/segments/{id}":
+    patch:
+      summary: Corrects a segment's transportation mode or resets it to auto-detection
+      tags:
+      - Tracks
+      description: 'Send `transportation_mode` to override the detected mode, or `reset:
+        true` to drop the correction and re-run detection for the whole track (the
+        segment list is replaced and `segment` is null).'
+      parameters:
+      - name: Authorization
+        in: header
+        required: true
+        description: Bearer token
+        schema:
+          type: string
+      - name: track_id
+        in: path
+        required: true
+        description: Track ID
+        schema:
+          type: integer
+      - name: id
+        in: path
+        required: true
+        description: Segment ID
+        schema:
+          type: integer
+      responses:
+        '200':
+          description: segment updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  track_id:
+                    type: integer
+                  dominant_mode:
+                    type: string
+                    nullable: true
+                  enabled_modes:
+                    type: array
+                    items:
+                      type: string
+                    description: Transportation modes enabled in the user's settings;
+                      the only valid override values
+                  segments:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: integer
+                        track_id:
+                          type: integer
+                        transportation_mode:
+                          type: string
+                          example: cycling
+                        start_at:
+                          type: string
+                          format: datetime
+                          nullable: true
+                        end_at:
+                          type: string
+                          format: datetime
+                          nullable: true
+                        start_index:
+                          type: integer
+                          nullable: true
+                        end_index:
+                          type: integer
+                          nullable: true
+                        distance:
+                          type: integer
+                          nullable: true
+                          description: Meters
+                        duration:
+                          type: integer
+                          nullable: true
+                          description: Seconds
+                        avg_speed:
+                          type: number
+                          nullable: true
+                          description: km/h
+                        max_speed:
+                          type: number
+                          nullable: true
+                          description: km/h
+                        confidence:
+                          type: string
+                          nullable: true
+                          enum:
+                          -
+                          - low
+                          - medium
+                          - high
+                        confidence_score:
+                          type: number
+                          nullable: true
+                        source:
+                          type: string
+                          nullable: true
+                          example: inferred
+                        corrected_at:
+                          type: string
+                          format: datetime
+                          nullable: true
+                        manually_corrected:
+                          type: boolean
+                      required:
+                      - id
+                      - track_id
+                      - transportation_mode
+                      - source
+                      - corrected_at
+                      - manually_corrected
+                  segment:
+                    type: object
+                    properties:
+                      id:
+                        type: integer
+                      track_id:
+                        type: integer
+                      transportation_mode:
+                        type: string
+                        example: cycling
+                      start_at:
+                        type: string
+                        format: datetime
+                        nullable: true
+                      end_at:
+                        type: string
+                        format: datetime
+                        nullable: true
+                      start_index:
+                        type: integer
+                        nullable: true
+                      end_index:
+                        type: integer
+                        nullable: true
+                      distance:
+                        type: integer
+                        nullable: true
+                        description: Meters
+                      duration:
+                        type: integer
+                        nullable: true
+                        description: Seconds
+                      avg_speed:
+                        type: number
+                        nullable: true
+                        description: km/h
+                      max_speed:
+                        type: number
+                        nullable: true
+                        description: km/h
+                      confidence:
+                        type: string
+                        nullable: true
+                        enum:
+                        -
+                        - low
+                        - medium
+                        - high
+                      confidence_score:
+                        type: number
+                        nullable: true
+                      source:
+                        type: string
+                        nullable: true
+                        example: inferred
+                      corrected_at:
+                        type: string
+                        format: datetime
+                        nullable: true
+                      manually_corrected:
+                        type: boolean
+                    required:
+                    - id
+                    - track_id
+                    - transportation_mode
+                    - source
+                    - corrected_at
+                    - manually_corrected
+                    nullable: true
+                required:
+                - track_id
+                - dominant_mode
+                - enabled_modes
+                - segments
+                - segment
+        '400':
+          description: neither transportation_mode nor reset given
+        '422':
+          description: mode not enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum:
+                    - mode_not_enabled
+                    - reprocess_failed
+                    - update_failed
+                  message:
+                    type: string
+                  enabled_modes:
+                    type: array
+                    items:
+                      type: string
+                required:
+                - error
+                - message
+        '404':
+          description: segment not found
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                transportation_mode:
+                  type: string
+                  example: driving
+                reset:
+                  type: boolean
+                  example: false
   "/api/v1/tracks":
     get:
       summary: Retrieves tracks as GeoJSON
