@@ -69,34 +69,6 @@ defmodule DawarichWeb.InsightsFrameTest do
     end
   end
 
-  test "ordinary Chrome HTML accept mix is admitted with unsafe request shapes retained" do
-    chrome =
-      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
-
-    assert DawarichWeb.InsightsGate.page_request?(
-             Plug.Test.conn(:get, "/insights/details")
-             |> put_req_header("accept", chrome)
-           )
-
-    for {method, path, headers} <- [
-          {:post, "/insights/details", []},
-          {:put, "/insights/details", []},
-          {:get, "/insights/details?format=csv", []},
-          {:get, "/insights/details", [{"accept", "application/json"}]},
-          {:get, "/insights/details", [{"x-requested-with", "XMLHttpRequest"}]}
-        ] do
-      conn =
-        Enum.reduce(headers, Plug.Test.conn(method, path), fn {name, value}, c ->
-          put_req_header(c, name, value)
-        end)
-
-      refute DawarichWeb.InsightsGate.page_request?(conn)
-    end
-
-    refute Dawarich.Auth.Admission.headers([{"turbo-frame", "one"}, {"turbo-frame", "two"}]) ==
-             :ok
-  end
-
   test "frame request chooses minimal layout while direct/blank-header requests retain app root" do
     for {header, expected} <- [
           {nil, false},

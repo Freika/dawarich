@@ -154,7 +154,6 @@ defmodule DawarichWeb.Router do
     live_session :insights_details,
       session: {DawarichWeb.InsightsFrame, :live_session, []},
       on_mount: DawarichWeb.InsightsFrameAuth,
-      root_layout: {DawarichWeb.Layouts, :root},
       layout: {DawarichWeb.Layouts, :app} do
       live "/insights/details", DawarichWeb.InsightsLive.Details, :index,
         container: {:div, class: "contents"},

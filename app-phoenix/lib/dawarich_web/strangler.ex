@@ -82,7 +82,7 @@ defmodule DawarichWeb.Strangler do
 
   defp handed_back?([]), do: false
 
-  defp page_request?(conn) do
+  def page_request?(conn) do
     not String.contains?(List.last(conn.path_info) || "", ".") and
       not String.match?(header(conn, "x-requested-with"), ~r/XMLHttpRequest/i) and
       not format_param?(conn.query_string) and
