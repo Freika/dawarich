@@ -18,6 +18,32 @@ defmodule DawarichWeb.NumberFormat do
         |> String.replace(".", format(locale, "separator", "."))
   end
 
+  def with_precision_one(locale, value) when is_float(value) do
+    {coefficient, exponent} = shortest_decimal(value)
+
+    tenths =
+      if exponent >= -1,
+        do: coefficient * Integer.pow(10, exponent + 1),
+        else:
+          div(
+            2 * coefficient + Integer.pow(10, -exponent - 1),
+            2 * Integer.pow(10, -exponent - 1)
+          )
+
+    Integer.to_string(div(tenths, 10)) <>
+      format(locale, "separator", ".") <> Integer.to_string(rem(tenths, 10))
+  end
+
+  defp shortest_decimal(value) do
+    [mantissa | exponent] = value |> :erlang.float_to_binary([:short]) |> String.split("e")
+
+    [int, frac] =
+      String.split(if(String.contains?(mantissa, "."), do: mantissa, else: mantissa <> ".0"), ".")
+
+    shift = if exponent == [], do: 0, else: String.to_integer(hd(exponent))
+    {String.to_integer(int <> frac), shift - byte_size(frac)}
+  end
+
   defp format(locale, key, default) do
     case Dawarich.I18n.t(locale, "number.format." <> key) do
       {:ok, value} when is_binary(value) -> value

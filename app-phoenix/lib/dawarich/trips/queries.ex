@@ -67,6 +67,29 @@ defmodule Dawarich.Trips.Queries do
     )
   end
 
+  def day_stats(repo, trip, windows, zone) do
+    repo
+    |> query(
+      """
+      SELECT (to_timestamp(points.timestamp) AT TIME ZONE $7)::date,
+             to_char(to_timestamp(MIN(points.timestamp)) AT TIME ZONE $7, 'YYYY-MM-DD"T"HH24:MI:SS'),
+             to_char(to_timestamp(MAX(points.timestamp)) AT TIME ZONE $7, 'YYYY-MM-DD"T"HH24:MI:SS'),
+             COALESCE(ST_Length(ST_MakeLine(points.lonlat::geometry ORDER BY points.timestamp)::geography), 0)
+      #{@from} #{@primary}
+      GROUP BY 1
+      """,
+      [trip.user_id, trip.from, trip.to | window_params(windows)] ++ [zone]
+    )
+    |> Map.new(fn [day, first, last, meters] ->
+      {day,
+       %{
+         first: NaiveDateTime.from_iso8601!(first),
+         last: NaiveDateTime.from_iso8601!(last),
+         distance_m: meters
+       }}
+    end)
+  end
+
   def distance_meters(repo, trip, windows) do
     [[meters]] =
       query(

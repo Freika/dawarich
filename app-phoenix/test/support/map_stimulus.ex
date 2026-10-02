@@ -3,7 +3,7 @@ defmodule Dawarich.Test.MapStimulus do
 
   @stimulus ~r/^(data-controller|data-action|data-turbo.*|data-[a-z0-9-]+-(target|value|outlet|class|param))$/
   @regions ["#map-shell", "#share-link-modal", "#demo-data-banner", "#map-footer"]
-  @roots ["map-shell", "share-link-modal", "demo-data-banner"]
+  @roots ["map-shell", "share-link-modal", "demo-data-banner", "trip-shell"]
   @islands Enum.join(
              [
                "[data-controller~='onboarding-modal']",
@@ -23,11 +23,11 @@ defmodule Dawarich.Test.MapStimulus do
     |> String.replace(~r|(/assets/[^"'\s]*?)-[0-9a-f]{8,}(\.\w+)|, "\\1\\2")
   end
 
-  def attributes(html) do
+  def attributes(html, regions \\ @regions) do
     doc = LazyHTML.from_document(html)
 
     regions =
-      for region <- @regions,
+      for region <- regions,
           {tag, attrs, _children} <-
             doc |> LazyHTML.query("#{region}, #{region} *") |> LazyHTML.to_tree(),
           kept = kept(attrs),

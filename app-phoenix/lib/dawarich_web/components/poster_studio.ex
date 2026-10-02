@@ -12,6 +12,7 @@ defmodule DawarichWeb.PosterStudio do
   attr :page, :map, required: true
   attr :locale, :string, required: true
   attr :rails_csrf_token, :string, required: true
+  attr :date_range_label, :string, default: nil
 
   def poster_studio(assigns) do
     assigns = assign(assigns, fonts: fonts_json(~w(inter oswald playfair-display jetbrains-mono)))
@@ -34,51 +35,58 @@ defmodule DawarichWeb.PosterStudio do
             </h2>
             <.studio_switcher current={:poster} controller="poster-studio-editor" locale={@locale} />
           </div>
-          <div class="flex items-center gap-2 min-w-0">
-            <input
-              type="datetime-local"
-              class="input input-bordered input-sm"
-              data-poster-studio-editor-target="dateStart"
-            />
-            <span class="text-xs opacity-60">–</span>
-            <input
-              type="datetime-local"
-              class="input input-bordered input-sm"
-              data-poster-studio-editor-target="dateEnd"
-            />
-            <button
-              type="button"
-              class="btn btn-sm btn-primary"
-              data-poster-studio-editor-target="loadButton"
-              data-action="poster-studio-editor#applyDates"
-            >
-              <span
-                class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
-                data-poster-studio-editor-target="loadSpinner"
-              ></span>
-              <span data-poster-studio-editor-target="loadLabel">{p(@locale, "load")}</span>
-            </button>
-            <div class="hidden items-center gap-1 lg:flex">
+          <%= if @date_range_label == nil do %>
+            <div class="flex items-center gap-2 min-w-0">
+              <input
+                type="datetime-local"
+                class="input input-bordered input-sm"
+                data-poster-studio-editor-target="dateStart"
+              />
+              <span class="text-xs opacity-60">–</span>
+              <input
+                type="datetime-local"
+                class="input input-bordered input-sm"
+                data-poster-studio-editor-target="dateEnd"
+              />
               <button
                 type="button"
-                class="btn btn-sm btn-ghost"
-                data-range="today"
-                data-action="poster-studio-editor#presetRange"
-              >{p(@locale, "today")}</button>
-              <button
-                type="button"
-                class="btn btn-sm btn-ghost"
-                data-range="week"
-                data-action="poster-studio-editor#presetRange"
-              >{p(@locale, "last_7_days")}</button>
-              <button
-                type="button"
-                class="btn btn-sm btn-ghost"
-                data-range="month"
-                data-action="poster-studio-editor#presetRange"
-              >{p(@locale, "last_month")}</button>
+                class="btn btn-sm btn-primary"
+                data-poster-studio-editor-target="loadButton"
+                data-action="poster-studio-editor#applyDates"
+              >
+                <span
+                  class="hidden h-3.5 w-3.5 animate-spin rounded-full border-2 border-current border-r-transparent"
+                  data-poster-studio-editor-target="loadSpinner"
+                ></span>
+                <span data-poster-studio-editor-target="loadLabel">{p(@locale, "load")}</span>
+              </button>
+              <div class="hidden items-center gap-1 lg:flex">
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost"
+                  data-range="today"
+                  data-action="poster-studio-editor#presetRange"
+                >{p(@locale, "today")}</button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost"
+                  data-range="week"
+                  data-action="poster-studio-editor#presetRange"
+                >{p(@locale, "last_7_days")}</button>
+                <button
+                  type="button"
+                  class="btn btn-sm btn-ghost"
+                  data-range="month"
+                  data-action="poster-studio-editor#presetRange"
+                >{p(@locale, "last_month")}</button>
+              </div>
             </div>
-          </div>
+          <% else %>
+            <div class="flex items-center gap-2 min-w-0 text-sm opacity-70">
+              <Icon.icon name="calendar-clock" class="h-4 w-4" />
+              <span>{@date_range_label}</span>
+            </div>
+          <% end %>
           <button
             type="button"
             class="btn btn-ghost btn-sm btn-circle shrink-0"

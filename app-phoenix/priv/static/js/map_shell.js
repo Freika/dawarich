@@ -75,7 +75,7 @@ export const mount = (element, hook = null) => {
   if (applications.has(element)) return applications.get(element)
   const family = new Set()
   const studios =
-    element.id === "map-shell"
+    element.id === "map-shell" || element.id === "trip-shell"
       ? [...element.querySelectorAll("#poster-studio, #video-studio")]
       : []
   for (const studio of studios) {
@@ -85,7 +85,7 @@ export const mount = (element, hook = null) => {
   const application = start(element, family)
   for (const studio of studios) start(studio, family)
   portals.set(element, studios)
-  if (element.id === "map-shell") window.Stimulus = application
+  if (element.id === "map-shell" || element.id === "trip-shell") window.Stimulus = application
   return application
 }
 

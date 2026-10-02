@@ -12,6 +12,7 @@ defmodule DawarichWeb.Strangler do
   @constraints %{
     "/api/v1/photos/:id/thumbnail" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
     "/api/v1/photos/:id/thumbnail.jpg" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
+    "/trips/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/stats/:year" => %{"year" => ~r/\A\d{4}\z/},
     "/stats/:year/:month" => %{"year" => ~r/\A\d{4}\z/, "month" => ~r/\A(0?[1-9]|1[0-2])\z/},
     "/digests/:year" => %{"year" => ~r/\A\d{4}\z/},

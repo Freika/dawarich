@@ -1,7 +1,7 @@
 defmodule DawarichWeb.TripsGate do
   @moduledoc false
 
-  alias Dawarich.TripList
+  alias Dawarich.{TripList, TripPage}
 
   def index?(conn, _params) do
     case Plug.Conn.Query.decode(conn.query_string)["page"] do
@@ -12,6 +12,9 @@ defmodule DawarichWeb.TripsGate do
         false
     end
   end
+
+  def show?(conn, %{"id" => id}),
+    do: open?(conn, &match?({:ok, _}, TripPage.gate(&1, String.to_integer(id))))
 
   def page_number(page), do: max(DawarichWeb.Params.ruby_to_i(page), 1)
 
