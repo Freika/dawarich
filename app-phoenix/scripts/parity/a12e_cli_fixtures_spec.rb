@@ -1,0 +1,313 @@
+# frozen_string_literal: true
+
+require 'rails_helper'
+require 'rake'
+require_relative 'a12e_fixture_support'
+
+RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks and console recipes' do
+  fx = A12eFixtureSupport
+  recorded = {}
+  touched = "updated_at > now() - interval '1 hour' AS touched"
+  users = { 'users' => "SELECT id, email, status, admin, #{touched} FROM users ORDER BY id" }
+  points = { 'points' => 'SELECT p.id, p.raw_data, p.raw_data_archived, a.month, a.chunk_number, ' \
+                         "p.#{touched} FROM points p LEFT JOIN points_raw_data_archives a " \
+                         'ON a.id = p.raw_data_archive_id ORDER BY p.id' }
+  archives = { 'archives' => 'SELECT user_id, year, month, chunk_number, point_count, point_ids_checksum, ' \
+                             "verified_at IS NOT NULL AS verified, metadata - 'content_checksum' AS metadata " \
+                             'FROM points_raw_data_archives ORDER BY user_id, year, month, chunk_number' }
+  blobs = { 'blobs' => 'SELECT b.key, b.filename, b.content_type, a.record_type FROM active_storage_blobs b ' \
+                       'JOIN active_storage_attachments a ON a.blob_id = b.id ORDER BY b.key' }
+  raw = points.merge(archives, blobs)
+  relative = { 'points_raw_data_archives' => %w[archived_at verified_at] }
+
+  before(:all) { Rails.application.load_tasks unless Rake::Task.task_defined?('points:raw_data:status') }
+
+  before do
+    phoenix_tables!
+    fx.reset!
+  end
+
+  after(:all) { fx.finish(recorded) }
+
+  define_method(:keep) do |name, entry|
+    if fx.write?
+      recorded[name] = entry
+    else
+      stored = fx.stored['cases'].find { |c| c['name'] == name }
+      expect(fx.comparable(entry.merge('name' => name))).to eq(fx.comparable(stored))
+    end
+  end
+
+  define_method(:activation_users) do
+    fx.user!(1001, 'inactive@example.invalid', status: 0)
+    fx.user!(1002, 'trial@example.invalid', status: 2)
+    fx.user!(1003, 'deleted@example.invalid', status: 0, deleted: true)
+  end
+
+  it 'number_to_human_size' do
+    expect(fx.human_sizes).to eq(fx.stored['human_sizes']) unless fx.write?
+  end
+
+  it 'users:activate' do
+    activation_users
+    keep('users_activate', fx.record(argv: ['users:activate'], after: users) { fx.rake('users:activate') })
+  end
+
+  it 'users:activate on Cloud' do
+    activation_users
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    keep('users_activate_cloud', fx.record(argv: ['users:activate'], env: { 'SELF_HOSTED' => 'false' },
+                                           after: users) { fx.rake('users:activate') })
+  end
+
+  it 'FAQ recipe: make a user an admin' do
+    fx.user!(1011, 'admin-me@example.invalid')
+    entry = fx.record(argv: %w[users admin admin-me@example.invalid], after: users, stdout: false) do
+      fx.recipe { User.find_by(email: 'admin-me@example.invalid').update(admin: true) }
+    end
+    keep('users_admin_recipe', entry)
+  end
+
+  it 'FAQ recipe: change an email' do
+    fx.user!(1021, 'old@example.invalid')
+    fx.user!(1022, 'other@example.invalid')
+    entry = fx.record(argv: ['users', 'email', 'old@example.invalid', '  New@Example.INVALID '], after: users,
+                      stdout: false) do
+      fx.recipe { User.find_by(email: 'old@example.invalid').update(email: '  New@Example.INVALID ') }
+    end
+    keep('users_email_recipe', entry)
+  end
+
+  it 'FAQ recipe: set a password' do
+    fx.user!(1031, 'login@example.invalid')
+    login = { 'users' => "SELECT id, encrypted_password LIKE '$2a$%' AS bcrypt, #{touched} FROM users ORDER BY id" }
+    entry = fx.record(argv: %w[users password login@example.invalid], stdin: "#{fx::LOGIN}\n", after: login,
+                      stdout: false) do
+      fx.recipe do
+        User.find_by(email: 'login@example.invalid').update(password: fx::LOGIN, password_confirmation: fx::LOGIN)
+      end
+    end
+    keep('users_password_recipe', entry)
+  end
+
+  it 'dawarich:jobs:status without the owner table' do
+    keep('jobs_status_absent', fx.record(argv: ['dawarich:jobs:status'], drop: ['phoenix.job_owners'], after: {}) do
+      fx.rake('dawarich:jobs:status')
+    end)
+  end
+
+  define_method(:job_rows) do
+    fx.sql("INSERT INTO phoenix.job_owners VALUES ('cron:z_job', 'sidekiq', true, '2026-01-02 03:04:05.678+00', " \
+           "'rake:ops'), ('command:a.job', 'oban', false, '2026-01-01 00:00:00+00', 'phoenix')")
+    fx.sql("INSERT INTO phoenix.runtime_nodes VALUES ('dawarich@a', '2026-01-01 00:00:00+00', ?)",
+           '2099-01-01 00:00:00+00')
+    fx.sql('INSERT INTO job_outbox (event_id, command_type, command_version, payload, scheduled_at, state) VALUES ' \
+           "('00000000-0000-4000-8000-000000000001', 'trips.calculate', 1, '{}', " \
+           "'2099-01-01 00:00:00+00', 'pending'), " \
+           "('00000000-0000-4000-8000-000000000002', 'trips.calculate', 1, '{}', " \
+           "'2026-01-01 00:00:00+00', 'quarantined')")
+    fx.sql('INSERT INTO phoenix.rails_commands (id, kind, available_at, created_at) VALUES ' \
+           "(1, 'tracks.realtime', '2099-01-01 00:00:00+00', '2026-01-01 00:00:00+00')")
+    fx.sql("INSERT INTO phoenix.rails_commands_dead VALUES (7, 'tracks.realtime', '{}', 3, 'boom', " \
+           "'2026-01-01 00:00:00+00', '2026-01-01 00:00:00+00')")
+  end
+
+  it 'dawarich:jobs:status with owners, nodes, outbox and reverse commands' do
+    job_rows
+    entry = fx.record(argv: ['dawarich:jobs:status'], env: { 'DAWARICH_PHOENIX_NODE' => 'dawarich@a' }, after: {}) do
+      fx.rake('dawarich:jobs:status', env: { 'DAWARICH_PHOENIX_NODE' => 'dawarich@a' })
+    end
+    keep('jobs_status_full', entry)
+  end
+
+  it 'dawarich:jobs:status for a node that is not beating while Oban owns a key' do
+    job_rows
+    entry = fx.record(argv: ['dawarich:jobs:status'], env: { 'DAWARICH_PHOENIX_NODE' => 'dawarich@b' }, after: {}) do
+      fx.rake('dawarich:jobs:status', env: { 'DAWARICH_PHOENIX_NODE' => 'dawarich@b' })
+    end
+    keep('jobs_status_stale_alarm', entry)
+  end
+
+  it 'points:raw_data:status' do
+    fx.user!(2001, 'many@example.invalid')
+    fx.user!(2002, 'few@example.invalid')
+    fx.month_points!(2001, 20_010, 3)
+    fx.month_points!(2001, 20_020, 2, month: 2)
+    fx.month_points!(2002, 20_030, 2)
+    fx.point!(20_040, 2002, fx::FUTURE)
+    fx.archive_user!(2001)
+    fx.archive_user!(2002)
+    fx.sql('UPDATE points_raw_data_archives SET verified_at = NULL WHERE user_id = 2002')
+    fx.sql("UPDATE points_raw_data_archives SET archived_at = now() - interval '30 days' WHERE user_id = 2002")
+    fx.sql("UPDATE points SET raw_data = '{}' WHERE id BETWEEN 20010 AND 20012")
+    keep('raw_data_status', fx.record(argv: ['points:raw_data:status'], relative:, after: {}) do
+      fx.rake('points:raw_data:status')
+    end)
+  end
+
+  it 'points:raw_data:status on an empty database' do
+    keep('raw_data_status_empty', fx.record(argv: ['points:raw_data:status'], after: {}) do
+      fx.rake('points:raw_data:status')
+    end)
+  end
+
+  it 'points:raw_data:verify over every unverified archive, one corrupted' do
+    fx.user!(2101, 'verify@example.invalid')
+    fx.month_points!(2101, 21_010, 3)
+    fx.month_points!(2101, 21_020, 2, month: 2)
+    fx.archive_user!(2101)
+    fx.sql('UPDATE points_raw_data_archives SET verified_at = NULL')
+    fx.corrupt!(fx.archive_id(2101, 2))
+    keep('raw_data_verify_all', fx.record(argv: ['points:raw_data:verify'], relative:, after: archives) do
+      fx.rake('points:raw_data:verify')
+    end)
+  end
+
+  it 'points:raw_data:verify for one month leaves verified archives alone' do
+    fx.user!(2111, 'month@example.invalid')
+    fx.month_points!(2111, 21_110, 2)
+    fx.archive_user!(2111)
+    fx.month_points!(2111, 21_120, 2)
+    fx.month_points!(2111, 21_130, 1, month: 2)
+    fx.archive_user!(2111)
+    fx.sql('UPDATE points_raw_data_archives SET verified_at = NULL WHERE NOT (month = 1 AND chunk_number = 1)')
+    fx.corrupt!(fx.archive_id(2111, 1, 1))
+    keep('raw_data_verify_month', fx.record(argv: ['points:raw_data:verify[2111,2020,1]'], relative:,
+                                            after: archives) { fx.rake('points:raw_data:verify', '2111', '2020', '1') })
+  end
+
+  it 'points:raw_data:clear_verified over every verified archive' do
+    fx.user!(2201, 'clear@example.invalid')
+    fx.month_points!(2201, 22_010, 3)
+    fx.month_points!(2201, 22_020, 2, month: 2)
+    fx.archive_user!(2201)
+    fx.sql('UPDATE points_raw_data_archives SET verified_at = NULL WHERE month = 2')
+    keep('raw_data_clear_all', fx.record(argv: ['points:raw_data:clear_verified'], relative:, after: points) do
+      fx.rake('points:raw_data:clear_verified')
+    end)
+  end
+
+  it 'points:raw_data:clear_verified for one month' do
+    fx.user!(2211, 'clear-month@example.invalid')
+    fx.month_points!(2211, 22_110, 2)
+    fx.month_points!(2211, 22_120, 2, month: 2)
+    fx.archive_user!(2211)
+    entry = fx.record(argv: ['points:raw_data:clear_verified[2211,2020,2]'], relative:, after: points) do
+      fx.rake('points:raw_data:clear_verified', '2211', '2020', '2')
+    end
+    keep('raw_data_clear_month', entry)
+  end
+
+  it 'points:raw_data:archive' do
+    fx.user!(2301, 'archive@example.invalid')
+    fx.user!(2302, 'gone@example.invalid', deleted: true)
+    fx.user!(2303, 'recent@example.invalid')
+    fx.month_points!(2301, 23_010, 2)
+    fx.month_points!(2301, 23_020, 1, month: 3)
+    fx.month_points!(2302, 23_030, 2)
+    fx.point!(23_040, 2303, fx::FUTURE)
+    keep('raw_data_archive', fx.record(argv: ['points:raw_data:archive'], after: raw) do
+      fx.rake('points:raw_data:archive')
+    end)
+  end
+
+  it 'points:raw_data:archive with nothing to archive' do
+    fx.user!(2311, 'idle@example.invalid')
+    fx.point!(23_110, 2311, fx::FUTURE)
+    keep('raw_data_archive_nothing', fx.record(argv: ['points:raw_data:initial_archive'], after: raw) do
+      fx.rake('points:raw_data:initial_archive')
+    end)
+  end
+
+  it 'points:raw_data:archive_full' do
+    fx.user!(2401, 'full@example.invalid')
+    fx.month_points!(2401, 24_020, 2, month: 2)
+    fx.archive_user!(2401)
+    fx.sql("UPDATE points_raw_data_archives SET verified_at = now() - interval '10 days'")
+    fx.month_points!(2401, 24_010, 2)
+    keep('raw_data_archive_full', fx.record(argv: ['points:raw_data:archive_full'], relative:, after: raw) do
+      fx.rake('points:raw_data:archive_full')
+    end)
+  end
+
+  it 'points:raw_data:archive_full stops when a verification fails' do
+    fx.user!(2411, 'stop@example.invalid')
+    fx.month_points!(2411, 24_110, 2)
+    fx.archive_user!(2411)
+    fx.sql('UPDATE points_raw_data_archives SET verified_at = NULL')
+    fx.corrupt!(fx.archive_id(2411, 1))
+    keep('raw_data_archive_full_failed', fx.record(argv: ['points:raw_data:archive_full'], relative:, after: points,
+                                                   stderr: true) { fx.rake('points:raw_data:archive_full') })
+  end
+
+  it 'points:raw_data:restore' do
+    fx.user!(2501, 'restore@example.invalid')
+    fx.month_points!(2501, 25_010, 3)
+    fx.archive_user!(2501)
+    fx.month_points!(2501, 25_020, 1)
+    fx.archive_user!(2501)
+    fx.sql("UPDATE points SET raw_data = '{}' WHERE user_id = 2501")
+    fx.sql('DELETE FROM points WHERE id = 25011')
+    keep('raw_data_restore', fx.record(argv: ['points:raw_data:restore[2501,2020,1]'], relative:, after: points) do
+      fx.rake('points:raw_data:restore', '2501', '2020', '1')
+    end)
+  end
+
+  it 'points:raw_data:restore without archives' do
+    fx.user!(2511, 'none@example.invalid')
+    entry = fx.record(argv: ['points:raw_data:restore[2511,2020,1]'], after: {}, stderr: true) do
+      fx.rake('points:raw_data:restore', '2511', '2020', '1')
+    end
+    keep('raw_data_restore_missing', entry)
+  end
+
+  it 'points:raw_data:restore with a missing argument' do
+    keep('raw_data_restore_usage', fx.record(argv: ['points:raw_data:restore[2511,2020]'], after: {}) do
+      fx.rake('points:raw_data:restore', '2511', '2020')
+    end)
+  end
+
+  it 'points:raw_data:restore_all' do
+    fx.user!(2521, 'all@example.invalid')
+    fx.month_points!(2521, 25_210, 2)
+    fx.month_points!(2521, 25_220, 2, month: 3)
+    fx.archive_user!(2521)
+    fx.sql("UPDATE points SET raw_data = '{}' WHERE user_id = 2521")
+    keep('raw_data_restore_all', fx.record(argv: ['points:raw_data:restore_all[2521]'], relative:, after: points) do
+      fx.rake('points:raw_data:restore_all', '2521')
+    end)
+  end
+
+  it 'points:raw_data:restore_all for an unknown user' do
+    keep('raw_data_restore_all_unknown', fx.record(argv: ['points:raw_data:restore_all[999]'], after: {},
+                                                   stderr: true) { fx.rake('points:raw_data:restore_all', '999') })
+  end
+
+  define_method(:reset_rows) do
+    fx.user!(2601, 'reset@example.invalid')
+    fx.month_points!(2601, 26_010, 2)
+    fx.month_points!(2601, 26_020, 2, month: 2)
+    fx.archive_user!(2601)
+    fx.sql("UPDATE points SET raw_data = '{}' WHERE id IN (26010, 26011)")
+  end
+
+  it 'points:raw_data:reset_all with CONFIRM=true' do
+    reset_rows
+    entry = fx.record(argv: ['points:raw_data:reset_all'], env: { 'CONFIRM' => 'true' }, relative:, after: raw) do
+      fx.rake('points:raw_data:reset_all', env: { 'CONFIRM' => 'true' })
+    end
+    keep('raw_data_reset_all', entry)
+  end
+
+  it 'points:raw_data:reset_all declined at the prompt' do
+    reset_rows
+    keep('raw_data_reset_all_declined', fx.record(argv: ['points:raw_data:reset_all'], stdin: "n\n", relative:,
+                                                  after: raw) { fx.rake('points:raw_data:reset_all', stdin: "n\n") })
+  end
+
+  it 'points:raw_data:reset_all with nothing to reset' do
+    keep('raw_data_reset_all_nothing', fx.record(argv: ['points:raw_data:reset_all'], after: raw) do
+      fx.rake('points:raw_data:reset_all')
+    end)
+  end
+end
