@@ -3,22 +3,36 @@ defmodule DawarichWeb.SharedLinkCookie do
 
   import Plug.Conn
 
-  alias Dawarich.{RailsCookies, RailsSecret, Repo, TimeZoneName}
+  alias Dawarich.{RailsCookies, RailsSecret, UserTimeZone}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.RackScheme
+
+  @thirty_days "SELECT ($1::timestamptz AT TIME ZONE z.name + interval '30 days') AT TIME ZONE z.name FROM z"
+  @anonymous %{"timezone" => ""}
 
   def unlock_token(id, phrase) do
     unless Ruby.blank?(phrase),
       do: :sha256 |> :crypto.hash("#{id}:#{phrase}") |> Base.encode16(case: :lower)
   end
 
+  def expires_at(link, now, settings, env \\ System.get_env())
+
+  def expires_at(%{expires_at: nil}, %DateTime{} = now, settings, env) do
+    %{rows: [[at]]} = UserTimeZone.query!(@thirty_days, [now], settings || @anonymous, env)
+    at
+  end
+
+  def expires_at(%{expires_at: %DateTime{} = at}, _now, _settings, _env), do: at
+
+  def expires_at(%{expires_at: %NaiveDateTime{} = at}, _now, _settings, _env),
+    do: DateTime.from_naive!(at, "Etc/UTC")
+
   def put(
         conn,
-        %{id: id, magic_phrase: phrase, expires_at: expires_at},
-        %DateTime{} = now,
+        %{id: id, magic_phrase: phrase},
+        %DateTime{} = at,
         secret \\ RailsSecret.fetch()
       ) do
-    at = utc(expires_at) || thirty_days_from(now)
     name = "shared_link_#{id}"
 
     put_resp_cookie(conn, name, RailsCookies.encrypt(unlock_token(id, phrase), name, secret, at),
@@ -52,20 +66,4 @@ defmodule DawarichWeb.SharedLinkCookie do
         end
     end
   end
-
-  defp thirty_days_from(now) do
-    zone = TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
-
-    %{rows: [[at]]} =
-      Repo.query!(
-        "SELECT ($1::timestamptz AT TIME ZONE $2 + interval '30 days') AT TIME ZONE $2",
-        [now, zone]
-      )
-
-    at
-  end
-
-  defp utc(nil), do: nil
-  defp utc(%DateTime{} = at), do: at
-  defp utc(%NaiveDateTime{} = at), do: DateTime.from_naive!(at, "Etc/UTC")
 end

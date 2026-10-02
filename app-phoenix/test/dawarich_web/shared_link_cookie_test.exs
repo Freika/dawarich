@@ -33,6 +33,22 @@ defmodule DawarichWeb.SharedLinkCookieTest do
   defp with_cookie(id, value),
     do: conn(:get, "/s/#{id}") |> put_req_cookie("shared_link_#{id}", value)
 
+  defp settings(%{"visitor_timezone" => zone}) when is_binary(zone), do: %{"timezone" => zone}
+  defp settings(_entry), do: nil
+
+  defp env(%{"time_zone_env" => zone}) when is_binary(zone), do: %{"TIME_ZONE" => zone}
+  defp env(_entry), do: %{}
+
+  defp expiry(entry),
+    do: SharedLinkCookie.expires_at(link(entry), A12b.now(), settings(entry), env(entry))
+
+  defp fallback(settings, env) do
+    %{id: 1, magic_phrase: "p", expires_at: nil}
+    |> SharedLinkCookie.expires_at(A12b.now(), settings, env)
+    |> DateTime.truncate(:second)
+    |> DateTime.to_iso8601()
+  end
+
   test "unlock_token is SharedLink#unlock_token, nil for a blank phrase" do
     for entry <- @crypto["shared_link"],
         do:
@@ -61,7 +77,7 @@ defmodule DawarichWeb.SharedLinkCookieTest do
     for entry <- @crypto["shared_link"] do
       conn =
         conn(:post, "http://dawarich.example/s/#{entry["id"]}/unlock")
-        |> SharedLinkCookie.put(link(entry), A12b.now(), A12b.secret())
+        |> SharedLinkCookie.put(link(entry), expiry(entry), A12b.secret())
         |> send_resp(302, "")
 
       [line] =
@@ -136,8 +152,8 @@ defmodule DawarichWeb.SharedLinkCookieTest do
         expires_at: DateTime.add(A12b.now(), 3600)
       }
 
-      conn =
-        conn(:post, "/s/#{n}/unlock") |> SharedLinkCookie.put(link, A12b.now(), A12b.secret())
+      at = SharedLinkCookie.expires_at(link, A12b.now(), nil, %{})
+      conn = conn(:post, "/s/#{n}/unlock") |> SharedLinkCookie.put(link, at, A12b.secret())
 
       cookie = conn.resp_cookies["shared_link_#{n}"].value
       assert SharedLinkCookie.unlocked?(with_cookie(n, cookie), link, A12b.now(), A12b.secret())
@@ -149,5 +165,39 @@ defmodule DawarichWeb.SharedLinkCookieTest do
                A12b.secret()
              )
     end)
+  end
+
+  test "the 30-day fallback follows the visitor's zone, then the app zone, never the process environment" do
+    assert fallback(nil, %{}) == "2026-11-01T13:00:00Z"
+    assert fallback(nil, %{"TIME_ZONE" => "UTC"}) == "2026-11-01T12:00:00Z"
+    assert fallback(nil, %{"TIME_ZONE" => "Berlin"}) == "2026-11-01T13:00:00Z"
+    assert fallback(%{"timezone" => "Asia/Tokyo"}, %{}) == "2026-11-01T12:00:00Z"
+
+    assert fallback(%{"timezone" => "Asia/Tokyo"}, %{"TIME_ZONE" => "Europe/Berlin"}) ==
+             "2026-11-01T12:00:00Z"
+
+    assert fallback(%{"timezone" => ""}, %{}) == "2026-11-01T13:00:00Z"
+    assert fallback(%{}, %{}) == "2026-11-01T12:00:00Z"
+    assert fallback(%{}, %{"TIME_ZONE" => "Europe/Berlin"}) == "2026-11-01T13:00:00Z"
+
+    link = %{id: 1, magic_phrase: "p", expires_at: ~N[2026-10-05 12:00:00]}
+    assert SharedLinkCookie.expires_at(link, A12b.now(), nil, %{}) == ~U[2026-10-05 12:00:00Z]
+  end
+
+  test "marks the cookie secure when the request is https, as Rails' request.ssl? does" do
+    [entry | _] = @crypto["shared_link"]
+
+    for url <- [
+          "https://dawarich.example/s/#{entry["id"]}/unlock",
+          "http://dawarich.example/s/#{entry["id"]}/unlock"
+        ] do
+      conn =
+        conn(:post, url)
+        |> SharedLinkCookie.put(link(entry), expiry(entry), A12b.secret())
+        |> send_resp(302, "")
+
+      [line] = get_resp_header(conn, "set-cookie")
+      assert "secure" in attributes(line) == String.starts_with?(url, "https:"), url
+    end
   end
 end
