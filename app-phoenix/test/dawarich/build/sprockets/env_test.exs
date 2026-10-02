@@ -60,4 +60,34 @@ defmodule Dawarich.Build.Sprockets.EnvTest do
     assert dir |> Env.tree(true) |> Enum.map(&Path.relative_to(&1, dir)) ==
              ~w(a-b.css a.css a a/z.css)
   end
+
+  test "refuses asset types Sprockets treats specially that the build does not model, only when they would be built",
+       %{tmp_dir: root} do
+    unmodelled =
+      ~w(fonts/a.ttf fonts/b.eot fonts/c.otf images/d.json images/e.html images/f.htm images/g.yml images/h.yaml
+         images/i.webmanifest images/j.webmanifest.erb images/k.html.erb)
+
+    for file <- ["images/logo-abcdefg.digested.png", "javascript/data.json" | unmodelled],
+        do:
+          file!(
+            root,
+            "app/" <>
+              if(String.starts_with?(file, "javascript"), do: file, else: "assets/" <> file)
+          )
+
+    env = Env.new(root)
+
+    for file <- unmodelled do
+      assert_raise ArgumentError, ~r/not supported/, fn ->
+        Env.asset(env, Path.join([root, "app/assets", file]), nil)
+      end
+    end
+
+    assert_raise ArgumentError, ~r/pre-digested/, fn ->
+      Env.asset(env, Path.join(root, "app/assets/images/logo-abcdefg.digested.png"), nil)
+    end
+
+    assert Env.asset(env, Path.join(root, "app/javascript/data.json"), :js) == nil
+    assert Env.asset(env, Path.join(root, "app/assets/images/e.html"), :js) == nil
+  end
 end

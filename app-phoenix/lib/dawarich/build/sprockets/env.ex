@@ -17,6 +17,7 @@ defmodule Dawarich.Build.Sprockets.Env do
     ".xml" => :xml
   }
   @accept %{".js" => :js, ".css" => :css}
+  @unmodelled ~w(.json .html .htm .yml .yaml .eot .otf .ttf .webmanifest)
 
   def new(root) do
     groups = Enum.flat_map(~w(app/assets lib/assets vendor/assets), &subdirs(Path.join(root, &1)))
@@ -95,6 +96,28 @@ defmodule Dawarich.Build.Sprockets.Env do
   end
 
   defp describe(file, relative, accept) do
+    with %{} = asset <- classify(file, relative, accept) do
+      unmodelled!(file, relative)
+      asset
+    end
+  end
+
+  defp unmodelled!(file, relative) do
+    extension = relative |> String.replace_suffix(".erb", "") |> Path.extname()
+
+    cond do
+      extension in @unmodelled ->
+        raise ArgumentError, "#{file}: #{extension} assets are not supported"
+
+      Regex.match?(~r/-[0-9a-zA-Z]{7,128}\.digested/, relative) ->
+        raise ArgumentError, "#{file}: pre-digested assets are not supported"
+
+      true ->
+        :ok
+    end
+  end
+
+  defp classify(file, relative, accept) do
     if String.ends_with?(relative, ".erb") do
       inner = String.replace_suffix(relative, ".erb", "")
 
