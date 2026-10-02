@@ -222,7 +222,6 @@ defmodule DawarichWeb.EndpointTest do
       {"GET", "/imports"},
       {"GET", "/imports/new"},
       {"GET", "/imports/:id"},
-      {"GET", "/imports/:id/edit"},
       {"GET", "/imports/:id/download"},
       {"POST", "/imports"},
       {"POST", "/imports/:id"},
