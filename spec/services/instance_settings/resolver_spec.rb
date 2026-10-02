@@ -118,8 +118,8 @@ RSpec.describe InstanceSettings::Resolver do
   end
 
   describe 'boot safety' do
-    # config/initializers/geocoder.rb resolves at boot, and the Docker image
-    # build runs assets:precompile with no database at all.
+    # config/initializers/geocoder.rb resolves at boot, which can happen with
+    # no database at all (assets:precompile on a build host).
     #
     # These stub InstanceSetting.all — the method load_stored actually calls.
     # They previously stubbed .pluck, which the implementation stopped using,
