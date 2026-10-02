@@ -4,7 +4,7 @@ defmodule Dawarich.JobsCase do
 
   alias Dawarich.ScratchRepo
 
-  @phoenix ~w(job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events notification_events delivery_claims export_claims rails_commands rails_commands_dead track_generations track_generation_chunks stats_point_counts import_runs import_handoffs import_download_requests import_destroy_runs import_blob_purges)
+  @phoenix ~w(job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events notification_events delivery_claims export_claims rails_commands rails_commands_dead track_generations track_generation_chunks stats_point_counts import_runs import_handoffs import_download_requests import_destroy_runs import_blob_purges once_claims counters epochs leases registration_setting)
   @oban ~w(oban_jobs oban_peers)
 
   using opts do
