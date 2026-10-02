@@ -151,6 +151,24 @@ defmodule DawarichWeb.ImportsNativePagesTest do
     refute_refresh(view)
   end
 
+  test "a poll recounts the import's points only when the import itself changed", c do
+    Repo.query!("UPDATE imports SET status=1 WHERE id=759101")
+    {:ok, view, _} = live_as(c.user, "/imports/759101")
+    assert has_element?(view, "[data-points-count]", "0")
+
+    Repo.query!(
+      "INSERT INTO points(user_id,import_id,timestamp,lonlat,created_at,updated_at) VALUES($1,759101,100,ST_SetSRID(ST_MakePoint(12.37,51.34),4326)::geography,now(),now())",
+      [c.user.id]
+    )
+
+    send(view.pid, :imports_refresh)
+    assert has_element?(view, "[data-points-count]", "0")
+
+    Repo.query!("UPDATE imports SET processed=11 WHERE id=759101")
+    send(view.pid, :imports_refresh)
+    assert has_element?(view, "[data-points-count]", "1")
+  end
+
   defp fast_polling do
     Application.put_env(:dawarich, :imports_poll_ms, 10)
     on_exit(fn -> Application.delete_env(:dawarich, :imports_poll_ms) end)

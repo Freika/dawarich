@@ -17,12 +17,10 @@ defmodule DawarichWeb.ImportsLive.Show do
   def handle_params(%{"id" => id}, _, socket) do
     case UiRecords.get(ImportsContext.repo(), socket.assigns.current_user.id, id) do
       {:ok, record} ->
-        [[points]] =
-          ImportsContext.repo().query!(
-            "SELECT count(*) FROM public.points WHERE import_id=$1",
-            [record.id],
-            log: false
-          ).rows
+        points =
+          if socket.assigns[:record] == record,
+            do: socket.assigns.points,
+            else: count_points(record.id)
 
         {:noreply,
          socket
@@ -39,6 +37,17 @@ defmodule DawarichWeb.ImportsLive.Show do
       _ ->
         {:noreply, redirect(socket, to: "/imports")}
     end
+  end
+
+  defp count_points(id) do
+    [[points]] =
+      ImportsContext.repo().query!(
+        "SELECT count(*) FROM public.points WHERE import_id=$1",
+        [id],
+        log: false
+      ).rows
+
+    points
   end
 
   @impl true
