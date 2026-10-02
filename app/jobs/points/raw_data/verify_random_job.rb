@@ -10,8 +10,11 @@ module Points
       queue_as :archival
 
       SAMPLE_SIZE = 10
+      OWNER_KEY = 'cron:raw_data_verify_job'
 
       def perform
+        return if JobOwnership.oban?(OWNER_KEY)
+
         archives = Points::RawDataArchive
                    .order(Arel.sql('RANDOM()'))
                    .limit(SAMPLE_SIZE)

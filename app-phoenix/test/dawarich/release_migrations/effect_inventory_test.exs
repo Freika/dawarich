@@ -48,12 +48,6 @@ defmodule Dawarich.ReleaseMigrations.EffectInventoryTest do
     end
   end
 
-  test "every job class owner is one of the three C3a owner atoms" do
-    for %{owner: owner} <- ReleaseEffectInventory.job_classes() do
-      assert owner in [:a1x_wave5, :a1x_wave6, :unreachable]
-    end
-  end
-
   defp found_job_classes do
     release_module_paths()
     |> Enum.flat_map(&Regex.scan(@job_class, File.read!(&1), capture: :all_but_first))

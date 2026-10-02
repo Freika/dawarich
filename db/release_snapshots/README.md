@@ -299,7 +299,7 @@ Paths are relative to the repository root.
 | `app-phoenix/test/dawarich/release_migrator/ledger_test.exs`, `real_ledger_test.exs`, `baseline_test.exs` | Classification, real ledgers around the floor, baseline and fresh install end to end |
 | `app-phoenix/test/dawarich/release_migrations/v1_0_2_test.exs`, `v1_1_0_test.exs`, `v1_11_0_test.exs`, `v1_13_0_test.exs` | Rescued-SQL unit tests |
 | `app-phoenix/test/dawarich/release_migrations/effects/*_test.exs`, `app-phoenix/test/dawarich/active_record_encryption_test.exs`, `app-phoenix/test/fixtures/*.json` | Unit tests of the ports and the encryption module; Rails pins (`geocoding_rails_pins_test.exs` reads the registry, providers, rate limits and messages through `RailsTree`; floats, Oj parsing and encryption messages are recorded in the Rails runtime) |
-| `app-phoenix/test/support/release_effect_inventory.ex`, `app-phoenix/test/dawarich/release_migrations/effect_inventory_test.exs` | Every class a release module records in the outbox, with its owner; a new or dynamically named class fails. The stop helper no longer exists, so a step that calls an unported effect does not compile |
+| `app-phoenix/test/support/release_effect_inventory.ex`, `app-phoenix/test/dawarich/release_migrations/effect_inventory_test.exs` | Every class a release module records in the outbox; a new or dynamically named class fails. Owners live in `Dawarich.ReleaseJobs` (recorded classes) and `Dawarich.RailsJobOwners` (every Rails job class, `rails_job_owners_test.exs`). The stop helper no longer exists, so a step that calls an unported effect does not compile |
 | `app-phoenix/test/dawarich/release_migrations/inline_effects_test.exs`, `encrypted_columns_test.exs` | Guards for `inline_effects.tsv` and `encrypted_columns.tsv` |
 | `app-phoenix/parity/expected_diffs.md` | Deliberate differences from Rails (`ED-002` onward) |
 | `scripts/schema_parity/rails_reference.rb` | Rails side of every check; captures SQL, jobs and the baseline |
@@ -1223,7 +1223,8 @@ release's `rows:` checks against current Rails (see "Proof inventory" for the fi
   seven stops) is closed.
 - **The outbox has no consumer yet.** Release modules record 22 job classes in `phoenix.release_migration_jobs`
   (`rg -n '\bjob\(' app-phoenix/lib/dawarich/release_migrations`; the per-user and per-import jobs of 1.0.2, 1.1.0
-  and `Unreleased` are built across several lines). `ReleaseEffectInventory` gives each an owner: A1.x wave 5 or 6.
+  and `Unreleased` are built across several lines). `Dawarich.ReleaseJobs.decode/2` maps each to a Phoenix worker, a
+  named owner slice, `:skip` or a refusal.
   The plan's relay (C3 Task 1) moved to A1, one relay for Rails' job outbox and this one; its workers (C3 Tasks 6–8)
   moved to A1.x waves 5–6. **A12 gate:** before the migrator goes live, every recorded class has a worker and the
   outbox drains.

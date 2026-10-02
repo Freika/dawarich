@@ -165,6 +165,98 @@ defmodule Dawarich.Jobs.DispatchTest do
     end
   end
 
+  test "each wave-6 command dispatches to its worker" do
+    dimensions = %{
+      "phase" => "dimensions",
+      "start_id" => nil,
+      "batch_size" => 50_000,
+      "repair_collisions" => false
+    }
+
+    country = %{
+      "phase" => "country",
+      "start_id" => 7,
+      "batch_size" => 25_000,
+      "repair_collisions" => true
+    }
+
+    cases = [
+      {"release.point_dimensions_country", dimensions, Dawarich.ReleaseOperations.PointBackfill,
+       %{"version" => 1, "cursor" => dimensions}},
+      {"release.point_dimensions_country", country, Dawarich.ReleaseOperations.PointBackfill,
+       %{"version" => 1, "cursor" => country}},
+      {"release.route_opacity", %{}, Dawarich.ReleaseOperations.RouteOpacity, %{"version" => 1}},
+      {"release.onboarding_completed", %{}, Dawarich.ReleaseOperations.OnboardingCompleted,
+       %{"version" => 1}},
+      {"release.orphaned_tracks", %{}, Dawarich.ReleaseOperations.OrphanedTracks,
+       %{"version" => 1}},
+      {"release.tracks_dedup", %{"user_id" => 42}, Dawarich.ReleaseOperations.TracksDedup,
+       %{"version" => 1, "user_id" => 42}},
+      {"release.place_name_locks", %{}, Dawarich.ReleaseOperations.PlaceNameLocks,
+       %{"version" => 1}},
+      {"release.time_anchor", %{"from_id" => 11}, Dawarich.ReleaseOperations.TimeAnchor,
+       %{"version" => 1, "cursor" => %{"from_id" => 11}}},
+      {"release.transportation", %{"scope" => "missing", "from_track_id" => 5},
+       Dawarich.ReleaseOperations.Transportation,
+       %{"version" => 1, "cursor" => %{"scope" => "missing", "from_track_id" => 5}}},
+      {"release.transportation", %{"scope" => "all", "from_track_id" => 5},
+       Dawarich.ReleaseOperations.Transportation,
+       %{"version" => 1, "cursor" => %{"scope" => "all", "from_track_id" => 5}}},
+      {"release.visits_fleet_redetect", %{}, Dawarich.ReleaseOperations.VisitsFleetRedetect,
+       %{
+         "version" => 1,
+         "cursor" => %{"after_id" => 0, "started_at" => nil, "offset" => 0}
+       }},
+      {"release.null_island", %{"user_id" => 42}, Dawarich.ReleaseOperations.NullIsland,
+       %{"version" => 1, "user_id" => 42}},
+      {"release.motion_data", %{"batch_size" => 500}, Dawarich.ReleaseOperations.MotionData,
+       %{"version" => 1, "cursor" => %{"after_id" => 0, "batch_size" => 500}}},
+      {"release.altitude", %{}, Dawarich.ReleaseOperations.Altitude,
+       %{"version" => 1, "cursor" => %{"phase" => "users", "after_id" => 0}}}
+    ]
+
+    ids =
+      for {type, payload, _worker, _args} <- cases,
+          do: outbox!(command_type: type, payload: payload)
+
+    assert Dispatch.run(
+             repo: ScratchRepo,
+             oban: @oban,
+             commands: &Dawarich.Jobs.Registry.command/1
+           ) == %{dispatched: length(cases)}
+
+    for {{type, _payload, worker, args}, id} <- Enum.zip(cases, ids) do
+      assert [[worker_name, job_args]] =
+               rows("SELECT worker, args FROM oban.oban_jobs WHERE args->>'event_id' = $1", [id]),
+             type
+
+      assert worker_name == inspect(worker), type
+      assert job_args == Map.put(args, "event_id", id), type
+    end
+  end
+
+  test "a malformed release payload is quarantined" do
+    id =
+      outbox!(
+        command_type: "release.point_dimensions_country",
+        payload: %{
+          "phase" => "dimensions",
+          "start_id" => "abc",
+          "batch_size" => 50_000,
+          "repair_collisions" => false
+        }
+      )
+
+    assert Dispatch.run(
+             repo: ScratchRepo,
+             oban: @oban,
+             commands: &Dawarich.Jobs.Registry.command/1
+           ) == %{quarantined: 1}
+
+    assert [["quarantined", nil, "invalid_payload"]] = outbox_state(id)
+    assert jobs() == []
+  end
+
   test "a mail command with extra payload keys is quarantined rather than dispatched" do
     id =
       outbox!(

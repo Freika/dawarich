@@ -51,13 +51,13 @@ defmodule DawarichWeb.Api.Respond do
     conn |> cache(status, "", []) |> send_resp(status, "") |> halt()
   end
 
-  def not_modified(conn, last_modified) do
+  def not_modified(conn, validators) do
     conn = frame(conn, "")
     log(conn, 304)
 
     conn
     |> delete_resp_header("content-type")
-    |> put_resp_header("last-modified", last_modified)
+    |> merge_resp_headers(validators)
     |> put_resp_header("cache-control", "max-age=0, private, must-revalidate")
     |> send_resp(304, "")
     |> halt()
@@ -94,23 +94,23 @@ defmodule DawarichWeb.Api.Respond do
   end
 
   defp cache(conn, status, body, opts) when status in [200, 201] and body != "" do
-    case Keyword.fetch(opts, :last_modified) do
-      {:ok, stamp} ->
-        conn
-        |> put_resp_header("last-modified", stamp)
-        |> put_resp_header("cache-control", Keyword.fetch!(opts, :cache_control))
-
-      :error ->
-        digest = :crypto.hash(:sha256, body) |> Base.encode16(case: :lower) |> binary_part(0, 32)
-
-        conn
-        |> put_resp_header("etag", ~s(W/"#{digest}"))
-        |> put_resp_header(
-          "cache-control",
-          Keyword.get(opts, :cache_control, "max-age=0, private, must-revalidate")
-        )
-    end
+    conn
+    |> merge_resp_headers(Keyword.get_lazy(opts, :validators, fn -> [{"etag", etag(body)}] end))
+    |> put_resp_header(
+      "cache-control",
+      Keyword.get(opts, :cache_control, "max-age=0, private, must-revalidate")
+    )
   end
 
   defp cache(conn, _status, _body, _opts), do: put_resp_header(conn, "cache-control", "no-cache")
+
+  def rack_etag(conn, body, cache_control \\ "max-age=0, private, must-revalidate") do
+    conn
+    |> put_resp_header("etag", etag(body))
+    |> put_resp_header("cache-control", cache_control)
+  end
+
+  defp etag(body),
+    do:
+      ~s(W/"#{:crypto.hash(:sha256, body) |> Base.encode16(case: :lower) |> binary_part(0, 32)}")
 end
