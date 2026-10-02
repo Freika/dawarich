@@ -96,9 +96,7 @@ defmodule Dawarich.Visits.RedetectWorkerTest do
     uid = user!(9110)
     point!(uid, 1_790_000_000)
     event_id = Ecto.UUID.generate()
-    config = Application.fetch_env!(:dawarich, :redis)
-    {:ok, contender} = Redix.start_link(config[:url], database: config[:database])
-    Redix.command!(contender, ["SET", PerUserLock.key(uid), "someone-else", "PX", "5000"])
+    hold_lease!(ScratchRepo, PerUserLock.key(uid), "someone-else")
     hold_lease!(ScratchRepo, run_key(uid), event_id)
 
     args = month_args(uid, event_id, 0, 1)

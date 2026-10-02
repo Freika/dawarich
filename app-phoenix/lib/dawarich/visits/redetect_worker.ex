@@ -89,7 +89,7 @@ defmodule Dawarich.Visits.RedetectWorker do
        }) do
     purge = fn -> HistoryRedetect.purge(repo, uid, min_ts, max_ts) end
 
-    case PerUserLock.with_user_lock(uid, purge, timeout_ms: @user_lock_wait_ms) do
+    case PerUserLock.with_user_lock(repo, uid, purge, timeout_ms: @user_lock_wait_ms) do
       {:ok, _wiped} ->
         months_total = length(Calendar.redetect_months(repo, zone, min_ts, max_ts))
 
@@ -143,7 +143,7 @@ defmodule Dawarich.Visits.RedetectWorker do
     [start_ts, stop_ts] = Enum.at(Calendar.redetect_months(repo, zone, min_ts, max_ts), i)
     detect = fn -> detect_month(repo, uid, start_ts, stop_ts, args) end
 
-    case PerUserLock.with_user_lock(uid, detect, timeout_ms: @user_lock_wait_ms) do
+    case PerUserLock.with_user_lock(repo, uid, detect, timeout_ms: @user_lock_wait_ms) do
       {:ok, {count, failed?}} -> advance(repo, oban, key, args, count, failed?)
       {:error, :timeout} -> {:snooze, 30}
     end

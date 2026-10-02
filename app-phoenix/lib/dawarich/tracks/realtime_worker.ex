@@ -44,6 +44,7 @@ defmodule Dawarich.Tracks.RealtimeWorker do
 
   defp generate(repo, user, now, opts) do
     case PerUserLock.with_user_lock(
+           repo,
            user.id,
            fn -> build(repo, user, now) end,
            Keyword.get(opts, :lock, [])

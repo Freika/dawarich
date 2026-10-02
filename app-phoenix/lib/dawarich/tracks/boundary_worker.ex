@@ -64,7 +64,7 @@ defmodule Dawarich.Tracks.BoundaryWorker do
           MetadataRefresher.run(repo, user)
         end
 
-        case PerUserLock.with_user_lock(user.id, resolve, Keyword.get(opts, :lock, [])) do
+        case PerUserLock.with_user_lock(repo, user.id, resolve, Keyword.get(opts, :lock, [])) do
           {:ok, _refresh} ->
             Generation.complete!(repo, generation.id)
             :ok
