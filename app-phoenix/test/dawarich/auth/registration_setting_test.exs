@@ -3,7 +3,9 @@ defmodule Dawarich.Auth.RegistrationSettingTest do
 
   alias Dawarich.Auth.RegistrationSetting
 
-  @fixture Jason.decode!(File.read!(Path.expand("../../fixtures/auth/activation.json", __DIR__)))
+  @activation Path.expand("../../fixtures/auth/activation.json", __DIR__)
+  @external_resource @activation
+  @fixture Jason.decode!(File.read!(@activation))
 
   defp redis(reply), do: fn ["GET", "dawarich/registration_enabled"] -> reply end
   defp bytes(name), do: Base.decode64!(@fixture["registration"][name])
