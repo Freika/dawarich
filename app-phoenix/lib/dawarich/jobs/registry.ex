@@ -184,6 +184,8 @@ defmodule Dawarich.Jobs.Registry do
     }
   ]
 
+  @native_crontab [{"17 * * * *", Dawarich.State.PurgeWorker}]
+
   def entries, do: @entries
 
   def claimable, do: Enum.filter(@entries, & &1.claimable)
@@ -193,7 +195,7 @@ defmodule Dawarich.Jobs.Registry do
       for(
         %{kind: :cron, expression: expression, worker: worker} <- @entries,
         do: {expression, worker}
-      )
+      ) ++ @native_crontab
 
   def command(type) do
     case Enum.find(@entries, &(&1.key == "command:" <> type)) do
