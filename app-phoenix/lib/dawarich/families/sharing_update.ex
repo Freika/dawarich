@@ -46,7 +46,10 @@ defmodule Dawarich.Families.SharingUpdate do
   end
 
   defp write!(user_id, params, now) do
-    [[settings]] = Repo.query!("SELECT settings FROM users WHERE id = $1", [user_id]).rows
+    [[settings, email]] =
+      Repo.query!("SELECT settings, email FROM users WHERE id = $1", [user_id]).rows
+
+    if Ruby.blank?(email), do: raise(ArgumentError, "a blank email fails Rails' validation")
     plain!(settings)
     family = settings["family"]
     unless is_nil(family) or is_map(family), do: raise(ArgumentError, "family settings")

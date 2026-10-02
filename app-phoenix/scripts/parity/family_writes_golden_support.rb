@@ -108,7 +108,8 @@ module FamilyWritesGoldenSupport
     member = { share: oracle::SHARE, locale: nil }.merge(kase[:member] || {})
     stamps = { created_at: oracle::STAMP, updated_at: oracle::STAMP, visits_redetected_at: oracle::STAMP }
     member_extra = member[:locale] ? { 'locale' => member[:locale] } : {}
-    writes_insert('users', id: oracle::OWNER, email: 'writes-owner@example.invalid', api_key: oracle::KEY, status: 1,
+    writes_insert('users', id: oracle::OWNER, email: actor.fetch(:email, 'writes-owner@example.invalid'),
+                           api_key: oracle::KEY, status: 1,
                            settings: writes_settings(actor[:timezone], actor[:share], actor[:extra]), **stamps)
     writes_insert('users', id: oracle::MEMBER, email: 'writes-member@example.invalid', api_key: 'phoenix-a4fam-w2',
                            status: 1, settings: writes_settings('UTC', member[:share], member_extra), **stamps)

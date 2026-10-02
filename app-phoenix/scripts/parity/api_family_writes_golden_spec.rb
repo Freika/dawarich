@@ -120,6 +120,8 @@ module ApiFamilyWritesOracle
       body: { enabled: 1 } },
     { name: 'replay_sharing_immich_slash', expect: :rails, method: :patch, path: "#{F}/sharing",
       actor: { extra: { 'immich_url' => 'https://immich.example.invalid/' } }, body: { enabled: false } },
+    { name: 'replay_sharing_blank_email', expect: :rails, method: :patch, path: "#{F}/sharing",
+      actor: { email: '' }, body: { enabled: false } },
     { name: 'replay_sharing_string_config', expect: :rails, method: :patch, path: "#{F}/sharing",
       actor: { share: 'on' }, body: { enabled: true } },
     { name: 'replay_create_self', expect: :rails, method: :post, path: R, actor: { share: nil },
