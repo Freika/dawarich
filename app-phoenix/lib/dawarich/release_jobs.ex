@@ -4,9 +4,14 @@ defmodule Dawarich.ReleaseJobs do
   alias Dawarich.ReleaseOperations, as: Ops
 
   @families ~w(DataMigrations::BackfillFamiliesForFamilyPlanJob DataMigrations::BackfillFamilyMemberEntitlementsJob)
-  @a12 ~w(DataMigrations::AddPointDimensionColumnsJob DataMigrations::DropLegacyLatLonJob
-          DataMigrations::RecalculatePerTrackerTracksJob DataMigrations::RecalculateAnomaliesJob
-          DataMigrations::BackfillAchievementsJob)
+  @deferred %{
+    "DataMigrations::AddPointDimensionColumnsJob" => :a12h,
+    "DataMigrations::DropLegacyLatLonJob" => :a12h,
+    "DataMigrations::RecalculatePerTrackerTracksJob" => :a12d1,
+    "DataMigrations::RecalculateAnomaliesJob" => :a12d1,
+    "DataMigrations::BackfillAchievementsJob" => :a12d2
+  }
+  @a12 Map.keys(@deferred)
   @classes @families ++
              @a12 ++
              ~w(DataMigrations::BackfillPointDimensionsJob DataMigrations::BackfillPointCountryIdJob
@@ -43,7 +48,7 @@ defmodule Dawarich.ReleaseJobs do
   def decode("DataMigrations::BackfillPlacesUserIdJob", []), do: once(Ops.PlacesUserId)
   def decode("DataMigrations::BackfillPlaceNameLocksJob", []), do: once(Ops.PlaceNameLocks)
 
-  def decode("Tracks::DeduplicationJob", [user_id]) when is_integer(user_id),
+  def decode("Tracks::DeduplicationJob", [user_id]) when is_integer(user_id) and user_id > 0,
     do: {:ok, Ops.TracksDedup, %{"version" => 1, "user_id" => user_id}}
 
   def decode("TrackSegments::TimeAnchorBackfillJob", []),
@@ -68,10 +73,12 @@ defmodule Dawarich.ReleaseJobs do
     if Dawarich.ReleaseMigration.self_hosted?(), do: :skip, else: {:error, :cloud_family_backfill}
   end
 
-  def decode(class, []) when class in @a12, do: {:deferred, :a12}
+  def decode(class, []) when class in @a12,
+    do: {:deferred, Map.fetch!(@deferred, class), %{"version" => 1}}
 
-  def decode("TransportationModes::ImportBackfillJob", [import_id]) when is_integer(import_id),
-    do: {:deferred, :a7}
+  def decode("TransportationModes::ImportBackfillJob", [import_id])
+      when is_integer(import_id) and import_id > 0,
+      do: {:deferred, :a7, %{"version" => 1, "import_id" => import_id}}
 
   def decode(class, _arguments) when class in @classes, do: {:error, :invalid_arguments}
   def decode(_class, _arguments), do: {:error, :unknown_class}

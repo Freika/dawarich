@@ -21,9 +21,10 @@ defmodule Dawarich.AirTrail.Flights do
 
   @upsert ~S"""
   WITH input AS (
-    SELECT DISTINCT ON ((e.f->>'id')::integer) e.f, d.km
-    FROM jsonb_array_elements($2::jsonb) WITH ORDINALITY AS e(f, i)
+    SELECT DISTINCT ON ((e.f->>'id')::integer) e.f, d.km, r.raw
+    FROM jsonb_array_elements($2::text::jsonb) WITH ORDINALITY AS e(f, i)
     JOIN unnest($3::float8[]) WITH ORDINALITY AS d(km, i) USING (i)
+    JOIN jsonb_array_elements($5::jsonb) WITH ORDINALITY AS r(raw, i) USING (i)
     ORDER BY (e.f->>'id')::integer, e.i DESC
   ), mapped AS (
     SELECT
@@ -45,7 +46,7 @@ defmodule Dawarich.AirTrail.Flights do
       f->>'flightNumber' AS flight_number,
       COALESCE(f->'seats'->0->>'seat', f->'seats'->0->>'seatNumber') AS seat,
       f->'seats'->0->>'seatClass' AS seat_class,
-      f->>'note' AS note, km AS distance_km, f AS raw
+      f->>'note' AS note, km AS distance_km, raw
     FROM input
   )
   INSERT INTO flights (user_id, external_id, flight_date, date_precision, departure_time, arrival_time,
@@ -115,7 +116,11 @@ defmodule Dawarich.AirTrail.Flights do
       repo.transaction(fn ->
         repo.query!("SELECT set_config('TimeZone', $1, true)", [time_zone], log: false)
         %{rows: [[months, epochs]]} = repo.query!(@months_before, [user_id], log: false)
-        repo.query!(@upsert, [user_id, flights, distances, @iso], log: false)
+
+        repo.query!(@upsert, [user_id, Jason.encode!(flights), distances, @iso, flights],
+          log: false
+        )
+
         repo.query!(@delete_unseen, [user_id, Enum.map(flights, & &1["id"])], log: false)
         repo.query!(@synced_at, [user_id], log: false)
 

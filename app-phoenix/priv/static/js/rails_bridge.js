@@ -4,6 +4,18 @@ export const meta = (name) =>
 const bridges = new WeakMap()
 const islands = new Set()
 window.StimulusIslands = islands
+window.Stimulus ??= {
+  getControllerForElementAndIdentifier: (element, identifier) => {
+    for (const app of islands) {
+      const controller = app.getControllerForElementAndIdentifier(
+        element,
+        identifier,
+      )
+      if (controller) return controller
+    }
+    return null
+  },
+}
 
 export const appendRailsFlash = (content) => {
   const container = document.getElementById("flash-messages")

@@ -8,8 +8,21 @@ defmodule DawarichWeb.EndpointTest do
 
   setup do
     upstream = listen()
+
+    previous =
+      Map.new([:rails_upstream, :rails_routes], &{&1, Application.fetch_env(:dawarich, &1)})
+
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
-    on_exit(fn -> Application.put_env(:dawarich, :rails_upstream, nil) end)
+
+    on_exit(fn ->
+      for {key, value} <- previous do
+        case value do
+          {:ok, configured} -> Application.put_env(:dawarich, key, configured)
+          :error -> Application.delete_env(:dawarich, key)
+        end
+      end
+    end)
+
     %{upstream: upstream}
   end
 
@@ -66,7 +79,18 @@ defmodule DawarichWeb.EndpointTest do
   defp answered_by_puma(port, upstream, request) do
     client = connect(port)
     send_raw(client, request)
-    puma = accept(upstream)
+
+    puma =
+      case :gen_tcp.accept(upstream.listen, 5_000) do
+        {:ok, socket} ->
+          socket
+
+        {:error, reason} ->
+          flunk(
+            "Puma did not receive #{request |> String.split("\r\n") |> hd()}: #{inspect(reason)}"
+          )
+      end
+
     {head, _rest} = read_head(puma)
     reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
     assert {200, _headers, "puma"} = read_response(client)
@@ -136,7 +160,6 @@ defmodule DawarichWeb.EndpointTest do
 
   test "a route handed back to Rails goes to Puma although Phoenix routes it", ctx do
     Application.put_env(:dawarich, :rails_routes, ["notifications"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     client = connect(serve())
     send_raw(client, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n")
 
@@ -150,28 +173,29 @@ defmodule DawarichWeb.EndpointTest do
   test "Phoenix answers the imports and exports lists itself" do
     port = serve()
 
-    for target <- ~w(/imports /exports /imports?page=2 /exports?order_by=asc&sort_by=name) do
+    for target <-
+          ~w(/imports /imports/new /exports /imports?page=2 /exports?order_by=asc&sort_by=name) do
       assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302, target
     end
   end
 
-  test "every other import and export route, and every other method, goes to Puma", ctx do
+  test "unowned import methods and export writes with unsafe admission go to Puma", ctx do
     port = serve()
 
     for target <-
-          ~w(/imports/new /imports/5 /imports/5/edit /imports/5/download /imports/5/extraction /imports.json /exports.json /imports?format=json /exports/5) do
+          ~w(/imports/5 /imports/5/edit /imports/5/download /imports/5/extraction /imports.json /exports.json /imports?format=json /imports/5?format=json /imports/5/download?format=json /exports/5) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
 
     for {method, target} <- [
-          {"POST", "/imports"},
-          {"POST", "/imports/5"},
-          {"PATCH", "/imports/5"},
           {"PUT", "/imports/5"},
-          {"DELETE", "/imports/5"},
-          {"POST", "/imports/5/extraction"},
-          {"DELETE", "/imports/5/extraction"},
+          {"PUT", "/imports"},
+          {"PATCH", "/imports/5/extraction"},
+          {"DELETE", "/imports"},
+          {"POST", "/imports/5/download"},
+          {"POST", "/imports/direct_uploads"},
+          {"PUT", "/imports/uploads/token"},
           {"POST", "/exports"},
           {"POST", "/exports/5"},
           {"DELETE", "/exports/5"},
@@ -187,9 +211,145 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
+  test "router lists exactly the owned import and export methods" do
+    actual =
+      DawarichWeb.Router.__routes__()
+      |> Enum.filter(&String.starts_with?(&1.path, ["/imports", "/exports"]))
+      |> Enum.map(&{String.upcase(to_string(&1.verb)), &1.path})
+      |> Enum.sort()
+
+    expected = [
+      {"GET", "/imports"},
+      {"GET", "/imports/new"},
+      {"GET", "/imports/:id"},
+      {"GET", "/imports/:id/download"},
+      {"POST", "/imports"},
+      {"POST", "/imports/:id"},
+      {"PATCH", "/imports/:id"},
+      {"DELETE", "/imports/:id"},
+      {"POST", "/imports/:id/extraction"},
+      {"DELETE", "/imports/:id/extraction"},
+      {"GET", "/exports"},
+      {"POST", "/exports"}
+    ]
+
+    assert actual == Enum.sort(expected)
+  end
+
+  test "signed-out import writes reach Puma with their body", ctx do
+    port = serve()
+    body = "import%5Bname%5D=x"
+
+    for {method, target} <- [
+          {"POST", "/imports"},
+          {"POST", "/imports/5"},
+          {"PATCH", "/imports/5"},
+          {"DELETE", "/imports/5"},
+          {"POST", "/imports/5/extraction"},
+          {"DELETE", "/imports/5/extraction"}
+        ] do
+      client = connect(port)
+
+      send_raw(
+        client,
+        "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+      )
+
+      puma = accept(ctx.upstream)
+      {head, rest} = read_head(puma)
+      assert request_line(head) == "#{method} #{target} HTTP/1.1"
+      assert read_at_least(puma, rest, byte_size(body)) == body
+      reply(puma, "HTTP/1.1 302 Found\r\nLocation: /users/sign_in\r\nContent-Length: 0\r\n\r\n")
+      assert {302, _headers, ""} = read_response(client)
+    end
+  end
+
+  test "a foreign or non-GPX import's pages, download and writes go to Puma", ctx do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
+    RailsUser.insert!(%{id: 7691, email: "tcp-owner@example.test"})
+    RailsUser.insert!(%{id: 7692, email: "tcp-foreign@example.test"})
+    ImportsExportsSeeds.import!(%{id: 769_101, user_id: 7691, name: "private-owner.gpx"})
+    ImportsExportsSeeds.import!(%{id: 769_102, user_id: 7692, name: "own.geojson", source: 6})
+    session = RailsUser.session(7692)
+    cookie = RailsUser.cookie(session)
+    token = DawarichWeb.RailsCsrf.masked_token(session)
+    port = serve()
+
+    for id <- [769_101, 769_102],
+        target <- ["/imports/#{id}", "/imports/#{id}/edit", "/imports/#{id}/download"] do
+      request = "GET #{target} HTTP/1.1\r\nHost: a\r\nCookie: _dawarich_session=#{cookie}\r\n\r\n"
+      assert answered_by_puma(port, ctx.upstream, request) == "GET #{target} HTTP/1.1"
+    end
+
+    body = "import%5Bname%5D=stolen"
+
+    for id <- [769_101, 769_102],
+        {method, target} <- [
+          {"PATCH", "/imports/#{id}"},
+          {"POST", "/imports/#{id}"},
+          {"DELETE", "/imports/#{id}"},
+          {"POST", "/imports/#{id}/extraction"},
+          {"DELETE", "/imports/#{id}/extraction"}
+        ] do
+      request =
+        "#{method} #{target} HTTP/1.1\r\nHost: a\r\nCookie: _dawarich_session=#{cookie}\r\n" <>
+          "X-CSRF-Token: #{token}\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+    end
+
+    assert [["private-owner.gpx", 2], ["own.geojson", 2]] ==
+             Dawarich.Repo.query!("SELECT name,status FROM imports ORDER BY id", [], log: false).rows
+  end
+
+  test "DAWARICH_RAILS_ROUTES=imports hands every import route and method back", ctx do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
+    RailsUser.insert!(%{id: 7693, email: "tcp-handback@example.test"})
+    ImportsExportsSeeds.import!(%{id: 769_301, user_id: 7693, name: "handback.gpx"})
+    session = RailsUser.session(7693)
+    cookie = "Cookie: _dawarich_session=#{RailsUser.cookie(session)}\r\n"
+    token = "X-CSRF-Token: #{DawarichWeb.RailsCsrf.masked_token(session)}\r\n"
+    port = serve()
+
+    assert answered_by_phoenix(port, "GET /imports/769301 HTTP/1.1\r\nHost: a\r\n#{cookie}\r\n") ==
+             200
+
+    Application.put_env(:dawarich, :rails_routes, ["imports"])
+    body = "import%5Bname%5D=renamed.gpx"
+
+    for {method, target} <- [
+          {"GET", "/imports"},
+          {"GET", "/imports/new"},
+          {"GET", "/imports/769301"},
+          {"GET", "/imports/769301/edit"},
+          {"GET", "/imports/769301/download"},
+          {"POST", "/imports"},
+          {"POST", "/imports/769301"},
+          {"PATCH", "/imports/769301"},
+          {"DELETE", "/imports/769301"},
+          {"POST", "/imports/769301/extraction"},
+          {"DELETE", "/imports/769301/extraction"}
+        ] do
+      request =
+        "#{method} #{target} HTTP/1.1\r\nHost: a\r\n#{cookie}#{token}" <>
+          "Content-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+      assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
+    end
+
+    assert [["handback.gpx", 2]] ==
+             Dawarich.Repo.query!("SELECT name,status FROM imports", [], log: false).rows
+  end
+
   test "DAWARICH_RAILS_ROUTES hands the imports and exports lists back with their query", ctx do
     Application.put_env(:dawarich, :rails_routes, ["imports", "exports"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     port = serve()
 
     for target <- ~w(/imports /imports?order_by=asc&page=2&sort_by=name /exports?page=2) do
@@ -547,7 +707,6 @@ defmodule DawarichWeb.EndpointTest do
 
   test "DAWARICH_RAILS_ROUTES hands the stats and digest pages back", ctx do
     Application.put_env(:dawarich, :rails_routes, ["stats", "digests"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     port = serve()
 
     for target <- ~w(/stats /stats/2024/3 /digests/2024),
@@ -603,7 +762,6 @@ defmodule DawarichWeb.EndpointTest do
 
   test "DAWARICH_RAILS_ROUTES=trips hands both pages back with their query", ctx do
     Application.put_env(:dawarich, :rails_routes, ["trips"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     port = serve()
 
     for target <- ~w(/trips /trips?page=2 /trips/5) do
@@ -625,7 +783,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/settings /settings/theme?theme=light /settings/visits /settings/two_factor /settings/background_jobs /settings/users /settings/users/export /settings/trek_sources/1/select_trips /insights/details?year=2024 /map/residency?year=2024 /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
+          ~w(/settings /settings/theme?theme=light /settings/visits /settings/two_factor /settings/background_jobs /settings/users /settings/users/export /settings/trek_sources/1/select_trips /insights/details?year=2024 /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
@@ -659,7 +817,6 @@ defmodule DawarichWeb.EndpointTest do
 
   test "DAWARICH_RAILS_ROUTES hands the settings, account and insights pages back", ctx do
     Application.put_env(:dawarich, :rails_routes, ["settings", "users", "insights"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     port = serve()
 
     for target <-
@@ -686,9 +843,6 @@ defmodule DawarichWeb.EndpointTest do
           {"/maps/v2", ""},
           {"/map/v1", ""},
           {"/map/timeline_feeds?date=2026-09-29", ""},
-          {"/map/timeline_feeds/calendar?month=2026-09", ""},
-          {"/map/timeline_feeds/5/track_info", ""},
-          {"/map/residency", ""},
           {"/api/v1/timeline?start_at=1&end_at=2", ""},
           {"/map/v2", "Accept: application/json\r\n"},
           {"/map/v2?format=json", ""},
@@ -724,5 +878,76 @@ defmodule DawarichWeb.EndpointTest do
           )
 
     assert answered_by_phoenix(port, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+  end
+
+  test "Phoenix answers the map frames itself" do
+    port = serve()
+    accept = "Accept: text/html, application/xhtml+xml\r\n"
+
+    for target <- [
+          "/map/timeline_feeds/5/track_info",
+          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds/calendar?month=2026-09",
+          "/map/timeline_feeds/calendar",
+          "/map/residency?year=2026",
+          "/map/residency"
+        ],
+        do:
+          assert(
+            answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n#{accept}\r\n") == 302
+          )
+  end
+
+  test "frame inputs Phoenix does not reproduce go to Puma unchanged", ctx do
+    port = serve()
+    frame = "Accept: text/html, application/xhtml+xml\r\n"
+    get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
+
+    for {target, headers} <- [
+          {"/map/timeline_feeds/abc/track_info", frame},
+          {"/map/timeline_feeds/1234567890123456789/track_info", frame},
+          {"/map/timeline_feeds/5/track_info?locale=de", frame},
+          {"/map/timeline_feeds/5/track_info?client=ios", frame},
+          {"/map/timeline_feeds/5/track_info?aff=a6s2", frame},
+          {"/map/timeline_feeds/calendar?month=2026-09&via=a6s2", frame},
+          {"/map/timeline_feeds/5/track_info", frame <> "X-Dawarich-Client: ios\r\n"},
+          {"/map/timeline_feeds/5/track_info", "Accept: application/json\r\n"},
+          {"/map/timeline_feeds/5/track_info", frame <> "X-Requested-With: XMLHttpRequest\r\n"},
+          {"/map/timeline_feeds/5/track_info?format=json", frame},
+          {"/map/timeline_feeds?date=2026-09-29", frame},
+          {"/map/timeline_feeds?start_at=&end_at=2026-09-27T23:59:59", frame},
+          {"/map/timeline_feeds?start_at=Oct%2015%202025&end_at=2026-09-27T23:59:59", frame},
+          {"/map/timeline_feeds?start_at[]=1&end_at=2", frame},
+          {"/map/timeline_feeds?start_at=1&end_at=2&locale=de", frame},
+          {"/map/timeline_feeds/calendar?month=2026-9", frame},
+          {"/map/residency?year=abc", frame},
+          {"/map/residency?year=", frame},
+          {"/map/residency?year=2040", frame},
+          {"/tracks/5/segments", frame}
+        ],
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, get.(target, headers)) ==
+              "GET #{target} HTTP/1.1"
+          )
+  end
+
+  test "DAWARICH_RAILS_ROUTES=map hands the frames back with the page", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["map"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+
+    for target <- [
+          "/map/v2",
+          "/map/timeline_feeds/5/track_info",
+          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds/calendar?month=2026-09",
+          "/map/residency?year=2026"
+        ],
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+              "GET #{target} HTTP/1.1"
+          )
   end
 end

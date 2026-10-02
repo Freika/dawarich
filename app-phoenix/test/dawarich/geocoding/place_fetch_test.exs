@@ -40,6 +40,22 @@ defmodule Dawarich.Geocoding.PlaceFetchTest do
     assert [[_, _, _, "51.339700", "12.373100", "POINT(12.3731 51.3397)" | _]] = places(f)
   end
 
+  test "geodata floats from the provider are stored as Rails stores them" do
+    f = load!("place_siblings")
+    [%{"url" => url, "status" => status, "body" => body}] = f["requests"]
+    FakeHttp.stub(url, status, with_rails_rounding_cases(body))
+
+    assert PlaceFetch.run(ScratchRepo, f["place_id"], Config.resolve(ScratchRepo, %{})) == :ok
+
+    [user] = f["input"]["users"]
+
+    assert ScratchRepo.query!(
+             "SELECT geodata->'properties'->>'extent', geodata->'properties'->>'distance' " <>
+               "FROM places WHERE user_id = $1 ORDER BY id",
+             [user["id"]]
+           ).rows == List.duplicate(["[12.3731, 51.3398, 12.3732, 51.3397]", "1500.0"], 4)
+  end
+
   test "name over 255 and missing coordinates raise" do
     for name <- ~w(place_name_too_long place_without_coordinates) do
       ScratchRepo.query!("TRUNCATE places, instance_settings RESTART IDENTITY CASCADE", [],

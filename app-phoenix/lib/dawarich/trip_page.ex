@@ -1,0 +1,137 @@
+defmodule Dawarich.TripPage do
+  @moduledoc false
+
+  alias Dawarich.{
+    CountryNames,
+    Repo,
+    TripDays,
+    TripSettings,
+    TripStream,
+    TripStudio,
+    UserTimeZone
+  }
+
+  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
+
+  @gate """
+  SELECT z.name, s.sl, s.el, s.seconds, s.near_transition,
+         t.path IS NULL OR ST_IsEmpty(t.path) OR t.distance IS NULL
+           OR t.trip_source_id IS NOT NULL OR t.source_identifier IS NOT NULL
+           OR t.started_at < '1901-12-13 20:45:52'
+           OR t.ended_at >= '2038-01-19 03:14:08'
+           OR NOT CASE WHEN jsonb_typeof(t.visited_countries) <> 'array' THEN false
+                       WHEN jsonb_array_length(t.visited_countries) = 0 THEN false
+                       ELSE NOT EXISTS (SELECT 1 FROM jsonb_array_elements(t.visited_countries) e
+                                        WHERE jsonb_typeof(e) <> 'string') END
+           OR EXISTS (SELECT 1 FROM planned_days x WHERE x.trip_id = t.id)
+           OR EXISTS (SELECT 1 FROM planned_reservations x WHERE x.trip_id = t.id)
+           OR EXISTS (SELECT 1 FROM planned_accommodations x WHERE x.trip_id = t.id)
+           OR EXISTS (SELECT 1 FROM planned_travellers x WHERE x.trip_id = t.id)
+           OR EXISTS (SELECT 1 FROM planned_unplanned_places x WHERE x.trip_id = t.id)
+           OR EXISTS (SELECT 1 FROM action_text_rich_texts r
+                      WHERE r.record_type = 'Trip' AND r.record_id = t.id AND r.name = 'description'
+                        AND btrim(coalesce(r.body, '')) <> '')
+  FROM trips t CROSS JOIN z
+  CROSS JOIN LATERAL (#{TripDays.span_sql("t.started_at", "t.ended_at", "z.name")}) s
+  WHERE t.id = $1 AND t.user_id = $2
+  """
+
+  def gate(user, trip_id) do
+    with {:ok, %{photos: false} = settings} <- TripSettings.read(user.settings),
+         [[zone, started_local, ended_local, seconds, near_transition, false]] <-
+           UserTimeZone.query!(@gate, [trip_id, user.id], user.settings).rows,
+         true <- TripSettings.zone?(user.settings, zone),
+         span = TripDays.span(started_local, ended_local, seconds, near_transition),
+         {_parts, borrowed} =
+           TripDays.duration_parts(span.started_local, span.ended_local, span.previous_month_days),
+         false <- borrowed and span.near_transition do
+      {:ok, %{settings: settings, zone: zone, span: span}}
+    else
+      _ -> :rails
+    end
+  end
+
+  @trip """
+  SELECT t.name, t.distance, t.visited_countries, t.started_at, t.ended_at,
+         ((t.started_at AT TIME ZONE 'UTC') AT TIME ZONE $2)::date,
+         ((t.ended_at AT TIME ZONE 'UTC') AT TIME ZONE $2)::date,
+         floor(extract(epoch FROM t.started_at AT TIME ZONE 'UTC'))::bigint,
+         floor(extract(epoch FROM t.ended_at AT TIME ZONE 'UTC'))::bigint,
+         coalesce(t.last_recalculated_at > $3::timestamp - interval '60 seconds', false),
+         EXISTS (SELECT 1 FROM shared_links s
+                 WHERE s.resource_type = 0 AND s.resource_id = t.id AND s.revoked_at IS NULL
+                   AND (s.expires_at IS NULL OR s.expires_at > $3::timestamp)),
+         (SELECT array_agg(ARRAY[ST_X(p.geom), ST_Y(p.geom)] ORDER BY p.path) FROM ST_DumpPoints(t.path) p)
+  FROM trips t WHERE t.id = $1
+  """
+
+  @notes """
+  SELECT n.id, n.noted_at::date, n.body FROM notes n
+  WHERE n.attachable_type = 'Trip' AND n.attachable_id = $1 AND n.noted_at IS NOT NULL
+  """
+
+  def load(user, trip_id, now) do
+    with {:ok, %{settings: settings, zone: zone, span: span}} <- gate(user, trip_id),
+         [row] <- Repo.query!(@trip, [trip_id, zone, DateTime.to_naive(now)]).rows do
+      {:ok, page(user, trip_id, row, settings, zone, span)}
+    else
+      _ -> :rails
+    end
+  end
+
+  defp page(user, id, row, settings, zone, span) do
+    [
+      name,
+      distance,
+      countries,
+      started,
+      ended,
+      first_day,
+      last_day,
+      from,
+      to,
+      recalculating,
+      shared,
+      path
+    ] = row
+
+    day_data = TripDays.day_data(user.id, from, to, settings.minutes * 60, zone)
+
+    {duration, _borrowed} =
+      TripDays.duration_parts(span.started_local, span.ended_local, span.previous_month_days)
+
+    %{
+      id: id,
+      name: name,
+      distance: distance,
+      countries: Enum.sort(countries),
+      flags: CountryNames.table(),
+      settings: settings,
+      api_key: user.api_key,
+      iana: zone,
+      started_at:
+        UserTimeZone.zoned(started, NaiveDateTime.diff(span.started_local, started), zone),
+      ended_at: UserTimeZone.zoned(ended, NaiveDateTime.diff(span.ended_local, ended), zone),
+      duration: duration,
+      recalculating: recalculating,
+      shared: shared,
+      path_json: IO.iodata_to_binary(Ruby.json(path)),
+      windows_json: day_data.windows_json,
+      days: days(first_day, last_day, day_data.stats, notes(id)),
+      trip_stream: TripStream.stream_name(id),
+      studio: TripStudio.load(user.id, zone)
+    }
+  end
+
+  defp days(first, last, stats, notes),
+    do:
+      for(
+        date <- Date.range(first, last, 1),
+        do: %{date: date, stats: stats[date], note: notes[date]}
+      )
+
+  defp notes(trip_id),
+    do:
+      Repo.query!(@notes, [trip_id]).rows
+      |> Map.new(fn [id, date, body] -> {date, %{id: id, date: date, body: body}} end)
+end
