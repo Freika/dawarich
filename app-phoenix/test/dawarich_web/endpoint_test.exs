@@ -751,6 +751,8 @@ defmodule DawarichWeb.EndpointTest do
           {"/map/timeline_feeds/1234567890123456789/track_info", frame},
           {"/map/timeline_feeds/5/track_info?locale=de", frame},
           {"/map/timeline_feeds/5/track_info?client=ios", frame},
+          {"/map/timeline_feeds/5/track_info?aff=a6s2", frame},
+          {"/map/timeline_feeds/calendar?month=2026-09&via=a6s2", frame},
           {"/map/timeline_feeds/5/track_info", frame <> "X-Dawarich-Client: ios\r\n"},
           {"/map/timeline_feeds/5/track_info", "Accept: application/json\r\n"},
           {"/map/timeline_feeds/5/track_info", frame <> "X-Requested-With: XMLHttpRequest\r\n"},
@@ -763,7 +765,8 @@ defmodule DawarichWeb.EndpointTest do
           {"/map/timeline_feeds/calendar?month=2026-9", frame},
           {"/map/residency?year=abc", frame},
           {"/map/residency?year=", frame},
-          {"/map/residency?year=2040", frame}
+          {"/map/residency?year=2040", frame},
+          {"/tracks/5/segments", frame}
         ],
         do:
           assert(
@@ -776,9 +779,18 @@ defmodule DawarichWeb.EndpointTest do
     Application.put_env(:dawarich, :rails_routes, ["map"])
     on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     port = serve()
-    target = "/map/timeline_feeds/5/track_info"
 
-    assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
-             "GET #{target} HTTP/1.1"
+    for target <- [
+          "/map/v2",
+          "/map/timeline_feeds/5/track_info",
+          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds/calendar?month=2026-09",
+          "/map/residency?year=2026"
+        ],
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+              "GET #{target} HTTP/1.1"
+          )
   end
 end

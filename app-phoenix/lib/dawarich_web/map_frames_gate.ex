@@ -65,6 +65,6 @@ defmodule DawarichWeb.MapFramesGate do
 
   defp plain?(conn, query),
     do:
-      not Map.has_key?(query, "locale") and not Map.has_key?(query, "client") and
+      not Enum.any?(~w(locale client aff via), &Map.has_key?(query, &1)) and
         get_req_header(conn, "x-dawarich-client") == []
 end
