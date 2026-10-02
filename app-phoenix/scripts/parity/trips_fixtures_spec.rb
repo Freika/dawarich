@@ -207,7 +207,10 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
       ['index_many_page1', 9805, '/trips'], ['index_many_page2', 9805, '/trips?page=2'],
       ['index_many_page3', 9805, '/trips?page=3'], ['index_many_page0', 9805, '/trips?page=0'],
       ['index_many_page_negative', 9805, '/trips?page=-1'], ['index_many_page_2abc', 9805, '/trips?page=2abc'],
-      ['index_many_page_out', 9805, '/trips?page=4'], ['index_many_extra_param', 9805, '/trips?page=2&view=cards']
+      ['index_many_page_out', 9805, '/trips?page=4'], ['index_many_extra_param', 9805, '/trips?page=2&view=cards'],
+      ['show_leipzig', 9801, '/trips/980101'], ['show_grenzgang', 9801, '/trips/980102'],
+      ['show_short_hop', 9801, '/trips/980106'], ['show_ny', 9802, '/trips/980201'],
+      ['show_utc', 9803, '/trips/980301']
     ]
   end
 
@@ -234,5 +237,55 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
       write_json('seed.json', { users:, countries:, sources:, trips:, points:, notes:, shared_links:, posters:,
                                 route_videos: })
     end
+  end
+
+  it 'writes the day-data corpus' do
+    travel_to now do
+      create_users!
+      insert!
+      cases = [980_101, 980_102, 980_106, 980_201, 980_301].map do |id|
+        trip = Trip.find(id)
+        zone = trip.user.timezone_iana
+        { trip_id: id, user_id: trip.user_id, from: trip.started_at.to_i, to: trip.ended_at.to_i,
+          gap: trip.user.safe_settings.minutes_between_routes * 60, iana: zone,
+          windows_json: trip.primary_device_windows.to_json,
+          stats: trip.day_stats(zone).sort.map do |day, stat|
+            { day: day.iso8601, first: stat[:first_time].strftime('%Y-%m-%dT%H:%M:%S'),
+              last: stat[:last_time].strftime('%Y-%m-%dT%H:%M:%S'), distance_m: stat[:distance_m] }
+          end }
+      end
+      write_json('windows.json', { trips: cases })
+    end
+  end
+
+  it 'writes the duration and precision corpus' do
+    zones = %w[Europe/Berlin America/New_York UTC Asia/Kathmandu]
+    spans = [%w[2026-05-09T06:00:00Z 2026-05-12T20:00:00Z], %w[2026-01-31T09:00:00Z 2026-03-02T07:00:00Z],
+             %w[2026-01-31T09:00:00Z 2026-02-02T07:00:00Z], %w[2026-04-30T10:00:00Z 2026-05-01T09:00:00Z],
+             %w[2025-12-31T23:30:00Z 2026-01-01T00:15:00Z], %w[2026-02-15T12:00:00Z 2027-04-18T16:00:00Z],
+             %w[2026-03-20T09:00:00Z 2026-04-10T07:00:00Z], %w[2026-10-20T12:00:00Z 2026-11-18T08:00:00Z],
+             %w[2026-10-28T08:00:00Z 2026-11-25T01:30:00Z],
+             %w[2026-06-01T10:00:00Z 2026-06-01T10:59:00Z], %w[2026-06-01T10:00:00Z 2026-06-01T10:00:00Z]]
+    durations = zones.product(spans).map do |zone, (from, to)|
+      text = Time.use_zone(zone) { helper.trip_duration(Trip.new(started_at: utc(from), ended_at: utc(to))) }
+      { zone:, started_at: from, ended_at: to, text: }
+    end
+    values = [1.0, 1.05, 1.15, 1.25, 1.35, 2.675, 9.95, 12.25, 12.35, 99.95, 100.0, 1234.56, 3.14159,
+              10.049999999999999, 10.05, 7.000000000000001, 1.0000000000000002, 1.0e21, 123_456_789.25]
+    precision = values.map { |value| { value:, text: helper.number_with_precision(value, precision: 1) } }
+    write_json('format.json', { durations:, precision: })
+  end
+
+  it 'raises for a previous-month wall time inside a DST gap, which Phoenix hands back' do
+    trip = Trip.new(started_at: utc('2026-03-30T08:00:00Z'), ended_at: utc('2026-04-29T00:30:00Z'))
+    expect { Time.use_zone('Europe/Berlin') { helper.trip_duration(trip) } }.to raise_error(StandardError)
+  end
+
+  it 'writes the trip stream-name corpus' do
+    expect(Rails.application.secret_key_base).to eq(secret)
+    signed = [980_101, 980_301, 1, 123_456_789].map do |id|
+      { trip_id: id, signed: Turbo::StreamsChannel.signed_stream_name(Trip.new(id:)) }
+    end
+    write_json('streams.json', { secret:, trips: signed })
   end
 end

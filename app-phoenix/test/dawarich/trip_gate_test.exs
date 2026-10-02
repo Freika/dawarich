@@ -1,7 +1,7 @@
 defmodule Dawarich.TripGateTest do
   use ExUnit.Case, async: false
 
-  alias Dawarich.TripList
+  alias Dawarich.{TripList, TripPage}
   alias Dawarich.Test.TripsSeeds
 
   @path [[12.37, 51.338], [12.381, 51.341]]
@@ -102,6 +102,114 @@ defmodule Dawarich.TripGateTest do
       assert TripList.gate(TripsSeeds.user!(8807, %{"timezone" => "Berlin"}), 1) == :phoenix
       assert TripList.gate(TripsSeeds.user!(8808, %{"timezone" => " "}), 1) == :phoenix
       assert TripList.gate(TripsSeeds.user!(8809, %{}), 1) == :phoenix
+    end
+  end
+
+  describe "the trip page" do
+    test "a calculated trip of a user without photo integrations is Phoenix's", %{user: user} do
+      assert {:ok,
+              %{settings: %{unit: "km"}, zone: "Europe/Berlin", span: %{near_transition: false}}} =
+               TripPage.gate(user, 880_101)
+    end
+
+    test "a missing or foreign trip goes to Rails, which answers 404", %{
+      user: user,
+      foreign: foreign
+    } do
+      assert TripPage.gate(user, 880_199) == :rails
+      assert TripPage.gate(foreign, 880_101) == :rails
+    end
+
+    test "an uncalculated trip goes to Rails, because Rails enqueues its calculation on this render",
+         %{user: user} do
+      for {id, attrs} <- [
+            {880_102, %{path: nil}},
+            {880_103, %{distance: nil}},
+            {880_104, %{visited_countries: []}},
+            {880_105, %{visited_countries: %{}}},
+            {880_106, %{visited_countries: ["Germany", 7]}}
+          ] do
+        trip!(id, attrs)
+        assert TripPage.gate(user, id) == :rails, inspect(attrs)
+      end
+
+      trip!(880_107, %{path: nil})
+      TripsSeeds.empty_path!(880_107)
+      assert TripPage.gate(user, 880_107) == :rails
+    end
+
+    test "TREK rows, a TREK source, a description and a date past int4 go to Rails; a blank description does not",
+         %{user: user} do
+      ~w(planned_days planned_reservations planned_accommodations planned_travellers planned_unplanned_places)
+      |> Enum.with_index(880_110)
+      |> Enum.each(fn {table, id} ->
+        trip!(id)
+        TripsSeeds.planned!(table, id)
+        assert TripPage.gate(user, id) == :rails, table
+      end)
+
+      trip!(880_120, %{source_identifier: "12"})
+      TripsSeeds.trip_source!(88_101, 8801)
+      trip!(880_121, %{trip_source_id: 88_101})
+      trip!(880_122)
+      TripsSeeds.rich_text!(880_122, "<div>Along the Elster</div>")
+      trip!(880_123)
+      TripsSeeds.rich_text!(880_123, "   ")
+      trip!(880_124, %{ended_at: ~N[2038-01-19 03:14:08]})
+
+      assert TripPage.gate(user, 880_120) == :rails
+      assert TripPage.gate(user, 880_121) == :rails
+      assert TripPage.gate(user, 880_122) == :rails
+      assert {:ok, _} = TripPage.gate(user, 880_123)
+      assert TripPage.gate(user, 880_124) == :rails
+    end
+
+    test "timestamps below int4 go to Rails while its exact lower boundary is admitted", %{
+      user: user
+    } do
+      trip!(880_125, %{started_at: ~N[1901-12-13 20:45:51], ended_at: ~N[1901-12-13 21:45:52]})
+      trip!(880_126, %{started_at: ~N[1901-12-13 20:45:52], ended_at: ~N[1901-12-13 21:45:52]})
+
+      assert TripPage.gate(user, 880_125) == :rails
+      assert TripPage.load(user, 880_125, ~U[2026-05-15 12:00:00Z]) == :rails
+      assert {:ok, _} = TripPage.gate(user, 880_126)
+    end
+
+    test "photo integrations and settings Rails would raise on go to Rails" do
+      photos =
+        TripsSeeds.user!(8802, %{
+          "immich_url" => "https://immich.example",
+          "immich_api_key" => "fixture"
+        })
+
+      leagues = TripsSeeds.user!(8803, %{"maps" => %{"distance_unit" => "leagues"}})
+      TripsSeeds.trip!(%{id: 880_201, user_id: 8802, path: @path})
+      TripsSeeds.trip!(%{id: 880_301, user_id: 8803, path: @path})
+
+      assert TripPage.gate(photos, 880_201) == :rails
+      assert TripPage.gate(leagues, 880_301) == :rails
+    end
+
+    test "a zone PostgreSQL does not list or a timezone that is not a string sends the page to Rails" do
+      for {user_id, trip_id, settings} <- [
+            {8805, 880_701, %{"timezone" => "Europe/Atlantis"}},
+            {8806, 880_702, %{"timezone" => 5}}
+          ] do
+        user = TripsSeeds.user!(user_id, settings)
+        TripsSeeds.trip!(%{id: trip_id, user_id: user_id, path: @path})
+        assert TripPage.gate(user, trip_id) == :rails, inspect(settings)
+      end
+    end
+
+    test "a duration that borrows a previous-month wall time within a day of an offset change goes to Rails",
+         %{user: user} do
+      trip!(880_401, %{started_at: ~N[2026-03-30 08:00:00], ended_at: ~N[2026-04-29 00:30:00]})
+      trip!(880_402, %{started_at: ~N[2026-10-28 08:00:00], ended_at: ~N[2026-11-25 01:30:00]})
+      trip!(880_403, %{started_at: ~N[2026-03-20 09:00:00], ended_at: ~N[2026-04-10 07:00:00]})
+
+      assert TripPage.gate(user, 880_401) == :rails
+      assert TripPage.gate(user, 880_402) == :rails
+      assert {:ok, _} = TripPage.gate(user, 880_403)
     end
   end
 end
