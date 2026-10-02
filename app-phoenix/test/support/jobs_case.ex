@@ -45,6 +45,19 @@ defmodule Dawarich.JobsCase do
 
   def rows(sql, params \\ []), do: ScratchRepo.query!(sql, params, log: false).rows
 
+  def hold_lease!(repo, name, holder) do
+    repo.query!(
+      "INSERT INTO phoenix.leases (name, holder, expires_at) VALUES ($1, $2, statement_timestamp() + interval '60 seconds')",
+      [name, holder],
+      log: false
+    )
+
+    :ok
+  end
+
+  def lease_holders(repo, name),
+    do: repo.query!("SELECT holder FROM phoenix.leases WHERE name = $1", [name], log: false).rows
+
   def foreign_lease!(name),
     do:
       rows(
