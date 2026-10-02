@@ -50,7 +50,8 @@ defmodule Dawarich.Imports.ProcessGpxWorker do
     LeaseLost -> GpxHandover.resume(repo, job)
   end
 
-  defp context(repo, job) do
+  @doc false
+  def context(repo, job) do
     [[settings]] =
       repo.query!("SELECT settings FROM users WHERE id=$1", [job.args["user_id"]], log: false).rows
 
@@ -60,7 +61,7 @@ defmodule Dawarich.Imports.ProcessGpxWorker do
       repo: repo,
       zone: Dawarich.TimeZoneName.to_iana(job.args["time_zone"]),
       locale: locale || "en",
-      now: DateTime.utc_now(),
+      now: &DateTime.utc_now/0,
       services: Dawarich.Imports.StorageContext.services(),
       self_hosted?: Dawarich.ReleaseMigration.self_hosted?(),
       on_terminal: fn -> Processed.mark!(repo, job.args["event_id"], "imports.process_gpx") end

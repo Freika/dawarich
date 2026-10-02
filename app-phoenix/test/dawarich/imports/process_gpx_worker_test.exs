@@ -18,6 +18,16 @@ defmodule Dawarich.Imports.ProcessGpxWorkerTest do
     Dawarich.ImportLeaseFixture.create()
   end
 
+  test "the worker's clock keeps running, so progress also fires on the five-second branch", c do
+    job = %Oban.Job{args: %{"user_id" => c.import.user_id, "time_zone" => "Berlin"}}
+    context = ProcessGpxWorker.context(ScratchRepo, job)
+    import = Map.take(c.import, [:id, :user_id])
+    state = Dawarich.Imports.GpxProgress.record(import, 1000, %{at: nil, index: nil}, context)
+    later = %{state | at: DateTime.add(DateTime.utc_now(), -5, :second)}
+    assert %{index: 1001} = Dawarich.Imports.GpxProgress.record(import, 1001, later, context)
+    assert [[1001]] = rows("SELECT processed FROM imports WHERE id=$1", [c.import.id])
+  end
+
   test "dispatch preserves a captured Rails zone", c do
     event =
       outbox!(
