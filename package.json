@@ -17,6 +17,10 @@
   "devDependencies": {
     "@biomejs/biome": "2.3.11",
     "@playwright/test": "^1.56.1",
-    "@types/node": "^24.0.13"
+    "@tailwindcss/aspect-ratio": "0.4.2",
+    "@tailwindcss/forms": "0.5.9",
+    "@tailwindcss/typography": "0.5.15",
+    "@types/node": "^24.0.13",
+    "tailwindcss": "3.4.17"
   }
 }
