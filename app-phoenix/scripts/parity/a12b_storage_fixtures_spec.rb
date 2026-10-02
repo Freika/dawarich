@@ -30,9 +30,9 @@ RSpec.describe 'Phoenix fixture: A12b Active Storage', type: :request do
      ["a12b#{'e' * 24}", 'no type', nil]]
   end
 
-  def make_blob(id, key, filename, type, stored:, checksum: Digest::MD5.base64digest(payload))
+  def make_blob(id, key, filename, type, stored:, checksum: Digest::MD5.base64digest(payload), service: 'test')
     blob = ActiveStorage::Blob.create!(id: id, key: key, filename: filename, content_type: type,
-                                       byte_size: payload.bytesize, checksum: checksum, service_name: 'test',
+                                       byte_size: payload.bytesize, checksum: checksum, service_name: service,
                                        metadata: {})
     if stored
       blob.service.upload(key, StringIO.new(payload), checksum: blob.checksum)
@@ -130,12 +130,39 @@ custom_metadata: {} }
     table
   end
 
-  def record(name, method, path, headers: {}, body: nil, at: fx::NOW, csrf: false)
+  def record(name, method, path, headers: {}, body: nil, at: fx::NOW, csrf: false, stored_body: body)
     travel_to(at) { send(method, path, headers: headers, params: body) }
     { 'name' => name, 'method' => method.to_s.upcase, 'path' => path, 'headers' => headers.except('X-CSRF-Token'),
-      'csrf' => csrf, 'body' => body && Base64.strict_encode64(body), 'now' => at.iso8601(3),
+      'csrf' => csrf, 'body' => stored_body && Base64.strict_encode64(stored_body), 'now' => at.iso8601(3),
       'status' => response.status, 'response_headers' => response.headers.to_h.slice(*compared),
-      'response_body' => Base64.strict_encode64(response.body.to_s) }
+      'response_body' => Base64.strict_encode64(response.body.to_s),
+      'default_service' => ActiveStorage::Blob.service.name.to_s }
+  end
+
+  def with_default_service(service)
+    previous = ActiveStorage::Blob.service
+    ActiveStorage::Blob.service = service
+    yield
+  ensure
+    ActiveStorage::Blob.service = previous
+  end
+
+  def local_blobs
+    [make_blob(970_514, "a12b#{'k' * 24}", 'local.json', 'application/json', stored: true, service: 'local'),
+     make_blob(970_515, "a12b#{'l' * 24}", 'local.gpx', 'application/gpx+xml', stored: false, service: 'local')]
+  end
+
+  def other_service_requests(stored, fresh)
+    paths = frozen do
+      with_urls do
+        [Rails.application.routes.url_helpers.rails_service_blob_path(stored.signed_id, stored.filename),
+         URI(stored.url(disposition: 'attachment')).path, URI(fresh.service_url_for_direct_upload).path]
+      end
+    end
+    with_default_service(services['aws']) do
+      [record('redirect_other_service', :get, paths[0]), record('disk_other_service', :get, paths[1]),
+       record('put_other_service', :put, paths[2], headers: { 'CONTENT_TYPE' => 'application/gpx+xml' }, body: payload)]
+    end
   end
 
   def blob_key_path(signed, filename)
@@ -169,7 +196,10 @@ custom_metadata: {} }
      record('disk_expired', :get, path, at: fx::NOW + 301),
      record('disk_wrong_purpose', :get, "#{upload_path}/x.json"),
      record('disk_traversal', :get, blob_key_path(traversal, 'x')),
-     record('disk_missing_file', :get, blob_key_path(missing_key, 'x'))]
+     record('disk_missing_file', :get, blob_key_path(missing_key, 'x')),
+     record('disk_json_accept', :get, blob_key_path(missing_key, 'x'), headers: { 'Accept' => 'application/json' }),
+     record('disk_browser_accept', :get, blob_key_path(missing_key, 'x'),
+            headers: { 'Accept' => 'application/json, */*' })]
   end
 
   def upload_requests(fresh, mismatch)
@@ -225,7 +255,15 @@ custom_metadata: {} }
                 record('upload_blank_checksum', :post, '/rails/active_storage/direct_uploads',
                        headers: json.merge('X-CSRF-Token' => csrf_meta), body: blank, csrf: true),
                 record('upload_bad_json', :post, '/rails/active_storage/direct_uploads',
-                       headers: json.merge('X-CSRF-Token' => csrf_meta), body: '{"blob":', csrf: true)]
+                       headers: json.merge('X-CSRF-Token' => csrf_meta), body: '{"blob":', csrf: true),
+                record('upload_empty_blob', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => csrf_meta), body: '{"blob":{}}', csrf: true),
+                record('upload_body_token', :post, '/rails/active_storage/direct_uploads',
+                       headers: json, body: { blob: {}, authenticity_token: csrf_meta }.to_json,
+                       stored_body: '{"blob":{}}', csrf: 'body'),
+                record('upload_foreign_origin', :post, '/rails/active_storage/direct_uploads',
+                       headers: json.merge('X-CSRF-Token' => csrf_meta, 'Origin' => 'http://evil.example'),
+                       body: '{"blob":{}}', csrf: true)]
     rewritten = requests.first['response_headers']['set-cookie']
     expect(rewritten.split('; ', 2).last).to eq('path=/; httponly; samesite=lax')
     expect(session_data(fx.cookie_value(rewritten)))
@@ -263,11 +301,15 @@ custom_metadata: {} }
          'urls' => urls(blobs), 'direct_uploads' => direct_uploads(blobs + [upload]),
          'blob_ids' => blobs.map { |b| { 'id' => b.id, 'signed' => b.signed_id } } }]
     end
-    requests = disk_requests(stored.first, missing) + upload_requests(fresh, mismatch) + redirect_requests(stored)
+    local, local_fresh = frozen { local_blobs }
+    requests = disk_requests(stored.first, missing) + upload_requests(fresh, mismatch) + redirect_requests(stored) +
+               other_service_requests(local, local_fresh)
     expect(fresh.service.exist?(fresh.key)).to be(true)
     expect(mismatch.service.exist?(mismatch.key)).to be(false)
+    expect(local_fresh.service.download(local_fresh.key).b).to eq(payload)
     uploads = direct_upload_requests
-    rows = stored.map { |b| row(b, true) } + [fresh, mismatch, missing].map { |b| row(b, false) }
+    rows = (stored + [local]).map { |b| row(b, true) } +
+           [fresh, mismatch, missing, local_fresh].map { |b| row(b, false) }
     data = stable.merge('blobs' => rows, 'requests' => requests, 'direct_upload' => uploads.except('requests'),
                         'upload_requests' => uploads['requests'])
     if fx.write?
@@ -281,6 +323,12 @@ custom_metadata: {} }
     end
   ensure
     Rails.application.env_config['action_dispatch.show_detailed_exceptions'] = detailed
+    remove_local([local, local_fresh])
+  end
+
+  def remove_local(blobs)
+    blobs.compact.each { |blob| blob.service.delete(blob.key) }
+    %w[storage/a1/2b storage/a1].map { |dir| Rails.root.join(dir) }.each { |dir| Dir.rmdir(dir) if Dir.empty?(dir) }
   end
 
   def phoenix_storage_code
@@ -290,7 +338,7 @@ custom_metadata: {} }
       now = ~U[2026-10-02 12:00:00.000000Z]
       local = %{service: "local", root: "/unused", stored_service: "test"}
       blob = fn row -> %{id: row["id"], key: row["key"], filename: row["filename"], content_type: row["content_type"], service_name: row["service_name"], byte_size: row["byte_size"], checksum: row["checksum"]} end
-      downloads = for row <- fx["blobs"], row["stored"], row["content_type"], d <- [nil, "attachment"], do: %{"blob_id" => row["id"], "disposition" => d, "url" => ActiveStorageUrls.service_url(local, blob.(row), d, "http://dawarich.example", now)}
+      downloads = for row <- fx["blobs"], row["stored"], row["content_type"], row["service_name"] == "test", d <- [nil, "attachment"], do: %{"blob_id" => row["id"], "disposition" => d, "url" => ActiveStorageUrls.service_url(local, blob.(row), d, "http://dawarich.example", now)}
       fresh = %{id: 970530, key: "a12b" <> String.duplicate("j", 24), filename: "phoenix.gpx", content_type: "application/gpx+xml", service_name: "test", byte_size: 1024, checksum: "#{Digest::MD5.base64digest(payload)}"}
       {url, headers} = ActiveStorageUrls.direct_upload(local, fresh, "http://dawarich.example", now)
       IO.puts(Jason.encode!(%{"downloads" => downloads, "upload" => %{"url" => url, "headers" => headers}, "signed_id" => Dawarich.RailsMessages.blob_id(970501)}))
