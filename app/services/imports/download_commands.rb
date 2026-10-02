@@ -56,7 +56,7 @@ module Imports
             end
 
             import.reload(lock: true)
-            import.user.lock!('FOR SHARE')
+            User.unscoped.lock('FOR SHARE').find_by(id: import.user_id)
             raise Busy, 'Download source changed' unless available?(import, source_blob_id) && import.user_id == actor
 
             blob = import.file.blob.reload(lock: true)
@@ -70,8 +70,8 @@ module Imports
     end
 
     def available?(import, source_blob_id)
-      import && !import.deleting? && import.user.deleted_at.nil? && import.file.attached? &&
-        import.file.blob_id == source_blob_id
+      import && !import.deleting? && import.file.attached? && import.file.blob_id == source_blob_id &&
+        User.unscoped.exists?(id: import.user_id, deleted_at: nil)
     end
     private_class_method :available?
   end

@@ -46,6 +46,38 @@ expected_user_id: import.user_id)
     expect(JobOutbox.count).to eq(0)
   end
 
+  describe 'with a wrapped GPX download' do
+    before do
+      archive = Zip::OutputStream.write_buffer do |zip|
+        zip.put_next_entry('original.gpx')
+        zip.write('<gpx/>')
+      end
+      import.file.attach(
+        io: StringIO.new(archive.string), filename: 'original.gpx.zip', content_type: 'application/zip',
+        metadata: { 'dawarich_client_wrapped' => true, 'dawarich_original_filename' => 'original.gpx' }
+      )
+    end
+
+    it 'prepares it for an active user' do
+      Imports::PrepareDownloadJob.perform_now(import.id, import.file.blob_id)
+      expect(import.reload.prepared_download.download).to eq('<gpx/>')
+    end
+
+    it 'does nothing for a soft-deleted user' do
+      import.user.update_column(:deleted_at, Time.current)
+      expect { Imports::PrepareDownloadJob.perform_now(import.id, import.file.blob_id) }.not_to raise_error
+      expect(import.reload.prepared_download).not_to be_attached
+      expect(JobOutbox.count).to eq(0)
+    end
+
+    it 'enqueues nothing from the reverse command for a soft-deleted user' do
+      import.user.update_column(:deleted_at, Time.current)
+      handler = RailsCommands::Registry.handler('imports.prepare_download')
+      expect { handler.call(payload.merge('native_fallback' => true)) }
+        .not_to have_enqueued_job(Imports::PrepareDownloadJob)
+    end
+  end
+
   it 'prepares a non-GPX download as before, outside the coordinated lock' do
     other = create(:import, source: :geojson, skip_background_processing: true)
     archive = Zip::OutputStream.write_buffer do |zip|

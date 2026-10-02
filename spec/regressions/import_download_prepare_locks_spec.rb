@@ -117,4 +117,22 @@ RSpec.describe 'Preparing a GPX download next to the user’s writes', :non_tran
     release_upload&.count_down
     thread&.join
   end
+
+  it 'refuses the attach when the user is soft-deleted during the upload and purges the uploaded blob' do
+    uploading, release_upload = pause_upload
+    thread = prepare_in_thread
+
+    expect(uploading.wait(10)).to be(true)
+    User.unscoped.where(id: import.user_id).update_all(deleted_at: Time.current)
+    release_upload.count_down
+    Timeout.timeout(15) { thread.join }
+
+    expect(import.reload.prepared_download).not_to be_attached
+    uploaded = ActiveStorage::Blob.where('id > ?', newest_blob_id).where.not(id: import.file.blob_id).sole
+    expect(ActiveStorage::PurgeJob).to have_been_enqueued.with(uploaded)
+  ensure
+    User.unscoped.where(id: import.user_id).update_all(deleted_at: nil)
+    release_upload&.count_down
+    thread&.join
+  end
 end
