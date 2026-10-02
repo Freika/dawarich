@@ -150,7 +150,13 @@ defmodule Dawarich.GeocodingCase do
 
   def dedupe_key(id), do: "geocode:enq:Point:#{id}"
 
-  def dedupe_key?(id), do: Redis.command(["EXISTS", dedupe_key(id)]) == {:ok, 1}
+  def dedupe_key?(id),
+    do:
+      ScratchRepo.query!(
+        "SELECT 1 FROM phoenix.once_claims WHERE key = $1 AND expires_at > statement_timestamp()",
+        [dedupe_key(id)],
+        log: false
+      ).num_rows == 1
 
   defp rows(sql), do: ScratchRepo.query!(sql, [], log: false).rows
 end

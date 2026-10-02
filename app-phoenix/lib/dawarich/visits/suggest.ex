@@ -5,7 +5,7 @@ defmodule Dawarich.Visits.Suggest do
 
   alias Dawarich.Geocoding.Config
   alias Dawarich.Mail.ExploreFeatures
-  alias Dawarich.{I18n, Notifications, RailsEffects, Redis}
+  alias Dawarich.{I18n, Notifications, RailsEffects, State}
   alias Dawarich.Visits.{Settings, SmartDetect, Sql}
 
   @known "SELECT floor(extract(epoch FROM started_at))::bigint, " <>
@@ -51,9 +51,14 @@ defmodule Dawarich.Visits.Suggest do
         "error=#{Exception.message(exception)}"
     )
 
-    claim = Redis.command(["SET", "visit_suggest_error:user:#{user_id}", "1", "NX", "EX", "3600"])
-    unless match?({:ok, nil}, claim), do: notify!(repo, user_id, exception)
+    if claim_error_window(repo, user_id), do: notify!(repo, user_id, exception)
     :ok
+  end
+
+  defp claim_error_window(repo, user_id) do
+    State.claim(repo, "visit_suggest_error:user:#{user_id}", 3600)
+  rescue
+    _ in [DBConnection.ConnectionError, Postgrex.Error] -> true
   end
 
   defp notify!(repo, user_id, exception) do
