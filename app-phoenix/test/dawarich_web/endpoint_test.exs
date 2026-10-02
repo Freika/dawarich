@@ -687,7 +687,6 @@ defmodule DawarichWeb.EndpointTest do
           {"/map/v1", ""},
           {"/map/timeline_feeds?date=2026-09-29", ""},
           {"/map/timeline_feeds/calendar?month=2026-09", ""},
-          {"/map/timeline_feeds/5/track_info", ""},
           {"/map/residency", ""},
           {"/api/v1/timeline?start_at=1&end_at=2", ""},
           {"/map/v2", "Accept: application/json\r\n"},
@@ -724,5 +723,48 @@ defmodule DawarichWeb.EndpointTest do
           )
 
     assert answered_by_phoenix(port, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+  end
+
+  test "Phoenix answers the map frames itself" do
+    port = serve()
+    accept = "Accept: text/html, application/xhtml+xml\r\n"
+
+    for target <- ["/map/timeline_feeds/5/track_info"],
+        do:
+          assert(
+            answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n#{accept}\r\n") == 302
+          )
+  end
+
+  test "frame inputs Phoenix does not reproduce go to Puma unchanged", ctx do
+    port = serve()
+    frame = "Accept: text/html, application/xhtml+xml\r\n"
+    get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
+
+    for {target, headers} <- [
+          {"/map/timeline_feeds/abc/track_info", frame},
+          {"/map/timeline_feeds/1234567890123456789/track_info", frame},
+          {"/map/timeline_feeds/5/track_info?locale=de", frame},
+          {"/map/timeline_feeds/5/track_info?client=ios", frame},
+          {"/map/timeline_feeds/5/track_info", frame <> "X-Dawarich-Client: ios\r\n"},
+          {"/map/timeline_feeds/5/track_info", "Accept: application/json\r\n"},
+          {"/map/timeline_feeds/5/track_info", frame <> "X-Requested-With: XMLHttpRequest\r\n"},
+          {"/map/timeline_feeds/5/track_info?format=json", frame}
+        ],
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, get.(target, headers)) ==
+              "GET #{target} HTTP/1.1"
+          )
+  end
+
+  test "DAWARICH_RAILS_ROUTES=map hands the frames back with the page", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["map"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+    target = "/map/timeline_feeds/5/track_info"
+
+    assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+             "GET #{target} HTTP/1.1"
   end
 end
