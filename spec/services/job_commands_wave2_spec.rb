@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe JobCommands do
-  it 'declares the seven wave-2 command types at version 1' do
+  it 'declares points exports at version 2 and the other wave-2 command types at version 1' do
     wave2_types = %w[
       exports.points
       mail.family_invitation
@@ -15,7 +15,7 @@ RSpec.describe JobCommands do
     ]
 
     versions = described_class::COMMANDS.slice(*wave2_types).transform_values { |command| command.fetch(:version) }
-    expect(versions).to eq(wave2_types.index_with(1))
+    expect(versions).to eq(wave2_types.index_with(1).merge('exports.points' => 2))
   end
 
   it "each legacy lambda enqueues today's job, arguments and locale" do

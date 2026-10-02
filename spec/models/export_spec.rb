@@ -40,7 +40,9 @@ RSpec.describe Export, type: :model do
       export = create(:export, user:, file_type: :points)
       expect(JobOutbox.sole).to have_attributes(command_type: 'exports.points', aggregate_id: export.id,
                                                 dedupe_key: "points-export:#{export.id}",
-                                                payload: { 'export_id' => export.id, 'user_id' => user.id })
+                                                command_version: 2,
+                                                payload: { 'export_id' => export.id, 'user_id' => user.id,
+                                                           'time_zone' => Time.zone.name })
     end
 
     it 'sidekiq owner enqueues ExportJob only after commit' do

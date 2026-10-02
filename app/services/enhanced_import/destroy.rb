@@ -4,8 +4,9 @@ module EnhancedImport
   class Destroy
     attr_reader :import
 
-    def initialize(import)
+    def initialize(import, fence: nil)
       @import = import
+      @fence = fence
     end
 
     BATCH_SIZE = 500
@@ -16,14 +17,18 @@ module EnhancedImport
       destroy_in_batches(owned(Visit))
       destroy_in_batches(owned(Track))
       destroy_orphaned_places(place_ids)
-      SourceSegmentsReset.new(import).call
+      effect { SourceSegmentsReset.new(import).call }
 
-      reset_extraction_state
+      effect { reset_extraction_state }
 
       true
     end
 
     private
+
+    def effect(&block)
+      @fence ? @fence.call(&block) : yield
+    end
 
     def owned(klass)
       klass.where(user_id: import.user_id, import_id: import.id)
@@ -47,7 +52,7 @@ module EnhancedImport
     # single long write transaction on a production database.
     def destroy_in_batches(relation)
       relation.in_batches(of: BATCH_SIZE) do |batch|
-        ActiveRecord::Base.transaction { batch.each(&:destroy) }
+        effect { ActiveRecord::Base.transaction { batch.each(&:destroy) } }
       end
     end
 
