@@ -1,11 +1,12 @@
 defmodule Dawarich.ReleaseJobsTest do
   use ExUnit.Case, async: false
 
-  alias Dawarich.{ReleaseEffectInventory, ReleaseJobs}
+  alias Dawarich.ReleaseJobs
   alias Dawarich.ReleaseOperations, as: Ops
 
   @app Path.expand("../..", __DIR__)
   @keywords %{"repair_collisions" => true, "_aj_ruby2_keywords" => ["repair_collisions"]}
+  @v1 %{"version" => 1}
   @arg_keys ~w(version operation_id cursor user_id)
   @command_payloads %{
     "DataMigrations::BackfillPointDimensionsJob" => %{
@@ -131,8 +132,25 @@ defmodule Dawarich.ReleaseJobsTest do
              "batch_size" => 50_000,
              "repair_collisions" => true
            }
+  end
 
-    assert ReleaseJobs.decode("TransportationModes::ImportBackfillJob", [5]) == {:deferred, :a7}
+  test "classes without a Phoenix worker defer to their owner with a versioned, id-only payload" do
+    System.put_env("SELF_HOSTED", "true")
+
+    deferred =
+      for {class, arguments} <- recorded_vectors(),
+          {:deferred, _owner, _payload} = outcome <- [ReleaseJobs.decode(class, arguments)],
+          do: {class, outcome}
+
+    assert Enum.sort(deferred) == [
+             {"DataMigrations::AddPointDimensionColumnsJob", {:deferred, :a12h, @v1}},
+             {"DataMigrations::BackfillAchievementsJob", {:deferred, :a12d2, @v1}},
+             {"DataMigrations::DropLegacyLatLonJob", {:deferred, :a12h, @v1}},
+             {"DataMigrations::RecalculateAnomaliesJob", {:deferred, :a12d1, @v1}},
+             {"DataMigrations::RecalculatePerTrackerTracksJob", {:deferred, :a12d1, @v1}},
+             {"TransportationModes::ImportBackfillJob",
+              {:deferred, :a7, %{"version" => 1, "import_id" => 42}}}
+           ]
   end
 
   test "decoded args equal what the worker builds from the forwarded command" do
@@ -160,25 +178,38 @@ defmodule Dawarich.ReleaseJobsTest do
              )
   end
 
-  test "a keyword marker with an extra key is refused" do
-    keywords = Map.put(@keywords, "extra", 1)
-
-    assert ReleaseJobs.decode("DataMigrations::BackfillPointCountryIdJob", [nil, 50_000, keywords]) ==
-             {:error, :invalid_arguments}
-
-    assert ReleaseJobs.decode("Tracks::DeduplicationJob", ["42"]) == {:error, :invalid_arguments}
-
-    assert ReleaseJobs.decode("DataMigrations::FixRouteOpacityJob", [1]) ==
-             {:error, :invalid_arguments}
+  test "argument vectors no release module records are refused" do
+    for {class, arguments} <- [
+          {"DataMigrations::BackfillPointCountryIdJob",
+           [nil, 50_000, Map.put(@keywords, "extra", 1)]},
+          {"DataMigrations::BackfillPointCountryIdJob", [nil, 0, @keywords]},
+          {"DataMigrations::BackfillPointCountryIdJob", [1, 50_000, @keywords]},
+          {"Tracks::DeduplicationJob", []},
+          {"Tracks::DeduplicationJob", ["42"]},
+          {"Tracks::DeduplicationJob", [0]},
+          {"TransportationModes::ImportBackfillJob", [nil]},
+          {"TransportationModes::ImportBackfillJob", [0]},
+          {"DataMigrations::FixRouteOpacityJob", [1]},
+          {"DataMigrations::DropLegacyLatLonJob", [1]},
+          {"DataMigrations::BackfillFamiliesForFamilyPlanJob", [1]}
+        ] do
+      assert ReleaseJobs.decode(class, arguments) == {:error, :invalid_arguments},
+             inspect({class, arguments})
+    end
   end
 
   test "unknown classes are refused" do
-    assert ReleaseJobs.decode("DataMigrations::NoSuchJob", []) == {:error, :unknown_class}
+    for class <- ["DataMigrations::NoSuchJob", "Users::RecalculateDataJob", ""] do
+      assert ReleaseJobs.decode(class, []) == {:error, :unknown_class}, class
+    end
   end
 
   test "family backfills skip self-hosted and refuse Cloud" do
     for class <-
           ~w(DataMigrations::BackfillFamiliesForFamilyPlanJob DataMigrations::BackfillFamilyMemberEntitlementsJob) do
+      System.delete_env("SELF_HOSTED")
+      assert ReleaseJobs.decode(class, []) == :skip
+
       System.put_env("SELF_HOSTED", "true")
       assert ReleaseJobs.decode(class, []) == :skip
 
@@ -198,22 +229,6 @@ defmodule Dawarich.ReleaseJobsTest do
         assert is_integer(value) or is_boolean(value) or is_nil(value) or value in @fixed_strings,
                "#{class}: #{inspect(value)}"
       end
-    end
-  end
-
-  test "decisions agree with the C3a inventory owners" do
-    System.put_env("SELF_HOSTED", "true")
-    decisions = Map.new(decisions())
-
-    for %{class: class, owner: owner} <- ReleaseEffectInventory.job_classes() do
-      expected =
-        case decisions[class] do
-          {:ok, _worker, _args} -> :a1x_wave6
-          :skip -> :a1x_wave6
-          {:deferred, owner} -> owner
-        end
-
-      assert owner == expected, class
     end
   end
 end
