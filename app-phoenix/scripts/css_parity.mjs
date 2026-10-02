@@ -1,5 +1,4 @@
 import { readFileSync, writeFileSync } from "node:fs"
-import { chromium } from "@playwright/test"
 
 const PROPS = [
   "display",
@@ -52,6 +51,7 @@ const PROPS = [
   "transform",
 ]
 const PAGES = ["/stats", "/notifications", "/settings/general"]
+const DIGEST = /-[0-9a-f]{64}(?=\.)/
 
 async function snapshot(props) {
   const sheets = []
@@ -79,6 +79,7 @@ async function snapshot(props) {
 }
 
 async function capture([base, email, password, out]) {
+  const { chromium } = await import("@playwright/test")
   const browser = await chromium.launch()
   const page = await browser.newPage({
     viewport: { width: 1440, height: 900 },
@@ -98,30 +99,56 @@ async function capture([base, email, password, out]) {
   writeFileSync(out, JSON.stringify(result, null, 1))
 }
 
-function compare([left, right]) {
+function compare(args) {
+  const strict = args.includes("--strict")
+  const [left, right] = args.filter((arg) => arg !== "--strict")
   const a = JSON.parse(readFileSync(left, "utf8"))
   const b = JSON.parse(readFileSync(right, "utf8"))
   let differences = 0
+  const report = (line) => {
+    differences++
+    console.log(line)
+  }
+  const logical = (sheets) =>
+    new Map(
+      sheets.map(([href, hash]) => [href.replace(DIGEST, ""), [href, hash]]),
+    )
   for (const path of PAGES) {
-    const sheets = new Map(a[path].sheets)
-    for (const [href, hash] of b[path].sheets) {
-      if (sheets.has(href) && sheets.get(href) !== hash) {
-        differences++
-        console.log(`${path} ${href}: body differs`)
+    const sheets = logical(a[path].sheets)
+    const others = logical(b[path].sheets)
+    let sharedSheets = 0
+    for (const [name, [href, hash]] of others) {
+      const mine = sheets.get(name)
+      if (!mine) {
+        console.log(`${path} ${name}: right only`)
+        if (strict) differences++
+        continue
       }
+      sharedSheets++
+      if (mine[1] !== hash)
+        report(`${path} ${name}: body differs (${mine[0]} -> ${href})`)
     }
+    for (const name of sheets.keys()) {
+      if (others.has(name)) continue
+      console.log(`${path} ${name}: left only`)
+      if (strict) differences++
+    }
+    if (sharedSheets === 0) report(`${path}: no stylesheet in common`)
     let shared = 0
     for (const [key, value] of Object.entries(a[path].styles)) {
       if (!(key in b[path].styles)) continue
       shared++
-      if (b[path].styles[key] !== value) {
-        differences++
-        console.log(`${path} ${key}: ${value} -> ${b[path].styles[key]}`)
-      }
+      if (b[path].styles[key] !== value)
+        report(`${path} ${key}: ${value} -> ${b[path].styles[key]}`)
     }
+    const leftOnly = Object.keys(a[path].styles).length - shared
+    const rightOnly = Object.keys(b[path].styles).length - shared
     console.log(
-      `${path}: ${shared} shared, ${Object.keys(a[path].styles).length - shared} left only, ${Object.keys(b[path].styles).length - shared} right only`,
+      `${path}: ${shared} shared, ${leftOnly} left only, ${rightOnly} right only`,
     )
+    if (shared === 0) report(`${path}: no element in common`)
+    if (strict && leftOnly + rightOnly > 0)
+      report(`${path}: elements on one side only`)
   }
   process.exit(differences === 0 ? 0 : 1)
 }
