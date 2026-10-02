@@ -8,27 +8,31 @@ defmodule DawarichWeb.AuthGateEndpointTest do
   alias Dawarich.{RailsCookies, RailsSecret, Redis}
   alias DawarichWeb.RailsCsrf
 
-  @fixture Jason.decode!(File.read!(Path.expand("../fixtures/auth/activation.json", __DIR__)))
+  @activation Path.expand("../fixtures/auth/activation.json", __DIR__)
+  @external_resource @activation
+  @fixture Jason.decode!(File.read!(@activation))
   @hash Jason.decode!(File.read!(Path.expand("../fixtures/auth/requests.json", __DIR__)))[
           "user_before"
         ]["encrypted_password"]
   @key "dawarich/registration_enabled"
+  @env ~w(SELF_HOSTED APPLICATION_PROTOCOL RAILS_ENV RACK_ENV OIDC_CLIENT_ID OIDC_CLIENT_SECRET
+          OIDC_PKCE_ENABLED GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET)
 
   setup do
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
     start_supervised!(hd(Redis.cache_child_specs()))
     {:ok, _} = Redis.cache_command(["DEL", @key])
-    previous = System.get_env("SELF_HOSTED")
+    previous = Map.new(@env, &{&1, System.get_env(&1)})
+    Enum.each(@env, &System.delete_env/1)
     System.put_env("SELF_HOSTED", "true")
 
     on_exit(fn ->
       Application.put_env(:dawarich, :rails_upstream, nil)
       Application.delete_env(:dawarich, :phoenix_auth)
 
-      if previous,
-        do: System.put_env("SELF_HOSTED", previous),
-        else: System.delete_env("SELF_HOSTED")
+      for {name, value} <- previous,
+          do: if(value, do: System.put_env(name, value), else: System.delete_env(name))
     end)
 
     bandit =
@@ -175,5 +179,17 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     registration("false")
     System.put_env("SELF_HOSTED", "false")
     assert to_puma(ctx, get("/users/sign_in")).line == "GET /users/sign_in HTTP/1.1"
+  end
+
+  test "credentials on, not self-hosted: Puma answers before Phoenix's own SSL check can", ctx do
+    Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
+    registration("false")
+    System.put_env("SELF_HOSTED", "false")
+    System.put_env("APPLICATION_PROTOCOL", "https")
+    System.put_env("RAILS_ENV", "production")
+
+    seen = to_puma(ctx, get("/users/sign_in"))
+    assert seen.line == "GET /users/sign_in HTTP/1.1"
+    assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
   end
 end

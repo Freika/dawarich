@@ -28,7 +28,16 @@ defmodule DawarichWeb.AuthGateTest do
 
   setup do
     Application.delete_env(:dawarich, :phoenix_auth)
-    on_exit(fn -> Application.delete_env(:dawarich, :phoenix_auth) end)
+    previous = System.get_env("SELF_HOSTED")
+    System.put_env("SELF_HOSTED", "true")
+
+    on_exit(fn ->
+      Application.delete_env(:dawarich, :phoenix_auth)
+
+      if previous,
+        do: System.put_env("SELF_HOSTED", previous),
+        else: System.delete_env("SELF_HOSTED")
+    end)
   end
 
   defp request({method, path}) do
@@ -64,5 +73,14 @@ defmodule DawarichWeb.AuthGateTest do
   test "credentials claims only its own four routes" do
     Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
     untouched(@recovery ++ @elsewhere)
+  end
+
+  test "credentials on, an instance that is not self-hosted: even its own routes pass untouched" do
+    Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
+
+    for value <- [nil, "false", "TRUE", ""] do
+      if value, do: System.put_env("SELF_HOSTED", value), else: System.delete_env("SELF_HOSTED")
+      untouched(@credentials)
+    end
   end
 end

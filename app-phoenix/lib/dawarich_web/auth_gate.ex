@@ -12,11 +12,17 @@ defmodule DawarichWeb.AuthGate do
 
   @impl true
   def call(conn, _opts) do
-    flows = Application.get_env(:dawarich, :phoenix_auth, [])
-
-    case Enum.find(@handlers, fn {flow, handler} -> flow in flows and handler.route?(conn) end) do
+    case claimed(conn) do
       nil -> conn
       {flow, handler} -> handler.call(conn, options(flow, RegistrationSetting.fetch()))
+    end
+  end
+
+  defp claimed(conn) do
+    flows = Application.get_env(:dawarich, :phoenix_auth, [])
+
+    if System.get_env("SELF_HOSTED") == "true" do
+      Enum.find(@handlers, fn {flow, handler} -> flow in flows and handler.route?(conn) end)
     end
   end
 
