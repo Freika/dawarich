@@ -109,7 +109,9 @@ custom_metadata: {} }
   end
 
   def dispositions
-    names = blob_specs.map(&:second) + ['100%.zip', 'semi;colon/slash.zip', "tab\tname.zip", 'Ærøskøbing.zip']
+    nbsp = 0xa0.chr(Encoding::UTF_8)
+    names = blob_specs.map(&:second) + ['100%.zip', 'semi;colon/slash.zip', "tab\tname.zip", 'Ærøskøbing.zip',
+                                        "#{nbsp}edge.zip#{nbsp}"]
     names.product(%w[attachment inline]).map do |name, type|
       sanitized = ActiveStorage::Filename.new(name).sanitized
       { 'type' => type, 'filename' => name, 'sanitized' => sanitized,
