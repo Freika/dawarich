@@ -20,23 +20,27 @@ RSpec.describe 'Phoenix fixture: a trip calculated by Rails' do
       now = Time.current
       phone = (0..60).reject { |i| (41..74).cover?(i) }.each_with_index.map do |i, index|
         { id: 9_900_001 + index, user_id: user.id, timestamp: base + (i * 60), tracker_id: 'phone', source_id: nil,
-          anomaly: false, lonlat: "POINT(#{12.373455 + (i * 0.00001)} #{51.339705 + (i * 0.00001)})",
+          anomaly: false, lonlat: "POINT(#{13.123455 + (i * 0.00001)} #{52.000005 + (i * 0.00001)})",
           country_name: i < 30 ? 'Germany' : 'Poland', created_at: now, updated_at: now }
       end
+      watch_id_start = phone.first.fetch(:id) + phone.size
       watch = (15..45).each_with_index.map do |i, index|
-        { id: 9_900_028 + index, user_id: user.id, timestamp: base + (i * 120) + 30, tracker_id: nil,
+        { id: watch_id_start + index, user_id: user.id, timestamp: base + (i * 120) + 30, tracker_id: nil,
           source_id: source.id, anomaly: nil,
-          lonlat: "POINT(#{12.376005 - (i * 0.00002)} #{51.343455 + (i * 0.00002)})",
+          lonlat: "POINT(#{14.000005 - (i * 0.00002)} #{50.123455 + (i * 0.00002)})",
           country_name: i == 20 ? nil : 'Czechia', created_at: now, updated_at: now }
       end
+      extra_id_start = watch_id_start + watch.size
       extra = [
-        { id: 9_900_059, user_id: user.id, timestamp: base + 90, tracker_id: 'phone', source_id: nil, anomaly: true,
-          lonlat: 'POINT(12.373 51.339)', country_name: 'Nowhere', created_at: now, updated_at: now },
-        { id: 9_900_060, user_id: user.id, timestamp: base + 90_000, tracker_id: 'phone', source_id: nil,
+        { id: extra_id_start, user_id: user.id, timestamp: base + 90, tracker_id: 'phone', source_id: nil,
+          anomaly: true,
+          lonlat: 'POINT(0 0)', country_name: 'Nowhere', created_at: now, updated_at: now },
+        { id: extra_id_start + 1, user_id: user.id, timestamp: base + 90_000, tracker_id: 'phone', source_id: nil,
           anomaly: false,
-          lonlat: 'POINT(12.374 51.34)', country_name: 'Later', created_at: now, updated_at: now }
+          lonlat: 'POINT(1 1)', country_name: 'Later', created_at: now, updated_at: now }
       ]
       Point.insert_all(phone + watch + extra)
+      expect(Point.where(user_id: user.id).count).to eq(phone.size + watch.size + extra.size)
       trip = Trip.create!(id: 990_101, user:, name: 'Fixture trip', started_at: Time.zone.at(base),
                           ended_at: Time.zone.at(base + 5400), skip_calculation_enqueue: true)
 
