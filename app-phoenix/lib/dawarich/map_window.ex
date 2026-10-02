@@ -44,6 +44,8 @@ defmodule Dawarich.MapWindow do
 
   defdelegate user_zone(settings, env), to: UserTimeZone, as: :zone
 
+  def iso?(value), do: Regex.match?(@iso, value)
+
   def build(params, settings, now, import_range, env \\ System.get_env()) do
     %{rows: [[main]]} = UserTimeZone.query!("SELECT z.name FROM z", [], settings, env)
     names = zone_names(settings, env)

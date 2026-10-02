@@ -130,6 +130,16 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RequireUser
   end
 
+  pipeline :rails_frame do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug :fetch_query_params
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.Locale
+    plug DawarichWeb.RailsHeaders
+    plug DawarichWeb.RequireUser
+  end
+
   pipeline :rails_form do
     plug :put_api_tag, "form"
     plug DawarichWeb.HostAuthorization
@@ -255,6 +265,22 @@ defmodule DawarichWeb.Router do
       live "/map", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
       live "/map/v2", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
     end
+  end
+
+  scope "/map" do
+    pipe_through :rails_frame
+
+    get "/timeline_feeds", DawarichWeb.MapFrames, :index,
+      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :feed?}}
+
+    get "/timeline_feeds/calendar", DawarichWeb.MapFrames, :calendar,
+      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :calendar?}}
+
+    get "/residency", DawarichWeb.MapFrames, :residency,
+      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :residency?}}
+
+    get "/timeline_feeds/:id/track_info", DawarichWeb.MapFrames, :track_info,
+      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :track?}}
   end
 
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
