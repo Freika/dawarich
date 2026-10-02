@@ -177,6 +177,7 @@ custom_metadata: {} }
     type = { 'CONTENT_TYPE' => 'application/gpx+xml' }
     [record('put_wrong_type', :put, urls[0], headers: { 'CONTENT_TYPE' => 'text/plain' }, body: payload),
      record('put_wrong_length', :put, urls[0], headers: type, body: payload.byteslice(0, 1000)),
+     record('put_length_header', :put, urls[0], headers: type.merge('CONTENT_LENGTH' => '1000'), body: payload),
      record('put_expired', :put, urls[0], headers: type, body: payload, at: fx::NOW + 301),
      record('put_mismatch', :put, urls[1], headers: type, body: payload),
      record('put_ok', :put, urls[0], headers: type, body: payload)]
