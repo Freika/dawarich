@@ -8,6 +8,8 @@ defmodule Dawarich.Photos.ThumbnailTest do
   @key "phoenix-a4g3-immich-key"
   @image <<0xFF, 0xD8, 0xFF, 0xE0, "phoenix-a4g3", 0x00, 0xFF, 0xD9>>
   @preview "GET /api/assets/#{@id}/thumbnail?size=preview HTTP/1.1"
+  @cap 32 * 1024 * 1024
+  @too_large {:replay, "photo source body exceeds the size cap"}
 
   setup do
     Dawarich.ApiEndpointCase.clear_transport_env()
@@ -38,6 +40,32 @@ defmodule Dawarich.Photos.ThumbnailTest do
     :gen_tcp.close(socket)
     head
   end
+
+  defp flood(server, framing, mebibytes) do
+    socket = accept(server)
+    read_head(socket)
+    :ok = :inet.setopts(socket, send_timeout: 2_000)
+    mebibyte = :binary.copy("a", 1_048_576)
+
+    framing_header =
+      if framing == :length,
+        do: "content-length: #{mebibytes * 1_048_576}",
+        else: "transfer-encoding: chunked"
+
+    reply(socket, "HTTP/1.1 200 X\r\nconnection: close\r\n#{framing_header}\r\n\r\n")
+
+    Enum.reduce_while(1..mebibytes, {0, :ok}, fn sent, _outcome ->
+      data = if framing == :length, do: mebibyte, else: ["100000\r\n", mebibyte, "\r\n"]
+
+      case :gen_tcp.send(socket, data) do
+        :ok -> {:cont, {sent, :ok}}
+        error -> {:halt, {sent - 1, error}}
+      end
+    end)
+  end
+
+  defp sized({:ok, body}), do: {:ok, byte_size(body)}
+  defp sized(other), do: other
 
   defp no_request!(server), do: assert({:error, :timeout} = :gen_tcp.accept(server.listen, 0))
 
@@ -108,6 +136,34 @@ defmodule Dawarich.Photos.ThumbnailTest do
     end
 
     no_request!(target)
+  end
+
+  test "fetch serves a body of exactly the 32 MiB cap and hands off one byte more, streamed (200) or buffered (201)" do
+    for status <- [200, 201] do
+      {base, task} = immich(answer(status, [], :binary.copy("a", @cap)))
+      assert sized(Thumbnail.fetch(settings(base), "immich", @id)) == {:ok, @cap}, "#{status}"
+      Task.await(task)
+
+      {base, task} = immich(answer(status, [], :binary.copy("a", @cap + 1)))
+      assert sized(Thumbnail.fetch(settings(base), "immich", @id)) == @too_large, "#{status}"
+      Task.await(task)
+    end
+  end
+
+  test "fetch aborts the upstream read once the body passes the cap: the server's writes fail before it has sent 128 MiB, whether the length is declared or chunked" do
+    for framing <- [:length, :chunked] do
+      server = listen()
+      flood = Task.async(fn -> flood(server, framing, 128) end)
+
+      assert sized(Thumbnail.fetch(settings("http://127.0.0.1:#{server.port}"), "immich", @id)) ==
+               @too_large,
+             "#{framing}"
+
+      {sent, outcome} = Task.await(flood, 30_000)
+      assert sent < 128, "#{framing}: #{sent} MiB sent"
+      assert {:error, reason} = outcome, "#{framing}"
+      refute reason == :timeout, "#{framing}: the server was left blocked, not disconnected"
+    end
   end
 
   test "fetch: a stalled read is retried once, then :timeout; a refused connection goes to Rails" do

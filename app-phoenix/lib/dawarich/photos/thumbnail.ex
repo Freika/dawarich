@@ -10,6 +10,7 @@ defmodule Dawarich.Photos.Thumbnail do
   @key ~r/\A[!-~]+\z/
   @statuses [400, 401, 404, 405, 408, 409, 410, 413, 414, 415, 422, 429, 500, 501, 502, 503, 504]
   @environment ~w(http_proxy https_proxy HTTP_PROXY HTTPS_PROXY SSL_CERT_FILE SSL_CERT_DIR)
+  @max_body 32 * 1024 * 1024
 
   def configured?(settings), do: pair?(settings, "immich") or pair?(settings, "photoprism")
 
@@ -82,14 +83,48 @@ defmodule Dawarich.Photos.Thumbnail do
   defp request(url, headers, ssl, attempts) do
     timeout = Application.get_env(:dawarich, :photo_source_timeout, 60_000)
     options = [timeout: timeout, connect_timeout: timeout, autoredirect: false, ssl: ssl]
+    streaming = [sync: false, stream: {:self, :once}, body_format: :binary]
 
-    case :httpc.request(:get, {String.to_charlist(url), headers}, options, body_format: :binary) do
+    result =
+      with {:ok, ref} <-
+             :httpc.request(:get, {String.to_charlist(url), headers}, options, streaming),
+           do: receive_response(ref, nil)
+
+    case result do
       {:error, :timeout} when attempts > 1 -> request(url, headers, ssl, attempts - 1)
       result -> result
     end
   end
 
-  defp classify({:ok, {{_version, status, _reason}, headers, body}}) do
+  defp receive_response(ref, stream) do
+    receive do
+      {:http, {^ref, :stream_start, headers, handler}} ->
+        :httpc.stream_next(handler)
+        receive_response(ref, %{headers: headers, handler: handler, parts: [], size: 0})
+
+      {:http, {^ref, :stream, part}} ->
+        size = stream.size + byte_size(part)
+
+        if size > @max_body do
+          :httpc.cancel_request(ref)
+          :too_large
+        else
+          :httpc.stream_next(stream.handler)
+          receive_response(ref, %{stream | parts: [stream.parts | part], size: size})
+        end
+
+      {:http, {^ref, :stream_end, _headers}} ->
+        {:ok, {200, stream.headers, IO.iodata_to_binary(stream.parts)}}
+
+      {:http, {^ref, {{_version, status, _reason}, headers, body}}} ->
+        if byte_size(body) > @max_body, do: :too_large, else: {:ok, {status, headers, body}}
+
+      {:http, {^ref, {:error, reason}}} ->
+        {:error, reason}
+    end
+  end
+
+  defp classify({:ok, {status, headers, body}}) do
     cond do
       encoded?(headers) -> {:replay, "photo source response is content-encoded"}
       status in 200..299 and body != "" -> {:ok, body}
@@ -98,6 +133,7 @@ defmodule Dawarich.Photos.Thumbnail do
     end
   end
 
+  defp classify(:too_large), do: {:replay, "photo source body exceeds the size cap"}
   defp classify({:error, :timeout}), do: :timeout
 
   defp classify({:error, {:failed_connect, details}}) do
