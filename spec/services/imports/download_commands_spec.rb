@@ -3,7 +3,7 @@
 require 'rails_helper'
 
 RSpec.describe 'Imports download command handoff' do
-  let!(:import) { create(:import, skip_background_processing: true) }
+  let!(:import) { create(:import, source: :gpx, skip_background_processing: true) }
   let(:payload) { { 'import_id' => import.id, 'user_id' => import.user_id, 'source_blob_id' => import.file.blob_id } }
 
   before do
@@ -44,5 +44,29 @@ expected_user_id: import.user_id)
                                             native_fallback: true, expected_user_id: original_user)
     expect(import.reload.prepared_download).not_to be_attached
     expect(JobOutbox.count).to eq(0)
+  end
+
+  it 'prepares a non-GPX download as before, outside the coordinated lock' do
+    other = create(:import, source: :geojson, skip_background_processing: true)
+    archive = Zip::OutputStream.write_buffer do |zip|
+      zip.put_next_entry('original.geojson')
+      zip.write('{"type":"FeatureCollection","features":[]}')
+    end
+    other.file.attach(
+      io: StringIO.new(archive.string), filename: 'original.geojson.zip', content_type: 'application/zip',
+      metadata: { 'dawarich_client_wrapped' => true, 'dawarich_original_filename' => 'original.geojson' }
+    )
+    hold_import_lock("import-download:#{other.id}") do
+      Imports::PrepareDownloadJob.perform_now(other.id, other.file.blob_id)
+    end
+    expect(other.reload.prepared_download.download).to eq('{"type":"FeatureCollection","features":[]}')
+  end
+
+  it 'leaves a busy GPX download preparation to Sidekiq retries' do
+    hold_import_lock("import-download:#{import.id}") do
+      expect { Imports::PrepareDownloadJob.perform_now(import.id, import.file.blob_id) }
+        .to raise_error(Imports::DownloadCommands::Busy)
+    end
+    expect(import.reload.prepared_download).not_to be_attached
   end
 end

@@ -30,28 +30,10 @@ RSpec.describe Import::ProcessJob, type: :job do
     expect(import.points.count).to eq(0)
   end
 
-  it 'uses the shared per-import session lock before starting legacy processing' do
-    ready = Queue.new
-    release = Queue.new
-    holder = Thread.new do
-      config = ActiveRecord::Base.connection_db_config.configuration_hash
-      connection = PG.connect(host: config[:host], port: config[:port], user: config[:username],
-                              password: config[:password], dbname: config[:database])
-      key = "phoenix-import:#{import.id}"
-      begin
-        connection.exec_params('SELECT pg_advisory_lock(hashtextextended($1,0))', [key])
-        ready.push(true)
-        release.pop
-        connection.exec_params('SELECT pg_advisory_unlock(hashtextextended($1,0))', [key])
-      ensure
-        connection.finish
-      end
+  it 'leaves a busy GPX import to Sidekiq retries instead of retrying it forever' do
+    hold_import_lock("phoenix-import:#{import.id}") do
+      expect { described_class.perform_now(import.id) }.to raise_error(Imports::GpxLegacy::Busy)
     end
-    ready.pop
-    expect { job.perform(import.id) }.to raise_error(Imports::GpxLegacy::Busy)
     expect(import.points.count).to eq(0)
-  ensure
-    release.push(true)
-    holder&.join
   end
 end

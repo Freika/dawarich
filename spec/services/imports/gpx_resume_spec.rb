@@ -73,4 +73,12 @@ RSpec.describe 'Imports::GpxResume' do
                                                  ['SELECT state FROM phoenix.import_handoffs WHERE event_id=?', event]
                                                ))
   end
+
+  it 'leaves a busy resume to Sidekiq retries' do
+    import.file.attach(io: StringIO.new('<gpx/>'), filename: 'resume.gpx')
+    hold_import_lock("phoenix-import:#{import.id}") do
+      expect { Import::GpxResumeJob.perform_now(payload) }.to raise_error(Imports::GpxResume::Busy)
+    end
+    expect(state).to eq('pending')
+  end
 end

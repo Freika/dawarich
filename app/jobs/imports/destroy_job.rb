@@ -3,18 +3,15 @@
 class Imports::DestroyJob < ApplicationJob
   queue_as :imports
 
-  retry_on Imports::DestroyLegacy::Busy, wait: 5.seconds, attempts: :unlimited
-
   def perform(import_id, expected_user_id: nil, event_id: nil)
     import = Import.find_by(id: import_id)
     return unless import
 
-    expected_user_id ||= import.user_id
-    Imports::DestroyLegacy.perform(import, expected_user_id:, event_id:, job_event_id: job_id) do
-      import.deleting!
-      broadcast_status_update(import)
-      Imports::Destroy.new(import.user, import).call
-      broadcast_deletion_complete(import)
+    if Imports::DestroyLegacy.coordinated?(import)
+      expected_user_id ||= import.user_id
+      Imports::DestroyLegacy.perform(import, expected_user_id:, event_id:, job_event_id: job_id) { destroy(import) }
+    else
+      destroy(import)
     end
   rescue Imports::DestroyLegacy::Busy
     raise
@@ -27,9 +24,17 @@ class Imports::DestroyJob < ApplicationJob
 
   private
 
+  def destroy(import)
+    import.deleting!
+    broadcast_status_update(import)
+    Imports::Destroy.new(import.user, import).call
+    broadcast_deletion_complete(import)
+  end
+
   def revert_deleting_status(import, expected_user_id)
-    return unless import && User.exists?(id: expected_user_id) &&
-                  Import.where(id: import.id, user_id: expected_user_id).exists?
+    return unless import && Import.exists?(import.id)
+    return if expected_user_id && !(User.exists?(id: expected_user_id) &&
+                                    Import.exists?(id: import.id, user_id: expected_user_id))
 
     import.failed!
     broadcast_status_update(import)

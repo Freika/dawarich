@@ -6,6 +6,11 @@ module Imports
 
     module_function
 
+    def coordinated?(import)
+      import.gpx? &&
+        ActiveRecord::Base.connection.select_value("SELECT to_regclass('phoenix.import_destroy_runs') IS NOT NULL")
+    end
+
     def perform(import, expected_user_id:, event_id:, job_event_id:)
       with_lock(import.id) do
         result = ActiveRecord::Base.transaction { admission(import, expected_user_id, event_id, job_event_id) }
