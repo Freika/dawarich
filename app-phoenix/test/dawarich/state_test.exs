@@ -106,7 +106,7 @@ defmodule Dawarich.StateTest do
 
     claimer = Task.async(fn -> State.claim(ScratchRepo, "o:atomic", 60) end)
     adder = Task.async(fn -> State.increment(ScratchRepo, "c:atomic", 3, 60) end)
-    wait_until(fn -> blocked("INSERT INTO phoenix.") == 2 end)
+    wait_until(fn -> blocked("INSERT INTO phoenix.%") == 2 end)
     commit(holder)
 
     refute Task.await(claimer)
@@ -149,9 +149,9 @@ defmodule Dawarich.StateTest do
     holder = hold(fn -> :ok = State.bump_epochs(ScratchRepo, ["e:a"]) end)
 
     forward = attempt(fn -> State.bump_epochs(ScratchRepo, ["e:a", "e:b"]) end)
-    wait_until(fn -> blocked("INSERT INTO phoenix.epochs AS e") == 1 end)
+    wait_until(fn -> blocked("INSERT INTO phoenix.epochs AS e%") == 1 end)
     backward = attempt(fn -> State.bump_epochs(ScratchRepo, ["e:b", "e:a"]) end)
-    wait_until(fn -> blocked("INSERT INTO phoenix.epochs AS e") == 2 end)
+    wait_until(fn -> blocked("INSERT INTO phoenix.epochs AS e%") == 2 end)
     commit(holder)
 
     assert Task.await(forward) == {:ok, :ok}
@@ -165,9 +165,9 @@ defmodule Dawarich.StateTest do
     holder = hold(fn -> State.epoch_tokens(ScratchRepo, ["s:c"]) end)
 
     wide = attempt(fn -> State.epoch_tokens(ScratchRepo, ["s:y", "s:c", "s:x"]) end)
-    wait_until(fn -> blocked("INSERT INTO phoenix.epochs (key") == 1 end)
+    wait_until(fn -> blocked("INSERT INTO phoenix.epochs (key%") == 1 end)
     narrow = attempt(fn -> State.epoch_tokens(ScratchRepo, ["s:x", "s:y"]) end)
-    outcome = settle(narrow, "INSERT INTO phoenix.epochs (key", 1)
+    outcome = settle(narrow, "INSERT INTO phoenix.epochs (key%", 1)
     commit(holder)
 
     assert {:ok, %{"s:c" => _, "s:x" => x, "s:y" => y}} = Task.await(wide)

@@ -43,16 +43,16 @@ defmodule Dawarich.LockRace do
     end)
   end
 
-  def blocked(prefix) do
-    [[count]] = ScratchRepo.query!(@blocked, [prefix <> "%"], log: false).rows
+  def blocked(pattern) do
+    [[count]] = ScratchRepo.query!(@blocked, [pattern], log: false).rows
     count
   end
 
-  def settle(task, prefix, already_blocked \\ 0) do
+  def settle(task, pattern, already_blocked \\ 0) do
     wait_until(fn ->
       case Task.yield(task, 0) do
         {:ok, result} -> {:finished, result}
-        nil -> blocked(prefix) > already_blocked && :blocked
+        nil -> blocked(pattern) > already_blocked && :blocked
       end
     end)
   end
