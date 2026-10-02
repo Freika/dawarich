@@ -18,7 +18,16 @@ RSpec.describe PhoenixBuildInputs do
     end
   end
 
+  def foreign?(file)
+    ancestors = Pathname(file).descend.to_a
+    gems = Gem.loaded_specs.values.map { |spec| Pathname(spec.full_gem_path) }
+    ancestors.intersect?(gems) || ancestors.exclude?(Rails.root)
+  end
+
   it 'compiles the precompile list into a directory, leaving public/ and config/ alone' do
+    watched = [Rails.root.join('config/sprockets-manifest.json'), Rails.root.join('public/assets')]
+    before = watched.map { |path| path.exist? && path.mtime }
+
     Dir.mktmpdir do |dir|
       manifest = File.join(dir, 'config/sprockets-manifest.json')
       described_class.compile_assets(File.join(dir, 'public/assets'), manifest)
@@ -27,7 +36,7 @@ RSpec.describe PhoenixBuildInputs do
       expect(assets.fetch('manifest.js'))
         .to eq('manifest-597b5199768f5efff6ec880a4180aec95099b04608cc46e56dfe4e0940ee4665.js')
       expect(File).to exist(File.join(dir, 'public/assets', "#{assets.fetch('application.css')}.gz"))
-      expect(Rails.root.join('config/sprockets-manifest.json')).not_to exist
+      expect(watched.map { |path| path.exist? && path.mtime }).to eq(before)
     end
   end
 
@@ -43,7 +52,7 @@ RSpec.describe PhoenixBuildInputs do
 
     it 'cover every gem locale file Rails loads for an available locale' do
       locales = I18n.available_locales.map(&:to_s)
-      outside = I18n.load_path.map(&:to_s).reject { |file| file.start_with?(Rails.root.to_s) }
+      outside = I18n.load_path.map(&:to_s).select { |file| foreign?(file) }
       ymls = outside.select do |file|
         file.end_with?('.yml') && YAML.unsafe_load_file(file).keys.map(&:to_s).intersect?(locales)
       end
@@ -64,10 +73,10 @@ RSpec.describe PhoenixBuildInputs do
       expect(app.first(vendored.size)).to eq(vendored.sort)
     end
 
-    it 'leave no precompiled asset resolving to a file outside the repository' do
+    it 'leave no precompiled asset resolving to a gem or a file outside the repository' do
       files = Rails.application.assets_manifest.find(Rails.application.config.assets.precompile).map(&:filename).uniq
 
-      expect(files.reject { |file| file.start_with?(Rails.root.to_s) }).to eq([])
+      expect(files.select { |file| foreign?(file) }).to eq([])
     end
   end
 
@@ -81,12 +90,20 @@ RSpec.describe PhoenixBuildInputs do
     expect(files.flat_map { |file| described_class.yaml_problems(file) }).to eq([])
   end
 
-  it 'flags plain scalars YAML 1.2 reads differently, anchors, aliases and duplicate keys' do
+  it 'flags plain scalars YAML 1.2 reads differently, anchors, aliases, duplicate keys and version directives' do
     Dir.mktmpdir do |dir|
       file = File.join(dir, 'x.yml')
-      File.write(file, "a: yes\nb: 1_000\nc: &x 1\nd: *x\ne: 1\ne: 2\nf: plain\ng: 2\nh: ~\ni: 3.0\n")
+      File.write(file, "a: yes\nb: 1_000\nc: &x 1\nd: *x\ne: 1\ne: 2\nf: plain\ng: 2\nh: ~\ni: 3.0\n" \
+                       "j: 08\nk: 1e3\nl: 0o17\nm: +\n")
+      versioned = File.join(dir, 'v.yml')
+      File.write(versioned, "%YAML 1.1\n---\na: b\n")
 
-      expect(described_class.yaml_problems(file).size).to eq(5)
+      expect(described_class.yaml_problems(file)).to eq(
+        ["#{file}:1 duplicate or merge key", "#{file}:1 \"yes\"", "#{file}:2 \"1_000\"",
+         "#{file}:3 anchor, alias or tag", "#{file}:4 anchor, alias or tag",
+         "#{file}:11 \"08\"", "#{file}:12 \"1e3\"", "#{file}:13 \"0o17\"", "#{file}:14 \"+\""]
+      )
+      expect(described_class.yaml_problems(versioned)).to eq(["#{versioned}:1 %YAML directive"])
     end
   end
 end

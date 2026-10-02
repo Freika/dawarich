@@ -46,6 +46,9 @@ module PhoenixBuildInputs
   end
 
   CORE_SCALAR = /\A(?:~|null|true|false|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?)?\z/
+  YAML12_TYPED = /\A(?:~|null|Null|NULL|true|True|TRUE|false|False|
+                  [-+]?(?:0x[0-9a-fA-F]*|0o[0-7]*|[0-9]*)|[-+]?(?:\.[0-9]+|[0-9]+(?:\.[0-9]*)?)(?:[eE][-+]?[0-9]+)?|
+                  [-+]?\.(?:inf|Inf|INF)|\.(?:nan|NaN|NAN))\z/x
 
   module_function
 
@@ -105,6 +108,7 @@ module PhoenixBuildInputs
       where = "#{file}:#{node.start_line + 1}"
       marked = node.is_a?(Psych::Nodes::Alias) || node.try(:anchor) || node.try(:tag)
       problems << "#{where} anchor, alias or tag" if marked
+      problems << "#{where} %YAML directive" if node.is_a?(Psych::Nodes::Document) && node.version.any?
       case node
       when Psych::Nodes::Scalar
         moved = node.plain && !node.quoted && !core_scalar?(scanner.tokenize(node.value), node.value, key)
@@ -125,7 +129,6 @@ module PhoenixBuildInputs
   end
 
   def core_scalar?(value, text, key)
-    core = text.match?(CORE_SCALAR)
-    value.is_a?(String) ? !core : !key && core
+    value.is_a?(String) ? !text.match?(YAML12_TYPED) : !key && text.match?(CORE_SCALAR)
   end
 end
