@@ -230,7 +230,7 @@ defmodule DawarichWeb.TimelineFeed do
           accept-charset="UTF-8"
           method="post"
         >
-          <input type="hidden" name="authenticity_token" value={@csrf} autocomplete="off" />
+          <input type="hidden" name="authenticity_token" value={@csrf} />
           <button
             type="submit"
             class="selection-bar__action selection-bar__merge"
@@ -249,8 +249,8 @@ defmodule DawarichWeb.TimelineFeed do
           accept-charset="UTF-8"
           method="post"
         >
-          <input type="hidden" name="_method" value="delete" autocomplete="off" />
-          <input type="hidden" name="authenticity_token" value={@csrf} autocomplete="off" />
+          <input type="hidden" name="_method" value="delete" />
+          <input type="hidden" name="authenticity_token" value={@csrf} />
           <button
             type="submit"
             class="selection-bar__action selection-bar__delete"

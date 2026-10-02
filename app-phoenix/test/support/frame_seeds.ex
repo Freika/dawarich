@@ -2,7 +2,7 @@ defmodule Dawarich.Test.FrameSeeds do
   @moduledoc false
 
   alias Dawarich.Repo
-  alias Dawarich.Test.RailsUser
+  alias Dawarich.Test.{ApiGolden, RailsUser}
 
   @lon 12.3731
   @lat 51.3397
@@ -175,6 +175,37 @@ defmodule Dawarich.Test.FrameSeeds do
           updated_at: stamp()
         }
       ])
+
+  @tables ~w(places areas tags taggings visits place_visits tracks track_segments points stats)
+
+  def load(name), do: "test/fixtures/map_frames/#{name}.json" |> File.read!() |> Jason.decode!()
+
+  def seed!(%{"user" => nil}), do: nil
+
+  def seed!(%{"user" => u, "rows" => rows}) do
+    RailsUser.insert!(%{
+      id: u["id"],
+      email: u["email"],
+      theme: u["theme"],
+      settings: u["settings"],
+      admin: u["admin"],
+      status: u["status"],
+      plan: u["plan"],
+      active_until: naive(u["active_until"]),
+      subscription_source: u["subscription_source"],
+      changelog_consent: u["changelog_consent"],
+      api_key: u["api_key"],
+      visits_redetected_at: naive(u["visits_redetected_at"])
+    })
+
+    for table <- @tables, row <- Map.get(rows, table, []), do: ApiGolden.insert!(table, row)
+    Dawarich.Accounts.get(u["id"])
+  end
+
+  defp naive(nil), do: nil
+
+  defp naive(iso),
+    do: iso |> NaiveDateTime.from_iso8601!() |> NaiveDateTime.truncate(:microsecond)
 
   defp stamp, do: NaiveDateTime.utc_now(:second)
 end

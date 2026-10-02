@@ -126,8 +126,8 @@ defmodule DawarichWeb.TimelineEntries do
           accept-charset="UTF-8"
           method="post"
         >
-          <input type="hidden" name="_method" value="patch" autocomplete="off" />
-          <input type="hidden" name="authenticity_token" value={@ctx.csrf} autocomplete="off" />
+          <input type="hidden" name="_method" value="patch" />
+          <input type="hidden" name="authenticity_token" value={@ctx.csrf} />
           <input
             value={@name}
             id={"visit-editor-name-#{@entry.visit_id}"}
@@ -151,7 +151,7 @@ defmodule DawarichWeb.TimelineEntries do
         <% end %>
         <div class="visit-editor__foot">
           <form class="button_to" method="post" action={"/visits/#{@entry.visit_id}"}>
-            <input type="hidden" name="_method" value="delete" autocomplete="off" />
+            <input type="hidden" name="_method" value="delete" />
             <button
               data-testid="visit-delete"
               data-turbo-confirm={v(@locale, "delete_this_visit_your_location_points_stay")}
@@ -160,7 +160,7 @@ defmodule DawarichWeb.TimelineEntries do
             >
               {v(@locale, "delete")}
             </button>
-            <input type="hidden" name="authenticity_token" value={@ctx.csrf} autocomplete="off" />
+            <input type="hidden" name="authenticity_token" value={@ctx.csrf} />
           </form>
         </div>
       </div>
