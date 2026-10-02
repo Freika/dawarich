@@ -77,4 +77,23 @@ defmodule Dawarich.RailsCookiesTest do
       assert RailsCookies.verify(value, "remember_user_token", @secret, @now) == :error
     end
   end
+
+  test "encrypt/4 embeds the expiry Rails embeds (milliseconds), and decrypt honours it" do
+    value = RailsCookies.encrypt("t", "shared_link_7", @secret, ~U[2026-10-05 12:00:00.123456Z])
+
+    assert RailsCookies.decrypt(value, "shared_link_7", @secret, ~U[2026-10-05 12:00:00.122999Z]) ==
+             {:ok, "t"}
+
+    assert RailsCookies.decrypt(value, "shared_link_7", @secret, ~U[2026-10-05 12:00:00.123000Z]) ==
+             :error
+  end
+
+  test "property: encrypted cookies round-trip any JSON text under their own name only" do
+    Dawarich.Test.A12b.seeded(fn n ->
+      text = Dawarich.Test.A12b.text()
+      value = RailsCookies.encrypt(text, "shared_link_#{n}", @secret)
+      assert RailsCookies.decrypt(value, "shared_link_#{n}", @secret, @now) == {:ok, text}
+      assert RailsCookies.decrypt(value, "shared_link_#{n + 1}", @secret, @now) == :error
+    end)
+  end
 end

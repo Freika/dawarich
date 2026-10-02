@@ -1,6 +1,7 @@
 defmodule Dawarich.RailsCookies do
   @moduledoc false
 
+  alias Dawarich.RailsMessages
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   @encrypted_salt "authenticated encrypted cookie"
@@ -29,8 +30,9 @@ defmodule Dawarich.RailsCookies do
     _ in [ArgumentError, ErlangError] -> :error
   end
 
-  def encrypt(value, name, secret) do
-    envelope = envelope(value, name, nil)
+  def encrypt(value, name, secret, expires_at \\ nil) do
+    exp = if expires_at, do: RailsMessages.iso8601_ms(expires_at)
+    envelope = envelope(value, name, exp)
     iv = :crypto.strong_rand_bytes(12)
     key = key(secret, @encrypted_salt, 32)
     {data, tag} = :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, envelope, "", true)
@@ -89,23 +91,5 @@ defmodule Dawarich.RailsCookies do
       |> :crypto.mac(:sha, key(secret, @signed_salt, 64), data)
       |> Base.encode16(case: :lower)
 
-  defp key(secret, salt, length) do
-    id = {__MODULE__, :crypto.hash(:sha256, secret), salt, length}
-
-    case :persistent_term.get(id, nil) do
-      nil ->
-        key =
-          Plug.Crypto.KeyGenerator.generate(secret, salt,
-            iterations: 1000,
-            length: length,
-            digest: :sha256
-          )
-
-        :persistent_term.put(id, key)
-        key
-
-      key ->
-        key
-    end
-  end
+  defp key(secret, salt, length), do: RailsMessages.key(secret, salt, 1000, length)
 end
