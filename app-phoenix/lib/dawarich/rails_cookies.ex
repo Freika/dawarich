@@ -40,7 +40,7 @@ defmodule Dawarich.RailsCookies do
   end
 
   def sign(value, name, secret, %DateTime{} = expires_at) do
-    exp = expires_at |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
+    exp = RailsMessages.iso8601_ms(expires_at)
     data = value |> envelope(name, exp) |> Base.encode64()
     URI.encode_www_form(data <> "--" <> hmac(secret, data))
   end

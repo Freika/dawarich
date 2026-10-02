@@ -117,4 +117,36 @@ defmodule Dawarich.RailsCookiesTest do
       assert RailsCookies.decrypt(cookie, "_dawarich_session", @secret, @now) == :error
     end
   end
+
+  test "refuses the unlock cookie Rails set once its GCM tag is cut to 12 bytes" do
+    now = Dawarich.Test.A12b.now()
+
+    for %{"id" => id, "set_cookie" => line, "unlock" => unlock} <-
+          Dawarich.Test.A12b.fixture("crypto.json")["shared_link"] do
+      value = line |> String.split(";") |> hd() |> String.split("=", parts: 2) |> List.last()
+      name = "shared_link_#{id}"
+      assert RailsCookies.decrypt(value, name, @secret, now) == {:ok, unlock}
+
+      [data, iv, tag] = value |> URI.decode_www_form() |> String.split("--")
+      short = tag |> Base.decode64!() |> binary_part(0, 12) |> Base.encode64()
+      cut = [data, iv, short] |> Enum.join("--") |> URI.encode_www_form()
+      assert RailsCookies.decrypt(cut, name, @secret, now) == :error
+    end
+  end
+
+  test "sign/4 writes Rails' millisecond expiry whatever the input precision" do
+    expiry = DateTime.add(@now, @fixture["remember_for_seconds"])
+    rails = URI.decode_www_form(@fixture["remember_cookie"])
+
+    for at <- [
+          expiry,
+          DateTime.truncate(expiry, :millisecond),
+          DateTime.truncate(expiry, :second)
+        ] do
+      signed =
+        RailsCookies.sign(@fixture["expected_remember"], "remember_user_token", @secret, at)
+
+      assert URI.decode_www_form(signed) == rails, inspect(at)
+    end
+  end
 end
