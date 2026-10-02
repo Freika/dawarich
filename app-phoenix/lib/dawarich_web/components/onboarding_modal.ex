@@ -22,7 +22,7 @@ defmodule DawarichWeb.OnboardingModal do
         legacy_trial: user.status == 2 and user.subscription_source in [nil, 0],
         family_card: family.available or family.member,
         family_href: if(family.available, do: "/family", else: "/family/new"),
-        upload_url: assigns.base_url <> "/imports/direct_uploads"
+        upload_url: assigns.base_url <> "/rails/active_storage/direct_uploads"
       )
 
     ~H"""

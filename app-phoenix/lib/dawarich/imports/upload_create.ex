@@ -5,7 +5,8 @@ defmodule Dawarich.Imports.UploadCreate do
   alias Dawarich.Jobs.Ownership
 
   def create(repo, user, files, context) when is_list(files) and files != [] do
-    with {:ok, blobs} <- prepare(repo, user, files, context) do
+    with {:ok, blobs} <- prepare(repo, user, files, context),
+         true <- Enum.all?(blobs, &(&1.source == 4)) || {:error, :rails_format} do
       repo.transaction(fn ->
         owner = Ownership.lock(repo, "command:imports.process_gpx")
         current = user!(repo, user.id)

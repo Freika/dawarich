@@ -31,20 +31,17 @@ defmodule DawarichWeb.ImportsDownload do
                  context.now
                ) do
             {:ok, _} -> pending(conn, record, context.locale)
-            {:error, _} -> missing(conn)
+            {:error, _} -> rails(conn)
           end
 
         {:legacy, _} ->
-          conn
-          |> delete_resp_header("x-dawarich-handler")
-          |> register_before_send(&put_resp_header(&1, "x-dawarich-handler", "rails-imports"))
-          |> DawarichWeb.RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
+          rails(conn)
 
         {:error, _} ->
-          missing(conn)
+          rails(conn)
       end
     else
-      _ -> missing(conn)
+      _ -> rails(conn)
     end
   end
 
@@ -88,9 +85,11 @@ defmodule DawarichWeb.ImportsDownload do
       |> Phoenix.HTML.html_escape()
       |> Phoenix.HTML.safe_to_string()
 
-  defp missing(conn),
-    do:
-      conn
-      |> put_resp_content_type("application/json")
-      |> send_resp(404, Jason.encode!(%{error: "not_found"}))
+  defp rails(conn) do
+    conn
+    |> delete_resp_header("x-dawarich-handler")
+    |> register_before_send(&put_resp_header(&1, "x-dawarich-handler", "rails-imports"))
+    |> DawarichWeb.RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
+    |> halt()
+  end
 end

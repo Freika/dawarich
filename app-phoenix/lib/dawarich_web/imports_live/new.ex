@@ -59,7 +59,7 @@ defmodule DawarichWeb.ImportsLive.New do
         phx-hook="RailsStimulus"
         phx-update="ignore"
         data-controller="upload"
-        data-upload-url-value={@base_url<>"/imports/direct_uploads"}
+        data-upload-url-value={@base_url <> "/rails/active_storage/direct_uploads"}
         data-upload-field-name-value="import[files][]"
         data-upload-multiple-value="true"
         data-upload-user-trial-value={to_string(@trial)}

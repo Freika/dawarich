@@ -2,6 +2,7 @@ defmodule DawarichWeb.ImportsNativePagesTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
   import Phoenix.LiveViewTest
+  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
   alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
   @endpoint DawarichWeb.Endpoint
   setup do
@@ -23,12 +24,15 @@ defmodule DawarichWeb.ImportsNativePagesTest do
   defp live_as(user, path),
     do: live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
 
-  test "new native page binds real upload controller to native endpoint", c do
+  test "new native page binds the upload controller to Rails' direct upload endpoint", c do
     {:ok, _view, html} = live_as(c.user, "/imports/new")
     assert html =~ "native-imports-root"
     assert html =~ "import-file-input"
-    assert html =~ "http://www.example.com/imports/direct_uploads"
-    refute html =~ "rails/active_storage/direct_uploads"
+
+    assert html =~
+             ~s(data-upload-url-value="http://www.example.com/rails/active_storage/direct_uploads")
+
+    refute html =~ "/imports/direct_uploads"
   end
 
   test "owner show and edit pages are native LiveViews", c do
@@ -40,13 +44,20 @@ defmodule DawarichWeb.ImportsNativePagesTest do
     assert html =~ "import[source]"
   end
 
-  test "cross-owner show does not disclose the import" do
+  test "a foreign import and an owned non-GPX import are shown by Rails", c do
     other = RailsUser.insert!(%{id: 7592, email: "foreign-pages@example.test"})
-    assert {:error, {:redirect, %{to: "/imports"}}} = live_as(other, "/imports/759101")
-    conn = get(RailsUser.signed_in(other.id), "/imports/759101")
-    assert conn.status == 302
-    assert Plug.Conn.get_resp_header(conn, "x-dawarich-handler") == ["phoenix-imports"]
-    refute conn.resp_body =~ "native.gpx"
+    ImportsExportsSeeds.import!(%{id: 759_102, user_id: c.user.id, name: "owned.kml", source: 9})
+    upstream = upstream!()
+
+    for {user_id, path} <- [
+          {other.id, "/imports/759101"},
+          {other.id, "/imports/759101/edit"},
+          {c.user.id, "/imports/759102"},
+          {c.user.id, "/imports/759102/edit"}
+        ] do
+      {request, conn} = forwarded(upstream, fn -> get(RailsUser.signed_in(user_id), path) end)
+      assert {request, conn.status} == {{"GET #{path} HTTP/1.1", ""}, 204}
+    end
   end
 
   test "connected index refreshes completed rows through owner-scoped native PubSub", c do
@@ -71,6 +82,22 @@ defmodule DawarichWeb.ImportsNativePagesTest do
 
     assert [[%{"import_id" => 759_101, "user_id" => 7591}]] =
              Repo.query!("SELECT payload FROM job_outbox WHERE command_type='imports.destroy'").rows
+  end
+
+  test "a non-GPX row keeps Rails' delete link and its delete event never runs natively", c do
+    ImportsExportsSeeds.import!(%{id: 759_103, user_id: c.user.id, name: "owned.csv", source: 10})
+    {:ok, view, _} = live_as(c.user, "/imports")
+    refute has_element?(view, "#import_759103 form[phx-submit=delete_import]")
+
+    assert has_element?(
+             view,
+             ~s(#import_759103 a[data-turbo-method=delete][href="/imports/759103"])
+           )
+
+    render_hook(view, "delete_import", %{"import_id" => "759103"})
+
+    assert [[2]] = Repo.query!("SELECT status FROM imports WHERE id=759103").rows
+    assert [] = Repo.query!("SELECT event_id FROM job_outbox").rows
   end
 
   test "native extraction card renders counts, trust choice and removal controls", c do

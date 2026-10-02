@@ -1,6 +1,7 @@
 defmodule DawarichWeb.ImportsDownloadTest do
   use Dawarich.IngestCase, async: false
   import Phoenix.ConnTest
+  import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
   alias Dawarich.Test.RailsUser
   alias Dawarich.Imports.{Uploads, UploadCreate}
   alias Dawarich.Jobs.Ownership
@@ -68,9 +69,22 @@ defmodule DawarichWeb.ImportsDownloadTest do
     assert Plug.Conn.get_resp_header(conn, "x-dawarich-handler") == ["phoenix-imports"]
     assert hd(Plug.Conn.get_resp_header(conn, "content-disposition")) =~ "download.gpx"
     other = RailsUser.insert!(%{id: 7598, email: "foreign-download@example.test"})
-    conn = get(RailsUser.signed_in(other.id), "/imports/#{id}/download")
-    assert conn.status == 404
-    refute conn.resp_body =~ "native streamed bytes"
+    path = "/imports/#{id}/download"
+
+    assert {{"GET " <> ^path <> " HTTP/1.1", ""}, %{status: 204}} =
+             forwarded(upstream!(), fn -> get(RailsUser.signed_in(other.id), path) end)
+  end
+
+  test "a GPX import Phoenix cannot read is downloaded by Rails", c do
+    Dawarich.Test.ImportsExportsSeeds.import!(%{
+      id: 759_701,
+      user_id: c.user.id,
+      name: "bare.gpx"
+    })
+
+    path = "/imports/759701/download"
+    {request, conn} = forwarded(upstream!(), fn -> get(RailsUser.signed_in(c.user.id), path) end)
+    assert {request, conn.status} == {{"GET #{path} HTTP/1.1", ""}, 204}
   end
 
   test "wrapped blob returns native pending cache and original archive remains immediately downloadable",

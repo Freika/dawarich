@@ -102,31 +102,25 @@ defmodule Dawarich.Imports.UploadCreateTest do
     assert [[1]] = rows("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id])
   end
 
-  test "other formats and Sidekiq-owned GPX have explicit durable Rails continuation", c do
-    blob = uploaded(c, "other.json", "{}")
+  test "a non-GPX file refuses the whole batch before any write; Sidekiq-owned GPX continues on Rails",
+       c do
+    other = uploaded(c, "other.json", "{}")
+    gpx = uploaded(c, "first.gpx", "<gpx><trk/></gpx>")
+    context = %{storage: c.config, self_hosted?: true}
 
-    assert {:ok, [id]} =
-             UploadCreate.create(ScratchRepo, c.user, [blob.signed_id], %{
-               storage: c.config,
-               self_hosted?: true
-             })
+    assert {:error, :rails_format} =
+             UploadCreate.create(ScratchRepo, c.user, [gpx.signed_id, other.signed_id], context)
 
-    assert [[nil]] = rows("SELECT source FROM imports WHERE id=$1", [id])
+    assert [["lease.gpx"]] == rows("SELECT name FROM imports WHERE user_id=$1", [c.user.id])
+    assert [] == rows("SELECT id FROM active_storage_attachments")
+    assert [] == rows("SELECT id FROM phoenix.rails_commands")
+    assert [] == rows("SELECT event_id FROM job_outbox")
 
-    assert [["imports.upload_created", payload]] =
-             rows("SELECT kind,payload FROM phoenix.rails_commands")
-
-    assert payload["import_id"] == id
     Ownership.put!(ScratchRepo, "command:imports.process_gpx", :sidekiq)
-    gpx = uploaded(c, "second.gpx", "<gpx><trk/></gpx>")
+    assert {:ok, [id]} = UploadCreate.create(ScratchRepo, c.user, [gpx.signed_id], context)
 
-    assert {:ok, [_]} =
-             UploadCreate.create(ScratchRepo, c.user, [gpx.signed_id], %{
-               storage: c.config,
-               self_hosted?: true
-             })
-
-    assert [[2]] = rows("SELECT count(*) FROM phoenix.rails_commands")
+    assert [["imports.upload_created", %{"import_id" => ^id}]] =
+             rows("SELECT kind,payload FROM phoenix.rails_commands")
   end
 
   test "cross-owner tokens and exhausted trial quota create no import or enqueue", c do
