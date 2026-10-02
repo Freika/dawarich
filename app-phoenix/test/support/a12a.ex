@@ -390,4 +390,16 @@ defmodule Dawarich.Test.A12a do
         pid
     end
   end
+
+  def producer_inputs, do: @corpus["producers"]
+
+  def phoenix_encoding(%{"channel" => channel, "streamables" => parts, "input" => input} = p) do
+    parts = if channel, do: [channel | streamables(parts)], else: streamables(parts)
+
+    %{
+      "name" => p["name"],
+      "broadcasting" => RailsMessages.broadcasting(parts),
+      "payload" => Dawarich.Cable.Frames.payload(term(input))
+    }
+  end
 end

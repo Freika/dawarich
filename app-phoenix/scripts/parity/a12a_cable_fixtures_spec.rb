@@ -457,6 +457,44 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
     fx.normalized(data.except('sessions').merge('pings' => data['pings'].except('gap_seconds')))
   end
 
+  def phoenix_encodings
+    fx.phoenix('IO.puts(Jason.encode!(Enum.map(Dawarich.Test.A12a.producer_inputs(), ' \
+               '&Dawarich.Test.A12a.phoenix_encoding/1)))')
+  end
+
+  def delivered_frames(entry, encodings, redis)
+    cookies = entry['cookies'].empty? ? [] : [['Cookie', cookie_header(entry['cookies'])]]
+    client = fx::Client.new(@port, fx.request(entry['method'], entry['path'], entry['headers'] + cookies))
+    client.frames
+    client.text(entry['steps'].find { |step| step.key?('send') }['send'])
+    client.frames
+    encodings.each { |e| redis.publish("#{fx::PREFIX}:#{e['broadcasting']}", e['payload']) }
+    client.frames
+  ensure
+    client&.close
+  end
+
+  it 'Rails delivers Phoenix payloads' do
+    travel_to(fx::NOW) do
+      cleanup!
+      setup!
+      encodings = phoenix_encodings
+      if fx.write?
+        fx.write('phoenix.json', { 'producers' => encodings })
+      else
+        expect(encodings).to eq(fx.read('phoenix.json')['producers'])
+      end
+      redis = Redis.new(url: ENV.fetch('REDIS_URL'), driver: :ruby)
+      by_case = encodings.group_by { |e| e['name'] }
+      fx.read('cable.json')['cases'].select { |c| c['section'] == 'messages' }.each do |c|
+        expected = c['steps'].drop_while { |step| !step.key?('publish') }.filter_map { |step| step['expect'] }
+        expect([c['name'], delivered_frames(c, by_case.fetch(c['name']), redis)]).to eq([c['name'], expected])
+      end
+    ensure
+      cleanup!
+    end
+  end
+
   it 'writes the cable corpus' do
     travel_to(fx::NOW) do
       cleanup!
