@@ -6,7 +6,7 @@ defmodule Dawarich.Photos.Thumbnail do
 
   @id ~r/\A[0-9A-Za-z_-]{1,128}\z/
   @host ~r/\A[0-9A-Za-z._-]+\z/
-  @path ~r/\A(?:\/[0-9A-Za-z._~-]+)*\z/
+  @path ~r/\A(?:\/(?!\.{1,2}(?:\/|\z))[0-9A-Za-z._~-]+)*\z/
   @key ~r/\A[!-~]+\z/
   @statuses [400, 401, 404, 405, 408, 409, 410, 413, 414, 415, 422, 429, 500, 501, 502, 503, 504]
   @environment ~w(http_proxy https_proxy HTTP_PROXY HTTPS_PROXY SSL_CERT_FILE SSL_CERT_DIR)

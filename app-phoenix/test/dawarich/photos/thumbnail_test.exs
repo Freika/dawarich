@@ -56,6 +56,16 @@ defmodule Dawarich.Photos.ThumbnailTest do
     end
   end
 
+  test "fetch keeps a path whose segments merely contain or start with dots" do
+    {base, task} = immich(answer(200))
+    path = "/..x/.../.y/z.."
+
+    assert Thumbnail.fetch(settings(base <> path), "immich", @id) == {:ok, @image}
+
+    assert request_line(Task.await(task)) ==
+             "GET #{path}/api/assets/#{@id}/thumbnail?size=preview HTTP/1.1"
+  end
+
   test "fetch: Rails' ordinary error statuses come back as {:error, status}; 403, a redirect, other statuses, an empty 2xx and a content encoding go to Rails" do
     for status <- [
           400,
@@ -132,6 +142,11 @@ defmodule Dawarich.Photos.ThumbnailTest do
       "http://[::1]:2283",
       base <> "/",
       base <> "/a%20b",
+      base <> "/.",
+      base <> "/..",
+      base <> "/immich/../admin",
+      base <> "/immich/./x",
+      base <> "/a/..",
       "http://127.0.0.1:443",
       "ftp://127.0.0.1",
       "127.0.0.1",
