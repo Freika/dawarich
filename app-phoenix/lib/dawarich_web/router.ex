@@ -85,6 +85,12 @@ defmodule DawarichWeb.Router do
       metadata: %{slice: :api_map_reads}
   end
 
+  scope "/api/v1/families", DawarichWeb.Api do
+    pipe_through :api_stats
+
+    get "/locations", FamilyController, :locations, metadata: %{slice: :api_family}
+  end
+
   pipeline :api_locations_photos do
     plug :put_api_tag, "api"
     plug DawarichWeb.HostAuthorization

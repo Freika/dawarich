@@ -41,7 +41,8 @@ defmodule Dawarich.Test.ApiGolden do
       |> Enum.uniq()
       |> Kernel.--(["date", "content-length" | ignore])
 
-    assert {got_status, got_body} == {status, body}
+    masks = kase["mask"] || []
+    assert {got_status, masked(got_body, masks)} == {status, masked(body, masks)}
     assert Enum.sort(names) == Enum.sort(Map.keys(expected) -- ignore)
 
     for name <- names -- ["x-request-id", "x-runtime"],
@@ -83,6 +84,12 @@ defmodule Dawarich.Test.ApiGolden do
     assert {^status, _, received} = read_response(client, method: method)
     assert received == body
   end
+
+  defp masked(body, masks),
+    do:
+      Enum.reduce(masks, body, fn mask, text ->
+        Regex.replace(Regex.compile!(mask), text, &String.replace(&1, ~r/\d/, "0"))
+      end)
 
   defp body(%{"body_base64" => encoded}), do: Base.decode64!(encoded)
   defp body(%{"body" => body}), do: body

@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- On self-hosted installations the family locations API (`GET /api/v1/families/locations`) is now answered by the Elixir supervisor instead of Rails. Responses are unchanged. Set `DAWARICH_RAILS_SLICES=api_family` on the web container to hand it back to Rails without changing the image. Family location history, `GET /api/v1/families/mine`, sharing changes and location requests are still answered by Rails, and Cloud keeps using Rails for now.
 - On self-hosted installations the map's point and track reads (`GET /api/v1/points`, `GET /api/v1/tracks`, `GET /api/v1/tracks/:id` and `GET /api/v1/tracks/:id/points`) are now answered by the Elixir supervisor instead of Rails. Responses are unchanged. Set `DAWARICH_RAILS_SLICES=api_map_reads` on the web container to hand them back to Rails without changing the image. Tracked months, map tiles, hexagons and every change to points are still answered by Rails, and Cloud keeps using Rails for now.
 - The map page (`/map`, `/map/v2`) is now served by the Phoenix side of the application. The map, its panels, studios, timeline, sharing and live mode work as before; every save still goes to the Rails side. Setting `DAWARICH_RAILS_ROUTES=map` hands the map back to the Rails side without changing the image.
 - Phoenix now has database tables for one-time claims, counters, cache tokens, leases and the registration setting, an hourly cleanup job for them, and an in-memory cache; nothing uses them yet.
