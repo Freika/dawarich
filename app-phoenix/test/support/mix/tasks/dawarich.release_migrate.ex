@@ -5,8 +5,6 @@ defmodule Mix.Tasks.Dawarich.ReleaseMigrate do
 
   @shortdoc "Runs the Ecto release migrator against PHOENIX_TEST_DATABASE"
 
-  @last_rails_release "1.15.2"
-
   @impl true
   def run(args) do
     {opts, []} = OptionParser.parse!(args, strict: [only: :string])
@@ -44,38 +42,5 @@ defmodule Mix.Tasks.Dawarich.ReleaseMigrate do
   defp report({:error, reason}), do: Mix.raise(describe(reason))
 
   @doc false
-  def describe({:unknown_release, release}), do: "no Ecto release module for #{release}"
-
-  def describe({:failed, release, version, message}),
-    do: "failed #{release} #{version}: #{String.replace(message, ~r/\s+/, " ")}"
-
-  def describe({:newer, versions}),
-    do: "refused: newer than this image (#{Enum.join(versions, " ")})"
-
-  def describe({:below_floor, release}),
-    do:
-      "refused: this database has not reached Dawarich #{release}, and this image upgrades only from 1.0.0; " <>
-        "start the Dawarich #{@last_rails_release} image once so Rails upgrades it, then start this image"
-
-  def describe({:not_dawarich, count}),
-    do:
-      "refused: schema_migrations holds #{count} versions and none of them is a Dawarich migration; " <>
-        "check DATABASE_NAME"
-
-  def describe({:foreign_schema, schema, others}),
-    do: "refused: Rails tables outside public (search path #{schema}; #{Enum.join(others, " ")})"
-
-  def describe({:locked, holder}),
-    do: "refused: another migrator holds the lease (#{holder})"
-
-  def describe({:lease_lost, holder}), do: "refused: lease lost by #{holder}"
-  def describe(:pool_too_small), do: "refused: the repo pool needs two connections"
-  def describe({:timezone, value}), do: "refused: session time zone is #{value}, not UTC"
-
-  def describe({:rails_migrating, pid}),
-    do:
-      "refused: a Rails migrator holds its advisory lock (backend #{pid}); stop it, or if no Rails process runs, " <>
-        "wait for PgBouncer's server_lifetime or restart PgBouncer"
-
-  def describe(error) when is_exception(error), do: "refused: #{Exception.message(error)}"
+  defdelegate describe(reason), to: Dawarich.CLI.Migrate
 end

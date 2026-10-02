@@ -1,0 +1,84 @@
+defmodule Dawarich.CLI.Migrate do
+  @moduledoc false
+
+  import Dawarich.CLI, only: [puts: 2, fail: 2]
+
+  alias Dawarich.{Release, ReleaseMigrator}
+
+  @last_rails_release "1.15.2"
+
+  def migrate([], ctx) do
+    :ok = Release.migrate()
+    puts(ctx, "phoenix and oban schemas: current")
+    0
+  end
+
+  def migrate(_args, ctx), do: fail(ctx, "usage: dawarich migrate [status]")
+
+  def status([], ctx) do
+    readiness = Release.readiness()
+    public = ReleaseMigrator.status(ctx.repo)
+    Enum.each([schemas(readiness) | public_lines(public)], &puts(ctx, &1))
+    if readiness == :no_connection or match?({:error, _}, public), do: 1, else: 0
+  end
+
+  def status(_args, ctx), do: fail(ctx, "usage: dawarich migrate status")
+
+  defp schemas(:ready), do: "phoenix and oban schemas: current"
+
+  defp schemas(:schemas_behind),
+    do: "phoenix and oban schemas: behind this image; run dawarich migrate"
+
+  defp schemas(:no_connection), do: "phoenix and oban schemas: the database did not answer"
+
+  defp public_lines({:ok, :current}), do: ["public schema: current"]
+
+  defp public_lines({:ok, :fresh}),
+    do: ["public schema: empty; the baseline schema will be loaded"]
+
+  defp public_lines({:ok, {:pending, steps}}) do
+    noun = if length(steps) == 1, do: "version", else: "versions"
+
+    [
+      "public schema: #{length(steps)} pending #{noun}"
+      | Enum.map(steps, fn {release, v} -> "  #{release} #{v}" end)
+    ]
+  end
+
+  defp public_lines({:error, reason}), do: ["public schema: " <> describe(reason)]
+
+  def describe({:unknown_release, release}), do: "no Ecto release module for #{release}"
+
+  def describe({:failed, release, version, message}),
+    do: "failed #{release} #{version}: #{String.replace(message, ~r/\s+/, " ")}"
+
+  def describe({:newer, versions}),
+    do: "refused: newer than this image (#{Enum.join(versions, " ")})"
+
+  def describe({:below_floor, release}),
+    do:
+      "refused: this database has not reached Dawarich #{release}, and this image upgrades only from 1.0.0; " <>
+        "start the Dawarich #{@last_rails_release} image once so Rails upgrades it, then start this image"
+
+  def describe({:not_dawarich, count}),
+    do:
+      "refused: schema_migrations holds #{count} versions and none of them is a Dawarich migration; " <>
+        "check DATABASE_NAME"
+
+  def describe({:foreign_schema, schema, others}),
+    do: "refused: Rails tables outside public (search path #{schema}; #{Enum.join(others, " ")})"
+
+  def describe({:locked, holder}),
+    do: "refused: another migrator holds the lease (#{holder})"
+
+  def describe({:lease_lost, holder}), do: "refused: lease lost by #{holder}"
+  def describe(:pool_too_small), do: "refused: the repo pool needs two connections"
+  def describe({:timezone, value}), do: "refused: session time zone is #{value}, not UTC"
+
+  def describe({:rails_migrating, pid}),
+    do:
+      "refused: a Rails migrator holds its advisory lock (backend #{pid}); stop it, or if no Rails process runs, " <>
+        "wait for PgBouncer's server_lifetime or restart PgBouncer"
+
+  def describe(error) when is_exception(error), do: "refused: #{Exception.message(error)}"
+end
