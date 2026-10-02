@@ -114,8 +114,10 @@ defmodule Dawarich.Imports.DownloadBlobStoreTest do
       end)
 
     assert_receive {:committed, blob}, 3000
+    {:monitored_by, [guard]} = Process.info(pid, :monitored_by)
+    guard_ref = Process.monitor(guard)
     Process.exit(pid, :kill)
-    Process.sleep(30)
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, :normal}, 5_000
     assert File.read!(Dawarich.Storage.disk_path(c.root, blob.key)) == "<gpx/>"
     assert blob.service_name == "test"
     assert Path.wildcard(Path.join(c.root, "download-candidate-*")) == []
