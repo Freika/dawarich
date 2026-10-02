@@ -24,7 +24,8 @@ defmodule Dawarich.Build do
     Enum.flat_map(
       [
         Path.join(root, "config/locales/**/*.yml"),
-        Path.join(root, "config/achievements{.yml,/*.yml}"),
+        Path.join(root, "config/achievements.yml"),
+        Path.join(root, "config/achievements/*.yml"),
         Path.expand("lib/dawarich/build/**/*.ex")
       ],
       &Path.wildcard/1
