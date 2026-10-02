@@ -612,6 +612,27 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
+  test "DAWARICH_RAILS_ROUTES=sharing hands the shared-link page and its unlock back with their query",
+       ctx do
+    Application.put_env(:dawarich, :rails_routes, ["sharing"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+    id = "a9500000-0000-4000-8000-000000000001"
+
+    assert answered_by_puma(
+             port,
+             ctx.upstream,
+             "GET /s/#{id}?locale=de HTTP/1.1\r\nHost: a\r\n\r\n"
+           ) ==
+             "GET /s/#{id}?locale=de HTTP/1.1"
+
+    request =
+      "POST /s/#{id}/unlock HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+        "Content-Length: 8\r\n\r\nphrase=x"
+
+    assert answered_by_puma(port, ctx.upstream, request) == "POST /s/#{id}/unlock HTTP/1.1"
+  end
+
   test "Phoenix answers the settings, account and insights pages itself" do
     port = serve()
 

@@ -32,8 +32,11 @@ defmodule Dawarich.Application do
       [
         {Oban, Keyword.put(oban, :cron, cron)},
         {Phoenix.PubSub, name: Dawarich.PubSub}
-      ] ++ Front.children(plan, [{"DAWARICH_PHOENIX_NODE", node}]) ++ jobs(node)
+      ] ++ rack_attack() ++ Front.children(plan, [{"DAWARICH_PHOENIX_NODE", node}]) ++ jobs(node)
   end
+
+  defp rack_attack,
+    do: if(jobs_runtime?(), do: Dawarich.Redis.rack_attack_child_specs(), else: [])
 
   defp redis,
     do:

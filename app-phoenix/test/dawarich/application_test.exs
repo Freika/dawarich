@@ -24,7 +24,14 @@ defmodule Dawarich.ApplicationTest do
     do: Enum.map(Dawarich.Application.children(plan), &Supervisor.child_spec(&1, []).id)
 
   test "stops the jobs first, then the front, then PubSub, Oban and the repo, in every front mode" do
-    base = [Dawarich.Repo, Redix, Dawarich.Redis.Cache, Oban, Phoenix.PubSub.Supervisor]
+    base = [
+      Dawarich.Repo,
+      Redix,
+      Dawarich.Redis.Cache,
+      Oban,
+      Phoenix.PubSub.Supervisor,
+      Dawarich.Redis.RackAttack
+    ]
 
     assert ids(:none) == base ++ [DawarichWeb.Endpoint, Dawarich.Jobs.Supervisor]
     assert ids(@direct) == base ++ [RailsServer, Dawarich.Jobs.Supervisor]
