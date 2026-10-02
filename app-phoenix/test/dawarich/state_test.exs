@@ -146,6 +146,7 @@ defmodule Dawarich.StateTest do
 
   test "two bumps naming overlapping keys in opposite orders both apply without a deadlock" do
     before = State.epoch_tokens(ScratchRepo, ["e:a", "e:b"])
+
     holder = hold(fn -> :ok = State.bump_epochs(ScratchRepo, ["e:a"]) end)
 
     forward = attempt(fn -> State.bump_epochs(ScratchRepo, ["e:a", "e:b"]) end)
@@ -159,6 +160,27 @@ defmodule Dawarich.StateTest do
     bumped = State.epoch_tokens(ScratchRepo, ["e:a", "e:b"])
     refute bumped["e:a"] == before["e:a"]
     refute bumped["e:b"] == before["e:b"]
+  end
+
+  test "a bump holds the lower key while it waits for a higher one the caller named first" do
+    State.epoch_tokens(ScratchRepo, ["e:p", "e:q"])
+
+    holder =
+      hold(fn ->
+        ScratchRepo.query!("SELECT 1 FROM phoenix.epochs WHERE key = 'e:q' FOR UPDATE")
+      end)
+
+    bump = attempt(fn -> State.bump_epochs(ScratchRepo, ["e:q", "e:p"]) end)
+    wait_until(fn -> blocked("INSERT INTO phoenix.epochs AS e%") == 1 end)
+
+    probe =
+      attempt(fn ->
+        ScratchRepo.query!("SELECT 1 FROM phoenix.epochs WHERE key = 'e:p' FOR UPDATE NOWAIT")
+      end)
+
+    assert {:error, :lock_not_available} = Task.await(probe)
+    commit(holder)
+    assert Task.await(bump) == {:ok, :ok}
   end
 
   test "two first reads seeding overlapping keys in different orders do not wait on each other" do
