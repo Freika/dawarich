@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- Reverse geocoding, visit suggestions, visit re-detection and GPX place extraction can run in Phoenix (off by default).
+- The geocoding rate limit can be shared by all processes with `GEOCODING_SHARED_RATE_LIMIT=true` (off by default; required before Phoenix runs any geocoding job).
 - The trips list is served by the Phoenix side of the application when it can show it exactly; a list page with a TREK plan preview, or an account whose settings Rails would reject, keeps being served by Rails. Setting `DAWARICH_RAILS_ROUTES=trips` serves the list from Rails again. Links on Phoenix list pages are ordinary page loads and their paginators update the page in place instead of using Turbo Drive (ED-151).
 - On self-hosted installations the stats, insights, year-end digest (reading), residency, visited-cities and flights API endpoints are now answered by the Elixir supervisor instead of Rails. Responses are unchanged. Set `DAWARICH_RAILS_SLICES=api_stats` on the web container to hand them back to Rails without changing the image. Creating and deleting digests, country borders and visited countries are still answered by Rails, and Cloud keeps using Rails for now.
 - On self-hosted installations `GET /api/v1/plan` is now answered by the Elixir supervisor instead of Rails. The response is unchanged. Set `DAWARICH_RAILS_SLICES=api_foundation` on the web container to hand it back to Rails without changing the image. `/api/v1/health` and `/api/v1/ready` are still answered by Rails, and Cloud keeps using Rails for now.

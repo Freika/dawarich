@@ -142,6 +142,11 @@ defmodule Dawarich.RuntimeConfigTest do
     assert prod_extraction_timeout_ms <= :timer.minutes(50)
   end
 
+  test "GPX extraction uses the measured M2 production timeout" do
+    timeout = Config.Reader.read!(@runtime, env: :prod)[:dawarich][:extraction_timeout_ms]
+    assert timeout == :timer.minutes(8)
+  end
+
   test "falls back to the host name when HOSTNAME is missing or not a single word" do
     {:ok, host} = :inet.gethostname()
 

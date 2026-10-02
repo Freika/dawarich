@@ -90,6 +90,12 @@ defmodule Dawarich.EnhancedImport.GpxTest do
     assert collect(path) == []
   end
 
+  test "a valid document after 256 whitespace bytes keeps its waypoints", %{storage: storage} do
+    xml = String.duplicate(" ", 256) <> String.replace(@waypoint, "<?xml version=\"1.0\"?>", "")
+    assert [%{name: "One", latitude: 51.3397}] = collect(write!(storage, xml))
+    assert collect(write!(storage, "")) == []
+  end
+
   test "a raising callback surfaces its original exception", %{storage: storage} do
     path = write!(storage, @waypoint)
 

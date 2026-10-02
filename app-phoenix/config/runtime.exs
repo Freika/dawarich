@@ -99,7 +99,7 @@ if config_env() != :test do
     database: env_integer.("RAILS_JOB_QUEUE_DB", 1),
     cache_database: env_integer.("RAILS_CACHE_DB", 0)
 
-  config :dawarich, :extraction_timeout_ms, 3_000_000
+  config :dawarich, :extraction_timeout_ms, 480_000
 end
 
 config :dawarich,

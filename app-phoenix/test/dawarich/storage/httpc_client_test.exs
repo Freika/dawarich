@@ -4,6 +4,27 @@ defmodule Dawarich.Storage.HttpcClientTest do
   alias Dawarich.Storage.HttpcClient
   alias Dawarich.Test.RawHTTP
 
+  test "a killed caller cancels its pending HTTP request" do
+    server = RawHTTP.listen()
+
+    caller =
+      spawn(fn ->
+        HttpcClient.request(:get, "http://127.0.0.1:#{server.port}/blocked", "", [], [])
+      end)
+
+    on_exit(fn ->
+      Process.exit(caller, :kill)
+      :gen_tcp.close(server.listen)
+    end)
+
+    socket = RawHTTP.accept(server)
+    RawHTTP.read_head(socket)
+    ref = Process.monitor(caller)
+    Process.exit(caller, :kill)
+    assert_receive {:DOWN, ^ref, :process, ^caller, :killed}
+    assert {:error, :closed} = :gen_tcp.recv(socket, 0, 1_000)
+  end
+
   test "sends method, headers and body over :httpc and returns binary headers" do
     server = RawHTTP.listen()
     url = "http://127.0.0.1:#{server.port}/dawarich/abc?uploadId=up-1"

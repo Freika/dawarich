@@ -114,8 +114,10 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorkerTest do
       "base64" => Base.encode64(xml)
     })
 
+    caller = self()
+
     HookRepo.set_hook(fn sql, _params ->
-      if sql =~ "geodata ->> 'external_place_id' =", do: send(self(), :lookup)
+      if sql =~ "geodata ->> 'external_place_id' =", do: send(caller, :lookup)
       :ok
     end)
 

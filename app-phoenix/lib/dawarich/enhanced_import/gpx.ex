@@ -55,7 +55,7 @@ defmodule Dawarich.EnhancedImport.Gpx do
   defp offset(prefix) do
     cond do
       Enum.any?(@boms, &String.starts_with?(prefix, &1)) -> 0
-      match = :binary.match(prefix, "<") -> elem(match, 0)
+      match?({_, _}, :binary.match(prefix, "<")) -> elem(:binary.match(prefix, "<"), 0)
       true -> 0
     end
   end
