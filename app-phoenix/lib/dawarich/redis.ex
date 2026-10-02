@@ -26,9 +26,12 @@ defmodule Dawarich.Redis do
   end
 
   def options(url, database) do
-    base = [name: @name, database: database, sync_connect: false, exit_on_disconnection: false]
-    if String.starts_with?(url, "rediss://"), do: base ++ [socket_opts: tls()], else: base
+    [name: @name, database: database, sync_connect: false, exit_on_disconnection: false] ++
+      socket_options(url)
   end
+
+  def socket_options(url),
+    do: if(String.starts_with?(url, "rediss://"), do: [socket_opts: tls()], else: [])
 
   def command(args, conn \\ @name) do
     Redix.command(conn, args, timeout: 5_000)
