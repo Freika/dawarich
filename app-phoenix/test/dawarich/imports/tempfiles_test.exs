@@ -44,10 +44,12 @@ defmodule Dawarich.Imports.TempfilesTest do
 
     assert_receive {:retained, path}
     assert File.exists?(path)
+    {:monitored_by, watchers} = Process.info(pid, :monitored_by)
+    [guard] = watchers -- [self()]
+    guard_ref = Process.monitor(guard)
     Process.exit(pid, :kill)
     assert_receive {:DOWN, ^ref, :process, ^pid, :killed}
-    deadline = System.monotonic_time(:millisecond) + 500
-    wait_until_removed(path, deadline)
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, :normal}, 5_000
     refute File.exists?(path)
   end
 
@@ -57,12 +59,5 @@ defmodule Dawarich.Imports.TempfilesTest do
     end
 
     assert [] == File.ls!(c.dir)
-  end
-
-  defp wait_until_removed(path, deadline) do
-    if File.exists?(path) and System.monotonic_time(:millisecond) < deadline do
-      Process.sleep(1)
-      wait_until_removed(path, deadline)
-    end
   end
 end
