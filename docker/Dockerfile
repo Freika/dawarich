@@ -156,6 +156,7 @@ RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
 
 COPY --from=phoenix_builder /out/public/assets public/assets
 COPY --from=phoenix_builder /out/config/sprockets-manifest.json config/sprockets-manifest.json
+COPY --from=phoenix_builder /src/app/assets/builds/tailwind.css app/assets/builds/tailwind.css
 COPY --from=phoenix_builder /out/tmp/phoenix tmp/phoenix
 
 # Ensure tmp directory exists and is writable by any user (for custom uid:gid support)
