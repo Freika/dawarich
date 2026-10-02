@@ -88,6 +88,23 @@ defmodule DawarichWeb.LayoutParityTest do
     end
   end
 
+  test "the map layout never queries the navbar inline for a signed-in user" do
+    assert_raise RuntimeError, ~r/was not preloaded/, fn ->
+      render_component(&DawarichWeb.Layouts.map/1,
+        current_user: %{id: 1},
+        locale: "en",
+        self_hosted: true,
+        flash: %{},
+        flash_messages: [],
+        now: ~U[2026-09-26 12:00:00Z],
+        request_path: "/map",
+        rails_csrf_token: nil,
+        page: %{demo_data: false},
+        inner_content: ""
+      )
+    end
+  end
+
   test "self_hosted_dark_en renders the changelog prompt" do
     html =
       render_component(&DawarichWeb.NavbarParts.version_indicator/1,

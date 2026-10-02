@@ -88,4 +88,23 @@ defmodule Dawarich.EntitlementsTest do
     family(owner.id, member.id, nil)
     refute Entitlements.full_access?(member, false, @now)
   end
+
+  test "access/3 returns the expected {full?, plan} pair for self-hosted, Cloud pro, Cloud family, and Cloud lite with and without inherited access" do
+    self_hosted = user(5441, %{plan: 0})
+    assert Entitlements.access(self_hosted, true, @now) == {true, "lite"}
+
+    pro = user(5442, %{plan: 1})
+    assert Entitlements.access(pro, false, @now) == {true, "pro"}
+
+    family_plan = user(5446, %{plan: 2})
+    assert Entitlements.access(family_plan, false, @now) == {true, "family"}
+
+    lite = user(5443, %{plan: 0})
+    assert Entitlements.access(lite, false, @now) == {false, "lite"}
+
+    owner = user(5444, %{plan: 2, active_until: ~N[3026-01-01 00:00:00]})
+    member = user(5445, %{plan: 0})
+    family(owner.id, member.id, nil)
+    assert Entitlements.access(member, false, @now) == {true, "family"}
+  end
 end

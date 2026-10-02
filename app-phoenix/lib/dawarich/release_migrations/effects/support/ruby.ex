@@ -88,10 +88,24 @@ defmodule Dawarich.ReleaseMigrations.Effects.Support.Ruby do
 
   def json(value), do: Jason.encode!(value)
 
+  def json_text(text),
+    do:
+      text
+      |> Jason.decode!(objects: :ordered_objects)
+      |> ordered()
+      |> json()
+      |> IO.iodata_to_binary()
+
   defp json_object(pairs) do
     members = Enum.map(pairs, fn {key, value} -> [json(key), ?:, json(value)] end)
     [?{, Enum.intersperse(members, ?,), ?}]
   end
+
+  defp ordered(%Jason.OrderedObject{values: pairs}),
+    do: {:object, Enum.map(pairs, fn {key, value} -> {key, ordered(value)} end)}
+
+  defp ordered(value) when is_list(value), do: Enum.map(value, &ordered/1)
+  defp ordered(value), do: value
 
   defp char(~S(")), do: ~S(\")
   defp char("\\"), do: "\\\\"

@@ -74,6 +74,17 @@ defmodule DawarichWeb.Router do
     get "/flights", GeoController, :flights, metadata: %{slice: :api_stats}
   end
 
+  scope "/api/v1", DawarichWeb.Api do
+    pipe_through :api_stats
+
+    get "/points", MapController, :points, metadata: %{slice: :api_map_reads}
+    get "/tracks", MapController, :tracks, metadata: %{slice: :api_map_reads}
+    get "/tracks/:id", MapController, :track, metadata: %{slice: :api_map_reads}
+
+    get "/tracks/:track_id/points", MapController, :track_points,
+      metadata: %{slice: :api_map_reads}
+  end
+
   pipeline :api_locations_photos do
     plug :put_api_tag, "api"
     plug DawarichWeb.HostAuthorization
@@ -157,6 +168,19 @@ defmodule DawarichWeb.Router do
 
       live "/insights", DawarichWeb.InsightsLive.Index, :index,
         container: {:div, class: "contents"}
+    end
+  end
+
+  scope "/" do
+    pipe_through [:browser, :rails_user]
+
+    live_session :rails_map,
+      session: {DawarichWeb.RailsAuth, :live_session, []},
+      on_mount: DawarichWeb.LiveAuth,
+      root_layout: {DawarichWeb.Layouts, :map_root},
+      layout: {DawarichWeb.Layouts, :map} do
+      live "/map", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
+      live "/map/v2", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
     end
   end
 

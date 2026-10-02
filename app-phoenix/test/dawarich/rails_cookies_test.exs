@@ -77,4 +77,25 @@ defmodule Dawarich.RailsCookiesTest do
       assert RailsCookies.verify(value, "remember_user_token", @secret, @now) == :error
     end
   end
+
+  test "refuses a session cookie whose GCM tag or IV is not the length Rails writes" do
+    [data, iv, tag] = @fixture["session_cookie"] |> URI.decode_www_form() |> String.split("--")
+    {:ok, raw_tag} = Base.decode64(tag)
+    {:ok, raw_iv} = Base.decode64(iv)
+
+    shaped = fn parts -> parts |> Enum.join("--") |> URI.encode_www_form() end
+
+    for size <- [1, 8, 15] do
+      short = raw_tag |> binary_part(0, size) |> Base.encode64()
+      cookie = shaped.([data, iv, short])
+
+      assert RailsCookies.decrypt(cookie, "_dawarich_session", @secret, @now) == :error,
+             "tag #{size}"
+    end
+
+    for bad_iv <- [binary_part(raw_iv, 0, 11), raw_iv <> <<0>>] do
+      cookie = shaped.([data, Base.encode64(bad_iv), tag])
+      assert RailsCookies.decrypt(cookie, "_dawarich_session", @secret, @now) == :error
+    end
+  end
 end

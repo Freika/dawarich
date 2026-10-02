@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang={@locale} data-theme={theme(@current_user)} data-self-hosted={to_string(@self_hosted)}>
+  <head>
+    <title>{page_title(@locale, @page_title)}</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <.pwa_meta locale={@locale} />
+    <meta name="action-cable-url" content="/cable" />
+    <%= if @rails_csrf_token do %>
+      <meta name="csrf-param" content="authenticity_token" /><meta
+        name="csrf-token"
+        content={@rails_csrf_token}
+      />
+    <% end %>
+    <meta name="phoenix-csrf-token" content={Phoenix.Controller.get_csrf_token()} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("tailwind.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("inter-font.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("application.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements_spectral.css")} />
+    <link rel="stylesheet" href={DawarichWeb.Assets.stylesheet_path("achievements_unlocks.css")} />
+    <script
+      id="i18n-translations"
+      type="application/json"
+      data-turbo-track="reload"
+      phx-no-format
+    ><%= Phoenix.HTML.raw(rails_translations(@locale)) %></script>
+    <script type="importmap">
+      <%= Phoenix.HTML.raw(importmap(true)) %>
+    </script>
+    <script type="module">
+      import "app"
+    </script>
+    <.favicon />
+    <%= unless @self_hosted do %>
+      <script async src="https://scripts.simpleanalyticscdn.com/latest.js">
+      </script>
+      <script src="https://rybbit.dwri.xyz/api/script.js" data-site-id="87c1f532b59f" defer>
+      </script>
+    <% end %>
+  </head>
+  <body class="h-screen !h-[100dvh] overflow-hidden relative">{@inner_content}</body>
+</html>

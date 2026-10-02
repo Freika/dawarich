@@ -46,13 +46,13 @@ defmodule Dawarich.Tracks.ChunkerTest do
     assert chunks(user, nil, nil, "Europe/Berlin") == @first_to_last
     assert chunks(user, nil, @base + 2 * 86_400, "Europe/Berlin") == @first_to_end
 
-    before = System.os_time(:second)
+    before = database_time()
     point!(user, before - 60, 12.3731, 51.3397)
 
     [{0, start_ts, end_ts, buffer_start_ts, buffer_end_ts}] =
       chunks(user, before - 3_600, nil, "UTC")
 
-    after_call = System.os_time(:second)
+    after_call = database_time()
 
     assert {start_ts, buffer_start_ts} == {before - 3_600, before - 3_600}
     assert end_ts in before..after_call
@@ -69,6 +69,15 @@ defmodule Dawarich.Tracks.ChunkerTest do
     ScratchRepo
     |> Chunker.chunks(user_id, at(start_ts), at(end_ts), zone)
     |> Enum.map(&{&1.chunk_id, &1.start_ts, &1.end_ts, &1.buffer_start_ts, &1.buffer_end_ts})
+  end
+
+  defp database_time do
+    %{rows: [[timestamp]]} =
+      ScratchRepo.query!("SELECT floor(extract(epoch FROM clock_timestamp()))::bigint", [],
+        log: false
+      )
+
+    timestamp
   end
 
   defp at(nil), do: nil

@@ -27,6 +27,18 @@ defmodule DawarichWeb.IconTest do
     refute html =~ "stroke-width"
   end
 
+  test "aria_hidden adds aria-hidden=true, as rails_icons does for aria: { hidden: true }" do
+    html =
+      render_component(&DawarichWeb.Icon.icon/1,
+        name: "play",
+        class: "w-5 h-5",
+        aria_hidden: true
+      )
+
+    assert html =~ ~s(class="w-5 h-5" aria-hidden="true")
+    refute render_component(&DawarichWeb.Icon.icon/1, name: "play") =~ "aria-hidden"
+  end
+
   test "a brand icon with a class baked into its own source keeps only the caller's class" do
     html = render_component(&DawarichWeb.Icon.brand/1, name: "airtrail", class: "size-5 shrink-0")
     tag = hd(Regex.run(~r/<svg[^>]*>/, html))

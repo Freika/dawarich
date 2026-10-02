@@ -31,6 +31,24 @@ defmodule Dawarich.LocalTimeTest do
              {"America/New_York", ~D[2026-02-28]}
   end
 
+  test "local/3 validates against a given env, overriding the process env; the default still reads it" do
+    now = ~U[2026-02-28 23:30:00Z]
+    System.put_env("TIME_ZONE", "America/New_York")
+
+    assert LocalTime.local(%{}, now, %{"TIME_ZONE" => "Asia/Kolkata"}) ==
+             {"Asia/Kolkata", ~D[2026-03-01]}
+
+    assert LocalTime.local(%{}, now) == {"America/New_York", ~D[2026-02-28]}
+  end
+
+  test "offset/3 defaults to the DB format; :iso gives Z and a colonized offset" do
+    assert LocalTime.offset("UTC", 0) == "UTC"
+    assert LocalTime.offset("UTC", 0, :iso) == "Z"
+    assert LocalTime.offset("Europe/Berlin", 7200) == "+0200"
+    assert LocalTime.offset("Europe/Berlin", 7200, :iso) == "+02:00"
+    assert LocalTime.offset("America/New_York", -18_000, :iso) == "-05:00"
+  end
+
   test "day bounds are Rails' TimeWithZone strings, across a DST change and for UTC" do
     assert LocalTime.day_bounds("Europe/Berlin", ~D[2024-03-07]) ==
              {"2024-03-07 00:00:00 +0100", "2024-03-07 23:59:59 +0100"}
