@@ -99,7 +99,6 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
            fun.()
          end) do
       {:ok, value} -> value
-      {:error, :changed} -> raise LeaseLost
       {:error, reason} -> raise "Download effect rolled back: #{inspect(reason)}"
     end
   end

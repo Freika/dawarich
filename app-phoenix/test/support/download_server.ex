@@ -26,6 +26,22 @@ defmodule Dawarich.Test.DownloadServer do
     {"http://127.0.0.1:#{server.port}", task}
   end
 
+  def serve(server, handler) do
+    {:ok, socket} = :gen_tcp.accept(server.listen, :infinity)
+    {head, rest} = RawHTTP.read_head(socket)
+
+    length =
+      head
+      |> RawHTTP.header("content-length")
+      |> List.first("0")
+      |> String.to_integer()
+
+    RawHTTP.read_at_least(socket, rest, length)
+    handler.(socket, RawHTTP.request_line(head))
+    :gen_tcp.close(socket)
+    serve(server, handler)
+  end
+
   def hello(socket) do
     RawHTTP.reply(
       socket,

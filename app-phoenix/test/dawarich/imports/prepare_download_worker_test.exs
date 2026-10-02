@@ -27,12 +27,12 @@ defmodule Dawarich.Imports.PrepareDownloadWorkerTest do
     Map.merge(c, %{root: root, config: config})
   end
 
-  defp attach(c, wrapped? \\ true) do
+  defp attach(c, wrapped? \\ true, entries \\ [{"ride.gpx", "<gpx/>", [method: 8]}]) do
     path = Path.join(c.root, "fixture.zip")
     content = "<gpx/>"
 
     if wrapped?,
-      do: Dawarich.GpxZipFixture.write!(path, [{"ride.gpx", content, [method: 8]}]),
+      do: Dawarich.GpxZipFixture.write!(path, entries),
       else: File.write!(path, content)
 
     blob =
@@ -220,9 +220,26 @@ defmodule Dawarich.Imports.PrepareDownloadWorkerTest do
     assert :ok = PrepareDownloadWorker.perform(j)
   end
 
-  for change <- [:owner, :cancel, :user, :attachment] do
+  defp s3_config(c, url) do
+    Map.merge(
+      %{service: "s3", root: c.root},
+      Dawarich.Storage.S3.config!(%{
+        "AWS_ACCESS_KEY_ID" => "synthetic",
+        "AWS_SECRET_ACCESS_KEY" => "synthetic",
+        "AWS_REGION" => "eu-central-1",
+        "AWS_BUCKET" => "dawarich",
+        "AWS_ENDPOINT" => url
+      })
+    )
+  end
+
+  for change <- [:owner, :cancel, :user, :attachment, :rename, :rename_original] do
     test "#{change} changed during blocked HTTP download fences prepared publication", c do
-      blob = attach(c)
+      blob =
+        if unquote(change) == :rename_original,
+          do: attach(c, true, [{"ride.gpx", "<gpx/>", []}, {"two.gpx", "<gpx/>", []}]),
+          else: attach(c)
+
       j = job(c, blob)
 
       [[key, size, checksum]] =
@@ -244,17 +261,7 @@ defmodule Dawarich.Imports.PrepareDownloadWorkerTest do
 
       on_exit(fn -> send(server.pid, :release) end)
 
-      config =
-        Map.merge(
-          %{service: "s3", root: c.root},
-          Dawarich.Storage.S3.config!(%{
-            "AWS_ACCESS_KEY_ID" => "synthetic",
-            "AWS_SECRET_ACCESS_KEY" => "synthetic",
-            "AWS_REGION" => "eu-central-1",
-            "AWS_BUCKET" => "dawarich",
-            "AWS_ENDPOINT" => url
-          })
-        )
+      config = s3_config(c, url)
 
       rows("UPDATE active_storage_blobs SET service_name='s3' WHERE id=$1", [blob])
       Application.put_env(:dawarich, :imports_services, %{"s3" => config})
@@ -273,6 +280,9 @@ defmodule Dawarich.Imports.PrepareDownloadWorkerTest do
 
         :attachment ->
           rows("UPDATE active_storage_blobs SET checksum=$2 WHERE id=$1", [blob, "different"])
+
+        rename when rename in [:rename, :rename_original] ->
+          rows("UPDATE imports SET name='renamed.gpx' WHERE id=$1", [c.import.id])
       end
 
       send(server.pid, :release)
@@ -288,12 +298,70 @@ defmodule Dawarich.Imports.PrepareDownloadWorkerTest do
         do: assert(match?({:cancel, _}, result)),
         else: assert(result in [:ok, {:snooze, 5}])
 
-      if unquote(change) in [:cancel, :attachment],
+      if unquote(change) in [:rename, :rename_original], do: assert(result == {:snooze, 5})
+
+      if unquote(change) in [:cancel, :attachment, :rename, :rename_original],
         do: refute(Processed.done?(ScratchRepo, j.args["event_id"])),
         else: assert(Processed.done?(ScratchRepo, j.args["event_id"]))
 
       assert File.read!(Dawarich.Storage.disk_path(c.root, key)) == bytes
       assert checksum == Base.encode64(:crypto.hash(:md5, bytes))
     end
+  end
+
+  test "a rename during the prepared upload hands back as changed and deletes the candidate", c do
+    blob = attach(c)
+    j = job(c, blob)
+    [[key]] = rows("SELECT key FROM active_storage_blobs WHERE id=$1", [blob])
+    bytes = File.read!(Dawarich.Storage.disk_path(c.root, key))
+    parent = self()
+    server = Dawarich.Test.RawHTTP.listen()
+
+    Task.start_link(fn ->
+      Dawarich.Test.DownloadServer.serve(server, fn socket, line ->
+        case String.split(line, " ") do
+          ["GET" | _] ->
+            Dawarich.Test.RawHTTP.reply(
+              socket,
+              "HTTP/1.1 200 OK\r\nContent-Length: #{byte_size(bytes)}\r\nConnection: close\r\n\r\n" <>
+                bytes
+            )
+
+          ["PUT", path | _] ->
+            send(parent, {:uploading, self(), path})
+            receive do: (:release -> :ok)
+
+            Dawarich.Test.RawHTTP.reply(
+              socket,
+              "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            )
+
+          ["DELETE", path | _] ->
+            send(parent, {:deleted, path})
+
+            Dawarich.Test.RawHTTP.reply(
+              socket,
+              "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n"
+            )
+        end
+      end)
+    end)
+
+    rows("UPDATE active_storage_blobs SET service_name='s3' WHERE id=$1", [blob])
+
+    Application.put_env(:dawarich, :imports_services, %{
+      "s3" => s3_config(c, "http://127.0.0.1:#{server.port}")
+    })
+
+    task = Task.async(fn -> PrepareDownloadWorker.perform(j) end)
+    assert_receive {:uploading, writer, put}, 3000
+    rows("UPDATE imports SET name='renamed.gpx' WHERE id=$1", [c.import.id])
+    send(writer, :release)
+
+    assert {:snooze, 5} = Task.await(task)
+    assert_receive {:deleted, ^put}, 3000
+    assert [] == rows("SELECT id FROM active_storage_attachments WHERE name='prepared_download'")
+    assert [[1]] = rows("SELECT count(*) FROM active_storage_blobs")
+    refute Processed.done?(ScratchRepo, j.args["event_id"])
   end
 end

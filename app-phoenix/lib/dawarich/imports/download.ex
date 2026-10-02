@@ -80,16 +80,9 @@ defmodule Dawarich.Imports.Download do
       filename,
       type,
       fn put ->
-        checked =
-          effect(context, fn ->
-            repo.transaction(fn ->
-              if Snapshot.load(repo, user, id, true) != snapshot, do: repo.rollback(:changed)
-            end)
-          end)
-
-        case checked do
-          {:ok, _} -> publish(repo, user, id, snapshot, context, config, put.(), filename, type)
-          {:error, reason} -> {:error, reason}
+        case fenced(repo, user, id, snapshot, context, fn -> :ok end) do
+          {:ok, :ok} -> publish(repo, user, id, snapshot, context, config, put.(), filename, type)
+          {:ok, :changed} -> {:error, :changed}
         end
       end
     )
@@ -104,39 +97,36 @@ defmodule Dawarich.Imports.Download do
 
     try do
       result =
-        effect(context, fn ->
-          repo.transaction(fn ->
-            if Snapshot.load(repo, user, id, true) != snapshot, do: repo.rollback(:changed)
-            schedule_detached(repo, user, id, snapshot)
+        fenced(repo, user, id, snapshot, context, fn ->
+          schedule_detached(repo, user, id, snapshot)
 
-            [[blob_id]] =
-              repo.query!(
-                "INSERT INTO active_storage_blobs(key,filename,content_type,metadata,service_name,byte_size,checksum,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,now()) RETURNING id",
-                [
-                  blob.key,
-                  filename,
-                  type,
-                  metadata,
-                  blob.service_name,
-                  blob.byte_size,
-                  blob.checksum
-                ],
-                log: false
-              ).rows
+          [[blob_id]] =
+            repo.query!(
+              "INSERT INTO active_storage_blobs(key,filename,content_type,metadata,service_name,byte_size,checksum,created_at) VALUES ($1,$2,$3,$4,$5,$6,$7,now()) RETURNING id",
+              [
+                blob.key,
+                filename,
+                type,
+                metadata,
+                blob.service_name,
+                blob.byte_size,
+                blob.checksum
+              ],
+              log: false
+            ).rows
 
-            attach!(repo, id, blob_id)
-            terminal(context)
-            :ok
-          end)
+          attach!(repo, id, blob_id)
+          terminal(context)
+          :ok
         end)
 
       case result do
         {:ok, :ok} ->
           :ok
 
-        {:error, reason} ->
+        {:ok, :changed} ->
           Storage.delete(config, blob.key)
-          {:error, reason}
+          {:error, :changed}
       end
     rescue
       error ->
@@ -147,19 +137,25 @@ defmodule Dawarich.Imports.Download do
 
   defp attach(repo, user, id, snapshot, blob_id, context) do
     result =
-      effect(context, fn ->
-        repo.transaction(fn ->
-          if Snapshot.load(repo, user, id, true) != snapshot, do: repo.rollback(:changed)
-          schedule_detached(repo, user, id, snapshot)
-          attach!(repo, id, blob_id)
-          terminal(context)
-        end)
+      fenced(repo, user, id, snapshot, context, fn ->
+        schedule_detached(repo, user, id, snapshot)
+        attach!(repo, id, blob_id)
+        terminal(context)
+        :ok
       end)
 
     case result do
-      {:ok, _} -> :ok
-      {:error, reason} -> {:error, reason}
+      {:ok, :ok} -> :ok
+      {:ok, :changed} -> {:error, :changed}
     end
+  end
+
+  defp fenced(repo, user, id, snapshot, context, fun) do
+    effect(context, fn ->
+      repo.transaction(fn ->
+        if Snapshot.load(repo, user, id, true) == snapshot, do: fun.(), else: :changed
+      end)
+    end)
   end
 
   defp attach!(repo, id, blob_id) do

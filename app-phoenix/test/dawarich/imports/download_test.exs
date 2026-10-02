@@ -607,7 +607,7 @@ defmodule Dawarich.Imports.DownloadTest do
     server = Dawarich.Test.RawHTTP.listen()
 
     Task.start_link(fn ->
-      storage_loop(server, fn socket, line ->
+      Dawarich.Test.DownloadServer.serve(server, fn socket, line ->
         case String.split(line, " ") do
           ["GET" | _] ->
             Dawarich.Test.RawHTTP.reply(
@@ -663,22 +663,6 @@ defmodule Dawarich.Imports.DownloadTest do
     end
 
     {%{c.context | services: %{"s3" => config}} |> Map.put(:fence, fence), source}
-  end
-
-  defp storage_loop(server, handler) do
-    {:ok, socket} = :gen_tcp.accept(server.listen, :infinity)
-    {head, rest} = Dawarich.Test.RawHTTP.read_head(socket)
-
-    length =
-      head
-      |> Dawarich.Test.RawHTTP.header("content-length")
-      |> List.first("0")
-      |> String.to_integer()
-
-    Dawarich.Test.RawHTTP.read_at_least(socket, rest, length)
-    handler.(socket, Dawarich.Test.RawHTTP.request_line(head))
-    :gen_tcp.close(socket)
-    storage_loop(server, handler)
   end
 
   test "callback failure and cancellation clean adopted verified files", c do
