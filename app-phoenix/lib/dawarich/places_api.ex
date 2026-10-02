@@ -21,10 +21,7 @@ defmodule Dawarich.PlacesApi do
 
   def run(action, user, params, now) do
     RailsTime.with_zone(user.timezone, fn ->
-      case dispatch(action, user.id, params, DateTime.to_naive(now)) do
-        {:replay, _reason} = replay -> Repo.rollback(replay)
-        result -> result
-      end
+      dispatch(action, user.id, params, DateTime.to_naive(now))
     end)
   rescue
     error -> {:replay, inspect(error.__struct__)}

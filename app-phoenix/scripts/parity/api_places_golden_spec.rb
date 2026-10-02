@@ -141,7 +141,8 @@ module ApiPlacesGoldenOracle
       headers: { 'X-HTTP-Method-Override' => 'PATCH' } },
     { name: 'replay_index_tag_ids', expect: :rails, path: "#{P}?tag_ids=950101" },
     { name: 'replay_index_untagged', expect: :rails, path: "#{P}?tag_ids=untagged" },
-    { name: 'replay_index_page_shape', expect: :rails, path: "#{P}?page=abc" },
+    { name: 'replay_index_page_shape', expect: :rails, path: "#{P}?page=01" },
+    { name: 'replay_index_per_page_shape', expect: :rails, path: "#{P}?page=1&per_page=05" },
     { name: 'replay_index_per_page_zero', expect: :rails, path: "#{P}?page=1&per_page=0" },
     { name: 'rails_show_head', expect: :rails, method: :head, path: H, auth: :none },
     { name: 'rails_cloud_create', expect: :rails, method: :post, path: P, env: { 'SELF_HOSTED' => 'false' },
@@ -186,6 +187,7 @@ RSpec.describe 'Phoenix fixture: golden places API requests', type: :request do
       defaults = { method: :get, auth: :bearer, expect: :own, env: {}, seed: :base,
                    content: ApiPlacesGoldenOracle::JSON_TYPE }
       ApiPlacesGoldenOracle.results << places_record(kase.reverse_merge(defaults))
+      expect(enqueued_jobs).to be_empty if kase.fetch(:expect, :own) == :own
     end
   end
 end
