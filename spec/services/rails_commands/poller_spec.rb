@@ -324,8 +324,13 @@ RSpec.describe RailsCommands::Poller do
     expected_kinds = %w[
       visit_months_changed airtrail_stats tracks_changed tracks_generate_range tracks_throttled_backfill
       tracks_realtime_retrigger geocode_recent_points transport_progress schedule_untracked_tracks
-      enhanced_import_card places_delete_if_orphan place_name_fetch reverse_geocode_place exports.points_created points.tile_epoch
+      enhanced_import_card places_delete_if_orphan place_name_fetch reverse_geocode_place imports.progress
+      exports.points_created points.tile_epoch
       points.anomaly_filter tracks.realtime tracks.backfill visits.realtime points.live_broadcast
+      points.anomaly_recalculate points.anomaly_stats imports.postprocessing_step imports.upload_created
+      imports.prepare_download imports.prepared_download_purge imports.destroy_requested imports.destroy_status
+      imports.destroy_callbacks imports.destroy_achievements imports.destroy_stats imports.destroy_complete
+      imports.destroy_terminal imports.extraction_requested imports.extraction_destroy_requested imports.resume
     ]
     expect(RailsCommands::Registry::HANDLERS.keys).to eq(expected_kinds)
     RailsCommands::Registry::HANDLERS.each_value do |handler|

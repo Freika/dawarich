@@ -2,7 +2,7 @@ defmodule Dawarich.Test.ParityHTML do
   @moduledoc false
   import Kernel, except: [node: 1]
 
-  @dropped_attribute ~r/^(phx-|data-phx-|data-controller$|data-action$|data-turbo|data-[a-z0-9-]+-(target|value|outlet|class|param)$)/
+  @dropped_attribute ~r/^(phx-|data-phx-|data-testid$|data-status-display$|data-points-count$|data-controller$|data-action$|data-turbo|data-[a-z0-9-]+-(target|value|outlet|class|param)$)/
   @dropped_elements ~w(turbo-cable-stream-source)
 
   def normalize(html) when is_binary(html),
@@ -48,6 +48,83 @@ defmodule Dawarich.Test.ParityHTML do
   defp node({tag, _attrs, _children}) when tag in @dropped_elements, do: []
 
   defp node({tag, attrs, children}) do
+    case delete_action(tag, Map.new(attrs), children) do
+      {:ok, action} -> [action]
+      :unchanged -> ordinary_node(tag, attrs, children)
+    end
+  end
+
+  defp delete_action("a", %{"href" => path, "data-turbo-method" => "delete"} = attrs, children) do
+    if Regex.match?(~r|^/imports/[1-9][0-9]*$|, path) do
+      {:ok,
+       action(
+         path,
+         Map.get(attrs, "data-turbo-confirm"),
+         Map.drop(attrs, ["href", "data-turbo-method", "data-turbo-confirm"]),
+         children
+       )}
+    else
+      :unchanged
+    end
+  end
+
+  defp delete_action("form", %{"action" => path, "method" => "post"} = attrs, children) do
+    nodes = Enum.reject(children, fn child -> is_binary(child) and String.trim(child) == "" end)
+    inputs = for {"input", input_attrs, []} <- nodes, do: Map.new(input_attrs)
+    buttons = for {"button", button_attrs, visible} <- nodes, do: {Map.new(button_attrs), visible}
+    input_values = Map.new(inputs, &{&1["name"], &1["value"]})
+
+    case buttons do
+      [{button, visible}] ->
+        valid =
+          Regex.match?(~r|^/imports/[1-9][0-9]*$|, path) and
+            length(nodes) == 4 and length(inputs) == 3 and
+            Enum.all?(
+              inputs,
+              &(&1["type"] == "hidden" and Enum.sort(Map.keys(&1)) == ~w(name type value))
+            ) and
+            Enum.sort(Map.keys(input_values)) == ~w(_method authenticity_token import_id) and
+            input_values["_method"] == "delete" and
+            input_values["import_id"] == List.last(String.split(path, "/")) and
+            is_binary(input_values["authenticity_token"]) and
+            input_values["authenticity_token"] != "" and
+            Map.get(button, "type", "submit") == "submit"
+
+        if valid do
+          extra_form =
+            attrs
+            |> Map.drop(["action", "method"])
+            |> Enum.reject(fn {key, _} -> Regex.match?(@dropped_attribute, key) end)
+
+          control =
+            button
+            |> Map.drop(["type", "data-confirm"])
+            |> Map.merge(Map.new(extra_form, fn {key, value} -> {"form-" <> key, value} end))
+
+          {:ok, action(path, button["data-confirm"], control, visible)}
+        else
+          :unchanged
+        end
+
+      _ ->
+        :unchanged
+    end
+  end
+
+  defp delete_action(_, _, _), do: :unchanged
+
+  defp action(path, confirmation, attrs, children) do
+    control =
+      attrs
+      |> Enum.reject(fn {key, _} -> Regex.match?(@dropped_attribute, key) end)
+      |> Enum.map(fn {key, val} -> {key, value("button", key, val, attrs)} end)
+
+    {"delete-action",
+     Enum.sort([{"path", path}, {"method", "delete"}, {"confirmation", confirmation} | control]),
+     normalize(children)}
+  end
+
+  defp ordinary_node(tag, attrs, children) do
     attrs = Map.new(attrs)
 
     if Map.has_key?(attrs, "data-phx-main") do

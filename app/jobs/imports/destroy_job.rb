@@ -3,27 +3,33 @@
 class Imports::DestroyJob < ApplicationJob
   queue_as :imports
 
-  def perform(import_id)
+  retry_on Imports::DestroyLegacy::Busy, wait: 5.seconds, attempts: :unlimited
+
+  def perform(import_id, expected_user_id: nil, event_id: nil)
     import = Import.find_by(id: import_id)
     return unless import
 
-    import.deleting!
-    broadcast_status_update(import)
-
-    Imports::Destroy.new(import.user, import).call
-
-    broadcast_deletion_complete(import)
+    expected_user_id ||= import.user_id
+    Imports::DestroyLegacy.perform(import, expected_user_id:, event_id:, job_event_id: job_id) do
+      import.deleting!
+      broadcast_status_update(import)
+      Imports::Destroy.new(import.user, import).call
+      broadcast_deletion_complete(import)
+    end
+  rescue Imports::DestroyLegacy::Busy
+    raise
   rescue ActiveRecord::RecordNotFound
     Rails.logger.warn "Import #{import_id} not found, may have already been deleted"
   rescue StandardError
-    revert_deleting_status(import)
+    revert_deleting_status(import, expected_user_id)
     raise
   end
 
   private
 
-  def revert_deleting_status(import)
-    return unless import && Import.exists?(import.id)
+  def revert_deleting_status(import, expected_user_id)
+    return unless import && User.exists?(id: expected_user_id) &&
+                  Import.where(id: import.id, user_id: expected_user_id).exists?
 
     import.failed!
     broadcast_status_update(import)

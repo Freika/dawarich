@@ -2,14 +2,9 @@
 
 class Imports::PrepareDownloadJob < ApplicationJob
   queue_as :imports
+  retry_on Imports::DownloadCommands::Busy, wait: 5.seconds, attempts: :unlimited
 
-  def perform(import_id, source_blob_id)
-    ActiveRecord::Base.with_advisory_lock("import-download:#{import_id}", timeout_seconds: 0) do
-      import = Import.find_by(id: import_id)
-      return unless import&.file&.attached?
-      return unless import.file.blob_id == source_blob_id
-
-      Imports::Download.new(import).prepare
-    end
+  def perform(import_id, source_blob_id, native_fallback: false, expected_user_id: nil)
+    Imports::DownloadCommands.perform(import_id, source_blob_id, event_id: job_id, native_fallback:, expected_user_id:)
   end
 end

@@ -33,6 +33,7 @@ defmodule DawarichWeb.ImportRow do
   attr :import, :map, required: true
   attr :locale, :string, required: true
   attr :now, :any, required: true
+  attr :rails_csrf_token, :string, default: nil
 
   def row(assigns) do
     {css, source_icon} = Map.get(@styles, assigns.import.source, @fallback)
@@ -128,7 +129,7 @@ defmodule DawarichWeb.ImportRow do
                 class="tooltip tooltip-left"
                 data-tip={t(@locale, "imports.table_row.retry_deletion", %{})}
               >
-                <.delete_link id={@import.id} locale={@locale} />
+                <.delete_link id={@import.id} locale={@locale} rails_csrf_token={@rails_csrf_token} />
               </div>
             <% :listed -> %>
               <div class="tooltip" data-tip={t(@locale, "imports.table_row.view_on_map", %{})}>
@@ -161,7 +162,7 @@ defmodule DawarichWeb.ImportRow do
                 class="tooltip tooltip-left"
                 data-tip={t(@locale, "imports.table_row.delete_import", %{})}
               >
-                <.delete_link id={@import.id} locale={@locale} />
+                <.delete_link id={@import.id} locale={@locale} rails_csrf_token={@rails_csrf_token} />
               </div>
           <% end %>
         </div>
@@ -173,14 +174,24 @@ defmodule DawarichWeb.ImportRow do
   attr :id, :integer, required: true
   attr :locale, :string, required: true
 
+  attr :rails_csrf_token, :string, default: nil
+
   defp delete_link(assigns) do
     ~H"""
-    <a
-      href={"/imports/#{@id}"}
-      class="btn btn-ghost btn-xs text-error hover:bg-error/10"
-      data-turbo-confirm={t(@locale, "imports.table_row.are_you_sure", %{})}
-      data-turbo-method="delete"
-    ><.icon name="trash-2" class="w-4 h-4" /></a>
+    <form action={"/imports/#{@id}"} method="post" data-turbo="false" phx-submit="delete_import">
+      <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
+      <input type="hidden" name="_method" value="delete" /><input
+        type="hidden"
+        name="import_id"
+        value={@id}
+      />
+      <button
+        type="submit"
+        data-testid="import-delete"
+        class="btn btn-ghost btn-xs text-error hover:bg-error/10"
+        data-confirm={t(@locale, "imports.table_row.are_you_sure", %{})}
+      ><.icon name="trash-2" class="w-4 h-4" /></button>
+    </form>
     """
   end
 

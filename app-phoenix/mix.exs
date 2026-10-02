@@ -34,7 +34,8 @@ defmodule Dawarich.MixProject do
       {:bandit, "~> 1.12"},
       {:redix, "~> 1.5"},
       {:gen_smtp, "~> 1.3"},
-      {:ex_aws, "~> 2.7"}
+      {:ex_aws, "~> 2.7"},
+      {:mint, "~> 1.11.0"}
     ]
   end
 

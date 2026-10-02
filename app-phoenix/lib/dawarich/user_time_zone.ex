@@ -19,10 +19,15 @@ defmodule Dawarich.UserTimeZone do
   def zoned(at, offset, zone),
     do: %{local: NaiveDateTime.add(at, offset), offset: offset, utc: zone in @utc_zones}
 
-  def query!(sql, params, settings) do
+  def name(settings, repo \\ Repo) do
+    %{rows: [[name]]} = query!("SELECT name FROM z", [], settings, repo)
+    name
+  end
+
+  def query!(sql, params, settings, repo \\ Repo) do
     n = length(params)
 
-    Repo.query!(
+    repo.query!(
       """
       WITH z AS (SELECT coalesce(
         (SELECT name FROM pg_timezone_names WHERE name = $#{n + 1}),

@@ -24,10 +24,86 @@ defmodule DawarichWeb.ImportsExportsParityTest do
       html = get(RailsUser.signed_in(@page["user_id"]), @page["path"]) |> html_response(200)
       rails = File.read!(Path.join(@dir, "pages/#{@page["name"]}.html"))
 
-      assert ParityHTML.fragment(html, "div.px-4.flex-1 > div.flex > *") ==
-               ParityHTML.normalize(rails)
+      native = ParityHTML.fragment(html, "div.px-4.flex-1 > div.flex > *")
+      expected = ParityHTML.normalize(rails)
+
+      assert native == expected,
+             "#{@page["name"]}: " <> first_difference(native, expected)
 
       assert html =~ "<title>#{@page["title"]}</title>"
     end
   end
+
+  test "delete action normalization retains route method confirmation visuals and accessibility" do
+    rails =
+      ~s(<a href="/imports/12" data-turbo-method="delete" data-turbo-confirm="Sure?" class="btn" aria-label="Delete"><svg class="icon"><path d="M1 2" /></svg>Delete</a>)
+
+    native =
+      ~s(<form action="/imports/12" method="post" phx-submit="delete_import"><input type="hidden" name="authenticity_token" value="token" /><input type="hidden" name="_method" value="delete" /><input type="hidden" name="import_id" value="12" /><button type="submit" class="btn" aria-label="Delete" data-confirm="Sure?" data-testid="import-delete"><svg class="icon"><path d="M1 2" /></svg>Delete</button></form>)
+
+    expected = ParityHTML.normalize(rails)
+    assert ParityHTML.normalize(native) == expected
+
+    for {from, to} <- [
+          {~s(action="/imports/12"), ~s(action="/imports/13")},
+          {~s(method="post"), ~s(method="get")},
+          {~s(value="delete"), ~s(value="patch")},
+          {~s(data-confirm="Sure?"), ~s(data-confirm="Different?")},
+          {~s(d="M1 2"), ~s(d="M3 4")},
+          {~s(class="icon"), ~s(class="hidden")},
+          {~s(class="btn"), ~s(class="btn-error")},
+          {~s(aria-label="Delete"), ~s(aria-label="Edit")},
+          {">Delete</button>", ">Edit</button>"},
+          {~s(name="import_id" value="12"), ~s(name="import_id" value="13")},
+          {~s(name="authenticity_token"), ~s(name="missing_token")},
+          {~s(name="_method"), ~s(name="_method" disabled)},
+          {~s(value="token"), ~s(value="")},
+          {~s(type="submit"), ~s(type="reset")},
+          {~s(aria-label="Delete"), ~s(aria-label="Delete" tabindex="-1")},
+          {~s(aria-label="Delete"), ~s(aria-label="Delete" disabled)}
+        ] do
+      refute ParityHTML.normalize(String.replace(native, from, to)) == expected,
+             "normalizer must retain #{from}"
+    end
+  end
+
+  test "Rails action mutations remain visible to equivalent action comparison" do
+    rails =
+      ~s(<a href="/imports/12" data-turbo-method="delete" data-turbo-confirm="Sure?" class="btn">Delete</a>)
+
+    expected = ParityHTML.normalize(rails)
+
+    for {from, to} <- [
+          {~s(data-turbo-method="delete"), ~s(data-turbo-method="patch")},
+          {~s(data-turbo-confirm="Sure?"), ~s(data-turbo-confirm="Changed?")},
+          {~s(href="/imports/12"), ~s(href="/imports/13")}
+        ] do
+      refute ParityHTML.normalize(String.replace(rails, from, to)) == expected
+    end
+  end
+
+  defp first_difference(left, right, path \\ "root")
+  defp first_difference(same, same, _path), do: "equal"
+
+  defp first_difference(left, right, path) when is_list(left) and is_list(right) do
+    if length(left) != length(right) do
+      "#{path}: child counts #{length(left)} != #{length(right)}"
+    else
+      left
+      |> Enum.zip(right)
+      |> Enum.with_index()
+      |> Enum.find_value(fn {{actual, expected}, index} ->
+        if actual != expected, do: first_difference(actual, expected, "#{path}[#{index}]")
+      end)
+    end
+  end
+
+  defp first_difference({tag, attrs, children}, {tag, attrs, expected}, path),
+    do: first_difference(children, expected, path <> "/" <> tag)
+
+  defp first_difference({tag, attrs, _}, {tag, expected, _}, path),
+    do: "#{path}/#{tag}: attributes #{inspect(attrs)} != #{inspect(expected)}"
+
+  defp first_difference(left, right, path),
+    do: "#{path}: #{inspect(left, limit: 8)} != #{inspect(right, limit: 8)}"
 end

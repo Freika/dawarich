@@ -37,8 +37,17 @@ defmodule DawarichWeb.LayoutParityTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+    previous = Map.new(~w(JWT_SECRET_KEY MANAGER_URL SELF_HOSTED), &{&1, System.fetch_env(&1)})
     System.put_env("JWT_SECRET_KEY", "test_secret")
-    on_exit(fn -> Enum.each(~w(JWT_SECRET_KEY MANAGER_URL SELF_HOSTED), &System.delete_env/1) end)
+
+    on_exit(fn ->
+      for {key, value} <- previous do
+        case value do
+          {:ok, configured} -> System.put_env(key, configured)
+          :error -> System.delete_env(key)
+        end
+      end
+    end)
   end
 
   test "normalizes tokens only for the manager authentication link" do
@@ -114,7 +123,9 @@ defmodule DawarichWeb.LayoutParityTest do
       {rails, meta} = LayoutFixtures.load(@name)
       phoenix = LayoutFixtures.render(meta["state"])
 
-      assert ParityHTML.without(phoenix, @chrome) == ParityHTML.without(rails, @chrome)
+      actual = ParityHTML.without(phoenix, @chrome)
+      expected = rails |> native_upload_fixture() |> ParityHTML.without(@chrome)
+      assert actual == expected, "#{@name}: " <> first_difference(actual, expected)
 
       assert phoenix
              |> LazyHTML.from_document()
@@ -140,10 +151,11 @@ defmodule DawarichWeb.LayoutParityTest do
     test "the onboarding modal and unlock host carry Rails' Stimulus attributes for #{name}" do
       {rails, meta} = LayoutFixtures.load(@name)
       phoenix = LayoutFixtures.render(meta["state"])
-      expected = rails |> body() |> ParityHTML.stimulus(@islands)
+      expected = rails |> native_upload_fixture() |> body() |> ParityHTML.stimulus(@islands)
 
       assert length(expected) > 10
-      assert phoenix |> body() |> ParityHTML.stimulus(@islands) == expected
+      actual = phoenix |> body() |> ParityHTML.stimulus(@islands)
+      assert actual == expected, "#{@name} Stimulus: " <> first_difference(actual, expected)
     end
   end
 
@@ -237,4 +249,85 @@ defmodule DawarichWeb.LayoutParityTest do
       assert ParityHTML.normalize(html) == ParityHTML.normalize(@flash["html"])
     end
   end
+
+  # Only the two explicit onboarding upload URL attributes changed ownership.
+  # Keep the rest of the Rails fixture byte-for-byte, then compare full DOM and
+  # all Stimulus data (including the new URL) without dropping action attributes.
+  defp native_upload_fixture(rails) do
+    Regex.replace(
+      ~r/(data-(?:upload-url-value|direct-upload-url)="http:\/\/www\.example\.com)\/rails\/active_storage\/direct_uploads"/,
+      rails,
+      "\\1/imports/direct_uploads\""
+    )
+  end
+
+  test "native onboarding expectation adapts exactly two upload attributes and keeps actions" do
+    {rails, _meta} = LayoutFixtures.load("self_hosted_dark_en")
+    expected = native_upload_fixture(rails)
+    assert length(Regex.scan(~r|http://www.example.com/imports/direct_uploads|, expected)) == 2
+
+    assert String.replace(
+             expected,
+             "/imports/direct_uploads",
+             "/rails/active_storage/direct_uploads"
+           ) == rails
+
+    for {from, to} <- [
+          {~s(data-direct-upload-url="http://www.example.com/imports/direct_uploads"),
+           ~s(data-direct-upload-url="http://evil.example/imports/direct_uploads")},
+          {~s(action="/imports"), ~s(action="/exports")},
+          {~s(method="post"), ~s(method="get")},
+          {~s(name="import[files][]"), ~s(name="other[files][]")},
+          {~s(class="file-input file-input-bordered w-full"), ~s(class="file-input hidden")},
+          {~s(href="/settings/general"), ~s(href="/settings/integrations")},
+          {~s(aria-label="Open navigation menu"), ~s(aria-label="Changed")}
+        ] do
+      changed = String.replace(expected, from, to)
+      refute changed == expected, "mutation selector must exist: #{from}"
+      refute ParityHTML.without(changed, @chrome) == ParityHTML.without(expected, @chrome), from
+    end
+
+    for {from, to} <- [
+          {~s(data-upload-url-value="http://www.example.com/imports/direct_uploads"),
+           ~s(data-upload-url-value="http://www.example.com/wrong")},
+          {~s(data-action="onboarding-modal#showImport"),
+           ~s(data-action="onboarding-modal#dismiss")},
+          {~s(data-upload-preserve-original-filename-value="true"),
+           ~s(data-upload-preserve-original-filename-value="false")},
+          {~s(data-upload-field-name-value="import[files][]"),
+           ~s(data-upload-field-name-value="other[files][]")}
+        ] do
+      changed = String.replace(expected, from, to)
+      refute changed == expected, "mutation selector must exist: #{from}"
+
+      refute changed |> body() |> ParityHTML.stimulus(@islands) ==
+               expected |> body() |> ParityHTML.stimulus(@islands),
+             from
+    end
+  end
+
+  defp first_difference(left, right, path \\ "root")
+  defp first_difference(same, same, _path), do: "equal"
+
+  defp first_difference(left, right, path) when is_list(left) and is_list(right) do
+    if length(left) != length(right) do
+      "#{path}: child counts #{length(left)} != #{length(right)}"
+    else
+      left
+      |> Enum.zip(right)
+      |> Enum.with_index()
+      |> Enum.find_value(fn {{actual, expected}, index} ->
+        if actual != expected, do: first_difference(actual, expected, "#{path}[#{index}]")
+      end)
+    end
+  end
+
+  defp first_difference({tag, attrs, children}, {tag, attrs, expected}, path),
+    do: first_difference(children, expected, path <> "/" <> tag)
+
+  defp first_difference({tag, attrs, _}, {tag, expected, _}, path),
+    do: "#{path}/#{tag}: attributes #{inspect(attrs)} != #{inspect(expected)}"
+
+  defp first_difference(left, right, path),
+    do: "#{path}: #{inspect(left, limit: 8)} != #{inspect(right, limit: 8)}"
 end

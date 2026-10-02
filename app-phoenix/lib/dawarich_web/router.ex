@@ -9,6 +9,7 @@ defmodule DawarichWeb.Router do
     plug :fetch_query_params
     plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
+    plug DawarichWeb.ImportsHeaders
     plug :phoenix_session
     plug :fetch_session
     plug :fetch_live_flash
@@ -88,6 +89,26 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
+  pipeline :imports_request do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.ImportsRequest
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :imports_request
+    post "/imports/direct_uploads", DawarichWeb.ImportsController, :direct_upload
+    put "/imports/uploads/:token", DawarichWeb.ImportsController, :upload
+    post "/imports", DawarichWeb.ImportsController, :create
+    post "/imports/:id", DawarichWeb.ImportsController, :update
+    patch "/imports/:id", DawarichWeb.ImportsController, :update
+    delete "/imports/:id", DawarichWeb.ImportsController, :delete
+    post "/imports/:id/extraction", DawarichWeb.ImportsController, :extract
+    delete "/imports/:id/extraction", DawarichWeb.ImportsController, :remove_extraction
+  end
+
   scope "/" do
     pipe_through :rails_form
 
@@ -96,6 +117,8 @@ defmodule DawarichWeb.Router do
 
   scope "/" do
     pipe_through [:browser, :rails_user]
+
+    get "/imports/:id/download", DawarichWeb.ImportsDownload, :show
 
     live_session :rails_pages,
       session: {DawarichWeb.RailsAuth, :live_session, []},
@@ -106,6 +129,14 @@ defmodule DawarichWeb.Router do
         container: {:div, class: "contents"}
 
       live "/notifications/:id", DawarichWeb.NotificationsLive.Show, :show,
+        container: {:div, class: "contents"}
+
+      live "/imports/new", DawarichWeb.ImportsLive.New, :new, container: {:div, class: "contents"}
+
+      live "/imports/:id/edit", DawarichWeb.ImportsLive.Show, :edit,
+        container: {:div, class: "contents"}
+
+      live "/imports/:id", DawarichWeb.ImportsLive.Show, :show,
         container: {:div, class: "contents"}
 
       live "/imports", DawarichWeb.ImportsLive.Index, :index, container: {:div, class: "contents"}

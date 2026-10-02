@@ -5,8 +5,9 @@ class Imports::Download
   ORIGINAL_FILENAME_KEY = 'dawarich_original_filename'
   SOURCE_BLOB_KEY = 'dawarich_download_source_blob_id'
 
-  def initialize(import)
+  def initialize(import, fence: nil)
     @import = import
+    @fence = fence || ->(&effect) { effect.call }
   end
 
   def ready?
@@ -40,13 +41,15 @@ class Imports::Download
     extracted_path = Archive::Unzipper.extract_single(archive_path)
     prepared = nil
     File.open(extracted_path, 'rb') do |file|
-      prepared = ActiveStorage::Blob.create_after_unfurling!(
-        io: file, filename: original_filename,
-        content_type: Marcel::MimeType.for(Pathname.new(extracted_path), name: original_filename),
-        metadata: { SOURCE_BLOB_KEY => source.id }
-      )
-      prepared.upload_without_unfurling(file)
-      import.prepared_download.attach(prepared)
+      prepared = @fence.call do
+        ActiveStorage::Blob.create_after_unfurling!(
+          io: file, filename: original_filename,
+          content_type: Marcel::MimeType.for(Pathname.new(extracted_path), name: original_filename),
+          metadata: { SOURCE_BLOB_KEY => source.id }
+        )
+      end
+      @fence.call { prepared.upload_without_unfurling(file) }
+      @fence.call { import.prepared_download.attach(prepared) }
     end
   rescue Archive::Unzipper::ArchiveTooLarge
     attach_original
@@ -85,7 +88,7 @@ class Imports::Download
   end
 
   def attach_original
-    import.prepared_download.attach(source)
+    @fence.call { import.prepared_download.attach(source) }
   end
 
   def extracted_filename

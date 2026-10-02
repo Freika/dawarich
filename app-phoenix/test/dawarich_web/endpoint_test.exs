@@ -8,8 +8,21 @@ defmodule DawarichWeb.EndpointTest do
 
   setup do
     upstream = listen()
+
+    previous =
+      Map.new([:rails_upstream, :rails_routes], &{&1, Application.fetch_env(:dawarich, &1)})
+
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
-    on_exit(fn -> Application.put_env(:dawarich, :rails_upstream, nil) end)
+
+    on_exit(fn ->
+      for {key, value} <- previous do
+        case value do
+          {:ok, configured} -> Application.put_env(:dawarich, key, configured)
+          :error -> Application.delete_env(:dawarich, key)
+        end
+      end
+    end)
+
     %{upstream: upstream}
   end
 
@@ -66,7 +79,18 @@ defmodule DawarichWeb.EndpointTest do
   defp answered_by_puma(port, upstream, request) do
     client = connect(port)
     send_raw(client, request)
-    puma = accept(upstream)
+
+    puma =
+      case :gen_tcp.accept(upstream.listen, 5_000) do
+        {:ok, socket} ->
+          socket
+
+        {:error, reason} ->
+          flunk(
+            "Puma did not receive #{request |> String.split("\r\n") |> hd()}: #{inspect(reason)}"
+          )
+      end
+
     {head, _rest} = read_head(puma)
     reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
     assert {200, _headers, "puma"} = read_response(client)
@@ -136,7 +160,6 @@ defmodule DawarichWeb.EndpointTest do
 
   test "a route handed back to Rails goes to Puma although Phoenix routes it", ctx do
     Application.put_env(:dawarich, :rails_routes, ["notifications"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     client = connect(serve())
     send_raw(client, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n")
 
@@ -150,28 +173,27 @@ defmodule DawarichWeb.EndpointTest do
   test "Phoenix answers the imports and exports lists itself" do
     port = serve()
 
-    for target <- ~w(/imports /exports /imports?page=2 /exports?order_by=asc&sort_by=name) do
+    for target <-
+          ~w(/imports /imports/new /imports/5 /imports/5/edit /imports/5/download /exports /imports?page=2 /exports?order_by=asc&sort_by=name) do
       assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302, target
     end
   end
 
-  test "every other import and export route, and every other method, goes to Puma", ctx do
+  test "unowned import methods and export writes with unsafe admission go to Puma", ctx do
     port = serve()
 
     for target <-
-          ~w(/imports/new /imports/5 /imports/5/edit /imports/5/download /imports/5/extraction /imports.json /exports.json /imports?format=json /exports/5) do
+          ~w(/imports/5/extraction /imports.json /exports.json /imports?format=json /imports/5?format=json /imports/5/download?format=json /exports/5) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
 
     for {method, target} <- [
-          {"POST", "/imports"},
-          {"POST", "/imports/5"},
-          {"PATCH", "/imports/5"},
           {"PUT", "/imports/5"},
-          {"DELETE", "/imports/5"},
-          {"POST", "/imports/5/extraction"},
-          {"DELETE", "/imports/5/extraction"},
+          {"PUT", "/imports"},
+          {"PATCH", "/imports/5/extraction"},
+          {"DELETE", "/imports"},
+          {"POST", "/imports/5/download"},
           {"POST", "/exports"},
           {"POST", "/exports/5"},
           {"DELETE", "/exports/5"},
@@ -187,9 +209,120 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
+  test "router lists exactly the owned import and export methods" do
+    actual =
+      DawarichWeb.Router.__routes__()
+      |> Enum.filter(&String.starts_with?(&1.path, ["/imports", "/exports"]))
+      |> Enum.map(&{String.upcase(to_string(&1.verb)), &1.path})
+      |> Enum.sort()
+
+    expected = [
+      {"GET", "/imports"},
+      {"GET", "/imports/new"},
+      {"GET", "/imports/:id"},
+      {"GET", "/imports/:id/edit"},
+      {"GET", "/imports/:id/download"},
+      {"POST", "/imports/direct_uploads"},
+      {"PUT", "/imports/uploads/:token"},
+      {"POST", "/imports"},
+      {"POST", "/imports/:id"},
+      {"PATCH", "/imports/:id"},
+      {"DELETE", "/imports/:id"},
+      {"POST", "/imports/:id/extraction"},
+      {"DELETE", "/imports/:id/extraction"},
+      {"GET", "/exports"},
+      {"POST", "/exports"}
+    ]
+
+    assert actual == Enum.sort(expected)
+  end
+
+  test "all owned import writes reject signed-out callers natively", ctx do
+    port = serve()
+
+    for {method, target} <- [
+          {"POST", "/imports/direct_uploads"},
+          {"PUT", "/imports/uploads/not-a-token"},
+          {"POST", "/imports"},
+          {"POST", "/imports/5"},
+          {"PATCH", "/imports/5"},
+          {"DELETE", "/imports/5"},
+          {"POST", "/imports/5/extraction"},
+          {"DELETE", "/imports/5/extraction"}
+        ] do
+      client = connect(port)
+      send_raw(client, "#{method} #{target} HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\n")
+      assert {401, headers, body} = read_response(client)
+      assert values(headers, "x-dawarich-handler") == ["phoenix-imports"], target
+      assert body == ~s({"error":"unauthorized"}), target
+    end
+
+    assert {:error, :timeout} == :gen_tcp.accept(ctx.upstream.listen, 50)
+  end
+
+  test "foreign owner pages downloads and writes remain native and nondisclosing", ctx do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
+    RailsUser.insert!(%{id: 7691, email: "tcp-owner@example.test"})
+    RailsUser.insert!(%{id: 7692, email: "tcp-foreign@example.test"})
+    ImportsExportsSeeds.import!(%{id: 769_101, user_id: 7691, name: "private-owner.gpx"})
+    session = RailsUser.session(7692)
+    cookie = RailsUser.cookie(session)
+    token = DawarichWeb.RailsCsrf.masked_token(session)
+    port = serve()
+
+    for {target, status} <- [
+          {"/imports/769101", 302},
+          {"/imports/769101/edit", 302},
+          {"/imports/769101/download", 404}
+        ] do
+      client = connect(port)
+
+      send_raw(
+        client,
+        "GET #{target} HTTP/1.1\r\nHost: a\r\nCookie: _dawarich_session=#{cookie}\r\n\r\n"
+      )
+
+      {actual, headers, body} = read_response(client)
+      assert actual == status, target
+      assert values(headers, "x-dawarich-handler") == ["phoenix-imports"], target
+      refute body =~ "private-owner.gpx"
+    end
+
+    for {method, target, csrf, origin, status} <- [
+          {"PATCH", "/imports/769101", token, "", 404},
+          {"POST", "/imports/769101", token, "", 404},
+          {"DELETE", "/imports/769101", token, "", 404},
+          {"POST", "/imports/769101/extraction", token, "", 404},
+          {"DELETE", "/imports/769101/extraction", token, "", 404},
+          {"PATCH", "/imports/769101", "bad-token", "", 422},
+          {"PATCH", "/imports/769101", token, "Origin: https://foreign.example\r\n", 422}
+        ] do
+      client = connect(port)
+      body = "import%5Bname%5D=stolen"
+
+      send_raw(
+        client,
+        "#{method} #{target} HTTP/1.1\r\nHost: a\r\nCookie: _dawarich_session=#{cookie}\r\nX-CSRF-Token: #{csrf}\r\n#{origin}Content-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n#{body}"
+      )
+
+      {actual, headers, response} = read_response(client)
+      assert actual == status, "#{method} #{target}"
+      assert values(headers, "x-dawarich-handler") == ["phoenix-imports"]
+      refute response =~ "private-owner.gpx"
+    end
+
+    assert [["private-owner.gpx", 2]] ==
+             Dawarich.Repo.query!("SELECT name,status FROM imports WHERE id=769101", [],
+               log: false
+             ).rows
+
+    assert {:error, :timeout} == :gen_tcp.accept(ctx.upstream.listen, 50)
+  end
+
   test "DAWARICH_RAILS_ROUTES hands the imports and exports lists back with their query", ctx do
     Application.put_env(:dawarich, :rails_routes, ["imports", "exports"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     port = serve()
 
     for target <- ~w(/imports /imports?order_by=asc&page=2&sort_by=name /exports?page=2) do
@@ -547,7 +680,6 @@ defmodule DawarichWeb.EndpointTest do
 
   test "DAWARICH_RAILS_ROUTES hands the stats and digest pages back", ctx do
     Application.put_env(:dawarich, :rails_routes, ["stats", "digests"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     port = serve()
 
     for target <- ~w(/stats /stats/2024/3 /digests/2024),
@@ -603,7 +735,6 @@ defmodule DawarichWeb.EndpointTest do
 
   test "DAWARICH_RAILS_ROUTES=trips hands both pages back with their query", ctx do
     Application.put_env(:dawarich, :rails_routes, ["trips"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     port = serve()
 
     for target <- ~w(/trips /trips?page=2 /trips/5) do
@@ -659,7 +790,6 @@ defmodule DawarichWeb.EndpointTest do
 
   test "DAWARICH_RAILS_ROUTES hands the settings, account and insights pages back", ctx do
     Application.put_env(:dawarich, :rails_routes, ["settings", "users", "insights"])
-    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
     port = serve()
 
     for target <-

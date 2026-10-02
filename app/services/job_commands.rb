@@ -2,6 +2,33 @@
 
 module JobCommands
   COMMANDS = {
+    'imports.prepare_download' => {
+      version: 1,
+      sidekiq: lambda { |payload, _at|
+        JobCommands.enqueue_after_commit(nil) do
+          Imports::PrepareDownloadJob.perform_later(payload.fetch('import_id'), payload.fetch('source_blob_id'),
+                                                    expected_user_id: payload.fetch('user_id'))
+        end
+      }
+    },
+    'imports.destroy' => {
+      version: 1,
+      sidekiq: lambda { |payload, _at|
+        JobCommands.enqueue_after_commit(nil) do
+          Imports::DestroyJob.perform_later(payload.fetch('import_id'), expected_user_id: payload.fetch('user_id'))
+        end
+      }
+    },
+    'imports.process_gpx' => {
+      version: 1,
+      sidekiq: lambda { |payload, _at|
+        JobCommands.enqueue_after_commit(nil) do
+          Time.use_zone(payload.fetch('time_zone')) do
+            Import::ProcessJob.perform_later(payload.fetch('import_id'))
+          end
+        end
+      }
+    },
     'users.explore_features_mail' => {
       version: 1,
       sidekiq: lambda { |payload, at|
@@ -74,9 +101,14 @@ module JobCommands
       }
     },
     'exports.points' => {
-      version: 1,
+      version: 2,
+      rehome_versions: [1, 2],
       sidekiq: lambda { |payload, _at|
-        JobCommands.enqueue_after_commit(nil) { ExportJob.perform_later(payload.fetch('export_id')) }
+        JobCommands.enqueue_after_commit(nil) do
+          Time.use_zone(payload.fetch('time_zone', Time.zone)) do
+            ExportJob.perform_later(payload.fetch('export_id'))
+          end
+        end
       }
     },
     'mail.family_invitation' => {
@@ -177,6 +209,8 @@ module JobCommands
   end
 
   def insert(type, payload, event_id:, aggregate_id:, producer:, scheduled_at:, dedupe_key:)
+    payload = payload.merge('time_zone' => payload.fetch('time_zone', Time.zone.name)) if type == 'exports.points'
+
     JobOutbox.insert_all(
       [{ event_id:, command_type: type, command_version: COMMANDS.fetch(type).fetch(:version), payload:,
          metadata: { 'producer' => producer }, aggregate_id:, dedupe_key:, scheduled_at: }]
@@ -193,12 +227,19 @@ module JobCommands
     command = COMMANDS.fetch(type)
     ActiveRecord::Base.transaction do
       JobOwnership.release!("command:#{type}", by:)
-      pending = JobOutbox.pending.where(command_type: type, command_version: command.fetch(:version))
+      versions = command.fetch(:rehome_versions, command.fetch(:version))
+      pending = JobOutbox.pending.where(command_type: type, command_version: versions)
       total = pending.count
       rows = pending.lock('FOR UPDATE SKIP LOCKED').to_a
       pushed, error = push_inline(rows, command.fetch(:sidekiq))
       JobOutbox.where(event_id: pushed).delete_all
-      { moved: pushed.size, left: total - pushed.size, error: }.compact
+      result = { moved: pushed.size, left: total - pushed.size, error: }.compact
+      if type == 'tracks.recalculate'
+        aliases = Points::AnomalyFilterCommands.rehome_pending!(by:)
+        result = { moved: result[:moved] + aliases[:moved], left: result[:left] + aliases[:left],
+                   error: result[:error] || aliases[:error] }.compact
+      end
+      result
     end
   end
 
