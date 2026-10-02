@@ -5,6 +5,7 @@ defmodule Dawarich.IngestCase do
   alias Dawarich.Repo
 
   @sql Path.expand("../../priv/repo/sql/20260928130000_rails_commands.sql", __DIR__)
+  @owners Path.expand("../../priv/repo/sql/20260927120100_job_control.sql", __DIR__)
 
   using do
     quote do
@@ -18,6 +19,7 @@ defmodule Dawarich.IngestCase do
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
     Repo.query!("CREATE SCHEMA IF NOT EXISTS phoenix")
     Repo.query!(File.read!(@sql), [], query_type: :text)
+    Repo.query!(File.read!(@owners), [], query_type: :text)
     Dawarich.Ingest.Sources.forget()
     :ok
   end

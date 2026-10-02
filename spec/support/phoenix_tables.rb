@@ -2,13 +2,20 @@
 
 module PhoenixTables
   SQL_FILES = Dir[Rails.root.join('app-phoenix/priv/repo/sql/*.sql')].sort.freeze
+  LEASES = 'CREATE TABLE IF NOT EXISTS phoenix.leases ' \
+           '(name text PRIMARY KEY, holder text NOT NULL, expires_at timestamptz NOT NULL)'
 
   def phoenix_tables!
     connection = ActiveRecord::Base.connection
-    connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
+    phoenix_leases!
     SQL_FILES.each do |file|
       File.read(file).split(";\n").map(&:strip).reject(&:empty?).each { |statement| connection.execute(statement) }
     end
+  end
+
+  def phoenix_leases!
+    ActiveRecord::Base.connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
+    ActiveRecord::Base.connection.execute(LEASES)
   end
 
   def job_owner!(key, owner, pinned: false)

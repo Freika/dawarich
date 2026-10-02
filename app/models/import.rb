@@ -17,7 +17,8 @@ class Import < ApplicationRecord
 
   before_save :resolve_additional_data_extraction_availability
 
-  after_commit -> { Import::ProcessJob.perform_later(id) unless skip_background_processing }, on: :create
+  after_commit -> { ImportCommands.process(self, producer: 'Import after_create') unless skip_background_processing },
+               on: :create
   after_commit :remove_attached_file, on: :destroy
   before_commit :recalculate_stats, on: :destroy, if: -> { !demo && points.exists? }
 

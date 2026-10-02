@@ -9,6 +9,7 @@ defmodule DawarichWeb.Router do
     plug :fetch_query_params
     plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
+    plug DawarichWeb.ImportsHeaders
     plug :phoenix_session
     plug :fetch_session
     plug :fetch_live_flash
@@ -130,6 +131,31 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
+  pipeline :imports_request do
+    plug :put_api_tag, "imports"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.ImportsRequest
+    plug DawarichWeb.RailsHeaders
+  end
+
+  @native_import %{rails_gate: {DawarichWeb.ImportsGate, :native?}}
+
+  scope "/" do
+    pipe_through :imports_request
+    post "/imports", DawarichWeb.ImportsController, :create
+    post "/imports/:id", DawarichWeb.ImportsController, :update, metadata: @native_import
+    patch "/imports/:id", DawarichWeb.ImportsController, :update, metadata: @native_import
+    delete "/imports/:id", DawarichWeb.ImportsController, :delete, metadata: @native_import
+
+    post "/imports/:id/extraction", DawarichWeb.ImportsController, :extract,
+      metadata: @native_import
+
+    delete "/imports/:id/extraction", DawarichWeb.ImportsController, :remove_extraction,
+      metadata: @native_import
+  end
+
   scope "/" do
     pipe_through :rails_form
 
@@ -138,6 +164,8 @@ defmodule DawarichWeb.Router do
 
   scope "/" do
     pipe_through [:browser, :rails_user]
+
+    get "/imports/:id/download", DawarichWeb.ImportsDownload, :show, metadata: @native_import
 
     live_session :rails_pages,
       session: {DawarichWeb.RailsAuth, :live_session, []},
@@ -149,6 +177,12 @@ defmodule DawarichWeb.Router do
 
       live "/notifications/:id", DawarichWeb.NotificationsLive.Show, :show,
         container: {:div, class: "contents"}
+
+      live "/imports/new", DawarichWeb.ImportsLive.New, :new, container: {:div, class: "contents"}
+
+      live "/imports/:id", DawarichWeb.ImportsLive.Show, :show,
+        container: {:div, class: "contents"},
+        metadata: @native_import
 
       live "/imports", DawarichWeb.ImportsLive.Index, :index, container: {:div, class: "contents"}
       live "/exports", DawarichWeb.ExportsLive.Index, :index, container: {:div, class: "contents"}
