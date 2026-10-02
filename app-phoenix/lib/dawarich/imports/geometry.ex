@@ -5,6 +5,8 @@ defmodule Dawarich.Imports.Geometry do
   @wkt ~r/\APOINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)\z/i
   @nan <<0x7FF8000000000000::little-64>>
 
+  def null_island?(value) when not is_binary(value), do: false
+
   def null_island?(wkt) do
     case Regex.run(@wkt, wkt, capture: :all_but_first) do
       [lon, lat] ->
@@ -17,6 +19,8 @@ defmodule Dawarich.Imports.Geometry do
     end
   end
 
+  def serialize(nil), do: nil
+
   def serialize(wkt) do
     cond do
       Regex.match?(
@@ -25,9 +29,17 @@ defmodule Dawarich.Imports.Geometry do
       ) ->
         nil
 
+      wkt == "POINT EMPTY" ->
+        wkt
+
+      String.starts_with?(wkt, "POLYGON(") ->
+        wkt
+
       true ->
         finite_or_overflow(wkt)
     end
+  rescue
+    Dawarich.Ingest.Unsupported -> nil
   end
 
   defp finite_or_overflow(wkt) do

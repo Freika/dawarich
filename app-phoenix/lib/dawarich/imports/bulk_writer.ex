@@ -1,11 +1,11 @@
 defmodule Dawarich.Imports.BulkWriter do
   @moduledoc false
 
-  alias Dawarich.Ingest.{Cast, Sources}
+  alias Dawarich.Imports.{NormalCast, SourceDimensions}
   alias Dawarich.Imports.Geometry
   alias Dawarich.{RailsCommands, Repo}
 
-  @columns ~w(lonlat timestamp altitude altitude_decimal velocity tracker_id import_id user_id created_at updated_at)a
+  @columns ~w(lonlat timestamp altitude altitude_decimal velocity tracker_id import_id user_id created_at updated_at battery ping accuracy vertical_accuracy ssid bssid inrids in_regions topic battery_status connection trigger motion_data raw_data course course_accuracy)a
   @required ~w(lonlat timestamp import_id user_id created_at updated_at)a
   @limit 1_000
 
@@ -60,13 +60,21 @@ defmodule Dawarich.Imports.BulkWriter do
   end
 
   defp stamp(rows, cache, repo, fence) do
-    if Sources.available?(repo) do
-      Enum.map_reduce(rows, cache, fn row, cache ->
-        combo = Sources.combo(row)
-        id = Map.get_lazy(cache, combo, fn -> fence.(fn -> Sources.resolve(repo, combo) end) end)
-        cache = if id, do: remember(cache, combo, id), else: cache
-        {row |> cast() |> Map.put(:source_id, id), cache}
-      end)
+    if SourceDimensions.available?(repo) do
+      {stamped, cache} =
+        Enum.map_reduce(rows, cache, fn row, cache ->
+          combo = SourceDimensions.combo(row)
+
+          id =
+            Map.get_lazy(cache, combo, fn ->
+              fence.(fn -> SourceDimensions.resolve(repo, combo) end)
+            end)
+
+          cache = if id, do: remember(cache, combo, id), else: cache
+          {Map.put(row, :source_id, id), cache}
+        end)
+
+      {Enum.map(stamped, &cast/1), cache}
     else
       {Enum.map(rows, &cast/1), cache}
     end
@@ -83,8 +91,8 @@ defmodule Dawarich.Imports.BulkWriter do
       {:lonlat, value} -> {:lonlat, Geometry.serialize(value)}
       {:velocity, :infinity} -> {:velocity, "Infinity"}
       {:velocity, :neg_infinity} -> {:velocity, "-Infinity"}
-      {key, value} when key in [:import_id, :created_at, :updated_at] -> {key, value}
-      {key, value} -> {key, Cast.column(key, value)}
+      {key, value} when key in [:source_id, :import_id, :created_at, :updated_at] -> {key, value}
+      {key, value} -> {key, NormalCast.column(key, value)}
     end)
   end
 
@@ -96,7 +104,7 @@ defmodule Dawarich.Imports.BulkWriter do
       Enum.map_join(Enum.with_index(rows), ", ", fn {_row, i} ->
         "(" <>
           Enum.map_join(Enum.with_index(columns), ", ", fn {column, j} ->
-            "$#{i * width + j + 1}#{if column == :lonlat, do: "::text::geography", else: ""}"
+            "$#{i * width + j + 1}#{suffix(column)}"
           end) <> ")"
       end)
 
@@ -109,6 +117,11 @@ defmodule Dawarich.Imports.BulkWriter do
       log: false
     ).num_rows
   end
+
+  defp suffix(:lonlat), do: "::text::geography"
+  defp suffix(column) when column in [:motion_data, :raw_data], do: "::text::jsonb"
+  defp suffix(column) when column in [:inrids, :in_regions], do: "::text::text[]"
+  defp suffix(_), do: ""
 
   defp counters!(attempted, skipped, import, repo) do
     repo.query!(
