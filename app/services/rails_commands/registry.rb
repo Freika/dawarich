@@ -109,6 +109,20 @@ module RailsCommands
           Points::ArrivalCommands.for_user(payload) { ReverseGeocodingJob.perform_later('place', place_id) }
         }
       },
+      'imports.progress' => {
+        guard: 'Re-renders the current owner-scoped import row; repeats never restore an old processed count',
+        call: lambda { |payload|
+          import = Import.find_by(id: payload.fetch('import_id'), user_id: payload.fetch('user_id'))
+          next unless import
+
+          I18n.with_locale(payload.fetch('locale')) do
+            Turbo::StreamsChannel.broadcast_replace_to(
+              [import.user, :imports], target: ActionView::RecordIdentifier.dom_id(import),
+              partial: 'imports/table_row', locals: { import: import, timezone: import.user.safe_settings.timezone }
+            )
+          end
+        }
+      },
       'exports.points_created' => {
         guard: 'Re-produces exports.points only while the export is still created: ExportJob claims ' \
                'created -> processing by compare-and-set and the outbox keeps one pending points-export:<id>',
@@ -158,7 +172,20 @@ module RailsCommands
           DataMigrations::CleanupNullIslandJob.follow_up(user) if user
         }
       }
-    }.merge(Points::ArrivalCommands::HANDLERS).freeze
+    }.merge(Points::ArrivalCommands::HANDLERS)
+     .merge(Points::AnomalyFilterCommands::HANDLERS)
+     .merge(Imports::PostprocessingCommands::HANDLERS)
+     .merge(Imports::UploadCommands::HANDLERS)
+     .merge(Imports::DownloadCommands::HANDLERS)
+     .merge(Imports::PreparedDownloadPurgeCommands::HANDLERS)
+     .merge(Imports::DestroyCommands::HANDLERS)
+     .merge(Imports::ExtractionCommands::HANDLERS)
+     .merge(
+       'imports.resume' => {
+         guard: 'Durable event receipt and per-import lease; repeats cannot restart a completed receipt',
+         call: ->(payload) { Imports::GpxResume.call(payload) }
+       }
+     ).freeze
 
     module_function
 

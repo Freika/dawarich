@@ -23,13 +23,53 @@ defmodule DawarichWeb.ImportsLive.Index do
   ]
 
   @impl true
-  def mount(_params, _session, socket),
-    do:
-      {:ok,
-       assign(socket,
-         page_title: t(socket.assigns.locale, "imports.index.imports", %{}),
-         morph_page_refreshes: true
-       )}
+  def mount(_params, _session, socket) do
+    if connected?(socket), do: Dawarich.Imports.Events.subscribe(socket.assigns.current_user.id)
+
+    {:ok,
+     assign(socket,
+       page_title: t(socket.assigns.locale, "imports.index.imports", %{}),
+       morph_page_refreshes: true,
+       polling: false
+     )}
+  end
+
+  @impl true
+  def handle_info(:imports_refresh, socket), do: refresh(assign(socket, polling: false))
+
+  def handle_info(:imports_changed, socket), do: refresh(socket)
+
+  defp refresh(socket) do
+    if Dawarich.Accounts.get(socket.assigns.current_user.id) do
+      {:noreply,
+       socket
+       |> assign(:now, DateTime.utc_now())
+       |> assign(
+         Dawarich.ImportExportIndex.imports(socket.assigns.current_user, socket.assigns.list)
+       )
+       |> poll()}
+    else
+      {:noreply, redirect(socket, to: "/users/sign_in")}
+    end
+  end
+
+  @impl true
+  def handle_event("delete_import", %{"import_id" => id}, socket) do
+    user = socket.assigns.current_user
+
+    case DawarichWeb.ImportsActions.delete(user, id) do
+      {:ok, _} ->
+        refresh(socket)
+
+      {:error, _} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           t(socket.assigns.locale, "imports.table_row.deletion_stalled", %{})
+         )}
+    end
+  end
 
   @impl true
   def handle_params(params, uri, socket) do
@@ -45,8 +85,11 @@ defmodule DawarichWeb.ImportsLive.Index do
        columns: @columns,
        integrations: integrations(user.settings)
      )
-     |> assign(Dawarich.ImportExportIndex.imports(user, list))}
+     |> assign(Dawarich.ImportExportIndex.imports(user, list))
+     |> poll()}
   end
+
+  defp poll(socket), do: DawarichWeb.ImportsPolling.schedule(socket, socket.assigns.entries)
 
   defp integrations(settings) do
     settings = if is_map(settings), do: settings, else: %{}
@@ -59,7 +102,7 @@ defmodule DawarichWeb.ImportsLive.Index do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="w-full my-5">
+    <div data-testid="native-imports-root" class="w-full my-5">
       <.page_header title={t(@locale, "imports.index.imports", %{})}>
         <div :if={@integrations != []} class="join">
           <a href="/imports/new" class="btn btn-primary btn-sm join-item"><.icon
@@ -148,7 +191,13 @@ defmodule DawarichWeb.ImportsLive.Index do
                 data-imports-target="index"
                 data-user-id={@current_user.id}
               >
-                <.row :for={import <- @entries} import={import} locale={@locale} now={@now} />
+                <.row
+                  :for={import <- @entries}
+                  import={import}
+                  locale={@locale}
+                  now={@now}
+                  rails_csrf_token={@rails_csrf_token}
+                />
               </tbody>
             </table>
           </div>
