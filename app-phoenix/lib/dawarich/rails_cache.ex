@@ -75,5 +75,5 @@ defmodule Dawarich.RailsCache do
     do: if(opts[:namespace], do: opts[:namespace] <> ":" <> key, else: key)
 
   defp command(args, opts),
-    do: (opts[:command] || (&Dawarich.RailsCache.Connection.command/1)).(args)
+    do: (opts[:command] || (&Dawarich.Redis.cache_command/1)).(args)
 end

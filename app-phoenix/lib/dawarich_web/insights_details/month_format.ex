@@ -54,10 +54,7 @@ defmodule DawarichWeb.InsightsDetails.MonthFormat do
       for %{} = toponym <- data.monthly["toponyms"] || [],
           is_list(toponym["cities"]),
           %{} = city <- toponym["cities"] do
-        codes =
-          Map.get_lazy(data, :country_codes, fn ->
-            CountryCodes.load(Map.get(data, :cache_options, []))
-          end)
+        codes = Map.get_lazy(data, :country_codes, &CountryCodes.load/0)
 
         %{
           name: "#{city["city"]}, #{country_code(toponym["country"], codes)}",

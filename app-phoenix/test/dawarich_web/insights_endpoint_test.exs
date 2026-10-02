@@ -5,7 +5,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
 
   import Dawarich.Test.RawHTTP
 
-  alias Dawarich.Test.{RailsUser, TripsSeeds}
+  alias Dawarich.Test.{InsightsSeeds, RailsUser, TripsSeeds}
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
@@ -20,6 +20,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
     end)
 
     TripsSeeds.user!(9301, %{"timezone" => "Europe/Berlin", "maps" => %{"distance_unit" => "km"}})
+    InsightsSeeds.start_cache!()
 
     %{
       upstream: upstream,
@@ -130,5 +131,57 @@ defmodule DawarichWeb.InsightsEndpointTest do
 
       assert line == "GET #{target} HTTP/1.1"
     end
+  end
+
+  defp digest_user!(ctx) do
+    InsightsSeeds.user!()
+    InsightsSeeds.yearly_digest!()
+    InsightsSeeds.monthly_digest!(4, ~N[2024-04-01 00:00:00])
+    Map.put(ctx, :cookie, "_dawarich_session=" <> RailsUser.cookie(RailsUser.session(93)))
+  end
+
+  defp digests, do: Dawarich.Repo.query!("SELECT id, updated_at FROM digests ORDER BY id").rows
+
+  test "a warm yearly digest is answered by Phoenix without writing digests", ctx do
+    ctx = digest_user!(ctx)
+    InsightsSeeds.warm!()
+    before = digests()
+    frame = [{"Cookie", ctx.cookie}, {"Turbo-Frame", "insights_details"}]
+
+    assert {200, _headers, body} =
+             phoenix(ctx.port, request("/insights/details?year=2024&month=4", frame))
+
+    assert body =~ ~s(<turbo-frame id="insights_details">)
+    assert digests() == before
+  end
+
+  test "a digest Rails would calculate or cache sends the request to Puma unchanged", ctx do
+    ctx = digest_user!(ctx)
+    cookie = [{"Cookie", ctx.cookie}]
+
+    for target <- ["/insights/details?year=2024&month=4", "/insights/details?year=2024&month=3"] do
+      if target =~ "month=3", do: InsightsSeeds.warm!()
+      assert {line, [_cookie]} = puma(ctx.port, ctx.upstream, request(target, cookie))
+      assert line == "GET #{target} HTTP/1.1"
+    end
+
+    assert length(digests()) == 2
+  end
+
+  test "a cached value that is not a digest hands the request to Puma", ctx do
+    ctx = digest_user!(ctx)
+    InsightsSeeds.warm!(<<0, 17, 1, -1.0::little-float-64, -1::little-signed-32, 4, 8, ?i, 86>>)
+    target = "/insights/details?year=2024&month=4"
+
+    assert {_line, [_cookie]} =
+             puma(ctx.port, ctx.upstream, request(target, [{"Cookie", ctx.cookie}]))
+  end
+
+  test "a gate that cannot read the database hands the request to Puma", ctx do
+    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :manual)
+    target = "/insights/details?year=all"
+
+    assert {_line, [_cookie]} =
+             puma(ctx.port, ctx.upstream, request(target, [{"Cookie", ctx.cookie}]))
   end
 end

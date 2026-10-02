@@ -6,18 +6,15 @@ defmodule DawarichWeb.InsightsLive.Details do
 
   @impl true
   def mount(params, _session, socket) do
-    opts = [
-      now: socket.assigns.now,
-      self_hosted: socket.assigns.self_hosted,
-      read_only: connected?(socket)
-    ]
+    user = socket.assigns.current_user
 
-    data = Details.load(socket.assigns.current_user, params, opts)
+    data =
+      Details.load(user, params, now: socket.assigns.now, self_hosted: socket.assigns.self_hosted)
 
     fragments =
       if data.restricted,
         do: %{},
-        else: Fragments.render(socket.assigns.current_user, socket.assigns.locale, data, opts)
+        else: Fragments.render(user, socket.assigns.locale, data, write: not connected?(socket))
 
     socket = assign(socket, data: data, fragments: fragments, rails_js: true, page_title: nil)
     layout = if socket.assigns.insights_frame, do: false, else: {DawarichWeb.Layouts, :app}

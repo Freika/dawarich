@@ -1,22 +1,5 @@
 defmodule Dawarich.RailsCache.JsonOrder do
-  @moduledoc "Preserves fresh AR JSON insertion order separately from persisted JSONB order."
-  def fresh(attrs, activity) do
-    patterns = attrs["travel_patterns"]
-    time = ordered(patterns["time_of_day"], ~w(night morning afternoon evening))
-    pairs = [{"time_of_day", time}]
-
-    pairs =
-      if Map.has_key?(patterns, "seasonality"),
-        do:
-          pairs ++
-            [{"seasonality", ordered(patterns["seasonality"], ~w(winter spring summer fall))}],
-        else: pairs
-
-    pairs = pairs ++ [{"activity_breakdown", %Jason.OrderedObject{values: activity}}]
-    raw = Jason.encode!(%Jason.OrderedObject{values: pairs})
-    Map.put(attrs, "_rails_json", %{"travel_patterns" => raw})
-  end
-
+  @moduledoc "Key order of a digest's travel_patterns JSON, as cached by Rails or stored in JSONB."
   def pattern_pairs(attrs) do
     case get_in(attrs, ["_rails_json", "travel_patterns"]) do
       raw when is_binary(raw) ->
@@ -35,6 +18,4 @@ defmodule Dawarich.RailsCache.JsonOrder do
         %{}
     end
   end
-
-  defp ordered(values, keys), do: %Jason.OrderedObject{values: Enum.map(keys, &{&1, values[&1]})}
 end

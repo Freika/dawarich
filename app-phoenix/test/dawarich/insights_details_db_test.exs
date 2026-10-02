@@ -1,187 +1,148 @@
 defmodule Dawarich.Insights.DetailsDBTest do
   use ExUnit.Case, async: false
-  alias Dawarich.{RailsCache, Repo}
-  alias Dawarich.Insights.Details
+
+  alias Dawarich.{Redis, Repo}
+  alias Dawarich.Insights.{Details, Fragments}
+  import Dawarich.Test.InsightsSeeds
+
   @now ~U[2026-06-15 10:00:00Z]
+  @digest_updated ~N[2024-03-05 00:00:00]
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    redis_url = Application.fetch_env!(:dawarich, :redis)[:url]
-    {:ok, redis} = Redix.start_link(redis_url, database: 1, name: A10DetailsRedis)
-    on_exit(fn -> Process.exit(redis, :normal) end)
-    user = Dawarich.A10InsightsFixture.seed()
-    user = %{id: user["id"], settings: user["settings"], plan: 1}
-
-    namespace =
-      "a10-details/" <>
-        System.get_env("A10_INSIGHTS_CAPTURE_DIR", "test") <>
-        "/" <> Integer.to_string(System.unique_integer([:positive]))
-
-    opts = [
-      now: @now,
-      self_hosted: false,
-      cache: [namespace: namespace, command: fn args -> Redix.command(A10DetailsRedis, args) end]
-    ]
-
-    %{user: user, opts: opts}
+    start_cache!()
+    %{user: user!()}
   end
 
-  test "cold missing yearly refresh precedes weekly projection and selected monthly refresh", %{
-    user: user,
-    opts: opts
-  } do
-    page = Details.load(user, %{"year" => "2024", "month" => "4"}, opts)
-    assert page.yearly["distance"] == 50_072
-    assert page.monthly["distance"] == 12_018
-    assert page.weekly == List.duplicate(0, 7)
-    assert page.available_months == [3, 4]
+  defp load(user, params), do: Details.load(user, params, now: @now, self_hosted: false)
 
-    assert page.totals == %{
-             distance: 50,
-             countries: 2,
-             cities: 2,
-             countries_list: ["Czechia", "Germany"],
-             days: 5,
-             biggest_month: %{year: 2024, month: 3, distance: 38}
-           }
+  defp digests, do: Repo.query!("SELECT id, updated_at FROM digests ORDER BY id", []).rows
 
-    assert page.comparison.distance_change == 150
-    key = Details.yearly_key(user.id, 2024, page.yearly["updated_at"])
-    assert RailsCache.get(key, opts[:cache]) == :miss
-    second = Details.load(user, %{"year" => "2024", "month" => "4"}, opts)
-    assert second.weekly == [0, 0, 12_018, 0, 0, 0, 0]
-    assert {:ok, _} = RailsCache.get(key, opts[:cache])
+  test "a missing yearly digest for a year with stats is Rails' to calculate", %{user: user} do
+    monthly_digest!(4, ~N[2024-04-01 00:00:00])
+    before = digests()
+    page = load(user, %{"year" => "2024", "month" => "4"})
+    assert page.rails
+    assert page.yearly == nil
+    assert digests() == before
   end
 
-  test "warm yearly cache skips newer stats, miss recalculates under previous version key", %{
-    user: user,
-    opts: opts
-  } do
-    first = Details.load(user, %{"year" => "2024", "month" => "4"}, opts)
-    Details.load(user, %{"year" => "2024", "month" => "4"}, opts)
-
-    Repo.query!(
-      "UPDATE stats SET distance=distance+1000,updated_at=$2 WHERE user_id=$1 AND year=2024 AND month=3",
-      [user.id, ~N[2026-06-15 10:00:02]],
-      log: false
-    )
-
-    warm =
-      Details.load(
-        user,
-        %{"year" => "2024", "month" => "4"},
-        Keyword.put(opts, :now, DateTime.add(@now, 3))
-      )
-
-    assert warm.yearly["distance"] == first.yearly["distance"]
-    assert warm.totals.distance == 51
-    key = Details.yearly_key(user.id, 2024, first.yearly["updated_at"])
-    assert {:ok, true} = RailsCache.delete(key, opts[:cache])
-
-    cold =
-      Details.load(
-        user,
-        %{"year" => "2024", "month" => "4"},
-        Keyword.put(opts, :now, DateTime.add(@now, 3))
-      )
-
-    assert cold.yearly["distance"] == 51_072
-    assert {:ok, _} = RailsCache.get(key, opts[:cache])
-    assert cold.yearly["updated_at"] == ~N[2026-06-15 10:00:03.000000]
+  test "a year without stats or digest stays with Phoenix and has no patterns", %{user: user} do
+    page = load(user, %{"year" => "2020"})
+    refute page.rails
+    assert page.yearly == nil
+    assert page.time_of_day == %{}
   end
 
-  test "all time and restricted details do not create digests; foreign selectors have no authority",
-       %{user: user, opts: opts} do
-    all = Details.load(user, %{"year" => "all", "user_id" => "999999"}, opts)
-    assert all.selected_month == "all"
-    assert all.available_months == []
-    assert all.weekly == List.duplicate(0, 7)
-    assert all.top_visits == []
-    assert all.totals.distance == 70
-    Repo.query!("UPDATE users SET plan=0 WHERE id=$1", [user.id], log: false)
-    locked = Details.load(%{user | plan: 0}, %{"year" => "2024"}, opts)
-    assert locked.year_locked
-    refute Map.has_key?(locked, :totals)
-    assert Repo.query!("SELECT count(*) FROM digests", [], log: false).rows == [[0]]
+  test "a cold yearly cache entry is Rails' to write; the database digest is kept for rendering",
+       %{user: user} do
+    yearly_digest!()
+    monthly_digest!(4, ~N[2024-04-01 00:00:00])
+    page = load(user, %{"year" => "2024", "month" => "4"})
+    assert page.rails
+    assert page.yearly["id"] == 71
+
+    assert {:ok, nil} =
+             Redis.cache_command(["GET", Details.yearly_key(93, 2024, @digest_updated)])
   end
 
-  test "unavailable selected month preserves existing digest and confirmed active visits are scoped",
-       %{user: user, opts: opts} do
-    Repo.query!(
-      "INSERT INTO digests(user_id,year,month,period_type,distance,created_at,updated_at) VALUES($1,2024,2,0,777,$2,$2)",
-      [user.id, ~N[2020-01-01 00:00:00]],
-      log: false
-    )
-
-    page = Details.load(user, %{"year" => "2024", "month" => "2", "user_id" => "999999"}, opts)
+  test "a warm yearly cache entry is used as Rails uses it, even after newer stats",
+       %{user: user} do
+    yearly_digest!()
+    monthly_digest!(4, ~N[2024-04-01 00:00:00])
+    warm!()
+    Repo.query!("UPDATE stats SET updated_at=$1 WHERE user_id=93", [~N[2026-06-15 09:00:00]])
+    Repo.query!("UPDATE digests SET updated_at=$1 WHERE month=4", [~N[2026-06-15 09:00:00]])
+    before = digests()
+    page = load(user, %{"year" => "2024", "month" => "4"})
+    refute page.rails
+    assert page.yearly["travel_patterns"] == %{"weekly_pattern" => [1, 2, 3, 4, 5, 6, 7]}
     assert page.monthly["distance"] == 777
+    assert digests() == before
+  end
+
+  test "a cached nil yearly digest renders without patterns", %{user: user} do
+    yearly_digest!()
+    monthly_digest!(4, ~N[2024-04-01 00:00:00])
+    warm!(<<0, 17, 1, -1.0::little-float-64, -1::little-signed-32, 4, 8, ?0>>)
+    page = load(user, %{"year" => "2024", "month" => "4"})
+    refute page.rails
+    assert page.yearly == nil
+  end
+
+  test "a cached value that is not a digest raises, so the gate hands the request to Rails",
+       %{user: user} do
+    yearly_digest!()
+    warm!(<<0, 17, 1, -1.0::little-float-64, -1::little-signed-32, 4, 8, ?i, 86>>)
+    assert_raise ArgumentError, fn -> load(user, %{"year" => "2024", "month" => "4"}) end
+  end
+
+  test "an unreachable cache is Rails' to answer", %{user: user} do
+    yearly_digest!()
+    monthly_digest!(4, ~N[2024-04-01 00:00:00])
+    stop_supervised!(Dawarich.Redis.Cache)
+    assert load(user, %{"year" => "2024", "month" => "4"}).rails
+  end
+
+  test "a missing or stale selected month is Rails' to calculate; an unavailable month is read",
+       %{user: user} do
+    yearly_digest!()
+    warm!()
+    assert load(user, %{"year" => "2024", "month" => "3"}).rails
+    monthly_digest!(3, ~N[2024-02-01 00:00:00])
+    assert load(user, %{"year" => "2024", "month" => "3"}).rails
+    monthly_digest!(2, ~N[2020-01-01 00:00:00])
+    page = load(user, %{"year" => "2024", "month" => "2", "user_id" => "999999"})
+    refute page.rails
     assert page.monthly["updated_at"] == ~N[2020-01-01 00:00:00.000000]
-    assert %{name: "Office", visit_count: 2, total_duration: 240} in page.top_visits
-    refute Enum.any?(page.top_visits, &String.contains?(&1.name, "Foreign"))
+    assert page.available_months == [3, 4]
   end
 
-  test "actual Ruby empty and prefixed year selection includes astronomical year zero", %{
-    user: user,
-    opts: opts
-  } do
+  test "all-time, restricted and coerced years never need a digest", %{user: user} do
+    all = load(user, %{"year" => "all"})
+    refute all.rails
+    assert all.selected_month == "all"
+    assert all.totals.distance == 50
+
+    Repo.query!("UPDATE users SET plan=0 WHERE id=93", [])
+    restricted = load(%{user | plan: 0}, %{"year" => "2024"})
+    refute restricted.rails
+    assert restricted.restricted
+    refute Map.has_key?(restricted, :totals)
+
     for raw <- ["", "0", "not-a-year", "1suffix"] do
-      page = Details.load(user, %{"year" => raw}, opts)
+      page = load(user, %{"year" => raw})
+      refute page.rails
       assert page.year == Dawarich.Digests.to_i(raw)
-      assert page.yearly == nil
-      assert page.monthly == nil
-      assert page.top_visits == []
     end
+
+    assert digests() == []
   end
 
-  test "six real fragment keys retain warm visit HTML, month/unit versions, safe buffers and24hour expiry",
-       %{user: user, opts: opts} do
-    page = Details.load(user, %{"year" => "2024", "month" => "4"}, opts)
-    page = Map.put(page, :country_codes, [])
-    first = Dawarich.Insights.Fragments.render(user, "en", page, opts)
+  test "fragments use Rails' six keys, keep warm HTML and are written only when asked",
+       %{user: user} do
+    page = %{load(user, %{"year" => "2020"}) | top_visits: []} |> Map.put(:country_codes, [])
+    first = Fragments.render(user, "en", page, write: false)
     assert map_size(first) == 6
 
-    expected =
-      "views/insights/details:9efea8724129ec15ede1d72979639af7/#{user.id}/insights/en/2024/2026-06-15 12:00:00 +0200/km/location_clusters"
+    key =
+      "views/insights/details:9efea8724129ec15ede1d72979639af7/93/insights/en/2020//km/location_clusters"
 
-    assert Dawarich.Insights.Fragments.key(user, "en", page, "location_clusters", opts) ==
-             expected
+    assert Fragments.key(user, "en", page, "location_clusters") == key
+    assert {:ok, nil} = Redis.cache_command(["GET", key])
 
-    assert {:ok, value} = RailsCache.get(expected, opts[:cache])
-    assert Dawarich.RailsCache.Snapshot.html(value) == first["location_clusters"]
-    key = opts[:cache][:namespace] <> ":" <> expected
-    assert {:ok, ttl} = Redix.command(A10DetailsRedis, ["PTTL", key])
+    Fragments.render(user, "en", page, write: true)
+    assert {:ok, ttl} = Redis.cache_command(["PTTL", key])
     assert ttl > 86_390_000 and ttl <= 86_400_000
 
     changed =
-      Map.put(page, :top_visits, [
-        %{name: "New fixture location", visit_count: 100, total_duration: 3000}
-      ])
+      Map.put(page, :top_visits, [%{name: "New place", visit_count: 9, total_duration: 30}])
 
-    warm = Dawarich.Insights.Fragments.render(user, "en", changed, opts)
-    assert warm == first
-    assert warm["location_clusters"] =~ "Office"
-    refute warm["location_clusters"] =~ "New fixture location"
+    assert Fragments.render(user, "en", changed, write: true) == first
 
     for {field, value} <- [{:selected_month, 3}, {:unit, "mi"}] do
-      changed = Map.put(page, field, value)
-      before = Dawarich.Insights.Fragments.key(user, "en", page, "monthly_digest", opts)
-      after_key = Dawarich.Insights.Fragments.key(user, "en", changed, "monthly_digest", opts)
-      refute before == after_key
+      refute Fragments.key(user, "en", page, "monthly_digest") ==
+               Fragments.key(user, "en", Map.put(page, field, value), "monthly_digest")
     end
-  end
-
-  test "connected LiveView reads do not repeat GET refresh/cache writes", %{
-    user: user,
-    opts: opts
-  } do
-    first = Details.load(user, %{"year" => "2024", "month" => "4"}, opts)
-    key = Details.yearly_key(user.id, 2024, first.yearly["updated_at"])
-
-    connected =
-      Details.load(user, %{"year" => "2024", "month" => "4"}, Keyword.put(opts, :read_only, true))
-
-    assert connected.yearly["updated_at"] == first.yearly["updated_at"]
-    assert connected.monthly["updated_at"] == first.monthly["updated_at"]
-    assert RailsCache.get(key, opts[:cache]) == :miss
   end
 end

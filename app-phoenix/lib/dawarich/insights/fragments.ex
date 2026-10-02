@@ -1,6 +1,6 @@
 defmodule Dawarich.Insights.Fragments do
   @moduledoc "The six actual Rails insight fragment keys, SafeBuffers and24hour cache policy."
-  alias Dawarich.{RailsCache, Repo}
+  alias Dawarich.{RailsCache, UserTimeZone}
   alias Dawarich.RailsCache.Snapshot
   alias DawarichWeb.InsightsDetails
   @template "views/insights/details:9efea8724129ec15ede1d72979639af7"
@@ -13,32 +13,22 @@ defmodule Dawarich.Insights.Fragments do
     {"movement_wellness", InsightsDetails.Wellness}
   ]
 
-  def render(user, locale, data, opts \\ []) do
+  def render(user, locale, data, opts) do
     for {name, module} <- @parts, into: %{} do
-      cache_key = key(user, locale, data, name, opts)
+      cache_key = key(user, locale, data, name)
 
       value =
-        case RailsCache.get(cache_key, opts[:cache] || []) do
+        case RailsCache.get(cache_key) do
           {:ok, value} ->
             Snapshot.html(value)
 
           _ ->
             html =
-              module.render(%{
-                __changed__: nil,
-                locale: locale,
-                data: Map.put(data, :cache_options, opts)
-              })
+              module.render(%{__changed__: nil, locale: locale, data: data})
               |> Phoenix.HTML.Safe.to_iodata()
               |> IO.iodata_to_binary()
 
-            unless opts[:read_only],
-              do:
-                RailsCache.put(
-                  cache_key,
-                  html,
-                  (opts[:cache] || []) ++ [expires_in: 86400]
-                )
+            if opts[:write], do: RailsCache.put(cache_key, html, expires_in: 86400)
 
             html
         end
@@ -47,14 +37,14 @@ defmodule Dawarich.Insights.Fragments do
     end
   end
 
-  def key(user, locale, data, name, opts \\ []) do
+  def key(user, locale, data, name) do
     common = [
       @template,
       user.id,
       "insights",
       locale,
       data.selected,
-      timestamp(user, data.max_stat_updated, opts),
+      timestamp(user, data.max_stat_updated),
       data.unit,
       name
     ]
@@ -63,16 +53,14 @@ defmodule Dawarich.Insights.Fragments do
     Enum.map_join(pieces, "/", &to_string/1)
   end
 
-  defp timestamp(_user, nil, _opts), do: ""
+  defp timestamp(_user, nil), do: ""
 
-  defp timestamp(user, time, opts) do
-    repo = opts[:repo] || Repo
-    zone = Dawarich.UserTimeZone.name(user.settings, repo)
-
+  defp timestamp(user, time) do
     [[local, seconds]] =
-      repo.query!(
-        "SELECT $1::timestamp AT TIME ZONE 'UTC' AT TIME ZONE $2,EXTRACT(epoch FROM (($1::timestamp AT TIME ZONE 'UTC' AT TIME ZONE $2)-$1::timestamp))::integer",
-        [time, zone]
+      UserTimeZone.query!(
+        "SELECT $1::timestamp AT TIME ZONE 'UTC' AT TIME ZONE z.name,EXTRACT(epoch FROM (($1::timestamp AT TIME ZONE 'UTC' AT TIME ZONE z.name)-$1::timestamp))::integer FROM z",
+        [time],
+        user.settings
       ).rows
 
     offset = abs(seconds) |> div(60)

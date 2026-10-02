@@ -1,56 +1,26 @@
 defmodule Dawarich.Insights.Details.Digests do
   @moduledoc false
-  alias Dawarich.{DigestRefresh, Digests, RailsCache}
+  alias Dawarich.{Digests, RailsCache, Repo}
   alias Dawarich.RailsCache.Snapshot
-  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
-  def yearly(context, year, stats, opts) do
-    case find(context, year, nil) do
+  def yearly(id, year, stats) do
+    case find(id, year, nil) do
       nil ->
-        if(!opts[:read_only], do: refresh(context.id, year, nil, opts))
+        {nil, Enum.any?(stats, &(&1["year"] == year))}
 
       digest ->
-        key = key(context.id, year, digest["updated_at"])
-        cache = opts[:cache] || []
-
-        case RailsCache.get(key, cache) do
-          {:ok, nil} ->
-            nil
-
-          {:ok, value} ->
-            Snapshot.decode(value)
-
-          _ ->
-            if opts[:read_only] do
-              digest
-            else
-              selected = Enum.filter(stats, &(&1["year"] == year))
-
-              value =
-                if Ruby.blank?(digest["travel_patterns"]) or stale?(digest, selected),
-                  do: refresh(context.id, year, nil, opts),
-                  else: digest
-
-              RailsCache.put(
-                key,
-                if(value, do: Snapshot.encode(value)),
-                cache ++ [expires_in: 3600]
-              )
-
-              value
-            end
+        case RailsCache.get(key(id, year, digest["updated_at"])) do
+          {:ok, nil} -> {nil, false}
+          {:ok, value} -> {Snapshot.decode(value), false}
+          _ -> {digest, true}
         end
     end
   end
 
-  def monthly(context, year, month, available, stats, opts) do
-    digest = find(context, year, month)
+  def monthly(id, year, month, available, stats) do
+    digest = find(id, year, month)
     selected = Enum.filter(stats, &(&1["year"] == year and &1["month"] == month))
-
-    if opts[:read_only] != true and month in available and
-         (digest == nil or stale?(digest, selected)),
-       do: refresh(context.id, year, month, opts),
-       else: digest
+    {digest, month in available and (digest == nil or stale?(digest, selected))}
   end
 
   def key(user, year, updated) do
@@ -58,11 +28,11 @@ defmodule Dawarich.Insights.Details.Digests do
     "insights/yearly_digest/#{user}/#{year}/#{epoch}"
   end
 
-  def weekly(context, year) do
+  def weekly(id, year) do
     result =
-      context.repo.query!(
+      Repo.query!(
         "SELECT year,month,monthly_distances FROM digests WHERE user_id=$1 AND year=$2 AND period_type=0",
-        [context.id, year]
+        [id, year]
       )
 
     Enum.reduce(result.rows, List.duplicate(0, 7), fn [year, month, daily], totals ->
@@ -98,31 +68,20 @@ defmodule Dawarich.Insights.Details.Digests do
     end)
   end
 
-  defp find(context, year, month) do
+  defp find(id, year, month) do
     period = if month == nil, do: 1, else: 0
 
-    case context.repo.query!(
+    case Repo.query!(
            "SELECT *,travel_patterns::text AS _rails_patterns FROM digests WHERE user_id=$1 AND year=$2 AND period_type=$3 AND ($4::integer IS NULL OR month=$4) LIMIT 1",
-           [context.id, year, period, month]
+           [id, year, period, month]
          ) do
-      %{rows: []} -> nil
-      %{rows: [row], columns: columns} -> Map.new(Enum.zip(columns, row)) |> normalize()
+      %{rows: []} ->
+        nil
+
+      %{rows: [row], columns: columns} ->
+        {raw, digest} = columns |> Enum.zip(row) |> Map.new() |> Map.pop("_rails_patterns")
+        Map.put(digest, "_rails_json", %{"travel_patterns" => raw})
     end
-  end
-
-  defp refresh(id, year, month, opts) do
-    value =
-      if month == nil,
-        do: DigestRefresh.year(id, year, opts),
-        else: DigestRefresh.month(id, year, month, opts)
-
-    if value, do: normalize(value)
-  end
-
-  defp normalize(value) do
-    {raw, value} = Map.pop(value, "_rails_patterns")
-    value = if raw, do: Map.put(value, "_rails_json", %{"travel_patterns" => raw}), else: value
-    value |> Snapshot.encode() |> Snapshot.decode()
   end
 
   defp stale?(_digest, []), do: false

@@ -1,34 +1,44 @@
 defmodule Dawarich.Insights.Details do
-  @moduledoc "Source details GET data, synchronous refresh ordering and shared Rails cache contract."
-  alias Dawarich.LocalTime
-  alias Dawarich.Digests.Refresh.Context
+  @moduledoc "Reads for Rails' InsightsController#details; `rails` marks a request whose digest Rails would refresh or cache."
+  alias Dawarich.{Repo, Stats}
   alias Dawarich.Insights.Details.Digests, as: DetailDigests
+  alias Dawarich.Insights.Details.Totals
   alias DawarichWeb.StatsFormat
 
   def load(user, params, opts \\ []) do
     now = opts[:now] || DateTime.utc_now()
-    context = Context.load(user.id, opts)
-    stats = Context.stats(context)
-    scoped = Context.scoped(stats, context.cutoff)
+    self_hosted = Keyword.get_lazy(opts, :self_hosted, &DawarichWeb.LayoutAssigns.self_hosted?/0)
+    context = Stats.context(user, now, self_hosted)
+    result = Repo.query!("SELECT * FROM stats WHERE user_id=$1", [user.id])
+    stats = for row <- result.rows, do: Map.new(Enum.zip(result.columns, row))
+
+    scoped =
+      Enum.filter(
+        stats,
+        &Stats.in_window?(%{year: &1["year"], month: &1["month"]}, context.cutoff)
+      )
+
     valid = Enum.filter(stats, &(&1["month"] in 1..12))
     scoped_valid = Enum.filter(scoped, &(&1["month"] in 1..12))
     available = valid |> Enum.map(& &1["year"]) |> Enum.uniq() |> Enum.sort(:desc)
-    restricted = context.cutoff != nil
-    locked = if restricted, do: available -- Enum.map(scoped_valid, & &1["year"]), else: []
-    {_zone, today} = LocalTime.local(user.settings, now)
-    raw = params["year"] || to_string(List.first(available) || today.year)
+
+    locked =
+      if context.restricted, do: available -- Enum.map(scoped_valid, & &1["year"]), else: []
+
+    raw = params["year"] || to_string(List.first(available) || context.today.year)
     year = if raw == "all", do: nil, else: Dawarich.Digests.to_i(raw)
 
     data = %{
+      rails: false,
       available: available,
       locked: locked,
-      restricted: restricted,
+      restricted: context.restricted,
       year_locked: year in locked,
       all_time: raw == "all",
       year: year,
       selected: year || "all",
       unit: StatsFormat.unit(user.settings),
-      today: today
+      today: context.today
     }
 
     year_stats =
@@ -39,65 +49,65 @@ defmodule Dawarich.Insights.Details do
     data =
       Map.merge(data, %{stats: year_stats, max_stat_updated: maximum(year_stats, "updated_at")})
 
-    if data.year_locked or restricted do
+    if data.year_locked or data.restricted do
       data
     else
-      totals = Dawarich.Insights.Details.Totals.calculate(year_stats, data.unit)
+      totals = Totals.calculate(year_stats, data.unit)
       previous = if year, do: Enum.filter(scoped_valid, &(&1["year"] == year - 1)), else: []
-
-      comparison =
-        if previous != [],
-          do: Dawarich.Insights.Details.Totals.comparison(totals, previous, data.unit)
-
+      comparison = if previous != [], do: Totals.comparison(totals, previous, data.unit)
       data = Map.merge(data, %{totals: totals, comparison: comparison})
 
       if data.all_time,
         do: Map.merge(data, defaults()),
-        else: patterns(data, context, scoped, params, opts)
+        else: patterns(data, user.id, context.zone, scoped, params)
     end
   end
 
   defdelegate yearly_key(id, year, updated), to: DetailDigests, as: :key
 
-  defp patterns(data, context, stats, params, opts) do
-    yearly = DetailDigests.yearly(context, data.year, stats, opts)
+  defp patterns(data, id, zone, stats, params) do
+    {yearly, yearly_rails} = DetailDigests.yearly(id, data.year, stats)
     patterns = if yearly, do: yearly["travel_patterns"] || %{}, else: %{}
-    weekly = DetailDigests.weekly(context, data.year)
-    visits = top_visits(context, data.year)
     months = for s <- stats, s["year"] == data.year, do: s["month"]
 
     month =
-      if params["month"] not in [nil, "", false],
+      if params["month"] not in [nil, ""],
         do: Dawarich.Digests.to_i(params["month"]),
         else:
           Enum.max(months, fn ->
             if data.year == data.today.year, do: data.today.month, else: 12
           end)
 
-    monthly = DetailDigests.monthly(context, data.year, month, months, stats, opts)
+    {monthly, monthly_rails} = DetailDigests.monthly(id, data.year, month, months, stats)
     orders = if yearly, do: Dawarich.RailsCache.JsonOrder.pattern_pairs(yearly), else: %{}
-    data = Map.merge(data, orders)
 
-    Map.merge(data, %{
+    data
+    |> Map.merge(orders)
+    |> Map.merge(%{
+      rails: yearly_rails or monthly_rails,
       yearly: yearly,
       monthly: monthly,
       selected_month: month,
       available_months: Enum.sort(months),
-      weekly: weekly,
+      weekly: DetailDigests.weekly(id, data.year),
       time_of_day: patterns["time_of_day"] || %{},
       seasonality: patterns["seasonality"] || %{},
       activity: patterns["activity_breakdown"] || %{},
-      top_visits: visits
+      top_visits: top_visits(id, zone, data.year)
     })
   end
 
-  defp top_visits(context, year) do
-    {_first, _last, first, last} = Context.bounds(context, year, nil)
-
+  defp top_visits(id, zone, year) do
     for [name, count, duration] <-
-          context.repo.query!(
-            "SELECT name,COUNT(*),SUM(duration) FROM visits WHERE user_id=$1 AND status=1 AND deleted_at IS NULL AND started_at BETWEEN $2 AND $3 GROUP BY name ORDER BY COUNT(*) DESC,SUM(duration) DESC LIMIT 5",
-            [context.id, first, last]
+          Repo.query!(
+            """
+            SELECT name,COUNT(*),SUM(duration) FROM visits
+            WHERE user_id=$1 AND status=1 AND deleted_at IS NULL
+              AND started_at BETWEEN make_timestamptz($2,1,1,0,0,0,$3)
+                AND (make_date($2,12,1)::timestamp + interval '1 month' - interval '1 microsecond') AT TIME ZONE $3
+            GROUP BY name ORDER BY COUNT(*) DESC,SUM(duration) DESC LIMIT 5
+            """,
+            [id, if(year <= 0, do: year - 1, else: year), zone]
           ).rows,
         do: %{name: name, visit_count: count, total_duration: duration}
   end
