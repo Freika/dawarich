@@ -15,16 +15,19 @@ defmodule Dawarich.Imports.Download do
       Tempfiles.with_files(fn adopt ->
         path = Reader.download!(config, blob, opts(context, adopt))
 
-        repo.transaction(fn ->
-          if Snapshot.load(repo, user, id, true) != snapshot, do: repo.rollback(:not_found)
+        case repo.transaction(fn -> Snapshot.load(repo, user, id, true) == snapshot end) do
+          {:ok, true} ->
+            names =
+              if Map.get(context, :original?, false),
+                do: %{snapshot | prepared: source},
+                else: snapshot
 
-          names =
-            if Map.get(context, :original?, false),
-              do: %{snapshot | prepared: source},
-              else: snapshot
+            {:ok,
+             fun.(path, Names.filename(names), blob.content_type || "application/octet-stream")}
 
-          fun.(path, Names.filename(names), blob.content_type || "application/octet-stream")
-        end)
+          _ ->
+            {:error, :not_found}
+        end
       end)
     else
       nil -> {:error, :not_found}

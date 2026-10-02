@@ -146,6 +146,34 @@ defmodule Dawarich.Imports.DownloadStreamTest do
     await_clean(c)
   end
 
+  test "a download mid-stream holds no lock on the user or the import", c do
+    port = server(c, true)
+    socket = Dawarich.Test.RawHTTP.connect(port)
+
+    Dawarich.Test.RawHTTP.send_raw(
+      socket,
+      "GET /download HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+    )
+
+    assert_receive {:stream_ready, path, process}, 3000
+
+    assert {:ok, [[1], [1]]} =
+             ScratchRepo.transaction(fn ->
+               rows("SELECT 1 FROM users WHERE id=$1 FOR NO KEY UPDATE NOWAIT", [c.import.user_id])
+
+               rows("UPDATE users SET updated_at=now() WHERE id=$1", [c.import.user_id])
+               [[1]] = rows("SELECT 1 FROM imports WHERE id=$1 FOR UPDATE NOWAIT", [c.import.id])
+               [[1], [1]]
+             end)
+
+    send(process, :stream)
+    {200, _headers, body} = Dawarich.Test.RawHTTP.read_response(socket)
+    :gen_tcp.close(socket)
+    assert body == c.bytes
+    assert_receive {:stream_returned, ^path}, 3000
+    await_clean(c)
+  end
+
   defp await_clean(c, attempts \\ 100) do
     files = Enum.flat_map(["import-*", "unzipped-*"], &Path.wildcard(Path.join(c.root, &1)))
 
