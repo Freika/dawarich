@@ -13,18 +13,21 @@ defmodule Dawarich.State.PurgeWorker do
     DELETE FROM phoenix.once_claims WHERE key IN (
       SELECT key FROM phoenix.once_claims WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
+      FOR UPDATE SKIP LOCKED
     ) AND expires_at <= statement_timestamp()
     """,
     """
     DELETE FROM phoenix.counters WHERE key IN (
       SELECT key FROM phoenix.counters WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
+      FOR UPDATE SKIP LOCKED
     ) AND expires_at <= statement_timestamp()
     """,
     """
     DELETE FROM phoenix.leases WHERE name IN (
       SELECT name FROM phoenix.leases WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
+      FOR UPDATE SKIP LOCKED
     ) AND expires_at <= statement_timestamp()
     """
   ]

@@ -1,9 +1,11 @@
 defmodule Dawarich.State.PurgeWorkerTest do
   use Dawarich.JobsCase, async: true, group: :scratch_db
 
+  import Dawarich.LockRace
+
   alias Dawarich.Jobs.Registry
   alias Dawarich.State
-  alias Dawarich.State.PurgeWorker
+  alias Dawarich.State.{Lease, PurgeWorker}
 
   test "purge deletes expired claims, counters and leases and keeps live rows, epochs and the registration row" do
     rows("""
@@ -48,37 +50,58 @@ defmodule Dawarich.State.PurgeWorkerTest do
     assert rows("SELECT count(*) FROM phoenix.counters") == [[0]]
   end
 
-  test "purge never deletes a claim that was taken again after its scan" do
-    rows(
-      "INSERT INTO phoenix.once_claims (key, expires_at) VALUES ('o:race', statement_timestamp() - interval '1 second')"
-    )
-
-    test = self()
+  test "purge skips rows a transaction holds locked, without waiting, and deletes them on the next run" do
+    expired!(~w(o:locked o:free), ~w(c:locked c:free), ~w(l:locked l:free))
 
     holder =
-      Task.async(fn ->
-        ScratchRepo.transaction(fn ->
-          true = State.claim(ScratchRepo, "o:race", 60)
-          [[pid]] = ScratchRepo.query!("SELECT pg_backend_pid()").rows
-          send(test, {:holding, pid})
-          receive(do: (:commit -> :ok))
-        end)
+      hold(fn ->
+        for {table, column, key} <- [
+              {"once_claims", "key", "o:locked"},
+              {"counters", "key", "c:locked"},
+              {"leases", "name", "l:locked"}
+            ],
+            do:
+              ScratchRepo.query!(
+                "SELECT 1 FROM phoenix.#{table} WHERE #{column} = $1 FOR UPDATE",
+                [key]
+              )
       end)
 
-    assert_receive {:holding, holding}, 5_000
-    purge = Task.async(fn -> PurgeWorker.run(ScratchRepo, 100) end)
+    outcome =
+      settle(Task.async(fn -> PurgeWorker.run(ScratchRepo, 100) end), "DELETE FROM phoenix.%")
 
-    wait_until(fn ->
-      rows(
-        "SELECT 1 FROM pg_stat_activity WHERE $1::int = ANY(pg_blocking_pids(pid)) AND query LIKE 'DELETE FROM phoenix.once_claims%'",
-        [holding]
-      ) != []
-    end)
+    commit(holder)
 
-    send(holder.pid, :commit)
-    assert {:ok, :ok} = Task.await(holder)
-    assert Task.await(purge) == :ok
+    assert outcome == {:finished, :ok}
+    assert rows("SELECT key FROM phoenix.once_claims") == [["o:locked"]]
+    assert rows("SELECT key FROM phoenix.counters") == [["c:locked"]]
+    assert rows("SELECT name FROM phoenix.leases") == [["l:locked"]]
+
+    assert PurgeWorker.run(ScratchRepo, 100) == :ok
+    assert rows("SELECT count(*) FROM phoenix.once_claims") == [[0]]
+    assert rows("SELECT count(*) FROM phoenix.counters") == [[0]]
+    assert rows("SELECT count(*) FROM phoenix.leases") == [[0]]
+  end
+
+  test "purge never deletes a claim, counter or lease taken again by a transaction open while it runs" do
+    expired!(["o:race"], ["c:race"], ["l:race"])
+
+    holder =
+      hold(fn ->
+        true = State.claim(ScratchRepo, "o:race", 60)
+        1 = State.increment(ScratchRepo, "c:race", 1, 60)
+        true = Lease.acquire(ScratchRepo, "l:race", "new", 60_000)
+      end)
+
+    outcome =
+      settle(Task.async(fn -> PurgeWorker.run(ScratchRepo, 100) end), "DELETE FROM phoenix.%")
+
+    commit(holder)
+
+    assert outcome == {:finished, :ok}
     assert State.claimed?(ScratchRepo, "o:race")
+    assert State.count(ScratchRepo, "c:race") == 1
+    assert rows("SELECT holder FROM phoenix.leases WHERE name = 'l:race'") == [["new"]]
   end
 
   test "the purge job runs hourly on the maintenance queue and is not a Rails ownership key" do
@@ -92,17 +115,26 @@ defmodule Dawarich.State.PurgeWorkerTest do
     assert PurgeWorker.__opts__()[:unique][:states] == :incomplete
   end
 
-  defp wait_until(fun, deadline \\ System.monotonic_time(:millisecond) + 5_000) do
-    cond do
-      fun.() ->
-        :ok
+  defp expired!(claims, counters, leases) do
+    for key <- claims,
+        do:
+          rows(
+            "INSERT INTO phoenix.once_claims (key, expires_at) VALUES ($1, statement_timestamp() - interval '1 second')",
+            [key]
+          )
 
-      System.monotonic_time(:millisecond) > deadline ->
-        flunk("condition not reached within 5 s")
+    for key <- counters,
+        do:
+          rows(
+            "INSERT INTO phoenix.counters (key, value, expires_at) VALUES ($1, 7, statement_timestamp() - interval '1 second')",
+            [key]
+          )
 
-      true ->
-        Process.sleep(20)
-        wait_until(fun, deadline)
-    end
+    for name <- leases,
+        do:
+          rows(
+            "INSERT INTO phoenix.leases (name, holder, expires_at) VALUES ($1, 'old', statement_timestamp() - interval '1 second')",
+            [name]
+          )
   end
 end
