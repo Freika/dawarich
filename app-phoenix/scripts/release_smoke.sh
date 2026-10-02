@@ -34,6 +34,22 @@ set -e
 [ "$status5" -eq 5 ] \
   || { echo "halt_unless_ready did not exit 5 without a database connection (got $status5)"; cat "$work/status5.out" >&2; exit 1; }
 
+"$rel" help >"$work/help.out" 2>&1 || { echo "dawarich help failed"; cat "$work/help.out" >&2; exit 1; }
+grep -q 'raw-data restore USER_ID YEAR MONTH' "$work/help.out" || { echo "help does not list the operator commands"; exit 1; }
+set +e
+"$rel" users >"$work/users.out" 2>&1
+users=$?
+"$rel" 'dawarich:jobs:rehome[command:x]' >"$work/retired.out" 2>&1
+retired=$?
+"$rel" 'points:raw_data:status' >"$work/status.out" 2>&1
+rawstatus=$?
+set -e
+[ "$users" -eq 1 ] && grep -q 'Usage: dawarich COMMAND' "$work/users.out" || { echo "an incomplete command did not print the usage (exit $users)"; exit 1; }
+[ "$retired" -eq 1 ] && grep -q 'removed together with Sidekiq' "$work/retired.out" || { echo "a retired rake name was not explained (exit $retired)"; exit 1; }
+[ "$rawstatus" -eq 0 ] && [ "$(head -1 "$work/status.out" | wc -c | tr -d ' ')" = 139 ] || { echo "raw-data status through the rake name failed or re-encoded its header (exit $rawstatus)"; cat "$work/status.out" >&2; exit 1; }
+[ "$("$rel" eval 'IO.puts(:still_eval)')" = still_eval ] || { echo "eval no longer reaches the release"; exit 1; }
+"$rel" version | grep -q '^dawarich ' || { echo "version no longer reaches the release"; exit 1; }
+
 DAWARICH_RAILS_ARGS="$(printf '%s\037' sh -c 'printf "M\303\274nchen\n"; echo "args:[$1][$2][$3] $#"; echo "cookie:${RELEASE_COOKIE:-unset}"; while [ ! -f "$0" ]; do sleep 0.1; done; exit 7' "$work/go" "" x "")"
 export DAWARICH_RAILS_ARGS
 
