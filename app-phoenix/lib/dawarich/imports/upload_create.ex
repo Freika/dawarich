@@ -215,7 +215,7 @@ defmodule Dawarich.Imports.UploadCreate do
     Dawarich.Imports.ZonePeriod.load!(Dawarich.TimeZoneName.to_iana(zone))
     zone
   rescue
-    ArgumentError -> Dawarich.UserTimeZone.name(user.settings, repo)
+    _ in [ArgumentError, File.Error] -> Dawarich.UserTimeZone.name(user.settings, repo)
   end
 
   defp unique_name(repo, user, name) do

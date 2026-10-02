@@ -56,6 +56,24 @@ defmodule Dawarich.Imports.UploadCreateTest do
              })
   end
 
+  test "an unknown stored zone name falls back to the default zone instead of failing the create",
+       c do
+    settings = %{"timezone" => "Mars/Olympus", "locale" => "fr"}
+    rows("UPDATE users SET settings=$2 WHERE id=$1", [c.user.id, settings])
+    blob = uploaded(c, "upload.gpx", "<?xml version=\"1.0\"?><gpx><trk/></gpx>")
+
+    assert {:ok, [id]} =
+             UploadCreate.create(ScratchRepo, c.user, [blob.signed_id], %{
+               storage: c.config,
+               self_hosted?: true
+             })
+
+    assert [[%{"time_zone" => zone}]] =
+             rows("SELECT payload FROM job_outbox WHERE aggregate_id=$1", [id])
+
+    assert zone == Dawarich.UserTimeZone.name(settings, ScratchRepo)
+  end
+
   test "real client single-entry ZIP is retained at rest while classified for the native worker",
        c do
     name = "client.gpx"
