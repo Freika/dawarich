@@ -47,9 +47,10 @@ defmodule Dawarich.Tracks.PerUserLock do
     end
   end
 
-  def renew(key, token, ttl_ms),
-    do:
-      Redis.command(["EVAL", @renew_lua, "1", key, token, Integer.to_string(ttl_ms)]) == {:ok, 1}
+  def renew_reply(key, token, ttl_ms),
+    do: Redis.command(["EVAL", @renew_lua, "1", key, token, Integer.to_string(ttl_ms)])
+
+  def renew(key, token, ttl_ms), do: renew_reply(key, token, ttl_ms) == {:ok, 1}
 
   def release(key, token), do: Redis.command(["EVAL", @release_lua, "1", key, token])
 
@@ -78,14 +79,7 @@ defmodule Dawarich.Tracks.PerUserLock do
       {:stop, from} -> send(from, {:stopped, self()})
     after
       opts[:renew_ms] ->
-        case Redis.command([
-               "EVAL",
-               @renew_lua,
-               "1",
-               key,
-               token,
-               Integer.to_string(opts[:ttl_ms])
-             ]) do
+        case renew_reply(key, token, opts[:ttl_ms]) do
           {:ok, 1} ->
             heartbeat(key, token, opts, 0)
 

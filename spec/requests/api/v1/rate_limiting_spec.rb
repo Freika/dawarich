@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'API Rate Limiting', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:original_limits) { Rack::Attack.api_rate_limits.dup }
 
   before do
@@ -13,11 +15,13 @@ RSpec.describe 'API Rate Limiting', type: :request do
     Rack::Attack.enabled = true
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     Rack::Attack.reset!
+    freeze_time
   end
 
   after do
     Rack::Attack.api_rate_limits = original_limits
     Rack::Attack.enabled = false
+    travel_back
   end
 
   describe 'rate limit headers' do

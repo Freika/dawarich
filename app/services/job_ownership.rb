@@ -19,6 +19,10 @@ module JobOwnership
     end
   end
 
+  def oban?(key)
+    with_owner(key) { :sidekiq } == :not_owner
+  end
+
   def lock_owner(key)
     return :sidekiq unless table?
 
@@ -46,6 +50,8 @@ module JobOwnership
 
   def put!(key, owner, pinned:, by:)
     raise ArgumentError, "unknown owner #{owner}" unless OWNERS.include?(owner.to_sym)
+
+    Geocoding::RateLimiter.guard_claim!(key) if owner.to_sym == :oban
 
     require_table!
     sql = <<~SQL.squish

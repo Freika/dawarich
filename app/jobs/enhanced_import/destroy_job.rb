@@ -7,9 +7,10 @@ module EnhancedImport
     def perform(import_id)
       import = Import.find_by(id: import_id)
       return if import.nil?
+      return if EnhancedImport::Commands.forward_destroy(import, event_id: job_id)
 
       EnhancedImport::Destroy.new(import).call
-      broadcast_card(import)
+      EnhancedImport::CardBroadcaster.call(import)
     rescue StandardError => e
       # The controller parks the import in `running`; without this it would
       # spin forever with no way for the user to retry.
@@ -19,22 +20,9 @@ module EnhancedImport
           'error_message' => "Removing extracted data failed: #{e.message}"
         )
       )
-      broadcast_card(import) if import
+      EnhancedImport::CardBroadcaster.call(import) if import
       ExceptionReporter.call(e, 'Failed to remove extracted import data')
       raise
-    end
-
-    private
-
-    def broadcast_card(import)
-      Turbo::StreamsChannel.broadcast_replace_to(
-        "import_#{import.id}_extraction",
-        target: "import-#{import.id}-extraction",
-        partial: 'imports/extraction_card',
-        locals: { import: import.reload }
-      )
-    rescue StandardError => e
-      Rails.logger.warn("[EnhancedImport::DestroyJob] card broadcast failed import_id=#{import.id}: #{e.message}")
     end
   end
 end

@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'POST /api/v1/auth/otp_challenge', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   before do
     Rack::Attack.enabled = true
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
@@ -104,6 +106,9 @@ RSpec.describe 'POST /api/v1/auth/otp_challenge', type: :request do
   end
 
   describe 'brute-force protection keyed on challenge_token' do
+    before { freeze_time }
+    after { travel_back }
+
     it 'throttles repeated guesses against the same challenge_token to 5 per window' do
       # 5 wrong attempts should not be throttled; the 6th should
       5.times do

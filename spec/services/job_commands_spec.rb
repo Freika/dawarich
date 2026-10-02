@@ -112,6 +112,95 @@ RSpec.describe JobCommands do
                                                       Tracks::RecalculateJob, TransportationModes::ReclassifyTrackJob)
   end
 
+  it "each wave-5b lambda enqueues today's job with its delay" do
+    user = create(:user)
+    at = Time.zone.parse('2026-03-29 12:34:56 UTC')
+    zone = ActiveSupport::TimeZone['Europe/Berlin']
+    calendar_payload = { 'user_id' => user.id, 'start_at' => 1_700_000_000, 'end_at' => 1_700_003_600,
+                        'stepping' => 'calendar', 'time_zone' => 'Europe/Berlin', 'plan_restricted' => false }
+    fixed_payload = calendar_payload.merge('stepping' => 'fixed')
+
+    point_lambda = described_class::COMMANDS.fetch('geocoding.reverse_point').fetch(:sidekiq)
+    expect { point_lambda.call({ 'user_id' => user.id, 'point_ids' => [11, 12], 'force' => false }, at) }
+      .to have_enqueued_job(ReverseGeocodingJob).with('Point', 11, force: false)
+                                                .and have_enqueued_job(ReverseGeocodingJob)
+      .with('Point', 12, force: false)
+
+    place_lambda = described_class::COMMANDS.fetch('geocoding.reverse_place').fetch(:sidekiq)
+    expect { place_lambda.call({ 'place_id' => 77 }, at) }
+      .to have_enqueued_job(ReverseGeocodingJob).with('place', 77).at(at)
+
+    suggest_lambda = described_class::COMMANDS.fetch('visits.suggest').fetch(:sidekiq)
+    expect { suggest_lambda.call(calendar_payload, at) }
+      .to have_enqueued_job(VisitSuggestingJob)
+      .with(user_id: user.id, start_at: zone.at(1_700_000_000).iso8601, end_at: zone.at(1_700_003_600).iso8601).at(at)
+    expect { suggest_lambda.call(fixed_payload, at) }
+      .to have_enqueued_job(VisitSuggestingJob)
+      .with(user_id: user.id, start_at: zone.at(1_700_000_000), end_at: zone.at(1_700_003_600)).at(at)
+
+    redetect_lambda = described_class::COMMANDS.fetch('visits.full_history_redetect').fetch(:sidekiq)
+    expect { redetect_lambda.call({ 'user_id' => user.id, 'time_zone' => 'UTC', 'plan_restricted' => false }, at) }
+      .to have_enqueued_job(Visits::FullHistoryRedetectJob).with(user.id).at(at)
+
+    extract_lambda = described_class::COMMANDS.fetch('enhanced_import.extract_gpx').fetch(:sidekiq)
+    expect { extract_lambda.call({ 'import_id' => 555, 'lock_attempt' => 3 }, at) }
+      .to have_enqueued_job(EnhancedImport::ExtractJob).with(555, attempt: 3).at(at)
+
+    destroy_lambda = described_class::COMMANDS.fetch('enhanced_import.destroy_gpx').fetch(:sidekiq)
+    expect { destroy_lambda.call({ 'import_id' => 555 }, at) }
+      .to have_enqueued_job(EnhancedImport::DestroyJob).with(555).at(at)
+  end
+
+  it 'wave-5b lambdas enqueue after commit' do
+    user = create(:user)
+    payloads = {
+      'geocoding.reverse_point' => { 'user_id' => user.id, 'point_ids' => [31], 'force' => false },
+      'geocoding.reverse_place' => { 'place_id' => 99 },
+      'visits.suggest' => { 'user_id' => user.id, 'start_at' => 1_700_000_000, 'end_at' => 1_700_003_600,
+                            'stepping' => 'fixed', 'time_zone' => 'UTC', 'plan_restricted' => false },
+      'visits.full_history_redetect' => { 'user_id' => user.id, 'time_zone' => 'UTC', 'plan_restricted' => false },
+      'enhanced_import.extract_gpx' => { 'import_id' => 555, 'lock_attempt' => 1 },
+      'enhanced_import.destroy_gpx' => { 'import_id' => 555 }
+    }
+
+    payloads.each do |type, payload|
+      ActiveRecord::Base.transaction do
+        described_class::COMMANDS.fetch(type).fetch(:sidekiq).call(payload, Time.current)
+        raise ActiveRecord::Rollback
+      end
+    end
+
+    expect(enqueued_jobs).to be_empty
+  end
+
+  it 'rehome moves pending wave-5b rows to their jobs' do
+    user = create(:user)
+    at = Time.zone.parse('2026-03-29 12:34:56 UTC')
+    payloads = {
+      'geocoding.reverse_point' => [{ 'user_id' => user.id, 'point_ids' => [21, 22], 'force' => false }, user.id],
+      'geocoding.reverse_place' => [{ 'place_id' => 88 }, user.id],
+      'visits.suggest' => [{ 'user_id' => user.id, 'start_at' => 1_700_000_000, 'end_at' => 1_700_003_600,
+                            'stepping' => 'fixed', 'time_zone' => 'UTC', 'plan_restricted' => false }, user.id],
+      'visits.full_history_redetect' => [{ 'user_id' => user.id, 'time_zone' => 'UTC', 'plan_restricted' => false },
+                                         user.id],
+      'enhanced_import.extract_gpx' => [{ 'import_id' => 555, 'lock_attempt' => 2 }, user.id],
+      'enhanced_import.destroy_gpx' => [{ 'import_id' => 555 }, user.id]
+    }
+
+    payloads.each do |type, (payload, aggregate_id)|
+      job_owner!("command:#{type}", :oban)
+      described_class.forward(type, payload, event_id: SecureRandom.uuid, aggregate_id:, producer: 'spec',
+                              scheduled_at: at)
+      expect(described_class.rehome!(type, by: 'spec')).to eq({ moved: 1, left: 0 })
+    end
+
+    expect(JobOutbox.pending).to be_empty
+    expect(enqueued_jobs.map { _1[:job] }).to match_array(
+      [ReverseGeocodingJob, ReverseGeocodingJob, ReverseGeocodingJob, VisitSuggestingJob,
+       Visits::FullHistoryRedetectJob, EnhancedImport::ExtractJob, EnhancedImport::DestroyJob]
+    )
+  end
+
   it 're-homes pending achievement and relabel commands to their Sidekiq jobs' do
     user = create(:user)
     area = create(:area, user: user)

@@ -38,10 +38,13 @@ config :dawarich, Oban, testing: :manual
 
 config :dawarich, :redis,
   url: System.get_env("PHOENIX_TEST_REDIS_URL", "redis://127.0.0.1:7153"),
-  database: 1
+  database: 1,
+  cache_database: 0
 
 config :dawarich, :jobs_runtime, false
 config :dawarich, :jobs_repo, Dawarich.ScratchRepo
+config :dawarich, :geocoding_http, Dawarich.Geocoding.FakeHttp
+config :dawarich, :extraction_timeout_ms, 600_000
 config :dawarich, :app_version_file, Path.expand("../../.app_version", __DIR__)
 config :dawarich, :rails_root, Path.expand("../..", __DIR__)
 config :dawarich, :mail_transport, Dawarich.Mail.TestTransport

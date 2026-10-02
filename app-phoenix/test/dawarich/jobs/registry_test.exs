@@ -94,6 +94,28 @@ defmodule Dawarich.Jobs.RegistryTest do
     assert {expression, Dawarich.Tracks.DailyWorker} in Registry.crontab()
   end
 
+  test "wave-5b commands resolve to their workers" do
+    wave5b = %{
+      "geocoding.reverse_point" => Dawarich.Geocoding.ReversePointWorker,
+      "geocoding.reverse_place" => Dawarich.Geocoding.ReversePlaceWorker,
+      "visits.suggest" => Dawarich.Visits.SuggestWorker,
+      "visits.full_history_redetect" => Dawarich.Visits.RedetectWorker,
+      "enhanced_import.extract_gpx" => Dawarich.EnhancedImport.ExtractGpxWorker,
+      "enhanced_import.destroy_gpx" => Dawarich.EnhancedImport.DestroyGpxWorker
+    }
+
+    entries = Map.new(Registry.entries(), &{&1.key, &1})
+
+    for {type, worker} <- wave5b do
+      assert %{kind: :command, worker: ^worker, claimable: false} = entries["command:" <> type],
+             type
+
+      assert Registry.command(type) == {:ok, worker}
+    end
+
+    assert Registry.claimable() == []
+  end
+
   test "the app-version cron has one source: the registry matches config/schedule.yml" do
     schedule = File.read!(Path.expand("../../../../config/schedule.yml", __DIR__))
     [_, expression] = Regex.run(~r/app_version_checking_job:\n\s+cron: "([^"]+)"/, schedule)

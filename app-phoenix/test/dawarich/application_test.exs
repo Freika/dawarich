@@ -24,7 +24,7 @@ defmodule Dawarich.ApplicationTest do
     do: Enum.map(Dawarich.Application.children(plan), &Supervisor.child_spec(&1, []).id)
 
   test "stops the jobs first, then the front, then PubSub, Oban and the repo, in every front mode" do
-    base = [Dawarich.Repo, Redix, Oban, Phoenix.PubSub.Supervisor]
+    base = [Dawarich.Repo, Redix, Dawarich.Redis.Cache, Oban, Phoenix.PubSub.Supervisor]
 
     assert ids(:none) == base ++ [DawarichWeb.Endpoint, Dawarich.Jobs.Supervisor]
     assert ids(@direct) == base ++ [RailsServer, Dawarich.Jobs.Supervisor]
@@ -41,10 +41,22 @@ defmodule Dawarich.ApplicationTest do
 
   test "Redis starts before Oban when the jobs runtime is on" do
     Application.put_env(:dawarich, :jobs_runtime, true)
-    assert Enum.take(ids(:none), 3) == [Dawarich.Repo, Redix, Oban]
+    assert Enum.take(ids(:none), 4) == [Dawarich.Repo, Redix, Dawarich.Redis.Cache, Oban]
 
     Application.put_env(:dawarich, :jobs_runtime, false)
     refute Redix in ids(:none)
+    refute Dawarich.Redis.Cache in ids(:none)
+  end
+
+  test "both Redis connections start before Oban" do
+    Application.put_env(:dawarich, :jobs_runtime, true)
+
+    assert Enum.take(ids(:none), 4) == [
+             Dawarich.Repo,
+             Redix,
+             Dawarich.Redis.Cache,
+             Oban
+           ]
   end
 
   test "leaves the jobs out when the jobs runtime is off" do
@@ -67,7 +79,7 @@ defmodule Dawarich.ApplicationTest do
 
     for {plan, marker} <- [{@proxy, "1"}, {@direct, false}] do
       children = Dawarich.Application.children(plan)
-      {Oban, oban} = Enum.at(children, 2)
+      {Oban, oban} = Enum.at(children, 3)
       {RailsServer, puma} = List.keyfind(children, RailsServer, 0)
       {Dawarich.Jobs.Supervisor, jobs} = List.last(children)
 

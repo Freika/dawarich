@@ -7,6 +7,8 @@ class Visits::FullHistoryRedetectJob < ApplicationJob
   COOLDOWN = 1.hour
 
   def perform(user_id)
+    return if Visits::Commands.forward_redetect(user_id, event_id: job_id)
+
     user = User.find(user_id)
 
     I18n.with_locale(user.locale) do

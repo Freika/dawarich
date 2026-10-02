@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- Reverse geocoding, visit suggestions, visit re-detection and GPX place extraction can run in Phoenix (off by default).
+- The geocoding rate limit can be shared by all processes with `GEOCODING_SHARED_RATE_LIMIT=true` (off by default; required before Phoenix runs any geocoding job).
 - The trips list is served by the Phoenix side of the application when it can show it exactly; a list page with a TREK plan preview, or an account whose settings Rails would reject, keeps being served by Rails. Setting `DAWARICH_RAILS_ROUTES=trips` serves the list from Rails again. Links on Phoenix list pages are ordinary page loads and their paginators update the page in place instead of using Turbo Drive (ED-151).
 - Pages served by Phoenix now show the Getting started dialog and newly unlocked achievement cards, with the same markup and behaviour as Rails pages; every action still goes to Rails. Links inside those pages also work when clicked before the page has finished connecting.
 - The general and integrations settings pages, the account page (`/users/edit`) and the insights page are served by the Phoenix side of the application. Saving a form, the account forms, the insights detail panel and the residency map still go to Rails, so nothing changes in how they work. Add `settings,users,insights` to `DAWARICH_RAILS_ROUTES` (keeping any existing values, e.g. `notifications,settings,users,insights`) to hand the pages back to Rails without changing the image.

@@ -37,6 +37,7 @@ module EnhancedImport
       return if import.nil?
 
       return unless EnhancedImport::Translator.supported?(import.source)
+      return if EnhancedImport::Commands.forward_extract(import, attempt:, event_id: job_id)
 
       run(import, attempt)
     end
@@ -125,17 +126,6 @@ module EnhancedImport
       import.additional_data_extraction.fetch('options', {}).fetch('trust_source', true)
     end
 
-    def broadcast_card(import)
-      Turbo::StreamsChannel.broadcast_replace_to(
-        "import_#{import.id}_extraction",
-        target: "import-#{import.id}-extraction",
-        partial: 'imports/extraction_card',
-        locals: { import: import.reload }
-      )
-    rescue StandardError => e
-      Rails.logger.warn("[EnhancedImport::ExtractJob] card broadcast failed import_id=#{import.id}: #{e.message}")
-    end
-
     def mark_running!(import)
       payload = import.additional_data_extraction.merge(
         'started_at' => Time.current.iso8601,
@@ -146,7 +136,7 @@ module EnhancedImport
         additional_data_extraction_status: Import.additional_data_extraction_statuses[:running],
         additional_data_extraction: payload
       )
-      broadcast_card(import)
+      EnhancedImport::CardBroadcaster.call(import)
     end
 
     def mark_completed!(import, counts)
@@ -159,7 +149,7 @@ module EnhancedImport
         additional_data_extraction_status: Import.additional_data_extraction_statuses[:completed],
         additional_data_extraction: payload
       )
-      broadcast_card(import)
+      EnhancedImport::CardBroadcaster.call(import)
       schedule_track_generation(import)
     end
 
@@ -170,7 +160,7 @@ module EnhancedImport
           'started_at' => Time.current.iso8601, 'error_message' => error.message
         )
       )
-      broadcast_card(import)
+      EnhancedImport::CardBroadcaster.call(import)
     end
 
     def mark_failed!(import, error)
@@ -182,7 +172,7 @@ module EnhancedImport
         additional_data_extraction_status: Import.additional_data_extraction_statuses[:failed],
         additional_data_extraction: payload
       )
-      broadcast_card(import)
+      EnhancedImport::CardBroadcaster.call(import)
     end
 
     def fail_finally!(import, error)

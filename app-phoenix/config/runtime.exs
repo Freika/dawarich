@@ -65,7 +65,10 @@ if config_env() != :test do
     exports: 1,
     projections: 1,
     imports: 1,
-    tracks: 2
+    tracks: 2,
+    reverse_geocoding: 2,
+    visit_suggesting: 1,
+    extractions: 1
   ]
 
   config :dawarich,
@@ -93,7 +96,10 @@ if config_env() != :test do
 
   config :dawarich, :redis,
     url: System.get_env("REDIS_URL"),
-    database: env_integer.("RAILS_JOB_QUEUE_DB", 1)
+    database: env_integer.("RAILS_JOB_QUEUE_DB", 1),
+    cache_database: env_integer.("RAILS_CACHE_DB", 0)
+
+  config :dawarich, :extraction_timeout_ms, 480_000
 end
 
 config :dawarich,

@@ -19,7 +19,7 @@ defmodule Dawarich.Storage.HttpcClient do
         {to_charlist(url), headers}
       end
 
-    case :httpc.request(method, request, options, body_format: :binary) do
+    case owned_request(method, request, options) do
       {:ok, {{_, status, _}, response_headers, response_body}} ->
         {:ok,
          %{
@@ -31,6 +31,51 @@ defmodule Dawarich.Storage.HttpcClient do
 
       {:error, reason} ->
         {:error, %{reason: reason}}
+    end
+  end
+
+  defp owned_request(method, request, options) do
+    owner = self()
+
+    {pid, ref} =
+      spawn_monitor(fn ->
+        owner_ref = Process.monitor(owner)
+
+        result =
+          case :httpc.request(method, request, options, body_format: :binary, sync: false) do
+            {:ok, id} -> await_response(id, owner_ref, options[:timeout])
+            {:error, _reason} = error -> error
+          end
+
+        Process.demonitor(owner_ref, [:flush])
+        send(owner, {self(), result})
+      end)
+
+    receive do
+      {^pid, result} ->
+        Process.demonitor(ref, [:flush])
+        result
+
+      {:DOWN, ^ref, :process, ^pid, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp await_response(id, owner_ref, timeout) do
+    receive do
+      {:http, {^id, {:error, _reason} = error}} ->
+        error
+
+      {:http, {^id, response}} ->
+        {:ok, response}
+
+      {:DOWN, ^owner_ref, :process, _pid, _reason} ->
+        :httpc.cancel_request(id)
+        {:error, :cancelled}
+    after
+      timeout ->
+        :httpc.cancel_request(id)
+        {:error, :timeout}
     end
   end
 
