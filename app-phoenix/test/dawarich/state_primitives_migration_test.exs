@@ -30,20 +30,71 @@ defmodule Dawarich.StatePrimitivesMigrationTest do
   end
 
   test "the state-primitive migration builds its tables only in phoenix and reverses cleanly" do
-    [{module, _}] = Code.compile_file(@source)
+    module = compile()
 
-    on_exit(fn ->
-      Ecto.Migrator.up(ScratchRepo, @version, module, prefix: "phoenix", log: false)
+    healing(module, fn ->
+      assert_built()
+      assert down(module) == :ok
+      assert placed() == []
+      refute @version in ledger()
+      assert up(module) == :ok
+      assert_built()
+      assert @version in ledger()
     end)
+  end
 
-    assert_built()
-    assert Ecto.Migrator.down(ScratchRepo, @version, module, prefix: "phoenix", log: false) == :ok
-    assert placed() == []
-    refute @version in ledger()
-    assert Ecto.Migrator.up(ScratchRepo, @version, module, prefix: "phoenix", log: false) == :ok
+  test "a build left by an earlier edit of the migration is rebuilt before the round trip" do
+    scratch_sql!("DROP INDEX IF EXISTS phoenix.counters_expires_at_index")
+
+    healing(compile(), &assert_built/0)
+  end
+
+  test "a round trip that fails midway leaves the tables built from the file" do
+    module = compile()
+
+    assert_raise RuntimeError, "midway", fn ->
+      healing(module, fn ->
+        :ok = down(module)
+        raise "midway"
+      end)
+    end
+
     assert_built()
     assert @version in ledger()
   end
+
+  defp compile do
+    [{module, _}] = Code.compile_file(@source)
+    module
+  end
+
+  defp healing(module, fun) do
+    heal!(module)
+
+    try do
+      fun.()
+    after
+      heal!(module)
+    end
+  end
+
+  defp heal!(module) do
+    scratch_sql!("DROP TABLE IF EXISTS #{Enum.map_join(@tables, ", ", &("phoenix." <> &1))}")
+
+    ScratchRepo.query!(
+      "DELETE FROM phoenix.phoenix_schema_migrations WHERE version = $1",
+      [@version],
+      log: false
+    )
+
+    :ok = up(module)
+  end
+
+  defp up(module),
+    do: Ecto.Migrator.up(ScratchRepo, @version, module, prefix: "phoenix", log: false)
+
+  defp down(module),
+    do: Ecto.Migrator.down(ScratchRepo, @version, module, prefix: "phoenix", log: false)
 
   defp assert_built do
     assert placed() == Enum.map(@tables, &["phoenix", &1])
