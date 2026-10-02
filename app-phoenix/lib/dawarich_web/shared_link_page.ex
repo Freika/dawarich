@@ -51,7 +51,10 @@ defmodule DawarichWeb.SharedLinkPage do
     if SharedLinkCookie.unlocked?(conn, link, now) do
       case SharedLinks.page(link) do
         :rails ->
-          conn |> assign(:api_tag, "sharing") |> Body.replay("shared link page")
+          conn
+          |> assign(:api_tag, "sharing")
+          |> put_private(:dawarich_rails_session_changes, %{})
+          |> Body.replay("shared link page")
 
         page ->
           SharedLinks.touch!(link.id, now)
