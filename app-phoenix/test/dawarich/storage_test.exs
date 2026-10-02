@@ -243,4 +243,89 @@ defmodule Dawarich.StorageTest do
     refute File.exists?(path)
     assert Storage.delete(config, key) == :ok
   end
+
+  @a12b Dawarich.Test.A12b.fixture("storage.json")
+
+  test "sanitized_filename/1 and content_disposition/2 equal Rails', transliteration included" do
+    for %{"type" => type, "filename" => name, "sanitized" => sanitized, "header" => header} <-
+          @a12b["dispositions"] do
+      assert Dawarich.Storage.sanitized_filename(name) == sanitized, inspect(name)
+      assert Dawarich.Storage.content_disposition(type, name) == header, inspect(name)
+    end
+  end
+
+  test "safe_disk_path/2 refuses what DiskService#path_for refuses" do
+    root = Path.join(System.tmp_dir!(), "a12b-root")
+
+    assert Dawarich.Storage.safe_disk_path(root, "abcdef") ==
+             {:ok, Path.join([Path.expand(root), "ab", "cd", "abcdef"])}
+
+    assert {:ok, _} =
+             Dawarich.Storage.safe_disk_path(root, "raw_data_archives/1/2026/05/001.jsonl.gz.enc")
+
+    for bad <- [
+          "",
+          "  ",
+          "../x",
+          "a/../b",
+          "./a",
+          "a/./b",
+          "a/..",
+          <<0, ?a>>,
+          <<255>>,
+          nil,
+          "..abc"
+        ],
+        do: assert(Dawarich.Storage.safe_disk_path(root, bad) == :error, inspect(bad))
+  end
+
+  test "property: safe_disk_path/2 never resolves outside the root" do
+    root = Path.expand(Path.join(System.tmp_dir!(), "a12b-root"))
+
+    Dawarich.Test.A12b.seeded(fn _ ->
+      key =
+        Enum.map_join(1..:rand.uniform(6), "/", fn _ ->
+          Enum.random(["..", ".", "a", "bc", "~", "x y", "é"])
+        end)
+
+      case Dawarich.Storage.safe_disk_path(root, key) do
+        {:ok, path} -> assert String.starts_with?(path, root <> "/")
+        :error -> :ok
+      end
+    end)
+  end
+
+  test "safe_disk_path/2 slices the folders by codepoint, as Ruby's key[0..1] does" do
+    root = Path.expand(Path.join(System.tmp_dir!(), "a12b-root"))
+    accent = <<?e, 0x301::utf8>>
+    key = accent <> "abc"
+
+    assert Dawarich.Storage.safe_disk_path(root, key) ==
+             {:ok, Path.join([root, accent, "ab", key])}
+  end
+
+  test "services!/2 is storage.yml's registry; service!/2 and disk_service/2 resolve names as Blob#service and named_disk_service do",
+       %{rails_root: rails_root} do
+    test_service = %{service: "local", root: Path.join(rails_root, "tmp/storage")}
+    local_service = %{service: "local", root: Path.join(rails_root, "storage")}
+    s3_service = Storage.config!(Map.put(@aws, "STORAGE_BACKEND", "s3"), rails_root)
+    local = Storage.services!(%{}, rails_root)
+
+    assert local == %{
+             default: "local",
+             services: %{"test" => test_service, "local" => local_service}
+           }
+
+    assert Storage.services!(@aws, rails_root) == %{
+             default: "local",
+             services: %{"test" => test_service, "local" => local_service, "s3" => s3_service}
+           }
+
+    s3 = Storage.services!(Map.put(@aws, "STORAGE_BACKEND", "s3"), rails_root)
+    assert s3.default == "s3"
+    assert Storage.service!(s3, "s3") == Map.put(s3_service, :stored_service, "s3")
+    assert Storage.disk_service(s3, "local") == Map.put(local_service, :stored_service, "local")
+    assert Storage.disk_service(local, "gone") == Map.put(local_service, :stored_service, "local")
+    assert_raise KeyError, fn -> Storage.service!(local, "s3") end
+  end
 end
