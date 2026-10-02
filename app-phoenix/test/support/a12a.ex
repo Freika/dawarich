@@ -337,4 +337,57 @@ defmodule Dawarich.Test.A12a do
     id = Jason.encode!(%{channel: channel})
     %{socket_state(%{user: user!(who), share: nil}) | subs: %{id => {b, :confirmed}}}
   end
+
+  def streamables(parts),
+    do:
+      Enum.map(parts, fn
+        [model, id] -> {String.to_atom(model), id}
+        part -> part
+      end)
+
+  def relay!(name), do: @corpus["relay"][name]
+  def relay_payload(name), do: name |> relay!() |> Map.fetch!("published") |> hd() |> List.last()
+
+  def listen(broadcasting) do
+    pid = listener()
+    {:ok, ref} = Redix.PubSub.subscribe(pid, Bus.channel(broadcasting), self())
+
+    receive do
+      {:redix_pubsub, ^pid, ^ref, :subscribed, _} -> {:ok, ref}
+    after
+      2_000 -> raise "no subscription to #{broadcasting}"
+    end
+  end
+
+  def listen_all do
+    pid = listener()
+    {:ok, ref} = Redix.PubSub.psubscribe(pid, "dawarich_a12a:*", self())
+
+    receive do
+      {:redix_pubsub, ^pid, ^ref, :psubscribed, _} -> {:ok, ref}
+    after
+      2_000 -> raise "no pattern subscription"
+    end
+  end
+
+  def heard(timeout \\ 2_000) do
+    receive do
+      {:redix_pubsub, _pid, _ref, kind, %{channel: channel, payload: payload}}
+      when kind in [:message, :pmessage] ->
+        {String.replace_prefix(channel, "dawarich_a12a:", ""), payload}
+    after
+      timeout -> :nothing
+    end
+  end
+
+  defp listener do
+    case Process.whereis(:a12a_listener) do
+      nil ->
+        start = {Redix.PubSub, :start_link, [test_redis_url(), [name: :a12a_listener]]}
+        start_supervised!(%{id: :a12a_listener, start: start})
+
+      pid ->
+        pid
+    end
+  end
 end
