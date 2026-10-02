@@ -9,11 +9,13 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
   @golden "test/fixtures/api_family/writes.json" |> File.read!() |> Jason.decode!()
   @tables ~w(users families family_memberships family_location_requests notifications points)
   @written ~w(users family_location_requests notifications)
+  @outbox ~w(phoenix.rails_commands phoenix.notification_events)
   @now @golden["now"] |> DateTime.from_iso8601() |> elem(1)
   @http_owned ~w(history_missing_params history_blank_params history_not_in_family
                  sharing_missing_enabled sharing_blank_enabled sharing_not_in_family create_stranger
                  create_deleted_member create_without_target create_not_in_family accept_missing
-                 accept_not_target mine_not_in_family decline accept_suggested)
+                 accept_not_target mine_not_in_family decline accept_suggested create_request
+                 create_target_sharing create_cooldown)
 
   @events Path.expand("../../../priv/repo/sql/20260928120000_wave2.sql", __DIR__)
 
@@ -34,6 +36,18 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
     end
   end
 
+  test "a failure after the first write rolls every table back and hands the request to Rails" do
+    kase = Enum.find(@golden["cases"], &(&1["name"] == "create_request"))
+    seed(kase)
+    Repo.query!("DROP TABLE phoenix.notification_events")
+    {action, user, params} = prepare(kase)
+    tables = @tables ++ ["phoenix.rails_commands"]
+    before = rows(tables)
+
+    assert {:replay, _reason} = FamilyController.run(action, user, params, @now)
+    assert rows(tables) == before
+  end
+
   defp seed(kase) do
     for [table, rows] <- @golden["setups"][kase["setup"]], row <- rows do
       true = table in @tables
@@ -45,17 +59,16 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
   end
 
   defp http!(kase, port, puma) do
-    before = rows(@tables)
+    before = rows(@tables ++ @outbox)
     ApiGolden.check(kase, port, puma)
-    if kase["expect"] == "rails", do: assert(rows(@tables) == before)
+    if kase["expect"] == "rails", do: assert(rows(@tables ++ @outbox) == before)
 
-    for table <- ~w(phoenix.notification_events phoenix.rails_commands) ++ Enum.reverse(@tables),
-        do: Repo.query!("DELETE FROM #{table}")
+    for table <- @outbox ++ Enum.reverse(@tables), do: Repo.query!("DELETE FROM #{table}")
 
     seed(kase)
   end
 
-  defp domain!(kase) do
+  defp prepare(kase) do
     %{"method" => method, "target" => target, "headers" => headers, "body" => body} =
       kase["request"]
 
@@ -63,6 +76,11 @@ defmodule DawarichWeb.Api.FamilyWritesGoldenTest do
     user = Accounts.by_api_key(String.replace_prefix(key, "Bearer ", ""))
     {action, path_params} = action(method, URI.parse(target).path)
     params = query(target) |> Map.merge(body(headers, body)) |> Map.merge(path_params)
+    {action, user, params}
+  end
+
+  defp domain!(kase) do
+    {action, user, params} = prepare(kase)
     notifications = count("notifications")
 
     assert {:ok, status, term} = FamilyController.run(action, user, params, @now)

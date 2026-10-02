@@ -11,21 +11,21 @@ module ApiFamilyWritesOracle
   GONE = 890_004
   FAMILY = 891_001
   KEY = 'phoenix-a4fam-writes-key'
-  NOW = Time.utc(2030, 1, 15, 10, 30, 0)
+  NOW = Time.utc(2037, 1, 15, 10, 30, 0)
   STAMP = '2029-12-01 08:00:00'
   SEQUENCES = { 'family_location_requests_id_seq' => 895_000, 'notifications_id_seq' => 896_000 }.freeze
   F = '/api/v1/families'
   R = "#{F}/location_requests".freeze
-  SHARE = { 'enabled' => true, 'started_at' => '2030-01-12T10:30:00Z', 'share_history' => true,
+  SHARE = { 'enabled' => true, 'started_at' => '2037-01-12T10:30:00Z', 'share_history' => true,
             'history_window' => '7d' }.freeze
-  MINE_SHARE = { 'enabled' => true, 'duration' => '6h', 'expires_at' => '2030-01-15T14:00:00Z',
-                 'started_at' => '2030-01-15T08:00:00+01:00', 'share_history' => true,
+  MINE_SHARE = { 'enabled' => true, 'duration' => '6h', 'expires_at' => '2037-01-15T14:00:00Z',
+                 'started_at' => '2037-01-15T08:00:00+01:00', 'share_history' => true,
                  'history_window' => '30d', 'history_before_sharing' => true }.freeze
   INCOMING = { id: 892_001, requester: MEMBER, target: OWNER, created: -600, expires: 86_000 }.freeze
   OUTGOING = { id: 892_002, requester: OWNER, target: MEMBER, created: -1200, expires: 85_000 }.freeze
   STALE = [{ id: 892_003, requester: MEMBER, target: OWNER, created: -90_000, expires: -3600 },
            { id: 892_004, requester: MEMBER, target: OWNER, status: 2, created: -700, expires: 86_000 }].freeze
-  RANGE = 'start_at=2030-01-05T00:00:00Z&end_at=2030-01-15T10:30:00Z'
+  RANGE = 'start_at=2037-01-05T00:00:00Z&end_at=2037-01-15T10:30:00Z'
   H = "#{F}/locations/history?#{RANGE}".freeze
   JSON_TYPE = { 'Content-Type' => 'application/json' }.freeze
   FORM = { 'Content-Type' => 'application/x-www-form-urlencoded' }.freeze
@@ -43,16 +43,16 @@ module ApiFamilyWritesOracle
     { name: 'history_window_24h', path: H, points: true, member: { share: SHARE.merge('history_window' => '24h') } },
     { name: 'history_window_unknown', path: H, points: true,
       member: { share: SHARE.merge('history_window' => '2w', 'started_at' => nil, 'history_before_sharing' => true) } },
-    { name: 'history_date_only_berlin', path: "#{F}/locations/history?start_at=2030-01-13&end_at=2030-01-15",
+    { name: 'history_date_only_berlin', path: "#{F}/locations/history?start_at=2037-01-13&end_at=2037-01-15",
       points: true, actor: { timezone: 'Europe/Berlin' } },
     { name: 'history_offset_params', points: true,
-      path: "#{F}/locations/history?start_at=2030-01-14T00:00:00%2B05:00&end_at=2030-01-15T09:00:00.5Z" },
+      path: "#{F}/locations/history?start_at=2037-01-14T00:00:00%2B05:00&end_at=2037-01-15T09:00:00.5Z" },
     { name: 'history_share_history_off', path: H, points: true,
       member: { share: SHARE.merge('share_history' => false) } },
     { name: 'history_no_start_no_consent', path: H, points: true, member: { share: SHARE.merge('started_at' => '') } },
-    { name: 'history_empty_range', path: "#{F}/locations/history?start_at=2030-01-15T10:30:00Z&end_at=2030-01-15",
+    { name: 'history_empty_range', path: "#{F}/locations/history?start_at=2037-01-15T10:30:00Z&end_at=2037-01-15",
       points: true },
-    { name: 'history_missing_params', path: "#{F}/locations/history?start_at=2030-01-01" },
+    { name: 'history_missing_params', path: "#{F}/locations/history?start_at=2037-01-01" },
     { name: 'history_blank_params', path: "#{F}/locations/history?start_at=%20&end_at=" },
     { name: 'history_not_in_family', path: H, seed: :no_family },
     { name: 'sharing_enable_hour', method: :patch, path: "#{F}/sharing", actor: { timezone: 'Europe/Berlin' },
@@ -60,10 +60,10 @@ module ApiFamilyWritesOracle
     { name: 'sharing_enable_permanent', method: :patch, path: "#{F}/sharing",
       body: { enabled: true, duration: 'permanent', share_history: true, history_window: '24h' } },
     { name: 'sharing_enable_carry_future', method: :patch, path: "#{F}/sharing", actor: { timezone: 'Asia/Tokyo',
-      share: { 'enabled' => false, 'duration' => '24h', 'expires_at' => '2030-01-15T20:00:00Z',
+      share: { 'enabled' => false, 'duration' => '24h', 'expires_at' => '2037-01-15T20:00:00Z',
                'started_at' => 'kept-as-is' } }, body: { enabled: true } },
     { name: 'sharing_enable_carry_past', method: :patch, path: "#{F}/sharing",
-      actor: { share: { 'duration' => '12h', 'expires_at' => '2030-01-15T09:00:00Z', 'share_history' => true,
+      actor: { share: { 'duration' => '12h', 'expires_at' => '2037-01-15T09:00:00Z', 'share_history' => true,
                         'history_before_sharing' => true } }, body: { enabled: true } },
     { name: 'sharing_form_strings', method: :patch, path: "#{F}/sharing", content: FORM,
       body: 'enabled=1&duration=6h&share_history=true&history_window=all&history_before_sharing=1' },
@@ -81,7 +81,7 @@ module ApiFamilyWritesOracle
     { name: 'sharing_blank_enabled', method: :patch, path: "#{F}/sharing", body: { enabled: '  ' } },
     { name: 'sharing_not_in_family', method: :patch, path: "#{F}/sharing", seed: :no_family, body: { enabled: true } },
     { name: 'create_request', method: :post, path: R, actor: { timezone: 'Europe/Berlin' },
-      member: { share: nil, locale: 'de' }, body: { target_user_id: MEMBER } },
+      member: { share: nil, locale: 'de' }, mask: ['"expires_at":"[^"]*"'], body: { target_user_id: MEMBER } },
     { name: 'create_request_string_id', method: :post, path: R, member: { share: nil },
       requests: [{ id: 892_005, requester: OWNER, target: MEMBER, created: -7200, expires: 79_000 }],
       body: { target_user_id: MEMBER.to_s } },
@@ -108,12 +108,12 @@ module ApiFamilyWritesOracle
     { name: 'replay_mine_deleted_requester', expect: :rails, path: "#{F}/mine",
       requests: [INCOMING.merge(requester: GONE)] },
     { name: 'replay_mine_loose_started', expect: :rails, path: "#{F}/mine",
-      actor: { share: { 'enabled' => false, 'started_at' => '2030-01-01' } } },
+      actor: { share: { 'enabled' => false, 'started_at' => '2037-01-01' } } },
     { name: 'replay_history_loose_date', expect: :rails,
-      path: "#{F}/locations/history?start_at=Jan%205%202030&end_at=x" },
+      path: "#{F}/locations/history?start_at=Jan%205%202037&end_at=x" },
     { name: 'replay_history_epoch', expect: :rails,
       path: "#{F}/locations/history?start_at=1893456000&end_at=1893456001" },
-    { name: 'replay_history_array', expect: :rails, path: "#{F}/locations/history?start_at[]=a&end_at=2030-01-15" },
+    { name: 'replay_history_array', expect: :rails, path: "#{F}/locations/history?start_at[]=a&end_at=2037-01-15" },
     { name: 'replay_sharing_numeric_duration', expect: :rails, method: :patch, path: "#{F}/sharing",
       body: { enabled: true, duration: '48' } },
     { name: 'replay_sharing_integer_enabled', expect: :rails, method: :patch, path: "#{F}/sharing",

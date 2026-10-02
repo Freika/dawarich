@@ -32,6 +32,7 @@ module FamilyWritesGoldenSupport
       response = writes_response(kase, headers, body)
       unordered = kase[:expect] == :own && response['body'].start_with?('{"members"', '{"lapsed"') ? ['members'] : []
       { 'name' => kase[:name], 'expect' => kase[:expect].to_s, 'ignore' => ['etag'], 'unordered' => unordered,
+        **(kase[:mask] ? { 'mask' => kase[:mask] } : {}),
         'env' => kase[:env],
         'setup' => setup,
         'request' => { 'method' => kase[:method].to_s.upcase, 'target' => kase[:path], 'headers' => headers.to_a,
