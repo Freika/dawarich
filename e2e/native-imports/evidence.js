@@ -200,7 +200,6 @@ export const test = base.extend({
           ...started.get(request),
           navigationURL: safeURL(navigationURL),
         }
-        // Missing request-start evidence cannot qualify for an expected cancellation.
         entry.setupNavigationCancellation =
           !!entry.documentURL &&
           entry.documentURL !== "[non-URL]" &&
@@ -276,7 +275,6 @@ export const test = base.extend({
     try {
       await use(evidence)
       const unexpectedRequests = failedRequests.filter((request) => {
-        // Chromium aborts navigation when a successful download is handed to the browser.
         const expectedDownload =
           downloads.has(new URL(request.url).pathname) &&
           request.error === "net::ERR_ABORTED"

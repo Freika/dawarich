@@ -77,7 +77,6 @@ async function readyPage(page) {
 
 export function fixture(kind) {
   const token = `${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
-  // Three non-anomalous points, with distinct timestamps across test executions.
   const start = 1709251200 + (Math.floor(Date.now() / 1000) % 16000000)
   const times = [0, 60, 120].map((offset) =>
     new Date((start + offset) * 1000).toISOString(),
@@ -191,8 +190,6 @@ export async function nativePage(page, path) {
       contentType: "image/png",
     })
   }
-  // DaisyUI gives a closed dialog dimensions despite opacity: 0. Only an actually
-  // open welcome dialog has a usable Skip button; keep the ordinary click path.
   const welcome = page.locator("dialog#getting_started[open]").filter({
     has: page.getByRole("heading", {
       name: "Welcome to Dawarich!",
@@ -222,7 +219,6 @@ export function row(page, name) {
     .filter({ has: page.getByRole("link", { name, exact: true }) })
 }
 
-// Raw GPX exercises real storage+native producer. Ordinary file selection wraps GPX client-side.
 export async function createPlainImport(page, input) {
   await nativePage(page, "/imports/new")
   const csrf = await page

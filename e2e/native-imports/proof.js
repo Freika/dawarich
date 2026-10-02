@@ -3,7 +3,6 @@ import { createHash } from "node:crypto"
 import { closeSync, existsSync, openSync, readSync, statSync } from "node:fs"
 import path from "node:path"
 
-// Read-only evidence from the actual stand, independent of browser DOM counters.
 export function database(sql) {
   const name = process.env.NATIVE_IMPORTS_DATABASE_NAME
   if (!name || !/^dawarich_(test|e2e)_a7_/.test(name)) {

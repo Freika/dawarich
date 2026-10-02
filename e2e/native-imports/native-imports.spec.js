@@ -47,7 +47,6 @@ for (const scenario of [
     const id = await imported.getAttribute("data-import-id")
     expect(id).toMatch(/^[1-9]\d*$/)
 
-    // An index loaded after POST remains live throughout processing: no reload/polling of HTML.
     let subsequentNavigations = 0
     page.on("framenavigated", (frame) => {
       if (frame === page.mainFrame()) subsequentNavigations++
@@ -194,7 +193,6 @@ for (const scenario of [
     expect(await download.failure()).toBeNull()
     expect(readFileSync(await download.path())).toEqual(input.buffer)
     evidence.downloaded(id)
-    // Wrapped downloads navigate through a preparation page; return to the connected index.
     await nativePage(page, "/imports")
     await expect(imported).toBeVisible()
 
