@@ -39,6 +39,33 @@ RSpec.describe 'RailsCommands family_location_request_mail' do
     expect(enqueued_jobs.size).to eq(1)
   end
 
+  it 'enqueues the mail on the next run when the first enqueue raised' do
+    request = create(:family_location_request, requester:, target_user: target, family:)
+    attempts = 0
+    allow(ActionMailer::MailDeliveryJob.queue_adapter).to receive(:enqueue).and_wrap_original do |enqueue, *args|
+      raise RedisClient::CannotConnectError, 'queue unreachable' if (attempts += 1) == 1
+
+      enqueue.call(*args)
+    end
+    payload = { 'user_id' => requester.id, 'request_id' => request.id }
+
+    expect { run(payload) }.to raise_error(RedisClient::CannotConnectError)
+    expect(enqueued_jobs).to be_empty
+
+    run(payload)
+
+    expect(enqueued_jobs.size).to eq(1)
+  end
+
+  it 'raises and enqueues nothing when the cache cannot be reached' do
+    request = create(:family_location_request, requester:, target_user: target, family:)
+    unreachable = ActiveSupport::Cache::RedisCacheStore.new(redis: -> { raise Redis::CannotConnectError, 'down' })
+    allow(Rails).to receive(:cache).and_return(unreachable)
+
+    expect { run('user_id' => requester.id, 'request_id' => request.id) }.to raise_error(/cache/)
+    expect(enqueued_jobs).to be_empty
+  end
+
   it 'enqueues nothing for a request that is gone' do
     run('user_id' => requester.id, 'request_id' => 999_999_999)
 
