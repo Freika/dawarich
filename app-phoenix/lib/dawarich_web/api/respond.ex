@@ -8,9 +8,25 @@ defmodule DawarichWeb.Api.Respond do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.RailsHeaders
 
-  def json(conn, status, term, opts \\ []) do
-    body = term |> Ruby.json() |> IO.iodata_to_binary()
-    conn = frame(conn, "application/json; charset=utf-8")
+  def json(conn, status, term, opts \\ []),
+    do:
+      send_body(
+        conn,
+        status,
+        term |> Ruby.json() |> IO.iodata_to_binary(),
+        "application/json; charset=utf-8",
+        opts
+      )
+
+  def data(conn, body, type, opts) do
+    conn
+    |> put_resp_header("content-disposition", "inline")
+    |> put_resp_header("content-transfer-encoding", "binary")
+    |> send_body(200, body, type, opts)
+  end
+
+  defp send_body(conn, status, body, type, opts) do
+    conn = frame(conn, type)
     conn = if conn.assigns.api_vary, do: put_resp_header(conn, "vary", "Accept"), else: conn
     conn = cache(conn, status, body, opts)
     final = final_status(conn, status)

@@ -155,7 +155,13 @@ defmodule DawarichWeb.Api.Auth do
     cond do
       Map.has_key?(conn.assigns.api_params, "format") ->
         case Map.get(
-               %{"json" => :json, "html" => :html, "xml" => :xml, "text" => :text},
+               %{
+                 "json" => :json,
+                 "html" => :html,
+                 "xml" => :xml,
+                 "text" => :text,
+                 "jpg" => :jpeg
+               },
                conn.assigns.api_params["format"]
              ) do
           nil -> {:replay, "format parameter"}

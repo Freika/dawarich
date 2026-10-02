@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- On self-hosted installations the location search (`GET /api/v1/locations`) and Immich photo thumbnail (`GET /api/v1/photos/:id/thumbnail`) API endpoints are now answered by the Elixir supervisor instead of Rails, so a slow Immich server no longer ties up Rails' request threads. Responses are unchanged. Set `DAWARICH_RAILS_SLICES=api_locations_photos` on the web container to hand them back to Rails without changing the image. Location suggestions, the photo list, PhotoPrism thumbnails and Immich enrichment are still answered by Rails, and Cloud keeps using Rails for now.
 - Reverse geocoding, visit suggestions, visit re-detection and GPX place extraction can run in Phoenix (off by default).
 - The geocoding rate limit can be shared by all processes with `GEOCODING_SHARED_RATE_LIMIT=true` (off by default; required before Phoenix runs any geocoding job).
 - The trips list is served by the Phoenix side of the application when it can show it exactly; a list page with a TREK plan preview, or an account whose settings Rails would reject, keeps being served by Rails. Setting `DAWARICH_RAILS_ROUTES=trips` serves the list from Rails again. Links on Phoenix list pages are ordinary page loads and their paginators update the page in place instead of using Turbo Drive (ED-151).

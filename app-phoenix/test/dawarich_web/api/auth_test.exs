@@ -410,4 +410,13 @@ defmodule DawarichWeb.Api.AuthTest do
     sent = Auth.admit(conn, %{user | active_until: "garbage"}, [])
     assert {sent.status, sent.resp_body} == {401, ""}
   end
+
+  test "format=jpg is Rails' path format: accepted without Vary, the Accept header never consulted" do
+    assert {:ok, :jpeg, false, nil} = admission(%{"format" => "jpg"}, [{"accept", "*/*"}])
+
+    assert {:ok, :jpeg, false, nil} =
+             admission(%{"format" => "jpg"}, [{"accept", "image/avif,image/webp"}])
+
+    assert {:replay, "format parameter"} = admission(%{"format" => "jpeg"})
+  end
 end
