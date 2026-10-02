@@ -4,6 +4,7 @@ defmodule Dawarich.Build.CompareBuildInputsTest do
   @moduletag :tmp_dir
 
   @script Path.expand("../../../scripts/compare_build_inputs.sh", __DIR__)
+  @zones File.read!(Path.expand("../../../priv/time_zones.json", __DIR__))
   @manifest ~s({"files":{"x-1.js":{"logical_path":"x.js","mtime":"2026-10-02T00:00:00+00:00","size":1}},) <>
               ~s("assets":{"x.js":"x-1.js","y.js":"y-2.js"}})
 
@@ -15,7 +16,8 @@ defmodule Dawarich.Build.CompareBuildInputsTest do
       "config/sprockets-manifest.json" => @manifest,
       "tmp/phoenix/i18n.json" => "{}",
       "tmp/phoenix/achievements.json" => "{}",
-      "tmp/phoenix/importmap.json" => "{}"
+      "tmp/phoenix/importmap.json" => "{}",
+      "tmp/phoenix/time_zones.json" => @zones
     }
 
     for {path, body} <- Map.merge(defaults, files), body != nil do
@@ -92,6 +94,14 @@ defmodule Dawarich.Build.CompareBuildInputsTest do
     assert compare(a, manifest.("b", reordered)) == {"", 0}
     assert {_, 1} = compare(a, manifest.("c", @manifest <> "\n"))
     assert {_, 1} = compare(a, manifest.("d", fields))
+  end
+
+  test "the first tree's time zones must be the committed list", %{tmp_dir: root} do
+    b = tree!(root, "b")
+
+    assert {output, 1} = compare(tree!(root, "a", %{"tmp/phoenix/time_zones.json" => "{}"}), b)
+    assert output =~ "priv/time_zones.json"
+    assert {_, 1} = compare(tree!(root, "c", %{"tmp/phoenix/time_zones.json" => nil}), b)
   end
 
   test "an input missing from both trees fails the comparison", %{tmp_dir: root} do

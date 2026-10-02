@@ -9,6 +9,7 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
   let(:root) { Rails.root.join('app-phoenix') }
   let(:fixtures) { root.join('test/fixtures') }
   let(:helper) { ApplicationController.helpers }
+  let(:zones) { JSON.parse(root.join('priv/time_zones.json').read).fetch('options') }
 
   def write_json(path, data) = File.write(path, "#{JSON.pretty_generate(data)}\n")
 
@@ -61,7 +62,7 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
 
     write_json(
       fixtures.join('settings_corpus.json'),
-      time_zone_options: helper.settings_time_zone_options,
+      time_zone_options: zones,
       qr: payloads.map { qr_entry(_1) },
       times: times.map do |value, zone|
         parsed = Time.use_zone(zone) do
@@ -146,6 +147,7 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
     allow(DawarichSettings).to receive(:two_factor_available?).and_return(two_factor)
     allow_any_instance_of(Supporter::VerifyEmail).to receive(:call).and_return(supporter)
     allow_any_instance_of(Supporter::VerifyGithubUsername).to receive(:call).and_return(supporter)
+    allow_any_instance_of(UserHelper).to receive(:settings_time_zone_options).and_return(zones)
     sign_in user
     get path
     expect(response).to have_http_status(:ok)

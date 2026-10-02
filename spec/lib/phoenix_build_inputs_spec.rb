@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'rake'
 
 RSpec.describe PhoenixBuildInputs do
   describe PhoenixBuildInputs::ManifestResolver do
@@ -106,8 +107,29 @@ RSpec.describe PhoenixBuildInputs do
     end
   end
 
-  it 'has the committed time-zone list ActiveSupport computes' do
-    expect(described_class.time_zones_json).to eq(Rails.root.join('app-phoenix/priv/time_zones.json').read)
+  it 'writes the time-zone list through phoenix:time_zones' do
+    Rails.application.load_tasks unless Rake::Task.task_defined?('phoenix:time_zones')
+
+    Dir.mktmpdir do |dir|
+      path = File.join(dir, 'time_zones.json')
+      Rake::Task['phoenix:time_zones'].reenable
+      Rake::Task['phoenix:time_zones'].invoke(path)
+
+      expect(File.read(path)).to eq(described_class.time_zones_json)
+    end
+  end
+
+  it 'commits the time-zone list the helper builds from ActiveSupport zones at the committed offsets' do
+    committed = Rails.root.join('app-phoenix/priv/time_zones.json').read
+    offsets = JSON.parse(committed).fetch('options').to_h do |label, iana|
+      [iana, Time.zone_offset(label[/\A\(GMT([+-]\d\d:\d\d)\) /, 1])]
+    end
+    zones = ActiveSupport::TimeZone::MAPPING.filter_map do |name, iana|
+      ActiveSupport::TimeZone.create(name, offsets[iana], Struct.new(:name).new(iana)) if offsets.key?(iana)
+    end
+    allow(ActiveSupport::TimeZone).to receive(:all).and_return(zones.sort)
+
+    expect(described_class.time_zones_json).to eq(committed)
   end
 
   it 'feeds Phoenix only YAML whose plain scalars mean the same under YAML 1.2' do

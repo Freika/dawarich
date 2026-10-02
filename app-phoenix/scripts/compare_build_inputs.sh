@@ -14,6 +14,8 @@ for side in a b; do
 done
 diff "$work/a.list" "$work/b.list" || { echo "the file sets differ" >&2; exit 1; }
 status=0
+zones="$(dirname "$0")/../priv/time_zones.json"
+cmp -s "$a/tmp/phoenix/time_zones.json" "$zones" || { echo "time zones differ from app-phoenix/priv/time_zones.json"; status=1; }
 while IFS= read -r f; do
   case "$f" in
     *.gz)
