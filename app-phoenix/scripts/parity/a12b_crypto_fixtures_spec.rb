@@ -210,4 +210,96 @@ RSpec.describe 'Phoenix fixture: A12b crypto', type: :request do
       end
     end
   end
+
+  def phoenix_crypto_code(lines)
+    <<~ELIXIR
+      alias Dawarich.RawData.ArchiveFormat
+      alias Dawarich.{RailsCookies, RailsMessages}
+      fx = "test/fixtures/a12b/crypto.json" |> File.read!() |> Jason.decode!()
+      ordered = "test/fixtures/a12b/crypto.json" |> File.read!() |> Jason.decode!(objects: :ordered_objects)
+      secret = Application.fetch_env!(:dawarich, :rails_secret)
+      envs = %{"absent" => %{}, "phrase" => %{"ARCHIVE_ENCRYPTION_KEY" => "#{fx::ARCHIVE_PHRASE}"}, "empty" => %{"ARCHIVE_ENCRYPTION_KEY" => ""}}
+      bases = %{"secret" => secret, "rotated" => "#{fx::ROTATED_BASE}"}
+      gzip = ArchiveFormat.build(fx["archives"]["lines"])
+      archives = for %{"env" => e, "base" => b} <- fx["archives"]["written"], do: %{"env" => e, "base" => b, "gzip" => Base.encode64(gzip), "message" => ArchiveFormat.encrypt(gzip, ArchiveFormat.key(envs[e], bases[b]))}
+      stored_lines = "#{Base64.strict_encode64(lines.to_json)}" |> Base.decode64!() |> Jason.decode!()
+      stored_message = ArchiveFormat.encrypt(ArchiveFormat.build(stored_lines), ArchiveFormat.key(%{}, secret))
+      stored_ids = Enum.map(stored_lines, &Jason.decode!(&1)["id"])
+      stored = %{"message" => stored_message, "content_checksum" => ArchiveFormat.sha256(stored_message), "ids_checksum" => ArchiveFormat.ids_checksum(stored_ids)}
+      turbo = for %{"parts" => parts} <- fx["turbo"], do: RailsMessages.stream_name(Enum.map(parts, fn [m, id] -> {String.to_atom(m), id}; p -> p end), secret)
+      exp = ~U[2026-10-02 12:05:00.000Z]
+      storage = for {entry, data} <- Enum.zip(fx["messages"]["storage"], Enum.map(ordered["messages"]["storage"], & &1["data"])), do: RailsMessages.sign_storage(data, entry["purpose"], exp, secret)
+      cookies = for e <- fx["shared_link"], do: %{"id" => e["id"], "live" => RailsCookies.encrypt(e["unlock"], "shared_link_\#{e["id"]}", secret, ~U[2026-10-02 13:00:00.000Z]), "expired" => RailsCookies.encrypt(e["unlock"], "shared_link_\#{e["id"]}", secret, ~U[2026-10-02 11:59:59.000Z])}
+      IO.puts(Jason.encode!(%{"archives" => archives, "stored" => stored, "turbo" => turbo, "storage" => storage, "cookies" => cookies}))
+    ELIXIR
+  end
+
+  def expect_stored_archive_from_phoenix(points, stored)
+    with_archive_env(nil, fx::SECRET) do
+      archive = Points::RawDataArchive.create!(
+        user: points.first.user, year: 2026, month: 6, chunk_number: 1, point_count: points.size,
+        point_ids_checksum: stored['ids_checksum'], archived_at: Time.current,
+        metadata: { 'format_version' => 2, 'compression' => 'gzip', 'encryption' => 'aes-256-gcm',
+                    'content_checksum' => stored['content_checksum'], 'expected_count' => points.size,
+                    'actual_count' => points.size }
+      )
+      archive.file.attach(io: StringIO.new(stored['message']), filename: '001.jsonl.gz.enc',
+                          content_type: 'application/octet-stream',
+                          key: "raw_data_archives/#{archive.user_id}/2026/06/001.jsonl.gz.enc")
+      originals = points.to_h { |point| [point.id, point.raw_data] }
+      ids = points.map(&:id)
+      Point.where(id: ids).update_all(raw_data_archived: true, raw_data_archive_id: archive.id)
+      Points::RawData::Verifier.new.verify_specific_archive(archive.id)
+      expect(archive.reload.verified_at).to be_present
+      Point.where(id: ids).update_all(raw_data: {})
+      Points::RawData::Restorer.new.restore_to_database(archive.user_id, 2026, 6)
+      expect(Point.where(id: ids).to_h { |point| [point.id, point.raw_data] }).to eq(originals)
+    end
+  end
+
+  it 'reads what Phoenix writes (archives, Turbo names, storage messages, cookies) and records it' do
+    recorded = fx.read('crypto.json')
+    travel_to(fx::NOW) do
+      user = create(:user, id: 970_408)
+      points = Array.new(3) do |i|
+        create(:point, id: 970_431 + i, user: user, raw_data: { 'n' => i, 's' => "x&<#{i}>" })
+      end
+      lines = Point.where(id: points.map(&:id)).order(:id).pluck(:id, Arel.sql('raw_data::text AS raw_text'))
+                   .map { |id, raw| format('{"id":%<id>s,"raw_data":%<raw>s}', id: id, raw: raw) }
+      out = fx.phoenix(phoenix_crypto_code(lines))
+
+      out['archives'].each do |entry|
+        pair = entry.values_at('env', 'base')
+        recorded_entry = recorded['archives']['written'].find { |e| e.values_at('env', 'base') == pair }
+        recorded_entry['readable'].each do |label, expected|
+          env, base = label.split('+')
+          got = with_archive_env(archive_envs[env], archive_bases[base]) { outcome(entry['message']) }
+          expect(got['outcome']).to eq(expected), "phoenix #{entry['env']}+#{entry['base']} under #{label}"
+          expect(got['gzip']).to eq(entry['gzip']) if expected == 'ok'
+        end
+      end
+      expect_stored_archive_from_phoenix(points, out['stored'])
+
+      out['turbo'].zip(recorded['turbo']).each do |signed, entry|
+        expect(Turbo::StreamsChannel.verified_stream_name(signed)).to eq(entry['name'])
+      end
+      out['storage'].zip(recorded['messages']['storage']).each do |signed, entry|
+        expect(ActiveStorage.verifier.verified(signed, purpose: entry['purpose'])).to eq(entry['data'])
+      end
+
+      owner = create(:user, id: 970_409)
+      out['cookies'].each do |cookie|
+        entry = recorded['shared_link'].find { |e| e['id'] == cookie['id'] }
+        create(:shared_link, id: cookie['id'], user: owner, magic_phrase: entry['magic_phrase'],
+                             expires_at: fx::NOW + 3.days)
+        name = "shared_link_#{cookie['id']}"
+        get public_shared_link_path(cookie['id']), headers: { 'Cookie' => "#{name}=#{cookie['live']}" }
+        expect(response).to have_http_status(:ok)
+        get public_shared_link_path(cookie['id']), headers: { 'Cookie' => "#{name}=#{cookie['expired']}" }
+        expect(response).to have_http_status(:unauthorized)
+      end
+
+      fx.write('crypto.json', recorded.merge('phoenix' => out)) if fx.write?
+    end
+  end
 end
