@@ -4,7 +4,7 @@ defmodule Dawarich.CLIParityTest do
   alias Dawarich.A12eCorpus
 
   @external_resource A12eCorpus.path()
-  @ported ~w(users_activate users_activate_cloud users_admin_recipe users_email_recipe users_password_recipe)
+  @ported ~w(users_activate users_activate_cloud users_admin_recipe users_email_recipe users_password_recipe jobs_status_absent jobs_status_full jobs_status_stale_alarm)
 
   for c <- A12eCorpus.cases(), c["name"] in @ported do
     @case c
