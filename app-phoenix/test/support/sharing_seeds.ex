@@ -28,27 +28,6 @@ defmodule Dawarich.Test.SharingSeeds do
     seed
   end
 
-  def link!(attrs) do
-    stamp = NaiveDateTime.utc_now()
-
-    row =
-      Map.merge(
-        %{
-          id: Ecto.UUID.dump!(Ecto.UUID.generate()),
-          user_id: 9901,
-          resource_type: 3,
-          name: "Link",
-          settings: %{},
-          created_at: stamp,
-          updated_at: stamp
-        },
-        attrs
-      )
-
-    Repo.insert_all("shared_links", [row])
-    Ecto.UUID.load!(row.id)
-  end
-
   def view_count(id) do
     %{rows: [[count]]} =
       Repo.query!("SELECT view_count FROM shared_links WHERE id = $1::text::uuid", [id])

@@ -14,8 +14,7 @@ defmodule DawarichWeb.RailsCsrf do
     case Base.url_decode64(real, padding: false) do
       {:ok, raw} ->
         pad = :crypto.strong_rand_bytes(32)
-        token = :crypto.mac(:hmac, :sha256, raw, identifier)
-        Base.url_encode64(pad <> :crypto.exor(pad, token), padding: false)
+        Base.url_encode64(pad <> :crypto.exor(pad, hmac(raw, identifier)), padding: false)
 
       :error ->
         nil
@@ -29,7 +28,7 @@ defmodule DawarichWeb.RailsCsrf do
          {:ok, <<pad::binary-size(32), masked::binary-size(32)>> = decoded} <-
            Base.url_decode64(token, padding: false),
          true <- Base.url_encode64(decoded, padding: false) == token do
-      Plug.Crypto.secure_compare(:crypto.exor(pad, masked), global(raw))
+      Plug.Crypto.secure_compare(:crypto.exor(pad, masked), hmac(raw, @global))
     else
       _ -> false
     end
@@ -37,5 +36,5 @@ defmodule DawarichWeb.RailsCsrf do
 
   def valid?(_session, _token), do: false
 
-  defp global(raw), do: :crypto.mac(:hmac, :sha256, raw, @global)
+  defp hmac(raw, identifier), do: :crypto.mac(:hmac, :sha256, raw, identifier)
 end
