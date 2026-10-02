@@ -10,6 +10,7 @@ defmodule Dawarich.Build.Yaml do
       try do
         :yamerl_constr.file(String.to_charlist(path), [
           :str_node_as_binary,
+          {:schema, :core},
           {:detailed_constr, true},
           {:keep_duplicate_keys, true}
         ])

@@ -78,4 +78,11 @@ defmodule Dawarich.Build.YamlTest do
       assert_raise ArgumentError, fn -> load(dir, text) end
     end
   end
+
+  test "types scalars by the YAML 1.2 core schema even under a %YAML 1.1 directive", %{
+    tmp_dir: dir
+  } do
+    assert load(dir, "%YAML 1.1\n---\nanswer: yes\nflag: false\n") ==
+             %OrderedObject{values: [{"answer", "yes"}, {"flag", false}]}
+  end
 end
