@@ -22,7 +22,8 @@ module A12aFixtureSupport
     'bob' => 971_201, 'carol' => 971_202, 'dave' => 971_203, 'erin' => 971_204, 'frank' => 971_205,
     'family' => 971_211, 'owner_membership' => 971_221, 'member_membership' => 971_222,
     'alice_notification' => 971_301, 'erin_notification' => 971_302, 'bob_notifications' => 971_311,
-    'bob_last_notification' => 971_411, 'trip_idle' => 971_501, 'trip_cooling' => 971_502,
+    'bob_last_notification' => 971_411, 'carol_notifications' => 973_001, 'carol_last_notification' => 973_099,
+    'trip_idle' => 971_501, 'trip_cooling' => 971_502,
     'track' => 971_601, 'model_point' => 971_701, 'live_point' => 971_702, 'family_point' => 971_703,
     'import' => 971_801, 'poster' => 971_901
   }.freeze
