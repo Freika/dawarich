@@ -30,14 +30,17 @@ defmodule Dawarich.RailsCookies do
   end
 
   def encrypt(value, name, secret) do
-    json = value |> Ruby.json() |> IO.iodata_to_binary()
-    message = Base.encode64(json)
-    meta = Jason.OrderedObject.new(message: message, exp: nil, pur: "cookie." <> name)
-    envelope = Jason.encode!(%{"_rails" => meta})
+    envelope = envelope(value, name, nil)
     iv = :crypto.strong_rand_bytes(12)
     key = key(secret, @encrypted_salt, 32)
     {data, tag} = :crypto.crypto_one_time_aead(:aes_256_gcm, key, iv, envelope, "", true)
     [data, iv, tag] |> Enum.map_join("--", &Base.encode64/1) |> URI.encode_www_form()
+  end
+
+  def sign(value, name, secret, %DateTime{} = expires_at) do
+    exp = expires_at |> DateTime.truncate(:millisecond) |> DateTime.to_iso8601()
+    data = value |> envelope(name, exp) |> Base.encode64()
+    URI.encode_www_form(data <> "--" <> hmac(secret, data))
   end
 
   def verify(value, name, secret, now) do
@@ -50,6 +53,12 @@ defmodule Dawarich.RailsCookies do
     end
   rescue
     _ in [ArgumentError, ErlangError] -> :error
+  end
+
+  defp envelope(value, name, exp) do
+    json = value |> Ruby.json() |> IO.iodata_to_binary()
+    meta = Jason.OrderedObject.new(message: Base.encode64(json), exp: exp, pur: "cookie." <> name)
+    Jason.encode!(%{"_rails" => meta})
   end
 
   defp unwrap(plain, name, now) do
