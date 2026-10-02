@@ -207,6 +207,9 @@ defmodule DawarichWeb.Router do
     get "/timeline_feeds/calendar", DawarichWeb.MapFrames, :calendar,
       metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :calendar?}}
 
+    get "/residency", DawarichWeb.MapFrames, :residency,
+      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :residency?}}
+
     get "/timeline_feeds/:id/track_info", DawarichWeb.MapFrames, :track_info,
       metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :track?}}
   end

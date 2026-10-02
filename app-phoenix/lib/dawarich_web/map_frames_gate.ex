@@ -3,9 +3,9 @@ defmodule DawarichWeb.MapFramesGate do
 
   import Plug.Conn, only: [get_req_header: 2]
 
-  alias Dawarich.MapWindow
+  alias Dawarich.{Entitlements, MapWindow}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias DawarichWeb.Strangler
+  alias DawarichWeb.{LayoutAssigns, RailsAuth, Strangler}
 
   @month ~r/\A(19|20|21)\d{2}-(0[1-9]|1[0-2])\z/
   @types ["text/html", "application/xhtml+xml", "text/vnd.turbo-stream.html", "*/*"]
@@ -27,6 +27,11 @@ defmodule DawarichWeb.MapFramesGate do
     plain?(conn, query) and month?(Map.get(query, "month")) and accept?(conn)
   end
 
+  def residency?(conn, _params) do
+    query = query(conn)
+    plain?(conn, query) and year?(Map.get(query, "year")) and pro?(conn)
+  end
+
   defp month?(nil), do: true
   defp month?(value) when is_binary(value), do: Ruby.blank?(value) or value =~ @month
   defp month?(_value), do: false
@@ -37,6 +42,23 @@ defmodule DawarichWeb.MapFramesGate do
     String.trim(accept) == "" or Strangler.browser_like?(accept) or
       (not String.contains?(accept, ";") and
          Enum.all?(String.split(accept, ","), &(String.trim(&1) in @types)))
+  end
+
+  defp year?(nil), do: true
+
+  defp year?(value) when is_binary(value),
+    do: value =~ ~r/\A\d{4}\z/ and String.to_integer(value) in 1970..2037
+
+  defp year?(_value), do: false
+
+  defp pro?(conn) do
+    case RailsAuth.call(conn, []).assigns.current_user do
+      nil ->
+        true
+
+      user ->
+        LayoutAssigns.self_hosted?() or Entitlements.full_access?(user, false, DateTime.utc_now())
+    end
   end
 
   defp query(conn), do: Plug.Conn.Query.decode(conn.query_string)

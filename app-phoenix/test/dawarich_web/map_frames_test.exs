@@ -269,4 +269,103 @@ defmodule DawarichWeb.MapFramesTest do
       refute calendar("?month=2026-09", "TEXT/HTML, application/xhtml+xml")
     end
   end
+
+  describe "the residency card" do
+    setup %{user: user} do
+      S.stat!(user.id, 2026, 1)
+
+      for {country, days} <- [{"Germany", 1..5}, {"Czechia", 10..12}, {"Atlantis", 20..20}],
+          day <- days,
+          do:
+            S.point!(
+              user.id,
+              7700 + day,
+              DateTime.to_unix(DateTime.new!(Date.new!(2026, 3, day), ~T[12:00:00], "Etc/UTC")),
+              %{country_name: country}
+            )
+
+      :ok
+    end
+
+    test "renders countries, periods and the year grid", %{user: user} do
+      html = user |> frame_get("/map/residency?year=2026") |> html_response(200)
+
+      assert html =~ ~s(<turbo-frame id="residency-content">)
+      assert html =~ ~s(data-testid="residency-country-list")
+      assert html =~ "bg-blue-600"
+      assert html =~ ~s(data-tip="Germany — )
+      assert length(Regex.scan(~r/<details class="group bg-base-100 rounded-lg">/, html)) == 3
+    end
+
+    test "the default year is the latest stats year, not the current one" do
+      old = S.user!(7025)
+      S.stat!(old.id, 2024, 5)
+      S.stat!(old.id, 2025, 5)
+
+      S.point!(old.id, 7790, DateTime.to_unix(~U[2025-05-01 12:00:00Z]), %{
+        country_name: "Germany"
+      })
+
+      assert old |> frame_get("/map/residency") |> html_response(200) =~ "Germany"
+    end
+
+    test "an empty year shows Rails' empty card with the year", %{user: user} do
+      html = user |> frame_get("/map/residency?year=2025") |> html_response(200)
+
+      assert html =~ "2025."
+      refute html =~ "residency-country-list"
+    end
+
+    test "countries with equal day counts are Rails' to order", %{user: user} do
+      S.point!(user.id, 7799, DateTime.to_unix(~U[2026-03-21 12:00:00Z]), %{
+        country_name: "Atlantis"
+      })
+
+      S.point!(user.id, 7798, DateTime.to_unix(~U[2026-03-22 12:00:00Z]), %{
+        country_name: "Narnia"
+      })
+
+      S.point!(user.id, 7797, DateTime.to_unix(~U[2026-03-23 12:00:00Z]), %{
+        country_name: "Narnia"
+      })
+
+      ctx = %{user: user, locale: "en", query: %{"year" => "2026"}, now: ~U[2026-09-29 10:00:00Z]}
+
+      assert {:replay, _reason} = DawarichWeb.MapFrames.body(:residency, ctx)
+    end
+
+    test "the year runs from local midnight to local midnight in the user's zone", %{user: user} do
+      S.point!(user.id, 7796, DateTime.to_unix(~U[2026-12-31 23:30:00Z]), %{
+        country_name: "Czechia"
+      })
+
+      assert user |> frame_get("/map/residency?year=2026") |> html_response(200) =~ "9 / 365"
+    end
+  end
+
+  describe "MapFramesGate.residency?/2" do
+    setup do
+      on_exit(fn -> System.delete_env("SELF_HOSTED") end)
+    end
+
+    defp residency(user, query),
+      do:
+        RailsUser.signed_in(user.id)
+        |> Map.put(:query_string, query)
+        |> MapFramesGate.residency?(%{})
+
+    test "owns self-hosted users and Cloud users with full access, years 1970–2037 and no year" do
+      lite = S.user!(7023, %{"timezone" => "Europe/Berlin"}, %{plan: 0})
+      pro = S.user!(7024)
+
+      assert residency(lite, "year=2026")
+      System.put_env("SELF_HOSTED", "false")
+      refute residency(lite, "year=2026")
+      assert residency(pro, "year=2026")
+      assert residency(pro, "")
+      refute residency(pro, "year=1969")
+      refute residency(pro, "year=26")
+      refute residency(pro, "year=")
+    end
+  end
 end

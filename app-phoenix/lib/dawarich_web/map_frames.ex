@@ -11,11 +11,14 @@ defmodule DawarichWeb.MapFrames do
     LayoutAssigns,
     RailsCsrf,
     RailsSession,
+    ResidencyFrame,
     StatsFormat,
     Strangler,
     TimelineCalendar,
     TimelineFeed
   }
+
+  alias DawarichWeb.Api.Body
 
   @impl true
   def init(action), do: action
@@ -46,6 +49,9 @@ defmodule DawarichWeb.MapFrames do
 
       :not_found ->
         raise DawarichWeb.NotFoundError
+
+      {:replay, reason} ->
+        conn |> assign(:api_tag, "map") |> Body.replay(reason)
     end
   end
 
@@ -100,6 +106,15 @@ defmodule DawarichWeb.MapFrames do
     if ctx.stream,
       do: render(&TimelineCalendar.calendar_stream/1, assigns, "text/vnd.turbo-stream.html"),
       else: html(&TimelineCalendar.calendar/1, assigns)
+  end
+
+  def body(:residency, ctx) do
+    year = if is_binary(ctx.query["year"]), do: String.to_integer(ctx.query["year"])
+
+    case ResidencyFrame.data(ctx.user, year, ctx.now) do
+      {:ok, data} -> html(&ResidencyFrame.frame/1, Map.put(data, :locale, ctx.locale))
+      {:replay, reason} -> {:replay, reason}
+    end
   end
 
   def body(:track_info, ctx) do
