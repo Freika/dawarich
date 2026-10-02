@@ -9,8 +9,8 @@ defmodule Dawarich.RailsCookies do
   def decrypt(value, name, secret, now) do
     with [data, iv, tag] <- value |> URI.decode_www_form() |> String.split("--"),
          {:ok, data} <- Base.decode64(data),
-         {:ok, iv} <- Base.decode64(iv),
-         {:ok, tag} <- Base.decode64(tag),
+         {:ok, <<_::binary-size(12)>> = iv} <- Base.decode64(iv),
+         {:ok, <<_::binary-size(16)>> = tag} <- Base.decode64(tag),
          plain when is_binary(plain) <-
            :crypto.crypto_one_time_aead(
              :aes_256_gcm,

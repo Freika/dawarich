@@ -70,8 +70,8 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
 
   test "GET and .json variants stay on Rails", %{port: port, upstream: upstream} do
     client = connect(port)
-    send_raw(client, "GET /api/v1/points HTTP/1.1\r\nHost: localhost\r\n\r\n")
-    assert puma(upstream) == "GET /api/v1/points HTTP/1.1"
+    send_raw(client, "GET /api/v1/points.json HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    assert puma(upstream) == "GET /api/v1/points.json HTTP/1.1"
     assert {200, _, "rails"} = read_response(client)
 
     client = post(port, "/api/v1/points.json")

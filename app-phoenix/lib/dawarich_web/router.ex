@@ -75,6 +75,17 @@ defmodule DawarichWeb.Router do
     get "/flights", GeoController, :flights, metadata: %{slice: :api_stats}
   end
 
+  scope "/api/v1", DawarichWeb.Api do
+    pipe_through :api_stats
+
+    get "/points", MapController, :points, metadata: %{slice: :api_map_reads}
+    get "/tracks", MapController, :tracks, metadata: %{slice: :api_map_reads}
+    get "/tracks/:id", MapController, :track, metadata: %{slice: :api_map_reads}
+
+    get "/tracks/:track_id/points", MapController, :track_points,
+      metadata: %{slice: :api_map_reads}
+  end
+
   pipeline :api_locations_photos do
     plug :put_api_tag, "api"
     plug DawarichWeb.HostAuthorization
