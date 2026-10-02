@@ -19,6 +19,27 @@ defmodule Dawarich.UserTimeZone do
   def zoned(at, offset, zone),
     do: %{local: NaiveDateTime.add(at, offset), offset: offset, utc: zone in @utc_zones}
 
+  def name(settings, repo \\ Repo) do
+    env = System.get_env()
+
+    %{rows: [[name]]} =
+      repo.query!(
+        """
+        WITH z AS (SELECT coalesce(
+          (SELECT name FROM pg_timezone_names WHERE name = $1),
+          (SELECT name FROM pg_timezone_names WHERE name = $2),
+          'UTC') AS name)
+        SELECT z.name FROM z
+        """,
+        [
+          Dawarich.TimeZoneName.to_iana(zone(settings, env)),
+          Dawarich.TimeZoneName.to_iana(env["TIME_ZONE"] || "Europe/Berlin")
+        ]
+      )
+
+    name
+  end
+
   def query!(sql, params, settings, env \\ System.get_env()) do
     n = length(params)
 
