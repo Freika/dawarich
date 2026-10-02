@@ -145,4 +145,24 @@ defmodule Dawarich.Insights.DetailsDBTest do
                Fragments.key(user, "en", Map.put(page, field, value), "monthly_digest")
     end
   end
+
+  test "fragment keys carry RAILS_CACHE_ID, else RAILS_APP_VERSION, after views as Rails' do",
+       %{user: user} do
+    saved = Map.new(~w(RAILS_CACHE_ID RAILS_APP_VERSION), &{&1, System.get_env(&1)})
+
+    on_exit(fn ->
+      for {name, value} <- saved,
+          do: if(value, do: System.put_env(name, value), else: System.delete_env(name))
+    end)
+
+    page = load(user, %{"year" => "2020"})
+    System.delete_env("RAILS_CACHE_ID")
+    System.put_env("RAILS_APP_VERSION", "1.15.2")
+
+    assert Fragments.key(user, "en", page, "travel_patterns") =~
+             ~r{\Aviews/1\.15\.2/insights/details:}
+
+    System.put_env("RAILS_CACHE_ID", "c1")
+    assert Fragments.key(user, "en", page, "travel_patterns") =~ ~r{\Aviews/c1/insights/details:}
+  end
 end

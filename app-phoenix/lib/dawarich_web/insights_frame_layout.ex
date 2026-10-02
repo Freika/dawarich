@@ -1,5 +1,5 @@
 defmodule DawarichWeb.InsightsFrameLayout do
-  @moduledoc "Turbo Rails2.0.23 minimal frame layout, preserving its conditional Rails CSRF metas."
+  @moduledoc "turbo-rails 2.0.23 frame layout: html, head with the Rails CSRF metas when present, body."
   use DawarichWeb, :html
 
   def render(assigns) do

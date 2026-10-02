@@ -30,7 +30,6 @@ defmodule DawarichWeb.InsightsDetails.Format do
 
   def duration(locale, seconds) do
     n = Digests.to_i(seconds)
-    # Ruby integer division is floor, including legacy negative durations.
     days = floor(n / 86400)
     hours = floor((n - days * 86400) / 3600)
     minutes = floor((n - floor(n / 3600) * 3600) / 60)

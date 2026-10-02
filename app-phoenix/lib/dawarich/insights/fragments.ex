@@ -1,9 +1,9 @@
 defmodule Dawarich.Insights.Fragments do
-  @moduledoc "The six actual Rails insight fragment keys, SafeBuffers and24hour cache policy."
+  @moduledoc "The six Rails fragment caches of insights/details: keys, HTML values and 24-hour expiry."
   alias Dawarich.{RailsCache, UserTimeZone}
   alias Dawarich.RailsCache.Snapshot
   alias DawarichWeb.InsightsDetails
-  @template "views/insights/details:9efea8724129ec15ede1d72979639af7"
+  @template "insights/details:9efea8724129ec15ede1d72979639af7"
   @parts [
     {"year_comparison", InsightsDetails.YearComparison},
     {"activity_breakdown", InsightsDetails.Activity},
@@ -38,7 +38,11 @@ defmodule Dawarich.Insights.Fragments do
   end
 
   def key(user, locale, data, name) do
+    prefix = System.get_env("RAILS_CACHE_ID") || System.get_env("RAILS_APP_VERSION")
+
     common = [
+      "views",
+      prefix,
       @template,
       user.id,
       "insights",
@@ -50,7 +54,7 @@ defmodule Dawarich.Insights.Fragments do
     ]
 
     pieces = if name == "monthly_digest", do: common ++ [data.selected_month], else: common
-    Enum.map_join(pieces, "/", &to_string/1)
+    pieces |> Enum.reject(&is_nil/1) |> Enum.map_join("/", &to_string/1)
   end
 
   defp timestamp(_user, nil), do: ""

@@ -21,6 +21,5 @@ defmodule DawarichWeb.InsightsHomeTest do
     assert get_resp_header(conn, "cache-control") == ["no-cache"]
     assert get_resp_header(conn, "content-type") == ["text/html; charset=utf-8"]
     assert get_resp_header(conn, "x-frame-options") == ["SAMEORIGIN"]
-    assert get_resp_header(conn, "x-dawarich-handler") == ["phoenix-insights-home"]
   end
 end

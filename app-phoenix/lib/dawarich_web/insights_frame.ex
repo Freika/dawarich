@@ -11,7 +11,6 @@ defmodule DawarichWeb.InsightsFrame do
       conn
       |> put_private(:insights_frame, frame)
       |> put_resp_header("cache-control", "max-age=0, private, must-revalidate")
-      |> put_resp_header("x-dawarich-handler", "phoenix-insights")
 
     conn =
       if conn.request_path == "/insights/details" and

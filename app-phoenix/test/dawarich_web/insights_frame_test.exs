@@ -82,7 +82,6 @@ defmodule DawarichWeb.InsightsFrameTest do
       conn = InsightsFrame.call(conn, [])
       assert conn.private.insights_frame == expected
       assert get_resp_header(conn, "cache-control") == ["max-age=0, private, must-revalidate"]
-      assert get_resp_header(conn, "x-dawarich-handler") == ["phoenix-insights"]
       assert InsightsFrame.live_session(conn)["insights_frame"] == expected
     end
   end

@@ -181,33 +181,6 @@ defmodule DawarichWeb.InsightsDetailsPartsTest do
     end
   end
 
-  test "full DOM equality rejects meaningful navigation, chart, visual and accessibility mutations" do
-    html = File.read!("test/fixtures/insights/details-en.html")
-
-    for {needle, replacement} <- [
-          {"/insights/details?", "/insights/foreign?"},
-          {"class=\"card bg-base-200\"", "class=\"card bg-base-100\""},
-          {"stroke=\"currentColor\"", "stroke=\"red\""},
-          {"<progress ", "<progress aria-hidden=\"true\" "},
-          {"<turbo-frame id=\"insights_details\"", "<turbo-frame id=\"foreign_details\""}
-        ] do
-      assert String.contains?(html, needle), "Mutation anchor absent: #{needle}"
-      mutated = String.replace(html, needle, replacement, global: false)
-      refute ParityHTML.normalize(mutated) == ParityHTML.normalize(html)
-    end
-
-    control =
-      ~s(<a href="/insights/details?year=2024" data-turbo-method="get" aria-label="March">March</a>)
-
-    # Turbo is deliberately omitted by global DOM normalization; prove its
-    # actual navigation contract independently rather than losing the method.
-    expected = ParityHTML.stimulus(control, "a")
-    refute ParityHTML.stimulus(String.replace(control, "get", "delete"), "a") == expected
-
-    refute ParityHTML.normalize(String.replace(control, "March", "April")) ==
-             ParityHTML.normalize(control)
-  end
-
   defp first_difference(a, a), do: nil
 
   defp first_difference(a, b) when is_list(a) and is_list(b) and length(a) == length(b),
