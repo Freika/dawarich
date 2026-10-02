@@ -1,0 +1,14 @@
+# frozen_string_literal: true
+
+class Import::GpxResumeJob < ApplicationJob
+  queue_as :imports
+
+  retry_on Imports::GpxResume::Busy, wait: :polynomially_longer,
+                                     attempts: Imports::BusyRetry::ATTEMPTS do |job, _error|
+    payload = job.arguments.first
+    Imports::BusyRetry.fail!(payload.fetch('import_id'), from: %i[created processing],
+                                                         user_id: payload.fetch('user_id'))
+  end
+
+  delegate :perform, to: :'Imports::GpxResume'
+end

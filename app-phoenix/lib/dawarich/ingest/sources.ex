@@ -37,19 +37,25 @@ defmodule Dawarich.Ingest.Sources do
   end
 
   def available?(repo, now \\ System.monotonic_time(:millisecond)) do
-    case :persistent_term.get(__MODULE__, :unknown) do
+    config = if function_exported?(repo, :config, 0), do: repo.config(), else: []
+    key = {repo, Keyword.take(config, [:database, :prefix])}
+
+    case Map.get(cache(), key, :unknown) do
       true -> true
       {:absent, at} when now - at < @recheck_ms -> false
-      _ -> remember(column?(repo), now)
+      _ -> remember(key, column?(repo), now)
     end
   end
 
   def forget, do: :persistent_term.erase(__MODULE__)
 
-  defp remember(true, _now), do: tap(true, fn _ -> :persistent_term.put(__MODULE__, true) end)
+  defp cache, do: :persistent_term.get(__MODULE__, %{})
 
-  defp remember(false, now),
-    do: tap(false, fn _ -> :persistent_term.put(__MODULE__, {:absent, now}) end)
+  defp remember(key, value, now) do
+    stored = if value, do: true, else: {:absent, now}
+    :persistent_term.put(__MODULE__, Map.put(cache(), key, stored))
+    value
+  end
 
   defp column?(repo) do
     repo.query!(

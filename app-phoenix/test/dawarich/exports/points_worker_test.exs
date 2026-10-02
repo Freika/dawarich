@@ -239,7 +239,8 @@ defmodule Dawarich.Exports.PointsWorkerTest do
     assert PointsWorker.args_from_command(1, Map.delete(payload, "user_id")) ==
              {:error, "invalid_payload"}
 
-    assert PointsWorker.args_from_command(2, payload) == {:error, "unsupported_version"}
+    assert PointsWorker.args_from_command(2, payload) == {:error, "invalid_payload"}
+    assert PointsWorker.args_from_command(3, payload) == {:error, "unsupported_version"}
   end
 
   test "timeout is 55 minutes, below Lifeline's 60" do

@@ -6,7 +6,8 @@ config :dawarich, Dawarich.Repo,
   migration_source: "phoenix_schema_migrations",
   migration_default_prefix: "phoenix",
   prepare: :unnamed,
-  parameters: [timezone: "UTC"]
+  parameters: [timezone: "UTC"],
+  types: Dawarich.PostgrexTypes
 
 config :dawarich, Oban,
   repo: Dawarich.Repo,

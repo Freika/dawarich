@@ -4,7 +4,7 @@ defmodule Dawarich.JobsCase do
 
   alias Dawarich.ScratchRepo
 
-  @phoenix ~w(job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events notification_events delivery_claims export_claims rails_commands rails_commands_dead track_generations track_generation_chunks stats_point_counts release_operations raw_data_archive_chunks once_claims counters epochs leases registration_setting)
+  @phoenix ~w(job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events notification_events delivery_claims export_claims rails_commands rails_commands_dead track_generations track_generation_chunks stats_point_counts import_runs import_handoffs import_download_requests import_destroy_runs import_blob_purges release_operations raw_data_archive_chunks once_claims counters epochs leases registration_setting)
   @oban ~w(oban_jobs oban_peers)
 
   using opts do
@@ -33,7 +33,7 @@ defmodule Dawarich.JobsCase do
     end
 
     repo.query!(
-      "TRUNCATE public.job_outbox, public.exports, public.users, public.point_sources, public.active_storage_attachments, public.active_storage_blobs, public.family_invitations, public.families CASCADE",
+      "TRUNCATE public.job_outbox, public.exports, public.imports, public.users, public.point_sources, public.active_storage_attachments, public.active_storage_blobs, public.family_invitations, public.families CASCADE",
       [],
       log: false
     )
@@ -44,6 +44,16 @@ defmodule Dawarich.JobsCase do
   end
 
   def rows(sql, params \\ []), do: ScratchRepo.query!(sql, params, log: false).rows
+
+  def foreign_lease!(name),
+    do:
+      rows(
+        "INSERT INTO phoenix.leases(name,holder,expires_at) VALUES($1,'rails-holder',now()+interval '1 hour')",
+        [name]
+      )
+
+  def end_foreign_lease!(name),
+    do: rows("DELETE FROM phoenix.leases WHERE name=$1 AND holder='rails-holder'", [name])
 
   def start_oban(name, opts \\ []) do
     base = [

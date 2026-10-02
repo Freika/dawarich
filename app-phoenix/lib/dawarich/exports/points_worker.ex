@@ -12,7 +12,17 @@ defmodule Dawarich.Exports.PointsWorker do
       when is_integer(export_id) and is_integer(user_id) and map_size(payload) == 2,
       do: {:ok, %{"export_id" => export_id, "user_id" => user_id}}
 
-  def args_from_command(1, _payload), do: {:error, "invalid_payload"}
+  def args_from_command(
+        2,
+        %{"export_id" => export_id, "user_id" => user_id, "time_zone" => time_zone} = payload
+      )
+      when is_integer(export_id) and is_integer(user_id) and is_binary(time_zone) and
+             byte_size(time_zone) > 0 and map_size(payload) == 3,
+      do: {:ok, payload}
+
+  def args_from_command(version, _payload) when version in [1, 2],
+    do: {:error, "invalid_payload"}
+
   def args_from_command(_version, _payload), do: {:error, "unsupported_version"}
 
   @impl Oban.Worker
@@ -20,20 +30,28 @@ defmodule Dawarich.Exports.PointsWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{
-        args: %{"event_id" => event_id, "export_id" => export_id, "user_id" => user_id}
+        args: %{"event_id" => event_id, "export_id" => export_id, "user_id" => user_id} = args
       }) do
     repo = Dawarich.Jobs.repo()
 
     case Exports.claim(repo, export_id, user_id, event_id) do
-      :skip -> :ok
-      {:run, export} -> run(repo, export, event_id)
+      :skip ->
+        :ok
+
+      {:run, export} ->
+        run(
+          repo,
+          export,
+          event_id,
+          Map.get(args, "time_zone", System.get_env("TIME_ZONE", "Europe/Berlin"))
+        )
     end
   end
 
-  defp run(repo, export, event_id) do
+  defp run(repo, export, event_id, time_zone) do
     case prepare(repo, export, event_id) do
       :failed -> :ok
-      {config, dir} -> generate(repo, config, dir, export, event_id)
+      {config, dir} -> generate(repo, config, dir, export, event_id, time_zone)
     end
   end
 
@@ -54,7 +72,7 @@ defmodule Dawarich.Exports.PointsWorker do
       :failed
   end
 
-  defp generate(repo, config, dir, export, event_id) do
+  defp generate(repo, config, dir, export, event_id, time_zone) do
     outcome =
       try do
         zip =
@@ -62,7 +80,7 @@ defmodule Dawarich.Exports.PointsWorker do
             repo,
             export,
             dir,
-            TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
+            TimeZoneName.to_iana(time_zone)
           )
 
         {:ok, Storage.put!(config, zip, export.name <> ".zip", "application/zip")}
