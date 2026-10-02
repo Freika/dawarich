@@ -60,12 +60,17 @@ docker exec a0_app ps -eo args | grep -qE '^puma|bin/rails server' || fail "puma
   || fail "the image's lazy_html NIF cannot sanitize HTML"
 docker exec a0_app sh -c 'cd /var/app && test -s config/sprockets-manifest.json && test -s tmp/phoenix/i18n.json && test -s tmp/phoenix/achievements.json && test -s tmp/phoenix/importmap.json' \
   || fail "a build input is missing from the image"
-rails_css="$(curl -fsS http://127.0.0.1:3900/users/sign_in | sed -n 's/.*href="\(\/assets\/tailwind-[0-9a-f]\{64\}\.css\)".*/\1/p' | head -1)"
-[ -n "$rails_css" ] || fail "Rails' sign-in page links no digested tailwind.css"
+upstream="$(docker logs a0_app 2>&1 | sed -n 's/.*Phoenix listens on \[::\]:3000 and proxies to Puma on 127\.0\.0\.1:\([0-9][0-9]*\).*/\1/p' | tail -1)"
+[ -n "$upstream" ] || fail "Phoenix does not front Puma on [::]:3000"
+rails_css="$(docker exec a0_app bin/rails runner 'puts ActionController::Base.helpers.asset_path("tailwind.css")' 2>/dev/null | tail -1)"
+printf '%s' "$rails_css" | grep -qE '^/assets/tailwind-[0-9a-f]{64}\.css$' \
+  || fail "Rails does not resolve tailwind.css to a digested asset through the manifest: '$rails_css'"
 [ "$(docker exec a0_app dawarich rpc 'IO.puts(DawarichWeb.Assets.stylesheet_path("tailwind.css"))')" = "$rails_css" ] \
   || fail "Phoenix and Rails link different tailwind.css files"
-[ "$(docker exec a0_app sh -c "curl -fsS -H 'Host: 127.0.0.1:3900' http://127.0.0.1:3000$rails_css | sha256sum | cut -c1-64; sha256sum /var/app/public$rails_css | cut -c1-64" | uniq | wc -l | tr -d ' ')" = 1 ] \
-  || fail "the served tailwind.css is not the built one"
+for base in http://127.0.0.1:3000 "http://127.0.0.1:$upstream"; do
+  docker exec -i a0_app sh -s -- /var/app/public_dist "$rails_css" "$base" 127.0.0.1:3900 <app-phoenix/scripts/served_asset_check.sh \
+    || fail "$base does not serve the image's built tailwind.css"
+done
 [ "$(docker exec a0_app dawarich rpc 'IO.puts(match?({:ok, _}, Dawarich.I18n.t("de", "common.app_name")) and length(Dawarich.Achievements.Registry.all()) > 200 and length(Dawarich.TimeZoneOptions.list()) > 100 and String.starts_with?(DawarichWeb.Assets.rails_imports()["application"], "/assets/application-"))')" = true ] \
   || fail "Phoenix cannot read a build input"
 curl -fsS "http://127.0.0.1:$DAWARICH_APP_PORT/api/v1/health" | grep -q '"status"' || fail "health failed"
@@ -73,9 +78,6 @@ docker exec a0_db psql -U postgres -d dawarich_development -Atc \
   "SELECT string_agg(nspname, ',' ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('oban','phoenix')" \
   | grep -qx 'oban,phoenix' || fail "schemas missing"
 echo "docker stats: $(docker stats --no-stream --format '{{.Name}} {{.MemUsage}} {{.CPUPerc}}' a0_app)"
-
-upstream="$(docker logs a0_app 2>&1 | sed -n 's/.*Phoenix listens on \[::\]:3000 and proxies to Puma on 127\.0\.0\.1:\([0-9][0-9]*\).*/\1/p' | tail -1)"
-[ -n "$upstream" ] || fail "Phoenix does not front Puma on [::]:3000"
 
 docker exec a0_app sh -c 'cat /proc/net/tcp /proc/net/tcp6' | awk '$4 == "0A" {print $2}' >"$work/listeners"
 grep -q ':0BB8$' "$work/listeners" || fail "nothing listens on 3000"
