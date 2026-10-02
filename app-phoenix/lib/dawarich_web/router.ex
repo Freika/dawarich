@@ -205,6 +205,10 @@ defmodule DawarichWeb.Router do
         container: {:div, class: "contents"},
         metadata: %{rails_gate: {DawarichWeb.TripsGate, :show?}}
 
+      live "/places", DawarichWeb.PlacesLive.Index, :index,
+        container: {:div, class: "contents"},
+        metadata: %{rails_gate: {DawarichWeb.PlacesGate, :index?}}
+
       live "/settings/general", DawarichWeb.SettingsLive.General, :index,
         container: {:div, class: "contents"}
 
