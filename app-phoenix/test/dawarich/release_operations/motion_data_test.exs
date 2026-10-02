@@ -104,4 +104,19 @@ defmodule Dawarich.ReleaseOperations.MotionDataTest do
     assert rows("SELECT status FROM phoenix.release_operations") == [["completed"]]
     assert rows("SELECT count(*) FROM points WHERE motion_data = '{}'::jsonb") == [[0]]
   end
+
+  test "backfilled floats are stored as Rails stores them: whole floats stay floats, no Jason scale",
+       %{user: user} do
+    whole = point!(user, %{}, %{})
+    small = point!(user, %{}, %{})
+    rows("UPDATE points SET raw_data = $2::text::jsonb WHERE id = $1", [whole, ~s({"m": 1000.0})])
+    rows("UPDATE points SET raw_data = $2::text::jsonb WHERE id = $1", [small, ~s({"m": 1e-05})])
+
+    assert start(1_000) == :ok
+    drain!()
+
+    assert rows("SELECT motion_data::text FROM points WHERE id = ANY($1) ORDER BY id", [
+             [whole, small]
+           ]) == [[~s({"m": 1000.0})], [~s({"m": 0.00001})]]
+  end
 end

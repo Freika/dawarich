@@ -48,7 +48,9 @@ RSpec.describe ExportJob, type: :job do
 
       expect(JobOutbox.sole).to have_attributes(event_id: job.job_id, command_type: 'exports.points',
                                                 aggregate_id: export.id, dedupe_key: "points-export:#{export.id}",
-                                                payload: { 'export_id' => export.id, 'user_id' => export.user_id })
+                                                command_version: 2,
+                                                payload: { 'export_id' => export.id, 'user_id' => export.user_id,
+                                                           'time_zone' => Time.zone.name })
       expect(export.reload).to be_created
     end
 

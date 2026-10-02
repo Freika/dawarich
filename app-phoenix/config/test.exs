@@ -20,6 +20,7 @@ scratch =
       timeout: :infinity,
       prepare: :unnamed,
       parameters: [timezone: "UTC"],
+      types: Dawarich.PostgrexTypes,
       migration_source: "phoenix_schema_migrations",
       migration_default_prefix: "phoenix"
     ]

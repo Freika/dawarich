@@ -78,7 +78,7 @@ defmodule Dawarich.PointExportsTest do
     RailsUser.insert!(%{id: 7321, email: "a7s2-create@dawarich.test"})
     {:ok, export} = PointExports.parse(params("2024-03-01 00:00:00 +0100"))
 
-    assert {:ok, id} = PointExports.create(export, 7321, "de")
+    assert {:ok, id} = PointExports.create(export, %{id: 7321}, "de")
 
     assert [
              [
@@ -113,7 +113,7 @@ defmodule Dawarich.PointExportsTest do
     Repo.query!("DROP TABLE phoenix.rails_commands")
     {:ok, export} = PointExports.parse(params(@ok))
 
-    assert PointExports.create(export, 7322, "en") ==
+    assert PointExports.create(export, %{id: 7322}, "en") ==
              {:error, "export write failed: Postgrex.Error"}
 
     assert Repo.query!("SELECT count(*) FROM exports").rows == [[0]]

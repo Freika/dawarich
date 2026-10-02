@@ -1,7 +1,8 @@
 defmodule Dawarich.PointExports do
   @moduledoc false
 
-  alias Dawarich.{RailsCommands, Repo}
+  alias Dawarich.{RailsCommands, Repo, UserSettings, UserTimeZone}
+  alias Dawarich.Jobs.Ownership
 
   @formats %{"json" => 0, "gpx" => 1}
   @stamp ~r/\A(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}):(\d{2}) (?:UTC|([+-])(\d{2})(\d{2}))\z/
@@ -22,10 +23,12 @@ defmodule Dawarich.PointExports do
 
   def parse(_params), do: :rails
 
-  def create(export, user_id, locale, repo \\ Repo) do
+  def create(export, %{id: user_id} = user, locale, repo \\ Repo) do
     now = NaiveDateTime.truncate(NaiveDateTime.utc_now(), :microsecond)
 
     repo.transaction(fn ->
+      owner = Ownership.lock(repo, "command:exports.points")
+
       %{rows: [[id]]} =
         repo.query!(
           """
@@ -37,16 +40,44 @@ defmodule Dawarich.PointExports do
           log: false
         )
 
-      RailsCommands.insert!(repo, "exports.points_created", %{
-        "export_id" => id,
-        "user_id" => user_id,
-        "locale" => locale
-      })
+      produce(repo, owner, id, user, locale, now)
 
       id
     end)
   rescue
     error -> {:error, "export write failed: " <> inspect(error.__struct__)}
+  end
+
+  defp produce(repo, :oban, id, user, _locale, now) do
+    payload = %{
+      "export_id" => id,
+      "user_id" => user.id,
+      "time_zone" => UserTimeZone.name(UserSettings.get(user), repo)
+    }
+
+    repo.query!(
+      """
+      INSERT INTO public.job_outbox
+        (event_id, command_type, command_version, payload, metadata, aggregate_id, dedupe_key, scheduled_at)
+      VALUES (gen_random_uuid(), 'exports.points', 2, $1, $2, $3, $4, $5)
+      """,
+      [
+        payload,
+        %{"producer" => "Phoenix ExportsCreate"},
+        id,
+        "points-export:#{id}",
+        DateTime.from_naive!(now, "Etc/UTC")
+      ],
+      log: false
+    )
+  end
+
+  defp produce(repo, :sidekiq, id, user, locale, _now) do
+    RailsCommands.insert!(repo, "exports.points_created", %{
+      "export_id" => id,
+      "user_id" => user.id,
+      "locale" => locale
+    })
   end
 
   defp stamp(value) when is_binary(value) do

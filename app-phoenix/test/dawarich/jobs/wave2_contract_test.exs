@@ -1,7 +1,7 @@
 defmodule Dawarich.Jobs.Wave2ContractTest do
   use Dawarich.JobsCase
 
-  alias Dawarich.Jobs.{Housekeeping, Registry}
+  alias Dawarich.Jobs.{Housekeeping, Ownership, Registry}
   alias Dawarich.Lite.ArchivalWarningWorker
   alias Dawarich.RailsTree
 
@@ -48,7 +48,44 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
           do: type
 
     assert MapSet.subset?(MapSet.new(@wave2_types), rails)
-    assert rails == phoenix
+    assert phoenix == MapSet.put(rails, "points.anomaly_recalculate")
+
+    assert {:ok, Dawarich.Points.AnomalyFilter.RecalculateWorker} =
+             Registry.command("points.anomaly_recalculate")
+
+    assert {:ok, Dawarich.Tracks.RecalculateWorker} = Registry.command("tracks.recalculate")
+  end
+
+  test "anomaly compatibility worker uses the canonical track recalculation owner" do
+    [[user]] =
+      rows(
+        "INSERT INTO users(email,created_at,updated_at) VALUES('alias-owner@example.test',now(),now()) RETURNING id"
+      )
+
+    [[track]] =
+      rows(
+        "INSERT INTO tracks(user_id,start_at,end_at,original_path,created_at,updated_at) VALUES($1,now(),now(),ST_GeomFromText('LINESTRING(13.405 52.52,13.406 52.52)',4326),now(),now()) RETURNING id",
+        [user]
+      )
+
+    args = %{"track_id" => track, "user_id" => user, "job_queue" => nil}
+    alias_worker = Dawarich.Points.AnomalyFilter.RecalculateWorker
+
+    Ownership.put!(ScratchRepo, "command:points.anomaly_recalculate", :oban)
+    assert :ok = alias_worker.run(ScratchRepo, args)
+
+    assert [[^args]] =
+             rows(
+               "SELECT payload FROM phoenix.rails_commands WHERE kind='points.anomaly_recalculate'"
+             )
+
+    assert [[^track]] = rows("SELECT id FROM tracks WHERE id=$1", [track])
+
+    rows("DELETE FROM phoenix.rails_commands")
+    Ownership.put!(ScratchRepo, "command:tracks.recalculate", :oban)
+    assert :ok = alias_worker.run(ScratchRepo, args)
+    assert [] == rows("SELECT id FROM tracks WHERE id=$1", [track])
+    assert [["tracks_changed"]] == rows("SELECT kind FROM phoenix.rails_commands")
   end
 
   test "every Rails-built payload decodes, and the args hold no personal data" do
