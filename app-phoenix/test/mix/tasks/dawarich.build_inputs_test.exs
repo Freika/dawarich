@@ -28,11 +28,13 @@ defmodule Mix.Tasks.Dawarich.BuildInputsTest do
 
     assert Enum.map(i18n.values, &elem(&1, 0)) == ~w(en de es fr pl ca zh)
 
-    keys =
-      json(out, "tmp/phoenix/achievements.json")["definitions"]
-      |> Enum.take(3)
-      |> Enum.map(& &1["key"])
+    definitions = json(out, "tmp/phoenix/achievements.json")["definitions"]
+    locales = Enum.sort(~w(en de es fr pl ca zh))
 
-    assert keys == ~w(border_hopper globetrotter world_traveler)
+    assert length(definitions) > 200
+
+    assert Enum.all?(definitions, fn definition ->
+             is_binary(definition["key"]) and Enum.sort(Map.keys(definition["names"])) == locales
+           end)
   end
 end
