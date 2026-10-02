@@ -112,6 +112,9 @@ module ApiMapGoldenOracle
     { name: 'track_points_blank_per_page', path: "#{T}/830001/points?page=1&per_page=" },
     { name: 'track_points_per_page_clamp', path: "#{T}/830001/points?page=1&per_page=5000" },
     { name: 'track_show_empty_import_xml', path: "#{T}/830001?import_id=999999", accept: :xml },
+    { name: 'track_show_degenerate_import', path: "#{T}/830001?import_id=820005", seed: :degenerate },
+    { name: 'track_show_degenerate_window', path: "#{T}/830001?start_at=1735689630&end_at=1735689631",
+      seed: :degenerate },
     { name: 'track_points_fallback', path: "#{T}/830002/points" },
     { name: 'track_points_fallback_import', path: "#{T}/830002/points?import_id=820003" },
     { name: 'track_points_missing', path: "#{T}/839999/points" },
@@ -150,6 +153,7 @@ module ApiMapGoldenOracle
     { name: 'rails_track_id_shape', expect: :rails, path: "#{T}/abc", auth: :none },
     { name: 'rails_track_json_suffix', expect: :rails, path: "#{T}/830001.json", auth: :none },
     { name: 'rails_track_points_json_suffix', expect: :rails, path: "#{T}/830001/points.json", auth: :none },
+    { name: 'rails_track_points_id_shape', expect: :rails, path: "#{T}/abc/points", auth: :none },
     { name: 'rails_point_tiles', expect: :rails, path: '/api/v1/tiles/points/1/1/1.mvt', auth: :none },
     { name: 'rails_point_update', expect: :rails, method: :patch, path: "#{P}/870001", auth: :none },
     { name: 'rails_points_bulk_destroy', expect: :rails, method: :delete, path: "#{P}/bulk_destroy", auth: :none }
@@ -342,6 +346,15 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     ActiveRecord::Base.connection.execute(
       "UPDATE points SET geodata = #{value}, motion_data = #{value} WHERE id = 870001"
     )
+  end
+
+  def map_seed_degenerate
+    [30, 31].each do |offset|
+      map_insert('points', id: 870_400 + offset, user_id: ApiMapGoldenOracle::OWNER, track_id: 830_001,
+                           timestamp: ApiMapGoldenOracle::T0 + offset, lonlat: 'SRID=4326;POINT(13.0005 52.0005)',
+                           import_id: 820_005, created_at: ApiMapGoldenOracle::STAMP,
+                           updated_at: ApiMapGoldenOracle::STAMP)
+    end
   end
 
   def map_seed_null_geometry
