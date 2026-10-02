@@ -43,7 +43,9 @@ defmodule Dawarich.Application do
       )
 
   defp jobs(node) do
-    if jobs_runtime?(), do: [{Dawarich.Jobs.Supervisor, node: node}], else: []
+    if jobs_runtime?(),
+      do: [{Dawarich.Jobs.Supervisor, node: node}, Dawarich.Cable.EventsRelay],
+      else: []
   end
 
   defp jobs_runtime?, do: Application.get_env(:dawarich, :jobs_runtime, true)

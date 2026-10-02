@@ -345,8 +345,82 @@ defmodule Dawarich.Test.A12a do
         part -> part
       end)
 
-  def relay!(name), do: @corpus["relay"][name]
-  def relay_payload(name), do: name |> relay!() |> Map.fetch!("published") |> hd() |> List.last()
+  def relay!(name) do
+    entry = @corpus["relay"][name]
+    %{entry | "published" => Enum.map(entry["published"], &List.to_tuple/1)}
+  end
+
+  def relay_payload(name), do: name |> relay!() |> Map.fetch!("published") |> hd() |> elem(1)
+  def relay_broadcasting(name), do: name |> relay!() |> Map.fetch!("published") |> hd() |> elem(0)
+  def naive_now, do: DateTime.to_naive(now())
+
+  def insert_events!(events) do
+    repo = Dawarich.Jobs.repo()
+
+    for event <- events do
+      case event do
+        %{"notification_id" => id} ->
+          repo.query!("INSERT INTO phoenix.notification_events (notification_id) VALUES ($1)", [
+            id
+          ])
+
+        %{"trip_id" => id, "kind" => kind, "distance_unit" => unit, "failed" => failed} ->
+          repo.query!(
+            "INSERT INTO phoenix.trip_events (trip_id, kind, distance_unit, failed, created_at) VALUES ($1, $2, $3, $4, now())",
+            [id, kind, unit, failed]
+          )
+      end
+    end
+
+    :ok
+  end
+
+  def split_turbo(payload) do
+    html = Jason.decode!(payload)
+
+    case String.split(html, ["<template>", "</template>"]) do
+      [head, content, tail] -> {head <> tail, content}
+      [whole] -> {whole, ""}
+    end
+  end
+
+  def many_notification_events(n) do
+    bob = @corpus["users"]["bob"]
+    stamp = naive_now()
+    first = 972_001
+
+    rows =
+      for id <- first..(first + n - 1),
+          do: %{
+            id: id,
+            user_id: bob,
+            title: "A12a #{id}",
+            content: "A12a",
+            kind: 0,
+            created_at: stamp,
+            updated_at: stamp
+          }
+
+    Repo.insert_all("notifications", rows)
+    for id <- first..(first + n - 1), do: %{"notification_id" => id}
+  end
+
+  def drain_until_empty(count \\ 0, round \\ 1)
+  def drain_until_empty(count, 11), do: count
+
+  def drain_until_empty(count, round) do
+    case Dawarich.Cable.TurboEvents.notifications(Dawarich.Jobs.repo(), Repo) do
+      0 -> count
+      n -> drain_until_empty(count + n, round + 1)
+    end
+  end
+
+  def heard_count(silence, count \\ 0) do
+    case heard(silence) do
+      :nothing -> count
+      _ -> heard_count(silence, count + 1)
+    end
+  end
 
   def listen(broadcasting) do
     pid = listener()

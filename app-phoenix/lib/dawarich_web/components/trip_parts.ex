@@ -163,31 +163,57 @@ defmodule DawarichWeb.TripParts do
         <.icon name="chevron-down" class="w-4 h-4" />
         <span class="hidden sm:inline">{s(@locale, "show_all_days")}</span>
       </button>
-      <turbo-frame id="trip_recalculate_frame">
-        <%= if @page.recalculating do %>
-          <button class="btn btn-outline btn-sm" disabled>
-            <span class="loading loading-spinner loading-xs"></span> {r(
-              @locale,
-              "recalculating_hellip"
-            )}
-          </button>
-        <% else %>
-          <form
-            class="button_to"
-            method="post"
-            action={"/trips/#{@page.id}/recalculate"}
-            data-turbo-confirm={
-              r(@locale, "recalculate_this_trip_s_path_distance_and_countries_from_your")
-            }
-          >
-            <button class="btn btn-outline btn-sm" type="submit">
-              <.icon name="refresh-ccw" class="w-4 h-4" /> {r(@locale, "recalculate")}
-            </button>
-            <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
-          </form>
-        <% end %>
-      </turbo-frame>
+      <.recalculate_button
+        trip_id={@page.id}
+        recalculating={@page.recalculating}
+        error={false}
+        locale={@locale}
+        rails_csrf_token={@rails_csrf_token}
+      />
     </div>
+    """
+  end
+
+  attr :trip_id, :integer, required: true
+  attr :recalculating, :boolean, required: true
+  attr :error, :boolean, required: true
+  attr :locale, :string, required: true
+  attr :rails_csrf_token, :string, default: nil
+
+  def recalculate_button(assigns) do
+    ~H"""
+    <turbo-frame id="trip_recalculate_frame">
+      <%= if @recalculating do %>
+        <button class="btn btn-outline btn-sm" disabled>
+          <span class="loading loading-spinner loading-xs"></span> {r(
+            @locale,
+            "recalculating_hellip"
+          )}
+        </button>
+      <% else %>
+        <form
+          class="button_to"
+          method="post"
+          action={"/trips/#{@trip_id}/recalculate"}
+          data-turbo-confirm={
+            r(@locale, "recalculate_this_trip_s_path_distance_and_countries_from_your")
+          }
+        >
+          <button class="btn btn-outline btn-sm" type="submit">
+            <.icon name="refresh-ccw" class="w-4 h-4" /> {r(@locale, "recalculate")}
+          </button>
+          <input
+            :if={@rails_csrf_token}
+            type="hidden"
+            name="authenticity_token"
+            value={@rails_csrf_token}
+          />
+        </form>
+        <span :if={@error} class="text-error text-xs ml-2">
+          {r(@locale, "recalculation_failed_try_again")}
+        </span>
+      <% end %>
+    </turbo-frame>
     """
   end
 
