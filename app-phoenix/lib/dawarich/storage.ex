@@ -24,6 +24,9 @@ defmodule Dawarich.Storage do
     "\\"
   ]
 
+  @external_resource approximations = Path.expand("../../priv/i18n_approximations.json", __DIR__)
+  @approximations approximations |> File.read!() |> Jason.decode!()
+
   def config!(env, rails_root \\ File.cwd!()) do
     root = Path.join(rails_root, "storage")
 
@@ -110,12 +113,33 @@ defmodule Dawarich.Storage do
     :ok
   end
 
+  def sanitized_filename(filename),
+    do: filename |> Dawarich.ReleaseMigration.ruby_strip() |> String.replace(@unsafe, "-")
+
   def content_disposition(type, filename) do
-    name = filename |> String.trim() |> String.replace(@unsafe, "-")
-    ascii = String.replace(name, ~r/[^\x00-\x7F]/u, "?")
+    name = sanitized_filename(filename)
+    ascii = Regex.replace(~r/[^\x00-\x7F]/u, name, &Map.get(@approximations, &1, "?"))
 
     ~s(#{type}; filename="#{escape(ascii, @ascii_escape)}"; filename*=UTF-8''#{escape(name, @utf8_escape)})
   end
+
+  def safe_disk_path(root, key) when is_binary(key) do
+    root = Path.expand(root)
+    segments = String.split(key, "/")
+
+    with true <-
+           String.valid?(key) and String.trim(key) != "" and not String.contains?(key, <<0>>),
+         false <- "." in segments or ".." in segments,
+         path =
+           Path.expand(Path.join([root, String.slice(key, 0, 2), String.slice(key, 2, 2), key])),
+         true <- String.starts_with?(path, root <> "/") do
+      {:ok, path}
+    else
+      _ -> :error
+    end
+  end
+
+  def safe_disk_path(_root, _key), do: :error
 
   defp escape(string, pattern),
     do:

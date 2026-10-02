@@ -211,4 +211,43 @@ defmodule Dawarich.StorageTest do
     refute File.exists?(path)
     assert Storage.delete(config, key) == :ok
   end
+
+  @a12b Dawarich.Test.A12b.fixture("storage.json")
+
+  test "sanitized_filename/1 and content_disposition/2 equal Rails', transliteration included" do
+    for %{"type" => type, "filename" => name, "sanitized" => sanitized, "header" => header} <-
+          @a12b["dispositions"] do
+      assert Dawarich.Storage.sanitized_filename(name) == sanitized, inspect(name)
+      assert Dawarich.Storage.content_disposition(type, name) == header, inspect(name)
+    end
+  end
+
+  test "safe_disk_path/2 refuses what DiskService#path_for refuses" do
+    root = Path.join(System.tmp_dir!(), "a12b-root")
+
+    assert Dawarich.Storage.safe_disk_path(root, "abcdef") ==
+             {:ok, Path.join([Path.expand(root), "ab", "cd", "abcdef"])}
+
+    assert {:ok, _} =
+             Dawarich.Storage.safe_disk_path(root, "raw_data_archives/1/2026/05/001.jsonl.gz.enc")
+
+    for bad <- ["", "  ", "../x", "a/../b", "./a", "a/./b", "a/..", <<0, ?a>>, <<255>>, nil],
+        do: assert(Dawarich.Storage.safe_disk_path(root, bad) == :error, inspect(bad))
+  end
+
+  test "property: safe_disk_path/2 never resolves outside the root" do
+    root = Path.expand(Path.join(System.tmp_dir!(), "a12b-root"))
+
+    Dawarich.Test.A12b.seeded(fn _ ->
+      key =
+        Enum.map_join(1..:rand.uniform(6), "/", fn _ ->
+          Enum.random(["..", ".", "a", "bc", "~", "x y", "é"])
+        end)
+
+      case Dawarich.Storage.safe_disk_path(root, key) do
+        {:ok, path} -> assert String.starts_with?(path, root <> "/")
+        :error -> :ok
+      end
+    end)
+  end
 end
