@@ -4,7 +4,7 @@ defmodule DawarichWeb.TimelineCalendar do
 
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias Dawarich.Timeline.Days
-  alias DawarichWeb.Icon
+  alias DawarichWeb.{Icon, LocalizedDate, TimelineFormat}
 
   @widths ~w(w-full w-3/4 w-5/6 w-2/3 w-4/5)
 
@@ -87,6 +87,81 @@ defmodule DawarichWeb.TimelineCalendar do
         </turbo-frame>
       </div>
     </turbo-frame>
+    """
+  end
+
+  attr :summary, :map, required: true
+  attr :locale, :string, required: true
+
+  def calendar(assigns) do
+    month = Date.from_iso8601!(assigns.summary.month <> "-01")
+    {:ok, initials} = Dawarich.I18n.t(assigns.locale, "calendar.weekday_initials")
+
+    assigns =
+      assign(assigns,
+        prev: month |> Date.shift(month: -1) |> Calendar.strftime("%Y-%m"),
+        next: month |> Date.shift(month: 1) |> Calendar.strftime("%Y-%m"),
+        title: LocalizedDate.l(assigns.locale, month, "month_year"),
+        initials: initials
+      )
+
+    ~H"""
+    <turbo-frame id="timeline-calendar-frame">
+      <div class="timeline-calendar" data-testid="timeline-calendar">
+        <div class="flex items-center justify-between mb-2">
+          <a
+            data-turbo-stream="true"
+            data-testid="calendar-prev"
+            data-target-month={@prev}
+            data-action="click->timeline-feed#previewMonth"
+            class="btn btn-ghost btn-xs btn-square"
+            aria-label={t(@locale, "map.timeline_feeds.calendar.previous_month", %{})}
+            href={"/map/timeline_feeds/calendar?month=#{@prev}"}
+          >
+            <Icon.icon name="chevron-left" class="w-4 h-4" />
+          </a>
+          <div class="font-semibold text-sm" data-testid="calendar-title">{@title}</div>
+          <a
+            data-turbo-stream="true"
+            data-testid="calendar-next"
+            data-target-month={@next}
+            data-action="click->timeline-feed#previewMonth"
+            class="btn btn-ghost btn-xs btn-square"
+            aria-label={t(@locale, "map.timeline_feeds.calendar.next_month", %{})}
+            href={"/map/timeline_feeds/calendar?month=#{@next}"}
+          >
+            <Icon.icon name="chevron-right" class="w-4 h-4" />
+          </a>
+        </div>
+        <div class="grid grid-cols-7 gap-0.5 text-[10px] text-base-content/60 mb-1">
+          <div :for={label <- @initials} class="text-center">{label}</div>
+        </div>
+        <div class="grid grid-cols-7 gap-0.5">
+          <%= for week <- @summary.weeks, cell <- week do %>
+            <button
+              type="button"
+              class={TimelineFormat.cell_classes(cell)}
+              data-day={cell.date}
+              data-action="click->timeline-feed#selectDay"
+              data-testid="calendar-day"
+              data-tracked-seconds={cell.tracked_seconds}
+              disabled={cell.disabled}
+            >
+              <span class="cal-cell__day">{Date.from_iso8601!(cell.date).day}</span>
+            </button>
+          <% end %>
+        </div>
+      </div>
+    </turbo-frame>
+    """
+  end
+
+  attr :summary, :map, required: true
+  attr :locale, :string, required: true
+
+  def calendar_stream(assigns) do
+    ~H"""
+    <turbo-stream action="replace" target="timeline-calendar-frame" phx-no-format><template><.calendar summary={@summary} locale={@locale} /></template></turbo-stream>
     """
   end
 

@@ -5,7 +5,7 @@ defmodule DawarichWeb.MapFrames do
   import Plug.Conn
 
   alias Dawarich.{Entitlements, MapWindow}
-  alias Dawarich.Timeline.{DayRows, Days}
+  alias Dawarich.Timeline.{DayRows, Days, MonthSummary}
 
   alias DawarichWeb.{
     LayoutAssigns,
@@ -89,6 +89,17 @@ defmodule DawarichWeb.MapFrames do
     if feed.days == [] or ctx.csrf_changes == %{},
       do: {:ok, type, html},
       else: {:ok, type, html, ctx.csrf_changes}
+  end
+
+  def body(:calendar, ctx) do
+    summary =
+      MonthSummary.build(ctx.user, ctx.query["month"], if(restricted?(ctx), do: ctx.now), ctx.now)
+
+    assigns = %{summary: summary, locale: ctx.locale}
+
+    if ctx.stream,
+      do: render(&TimelineCalendar.calendar_stream/1, assigns, "text/vnd.turbo-stream.html"),
+      else: html(&TimelineCalendar.calendar/1, assigns)
   end
 
   def body(:track_info, ctx) do

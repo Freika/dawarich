@@ -686,7 +686,6 @@ defmodule DawarichWeb.EndpointTest do
           {"/maps/v2", ""},
           {"/map/v1", ""},
           {"/map/timeline_feeds?date=2026-09-29", ""},
-          {"/map/timeline_feeds/calendar?month=2026-09", ""},
           {"/map/residency", ""},
           {"/api/v1/timeline?start_at=1&end_at=2", ""},
           {"/map/v2", "Accept: application/json\r\n"},
@@ -731,7 +730,9 @@ defmodule DawarichWeb.EndpointTest do
 
     for target <- [
           "/map/timeline_feeds/5/track_info",
-          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59"
+          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds/calendar?month=2026-09",
+          "/map/timeline_feeds/calendar"
         ],
         do:
           assert(
@@ -757,7 +758,8 @@ defmodule DawarichWeb.EndpointTest do
           {"/map/timeline_feeds?start_at=&end_at=2026-09-27T23:59:59", frame},
           {"/map/timeline_feeds?start_at=Oct%2015%202025&end_at=2026-09-27T23:59:59", frame},
           {"/map/timeline_feeds?start_at[]=1&end_at=2", frame},
-          {"/map/timeline_feeds?start_at=1&end_at=2&locale=de", frame}
+          {"/map/timeline_feeds?start_at=1&end_at=2&locale=de", frame},
+          {"/map/timeline_feeds/calendar?month=2026-9", frame}
         ],
         do:
           assert(

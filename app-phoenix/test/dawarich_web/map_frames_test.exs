@@ -207,4 +207,66 @@ defmodule DawarichWeb.MapFramesTest do
       refute ok.("start_at[]=1&end_at=2")
     end
   end
+
+  describe "the calendar" do
+    test "Turbo's stream request gets the replace stream, a frame request the frame", %{
+      user: user
+    } do
+      stream =
+        frame_get(
+          user,
+          "/map/timeline_feeds/calendar?month=2026-09",
+          "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"
+        )
+
+      frame = frame_get(user, "/map/timeline_feeds/calendar?month=2026-09")
+
+      assert get_resp_header(stream, "content-type") == [
+               "text/vnd.turbo-stream.html; charset=utf-8"
+             ]
+
+      assert stream.resp_body =~
+               ~r/\A<turbo-stream action="replace" target="timeline-calendar-frame"><template><turbo-frame id="timeline-calendar-frame">/
+
+      assert html_response(frame, 200) =~ ~s(<turbo-frame id="timeline-calendar-frame">)
+      assert get_resp_header(frame, "vary") == ["Accept"]
+    end
+
+    test "a lone */* gets the stream; browser-like and empty Accept get HTML without Vary", %{
+      user: user
+    } do
+      path = "/map/timeline_feeds/calendar?month=2026-09"
+
+      assert frame_get(user, path, "*/*") |> get_resp_header("content-type") == [
+               "text/vnd.turbo-stream.html; charset=utf-8"
+             ]
+
+      for accept <- [@browser, ""] do
+        conn = frame_get(user, path, accept)
+        assert get_resp_header(conn, "content-type") == ["text/html; charset=utf-8"]
+        assert get_resp_header(conn, "vary") == []
+      end
+    end
+  end
+
+  describe "MapFramesGate.calendar?/2" do
+    defp calendar(query, accept \\ "text/html, application/xhtml+xml"),
+      do:
+        build_conn(:get, "/map/timeline_feeds/calendar" <> query)
+        |> put_req_header("accept", accept)
+        |> MapFramesGate.calendar?(%{})
+
+    test "owns YYYY-MM months, blank or missing months, and the Accept shapes Turbo and browsers send" do
+      assert calendar("?month=2026-09")
+      assert calendar("")
+      assert calendar("?month=")
+      assert calendar("?month=2026-09", "*/*")
+      assert calendar("?month=2026-09", "")
+      refute calendar("?month=2026-9")
+      refute calendar("?month=0000-01")
+      refute calendar("?month[]=2026-09")
+      refute calendar("?month=2026-09", "text/html;level=1, text/vnd.turbo-stream.html")
+      refute calendar("?month=2026-09", "TEXT/HTML, application/xhtml+xml")
+    end
+  end
 end
