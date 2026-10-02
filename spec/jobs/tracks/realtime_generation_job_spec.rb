@@ -222,6 +222,19 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
             .not_to have_enqueued_job(ReverseGeocodingJob)
         end
       end
+
+      it 'Oban-owned: RealtimeGeocodeFollowUp writes a batch instead of enqueueing' do
+        job_owner!('command:geocoding.reverse_point', :oban)
+        recent_point = create(:point, user: user, reverse_geocoded_at: nil)
+        reset_dedup_keys
+
+        expect { described_class.perform_now(user.id) }
+          .not_to have_enqueued_job(ReverseGeocodingJob)
+
+        row = JobOutbox.sole
+        expect(row).to have_attributes(command_type: 'geocoding.reverse_point', aggregate_id: user.id)
+        expect(row.payload).to eq('user_id' => user.id, 'point_ids' => [recent_point.id], 'force' => false)
+      end
     end
   end
 end

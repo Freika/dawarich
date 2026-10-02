@@ -56,6 +56,29 @@ defmodule Dawarich.Storage.S3 do
     :ok
   end
 
+  def download!(config, key, dest),
+    do: File.open!(dest, [:write, :binary], &range!(config, key, &1, 0))
+
+  defp range!(config, key, io, from) do
+    %{body: body, headers: headers} =
+      request!(config, :get, key, nil, %{}, "", %{
+        "range" => "bytes=#{from}-#{from + @single_part_limit - 1}"
+      })
+
+    IO.binwrite(io, body)
+
+    total =
+      headers
+      |> header!("content-range")
+      |> String.split("/")
+      |> List.last()
+      |> String.to_integer()
+
+    if from + byte_size(body) < total,
+      do: range!(config, key, io, from + byte_size(body)),
+      else: :ok
+  end
+
   defp multipart!(config, path, key, headers, part_size) do
     %{body: xml} = request!(config, :post, key, "uploads", %{}, "", headers)
     [_, upload_id] = Regex.run(~r|<UploadId>([^<]+)</UploadId>|, xml)

@@ -10,8 +10,10 @@ module Tracks
       config = Geocoding::Config.for(user.id)
       return unless config.enabled?
 
-      user.points.not_reverse_geocoded.where('created_at > ?', since)
-          .find_each { |point| point.async_reverse_geocode(config: config) }
+      user.points.not_reverse_geocoded.where('created_at > ?', since).in_batches(of: 1000) do |batch|
+        Geocoding::ReverseCommands.enqueue_points(user.id, batch.pluck(:id), force: false,
+                                                  producer: 'Tracks::RealtimeGeocodeFollowUp')
+      end
     end
   end
 end

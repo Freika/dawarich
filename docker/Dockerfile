@@ -90,7 +90,7 @@ RUN apt-get update -qq \
     && rm -rf /var/lib/apt/lists/*
 
 RUN apt-get update -qq \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends erlang-base erlang-inets erlang-ssl procps \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends erlang-base erlang-inets erlang-ssl erlang-xmerl procps \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=mbgl_libs /out /opt/mbgl-libs

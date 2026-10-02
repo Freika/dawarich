@@ -305,9 +305,13 @@ RSpec.describe 'OAuth account-link password challenge', type: :request do
       Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
       Rack::Attack.reset!
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      freeze_time
     end
 
-    after { Rack::Attack.enabled = false }
+    after do
+      Rack::Attack.enabled = false
+      travel_back
+    end
 
     it 'throttles auth/account_link_challenge_session at 5/15min for the same pending link' do
       6.times do

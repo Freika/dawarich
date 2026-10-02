@@ -75,6 +75,61 @@ module RailsCommands
 
           Tracks::TransportationRecalculationStatus.new(payload.fetch('user_id')).increment_processed!
         }
+      },
+      'schedule_untracked_tracks' => {
+        guard: 'untracked-only generation over the import range; a repeat finds no untracked point to claim',
+        call: ->(payload) { Import.find_by(id: payload.fetch('import_id'))&.schedule_untracked_track_generation }
+      },
+      'enhanced_import_card' => {
+        guard: 'broadcast_replace of the card as it is now; a repeat re-renders the same state',
+        call: lambda { |payload|
+          import = Import.find_by(id: payload.fetch('import_id'))
+          EnhancedImport::CardBroadcaster.call(import) if import
+        }
+      },
+      'places_delete_if_orphan' => {
+        guard: 'Places::DeleteIfOrphan re-checks every reference before deleting; ' \
+               'a repeat finds the place kept or gone',
+        call: lambda { |payload|
+          Points::ArrivalCommands.for_user(payload) do
+            ActiveJob.perform_all_later(payload.fetch('place_ids').map { |id| Places::DeleteIfOrphanJob.new(id) })
+          end
+        }
+      },
+      'place_name_fetch' => {
+        guard: 'Places::NameFetcher names the place from the provider; a repeat repeats a rate-limited lookup',
+        call: lambda { |payload|
+          Points::ArrivalCommands.for_user(payload) { Places::NameFetchingJob.perform_later(payload.fetch('place_id')) }
+        }
+      },
+      'reverse_geocode_place' => {
+        guard: 'place reverse geocoding converges (Finding 5); a repeat rewrites the same values',
+        call: lambda { |payload|
+          place_id = payload.fetch('place_id')
+          Points::ArrivalCommands.for_user(payload) { ReverseGeocodingJob.perform_later('place', place_id) }
+        }
+      },
+      'exports.points_created' => {
+        guard: 'Re-produces exports.points only while the export is still created: ExportJob claims ' \
+               'created -> processing by compare-and-set and the outbox keeps one pending points-export:<id>',
+        call: lambda { |payload|
+          export = Export.find_by(id: payload.fetch('export_id'), user_id: payload.fetch('user_id'))
+          next unless export&.created?
+
+          produce = lambda {
+            I18n.with_locale(payload.fetch('locale')) do
+              JobCommands.produce('exports.points', { 'export_id' => export.id, 'user_id' => export.user_id },
+                                  aggregate_id: export.id, producer: 'Phoenix ExportsCreate',
+                                  dedupe_key: "points-export:#{export.id}")
+            end
+          }
+
+          begin
+            Time.use_zone(export.user.timezone, &produce)
+          rescue ArgumentError
+            produce.call
+          end
+        }
       }
     }.merge(Points::ArrivalCommands::HANDLERS).freeze
 

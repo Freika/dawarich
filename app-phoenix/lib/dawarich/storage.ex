@@ -87,6 +87,12 @@ defmodule Dawarich.Storage do
     }
   end
 
+  def download!(%{service: "local", root: root}, key, dest),
+    do: File.cp!(disk_path(root, key), dest)
+
+  def download!(%{service: "s3"} = config, key, dest),
+    do: Dawarich.Storage.S3.download!(config, key, dest)
+
   def delete(%{service: "local", root: root}, key) do
     _ = File.rm(disk_path(root, key))
     :ok

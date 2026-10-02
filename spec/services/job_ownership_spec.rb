@@ -26,6 +26,14 @@ RSpec.describe JobOwnership do
       expect(described_class.with_owner(key) { :ran }).to eq(:ran)
     end
 
+    it 'oban? reports true only when Oban owns the key' do
+      job_owner!(key, :oban)
+      expect(described_class.oban?(key)).to be(true)
+
+      job_owner!(key, :sidekiq)
+      expect(described_class.oban?(key)).to be(false)
+    end
+
     it 'skips and logs when Oban owns the key' do
       job_owner!(key, :oban)
       allow(Rails.logger).to receive(:info).and_call_original
@@ -70,6 +78,37 @@ RSpec.describe JobOwnership do
         expect(described_class.unpin!(released, by: 'spec')).to match_array(lite_keys)
         expect(lite_rows).to eq(lite_keys.map { |key| [key, 'sidekiq', false] }), released
       end
+    end
+  end
+
+  context 'with the shared geocoding rate limiter guard' do
+    let(:geocoding_key) { 'command:visits.suggest' }
+
+    def stub_shared_limiter_flag(value)
+      allow(ENV).to receive(:[]).and_call_original
+      allow(ENV).to receive(:[]).with('GEOCODING_SHARED_RATE_LIMIT').and_return(value)
+    end
+
+    it 'refuses a geocoding key to Oban while the shared limiter is off' do
+      phoenix_tables!
+      stub_shared_limiter_flag(nil)
+
+      expect do
+        described_class.put!(geocoding_key, :oban, pinned: false, by: 'spec')
+      end.to raise_error(ArgumentError, /GEOCODING_SHARED_RATE_LIMIT/)
+      expect(described_class.lock_owner(geocoding_key)).to eq(:sidekiq)
+
+      expect(described_class.put!(key, :oban, pinned: false, by: 'spec')).to eq([key])
+      expect(described_class.release!(geocoding_key, by: 'spec')).to eq([geocoding_key])
+    end
+
+    it 'gives a geocoding key to Oban once the flag is on' do
+      phoenix_tables!
+      stub_shared_limiter_flag('true')
+
+      described_class.put!(geocoding_key, :oban, pinned: false, by: 'spec')
+
+      expect(described_class.lock_owner(geocoding_key)).to eq(:oban)
     end
   end
 

@@ -323,8 +323,10 @@ RSpec.describe RailsCommands::Poller do
   it 'every registered kind declares a repeat guard and a callable' do
     expected_kinds = %w[
       visit_months_changed airtrail_stats tracks_changed tracks_generate_range tracks_throttled_backfill
-      tracks_realtime_retrigger geocode_recent_points transport_progress points.tile_epoch points.anomaly_filter
-      tracks.realtime tracks.backfill visits.realtime points.live_broadcast
+      tracks_realtime_retrigger geocode_recent_points transport_progress schedule_untracked_tracks
+      enhanced_import_card places_delete_if_orphan place_name_fetch reverse_geocode_place exports.points_created
+      points.tile_epoch
+      points.anomaly_filter tracks.realtime tracks.backfill visits.realtime points.live_broadcast
     ]
     expect(RailsCommands::Registry::HANDLERS.keys).to eq(expected_kinds)
     RailsCommands::Registry::HANDLERS.each_value do |handler|
@@ -433,6 +435,68 @@ RSpec.describe RailsCommands::Poller do
     command!('geocode_recent_points', { 'user_id' => 0, 'since' => Time.current.to_i })
 
     expect { described_class.drain_once }.not_to have_enqueued_job(Tracks::ThrottledBackfillJob)
+    expect(commands).to be_empty
+    expect(dead).to be_empty
+  end
+
+  it "schedule_untracked_tracks schedules the import's untracked generation" do
+    phoenix_tables!
+    import = create(:import, user:)
+    create(:point, user:, import:, timestamp: 1.hour.ago.to_i)
+    create(:point, user:, import:, timestamp: Time.current.to_i)
+    command!('schedule_untracked_tracks', { 'user_id' => user.id, 'import_id' => import.id })
+
+    expect { described_class.drain_once }.to have_enqueued_job(Tracks::ParallelGeneratorJob)
+      .with(user.id, hash_including(untracked_only: true, import_id: import.id))
+  end
+
+  it 'enhanced_import_card broadcasts the card' do
+    phoenix_tables!
+    import = create(:import, user:)
+    command!('enhanced_import_card', { 'user_id' => user.id, 'import_id' => import.id })
+
+    expect { described_class.drain_once }.to have_broadcasted_to("import_#{import.id}_extraction")
+  end
+
+  it 'places_delete_if_orphan enqueues one job per place' do
+    phoenix_tables!
+    command!('places_delete_if_orphan', { 'user_id' => user.id, 'place_ids' => [1, 2] })
+
+    expect { described_class.drain_once }
+      .to have_enqueued_job(Places::DeleteIfOrphanJob).exactly(2).times
+
+    expect(enqueued_jobs.select { |job| job[:job] == Places::DeleteIfOrphanJob }.map { |job| job[:args] })
+      .to contain_exactly([1], [2])
+  end
+
+  it 'place_name_fetch and reverse_geocode_place enqueue their jobs' do
+    phoenix_tables!
+    command!('place_name_fetch', { 'user_id' => user.id, 'place_id' => 5 })
+    command!('reverse_geocode_place', { 'user_id' => user.id, 'place_id' => 7 })
+
+    expect { described_class.drain_once }.to have_enqueued_job(Places::NameFetchingJob).with(5)
+    expect(enqueued_jobs).to include(hash_including(job: ReverseGeocodingJob, args: ['place', 7]))
+  end
+
+  it 'a missing import is skipped' do
+    phoenix_tables!
+    command!('schedule_untracked_tracks', { 'user_id' => user.id, 'import_id' => 0 })
+    command!('enhanced_import_card', { 'user_id' => user.id, 'import_id' => 0 })
+
+    expect(described_class.drain_once).to eq(2)
+    expect(enqueued_jobs).to be_empty
+    expect(commands).to be_empty
+    expect(dead).to be_empty
+  end
+
+  it 'user-scoped kinds skip a missing user' do
+    phoenix_tables!
+    command!('places_delete_if_orphan', { 'user_id' => 0, 'place_ids' => [1] })
+    command!('place_name_fetch', { 'user_id' => 0, 'place_id' => 1 })
+    command!('reverse_geocode_place', { 'user_id' => 0, 'place_id' => 1 })
+
+    expect(described_class.drain_once).to eq(3)
+    expect(enqueued_jobs).to be_empty
     expect(commands).to be_empty
     expect(dead).to be_empty
   end
