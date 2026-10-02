@@ -13,20 +13,30 @@ defmodule Dawarich.Mail.Smtp do
   end
 
   def data(%{format: :html_only} = message) do
-    encoded = encode(message)
+    transfer = transfer_encoding(message.html)
+    encoded = html_only(message, transfer)
     size = byte_size(encoded)
 
     cond do
       binary_part(encoded, size - 2, 2) == "\r\n" -> binary_part(encoded, 0, size - 2)
-      transfer_encoding(message.html) == "quoted-printable" -> encoded <> "="
+      transfer == "quoted-printable" -> encoded <> "="
       true -> encoded
     end
   end
 
   def data(message), do: encode(message)
 
-  def encode(%{format: :html_only} = message) do
-    transfer = transfer_encoding(message.html)
+  def encode(%{format: :html_only} = message),
+    do: html_only(message, transfer_encoding(message.html))
+
+  def encode(message),
+    do:
+      :mimemail.encode(
+        {"multipart", "alternative", headers(message), %{},
+         [part("plain", message.text), part("html", message.html)]}
+      )
+
+  defp html_only(message, transfer) do
     body = if transfer == "base64", do: message.html, else: crlf(message.html)
     reply_to = if message[:reply_to], do: [{"Reply-To", message.reply_to}], else: []
     params = %{content_type_params: [{"charset", "UTF-8"}], transfer_encoding: transfer}
@@ -36,13 +46,6 @@ defmodule Dawarich.Mail.Smtp do
        params, body}
     )
   end
-
-  def encode(message),
-    do:
-      :mimemail.encode(
-        {"multipart", "alternative", headers(message), %{},
-         [part("plain", message.text), part("html", message.html)]}
-      )
 
   defp headers(message),
     do:
