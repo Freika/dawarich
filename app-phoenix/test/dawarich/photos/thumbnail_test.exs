@@ -65,6 +65,9 @@ defmodule Dawarich.Photos.ThumbnailTest do
     end)
   end
 
+  defp fill_backlog(_server, fillers) when length(fillers) >= 64,
+    do: flunk("the listen backlog accepted 64 connections without a connect timeout")
+
   defp fill_backlog(server, fillers) do
     case :gen_tcp.connect({127, 0, 0, 1}, server.port, [:binary, active: false], @deadline) do
       {:ok, filler} -> fill_backlog(server, [filler | fillers])
