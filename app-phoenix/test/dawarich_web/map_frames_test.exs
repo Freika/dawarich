@@ -100,4 +100,111 @@ defmodule DawarichWeb.MapFramesTest do
              |> MapFramesGate.track?(%{})
     end
   end
+
+  describe "the day feed" do
+    @feed "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59"
+
+    test "renders the day, its rows and the forms with the session's masked token", %{user: user} do
+      S.place!(user.id, 7321, "Café Kowalski, Karl-Liebknecht-Straße, 10, Leipzig, Sachsen")
+
+      S.visit!(user.id, 7121, %{
+        started_at: ~N[2026-09-27 06:00:00],
+        ended_at: ~N[2026-09-27 07:00:00],
+        name: "",
+        place_id: 7321,
+        duration: 60
+      })
+
+      S.visit!(user.id, 7122, %{
+        started_at: ~N[2026-09-27 09:00:00],
+        ended_at: ~N[2026-09-27 10:00:00],
+        duration: 60
+      })
+
+      S.track!(user.id, 7223, %{
+        start_at: ~N[2026-09-27 07:05:00],
+        end_at: ~N[2026-09-27 07:35:00],
+        distance: 2400,
+        duration: 1800
+      })
+
+      html = user |> frame_get(@feed) |> html_response(200)
+
+      assert html =~ ~s(<turbo-frame id="timeline-feed-frame">)
+      assert html =~ ~s(data-day="2026-09-27")
+      assert html =~ ~s(id="visit_entry_7121")
+      assert html =~ ~s(data-started-at="2026-09-27T08:00:00+02:00")
+      assert html =~ ~s(data-max-bulk-visits="500")
+      assert html =~ ~s(action="/visits/7121")
+      assert html =~ ~s(data-frame-id="track-info-7223")
+      assert html =~ "Karl-Liebknecht-Straße 10, Leipzig"
+      assert length(Regex.scan(~r/name="authenticity_token" value="[^"]+"/, html)) == 6
+    end
+
+    test "leaves the session's pending flash and token alone", %{user: user} do
+      S.visit!(user.id, 7124, %{
+        started_at: ~N[2026-09-27 06:00:00],
+        ended_at: ~N[2026-09-27 07:00:00]
+      })
+
+      flash = %{"discard" => [], "flashes" => %{"notice" => "Saved"}}
+
+      conn =
+        RailsUser.signed_in(user.id, %{"flash" => flash})
+        |> put_req_header("accept", @frame)
+        |> get(@feed)
+
+      assert conn.status == 200
+      assert get_resp_header(conn, "set-cookie") == []
+    end
+
+    test "a session without a token gets one when the feed renders forms, as form_with creates it",
+         %{user: user} do
+      cookie = user.id |> RailsUser.session() |> Map.delete("_csrf_token") |> RailsUser.cookie()
+
+      request = fn ->
+        build_conn()
+        |> put_req_cookie("_dawarich_session", cookie)
+        |> put_req_header("accept", @frame)
+        |> get(@feed)
+      end
+
+      assert request.() |> get_resp_header("set-cookie") == []
+
+      S.visit!(user.id, 7123, %{
+        started_at: ~N[2026-09-27 06:00:00],
+        ended_at: ~N[2026-09-27 07:00:00]
+      })
+
+      assert [set] = request.() |> get_resp_header("set-cookie")
+      [_, value] = Regex.run(~r/_dawarich_session=([^;]+)/, set)
+
+      read =
+        build_conn()
+        |> put_req_cookie("_dawarich_session", value)
+        |> DawarichWeb.RailsAuth.call([])
+
+      assert is_binary(read.assigns.rails_session["_csrf_token"])
+    end
+
+    test "an empty day keeps the day navigator for the requested date", %{user: user} do
+      html = user |> frame_get(@feed) |> html_response(200)
+
+      assert html =~ ~s(data-testid="day-header-label">Sunday, September 27<)
+      refute html =~ "timeline-entries"
+    end
+  end
+
+  describe "MapFramesGate.feed?/2" do
+    test "owns digits and ISO start/end only" do
+      ok = &MapFramesGate.feed?(build_conn(:get, "/map/timeline_feeds?" <> &1), %{})
+
+      assert ok.("start_at=1790460000&end_at=1790546399")
+      assert ok.("start_at=2026-09-27T00:00:00&end_at=2026-09-27%2023:59")
+      refute ok.("end_at=2026-09-27T23:59:59")
+      refute ok.("start_at=%20&end_at=2026-09-27T23:59:59")
+      refute ok.("start_at=yesterday&end_at=2026-09-27T23:59:59")
+      refute ok.("start_at[]=1&end_at=2")
+    end
+  end
 end

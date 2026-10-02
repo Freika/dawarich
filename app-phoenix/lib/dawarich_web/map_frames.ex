@@ -4,8 +4,18 @@ defmodule DawarichWeb.MapFrames do
 
   import Plug.Conn
 
+  alias Dawarich.{Entitlements, MapWindow}
   alias Dawarich.Timeline.{DayRows, Days}
-  alias DawarichWeb.{LayoutAssigns, RailsCsrf, Strangler, TimelineCalendar}
+
+  alias DawarichWeb.{
+    LayoutAssigns,
+    RailsCsrf,
+    RailsSession,
+    StatsFormat,
+    Strangler,
+    TimelineCalendar,
+    TimelineFeed
+  }
 
   @impl true
   def init(action), do: action
@@ -31,9 +41,54 @@ defmodule DawarichWeb.MapFrames do
       {:ok, type, html} ->
         respond(conn, accept, type, html)
 
+      {:ok, type, html, changes} ->
+        conn |> RailsSession.stage(changes) |> respond(accept, type, html)
+
       :not_found ->
         raise DawarichWeb.NotFoundError
     end
+  end
+
+  def body(:index, ctx) do
+    window =
+      MapWindow.build(
+        Map.take(ctx.query, ["start_at", "end_at"]),
+        ctx.user.settings || %{},
+        ctx.now,
+        nil
+      )
+
+    restricted = restricted?(ctx)
+    feed = Days.load(ctx.user, window, if(restricted, do: ctx.now))
+
+    frame_ctx = %{
+      csrf: ctx.csrf,
+      api_key: ctx.user.api_key || "",
+      redetected: feed.redetected,
+      alert_href:
+        if(restricted,
+          do:
+            StatsFormat.upgrade_url(
+              ctx.user,
+              ctx.now,
+              ctx.self_hosted,
+              "data_window",
+              "timeline_feed"
+            )
+        )
+    }
+
+    {:ok, type, html} =
+      html(&TimelineFeed.frame/1, %{
+        days: feed.days,
+        requested_date: window.start_date,
+        locale: ctx.locale,
+        ctx: frame_ctx
+      })
+
+    if feed.days == [] or ctx.csrf_changes == %{},
+      do: {:ok, type, html},
+      else: {:ok, type, html, ctx.csrf_changes}
   end
 
   def body(:track_info, ctx) do
@@ -57,6 +112,8 @@ defmodule DawarichWeb.MapFrames do
           "text/vnd.turbo-stream.html",
           "*/*"
         ]
+
+  defp restricted?(ctx), do: not Entitlements.full_access?(ctx.user, ctx.self_hosted, ctx.now)
 
   defp html(fun, assigns), do: render(fun, assigns, "text/html")
 

@@ -729,7 +729,10 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
     accept = "Accept: text/html, application/xhtml+xml\r\n"
 
-    for target <- ["/map/timeline_feeds/5/track_info"],
+    for target <- [
+          "/map/timeline_feeds/5/track_info",
+          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59"
+        ],
         do:
           assert(
             answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n#{accept}\r\n") == 302
@@ -749,7 +752,12 @@ defmodule DawarichWeb.EndpointTest do
           {"/map/timeline_feeds/5/track_info", frame <> "X-Dawarich-Client: ios\r\n"},
           {"/map/timeline_feeds/5/track_info", "Accept: application/json\r\n"},
           {"/map/timeline_feeds/5/track_info", frame <> "X-Requested-With: XMLHttpRequest\r\n"},
-          {"/map/timeline_feeds/5/track_info?format=json", frame}
+          {"/map/timeline_feeds/5/track_info?format=json", frame},
+          {"/map/timeline_feeds?date=2026-09-29", frame},
+          {"/map/timeline_feeds?start_at=&end_at=2026-09-27T23:59:59", frame},
+          {"/map/timeline_feeds?start_at=Oct%2015%202025&end_at=2026-09-27T23:59:59", frame},
+          {"/map/timeline_feeds?start_at[]=1&end_at=2", frame},
+          {"/map/timeline_feeds?start_at=1&end_at=2&locale=de", frame}
         ],
         do:
           assert(
