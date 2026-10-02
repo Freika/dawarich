@@ -36,6 +36,9 @@ defmodule DawarichWeb.Api.PhotosController do
     settings = Accounts.settings(user.id)
 
     cond do
+      not is_map(settings) ->
+        {:replay, "settings shape"}
+
       not (is_nil(source) or (is_binary(source) and source =~ @printable)) ->
         {:replay, "source parameter shape"}
 

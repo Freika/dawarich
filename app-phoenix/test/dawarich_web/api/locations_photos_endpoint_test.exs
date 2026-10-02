@@ -220,6 +220,19 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
     assert Task.await(immich) == [@preview, @preview]
   end
 
+  test "a user whose settings column is NULL or JSON null goes to Puma, which answers its own 500",
+       %{port: port, upstream: upstream} do
+    user!(%{api_key: "phoenix-a4g3-key-sql-null", settings: nil})
+    json_null = user!(%{api_key: "phoenix-a4g3-key-json-null"})
+    Repo.query!("UPDATE users SET settings = 'null'::jsonb WHERE id = $1", [json_null])
+
+    for key <- ~w(phoenix-a4g3-key-sql-null phoenix-a4g3-key-json-null) do
+      client = request(port, "#{@thumb}?source=immich", bearer(key))
+      assert puma(upstream) == "GET #{@thumb}?source=immich HTTP/1.1", key
+      assert {200, _, "rails"} = read_response(client)
+    end
+  end
+
   test "Cloud, the kill switch, HEAD, other suffixes, other ids, the photo list, suggestions and enrich reach Puma even without a key",
        %{port: port, upstream: upstream} do
     owner!()
