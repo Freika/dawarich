@@ -4,6 +4,10 @@ defmodule DawarichWeb.InsightsEndpointTest do
   @moduletag :capture_log
 
   import Dawarich.Test.RawHTTP
+  import Phoenix.ConnTest, only: [get: 2, html_response: 2]
+  import Phoenix.LiveViewTest, only: [live: 1, render: 1]
+
+  @endpoint DawarichWeb.Endpoint
 
   alias Dawarich.Test.{InsightsSeeds, RailsUser, TripsSeeds}
 
@@ -183,5 +187,15 @@ defmodule DawarichWeb.InsightsEndpointTest do
 
     assert {_line, [_cookie]} =
              puma(ctx.port, ctx.upstream, request(target, [{"Cookie", ctx.cookie}]))
+  end
+
+  test "a connected details LiveView renders the frame and writes no fragments" do
+    conn = get(RailsUser.signed_in(9301), "/insights/details?year=all")
+    assert html_response(conn, 200) =~ ~s(<turbo-frame id="insights_details">)
+    assert {:ok, [_ | _]} = Dawarich.Redis.cache_command(["KEYS", "views/*"])
+    {:ok, "OK"} = Dawarich.Redis.cache_command(["FLUSHDB"])
+    {:ok, view, _html} = live(RailsUser.connecting_as(conn, 9301))
+    assert render(view) =~ ~s(<turbo-frame id="insights_details">)
+    assert {:ok, []} = Dawarich.Redis.cache_command(["KEYS", "views/*"])
   end
 end
