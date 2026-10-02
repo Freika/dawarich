@@ -36,6 +36,7 @@ defmodule Dawarich.MapApi.ReadsTest do
 
     tracks!(user.id, 3..29)
     assert {thirty, 30} = counted(user)
+    assert three > 0
     assert thirty == three
   end
 
