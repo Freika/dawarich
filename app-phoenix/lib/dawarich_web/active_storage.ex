@@ -12,6 +12,7 @@ defmodule DawarichWeb.ActiveStorage do
 
   @reasons %{400 => "Bad Request", 404 => "Not Found", 422 => "Unprocessable Content"}
   @fields ~w(filename byte_size checksum content_type metadata)
+  @required ~w(filename byte_size checksum)
   @browser_accept ~r/,\s*\*\/\*|\*\/\*\s*,/
 
   @impl true
@@ -20,7 +21,7 @@ defmodule DawarichWeb.ActiveStorage do
   @impl true
   def call(conn, opts) do
     now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
-    storage = Keyword.get_lazy(opts, :storage, fn -> Storage.config!(System.get_env()) end)
+    storage = Keyword.get_lazy(opts, :storage, fn -> Storage.services!(System.get_env()) end)
     action(Keyword.fetch!(opts, :action), fetch_query_params(conn), storage, now, opts)
   end
 
@@ -33,8 +34,10 @@ defmodule DawarichWeb.ActiveStorage do
         blob ->
           disposition = conn.query_params["disposition"]
 
+          service = Storage.service!(storage, blob.service_name)
+
           url =
-            ActiveStorageUrls.service_url(storage, blob, disposition, RequestURL.base(conn), now)
+            ActiveStorageUrls.service_url(service, blob, disposition, RequestURL.base(conn), now)
 
           conn
           |> put_resp_header("content-type", "text/html; charset=utf-8")
@@ -50,7 +53,7 @@ defmodule DawarichWeb.ActiveStorage do
   defp action(:disk, conn, storage, now, _opts) do
     with {:ok, %{"key" => key} = data} <-
            RailsMessages.verify_storage(conn.path_params["encoded_key"], "blob_key", now),
-         %{service: "local", root: root} <- storage,
+         %{service: "local", root: root} <- Storage.disk_service(storage, data["service_name"]),
          {:ok, path} <- Storage.safe_disk_path(root, key),
          {:ok, %File.Stat{type: :regular, size: size, mtime: mtime}} <-
            File.stat(path, time: :posix) do
@@ -70,8 +73,8 @@ defmodule DawarichWeb.ActiveStorage do
   defp action(:disk_update, conn, storage, now, _opts) do
     with {:ok, %{} = data} <-
            RailsMessages.verify_storage(conn.path_params["encoded_token"], "blob_token", now),
-         %{service: "local"} <- storage do
-      if acceptable?(conn, data), do: upload(conn, storage, data), else: head(conn, 422)
+         %{service: "local"} = service <- Storage.disk_service(storage, data["service_name"]) do
+      if acceptable?(conn, data), do: upload(conn, service, data), else: head(conn, 422)
     else
       _ -> head(conn, 404)
     end
@@ -83,9 +86,11 @@ defmodule DawarichWeb.ActiveStorage do
          true <- csrf?(conn, params) || :csrf,
          {:ok, %{} = blob} <- Map.fetch(params, "blob"),
          {:ok, attrs} <- blob_attrs(blob) do
-      case Blobs.create_before_direct_upload(storage, attrs, DateTime.to_naive(now), opts) do
+      service = Storage.service!(storage, storage.default)
+
+      case Blobs.create_before_direct_upload(service, attrs, DateTime.to_naive(now), opts) do
         {:ok, row} ->
-          target = ActiveStorageUrls.direct_upload(storage, row, RequestURL.base(conn), now)
+          target = ActiveStorageUrls.direct_upload(service, row, RequestURL.base(conn), now)
           json = direct_upload_json(row, target)
 
           conn
@@ -122,9 +127,9 @@ defmodule DawarichWeb.ActiveStorage do
     data["content_type"] == media and data["content_length"] == length
   end
 
-  defp upload(conn, storage, %{"key" => key, "checksum" => checksum}) do
-    with {:ok, path} <- Storage.safe_disk_path(storage.root, key) do
-      dir = Storage.tmp_dir!(storage, "upload-" <> Storage.generate_key())
+  defp upload(conn, service, %{"key" => key, "checksum" => checksum}) do
+    with {:ok, path} <- Storage.safe_disk_path(service.root, key) do
+      dir = Storage.tmp_dir!(service, "upload-" <> Storage.generate_key())
       tmp = Path.join(dir, "object")
 
       try do
@@ -180,6 +185,9 @@ defmodule DawarichWeb.ActiveStorage do
     checksum = blob["checksum"]
 
     cond do
+      not Enum.all?(@required, &Map.has_key?(blob, &1)) ->
+        :error
+
       is_nil(checksum) or (is_binary(checksum) and String.trim(checksum) == "") ->
         {:error, :invalid}
 

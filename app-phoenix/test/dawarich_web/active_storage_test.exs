@@ -12,10 +12,18 @@ defmodule DawarichWeb.ActiveStorageTest do
   @fx A12b.fixture("storage.json")
   @compared ~w(content-type content-disposition content-range last-modified cache-control location etag)
   @payload :binary.copy(:binary.list_to_bin(Enum.to_list(0..255)), 4)
+  @s3 %{
+    "STORAGE_BACKEND" => "s3",
+    "AWS_ACCESS_KEY_ID" => String.duplicate("a", 20),
+    "AWS_SECRET_ACCESS_KEY" => String.duplicate("b", 40),
+    "AWS_REGION" => "eu-central-1",
+    "AWS_BUCKET" => "dawarich-a12b"
+  }
 
   setup do
-    root = Path.join(System.tmp_dir!(), "a12b-#{System.unique_integer([:positive])}")
-    on_exit(fn -> File.rm_rf(root) end)
+    base = Path.join(System.tmp_dir!(), "a12b-#{System.unique_integer([:positive])}")
+    on_exit(fn -> File.rm_rf(base) end)
+    roots = %{"test" => Path.join(base, "test"), "local" => Path.join(base, "local")}
     mtime = DateTime.to_unix(~U[2026-10-01 12:00:00Z])
 
     for row <- @fx["blobs"] do
@@ -37,14 +45,20 @@ defmodule DawarichWeb.ActiveStorageTest do
       )
 
       if row["stored"] do
-        path = Storage.disk_path(root, row["key"])
+        path = Storage.disk_path(roots[row["service_name"]], row["key"])
         File.mkdir_p!(Path.dirname(path))
         File.write!(path, @payload)
         File.touch!(path, mtime)
       end
     end
 
-    %{storage: %{service: "local", root: root, stored_service: "test"}}
+    services = %{
+      "test" => %{service: "local", root: roots["test"]},
+      "local" => %{service: "local", root: roots["local"]},
+      "s3" => Storage.config!(@s3, base)
+    }
+
+    %{storage: %{default: "test", services: services}, roots: roots}
   end
 
   defp route("GET", "/rails/active_storage/disk/" <> rest) do
@@ -99,13 +113,22 @@ defmodule DawarichWeb.ActiveStorageTest do
       conn,
       ActiveStorage.init(
         action: action,
-        storage: storage,
+        storage: %{storage | default: request["default_service"]},
         now: now,
         key: fn -> "a12b" <> String.duplicate("h", 24) end,
         zone: @fx["direct_upload"]["time_zone"]
       )
     )
   end
+
+  defp put_body_token(body, token),
+    do:
+      body
+      |> Base.decode64!()
+      |> Jason.decode!()
+      |> Map.put("authenticity_token", token)
+      |> Jason.encode!()
+      |> Base.encode64()
 
   defp assert_replayed(conn, request) do
     name = request["name"]
@@ -128,7 +151,7 @@ defmodule DawarichWeb.ActiveStorageTest do
   end
 
   test "replays every recorded disk, upload and redirect request with Rails' status, headers and body",
-       %{storage: storage} do
+       %{storage: storage, roots: roots} do
     {[multi], rest} = Enum.split_with(@fx["requests"], &(&1["name"] == "disk_multi"))
 
     for request <- rest, do: assert_replayed(replay(request, storage, %{}), request)
@@ -136,9 +159,11 @@ defmodule DawarichWeb.ActiveStorageTest do
     conn = replay(multi, storage, %{})
     assert {conn.status, conn.resp_body} == {200, @payload}
 
-    stored = Storage.disk_path(storage.root, "a12b" <> String.duplicate("f", 24))
-    assert File.read!(stored) == @payload
-    refute File.exists?(Storage.disk_path(storage.root, "a12b" <> String.duplicate("g", 24)))
+    key = &("a12b" <> String.duplicate(&1, 24))
+    assert File.read!(Storage.disk_path(roots["test"], key.("f"))) == @payload
+    refute File.exists?(Storage.disk_path(roots["test"], key.("g")))
+    assert File.read!(Storage.disk_path(roots["local"], key.("l"))) == @payload
+    refute File.exists?(Storage.disk_path(roots["test"], key.("l")))
   end
 
   test "replays the direct-upload requests, the created blob and its JSON byte for byte",
@@ -150,11 +175,15 @@ defmodule DawarichWeb.ActiveStorageTest do
         "_dawarich_session=" <> URI.encode_www_form(@fx["direct_upload"]["session_cookie"])
     }
 
+    token = @fx["direct_upload"]["csrf_meta"]
+
     for request <- @fx["upload_requests"] do
-      csrf =
-        if request["csrf"],
-          do: %{"x-csrf-token" => @fx["direct_upload"]["csrf_meta"]},
-          else: %{}
+      {request, csrf} =
+        case request["csrf"] do
+          true -> {request, %{"x-csrf-token" => token}}
+          "body" -> {Map.update!(request, "body", &put_body_token(&1, token)), %{}}
+          false -> {request, %{}}
+        end
 
       assert_replayed(replay(request, storage, Map.merge(cookie, csrf)), request)
     end
