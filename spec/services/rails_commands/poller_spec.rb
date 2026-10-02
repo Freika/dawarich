@@ -323,8 +323,8 @@ RSpec.describe RailsCommands::Poller do
   it 'every registered kind declares a repeat guard and a callable' do
     expected_kinds = %w[
       visit_months_changed airtrail_stats tracks_changed tracks_generate_range tracks_throttled_backfill
-      tracks_realtime_retrigger geocode_recent_points transport_progress points.tile_epoch points.anomaly_filter
-      tracks.realtime tracks.backfill visits.realtime points.live_broadcast
+      tracks_realtime_retrigger geocode_recent_points transport_progress exports.points_created points.tile_epoch
+      points.anomaly_filter tracks.realtime tracks.backfill visits.realtime points.live_broadcast
     ]
     expect(RailsCommands::Registry::HANDLERS.keys).to eq(expected_kinds)
     RailsCommands::Registry::HANDLERS.each_value do |handler|

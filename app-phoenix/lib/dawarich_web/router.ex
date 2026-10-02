@@ -78,6 +78,22 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RequireUser
   end
 
+  pipeline :rails_form do
+    plug :put_api_tag, "form"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.Api.Body
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.RailsForm
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :rails_form
+
+    post "/exports", DawarichWeb.ExportsCreate, :create
+  end
+
   scope "/" do
     pipe_through [:browser, :rails_user]
 
