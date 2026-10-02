@@ -416,6 +416,7 @@ Rails.application.routes.draw do
 
       resources :tracks, only: %i[index show] do
         resources :points, only: [:index], controller: 'tracks/points'
+        resources :segments, only: %i[index update], controller: 'tracks/segments'
       end
 
       resources :timeline, only: [:index]

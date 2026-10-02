@@ -46,6 +46,38 @@ RSpec.describe Points::MotionDataExtractor do
     it 'returns empty hash when no relevant keys present' do
       expect(described_class.from_overland_properties({ speed: 5 })).to eq({})
     end
+
+    it 'keeps a numeric motion_confidence next to motion' do
+      result = described_class.from_overland_properties({ motion: ['driving'], motion_confidence: 1.0 })
+
+      expect(result).to eq({ 'motion' => ['driving'], 'motion_confidence' => 1.0 })
+    end
+
+    it 'accepts string keys and numeric strings, storing a float' do
+      result = described_class.from_overland_properties({ 'motion' => ['driving'], 'motion_confidence' => '0.75' })
+
+      expect(result['motion_confidence']).to eq(0.75)
+    end
+
+    it 'clamps motion_confidence into 0..1' do
+      confidence = lambda do |value|
+        described_class.from_overland_properties({ motion: ['driving'], motion_confidence: value })
+      end
+
+      expect(confidence.call(3)['motion_confidence']).to eq(1.0)
+      expect(confidence.call(-1)['motion_confidence']).to eq(0.0)
+    end
+
+    it 'drops a non-numeric motion_confidence' do
+      %w[yes certain].push(true, nil, [1.0]).each do |value|
+        result = described_class.from_overland_properties({ motion: ['driving'], motion_confidence: value })
+        expect(result).to eq({ 'motion' => ['driving'] })
+      end
+    end
+
+    it 'drops motion_confidence without motion' do
+      expect(described_class.from_overland_properties({ motion_confidence: 1.0 })).to eq({})
+    end
   end
 
   describe '.from_google_phone_takeout' do
@@ -179,6 +211,12 @@ RSpec.describe Points::MotionDataExtractor do
       result = described_class.from_raw_data(raw)
 
       expect(result).to eq({ 'motion' => ['driving'], 'activity' => 'other_navigation' })
+    end
+
+    it 'keeps Overland motion_confidence on backfill' do
+      raw = { 'properties' => { 'motion' => ['driving'], 'motion_confidence' => 1 } }
+
+      expect(described_class.from_raw_data(raw)).to eq({ 'motion' => ['driving'], 'motion_confidence' => 1.0 })
     end
 
     it 'detects Google data with activityRecord' do

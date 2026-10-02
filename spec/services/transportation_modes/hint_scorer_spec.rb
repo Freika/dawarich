@@ -49,4 +49,40 @@ RSpec.describe TransportationModes::HintScorer do
     expect(described_class.call([])).to eq({})
     expect(described_class.call({ 'unrelated' => true })).to eq({})
   end
+
+  describe 'Overland motion_confidence' do
+    it 'keeps the fixed Overland boost when motion_confidence is absent' do
+      expect(described_class.call({ 'motion' => %w[cycling] })[:cycling]).to eq(described_class::OVERLAND_BOOST)
+    end
+
+    it 'scales the hint through the probability curve below 1' do
+      hints = described_class.call({ 'motion' => %w[cycling], 'motion_confidence' => 0.5 })
+      expect(hints[:cycling]).to be_within(0.001).of(described_class.boost(0.5))
+      expect(hints[:cycling]).to be < described_class::OVERLAND_BOOST
+    end
+
+    it 'gives the full Overland boost at 1.0' do
+      hints = described_class.call({ 'motion' => %w[cycling], 'motion_confidence' => 1.0 })
+      expect(hints[:cycling]).to be_within(0.001).of(described_class::OVERLAND_BOOST)
+    end
+  end
+
+  describe '.certain_mode' do
+    it 'returns the mode when the device is certain' do
+      expect(described_class.certain_mode({ 'motion' => %w[driving], 'motion_confidence' => 1.0 })).to eq(:driving)
+      expect(described_class.certain_mode({ 'motion' => %w[automotive], 'motion_confidence' => '1' })).to eq(:driving)
+    end
+
+    it 'is nil below full confidence or without confidence' do
+      expect(described_class.certain_mode({ 'motion' => %w[driving], 'motion_confidence' => 0.99 })).to be_nil
+      expect(described_class.certain_mode({ 'motion' => %w[driving] })).to be_nil
+    end
+
+    it 'is nil when motion names several or no known modes' do
+      expect(described_class.certain_mode({ 'motion' => %w[driving walking], 'motion_confidence' => 1.0 })).to be_nil
+      expect(described_class.certain_mode({ 'motion' => %w[unknown], 'motion_confidence' => 1.0 })).to be_nil
+      expect(described_class.certain_mode({ 'motion_confidence' => 1.0 })).to be_nil
+      expect(described_class.certain_mode(nil)).to be_nil
+    end
+  end
 end

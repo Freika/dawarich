@@ -83,6 +83,7 @@ module TransportationModes
         motion_variance: standard_deviation(moving),
         stop_fraction: (speeds_kmh.size - moving.size).to_f / speeds_kmh.size,
         hints: window_hints(window_rows),
+        certain_mode: window_certain_mode(window_rows),
         sparse: dts.any? && (dts.sum.to_f / dts.size) > Emissions::TUNING[:sparse_dt_s],
         point_ids: window_rows.map { |r| r[:point_id] }
       }
@@ -122,6 +123,15 @@ module TransportationModes
         HintScorer.call(row[:motion_data]).each { |mode, value| totals[mode] << value }
       end
       totals.transform_values { |values| values.sum / rows.size }
+    end
+
+    # The mode more than half of the window's points are certain about, or
+    # nil. Counting all rows (not just speed-valid ones) keeps stops inside a
+    # certain stretch — a car at a red light — certain too.
+    def self.window_certain_mode(rows)
+      counts = rows.filter_map { |row| HintScorer.certain_mode(row[:motion_data]) }.tally
+      mode, count = counts.max_by { |_mode, n| n }
+      mode if count && count * 2 > rows.size
     end
   end
 end
