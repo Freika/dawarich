@@ -218,7 +218,7 @@ defmodule DawarichWeb.TripsLiveTest do
         trip_id: 883_901,
         user_id: user.id,
         body: "Morgenkaffee <b>am</b> See",
-        noted_at: ~N[2026-05-10 12:00:00]
+        noted_at: ~N[2026-05-10 23:30:00]
       })
 
       :ok
@@ -356,7 +356,7 @@ defmodule DawarichWeb.TripsLiveTest do
         })
 
       trip!(pilot, 883_902, %{
-        last_recalculated_at: NaiveDateTime.add(NaiveDateTime.utc_now(), -3600)
+        last_recalculated_at: NaiveDateTime.add(NaiveDateTime.utc_now(), -90)
       })
 
       {:ok, view, _html} = live_as(pilot, "/trips/883902")

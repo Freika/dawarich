@@ -101,6 +101,15 @@ defmodule Dawarich.TripDaysTest do
       })
 
       TripsSeeds.point!(%{
+        id: 882_302,
+        user_id: 8821,
+        timestamp: midnight + 45 * 60,
+        at: [12.395, 51.365],
+        tracker_id: "phone",
+        anomaly: true
+      })
+
+      TripsSeeds.point!(%{
         id: 882_301,
         user_id: 8822,
         timestamp: midnight + 1 * 60,

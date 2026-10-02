@@ -53,7 +53,16 @@ defmodule Dawarich.TripPageTest do
       trip_id: 884_201,
       user_id: 8842,
       body: "Morning",
-      noted_at: ~N[2026-05-10 12:00:00]
+      noted_at: ~N[2026-05-10 23:30:00]
+    })
+
+    TripsSeeds.note!(%{
+      id: 88_423,
+      trip_id: 884_201,
+      user_id: 8842,
+      attachable_type: "Place",
+      body: "Another record",
+      noted_at: ~N[2026-05-11 12:00:00]
     })
 
     TripsSeeds.note!(%{
@@ -87,6 +96,21 @@ defmodule Dawarich.TripPageTest do
       expires_at: ~N[2026-09-28 12:00:00]
     })
 
+    TripsSeeds.shared_link!(%{
+      id: "a8510000-0000-4000-8000-0000000000a4",
+      resource_type: 0,
+      trip_id: 884_201,
+      user_id: 8842,
+      revoked_at: ~N[2026-09-28 12:00:00]
+    })
+
+    TripsSeeds.shared_link!(%{
+      id: "a8510000-0000-4000-8000-0000000000a5",
+      resource_type: 0,
+      trip_id: 889_901,
+      user_id: 8899
+    })
+
     user = Dawarich.Accounts.get(8842)
     {:ok, page} = TripPage.load(user, 884_201, @now)
 
@@ -107,6 +131,8 @@ defmodule Dawarich.TripPageTest do
     })
 
     assert {:ok, %{shared: true}} = TripPage.load(user, 884_201, @now)
+    assert {:ok, %{recalculating: true}} = TripPage.load(user, 884_201, DateTime.add(@now, 29))
+    assert {:ok, %{recalculating: false}} = TripPage.load(user, 884_201, DateTime.add(@now, 31))
     assert {:ok, %{recalculating: false}} = TripPage.load(user, 884_201, DateTime.add(@now, 3600))
   end
 
