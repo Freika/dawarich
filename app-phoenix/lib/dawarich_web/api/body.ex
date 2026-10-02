@@ -68,7 +68,7 @@ defmodule DawarichWeb.Api.Body do
   end
 
   defp decode(conn, kind) do
-    case read(conn, []) do
+    case raw(conn) do
       {:ok, raw, conn} ->
         conn = put_private(conn, :dawarich_raw_body, raw)
 
@@ -82,6 +82,9 @@ defmodule DawarichWeb.Api.Body do
         halt(conn)
     end
   end
+
+  defp raw(%{private: %{dawarich_raw_body: raw}} = conn), do: {:ok, raw, conn}
+  defp raw(conn), do: read(conn, [])
 
   defp read(conn, acc) do
     case read_body(conn, RailsProxy.read_options()) do
@@ -114,24 +117,37 @@ defmodule DawarichWeb.Api.Body do
   defp munge(list) when is_list(list), do: for(e <- list, e != nil, do: munge(e))
   defp munge(value), do: value
 
-  defp too_deep?(map, depth) when is_map(map),
+  def too_deep?(map, depth) when is_map(map),
     do: depth >= @depth or Enum.any?(map, fn {_key, value} -> too_deep?(value, depth + 1) end)
 
-  defp too_deep?(list, depth) when is_list(list),
+  def too_deep?(list, depth) when is_list(list),
     do: depth >= @depth or Enum.any?(list, &too_deep?(&1, depth + 1))
 
-  defp too_deep?(_term, _depth), do: false
+  def too_deep?(_term, _depth), do: false
 
-  defp pairs(""), do: {:ok, %{}}
+  def segments(""), do: {:ok, []}
+
+  def segments(text) do
+    if more_pairs?(text) or byte_size(text) > 4_194_304 do
+      {:replay, "more parameters than Rack allows"}
+    else
+      text
+      |> String.split(~r/& */)
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.reduce_while({:ok, []}, &segment/2)
+      |> then(fn
+        {:ok, reversed} -> {:ok, Enum.reverse(reversed)}
+        replay -> replay
+      end)
+    end
+  end
 
   defp pairs(text) do
-    if more_pairs?(text) or byte_size(text) > 4_194_304,
-      do: {:replay, "more parameters than Rack allows"},
-      else:
-        text
-        |> String.split(~r/& */)
-        |> Enum.reject(&(&1 == ""))
-        |> Enum.reduce_while({:ok, %{}}, &pair/2)
+    with {:ok, segments} <- segments(text) do
+      if Enum.any?(segments, fn {key, _} -> String.contains?(key, ["[", "]"]) end),
+        do: {:replay, "form or query shape Rack parses differently"},
+        else: {:ok, Map.new(segments)}
+    end
   end
 
   defp more_pairs?(text), do: more_pairs?(text, 0)
@@ -140,12 +156,11 @@ defmodule DawarichWeb.Api.Body do
   defp more_pairs?(<<_byte, rest::binary>>, count), do: more_pairs?(rest, count)
   defp more_pairs?("", _count), do: false
 
-  defp pair(segment, {:ok, acc}) do
+  defp segment(segment, {:ok, acc}) do
     with [key, value] <- String.split(segment, "=", parts: 2),
          {:ok, key} when key != "" <- component(key),
-         false <- String.contains?(key, ["[", "]"]),
          {:ok, value} <- component(value) do
-      {:cont, {:ok, Map.put(acc, key, value)}}
+      {:cont, {:ok, [{key, value} | acc]}}
     else
       _ -> {:halt, {:replay, "form or query shape Rack parses differently"}}
     end
