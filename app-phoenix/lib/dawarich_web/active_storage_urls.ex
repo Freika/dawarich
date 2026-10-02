@@ -41,7 +41,7 @@ defmodule DawarichWeb.ActiveStorageUrls do
           [{"response-content-disposition", header}] ++
             if(content_type, do: [{"response-content-type", content_type}], else: [])
 
-        S3.presigned_url!(config, :get, blob.key, query, [], now)
+        S3.presigned_url!(config, :get, blob.key, query, [], now, @expires_in)
     end
   end
 
@@ -79,7 +79,7 @@ defmodule DawarichWeb.ActiveStorageUrls do
         {"Content-Disposition", Storage.content_disposition("inline", blob.filename)}
       ])
 
-    {S3.presigned_url!(config, :put, blob.key, [], signed_headers, now), headers}
+    {S3.presigned_url!(config, :put, blob.key, [], signed_headers, now, @expires_in), headers}
   end
 
   defp type(value) when value in ["attachment", "inline"], do: value
