@@ -131,6 +131,24 @@ module RailsCommands
           end
         }
       },
+      'family_location_request_mail' => {
+        guard: 'SET NX on family_location_request_mail:<request_id> (one day) before deliver_later; ' \
+               'a repeat finds the key and enqueues no second mail',
+        call: lambda { |payload|
+          request = Family::LocationRequest.find_by(id: payload.fetch('request_id'))
+          next unless request&.requester
+
+          key = "family_location_request_mail:#{request.id}"
+          next unless Rails.cache.write(key, 1, unless_exist: true, expires_in: 1.day)
+
+          enqueue = -> { FamilyMailer.location_request(request).deliver_later }
+          begin
+            Time.use_zone(request.requester.timezone, &enqueue)
+          rescue ArgumentError
+            enqueue.call
+          end
+        }
+      },
       'release_reclassify_tracks' => {
         guard: "ReclassifyTrackJob replaces a track's inferred segments in one transaction; " \
                'a repeat enqueue reclassifies the same track to the same result',
