@@ -85,6 +85,13 @@ defmodule Dawarich.Test.A12a do
     end
   end
 
+  def expected_decision(name) do
+    case List.last(case!(name)["steps"]) do
+      %{"silent_ms" => _} -> :ignore
+      %{"expect" => frame} -> if frame =~ "reject_subscription", do: :reject, else: :confirm
+    end
+  end
+
   def outcome({:ok, %{}}), do: :welcome
   def outcome(other), do: other
 
