@@ -20,6 +20,13 @@ RSpec.describe EnhancedImport::ExtractJob do
       expect(import.additional_data_extraction['completed_at']).to be_present
     end
 
+    it 'broadcasts the extraction card when the run starts and when it completes' do
+      allow_any_instance_of(EnhancedImport::Translator).to receive(:translate) { |&_block| }
+
+      expect { described_class.new.perform(import.id) }
+        .to have_broadcasted_to("import_#{import.id}_extraction").exactly(2).times
+    end
+
     it 'keeps the import in flight and re-raises when the translator blows up' do
       allow_any_instance_of(EnhancedImport::Translator).to receive(:translate).and_raise('boom')
 
@@ -80,6 +87,17 @@ RSpec.describe EnhancedImport::ExtractJob do
       expect(row.payload).to eq('import_id' => gpx_import.id, 'lock_attempt' => 7)
       expect(gpx_import.reload.additional_data_extraction_status).to eq('not_attempted')
       expect(EnhancedImport::CardBroadcaster).not_to have_received(:call)
+    end
+
+    it 'does not forward a native extraction request that is no longer current' do
+      job_owner!('command:enhanced_import.extract_gpx', :oban)
+      gpx_import = create(:import, user: user, source: :gpx)
+      stale = { 'user_id' => user.id, 'source' => 4, 'source_blob_id' => nil, 'event_id' => 'stale',
+                'started_at' => '2026-01-01T00:00:00Z', 'action' => 'extract' }
+
+      described_class.new.perform(gpx_import.id, expected: stale)
+
+      expect(JobOutbox.count).to eq(0)
     end
 
     it 'runs Rails for a Takeout import rather than forwarding' do

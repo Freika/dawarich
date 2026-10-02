@@ -75,7 +75,7 @@ defmodule DawarichWeb.ImportsLiveTest do
       assert row_ids(content(html)) == ["import_710102", "import_710101"]
     end
 
-    test "row actions are Rails links, and deleting goes through Rails' method link, never a LiveView event",
+    test "row actions retain native read links and delete uses a LiveView form with a native HTTP fallback",
          %{user: user} do
       Seeds.import!(%{id: 710_111, user_id: user.id, created_at: at(1)})
       Seeds.file!("Import", 710_111, "file", 971_111, 2048, "a.gpx")
@@ -88,11 +88,12 @@ defmodule DawarichWeb.ImportsLiveTest do
             ~s(a.btn.btn-ghost.btn-xs[href="/map/v2?import_id=710111"]),
             ~s(a.btn.btn-ghost.btn-xs[href="/points?import_id=710111"]),
             ~s(a.btn.btn-ghost.btn-xs[href="/imports/710111/download"][data-turbo="false"]),
-            ~s(a[href="/imports/710111"][data-turbo-method="delete"][data-turbo-confirm="Are you sure?"])
+            ~s(form[action="/imports/710111"][phx-submit="delete_import"] button[data-testid="import-delete"][data-confirm="Are you sure?"])
           ],
           do: assert(count(page, selector) == 1, selector)
 
-      assert count(page, "[phx-click], [phx-submit], form") == 0
+      assert count(page, ~s(form[phx-submit="delete_import"])) == 1
+      assert count(page, "[data-turbo-method=delete]") == 0
     end
 
     test "only an original file gets a download link; a prepared download alone does not",
@@ -137,7 +138,10 @@ defmodule DawarichWeb.ImportsLiveTest do
       assert count(page, "#import_710131 .loading-spinner") == 1
       assert count(page, "#import_710131 a") == 1
       assert count(page, "#import_710132 .loading-spinner") == 0
-      assert count(page, ~s(#import_710132 .tooltip-left a[data-turbo-method="delete"])) == 1
+
+      assert count(page, ~s(#import_710132 .tooltip-left button[data-testid="import-delete"])) ==
+               1
+
       assert count(page, ~s(#import_710132 a[href^="/map/v2"])) == 0
     end
 
@@ -253,7 +257,11 @@ defmodule DawarichWeb.ImportsLiveTest do
         |> html_response(200)
         |> LazyHTML.from_document()
 
-      assert count(doc, ~s(a[href="/imports/710161"][data-turbo-method="delete"])) == 1
+      assert count(
+               doc,
+               ~s(form[action="/imports/710161"][method="post"] button[data-testid="import-delete"])
+             ) == 1
+
       assert count(doc, ~s(meta[name="csrf-param"][content="authenticity_token"])) == 1
 
       [token] =

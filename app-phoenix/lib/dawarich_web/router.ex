@@ -9,6 +9,7 @@ defmodule DawarichWeb.Router do
     plug :fetch_query_params
     plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
+    plug DawarichWeb.ImportsHeaders
     plug :phoenix_session
     plug :fetch_session
     plug :fetch_live_flash
@@ -147,6 +148,16 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RequireUser
   end
 
+  pipeline :rails_frame do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug :fetch_query_params
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.Locale
+    plug DawarichWeb.RailsHeaders
+    plug DawarichWeb.RequireUser
+  end
+
   pipeline :rails_form do
     plug :put_api_tag, "form"
     plug DawarichWeb.HostAuthorization
@@ -155,6 +166,31 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsAuth
     plug DawarichWeb.RailsForm
     plug DawarichWeb.RailsHeaders
+  end
+
+  pipeline :imports_request do
+    plug :put_api_tag, "imports"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.ImportsRequest
+    plug DawarichWeb.RailsHeaders
+  end
+
+  @native_import %{rails_gate: {DawarichWeb.ImportsGate, :native?}}
+
+  scope "/" do
+    pipe_through :imports_request
+    post "/imports", DawarichWeb.ImportsController, :create
+    post "/imports/:id", DawarichWeb.ImportsController, :update, metadata: @native_import
+    patch "/imports/:id", DawarichWeb.ImportsController, :update, metadata: @native_import
+    delete "/imports/:id", DawarichWeb.ImportsController, :delete, metadata: @native_import
+
+    post "/imports/:id/extraction", DawarichWeb.ImportsController, :extract,
+      metadata: @native_import
+
+    delete "/imports/:id/extraction", DawarichWeb.ImportsController, :remove_extraction,
+      metadata: @native_import
   end
 
   scope "/" do
@@ -166,6 +202,8 @@ defmodule DawarichWeb.Router do
   scope "/" do
     pipe_through [:browser, :rails_user]
 
+    get "/imports/:id/download", DawarichWeb.ImportsDownload, :show, metadata: @native_import
+
     live_session :rails_pages,
       session: {DawarichWeb.RailsAuth, :live_session, []},
       on_mount: DawarichWeb.LiveAuth,
@@ -176,6 +214,12 @@ defmodule DawarichWeb.Router do
 
       live "/notifications/:id", DawarichWeb.NotificationsLive.Show, :show,
         container: {:div, class: "contents"}
+
+      live "/imports/new", DawarichWeb.ImportsLive.New, :new, container: {:div, class: "contents"}
+
+      live "/imports/:id", DawarichWeb.ImportsLive.Show, :show,
+        container: {:div, class: "contents"},
+        metadata: @native_import
 
       live "/imports", DawarichWeb.ImportsLive.Index, :index, container: {:div, class: "contents"}
       live "/exports", DawarichWeb.ExportsLive.Index, :index, container: {:div, class: "contents"}
@@ -223,6 +267,22 @@ defmodule DawarichWeb.Router do
       live "/map", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
       live "/map/v2", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
     end
+  end
+
+  scope "/map" do
+    pipe_through :rails_frame
+
+    get "/timeline_feeds", DawarichWeb.MapFrames, :index,
+      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :feed?}}
+
+    get "/timeline_feeds/calendar", DawarichWeb.MapFrames, :calendar,
+      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :calendar?}}
+
+    get "/residency", DawarichWeb.MapFrames, :residency,
+      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :residency?}}
+
+    get "/timeline_feeds/:id/track_info", DawarichWeb.MapFrames, :track_info,
+      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :track?}}
   end
 
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)

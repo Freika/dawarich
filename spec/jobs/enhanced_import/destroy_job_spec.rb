@@ -20,6 +20,16 @@ RSpec.describe EnhancedImport::DestroyJob do
       expect(EnhancedImport::CardBroadcaster).not_to have_received(:call)
     end
 
+    it 'does not forward a native removal request that is no longer current' do
+      job_owner!('command:enhanced_import.destroy_gpx', :oban)
+      stale = { 'user_id' => user.id, 'source' => 4, 'source_blob_id' => nil, 'event_id' => 'stale',
+                'started_at' => '2026-01-01T00:00:00Z', 'action' => 'remove' }
+
+      described_class.new.perform(import.id, expected: stale)
+
+      expect(JobOutbox.count).to eq(0)
+    end
+
     it 'a GPX import owning a visit runs Rails instead of forwarding' do
       job_owner!('command:enhanced_import.destroy_gpx', :oban)
       create(:visit, user: user).update_columns(import_id: import.id)

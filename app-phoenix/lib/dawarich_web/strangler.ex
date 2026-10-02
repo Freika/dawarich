@@ -8,7 +8,7 @@ defmodule DawarichWeb.Strangler do
 
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
-  @page_pipelines [:browser, :sharing, :sharing_unlock]
+  @page_pipelines [:browser, :rails_frame, :sharing, :sharing_unlock]
   @keys %{"s" => "sharing"}
 
   @constraints %{
@@ -16,6 +16,7 @@ defmodule DawarichWeb.Strangler do
     "/api/v1/photos/:id/thumbnail.jpg" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
     "/api/v1/tracks/:id" => %{"id" => ~r/\A\d+\z/},
     "/api/v1/tracks/:track_id/points" => %{"track_id" => ~r/\A\d+\z/},
+    "/map/timeline_feeds/:id/track_info" => %{"id" => ~r/\A\d{1,18}\z/},
     "/trips/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/stats/:year" => %{"year" => ~r/\A\d{4}\z/},
     "/stats/:year/:month" => %{"year" => ~r/\A\d{4}\z/, "month" => ~r/\A(0?[1-9]|1[0-2])\z/},
@@ -48,7 +49,7 @@ defmodule DawarichWeb.Strangler do
       %{pipe_through: pipelines} = route ->
         not handed_back?(conn.path_info) and slice_owned?(route, conn) and
           rails_constraints?(route) and
-          (Enum.all?(pipelines, &(&1 not in @page_pipelines)) or page_request?(conn)) and
+          (not Enum.any?(pipelines, &(&1 in @page_pipelines)) or page_request?(conn)) and
           gate_open?(route, conn)
     end
   end

@@ -1,7 +1,7 @@
 defmodule Dawarich.Residency do
   @moduledoc false
 
-  alias Dawarich.{CountryNames, Repo, RubyFloat}
+  alias Dawarich.{CountryNames, Repo, RubyFloat, UserTimeZone}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   @days """
@@ -13,20 +13,23 @@ defmodule Dawarich.Residency do
   ORDER BY point_date
   """
 
+  @bounds "SELECT extract(epoch FROM make_timestamptz($1, 1, 1, 0, 0, 0))::bigint, " <>
+            "extract(epoch FROM make_timestamptz($1, 12, 31, 23, 59, 59))::bigint"
+
+  @local_bounds "SELECT extract(epoch FROM make_timestamptz($1, 1, 1, 0, 0, 0, z.name))::bigint, " <>
+                  "extract(epoch FROM make_timestamptz($1, 12, 31, 23, 59, 59, z.name))::bigint FROM z"
+
   def window(user_id, requested, now) do
-    year = requested || default_year(user_id, now)
-
-    if year in 1970..2037 do
-      [[first, last]] =
-        Repo.query!(
-          "SELECT extract(epoch FROM make_timestamptz($1, 1, 1, 0, 0, 0))::bigint, " <>
-            "extract(epoch FROM make_timestamptz($1, 12, 31, 23, 59, 59))::bigint",
-          [year]
-        ).rows
-
+    with {:ok, year} <- year(requested || latest_year(user_id) || db_year(now)) do
+      [[first, last]] = Repo.query!(@bounds, [year]).rows
       {:ok, {year, first, last}}
-    else
-      {:replay, "residency year #{year}"}
+    end
+  end
+
+  def local_window(user_id, requested, settings, today) do
+    with {:ok, year} <- year(requested || latest_year(user_id) || today.year) do
+      %{rows: [[first, last]]} = UserTimeZone.query!(@local_bounds, [year], settings)
+      {:ok, {year, first, last}}
     end
   end
 
@@ -56,12 +59,14 @@ defmodule Dawarich.Residency do
     end
   end
 
-  defp default_year(user_id, now) do
-    case Repo.query!("SELECT max(year) FROM stats WHERE user_id = $1", [user_id]).rows do
-      [[nil]] -> hd(hd(Repo.query!("SELECT extract(year FROM $1::timestamptz)::int", [now]).rows))
-      [[year]] -> year
-    end
-  end
+  defp year(year) when year in 1970..2037, do: {:ok, year}
+  defp year(year), do: {:replay, "residency year #{year}"}
+
+  defp latest_year(user_id),
+    do: hd(hd(Repo.query!("SELECT max(year) FROM stats WHERE user_id = $1", [user_id]).rows))
+
+  defp db_year(now),
+    do: hd(hd(Repo.query!("SELECT extract(year FROM $1::timestamptz)::int", [now]).rows))
 
   defp daily_countries(rows) do
     rows

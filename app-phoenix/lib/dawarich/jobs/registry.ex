@@ -3,6 +3,30 @@ defmodule Dawarich.Jobs.Registry do
 
   @base_entries [
     %{
+      key: "command:imports.destroy",
+      kind: :command,
+      worker: Dawarich.Imports.DestroyWorker,
+      claimable: false
+    },
+    %{
+      key: "command:imports.prepare_download",
+      kind: :command,
+      worker: Dawarich.Imports.PrepareDownloadWorker,
+      claimable: false
+    },
+    %{
+      key: "command:points.anomaly_recalculate",
+      kind: :command,
+      worker: Dawarich.Points.AnomalyFilter.RecalculateWorker,
+      claimable: false
+    },
+    %{
+      key: "command:imports.process_gpx",
+      kind: :command,
+      worker: Dawarich.Imports.ProcessGpxWorker,
+      claimable: false
+    },
+    %{
       key: "cron:app_version_checking_job",
       kind: :cron,
       expression: "0 */6 * * *",

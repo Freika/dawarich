@@ -37,8 +37,17 @@ defmodule DawarichWeb.LayoutParityTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+    previous = Map.new(~w(JWT_SECRET_KEY MANAGER_URL SELF_HOSTED), &{&1, System.fetch_env(&1)})
     System.put_env("JWT_SECRET_KEY", "test_secret")
-    on_exit(fn -> Enum.each(~w(JWT_SECRET_KEY MANAGER_URL SELF_HOSTED), &System.delete_env/1) end)
+
+    on_exit(fn ->
+      for {key, value} <- previous do
+        case value do
+          {:ok, configured} -> System.put_env(key, configured)
+          :error -> System.delete_env(key)
+        end
+      end
+    end)
   end
 
   test "normalizes tokens only for the manager authentication link" do
