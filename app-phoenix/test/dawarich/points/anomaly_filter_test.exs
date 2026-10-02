@@ -215,7 +215,7 @@ defmodule Dawarich.Points.AnomalyFilterTest do
       trace!(user, [
         {@base, {10.5526, 52.9697}, []},
         {@base + 480, {10.4417, 52.9117}, []},
-        {@base + 2100, {13.5162, 52.4546}, []},
+        {@base + 2100, {12.3731, 51.3397}, []},
         {@base + 3000, {9.7419, 52.3775}, []},
         {@base + 3300, {9.7420, 52.3776}, []}
       ])
@@ -227,7 +227,7 @@ defmodule Dawarich.Points.AnomalyFilterTest do
   test "a far stray interrupts one stay but a real multi-hour visit remains" do
     user = user!()
     point!(user, @base, {9.806, 52.310})
-    stray = point!(user, @base + 45_540, {13.516, 52.455})
+    stray = point!(user, @base + 45_540, {13.738, 51.050})
     point!(user, @base + 48_420, {9.806, 52.310})
     point!(user, @base + 48_480, {9.806, 52.310})
     assert filter(user, @base, @base + 90_000) == 1
