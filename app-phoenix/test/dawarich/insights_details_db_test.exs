@@ -165,4 +165,16 @@ defmodule Dawarich.Insights.DetailsDBTest do
     System.put_env("RAILS_CACHE_ID", "c1")
     assert Fragments.key(user, "en", page, "travel_patterns") =~ ~r{\Aviews/c1/insights/details:}
   end
+
+  test "a blank month selects the latest month, as Rails' present? does", %{user: user} do
+    yearly_digest!()
+    monthly_digest!(4, ~N[2024-04-01 00:00:00])
+    warm!()
+
+    for blank <- ["", " ", "\t"] do
+      page = load(user, %{"year" => "2024", "month" => blank})
+      refute page.rails
+      assert page.selected_month == 4
+    end
+  end
 end

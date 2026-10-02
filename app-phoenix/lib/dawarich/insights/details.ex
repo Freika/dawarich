@@ -3,6 +3,7 @@ defmodule Dawarich.Insights.Details do
   alias Dawarich.{Repo, Stats}
   alias Dawarich.Insights.Details.Digests, as: DetailDigests
   alias Dawarich.Insights.Details.Totals
+  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.StatsFormat
 
   def load(user, params, opts \\ []) do
@@ -71,7 +72,7 @@ defmodule Dawarich.Insights.Details do
     months = for s <- stats, s["year"] == data.year, do: s["month"]
 
     month =
-      if params["month"] not in [nil, ""],
+      if Ruby.present?(params["month"]),
         do: Dawarich.Digests.to_i(params["month"]),
         else:
           Enum.max(months, fn ->
