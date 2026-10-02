@@ -5,6 +5,7 @@ defmodule DawarichWeb.ImportsNativePagesTest do
   import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
   alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
   @endpoint DawarichWeb.Endpoint
+  @reopen ~s(button[data-action="click->import-extraction#open"])
   setup do
     user = RailsUser.insert!(%{id: 7591, email: "native-pages@example.test"})
     ImportsExportsSeeds.import!(%{id: 759_101, user_id: user.id, name: "native.gpx"})
@@ -26,8 +27,6 @@ defmodule DawarichWeb.ImportsNativePagesTest do
 
   test "new native page binds the upload controller to Rails' direct upload endpoint", c do
     {:ok, _view, html} = live_as(c.user, "/imports/new")
-    assert html =~ "native-imports-root"
-    assert html =~ "import-file-input"
 
     assert html =~
              ~s(data-upload-url-value="http://www.example.com/rails/active_storage/direct_uploads")
@@ -35,13 +34,15 @@ defmodule DawarichWeb.ImportsNativePagesTest do
     refute html =~ "/imports/direct_uploads"
   end
 
-  test "owner show and edit pages are native LiveViews", c do
+  test "the owner's show page is a native LiveView and the edit page is Rails'", c do
     {:ok, _view, html} = live_as(c.user, "/imports/759101")
     assert html =~ "native.gpx"
-    assert html =~ "native-imports-root"
-    {:ok, _view, html} = live_as(c.user, "/imports/759101/edit")
-    assert html =~ "import[name]"
-    assert html =~ "import[source]"
+    assert html =~ "data-phx-main"
+
+    {request, conn} =
+      forwarded(upstream!(), fn -> get(RailsUser.signed_in(c.user.id), "/imports/759101/edit") end)
+
+    assert {request, conn.status} == {{"GET /imports/759101/edit HTTP/1.1", ""}, 204}
   end
 
   test "a foreign import and an owned non-GPX import are shown by Rails", c do
@@ -100,26 +101,7 @@ defmodule DawarichWeb.ImportsNativePagesTest do
     assert [] = Repo.query!("SELECT event_id FROM job_outbox").rows
   end
 
-  test "native extraction card renders counts, trust choice and removal controls", c do
-    Repo.query!(
-      "UPDATE imports SET raw_data=$1,additional_data_extraction_status=3,additional_data_extraction=$2 WHERE id=759101",
-      [
-        %{"waypoints_seen" => 1},
-        %{"counts" => %{"visits" => 2, "places" => 3, "tracks" => 4, "segments" => 5}}
-      ]
-    )
-
-    {:ok, view, _} = live_as(c.user, "/imports/759101")
-    assert has_element?(view, "[data-extraction-count=visits]", "2")
-    assert has_element?(view, "[data-extraction-count=places]", "3")
-    assert has_element?(view, "[data-extraction-count=tracks]", "4")
-    assert has_element?(view, "[data-extraction-count=segments]", "5")
-    assert has_element?(view, "input[name=trust_source][value=false]")
-    assert has_element?(view, "[data-testid=import-extraction-remove]")
-    assert has_element?(view, "[data-testid=import-extraction-submit]", "Re-extract")
-  end
-
-  test "failed and stalled native extraction cards permit recovery", c do
+  test "a failed extraction card offers a retry and turns into start-over once it stalls", c do
     Repo.query!(
       "UPDATE imports SET raw_data=$1,additional_data_extraction_status=4,additional_data_extraction=$2 WHERE id=759101",
       [%{"waypoints_seen" => 1}, %{"error_message" => "real extraction failure"}]
@@ -127,7 +109,7 @@ defmodule DawarichWeb.ImportsNativePagesTest do
 
     {:ok, view, _} = live_as(c.user, "/imports/759101")
     assert render(view) =~ "real extraction failure"
-    assert has_element?(view, "[data-testid=import-extraction-submit]", "Retry extraction")
+    assert has_element?(view, @reopen, "Retry extraction")
 
     Repo.query!(
       "UPDATE imports SET additional_data_extraction_status=2,additional_data_extraction=$1 WHERE id=759101",
@@ -135,6 +117,62 @@ defmodule DawarichWeb.ImportsNativePagesTest do
     )
 
     Dawarich.Imports.Events.broadcast(c.user.id)
-    assert has_element?(view, "[data-testid=import-extraction-submit]", "Start over")
+    assert has_element?(view, @reopen, "Start over")
+  end
+
+  test "the list polls while an import is unfinished and stops once every row is final", c do
+    fast_polling()
+    Repo.query!("UPDATE imports SET status=1 WHERE id=759101")
+    {:ok, view, _} = live_as(c.user, "/imports")
+    Repo.query!("UPDATE imports SET status=2,processed=11 WHERE id=759101")
+
+    assert eventually(fn ->
+             has_element?(view, "#import_759101 [data-status-display]", "Completed")
+           end)
+
+    refute_refresh(view)
+  end
+
+  test "a GPX import's page polls while its extraction runs and stops once it is final", c do
+    Repo.query!(
+      "UPDATE imports SET raw_data=$1,additional_data_extraction_status=2,additional_data_extraction=$2 WHERE id=759101",
+      [%{"waypoints_seen" => 1}, %{"started_at" => DateTime.to_iso8601(DateTime.utc_now())}]
+    )
+
+    fast_polling()
+    {:ok, view, _} = live_as(c.user, "/imports/759101")
+
+    Repo.query!(
+      "UPDATE imports SET additional_data_extraction_status=3,additional_data_extraction=$1 WHERE id=759101",
+      [%{"counts" => %{"visits" => 2, "places" => 3, "tracks" => 4, "segments" => 5}}]
+    )
+
+    assert eventually(fn -> has_element?(view, @reopen, "Re-extract") end)
+    refute_refresh(view)
+  end
+
+  defp fast_polling do
+    Application.put_env(:dawarich, :imports_poll_ms, 10)
+    on_exit(fn -> Application.delete_env(:dawarich, :imports_poll_ms) end)
+  end
+
+  defp eventually(check, tries \\ 300) do
+    cond do
+      check.() ->
+        true
+
+      tries == 0 ->
+        false
+
+      true ->
+        Process.sleep(10)
+        eventually(check, tries - 1)
+    end
+  end
+
+  defp refute_refresh(view) do
+    :erlang.trace(view.pid, true, [:receive])
+    pid = view.pid
+    refute_receive {:trace, ^pid, :receive, :imports_refresh}, 200
   end
 end

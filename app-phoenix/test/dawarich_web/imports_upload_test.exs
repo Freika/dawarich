@@ -39,20 +39,8 @@ defmodule DawarichWeb.ImportsUploadTest do
     |> dispatch(DawarichWeb.Endpoint, method, path, body)
   end
 
-  defp rails_blob!(c, name, bytes) do
-    key = Dawarich.Storage.generate_key()
-    path = Dawarich.Storage.disk_path(c.root, key)
-    File.mkdir_p!(Path.dirname(path))
-    File.write!(path, bytes)
-
-    [[id]] =
-      Repo.query!(
-        "INSERT INTO active_storage_blobs(key,filename,content_type,metadata,service_name,byte_size,checksum,created_at) VALUES($1,$2,'application/octet-stream','{}','local',$3,$4,now()) RETURNING id",
-        [key, name, byte_size(bytes), Base.encode64(:crypto.hash(:md5, bytes))]
-      ).rows
-
-    Dawarich.RailsMessages.blob_id(id)
-  end
+  defp rails_blob!(c, name, bytes),
+    do: Dawarich.RailsBlobFixture.create!(Repo, c.root, name, bytes).signed_id
 
   defp create_body(signed_ids),
     do: Plug.Conn.Query.encode(%{"import" => %{"files" => signed_ids}})
@@ -84,6 +72,50 @@ defmodule DawarichWeb.ImportsUploadTest do
     assert [[%{"time_zone" => "Berlin"}]] =
              Repo.query!("SELECT payload FROM job_outbox").rows
              |> Enum.map(fn [p] -> [Map.take(p, ["time_zone"])] end)
+  end
+
+  test "the Rails form's multipart post is created natively; a file part or an oversized body reaches Puma",
+       c do
+    signed = rails_blob!(c, "form.gpx", "<gpx><trk/></gpx>")
+    headers = [{"content-type", "multipart/form-data; boundary=XyZ"}]
+
+    file_part =
+      multipart([
+        {~s(name="import[files][]"; filename="a.gpx"\r\nContent-Type: application/gpx+xml),
+         "<gpx/>"}
+      ])
+
+    oversized =
+      multipart([
+        {~s(name="import[files][]"), signed},
+        {~s(name="commit"), String.duplicate("x", 2_097_152)}
+      ])
+
+    for body <- [file_part, oversized],
+        do:
+          assert(to_puma(c, :post, "/imports", body, headers) == {"POST /imports HTTP/1.1", body})
+
+    assert imports() == []
+
+    body =
+      multipart([
+        {~s(name="import[files][]"), ""},
+        {~s(name="import[files][]"), signed},
+        {~s(name="commit"), "Create Import"}
+      ])
+
+    conn = request(c, :post, "/imports", body, headers)
+
+    assert {conn.status, get_resp_header(conn, "x-dawarich-handler")} ==
+             {303, ["phoenix-imports"]}
+
+    assert [[_id, "form.gpx", 4]] = imports()
+  end
+
+  defp multipart(parts) do
+    Enum.map_join(parts, fn {disposition, value} ->
+      "--XyZ\r\nContent-Disposition: form-data; #{disposition}\r\n\r\n#{value}\r\n"
+    end) <> "--XyZ--\r\n"
   end
 
   test "GeoJSON, Google JSON and KML uploads reach Puma byte-exactly and create nothing", c do

@@ -6,10 +6,12 @@ defmodule DawarichWeb.ImportsRequest do
 
   alias DawarichWeb.Api.Body
   alias DawarichWeb.{RailsForm, RailsProxy}
+  alias Plug.Conn.Query
 
-  @keys ~w(authenticity_token _method trust_source import_id)
+  @keys ~w(authenticity_token _method trust_source import_id commit)
   @import_keys ~w(name source)
   @rack_params 4_096
+  @max 2_097_152
 
   @impl true
   def init(opts), do: opts
@@ -37,33 +39,70 @@ defmodule DawarichWeb.ImportsRequest do
   defp params(conn) do
     case Body.kind(conn) do
       :none -> {:ok, assign_params(conn, %{})}
-      :form -> read(conn, [])
+      :form -> read(conn, [], &urlencoded/1)
+      _ -> multipart(conn)
+    end
+  end
+
+  defp multipart(conn) do
+    with [type] <- get_req_header(conn, "content-type"),
+         {:ok, "multipart", "form-data", %{"boundary" => boundary}} <-
+           Plug.Conn.Utils.media_type(type),
+         [length] <- get_req_header(conn, "content-length"),
+         {size, ""} when size <= @max <- Integer.parse(length),
+         false <- RailsProxy.Headers.chunked?(conn) do
+      read(conn, [], &parts(&1, boundary))
+    else
       _ -> {:replay, conn, "request body"}
     end
   end
 
-  defp read(conn, acc) do
+  defp read(conn, acc, parse) do
     case read_body(conn, RailsProxy.read_options()) do
       {:more, data, conn} ->
-        read(conn, [acc, data])
+        read(conn, [acc, data], parse)
 
       {:ok, data, conn} ->
-        decode(put_private(conn, :dawarich_raw_body, IO.iodata_to_binary([acc, data])))
+        conn
+        |> put_private(:dawarich_raw_body, IO.iodata_to_binary([acc, data]))
+        |> decode(parse)
 
       {:error, _reason} ->
         {:halt, conn}
     end
   end
 
-  defp decode(conn) do
-    raw = conn.private.dawarich_raw_body
-    body = Plug.Conn.Query.decode(raw)
+  defp decode(conn, parse) do
+    body = parse.(conn.private.dawarich_raw_body)
 
-    if length(:binary.matches(raw, "&")) < @rack_params - 1 and Enum.all?(body, &field?/1),
+    if Enum.all?(body, &field?/1),
       do: {:ok, assign_params(conn, body)},
       else: {:replay, conn, "parameter shape"}
   rescue
-    Plug.Conn.InvalidQueryError -> {:replay, conn, "parameter shape"}
+    _error -> {:replay, conn, "parameter shape"}
+  end
+
+  defp urlencoded(raw) do
+    true = length(:binary.matches(raw, "&")) < @rack_params - 1
+    Query.decode(raw)
+  end
+
+  defp parts(raw, boundary) do
+    [_preamble | rest] = String.split(raw, "--" <> boundary)
+    {parts, [closing]} = Enum.split(rest, -1)
+    true = closing in ["--", "--\r\n"] and length(parts) < @rack_params
+
+    parts
+    |> Enum.map(&part/1)
+    |> Enum.reduce(Query.decode_init(), &Query.decode_each/2)
+    |> Query.decode_done()
+  end
+
+  defp part("\r\n" <> part) do
+    [head, value] = String.split(part, "\r\n\r\n", parts: 2)
+    [_, name] = Regex.run(~r/\A(?i:content-disposition): form-data; name="([^"\r\n]*)"\z/, head)
+    true = String.ends_with?(value, "\r\n")
+    {name, String.replace_suffix(value, "\r\n", "")}
   end
 
   defp field?({"import", %{} = import}), do: Enum.all?(import, &import_field?/1)

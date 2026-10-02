@@ -24,23 +24,18 @@ defmodule DawarichWeb.ImportsLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket) do
-      Dawarich.Imports.Events.subscribe(socket.assigns.current_user.id)
-      Process.send_after(self(), :imports_refresh, 1000)
-    end
+    if connected?(socket), do: Dawarich.Imports.Events.subscribe(socket.assigns.current_user.id)
 
     {:ok,
      assign(socket,
        page_title: t(socket.assigns.locale, "imports.index.imports", %{}),
-       morph_page_refreshes: true
+       morph_page_refreshes: true,
+       polling: false
      )}
   end
 
   @impl true
-  def handle_info(:imports_refresh, socket) do
-    Process.send_after(self(), :imports_refresh, 1000)
-    refresh(socket)
-  end
+  def handle_info(:imports_refresh, socket), do: refresh(assign(socket, polling: false))
 
   def handle_info(:imports_changed, socket), do: refresh(socket)
 
@@ -51,7 +46,8 @@ defmodule DawarichWeb.ImportsLive.Index do
        |> assign(:now, DateTime.utc_now())
        |> assign(
          Dawarich.ImportExportIndex.imports(socket.assigns.current_user, socket.assigns.list)
-       )}
+       )
+       |> poll()}
     else
       {:noreply, redirect(socket, to: "/users/sign_in")}
     end
@@ -89,8 +85,11 @@ defmodule DawarichWeb.ImportsLive.Index do
        columns: @columns,
        integrations: integrations(user.settings)
      )
-     |> assign(Dawarich.ImportExportIndex.imports(user, list))}
+     |> assign(Dawarich.ImportExportIndex.imports(user, list))
+     |> poll()}
   end
+
+  defp poll(socket), do: DawarichWeb.ImportsPolling.schedule(socket, socket.assigns.entries)
 
   defp integrations(settings) do
     settings = if is_map(settings), do: settings, else: %{}

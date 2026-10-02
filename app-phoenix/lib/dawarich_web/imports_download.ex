@@ -65,18 +65,36 @@ defmodule DawarichWeb.ImportsDownload do
 
   defp pending(conn, record, locale) do
     body = """
-    <div data-testid="native-imports-root" class="max-w-lg mx-auto py-12"><div data-testid="import-download-preparing">
-      <h1>#{text(locale, "preparing")}</h1><p>#{text(locale, "automatic_download")}</p>
-      <a href="/imports/#{record.id}/download?original=1">#{text(locale, "original_archive")}</a>
-      <a href="/imports">#{text(locale, "back")}</a>
-    </div></div>
+    <div class="max-w-lg mx-auto py-12" data-testid="import-download-preparing">
+      <h1 class="text-2xl font-bold">#{text(locale, "preparing")}</h1>
+      <p class="my-4">#{text(locale, "automatic_download")}</p>
+      <a class="btn btn-outline" data-turbo="false" href="/imports/#{record.id}/download?original=1">#{text(locale, "original_archive")}</a>
+      <a class="btn btn-ghost" href="/imports">#{text(locale, "back")}</a>
+    </div>
     """
+
+    assigns =
+      Map.merge(conn.assigns, %{
+        __changed__: nil,
+        flash: %{},
+        page_title: nil,
+        inner_content: Phoenix.HTML.raw(body),
+        navbar:
+          Dawarich.Navbar.load(conn.assigns.current_user,
+            now: conn.assigns.now,
+            self_hosted: conn.assigns.self_hosted
+          )
+      })
+
+    html =
+      DawarichWeb.Layouts.root(%{assigns | inner_content: DawarichWeb.Layouts.app(assigns)})
+      |> Phoenix.HTML.Safe.to_iodata()
 
     conn
     |> put_resp_header("refresh", "3")
     |> put_resp_header("cache-control", "no-store")
     |> put_resp_content_type("text/html")
-    |> send_resp(202, body)
+    |> send_resp(202, html)
   end
 
   defp text(locale, key),

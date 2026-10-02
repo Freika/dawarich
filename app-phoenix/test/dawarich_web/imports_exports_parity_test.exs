@@ -28,7 +28,7 @@ defmodule DawarichWeb.ImportsExportsParityTest do
       expected = ParityHTML.normalize(rails)
 
       assert native == expected,
-             "#{@page["name"]}: " <> first_difference(native, expected)
+             "#{@page["name"]}: " <> ParityHTML.first_difference(native, expected)
 
       assert html =~ "<title>#{@page["title"]}</title>"
     end
@@ -81,29 +81,4 @@ defmodule DawarichWeb.ImportsExportsParityTest do
       refute ParityHTML.normalize(String.replace(rails, from, to)) == expected
     end
   end
-
-  defp first_difference(left, right, path \\ "root")
-  defp first_difference(same, same, _path), do: "equal"
-
-  defp first_difference(left, right, path) when is_list(left) and is_list(right) do
-    if length(left) != length(right) do
-      "#{path}: child counts #{length(left)} != #{length(right)}"
-    else
-      left
-      |> Enum.zip(right)
-      |> Enum.with_index()
-      |> Enum.find_value(fn {{actual, expected}, index} ->
-        if actual != expected, do: first_difference(actual, expected, "#{path}[#{index}]")
-      end)
-    end
-  end
-
-  defp first_difference({tag, attrs, children}, {tag, attrs, expected}, path),
-    do: first_difference(children, expected, path <> "/" <> tag)
-
-  defp first_difference({tag, attrs, _}, {tag, expected, _}, path),
-    do: "#{path}/#{tag}: attributes #{inspect(attrs)} != #{inspect(expected)}"
-
-  defp first_difference(left, right, path),
-    do: "#{path}: #{inspect(left, limit: 8)} != #{inspect(right, limit: 8)}"
 end

@@ -159,10 +159,6 @@ defmodule DawarichWeb.Router do
 
       live "/imports/new", DawarichWeb.ImportsLive.New, :new, container: {:div, class: "contents"}
 
-      live "/imports/:id/edit", DawarichWeb.ImportsLive.Show, :edit,
-        container: {:div, class: "contents"},
-        metadata: @native_import
-
       live "/imports/:id", DawarichWeb.ImportsLive.Show, :show,
         container: {:div, class: "contents"},
         metadata: @native_import

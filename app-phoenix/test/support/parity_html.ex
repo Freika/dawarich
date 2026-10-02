@@ -132,13 +132,16 @@ defmodule Dawarich.Test.ParityHTML do
     else
       kept =
         attrs
-        |> Enum.reject(fn {name, _} -> Regex.match?(@dropped_attribute, name) end)
+        |> Enum.reject(fn {name, value} -> dropped?(name, value) end)
         |> Enum.map(fn {name, value} -> {name, value(tag, name, value, attrs)} end)
         |> Enum.sort()
 
       [{tag, kept, normalize(children)}]
     end
   end
+
+  defp dropped?("id", "phx-" <> _), do: true
+  defp dropped?(name, _value), do: Regex.match?(@dropped_attribute, name)
 
   defp value("meta", "content", _value, %{"name" => name})
        when name in ["csrf-token", "phoenix-csrf-token"],
@@ -184,4 +187,28 @@ defmodule Dawarich.Test.ParityHTML do
 
   defp prune({tag, attrs, children}, drop), do: {tag, attrs, prune(children, drop)}
   defp prune(other, _drop), do: other
+
+  def first_difference(left, right, path \\ "root")
+  def first_difference(same, same, _path), do: "equal"
+
+  def first_difference(left, right, path) when is_list(left) and is_list(right) do
+    case Enum.zip(left, right) |> Enum.find_index(fn {a, b} -> a != b end) do
+      nil ->
+        extra = Enum.drop(left, length(right)) ++ Enum.drop(right, length(left))
+
+        "#{path}: child counts #{length(left)} != #{length(right)}, extra #{inspect(extra, limit: 8)}"
+
+      index ->
+        first_difference(Enum.at(left, index), Enum.at(right, index), "#{path}[#{index}]")
+    end
+  end
+
+  def first_difference({tag, attrs, children}, {tag, attrs, expected}, path),
+    do: first_difference(children, expected, path <> "/" <> tag)
+
+  def first_difference({tag, attrs, _}, {tag, expected, _}, path),
+    do: "#{path}/#{tag}: attributes #{inspect(attrs)} != #{inspect(expected)}"
+
+  def first_difference(left, right, path),
+    do: "#{path}: #{inspect(left, limit: 8)} != #{inspect(right, limit: 8)}"
 end
