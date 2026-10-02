@@ -31,6 +31,7 @@ defmodule DawarichWeb.Endpoint do
     only: ~w(app.js map_shell.js rails_bridge.js)
 
   plug DawarichWeb.PublicFiles
+  plug DawarichWeb.AuthGate
   plug DawarichWeb.Strangler
   plug DawarichWeb.Router
 end

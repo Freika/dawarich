@@ -109,6 +109,13 @@ config :dawarich,
        |> Enum.map(&String.trim/1)
        |> Enum.reject(&(&1 == ""))
 
+config :dawarich,
+       :phoenix_auth,
+       (System.get_env("DAWARICH_PHOENIX_AUTH") || "")
+       |> String.split(",")
+       |> Enum.map(&(&1 |> String.trim() |> String.downcase()))
+       |> Enum.reject(&(&1 == ""))
+
 case System.get_env("DAWARICH_RAILS_ARGS") do
   args when args in [nil, ""] ->
     :ok

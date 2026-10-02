@@ -1,10 +1,17 @@
 defmodule DawarichWeb.AuthHandler do
-  @moduledoc "Inactive, auth-owned entry point. Root integration must call before body consumption."
+  @moduledoc false
   @behaviour Plug
   import Plug.Conn
   alias Dawarich.Accounts
   alias Dawarich.Auth.{ActionCsrf, Admission, Credentials}
   alias DawarichWeb.{AuthMessages, AuthResponse, RailsAuth, RailsProxy, RequestURL}
+
+  @routes [
+    {"GET", "/users/sign_in"},
+    {"POST", "/users/sign_in"},
+    {"DELETE", "/users/sign_out"},
+    {"POST", "/users/sign_out"}
+  ]
 
   def init(opts), do: opts
 
@@ -49,14 +56,7 @@ defmodule DawarichWeb.AuthHandler do
 
   defp owned?(conn, _session), do: is_nil(conn.assigns.current_user)
 
-  defp route?(conn),
-    do:
-      {conn.method, conn.request_path} in [
-        {"GET", "/users/sign_in"},
-        {"POST", "/users/sign_in"},
-        {"DELETE", "/users/sign_out"},
-        {"POST", "/users/sign_out"}
-      ]
+  def route?(conn), do: {conn.method, conn.request_path} in @routes
 
   defp dispatch(%{method: "GET", query_string: ""} = conn, _opts),
     do: AuthResponse.form(conn, "", nil, 200)
