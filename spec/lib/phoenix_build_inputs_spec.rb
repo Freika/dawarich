@@ -80,6 +80,32 @@ RSpec.describe PhoenixBuildInputs do
     end
   end
 
+  describe 'Rails behaviour the Elixir build mirrors' do
+    let(:mirrored) do
+      { 'sprockets' => '4.2.1', 'sprockets-rails' => '3.5.2', 'importmap-rails' => '2.2.3', 'i18n' => '1.15.2' }
+    end
+
+    it 'precompiles the assets Rails is configured to precompile' do
+      compiler = Rails.root.join('app-phoenix/lib/dawarich/build/sprockets/compiler.ex').read
+
+      expect(compiler[/@precompile ~w\(([^)]*)\)/, 1].split).to match_array(Rails.application.config.assets.precompile)
+    end
+
+    it 'runs the gem versions the Elixir build reproduces byte for byte' do
+      versions = Gem.loaded_specs.slice(*mirrored.keys).transform_values { |spec| spec.version.to_s }
+
+      expect(versions).to eq(mirrored), 'a gem the Elixir build mirrors changed version: run ' \
+                                        '`mix test --only rails_parity` in app-phoenix, refresh the vectors in ' \
+                                        'compiler_test.exs if it fails, then update this list'
+    end
+
+    it 'builds Tailwind in the image with the version tailwindcss-ruby gives Rails' do
+      pinned = JSON.parse(Rails.root.join('package.json').read).dig('devDependencies', 'tailwindcss')
+
+      expect(Gem.loaded_specs.fetch('tailwindcss-ruby').version.to_s).to eq(pinned)
+    end
+  end
+
   it 'has the committed time-zone list ActiveSupport computes' do
     expect(described_class.time_zones_json).to eq(Rails.root.join('app-phoenix/priv/time_zones.json').read)
   end
