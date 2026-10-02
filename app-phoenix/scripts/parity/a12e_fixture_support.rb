@@ -13,7 +13,7 @@ module A12eFixtureSupport
               phoenix.job_owners phoenix.runtime_nodes phoenix.rails_commands phoenix.rails_commands_dead].freeze
   SEQUENCES = %w[users points_raw_data_archives points active_storage_blobs active_storage_attachments
                  phoenix.rails_commands].freeze
-  ORDER = { 'phoenix.job_owners' => 'key', 'phoenix.runtime_nodes' => 'node', 'job_outbox' => 'event_id' }.freeze
+  ORDER = { 'phoenix.job_owners' => 'key DESC', 'phoenix.runtime_nodes' => 'node', 'job_outbox' => 'event_id' }.freeze
   SIZES = [0, 1, 2, 1023, 1024, 1025, 1536, 10_240, 1_048_575, 1_048_576, 1_234_567, 1_073_741_824,
            5_368_709_120, 1_099_511_627_776, 1_125_899_906_842_624].freeze
 
