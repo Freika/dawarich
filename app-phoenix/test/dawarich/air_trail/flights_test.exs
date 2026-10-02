@@ -64,6 +64,18 @@ defmodule Dawarich.AirTrail.FlightsTest do
     assert raw == input
   end
 
+  test "raw keeps Rails' float text while the coordinate columns keep the full double", %{
+    user_id: user_id
+  } do
+    from = Map.put(flight()["from"], "lat", 52.520008000000004)
+    store!(user_id, [flight(%{"from" => from, "duration" => 7200.0})])
+
+    assert rows(
+             "SELECT from_lat, raw->'from'->>'lat', raw->>'duration' FROM flights WHERE user_id = $1",
+             [user_id]
+           ) == [[52.520008000000004, "52.520008", "7200.0"]]
+  end
+
   test "scheduled times stand in for missing actual times", %{user_id: user_id} do
     store!(user_id, [
       flight(%{"departure" => nil, "departureScheduled" => "2026-04-20T10:00:00.000+00:00"})

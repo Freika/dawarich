@@ -4,8 +4,8 @@ defmodule Dawarich.RailsCommands do
   def insert!(repo, kind, %{"user_id" => user_id} = payload)
       when is_binary(kind) and is_integer(user_id) do
     repo.query!(
-      "INSERT INTO phoenix.rails_commands (kind, payload) VALUES ($1, $2)",
-      [kind, payload],
+      "INSERT INTO phoenix.rails_commands (kind, payload) VALUES ($1, $2::text::jsonb)",
+      [kind, Dawarich.RubyJson.encode_exact!(payload)],
       log: false
     )
 

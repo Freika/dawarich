@@ -30,6 +30,21 @@ defmodule Dawarich.Geocoding.PointFetchTest do
     end
   end
 
+  test "geodata floats from the provider are stored as Rails stores them" do
+    f = load!("photon_komoot")
+    [%{"url" => url, "status" => status, "body" => body} | _] = f["requests"]
+    FakeHttp.stub(url, status, with_rails_rounding_cases(body))
+    [%{"point_id" => id} | _] = f["calls"]
+
+    PointFetch.run(ScratchRepo, id, Config.resolve(ScratchRepo, %{}), false)
+
+    assert ScratchRepo.query!(
+             "SELECT geodata->'properties'->>'extent', geodata->'properties'->>'distance' " <>
+               "FROM points WHERE id = $1",
+             [id]
+           ).rows == [["[12.3731, 51.3398, 12.3732, 51.3397]", "1500.0"]]
+  end
+
   test "a stale write repeats the lookup three times" do
     f = load!("store_geodata_false")
     stub_requests!(f["requests"])
