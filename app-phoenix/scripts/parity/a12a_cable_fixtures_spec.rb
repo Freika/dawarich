@@ -93,6 +93,9 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
       { id: ids['bob_notifications'] + i, user_id: bob.id, title: "A12a #{i}", content: 'A12a content', kind: 0,
         created_at: Time.current, updated_at: Time.current }
     end)
+    Notification.insert_all([{ id: ids['bob_last_notification'], user_id: bob.id, title: 'A12a last',
+                               content: 'A12a content', kind: 2, created_at: Time.current,
+                               updated_at: Time.current }])
     create(:trip, id: ids['trip_idle'], user: alice, name: 'A12a idle', last_recalculated_at: nil)
     create(:trip, id: ids['trip_cooling'], user: alice, name: 'A12a cooling', last_recalculated_at: 30.seconds.ago)
     @alice = alice.reload
@@ -376,9 +379,6 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
     end
     ActiveRecord::Base.transaction do
       phoenix_tables!
-      Notification.insert_all([{ id: ids['bob_last_notification'], user_id: @bob.id, title: 'A12a last',
-                                 content: 'A12a content', kind: 2, created_at: Time.current,
-                                 updated_at: Time.current }])
       { 'notification_created' => 'alice_notification', 'notification_badge_99_plus' => 'bob_last_notification',
         'notification_soft_deleted_user' => 'erin_notification' }.each do |name, id|
         relay[name] = relay_entry([{ 'notification_id' => ids[id] }], 'notification_events') do
