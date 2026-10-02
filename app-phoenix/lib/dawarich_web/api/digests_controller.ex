@@ -18,7 +18,7 @@ defmodule DawarichWeb.Api.DigestsController do
         Respond.json(conn, 200, term, opts)
 
       {:not_modified, stamp} ->
-        Respond.not_modified(conn, stamp)
+        Respond.not_modified(conn, [{"last-modified", stamp}])
 
       :not_found ->
         Respond.json(
@@ -61,7 +61,9 @@ defmodule DawarichWeb.Api.DigestsController do
     with {:ok, unit} <-
            Params.unit(conn.assigns.api_params["distance_unit"], Accounts.settings(user.id)),
          {:ok, term} <- Api.detail(digest, unit),
-         do: {:ok, term, cache_control: "max-age=3600, private", last_modified: stamp}
+         do:
+           {:ok, term,
+            cache_control: "max-age=3600, private", validators: [{"last-modified", stamp}]}
   end
 
   defp fresh?(conn, since, modified),

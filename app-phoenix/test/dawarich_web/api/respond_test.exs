@@ -49,13 +49,13 @@ defmodule DawarichWeb.Api.RespondTest do
               header(again, "cache-control"), header(again, "content-type")}
   end
 
-  test "last_modified: sets Last-Modified and the given Cache-Control, and no ETag, so If-None-Match never matches" do
+  test "validators: a Last-Modified validator and the given Cache-Control replace the body ETag, so If-None-Match never matches" do
     stamp = "Sun, 06 Nov 1994 08:49:37 GMT"
 
     sent =
       Respond.json(authed(), 200, @term,
         cache_control: "max-age=3600, private",
-        last_modified: stamp
+        validators: [{"last-modified", stamp}]
       )
 
     assert {200, stamp, "max-age=3600, private", nil} ==
@@ -64,12 +64,12 @@ defmodule DawarichWeb.Api.RespondTest do
 
     assert Respond.json(authed([{"if-none-match", ~s(W/"x")}]), 200, @term,
              cache_control: "max-age=3600, private",
-             last_modified: stamp
+             validators: [{"last-modified", stamp}]
            ).status == 200
   end
 
   test "not_modified answers stale?'s 304: Last-Modified, the default Cache-Control, no Content-Type, no Vary, no body" do
-    sent = Respond.not_modified(authed(), "Sun, 06 Nov 1994 08:49:37 GMT")
+    sent = Respond.not_modified(authed(), [{"last-modified", "Sun, 06 Nov 1994 08:49:37 GMT"}])
     assert {304, ""} == {sent.status, sent.resp_body}
 
     assert {"Sun, 06 Nov 1994 08:49:37 GMT", "max-age=0, private, must-revalidate", nil, nil, nil} ==

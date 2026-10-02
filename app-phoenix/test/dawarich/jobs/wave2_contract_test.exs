@@ -21,7 +21,11 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
   test "Rails COMMANDS and the registry name the same command types" do
     commands =
       ~r/^\s*'([a-z0-9_.]+)' => \{/m
-      |> Regex.scan(RailsTree.read("app/services/job_commands.rb"), capture: :all_but_first)
+      |> Regex.scan(
+        RailsTree.read("app/services/job_commands.rb") <>
+          RailsTree.read("app/services/release_commands.rb"),
+        capture: :all_but_first
+      )
       |> List.flatten()
 
     [legacy_options] =

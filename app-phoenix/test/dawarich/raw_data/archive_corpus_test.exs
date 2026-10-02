@@ -64,7 +64,7 @@ defmodule Dawarich.RawData.ArchiveCorpusTest do
     end
   end
 
-  test "refuses every tampered message, including a truncated tag; the two Rails-only forms are ED-A12B-1" do
+  test "refuses every tampered message, including a truncated tag; the two Rails-only forms are ED-234" do
     rails_only = for %{"case" => c, "outcome" => "ok"} <- @crypto["archives"]["tampered"], do: c
     assert Enum.sort(rails_only) == ["expiry_envelope", "marshal_payload"]
 

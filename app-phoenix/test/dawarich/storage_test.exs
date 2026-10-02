@@ -124,6 +124,30 @@ defmodule Dawarich.StorageTest do
     refute File.exists?(source)
   end
 
+  test "put! with an explicit key stores under that key", %{rails_root: root, config: config} do
+    source = Path.join(root, "archive")
+    File.write!(source, "archive bytes")
+    key = "raw_data_archives/7/2026/01/001.jsonl.gz.enc"
+
+    blob = Storage.put!(config, source, "001.jsonl.gz.enc", "application/octet-stream", key)
+
+    assert blob.key == key
+    assert File.read!(Storage.disk_path(config.root, key)) == "archive bytes"
+  end
+
+  test "get! reads a local object back; a missing key raises and leaves no temp dir", %{
+    rails_root: root,
+    config: config
+  } do
+    source = Path.join(root, "object")
+    File.write!(source, "object bytes")
+    %{key: key} = Storage.put!(config, source, "object", "application/octet-stream")
+
+    assert Storage.get!(config, key) == "object bytes"
+    assert_raise File.CopyError, fn -> Storage.get!(config, Storage.generate_key()) end
+    assert Path.wildcard(Path.join([config.root, ".phoenix-tmp", "get-*"])) == []
+  end
+
   test "tmp_dir!/2 is storage/.phoenix-tmp/<event> and is recreated empty", %{config: config} do
     dir = Storage.tmp_dir!(config, "evt-1")
 
@@ -184,21 +208,29 @@ defmodule Dawarich.StorageTest do
     assert File.read!(local) == "local bytes"
 
     object = :crypto.strong_rand_bytes(20 * 1024 * 1024)
-    s3 = Storage.config!(Map.put(@aws, "STORAGE_BACKEND", "s3"), root)
-
-    s3 = %{
-      s3
-      | ex_aws: Keyword.merge(s3.ex_aws, http_client: RangeClient, http_opts: [object: object])
-    }
-
     dest = Path.join(root, "s3.out")
-    Storage.download!(s3, "the-key", dest)
+    Storage.download!(range_s3(root, object), "the-key", dest)
 
     assert_received {:range, "bytes=0-8388607"}
     assert_received {:range, "bytes=8388608-16777215"}
     assert_received {:range, "bytes=16777216-25165823"}
     refute_received {:range, _}
     assert File.read!(dest) == object
+  end
+
+  test "get! over S3 returns the ranged download", %{rails_root: root} do
+    object = :crypto.strong_rand_bytes(20 * 1024 * 1024)
+
+    assert Storage.get!(range_s3(root, object), "the-key") == object
+  end
+
+  defp range_s3(root, object) do
+    s3 = Storage.config!(Map.put(@aws, "STORAGE_BACKEND", "s3"), root)
+
+    %{
+      s3
+      | ex_aws: Keyword.merge(s3.ex_aws, http_client: RangeClient, http_opts: [object: object])
+    }
   end
 
   test "delete/2 removes a local object and ignores a missing key", %{config: config} do

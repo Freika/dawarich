@@ -116,6 +116,66 @@ defmodule Dawarich.Jobs.RegistryTest do
     assert Registry.claimable() == []
   end
 
+  @wave6_commands %{
+    "release.point_dimensions_country" => Dawarich.ReleaseOperations.PointBackfill,
+    "release.route_opacity" => Dawarich.ReleaseOperations.RouteOpacity,
+    "release.onboarding_completed" => Dawarich.ReleaseOperations.OnboardingCompleted,
+    "release.orphaned_tracks" => Dawarich.ReleaseOperations.OrphanedTracks,
+    "release.tracks_dedup" => Dawarich.ReleaseOperations.TracksDedup,
+    "release.place_name_locks" => Dawarich.ReleaseOperations.PlaceNameLocks,
+    "release.time_anchor" => Dawarich.ReleaseOperations.TimeAnchor,
+    "release.transportation" => Dawarich.ReleaseOperations.Transportation,
+    "release.visits_fleet_redetect" => Dawarich.ReleaseOperations.VisitsFleetRedetect,
+    "release.null_island" => Dawarich.ReleaseOperations.NullIsland,
+    "release.motion_data" => Dawarich.ReleaseOperations.MotionData,
+    "release.altitude" => Dawarich.ReleaseOperations.Altitude
+  }
+
+  @wave6_crons %{
+    "cron:raw_data_archive_job" => Dawarich.RawData.ArchiveWorker,
+    "cron:raw_data_verify_job" => Dawarich.RawData.VerifyWorker,
+    "cron:raw_data_clear_job" => Dawarich.RawData.ClearWorker
+  }
+
+  test "wave-6 keys are exact and unclaimable; the raw-data crons match config/schedule.yml" do
+    entries = Map.new(Registry.entries(), &{&1.key, &1})
+
+    for {type, worker} <- @wave6_commands do
+      assert %{kind: :command, worker: ^worker, claimable: false} = entries["command:" <> type],
+             type
+
+      assert Registry.command(type) == {:ok, worker}
+    end
+
+    assert Enum.count(Registry.entries(), &String.starts_with?(&1.key, "command:release.")) ==
+             map_size(@wave6_commands)
+
+    schedule = File.read!(Path.expand("../../../../config/schedule.yml", __DIR__))
+
+    for {"cron:" <> name = key, worker} <- @wave6_crons do
+      assert %{kind: :cron, worker: ^worker, claimable: false, expression: expression} =
+               entries[key],
+             key
+
+      assert worker.key() == key
+      assert [_, ^expression] = Regex.run(~r/#{name}:\n\s+cron: "([^"]+)"/, schedule), key
+      assert {expression, worker} in Registry.crontab()
+    end
+
+    assert Enum.count(Registry.entries(), &String.starts_with?(&1.key, "cron:raw_data_")) ==
+             map_size(@wave6_crons)
+
+    assert Registry.claimable() == []
+  end
+
+  test "seasonal raw-data crons opt out of catch-up" do
+    entries = Map.new(Registry.entries(), &{&1.key, &1})
+
+    assert %{catch_up: false} = entries["cron:raw_data_archive_job"]
+    assert %{catch_up: false} = entries["cron:raw_data_clear_job"]
+    refute Map.has_key?(entries["cron:raw_data_verify_job"], :catch_up)
+  end
+
   test "the app-version cron has one source: the registry matches config/schedule.yml" do
     schedule = File.read!(Path.expand("../../../../config/schedule.yml", __DIR__))
     [_, expression] = Regex.run(~r/app_version_checking_job:\n\s+cron: "([^"]+)"/, schedule)

@@ -4,6 +4,8 @@ class DataMigrations::FixRouteOpacityJob < ApplicationJob
   queue_as :data_migrations
 
   def perform
+    return if ReleaseCommands.forwarded?(self, 'release.route_opacity', {})
+
     Rails.logger.info('Starting route opacity fix job')
 
     count = User.where("(settings->>'route_opacity')::float > 1").count

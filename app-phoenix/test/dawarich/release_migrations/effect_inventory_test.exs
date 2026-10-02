@@ -50,7 +50,7 @@ defmodule Dawarich.ReleaseMigrations.EffectInventoryTest do
 
   test "every job class owner is one of the three C3a owner atoms" do
     for %{owner: owner} <- ReleaseEffectInventory.job_classes() do
-      assert owner in [:a1x_wave5, :a1x_wave6, :unreachable]
+      assert owner in [:a1x_wave6, :a12, :a7]
     end
   end
 
