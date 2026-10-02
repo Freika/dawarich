@@ -132,6 +132,22 @@ defmodule Dawarich.GeocodingCase do
     Enum.each(keys, &Redis.command(["DEL", &1]))
   end
 
+  def with_rails_rounding_cases(body) do
+    added = %{
+      "extent" => [12.373100000000003, 51.339800000000004, 12.373200000000002, 51.3397],
+      "distance" => 1500.0
+    }
+
+    body
+    |> Jason.decode!()
+    |> Map.update!("features", fn features ->
+      Enum.map(features, fn feature ->
+        Map.update!(feature, "properties", &Map.merge(&1, added))
+      end)
+    end)
+    |> Jason.encode!()
+  end
+
   def dedupe_key(id), do: "geocode:enq:Point:#{id}"
 
   def dedupe_key?(id), do: Redis.command(["EXISTS", dedupe_key(id)]) == {:ok, 1}
