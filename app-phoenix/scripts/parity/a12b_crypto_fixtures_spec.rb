@@ -158,14 +158,24 @@ RSpec.describe 'Phoenix fixture: A12b crypto', type: :request do
     end
   end
 
+  def unlock_as(link, visitor)
+    sign_in(visitor) if visitor
+    post unlock_public_shared_link_path(link.id), params: { phrase: 'open sesame' }
+    expect(response).to have_http_status(:redirect)
+    sign_out(visitor) if visitor
+    fx.set_cookie_line(response, "shared_link_#{link.id}")
+  end
+
   def shared_link
     owner = create(:user, id: 970_405)
-    [[970_406, fx::NOW + 3.days], [970_407, nil]].map do |id, expires_at|
+    tokyo = create(:user, id: 970_410, settings: { 'timezone' => 'Asia/Tokyo' })
+    [['00000000-0000-4000-8000-000000970406', fx::NOW + 3.days, nil],
+     ['00000000-0000-4000-8000-000000970407', nil, nil],
+     ['00000000-0000-4000-8000-000000970410', nil, tokyo]].map do |id, expires_at, visitor|
       link = create(:shared_link, id: id, user: owner, magic_phrase: 'open sesame', expires_at: expires_at)
-      post unlock_public_shared_link_path(link.id), params: { phrase: 'open sesame' }
-      expect(response).to have_http_status(:redirect)
       { 'id' => link.id, 'magic_phrase' => 'open sesame', 'expires_at' => link.expires_at&.utc&.iso8601(6),
-        'set_cookie' => fx.set_cookie_line(response, "shared_link_#{link.id}"), 'unlock' => link.unlock_token }
+        'set_cookie' => unlock_as(link, visitor), 'unlock' => link.unlock_token,
+        'visitor_timezone' => visitor&.timezone, 'time_zone_env' => ENV.fetch('TIME_ZONE', nil) }
     end
   end
 
@@ -195,7 +205,8 @@ RSpec.describe 'Phoenix fixture: A12b crypto', type: :request do
     travel_to(fx::NOW) do
       stable = { 'now' => fx::NOW.iso8601(3), 'settings' => crypto_settings, 'messages' => messages, 'turbo' => turbo }
       if fx.write?
-        fx.write('crypto.json', stable.merge('archives' => archives, 'shared_link' => shared_link))
+        previous = fx::DIR.join('crypto.json').exist? ? fx.read('crypto.json') : {}
+        fx.write('crypto.json', previous.merge(stable, 'archives' => archives, 'shared_link' => shared_link))
       else
         recorded = fx.read('crypto.json')
         expect(recorded.slice(*stable.keys)).to eq(fx.normalized(stable))
