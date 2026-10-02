@@ -3,6 +3,12 @@
 class Imports::PrepareDownloadJob < ApplicationJob
   queue_as :imports
 
+  retry_on Imports::DownloadCommands::Busy, wait: :polynomially_longer,
+                                            attempts: Imports::BusyRetry::ATTEMPTS do |job, _error|
+    Rails.logger.warn("[imports] import #{job.arguments.first}: download preparation stopped, " \
+                      'another preparation kept it busy')
+  end
+
   def perform(import_id, source_blob_id, native_fallback: false, expected_user_id: nil)
     return legacy(import_id, source_blob_id) unless Import.find_by(id: import_id)&.gpx?
 

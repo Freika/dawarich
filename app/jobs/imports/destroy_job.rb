@@ -3,6 +3,12 @@
 class Imports::DestroyJob < ApplicationJob
   queue_as :imports
 
+  retry_on Imports::DestroyLegacy::Busy, wait: :polynomially_longer,
+                                         attempts: Imports::BusyRetry::ATTEMPTS do |job, _error|
+    options = job.arguments.second || {}
+    Imports::BusyRetry.fail!(job.arguments.first, from: :deleting, user_id: options[:expected_user_id])
+  end
+
   def perform(import_id, expected_user_id: nil, event_id: nil)
     import = Import.find_by(id: import_id)
     return unless import

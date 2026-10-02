@@ -30,10 +30,20 @@ RSpec.describe Import::ProcessJob, type: :job do
     expect(import.points.count).to eq(0)
   end
 
-  it 'leaves a busy GPX import to Sidekiq retries instead of retrying it forever' do
+  it 'retries a busy GPX import ten times, then marks it failed with a clear message' do
     hold_import_lock("phoenix-import:#{import.id}") do
-      expect { described_class.perform_now(import.id) }.to raise_error(Imports::GpxLegacy::Busy)
+      perform_enqueued_jobs { described_class.perform_later(import.id) }
     end
+    expect(performed_jobs.count { |entry| entry[:job] == described_class }).to eq(10)
+    expect(import.reload).to have_attributes(status: 'failed', error_message: Imports::BusyRetry::MESSAGE)
     expect(import.points.count).to eq(0)
+  end
+
+  it 'leaves a GPX import that another attempt completed while this one waited' do
+    import.update!(status: :completed)
+    hold_import_lock("phoenix-import:#{import.id}") do
+      perform_enqueued_jobs { described_class.perform_later(import.id) }
+    end
+    expect(import.reload).to have_attributes(status: 'completed', error_message: nil)
   end
 end

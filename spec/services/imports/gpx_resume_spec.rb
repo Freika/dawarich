@@ -74,11 +74,13 @@ RSpec.describe 'Imports::GpxResume' do
                                                ))
   end
 
-  it 'leaves a busy resume to Sidekiq retries' do
+  it 'retries a busy resume ten times, then marks the import failed with a clear message' do
     import.file.attach(io: StringIO.new('<gpx/>'), filename: 'resume.gpx')
     hold_import_lock("phoenix-import:#{import.id}") do
-      expect { Import::GpxResumeJob.perform_now(payload) }.to raise_error(Imports::GpxResume::Busy)
+      perform_enqueued_jobs { Import::GpxResumeJob.perform_later(payload) }
     end
+    expect(performed_jobs.count { |entry| entry[:job] == Import::GpxResumeJob }).to eq(10)
+    expect(import.reload).to have_attributes(status: 'failed', error_message: Imports::BusyRetry::MESSAGE)
     expect(state).to eq('pending')
   end
 end

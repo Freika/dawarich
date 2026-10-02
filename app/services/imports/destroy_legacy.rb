@@ -42,7 +42,11 @@ module Imports
 
       import.association(:user).reset
       return unless User.exists?(id: expected_user_id)
-      return if foreign_children?(import)
+
+      if foreign_children?(import)
+        Rails.logger.warn("[imports] import #{import.id} not deleted: it holds another user's data")
+        return
+      end
 
       row = receipt(import.id)
       return if row && (row['user_id'].to_i != expected_user_id || row['phase'] == 'removed')

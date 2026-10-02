@@ -39,9 +39,13 @@ RSpec.describe Imports::DestroyJob, type: :job do
 
   it 'refuses corrupted foreign-user import children before deleting' do
     point = create(:point, import:, user: create(:user))
+    allow(Rails.logger).to receive(:warn)
     expect { job.perform(import.id) }.not_to(change { import.reload.status })
     expect(Point.exists?(point.id)).to be true
+    expect(Rails.logger).to have_received(:warn)
+      .with("[imports] import #{import.id} not deleted: it holds another user's data")
   end
+
   it 'skips a soft-deleted actor without restoring failed status' do
     import.user.update_column(:deleted_at, Time.current)
     expect { job.perform(import.id) }.not_to raise_error
@@ -68,11 +72,13 @@ RSpec.describe Imports::DestroyJob, type: :job do
     expect(row).to include('event_id' => event, 'phase' => 'removed')
   end
 
-  it 'leaves a busy GPX destruction to Sidekiq retries without restoring failed status' do
+  it 'retries a busy GPX destruction ten times, then marks the import failed with a clear message' do
+    import.deleting!
     hold_import_lock("phoenix-import:#{import.id}") do
-      expect { described_class.perform_now(import.id) }.to raise_error(Imports::DestroyLegacy::Busy)
+      perform_enqueued_jobs { described_class.perform_later(import.id) }
     end
-    expect(import.reload.status).to eq('completed')
+    expect(performed_jobs.count { |entry| entry[:job] == described_class }).to eq(10)
+    expect(import.reload).to have_attributes(status: 'failed', error_message: Imports::BusyRetry::MESSAGE)
   end
 
   it 'destroys a non-GPX import as before, without the session lock or a receipt' do

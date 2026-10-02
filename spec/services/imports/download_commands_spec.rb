@@ -62,11 +62,15 @@ expected_user_id: import.user_id)
     expect(other.reload.prepared_download.download).to eq('{"type":"FeatureCollection","features":[]}')
   end
 
-  it 'leaves a busy GPX download preparation to Sidekiq retries' do
+  it 'retries a busy GPX download preparation ten times, then stops with a warning and leaves the import' do
+    allow(Rails.logger).to receive(:warn)
     hold_import_lock("import-download:#{import.id}") do
-      expect { Imports::PrepareDownloadJob.perform_now(import.id, import.file.blob_id) }
-        .to raise_error(Imports::DownloadCommands::Busy)
+      perform_enqueued_jobs { Imports::PrepareDownloadJob.perform_later(import.id, import.file.blob_id) }
     end
-    expect(import.reload.prepared_download).not_to be_attached
+    expect(performed_jobs.count { |entry| entry[:job] == Imports::PrepareDownloadJob }).to eq(10)
+    expect(import.reload).to have_attributes(status: 'created', error_message: nil)
+    expect(import.prepared_download).not_to be_attached
+    expect(Rails.logger).to have_received(:warn)
+      .with("[imports] import #{import.id}: download preparation stopped, another preparation kept it busy")
   end
 end
