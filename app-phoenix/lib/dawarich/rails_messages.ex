@@ -4,6 +4,18 @@ defmodule Dawarich.RailsMessages do
   def blob_id(id, secret \\ Dawarich.RailsSecret.fetch()),
     do: sign("ActiveStorage", ~s({"_rails":{"data":#{id},"pur":"blob_id"}}), :sha, secret)
 
+  def stream_name(parts, secret \\ Dawarich.RailsSecret.fetch()),
+    do:
+      sign(
+        "turbo/signed_stream_verifier_key",
+        Jason.encode!(Enum.map_join(parts, ":", &part/1)),
+        :sha256,
+        secret
+      )
+
+  defp part({:user, id}), do: Base.url_encode64("gid://dawarich/User/#{id}", padding: false)
+  defp part(value), do: to_string(value)
+
   defp sign(salt, json, digest, secret) do
     data = Base.encode64(json)
 

@@ -1,15 +1,10 @@
 defmodule Dawarich.RailsCookies do
   @moduledoc false
 
+  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
+
   @encrypted_salt "authenticated encrypted cookie"
   @signed_salt "signed cookie"
-  @json_escapes %{
-    "&" => ~S(\u0026),
-    "<" => ~S(\u003c),
-    ">" => ~S(\u003e),
-    "\u2028" => ~S(\u2028),
-    "\u2029" => ~S(\u2029)
-  }
 
   def decrypt(value, name, secret, now) do
     with [data, iv, tag] <- value |> URI.decode_www_form() |> String.split("--"),
@@ -35,7 +30,7 @@ defmodule Dawarich.RailsCookies do
   end
 
   def encrypt(value, name, secret) do
-    json = String.replace(Jason.encode!(value), Map.keys(@json_escapes), &@json_escapes[&1])
+    json = value |> Ruby.json() |> IO.iodata_to_binary()
     message = Base.encode64(json)
     meta = Jason.OrderedObject.new(message: message, exp: nil, pur: "cookie." <> name)
     envelope = Jason.encode!(%{"_rails" => meta})

@@ -8,6 +8,20 @@ defmodule DawarichWeb.Assets do
             |> then(&:crypto.hash(:md5, &1))
             |> Base.url_encode64(padding: false)
 
+  @map_shell_js Path.expand("../../priv/static/js/map_shell.js", __DIR__)
+  @external_resource @map_shell_js
+  @map_shell_hash @map_shell_js
+                  |> File.read!()
+                  |> then(&:crypto.hash(:md5, &1))
+                  |> Base.url_encode64(padding: false)
+
+  @rails_bridge_js Path.expand("../../priv/static/js/rails_bridge.js", __DIR__)
+  @external_resource @rails_bridge_js
+  @rails_bridge_hash @rails_bridge_js
+                     |> File.read!()
+                     |> then(&:crypto.hash(:md5, &1))
+                     |> Base.url_encode64(padding: false)
+
   def stylesheet_path(logical), do: "/assets/" <> Map.get(manifest(), logical, logical)
 
   def stylesheet_path(rails_root, logical),
@@ -17,7 +31,9 @@ defmodule DawarichWeb.Assets do
     %{
       phoenix: to_string(Application.spec(:phoenix, :vsn)),
       live_view: to_string(Application.spec(:phoenix_live_view, :vsn)),
-      app: @app_hash
+      app: @app_hash,
+      map_shell: @map_shell_hash,
+      rails_bridge: @rails_bridge_hash
     }
   end
 
@@ -51,10 +67,14 @@ defmodule DawarichWeb.Assets do
   end
 
   defp read_manifest(rails_root) do
-    with [path | _] <-
-           rails_root
-           |> Path.join("public/assets/.sprockets-manifest-*.json")
-           |> Path.wildcard(match_dot: true),
+    configured = Path.join(rails_root, "config/sprockets-manifest.json")
+
+    legacy =
+      rails_root
+      |> Path.join("public/assets/.sprockets-manifest-*.json")
+      |> Path.wildcard(match_dot: true)
+
+    with path when is_binary(path) <- Enum.find([configured | legacy], &File.regular?/1),
          {:ok, json} <- File.read(path),
          {:ok, %{"assets" => assets}} <- Jason.decode(json) do
       assets

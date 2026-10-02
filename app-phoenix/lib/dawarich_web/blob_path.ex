@@ -1,13 +1,20 @@
 defmodule DawarichWeb.BlobPath do
   @moduledoc false
 
-  @kept ~c"-._~!$&'()*+,;=:@/"
+  @kept ~c"!$&'()*+,;=:@"
+  @kept_path [?/ | @kept]
 
-  def redirect_path(blob_id, filename) do
+  def redirect_path(blob_id, filename, opts \\ []) do
+    disposition = Keyword.get(opts, :disposition, "attachment")
+    secret = Keyword.get_lazy(opts, :secret, &Dawarich.RailsSecret.fetch/0)
+
     "/rails/active_storage/blobs/redirect/" <>
-      Dawarich.RailsMessages.blob_id(blob_id) <>
-      "/" <> URI.encode(sanitize(filename), &kept?/1) <> "?disposition=attachment"
+      escape(Dawarich.RailsMessages.blob_id(blob_id, secret), @kept) <>
+      "/" <> escape(sanitize(filename), @kept_path) <> query(disposition)
   end
+
+  defp query(nil), do: ""
+  defp query(disposition), do: "?disposition=#{disposition}"
 
   defp sanitize(filename) do
     filename
@@ -15,5 +22,5 @@ defmodule DawarichWeb.BlobPath do
     |> then(&Regex.replace(~r/[\x{202E}%$|:;\/<>?*"\t\r\n\\]/u, &1, "-"))
   end
 
-  defp kept?(byte), do: byte in ?a..?z or byte in ?A..?Z or byte in ?0..?9 or byte in @kept
+  defp escape(value, keep), do: URI.encode(value, &(URI.char_unreserved?(&1) or &1 in keep))
 end

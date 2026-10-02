@@ -1,0 +1,85 @@
+<div class="fixed w-full z-40 h-[calc(4rem+env(safe-area-inset-top))] pt-[env(safe-area-inset-top)] border-b border-base-content/10">
+  <div class="container mx-auto h-full w-full flex items-center">
+    <.navbar
+      current_user={@current_user}
+      data={navbar_data(assigns)}
+      locale={@locale}
+      request_path={@request_path}
+      base_url={assigns[:base_url] || ""}
+      self_hosted={@self_hosted}
+      rails_csrf_token={@rails_csrf_token}
+      now={@now}
+    />
+  </div>
+</div>
+<div class="fixed top-[calc(4rem+env(safe-area-inset-top))] w-full z-50">
+  <div class="container mx-auto px-5">
+    <.flash locale={@locale} flash={@flash} flash_messages={@flash_messages} />
+  </div>
+</div>
+<div
+  id="map-shell"
+  phx-hook="MapShell"
+  phx-update="ignore"
+  data-turbo="true"
+  class="absolute top-[calc(4rem+env(safe-area-inset-top))] left-0 right-0 bottom-0 w-full z-20 flex flex-col"
+>
+  {@inner_content}
+</div>
+<turbo-frame id="share-link-modal" phx-hook="MapShell" phx-update="ignore" data-turbo="true">
+</turbo-frame>
+<%= if @page.demo_data do %>
+  <div
+    id="demo-data-banner"
+    phx-hook="MapShell"
+    phx-update="ignore"
+    data-turbo="true"
+    class="fixed bottom-0 left-1/2 -translate-x-1/2 z-30 mb-[calc(1rem+env(safe-area-inset-bottom))]"
+    data-controller="demo-banner"
+  >
+    <div class="alert alert-info shadow-lg py-1.5 px-3 flex items-center gap-1.5 rounded-lg whitespace-nowrap text-sm">
+      <span class="font-medium" data-demo-banner-target="label">{t(
+        @locale,
+        "layouts.map.you_re_viewing_demo_data",
+        %{}
+      )}</span>
+      <span data-demo-banner-target="loadingState" class="hidden">
+        <span class="loading loading-spinner loading-xs text-info"></span>
+      </span>
+      <form
+        data-turbo="false"
+        data-action="submit->demo-banner#confirmDelete"
+        class="button_to"
+        method="post"
+        action="/settings/onboarding/demo_data"
+      >
+        <input type="hidden" name="_method" value="delete" /><button
+          data-demo-banner-target="deleteButton"
+          class="btn btn-error btn-xs"
+          type="submit"
+        >{t(@locale, "layouts.map.delete", %{})}</button><input
+          type="hidden"
+          name="authenticity_token"
+          value={@rails_csrf_token}
+        />
+      </form>
+      <button class="btn btn-ghost btn-xs btn-square" data-action="demo-banner#dismiss">
+        <Icon.icon name="x" class="w-3 h-3" />
+      </button>
+    </div>
+  </div>
+<% end %>
+<div id="map-footer" class="fixed bottom-[env(safe-area-inset-bottom)] left-0 right-0 z-30 hidden">
+  {legal_footer(%{locale: @locale, now: @now})}
+</div>
+<%= if @current_user do %>
+  <.onboarding_modal
+    current_user={@current_user}
+    navbar={navbar_data(assigns)}
+    locale={@locale}
+    base_url={assigns[:base_url] || ""}
+    rails_csrf_token={@rails_csrf_token}
+    auto_open={true}
+  />
+  <.achievement_host user_id={@current_user.id} />
+<% end %>
