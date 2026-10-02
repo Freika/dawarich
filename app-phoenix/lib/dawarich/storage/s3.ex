@@ -59,6 +59,25 @@ defmodule Dawarich.Storage.S3 do
   def download!(config, key, dest),
     do: File.open!(dest, [:write, :binary], &range!(config, key, &1, 0))
 
+  def presigned_url!(config, method, key, query, headers, %DateTime{} = now, expires_in) do
+    aws = ExAws.Config.new(:s3, config.ex_aws)
+
+    {path, aws} =
+      if aws[:virtual_host],
+        do: {"/" <> key, Map.put(aws, :host, config.bucket <> "." <> aws.host)},
+        else: {"/" <> config.bucket <> "/" <> key, aws}
+
+    url =
+      ExAws.Request.Url.build(%{path: path, params: %{}}, Map.put(aws, :normalize_path, false))
+
+    at = now |> DateTime.to_naive() |> NaiveDateTime.to_erl()
+
+    case ExAws.Auth.presigned_url(method, url, :s3, at, aws, expires_in, query, nil, headers) do
+      {:ok, signed} -> signed
+      {:error, _reason} -> raise "S3 presign failed"
+    end
+  end
+
   defp range!(config, key, io, from) do
     %{body: body, headers: headers} =
       request!(config, :get, key, nil, %{}, "", %{

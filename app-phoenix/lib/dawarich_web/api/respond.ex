@@ -104,6 +104,12 @@ defmodule DawarichWeb.Api.Respond do
 
   defp cache(conn, _status, _body, _opts), do: put_resp_header(conn, "cache-control", "no-cache")
 
+  def rack_etag(conn, body, cache_control \\ "max-age=0, private, must-revalidate") do
+    conn
+    |> put_resp_header("etag", etag(body))
+    |> put_resp_header("cache-control", cache_control)
+  end
+
   defp etag(body),
     do:
       ~s(W/"#{:crypto.hash(:sha256, body) |> Base.encode16(case: :lower) |> binary_part(0, 32)}")

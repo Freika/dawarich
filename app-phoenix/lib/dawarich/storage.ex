@@ -24,6 +24,10 @@ defmodule Dawarich.Storage do
     "\\"
   ]
 
+  @aws ~w(AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY AWS_REGION AWS_BUCKET)
+  @external_resource approximations = Path.expand("../../priv/i18n_approximations.json", __DIR__)
+  @approximations approximations |> File.read!() |> Jason.decode!()
+
   def config!(env, rails_root \\ File.cwd!()) do
     root = Path.join(rails_root, "storage")
 
@@ -33,6 +37,30 @@ defmodule Dawarich.Storage do
       other -> raise ArgumentError, "unsupported STORAGE_BACKEND #{inspect(other)}"
     end
   end
+
+  def services!(env, rails_root \\ File.cwd!()) do
+    disk = %{
+      "test" => %{service: "local", root: Path.join(rails_root, "tmp/storage")},
+      "local" => %{service: "local", root: Path.join(rails_root, "storage")}
+    }
+
+    services =
+      if Enum.all?(@aws, &(Map.get(env, &1) not in [nil, ""])),
+        do: Map.put(disk, "s3", config!(Map.put(env, "STORAGE_BACKEND", "s3"), rails_root)),
+        else: disk
+
+    %{default: Map.get(env, "STORAGE_BACKEND", "local"), services: services}
+  end
+
+  def service!(%{services: services}, name) do
+    case Map.fetch(services, name) do
+      {:ok, config} -> Map.put(config, :stored_service, name)
+      :error -> raise KeyError, "Missing configuration for the #{name} Active Storage service"
+    end
+  end
+
+  def disk_service(%{default: default, services: services} = registry, name),
+    do: service!(registry, if(Map.has_key?(services, name), do: name, else: default))
 
   def tmp_dir!(%{root: root}, event_id) do
     dir = Path.join([root, ".phoenix-tmp", event_id])
@@ -122,12 +150,35 @@ defmodule Dawarich.Storage do
     :ok
   end
 
+  def sanitized_filename(filename),
+    do: filename |> Dawarich.ReleaseMigration.ruby_strip() |> String.replace(@unsafe, "-")
+
   def content_disposition(type, filename) do
-    name = filename |> String.trim() |> String.replace(@unsafe, "-")
-    ascii = String.replace(name, ~r/[^\x00-\x7F]/u, "?")
+    name = sanitized_filename(filename)
+    ascii = Regex.replace(~r/[^\x00-\x7F]/u, name, &Map.get(@approximations, &1, "?"))
 
     ~s(#{type}; filename="#{escape(ascii, @ascii_escape)}"; filename*=UTF-8''#{escape(name, @utf8_escape)})
   end
+
+  def safe_disk_path(root, key) when is_binary(key) do
+    root = Path.expand(root)
+    segments = String.split(key, "/")
+
+    with true <-
+           String.valid?(key) and String.trim(key) != "" and not String.contains?(key, <<0>>),
+         false <- "." in segments or ".." in segments,
+         codepoints = String.codepoints(key),
+         path = Path.expand(Path.join([root, folder(codepoints, 0), folder(codepoints, 2), key])),
+         true <- String.starts_with?(path, root <> "/") do
+      {:ok, path}
+    else
+      _ -> :error
+    end
+  end
+
+  def safe_disk_path(_root, _key), do: :error
+
+  defp folder(codepoints, at), do: codepoints |> Enum.slice(at, 2) |> Enum.join()
 
   defp escape(string, pattern),
     do:

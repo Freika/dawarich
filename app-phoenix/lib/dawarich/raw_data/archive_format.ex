@@ -3,9 +3,9 @@ defmodule Dawarich.RawData.ArchiveFormat do
 
   @salt "points_raw_data_archive"
 
-  def key(env \\ System.get_env()) do
-    secret = Map.get(env, "ARCHIVE_ENCRYPTION_KEY") || Dawarich.RailsSecret.fetch()
-    :crypto.pbkdf2_hmac(:sha256, secret, @salt, 65_536, 32)
+  def key(env \\ System.get_env(), secret_key_base \\ Dawarich.RailsSecret.fetch()) do
+    secret = Map.get(env, "ARCHIVE_ENCRYPTION_KEY") || secret_key_base
+    Dawarich.RailsMessages.key(secret, @salt, 65_536, 32)
   end
 
   def build(lines), do: :zlib.gzip(Enum.map(lines, &[&1, ?\n]))
