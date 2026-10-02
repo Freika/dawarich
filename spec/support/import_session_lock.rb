@@ -8,15 +8,17 @@ module ImportSessionLock
       config = ActiveRecord::Base.connection_db_config.configuration_hash
       connection = PG.connect(host: config[:host], port: config[:port], user: config[:username],
                               password: config[:password], dbname: config[:database])
-      begin
-        connection.exec_params('SELECT pg_advisory_lock(hashtextextended($1,0))', [key])
-        ready.push(true)
-        release.pop
-      ensure
-        connection.finish
-      end
+      connection.exec_params('SELECT pg_advisory_lock(hashtextextended($1,0))', [key])
+      ready.push(:locked)
+      release.pop
+    rescue StandardError => e
+      ready.push(e)
+    ensure
+      connection&.finish
     end
-    ready.pop
+    locked = ready.pop
+    raise locked unless locked == :locked
+
     yield
   ensure
     release&.push(true)
