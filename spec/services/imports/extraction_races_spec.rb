@@ -5,6 +5,7 @@ require 'rails_helper'
 RSpec.describe 'Native extraction effects after concurrent import changes' do
   self.use_transactional_tests = false
 
+  let!(:blob_floor) { ActiveStorage::Blob.maximum(:id).to_i }
   let!(:user) { create(:user) }
   let!(:other_user) { create(:user) }
   let!(:import) { create(:import, user:, source: :gpx, status: :processing, skip_background_processing: true) }
@@ -27,9 +28,16 @@ RSpec.describe 'Native extraction effects after concurrent import changes' do
   end
 
   after do
-    import.reload.update_columns(user_id: user.id)
-    User.unscoped.find(user.id).destroy!
-    other_user.destroy!
+    owners = [user.id, other_user.id]
+    Import.where(user_id: owners).find_each do |owned|
+      ActiveStorage::Attachment.where(record: owned).find_each(&:purge)
+      owned.destroy!
+    end
+    ActiveStorage::Blob.where(id: (blob_floor + 1)..).where.missing(:attachments).find_each(&:purge)
+    Tag.where(user_id: owners).destroy_all
+    Place.where(user_id: owners).destroy_all
+    Notification.where(user_id: owners).delete_all
+    User.unscoped.where(id: owners).delete_all
     ActiveJob::Base.queue_adapter.enqueued_jobs.clear
   end
 
