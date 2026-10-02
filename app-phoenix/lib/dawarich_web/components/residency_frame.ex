@@ -2,7 +2,7 @@ defmodule DawarichWeb.ResidencyFrame do
   @moduledoc false
   use DawarichWeb, :html
 
-  alias Dawarich.ResidencyYear
+  alias Dawarich.{LocalTime, Residency}
   alias Dawarich.Insights.Heatmap
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias DawarichWeb.{Icon, LocalizedDate}
@@ -10,10 +10,47 @@ defmodule DawarichWeb.ResidencyFrame do
   @colors ~w(bg-blue-600 bg-orange-700 bg-emerald-600 bg-fuchsia-600 bg-amber-700 bg-cyan-700 bg-rose-600 bg-violet-500 bg-lime-700 bg-pink-600 bg-teal-600 bg-yellow-700 bg-indigo-500 bg-red-600)
 
   def data(user, year, now) do
-    with {:ok, data} <- ResidencyYear.read(user, year, now) do
-      colors = data.countries |> Enum.with_index() |> Map.new(fn {c, i} -> {c.name, color(i)} end)
-      {:ok, Map.merge(data, %{colors: colors, weeks: Heatmap.weeks(data.year)})}
+    settings = user.settings || %{}
+    {_zone, today} = LocalTime.local(settings, now)
+
+    with {:ok, window} <- Residency.local_window(user.id, year, settings, today),
+         {:ok, {:object, pairs}} <- Residency.term(user.id, window) do
+      result = Map.new(pairs)
+      {:object, daily} = result["daily_countries"]
+      countries = for {:object, fields} <- result["countries"], do: country(Map.new(fields))
+
+      {:ok,
+       %{
+         year: result["year"],
+         days_in_year: result["days_in_year"],
+         total: result["total_tracked_days"],
+         countries: countries,
+         daily: Map.new(daily),
+         today: today,
+         colors: countries |> Enum.with_index() |> Map.new(fn {c, i} -> {c.name, color(i)} end),
+         weeks: Heatmap.weeks(result["year"])
+       }}
     end
+  end
+
+  defp country(fields) do
+    %{
+      name: fields["country_name"],
+      iso: fields["iso_a2"],
+      days: fields["days"],
+      year_percentage: fields["year_percentage"],
+      warning: fields["threshold_warning"],
+      periods:
+        for {:object, period} <- fields["periods"] do
+          period = Map.new(period)
+
+          %{
+            first: Date.from_iso8601!(period["start_date"]),
+            last: Date.from_iso8601!(period["end_date"]),
+            days: period["consecutive_days"]
+          }
+        end
+    }
   end
 
   attr :year, :integer, required: true
