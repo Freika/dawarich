@@ -20,26 +20,29 @@ defmodule Dawarich.ReleaseMigrations.Effects.DedupeTracksForUniqueIndex do
 
   def run(repo) do
     for [user_id] <- repo.query!(@users_with_duplicates, [], log: false).rows,
-        exists?(repo, @user, [user_id]) do
-      repo.transaction(fn ->
-        repo.query!("DELETE FROM track_segments WHERE track_id IN (#{@loser_ids})", [user_id],
-          log: false
-        )
-
-        repo.query!(
-          "UPDATE points SET track_id = NULL WHERE track_id IN (#{@loser_ids})",
-          [user_id],
-          log: false
-        )
-
-        repo.query!(
-          "DELETE FROM tracks WHERE user_id = $1 AND id NOT IN (#{@keeper_ids})",
-          [user_id],
-          log: false
-        )
-      end)
-    end
+        exists?(repo, @user, [user_id]),
+        do: dedupe_user(repo, user_id)
 
     :ok
+  end
+
+  def dedupe_user(repo, user_id) do
+    repo.transaction(fn ->
+      repo.query!("DELETE FROM track_segments WHERE track_id IN (#{@loser_ids})", [user_id],
+        log: false
+      )
+
+      repo.query!(
+        "UPDATE points SET track_id = NULL WHERE track_id IN (#{@loser_ids})",
+        [user_id],
+        log: false
+      )
+
+      repo.query!(
+        "DELETE FROM tracks WHERE user_id = $1 AND id NOT IN (#{@keeper_ids})",
+        [user_id],
+        log: false
+      )
+    end)
   end
 end

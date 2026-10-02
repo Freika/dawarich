@@ -142,6 +142,37 @@ defmodule Dawarich.RuntimeConfigTest do
     assert prod_extraction_timeout_ms <= :timer.minutes(50)
   end
 
+  test "every wave-6 worker runs on a configured queue and times out before Lifeline" do
+    {repo, oban} = prod()
+
+    for worker <- [
+          Dawarich.ReleaseOperations.PointBackfill,
+          Dawarich.ReleaseOperations.RouteOpacity,
+          Dawarich.ReleaseOperations.OnboardingCompleted,
+          Dawarich.ReleaseOperations.OrphanedTracks,
+          Dawarich.ReleaseOperations.TracksDedup,
+          Dawarich.ReleaseOperations.PlacesUserId,
+          Dawarich.ReleaseOperations.PlaceNameLocks,
+          Dawarich.ReleaseOperations.TimeAnchor,
+          Dawarich.ReleaseOperations.Transportation,
+          Dawarich.ReleaseOperations.VisitsFleetRedetect,
+          Dawarich.ReleaseOperations.NullIsland,
+          Dawarich.ReleaseOperations.MotionData,
+          Dawarich.ReleaseOperations.Altitude,
+          Dawarich.RawData.ArchiveWorker,
+          Dawarich.RawData.VerifyWorker,
+          Dawarich.RawData.ClearWorker
+        ] do
+      assert worker.__opts__()[:queue] == :maintenance, inspect(worker)
+      assert Keyword.has_key?(oban[:queues], :maintenance)
+      timeout = worker.timeout(%Oban.Job{})
+      assert is_integer(timeout) and timeout < :timer.minutes(60), inspect(worker)
+    end
+
+    assert oban[:queues][:maintenance] == 1
+    assert repo[:pool_size] == 23
+  end
+
   test "GPX extraction uses the measured M2 production timeout" do
     timeout = Config.Reader.read!(@runtime, env: :prod)[:dawarich][:extraction_timeout_ms]
     assert timeout == :timer.minutes(8)

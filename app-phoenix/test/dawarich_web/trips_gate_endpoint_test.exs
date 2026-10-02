@@ -2,8 +2,10 @@ defmodule DawarichWeb.TripsGateEndpointTest do
   use Dawarich.JobsCase, async: false
 
   @moduletag :capture_log
+  @endpoint DawarichWeb.Endpoint
 
   import Dawarich.Test.RawHTTP
+  import Phoenix.ConnTest
 
   alias Dawarich.Test.{RailsUser, TripsSeeds}
 
@@ -110,5 +112,30 @@ defmodule DawarichWeb.TripsGateEndpointTest do
              answered_by_puma(serve(), ctx.upstream, request("/trips", cookie))
 
     assert "_dawarich_session=" <> _ = returned_cookie
+  end
+
+  test "Phoenix answers a trip it can render for a signed-in user", ctx do
+    client = connect(serve())
+    send_raw(client, request("/trips/881101", ctx.cookie))
+    assert {200, _headers, body} = read_response(client)
+    assert body =~ "data-phx-main"
+  end
+
+  test "a signed-out visitor is redirected to sign-in for a trip through the accepted id upper bound" do
+    for target <- ~w(/trips/5 /trips/123456789012345678) do
+      assert redirected_to(get(build_conn(), target), 302) ==
+               "http://www.example.com/users/sign_in"
+    end
+  end
+
+  test "an uncalculated or foreign trip goes to Puma with the Rails cookie", ctx do
+    TripsSeeds.trip!(%{id: 881_102, user_id: 8811, path: nil})
+    port = serve()
+
+    for target <- ~w(/trips/881102 /trips/881199) do
+      assert {line, [cookie]} = answered_by_puma(port, ctx.upstream, request(target, ctx.cookie))
+      assert line == "GET #{target} HTTP/1.1"
+      assert "_dawarich_session=" <> _ = cookie
+    end
   end
 end

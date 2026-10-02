@@ -144,6 +144,33 @@ module RailsCommands
             produce.call
           end
         }
+      },
+      'release_reclassify_tracks' => {
+        guard: "ReclassifyTrackJob replaces a track's inferred segments in one transaction; " \
+               'a repeat enqueue reclassifies the same track to the same result',
+        call: lambda { |payload|
+          at = Time.zone.at(payload.fetch('run_at'))
+          jobs = payload.fetch('track_ids').map do |track_id|
+            TransportationModes::ReclassifyTrackJob.new(track_id).tap { _1.scheduled_at = at }
+          end
+          ActiveJob.perform_all_later(jobs)
+        }
+      },
+      'release_user_redetect' => {
+        guard: 'Visits::UserRedetectJob recomputes machine visits month by month under the per-user lock; ' \
+               'a repeat produces the same visits',
+        call: lambda { |payload|
+          Visits::UserRedetectJob.set(wait_until: Time.zone.at(payload.fetch('run_at')))
+                                 .perform_later(payload.fetch('user_id'))
+        }
+      },
+      'release_null_island_follow_up' => {
+        guard: 'follow_up re-reads the null-island rows: a repeat bumps the tile epoch again, finds no visit left ' \
+               'to destroy and re-enqueues convergent stats and track recalculations',
+        call: lambda { |payload|
+          user = User.find_by(id: payload.fetch('user_id'))
+          DataMigrations::CleanupNullIslandJob.follow_up(user) if user
+        }
       }
     }.merge(Points::ArrivalCommands::HANDLERS)
      .merge(Points::AnomalyFilterCommands::HANDLERS)

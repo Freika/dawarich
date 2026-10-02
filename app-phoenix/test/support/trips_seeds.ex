@@ -104,7 +104,7 @@ defmodule Dawarich.Test.TripsSeeds do
     Repo.insert_all("notes", [
       %{
         id: attrs.id,
-        attachable_type: "Trip",
+        attachable_type: attrs[:attachable_type] || "Trip",
         attachable_id: attrs.trip_id,
         user_id: attrs.user_id,
         body: attrs.body,

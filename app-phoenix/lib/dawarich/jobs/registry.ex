@@ -1,7 +1,7 @@
 defmodule Dawarich.Jobs.Registry do
   @moduledoc false
 
-  @entries [
+  @base_entries [
     %{
       key: "command:imports.destroy",
       kind: :command,
@@ -208,6 +208,7 @@ defmodule Dawarich.Jobs.Registry do
     }
   ]
 
+  @entries @base_entries ++ Dawarich.Jobs.ReleaseEntries.entries()
   @native_crontab [{"17 * * * *", Dawarich.State.PurgeWorker}]
 
   def entries, do: @entries
