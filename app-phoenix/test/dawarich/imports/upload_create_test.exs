@@ -107,11 +107,12 @@ defmodule Dawarich.Imports.UploadCreateTest do
     other = uploaded(c, "other.json", "{}")
     gpx = uploaded(c, "first.gpx", "<gpx><trk/></gpx>")
     context = %{storage: c.config, self_hosted?: true}
+    [[last]] = rows("SELECT max(id) FROM imports")
 
     assert {:error, :rails_format} =
              UploadCreate.create(ScratchRepo, c.user, [gpx.signed_id, other.signed_id], context)
 
-    assert [["lease.gpx"]] == rows("SELECT name FROM imports WHERE user_id=$1", [c.user.id])
+    assert [] == rows("SELECT id FROM imports WHERE id > $1", [last])
     assert [] == rows("SELECT id FROM active_storage_attachments")
     assert [] == rows("SELECT id FROM phoenix.rails_commands")
     assert [] == rows("SELECT event_id FROM job_outbox")
