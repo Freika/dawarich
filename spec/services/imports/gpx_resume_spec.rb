@@ -76,7 +76,7 @@ RSpec.describe 'Imports::GpxResume' do
 
   it 'retries a busy resume ten times, then marks the import failed with a clear message' do
     import.file.attach(io: StringIO.new('<gpx/>'), filename: 'resume.gpx')
-    hold_import_lock("phoenix-import:#{import.id}") do
+    hold_import_lock("import:#{import.id}") do
       perform_enqueued_jobs { Import::GpxResumeJob.perform_later(payload) }
     end
     expect(performed_jobs.count { |entry| entry[:job] == Import::GpxResumeJob }).to eq(10)

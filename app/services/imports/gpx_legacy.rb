@@ -7,17 +7,9 @@ module Imports
     module_function
 
     def perform(import, event_id:)
-      ActiveRecord::Base.connection_pool.with_connection do |connection|
-        key = connection.quote("phoenix-import:#{import.id}")
-        locked = connection.select_value("SELECT pg_try_advisory_lock(hashtextextended(#{key},0))")
-        raise Busy, 'Another import attempt is running' unless locked
-
-        begin
-          action = ActiveRecord::Base.transaction { admission(import, event_id) }
-          I18n.with_locale(import.user.locale) { import.process! } if action == :process
-        ensure
-          connection.select_value("SELECT pg_advisory_unlock(hashtextextended(#{key},0))")
-        end
+      PhoenixLease.hold("import:#{import.id}", Busy.new('Another import attempt is running')) do
+        action = ActiveRecord::Base.transaction { admission(import, event_id) }
+        I18n.with_locale(import.user.locale) { import.process! } if action == :process
       end
     end
 

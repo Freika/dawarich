@@ -31,7 +31,7 @@ RSpec.describe Import::ProcessJob, type: :job do
   end
 
   it 'retries a busy GPX import ten times, then marks it failed with a clear message' do
-    hold_import_lock("phoenix-import:#{import.id}") do
+    hold_import_lock("import:#{import.id}") do
       perform_enqueued_jobs { described_class.perform_later(import.id) }
     end
     expect(performed_jobs.count { |entry| entry[:job] == described_class }).to eq(10)
@@ -41,7 +41,7 @@ RSpec.describe Import::ProcessJob, type: :job do
 
   it 'leaves a GPX import that another attempt completed while this one waited' do
     import.update!(status: :completed)
-    hold_import_lock("phoenix-import:#{import.id}") do
+    hold_import_lock("import:#{import.id}") do
       perform_enqueued_jobs { described_class.perform_later(import.id) }
     end
     expect(import.reload).to have_attributes(status: 'completed', error_message: nil)

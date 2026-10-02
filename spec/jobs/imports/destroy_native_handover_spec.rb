@@ -74,7 +74,7 @@ RSpec.describe Imports::DestroyJob, type: :job do
 
   it 'retries a busy GPX destruction ten times, then marks the import failed with a clear message' do
     import.deleting!
-    hold_import_lock("phoenix-import:#{import.id}") do
+    hold_import_lock("import:#{import.id}") do
       perform_enqueued_jobs { described_class.perform_later(import.id) }
     end
     expect(performed_jobs.count { |entry| entry[:job] == described_class }).to eq(10)
@@ -83,14 +83,14 @@ RSpec.describe Imports::DestroyJob, type: :job do
 
   it 'destroys a non-GPX import as before, without the session lock or a receipt' do
     csv = create(:import, source: :csv, status: :completed, skip_background_processing: true)
-    hold_import_lock("phoenix-import:#{csv.id}") { described_class.perform_now(csv.id) }
+    hold_import_lock("import:#{csv.id}") { described_class.perform_now(csv.id) }
     expect(Import.exists?(csv.id)).to be false
     expect(Imports::DestroyLegacy.receipt(csv.id)).to be_nil
   end
 
   it 'destroys a GPX import as before when Phoenix never migrated this database' do
     ActiveRecord::Base.connection.execute('DROP SCHEMA phoenix CASCADE')
-    hold_import_lock("phoenix-import:#{import.id}") { described_class.perform_now(import.id) }
+    hold_import_lock("import:#{import.id}") { described_class.perform_now(import.id) }
     expect(Import.exists?(import.id)).to be false
   end
 end

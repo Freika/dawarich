@@ -12,7 +12,7 @@ RSpec.describe Import::ProcessJob, type: :job do
   end
 
   it 'processes a non-GPX import as before while the per-import session lock is held' do
-    hold_import_lock("phoenix-import:#{import.id}") { described_class.perform_now(import.id) }
+    hold_import_lock("import:#{import.id}") { described_class.perform_now(import.id) }
     expect(import.points.count).to eq(9)
     expect(import.reload).to be_completed
   end

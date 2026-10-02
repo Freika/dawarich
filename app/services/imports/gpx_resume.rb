@@ -13,23 +13,16 @@ module Imports
     end
 
     def perform(payload)
-      ActiveRecord::Base.connection_pool.with_connection do |connection|
-        key = "phoenix-import:#{Integer(payload.fetch('import_id'))}"
-        locked = connection.select_value(sql('SELECT pg_try_advisory_lock(hashtextextended(?,0))', key))
-        raise Busy, 'Another import attempt is running' unless locked
+      name = "import:#{Integer(payload.fetch('import_id'))}"
+      PhoenixLease.hold(name, Busy.new('Another import attempt is running')) do
+        action = ActiveRecord::Base.transaction { prepare(payload) }
+        next unless action == :process
 
-        begin
-          action = ActiveRecord::Base.transaction { prepare(payload) }
-          next unless action == :process
-
-          import = Import.find_by(id: payload.fetch('import_id'), user_id: payload.fetch('user_id'))
-          Time.use_zone(payload.fetch('time_zone')) do
-            I18n.with_locale(import.user.locale) { import.process! }
-          end
-          ActiveRecord::Base.transaction { finish(payload, 'completed') }
-        ensure
-          connection.select_value(sql('SELECT pg_advisory_unlock(hashtextextended(?,0))', key))
+        import = Import.find_by(id: payload.fetch('import_id'), user_id: payload.fetch('user_id'))
+        Time.use_zone(payload.fetch('time_zone')) do
+          I18n.with_locale(import.user.locale) { import.process! }
         end
+        ActiveRecord::Base.transaction { finish(payload, 'completed') }
       end
     end
 

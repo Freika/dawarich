@@ -77,26 +77,15 @@ RSpec.describe 'Native extraction effects after concurrent import changes' do
     expect(import.additional_data_extraction_status).to eq('pending')
   end
 
-  it 'coordinates extraction with the real native destruction session lock' do
-    ready = Queue.new
-    release = Queue.new
-    holder = Thread.new do
-      ActiveRecord::Base.connection_pool.with_connection do |connection|
-        key = connection.quote("phoenix-import:#{import.id}")
-        connection.execute("SELECT pg_advisory_lock(hashtextextended(#{key},0))")
-        ready << true
-        release.pop
-        connection.execute("SELECT pg_advisory_unlock(hashtextextended(#{key},0))")
-      end
+  it 'coordinates extraction with the lease a native destruction holds' do
+    hold_import_lock("import:#{import.id}") do
+      expect { EnhancedImport::ExtractJob.new.perform(import.id, expected: expected) }
+        .to raise_error(Imports::ExtractionCommands::Busy)
     end
-    Timeout.timeout(5) { ready.pop }
-    expect { EnhancedImport::ExtractJob.new.perform(import.id, expected: expected) }
-      .to raise_error(Imports::ExtractionCommands::Busy)
     expect(Place.where(import_id: import.id)).to be_empty
     expect(import.reload.additional_data_extraction_status).to eq('pending')
   ensure
-    release << true
-    holder&.join(5)
+    ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.leases')
   end
 
   it 'rechecks identity after waiting for the actual per-user lock' do

@@ -32,20 +32,10 @@ module Imports
       end
     end
 
-    def with_session(import, expected)
+    def with_session(import, expected, &)
       return yield unless expected
 
-      ActiveRecord::Base.connection_pool.with_connection do |connection|
-        key = connection.quote("phoenix-import:#{import.id}")
-        locked = connection.select_value("SELECT pg_try_advisory_lock(hashtextextended(#{key},0))")
-        raise Busy, 'Another import attempt is running' unless locked
-
-        begin
-          yield
-        ensure
-          connection.select_value("SELECT pg_advisory_unlock(hashtextextended(#{key},0))")
-        end
-      end
+      PhoenixLease.hold("import:#{import.id}", Busy.new('Another import attempt is running'), &)
     end
 
     def effect!(import, expected)
