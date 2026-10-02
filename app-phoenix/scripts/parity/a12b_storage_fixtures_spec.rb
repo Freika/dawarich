@@ -282,4 +282,45 @@ custom_metadata: {} }
   ensure
     Rails.application.env_config['action_dispatch.show_detailed_exceptions'] = detailed
   end
+
+  def phoenix_storage_code
+    <<~ELIXIR
+      alias DawarichWeb.ActiveStorageUrls
+      fx = "test/fixtures/a12b/storage.json" |> File.read!() |> Jason.decode!()
+      now = ~U[2026-10-02 12:00:00.000000Z]
+      local = %{service: "local", root: "/unused", stored_service: "test"}
+      blob = fn row -> %{id: row["id"], key: row["key"], filename: row["filename"], content_type: row["content_type"], service_name: row["service_name"], byte_size: row["byte_size"], checksum: row["checksum"]} end
+      downloads = for row <- fx["blobs"], row["stored"], row["content_type"], d <- [nil, "attachment"], do: %{"blob_id" => row["id"], "disposition" => d, "url" => ActiveStorageUrls.service_url(local, blob.(row), d, "http://dawarich.example", now)}
+      fresh = %{id: 970530, key: "a12b" <> String.duplicate("j", 24), filename: "phoenix.gpx", content_type: "application/gpx+xml", service_name: "test", byte_size: 1024, checksum: "#{Digest::MD5.base64digest(payload)}"}
+      {url, headers} = ActiveStorageUrls.direct_upload(local, fresh, "http://dawarich.example", now)
+      IO.puts(Jason.encode!(%{"downloads" => downloads, "upload" => %{"url" => url, "headers" => headers}, "signed_id" => Dawarich.RailsMessages.blob_id(970501)}))
+    ELIXIR
+  end
+
+  it 'serves what Phoenix signs: disk downloads, a direct upload target and a signed blob id' do
+    recorded = fx.read('storage.json')
+    host! 'dawarich.example'
+    travel_to(fx::NOW) do
+      blobs = stored_blobs
+      out = fx.phoenix(phoenix_storage_code)
+      out['downloads'].each do |download|
+        blob = blobs.find { |b| b.id == download['blob_id'] }
+        get URI(download['url']).path
+        expect(response).to have_http_status(:ok)
+        expect(response.body.b).to eq(payload)
+        type = (blob.forced_disposition_for_serving || download['disposition'] || 'inline').to_s
+        expect(response.headers['content-disposition'])
+          .to eq(ActionDispatch::Http::ContentDisposition.format(disposition: type, filename: blob.filename.sanitized))
+      end
+      untyped = blobs.find { |b| b.content_type.nil? }
+      expect { get URI(with_urls { untyped.url }).path }.to raise_error(NameError, /DEFAULT_SEND_FILE_TYPE/)
+      fresh = make_blob(970_530, "a12b#{'j' * 24}", 'phoenix.gpx', 'application/gpx+xml', stored: false)
+      put URI(out['upload']['url']).path, params: payload,
+                                          headers: { 'CONTENT_TYPE' => out['upload']['headers']['Content-Type'] }
+      expect(response).to have_http_status(:no_content)
+      expect(fresh.download.b).to eq(payload)
+      expect(ActiveStorage::Blob.find_signed!(out['signed_id'])).to eq(blobs.first)
+      fx.write('storage.json', recorded.merge('phoenix' => out)) if fx.write?
+    end
+  end
 end

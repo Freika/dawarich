@@ -71,3 +71,37 @@ RSpec.describe 'Phoenix port: what Phoenix wrote in the A12b fixtures, read with
     end
   end
 end
+
+RSpec.describe 'Phoenix port: the Active Storage messages and settings in the A12b storage fixture' do
+  include ActiveSupport::Testing::TimeHelpers
+
+  let(:secret) do
+    JSON.parse(Rails.root.join('app-phoenix/test/fixtures/rails_cookies.json').read).fetch('rails_test_secret')
+  end
+  let(:storage) { JSON.parse(Rails.root.join('app-phoenix/test/fixtures/a12b/storage.json').read) }
+  let(:verifier) do
+    ActiveSupport::MessageVerifier.new(Rails.application.key_generator(secret).generate_key('ActiveStorage'))
+  end
+
+  it 'still has the Active Storage settings Phoenix reimplements' do
+    expect(ActiveStorage.service_urls_expire_in.to_i).to eq(storage['settings']['service_urls_expire_in'])
+    expect(ActiveStorage.content_types_to_serve_as_binary).to eq(storage['settings']['binary_content_types'])
+    expect(ActiveStorage.content_types_allowed_inline).to eq(storage['settings']['inline_content_types'])
+    expect(ActiveStorage.binary_content_type).to eq(storage['settings']['binary_content_type'])
+    expect(ActiveStorage.routes_prefix).to eq(storage['settings']['routes_prefix'])
+    expect(JSON.parse(Rails.root.join('app-phoenix/priv/i18n_approximations.json').read))
+      .to eq(JSON.parse(I18n::Backend::Transliterator::HashTransliterator::DEFAULT_APPROXIMATIONS.to_json))
+  end
+
+  it 'verifies the disk download and upload messages and the blob id Phoenix signed' do
+    travel_to(Time.iso8601(storage['now'])) do
+      storage['phoenix']['downloads'].each do |download|
+        signed = URI.decode_uri_component(URI(download['url']).path.split('/')[4])
+        expect(verifier.verified(signed, purpose: :blob_key)).to include('key', 'disposition', 'service_name')
+      end
+      upload = URI.decode_uri_component(URI(storage['phoenix']['upload']['url']).path.split('/').last)
+      expect(verifier.verified(upload, purpose: :blob_token)).to include('content_length' => 1024)
+      expect(verifier.verified(storage['phoenix']['signed_id'], purpose: :blob_id)).to eq(970_501)
+    end
+  end
+end
