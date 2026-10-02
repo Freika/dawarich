@@ -42,3 +42,13 @@
       else: legal_footer(%{locale: @locale, now: @now})}
   </div>
 </div>
+<%= if @current_user do %>
+  <.onboarding_modal
+    current_user={@current_user}
+    navbar={navbar_data(assigns)}
+    locale={@locale}
+    base_url={assigns[:base_url] || ""}
+    rails_csrf_token={@rails_csrf_token}
+  />
+  <.achievement_host user_id={@current_user.id} />
+<% end %>

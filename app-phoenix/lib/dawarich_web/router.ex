@@ -78,6 +78,22 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RequireUser
   end
 
+  pipeline :rails_form do
+    plug :put_api_tag, "form"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.Api.Body
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.RailsForm
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :rails_form
+
+    post "/exports", DawarichWeb.ExportsCreate, :create
+  end
+
   scope "/" do
     pipe_through [:browser, :rails_user]
 
@@ -108,6 +124,18 @@ defmodule DawarichWeb.Router do
       live "/trips", DawarichWeb.TripsLive.Index, :index,
         container: {:div, class: "contents"},
         metadata: %{rails_gate: {DawarichWeb.TripsGate, :index?}}
+
+      live "/settings/general", DawarichWeb.SettingsLive.General, :index,
+        container: {:div, class: "contents"}
+
+      live "/settings/integrations", DawarichWeb.SettingsLive.Integrations, :index,
+        container: {:div, class: "contents"}
+
+      live "/users/edit", DawarichWeb.AccountLive.Edit, :edit,
+        container: {:div, class: "contents"}
+
+      live "/insights", DawarichWeb.InsightsLive.Index, :index,
+        container: {:div, class: "contents"}
     end
   end
 

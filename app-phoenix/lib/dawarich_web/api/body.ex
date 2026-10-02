@@ -73,7 +73,7 @@ defmodule DawarichWeb.Api.Body do
         conn = put_private(conn, :dawarich_raw_body, raw)
 
         with {:ok, body} <- body(kind, raw), {:ok, query} <- pairs(conn.query_string) do
-          assign(conn, :api_params, Map.merge(body, query))
+          conn |> assign(:api_query, query) |> assign(:api_params, Map.merge(body, query))
         else
           {:replay, reason} -> replay(conn, reason)
         end

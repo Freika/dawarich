@@ -69,6 +69,27 @@ defmodule DawarichWeb.Chrome do
     """
   end
 
+  attr :user_id, :integer, required: true
+
+  def achievement_host(assigns) do
+    ~H"""
+    <div
+      id="achievement-unlocks"
+      class="ach-unlock-host"
+      aria-live="polite"
+      phx-hook="RailsStimulus"
+      phx-update="ignore"
+      data-controller="achievement-unlocks"
+      data-achievement-unlocks-user-id-value={@user_id}
+      data-achievement-unlocks-next-url-value="/achievements/unlocks/next"
+      data-achievement-unlocks-seen-url-value="/achievements/unlocks/__ID__/seen"
+      data-achievement-unlocks-dismiss-url-value="/achievements/unlocks/dismiss"
+      data-action="turbo:before-cache@document->achievement-unlocks#beforeCache keydown@window->achievement-unlocks#keyDown visibilitychange@document->achievement-unlocks#resumeVisit pageshow@window->achievement-unlocks#resumeVisit"
+    >
+    </div>
+    """
+  end
+
   def footer(assigns),
     do: ~H"""
     <footer class="footer bg-base-200 text-content-neutral p-4">

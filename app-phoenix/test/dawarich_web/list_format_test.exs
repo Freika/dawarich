@@ -35,7 +35,7 @@ defmodule DawarichWeb.ListFormatTest do
       rendered =
         render_component(&HumanDatetime.human_datetime/1,
           locale: locale,
-          at: Dawarich.ImportExportIndex.zoned(naive, offset, name)
+          at: Dawarich.UserTimeZone.zoned(naive, offset, name)
         )
 
       assert ParityHTML.normalize(rendered) == ParityHTML.normalize(html),

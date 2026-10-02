@@ -6,9 +6,11 @@ defmodule DawarichWeb.Locale do
 
   alias DawarichWeb.RailsSession
 
-  @locales ~w(ca de en es fr pl zh)
+  @locales ~w(en de es fr pl ca zh)
 
   def init(opts), do: opts
+
+  def locales, do: @locales
 
   def call(conn, _opts) do
     parameter = conn.params["locale"]

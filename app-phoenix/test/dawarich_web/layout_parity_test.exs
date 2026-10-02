@@ -6,7 +6,7 @@ defmodule DawarichWeb.LayoutParityTest do
 
   alias Dawarich.Test.{LayoutFixtures, ParityHTML}
 
-  @chrome ["[data-controller~='onboarding-modal']", "#achievement-unlocks"]
+  @chrome []
   @rails_head_replacements [
     "script[type='application/json'][data-turbo-track='reload']",
     "script[type='importmap']",
@@ -15,9 +15,25 @@ defmodule DawarichWeb.LayoutParityTest do
   ]
   @phoenix_head_replacements [
     "meta[name='phoenix-csrf-token']",
+    "script[type='application/json'][data-turbo-track='reload']",
     "script[type='importmap']",
     "script[type='module']"
   ]
+  @islands Enum.join(
+             [
+               "[data-controller~='onboarding-modal']",
+               "[data-controller~='onboarding-modal'] [data-controller]",
+               "[data-controller~='onboarding-modal'] [data-action]",
+               "[data-controller~='onboarding-modal'] [data-onboarding-modal-target]",
+               "[data-controller~='onboarding-modal'] [data-upload-target]",
+               "#achievement-unlocks"
+             ],
+             ", "
+           )
+  @signed_in Enum.filter(
+               LayoutFixtures.names(),
+               &(&1 |> LayoutFixtures.load() |> elem(1) |> get_in(["state", "user"]))
+             )
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
@@ -118,6 +134,22 @@ defmodule DawarichWeb.LayoutParityTest do
     end
   end
 
+  for name <- @signed_in do
+    @name name
+
+    test "the onboarding modal and unlock host carry Rails' Stimulus attributes for #{name}" do
+      {rails, meta} = LayoutFixtures.load(@name)
+      phoenix = LayoutFixtures.render(meta["state"])
+      expected = rails |> body() |> ParityHTML.stimulus(@islands)
+
+      assert length(expected) > 10
+      assert phoenix |> body() |> ParityHTML.stimulus(@islands) == expected
+    end
+  end
+
+  defp body(html),
+    do: html |> LazyHTML.from_document() |> LazyHTML.query("body") |> LazyHTML.to_html()
+
   test "the locale suggestion banner carries a dismissible key matching Rails' localStorage format" do
     html =
       render_component(&DawarichWeb.Layouts.app/1,
@@ -169,6 +201,27 @@ defmodule DawarichWeb.LayoutParityTest do
                ParityHTML.without(rails_head, @rails_head_replacements, "head")
     end
   end
+
+  for name <- ~w(self_hosted_dark_en self_hosted_light_de cloud_en) do
+    @name name
+
+    test "a signed-in head carries Rails' JavaScript translations (#{name})" do
+      {_rails, meta} = LayoutFixtures.load(@name)
+      rails = @name |> LayoutFixtures.load_head() |> translations()
+      phoenix = meta["state"] |> LayoutFixtures.render() |> translations()
+
+      assert map_size(rails) > 4
+      assert phoenix == rails
+    end
+  end
+
+  defp translations(html),
+    do:
+      html
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("script#i18n-translations")
+      |> LazyHTML.text()
+      |> Jason.decode!()
 
   for %{"type" => type, "locale" => locale} = flash <- LayoutFixtures.flash_messages() do
     @flash flash

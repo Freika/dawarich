@@ -266,4 +266,21 @@ defmodule Dawarich.NavbarTest do
              self_hosted: true
            ).onboarding
   end
+
+  test "counts every import of the user and flags a demo one, as current_user.imports does" do
+    stamp = ~N[2026-09-01 00:00:00]
+    none = user(4460)
+    mixed = user(4461)
+    user(4462)
+
+    Repo.insert_all("imports", [
+      %{user_id: 4461, name: "a", demo: false, status: 3, created_at: stamp, updated_at: stamp},
+      %{user_id: 4461, name: "b", demo: true, status: 4, created_at: stamp, updated_at: stamp},
+      %{user_id: 4461, name: "c", demo: false, status: 0, created_at: stamp, updated_at: stamp},
+      %{user_id: 4462, name: "d", demo: true, status: 2, created_at: stamp, updated_at: stamp}
+    ])
+
+    assert Navbar.load(none, now: @now, self_hosted: true).imports == %{count: 0, demo: false}
+    assert Navbar.load(mixed, now: @now, self_hosted: true).imports == %{count: 3, demo: true}
+  end
 end

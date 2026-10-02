@@ -75,10 +75,54 @@ defmodule DawarichWeb.StatsLiveTest do
       assert html =~ ~r/import "chartkick"\s+import "Chart.bundle"/
     end
 
-    test "a page without rails_js keeps slice 1's head", %{user: user} do
+    test "a signed-in page without rails_js loads Rails' imports and translations, not Chartkick",
+         %{user: user} do
       html = RailsUser.signed_in(user.id) |> get("/notifications") |> html_response(200)
-      refute html =~ "i18n-translations"
-      refute html =~ "chartkick"
+      head = html |> LazyHTML.from_document() |> LazyHTML.query("head")
+
+      imports =
+        head
+        |> LazyHTML.query("script[type='importmap']")
+        |> LazyHTML.text()
+        |> Jason.decode!()
+        |> Map.fetch!("imports")
+
+      assert imports["chartkick"] == "/assets/chartkick-0123abcd.js"
+      assert imports["app"] =~ "/phoenix/js/app.js?vsn="
+
+      translations =
+        head
+        |> LazyHTML.query("script#i18n-translations[type='application/json']")
+        |> LazyHTML.text()
+        |> Jason.decode!()
+
+      assert translations["demo"]["already_loaded"] == "Demo data already loaded"
+      refute html =~ ~r/import "chartkick"/
+    end
+
+    test "rails_charts: false keeps Rails' modules and drops Chartkick" do
+      root = fn extra ->
+        render_component(
+          &DawarichWeb.Layouts.root/1,
+          Map.merge(
+            %{
+              locale: "en",
+              current_user: nil,
+              self_hosted: true,
+              page_title: nil,
+              rails_csrf_token: nil,
+              rails_js: true,
+              inner_content: ""
+            },
+            extra
+          )
+        )
+      end
+
+      assert root.(%{}) =~ ~r/import "chartkick"/
+      html = root.(%{rails_charts: false})
+      assert html =~ ~s(id="i18n-translations")
+      refute html =~ ~r/import "chartkick"/
     end
 
     test "rails_flash shows only success and error flashes", %{user: user} do
