@@ -27,6 +27,7 @@ defmodule Dawarich.MixProject do
       {:postgrex, ">= 0.0.0"},
       {:oban, "~> 2.20"},
       {:jason, "~> 1.4"},
+      {:yamerl, "~> 0.10", runtime: false},
       {:bcrypt_elixir, "~> 3.3.2"},
       {:phoenix, "~> 1.8.1"},
       {:phoenix_html, "~> 4.2"},
