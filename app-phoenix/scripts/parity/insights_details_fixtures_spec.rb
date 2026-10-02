@@ -134,15 +134,15 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
     requests = [[reader, '/insights/details?year=2024&month=4', 'details-en.html'],
                 [reader, '/insights/details?year=2024&month=4&locale=de', 'details-de.html'],
                 [active, '/insights/details?year=2024', 'details-activity.html']]
-    keys = requests.flat_map do |user, path, fixture|
+    written = requests.map do |user, path, fixture|
       reset!
       sign_in User.find(user.id)
-      markup, written = frame(path)
+      markup, keys = frame(path)
       File.write(dir.join(fixture), "#{markup}\n")
-      written
+      keys.grep(%r{\Aviews/insights/details:})
     end
 
-    templates = keys.filter_map { _1[%r{\Aviews/(insights/details:\h+)/}, 1] }.uniq
+    templates = written.flatten.map { _1[%r{\Aviews/(insights/details:\h+)/}, 1] }.uniq
     digest = ActionView::Digestor.digest(name: 'insights/details', format: :html,
                                          finder: ApplicationController.new.lookup_context)
     expect(templates).to eq(["insights/details:#{digest}"])
@@ -151,8 +151,8 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
     corpus = rows([reader, active]).merge(
       'template_digest' => templates.first,
       'cache' => [yearly_cache(reader, 2024), yearly_cache(active, 2024)],
-      'requests' => requests.map do |user, path, fixture|
-        { 'user_id' => user.id, 'path' => path, 'fixture' => fixture }
+      'requests' => requests.zip(written).map do |(user, path, fixture), keys|
+        { 'user_id' => user.id, 'path' => path, 'fixture' => fixture, 'fragment_keys' => keys }
       end
     )
     File.write(dir.join('details-corpus.json'), "#{JSON.pretty_generate(corpus.as_json)}\n")

@@ -5,7 +5,7 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
 
   import Dawarich.Test.RawHTTP
 
-  alias Dawarich.Insights.Fragments
+  alias Dawarich.Insights.{Details, Fragments}
   alias Dawarich.Test.{InsightsSeeds, ParityHTML, RailsUser}
 
   @dir Path.expand("../fixtures/insights", __DIR__)
@@ -34,8 +34,21 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
     assert String.starts_with?(key, "views/" <> @corpus["template_digest"] <> "/")
   end
 
+  @parts ~w(year_comparison activity_breakdown location_clusters monthly_digest travel_patterns movement_wellness)
+
   for request <- @corpus["requests"] do
     @request request
+    test "Phoenix keys the fragments of #{request["path"]} exactly as Rails wrote them" do
+      %{"settings" => settings, "plan" => plan} =
+        Enum.find(@corpus["users"], &(&1["id"] == @request["user_id"]))
+
+      user = %{id: @request["user_id"], settings: settings, plan: plan}
+      query = @request["path"] |> URI.parse() |> Map.fetch!(:query) |> URI.decode_query()
+      data = Details.load(user, query, self_hosted: false)
+      keys = for name <- @parts, do: Fragments.key(user, query["locale"] || "en", data, name)
+      assert Enum.sort(keys) == Enum.sort(@request["fragment_keys"])
+    end
+
     test "Phoenix answers #{request["path"]} as Rails renders #{request["fixture"]}", ctx do
       expected = @dir |> Path.join(@request["fixture"]) |> File.read!() |> ParityHTML.normalize()
       cookie = "_dawarich_session=" <> RailsUser.cookie(RailsUser.session(@request["user_id"]))
