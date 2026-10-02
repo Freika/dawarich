@@ -89,6 +89,17 @@ defmodule DawarichWeb.Router do
     pipe_through :api_stats
 
     get "/locations", FamilyController, :locations, metadata: %{slice: :api_family}
+    get "/locations/history", FamilyController, :history, metadata: %{slice: :api_family}
+    get "/mine", FamilyController, :mine, metadata: %{slice: :api_family}
+    patch "/sharing", FamilyController, :sharing, metadata: %{slice: :api_family}
+    put "/sharing", FamilyController, :sharing, metadata: %{slice: :api_family}
+    post "/location_requests", FamilyController, :create, metadata: %{slice: :api_family}
+
+    post "/location_requests/:id/accept", FamilyController, :accept,
+      metadata: %{slice: :api_family}
+
+    post "/location_requests/:id/decline", FamilyController, :decline,
+      metadata: %{slice: :api_family}
   end
 
   pipeline :api_locations_photos do

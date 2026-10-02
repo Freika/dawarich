@@ -1,8 +1,7 @@
 defmodule Dawarich.Families.Sharing do
   @moduledoc false
 
-  @blank ~r/\A[ \t\n\v\f\r]*\z/
-  @iso ~r/\A\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,6})?(?:Z|[+-]\d{2}:\d{2})\z/
+  alias Dawarich.Families.Clock
 
   def enabled?(%{} = settings, now) do
     case settings["family"] do
@@ -14,21 +13,23 @@ defmodule Dawarich.Families.Sharing do
 
   def enabled?(_settings, _now), do: raise(ArgumentError, "settings are not an object")
 
-  defp active?(%{"enabled" => true} = sharing, now), do: unexpired?(sharing["expires_at"], now)
-  defp active?(_sharing, _now), do: false
-
-  defp unexpired?(blank, _now) when blank in [nil, false, [], %{}], do: true
-
-  defp unexpired?(text, now) when is_binary(text) do
-    cond do
-      text =~ @blank -> true
-      text =~ @iso -> text |> DateTime.from_iso8601() |> future?(now)
-      true -> raise ArgumentError, "sharing expiry is not ISO 8601 with an offset"
+  def config(settings) do
+    case settings do
+      %{"family" => nil} -> nil
+      %{"family" => %{"location_sharing" => nil}} -> nil
+      %{"family" => %{"location_sharing" => %{} = config}} -> config
+      %{"family" => %{} = family} when not is_map_key(family, "location_sharing") -> nil
+      %{} when not is_map_key(settings, "family") -> nil
+      _other -> raise ArgumentError, "sharing settings are not an object"
     end
   end
 
-  defp unexpired?(_other, _now), do: raise(ArgumentError, "sharing expiry is not a string")
+  defp active?(%{"enabled" => true} = sharing, now) do
+    case Clock.parse(sharing["expires_at"]) do
+      nil -> true
+      at -> NaiveDateTime.compare(at, Clock.naive(now)) == :gt
+    end
+  end
 
-  defp future?({:ok, at, _offset}, now), do: DateTime.compare(at, now) == :gt
-  defp future?(_error, _now), do: raise(ArgumentError, "sharing expiry is not a valid time")
+  defp active?(_sharing, _now), do: false
 end

@@ -132,7 +132,7 @@ RSpec.describe 'Phoenix fixture: golden family API requests', type: :request do
 
     mask = kase[:expect] == :own && response['status'] == 200 ? ApiFamilyGoldenOracle::NOW_MASK : []
     { 'name' => kase[:name], 'expect' => kase[:expect].to_s, 'ignore' => mask.empty? ? [] : ['etag'],
-      'mask' => mask, 'env' => kase[:env], 'setup' => setup,
+      'mask' => mask, 'unordered' => mask.empty? ? [] : ['locations'], 'env' => kase[:env], 'setup' => setup,
       'request' => { 'method' => kase[:method].to_s.upcase, 'target' => path, 'headers' => headers.to_a },
       'response' => response }
   end
