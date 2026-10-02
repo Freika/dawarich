@@ -43,8 +43,55 @@ defmodule Dawarich.LocationsTest do
   defp rows(zone, user_id, search),
     do: RailsTime.with_zone(zone, fn -> Locations.rows(user_id, search) end)
 
+  defp plan_nodes(plan), do: [plan | Enum.flat_map(plan["Plans"] || [], &plan_nodes/1)]
+
+  defp locations_plan(user_id, search) do
+    {sql, args} = Locations.query(user_id, search)
+    Repo.query!("DROP INDEX IF EXISTS index_points_on_user_id_and_created_at")
+
+    Repo.query!(
+      "CREATE UNIQUE INDEX IF NOT EXISTS index_points_on_user_id_timestamp_lonlat ON points (user_id, timestamp, lonlat)"
+    )
+
+    Repo.query!("SET LOCAL enable_seqscan = off")
+    [[plan]] = Repo.query!("EXPLAIN (FORMAT JSON) #{sql}", args).rows
+    plan |> List.first() |> Map.fetch!("Plan")
+  end
+
   defp row(ts, accuracy, altitude, distance),
     do: [ts, 52.5 + ts / 1.0e9, 13.4, "C#{ts}", "D", altitude, accuracy, distance, "d#{ts}"]
+
+  test "rows: the user/timestamp index has the date range in its index condition" do
+    id = user!()
+    start = 1_699_920_000
+    finish = 1_700_006_400
+    search = search(%{date_from: ~D[2023-11-14], date_to: ~D[2023-11-14]})
+
+    point!(id, 52.52001, 13.40501, start)
+    point!(id, 52.52002, 13.40502, finish - 1)
+
+    index =
+      "UTC"
+      |> RailsTime.with_zone(fn -> locations_plan(id, search) end)
+      |> plan_nodes()
+      |> Enum.find(&(&1["Index Name"] == "index_points_on_user_id_timestamp_lonlat"))
+
+    assert index["Index Cond"] =~ "timestamp"
+  end
+
+  test "rows: date bounds include the first second and exclude the following midnight" do
+    id = user!()
+    start = 1_699_920_000
+    finish = 1_700_006_400
+    day = search(%{date_from: ~D[2023-11-14], date_to: ~D[2023-11-14]})
+
+    point!(id, 52.52001, 13.40501, start - 1)
+    point!(id, 52.52002, 13.40502, start)
+    point!(id, 52.52003, 13.40503, finish - 1)
+    point!(id, 52.52004, 13.40504, finish)
+
+    assert "UTC" |> rows(id, day) |> Enum.map(&hd/1) |> Enum.sort() == [start, finish - 1]
+  end
 
   test "rows: this user's points within the radius, Rails' zoned date, a NULL timestamp read as 0, date bounds at local midnight" do
     id = user!()

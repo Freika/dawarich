@@ -62,9 +62,9 @@ defmodule Dawarich.Timeline.MonthSummary do
     FROM points p CROSS JOIN z
     #{@bounds}
     WHERE p.user_id = $1
-      AND p.timestamp BETWEEN floor(extract(epoch FROM m.first AT TIME ZONE 'UTC'))
-                          AND floor(extract(epoch FROM m.last AT TIME ZONE 'UTC'))
-      AND ($3::timestamptz IS NULL OR p.timestamp >= floor(extract(epoch FROM #{window_start("$3")})))
+      AND p.timestamp BETWEEN floor(extract(epoch FROM m.first AT TIME ZONE 'UTC'))::bigint
+                          AND floor(extract(epoch FROM m.last AT TIME ZONE 'UTC'))::bigint
+      AND ($3::timestamptz IS NULL OR p.timestamp >= floor(extract(epoch FROM #{window_start("$3")}))::bigint)
     GROUP BY 1
     """
   end
