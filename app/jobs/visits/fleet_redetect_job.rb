@@ -12,6 +12,8 @@ class Visits::FleetRedetectJob < ApplicationJob
   STAGGER_SECONDS = 30
 
   def perform
+    return if ReleaseCommands.forwarded?(self, 'release.visits_fleet_redetect', {})
+
     offset = 0
     now = Time.current
     User.active.where(points_count: 1..).in_batches(of: BATCH_SIZE) do |batch|

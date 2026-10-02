@@ -10,6 +10,8 @@ module TrackSegments
     BATCH = 1_000
 
     def perform(from_id = 0)
+      return if ReleaseCommands.forwarded?(self, 'release.time_anchor', { 'from_id' => from_id })
+
       ids = TrackSegment.where(id: (from_id + 1)..)
                         .where(start_at: nil).where.not(start_index: nil)
                         .order(:id).limit(BATCH).pluck(:id)

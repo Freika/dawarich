@@ -4,12 +4,12 @@ defmodule Dawarich.ReleaseEffectInventory do
   @job_classes [
     %{
       class: "DataMigrations::AddPointDimensionColumnsJob",
-      owner: :a1x_wave6,
+      owner: :a12,
       rails_file: "app/jobs/data_migrations/add_point_dimension_columns_job.rb"
     },
     %{
       class: "DataMigrations::BackfillAchievementsJob",
-      owner: :a1x_wave6,
+      owner: :a12,
       rails_file: "app/jobs/data_migrations/backfill_achievements_job.rb"
     },
     %{
@@ -29,7 +29,7 @@ defmodule Dawarich.ReleaseEffectInventory do
     },
     %{
       class: "DataMigrations::BackfillMotionDataJob",
-      owner: :a1x_wave5,
+      owner: :a1x_wave6,
       rails_file: "app/jobs/data_migrations/backfill_motion_data_job.rb"
     },
     %{
@@ -39,7 +39,7 @@ defmodule Dawarich.ReleaseEffectInventory do
     },
     %{
       class: "DataMigrations::BackfillPlaceNameLocksJob",
-      owner: :a1x_wave5,
+      owner: :a1x_wave6,
       rails_file: "app/jobs/data_migrations/backfill_place_name_locks_job.rb"
     },
     %{
@@ -59,7 +59,7 @@ defmodule Dawarich.ReleaseEffectInventory do
     },
     %{
       class: "DataMigrations::BackfillTransportationModesJob",
-      owner: :a1x_wave5,
+      owner: :a1x_wave6,
       rails_file: "app/jobs/data_migrations/backfill_transportation_modes_job.rb"
     },
     %{
@@ -69,12 +69,12 @@ defmodule Dawarich.ReleaseEffectInventory do
     },
     %{
       class: "DataMigrations::DestroyOrphanedTracksJob",
-      owner: :a1x_wave5,
+      owner: :a1x_wave6,
       rails_file: "app/jobs/data_migrations/destroy_orphaned_tracks_job.rb"
     },
     %{
       class: "DataMigrations::DropLegacyLatLonJob",
-      owner: :a1x_wave6,
+      owner: :a12,
       rails_file: "app/jobs/data_migrations/drop_legacy_lat_lon_job.rb"
     },
     %{
@@ -84,27 +84,27 @@ defmodule Dawarich.ReleaseEffectInventory do
     },
     %{
       class: "DataMigrations::RecalculateAnomaliesJob",
-      owner: :a1x_wave6,
+      owner: :a12,
       rails_file: "app/jobs/data_migrations/recalculate_anomalies_job.rb"
     },
     %{
       class: "DataMigrations::RecalculatePerTrackerTracksJob",
-      owner: :a1x_wave5,
+      owner: :a12,
       rails_file: "app/jobs/data_migrations/recalculate_per_tracker_tracks_job.rb"
     },
     %{
       class: "TrackSegments::TimeAnchorBackfillJob",
-      owner: :a1x_wave5,
+      owner: :a1x_wave6,
       rails_file: "app/jobs/track_segments/time_anchor_backfill_job.rb"
     },
     %{
       class: "Tracks::DeduplicationJob",
-      owner: :a1x_wave5,
+      owner: :a1x_wave6,
       rails_file: "app/jobs/tracks/deduplication_job.rb"
     },
     %{
       class: "TransportationModes::ImportBackfillJob",
-      owner: :a1x_wave5,
+      owner: :a7,
       rails_file: "app/jobs/transportation_modes/import_backfill_job.rb"
     },
     %{

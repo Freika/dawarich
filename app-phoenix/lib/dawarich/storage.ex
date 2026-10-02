@@ -57,9 +57,9 @@ defmodule Dawarich.Storage do
     {Base.encode64(:crypto.hash_final(ctx)), size}
   end
 
-  def put!(config, path, filename, content_type) do
+  def put!(config, path, filename, content_type, key \\ nil) do
     {checksum, size} = digest_file!(path)
-    key = generate_key()
+    key = key || generate_key()
 
     case config.service do
       "local" ->
@@ -99,6 +99,18 @@ defmodule Dawarich.Storage do
   end
 
   def delete(%{service: "s3"} = config, key), do: Dawarich.Storage.S3.delete(config, key)
+
+  def get!(config, key) do
+    dir = tmp_dir!(config, "get-" <> generate_key())
+    path = Path.join(dir, "object")
+
+    try do
+      download!(config, key, path)
+      File.read!(path)
+    after
+      File.rm_rf(dir)
+    end
+  end
 
   def sweep_tmp(%{root: root}, max_age_seconds) do
     cutoff = System.os_time(:second) - max_age_seconds

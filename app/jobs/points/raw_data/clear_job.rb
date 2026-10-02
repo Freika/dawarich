@@ -7,8 +7,11 @@ module Points
     class ClearJob < ApplicationJob
       queue_as :archival
 
+      OWNER_KEY = 'cron:raw_data_clear_job'
+
       def perform
         return unless ENV['ARCHIVE_RAW_DATA'] == 'true'
+        return if JobOwnership.oban?(OWNER_KEY)
 
         User.find_each do |user|
           ClearUserJob.perform_later(user.id)

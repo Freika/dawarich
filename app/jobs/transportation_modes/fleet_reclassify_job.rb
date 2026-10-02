@@ -19,6 +19,9 @@ module TransportationModes
     NEXT_BATCH_DELAY = 10.minutes
 
     def perform(from_track_id = 0)
+      return if ReleaseCommands.forwarded?(self, 'release.transportation',
+                                           { 'scope' => 'all', 'from_track_id' => from_track_id })
+
       ids = Track.where(id: (from_track_id + 1)..).order(:id).limit(BATCH).pluck(:id)
       if ids.empty?
         Rails.logger.info("[FleetReclassify] finished; last cursor #{from_track_id}")

@@ -138,6 +138,19 @@ defmodule Dawarich.Storage.S3Test do
              @fixture["content_dispositions"]["report name.zip"]
   end
 
+  test "put! with an explicit key PUTs to that key", %{root: root} do
+    path = Path.join(root, "archive")
+    File.write!(path, "archive bytes")
+    config = config(root, fn _, _, _ -> ok() end)
+    key = "raw_data_archives/7/2026/01/001.jsonl.gz.enc"
+
+    blob = Storage.put!(config, path, "001.jsonl.gz.enc", "application/octet-stream", key)
+
+    assert [{:put, put_path, %{}, _headers, "archive bytes"}] = received()
+    assert String.ends_with?(put_path, key)
+    assert blob.key == key
+  end
+
   test "multipart sends per-part Content-MD5 and completes with the ETags in order", %{root: root} do
     {path, bin} = big_file(root)
     config = config(root, multipart_responder(fn _ -> nil end))

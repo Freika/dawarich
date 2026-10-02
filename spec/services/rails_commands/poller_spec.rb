@@ -325,6 +325,7 @@ RSpec.describe RailsCommands::Poller do
       visit_months_changed airtrail_stats tracks_changed tracks_generate_range tracks_throttled_backfill
       tracks_realtime_retrigger geocode_recent_points transport_progress schedule_untracked_tracks
       enhanced_import_card places_delete_if_orphan place_name_fetch reverse_geocode_place exports.points_created
+      release_reclassify_tracks release_user_redetect release_null_island_follow_up
       points.tile_epoch
       points.anomaly_filter tracks.realtime tracks.backfill visits.realtime points.live_broadcast
     ]

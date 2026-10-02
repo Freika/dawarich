@@ -9,6 +9,9 @@ class DataMigrations::BackfillTransportationModesJob < ApplicationJob
   NEXT_BATCH_DELAY = 10.minutes
 
   def perform(from_track_id = 0)
+    return if ReleaseCommands.forwarded?(self, 'release.transportation',
+                                         { 'scope' => 'missing', 'from_track_id' => from_track_id })
+
     ids = Track.joins(:user)
                .left_joins(:track_segments)
                .where(users: { deleted_at: nil })
