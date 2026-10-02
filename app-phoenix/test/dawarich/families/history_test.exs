@@ -12,6 +12,37 @@ defmodule Dawarich.Families.HistoryTest do
   }
 
   test "more than 5000 points keep every ceil(total / 5000)th row in timestamp order" do
+    {owner, _member, start} = seed_member_points!()
+    params = %{"start_at" => "2030-01-01T00:00:00Z", "end_at" => "2030-01-15T10:30:00Z"}
+
+    assert {:ok, 200, {:object, [{"members", [{:object, fields}]}]}} =
+             History.read(%{id: owner, timezone: "UTC"}, params, @now)
+
+    stamps = for [_lat, _lon, stamp] <- Map.new(fields)["points"], do: stamp
+    assert stamps == Enum.map(0..5002//2, &(start + &1))
+  end
+
+  test "the points scan takes both timestamp bounds as index conditions" do
+    {_owner, member, _start} = seed_member_points!()
+    Repo.query!("ANALYZE points")
+    Repo.query!("SET LOCAL enable_seqscan = off")
+
+    params = [member, "2030-01-15T09:00:00Z", "2030-01-15T09:05:00Z", @now, "1 year", nil, true]
+
+    [[[%{"Plan" => plan}]]] =
+      Repo.query!("EXPLAIN (FORMAT JSON) " <> History.points_sql(), params).rows
+
+    conditions = plan |> index_conditions() |> Enum.join(" ")
+    assert conditions =~ ~s("timestamp" >=)
+    assert conditions =~ ~s("timestamp" <=)
+  end
+
+  defp index_conditions(%{"Plans" => plans} = node),
+    do: List.wrap(node["Index Cond"]) ++ Enum.flat_map(plans, &index_conditions/1)
+
+  defp index_conditions(node), do: List.wrap(node["Index Cond"])
+
+  defp seed_member_points! do
     owner = user!(%{settings: %{"timezone" => "UTC"}})
     member = user!(%{settings: %{"family" => %{"location_sharing" => @share}}})
 
@@ -37,12 +68,13 @@ defmodule Dawarich.Families.HistoryTest do
       [member, start]
     )
 
-    params = %{"start_at" => "2030-01-01T00:00:00Z", "end_at" => "2030-01-15T10:30:00Z"}
+    Repo.query!(
+      "INSERT INTO points (user_id, timestamp, lonlat, created_at, updated_at) " <>
+        "SELECT $1, 1000000000 + i, ST_SetSRID(ST_MakePoint(12.37, 51.34), 4326), now(), now() " <>
+        "FROM generate_series(0, 39999) AS i",
+      [member]
+    )
 
-    assert {:ok, 200, {:object, [{"members", [{:object, fields}]}]}} =
-             History.read(%{id: owner, timezone: "UTC"}, params, @now)
-
-    stamps = for [_lat, _lon, stamp] <- Map.new(fields)["points"], do: stamp
-    assert stamps == Enum.map(0..5002//2, &(start + &1))
+    {owner, member, start}
   end
 end

@@ -19,12 +19,15 @@ defmodule Dawarich.Families.History do
     FROM points p, b
     WHERE p.user_id = $1 AND p.timestamp IS NOT NULL AND p.lonlat IS NOT NULL
       AND (p.anomaly = false OR p.anomaly IS NULL) AND b.lo < b.hi
-      AND p.timestamp >= floor(extract(epoch FROM b.lo)) AND p.timestamp <= floor(extract(epoch FROM b.hi))
+      AND p.timestamp >= floor(extract(epoch FROM b.lo))::bigint
+      AND p.timestamp <= floor(extract(epoch FROM b.hi))::bigint
   )
   SELECT ST_Y(lonlat::geometry), ST_X(lonlat::geometry), timestamp FROM n
   WHERE total <= 5000 OR mod(row_num, ceil(total / 5000.0)::bigint) = 0
   ORDER BY timestamp ASC
   """
+
+  def points_sql, do: @points
 
   def read(user, params, now) do
     case Locations.membership(user.id) do
