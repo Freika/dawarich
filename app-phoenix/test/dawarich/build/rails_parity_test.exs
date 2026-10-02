@@ -3,6 +3,7 @@ defmodule Dawarich.Build.RailsParityTest do
 
   alias Dawarich.Build
   alias Dawarich.Build.Sprockets.{Compiler, Writer}
+  alias Jason.OrderedObject
 
   @moduletag :rails_parity
   @moduletag timeout: :infinity
@@ -125,7 +126,24 @@ defmodule Dawarich.Build.RailsParityTest do
   end
 
   defp manifest(path) do
-    %{"files" => files, "assets" => assets} = path |> File.read!() |> Jason.decode!()
-    {Map.new(files, fn {name, entry} -> {name, Map.delete(entry, "mtime")} end), assets}
+    raw = File.read!(path)
+    decoded = Jason.decode!(raw, objects: :ordered_objects)
+    assert Jason.encode!(decoded) == raw, "#{path} is not compact JSON"
+
+    %OrderedObject{values: sections} = decoded
+
+    sections
+    |> Enum.map(fn
+      {"files", %OrderedObject{values: files}} ->
+        {"files", files |> Enum.map(&without_mtime/1) |> Enum.sort_by(&elem(&1, 0))}
+
+      {"assets", %OrderedObject{values: assets}} ->
+        {"assets", Enum.sort_by(assets, &elem(&1, 0))}
+    end)
+    |> Enum.map(fn {name, values} -> {name, %OrderedObject{values: values}} end)
+    |> then(&Jason.encode!(%OrderedObject{values: &1}))
   end
+
+  defp without_mtime({name, %OrderedObject{values: fields}}),
+    do: {name, %OrderedObject{values: List.keydelete(fields, "mtime", 0)}}
 end
