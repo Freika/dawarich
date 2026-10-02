@@ -101,16 +101,21 @@ defmodule DawarichWeb.Api.Respond do
         |> put_resp_header("cache-control", Keyword.fetch!(opts, :cache_control))
 
       :error ->
-        digest = :crypto.hash(:sha256, body) |> Base.encode16(case: :lower) |> binary_part(0, 32)
-
-        conn
-        |> put_resp_header("etag", ~s(W/"#{digest}"))
-        |> put_resp_header(
-          "cache-control",
+        rack_etag(
+          conn,
+          body,
           Keyword.get(opts, :cache_control, "max-age=0, private, must-revalidate")
         )
     end
   end
 
   defp cache(conn, _status, _body, _opts), do: put_resp_header(conn, "cache-control", "no-cache")
+
+  def rack_etag(conn, body, cache_control \\ "max-age=0, private, must-revalidate") do
+    digest = :crypto.hash(:sha256, body) |> Base.encode16(case: :lower) |> binary_part(0, 32)
+
+    conn
+    |> put_resp_header("etag", ~s(W/"#{digest}"))
+    |> put_resp_header("cache-control", cache_control)
+  end
 end

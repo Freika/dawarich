@@ -6,9 +6,21 @@ defmodule Dawarich.RailsMessages do
 
   @storage "ActiveStorage"
   @turbo "turbo/signed_stream_verifier_key"
+  @sgid "signed_global_ids"
 
   def blob_id(id, secret \\ RailsSecret.fetch()),
     do: sign(@storage, ~s({"_rails":{"data":#{id},"pur":"blob_id"}}), :sha, secret)
+
+  def attachable_sgid(blob_id, secret \\ RailsSecret.fetch()) do
+    gid = "gid://dawarich/ActiveStorage::Blob/#{blob_id}?expires_in"
+
+    sign(
+      @sgid,
+      json(%{"_rails" => Jason.OrderedObject.new(data: gid, pur: "attachable")}),
+      :sha,
+      secret
+    )
+  end
 
   def stream_name(parts, secret \\ RailsSecret.fetch()) do
     name = Enum.map_join(parts, ":", &part/1)
