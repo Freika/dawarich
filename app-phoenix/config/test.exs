@@ -53,7 +53,5 @@ config :logger, level: :warning
 
 config :dawarich, :rails_secret, "phoenix-a2-cookie-fixture-secret-not-for-production"
 
-config :dawarich, :photo_source_timeout, 200
-
 config :dawarich, :i18n_path, Path.expand("../tmp/i18n.json", __DIR__)
 config :dawarich, :achievements_path, Path.expand("../tmp/achievements.json", __DIR__)

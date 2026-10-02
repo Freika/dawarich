@@ -1,9 +1,12 @@
 defmodule Dawarich.Test.RawHTTP do
   @moduledoc false
 
-  def listen do
+  def listen(options \\ []) do
     {:ok, listen} =
-      :gen_tcp.listen(0, [:binary, ip: {127, 0, 0, 1}, active: false, reuseaddr: true])
+      :gen_tcp.listen(
+        0,
+        [:binary, ip: {127, 0, 0, 1}, active: false, reuseaddr: true] ++ options
+      )
 
     {:ok, port} = :inet.port(listen)
     %{listen: listen, port: port}

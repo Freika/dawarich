@@ -174,6 +174,7 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
 
     Task.await(immich)
 
+    put_photo_source_timeout(300)
     stalled = listen()
     owner!("phoenix-a4g3-key-stalled", immich_settings("http://127.0.0.1:#{stalled.port}"))
     waits = Task.async(fn -> stall(stalled, 2) end)
@@ -184,6 +185,7 @@ defmodule DawarichWeb.Api.LocationsPhotosEndpointTest do
              |> read_response()
 
     Task.await(waits)
+    no_upstream!(stalled)
   end
 
   test "inputs Phoenix does not own go to Puma, before or after the upstream fetch", %{

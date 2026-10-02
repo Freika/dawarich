@@ -10,6 +10,7 @@ defmodule Dawarich.Photos.ThumbnailTest do
   @preview "GET /api/assets/#{@id}/thumbnail?size=preview HTTP/1.1"
   @cap 32 * 1024 * 1024
   @too_large {:replay, "photo source body exceeds the size cap"}
+  @deadline 300
 
   setup do
     Dawarich.ApiEndpointCase.clear_transport_env()
@@ -62,6 +63,39 @@ defmodule Dawarich.Photos.ThumbnailTest do
         error -> {:halt, {sent - 1, error}}
       end
     end)
+  end
+
+  defp fill_backlog(server, fillers) do
+    case :gen_tcp.connect({127, 0, 0, 1}, server.port, [:binary, active: false], @deadline) do
+      {:ok, filler} -> fill_backlog(server, [filler | fillers])
+      {:error, :timeout} -> fillers
+    end
+  end
+
+  defp httpc_attempts(fun) do
+    tracer = spawn_link(fn -> count_calls(0) end)
+    :erlang.trace_pattern({:httpc, :request, 4}, true, [])
+    :erlang.trace(self(), true, [:call, {:tracer, tracer}])
+
+    try do
+      result = fun.()
+      :erlang.trace(self(), false, [:call])
+      send(tracer, {:report, self()})
+
+      receive do
+        {:calls, count} -> {result, count}
+      end
+    after
+      :erlang.trace(self(), false, [:call])
+      :erlang.trace_pattern({:httpc, :request, 4}, false, [])
+    end
+  end
+
+  defp count_calls(count) do
+    receive do
+      {:trace, _pid, :call, {:httpc, :request, _args}} -> count_calls(count + 1)
+      {:report, from} -> send(from, {:calls, count})
+    end
   end
 
   defp sized({:ok, body}), do: {:ok, byte_size(body)}
@@ -166,7 +200,12 @@ defmodule Dawarich.Photos.ThumbnailTest do
     end
   end
 
-  test "fetch: a stalled read is retried once, then :timeout; a refused connection goes to Rails" do
+  test "no per-attempt deadline is configured for the test environment: only the stall and connect tests inject one" do
+    assert Application.fetch_env(:dawarich, :photo_source_timeout) == :error
+  end
+
+  test "fetch: a stalled read is retried once, then :timeout; a third attempt never starts" do
+    Dawarich.ApiEndpointCase.put_photo_source_timeout(@deadline)
     server = listen()
 
     stalled =
@@ -181,9 +220,28 @@ defmodule Dawarich.Photos.ThumbnailTest do
 
     assert Thumbnail.fetch(settings("http://127.0.0.1:#{server.port}"), "immich", @id) == :timeout
     assert Task.await(stalled) == [@preview, @preview]
+    no_request!(server)
+  end
 
+  test "fetch: a refused connection goes to Rails" do
     assert Thumbnail.fetch(settings("http://127.0.0.1:1"), "immich", @id) ==
              {:replay, "photo source unreachable"}
+  end
+
+  test "fetch: a connect timeout is :timeout with no retry, and nothing but the fillers ever reached the listener" do
+    Dawarich.ApiEndpointCase.put_photo_source_timeout(@deadline)
+    server = listen(backlog: 1)
+    fillers = fill_backlog(server, [])
+
+    {result, attempts} =
+      httpc_attempts(fn ->
+        Thumbnail.fetch(settings("http://127.0.0.1:#{server.port}"), "immich", @id)
+      end)
+
+    assert result == :timeout
+    assert attempts == 1
+    for _filler <- fillers, do: accept(server)
+    no_request!(server)
   end
 
   test "fetch hands off before any request: PhotoPrism, Immich not configured, ids, URLs and keys outside the owned shapes, proxy and CA variables" do

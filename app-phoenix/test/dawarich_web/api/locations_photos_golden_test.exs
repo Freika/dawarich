@@ -16,6 +16,7 @@ defmodule DawarichWeb.Api.LocationsPhotosGoldenTest do
     @kase kase
     test "golden #{kase["name"]}", %{port: port, upstream: puma} do
       Enum.each(@kase["env"], fn {name, value} -> System.put_env(name, value) end)
+      if get_in(@kase, ["upstream", "fault"]) == "timeout", do: put_photo_source_timeout(300)
       {base, served} = immich(@kase["upstream"])
 
       for [table, rows] <- @kase["setup"], row <- rows do
@@ -33,7 +34,12 @@ defmodule DawarichWeb.Api.LocationsPhotosGoldenTest do
   defp immich(%{"calls" => calls} = spec) when calls > 0 do
     server = listen()
     task = Task.async(fn -> Enum.map(1..calls, fn _call -> serve(server, spec) end) end)
-    {"http://127.0.0.1:#{server.port}", fn -> assert length(Task.await(task)) == calls end}
+
+    {"http://127.0.0.1:#{server.port}",
+     fn ->
+       assert length(Task.await(task)) == calls
+       no_upstream!(server)
+     end}
   end
 
   defp immich(_none) do

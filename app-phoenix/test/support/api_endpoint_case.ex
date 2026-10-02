@@ -24,6 +24,18 @@ defmodule Dawarich.ApiEndpointCase do
     end)
   end
 
+  def put_photo_source_timeout(milliseconds) do
+    previous = Application.fetch_env(:dawarich, :photo_source_timeout)
+    Application.put_env(:dawarich, :photo_source_timeout, milliseconds)
+
+    ExUnit.Callbacks.on_exit(fn ->
+      case previous do
+        {:ok, value} -> Application.put_env(:dawarich, :photo_source_timeout, value)
+        :error -> Application.delete_env(:dawarich, :photo_source_timeout)
+      end
+    end)
+  end
+
   setup do
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
