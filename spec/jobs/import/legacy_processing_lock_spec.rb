@@ -11,7 +11,7 @@ RSpec.describe Import::ProcessJob, type: :job do
                        filename: '2024-03.rec', content_type: 'application/octet-stream')
   end
 
-  it 'processes a non-GPX import as before while the per-import session lock is held' do
+  it 'processes a non-GPX import as before while another runtime holds the import lease' do
     hold_import_lock("import:#{import.id}") { described_class.perform_now(import.id) }
     expect(import.points.count).to eq(9)
     expect(import.reload).to be_completed

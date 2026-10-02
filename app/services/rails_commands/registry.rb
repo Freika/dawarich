@@ -155,7 +155,7 @@ module RailsCommands
      .merge(Imports::ExtractionCommands::HANDLERS)
      .merge(
        'imports.resume' => {
-         guard: 'Durable event receipt and per-import session lock; repeats cannot restart a completed receipt',
+         guard: 'Durable event receipt and per-import lease; repeats cannot restart a completed receipt',
          call: ->(payload) { Imports::GpxResume.call(payload) }
        }
      ).freeze
