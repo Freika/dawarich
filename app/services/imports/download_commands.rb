@@ -56,7 +56,7 @@ module Imports
             end
 
             import.reload(lock: true)
-            import.user.lock!
+            import.user.lock!('FOR SHARE')
             raise Busy, 'Download source changed' unless available?(import, source_blob_id) && import.user_id == actor
 
             blob = import.file.blob.reload(lock: true)
