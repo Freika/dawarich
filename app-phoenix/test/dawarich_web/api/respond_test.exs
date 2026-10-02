@@ -94,4 +94,28 @@ defmodule DawarichWeb.Api.RespondTest do
   test "Accounts.settings/1 returns the raw settings JSON", %{id: id} do
     assert %{"maps" => %{"distance_unit" => "mi"}, "timezone" => "UTC"} = Accounts.settings(id)
   end
+
+  test "data/4: the bytes with send_data's headers, the Rack ETag and the given Cache-Control; the If-None-Match 304 keeps Content-Disposition" do
+    image = <<0xFF, 0xD8, 0xFF, 0xE0, "phoenix-a4g3", 0x00, 0xFF, 0xD9>>
+    sent = Respond.data(authed(), image, "image/jpeg", cache_control: "max-age=1800, private")
+
+    assert {200, image, "image/jpeg", "inline", "binary", "max-age=1800, private", "Accept"} ==
+             {sent.status, sent.resp_body, header(sent, "content-type"),
+              header(sent, "content-disposition"), header(sent, "content-transfer-encoding"),
+              header(sent, "cache-control"), header(sent, "vary")}
+
+    digest = :crypto.hash(:sha256, image) |> Base.encode16(case: :lower) |> binary_part(0, 32)
+    etag = header(sent, "etag")
+    assert etag == ~s(W/"#{digest}")
+
+    again =
+      Respond.data(authed([{"if-none-match", etag}]), image, "image/jpeg",
+        cache_control: "max-age=1800, private"
+      )
+
+    assert {304, "", nil, "inline", "binary", etag, "max-age=1800, private"} ==
+             {again.status, again.resp_body, header(again, "content-type"),
+              header(again, "content-disposition"), header(again, "content-transfer-encoding"),
+              header(again, "etag"), header(again, "cache-control")}
+  end
 end

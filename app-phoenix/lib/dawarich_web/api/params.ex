@@ -9,6 +9,9 @@ defmodule DawarichWeb.Api.Params do
   @stamp ~r/\A(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2})(?::(\d{2})(?:\.\d{1,6})?)?(?:Z|[+-](\d{2}):(\d{2})))?\z/
   @http ~r/\A(?:Mon|Tue|Wed|Thu|Fri|Sat|Sun), (\d{2}) (Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{4}) (\d{2}):(\d{2}):(\d{2}) GMT\z/
   @months ~w(Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec)
+  @coordinate ~r/\A-?\d{1,3}(?:\.\d{1,20})?(?:e-\d{1,2})?\z/
+  @count ~r/\A\d{1,9}\z/
+  @date ~r/\A(\d{4})-(\d{2})-(\d{2})\z/
 
   def year(nil), do: {:ok, nil}
   def year(value) when is_integer(value) and value in 1970..2037, do: {:ok, value}
@@ -81,6 +84,47 @@ defmodule DawarichWeb.Api.Params do
   end
 
   def http_date(%NaiveDateTime{} = at), do: Calendar.strftime(at, "%a, %d %b %Y %H:%M:%S GMT")
+
+  def coordinates(lat, lon) do
+    cond do
+      not (text?(lat) and text?(lon)) -> {:replay, "coordinate parameter shape"}
+      Ruby.blank?(lat) or Ruby.blank?(lon) -> :missing
+      lat =~ @coordinate and lon =~ @coordinate -> {:ok, Ruby.to_f(lat), Ruby.to_f(lon)}
+      true -> {:replay, "coordinate parameter shape"}
+    end
+  end
+
+  def count(nil, default), do: {:ok, default}
+
+  def count(value, _default) when is_binary(value) do
+    if value =~ @count,
+      do: {:ok, String.to_integer(value)},
+      else: {:replay, "count parameter shape"}
+  end
+
+  def count(_value, _default), do: {:replay, "count parameter shape"}
+
+  def date(value) do
+    cond do
+      is_nil(value) or (is_binary(value) and Ruby.blank?(value)) -> {:ok, nil}
+      is_binary(value) -> calendar(Regex.run(@date, value, capture: :all_but_first))
+      true -> {:replay, "date parameter shape"}
+    end
+  end
+
+  def text(value) when is_nil(value) or is_binary(value), do: {:ok, value}
+  def text(_value), do: {:replay, "text parameter shape"}
+
+  defp text?(value), do: is_nil(value) or is_binary(value)
+
+  defp calendar([y, m, d]) do
+    case Date.new(String.to_integer(y), String.to_integer(m), String.to_integer(d)) do
+      {:ok, %Date{year: year} = date} when year in 1970..2037 -> {:ok, date}
+      _ -> {:replay, "date parameter shape"}
+    end
+  end
+
+  defp calendar(nil), do: {:replay, "date parameter shape"}
 
   defp setting_unit(%{"maps" => maps}) when is_map(maps), do: {:ok, maps["distance_unit"] || "km"}
   defp setting_unit(%{"maps" => nil}), do: {:ok, "km"}

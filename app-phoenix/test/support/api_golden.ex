@@ -4,6 +4,8 @@ defmodule Dawarich.Test.ApiGolden do
   import ExUnit.Assertions
   import Dawarich.Test.RawHTTP
 
+  alias Dawarich.ReleaseMigrations.Effects.Support.RubyFloat
+
   def check(kase, port, upstream) do
     client = connect(port)
     send_raw(client, raw(kase["request"]))
@@ -11,6 +13,13 @@ defmodule Dawarich.Test.ApiGolden do
     if kase["expect"] == "own",
       do: owned(kase, client, upstream),
       else: rails(kase, client, upstream)
+  end
+
+  def insert!(table, row) do
+    Dawarich.Repo.query!(
+      "INSERT INTO #{table} SELECT * FROM json_populate_record(NULL::#{table}, $1::text::json)",
+      [exact_json(row)]
+    )
   end
 
   defp raw(%{"method" => method, "target" => target, "headers" => headers}),
@@ -21,7 +30,8 @@ defmodule Dawarich.Test.ApiGolden do
     ]
 
   defp owned(kase, client, upstream) do
-    %{"status" => status, "headers" => expected, "body" => body} = kase["response"]
+    %{"status" => status, "headers" => expected} = kase["response"]
+    body = body(kase["response"])
     {got_status, headers, got_body} = read_response(client)
     ignore = kase["ignore"] || []
 
@@ -67,9 +77,25 @@ defmodule Dawarich.Test.ApiGolden do
     assert request_line(head) == "#{method} #{target} HTTP/1.1"
     for [name, value] <- sent, do: assert(header(head, String.downcase(name)) == [value], name)
 
-    %{"status" => status, "body" => body} = kase["response"]
-    reply(puma, "HTTP/1.1 #{status} Rails\r\nContent-Length: #{byte_size(body)}\r\n\r\n#{body}")
+    %{"status" => status} = kase["response"]
+    body = body(kase["response"])
+    reply(puma, ["HTTP/1.1 #{status} Rails\r\nContent-Length: #{byte_size(body)}\r\n\r\n", body])
     assert {^status, _, received} = read_response(client, method: method)
     assert received == body
   end
+
+  defp body(%{"body_base64" => encoded}), do: Base.decode64!(encoded)
+  defp body(%{"body" => body}), do: body
+
+  defp exact_json(value) when is_float(value), do: RubyFloat.to_s(value)
+
+  defp exact_json(value) when is_map(value),
+    do:
+      "{" <>
+        Enum.map_join(value, ",", fn {k, v} -> "#{Jason.encode!(k)}:#{exact_json(v)}" end) <> "}"
+
+  defp exact_json(value) when is_list(value),
+    do: "[" <> Enum.map_join(value, ",", &exact_json/1) <> "]"
+
+  defp exact_json(value), do: Jason.encode!(value)
 end

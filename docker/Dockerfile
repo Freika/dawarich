@@ -22,7 +22,7 @@ FROM ruby:3.4.9-slim AS phoenix_builder
 
 RUN apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    erlang-nox erlang-dev elixir git ca-certificates \
+    erlang-nox erlang-dev elixir git ca-certificates build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 ENV MIX_ENV=prod LANG=C.UTF-8

@@ -1,8 +1,12 @@
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
-
-const meta = (name) =>
-  document.querySelector(`meta[name='${name}']`)?.getAttribute("content")
+import {
+  bootRailsBridges,
+  MapShell,
+  meta,
+  RailsStimulus,
+  watchFlashes,
+} from "rails_bridge"
 
 const ChangelogWidget = {
   mounted() {
@@ -19,134 +23,20 @@ const ChangelogWidget = {
   },
 }
 
-const bridges = new WeakMap()
-
-const appendRailsFlash = (content) => {
-  const container = document.getElementById("flash-messages")
-  if (!container) return
-  for (const alert of [...content.querySelectorAll("[role='alert']")])
-    container.appendChild(alert)
-}
-
-const controllerIdentifiers = (root) =>
-  [root, ...root.querySelectorAll("[data-controller]")]
-    .flatMap((node) =>
-      (node.getAttribute("data-controller") || "").split(/\s+/),
-    )
-    .filter(
-      (identifier, index, all) =>
-        identifier !== "" && all.indexOf(identifier) === index,
-    )
-
-const registerControllers = async (app, root) => {
-  for (const identifier of controllerIdentifiers(root)) {
-    const path = identifier.replace(/--/g, "/").replace(/-/g, "_")
-    const module = await import(`controllers/${path}_controller`)
-    app.register(identifier, module.default)
-  }
-}
-
-const startStimulus = async (element) => {
-  const { Application } = await import("@hotwired/stimulus")
-  const { lazyLoadControllersFrom } = await import("@hotwired/stimulus-loading")
-  const app = Application.start(element)
-  await registerControllers(app, element)
-  lazyLoadControllersFrom("controllers", app, element)
-  return app
-}
-
-const submitStream = async (event, bridge) => {
-  const form = event.target.closest?.("form[data-sharing-modal-target='form']")
-  if (!form) return
-  event.preventDefault()
-  const response = await fetch(form.action, {
-    method: "POST",
-    body: new URLSearchParams(new FormData(form)),
-    headers: {
-      Accept: "text/vnd.turbo-stream.html, text/html, application/xhtml+xml",
-      "X-CSRF-Token": meta("csrf-token") || "",
-    },
-    credentials: "same-origin",
-  })
-  const template = document.createElement("template")
-  template.innerHTML = await response.text()
-  for (const stream of template.content.querySelectorAll("turbo-stream")) {
-    const content = stream.querySelector("template")?.content
-    if (!content) continue
-    if (stream.getAttribute("action") === "replace") {
-      document
-        .getElementById(stream.getAttribute("target"))
-        ?.replaceWith(content)
-    } else if (stream.getAttribute("target") === "flash-messages") {
-      bridge.flash(content)
-    }
-  }
-}
-
-const railsBridge = (element) => {
-  if (bridges.has(element)) return bridges.get(element)
-  const bridge = { flash: appendRailsFlash }
-  bridge.onSubmit = (event) => submitStream(event, bridge)
-  element.addEventListener("submit", bridge.onSubmit)
-  bridge.ready = startStimulus(element)
-  bridges.set(element, bridge)
-  return bridge
-}
-
-const RailsStimulus = {
-  mounted() {
-    this.bridge = railsBridge(this.el)
-    this.reconnected()
-  },
-  reconnected() {
-    this.bridge.flash = (content) => {
-      const alert = content.querySelector("[role='alert']")
-      this.pushEvent("rails_flash", {
-        type: alert?.classList.contains("alert-error") ? "error" : "success",
-        message: alert?.querySelector("span")?.textContent || "",
-      })
-    }
-  },
-  disconnected() {
-    this.bridge.flash = appendRailsFlash
-  },
-  destroyed() {
-    const bridge = bridges.get(this.el)
-    if (!bridge) return
-    this.el.removeEventListener("submit", bridge.onSubmit)
-    bridge.ready.then((app) => app.stop())
-    bridges.delete(this.el)
-  },
+const turboOwns = (element) => {
+  if (!window.Turbo || !element) return false
+  const container = element.closest("[data-turbo]")
+  return container
+    ? container.getAttribute("data-turbo") === "true"
+    : element.closest("turbo-frame") !== null
 }
 
 const liveSocket = new LiveSocket("/phoenix/live", Socket, {
   params: { _csrf_token: meta("phoenix-csrf-token") },
-  hooks: { ChangelogWidget, RailsStimulus },
+  hooks: { ChangelogWidget, RailsStimulus, MapShell },
 })
 liveSocket.connect()
 window.liveSocket = liveSocket
-
-const bootRailsBridges = () => {
-  for (const element of document.querySelectorAll("[phx-hook='RailsStimulus']"))
-    railsBridge(element)
-}
-
-const expireRailsAlert = (node) => {
-  if (
-    node instanceof Element &&
-    node.getAttribute("data-removals-timeout-value") === "5000" &&
-    !node.querySelector("[phx-click]")
-  )
-    window.setTimeout(() => node.remove(), 5000)
-}
-
-const watchFlashes = () => {
-  const container = document.getElementById("flash-messages")
-  if (!container) return
-  new MutationObserver((mutations) => {
-    for (const { addedNodes } of mutations) addedNodes.forEach(expireRailsAlert)
-  }).observe(container, { childList: true })
-}
 
 const bootTurboFrames = () => {
   if (!document.querySelector("turbo-frame[src]")) return
@@ -232,6 +122,7 @@ document.addEventListener(
   (event) => {
     const link = event.target.closest?.("a[data-turbo-method], a[data-method]")
     if (!link) return
+    if (turboOwns(link)) return
     const message = confirmMessage(link)
     if (message !== null && !window.confirm(message)) return stop(event)
     if (link.hasAttribute("phx-click") && joined())
@@ -249,6 +140,7 @@ document.addEventListener(
 document.addEventListener(
   "submit",
   (event) => {
+    if (turboOwns(event.target)) return
     const message =
       confirmMessage(event.submitter) ?? confirmMessage(event.target)
     if (message !== null && !window.confirm(message)) return stop(event)

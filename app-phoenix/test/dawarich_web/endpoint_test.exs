@@ -828,4 +828,59 @@ defmodule DawarichWeb.EndpointTest do
               "GET #{target} HTTP/1.1"
           )
   end
+
+  test "Phoenix answers both map paths itself", _ctx do
+    port = serve()
+
+    for target <- ~w(/map /map/v2 /map/v2?date=2026-09-29&panel=timeline),
+        do: assert(answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302)
+  end
+
+  test "every other map path, method and format goes to Puma unchanged", ctx do
+    port = serve()
+    get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
+
+    for {target, headers} <- [
+          {"/maps/v2", ""},
+          {"/map/v1", ""},
+          {"/map/timeline_feeds?date=2026-09-29", ""},
+          {"/map/timeline_feeds/calendar?month=2026-09", ""},
+          {"/map/timeline_feeds/5/track_info", ""},
+          {"/map/residency", ""},
+          {"/api/v1/timeline?start_at=1&end_at=2", ""},
+          {"/map/v2", "Accept: application/json\r\n"},
+          {"/map/v2?format=json", ""},
+          {"/map/v2", "X-Requested-With: XMLHttpRequest\r\n"}
+        ],
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, get.(target, headers)) ==
+              "GET #{target} HTTP/1.1"
+          )
+
+    body = "authenticity_token=x"
+
+    for method <- ~w(POST PATCH DELETE) do
+      request =
+        "#{method} /map/v2 HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+      assert answered_by_puma(port, ctx.upstream, request) == "#{method} /map/v2 HTTP/1.1"
+    end
+  end
+
+  test "DAWARICH_RAILS_ROUTES=map hands both map paths back to Puma with their query", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["map"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+
+    for target <- ~w(/map /map/v2?panel=timeline&date=2026-09-29),
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+              "GET #{target} HTTP/1.1"
+          )
+
+    assert answered_by_phoenix(port, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+  end
 end

@@ -153,4 +153,75 @@ defmodule DawarichWeb.Api.ParamsTest do
     assert {Distance.convert(1609, "km"), Distance.convert(160_934, "mi"),
             Distance.convert(7, "m")} == {1.609, 160_934 / 1609.34, 7.0}
   end
+
+  test "coordinates: present decimal text read as Ruby's to_f; blank is :missing; other shapes go to Rails without the value in the reason" do
+    assert Params.coordinates("52.52", "13.405") == {:ok, 52.52, 13.405}
+    assert Params.coordinates("-90", "180") == {:ok, -90.0, 180.0}
+    assert {:ok, 1.0e-7, lon} = Params.coordinates("1e-7", "-0")
+    assert <<1::1, _::63>> = <<lon::float>>
+
+    for {lat, lon} <- [{nil, "13"}, {"52", nil}, {"", "13"}, {"52", " "}],
+        do: assert(Params.coordinates(lat, lon) == :missing, inspect({lat, lon}))
+
+    for {lat, lon} <- [
+          {"52.5abc", "13"},
+          {"52,5", "13"},
+          {"+52", "13"},
+          {" 52", "13"},
+          {"52.", "13"},
+          {".5", "13"},
+          {"1e3", "13"},
+          {"1000", "13"},
+          {"52", "0x1A"},
+          {52.5, "13"},
+          {"52", ["13"]}
+        ] do
+      assert Params.coordinates(lat, lon) == {:replay, "coordinate parameter shape"},
+             inspect({lat, lon})
+    end
+  end
+
+  test "count: absent is the default, one to nine digits are the integer, anything else goes to Rails" do
+    assert {Params.count(nil, 50), Params.count("0", 50), Params.count("007", 50),
+            Params.count("123456789", 500)} ==
+             {{:ok, 50}, {:ok, 0}, {:ok, 7}, {:ok, 123_456_789}}
+
+    for value <- ["", " 5", "5 ", "-1", "+5", "1.5", "5abc", "1234567890", 5, ["5"]],
+        do: assert({:replay, _} = Params.count(value, 50), inspect(value))
+  end
+
+  test "date: blank is nil, a real YYYY-MM-DD in 1970..2037 is a Date, anything else goes to Rails" do
+    assert {Params.date(nil), Params.date(""), Params.date("  "), Params.date("2023-11-15"),
+            Params.date("2037-12-31")} ==
+             {{:ok, nil}, {:ok, nil}, {:ok, nil}, {:ok, ~D[2023-11-15]}, {:ok, ~D[2037-12-31]}}
+
+    for value <- [
+          "2023-02-30",
+          "2023-13-01",
+          "1969-12-31",
+          "2038-01-01",
+          "2023-1-5",
+          "Nov 15 2023",
+          "2023-11-15T00:00",
+          "20231115",
+          2023,
+          ["2023-11-15"]
+        ],
+        do: assert({:replay, _} = Params.date(value), inspect(value))
+  end
+
+  test "text: nil or a string passes, anything else goes to Rails" do
+    assert {Params.text(nil), Params.text(""), Params.text("Café <Z>")} ==
+             {{:ok, nil}, {:ok, ""}, {:ok, "Café <Z>"}}
+
+    for value <- [1, ["a"], %{"a" => 1}, true],
+        do: assert({:replay, "text parameter shape"} = Params.text(value), inspect(value))
+  end
+
+  test "rejected count and date values never appear in replay reasons" do
+    secret = "phoenix-a4g3-sensitive-query"
+    assert Params.count(secret, 50) == {:replay, "count parameter shape"}
+    assert Params.date(secret) == {:replay, "date parameter shape"}
+    assert Params.date("1969-12-31") == {:replay, "date parameter shape"}
+  end
 end

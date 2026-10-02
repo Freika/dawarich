@@ -75,6 +75,27 @@ defmodule DawarichWeb.Router do
     get "/flights", GeoController, :flights, metadata: %{slice: :api_stats}
   end
 
+  pipeline :api_locations_photos do
+    plug :put_api_tag, "api"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.Api.Body
+    plug :put_path_format
+    plug DawarichWeb.Api.Auth, require_active: false
+  end
+
+  scope "/api/v1", DawarichWeb.Api do
+    pipe_through :api_locations_photos
+
+    get "/locations", LocationsController, :index, metadata: %{slice: :api_locations_photos}
+
+    get "/photos/:id/thumbnail", PhotosController, :thumbnail,
+      metadata: %{slice: :api_locations_photos}
+
+    get "/photos/:id/thumbnail.jpg", PhotosController, :thumbnail,
+      metadata: %{slice: :api_locations_photos}
+  end
+
   pipeline :rails_user do
     plug DawarichWeb.RequireUser
   end
@@ -177,7 +198,25 @@ defmodule DawarichWeb.Router do
     end
   end
 
+  scope "/" do
+    pipe_through [:browser, :rails_user]
+
+    live_session :rails_map,
+      session: {DawarichWeb.RailsAuth, :live_session, []},
+      on_mount: DawarichWeb.LiveAuth,
+      root_layout: {DawarichWeb.Layouts, :map_root},
+      layout: {DawarichWeb.Layouts, :map} do
+      live "/map", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
+      live "/map/v2", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
+    end
+  end
+
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
+
+  defp put_path_format(%{path_info: [_api, _v1, "photos", _id, "thumbnail.jpg"]} = conn, _opts),
+    do: Plug.Conn.assign(conn, :api_params, Map.put(conn.assigns.api_params, "format", "jpg"))
+
+  defp put_path_format(conn, _opts), do: conn
 
   defp phoenix_session(conn, _opts) do
     opts =
