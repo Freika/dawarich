@@ -5,8 +5,7 @@ defmodule Dawarich.RailsCache.WireTest do
   @fixtures Path.expand("../../fixtures/rails_cache", __DIR__)
 
   test "reads actual Rails8.1 Redis entries including compressed AR and fragments" do
-    for file <- Path.wildcard(Path.join(@fixtures, "*.wire")),
-        not String.contains?(file, "raw-counter") do
+    for file <- Path.wildcard(Path.join(@fixtures, "*.wire")) do
       assert {:ok, %{value: _, expires_at: expires}} = Wire.decode(File.read!(file))
       assert is_float(expires)
     end
@@ -19,15 +18,14 @@ defmodule Dawarich.RailsCache.WireTest do
     assert {:ok, %{value: nil}} = read("nil")
     assert {:ok, %{value: false}} = read("false")
     assert {:ok, %{value: true}} = read("true")
-    assert {:ok, %{value: "Berlin — 東京"}} = read("utf8")
+    assert {:ok, %{value: "Leipzig — Lindenau"}} = read("utf8")
   end
 
-  test "fragment HTML is written as Rails' UTF-8 string entry, compressed from 1 KiB" do
-    for html <- ["<p>Leipzig</p>", String.duplicate("<p>Leipzig fragment</p>", 120)] do
-      bytes = Wire.encode(html, expires_at: 2_000_000_000.125)
-      assert <<0, 17, type, _::binary>> = bytes
-      assert type == if(byte_size(html) >= 1024, do: 130, else: 2)
-      assert {:ok, %{value: ^html, expires_at: 2_000_000_000.125}} = Wire.decode(bytes)
+  test "fragment HTML is written byte for byte as Rails writes a String entry" do
+    for name <- ~w(utf8 compressed_string) do
+      bytes = File.read!(Path.join(@fixtures, "codec-#{name}.wire"))
+      {:ok, %{value: html, expires_at: expires}} = Wire.decode(bytes)
+      assert Wire.encode(html, expires_at: expires) == bytes
     end
   end
 
