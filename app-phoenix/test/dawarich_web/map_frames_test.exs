@@ -345,7 +345,13 @@ defmodule DawarichWeb.MapFramesTest do
 
   describe "MapFramesGate.residency?/2" do
     setup do
-      on_exit(fn -> System.delete_env("SELF_HOSTED") end)
+      previous = System.get_env("SELF_HOSTED")
+
+      on_exit(fn ->
+        if previous,
+          do: System.put_env("SELF_HOSTED", previous),
+          else: System.delete_env("SELF_HOSTED")
+      end)
     end
 
     defp residency(user, query),

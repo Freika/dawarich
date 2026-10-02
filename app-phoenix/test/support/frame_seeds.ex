@@ -126,23 +126,6 @@ defmodule Dawarich.Test.FrameSeeds do
     ])
   end
 
-  def area!(user_id, id, name) do
-    Repo.insert_all("areas", [
-      %{
-        id: id,
-        user_id: user_id,
-        name: name,
-        latitude: Decimal.new("51.340600"),
-        longitude: Decimal.new("12.381600"),
-        radius: 120,
-        created_at: stamp(),
-        updated_at: stamp()
-      }
-    ])
-
-    id
-  end
-
   def suggest!(id, visit_id, place_id),
     do:
       Repo.insert_all("place_visits", [
