@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.Admission do
-  @moduledoc "Pre-effect boundary for the inactive credentials HTTP slice."
+  @moduledoc false
 
   @special ~w(invitation_token pending_import_ticket dawarich_client)
   @fields ~w(authenticity_token user[email] user[password] user[remember_me] commit utf8 _method)

@@ -1,6 +1,6 @@
 defmodule Dawarich.Auth.Credentials do
   @moduledoc """
-  Transactional credentials for the bounded, inactive A11 password slice.
+  Transactional credentials for the bounded A11 password slice.
 
   The password is checked before the row lock is taken; a hash that changed
   in between hands off. OTP, provider and payment accounts hand off only after
