@@ -328,7 +328,9 @@ custom_metadata: {} }
 
   def remove_local(blobs)
     blobs.compact.each { |blob| blob.service.delete(blob.key) }
-    %w[storage/a1/2b storage/a1].map { |dir| Rails.root.join(dir) }.each { |dir| Dir.rmdir(dir) if Dir.exist?(dir) && Dir.empty?(dir) }
+    %w[storage/a1/2b storage/a1].map { |dir| Rails.root.join(dir) }.each do |dir|
+      Dir.rmdir(dir) if Dir.exist?(dir) && Dir.empty?(dir)
+    end
   end
 
   def phoenix_storage_code
