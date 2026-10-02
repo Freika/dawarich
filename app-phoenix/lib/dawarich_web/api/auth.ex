@@ -31,8 +31,9 @@ defmodule DawarichWeb.Api.Auth do
     conn = conn |> assign(:api_started, System.monotonic_time()) |> fetch_cookies()
 
     case admission(conn) do
-      {:ok, _format, vary, user} ->
+      {:ok, format, vary, user} ->
         conn
+        |> assign(:api_format, format)
         |> assign(:api_vary, vary)
         |> assign(:api_request_id, request_id(conn))
         |> assign(:api_headers, Headers.dawarich(user != nil, version()))
