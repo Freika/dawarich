@@ -154,4 +154,4 @@ function compare(args) {
 }
 
 const [command, ...args] = process.argv.slice(2)
-await (command === "compare" ? compare(args) : capture(args))
+await (command === "compare" ? compare(args) : capture([command, ...args]))
