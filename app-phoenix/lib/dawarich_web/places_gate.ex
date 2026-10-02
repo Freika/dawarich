@@ -1,7 +1,7 @@
 defmodule DawarichWeb.PlacesGate do
   @moduledoc false
 
-  alias Dawarich.PlaceList
+  alias Dawarich.{PlaceDrawer, PlaceList}
   alias DawarichWeb.TripsGate
 
   def index?(conn, _params) do
@@ -12,5 +12,11 @@ defmodule DawarichWeb.PlacesGate do
       _page ->
         false
     end
+  end
+
+  def drawer?(conn, %{"id" => id}) do
+    Plug.Conn.get_req_header(conn, "turbo-frame") == ["place-drawer"] and conn.query_string == "" and
+      Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and
+      TripsGate.open?(conn, &(PlaceDrawer.load(&1, String.to_integer(id)) != :rails))
   end
 end

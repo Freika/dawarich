@@ -252,6 +252,13 @@ defmodule DawarichWeb.Router do
       metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :track?}}
   end
 
+  scope "/places" do
+    pipe_through :rails_frame
+
+    get "/:id", DawarichWeb.MapFrames, :place,
+      metadata: %{rails_gate: {DawarichWeb.PlacesGate, :drawer?}}
+  end
+
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
 
   defp put_path_format(%{path_info: [_api, _v1, "photos", _id, "thumbnail.jpg"]} = conn, _opts),

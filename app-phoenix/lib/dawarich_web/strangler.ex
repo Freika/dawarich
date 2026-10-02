@@ -17,6 +17,7 @@ defmodule DawarichWeb.Strangler do
     "/api/v1/tracks/:track_id/points" => %{"track_id" => ~r/\A\d+\z/},
     "/map/timeline_feeds/:id/track_info" => %{"id" => ~r/\A\d{1,18}\z/},
     "/trips/:id" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/places/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/stats/:year" => %{"year" => ~r/\A\d{4}\z/},
     "/stats/:year/:month" => %{"year" => ~r/\A\d{4}\z/, "month" => ~r/\A(0?[1-9]|1[0-2])\z/},
     "/digests/:year" => %{"year" => ~r/\A\d{4}\z/},

@@ -4,11 +4,12 @@ defmodule DawarichWeb.MapFrames do
 
   import Plug.Conn
 
-  alias Dawarich.{Entitlements, MapWindow}
+  alias Dawarich.{Entitlements, MapWindow, PlaceDrawer}
   alias Dawarich.Timeline.{DayRows, Days, MonthSummary}
 
   alias DawarichWeb.{
     LayoutAssigns,
+    PlaceDrawerFrame,
     RailsCsrf,
     RailsSession,
     ResidencyFrame,
@@ -131,6 +132,21 @@ defmodule DawarichWeb.MapFrames do
     end
   end
 
+  def body(:place, ctx) do
+    case PlaceDrawer.load(ctx.user, String.to_integer(ctx.id)) do
+      {:ok, drawer} ->
+        {:ok, type, html} =
+          html(&PlaceDrawerFrame.frame/1, %{drawer: drawer, locale: ctx.locale, csrf: ctx.csrf})
+
+        if ctx.csrf_changes == %{},
+          do: {:ok, type, html},
+          else: {:ok, type, html, ctx.csrf_changes}
+
+      :rails ->
+        {:replay, "place drawer changed after the gate"}
+    end
+  end
+
   def stream?(accept),
     do:
       String.trim(accept) != "" and not Strangler.browser_like?(accept) and
@@ -157,10 +173,11 @@ defmodule DawarichWeb.MapFrames do
       else: conn
   end
 
-  defp csrf(%{"_csrf_token" => token} = session, :index) when is_binary(token),
-    do: {RailsCsrf.masked_token(session), %{}}
+  defp csrf(%{"_csrf_token" => token} = session, action)
+       when action in [:index, :place] and is_binary(token),
+       do: {RailsCsrf.masked_token(session), %{}}
 
-  defp csrf(_session, :index) do
+  defp csrf(_session, action) when action in [:index, :place] do
     token = RailsCsrf.new_token()
     {RailsCsrf.masked_token(%{"_csrf_token" => token}), %{"_csrf_token" => token}}
   end

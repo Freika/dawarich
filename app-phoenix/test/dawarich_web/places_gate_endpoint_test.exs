@@ -2,8 +2,11 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
   use Dawarich.JobsCase, async: false
 
   @moduletag :capture_log
+  @endpoint DawarichWeb.Endpoint
 
   import Dawarich.Test.RawHTTP
+  import ExUnit.CaptureLog
+  import Phoenix.ConnTest
 
   alias Dawarich.Test.FrameSeeds, as: S
   alias Dawarich.Test.RailsUser
@@ -94,5 +97,134 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
 
       assert line == "GET #{target} HTTP/1.1"
     end
+  end
+
+  @frame [{"Accept", "text/html, application/xhtml+xml"}, {"Turbo-Frame", "place-drawer"}]
+
+  test "Phoenix answers the drawer frame", ctx do
+    client = connect(serve())
+    send_raw(client, request("/places/842101", ctx.cookie, @frame))
+    assert {200, headers, body} = read_response(client)
+    assert values(headers, "content-type") == ["text/html; charset=utf-8"]
+    assert values(headers, "vary") == ["Accept"]
+    assert body =~ ~r{\A<turbo-frame id="place-drawer">}
+  end
+
+  test "an unframed request goes to Puma", ctx do
+    assert {"GET /places/842101 HTTP/1.1", [_cookie]} =
+             answered_by_puma(
+               serve(),
+               ctx.upstream,
+               request("/places/842101", ctx.cookie, [hd(@frame)])
+             )
+  end
+
+  test "a second frame name or a repeated header goes to Puma", ctx do
+    port = serve()
+    accept = hd(@frame)
+
+    for headers <- [
+          [accept, {"Turbo-Frame", "other"}],
+          [accept, {"Turbo-Frame", "place-drawer"}, {"Turbo-Frame", "other"}]
+        ] do
+      assert {"GET /places/842101 HTTP/1.1", [_cookie]} =
+               answered_by_puma(
+                 port,
+                 ctx.upstream,
+                 request("/places/842101", ctx.cookie, headers)
+               )
+    end
+  end
+
+  test "a query string or X-Dawarich-Client goes to Puma", ctx do
+    port = serve()
+
+    for {target, headers} <- [
+          {"/places/842101?locale=de", @frame},
+          {"/places/842101?x=1", @frame},
+          {"/places/842101", @frame ++ [{"X-Dawarich-Client", "ios"}]}
+        ] do
+      assert {line, [_cookie]} =
+               answered_by_puma(port, ctx.upstream, request(target, ctx.cookie, headers))
+
+      assert line == "GET #{target} HTTP/1.1"
+    end
+  end
+
+  test "a foreign or missing place goes to Puma before routing", ctx do
+    user!(8423)
+    S.place!(8423, 842_301, "Fremd")
+    Logger.put_module_level(DawarichWeb.Api.Body, :info)
+    on_exit(fn -> Logger.delete_module_level(DawarichWeb.Api.Body) end)
+    port = serve()
+
+    for target <- ~w(/places/842301 /places/842199) do
+      log =
+        capture_log(fn ->
+          assert {line, [_cookie]} =
+                   answered_by_puma(port, ctx.upstream, request(target, ctx.cookie, @frame))
+
+          assert line == "GET #{target} HTTP/1.1"
+        end)
+
+      refute log =~ "place drawer changed after the gate"
+    end
+  end
+
+  test "ids Rails casts, nearby and the writes go to Puma", ctx do
+    S.place!(8421, 1_000_000_000_000_000_001, "Lang")
+    port = serve()
+
+    for target <- [
+          "/places/12abc",
+          "/places/nearby?latitude=51.34&longitude=12.37",
+          "/places/1000000000000000001",
+          "/places/842101/edit"
+        ] do
+      assert {line, [_cookie]} =
+               answered_by_puma(port, ctx.upstream, request(target, ctx.cookie, @frame))
+
+      assert line == "GET #{target} HTTP/1.1"
+    end
+
+    body = "_method=patch&place%5Bnote%5D=x"
+
+    for {method, target} <- [
+          {"POST", "/places"},
+          {"PATCH", "/places/842101"},
+          {"PUT", "/places/842101"},
+          {"DELETE", "/places/842101"}
+        ] do
+      raw =
+        "#{method} #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{ctx.cookie}\r\n" <>
+          "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n" <>
+          body
+
+      assert {line, [_cookie]} = answered_by_puma(port, ctx.upstream, raw)
+      assert line == "#{method} #{target} HTTP/1.1"
+    end
+  end
+
+  test "a signed-out frame request is redirected by Phoenix" do
+    conn =
+      Enum.reduce(@frame, build_conn(), fn {name, value}, conn ->
+        Plug.Conn.put_req_header(conn, String.downcase(name), value)
+      end)
+      |> get("/places/842101")
+
+    assert redirected_to(conn, 302) == "http://www.example.com/users/sign_in"
+
+    [_, value] =
+      Regex.run(
+        ~r/_dawarich_session=([^;]+)/,
+        conn |> Plug.Conn.get_resp_header("set-cookie") |> hd()
+      )
+
+    staged =
+      build_conn()
+      |> put_req_cookie("_dawarich_session", value)
+      |> DawarichWeb.RailsAuth.call([])
+
+    assert staged.assigns.rails_session["user_return_to"] == "/places/842101"
   end
 end
