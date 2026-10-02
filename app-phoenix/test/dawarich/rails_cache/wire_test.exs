@@ -1,8 +1,6 @@
-ExUnit.start()
-
 defmodule Dawarich.RailsCache.WireTest do
   use ExUnit.Case, async: true
-  alias Dawarich.RailsCache.{Marshal, Wire}
+  alias Dawarich.RailsCache.Wire
 
   @fixtures Path.expand("../../fixtures/rails_cache", __DIR__)
 
@@ -24,24 +22,12 @@ defmodule Dawarich.RailsCache.WireTest do
     assert {:ok, %{value: "Berlin — 東京"}} = read("utf8")
   end
 
-  test "native encodings round trip without constructing Ruby classes" do
-    for value <- [
-          nil,
-          true,
-          false,
-          0,
-          81,
-          -901,
-          Integer.pow(2, 90),
-          1.25,
-          "Berlin — 東京",
-          [1, nil, false],
-          %{"plan" => "pro"}
-        ] do
-      assert {:ok, ^value} = value |> Marshal.encode() |> Marshal.decode()
-
-      assert {:ok, %{value: ^value, version: "v1"}} =
-               value |> Wire.encode(expires_at: 2_000_000_000.125, version: "v1") |> Wire.decode()
+  test "fragment HTML is written as Rails' UTF-8 string entry, compressed from 1 KiB" do
+    for html <- ["<p>Leipzig</p>", String.duplicate("<p>Leipzig fragment</p>", 120)] do
+      bytes = Wire.encode(html, expires_at: 2_000_000_000.125)
+      assert <<0, 17, type, _::binary>> = bytes
+      assert type == if(byte_size(html) >= 1024, do: 130, else: 2)
+      assert {:ok, %{value: ^html, expires_at: 2_000_000_000.125}} = Wire.decode(bytes)
     end
   end
 

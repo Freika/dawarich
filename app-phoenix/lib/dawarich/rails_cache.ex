@@ -1,69 +1,29 @@
 defmodule Dawarich.RailsCache do
-  @moduledoc "Interoperate with Rails RedisCacheStore using explicit normalized string keys."
+  @moduledoc "Reads Rails' RedisCacheStore entries and writes fragment HTML entries Rails reads."
   alias Dawarich.RailsCache.Wire
-
-  @counter "local n=redis.call('INCRBY',KEYS[1],ARGV[1]); if ARGV[2]~='' then redis.call('EXPIRE',KEYS[1],ARGV[2],'NX') end; return n"
+  alias Dawarich.Redis
 
   def get(key, opts \\ []) do
-    with {:ok, bytes} <- command(["GET", key(key, opts)], opts) do
-      cond do
-        bytes == nil ->
-          :miss
-
-        opts[:raw] ->
-          {:ok, bytes}
-
-        true ->
-          case entry(bytes, opts) do
-            :expired ->
-              delete(key, opts)
-              :miss
-
-            result ->
-              result
-          end
-      end
+    case Redis.cache_command(["GET", key]) do
+      {:ok, nil} -> :miss
+      {:ok, bytes} -> entry(key, bytes, opts)
+      error -> error
     end
   end
 
-  def put(key, value, opts \\ []) do
-    now = opts[:now] || System.system_time(:microsecond) / 1_000_000
-    expiry = if opts[:expires_in], do: now + opts[:expires_in]
-
-    bytes =
-      if opts[:raw],
-        do: to_string(value),
-        else: Wire.encode(value, expires_at: expiry, version: opts[:version])
-
-    modifiers =
-      if opts[:expires_in], do: ["PX", to_string(ceil(opts[:expires_in] * 1000))], else: []
-
-    modifiers = if opts[:unless_exist], do: modifiers ++ ["NX"], else: modifiers
-
-    with {:ok, result} <- command(["SET", key(key, opts), bytes] ++ modifiers, opts),
-         do: {:ok, result == "OK"}
+  def put(key, html, expires_in: seconds) do
+    bytes = Wire.encode(html, expires_at: now() + seconds)
+    Redis.cache_command(["SET", key, bytes, "PX", to_string(seconds * 1000)])
   end
 
-  def delete(key, opts \\ []) do
-    with {:ok, count} <- command(["UNLINK", key(key, opts)], opts), do: {:ok, count == 1}
-  end
-
-  def increment(key, amount \\ 1, opts \\ []) do
-    ttl = if opts[:expires_in], do: to_string(trunc(opts[:expires_in])), else: ""
-    command(["EVAL", @counter, "1", key(key, opts), to_string(amount), ttl], opts)
-  end
-
-  defp entry(bytes, opts) do
-    case Wire.decode(bytes) do
-      {:ok, entry} ->
-        now = opts[:now] || System.system_time(:microsecond) / 1_000_000
-        expired = entry.expires_at && entry.expires_at <= now
-        mismatch = entry.version && opts[:version] && entry.version != opts[:version]
-
-        cond do
-          expired -> :expired
-          mismatch -> :miss
-          true -> {:ok, entry.value}
+  defp entry(key, bytes, opts) do
+    case Wire.decode(bytes, opts) do
+      {:ok, %{expires_at: expires, value: value}} ->
+        if expires && expires <= now() do
+          Redis.cache_command(["UNLINK", key])
+          :miss
+        else
+          {:ok, value}
         end
 
       {:error, _} ->
@@ -71,9 +31,5 @@ defmodule Dawarich.RailsCache do
     end
   end
 
-  defp key(key, opts) when is_binary(key) and byte_size(key) > 0,
-    do: if(opts[:namespace], do: opts[:namespace] <> ":" <> key, else: key)
-
-  defp command(args, opts),
-    do: (opts[:command] || (&Dawarich.Redis.cache_command/1)).(args)
+  defp now, do: System.system_time(:microsecond) / 1_000_000
 end

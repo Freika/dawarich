@@ -1,23 +1,12 @@
 defmodule Dawarich.Insights.Details.CountryCodes do
-  @moduledoc false
-  alias Dawarich.{Repo, RailsCache.Ordered}
-  @key "countries_names_to_iso_a2"
-  def load(opts \\ []) do
-    cache = opts[:cache] || []
+  @moduledoc "Rails' Country.names_to_iso_a2: the cached Ruby hash when warm, else the table read like Hash#to_h."
+  alias Dawarich.{RailsCache, Repo}
+  alias Dawarich.RailsCache.Value
 
-    case Ordered.get(@key, cache) do
-      {:ok, pairs} ->
-        pairs
-
-      _ ->
-        repo = opts[:repo] || Repo
-
-        pairs =
-          for [name, code] <- repo.query!("SELECT name,iso_a2 FROM countries").rows,
-              do: {name, code}
-
-        Ordered.put(@key, pairs, cache ++ [expires_in: 86400])
-        pairs
+  def load do
+    case RailsCache.get("countries_names_to_iso_a2", hash: :ordered) do
+      {:ok, %Value{tag: :hash_default, value: {pairs, _default}}} -> pairs
+      _ -> to_h(Repo.query!("SELECT name,iso_a2 FROM countries").rows)
     end
   end
 
@@ -27,8 +16,9 @@ defmodule Dawarich.Insights.Details.CountryCodes do
         code
 
       _ ->
+        country = String.downcase(country)
+
         Enum.find_value(pairs, fn {name, code} ->
-          country = String.downcase(country)
           name = String.downcase(name)
 
           if country == name or String.contains?(country, name) or
@@ -40,5 +30,10 @@ defmodule Dawarich.Insights.Details.CountryCodes do
           nil -> nil
         end
     end
+  end
+
+  defp to_h(rows) do
+    last = Map.new(rows, fn [name, code] -> {name, code} end)
+    rows |> Enum.map(&hd/1) |> Enum.uniq() |> Enum.map(&{&1, last[&1]})
   end
 end

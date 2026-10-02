@@ -13,7 +13,7 @@ defmodule Dawarich.RailsCache.SnapshotTest do
 
   test "actual controller fragment cache is a UTF-8 String; a SafeBuffer is read as its HTML" do
     source_fragment = "<div class=\"card\">synthetic &amp; escaped</div>"
-    {:ok, entry} = source_fragment |> Wire.encode() |> Wire.decode()
+    {:ok, entry} = source_fragment |> Wire.encode(expires_at: -1.0) |> Wire.decode()
     assert Snapshot.html(entry.value) == source_fragment
 
     safe = %Value{tag: :user_class, class: "ActiveSupport::SafeBuffer", value: source_fragment}

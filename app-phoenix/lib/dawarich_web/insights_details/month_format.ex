@@ -50,14 +50,18 @@ defmodule DawarichWeb.InsightsDetails.MonthFormat do
   end
 
   def top_locations(data) do
-    entries =
+    cities =
       for %{} = toponym <- data.monthly["toponyms"] || [],
           is_list(toponym["cities"]),
-          %{} = city <- toponym["cities"] do
-        codes = Map.get_lazy(data, :country_codes, &CountryCodes.load/0)
+          %{} = city <- toponym["cities"],
+          do: {toponym["country"], city}
 
+    codes = if cities != [], do: Map.get_lazy(data, :country_codes, &CountryCodes.load/0)
+
+    entries =
+      for {country, city} <- cities do
         %{
-          name: "#{city["city"]}, #{country_code(toponym["country"], codes)}",
+          name: "#{city["city"]}, #{country_code(country, codes)}",
           minutes: Digests.to_i(city["stayed_for"])
         }
       end

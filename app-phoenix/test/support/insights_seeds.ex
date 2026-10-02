@@ -52,5 +52,6 @@ defmodule Dawarich.Test.InsightsSeeds do
   def start_cache! do
     ExUnit.Callbacks.start_supervised!(hd(Redis.cache_child_specs()))
     {:ok, "OK"} = Redis.cache_command(["FLUSHDB"])
+    :ok
   end
 end
