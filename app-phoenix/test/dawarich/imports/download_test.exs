@@ -543,6 +543,144 @@ defmodule Dawarich.Imports.DownloadTest do
     clean(c)
   end
 
+  test "the prepared-download upload runs outside the fence: the user's points and locks proceed",
+       c do
+    {context, source} = blocked_upload(c)
+    task = Task.async(fn -> prepare(%{c | context: context}, source) end)
+    assert_receive {:uploading, writer, _}, 3000
+
+    assert {:ok, :ok} =
+             ScratchRepo.transaction(fn ->
+               rows("SET LOCAL lock_timeout = '2s'")
+
+               rows(
+                 "INSERT INTO points(user_id,timestamp,lonlat,created_at,updated_at) VALUES($1,100,ST_SetSRID(ST_MakePoint(12.37,51.34),4326)::geography,now(),now())",
+                 [c.import.user_id]
+               )
+
+               rows("SELECT 1 FROM users WHERE id=$1 FOR NO KEY UPDATE NOWAIT", [c.import.user_id])
+
+               rows("SELECT 1 FROM imports WHERE id=$1 FOR UPDATE NOWAIT", [c.import.id])
+               :ok
+             end)
+
+    send(writer, :release)
+    assert :ok = Task.await(task)
+
+    assert [[1]] =
+             rows(
+               "SELECT count(*) FROM active_storage_attachments WHERE record_id=$1 AND name='prepared_download'",
+               [c.import.id]
+             )
+  end
+
+  test "a source change during the upload refuses the attach and deletes the uploaded candidate",
+       c do
+    {context, source} = blocked_upload(c)
+    context = Map.delete(context, :fence)
+    task = Task.async(fn -> prepare(%{c | context: context}, source) end)
+    assert_receive {:uploading, writer, put}, 3000
+
+    ScratchRepo.transaction(fn ->
+      rows("SET LOCAL lock_timeout = '2s'")
+      rows("UPDATE active_storage_blobs SET filename='replacement.gpx.zip' WHERE id=$1", [source])
+    end)
+
+    send(writer, :release)
+    assert {:error, :changed} = Task.await(task)
+    assert_receive {:deleted, ^put}, 3000
+
+    assert [[0]] =
+             rows(
+               "SELECT count(*) FROM active_storage_attachments WHERE record_id=$1 AND name='prepared_download'",
+               [c.import.id]
+             )
+
+    assert [[1]] = rows("SELECT count(*) FROM active_storage_blobs")
+  end
+
+  defp blocked_upload(c) do
+    bytes = archive(c, [{"ride.gpx", "<gpx/>", []}])
+    source = attach(c, bytes, "ride.gpx.zip")
+    rows("UPDATE active_storage_blobs SET service_name='s3' WHERE id=$1", [source])
+    parent = self()
+    server = Dawarich.Test.RawHTTP.listen()
+
+    Task.start_link(fn ->
+      storage_loop(server, fn socket, line ->
+        case String.split(line, " ") do
+          ["GET" | _] ->
+            Dawarich.Test.RawHTTP.reply(
+              socket,
+              "HTTP/1.1 200 OK\r\nContent-Length: #{byte_size(bytes)}\r\nConnection: close\r\n\r\n" <>
+                bytes
+            )
+
+          ["PUT", path | _] ->
+            send(parent, {:uploading, self(), path})
+            receive do: (:release -> :ok)
+
+            Dawarich.Test.RawHTTP.reply(
+              socket,
+              "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+            )
+
+          ["DELETE", path | _] ->
+            send(parent, {:deleted, path})
+
+            Dawarich.Test.RawHTTP.reply(
+              socket,
+              "HTTP/1.1 204 No Content\r\nConnection: close\r\n\r\n"
+            )
+        end
+      end)
+    end)
+
+    config =
+      Map.merge(
+        %{service: "s3"},
+        Dawarich.Storage.S3.config!(%{
+          "AWS_ACCESS_KEY_ID" => "AKIA_SYNTHETIC",
+          "AWS_SECRET_ACCESS_KEY" => "synthetic",
+          "AWS_REGION" => "eu-central-1",
+          "AWS_BUCKET" => "dawarich",
+          "AWS_ENDPOINT" => "http://127.0.0.1:#{server.port}"
+        })
+      )
+
+    fence = fn fun ->
+      {:ok, value} =
+        ScratchRepo.transaction(fn ->
+          rows(
+            "SELECT 1 FROM imports i JOIN users u ON u.id=i.user_id WHERE i.id=$1 FOR UPDATE OF i FOR SHARE OF u",
+            [c.import.id]
+          )
+
+          fun.()
+        end)
+
+      value
+    end
+
+    {%{c.context | services: %{"s3" => config}} |> Map.put(:fence, fence), source}
+  end
+
+  defp storage_loop(server, handler) do
+    {:ok, socket} = :gen_tcp.accept(server.listen, :infinity)
+    {head, rest} = Dawarich.Test.RawHTTP.read_head(socket)
+
+    length =
+      head
+      |> Dawarich.Test.RawHTTP.header("content-length")
+      |> List.first("0")
+      |> String.to_integer()
+
+    Dawarich.Test.RawHTTP.read_at_least(socket, rest, length)
+    handler.(socket, Dawarich.Test.RawHTTP.request_line(head))
+    :gen_tcp.close(socket)
+    storage_loop(server, handler)
+  end
+
   test "callback failure and cancellation clean adopted verified files", c do
     attach(c, "<gpx/>")
 

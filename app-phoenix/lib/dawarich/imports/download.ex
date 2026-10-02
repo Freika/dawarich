@@ -80,16 +80,15 @@ defmodule Dawarich.Imports.Download do
       filename,
       type,
       fn put ->
-        stored =
+        checked =
           effect(context, fn ->
             repo.transaction(fn ->
               if Snapshot.load(repo, user, id, true) != snapshot, do: repo.rollback(:changed)
-              put.()
             end)
           end)
 
-        case stored do
-          {:ok, blob} -> publish(repo, user, id, snapshot, context, config, blob, filename, type)
+        case checked do
+          {:ok, _} -> publish(repo, user, id, snapshot, context, config, put.(), filename, type)
           {:error, reason} -> {:error, reason}
         end
       end
