@@ -58,6 +58,16 @@ docker exec a0_app ps -eo args | grep -qE '^puma|bin/rails server' || fail "puma
 [ "$(docker exec a0_app dawarich rpc 'IO.puts(Oban.config().prefix)')" = "oban" ] || fail "rpc failed"
 [ "$(docker exec a0_app dawarich rpc 'IO.puts(Dawarich.HtmlSanitizer.sanitize("<b>x</b><script>y</script>"))')" = "<b>x</b>y" ] \
   || fail "the image's lazy_html NIF cannot sanitize HTML"
+docker exec a0_app sh -c 'cd /var/app && test -s config/sprockets-manifest.json && test -s tmp/phoenix/i18n.json && test -s tmp/phoenix/achievements.json && test -s tmp/phoenix/importmap.json' \
+  || fail "a build input is missing from the image"
+rails_css="$(curl -fsS http://127.0.0.1:3900/users/sign_in | sed -n 's/.*href="\(\/assets\/tailwind-[0-9a-f]\{64\}\.css\)".*/\1/p' | head -1)"
+[ -n "$rails_css" ] || fail "Rails' sign-in page links no digested tailwind.css"
+[ "$(docker exec a0_app dawarich rpc 'IO.puts(DawarichWeb.Assets.stylesheet_path("tailwind.css"))')" = "$rails_css" ] \
+  || fail "Phoenix and Rails link different tailwind.css files"
+[ "$(docker exec a0_app sh -c "curl -fsS -H 'Host: 127.0.0.1:3900' http://127.0.0.1:3000$rails_css | sha256sum | cut -c1-64; sha256sum /var/app/public$rails_css | cut -c1-64" | uniq | wc -l | tr -d ' ')" = 1 ] \
+  || fail "the served tailwind.css is not the built one"
+[ "$(docker exec a0_app dawarich rpc 'IO.puts(match?({:ok, _}, Dawarich.I18n.t("de", "common.app_name")) and length(Dawarich.Achievements.Registry.all()) > 200 and length(Dawarich.TimeZoneOptions.list()) > 100 and String.starts_with?(DawarichWeb.Assets.rails_imports()["application"], "/assets/application-"))')" = true ] \
+  || fail "Phoenix cannot read a build input"
 curl -fsS "http://127.0.0.1:$DAWARICH_APP_PORT/api/v1/health" | grep -q '"status"' || fail "health failed"
 docker exec a0_db psql -U postgres -d dawarich_development -Atc \
   "SELECT string_agg(nspname, ',' ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('oban','phoenix')" \
