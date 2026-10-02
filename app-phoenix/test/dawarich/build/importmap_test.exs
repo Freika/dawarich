@@ -57,7 +57,11 @@ defmodule Dawarich.Build.ImportmapTest do
     for line <- [
           "enable_integrity!",
           "pin 'x', integrity: 'sha384-y'",
-          "pin_all_from 'a', under: c"
+          "pin_all_from 'a', under: c",
+          ~S|pin "x", to: "a#{b}.js"|,
+          ~S|pin "a#{b}"|,
+          ~S|pin 'x', to: 'a\\b.js'|,
+          ~S|pin "x", to: "a\\b.js"|
         ] do
       file!(root, "config/importmap.rb", line <> "\n")
       assert_raise ArgumentError, ~r/unsupported/, fn -> Importmap.export(root, %{}) end

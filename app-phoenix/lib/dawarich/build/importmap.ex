@@ -3,7 +3,7 @@ defmodule Dawarich.Build.Importmap do
 
   alias Jason.OrderedObject
 
-  @call ~r/\A(pin|pin_all_from)\s+(["'])([^"']+)\2((?:\s*,\s*\w+:\s*(?:"[^"]*"|'[^']*'|true|false))*)\s*(?:#.*)?\z/
+  @call ~r/\A(pin|pin_all_from)\s+(["'])([^"'\\#]+)\2((?:\s*,\s*\w+:\s*(?:"[^"\\#]*"|'[^'\\]*'|true|false))*)\s*(?:#.*)?\z/
   @option ~r/(\w+):\s*(?:"([^"]*)"|'([^']*)'|(true|false))/
   @options %{"pin" => ~w(to preload), "pin_all_from" => ~w(under to preload)}
   @uri ~r{\A(?:[-a-z]+://|cid:|data:|//)}i
