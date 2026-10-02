@@ -19,7 +19,7 @@ defmodule Dawarich.Imports.DestroyService do
           [[source]] ->
             tracks =
               lease.repo.query!(
-                "SELECT DISTINCT track_id FROM points WHERE import_id=$1 AND user_id=$2 AND track_id IS NOT NULL",
+                "SELECT DISTINCT track_id FROM points WHERE import_id=$1 AND (user_id=$2 OR user_id IS NULL) AND track_id IS NOT NULL",
                 [lease.id, lease.user],
                 log: false
               ).rows
@@ -36,7 +36,7 @@ defmodule Dawarich.Imports.DestroyService do
 
             [[oldest]] =
               lease.repo.query!(
-                "SELECT min(timestamp) FROM points WHERE import_id=$1 AND user_id=$2",
+                "SELECT min(timestamp) FROM points WHERE import_id=$1 AND (user_id=$2 OR user_id IS NULL)",
                 [lease.id, lease.user],
                 log: false
               ).rows
@@ -99,30 +99,36 @@ defmodule Dawarich.Imports.DestroyService do
 
   defp delete_points(lease, total) do
     deleted =
-      DestroyLease.effect!(lease, fn ->
-        rows =
-          lease.repo.query!(
-            "SELECT id,timestamp FROM points WHERE import_id=$1 AND user_id=$2 ORDER BY id LIMIT 5000 FOR UPDATE",
-            [lease.id, lease.user],
-            log: false
-          ).rows
-
-        if rows == [] do
-          0
-        else
-          ids = Enum.map(rows, &hd/1)
-
-          result =
+      DestroyLease.effect!(
+        lease,
+        fn ->
+          rows =
             lease.repo.query!(
-              "DELETE FROM points WHERE id=ANY($1::bigint[]) AND user_id=$2",
-              [ids, lease.user],
+              "SELECT id,timestamp FROM points WHERE import_id=$1 AND (user_id=$2 OR user_id IS NULL) ORDER BY id LIMIT 5000 FOR UPDATE",
+              [lease.id, lease.user],
               log: false
-            )
+            ).rows
 
-          if result.num_rows > 0, do: DestroyEffects.points!(lease, Enum.map(rows, &List.last/1))
-          result.num_rows
-        end
-      end)
+          if rows == [] do
+            0
+          else
+            ids = Enum.map(rows, &hd/1)
+
+            result =
+              lease.repo.query!(
+                "DELETE FROM points WHERE id=ANY($1::bigint[]) AND (user_id=$2 OR user_id IS NULL)",
+                [ids, lease.user],
+                log: false
+              )
+
+            if result.num_rows > 0,
+              do: DestroyEffects.points!(lease, Enum.map(rows, &List.last/1))
+
+            result.num_rows
+          end
+        end,
+        foreign: false
+      )
 
     if deleted > 0, do: delete_points(lease, total + deleted), else: total
   end

@@ -33,11 +33,13 @@ defmodule Dawarich.Imports.DestroyLease do
     end)
   end
 
-  def effect!(lease, fun) do
+  def effect!(lease, fun, opts \\ []) do
     unless Process.get({__MODULE__, lease.scope}), do: raise(LeaseLost)
 
     case lease.repo.transaction(fn ->
-           unless current?(lease) and receipt?(lease), do: raise(LeaseLost)
+           unless current?(lease, Keyword.get(opts, :foreign, true)) and receipt?(lease),
+             do: raise(LeaseLost)
+
            fun.()
          end) do
       {:ok, value} -> value
@@ -59,7 +61,7 @@ defmodule Dawarich.Imports.DestroyLease do
   def foreign?(repo, id, user) do
     [[found]] =
       repo.query!(
-        "SELECT EXISTS(SELECT 1 FROM points WHERE import_id=$1 AND user_id IS DISTINCT FROM $2 UNION ALL SELECT 1 FROM visits WHERE import_id=$1 AND user_id IS DISTINCT FROM $2 UNION ALL SELECT 1 FROM tracks WHERE import_id=$1 AND user_id IS DISTINCT FROM $2 UNION ALL SELECT 1 FROM places WHERE import_id=$1 AND user_id IS DISTINCT FROM $2)",
+        "SELECT EXISTS(SELECT 1 FROM points WHERE import_id=$1 AND user_id<>$2 UNION ALL SELECT 1 FROM visits WHERE import_id=$1 AND user_id IS DISTINCT FROM $2 UNION ALL SELECT 1 FROM tracks WHERE import_id=$1 AND user_id IS DISTINCT FROM $2 UNION ALL SELECT 1 FROM places WHERE import_id=$1 AND user_id IS DISTINCT FROM $2)",
         [id, user],
         log: false
       ).rows
@@ -118,9 +120,9 @@ defmodule Dawarich.Imports.DestroyLease do
     end
   end
 
-  defp current?(lease) do
+  defp current?(lease, foreign) do
     Ownership.lock(lease.repo, @lane) == :oban and current_job?(lease.repo, lease.job) and
-      user?(lease) and import?(lease)
+      user?(lease) and import?(lease, foreign)
   end
 
   defp user?(lease),
@@ -131,15 +133,20 @@ defmodule Dawarich.Imports.DestroyLease do
         log: false
       ).rows == [[lease.user]]
 
-  defp import?(lease) do
+  defp import?(lease, foreign) do
     case lease.repo.query!(
            "SELECT user_id,status FROM imports WHERE id=$1 FOR UPDATE",
            [lease.id],
            log: false
          ).rows do
-      [[user, 4]] -> user == lease.user and not foreign?(lease.repo, lease.id, lease.user)
-      [] -> terminal?(lease)
-      _ -> false
+      [[user, 4]] ->
+        user == lease.user and not (foreign and foreign?(lease.repo, lease.id, lease.user))
+
+      [] ->
+        terminal?(lease)
+
+      _ ->
+        false
     end
   end
 

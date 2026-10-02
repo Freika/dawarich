@@ -247,6 +247,44 @@ defmodule Dawarich.Imports.DestroyWorkerTest do
     assert [] = rows("SELECT id FROM phoenix.rails_commands")
   end
 
+  test "points without a user are deleted with the import, as Rails deletes them", c do
+    points!(c)
+
+    rows(
+      "INSERT INTO points(user_id,import_id,timestamp,lonlat,created_at,updated_at) VALUES(NULL,$1,1,ST_SetSRID(ST_MakePoint(12.37,51.34),4326)::geography,now(),now())",
+      [c.id]
+    )
+
+    assert :ok = DestroyWorker.perform(c.job)
+    assert [] = rows("SELECT id FROM imports WHERE id=$1", [c.id])
+    assert [] = rows("SELECT id FROM points WHERE import_id=$1", [c.id])
+  end
+
+  test "points without a user do not stop a deletion request", c do
+    rows(
+      "INSERT INTO points(user_id,import_id,timestamp,lonlat,created_at,updated_at) VALUES(NULL,$1,1,ST_SetSRID(ST_MakePoint(12.37,51.34),4326)::geography,now(),now())",
+      [c.id]
+    )
+
+    assert {:ok, :queued} =
+             Destroy.enqueue(ScratchRepo, c.user, c.id, %{zone: "UTC", locale: "en"})
+  end
+
+  test "a point batch effect skips the foreign-data scan; the next guarded effect still stops",
+       c do
+    assert {:ok, :stopped} =
+             DestroyLease.with_import(ScratchRepo, c.job, fn lease ->
+               rows(
+                 "INSERT INTO points(user_id,import_id,timestamp,lonlat,created_at,updated_at) VALUES($1,$2,1,ST_SetSRID(ST_MakePoint(12.37,51.34),4326)::geography,now(),now())",
+                 [c.other, c.id]
+               )
+
+               assert :batch = DestroyLease.effect!(lease, fn -> :batch end, foreign: false)
+               assert_raise LeaseLost, fn -> DestroyLease.effect!(lease, fn -> :next end) end
+               :stopped
+             end)
+  end
+
   test "late point-batch failure preserves prior deletion and Rails partial counter retry semantics",
        c do
     rows("UPDATE users SET points_count=10001 WHERE id=$1", [c.user])
