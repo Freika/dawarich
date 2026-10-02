@@ -5,12 +5,13 @@ defmodule Dawarich.LocalTime do
 
   @utc ~w(UTC Etc/UTC UCT Etc/UCT Universal Etc/Universal Zulu Etc/Zulu)
 
-  def local(settings, now) do
+  def local(settings, now, env \\ System.get_env()) do
     %{rows: [[zone, today]]} =
       UserTimeZone.query!(
         "SELECT z.name, ($1::timestamptz AT TIME ZONE z.name)::date FROM z",
         [now],
-        settings
+        settings,
+        env
       )
 
     {zone, today}
@@ -31,12 +32,16 @@ defmodule Dawarich.LocalTime do
     {"#{day} 00:00:00 #{offset(zone, first)}", "#{day} 23:59:59 #{offset(zone, last)}"}
   end
 
-  defp offset(zone, 0) when zone in @utc, do: "UTC"
+  def offset(zone, seconds, format \\ :db)
+  def offset(zone, 0, :db) when zone in @utc, do: "UTC"
+  def offset(zone, 0, :iso) when zone in @utc, do: "Z"
 
-  defp offset(_zone, seconds) do
+  def offset(_zone, seconds, format) do
     sign = if seconds < 0, do: "-", else: "+"
     minutes = div(abs(seconds), 60)
-    sign <> pad(div(minutes, 60)) <> pad(rem(minutes, 60))
+    hh = pad(div(minutes, 60))
+    mm = pad(rem(minutes, 60))
+    if format == :iso, do: sign <> hh <> ":" <> mm, else: sign <> hh <> mm
   end
 
   defp pad(number), do: number |> Integer.to_string() |> String.pad_leading(2, "0")

@@ -171,6 +171,19 @@ defmodule DawarichWeb.Router do
     end
   end
 
+  scope "/" do
+    pipe_through [:browser, :rails_user]
+
+    live_session :rails_map,
+      session: {DawarichWeb.RailsAuth, :live_session, []},
+      on_mount: DawarichWeb.LiveAuth,
+      root_layout: {DawarichWeb.Layouts, :map_root},
+      layout: {DawarichWeb.Layouts, :map} do
+      live "/map", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
+      live "/map/v2", DawarichWeb.MapLive, :index, container: {:div, class: "contents"}
+    end
+  end
+
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
 
   defp put_path_format(%{path_info: [_api, _v1, "photos", _id, "thumbnail.jpg"]} = conn, _opts),

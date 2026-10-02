@@ -6,6 +6,7 @@ defmodule DawarichWeb.Layouts do
   import DawarichWeb.Navbar, only: [navbar: 1]
   import DawarichWeb.OnboardingModal, only: [onboarding_modal: 1]
   import DawarichWeb.Translate, only: [t: 3]
+  alias DawarichWeb.Icon
   embed_templates "layouts/*"
 
   def theme(%{theme: "light"}), do: "dawarich"
@@ -23,7 +24,9 @@ defmodule DawarichWeb.Layouts do
 
     phoenix = %{
       "app" => "/phoenix/js/app.js?vsn=#{versions.app}",
+      "map_shell" => "/phoenix/js/map_shell.js?vsn=#{versions.map_shell}",
       "phoenix" => "/phoenix/js/phoenix.mjs?vsn=#{versions.phoenix}",
+      "rails_bridge" => "/phoenix/js/rails_bridge.js?vsn=#{versions.rails_bridge}",
       "phoenix_live_view" => "/phoenix/js/phoenix_live_view.esm.js?vsn=#{versions.live_view}"
     }
 

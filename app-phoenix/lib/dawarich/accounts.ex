@@ -78,15 +78,9 @@ defmodule Dawarich.Accounts do
   def from_session(_session, _now), do: nil
 
   @spec from_remember_cookie(term(), DateTime.t()) :: %User{} | {:locked, %User{}} | nil
-  def from_remember_cookie([[id], token, generated_at], now)
-      when is_integer(id) and is_binary(token) do
+  def from_remember_cookie([[id], _token, _generated_at] = payload, now) when is_integer(id) do
     with %User{} = user <- find(id),
-         value when is_binary(value) and value != "" <- salt(user),
-         true <- Plug.Crypto.secure_compare(value, token),
-         {:ok, at} <- generated(generated_at),
-         :gt <- DateTime.compare(at, DateTime.add(now, -@remember_for)),
-         %DateTime{} = created <- user.remember_created_at,
-         :gt <- DateTime.compare(at, created) do
+         true <- remembered?(user, payload, now) do
       if unlocked?(user, now), do: user, else: {:locked, user}
     else
       _ -> nil
@@ -95,12 +89,44 @@ defmodule Dawarich.Accounts do
 
   def from_remember_cookie(_payload, _now), do: nil
 
-  defp find(id), do: User |> where([u], u.id == ^id and is_nil(u.deleted_at)) |> Repo.one()
+  def remembered?(
+        %{id: id, encrypted_password: hash, remember_created_at: created},
+        [[id], token, generated_at],
+        now
+      )
+      when is_binary(hash) and hash != "" and is_binary(token) do
+    with true <- Plug.Crypto.secure_compare(String.slice(hash, 0, 29), token),
+         {:ok, at} <- generated(generated_at),
+         :gt <- DateTime.compare(at, DateTime.add(now, -@remember_for)),
+         %DateTime{} <- created,
+         :gt <- DateTime.compare(at, created) do
+      true
+    else
+      _ -> false
+    end
+  end
 
-  defp unlocked?(%User{locked_at: nil}, _now), do: true
+  def remembered?(_user, _payload, _now), do: false
 
-  defp unlocked?(%User{locked_at: at}, now),
+  def remember_generated_at(%DateTime{} = at) do
+    microseconds = DateTime.to_unix(at, :microsecond)
+
+    fraction =
+      microseconds
+      |> rem(1_000_000)
+      |> Integer.to_string()
+      |> String.pad_leading(6, "0")
+      |> String.trim_trailing("0")
+
+    "#{div(microseconds, 1_000_000)}.#{if fraction == "", do: "0", else: fraction}"
+  end
+
+  def unlocked?(%{locked_at: nil}, _now), do: true
+
+  def unlocked?(%{locked_at: at}, now),
     do: DateTime.compare(at, DateTime.add(now, -@unlock_in)) == :lt
+
+  defp find(id), do: User |> where([u], u.id == ^id and is_nil(u.deleted_at)) |> Repo.one()
 
   defp salt(%User{encrypted_password: nil}), do: nil
   defp salt(%User{encrypted_password: password}), do: String.slice(password, 0, 29)
