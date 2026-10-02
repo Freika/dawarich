@@ -85,6 +85,26 @@ defmodule DawarichWeb.Router do
       metadata: %{slice: :api_map_reads}
   end
 
+  pipeline :api_places do
+    plug :put_api_tag, "api"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug :method_override_to_rails
+    plug DawarichWeb.Api.Body
+    plug DawarichWeb.Api.Auth, require_active: false
+  end
+
+  scope "/api/v1", DawarichWeb.Api do
+    pipe_through :api_places
+
+    get "/places", PlacesController, :index, metadata: %{slice: :api_places}
+    post "/places", PlacesController, :create, metadata: %{slice: :api_places}
+    get "/places/:id", PlacesController, :show, metadata: %{slice: :api_places}
+    patch "/places/:id", PlacesController, :update, metadata: %{slice: :api_places}
+    put "/places/:id", PlacesController, :update, metadata: %{slice: :api_places}
+    delete "/places/:id", PlacesController, :destroy, metadata: %{slice: :api_places}
+  end
+
   pipeline :api_locations_photos do
     plug :put_api_tag, "api"
     plug DawarichWeb.HostAuthorization
@@ -189,6 +209,12 @@ defmodule DawarichWeb.Router do
   end
 
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
+
+  defp method_override_to_rails(conn, _opts) do
+    if Plug.Conn.get_req_header(conn, "x-http-method-override") == [],
+      do: conn,
+      else: DawarichWeb.Api.Body.replay(conn, "method override header")
+  end
 
   defp put_path_format(%{path_info: [_api, _v1, "photos", _id, "thumbnail.jpg"]} = conn, _opts),
     do: Plug.Conn.assign(conn, :api_params, Map.put(conn.assigns.api_params, "format", "jpg"))
