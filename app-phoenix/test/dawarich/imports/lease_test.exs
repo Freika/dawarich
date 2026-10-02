@@ -161,7 +161,13 @@ defmodule Dawarich.Imports.LeaseTest do
     assert {:ok, :saved} = run(c, &write(&1, c, 7))
   end
 
-  test "exceptions release the advisory lock and roll back only their own stage", c do
+  test "a Rails-held import lease skips the attempt as busy", c do
+    foreign_lease!("import:#{c.import.id}")
+    assert {:skip, :busy} = run(c, fn _ -> flunk("lease overlapped") end)
+    assert [["rails-holder"]] = rows("SELECT holder FROM phoenix.leases")
+  end
+
+  test "exceptions release the import lease and roll back only their own stage", c do
     assert_raise RuntimeError, "late stage failed", fn ->
       run(c, fn lease ->
         write(lease, c, 7)
@@ -177,7 +183,7 @@ defmodule Dawarich.Imports.LeaseTest do
     assert {:ok, :saved} = run(c, &write(&1, c, 8))
   end
 
-  test "process death frees the connection's session lock for a new attempt", c do
+  test "a dead attempt's lease blocks until it expires, then a new attempt takes it over", c do
     parent = self()
 
     {pid, ref} =
@@ -194,7 +200,13 @@ defmodule Dawarich.Imports.LeaseTest do
     assert_receive :locked
     Process.exit(pid, :kill)
     assert_receive {:DOWN, ^ref, :process, ^pid, :killed}
-    assert eventually(fn -> run(c, &write(&1, c, 7)) end) == {:ok, :saved}
+    assert {:skip, :busy} = run(c, &write(&1, c, 7))
+
+    rows("UPDATE phoenix.leases SET expires_at=now()-interval '1 second' WHERE name=$1", [
+      "import:#{c.import.id}"
+    ])
+
+    assert {:ok, :saved} = run(c, &write(&1, c, 7))
   end
 
   test "same event can resume a real newer Oban attempt; a different event cannot steal it", c do
@@ -260,17 +272,6 @@ defmodule Dawarich.Imports.LeaseTest do
     send(holder.pid, :owner_changed)
     assert {:ok, :stopped} = Task.await(holder)
     assert count(c) == [[7]]
-  end
-
-  defp eventually(fun, tries \\ 50) do
-    case fun.() do
-      {:skip, :busy} when tries > 0 ->
-        Process.sleep(10)
-        eventually(fun, tries - 1)
-
-      value ->
-        value
-    end
   end
 
   defp lock_waiting?(backend, tries \\ 100) do

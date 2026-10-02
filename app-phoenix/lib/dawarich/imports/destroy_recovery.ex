@@ -58,13 +58,10 @@ defmodule Dawarich.Imports.DestroyRecovery do
   end
 
   defp running?(repo, id) do
-    [[locked]] =
-      repo.query!(
-        "SELECT pg_try_advisory_xact_lock(hashtextextended($1,0))",
-        ["phoenix-import:#{id}"],
-        log: false
-      ).rows
-
-    not locked
+    repo.query!(
+      "SELECT 1 FROM phoenix.leases WHERE name=$1 AND expires_at > statement_timestamp()",
+      ["import:#{id}"],
+      log: false
+    ).num_rows == 1
   end
 end

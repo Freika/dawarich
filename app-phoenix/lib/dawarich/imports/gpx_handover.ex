@@ -1,30 +1,20 @@
 defmodule Dawarich.Imports.GpxHandover do
   @moduledoc false
   alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.State.Lease
   @lane "command:imports.process_gpx"
   @worker "Dawarich.Imports.ProcessGpxWorker"
 
   def resume(repo, %Oban.Job{} = job, reason \\ :lost) when reason in [:lost, :legacy] do
-    repo.checkout(
-      fn ->
-        key = "phoenix-import:#{job.args["import_id"]}"
+    transfer = fn ->
+      {:ok, result} = repo.transaction(fn -> transfer(repo, job, reason) end)
+      result
+    end
 
-        [[locked]] =
-          repo.query!("SELECT pg_try_advisory_lock(hashtextextended($1,0))", [key], log: false).rows
-
-        if locked do
-          try do
-            {:ok, result} = repo.transaction(fn -> transfer(repo, job, reason) end)
-            result
-          after
-            repo.query!("SELECT pg_advisory_unlock(hashtextextended($1,0))", [key], log: false)
-          end
-        else
-          {:snooze, 5}
-        end
-      end,
-      timeout: :infinity
-    )
+    case Lease.with_lease(repo, "import:#{job.args["import_id"]}", transfer, timeout_ms: 0) do
+      {:ok, result} -> result
+      {:error, :timeout} -> {:snooze, 5}
+    end
   end
 
   def current_job?(repo, job) do

@@ -2,6 +2,7 @@ defmodule Dawarich.Imports.Lease do
   @moduledoc false
   alias Dawarich.Imports.LeaseLost
   alias Dawarich.Jobs.Ownership
+  alias Dawarich.State
   @lane "command:imports.process_gpx"
   @worker "Dawarich.Imports.ProcessGpxWorker"
 
@@ -26,36 +27,29 @@ defmodule Dawarich.Imports.Lease do
       scope: make_ref()
     }
 
-    repo.checkout(
-      fn ->
-        key = "phoenix-import:#{import.id}"
+    case State.Lease.with_lease(repo, "import:#{import.id}", fn -> run(lease, fun) end,
+           timeout_ms: 0
+         ) do
+      {:ok, result} -> result
+      {:error, :timeout} -> {:skip, :busy}
+    end
+  end
 
-        [[locked]] =
-          repo.query!("SELECT pg_try_advisory_lock(hashtextextended($1,0))", [key], log: false).rows
+  defp run(lease, fun) do
+    lease = Map.put(lease, :mode, if(terminal_resume?(lease), do: :terminal, else: :processing))
 
-        if locked do
-          lease =
-            Map.put(lease, :mode, if(terminal_resume?(lease), do: :terminal, else: :processing))
+    try do
+      case claim(lease) do
+        :ok ->
+          Process.put({__MODULE__, lease.scope}, true)
+          {:ok, fun.(lease)}
 
-          try do
-            case claim(lease) do
-              :ok ->
-                Process.put({__MODULE__, lease.scope}, true)
-                {:ok, fun.(lease)}
-
-              reason ->
-                {:skip, reason}
-            end
-          after
-            Process.delete({__MODULE__, lease.scope})
-            repo.query!("SELECT pg_advisory_unlock(hashtextextended($1,0))", [key], log: false)
-          end
-        else
-          {:skip, :busy}
-        end
-      end,
-      timeout: :infinity
-    )
+        reason ->
+          {:skip, reason}
+      end
+    after
+      Process.delete({__MODULE__, lease.scope})
+    end
   end
 
   def effect!(lease, fun) when is_function(fun, 0) do

@@ -35,39 +35,18 @@ defmodule Dawarich.Imports.Download do
   end
 
   def prepare!(repo, user, id, source_id, context) do
-    repo.checkout(fn ->
-      [[locked]] =
-        repo.query!(
-          "SELECT pg_try_advisory_lock(hashtextextended($1,0))",
-          ["import-download:#{id}"],
-          log: false
-        ).rows
-
-      if locked do
-        try do
-          case Snapshot.load(repo, user, id) do
-            %{source: %{id: ^source_id}} = snapshot ->
-              if Names.ready?(snapshot) do
-                effect(context, fn -> terminal(context) end)
-                :ok
-              else
-                prepare_snapshot(repo, user, id, snapshot, context)
-              end
-
-            _ ->
-              :ok
-          end
-        after
-          repo.query!(
-            "SELECT pg_advisory_unlock(hashtextextended($1,0))",
-            ["import-download:#{id}"],
-            log: false
-          )
+    case Snapshot.load(repo, user, id) do
+      %{source: %{id: ^source_id}} = snapshot ->
+        if Names.ready?(snapshot) do
+          effect(context, fn -> terminal(context) end)
+          :ok
+        else
+          prepare_snapshot(repo, user, id, snapshot, context)
         end
-      else
-        {:error, :busy}
-      end
-    end)
+
+      _ ->
+        :ok
+    end
   end
 
   defp prepare_snapshot(repo, user, id, snapshot, context) do

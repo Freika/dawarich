@@ -213,25 +213,10 @@ defmodule Dawarich.Imports.PrepareDownloadWorkerTest do
 
   test "another live preparation snoozes and releases cleanly", c do
     j = job(c, attach(c))
-    parent = self()
-
-    holder =
-      Task.async(fn ->
-        ScratchRepo.checkout(fn ->
-          key = "import-download:#{c.import.id}"
-          rows("SELECT pg_advisory_lock(hashtextextended($1,0))", [key])
-          send(parent, :locked)
-          receive do: (:release -> :ok)
-          rows("SELECT pg_advisory_unlock(hashtextextended($1,0))", [key])
-        end)
-      end)
-
-    on_exit(fn -> send(holder.pid, :release) end)
-    assert_receive :locked
+    foreign_lease!("import-download:#{c.import.id}")
     assert {:snooze, 5} = PrepareDownloadWorker.perform(j)
     refute Processed.done?(ScratchRepo, j.args["event_id"])
-    send(holder.pid, :release)
-    Task.await(holder)
+    end_foreign_lease!("import-download:#{c.import.id}")
     assert :ok = PrepareDownloadWorker.perform(j)
   end
 

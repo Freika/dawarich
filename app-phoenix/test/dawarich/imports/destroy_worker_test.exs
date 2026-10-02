@@ -134,30 +134,15 @@ defmodule Dawarich.Imports.DestroyWorkerTest do
     assert [[4, 7]] = rows("SELECT status,processed FROM imports WHERE id=$1", [c.id])
   end
 
-  test "same GPX advisory lock excludes simultaneous processing and deletion", c do
-    parent = self()
-
-    task =
-      Task.async(fn ->
-        ScratchRepo.checkout(fn ->
-          rows("SELECT pg_advisory_lock(hashtextextended($1,0))", ["phoenix-import:#{c.id}"])
-          send(parent, :locked)
-
-          receive do
-            :release -> :ok
-          end
-
-          rows("SELECT pg_advisory_unlock(hashtextextended($1,0))", ["phoenix-import:#{c.id}"])
-        end)
-      end)
-
-    assert_receive :locked
+  test "a Rails-held import lease excludes deletion until it ends", c do
+    foreign_lease!("import:#{c.id}")
 
     assert {:skip, :busy} =
-             DestroyLease.with_import(ScratchRepo, c.job, fn _ -> flunk("lock overlapped") end)
+             DestroyLease.with_import(ScratchRepo, c.job, fn _ -> flunk("lease overlapped") end)
 
-    send(task.pid, :release)
-    Task.await(task)
+    end_foreign_lease!("import:#{c.id}")
+    assert {:ok, :ran} = DestroyLease.with_import(ScratchRepo, c.job, fn _ -> :ran end)
+    assert [] = rows("SELECT name FROM phoenix.leases")
   end
 
   test "extracted visits and tracks release other points and remove dependent records", c do

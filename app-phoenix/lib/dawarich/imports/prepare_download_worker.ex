@@ -7,6 +7,7 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
 
   alias Dawarich.Imports.{Download, Download.Snapshot, LeaseLost, StorageContext}
   alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.State.Lease
   @lane "command:imports.prepare_download"
   @worker "Dawarich.Imports.PrepareDownloadWorker"
 
@@ -28,30 +29,21 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
   end
 
   defp locked(repo, job) do
-    repo.checkout(
-      fn ->
-        key = "import-download:#{job.args["import_id"]}"
-
-        [[locked]] =
-          repo.query!("SELECT pg_try_advisory_lock(hashtextextended($1,0))", [key], log: false).rows
-
-        if locked do
-          try do
-            case admission(repo, job) do
-              {:run, source} -> prepare(repo, job, source)
-              result -> result
-            end
-          rescue
-            LeaseLost -> handback(repo, job)
-          after
-            repo.query!("SELECT pg_advisory_unlock(hashtextextended($1,0))", [key], log: false)
-          end
-        else
-          {:snooze, 5}
+    run = fn ->
+      try do
+        case admission(repo, job) do
+          {:run, source} -> prepare(repo, job, source)
+          result -> result
         end
-      end,
-      timeout: :infinity
-    )
+      rescue
+        LeaseLost -> handback(repo, job)
+      end
+    end
+
+    case Lease.with_lease(repo, "import-download:#{job.args["import_id"]}", run, timeout_ms: 0) do
+      {:ok, result} -> result
+      {:error, :timeout} -> {:snooze, 5}
+    end
   end
 
   defp admission(repo, job) do
@@ -91,7 +83,6 @@ defmodule Dawarich.Imports.PrepareDownloadWorker do
 
     case Download.prepare!(repo, job.args["user_id"], job.args["import_id"], source.id, context) do
       :ok -> effect(repo, job, source, fn -> mark(repo, job) end)
-      {:error, :busy} -> {:snooze, 5}
       {:error, :changed} -> handback(repo, job)
       {:legacy, _} -> handback(repo, job, true)
     end

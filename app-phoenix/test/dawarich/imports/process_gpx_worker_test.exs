@@ -206,6 +206,21 @@ defmodule Dawarich.Imports.ProcessGpxWorkerTest do
     refute Processed.done?(ScratchRepo, c.job.args["event_id"])
   end
 
+  test "a Rails-held import lease snoozes the worker without a handback", c do
+    foreign_lease!("import:#{c.import.id}")
+    assert {:snooze, 5} = ProcessGpxWorker.perform(c.job)
+    refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+    assert [] == rows("SELECT id FROM phoenix.rails_commands")
+  end
+
+  test "a Rails-held import lease snoozes the handover", c do
+    foreign_lease!("import:#{c.import.id}")
+    assert {:snooze, 5} = GpxHandover.resume(ScratchRepo, c.job, :legacy)
+    assert [] == rows("SELECT id FROM phoenix.rails_commands")
+    end_foreign_lease!("import:#{c.import.id}")
+    assert :ok = GpxHandover.resume(ScratchRepo, c.job, :legacy)
+  end
+
   test "a reverse-command failure rolls back the receipt and processed marker", c do
     Ownership.put!(ScratchRepo, "command:imports.process_gpx", :sidekiq)
 

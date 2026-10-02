@@ -109,26 +109,10 @@ defmodule Dawarich.Imports.DestroyRecoveryTest do
     assert [] = rows("SELECT event_id FROM job_outbox")
   end
 
-  test "an executing Sidekiq deletion holds the actual shared lock and is not superseded", c do
+  test "an executing Sidekiq deletion holds the import lease and is not superseded", c do
     event = receipt!(c)
     Ownership.put!(ScratchRepo, "command:imports.destroy", :sidekiq)
-    parent = self()
-
-    task =
-      Task.async(fn ->
-        ScratchRepo.checkout(fn ->
-          rows("SELECT pg_advisory_lock(hashtextextended($1,0))", ["phoenix-import:#{c.id}"])
-          send(parent, :deleting)
-
-          receive do
-            :release -> :ok
-          end
-
-          rows("SELECT pg_advisory_unlock(hashtextextended($1,0))", ["phoenix-import:#{c.id}"])
-        end)
-      end)
-
-    assert_receive :deleting
+    foreign_lease!("import:#{c.id}")
 
     try do
       assert {:ok, :queued} = Destroy.enqueue(ScratchRepo, c.user, c.id, c.context)
@@ -140,8 +124,7 @@ defmodule Dawarich.Imports.DestroyRecoveryTest do
 
       assert [] = rows("SELECT kind FROM phoenix.rails_commands")
     after
-      send(task.pid, :release)
-      Task.await(task)
+      end_foreign_lease!("import:#{c.id}")
     end
   end
 

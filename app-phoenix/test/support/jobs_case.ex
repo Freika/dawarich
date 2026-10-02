@@ -45,6 +45,16 @@ defmodule Dawarich.JobsCase do
 
   def rows(sql, params \\ []), do: ScratchRepo.query!(sql, params, log: false).rows
 
+  def foreign_lease!(name),
+    do:
+      rows(
+        "INSERT INTO phoenix.leases(name,holder,expires_at) VALUES($1,'rails-holder',now()+interval '1 hour')",
+        [name]
+      )
+
+  def end_foreign_lease!(name),
+    do: rows("DELETE FROM phoenix.leases WHERE name=$1 AND holder='rails-holder'", [name])
+
   def start_oban(name, opts \\ []) do
     base = [
       name: name,

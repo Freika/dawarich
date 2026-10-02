@@ -543,34 +543,6 @@ defmodule Dawarich.Imports.DownloadTest do
     clean(c)
   end
 
-  test "a competing session advisory owner returns busy and retry acquires released key", c do
-    source = attach(c, archive(c, [{"ride.gpx", "<gpx/>", []}]), "ride.gpx.zip")
-    parent = self()
-
-    task =
-      Task.async(fn ->
-        ScratchRepo.checkout(fn ->
-          rows("SELECT pg_advisory_lock(hashtextextended($1,0))", [
-            "import-download:#{c.import.id}"
-          ])
-
-          send(parent, :locked)
-          receive do: (:release -> :ok)
-
-          rows("SELECT pg_advisory_unlock(hashtextextended($1,0))", [
-            "import-download:#{c.import.id}"
-          ])
-        end)
-      end)
-
-    assert_receive :locked, 1000
-    assert {:error, :busy} = prepare(c, source)
-    send(task.pid, :release)
-    Task.await(task)
-    assert :ok = prepare(c, source)
-    clean(c)
-  end
-
   test "callback failure and cancellation clean adopted verified files", c do
     attach(c, "<gpx/>")
 
