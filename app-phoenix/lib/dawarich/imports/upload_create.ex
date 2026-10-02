@@ -4,8 +4,15 @@ defmodule Dawarich.Imports.UploadCreate do
   alias Dawarich.{Storage, RailsCommands}
   alias Dawarich.Jobs.Ownership
 
-  def create(repo, user, files, context) when is_list(files) and files != [] do
-    with {:ok, blobs} <- prepare(repo, user, files, context),
+  def create(repo, user, files, context) when is_list(files),
+    do: files |> Enum.reject(&(&1 == "")) |> create_present(repo, user, context)
+
+  def create(_, _, _, _), do: {:error, :no_files}
+
+  defp create_present([], _repo, _user, _context), do: {:error, :no_files}
+
+  defp create_present(files, repo, user, context) do
+    with {:ok, blobs} <- prepare(repo, files, context),
          true <- Enum.all?(blobs, &(&1.source == 4)) || {:error, :rails_format} do
       repo.transaction(fn ->
         owner = Ownership.lock(repo, "command:imports.process_gpx")
@@ -16,13 +23,11 @@ defmodule Dawarich.Imports.UploadCreate do
     end
   end
 
-  def create(_, _, _, _), do: {:error, :no_files}
-
-  defp prepare(repo, user, files, context) do
+  defp prepare(repo, files, context) do
     Enum.reduce_while(files, {:ok, []}, fn raw, {:ok, acc} ->
       descriptor = descriptor(raw)
 
-      case Uploads.fetch(repo, user, descriptor["signed_id"]) do
+      case Uploads.fetch(repo, descriptor["signed_id"]) do
         {:ok, blob} ->
           original = original(descriptor, blob.filename)
           metadata = blob.metadata

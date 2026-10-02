@@ -1,6 +1,6 @@
 defmodule DawarichWeb.ImportsDownloadSocketTest do
   use Dawarich.IngestCase, async: false
-  alias Dawarich.Imports.{Uploads, UploadCreate}
+  alias Dawarich.Imports.UploadCreate
   alias Dawarich.Test.RailsUser
 
   defmodule Probe do
@@ -28,22 +28,10 @@ defmodule DawarichWeb.ImportsDownloadSocketTest do
     on_exit(fn -> File.rm_rf!(root) end)
     bytes = "<gpx/>" <> String.duplicate(" ", 16 * 1024 * 1024)
 
-    {:ok, blob} =
-      Uploads.reserve(
-        Repo,
-        user,
-        %{
-          "filename" => "socket.gpx",
-          "byte_size" => byte_size(bytes),
-          "checksum" => Base.encode64(:crypto.hash(:md5, bytes)),
-          "content_type" => "application/gpx+xml"
-        },
-        config
+    blob =
+      Dawarich.RailsBlobFixture.create!(Repo, root, "socket.gpx", bytes,
+        content_type: "application/gpx+xml"
       )
-
-    path = Path.join(root, "source")
-    File.write!(path, bytes)
-    :ok = Uploads.write(Repo, user, blob.upload_token, path, config)
 
     {:ok, [id]} =
       UploadCreate.create(Repo, user, [blob.signed_id], %{storage: config, self_hosted?: true})

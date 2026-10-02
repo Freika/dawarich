@@ -3,7 +3,7 @@ defmodule DawarichWeb.ImportsDownloadTest do
   import Phoenix.ConnTest
   import Dawarich.Test.RailsFormRequests, only: [upstream!: 0, forwarded: 2]
   alias Dawarich.Test.RailsUser
-  alias Dawarich.Imports.{Uploads, UploadCreate}
+  alias Dawarich.Imports.UploadCreate
   alias Dawarich.Jobs.Ownership
   @endpoint DawarichWeb.Endpoint
   setup do
@@ -33,17 +33,10 @@ defmodule DawarichWeb.ImportsDownloadTest do
   end
 
   defp import!(c, name, bytes, original \\ nil) do
-    attrs = %{
-      "filename" => name,
-      "byte_size" => byte_size(bytes),
-      "checksum" => Base.encode64(:crypto.hash(:md5, bytes)),
-      "content_type" => "application/gpx+xml"
-    }
-
-    {:ok, blob} = Uploads.reserve(Repo, c.user, attrs, c.config)
-    path = Path.join(c.config.root, "input")
-    File.write!(path, bytes)
-    :ok = Uploads.write(Repo, c.user, blob.upload_token, path, c.config)
+    blob =
+      Dawarich.RailsBlobFixture.create!(Repo, c.config.root, name, bytes,
+        content_type: "application/gpx+xml"
+      )
 
     descriptor =
       if original,

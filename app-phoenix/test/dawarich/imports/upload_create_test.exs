@@ -1,6 +1,6 @@
 defmodule Dawarich.Imports.UploadCreateTest do
   use Dawarich.JobsCase
-  alias Dawarich.Imports.{Uploads, UploadCreate}
+  alias Dawarich.Imports.UploadCreate
   alias Dawarich.Jobs.Ownership
 
   setup do
@@ -27,20 +27,8 @@ defmodule Dawarich.Imports.UploadCreateTest do
     }
   end
 
-  defp uploaded(c, name, bytes) do
-    attrs = %{
-      "filename" => name,
-      "byte_size" => byte_size(bytes),
-      "checksum" => Base.encode64(:crypto.hash(:md5, bytes)),
-      "content_type" => "application/octet-stream"
-    }
-
-    {:ok, blob} = Uploads.reserve(ScratchRepo, c.user, attrs, c.config)
-    path = Path.join(c.config.root, "input-" <> Ecto.UUID.generate())
-    File.write!(path, bytes)
-    :ok = Uploads.write(ScratchRepo, c.user, blob.upload_token, path, c.config)
-    blob
-  end
+  defp uploaded(c, name, bytes),
+    do: Dawarich.RailsBlobFixture.create!(ScratchRepo, c.config.root, name, bytes)
 
   test "unknown plaintext GPX source is classified and native enqueue captures current Rails zone",
        c do
@@ -124,11 +112,11 @@ defmodule Dawarich.Imports.UploadCreateTest do
              rows("SELECT kind,payload FROM phoenix.rails_commands")
   end
 
-  test "cross-owner tokens and exhausted trial quota create no import or enqueue", c do
+  test "forged tokens and exhausted trial quota create no import or enqueue", c do
     blob = uploaded(c, "third.gpx", "<gpx/>")
 
-    assert {:error, :forbidden} =
-             UploadCreate.create(ScratchRepo, %{c.user | id: c.user.id + 1}, [blob.signed_id], %{
+    assert {:error, :invalid_token} =
+             UploadCreate.create(ScratchRepo, c.user, [blob.signed_id <> "x"], %{
                storage: c.config,
                self_hosted?: true
              })
