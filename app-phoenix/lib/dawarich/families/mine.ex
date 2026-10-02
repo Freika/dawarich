@@ -17,7 +17,7 @@ defmodule Dawarich.Families.Mine do
   end
 
   defp payload(user_id, settings, family_id, now) do
-    members = members(family_id)
+    members = Locations.members(family_id)
     [[name]] = Repo.query!("SELECT name FROM families WHERE id = $1", [family_id]).rows
 
     {:object,
@@ -69,18 +69,6 @@ defmodule Dawarich.Families.Mine do
        {"sharing_started_at", config["started_at"] |> Clock.parse() |> Clock.iso()},
        {"joined_at", Clock.iso(member.joined)}
      ]}
-  end
-
-  defp members(family_id) do
-    Repo.query!(
-      "SELECT u.id, u.email, u.settings, m.role, m.created_at FROM users u " <>
-        "INNER JOIN family_memberships m ON u.id = m.user_id " <>
-        "WHERE u.deleted_at IS NULL AND m.family_id = $1",
-      [family_id]
-    ).rows
-    |> Enum.map(fn [id, email, settings, role, joined] ->
-      %{id: id, email: email, settings: settings, role: role, joined: joined}
-    end)
   end
 
   defp requests(user_id, now) do

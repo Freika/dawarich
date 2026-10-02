@@ -2,7 +2,7 @@ defmodule Dawarich.Families.Locations do
   @moduledoc false
 
   alias Dawarich.{I18n, RailsTime, Repo}
-  alias Dawarich.Families.Sharing
+  alias Dawarich.Families.{Clock, Sharing}
 
   @statuses ~w(unknown unplugged charging full connected_not_charging discharging)
 
@@ -22,7 +22,7 @@ defmodule Dawarich.Families.Locations do
            {:object,
             [
               {"locations", Enum.flat_map(sharing, &location/1)},
-              {"updated_at", stamp(now)},
+              {"updated_at", Clock.iso(Clock.naive(now))},
               {"sharing_enabled", own}
             ]}}
         end)
@@ -47,12 +47,14 @@ defmodule Dawarich.Families.Locations do
 
   def members(family_id) do
     Repo.query!(
-      "SELECT u.id, u.email, u.settings FROM users u " <>
+      "SELECT u.id, u.email, u.settings, m.role, m.created_at FROM users u " <>
         "INNER JOIN family_memberships m ON u.id = m.user_id " <>
         "WHERE u.deleted_at IS NULL AND m.family_id = $1",
       [family_id]
     ).rows
-    |> Enum.map(fn [id, email, settings] -> %{id: id, email: email, settings: settings} end)
+    |> Enum.map(fn [id, email, settings, role, joined] ->
+      %{id: id, email: email, settings: settings, role: role, joined: joined}
+    end)
   end
 
   defp location(member) do
@@ -87,13 +89,6 @@ defmodule Dawarich.Families.Locations do
 
   defp status(code) when is_integer(code) and code in 0..5, do: Enum.at(@statuses, code)
   defp status(_code), do: nil
-
-  defp stamp(now) do
-    [[text]] =
-      Repo.query!("SELECT " <> RailsTime.sql("$1::timestamp", 0), [DateTime.to_naive(now)]).rows
-
-    text
-  end
 
   defp latest_sql do
     """
