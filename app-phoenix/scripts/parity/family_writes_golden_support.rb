@@ -58,6 +58,7 @@ module FamilyWritesGoldenSupport
     params = body.empty? ? nil : body
     send(kase[:method], kase[:path], params:, headers: headers.except('Content-Length'))
     headers = response.headers.to_h.transform_keys(&:downcase).except('date', 'content-length')
+    headers = FamilyGoldenHeaders.fixed(headers)
     html = kase[:expect] == :rails && response.media_type == 'text/html'
     { 'status' => response.status, 'headers' => headers,
       'body' => html ? '' : response.body.gsub(/token=[\w.-]+/, 'token=redacted') }

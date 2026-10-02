@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'family_golden_headers'
 
 module ApiFamilyGoldenOracle
   TABLES = %w[users families family_memberships point_sources points].freeze
@@ -11,6 +12,7 @@ module ApiFamilyGoldenOracle
   FAMILY = 881_001
   KEY = 'phoenix-a4fam-golden-key'
   STAMP = '2026-09-01 12:00:00'
+  NOW = Time.utc(2037, 1, 15, 10, 30, 0)
   T0 = 1_780_000_000
   L = '/api/v1/families/locations'
   FUTURE = '2099-01-01T00:00:00Z'
@@ -87,6 +89,8 @@ module ApiFamilyGoldenOracle
 end
 
 RSpec.describe 'Phoenix fixture: golden family API requests', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   after(:all) do
     path = Rails.root.join('app-phoenix/test/fixtures/api_family/golden.json')
     FileUtils.mkdir_p(path.dirname)
@@ -98,7 +102,9 @@ RSpec.describe 'Phoenix fixture: golden family API requests', type: :request do
   ApiFamilyGoldenOracle::CASES.each do |kase|
     it(kase[:name]) do
       defaults = { method: :get, auth: :bearer, accept: :json, expect: :own, env: {}, seed: :base }
-      ApiFamilyGoldenOracle.results << family_record(kase.reverse_merge(defaults))
+      travel_to(ApiFamilyGoldenOracle::NOW) do
+        ApiFamilyGoldenOracle.results << family_record(kase.reverse_merge(defaults))
+      end
     end
   end
 
@@ -140,6 +146,7 @@ RSpec.describe 'Phoenix fixture: golden family API requests', type: :request do
   def family_response(kase, path, headers)
     send(kase[:method], path, headers: headers)
     headers = response.headers.to_h.transform_keys(&:downcase).except('date', 'content-length')
+    headers = FamilyGoldenHeaders.fixed(headers)
     body = kase[:expect] == :rails ? response.body.gsub(/token=[\w.-]+/, 'token=redacted') : response.body
     { 'status' => response.status, 'headers' => headers, 'body' => body }
   rescue StandardError

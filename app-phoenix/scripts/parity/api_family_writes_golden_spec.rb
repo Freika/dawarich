@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'family_golden_headers'
 
 module ApiFamilyWritesOracle
   TABLES = %w[users families family_memberships family_location_requests notifications points].freeze
