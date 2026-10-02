@@ -4,6 +4,13 @@ module TransportationModes
   # Log-space Viterbi decoding over window emission scores with hand-set
   # transition penalties, plus forward-backward posteriors for confidence.
   # Chains split by gap_before decode independently.
+  #
+  # Windows whose points the device is certain about (window[:certain_mode],
+  # see HintScorer.certain_mode) are pinned: their emission names only that
+  # mode, so Viterbi must pass through it there while uncertain neighbours
+  # still decode freely — the transition penalties let them lean toward the
+  # pinned mode near the boundary rather than flap. Pinned windows report
+  # pinned: true and posterior 1.0.
   class Decoder
     HUBS = %i[stationary walking].freeze
 
@@ -37,15 +44,30 @@ module TransportationModes
     end
 
     def self.decode_chain(chain, enabled)
-      emissions = chain.map { |w| Emissions.log_likelihoods(w, enabled: enabled) }
+      pins = chain.map { |w| pinned_mode(w, enabled) }
+      emissions = chain.each_with_index.map do |w, i|
+        pins[i] ? { pins[i] => 0.0 } : Emissions.log_likelihoods(w, enabled: enabled)
+      end
       modes = emissions.flat_map(&:keys).uniq
       return chain.map { { mode: :unknown, posterior: 0.0 } } if modes.empty?
 
       path = viterbi(emissions, modes)
       posteriors = forward_backward(emissions, modes)
       path.each_with_index.map do |mode, i|
+        next { mode: mode, posterior: 1.0, pinned: true } if pins[i]
+
         { mode: mode, posterior: posteriors[i].fetch(mode, 0.0).round(4) }
       end
+    end
+
+    # A certain mode pins the window only if the user has it enabled and the
+    # pipeline can emit it; otherwise the point's ordinary hint still applies.
+    def self.pinned_mode(window, enabled)
+      mode = window[:certain_mode]&.to_sym
+      return nil unless mode
+
+      emittable = Emissions::INFERRED_MODES + Emissions::HINT_ONLY_MODES
+      mode if emittable.include?(mode) && enabled.map(&:to_sym).include?(mode)
     end
 
     def self.viterbi(emissions, modes)

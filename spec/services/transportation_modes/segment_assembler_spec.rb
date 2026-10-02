@@ -91,4 +91,19 @@ RSpec.describe TransportationModes::SegmentAssembler do
     segments = described_class.call(rows: rows, windows: windows, decoded: decoded)
     expect(segments.first[:source]).to eq('hints+inferred')
   end
+
+  it 'marks pinned runs as device with high confidence, split from decoded runs of the same mode' do
+    rows = build_rows
+    windows, decoded = build_windows_and_decoded(rows, boundary_ts: -1)
+    decoded.each_with_index do |d, i|
+      d[:posterior] = 0.6
+      decoded[i] = d.merge(posterior: 1.0, pinned: true) if windows[i][:start_ts] >= 300
+    end
+    segments = described_class.call(rows: rows, windows: windows, decoded: decoded)
+
+    expect(segments.map { |s| [s[:mode], s[:source]] }).to eq([[:driving, 'inferred'], [:driving, 'device']])
+    expect(segments.last[:confidence]).to eq(:high)
+    expect(segments.last[:confidence_score]).to eq(1.0)
+    expect(segments.last[:start_at].to_i).to be_within(35).of(300)
+  end
 end

@@ -59,5 +59,11 @@ RSpec.describe Overland::Params do
     it 'returns the correct number of points' do
       expect(params.size).to eq(1)
     end
+
+    it 'keeps motion_confidence in motion_data' do
+      json['locations'][0]['properties']['motion_confidence'] = 1.0
+
+      expect(params[0][:motion_data]).to include('motion' => %w[driving stationary], 'motion_confidence' => 1.0)
+    end
   end
 end

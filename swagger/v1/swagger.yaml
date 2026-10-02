@@ -5579,6 +5579,9 @@ paths:
                           type: string
                           nullable: true
                           example: inferred
+                          description: How the mode was decided. One of inferred,
+                            hints+inferred, device (the tracker stated the mode as
+                            certain), user (manual correction), default
                         corrected_at:
                           type: string
                           format: datetime
@@ -5704,6 +5707,9 @@ paths:
                           type: string
                           nullable: true
                           example: inferred
+                          description: How the mode was decided. One of inferred,
+                            hints+inferred, device (the tracker stated the mode as
+                            certain), user (manual correction), default
                         corrected_at:
                           type: string
                           format: datetime
@@ -5772,6 +5778,9 @@ paths:
                         type: string
                         nullable: true
                         example: inferred
+                        description: How the mode was decided. One of inferred, hints+inferred,
+                          device (the tracker stated the mode as certain), user (manual
+                          correction), default
                       corrected_at:
                         type: string
                         format: datetime

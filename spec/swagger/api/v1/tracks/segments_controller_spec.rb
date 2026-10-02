@@ -25,7 +25,11 @@ describe 'Track Segments API', type: :request do
       max_speed: { type: :number, nullable: true, description: 'km/h' },
       confidence: { type: :string, nullable: true, enum: [nil, 'low', 'medium', 'high'] },
       confidence_score: { type: :number, nullable: true },
-      source: { type: :string, nullable: true, example: 'inferred' },
+      source: {
+        type: :string, nullable: true, example: 'inferred',
+        description: 'How the mode was decided. One of inferred, hints+inferred, ' \
+                     'device (the tracker stated the mode as certain), user (manual correction), default'
+      },
       corrected_at: { type: :string, format: :datetime, nullable: true },
       manually_corrected: { type: :boolean }
     },

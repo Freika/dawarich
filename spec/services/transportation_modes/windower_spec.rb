@@ -73,4 +73,25 @@ RSpec.describe TransportationModes::Windower do
     expect(post_gap.first[:sparse]).to be false
     expect(post_gap.size).to be > 1
   end
+
+  describe 'certain_mode' do
+    let(:certain) { { 'motion' => %w[driving], 'motion_confidence' => 1.0 } }
+
+    it 'marks windows whose points are certain, stops included' do
+      rows = rows_for(([4.0] * 12) + ([0.0] * 12) + ([4.0] * 12))
+      rows.each { |r| r[:motion_data] = certain }
+
+      expect(described_class.call(rows).map { |w| w[:certain_mode] }).to all(eq(:driving))
+    end
+
+    it 'leaves windows without a certain majority unpinned' do
+      rows = rows_for([4.0] * 36)
+      rows.first(12).each { |r| r[:motion_data] = certain }
+      rows.drop(12).each { |r| r[:motion_data] = { 'motion' => %w[driving] } }
+      windows = described_class.call(rows)
+
+      expect(windows.first[:certain_mode]).to eq(:driving)
+      expect(windows.last[:certain_mode]).to be_nil
+    end
+  end
 end
