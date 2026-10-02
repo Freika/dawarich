@@ -95,6 +95,46 @@ defmodule Dawarich.StateTest do
     for key <- keys, do: assert(State.count(ScratchRepo, key) == Map.get(model, key, 0))
   end
 
+  test "epoch_tokens seeds a missing key once and returns the same token afterwards" do
+    key = "points:tile_epoch:1:2025"
+    assert %{^key => token} = State.epoch_tokens(ScratchRepo, [key])
+    assert token =~ ~r/\A[0-9a-f]{16}\z/
+    assert State.epoch_tokens(ScratchRepo, [key]) == %{key => token}
+  end
+
+  test "bump_epochs replaces each named token once, even when repeated, and leaves other keys alone" do
+    keys = ["e:1:2024", "e:1:2025", "e:1:all"]
+    before = State.epoch_tokens(ScratchRepo, keys)
+
+    assert State.bump_epochs(ScratchRepo, ["e:1:2025", "e:1:all", "e:1:all"]) == :ok
+
+    bumped = State.epoch_tokens(ScratchRepo, keys)
+    assert bumped["e:1:2024"] == before["e:1:2024"]
+    refute bumped["e:1:2025"] == before["e:1:2025"]
+    refute bumped["e:1:all"] == before["e:1:all"]
+  end
+
+  test "a bump inside a rolled-back transaction leaves the token as it was" do
+    %{"e:2:all" => token} = State.epoch_tokens(ScratchRepo, ["e:2:all"])
+
+    ScratchRepo.transaction(fn ->
+      :ok = State.bump_epochs(ScratchRepo, ["e:2:all"])
+      ScratchRepo.rollback(:domain_write_failed)
+    end)
+
+    assert State.epoch_tokens(ScratchRepo, ["e:2:all"]) == %{"e:2:all" => token}
+  end
+
+  test "registration follows the given default until it is stored, then the stored value" do
+    assert State.registration_enabled(ScratchRepo, true)
+    refute State.registration_enabled(ScratchRepo, false)
+    assert State.put_registration_enabled(ScratchRepo, false) == :ok
+    refute State.registration_enabled(ScratchRepo, true)
+    assert State.put_registration_enabled(ScratchRepo, true) == :ok
+    assert State.registration_enabled(ScratchRepo, false)
+    assert rows("SELECT count(*) FROM phoenix.registration_setting") == [[1]]
+  end
+
   defp seed!, do: :rand.seed(:exsss, {ExUnit.configuration()[:seed], 101, 202})
 
   defp expire!(table, key),

@@ -18,6 +18,23 @@ defmodule Dawarich.State do
   RETURNING value
   """
   @count "SELECT value FROM phoenix.counters WHERE key = $1 AND expires_at > statement_timestamp()"
+  @tokens "SELECT key, token FROM phoenix.epochs WHERE key = ANY($1::text[])"
+  @seed """
+  INSERT INTO phoenix.epochs (key, token)
+  SELECT * FROM unnest($1::text[], $2::text[])
+  ON CONFLICT (key) DO NOTHING
+  """
+  @bump """
+  INSERT INTO phoenix.epochs AS e (key, token)
+  SELECT * FROM unnest($1::text[], $2::text[])
+  ON CONFLICT (key) DO UPDATE SET token = EXCLUDED.token, updated_at = statement_timestamp()
+  """
+  @registration "SELECT enabled FROM phoenix.registration_setting"
+  @put_registration """
+  INSERT INTO phoenix.registration_setting (id, enabled, updated_at)
+  VALUES (true, $1, statement_timestamp())
+  ON CONFLICT (id) DO UPDATE SET enabled = EXCLUDED.enabled, updated_at = EXCLUDED.updated_at
+  """
 
   def claim(repo, key, ttl_seconds)
       when is_binary(key) and is_integer(ttl_seconds) and ttl_seconds > 0,
@@ -43,4 +60,41 @@ defmodule Dawarich.State do
       [] -> 0
     end
   end
+
+  def epoch_tokens(repo, keys) when is_list(keys) do
+    found = tokens(repo, keys)
+
+    case keys |> Enum.reject(&Map.has_key?(found, &1)) |> Enum.uniq() do
+      [] ->
+        found
+
+      missing ->
+        repo.query!(@seed, [missing, Enum.map(missing, fn _ -> token() end)], log: false)
+        tokens(repo, keys)
+    end
+  end
+
+  def bump_epochs(repo, keys) when is_list(keys) do
+    keys = Enum.uniq(keys)
+    repo.query!(@bump, [keys, Enum.map(keys, fn _ -> token() end)], log: false)
+    :ok
+  end
+
+  def registration_enabled(repo, default) when is_boolean(default) do
+    case repo.query!(@registration, [], log: false).rows do
+      [[enabled]] -> enabled
+      [] -> default
+    end
+  end
+
+  def put_registration_enabled(repo, enabled) when is_boolean(enabled) do
+    repo.query!(@put_registration, [enabled], log: false)
+    :ok
+  end
+
+  defp tokens(repo, keys),
+    do:
+      Map.new(repo.query!(@tokens, [keys], log: false).rows, fn [key, token] -> {key, token} end)
+
+  defp token, do: Base.encode16(:crypto.strong_rand_bytes(8), case: :lower)
 end
