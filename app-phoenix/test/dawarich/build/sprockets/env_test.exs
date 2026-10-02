@@ -28,6 +28,7 @@ defmodule Dawarich.Build.Sprockets.EnvTest do
        %{tmp_dir: root} do
     file!(root, "app/assets/images/favicon/browserconfig.xml.erb")
     file!(root, "vendor/assets/javascripts/activestorage.js")
+    file!(root, "vendor/assets/javascripts/activestorage.esm.js")
     file!(root, "vendor/assets/stylesheets/trix.css")
     file!(root, "app/assets/stylesheets/trix.css")
     env = Env.new(root)
@@ -40,6 +41,9 @@ defmodule Dawarich.Build.Sprockets.EnvTest do
 
     assert %{logical: "activestorage.js", kind: :js} =
              Env.resolve(env, "activestorage", nil, root)
+
+    assert %{logical: "activestorage.esm.js", kind: :js} =
+             Env.resolve(env, "activestorage.esm", nil, root)
 
     assert Env.resolve(env, "trix", :css, root).file ==
              Path.join(root, "app/assets/stylesheets/trix.css")

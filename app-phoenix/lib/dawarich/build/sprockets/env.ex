@@ -3,6 +3,11 @@ defmodule Dawarich.Build.Sprockets.Env do
 
   defstruct [:paths]
 
+  @registered ~w(.js .json .rb .xml .webmanifest .css .html .htm .txt .text .yml .yaml .ico .bmp .gif .webp
+                 .png .jpg .jpeg .tiff .tif .svg .webm .snd .au .aiff .mp3 .mp2 .m2a .m3a .ogx .ogg .oga
+                 .midi .mid .avi .wav .wave .mp4 .m4v .aac .m4a .flac .eot .otf .ttf .woff .woff2 .map .erb
+                 .rhtml .rxml)
+
   @kinds %{
     ".js" => :js,
     ".css" => :css,
@@ -78,14 +83,14 @@ defmodule Dawarich.Build.Sprockets.Env do
   end
 
   defp candidates(base, path, accept) do
-    case Path.extname(path) do
-      "" ->
-        for {ext, kind} <- [{".js", :js}, {".css", :css}],
-            accept in [nil, kind],
-            do: {base <> ext, kind}
+    ext = Path.extname(path)
 
-      ext ->
-        [{base, accept}, {base <> ".erb", accept || Map.get(@accept, ext) || kind(path)}]
+    if ext in @registered do
+      [{base, accept}, {base <> ".erb", accept || Map.get(@accept, ext) || kind(path)}]
+    else
+      for {ext, kind} <- [{".js", :js}, {".css", :css}],
+          accept in [nil, kind],
+          do: {base <> ext, kind}
     end
   end
 
