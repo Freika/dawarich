@@ -12,7 +12,12 @@ defmodule Dawarich.MapApi.Tracks do
       per = Params.per_page(params["per_page"], 500)
       sql = where <> " ORDER BY t.start_at DESC LIMIT #{per} OFFSET #{(page - 1) * per}"
 
-      {:ok, TrackRecord.collection(TrackRecord.rows(sql, args), user.timezone, false),
+      {:ok,
+       {:object,
+        [
+          {"type", "FeatureCollection"},
+          {"features", TrackRecord.features(TrackRecord.rows(sql, args), false)}
+        ]},
        [
          {"x-current-page", Integer.to_string(page)},
          {"x-total-pages", Integer.to_string(div(count + per - 1, per))},
@@ -30,7 +35,7 @@ defmodule Dawarich.MapApi.Tracks do
         :missing
 
       [track] ->
-        feature = TrackRecord.feature(track, user.timezone, true)
+        [feature] = TrackRecord.features([track], true)
 
         with {:ok, feature} <- Clip.apply(feature, track, user, params, now),
              do:
