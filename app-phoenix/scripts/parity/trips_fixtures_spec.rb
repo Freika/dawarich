@@ -100,7 +100,7 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
       point(9_810_007, 9801, '2026-05-10T06:15:00Z', 12.376, 51.3405, tracker: 'phone'),
       point(9_810_008, 9801, '2026-05-10T06:20:00Z', 12.383, 51.345, source: 98_001),
       point(9_810_009, 9801, '2026-05-10T06:30:00Z', 12.3801, 51.3422, tracker: 'phone'),
-      point(9_810_010, 9801, '2026-05-10T08:00:00Z', 12.9, 51.6, tracker: 'phone', anomaly: true),
+      point(9_810_010, 9801, '2026-05-10T08:00:00Z', 12.39, 51.36, tracker: 'phone', anomaly: true),
       point(9_810_011, 9801, '2026-05-10T09:00:00Z', 12.39, 51.35, tracker: 'phone'),
       point(9_810_012, 9801, '2026-05-10T09:10:00Z', 12.395, 51.353, tracker: 'phone'),
       point(9_810_013, 9801, '2026-05-10T12:00:00Z', 12.4, 51.33, source: 98_001),
