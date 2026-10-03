@@ -13,7 +13,7 @@ defmodule Dawarich.RailsJobOwners do
     "AirTrail::SyncSchedulingJob" => {:slice, :a12d2},
     "AppVersionCheckingJob" => {:oban, ["cron:app_version_checking_job"]},
     "Areas::RelabelVisitsJob" => {:oban, ["command:areas.relabel_visits"]},
-    "BulkStatsCalculatingJob" => {:slice, :a12d1},
+    "BulkStatsCalculatingJob" => {:oban, ["cron:bulk_stats_calculating_job"]},
     "BulkVisitsSuggestingJob" => {:slice, :a12d2},
     "Cache::CleaningJob" => {:slice, :a12d1},
     "Cache::PreheatingJob" => {:slice, :a12d1},

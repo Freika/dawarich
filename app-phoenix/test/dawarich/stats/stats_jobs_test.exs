@@ -3,7 +3,7 @@ defmodule Dawarich.Stats.StatsJobsTest do
 
   alias Dawarich.Jobs.{Ownership, Registry}
   alias Dawarich.StatsFixtures, as: F
-  alias Dawarich.Stats.{CalculateMonthWorker, Schedule, ToponymsRefreshWorker}
+  alias Dawarich.Stats.{BulkSweepWorker, CalculateMonthWorker, Schedule, ToponymsRefreshWorker}
 
   @oban :a12d1a_stats_oban
   @payload %{"user_id" => 7, "year" => 2024, "month" => 3, "notify_on_failure" => true}
@@ -104,5 +104,40 @@ defmodule Dawarich.Stats.StatsJobsTest do
              ~r/stats_toponyms_refresh_job:\n\s+cron: "\*\/5 \* \* \* \*"/
 
     assert {"*/5 * * * *", ToponymsRefreshWorker} in Registry.crontab()
+  end
+
+  test "the hourly sweep cancels itself while Sidekiq owns it" do
+    assert BulkSweepWorker.run(ScratchRepo) == {:cancel, :not_owner}
+  end
+
+  test "the hourly sweep fails only when every active or trial user failed" do
+    Ownership.put!(ScratchRepo, BulkSweepWorker.key(), :oban)
+    F.user!(41, %{})
+    F.user!(42, %{}, %{"status" => 2})
+    F.user!(43, %{}, %{"status" => 0})
+    seen = :ets.new(:seen, [:public, :bag])
+    boom = fn _repo, id, _opts -> :ets.insert(seen, {id}) && raise("boom") end
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      assert BulkSweepWorker.run(ScratchRepo, calculator: boom) ==
+               {:error, "stats calculation failed for all 2 users"}
+    end)
+
+    assert :ets.tab2list(seen) |> Enum.sort() == [{41}, {42}]
+    one = fn _repo, id, _opts -> if id == 41, do: raise("boom"), else: :ok end
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      assert BulkSweepWorker.run(ScratchRepo, calculator: one) == :ok
+    end)
+  end
+
+  test "the hourly sweep is registered unclaimable on Rails' schedule" do
+    entry = Enum.find(Registry.entries(), &(&1.key == "cron:bulk_stats_calculating_job"))
+
+    assert %{kind: :cron, worker: BulkSweepWorker, claimable: false, expression: "0 */1 * * *"} =
+             entry
+
+    assert Dawarich.RailsTree.read("config/schedule.yml") =~
+             ~r/bulk_stats_calculating_job:\n\s+cron: "0 \*\/1 \* \* \*"/
   end
 end
