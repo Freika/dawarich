@@ -45,9 +45,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Clicking a place on the map opens its details panel instead of a popup. The panel's Edit button changes the place's name and tags.
 - The `phoenix` and `oban` schemas no longer need the database-level `CREATE` privilege once they exist: with a database user that lacks it, have an administrator run `CREATE SCHEMA phoenix AUTHORIZATION <user>` and `CREATE SCHEMA oban AUTHORIZATION <user>` once.
 - The image also ships `release.sh`, `cloud-entrypoint.sh` and `cloud-sidekiq-entrypoint.sh` for platforms that run migrations as a separate release step. With them the web container neither migrates nor seeds, every process drops from root to uid 32767 (or `PUID`/`PGID`), and the Elixir supervisor starts only once `release.sh` has installed its schemas. When `release.sh` cannot install them, it logs a warning and web containers start Rails without the Elixir supervisor; with `SELF_HOSTED=false` it stops the deploy instead. `docker-compose.yml` setups are not affected.
+- Track-generation locks, geocoding de-duplication, the realtime debouncers and achievement-check coalescing are stored in PostgreSQL instead of Redis wherever the Phoenix tables exist.
 
 ### Fixed
 
+- Background-job locks (toponym refresh, import downloads, raw-data archiving, anomaly backfills, TeslaMate and Trek sync) no longer leak behind a transaction-pooling PgBouncer.
 - Cloud layouts now initialize Paddle after its script loads.
 - Replay scrubber and playback now stay in chronological order through daylight-saving clock changes.
 - Replay scrubber controls use the profile timezone when it differs from the browser timezone.
