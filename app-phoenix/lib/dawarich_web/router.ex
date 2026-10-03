@@ -159,7 +159,7 @@ defmodule DawarichWeb.Router do
     get "/imports/:id/download", DawarichWeb.ImportsDownload, :show, metadata: @native_import
 
     live_session :rails_pages,
-      session: {DawarichWeb.RailsAuth, :live_session, []},
+      session: {DawarichWeb.TagsLive.Form, :live_session, []},
       on_mount: DawarichWeb.LiveAuth,
       root_layout: {DawarichWeb.Layouts, :root},
       layout: {DawarichWeb.Layouts, :app} do
@@ -203,6 +203,18 @@ defmodule DawarichWeb.Router do
       live "/points", DawarichWeb.PointsLive.Index, :index,
         container: {:div, class: "contents"},
         metadata: %{rails_gate: {DawarichWeb.MapDataGate, :points?}}
+
+      live "/tags", DawarichWeb.TagsLive.Index, :index,
+        container: {:div, class: "contents"},
+        metadata: %{rails_gate: {DawarichWeb.MapDataGate, :tags?}}
+
+      live "/tags/new", DawarichWeb.TagsLive.Form, :new,
+        container: {:div, class: "contents"},
+        metadata: %{rails_gate: {DawarichWeb.MapDataGate, :tags?}}
+
+      live "/tags/:id/edit", DawarichWeb.TagsLive.Form, :edit,
+        container: {:div, class: "contents"},
+        metadata: %{rails_gate: {DawarichWeb.MapDataGate, :tag_edit?}}
 
       live "/settings/general", DawarichWeb.SettingsLive.General, :index,
         container: {:div, class: "contents"}

@@ -22,6 +22,7 @@ defmodule DawarichWeb.Strangler do
     "/api/v1/families/location_requests/:id/accept" => %{"id" => ~r/\A\d{1,18}\z/},
     "/api/v1/families/location_requests/:id/decline" => %{"id" => ~r/\A\d{1,18}\z/},
     "/places/:id" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/tags/:id/edit" => %{"id" => ~r/\A\d{1,18}\z/},
     "/stats/:year" => %{"year" => ~r/\A\d{4}\z/},
     "/stats/:year/:month" => %{"year" => ~r/\A\d{4}\z/, "month" => ~r/\A(0?[1-9]|1[0-2])\z/},
     "/digests/:year" => %{"year" => ~r/\A\d{4}\z/},
