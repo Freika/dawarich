@@ -3,7 +3,6 @@ defmodule Dawarich.Redis do
 
   @name __MODULE__
   @cache_name Dawarich.Redis.Cache
-  @rack_attack_name Dawarich.Redis.RackAttack
 
   def child_specs(config \\ Application.get_env(:dawarich, :redis, [])) do
     case config[:url] do
@@ -26,24 +25,13 @@ defmodule Dawarich.Redis do
     end
   end
 
-  def rack_attack_child_specs(config \\ Application.get_env(:dawarich, :redis, [])) do
-    case config[:url] do
-      url when is_binary(url) and url != "" ->
-        database = Dawarich.RubyInteger.to_i(System.get_env("RACK_ATTACK_REDIS_DB", "3"))
-        options = Keyword.put(options(url, database), :name, @rack_attack_name)
-        [Supervisor.child_spec({Redix, {url, options}}, id: @rack_attack_name)]
-
-      _ ->
-        []
-    end
-  end
-
-  def rack_attack, do: @rack_attack_name
-
   def options(url, database) do
-    base = [name: @name, database: database, sync_connect: false, exit_on_disconnection: false]
-    if String.starts_with?(url, "rediss://"), do: base ++ [socket_opts: tls()], else: base
+    [name: @name, database: database, sync_connect: false, exit_on_disconnection: false] ++
+      socket_options(url)
   end
+
+  def socket_options(url),
+    do: if(String.starts_with?(url, "rediss://"), do: [socket_opts: tls()], else: [])
 
   def command(args, conn \\ @name, timeout \\ 5_000) do
     Redix.command(conn, args, timeout: timeout)

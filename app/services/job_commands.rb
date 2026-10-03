@@ -181,7 +181,7 @@ module JobCommands
         end
       }
     }
-  }.merge(ReleaseCommands::COMMANDS).freeze
+  }.merge(ReleaseCommands::COMMANDS).merge(Stats::Commands::COMMANDS).freeze
 
   module_function
 

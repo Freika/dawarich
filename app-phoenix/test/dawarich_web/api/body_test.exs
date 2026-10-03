@@ -182,4 +182,18 @@ defmodule DawarichWeb.Api.BodyTest do
     assert Body.kind(conn(:post, "/x", "a") |> put_req_header("content-length", "1")) == :proxy
     assert Body.kind(conn(:post, "/x", "")) == :none
   end
+
+  test "a body the rate limiter already read is decoded without reading the socket again" do
+    body = "api_key=k&a=1"
+
+    conn =
+      conn(:post, "/api/v1/points", "")
+      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> put_req_header("content-length", Integer.to_string(byte_size(body)))
+      |> put_private(:dawarich_raw_body, body)
+      |> assign(:api_tag, "ingest")
+      |> Body.call([])
+
+    assert conn.assigns.api_params == %{"api_key" => "k", "a" => "1"}
+  end
 end

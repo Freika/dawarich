@@ -2,8 +2,11 @@
 
 class BulkStatsCalculatingJob < ApplicationJob
   queue_as :stats
+  OWNER_KEY = 'cron:bulk_stats_calculating_job'
 
   def perform
+    return if JobOwnership.oban?(OWNER_KEY)
+
     user_ids = User.active.pluck(:id) + User.trial.pluck(:id)
     return if user_ids.empty?
 

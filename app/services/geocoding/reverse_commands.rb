@@ -37,22 +37,12 @@ module Geocoding
     end
 
     def claim_dedup_keys(ids)
-      results = Sidekiq.redis do |redis|
-        redis.pipelined do |pipe|
-          ids.each do |id|
-            pipe.set(Point.geocode_dedup_key(id), 1, nx: true, ex: Point::GEOCODE_DEDUP_TTL)
-          end
-        end
-      end
-      ids.zip(results).filter_map { |id, claimed| id if claimed }
+      claimed = PhoenixClaims.claim_all(ids.map { Point.geocode_dedup_key(_1) }, Point::GEOCODE_DEDUP_TTL).to_set
+      ids.select { claimed.include?(Point.geocode_dedup_key(_1)) }
     end
 
     def clear_dedup_keys(ids)
-      Sidekiq.redis do |redis|
-        redis.pipelined do |pipe|
-          ids.each { |id| pipe.del(Point.geocode_dedup_key(id)) }
-        end
-      end
+      PhoenixClaims.unclaim_all(ids.map { Point.geocode_dedup_key(_1) })
       ids
     end
   end

@@ -13,7 +13,7 @@ module Trek
       return unless source&.sync_allowed? && !source.importing?
 
       result = nil
-      locked = ActiveRecord::Base.with_advisory_lock("trek-sync:#{source.id}", timeout_seconds: 0) do
+      locked = PhoenixLease.try_hold("trek-sync:#{source.id}") do
         source.reload
         unless source.importing?
           result = Trek::Sync.new(source).call(limit: BATCH_SIZE, after_id:)

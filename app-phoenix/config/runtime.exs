@@ -94,6 +94,10 @@ if config_env() != :test do
     lifeline: [rescue_after: {60, :minute}],
     shutdown_grace_period: 12_000
 
+  config :dawarich, :cable,
+    url: System.get_env("REDIS_URL"),
+    database: env_integer.("RAILS_WS_DB", 2)
+
   config :dawarich, :redis,
     url: System.get_env("REDIS_URL"),
     database: env_integer.("RAILS_JOB_QUEUE_DB", 1),

@@ -88,8 +88,7 @@ RSpec.describe TeslaMate::SyncJob, type: :job do
 
   it 'does not start a second sync while one already holds the user lock' do
     user = create(:user)
-    allow(ActiveRecord::Base).to receive(:with_advisory_lock)
-      .with("teslamate-sync:#{user.id}", timeout_seconds: 0).and_return(false)
+    allow(PhoenixLease).to receive(:try_hold).with("teslamate-sync:#{user.id}").and_return(false)
 
     expect(TeslaMate::Sync).not_to receive(:new)
 

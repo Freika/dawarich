@@ -2,7 +2,7 @@
 
 module Stats
   class ToponymsRefresh
-    LOCK_ID = Zlib.crc32('stats:toponyms_refresh')
+    LOCK_NAME = 'stats:toponyms_refresh'
     DISCOVERY_KEY = 'stats:toponyms_reconciliation:missing_cursor'
     TURN_KEY = 'stats:toponyms_reconciliation:turn'
     CURSOR_KEY = 'stats:toponyms_reconciliation:cursor'
@@ -11,29 +11,22 @@ module Stats
     RUN_BUDGET = 30.seconds
 
     def call
-      ActiveRecord::Base.connection_pool.with_connection do |connection|
-        locked = connection.select_value("SELECT pg_try_advisory_lock(#{LOCK_ID})")
-        next unless locked
-
-        begin
-          @deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + RUN_BUDGET
-          @remaining = MONTHS_PER_RUN
-          @results = {}
-          @scheduled_full = Set.new
-          discover_missing_month
-          first = Sidekiq.redis { |redis| redis.incr(TURN_KEY).odd? }
-          if first
-            reconcile
-            @results.clear
-            refresh_pending
-          else
-            @remaining -= RECONCILIATIONS_PER_RUN
-            refresh_pending
-            @remaining = RECONCILIATIONS_PER_RUN
-            reconcile if within_budget?
-          end
-        ensure
-          connection.execute("SELECT pg_advisory_unlock(#{LOCK_ID})")
+      PhoenixLease.try_hold(LOCK_NAME) do
+        @deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + RUN_BUDGET
+        @remaining = MONTHS_PER_RUN
+        @results = {}
+        @scheduled_full = Set.new
+        discover_missing_month
+        first = PhoenixCursors.incr(TURN_KEY).odd?
+        if first
+          reconcile
+          @results.clear
+          refresh_pending
+        else
+          @remaining -= RECONCILIATIONS_PER_RUN
+          refresh_pending
+          @remaining = RECONCILIATIONS_PER_RUN
+          reconcile if within_budget?
         end
       end
     end
@@ -41,10 +34,10 @@ module Stats
     private
 
     def reconcile
-      cursor = Sidekiq.redis { |redis| redis.get(CURSOR_KEY) }.to_i
+      cursor = PhoenixCursors.get(CURSOR_KEY).to_i
       rows = Stat.where('id > ?', cursor).order(:id).limit(RECONCILIATIONS_PER_RUN).pluck(:id, :user_id, :year, :month)
       if rows.empty?
-        Sidekiq.redis { |redis| redis.set(CURSOR_KEY, 0) }
+        PhoenixCursors.set(CURSOR_KEY, 0)
         return
       end
 
@@ -53,15 +46,15 @@ module Stats
 
         user = User.find_by(id: user_id)
         refresh(user, year, month) if user
-        Sidekiq.redis { |redis| redis.set(CURSOR_KEY, id) }
+        PhoenixCursors.set(CURSOR_KEY, id)
       end
     end
 
     def discover_missing_month
-      raw = Sidekiq.redis { |redis| redis.get(DISCOVERY_KEY) }
+      raw = PhoenixCursors.get(DISCOVERY_KEY)
       user_id, timestamp = raw ? JSON.parse(raw) : [0, -2_147_483_648]
       user = User.where('id >= ?', user_id).order(:id).first
-      return Sidekiq.redis { |redis| redis.del(DISCOVERY_KEY) } unless user
+      return PhoenixCursors.del(DISCOVERY_KEY) unless user
 
       timestamp = -2_147_483_648 if user.id != user_id
       first = user.points.not_anomaly.where('timestamp >= ?', timestamp).order(:timestamp).pick(:timestamp)
@@ -75,7 +68,7 @@ module Stats
       else
         cursor = [user.id + 1, -2_147_483_648]
       end
-      Sidekiq.redis { |redis| redis.set(DISCOVERY_KEY, cursor.to_json) }
+      PhoenixCursors.set(DISCOVERY_KEY, cursor.to_json)
     end
 
     def refresh_pending

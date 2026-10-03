@@ -5,20 +5,24 @@ require 'rails_helper'
 RSpec.describe 'Visits::FullHistoryRedetectJob serializes concurrent runs' do
   let(:user) { create(:user) }
   let(:base_ts) { 1_700_000_000 }
-  let(:redis_key) { "tracks:per_user_lock:#{user.id}" }
+  let(:lease_name) { "tracks:per_user_lock:#{user.id}" }
+
+  def lease_count
+    ActiveRecord::Base.connection.select_value(
+      "SELECT count(*) FROM phoenix.leases WHERE name = #{ActiveRecord::Base.connection.quote(lease_name)}"
+    ).to_i
+  end
 
   before do
     # New accounts are born re-detected (DB default), which starts the cooldown.
     user.update!(visits_redetected_at: 2.hours.ago)
-    Sidekiq.redis { |r| r.del(redis_key) }
+    phoenix_leases!
     3.times do |i|
       create(:point, user: user,
                      latitude: 52.5, longitude: 13.4, lonlat: 'POINT(13.4 52.5)',
                      timestamp: base_ts + i * 60, accuracy: 10, visit_id: nil)
     end
   end
-
-  after { Sidekiq.redis { |r| r.del(redis_key) } }
 
   it 'a second worker blocked by the per-user lock does not destroy suggested visits and notifies the user' do
     suggested = create(:visit, user: user, status: :suggested,
@@ -27,7 +31,11 @@ RSpec.describe 'Visits::FullHistoryRedetectJob serializes concurrent runs' do
                                 duration: 600, name: 'old')
 
     stub_const('Tracks::PerUserLock::DEFAULT_ACQUIRE_TIMEOUT', 0.2)
-    Sidekiq.redis { |r| r.set(redis_key, 'other-holder', ex: 60) }
+    ActiveRecord::Base.connection.execute(
+      'INSERT INTO phoenix.leases (name, holder, expires_at) ' \
+      "VALUES (#{ActiveRecord::Base.connection.quote(lease_name)}, 'other-holder', " \
+      "statement_timestamp() + interval '60 seconds')"
+    )
 
     expect { Visits::FullHistoryRedetectJob.new.perform(user.id) }.not_to raise_error
 
@@ -39,13 +47,13 @@ RSpec.describe 'Visits::FullHistoryRedetectJob serializes concurrent runs' do
   it 'acquires the per-user lock during a successful run and releases it afterwards' do
     observed_during_perform = nil
     allow_any_instance_of(Visits::SmartDetect).to receive(:call) do
-      observed_during_perform = Sidekiq.redis { |r| r.exists(redis_key) }
+      observed_during_perform = lease_count
       []
     end
 
     Visits::FullHistoryRedetectJob.new.perform(user.id)
 
     expect(observed_during_perform).to eq(1)
-    expect(Sidekiq.redis { |r| r.exists(redis_key) }).to eq(0)
+    expect(lease_count).to eq(0)
   end
 end
