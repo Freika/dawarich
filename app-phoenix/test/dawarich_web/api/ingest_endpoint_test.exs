@@ -28,12 +28,26 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
 
   @body ~s({"locations":{"geometry":{"coordinates":[13.4,52.5]},"properties":{"timestamp":"2026-09-28T11:00:00Z"}}})
 
-  defp post(port, path, body \\ @body) do
+  defp post(port, path, body \\ @body), do: post(port, path, "application/json", body)
+
+  defp post(
+         port,
+         path,
+         type,
+         body,
+         headers \\ [],
+         authorization \\ "Bearer phoenix-a3-endpoint-key"
+       ) do
     client = connect(port)
 
     send_raw(
       client,
-      "POST #{path} HTTP/1.1\r\nHost: localhost\r\nContent-Type: application/json\r\nAuthorization: Bearer phoenix-a3-endpoint-key\r\nContent-Length: #{byte_size(body)}\r\n\r\n#{body}"
+      [
+        "POST #{path} HTTP/1.1\r\nHost: localhost\r\nContent-Type: #{type}\r\n",
+        if(authorization, do: "Authorization: #{authorization}\r\n", else: []),
+        Enum.map(headers, fn {name, value} -> "#{name}: #{value}\r\n" end),
+        "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+      ]
     )
 
     client
@@ -44,6 +58,23 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
     {head, _rest} = read_head(socket)
     reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
     request_line(head)
+  end
+
+  defp puma_request(upstream, body) do
+    socket = accept(upstream)
+    {head, rest} = read_head(socket)
+    received = read_at_least(socket, rest, byte_size(body))
+    reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
+    {head, received}
+  end
+
+  defp assert_no_writes do
+    assert [[0]] = Repo.query!("SELECT count(*) FROM points").rows
+
+    assert [[0, 0, 0]] ==
+             Repo.query!(
+               "SELECT (SELECT count(*) FROM families), (SELECT count(*) FROM family_memberships), (SELECT count(*) FROM family_location_requests)"
+             ).rows
   end
 
   test "Phoenix answers an owned batch on a self-hosted install", %{port: port} do
@@ -77,6 +108,61 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
     client = post(port, "/api/v1/points.json")
     assert puma(upstream) == "POST /api/v1/points.json HTTP/1.1"
     assert {200, _, "rails"} = read_response(client)
+  end
+
+  test "invalid percent escapes in a query or form body reach Rails unchanged before either write",
+       %{
+         port: port,
+         upstream: upstream
+       } do
+    cases =
+      for escape <- ["%ZZ", "%", "%4"] do
+        [
+          {"/api/v1/points?a=#{escape}", "application/json", @body, []},
+          {"/api/v1/points", "application/x-www-form-urlencoded", "a=#{escape}", []}
+        ]
+      end
+      |> List.flatten()
+
+    for {path, type, body, headers} <- cases,
+        target <- [
+          path,
+          String.replace_prefix(path, "/api/v1/points", "/family/location_requests")
+        ] do
+      client = post(port, target, type, body, headers, nil)
+      {head, received} = puma_request(upstream, body)
+      assert request_line(head) == "POST #{target} HTTP/1.1"
+      assert received == body
+      assert {200, _, "rails"} = read_response(client)
+      assert_no_writes()
+    end
+  end
+
+  test "method override posts reach Rails with their body and override header before either write",
+       %{
+         port: port,
+         upstream: upstream
+       } do
+    cases = [
+      {"application/json", @body, [{"X-HTTP-Method-Override", "GET"}]},
+      {"application/x-www-form-urlencoded", "_method=delete", []},
+      {"application/x-www-form-urlencoded", "_method=dele%74e", []}
+    ]
+
+    for {type, body, headers} <- cases,
+        target <- ["/api/v1/points", "/family/location_requests"] do
+      client = post(port, target, type, body, headers, nil)
+      {head, received} = puma_request(upstream, body)
+      assert request_line(head) == "POST #{target} HTTP/1.1"
+      assert received == body
+
+      if headers != [] do
+        assert header(head, "x-http-method-override") == ["GET"]
+      end
+
+      assert {200, _, "rails"} = read_response(client)
+      assert_no_writes()
+    end
   end
 
   defp no_upstream!(upstream),
