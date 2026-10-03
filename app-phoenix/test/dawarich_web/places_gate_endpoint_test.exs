@@ -209,8 +209,14 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
           "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n" <>
           body
 
-      assert {line, [_cookie]} = answered_by_puma(port, ctx.upstream, raw)
-      assert line == "#{method} #{target} HTTP/1.1"
+      client = connect(port)
+      send_raw(client, raw)
+      puma = accept(ctx.upstream)
+      {head, rest} = read_head(puma)
+      assert request_line(head) == "#{method} #{target} HTTP/1.1"
+      assert read_at_least(puma, rest, byte_size(body)) == body
+      reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+      assert {200, _headers, "puma"} = read_response(client)
     end
   end
 
