@@ -917,6 +917,24 @@ defmodule DawarichWeb.EndpointTest do
     assert answered_by_phoenix(port, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n") == 302
   end
 
+  test "DAWARICH_RAILS_ROUTES=places hands the list and the drawer back with their query", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["places"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+    frame = "Accept: text/html, application/xhtml+xml\r\nTurbo-Frame: place-drawer\r\n"
+
+    for {target, headers} <- [{"/places", ""}, {"/places?page=2", ""}, {"/places/5", frame}],
+        do:
+          assert(
+            answered_by_puma(
+              port,
+              ctx.upstream,
+              "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n"
+            ) ==
+              "GET #{target} HTTP/1.1"
+          )
+  end
+
   test "Phoenix answers the map frames itself" do
     port = serve()
     accept = "Accept: text/html, application/xhtml+xml\r\n"
@@ -986,5 +1004,11 @@ defmodule DawarichWeb.EndpointTest do
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
               "GET #{target} HTTP/1.1"
           )
+
+    drawer =
+      "GET /places/5 HTTP/1.1\r\nHost: a\r\nAccept: text/html, application/xhtml+xml\r\n" <>
+        "Turbo-Frame: place-drawer\r\n\r\n"
+
+    assert answered_by_phoenix(port, drawer) == 302
   end
 end

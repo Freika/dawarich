@@ -294,6 +294,10 @@ defmodule DawarichWeb.Router do
         container: {:div, class: "contents"},
         metadata: %{rails_gate: {DawarichWeb.TripsGate, :show?}}
 
+      live "/places", DawarichWeb.PlacesLive.Index, :index,
+        container: {:div, class: "contents"},
+        metadata: %{rails_gate: {DawarichWeb.PlacesGate, :index?}}
+
       live "/settings/general", DawarichWeb.SettingsLive.General, :index,
         container: {:div, class: "contents"}
 
@@ -335,6 +339,13 @@ defmodule DawarichWeb.Router do
 
     get "/timeline_feeds/:id/track_info", DawarichWeb.MapFrames, :track_info,
       metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :track?}}
+  end
+
+  scope "/places" do
+    pipe_through :rails_frame
+
+    get "/:id", DawarichWeb.MapFrames, :place,
+      metadata: %{rails_gate: {DawarichWeb.PlacesGate, :drawer?}}
   end
 
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
