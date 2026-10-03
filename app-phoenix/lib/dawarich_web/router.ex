@@ -20,6 +20,25 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsHeaders
   end
 
+  pipeline :insights do
+    plug DawarichWeb.HostAuthorization
+    plug :accepts, ["html"]
+    plug DawarichWeb.ForceSSL
+    plug :fetch_query_params
+    plug DawarichWeb.InsightsVisit
+    plug DawarichWeb.RailsAuth
+    plug :phoenix_session
+    plug :fetch_session
+    plug :fetch_live_flash
+    plug DawarichWeb.Locale
+    plug DawarichWeb.LayoutAssigns
+    plug :put_root_layout, html: {DawarichWeb.Layouts, :root}
+    plug :protect_from_forgery
+    plug DawarichWeb.RailsHeaders
+    plug DawarichWeb.InsightsFrame
+    plug DawarichWeb.RequireUser
+  end
+
   pipeline :api_ingest do
     plug :put_api_tag, "ingest"
     plug DawarichWeb.HostAuthorization
@@ -160,6 +179,22 @@ defmodule DawarichWeb.Router do
     pipe_through :rails_form
 
     post "/exports", DawarichWeb.ExportsCreate, :create
+  end
+
+  scope "/" do
+    pipe_through :insights
+
+    get "/", DawarichWeb.InsightsHome, :index,
+      metadata: %{rails_gate: {DawarichWeb.InsightsGate, :owned?}}
+
+    live_session :insights_details,
+      session: {DawarichWeb.InsightsFrame, :live_session, []},
+      on_mount: DawarichWeb.InsightsFrameAuth,
+      layout: {DawarichWeb.Layouts, :app} do
+      live "/insights/details", DawarichWeb.InsightsLive.Details, :index,
+        container: {:div, class: "contents"},
+        metadata: %{rails_gate: {DawarichWeb.InsightsGate, :owned?}}
+    end
   end
 
   scope "/" do
