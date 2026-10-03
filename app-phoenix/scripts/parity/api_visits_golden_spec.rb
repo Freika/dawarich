@@ -4,7 +4,7 @@ require 'rails_helper'
 require_relative 'places_golden_support'
 
 module ApiVisitsGoldenOracle
-  TABLES = %w[users areas places visits points place_visits notes tags taggings].freeze
+  TABLES = %w[users areas places visits points place_visits notes tags taggings instance_settings].freeze
   AFTER = TABLES.drop(1).freeze
   OWNER = 953_001
   OTHER = 953_002
@@ -106,7 +106,7 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
     Rails.cache.clear
     allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
     allow(DawarichSettings).to receive(:store_geodata?).and_return(kase.fetch(:store_geodata, true))
-    places_sql("TRUNCATE #{oracle::TABLES.join(',')},instance_settings CASCADE")
+    places_sql("TRUNCATE #{oracle::TABLES.join(',')} CASCADE")
     InstanceSettings::Resolver.reset!
     stamps = { created_at: oracle::STAMP, updated_at: oracle::STAMP }
     user = { status: 1, timezone: 'UTC' }.merge(kase[:user] || {})
@@ -168,7 +168,10 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
   end
 
   def visits_provider(kase, owner)
-    configure_instance_geocoding
+    places_insert('instance_settings', id: 953_901, key: 'photon_api_host',
+                                       value: JSON.generate('photon.test.example.com'),
+                                       created_at: ApiVisitsGoldenOracle::STAMP, updated_at: ApiVisitsGoldenOracle::STAMP)
+    InstanceSettings::Resolver.reset!
     results = [42, 43].map do |id|
       data = { 'properties' => { 'osm_id' => id, 'osm_type' => 'N', 'name' => "Synthetic #{id}" },
                'geometry' => { 'coordinates' => [13.405, 52.52] } }

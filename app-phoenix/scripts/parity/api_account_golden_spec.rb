@@ -4,7 +4,7 @@ require 'rails_helper'
 require_relative 'places_golden_support'
 
 module ApiAccountGoldenOracle
-  TABLES = %w[users families family_memberships].freeze
+  TABLES = %w[users families family_memberships instance_settings].freeze
   AFTER = TABLES.freeze
   OWNER = 954_001
   OTHER = 954_002
@@ -98,7 +98,11 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
     places_insert('users', id: oracle::OTHER, email: 'a4rest-other@example.invalid', api_key: 'a4rest-account-other',
                            status: 1, settings: { 'timezone' => 'UTC' }, visits_redetected_at: oracle::STAMP, **stamps)
     account_family(kase, stamps) if %i[family single_family].include?(kase[:seed])
-    configure_instance_geocoding if kase[:geocoding]
+    if kase[:geocoding]
+      places_insert('instance_settings', id: 954_901, key: 'photon_api_host',
+                                         value: JSON.generate('photon.test.example.com'), **stamps)
+      InstanceSettings::Resolver.reset!
+    end
     @runtime_secret = nil
     @runtime_backup = nil
     if kase[:otp]
