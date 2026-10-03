@@ -6,12 +6,12 @@ defmodule Dawarich.Test.ApiGolden do
 
   alias Dawarich.ReleaseMigrations.Effects.Support.RubyFloat
 
-  def check(kase, port, upstream) do
+  def check(kase, port, upstream, options \\ []) do
     client = connect(port)
     send_raw(client, raw(kase["request"]))
 
     if kase["expect"] == "own",
-      do: owned(kase, client, upstream),
+      do: owned(kase, client, upstream, options),
       else: rails(kase, client, upstream)
   end
 
@@ -29,11 +29,11 @@ defmodule Dawarich.Test.ApiGolden do
       "\r\n"
     ]
 
-  defp owned(kase, client, upstream) do
+  defp owned(kase, client, upstream, options) do
     %{"status" => status, "headers" => expected} = kase["response"]
     body = body(kase["response"])
     {got_status, headers, got_body} = read_response(client)
-    ignore = kase["ignore"] || []
+    ignore = (kase["ignore"] || []) ++ float_derived_headers(options)
 
     names =
       headers
@@ -41,14 +41,19 @@ defmodule Dawarich.Test.ApiGolden do
       |> Enum.uniq()
       |> Kernel.--(["date", "content-length" | ignore])
 
-    assert {got_status, got_body} == {status, body}
+    assert {got_status, comparable_body(got_body, options)} ==
+             {status, comparable_body(body, options)}
+
     assert Enum.sort(names) == Enum.sort(Map.keys(expected) -- ignore)
 
     for name <- names -- ["x-request-id", "x-runtime"],
         do: assert(values(headers, name) == [expected[name]], name)
 
     assert values(headers, "content-length") ==
-             if(status == 304, do: [], else: [Integer.to_string(byte_size(body))])
+             if(status == 304,
+               do: [],
+               else: [Integer.to_string(byte_size(content_length_body(got_body, body, options)))]
+             )
 
     assert [runtime] = values(headers, "x-runtime")
     assert runtime =~ ~r/\A\d+\.\d{6}\z/
@@ -98,4 +103,44 @@ defmodule Dawarich.Test.ApiGolden do
     do: "[" <> Enum.map_join(value, ",", &exact_json/1) <> "]"
 
   defp exact_json(value), do: Jason.encode!(value)
+
+  defp comparable_body(body, float_precision: precision, float_fields: fields) do
+    case Jason.decode(body) do
+      {:ok, value} -> normalize_floats(value, MapSet.new(fields), precision)
+      {:error, _} -> body
+    end
+  end
+
+  defp comparable_body(body, _options), do: body
+
+  defp content_length_body(got_body, _body, float_precision: _precision, float_fields: _fields),
+    do: got_body
+
+  defp content_length_body(_got_body, body, _options), do: body
+
+  defp float_derived_headers(float_precision: _precision, float_fields: _fields),
+    do: ["etag", "set-cookie"]
+
+  defp float_derived_headers(_options), do: []
+
+  defp normalize_floats(value, fields, precision) when is_list(value),
+    do: Enum.map(value, &normalize_floats(&1, fields, precision))
+
+  defp normalize_floats(value, fields, precision) when is_map(value) do
+    Map.new(value, fn {key, nested} ->
+      value =
+        if MapSet.member?(fields, key) and is_float(nested),
+          do: round_float(nested, precision),
+          else: nested
+
+      {key, normalize_floats(value, fields, precision)}
+    end)
+  end
+
+  defp normalize_floats(value, _fields, _precision), do: value
+
+  defp round_float(value, precision) do
+    scale = :math.pow(10, precision)
+    :erlang.round(value * scale) / scale
+  end
 end
