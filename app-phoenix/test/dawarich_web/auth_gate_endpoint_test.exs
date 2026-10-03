@@ -193,6 +193,24 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
   end
 
+  test "credentials on: the invitation variant of the sign-in page stays with Rails", ctx do
+    Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
+    registration("false")
+
+    path = "/users/sign_in?invitation_token=abc"
+    assert to_puma(ctx, get(path)).line == "GET #{path} HTTP/1.1"
+
+    {session, _cookie} = guest()
+    session = Map.put(session, "invitation_token", "abc")
+
+    cookie =
+      "_dawarich_session=" <>
+        RailsCookies.encrypt(session, "_dawarich_session", RailsSecret.fetch())
+
+    request = "GET /users/sign_in HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\n\r\n"
+    assert to_puma(ctx, request).line == "GET /users/sign_in HTTP/1.1"
+  end
+
   describe "recovery" do
     setup do
       names = ~w(SMTP_FROM SMTP_SERVER E2E_SMTP_PORT DOMAIN SMTP_AUTHENTICATION)

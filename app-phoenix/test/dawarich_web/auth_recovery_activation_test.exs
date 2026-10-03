@@ -70,7 +70,8 @@ defmodule DawarichWeb.AuthRecoveryActivationTest do
       "/users/password",
       [
         {"authenticity_token", token || RailsCsrf.masked_token(session)},
-        {"user[email]", email}
+        {"user[email]", email},
+        {"commit", "Send me reset password instructions"}
       ],
       session,
       enqueue
@@ -88,7 +89,8 @@ defmodule DawarichWeb.AuthRecoveryActivationTest do
         {"authenticity_token", RailsCsrf.masked_token(session)},
         {"user[reset_password_token]", raw},
         {"user[password]", password},
-        {"user[password_confirmation]", password}
+        {"user[password_confirmation]", password},
+        {"commit", "Change my password"}
       ],
       session,
       nil
