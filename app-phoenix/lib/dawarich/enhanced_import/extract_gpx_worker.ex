@@ -53,7 +53,7 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorker do
       Extract.process(repo, import, storage, job.args["event_id"], deadline)
     end
 
-    case PerUserLock.with_user_lock(import.user_id, process, Keyword.get(opts, :lock, [])) do
+    case PerUserLock.with_user_lock(repo, import.user_id, process, Keyword.get(opts, :lock, [])) do
       {:ok, counts} ->
         State.completed!(repo, import, counts)
         :ok
@@ -65,9 +65,6 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorker do
       {:error, :timeout} ->
         State.pending!(repo, import)
         {:snooze, 60}
-
-      {:error, {:redis, reason}} ->
-        raise RuntimeError, "Redis unavailable: #{inspect(reason)}"
     end
   rescue
     exception -> fail(repo, import, exception, __STACKTRACE__, job)

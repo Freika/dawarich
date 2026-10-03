@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Per-user anomaly backfill. Processes points in monthly chunks,
-# guarded by an advisory lock so duplicate enqueues are harmless.
+# guarded by a per-user lease so duplicate enqueues are harmless.
 class Points::AnomalyBackfillUserJob < ApplicationJob
   include Resumable
 
@@ -11,7 +11,7 @@ class Points::AnomalyBackfillUserJob < ApplicationJob
     user = User.find(user_id)
     lock_key = "anomaly_backfill:#{user.id}"
 
-    lock_acquired = ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
+    lock_acquired = PhoenixLease.try_hold(lock_key) do
       step :reset_flags do
         reset_existing_flags(user) if reset
       end

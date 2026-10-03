@@ -26,6 +26,14 @@ RSpec.describe Visits::SelectPlace do
   end
 
   describe '#call' do
+    it 'serialises duplicate selections with a transaction-scoped advisory lock' do
+      allow_any_instance_of(described_class).to receive(:advisory_locks_enabled?).and_return(true)
+      expect(ActiveRecord::Base).to receive(:with_advisory_lock)
+        .with(start_with("select_place:#{user.id}:"), transaction: true).and_call_original
+
+      described_class.new(user:, visit:, photon: photon_payload).call
+    end
+
     it 'creates a user-scoped Place when no match exists' do
       place = described_class.new(user: user, visit: visit, photon: photon_payload).call
 

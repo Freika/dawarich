@@ -17,6 +17,7 @@ defmodule Dawarich.Geocoding.HookRepo do
   end
 
   def transaction(fun, opts \\ []), do: ScratchRepo.transaction(fun, opts)
+  def in_transaction?, do: ScratchRepo.in_transaction?()
   def rollback(value), do: ScratchRepo.rollback(value)
 
   defp hook(sql, params),

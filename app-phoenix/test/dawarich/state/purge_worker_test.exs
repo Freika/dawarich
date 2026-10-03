@@ -115,6 +115,17 @@ defmodule Dawarich.State.PurgeWorkerTest do
     assert PurgeWorker.__opts__()[:unique][:states] == :incomplete
   end
 
+  test "purge deletes expired pending achievement checks and keeps live ones" do
+    rows("""
+    INSERT INTO phoenix.achievement_checks (user_id, oldest_timestamp, revision, expires_at) VALUES
+      (1, 100, 1, statement_timestamp() - interval '1 second'),
+      (2, 200, 1, statement_timestamp() + interval '1 hour')
+    """)
+
+    assert PurgeWorker.run(ScratchRepo, 100) == :ok
+    assert rows("SELECT user_id FROM phoenix.achievement_checks") == [[2]]
+  end
+
   defp expired!(claims, counters, leases) do
     for key <- claims,
         do:

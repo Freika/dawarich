@@ -320,6 +320,7 @@ RSpec.describe JobCommands do
         ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '2s'")
         ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
       end
+      PhoenixTables.install_state!
     end
 
     it 'moves unlocked commands and reports the pending command left behind by the relay' do
@@ -366,6 +367,7 @@ RSpec.describe JobCommands do
         ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '2s'")
         ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
       end
+      PhoenixTables.install_state!
     end
 
     it 'leaves no outbox row when the caller transaction rolls back' do

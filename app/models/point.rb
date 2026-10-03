@@ -103,19 +103,17 @@ class Point < ApplicationRecord
     config ||= Geocoding::Config.for(user_id)
     return unless config.enabled?
 
+    key = self.class.geocode_dedup_key(id)
     if force
-      Sidekiq.redis { |r| r.del(self.class.geocode_dedup_key(id)) }
+      PhoenixClaims.unclaim(key)
     else
-      claimed = Sidekiq.redis do |r|
-        r.set(self.class.geocode_dedup_key(id), 1, nx: true, ex: GEOCODE_DEDUP_TTL)
-      end
-      return unless claimed
+      return unless PhoenixClaims.claim(key, GEOCODE_DEDUP_TTL)
     end
 
     begin
       ReverseGeocodingJob.perform_later(self.class.to_s, id, force: force)
     rescue StandardError
-      Sidekiq.redis { |r| r.del(self.class.geocode_dedup_key(id)) } unless force
+      PhoenixClaims.unclaim(key) unless force
       raise
     end
   end
