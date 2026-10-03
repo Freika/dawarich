@@ -140,12 +140,15 @@ defmodule Dawarich.Auth.Recovery.MailWorkerTest do
     assert mail.html =~ "/users/unlock?unlock_token=#{@raw}"
   end
 
+  @deliverable %{
+    "RAILS_ENV" => "production",
+    "SMTP_FROM" => @sender,
+    "SMTP_SERVER" => "smtp.example.test",
+    "DOMAIN" => "dawarich.example.test"
+  }
+
   test "deliverable?/1 needs a sender, a server and DOMAIN" do
-    base = %{
-      "SMTP_FROM" => @sender,
-      "SMTP_SERVER" => "smtp.example.test",
-      "DOMAIN" => "dawarich.example.test"
-    }
+    base = @deliverable
 
     assert MailWorker.deliverable?(base)
 
@@ -162,6 +165,41 @@ defmodule Dawarich.Auth.Recovery.MailWorkerTest do
         do: refute(MailWorker.deliverable?(Map.put(base, "DOMAIN", domain)), domain)
 
     assert MailWorker.deliverable?(Map.put(base, "DOMAIN", "dawarich.example.test:3000"))
+  end
+
+  test "deliverable?/1 only where Rails' mailer is the one Phoenix mirrors: production and staging" do
+    assert MailWorker.deliverable?(Map.put(@deliverable, "RAILS_ENV", "staging"))
+
+    for env <- ["development", "test", "Production", "", " "],
+        do: refute(MailWorker.deliverable?(Map.put(@deliverable, "RAILS_ENV", env)), env)
+
+    refute MailWorker.deliverable?(Map.delete(@deliverable, "RAILS_ENV"))
+  end
+
+  test "deliverable?/1 only when Phoenix can configure the transport Rails would use" do
+    for auth <- ~w(plain login cram_md5 none),
+        do:
+          assert(
+            MailWorker.deliverable?(Map.put(@deliverable, "SMTP_AUTHENTICATION", auth)),
+            auth
+          )
+
+    for auth <- ~w(xoauth2 ntlm gssapi digest_md5),
+        do:
+          refute(
+            MailWorker.deliverable?(Map.put(@deliverable, "SMTP_AUTHENTICATION", auth)),
+            auth
+          )
+
+    refute MailWorker.deliverable?(
+             Map.put(@deliverable, "SMTP_OPENSSL_VERIFY_MODE", "client_once")
+           )
+
+    refute MailWorker.deliverable?(
+             @deliverable
+             |> Map.delete("SMTP_SERVER")
+             |> Map.put("E2E_SMTP_PORT", "abc")
+           )
   end
 
   test "the two Devise mails equal Rails' rendering and framing" do

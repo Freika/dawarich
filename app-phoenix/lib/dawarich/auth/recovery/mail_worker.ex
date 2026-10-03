@@ -3,20 +3,22 @@ defmodule Dawarich.Auth.Recovery.MailWorker do
   use Oban.Worker, queue: :mailers, max_attempts: 20
 
   alias Dawarich.Auth.Recovery.{Mail, Notification}
-  alias Dawarich.Mail.{Delivery, Recipient, Wave2}
+  alias Dawarich.Mail.{Delivery, Recipient, SmtpConfig, Wave2}
   alias Dawarich.{RailsCookies, RailsSecret}
 
   @seal "dawarich.auth.recovery"
   @lifetime 6 * 3600
+  @mirrored_envs ~w(production staging)
   @kinds %{
     "reset_password_instructions" => {:reset_password_instructions, "reset_password_token"},
     "unlock_instructions" => {:unlock_instructions, "unlock_token"}
   }
 
   def deliverable?(env) do
-    present?(env["SMTP_FROM"]) and
+    env["RAILS_ENV"] in @mirrored_envs and present?(env["SMTP_FROM"]) and
       (present?(env["SMTP_SERVER"]) or present?(env["E2E_SMTP_PORT"])) and
-      present?(env["DOMAIN"]) and base_url?(env) and is_binary(RailsSecret.fetch())
+      present?(env["DOMAIN"]) and base_url?(env) and transport?(env) and
+      is_binary(RailsSecret.fetch())
   end
 
   def enqueue(%Notification{} = notification, oban \\ Oban, now \\ DateTime.utc_now()) do
@@ -94,6 +96,13 @@ defmodule Dawarich.Auth.Recovery.MailWorker do
       {:ok, base_url} -> Mail.valid_base_url?(base_url)
       _ -> false
     end
+  end
+
+  defp transport?(env) do
+    SmtpConfig.options(env)
+    true
+  rescue
+    ArgumentError -> false
   end
 
   defp present?(value), do: is_binary(value) and String.trim(value) != ""

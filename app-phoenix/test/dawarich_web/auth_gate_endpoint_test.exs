@@ -195,7 +195,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
 
   describe "recovery" do
     setup do
-      names = ~w(SMTP_FROM SMTP_SERVER E2E_SMTP_PORT DOMAIN)
+      names = ~w(SMTP_FROM SMTP_SERVER E2E_SMTP_PORT DOMAIN SMTP_AUTHENTICATION)
       saved = for name <- names, value = System.get_env(name), do: {name, value}
       Enum.each(names, &System.delete_env/1)
 
@@ -208,6 +208,13 @@ defmodule DawarichWeb.AuthGateEndpointTest do
       :ok
     end
 
+    defp mail_setup do
+      System.put_env("RAILS_ENV", "production")
+      System.put_env("SMTP_FROM", "Dawarich <a11a@dawarich.test>")
+      System.put_env("SMTP_SERVER", "smtp.example.test")
+      System.put_env("DOMAIN", "dawarich.example.test")
+    end
+
     defp recovery_post(email) do
       {session, cookie} = guest()
 
@@ -217,8 +224,11 @@ defmodule DawarichWeb.AuthGateEndpointTest do
           {"user[email]", email}
         ])
 
-      form("POST", "/users/password", cookie, body)
+      {form("POST", "/users/password", cookie, body), body}
     end
+
+    defp digest_of(id),
+      do: Repo.query!("SELECT reset_password_token FROM users WHERE id = $1", [id]).rows
 
     test "recovery on: Phoenix answers the recovery forms; credentials alone leaves them to Puma",
          ctx do
@@ -236,20 +246,17 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     test "recovery on with a mail setup: Phoenix writes the digest and one mailers job, Puma never sees the post",
          ctx do
       Application.put_env(:dawarich, :phoenix_auth, ["recovery"])
-      System.put_env("SMTP_FROM", "Dawarich <a11a@dawarich.test>")
-      System.put_env("SMTP_SERVER", "smtp.example.test")
-      System.put_env("DOMAIN", "dawarich.example.test")
+      mail_setup()
       email = "a11a-#{System.unique_integer([:positive])}@dawarich.test"
       id = user!(%{email: email})
+      {request, _body} = recovery_post(email)
 
-      assert {303, headers, ""} = exchange(ctx, recovery_post(email))
+      assert {303, headers, ""} = exchange(ctx, request)
       assert values(headers, "x-dawarich-auth-owner") == ["native-recovery"]
       assert values(headers, "location") == ["http://a/users/sign_in"]
       no_puma(ctx)
 
-      assert [[digest]] =
-               Repo.query!("SELECT reset_password_token FROM users WHERE id = $1", [id]).rows
-
+      assert [[digest]] = digest_of(id)
       assert is_binary(digest)
 
       assert Repo.query!("SELECT worker, args->>'digest' FROM oban.oban_jobs").rows == [
@@ -262,23 +269,59 @@ defmodule DawarichWeb.AuthGateEndpointTest do
       Application.put_env(:dawarich, :phoenix_auth, ["recovery"])
       email = "a11a-#{System.unique_integer([:positive])}@dawarich.test"
       id = user!(%{email: email})
+      {request, body} = recovery_post(email)
+
+      seen = to_puma(ctx, request)
+      assert seen.body == body
+      assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+      assert digest_of(id) == [[nil]]
+      assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[0]]
+    end
+
+    test "recovery on where Phoenix cannot mail as Rails does (development or unset RAILS_ENV, an SMTP authentication only Rails speaks): the post reaches Puma, nothing written",
+         ctx do
+      Application.put_env(:dawarich, :phoenix_auth, ["recovery"])
+      email = "a11a-#{System.unique_integer([:positive])}@dawarich.test"
+      id = user!(%{email: email})
+
+      for {name, value} <- [
+            {"RAILS_ENV", nil},
+            {"RAILS_ENV", "development"},
+            {"SMTP_AUTHENTICATION", "xoauth2"}
+          ] do
+        mail_setup()
+        if value, do: System.put_env(name, value), else: System.delete_env(name)
+        {request, body} = recovery_post(email)
+
+        seen = to_puma(ctx, request)
+        assert seen.body == body, "#{name}=#{inspect(value)}"
+        assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+      end
+
+      assert digest_of(id) == [[nil]]
+      assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[0]]
+    end
+
+    test "OIDC configured: neither the recovery forms nor the sign-in reach the native flows",
+         ctx do
+      Application.put_env(:dawarich, :phoenix_auth, ["credentials", "recovery"])
+      mail_setup()
+      System.put_env("OIDC_CLIENT_ID", "synthetic")
+      System.put_env("OIDC_CLIENT_SECRET", "synthetic")
+
+      assert to_puma(ctx, get("/users/password/new")).line == "GET /users/password/new HTTP/1.1"
+      assert to_puma(ctx, get("/users/sign_in")).line == "GET /users/sign_in HTTP/1.1"
+
       {session, cookie} = guest()
 
       body =
         URI.encode_query([
           {"authenticity_token", RailsCsrf.masked_token(session)},
-          {"user[email]", email}
+          {"user[email]", "oidc@dawarich.test"},
+          {"user[password]", "synthetic-password"}
         ])
 
-      seen = to_puma(ctx, form("POST", "/users/password", cookie, body))
-      assert seen.body == body
-      assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
-
-      assert Repo.query!("SELECT reset_password_token FROM users WHERE id = $1", [id]).rows == [
-               [nil]
-             ]
-
-      assert Repo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[0]]
+      assert to_puma(ctx, form("POST", "/users/sign_in", cookie, body)).body == body
     end
   end
 end
