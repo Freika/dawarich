@@ -23,6 +23,13 @@ defmodule Dawarich.Entitlements do
      if(inherited, do: "family", else: Map.get(@plan_names, user.plan, ""))}
   end
 
+  def families?(_user, true, _now), do: true
+
+  def families?(user, false, now),
+    do:
+      inherited_family_access?(user.id, now) or
+        (user.plan == @family and future?(user.active_until, now))
+
   def inherited?(nil, @family, owner_until, now), do: future?(owner_until, now)
   def inherited?(nil, _plan, _owner_until, _now), do: false
   def inherited?(access_until, _plan, _owner_until, now), do: future?(access_until, now)

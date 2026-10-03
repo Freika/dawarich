@@ -14,22 +14,6 @@ Sidekiq.configure_server do |config|
   end
 
   config.on(:startup) do
-    Trips::CalculationEventsBroadcaster.start
-  rescue StandardError => e
-    Rails.logger.warn("[Trips] calculation events broadcaster failed to start: #{e.class}: #{e.message}")
-  end
-
-  config.on(:shutdown) { Trips::CalculationEventsBroadcaster.stop }
-
-  config.on(:startup) do
-    Notifications::EventsBroadcaster.start
-  rescue StandardError => e
-    Rails.logger.warn("[Notifications] events broadcaster failed to start: #{e.class}: #{e.message}")
-  end
-
-  config.on(:shutdown) { Notifications::EventsBroadcaster.stop }
-
-  config.on(:startup) do
     RailsCommands::Poller.start
   rescue StandardError => e
     Rails.logger.warn("[RailsCommands] poller failed to start: #{e.class}: #{e.message}")
