@@ -4,56 +4,59 @@ defmodule Dawarich.Cable.TurboEvents do
   alias Dawarich.{Cable, Notifications}
   alias DawarichWeb.CableTurbo
 
-  @claim_notifications """
-  DELETE FROM phoenix.notification_events WHERE id IN (
-    SELECT id FROM phoenix.notification_events ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED)
+  @batch 100
+  @claim_notification """
+  DELETE FROM phoenix.notification_events WHERE id = (
+    SELECT id FROM phoenix.notification_events ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)
   RETURNING notification_id
   """
-  @claim_trips """
-  DELETE FROM phoenix.trip_events WHERE id IN (
-    SELECT id FROM phoenix.trip_events ORDER BY id LIMIT 100 FOR UPDATE SKIP LOCKED)
+  @claim_trip """
+  DELETE FROM phoenix.trip_events WHERE id = (
+    SELECT id FROM phoenix.trip_events ORDER BY id LIMIT 1 FOR UPDATE SKIP LOCKED)
   RETURNING id, trip_id, kind, failed
   """
-  @notifications """
+  @notification """
   SELECT n.id, n.user_id, n.title, n.kind,
          (SELECT count(*) FROM notifications u WHERE u.user_id = n.user_id AND u.read_at IS NULL)
   FROM notifications n JOIN users usr ON usr.id = n.user_id AND usr.deleted_at IS NULL
-  WHERE n.id = ANY($1) ORDER BY n.id
+  WHERE n.id = $1
   """
   @trip "SELECT coalesce(last_recalculated_at > $2::timestamp - interval '60 seconds', false) FROM trips WHERE id = $1"
 
   def drain(jobs_repo, repo), do: notifications(jobs_repo, repo) + trips(jobs_repo, repo)
 
-  def notifications(jobs_repo, repo), do: claimed(jobs_repo, fn -> notify(jobs_repo, repo) end)
+  def notifications(jobs_repo, repo),
+    do: each_event(jobs_repo, @claim_notification, &notify(repo, &1), 0)
 
   def trips(jobs_repo, repo, now \\ NaiveDateTime.utc_now()),
-    do: claimed(jobs_repo, fn -> relay_trips(jobs_repo, repo, now) end)
+    do: each_event(jobs_repo, @claim_trip, &trip(repo, &1, now), 0)
 
-  defp claimed(jobs_repo, fun) do
-    {:ok, count} = jobs_repo.transaction(fun)
-    count
+  defp each_event(_jobs_repo, _claim, _publish, @batch), do: @batch
+
+  defp each_event(jobs_repo, claim, publish, done) do
+    {:ok, claimed?} =
+      jobs_repo.transaction(fn ->
+        case jobs_repo.query!(claim, [], log: false).rows do
+          [event] ->
+            publish.(event)
+            true
+
+          [] ->
+            false
+        end
+      end)
+
+    if claimed?, do: each_event(jobs_repo, claim, publish, done + 1), else: done
   end
 
-  defp notify(jobs_repo, repo) do
-    ids = for [id] <- jobs_repo.query!(@claim_notifications, [], log: false).rows, do: id
-
-    if ids != [] do
-      for [id, user_id, title, kind, unread] <-
-            repo.query!(@notifications, [ids], log: false).rows do
-        item = %{id: id, title: title, kind: Notifications.kind_name(kind)}
-        stream = [{:user, user_id}, "notifications"]
-        :ok = Cable.turbo(stream, "prepend", "notifications-list", CableTurbo.navbar_item(item))
-        :ok = Cable.turbo(stream, "replace", "notifications-badge", CableTurbo.badge(unread))
-      end
+  defp notify(repo, [notification_id]) do
+    for [id, user_id, title, kind, unread] <-
+          repo.query!(@notification, [notification_id], log: false).rows do
+      item = %{id: id, title: title, kind: Notifications.kind_name(kind)}
+      stream = [{:user, user_id}, "notifications"]
+      :ok = Cable.turbo(stream, "prepend", "notifications-list", CableTurbo.navbar_item(item))
+      :ok = Cable.turbo(stream, "replace", "notifications-badge", CableTurbo.badge(unread))
     end
-
-    length(ids)
-  end
-
-  defp relay_trips(jobs_repo, repo, now) do
-    events = jobs_repo.query!(@claim_trips, [], log: false).rows |> Enum.sort()
-    Enum.each(events, &trip(repo, &1, now))
-    length(events)
   end
 
   defp trip(repo, [_id, trip_id, "path", _failed], now) do

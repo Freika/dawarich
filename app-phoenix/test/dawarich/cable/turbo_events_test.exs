@@ -86,4 +86,24 @@ defmodule Dawarich.Cable.TurboEventsTest do
     assert A12a.heard_count(300) == 3
     assert A12a.queued() == 0
   end
+
+  test "a publish failure keeps only the events not yet published; the next drain sends just those" do
+    trip = A12a.trip_id!("trip_idle")
+    path = %{"trip_id" => trip, "kind" => "path", "distance_unit" => "km", "failed" => false}
+    A12a.insert_events!(List.duplicate(path, 5))
+    A12a.swap_publisher!(A12a.flaky_redis_url(2))
+    {:ok, _} = A12a.listen_all()
+
+    assert_raise MatchError, fn ->
+      TurboEvents.trips(Dawarich.Jobs.repo(), Dawarich.Repo, A12a.naive_now())
+    end
+
+    assert A12a.heard_count(300) == 2
+    assert A12a.queued() == 3
+
+    A12a.swap_publisher!(A12a.test_redis_url())
+    assert TurboEvents.trips(Dawarich.Jobs.repo(), Dawarich.Repo, A12a.naive_now()) == 3
+    assert A12a.heard_count(300) == 3
+    assert A12a.queued() == 0
+  end
 end

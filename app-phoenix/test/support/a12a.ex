@@ -118,6 +118,59 @@ defmodule Dawarich.Test.A12a do
     start_supervised!(spec)
   end
 
+  def flaky_redis_url(allowed_publishes) do
+    {:ok, listen} =
+      :gen_tcp.listen(0, [:binary, ip: {127, 0, 0, 1}, active: false, reuseaddr: true])
+
+    {:ok, port} = :inet.port(listen)
+    %URI{host: host, port: upstream} = URI.parse(test_redis_url())
+    counter = :counters.new(1, [])
+    upstream = {String.to_charlist(host), upstream}
+    start_supervised!({Task, fn -> accept_loop(listen, upstream, counter, allowed_publishes) end})
+    "redis://127.0.0.1:#{port}"
+  end
+
+  defp accept_loop(listen, upstream, counter, allowed) do
+    {:ok, client} = :gen_tcp.accept(listen)
+    pid = spawn_link(fn -> forward(client, upstream, counter, allowed) end)
+    :ok = :gen_tcp.controlling_process(client, pid)
+    send(pid, :go)
+    accept_loop(listen, upstream, counter, allowed)
+  end
+
+  defp forward(client, {host, port}, counter, allowed) do
+    receive do
+      :go -> :ok
+    end
+
+    {:ok, server} = :gen_tcp.connect(host, port, [:binary, active: true])
+    :ok = :inet.setopts(client, active: true)
+    relay(client, server, counter, allowed)
+  end
+
+  defp relay(client, server, counter, allowed) do
+    receive do
+      {:tcp, ^client, data} ->
+        if String.contains?(data, "PUBLISH"), do: :counters.add(counter, 1, 1)
+
+        if :counters.get(counter, 1) > allowed do
+          :gen_tcp.close(client)
+          :gen_tcp.close(server)
+        else
+          :ok = :gen_tcp.send(server, data)
+          relay(client, server, counter, allowed)
+        end
+
+      {:tcp, ^server, data} ->
+        :ok = :gen_tcp.send(client, data)
+        relay(client, server, counter, allowed)
+
+      {:tcp_closed, _socket} ->
+        :gen_tcp.close(client)
+        :gen_tcp.close(server)
+    end
+  end
+
   def dead_redis_url do
     {:ok, listen} = :gen_tcp.listen(0, ip: {127, 0, 0, 1})
     {:ok, port} = :inet.port(listen)
