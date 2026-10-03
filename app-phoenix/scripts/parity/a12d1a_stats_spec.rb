@@ -331,7 +331,9 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
       'call' => { 'kind' => kind, 'user_id' => digest_user_id, 'year' => year,
                   'month' => kind == 'monthly' ? month : nil },
       'options' => { 'now' => digest_now.iso8601, 'ambient_zone' => 'Europe/Berlin',
-                     'env' => { 'SELF_HOSTED' => 'false', 'TIME_ZONE' => 'Europe/Berlin' }, 'uuid' => digest_uuid },
+                     'env' => { 'SELF_HOSTED' => 'false',
+                                'TIME_ZONE' => Users::SafeSettings::DEFAULT_VALUES.fetch('timezone') },
+                     'uuid' => digest_uuid },
       'legacy_duplicates' => profile == 'duplicates', 'null_segment_mode' => profile == 'nil_mode',
       'input' => input, 'before' => before,
       'expected' => { 'result_id' => result&.id, 'rows' => digest_rows, 'error' => error }.merge(extra)
