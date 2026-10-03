@@ -17,8 +17,6 @@ const globals = {
 }
 vm.runInNewContext(source.replace(/^import[\s\S]*?from "[^"]+"\n/gm, ""), globals)
 
-// Use the actual pinned LiveView attribute reconciler, rather than reimplementing
-// its removal rules. Minimal attribute adapters avoid installing a DOM package.
 const client = await readFile(new URL("../../deps/phoenix_live_view/priv/static/phoenix_live_view.esm.js", import.meta.url), "utf8")
 const start = client.indexOf("var DOM = {")
 const end = client.indexOf("\nvar dom_default = DOM;", start)
