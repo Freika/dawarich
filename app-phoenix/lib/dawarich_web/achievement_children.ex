@@ -75,11 +75,17 @@ defmodule DawarichWeb.AchievementChildren do
               type="search"
               name="q"
               id="q"
+              phx-update="ignore"
             />
           </div>
           <div class="ach-status-field">
             <label class="sr-only" for="status">{t(@locale, "achievements.ui.card_status", %{})}</label>
-            <select class="select select-bordered select-sm w-full" name="status" id="status"><option
+            <select
+              class="select select-bordered select-sm w-full"
+              name="status"
+              id="status"
+              phx-update="ignore"
+            ><option
               :for={status <- statuses(@view.level)}
               selected={@view.status == status && "selected"}
               value={status}
