@@ -55,11 +55,20 @@ RSpec.describe 'RailsCommands::A8Handlers' do
       .to have_enqueued_job(ActiveStorage::PurgeJob).with(blob)
   end
 
-  it 'redetection shim delegates to the existing job without stamping cooldown' do
+  it 'redetection shim invokes existing FullHistoryRedetectJob with the owner id' do
     user.update_columns(visits_redetected_at: nil)
     clear_enqueued_jobs
-    expect { RailsCommands::Registry.handler('visits.web_redetect').call('user_id' => user.id) }
+    expect do
+      RailsCommands::Registry.handler('visits.web_redetect').call(
+        'user_id' => user.id, 'locale' => 'de', 'timezone' => 'America/New_York'
+      )
+    end
       .to have_enqueued_job(Visits::FullHistoryRedetectJob).with(user.id)
+    expect(enqueued_jobs.last['locale']).to eq('de')
+    expect(enqueued_jobs.last['timezone']).to eq('America/New_York')
     expect(user.reload.visits_redetected_at).to be_nil
+    clear_enqueued_jobs
+    RailsCommands::A8Handlers.redetect('user_id' => User.maximum(:id) + 1)
+    expect(enqueued_jobs).to be_empty
   end
 end

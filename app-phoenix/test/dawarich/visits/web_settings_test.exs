@@ -7,6 +7,115 @@ defmodule Dawarich.Visits.WebSettingsTest do
   alias Dawarich.Test.RailsUser
   @now ~U[2026-10-03 10:00:00Z]
 
+  describe "writes" do
+    setup do
+      alias Dawarich.ScratchRepo
+      Dawarich.JobsCase.reset!(ScratchRepo)
+
+      ScratchRepo.insert_all("users", [
+        %{
+          id: 8890,
+          email: "a8-settings-write@dawarich.test",
+          encrypted_password: "synthetic",
+          settings: %{
+            "timezone" => "Europe/Berlin",
+            "visit_radius_meters" => 100,
+            "visit_min_points" => 3,
+            "unrelated" => "kept"
+          },
+          visits_redetected_at: nil,
+          created_at: ~N[2026-10-03 09:00:00],
+          updated_at: ~N[2026-10-03 09:00:00]
+        }
+      ])
+
+      :ok
+    end
+
+    test "partial save preserves unrelated and omitted detection settings" do
+      repo = Dawarich.ScratchRepo
+
+      assert {:ok, saved} =
+               WebSettings.save(
+                 repo,
+                 8890,
+                 %{"visit_radius_meters" => "75", "unknown" => "discard"},
+                 @now
+               )
+
+      assert saved == %{
+               "timezone" => "Europe/Berlin",
+               "visit_radius_meters" => 75,
+               "visit_min_points" => 3,
+               "unrelated" => "kept"
+             }
+
+      assert WebSettings.load(repo, 8890).settings == saved
+
+      assert [[~N[2026-10-03 10:00:00.000000]]] =
+               repo.query!("SELECT updated_at FROM users WHERE id=8890").rows
+    end
+
+    test "settings persist raw Ruby integers and clamp only on display" do
+      repo = Dawarich.ScratchRepo
+
+      assert {:ok, saved} =
+               WebSettings.save(
+                 repo,
+                 8890,
+                 %{
+                   "visit_radius_meters" => "nonsense",
+                   "visit_min_points" => "-2",
+                   "visit_min_duration_minutes" => "0"
+                 },
+                 @now
+               )
+
+      assert saved["visit_radius_meters"] == 0
+      assert saved["visit_min_points"] == -2
+      assert saved["visit_min_duration_minutes"] == 0
+      policy = Dawarich.Visits.Settings.policy(saved)
+      assert %{stay_radius_m: 5, min_points: 2, min_dwell_s: 60} = policy
+      assert {:replay, _} = WebSettings.save(repo, 8890, %{"visit_radius_meters" => ["75"]}, @now)
+      assert WebSettings.load(repo, 8890).settings == saved
+    end
+
+    test "fresh cooldown returns Rails 429 and produces no command" do
+      repo = Dawarich.ScratchRepo
+
+      repo.query!("UPDATE users SET visits_redetected_at=$1 WHERE id=8890", [
+        ~N[2026-10-03 09:30:00]
+      ])
+
+      assert {:cooldown, 429} = WebSettings.redetect(repo, 8890, @now, "en")
+      assert repo.query!("SELECT id FROM phoenix.rails_commands").rows == []
+
+      assert [[~N[2026-10-03 09:30:00.000000]]] =
+               repo.query!("SELECT visits_redetected_at FROM users WHERE id=8890").rows
+    end
+
+    test "allowed redetection queues once without stamping controller cooldown" do
+      repo = Dawarich.ScratchRepo
+
+      repo.query!("UPDATE users SET visits_redetected_at=$1 WHERE id=8890", [
+        ~N[2026-10-03 09:00:00]
+      ])
+
+      assert {:ok, _} = WebSettings.redetect(repo, 8890, @now, "en")
+
+      assert [
+               [
+                 "visits.web_redetect",
+                 %{"user_id" => 8890, "locale" => "en", "timezone" => "Europe/Berlin"}
+               ]
+             ] =
+               repo.query!("SELECT kind,payload FROM phoenix.rails_commands").rows
+
+      assert [[~N[2026-10-03 09:00:00.000000]]] =
+               repo.query!("SELECT visits_redetected_at FROM users WHERE id=8890").rows
+    end
+  end
+
   setup do
     row =
       RailsUser.insert!(%{

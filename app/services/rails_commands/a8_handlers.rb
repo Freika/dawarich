@@ -49,7 +49,13 @@ module RailsCommands
       return unless positive_ids?(payload, %w[user_id])
 
       user = User.find_by(id: payload.fetch('user_id'))
-      Visits::FullHistoryRedetectJob.perform_later(user.id) if user
+      return unless user
+
+      I18n.with_locale(payload.fetch('locale', user.locale)) do
+        Time.use_zone(payload.fetch('timezone', user.timezone)) do
+          Visits::FullHistoryRedetectJob.perform_later(user.id)
+        end
+      end
     end
   end
 end

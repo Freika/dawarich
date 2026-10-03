@@ -22,6 +22,18 @@ defmodule DawarichWeb.A8Routes do
 
         post "/route_videos/:id", DawarichWeb.RouteVideoActions, :destroy,
           metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        patch "/settings/visits", DawarichWeb.VisitSettingsActions, :update,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        put "/settings/visits", DawarichWeb.VisitSettingsActions, :update,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        post "/settings/visits", DawarichWeb.VisitSettingsActions, :update,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        post "/visits/redetections", DawarichWeb.VisitSettingsActions, :redetect,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
       end
 
       pipeline :a8_public do
