@@ -84,4 +84,44 @@ RSpec.describe Stats::ToponymsRefresh do
         .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2014, 6, notify_on_failure: false).exactly(:once)
     end
   end
+
+  context 'with phoenix.cursors and phoenix.stats_geocoded_days' do
+    before { phoenix_tables! }
+
+    it 'keeps the turn and both cursors in phoenix.cursors and never touches their Redis keys' do
+      stats = (1..3).map do |month|
+        create(:point, user: user, timestamp: Time.utc(2014, month, 15).to_i, city: 'Leipzig', country: 'Germany')
+        create(:stat, user: user, year: 2014, month: month, toponyms: [])
+      end
+      PhoenixCursors.set(described_class::CURSOR_KEY, stats.first.id - 1)
+
+      described_class.new.call
+
+      expect(stats.count { |stat| stat.reload.toponyms.present? }).to eq(2)
+      expect(ActiveRecord::Base.connection.select_rows('SELECT key, value FROM phoenix.cursors ORDER BY key').to_h)
+        .to eq(described_class::CURSOR_KEY => stats.second.id.to_s,
+               described_class::DISCOVERY_KEY => [user.id, Time.utc(2014, 2, 1).to_i].to_json,
+               described_class::TURN_KEY => '1')
+      expect(Sidekiq.redis do |r|
+        r.exists(described_class::CURSOR_KEY, described_class::DISCOVERY_KEY, described_class::TURN_KEY)
+      end).to eq(0)
+    end
+
+    it 'drains a day still pending in Redis into the queue and refreshes it in the same run' do
+      point = create(:point, user: user, timestamp: Time.utc(2014, 6, 15).to_i, city: 'Leipzig', country: 'Germany')
+      stat = create(:stat, user: user, year: 2014, month: 6, toponyms: [])
+      member = "#{user.id}:2014-06-15"
+      Sidekiq.redis do |r|
+        r.call('SET', "#{Stats::GeocodedDays::VERSION_KEY_PREFIX}:#{member}", 'redis-version')
+        r.call('ZADD', Stats::GeocodedDays::PENDING_KEY, point.timestamp, member)
+      end
+      PhoenixCursors.set(described_class::TURN_KEY, 1)
+
+      described_class.new.call
+
+      expect(stat.reload.toponyms.first['country']).to eq('Germany')
+      expect(Stats::GeocodedDays.due(limit: 10)).to be_empty
+      expect(Sidekiq.redis { |r| r.call('ZCARD', Stats::GeocodedDays::PENDING_KEY) }).to eq(0)
+    end
+  end
 end
