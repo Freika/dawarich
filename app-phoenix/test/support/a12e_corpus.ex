@@ -31,14 +31,14 @@ defmodule Dawarich.A12eCorpus do
 
   def stderr_message(stderr), do: String.replace(stderr, ~r/^dawarich: /m, "")
 
-  def replay(%{"seed" => seed} = c) do
+  def replay(%{"seed" => seed} = c, extra \\ %{}) do
     storage = Wave6Fixtures.local_storage!()
     load!(seed, storage)
     {:ok, out} = StringIO.open("")
     {:ok, err} = StringIO.open("")
     {:ok, stdin} = StringIO.open(c["stdin"] || "")
 
-    ctx = %{
+    base = %{
       repo: ScratchRepo,
       out: out,
       err: err,
@@ -47,6 +47,8 @@ defmodule Dawarich.A12eCorpus do
       storage: storage,
       archive_key: ArchiveFormat.key(%{"ARCHIVE_ENCRYPTION_KEY" => @phrase})
     }
+
+    ctx = Map.merge(base, extra)
 
     within_drops(c["drop"], fn ->
       code = CLI.run(c["argv"], ctx)

@@ -52,6 +52,11 @@ printf '%s\n' phoenix-a12e-smoke-login-not-for-production | "$rel" users passwor
 password=$?
 set -e
 [ "$password" -eq 1 ] && [ "$(cat "$work/password.out")" = "dawarich: no user with email nobody@example.invalid" ] || { echo "users password with a piped password did not answer cleanly (exit $password)"; cat "$work/password.out" >&2; exit 1; }
+set +e
+DATABASE_PORT=1 "$rel" migrate status >"$work/nodb.out" 2>"$work/nodb.err"
+nodb=$?
+set -e
+[ "$nodb" -eq 1 ] && [ "$(cat "$work/nodb.out")" = "phoenix and oban schemas: the database did not answer" ] || { echo "migrate status without a database did not answer on stdout alone (exit $nodb)"; cat "$work/nodb.out" "$work/nodb.err" >&2; exit 1; }
 uuid="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n' | sed 's/^\(.\{8\}\)\(.\{4\}\)\(.\{4\}\)\(.\{4\}\)/\1-\2-\3-\4-/')"
 set +e
 "$rel" jobs resume "$uuid" >"$work/resume.out" 2>&1

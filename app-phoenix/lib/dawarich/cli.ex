@@ -100,6 +100,7 @@ defmodule Dawarich.CLI do
   """
 
   def main do
+    log_to_stderr()
     resolved = resolve(System.argv())
     ctx = %{out: :stdio, err: :stderr, stdin: :stdio, env: System.get_env()}
 
@@ -179,6 +180,17 @@ defmodule Dawarich.CLI do
   defp dispatch(:unknown, ctx) do
     IO.write(ctx.err, @help)
     1
+  end
+
+  defp log_to_stderr do
+    with {:ok, config} <- :logger.get_handler_config(:default),
+         :ok <- :logger.remove_handler(:default),
+         do:
+           :logger.add_handler(
+             :default,
+             config.module,
+             put_in(config, [:config, :type], :standard_error)
+           )
   end
 
   defp with_repo(fun) do

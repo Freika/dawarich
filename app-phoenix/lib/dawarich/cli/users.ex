@@ -43,7 +43,7 @@ defmodule Dawarich.CLI.Users do
     new_email = normalize(new_email)
 
     with {:ok, id} <- find(ctx, email),
-         :ok <- valid_email(ctx, id, new_email) do
+         :ok <- if(new_email == normalize(email), do: :ok, else: valid_email(ctx, id, new_email)) do
       ctx.repo.query!(@set_email, [id, new_email], log: false)
       puts(ctx, "#{normalize(email)} is now #{new_email}")
       0

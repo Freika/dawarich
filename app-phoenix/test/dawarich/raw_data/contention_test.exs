@@ -9,16 +9,17 @@ defmodule Dawarich.RawData.ContentionTest do
     }
 
   test "retries a contention error three times, then raises; other errors raise at once" do
-    counter = :counters.new(1, [])
     opts = [sleep: fn _ -> :ok end]
 
-    assert_raise Postgrex.Error, fn ->
-      Contention.retry(opts, fn ->
-        :counters.add(counter, 1, 1) && raise(error(:deadlock_detected))
-      end)
-    end
+    for code <- [:deadlock_detected, :lock_not_available, :query_canceled] do
+      counter = :counters.new(1, [])
 
-    assert :counters.get(counter, 1) == 4
+      assert_raise Postgrex.Error, fn ->
+        Contention.retry(opts, fn -> :counters.add(counter, 1, 1) && raise(error(code)) end)
+      end
+
+      assert {code, :counters.get(counter, 1)} == {code, 4}
+    end
 
     other = :counters.new(1, [])
 

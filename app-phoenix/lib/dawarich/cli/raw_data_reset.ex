@@ -17,7 +17,10 @@ defmodule Dawarich.CLI.RawDataReset do
   WHERE EXISTS (SELECT 1 FROM points p WHERE p.raw_data_archive_id = a.id AND p.raw_data = '{}'::jsonb)
   ORDER BY a.user_id, a.year, a.month
   """
-  @unflag "UPDATE points SET raw_data_archived = false, raw_data_archive_id = NULL WHERE raw_data_archived = true"
+  @unflag """
+  UPDATE points SET raw_data_archived = false, raw_data_archive_id = NULL
+  WHERE raw_data_archived = true AND raw_data <> '{}'::jsonb
+  """
   @archives "SELECT id FROM points_raw_data_archives ORDER BY id"
 
   def reset_all([], ctx) do
@@ -61,14 +64,18 @@ defmodule Dawarich.CLI.RawDataReset do
       puts(ctx, "▸ Step 1/3: No cleared points to restore (skipped).")
     end
 
+    Map.get(ctx, :before_unflag, fn -> :ok end).()
     lines(ctx, ["", "▸ Step 2/3: Resetting archival flags on points..."])
     puts(ctx, "  Reset #{ctx.repo.query!(@unflag, [], log: false).num_rows} points.")
     lines(ctx, ["", "▸ Step 3/3: Deleting archive records and files..."])
 
-    for id <- ids(ctx, @archives, []) do
-      with {:error, reason} <- Archives.destroy(ctx.repo, ctx.storage, id),
-           do: raise("Archive #{id} could not be deleted (#{reason})")
-    end
+    kept = ctx |> ids(@archives, []) |> Enum.reject(&(destroy!(ctx, &1) == :ok))
+
+    if kept != [],
+      do:
+        raise(
+          "#{length(kept)} archives still hold points whose raw_data was cleared during the reset and were kept; run dawarich raw-data reset-all again"
+        )
 
     lines(ctx, [
       "  Deleted #{archives} archive records.",
@@ -80,6 +87,14 @@ defmodule Dawarich.CLI.RawDataReset do
       "All points are now as if archival never happened.",
       vacuum()
     ])
+  end
+
+  defp destroy!(ctx, id) do
+    case Archives.destroy(ctx.repo, ctx.storage, id) do
+      :ok -> :ok
+      {:error, :linked} -> :linked
+      {:error, reason} -> raise "Archive #{id} could not be deleted (#{reason})"
+    end
   end
 
   defp confirmed?(ctx), do: ctx.env["CONFIRM"] == "true" or prompt_yes?(ctx)

@@ -54,7 +54,11 @@ defmodule Dawarich.CLITest do
   test "help lists every command and exits 0" do
     ctx = io()
     assert CLI.run(["help"], ctx) == 0
-    for path <- CLI.commands(), do: assert(text(ctx.out) =~ Enum.join(path, " "))
+    help = text(ctx.out)
+
+    for path <- CLI.commands(),
+        do:
+          assert(help =~ ~r/^  #{Regex.escape(Enum.join(path, " "))}( |$)/m, Enum.join(path, " "))
   end
 
   test "an exception inside a command becomes one stderr line and exit 1" do

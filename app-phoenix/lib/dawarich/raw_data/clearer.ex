@@ -20,21 +20,27 @@ defmodule Dawarich.RawData.Clearer do
   SELECT id FROM points
   WHERE raw_data_archive_id = $1 AND raw_data_archived = true AND raw_data <> '{}'::jsonb ORDER BY id
   """
-  @clear "UPDATE points SET raw_data = '{}'::jsonb WHERE id = ANY($1) AND raw_data_archived = true"
+  @clear """
+  UPDATE points SET raw_data = '{}'::jsonb
+  WHERE id = ANY($1) AND raw_data_archived = true AND raw_data_archive_id = $2
+  """
 
-  def clear_all(repo, cooling_days), do: clear(repo, ids(repo, @all, [cooling_days]))
+  def clear_all(repo, cooling_days, opts \\ []),
+    do: clear(repo, ids(repo, @all, [cooling_days]), opts)
 
   def clear_month(repo, user_id, year, month),
-    do: clear(repo, ids(repo, @month, [user_id, year, month]))
+    do: clear(repo, ids(repo, @month, [user_id, year, month]), [])
 
-  defp clear(repo, archive_ids), do: Enum.reduce(archive_ids, 0, &(&2 + clear_archive(repo, &1)))
+  defp clear(repo, archive_ids, opts),
+    do: Enum.reduce(archive_ids, 0, &(&2 + clear_archive(repo, &1, opts)))
 
-  defp clear_archive(repo, archive_id) do
+  defp clear_archive(repo, archive_id, opts) do
     repo
     |> ids(@points, [archive_id])
     |> Enum.chunk_every(@batch)
     |> Enum.reduce(0, fn batch, total ->
-      total + repo.query!(@clear, [batch], log: false).num_rows
+      Keyword.get(opts, :before_clear, fn -> :ok end).()
+      total + repo.query!(@clear, [batch, archive_id], log: false).num_rows
     end)
   rescue
     error in [Postgrex.Error, DBConnection.ConnectionError] ->

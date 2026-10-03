@@ -16,10 +16,16 @@ defmodule Dawarich.CLI.Migrate do
   def migrate(_args, ctx), do: fail(ctx, "usage: dawarich migrate [status]")
 
   def status([], ctx) do
-    readiness = Release.readiness()
-    public = ReleaseMigrator.status(ctx.repo)
-    Enum.each([schemas(readiness) | public_lines(public)], &puts(ctx, &1))
-    if readiness == :no_connection or match?({:error, _}, public), do: 1, else: 0
+    case Release.readiness() do
+      :no_connection ->
+        puts(ctx, schemas(:no_connection))
+        1
+
+      readiness ->
+        public = ReleaseMigrator.status(ctx.repo)
+        Enum.each([schemas(readiness) | public_lines(public)], &puts(ctx, &1))
+        if match?({:error, _}, public), do: 1, else: 0
+    end
   end
 
   def status(_args, ctx), do: fail(ctx, "usage: dawarich migrate status")

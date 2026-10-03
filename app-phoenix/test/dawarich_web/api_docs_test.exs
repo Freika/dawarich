@@ -5,12 +5,15 @@ defmodule DawarichWeb.ApiDocsTest do
 
   alias DawarichWeb.ApiDocs
 
-  test "serves the stored OpenAPI YAML as text/yaml, HEAD without a body" do
+  test "serves the stored OpenAPI YAML as text/yaml, HEAD with the same headers and no body" do
     conn = ApiDocs.call(conn(:get, "/api-docs/v1/swagger.yaml"), [])
     assert conn.status == 200
     assert Plug.Conn.get_resp_header(conn, "content-type") == ["text/yaml"]
     assert conn.resp_body == File.read!(Dawarich.RailsRoot.join("swagger/v1/swagger.yaml"))
-    assert ApiDocs.call(conn(:head, "/api-docs/v1/swagger.yaml"), []).status == 200
+
+    head = ApiDocs.call(conn(:head, "/api-docs/v1/swagger.yaml"), [])
+    assert {head.status, head.resp_body} == {200, ""}
+    assert Plug.Conn.get_resp_header(head, "content-type") == ["text/yaml"]
   end
 
   test "the index links the YAML and the hosted reference; other paths and methods are 404" do

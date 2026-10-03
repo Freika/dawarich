@@ -53,6 +53,13 @@ defmodule Dawarich.CLI.UsersTest do
     assert column(id, "updated_at") == ~N[2026-01-01 00:00:00.000000]
   end
 
+  test "an unchanged address is not validated, as Devise skips it" do
+    Wave6Fixtures.user!(%{"email" => "legacy-without-at"})
+
+    assert {0, "legacy-without-at is now legacy-without-at\n", ""} =
+             run(~w(users email legacy-without-at LEGACY-WITHOUT-AT))
+  end
+
   test "password length is Devise's 12 to 128 characters, counted as code points" do
     Wave6Fixtures.user!(%{"email" => "len@example.invalid"})
 

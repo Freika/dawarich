@@ -52,4 +52,20 @@ defmodule Dawarich.RawData.ClearerTest do
     assert Clearer.clear_month(ScratchRepo, ctx.user, 2020, 2) == 1
     assert {raw(january), raw(february)} == {~s({"m": 1}), "{}"}
   end
+
+  test "a point moved to an unverified archive between reading and clearing keeps its raw_data",
+       ctx do
+    {_verified, point} = ctx.archive.(1, 0)
+    {unverified, _} = ctx.archive.(2, nil)
+
+    move = fn ->
+      ScratchRepo.query!("UPDATE points SET raw_data_archive_id = $1 WHERE id = $2", [
+        unverified,
+        point
+      ])
+    end
+
+    assert Clearer.clear_all(ScratchRepo, nil, before_clear: move) == 0
+    assert raw(point) == ~s({"m": 1})
+  end
 end
