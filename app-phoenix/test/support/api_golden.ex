@@ -55,7 +55,7 @@ defmodule Dawarich.Test.ApiGolden do
         do: assert(values(headers, name) == [expected[name]], name)
 
     assert values(headers, "content-length") ==
-             if(status == 304,
+             if(status in [204, 304],
                do: [],
                else: [Integer.to_string(byte_size(content_length_body(got_body, body, options)))]
              )
