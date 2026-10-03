@@ -2,6 +2,7 @@ defmodule DawarichWeb.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
   import DawarichWeb.AchievementRoutes
+  import DawarichWeb.MapFrameRoutes
   import DawarichWeb.ApiRoutes
 
   pipeline :browser do
@@ -243,28 +244,7 @@ defmodule DawarichWeb.Router do
     end
   end
 
-  scope "/map" do
-    pipe_through :rails_frame
-
-    get "/timeline_feeds", DawarichWeb.MapFrames, :index,
-      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :feed?}}
-
-    get "/timeline_feeds/calendar", DawarichWeb.MapFrames, :calendar,
-      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :calendar?}}
-
-    get "/residency", DawarichWeb.MapFrames, :residency,
-      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :residency?}}
-
-    get "/timeline_feeds/:id/track_info", DawarichWeb.MapFrames, :track_info,
-      metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :track?}}
-  end
-
-  scope "/places" do
-    pipe_through :rails_frame
-
-    get "/:id", DawarichWeb.MapFrames, :place,
-      metadata: %{rails_gate: {DawarichWeb.PlacesGate, :drawer?}}
-  end
+  map_frame_routes()
 
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
 

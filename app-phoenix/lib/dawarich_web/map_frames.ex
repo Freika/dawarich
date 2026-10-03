@@ -4,12 +4,14 @@ defmodule DawarichWeb.MapFrames do
 
   import Plug.Conn
 
-  alias Dawarich.{Entitlements, MapWindow, PlaceDrawer}
+  alias Dawarich.{Entitlements, MapWindow, PlaceDrawer, PointList, TrackSegmentPage}
   alias Dawarich.Timeline.{DayRows, Days, MonthSummary}
 
   alias DawarichWeb.{
     LayoutAssigns,
     PlaceDrawerFrame,
+    PointAddressFrame,
+    SegmentFrame,
     RailsCsrf,
     RailsSession,
     ResidencyFrame,
@@ -34,6 +36,7 @@ defmodule DawarichWeb.MapFrames do
       locale: conn.assigns.locale,
       query: conn.query_params,
       id: conn.path_params["id"],
+      track_id: conn.path_params["track_id"],
       now: DateTime.utc_now(),
       self_hosted: LayoutAssigns.self_hosted?(),
       csrf: csrf,
@@ -53,7 +56,7 @@ defmodule DawarichWeb.MapFrames do
 
       {:replay, reason} ->
         conn
-        |> assign(:api_tag, if(action == :place, do: "places", else: "map"))
+        |> assign(:api_tag, replay_tag(action))
         |> Body.replay(reason)
     end
   end
@@ -149,6 +152,42 @@ defmodule DawarichWeb.MapFrames do
     end
   end
 
+  def body(:segments, ctx) do
+    case TrackSegmentPage.load(ctx.user, String.to_integer(ctx.track_id)) do
+      {:ok, data} ->
+        {:ok, type, html} =
+          html(
+            &SegmentFrame.frame/1,
+            Map.merge(data, %{
+              user: ctx.user,
+              locale: ctx.locale,
+              csrf: ctx.csrf,
+              now: ctx.now,
+              unit: Days.unit(ctx.user.settings)
+            })
+          )
+
+        if data.segments == [] or ctx.csrf_changes == %{},
+          do: {:ok, type, html},
+          else: {:ok, type, html, ctx.csrf_changes}
+
+      :rails ->
+        {:replay, "segments changed after the gate"}
+    end
+  end
+
+  def body(:point_address, ctx) do
+    case PointList.address(ctx.user, String.to_integer(ctx.id)) do
+      {:ok, point} -> html(&PointAddressFrame.frame/1, %{point: point, locale: ctx.locale})
+      :rails -> {:replay, "point address changed after the gate"}
+    end
+  end
+
+  defp replay_tag(:place), do: "places"
+  defp replay_tag(:segments), do: "tracks"
+  defp replay_tag(:point_address), do: "points"
+  defp replay_tag(_), do: "map"
+
   def stream?(accept),
     do:
       String.trim(accept) != "" and not Strangler.browser_like?(accept) and
@@ -176,10 +215,10 @@ defmodule DawarichWeb.MapFrames do
   end
 
   defp csrf(%{"_csrf_token" => token} = session, action)
-       when action in [:index, :place] and is_binary(token),
+       when action in [:index, :place, :segments] and is_binary(token),
        do: {RailsCsrf.masked_token(session), %{}}
 
-  defp csrf(_session, action) when action in [:index, :place] do
+  defp csrf(_session, action) when action in [:index, :place, :segments] do
     token = RailsCsrf.new_token()
     {RailsCsrf.masked_token(%{"_csrf_token" => token}), %{"_csrf_token" => token}}
   end

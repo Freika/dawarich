@@ -27,6 +27,16 @@ defmodule Dawarich.PointList do
     - interval '12 months') AT TIME ZONE z.name))::bigint FROM z
   """
 
+  def address(user, id) do
+    case Repo.query!("SELECT id, geodata FROM public.points WHERE user_id = $1 AND id = $2", [
+           user.id,
+           id
+         ]).rows do
+      [[id, geodata]] -> {:ok, %{id: id, geodata: geodata}}
+      _ -> :rails
+    end
+  end
+
   def load(user, params, now, opts) do
     page = TripsGate.page_number(params["page"])
 
