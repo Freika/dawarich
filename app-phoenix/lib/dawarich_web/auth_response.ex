@@ -60,7 +60,7 @@ defmodule DawarichWeb.AuthResponse do
     token = RailsCsrf.masked_token(session)
 
     body =
-      AuthForm.render(token, email, error,
+      AuthForm.render(token, email,
         locale: conn.assigns.locale,
         registration_enabled: conn.private[:auth_registration_enabled]
       )
@@ -68,7 +68,7 @@ defmodule DawarichWeb.AuthResponse do
     assigns =
       Map.merge(conn.assigns, %{
         __changed__: nil,
-        flash: %{},
+        flash: if(error, do: %{"alert" => error}, else: %{}),
         page_title: nil,
         rails_csrf_token: token,
         inner_content: Phoenix.HTML.raw(body)

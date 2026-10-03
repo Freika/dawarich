@@ -4,11 +4,13 @@ defmodule Dawarich.Auth.AuthHandlerTest do
 
   alias Dawarich.{Accounts, RailsCookies, RailsSecret, Repo}
   alias Dawarich.Auth.RememberCookie
+  alias Dawarich.Test.{AuthMarkup, ParityHTML}
   alias DawarichWeb.{AuthHandler, AuthRestore, RailsAuth, RailsCsrf}
 
   @fixture Jason.decode!(File.read!(Path.expand("../../fixtures/auth/requests.json", __DIR__)))
   @hash @fixture["user_before"]["encrypted_password"]
   @base "http://www.example.com"
+  @markup AuthMarkup.fixture()["signin"]
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -55,6 +57,27 @@ defmodule Dawarich.Auth.AuthHandlerTest do
     assert state(ctx.id) == %{failed_attempts: 0, sign_in_count: 1, remembered: false}
   end
 
+  test "the sign-in page Phoenix serves is Rails' devise/sessions/new, byte for byte" do
+    conn = call(:get, "/users/sign_in", [session_cookie(guest())], nil)
+
+    assert conn.status == 200
+    assert get_resp_header(conn, "x-dawarich-auth-owner") == ["native-credentials"]
+
+    assert AuthMarkup.strict(AuthMarkup.hero(conn.resp_body)) ==
+             AuthMarkup.strict(@markup["signin"]["html"])
+  end
+
+  test "the browser's own field set, commit=Log in included, signs in natively", ctx do
+    session = guest()
+    body = sign_in(session, ctx.email, "safepassword12") <> "&commit=Log+in"
+
+    conn = call(:post, "/users/sign_in", [session_cookie(session)], body, [{"origin", @base}])
+
+    refute conn.private[:handed_to_rails]
+    assert conn.status == 303
+    assert get_resp_header(conn, "x-dawarich-auth-owner") == ["native-credentials"]
+  end
+
   test "a wrong password and an unknown email get the same native 422 without the owner header",
        ctx do
     session = guest()
@@ -69,8 +92,14 @@ defmodule Dawarich.Auth.AuthHandlerTest do
         )
 
       assert conn.status == @fixture["wrong_password"]["response"]["status"]
-      assert conn.resp_body =~ "Invalid email or password."
       assert get_resp_header(conn, "x-dawarich-auth-owner") == []
+
+      failed = @markup["signin_failed"]
+      shown = String.replace(failed["html"], ~s(value="#{failed["email"]}"), ~s(value="#{email}"))
+      assert AuthMarkup.strict(AuthMarkup.hero(conn.resp_body)) == AuthMarkup.strict(shown)
+
+      assert ParityHTML.normalize(AuthMarkup.toast(conn.resp_body)) ==
+               ParityHTML.normalize(failed["toast"])
     end
 
     assert state(ctx.id).failed_attempts == @fixture["wrong_password"]["user"]["failed_attempts"]
