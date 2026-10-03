@@ -1,0 +1,39 @@
+defmodule Dawarich.SharedApi.Trip do
+  @moduledoc false
+
+  alias Dawarich.{RailsTime, Repo, RubyFloat, UserTimeZone}
+
+  def show(%{type: "trip"} = link) do
+    RailsTime.with_zone(UserTimeZone.name(nil), fn ->
+      sql =
+        "SELECT t.name, #{RailsTime.sql("t.started_at", 3)}, #{RailsTime.sql("t.ended_at", 3)}, " <>
+          "t.distance, u.settings FROM trips t JOIN users u ON u.id = t.user_id " <>
+          "WHERE t.id = $1 AND t.user_id = $2"
+
+      case Repo.query!(sql, [link.resource_id, link.user_id]).rows do
+        [[name, started, ended, distance, settings]] ->
+          fields = [{"name", name}, {"started_at", started}, {"ended_at", ended}]
+          stats(fields, link.settings, distance, settings)
+
+        [] ->
+          {:error, 410, "gone"}
+      end
+    end)
+  end
+
+  def show(_link), do: {:replay, "shared trip resource type"}
+
+  defp stats(fields, %{"show_stats" => true}, distance, settings) when not is_nil(distance) do
+    unit = get_in(settings || %{}, ["maps", "distance_unit"]) || "km"
+    factor = %{"km" => 1000, "mi" => 1609.344}[unit]
+
+    if factor,
+      do:
+        {:ok,
+         {:object,
+          fields ++ [{"distance", RubyFloat.round(distance / factor)}, {"distance_unit", unit}]}},
+      else: {:replay, "shared distance unit"}
+  end
+
+  defp stats(fields, _flags, _distance, _settings), do: {:ok, {:object, fields}}
+end

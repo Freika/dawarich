@@ -61,7 +61,16 @@ defmodule DawarichWeb.Api.SharedController do
   defp dispatch(conn, :route, %{type: type} = link) when type != "live",
     do: Respond.json(conn, 200, [], cache_control: cache(link))
 
+  defp dispatch(conn, :trip, link), do: result(conn, Dawarich.SharedApi.Trip.show(link), [])
+
+  defp dispatch(conn, :points, %{type: type} = link) when type != "live",
+    do: result(conn, Dawarich.SharedApi.Points.index(link), cache_control: cache(link))
+
   defp dispatch(conn, _action, _link), do: Body.replay(conn, "shared API action pending")
+
+  defp result(conn, {:ok, term}, opts), do: Respond.json(conn, 200, term, opts)
+  defp result(conn, {:error, status, message}, _opts), do: error(conn, status, message)
+  defp result(conn, {:replay, reason}, _opts), do: Body.replay(conn, reason)
 
   defp cache(%{magic_phrase: phrase}) do
     if Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(phrase),

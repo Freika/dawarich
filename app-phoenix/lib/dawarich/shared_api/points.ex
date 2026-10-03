@@ -1,0 +1,77 @@
+defmodule Dawarich.SharedApi.Points do
+  @moduledoc false
+
+  alias Dawarich.{RailsTime, Repo, UserTimeZone}
+  alias Dawarich.SharedApi.Privacy
+
+  def index(link) do
+    [[settings]] = Repo.query!("SELECT settings FROM users WHERE id = $1", [link.user_id]).rows
+
+    RailsTime.with_zone(UserTimeZone.name(settings), fn ->
+      with {:ok, predicate, params} <- scope(link),
+           do: sample(predicate, params)
+    end)
+  end
+
+  defp scope(%{type: "trip"} = link) do
+    {:ok,
+     "p.user_id = $1 AND p.anomaly IS NOT TRUE AND EXISTS (SELECT 1 FROM trips t " <>
+       "WHERE t.id = $2 AND t.user_id = $1 AND p.timestamp BETWEEN " <>
+       "extract(epoch FROM t.started_at)::bigint AND extract(epoch FROM t.ended_at)::bigint)",
+     [link.user_id, link.resource_id]}
+  end
+
+  defp scope(%{type: "track"} = link) do
+    {:ok,
+     "p.track_id = $2 AND EXISTS (SELECT 1 FROM tracks t WHERE t.id = $2 AND t.user_id = $1)",
+     [link.user_id, link.resource_id]}
+  end
+
+  defp scope(%{type: "timeline", settings: settings} = link) do
+    with {:ok, from} <- date(settings["start_date"]), {:ok, to} <- date(settings["end_date"]) do
+      {:ok,
+       "p.user_id = $1 AND p.anomaly IS NOT TRUE AND p.timestamp BETWEEN " <>
+         "extract(epoch FROM $2::date::timestamp AT TIME ZONE current_setting('TimeZone'))::bigint AND " <>
+         "extract(epoch FROM ($3::date + 1)::timestamp AT TIME ZONE current_setting('TimeZone'))::bigint - 1",
+       [link.user_id, from, to]}
+    else
+      _ -> {:replay, "shared timeline dates"}
+    end
+  end
+
+  defp scope(_link), do: {:replay, "shared points resource type"}
+
+  defp sample(predicate, params) do
+    from = " FROM points p WHERE #{predicate} AND #{Privacy.outside("p.lonlat")}"
+
+    [[total, unique]] =
+      Repo.query!("SELECT count(*), count(DISTINCT p.timestamp)" <> from, params).rows
+
+    cond do
+      total != unique ->
+        {:replay, "shared timestamp ties"}
+
+      total == 0 ->
+        {:ok, []}
+
+      true ->
+        step = ceil(total / 10_000)
+
+        numbered =
+          "SELECT ST_X(p.lonlat::geometry) AS lon, ST_Y(p.lonlat::geometry) AS lat, " <>
+            "p.timestamp, ROW_NUMBER() OVER (ORDER BY p.timestamp) AS rn" <> from
+
+        rows =
+          Repo.query!(
+            "SELECT lon, lat, timestamp FROM (#{numbered}) sampled " <>
+              "WHERE (rn - 1) % $#{length(params) + 1} = 0 ORDER BY timestamp",
+            params ++ [step]
+          ).rows
+
+        {:ok, rows}
+    end
+  end
+
+  defp date(value) when is_binary(value), do: Date.from_iso8601(value)
+  defp date(_value), do: :error
+end
