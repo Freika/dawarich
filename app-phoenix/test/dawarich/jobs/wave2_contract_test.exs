@@ -23,7 +23,8 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
       ~r/^\s*'([a-z0-9_.]+)' => \{/m
       |> Regex.scan(
         RailsTree.read("app/services/job_commands.rb") <>
-          RailsTree.read("app/services/release_commands.rb"),
+          RailsTree.read("app/services/release_commands.rb") <>
+          hd(String.split(RailsTree.read("app/services/stats/commands.rb"), "HANDLERS = {")),
         capture: :all_but_first
       )
       |> List.flatten()

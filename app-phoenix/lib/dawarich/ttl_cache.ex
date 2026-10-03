@@ -13,14 +13,32 @@ defmodule Dawarich.TtlCache do
         write_concurrency: true
       ])
 
-  def fetch(key, ttl_ms, fun) when is_integer(ttl_ms) and ttl_ms >= 0 and is_function(fun, 0) do
+  def fetch(key, ttl_ms, fun, opts \\ [])
+      when is_integer(ttl_ms) and ttl_ms >= 0 and is_function(fun, 0) do
+    case lookup(key) do
+      {:ok, value} ->
+        value
+
+      :error ->
+        value = fun.()
+
+        if is_nil(value) and not Keyword.get(opts, :cache_nil, true),
+          do: nil,
+          else: store(key, value, ttl_ms)
+    end
+  end
+
+  def lookup(key) do
     now = System.monotonic_time(:millisecond)
 
     case :ets.lookup(__MODULE__, key) do
-      [{^key, value, expires_at}] when expires_at > now -> value
-      _ -> store(key, fun.(), ttl_ms)
+      [{^key, value, expires_at}] when expires_at > now -> {:ok, value}
+      _ -> :error
     end
   end
+
+  def put(key, value, ttl_ms) when is_integer(ttl_ms) and ttl_ms >= 0,
+    do: store(key, value, ttl_ms)
 
   def delete(key) do
     :ets.delete(__MODULE__, key)

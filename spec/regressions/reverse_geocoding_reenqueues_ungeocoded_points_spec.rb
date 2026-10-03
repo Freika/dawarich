@@ -8,7 +8,7 @@ RSpec.describe 'Reverse geocoding re-enqueue after an ungeocoded run', type: :jo
 
   before do
     configure_instance_geocoding
-    Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+    clear_geocode_claims!
   end
 
   it 're-enqueues a still-ungeocoded point on a later continue run' do

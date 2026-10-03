@@ -120,6 +120,7 @@ RSpec.describe JobOwnership do
         ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '2s'")
         ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
       end
+      PhoenixTables.install_state!
     end
 
     it 'makes an owner change wait for a gate that holds the row' do

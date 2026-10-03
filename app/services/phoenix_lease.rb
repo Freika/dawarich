@@ -29,32 +29,49 @@ module PhoenixLease
 
   module_function
 
-  def hold(name, busy, ttl: TTL)
+  def hold(name, busy, ttl: TTL, &)
     return yield unless table?
 
     holder = SecureRandom.uuid
     raise busy unless acquire(name, holder, ttl)
 
+    held(name, holder, ttl, &)
+  end
+
+  def try_hold(name, ttl: TTL, &)
+    return ActiveRecord::Base.with_advisory_lock(name, timeout_seconds: 0, &) unless table?
+
+    holder = SecureRandom.uuid
+    return false unless acquire(name, holder, ttl)
+
+    held(name, holder, ttl, &)
+  end
+
+  def held(name, holder, ttl)
     stop = Queue.new
-    beat = Thread.new { heartbeat(name, holder, ttl, stop) }
     begin
+      beat = Thread.new { heartbeat(name, holder, ttl, stop) }
       yield
     ensure
       stop << true
-      beat.join
+      beat&.join
       quietly { release(name, holder) }
     end
   end
 
-  def acquire(name, holder, ttl) = changed?(ACQUIRE, name, holder, ttl)
+  def acquire(name, holder, ttl)
+    if ActiveRecord::Base.connection.current_transaction.joinable?
+      raise ArgumentError, 'a lease cannot be taken inside a transaction: its heartbeat renews on another connection'
+    end
 
-  def renew(name, holder, ttl) = changed?(RENEW, name, holder, ttl)
-
-  def release(name, holder) = changed?(RELEASE, name, holder)
-
-  def table?
-    ActiveRecord::Base.connection.select_value("SELECT to_regclass('phoenix.leases') IS NOT NULL")
+    changed?(ActiveRecord::Base.connection_pool, ACQUIRE, name, holder, ttl)
   end
+
+  def renew(name, holder, ttl) = changed?(PhoenixLeaseRecord.connection_pool, RENEW, name, holder, ttl)
+
+  def release(name, holder) = changed?(PhoenixLeaseRecord.connection_pool, RELEASE, name, holder)
+
+  def table? = PhoenixSchema.table?('leases')
 
   def heartbeat(name, holder, ttl, stop)
     errors = 0
@@ -79,11 +96,9 @@ module PhoenixLease
     :error
   end
 
-  def changed?(sql, *binds)
-    ActiveRecord::Base.connection_pool.with_connection do |connection|
-      connection.exec_update(sql, 'PhoenixLease', binds) == 1
-    end
+  def changed?(pool, sql, *binds)
+    pool.with_connection { |connection| connection.exec_update(sql, 'PhoenixLease', binds) == 1 }
   end
 
-  private_class_method :heartbeat, :lost, :quietly, :changed?
+  private_class_method :held, :heartbeat, :lost, :quietly, :changed?
 end

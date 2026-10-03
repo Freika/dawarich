@@ -325,13 +325,15 @@ RSpec.describe RailsCommands::Poller do
       visit_months_changed airtrail_stats tracks_changed tracks_generate_range tracks_throttled_backfill
       tracks_realtime_retrigger geocode_recent_points transport_progress schedule_untracked_tracks
       enhanced_import_card places_delete_if_orphan place_name_fetch reverse_geocode_place imports.progress
-      exports.points_created release_reclassify_tracks release_user_redetect release_null_island_follow_up
+      exports.points_created family_location_request_mail release_reclassify_tracks release_user_redetect
+      release_null_island_follow_up
       points.tile_epoch
       points.anomaly_filter tracks.realtime tracks.backfill visits.realtime points.live_broadcast
       points.anomaly_recalculate points.anomaly_stats imports.postprocessing_step imports.upload_created
       imports.prepare_download imports.prepared_download_purge imports.destroy_requested imports.destroy_status
       imports.destroy_callbacks imports.destroy_achievements imports.destroy_stats imports.destroy_complete
       imports.destroy_terminal imports.extraction_requested imports.extraction_destroy_requested imports.resume
+      stats.calculate_month stats.caches_invalidated
     ]
     expect(RailsCommands::Registry::HANDLERS.keys).to eq(expected_kinds)
     RailsCommands::Registry::HANDLERS.each_value do |handler|
@@ -400,7 +402,7 @@ RSpec.describe RailsCommands::Poller do
     command!('tracks_realtime_retrigger', { 'user_id' => user.id })
 
     expect { described_class.drain_once }.to have_enqueued_job(Tracks::RealtimeGenerationJob).with(user.id)
-    expect(Sidekiq.redis { |redis| redis.get("track_realtime:user:#{user.id}") }).to eq('1')
+    expect(claim_seconds("track_realtime:user:#{user.id}")).to be_between(119, 120)
   end
 
   it 'geocode_recent_points uses the payload’s since' do

@@ -50,13 +50,13 @@ module RailsCommands
         }
       },
       'tracks_realtime_retrigger' => {
-        guard: 'RealtimeDebouncer#trigger is SET NX: a repeat extends the 2 min TTL, or, once the job cleared ' \
-               'the key, schedules one more RealtimeGenerationJob, which claims only untracked points ' \
+        guard: 'RealtimeDebouncer#trigger is a debounce claim: a repeat extends it by 2 min, or, once the job ' \
+               'cleared it, schedules one more RealtimeGenerationJob, which claims only untracked points ' \
                'under the user lock',
         call: ->(payload) { Tracks::RealtimeDebouncer.new(payload.fetch('user_id')).trigger }
       },
       'geocode_recent_points' => {
-        guard: 'async_reverse_geocode claims geocode:enq:Point:<id> with SET NX over not_reverse_geocoded ' \
+        guard: 'async_reverse_geocode claims geocode:enq:Point:<id> once over not_reverse_geocoded ' \
                'points, so queued and finished points are skipped; a point whose job raised may cost one ' \
                'more provider lookup',
         call: lambda { |payload|
@@ -145,6 +145,34 @@ module RailsCommands
           end
         }
       },
+      'family_location_request_mail' => {
+        guard: 'SET NX on family_location_request_mail:<request_id> (one day) before deliver_later, deleted ' \
+               'again when the enqueue raises; a repeat finds the key and enqueues no second mail, and a cache ' \
+               'that cannot claim the key raises so the poller retries',
+        call: lambda { |payload|
+          request = Family::LocationRequest.find_by(id: payload.fetch('request_id'))
+          next unless request&.requester
+
+          key = "family_location_request_mail:#{request.id}"
+          unless Rails.cache.write(key, 1, unless_exist: true, expires_in: 1.day)
+            next if Rails.cache.exist?(key)
+
+            raise 'the cache could not claim the family location request mail'
+          end
+
+          enqueue = -> { FamilyMailer.location_request(request).deliver_later }
+          begin
+            begin
+              Time.use_zone(request.requester.timezone, &enqueue)
+            rescue ArgumentError
+              enqueue.call
+            end
+          rescue StandardError
+            Rails.cache.delete(key)
+            raise
+          end
+        }
+      },
       'release_reclassify_tracks' => {
         guard: "ReclassifyTrackJob replaces a track's inferred segments in one transaction; " \
                'a repeat enqueue reclassifies the same track to the same result',
@@ -185,7 +213,7 @@ module RailsCommands
          guard: 'Durable event receipt and per-import lease; repeats cannot restart a completed receipt',
          call: ->(payload) { Imports::GpxResume.call(payload) }
        }
-     ).freeze
+     ).merge(Stats::Commands::HANDLERS).freeze
 
     module_function
 

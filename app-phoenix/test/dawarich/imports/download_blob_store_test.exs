@@ -59,11 +59,14 @@ defmodule Dawarich.Imports.DownloadBlobStoreTest do
         )
       end)
 
-    assert_receive {:published, blob}, 3000
+    {:published, blob} = receive do: ({:published, _} = message -> message)
     path = Dawarich.Storage.disk_path(c.root, blob.key)
     assert File.read!(path) == "<gpx/>"
+    {:monitored_by, [guard]} = Process.info(pid, :monitored_by)
+    guard_ref = Process.monitor(guard)
     Process.exit(pid, :kill)
-    await_removed(path)
+    receive do: ({:DOWN, ^guard_ref, :process, ^guard, :normal} -> :ok)
+    refute File.exists?(path)
     assert Path.wildcard(Path.join(c.root, "download-candidate-*")) == []
   end
 
@@ -113,11 +116,11 @@ defmodule Dawarich.Imports.DownloadBlobStoreTest do
         )
       end)
 
-    assert_receive {:committed, blob}, 3000
+    {:committed, blob} = receive do: ({:committed, _} = message -> message)
     {:monitored_by, [guard]} = Process.info(pid, :monitored_by)
     guard_ref = Process.monitor(guard)
     Process.exit(pid, :kill)
-    assert_receive {:DOWN, ^guard_ref, :process, ^guard, :normal}, 5_000
+    receive do: ({:DOWN, ^guard_ref, :process, ^guard, :normal} -> :ok)
     assert File.read!(Dawarich.Storage.disk_path(c.root, blob.key)) == "<gpx/>"
     assert blob.service_name == "test"
     assert Path.wildcard(Path.join(c.root, "download-candidate-*")) == []
@@ -197,28 +200,15 @@ defmodule Dawarich.Imports.DownloadBlobStoreTest do
         )
       end)
 
-    assert_receive {:put_started, http}, 3000
+    {:put_started, http} = receive do: ({:put_started, _} = message -> message)
+    {:monitored_by, [guard]} = Process.info(pid, :monitored_by)
+    guard_ref = Process.monitor(guard)
     Process.exit(pid, :kill)
     refute_receive :candidate_deleted, 50
     send(http, :complete_put)
-    assert_receive :candidate_deleted, 3000
-    Task.await(server)
-    await_stage_removed(c.root)
-  end
-
-  defp await_stage_removed(root, n \\ 100) do
-    if Path.wildcard(Path.join(root, "download-candidate-*")) != [] do
-      assert n > 0
-      Process.sleep(10)
-      await_stage_removed(root, n - 1)
-    end
-  end
-
-  defp await_removed(path, n \\ 100) do
-    if File.exists?(path) do
-      assert n > 0
-      Process.sleep(10)
-      await_removed(path, n - 1)
-    end
+    receive do: (:candidate_deleted -> :ok)
+    Task.await(server, :infinity)
+    receive do: ({:DOWN, ^guard_ref, :process, ^guard, :normal} -> :ok)
+    assert Path.wildcard(Path.join(c.root, "download-candidate-*")) == []
   end
 end

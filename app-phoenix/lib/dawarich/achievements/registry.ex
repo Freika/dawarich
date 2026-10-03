@@ -5,6 +5,11 @@ defmodule Dawarich.Achievements.Registry do
   def find(key), do: Map.get(data().by_key, key)
   def announcer(code), do: Map.get(data().announcers, code)
 
+  def approximations(locale) do
+    %{"default" => default, "rules" => rules} = data().transliteration
+    Map.merge(default, Map.get(rules, locale, %{}))
+  end
+
   def visible_geography?(code) do
     if Regex.match?(~r/\A[A-Z]{2}\z/, code),
       do: Map.has_key?(data().by_key, "country_" <> String.downcase(code)),
@@ -26,14 +31,16 @@ defmodule Dawarich.Achievements.Registry do
         Path.join(File.cwd!(), "tmp/phoenix/achievements.json")
       )
 
-    definitions =
+    export =
       case File.read(path) do
         {:ok, json} ->
-          json |> Jason.decode!() |> Map.fetch!("definitions") |> Enum.map(&definition/1)
+          Jason.decode!(json)
 
         {:error, reason} ->
-          raise "cannot read #{path} (#{reason}); run bin/rails phoenix:achievements"
+          raise "cannot read #{path} (#{reason}); run mix dawarich.achievements"
       end
+
+    definitions = export |> Map.fetch!("definitions") |> Enum.map(&definition/1)
 
     gridded = Enum.filter(definitions, &(&1.kind == "country" and &1.level == "subdivision"))
     continents = Enum.filter(definitions, &(&1.kind == "continent"))
@@ -42,7 +49,8 @@ defmodule Dawarich.Achievements.Registry do
       definitions: definitions,
       by_key: Map.new(definitions, &{&1.key, &1}),
       announcers: first_wins(gridded ++ continents),
-      subdivision_parents: first_wins(Enum.filter(definitions, &(&1.level == "subdivision")))
+      subdivision_parents: first_wins(Enum.filter(definitions, &(&1.level == "subdivision"))),
+      transliteration: Map.fetch!(export, "transliteration")
     }
   end
 
@@ -63,7 +71,12 @@ defmodule Dawarich.Achievements.Registry do
       target: map["target"],
       regions: map["regions"],
       region_codes: map["region_codes"],
-      names: map["names"]
+      names: map["names"],
+      name: map["name"],
+      country: map["country"],
+      continent: map["continent"],
+      parent_key: map["parent_key"],
+      card: map["card"]
     }
   end
 end

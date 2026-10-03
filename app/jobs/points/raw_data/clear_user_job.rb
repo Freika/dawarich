@@ -16,7 +16,7 @@ module Points
 
         lock_key = "clear_raw_data:#{user_id}"
 
-        lock_acquired = ActiveRecord::Base.with_advisory_lock(lock_key, timeout_seconds: 0) do
+        lock_acquired = PhoenixLease.try_hold(lock_key) do
           clear_user(user)
           true
         end

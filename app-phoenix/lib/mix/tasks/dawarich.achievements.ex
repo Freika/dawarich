@@ -2,28 +2,19 @@ defmodule Mix.Tasks.Dawarich.Achievements do
   @moduledoc false
   use Mix.Task
 
+  alias Dawarich.Build
+
   @impl true
   def run(_args) do
+    Mix.Task.run("dawarich.i18n")
+    root = Build.root()
     target = Application.fetch_env!(:dawarich, :achievements_path)
 
-    sources =
-      [
-        "../Gemfile.lock",
-        "../config/achievements.yml",
-        "../config/achievements/planet.yml",
-        "../app/services/achievements/registry.rb",
-        "../app/services/achievements/set_presenter.rb",
-        "../lib/tasks/phoenix.rake"
-      ] ++ Path.wildcard("../config/locales/**/*.yml")
+    Build.refresh!(target, root, fn ->
+      translations =
+        :dawarich |> Application.fetch_env!(:i18n_path) |> File.read!() |> Jason.decode!()
 
-    if Mix.Tasks.Dawarich.I18n.stale?(target, sources) do
-      {_, 0} =
-        System.cmd("bundle", ["exec", "rake", "phoenix:achievements[#{target}]"],
-          cd: "..",
-          env: [{"RAILS_ENV", "test"}],
-          stderr_to_stdout: true,
-          into: IO.stream()
-        )
-    end
+      Build.Achievements.export(root, translations)
+    end)
   end
 end

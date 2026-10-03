@@ -48,9 +48,9 @@ defmodule DawarichWeb.RackScheme do
     |> Enum.find(&(&1 in @allowed))
   end
 
-  defp forwarded_values(nil), do: nil
+  def forwarded_values(nil), do: nil
 
-  defp forwarded_values(value) do
+  def forwarded_values(value) do
     value |> String.replace("\n", ";") |> String.replace(@separators, "") |> params(%{}, 0, 0)
   end
 

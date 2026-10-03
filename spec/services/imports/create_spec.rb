@@ -190,7 +190,7 @@ RSpec.describe Imports::Create do
           clear_achievement_checks(user.id)
 
           expect { service.call }.to have_enqueued_job(Achievements::CheckJob).with(user.id)
-          expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([import.points.minimum(:timestamp)])
+          expect(Achievements::PendingChecks.read(user.id).first).to eq(import.points.minimum(:timestamp))
         end
       end
 

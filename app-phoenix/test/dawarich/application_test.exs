@@ -24,18 +24,24 @@ defmodule Dawarich.ApplicationTest do
     do: Enum.map(Dawarich.Application.children(plan), &Supervisor.child_spec(&1, []).id)
 
   test "stops the jobs first, then the front, then PubSub, Oban and the repo, in every front mode" do
-    base = [Dawarich.Repo, Redix, Dawarich.Redis.Cache, Oban, Phoenix.PubSub.Supervisor]
+    base = [
+      Dawarich.Repo,
+      Redix,
+      Dawarich.Redis.Cache,
+      Oban,
+      Phoenix.PubSub.Supervisor
+    ]
 
-    assert ids(:none) == base ++ [DawarichWeb.Endpoint, Dawarich.Jobs.Supervisor]
-    assert ids(@direct) == base ++ [RailsServer, Dawarich.Jobs.Supervisor]
+    jobs = [Dawarich.Jobs.Supervisor, Dawarich.Cable.EventsRelay.Supervisor]
+    assert ids(:none) == base ++ [DawarichWeb.Endpoint | jobs]
+    assert ids(@direct) == base ++ [RailsServer | jobs]
 
     assert ids(@proxy) ==
              base ++
                [
                  RailsServer,
                  DawarichWeb.Endpoint,
-                 Dawarich.Front.Drainer,
-                 Dawarich.Jobs.Supervisor
+                 Dawarich.Front.Drainer | jobs
                ]
   end
 
@@ -81,7 +87,7 @@ defmodule Dawarich.ApplicationTest do
       children = Dawarich.Application.children(plan)
       {Oban, oban} = Enum.at(children, 3)
       {RailsServer, puma} = List.keyfind(children, RailsServer, 0)
-      {Dawarich.Jobs.Supervisor, jobs} = List.last(children)
+      {Dawarich.Jobs.Supervisor, jobs} = List.keyfind(children, Dawarich.Jobs.Supervisor, 0)
 
       assert oban[:node] == node
       assert oban[:cron] == [crontab: Dawarich.Jobs.Registry.crontab(), timezone: "Etc/UTC"]

@@ -3,17 +3,11 @@ defmodule Dawarich.EnhancedImport.DestroyGpxWorker do
   use Oban.Worker, queue: :extractions, max_attempts: 26
 
   alias Dawarich.EnhancedImport.State
+  alias Dawarich.PlaceCascade
 
   @batch 500
   @owned "WHERE user_id = $1 AND import_id = $2"
   @owns_work "SELECT EXISTS (SELECT 1 FROM visits #{@owned}) OR EXISTS (SELECT 1 FROM tracks #{@owned})"
-  @deletes [
-    "UPDATE visits SET place_id = NULL WHERE place_id = ANY($1)",
-    "DELETE FROM place_visits WHERE place_id = ANY($1)",
-    "DELETE FROM taggings WHERE taggable_type = 'Place' AND taggable_id = ANY($1)",
-    "DELETE FROM notes WHERE attachable_type = 'Place' AND attachable_id = ANY($1)",
-    "DELETE FROM places WHERE id = ANY($1)"
-  ]
 
   def args_from_command(1, %{"import_id" => id} = p) when is_integer(id) and map_size(p) == 1,
     do: {:ok, p}
@@ -59,7 +53,7 @@ defmodule Dawarich.EnhancedImport.DestroyGpxWorker do
 
   defp delete_batch!(repo, ids) do
     {:ok, :ok} =
-      repo.transaction(fn -> Enum.each(@deletes, &repo.query!(&1, [ids], log: false)) end)
+      repo.transaction(fn -> PlaceCascade.delete!(repo, ids) end)
   end
 
   defp column(repo, sql, params),

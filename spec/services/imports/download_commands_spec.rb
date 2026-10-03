@@ -78,7 +78,7 @@ expected_user_id: import.user_id)
     end
   end
 
-  it 'prepares a non-GPX download as before, outside the coordinated lock' do
+  it 'prepares a non-GPX download under the same import lease, skipping it while another preparation holds it' do
     other = create(:import, source: :geojson, skip_background_processing: true)
     archive = Zip::OutputStream.write_buffer do |zip|
       zip.put_next_entry('original.geojson')
@@ -90,7 +90,9 @@ expected_user_id: import.user_id)
     )
     hold_import_lock("import-download:#{other.id}") do
       Imports::PrepareDownloadJob.perform_now(other.id, other.file.blob_id)
+      expect(other.reload.prepared_download).not_to be_attached
     end
+    Imports::PrepareDownloadJob.perform_now(other.id, other.file.blob_id)
     expect(other.reload.prepared_download.download).to eq('{"type":"FeatureCollection","features":[]}')
   end
 

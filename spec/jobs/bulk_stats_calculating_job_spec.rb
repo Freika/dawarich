@@ -148,5 +148,15 @@ RSpec.describe BulkStatsCalculatingJob, type: :job do
         expect(Stats::BulkCalculator).to have_received(:new).exactly(2).times
       end
     end
+
+    it 'Oban-owned: sweeps nobody' do
+      create(:user)
+      job_owner!(described_class::OWNER_KEY, :oban)
+      allow(Stats::BulkCalculator).to receive(:new)
+
+      described_class.perform_now
+
+      expect(Stats::BulkCalculator).not_to have_received(:new)
+    end
   end
 end

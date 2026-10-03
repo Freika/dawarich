@@ -13,6 +13,7 @@ defmodule DawarichWeb.Api.Body do
   @form "application/x-www-form-urlencoded"
   @pairs 4_096
   @depth 32
+  @override_methods ~w(GET HEAD PUT POST DELETE OPTIONS PATCH LINK UNLINK)
 
   @impl true
   def init(opts), do: opts
@@ -47,6 +48,12 @@ defmodule DawarichWeb.Api.Body do
       |> String.downcase()
 
     cond do
+      api_request?(conn) and invalid_escape?(conn.query_string) ->
+        {:proxy, "invalid percent escape in query"}
+
+      api_request?(conn) and header_method_override?(conn) ->
+        {:proxy, "method override header"}
+
       RailsProxy.Headers.chunked?(conn) ->
         {:proxy, "chunked request body"}
 
@@ -68,11 +75,11 @@ defmodule DawarichWeb.Api.Body do
   end
 
   defp decode(conn, kind) do
-    case read(conn, []) do
+    case raw(conn) do
       {:ok, raw, conn} ->
         conn = put_private(conn, :dawarich_raw_body, raw)
 
-        with {:ok, body} <- body(kind, raw), {:ok, query} <- pairs(conn.query_string) do
+        with {:ok, body} <- body(conn, kind, raw), {:ok, query} <- pairs(conn.query_string) do
           conn |> assign(:api_query, query) |> assign(:api_params, Map.merge(body, query))
         else
           {:replay, reason} -> replay(conn, reason)
@@ -83,6 +90,9 @@ defmodule DawarichWeb.Api.Body do
     end
   end
 
+  defp raw(%{private: %{dawarich_raw_body: raw}} = conn), do: {:ok, raw, conn}
+  defp raw(conn), do: read(conn, [])
+
   defp read(conn, acc) do
     case read_body(conn, RailsProxy.read_options()) do
       {:ok, data, conn} -> {:ok, IO.iodata_to_binary([acc, data]), conn}
@@ -91,11 +101,24 @@ defmodule DawarichWeb.Api.Body do
     end
   end
 
-  defp body(:none, _raw), do: {:ok, %{}}
-  defp body(:form, raw), do: pairs(raw)
-  defp body(:json, ""), do: {:ok, %{}}
+  defp body(_conn, :none, _raw), do: {:ok, %{}}
 
-  defp body(:json, raw) do
+  defp body(conn, :form, raw) do
+    cond do
+      api_request?(conn) and invalid_escape?(raw) ->
+        {:replay, "invalid percent escape in form body"}
+
+      api_request?(conn) and form_method_override?(raw) ->
+        {:replay, "method override form parameter"}
+
+      true ->
+        pairs(raw)
+    end
+  end
+
+  defp body(_conn, :json, ""), do: {:ok, %{}}
+
+  defp body(_conn, :json, raw) do
     case Jason.decode(raw) do
       {:ok, term} ->
         if too_deep?(term, 0),
@@ -114,24 +137,37 @@ defmodule DawarichWeb.Api.Body do
   defp munge(list) when is_list(list), do: for(e <- list, e != nil, do: munge(e))
   defp munge(value), do: value
 
-  defp too_deep?(map, depth) when is_map(map),
+  def too_deep?(map, depth) when is_map(map),
     do: depth >= @depth or Enum.any?(map, fn {_key, value} -> too_deep?(value, depth + 1) end)
 
-  defp too_deep?(list, depth) when is_list(list),
+  def too_deep?(list, depth) when is_list(list),
     do: depth >= @depth or Enum.any?(list, &too_deep?(&1, depth + 1))
 
-  defp too_deep?(_term, _depth), do: false
+  def too_deep?(_term, _depth), do: false
 
-  defp pairs(""), do: {:ok, %{}}
+  def segments(""), do: {:ok, []}
+
+  def segments(text) do
+    if more_pairs?(text) or byte_size(text) > 4_194_304 do
+      {:replay, "more parameters than Rack allows"}
+    else
+      text
+      |> String.split(~r/& */)
+      |> Enum.reject(&(&1 == ""))
+      |> Enum.reduce_while({:ok, []}, &segment/2)
+      |> then(fn
+        {:ok, reversed} -> {:ok, Enum.reverse(reversed)}
+        replay -> replay
+      end)
+    end
+  end
 
   defp pairs(text) do
-    if more_pairs?(text) or byte_size(text) > 4_194_304,
-      do: {:replay, "more parameters than Rack allows"},
-      else:
-        text
-        |> String.split(~r/& */)
-        |> Enum.reject(&(&1 == ""))
-        |> Enum.reduce_while({:ok, %{}}, &pair/2)
+    with {:ok, segments} <- segments(text) do
+      if Enum.any?(segments, fn {key, _} -> String.contains?(key, ["[", "]"]) end),
+        do: {:replay, "form or query shape Rack parses differently"},
+        else: {:ok, Map.new(segments)}
+    end
   end
 
   defp more_pairs?(text), do: more_pairs?(text, 0)
@@ -140,12 +176,11 @@ defmodule DawarichWeb.Api.Body do
   defp more_pairs?(<<_byte, rest::binary>>, count), do: more_pairs?(rest, count)
   defp more_pairs?("", _count), do: false
 
-  defp pair(segment, {:ok, acc}) do
+  defp segment(segment, {:ok, acc}) do
     with [key, value] <- String.split(segment, "=", parts: 2),
          {:ok, key} when key != "" <- component(key),
-         false <- String.contains?(key, ["[", "]"]),
          {:ok, value} <- component(value) do
-      {:cont, {:ok, Map.put(acc, key, value)}}
+      {:cont, {:ok, [{key, value} | acc]}}
     else
       _ -> {:halt, {:replay, "form or query shape Rack parses differently"}}
     end
@@ -157,6 +192,34 @@ defmodule DawarichWeb.Api.Body do
   rescue
     ArgumentError -> :error
   end
+
+  defp invalid_escape?(text), do: Regex.match?(~r/%(?![0-9A-Fa-f]{2})/, text)
+
+  defp api_request?(conn), do: Map.get(conn.assigns, :api_tag) in ["api", "ingest"]
+
+  defp header_method_override?(%{method: "POST"} = conn) do
+    conn
+    |> get_req_header("x-http-method-override")
+    |> Enum.any?(&method_override?/1)
+  end
+
+  defp header_method_override?(_conn), do: false
+
+  defp form_method_override?(text) do
+    text
+    |> String.split(~r/& */)
+    |> Enum.any?(fn segment ->
+      case String.split(segment, "=", parts: 2) do
+        [key, value] ->
+          URI.decode_www_form(key) == "_method" and method_override?(URI.decode_www_form(value))
+
+        _ ->
+          false
+      end
+    end)
+  end
+
+  defp method_override?(value), do: String.upcase(value) in @override_methods
 
   defp upstream, do: Application.fetch_env!(:dawarich, :rails_upstream)
 end
