@@ -20,6 +20,27 @@ defmodule Dawarich.Cable.BusTest do
     assert Bus.prefix(%{"RAILS_ENV" => "test"}) == nil
   end
 
+  test "the prefix is resolved once, not per message" do
+    rails_env = System.get_env("RAILS_ENV")
+    :persistent_term.erase({Bus, :prefix})
+    Application.delete_env(:dawarich, :cable_prefix)
+    System.put_env("RAILS_ENV", "production")
+
+    on_exit(fn ->
+      if rails_env,
+        do: System.put_env("RAILS_ENV", rails_env),
+        else: System.delete_env("RAILS_ENV")
+
+      :persistent_term.erase({Bus, :prefix})
+      Application.put_env(:dawarich, :cable_prefix, "dawarich_a12a")
+    end)
+
+    assert Bus.prefix() == "dawarich_production"
+    System.put_env("RAILS_ENV", "staging")
+    assert Bus.prefix() == "dawarich_production"
+    assert Bus.channel("points:Z2lk") == "dawarich_production:points:Z2lk"
+  end
+
   test "a subscriber is acknowledged, then receives Rails' channel with the prefix stripped" do
     {:ok, _ref} = Bus.subscribe("points:Z2lk")
     assert_receive message, 2_000

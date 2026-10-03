@@ -104,17 +104,42 @@ defmodule Dawarich.Test.A12a do
     Plug.Conn.Query.decode(query)["share_id"]
   end
 
-  def start_bus! do
-    for spec <- Bus.child_specs(bus: true, url: test_redis_url(), database: 2),
-        do: start_supervised!(spec)
-
-    start_supervised!({Redix, {test_redis_url(), [name: Dawarich.Redis]}})
+  def start_bus!(url \\ test_redis_url()) do
+    for spec <- Bus.child_specs(bus: true, url: url, database: 2), do: start_supervised!(spec)
     :ok
+  end
+
+  def swap_publisher!(url) do
+    :ok = ExUnit.Callbacks.stop_supervised(Dawarich.Cable.Bus.Publisher)
+
+    spec =
+      Enum.find(Bus.child_specs(bus: true, url: url), &(&1.id == Dawarich.Cable.Bus.Publisher))
+
+    start_supervised!(spec)
+  end
+
+  def dead_redis_url do
+    {:ok, listen} = :gen_tcp.listen(0, ip: {127, 0, 0, 1})
+    {:ok, port} = :inet.port(listen)
+    :ok = :gen_tcp.close(listen)
+    "redis://127.0.0.1:#{port}"
+  end
+
+  def queued do
+    repo = Dawarich.Jobs.repo()
+
+    for table <- ~w(notification_events trip_events), reduce: 0 do
+      sum -> sum + hd(hd(repo.query!("SELECT count(*) FROM phoenix.#{table}").rows))
+    end
   end
 
   def publish!(broadcasting, payload) do
     {:ok, _} =
-      Redix.command(Dawarich.Redis, ["PUBLISH", "dawarich_a12a:" <> broadcasting, payload])
+      Redix.command(Dawarich.Cable.Bus.Publisher, [
+        "PUBLISH",
+        "dawarich_a12a:" <> broadcasting,
+        payload
+      ])
 
     :ok
   end
@@ -213,9 +238,12 @@ defmodule Dawarich.Test.A12a do
     end
   end
 
-  def next_frame(socket, timeout \\ 2_000) do
-    case recv_frame(socket, timeout) do
-      {_fin, :text, ~s({"type":"ping") <> _} -> next_frame(socket, timeout)
+  def next_frame(socket, timeout \\ 2_000),
+    do: next_frame_until(socket, System.monotonic_time(:millisecond) + timeout)
+
+  defp next_frame_until(socket, deadline) do
+    case recv_frame(socket, max(deadline - System.monotonic_time(:millisecond), 0)) do
+      {_fin, :text, ~s({"type":"ping") <> _} -> next_frame_until(socket, deadline)
       {_fin, :text, text} -> %{"expect" => text}
       {_fin, :close, <<code::16, _::binary>>} -> %{"close" => code}
       {_fin, kind, payload} -> %{"unexpected" => [Atom.to_string(kind), payload]}
@@ -325,7 +353,9 @@ defmodule Dawarich.Test.A12a do
       identity: identity,
       context: %{secret: secret(), now: &now/0, self_hosted: true},
       beat_ms: 3_000,
-      subs: %{}
+      silent_ms: 60_000,
+      subs: %{},
+      bus: nil
     }
   end
 

@@ -26,7 +26,7 @@ defmodule Dawarich.ApplicationTest do
   test "stops the jobs first, then the front, then PubSub, Oban and the repo, in every front mode" do
     base = [Dawarich.Repo, Redix, Dawarich.Redis.Cache, Oban, Phoenix.PubSub.Supervisor]
 
-    jobs = [Dawarich.Jobs.Supervisor, Dawarich.Cable.EventsRelay]
+    jobs = [Dawarich.Jobs.Supervisor, Dawarich.Cable.EventsRelay.Supervisor]
     assert ids(:none) == base ++ [DawarichWeb.Endpoint | jobs]
     assert ids(@direct) == base ++ [RailsServer | jobs]
 

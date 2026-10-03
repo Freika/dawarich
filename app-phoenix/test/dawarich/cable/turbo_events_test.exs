@@ -69,4 +69,21 @@ defmodule Dawarich.Cable.TurboEventsTest do
 
     assert A12a.corpus()["relay"]["relay_locale"] == "en"
   end
+
+  test "nothing is claimed while the publisher is down; once it is back each event is published once" do
+    A12a.insert_events!(
+      A12a.relay!("notification_created")["events"] ++ A12a.relay!("trip_path")["events"]
+    )
+
+    A12a.swap_publisher!(A12a.dead_redis_url())
+    {:ok, _} = A12a.listen_all()
+    assert_raise MatchError, fn -> TurboEvents.drain(Dawarich.Jobs.repo(), Dawarich.Repo) end
+    assert A12a.queued() == 2
+    refute_receive {:redix_pubsub, _, _, :pmessage, _}, 300
+
+    A12a.swap_publisher!(A12a.test_redis_url())
+    assert TurboEvents.drain(Dawarich.Jobs.repo(), Dawarich.Repo) == 2
+    assert A12a.heard_count(300) == 3
+    assert A12a.queued() == 0
+  end
 end

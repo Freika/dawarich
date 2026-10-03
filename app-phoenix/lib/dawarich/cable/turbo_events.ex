@@ -24,7 +24,17 @@ defmodule Dawarich.Cable.TurboEvents do
 
   def drain(jobs_repo, repo), do: notifications(jobs_repo, repo) + trips(jobs_repo, repo)
 
-  def notifications(jobs_repo, repo) do
+  def notifications(jobs_repo, repo), do: claimed(jobs_repo, fn -> notify(jobs_repo, repo) end)
+
+  def trips(jobs_repo, repo, now \\ NaiveDateTime.utc_now()),
+    do: claimed(jobs_repo, fn -> relay_trips(jobs_repo, repo, now) end)
+
+  defp claimed(jobs_repo, fun) do
+    {:ok, count} = jobs_repo.transaction(fun)
+    count
+  end
+
+  defp notify(jobs_repo, repo) do
     ids = for [id] <- jobs_repo.query!(@claim_notifications, [], log: false).rows, do: id
 
     if ids != [] do
@@ -40,7 +50,7 @@ defmodule Dawarich.Cable.TurboEvents do
     length(ids)
   end
 
-  def trips(jobs_repo, repo, now \\ NaiveDateTime.utc_now()) do
+  defp relay_trips(jobs_repo, repo, now) do
     events = jobs_repo.query!(@claim_trips, [], log: false).rows |> Enum.sort()
     Enum.each(events, &trip(repo, &1, now))
     length(events)

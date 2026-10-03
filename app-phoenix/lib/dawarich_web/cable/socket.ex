@@ -8,10 +8,13 @@ defmodule DawarichWeb.Cable.Socket do
   def init(%{identity: :unauthorized} = state),
     do: {:stop, :normal, 1000, [{:text, Frames.disconnect("unauthorized", false)}], state}
 
-  def init(%{identity: :silent} = state), do: {:ok, state}
+  def init(%{identity: :silent} = state) do
+    Process.send_after(self(), :silent_timeout, state.silent_ms)
+    {:ok, state}
+  end
 
   def init(%{identity: {:ok, identity}} = state) do
-    {:ok, _} = :timer.send_interval(state.beat_ms, :beat)
+    Process.send_after(self(), :beat, state.beat_ms)
     {:push, [{:text, Frames.welcome()}], %{state | identity: identity}}
   end
 
@@ -32,8 +35,15 @@ defmodule DawarichWeb.Cable.Socket do
   def handle_in(_frame, state), do: {:ok, state}
 
   @impl WebSock
-  def handle_info(:beat, state),
-    do: {:push, [{:text, Frames.ping(System.os_time(:second))}], state}
+  def handle_info(:beat, state) do
+    Process.send_after(self(), :beat, state.beat_ms)
+    {:push, [{:text, Frames.ping(System.os_time(:second))}], state}
+  end
+
+  def handle_info(:silent_timeout, %{identity: :silent} = state), do: {:stop, :normal, state}
+
+  def handle_info({:DOWN, ref, :process, _bus, _reason}, %{bus: ref} = state),
+    do: {:stop, :normal, 1000, [{:text, Frames.disconnect("server_restart", true)}], state}
 
   def handle_info(message, %{identity: %{}} = state) do
     case Bus.event(message) do
@@ -62,6 +72,7 @@ defmodule DawarichWeb.Cable.Socket do
 
   defp decide({:stream, broadcasting}, id, state) do
     {:ok, _ref} = Bus.subscribe(broadcasting)
+    state = %{state | bus: state.bus || Process.monitor(Bus)}
     {:ok, put_in(state.subs[id], {broadcasting, :pending})}
   end
 

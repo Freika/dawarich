@@ -46,7 +46,7 @@ defmodule Dawarich.Application do
 
   defp jobs(node) do
     if jobs_runtime?(),
-      do: [{Dawarich.Jobs.Supervisor, node: node}, Dawarich.Cable.EventsRelay],
+      do: [{Dawarich.Jobs.Supervisor, node: node}, Dawarich.Cable.EventsRelay.supervisor_spec()],
       else: []
   end
 

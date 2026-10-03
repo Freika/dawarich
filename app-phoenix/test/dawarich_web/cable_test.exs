@@ -61,6 +61,17 @@ defmodule DawarichWeb.CableTest do
     assert frame == Frames.message(~s({"channel":"PointsChannel"}), ~s([1]))
   end
 
+  test "a Bus DOWN for the monitored Bus stops the socket; other DOWNs are ignored" do
+    state = A12a.socket_state(%{user: A12a.user!("alice"), share: nil})
+    {:ok, state} = Socket.handle_in({A12a.subscribe_frame("PointsChannel"), opcode: :text}, state)
+    assert is_reference(state.bus)
+    down = {:DOWN, state.bus, :process, Dawarich.Cable.Bus, :killed}
+
+    assert {:stop, :normal, 1000, [{:text, frame}], _} = Socket.handle_info(down, state)
+    assert frame == Frames.disconnect("server_restart", true)
+    assert {:ok, _} = Socket.handle_info({:DOWN, make_ref(), :process, self(), :normal}, state)
+  end
+
   test "unsubscribe stops delivery; unknown identifiers and commands send nothing" do
     state = A12a.confirmed_state("PointsChannel", "alice")
     unsubscribe = {A12a.unsubscribe_frame("PointsChannel"), opcode: :text}
@@ -87,5 +98,50 @@ defmodule DawarichWeb.CableTest do
     socket = A12a.open!(port, A12a.cookie("dave_locked"))
     assert A12a.ws_recv_any(socket, 300) == :timeout
     assert :inet.peername(socket) |> elem(0) == :ok
+  end
+
+  test "a malformed upgrade gets Phoenix's 400 (ED-057)", %{port: port} do
+    assert A12a.replay(port, A12a.case!("version_8")) ==
+             {400, nil, "text/plain; charset=utf-8", "Bad Request", []}
+  end
+
+  test "a socket whose Bus goes down is told to reconnect, as Rails' server restart does",
+       %{port: port} do
+    socket = A12a.open!(port, A12a.cookie("alice"))
+    assert A12a.ws_recv_json(socket) == %{"type" => "welcome"}
+    A12a.send_text(socket, A12a.subscribe_frame("PointsChannel"))
+    assert %{"expect" => confirm} = A12a.next_frame(socket)
+    assert confirm == Frames.confirm(~s({"channel":"PointsChannel"}))
+
+    Process.exit(Process.whereis(Dawarich.Cable.Bus), :kill)
+    assert A12a.next_frame(socket) == %{"expect" => Frames.disconnect("server_restart", true)}
+    assert A12a.next_frame(socket) == %{"close" => 1000}
+  end
+
+  test "a silent socket is closed after its bounded lifetime (ED-A12A-8)" do
+    port = A12a.serve_cable!(silent_ms: 100)
+    socket = A12a.open!(port, A12a.cookie("dave_locked"))
+    assert {_fin, :close, <<1000::16, _::binary>>} = A12a.ws_recv_any(socket, 2_000)
+  end
+
+  test "a failing identity lookup leaves the socket silent, as Rails' failing connect does",
+       %{port: port} do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkin(Dawarich.Repo)
+    socket = A12a.open!(port, A12a.cookie("alice"))
+    assert A12a.ws_recv_any(socket, 300) == :timeout
+  end
+
+  test "each Phoenix-held upgrade is logged once", %{port: port} do
+    previous = Logger.level()
+    Logger.configure(level: :info)
+    on_exit(fn -> Logger.configure(level: previous) end)
+
+    log =
+      ExUnit.CaptureLog.capture_log([level: :info], fn ->
+        socket = A12a.open!(port, A12a.cookie("alice"))
+        assert A12a.ws_recv_json(socket) == %{"type" => "welcome"}
+      end)
+
+    assert log =~ "[Cable] Phoenix upgraded /cable"
   end
 end

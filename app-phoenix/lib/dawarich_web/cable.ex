@@ -4,6 +4,8 @@ defmodule DawarichWeb.Cable do
 
   import Plug.Conn
 
+  require Logger
+
   alias Dawarich.Cable.Identity
   alias Dawarich.RailsSecret
   alias DawarichWeb.{CableProxy, LayoutAssigns, RackScheme, RailsAuth, SharedLinkCookie}
@@ -25,7 +27,7 @@ defmodule DawarichWeb.Cable do
         refuse(conn, 404, "Page not found")
 
       WebSockAdapter.UpgradeValidation.validate_upgrade(conn) != :ok ->
-        refuse(conn, 400, "Bad Request")
+        CableProxy.bad_request(conn)
 
       true ->
         upgrade(conn, opts, env)
@@ -62,8 +64,12 @@ defmodule DawarichWeb.Cable do
       identity: identity(conn, secret, clock.()),
       context: %{secret: secret, now: clock, self_hosted: self_hosted},
       beat_ms: Keyword.get(opts, :beat_ms, 3_000),
-      subs: %{}
+      silent_ms: Keyword.get(opts, :silent_ms, 60_000),
+      subs: %{},
+      bus: nil
     }
+
+    Logger.info("[Cable] Phoenix upgraded /cable")
 
     conn
     |> put_protocol()
@@ -81,6 +87,10 @@ defmodule DawarichWeb.Cable do
       :error ->
         :silent
     end
+  rescue
+    error ->
+      Logger.warning("[Cable] connect failed: #{inspect(error.__struct__)}")
+      :silent
   end
 
   defp query(string) do
