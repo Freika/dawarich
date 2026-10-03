@@ -63,7 +63,7 @@ RSpec.describe Achievements::CheckJob do
         command_type: 'achievements.check', dedupe_key: nil, aggregate_id: user.id,
         payload: { 'user_id' => user.id, 'notify' => true, 'oldest_timestamp' => 50 }
       )
-      expect(described_class.pending_members(user.id)).to be_empty
+      expect(Achievements::PendingChecks.read(user.id).first).to be_nil
     end
 
     it 'forwards a retried job once' do
@@ -76,7 +76,7 @@ RSpec.describe Achievements::CheckJob do
 
     it 'a retry whose command is already written keeps every pending timestamp for the next check' do
       described_class.defer(user.id, oldest_timestamp: 50)
-      members = described_class.pending_members(user.id)
+      members = Achievements::PendingChecks.read(user.id).last
       job = described_class.new(user.id, notify: true)
       job.perform_now
       Sidekiq.redis { |redis| members.each { redis.call('ZADD', described_class.pending_key(user.id), _1.to_i, _1) } }
@@ -84,12 +84,12 @@ RSpec.describe Achievements::CheckJob do
 
       job.perform_now
 
-      expect(described_class.pending_timestamps(user.id)).to contain_exactly(50, 40)
+      expect(Achievements::PendingChecks.read(user.id).last.map(&:to_i)).to contain_exactly(50, 40)
 
       described_class.perform_now(user.id, notify: true)
 
       expect(JobOutbox.pending.map { _1.payload['oldest_timestamp'] }).to contain_exactly(50, 40)
-      expect(described_class.pending_members(user.id)).to be_empty
+      expect(Achievements::PendingChecks.read(user.id).first).to be_nil
     end
 
     it 'writes a separate command per job for the same user' do
@@ -103,7 +103,7 @@ RSpec.describe Achievements::CheckJob do
       allow(JobOutbox).to receive(:insert_all).and_raise(ActiveRecord::StatementInvalid, 'outbox down')
 
       expect { described_class.perform_now(user.id) }.to raise_error(ActiveRecord::StatementInvalid, 'outbox down')
-      expect(described_class.pending_members(user.id)).not_to be_empty
+      expect(Achievements::PendingChecks.read(user.id).first).to eq(50)
     end
   end
 
@@ -140,7 +140,7 @@ RSpec.describe Achievements::CheckJob do
       described_class.schedule(user.id, oldest_timestamp: 100)
       described_class.perform_now(user.id)
 
-      expect(described_class.pending_timestamps(user.id)).to be_empty
+      expect(Achievements::PendingChecks.read(user.id).first).to be_nil
     end
 
     it 'keeps a change with the same timestamp that arrives during the check' do
@@ -151,7 +151,7 @@ RSpec.describe Achievements::CheckJob do
 
       described_class.perform_now(user.id)
 
-      expect(described_class.pending_timestamps(user.id)).to eq([100])
+      expect(Achievements::PendingChecks.read(user.id).first).to eq(100)
     end
 
     it 'schedules again once the pending check has started' do
@@ -167,7 +167,7 @@ RSpec.describe Achievements::CheckJob do
       allow(Achievements::RegionSetChecker).to receive(:new).and_raise(StandardError, 'boom')
 
       expect { described_class.perform_now(user.id) }.to raise_error(StandardError, 'boom')
-      expect(described_class.pending_timestamps(user.id)).to eq([100])
+      expect(Achievements::PendingChecks.read(user.id).first).to eq(100)
     end
 
     it 'keeps the pending timestamp when the worker shuts down mid-check' do
@@ -175,7 +175,7 @@ RSpec.describe Achievements::CheckJob do
       allow(Achievements::RegionSetChecker).to receive(:new).and_raise(Sidekiq::Shutdown)
 
       expect { described_class.perform_now(user.id) }.to raise_error(Sidekiq::Shutdown)
-      expect(described_class.pending_timestamps(user.id)).to eq([100])
+      expect(Achievements::PendingChecks.read(user.id).first).to eq(100)
     end
 
     it 'releases the debounce window after a check' do
@@ -189,7 +189,52 @@ RSpec.describe Achievements::CheckJob do
   describe '.defer' do
     it 'hands the change to the next check without scheduling one' do
       expect { described_class.defer(user.id, oldest_timestamp: 100) }.not_to have_enqueued_job(described_class)
-      expect(described_class.pending_timestamps(user.id)).to eq([100])
+      expect(Achievements::PendingChecks.read(user.id).first).to eq(100)
+    end
+  end
+
+  context 'with phoenix tables' do
+    before { phoenix_state! }
+
+    def checker_for(oldest)
+      checker = instance_double(Achievements::RegionSetChecker, call: true)
+      allow(Achievements::RegionSetChecker).to receive(:new)
+        .with(user, notify: anything, oldest_timestamp: oldest).and_return(checker)
+      checker
+    end
+
+    it 'schedules one check per burst from the claim row and runs it from the oldest pending timestamp' do
+      lock = ActiveRecord::Base.connection.quote(described_class.lock_key(user.id))
+
+      expect do
+        described_class.schedule(user.id, oldest_timestamp: 300)
+        described_class.schedule(user.id, oldest_timestamp: 100)
+      end.to have_enqueued_job(described_class).exactly(:once)
+      expect(
+        ActiveRecord::Base.connection.select_value("SELECT count(*) FROM phoenix.once_claims WHERE key = #{lock}").to_i
+      ).to eq(1)
+      expect(Sidekiq.redis { |r| r.exists(described_class.lock_key(user.id)) }).to eq(0)
+
+      checker = checker_for(100)
+      described_class.perform_now(user.id)
+      expect(checker).to have_received(:call)
+
+      expect(Achievements::PendingChecks.read(user.id)).to eq([nil, nil])
+      expect { described_class.schedule(user.id) }.to have_enqueued_job(described_class)
+    end
+
+    it "consumes a deferral written by Phoenix's anomaly filter exactly once" do
+      source = Rails.root.join('app-phoenix/lib/dawarich/points/anomaly_filter/effects.ex').read
+      phoenix_defer = source[/@defer """\n(.*?)\n\s*"""/m, 1]
+      ActiveRecord::Base.connection.exec_update(phoenix_defer, 'Phoenix', [user.id, 1_700_000_000, 259_200])
+
+      first = checker_for(1_700_000_000)
+      described_class.perform_now(user.id)
+      expect(first).to have_received(:call)
+
+      second = checker_for(nil)
+      described_class.perform_now(user.id)
+      expect(second).to have_received(:call)
     end
   end
 end

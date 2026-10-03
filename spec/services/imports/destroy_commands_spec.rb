@@ -36,7 +36,7 @@ RSpec.describe 'Imports::DestroyCommands' do
     clear_achievement_checks(user.id)
     args = payload.merge('oldest_timestamp' => 1_640_995_200)
     expect { 2.times { commands.achievements(args) } }.to have_enqueued_job(Achievements::CheckJob).once
-    expect(Achievements::CheckJob.pending_timestamps(user.id).uniq).to eq([1_640_995_200])
+    expect(Achievements::PendingChecks.read(user.id).first).to eq(1_640_995_200)
   end
 
   it 'routes adopted track reclassification through its actual native owner' do

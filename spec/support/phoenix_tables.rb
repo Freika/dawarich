@@ -6,7 +6,9 @@ module PhoenixTables
            '(name text PRIMARY KEY, holder text NOT NULL, expires_at timestamptz NOT NULL)'
   ONCE_CLAIMS = 'CREATE TABLE IF NOT EXISTS phoenix.once_claims ' \
                 '(key text PRIMARY KEY, expires_at timestamptz NOT NULL)'
-  PHOENIX_STATE_TABLES = %w[once_claims leases].freeze
+  ACHIEVEMENT_CHECKS = 'CREATE TABLE IF NOT EXISTS phoenix.achievement_checks (user_id bigint PRIMARY KEY, ' \
+                       'oldest_timestamp bigint NOT NULL, revision bigint NOT NULL, expires_at timestamptz NOT NULL)'
+  PHOENIX_STATE_TABLES = %w[once_claims leases achievement_checks].freeze
 
   def phoenix_tables!
     connection = ActiveRecord::Base.connection
@@ -24,6 +26,7 @@ module PhoenixTables
   def phoenix_state!
     phoenix_leases!
     ActiveRecord::Base.connection.execute(ONCE_CLAIMS)
+    ActiveRecord::Base.connection.execute(ACHIEVEMENT_CHECKS)
   end
 
   def without_phoenix_state!
