@@ -8,9 +8,10 @@ defmodule Dawarich.Entitlements do
   @lite 0
   @family 2
 
-  def full_access?(_user, true, _now), do: true
-  def full_access?(%{plan: plan}, false, _now) when plan != @lite, do: true
-  def full_access?(user, false, now), do: inherited_family_access?(user.id, now)
+  def full_access?(user, self_hosted, now, repo \\ Repo)
+  def full_access?(_user, true, _now, _repo), do: true
+  def full_access?(%{plan: plan}, false, _now, _repo) when plan != @lite, do: true
+  def full_access?(user, false, now, repo), do: inherited_family_access?(user.id, now, repo)
 
   @plan_names %{0 => "lite", 1 => "pro", 2 => "family"}
 
@@ -34,7 +35,7 @@ defmodule Dawarich.Entitlements do
 
   def future?(%DateTime{} = at, now), do: DateTime.compare(at, now) == :gt
 
-  defp inherited_family_access?(user_id, now) do
+  defp inherited_family_access?(user_id, now, repo \\ Repo) do
     from(m in "family_memberships",
       join: f in "families",
       on: f.id == m.family_id,
@@ -43,7 +44,7 @@ defmodule Dawarich.Entitlements do
       where: m.user_id == ^user_id,
       select: {f.access_until, o.plan, o.active_until}
     )
-    |> Repo.one()
+    |> repo.one()
     |> case do
       nil -> false
       {access_until, plan, owner_until} -> inherited?(access_until, plan, owner_until, now)
