@@ -42,8 +42,6 @@ const liveSocket = new LiveSocket("/phoenix/live", Socket, {
         fromEl.querySelector('a[href="/users/sign_out"]') &&
         toEl.querySelector('a[href="/users/sign_out"]')
       ) {
-        // The browser owns disclosure state, including edits before first join.
-        // Keep every other attribute and descendant eligible for server updates.
         toEl.toggleAttribute("open", fromEl.hasAttribute("open"))
       }
     },
