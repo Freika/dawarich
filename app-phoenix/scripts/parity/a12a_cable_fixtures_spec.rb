@@ -356,16 +356,9 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
     end
   end
 
-  def relay_entry(events, table)
+  def relay_entry(events)
     @queue.clear
     @calls.clear
-    events.each do |event|
-      columns = event.keys
-      values = event.values.map { |v| ActiveRecord::Base.connection.quote(v) }
-      ActiveRecord::Base.connection.execute(
-        "INSERT INTO phoenix.#{table} (#{columns.join(', ')}, created_at) VALUES (#{values.join(', ')}, now())"
-      )
-    end
     error = begin
       yield
       nil
@@ -375,6 +368,28 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
     { 'events' => events, 'published' => fx.drain(@queue, @calls.size), 'error' => error }.compact
   end
 
+  def rails_notification_relay(id)
+    Notification.where(id: id).includes(:user).order(:id).each(&:broadcast_notification)
+  end
+
+  def rails_trip_relay(event)
+    trip = Trip.find_by(id: event['trip_id'])
+    return unless trip
+
+    case event['kind']
+    when 'path'
+      Turbo::StreamsChannel.broadcast_refresh_to(trip)
+    when 'distance', 'countries'
+      Turbo::StreamsChannel.broadcast_update_to(trip, target: "trip_#{event['kind']}",
+                                                      partial: "trips/#{event['kind']}",
+                                                      locals: { trip:, distance_unit: event['distance_unit'] })
+    when 'finished'
+      Turbo::StreamsChannel.broadcast_replace_to(trip, target: 'trip_recalculate_frame',
+                                                       partial: 'trips/recalculate_button',
+                                                       locals: { trip:, error: event['failed'] })
+    end
+  end
+
   def relay_cases
     relay = {}
     locales = []
@@ -382,24 +397,18 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
       locales << I18n.locale.to_s
       original.call(*args, **kw)
     end
-    ActiveRecord::Base.transaction do
-      phoenix_tables!
-      { 'notification_created' => 'alice_notification', 'notification_badge_99_plus' => 'bob_last_notification',
-        'notification_badge_99' => 'carol_last_notification',
-        'notification_soft_deleted_user' => 'erin_notification' }.each do |name, id|
-        relay[name] = relay_entry([{ 'notification_id' => ids[id] }], 'notification_events') do
-          Notifications::EventsBroadcaster.drain_once
-        end
-      end
-      { 'trip_path' => ['trip_idle', 'path', false], 'trip_finished_ok' => ['trip_idle', 'finished', false],
-        'trip_finished_failed' => ['trip_idle', 'finished', true],
-        'trip_finished_cooling' => ['trip_cooling', 'finished', false],
-        'trip_distance' => ['trip_idle', 'distance', false],
-        'trip_countries' => ['trip_idle', 'countries', false] }.each do |name, (trip, kind, failed)|
-        event = { 'trip_id' => ids[trip], 'kind' => kind, 'distance_unit' => 'km', 'failed' => failed }
-        relay[name] = relay_entry([event], 'trip_events') { Trips::CalculationEventsBroadcaster.drain_once }
-      end
-      raise ActiveRecord::Rollback
+    { 'notification_created' => 'alice_notification', 'notification_badge_99_plus' => 'bob_last_notification',
+      'notification_badge_99' => 'carol_last_notification',
+      'notification_soft_deleted_user' => 'erin_notification' }.each do |name, id|
+      relay[name] = relay_entry([{ 'notification_id' => ids[id] }]) { rails_notification_relay(ids[id]) }
+    end
+    { 'trip_path' => ['trip_idle', 'path', false], 'trip_finished_ok' => ['trip_idle', 'finished', false],
+      'trip_finished_failed' => ['trip_idle', 'finished', true],
+      'trip_finished_cooling' => ['trip_cooling', 'finished', false],
+      'trip_distance' => ['trip_idle', 'distance', false],
+      'trip_countries' => ['trip_idle', 'countries', false] }.each do |name, (trip, kind, failed)|
+      event = { 'trip_id' => ids[trip], 'kind' => kind, 'distance_unit' => 'km', 'failed' => failed }
+      relay[name] = relay_entry([event]) { rails_trip_relay(event) }
     end
     relay.merge('trip_show_targets' => trip_show_targets, 'relay_locale' => locales.uniq.sole)
   end
