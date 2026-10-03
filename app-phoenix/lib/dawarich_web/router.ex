@@ -174,6 +174,7 @@ defmodule DawarichWeb.Router do
   pipeline :cable do
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
   end
 
   scope "/" do
