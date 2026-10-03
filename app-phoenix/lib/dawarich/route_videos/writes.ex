@@ -3,7 +3,7 @@ defmodule Dawarich.RouteVideos.Writes do
 
   alias Dawarich.{RailsCommands, RailsMessages}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
-  alias Dawarich.RouteVideos.Recipe
+  alias Dawarich.RouteVideos.{Recipe, Retention}
 
   @ceiling 250 * 1024 * 1024
 
@@ -84,7 +84,7 @@ defmodule Dawarich.RouteVideos.Writes do
   defp save(repo, user_id, blob_id, name, recipe, now, policy) do
     case insert(repo, user_id, blob_id, name, recipe, DateTime.to_naive(now)) do
       {:ok, id} ->
-        cap(repo, user_id, id, policy.max_per_user, DateTime.to_naive(now))
+        cap(repo, user_id, id, policy.max_per_user, now)
 
       {:error, _} ->
         repo.transaction(fn ->
@@ -135,56 +135,71 @@ defmodule Dawarich.RouteVideos.Writes do
   defp cap(_repo, _user_id, id, 0, _now), do: {:ok, %{id: id, evicted: []}}
 
   defp cap(repo, user_id, id, limit, now) do
-    ids =
-      repo.query!(
-        "SELECT id FROM route_videos WHERE user_id=$1 AND status=0 ORDER BY created_at DESC,id DESC OFFSET $2",
-        [user_id, limit],
-        log: false
-      ).rows
-      |> List.flatten()
-
-    Enum.each(ids, &expire(repo, user_id, &1, now))
+    ids = Retention.expire_over_cap(repo, user_id, limit, now)
     {:ok, %{id: id, evicted: ids}}
   rescue
     _e in [Postgrex.Error, DBConnection.ConnectionError, RuntimeError] ->
       {:error, %{phase: :post_commit, id: id}}
   end
 
-  defp expire(repo, user_id, id, now) do
+  def detach(repo, user_id, id, now) do
+    attachments =
+      repo.query!(
+        "SELECT id,blob_id FROM active_storage_attachments WHERE record_type='RouteVideo' AND record_id=$1 AND name='file' FOR UPDATE",
+        [id],
+        log: false
+      ).rows
+
+    for [attachment_id, blob_id] <- attachments do
+      repo.query!("DELETE FROM active_storage_attachments WHERE id=$1", [attachment_id],
+        log: false
+      )
+
+      repo.query!("UPDATE route_videos SET updated_at=$2 WHERE id=$1", [id, now], log: false)
+
+      RailsCommands.insert!(repo, "route_videos.attachment_job", %{
+        "user_id" => user_id,
+        "action" => "purge_detached",
+        "blob_id" => blob_id,
+        "attachment" => %{
+          "id" => attachment_id,
+          "name" => "file",
+          "record_type" => "RouteVideo",
+          "record_id" => id,
+          "blob_id" => blob_id
+        }
+      })
+    end
+  end
+
+  def destroy(repo, user_id, id, now) when is_integer(id) and id > 0 do
     repo.transaction(fn ->
-      attachments =
-        repo.query!(
-          "SELECT id,blob_id FROM active_storage_attachments WHERE record_type='RouteVideo' AND record_id=$1 AND name='file' FOR UPDATE",
-          [id],
-          log: false
-        ).rows
+      case repo.query!(
+             "SELECT id FROM route_videos WHERE id=$1 AND user_id=$2 FOR UPDATE",
+             [id, user_id],
+             log: false
+           ).rows do
+        [] ->
+          {:replay, "missing route video"}
 
-      for [attachment_id, blob_id] <- attachments do
-        repo.query!("DELETE FROM active_storage_attachments WHERE id=$1", [attachment_id],
-          log: false
-        )
+        [[^id]] ->
+          detach(repo, user_id, id, DateTime.to_naive(now))
 
-        repo.query!("UPDATE route_videos SET updated_at=$2 WHERE id=$1", [id, now], log: false)
+          repo.query!("DELETE FROM route_videos WHERE id=$1 AND user_id=$2", [id, user_id],
+            log: false
+          )
 
-        RailsCommands.insert!(repo, "route_videos.attachment_job", %{
-          "user_id" => user_id,
-          "action" => "purge_detached",
-          "blob_id" => blob_id,
-          "attachment" => %{
-            "id" => attachment_id,
-            "name" => "file",
-            "record_type" => "RouteVideo",
-            "record_id" => id,
-            "blob_id" => blob_id
-          }
-        })
+          {:ok, id}
       end
     end)
-
-    repo.query!(
-      "UPDATE route_videos SET status=1,expired_at=$2,updated_at=$2 WHERE id=$1 AND status=0",
-      [id, now],
-      log: false
-    )
+    |> case do
+      {:ok, result} -> result
+      {:error, reason} -> {:error, reason}
+    end
+  rescue
+    _e in [Postgrex.Error, DBConnection.ConnectionError, RuntimeError] ->
+      {:error, :destroy_failed}
   end
+
+  def destroy(_repo, _user_id, _id, _now), do: {:replay, "route video id"}
 end
