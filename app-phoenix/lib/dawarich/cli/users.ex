@@ -87,9 +87,7 @@ defmodule Dawarich.CLI.Users do
 
   defp read_password(ctx) do
     IO.write(ctx.err, "New password: ")
-    _ = :io.setopts(ctx.stdin, echo: false)
     line = IO.gets(ctx.stdin, "")
-    _ = :io.setopts(ctx.stdin, echo: true)
     IO.write(ctx.err, "\n")
 
     case line do

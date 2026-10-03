@@ -47,6 +47,11 @@ set -e
 [ "$users" -eq 1 ] && grep -q 'Usage: dawarich COMMAND' "$work/users.out" || { echo "an incomplete command did not print the usage (exit $users)"; exit 1; }
 [ "$retired" -eq 1 ] && grep -q 'removed together with Sidekiq' "$work/retired.out" || { echo "a retired rake name was not explained (exit $retired)"; exit 1; }
 [ "$rawstatus" -eq 0 ] && [ "$(head -1 "$work/status.out" | wc -c | tr -d ' ')" = 139 ] || { echo "raw-data status through the rake name failed or re-encoded its header (exit $rawstatus)"; cat "$work/status.out" >&2; exit 1; }
+set +e
+printf '%s\n' phoenix-a12e-smoke-login-not-for-production | "$rel" users password nobody@example.invalid >"$work/password.out" 2>&1
+password=$?
+set -e
+[ "$password" -eq 1 ] && [ "$(cat "$work/password.out")" = "dawarich: no user with email nobody@example.invalid" ] || { echo "users password with a piped password did not answer cleanly (exit $password)"; cat "$work/password.out" >&2; exit 1; }
 uuid="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n' | sed 's/^\(.\{8\}\)\(.\{4\}\)\(.\{4\}\)\(.\{4\}\)/\1-\2-\3-\4-/')"
 set +e
 "$rel" jobs resume "$uuid" >"$work/resume.out" 2>&1
