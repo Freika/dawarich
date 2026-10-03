@@ -43,40 +43,42 @@ defmodule Dawarich.LocationsTest do
   defp rows(zone, user_id, search),
     do: RailsTime.with_zone(zone, fn -> Locations.rows(user_id, search) end)
 
-  defp plan_nodes(plan), do: [plan | Enum.flat_map(plan["Plans"] || [], &plan_nodes/1)]
+  defp index_conditions(node),
+    do: List.wrap(node["Index Cond"]) ++ Enum.flat_map(node["Plans"] || [], &index_conditions/1)
 
   defp locations_plan(user_id, search) do
     {sql, args} = Locations.query(user_id, search)
-    Repo.query!("DROP INDEX IF EXISTS index_points_on_user_id_and_created_at")
-
-    Repo.query!(
-      "CREATE UNIQUE INDEX IF NOT EXISTS index_points_on_user_id_timestamp_lonlat ON points (user_id, timestamp, lonlat)"
-    )
-
+    Repo.query!("ANALYZE points")
     Repo.query!("SET LOCAL enable_seqscan = off")
-    [[plan]] = Repo.query!("EXPLAIN (FORMAT JSON) #{sql}", args).rows
-    plan |> List.first() |> Map.fetch!("Plan")
+    [[[%{"Plan" => plan}]]] = Repo.query!("EXPLAIN (FORMAT JSON) #{sql}", args).rows
+    plan
   end
 
   defp row(ts, accuracy, altitude, distance),
     do: [ts, 52.5 + ts / 1.0e9, 13.4, "C#{ts}", "D", altitude, accuracy, distance, "d#{ts}"]
 
-  test "rows: the user/timestamp index has the date range in its index condition" do
+  test "rows: the points scan takes both timestamp bounds as index conditions" do
     id = user!()
     start = 1_699_920_000
-    finish = 1_700_006_400
     search = search(%{date_from: ~D[2023-11-14], date_to: ~D[2023-11-14]})
 
-    point!(id, 52.52001, 13.40501, start)
-    point!(id, 52.52002, 13.40502, finish - 1)
+    for {count, first, step} <- [{40_000, 1_000_000_000, 1}, {200, start, 60}] do
+      Repo.query!(
+        "INSERT INTO points (user_id, timestamp, lonlat, created_at, updated_at) " <>
+          "SELECT $1, $2 + i * $3, ST_SetSRID(ST_MakePoint($4, $5), 4326)::geography, now(), now() " <>
+          "FROM generate_series(0, $6) AS i",
+        [id, first, step, search.lon, search.lat, count - 1]
+      )
+    end
 
-    index =
+    conditions =
       "UTC"
       |> RailsTime.with_zone(fn -> locations_plan(id, search) end)
-      |> plan_nodes()
-      |> Enum.find(&(&1["Index Name"] == "index_points_on_user_id_timestamp_lonlat"))
+      |> index_conditions()
+      |> Enum.join(" ")
 
-    assert index["Index Cond"] =~ "timestamp"
+    assert conditions =~ ~s("timestamp" >=)
+    assert conditions =~ ~s("timestamp" < )
   end
 
   test "rows: date bounds include the first second and exclude the following midnight" do
