@@ -85,6 +85,29 @@ RSpec.describe Stats::ToponymsRefresh do
     end
   end
 
+  context 'with phoenix.cursors and phoenix.stats_geocoded_days' do
+    before { phoenix_tables! }
+
+    it 'keeps the turn and both cursors in phoenix.cursors and never touches their Redis keys' do
+      stats = (1..3).map do |month|
+        create(:point, user: user, timestamp: Time.utc(2014, month, 15).to_i, city: 'Leipzig', country: 'Germany')
+        create(:stat, user: user, year: 2014, month: month, toponyms: [])
+      end
+      PhoenixCursors.set(described_class::CURSOR_KEY, stats.first.id - 1)
+
+      described_class.new.call
+
+      expect(stats.count { |stat| stat.reload.toponyms.present? }).to eq(2)
+      expect(ActiveRecord::Base.connection.select_rows('SELECT key, value FROM phoenix.cursors ORDER BY key').to_h)
+        .to eq(described_class::CURSOR_KEY => stats.second.id.to_s,
+               described_class::DISCOVERY_KEY => [user.id, Time.utc(2014, 2, 1).to_i].to_json,
+               described_class::TURN_KEY => '1')
+      expect(Sidekiq.redis do |r|
+        r.exists(described_class::CURSOR_KEY, described_class::DISCOVERY_KEY, described_class::TURN_KEY)
+      end).to eq(0)
+    end
+  end
+
   it 'skips the run while another holder keeps the refresh lease, and runs once it is released' do
     phoenix_leases!
     connection = ActiveRecord::Base.connection

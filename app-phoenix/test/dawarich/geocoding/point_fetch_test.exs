@@ -6,7 +6,6 @@ defmodule Dawarich.Geocoding.PointFetchTest do
 
   @fixtures ~w(photon_komoot photon_selfhosted_key photon_chibigeo geoapify nominatim locationiq
                store_geodata_false country_alias_and_mismatch point_force_and_rerun)
-  @pending "stats:geocoded_days:pending"
 
   for name <- @fixtures do
     @name name
@@ -93,31 +92,57 @@ defmodule Dawarich.Geocoding.PointFetchTest do
     assert [[^id, "Leipzig", "Germany", nil, _geodata, true, 1]] = points()
   end
 
-  test "a changed city marks the geocoded day in Sidekiq's Redis" do
+  test "a changed city marks the geocoded day in phoenix.stats_geocoded_days" do
     f = load!("photon_selfhosted_key")
     stub_requests!(f["requests"])
     config = Config.resolve(ScratchRepo, %{})
     [%{"point_id" => id}] = f["calls"]
     [user] = f["input"]["users"]
     member = "#{user["id"]}:2026-09-21"
-    sidekiq = sidekiq_redis()
 
     assert PointFetch.run(ScratchRepo, id, config, false) == :written
 
-    {:ok, score} = Redix.command(sidekiq, ["ZSCORE", @pending, member])
-    assert_in_delta String.to_integer(score), System.os_time(:second) + 3600, 5
-    {:ok, version} = Redix.command(sidekiq, ["GET", "stats:geocoded_days:version:" <> member])
-    assert is_binary(version)
+    [[version, due_at]] =
+      ScratchRepo.query!(
+        "SELECT version, due_at FROM phoenix.stats_geocoded_days WHERE member = $1",
+        [member]
+      ).rows
 
-    Redix.command!(sidekiq, ["ZREM", @pending, member])
+    assert_in_delta due_at, System.os_time(:second) + 3600, 5
+
+    ScratchRepo.query!("UPDATE phoenix.stats_geocoded_days SET due_at = 0 WHERE member = $1", [
+      member
+    ])
+
     assert PointFetch.run(ScratchRepo, id, config, true) == :written
 
-    assert Redix.command(sidekiq, ["ZSCORE", @pending, member]) == {:ok, nil}
-
-    assert Redix.command(sidekiq, ["GET", "stats:geocoded_days:version:" <> member]) ==
-             {:ok, version}
+    assert ScratchRepo.query!(
+             "SELECT version, due_at FROM phoenix.stats_geocoded_days WHERE member = $1",
+             [member]
+           ).rows == [[version, 0]]
 
     assert Enum.map(kinds(), & &1["kind"]) == ["points.tile_epoch", "points.tile_epoch"]
+  end
+
+  test "a geocoded-day write that fails is logged and the point stays written" do
+    f = load!("photon_selfhosted_key")
+    stub_requests!(f["requests"])
+    [%{"point_id" => id}] = f["calls"]
+
+    HookRepo.set_hook(fn sql, _params ->
+      if String.starts_with?(sql, "INSERT INTO phoenix.stats_geocoded_days"),
+        do: raise(Postgrex.Error, message: "queue unavailable")
+
+      :ok
+    end)
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert PointFetch.run(HookRepo, id, Config.resolve(ScratchRepo, %{}), false) == :written
+      end)
+
+    assert log =~ "event=geocoding.geocoded_day_failed user_id="
+    assert geocoded_days() == []
   end
 
   test "a missing point is :missing" do
@@ -151,12 +176,5 @@ defmodule Dawarich.Geocoding.PointFetchTest do
     refute log =~ second["body"]
     assert kinds() == []
     assert [[_, nil, nil, nil, "{}", false, 0], [_, nil, nil, nil, "{}", false, 0]] = points()
-  end
-
-  defp sidekiq_redis do
-    config = Application.fetch_env!(:dawarich, :redis)
-    {:ok, conn} = Redix.start_link(config[:url], database: 1)
-    on_exit(fn -> Process.alive?(conn) && Redix.stop(conn) end)
-    conn
   end
 end

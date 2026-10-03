@@ -47,6 +47,17 @@ defmodule Dawarich.State do
   VALUES (true, $1, statement_timestamp())
   ON CONFLICT (id) DO UPDATE SET enabled = EXCLUDED.enabled, updated_at = EXCLUDED.updated_at
   """
+  @cursor "SELECT value FROM phoenix.cursors WHERE key = $1"
+  @put_cursor """
+  INSERT INTO phoenix.cursors (key, value, updated_at) VALUES ($1, $2, statement_timestamp())
+  ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = EXCLUDED.updated_at
+  """
+  @delete_cursor "DELETE FROM phoenix.cursors WHERE key = $1"
+  @increment_cursor """
+  INSERT INTO phoenix.cursors AS c (key, value, updated_at) VALUES ($1, '1', statement_timestamp())
+  ON CONFLICT (key) DO UPDATE SET value = (c.value::bigint + 1)::text, updated_at = EXCLUDED.updated_at
+  RETURNING value::bigint
+  """
 
   def claim(repo, key, ttl_seconds)
       when is_binary(key) and is_integer(ttl_seconds) and ttl_seconds > 0,
@@ -118,6 +129,28 @@ defmodule Dawarich.State do
   def put_registration_enabled(repo, enabled) when is_boolean(enabled) do
     repo.query!(@put_registration, [enabled], log: false)
     :ok
+  end
+
+  def cursor(repo, key) when is_binary(key) do
+    case repo.query!(@cursor, [key], log: false).rows do
+      [[value]] -> value
+      [] -> nil
+    end
+  end
+
+  def put_cursor(repo, key, value) when is_binary(key) and is_binary(value) do
+    repo.query!(@put_cursor, [key, value], log: false)
+    :ok
+  end
+
+  def delete_cursor(repo, key) when is_binary(key) do
+    repo.query!(@delete_cursor, [key], log: false)
+    :ok
+  end
+
+  def increment_cursor(repo, key) when is_binary(key) do
+    %{rows: [[value]]} = repo.query!(@increment_cursor, [key], log: false)
+    value
   end
 
   defp slide(repo, key, ttl_seconds) do

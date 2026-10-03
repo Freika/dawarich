@@ -17,7 +17,7 @@ module Stats
         @results = {}
         @scheduled_full = Set.new
         discover_missing_month
-        first = Sidekiq.redis { |redis| redis.incr(TURN_KEY).odd? }
+        first = PhoenixCursors.incr(TURN_KEY).odd?
         if first
           reconcile
           @results.clear
@@ -34,10 +34,10 @@ module Stats
     private
 
     def reconcile
-      cursor = Sidekiq.redis { |redis| redis.get(CURSOR_KEY) }.to_i
+      cursor = PhoenixCursors.get(CURSOR_KEY).to_i
       rows = Stat.where('id > ?', cursor).order(:id).limit(RECONCILIATIONS_PER_RUN).pluck(:id, :user_id, :year, :month)
       if rows.empty?
-        Sidekiq.redis { |redis| redis.set(CURSOR_KEY, 0) }
+        PhoenixCursors.set(CURSOR_KEY, 0)
         return
       end
 
@@ -46,15 +46,15 @@ module Stats
 
         user = User.find_by(id: user_id)
         refresh(user, year, month) if user
-        Sidekiq.redis { |redis| redis.set(CURSOR_KEY, id) }
+        PhoenixCursors.set(CURSOR_KEY, id)
       end
     end
 
     def discover_missing_month
-      raw = Sidekiq.redis { |redis| redis.get(DISCOVERY_KEY) }
+      raw = PhoenixCursors.get(DISCOVERY_KEY)
       user_id, timestamp = raw ? JSON.parse(raw) : [0, -2_147_483_648]
       user = User.where('id >= ?', user_id).order(:id).first
-      return Sidekiq.redis { |redis| redis.del(DISCOVERY_KEY) } unless user
+      return PhoenixCursors.del(DISCOVERY_KEY) unless user
 
       timestamp = -2_147_483_648 if user.id != user_id
       first = user.points.not_anomaly.where('timestamp >= ?', timestamp).order(:timestamp).pick(:timestamp)
@@ -68,7 +68,7 @@ module Stats
       else
         cursor = [user.id + 1, -2_147_483_648]
       end
-      Sidekiq.redis { |redis| redis.set(DISCOVERY_KEY, cursor.to_json) }
+      PhoenixCursors.set(DISCOVERY_KEY, cursor.to_json)
     end
 
     def refresh_pending
