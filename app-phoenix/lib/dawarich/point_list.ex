@@ -30,7 +30,7 @@ defmodule Dawarich.PointList do
   def load(user, params, now, opts) do
     page = TripsGate.page_number(params["page"])
 
-    with true <- params?(params) and page <= @max_page and settings?(user.settings),
+    with true <- valid_params?(params) and page <= @max_page and settings?(user.settings),
          {:ok, imports} <- imports(user.id),
          {:ok, import_id} <- selected_import(params["import_id"], imports),
          window =
@@ -69,7 +69,7 @@ defmodule Dawarich.PointList do
     end
   end
 
-  defp params?(params) do
+  def valid_params?(params) do
     Enum.all?(params, fn {key, value} ->
       key in @filters and (is_nil(value) or is_binary(value))
     end) and

@@ -9,8 +9,15 @@ defmodule DawarichWeb.HumanDatetime do
     ~H|<span class="tooltip" data-tip={iso8601(@at)}>{text(@locale, @at.local)}</span>|
   end
 
-  def text(locale, local) do
-    {:ok, pattern} = Dawarich.I18n.t(locale, "time.formats.human")
+  attr :locale, :string, required: true
+  attr :at, :map, required: true
+
+  def human_datetime_with_seconds(assigns) do
+    ~H|<span class="tooltip" data-tip={iso8601(@at)}>{text(@locale, @at.local, "human_with_seconds")}</span>|
+  end
+
+  def text(locale, local, format \\ "human") do
+    {:ok, pattern} = Dawarich.I18n.t(locale, "time.formats." <> format)
     {:ok, months} = Dawarich.I18n.t(locale, "date.abbr_month_names")
 
     Calendar.strftime(local, String.replace(pattern, "%e", "%_d"),

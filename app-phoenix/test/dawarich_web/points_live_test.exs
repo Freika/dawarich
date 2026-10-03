@@ -1,0 +1,191 @@
+defmodule DawarichWeb.PointsLiveTest do
+  use Dawarich.JobsCase, async: false
+
+  import Phoenix.ConnTest
+  import Phoenix.LiveViewTest
+  import Plug.Conn
+
+  alias Dawarich.{RailsCookies, RailsSecret, Repo}
+  alias Dawarich.Test.{FrameSeeds, RailsUser}
+  alias DawarichWeb.{HumanDatetime, MapDataGate, PointListFormat, Router}
+
+  @endpoint DawarichWeb.Endpoint
+  @range "start_at=1772359200&end_at=1772445600"
+
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    %{user: FrameSeeds.user!(8371, %{"timezone" => "UTC", "maps" => %{"distance_unit" => "km"}})}
+  end
+
+  defp live_as(user, path) do
+    assert %{plug: Phoenix.LiveView.Plug} =
+             Phoenix.Router.route_info(Router, "GET", "/points", "localhost")
+
+    live(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
+  end
+
+  defp fill(user, n) do
+    for i <- 1..n, do: FrameSeeds.point!(user.id, 837_100 + i, 1_772_359_200 + (i - 1) * 60)
+  end
+
+  defp attr(html, selector, name),
+    do: html |> LazyHTML.from_fragment() |> LazyHTML.query(selector) |> LazyHTML.attribute(name)
+
+  test "coordinates velocity and seconds match Rails table formatting" do
+    assert PointListFormat.coordinates(%{lat: 51.339700123456, lon: 12.373468123456}) ==
+             "51.339700, 12.373468"
+
+    assert PointListFormat.velocity(1.234, "km") == "4.4"
+    assert PointListFormat.velocity(1.234, "mi") == "2.8"
+    assert PointListFormat.velocity(nil, "km") == ""
+    assert PointListFormat.velocity(0.0, "km") == "0.0"
+    assert PointListFormat.velocity(-1.5, "km") == "-1.5"
+    assert PointListFormat.speed_class(-0.5) == "text-default"
+    assert PointListFormat.speed_class(-1.5) == "text-red-500"
+    at = %{local: ~N[2026-03-01 10:00:27], offset: 0, utc: true}
+    html = render_component(&HumanDatetime.human_datetime_with_seconds/1, locale: "en", at: at)
+    assert html =~ "1 Mar 2026, 10:00:27"
+    assert html =~ ~s(data-tip="2026-03-01T10:00:27Z")
+
+    refute render_component(&HumanDatetime.human_datetime/1, locale: "en", at: at) =~
+             "10:00:27</span>"
+  end
+
+  test "list controls preserve original filter and bulk form names", %{user: user} do
+    stamp = ~N[2026-03-01 10:00:00]
+
+    Repo.insert_all("imports", [
+      %{id: 83711, user_id: user.id, name: "Synthetic.json", created_at: stamp, updated_at: stamp}
+    ])
+
+    fill(user, 1)
+    Repo.query!("UPDATE points SET import_id = 83711 WHERE user_id = $1", [user.id])
+    {:ok, _view, html} = live_as(user, "/points?#{@range}&import_id=83711&order_by=asc")
+    [action] = attr(html, "#bulk_destroy_form", "action")
+    assert URI.parse(action).path == "/points/bulk_destroy"
+
+    assert URI.decode_query(URI.parse(action).query) == %{
+             "action" => "index",
+             "controller" => "points",
+             "start_at" => "1772359200",
+             "end_at" => "1772445600",
+             "import_id" => "83711",
+             "order_by" => "asc"
+           }
+
+    assert attr(html, "#bulk_destroy_form input[name='_method']", "value") == ["delete"]
+    assert attr(html, "input[name='point_ids[]']", "value") == ["837101"]
+    assert attr(html, "input[name='start_at']", "value") == ["2026-03-01T10:00"]
+    assert attr(html, "select[name='import_id'] option[selected]", "value") == ["83711"]
+    assert attr(html, "#points", "phx-hook") == ["RailsStimulus"]
+    assert attr(html, "#bulk_destroy_form", "phx-submit") == []
+    assert html =~ "Synthetic.json"
+  end
+
+  test "pagination and order navigation render the selected page", %{user: user} do
+    fill(user, 51)
+    {:ok, view, html} = live_as(user, "/points?#{@range}&order_by=asc")
+    assert attr(html, "#points tbody tr", "id") == Enum.map(837_101..837_150, &"point_#{&1}")
+
+    html =
+      view |> element(".flex.justify-center.mb-4 [aria-label='pager'] a", "2") |> render_click()
+
+    assert_patch(view, "/points?end_at=1772445600&order_by=asc&page=2&start_at=1772359200")
+    assert attr(html, "#points tbody tr", "id") == ["point_837151"]
+    assert html =~ "51"
+    {:ok, _desc, html} = live_as(user, "/points?#{@range}&order_by=desc")
+    assert hd(attr(html, "#points tbody tr", "id")) == "point_837151"
+    assert Enum.any?(attr(html, "thead a", "href"), &String.contains?(&1, "order_by=asc"))
+  end
+
+  test "geocoding disables the column and list fallback differs from address frame", %{user: user} do
+    fill(user, 1)
+
+    Repo.query!(
+      "UPDATE points SET city = 'Fallback', country_name = 'Germany', geodata = '{}'::jsonb WHERE user_id = $1",
+      [user.id]
+    )
+
+    {:ok, _view, disabled} = live_as(user, "/points?#{@range}")
+    refute disabled =~ ">Address</th>"
+    stamp = ~N[2026-03-01 10:00:00]
+
+    Repo.insert_all("instance_settings", [
+      %{
+        key: "photon_api_host",
+        value: "photon.example.invalid",
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    {:ok, _view, enabled} = live_as(user, "/points?#{@range}")
+    assert enabled =~ "Fallback, Germany"
+
+    assert PointListFormat.address(%{geodata: %{}, city: "Fallback", country_name: "Germany"}) ==
+             "Fallback, Germany"
+
+    assert PointListFormat.address(
+             %{geodata: %{}, city: "Fallback", country_name: "Germany"},
+             false
+           ) == ""
+  end
+
+  test "points route and query writers hand back before page pipeline", %{user: user} do
+    assert %{pipe_through: [:browser, :rails_user], rails_gate: {MapDataGate, :points?}} =
+             Phoenix.Router.route_info(Router, "GET", "/points", "localhost")
+
+    assert MapDataGate.points?(
+             RailsUser.signed_in(user.id) |> Map.put(:query_string, @range),
+             %{}
+           )
+
+    for query <- [
+          "locale=de",
+          "client=x",
+          "aff=x",
+          "via=x",
+          "start_at[]=x",
+          "page[]=2",
+          "order_by=bad"
+        ] do
+      refute MapDataGate.points?(
+               RailsUser.signed_in(user.id) |> Map.put(:query_string, query),
+               %{}
+             )
+    end
+
+    refute MapDataGate.points?(
+             RailsUser.signed_in(user.id) |> put_req_header("x-dawarich-client", "test"),
+             %{}
+           )
+
+    refute DawarichWeb.Strangler.page_request?(
+             build_conn()
+             |> Map.put(:path_info, ["points"])
+             |> put_req_header("x-requested-with", "XMLHttpRequest")
+           )
+  end
+
+  test "signed out list records Rails return URL and alert" do
+    assert %{plug: Phoenix.LiveView.Plug} =
+             Phoenix.Router.route_info(Router, "GET", "/points", "localhost")
+
+    conn = get(build_conn(), "/points?#{@range}")
+    assert redirected_to(conn, 302) == "http://www.example.com/users/sign_in"
+
+    {:ok, session} =
+      RailsCookies.decrypt(
+        conn.resp_cookies["_dawarich_session"].value,
+        "_dawarich_session",
+        RailsSecret.fetch(),
+        DateTime.utc_now()
+      )
+
+    assert session["user_return_to"] == "/points?#{@range}"
+
+    assert session["flash"]["flashes"]["alert"] ==
+             "You need to sign in or sign up before continuing."
+  end
+end
