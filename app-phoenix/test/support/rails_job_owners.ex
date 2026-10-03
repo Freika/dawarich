@@ -92,7 +92,7 @@ defmodule Dawarich.RailsJobOwners do
     "StaleJobsRecoveryJob" => {:slice, :a7},
     "Stats::CalculatingJob" => {:oban, ["command:stats.calculate_month"]},
     "Stats::FullRecalculationJob" => {:slice, :a12d1},
-    "Stats::ToponymsRefreshJob" => {:slice, :a12d1},
+    "Stats::ToponymsRefreshJob" => {:oban, ["cron:stats_toponyms_refresh_job"]},
     "TeslaMate::SyncJob" => {:slice, :a7},
     "TeslaMate::SyncSchedulingJob" => {:slice, :a7},
     "TrackSegments::TimeAnchorBackfillJob" => {:oban, ["command:release.time_anchor"]},

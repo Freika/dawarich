@@ -3,7 +3,7 @@ defmodule Dawarich.Stats.StatsJobsTest do
 
   alias Dawarich.Jobs.{Ownership, Registry}
   alias Dawarich.StatsFixtures, as: F
-  alias Dawarich.Stats.{CalculateMonthWorker, Schedule}
+  alias Dawarich.Stats.{CalculateMonthWorker, Schedule, ToponymsRefreshWorker}
 
   @oban :a12d1a_stats_oban
   @payload %{"user_id" => 7, "year" => 2024, "month" => 3, "notify_on_failure" => true}
@@ -69,5 +69,40 @@ defmodule Dawarich.Stats.StatsJobsTest do
 
     assert Registry.command("stats.calculate_month") == {:ok, CalculateMonthWorker}
     assert Registry.claimable() == []
+  end
+
+  test "the toponym cron cancels itself while Sidekiq owns it and runs once Oban does" do
+    assert ToponymsRefreshWorker.run(ScratchRepo) == {:cancel, :not_owner}
+    assert rows("SELECT count(*) FROM phoenix.cursors") == [[0]]
+    Ownership.put!(ScratchRepo, ToponymsRefreshWorker.key(), :oban)
+    assert ToponymsRefreshWorker.run(ScratchRepo) == :ok
+
+    assert rows(
+             "SELECT value FROM phoenix.cursors WHERE key = 'stats:toponyms_reconciliation:turn'"
+           ) ==
+             [["1"]]
+  end
+
+  test "the toponym cron skips a run while another runtime holds the refresh lease" do
+    Ownership.put!(ScratchRepo, ToponymsRefreshWorker.key(), :oban)
+    foreign_lease!("stats:toponyms_refresh")
+    assert ToponymsRefreshWorker.run(ScratchRepo) == :ok
+    assert rows("SELECT count(*) FROM phoenix.cursors") == [[0]]
+  end
+
+  test "the toponym cron is registered unclaimable on Rails' schedule" do
+    entry = Enum.find(Registry.entries(), &(&1.key == "cron:stats_toponyms_refresh_job"))
+
+    assert %{
+             kind: :cron,
+             worker: ToponymsRefreshWorker,
+             claimable: false,
+             expression: "*/5 * * * *"
+           } = entry
+
+    assert Dawarich.RailsTree.read("config/schedule.yml") =~
+             ~r/stats_toponyms_refresh_job:\n\s+cron: "\*\/5 \* \* \* \*"/
+
+    assert {"*/5 * * * *", ToponymsRefreshWorker} in Registry.crontab()
   end
 end

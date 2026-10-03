@@ -211,6 +211,13 @@ defmodule Dawarich.Jobs.Registry do
       kind: :command,
       worker: Dawarich.Stats.CalculateMonthWorker,
       claimable: false
+    },
+    %{
+      key: Dawarich.Stats.ToponymsRefreshWorker.key(),
+      kind: :cron,
+      expression: "*/5 * * * *",
+      worker: Dawarich.Stats.ToponymsRefreshWorker,
+      claimable: false
     }
   ]
 
