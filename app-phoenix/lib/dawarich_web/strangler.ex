@@ -8,7 +8,8 @@ defmodule DawarichWeb.Strangler do
 
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
-  @page_pipelines [:browser, :insights, :rails_frame]
+  @page_pipelines [:browser, :insights, :rails_frame, :sharing, :sharing_unlock]
+  @keys %{"s" => "sharing"}
 
   @constraints %{
     "/api/v1/photos/:id/thumbnail" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
@@ -83,7 +84,7 @@ defmodule DawarichWeb.Strangler do
       end)
 
   defp handed_back?([segment | _]),
-    do: segment in Application.get_env(:dawarich, :rails_routes, [])
+    do: Map.get(@keys, segment, segment) in Application.get_env(:dawarich, :rails_routes, [])
 
   defp handed_back?([]), do: false
 

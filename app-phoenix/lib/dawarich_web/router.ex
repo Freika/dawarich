@@ -143,6 +143,43 @@ defmodule DawarichWeb.Router do
       metadata: %{slice: :api_locations_photos}
   end
 
+  pipeline :sharing do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug :fetch_query_params
+    plug DawarichWeb.TurboVisit
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.Locale
+    plug DawarichWeb.LayoutAssigns
+    plug DawarichWeb.RailsHeaders
+  end
+
+  pipeline :sharing_unlock do
+    plug :put_api_tag, "sharing"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.Api.Body
+    plug DawarichWeb.UnlockThrottle
+    plug :fetch_query_params
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.Locale
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :sharing
+
+    get "/s/:id", DawarichWeb.SharedLinkPage, :show,
+      metadata: %{rails_gate: {DawarichWeb.SharingGate, :show?}}
+  end
+
+  scope "/" do
+    pipe_through :sharing_unlock
+
+    post "/s/:id/unlock", DawarichWeb.SharedLinkPage, :unlock,
+      metadata: %{rails_gate: {DawarichWeb.SharingGate, :unlock?}}
+  end
+
   pipeline :rails_user do
     plug DawarichWeb.RequireUser
   end

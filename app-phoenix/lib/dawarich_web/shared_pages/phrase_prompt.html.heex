@@ -1,0 +1,45 @@
+<section class="hero min-h-[60vh]">
+  <div class="hero-content text-center">
+    <div class="max-w-md">
+      <h1 class="text-3xl font-bold">
+        {t(@locale, "shared.links.phrase_prompt.enter_the_magic_phrase", %{})}
+      </h1>
+      <p class="py-4">
+        {t(
+          @locale,
+          "shared.links.phrase_prompt.this_shared_link_is_protected_ask_the_owner_for_the",
+          %{}
+        )}
+      </p>
+      <div :if={@error} class="alert alert-error mb-4">{@error}</div>
+      <form
+        class="form-control"
+        action={"/s/#{@link.id}/unlock"}
+        accept-charset="UTF-8"
+        method="post"
+      >
+        <input
+          type="hidden"
+          name="authenticity_token"
+          value={form_token(@rails_session, @link.id)}
+        />
+        <input
+          required="required"
+          autofocus="autofocus"
+          class="input input-bordered w-full"
+          placeholder={t(@locale, "shared.links.phrase_prompt.magic_phrase", %{})}
+          type="text"
+          name="phrase"
+          id="phrase"
+        />
+        <input
+          type="submit"
+          name="commit"
+          value={t(@locale, "shared.links.phrase_prompt.unlock", %{})}
+          class="btn btn-primary mt-4"
+          data-disable-with={t(@locale, "shared.links.phrase_prompt.unlock", %{})}
+        />
+      </form>
+    </div>
+  </div>
+</section>
