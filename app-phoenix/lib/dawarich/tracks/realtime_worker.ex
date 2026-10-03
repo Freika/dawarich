@@ -64,10 +64,6 @@ defmodule Dawarich.Tracks.RealtimeWorker do
         Logger.warning("Tracks::RealtimeGenerationJob lock_busy user_id=#{user.id}")
         RailsCommands.insert!(repo, "tracks_realtime_retrigger", %{"user_id" => user.id})
         :ok
-
-      {:error, reason} ->
-        Logger.error("Failed real-time track generation for user #{user.id}: #{inspect(reason)}")
-        :ok
     end
   end
 

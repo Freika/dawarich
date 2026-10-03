@@ -65,4 +65,13 @@ defmodule Dawarich.Tracks.PerUserLockTest do
     assert PerUserLock.with_user_lock(ScratchRepo, 9, fn -> :ran end, timeout_ms: 0) ==
              {:ok, :ran}
   end
+
+  test "a database error while taking the lock raises instead of returning an error tuple" do
+    rows("ALTER TABLE phoenix.leases RENAME TO leases_away")
+    on_exit(fn -> rows("ALTER TABLE phoenix.leases_away RENAME TO leases") end)
+
+    assert_raise Postgrex.Error, fn ->
+      PerUserLock.with_user_lock(ScratchRepo, 7, fn -> flunk("ran") end, timeout_ms: 0)
+    end
+  end
 end

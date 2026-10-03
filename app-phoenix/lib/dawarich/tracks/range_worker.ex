@@ -60,7 +60,6 @@ defmodule Dawarich.Tracks.RangeWorker do
            ) do
         {:ok, :ok} -> :ok
         {:error, :timeout} -> {:error, :lock_busy}
-        {:error, reason} -> {:error, reason}
       end
     else
       :ok
