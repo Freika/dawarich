@@ -69,11 +69,15 @@ defmodule DawarichWeb.Api.SharedController do
   defp dispatch(conn, :points, link),
     do: result(conn, Dawarich.SharedApi.Points.live(link, DateTime.utc_now()), [])
 
+  defp dispatch(conn, action, link) when action in [:photos, :thumbnail],
+    do: result(conn, Dawarich.SharedApi.Photos.response(link, action), [])
+
   defp dispatch(conn, _action, _link), do: Body.replay(conn, "shared API action pending")
 
   defp result(conn, {:ok, term}, opts), do: Respond.json(conn, 200, term, opts)
   defp result(conn, {:error, status, message}, _opts), do: error(conn, status, message)
   defp result(conn, {:replay, reason}, _opts), do: Body.replay(conn, reason)
+  defp result(conn, {:head, status}, _opts), do: Respond.head(conn, status, "application/json")
 
   defp cache(%{magic_phrase: phrase}) do
     if Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(phrase),
