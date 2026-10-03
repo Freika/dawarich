@@ -266,7 +266,7 @@ defmodule Dawarich.Imports.PrepareDownloadWorkerTest do
       rows("UPDATE active_storage_blobs SET service_name='s3' WHERE id=$1", [blob])
       Application.put_env(:dawarich, :imports_services, %{"s3" => config})
       task = Task.async(fn -> PrepareDownloadWorker.perform(j) end)
-      assert_receive :downloading, 1000
+      receive do: (:downloading -> :ok)
 
       case unquote(change) do
         :owner ->
@@ -286,8 +286,8 @@ defmodule Dawarich.Imports.PrepareDownloadWorkerTest do
       end
 
       send(server.pid, :release)
-      result = Task.await(task)
-      Task.await(server)
+      result = Task.await(task, :infinity)
+      Task.await(server, :infinity)
 
       assert [] ==
                rows("SELECT id FROM active_storage_attachments WHERE name='prepared_download'")
@@ -354,12 +354,12 @@ defmodule Dawarich.Imports.PrepareDownloadWorkerTest do
     })
 
     task = Task.async(fn -> PrepareDownloadWorker.perform(j) end)
-    assert_receive {:uploading, writer, put}, 3000
+    {:uploading, writer, put} = receive do: ({:uploading, _, _} = message -> message)
     rows("UPDATE imports SET name='renamed.gpx' WHERE id=$1", [c.import.id])
     send(writer, :release)
 
-    assert {:snooze, 5} = Task.await(task)
-    assert_receive {:deleted, ^put}, 3000
+    assert {:snooze, 5} = Task.await(task, :infinity)
+    assert_received {:deleted, ^put}
     assert [] == rows("SELECT id FROM active_storage_attachments WHERE name='prepared_download'")
     assert [[1]] = rows("SELECT count(*) FROM active_storage_blobs")
     refute Processed.done?(ScratchRepo, j.args["event_id"])

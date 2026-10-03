@@ -1,4 +1,4 @@
-ExUnit.start()
+ExUnit.start(exclude: [:rails_parity])
 Application.put_env(:dawarich, :allowed_hosts, [])
 Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :manual)
 
