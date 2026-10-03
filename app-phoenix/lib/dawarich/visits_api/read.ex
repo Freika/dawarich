@@ -26,13 +26,54 @@ defmodule Dawarich.VisitsApi.Read do
     end)
   end
 
-  def show(owner, id, zone) do
-    RailsTime.with_zone(zone, fn ->
-      case Payload.rows(@active <> " AND v.id=$2", [owner, id], "") do
+  def show(owner, id, zone, repo \\ Repo, active? \\ true) do
+    RailsTime.with_zone(repo, zone, fn ->
+      where = if active?, do: @active, else: "v.user_id=$1"
+
+      case Payload.rows(where <> " AND v.id=$2", [owner, id], "", repo) do
         [row] -> {:ok, Payload.term(row)}
         [] -> :not_found
       end
     end)
+  end
+
+  def possible_places(owner, id, zone, repo \\ Dawarich.Jobs.repo()) do
+    RailsTime.with_zone(repo, zone, fn ->
+      with {:ok, visit} <- Dawarich.VisitsApi.Effects.load(repo, owner, id) do
+        [[lat, lon]] =
+          repo.query!(
+            "SELECT CASE WHEN a.id IS NOT NULL THEN a.latitude WHEN p.id IS NOT NULL THEN COALESCE(ST_Y(p.lonlat::geometry),p.latitude::float8) ELSE COALESCE((SELECT AVG(ST_Y(lonlat::geometry)) FROM points WHERE visit_id=v.id),0) END,CASE WHEN a.id IS NOT NULL THEN a.longitude WHEN p.id IS NOT NULL THEN COALESCE(ST_X(p.lonlat::geometry),p.longitude::float8) ELSE COALESCE((SELECT AVG(ST_X(lonlat::geometry)) FROM points WHERE visit_id=v.id),0) END FROM visits v LEFT JOIN areas a ON a.id=v.area_id LEFT JOIN places p ON p.id=v.place_id WHERE v.id=$1",
+            [id]
+          ).rows
+
+        if Dawarich.Geocoding.Config.resolve(repo).enabled && !(lat == 0 && lon == 0) do
+          {:replay, "enabled nearby provider"}
+        else
+          {:ok, current_place(repo, visit.place_id)}
+        end
+      end
+    end)
+  end
+
+  defp current_place(_repo, nil), do: []
+
+  defp current_place(repo, id) do
+    case repo.query!(
+           "SELECT id,name,COALESCE(ST_Y(lonlat::geometry),latitude::float8),COALESCE(ST_X(lonlat::geometry),longitude::float8),geodata->'properties'->'osm_id',geodata->'properties'->'osm_type',geodata->'properties'->'osm_key',geodata->'properties'->'osm_value',city,country,CASE source WHEN 0 THEN 'manual' WHEN 1 THEN 'photon' WHEN 2 THEN 'gpx_waypoint' END,geodata FROM places WHERE id=$1",
+           [id]
+         ).rows do
+      [row] ->
+        [
+          {:object,
+           Enum.zip(
+             ~w(id name latitude longitude osm_id osm_type osm_key osm_value city country source geodata),
+             row
+           )}
+        ]
+
+      [] ->
+        []
+    end
   end
 
   defp time(value, optional?) do

@@ -11,8 +11,8 @@ defmodule Dawarich.VisitsApi.Payload do
     count
   end
 
-  def rows(where, args, tail) do
-    Repo.query!(
+  def rows(where, args, tail, repo \\ Repo) do
+    repo.query!(
       "SELECT v.id,v.area_id,v.user_id,#{RailsTime.sql("v.started_at", 3)},#{RailsTime.sql("v.ended_at", 3)}," <>
         "v.duration,v.name,CASE v.status WHEN 0 THEN 'suggested' WHEN 1 THEN 'confirmed' WHEN 2 THEN 'declined' END," <>
         "v.confidence,CASE WHEN v.confidence>=70 THEN 'high' WHEN v.confidence>=40 THEN 'medium' WHEN v.confidence IS NOT NULL THEN 'low' END," <>

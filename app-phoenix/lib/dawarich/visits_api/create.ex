@@ -9,12 +9,13 @@ defmodule Dawarich.VisitsApi.Create do
   @statuses %{"suggested" => 0, "confirmed" => 1, "declined" => 2}
 
   def call(owner, attrs, zone, now, repo \\ Jobs.repo()) do
-    with {:ok, values} <- inputs(attrs) do
+    if is_map(attrs) do
       result =
         RailsTime.with_zone(repo, zone, fn ->
           with {:ok, from} <- time(repo, attrs["started_at"]),
                {:ok, to} <- time(repo, attrs["ended_at"]),
-               :ok <- interval(from, to) do
+               :ok <- interval(from, to),
+               {:ok, values} <- inputs(attrs) do
             persist(
               repo,
               owner,
@@ -28,6 +29,25 @@ defmodule Dawarich.VisitsApi.Create do
         {:create_unique, values} -> duplicate(repo, owner, values, zone, now)
         other -> other
       end
+    else
+      {:replay, "visit create root shape"}
+    end
+  end
+
+  def admit(attrs) do
+    case inputs(attrs) do
+      {:replay, _} = replay ->
+        replay
+
+      _ ->
+        if Enum.all?(~w(started_at ended_at), fn key ->
+             value = attrs[key]
+
+             Ruby.blank?(value) || (is_binary(value) && value =~ ~r/\A[a-z]{3,}\z/) ||
+               match?({:ok, {:text, _}}, Params.timestamp(value))
+           end),
+           do: :ok,
+           else: {:replay, "visit timestamp shape"}
     end
   end
 
