@@ -83,7 +83,8 @@ RSpec.describe Points::ArrivalCommands do
     expect(zones).to eq(['Asia/Tokyo'])
   end
 
-  it 'broadcasts at most once per broadcast_id: the marker lives a day and a repeat skips' do
+  it 'broadcasts at most once per broadcast_id with a Redis marker where Phoenix never migrated' do
+    without_phoenix_state!
     allow(Points::LiveBroadcaster).to receive(:new).and_return(instance_double(Points::LiveBroadcaster, call: nil))
     2.times { run('points.live_broadcast') }
 
@@ -91,8 +92,7 @@ RSpec.describe Points::ArrivalCommands do
     expect(Sidekiq.redis { |r| r.ttl('live_broadcast:done:b-1') }).to be_within(5).of(86_400)
   end
 
-  it 'claims the live broadcast marker row once' do
-    phoenix_state!
+  it 'broadcasts at most once per broadcast_id: the marker row lives a day and a repeat skips' do
     allow(Points::LiveBroadcaster).to receive(:new).and_return(instance_double(Points::LiveBroadcaster, call: nil))
     2.times { run('points.live_broadcast') }
 

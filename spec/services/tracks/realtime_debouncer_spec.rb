@@ -15,12 +15,10 @@ RSpec.describe Tracks::RealtimeDebouncer do
 
   describe '#trigger' do
     context 'when called for the first time' do
-      it 'sets the Redis key' do
+      it 'claims the debounce row' do
         debouncer.trigger
 
-        Sidekiq.redis do |redis|
-          expect(redis.exists(redis_key)).to eq(1)
-        end
+        expect(claim_seconds(redis_key)).to be_between(119, 120)
       end
 
       it 'schedules a RealtimeGenerationJob' do
@@ -50,7 +48,8 @@ RSpec.describe Tracks::RealtimeDebouncer do
         expect(jobs.size).to eq(1)
       end
 
-      it 'extends the Redis key TTL' do
+      it 'extends the Redis key TTL where Phoenix never migrated' do
+        without_phoenix_state!
         debouncer.trigger
 
         Sidekiq.redis do |redis|
@@ -85,7 +84,9 @@ RSpec.describe Tracks::RealtimeDebouncer do
     end
   end
 
-  describe '#clear' do
+  describe '#clear without phoenix tables (Redis fallback)' do
+    before { without_phoenix_state! }
+
     it 'removes the Redis key' do
       debouncer.trigger
 
@@ -104,25 +105,9 @@ RSpec.describe Tracks::RealtimeDebouncer do
   context 'with phoenix.once_claims' do
     before { phoenix_state! }
 
-    def claim_seconds(key)
-      connection = ActiveRecord::Base.connection
-      connection.select_value(
-        'SELECT extract(epoch FROM expires_at - statement_timestamp()) FROM phoenix.once_claims ' \
-        "WHERE key = #{connection.quote(key)}"
-      )&.to_f
-    end
-
-    def expire_in_ten_seconds(key)
-      connection = ActiveRecord::Base.connection
-      connection.execute(
-        "UPDATE phoenix.once_claims SET expires_at = statement_timestamp() + interval '10 seconds' " \
-        "WHERE key = #{connection.quote(key)}"
-      )
-    end
-
     it 'schedules one job per burst from the claim row, slides the row and lets the job clear it' do
       expect { 3.times { debouncer.trigger } }.to have_enqueued_job(Tracks::RealtimeGenerationJob).exactly(:once)
-      expire_in_ten_seconds(redis_key)
+      expire_claim_in(redis_key, '10 seconds')
       expect { debouncer.trigger }.not_to have_enqueued_job(Tracks::RealtimeGenerationJob)
       expect(claim_seconds(redis_key)).to be_between(119, 120)
       debouncer.clear

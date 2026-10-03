@@ -54,25 +54,9 @@ RSpec.describe Stats::RecalculationDebouncer do
   context 'with phoenix.once_claims' do
     before { phoenix_state! }
 
-    def claim_seconds(key)
-      connection = ActiveRecord::Base.connection
-      connection.select_value(
-        'SELECT extract(epoch FROM expires_at - statement_timestamp()) FROM phoenix.once_claims ' \
-        "WHERE key = #{connection.quote(key)}"
-      )&.to_f
-    end
-
-    def expire_in_ten_seconds(key)
-      connection = ActiveRecord::Base.connection
-      connection.execute(
-        "UPDATE phoenix.once_claims SET expires_at = statement_timestamp() + interval '10 seconds' " \
-        "WHERE key = #{connection.quote(key)}"
-      )
-    end
-
     it 'schedules one job per burst from the claim row, slides the row and lets the job clear it' do
       expect { 3.times { debouncer.trigger } }.to have_enqueued_job(Stats::FullRecalculationJob).exactly(:once)
-      expire_in_ten_seconds(redis_key)
+      expire_claim_in(redis_key, '10 seconds')
       expect { debouncer.trigger }.not_to have_enqueued_job(Stats::FullRecalculationJob)
       expect(claim_seconds(redis_key)).to be_between(299, 300)
       debouncer.clear

@@ -57,9 +57,7 @@ module PhoenixClaims
     nil
   end
 
-  def table?
-    connection.select_value("SELECT to_regclass('phoenix.once_claims') IS NOT NULL")
-  end
+  def table? = PhoenixSchema.table?('once_claims')
 
   def redis_claim_all(keys, ttl)
     results = Sidekiq.redis { |r| r.pipelined { |p| keys.each { p.set(_1, 1, nx: true, ex: ttl) } } }

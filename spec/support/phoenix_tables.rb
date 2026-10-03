@@ -11,6 +11,13 @@ module PhoenixTables
   ACHIEVEMENT_CHECK_REVISIONS = 'CREATE SEQUENCE IF NOT EXISTS phoenix.achievement_check_revisions'
   PHOENIX_STATE_TABLES = %w[once_claims leases achievement_checks].freeze
 
+  def self.install_state!
+    connection = ActiveRecord::Base.connection
+    ['CREATE SCHEMA IF NOT EXISTS phoenix', LEASES, ONCE_CLAIMS, ACHIEVEMENT_CHECKS, ACHIEVEMENT_CHECK_REVISIONS,
+     "TRUNCATE #{PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" }.join(', ')}"].each { connection.execute(_1) }
+    PhoenixSchema.reset!
+  end
+
   def phoenix_tables!
     connection = ActiveRecord::Base.connection
     phoenix_leases!
@@ -33,6 +40,28 @@ module PhoenixTables
 
   def without_phoenix_state!
     PHOENIX_STATE_TABLES.each { |table| ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS phoenix.#{table}") }
+    PhoenixSchema.reset!
+  end
+
+  def clear_geocode_claims!
+    Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+    ActiveRecord::Base.connection.execute("DELETE FROM phoenix.once_claims WHERE key LIKE 'geocode:enq:%'")
+  end
+
+  def claim_seconds(key)
+    connection = ActiveRecord::Base.connection
+    connection.select_value(
+      'SELECT extract(epoch FROM expires_at - statement_timestamp()) FROM phoenix.once_claims ' \
+      "WHERE key = #{connection.quote(key)}"
+    )&.to_f
+  end
+
+  def expire_claim_in(key, interval)
+    connection = ActiveRecord::Base.connection
+    connection.execute(
+      "UPDATE phoenix.once_claims SET expires_at = statement_timestamp() + interval #{connection.quote(interval)} " \
+      "WHERE key = #{connection.quote(key)}"
+    )
   end
 
   def job_owner!(key, owner, pinned: false)
@@ -45,4 +74,8 @@ module PhoenixTables
   end
 end
 
-RSpec.configure { |config| config.include PhoenixTables }
+RSpec.configure do |config|
+  config.include PhoenixTables
+  config.before(:suite) { PhoenixTables.install_state! }
+  config.after { PhoenixSchema.reset! }
+end

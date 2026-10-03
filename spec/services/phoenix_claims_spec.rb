@@ -12,20 +12,6 @@ RSpec.describe PhoenixClaims do
     )
   end
 
-  def seconds_left(key)
-    connection.select_value(
-      'SELECT extract(epoch FROM expires_at - statement_timestamp()) FROM phoenix.once_claims ' \
-      "WHERE key = #{connection.quote(key)}"
-    ).to_f
-  end
-
-  def set_expiry(key, interval)
-    connection.execute(
-      "UPDATE phoenix.once_claims SET expires_at = statement_timestamp() + interval #{connection.quote(interval)} " \
-      "WHERE key = #{connection.quote(key)}"
-    )
-  end
-
   def redis_keys = Sidekiq.redis { |r| r.keys("#{prefix}:*") }
 
   after do
@@ -42,8 +28,8 @@ RSpec.describe PhoenixClaims do
       key = "#{prefix}:a"
       expect(described_class.claim(key, 60)).to be(true)
       expect(described_class.claim(key, 60)).to be(false)
-      expect(seconds_left(key)).to be_between(59, 60)
-      set_expiry(key, '-1 second')
+      expect(claim_seconds(key)).to be_between(59, 60)
+      expire_claim_in(key, '-1 second')
       expect(described_class.claim(key, 60)).to be(true)
       expect(redis_keys).to be_empty
     end
@@ -54,7 +40,7 @@ RSpec.describe PhoenixClaims do
       fresh = "#{prefix}:new"
       described_class.claim(live, 60)
       described_class.claim(old, 60)
-      set_expiry(old, '-1 second')
+      expire_claim_in(old, '-1 second')
 
       expect(described_class.claim_all([fresh, live, old, fresh], 86_400)).to contain_exactly(fresh, old)
       expect(described_class.claim_all([], 60)).to eq([])
@@ -74,10 +60,10 @@ RSpec.describe PhoenixClaims do
     it 'debounces: claims a free key, slides a live one, claims an expired or cleared one' do
       key = "#{prefix}:d"
       expect(described_class.debounce(key, 120)).to be(true)
-      set_expiry(key, '10 seconds')
+      expire_claim_in(key, '10 seconds')
       expect(described_class.debounce(key, 120)).to be(false)
-      expect(seconds_left(key)).to be_between(119, 120)
-      set_expiry(key, '-1 second')
+      expect(claim_seconds(key)).to be_between(119, 120)
+      expire_claim_in(key, '-1 second')
       expect(described_class.debounce(key, 120)).to be(true)
       described_class.unclaim(key)
       expect(described_class.debounce(key, 120)).to be(true)

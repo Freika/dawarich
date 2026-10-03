@@ -50,18 +50,16 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       allow(Geocoder).to receive(:search).and_return(
         [double(city: 'City', country: 'Country', data: { 'address' => {} })]
       )
-      Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+      clear_geocode_claims!
     end
 
-    def key_exists?
-      Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) } == 1
-    end
+    def key_exists? = !claim_seconds(Point.geocode_dedup_key(point.id)).nil?
 
     context 'when reverse geocoding is enabled' do
       before { configure_instance_geocoding }
 
       it 'releases the claim after a non-forced run' do
-        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
 
         described_class.new.perform('Point', point.id)
 
@@ -77,19 +75,20 @@ RSpec.describe ReverseGeocodingJob, type: :job do
           described_class.new.perform('Point', point.id)
 
           expect(PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 60)).to be(true)
-          expect(key_exists?).to be false
+          expect(Sidekiq.redis { |r| r.exists(Point.geocode_dedup_key(point.id)) }).to eq(0)
         end
       end
 
       it 'leaves a concurrent claim intact when the run is forced' do
-        Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
 
         described_class.new.perform('Point', point.id, force: true)
 
         expect(key_exists?).to be true
       end
 
-      it 'does not fail the job when Redis is unreachable during release' do
+      it 'does not fail the job when Redis is unreachable during release where Phoenix never migrated' do
+        without_phoenix_state!
         geocoded = create(:point, user:, reverse_geocoded_at: Time.current)
         allow(Sidekiq).to receive(:redis).and_raise(ConnectionPool::TimeoutError, 'redis down')
 
@@ -98,7 +97,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
     end
 
     it 'leaves point claims alone when the job runs for a place' do
-      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+      PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
 
       described_class.new.perform('place', point.id)
 
@@ -114,7 +113,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
     it 'a point forwards once with the job id and keeps the dedupe key' do
       job_owner!('command:geocoding.reverse_point', :oban)
       point = create(:point, user:, reverse_geocoded_at: nil)
-      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+      PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
       allow(ReverseGeocoding::Points::FetchData).to receive(:new)
       job = described_class.new
 
@@ -124,7 +123,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       row = JobOutbox.sole
       expect(row).to have_attributes(payload: { 'user_id' => point.user_id, 'point_ids' => [point.id],
                                                 'force' => false }, event_id: job.job_id)
-      expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(1)
+      expect(claim_seconds(Point.geocode_dedup_key(point.id))).not_to be_nil
       expect(ReverseGeocoding::Points::FetchData).not_to have_received(:new)
     end
 
@@ -141,23 +140,23 @@ RSpec.describe ReverseGeocodingJob, type: :job do
     it 'a failing forward releases the key and raises' do
       job_owner!('command:geocoding.reverse_point', :oban)
       point = create(:point, user:, reverse_geocoded_at: nil)
-      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+      PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
       allow(JobCommands).to receive(:forward).and_raise(ActiveRecord::StatementInvalid, 'boom')
 
       expect { described_class.new.perform('Point', point.id) }.to raise_error(ActiveRecord::StatementInvalid)
 
-      expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
+      expect(claim_seconds(Point.geocode_dedup_key(point.id))).to be_nil
     end
 
     it 'force forwards and never touches the key' do
       job_owner!('command:geocoding.reverse_point', :oban)
       point = create(:point, user:, reverse_geocoded_at: nil)
       foreign_key_owner_id = create(:point, user:, reverse_geocoded_at: nil).id
-      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(foreign_key_owner_id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+      PhoenixClaims.claim(Point.geocode_dedup_key(foreign_key_owner_id), Point::GEOCODE_DEDUP_TTL)
 
       described_class.new.perform('Point', point.id, force: true)
 
-      expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(foreign_key_owner_id)) }).to eq(1)
+      expect(claim_seconds(Point.geocode_dedup_key(foreign_key_owner_id))).not_to be_nil
     end
 
     it 'a missing record writes no row' do

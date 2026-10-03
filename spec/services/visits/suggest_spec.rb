@@ -162,7 +162,7 @@ RSpec.describe Visits::Suggest do
 
       it 'notifies again once the dedup window has passed' do
         described_class.new(user, start_at:, end_at:).call
-        Sidekiq.redis { |redis| redis.del("visit_suggest_error:user:#{user.id}") }
+        PhoenixClaims.unclaim("visit_suggest_error:user:#{user.id}")
 
         described_class.new(user, start_at:, end_at:).call
 
@@ -170,14 +170,15 @@ RSpec.describe Visits::Suggest do
       end
 
       it 'suppresses the notification when another run already claimed the window' do
-        Sidekiq.redis { |redis| redis.set("visit_suggest_error:user:#{user.id}", 1, ex: 3600) }
+        PhoenixClaims.claim("visit_suggest_error:user:#{user.id}", 3600)
 
         described_class.new(user, start_at:, end_at:).call
 
         expect(user.notifications.where(title: 'Error suggesting visits')).to be_empty
       end
 
-      it 'still notifies when Redis is unavailable' do
+      it 'still notifies when Redis is unavailable where Phoenix never migrated' do
+        without_phoenix_state!
         allow(Sidekiq).to receive(:redis).and_raise(RedisClient::CannotConnectError, 'redis down')
 
         described_class.new(user, start_at:, end_at:).call

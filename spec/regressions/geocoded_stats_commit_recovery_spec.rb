@@ -101,7 +101,6 @@ RSpec.describe 'Geocoded statistics commit recovery', :non_transactional, thread
   it 'excludes a second worker while another holder keeps the global refresh lease' do
     stat.id
     ReverseGeocoding::Points::FetchData.new(point.id).call
-    phoenix_leases!
     ActiveRecord::Base.connection.execute(
       'INSERT INTO phoenix.leases (name, holder, expires_at) ' \
       "VALUES ('stats:toponyms_refresh', 'other-worker', statement_timestamp() + interval '60 seconds')"
@@ -113,6 +112,6 @@ RSpec.describe 'Geocoded statistics commit recovery', :non_transactional, thread
       expect(Stats::GeocodedDays.due(limit: 10)).not_to be_empty
     end
   ensure
-    ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.leases')
+    ActiveRecord::Base.connection.execute('DELETE FROM phoenix.leases')
   end
 end

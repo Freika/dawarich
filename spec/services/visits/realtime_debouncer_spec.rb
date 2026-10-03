@@ -22,12 +22,10 @@ RSpec.describe Visits::RealtimeDebouncer do
         expect { debouncer.trigger }.not_to have_enqueued_job(VisitSuggestingJob)
       end
 
-      it 'does not set a Redis key' do
+      it 'claims no debounce row' do
         debouncer.trigger
 
-        Sidekiq.redis do |redis|
-          expect(redis.exists(redis_key)).to eq(0)
-        end
+        expect(claim_seconds(redis_key)).to be_nil
       end
     end
 
@@ -40,12 +38,10 @@ RSpec.describe Visits::RealtimeDebouncer do
         expect { debouncer.trigger }.not_to have_enqueued_job(VisitSuggestingJob)
       end
 
-      it 'does not set a Redis key' do
+      it 'claims no debounce row' do
         debouncer.trigger
 
-        Sidekiq.redis do |redis|
-          expect(redis.exists(redis_key)).to eq(0)
-        end
+        expect(claim_seconds(redis_key)).to be_nil
       end
     end
 
@@ -58,12 +54,10 @@ RSpec.describe Visits::RealtimeDebouncer do
     end
 
     context 'when called for the first time' do
-      it 'sets the Redis key' do
+      it 'claims the debounce row' do
         debouncer.trigger
 
-        Sidekiq.redis do |redis|
-          expect(redis.exists(redis_key)).to eq(1)
-        end
+        expect(claim_seconds(redis_key)).to be_between(599, 600)
       end
 
       it 'schedules a VisitSuggestingJob for this user' do
@@ -107,7 +101,8 @@ RSpec.describe Visits::RealtimeDebouncer do
         expect(jobs.size).to eq(1)
       end
 
-      it 'extends the Redis key TTL' do
+      it 'extends the Redis key TTL where Phoenix never migrated' do
+        without_phoenix_state!
         debouncer.trigger
 
         Sidekiq.redis do |redis|
@@ -149,7 +144,8 @@ RSpec.describe Visits::RealtimeDebouncer do
           .and_raise(StandardError, 'queue down')
       end
 
-      it 'removes the Redis key so the next call can re-enqueue' do
+      it 'removes the Redis key so the next call can re-enqueue where Phoenix never migrated' do
+        without_phoenix_state!
         expect { debouncer.trigger }.to raise_error(StandardError, 'queue down')
 
         Sidekiq.redis do |redis|
@@ -159,7 +155,9 @@ RSpec.describe Visits::RealtimeDebouncer do
     end
   end
 
-  describe '#clear' do
+  describe '#clear without phoenix tables (Redis fallback)' do
+    before { without_phoenix_state! }
+
     it 'removes the Redis key' do
       debouncer.trigger
 
@@ -178,25 +176,9 @@ RSpec.describe Visits::RealtimeDebouncer do
   context 'with phoenix.once_claims' do
     before { phoenix_state! }
 
-    def claim_seconds(key)
-      connection = ActiveRecord::Base.connection
-      connection.select_value(
-        'SELECT extract(epoch FROM expires_at - statement_timestamp()) FROM phoenix.once_claims ' \
-        "WHERE key = #{connection.quote(key)}"
-      )&.to_f
-    end
-
-    def expire_in_ten_seconds(key)
-      connection = ActiveRecord::Base.connection
-      connection.execute(
-        "UPDATE phoenix.once_claims SET expires_at = statement_timestamp() + interval '10 seconds' " \
-        "WHERE key = #{connection.quote(key)}"
-      )
-    end
-
     it 'schedules one job per burst from the claim row, slides the row and lets the job clear it' do
       expect { 3.times { debouncer.trigger } }.to have_enqueued_job(VisitSuggestingJob).exactly(:once)
-      expire_in_ten_seconds(redis_key)
+      expire_claim_in(redis_key, '10 seconds')
       expect { debouncer.trigger }.not_to have_enqueued_job(VisitSuggestingJob)
       expect(claim_seconds(redis_key)).to be_between(599, 600)
       debouncer.clear

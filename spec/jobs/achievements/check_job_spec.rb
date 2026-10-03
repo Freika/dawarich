@@ -74,7 +74,8 @@ RSpec.describe Achievements::CheckJob do
       expect(JobOutbox.pending.count).to eq(1)
     end
 
-    it 'a retry whose command is already written keeps every pending timestamp for the next check' do
+    it 'a retry whose command is already written keeps every pending timestamp where Phoenix never migrated' do
+      without_phoenix_state!
       described_class.defer(user.id, oldest_timestamp: 50)
       members = Achievements::PendingChecks.read(user.id).last
       job = described_class.new(user.id, notify: true)

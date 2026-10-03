@@ -37,9 +37,7 @@ module Achievements
       connection.exec_update(CONSUME, 'PendingChecks', [user_id, token])
     end
 
-    def table?
-      connection.select_value("SELECT to_regclass('phoenix.achievement_checks') IS NOT NULL")
-    end
+    def table? = PhoenixSchema.table?('achievement_checks')
 
     def redis_defer(user_id, timestamp)
       key = CheckJob.pending_key(user_id)

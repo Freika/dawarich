@@ -6,9 +6,6 @@ RSpec.describe 'Tracks::PerUserLock across database sessions', :non_transactiona
   let(:user_id) { 98_765 }
   let(:name) { "tracks:per_user_lock:#{user_id}" }
 
-  before(:context) { phoenix_leases! }
-  after(:context) { ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.leases') }
-
   def in_session(&block) = Thread.new { ActiveRecord::Base.connection_pool.with_connection(&block) }
 
   def holders
@@ -39,5 +36,8 @@ RSpec.describe 'Tracks::PerUserLock across database sessions', :non_transactiona
   ensure
     finish&.count_down
     first&.join(10)
+    ActiveRecord::Base.connection.execute(
+      "DELETE FROM phoenix.leases WHERE name = #{ActiveRecord::Base.connection.quote(name)}"
+    )
   end
 end
