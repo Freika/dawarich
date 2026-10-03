@@ -725,6 +725,18 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
+  test "value-less browser query keys go to Puma unchanged while valued keys stay in Phoenix",
+       ctx do
+    port = serve()
+
+    for target <- ~w(/trips?page /trips?view /stats?year) do
+      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+               "GET #{target} HTTP/1.1"
+    end
+
+    assert answered_by_phoenix(port, "GET /trips?page=2 HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+  end
+
   test "every other trip route, format and method goes to Puma", ctx do
     port = serve()
 
