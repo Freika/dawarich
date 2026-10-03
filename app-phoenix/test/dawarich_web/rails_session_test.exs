@@ -28,6 +28,16 @@ defmodule DawarichWeb.RailsSessionTest do
 
   defp flash(notice), do: %{"flash" => %{"flashes" => %{"notice" => notice}, "discard" => []}}
 
+  defp cookie_size(value),
+    do: byte_size("_dawarich_session") + byte_size(URI.decode_www_form(value))
+
+  defp fresh_cookie_size(changes) do
+    changes
+    |> Map.put("session_id", String.duplicate("0", 32))
+    |> RailsCookies.encrypt("_dawarich_session", @secret)
+    |> cookie_size()
+  end
+
   defp envelope(value) do
     [data, iv, tag] =
       value |> URI.decode_www_form() |> String.split("--") |> Enum.map(&Base.decode64!/1)
@@ -65,11 +75,30 @@ defmodule DawarichWeb.RailsSessionTest do
     assert decrypt(value) == before
   end
 
-  test "an absent or unreadable session starts empty" do
+  @tag :identity_contract
+  test "an absent or unreadable session gains an identity only for effective changes" do
     for cookie <- [nil, "not-a-rails-cookie", @cookies_fixture["other_purpose_cookie"]] do
       {:ok, value} = RailsSession.rewrite(cookie, %{"locale" => "de"}, @secret)
-      assert decrypt(value) == %{"locale" => "de"}
-      assert RailsSession.rewrite(cookie, %{"locale" => nil}, @secret) == :unchanged
+      session = decrypt(value)
+      valid_identity = Regex.match?(~r/\A[0-9a-f]{32}\z/, session["session_id"] || "")
+      assert valid_identity
+      assert Map.delete(session, "session_id") == %{"locale" => "de"}
+
+      for changes <- [
+            %{},
+            %{"locale" => nil, "flash" => nil, "_csrf_token" => nil, "user_return_to" => nil}
+          ] do
+        assert RailsSession.rewrite(cookie, changes, @secret) == :unchanged
+
+        request = conn(:get, "/")
+
+        request =
+          if cookie, do: put_req_cookie(request, "_dawarich_session", cookie), else: request
+
+        response = request |> RailsSession.stage(changes) |> send_resp(200, "")
+        assert response.resp_cookies == %{}
+        assert get_resp_header(response, "set-cookie") == []
+      end
     end
   end
 
@@ -156,6 +185,7 @@ defmodule DawarichWeb.RailsSessionTest do
     end
   end
 
+  @tag :identity_contract
   test "the 4 KB decision matches Rails' on values Rails escapes" do
     %{"unit" => unit, "units" => units, "extra" => extra, "fits" => fits} = @fixture["overflow"]
     assert Enum.any?(Map.values(fits)) and not Enum.all?(Map.values(fits))
@@ -163,14 +193,22 @@ defmodule DawarichWeb.RailsSessionTest do
     for {count, rails} <- fits do
       notice = String.duplicate(unit, units) <> String.duplicate(extra, String.to_integer(count))
 
+      changes = flash(notice)
+      legacy_size = changes |> RailsCookies.encrypt("_dawarich_session", @secret) |> cookie_size()
+      assert {count, legacy_size <= 4096} == {count, rails}
+      expected_size = fresh_cookie_size(changes)
+      assert expected_size > legacy_size
+
       phoenix =
         try do
-          match?({:ok, _}, RailsSession.rewrite(nil, flash(notice), @secret))
+          {:ok, written} = RailsSession.rewrite(nil, changes, @secret)
+          assert cookie_size(written) == expected_size
+          true
         rescue
           RailsSession.Overflow -> false
         end
 
-      assert {count, phoenix} == {count, rails}
+      assert {count, phoenix} == {count, expected_size <= 4096}
     end
   end
 
@@ -180,16 +218,18 @@ defmodule DawarichWeb.RailsSessionTest do
     end
   end
 
+  @tag :identity_contract
   test "the 4 KB limit is Rails': the name plus the unescaped value, above 4096 bytes" do
     results =
       for length <- 2000..2400 do
         changes = flash(String.duplicate("a", length))
-        value = RailsCookies.encrypt(changes, "_dawarich_session", @secret)
-        size = byte_size("_dawarich_session") + byte_size(URI.decode_www_form(value))
+        size = fresh_cookie_size(changes)
 
         accepted =
           try do
-            match?({:ok, _}, RailsSession.rewrite(nil, changes, @secret))
+            {:ok, written} = RailsSession.rewrite(nil, changes, @secret)
+            assert cookie_size(written) == size
+            true
           rescue
             RailsSession.Overflow -> false
           end

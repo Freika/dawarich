@@ -19,7 +19,7 @@ stack() {
     OTP_ENCRYPTION_DETERMINISTIC_KEY=e2e-otp-deterministic-key-not-a-secret \
     OTP_ENCRYPTION_KEY_DERIVATION_SALT=e2e-otp-derivation-salt-not-a-secret \
     WEB_CONCURRENCY=0 RAILS_MAX_THREADS=10 APPLICATION_HOSTS="${APPLICATION_HOSTS:-localhost,127.0.0.1}" DAWARICH_COOKIE_FILE="$root/tmp/proxy_stack.cookie" \
-    DAWARICH_RAILS_ROUTES="${DAWARICH_RAILS_ROUTES:-}" "$@"
+    DAWARICH_RAILS_ROUTES="${DAWARICH_RAILS_ROUTES:-}" DAWARICH_PHOENIX_AUTH="${DAWARICH_PHOENIX_AUTH:-}" ${DOMAIN:+DOMAIN="$DOMAIN"} "$@"
 }
 
 if [ "${1:-}" = --down ]; then

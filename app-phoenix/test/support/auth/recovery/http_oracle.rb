@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-require 'nokogiri'
 require_relative 'oracle_support'
 
 RecoveryOracle.deterministic!('http-raw-')
@@ -24,16 +23,6 @@ def recovery_response(session)
   data = ActionDispatch::Cookies::CookieJar.build(session.request, cookies).encrypted['_dawarich_session'] || {}
   { status: session.response.status, location: session.response.headers['Location'],
     signed_in: data.key?('warden.user.user.key'), flash: data['flash'], csrf_present: data.key?('_csrf_token') }
-end
-
-def recovery_markup(session)
-  card = Nokogiri::HTML(session.response.body).at_css('div.hero')
-  card.css('input[name="authenticity_token"]').each { |input| input['value'] = 'CSRF' }
-  { status: session.response.status, registration: card.to_html.include?('/users/sign_up'), html: card.to_html }
-end
-
-def csrf(session)
-  session.response.body[/name="csrf-token" content="([^"]+)"/, 1] || raise('source CSRF token absent')
 end
 
 result = {}
@@ -91,28 +80,5 @@ session = recovery_session
 session.post('/users/unlock', params: { user: { email: 'unknown@dawarich.test' } })
 result[:unknown_unlock_request] = recovery_response(session)
 
-ActionController::Base.allow_forgery_protection = true
-markup = {}
-{ password_new: '/users/password/new', password_edit: '/users/password/edit?reset_password_token=synthetic',
-  unlock_new: '/users/unlock/new', unlock_invalid: '/users/unlock?unlock_token=unknown' }.each do |name, path|
-  session = recovery_session
-  session.get(path)
-  markup[name] = recovery_markup(session)
-end
-user = RecoveryOracle.fresh_user(EMAIL)
-raw = user.send_reset_password_instructions
-{ password_edit_errors: [raw, 'short', 'different'], password_edit_invalid: ['unknown', 'newpassword12345', nil],
-  password_edit_blank_token: ['', 'newpassword12345', nil], password_edit_expired: [raw, 'newpassword12345', nil] }
-  .each do |name, (token, password, confirmation)|
-  user.update_columns(reset_password_sent_at: name == :password_edit_expired ? 7.hours.ago : Time.now.utc)
-  session = recovery_session
-  session.get('/users/password/edit?reset_password_token=synthetic')
-  session.put('/users/password', params: { authenticity_token: csrf(session), user: {
-                reset_password_token: token, password:, password_confirmation: confirmation
-              } })
-  markup[name] = recovery_markup(session).merge(token:)
-end
-result[:markup] = markup
-
 RecoveryOracle.write(ARGV.fetch(0), result)
-puts 'Captured Rails recovery HTTP responses and form markup; delivery disabled'
+puts 'Captured Rails recovery HTTP responses; delivery disabled'

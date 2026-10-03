@@ -89,6 +89,11 @@ defmodule DawarichWeb.RailsSession do
   defp apply_change({key, value}, session), do: Map.put(session, key, value)
 
   defp encode(session, secret) do
+    session =
+      Map.put_new_lazy(session, "session_id", fn ->
+        Base.encode16(:crypto.strong_rand_bytes(16), case: :lower)
+      end)
+
     value = RailsCookies.encrypt(session, @name, secret)
     size = byte_size(@name) + byte_size(URI.decode_www_form(value))
 

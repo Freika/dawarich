@@ -2,7 +2,7 @@ defmodule Dawarich.Auth.Recovery.Flow do
   @moduledoc false
   alias Dawarich.Auth.{Admission, SessionCookie}
   alias Dawarich.Auth.Recovery.{Lifecycle, Token}
-  alias Dawarich.{RailsCookies, RailsSecret}
+  alias Dawarich.{RailsCookies, RailsSecret, Repo}
 
   def dispatch(method, path, params, session, context \\ %{}) do
     with true <- Map.get(context, :enabled, false) == true,
@@ -97,34 +97,53 @@ defmodule Dawarich.Auth.Recovery.Flow do
   defp action(_, _, _, _, _), do: {:handoff, :route}
 
   defp request(kind, params, session, context) do
-    case context[:enqueue] do
-      enqueue when is_function(enqueue, 1) or is_function(enqueue, 2) ->
+    case {context[:enqueue], params["user[email]"], secret(context)} do
+      {enqueue, email, secret}
+      when is_function(enqueue, 1) and is_binary(email) and is_binary(secret) ->
+        issue(kind, email, enqueue, session, Map.put(context, :secret, secret))
+
+      {enqueue, _, _} when not is_function(enqueue, 1) ->
+        {:handoff, :delivery_owner}
+
+      {_, email, _} when not is_binary(email) ->
+        {:handoff, :parameters}
+
+      _ ->
+        {:handoff, :secret}
+    end
+  end
+
+  defp issue(kind, email, enqueue, session, context) do
+    column = if kind == :reset, do: :reset_password_token, else: :unlock_token
+    Token.key(column, context.secret)
+    repo = Map.get(context, :repo, Repo)
+
+    outcome =
+      repo.transaction(fn ->
         result =
           if kind == :reset,
-            do: Lifecycle.request_reset(params["user[email]"], context),
-            else: Lifecycle.request_unlock(params["user[email]"], context)
+            do: Lifecycle.request_reset(email, context),
+            else: Lifecycle.request_unlock(email, context)
 
         case result do
-          {:ok, %{user: user, notification: notification}} ->
-            delivery =
-              if is_function(enqueue, 2),
-                do: enqueue.(notification, user),
-                else: enqueue.(notification)
-
-            case delivery do
-              :ok -> requested(kind, session, context)
-              error -> {:error, {:delivery, error}}
+          {:ok, %{notification: notification}} ->
+            case enqueue.(notification) do
+              :ok -> :requested
+              error -> repo.rollback({:delivery, error})
             end
 
           {:error, error} when error in [:not_found, :not_locked] ->
-            requested(kind, session, context)
+            :requested
 
           other ->
             other
         end
+      end)
 
-      _ ->
-        {:handoff, :delivery_owner}
+    case outcome do
+      {:ok, :requested} -> requested(kind, session, context)
+      {:ok, other} -> other
+      {:error, {:delivery, _}} = failed -> failed
     end
   end
 

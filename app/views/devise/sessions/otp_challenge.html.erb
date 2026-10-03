@@ -7,7 +7,7 @@
       </p>
     </div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
-      <%= form_with url: user_otp_challenge_path, method: :post, class: 'form-body' do |f| %>
+      <%= form_with url: user_otp_challenge_path, method: :post, class: 'form-body', data: { turbo: false } do |f| %>
         <div class="form-control">
           <%= f.label :otp_attempt, t('.authentication_code'), class: 'label' do %>
             <span class="label-text"><%= t('.authentication_code') %></span>
