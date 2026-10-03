@@ -21,6 +21,7 @@ RSpec.describe 'Phoenix fixture: the registration flag and Devise recovery mail 
   end
 
   def wire(message)
+    message.date = Time.utc(2026, 9, 26, 12)
     encoded = message.encoded
     encoded.end_with?("\r\n") ? encoded : "#{encoded}\r\n"
   end
