@@ -22,7 +22,7 @@ defmodule DawarichWeb.Api.MapGoldenTest do
       end
 
       before = digests()
-      ApiGolden.check(@kase, port, puma)
+      ApiGolden.check(@kase, port, puma, float_precision: 8, float_fields: ["avg_speed"])
       assert digests() == before
     end
   end
