@@ -535,7 +535,8 @@ RSpec.describe 'Phoenix fixture: rack-attack throttles, blocklist and responders
       *Array.new(5) { step('POST', '/s/AbC%2fd/unlock', ip: '203.0.113.150', **form_body('phrase=wrong')) },
       step('POST', '/s/abc%2Fd/unlock.json', ip: '203.0.113.150', **form_body('phrase=wrong')),
       step('POST', '/s/abc/unlock', ip: '127.0.0.1', headers: [['x-forwarded-for', '<garbage>']]),
-      step('POST', '/s/abc/unlock', ip: '10.0.0.5', headers: [['forwarded', 'for=198.51.100.4']])
+      step('POST', '/s/abc/unlock', ip: '10.0.0.5', headers: [['forwarded', 'for=198.51.100.4']]),
+      *%w[/s/abc/unlock/ //s/abc/unlock /s/abc//unlock].map { |path| step('POST', path, ip: '203.0.113.151') }
     ]
   end
 end
