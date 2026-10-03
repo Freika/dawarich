@@ -45,31 +45,33 @@ defmodule Dawarich.Auth.Admission do
               "true"))
   end
 
-  def form(raw, query) when is_binary(raw) and is_binary(query) do
+  def form(raw, query), do: form(raw, query, @fields)
+
+  def form(raw, query, fields) when is_binary(raw) and is_binary(query) and is_list(fields) do
     if query != "" or byte_size(raw) > 65_536 do
       {:handoff, :parameters}
     else
       raw
       |> String.split("&", trim: true)
-      |> Enum.reduce_while({:ok, %{}}, &pair/2)
+      |> Enum.reduce_while({:ok, %{}}, &pair(&1, &2, fields))
     end
   end
 
   defp present?(env, key), do: Dawarich.ReleaseMigration.ruby_strip(env[key] || "") != ""
 
-  defp pair(segment, {:ok, acc}) do
+  defp pair(segment, {:ok, acc}, fields) do
     with [key, value] <- String.split(segment, "=", parts: 2),
          key <- URI.decode_www_form(key),
          value <- URI.decode_www_form(value),
          true <- not Regex.match?(~r/%(?![0-9a-fA-F]{2})/, segment),
          true <- String.valid?(key) and String.valid?(value),
-         true <- key in @fields,
+         true <- key in fields,
          true <- key != "user[remember_me]" or value in ["0", "1"] do
       case Map.fetch(acc, key) do
         :error ->
           {:cont, {:ok, Map.put(acc, key, value)}}
 
-        {:ok, "0"} when key == "user[remember_me]" and value == "1" ->
+        {:ok, "0"} when key == "user[remember_me]" and value == "1" and fields == @fields ->
           {:cont, {:ok, Map.put(acc, key, value)}}
 
         _ ->
