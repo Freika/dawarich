@@ -92,6 +92,7 @@ RSpec.describe 'Phoenix fixtures: point lists and addresses', type: :request do
       expect(response.body).not_to include('point_839901') if path == '/points'
       state = { 'kind' => frame ? 'point_address' : 'points', 'path' => path, 'accept' => accept,
                 'turbo_frame' => frame, 'now' => at.iso8601, 'status' => response.status,
+                'title' => doc.at_css('title')&.text,
                 'content_type' => response.media_type, 'vary' => response.headers['Vary'],
                 'location' => response.headers['Location'], 'self_hosted' => DawarichSettings.self_hosted?,
                 'geocoding' => geocoding, 'env' => { 'TIME_ZONE' => ENV.fetch('TIME_ZONE', nil) },

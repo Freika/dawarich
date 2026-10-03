@@ -10,7 +10,12 @@ defmodule DawarichWeb.PointListFormat do
 
   def velocity(nil, _unit), do: ""
 
-  def velocity(value, unit) when value > 0 do
+  def velocity(value, unit) when is_binary(value) do
+    numeric = Ruby.to_f(value)
+    if numeric > 0, do: velocity(numeric, unit), else: value
+  end
+
+  def velocity(value, unit) when is_number(value) and value > 0 do
     kmh = value * 3.6
     speed = if unit == "mi", do: kmh * 0.621371, else: kmh
     speed |> RubyFloat.round(1) |> SupportFloat.to_s()

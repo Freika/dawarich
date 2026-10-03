@@ -100,7 +100,8 @@ RSpec.describe 'Phoenix fixtures: track segment frames', type: :request do
       expect(response.headers['Location']).to include('/users/sign_in')
     end
     state = { 'kind' => 'segments', 'path' => path, 'accept' => accept, 'turbo_frame' => frame,
-              'now' => now.iso8601, 'status' => response.status, 'content_type' => response.media_type,
+              'now' => now.iso8601, 'status' => response.status, 'title' => doc.at_css('title')&.text,
+              'content_type' => response.media_type,
               'vary' => response.headers['Vary'], 'location' => response.headers['Location'],
               'self_hosted' => DawarichSettings.self_hosted?, 'env' => { 'TIME_ZONE' => ENV.fetch('TIME_ZONE', nil) },
               'session' => { 'user_return_to' => session[:user_return_to], 'alert' => flash[:alert] },

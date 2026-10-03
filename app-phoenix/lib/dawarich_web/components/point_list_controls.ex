@@ -66,7 +66,7 @@ defmodule DawarichWeb.PointListControls do
               <option
                 :for={entry <- @imports}
                 value={entry.id}
-                selected={@query["import_id"] == to_string(entry.id)}
+                selected={if @query["import_id"] == to_string(entry.id), do: "selected"}
               >
                 {entry.name}
               </option>

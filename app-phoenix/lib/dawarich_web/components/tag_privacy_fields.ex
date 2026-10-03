@@ -53,7 +53,7 @@ defmodule DawarichWeb.TagPrivacyFields do
             >{@radius || 1000}m</span><span>{t(@locale, "units.meters_compact", %{value: 5000})}</span>
           </div>
           <input
-            value={@radius || ""}
+            value={@radius}
             data-privacy-radius-target="field"
             type="hidden"
             name="tag[privacy_radius_meters]"

@@ -111,7 +111,7 @@ defmodule DawarichWeb.SegmentLegs do
         >
           <option
             :for={{label, value} <- SegmentFormat.modes_for_mode(@mode, @user, @locale)}
-            selected={value == @mode}
+            selected={if value == @mode, do: "selected"}
             value={value}
           >
             {label}

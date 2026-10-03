@@ -7,7 +7,7 @@ defmodule DawarichWeb.TagsLive.Index do
 
   @impl true
   def mount(_params, _session, socket),
-    do: {:ok, assign(socket, page_title: t(socket.assigns.locale, "tags.index.tags", %{}))}
+    do: {:ok, assign(socket, page_title: nil)}
 
   @impl true
   def handle_params(_params, _uri, socket),
@@ -19,11 +19,16 @@ defmodule DawarichWeb.TagsLive.Index do
     <div class="w-full my-5">
       <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-6">
         <h1 class="text-3xl font-bold">{t(@locale, "tags.index.tags", %{})}</h1>
-        <a href="/tags/new" class="btn btn-primary btn-sm"><.icon name="circle-plus" class="w-4 h-4" /> {t(
-          @locale,
-          "tags.index.new_tag",
-          %{}
-        )}</a>
+        <div class="flex flex-wrap gap-2">
+          <a href="/tags/new" class="btn btn-primary btn-sm"><.icon
+            name="circle-plus"
+            class="w-4 h-4"
+          /> {t(
+            @locale,
+            "tags.index.new_tag",
+            %{}
+          )}</a>
+        </div>
       </div>
       <%= if @tags != [] do %>
         <div class="border border-base-300 rounded-xl overflow-x-auto">

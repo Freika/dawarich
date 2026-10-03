@@ -40,7 +40,7 @@ defmodule DawarichWeb.TagsLive.Form do
       {:ok, tag} ->
         kind = if tag.id, do: "edit", else: "new"
         title = t(socket.assigns.locale, "tags.#{kind}.#{kind}_tag", %{})
-        {:noreply, assign(socket, tag: tag, kind: kind, page_title: title)}
+        {:noreply, assign(socket, tag: tag, kind: kind, tag_title: title, page_title: nil)}
 
       :rails ->
         %URI{path: path, query: query} = URI.parse(uri)
@@ -53,7 +53,7 @@ defmodule DawarichWeb.TagsLive.Form do
     ~H"""
     <div class="container mx-auto px-4 py-8 max-w-2xl">
       <div class="mb-6">
-        <h1 class="text-3xl font-bold">{@page_title}</h1>
+        <h1 class="text-3xl font-bold">{@tag_title}</h1>
         <p class="text-gray-600 mt-2">
           {t(
             @locale,

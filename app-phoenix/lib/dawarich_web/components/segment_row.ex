@@ -58,7 +58,7 @@ defmodule DawarichWeb.SegmentRow do
                 {label, value} <-
                   SegmentFormat.modes_for_mode(@segment.transportation_mode, @user, @locale)
               }
-              selected={value == @segment.transportation_mode}
+              selected={if value == @segment.transportation_mode, do: "selected"}
               value={value}
             >
               {label}

@@ -13,6 +13,7 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
     plug DawarichWeb.ImportsHeaders
+    plug DawarichWeb.MapDataHeaders
     plug :phoenix_session
     plug :fetch_session
     plug :fetch_live_flash

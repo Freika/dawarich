@@ -79,6 +79,7 @@ RSpec.describe 'Phoenix fixtures: tag pages', type: :request do
     end
     state = { 'kind' => path == '/tags' ? 'tags' : 'tag_form', 'path' => path, 'accept' => accept,
               'turbo_frame' => nil, 'now' => now.iso8601, 'status' => response.status,
+              'title' => doc.at_css('title')&.text,
               'content_type' => response.media_type, 'vary' => response.headers['Vary'],
               'location' => response.headers['Location'], 'self_hosted' => DawarichSettings.self_hosted?,
               'env' => { 'TIME_ZONE' => ENV.fetch('TIME_ZONE', nil) },
