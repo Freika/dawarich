@@ -5,9 +5,11 @@ require 'rake'
 require_relative 'a12e_fixture_support'
 
 RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks and console recipes' do
+  include ActiveSupport::Testing::TimeHelpers
+
   fx = A12eFixtureSupport
   recorded = {}
-  touched = "updated_at > now() - interval '1 hour' AS touched"
+  touched = "updated_at > timestamp '2026-06-01' AS touched"
   users = { 'users' => "SELECT id, email, status, admin, #{touched} FROM users ORDER BY id" }
   points = { 'points' => 'SELECT p.id, p.raw_data, p.raw_data_archived, a.month, a.chunk_number, ' \
                          "p.#{touched} FROM points p LEFT JOIN points_raw_data_archives a " \
@@ -22,7 +24,15 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
 
   before(:all) { Rails.application.load_tasks unless Rake::Task.task_defined?('points:raw_data:status') }
 
+  around { |example| travel_to(fx::NOW) { example.run } }
+
   before do
+    allow(OpenSSL::Cipher).to receive(:new).and_wrap_original do |original, *args|
+      original.call(*args).tap { |cipher| cipher.define_singleton_method(:random_iv) { self.iv = "\0" * iv_len } }
+    end
+    allow(Zlib::GzipWriter).to receive(:new).and_wrap_original do |original, *args, **opts|
+      original.call(*args, **opts).tap { |gzip| gzip.mtime = fx::NOW.to_i }
+    end
     phoenix_tables!
     fx.reset!
   end
@@ -101,11 +111,12 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
            "'rake:ops'), ('command:a.job', 'oban', false, '2026-01-01 00:00:00+00', 'phoenix')")
     fx.sql("INSERT INTO phoenix.runtime_nodes VALUES ('dawarich@a', '2026-01-01 00:00:00+00', ?)",
            '2099-01-01 00:00:00+00')
-    fx.sql('INSERT INTO job_outbox (event_id, command_type, command_version, payload, scheduled_at, state) VALUES ' \
+    fx.sql('INSERT INTO job_outbox (event_id, command_type, command_version, payload, scheduled_at, state, ' \
+           'created_at) VALUES ' \
            "('00000000-0000-4000-8000-000000000001', 'trips.calculate', 1, '{}', " \
-           "'2099-01-01 00:00:00+00', 'pending'), " \
+           "'2099-01-01 00:00:00+00', 'pending', '2026-01-01 00:00:00+00'), " \
            "('00000000-0000-4000-8000-000000000002', 'trips.calculate', 1, '{}', " \
-           "'2026-01-01 00:00:00+00', 'quarantined')")
+           "'2026-01-01 00:00:00+00', 'quarantined', '2026-01-01 00:00:00+00')")
     fx.sql('INSERT INTO phoenix.rails_commands (id, kind, available_at, created_at) VALUES ' \
            "(1, 'tracks.realtime', '2099-01-01 00:00:00+00', '2026-01-01 00:00:00+00')")
     fx.sql("INSERT INTO phoenix.rails_commands_dead VALUES (7, 'tracks.realtime', '{}', 3, 'boom', " \
@@ -138,7 +149,7 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
     fx.archive_user!(2001)
     fx.archive_user!(2002)
     fx.sql('UPDATE points_raw_data_archives SET verified_at = NULL WHERE user_id = 2002')
-    fx.sql("UPDATE points_raw_data_archives SET archived_at = now() - interval '30 days' WHERE user_id = 2002")
+    fx.sql('UPDATE points_raw_data_archives SET archived_at = ? WHERE user_id = 2002', 30.days.ago)
     fx.sql("UPDATE points SET raw_data = '{}' WHERE id BETWEEN 20010 AND 20012")
     keep('raw_data_status', fx.record(argv: ['points:raw_data:status'], relative:, after: {}) do
       fx.rake('points:raw_data:status')
@@ -223,7 +234,7 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
     fx.user!(2401, 'full@example.invalid')
     fx.month_points!(2401, 24_020, 2, month: 2)
     fx.archive_user!(2401)
-    fx.sql("UPDATE points_raw_data_archives SET verified_at = now() - interval '10 days'")
+    fx.sql('UPDATE points_raw_data_archives SET verified_at = ?', 10.days.ago)
     fx.month_points!(2401, 24_010, 2)
     keep('raw_data_archive_full', fx.record(argv: ['points:raw_data:archive_full'], relative:, after: raw) do
       fx.rake('points:raw_data:archive_full')

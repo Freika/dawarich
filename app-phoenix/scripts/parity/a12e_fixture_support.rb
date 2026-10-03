@@ -7,6 +7,7 @@ module A12eFixtureSupport
   PHRASE = 'phoenix-a12e-archive-phrase-not-for-production'
   LOGIN = 'phoenix-a12e-login-not-for-production'
   STAMP = '2026-01-01 00:00:00'
+  NOW = Time.utc(2026, 10, 1, 12)
   FUTURE = 2_000_000_000
   RAW = { 'tid' => 'a1', 'acc' => 0.30000000000000004, 'batt' => 87 }.freeze
   TABLES = %w[users points_raw_data_archives points active_storage_blobs active_storage_attachments job_outbox
@@ -37,9 +38,10 @@ module A12eFixtureSupport
   end
 
   def user!(id, email, status: 1, deleted: false, admin: false)
-    sql(<<~SQL.squish, id, email, status, admin, deleted ? STAMP : nil, STAMP, STAMP)
-      INSERT INTO users (id, email, encrypted_password, api_key, status, admin, deleted_at, created_at, updated_at)
-      VALUES (?, ?, '', '', ?, ?, ?, ?, ?)
+    sql(<<~SQL.squish, id, email, status, admin, deleted ? STAMP : nil, STAMP, STAMP, STAMP)
+      INSERT INTO users (id, email, encrypted_password, api_key, status, admin, deleted_at, created_at, updated_at,
+                         visits_redetected_at)
+      VALUES (?, ?, '', '', ?, ?, ?, ?, ?, ?)
     SQL
   end
 
@@ -157,7 +159,7 @@ module A12eFixtureSupport
   def human_sizes = SIZES.map { |n| [n, ActiveSupport::NumberHelper.number_to_human_size(n)] }
 
   def finish(recorded)
-    return unless write?
+    return unless write? && recorded.any?
 
     FileUtils.mkdir_p(DIR)
     data = { 'cases' => recorded.sort.map { |name, entry| entry.merge('name' => name) },
