@@ -11,14 +11,6 @@ RSpec.describe RackAttack::PhoenixCounterStore do
   let(:connection) { ActiveRecord::Base.connection }
   let(:key) { 'rack::attack:497484:shared_links/unlock:203.0.113.5:abc' }
 
-  def counters!
-    connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
-    connection.execute(<<~SQL.squish)
-      CREATE TABLE IF NOT EXISTS phoenix.counters
-        (key text PRIMARY KEY, value bigint NOT NULL, expires_at timestamptz NOT NULL)
-    SQL
-  end
-
   def expires_at
     connection.select_value(
       ActiveRecord::Base.sanitize_sql_array(['SELECT expires_at FROM phoenix.counters WHERE key = ?', key])
@@ -26,7 +18,7 @@ RSpec.describe RackAttack::PhoenixCounterStore do
   end
 
   context 'when phoenix.counters exists' do
-    before { counters! }
+    before { phoenix_counters! }
 
     it 'adds to a live counter and starts an expired one again' do
       expect([store.increment(key, 1, expires_in: 60), store.increment(key, 1, expires_in: 60)]).to eq([1, 2])
