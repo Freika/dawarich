@@ -45,6 +45,32 @@ defmodule Dawarich.Auth.CredentialsTest do
     assert id == ctx.id
   end
 
+  test "verifies Ruby bcrypt hashes for 128 codepoint multibyte passwords using 72 bytes", ctx do
+    for {character, hash} <- [
+          {"ä", "$2a$04$PhoenixA12eCorpusSaltu1gB/351kOA0HkAFa22kBqCw.Bj8/Nyu"},
+          {"😀", "$2a$04$PhoenixA12eCorpusSaltue6ptoJykW99b9t2pZDbOTzGTAIqXuHu"}
+        ] do
+      password = String.duplicate(character, 128)
+      Repo.query!("UPDATE users SET encrypted_password=$1 WHERE id=$2", [hash, ctx.id])
+
+      assert {:ok, result} = Credentials.login(ctx.email, password, ctx.context)
+      assert result.user.id == ctx.id
+      assert {:ok, _} = Credentials.login(ctx.email, password <> "different-suffix", ctx.context)
+      assert {:error, :invalid} = Credentials.login(ctx.email, "x" <> password, ctx.context)
+    end
+  end
+
+  test "verifies Ruby bcrypt when byte 72 splits a UTF-8 codepoint", ctx do
+    password = String.duplicate("a", 71) <> String.duplicate("😀", 47)
+    hash = "$2a$04$PhoenixA12eCorpusSaltukj1dGmqj3ckV/mj/SzCoeQ3gODjlSfG"
+    refute String.valid?(binary_part(password, 0, 72))
+    Repo.query!("UPDATE users SET encrypted_password=$1 WHERE id=$2", [hash, ctx.id])
+
+    assert {:ok, result} = Credentials.login(ctx.email, password, ctx.context)
+    assert result.user.id == ctx.id
+    assert {:error, :invalid} = Credentials.login(ctx.email, "x" <> password, ctx.context)
+  end
+
   test "strips only the whitespace Ruby's String#strip strips from the email", ctx do
     separator = <<0x2028::utf8>>
 

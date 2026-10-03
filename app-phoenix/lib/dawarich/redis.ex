@@ -33,13 +33,13 @@ defmodule Dawarich.Redis do
   def socket_options(url),
     do: if(String.starts_with?(url, "rediss://"), do: [socket_opts: tls()], else: [])
 
-  def command(args, conn \\ @name) do
-    Redix.command(conn, args, timeout: 5_000)
+  def command(args, conn \\ @name, timeout \\ 5_000) do
+    Redix.command(conn, args, timeout: timeout)
   catch
     :exit, reason -> {:error, {:exit, reason}}
   end
 
-  def cache_command(args), do: command(args, @cache_name)
+  def cache_command(args, timeout \\ 5_000), do: command(args, @cache_name, timeout)
 
   def transaction(commands, conn \\ @name) do
     Redix.transaction_pipeline(conn, commands, timeout: 5_000)

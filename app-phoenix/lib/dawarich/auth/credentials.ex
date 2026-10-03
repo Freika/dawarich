@@ -1,6 +1,6 @@
 defmodule Dawarich.Auth.Credentials do
   @moduledoc """
-  Transactional credentials for the bounded, inactive A11 password slice.
+  Transactional credentials for the bounded A11 password slice.
 
   The password is checked before the row lock is taken; a hash that changed
   in between hands off. OTP, provider and payment accounts hand off only after
@@ -162,7 +162,7 @@ defmodule Dawarich.Auth.Credentials do
   defp valid_password?(password, hash, context) do
     if blank?(password) or hash == "",
       do: dummy(context),
-      else: Bcrypt.verify_pass(password, hash)
+      else: Bcrypt.verify_pass(binary_part(password, 0, min(byte_size(password), 72)), hash)
   end
 
   defp dummy(context), do: Bcrypt.no_user_verify(log_rounds: Map.get(context, :log_rounds, 12))

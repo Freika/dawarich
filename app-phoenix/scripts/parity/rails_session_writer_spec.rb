@@ -104,6 +104,60 @@ RSpec.describe 'Phoenix fixture: the Rails session Phoenix writes', type: :reque
     ELIXIR
   end
 
+  def fresh_guest_redirect
+    environment = {
+      'MIX_ENV' => 'test', 'RAILS_ENV' => 'test',
+      'PATH' => "#{Dir.home}/.asdf/shims:#{ENV.fetch('PATH')}",
+      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.18.3-otp-27',
+      'DATABASE_HOST' => ENV.fetch('DATABASE_HOST'),
+      'PHOENIX_TEST_DATABASE' => ENV.fetch('PHOENIX_TEST_DATABASE'),
+      'PHOENIX_TEST_REDIS_URL' => ENV.fetch('PHOENIX_TEST_REDIS_URL'),
+      'RAILS_GUEST_TEST_SECRET' => Rails.application.secret_key_base
+    }
+    output, status = Open3.capture2e(environment, 'mix', 'run', '--no-start',
+                                     'scripts/parity/fresh_guest_redirect.exs',
+                                     chdir: Rails.root.join('app-phoenix').to_s)
+    expect(status.success?).to be(true), 'native fresh guest producer failed; output withheld'
+    JSON.parse(output.lines.last)
+  end
+
+  it 'renders a fresh native guest redirect alert once through Rails sign-in middleware' do
+    redirect = fresh_guest_redirect
+    expect(redirect.values_at('status', 'halted', 'location', 'cookie_count'))
+      .to eq([302, true, 'http://127.0.0.1/users/sign_in', 1])
+
+    browser = ActionDispatch::Integration::Session.new(Rails.application)
+    browser.host!('127.0.0.1')
+    browser.get('/users/sign_in', headers: { 'Cookie' => "_dawarich_session=#{redirect.fetch('cookie')}" })
+    first = {
+      status: browser.response.status,
+      alert: browser.request.flash[:alert],
+      messages: Nokogiri::HTML(browser.response.body).css('#flash-messages').text,
+      return_to: browser.request.session['user_return_to'],
+      csrf: browser.request.session['_csrf_token'].present?,
+      authenticated: browser.request.session.key?('warden.user.user.key')
+    }
+    browser.get('/users/sign_in')
+    second = {
+      status: browser.response.status,
+      alert: browser.request.flash[:alert],
+      messages: Nokogiri::HTML(browser.response.body).css('#flash-messages').text
+    }
+    alert = 'You need to sign in or sign up before continuing.'
+
+    aggregate_failures do
+      expect(first[:status]).to eq(200)
+      expect(first[:alert]).to eq(alert)
+      expect(first[:messages]).to include(alert)
+      expect(first[:return_to]).to eq('/stats?locale=en')
+      expect(first[:csrf]).to be(true)
+      expect(first[:authenticated]).to be(false)
+      expect(second[:status]).to eq(200)
+      expect(second[:alert]).to be_nil
+      expect(second[:messages]).not_to include(alert)
+    end
+  end
+
   it 'writes app-phoenix/test/fixtures/rails_session_writer.json and Rails accepts the rewritten session' do
     expect(Rails.application.secret_key_base).to eq(secret)
 
