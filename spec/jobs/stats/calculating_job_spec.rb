@@ -52,5 +52,18 @@ RSpec.describe Stats::CalculatingJob, type: :job do
         expect(user.notifications.last.content).to include('boom')
       end
     end
+
+    it 'Oban-owned: forwards the month with integer year and month and calculates nothing' do
+      job_owner!(described_class::OWNER_KEY, :oban)
+      job = described_class.new(user.id, '2024', '3', notify_on_failure: false)
+
+      job.perform_now
+
+      expect(JobOutbox.sole).to have_attributes(
+        command_type: 'stats.calculate_month', aggregate_id: user.id, event_id: job.job_id,
+        payload: { 'user_id' => user.id, 'year' => 2024, 'month' => 3, 'notify_on_failure' => false }
+      )
+      expect(Stats::CalculateMonth).not_to have_received(:new)
+    end
   end
 end

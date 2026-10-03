@@ -11,4 +11,13 @@ RSpec.describe Stats::ToponymsRefreshJob do
     described_class.perform_now
     expect(service).to have_received(:call).once
   end
+
+  it 'Oban-owned: does not refresh' do
+    job_owner!(described_class::OWNER_KEY, :oban)
+    allow(Stats::ToponymsRefresh).to receive(:new)
+
+    described_class.perform_now
+
+    expect(Stats::ToponymsRefresh).not_to have_received(:new)
+  end
 end

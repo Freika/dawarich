@@ -2,8 +2,11 @@
 
 class Stats::CalculatingJob < ApplicationJob
   queue_as :stats
+  OWNER_KEY = 'command:stats.calculate_month'
 
   def perform(user_id, year, month, notify_on_failure: true)
+    return forward(user_id, year, month, notify_on_failure) if JobOwnership.oban?(OWNER_KEY)
+
     user = find_user_or_skip(user_id) || return
 
     I18n.with_locale(user.locale) do
@@ -16,6 +19,13 @@ class Stats::CalculatingJob < ApplicationJob
   end
 
   private
+
+  def forward(user_id, year, month, notify_on_failure)
+    JobCommands.forward('stats.calculate_month',
+                        { 'user_id' => user_id, 'year' => year.to_i, 'month' => month.to_i,
+                          'notify_on_failure' => notify_on_failure },
+                        event_id: job_id, aggregate_id: user_id, producer: self.class.name)
+  end
 
   def create_stats_update_failed_notification(user_id, error)
     user = find_user_or_skip(user_id) || return
