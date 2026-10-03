@@ -68,6 +68,15 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
     assert "_dawarich_session=" <> _ = cookie
   end
 
+  test "a query part without = goes to Puma, whose parser reads it as nil", ctx do
+    port = serve()
+
+    for target <- ~w(/places?page /places?view /places?page=2&view) do
+      assert {line, [_cookie]} = answered_by_puma(port, ctx.upstream, request(target, ctx.cookie))
+      assert line == "GET #{target} HTTP/1.1"
+    end
+  end
+
   test "an account whose zone PostgreSQL lacks goes to Puma", ctx do
     user!(8422, %{"timezone" => "Mars/Phobos"})
     S.place!(8422, 842_201, "Mars")
