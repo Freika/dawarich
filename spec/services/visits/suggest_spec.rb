@@ -185,6 +185,28 @@ RSpec.describe Visits::Suggest do
         expect(user.notifications.where(title: 'Error suggesting visits').count).to eq(1)
       end
 
+      context 'with phoenix.once_claims' do
+        before { phoenix_state! }
+
+        it 'claims the error window row once per hour' do
+          key = "visit_suggest_error:user:#{user.id}"
+          2.times { described_class.new(user, start_at:, end_at:).call }
+
+          expect(user.notifications.where(title: 'Error suggesting visits').count).to eq(1)
+          seconds = ActiveRecord::Base.connection.select_value(
+            'SELECT extract(epoch FROM expires_at - statement_timestamp()) FROM phoenix.once_claims ' \
+            "WHERE key = #{ActiveRecord::Base.connection.quote(key)}"
+          ).to_f
+          expect(seconds).to be_between(3599, 3600)
+          expect(Sidekiq.redis { |r| r.exists(key) }).to eq(0)
+        end
+      end
+
+      it 'uses the key Phoenix claims' do
+        source = Rails.root.join('app-phoenix/lib/dawarich/visits/suggest.ex').read
+        expect(source).to include('"visit_suggest_error:user:#{')
+      end
+
       it 'notifies the user without leaking a backtrace' do
         described_class.new(user, start_at:, end_at:).call
 

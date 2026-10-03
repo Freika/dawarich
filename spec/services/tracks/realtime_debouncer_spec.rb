@@ -100,4 +100,34 @@ RSpec.describe Tracks::RealtimeDebouncer do
       end
     end
   end
+
+  context 'with phoenix.once_claims' do
+    before { phoenix_state! }
+
+    def claim_seconds(key)
+      connection = ActiveRecord::Base.connection
+      connection.select_value(
+        'SELECT extract(epoch FROM expires_at - statement_timestamp()) FROM phoenix.once_claims ' \
+        "WHERE key = #{connection.quote(key)}"
+      )&.to_f
+    end
+
+    def expire_in_ten_seconds(key)
+      connection = ActiveRecord::Base.connection
+      connection.execute(
+        "UPDATE phoenix.once_claims SET expires_at = statement_timestamp() + interval '10 seconds' " \
+        "WHERE key = #{connection.quote(key)}"
+      )
+    end
+
+    it 'schedules one job per burst from the claim row, slides the row and lets the job clear it' do
+      expect { 3.times { debouncer.trigger } }.to have_enqueued_job(Tracks::RealtimeGenerationJob).exactly(:once)
+      expire_in_ten_seconds(redis_key)
+      expect { debouncer.trigger }.not_to have_enqueued_job(Tracks::RealtimeGenerationJob)
+      expect(claim_seconds(redis_key)).to be_between(119, 120)
+      debouncer.clear
+      expect { debouncer.trigger }.to have_enqueued_job(Tracks::RealtimeGenerationJob).exactly(:once)
+      expect(Sidekiq.redis { |r| r.exists(redis_key) }).to eq(0)
+    end
+  end
 end

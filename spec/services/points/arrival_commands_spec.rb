@@ -91,6 +91,20 @@ RSpec.describe Points::ArrivalCommands do
     expect(Sidekiq.redis { |r| r.ttl('live_broadcast:done:b-1') }).to be_within(5).of(86_400)
   end
 
+  it 'claims the live broadcast marker row once' do
+    phoenix_state!
+    allow(Points::LiveBroadcaster).to receive(:new).and_return(instance_double(Points::LiveBroadcaster, call: nil))
+    2.times { run('points.live_broadcast') }
+
+    expect(Points::LiveBroadcaster).to have_received(:new).once
+    seconds = ActiveRecord::Base.connection.select_value(
+      'SELECT extract(epoch FROM expires_at - statement_timestamp()) FROM phoenix.once_claims ' \
+      "WHERE key = 'live_broadcast:done:b-1'"
+    ).to_f
+    expect(seconds).to be_between(86_399, 86_400)
+    expect(Sidekiq.redis { |r| r.exists('live_broadcast:done:b-1') }).to eq(0)
+  end
+
   it 'keeps the marker when the broadcast raises, so the retry does not broadcast again' do
     broadcaster = instance_double(Points::LiveBroadcaster)
     allow(broadcaster).to receive(:call).and_raise(RuntimeError, 'cable down')
