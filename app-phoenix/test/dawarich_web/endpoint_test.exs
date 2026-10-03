@@ -967,5 +967,11 @@ defmodule DawarichWeb.EndpointTest do
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
               "GET #{target} HTTP/1.1"
           )
+
+    drawer =
+      "GET /places/5 HTTP/1.1\r\nHost: a\r\nAccept: text/html, application/xhtml+xml\r\n" <>
+        "Turbo-Frame: place-drawer\r\n\r\n"
+
+    assert answered_by_phoenix(port, drawer) == 302
   end
 end

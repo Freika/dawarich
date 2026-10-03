@@ -1,8 +1,7 @@
 defmodule Dawarich.PlaceList do
   @moduledoc false
 
-  alias Dawarich.{MapPage, TripSettings, UserTimeZone}
-  alias DawarichWeb.TripsGate
+  alias Dawarich.{MapPage, RubyInteger, TripSettings, UserTimeZone}
 
   @per_page 20
   @max_page 1_000_000_000_000_000
@@ -20,7 +19,7 @@ defmodule Dawarich.PlaceList do
   """
 
   def load(user, page) do
-    number = TripsGate.page_number(page)
+    number = max(RubyInteger.to_i(page), 1)
 
     if number <= @max_page and settings?(user.settings),
       do: page(user, number, user.settings || %{}),

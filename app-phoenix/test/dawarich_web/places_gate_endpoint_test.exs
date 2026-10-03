@@ -180,6 +180,32 @@ defmodule DawarichWeb.PlacesGateEndpointTest do
     end
   end
 
+  test "a drawer that leaves after the gate is replayed under the places log tag", ctx do
+    Logger.put_module_level(DawarichWeb.Api.Body, :info)
+    on_exit(fn -> Logger.delete_module_level(DawarichWeb.Api.Body) end)
+
+    conn =
+      build_conn(:get, "/places/842199")
+      |> Plug.Conn.put_req_header("accept", "text/html, application/xhtml+xml")
+      |> Map.put(:path_params, %{"id" => "842199"})
+      |> Plug.Conn.assign(:rails_session, RailsUser.session(8421))
+      |> Plug.Conn.assign(:current_user, Dawarich.Accounts.get(8421))
+      |> Plug.Conn.assign(:locale, "en")
+
+    puma =
+      Task.async(fn ->
+        socket = accept(ctx.upstream)
+        {head, _rest} = read_head(socket)
+        reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+        request_line(head)
+      end)
+
+    log = capture_log(fn -> assert DawarichWeb.MapFrames.call(conn, :place).status == 200 end)
+
+    assert Task.await(puma) == "GET /places/842199 HTTP/1.1"
+    assert log =~ "[places] /places/842199 handed to Rails: place drawer changed after the gate"
+  end
+
   test "ids Rails casts, nearby and the writes go to Puma", ctx do
     S.place!(8421, 1_000_000_000_000_000_001, "Lang")
     port = serve()

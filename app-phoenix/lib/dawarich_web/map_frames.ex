@@ -52,7 +52,9 @@ defmodule DawarichWeb.MapFrames do
         raise DawarichWeb.NotFoundError
 
       {:replay, reason} ->
-        conn |> assign(:api_tag, "map") |> Body.replay(reason)
+        conn
+        |> assign(:api_tag, if(action == :place, do: "places", else: "map"))
+        |> Body.replay(reason)
     end
   end
 

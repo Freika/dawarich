@@ -133,6 +133,19 @@ defmodule Dawarich.PlaceDrawerTest do
     assert names(PlaceDrawer.load(user, 844_101), :visits) == ["Besuch 84433", "Besuch 84432"]
   end
 
+  test "a tie across the fifth visit keeps the higher id", %{user: user} do
+    other = user!(8445)
+    visit!(user.id, 84_462, ~N[2026-09-01 08:00:00], 30)
+    visit!(other.id, 84_463, ~N[2026-09-01 08:00:00], 30)
+
+    for n <- 1..4,
+        do:
+          visit!(user.id, 84_470 + n, NaiveDateTime.add(~N[2026-09-01 08:00:00], n * 86_400), 30)
+
+    assert names(PlaceDrawer.load(user, 844_101), :visits) ==
+             ["Besuch 84474", "Besuch 84473", "Besuch 84472", "Besuch 84471", "Besuch 84463"]
+  end
+
   test "visit times are local to the user's zone", %{user: user} do
     visit!(user.id, 84_441, ~N[2026-03-28 07:15:00], 45)
     visit!(user.id, 84_442, ~N[2026-03-30 07:15:00], 135)
@@ -151,6 +164,16 @@ defmodule Dawarich.PlaceDrawerTest do
 
     assert {:ok, %{visits: [late]}} = PlaceDrawer.load(utc, 844_301)
     assert {late.started, late.ended} == {~N[2026-09-30 23:50:00], ~N[2026-10-01 00:15:00]}
+  end
+
+  test "a blank zone shows Rails' TIME_ZONE default, a missing one UTC", %{user: user} do
+    visit!(user.id, 84_451, ~N[2026-03-28 07:15:00], 45)
+    started = fn settings -> PlaceDrawer.load(%{user | settings: settings}, 844_101) end
+
+    assert {:ok, %{visits: [%{started: ~N[2026-03-28 08:15:00]}]}} =
+             started.(%{"timezone" => ""})
+
+    assert {:ok, %{visits: [%{started: ~N[2026-03-28 07:15:00]}]}} = started.(%{})
   end
 
   test "a missing or another user's place hands back", %{user: user} do

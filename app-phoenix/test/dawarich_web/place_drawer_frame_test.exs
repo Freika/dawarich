@@ -123,6 +123,9 @@ defmodule DawarichWeb.PlaceDrawerFrameTest do
   test "the note textarea keeps Rails' leading newline" do
     assert render(@full) =~ ~s(name="place[note]">\n\nErste Zeile</textarea>)
     assert render(@empty) =~ ~s(name="place[note]">\n</textarea>)
+
+    assert render(%{@empty | note: "zwei\n  Zeilen\n\nund mehr "}) =~
+             ~s(name="place[note]">\nzwei\n  Zeilen\n\nund mehr </textarea>)
   end
 
   test "Rails' form helpers, verbatim" do
