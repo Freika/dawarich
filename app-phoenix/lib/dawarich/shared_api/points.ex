@@ -4,6 +4,56 @@ defmodule Dawarich.SharedApi.Points do
   alias Dawarich.{RailsTime, Repo, UserTimeZone}
   alias Dawarich.SharedApi.Privacy
 
+  @false_flags [nil, false, "", "0", "false", "FALSE", "f", "F", "off", "OFF"]
+
+  def live(link, now) do
+    rows =
+      Repo.query!(
+        "SELECT ST_X(lonlat::geometry), ST_Y(lonlat::geometry), timestamp FROM points p " <>
+          "WHERE user_id = $1 AND anomaly IS NOT TRUE ORDER BY timestamp DESC LIMIT 2",
+        [link.user_id]
+      ).rows
+
+    case rows do
+      [] ->
+        {:ok, []}
+
+      [[_, _, ts], [_, _, ts]] ->
+        {:replay, "shared latest timestamp tie"}
+
+      [[lon, lat, ts] | _] ->
+        ts = ts || 0
+
+        if DateTime.to_unix(now) - ts > 900 do
+          {:ok, []}
+        else
+          lon = lon || 0.0
+          lat = lat || 0.0
+          point = "ST_SetSRID(ST_MakePoint($2::float8,$3::float8),4326)::geography"
+
+          [[outside]] =
+            Repo.query!("SELECT #{Privacy.outside(point)}", [link.user_id, lon, lat]).rows
+
+          {:ok, if(outside, do: [[lon, lat, ts]], else: [])}
+        end
+    end
+  end
+
+  def route(%{type: "live"} = link) do
+    if link.settings["show_route"] in @false_flags do
+      {:ok, []}
+    else
+      from = link.created_at |> DateTime.from_naive!("Etc/UTC") |> DateTime.to_unix()
+
+      sample("p.user_id = $1 AND p.anomaly IS NOT TRUE AND p.timestamp >= $2", [
+        link.user_id,
+        from
+      ])
+    end
+  end
+
+  def route(_link), do: {:ok, []}
+
   def index(link) do
     [[settings]] = Repo.query!("SELECT settings FROM users WHERE id = $1", [link.user_id]).rows
 

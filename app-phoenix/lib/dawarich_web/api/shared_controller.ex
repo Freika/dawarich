@@ -58,13 +58,16 @@ defmodule DawarichWeb.Api.SharedController do
       length(get_req_header(conn, "cookie")) <= 1
   end
 
-  defp dispatch(conn, :route, %{type: type} = link) when type != "live",
-    do: Respond.json(conn, 200, [], cache_control: cache(link))
+  defp dispatch(conn, :route, link),
+    do: result(conn, Dawarich.SharedApi.Points.route(link), cache_control: cache(link))
 
   defp dispatch(conn, :trip, link), do: result(conn, Dawarich.SharedApi.Trip.show(link), [])
 
   defp dispatch(conn, :points, %{type: type} = link) when type != "live",
     do: result(conn, Dawarich.SharedApi.Points.index(link), cache_control: cache(link))
+
+  defp dispatch(conn, :points, link),
+    do: result(conn, Dawarich.SharedApi.Points.live(link, DateTime.utc_now()), [])
 
   defp dispatch(conn, _action, _link), do: Body.replay(conn, "shared API action pending")
 
