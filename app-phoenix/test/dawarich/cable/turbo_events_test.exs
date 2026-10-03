@@ -33,11 +33,11 @@ defmodule Dawarich.Cable.TurboEventsTest do
     end
   end
 
-  test "a soft-deleted user's notification is skipped" do
+  test "a soft-deleted user's notification and a deleted notification are skipped" do
     %{"events" => events} = A12a.relay!("notification_soft_deleted_user")
-    A12a.insert_events!(events)
+    A12a.insert_events!(events ++ [%{"notification_id" => -1}])
     {:ok, _} = A12a.listen_all()
-    assert TurboEvents.notifications(Dawarich.Jobs.repo(), Dawarich.Repo) == 1
+    assert TurboEvents.notifications(Dawarich.Jobs.repo(), Dawarich.Repo) == 2
     refute_receive {:redix_pubsub, _, _, :pmessage, _}, 300
   end
 
@@ -51,8 +51,14 @@ defmodule Dawarich.Cable.TurboEventsTest do
       assert same_stream?(rails, phoenix), name
     end
 
-    for name <- ~w(trip_distance trip_countries) do
-      A12a.insert_events!(A12a.relay!(name)["events"])
+    gone = %{"trip_id" => -1, "kind" => "finished", "distance_unit" => "km", "failed" => false}
+
+    for events <- [
+          A12a.relay!("trip_distance")["events"],
+          A12a.relay!("trip_countries")["events"],
+          [gone]
+        ] do
+      A12a.insert_events!(events)
       {:ok, _} = A12a.listen_all()
       assert TurboEvents.trips(Dawarich.Jobs.repo(), Dawarich.Repo, A12a.naive_now()) == 1
       refute_receive {:redix_pubsub, _, _, :pmessage, _}, 300

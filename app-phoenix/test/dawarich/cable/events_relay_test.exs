@@ -16,7 +16,14 @@ defmodule Dawarich.Cable.EventsRelayTest do
   test "claims in id order, waits a second when idle and five after an error" do
     assert EventsRelay.next_delay(fn -> 0 end) == 1_000
     assert EventsRelay.next_delay(fn -> 3 end) == 0
-    assert EventsRelay.next_delay(fn -> raise DBConnection.ConnectionError, "down" end) == 5_000
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert EventsRelay.next_delay(fn -> raise DBConnection.ConnectionError, "down" end) ==
+                 5_000
+      end)
+
+    assert log =~ "[Cable] events relay: DBConnection.ConnectionError"
   end
 
   test "two relays never publish one event twice" do
