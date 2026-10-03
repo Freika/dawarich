@@ -8,7 +8,7 @@ defmodule Dawarich.Geocoding.ReversePointWorker do
   require Logger
 
   alias Dawarich.Geocoding.{Config, PointFetch}
-  alias Dawarich.Redis
+  alias Dawarich.State
 
   def args_from_command(1, %{"user_id" => uid, "point_ids" => ids, "force" => force} = p)
       when is_integer(uid) and is_list(ids) and ids != [] and length(ids) <= 100 and
@@ -52,14 +52,15 @@ defmodule Dawarich.Geocoding.ReversePointWorker do
   defp geocode(repo, config, id, force) do
     if config.enabled, do: PointFetch.run(repo, id, config, force)
   after
-    unless force, do: release(id)
+    unless force, do: release(repo, id)
   end
 
-  defp release(id) do
-    with {:error, reason} <- Redis.command(["DEL", "geocode:enq:Point:#{id}"]),
-         do:
-           Logger.error(
-             "event=geocoding.dedupe_release_failed point_id=#{id} reason=#{inspect(reason)}"
-           )
+  defp release(repo, id) do
+    State.unclaim(repo, "geocode:enq:Point:#{id}")
+  rescue
+    error in [DBConnection.ConnectionError, Postgrex.Error] ->
+      Logger.error(
+        "event=geocoding.dedupe_release_failed point_id=#{id} reason=#{inspect(error)}"
+      )
   end
 end

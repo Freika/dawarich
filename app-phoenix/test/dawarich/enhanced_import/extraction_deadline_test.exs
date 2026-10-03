@@ -64,7 +64,7 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
     assert_received {:blocked, pid}
     refute Process.alive?(pid)
     assert Path.wildcard(Path.join(storage.root, ".phoenix-tmp/*")) == []
-    assert {:ok, nil} = Dawarich.Redis.command(["GET", PerUserLock.key(uid)])
+    assert lease_holders(ScratchRepo, PerUserLock.key(uid)) == []
   end
 
   for {attempt, status} <- [{1, 1}, {3, 4}] do
@@ -181,6 +181,6 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
 
     assert List.last(kinds())["kind"] == "schedule_untracked_tracks"
     assert Path.wildcard(Path.join(storage.root, ".phoenix-tmp/*")) == []
-    assert {:ok, nil} = Dawarich.Redis.command(["GET", PerUserLock.key(uid)])
+    assert lease_holders(ScratchRepo, PerUserLock.key(uid)) == []
   end
 end

@@ -84,4 +84,19 @@ RSpec.describe Stats::ToponymsRefresh do
         .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2014, 6, notify_on_failure: false).exactly(:once)
     end
   end
+
+  it 'skips the run while another holder keeps the refresh lease, and runs once it is released' do
+    phoenix_leases!
+    connection = ActiveRecord::Base.connection
+    connection.execute(
+      'INSERT INTO phoenix.leases (name, holder, expires_at) ' \
+      "VALUES ('stats:toponyms_refresh', 'other', statement_timestamp() + interval '60 seconds')"
+    )
+    turn = -> { Sidekiq.redis { |r| r.get(described_class::TURN_KEY) } }
+
+    expect { described_class.new.call }.not_to(change { turn.call })
+    connection.execute("DELETE FROM phoenix.leases WHERE name = 'stats:toponyms_refresh'")
+    expect { described_class.new.call }.to(change { turn.call })
+    expect(connection.select_value('SELECT count(*) FROM phoenix.leases').to_i).to eq(0)
+  end
 end

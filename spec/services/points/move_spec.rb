@@ -67,7 +67,7 @@ RSpec.describe Points::Move do
         history_scope: scope
       )
     end.to have_enqueued_job(Achievements::CheckJob).with(user.id)
-    expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([point.timestamp])
+    expect(Achievements::PendingChecks.read(user.id).first).to eq(point.timestamp)
   end
 
   it 'returns the committed move when the achievements check cannot be scheduled' do

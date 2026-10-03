@@ -4,167 +4,133 @@ require 'rails_helper'
 
 RSpec.describe Tracks::PerUserLock do
   let(:user_id) { 1410 }
-  let(:redis_key) { "tracks:per_user_lock:#{user_id}" }
+  let(:name) { "tracks:per_user_lock:#{user_id}" }
+  let(:connection) { ActiveRecord::Base.connection }
 
-  before do
-    Sidekiq.redis do |r|
-      r.del(redis_key)
-      r.del("tracks:per_user_lock:#{user_id + 1}")
+  def monotonic = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+
+  def lease_rows
+    connection.select_rows(
+      "SELECT holder, expires_at > statement_timestamp() FROM phoenix.leases WHERE name = #{connection.quote(name)}"
+    )
+  end
+
+  def expires_at
+    connection.select_value("SELECT expires_at FROM phoenix.leases WHERE name = #{connection.quote(name)}")
+  end
+
+  def plant(holder, offset)
+    connection.execute(
+      'INSERT INTO phoenix.leases (name, holder, expires_at) ' \
+      "VALUES (#{connection.quote(name)}, #{connection.quote(holder)}, " \
+      "statement_timestamp() + interval #{connection.quote(offset)})"
+    )
+  end
+
+  before { Sidekiq.redis { |r| r.del(name) } }
+  after { Sidekiq.redis { |r| r.del(name) } }
+
+  it 'uses the lease name Phoenix uses' do
+    source = Rails.root.join('app-phoenix/lib/dawarich/tracks/per_user_lock.ex').read
+    expect(source).to include("\"tracks:per_user_lock:\#{user_id}\"")
+    expect("#{described_class::NAMESPACE}:#{user_id}").to eq(name)
+  end
+
+  context 'with phoenix.leases (Phoenix migrated)' do
+    before { phoenix_leases! }
+
+    it 'holds the shared lease for the block, releases it afterwards and writes no Redis key' do
+      expect(described_class.with_user_lock(user_id) { lease_rows }).to match([[kind_of(String), true]])
+      expect(lease_rows).to be_empty
+      expect(Sidekiq.redis { |r| r.exists(name) }).to eq(0)
+    end
+
+    it 'refuses to take the lease inside a transaction' do
+      ActiveRecord::Base.transaction do
+        expect { described_class.with_user_lock(user_id) { :ran } }
+          .to raise_error(ArgumentError, /inside a transaction/)
+      end
+      expect(lease_rows).to be_empty
+    end
+
+    it 'releases the lease when the block raises' do
+      expect { described_class.with_user_lock(user_id) { raise 'boom' } }.to raise_error('boom')
+      expect(lease_rows).to be_empty
+    end
+
+    it 'raises AcquisitionTimeout at once while Phoenix holds the lease, and leaves it alone' do
+      plant('phoenix-token', '60 seconds')
+      ran = false
+
+      expect { described_class.with_user_lock(user_id, timeout: 0) { ran = true } }
+        .to raise_error(described_class::AcquisitionTimeout, /user_id=#{user_id}/)
+      expect(ran).to be(false)
+      expect(lease_rows).to eq([['phoenix-token', true]])
+    end
+
+    it 'takes over the lease of a holder that crashed and let it expire' do
+      plant('crashed', '-1 second')
+      expect(described_class.with_user_lock(user_id, timeout: 0) { lease_rows })
+        .to match([[satisfy { |holder| holder != 'crashed' }, true]])
+    end
+
+    it 'isolates locks per user' do
+      plant('phoenix-token', '60 seconds')
+      expect(described_class.with_user_lock(user_id + 1, timeout: 0) { :ran }).to eq(:ran)
+    end
+
+    it 'renews the lease while the block outlives a third of its ttl' do
+      described_class.with_user_lock(user_id, ttl: 0.3) do
+        first = expires_at
+        deadline = monotonic + 5
+        sleep 0.02 until expires_at > first || monotonic > deadline
+        expect(expires_at).to be > first
+      end
+    end
+
+    it 'gives up renewing after three consecutive errors' do
+      calls = 0
+      allow(PhoenixLease).to receive(:renew) do
+        calls += 1
+        raise ActiveRecord::ConnectionNotEstablished
+      end
+
+      beat = described_class.start_heartbeat(PhoenixLease, name, 'token', 0.3, user_id)
+
+      expect(beat[:thread].join(5)).not_to be_nil
+      expect(calls).to eq(described_class::MAX_RENEW_ERRORS)
     end
   end
 
-  describe '.with_user_lock' do
-    it 'yields and returns the block value' do
-      result = described_class.with_user_lock(user_id) { :yielded }
+  context 'without phoenix.leases (Phoenix never migrated)' do
+    before { without_phoenix_state! }
 
-      expect(result).to eq(:yielded)
+    it 'holds the Redis key for the block and releases it afterwards' do
+      remaining = described_class.with_user_lock(user_id) { Sidekiq.redis { |r| r.pttl(name) } }
+      expect(remaining).to be_between(1, 60_000)
+      expect(Sidekiq.redis { |r| r.exists(name) }).to eq(0)
     end
 
-    it 'holds the lock for the duration of the block' do
-      observed_during_block = nil
-
-      described_class.with_user_lock(user_id) do
-        observed_during_block = Sidekiq.redis { |r| r.exists(redis_key) }
-      end
-
-      expect(observed_during_block).to eq(1)
+    it 'raises AcquisitionTimeout while another holder owns the Redis key, and leaves it alone' do
+      Sidekiq.redis { |r| r.set(name, 'other-owner', ex: 60) }
+      expect { described_class.with_user_lock(user_id, timeout: 0) { :never } }
+        .to raise_error(described_class::AcquisitionTimeout)
+      expect(Sidekiq.redis { |r| r.get(name) }).to eq('other-owner')
     end
 
-    it 'releases the lock after the block completes' do
-      described_class.with_user_lock(user_id) { :ok }
-
-      released = Sidekiq.redis { |r| r.exists(redis_key) }
-      expect(released).to eq(0)
-    end
-
-    it 'releases the lock when the block raises' do
-      expect do
-        described_class.with_user_lock(user_id) { raise 'boom' }
-      end.to raise_error('boom')
-
-      released = Sidekiq.redis { |r| r.exists(redis_key) }
-      expect(released).to eq(0)
-    end
-
-    it 'sets a TTL on the lock key so a crashed worker cannot orphan it' do
-      lock_ttl = nil
-
-      described_class.with_user_lock(user_id) do
-        lock_ttl = Sidekiq.redis { |r| r.ttl(redis_key) }
-      end
-
-      expect(lock_ttl).to be > 0
-    end
-
-    it 'uses a short lease so an orphaned lock frees within about a minute' do
-      remaining_ms = nil
-
-      described_class.with_user_lock(user_id) do
-        remaining_ms = Sidekiq.redis { |r| r.pttl(redis_key) }
-      end
-
-      expect(remaining_ms).to be_between(1, 60_000)
-    end
-
-    it 'renews the lock so it survives a block that outlives the initial lease' do
-      remaining_ms = nil
-
-      described_class.with_user_lock(user_id, ttl: 2) do
-        sleep 2.6
-        remaining_ms = Sidekiq.redis { |r| r.pttl(redis_key) }
-      end
-
-      expect(remaining_ms).to be > 0
-    end
-
-    it 'keeps renewing after a transient redis error instead of giving up' do
-      calls = 0
-      original_renew = described_class.method(:renew)
-      allow(described_class).to receive(:renew) do |*args|
-        calls += 1
-        raise 'transient redis blip' if calls == 1
-
-        original_renew.call(*args)
-      end
-
-      remaining_ms = nil
-      described_class.with_user_lock(user_id, ttl: 2) do
-        sleep 2.5
-        remaining_ms = Sidekiq.redis { |r| r.pttl(redis_key) }
-      end
-
-      expect(calls).to be >= 2
-      expect(remaining_ms).to be > 0
-    end
-
-    it 'stops renew attempts once consecutive redis errors exhaust the lease' do
-      calls = 0
-      allow(described_class).to receive(:renew) do
-        calls += 1
-        raise 'redis down'
-      end
-
-      described_class.with_user_lock(user_id, ttl: 0.6) { sleep 1.4 }
-
-      expect(calls).to eq(described_class::MAX_RENEW_ERRORS)
-    end
-
-    it 'raises AcquisitionTimeout when another holder owns the lock' do
-      Sidekiq.redis { |r| r.set(redis_key, 'other-owner', ex: 60) }
-
-      expect do
-        described_class.with_user_lock(user_id, timeout: 0.2) { :never_runs }
-      end.to raise_error(Tracks::PerUserLock::AcquisitionTimeout, /user_id=#{user_id}/)
-    end
-
-    it 'does not delete a lock held by a different owner' do
-      Sidekiq.redis { |r| r.set(redis_key, 'other-owner', ex: 60) }
-
-      expect do
-        described_class.with_user_lock(user_id, timeout: 0.1) { :never_runs }
-      end.to raise_error(Tracks::PerUserLock::AcquisitionTimeout)
-
-      remaining = Sidekiq.redis { |r| r.get(redis_key) }
-      expect(remaining).to eq('other-owner')
-    end
-
-    it 'serializes concurrent callers per user' do
-      first_started = false
-      second_started = false
-      contention_observed = false
-
-      first = Thread.new do
-        described_class.with_user_lock(user_id, timeout: 5) do
-          first_started = true
-          sleep 0.2
-          contention_observed = second_started == false
+    it 'renews the Redis key while the block outlives a third of its ttl' do
+      described_class.with_user_lock(user_id, ttl: 0.3) do
+        previous = Sidekiq.redis { |r| r.pttl(name) }
+        deadline = monotonic + 5
+        renewed = false
+        until renewed || monotonic > deadline
+          current = Sidekiq.redis { |r| r.pttl(name) }
+          renewed = current > previous
+          previous = current
+          sleep 0.01
         end
+        expect(renewed).to be(true)
       end
-
-      Thread.pass until first_started
-
-      second = Thread.new do
-        described_class.with_user_lock(user_id, timeout: 5) do
-          second_started = true
-        end
-      end
-
-      [first, second].each(&:join)
-
-      expect(contention_observed).to be(true)
-      expect(second_started).to be(true)
-    end
-
-    it 'isolates locks per user_id' do
-      acquired_other = false
-
-      described_class.with_user_lock(user_id) do
-        described_class.with_user_lock(user_id + 1, timeout: 0.5) do
-          acquired_other = true
-        end
-      end
-
-      expect(acquired_other).to be(true)
     end
   end
 end

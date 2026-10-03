@@ -85,7 +85,7 @@ RSpec.describe 'Native extraction effects after concurrent import changes' do
     expect(Place.where(import_id: import.id)).to be_empty
     expect(import.reload.additional_data_extraction_status).to eq('pending')
   ensure
-    ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.leases')
+    ActiveRecord::Base.connection.execute('DELETE FROM phoenix.leases')
   end
 
   it 'rechecks identity after waiting for the actual per-user lock' do
