@@ -42,4 +42,18 @@ defmodule Dawarich.Stats.HexagonsTest do
     assert [["861f1a8cfffffff", 2, _, _], ["861f1a9afffffff", 1, _, _]] =
              Hexagons.calculate(ScratchRepo, user, 2024, 1, resolution: 6)
   end
+
+  test "exactly 10 000 cells stay at resolution 8; only more fall back to resolution 6" do
+    ScratchRepo.query!(
+      "INSERT INTO points (id, user_id, timestamp, lonlat, anomaly, velocity, created_at, updated_at) " <>
+        "SELECT 620000 + g, 61, $1::int + g * 60, " <>
+        "ST_SetSRID(ST_MakePoint(10.0 + (g % 100) * 0.02, 50.0 + (g / 100) * 0.02), 4326)::geography, " <>
+        "false, '0', '2026-10-01', '2026-10-01' FROM generate_series(0, 9999) AS g",
+      [@jan1]
+    )
+
+    cells = Hexagons.calculate(ScratchRepo, Accounts.find(ScratchRepo, 61), 2024, 1)
+    assert length(cells) == 10_000
+    assert Enum.all?(cells, fn [index, 1, _, _] -> String.starts_with?(index, "88") end)
+  end
 end

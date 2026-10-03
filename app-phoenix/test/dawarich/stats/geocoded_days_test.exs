@@ -54,6 +54,14 @@ defmodule Dawarich.Stats.GeocodedDaysTest do
              ["100:2015-01-12", "10:2015-01-12", "9:2015-01-12"]
   end
 
+  test "due breaks a due-second tie by member bytes, not by the database collation" do
+    GeocodedDays.mark(ScratchRepo, 1, @jan12, @t0)
+    GeocodedDays.mark(ScratchRepo, 12, @jan12 - 11 * 86_400, @t0)
+
+    assert Enum.map(GeocodedDays.due(ScratchRepo, 10, @t0 + 3_600), &elem(&1, 0)) ==
+             ["12:2015-01-01", "1:2015-01-12"]
+  end
+
   test "postpone moves only a pending day" do
     assert GeocodedDays.postpone(ScratchRepo, "7:2015-01-12", @t0) == :ok
     assert rows("SELECT count(*) FROM phoenix.stats_geocoded_days") == [[0]]

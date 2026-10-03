@@ -86,7 +86,8 @@ defmodule Dawarich.Stats.StatsJobsTest do
   test "the toponym cron skips a run while another runtime holds the refresh lease" do
     Ownership.put!(ScratchRepo, ToponymsRefreshWorker.key(), :oban)
     foreign_lease!("stats:toponyms_refresh")
-    assert ToponymsRefreshWorker.run(ScratchRepo) == :ok
+    waited = fn _ms -> flunk("the toponym cron waited for the refresh lease") end
+    assert ToponymsRefreshWorker.run(ScratchRepo, sleep: waited) == :ok
     assert rows("SELECT count(*) FROM phoenix.cursors") == [[0]]
   end
 

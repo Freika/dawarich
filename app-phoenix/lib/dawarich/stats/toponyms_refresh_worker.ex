@@ -21,7 +21,8 @@ defmodule Dawarich.Stats.ToponymsRefreshWorker do
     case Ownership.with_owner(repo, @key, :oban, fn -> :owned end) do
       {:ok, :owned} ->
         case Lease.with_lease(repo, @lease, fn -> ToponymsRefresh.run(repo, opts) end,
-               timeout_ms: 0
+               timeout_ms: 0,
+               sleep: Keyword.get(opts, :sleep, &Process.sleep/1)
              ) do
           {:ok, :ok} -> :ok
           {:error, :timeout} -> :ok
