@@ -73,6 +73,14 @@ RSpec.describe PhoenixLease do
       expect(rows).to eq([['phoenix-holder', true]])
     end
 
+    it 'refuses to take a lease inside a transaction, like Dawarich.State.Lease' do
+      ActiveRecord::Base.transaction do
+        expect { described_class.try_hold(name) { :ran } }.to raise_error(ArgumentError, /inside a transaction/)
+        expect { described_class.hold(name, busy.new) { :ran } }.to raise_error(ArgumentError, /inside a transaction/)
+      end
+      expect(rows).to be_empty
+    end
+
     it 'try_hold releases the lease when the block raises' do
       expect { described_class.try_hold(name) { raise ArgumentError } }.to raise_error(ArgumentError)
       expect(rows).to be_empty
@@ -89,12 +97,12 @@ RSpec.describe PhoenixLease do
   end
 
   it 'runs the block without a lease on a database Phoenix never migrated' do
-    connection.execute('DROP TABLE IF EXISTS phoenix.leases')
+    without_phoenix_state!
     expect(described_class.hold(name, busy.new) { :ran }).to eq(:ran)
   end
 
   it 'try_hold falls back to the try-once advisory lock on a database Phoenix never migrated' do
-    connection.execute('DROP TABLE IF EXISTS phoenix.leases')
+    without_phoenix_state!
     expect(ActiveRecord::Base).to receive(:with_advisory_lock).with(name, timeout_seconds: 0) { |*, &block| block.call }
     expect(described_class.try_hold(name) { :ran }).to eq(:ran)
   end

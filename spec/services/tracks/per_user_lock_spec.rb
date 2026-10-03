@@ -45,6 +45,14 @@ RSpec.describe Tracks::PerUserLock do
       expect(Sidekiq.redis { |r| r.exists(name) }).to eq(0)
     end
 
+    it 'refuses to take the lease inside a transaction' do
+      ActiveRecord::Base.transaction do
+        expect { described_class.with_user_lock(user_id) { :ran } }
+          .to raise_error(ArgumentError, /inside a transaction/)
+      end
+      expect(lease_rows).to be_empty
+    end
+
     it 'releases the lease when the block raises' do
       expect { described_class.with_user_lock(user_id) { raise 'boom' } }.to raise_error('boom')
       expect(lease_rows).to be_empty
@@ -95,7 +103,7 @@ RSpec.describe Tracks::PerUserLock do
   end
 
   context 'without phoenix.leases (Phoenix never migrated)' do
-    before { connection.execute('DROP TABLE IF EXISTS phoenix.leases') }
+    before { without_phoenix_state! }
 
     it 'holds the Redis key for the block and releases it afterwards' do
       remaining = described_class.with_user_lock(user_id) { Sidekiq.redis { |r| r.pttl(name) } }

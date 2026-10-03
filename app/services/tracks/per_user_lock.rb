@@ -50,8 +50,8 @@ module Tracks
 
       acquire!(store, key, token, ttl, timeout, user_id, started_at)
 
-      heartbeat = start_heartbeat(store, key, token, ttl, user_id)
       begin
+        heartbeat = start_heartbeat(store, key, token, ttl, user_id)
         yield
       ensure
         stop_heartbeat(heartbeat)
