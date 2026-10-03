@@ -1,11 +1,15 @@
 defmodule Dawarich.Imports.Geometry do
   @moduledoc false
+  alias Dawarich.Imports.Geometry.{Ewkb, Wkb, Wkt}
   alias Dawarich.Ingest.Geo
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   @wkt ~r/\APOINT\s*\(\s*(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s*\)\z/i
-  @nan <<0x7FF8000000000000::little-64>>
+
+  def null_island?(value) when not is_binary(value), do: false
 
   def null_island?(wkt) do
+    unless String.valid?(wkt), do: raise(ArgumentError, "invalid byte sequence in UTF-8")
+
     case Regex.run(@wkt, wkt, capture: :all_but_first) do
       [lon, lat] ->
         if is_float(Ruby.to_f(lon)) && is_float(Ruby.to_f(lat)),
@@ -17,41 +21,33 @@ defmodule Dawarich.Imports.Geometry do
     end
   end
 
-  def serialize(wkt) do
-    cond do
-      Regex.match?(
-        ~r/\APOINT\((?:(?:[-+]?Infinity|NaN) [^()]+|[^()]+ (?:[-+]?Infinity|NaN))\)\z/,
-        wkt
-      ) ->
-        nil
+  def serialize(nil), do: nil
 
-      true ->
-        finite_or_overflow(wkt)
+  def serialize(value) when is_binary(value) do
+    case parse(value) do
+      {:point, x, y} -> Ewkb.point(x, y)
+      :empty_point -> "POINT EMPTY"
+      {:other, geometry} when is_binary(geometry) -> geometry
+      {:other, geometry} -> Ewkb.encode(geometry)
+      :error -> nil
     end
   end
 
-  defp finite_or_overflow(wkt) do
-    case Regex.run(@wkt, wkt, capture: :all_but_first) do
-      [lon, lat] ->
-        x = Ruby.to_f(lon)
+  def serialize(value),
+    do: raise(ArgumentError, "undefined method 'factory' for #{instance(value)}")
 
-        y =
-          case Ruby.to_f(lat) do
-            :infinity -> 90.0
-            :neg_infinity -> -90.0
-            value -> value |> min(90.0) |> max(-90.0)
-          end
+  defp parse(<<byte, _::binary>> = value) when byte in [0, 1], do: Wkb.parse(value)
 
-        if x in [:infinity, :neg_infinity] do
-          Base.encode16(
-            <<1, 0x20000001::little-32, 4326::little-32, @nan::binary, y::little-float-64>>
-          )
-        else
-          Geo.ewkb!(Geo.wkt(x, y))
-        end
+  defp parse(<<a, b, c, d, _::binary>> = value)
+       when a in ~c"0123456789abcdefABCDEF" and b in ~c"0123456789abcdefABCDEF" and
+              c in ~c"0123456789abcdefABCDEF" and d in ~c"0123456789abcdefABCDEF",
+       do: value |> Wkb.unhex() |> Wkb.parse()
 
-      nil ->
-        Geo.ewkb!(wkt)
-    end
-  end
+  defp parse(value), do: Wkt.parse(value)
+
+  defp instance(value) when is_boolean(value), do: Atom.to_string(value)
+  defp instance(value) when is_integer(value), do: "an instance of Integer"
+  defp instance(value) when is_float(value) or is_atom(value), do: "an instance of Float"
+  defp instance(value) when is_list(value), do: "an instance of Array"
+  defp instance(value) when is_map(value), do: "an instance of Hash"
 end
