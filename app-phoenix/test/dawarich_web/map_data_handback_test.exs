@@ -37,9 +37,32 @@ defmodule DawarichWeb.MapDataHandbackTest do
   end
 
   defp changes do
-    Repo.query!(
-      "SELECT (SELECT count(*) FROM points), (SELECT count(*) FROM tags), (SELECT count(*) FROM track_segments), (SELECT count(*) FROM public.job_outbox), (SELECT count(*) FROM oban.oban_jobs)"
-    ).rows
+    pages =
+      Repo.query!(
+        "SELECT (SELECT count(*) FROM points), (SELECT count(*) FROM tags), (SELECT count(*) FROM track_segments)"
+      ).rows
+
+    jobs =
+      Dawarich.Jobs.repo().query!(
+        "SELECT (SELECT count(*) FROM public.job_outbox), (SELECT count(*) FROM oban.oban_jobs)"
+      ).rows
+
+    pages ++ jobs
+  end
+
+  test "hand-back snapshots observe jobs outside the page sandbox" do
+    Repo.query!("DROP SCHEMA IF EXISTS oban CASCADE", [], log: false)
+    [[points, tags, segments], [outbox, jobs]] = changes()
+
+    outbox!(%{})
+
+    ScratchRepo.query!(
+      "INSERT INTO oban.oban_jobs(worker, args) VALUES ('Synthetic', '{}')",
+      [],
+      log: false
+    )
+
+    assert changes() == [[points, tags, segments], [outbox + 1, jobs + 1]]
   end
 
   defp write(conn, method, path, body) do
