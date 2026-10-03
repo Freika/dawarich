@@ -4,6 +4,9 @@ module PhoenixTables
   SQL_FILES = Dir[Rails.root.join('app-phoenix/priv/repo/sql/*.sql')].sort.freeze
   LEASES = 'CREATE TABLE IF NOT EXISTS phoenix.leases ' \
            '(name text PRIMARY KEY, holder text NOT NULL, expires_at timestamptz NOT NULL)'
+  ONCE_CLAIMS = 'CREATE TABLE IF NOT EXISTS phoenix.once_claims ' \
+                '(key text PRIMARY KEY, expires_at timestamptz NOT NULL)'
+  PHOENIX_STATE_TABLES = %w[once_claims leases].freeze
 
   def phoenix_tables!
     connection = ActiveRecord::Base.connection
@@ -16,6 +19,15 @@ module PhoenixTables
   def phoenix_leases!
     ActiveRecord::Base.connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
     ActiveRecord::Base.connection.execute(LEASES)
+  end
+
+  def phoenix_state!
+    phoenix_leases!
+    ActiveRecord::Base.connection.execute(ONCE_CLAIMS)
+  end
+
+  def without_phoenix_state!
+    PHOENIX_STATE_TABLES.each { |table| ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS phoenix.#{table}") }
   end
 
   def job_owner!(key, owner, pinned: false)
