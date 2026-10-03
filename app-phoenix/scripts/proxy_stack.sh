@@ -4,7 +4,8 @@ root="$(cd "$(dirname "$0")/../.." && pwd)"
 E2E_REPO="${E2E_REPO:-$HOME/projects/dawarich/e2e-dawarich-playwright/.worktrees/phoenix-port}"
 ENV_FILE="${ENV_FILE:-$root/../../.env}"
 PORT="${PORT:-3120}"
-REDIS_PORT=$((PORT + 4000))
+REDIS_PORT="${REDIS_PORT:-$((PORT + 4000))}"
+DATABASE_NAME="${DATABASE_NAME:-dawarich_e2e_a2}"
 rel="$root/app-phoenix/_build/prod/rel/dawarich/bin/dawarich"
 pidfile="$root/tmp/pids/proxy_stack.pid"
 log="$root/log/proxy_stack.log"
@@ -12,8 +13,9 @@ sidekiq_log="$root/log/proxy_stack_sidekiq.log"
 sidekiq="sidekiq.* $(basename "$root") "
 
 stack() {
-  env $(grep -E '^DATABASE_(HOST|PORT|USERNAME|PASSWORD)=' "$ENV_FILE" | xargs) \
-    DATABASE_NAME=dawarich_e2e_a2 REDIS_URL="redis://127.0.0.1:$REDIS_PORT" SELF_HOSTED=true \
+  env $(grep -E '^DATABASE_(PORT|USERNAME|PASSWORD)=' "$ENV_FILE" | xargs) \
+    DATABASE_HOST=127.0.0.1 DATABASE_NAME="$DATABASE_NAME" RAILS_ENV=test \
+    REDIS_URL="redis://127.0.0.1:$REDIS_PORT" SELF_HOSTED=true \
     E2E_DEMO_DATA="$E2E_REPO/fixtures/demo_data.json" SMTP_FROM=e2e@dawarich.test E2E_SMTP_PORT=1025 SMTP_SERVER=127.0.0.1 \
     OTP_ENCRYPTION_PRIMARY_KEY=e2e-otp-primary-key-not-a-secret \
     OTP_ENCRYPTION_DETERMINISTIC_KEY=e2e-otp-deterministic-key-not-a-secret \
@@ -67,7 +69,10 @@ stack bin/rails db:prepare >/dev/null
 stack bin/rails phoenix:i18n phoenix:achievements >/dev/null
 [ -n "$(ls -A public/assets 2>/dev/null)" ] || stack bin/rails assets:precompile >/dev/null
 stack bin/rails phoenix:importmap phoenix:time_zones >/dev/null
-(cd app-phoenix && env PATH="$HOME/.asdf/shims:$PATH" MIX_ENV=prod sh -c 'mix compile --force >/dev/null && mix release --overwrite >/dev/null')
+(cd app-phoenix && stack env PATH="$HOME/.asdf/shims:$PATH" \
+  ASDF_ERLANG_VERSION=27.3.4.1 ASDF_ELIXIR_VERSION=1.18.3-otp-27 \
+  DATABASE_HOST=127.0.0.1 PHOENIX_TEST_REDIS_URL="redis://127.0.0.1:$REDIS_PORT/1" \
+  MIX_ENV=prod sh -c 'mix --version | grep -q "^Mix 1.18.3 " && mix compile --force >/dev/null && mix release --overwrite >/dev/null')
 stack "$rel" eval 'Dawarich.Release.migrate()'
 stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$PORT")" \
   sh -c 'echo $$ >"$1"; exec nohup "$2" start' _ "$pidfile" "$rel" >>"$log" 2>&1 &
