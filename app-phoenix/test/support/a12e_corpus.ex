@@ -14,7 +14,7 @@ defmodule Dawarich.A12eCorpus do
   @truncate "TRUNCATE users, points, points_raw_data_archives, active_storage_attachments, active_storage_blobs, job_outbox RESTART IDENTITY CASCADE"
 
   def path, do: @path
-  def corpus, do: @path |> File.read!() |> Jason.decode!()
+  def corpus, do: @path |> File.read!() |> Jason.decode!(floats: :decimals)
   def cases, do: corpus()["cases"]
 
   def expected_stdout(%{"stdout" => stdout}),
@@ -111,8 +111,13 @@ defmodule Dawarich.A12eCorpus do
       {column, %{"ago" => seconds}} ->
         {column, now |> DateTime.add(-seconds, :second) |> DateTime.to_iso8601()}
 
-      pair ->
-        pair
+      {column, value} ->
+        {column, literal(value)}
     end)
   end
+
+  defp literal(%Decimal{} = number), do: Jason.Fragment.new(Decimal.to_string(number, :normal))
+  defp literal(map) when is_map(map), do: Map.new(map, fn {k, v} -> {k, literal(v)} end)
+  defp literal(list) when is_list(list), do: Enum.map(list, &literal/1)
+  defp literal(value), do: value
 end

@@ -1,7 +1,7 @@
 defmodule Dawarich.CLI do
   @moduledoc false
 
-  alias Dawarich.CLI.{Jobs, Migrate, RawData, RawDataStatus, Users}
+  alias Dawarich.CLI.{Jobs, Migrate, RawData, RawDataReset, RawDataStatus, Users}
 
   @rule String.duplicate("━", 46)
 
@@ -22,7 +22,7 @@ defmodule Dawarich.CLI do
     ["raw-data", "clear-verified"] => {RawData, :clear_verified},
     ["raw-data", "restore"] => {RawData, :restore},
     ["raw-data", "restore-all"] => {RawData, :restore_all},
-    ["raw-data", "reset-all"] => {RawData, :reset_all}
+    ["raw-data", "reset-all"] => {RawDataReset, :reset_all}
   }
 
   @own_repo [{Migrate, :migrate}]
