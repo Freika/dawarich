@@ -9,6 +9,7 @@ defmodule Dawarich.SharedLinks do
 
   @active """
   SELECT s.id::text, s.user_id, s.resource_type, s.name, s.magic_phrase, s.settings, s.expires_at,
+    s.resource_id, s.created_at,
     CASE s.resource_type
       WHEN 0 THEN EXISTS (SELECT 1 FROM trips t WHERE t.id = s.resource_id AND t.user_id = s.user_id)
       WHEN 1 THEN EXISTS (SELECT 1 FROM tracks t WHERE t.id = s.resource_id AND t.user_id = s.user_id)
@@ -22,7 +23,7 @@ defmodule Dawarich.SharedLinks do
 
   def active(id, %DateTime{} = now) do
     case Repo.query!(@active, [id, DateTime.to_naive(now)]).rows do
-      [[id, user_id, type, name, phrase, settings, expires_at, present]] ->
+      [[id, user_id, type, name, phrase, settings, expires_at, resource_id, created_at, present]] ->
         %{
           id: id,
           user_id: user_id,
@@ -31,6 +32,8 @@ defmodule Dawarich.SharedLinks do
           magic_phrase: phrase,
           settings: settings,
           expires_at: expires_at,
+          resource_id: resource_id,
+          created_at: created_at,
           resource_present: present
         }
 

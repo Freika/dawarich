@@ -3,6 +3,25 @@ defmodule DawarichWeb.ApiRoutes do
 
   defmacro api_routes do
     quote do
+      pipeline :api_shared do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.Api.Body
+      end
+
+      scope "/api/v1/shared", DawarichWeb.Api do
+        pipe_through :api_shared
+
+        get "/:id/trip", SharedController, :trip, metadata: %{slice: :api_shared}
+        get "/:id/points", SharedController, :points, metadata: %{slice: :api_shared}
+        get "/:id/route", SharedController, :route, metadata: %{slice: :api_shared}
+        get "/:id/photos", SharedController, :photos, metadata: %{slice: :api_shared}
+
+        get "/:id/photos/:photo_id/thumbnail", SharedController, :thumbnail,
+          metadata: %{slice: :api_shared}
+      end
+
       pipeline :api_ingest do
         plug :put_api_tag, "ingest"
         plug DawarichWeb.HostAuthorization

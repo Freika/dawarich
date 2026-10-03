@@ -49,7 +49,9 @@ defmodule DawarichWeb.Api.RemainingRoutesTest do
     assert Code.ensure_loaded?(DawarichWeb.ApiRoutes)
 
     actual =
-      for route <- DawarichWeb.Router.__routes__(), String.starts_with?(route.path, "/api/") do
+      for route <- DawarichWeb.Router.__routes__(),
+          String.starts_with?(route.path, "/api/"),
+          route.metadata[:slice] != :api_shared do
         verb = route.verb |> to_string() |> String.upcase()
         info = Phoenix.Router.route_info(DawarichWeb.Router, verb, route.path, "localhost")
 
