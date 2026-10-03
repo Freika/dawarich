@@ -4,6 +4,8 @@ module PhoenixTables
   SQL_FILES = Dir[Rails.root.join('app-phoenix/priv/repo/sql/*.sql')].sort.freeze
   LEASES = 'CREATE TABLE IF NOT EXISTS phoenix.leases ' \
            '(name text PRIMARY KEY, holder text NOT NULL, expires_at timestamptz NOT NULL)'
+  COUNTERS = 'CREATE TABLE IF NOT EXISTS phoenix.counters ' \
+             '(key text PRIMARY KEY, value bigint NOT NULL, expires_at timestamptz NOT NULL)'
   ONCE_CLAIMS = 'CREATE TABLE IF NOT EXISTS phoenix.once_claims ' \
                 '(key text PRIMARY KEY, expires_at timestamptz NOT NULL)'
   ACHIEVEMENT_CHECKS = 'CREATE TABLE IF NOT EXISTS phoenix.achievement_checks (user_id bigint PRIMARY KEY, ' \
@@ -24,6 +26,11 @@ module PhoenixTables
     SQL_FILES.each do |file|
       File.read(file).split(";\n").map(&:strip).reject(&:empty?).each { |statement| connection.execute(statement) }
     end
+  end
+
+  def phoenix_counters!
+    ActiveRecord::Base.connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
+    ActiveRecord::Base.connection.execute(COUNTERS)
   end
 
   def phoenix_leases!
