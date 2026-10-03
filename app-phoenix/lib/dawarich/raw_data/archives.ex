@@ -47,6 +47,8 @@ defmodule Dawarich.RawData.Archives do
   @drop_blobs "DELETE FROM active_storage_blobs WHERE id = ANY($1)"
   @drop_archive "DELETE FROM points_raw_data_archives WHERE id = $1"
   @drop_journal "DELETE FROM phoenix.raw_data_archive_chunks WHERE archive_id = $1"
+  @phase "SELECT phase FROM phoenix.raw_data_archive_chunks WHERE archive_id = $1"
+  @natural "SELECT user_id, year, month, chunk_number FROM points_raw_data_archives WHERE id = $1"
   @stale """
   SELECT archive_id, storage_key, phase FROM phoenix.raw_data_archive_chunks
   WHERE user_id = $1 AND updated_at < now() - interval '1 hour'
@@ -158,6 +160,22 @@ defmodule Dawarich.RawData.Archives do
     case repo.query!(@file_key, [archive_id], log: false).rows do
       [[key] | _] -> {:ok, key}
       [] -> {:error, :file_not_attached}
+    end
+  end
+
+  def destroy(repo, storage, archive_id) do
+    phase =
+      case repo.query!(@phase, [archive_id], log: false).rows do
+        [[phase]] -> phase
+        [] -> "reserved"
+      end
+
+    case repo.query!(@natural, [archive_id], log: false).rows do
+      [[user_id, year, month, chunk]] ->
+        discard(repo, storage, archive_id, storage_key(user_id, year, month, chunk), phase, false)
+
+      [] ->
+        :ok
     end
   end
 

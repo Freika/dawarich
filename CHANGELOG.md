@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Maintenance commands in the app container: `docker exec -it dawarich_app dawarich help` lists them. `dawarich raw-data …` runs the raw-data archive tasks (status, archive, verify, clear-verified, archive-full, restore, restore-all, reset-all), `dawarich users …` activates users, makes a user an administrator, changes an email or sets a password (read from standard input), `dawarich jobs status` prints the job-ownership summary and `dawarich migrate status` shows whether this image accepts the database. The rake task names work as arguments too, e.g. `dawarich "points:raw_data:restore[1,2026,1]"`. The `bin/rails`/`rake` tasks keep working until Rails is removed.
 - Shared achievement links now show a preview of the achievement card with its geography and progress. (#3721)
 
 ### Changed
