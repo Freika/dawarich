@@ -8,16 +8,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Maintenance commands in the app container: `docker exec -it dawarich_app dawarich help` lists them. `dawarich raw-data …` runs the raw-data archive tasks (status, archive, verify, clear-verified, archive-full, restore, restore-all, reset-all), `dawarich users …` activates users, makes a user an administrator, changes an email or sets a password (read from standard input), `dawarich jobs status` prints the job-ownership summary and `dawarich migrate status` shows whether this image accepts the database. The rake task names work as arguments too, e.g. `dawarich "points:raw_data:restore[1,2026,1]"`. The `bin/rails`/`rake` tasks keep working until Rails is removed.
 - Shared achievement links now show a preview of the achievement card with its geography and progress. (#3721)
 
 ### Changed
 
+- Wherever the Phoenix tables exist, the queue of days whose places changed after geocoding and the toponym reconciliation cursors are kept in PostgreSQL instead of Redis; days still pending in Redis are moved over by the next five-minute toponym run. Monthly statistics, toponym refresh and the hourly statistics sweep are ready to move to Phoenix (Oban) and keep running in Sidekiq until a later release enables it.
+- Rate limits (Cloud's throttles and the shared-link unlock and account-link limits self-hosted installations keep) are now counted in PostgreSQL, in a table the Rails and Phoenix sides share, instead of Redis, so both sides enforce one budget. `RACK_ATTACK_REDIS_DB` is no longer used. Pages and API routes served by the Phoenix side apply the same limits, oversized-request check and JSON responses.
 - Password reset and account unlock are prepared in Phoenix but not used yet; Rails still answers them.
 - The Insights details panel (`/insights/details`) and the signed-in redirect from `/` to the map are now served by the Phoenix side when it can answer exactly as Rails would. A details request whose yearly or monthly digest Rails would recalculate, or whose cached yearly digest Rails would write, still goes to Rails, as do guests, writes and other formats. Phoenix reads Rails' cached digest and fragments and writes only the fragment HTML Rails reads back. Setting `DAWARICH_RAILS_ROUTES=insights` hands `/insights`, `/insights/details` and the `/` redirect back to Rails without changing the image.
 - The places list (`/places`) and the place panel on the map are served by the Phoenix side of the application; saving a note, editing, tagging and deleting a place still go to Rails, and opening a place link still redirects to the map through Rails. Accounts whose time-zone setting PostgreSQL does not know keep being served by Rails. Add `places` to `DAWARICH_RAILS_ROUTES` (keeping any existing values, e.g. `map,places`) to hand both back to Rails without changing the image; `map` alone does not hand back the place panel. Deleting a place from the list reloads the page (ED-280), and the list shows places in the order they were created (ED-281).
 - Phoenix serves the map's timeline frames (day feed, track card, calendar) and the residency card with the Rails markup; Rails keeps every write, socket and the track-segment frame. `DAWARICH_RAILS_ROUTES=map` hands the frames back together with the map page.
 - On self-hosted installations the family API (`GET /api/v1/families/locations`, `GET /api/v1/families/locations/history`, `GET /api/v1/families/mine`, `PATCH`/`PUT /api/v1/families/sharing` and creating, accepting and declining location requests) is now answered by the Elixir supervisor instead of Rails. Responses and stored data are unchanged; the notification and email for a new location request are still delivered by Rails, a moment after the request. Set `DAWARICH_RAILS_SLICES=api_family` on the web container to hand the family API back to Rails without changing the image. Cloud keeps using Rails for now.
 - On self-hosted installations the places API (`GET /api/v1/places`, `GET /api/v1/places/:id`, `POST /api/v1/places`, `PATCH`/`PUT /api/v1/places/:id` and `DELETE /api/v1/places/:id`) is now answered by the Elixir supervisor instead of Rails. Responses and stored places are unchanged. Set `DAWARICH_RAILS_SLICES=api_places` on the web container to hand it back to Rails without changing the image. Nearby and search, tag changes, creates and edits with non-ASCII names or notes and the areas API are still answered by Rails, and Cloud keeps using Rails for now.
+- Realtime updates (`/cable`) on self-hosted instances are served by the Phoenix runtime; set `DAWARICH_RAILS_ROUTES=cable` to hand them back to Rails.
 - On self-hosted installations the map's point and track reads (`GET /api/v1/points`, `GET /api/v1/tracks`, `GET /api/v1/tracks/:id` and `GET /api/v1/tracks/:id/points`) are now answered by the Elixir supervisor instead of Rails. Responses are unchanged. Set `DAWARICH_RAILS_SLICES=api_map_reads` on the web container to hand them back to Rails without changing the image. Tracked months, map tiles, hexagons and every change to points are still answered by Rails, and Cloud keeps using Rails for now.
 - The map page (`/map`, `/map/v2`) is now served by the Phoenix side of the application. The map, its panels, studios, timeline, sharing and live mode work as before; every save still goes to the Rails side. Setting `DAWARICH_RAILS_ROUTES=map` hands the map back to the Rails side without changing the image.
 - Phoenix now has database tables for one-time claims, counters, cache tokens, leases and the registration setting, an hourly cleanup job for them, and an in-memory cache; nothing uses them yet.
@@ -61,6 +65,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Phoenix pages link the digested stylesheets from Rails' configured asset manifest.
+- Track-generation locks, geocoding de-duplication, the realtime debouncers and achievement-check coalescing are stored in PostgreSQL instead of Redis wherever the Phoenix tables exist.
+
+### Fixed
+
+- Background-job locks (toponym refresh, import downloads, raw-data archiving, anomaly backfills, TeslaMate and Trek sync) no longer leak behind a transaction-pooling PgBouncer.
 - Cloud layouts now initialize Paddle after its script loads.
 - Replay scrubber and playback now stay in chronological order through daylight-saving clock changes.
 - Replay scrubber controls use the profile timezone when it differs from the browser timezone.

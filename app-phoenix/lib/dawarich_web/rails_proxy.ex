@@ -25,6 +25,8 @@ defmodule DawarichWeb.RailsProxy do
 
   @impl true
   def call(conn, upstream) do
+    conn = DawarichWeb.RateLimit.release(conn)
+
     if Headers.websocket_upgrade?(conn),
       do: DawarichWeb.CableProxy.upgrade(conn, upstream),
       else: with_upstream(conn, upstream, &forward/2)

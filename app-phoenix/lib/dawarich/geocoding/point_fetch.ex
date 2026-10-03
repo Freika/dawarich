@@ -4,8 +4,9 @@ defmodule Dawarich.Geocoding.PointFetch do
   require Logger
 
   alias Dawarich.Geocoding.{Countries, Result, Search}
-  alias Dawarich.{RailsEffects, Redis}
+  alias Dawarich.RailsEffects
   alias Dawarich.ReleaseMigrations.Effects.Support.{Ruby, RubyFloat}
+  alias Dawarich.Stats.GeocodedDays
 
   @load "SELECT id, user_id, timestamp, lock_version, reverse_geocoded_at IS NOT NULL, " <>
           "ST_Y(lonlat::geometry), ST_X(lonlat::geometry), city, country_name, country_id " <>
@@ -95,7 +96,7 @@ defmodule Dawarich.Geocoding.PointFetch do
 
       with :ok <- commit(repo, @write, params, point) do
         if {city, country_name, country_id} != {point.city, point.country_name, point.country_id},
-          do: mark(point)
+          do: mark(repo, point)
 
         :written
       end
@@ -148,26 +149,13 @@ defmodule Dawarich.Geocoding.PointFetch do
       end
   end
 
-  defp mark(point) do
-    date = point.timestamp |> DateTime.from_unix!() |> DateTime.to_date() |> Date.to_iso8601()
-    member = "#{point.user_id}:#{date}"
-
-    commands = [
-      ["SET", "stats:geocoded_days:version:" <> member, Ecto.UUID.generate()],
-      [
-        "ZADD",
-        "stats:geocoded_days:pending",
-        "NX",
-        Integer.to_string(System.os_time(:second) + 3600),
-        member
-      ]
-    ]
-
-    with {:error, reason} <- Redis.transaction(commands),
-         do:
-           Logger.warning(
-             "event=geocoding.geocoded_day_failed user_id=#{point.user_id} reason=#{inspect(reason)}"
-           )
+  defp mark(repo, point) do
+    GeocodedDays.mark(repo, point.user_id, point.timestamp)
+  rescue
+    error in [DBConnection.ConnectionError, Postgrex.Error] ->
+      Logger.warning(
+        "event=geocoding.geocoded_day_failed user_id=#{point.user_id} reason=#{inspect(error.__struct__)}"
+      )
   end
 
   defp provider_error(id, class) do

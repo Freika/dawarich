@@ -162,7 +162,7 @@ RSpec.describe Visits::Suggest do
 
       it 'notifies again once the dedup window has passed' do
         described_class.new(user, start_at:, end_at:).call
-        Sidekiq.redis { |redis| redis.del("visit_suggest_error:user:#{user.id}") }
+        PhoenixClaims.unclaim("visit_suggest_error:user:#{user.id}")
 
         described_class.new(user, start_at:, end_at:).call
 
@@ -170,19 +170,42 @@ RSpec.describe Visits::Suggest do
       end
 
       it 'suppresses the notification when another run already claimed the window' do
-        Sidekiq.redis { |redis| redis.set("visit_suggest_error:user:#{user.id}", 1, ex: 3600) }
+        PhoenixClaims.claim("visit_suggest_error:user:#{user.id}", 3600)
 
         described_class.new(user, start_at:, end_at:).call
 
         expect(user.notifications.where(title: 'Error suggesting visits')).to be_empty
       end
 
-      it 'still notifies when Redis is unavailable' do
+      it 'still notifies when Redis is unavailable where Phoenix never migrated' do
+        without_phoenix_state!
         allow(Sidekiq).to receive(:redis).and_raise(RedisClient::CannotConnectError, 'redis down')
 
         described_class.new(user, start_at:, end_at:).call
 
         expect(user.notifications.where(title: 'Error suggesting visits').count).to eq(1)
+      end
+
+      context 'with phoenix.once_claims' do
+        before { phoenix_state! }
+
+        it 'claims the error window row once per hour' do
+          key = "visit_suggest_error:user:#{user.id}"
+          2.times { described_class.new(user, start_at:, end_at:).call }
+
+          expect(user.notifications.where(title: 'Error suggesting visits').count).to eq(1)
+          seconds = ActiveRecord::Base.connection.select_value(
+            'SELECT extract(epoch FROM expires_at - statement_timestamp()) FROM phoenix.once_claims ' \
+            "WHERE key = #{ActiveRecord::Base.connection.quote(key)}"
+          ).to_f
+          expect(seconds).to be_between(3599, 3600)
+          expect(Sidekiq.redis { |r| r.exists(key) }).to eq(0)
+        end
+      end
+
+      it 'uses the key Phoenix claims' do
+        source = Rails.root.join('app-phoenix/lib/dawarich/visits/suggest.ex').read
+        expect(source).to include('"visit_suggest_error:user:#{')
       end
 
       it 'notifies the user without leaking a backtrace' do

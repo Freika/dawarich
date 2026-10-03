@@ -55,7 +55,8 @@ defmodule DawarichWeb.EndpointTest do
     assert values(headers, "location") == ["/settings"]
   end
 
-  test "a /cable upgrade goes to Puma as an upgrade", ctx do
+  test "a handed-back /cable upgrade goes to Puma as an upgrade", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["cable"])
     port = serve()
     client = ws_request(port, "/cable", [{"Origin", "http://127.0.0.1:#{port}"}])
     puma = accept(ctx.upstream)
@@ -552,6 +553,8 @@ defmodule DawarichWeb.EndpointTest do
   end
 
   test "stopping the production listener closes a proxied cable connection normally", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["cable"])
+
     plan =
       {:proxy,
        %{
@@ -809,8 +812,7 @@ defmodule DawarichWeb.EndpointTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     Dawarich.Test.SharingSeeds.load!()
-    start_supervised!(hd(Dawarich.Redis.rack_attack_child_specs()))
-    Redix.command!(Dawarich.Redis.rack_attack(), ["FLUSHDB"])
+    Dawarich.ScratchRepo.query!("TRUNCATE phoenix.counters", [], log: false)
     port = serve()
     id = "a9500000-0000-4000-8000-000000000001"
     page = "GET /s/#{id}?locale=de HTTP/1.1\r\nHost: a\r\n\r\n"

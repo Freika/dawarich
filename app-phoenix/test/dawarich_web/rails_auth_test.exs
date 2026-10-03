@@ -36,14 +36,14 @@ defmodule DawarichWeb.RailsAuthTest do
   defp update_user(fields), do: Repo.update_all(from_users(), set: fields)
   defp from_users, do: Ecto.Query.from(u in "users", where: u.id == ^@user["id"])
 
-  defp current_user(cookies, now \\ @now) do
-    conn =
-      Enum.reduce(cookies, conn(:get, "/"), fn {name, value}, conn ->
-        put_req_cookie(conn, name, value)
-      end)
-
-    RailsAuth.call(conn, RailsAuth.init(now: now)).assigns.current_user
+  defp conn_with(cookies) do
+    Enum.reduce(cookies, conn(:get, "/"), fn {name, value}, conn ->
+      put_req_cookie(conn, name, value)
+    end)
   end
+
+  defp current_user(cookies, now \\ @now),
+    do: RailsAuth.call(conn_with(cookies), RailsAuth.init(now: now)).assigns.current_user
 
   defp session_cookie, do: [{"_dawarich_session", @fixture["session_cookie"]}]
   defp remember_cookie, do: [{"remember_user_token", @fixture["remember_cookie"]}]
@@ -83,6 +83,14 @@ defmodule DawarichWeb.RailsAuthTest do
   test "the user in the Rails session is the current user" do
     assert %{id: id} = current_user(session_cookie())
     assert id == @user["id"]
+  end
+
+  test "session_user/2 reads only the Warden session, never the remember cookie" do
+    assert %{id: id} = RailsAuth.session_user(conn_with(session_cookie()), now: @now)
+    assert id == @user["id"]
+    assert RailsAuth.session_user(conn_with(remember_cookie()), now: @now) == nil
+    update_user(locked_at: NaiveDateTime.add(naive(@fixture["now"]), -60))
+    assert {:locked, _} = RailsAuth.session_user(conn_with(session_cookie()), now: @now)
   end
 
   test "the decrypted Rails session is available to later plugs" do

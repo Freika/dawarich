@@ -22,10 +22,11 @@ defmodule Dawarich.RailsMessages do
     )
   end
 
-  def stream_name(parts, secret \\ RailsSecret.fetch()) do
-    name = Enum.map_join(parts, ":", &part/1)
-    sign(@turbo, Jason.encode!(name, escape: :javascript_safe), :sha256, secret)
-  end
+  def stream_name(parts, secret \\ RailsSecret.fetch()),
+    do:
+      sign(@turbo, Jason.encode!(broadcasting(parts), escape: :javascript_safe), :sha256, secret)
+
+  def broadcasting(parts), do: Enum.map_join(List.wrap(parts), ":", &part/1)
 
   def verified_stream_name(signed, secret \\ RailsSecret.fetch()) do
     case open(signed, @turbo, :sha256, secret, nil, DateTime.utc_now()) do

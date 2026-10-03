@@ -18,7 +18,7 @@ class Imports::PrepareDownloadJob < ApplicationJob
   private
 
   def legacy(import_id, source_blob_id)
-    ActiveRecord::Base.with_advisory_lock("import-download:#{import_id}", timeout_seconds: 0) do
+    PhoenixLease.try_hold("import-download:#{import_id}") do
       import = Import.find_by(id: import_id)
       return unless import&.file&.attached?
       return unless import.file.blob_id == source_blob_id

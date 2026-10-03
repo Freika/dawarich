@@ -7,6 +7,7 @@ defmodule DawarichWeb.ApiRoutes do
         plug :put_api_tag, "ingest"
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
         plug DawarichWeb.Api.Body
         plug DawarichWeb.Api.Auth
       end
@@ -24,6 +25,7 @@ defmodule DawarichWeb.ApiRoutes do
         plug :put_api_tag, "api"
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
         plug DawarichWeb.Api.Body
         plug DawarichWeb.Api.Auth, reject_pending: false, require_active: false
       end
@@ -38,6 +40,7 @@ defmodule DawarichWeb.ApiRoutes do
         plug :put_api_tag, "api"
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
         plug DawarichWeb.Api.Body
         plug DawarichWeb.Api.Auth, require_active: false
       end
@@ -73,6 +76,7 @@ defmodule DawarichWeb.ApiRoutes do
         plug :put_api_tag, "api"
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
         plug :method_override_to_rails
         plug DawarichWeb.Api.Body
         plug DawarichWeb.Api.Auth, require_active: false
@@ -110,6 +114,7 @@ defmodule DawarichWeb.ApiRoutes do
         plug :put_api_tag, "api"
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
         plug DawarichWeb.Api.Body
         plug :put_path_format
         plug DawarichWeb.Api.Auth, require_active: false

@@ -88,7 +88,7 @@ class DataMigrations::RecalculateAnomaliesUserJob < ApplicationJob
     end
 
     # Three outcomes, and nil is not the same as false: the backfill returns
-    # `false` when the advisory lock was busy, but `nil` when a shutdown
+    # `false` when the backfill lease was busy, but `nil` when a shutdown
     # interrupted it — ActiveJob's continuation swallows the return value and
     # puts the job back on the queue itself. Retrying an interrupted run would
     # repeat the whole reset and filter pass against the copy already resuming,

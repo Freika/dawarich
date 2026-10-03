@@ -2,7 +2,6 @@ defmodule Dawarich.Visits.RedetectWorkerTest do
   use Dawarich.VisitsCase, async: false
 
   alias Dawarich.Geocoding.HookRepo
-  alias Dawarich.Redis
   alias Dawarich.Tracks.PerUserLock
   alias Dawarich.Visits.RedetectWorker
 
@@ -23,10 +22,10 @@ defmodule Dawarich.Visits.RedetectWorkerTest do
 
     assert RedetectWorker.perform(job(start_args(cooled))) == :ok
     assert notifications(cooled) == []
-    refute key_exists?(run_key(cooled))
+    assert lease_holders(ScratchRepo, run_key(cooled)) == []
 
     busy = user!(9102)
-    cmd!(["SET", run_key(busy), "other-token", "PX", "60000"])
+    hold_lease!(ScratchRepo, run_key(busy), "other-token")
     assert RedetectWorker.perform(job(start_args(busy))) == :ok
 
     assert notifications(busy) == [
@@ -37,7 +36,7 @@ defmodule Dawarich.Visits.RedetectWorkerTest do
              }
            ]
 
-    assert cmd!(["GET", run_key(busy)]) == "other-token"
+    assert lease_holders(ScratchRepo, run_key(busy)) == [["other-token"]]
 
     empty = user!(9103)
     assert RedetectWorker.perform(job(start_args(empty))) == :ok
@@ -50,7 +49,7 @@ defmodule Dawarich.Visits.RedetectWorkerTest do
              }
            ]
 
-    refute key_exists?(run_key(empty))
+    assert lease_holders(ScratchRepo, run_key(empty)) == []
   end
 
   test "three months chain to a complete notification" do
@@ -97,23 +96,21 @@ defmodule Dawarich.Visits.RedetectWorkerTest do
     uid = user!(9110)
     point!(uid, 1_790_000_000)
     event_id = Ecto.UUID.generate()
-    config = Application.fetch_env!(:dawarich, :redis)
-    {:ok, contender} = Redix.start_link(config[:url], database: config[:database])
-    Redix.command!(contender, ["SET", PerUserLock.key(uid), "someone-else", "PX", "5000"])
-    cmd!(["SET", run_key(uid), event_id, "PX", "60000"])
+    hold_lease!(ScratchRepo, PerUserLock.key(uid), "someone-else")
+    hold_lease!(ScratchRepo, run_key(uid), event_id)
 
     args = month_args(uid, event_id, 0, 1)
 
     assert RedetectWorker.perform(job(args)) == {:snooze, 30}
     assert visits(uid) == []
-    assert cmd!(["GET", run_key(uid)]) == event_id
+    assert lease_holders(ScratchRepo, run_key(uid)) == [[event_id]]
   end
 
   test "a superseded run stops" do
     uid = user!(9111)
     point!(uid, 1_790_000_000)
     event_id = Ecto.UUID.generate()
-    cmd!(["SET", run_key(uid), "someone-else", "PX", "60000"])
+    hold_lease!(ScratchRepo, run_key(uid), "someone-else")
     args = month_args(uid, event_id, 0, 1)
 
     assert RedetectWorker.perform(job(args)) == :ok
@@ -125,7 +122,7 @@ defmodule Dawarich.Visits.RedetectWorkerTest do
     uid = user!(9112)
     point!(uid, 1_790_000_000)
     event_id = Ecto.UUID.generate()
-    cmd!(["SET", run_key(uid), event_id, "PX", "60000"])
+    hold_lease!(ScratchRepo, run_key(uid), event_id)
     args = month_args(uid, event_id, 0, 2)
     the_job = job(args)
     stop_supervised!(@oban)
@@ -137,20 +134,24 @@ defmodule Dawarich.Visits.RedetectWorkerTest do
              notifications(uid)
 
     assert content == message
-    refute key_exists?(run_key(uid))
+    assert lease_holders(ScratchRepo, run_key(uid)) == []
   end
 
-  test "a Redis error on renew retries the month" do
+  test "a database error on renew raises so Oban retries the month, and the run keeps its lease" do
     uid = user!(9113)
     event_id = Ecto.UUID.generate()
-    cmd!(["SET", run_key(uid), event_id, "PX", "60000"])
+    hold_lease!(ScratchRepo, run_key(uid), event_id)
     args = month_args(uid, event_id, 0, 1)
 
-    stop_supervised!(Redix)
-    assert match?({:error, {:redis, _}}, RedetectWorker.perform(job(args)))
+    HookRepo.set_hook(fn sql, _params ->
+      if String.starts_with?(sql, "UPDATE phoenix.leases"),
+        do: raise(DBConnection.ConnectionError, "connection dropped")
+    end)
 
-    start_supervised!(hd(Redis.child_specs()))
-    assert cmd!(["GET", run_key(uid)]) == event_id
+    use_repo!(HookRepo)
+
+    assert_raise DBConnection.ConnectionError, fn -> RedetectWorker.perform(job(args)) end
+    assert lease_holders(ScratchRepo, run_key(uid)) == [[event_id]]
     assert notifications(uid) == []
   end
 
@@ -223,13 +224,6 @@ defmodule Dawarich.Visits.RedetectWorkerTest do
   end
 
   defp run_key(uid), do: "visits:redetect_run:#{uid}"
-
-  defp cmd!(args) do
-    {:ok, value} = Redis.command(args)
-    value
-  end
-
-  defp key_exists?(key), do: cmd!(["EXISTS", key]) == 1
 
   defp notifications(uid) do
     for [kind, title, content] <-

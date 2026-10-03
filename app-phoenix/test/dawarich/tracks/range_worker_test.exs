@@ -51,30 +51,34 @@ defmodule Dawarich.Tracks.RangeWorkerTest do
   test "a held lock is lock_busy and cleans nothing" do
     user = user_with_points!()
     track = track!(user.id, "old", @t - 600, @t - 300)
-    rails = rails_redis!()
-    Redix.command!(rails, ["SET", PerUserLock.key(user.id), "rails-token", "PX", "60000"])
+    Dawarich.JobsCase.hold_lease!(ScratchRepo, PerUserLock.key(user.id), "rails-token")
     args = args(user)
 
-    assert RangeWorker.run(ScratchRepo, oban(), args, lock: [timeout_ms: 200]) ==
+    assert RangeWorker.run(ScratchRepo, oban(), args, lock: [timeout_ms: 0]) ==
              {:error, :lock_busy}
 
     assert track_ids() == [track]
     assert rows("SELECT count(*) FROM phoenix.track_generations") == [[0]]
     assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
     assert tracks_changed() == []
-    assert Redix.command!(rails, ["GET", PerUserLock.key(user.id)]) == "rails-token"
+
+    assert Dawarich.JobsCase.lease_holders(ScratchRepo, PerUserLock.key(user.id)) == [
+             ["rails-token"]
+           ]
   end
 
   test "an untracked-only run skips the per-user lock" do
     user = user_with_points!()
-    rails = rails_redis!()
-    Redix.command!(rails, ["SET", PerUserLock.key(user.id), "rails-token", "PX", "60000"])
+    Dawarich.JobsCase.hold_lease!(ScratchRepo, PerUserLock.key(user.id), "rails-token")
     args = args(user, %{"untracked_only" => true})
 
-    assert RangeWorker.run(ScratchRepo, oban(), args, lock: [timeout_ms: 200]) == :ok
+    assert RangeWorker.run(ScratchRepo, oban(), args, lock: [timeout_ms: 0]) == :ok
     assert rows("SELECT count(*) FROM phoenix.track_generations") == [[1]]
     assert length(chunk_jobs(args["event_id"])) == 1
-    assert Redix.command!(rails, ["GET", PerUserLock.key(user.id)]) == "rails-token"
+
+    assert Dawarich.JobsCase.lease_holders(ScratchRepo, PerUserLock.key(user.id)) == [
+             ["rails-token"]
+           ]
   end
 
   test "low-priority generations schedule priority-3 jobs; daily/bulk generations schedule priority-1" do

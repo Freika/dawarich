@@ -11,6 +11,8 @@ defmodule Dawarich.Notifications do
   @max_id 9_223_372_036_854_775_807
   @year_bucket_days 364
 
+  def kind_name(kind), do: Map.get(@kind_names, kind)
+
   def page(user_id, page) do
     offset = (page - 1) * @per_page
     owned = from(n in "notifications", where: n.user_id == ^user_id)

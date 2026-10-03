@@ -28,6 +28,13 @@ defmodule DawarichWeb.RailsAuth do
     |> put_private(:dawarich_rails_user, user)
   end
 
+  def session_user(conn, opts \\ []) do
+    conn = fetch_cookies(conn)
+    secret = Keyword.get_lazy(opts, :secret, &RailsSecret.fetch/0)
+    now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
+    Accounts.from_session(rails_session(conn, secret, now), now)
+  end
+
   def user_id(conn) do
     user =
       case Map.fetch(conn.private, :dawarich_rails_user) do

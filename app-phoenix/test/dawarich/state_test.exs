@@ -206,6 +206,109 @@ defmodule Dawarich.StateTest do
     assert rows("SELECT count(*) FROM phoenix.registration_setting") == [[1]]
   end
 
+  @claim_all_like "INSERT INTO phoenix.once_claims AS c (key, expires_at)%unnest%"
+
+  test "claim_all takes each free or expired key once and returns exactly the keys it took" do
+    assert State.claim(ScratchRepo, "o:live", 60)
+
+    rows(
+      "INSERT INTO phoenix.once_claims (key, expires_at) VALUES ('o:old', statement_timestamp() - interval '1 second')"
+    )
+
+    taken = State.claim_all(ScratchRepo, ["o:new", "o:live", "o:old", "o:new"], 86_400)
+
+    assert Enum.sort(taken) == ["o:new", "o:old"]
+    refute State.claim(ScratchRepo, "o:new", 60)
+
+    assert rows(
+             "SELECT expires_at - statement_timestamp() BETWEEN interval '86399 seconds' AND interval '86400 seconds' FROM phoenix.once_claims WHERE key = 'o:old'"
+           ) == [[true]]
+
+    assert State.claim_all(ScratchRepo, [], 60) == []
+  end
+
+  test "unclaim_all frees every named key and keeps the others" do
+    for key <- ~w(o:1 o:2 o:3), do: assert(State.claim(ScratchRepo, key, 60))
+
+    assert State.unclaim_all(ScratchRepo, ["o:1", "o:3", "o:9", "o:1"]) == :ok
+
+    refute State.claimed?(ScratchRepo, "o:1")
+    assert State.claimed?(ScratchRepo, "o:2")
+    refute State.claimed?(ScratchRepo, "o:3")
+  end
+
+  test "debounce claims a free key, slides a live one without claiming it, and claims an expired or cleared one" do
+    assert State.debounce(ScratchRepo, "d:u1", 120)
+
+    rows(
+      "UPDATE phoenix.once_claims SET expires_at = statement_timestamp() + interval '10 seconds' WHERE key = 'd:u1'"
+    )
+
+    refute State.debounce(ScratchRepo, "d:u1", 120)
+
+    assert rows(
+             "SELECT expires_at - statement_timestamp() BETWEEN interval '119 seconds' AND interval '120 seconds' FROM phoenix.once_claims WHERE key = 'd:u1'"
+           ) == [[true]]
+
+    expire!("once_claims", "d:u1")
+    assert State.debounce(ScratchRepo, "d:u1", 120)
+    assert State.unclaim(ScratchRepo, "d:u1") == :ok
+    assert State.debounce(ScratchRepo, "d:u1", 120)
+  end
+
+  test "claim_all takes its keys in key order, holding the lower one while it waits for a higher one" do
+    for key <- ~w(o:p o:q),
+        do:
+          rows(
+            "INSERT INTO phoenix.once_claims (key, expires_at) VALUES ($1, statement_timestamp() - interval '1 second')",
+            [key]
+          )
+
+    holder =
+      hold(fn ->
+        ScratchRepo.query!("SELECT 1 FROM phoenix.once_claims WHERE key = 'o:q' FOR UPDATE")
+      end)
+
+    claim = attempt(fn -> State.claim_all(ScratchRepo, ["o:q", "o:p"], 60) end)
+    wait_until(fn -> blocked(@claim_all_like) == 1 end)
+
+    probe =
+      attempt(fn ->
+        ScratchRepo.query!(
+          "SELECT 1 FROM phoenix.once_claims WHERE key = 'o:p' FOR UPDATE NOWAIT"
+        )
+      end)
+
+    assert {:error, :lock_not_available} = Task.await(probe)
+    commit(holder)
+    assert {:ok, taken} = Task.await(claim)
+    assert Enum.sort(taken) == ["o:p", "o:q"]
+  end
+
+  test "two claim_all calls naming overlapping keys in opposite orders both finish without a deadlock" do
+    for key <- ~w(o:a o:b),
+        do:
+          rows(
+            "INSERT INTO phoenix.once_claims (key, expires_at) VALUES ($1, statement_timestamp() - interval '1 second')",
+            [key]
+          )
+
+    holder =
+      hold(fn ->
+        ScratchRepo.query!("SELECT 1 FROM phoenix.once_claims WHERE key = 'o:a' FOR UPDATE")
+      end)
+
+    forward = attempt(fn -> State.claim_all(ScratchRepo, ["o:a", "o:b"], 60) end)
+    wait_until(fn -> blocked(@claim_all_like) == 1 end)
+    backward = attempt(fn -> State.claim_all(ScratchRepo, ["o:b", "o:a"], 60) end)
+    wait_until(fn -> blocked(@claim_all_like) == 2 end)
+    commit(holder)
+
+    assert {:ok, first} = Task.await(forward)
+    assert {:ok, second} = Task.await(backward)
+    assert Enum.sort(first ++ second) == ["o:a", "o:b"]
+  end
+
   defp seed!, do: :rand.seed(:exsss, {ExUnit.configuration()[:seed], 101, 202})
 
   defp expire!(table, key),
