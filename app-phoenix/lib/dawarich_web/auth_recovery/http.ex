@@ -107,7 +107,7 @@ defmodule DawarichWeb.AuthRecovery.Http do
   end
 
   defp dispatch(conn, method, params, opts, context) do
-    case plan(method, conn, params, context) do
+    case Flow.dispatch(method, conn.request_path, params, conn.assigns.rails_session, context) do
       {:ok, %{location: nil} = result} ->
         form(conn, result, context)
 
@@ -129,26 +129,6 @@ defmodule DawarichWeb.AuthRecovery.Http do
         fallback(conn, opts)
     end
   end
-
-  defp plan("POST", conn, params, context) do
-    repo = Map.get(context, :repo, Dawarich.Repo)
-
-    planned =
-      repo.transaction(fn ->
-        case Flow.dispatch("POST", conn.request_path, params, conn.assigns.rails_session, context) do
-          {:ok, result} -> {:ok, result}
-          other -> repo.rollback(other)
-        end
-      end)
-
-    case planned do
-      {:ok, ok} -> ok
-      {:error, other} -> other
-    end
-  end
-
-  defp plan(method, conn, params, context),
-    do: Flow.dispatch(method, conn.request_path, params, conn.assigns.rails_session, context)
 
   defp form(conn, result, context) do
     conn =

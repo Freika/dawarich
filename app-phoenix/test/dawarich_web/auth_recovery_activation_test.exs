@@ -34,10 +34,17 @@ defmodule DawarichWeb.AuthRecoveryActivationTest do
 
   defp session, do: %{"session_id" => "a11a-guest", "_csrf_token" => RailsCsrf.new_token()}
 
-  defp form_conn(method, path, fields, session, enqueue) do
+  defmodule NoTransactionRepo do
+    def transaction(_), do: raise("a transaction was opened")
+  end
+
+  def key_derived(_event, _measurements, _metadata, pid),
+    do: send(pid, {:key_derived, Dawarich.ScratchRepo.in_transaction?()})
+
+  defp form_conn(method, path, fields, session, enqueue, extra \\ %{}) do
     body = URI.encode_query(fields)
     context = %{repo: ScratchRepo, registration_enabled: false, oidc: false, self_hosted: true}
-    context = Map.put(context, :log_rounds, 4)
+    context = Map.merge(Map.put(context, :log_rounds, 4), extra)
     context = if enqueue, do: Map.put(context, :enqueue, enqueue), else: context
 
     Plug.Test.conn(method, path, body)
@@ -90,6 +97,21 @@ defmodule DawarichWeb.AuthRecoveryActivationTest do
 
   defp digest(id), do: rows("SELECT reset_password_token FROM users WHERE id = $1", [id])
 
+  defp answer(conn) do
+    %{value: value} = conn.resp_cookies["_dawarich_session"]
+
+    {:ok, session} =
+      RailsCookies.decrypt(value, "_dawarich_session", RailsSecret.fetch(), DateTime.utc_now())
+
+    %{
+      status: conn.status,
+      body: conn.resp_body,
+      location: get_resp_header(conn, "location"),
+      owner: get_resp_header(conn, "x-dawarich-auth-owner"),
+      flash: session["flash"]
+    }
+  end
+
   test "the token, its sealed mail job and the paranoid notice commit together", ctx do
     start_oban(ActivationOban)
     conn = post(@email, &MailWorker.enqueue(&1, ActivationOban))
@@ -125,17 +147,82 @@ defmodule DawarichWeb.AuthRecoveryActivationTest do
     assert digest(ctx.id) == [[nil]]
   end
 
-  test "an unknown email answers the same notice and enqueues nothing" do
+  test "an unknown email answers exactly what an existing account's request answers and enqueues nothing" do
     start_oban(ActivationOban)
-    conn = post("nobody@dawarich.test", &MailWorker.enqueue(&1, ActivationOban))
-    assert conn.status == 303
-    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
+    known = answer(post(@email, &MailWorker.enqueue(&1, ActivationOban)))
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
+
+    unknown = answer(post("nobody@dawarich.test", &MailWorker.enqueue(&1, ActivationOban)))
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
+
+    assert unknown == known
+    assert known.status == 303
+    assert known.location == ["http://www.example.com/users/sign_in"]
+    assert known.owner == ["native-recovery"]
+    assert known.flash["flashes"]["notice"] =~ "email"
   end
 
   test "a failed enqueue rolls the token back and answers 500", ctx do
     conn = post(@email, fn _ -> {:error, :boom} end)
     assert conn.status == 500
     assert digest(ctx.id) == [[nil]]
+  end
+
+  test "a failed enqueue after the job insert rolls the job back with the digest", ctx do
+    start_oban(ActivationOban)
+
+    conn =
+      post(@email, fn notification ->
+        :ok = MailWorker.enqueue(notification, ActivationOban)
+        {:error, :boom}
+      end)
+
+    assert conn.status == 500
+    assert digest(ctx.id) == [[nil]]
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
+  end
+
+  test "a request handed back before issuance opens no transaction" do
+    session = session()
+    fields = [{"authenticity_token", RailsCsrf.masked_token(session)}, {"user[email]", @email}]
+    enqueue = fn _ -> flunk("enqueued") end
+
+    for {fields, enqueue, extra} <- [
+          {fields, nil, %{repo: NoTransactionRepo}},
+          {List.keydelete(fields, "user[email]", 0), enqueue, %{repo: NoTransactionRepo}},
+          {fields, enqueue, %{repo: NoTransactionRepo, secret: nil}}
+        ] do
+      conn = form_conn(:post, "/users/password", fields, session, enqueue, extra)
+      assert conn.private[:handed_to_rails]
+    end
+  end
+
+  test "the token key is derived before the request transaction opens" do
+    start_oban(ActivationOban)
+    id = "a11a-key-#{System.unique_integer([:positive])}"
+
+    :telemetry.attach(
+      id,
+      [:dawarich, :auth, :recovery, :token_key],
+      &__MODULE__.key_derived/4,
+      self()
+    )
+
+    on_exit(fn -> :telemetry.detach(id) end)
+    session = session()
+
+    conn =
+      form_conn(
+        :post,
+        "/users/password",
+        [{"authenticity_token", RailsCsrf.masked_token(session)}, {"user[email]", @email}],
+        session,
+        &MailWorker.enqueue(&1, ActivationOban),
+        %{secret: "a11a-cold-#{System.unique_integer([:positive])}"}
+      )
+
+    assert conn.status == 303
+    assert_received {:key_derived, false}
   end
 
   test "without a delivery owner the request goes to Rails before any effect", ctx do
