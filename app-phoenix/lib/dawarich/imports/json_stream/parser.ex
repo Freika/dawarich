@@ -35,7 +35,7 @@ defmodule Dawarich.Imports.JsonStream.Parser do
 
   defp parse(path, select, opts) do
     offset = Keyword.get(opts, :offset, 0)
-    length = Keyword.get(opts, :length, File.stat!(path).size - offset)
+    length = Keyword.get_lazy(opts, :length, fn -> source_size(path) - offset end)
     reader = Reader.open(path, offset, length)
     mode = Keyword.get(opts, :mode, :saj)
     state = %{select: select, total: length, offset: offset, opts: opts, mode: mode, documents: 0}
@@ -55,6 +55,9 @@ defmodule Dawarich.Imports.JsonStream.Parser do
       Reader.close(reader)
     end
   end
+
+  defp source_size({:bytes, bytes}), do: byte_size(bytes)
+  defp source_size(path), do: File.stat!(path).size
 
   defp documents(r, s) do
     case Reader.peek(r) do

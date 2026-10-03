@@ -34,5 +34,8 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
         NormalImportFormatsSupport.write(name, result)
       end
     end
+    detection = NormalImportFormatsSupport.capture_detection
+    detection.each { |row| expect(row.fetch('source')).to eq(row.fetch('expected')) }
+    NormalImportFormatsSupport.write('source_detection', detection)
   end
 end

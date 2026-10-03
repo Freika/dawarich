@@ -115,4 +115,52 @@ module NormalImportFormatsSupport
       'notifications' => Notification.where(user_id: import.user_id).order(:id).pluck(:title, :content, :kind),
       'jobs' => ActiveJob::Base.queue_adapter.enqueued_jobs.map { |job| { 'type' => job[:job].name, 'args' => job[:args] } } }
   end
+
+  def capture_detection
+    detection_cases.map do |name, bytes, expected|
+      path = DIR.join("detection_#{name}")
+      File.binwrite(path, bytes)
+      { 'input' => path.basename.to_s, 'filename' => name, 'expected' => expected,
+        'source' => Imports::SourceDetector.new_from_file_header(path).detect_source&.to_s }
+    end
+  end
+
+  def detection_cases
+    mobile = { type: 'DawarichPhotoLibrary', version: 1,
+               points: [{ timestamp: 1, latitude: 51.3, longitude: 12.4 }] }
+    [
+      ['ambiguous.json', { locations: [{ latitudeE7: 513_000_000, longitudeE7: 124_000_000,
+                                       lat: 51.3, lon: 12.4, time: 1 }] }.to_json, 'google_records'],
+      ['mobile_v1.json', mobile.to_json, 'mobile_photo_library'],
+      ['mobile_v2.json', mobile.merge(version: 2).to_json, nil],
+      ['mobile_large_v1.json', "#{mobile.to_json.delete_suffix('}')},\"padding\":\"#{'x' * 9000}",
+       'mobile_photo_library'],
+      ['mobile_large_v2.json', "#{mobile.merge(version: 2).to_json.delete_suffix('}')},\"padding\":\"#{'x' * 9000}",
+       nil],
+      ['mobile_empty.json', mobile.merge(points: []).to_json, 'mobile_photo_library'],
+      ['mobile_missing_type.json', { version: 1, points: mobile[:points] }.to_json, nil],
+      ['empty.json', '', nil], ['null.json', 'null', nil], ['false.json', 'false', nil],
+      ['partial.json', '{"locations":[{"latitudeE7":513000000}', 'google_records'],
+      ['records_fallback.json', "{\"padding\":\"#{'x' * 9000}\",\"locations\":[{\"latitudeE7\":1", 'google_records'],
+      ['outside_raw_limit.json', "#{'x' * 262_144}\"locations\" \"latitudeE7\"", nil],
+      ['semantic.json', '{"timelineObjects":[{"placeVisit":{}}]}', 'google_semantic_history'],
+      ['phone.json', '{"semanticSegments":[{"startTime":"2026-01-15"}]}', 'google_phone_takeout'],
+      ['raw.json', '{"rawSignals":[]}', 'google_phone_takeout'],
+      ['photos.json', '{"title":"a","creationTime":{"timestamp":"1"},"imageViews":0}', 'google_photos'],
+      ['geo.json', '{"type":"FeatureCollection","features":[{"geometry":null}]}', 'geojson'],
+      ['polar.json', '{"locations":[{"lat":51.3,"lon":12.4,"time":1}]}', 'polarsteps'],
+      ['polar_comment.json', '/* root */{"locations":[{"lat":51.3,"lon":12.4,"time":1}]}', 'polarsteps'],
+      ['segments.json', '[{"arrived":null,"departed":1}]', 'polarsteps'],
+      ['track.rec', 'invalid', 'owntracks'],
+      ['track.json', 'prefix {"_type":"location"}', 'owntracks'],
+      ['track.gpx', "\xEF\xBB\xBF<gpx></gpx>", 'gpx'],
+      ['late.gpx', "<?xml #{' ' * 1024}<gpx>", nil],
+      ['track.kml', '<kml></kml>', 'kml'], ['track.kmz', 'PKanything', 'kml'],
+      ['track.zip', [80, 75, 3, 4].pack('C*'), 'zip'],
+      ['track.fit', '12345678.FIT', 'fit'],
+      ['track.tcx', '<TrainingCenterDatabase>', 'tcx'],
+      ['track.csv', "latitude;longitude;timestamp\n51.3;12.4;1", 'csv'],
+      ['unrecognized.csv', 'foo,bar,baz', nil]
+    ]
+  end
 end
