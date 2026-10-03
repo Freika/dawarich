@@ -1,0 +1,39 @@
+defmodule DawarichWeb.Api.FamilyGoldenTest do
+  use Dawarich.ApiEndpointCase
+
+  alias Dawarich.Test.ApiGolden
+
+  @golden "test/fixtures/api_family/golden.json" |> File.read!() |> Jason.decode!()
+  @tables ~w(users families family_memberships point_sources points)
+
+  setup do
+    if zone = @golden["time_zone"], do: System.put_env("TIME_ZONE", zone)
+    :ok
+  end
+
+  for kase <- @golden["cases"] do
+    @kase kase
+    test "golden #{kase["name"]}", %{port: port, upstream: puma} do
+      Enum.each(@kase["env"], fn {name, value} -> System.put_env(name, value) end)
+
+      for [table, rows] <- @golden["setups"][@kase["setup"]], row <- rows do
+        true = table in @tables
+        ApiGolden.insert!(table, row)
+      end
+
+      before = digests()
+      ApiGolden.check(@kase, port, puma)
+      assert digests() == before
+    end
+  end
+
+  defp digests do
+    Repo.query!("SELECT set_config('TimeZone', 'UTC', true)")
+
+    for table <- @tables do
+      Repo.query!(
+        "SELECT md5(coalesce(string_agg(t::text, '|' ORDER BY id), '')) FROM #{table} t"
+      ).rows
+    end
+  end
+end

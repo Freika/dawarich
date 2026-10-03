@@ -18,11 +18,11 @@ RUN if [ "$TARGETARCH" = "amd64" ] || [ "$TARGETARCH" = "arm64" ]; then \
        /usr/lib/*/libXext.so.6* /out/; \
     else mkdir /out; fi
 
-FROM ruby:3.4.9-slim AS phoenix_builder
+FROM debian:trixie-slim AS phoenix_builder
 
 RUN apt-get update -qq \
     && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
-    erlang-nox erlang-dev elixir git ca-certificates build-essential \
+    erlang-nox erlang-dev elixir git ca-certificates build-essential nodejs npm \
     && rm -rf /var/lib/apt/lists/*
 
 ENV MIX_ENV=prod LANG=C.UTF-8
@@ -41,6 +41,24 @@ COPY lib/assets/admin1_world.geojson priv/admin1_world.geojson
 COPY app-phoenix/rel rel
 COPY app-phoenix/config/runtime.exs config/
 RUN mix release
+
+WORKDIR /src
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund && rm -rf ~/.npm
+COPY app/assets app/assets
+COPY app/javascript app/javascript
+COPY app/helpers app/helpers
+COPY app/views app/views
+COPY vendor/assets vendor/assets
+COPY vendor/javascript vendor/javascript
+COPY config/locales config/locales
+COPY config/achievements config/achievements
+COPY config/achievements.yml config/importmap.rb config/tailwind.config.js config/
+COPY app-phoenix/lib app-phoenix/lib
+RUN BROWSERSLIST_IGNORE_OLD_DATA=1 node_modules/.bin/tailwindcss \
+      -i app/assets/stylesheets/application.tailwind.css -o app/assets/builds/tailwind.css \
+      -c config/tailwind.config.js --minify \
+    && cd /build && mix dawarich.build_inputs --root /src --out /out
 
 FROM ruby:3.4.9-slim
 
@@ -126,11 +144,6 @@ RUN bundle config set --local path 'vendor/bundle' \
 
 COPY ../. ./
 
-# Node deps (tailwind plugins like daisyui) are needed by assets:precompile.
-# Install them here so the build does not depend on a host-side `npm install`
-# having populated node_modules in the build context.
-RUN npm ci --no-audit --no-fund && rm -rf ~/.npm
-
 # Poster renderer dependencies — prebuilt maplibre-native binaries exist for
 # x64/arm64 only (Debian's Node 20 = ABI 115, which the release ships). On
 # armv7 the renderer is skipped; server-side poster rendering is unavailable
@@ -141,11 +154,10 @@ RUN if [ "$(uname -m)" = "x86_64" ] || [ "$(uname -m)" = "aarch64" ]; then \
     && rm -rf ~/.npm; \
     fi
 
-# Precompile assets
-RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake assets:precompile \
-    && rm -rf node_modules tmp/cache
-
-RUN SECRET_KEY_BASE_DUMMY=1 bundle exec rake phoenix:i18n phoenix:achievements phoenix:importmap phoenix:time_zones
+COPY --from=phoenix_builder /out/public/assets public/assets
+COPY --from=phoenix_builder /out/config/sprockets-manifest.json config/sprockets-manifest.json
+COPY --from=phoenix_builder /src/app/assets/builds/tailwind.css app/assets/builds/tailwind.css
+COPY --from=phoenix_builder /out/tmp/phoenix tmp/phoenix
 
 # Ensure tmp directory exists and is writable by any user (for custom uid:gid support)
 RUN mkdir -p tmp/pids tmp/cache tmp/sockets \

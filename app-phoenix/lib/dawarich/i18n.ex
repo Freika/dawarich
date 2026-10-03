@@ -122,7 +122,7 @@ defmodule Dawarich.I18n do
               Jason.decode!(json)
 
             {:error, reason} ->
-              raise "cannot read #{path} (#{reason}); run bin/rails phoenix:i18n"
+              raise "cannot read #{path} (#{reason}); run mix dawarich.i18n"
           end
 
         :persistent_term.put(__MODULE__, tree)

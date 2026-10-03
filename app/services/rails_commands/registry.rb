@@ -145,6 +145,34 @@ module RailsCommands
           end
         }
       },
+      'family_location_request_mail' => {
+        guard: 'SET NX on family_location_request_mail:<request_id> (one day) before deliver_later, deleted ' \
+               'again when the enqueue raises; a repeat finds the key and enqueues no second mail, and a cache ' \
+               'that cannot claim the key raises so the poller retries',
+        call: lambda { |payload|
+          request = Family::LocationRequest.find_by(id: payload.fetch('request_id'))
+          next unless request&.requester
+
+          key = "family_location_request_mail:#{request.id}"
+          unless Rails.cache.write(key, 1, unless_exist: true, expires_in: 1.day)
+            next if Rails.cache.exist?(key)
+
+            raise 'the cache could not claim the family location request mail'
+          end
+
+          enqueue = -> { FamilyMailer.location_request(request).deliver_later }
+          begin
+            begin
+              Time.use_zone(request.requester.timezone, &enqueue)
+            rescue ArgumentError
+              enqueue.call
+            end
+          rescue StandardError
+            Rails.cache.delete(key)
+            raise
+          end
+        }
+      },
       'release_reclassify_tracks' => {
         guard: "ReclassifyTrackJob replaces a track's inferred segments in one transaction; " \
                'a repeat enqueue reclassifies the same track to the same result',

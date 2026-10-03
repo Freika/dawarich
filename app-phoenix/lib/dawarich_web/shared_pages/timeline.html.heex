@@ -1,0 +1,22 @@
+<section class="container mx-auto px-4 py-6">
+  <header class="mb-4">
+    <h1 class="text-3xl font-bold leading-tight">
+      {date_range(@locale, @from, @to)}
+    </h1>
+    <p class="text-sm text-base-content/60 mt-1">
+      {t(@locale, "shared.links.timeline.days_shared_on_dawarich", %{
+        count: Date.diff(@to, @from) + 1
+      })}
+    </p>
+  </header>
+
+  <div
+    id="shared-trip-map"
+    data-controller="shared-trip-map"
+    data-shared-trip-map-link-id-value={@link.id}
+    data-shared-trip-map-show-photos-value={to_string(@link.settings["show_photos"] === true)}
+    style="height: 60vh; min-height: 400px;"
+    class="rounded-lg overflow-hidden bg-base-200 mb-4 ring-1 ring-base-300"
+  >
+  </div>
+</section>

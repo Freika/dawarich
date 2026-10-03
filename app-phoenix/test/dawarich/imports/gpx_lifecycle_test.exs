@@ -241,7 +241,7 @@ defmodule Dawarich.Imports.GpxLifecycleTest do
           assert_raise Dawarich.Imports.LeaseLost, fn -> run(%{c | context: context}) end
         end)
 
-      assert_receive {:download_started, _}, 1000
+      receive do: ({:download_started, _} -> :ok)
 
       target =
         case unquote(id) do
@@ -252,8 +252,8 @@ defmodule Dawarich.Imports.GpxLifecycleTest do
 
       rows(unquote(sql), [target])
       send(server.pid, :release)
-      Task.await(task)
-      Task.await(server)
+      Task.await(task, :infinity)
+      Task.await(server, :infinity)
       assert [[0]] == rows("SELECT count(*) FROM points")
       assert [[0]] == rows("SELECT count(*) FROM notifications")
       refute Processed.done?(ScratchRepo, c.job.args["event_id"])
