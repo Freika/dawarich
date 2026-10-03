@@ -16,9 +16,12 @@ defmodule DawarichWeb.CableProxy do
         RailsProxy.with_upstream(conn, upstream, &handshake/2)
 
       {:error, _reason} ->
-        conn |> put_resp_content_type("text/plain") |> send_resp(400, "Bad Request") |> halt()
+        bad_request(conn)
     end
   end
+
+  def bad_request(conn),
+    do: conn |> put_resp_content_type("text/plain") |> send_resp(400, "Bad Request") |> halt()
 
   defp handshake(conn, socket) do
     with :ok <- Upstream.send_head(socket, "GET", Headers.target(conn), upgrade_headers(conn)),

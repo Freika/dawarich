@@ -306,7 +306,7 @@ defmodule DawarichWeb.RateLimitTest do
       source
       |> then(&Regex.scan(~r/  pipeline :(\w+) do\n(.*?)\n  end/s, &1, capture: :all_but_first))
       |> Enum.filter(fn [_name, body] ->
-        body =~ ~r/plug DawarichWeb\.ForceSSL\n\s+plug DawarichWeb\.RateLimit\n/
+        body =~ ~r/plug DawarichWeb\.ForceSSL\n\s+plug DawarichWeb\.RateLimit(?:\n|$)/
       end)
       |> MapSet.new(fn [name, _body] -> String.to_existing_atom(name) end)
 

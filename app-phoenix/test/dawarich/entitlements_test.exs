@@ -107,4 +107,32 @@ defmodule Dawarich.EntitlementsTest do
     family(owner.id, member.id, nil)
     assert Entitlements.access(member, false, @now) == {true, "family"}
   end
+
+  test "families?/3: self-hosted, the inherited family, or the user's own live Family plan; false when lapsed" do
+    lite = user(5431, %{plan: 0})
+    assert Entitlements.families?(lite, true, @now)
+    refute Entitlements.families?(lite, false, @now)
+
+    assert Entitlements.families?(
+             user(5432, %{plan: 2, active_until: ~N[3026-01-01 00:00:00]}),
+             false,
+             @now
+           )
+
+    refute Entitlements.families?(
+             user(5433, %{plan: 2, active_until: ~N[2020-01-01 00:00:00]}),
+             false,
+             @now
+           )
+
+    refute Entitlements.families?(
+             user(5434, %{plan: 1, active_until: ~N[3026-01-01 00:00:00]}),
+             false,
+             @now
+           )
+
+    member = user(5435, %{plan: 0})
+    family(user(5436, %{plan: 1}).id, member.id, ~N[3026-01-01 00:00:00])
+    assert Entitlements.families?(member, false, @now)
+  end
 end

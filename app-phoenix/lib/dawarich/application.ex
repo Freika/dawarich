@@ -32,7 +32,9 @@ defmodule Dawarich.Application do
       [
         {Oban, Keyword.put(oban, :cron, cron)},
         {Phoenix.PubSub, name: Dawarich.PubSub}
-      ] ++ Front.children(plan, [{"DAWARICH_PHOENIX_NODE", node}]) ++ jobs(node)
+      ] ++
+      Dawarich.Cable.Bus.child_specs() ++
+      Front.children(plan, [{"DAWARICH_PHOENIX_NODE", node}]) ++ jobs(node)
   end
 
   defp redis,
@@ -43,7 +45,9 @@ defmodule Dawarich.Application do
       )
 
   defp jobs(node) do
-    if jobs_runtime?(), do: [{Dawarich.Jobs.Supervisor, node: node}], else: []
+    if jobs_runtime?(),
+      do: [{Dawarich.Jobs.Supervisor, node: node}, Dawarich.Cable.EventsRelay.supervisor_spec()],
+      else: []
   end
 
   defp jobs_runtime?, do: Application.get_env(:dawarich, :jobs_runtime, true)
