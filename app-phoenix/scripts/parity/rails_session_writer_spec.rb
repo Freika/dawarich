@@ -115,8 +115,8 @@ RSpec.describe 'Phoenix fixture: the Rails session Phoenix writes', type: :reque
       'RAILS_GUEST_TEST_SECRET' => Rails.application.secret_key_base
     }
     output, status = Open3.capture2e(environment, 'mix', 'run', '--no-start',
-                                    'scripts/parity/fresh_guest_redirect.exs',
-                                    chdir: Rails.root.join('app-phoenix').to_s)
+                                     'scripts/parity/fresh_guest_redirect.exs',
+                                     chdir: Rails.root.join('app-phoenix').to_s)
     expect(status.success?).to be(true), 'native fresh guest producer failed; output withheld'
     JSON.parse(output.lines.last)
   end
