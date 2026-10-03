@@ -28,6 +28,19 @@ RSpec.describe Achievements::PendingChecks do
       expect(Sidekiq.redis { |r| r.exists(Achievements::CheckJob.pending_key(user_id)) }).to eq(0)
     end
 
+    it 'never lets a slower check consume a deferral that arrived after a faster check emptied the row' do
+      described_class.defer(user_id, 500)
+      _, slow_token = described_class.read(user_id)
+      described_class.defer(user_id, 400)
+      _, fast_token = described_class.read(user_id)
+      described_class.consume(user_id, fast_token)
+      described_class.defer(user_id, 100)
+
+      described_class.consume(user_id, slow_token)
+
+      expect(described_class.read(user_id).first).to eq(100)
+    end
+
     it 'starts over from the new deferral once the pending value expired, and keeps it for three days' do
       described_class.defer(user_id, 100)
       connection.execute(

@@ -8,6 +8,7 @@ module PhoenixTables
                 '(key text PRIMARY KEY, expires_at timestamptz NOT NULL)'
   ACHIEVEMENT_CHECKS = 'CREATE TABLE IF NOT EXISTS phoenix.achievement_checks (user_id bigint PRIMARY KEY, ' \
                        'oldest_timestamp bigint NOT NULL, revision bigint NOT NULL, expires_at timestamptz NOT NULL)'
+  ACHIEVEMENT_CHECK_REVISIONS = 'CREATE SEQUENCE IF NOT EXISTS phoenix.achievement_check_revisions'
   PHOENIX_STATE_TABLES = %w[once_claims leases achievement_checks].freeze
 
   def phoenix_tables!
@@ -27,6 +28,7 @@ module PhoenixTables
     phoenix_leases!
     ActiveRecord::Base.connection.execute(ONCE_CLAIMS)
     ActiveRecord::Base.connection.execute(ACHIEVEMENT_CHECKS)
+    ActiveRecord::Base.connection.execute(ACHIEVEMENT_CHECK_REVISIONS)
   end
 
   def without_phoenix_state!

@@ -25,6 +25,7 @@ defmodule Dawarich.AchievementChecksMigrationTest do
       assert_built()
       assert down(module) == :ok
       assert placed() == []
+      assert sequences() == []
       assert up(module) == :ok
       assert_built()
     after
@@ -34,6 +35,7 @@ defmodule Dawarich.AchievementChecksMigrationTest do
 
   defp heal!(module) do
     scratch_sql!("DROP TABLE IF EXISTS phoenix.achievement_checks")
+    scratch_sql!("DROP SEQUENCE IF EXISTS phoenix.achievement_check_revisions")
 
     ScratchRepo.query!(
       "DELETE FROM phoenix.phoenix_schema_migrations WHERE version = $1",
@@ -54,7 +56,14 @@ defmodule Dawarich.AchievementChecksMigrationTest do
     assert placed() == [["phoenix", "achievement_checks"]]
     assert columns() == @columns
     assert indexes() == ["achievement_checks_expires_at_index", "achievement_checks_pkey"]
+    assert sequences() == [["phoenix", "achievement_check_revisions"]]
   end
+
+  defp sequences,
+    do:
+      rows(
+        "SELECT sequence_schema::text, sequence_name::text FROM information_schema.sequences WHERE sequence_name = 'achievement_check_revisions'"
+      )
 
   defp placed,
     do:

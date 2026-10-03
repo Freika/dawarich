@@ -6,11 +6,11 @@ defmodule Dawarich.Points.AnomalyFilter.Effects do
   @pending_ttl 259_200
   @defer """
   INSERT INTO phoenix.achievement_checks AS c (user_id, oldest_timestamp, revision, expires_at)
-  VALUES ($1, $2, 1, statement_timestamp() + make_interval(secs => $3))
+  VALUES ($1, $2, nextval('phoenix.achievement_check_revisions'), statement_timestamp() + make_interval(secs => $3))
   ON CONFLICT (user_id) DO UPDATE SET
     oldest_timestamp = CASE WHEN c.expires_at <= statement_timestamp() THEN EXCLUDED.oldest_timestamp
                             ELSE LEAST(c.oldest_timestamp, EXCLUDED.oldest_timestamp) END,
-    revision = c.revision + 1,
+    revision = nextval('phoenix.achievement_check_revisions'),
     expires_at = EXCLUDED.expires_at
   """
 

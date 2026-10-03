@@ -42,7 +42,7 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
            ] ==
              rows("SELECT payload FROM phoenix.rails_commands WHERE kind='points.anomaly_stats'")
 
-    assert pending(user) == [[@at, 1, true]]
+    assert pending(user) == [[@at, last_revision(), true]]
   end
 
   test "a deferral keeps an older live pending timestamp and bumps its revision, and replaces an expired one" do
@@ -55,7 +55,8 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
 
     point!(user, @at, {13.405, 52.52}, accuracy: 20_000)
     assert AnomalyFilter.call(ScratchRepo, user, @at, @at, zone: "UTC") == 1
-    assert pending(user) == [[@at - 1000, 5, true]]
+    assert pending(user) == [[@at - 1000, last_revision(), true]]
+    refute last_revision() == 4
 
     rows(
       "UPDATE phoenix.achievement_checks SET expires_at = statement_timestamp() - interval '1 second' WHERE user_id = $1",
@@ -63,8 +64,10 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
     )
 
     point!(user, @at + 60, {13.405, 52.52}, accuracy: 20_000)
+    first = last_revision()
     assert AnomalyFilter.call(ScratchRepo, user, @at + 60, @at + 60, zone: "UTC") == 1
-    assert pending(user) == [[@at + 60, 6, true]]
+    assert pending(user) == [[@at + 60, last_revision(), true]]
+    assert last_revision() > first
   end
 
   test "a deferral the database refuses raises" do
@@ -206,6 +209,9 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
     assert length(flagged(user)) == 1
     assert [["points.tile_epoch"]] == rows("SELECT kind FROM phoenix.rails_commands")
   end
+
+  defp last_revision,
+    do: hd(hd(rows("SELECT last_value FROM phoenix.achievement_check_revisions WHERE is_called")))
 
   defp pending(user),
     do:

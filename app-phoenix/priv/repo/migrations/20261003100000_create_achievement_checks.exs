@@ -10,5 +10,8 @@ defmodule Dawarich.Repo.Migrations.CreateAchievementChecks do
     end
 
     create index(:achievement_checks, [:expires_at])
+
+    execute "CREATE SEQUENCE phoenix.achievement_check_revisions",
+            "DROP SEQUENCE phoenix.achievement_check_revisions"
   end
 end
