@@ -34,6 +34,26 @@ defmodule DawarichWeb.PaginatorTest do
     assert html =~ ~s(<button class="join-item btn btn-active">2</button>)
   end
 
+  test "plain links append the anchor and leave out the LiveView patch" do
+    html =
+      render_component(&Paginator.paginator/1,
+        locale: "en",
+        path: "/achievements/continent_europe",
+        query: %{"q" => " a ", "page" => "2", "status" => "locked"},
+        page: 2,
+        total_pages: 3,
+        anchor: "collection",
+        patch: false
+      )
+
+    assert html =~ ~s(href="/achievements/continent_europe?q=+a+&amp;status=locked#collection")
+
+    assert html =~
+             ~s(href="/achievements/continent_europe?page=3&amp;q=+a+&amp;status=locked#collection")
+
+    refute html =~ "data-phx-link"
+  end
+
   test "ruby_to_i reads leading digits like String#to_i" do
     for {input, value} <- [
           {"2", 2},
