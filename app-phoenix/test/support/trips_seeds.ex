@@ -223,6 +223,8 @@ defmodule Dawarich.Test.TripsSeeds do
             noted_at: naive(n["noted_at"])
           })
 
+    for r <- seed["rich_texts"], do: rich_text!(r["trip_id"], r["body"])
+
     for l <- seed["shared_links"] do
       shared_link!(%{
         id: l["id"],

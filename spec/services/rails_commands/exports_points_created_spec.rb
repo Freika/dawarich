@@ -56,8 +56,9 @@ RSpec.describe 'RailsCommands exports.points_created' do
     expect(enqueued_jobs).to be_empty
     expect(JobOutbox.sole.attributes.slice('command_type', 'command_version', 'payload', 'aggregate_id',
                                            'dedupe_key', 'state'))
-      .to eq('command_type' => 'exports.points', 'command_version' => 1,
-             'payload' => { 'export_id' => export.id, 'user_id' => user.id }, 'aggregate_id' => export.id,
+      .to eq('command_type' => 'exports.points', 'command_version' => 2,
+             'payload' => { 'export_id' => export.id, 'user_id' => user.id,
+                            'time_zone' => ENV.fetch('TIME_ZONE', 'UTC') }, 'aggregate_id' => export.id,
              'dedupe_key' => "points-export:#{export.id}", 'state' => 'pending')
   end
 

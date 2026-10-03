@@ -22,7 +22,7 @@ defmodule DawarichWeb.ExportsCreate do
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
 
     with {:ok, export} <- PointExports.parse(conn.assigns.api_params),
-         {:ok, _id} <- PointExports.create(export, user.id, locale) do
+         {:ok, _id} <- PointExports.create(export, user, locale) do
       notice = Translate.t(locale, @notice, %{})
 
       conn

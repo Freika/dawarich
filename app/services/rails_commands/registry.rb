@@ -109,6 +109,20 @@ module RailsCommands
           Points::ArrivalCommands.for_user(payload) { ReverseGeocodingJob.perform_later('place', place_id) }
         }
       },
+      'imports.progress' => {
+        guard: 'Re-renders the current owner-scoped import row; repeats never restore an old processed count',
+        call: lambda { |payload|
+          import = Import.find_by(id: payload.fetch('import_id'), user_id: payload.fetch('user_id'))
+          next unless import
+
+          I18n.with_locale(payload.fetch('locale')) do
+            Turbo::StreamsChannel.broadcast_replace_to(
+              [import.user, :imports], target: ActionView::RecordIdentifier.dom_id(import),
+              partial: 'imports/table_row', locals: { import: import, timezone: import.user.safe_settings.timezone }
+            )
+          end
+        }
+      },
       'exports.points_created' => {
         guard: 'Re-produces exports.points only while the export is still created: ExportJob claims ' \
                'created -> processing by compare-and-set and the outbox keeps one pending points-export:<id>',
@@ -128,6 +142,34 @@ module RailsCommands
             Time.use_zone(export.user.timezone, &produce)
           rescue ArgumentError
             produce.call
+          end
+        }
+      },
+      'family_location_request_mail' => {
+        guard: 'SET NX on family_location_request_mail:<request_id> (one day) before deliver_later, deleted ' \
+               'again when the enqueue raises; a repeat finds the key and enqueues no second mail, and a cache ' \
+               'that cannot claim the key raises so the poller retries',
+        call: lambda { |payload|
+          request = Family::LocationRequest.find_by(id: payload.fetch('request_id'))
+          next unless request&.requester
+
+          key = "family_location_request_mail:#{request.id}"
+          unless Rails.cache.write(key, 1, unless_exist: true, expires_in: 1.day)
+            next if Rails.cache.exist?(key)
+
+            raise 'the cache could not claim the family location request mail'
+          end
+
+          enqueue = -> { FamilyMailer.location_request(request).deliver_later }
+          begin
+            begin
+              Time.use_zone(request.requester.timezone, &enqueue)
+            rescue ArgumentError
+              enqueue.call
+            end
+          rescue StandardError
+            Rails.cache.delete(key)
+            raise
           end
         }
       },
@@ -158,7 +200,20 @@ module RailsCommands
           DataMigrations::CleanupNullIslandJob.follow_up(user) if user
         }
       }
-    }.merge(Points::ArrivalCommands::HANDLERS).freeze
+    }.merge(Points::ArrivalCommands::HANDLERS)
+     .merge(Points::AnomalyFilterCommands::HANDLERS)
+     .merge(Imports::PostprocessingCommands::HANDLERS)
+     .merge(Imports::UploadCommands::HANDLERS)
+     .merge(Imports::DownloadCommands::HANDLERS)
+     .merge(Imports::PreparedDownloadPurgeCommands::HANDLERS)
+     .merge(Imports::DestroyCommands::HANDLERS)
+     .merge(Imports::ExtractionCommands::HANDLERS)
+     .merge(
+       'imports.resume' => {
+         guard: 'Durable event receipt and per-import lease; repeats cannot restart a completed receipt',
+         call: ->(payload) { Imports::GpxResume.call(payload) }
+       }
+     ).freeze
 
     module_function
 
