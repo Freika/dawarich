@@ -159,6 +159,294 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
 
   def feed(day, last = day) = "/map/timeline_feeds?start_at=#{day}T00:00:00&end_at=#{last}T23:59:59"
 
+  context 'A8 web visits' do
+    let(:now) { Time.utc(2026, 10, 3, 10, 0, 0) }
+
+    def a8_visit_graph(users)
+      { users: users.map { user_row(_1.reload) },
+        rows: (tables + ['notes']).to_h do |table|
+          condition = users.map { "(#{owner(table, _1.id)})" }.join(' OR ')
+          sql = "SELECT row_to_json(t)::text FROM #{table} t WHERE #{condition} ORDER BY t.id"
+          [table, ActiveRecord::Base.connection.select_values(sql).map { JSON.parse(_1) }]
+        end }
+    end
+
+    def a8_visit_request(user, method, path, params, accept: 'text/vnd.turbo-stream.html')
+      reset!
+      sign_in user
+      get '/settings/visits'
+      token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+      clear_enqueued_jobs
+      public_send(method, path, params:, headers: { 'X-CSRF-Token' => token, 'Accept' => accept })
+    end
+
+    def a8_visit_record(name, users, before, request, cache: {})
+      target = Rails.root.join('app-phoenix/test/fixtures/a8vv/visits')
+      FileUtils.mkdir_p(target)
+      body = response.body.gsub(/(name="authenticity_token" value=")[^"]*/, '\1CSRF')
+      File.write(target.join("#{name}.html"), body)
+      write_json(target.join("#{name}.json"), {
+                   now: now.iso8601, self_hosted: DawarichSettings.self_hosted?, request:, before:,
+                   after: a8_visit_graph(users), status: response.status, content_type: response.media_type,
+                   location: response.location, flash: flash.to_hash, cache:,
+                   headers: response.headers.slice('Content-Type', 'Location', 'Vary', 'Cache-Control',
+                                                   'X-Frame-Options', 'Referrer-Policy', 'X-Content-Type-Options'),
+                   streams: Nokogiri::HTML5.fragment(body).css('turbo-stream').map { [_1['action'], _1['target']] },
+                   jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args] } }
+                 })
+    end
+
+    def a8_visit_streams
+      Nokogiri::HTML5.fragment(response.body).css('turbo-stream').map { [_1['action'], _1['target']] }
+    end
+
+    it 'writes A8 visit responses and effects' do
+      travel_to now do
+        names = %w[soft_delete confirm rename blank_name decline owned_place foreign_area demo_adoption month_move
+                   bulk_date bulk_selection bulk_500 bulk_501 bulk_foreign bulk_hidden bulk_archive bulk_source
+                   bulk_empty bulk_no_callbacks merge_points merge_cross_day merge_foreign merge_same_place
+                   merge_mixed_names bulk_cross_day_destroy]
+        names.each_with_index do |name, index|
+          Rails.cache.clear
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(name != 'bulk_archive')
+          user = reader(9001 + index, plan: name == 'bulk_archive' ? :lite : :pro)
+          user.update_columns(theme: 'dark')
+          id = 900_000 + index * 1000
+          visit!(user, id, now - 2.hours, now - 1.hour, name: 'Cafe', status: :suggested)
+          visit = Visit.find(id)
+          users = [user]
+          method = :patch
+          path = "/visits/#{id}"
+          params = { visit: { status: 'confirmed' } }
+          accept = 'text/vnd.turbo-stream.html'
+          wanted_status = 200
+          cache = {}
+          case name
+          when 'soft_delete'
+            method = :delete
+            params = {}
+            accept = 'text/html'
+            wanted_status = 303
+            points!(user, id, [now - 90.minutes], visit: id)
+          when 'rename'
+            params = { visit: { name: '  Renamed  ' } }
+          when 'blank_name'
+            params = { visit: { name: '  ' } }
+            accept = 'text/html'
+            wanted_status = 302
+          when 'decline'
+            params = { visit: { name: 'Declined name', status: 'declined' } }
+          when 'owned_place', 'demo_adoption'
+            place!(user, id, 'Owned cafe')
+            params = { visit: { place_id: id.to_s } }
+            if name == 'demo_adoption'
+              Place.find(id).update_columns(demo: true)
+              tag!(user, id, 'Demo cafe', id)
+              Tag.find(id).update_columns(demo: true)
+              visit.update_columns(demo: true, place_id: id)
+            end
+          when 'foreign_area'
+            other = reader(9100 + index)
+            users << other
+            area!(other, id, 'Foreign area')
+            params = { visit: { area_id: id.to_s } }
+            wanted_status = 422
+          when 'month_move'
+            visit.update_columns(started_at: Time.utc(2026, 9, 30, 20), ended_at: Time.utc(2026, 9, 30, 21))
+            params = { visit: { started_at: '2026-10-01T08:00:00+02:00', ended_at: '2026-10-01T09:00:00+02:00' } }
+            cache = %w[2026-09-01 2026-10-01].to_h do |month|
+              key = Timeline::MonthSummary.cache_key_for(user, Date.parse(month))
+              Rails.cache.write(key, 'synthetic stale month')
+              [month, key]
+            end
+          end
+          if name.start_with?('bulk_')
+            path = '/visits/bulk_update'
+            params = { visit_ids: [id.to_s], status: 'confirmed', date: '2026-10-03' }
+            case name
+            when 'bulk_date'
+              visit.update_columns(started_at: Time.utc(2026, 10, 2, 22, 30), ended_at: Time.utc(2026, 10, 2, 23))
+              visit!(user, id + 1, Time.utc(2026, 10, 3, 23, 30), Time.utc(2026, 10, 4, 0), status: :suggested)
+              params.delete(:visit_ids)
+              params[:source_status] = 'suggested'
+            when 'bulk_selection'
+              visit.update_columns(status: :confirmed)
+              params[:visit_ids] = [id.to_s, id.to_s, '0']
+              accept = 'text/html'
+              wanted_status = 302
+            when 'bulk_500', 'bulk_501'
+              count = name == 'bulk_500' ? 500 : 501
+              (1...count).each { visit!(user, id + _1, now - 2.hours, now - 1.hour, status: :suggested) }
+              params[:visit_ids] = (id...id + count).map(&:to_s)
+              wanted_status = 422 if count == 501
+            when 'bulk_foreign'
+              other = reader(9100 + index)
+              users << other
+              visit!(other, id + 1, now - 2.hours, now - 1.hour, status: :suggested)
+              params[:visit_ids] << (id + 1).to_s
+              wanted_status = 404
+            when 'bulk_hidden'
+              visit!(user, id + 1, now - 2.hours, now - 1.hour, status: :suggested, deleted: true)
+              params[:visit_ids] << (id + 1).to_s
+              wanted_status = 404
+            when 'bulk_archive'
+              visit.update_columns(started_at: now - 13.months, ended_at: now - 13.months + 1.hour)
+              wanted_status = 404
+            when 'bulk_source'
+              params[:source_status] = 'confirmed'
+              wanted_status = 422
+            when 'bulk_empty'
+              method = :delete
+              path = '/visits/bulk_destroy'
+              params = {}
+              wanted_status = 422
+            when 'bulk_no_callbacks'
+              visit.update_columns(demo: true, updated_at: now - 1.day)
+            when 'bulk_cross_day_destroy'
+              method = :delete
+              path = '/visits/bulk_destroy'
+              visit!(user, id + 1, now - 1.day - 2.hours, now - 1.day - 1.hour, status: :suggested)
+              params = { visit_ids: [id.to_s, (id + 1).to_s] }
+            end
+          elsif name.start_with?('merge_')
+            method = :post
+            path = '/visits/merge'
+            visit!(user, id + 1, now - 1.hour, now - 30.minutes, name: 'Park', status: :suggested)
+            params = { visit_ids: [id.to_s, (id + 1).to_s] }
+            case name
+            when 'merge_points'
+              place!(user, id, 'Suggested cafe')
+              suggest!(id, id + 1, id)
+              points!(user, id, [now - 45.minutes], visit: id + 1)
+            when 'merge_cross_day'
+              Visit.find(id + 1).update_columns(started_at: now - 1.day, ended_at: now - 1.day + 1.hour)
+              wanted_status = 422
+            when 'merge_foreign'
+              other = reader(9100 + index)
+              users << other
+              Visit.find(id + 1).update_columns(user_id: other.id)
+              wanted_status = 404
+            when 'merge_same_place'
+              place!(user, id, 'Same place')
+              Visit.where(id: [id, id + 1]).update_all(place_id: id)
+            when 'merge_mixed_names'
+              visit.update_columns(name: ' Cafe ')
+              Visit.find(id + 1).update_columns(name: 'cAFE')
+              visit!(user, id + 2, now - 20.minutes, now - 10.minutes, name: 'Park', status: :suggested)
+              params[:visit_ids] << (id + 2).to_s
+            end
+          end
+          before = a8_visit_graph(users)
+          a8_visit_request(user, method, path, params, accept:)
+          expect(response.status).to eq(wanted_status), name
+          if wanted_status >= 400
+            expect(a8_visit_graph(users)).to eq(before), name
+          elsif name == 'soft_delete'
+            expect(Visit.exists?(id)).to be(true)
+            expect(Visit.find(id).deleted_at).to eq(now)
+            expect(Point.find(id).visit_id).to eq(id)
+            expect(response).to redirect_to('/map/v2?date=today&panel=timeline')
+          elsif name.start_with?('merge_')
+            expect(Visit.exists?(id + 1)).to be(false)
+            merged = Visit.find(id)
+            expect(merged.status).to eq('confirmed')
+            expect(merged.started_at).to eq(now - 2.hours)
+            expect(merged.ended_at).to eq(name == 'merge_mixed_names' ? now - 10.minutes : now - 30.minutes)
+            expect(merged.duration).to eq(name == 'merge_mixed_names' ? 110 : 90)
+            expect(merged.name).to eq({ 'merge_same_place' => 'Cafe', 'merge_mixed_names' => ' Cafe , Park' }.fetch(
+                                        name, 'Cafe, Park'
+                                      ))
+            if name == 'merge_points'
+              expect(Point.find(id).visit_id).to eq(id)
+              expect(PlaceVisit.where(visit_id: id + 1)).to be_empty
+            end
+            expect(a8_visit_streams).to eq([%w[update timeline-feed-frame], %w[append flash-messages]])
+          elsif name == 'bulk_cross_day_destroy'
+            expect(Visit.where(id: [id, id + 1]).pluck(:deleted_at)).to eq([now, now])
+            expect(a8_visit_streams).to eq([%w[replace timeline-calendar-frame], %w[append flash-messages]])
+          elsif name.start_with?('bulk_')
+            expect(visit.reload.status).to eq('confirmed')
+            expect(Visit.find(id + 1).status).to eq('suggested') if name == 'bulk_date'
+            expect(user.visits.where(status: :confirmed).count).to eq(500) if name == 'bulk_500'
+            if name == 'bulk_no_callbacks'
+              expect(visit.demo?).to be(true)
+              expect(visit.updated_at).to eq(now - 1.day)
+            end
+            if accept == 'text/html'
+              expect(response).to redirect_to('/map/v2?date=2026-10-03&panel=timeline&status=suggested')
+            else
+              expect(a8_visit_streams).to eq([%w[update timeline-feed-frame], %w[replace timeline-calendar-frame],
+                                              %w[append flash-messages]])
+            end
+          else
+            visit.reload
+            expect(visit.status).to eq(name == 'decline' ? 'declined' : 'confirmed')
+            wanted_name = { 'rename' => 'Renamed', 'decline' => 'Declined name',
+                            'owned_place' => 'Owned cafe', 'demo_adoption' => 'Owned cafe' }.fetch(name, 'Cafe')
+            expect(visit.name).to eq(wanted_name)
+            expect(visit.duration).to eq(60)
+            if name == 'demo_adoption'
+              expect([visit.demo?, Place.find(id).demo?, Tag.find(id).demo?]).to eq([false, false, false])
+            end
+            if accept == 'text/html'
+              expect(response).to redirect_to('/map/v2?date=today&panel=timeline&status=suggested')
+            else
+              expect(a8_visit_streams).to eq([['replace', "visit_entry_#{id}"], %w[replace timeline-calendar-frame],
+                                              %w[append flash-messages]])
+            end
+          end
+          cache = cache.transform_values { Rails.cache.exist?(_1) }
+          expect(cache.values).to eq([false, false]) if name == 'month_move'
+          a8_visit_record(name, users, before, { method: method.to_s.upcase, path:, params:, accept: }, cache:)
+        end
+      end
+    end
+
+    it 'writes A8 explicitly suggested foreign place selection' do
+      travel_to now do
+        user = reader(9201)
+        other = reader(9202)
+        place!(other, 920_001, 'Suggested foreign cafe')
+        visit!(user, 920_001, now - 2.hours, now - 1.hour, name: 'Unmatched', status: :suggested)
+        suggest!(920_001, 920_001, 920_001)
+        visit = Visit.find(920_001)
+        expect(Place.find(920_001).user_id).to eq(other.id)
+        expect(visit.suggested_places.pluck(:id)).to eq([920_001])
+        params = { visit: { place_id: '920001' } }
+        before = a8_visit_graph([user, other])
+        a8_visit_request(user, :patch, '/visits/920001', params)
+        expect(response.status).to eq(200)
+        expect(visit.reload.place_id).to eq(920_001)
+        expect(visit.name).to eq('Suggested foreign cafe')
+        expect(visit.status).to eq('confirmed')
+        a8_visit_record('suggested_foreign_place', [user, other], before,
+                        { method: 'PATCH', path: '/visits/920001', params:, accept: 'text/vnd.turbo-stream.html' })
+      end
+    end
+
+    it 'writes A8 noted merge dependent deletion graph' do
+      travel_to now do
+        user = reader(9210)
+        place!(user, 921_001, 'Noted cafe')
+        visit!(user, 921_001, now - 2.hours, now - 1.hour, name: 'Cafe', status: :suggested)
+        visit!(user, 921_002, now - 1.hour, now - 30.minutes, name: 'Park', status: :suggested)
+        suggest!(921_001, 921_002, 921_001)
+        Note.create!(id: 921_001, user:, attachable: Visit.find(921_002), body: 'Synthetic visit note', noted_at: now)
+        expect(Note.where(attachable_type: 'Visit', attachable_id: 921_002).count).to eq(1)
+        params = { visit_ids: %w[921001 921002] }
+        before = a8_visit_graph([user])
+        a8_visit_request(user, :post, '/visits/merge', params)
+        expect(response.status).to eq(200)
+        expect(Visit.exists?(921_002)).to be(false)
+        expect(Note.exists?(921_001)).to be(false)
+        expect(PlaceVisit.exists?(921_001)).to be(false)
+        expect(a8_visit_streams).to eq([%w[update timeline-feed-frame], %w[append flash-messages]])
+        a8_visit_record('merge_noted', [user], before,
+                        { method: 'POST', path: '/visits/merge', params:, accept: 'text/vnd.turbo-stream.html' })
+      end
+    end
+  end
+
   it 'writes the self-hosted day feeds' do
     travel_to now do
       rich = reader(7101)
