@@ -170,6 +170,71 @@ defmodule DawarichWeb.AchievementsLiveTest do
       |> LazyHTML.query(".ach-silhouette-svg path")
       |> LazyHTML.attribute("d")
 
+  test "GET form serialization keeps unlocked region filters through connection", %{
+    user: user
+  } do
+    progress(%{
+      "earned" => %{"DE" => "2026-07-01T10:00:00Z", "DE-BY" => "2026-07-01T10:00:00Z"}
+    })
+
+    conn =
+      RailsUser.signed_in(user.id)
+      |> RailsUser.connecting_as(user.id)
+      |> get("/achievements/country_de")
+
+    html = html_response(conn, 200)
+    form = LazyHTML.from_document(html) |> LazyHTML.query("form.ach-collection-toolbar")
+    assert LazyHTML.attribute(form, "method") == ["get"]
+
+    assert LazyHTML.query(form, "select[name='status'] option[selected]")
+           |> LazyHTML.attribute("value") == ["all"]
+
+    {:ok, initial, _} = live(conn)
+    assert has_element?(initial, "select[name='status'] option[value='all'][selected]")
+
+    params =
+      form
+      |> LazyHTML.query("input[name], select[name]")
+      |> Enum.map(fn control ->
+        [name] = LazyHTML.attribute(control, "name")
+
+        value =
+          if name == "status",
+            do: "unlocked",
+            else: control |> LazyHTML.attribute("value") |> List.first("")
+
+        {name, value}
+      end)
+      |> Map.new()
+
+    assert params == %{"q" => "", "status" => "unlocked", "commit" => "Apply"}
+    [action] = LazyHTML.attribute(form, "action")
+    target = URI.parse(action).path <> "?" <> URI.encode_query(params)
+
+    filtered =
+      RailsUser.signed_in(user.id)
+      |> RailsUser.connecting_as(user.id)
+      |> get(target)
+
+    filtered_html = html_response(filtered, 200) |> LazyHTML.from_document()
+
+    assert LazyHTML.query(filtered_html, ".ach-child-grid .card-title") |> LazyHTML.text() ==
+             "Bavaria"
+
+    assert LazyHTML.query(filtered_html, "select[name='status'] option[selected]")
+           |> LazyHTML.attribute("value") == ["unlocked"]
+
+    {:ok, view, _} = live(filtered)
+    assert has_element?(view, ".ach-child-grid .card-title", "Bavaria")
+
+    assert render(view)
+           |> LazyHTML.from_document()
+           |> LazyHTML.query(".ach-child-grid .card-title")
+           |> Enum.count() == 1
+
+    assert has_element?(view, "select[name='status'] option[value='unlocked'][selected]")
+  end
+
   test "GET paging escaping and no-results reflect original filters", %{user: user} do
     progress(%{"earned" => %{"DE" => "2026-07-19T10:00:00Z"}})
 
