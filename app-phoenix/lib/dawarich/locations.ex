@@ -8,9 +8,15 @@ defmodule Dawarich.Locations do
   @no_accuracy 999_999
 
   def rows(user_id, search) do
+    {sql, args} = query(user_id, search)
+
+    Repo.query!(sql, args).rows
+  end
+
+  def query(user_id, search) do
     {clauses, dates} = date_filters(search)
 
-    Repo.query!(
+    {
       """
       WITH search_point AS (SELECT ST_SetSRID(ST_MakePoint($1::float8, $2::float8), 4326)::geography AS geom)
       SELECT COALESCE(p.timestamp, 0), ST_Y(p.lonlat::geometry), ST_X(p.lonlat::geometry), p.city, p.country,
@@ -20,7 +26,7 @@ defmodule Dawarich.Locations do
       WHERE p.user_id = $3 AND ST_DWithin(p.lonlat, search_point.geom, $4::float8)#{Enum.join(clauses)}
       """,
       [search.lon, search.lat, user_id, search.radius * 1.0 | dates]
-    ).rows
+    }
   end
 
   def term(search, rows) do
@@ -38,7 +44,8 @@ defmodule Dawarich.Locations do
     |> Enum.reject(fn {date, _op, _shift} -> is_nil(date) end)
     |> Enum.with_index(5)
     |> Enum.map(fn {{date, op, shift}, n} ->
-      {" AND p.timestamp #{op} extract(epoch FROM ($#{n}::date#{shift})::timestamptz)", date}
+      {" AND p.timestamp #{op} floor(extract(epoch FROM ($#{n}::date#{shift})::timestamptz))::bigint",
+       date}
     end)
     |> Enum.unzip()
   end

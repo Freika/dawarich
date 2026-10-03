@@ -374,4 +374,43 @@ defmodule DawarichWeb.MapFramesTest do
       refute residency(pro, "year=")
     end
   end
+
+  describe "the place drawer" do
+    setup %{user: user} do
+      S.place!(user.id, 7_084_101, "Café")
+      :ok
+    end
+
+    defp drawer_get(conn),
+      do:
+        conn
+        |> put_req_header("accept", @frame)
+        |> put_req_header("turbo-frame", "place-drawer")
+        |> get("/places/7084101")
+
+    test "stages a CSRF token only when the session has none", %{user: user} do
+      cookie = user.id |> RailsUser.session() |> Map.delete("_csrf_token") |> RailsUser.cookie()
+      staged = build_conn() |> put_req_cookie("_dawarich_session", cookie) |> drawer_get()
+
+      assert html_response(staged, 200) =~ ~r/name="authenticity_token" value="[^"]+"/
+      assert [set] = get_resp_header(staged, "set-cookie")
+      [_, value] = Regex.run(~r/_dawarich_session=([^;]+)/, set)
+
+      read =
+        build_conn()
+        |> put_req_cookie("_dawarich_session", value)
+        |> DawarichWeb.RailsAuth.call([])
+
+      assert is_binary(read.assigns.rails_session["_csrf_token"])
+
+      kept = user.id |> RailsUser.signed_in() |> drawer_get()
+      assert html_response(kept, 200) =~ ~r/name="authenticity_token" value="[^"]+"/
+      assert get_resp_header(kept, "set-cookie") == []
+    end
+
+    test "a place that leaves after the gate is replayed", %{user: user} do
+      ctx = %{user: user, locale: "en", id: "7084199", csrf: "CSRF", csrf_changes: %{}}
+      assert {:replay, _reason} = DawarichWeb.MapFrames.body(:place, ctx)
+    end
+  end
 end

@@ -32,7 +32,7 @@ defmodule Dawarich.Achievements.Registry do
           json |> Jason.decode!() |> Map.fetch!("definitions") |> Enum.map(&definition/1)
 
         {:error, reason} ->
-          raise "cannot read #{path} (#{reason}); run bin/rails phoenix:achievements"
+          raise "cannot read #{path} (#{reason}); run mix dawarich.achievements"
       end
 
     gridded = Enum.filter(definitions, &(&1.kind == "country" and &1.level == "subdivision"))

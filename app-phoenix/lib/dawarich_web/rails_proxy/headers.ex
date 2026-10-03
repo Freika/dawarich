@@ -34,10 +34,10 @@ defmodule DawarichWeb.RailsProxy.Headers do
 
   defp framing(conn), do: if(chunked?(conn), do: [{"transfer-encoding", "chunked"}], else: [])
 
-  defp peer({0, 0, 0, 0, 0, 0xFFFF, hi, lo}),
+  def peer({0, 0, 0, 0, 0, 0xFFFF, hi, lo}),
     do: peer({div(hi, 256), rem(hi, 256), div(lo, 256), rem(lo, 256)})
 
-  defp peer(ip), do: ip |> :inet.ntoa() |> to_string()
+  def peer(ip), do: ip |> :inet.ntoa() |> to_string()
 
   defp connection_tokens(headers), do: tokens(headers, "connection")
 

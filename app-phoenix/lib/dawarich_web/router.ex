@@ -105,6 +105,43 @@ defmodule DawarichWeb.Router do
       metadata: %{slice: :api_map_reads}
   end
 
+  pipeline :api_places do
+    plug :put_api_tag, "api"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug :method_override_to_rails
+    plug DawarichWeb.Api.Body
+    plug DawarichWeb.Api.Auth, require_active: false
+  end
+
+  scope "/api/v1", DawarichWeb.Api do
+    pipe_through :api_places
+
+    get "/places", PlacesController, :index, metadata: %{slice: :api_places}
+    post "/places", PlacesController, :create, metadata: %{slice: :api_places}
+    get "/places/:id", PlacesController, :show, metadata: %{slice: :api_places}
+    patch "/places/:id", PlacesController, :update, metadata: %{slice: :api_places}
+    put "/places/:id", PlacesController, :update, metadata: %{slice: :api_places}
+    delete "/places/:id", PlacesController, :destroy, metadata: %{slice: :api_places}
+  end
+
+  scope "/api/v1/families", DawarichWeb.Api do
+    pipe_through :api_stats
+
+    get "/locations", FamilyController, :locations, metadata: %{slice: :api_family}
+    get "/locations/history", FamilyController, :history, metadata: %{slice: :api_family}
+    get "/mine", FamilyController, :mine, metadata: %{slice: :api_family}
+    patch "/sharing", FamilyController, :sharing, metadata: %{slice: :api_family}
+    put "/sharing", FamilyController, :sharing, metadata: %{slice: :api_family}
+    post "/location_requests", FamilyController, :create, metadata: %{slice: :api_family}
+
+    post "/location_requests/:id/accept", FamilyController, :accept,
+      metadata: %{slice: :api_family}
+
+    post "/location_requests/:id/decline", FamilyController, :decline,
+      metadata: %{slice: :api_family}
+  end
+
   pipeline :api_locations_photos do
     plug :put_api_tag, "api"
     plug DawarichWeb.HostAuthorization
@@ -124,6 +161,43 @@ defmodule DawarichWeb.Router do
 
     get "/photos/:id/thumbnail.jpg", PhotosController, :thumbnail,
       metadata: %{slice: :api_locations_photos}
+  end
+
+  pipeline :sharing do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug :fetch_query_params
+    plug DawarichWeb.TurboVisit
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.Locale
+    plug DawarichWeb.LayoutAssigns
+    plug DawarichWeb.RailsHeaders
+  end
+
+  pipeline :sharing_unlock do
+    plug :put_api_tag, "sharing"
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.Api.Body
+    plug DawarichWeb.UnlockThrottle
+    plug :fetch_query_params
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.Locale
+    plug DawarichWeb.RailsHeaders
+  end
+
+  scope "/" do
+    pipe_through :sharing
+
+    get "/s/:id", DawarichWeb.SharedLinkPage, :show,
+      metadata: %{rails_gate: {DawarichWeb.SharingGate, :show?}}
+  end
+
+  scope "/" do
+    pipe_through :sharing_unlock
+
+    post "/s/:id/unlock", DawarichWeb.SharedLinkPage, :unlock,
+      metadata: %{rails_gate: {DawarichWeb.SharingGate, :unlock?}}
   end
 
   pipeline :rails_user do
@@ -240,6 +314,10 @@ defmodule DawarichWeb.Router do
         container: {:div, class: "contents"},
         metadata: %{rails_gate: {DawarichWeb.TripsGate, :show?}}
 
+      live "/places", DawarichWeb.PlacesLive.Index, :index,
+        container: {:div, class: "contents"},
+        metadata: %{rails_gate: {DawarichWeb.PlacesGate, :index?}}
+
       live "/settings/general", DawarichWeb.SettingsLive.General, :index,
         container: {:div, class: "contents"}
 
@@ -283,7 +361,20 @@ defmodule DawarichWeb.Router do
       metadata: %{rails_gate: {DawarichWeb.MapFramesGate, :track?}}
   end
 
+  scope "/places" do
+    pipe_through :rails_frame
+
+    get "/:id", DawarichWeb.MapFrames, :place,
+      metadata: %{rails_gate: {DawarichWeb.PlacesGate, :drawer?}}
+  end
+
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
+
+  defp method_override_to_rails(conn, _opts) do
+    if Plug.Conn.get_req_header(conn, "x-http-method-override") == [],
+      do: conn,
+      else: DawarichWeb.Api.Body.replay(conn, "method override header")
+  end
 
   defp put_path_format(%{path_info: [_api, _v1, "photos", _id, "thumbnail.jpg"]} = conn, _opts),
     do: Plug.Conn.assign(conn, :api_params, Map.put(conn.assigns.api_params, "format", "jpg"))

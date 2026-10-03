@@ -725,6 +725,18 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
+  test "value-less browser query keys go to Puma unchanged while valued keys stay in Phoenix",
+       ctx do
+    port = serve()
+
+    for target <- ~w(/trips?page /trips?view /stats?year) do
+      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+               "GET #{target} HTTP/1.1"
+    end
+
+    assert answered_by_phoenix(port, "GET /trips?page=2 HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+  end
+
   test "every other trip route, format and method goes to Puma", ctx do
     port = serve()
 
@@ -768,6 +780,31 @@ defmodule DawarichWeb.EndpointTest do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
+  end
+
+  test "DAWARICH_RAILS_ROUTES=sharing hands the shared-link page and its unlock back with their query",
+       ctx do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    Dawarich.Test.SharingSeeds.load!()
+    start_supervised!(hd(Dawarich.Redis.rack_attack_child_specs()))
+    Redix.command!(Dawarich.Redis.rack_attack(), ["FLUSHDB"])
+    port = serve()
+    id = "a9500000-0000-4000-8000-000000000001"
+    page = "GET /s/#{id}?locale=de HTTP/1.1\r\nHost: a\r\n\r\n"
+
+    unlock =
+      "POST /s/#{id}/unlock HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+        "Content-Length: 8\r\n\r\nphrase=x"
+
+    assert answered_by_phoenix(port, page) == 200
+    assert answered_by_phoenix(port, unlock) == 401
+
+    Application.put_env(:dawarich, :rails_routes, ["sharing"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+
+    assert answered_by_puma(port, ctx.upstream, page) == "GET /s/#{id}?locale=de HTTP/1.1"
+    assert answered_by_puma(port, ctx.upstream, unlock) == "POST /s/#{id}/unlock HTTP/1.1"
   end
 
   test "Phoenix answers the settings, account and insights pages itself" do
@@ -880,6 +917,24 @@ defmodule DawarichWeb.EndpointTest do
     assert answered_by_phoenix(port, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n") == 302
   end
 
+  test "DAWARICH_RAILS_ROUTES=places hands the list and the drawer back with their query", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["places"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+    frame = "Accept: text/html, application/xhtml+xml\r\nTurbo-Frame: place-drawer\r\n"
+
+    for {target, headers} <- [{"/places", ""}, {"/places?page=2", ""}, {"/places/5", frame}],
+        do:
+          assert(
+            answered_by_puma(
+              port,
+              ctx.upstream,
+              "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n"
+            ) ==
+              "GET #{target} HTTP/1.1"
+          )
+  end
+
   test "Phoenix answers the map frames itself" do
     port = serve()
     accept = "Accept: text/html, application/xhtml+xml\r\n"
@@ -949,5 +1004,11 @@ defmodule DawarichWeb.EndpointTest do
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
               "GET #{target} HTTP/1.1"
           )
+
+    drawer =
+      "GET /places/5 HTTP/1.1\r\nHost: a\r\nAccept: text/html, application/xhtml+xml\r\n" <>
+        "Turbo-Frame: place-drawer\r\n\r\n"
+
+    assert answered_by_phoenix(port, drawer) == 302
   end
 end

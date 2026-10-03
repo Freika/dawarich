@@ -108,13 +108,16 @@ defmodule Dawarich.MapPage do
         {:ok,
          %{
            id: row.id,
-           lat: row.lat || Decimal.to_float(row.latitude),
-           lon: row.lon || Decimal.to_float(row.longitude)
+           lat: coordinate(row.lat, row.latitude),
+           lon: coordinate(row.lon, row.longitude)
          }}
     end
   end
 
   defp find_place(_user_id, _id), do: :not_found
+
+  def coordinate(nil, decimal), do: Decimal.to_float(decimal)
+  def coordinate(value, _decimal), do: value
 
   defp import_row(user_id, value) when is_binary(value) do
     with true <- Ruby.present?(value) and Regex.match?(@numeric, value),
