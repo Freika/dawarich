@@ -48,6 +48,27 @@ defmodule DawarichWeb.Api.PlacesGoldenTest do
     assert rows(@tables) == before
   end
 
+  test "tags whose taggings share a created_at come in tagging id order" do
+    seed(Enum.find(@golden["cases"], &(&1["name"] == "show_active_visits")))
+
+    for {id, tag} <- [{950_699, 950_101}, {950_698, 950_102}] do
+      Repo.query!(
+        "INSERT INTO taggings (id, taggable_type, taggable_id, tag_id, created_at, updated_at) " <>
+          "VALUES ($1, 'Place', 950202, $2, $3, $3)",
+        [id, tag, ~N[2026-09-01 09:00:00]]
+      )
+    end
+
+    user = Accounts.by_api_key("phoenix-a4pl-golden-key")
+
+    assert {:ok, 200, {:object, pairs}, []} =
+             PlacesApi.run(:show, user, %{"id" => "950202"}, @now)
+
+    {"tags", tags} = List.keyfind(pairs, "tags", 0)
+    assert for({:object, [{"id", id} | _]} <- tags, do: id) == [950_102, 950_101]
+    assert List.keyfind(pairs, "icon", 0) == {"icon", nil}
+  end
+
   defp seed(kase) do
     Repo.query!("TRUNCATE places CASCADE")
 

@@ -8,7 +8,7 @@ defmodule Dawarich.PlacesApi.Payload do
   @tag_keys ~w(id name icon color privacy_radius_meters)
   @tags "SELECT g.taggable_id, t.id, t.name, t.icon, t.color, t.privacy_radius_meters " <>
           "FROM taggings g JOIN tags t ON t.id = g.tag_id " <>
-          "WHERE g.taggable_type = 'Place' AND g.taggable_id = ANY($1) ORDER BY g.created_at"
+          "WHERE g.taggable_type = 'Place' AND g.taggable_id = ANY($1) ORDER BY g.created_at, g.id"
   @counts "SELECT place_id, count(*) FROM visits WHERE place_id = ANY($1) " <>
             "AND deleted_at IS NULL AND status <> 2 GROUP BY place_id"
 
