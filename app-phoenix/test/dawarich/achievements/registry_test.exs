@@ -20,6 +20,25 @@ defmodule Dawarich.Achievements.RegistryTest do
     refute Registry.visible_geography?("ZZ-99")
   end
 
+  test "definitions carry the card, geography and name the achievement pages render" do
+    assert %{
+             name: "Germany Explorer",
+             country: "DE",
+             continent: "Europe",
+             parent_key: "continent_europe",
+             card: %{"place" => "Germany", "rarity" => "Rare", "art" => %{"zoom" => 4.3}}
+           } = Registry.find("country_de")
+
+    assert %{country: nil, parent_key: nil, card: %{"rarity" => "Legendary"}} =
+             Registry.find("continent_europe")
+  end
+
+  test "transliteration follows the exported I18n table" do
+    assert Registry.approximations("de")["ß"] == "ss"
+    assert Registry.approximations("zh")["Ł"] == "L"
+    refute Map.has_key?(Registry.approximations("en"), "中")
+  end
+
   test "every exported definition carries a name in each available locale" do
     for d <- Registry.all(),
         l <- Dawarich.I18n.available_locales(),
