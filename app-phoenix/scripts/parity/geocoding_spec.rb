@@ -2,9 +2,11 @@
 
 require 'rails_helper'
 require_relative 'wave5b_fixture_support'
+require_relative 'geocoding_fixture_determinism'
 
 RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
   include Wave5bFixtureSupport
+  include GeocodingFixtureDeterminism::Oracle
 
   let!(:http) { record_http! }
   let!(:results) { capture_results! }
@@ -138,7 +140,8 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
 
   def selfhosted_url = %r{https://photon\.selfhosted\.example\.test/reverse}
 
-  it 'reverse-geocodes through Photon (Komoot) over forced HTTPS at the locked 1 rps, and writes an empty result' do
+  it 'reverse-geocodes through Photon (Komoot) over forced HTTPS at the locked 1 rps, and writes an empty result',
+     fixture: :photon_komoot do
     user = create(:user, email: 'w5b-photon-komoot@example.test')
     configure_instance_geocoding(photon_api_host: 'photon.komoot.io', reverse_geocoding_rps: '40')
     ok, empty = create_points(user, 2)
@@ -148,7 +151,7 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     point_fixture('photon_komoot', user, [ok, empty], [[ok, false], [empty, false]])
   end
 
-  it "sends the self-hosted Photon's X-Api-Key header over HTTP" do
+  it "sends the self-hosted Photon's X-Api-Key header over HTTP", fixture: :photon_selfhosted_key do
     user = create(:user, email: 'w5b-photon-selfhosted-key@example.test')
     configure_instance_geocoding(photon_api_host: 'photon.selfhosted.example.test', photon_api_use_https: false,
                                  photon_api_key: 'w5b-k-01')
@@ -158,7 +161,8 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     point_fixture('photon_selfhosted_key', user, [point], [[point, false]])
   end
 
-  it "resolves ChibiGeo's proxy path host, clamps its rate and digests its rate-limit bucket per key" do
+  it "resolves ChibiGeo's proxy path host, clamps its rate and digests its rate-limit bucket per key",
+     fixture: :photon_chibigeo do
     user = create(:user, email: 'w5b-photon-chibigeo@example.test')
     configure_instance_geocoding(photon_api_host: 'app.chibigeo.com/v1/photon', photon_api_key: 'w5b-k-02',
                                  reverse_geocoding_rps: '40')
@@ -171,7 +175,7 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
                                              'key' => Geocoding::RateLimiter.key_for(config) } })
   end
 
-  it 'puts apiKey in the Geoapify cache key, upcases the country code, and records an HTTP 500' do
+  it 'puts apiKey in the Geoapify cache key, upcases the country code, and records an HTTP 500', fixture: :geoapify do
     user = create(:user, email: 'w5b-geoapify@example.test')
     configure_instance_geocoding(geoapify_api_key: 'w5b-k-03')
     ok, failing = create_points(user, 2)
@@ -186,7 +190,8 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     point_fixture('geoapify', user, [ok, failing], [[ok, false], [failing, false]])
   end
 
-  it 'maps a flat Nominatim town onto city, lowercases the code, and records a bandwidth-limit error' do
+  it 'maps a flat Nominatim town onto city, lowercases the code, and records a bandwidth-limit error',
+     fixture: :nominatim do
     user = create(:user, email: 'w5b-nominatim@example.test')
     configure_instance_geocoding(nominatim_api_host: 'nominatim.selfhosted.example.test',
                                  nominatim_api_use_https: false)
@@ -199,7 +204,7 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     point_fixture('nominatim', user, [ok, failing], [[ok, false], [failing, false]])
   end
 
-  it 'takes the first LocationIQ array result and records an invalid-key error' do
+  it 'takes the first LocationIQ array result and records an invalid-key error', fixture: :locationiq do
     user = create(:user, email: 'w5b-locationiq@example.test')
     configure_instance_geocoding(locationiq_api_key: 'w5b-k-04')
     ok, failing = create_points(user, 2)
@@ -211,7 +216,8 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     point_fixture('locationiq', user, [ok, failing], [[ok, false], [failing, false]])
   end
 
-  it 'stores an empty geodata but the identity fields when the stored store_geodata is false' do
+  it 'stores an empty geodata but the identity fields when the stored store_geodata is false',
+     fixture: :store_geodata_false do
     user = create(:user, email: 'w5b-store-geodata-false@example.test')
     selfhosted_photon(store_geodata: false)
     point, = create_points(user, 1)
@@ -219,7 +225,8 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     point_fixture('store_geodata_false', user, [point], [[point, false]])
   end
 
-  it 'resolves a country name alias and drops a name match whose code disagrees' do
+  it 'resolves a country name alias and drops a name match whose code disagrees',
+     fixture: :country_alias_and_mismatch do
     user = create(:user, email: 'w5b-country-alias@example.test')
     selfhosted_photon
     country = create(:country, name: 'United States of America', iso_a2: 'US', iso_a3: 'USA',
@@ -234,7 +241,8 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
                   [[alias_point, false], [mismatch_point, false]], input: { 'countries' => [country_row(country)] })
   end
 
-  it 'skips an already geocoded point unless forced, and a forced unchanged city marks no day' do
+  it 'skips an already geocoded point unless forced, and a forced unchanged city marks no day',
+     fixture: :point_force_and_rerun do
     user = create(:user, email: 'w5b-point-force@example.test')
     selfhosted_photon
     point, = create_points(user, 1, geocoded: true)
@@ -242,7 +250,8 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     point_fixture('point_force_and_rerun', user, [point], [[point, false], [point, true]])
   end
 
-  it 'runs the point job per point, releasing each dedupe key unless forced, through a timeout' do
+  it 'runs the point job per point, releasing each dedupe key unless forced, through a timeout',
+     fixture: :point_batch do
     user = create(:user, email: 'w5b-point-batch@example.test')
     selfhosted_photon
     points = create_points(user, 5)
@@ -272,7 +281,7 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     end
   end
 
-  it 'releases the dedupe key without a lookup when geocoding is disabled' do
+  it 'releases the dedupe key without a lookup when geocoding is disabled', fixture: :point_job_disabled do
     user = create(:user, email: 'w5b-point-disabled@example.test')
     point, = create_points(user, 1)
     Sidekiq.redis { |redis| redis.call('SET', Point.geocode_dedup_key(point.id), '1', 'EX', 86_400) }
@@ -290,7 +299,7 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     write_fixture('geocoding', 'point_job_disabled', fixture)
   end
 
-  it 'folds an existing, a repeated and a new osm_id sibling into places' do
+  it 'folds an existing, a repeated and a new osm_id sibling into places', fixture: :place_siblings do
     user = create(:user, email: 'w5b-place-siblings@example.test')
     selfhosted_photon
     create(:place, user:, name: 'Old Name', latitude: leipzig_lat(0), longitude: leipzig_lon(0), source: :photon,
@@ -309,7 +318,7 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     place_fixture('place_siblings', user, place)
   end
 
-  it "keeps a name-locked place's name and source through reverse geocoding" do
+  it "keeps a name-locked place's name and source through reverse geocoding", fixture: :place_name_locked do
     user = create(:user, email: 'w5b-place-name-locked@example.test')
     selfhosted_photon
     place = create(:place, user:, name: 'My Cafe', latitude: leipzig_lat(0), longitude: leipzig_lon(0),
@@ -319,7 +328,8 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     place_fixture('place_name_locked', user, place)
   end
 
-  it 'keeps the identity keys and, with the stored store_geodata false, only the indexed properties' do
+  it 'keeps the identity keys and, with the stored store_geodata false, only the indexed properties',
+     fixture: :place_privacy_mode do
     user = create(:user, email: 'w5b-place-privacy-mode@example.test')
     selfhosted_photon(store_geodata: false)
     place = create(:place, user:, name: 'Waypoint', latitude: leipzig_lat(0), longitude: leipzig_lon(0),
@@ -329,7 +339,7 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     place_fixture('place_privacy_mode', user, place)
   end
 
-  it 'raises when a provider name would exceed the 255-character column limit' do
+  it 'raises when a provider name would exceed the 255-character column limit', fixture: :place_name_too_long do
     user = create(:user, email: 'w5b-place-name-too-long@example.test')
     selfhosted_photon
     place = create(:place, user:, name: 'Suggested place', latitude: leipzig_lat(0), longitude: leipzig_lon(0),
@@ -338,7 +348,7 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     place_fixture('place_name_too_long', user, place)
   end
 
-  it 'raises when a provider result carries no coordinates' do
+  it 'raises when a provider result carries no coordinates', fixture: :place_without_coordinates do
     user = create(:user, email: 'w5b-place-without-coordinates@example.test')
     selfhosted_photon
     place = create(:place, user:, name: 'Suggested place', latitude: leipzig_lat(0), longitude: leipzig_lon(0),
@@ -350,7 +360,7 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     place_fixture('place_without_coordinates', user, place)
   end
 
-  it "queries the place's lonlat but rebuilds lonlat from its decimals" do
+  it "queries the place's lonlat but rebuilds lonlat from its decimals", fixture: :place_lonlat_from_decimals do
     user = create(:user, email: 'w5b-place-lonlat-decimals@example.test')
     selfhosted_photon
     place = create(:place, user:, name: 'Suggested place', latitude: leipzig_lat(0), longitude: leipzig_lon(0),
@@ -390,7 +400,8 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     end
   end
 
-  it 'resolves the provider chain, pins, stored secrets, stored false values and rate clamps' do
+  it 'resolves the provider chain, pins, stored secrets, stored false values and rate clamps',
+     fixture: :config_resolution do
     selfhosted = { photon_api_host: 'photon.selfhosted.example.test' }
     cases = [
       config_case('env_pin_beats_stored', selfhosted, env: { 'NOMINATIM_API_HOST' => 'nominatim.pinned.example.test' }),
@@ -448,7 +459,7 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     { 'raised' => e.class.name, 'message' => e.message, 'requests' => http.size - before }
   end
 
-  it 'records what the search raises or returns for each provider body and status' do
+  it 'records what the search raises or returns for each provider body and status', fixture: :search_outcomes do
     photon = { photon_api_host: 'photon.selfhosted.example.test', photon_api_use_https: true }
     nominatim = { nominatim_api_host: 'nominatim.selfhosted.example.test', nominatim_api_use_https: false }
     locationiq = { locationiq_api_key: 'w5b-k-04' }
