@@ -13,8 +13,12 @@ defmodule Dawarich.Imports.NormalCast.Arrays do
   defp element(nil), do: "NULL"
   defp element(values) when is_list(values), do: literal(values)
 
-  defp element(value),
-    do:
-      "\"" <>
-        (Text.cast(value) |> String.replace("\\", "\\\\") |> String.replace("\"", "\\\"")) <> "\""
+  defp element(value), do: value |> Text.cast() |> quoted()
+
+  defp quoted(text) do
+    if text == "" or String.upcase(text, :ascii) == "NULL" or
+         String.contains?(text, ["\"", "\\", "{", "}", ",", " ", "\t", "\n", "\r", "\v", "\f"]),
+       do: "\"" <> (text |> String.replace("\\", "\\\\") |> String.replace("\"", "\\\"")) <> "\"",
+       else: text
+  end
 end

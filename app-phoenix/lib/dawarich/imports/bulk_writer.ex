@@ -89,8 +89,6 @@ defmodule Dawarich.Imports.BulkWriter do
   defp cast(row) do
     Map.new(row, fn
       {:lonlat, value} -> {:lonlat, Geometry.serialize(value)}
-      {:velocity, :infinity} -> {:velocity, "Infinity"}
-      {:velocity, :neg_infinity} -> {:velocity, "-Infinity"}
       {key, value} when key in [:source_id, :import_id, :created_at, :updated_at] -> {key, value}
       {key, value} -> {key, NormalCast.column(key, value)}
     end)

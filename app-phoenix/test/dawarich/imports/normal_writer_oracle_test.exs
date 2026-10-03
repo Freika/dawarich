@@ -2,6 +2,10 @@ defmodule Dawarich.Imports.NormalWriterOracleTest do
   use Dawarich.IngestCase, async: false
   alias Dawarich.Imports.BulkWriter
   @stamp ~N[2026-01-01 00:00:00]
+  @inputs Path.expand("../../fixtures/imports/normal_writer_inputs.json", __DIR__)
+          |> File.read!()
+          |> Jason.decode!()
+          |> Map.new(&{&1["name"], &1})
   @cases Path.expand("../../fixtures/imports/rails_normal_writer_oracle.json", __DIR__)
          |> File.read!()
          |> Jason.decode!()
@@ -22,6 +26,7 @@ defmodule Dawarich.Imports.NormalWriterOracleTest do
 
   for example <- @cases do
     @example example
+    @input Map.fetch!(@inputs, example["name"])
     test "independent Rails persisted oracle: #{example["name"]}", %{import: import} do
       e = @example
 
@@ -39,7 +44,7 @@ defmodule Dawarich.Imports.NormalWriterOracleTest do
       }
 
       batch =
-        Enum.map(e["rows"] || [e["attributes"]], fn row ->
+        Enum.map(@input["rows"] || [@input["attributes"]], fn row ->
           Map.merge(
             attrs,
             Map.new(row, fn {key, value} -> {String.to_atom(key), decode_tags(value)} end)
@@ -54,7 +59,8 @@ defmodule Dawarich.Imports.NormalWriterOracleTest do
         end
 
       if e["error"] do
-        assert {:error, _} = result
+        assert {:error, error} = result
+        assert_same_error(error, e["error"])
       else
         assert {:ok, {inserted, _}} = result
         assert inserted == e["inserted"]
@@ -115,6 +121,8 @@ defmodule Dawarich.Imports.NormalWriterOracleTest do
   defp decode_tags(%{"__float__" => name}),
     do: Map.fetch!(%{"Infinity" => :infinity, "-Infinity" => :neg_infinity, "NaN" => :nan}, name)
 
+  defp decode_tags(%{"__bytes__" => hex}), do: Base.decode16!(hex, case: :mixed)
+
   defp decode_tags(%{"__symbol_pairs__" => pairs}),
     do:
       pairs
@@ -132,6 +140,15 @@ defmodule Dawarich.Imports.NormalWriterOracleTest do
 
   defp decode_tags(list) when is_list(list), do: Enum.map(list, &decode_tags/1)
   defp decode_tags(value), do: value
+
+  defp assert_same_error(error, %{"message" => "PG::" <> _ = message}) do
+    [_, class, primary] = Regex.run(~r/\APG::(\w+): ERROR:  (.*)\z/, message)
+    assert %Postgrex.Error{postgres: %{code: code, message: ^primary}} = error
+    assert Atom.to_string(code) == Macro.underscore(class)
+  end
+
+  defp assert_same_error(error, %{"message" => message}),
+    do: assert(Exception.message(error) == message)
 
   defp decimals(row) do
     Enum.reduce(~w(altitude_decimal course course_accuracy), row, fn key, acc ->

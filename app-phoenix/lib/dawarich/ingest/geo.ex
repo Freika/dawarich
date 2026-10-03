@@ -57,13 +57,13 @@ defmodule Dawarich.Ingest.Geo do
   defp zero(value) when value == 0.0, do: 0.0
   defp zero(value), do: value
 
-  defp longitude(x) when x < -180.0 or x > 180.0 do
+  def longitude(x) when x < -180.0 or x > 180.0 do
     m = :math.fmod(x, 360.0)
     m = if m < 0.0, do: m + 360.0, else: m
     if m > 180.0, do: m - 360.0, else: m
   end
 
-  defp longitude(x), do: x
+  def longitude(x), do: x
 
   defp meters(lat, lon) do
     rad = :math.pi() / 180

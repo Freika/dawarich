@@ -1,5 +1,5 @@
 defmodule Dawarich.Imports.NormalCast do
-  @moduledoc false
+  @moduledoc "Import-row casts with Rails' coercions; API intake uses Dawarich.Ingest.Cast, which refuses them."
   alias Dawarich.Ingest.{Cast, Ruby}
   alias Dawarich.Imports.{Geometry, NormalCast.Text, NormalCast.Arrays}
   @integers ~w(accuracy altitude battery vertical_accuracy timestamp)a

@@ -32,6 +32,8 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
         'NaN' => Float::NAN }.fetch(value.fetch('__float__'))
     elsif value.is_a?(Hash) && value.keys == ['__symbol_pairs__']
       value.fetch('__symbol_pairs__').to_h { |key, item| [key.to_sym, decode_tags(item)] }
+    elsif value.is_a?(Hash) && value.keys == ['__bytes__']
+      [value.fetch('__bytes__')].pack('H*').force_encoding(Encoding::UTF_8)
     elsif value.is_a?(Hash) && value.keys == ['__symbol_hash__']
       value.fetch('__symbol_hash__').transform_keys(&:to_sym).transform_values { |v| decode_tags(v) }
     elsif value.is_a?(Hash)
@@ -60,7 +62,11 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
   def attempt(import, rows)
     { 'inserted' => writer.new(import).write(rows), 'error' => nil }
   rescue StandardError => e
-    { 'inserted' => nil, 'error' => { 'class' => e.class.name, 'message' => e.message } }
+    { 'inserted' => nil, 'error' => { 'class' => e.class.name, 'message' => error_message(e) } }
+  end
+
+  def error_message(error)
+    error.message.start_with?('PG::') ? error.message.lines.first.chomp : error.message
   end
 
   def points(id)
