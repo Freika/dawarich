@@ -8,7 +8,7 @@ defmodule DawarichWeb.Strangler do
 
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
-  @page_pipelines [:browser, :rails_frame]
+  @page_pipelines [:browser, :insights, :rails_frame]
 
   @constraints %{
     "/api/v1/photos/:id/thumbnail" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
@@ -88,8 +88,15 @@ defmodule DawarichWeb.Strangler do
   def page_request?(conn) do
     not String.contains?(List.last(conn.path_info) || "", ".") and
       not String.match?(header(conn, "x-requested-with"), ~r/XMLHttpRequest/i) and
+      not valueless_query?(conn.query_string) and
       not format_param?(conn.query_string) and
       page_accept?(header(conn, "accept"))
+  end
+
+  defp valueless_query?(query) do
+    query
+    |> String.split("&", trim: true)
+    |> Enum.any?(&(not String.contains?(&1, "=")))
   end
 
   defp format_param?(query) do
