@@ -126,6 +126,8 @@ defmodule Dawarich.CLI.Jobs do
   defp oban(%{oban: oban}), do: oban
 
   defp oban(ctx) do
+    {:ok, _} = Application.ensure_all_started(:oban)
+
     {:ok, _} =
       Oban.start_link(
         name: Dawarich.CLI.Oban,

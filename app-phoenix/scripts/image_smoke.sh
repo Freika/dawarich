@@ -68,8 +68,13 @@ docker exec a0_app dawarich jobs status | grep -q '"summary"' || fail "jobs stat
 [ "$(docker exec a0_app dawarich 'points:raw_data:status' | head -1 | wc -c | tr -d ' ')" = 139 ] || fail "raw-data status through the rake name failed or re-encoded its header"
 docker exec -u 0 a0_app dawarich raw-data status >/dev/null || fail "the CLI fails as root"
 docker exec a0_app sh -c 'printf "%s\n" phoenix-a12e-smoke-login-not-for-production | dawarich users password demo@dawarich.app' >/dev/null || fail "users password failed"
-[ "$(docker exec a0_app bin/rails runner 'print User.find_by(email: "demo@dawarich.app").valid_password?("phoenix-a12e-smoke-login-not-for-production")')" = true ] \
+[ "$(docker exec a0_app bin/rails runner 'print User.find_by(email: "demo@dawarich.app").valid_password?("phoenix-a12e-smoke-login-not-for-production")' 2>/dev/null | tail -1)" = true ] \
   || fail "Rails does not accept the password the CLI set"
+set +e
+docker exec a0_app dawarich jobs resume 00000000-0000-4000-8000-00000000a12e >"$work/resume.out" 2>&1
+resume=$?
+set -e
+[ "$resume" -eq 1 ] && grep -q 'is not a failed or stalled release operation' "$work/resume.out" || fail "jobs resume did not reach the release operations (exit $resume)"
 echo "docker stats: $(docker stats --no-stream --format '{{.Name}} {{.MemUsage}} {{.CPUPerc}}' a0_app)"
 
 upstream="$(docker logs a0_app 2>&1 | sed -n 's/.*Phoenix listens on \[::\]:3000 and proxies to Puma on 127\.0\.0\.1:\([0-9][0-9]*\).*/\1/p' | tail -1)"

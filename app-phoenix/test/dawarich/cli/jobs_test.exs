@@ -51,6 +51,19 @@ defmodule Dawarich.CLI.JobsTest do
     assert err =~ "is not a failed or stalled release operation"
   end
 
+  test "resume without an injected Oban starts its own idle instance and enqueues there" do
+    id = Ecto.UUID.generate()
+
+    ScratchRepo.query!(
+      "INSERT INTO phoenix.release_operations (id, command_type, cursor, status) VALUES ($1, 'release.route_opacity', '{\"after_id\": 0}', 'failed')",
+      [Ecto.UUID.dump!(id)]
+    )
+
+    assert {0, "#{id}: resumed\n", ""} == run(["jobs", "resume", id])
+
+    assert [[%{"operation_id" => ^id}]] = rows("SELECT args FROM oban.oban_jobs")
+  end
+
   test "resume refuses an id that is not a UUID with the usage" do
     assert {1, "", "dawarich: usage: dawarich jobs resume OPERATION_ID\n"} =
              run(~w(jobs resume 42), %{oban: @oban})

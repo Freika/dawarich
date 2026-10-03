@@ -47,6 +47,12 @@ set -e
 [ "$users" -eq 1 ] && grep -q 'Usage: dawarich COMMAND' "$work/users.out" || { echo "an incomplete command did not print the usage (exit $users)"; exit 1; }
 [ "$retired" -eq 1 ] && grep -q 'removed together with Sidekiq' "$work/retired.out" || { echo "a retired rake name was not explained (exit $retired)"; exit 1; }
 [ "$rawstatus" -eq 0 ] && [ "$(head -1 "$work/status.out" | wc -c | tr -d ' ')" = 139 ] || { echo "raw-data status through the rake name failed or re-encoded its header (exit $rawstatus)"; cat "$work/status.out" >&2; exit 1; }
+uuid="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n' | sed 's/^\(.\{8\}\)\(.\{4\}\)\(.\{4\}\)\(.\{4\}\)/\1-\2-\3-\4-/')"
+set +e
+"$rel" jobs resume "$uuid" >"$work/resume.out" 2>&1
+resume=$?
+set -e
+[ "$resume" -eq 1 ] && grep -q "$uuid is not a failed or stalled release operation" "$work/resume.out" || { echo "jobs resume did not reach the release operations (exit $resume)"; cat "$work/resume.out" >&2; exit 1; }
 [ "$("$rel" eval 'IO.puts(:still_eval)')" = still_eval ] || { echo "eval no longer reaches the release"; exit 1; }
 "$rel" version | grep -q '^dawarich ' || { echo "version no longer reaches the release"; exit 1; }
 
