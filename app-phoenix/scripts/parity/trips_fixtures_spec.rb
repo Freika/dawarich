@@ -263,6 +263,43 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         end
       end
     end
+
+    it 'writes A8 attachment identification boundaries' do
+      travel_to now do
+        allow(DawarichSettings).to receive(:video_max_per_user).and_return(0)
+        %w[unidentified preidentified shared_preidentified].each_with_index do |name, index|
+          user = a8_video_user(8895 + index)
+          id = 888_150 + index * 10
+          blob = a8_blob(id)
+          metadata = name == 'unidentified' ? {} : { identified: true }
+          metadata[:analyzed] = true if name == 'shared_preidentified'
+          blob.update!(metadata:)
+          other = a8_video(user, id + 1, blob:) if name == 'shared_preidentified'
+          %w[route_videos active_storage_attachments].each do |table|
+            ActiveRecord::Base.connection.execute(
+              "SELECT setval(pg_get_serial_sequence('#{table}', 'id'), #{id + 2}, false)"
+            )
+          end
+          before = a8_video_graph(user)
+          params = { route_video: { name: 'Metadata route', file: blob.signed_id, settings: a8_recipe } }
+          a8_video_request(user, :post, '/route_videos', params:)
+          expect(response.status).to eq(200), name
+          saved = user.route_videos.find_by!(name: 'Metadata route')
+          expect(saved.file.blob.id).to eq(id)
+          expect(blob.reload.identified?).to be(true)
+          if name == 'shared_preidentified'
+            expect(blob.attachments.count).to eq(2)
+            expect(other.reload.file.blob.id).to eq(id)
+            expect(enqueued_jobs).to be_empty
+          else
+            expect(enqueued_jobs.map { _1[:job] }).to eq([ActiveStorage::AnalyzeJob])
+          end
+          request = { method: 'POST', path: '/route_videos', accept: 'text/vnd.turbo-stream.html',
+                      params: params.deep_merge(route_video: { file: 'BLOB_SIGNED_ID' }), blob_id: id }
+          a8_video_record("metadata_#{name}", user, before, request)
+        end
+      end
+    end
   end
 
   def user_settings
