@@ -106,22 +106,5 @@ RSpec.describe Stats::ToponymsRefresh do
         r.exists(described_class::CURSOR_KEY, described_class::DISCOVERY_KEY, described_class::TURN_KEY)
       end).to eq(0)
     end
-
-    it 'drains a day still pending in Redis into the queue and refreshes it in the same run' do
-      point = create(:point, user: user, timestamp: Time.utc(2014, 6, 15).to_i, city: 'Leipzig', country: 'Germany')
-      stat = create(:stat, user: user, year: 2014, month: 6, toponyms: [])
-      member = "#{user.id}:2014-06-15"
-      Sidekiq.redis do |r|
-        r.call('SET', "#{Stats::GeocodedDays::VERSION_KEY_PREFIX}:#{member}", 'redis-version')
-        r.call('ZADD', Stats::GeocodedDays::PENDING_KEY, point.timestamp, member)
-      end
-      PhoenixCursors.set(described_class::TURN_KEY, 1)
-
-      described_class.new.call
-
-      expect(stat.reload.toponyms.first['country']).to eq('Germany')
-      expect(Stats::GeocodedDays.due(limit: 10)).to be_empty
-      expect(Sidekiq.redis { |r| r.call('ZCARD', Stats::GeocodedDays::PENDING_KEY) }).to eq(0)
-    end
   end
 end

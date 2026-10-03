@@ -6,6 +6,7 @@ module Stats
     OWNER_KEY = 'cron:stats_toponyms_refresh_job'
 
     def perform
+      GeocodedDays.drain_redis
       return if JobOwnership.oban?(OWNER_KEY)
 
       ToponymsRefresh.new.call

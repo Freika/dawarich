@@ -20,7 +20,6 @@ module Stats
           @remaining = MONTHS_PER_RUN
           @results = {}
           @scheduled_full = Set.new
-          GeocodedDays.drain_redis
           discover_missing_month
           first = PhoenixCursors.incr(TURN_KEY).odd?
           if first
