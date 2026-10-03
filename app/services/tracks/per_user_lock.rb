@@ -10,47 +10,60 @@ module Tracks
     POLL_INTERVAL = 0.1
     LOCK_WAIT_WARN_SECONDS = 1.0
 
-    RELEASE_LUA = <<~LUA
-      if redis.call("get", KEYS[1]) == ARGV[1] then
-        return redis.call("del", KEYS[1])
-      else
-        return 0
-      end
-    LUA
-
-    RENEW_LUA = <<~LUA
-      if redis.call("get", KEYS[1]) == ARGV[1] then
-        return redis.call("pexpire", KEYS[1], ARGV[2])
-      else
-        return 0
-      end
-    LUA
-
     class AcquisitionTimeout < StandardError; end
+
+    module RedisStore
+      RELEASE_LUA = <<~LUA
+        if redis.call("get", KEYS[1]) == ARGV[1] then
+          return redis.call("del", KEYS[1])
+        else
+          return 0
+        end
+      LUA
+
+      RENEW_LUA = <<~LUA
+        if redis.call("get", KEYS[1]) == ARGV[1] then
+          return redis.call("pexpire", KEYS[1], ARGV[2])
+        else
+          return 0
+        end
+      LUA
+
+      module_function
+
+      def acquire(key, token, ttl) = Sidekiq.redis { |r| r.set(key, token, nx: true, px: (ttl * 1000).to_i) }
+
+      def renew(key, token, ttl)
+        Sidekiq.redis { |r| r.call('EVAL', RENEW_LUA, 1, key, token, (ttl * 1000).to_i.to_s) }.to_i == 1
+      end
+
+      def release(key, token) = Sidekiq.redis { |r| r.call('EVAL', RELEASE_LUA, 1, key, token) }
+    end
+
+    def self.store = PhoenixLease.table? ? PhoenixLease : RedisStore
 
     def self.with_user_lock(user_id, timeout: DEFAULT_ACQUIRE_TIMEOUT, ttl: DEFAULT_TTL)
       key = "#{NAMESPACE}:#{user_id}"
       token = SecureRandom.uuid
+      store = self.store
       started_at = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
-      acquire!(key, token, ttl, timeout, user_id, started_at)
+      acquire!(store, key, token, ttl, timeout, user_id, started_at)
 
-      heartbeat = start_heartbeat(key, token, ttl, user_id)
+      heartbeat = start_heartbeat(store, key, token, ttl, user_id)
       begin
         yield
       ensure
         stop_heartbeat(heartbeat)
-        release(key, token)
+        store.release(key, token)
       end
     end
 
-    def self.acquire!(key, token, ttl, timeout, user_id, started_at)
+    def self.acquire!(store, key, token, ttl, timeout, user_id, started_at)
       deadline = started_at + timeout
-      ttl_ms = (ttl * 1000).to_i
 
       loop do
-        acquired = Sidekiq.redis { |r| r.set(key, token, nx: true, px: ttl_ms) }
-        if acquired
+        if store.acquire(key, token, ttl)
           warn_on_contention(user_id, started_at)
           return true
         end
@@ -75,9 +88,8 @@ module Tracks
       )
     end
 
-    def self.start_heartbeat(key, token, ttl, user_id)
+    def self.start_heartbeat(store, key, token, ttl, user_id)
       interval = [ttl / RENEW_DIVISOR, POLL_INTERVAL].max
-      ttl_ms = (ttl * 1000).to_i
       stop = Queue.new
 
       thread = Thread.new do
@@ -86,7 +98,7 @@ module Tracks
           break if stop.pop(timeout: interval)
 
           begin
-            break if lock_lost?(key, token, ttl_ms, user_id)
+            break if lock_lost?(store, key, token, ttl, user_id)
 
             renew_errors = 0
           rescue StandardError => e
@@ -115,20 +127,11 @@ module Tracks
       heartbeat[:thread].join
     end
 
-    def self.lock_lost?(key, token, ttl_ms, user_id)
-      return false if renew(key, token, ttl_ms)
+    def self.lock_lost?(store, key, token, ttl, user_id)
+      return false if store.renew(key, token, ttl)
 
       Rails.logger.warn("event=tracks.per_user_lock_renew_lost user_id=#{user_id}")
       true
-    end
-
-    def self.renew(key, token, ttl_ms)
-      result = Sidekiq.redis { |r| r.call('EVAL', RENEW_LUA, 1, key, token, ttl_ms.to_s) }
-      result.to_i == 1
-    end
-
-    def self.release(key, token)
-      Sidekiq.redis { |r| r.call('EVAL', RELEASE_LUA, 1, key, token) }
     end
   end
 end
