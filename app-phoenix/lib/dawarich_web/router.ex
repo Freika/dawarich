@@ -114,6 +114,7 @@ defmodule DawarichWeb.Router do
     plug :put_api_tag, "api"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug :method_override_to_rails
     plug DawarichWeb.Api.Body
     plug DawarichWeb.Api.Auth, require_active: false
