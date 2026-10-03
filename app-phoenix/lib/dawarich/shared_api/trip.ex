@@ -1,7 +1,7 @@
 defmodule Dawarich.SharedApi.Trip do
   @moduledoc false
 
-  alias Dawarich.{RailsTime, Repo, RubyFloat, UserTimeZone}
+  alias Dawarich.{Distance, RailsTime, Repo, RubyFloat, UserTimeZone}
 
   def show(%{type: "trip"} = link) do
     RailsTime.with_zone(UserTimeZone.name(nil), fn ->
@@ -25,13 +25,16 @@ defmodule Dawarich.SharedApi.Trip do
 
   defp stats(fields, %{"show_stats" => true}, distance, settings) when not is_nil(distance) do
     unit = get_in(settings || %{}, ["maps", "distance_unit"]) || "km"
-    factor = %{"km" => 1000, "mi" => 1609.344}[unit]
 
-    if factor,
+    if Distance.unit?(unit),
       do:
         {:ok,
          {:object,
-          fields ++ [{"distance", RubyFloat.round(distance / factor)}, {"distance_unit", unit}]}},
+          fields ++
+            [
+              {"distance", RubyFloat.round(Distance.convert(distance, unit))},
+              {"distance_unit", unit}
+            ]}},
       else: {:replay, "shared distance unit"}
   end
 

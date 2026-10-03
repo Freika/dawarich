@@ -41,6 +41,13 @@ defmodule Dawarich.SharedApi.TripTest do
     assert Trip.show(%{link | settings: %{"show_stats" => true}}) ==
              {:ok, {:object, fields ++ [{"distance", 77}, {"distance_unit", "mi"}]}}
 
+    Repo.query!("UPDATE trips SET distance = 803866 WHERE id = 951101")
+
+    assert Trip.show(%{link | settings: %{"show_stats" => true}}) ==
+             {:ok, {:object, fields ++ [{"distance", 500}, {"distance_unit", "mi"}]}}
+
+    Repo.query!("UPDATE trips SET distance = 123456 WHERE id = 951101")
+
     Repo.query!("UPDATE users SET settings = $1 WHERE id = $2", [
       %{"maps" => %{"distance_unit" => "km"}},
       owner
