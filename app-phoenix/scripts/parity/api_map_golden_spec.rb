@@ -18,6 +18,8 @@ module ApiMapGoldenOracle
              xml: { 'Accept' => 'application/xml' },
              browser: { 'Accept' => 'text/html,application/xhtml+xml,*/*;q=0.8' } }.freeze
   NOW_ETAG = %w[etag].freeze
+  POSTGIS_FLOAT_FIELDS = %w[avg_speed].freeze
+  POSTGIS_FLOAT_PRECISION = 8
   CASES = [
     { name: 'points_default', path: P, ignore: NOW_ETAG },
     { name: 'points_end', path: "#{P}?#{E}" },
@@ -220,7 +222,11 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
   def map_response(kase, path, headers)
     send(kase[:method], path, headers: headers)
     headers = response.headers.to_h.transform_keys(&:downcase).except('date', 'content-length')
-    { 'status' => response.status, 'headers' => headers, 'body' => response.body }
+    headers['etag'] = 'W/"fixture-etag"'
+    headers['set-cookie'] = 'fixture-session' if headers.key?('set-cookie')
+    headers['x-request-id'] = 'fixture-request-id'
+    headers['x-runtime'] = '0.000000'
+    { 'status' => response.status, 'headers' => headers, 'body' => map_normalized_body(response.body) }
   rescue StandardError
     raise unless kase[:expect] == :rails
 
@@ -262,6 +268,31 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     columns = row.keys.map { connection.quote_column_name(_1) }.join(', ')
     values = row.values.map { connection.quote(_1.is_a?(Hash) ? JSON.generate(_1) : _1) }.join(', ')
     connection.execute("INSERT INTO #{table} (#{columns}) VALUES (#{values})")
+  end
+
+  def map_normalized_body(body)
+    value = JSON.parse(body)
+    Oj.dump(map_normalized_floats(value), mode: :strict, float_precision: 0)
+  rescue JSON::ParserError
+    body
+  end
+
+  def map_normalized_floats(value)
+    case value
+    when Array
+      value.map { map_normalized_floats(_1) }
+    when Hash
+      value.to_h do |key, nested|
+        nested = if ApiMapGoldenOracle::POSTGIS_FLOAT_FIELDS.include?(key) && nested.is_a?(Float)
+                   nested.round(ApiMapGoldenOracle::POSTGIS_FLOAT_PRECISION)
+                 else
+                   nested
+                 end
+        [key, map_normalized_floats(nested)]
+      end
+    else
+      value
+    end
   end
 
   def map_time(offset) = Time.at(ApiMapGoldenOracle::T0 + offset).utc.strftime('%F %T.%6N')

@@ -8,12 +8,14 @@ defmodule DawarichWeb.Strangler do
 
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
+  @page_pipelines [:browser, :rails_frame]
 
   @constraints %{
     "/api/v1/photos/:id/thumbnail" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
     "/api/v1/photos/:id/thumbnail.jpg" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
     "/api/v1/tracks/:id" => %{"id" => ~r/\A\d+\z/},
     "/api/v1/tracks/:track_id/points" => %{"track_id" => ~r/\A\d+\z/},
+    "/map/timeline_feeds/:id/track_info" => %{"id" => ~r/\A\d{1,18}\z/},
     "/trips/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/api/v1/families/location_requests/:id/accept" => %{"id" => ~r/\A\d{1,18}\z/},
     "/api/v1/families/location_requests/:id/decline" => %{"id" => ~r/\A\d{1,18}\z/},
@@ -48,7 +50,8 @@ defmodule DawarichWeb.Strangler do
       %{pipe_through: pipelines} = route ->
         not handed_back?(conn.path_info) and slice_owned?(route, conn) and
           rails_constraints?(route) and
-          (:browser not in pipelines or page_request?(conn)) and gate_open?(route, conn)
+          (not Enum.any?(pipelines, &(&1 in @page_pipelines)) or page_request?(conn)) and
+          gate_open?(route, conn)
     end
   end
 
@@ -84,7 +87,7 @@ defmodule DawarichWeb.Strangler do
 
   defp handed_back?([]), do: false
 
-  defp page_request?(conn) do
+  def page_request?(conn) do
     not String.contains?(List.last(conn.path_info) || "", ".") and
       not String.match?(header(conn, "x-requested-with"), ~r/XMLHttpRequest/i) and
       not format_param?(conn.query_string) and

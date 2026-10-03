@@ -783,7 +783,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/settings /settings/theme?theme=light /settings/visits /settings/two_factor /settings/background_jobs /settings/users /settings/users/export /settings/trek_sources/1/select_trips /insights/details?year=2024 /map/residency?year=2024 /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
+          ~w(/settings /settings/theme?theme=light /settings/visits /settings/two_factor /settings/background_jobs /settings/users /settings/users/export /settings/trek_sources/1/select_trips /insights/details?year=2024 /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
@@ -843,9 +843,6 @@ defmodule DawarichWeb.EndpointTest do
           {"/maps/v2", ""},
           {"/map/v1", ""},
           {"/map/timeline_feeds?date=2026-09-29", ""},
-          {"/map/timeline_feeds/calendar?month=2026-09", ""},
-          {"/map/timeline_feeds/5/track_info", ""},
-          {"/map/residency", ""},
           {"/api/v1/timeline?start_at=1&end_at=2", ""},
           {"/map/v2", "Accept: application/json\r\n"},
           {"/map/v2?format=json", ""},
@@ -881,5 +878,76 @@ defmodule DawarichWeb.EndpointTest do
           )
 
     assert answered_by_phoenix(port, "GET /notifications HTTP/1.1\r\nHost: a\r\n\r\n") == 302
+  end
+
+  test "Phoenix answers the map frames itself" do
+    port = serve()
+    accept = "Accept: text/html, application/xhtml+xml\r\n"
+
+    for target <- [
+          "/map/timeline_feeds/5/track_info",
+          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds/calendar?month=2026-09",
+          "/map/timeline_feeds/calendar",
+          "/map/residency?year=2026",
+          "/map/residency"
+        ],
+        do:
+          assert(
+            answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n#{accept}\r\n") == 302
+          )
+  end
+
+  test "frame inputs Phoenix does not reproduce go to Puma unchanged", ctx do
+    port = serve()
+    frame = "Accept: text/html, application/xhtml+xml\r\n"
+    get = fn target, headers -> "GET #{target} HTTP/1.1\r\nHost: a\r\n#{headers}\r\n" end
+
+    for {target, headers} <- [
+          {"/map/timeline_feeds/abc/track_info", frame},
+          {"/map/timeline_feeds/1234567890123456789/track_info", frame},
+          {"/map/timeline_feeds/5/track_info?locale=de", frame},
+          {"/map/timeline_feeds/5/track_info?client=ios", frame},
+          {"/map/timeline_feeds/5/track_info?aff=a6s2", frame},
+          {"/map/timeline_feeds/calendar?month=2026-09&via=a6s2", frame},
+          {"/map/timeline_feeds/5/track_info", frame <> "X-Dawarich-Client: ios\r\n"},
+          {"/map/timeline_feeds/5/track_info", "Accept: application/json\r\n"},
+          {"/map/timeline_feeds/5/track_info", frame <> "X-Requested-With: XMLHttpRequest\r\n"},
+          {"/map/timeline_feeds/5/track_info?format=json", frame},
+          {"/map/timeline_feeds?date=2026-09-29", frame},
+          {"/map/timeline_feeds?start_at=&end_at=2026-09-27T23:59:59", frame},
+          {"/map/timeline_feeds?start_at=Oct%2015%202025&end_at=2026-09-27T23:59:59", frame},
+          {"/map/timeline_feeds?start_at[]=1&end_at=2", frame},
+          {"/map/timeline_feeds?start_at=1&end_at=2&locale=de", frame},
+          {"/map/timeline_feeds/calendar?month=2026-9", frame},
+          {"/map/residency?year=abc", frame},
+          {"/map/residency?year=", frame},
+          {"/map/residency?year=2040", frame},
+          {"/tracks/5/segments", frame}
+        ],
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, get.(target, headers)) ==
+              "GET #{target} HTTP/1.1"
+          )
+  end
+
+  test "DAWARICH_RAILS_ROUTES=map hands the frames back with the page", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["map"])
+    on_exit(fn -> Application.delete_env(:dawarich, :rails_routes) end)
+    port = serve()
+
+    for target <- [
+          "/map/v2",
+          "/map/timeline_feeds/5/track_info",
+          "/map/timeline_feeds?start_at=2026-09-27T00:00:00&end_at=2026-09-27T23:59:59",
+          "/map/timeline_feeds/calendar?month=2026-09",
+          "/map/residency?year=2026"
+        ],
+        do:
+          assert(
+            answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+              "GET #{target} HTTP/1.1"
+          )
   end
 end

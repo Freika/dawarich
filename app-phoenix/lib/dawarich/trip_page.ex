@@ -5,6 +5,7 @@ defmodule Dawarich.TripPage do
     CountryNames,
     Repo,
     TripDays,
+    TripDescription,
     TripSettings,
     TripStream,
     TripStudio,
@@ -27,10 +28,9 @@ defmodule Dawarich.TripPage do
            OR EXISTS (SELECT 1 FROM planned_reservations x WHERE x.trip_id = t.id)
            OR EXISTS (SELECT 1 FROM planned_accommodations x WHERE x.trip_id = t.id)
            OR EXISTS (SELECT 1 FROM planned_travellers x WHERE x.trip_id = t.id)
-           OR EXISTS (SELECT 1 FROM planned_unplanned_places x WHERE x.trip_id = t.id)
-           OR EXISTS (SELECT 1 FROM action_text_rich_texts r
-                      WHERE r.record_type = 'Trip' AND r.record_id = t.id AND r.name = 'description'
-                        AND btrim(coalesce(r.body, '')) <> '')
+           OR EXISTS (SELECT 1 FROM planned_unplanned_places x WHERE x.trip_id = t.id),
+         (SELECT r.body FROM action_text_rich_texts r
+          WHERE r.record_type = 'Trip' AND r.record_id = t.id AND r.name = 'description')
   FROM trips t CROSS JOIN z
   CROSS JOIN LATERAL (#{TripDays.span_sql("t.started_at", "t.ended_at", "z.name")}) s
   WHERE t.id = $1 AND t.user_id = $2
@@ -38,14 +38,15 @@ defmodule Dawarich.TripPage do
 
   def gate(user, trip_id) do
     with {:ok, %{photos: false} = settings} <- TripSettings.read(user.settings),
-         [[zone, started_local, ended_local, seconds, near_transition, false]] <-
+         [[zone, started_local, ended_local, seconds, near_transition, false, body]] <-
            UserTimeZone.query!(@gate, [trip_id, user.id], user.settings).rows,
+         {:ok, description} <- TripDescription.read(body),
          true <- TripSettings.zone?(user.settings, zone),
          span = TripDays.span(started_local, ended_local, seconds, near_transition),
          {_parts, borrowed} =
            TripDays.duration_parts(span.started_local, span.ended_local, span.previous_month_days),
          false <- borrowed and span.near_transition do
-      {:ok, %{settings: settings, zone: zone, span: span}}
+      {:ok, %{settings: settings, zone: zone, span: span, description: description}}
     else
       _ -> :rails
     end
@@ -71,15 +72,15 @@ defmodule Dawarich.TripPage do
   """
 
   def load(user, trip_id, now) do
-    with {:ok, %{settings: settings, zone: zone, span: span}} <- gate(user, trip_id),
-         [row] <- Repo.query!(@trip, [trip_id, zone, DateTime.to_naive(now)]).rows do
-      {:ok, page(user, trip_id, row, settings, zone, span)}
+    with {:ok, gated} <- gate(user, trip_id),
+         [row] <- Repo.query!(@trip, [trip_id, gated.zone, DateTime.to_naive(now)]).rows do
+      {:ok, page(user, trip_id, row, gated)}
     else
       _ -> :rails
     end
   end
 
-  defp page(user, id, row, settings, zone, span) do
+  defp page(user, id, row, %{settings: settings, zone: zone, span: span} = gated) do
     [
       name,
       distance,
@@ -118,6 +119,7 @@ defmodule Dawarich.TripPage do
       path_json: IO.iodata_to_binary(Ruby.json(path)),
       windows_json: day_data.windows_json,
       days: days(first_day, last_day, day_data.stats, notes(id)),
+      description: gated.description,
       trip_stream: TripStream.stream_name(id),
       studio: TripStudio.load(user.id, zone)
     }

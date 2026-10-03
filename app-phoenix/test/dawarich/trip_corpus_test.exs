@@ -26,7 +26,7 @@ defmodule Dawarich.TripCorpusTest do
         assert Date.to_iso8601(day) == expected["day"], inspect(c["trip_id"])
         assert NaiveDateTime.to_iso8601(s.first) == expected["first"], inspect(c["trip_id"])
         assert NaiveDateTime.to_iso8601(s.last) == expected["last"], inspect(c["trip_id"])
-        assert_in_delta s.distance_m, expected["distance_m"], 1.0e-6, inspect(c["trip_id"])
+        assert Float.round(s.distance_m, 6) == expected["distance_m"], inspect(c["trip_id"])
       end
     end
   end
