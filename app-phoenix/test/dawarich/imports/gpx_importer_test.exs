@@ -261,4 +261,31 @@ defmodule Dawarich.Imports.GpxImporterTest do
     assert [[0]] == rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
     assert [[0]] == rows("SELECT count(*) FROM notifications")
   end
+
+  defp elevation_document(ele),
+    do:
+      "<gpx><trk><trkseg><trkpt lat='51.3' lon='12.4'><ele>#{ele}</ele><time>2024-03-16T12:30:23Z</time></trkpt></trkseg></trk></gpx>"
+
+  test "an elevation beyond int4 fails the batch with Rails' ActiveModel range message", c do
+    File.write!(c.path, elevation_document("3000000000"))
+    assert :ok == run(c)
+
+    assert [
+             [
+               "Failed to process GPX data: 3000000000 is out of range for ActiveModel::Type::Integer with limit 4 bytes"
+             ]
+           ] == rows("SELECT content FROM notifications WHERE user_id=$1", [c.import.user_id])
+
+    assert [[0]] == rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
+  end
+
+  test "an infinite elevation without altitude_decimal stores the point with no altitude, as Rails casts it",
+       c do
+    File.write!(c.path, elevation_document("1e999"))
+    assert :ok == run(%{c | ctx: %{c.ctx | altitude_decimal?: false}})
+    assert [[nil]] == rows("SELECT altitude FROM points WHERE import_id=$1", [c.import.id])
+
+    assert [[0]] ==
+             rows("SELECT count(*) FROM notifications WHERE user_id=$1", [c.import.user_id])
+  end
 end
