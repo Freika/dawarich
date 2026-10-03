@@ -19,5 +19,13 @@ defmodule Dawarich.Auth.Account do
     field(:current_sign_in_ip, :string)
     field(:last_sign_in_ip, :string)
     field(:updated_at, :utc_datetime_usec)
+    field(:reset_password_token, :string, redact: true)
+    field(:reset_password_sent_at, :utc_datetime_usec)
+    field(:failed_otp_attempts, :integer)
+    field(:otp_locked_at, :utc_datetime_usec)
+    field(:settings, :map, redact: true, load_in_query: false)
   end
+
+  def normalize_email(email), do: email |> String.downcase() |> strip()
+  def strip(value), do: Regex.replace(~r/\A[\x00\x09-\x0D ]+|[\x00\x09-\x0D ]+\z/, value, "")
 end

@@ -78,6 +78,8 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
            distance: 16_093, countries: ['United States'], path: line(12.33, 51.35, 4), recalculated: 3600),
       trip(980_301, 9803, 'Midnight run', '2026-06-01T22:00:00.000000Z', '2026-06-03T01:00:00.000000Z',
            distance: 800, countries: ['Germany'], path: line(12.36, 51.32, 2)),
+      trip(980_302, 9803, 'Auwald notes', '2026-07-04T08:00:00.000000Z', '2026-07-05T18:00:00.000000Z',
+           distance: 2500, countries: ['Germany'], path: short_path),
       *many_trips,
       trip(989_901, 9899, 'Foreign trip', '2026-05-09T06:00:00.000000Z', '2026-05-12T20:00:00.000000Z',
            distance: 1000, countries: ['Germany'], path: loop_path)
@@ -132,8 +134,20 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
     [{ id: 9_811, trip_id: 980_101, user_id: 9801, noted_at: '2026-05-10T12:00:00Z',
        body: "Morgenkaffee <b>am</b> See\nthen the Auensee" },
      { id: 9_812, trip_id: 980_101, user_id: 9801, noted_at: '2026-05-20T12:00:00Z', body: 'Outside the trip' },
+     { id: 9_833, trip_id: 980_302, user_id: 9803, noted_at: '2026-07-05T12:00:00Z',
+       body: %(Picknick am "Auensee" & 'Rosental') },
      { id: 9_891, trip_id: 989_901, user_id: 9899, noted_at: '2026-05-10T12:00:00Z', body: 'Foreign note' }]
   end
+
+  def described
+    '<h1>Leipzig &amp; the Auwald</h1><div>From the <strong>Rosental</strong> <em>along</em> the ' \
+      '<del>Elster</del> Pleiße<br>two&nbsp;&nbsp;spaces, "quotes" and 3 &lt; 4 &gt; 2</div>' \
+      '<blockquote>Leise rauscht der Fluss</blockquote><ul><li>Rosental<ul><li>Zoo</li></ul></li><li>' \
+      '<a href="https://www.leipzig.de/freizeit?x=1&amp;y=2#auwald">Auwald</a></li></ul><ol><li>Auensee</li>' \
+      "</ol><pre>12.3712 51.3391\n12.3801 51.3422</pre>"
+  end
+
+  def rich_texts = [{ trip_id: 980_302, body: described }]
 
   def shared_links
     [{ id: 'a8510000-0000-4000-8000-000000000001', resource_type: 0, trip_id: 980_101, user_id: 9801,
@@ -185,6 +199,10 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
       { id: n[:id], attachable_type: 'Trip', attachable_id: n[:trip_id], user_id: n[:user_id], body: n[:body],
         noted_at: utc(n[:noted_at]), created_at: now, updated_at: now }
     end)
+    ActionText::RichText.insert_all(rich_texts.map do |r|
+      { record_type: 'Trip', record_id: r[:trip_id], name: 'description', body: r[:body], created_at: now,
+        updated_at: now }
+    end)
     SharedLink.insert_all(shared_links.map do |l|
       { id: l[:id], name: 'Fixture link', resource_type: SharedLink.resource_types.key(l[:resource_type]),
         resource_id: l[:trip_id], user_id: l[:user_id], revoked_at: l[:revoked] ? now - 1.day : nil,
@@ -210,7 +228,7 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
       ['index_many_page_out', 9805, '/trips?page=4'], ['index_many_extra_param', 9805, '/trips?page=2&view=cards'],
       ['show_leipzig', 9801, '/trips/980101'], ['show_grenzgang', 9801, '/trips/980102'],
       ['show_short_hop', 9801, '/trips/980106'], ['show_ny', 9802, '/trips/980201'],
-      ['show_utc', 9803, '/trips/980301']
+      ['show_utc', 9803, '/trips/980301'], ['show_described', 9803, '/trips/980302']
     ]
   end
 
@@ -234,8 +252,8 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
       users = create_users!
       insert!
       write_json('pages.json', { pages: pages.map { |name, user_id, path| capture(name, user_id, path) } })
-      write_json('seed.json', { users:, countries:, sources:, trips:, points:, notes:, shared_links:, posters:,
-                                route_videos: })
+      write_json('seed.json', { users:, countries:, sources:, trips:, points:, notes:, rich_texts:, shared_links:,
+                                posters:, route_videos: })
     end
   end
 
@@ -251,7 +269,7 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
           windows_json: trip.primary_device_windows.to_json,
           stats: trip.day_stats(zone).sort.map do |day, stat|
             { day: day.iso8601, first: stat[:first_time].strftime('%Y-%m-%dT%H:%M:%S'),
-              last: stat[:last_time].strftime('%Y-%m-%dT%H:%M:%S'), distance_m: stat[:distance_m] }
+              last: stat[:last_time].strftime('%Y-%m-%dT%H:%M:%S'), distance_m: stat[:distance_m].round(6) }
           end }
       end
       write_json('windows.json', { trips: cases })

@@ -9,7 +9,7 @@ defmodule DawarichWeb.TripsLive.Show do
   import DawarichWeb.TripParts, only: [trip_header: 1, trip_toolbar: 1]
   import DawarichWeb.VideoStudio, only: [video_studio: 1]
 
-  alias Dawarich.TripPage
+  alias Dawarich.{TripDescription, TripPage}
   alias DawarichWeb.{HumanDatetime, MapParts}
 
   @impl true
@@ -85,6 +85,12 @@ defmodule DawarichWeb.TripsLive.Show do
             <turbo-frame id="share-link-modal"></turbo-frame>
             <.trip_toolbar page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />
             <.trip_days page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />
+            <div :if={@page.description} class="mb-6">
+              <h3 class="text-lg font-semibold mb-2">{t(@locale, "trips.show.trip_notes", %{})}</h3>
+              <div class="prose max-w-none">
+                {Phoenix.HTML.raw(TripDescription.html(@page.description))}
+              </div>
+            </div>
             <div class="mb-6">
               <a href="/trips" class="btn btn-sm btn-ghost gap-1"><.icon
                 name="arrow-left"

@@ -8,6 +8,7 @@ defmodule DawarichWeb.TripsGateEndpointTest do
   import Phoenix.ConnTest
 
   alias Dawarich.Test.{RailsUser, TripsSeeds}
+  alias DawarichWeb.RailsCsrf
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
@@ -128,14 +129,61 @@ defmodule DawarichWeb.TripsGateEndpointTest do
     end
   end
 
-  test "an uncalculated or foreign trip goes to Puma with the Rails cookie", ctx do
+  test "an uncalculated, foreign or attachment-described trip goes to Puma with the Rails cookie",
+       ctx do
     TripsSeeds.trip!(%{id: 881_102, user_id: 8811, path: nil})
+    TripsSeeds.trip!(%{id: 881_103, user_id: 8811, path: [[12.37, 51.338], [12.381, 51.341]]})
+    TripsSeeds.rich_text!(881_103, ~s(<action-text-attachment sgid="x"></action-text-attachment>))
     port = serve()
 
-    for target <- ~w(/trips/881102 /trips/881199) do
+    for target <- ~w(/trips/881102 /trips/881103 /trips/881199) do
       assert {line, [cookie]} = answered_by_puma(port, ctx.upstream, request(target, ctx.cookie))
       assert line == "GET #{target} HTTP/1.1"
       assert "_dawarich_session=" <> _ = cookie
+    end
+  end
+
+  test "note writes from the trip page reach Puma byte for byte and its Turbo Stream comes back unchanged",
+       ctx do
+    port = serve()
+    accept = "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"
+    session = RailsUser.session(8811)
+    cookie = "_dawarich_session=" <> RailsUser.cookie(session)
+    token = "authenticity_token=" <> URI.encode_www_form(RailsCsrf.masked_token(session))
+
+    for {target, body} <- [
+          {"/trips/881101/notes", token <> "&note%5Bdate%5D=2026-05-10&note%5Bbody%5D=Auensee"},
+          {"/trips/881101/notes/7", "_method=patch&" <> token <> "&note%5Bbody%5D=Rosental"},
+          {"/trips/881101/notes/7", "_method=delete&" <> token}
+        ] do
+      client = connect(port)
+
+      send_raw(
+        client,
+        "POST #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\nAccept: #{accept}\r\n" <>
+          "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n" <>
+          body
+      )
+
+      puma = accept(ctx.upstream)
+      {head, rest} = read_head(puma)
+      assert request_line(head) == "POST #{target} HTTP/1.1"
+      assert header(head, "accept") == [accept]
+      assert header(head, "cookie") == [cookie]
+      assert header(head, "content-type") == ["application/x-www-form-urlencoded"]
+      assert read_at_least(puma, rest, byte_size(body)) == body
+
+      stream =
+        ~s(<turbo-stream action="replace" target="note-881101-2026-05-10"><template>x</template></turbo-stream>)
+
+      reply(
+        puma,
+        "HTTP/1.1 200 OK\r\nContent-Type: text/vnd.turbo-stream.html; charset=utf-8\r\n" <>
+          "Content-Length: #{byte_size(stream)}\r\n\r\n#{stream}"
+      )
+
+      assert {200, headers, ^stream} = read_response(client)
+      assert values(headers, "content-type") == ["text/vnd.turbo-stream.html; charset=utf-8"]
     end
   end
 end
