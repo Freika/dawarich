@@ -176,4 +176,91 @@ defmodule Dawarich.Auth.AccountChangesTest do
   defp changed({before, _, _}, {after_row, _, _}) do
     before |> Map.keys() |> Enum.reject(&(before[&1] == after_row[&1])) |> Enum.sort()
   end
+
+  test "password updates preserve source side effects and invalidate old salts", c do
+    initial = Repo.get!(Account, c.id)
+    corpus = "test/fixtures/auth/account/requests.json" |> File.read!() |> Jason.decode!()
+
+    for {kind, password} <- [
+          {"password_only", "a11rest-new-password"},
+          {"both", "a11rest-both-password"},
+          {"password_only", String.duplicate("ü", 128)}
+        ] do
+      Repo.query!(
+        """
+        UPDATE users SET email=$1,encrypted_password=$2,reset_password_token='a11rest-reset',
+          reset_password_sent_at=$3,updated_at=$3 WHERE id=$4
+        """,
+        [c.email, initial.encrypted_password, DateTime.add(@now, -86_400), c.id],
+        log: false
+      )
+
+      before = snapshot(c.id)
+      remember = [[c.id], c.salt, DateTime.to_iso8601(@now)]
+      accepted_before = Dawarich.Auth.RememberCredential.valid?(initial, remember, @now)
+      assert accepted_before
+      email = if kind == "both", do: "A11REST-COMBINED@dawarich.test", else: c.email
+
+      input = %{
+        "email" => email,
+        "current_password" => @password,
+        "password" => password,
+        "password_confirmation" => password
+      }
+
+      assert {:ok, user} = AccountChanges.update(c.id, c.salt, input, c.context)
+
+      new_valid =
+        Bcrypt.verify_pass(
+          binary_part(password, 0, min(byte_size(password), 72)),
+          user.encrypted_password
+        )
+
+      old_valid = Bcrypt.verify_pass(@password, user.encrypted_password)
+      assert new_valid
+      refute old_valid
+      oracle = Enum.find(corpus, &(&1["name"] == kind))
+      assert bcrypt_cost(user.encrypted_password) == oracle["bcrypt_cost"]
+      after_row = snapshot(c.id)
+      assert changed(before, after_row) == oracle["changed"]
+      assert elem(before, 1) == elem(after_row, 1)
+      assert elem(before, 2) == elem(after_row, 2)
+      salt_changed = binary_part(user.encrypted_password, 0, 29) != c.salt
+      assert salt_changed
+
+      old_session_accepted =
+        not is_nil(
+          Dawarich.Accounts.from_session(%{"warden.user.user.key" => [[c.id], c.salt]}, @now)
+        )
+
+      refute old_session_accepted
+      old_remember_accepted = Dawarich.Auth.RememberCredential.valid?(user, remember, @now)
+      refute old_remember_accepted
+    end
+
+    user = Repo.get!(Account, c.id)
+    salt = binary_part(user.encrypted_password, 0, 29)
+    before = snapshot(c.id)
+
+    for input <- [
+          %{
+            "email" => "a11rest-unsaved@dawarich.test",
+            "current_password" => "wrong",
+            "password" => "short"
+          },
+          %{
+            "email" => "<bad>",
+            "current_password" => String.duplicate("ü", 128),
+            "password" => "short"
+          }
+        ] do
+      assert {:error, _} = AccountChanges.update(c.id, salt, input, c.context)
+      unchanged = snapshot(c.id) == before
+      assert unchanged
+    end
+  end
+
+  defp bcrypt_cost(hash) do
+    hash |> String.split("$") |> Enum.at(2) |> String.to_integer()
+  end
 end

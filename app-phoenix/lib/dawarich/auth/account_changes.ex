@@ -4,6 +4,7 @@ defmodule Dawarich.Auth.AccountChanges do
   alias Dawarich.Auth.{Account, AccountValidation}
   alias Dawarich.Auth.Recovery.{Settings, Token}
   alias Dawarich.{Accounts, Repo}
+  @rounds if(Mix.env() == :test, do: 4, else: 12)
 
   def update(id, session_salt, params, context \\ %{})
 
@@ -19,12 +20,24 @@ defmodule Dawarich.Auth.AccountChanges do
         )
 
       if result.errors == [],
-        do: persist(user, Map.take(result.changes, [:email]), context),
+        do: persist(user, credentials(result.changes, context), context),
         else: {:error, result.render}
     end
   end
 
   def update(_, _, _, _), do: {:handoff, :parameters}
+
+  defp credentials(changes, context) do
+    case Map.pop(changes, :password) do
+      {nil, changes} ->
+        changes
+
+      {password, changes} ->
+        bytes = binary_part(password, 0, min(byte_size(password), 72))
+        rounds = max(4, Map.get(context, :log_rounds, @rounds))
+        Map.put(changes, :encrypted_password, Bcrypt.hash_pwd_salt(bytes, log_rounds: rounds))
+    end
+  end
 
   defp email_taken?(user, params, context) do
     email = Account.normalize_email(Map.get(params, "email", user.email))
