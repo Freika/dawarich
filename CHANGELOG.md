@@ -62,6 +62,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Phoenix pages link the digested stylesheets from Rails' configured asset manifest.
+- Track-generation locks, geocoding de-duplication, the realtime debouncers and achievement-check coalescing are stored in PostgreSQL instead of Redis wherever the Phoenix tables exist.
+
+### Fixed
+
+- Background-job locks (toponym refresh, import downloads, raw-data archiving, anomaly backfills, TeslaMate and Trek sync) no longer leak behind a transaction-pooling PgBouncer.
 - Cloud layouts now initialize Paddle after its script loads.
 - Replay scrubber and playback now stay in chronological order through daylight-saving clock changes.
 - Replay scrubber controls use the profile timezone when it differs from the browser timezone.

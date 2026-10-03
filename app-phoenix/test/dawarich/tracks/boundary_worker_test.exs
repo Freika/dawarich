@@ -9,14 +9,11 @@ defmodule Dawarich.Tracks.BoundaryWorkerTest do
         ScratchRepo,
         oban(),
         %{"generation_id" => id, "poll_count" => 0},
-        [lock: [timeout_ms: 200]] ++ opts
+        [lock: [timeout_ms: 0]] ++ opts
       )
 
-  defp hold_lock!(user_id) do
-    rails = rails_redis!()
-    Redix.command!(rails, ["SET", PerUserLock.key(user_id), "rails-token", "PX", "60000"])
-    rails
-  end
+  defp hold_lock!(user_id),
+    do: Dawarich.JobsCase.hold_lease!(ScratchRepo, PerUserLock.key(user_id), "rails-token")
 
   test "completes after all chunks under the lock" do
     %{call: [call], expected: expected} = TracksFixtures.load!(ScratchRepo, "range_dst")
@@ -28,12 +25,12 @@ defmodule Dawarich.Tracks.BoundaryWorkerTest do
     chunk_tracks = actual_tracks()
     assert [["running", 3, 3, 0, 0, nil]] = generation(id)
 
-    rails = hold_lock!(user.id)
+    hold_lock!(user.id)
     assert look(id) == {:error, :lock_busy}
     assert actual_tracks() == chunk_tracks
     assert [["running", 3, 3, 0, 0, nil]] = generation(id)
 
-    Redix.command!(rails, ["DEL", PerUserLock.key(user.id)])
+    rows("DELETE FROM phoenix.leases WHERE name = $1", [PerUserLock.key(user.id)])
     assert look(id) == :ok
 
     assert generation(id) == [["completed", 3, 3, 0, 0, nil]]
@@ -105,17 +102,18 @@ defmodule Dawarich.Tracks.BoundaryWorkerTest do
     assert generation(id) == [["failed", 3, 3, 0, 0, "User 1 not found"]]
   end
 
-  test "a Redis error on the final attempt fails the generation" do
+  test "a database error while taking the lock raises, and on the final attempt fails the generation" do
     %{call: [call]} = TracksFixtures.load!(ScratchRepo, "range_dst")
     id = generate_chunks!(Settings.load!(ScratchRepo, 1), call)
-    stop_supervised!(Redix)
+    rows("ALTER TABLE phoenix.leases RENAME TO leases_away")
+    on_exit(fn -> rows("ALTER TABLE phoenix.leases_away RENAME TO leases") end)
 
-    assert {:error, {:redis, _}} = look(id, attempt: 4, max_attempts: 5)
+    assert_raise Postgrex.Error, fn -> look(id, attempt: 4, max_attempts: 5) end
     assert [["running" | _]] = generation(id)
 
-    assert {:error, {:redis, _}} = look(id, attempt: 5, max_attempts: 5)
+    assert_raise Postgrex.Error, fn -> look(id, attempt: 5, max_attempts: 5) end
     assert [["failed", 3, 3, 0, 0, error]] = generation(id)
-    assert error =~ "could not acquire lock for user_id=1"
+    assert error =~ ~s(relation "phoenix.leases" does not exist)
   end
 
   test "the final attempt is never killed by the job timeout" do

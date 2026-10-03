@@ -27,14 +27,14 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
 
       it 'Oban-owned: clears the debounce key, forwards, generates nothing' do
         key = "track_realtime:user:#{user.id}"
-        Sidekiq.redis { |redis| redis.set(key, 1) }
+        PhoenixClaims.claim(key, 120)
         job_owner!(described_class::OWNER_KEY, :oban)
         allow(Tracks::IncrementalGenerator).to receive(:new)
         job = described_class.new(user.id)
 
         job.perform_now
 
-        expect(Sidekiq.redis { |redis| redis.exists(key) }).to eq(0)
+        expect(claim_seconds(key)).to be_nil
         expect(JobOutbox.sole).to have_attributes(command_type: 'tracks.generate_realtime', aggregate_id: user.id,
                                                   event_id: job.job_id)
         expect(Tracks::IncrementalGenerator).not_to have_received(:new)
@@ -168,7 +168,7 @@ RSpec.describe Tracks::RealtimeGenerationJob, type: :job do
 
     describe 'reverse geocoding enqueueing' do
       def reset_dedup_keys
-        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+        clear_geocode_claims!
       end
 
       let(:geocoding_configured) { true }

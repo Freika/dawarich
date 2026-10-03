@@ -53,13 +53,13 @@ defmodule Dawarich.Tracks.RangeWorker do
       hook.(:locking)
 
       case PerUserLock.with_user_lock(
+             repo,
              user_id,
              fn -> generate(repo, oban, args, hook, opts) end,
              Keyword.get(opts, :lock, [])
            ) do
         {:ok, :ok} -> :ok
         {:error, :timeout} -> {:error, :lock_busy}
-        {:error, reason} -> {:error, reason}
       end
     else
       :ok

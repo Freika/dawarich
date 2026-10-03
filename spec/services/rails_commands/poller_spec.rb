@@ -402,7 +402,7 @@ RSpec.describe RailsCommands::Poller do
     command!('tracks_realtime_retrigger', { 'user_id' => user.id })
 
     expect { described_class.drain_once }.to have_enqueued_job(Tracks::RealtimeGenerationJob).with(user.id)
-    expect(Sidekiq.redis { |redis| redis.get("track_realtime:user:#{user.id}") }).to eq('1')
+    expect(claim_seconds("track_realtime:user:#{user.id}")).to be_between(119, 120)
   end
 
   it 'geocode_recent_points uses the payload’s since' do

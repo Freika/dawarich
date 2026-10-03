@@ -1,165 +1,77 @@
 defmodule Dawarich.Tracks.PerUserLockTest do
-  use ExUnit.Case, async: false
+  use Dawarich.JobsCase, async: true, group: :scratch_db
 
-  alias Dawarich.Redis
   alias Dawarich.Tracks.PerUserLock
 
-  @user_id 7
-  @key PerUserLock.key(@user_id)
-
-  setup do
-    url = Application.fetch_env!(:dawarich, :redis)[:url]
-    start_supervised!(hd(Redis.child_specs()))
-    {:ok, rails} = Redix.start_link(url, database: 1)
-    {:ok, cache} = Redix.start_link(url, database: 0)
-    Redix.command!(rails, ["FLUSHDB"])
-
-    %{rails: rails, cache: cache}
+  test "the lease name is the key Rails' Tracks::PerUserLock uses" do
+    assert PerUserLock.key(42) == "tracks:per_user_lock:42"
   end
 
-  test "holds the Rails key in database 1 while fun runs", %{rails: rails, cache: cache} do
-    assert {:ok, :ran} =
-             PerUserLock.with_user_lock(@user_id, fn ->
-               assert {:ok, token} = Redix.command(rails, ["GET", @key])
-               assert token =~ ~r/\A[0-9a-f-]{36}\z/
-
-               assert {:ok, ttl} = Redix.command(rails, ["PTTL", @key])
-               assert ttl in 1..60_000
-
-               assert Redix.command(cache, ["GET", @key]) == {:ok, nil}
-               :ran
+  test "holds the user's lease while fun runs and releases it afterwards" do
+    assert {:ok, [[holder, true]]} =
+             PerUserLock.with_user_lock(ScratchRepo, 7, fn ->
+               rows(
+                 "SELECT holder, expires_at > statement_timestamp() FROM phoenix.leases WHERE name = 'tracks:per_user_lock:7'"
+               )
              end)
 
-    assert Redix.command(rails, ["GET", @key]) == {:ok, nil}
+    assert holder =~ ~r/\A[0-9a-f-]{36}\z/
+    assert lease_holders(ScratchRepo, "tracks:per_user_lock:7") == []
   end
 
-  test "times out while another runtime holds the key", %{rails: rails} do
-    Redix.command!(rails, ["SET", @key, "other", "PX", "60000"])
-    parent = self()
+  test "a lease Rails holds keeps Phoenix out until Rails releases it" do
+    hold_lease!(ScratchRepo, "tracks:per_user_lock:7", "rails-token")
 
-    assert PerUserLock.with_user_lock(@user_id, fn -> send(parent, :ran) end, timeout_ms: 250) ==
+    assert PerUserLock.with_user_lock(ScratchRepo, 7, fn -> flunk("ran") end, timeout_ms: 0) ==
              {:error, :timeout}
 
-    refute_received :ran
-    assert Redix.command(rails, ["GET", @key]) == {:ok, "other"}
-  end
+    assert lease_holders(ScratchRepo, "tracks:per_user_lock:7") == [["rails-token"]]
+    rows("DELETE FROM phoenix.leases WHERE holder = 'rails-token'")
 
-  test "acquires once the holder's key expires", %{rails: rails} do
-    Redix.command!(rails, ["SET", @key, "other", "PX", "150"])
-
-    assert PerUserLock.with_user_lock(@user_id, fn -> :ran end, timeout_ms: 2_000, poll_ms: 10) ==
+    assert PerUserLock.with_user_lock(ScratchRepo, 7, fn -> :ran end, timeout_ms: 0) ==
              {:ok, :ran}
   end
 
-  test "release never deletes another holder's token", %{rails: rails} do
-    assert {:ok, :ran} =
-             PerUserLock.with_user_lock(@user_id, fn ->
-               Redix.command!(rails, ["SET", @key, "stolen"])
-               :ran
-             end)
+  test "locks are per user" do
+    hold_lease!(ScratchRepo, "tracks:per_user_lock:7", "rails-token")
 
-    assert Redix.command(rails, ["GET", @key]) == {:ok, "stolen"}
+    assert PerUserLock.with_user_lock(ScratchRepo, 8, fn -> :ran end, timeout_ms: 0) ==
+             {:ok, :ran}
   end
 
-  test "renew extends only its own token" do
-    token = Ecto.UUID.generate()
-    assert {:ok, "OK"} = Redis.command(["SET", @key, token, "PX", "1000"])
+  test "a holder killed mid-run keeps the lease until it expires, then the next caller takes it over" do
+    test = self()
 
-    refute PerUserLock.renew(@key, "someone-else-token", 5_000)
-    assert PerUserLock.renew(@key, token, 5_000)
+    {pid, ref} =
+      spawn_monitor(fn ->
+        PerUserLock.with_user_lock(ScratchRepo, 9, fn ->
+          send(test, :holding)
+          receive(do: (:never -> :ok))
+        end)
+      end)
 
-    assert {:ok, ttl} = Redis.command(["PTTL", @key])
-    assert ttl > 4_000
+    assert_receive :holding, 5_000
+    Process.exit(pid, :kill)
+    assert_receive {:DOWN, ^ref, :process, ^pid, :killed}, 5_000
+    assert [[_crashed]] = lease_holders(ScratchRepo, "tracks:per_user_lock:9")
+
+    assert PerUserLock.with_user_lock(ScratchRepo, 9, fn -> :ran end, timeout_ms: 0) ==
+             {:error, :timeout}
+
+    rows(
+      "UPDATE phoenix.leases SET expires_at = statement_timestamp() - interval '1 second' WHERE name = 'tracks:per_user_lock:9'"
+    )
+
+    assert PerUserLock.with_user_lock(ScratchRepo, 9, fn -> :ran end, timeout_ms: 0) ==
+             {:ok, :ran}
   end
 
-  test "renew_reply distinguishes a foreign token from an error" do
-    token = Ecto.UUID.generate()
-    assert {:ok, "OK"} = Redis.command(["SET", @key, token, "PX", "5000"])
+  test "a database error while taking the lock raises instead of returning an error tuple" do
+    rows("ALTER TABLE phoenix.leases RENAME TO leases_away")
+    on_exit(fn -> rows("ALTER TABLE phoenix.leases_away RENAME TO leases") end)
 
-    assert PerUserLock.renew_reply(@key, token, 5_000) == {:ok, 1}
-    assert PerUserLock.renew(@key, token, 5_000)
-
-    assert PerUserLock.renew_reply(@key, "someone-else-token", 5_000) == {:ok, 0}
-    refute PerUserLock.renew(@key, "someone-else-token", 5_000)
-
-    stop_supervised!(Redix)
-    assert {:error, _} = PerUserLock.renew_reply(@key, token, 5_000)
-  end
-
-  test "the heartbeat renews during a long body", %{rails: rails} do
-    assert {:ok, :ran} =
-             PerUserLock.with_user_lock(
-               @user_id,
-               fn ->
-                 assert :ok = await_renewal(rails, @key, 400, 50)
-                 assert {:ok, token} = Redix.command(rails, ["GET", @key])
-                 refute is_nil(token)
-                 :ran
-               end,
-               ttl_ms: 400,
-               renew_ms: 50
-             )
-  end
-
-  test "derives renew_ms from ttl_ms like Rails when the caller omits it", %{rails: rails} do
-    assert {:ok, :ran} =
-             PerUserLock.with_user_lock(
-               @user_id,
-               fn ->
-                 await_elapsed(350)
-                 assert {:ok, token} = Redix.command(rails, ["GET", @key])
-                 refute is_nil(token)
-                 :ran
-               end,
-               ttl_ms: 300
-             )
-  end
-
-  test "a raising fun still releases", %{rails: rails} do
-    assert_raise RuntimeError, fn ->
-      PerUserLock.with_user_lock(@user_id, fn -> raise "boom" end)
-    end
-
-    assert Redix.command(rails, ["GET", @key]) == {:ok, nil}
-  end
-
-  test "Redis down is an error, not a crash" do
-    stop_supervised!(Redix)
-
-    assert {:error, {:redis, _}} = PerUserLock.with_user_lock(@user_id, fn -> :ran end)
-  end
-
-  defp await_renewal(conn, key, ttl_ms, renew_ms) do
-    deadline = System.monotonic_time(:millisecond) + ttl_ms * 2
-    await_renewal(conn, key, ttl_ms - renew_ms, false, deadline)
-  end
-
-  defp await_renewal(conn, key, threshold, decayed?, deadline) do
-    if System.monotonic_time(:millisecond) >= deadline do
-      flunk("PTTL never renewed above #{threshold}ms after decaying at or below it")
-    else
-      case Redix.command!(conn, ["PTTL", key]) do
-        ttl when ttl > threshold and decayed? ->
-          :ok
-
-        ttl ->
-          :erlang.yield()
-          await_renewal(conn, key, threshold, decayed? or ttl <= threshold, deadline)
-      end
-    end
-  end
-
-  defp await_elapsed(ms) do
-    deadline = System.monotonic_time(:millisecond) + ms
-    wait_until(deadline)
-  end
-
-  defp wait_until(deadline) do
-    if System.monotonic_time(:millisecond) >= deadline do
-      :ok
-    else
-      :erlang.yield()
-      wait_until(deadline)
+    assert_raise Postgrex.Error, fn ->
+      PerUserLock.with_user_lock(ScratchRepo, 7, fn -> flunk("ran") end, timeout_ms: 0)
     end
   end
 end

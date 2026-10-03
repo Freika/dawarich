@@ -9,6 +9,18 @@ defmodule Dawarich.State do
   """
   @claimed "SELECT 1 FROM phoenix.once_claims WHERE key = $1 AND expires_at > statement_timestamp()"
   @unclaim "DELETE FROM phoenix.once_claims WHERE key = $1"
+  @claim_all """
+  INSERT INTO phoenix.once_claims AS c (key, expires_at)
+  SELECT k, statement_timestamp() + make_interval(secs => $2) FROM unnest($1::text[]) AS k ORDER BY k
+  ON CONFLICT (key) DO UPDATE SET expires_at = EXCLUDED.expires_at
+  WHERE c.expires_at <= statement_timestamp()
+  RETURNING key
+  """
+  @unclaim_all "DELETE FROM phoenix.once_claims WHERE key = ANY($1::text[])"
+  @slide """
+  UPDATE phoenix.once_claims SET expires_at = statement_timestamp() + make_interval(secs => $2)
+  WHERE key = $1 AND expires_at > statement_timestamp()
+  """
   @increment """
   INSERT INTO phoenix.counters AS c (key, value, expires_at)
   VALUES ($1, $2, statement_timestamp() + make_interval(secs => $3))
@@ -58,6 +70,22 @@ defmodule Dawarich.State do
     repo.query!(@unclaim, [key], log: false)
     :ok
   end
+
+  def claim_all(repo, keys, ttl_seconds)
+      when is_list(keys) and is_integer(ttl_seconds) and ttl_seconds > 0 do
+    case Enum.uniq(keys) do
+      [] -> []
+      keys -> List.flatten(repo.query!(@claim_all, [keys, ttl_seconds], log: false).rows)
+    end
+  end
+
+  def unclaim_all(repo, keys) when is_list(keys) do
+    repo.query!(@unclaim_all, [keys], log: false)
+    :ok
+  end
+
+  def debounce(repo, key, ttl_seconds),
+    do: claim(repo, key, ttl_seconds) or slide(repo, key, ttl_seconds)
 
   def increment(repo, key, by, ttl_seconds)
       when is_binary(key) and is_integer(by) and is_integer(ttl_seconds) and ttl_seconds > 0 do
@@ -123,6 +151,11 @@ defmodule Dawarich.State do
   def increment_cursor(repo, key) when is_binary(key) do
     %{rows: [[value]]} = repo.query!(@increment_cursor, [key], log: false)
     value
+  end
+
+  defp slide(repo, key, ttl_seconds) do
+    repo.query!(@slide, [key, ttl_seconds], log: false)
+    false
   end
 
   defp tokens(repo, keys),

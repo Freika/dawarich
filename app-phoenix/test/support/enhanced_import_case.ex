@@ -3,7 +3,7 @@ defmodule Dawarich.EnhancedImportCase do
   use ExUnit.CaseTemplate
 
   alias Dawarich.Geocoding.HookRepo
-  alias Dawarich.{Redis, ScratchRepo, Storage, Wave5bFixtures}
+  alias Dawarich.{ScratchRepo, Storage, Wave5bFixtures}
 
   @dir "test/fixtures/enhanced_import"
   @places "SELECT user_id, name, latitude::text, longitude::text, ST_AsText(lonlat), city, country, source, " <>
@@ -24,8 +24,6 @@ defmodule Dawarich.EnhancedImportCase do
 
   def setup! do
     truncate!()
-    ExUnit.Callbacks.start_supervised!(hd(Redis.child_specs()))
-    {:ok, "OK"} = Redis.command(["FLUSHDB"])
     HookRepo.clear_hook()
     ExUnit.Callbacks.on_exit(&HookRepo.clear_hook/0)
     root = Path.join(System.tmp_dir!(), "w5b-extract-#{System.unique_integer([:positive])}")

@@ -134,14 +134,12 @@ RSpec.describe Point, type: :model do
     describe '#async_reverse_geocode' do
       let(:point) { build(:point) }
 
-      def clear_dedup_key(point_id)
-        Sidekiq.redis { |r| r.del(Point.geocode_dedup_key(point_id)) }
-      end
+      def clear_dedup_key(point_id) = PhoenixClaims.unclaim(Point.geocode_dedup_key(point_id))
 
       before do
         configure_instance_geocoding
         allow(DawarichSettings).to receive(:store_geodata?).and_return(true)
-        Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } }
+        clear_geocode_claims!
       end
 
       it 'enqueues ReverseGeocodeJob with correct arguments' do
@@ -171,6 +169,36 @@ RSpec.describe Point, type: :model do
         end
       end
 
+      context 'with phoenix.once_claims' do
+        before { phoenix_state! }
+
+        def claimed?(id)
+          key = ActiveRecord::Base.connection.quote(Point.geocode_dedup_key(id))
+          ActiveRecord::Base.connection.select_value(
+            "SELECT count(*) FROM phoenix.once_claims WHERE key = #{key} AND expires_at > statement_timestamp()"
+          ).to_i == 1
+        end
+
+        it 'claims the dedupe row instead of the Redis key and enqueues once until it is released' do
+          point.save
+
+          expect(claimed?(point.id)).to be(true)
+          expect(Sidekiq.redis { |r| r.exists(Point.geocode_dedup_key(point.id)) }).to eq(0)
+          expect { point.async_reverse_geocode }.not_to have_enqueued_job(ReverseGeocodingJob)
+          PhoenixClaims.unclaim(Point.geocode_dedup_key(point.id))
+          expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
+            .with('Point', point.id, force: false)
+        end
+
+        it 'clears the row on force' do
+          point.save
+
+          expect { point.async_reverse_geocode(force: true) }.to have_enqueued_job(ReverseGeocodingJob)
+            .with('Point', point.id, force: true)
+          expect(claimed?(point.id)).to be(false)
+        end
+      end
+
       context 'when called twice for the same point' do
         it 'only enqueues a single job (dedup)' do
           point.save
@@ -178,7 +206,14 @@ RSpec.describe Point, type: :model do
           expect { point.async_reverse_geocode }.not_to have_enqueued_job(ReverseGeocodingJob)
         end
 
-        it 'sets a 24h-TTL Redis key for the point id' do
+        it 'claims a 24h dedupe row for the point id' do
+          point.save
+
+          expect(claim_seconds(Point.geocode_dedup_key(point.id))).to be_between(86_399, 86_400)
+        end
+
+        it 'sets a 24h-TTL Redis key for the point id where Phoenix never migrated' do
+          without_phoenix_state!
           point.save
 
           ttl = Sidekiq.redis { |r| r.ttl(Point.geocode_dedup_key(point.id)) }
@@ -201,7 +236,7 @@ RSpec.describe Point, type: :model do
 
           point.async_reverse_geocode(force: true)
 
-          expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
+          expect(claim_seconds(Point.geocode_dedup_key(point.id))).to be_nil
         end
       end
 
@@ -222,7 +257,7 @@ RSpec.describe Point, type: :model do
           allow(ReverseGeocodingJob).to receive(:perform_later).and_raise(StandardError, 'queue down')
 
           expect { point.async_reverse_geocode }.to raise_error(StandardError, 'queue down')
-          expect(Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(point.id)) }).to eq(0)
+          expect(claim_seconds(Point.geocode_dedup_key(point.id))).to be_nil
         end
       end
     end

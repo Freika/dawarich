@@ -13,7 +13,7 @@ module TeslaMate
       user = find_user_or_skip(user_id) || return
       return unless sync_allowed?(user)
 
-      ActiveRecord::Base.with_advisory_lock("teslamate-sync:#{user.id}", timeout_seconds: 0) do
+      PhoenixLease.try_hold("teslamate-sync:#{user.id}") do
         TeslaMate::Sync.new(user).call
       end
     end
