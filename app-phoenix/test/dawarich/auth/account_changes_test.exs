@@ -105,4 +105,75 @@ defmodule Dawarich.Auth.AccountChangesTest do
     [[mail_jobs]] = Repo.query!("SELECT count(*) FROM oban.oban_jobs", [], log: false).rows
     {row, jobs, mail_jobs}
   end
+
+  test "email changes clear reset credentials but preserve password and login state", c do
+    before = snapshot(c.id)
+    input = %{"email" => " #{String.upcase(c.email)} ", "current_password" => @password}
+    assert {:ok, user} = AccountChanges.update(c.id, c.salt, input, c.context)
+    assert user.email == c.email
+    unchanged = snapshot(c.id) == before
+    assert unchanged
+
+    input = %{input | "email" => " A11REST-UPDATED@dawarich.test "}
+    assert {:ok, user} = AccountChanges.update(c.id, c.salt, input, c.context)
+    assert user.email == "a11rest-updated@dawarich.test"
+    reset_cleared = is_nil(user.reset_password_token) and is_nil(user.reset_password_sent_at)
+    assert reset_cleared
+    after_row = snapshot(c.id)
+
+    oracle =
+      "test/fixtures/auth/account/requests.json"
+      |> File.read!()
+      |> Jason.decode!()
+      |> Enum.find(&(&1["name"] == "email_only"))
+
+    assert changed(before, after_row) == oracle["changed"]
+    same_hash = elem(before, 0)["encrypted_password"] == elem(after_row, 0)["encrypted_password"]
+    assert same_hash
+    assert user.updated_at == @now
+    assert elem(before, 1) == elem(after_row, 1)
+    assert elem(before, 2) == elem(after_row, 2)
+
+    user_from_session =
+      Dawarich.Accounts.from_session(%{"warden.user.user.key" => [[c.id], c.salt]}, @now)
+
+    assert user_from_session.id == c.id
+  end
+
+  test "email collisions leave both actors unchanged", c do
+    [[other_id]] =
+      Repo.query!(
+        """
+        INSERT INTO users(email,encrypted_password,status,created_at,updated_at)
+        SELECT 'a11rest-collision@dawarich.test',encrypted_password,1,created_at,updated_at
+        FROM users WHERE id=$1 RETURNING id
+        """,
+        [c.id],
+        log: false
+      ).rows
+
+    input = %{"email" => String.upcase(c.email), "current_password" => @password}
+    before = snapshot(c.id)
+    assert {:ok, _} = AccountChanges.update(c.id, c.salt, input, c.context)
+    unchanged = snapshot(c.id) == before
+    assert unchanged
+
+    for deleted_at <- [nil, @now] do
+      Repo.query!("UPDATE users SET deleted_at=$1 WHERE id=$2", [deleted_at, other_id],
+        log: false
+      )
+
+      before = snapshot(c.id)
+      other_before = snapshot(other_id)
+      input = %{input | "email" => "A11REST-COLLISION@dawarich.test"}
+      assert {:error, render} = AccountChanges.update(c.id, c.salt, input, c.context)
+      assert render.messages == ["Email has already been taken"]
+      unchanged = snapshot(c.id) == before and snapshot(other_id) == other_before
+      assert unchanged
+    end
+  end
+
+  defp changed({before, _, _}, {after_row, _, _}) do
+    before |> Map.keys() |> Enum.reject(&(before[&1] == after_row[&1])) |> Enum.sort()
+  end
 end

@@ -14,14 +14,41 @@ defmodule Dawarich.Auth.AccountChanges do
       result =
         AccountValidation.validate(params, user.email,
           current_password_valid: valid,
+          email_taken: email_taken?(user, params, context),
           locale: Map.get(context, :locale, "en")
         )
 
-      if result.errors == [], do: {:ok, user}, else: {:error, result.render}
+      if result.errors == [],
+        do: persist(user, Map.take(result.changes, [:email]), context),
+        else: {:error, result.render}
     end
   end
 
   def update(_, _, _, _), do: {:handoff, :parameters}
+
+  defp email_taken?(user, params, context) do
+    email = Account.normalize_email(Map.get(params, "email", user.email))
+    repo = Map.get(context, :repo, Repo)
+    repo.exists?(from u in Account, where: u.email == ^email and u.id != ^user.id)
+  end
+
+  defp persist(user, changes, _context) when map_size(changes) == 0, do: {:ok, user}
+
+  defp persist(user, changes, context) do
+    changes =
+      Map.merge(changes, %{
+        reset_password_token: nil,
+        reset_password_sent_at: nil,
+        updated_at: Map.get(context, :clock, &DateTime.utc_now/0).()
+      })
+
+    changeset =
+      user
+      |> Ecto.Changeset.change(changes)
+      |> Ecto.Changeset.unique_constraint(:email, name: :index_users_on_email)
+
+    {:ok, Map.get(context, :repo, Repo).update!(changeset)}
+  end
 
   def actor(id, session_salt, context) do
     cond do
