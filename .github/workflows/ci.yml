@@ -136,6 +136,15 @@ jobs:
             app-phoenix/_build
           key: mix-${{ runner.os }}-${{ hashFiles('app-phoenix/mix.lock') }}
 
+      - name: Set up Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: 18.17.1
+          cache: npm
+
+      - name: Install JavaScript dependencies
+        run: npm ci
+
       - name: Test Phoenix
         working-directory: app-phoenix
         run: |
@@ -144,3 +153,4 @@ jobs:
           mix compile --warnings-as-errors
           mix test
           scripts/release_smoke.sh
+          mix test --only rails_parity

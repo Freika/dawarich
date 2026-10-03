@@ -52,9 +52,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Clicking a place on the map opens its details panel instead of a popup. The panel's Edit button changes the place's name and tags.
 - The `phoenix` and `oban` schemas no longer need the database-level `CREATE` privilege once they exist: with a database user that lacks it, have an administrator run `CREATE SCHEMA phoenix AUTHORIZATION <user>` and `CREATE SCHEMA oban AUTHORIZATION <user>` once.
 - The image also ships `release.sh`, `cloud-entrypoint.sh` and `cloud-sidekiq-entrypoint.sh` for platforms that run migrations as a separate release step. With them the web container neither migrates nor seeds, every process drops from root to uid 32767 (or `PUID`/`PGID`), and the Elixir supervisor starts only once `release.sh` has installed its schemas. When `release.sh` cannot install them, it logs a warning and web containers start Rails without the Elixir supervisor; with `SELF_HOSTED=false` it stops the deploy instead. `docker-compose.yml` setups are not affected.
+- The Docker image builds its compiled assets, translations, achievements list and importmap without Ruby; Rails reads the same asset manifest as Phoenix. Gem-provided translations and assets are vendored under `config/locales/0_vendor` and `vendor/assets`.
+- After upgrading a gem listed in `PhoenixBuildInputs::VENDORED` (`lib/phoenix_build_inputs.rb`: the Rails framework gems, Devise, Turbo, Stimulus, Trix, Chartkick, tailwindcss-rails and the others listed there), run `RAILS_ENV=test bundle exec rake phoenix:vendor` and commit the refreshed copies. Until then Rails keeps serving the old vendored files and translations, and `spec/lib/phoenix_build_inputs_spec.rb` fails.
+- After upgrading sprockets, sprockets-rails, importmap-rails, i18n or tailwindcss-ruby, `spec/lib/phoenix_build_inputs_spec.rb` fails until its pinned versions are updated, because the image's Ruby-free build reproduces their output: first run `mix test --only rails_parity` in `app-phoenix/`, and if the digest vectors in `app-phoenix/test/dawarich/build/sprockets/compiler_test.exs` no longer match (a re-vendored turbo, stimulus or actiontext changes them), refresh them from a `RAILS_ENV=test bundle exec rake "phoenix:assets[<dir>,<dir>/manifest.json]"` manifest. Keep `tailwindcss` in `package.json` at the version tailwindcss-ruby has.
 
 ### Fixed
 
+- Phoenix pages link the digested stylesheets from Rails' configured asset manifest.
 - Cloud layouts now initialize Paddle after its script loads.
 - Replay scrubber and playback now stay in chronological order through daylight-saving clock changes.
 - Replay scrubber controls use the profile timezone when it differs from the browser timezone.
