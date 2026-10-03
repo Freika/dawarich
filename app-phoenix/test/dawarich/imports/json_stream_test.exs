@@ -86,7 +86,34 @@ defmodule Dawarich.Imports.JsonStreamTest do
           expected = if @record["error"] == "Oj::ParseError", do: :invalid_float, else: :syntax
           assert error.reason == expected
         else
-          assert parse.() == {:object, Enum.to_list(@record["value"])}
+          assert {:object, pairs} = parse.()
+          assert same?(Enum.map(pairs, &elem(&1, 1)), Map.values(@record["value"]))
+          assert Enum.map(pairs, &elem(&1, 0)) == Map.keys(@record["value"])
+        end
+      end)
+    end
+  end
+
+  for record <- Jason.decode!(File.read!(@compat_oracle)) do
+    @record record
+    test "actual Oj GeoJSON saj lexical oracle #{record["name"]}" do
+      with_source(@record["input"], fn path ->
+        parse = fn ->
+          path
+          |> JsonStream.reduce(
+            [],
+            fn
+              {:value, ["altitude"], value, _, _}, acc -> [value | acc]
+              _, acc -> acc
+            end,
+            fn _ -> true end
+          )
+          |> Enum.reverse()
+        end
+
+        case @record["saj"] do
+          %{"outcome" => "error"} -> assert_raise JsonStream.Error, parse
+          %{"values" => values} -> assert same?(parse.(), values)
         end
       end)
     end
@@ -121,8 +148,11 @@ defmodule Dawarich.Imports.JsonStreamTest do
     assert_receive {:private_directory, directory}, 2000
     assert band(File.stat!(directory).mode, 0o777) == 0o700
     assert band(File.stat!(Path.join(directory, "rows")).mode, 0o777) == 0o600
+    {:monitors, [process: guard]} = Process.info(pid, :monitors)
+    guard_ref = Process.monitor(guard)
     Process.exit(pid, :kill)
-    eventually(fn -> not File.exists?(directory) end)
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, :normal}
+    refute File.exists?(directory)
 
     assert_raise RuntimeError, fn ->
       Spool.with_directory(%{}, fn directory ->
@@ -136,60 +166,153 @@ defmodule Dawarich.Imports.JsonStreamTest do
   end
 
   test "discarded 8MiB unknown string never becomes a retained DOM" do
-    Spool.with_directory(%{}, fn directory ->
-      path = Path.join(directory, "source")
-      f = Spool.open!(path)
-      IO.binwrite(f, ~s({"unknown":"))
-      block = :binary.copy("x", 65536)
-      Enum.each(1..128, fn _ -> IO.binwrite(f, block) end)
-      IO.binwrite(f, ~s(","selected":42}))
-      File.close(f)
-      parent = self()
-
-      pid =
-        spawn(fn ->
-          result =
-            JsonStream.reduce(
-              path,
-              [],
-              fn
-                {:value, ["selected"], v, _, _}, acc -> [v | acc]
-                _, acc -> acc
-              end,
-              fn path -> path == ["selected"] end
-            )
-
-          send(parent, {:stream_result, result})
-        end)
-
-      peak = monitor_memory(pid, 0)
-      assert_receive {:stream_result, [42]}, 2000
-      assert peak < 8 * 1024 * 1024
+    with_large_string(:discarded, fn path ->
+      assert [42] ==
+               JsonStream.reduce(path, [], &selected/2, &(&1 == ["selected"]),
+                 max_heap_bytes: 4 * 1024 * 1024
+               )
     end)
   end
 
-  defp monitor_memory(pid, peak) do
-    case Process.info(pid, :memory) do
-      nil ->
-        peak
+  test "a retained 8MiB string costs about its own size, not a list cell per byte" do
+    with_large_string(:retained, fn path ->
+      assert [value] =
+               JsonStream.reduce(path, [], &selected/2, &(&1 == ["selected"]),
+                 mode: :compat,
+                 max_heap_bytes: 48 * 1024 * 1024
+               )
 
-      {:memory, bytes} ->
-        Process.sleep(10)
-        monitor_memory(pid, max(bytes, peak))
-    end
+      assert byte_size(value) == 8 * 1024 * 1024
+    end)
   end
 
-  defp eventually(fun, attempts \\ 100)
-  defp eventually(fun, 0), do: assert(fun.())
+  test "a short retained string does not pin the read buffer it came from" do
+    padding = :binary.copy("p", 60_000)
 
-  defp eventually(fun, n) do
-    if fun.(),
-      do: :ok,
-      else:
-        (
-          Process.sleep(10)
-          eventually(fun, n - 1)
-        )
+    with_source(~s({"pad":"#{padding}","selected":"short"}), fn path ->
+      assert ["short"] = [value] = JsonStream.reduce(path, [], &selected/2, &(&1 == ["selected"]))
+      assert :binary.referenced_byte_size(value) < 1024
+    end)
+  end
+
+  test "a parse over its heap cap fails the reduce with a memory error and leaves the caller running" do
+    with_large_string(:retained, fn path ->
+      error =
+        assert_raise JsonStream.Error, fn ->
+          JsonStream.reduce(path, [], &selected/2, &(&1 == ["selected"]),
+            max_heap_bytes: 4 * 1024 * 1024
+          )
+        end
+
+      assert error.reason == :memory
+      assert error.message == "JSON document needs more than 4 MiB of memory"
+    end)
+  end
+
+  test "nesting is capped at 10000 levels" do
+    deep = fn n -> String.duplicate("[", n) <> String.duplicate("]", n) end
+    with_source(deep.(10_000), fn path -> assert :ok == JsonStream.reduce(path, :ok, &keep/2) end)
+
+    with_source(deep.(10_001), fn path ->
+      error = assert_raise JsonStream.Error, fn -> JsonStream.reduce(path, :ok, &keep/2) end
+      assert error.reason == :depth
+    end)
+  end
+
+  @tag :tmp_dir
+  test "retained object members are collected in linear time", %{tmp_dir: dir} do
+    assert reductions(dir, 20_000) < 8 * reductions(dir, 5_000)
+  end
+
+  @tag :tmp_dir
+  test "a callback error stops the parser and reaches the caller", %{tmp_dir: dir} do
+    path = Path.join(dir, "list.json")
+    File.write!(path, "[" <> Enum.map_join(1..1000, ",", &Integer.to_string/1) <> "]")
+
+    assert_raise RuntimeError, "callback failed", fn ->
+      JsonStream.reduce(path, nil, fn
+        {:value, [0], _, _, _}, _ ->
+          {:monitors, [process: parser]} = Process.info(self(), :monitors)
+          send(self(), {:parser, parser})
+          raise "callback failed"
+
+        _, acc ->
+          acc
+      end)
+    end
+
+    assert_received {:parser, parser}
+    ref = Process.monitor(parser)
+    assert_receive {:DOWN, ^ref, :process, ^parser, reason} when reason in [:killed, :noproc]
+  end
+
+  test "a killed spool guard does not leave the owner waiting" do
+    {:monitored_by, before} = Process.info(self(), :monitored_by)
+
+    Spool.with_directory(%{}, fn directory ->
+      send(self(), {:directory, directory})
+      {:monitored_by, now} = Process.info(self(), :monitored_by)
+      [guard] = now -- before
+      Process.exit(guard, :kill)
+    end)
+
+    assert_received {:directory, directory}
+    refute File.exists?(directory)
+  end
+
+  defp same?(actual, expected) when is_list(actual) and is_list(expected),
+    do: length(actual) == length(expected) and Enum.all?(Enum.zip(actual, expected), &same?/1)
+
+  defp same?({actual, %{"scrubbed" => text}}), do: actual == text
+
+  defp same?({actual, expected}) when is_float(expected),
+    do: is_float(actual) and actual == expected
+
+  defp same?({actual, expected}) when is_integer(expected),
+    do: is_integer(actual) and actual == expected
+
+  defp same?({actual, expected}), do: actual == expected
+
+  defp selected({:value, ["selected"], value, _, _}, acc), do: [value | acc]
+  defp selected(_, acc), do: acc
+  defp keep(_, acc), do: acc
+
+  defp reductions(dir, n) do
+    path = Path.join(dir, "object-#{n}.json")
+    File.write!(path, "{" <> Enum.map_join(1..n, ",", &~s("k#{&1}":#{&1})) <> "}")
+
+    {_parser, count} =
+      JsonStream.reduce(
+        path,
+        nil,
+        fn
+          _, nil ->
+            {:monitors, [process: parser]} = Process.info(self(), :monitors)
+            {parser, 0}
+
+          _, {parser, count} ->
+            case Process.info(parser, :reductions) do
+              {:reductions, latest} -> {parser, latest}
+              nil -> {parser, count}
+            end
+        end,
+        fn _ -> true end
+      )
+
+    count
+  end
+
+  defp with_large_string(kind, fun) do
+    Spool.with_directory(%{}, fn directory ->
+      path = Path.join(directory, "source")
+      f = Spool.open!(path)
+      IO.binwrite(f, if(kind == :discarded, do: ~s({"unknown":"), else: ~s({"selected":")))
+      block = :binary.copy("x", 65536)
+      Enum.each(1..128, fn _ -> IO.binwrite(f, block) end)
+      IO.binwrite(f, if(kind == :discarded, do: ~s(","selected":42}), else: ~s("})))
+      File.close(f)
+      fun.(path)
+    end)
   end
 
   defp with_source(json, fun) do

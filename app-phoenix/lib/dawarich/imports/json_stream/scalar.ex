@@ -1,40 +1,40 @@
 defmodule Dawarich.Imports.JsonStream.Scalar do
   @moduledoc false
+  import Bitwise
   alias Dawarich.Imports.JsonStream.Reader
+  @named %{?b => <<8>>, ?f => <<12>>, ?n => <<10>>, ?r => <<13>>, ?t => <<9>>}
 
-  def read(34, r, keep, opts), do: string(r, keep, Keyword.get(opts, :unicode, :saj))
+  def read(?", r, keep, opts), do: string(r, keep, Keyword.get(opts, :unicode, :saj))
 
-  def read(c, r, keep, _opts) when c in [110, 116, 102] do
-    {token, value} = %{110 => {"ull", nil}, 116 => {"rue", true}, 102 => {"alse", false}}[c]
+  def read(c, r, keep, _opts) when c in [?n, ?t, ?f] do
+    {token, value} = %{?n => {"ull", nil}, ?t => {"rue", true}, ?f => {"alse", false}}[c]
     r = Enum.reduce(:binary.bin_to_list(token), r, &Reader.expect(&2, &1))
     {if(keep, do: value, else: nil), r}
   end
 
-  def read(73, r, keep, _opts), do: infinity(r, keep, :infinity)
+  def read(?I, r, keep, _opts), do: infinity(r, keep, :infinity)
 
-  def read(78, r, keep, opts) do
+  def read(?N, r, keep, opts) do
     if not Keyword.get(opts, :allow_nan, false), do: throw(:invalid)
-    r = r |> Reader.expect(97) |> Reader.expect(78)
+    r = r |> Reader.expect(?a) |> Reader.expect(?N)
     {if(keep, do: :nan, else: nil), r}
   end
 
-  def read(c, r, keep, opts) when c in [43, 45] or c in 48..57 do
+  def read(c, r, keep, opts) when c in [?+, ?-] or c in ?0..?9 do
     strict = Keyword.get(opts, :strict_numbers, false)
-    if c == 43 and strict, do: throw(:invalid)
+    decoder = Keyword.get(opts, :number_decoder)
+    if c == ?+ and strict, do: throw(:invalid)
 
     case Reader.peek(r) do
-      {73, r} when c in [43, 45] ->
-        infinity(Reader.expect(r, 73), keep, if(c == 45, do: :neg_infinity, else: :infinity))
+      {?I, r} when c in [?+, ?-] ->
+        infinity(Reader.expect(r, ?I), keep, if(c == ?-, do: :neg_infinity, else: :infinity))
+
+      {_, r} when strict ->
+        strict_number(r, c, keep, decoder)
 
       {_, r} ->
-        number(
-          r,
-          if(keep, do: <<c>>, else: ""),
-          keep,
-          if(c in [43, 45], do: :sign, else: if(c == 48, do: :zero, else: :int)),
-          strict,
-          Keyword.get(opts, :number_decoder)
-        )
+        state = if(c in [?+, ?-], do: :sign, else: if(c == ?0, do: :zero, else: :int))
+        number(r, if(keep, do: <<c>>, else: ""), keep, state, decoder)
     end
   end
 
@@ -45,169 +45,197 @@ defmodule Dawarich.Imports.JsonStream.Scalar do
     {if(keep, do: value, else: nil), r}
   end
 
-  def string(r, mode, unicode), do: string(r, mode, [], 0, unicode)
+  def string(r, mode, unicode), do: chars(r, mode, unicode, [], 0)
 
-  defp string(r, mode, acc, size, unicode) do
-    case Reader.get(r) do
-      {34, r} ->
-        value =
-          if mode == false or (mode == :key and size > 256),
-            do: nil,
-            else: decode_string(acc, unicode)
+  defp chars(r, mode, unicode, acc, size) do
+    {piece, r} = Reader.chunk(r)
+    acc = save(acc, piece, mode, size)
+    size = size + byte_size(piece)
 
-        {value, r}
+    case Reader.peek(r) do
+      {?", r} ->
+        {finish(acc, mode, size, unicode), Reader.expect(r, ?")}
 
-      {92, r} ->
-        {escaped, r} = escape(r, unicode)
-        bytes = [92, escaped]
-        string(r, mode, save(acc, bytes, mode, size), size + IO.iodata_length(bytes), unicode)
+      {?\\, r} ->
+        {piece, raw, r} = r |> Reader.expect(?\\) |> escape(unicode)
+        chars(r, mode, unicode, save(acc, piece, mode, size), size + raw)
 
       {0, _r} when unicode in [:phone_validate, :phone_saj] ->
         raise ArgumentError, "string contains null byte"
 
-      {c, r} when is_integer(c) and (c >= 32 or unicode in [:phone_validate, :phone_saj]) ->
-        string(r, mode, save(acc, c, mode, size), size + 1, unicode)
+      {c, r} when is_integer(c) and c != 0 ->
+        chars(r, mode, unicode, acc, size)
 
       _ ->
         throw(:invalid)
     end
   end
 
-  defp save(acc, _, false, _), do: acc
-  defp save(acc, _, :key, size) when size > 256, do: acc
-  defp save(acc, bytes, _, _), do: [bytes | acc]
+  defp save(acc, _piece, false, _size), do: acc
+  defp save(acc, _piece, :key, size) when size > 256, do: acc
+  defp save(acc, piece, _mode, _size), do: [acc, piece]
 
-  defp decode_string(acc, :phone_validate), do: decode_string(acc, :saj)
+  defp finish(_acc, false, _size, _unicode), do: nil
+  defp finish(_acc, :key, size, _unicode) when size > 256, do: nil
 
-  defp decode_string(acc, :phone_saj) do
-    bytes = acc |> Enum.reverse() |> IO.iodata_to_binary() |> scrub()
-
-    bytes =
-      for <<c <- bytes>>,
-        into: "",
-        do:
-          if(c < 32,
-            do: "\\u" <> String.pad_leading(Integer.to_string(c, 16), 4, "0"),
-            else: <<c>>
-          )
-
-    case Jason.decode(<<34>> <> bytes <> <<34>>) do
-      {:ok, value} -> value |> :binary.split(<<0>>) |> hd()
-      _ -> throw(:invalid)
-    end
+  defp finish(acc, _mode, _size, unicode) do
+    text = acc |> IO.iodata_to_binary() |> scrub()
+    if unicode == :phone_saj, do: text |> :binary.split(<<0>>) |> hd(), else: text
   end
-
-  defp decode_string(acc, :saj),
-    do:
-      acc
-      |> Enum.reverse()
-      |> IO.iodata_to_binary()
-      |> saj_string([])
-      |> Enum.reverse()
-      |> IO.iodata_to_binary()
-      |> scrub()
-
-  defp decode_string(acc, :json) do
-    bytes = [34, Enum.reverse(acc), 34] |> IO.iodata_to_binary() |> scrub()
-
-    case Jason.decode(bytes) do
-      {:ok, v} -> v
-      _ -> throw(:invalid)
-    end
-  end
-
-  defp saj_string(<<>>, acc), do: acc
-
-  defp saj_string(<<92, 117, hex::binary-size(4), rest::binary>>, acc) do
-    code = String.to_integer(hex, 16)
-
-    bytes =
-      cond do
-        code < 128 -> <<code>>
-        code < 2048 -> <<192 + div(code, 64), 128 + rem(code, 64)>>
-        true -> <<224 + div(code, 4096), 128 + rem(div(code, 64), 64), 128 + rem(code, 64)>>
-      end
-
-    saj_string(rest, [bytes | acc])
-  end
-
-  defp saj_string(<<92, c, rest::binary>>, acc),
-    do:
-      saj_string(rest, [
-        <<Map.get(%{98 => 8, 102 => 12, 110 => 10, 114 => 13, 116 => 9}, c, c)>> | acc
-      ])
-
-  defp saj_string(<<c, rest::binary>>, acc), do: saj_string(rest, [<<c>> | acc])
 
   defp escape(r, unicode) do
     case Reader.get(r) do
-      {c, r} when c in [34, 92, 47, 98, 102, 110, 114, 116] ->
-        {c, r}
-
-      {117, r} ->
-        {hex, r} = hex(r, 4, [])
-        code = hex |> IO.iodata_to_binary() |> String.to_integer(16)
-
-        cond do
-          unicode in [:saj, :phone_validate] ->
-            {[117, hex], r}
-
-          code in 0xD800..0xDBFF ->
-            r = r |> Reader.expect(92) |> Reader.expect(117)
-            {low, r} = hex(r, 4, [])
-            value = low |> IO.iodata_to_binary() |> String.to_integer(16)
-            if value not in 0xDC00..0xDFFF, do: throw(:invalid)
-            {[117, hex, 92, 117, low], r}
-
-          code in 0xDC00..0xDFFF ->
-            throw(:invalid)
-
-          true ->
-            {[117, hex], r}
-        end
-
-      _ ->
-        throw(:invalid)
-    end
-  end
-
-  defp hex(r, 0, acc), do: {Enum.reverse(acc), r}
-
-  defp hex(r, n, acc) do
-    case Reader.get(r) do
-      {c, r} when c in 48..57 or c in 65..70 or c in 97..102 -> hex(r, n - 1, [c | acc])
+      {c, r} when c in [?", ?\\, ?/] -> {<<c>>, 2, r}
+      {c, r} when is_map_key(@named, c) -> {@named[c], 2, r}
+      {?u, r} -> unicode_escape(r, unicode)
+      {c, r} when unicode == :json and is_integer(c) -> {<<c>>, 2, r}
       _ -> throw(:invalid)
     end
   end
 
-  defp number(r, bytes, keep, state, strict, decoder) do
+  defp unicode_escape(r, unicode) do
+    {code, r} = hex(r)
+
+    cond do
+      unicode in [:saj, :phone_validate] ->
+        {cesu(code), 6, r}
+
+      code in 0xD800..0xDBFF ->
+        {low, r} = r |> Reader.expect(?\\) |> Reader.expect(?u) |> hex()
+        if low not in 0xDC00..0xDFFF, do: throw(:invalid)
+        {<<0x10000 + ((code - 0xD800) <<< 10) + (low - 0xDC00)::utf8>>, 12, r}
+
+      code in 0xDC00..0xDFFF ->
+        throw(:invalid)
+
+      true ->
+        {<<code::utf8>>, 6, r}
+    end
+  end
+
+  defp cesu(code) when code < 128, do: <<code>>
+  defp cesu(code) when code < 2048, do: <<192 + div(code, 64), 128 + rem(code, 64)>>
+
+  defp cesu(code),
+    do: <<224 + div(code, 4096), 128 + rem(div(code, 64), 64), 128 + rem(code, 64)>>
+
+  defp hex(r) do
+    Enum.reduce(1..4, {0, r}, fn _, {code, r} ->
+      case Reader.get(r) do
+        {c, r} when c in ?0..?9 -> {code * 16 + c - ?0, r}
+        {c, r} when c in ?A..?F -> {code * 16 + c - ?A + 10, r}
+        {c, r} when c in ?a..?f -> {code * 16 + c - ?a + 10, r}
+        _ -> throw(:invalid)
+      end
+    end)
+  end
+
+  defp strict_number(r, c, keep, decoder) do
+    {sign, digits} = if c == ?-, do: {"-", ""}, else: {"", <<c>>}
+    {digits, r} = take_digits(r, digits)
+    if Regex.match?(~r/\A0+[1-9]/, digits), do: throw(:invalid)
+    {fraction, r} = strict_fraction(r, digits)
+    {exponent, r} = strict_exponent(r)
+    text = sign <> digits <> fraction <> exponent
+
+    value =
+      cond do
+        not keep ->
+          nil
+
+        decoder ->
+          decoder.(text)
+
+        true ->
+          decode_number(sign <> if(digits == "", do: "0", else: digits) <> fraction <> exponent)
+      end
+
+    {value, r}
+  end
+
+  defp strict_fraction(r, digits) do
+    case Reader.peek(r) do
+      {?., r} ->
+        if digits == "", do: throw(:invalid)
+        r = Reader.expect(r, ?.)
+
+        case Reader.peek(r) do
+          {d, r} when d in ?0..?9 -> take_digits(r, ".")
+          _ -> throw(:invalid)
+        end
+
+      {_, r} ->
+        {"", r}
+    end
+  end
+
+  defp strict_exponent(r) do
+    case Reader.peek(r) do
+      {e, r} when e in [?e, ?E] ->
+        r = Reader.expect(r, e)
+
+        {sign, r} =
+          case Reader.peek(r) do
+            {s, r} when s in [?+, ?-] -> {<<s>>, Reader.expect(r, s)}
+            {_, r} -> {"", r}
+          end
+
+        {digits, r} = take_digits(r, "")
+        if digits == "", do: throw(:invalid_float)
+        {<<e>> <> sign <> digits, r}
+
+      {_, r} ->
+        {"", r}
+    end
+  end
+
+  defp take_digits(r, acc) do
+    case Reader.peek(r) do
+      {d, r} when d in ?0..?9 -> take_digits(Reader.expect(r, d), acc <> <<d>>)
+      {_, r} -> {acc, r}
+    end
+  end
+
+  defp number(r, bytes, keep, state, decoder) do
     {c, r} = Reader.peek(r)
 
     next =
       cond do
-        c in 48..57 and (state in [:sign, :int] or (state == :zero and not strict)) -> :int
-        c in 48..57 and state in [:dot, :fraction] -> :fraction
-        c in 48..57 and state in [:e, :esign, :exp] -> :exp
-        c == 46 and state in [:int, :zero] -> :dot
-        c in [69, 101] and state in [:int, :zero, :fraction] -> :e
-        c in [43, 45] and state == :e -> :esign
+        c in ?0..?9 and state in [:sign, :int, :zero] -> :int
+        c in ?0..?9 and state in [:dot, :fraction] -> :fraction
+        c in ?0..?9 and state in [:e, :esign, :exp] -> :exp
+        c == ?. and state in [:sign, :int, :zero] -> :dot
+        c in [?E, ?e] and state in [:int, :zero, :dot, :fraction] -> :e
+        c in [?+, ?-] and state == :e -> :esign
         true -> nil
       end
 
     if next do
       {_, r} = Reader.get(r)
-      number(r, if(keep, do: bytes <> <<c>>, else: bytes), keep, next, strict, decoder)
+      number(r, if(keep, do: bytes <> <<c>>, else: bytes), keep, next, decoder)
     else
-      accepted =
-        if strict,
-          do: [:int, :zero, :fraction, :exp],
-          else: [:int, :zero, :fraction, :exp, :dot, :e, :esign]
+      value =
+        cond do
+          not keep -> nil
+          decoder -> decoder.(bytes)
+          true -> bytes |> lenient() |> decode_number()
+        end
 
-      if strict and state in [:e, :esign], do: throw(:invalid_float)
-      if state not in accepted, do: throw(:invalid)
-      value = if keep, do: if(decoder, do: decoder.(bytes), else: decode_number(bytes)), else: nil
       {value, r}
     end
+  end
+
+  defp lenient(bytes) do
+    %{"sign" => sign, "digits" => digits, "fraction" => fraction, "exponent" => exponent} =
+      Regex.named_captures(
+        ~r/\A(?<sign>[+-]?)(?<digits>\d*)(?<fraction>\.\d*)?(?<exponent>[eE][+-]?\d+)?/,
+        bytes
+      )
+
+    fraction =
+      if fraction in ["", "."], do: if(exponent == "", do: "", else: ".0"), else: fraction
+
+    sign <> if(digits == "", do: "0", else: digits) <> fraction <> exponent
   end
 
   defp decode_number(bytes) do
@@ -221,29 +249,40 @@ defmodule Dawarich.Imports.JsonStream.Scalar do
     end
   end
 
-  defp scrub(bytes), do: scrub(bytes, []) |> Enum.reverse() |> IO.iodata_to_binary()
-  defp scrub(<<>>, acc), do: acc
-  defp scrub(<<cp::utf8, rest::binary>>, acc), do: scrub(rest, [<<cp::utf8>> | acc])
-
-  defp scrub(<<byte, rest::binary>>, acc) do
-    width =
-      cond do
-        byte in 0xC2..0xDF -> 1
-        byte in 0xE0..0xEF -> 2
-        byte in 0xF0..0xF4 -> 3
-        true -> 0
-      end
-
-    scrub(prefix(rest, width, byte), ["�" | acc])
+  defp scrub(bytes) do
+    if String.valid?(bytes), do: bytes, else: bytes |> scrub(0, 0, []) |> IO.iodata_to_binary()
   end
 
-  defp prefix(<<b, rest::binary>>, n, lead) when n > 0 and b in 0x80..0xBF do
-    valid =
-      not ((lead == 0xE0 and b < 0xA0) or (lead == 0xED and b > 0x9F) or
-             (lead == 0xF0 and b < 0x90) or (lead == 0xF4 and b > 0x8F))
+  defp scrub(bytes, from, at, acc) do
+    case bytes do
+      <<_::binary-size(at)>> ->
+        [acc, binary_part(bytes, from, at - from)]
 
-    if valid, do: prefix(rest, n - 1, 0), else: <<b, rest::binary>>
+      <<_::binary-size(at), cp::utf8, _::binary>> ->
+        scrub(bytes, from, at + width(cp), acc)
+
+      <<_::binary-size(at), byte, rest::binary>> ->
+        skip = 1 + continuation(rest, lead_width(byte), byte)
+        scrub(bytes, at + skip, at + skip, [acc, binary_part(bytes, from, at - from), "�"])
+    end
   end
 
-  defp prefix(rest, _, _), do: rest
+  defp width(cp) when cp < 0x80, do: 1
+  defp width(cp) when cp < 0x800, do: 2
+  defp width(cp) when cp < 0x10000, do: 3
+  defp width(_cp), do: 4
+
+  defp lead_width(byte) when byte in 0xC2..0xDF, do: 1
+  defp lead_width(byte) when byte in 0xE0..0xEF, do: 2
+  defp lead_width(byte) when byte in 0xF0..0xF4, do: 3
+  defp lead_width(_byte), do: 0
+
+  defp continuation(<<b, rest::binary>>, n, lead) when n > 0 and b in 0x80..0xBF do
+    if (lead == 0xE0 and b < 0xA0) or (lead == 0xED and b > 0x9F) or
+         (lead == 0xF0 and b < 0x90) or (lead == 0xF4 and b > 0x8F),
+       do: 0,
+       else: 1 + continuation(rest, n - 1, 0)
+  end
+
+  defp continuation(_rest, _n, _lead), do: 0
 end

@@ -26,6 +26,23 @@ defmodule Dawarich.Imports.JsonStream.Reader do
     end
   end
 
+  def chunk(r) do
+    case peek(r) do
+      {nil, r} ->
+        {"", r}
+
+      {_, %{buffer: buffer} = r} ->
+        size =
+          case :binary.match(buffer, ["\"", "\\", <<0>>]) do
+            {at, _} -> at
+            :nomatch -> byte_size(buffer)
+          end
+
+        <<piece::binary-size(size), rest::binary>> = buffer
+        {piece, %{r | buffer: rest, remaining: r.remaining - size}}
+    end
+  end
+
   def expect(r, byte) do
     case get(r) do
       {^byte, r} -> r

@@ -4,28 +4,16 @@ defmodule Dawarich.Imports.JsonStream.Spool do
     path =
       Path.join(
         Map.get(context, :temp_dir, System.tmp_dir!()),
-        "geojson-" <> Base.url_encode64(:crypto.strong_rand_bytes(24), padding: false)
+        "json-spool-" <> Base.url_encode64(:crypto.strong_rand_bytes(24), padding: false)
       )
 
     owner = self()
+    {guard, monitor} = spawn_monitor(fn -> guard(owner, path) end)
 
-    guard =
-      spawn(fn ->
-        ref = Process.monitor(owner)
-        send(owner, {self(), :ready})
-
-        receive do
-          {:DOWN, ^ref, :process, ^owner, _} ->
-            File.rm_rf(path)
-
-          {:clean, ^owner, tag} ->
-            File.rm_rf(path)
-            Process.demonitor(ref, [:flush])
-            send(owner, {tag, :cleaned})
-        end
-      end)
-
-    receive do: ({^guard, :ready} -> :ok)
+    receive do
+      {^guard, :ready} -> :ok
+      {:DOWN, ^monitor, :process, ^guard, reason} -> exit(reason)
+    end
 
     try do
       File.mkdir!(path)
@@ -34,7 +22,26 @@ defmodule Dawarich.Imports.JsonStream.Spool do
     after
       tag = make_ref()
       send(guard, {:clean, owner, tag})
-      receive do: ({^tag, :cleaned} -> :ok)
+
+      receive do
+        {^tag, :cleaned} -> Process.demonitor(monitor, [:flush])
+        {:DOWN, ^monitor, :process, ^guard, _reason} -> File.rm_rf(path)
+      end
+    end
+  end
+
+  defp guard(owner, path) do
+    ref = Process.monitor(owner)
+    send(owner, {self(), :ready})
+
+    receive do
+      {:DOWN, ^ref, :process, ^owner, _} ->
+        File.rm_rf(path)
+
+      {:clean, ^owner, tag} ->
+        File.rm_rf(path)
+        Process.demonitor(ref, [:flush])
+        send(owner, {tag, :cleaned})
     end
   end
 
@@ -75,7 +82,7 @@ defmodule Dawarich.Imports.JsonStream.Spool do
             bytes = IO.binread(f, size)
 
             if not is_binary(bytes) or byte_size(bytes) != size,
-              do: raise("truncated private GeoJSON spool")
+              do: raise("truncated private JSON spool")
 
             {[:erlang.binary_to_term(bytes, [:safe])], f}
         end
