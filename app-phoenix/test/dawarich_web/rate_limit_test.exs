@@ -126,6 +126,48 @@ defmodule DawarichWeb.RateLimitTest do
     assert RateLimit.plan(lite["value"]) == "lite"
   end
 
+  test "unknown API keys do not cache misses or evict other features' cached entries" do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    expires_at = System.monotonic_time(:millisecond) + 120_000
+    keys = for n <- 1..10_000, do: {:a13c_cache_spray_guard, n}
+    :ets.insert(TtlCache, Enum.map(keys, &{&1, :kept, expires_at}))
+    on_exit(fn -> Enum.each(keys, &TtlCache.delete/1) end)
+
+    for key <- ["a13cunknownspray1", "a13cunknownspray2"] do
+      assert RateLimit.plan(key) == nil
+      assert :ets.lookup(TtlCache, {RateLimit, key}) == []
+    end
+
+    assert TtlCache.fetch(hd(keys), 120_000, fn -> flunk("shared cache was flushed") end) == :kept
+  end
+
+  test "every Rack CORS pending-imports path defers to Rails before counting or reading" do
+    body = ~s({"api_key":"a13cunknown"})
+
+    for path <- [
+          "/api/v1/imports/pending",
+          "/api/v1/imports/pending/",
+          "//api/v1/imports/pending",
+          "/api/v1/imports/%70ending",
+          "/api/v1/imports/other/../pending"
+        ],
+        method <- [:get, :post],
+        self_hosted <- [false, true] do
+      conn =
+        %{Plug.Test.conn(method, "/", body) | request_path: path}
+        |> put_req_header("content-type", "application/json")
+        |> put_req_header("content-length", Integer.to_string(byte_size(body)))
+        |> put_req_header("origin", "https://example.invalid")
+
+      assert {:defer, deferred, [], "Rack CORS resource"} =
+               RateLimit.decide(conn, opts(self_hosted))
+
+      refute Map.has_key?(deferred.private, :dawarich_raw_body)
+    end
+
+    assert rows("SELECT count(*) FROM phoenix.counters") == [[0]]
+  end
+
   test "nothing is read, counted or deferred for a request no rule covers" do
     body = "export%5Bname%5D=x"
 
@@ -257,25 +299,30 @@ defmodule DawarichWeb.RateLimitTest do
     assert rows("SELECT value FROM phoenix.counters ORDER BY key") == [[0], [0]]
   end
 
-  test "every pipeline runs the limiter right after ForceSSL" do
+  test "every routed request runs the limiter right after ForceSSL" do
     source = File.read!(Path.expand("../../lib/dawarich_web/router.ex", __DIR__))
 
-    pipelines =
-      Regex.scan(~r/  pipeline :(\w+) do\n(.*?)\n  end/s, source, capture: :all_but_first)
-
     guarded =
-      for [name, body] <- pipelines,
-          String.contains?(body, "plug DawarichWeb.ForceSSL"),
-          do: {name, body}
+      source
+      |> then(&Regex.scan(~r/  pipeline :(\w+) do\n(.*?)\n  end/s, &1, capture: :all_but_first))
+      |> Enum.filter(fn [_name, body] ->
+        body =~ ~r/plug DawarichWeb\.ForceSSL\n\s+plug DawarichWeb\.RateLimit\n/
+      end)
+      |> MapSet.new(fn [name, _body] -> String.to_existing_atom(name) end)
 
-    assert MapSet.subset?(
-             MapSet.new(
-               ~w(browser api_ingest api_foundation api_stats api_locations_photos rails_form sharing_unlock)
-             ),
-             MapSet.new(guarded, &elem(&1, 0))
-           )
+    for route <- DawarichWeb.Router.__routes__() do
+      info =
+        Phoenix.Router.route_info(
+          DawarichWeb.Router,
+          String.upcase(to_string(route.verb)),
+          route.path,
+          "localhost"
+        )
 
-    for {name, body} <- guarded,
-        do: assert(body =~ ~r/plug DawarichWeb\.ForceSSL\n\s+plug DawarichWeb\.RateLimit\n/, name)
+      assert is_map(info), "#{route.verb} #{route.path} does not resolve"
+
+      assert Enum.any?(info.pipe_through, &MapSet.member?(guarded, &1)),
+             "#{route.verb} #{route.path} has no guarded pipeline: #{inspect(info.pipe_through)}"
+    end
   end
 end

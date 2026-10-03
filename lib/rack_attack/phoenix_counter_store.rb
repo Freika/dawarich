@@ -25,7 +25,14 @@ module RackAttack
     private
 
     def table?
-      @table ||= connection.select_value("SELECT to_regclass('phoenix.counters') IS NOT NULL")
+      return true if @table
+
+      @table = connection.select_value("SELECT to_regclass('phoenix.counters') IS NOT NULL")
+      if !@table && !@warned
+        Rails.logger.warn('event=rack_attack.store_unavailable reason=table_missing')
+        @warned = true
+      end
+      @table
     end
 
     def connection = ActiveRecord::Base.connection

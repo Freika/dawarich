@@ -52,6 +52,15 @@ RSpec.describe RackAttack::PhoenixCounterStore do
   end
 
   context 'when Phoenix has never migrated the database' do
+    it 'warns once while the table is absent and resumes counting after migration' do
+      expect(Rails.logger).to receive(:warn).with('event=rack_attack.store_unavailable reason=table_missing').once
+      expect(store.increment(key, 1, expires_in: 60)).to be_nil
+      expect(store.increment(key, 1, expires_in: 60)).to be_nil
+      phoenix_counters!
+      expect(store.increment(key, 1, expires_in: 60)).to eq(1)
+      expect(store.increment(key, 1, expires_in: 60)).to eq(2)
+    end
+
     it 'fails open without aborting the caller transaction' do
       ActiveRecord::Base.transaction do
         expect(store.increment(key, 1, expires_in: 60)).to be_nil

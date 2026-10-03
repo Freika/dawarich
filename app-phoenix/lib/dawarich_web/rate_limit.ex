@@ -48,9 +48,16 @@ defmodule DawarichWeb.RateLimit do
     facts = Request.facts(conn, opts.self_hosted)
     candidates = Enum.filter(Rules.throttles(), fn rule -> elem(rule, 4).(facts) end)
 
-    if candidates == [] and not Rules.blocklist_path?(facts),
-      do: {:pass, conn, [], nil},
-      else: screen(conn, facts, candidates, opts)
+    cond do
+      conn.request_path |> URI.decode() |> Path.expand("/") == @cors_resource ->
+        {:defer, conn, [], "Rack CORS resource"}
+
+      candidates == [] and not Rules.blocklist_path?(facts) ->
+        {:pass, conn, [], nil}
+
+      true ->
+        screen(conn, facts, candidates, opts)
+    end
   end
 
   defp screen(conn, facts, candidates, opts) do
@@ -107,10 +114,15 @@ defmodule DawarichWeb.RateLimit do
   end
 
   def plan(key) do
-    TtlCache.fetch({__MODULE__, key}, 120_000, fn ->
-      with %{} = user <- Accounts.by_api_key(key),
-           do: user |> Entitlements.access(false, DateTime.utc_now()) |> elem(1)
-    end)
+    TtlCache.fetch(
+      {__MODULE__, key},
+      120_000,
+      fn ->
+        with %{} = user <- Accounts.by_api_key(key),
+             do: user |> Entitlements.access(false, DateTime.utc_now()) |> elem(1)
+      end,
+      cache_nil: false
+    )
   end
 
   def release(%{private: %{dawarich_rate_limit: [_ | _] = counted}} = conn) do
@@ -155,13 +167,10 @@ defmodule DawarichWeb.RateLimit do
     headers =
       kept ++
         [{"content-type", "application/json"}, {"cache-control", "no-store"}] ++
-        retry_after ++ [{"cache-control", "no-cache"}] ++ vary(conn)
+        retry_after ++ [{"cache-control", "no-cache"}]
 
     %{conn | resp_headers: headers}
     |> send_resp(status, IO.iodata_to_binary(body))
     |> halt()
   end
-
-  defp vary(%{request_path: @cors_resource}), do: [{"vary", "Origin"}]
-  defp vary(_conn), do: []
 end

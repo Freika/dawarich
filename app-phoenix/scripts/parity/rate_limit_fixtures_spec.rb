@@ -464,7 +464,7 @@ RSpec.describe 'Phoenix fixture: rack-attack throttles, blocklist and responders
     multipart = "--a13c\r\nContent-Disposition: form-data; name=\"api_key\"\r\n\r\n#{keys['family']}\r\n--a13c--\r\n"
     [
       seed('api/v1/imports/pending CREATE', '203.0.113.160', 3600, 59),
-      *Array.new(2) { step('POST', '/api/v1/imports/pending', ip: '203.0.113.160', **json_body({})) },
+      *Array.new(2) { step('POST', '/api/v1/imports/pending', ip: '203.0.113.160', phoenix: 'defer', **json_body({})) },
       step('POST', '/api/v1/imports/pending', ip: '203.0.113.161', phoenix: 'defer',
                                               type: 'multipart/form-data; boundary=a13c', body: multipart)
     ]
@@ -487,7 +487,7 @@ RSpec.describe 'Phoenix fixture: rack-attack throttles, blocklist and responders
       step('POST', '/users/sign_in', **form_body('user%5Bemail%5D=a%40example.invalid')),
       step('POST', '/api/v1/auth/login', **json_body('email' => 'a@example.invalid')),
       step('POST', '/users'), step('GET', '/trial/welcome'), step('GET', '/admin/flipper'),
-      step('GET', '/s/abc'), step('POST', '/api/v1/imports/pending', **json_body({})),
+      step('GET', '/s/abc'), step('POST', '/api/v1/imports/pending', phoenix: 'defer', **json_body({})),
       step('GET', '/users/sign_up', query: 'import_ticket=t'),
       step('POST', '/users/otp_challenge', headers: cookie('otp'))
     ]
