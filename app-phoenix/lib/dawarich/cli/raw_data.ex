@@ -17,7 +17,7 @@ defmodule Dawarich.CLI.RawData do
 
   def vacuum, do: @vacuum
 
-  def restore([user, year, month | _], ctx) do
+  def restore([user, year, month], ctx) do
     ctx = ready(ctx)
     {user, year, month} = {to_i(user), to_i(year), to_i(month)}
     header(ctx, "Restoring raw_data to DATABASE", month_line(user, year, month))
@@ -36,7 +36,7 @@ defmodule Dawarich.CLI.RawData do
 
   def restore(_args, ctx), do: fail(ctx, "usage: dawarich raw-data restore USER_ID YEAR MONTH")
 
-  def restore_all([user | _], ctx) do
+  def restore_all([user], ctx) do
     ctx = ready(ctx)
     user = to_i(user)
 
@@ -72,7 +72,7 @@ defmodule Dawarich.CLI.RawData do
 
   def restore_all(_args, ctx), do: fail(ctx, "usage: dawarich raw-data restore-all USER_ID")
 
-  def verify([user, year, month | _], ctx) do
+  def verify([user, year, month], ctx) do
     ctx = ready(ctx)
     {user, year, month} = {to_i(user), to_i(year), to_i(month)}
     header(ctx, "Verifying Archives", month_line(user, year, month))
@@ -81,7 +81,7 @@ defmodule Dawarich.CLI.RawData do
     0
   end
 
-  def verify(_args, ctx) do
+  def verify([], ctx) do
     ctx = ready(ctx)
     header(ctx, "Verifying All Unverified Archives", nil)
     {verified, failed} = verify_ids(ctx, ids(ctx, @unverified, []))
@@ -89,7 +89,9 @@ defmodule Dawarich.CLI.RawData do
     0
   end
 
-  def clear_verified([user, year, month | _], ctx) do
+  def verify(_args, ctx), do: fail(ctx, "usage: dawarich raw-data verify [USER_ID YEAR MONTH]")
+
+  def clear_verified([user, year, month], ctx) do
     {user, year, month} = {to_i(user), to_i(year), to_i(month)}
     header(ctx, "Clearing Verified Archives", month_line(user, year, month))
     Clearer.clear_month(ctx.repo, user, year, month)
@@ -97,14 +99,17 @@ defmodule Dawarich.CLI.RawData do
     0
   end
 
-  def clear_verified(_args, ctx) do
+  def clear_verified([], ctx) do
     header(ctx, "Clearing All Verified Archives", nil)
     cleared = Clearer.clear_all(ctx.repo, nil)
     lines(ctx, ["", "Points cleared: #{cleared}", "", "✓ Clearing complete!", "", @vacuum])
     0
   end
 
-  def archive(_args, ctx) do
+  def clear_verified(_args, ctx),
+    do: fail(ctx, "usage: dawarich raw-data clear-verified [USER_ID YEAR MONTH]")
+
+  def archive([], ctx) do
     ctx = ready(ctx)
 
     lines(ctx, [
@@ -144,7 +149,9 @@ defmodule Dawarich.CLI.RawData do
     0
   end
 
-  def archive_full(_args, ctx) do
+  def archive(_args, ctx), do: fail(ctx, "usage: dawarich raw-data archive")
+
+  def archive_full([], ctx) do
     ctx = ready(ctx)
 
     lines(ctx, [
@@ -178,6 +185,8 @@ defmodule Dawarich.CLI.RawData do
 
     0
   end
+
+  def archive_full(_args, ctx), do: fail(ctx, "usage: dawarich raw-data archive-full")
 
   defp archive_all(ctx, after_id \\ 0, stats \\ %{processed: 0, archived: 0, failed: 0}) do
     case ids(ctx, @users, [after_id]) do

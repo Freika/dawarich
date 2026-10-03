@@ -1,7 +1,7 @@
 defmodule Dawarich.CLI.RawDataStatus do
   @moduledoc false
 
-  import Dawarich.CLI, only: [lines: 2, rule: 0]
+  import Dawarich.CLI, only: [lines: 2, rule: 0, fail: 2]
 
   alias Dawarich.RubyFloat
 
@@ -24,7 +24,7 @@ defmodule Dawarich.CLI.RawDataStatus do
   GROUP BY a.user_id, u.email ORDER BY count(*) DESC, a.user_id LIMIT 10
   """
 
-  def status(_args, ctx) do
+  def status([], ctx) do
     [[total, verified, points, archived, cleared, bytes, recent]] =
       ctx.repo.query!(@counts, [], log: false).rows
 
@@ -51,6 +51,8 @@ defmodule Dawarich.CLI.RawDataStatus do
 
     0
   end
+
+  def status(_args, ctx), do: fail(ctx, "usage: dawarich raw-data status")
 
   def human_size(bytes) when bytes < 1024,
     do: "#{bytes} #{if bytes == 1, do: "Byte", else: "Bytes"}"

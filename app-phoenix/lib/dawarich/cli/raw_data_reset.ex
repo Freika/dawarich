@@ -1,7 +1,7 @@
 defmodule Dawarich.CLI.RawDataReset do
   @moduledoc false
 
-  import Dawarich.CLI, only: [puts: 2, lines: 2, rule: 0]
+  import Dawarich.CLI, only: [puts: 2, lines: 2, rule: 0, fail: 2]
   import Dawarich.CLI.RawData, only: [ready: 1, ids: 3, pad: 1, vacuum: 0]
 
   alias Dawarich.RawData.{Archives, Restorer}
@@ -20,7 +20,7 @@ defmodule Dawarich.CLI.RawDataReset do
   @unflag "UPDATE points SET raw_data_archived = false, raw_data_archive_id = NULL WHERE raw_data_archived = true"
   @archives "SELECT id FROM points_raw_data_archives ORDER BY id"
 
-  def reset_all(_args, ctx) do
+  def reset_all([], ctx) do
     ctx = ready(ctx)
     [[archives, archived, cleared]] = ctx.repo.query!(@counts, [], log: false).rows
 
@@ -44,6 +44,8 @@ defmodule Dawarich.CLI.RawDataReset do
 
     0
   end
+
+  def reset_all(_args, ctx), do: fail(ctx, "usage: dawarich raw-data reset-all")
 
   defp reset(ctx, archives, cleared) do
     if cleared > 0 do

@@ -27,6 +27,17 @@ defmodule Dawarich.CLITest do
              {:ok, {Users, :admin}, ["a@b.invalid"]}
   end
 
+  test "a rake name resolves only in rake's own name[args] grammar and with nothing after it" do
+    for argv <- [
+          ["points:raw_data:clear_verified[1,2026,1"],
+          ["points:raw_data:clear_verified[1,2026,1]x"],
+          ["points:raw_data:clear_verified[1,", "2026,", "1]"],
+          ["points:raw_data:clear_verified", "1"],
+          ["users:activate", "--help"]
+        ],
+        do: assert(CLI.resolve(argv) == :unknown, inspect(argv))
+  end
+
   test "retired rake tasks explain what replaced them and exit 1" do
     ctx = io()
     assert CLI.run(["dawarich:jobs:rehome[command:trips.calculate]"], ctx) == 1

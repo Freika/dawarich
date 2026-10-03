@@ -17,6 +17,9 @@ defmodule Dawarich.A12eCorpus do
   def corpus, do: @path |> File.read!() |> Jason.decode!(floats: :decimals)
   def cases, do: corpus()["cases"]
 
+  def case!(name),
+    do: Enum.find(cases(), &(&1["name"] == name)) || raise("no corpus case #{name}")
+
   def expected_stdout(%{"stdout" => stdout}),
     do:
       Enum.reduce(@renamed, stdout, fn {rails, phoenix}, acc ->

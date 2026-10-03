@@ -118,11 +118,12 @@ defmodule Dawarich.CLI do
 
   @doc false
   def resolve([name | rest]) when is_binary(name) do
-    task = name |> String.split("[", parts: 2) |> hd()
+    {task, args} = rake_task(name)
 
     cond do
       Map.has_key?(@retired, task) -> {:retired, @retired[task]}
-      Map.has_key?(@rake, task) -> command(@rake[task] ++ rake_args(name) ++ rest)
+      Map.has_key?(@rake, task) and rest == [] -> command(@rake[task] ++ args)
+      Map.has_key?(@rake, task) -> :unknown
       true -> command([name | rest])
     end
   end
@@ -147,21 +148,23 @@ defmodule Dawarich.CLI do
   defp command([a | args]) when is_map_key(@commands, [a]), do: {:ok, @commands[[a]], args}
   defp command(_argv), do: :unknown
 
-  defp rake_args(name) do
-    case Regex.run(~r/\[(.*)\]\z/s, name) do
-      [_, ""] -> []
-      [_, inner] -> inner |> String.split(",") |> Enum.map(&String.trim/1)
-      nil -> []
+  defp rake_task(name) do
+    case Regex.run(~r/\A([^\[]+)\[(.*)\]\z/s, name) do
+      [_, task, ""] -> {task, []}
+      [_, task, inner] -> {task, inner |> String.split(",") |> Enum.map(&String.trim/1)}
+      nil -> {name, []}
     end
   end
 
   defp repo?({:ok, command, _args}) when is_tuple(command), do: command not in @own_repo
   defp repo?(_resolved), do: false
 
-  defp dispatch({:ok, :help, _args}, ctx) do
+  defp dispatch({:ok, :help, []}, ctx) do
     IO.write(ctx.out, @help)
     0
   end
+
+  defp dispatch({:ok, :help, _args}, ctx), do: dispatch(:unknown, ctx)
 
   defp dispatch({:ok, {module, fun}, args}, ctx) do
     apply(module, fun, [args, ctx])

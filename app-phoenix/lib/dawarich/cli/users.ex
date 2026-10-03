@@ -15,7 +15,7 @@ defmodule Dawarich.CLI.Users do
   @set_password "UPDATE users SET encrypted_password = $2, #{@reset} WHERE id = $1"
   @password_usage "usage: dawarich users password EMAIL, with the new password on standard input"
 
-  def activate(_args, ctx) do
+  def activate([], ctx) do
     if ReleaseMigration.self_hosted?(ctx.env) do
       puts(ctx, "Activating all users...")
       ctx.repo.query!(@activate, [], log: false)
@@ -26,6 +26,8 @@ defmodule Dawarich.CLI.Users do
       1
     end
   end
+
+  def activate(_args, ctx), do: fail(ctx, "usage: dawarich users activate")
 
   def admin([email], ctx) do
     with {:ok, id} <- find(ctx, email) do
