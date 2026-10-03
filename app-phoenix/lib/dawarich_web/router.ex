@@ -1,6 +1,7 @@
 defmodule DawarichWeb.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
+  import DawarichWeb.AchievementRoutes
 
   pipeline :browser do
     plug DawarichWeb.HostAuthorization
@@ -223,6 +224,8 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.RailsForm
     plug DawarichWeb.RailsHeaders
   end
+
+  achievement_routes()
 
   pipeline :imports_request do
     plug :put_api_tag, "imports"
