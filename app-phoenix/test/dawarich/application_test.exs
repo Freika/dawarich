@@ -29,8 +29,7 @@ defmodule Dawarich.ApplicationTest do
       Redix,
       Dawarich.Redis.Cache,
       Oban,
-      Phoenix.PubSub.Supervisor,
-      Dawarich.Redis.RackAttack
+      Phoenix.PubSub.Supervisor
     ]
 
     assert ids(:none) == base ++ [DawarichWeb.Endpoint, Dawarich.Jobs.Supervisor]
