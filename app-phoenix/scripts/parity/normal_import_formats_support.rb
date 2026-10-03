@@ -163,4 +163,46 @@ module NormalImportFormatsSupport
       ['unrecognized.csv', 'foo,bar,baz', nil]
     ]
   end
+
+  def capture_csv_lexical
+    cases = [
+      ['empty', '', ','], ['newline', "\n", ','], ['crlf', "\r\n", ','],
+      ['trailing_nil', 'a,', ','], ['all_nil', ',,', ','], ['quoted_empty', '"",', ','],
+      ['quotes', '"a,b","a""b"', ','], ['spaces', ' a,b ', ','], ['first_record', "a\nb", ','],
+      ['bom', "\xEF\xBB\xBFa,b", ','], ['semicolon', 'a;"";', ';'], ['tab', "a\t\"\"\t", "\t"],
+      ['quoted_newline', "\"a\nb\",c", ','], ['quoted_crlf', "\"a\r\nb\",c", ','],
+      ['unclosed', '"a', ','], ['illegal', 'a"b,c', ','], ['after_quote', '"a"x,b', ','],
+      ['after_quote_space', '"a" ,b', ',']
+    ]
+    records = cases.map do |name, line, delimiter|
+      result = { 'name' => name, 'line' => line, 'delimiter' => delimiter, 'kind' => 'records' }
+      begin
+        result.merge('fields' => CSV.parse_line(line, col_sep: delimiter), 'error' => nil)
+      rescue CSV::MalformedCSVError => e
+        result.merge('error' => { 'class' => e.class.name, 'message' => e.message })
+      end
+    end
+    records + csv_detector_cases.map do |name, bytes|
+      path = DIR.join("csv_detector_#{name}.csv")
+      File.binwrite(path, bytes)
+      result = { 'name' => name, 'input' => path.basename.to_s, 'kind' => 'detector' }
+      begin
+        result.merge('detection' => Csv::Detector.new(path).call, 'error' => nil)
+      rescue StandardError => e
+        result.merge('error' => { 'class' => e.class.name, 'message' => e.message })
+      end
+    end
+  end
+
+  def csv_detector_cases
+    [
+      ['decimal', "latitude,longitude,timestamp,altitude\n51.3,12.4,1768519800,12.75\n"],
+      ['semicolon', "latitude;longitude;timestamp\n51,3;12,4;1768519800000\n"],
+      ['tab', "LATITUDE N/S\tLONGITUDE E/W\tdate\ttime\n51.3N\t12.4W\t2026-01-15\t23:30:00\n"],
+      ['aliases', "latitude,lat,longitude,lon,date,time,timestamp\n11,513000000,22,124000000,x,y,1768519800\n"],
+      ['bom', "\xEF\xBB\xBFlatitude,longitude,timestamp\n51.3,12.4,2026-01-15\n"],
+      ['empty', ''], ['missing', "latitude,timestamp\n51.3,1\n"],
+      ['quoted_newline', "latitude,longitude,timestamp\n\"51\n.3\",12.4,1\n"]
+    ]
+  end
 end

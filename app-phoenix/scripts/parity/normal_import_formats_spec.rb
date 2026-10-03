@@ -37,5 +37,11 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
     detection = NormalImportFormatsSupport.capture_detection
     detection.each { |row| expect(row.fetch('source')).to eq(row.fetch('expected')) }
     NormalImportFormatsSupport.write('source_detection', detection)
+    lexical = NormalImportFormatsSupport.capture_csv_lexical
+    expect(lexical.find { |row| row['name'] == 'trailing_nil' }.fetch('fields')).to eq(['a', nil])
+    expect(lexical.find { |row| row['name'] == 'quoted_empty' }.fetch('fields')).to eq(['', nil])
+    expect(lexical.find { |row| row['name'] == 'unclosed' }.fetch('error').fetch('class'))
+      .to eq('CSV::MalformedCSVError')
+    NormalImportFormatsSupport.write('csv_lexical', lexical)
   end
 end
