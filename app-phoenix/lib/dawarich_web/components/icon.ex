@@ -4,6 +4,7 @@ defmodule DawarichWeb.Icon do
 
   attr :name, :string, required: true
   attr :class, :string, default: nil
+  attr :id, :string, default: nil
   attr :aria_hidden, :boolean, default: false
 
   def icon(assigns) do
@@ -16,7 +17,10 @@ defmodule DawarichWeb.Icon do
         :svg,
         path
         |> File.read!()
-        |> String.replace(~r/<svg[^>]*>/, svg_tag(assigns.class, assigns.aria_hidden))
+        |> String.replace(
+          ~r/<svg[^>]*>/,
+          svg_tag(assigns.class, assigns.aria_hidden, assigns[:id])
+        )
         |> Phoenix.HTML.raw()
       )
 
@@ -25,8 +29,9 @@ defmodule DawarichWeb.Icon do
     """
   end
 
-  defp svg_tag(class, aria_hidden) do
+  defp svg_tag(class, aria_hidden, id) do
     ~s(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round") <>
+      if(id, do: ~s( id="#{id}"), else: "") <>
       if(class, do: ~s( class="#{class}"), else: "") <>
       if(aria_hidden, do: ~s( aria-hidden="true"), else: "") <> ">"
   end
