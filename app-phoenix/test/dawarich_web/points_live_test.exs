@@ -168,6 +168,49 @@ defmodule DawarichWeb.PointsLiveTest do
            )
   end
 
+  test "named dates and unproved timestamps hand back before the browser pipeline", %{user: user} do
+    for {name, key} <- [{"points_named_start", "start_at"}, {"points_named_end", "end_at"}] do
+      state = File.read!("test/fixtures/map_data/#{name}.json") |> Jason.decode!()
+      html = File.read!("test/fixtures/map_data/#{name}.html")
+      assert attr(html, "input[name='#{key}']", "value") == ["2026-03-01T00:00"]
+
+      refute MapDataGate.points?(
+               RailsUser.signed_in(user.id)
+               |> Map.put(:query_string, URI.parse(state["path"]).query),
+               %{}
+             )
+    end
+
+    for key <- ["start_at", "end_at"],
+        value <- [
+          "Mar 2026",
+          "yesterday",
+          "2026-02-30T10:00:00Z",
+          "2026-03-01T10:00:00+99:99",
+          "2026-03-01T10:00:00+05",
+          "2026-03-01T10:00:00+0500"
+        ] do
+      refute MapDataGate.points?(
+               RailsUser.signed_in(user.id)
+               |> Map.put(:query_string, URI.encode_query(%{key => value})),
+               %{}
+             )
+    end
+
+    for key <- ["start_at", "end_at"],
+        value <- [
+          "",
+          " ",
+          "1772359200",
+          "2026-03-01",
+          "2026-03-01T10:00",
+          "2026-03-01T10:00:00Z",
+          "2026-03-01T10:00:00+05:00"
+        ] do
+      assert Dawarich.PointList.valid_params?(%{key => value})
+    end
+  end
+
   test "signed out list records Rails return URL and alert" do
     assert %{plug: Phoenix.LiveView.Plug} =
              Phoenix.Router.route_info(Router, "GET", "/points", "localhost")

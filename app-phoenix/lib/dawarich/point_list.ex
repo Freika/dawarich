@@ -83,8 +83,36 @@ defmodule Dawarich.PointList do
     Enum.all?(params, fn {key, value} ->
       key in @filters and (is_nil(value) or is_binary(value))
     end) and
-      params["order_by"] in [nil, "asc", "desc", "ASC", "DESC"]
+      params["order_by"] in [nil, "asc", "desc", "ASC", "DESC"] and
+      Enum.all?(~w(start_at end_at), &supported_timestamp?(params[&1]))
   end
+
+  defp supported_timestamp?(value) do
+    cond do
+      Ruby.blank?(value) -> true
+      not is_binary(value) -> false
+      Regex.match?(~r/\A\d+\z/, value) -> true
+      true -> supported_iso?(value)
+    end
+  end
+
+  defp supported_iso?(value) do
+    with %{"y" => y, "m" => m, "d" => d, "hh" => hh, "mm" => mm, "ss" => ss, "offset" => offset} <-
+           Regex.named_captures(
+             ~r/\A(?<y>\d{4})-(?<m>\d{2})-(?<d>\d{2})(?:[T ](?<hh>\d{2}):(?<mm>\d{2})(?::(?<ss>\d{2}))?)?(?<offset>Z|[+-]\d{2}:\d{2})?\z/,
+             value
+           ),
+         {:ok, _} <- Date.new(String.to_integer(y), String.to_integer(m), String.to_integer(d)),
+         {:ok, _} <- Time.new(integer(hh), integer(mm), integer(ss)) do
+      offset in ["", "Z"] or
+        (hh != "" and Regex.match?(~r/\A[+-](0\d|1[0-4]):[0-5]\d\z/, offset))
+    else
+      _ -> false
+    end
+  end
+
+  defp integer(""), do: 0
+  defp integer(value), do: String.to_integer(value)
 
   defp settings?(%{} = settings) do
     (is_nil(settings["timezone"]) or is_binary(settings["timezone"])) and

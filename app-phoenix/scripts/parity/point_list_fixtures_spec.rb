@@ -159,6 +159,14 @@ expected: { '#point_830301' => 1 })
       expect(march_doc.at_css('input[name="start_at"]')['value']).to eq('2026-02-28T00:00')
       point!(march, 830_302, Time.utc(2026, 3, 29, 0, 59, 59))
       point!(march, 830_303, Time.utc(2026, 3, 29, 1))
+      capture('points_named_start', march, '/points?start_at=Mar%202026&end_at=2026-03-31T23:59:59Z',
+              at: Time.utc(2026, 3, 31, 10), expected: { '#points tbody tr' => 2, '#point_830301' => 0 })
+      named_start = Nokogiri::HTML5(File.read(dir.join('points_named_start.html')))
+      expect(named_start.at_css('input[name="start_at"]')['value']).to eq('2026-03-01T00:00')
+      capture('points_named_end', march, '/points?start_at=2026-02-01T00:00:00Z&end_at=Mar%202026',
+              at: Time.utc(2026, 3, 31, 10), expected: { '#points tbody tr' => 1, '#point_830301' => 1 })
+      named_end = Nokogiri::HTML5(File.read(dir.join('points_named_end.html')))
+      expect(named_end.at_css('input[name="end_at"]')['value']).to eq('2026-03-01T00:00')
       capture('points_berlin_dst', march,
               '/points?start_at=2026-03-29T01:59:59%2B01:00&end_at=2026-03-29T03:00:00%2B02:00',
               at: Time.utc(2026, 3, 31, 10), expected: { '#points tbody tr' => 2 })

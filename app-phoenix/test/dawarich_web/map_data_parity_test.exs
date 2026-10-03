@@ -21,7 +21,8 @@ defmodule DawarichWeb.MapDataParityTest do
   @points ~w(address_direct address_empty address_foreign address_full address_guest points_asc
     points_berlin_dst points_cloud_pro points_desc points_empty points_empty_import points_epoch
     points_geocoding_disabled points_guest points_import points_iso points_lite points_lite_dst
-    points_lite_leap points_march_default points_mi points_page1 points_page2 points_page_out)
+    points_lite_leap points_march_default points_mi points_named_start points_named_end
+    points_page1 points_page2 points_page_out)
   @tags ~w(tags_edit tags_edit_blank tags_edit_guest tags_empty tags_foreign_edit tags_guest
     tags_list tags_new tags_new_guest)
   @segments ~w(segments_corrected segments_disabled_mi segments_empty segments_enabled
@@ -106,7 +107,8 @@ defmodule DawarichWeb.MapDataParityTest do
       query: params
     }
 
-    fallback = state["status"] == 404 or name == "address_direct"
+    fallback =
+      state["status"] == 404 or name in ~w(address_direct points_named_start points_named_end)
 
     if state["status"] == 200 and not fallback do
       native = body(state, ctx, path)
@@ -245,7 +247,7 @@ defmodule DawarichWeb.MapDataParityTest do
     else
       refute conn.private[:dawarich_rails_session_changes], name
 
-      if state["status"] == 200 and state["kind"] in ["points", "tags", "tag_form"] do
+      if state["status"] == 200 and not fallback and state["kind"] in ["points", "tags", "tag_form"] do
         title =
           Map.fetch!(state, "title")
           |> Phoenix.HTML.html_escape()
