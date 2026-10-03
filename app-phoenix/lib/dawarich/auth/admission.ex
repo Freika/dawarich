@@ -37,6 +37,14 @@ defmodule Dawarich.Auth.Admission do
     end
   end
 
+  def oidc?(env \\ System.get_env()) do
+    (present?(env, "GOOGLE_OAUTH_CLIENT_ID") and present?(env, "GOOGLE_OAUTH_CLIENT_SECRET")) or
+      (present?(env, "OIDC_CLIENT_ID") and
+         (present?(env, "OIDC_CLIENT_SECRET") or
+            String.downcase(Dawarich.ReleaseMigration.ruby_strip(env["OIDC_PKCE_ENABLED"] || "")) ==
+              "true"))
+  end
+
   def form(raw, query) when is_binary(raw) and is_binary(query) do
     if query != "" or byte_size(raw) > 65_536 do
       {:handoff, :parameters}
@@ -46,6 +54,8 @@ defmodule Dawarich.Auth.Admission do
       |> Enum.reduce_while({:ok, %{}}, &pair/2)
     end
   end
+
+  defp present?(env, key), do: Dawarich.ReleaseMigration.ruby_strip(env[key] || "") != ""
 
   defp pair(segment, {:ok, acc}) do
     with [key, value] <- String.split(segment, "=", parts: 2),

@@ -17,8 +17,10 @@ defmodule DawarichWeb.AuthRecovery.Http do
   ]
   def init(opts), do: opts
 
+  def route?(conn), do: {conn.method, conn.request_path} in @routes
+
   def call(conn, opts) do
-    if Keyword.get(opts, :enabled, false) == true and {conn.method, conn.request_path} in @routes and
+    if Keyword.get(opts, :enabled, false) == true and route?(conn) and
          Admission.headers(conn.req_headers) == :ok do
       conn = conn |> DawarichWeb.HostAuthorization.call([]) |> DawarichWeb.ForceSSL.call([])
       if conn.halted, do: conn, else: admit(conn, opts)
@@ -82,10 +84,7 @@ defmodule DawarichWeb.AuthRecovery.Http do
                  ) do
               dispatch(conn, method, params, opts, context)
             else
-              conn
-              |> put_resp_content_type("text/html")
-              |> send_resp(422, "Invalid authenticity token")
-              |> halt()
+              fallback(conn, opts)
             end
           else
             _ -> fallback(conn, opts)
@@ -108,7 +107,7 @@ defmodule DawarichWeb.AuthRecovery.Http do
   end
 
   defp dispatch(conn, method, params, opts, context) do
-    case Flow.dispatch(method, conn.request_path, params, conn.assigns.rails_session, context) do
+    case plan(method, conn, params, context) do
       {:ok, %{location: nil} = result} ->
         form(conn, result, context)
 
@@ -119,7 +118,7 @@ defmodule DawarichWeb.AuthRecovery.Http do
         conn
         |> AuthCookie.session({result.session, cookie})
         |> headers()
-        |> put_resp_header("location", result.location)
+        |> put_resp_header("location", RequestURL.base(conn) <> result.location)
         |> send_resp(result.status, "")
         |> halt()
 
@@ -130,6 +129,26 @@ defmodule DawarichWeb.AuthRecovery.Http do
         fallback(conn, opts)
     end
   end
+
+  defp plan("POST", conn, params, context) do
+    repo = Map.get(context, :repo, Dawarich.Repo)
+
+    planned =
+      repo.transaction(fn ->
+        case Flow.dispatch("POST", conn.request_path, params, conn.assigns.rails_session, context) do
+          {:ok, result} -> {:ok, result}
+          other -> repo.rollback(other)
+        end
+      end)
+
+    case planned do
+      {:ok, ok} -> ok
+      {:error, other} -> other
+    end
+  end
+
+  defp plan(method, conn, params, context),
+    do: Flow.dispatch(method, conn.request_path, params, conn.assigns.rails_session, context)
 
   defp form(conn, result, context) do
     conn =

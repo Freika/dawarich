@@ -75,12 +75,17 @@ defmodule DawarichWeb.AuthGateTest do
     untouched(@recovery ++ @elsewhere)
   end
 
-  test "credentials on, an instance that is not self-hosted: even its own routes pass untouched" do
-    Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
+  test "recovery claims only its own seven routes" do
+    Application.put_env(:dawarich, :phoenix_auth, ["recovery"])
+    untouched(@credentials ++ @elsewhere)
+  end
+
+  test "credentials and recovery on, an instance that is not self-hosted: even their own routes pass untouched" do
+    Application.put_env(:dawarich, :phoenix_auth, ["credentials", "recovery"])
 
     for value <- [nil, "false", "TRUE", ""] do
       if value, do: System.put_env("SELF_HOSTED", value), else: System.delete_env("SELF_HOSTED")
-      untouched(@credentials)
+      untouched(@credentials ++ @recovery)
     end
   end
 end

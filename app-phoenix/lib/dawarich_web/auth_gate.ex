@@ -2,10 +2,11 @@ defmodule DawarichWeb.AuthGate do
   @moduledoc false
   @behaviour Plug
 
-  alias Dawarich.Auth.RegistrationSetting
-  alias DawarichWeb.AuthHandler
+  alias Dawarich.Auth.{Admission, RegistrationSetting}
+  alias Dawarich.Auth.Recovery.MailWorker
+  alias DawarichWeb.{AuthHandler, AuthRecovery}
 
-  @handlers [{"credentials", AuthHandler}]
+  @handlers [{"credentials", AuthHandler}, {"recovery", AuthRecovery.Http}]
 
   @impl true
   def init(opts), do: opts
@@ -30,4 +31,21 @@ defmodule DawarichWeb.AuthGate do
     do: [enabled: true, registration_enabled: registration]
 
   defp options("credentials", :error), do: [enabled: true]
+
+  defp options("recovery", registration) do
+    env = System.get_env()
+
+    context =
+      %{oidc: Admission.oidc?(env), self_hosted: env["SELF_HOSTED"] == "true"}
+      |> put_registration(registration)
+      |> put_enqueue(MailWorker.deliverable?(env))
+
+    [enabled: true, context: context]
+  end
+
+  defp put_registration(context, {:ok, value}), do: Map.put(context, :registration_enabled, value)
+  defp put_registration(context, :error), do: context
+
+  defp put_enqueue(context, true), do: Map.put(context, :enqueue, &MailWorker.enqueue/1)
+  defp put_enqueue(context, false), do: context
 end

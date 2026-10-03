@@ -41,7 +41,7 @@ defmodule DawarichWeb.AuthHandler do
            Admission.context(
              session,
              conn.req_headers,
-             oidc?(),
+             Admission.oidc?(),
              System.get_env("SELF_HOSTED") == "true"
            ),
          true <- owned?(conn, session) do
@@ -165,17 +165,6 @@ defmodule DawarichWeb.AuthHandler do
       _ -> false
     end
   end
-
-  defp oidc? do
-    (present?("GOOGLE_OAUTH_CLIENT_ID") and present?("GOOGLE_OAUTH_CLIENT_SECRET")) or
-      (present?("OIDC_CLIENT_ID") and
-         (present?("OIDC_CLIENT_SECRET") or
-            String.downcase(
-              Dawarich.ReleaseMigration.ruby_strip(System.get_env("OIDC_PKCE_ENABLED") || "")
-            ) == "true"))
-  end
-
-  defp present?(key), do: Dawarich.ReleaseMigration.ruby_strip(System.get_env(key) || "") != ""
 
   defp fallback(conn, opts) do
     case Keyword.get(opts, :fallback) do
