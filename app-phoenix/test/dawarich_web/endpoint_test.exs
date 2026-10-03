@@ -782,6 +782,28 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
+  test "Rails keeps guest achievement requests intact, including malformed page shapes and writes",
+       ctx do
+    port = serve()
+
+    for target <-
+          ~w(/achievements /achievements/country_de /achievements/unknown /achievements.json /achievements/country_de.json /achievements?format=json /achievements?unexpected=value /achievements?q[a]=value) do
+      assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
+               "GET #{target} HTTP/1.1"
+    end
+
+    for target <-
+          ~w(/achievements/country_de/toggle_sharing /achievements/unlocks/next /achievements/unlocks/123/seen /achievements/unlocks/dismiss) do
+      body = "authenticity_token=x"
+
+      request =
+        "POST #{target} HTTP/1.1\r\nHost: a\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+          "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+      assert answered_by_puma(port, ctx.upstream, request) == "POST #{target} HTTP/1.1"
+    end
+  end
+
   test "DAWARICH_RAILS_ROUTES=sharing hands the shared-link page and its unlock back with their query",
        ctx do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)

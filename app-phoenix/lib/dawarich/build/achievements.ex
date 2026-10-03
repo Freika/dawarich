@@ -14,9 +14,16 @@ defmodule Dawarich.Build.Achievements do
       |> fetch!("continents")
 
     hand = root |> Path.join("config/achievements.yml") |> Yaml.load!()
-    sets = hand_sets(hand, universe(planet)) ++ continent_sets(planet) ++ country_sets(planet)
 
-    Jason.encode_to_iodata!(object([{"definitions", Enum.map(sets, &json(&1, translations))}]))
+    sets =
+      hand_sets(hand, universe(planet)) ++ continent_sets(planet, hand) ++ country_sets(planet)
+
+    Jason.encode_to_iodata!(
+      object([
+        {"definitions", Enum.map(sets, &json(&1, translations))},
+        {"transliteration", Dawarich.Build.Transliteration.export(root)}
+      ])
+    )
   end
 
   defp universe(planet) do
@@ -35,6 +42,10 @@ defmodule Dawarich.Build.Achievements do
         key: key,
         kind: fetch(attrs, "kind"),
         name: fetch(attrs, "name"),
+        country: nil,
+        continent: fetch(attrs, "continent"),
+        parent_key: nil,
+        card: fetch(attrs, "card") || object([]),
         level: "country",
         threshold: fetch(attrs, "threshold"),
         regions: if(regions, do: pairs(regions), else: universe),
@@ -43,12 +54,16 @@ defmodule Dawarich.Build.Achievements do
     end
   end
 
-  defp continent_sets(planet) do
+  defp continent_sets(planet, hand) do
     for {continent, data} <- pairs(planet), continent != @no_meta_continent do
       %{
-        key: "continent_" <> (continent |> String.downcase() |> String.replace(" ", "_")),
+        key: continent_key(continent),
         kind: "continent",
         name: continent <> " Explorer",
+        country: nil,
+        continent: continent,
+        parent_key: nil,
+        card: continent_card(continent, data, hand),
         level: "country",
         threshold: nil,
         regions:
@@ -62,7 +77,7 @@ defmodule Dawarich.Build.Achievements do
   end
 
   defp country_sets(planet) do
-    for {_continent, data} <- pairs(planet),
+    for {continent, data} <- pairs(planet),
         {code, country} <- pairs(fetch!(data, "countries")) do
       name = fetch!(country, "name")
       subdivisions = pairs(fetch!(country, "subdivisions"))
@@ -71,13 +86,53 @@ defmodule Dawarich.Build.Achievements do
       %{
         key: "country_" <> String.downcase(code),
         kind: "country",
-        name: name,
+        name: if(gridded, do: name <> " Explorer", else: name),
+        country: code,
+        continent: continent,
+        parent_key: if(continent == @no_meta_continent, do: nil, else: continent_key(continent)),
+        card: country_card(country, gridded),
         level: if(gridded, do: "subdivision", else: "country"),
         threshold: nil,
         regions: if(gridded, do: subdivisions, else: [{code, name}]),
         place: name
       }
     end
+  end
+
+  defp continent_key(continent),
+    do: "continent_" <> (continent |> String.downcase() |> String.replace(" ", "_"))
+
+  defp continent_card(continent, data, hand) do
+    meta = hand |> fetch!("_continents") |> fetch!(continent)
+    count = data |> fetch!("countries") |> pairs() |> length()
+
+    object([
+      {"rarity", "Legendary"},
+      {"description", "Spend time in all #{count} countries and territories of #{continent}."},
+      {"flavor", fetch(meta, "flavor")},
+      {"place", continent},
+      {"child_zoom", fetch(meta, "child_zoom")},
+      {"art", fetch(meta, "art")}
+    ])
+  end
+
+  defp country_card(country, gridded) do
+    name = fetch!(country, "name")
+    count = country |> fetch!("subdivisions") |> pairs() |> length()
+    art = fetch!(country, "art")
+
+    description =
+      if gridded,
+        do: "Spend time in all #{count} regions of #{name}.",
+        else: "Spend time in #{name}."
+
+    object([
+      {"rarity", "Rare"},
+      {"description", description},
+      {"place", name},
+      {"child_zoom", Float.round(fetch!(art, "zoom") + 1.5, 1)},
+      {"art", art}
+    ])
   end
 
   defp json(set, translations) do
@@ -98,7 +153,12 @@ defmodule Dawarich.Build.Achievements do
       {"target", set.threshold || total},
       {"regions", object(set.regions)},
       {"region_codes", Enum.map(set.regions, &elem(&1, 0))},
-      {"names", object(names)}
+      {"names", object(names)},
+      {"name", set.name},
+      {"country", set.country},
+      {"continent", set.continent},
+      {"parent_key", set.parent_key},
+      {"card", set.card}
     ])
   end
 

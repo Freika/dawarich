@@ -23,6 +23,24 @@ defmodule Dawarich.TtlCacheTest do
     assert TtlCache.fetch(:short, 0, fn -> :second end) == :second
   end
 
+  test "nil miss policy and lookup preserve shared cache contracts" do
+    key = {:shared_cache, :nil_policy}
+    assert TtlCache.fetch(key, 60_000, fn -> nil end, cache_nil: false) == nil
+    assert TtlCache.lookup(key) == :error
+    assert :ets.lookup(TtlCache, key) == []
+
+    assert TtlCache.fetch(key, 60_000, fn -> :resolved end, cache_nil: false) == :resolved
+    assert TtlCache.lookup(key) == {:ok, :resolved}
+    assert TtlCache.delete(key) == :ok
+    assert TtlCache.lookup(key) == :error
+
+    assert TtlCache.fetch(key, 60_000, fn -> nil end) == nil
+    assert TtlCache.lookup(key) == {:ok, nil}
+    assert TtlCache.fetch(key, 60_000, fn -> flunk("recomputed cached nil") end) == nil
+    assert TtlCache.put(key, :replacement, 0) == :replacement
+    assert TtlCache.lookup(key) == :error
+  end
+
   test "delete forgets a key" do
     assert TtlCache.fetch(:gone, 60_000, fn -> :first end) == :first
     assert TtlCache.delete(:gone) == :ok
