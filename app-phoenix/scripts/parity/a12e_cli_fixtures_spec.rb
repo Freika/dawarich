@@ -10,7 +10,8 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
   fx = A12eFixtureSupport
   recorded = {}
   touched = "updated_at > timestamp '2026-06-01' AS touched"
-  users = { 'users' => "SELECT id, email, status, admin, #{touched} FROM users ORDER BY id" }
+  reset = 'reset_password_token IS NULL AS no_reset_token, reset_password_sent_at IS NULL AS no_reset_sent_at'
+  users = { 'users' => "SELECT id, email, status, admin, #{reset}, #{touched} FROM users ORDER BY id" }
   points = { 'points' => 'SELECT p.id, p.raw_data, p.raw_data_archived, a.month, a.chunk_number, ' \
                          "p.#{touched} FROM points p LEFT JOIN points_raw_data_archives a " \
                          'ON a.id = p.raw_data_archive_id ORDER BY p.id' }
@@ -71,7 +72,7 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
   end
 
   it 'FAQ recipe: make a user an admin' do
-    fx.user!(1011, 'admin-me@example.invalid')
+    fx.user!(1011, 'admin-me@example.invalid', reset: true)
     entry = fx.record(argv: %w[users admin admin-me@example.invalid], after: users, stdout: false) do
       fx.recipe { User.find_by(email: 'admin-me@example.invalid').update(admin: true) }
     end
@@ -79,8 +80,8 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
   end
 
   it 'FAQ recipe: change an email' do
-    fx.user!(1021, 'old@example.invalid')
-    fx.user!(1022, 'other@example.invalid')
+    fx.user!(1021, 'old@example.invalid', reset: true)
+    fx.user!(1022, 'other@example.invalid', reset: true)
     entry = fx.record(argv: ['users', 'email', 'old@example.invalid', '  New@Example.INVALID '], after: users,
                       stdout: false) do
       fx.recipe { User.find_by(email: 'old@example.invalid').update(email: '  New@Example.INVALID ') }
@@ -89,8 +90,9 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
   end
 
   it 'FAQ recipe: set a password' do
-    fx.user!(1031, 'login@example.invalid')
-    login = { 'users' => "SELECT id, encrypted_password LIKE '$2a$%' AS bcrypt, #{touched} FROM users ORDER BY id" }
+    fx.user!(1031, 'login@example.invalid', reset: true)
+    login = { 'users' => "SELECT id, encrypted_password LIKE '$2a$%' AS bcrypt, #{reset}, #{touched} " \
+                         'FROM users ORDER BY id' }
     entry = fx.record(argv: %w[users password login@example.invalid], stdin: "#{fx::LOGIN}\n", after: login,
                       stdout: false) do
       fx.recipe do
@@ -264,6 +266,19 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
     end)
   end
 
+  it 'points:raw_data:restore of an archive line holding a 17-digit float' do
+    fx.user!(2531, 'float@example.invalid')
+    fx.month_points!(2531, 25_310, 2)
+    fx.archive_user!(2531)
+    lines = [25_310, 25_311].map { |id| %({"id":#{id},"raw_data":{"acc":0.30000000000000004,"seq":#{id}}}) }
+    fx.archive_lines!(fx.archive_id(2531, 1), lines)
+    fx.sql("UPDATE points SET raw_data = '{}' WHERE user_id = 2531")
+    entry = fx.record(argv: ['points:raw_data:restore[2531,2020,1]'], relative:, after: points) do
+      fx.rake('points:raw_data:restore', '2531', '2020', '1')
+    end
+    keep('raw_data_restore_float', entry)
+  end
+
   it 'points:raw_data:restore without archives' do
     fx.user!(2511, 'none@example.invalid')
     entry = fx.record(argv: ['points:raw_data:restore[2511,2020,1]'], after: {}, stderr: true) do
@@ -326,7 +341,11 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
     path = fx::DIR.join('password.json')
     fx.write_password_hash(path) if fx.write?
     fx.user!(1041, 'phoenix-hash@example.invalid')
-    User.where(id: 1041).update_all(encrypted_password: JSON.parse(path.read).fetch('hash'))
+    hashes = JSON.parse(path.read)
+    User.where(id: 1041).update_all(encrypted_password: hashes.fetch('hash'))
     expect(User.find(1041).valid_password?(fx::LOGIN)).to be(true)
+    User.where(id: 1041).update_all(encrypted_password: hashes.fetch('long_hash'))
+    expect(User.find(1041).valid_password?(fx::LONG)).to be(true)
+    expect(User.find(1041).valid_password?(fx::LONG[0, 36] + ('b' * 50))).to be(true)
   end
 end

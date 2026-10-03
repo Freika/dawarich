@@ -5,13 +5,14 @@ defmodule Dawarich.CLI.Users do
 
   alias Dawarich.ReleaseMigration
 
+  @reset "reset_password_token = NULL, reset_password_sent_at = NULL, updated_at = now()"
   @email ~r/\A[^@\s]+@[^@\s]+\z/
   @find "SELECT id FROM users WHERE email = $1 AND deleted_at IS NULL"
   @taken "SELECT EXISTS (SELECT 1 FROM users WHERE email = $1 AND id <> $2)"
   @activate "UPDATE users SET status = 1 WHERE deleted_at IS NULL"
   @admin "UPDATE users SET admin = true, updated_at = now() WHERE id = $1 AND admin IS DISTINCT FROM true"
-  @set_email "UPDATE users SET email = $2, updated_at = now() WHERE id = $1 AND email <> $2"
-  @set_password "UPDATE users SET encrypted_password = $2, updated_at = now() WHERE id = $1"
+  @set_email "UPDATE users SET email = $2, #{@reset} WHERE id = $1 AND email <> $2"
+  @set_password "UPDATE users SET encrypted_password = $2, #{@reset} WHERE id = $1"
   @password_usage "usage: dawarich users password EMAIL, with the new password on standard input"
 
   def activate(_args, ctx) do
@@ -61,7 +62,7 @@ defmodule Dawarich.CLI.Users do
   def password(_args, ctx), do: fail(ctx, @password_usage)
 
   def hash_password(password, salt \\ Bcrypt.Base.gen_salt(12, true)),
-    do: Bcrypt.Base.hash_password(password, salt)
+    do: Bcrypt.Base.hash_password(binary_part(password, 0, min(byte_size(password), 72)), salt)
 
   defp find(ctx, email) do
     case ctx.repo.query!(@find, [normalize(email)], log: false).rows do

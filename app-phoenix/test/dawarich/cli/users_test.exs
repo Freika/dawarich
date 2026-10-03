@@ -93,18 +93,27 @@ defmodule Dawarich.CLI.UsersTest do
     assert out =~ "Password updated for quiet@example.invalid"
   end
 
+  test "a password longer than 72 bytes is cut to 72 bytes first, as Ruby's bcrypt gem does" do
+    salt = "$2a$12$PhoenixA12eCorpusSaltu"
+    long = String.duplicate(<<195, 164>>, 128)
+
+    assert Users.hash_password(long, salt) ==
+             Users.hash_password(String.duplicate(<<195, 164>>, 36), salt)
+  end
+
   test "hash_password/1 is what R2 hands to Rails" do
     assert Bcrypt.verify_pass(@login, Users.hash_password(@login))
   end
 
   test "the corpus hash is hash_password/2 with the recorded salt, in hash_password/1's shape" do
-    %{"hash" => recorded, "salt" => salt} =
+    %{"hash" => recorded, "long_hash" => long_hash, "salt" => salt} =
       "../../fixtures/a12e/password.json"
       |> Path.expand(__DIR__)
       |> File.read!()
       |> Jason.decode!()
 
     assert Users.hash_password(@login, salt) == recorded
+    assert Users.hash_password(String.duplicate(<<195, 164>>, 128), salt) == long_hash
     assert <<"$2a$12$", _::binary-size(53)>> = Users.hash_password(@login)
     assert binary_part(recorded, 0, 7) == "$2a$12$" and byte_size(recorded) == 60
   end

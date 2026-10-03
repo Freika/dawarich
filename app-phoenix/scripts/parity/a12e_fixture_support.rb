@@ -8,6 +8,8 @@ module A12eFixtureSupport
   PHRASE = 'phoenix-a12e-archive-phrase-not-for-production'
   LOGIN = 'phoenix-a12e-login-not-for-production'
   SALT = '$2a$12$PhoenixA12eCorpusSaltu'
+  LONG = ('ä' * 128).freeze
+  RESET = 'phoenix-a12e-pending-reset'
   STAMP = '2026-01-01 00:00:00'
   NOW = Time.utc(2026, 10, 1, 12)
   FUTURE = 2_000_000_000
@@ -39,11 +41,13 @@ module A12eFixtureSupport
     FileUtils.rm_rf(Dir[Rails.root.join('tmp/storage/*').to_s])
   end
 
-  def user!(id, email, status: 1, deleted: false, admin: false)
-    sql(<<~SQL.squish, id, email, status, admin, deleted ? STAMP : nil, STAMP, STAMP, STAMP)
+  def user!(id, email, status: 1, deleted: false, admin: false, reset: false)
+    values = [id, email, status, admin, deleted ? STAMP : nil, STAMP, STAMP, STAMP, reset ? "#{RESET}-#{id}" : nil,
+              reset ? STAMP : nil]
+    sql(<<~SQL.squish, *values)
       INSERT INTO users (id, email, encrypted_password, api_key, status, admin, deleted_at, created_at, updated_at,
-                         visits_redetected_at)
-      VALUES (?, ?, '', '', ?, ?, ?, ?, ?, ?)
+                         visits_redetected_at, reset_password_token, reset_password_sent_at)
+      VALUES (?, ?, '', '', ?, ?, ?, ?, ?, ?, ?, ?)
     SQL
   end
 
@@ -161,12 +165,26 @@ module A12eFixtureSupport
   def human_sizes = SIZES.map { |n| [n, ActiveSupport::NumberHelper.number_to_human_size(n)] }
 
   def write_password_hash(path)
-    code = "IO.puts(Jason.encode!(Dawarich.CLI.Users.hash_password(#{LOGIN.inspect}, #{SALT.inspect})))"
+    long = "String.duplicate(<<195, 164>>, #{LONG.length})"
+    code = "h = &Dawarich.CLI.Users.hash_password(&1, #{SALT.inspect}); " \
+           "IO.puts(Jason.encode!([h.(#{LOGIN.inspect}), h.(#{long})]))"
     out, status = Open3.capture2e(phoenix_env, 'mix', 'run', '--no-start', '-e', code,
                                   chdir: Rails.root.join('app-phoenix').to_s)
     raise out unless status.success?
 
-    path.write("#{Oj.dump({ 'hash' => JSON.parse(out.lines.last), 'salt' => SALT }, mode: :strict, indent: 2)}\n")
+    hash, long_hash = JSON.parse(out.lines.last)
+    data = { 'hash' => hash, 'long_hash' => long_hash, 'salt' => SALT }
+    path.write("#{Oj.dump(data, mode: :strict, indent: 2)}\n")
+  end
+
+  def archive_lines!(archive_id, lines)
+    io = StringIO.new
+    gzip = Zlib::GzipWriter.new(io)
+    lines.each { |line| gzip.write("#{line}\n") }
+    gzip.close
+    data = with_env('ARCHIVE_ENCRYPTION_KEY' => PHRASE) { Points::RawData::Encryption.encrypt(io.string) }
+    blob = Points::RawDataArchive.find(archive_id).file.blob
+    blob.service.upload(blob.key, StringIO.new(data))
   end
 
   def phoenix_env
