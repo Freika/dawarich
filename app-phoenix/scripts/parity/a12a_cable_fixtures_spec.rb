@@ -194,6 +194,7 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
     record('share_list', 'connect', path: "/cable?share_id%5B%5D=#{open}")
     record('share_hash', 'connect', path: "/cable?share_id%5Bk%5D=#{open}")
     record('query_bad_encoding', 'connect', path: '/cable?share_id=%ZZ')
+    record('query_bad_utf8', 'connect', path: '/cable?share_id=%E9')
     record('user_and_share', 'connect', path: share_path('live_open'), cookies: ['alice'])
   end
 

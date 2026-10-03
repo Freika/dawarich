@@ -112,6 +112,7 @@ module A12aFixtureSupport
 
   def phoenix(code)
     env = { 'MIX_ENV' => 'test', 'PATH' => "#{Dir.home}/.asdf/shims:#{ENV.fetch('PATH')}",
+            'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.18.3-otp-27',
             'PHOENIX_TEST_REDIS_URL' => 'redis://127.0.0.1:7195/1', 'DATABASE_HOST' => '127.0.0.1' }
     out, status = Open3.capture2e(env, 'mix', 'run', '--no-start', '-e', code,
                                   chdir: Rails.root.join('app-phoenix').to_s)
