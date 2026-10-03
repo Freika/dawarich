@@ -22,11 +22,12 @@ defmodule Dawarich.Test.ApiGolden do
     )
   end
 
-  defp raw(%{"method" => method, "target" => target, "headers" => headers}),
+  defp raw(%{"method" => method, "target" => target, "headers" => headers} = request),
     do: [
       "#{method} #{target} HTTP/1.1\r\n",
       Enum.map(headers, fn [name, value] -> "#{name}: #{value}\r\n" end),
-      "\r\n"
+      "\r\n",
+      Map.get(request, "body", "")
     ]
 
   defp owned(kase, client, upstream, options) do
@@ -41,8 +42,12 @@ defmodule Dawarich.Test.ApiGolden do
       |> Enum.uniq()
       |> Kernel.--(["date", "content-length" | ignore])
 
-    assert {got_status, comparable_body(got_body, options)} ==
-             {status, comparable_body(body, options)}
+    masks = kase["mask"] || []
+    unordered = kase["unordered"] || []
+
+    assert {got_status,
+            got_body |> comparable_body(options) |> masked(masks) |> normalized(unordered)} ==
+             {status, body |> comparable_body(options) |> masked(masks) |> normalized(unordered)}
 
     assert Enum.sort(names) == Enum.sort(Map.keys(expected) -- ignore)
 
@@ -77,10 +82,12 @@ defmodule Dawarich.Test.ApiGolden do
   defp rails(kase, client, upstream) do
     %{"method" => method, "target" => target, "headers" => sent} = kase["request"]
     puma = accept(upstream)
-    {head, _rest} = read_head(puma)
+    {head, rest} = read_head(puma)
 
     assert request_line(head) == "#{method} #{target} HTTP/1.1"
     for [name, value] <- sent, do: assert(header(head, String.downcase(name)) == [value], name)
+    sent_body = Map.get(kase["request"], "body", "")
+    assert read_at_least(puma, rest, byte_size(sent_body)) == sent_body
 
     %{"status" => status} = kase["response"]
     body = body(kase["response"])
@@ -88,6 +95,22 @@ defmodule Dawarich.Test.ApiGolden do
     assert {^status, _, received} = read_response(client, method: method)
     assert received == body
   end
+
+  def normalized(body, []), do: body
+
+  def normalized(body, keys) do
+    %Jason.OrderedObject{values: values} = Jason.decode!(body, objects: :ordered_objects)
+
+    for {key, value} <- values do
+      if key in keys, do: {key, Enum.sort_by(value, &Jason.encode!/1)}, else: {key, value}
+    end
+  end
+
+  defp masked(body, masks),
+    do:
+      Enum.reduce(masks, body, fn mask, text ->
+        Regex.replace(Regex.compile!(mask), text, &String.replace(&1, ~r/\d/, "0"))
+      end)
 
   defp body(%{"body_base64" => encoded}), do: Base.decode64!(encoded)
   defp body(%{"body" => body}), do: body
