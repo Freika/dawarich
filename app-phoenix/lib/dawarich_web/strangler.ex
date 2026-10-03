@@ -12,6 +12,7 @@ defmodule DawarichWeb.Strangler do
   @keys %{"s" => "sharing"}
 
   @constraints %{
+    "/api/v1/notes/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/api/v1/photos/:id/thumbnail" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
     "/api/v1/photos/:id/thumbnail.jpg" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
     "/api/v1/places/:id" => %{"id" => ~r/\A\d{1,18}\z/},

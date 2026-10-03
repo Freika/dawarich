@@ -51,7 +51,7 @@ defmodule DawarichWeb.Api.RemainingRoutesTest do
     actual =
       for route <- DawarichWeb.Router.__routes__(),
           String.starts_with?(route.path, "/api/"),
-          route.metadata[:slice] != :api_shared do
+          route.metadata[:slice] not in [:api_shared, :api_notes] do
         verb = route.verb |> to_string() |> String.upcase()
         info = Phoenix.Router.route_info(DawarichWeb.Router, verb, route.path, "localhost")
 

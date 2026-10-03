@@ -3,6 +3,25 @@ defmodule DawarichWeb.ApiRoutes do
 
   defmacro api_routes do
     quote do
+      pipeline :api_notes do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug :method_override_to_rails
+        plug DawarichWeb.Api.Body
+        plug DawarichWeb.Api.Auth, require_active: false
+      end
+
+      scope "/api/v1", DawarichWeb.Api do
+        pipe_through :api_notes
+        get "/notes", NotesController, :index, metadata: %{slice: :api_notes}
+        post "/notes", NotesController, :create, metadata: %{slice: :api_notes}
+        get "/notes/:id", NotesController, :show, metadata: %{slice: :api_notes}
+        patch "/notes/:id", NotesController, :update, metadata: %{slice: :api_notes}
+        put "/notes/:id", NotesController, :update, metadata: %{slice: :api_notes}
+        delete "/notes/:id", NotesController, :destroy, metadata: %{slice: :api_notes}
+      end
+
       pipeline :api_shared do
         plug :put_api_tag, "api"
         plug DawarichWeb.HostAuthorization
