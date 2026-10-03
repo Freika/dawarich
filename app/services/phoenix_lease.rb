@@ -29,12 +29,25 @@ module PhoenixLease
 
   module_function
 
-  def hold(name, busy, ttl: TTL)
+  def hold(name, busy, ttl: TTL, &)
     return yield unless table?
 
     holder = SecureRandom.uuid
     raise busy unless acquire(name, holder, ttl)
 
+    held(name, holder, ttl, &)
+  end
+
+  def try_hold(name, ttl: TTL, &)
+    return ActiveRecord::Base.with_advisory_lock(name, timeout_seconds: 0, &) unless table?
+
+    holder = SecureRandom.uuid
+    return false unless acquire(name, holder, ttl)
+
+    held(name, holder, ttl, &)
+  end
+
+  def held(name, holder, ttl)
     stop = Queue.new
     beat = Thread.new { heartbeat(name, holder, ttl, stop) }
     begin
@@ -85,5 +98,5 @@ module PhoenixLease
     end
   end
 
-  private_class_method :heartbeat, :lost, :quietly, :changed?
+  private_class_method :held, :heartbeat, :lost, :quietly, :changed?
 end

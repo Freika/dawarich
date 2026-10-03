@@ -60,6 +60,24 @@ RSpec.describe PhoenixLease do
       expect(rows).to be_empty
     end
 
+    it 'try_hold runs the block under the lease and returns its value' do
+      expect(described_class.try_hold(name) { rows }).to match([[kind_of(String), true]])
+      expect(rows).to be_empty
+    end
+
+    it 'try_hold returns false at once while another holder owns the lease' do
+      insert('phoenix-holder', '1 hour')
+      ran = false
+      expect(described_class.try_hold(name) { ran = true }).to be(false)
+      expect(ran).to be(false)
+      expect(rows).to eq([['phoenix-holder', true]])
+    end
+
+    it 'try_hold releases the lease when the block raises' do
+      expect { described_class.try_hold(name) { raise ArgumentError } }.to raise_error(ArgumentError)
+      expect(rows).to be_empty
+    end
+
     it 'keeps renewing the lease while the block outlives its ttl' do
       described_class.hold(name, busy.new, ttl: 1.5) do
         first = expires_at
@@ -73,6 +91,12 @@ RSpec.describe PhoenixLease do
   it 'runs the block without a lease on a database Phoenix never migrated' do
     connection.execute('DROP TABLE IF EXISTS phoenix.leases')
     expect(described_class.hold(name, busy.new) { :ran }).to eq(:ran)
+  end
+
+  it 'try_hold falls back to the try-once advisory lock on a database Phoenix never migrated' do
+    connection.execute('DROP TABLE IF EXISTS phoenix.leases')
+    expect(ActiveRecord::Base).to receive(:with_advisory_lock).with(name, timeout_seconds: 0) { |*, &block| block.call }
+    expect(described_class.try_hold(name) { :ran }).to eq(:ran)
   end
 
   it 'issues the same statements as Dawarich.State.Lease' do
