@@ -47,7 +47,7 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
     {import["id"], import["user_id"]}
   end
 
-  defp run(id, attempt, storage, repo \\ ScratchRepo) do
+  defp run(id, attempt, storage, repo \\ ScratchRepo, opts \\ []) do
     job = %Oban.Job{
       args: %{"import_id" => id, "lock_attempt" => 1, "event_id" => Ecto.UUID.generate()},
       attempt: attempt,
@@ -56,7 +56,7 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
     }
 
     assert_raise RuntimeError, "GPX extraction did not finish within 0 minutes", fn ->
-      ExtractGpxWorker.run(repo, job, storage: storage)
+      ExtractGpxWorker.run(repo, job, [storage: storage] ++ opts)
     end
   end
 
@@ -138,14 +138,17 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
     storage: storage
   } do
     {id, uid} = prepare(storage, "<gpx/>")
+    Application.put_env(:dawarich, :extraction_timeout_ms, 60_000)
     server = Dawarich.Test.RawHTTP.listen()
     on_exit(fn -> :gen_tcp.close(server.listen) end)
+    caller = self()
 
     peer =
       Task.async(fn ->
         socket = Dawarich.Test.RawHTTP.accept(server)
         Dawarich.Test.RawHTTP.read_head(socket)
-        :gen_tcp.recv(socket, 0, 1_000)
+        :ok = :gen_tcp.controlling_process(socket, caller)
+        socket
       end)
 
     s3 =
@@ -158,8 +161,20 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
         "AWS_ENDPOINT_URL" => "http://127.0.0.1:#{server.port}"
       })
 
-    run(id, 3, %{s3 | root: storage.root})
-    assert {:error, :closed} = Task.await(peer, 2_000)
+    deadline = %{at: :deferred, timeout_ms: 200, minutes: 0}
+
+    extraction =
+      Task.async(fn ->
+        run(id, 3, %{s3 | root: storage.root}, ScratchRepo, deadline: deadline)
+      end)
+
+    socket = Task.await(peer, :infinity)
+    send(extraction.pid, :start_deadline)
+
+    assert %RuntimeError{message: "GPX extraction did not finish within 0 minutes"} =
+             Task.await(extraction)
+
+    assert {:error, :closed} = :gen_tcp.recv(socket, 0, 1_000)
 
     assert {4, %{"error_message" => "GPX extraction did not finish within 0 minutes"}, _} =
              import_state(id)

@@ -3,7 +3,7 @@ defmodule Dawarich.Test.ImportDownloadPlug do
   def init(opts), do: opts
 
   def call(conn, opts) do
-    {:ok, conn} =
+    {:ok, {conn, path}} =
       Dawarich.Imports.Download.with_file(
         Dawarich.ScratchRepo,
         opts.user,
@@ -33,10 +33,11 @@ defmodule Dawarich.Test.ImportDownloadPlug do
             end)
 
           send(opts.parent, {:stream_returned, path})
-          conn
+          {conn, path}
         end
       )
 
+    send(opts.parent, {:stream_cleaned, path})
     conn
   end
 end
@@ -120,9 +121,12 @@ defmodule Dawarich.Imports.DownloadStreamTest do
              key == "content-disposition" and value =~ "lease.gpx"
            end)
 
-    assert_receive {:stream_ready, path, _}, 1000
-    assert_receive {:stream_returned, ^path}, 1000
-    await_clean(c)
+    {:stream_ready, path, _process} =
+      receive do: ({:stream_ready, _, _} = message -> message)
+
+    receive do: ({:stream_returned, ^path} -> :ok)
+    receive do: ({:stream_cleaned, ^path} -> :ok)
+    clean(c)
   end
 
   test "actual HTTP socket disconnect halts stream and cleans verified prepared file", c do
@@ -135,15 +139,18 @@ defmodule Dawarich.Imports.DownloadStreamTest do
         "GET /download HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
       )
 
-    assert_receive {:stream_ready, path, process}, 3000
+    {:stream_ready, path, process} =
+      receive do: ({:stream_ready, _, _} = message -> message)
+
     assert File.exists?(path)
-    {:ok, headers} = :gen_tcp.recv(socket, 0, 1000)
+    {:ok, headers} = :gen_tcp.recv(socket, 0, :infinity)
     assert headers =~ "200 OK"
     assert String.downcase(headers) =~ "transfer-encoding: chunked"
     :ok = :gen_tcp.close(socket)
     send(process, :stream)
-    assert_receive {:stream_returned, ^path}, 3000
-    await_clean(c)
+    receive do: ({:stream_returned, ^path} -> :ok)
+    receive do: ({:stream_cleaned, ^path} -> :ok)
+    clean(c)
   end
 
   test "a download mid-stream holds no lock on the user or the import", c do
@@ -155,7 +162,8 @@ defmodule Dawarich.Imports.DownloadStreamTest do
       "GET /download HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
     )
 
-    assert_receive {:stream_ready, path, process}, 3000
+    {:stream_ready, path, process} =
+      receive do: ({:stream_ready, _, _} = message -> message)
 
     assert {:ok, [[1], [1]]} =
              ScratchRepo.transaction(fn ->
@@ -170,17 +178,14 @@ defmodule Dawarich.Imports.DownloadStreamTest do
     {200, _headers, body} = Dawarich.Test.RawHTTP.read_response(socket)
     :gen_tcp.close(socket)
     assert body == c.bytes
-    assert_receive {:stream_returned, ^path}, 3000
-    await_clean(c)
+    receive do: ({:stream_returned, ^path} -> :ok)
+    receive do: ({:stream_cleaned, ^path} -> :ok)
+    clean(c)
   end
 
-  defp await_clean(c, attempts \\ 100) do
-    files = Enum.flat_map(["import-*", "unzipped-*"], &Path.wildcard(Path.join(c.root, &1)))
-
-    if files != [] do
-      assert attempts > 0
-      Process.sleep(10)
-      await_clean(c, attempts - 1)
-    end
-  end
+  defp clean(c),
+    do:
+      assert(
+        Enum.flat_map(["import-*", "unzipped-*"], &Path.wildcard(Path.join(c.root, &1))) == []
+      )
 end

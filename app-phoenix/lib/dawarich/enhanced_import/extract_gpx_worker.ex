@@ -28,10 +28,13 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorker do
   def run(repo, %Oban.Job{args: %{"import_id" => id, "lock_attempt" => first}} = job, opts \\ []) do
     timeout = timeout(job)
 
-    deadline = %{
-      at: System.monotonic_time(:millisecond) + timeout - @margin_ms,
-      minutes: div(timeout - @margin_ms, 60_000)
-    }
+    deadline =
+      Keyword.get_lazy(opts, :deadline, fn ->
+        %{
+          at: System.monotonic_time(:millisecond) + timeout - @margin_ms,
+          minutes: div(timeout - @margin_ms, 60_000)
+        }
+      end)
 
     case State.load(repo, id) do
       %{source: 4} = import ->

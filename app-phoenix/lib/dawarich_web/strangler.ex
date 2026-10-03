@@ -8,7 +8,8 @@ defmodule DawarichWeb.Strangler do
 
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
-  @page_pipelines [:browser, :rails_frame]
+  @page_pipelines [:browser, :insights, :rails_frame, :sharing, :sharing_unlock]
+  @keys %{"s" => "sharing"}
 
   @constraints %{
     "/api/v1/photos/:id/thumbnail" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
@@ -17,6 +18,9 @@ defmodule DawarichWeb.Strangler do
     "/api/v1/tracks/:track_id/points" => %{"track_id" => ~r/\A\d+\z/},
     "/map/timeline_feeds/:id/track_info" => %{"id" => ~r/\A\d{1,18}\z/},
     "/trips/:id" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/api/v1/families/location_requests/:id/accept" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/api/v1/families/location_requests/:id/decline" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/places/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/stats/:year" => %{"year" => ~r/\A\d{4}\z/},
     "/stats/:year/:month" => %{"year" => ~r/\A\d{4}\z/, "month" => ~r/\A(0?[1-9]|1[0-2])\z/},
     "/digests/:year" => %{"year" => ~r/\A\d{4}\z/},
@@ -81,15 +85,22 @@ defmodule DawarichWeb.Strangler do
       end)
 
   defp handed_back?([segment | _]),
-    do: segment in Application.get_env(:dawarich, :rails_routes, [])
+    do: Map.get(@keys, segment, segment) in Application.get_env(:dawarich, :rails_routes, [])
 
   defp handed_back?([]), do: false
 
-  defp page_request?(conn) do
+  def page_request?(conn) do
     not String.contains?(List.last(conn.path_info) || "", ".") and
       not String.match?(header(conn, "x-requested-with"), ~r/XMLHttpRequest/i) and
+      not valueless_query?(conn.query_string) and
       not format_param?(conn.query_string) and
       page_accept?(header(conn, "accept"))
+  end
+
+  defp valueless_query?(query) do
+    query
+    |> String.split("&", trim: true)
+    |> Enum.any?(&(not String.contains?(&1, "=")))
   end
 
   defp format_param?(query) do
