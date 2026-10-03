@@ -2,6 +2,7 @@ defmodule DawarichWeb.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
   import DawarichWeb.AchievementRoutes
+  import DawarichWeb.A8Routes
   import DawarichWeb.AppPageRoutes
 
   pipeline :browser do
@@ -260,6 +261,7 @@ defmodule DawarichWeb.Router do
   end
 
   app_page_routes()
+  a8_routes()
 
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
 

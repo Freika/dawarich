@@ -31,7 +31,7 @@ defmodule DawarichWeb.SettingsParts do
           "settings.navigation.integrations",
           %{}
         )}</a>
-        <a role="tab" class="tab tab-lg" href="/settings/visits">{t(
+        <a role="tab" class={tab(@active, "visits")} href="/settings/visits">{t(
           @locale,
           "settings.navigation.visits",
           %{}

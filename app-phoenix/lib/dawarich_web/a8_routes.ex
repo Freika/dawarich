@@ -1,0 +1,33 @@
+defmodule DawarichWeb.A8Routes do
+  @moduledoc false
+  defmacro a8_routes do
+    quote do
+      pipeline :a8_public do
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RailsHeaders
+      end
+
+      scope "/" do
+        pipe_through :a8_public
+
+        get "/visits", DawarichWeb.VisitsNavigation, :index,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :navigation?}}
+      end
+
+      scope "/" do
+        pipe_through [:browser, :rails_user]
+
+        live_session :a8_pages,
+          session: {DawarichWeb.RailsAuth, :live_session, []},
+          on_mount: DawarichWeb.LiveAuth,
+          root_layout: {DawarichWeb.Layouts, :root},
+          layout: {DawarichWeb.Layouts, :app} do
+          live "/settings/visits", DawarichWeb.SettingsLive.Visits, :index,
+            container: {:div, class: "contents"},
+            metadata: %{rails_gate: {DawarichWeb.A8Gate, :settings?}}
+        end
+      end
+    end
+  end
+end
