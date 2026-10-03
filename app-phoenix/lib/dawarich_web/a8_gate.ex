@@ -3,6 +3,39 @@ defmodule DawarichWeb.A8Gate do
   alias Dawarich.Visits.WebSettings
   alias DawarichWeb.{RailsAuth, Strangler}
 
+  def actions?(conn, _params) do
+    conn.query_string == "" and
+      Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and
+      Plug.Conn.get_req_header(conn, "x-http-method-override") == [] and
+      action_content?(conn) and
+      not String.contains?(List.last(conn.path_info) || "", ".")
+  end
+
+  defp action_content?(conn) do
+    DawarichWeb.Api.Body.kind(conn) in [:form, :none] or
+      case Plug.Conn.get_req_header(conn, "content-type") do
+        [type] ->
+          match?(
+            {:ok, "multipart", "form-data", %{"boundary" => _}},
+            Plug.Conn.Utils.media_type(type)
+          ) and
+            not DawarichWeb.RailsProxy.Headers.chunked?(conn) and
+            bounded_length?(Plug.Conn.get_req_header(conn, "content-length"))
+
+        _ ->
+          false
+      end
+  end
+
+  defp bounded_length?([length]) do
+    case Integer.parse(length) do
+      {size, ""} -> size in 0..2_097_152
+      _ -> false
+    end
+  end
+
+  defp bounded_length?(_), do: false
+
   def navigation?(conn, _params) do
     Strangler.page_request?(conn) and scalar_query?(conn.query_string, ~w(status locale))
   end

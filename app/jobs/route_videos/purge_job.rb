@@ -10,10 +10,13 @@ class RouteVideos::PurgeJob < ApplicationJob
   queue_as :route_videos
 
   BATCH_SIZE = 500
+  OWNERSHIP_KEY = 'cron:route_videos_purge_job'
 
   def perform
-    expire_aged_out
-    expire_over_cap
+    JobOwnership.with_owner(OWNERSHIP_KEY) do
+      expire_aged_out
+      expire_over_cap
+    end
   end
 
   private

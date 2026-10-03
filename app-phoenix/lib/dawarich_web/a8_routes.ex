@@ -2,6 +2,28 @@ defmodule DawarichWeb.A8Routes do
   @moduledoc false
   defmacro a8_routes do
     quote do
+      pipeline :a8_action do
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RailsAuth
+        plug DawarichWeb.A8Request
+        plug DawarichWeb.Locale
+        plug DawarichWeb.RailsHeaders
+      end
+
+      scope "/" do
+        pipe_through :a8_action
+
+        post "/route_videos", DawarichWeb.RouteVideoActions, :create,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        delete "/route_videos/:id", DawarichWeb.RouteVideoActions, :destroy,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        post "/route_videos/:id", DawarichWeb.RouteVideoActions, :destroy,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+      end
+
       pipeline :a8_public do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL

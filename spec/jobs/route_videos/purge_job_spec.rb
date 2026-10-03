@@ -7,6 +7,18 @@ RSpec.describe RouteVideos::PurgeJob, type: :job do
 
   let(:user) { create(:user) }
 
+  it 'native-owned retention makes Rails job a no-op' do
+    job_owner!('cron:route_videos_purge_job', :oban)
+    allow(DawarichSettings).to receive_messages(video_retention_days: 30, video_max_per_user: 1)
+    old = create(:route_video, :with_file, user:, created_at: 31.days.ago)
+    create(:route_video, :with_file, user:)
+
+    run
+
+    expect(old.reload).to be_status_stored
+    expect(old.file).to be_attached
+  end
+
   describe 'the retention window' do
     before { allow(DawarichSettings).to receive(:video_max_per_user).and_return(0) }
 
