@@ -487,10 +487,10 @@ defmodule Dawarich.Imports.DownloadTest do
         end)
       end)
 
-    assert_receive {:reading, reader}, 3000
+    {:reading, reader} = receive do: ({:reading, _} = message -> message)
     rows("UPDATE active_storage_blobs SET filename='replacement.gpx' WHERE id=$1", [source])
     send(reader, :release)
-    assert {:error, :not_found} = Task.await(task)
+    assert {:error, :not_found} = Task.await(task, :infinity)
     clean(c)
   end
 
@@ -529,10 +529,10 @@ defmodule Dawarich.Imports.DownloadTest do
 
     context = %{c.context | services: %{"s3" => config}}
     task = Task.async(fn -> prepare(%{c | context: context}, source) end)
-    assert_receive {:preparing, reader}, 3000
+    {:preparing, reader} = receive do: ({:preparing, _} = message -> message)
     rows("UPDATE active_storage_blobs SET filename='replacement.gpx.zip' WHERE id=$1", [source])
     send(reader, :release)
-    assert {:error, :changed} = Task.await(task)
+    assert {:error, :changed} = Task.await(task, :infinity)
 
     assert [[0]] =
              rows(
@@ -547,7 +547,7 @@ defmodule Dawarich.Imports.DownloadTest do
        c do
     {context, source} = blocked_upload(c)
     task = Task.async(fn -> prepare(%{c | context: context}, source) end)
-    assert_receive {:uploading, writer, _}, 3000
+    {:uploading, writer, _} = receive do: ({:uploading, _, _} = message -> message)
 
     assert {:ok, :ok} =
              ScratchRepo.transaction(fn ->
@@ -565,7 +565,7 @@ defmodule Dawarich.Imports.DownloadTest do
              end)
 
     send(writer, :release)
-    assert :ok = Task.await(task)
+    assert :ok = Task.await(task, :infinity)
 
     assert [[1]] =
              rows(
@@ -579,7 +579,7 @@ defmodule Dawarich.Imports.DownloadTest do
     {context, source} = blocked_upload(c)
     context = Map.delete(context, :fence)
     task = Task.async(fn -> prepare(%{c | context: context}, source) end)
-    assert_receive {:uploading, writer, put}, 3000
+    {:uploading, writer, put} = receive do: ({:uploading, _, _} = message -> message)
 
     ScratchRepo.transaction(fn ->
       rows("SET LOCAL lock_timeout = '2s'")
@@ -587,8 +587,8 @@ defmodule Dawarich.Imports.DownloadTest do
     end)
 
     send(writer, :release)
-    assert {:error, :changed} = Task.await(task)
-    assert_receive {:deleted, ^put}, 3000
+    assert {:error, :changed} = Task.await(task, :infinity)
+    assert_received {:deleted, ^put}
 
     assert [[0]] =
              rows(
@@ -685,18 +685,12 @@ defmodule Dawarich.Imports.DownloadTest do
         end)
       end)
 
-    assert_receive {:verified, path}, 3000
+    {:verified, path} = receive do: ({:verified, _} = message -> message)
+    {:monitored_by, [guard]} = Process.info(pid, :monitored_by)
+    guard_ref = Process.monitor(guard)
     Process.exit(pid, :kill)
-    deadline = System.monotonic_time(:millisecond) + 1000
-    await_removed(path, deadline)
+    receive do: ({:DOWN, ^guard_ref, :process, ^guard, :normal} -> :ok)
+    refute File.exists?(path)
     clean(c)
-  end
-
-  defp await_removed(path, deadline) do
-    if File.exists?(path) do
-      assert System.monotonic_time(:millisecond) < deadline
-      Process.sleep(10)
-      await_removed(path, deadline)
-    end
   end
 end

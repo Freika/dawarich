@@ -45,6 +45,15 @@ defmodule Dawarich.Auth.CredentialsTest do
     assert id == ctx.id
   end
 
+  test "strips only the whitespace Ruby's String#strip strips from the email", ctx do
+    separator = <<0x2028::utf8>>
+
+    assert {:error, :invalid} =
+             Credentials.login(ctx.email <> separator, "safepassword12", ctx.context)
+
+    assert {:ok, _} = Credentials.login("\t#{ctx.email}\v\r\n", "safepassword12", ctx.context)
+  end
+
   test "matches the two failed strategy increments and generic unknown-user result", ctx do
     assert {:error, :invalid} = Credentials.login(ctx.email, "not-the-password", ctx.context)
     assert state(ctx.id).failed_attempts == @fixture["wrong_password"]["user"]["failed_attempts"]

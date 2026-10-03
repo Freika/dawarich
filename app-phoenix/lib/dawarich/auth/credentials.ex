@@ -18,7 +18,8 @@ defmodule Dawarich.Auth.Credentials do
 
   def login(email, password, context) when is_binary(email) and is_binary(password) do
     repo = Map.get(context, :repo, Repo)
-    query = from(u in Account, where: u.email == ^normalize_email(email) and is_nil(u.deleted_at))
+    email = Account.normalize_email(email)
+    query = from(u in Account, where: u.email == ^email and is_nil(u.deleted_at))
 
     case repo.one(query) do
       nil ->
@@ -168,10 +169,4 @@ defmodule Dawarich.Auth.Credentials do
   defp blank?(password), do: String.trim(password) == ""
   defp change(repo, user, changes), do: repo.update!(Ecto.Changeset.change(user, changes))
   defp clock(context), do: Map.get(context, :clock, &DateTime.utc_now/0).()
-
-  defp normalize_email(email) do
-    email
-    |> String.downcase()
-    |> String.replace(~r/\A[\x00\t\n\v\f\r ]+|[\x00\t\n\v\f\r ]+\z/u, "")
-  end
 end

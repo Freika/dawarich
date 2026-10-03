@@ -138,7 +138,7 @@ defmodule Dawarich.TripGateTest do
       assert TripPage.gate(user, 880_107) == :rails
     end
 
-    test "TREK rows, a TREK source, a description and a date past int4 go to Rails; a blank description does not",
+    test "TREK rows, a TREK source, a description Phoenix cannot render exactly and a date past int4 go to Rails",
          %{user: user} do
       ~w(planned_days planned_reservations planned_accommodations planned_travellers planned_unplanned_places)
       |> Enum.with_index(880_110)
@@ -156,12 +156,19 @@ defmodule Dawarich.TripGateTest do
       trip!(880_123)
       TripsSeeds.rich_text!(880_123, "   ")
       trip!(880_124, %{ended_at: ~N[2038-01-19 03:14:08]})
+      trip!(880_127)
+
+      TripsSeeds.rich_text!(
+        880_127,
+        ~s(<action-text-attachment sgid="x"></action-text-attachment>)
+      )
 
       assert TripPage.gate(user, 880_120) == :rails
       assert TripPage.gate(user, 880_121) == :rails
-      assert TripPage.gate(user, 880_122) == :rails
-      assert {:ok, _} = TripPage.gate(user, 880_123)
+      assert {:ok, %{description: "<div>Along the Elster</div>"}} = TripPage.gate(user, 880_122)
+      assert {:ok, %{description: nil}} = TripPage.gate(user, 880_123)
       assert TripPage.gate(user, 880_124) == :rails
+      assert TripPage.gate(user, 880_127) == :rails
     end
 
     test "timestamps below int4 go to Rails while its exact lower boundary is admitted", %{

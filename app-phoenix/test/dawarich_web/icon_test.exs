@@ -48,4 +48,16 @@ defmodule DawarichWeb.IconTest do
     refute tag =~ "lucide-tower-control"
     assert tag =~ ~s(stroke="#3c83f6")
   end
+
+  test "an id lands on the svg" do
+    html =
+      Phoenix.LiveViewTest.render_component(&DawarichWeb.Icon.icon/1,
+        name: "play",
+        id: "track-replay-play-icon",
+        class: "w-3 h-3"
+      )
+
+    assert html =~ ~s(id="track-replay-play-icon")
+    refute Phoenix.LiveViewTest.render_component(&DawarichWeb.Icon.icon/1, name: "play") =~ "id="
+  end
 end
