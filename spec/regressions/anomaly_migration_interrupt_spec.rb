@@ -35,8 +35,20 @@ RSpec.describe 'Anomaly migration interrupted mid-backfill', type: :job do
     expect(user.reload.settings).not_to have_key(DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY)
   end
 
+  it 'releases the backfill lease when the interrupt unwinds the backfill' do
+    phoenix_leases!
+
+    interrupt_job_during_step(Points::AnomalyBackfillUserJob, :filter_months, cursor: january_cursor) do
+      DataMigrations::RecalculateAnomaliesUserJob.new.perform(user.id)
+    end
+
+    expect(Points::AnomalyBackfillUserJob).to have_been_enqueued
+    expect(DataMigrations::RecalculateAnomaliesUserJob).not_to have_been_enqueued
+    expect(ActiveRecord::Base.connection.select_value('SELECT count(*) FROM phoenix.leases').to_i).to eq(0)
+  end
+
   it 'still treats a busy advisory lock as contention worth retrying' do
-    allow(ActiveRecord::Base).to receive(:with_advisory_lock).and_return(false)
+    allow(PhoenixLease).to receive(:try_hold).and_return(false)
 
     DataMigrations::RecalculateAnomaliesUserJob.new.perform(user.id)
 

@@ -34,7 +34,7 @@ RSpec.describe Points::RawData::ArchiveUserJob, type: :job do
     context 'when advisory lock is held' do
       it 'skips without error' do
         # Simulate lock being held by not allowing the block to execute
-        allow(ActiveRecord::Base).to receive(:with_advisory_lock).and_return(false)
+        allow(PhoenixLease).to receive(:try_hold).and_return(false)
 
         expect(archiver).not_to receive(:archive_user)
 

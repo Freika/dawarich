@@ -4,14 +4,7 @@ require 'rails_helper'
 
 RSpec.describe 'Session-level advisory locks behind PgBouncer transaction pooling' do
   let(:sources) { Dir[Rails.root.join('{app,lib,app-phoenix/lib}/**/*.{rb,rake,ex}')].sort }
-  let(:allowed_session_gem_locks) do
-    %w[
-      app/jobs/points/anomaly_backfill_user_job.rb app/jobs/points/raw_data/archive_user_job.rb
-      app/jobs/points/raw_data/clear_user_job.rb app/jobs/tesla_mate/sync_job.rb app/jobs/trek/import_trips_job.rb
-      app/jobs/trek/sync_job.rb app/services/phoenix_lease.rb app/services/points/raw_data/archiver.rb
-      app/services/visits/select_place.rb lib/tasks/points_raw_data.rake
-    ]
-  end
+  let(:allowed_session_gem_locks) { %w[app/services/phoenix_lease.rb] }
 
   def relative(path) = Pathname(path).relative_path_from(Rails.root).to_s
 

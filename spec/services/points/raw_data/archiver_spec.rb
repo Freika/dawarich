@@ -350,7 +350,7 @@ RSpec.describe Points::RawData::Archiver do
     end
 
     it 'prevents duplicate processing via archive_specific_month' do
-      allow(ActiveRecord::Base).to receive(:with_advisory_lock).and_return(false)
+      allow(PhoenixLease).to receive(:try_hold).and_return(false)
 
       old_date = 3.months.ago.beginning_of_month
       expect do

@@ -69,10 +69,17 @@ RSpec.describe Points::RawData::ClearUserJob, type: :job do
     end
 
     context 'when advisory lock is held' do
+      let!(:archive) { create(:points_raw_data_archive, user: user, verified_at: 8.days.ago) }
+      let!(:point) do
+        create(:point, user: user, raw_data_archived: true, raw_data_archive_id: archive.id,
+                       raw_data: { 'foo' => 'bar' })
+      end
+
       it 'skips without error' do
-        allow(ActiveRecord::Base).to receive(:with_advisory_lock).and_return(false)
+        allow(PhoenixLease).to receive(:try_hold).with("clear_raw_data:#{user.id}").and_return(false)
 
         expect { described_class.perform_now(user.id) }.not_to raise_error
+        expect(point.reload.raw_data).to eq({ 'foo' => 'bar' })
       end
     end
 
