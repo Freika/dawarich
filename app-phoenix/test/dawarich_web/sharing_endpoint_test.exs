@@ -6,7 +6,8 @@ defmodule DawarichWeb.SharingEndpointTest do
   import Dawarich.Test.RawHTTP
 
   alias Dawarich.Test.{RailsUser, SharingSeeds, TripsSeeds}
-  alias DawarichWeb.UnlockThrottle
+  alias Dawarich.State
+  alias DawarichWeb.RateLimit.Rules
 
   @live "a9500000-0000-4000-8000-000000000001"
   @protected "a9500000-0000-4000-8000-000000000002"
@@ -24,9 +25,28 @@ defmodule DawarichWeb.SharingEndpointTest do
     %{upstream: upstream}
   end
 
-  defp redis! do
-    start_supervised!(hd(Dawarich.Redis.rack_attack_child_specs()))
-    Redix.command!(Dawarich.Redis.rack_attack(), ["FLUSHDB"])
+  defmodule UnreachableRepo do
+    def query!(_sql, _params, _opts), do: raise(DBConnection.ConnectionError, "unreachable")
+  end
+
+  defp counter_store!(repo) do
+    Application.put_env(:dawarich, :jobs_repo, repo)
+    on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, ScratchRepo) end)
+  end
+
+  defp unlock_key(ip, id, now), do: Rules.key(now, 300, "shared_links/unlock", "#{ip}:#{id}")
+
+  defp counter(key),
+    do: "#{hd(hd(rows("SELECT value FROM phoenix.counters WHERE key = $1", [key])))}"
+
+  defp ttl(key) do
+    [[expires]] =
+      rows(
+        "SELECT floor(extract(epoch FROM expires_at))::bigint FROM phoenix.counters WHERE key = $1",
+        [key]
+      )
+
+    expires - System.os_time(:second)
   end
 
   defp serve do
@@ -66,10 +86,8 @@ defmodule DawarichWeb.SharingEndpointTest do
     read_response(client)
   end
 
-  defp counters do
-    {:ok, keys} = Redix.command(Dawarich.Redis.rack_attack(), ["KEYS", "rack::attack:*"])
-    keys
-  end
+  defp counters,
+    do: List.flatten(rows("SELECT key FROM phoenix.counters WHERE value <> 0 ORDER BY key"))
 
   test "requests Phoenix cannot answer as Rails would go to Puma before the view is counted",
        ctx do
@@ -129,7 +147,6 @@ defmodule DawarichWeb.SharingEndpointTest do
 
   test "unlocks Phoenix cannot count or read as Rails would go to Puma with their body, uncounted",
        ctx do
-    redis!()
     port = serve()
 
     for {body, type, headers} <- [
@@ -153,7 +170,6 @@ defmodule DawarichWeb.SharingEndpointTest do
   end
 
   test "the sixth wrong phrase within five minutes answers 429 as Rack::Attack does" do
-    redis!()
     port = serve()
     before = System.os_time(:second)
 
@@ -183,10 +199,10 @@ defmodule DawarichWeb.SharingEndpointTest do
            )
 
     assert [key] = counters()
-    assert key in Enum.map([before, later], &UnlockThrottle.key("127.0.0.1", @protected, &1))
-    assert Redix.command!(Dawarich.Redis.rack_attack(), ["GET", key]) == "7"
+    assert key in Enum.map([before, later], &unlock_key("127.0.0.1", @protected, &1))
+    assert counter(key) == "7"
     ["rack", "", "attack", window | _] = String.split(key, ":")
-    ttl = Redix.command!(Dawarich.Redis.rack_attack(), ["TTL", key])
+    ttl = ttl(key)
     assert abs(System.os_time(:second) + ttl - (300 * (String.to_integer(window) + 1) + 1)) <= 1
   end
 
@@ -195,21 +211,21 @@ defmodule DawarichWeb.SharingEndpointTest do
     epoch = DateTime.to_unix(anchor)
 
     assert [%{"key" => written}] = @throttle["keys"]
-    assert UnlockThrottle.key("127.0.0.1", @protected, epoch) == written
-    assert UnlockThrottle.key("198.51.100.4", @protected, epoch) == @throttle["seeded"]["key"]
+    assert unlock_key("127.0.0.1", @protected, epoch) == written
+    assert unlock_key("198.51.100.4", @protected, epoch) == @throttle["seeded"]["key"]
     assert @throttle["redis_db"] == 3
 
-    redis!()
     port = serve()
     now = System.os_time(:second)
 
     for at <- [now, now + 5],
         do:
-          Redix.command!(Dawarich.Redis.rack_attack(), [
-            "SET",
-            UnlockThrottle.key("127.0.0.1", @protected, at),
-            "#{@throttle["seeded"]["count"]}"
-          ])
+          State.increment(
+            ScratchRepo,
+            unlock_key("127.0.0.1", @protected, at),
+            @throttle["seeded"]["count"],
+            300
+          )
 
     assert {429, _headers, _body} =
              phoenix(port, post("/s/#{@protected}/unlock", "phrase=blau-tiger-berg"))
@@ -219,6 +235,7 @@ defmodule DawarichWeb.SharingEndpointTest do
 
   test "an unlock goes to Puma with its body, uncounted, when the Rack::Attack connection is not running",
        ctx do
+    counter_store!(Dawarich.NotStartedRepo)
     port = serve()
 
     assert {"POST /s/#{@protected}/unlock HTTP/1.1", "phrase=falsch"} ==
@@ -227,15 +244,7 @@ defmodule DawarichWeb.SharingEndpointTest do
 
   test "an unlock goes to Puma with its body when the Rack::Attack store cannot be reached",
        ctx do
-    closed = listen()
-    :gen_tcp.close(closed.listen)
-
-    start_supervised!(
-      {Redix,
-       {"redis://127.0.0.1:#{closed.port}",
-        [name: Dawarich.Redis.rack_attack(), sync_connect: false, exit_on_disconnection: false]}}
-    )
-
+    counter_store!(UnreachableRepo)
     port = serve()
 
     assert {"POST /s/#{@protected}/unlock HTTP/1.1", "phrase=falsch"} ==

@@ -4,7 +4,7 @@ defmodule DawarichWeb.RateLimitTest do
   import Plug.Conn
 
   alias Dawarich.{Repo, State, TtlCache}
-  alias Dawarich.Test.{RailsUser, RateLimitCorpus}
+  alias Dawarich.Test.{RailsUser, RateLimitCorpus, RawHTTP}
   alias DawarichWeb.RateLimit
   alias DawarichWeb.RateLimit.Rules
 
@@ -209,4 +209,73 @@ defmodule DawarichWeb.RateLimitTest do
 
   defp naive(nil), do: nil
   defp naive(iso), do: iso |> NaiveDateTime.from_iso8601!() |> NaiveDateTime.truncate(:second)
+
+  test "a request Phoenix counted and then hands to Puma is released, so Rails counts it once" do
+    upstream = RawHTTP.listen()
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
+    previous = System.get_env("SELF_HOSTED")
+    System.put_env("SELF_HOSTED", "false")
+
+    on_exit(fn ->
+      Application.put_env(:dawarich, :rails_upstream, nil)
+
+      if previous,
+        do: System.put_env("SELF_HOSTED", previous),
+        else: System.delete_env("SELF_HOSTED")
+    end)
+
+    body = ~s({"email":"a@example.invalid"})
+
+    puma =
+      Task.async(fn ->
+        socket = RawHTTP.accept(upstream)
+        {_head, rest} = RawHTTP.read_head(socket)
+        received = RawHTTP.read_at_least(socket, rest, byte_size(body))
+
+        RawHTTP.reply(
+          socket,
+          "HTTP/1.1 401 Unauthorized\r\ncontent-length: 0\r\nconnection: close\r\n\r\n"
+        )
+
+        :gen_tcp.close(socket)
+        received
+      end)
+
+    conn =
+      %{Plug.Test.conn(:post, "/api/v1/auth/login", body) | remote_ip: {203, 0, 113, 40}}
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("content-length", Integer.to_string(byte_size(body)))
+      |> RateLimit.call([])
+
+    assert [_, _] = conn.private.dawarich_rate_limit
+    assert rows("SELECT value FROM phoenix.counters ORDER BY key") == [[1], [1]]
+
+    conn = conn |> assign(:api_tag, "api") |> DawarichWeb.Api.Body.replay("test")
+
+    assert Task.await(puma) == body
+    assert conn.status == 401
+    assert rows("SELECT value FROM phoenix.counters ORDER BY key") == [[0], [0]]
+  end
+
+  test "every pipeline runs the limiter right after ForceSSL" do
+    source = File.read!(Path.expand("../../lib/dawarich_web/router.ex", __DIR__))
+
+    pipelines =
+      Regex.scan(~r/  pipeline :(\w+) do\n(.*?)\n  end/s, source, capture: :all_but_first)
+
+    guarded =
+      for [name, body] <- pipelines,
+          String.contains?(body, "plug DawarichWeb.ForceSSL"),
+          do: {name, body}
+
+    assert MapSet.subset?(
+             MapSet.new(
+               ~w(browser api_ingest api_foundation api_stats api_locations_photos rails_form sharing_unlock)
+             ),
+             MapSet.new(guarded, &elem(&1, 0))
+           )
+
+    for {name, body} <- guarded,
+        do: assert(body =~ ~r/plug DawarichWeb\.ForceSSL\n\s+plug DawarichWeb\.RateLimit\n/, name)
+  end
 end
