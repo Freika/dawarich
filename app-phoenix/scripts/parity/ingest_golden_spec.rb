@@ -168,9 +168,10 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
 
     path = Rails.root.join('app-phoenix/test/fixtures/ingest/golden.json')
     fixture = { 'rows_sql' => IngestGoldenOracle::ROWS_SQL, 'cases' => results.sort_by { _1['name'] } }
-    File.write(path, "#{Oj.dump(fixture, mode: :strict, float_precision: 0, indent: 2)}\n")
+    encoded = "#{Oj.dump(fixture, mode: :strict, float_precision: 0, indent: 2)}\n"
+    File.write(path, encoded) if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
 
-    written = JSON.parse(File.read(path))
+    written = JSON.parse(encoded)
     float_case = written['cases'].find { _1['name'] == 'points_float_text' }
     broadcast = float_case['commands'].find { _1['kind'] == 'points.live_broadcast' }
     altitude = broadcast['payload']['payloads'][0]['altitude']
@@ -329,15 +330,36 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
                   .grep(/\A(track_realtime|track_backfill|visit_realtime|points:tile_epoch):/).sort
     streams = [PointsChannel.broadcasting_for(user)] +
               (user.family ? [FamilyLocationsChannel.broadcasting_for(user.family)] : [])
-    { 'jobs' => jobs.sort_by(&:to_s), 'keys' => keys, 'cable' => streams.map do
+    { 'jobs' => jobs.sort_by(&:to_s), 'keys' => keys, 'phoenix' => phoenix_effects, 'cable' => streams.map do
       ActionCable.server.pubsub.broadcasts(_1)
     end }
+  end
+
+  def phoenix_effects
+    connection = ActiveRecord::Base.connection
+    PhoenixTables::PHOENIX_STATE_TABLES.index_with do |table|
+      scope = if table == 'once_claims'
+                " WHERE key ~ '^(track_realtime|track_backfill|visit_realtime|points:tile_epoch):'"
+              else
+                ''
+              end
+      connection.select_all(
+        'SELECT *, round(extract(epoch FROM expires_at - statement_timestamp()) / 60) AS ttl_minutes ' \
+        "FROM phoenix.#{table}#{scope}"
+      ).to_a.map { _1.except('expires_at', 'revision') }.sort_by(&:to_s)
+    end
+  end
+
+  def clear_phoenix_effects!
+    tables = PhoenixTables::PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" }.join(', ')
+    ActiveRecord::Base.connection.execute("TRUNCATE #{tables}")
   end
 
   def reverse_outbox_equivalent!(user, calls, name)
     before = effects(user)
     clear_enqueued_jobs
     Sidekiq.redis(&:flushdb)
+    clear_phoenix_effects!
     ActionCable.server.pubsub.clear
     phoenix_tables!
     calls.each do |kind, payload|
@@ -355,6 +377,7 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
 
   def record(kase)
     Sidekiq.redis(&:flushdb)
+    clear_phoenix_effects!
     user = user_for(kase)
     headers = { 'Host' => 'localhost' }.merge(kase[:headers] || {})
     cookie = cookie_for(kase[:setup], user)
