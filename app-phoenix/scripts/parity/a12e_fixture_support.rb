@@ -7,6 +7,7 @@ module A12eFixtureSupport
   DIR = Rails.root.join('app-phoenix/test/fixtures/a12e')
   PHRASE = 'phoenix-a12e-archive-phrase-not-for-production'
   LOGIN = 'phoenix-a12e-login-not-for-production'
+  SALT = '$2a$12$PhoenixA12eCorpusSaltu'
   STAMP = '2026-01-01 00:00:00'
   NOW = Time.utc(2026, 10, 1, 12)
   FUTURE = 2_000_000_000
@@ -160,12 +161,12 @@ module A12eFixtureSupport
   def human_sizes = SIZES.map { |n| [n, ActiveSupport::NumberHelper.number_to_human_size(n)] }
 
   def write_password_hash(path)
-    code = "IO.puts(Jason.encode!(Dawarich.CLI.Users.hash_password(#{LOGIN.inspect})))"
+    code = "IO.puts(Jason.encode!(Dawarich.CLI.Users.hash_password(#{LOGIN.inspect}, #{SALT.inspect})))"
     out, status = Open3.capture2e(phoenix_env, 'mix', 'run', '--no-start', '-e', code,
                                   chdir: Rails.root.join('app-phoenix').to_s)
     raise out unless status.success?
 
-    path.write("#{Oj.dump({ 'hash' => JSON.parse(out.lines.last) }, mode: :strict, indent: 2)}\n")
+    path.write("#{Oj.dump({ 'hash' => JSON.parse(out.lines.last), 'salt' => SALT }, mode: :strict, indent: 2)}\n")
   end
 
   def phoenix_env

@@ -60,8 +60,8 @@ defmodule Dawarich.CLI.Users do
 
   def password(_args, ctx), do: fail(ctx, @password_usage)
 
-  def hash_password(password),
-    do: Bcrypt.Base.hash_password(password, Bcrypt.Base.gen_salt(12, true))
+  def hash_password(password, salt \\ Bcrypt.Base.gen_salt(12, true)),
+    do: Bcrypt.Base.hash_password(password, salt)
 
   defp find(ctx, email) do
     case ctx.repo.query!(@find, [normalize(email)], log: false).rows do

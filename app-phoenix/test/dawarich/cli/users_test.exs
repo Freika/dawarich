@@ -96,4 +96,16 @@ defmodule Dawarich.CLI.UsersTest do
   test "hash_password/1 is what R2 hands to Rails" do
     assert Bcrypt.verify_pass(@login, Users.hash_password(@login))
   end
+
+  test "the corpus hash is hash_password/2 with the recorded salt, in hash_password/1's shape" do
+    %{"hash" => recorded, "salt" => salt} =
+      "../../fixtures/a12e/password.json"
+      |> Path.expand(__DIR__)
+      |> File.read!()
+      |> Jason.decode!()
+
+    assert Users.hash_password(@login, salt) == recorded
+    assert <<"$2a$12$", _::binary-size(53)>> = Users.hash_password(@login)
+    assert binary_part(recorded, 0, 7) == "$2a$12$" and byte_size(recorded) == 60
+  end
 end
