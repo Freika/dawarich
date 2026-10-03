@@ -205,6 +205,12 @@ defmodule Dawarich.Jobs.Registry do
       kind: :command,
       worker: Dawarich.EnhancedImport.DestroyGpxWorker,
       claimable: false
+    },
+    %{
+      key: "command:stats.calculate_month",
+      kind: :command,
+      worker: Dawarich.Stats.CalculateMonthWorker,
+      claimable: false
     }
   ]
 
