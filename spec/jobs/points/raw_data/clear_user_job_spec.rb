@@ -68,7 +68,7 @@ RSpec.describe Points::RawData::ClearUserJob, type: :job do
       end
     end
 
-    context 'when advisory lock is held' do
+    context 'when the lease is held' do
       let!(:archive) { create(:points_raw_data_archive, user: user, verified_at: 8.days.ago) }
       let!(:point) do
         create(:point, user: user, raw_data_archived: true, raw_data_archive_id: archive.id,

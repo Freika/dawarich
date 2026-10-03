@@ -35,7 +35,7 @@ RSpec.describe 'points:raw_data:archive' do
     end
   end
 
-  context 'when the per-user advisory lock is held' do
+  context 'when the per-user lease is held' do
     let(:user) { create(:user) }
 
     before do

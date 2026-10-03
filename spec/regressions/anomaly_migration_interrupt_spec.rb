@@ -47,7 +47,7 @@ RSpec.describe 'Anomaly migration interrupted mid-backfill', type: :job do
     expect(ActiveRecord::Base.connection.select_value('SELECT count(*) FROM phoenix.leases').to_i).to eq(0)
   end
 
-  it 'still treats a busy advisory lock as contention worth retrying' do
+  it 'still treats a busy backfill lease as contention worth retrying' do
     allow(PhoenixLease).to receive(:try_hold).and_return(false)
 
     DataMigrations::RecalculateAnomaliesUserJob.new.perform(user.id)

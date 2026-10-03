@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 # Per-user anomaly backfill. Processes points in monthly chunks,
-# guarded by an advisory lock so duplicate enqueues are harmless.
+# guarded by a per-user lease so duplicate enqueues are harmless.
 class Points::AnomalyBackfillUserJob < ApplicationJob
   include Resumable
 
