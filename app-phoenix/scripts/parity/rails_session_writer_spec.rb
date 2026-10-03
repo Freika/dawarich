@@ -78,7 +78,15 @@ RSpec.describe 'Phoenix fixture: the Rails session Phoenix writes', type: :reque
       phoenix_changes: changes,
       force_ssl: force_ssl_fixture(line)
     }
-    File.write(Rails.root.join(PhoenixSessionWriterFixture::PATH), "#{JSON.pretty_generate(fixture)}\n")
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      File.write(Rails.root.join(PhoenixSessionWriterFixture::PATH), "#{JSON.pretty_generate(fixture)}\n")
+    else
+      recorded = PhoenixSessionWriterFixture.read
+      stable = %w[rails_test_secret rails_settings rails_cookie_json overflow]
+      expect(recorded.slice(*stable)).to eq(fixture.as_json.slice(*stable))
+      expect(rails_session(recorded.fetch('phoenix_session_cookie')))
+        .to eq(rails_session(recorded.fetch('session_cookie')).merge(recorded.fetch('phoenix_changes')))
+    end
   end
 
   def rails_session(value)
