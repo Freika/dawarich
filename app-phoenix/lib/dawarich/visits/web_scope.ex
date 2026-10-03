@@ -4,19 +4,23 @@ defmodule Dawarich.Visits.WebScope do
   alias Dawarich.Timeline.Sql
   @active "v.user_id=$1 AND v.deleted_at IS NULL AND v.status<>2"
 
-  def ids(nil), do: {:ok, []}
-  def ids(raw) when is_binary(raw), do: ids([raw])
+  def ids(raw, limit \\ 500)
+  def ids(nil, _limit), do: {:ok, []}
+  def ids(raw, limit) when is_binary(raw), do: ids([raw], limit)
 
-  def ids(raw) when is_list(raw) do
+  def ids(raw, limit) when is_list(raw) do
     if Enum.all?(raw, &(is_binary(&1) and String.valid?(&1))) do
       parsed = raw |> Enum.map(&RubyInteger.to_i/1) |> Enum.reject(&(&1 == 0)) |> Enum.uniq()
-      if length(parsed) > 500, do: {:error, :too_many}, else: {:ok, parsed}
+
+      if is_integer(limit) and length(parsed) > limit,
+        do: {:error, :too_many},
+        else: {:ok, parsed}
     else
       {:replay, "visit selection shape"}
     end
   end
 
-  def ids(_raw), do: {:replay, "visit selection shape"}
+  def ids(_raw, _limit), do: {:replay, "visit selection shape"}
 
   def load(repo, user, ids, now, self_hosted) do
     with {:ok, cutoff} <- cutoff(repo, user, now, self_hosted) do
