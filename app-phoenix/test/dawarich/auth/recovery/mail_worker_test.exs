@@ -157,6 +157,11 @@ defmodule Dawarich.Auth.Recovery.MailWorkerTest do
 
     for name <- ~w(SMTP_FROM SMTP_SERVER DOMAIN),
         do: refute(MailWorker.deliverable?(Map.put(base, name, " ")))
+
+    for domain <- ["dawarich.example.test/path", "user@dawarich.example.test"],
+        do: refute(MailWorker.deliverable?(Map.put(base, "DOMAIN", domain)), domain)
+
+    assert MailWorker.deliverable?(Map.put(base, "DOMAIN", "dawarich.example.test:3000"))
   end
 
   test "the two Devise mails equal Rails' rendering and framing" do

@@ -16,7 +16,7 @@ defmodule Dawarich.Auth.Recovery.MailWorker do
   def deliverable?(env) do
     present?(env["SMTP_FROM"]) and
       (present?(env["SMTP_SERVER"]) or present?(env["E2E_SMTP_PORT"])) and
-      present?(env["DOMAIN"]) and is_binary(RailsSecret.fetch())
+      present?(env["DOMAIN"]) and base_url?(env) and is_binary(RailsSecret.fetch())
   end
 
   def enqueue(%Notification{} = notification, oban \\ Oban, now \\ DateTime.utc_now()) do
@@ -88,6 +88,13 @@ defmodule Dawarich.Auth.Recovery.MailWorker do
         [user_id, digest],
         log: false
       ).rows == [[true]]
+
+  defp base_url?(env) do
+    case Wave2.base_url(env) do
+      {:ok, base_url} -> Mail.valid_base_url?(base_url)
+      _ -> false
+    end
+  end
 
   defp present?(value), do: is_binary(value) and String.trim(value) != ""
 end

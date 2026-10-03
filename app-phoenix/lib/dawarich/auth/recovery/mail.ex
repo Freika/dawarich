@@ -53,6 +53,8 @@ defmodule Dawarich.Auth.Recovery.Mail do
 
   def build(_, _, _, _, _, _), do: {:error, :surface}
 
+  def valid_base_url?(value), do: valid_url(value) == :ok
+
   defp paragraphs(:reset_password_instructions),
     do: {
       ["someone_has_requested_a_link_to_change_your_password_you"],
