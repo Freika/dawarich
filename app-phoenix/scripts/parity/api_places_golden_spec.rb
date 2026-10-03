@@ -19,6 +19,7 @@ module ApiPlacesGoldenOracle
   LEIPZIG = { latitude: 51.3404, longitude: 12.3778 }.freeze
   CRLF = "#{'a' * 126}\r\n#{'b' * 127}".freeze
   BERLIN = { timezone: 'Europe/Berlin' }.freeze
+  KILL = { 'DAWARICH_RAILS_SLICES' => 'api_places' }.freeze
   CASES = [
     { name: 'show_tagged', path: H },
     { name: 'show_active_visits', path: S },
@@ -147,8 +148,15 @@ module ApiPlacesGoldenOracle
     { name: 'rails_show_head', expect: :rails, method: :head, path: H, auth: :none },
     { name: 'rails_cloud_create', expect: :rails, method: :post, path: P, env: { 'SELF_HOSTED' => 'false' },
       body: { place: { name: 'Cloud', **LEIPZIG } } },
-    { name: 'rails_kill_switch_destroy', expect: :rails, method: :delete, path: H,
-      env: { 'DAWARICH_RAILS_SLICES' => 'api_places' } },
+    { name: 'rails_kill_switch_destroy', expect: :rails, method: :delete, path: H, env: KILL },
+    { name: 'rails_kill_switch_index', expect: :rails, path: P, env: KILL },
+    { name: 'rails_kill_switch_show', expect: :rails, path: H, env: KILL },
+    { name: 'rails_kill_switch_create', expect: :rails, method: :post, path: P, env: KILL,
+      body: { place: { name: 'Handed back', **LEIPZIG } } },
+    { name: 'rails_kill_switch_patch', expect: :rails, method: :patch, path: H, env: KILL,
+      body: { place: { note: 'handed back' } } },
+    { name: 'rails_kill_switch_put', expect: :rails, method: :put, path: H, env: KILL,
+      body: { place: { note: 'handed back' } } },
     { name: 'rails_show_json_suffix', expect: :rails, path: "#{H}.json", auth: :none },
     { name: 'rails_id_shape', expect: :rails, path: "#{P}/abc", auth: :none },
     { name: 'rails_id_too_long', expect: :rails, path: "#{P}/1234567890123456789", auth: :none },
