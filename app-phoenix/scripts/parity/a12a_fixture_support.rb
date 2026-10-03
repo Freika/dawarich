@@ -110,10 +110,13 @@ module A12aFixtureSupport
     end
   end
 
-  def phoenix(code, extra_env = {})
+  def phoenix_redis_url
+    ENV.fetch('PHOENIX_TEST_REDIS_URL') { URI(ENV.fetch('REDIS_URL')).tap { |uri| uri.path = '/1' }.to_s }
+  end
+
+  def phoenix(code)
     env = { 'MIX_ENV' => 'test', 'PATH' => "#{Dir.home}/.asdf/shims:#{ENV.fetch('PATH')}",
-            'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.18.3-otp-27',
-            'PHOENIX_TEST_REDIS_URL' => 'redis://127.0.0.1:7195/1', 'DATABASE_HOST' => '127.0.0.1' }.merge(extra_env)
+            'PHOENIX_TEST_REDIS_URL' => phoenix_redis_url, 'DATABASE_HOST' => '127.0.0.1' }
     out, status = Open3.capture2e(env, 'mix', 'run', '--no-start', '-e', code,
                                   chdir: Rails.root.join('app-phoenix').to_s)
     raise out unless status.success?

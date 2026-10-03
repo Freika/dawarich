@@ -36,6 +36,14 @@ RSpec.describe 'Phoenix port: the ActionCable facts A12a recorded, read with the
     end
   end
 
+  it 'leaves the phoenix event queues to Phoenix: no Rails file drains them' do
+    pattern = /phoenix\.(notification|trip)_events|EventsBroadcaster|PhoenixEventsPoller/
+    drainers = Dir.glob(Rails.root.join('{app,lib,config}/**/*')).select do |path|
+      File.file?(path) && File.binread(path).force_encoding(Encoding::BINARY).match?(pattern)
+    end
+    expect(drainers).to eq([])
+  end
+
   it 'every phoenix.json payload equals the recorded Rails payload' do
     rails = cable['producers'].map { |p| p.slice('name', 'broadcasting', 'payload') }
     expect(phoenix['producers']).to eq(rails)
