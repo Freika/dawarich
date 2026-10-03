@@ -151,6 +151,20 @@ expected: { '#point-address-830102 > div' => 0 })
       capture('points_guest', nil, '/points', status: 302)
       empty = reader(8302)
       capture('points_empty', empty, '/points', expected: { '#points tbody tr' => 0 })
+      historic = reader(8308)
+      import!(historic, 83_081, 'Historic.json', now - 1.day)
+      point!(historic, 830_801, Time.utc(1969, 12, 31, 10), import_id: 83_081)
+      capture('points_pre_epoch_import', historic, '/points?import_id=83081',
+              expected: { '#point_830801' => 1 })
+      historic_doc = Nokogiri::HTML5(File.read(dir.join('points_pre_epoch_import.html')))
+      expect(historic_doc.at_css('input[name="start_at"]')['value']).to eq('1969-12-31T00:00')
+      expect(historic_doc.at_css('input[name="end_at"]')['value']).to eq('1969-12-31T23:59')
+      capture('points_pre_epoch_explicit', historic,
+              '/points?import_id=83081&start_at=1969-12-31T00:00:00Z&end_at=1969-12-31T23:59:59Z',
+              expected: { '#point_830801' => 0 })
+      explicit_doc = Nokogiri::HTML5(File.read(dir.join('points_pre_epoch_explicit.html')))
+      expect(explicit_doc.at_css('input[name="start_at"]')['value']).to eq('1970-01-01T00:00')
+      expect(explicit_doc.at_css('input[name="end_at"]')['value']).to eq('1970-01-01T00:00')
       march = reader(8303, zone: 'Europe/Berlin')
       point!(march, 830_301, Time.utc(2026, 2, 27, 23))
       capture('points_march_default', march, '/points', at: Time.utc(2026, 3, 31, 10),

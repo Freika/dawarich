@@ -211,6 +211,51 @@ defmodule DawarichWeb.PointsLiveTest do
     end
   end
 
+  test "unclamped pre-epoch import defaults hand back and explicit bounds remain clamped", %{
+    user: user
+  } do
+    omitted = File.read!("test/fixtures/map_data/points_pre_epoch_import.html")
+    assert attr(omitted, "input[name='start_at']", "value") == ["1969-12-31T00:00"]
+    assert attr(omitted, "input[name='end_at']", "value") == ["1969-12-31T23:59"]
+    assert attr(omitted, "#points tbody tr", "id") == ["point_830801"]
+    explicit = File.read!("test/fixtures/map_data/points_pre_epoch_explicit.html")
+    assert attr(explicit, "input[name='start_at']", "value") == ["1970-01-01T00:00"]
+    assert attr(explicit, "input[name='end_at']", "value") == ["1970-01-01T00:00"]
+    assert attr(explicit, "#points tbody tr", "id") == []
+    stamp = ~N[2026-03-01 10:00:00]
+
+    Repo.insert_all("imports", [
+      %{id: 83712, user_id: user.id, name: "Historic.json", created_at: stamp, updated_at: stamp}
+    ])
+
+    FrameSeeds.point!(user.id, 837_201, DateTime.to_unix(~U[1969-12-31 10:00:00Z]))
+    Repo.query!("UPDATE points SET import_id = 83712 WHERE id = 837201")
+
+    for bounds <- [
+          %{},
+          %{"start_at" => "1969-12-31T00:00:00Z"},
+          %{"end_at" => "1970-01-02T00:00:00Z"}
+        ] do
+      refute MapDataGate.points?(
+               RailsUser.signed_in(user.id)
+               |> Map.put(:query_string, URI.encode_query(Map.put(bounds, "import_id", "83712"))),
+               %{}
+             )
+    end
+
+    params = %{
+      "import_id" => "83712",
+      "start_at" => "1969-12-31T00:00:00Z",
+      "end_at" => "1969-12-31T23:59:59Z"
+    }
+
+    assert {:ok, page} =
+             Dawarich.PointList.load(user, params, ~U[2026-03-31 10:00:00Z], self_hosted: true)
+
+    assert {page.window.start, page.window.end, page.rows} ==
+             {"1970-01-01T00:00:00Z", "1970-01-01T00:00:00Z", []}
+  end
+
   test "signed out list records Rails return URL and alert" do
     assert %{plug: Phoenix.LiveView.Plug} =
              Phoenix.Router.route_info(Router, "GET", "/points", "localhost")

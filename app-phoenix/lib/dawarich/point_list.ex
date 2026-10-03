@@ -43,7 +43,7 @@ defmodule Dawarich.PointList do
     with true <- valid_params?(params) and page <= @max_page and settings?(user.settings),
          {:ok, imports} <- imports(user.id),
          {:ok, import_id} <- selected_import(params["import_id"], imports),
-         window =
+         %{} = window <-
            PointListWindow.build(params, user.settings, now, import_range(user.id, import_id)),
          true <- TripSettings.zone?(user.settings, window.zone) do
       cutoff = cutoff(user, now, opts)
