@@ -6,6 +6,15 @@ IMAGE="${IMAGE:-dawarich:a13c-local}"
 MODE="${MODE:-smoke}"
 KEEP="${KEEP:-0}"
 WAIT="${SMOKE_WAIT_SECONDS:-300}"
+pool_size=4
+if [ "$MODE" = bench ]; then
+  [ -n "${BENCH_REPORT:-}" ] || { echo 'BENCH_REPORT is required' >&2; exit 1; }
+  case "${BENCH_ROLE:-}" in
+    base) ;;
+    branch) [ -f "${BENCH_BASELINE:-}" ] || { echo 'branch requires BENCH_BASELINE' >&2; exit 1; } ;;
+    *) echo 'BENCH_ROLE must be base or branch' >&2; exit 1 ;;
+  esac
+fi
 net=a13c-rate
 run="a13c-smoke=$$"
 manager=https://manager.example
@@ -120,7 +129,7 @@ docker network create --label "$run" "$net" >/dev/null
 docker run -d --name a13c_db --label "$run" --network "$net" -e POSTGRES_PASSWORD=postgres postgis/postgis:17-3.5-alpine >/dev/null
 docker run -d --name a13c_redis --label "$run" --network "$net" redis:7.4-alpine >/dev/null
 mkdir "$work/bouncer"
-cat >"$work/bouncer/pgbouncer.ini" <<'EOF'
+cat >"$work/bouncer/pgbouncer.ini" <<EOF
 [databases]
 dawarich_cloud = host=a13c_db port=5432 dbname=dawarich_cloud
 
@@ -131,7 +140,7 @@ unix_socket_dir =
 auth_type = scram-sha-256
 auth_file = /etc/pgbouncer/userlist.txt
 pool_mode = transaction
-default_pool_size = 4
+default_pool_size = $pool_size
 min_pool_size = 2
 max_prepared_statements = 200
 stats_users = dawarich_cloud
@@ -191,19 +200,7 @@ app --rm "$IMAGE" $(procfile release) >"$work/release.log" 2>&1 || { cat "$work/
 if [ "$MODE" = bench ]; then
   web a13c_web 3911
   app --rm "$IMAGE" bin/rails runner "u = User.create!(email: 'a13c-bench@dawarich.test', password: 'a13c-bench-password', skip_auto_trial: true); u.update_columns(api_key: 'a13cbenchqqqqqqqqqqqqqqq', plan: User.plans[:pro], active_until: 1.year.from_now)" >/dev/null
-  : >"$work/times"
-  : >"$work/waiting"
-  i=1
-  while [ "$i" -le 900 ]; do
-    curl -s -m 10 -o /dev/null -w '%{time_total}\n' "http://127.0.0.1:3911/api/v1/points?api_key=a13cbenchqqqqqqqqqqqqqqq&start_at=2026-01-01&end_at=2026-01-02" >>"$work/times"
-    if [ $((i % 100)) = 0 ]; then
-      docker exec -e PGPASSWORD=cloud a13c_db psql -h a13c_bouncer -p 6432 -U dawarich_cloud -Atc 'SHOW POOLS' pgbouncer \
-        | awk -F'|' '$1 == "dawarich_cloud" {print $4}' >>"$work/waiting"
-    fi
-    i=$((i + 1))
-  done
-  sort -n "$work/times" | awk 'NR == 450 {p50 = $1} NR == 855 {p95 = $1} END {printf "p50=%.4f p95=%.4f\n", p50, p95}'
-  echo "max_cl_waiting=$(sort -n "$work/waiting" | tail -1)"
+  BENCH_POOL_SIZE="$pool_size" ruby app-phoenix/scripts/rate_limit_bench.rb
   exit 0
 fi
 
