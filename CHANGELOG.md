@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- Wherever the Phoenix tables exist, the queue of days whose places changed after geocoding and the toponym reconciliation cursors are kept in PostgreSQL instead of Redis; days still pending in Redis are moved over by the next five-minute toponym run. Monthly statistics, toponym refresh and the hourly statistics sweep are ready to move to Phoenix (Oban) and keep running in Sidekiq until a later release enables it.
 - Password reset and account unlock are prepared in Phoenix but not used yet; Rails still answers them.
 - The Insights details panel (`/insights/details`) and the signed-in redirect from `/` to the map are now served by the Phoenix side when it can answer exactly as Rails would. A details request whose yearly or monthly digest Rails would recalculate, or whose cached yearly digest Rails would write, still goes to Rails, as do guests, writes and other formats. Phoenix reads Rails' cached digest and fragments and writes only the fragment HTML Rails reads back. Setting `DAWARICH_RAILS_ROUTES=insights` hands `/insights`, `/insights/details` and the `/` redirect back to Rails without changing the image.
 - Phoenix serves the map's timeline frames (day feed, track card, calendar) and the residency card with the Rails markup; Rails keeps every write, socket and the track-segment frame. `DAWARICH_RAILS_ROUTES=map` hands the frames back together with the map page.
