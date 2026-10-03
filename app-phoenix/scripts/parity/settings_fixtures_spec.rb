@@ -11,6 +11,307 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
   let(:helper) { ApplicationController.helpers }
   let(:zones) { JSON.parse(root.join('priv/time_zones.json').read).fetch('options') }
 
+  context 'A11 account security' do
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+    def account_fixture(name, value, json: true)
+      directory = fixtures.join('auth/account')
+      content = json ? "#{Oj.dump(value, mode: :strict, float_precision: 0, indent: 2)}\n" : value
+      path = directory.join(name)
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        FileUtils.mkdir_p(directory)
+        File.write(path, content)
+      else
+        aggregate_failures(name) do
+          expect(path.exist?).to be(true)
+          expect(path.read == content).to be(true) if path.exist?
+        end
+      end
+    end
+
+    def account_actor(id)
+      user = create(:user, id:, email: "a11rest-#{id}@dawarich.test", password: 'a11rest-password-42')
+      user.update_columns(settings: { 'timezone' => 'Europe/Berlin', 'onboarding_completed' => true },
+                          api_key: 'API_KEY', created_at: now - 1.day, updated_at: now - 1.day,
+                          reset_password_token: "a11rest-reset-digest-#{id}", reset_password_sent_at: now - 1.hour)
+      user.reload
+    end
+
+    def account_browser(user)
+      client = ActionDispatch::Integration::Session.new(Rails.application)
+      client.get('/users/sign_in')
+      client.post('/users/sign_in', params: {
+                    authenticity_token: account_csrf(client),
+                    user: { email: user.email, password: 'a11rest-password-42', remember_me: '1' }
+                  })
+      expect(client.response.status).to eq(303)
+      client.get('/users/edit')
+      expect(client.response.status).to eq(200)
+      client
+    end
+
+    def account_csrf(client)
+      Nokogiri::HTML5(client.response.body).at_css('meta[name="csrf-token"]')['content']
+    end
+
+    def decoded_account_session(client)
+      request = ActionDispatch::Request.new(Rails.application.env_config.dup)
+      jar = ActionDispatch::Cookies::CookieJar.build(request,
+                                                     '_dawarich_session' => client.cookies['_dawarich_session'])
+      jar.encrypted['_dawarich_session']
+    end
+
+    def seed_account_session(client, session)
+      jar = ActionDispatch::Request.new(Rails.application.env_config.dup).cookie_jar
+      jar.encrypted['_dawarich_session'] = { value: session }
+      client.cookies['_dawarich_session'] = jar['_dawarich_session']
+    end
+
+    def account_cases
+      [
+        ['put', 'PUT', {}], ['patch', 'PATCH', {}],
+        ['post_put', 'POST', { '_method' => 'put' }], ['post_patch', 'POST', { '_method' => 'patch' }],
+        ['blank_current', 'PUT', { 'current_password' => 'empty' }],
+        ['missing_current', 'PUT', { 'current_password' => 'omitted' }],
+        ['no_op_blank_current', 'PUT', { 'email' => 'same', 'current_password' => 'empty' }],
+        ['wrong_current', 'PUT', { 'current_password' => 'wrong' }],
+        ['email_only', 'PUT', { 'email' => 'normalized' }],
+        ['password_only', 'PUT', { 'email' => 'same', 'password' => 'new', 'password_confirmation' => 'new' }],
+        ['both', 'PUT', { 'password' => 'new', 'password_confirmation' => 'new' }],
+        ['no_op', 'PUT', { 'email' => 'same', 'password' => 'empty', 'password_confirmation' => 'empty' }],
+        ['omitted_confirmation', 'PUT', { 'password' => 'new' }],
+        ['empty_confirmation', 'PUT', { 'password' => 'new', 'password_confirmation' => 'empty' }],
+        ['mismatch_confirmation', 'PUT', { 'password' => 'new', 'password_confirmation' => 'wrong' }],
+        ['length_11', 'PUT', { 'password' => 'repeat_x_11' }],
+        ['length_12', 'PUT', { 'password' => 'repeat_x_12' }],
+        ['length_128', 'PUT', { 'password' => 'repeat_x_128' }],
+        ['length_129', 'PUT', { 'password' => 'repeat_x_129' }],
+        ['multibyte_11', 'PUT', { 'password' => 'repeat_ü_11' }],
+        ['multibyte_12', 'PUT', { 'password' => 'repeat_ü_12' }],
+        ['duplicate_email', 'PUT', { 'email' => 'taken' }],
+        ['deleted_email', 'PUT', { 'email' => 'deleted' }],
+        ['multiple_errors', 'PUT', { 'email' => 'invalid', 'password' => 'short',
+                                   'password_confirmation' => 'empty', 'current_password' => 'empty' }],
+        ['blank_email', 'PUT', { 'email' => 'empty' }],
+        ['duplicate_scalar_email', 'PUT', { 'duplicate' => 'email' }],
+        ['duplicate_scalar_current', 'PUT', { 'duplicate' => 'current_password' }],
+        ['malformed_encoding', 'PUT', { 'malformed' => true }],
+        ['type_conflict', 'PUT', { 'type_conflict' => true }],
+        ['errors_de', 'PUT', { 'email' => 'invalid', 'password' => 'short', 'password_confirmation' => 'empty',
+                             'current_password' => 'empty', 'locale' => 'de' }]
+      ]
+    end
+
+    def account_input(input, user)
+      input = { 'email' => 'changed', 'current_password' => 'valid' }.merge(input)
+      input.slice('email', 'password', 'password_confirmation', 'current_password').filter_map do |field, marker|
+        next if marker == 'omitted'
+
+        value = if field == 'email'
+                  { 'same' => user.email, 'changed' => "a11rest-changed-#{user.id}@dawarich.test",
+                    'normalized' => " A11REST-NORMALIZED-#{user.id}@dawarich.test ",
+                    'taken' => 'A11REST-TAKEN@dawarich.test', 'deleted' => 'a11rest-deleted@dawarich.test',
+                    'invalid' => '<bad>', 'empty' => '' }.fetch(marker)
+                elsif marker.start_with?('repeat_')
+                  _, character, count = marker.split('_')
+                  character * count.to_i
+                else
+                  { 'valid' => 'a11rest-password-42', 'new' => 'a11rest-new-password',
+                    'empty' => '', 'wrong' => 'wrong-password', 'short' => 'short' }.fetch(marker)
+                end
+        [field, value]
+      end.to_h
+    end
+
+    def account_body(client, input, params)
+      body = URI.encode_www_form({ authenticity_token: account_csrf(client), _method: input['_method'],
+                                  locale: input['locale'] }.compact)
+      body += "&#{URI.encode_www_form(params.to_h { |field, value| ["user[#{field}]", value] })}"
+      body += '&user%5Bemail%5D=a11rest-last%40dawarich.test' if input['duplicate'] == 'email'
+      body = "user%5Bcurrent_password%5D=wrong&#{body}" if input['duplicate'] == 'current_password'
+      body += '&user%5Bemail%5D=%FF' if input['malformed']
+      body += '&user%5Bemail%5D%5Bnested%5D=value' if input['type_conflict']
+      body
+    end
+
+    def account_projection(client, user, before, session, remember, jobs, mails)
+      after = user.reload.attributes
+      received = decoded_account_session(client)
+      retained = %w[session_id _csrf_token user_return_to locale a11rest]
+      {
+        'status' => client.response.status, 'location' => client.response.location,
+        'changed' => before.keys.reject { |key| before[key] == after[key] }.sort,
+        'email' => user.email, 'reset_cleared' => user.reset_password_token.nil? && user.reset_password_sent_at.nil?,
+        'hash_changed' => before['encrypted_password'] != after['encrypted_password'],
+        'bcrypt_cost' => BCrypt::Password.new(user.encrypted_password).cost,
+        'old_password_valid' => user.valid_password?('a11rest-password-42'),
+        'jobs_delta' => enqueued_jobs.size - jobs, 'mail_delta' => ActionMailer::Base.deliveries.size - mails,
+        'session' => {
+          'retained' => retained.index_with { |key| session[key] == received[key] },
+          'warden_salt_retained' => session.dig('warden.user.user.key', 1) == received.dig('warden.user.user.key', 1),
+          'warden_matches_actor' => received.dig('warden.user.user.key', 1) == user.authenticatable_salt,
+          'devise_data_removed' => !received.key?('devise.test'),
+          'remember_cookie_retained' => client.cookies['remember_user_token'] == remember,
+          'flash' => received.dig('flash', 'flashes')
+        }
+      }
+    end
+
+    def capture_account_case(name, method, input, id)
+      user = account_actor(id)
+      client = account_browser(user)
+      user.update_columns(failed_attempts: 2, failed_otp_attempts: 3, otp_locked_at: now - 2.hours,
+                          updated_at: now - 1.day)
+      session = decoded_account_session(client).merge('devise.test' => 'expire', 'user_return_to' => '/stats',
+                                                      'locale' => 'en', 'a11rest' => 'retain')
+      seed_account_session(client, session)
+      before = user.reload.attributes
+      remember = client.cookies['remember_user_token']
+      jobs = enqueued_jobs.size
+      mails = ActionMailer::Base.deliveries.size
+      params = account_input(input, user)
+      client.public_send(method.downcase, '/users', params: account_body(client, input, params),
+                         headers: { 'CONTENT_TYPE' => 'application/x-www-form-urlencoded' })
+      projection = account_projection(client, user, before, session, remember, jobs, mails)
+      projection.merge!('name' => name, 'method' => method, 'input' => input, 'locale' => input['locale'] || 'en',
+                        'password_valid' => params['password'].blank? || user.valid_password?(params['password']))
+      doc = Nokogiri::HTML5(client.response.body)
+      projection['errors'] = doc.css('#error_explanation li').map(&:text)
+      projection['submitted_email'] = doc.at_css('#user_email')&.[]('value')
+      projection['password_fields_empty'] = doc.css('input[type="password"]').all? { |field| field['value'].blank? }
+      html = if client.response.status == 422
+               doc.css('input[name="authenticity_token"]').each { |field| field['value'] = 'CSRF' }
+               doc.css('[nonce]').each { |node| node['nonce'] = 'NONCE' }
+               doc.at_css('body > div.container > div.w-full > div.flex').inner_html
+             end
+      [projection, html]
+    end
+
+    def account_contract_corpus
+      taken = account_actor(73_301)
+      taken.update_column(:email, 'a11rest-taken@dawarich.test')
+      deleted = account_actor(73_302)
+      deleted.update_columns(email: 'a11rest-deleted@dawarich.test', deleted_at: now)
+      requests = []
+      html = {}
+      account_cases.each_with_index do |(name, method, input), index|
+        row, page = capture_account_case(name, method, input, 73_400 + index)
+        requests << row
+        html["#{name}_#{row['locale']}"] = page if page
+      end
+      validation = requests.reject { |row| %w[malformed_encoding type_conflict].include?(row['name']) }.map do |row|
+        row.slice('name', 'input', 'locale', 'status', 'errors', 'submitted_email', 'password_fields_empty')
+      end
+      { requests:, validation:, api_keys: account_key_corpus, html: }
+    end
+
+    def account_key_corpus
+      %w[plain turbo referer invalid_resource legacy_invalid_email dirty_settings].each_with_index.map do |name, index|
+        user = account_actor(73_500 + index)
+        user.update_column(:api_key, "a11rest-key-#{user.id}")
+        client = account_browser(user)
+        user.update_column(:updated_at, now - 1.day)
+        user.update_column(:email, '') if name == 'invalid_resource'
+        user.update_column(:email, 'invalid') if name == 'legacy_invalid_email'
+        if name == 'dirty_settings'
+          user.update_column(:settings, user.settings.merge('immich_url' => 'https://immich.a11rest.test///'))
+        end
+        before = user.reload.attributes
+        session = decoded_account_session(client)
+        remember = client.cookies['remember_user_token']
+        jobs = enqueued_jobs.size
+        mails = ActionMailer::Base.deliveries.size
+        referer = { 'turbo' => 'http://www.example.com/users/edit', 'referer' => 'http://www.example.com/stats' }[name]
+        accept = name == 'turbo' ? 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml' : 'text/html'
+        client.post('/settings/generate_api_key', params: '', headers: {
+          'CONTENT_TYPE' => 'application/x-www-form-urlencoded', 'X-CSRF-Token' => account_csrf(client),
+                      'Accept' => accept, 'Referer' => referer
+        }.compact)
+        projection = account_projection(client, user, before, session, remember, jobs, mails)
+        probe = ActionDispatch::Integration::Session.new(Rails.application)
+        lookups = [before['api_key'], user.api_key].map do |key|
+          probe.get('/api/v1/users/me', params: { api_key: key })
+          query = probe.response.status
+          probe.get('/api/v1/users/me', headers: { 'Authorization' => "Bearer #{key}" })
+          { 'query' => query, 'bearer' => probe.response.status }
+        end
+        projection.merge('name' => name, 'referer' => referer, 'accept' => accept, 'body' => '',
+                         'csrf_transport' => 'header', 'key_changed' => user.api_key != before['api_key'],
+                         'key_format' => user.api_key.match?(/\A[0-9a-f]{64}\z/), 'lookups' => lookups,
+                         'settings_cleaned' => name == 'dirty_settings' &&
+                           user.settings['immich_url'].end_with?('.test'))
+      end
+    end
+
+    def account_exclusion_corpus
+      %w[oauth otp cloud dirty_settings remember_only].each_with_index.map do |name, index|
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        user = account_actor(73_600 + index)
+        client = account_browser(user)
+        user.update_columns(provider: 'github', uid: 'a11rest-uid') if name == 'oauth'
+        user.update_column(:otp_required_for_login, true) if name == 'otp'
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(name != 'cloud')
+        if name == 'dirty_settings'
+          user.update_column(:settings, user.settings.merge('immich_url' => 'https://immich.a11rest.test///'))
+        end
+        if name == 'remember_only'
+          seed_account_session(client,
+                               decoded_account_session(client).except('warden.user.user.key'))
+        end
+        params = { email: "a11rest-excluded-#{index}@dawarich.test", current_password: 'a11rest-password-42' }
+        params.delete(:current_password) if name == 'oauth'
+        client.put('/users', params: { user: params, authenticity_token: account_csrf(client) })
+        { 'name' => name, 'owner' => 'rails', 'status' => client.response.status,
+          'location' => client.response.location, 'email_changed' => user.reload.email == params[:email] }
+      end
+    end
+
+    it 'writes or verifies the complete A11 account contract corpus' do
+      travel_to now do
+        corpus = account_contract_corpus
+        expected_requests = %w[
+          put patch post_put post_patch blank_current missing_current no_op_blank_current wrong_current
+          email_only password_only both no_op omitted_confirmation empty_confirmation mismatch_confirmation
+          length_11 length_12 length_128 length_129 multibyte_11 multibyte_12 duplicate_email deleted_email
+          multiple_errors blank_email duplicate_scalar_email duplicate_scalar_current malformed_encoding
+          type_conflict errors_de
+        ]
+        expect(corpus.fetch(:requests).pluck('name')).to eq(expected_requests)
+        expect(corpus.fetch(:api_keys).pluck('name')).to eq(
+          %w[plain turbo referer invalid_resource legacy_invalid_email dirty_settings]
+        )
+        turbo = corpus.fetch(:api_keys).find { |row| row['name'] == 'turbo' }
+        expect(turbo.slice('status', 'location', 'changed')).to eq(
+          'status' => 302, 'location' => 'http://www.example.com/users/edit', 'changed' => %w[api_key updated_at]
+        )
+        expect(corpus.fetch(:validation).find { |row| row['name'] == 'multiple_errors' }.fetch('errors')).to eq(
+          ['Email is invalid', "Password confirmation doesn't match Password",
+           'Password is too short (minimum is 12 characters)', "Current password can't be blank"]
+        )
+        corpus.fetch(:api_keys).each do |row|
+          old_status = row['name'] == 'invalid_resource' ? 200 : 401
+          expect(row['lookups']).to eq(
+            [{ 'query' => old_status, 'bearer' => old_status },
+             { 'query' => 200, 'bearer' => 200 }]
+          )
+        end
+        corpus.except(:html).each { |name, rows| account_fixture("#{name}.json", rows) }
+        corpus.fetch(:html).each { |name, html| account_fixture("#{name}.html", html, json: false) }
+      end
+    end
+
+    it 'preserves source-only account rejection cases' do
+      travel_to now do
+        rows = account_exclusion_corpus
+        expect(rows.pluck('name')).to eq(%w[oauth otp cloud dirty_settings remember_only])
+        expect(rows.pluck('owner').uniq).to eq(['rails'])
+        expect(rows.pluck('status')).to eq([303, 303, 303, 303, 302])
+        expect(rows.pluck('email_changed')).to eq([true, true, true, true, false])
+        account_fixture('exclusions.json', rows)
+      end
+    end
+  end
+
   def write_json(path, data) = File.write(path, "#{JSON.pretty_generate(data)}\n")
 
   def qr_entry(payload)
