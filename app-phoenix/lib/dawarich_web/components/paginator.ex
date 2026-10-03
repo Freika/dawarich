@@ -10,6 +10,8 @@ defmodule DawarichWeb.Paginator do
   attr :query, :map, required: true
   attr :page, :integer, required: true
   attr :total_pages, :integer, required: true
+  attr :anchor, :string, default: nil
+  attr :patch, :boolean, default: true
 
   def paginator(assigns) do
     assigns = assign(assigns, :tags, tags(assigns.page, assigns.total_pages))
@@ -24,13 +26,21 @@ defmodule DawarichWeb.Paginator do
       <%= for tag <- @tags do %>
         <%= case tag do %>
           <% :prev -> %>
-            <.link patch={url(@path, @query, @page - 1)} rel="prev" class="join-item btn">{t(
+            <.link
+              {nav(@patch, url(@path, @query, @page - 1, @anchor))}
+              rel="prev"
+              class="join-item btn"
+            >{t(
               @locale,
               "kaminari.prev_page.laquo",
               %{}
             )}</.link>
           <% :next -> %>
-            <.link patch={url(@path, @query, @page + 1)} rel="next" class="join-item btn">{t(
+            <.link
+              {nav(@patch, url(@path, @query, @page + 1, @anchor))}
+              rel="next"
+              class="join-item btn"
+            >{t(
               @locale,
               "kaminari.next_page.raquo",
               %{}
@@ -41,7 +51,11 @@ defmodule DawarichWeb.Paginator do
             <%= if number == @page do %>
               <button class="join-item btn btn-active">{number}</button>
             <% else %>
-              <.link patch={url(@path, @query, number)} rel={rel(number, @page)} class="join-item btn">{number}</.link>
+              <.link
+                {nav(@patch, url(@path, @query, number, @anchor))}
+                rel={rel(number, @page)}
+                class="join-item btn"
+              >{number}</.link>
             <% end %>
         <% end %>
       <% end %>
@@ -85,13 +99,17 @@ defmodule DawarichWeb.Paginator do
   defp rel(number, page) when number == page - 1, do: "prev"
   defp rel(_number, _page), do: nil
 
-  defp url(path, query, number) do
+  defp nav(true, url), do: [patch: url]
+  defp nav(false, url), do: [href: url]
+
+  defp url(path, query, number, anchor) do
     query = query |> Map.drop(@form_keys) |> Map.delete("page")
     query = if number > 1, do: Map.put(query, "page", Integer.to_string(number)), else: query
+    fragment = if anchor, do: "#" <> anchor, else: ""
 
     case query |> Enum.map(&URI.encode_query([&1])) |> Enum.sort() |> Enum.join("&") do
-      "" -> path
-      encoded -> path <> "?" <> encoded
+      "" -> path <> fragment
+      encoded -> path <> "?" <> encoded <> fragment
     end
   end
 end

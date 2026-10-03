@@ -75,10 +75,20 @@ module PhoenixBuildInputs
         'target' => definition.target, 'regions' => definition.regions, 'region_codes' => definition.region_codes,
         'names' => I18n.available_locales.to_h do |locale|
           [locale.to_s, I18n.with_locale(locale) { Achievements::SetPresenter.new(definition:).name }]
-        end
+        end,
+        'name' => definition.name, 'country' => definition.country, 'continent' => definition.continent,
+        'parent_key' => definition.parent_key, 'card' => definition.card
       }
     end
-    JSON.generate('definitions' => definitions)
+    rules = I18n.available_locales.filter_map do |locale|
+      rule = I18n.t(:'i18n.transliterate.rule', locale:, resolve: false, default: {})
+      raise ArgumentError, "#{locale}: only hash transliteration rules can be exported" unless rule.is_a?(Hash)
+
+      [locale.to_s, rule.to_h { |char, value| [char.to_s, value.to_s] }] if rule.any?
+    end
+    transliteration = { 'default' => I18n::Backend::Transliterator::HashTransliterator::DEFAULT_APPROXIMATIONS,
+                        'rules' => rules.to_h }
+    JSON.generate('definitions' => definitions, 'transliteration' => transliteration)
   end
 
   def time_zones_json
