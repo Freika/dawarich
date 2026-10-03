@@ -321,4 +321,12 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
       fx.rake('points:raw_data:reset_all')
     end)
   end
+
+  it 'accepts the password hash Phoenix writes' do
+    path = fx::DIR.join('password.json')
+    fx.write_password_hash(path) if fx.write?
+    fx.user!(1041, 'phoenix-hash@example.invalid')
+    User.where(id: 1041).update_all(encrypted_password: JSON.parse(path.read).fetch('hash'))
+    expect(User.find(1041).valid_password?(fx::LOGIN)).to be(true)
+  end
 end

@@ -1,5 +1,6 @@
 # frozen_string_literal: true
 
+require 'open3'
 require 'stringio'
 
 module A12eFixtureSupport
@@ -157,6 +158,21 @@ module A12eFixtureSupport
   def normalized(data) = JSON.parse(Oj.dump(data, mode: :strict, float_precision: 0))
   def comparable(entry) = normalized(entry).except('seed')
   def human_sizes = SIZES.map { |n| [n, ActiveSupport::NumberHelper.number_to_human_size(n)] }
+
+  def write_password_hash(path)
+    code = "IO.puts(Jason.encode!(Dawarich.CLI.Users.hash_password(#{LOGIN.inspect})))"
+    out, status = Open3.capture2e(phoenix_env, 'mix', 'run', '--no-start', '-e', code,
+                                  chdir: Rails.root.join('app-phoenix').to_s)
+    raise out unless status.success?
+
+    path.write("#{Oj.dump({ 'hash' => JSON.parse(out.lines.last) }, mode: :strict, indent: 2)}\n")
+  end
+
+  def phoenix_env
+    { 'MIX_ENV' => 'test', 'PATH' => "#{Dir.home}/.asdf/shims:#{ENV.fetch('PATH')}",
+      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.18.3-otp-27',
+      'PHOENIX_TEST_REDIS_URL' => 'redis://127.0.0.1:7196/1', 'DATABASE_HOST' => '127.0.0.1' }
+  end
 
   def finish(recorded)
     return unless write? && recorded.any?
