@@ -255,8 +255,24 @@ defmodule Dawarich.CLI.RawData do
 
   def ready(ctx) do
     ctx
-    |> Map.put_new_lazy(:storage, fn -> Storage.config!(ctx.env, Dawarich.RailsRoot.join("")) end)
+    |> Map.put_new_lazy(:storage, fn -> storage!(ctx.env) end)
     |> Map.put_new_lazy(:archive_key, fn -> ArchiveFormat.key(ctx.env) end)
+  end
+
+  defp storage!(env) do
+    root =
+      env["APP_PATH"] ||
+        raise "APP_PATH is not set: set it to the Dawarich directory that holds storage/ (/var/app in the image)"
+
+    storage = Storage.config!(env, root)
+
+    if storage.service == "local" and not File.dir?(storage.root),
+      do:
+        raise(
+          "#{storage.root} is not a directory: APP_PATH must be the Dawarich directory that holds storage/"
+        )
+
+    storage
   end
 
   def ids(ctx, sql, params), do: ctx.repo.query!(sql, params, log: false).rows |> List.flatten()
