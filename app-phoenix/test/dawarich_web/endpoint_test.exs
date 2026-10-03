@@ -967,7 +967,8 @@ defmodule DawarichWeb.EndpointTest do
           "/map/timeline_feeds/calendar?month=2026-09",
           "/map/timeline_feeds/calendar",
           "/map/residency?year=2026",
-          "/map/residency"
+          "/map/residency",
+          "/tracks/5/segments"
         ],
         do:
           assert(
@@ -1000,7 +1001,7 @@ defmodule DawarichWeb.EndpointTest do
           {"/map/residency?year=abc", frame},
           {"/map/residency?year=", frame},
           {"/map/residency?year=2040", frame},
-          {"/tracks/5/segments", frame}
+          {"/tracks/5/segments?locale=de", frame}
         ],
         do:
           assert(
