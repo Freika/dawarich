@@ -13,6 +13,7 @@ defmodule DawarichWeb.Api.Body do
   @form "application/x-www-form-urlencoded"
   @pairs 4_096
   @depth 32
+  @override_methods ~w(GET HEAD PUT POST DELETE OPTIONS PATCH LINK UNLINK)
 
   @impl true
   def init(opts), do: opts
@@ -47,6 +48,12 @@ defmodule DawarichWeb.Api.Body do
       |> String.downcase()
 
     cond do
+      api_request?(conn) and invalid_escape?(conn.query_string) ->
+        {:proxy, "invalid percent escape in query"}
+
+      api_request?(conn) and header_method_override?(conn) ->
+        {:proxy, "method override header"}
+
       RailsProxy.Headers.chunked?(conn) ->
         {:proxy, "chunked request body"}
 
@@ -72,7 +79,7 @@ defmodule DawarichWeb.Api.Body do
       {:ok, raw, conn} ->
         conn = put_private(conn, :dawarich_raw_body, raw)
 
-        with {:ok, body} <- body(kind, raw), {:ok, query} <- pairs(conn.query_string) do
+        with {:ok, body} <- body(conn, kind, raw), {:ok, query} <- pairs(conn.query_string) do
           conn |> assign(:api_query, query) |> assign(:api_params, Map.merge(body, query))
         else
           {:replay, reason} -> replay(conn, reason)
@@ -94,11 +101,24 @@ defmodule DawarichWeb.Api.Body do
     end
   end
 
-  defp body(:none, _raw), do: {:ok, %{}}
-  defp body(:form, raw), do: pairs(raw)
-  defp body(:json, ""), do: {:ok, %{}}
+  defp body(_conn, :none, _raw), do: {:ok, %{}}
 
-  defp body(:json, raw) do
+  defp body(conn, :form, raw) do
+    cond do
+      api_request?(conn) and invalid_escape?(raw) ->
+        {:replay, "invalid percent escape in form body"}
+
+      api_request?(conn) and form_method_override?(raw) ->
+        {:replay, "method override form parameter"}
+
+      true ->
+        pairs(raw)
+    end
+  end
+
+  defp body(_conn, :json, ""), do: {:ok, %{}}
+
+  defp body(_conn, :json, raw) do
     case Jason.decode(raw) do
       {:ok, term} ->
         if too_deep?(term, 0),
@@ -172,6 +192,34 @@ defmodule DawarichWeb.Api.Body do
   rescue
     ArgumentError -> :error
   end
+
+  defp invalid_escape?(text), do: Regex.match?(~r/%(?![0-9A-Fa-f]{2})/, text)
+
+  defp api_request?(conn), do: Map.get(conn.assigns, :api_tag) in ["api", "ingest"]
+
+  defp header_method_override?(%{method: "POST"} = conn) do
+    conn
+    |> get_req_header("x-http-method-override")
+    |> Enum.any?(&method_override?/1)
+  end
+
+  defp header_method_override?(_conn), do: false
+
+  defp form_method_override?(text) do
+    text
+    |> String.split(~r/& */)
+    |> Enum.any?(fn segment ->
+      case String.split(segment, "=", parts: 2) do
+        [key, value] ->
+          URI.decode_www_form(key) == "_method" and method_override?(URI.decode_www_form(value))
+
+        _ ->
+          false
+      end
+    end)
+  end
+
+  defp method_override?(value), do: String.upcase(value) in @override_methods
 
   defp upstream, do: Application.fetch_env!(:dawarich, :rails_upstream)
 end

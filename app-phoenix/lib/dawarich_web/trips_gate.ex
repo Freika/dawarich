@@ -18,7 +18,7 @@ defmodule DawarichWeb.TripsGate do
 
   def page_number(page), do: max(DawarichWeb.Params.ruby_to_i(page), 1)
 
-  defp open?(conn, check) do
+  def open?(conn, check) do
     case DawarichWeb.RailsAuth.call(conn, []).assigns.current_user do
       nil -> true
       user -> check.(user)

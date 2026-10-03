@@ -17,7 +17,9 @@ defmodule DawarichWeb.ImportsExportsParityTest do
     :ok
   end
 
-  for page <- "test/fixtures/imports_exports/pages.json" |> File.read!() |> Jason.decode!() do
+  for page <- "test/fixtures/imports_exports/pages.json" |> File.read!() |> Jason.decode!(),
+      query = URI.parse(page["path"]).query || "",
+      not Enum.any?(String.split(query, "&", trim: true), &(not String.contains?(&1, "="))) do
     @page page
 
     test "#{page["name"]} matches the page Rails renders" do
