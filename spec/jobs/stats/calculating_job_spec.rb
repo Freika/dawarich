@@ -65,5 +65,14 @@ RSpec.describe Stats::CalculatingJob, type: :job do
       )
       expect(Stats::CalculateMonth).not_to have_received(:new)
     end
+
+    it 'Oban-owned: a failing forward raises for a Sidekiq retry and notifies nobody' do
+      job_owner!(described_class::OWNER_KEY, :oban)
+      allow(JobCommands).to receive(:forward).and_raise(ActiveRecord::ConnectionNotEstablished, 'down')
+
+      expect do
+        expect { described_class.perform_now(user.id, 2024, 1) }.to raise_error(ActiveRecord::ConnectionNotEstablished)
+      end.not_to change(Notification, :count)
+    end
   end
 end

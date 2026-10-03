@@ -7,6 +7,12 @@ class Stats::CalculatingJob < ApplicationJob
   def perform(user_id, year, month, notify_on_failure: true)
     return forward(user_id, year, month, notify_on_failure) if JobOwnership.oban?(OWNER_KEY)
 
+    calculate(user_id, year, month, notify_on_failure)
+  end
+
+  private
+
+  def calculate(user_id, year, month, notify_on_failure)
     user = find_user_or_skip(user_id) || return
 
     I18n.with_locale(user.locale) do
@@ -17,8 +23,6 @@ class Stats::CalculatingJob < ApplicationJob
 
     create_stats_update_failed_notification(user_id, e) if notify_on_failure
   end
-
-  private
 
   def forward(user_id, year, month, notify_on_failure)
     JobCommands.forward('stats.calculate_month',
