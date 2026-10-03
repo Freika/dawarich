@@ -48,15 +48,16 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
   test "a deferral keeps an older live pending timestamp and bumps its revision, and replaces an expired one" do
     user = user!()
 
-    rows(
-      "INSERT INTO phoenix.achievement_checks (user_id, oldest_timestamp, revision, expires_at) VALUES ($1, $2, 4, statement_timestamp() + interval '1 hour')",
-      [user, @at - 1000]
-    )
+    [[previous]] =
+      rows(
+        "INSERT INTO phoenix.achievement_checks (user_id, oldest_timestamp, revision, expires_at) VALUES ($1, $2, nextval('phoenix.achievement_check_revisions'), statement_timestamp() + interval '1 hour') RETURNING revision",
+        [user, @at - 1000]
+      )
 
     point!(user, @at, {13.405, 52.52}, accuracy: 20_000)
     assert AnomalyFilter.call(ScratchRepo, user, @at, @at, zone: "UTC") == 1
     assert pending(user) == [[@at - 1000, last_revision(), true]]
-    refute last_revision() == 4
+    assert last_revision() > previous
 
     rows(
       "UPDATE phoenix.achievement_checks SET expires_at = statement_timestamp() - interval '1 second' WHERE user_id = $1",
