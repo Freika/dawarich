@@ -68,6 +68,19 @@ RSpec.describe ReverseGeocodingJob, type: :job do
         expect(key_exists?).to be false
       end
 
+      context 'with phoenix.once_claims' do
+        before { phoenix_state! }
+
+        it 'releases the claim row after a non-forced run' do
+          PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 86_400)
+
+          described_class.new.perform('Point', point.id)
+
+          expect(PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 60)).to be(true)
+          expect(key_exists?).to be false
+        end
+      end
+
       it 'leaves a concurrent claim intact when the run is forced' do
         Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(point.id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
 

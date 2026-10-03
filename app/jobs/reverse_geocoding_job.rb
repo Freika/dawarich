@@ -28,7 +28,7 @@ class ReverseGeocodingJob < ApplicationJob
     return unless klass == 'Point'
     return if force
 
-    Sidekiq.redis { |r| r.del(Point.geocode_dedup_key(id)) }
+    PhoenixClaims.unclaim(Point.geocode_dedup_key(id))
   rescue StandardError => e
     Rails.logger.warn("Failed to release geocode dedup key for point #{id}: #{e.message}")
   end

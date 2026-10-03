@@ -79,4 +79,40 @@ RSpec.describe Geocoding::ReverseCommands do
       expect(key_exists?(foreign_id)).to be true
     end
   end
+
+  context 'with phoenix.once_claims' do
+    let(:user) { create(:user) }
+    let(:keys) { ->(ids) { ids.map { Point.geocode_dedup_key(_1) } } }
+
+    before { phoenix_state! }
+
+    def claimed_keys = ActiveRecord::Base.connection.select_values('SELECT key FROM phoenix.once_claims ORDER BY key')
+
+    it 'claims rows only for points without a live claim, and clears them on force' do
+      PhoenixClaims.claim(Point.geocode_dedup_key(2), 60)
+      expect(JobCommands).to receive(:produce)
+        .with('geocoding.reverse_point', { 'user_id' => user.id, 'point_ids' => [1, 3], 'force' => false },
+              aggregate_id: user.id, producer: 'spec')
+
+      described_class.enqueue_points(user.id, [1, 2, 3], force: false, producer: 'spec')
+      expect(claimed_keys).to match_array(keys.call([1, 2, 3]))
+
+      allow(JobCommands).to receive(:produce)
+      described_class.enqueue_points(user.id, [1, 2, 3], force: true, producer: 'spec')
+      expect(claimed_keys).to be_empty
+    end
+
+    it 'releases the rows it claimed when producing fails' do
+      allow(JobCommands).to receive(:produce).and_raise(RuntimeError, 'outbox down')
+
+      expect { described_class.enqueue_points(user.id, [5], force: false, producer: 'spec') }
+        .to raise_error(RuntimeError, 'outbox down')
+      expect(claimed_keys).to be_empty
+    end
+
+    it 'uses the key Phoenix releases' do
+      source = Rails.root.join('app-phoenix/lib/dawarich/geocoding/reverse_point_worker.ex').read
+      expect(source).to include("\"geocode:enq:Point:\#{id}\"")
+    end
+  end
 end

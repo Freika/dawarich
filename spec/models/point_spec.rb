@@ -171,6 +171,36 @@ RSpec.describe Point, type: :model do
         end
       end
 
+      context 'with phoenix.once_claims' do
+        before { phoenix_state! }
+
+        def claimed?(id)
+          key = ActiveRecord::Base.connection.quote(Point.geocode_dedup_key(id))
+          ActiveRecord::Base.connection.select_value(
+            "SELECT count(*) FROM phoenix.once_claims WHERE key = #{key} AND expires_at > statement_timestamp()"
+          ).to_i == 1
+        end
+
+        it 'claims the dedupe row instead of the Redis key and enqueues once until it is released' do
+          point.save
+
+          expect(claimed?(point.id)).to be(true)
+          expect(Sidekiq.redis { |r| r.exists(Point.geocode_dedup_key(point.id)) }).to eq(0)
+          expect { point.async_reverse_geocode }.not_to have_enqueued_job(ReverseGeocodingJob)
+          PhoenixClaims.unclaim(Point.geocode_dedup_key(point.id))
+          expect { point.async_reverse_geocode }.to have_enqueued_job(ReverseGeocodingJob)
+            .with('Point', point.id, force: false)
+        end
+
+        it 'clears the row on force' do
+          point.save
+
+          expect { point.async_reverse_geocode(force: true) }.to have_enqueued_job(ReverseGeocodingJob)
+            .with('Point', point.id, force: true)
+          expect(claimed?(point.id)).to be(false)
+        end
+      end
+
       context 'when called twice for the same point' do
         it 'only enqueues a single job (dedup)' do
           point.save
