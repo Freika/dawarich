@@ -52,6 +52,15 @@ defmodule Dawarich.Visits.WebEffects do
 
   def stamps(rows), do: Enum.map(rows, &DateTime.from_naive!(&1["started_at"], "Etc/UTC"))
 
+  def dates(repo, rows, zone) do
+    repo.query!(
+      "SELECT DISTINCT (stamp AT TIME ZONE 'UTC' AT TIME ZONE $2)::date FROM unnest($1::timestamp[]) stamp ORDER BY 1",
+      [Enum.map(rows, & &1["started_at"]), zone],
+      log: false
+    ).rows
+    |> Enum.map(&hd/1)
+  end
+
   def persist(repo, old, new, now) do
     fields = ~w(name status place_id area_id started_at ended_at duration deleted_at)
 
