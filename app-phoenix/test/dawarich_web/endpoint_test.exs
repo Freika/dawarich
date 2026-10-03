@@ -55,7 +55,8 @@ defmodule DawarichWeb.EndpointTest do
     assert values(headers, "location") == ["/settings"]
   end
 
-  test "a /cable upgrade goes to Puma as an upgrade", ctx do
+  test "a handed-back /cable upgrade goes to Puma as an upgrade", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["cable"])
     port = serve()
     client = ws_request(port, "/cable", [{"Origin", "http://127.0.0.1:#{port}"}])
     puma = accept(ctx.upstream)
@@ -552,6 +553,8 @@ defmodule DawarichWeb.EndpointTest do
   end
 
   test "stopping the production listener closes a proxied cable connection normally", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["cable"])
+
     plan =
       {:proxy,
        %{

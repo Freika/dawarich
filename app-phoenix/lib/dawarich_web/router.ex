@@ -107,6 +107,17 @@ defmodule DawarichWeb.Router do
       metadata: %{slice: :api_locations_photos}
   end
 
+  pipeline :cable do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+  end
+
+  scope "/" do
+    pipe_through :cable
+
+    get "/cable", DawarichWeb.Cable, :upgrade, metadata: %{slice: :cable}
+  end
+
   pipeline :rails_user do
     plug DawarichWeb.RequireUser
   end

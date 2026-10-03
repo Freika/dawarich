@@ -32,7 +32,9 @@ defmodule Dawarich.Application do
       [
         {Oban, Keyword.put(oban, :cron, cron)},
         {Phoenix.PubSub, name: Dawarich.PubSub}
-      ] ++ Front.children(plan, [{"DAWARICH_PHOENIX_NODE", node}]) ++ jobs(node)
+      ] ++
+      Dawarich.Cable.Bus.child_specs() ++
+      Front.children(plan, [{"DAWARICH_PHOENIX_NODE", node}]) ++ jobs(node)
   end
 
   defp redis,
