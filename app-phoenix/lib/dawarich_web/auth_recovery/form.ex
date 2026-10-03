@@ -2,6 +2,8 @@ defmodule DawarichWeb.AuthRecovery.Form do
   @moduledoc false
   alias Dawarich.Auth.Recovery.{Messages, Token}
 
+  @circle_x ~s(<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewbox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="size-6"><circle cx="12" cy="12" r="10"></circle><path d="m15 9-6 6"></path><path d="m9 9 6 6"></path></svg>)
+
   def render(view, token, assigns, locale, registration_enabled) do
     {scope, title, description, submit, path} = config(view)
     t = fn key -> DawarichWeb.Translate.t(locale, scope <> key, %{}) |> h() end
@@ -48,7 +50,7 @@ defmodule DawarichWeb.AuthRecovery.Form do
     <div class="text-center lg:text-left"><h1 class="text-5xl font-bold text-base-content">#{t.(title)}</h1><p class="py-6 text-base-content opacity-70">#{t.(description)}</p></div>
     <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
     <form class="#{form_id}" id="#{form_id}" action="#{path}" accept-charset="UTF-8" method="post">#{method}#{hidden("authenticity_token", token)}#{errors(view, error, locale)}#{fields}
-    <div class="form-control mt-6"><input type="submit" name="commit" value="#{t.(submit)}" class="btn btn-primary w-full" data-disable-with="#{t.(submit)}"></div></form>
+    <div class="form-control mt-6"><input type="submit" name="commit" value="#{t.(submit)}" class="btn btn-primary w-full" data-disable-with="#{t.(submit)}" /></div></form>
     <div class="mt-5 space-y-2 text-sm">#{links}</div>
     </div></div></div>
     """
@@ -60,14 +62,7 @@ defmodule DawarichWeb.AuthRecovery.Form do
     messages = Messages.error(view, error, locale)
     items = Enum.map_join(messages.messages, "", &("<li>" <> h(&1) <> "</li>"))
 
-    ~s(<div id="error_explanation" class="alert alert-error mb-4" data-turbo-cache="false">#{icon()}<div class="font-bold mb-4 flex items-center gap-2"><div><h3 class="font-bold">#{h(messages.heading)}</h3><ul class="text-sm mt-1">#{items}</ul></div></div></div>)
-  end
-
-  defp icon do
-    %{name: "circle-x", class: "size-6", aria_hidden: false, __changed__: nil}
-    |> DawarichWeb.Icon.icon()
-    |> Phoenix.HTML.Safe.to_iodata()
-    |> IO.iodata_to_binary()
+    ~s(<div id="error_explanation" class="alert alert-error mb-4" data-turbo-cache="false">#{@circle_x}<div class="font-bold mb-4 flex items-center gap-2"><div><h3 class="font-bold">#{h(messages.heading)}</h3><ul class="text-sm mt-1">#{items}</ul></div></div></div>)
   end
 
   defp config(:password_new),
@@ -90,7 +85,7 @@ defmodule DawarichWeb.AuthRecovery.Form do
   defp token_field(token) do
     value = if Token.blank?(token), do: "", else: ~s( value="#{h(token)}")
 
-    ~s(<input type="hidden"#{value} name="user[reset_password_token]" id="user_reset_password_token">)
+    ~s(<input type="hidden"#{value} name="user[reset_password_token]" id="user_reset_password_token" />)
   end
 
   defp label(field, text, invalid),
@@ -106,7 +101,7 @@ defmodule DawarichWeb.AuthRecovery.Form do
     value = if type == "email", do: ~s( value=""), else: ""
 
     wrap(
-      ~s(<input#{focus} autocomplete="#{autocomplete}" class="input input-bordered w-full" type="#{type}"#{value} name="user[#{field}]" id="user_#{field}">),
+      ~s(<input#{focus} autocomplete="#{autocomplete}" class="input input-bordered w-full" type="#{type}"#{value} name="user[#{field}]" id="user_#{field}" />),
       field,
       invalid
     )
@@ -115,6 +110,6 @@ defmodule DawarichWeb.AuthRecovery.Form do
   defp wrap(html, field, invalid),
     do: if(field in invalid, do: ~s(<div class="field_with_errors">#{html}</div>), else: html)
 
-  defp hidden(name, value), do: ~s(<input type="hidden" name="#{name}" value="#{h(value)}">)
+  defp hidden(name, value), do: ~s(<input type="hidden" name="#{name}" value="#{h(value)}" />)
   defp h(value), do: value |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 end
