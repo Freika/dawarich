@@ -22,9 +22,11 @@ module Stats
     SQL
     POSTPONE = 'UPDATE phoenix.stats_geocoded_days SET due_at = $2 WHERE member = $1'
     DRAIN = <<~SQL
-      INSERT INTO phoenix.stats_geocoded_days (member, version, due_at) VALUES ($1, $2, $3)
-      ON CONFLICT (member) DO NOTHING
+      INSERT INTO phoenix.stats_geocoded_days (member, version, due_at)
+      SELECT member, version, $3::bigint FROM unnest($1::text[], $2::text[]) AS drained(member, version)
+      ON CONFLICT (member) DO UPDATE SET version = gen_random_uuid()::text
     SQL
+    DRAIN_BATCH = 1_000
 
     def self.mark(user_id, timestamp)
       member = "#{user_id}:#{Time.at(timestamp).utc.to_date.iso8601}"
@@ -93,13 +95,30 @@ module Stats
       return unless table?
 
       Sidekiq.redis do |redis|
-        members = redis.call('ZRANGE', PENDING_KEY, 0, -1)
-        next if members.empty?
+        offset = 0
+        loop do
+          members = redis.call('ZRANGE', PENDING_KEY, offset, offset + DRAIN_BATCH - 1)
+          break if members.empty?
 
-        snapshot(redis, members).each { |member, version| query(DRAIN, member, version, Time.current.to_i) }
-        redis.call('ZREM', PENDING_KEY, *members)
-        redis.call('DEL', *members.map { |member| version_key(member) })
+          versions = redis.call('MGET', *members.map { |member| version_key(member) })
+          encoder = PG::TextEncoder::Array.new
+          drained = versions.map { |version| version || SecureRandom.uuid }
+          query(DRAIN, encoder.encode(members), encoder.encode(drained), Time.current.to_i)
+          offset += members.zip(versions).count { |member, version| !release(redis, member, version) }
+        end
       end
+    rescue RedisClient::Error => e
+      Rails.logger.warn("Stats geocoded-days drain skipped: #{e.class}: #{e.message}")
+    end
+
+    def self.release(redis, member, version)
+      key = version_key(member)
+      redis.multi(watch: [key]) do |transaction|
+        next unless redis.call('GET', key) == version
+
+        transaction.call('DEL', key)
+        transaction.call('ZREM', PENDING_KEY, member)
+      end.present?
     end
 
     def self.local_months(member, user)
@@ -130,6 +149,6 @@ module Stats
     end
 
     def self.due_at = (Time.current + DELAY).to_i
-    private_class_method :snapshot, :version_key, :query, :due_at
+    private_class_method :snapshot, :version_key, :query, :due_at, :release
   end
 end
