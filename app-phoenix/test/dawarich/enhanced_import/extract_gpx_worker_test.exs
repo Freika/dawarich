@@ -26,7 +26,7 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorkerTest do
   end
 
   defp run(repo, job, storage, opts \\ []),
-    do: ExtractGpxWorker.run(repo, job, [storage: storage, lock: [timeout_ms: 200]] ++ opts)
+    do: ExtractGpxWorker.run(repo, job, [storage: storage, lock: [timeout_ms: 0]] ++ opts)
 
   defp prepare!(storage, name) do
     fixture = load!(name)
@@ -164,7 +164,7 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorkerTest do
 
   test "a held lock snoozes and the 60th attempt fails", %{storage: storage} do
     {id, user_id, _fixture} = prepare!(storage, "writer_dedup")
-    Redix.command!(rails_redis!(), ["SET", PerUserLock.key(user_id), "rails", "PX", "60000"])
+    hold_lease!(ScratchRepo, PerUserLock.key(user_id), "rails")
 
     assert run(ScratchRepo, job(id), storage) == {:snooze, 60}
     assert {1, %{"started_at" => started_at}, _} = import_state(id)
@@ -245,12 +245,6 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorkerTest do
 
     assert List.last(kind_names()) == "schedule_untracked_tracks"
     assert rows("SELECT count(*) FROM places WHERE import_id = $1", [id]) == [[0]]
-    assert Redix.command!(rails_redis!(), ["GET", PerUserLock.key(user_id)]) == nil
-  end
-
-  defp rails_redis! do
-    config = Application.fetch_env!(:dawarich, :redis)
-    {:ok, conn} = Redix.start_link(config[:url], database: config[:database])
-    conn
+    assert lease_holders(ScratchRepo, PerUserLock.key(user_id)) == []
   end
 end

@@ -31,6 +31,16 @@ RSpec.describe Imports::PrepareDownloadJob do
     expect(import.file.download).to eq(original)
   end
 
+  it 'skips a legacy preparation while another preparation holds the import lease, and prepares once it is free' do
+    hold_import_lock("import-download:#{import.id}") do
+      described_class.perform_now(import.id, import.file.blob_id)
+      expect(import.reload.prepared_download).not_to be_attached
+    end
+
+    described_class.perform_now(import.id, import.file.blob_id)
+    expect(import.reload.prepared_download).to be_attached
+  end
+
   it 'ignores a job for a replaced source file' do
     source_id = import.file.blob_id
     import.file.attach(io: StringIO.new('<gpx/>'), filename: 'replacement.gpx')

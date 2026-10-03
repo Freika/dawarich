@@ -3,14 +3,10 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
   import Dawarich.AnomalyCase
   alias Dawarich.Points.AnomalyFilter
   alias Dawarich.Points.AnomalyFilter.RecalculateWorker
+  alias Dawarich.Geocoding.HookRepo
   alias Dawarich.Jobs.{Ownership, Dispatch, Registry}
 
   @at DateTime.to_unix(~U[2023-12-31 23:59:00Z])
-
-  setup do
-    start_supervised!(hd(Dawarich.Redis.child_specs()))
-    :ok
-  end
 
   test "default dependents preserve captured local months, track uniqueness and oldest achievement deferred" do
     user = user!()
@@ -46,17 +42,50 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
            ] ==
              rows("SELECT payload FROM phoenix.rails_commands WHERE kind='points.anomaly_stats'")
 
-    assert {:ok, [member]} =
-             Dawarich.Redis.command([
-               "ZRANGE",
-               "achievements_check:user:#{user}:oldest",
-               "0",
-               "-1"
-             ])
+    assert pending(user) == [[@at, last_revision(), true]]
+  end
 
-    assert member =~ "#{@at}:"
-    assert {:ok, ttl} = Dawarich.Redis.command(["TTL", "achievements_check:user:#{user}:oldest"])
-    assert ttl > 259_190 and ttl <= 259_200
+  test "a deferral keeps an older live pending timestamp and bumps its revision, and replaces an expired one" do
+    user = user!()
+
+    [[previous]] =
+      rows(
+        "INSERT INTO phoenix.achievement_checks (user_id, oldest_timestamp, revision, expires_at) VALUES ($1, $2, nextval('phoenix.achievement_check_revisions'), statement_timestamp() + interval '1 hour') RETURNING revision",
+        [user, @at - 1000]
+      )
+
+    point!(user, @at, {13.405, 52.52}, accuracy: 20_000)
+    assert AnomalyFilter.call(ScratchRepo, user, @at, @at, zone: "UTC") == 1
+    assert pending(user) == [[@at - 1000, last_revision(), true]]
+    assert last_revision() > previous
+
+    rows(
+      "UPDATE phoenix.achievement_checks SET expires_at = statement_timestamp() - interval '1 second' WHERE user_id = $1",
+      [user]
+    )
+
+    point!(user, @at + 60, {13.405, 52.52}, accuracy: 20_000)
+    first = last_revision()
+    assert AnomalyFilter.call(ScratchRepo, user, @at + 60, @at + 60, zone: "UTC") == 1
+    assert pending(user) == [[@at + 60, last_revision(), true]]
+    assert last_revision() > first
+  end
+
+  test "a deferral the database refuses raises" do
+    user = user!()
+    point!(user, @at, {13.405, 52.52}, accuracy: 20_000)
+    on_exit(&HookRepo.clear_hook/0)
+
+    HookRepo.set_hook(fn sql, _params ->
+      if String.starts_with?(sql, "INSERT INTO phoenix.achievement_checks"),
+        do: raise(DBConnection.ConnectionError, "connection dropped")
+
+      :ok
+    end)
+
+    assert_raise DBConnection.ConnectionError, fn ->
+      AnomalyFilter.call(HookRepo, user, @at, @at, zone: "UTC")
+    end
   end
 
   test "backfill opt-out retains flag detach and exact tile years but no rebuild" do
@@ -181,6 +210,16 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
     assert length(flagged(user)) == 1
     assert [["points.tile_epoch"]] == rows("SELECT kind FROM phoenix.rails_commands")
   end
+
+  defp last_revision,
+    do: hd(hd(rows("SELECT last_value FROM phoenix.achievement_check_revisions WHERE is_called")))
+
+  defp pending(user),
+    do:
+      rows(
+        "SELECT oldest_timestamp, revision, expires_at - statement_timestamp() BETWEEN interval '259199 seconds' AND interval '259200 seconds' FROM phoenix.achievement_checks WHERE user_id = $1",
+        [user]
+      )
 
   defp track!(user) do
     [[id]] =

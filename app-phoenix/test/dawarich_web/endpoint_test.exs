@@ -812,8 +812,7 @@ defmodule DawarichWeb.EndpointTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     Dawarich.Test.SharingSeeds.load!()
-    start_supervised!(hd(Dawarich.Redis.rack_attack_child_specs()))
-    Redix.command!(Dawarich.Redis.rack_attack(), ["FLUSHDB"])
+    Dawarich.ScratchRepo.query!("TRUNCATE phoenix.counters", [], log: false)
     port = serve()
     id = "a9500000-0000-4000-8000-000000000001"
     page = "GET /s/#{id}?locale=de HTTP/1.1\r\nHost: a\r\n\r\n"

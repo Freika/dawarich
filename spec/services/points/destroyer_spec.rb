@@ -52,7 +52,7 @@ RSpec.describe Points::Destroyer do
 
         expect { described_class.new(user, point_ids).call }
           .to have_enqueued_job(Achievements::CheckJob).with(user.id)
-        expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([may_point.timestamp])
+        expect(Achievements::PendingChecks.read(user.id).first).to eq(may_point.timestamp)
       end
 
       it 'returns the destroyed points' do

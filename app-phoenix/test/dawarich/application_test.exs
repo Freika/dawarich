@@ -29,8 +29,7 @@ defmodule Dawarich.ApplicationTest do
       Redix,
       Dawarich.Redis.Cache,
       Oban,
-      Phoenix.PubSub.Supervisor,
-      Dawarich.Redis.RackAttack
+      Phoenix.PubSub.Supervisor
     ]
 
     jobs = [Dawarich.Jobs.Supervisor, Dawarich.Cable.EventsRelay.Supervisor]

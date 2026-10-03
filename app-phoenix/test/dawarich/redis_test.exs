@@ -33,28 +33,6 @@ defmodule Dawarich.RedisTest do
     assert Redix.command(db1, ["GET", "wave5b_redis_cache_probe"]) == {:ok, nil}
   end
 
-  test "the Rack::Attack connection reads RACK_ATTACK_REDIS_DB like Rails' throttle store, 3 by default" do
-    database = fn ->
-      %{start: {Redix, :start_link, [_url, opts]}} = hd(Redis.rack_attack_child_specs())
-      opts[:database]
-    end
-
-    on_exit(fn -> System.delete_env("RACK_ATTACK_REDIS_DB") end)
-    assert Redis.rack_attack_child_specs(url: nil) == []
-    assert database.() == 3
-    System.put_env("RACK_ATTACK_REDIS_DB", "5")
-    assert database.() == 5
-    System.put_env("RACK_ATTACK_REDIS_DB", "x")
-    assert database.() == 0
-    System.delete_env("RACK_ATTACK_REDIS_DB")
-
-    start_supervised!(hd(Redis.rack_attack_child_specs()))
-    assert {:ok, "OK"} = Redix.command(Redis.rack_attack(), ["SET", "a9s_rack_attack_probe", "v"])
-    url = Application.fetch_env!(:dawarich, :redis)[:url]
-    {:ok, db3} = Redix.start_link(url, database: 3)
-    assert Redix.command(db3, ["GET", "a9s_rack_attack_probe"]) == {:ok, "v"}
-  end
-
   test "transaction/1 runs MULTI/EXEC on Sidekiq's database" do
     start_supervised!(hd(Redis.child_specs()))
     Redis.command(["DEL", "wave5b_redis_tx_probe_z"])

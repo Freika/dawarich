@@ -170,9 +170,18 @@ RSpec.describe 'Phoenix fixtures: the public shared-link pages as Rails renders 
     end
   end
 
+  def counters
+    ActiveRecord::Base.connection.select_rows(<<~SQL.squish)
+      SELECT key, value, ceil(extract(epoch FROM expires_at - statement_timestamp()))::int
+      FROM phoenix.counters ORDER BY key
+    SQL
+  end
+
   it 'writes the unlock throttle as rack-attack keeps it' do
+    store = Rack::Attack.cache.store
+    phoenix_counters!
+    Rack::Attack.cache.store = RackAttack::PhoenixCounterStore.new
     Rack::Attack.enabled = true
-    Rack::Attack.reset!
     travel_to now do
       insert!
       first = 6.times.map do
@@ -180,14 +189,13 @@ RSpec.describe 'Phoenix fixtures: the public shared-link pages as Rails renders 
           .merge(body: response.body)
       end
       throttled = first.last.except(:name, :touched)
-      redis = Rack::Attack.cache.store.redis
-      keys = redis.with { |r| r.keys('rack::attack:*').sort.map { |k| [k, r.get(k).to_i, r.ttl(k)] } }
+      keys = counters
       raise "unexpected TTL #{keys.inspect}" unless keys.all? { |_k, _v, ttl| ttl.between?(290, 301) }
 
       raw = raw_post("/s/#{link_id(2)}/unlock", 'phrase=falsch')
       seeded = "rack::attack:#{now.to_i / 300}:shared_links/unlock:198.51.100.4:#{link_id(2)}"
-      Rack::Attack.reset!
-      redis.with { |r| r.set(seeded, 5) }
+      ActiveRecord::Base.connection.execute('DELETE FROM phoenix.counters')
+      Rack::Attack.cache.store.increment(seeded, 5, expires_in: 301)
       reset!
       post "/s/#{link_id(2)}/unlock", params: { phrase: }, env: { 'REMOTE_ADDR' => '198.51.100.4' }
       write_json('throttle.json', { now: now.iso8601, statuses: first.map { |e| e[:status] }, throttled:, raw:,
@@ -196,7 +204,7 @@ RSpec.describe 'Phoenix fixtures: the public shared-link pages as Rails renders 
                                     redis_db: ENV.fetch('RACK_ATTACK_REDIS_DB', '3').to_i })
     end
   ensure
-    Rack::Attack.reset!
+    Rack::Attack.cache.store = store
     Rack::Attack.enabled = false
   end
 end

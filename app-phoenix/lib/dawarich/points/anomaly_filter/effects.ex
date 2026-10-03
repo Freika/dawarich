@@ -1,7 +1,18 @@
 defmodule Dawarich.Points.AnomalyFilter.Effects do
   @moduledoc false
-  alias Dawarich.{RailsCommands, Redis}
+  alias Dawarich.RailsCommands
   alias Dawarich.Jobs.Ownership
+
+  @pending_ttl 259_200
+  @defer """
+  INSERT INTO phoenix.achievement_checks AS c (user_id, oldest_timestamp, revision, expires_at)
+  VALUES ($1, $2, nextval('phoenix.achievement_check_revisions'), statement_timestamp() + make_interval(secs => $3))
+  ON CONFLICT (user_id) DO UPDATE SET
+    oldest_timestamp = CASE WHEN c.expires_at <= statement_timestamp() THEN EXCLUDED.oldest_timestamp
+                            ELSE LEAST(c.oldest_timestamp, EXCLUDED.oldest_timestamp) END,
+    revision = nextval('phoenix.achievement_check_revisions'),
+    expires_at = EXCLUDED.expires_at
+  """
 
   def call(_context, [], _opts), do: :ok
 
@@ -52,17 +63,10 @@ defmodule Dawarich.Points.AnomalyFilter.Effects do
 
   defp defer(context, flagged) do
     oldest = flagged |> Enum.map(fn [_id, _track, at] -> at end) |> Enum.min()
-    key = "achievements_check:user:#{context.user_id}:oldest"
-    member = "#{oldest}:#{Base.encode16(:crypto.strong_rand_bytes(4), case: :lower)}"
-    context.fence.(fn -> redis!(["ZADD", key, to_string(oldest), member]) end)
-    context.fence.(fn -> redis!(["EXPIRE", key, "259200"]) end)
-  end
 
-  defp redis!(args) do
-    case Redis.command(args) do
-      {:ok, value} -> value
-      {:error, _} -> raise "Unable to defer anomaly achievement rebuild"
-    end
+    context.fence.(fn ->
+      context.repo.query!(@defer, [context.user_id, oldest, @pending_ttl], log: false)
+    end)
   end
 
   defp track(context, track, queue) do

@@ -7,6 +7,7 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.HostAuthorization
     plug :accepts, ["html"]
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug :fetch_query_params
     plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
@@ -25,6 +26,7 @@ defmodule DawarichWeb.Router do
     plug DawarichWeb.HostAuthorization
     plug :accepts, ["html"]
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug :fetch_query_params
     plug DawarichWeb.InsightsVisit
     plug DawarichWeb.RailsAuth
@@ -44,6 +46,7 @@ defmodule DawarichWeb.Router do
     plug :put_api_tag, "ingest"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug DawarichWeb.Api.Body
     plug DawarichWeb.Api.Auth
   end
@@ -61,6 +64,7 @@ defmodule DawarichWeb.Router do
     plug :put_api_tag, "api"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug DawarichWeb.Api.Body
     plug DawarichWeb.Api.Auth, reject_pending: false, require_active: false
   end
@@ -75,6 +79,7 @@ defmodule DawarichWeb.Router do
     plug :put_api_tag, "api"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug DawarichWeb.Api.Body
     plug DawarichWeb.Api.Auth, require_active: false
   end
@@ -110,6 +115,7 @@ defmodule DawarichWeb.Router do
     plug :put_api_tag, "api"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug :method_override_to_rails
     plug DawarichWeb.Api.Body
     plug DawarichWeb.Api.Auth, require_active: false
@@ -147,6 +153,7 @@ defmodule DawarichWeb.Router do
     plug :put_api_tag, "api"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug DawarichWeb.Api.Body
     plug :put_path_format
     plug DawarichWeb.Api.Auth, require_active: false
@@ -178,6 +185,7 @@ defmodule DawarichWeb.Router do
   pipeline :sharing do
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug :fetch_query_params
     plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
@@ -190,8 +198,9 @@ defmodule DawarichWeb.Router do
     plug :put_api_tag, "sharing"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug DawarichWeb.Api.Body
-    plug DawarichWeb.UnlockThrottle
+    plug DawarichWeb.UnlockAdmission
     plug :fetch_query_params
     plug DawarichWeb.RailsAuth
     plug DawarichWeb.Locale
@@ -219,6 +228,7 @@ defmodule DawarichWeb.Router do
   pipeline :rails_frame do
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug :fetch_query_params
     plug DawarichWeb.RailsAuth
     plug DawarichWeb.Locale
@@ -230,6 +240,7 @@ defmodule DawarichWeb.Router do
     plug :put_api_tag, "form"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug DawarichWeb.Api.Body
     plug DawarichWeb.RailsAuth
     plug DawarichWeb.RailsForm
@@ -242,6 +253,7 @@ defmodule DawarichWeb.Router do
     plug :put_api_tag, "imports"
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
     plug DawarichWeb.RailsAuth
     plug DawarichWeb.ImportsRequest
     plug DawarichWeb.RailsHeaders

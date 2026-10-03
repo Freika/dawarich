@@ -29,7 +29,7 @@ RSpec.describe 'Shared link rate limiting', type: :request do
   end
 
   describe 'viewer throttle' do
-    let(:original_viewer_limit) { Rack::Attack.shared_links_viewer_limit }
+    let!(:original_viewer_limit) { Rack::Attack.shared_links_viewer_limit }
 
     before { Rack::Attack.shared_links_viewer_limit = 2 }
     after  { Rack::Attack.shared_links_viewer_limit = original_viewer_limit }

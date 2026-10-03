@@ -2,7 +2,6 @@ defmodule Dawarich.Geocoding.ReversePointWorkerTest do
   use Dawarich.GeocodingCase, async: false
 
   alias Dawarich.Geocoding.ReversePointWorker
-  alias Dawarich.Redis
 
   @oban __MODULE__.Oban
   @load "SELECT id, user_id, timestamp"
@@ -96,6 +95,31 @@ defmodule Dawarich.Geocoding.ReversePointWorkerTest do
     assert FakeHttp.requests() == f["requests"] |> Enum.take(3) |> Enum.map(& &1["url"])
   end
 
+  test "a release the database refuses is logged and the batch still finishes" do
+    f = load!("point_batch")
+    stub_requests!(f["requests"])
+    ids = [6207, 6208, 6209]
+    set_keys!(ids)
+
+    HookRepo.set_hook(fn sql, _params ->
+      if String.starts_with?(sql, "DELETE FROM phoenix.once_claims"),
+        do: raise(DBConnection.ConnectionError, "connection dropped")
+
+      :ok
+    end)
+
+    use_repo!(HookRepo)
+
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert ReversePointWorker.perform(job(f, ids, false)) == :ok
+      end)
+
+    assert log =~ "event=geocoding.dedupe_release_failed point_id=6207"
+    assert for([id, "Leipzig", _, _, _, true, 1] <- points(), do: id) == ids
+    assert Enum.all?(ids, &dedupe_key?/1)
+  end
+
   test "a spent budget continues at the next index" do
     f = load!("point_batch")
     stub_requests!(f["requests"])
@@ -187,7 +211,7 @@ defmodule Dawarich.Geocoding.ReversePointWorkerTest do
   end
 
   defp set_keys!(ids),
-    do: Enum.each(ids, &({:ok, "OK"} = Redis.command(["SET", dedupe_key(&1), "1"])))
+    do: Enum.each(ids, &(true = Dawarich.State.claim(ScratchRepo, dedupe_key(&1), 86_400)))
 
   defp geocoded, do: for([id, _, _, _, _, true, _] <- points(), do: id)
 

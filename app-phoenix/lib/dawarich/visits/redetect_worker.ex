@@ -4,7 +4,7 @@ defmodule Dawarich.Visits.RedetectWorker do
 
   require Logger
 
-  alias Dawarich.Redis
+  alias Dawarich.State.Lease
   alias Dawarich.Tracks.PerUserLock
   alias Dawarich.Visits.{Calendar, HistoryRedetect, RedetectNotifications, Settings, SmartDetect}
 
@@ -44,7 +44,7 @@ defmodule Dawarich.Visits.RedetectWorker do
   rescue
     exception ->
       RedetectNotifications.failed(repo, uid, exception)
-      PerUserLock.release(run_key(uid), event_id)
+      release(repo, run_key(uid), event_id)
       reraise exception, __STACKTRACE__
   end
 
@@ -54,7 +54,7 @@ defmodule Dawarich.Visits.RedetectWorker do
         Logger.info("event=visits.redetect_start reason=cooldown_active user_id=#{uid}")
         :ok
 
-      claim(key, event_id) == :busy ->
+      claim(repo, key, event_id) == :busy ->
         RedetectNotifications.busy(repo, uid)
         :ok
 
@@ -66,13 +66,13 @@ defmodule Dawarich.Visits.RedetectWorker do
   defp after_claim(repo, oban, key, %{"user_id" => uid, "event_id" => event_id} = args) do
     if cooldown?(repo, uid) do
       Logger.info("event=visits.redetect_start reason=cooldown_active_after_lock user_id=#{uid}")
-      PerUserLock.release(key, event_id)
+      release(repo, key, event_id)
       :ok
     else
       case points_range(repo, uid) do
         nil ->
           RedetectNotifications.no_points(repo, uid)
-          PerUserLock.release(key, event_id)
+          release(repo, key, event_id)
           :ok
 
         {min_ts, max_ts} ->
@@ -89,7 +89,7 @@ defmodule Dawarich.Visits.RedetectWorker do
        }) do
     purge = fn -> HistoryRedetect.purge(repo, uid, min_ts, max_ts) end
 
-    case PerUserLock.with_user_lock(uid, purge, timeout_ms: @user_lock_wait_ms) do
+    case PerUserLock.with_user_lock(repo, uid, purge, timeout_ms: @user_lock_wait_ms) do
       {:ok, _wiped} ->
         months_total = length(Calendar.redetect_months(repo, zone, min_ts, max_ts))
 
@@ -112,23 +112,18 @@ defmodule Dawarich.Visits.RedetectWorker do
 
       {:error, :timeout} ->
         RedetectNotifications.busy(repo, uid)
-        PerUserLock.release(key, event_id)
+        release(repo, key, event_id)
     end
 
     :ok
   end
 
   defp month(repo, oban, %{"user_id" => uid, "event_id" => event_id} = args) do
-    case PerUserLock.renew_reply(run_key(uid), event_id, @run_key_ttl_ms) do
-      {:ok, 1} ->
-        run_month(repo, oban, run_key(uid), args)
-
-      {:ok, 0} ->
-        Logger.info("event=visits.redetect_month reason=run_superseded user_id=#{uid}")
-        :ok
-
-      {:error, reason} ->
-        {:error, {:redis, reason}}
+    if Lease.renew(repo, run_key(uid), event_id, @run_key_ttl_ms) do
+      run_month(repo, oban, run_key(uid), args)
+    else
+      Logger.info("event=visits.redetect_month reason=run_superseded user_id=#{uid}")
+      :ok
     end
   end
 
@@ -148,14 +143,14 @@ defmodule Dawarich.Visits.RedetectWorker do
     [start_ts, stop_ts] = Enum.at(Calendar.redetect_months(repo, zone, min_ts, max_ts), i)
     detect = fn -> detect_month(repo, uid, start_ts, stop_ts, args) end
 
-    case PerUserLock.with_user_lock(uid, detect, timeout_ms: @user_lock_wait_ms) do
+    case PerUserLock.with_user_lock(repo, uid, detect, timeout_ms: @user_lock_wait_ms) do
       {:ok, {count, failed?}} -> advance(repo, oban, key, args, count, failed?)
       {:error, :timeout} -> {:snooze, 30}
     end
   rescue
     exception ->
       RedetectNotifications.failed(repo, uid, exception)
-      PerUserLock.release(key, event_id)
+      release(repo, key, event_id)
       {:cancel, Exception.message(exception)}
   end
 
@@ -205,14 +200,16 @@ defmodule Dawarich.Visits.RedetectWorker do
       end
     end)
 
-    PerUserLock.release(key, event_id)
+    release(repo, key, event_id)
   end
 
-  defp claim(key, token) do
-    case Redis.command(["SET", key, token, "NX", "PX", Integer.to_string(@run_key_ttl_ms)]) do
-      {:ok, "OK"} -> :ok
-      {:ok, nil} -> :busy
-    end
+  defp claim(repo, key, token),
+    do: if(Lease.acquire(repo, key, token, @run_key_ttl_ms), do: :ok, else: :busy)
+
+  defp release(repo, key, token) do
+    Lease.release(repo, key, token)
+  rescue
+    _ in [DBConnection.ConnectionError, Postgrex.Error] -> false
   end
 
   defp cooldown?(repo, uid), do: repo.query!(@cooldown_sql, [uid], log: false).rows == [[true]]

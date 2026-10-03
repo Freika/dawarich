@@ -19,7 +19,7 @@ module Trek
         return
       end
 
-      completed = ActiveRecord::Base.with_advisory_lock("trek-sync:#{source.id}", timeout_seconds: 0) do
+      completed = PhoenixLease.try_hold("trek-sync:#{source.id}") do
         source.reload
         next unless source.selection_token == selection_token && source.importing?
 

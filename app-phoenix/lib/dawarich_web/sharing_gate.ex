@@ -12,9 +12,7 @@ defmodule DawarichWeb.SharingGate do
     do: open?(conn, id) and not RailsProxy.Headers.body?(conn) and renderable?(id)
 
   def unlock?(conn, %{"id" => id}),
-    do:
-      open?(conn, id) and Enum.all?(@forwarded, &(get_req_header(conn, &1) == [])) and
-        is_pid(Process.whereis(Dawarich.Redis.rack_attack()))
+    do: open?(conn, id) and Enum.all?(@forwarded, &(get_req_header(conn, &1) == []))
 
   defp open?(conn, id) do
     conn.method != "HEAD" and LayoutAssigns.self_hosted?() and SharedLinks.canonical?(id) and

@@ -44,6 +44,7 @@ defmodule Dawarich.Tracks.RealtimeWorker do
 
   defp generate(repo, user, now, opts) do
     case PerUserLock.with_user_lock(
+           repo,
            user.id,
            fn -> build(repo, user, now) end,
            Keyword.get(opts, :lock, [])
@@ -62,10 +63,6 @@ defmodule Dawarich.Tracks.RealtimeWorker do
       {:error, :timeout} ->
         Logger.warning("Tracks::RealtimeGenerationJob lock_busy user_id=#{user.id}")
         RailsCommands.insert!(repo, "tracks_realtime_retrigger", %{"user_id" => user.id})
-        :ok
-
-      {:error, reason} ->
-        Logger.error("Failed real-time track generation for user #{user.id}: #{inspect(reason)}")
         :ok
     end
   end

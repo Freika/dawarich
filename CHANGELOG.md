@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Changed
 
+- Rate limits (Cloud's throttles and the shared-link unlock and account-link limits self-hosted installations keep) are now counted in PostgreSQL, in a table the Rails and Phoenix sides share, instead of Redis, so both sides enforce one budget. `RACK_ATTACK_REDIS_DB` is no longer used. Pages and API routes served by the Phoenix side apply the same limits, oversized-request check and JSON responses.
 - Password reset and account unlock are prepared in Phoenix but not used yet; Rails still answers them.
 - The Insights details panel (`/insights/details`) and the signed-in redirect from `/` to the map are now served by the Phoenix side when it can answer exactly as Rails would. A details request whose yearly or monthly digest Rails would recalculate, or whose cached yearly digest Rails would write, still goes to Rails, as do guests, writes and other formats. Phoenix reads Rails' cached digest and fragments and writes only the fragment HTML Rails reads back. Setting `DAWARICH_RAILS_ROUTES=insights` hands `/insights`, `/insights/details` and the `/` redirect back to Rails without changing the image.
 - The places list (`/places`) and the place panel on the map are served by the Phoenix side of the application; saving a note, editing, tagging and deleting a place still go to Rails, and opening a place link still redirects to the map through Rails. Accounts whose time-zone setting PostgreSQL does not know keep being served by Rails. Add `places` to `DAWARICH_RAILS_ROUTES` (keeping any existing values, e.g. `map,places`) to hand both back to Rails without changing the image; `map` alone does not hand back the place panel. Deleting a place from the list reloads the page (ED-280), and the list shows places in the order they were created (ED-281).
@@ -62,6 +63,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 
 - Phoenix pages link the digested stylesheets from Rails' configured asset manifest.
+- Track-generation locks, geocoding de-duplication, the realtime debouncers and achievement-check coalescing are stored in PostgreSQL instead of Redis wherever the Phoenix tables exist.
+
+### Fixed
+
+- Background-job locks (toponym refresh, import downloads, raw-data archiving, anomaly backfills, TeslaMate and Trek sync) no longer leak behind a transaction-pooling PgBouncer.
 - Cloud layouts now initialize Paddle after its script loads.
 - Replay scrubber and playback now stay in chronological order through daylight-saving clock changes.
 - Replay scrubber controls use the profile timezone when it differs from the browser timezone.

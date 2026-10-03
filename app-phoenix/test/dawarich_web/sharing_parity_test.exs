@@ -14,8 +14,6 @@ defmodule DawarichWeb.SharingParityTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
-    start_supervised!(hd(Dawarich.Redis.rack_attack_child_specs()))
-    Redix.command!(Dawarich.Redis.rack_attack(), ["FLUSHDB"])
     SharingSeeds.load!()
     :ok
   end

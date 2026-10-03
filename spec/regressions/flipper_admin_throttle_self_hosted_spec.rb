@@ -3,9 +3,12 @@
 require 'rails_helper'
 
 RSpec.describe 'Flipper admin UI throttling', type: :request do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:admin) { create(:user, :admin) }
 
   before do
+    freeze_time
     Rack::Attack.enabled = true
     Rack::Attack.cache.store = ActiveSupport::Cache::MemoryStore.new
     Rack::Attack.reset!
@@ -14,6 +17,7 @@ RSpec.describe 'Flipper admin UI throttling', type: :request do
 
   after do
     Rack::Attack.enabled = false
+    travel_back
   end
 
   def browse_flipper(times)

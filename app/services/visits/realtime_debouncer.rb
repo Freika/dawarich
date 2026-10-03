@@ -2,7 +2,7 @@
 
 class Visits::RealtimeDebouncer
   DEBOUNCE_DELAY = 5.minutes
-  REDIS_KEY_TTL = 10.minutes
+  KEY_TTL = 10.minutes
   # Clusters that match an existing visit never claim their points, so every run
   # re-detects and re-names them. Now that the key is released each run, keep the
   # window tight — BulkVisitsSuggestingJob still re-scans the whole previous day.
@@ -16,30 +16,19 @@ class Visits::RealtimeDebouncer
     return unless Geocoding::Config.for(@user_id).enabled?
     return unless user_opted_in?
 
-    redis_pool.with do |redis|
-      key = redis_key
-      if redis.set(key, 1, nx: true, ex: REDIS_KEY_TTL.to_i)
-        begin
-          VisitSuggestingJob
-            .set(wait: DEBOUNCE_DELAY)
-            .perform_later(
-              user_id: @user_id,
-              start_at: LOOKBACK_WINDOW.ago.iso8601,
-              end_at: Time.current.iso8601
-            )
-        rescue StandardError
-          redis.del(key)
-          raise
-        end
-      else
-        redis.expire(key, REDIS_KEY_TTL.to_i)
-      end
+    return unless PhoenixClaims.debounce(key, KEY_TTL.to_i)
+
+    begin
+      VisitSuggestingJob
+        .set(wait: DEBOUNCE_DELAY)
+        .perform_later(user_id: @user_id, start_at: LOOKBACK_WINDOW.ago.iso8601, end_at: Time.current.iso8601)
+    rescue StandardError
+      PhoenixClaims.unclaim(key)
+      raise
     end
   end
 
-  def clear
-    redis_pool.with { |redis| redis.del(redis_key) }
-  end
+  def clear = PhoenixClaims.unclaim(key)
 
   private
 
@@ -47,11 +36,7 @@ class Visits::RealtimeDebouncer
     User.find_by(id: @user_id)&.safe_settings&.visits_suggestions_enabled?
   end
 
-  def redis_key
+  def key
     "visit_realtime:user:#{@user_id}"
-  end
-
-  def redis_pool
-    Sidekiq.redis_pool
   end
 end

@@ -2,7 +2,6 @@ defmodule Dawarich.Visits.SuggestWorkerTest do
   use Dawarich.VisitsCase, async: false
 
   alias Dawarich.Geocoding.HookRepo
-  alias Dawarich.Redis
   alias Dawarich.Visits.{Suggest, SuggestWorker}
 
   @oban __MODULE__.Oban
@@ -98,13 +97,27 @@ defmodule Dawarich.Visits.SuggestWorkerTest do
     assert Suggest.run(HookRepo, uid, f["run"]["start_at"], f["run"]["end_at"], args) == :ok
     assert notifications(uid) == f["expected"]["notifications"]
 
-    {:ok, ttl} = Redis.command(["TTL", "visit_suggest_error:user:#{uid}"])
-    assert ttl > 0 and ttl <= 3600
+    assert rows(
+             "SELECT expires_at - statement_timestamp() BETWEEN interval '3599 seconds' AND interval '3600 seconds' FROM phoenix.once_claims WHERE key = $1",
+             ["visit_suggest_error:user:#{uid}"]
+           ) == [[true]]
 
     assert Suggest.run(HookRepo, uid, f["run"]["start_at"], f["run"]["end_at"], args) == :ok
     assert length(notifications(uid)) == 1
 
-    stop_supervised!(Redix)
+    HookRepo.set_hook(fn sql, _params ->
+      cond do
+        String.starts_with?(sql, "SELECT EXISTS (SELECT 1 FROM points") ->
+          raise(f["run"]["message"])
+
+        String.starts_with?(sql, "INSERT INTO phoenix.once_claims") ->
+          raise(DBConnection.ConnectionError, "connection dropped")
+
+        true ->
+          :ok
+      end
+    end)
+
     assert Suggest.run(HookRepo, uid, f["run"]["start_at"], f["run"]["end_at"], args) == :ok
     assert length(notifications(uid)) == 2
   end
