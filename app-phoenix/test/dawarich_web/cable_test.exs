@@ -118,7 +118,7 @@ defmodule DawarichWeb.CableTest do
     assert A12a.next_frame(socket) == %{"close" => 1000}
   end
 
-  test "a silent socket is closed after its bounded lifetime (ED-A12A-8)" do
+  test "a silent socket is closed after its bounded lifetime (ED-329)" do
     port = A12a.serve_cable!(silent_ms: 100)
     socket = A12a.open!(port, A12a.cookie("dave_locked"))
     assert {_fin, :close, <<1000::16, _::binary>>} = A12a.ws_recv_any(socket, 2_000)
