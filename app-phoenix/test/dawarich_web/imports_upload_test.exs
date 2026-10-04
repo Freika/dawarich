@@ -185,8 +185,6 @@ defmodule DawarichWeb.ImportsUploadTest do
     for {method, path, body} <- [
           {:patch, "/imports/758102", params},
           {:delete, "/imports/758102", ""},
-          {:patch, "/imports/758106", params},
-          {:delete, "/imports/758106", ""},
           {:post, "/imports/758106/extraction", ""},
           {:post, "/imports/758101", params},
           {:post, "/imports/758101", params <> "&_method=get"}

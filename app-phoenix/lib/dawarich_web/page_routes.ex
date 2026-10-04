@@ -61,6 +61,10 @@ defmodule DawarichWeb.PageRoutes do
             container: {:div, class: "contents"},
             metadata: @native_import
 
+          live "/imports/:id/edit", DawarichWeb.ImportsLive.Edit, :edit,
+            container: {:div, class: "contents"},
+            metadata: @native_import
+
           live "/imports", DawarichWeb.ImportsLive.Index, :index,
             container: {:div, class: "contents"}
 
