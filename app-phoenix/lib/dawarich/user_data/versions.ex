@@ -7,7 +7,7 @@ defmodule Dawarich.UserData.Versions do
   @streamed ~w(places visits points)
 
   defmodule UnsupportedFormatError do
-    defexception message: "Unknown export format: no manifest.json or data.json found"
+    defexception message: "Unknown export format: neither manifest.json nor data.json found"
   end
 
   def detect(directory) do

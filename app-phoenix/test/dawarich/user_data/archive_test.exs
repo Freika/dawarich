@@ -57,7 +57,9 @@ defmodule Dawarich.UserData.ArchiveTest do
       Archive.with_directory(zip, %{}, &assert(Versions.detect(&1) == version))
     end
 
-    assert_raise Versions.UnsupportedFormatError, fn -> Versions.detect(dir) end
+    assert_raise Versions.UnsupportedFormatError,
+                 "Unknown export format: neither manifest.json nor data.json found",
+                 fn -> Versions.detect(dir) end
 
     assert_raise Jason.DecodeError, fn ->
       Versions.manifest(Path.join(@fixtures, "invalid_manifest/entries"))
