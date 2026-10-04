@@ -18,7 +18,7 @@ defmodule Dawarich.Imports.ZipChildren do
     ImportState.effect!(lease, fn ->
       rows =
         lease.repo.query!(
-          "SELECT entry_name,child_id FROM phoenix.import_archive_children WHERE parent_id=$1 AND blob_id=$2 AND user_id=$3 AND phase='created' ORDER BY entry_name FOR UPDATE",
+          "SELECT entry_name,child_id FROM phoenix.import_archive_children WHERE parent_id=$1 AND blob_id=$2 AND user_id=$3 AND phase='created' ORDER BY child_id FOR UPDATE",
           [lease.import.id, blob.id, lease.import.user_id],
           log: false
         ).rows

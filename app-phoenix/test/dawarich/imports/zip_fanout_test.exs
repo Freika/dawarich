@@ -11,13 +11,17 @@ defmodule Dawarich.Imports.ZipFanoutTest do
   end
 
   test "zip fanout preferences names duplicate skips and parent removal match Rails", c do
-    for name <- ~w(zip_known_preference zip_duplicate_names kmz_plain unsupported_single) do
+    for name <- ~w(zip_known_preference zip_duplicate_names kmz_plain unsupported_single),
+        owner <- [:oban, :sidekiq] do
       reset!(ScratchRepo)
       c = fixture(c, name)
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:imports.process_normal", owner)
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:imports.archive_test", :oban)
+      c = Map.put(c, :lane, "command:imports.archive_test")
       assert {:ok, :removed} = run(c)
       assert_children(c)
       assert [] = rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
-      assert queued(c) == new_children(c) |> Enum.map(& &1["id"]) |> Enum.sort()
+      assert queued(c) == expected_queue(c)
 
       assert [[2]] =
                rows(
@@ -52,9 +56,9 @@ defmodule Dawarich.Imports.ZipFanoutTest do
       assert queued(c) == []
       assert {:ok, :removed} = run(c)
       assert_children(c)
-      assert queued(c) == new_children(c) |> Enum.map(& &1["id"]) |> Enum.sort()
+      assert queued(c) == expected_queue(c)
       assert :ok = Dawarich.Imports.ProcessWorker.perform(c.job)
-      assert queued(c) == new_children(c) |> Enum.map(& &1["id"]) |> Enum.sort()
+      assert queued(c) == expected_queue(c)
       assert_clean(c)
     end
   end
@@ -107,7 +111,11 @@ defmodule Dawarich.Imports.ZipFanoutTest do
           ZipFanout.call(lease, path, c.context)
         end)
       end,
-      ProcessWorker.lease_options()
+      Keyword.put(
+        ProcessWorker.lease_options(),
+        :lane,
+        Map.get(c, :lane, "command:imports.process_normal")
+      )
     )
   end
 
@@ -155,22 +163,31 @@ defmodule Dawarich.Imports.ZipFanoutTest do
     end
   end
 
-  defp queued(c) do
+  defp expected_queue(c) do
+    for job <- c.expected["jobs"], job["type"] == "Import::ProcessJob" do
+      [
+        "imports.process_normal",
+        %{
+          "import_id" => hd(job["args"]),
+          "user_id" => c.import.user_id,
+          "time_zone" => c.expected["zone"]
+        }
+      ]
+    end
+  end
+
+  defp queued(_c) do
     reverse =
       rows(
-        "SELECT (payload->'command_payload'->>'import_id')::bigint FROM phoenix.rails_commands WHERE kind='imports.postprocessing_step' AND payload->>'command_type'='imports.process_normal'"
+        "SELECT payload->>'command_type',payload->'command_payload' FROM phoenix.rails_commands WHERE kind='imports.postprocessing_step' AND payload->>'command_type'='imports.process_normal' ORDER BY id"
       )
-      |> List.flatten()
 
     native =
       rows(
-        "SELECT (payload->>'import_id')::bigint FROM job_outbox WHERE command_type='imports.process_normal'"
+        "SELECT command_type,payload FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY ctid"
       )
-      |> List.flatten()
 
-    ids = Enum.sort(reverse ++ native)
-    assert Enum.all?(ids, &(&1 != c.import.id))
-    ids
+    reverse ++ native
   end
 
   defp assert_clean(c), do: assert(Path.wildcard(Path.join(c.root, "unzipped-*")) == [])

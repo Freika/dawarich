@@ -147,6 +147,47 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     end
   end
 
+  test "preparation terminal resume skips download and effects after marker failure", c do
+    for failure <- [:missing_attachment, :checksum], handback? <- [false, true] do
+      reset!(ScratchRepo)
+      c = fixture(c, "csv_known")
+      [[key]] = rows("SELECT key FROM active_storage_blobs")
+      path = Dawarich.Storage.disk_path(c.root, key)
+
+      case failure do
+        :missing_attachment -> rows("DELETE FROM active_storage_attachments")
+        :checksum -> rows("UPDATE active_storage_blobs SET checksum='invalid'")
+      end
+
+      failing = %{c | context: %{c.context | on_terminal: fn -> raise "marker unavailable" end}}
+      assert_raise RuntimeError, "marker unavailable", fn -> run(failing) end
+      assert [["terminal"]] =
+               rows("SELECT phase FROM phoenix.import_runs WHERE import_id=$1", [c.import.id])
+      assert [[3]] = rows("SELECT status FROM imports WHERE id=$1", [c.import.id])
+      assert [[1]] = rows("SELECT count(*) FROM notifications")
+      before = rows("SELECT title,content FROM notifications ORDER BY id")
+      commands = rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id")
+      File.rm!(path)
+
+      if handback? do
+        Ownership.put!(ScratchRepo, "command:imports.process_normal", :sidekiq)
+        assert :ok = Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job)
+        assert [] = rows("SELECT event_id FROM phoenix.import_handoffs")
+        Ownership.put!(ScratchRepo, "command:imports.process_normal", :oban)
+      end
+
+      rows("UPDATE oban.oban_jobs SET attempt=2 WHERE id=$1", [c.job.id])
+      assert {:ok, :ok} = run(%{c | job: %{c.job | attempt: 2}})
+      assert before == rows("SELECT title,content FROM notifications ORDER BY id")
+      assert [] = rows("SELECT id FROM points")
+      assert Processed.done?(ScratchRepo, c.job.args["event_id"])
+      assert Enum.reject(rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id"),
+               fn [kind, _] -> kind == "imports.progress" end) ==
+             Enum.reject(commands, fn [kind, _] -> kind == "imports.progress" end)
+      assert_clean(c)
+    end
+  end
+
   test "plain and client-wrapped KMZ have different whole-create effects", c do
     for name <- ~w(kmz_plain kmz_wrapped) do
       reset!(ScratchRepo)
@@ -189,9 +230,9 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
       ids =
         for job <- c.expected["jobs"], job["type"] == "Import::ProcessJob", do: hd(job["args"])
 
-      assert Enum.sort(ids) ==
+      assert ids ==
                rows(
-                 "SELECT (payload->'command_payload'->>'import_id')::bigint FROM phoenix.rails_commands WHERE payload->>'command_type'='imports.process_normal' UNION ALL SELECT (payload->>'import_id')::bigint FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY 1"
+                 "SELECT (payload->>'import_id')::bigint FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY ctid"
                )
                |> List.flatten()
 
