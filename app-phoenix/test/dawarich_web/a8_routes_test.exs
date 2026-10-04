@@ -20,7 +20,7 @@ defmodule DawarichWeb.A8RoutesTest do
           {"/map/v2", Phoenix.LiveView.Plug, :index, [:browser, :rails_user]},
           {"/map/timeline_feeds", DawarichWeb.MapFrames, :index, [:rails_frame]},
           {"/map/timeline_feeds/calendar", DawarichWeb.MapFrames, :calendar, [:rails_frame]},
-          {"/places/42", DawarichWeb.MapFrames, :place, [:rails_frame]}
+          {"/places/42", DawarichWeb.PlaceNavigation, :show, [:rails_frame]}
         ] do
       route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", path, "www.example.com")
       assert %{plug: ^module, plug_opts: ^action, pipe_through: ^pipelines} = route
