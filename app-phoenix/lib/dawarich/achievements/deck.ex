@@ -5,6 +5,48 @@ defmodule Dawarich.Achievements.Deck do
   @fields ~w(id user_id kind key claim_token claimed_at seen_at created_at updated_at)a
   @columns Enum.map_join(@fields, ",", &Atom.to_string/1)
 
+  def acknowledge(repo, user_id, id, token, context) when is_binary(token) do
+    if String.trim(token) == "" do
+      false
+    else
+      updated =
+        query(
+          repo,
+          "UPDATE achievement_unlock_events SET seen_at=$4,claimed_at=NULL,claim_token=NULL WHERE user_id=$1 AND id=$2 AND claim_token=$3 AND seen_at IS NULL RETURNING id",
+          [user_id, id, token, stamp(context)]
+        )
+
+      updated != [] or
+        query(
+          repo,
+          "SELECT id FROM achievement_unlock_events WHERE user_id=$1 AND id=$2 AND seen_at IS NOT NULL",
+          [user_id, id]
+        ) != []
+    end
+  end
+
+  def acknowledge(_, _, _, _, _), do: false
+
+  def dismiss_through(repo, user_id, bound, context) do
+    if id = positive_id(bound) do
+      query(
+        repo,
+        "UPDATE achievement_unlock_events SET seen_at=$3,claimed_at=NULL,claim_token=NULL WHERE user_id=$1 AND id BETWEEN 0 AND $2 AND seen_at IS NULL",
+        [user_id, id, stamp(context)]
+      )
+    end
+
+    :ok
+  end
+
+  defp positive_id(id) when is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807, do: id
+
+  defp positive_id(id) when is_binary(id) do
+    if id =~ ~r/\A[1-9]\d{0,18}\z/, do: positive_id(String.to_integer(id)), else: nil
+  end
+
+  defp positive_id(_), do: nil
+
   def claim(repo, user_id, params, context) do
     {:ok, result} =
       repo.transaction(fn ->
