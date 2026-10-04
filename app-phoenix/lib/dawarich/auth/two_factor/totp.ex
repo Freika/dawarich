@@ -2,6 +2,7 @@ defmodule Dawarich.Auth.TwoFactor.Totp do
   @moduledoc false
   import Bitwise
   alias Dawarich.Auth.Account
+  alias Dawarich.Auth.Recovery.Token
   @alphabet ~c"ABCDEFGHIJKLMNOPQRSTUVWXYZ234567"
 
   def generate_secret(entropy \\ :crypto.strong_rand_bytes(20)),
@@ -32,16 +33,20 @@ defmodule Dawarich.Auth.TwoFactor.Totp do
   def verify(secret, input, at, consumed \\ nil)
 
   def verify(secret, input, at, consumed) when is_binary(secret) and is_binary(input) do
-    input = String.replace(input, ~r/[\x09-\x0D ]+/, "")
-    key = decode(secret)
+    if Token.blank?(secret) do
+      :invalid
+    else
+      input = String.replace(input, ~r/[\x09-\x0D ]+/, "")
+      key = decode(secret)
 
-    div(at - 30, 30)..div(at + 30, 30)
-    |> Enum.reduce(:invalid, fn timestep, result ->
-      if (is_nil(consumed) or timestep > consumed) and
-           Plug.Crypto.secure_compare(input, code(key, timestep)),
-         do: {:ok, timestep},
-         else: result
-    end)
+      div(at - 30, 30)..div(at + 30, 30)
+      |> Enum.reduce(:invalid, fn timestep, result ->
+        if (is_nil(consumed) or timestep > consumed) and
+             Plug.Crypto.secure_compare(input, code(key, timestep)),
+           do: {:ok, timestep},
+           else: result
+      end)
+    end
   end
 
   def verify(_, _, _, _), do: :invalid

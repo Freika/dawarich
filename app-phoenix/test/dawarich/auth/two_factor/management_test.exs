@@ -75,6 +75,45 @@ defmodule Dawarich.Auth.TwoFactor.ManagementTest do
     Repo.get!(Account, id) |> Ecto.Changeset.change(values) |> Repo.update!(log: false)
   end
 
+  test "Rails blank secrets reject verification and OTP disable without writes", c do
+    rows =
+      File.read!("test/fixtures/auth/two_factor/review_blank_secrets.json") |> Jason.decode!()
+
+    for row <- rows do
+      secret = row["secret"]
+      ciphertext = if secret, do: elem(Secret.encrypt(secret, c.context.env), 1), else: nil
+      hash = Bcrypt.hash_pwd_salt("a11c-review-backup", log_rounds: 4)
+
+      seed(c.id,
+        otp_secret: ciphertext,
+        otp_required_for_login: true,
+        otp_backup_codes: [hash],
+        consumed_timestep: nil
+      )
+
+      before = snapshot(c.id)
+      assert row["valid"] == false and row["unchanged"]
+      assert Totp.verify(secret, row["code"], row["at"]) == :invalid
+      result = Management.verify(c.id, c.salt, row["code"], c.context)
+
+      assert match?({:error, %{reason: :invalid_verification_code}}, result) or
+               match?({:handoff, :secret}, result)
+
+      assert snapshot(c.id) == before
+
+      assert {:error, %{reason: :provide_a_valid_two_factor_code_or_backup_code_to}} =
+               Management.disable(c.id, c.salt, "safepassword12", row["code"], c.context)
+
+      assert snapshot(c.id) == before
+
+      assert {:ok, %{reason: :two_factor_authentication_disabled}} =
+               Management.disable(c.id, c.salt, "safepassword12", "a11c-review-backup", c.context)
+
+      refute Repo.get!(Account, c.id).otp_required_for_login
+      assert is_nil(Repo.get!(Account, c.id).otp_backup_codes)
+    end
+  end
+
   test "web setup and verify preserve the source save sequence", c do
     assert Code.ensure_loaded?(Management)
     other = actor!()

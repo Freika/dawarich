@@ -291,6 +291,45 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
       { requests: requests, otp: two_factor_otp, exclusions: two_factor_exclusions, html: html }
     end
 
+    it 'records A11c review blank secret behavior' do
+      travel_to now do
+        rows = [nil, ''].each_with_index.map do |secret, index|
+          actor = two_factor_actor(74_600 + index)
+          client = two_factor_browser(actor)
+          actor.update!(otp_secret: secret, otp_required_for_login: true,
+                        otp_backup_codes: [Devise::Encryptor.digest(User, 'a11c-review-backup')])
+          code = ROTP::TOTP.new('').at(now)
+          before = actor.reload.attributes
+          expect(actor.validate_and_consume_otp!(code)).to be(false)
+          expect(actor.reload.attributes == before).to be(true)
+          client.post('/settings/two_factor/verify', params: {
+                        authenticity_token: two_factor_csrf(client), otp_attempt: code
+                      })
+          expect(client.response.status).to eq(422)
+          expect(actor.reload.attributes == before).to be(true)
+          verify_status = client.response.status
+          client.delete('/settings/two_factor', params: {
+                          authenticity_token: two_factor_csrf(client),
+                          password: 'a11c-fixture-password-42', otp_attempt: code
+                        })
+          expect(client.response.status).to eq(302)
+          expect(actor.reload.attributes == before).to be(true)
+          alert = client.request.flash[:alert]
+          client.get('/settings/two_factor')
+          client.delete('/settings/two_factor', params: {
+                          authenticity_token: two_factor_csrf(client),
+                          password: 'a11c-fixture-password-42', otp_attempt: 'a11c-review-backup'
+                        })
+          expect(actor.reload.attributes.values_at('otp_secret', 'otp_required_for_login', 'otp_backup_codes'))
+            .to eq([nil, false, nil])
+          { 'secret' => secret, 'code' => code, 'at' => now.to_i, 'valid' => false,
+            'verify_status' => verify_status, 'disable_alert' => alert,
+            'unchanged' => true, 'backup_disable_status' => client.response.status }
+        end
+        two_factor_fixture('review_blank_secrets.json', rows)
+      end
+    end
+
     it 'writes or verifies A11c management contract fixtures' do
       travel_to now do
         corpus = two_factor_corpus
