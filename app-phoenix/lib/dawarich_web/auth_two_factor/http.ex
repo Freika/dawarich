@@ -87,6 +87,8 @@ defmodule DawarichWeb.AuthTwoFactor.Http do
                  ),
                {:ok, action, method, fields} <- action(conn, params),
                true <- Enum.all?(Map.keys(params), &(&1 in (@common ++ fields))),
+               false <- String.contains?(params["password"] || "", <<0>>),
+               false <- String.contains?(params["otp_attempt"] || "", <<0>>),
                true <- csrf?(conn, params, method) do
             dispatch(conn, action, params, id, salt, opts, context)
           else

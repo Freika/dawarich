@@ -330,6 +330,30 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
       end
     end
 
+    it 'records A11c review confirmation exclusions' do
+      travel_to now do
+        rows = %w[password otp_attempt].each_with_index.map do |field, index|
+          actor = two_factor_actor(74_610 + index)
+          client = two_factor_browser(actor)
+          actor.update!(otp_secret: otp_secret, otp_required_for_login: true,
+                        otp_backup_codes: [Devise::Encryptor.digest(User, 'a11c-review-backup')])
+          input = { 'password' => 'a11c-fixture-password-42', 'otp_attempt' => 'a11c-review-backup' }
+          input[field] += "#{0.chr}suffix"
+          before = actor.reload.attributes
+          error = nil
+          begin
+            client.delete('/settings/two_factor', params: input.merge('authenticity_token' => two_factor_csrf(client)))
+          rescue ArgumentError => e
+            error = e.class.name
+          end
+          expect(error).to eq('ArgumentError')
+          expect(actor.reload.attributes == before).to be(true)
+          { 'field' => field, 'input' => input, 'error' => error, 'unchanged' => true, 'owner' => 'rails' }
+        end
+        two_factor_fixture('review_confirmations.json', rows)
+      end
+    end
+
     it 'writes or verifies A11c management contract fixtures' do
       travel_to now do
         corpus = two_factor_corpus

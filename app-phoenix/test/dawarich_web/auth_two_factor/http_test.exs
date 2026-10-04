@@ -87,6 +87,48 @@ defmodule DawarichWeb.AuthTwoFactor.HttpTest do
     %{session: session, opts: opts}
   end
 
+  test "Rails password confirmation exclusion replays original bytes without writes", c do
+    confirmation_exclusion(c, "password")
+  end
+
+  test "Rails backup confirmation exclusion replays original bytes without writes", c do
+    confirmation_exclusion(c, "otp_attempt")
+  end
+
+  defp confirmation_exclusion(c, field) do
+    rows =
+      File.read!("test/fixtures/auth/two_factor/review_confirmations.json") |> Jason.decode!()
+
+    row = Enum.find(rows, &(&1["field"] == field))
+
+    hash =
+      Bcrypt.hash_pwd_salt(row["input"]["password"] |> String.split(<<0>>) |> hd(), log_rounds: 4)
+
+    backup = Bcrypt.hash_pwd_salt("a11c-review-backup", log_rounds: 4)
+    {:ok, ciphertext} = Secret.encrypt("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", @env)
+
+    seed(
+      encrypted_password: hash,
+      otp_secret: ciphertext,
+      otp_required_for_login: true,
+      otp_backup_codes: [backup],
+      consumed_timestep: nil
+    )
+
+    session = Map.put(c.session, "warden.user.user.key", [[@id], binary_part(hash, 0, 29)])
+    params = Map.put(row["input"], "authenticity_token", action_token(session, "DELETE", @path))
+    raw = URI.encode_query(params)
+    assert raw =~ "%00"
+    assert row["error"] == "ArgumentError" and row["unchanged"]
+    before = snapshot()
+    result = request(session, raw, "DELETE") |> Http.call(c.opts)
+    assert result.private[:replayed] == true and result.halted
+    assert_received {:replayed, "DELETE", ^raw}
+    assert snapshot() == before
+    assert result.resp_cookies == %{}
+    refute_received :otp_write
+  end
+
   test "management HTTP dispatch matches source actions and CSRF-bound overrides", c do
     assert Code.ensure_loaded?(Http), "management HTTP module must exist"
     assert Http.init([]) == []
@@ -210,7 +252,7 @@ defmodule DawarichWeb.AuthTwoFactor.HttpTest do
 
     for input <- invalid do
       result = Http.call(input, c.opts)
-      assert result.private[:replayed] and result.halted
+      assert result.private[:replayed] == true and result.halted
       assert_received {:replayed, method, bytes}
       assert method == input.method and bytes == input.private.original_body
       assert snapshot() == before
