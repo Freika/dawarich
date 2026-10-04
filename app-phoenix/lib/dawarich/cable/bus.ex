@@ -74,8 +74,14 @@ defmodule Dawarich.Cable.Bus do
       else: Redix.PubSub.unsubscribe(@name, channel(broadcasting), self())
   end
 
-  def publish(broadcasting, payload),
-    do: Redis.command(["PUBLISH", channel(broadcasting), payload], @publisher)
+  def publish(broadcasting, payload, opts \\ []) do
+    if pg?() do
+      repo = Keyword.get(opts, :repo, Dawarich.Jobs.repo())
+      Dawarich.Cable.PgStore.append(repo, prefix() || "", broadcasting, payload)
+    else
+      Redis.command(["PUBLISH", channel(broadcasting), payload], @publisher)
+    end
+  end
 
   def event({:redix_pubsub, _pid, _ref, :message, %{channel: channel, payload: payload}}),
     do: {:message, strip(channel), payload}
