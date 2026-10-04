@@ -70,6 +70,20 @@ defmodule DawarichWeb.CableRouteTest do
     end)
   end
 
+  test "map and cable rollback keys remain independent", %{port: port} do
+    Application.put_env(:dawarich, :rails_routes, ["map"])
+    assert DawarichWeb.Strangler.handed_back?(["map"])
+    refute DawarichWeb.Strangler.handed_back?(["cable"])
+    assert {101, _} = upgrade!(port)
+    refute_receive {:cable_request, "/cable", _, _}, 200
+
+    Application.put_env(:dawarich, :rails_routes, ["cable"])
+    refute DawarichWeb.Strangler.handed_back?(["map"])
+    assert DawarichWeb.Strangler.handed_back?(["cable"])
+    assert {101, _} = upgrade!(port)
+    assert_receive {:cable_request, "/cable", _, _}
+  end
+
   test "the Bus is a child of the application" do
     previous = Application.get_env(:dawarich, :cable)
     Application.put_env(:dawarich, :cable, bus: true, url: A12a.test_redis_url(), database: 2)
