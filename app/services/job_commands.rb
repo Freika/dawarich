@@ -183,6 +183,7 @@ module JobCommands
     }
   }.merge(ReleaseCommands::COMMANDS)
    .merge(Stats::Commands::COMMANDS)
+   .merge(Users::RecalculationCommands::COMMANDS)
    .merge(Imports::ProcessCommands::COMMANDS)
    .merge(Posters::CreationCommand::COMMANDS)
    .merge(Users::Digests::Commands::COMMANDS).freeze
@@ -190,6 +191,7 @@ module JobCommands
   module_function
 
   def produce(type, payload, aggregate_id:, producer:, scheduled_at: Time.current, dedupe_key: nil)
+    payload = Users::RecalculationCommands.normalize(payload) if type == 'users.recalculate_data'
     command = COMMANDS.fetch(type)
     ActiveRecord::Base.transaction do
       if JobOwnership.lock_owner("command:#{type}") == :oban

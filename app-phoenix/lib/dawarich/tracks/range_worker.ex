@@ -75,8 +75,15 @@ defmodule Dawarich.Tracks.RangeWorker do
       end_at = parse(args["end_at"])
       chunks = Chunker.chunks(repo, user_id, start_at, end_at, args["time_zone"])
 
-      if args["untracked_only"] == false,
-        do: Destroy.clean_range!(repo, user_id, unix(start_at), unix(end_at))
+      if args["untracked_only"] == false do
+        {:ok, _} =
+          repo.transaction(fn ->
+            if fence = opts[:fence], do: fence.()
+            result = Destroy.clean_range!(repo, user_id, unix(start_at), unix(end_at))
+            if fence = opts[:fence], do: fence.()
+            result
+          end)
+      end
 
       if chunks != [], do: Generation.start!(repo, oban, args, chunks, opts)
       :ok
