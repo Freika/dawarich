@@ -36,7 +36,7 @@ defmodule Dawarich.Imports.JsonStream.Section do
   def reduce(_path, _section, acc, _fun), do: acc
 
   defp record({:start, kind, parts, offset}, state, key) when parts == [] or parts == [key] do
-    Map.put(state, field(parts), %{kind: kind, offset: offset})
+    Map.put(state, field(parts), %{kind: kind, offset: offset, count: 0})
   end
 
   defp record({:value, parts, value, offset, ending}, state, key)
@@ -44,7 +44,19 @@ defmodule Dawarich.Imports.JsonStream.Section do
     field = field(parts)
     previous = Map.get(state, field)
     kind = if previous && previous.offset == offset, do: previous.kind, else: :scalar
-    Map.put(state, field, %{kind: kind, value: value, offset: offset, length: ending - offset})
+    count = if previous && previous.offset == offset, do: previous.count, else: 0
+
+    Map.put(state, field, %{
+      kind: kind,
+      value: value,
+      offset: offset,
+      length: ending - offset,
+      count: count
+    })
+  end
+
+  defp record({:value, [_, key], _, _, _}, state, key) do
+    Map.update!(state, :section, &Map.update!(&1, :count, fn count -> count + 1 end))
   end
 
   defp record(_, state, _key), do: state

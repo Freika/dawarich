@@ -3,9 +3,11 @@ defmodule Dawarich.Imports.GoogleRecords do
   alias Dawarich.Imports.JsonStream.Section
   alias Dawarich.Imports.{GpxProgress, NormalBatch}
   alias Dawarich.Imports.GoogleRecords.Point
+  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby, as: Value
 
   def call(path, import, context) do
-    {_root, section} = Section.last(path, "locations")
+    {root, section} = Section.last(path, "locations")
+    validate!(root, section)
 
     context =
       context
@@ -36,6 +38,16 @@ defmodule Dawarich.Imports.GoogleRecords do
 
     :ok
   end
+
+  defp validate!(%{kind: :object}, %{kind: :object, count: count}) when count > 0,
+    do: raise(ArgumentError, "no implicit conversion of String into Integer")
+
+  defp validate!(%{kind: :object}, %{kind: :scalar, value: value}) do
+    unless Value.blank?(value),
+      do: raise(ArgumentError, "undefined method 'each' for #{Value.instance(value)}")
+  end
+
+  defp validate!(_root, _section), do: :ok
 
   defp live_clock(fun) when is_function(fun, 0), do: fn -> clock(fun.()) end
   defp live_clock(now), do: clock(now)

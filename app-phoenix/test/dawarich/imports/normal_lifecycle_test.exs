@@ -213,6 +213,16 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     end
   end
 
+  test "Google Records invalid section shapes match Rails whole-create failure", c do
+    for name <-
+          ~w(records_shape_0 records_shape_1 records_shape_2 records_shape_3 records_shape_4 records_shape_5 records_shape_missing) do
+      reset!(ScratchRepo)
+      c = fixture(c, name)
+      assert {:ok, :ok} = run(c)
+      assert_parent(c)
+    end
+  end
+
   defp assert_parent(c) do
     expected = c.expected["parent"]
 
