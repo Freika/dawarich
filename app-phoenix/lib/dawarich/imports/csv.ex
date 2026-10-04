@@ -1,5 +1,6 @@
 defmodule Dawarich.Imports.Csv do
   @moduledoc false
+  alias Dawarich.Imports.BoundedLines
   alias Dawarich.Imports.{Fence, GpxProgress, NormalBatch, ZonePeriod}
   alias Dawarich.Imports.Csv.{Detector, Params, Records}
 
@@ -21,7 +22,7 @@ defmodule Dawarich.Imports.Csv do
 
     state =
       path
-      |> File.stream!()
+      |> BoundedLines.stream()
       |> Stream.with_index()
       |> Enum.reduce(state, fn {line, index}, state ->
         line = if index == 0, do: strip_bom(line), else: line

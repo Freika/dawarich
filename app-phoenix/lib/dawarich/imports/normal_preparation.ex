@@ -1,5 +1,6 @@
 defmodule Dawarich.Imports.NormalPreparation do
   @moduledoc false
+  alias Dawarich.Imports.{BoundedLines, ParserLimit, Tcx}
   alias Dawarich.Imports.GpxArchive.Error, as: ArchiveError
   alias Dawarich.Imports.{ArchiveDispatch, ArchivePaths, ImportState, LeaseLost, SourceDetector}
   alias Dawarich.Storage.{Reader, ImportServices}
@@ -28,16 +29,30 @@ defmodule Dawarich.Imports.NormalPreparation do
         {:single_entry, entry} ->
           path = ArchivePaths.extract(path, entry, opts)
           ImportState.effect!(lease, fn -> :ok end)
-          {:file, path, entry.name}
+          file(path, entry.name, state, context)
 
         :not_a_zip ->
-          {:file, path, blob.filename}
+          file(path, blob.filename, state, context)
       end
     end
   rescue
+    error in ParserLimit -> {:legacy, {:parser_limit, error.message}}
     error in LeaseLost -> reraise error, __STACKTRACE__
     error in ArchiveError -> {:legacy, {:archive_policy, error.message}}
     error -> {:error, error, __STACKTRACE__}
+  end
+
+  defp file(path, filename, state, context) do
+    detected = if is_nil(state.import.source), do: SourceDetector.detect(path, filename)
+    source = state.import.source || Enum.find_index(@sources, &(&1 == detected))
+
+    cond do
+      source in [1, 10] -> BoundedLines.validate!(path)
+      source == 11 -> Tcx.validate!(path, context)
+      true -> :ok
+    end
+
+    {:file, path, filename}
   end
 
   def source(lease, path, filename, context) do

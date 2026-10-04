@@ -98,6 +98,16 @@ module NormalImportFormatsSupport
                bytes: duplicate_entries.gsub('two.csv', 'one.csv'), expected_source: 'csv' }
     cases << { name: 'zip_path_skip', filename: 'skip.zip',
                bytes: zip_bytes([['ignored..csv', csv], ['safe.csv', csv]]), expected_source: nil }
+    cases << { name: 'bounded_tcx_nodes', filename: 'nodes.tcx',
+               bytes: tcx_document(tcx_activity(tcx_point('2026-01-15T23:30:00Z', '<x/>' * 1025))),
+               source: 'tcx', expected_source: 'tcx' }
+    cases << { name: 'bounded_csv_line', filename: 'oversized.csv',
+               bytes: "latitude,longitude,timestamp,ignored\n51.3,12.4,1768519800,#{'x' * 1_048_577}\n",
+               source: 'csv', expected_source: 'csv' }
+    rec = { _type: 'location', lat: 51.3, lon: 12.4, tst: 1_768_519_800, padding: 'x' * 1_048_577 }
+    cases << { name: 'bounded_rec_line', filename: 'oversized.rec',
+               bytes: "2026-01-15T23:30:00Z\t*\t#{rec.to_json}\n",
+               source: 'owntracks', expected_source: 'owntracks' }
     cases << { name: 'empty_zip', filename: 'empty.zip', bytes: zip_bytes([]), expected_source: nil }
     cases << { name: 'malformed_zip', filename: 'broken.zip', bytes: "PK#{[3, 4].pack('C*')}broken",
                expected_source: nil }

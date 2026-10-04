@@ -1,5 +1,6 @@
 defmodule Dawarich.Imports.Csv.Detector do
   @moduledoc false
+  alias Dawarich.Imports.BoundedLines
   alias Dawarich.Imports.Csv.Records
   alias Dawarich.I18n
 
@@ -23,7 +24,7 @@ defmodule Dawarich.Imports.Csv.Detector do
   def call(path, locale \\ "en") do
     lines =
       path
-      |> File.stream!()
+      |> BoundedLines.stream()
       |> Stream.with_index()
       |> Stream.map(fn {line, index} ->
         line = if index == 0, do: strip_bom(line), else: line

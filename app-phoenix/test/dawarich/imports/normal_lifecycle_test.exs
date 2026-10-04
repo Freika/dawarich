@@ -286,6 +286,46 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     end
   end
 
+  test "TCX empty-node budget hands Rails accepted input back before effects", c do
+    c = fixture(c, "bounded_tcx_nodes")
+    assert c.expected["parent"]["status"] == "completed"
+    assert length(c.expected["points"]) == 1
+    assert_parser_handover(c)
+  end
+
+  test "CSV and REC oversized physical lines hand back before allocation or effects", c do
+    for name <- ~w(bounded_csv_line bounded_rec_line) do
+      reset!(ScratchRepo)
+      c = fixture(c, name)
+      assert c.expected["parent"]["status"] == "completed"
+      assert length(c.expected["points"]) == 1
+      assert_parser_handover(c)
+    end
+  end
+
+  defp assert_parser_handover(c) do
+    assert {:ok, {:legacy, _}} = run(c)
+
+    assert [[0, 0, 0]] ==
+             rows("SELECT status,raw_points,doubles FROM imports WHERE id=$1", [c.import.id])
+
+    assert [] = rows("SELECT id FROM points")
+    assert [] = rows("SELECT id FROM notifications")
+    assert [] = rows("SELECT kind FROM phoenix.rails_commands")
+    assert :ok = Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job, :legacy)
+
+    assert [[c.import.id, true]] ==
+             rows("SELECT import_id,native_fallback FROM phoenix.import_handoffs")
+
+    assert [["imports.normal_resume", c.job.args]] ==
+             rows("SELECT kind,payload FROM phoenix.rails_commands")
+
+    assert :ok = Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job, :legacy)
+    assert [[1]] = rows("SELECT count(*) FROM phoenix.import_handoffs")
+    assert [[1]] = rows("SELECT count(*) FROM phoenix.rails_commands")
+    assert_clean(c)
+  end
+
   defp assert_parent(c) do
     expected = c.expected["parent"]
 

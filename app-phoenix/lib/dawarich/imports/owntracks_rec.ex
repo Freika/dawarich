@@ -1,5 +1,6 @@
 defmodule Dawarich.Imports.OwntracksRec do
   @moduledoc false
+  alias Dawarich.Imports.BoundedLines
   alias Dawarich.Imports.JsonStream
   alias Dawarich.Ingest.Ruby
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby, as: RubyValue
@@ -17,7 +18,7 @@ defmodule Dawarich.Imports.OwntracksRec do
 
   def reduce(path, acc, fun) do
     path
-    |> File.stream!()
+    |> BoundedLines.stream()
     |> Enum.reduce(acc, fn line, acc ->
       case parse(line) do
         nil -> acc

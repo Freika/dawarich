@@ -1,11 +1,12 @@
 defmodule Dawarich.Imports.Tcx.Handler do
   @moduledoc false
+  alias Dawarich.Imports.ParserLimit
   alias Dawarich.Imports.JsonStream.Spool
 
-  def new(io), do: %{io: io, path: [], sport: nil, frames: [], bytes: 0}
+  def new(io), do: %{io: io, path: [], sport: nil, frames: [], bytes: 0, nodes: 0}
 
   def event({:startElement, _, name, _, attrs}, _, s) do
-    if length(s.path) >= 64, do: raise(ArgumentError, "TCX XML depth exceeds limit")
+    if length(s.path) >= 64, do: raise(ParserLimit, "TCX XML depth exceeds limit")
     name = List.to_string(name)
     path = [name | s.path]
     s = %{s | path: path}
@@ -24,7 +25,17 @@ defmodule Dawarich.Imports.Tcx.Handler do
            "Activities",
            "TrainingCenterDatabase"
          ] do
-      %{s | frames: [{name, %{}, []} | s.frames]}
+      nodes = s.nodes + 1
+
+      bytes =
+        s.bytes + byte_size(name) + 32 +
+          Enum.reduce(attrs, 0, fn {_, _, key, value}, total ->
+            total + length(key) * 4 + length(value) * 4
+          end)
+
+      if nodes > 1024, do: raise(ParserLimit, "TCX trackpoint node count exceeds limit")
+      if bytes > 1_048_576, do: raise(ParserLimit, "TCX trackpoint exceeds limit")
+      %{s | frames: [{name, %{}, []} | s.frames], nodes: nodes, bytes: bytes}
     else
       s
     end
@@ -33,7 +44,7 @@ defmodule Dawarich.Imports.Tcx.Handler do
   def event({:characters, chars}, _, %{frames: [{name, children, text} | tail]} = s) do
     value = List.to_string(chars)
     bytes = s.bytes + byte_size(value)
-    if bytes > 1_048_576, do: raise(ArgumentError, "TCX trackpoint exceeds limit")
+    if bytes > 1_048_576, do: raise(ParserLimit, "TCX trackpoint exceeds limit")
     %{s | bytes: bytes, frames: [{name, children, [value | text]} | tail]}
   end
 
@@ -45,7 +56,7 @@ defmodule Dawarich.Imports.Tcx.Handler do
     case tail do
       [] ->
         Spool.write!(s.io, {s.sport, value})
-        %{s | path: tl(s.path), frames: [], bytes: 0}
+        %{s | path: tl(s.path), frames: [], bytes: 0, nodes: 0}
 
       [{parent, siblings, parent_text} | rest] ->
         siblings = Map.update(siblings, name, value, fn old -> List.wrap(old) ++ [value] end)

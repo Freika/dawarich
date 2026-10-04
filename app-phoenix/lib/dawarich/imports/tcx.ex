@@ -14,6 +14,17 @@ defmodule Dawarich.Imports.Tcx do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby, as: Number
   alias Dawarich.Ingest.Ruby, as: DecimalNumber
 
+  def validate!(path, context) do
+    Spool.with_directory(context, fn dir ->
+      input = Path.join(dir, "input.xml")
+      XmlAmpersands.copy(path, input)
+      parse(input, Path.join(dir, "objects"))
+    end)
+  rescue
+    error in ArgumentError ->
+      raise Dawarich.Imports.ParserLimit, message: Exception.message(error)
+  end
+
   def call(path, import, context) do
     context = Map.put(context, :importer_name, "TCX")
 
