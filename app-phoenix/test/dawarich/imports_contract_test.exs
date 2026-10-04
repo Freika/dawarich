@@ -9,10 +9,11 @@ defmodule Dawarich.ImportsContractTest do
     command:imports.destroy
     command:imports.prepare_download
     command:imports.process_gpx
+    command:imports.process_normal
     command:imports.update_points_count
   )
 
-  test "Imports registers exactly its five canonical command keys, unclaimable" do
+  test "Imports registers exactly its six canonical command keys, unclaimable" do
     entries = Enum.filter(Registry.entries(), &String.starts_with?(&1.key, "command:imports."))
     assert Enum.map(entries, & &1.key) |> Enum.sort() == Enum.sort(@imports)
     assert Enum.all?(entries, &(&1.kind == :command and &1.claimable == false))

@@ -38,7 +38,7 @@ defmodule Dawarich.Imports.Postprocessing do
     if Policy.extracts?(import) do
       repo.query!(
         "UPDATE imports SET additional_data_extraction_status=1,additional_data_extraction=additional_data_extraction||$2::jsonb WHERE id=$1",
-        [import.id, %{"started_at" => DateTime.to_iso8601(Snapshot.clock(context))}],
+        [import.id, %{"started_at" => Snapshot.local_iso(context)}],
         log: false
       )
 

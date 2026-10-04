@@ -1,0 +1,56 @@
+<div class="space-y-2">
+  <div
+    :for={share <- @hub.shares}
+    class="flex items-center gap-2 p-2 rounded-lg border border-base-300"
+  >
+    <span class="badge badge-sm whitespace-nowrap">{t(
+      @ctx.locale,
+      "enums.shared_link.resource_type.#{share.type}",
+      %{}
+    )}</span>
+    <input
+      type="text"
+      readonly
+      value={@ctx.base_url <> "/s/" <> share.id}
+      class="input input-bordered input-sm flex-1 font-mono text-xs"
+      onclick="this.select();"
+    />
+    <button
+      type="button"
+      class="btn btn-ghost btn-sm btn-square"
+      data-controller="clipboard"
+      data-clipboard-text-value={@ctx.base_url <> "/s/" <> share.id}
+      data-action="click->clipboard#copy"
+      title={s(@ctx, "shared_list", "copy_link")}
+      aria-label={s(@ctx, "shared_list", "copy_link")}
+    ><.icon name="copy" class="w-4 h-4" /></button>
+    <a
+      target="_blank"
+      rel="noopener"
+      class="btn btn-ghost btn-sm btn-square"
+      data-turbo="false"
+      title={s(@ctx, "shared_list", "open_in_new_tab")}
+      aria-label={s(@ctx, "shared_list", "open_in_new_tab")}
+      href={"/s/" <> share.id}
+    ><.icon name="external-link" class="w-4 h-4" /></a>
+    <form
+      data-turbo-frame="share-link-modal"
+      title={s(@ctx, "shared_list", "revoke_link")}
+      class="button_to"
+      method="post"
+      action={"/share_links/shares/#{share.id}/revoke" <> query(@hub)}
+    >
+      <input type="hidden" name="_method" value="patch" />
+      <button
+        class="btn btn-ghost btn-sm btn-square text-warning"
+        data-turbo-confirm={
+          s(@ctx, "shared_list", "revoke_this_link_it_will_stop_working_immediately")
+        }
+        title={s(@ctx, "shared_list", "revoke_link")}
+        aria-label={s(@ctx, "shared_list", "revoke")}
+        type="submit"
+      ><.icon name="shield" class="w-4 h-4" /></button>
+      <input type="hidden" name="authenticity_token" value={@ctx.csrf} />
+    </form>
+  </div>
+</div>

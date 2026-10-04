@@ -12,7 +12,7 @@ defmodule Dawarich.RailsJobOwnersTest do
            "unowned: #{inspect(Enum.sort(MapSet.difference(scanned, owned)))}; " <>
              "stale: #{inspect(Enum.sort(MapSet.difference(owned, scanned)))}"
 
-    assert MapSet.size(scanned) == 124
+    assert MapSet.size(scanned) == 125
   end
 
   test "owner decisions use the allowed vocabulary, name live registry keys, and cover every key" do

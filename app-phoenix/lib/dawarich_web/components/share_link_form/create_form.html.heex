@@ -1,0 +1,138 @@
+<form
+  data-turbo-frame="share-link-modal"
+  action={@paths.create}
+  accept-charset="UTF-8"
+  method="post"
+>
+  <input type="hidden" name="authenticity_token" value={@ctx.csrf} />
+  <div :if={@type == "live"} class="alert alert-warning text-sm mb-4">
+    <span>{t(
+      @ctx.locale,
+      "shared_links.modal_live_create_form.this_shares_your_location_with_anyone_html",
+      %{
+        location:
+          {:safe, "<strong>" <> s(@ctx, @type, "current_location_in_real_time") <> "</strong>"}
+      }
+    )}</span>
+  </div>
+  <div :if={@type == "timeline"} class="grid grid-cols-2 gap-3">
+    <div
+      :for={{key, date} <- [{"start_date", @start_date}, {"end_date", @end_date}]}
+      class="form-control"
+    >
+      <label class="label"><span class="label-text">{s(@ctx, @type, key)}</span></label>
+      <input
+        value={Date.to_iso8601(date)}
+        class="input input-bordered"
+        required
+        type="date"
+        name={"shared_link[#{key}]"}
+        id={"shared_link_#{key}"}
+      />
+    </div>
+  </div>
+  <div class={if @type == "timeline", do: "form-control mt-4", else: "form-control"}>
+    <label class="label"><span class="label-text">{s(@ctx, @type, "magic_phrase_optional")}</span></label>
+    <input
+      class="input input-bordered"
+      value={@phrase}
+      type="text"
+      name="shared_link[magic_phrase]"
+      id="shared_link_magic_phrase"
+    />
+    <span class="label-text-alt mt-1">{s(
+      @ctx,
+      @type,
+      "leave_blank_to_share_without_a_phrase_or_use_the"
+    )}</span>
+  </div>
+  <div class="form-control mt-4">
+    <label class="label"><span class="label-text">{expiry(@ctx, "expires_optional")}</span></label>
+    <input
+      class="input input-bordered"
+      min={Date.to_iso8601(Date.add(@today, 1))}
+      value={Date.to_iso8601(Date.add(@today, 7))}
+      type="date"
+      name="shared_link[expires_at]"
+      id="shared_link_expires_at"
+    />
+    <span class="label-text-alt mt-1">{expiry(
+      @ctx,
+      "stays_active_through_the_end_of_the_day_before_the"
+    )}</span>
+    <span class="label-text-alt">{expiry(
+      @ctx,
+      "defaults_to_one_week_from_today_leave_blank_for_a"
+    )}</span>
+  </div>
+  <div :if={@type == "live"} class="form-control mt-4">
+    <label class="label cursor-pointer justify-start gap-3">
+      <input
+        type="checkbox"
+        name="shared_link[settings][show_route]"
+        id="shared_link_settings_show_route"
+        value="1"
+        class="checkbox checkbox-primary"
+      />
+      <span class="label-text">{s(@ctx, @type, "share_the_route")}</span>
+    </label>
+    <span class="label-text-alt mt-1">{s(
+      @ctx,
+      @type,
+      "also_show_the_path_travelled_since_this_link_was_created"
+    )}</span>
+  </div>
+  <div :if={@type == "trip"} class="form-control mt-4">
+    <span class="label-text font-semibold">{s(@ctx, @type, "what_to_include_on_the_public_page")}</span>
+    <label :for={{key, label, checked} <- sections()} class="label cursor-pointer">
+      <span class="label-text">{s(@ctx, @type, label)}</span>
+      <input
+        type="hidden"
+        name={"shared_link[settings][#{key}]"}
+        id={"shared_link_settings_#{key}"}
+        value="0"
+      />
+      <input
+        type="checkbox"
+        name={"shared_link[settings][#{key}]"}
+        id={"shared_link_settings_#{key}"}
+        value="1"
+        class="checkbox"
+        checked={checked}
+      />
+    </label>
+  </div>
+  <div :if={@type == "timeline"} class="form-control mt-4">
+    <label class="label cursor-pointer">
+      <span class="label-text">{s(@ctx, @type, "show_photos")}</span>
+      <input
+        type="hidden"
+        name="shared_link[settings][show_photos]"
+        id="shared_link_settings_show_photos"
+        value="0"
+      />
+      <input
+        type="checkbox"
+        name="shared_link[settings][show_photos]"
+        id="shared_link_settings_show_photos"
+        value="1"
+        class="checkbox"
+      />
+    </label>
+  </div>
+  <div class="modal-action">
+    <a
+      class="btn btn-ghost"
+      data-turbo-frame="_top"
+      data-action="share-link-modal#close"
+      href={@close_path}
+    >{s(@ctx, @type, "cancel")}</a>
+    <input
+      type="submit"
+      name="commit"
+      value={s(@ctx, @type, "create_share_link")}
+      class="btn btn-primary"
+      data-disable-with={s(@ctx, @type, "create_share_link")}
+    />
+  </div>
+</form>

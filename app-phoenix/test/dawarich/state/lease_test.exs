@@ -6,6 +6,19 @@ defmodule Dawarich.State.LeaseTest do
 
   alias Dawarich.State.Lease
 
+  @tag mutation: "poster-holder"
+  test "lease callback can receive its current holder without changing existing zero arity callers" do
+    assert {:ok, returned} =
+             Lease.with_lease(ScratchRepo, "posters:holder", fn current ->
+               assert holder("posters:holder") == [[current]]
+               current
+             end)
+
+    assert is_binary(returned)
+    assert holder("posters:holder") == []
+    assert {:ok, :unchanged} = Lease.with_lease(ScratchRepo, "posters:zero", fn -> :unchanged end)
+  end
+
   defmodule ReleaseFailsRepo do
     def query!("DELETE" <> _, _params, _opts), do: raise(DBConnection.ConnectionError, "down")
     def query!(sql, params, opts), do: Dawarich.ScratchRepo.query!(sql, params, opts)

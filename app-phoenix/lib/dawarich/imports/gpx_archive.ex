@@ -20,6 +20,17 @@ defmodule Dawarich.Imports.GpxArchive do
       raise Error, message: "Malformed ZIP archive: #{inspect(error.__struct__)}"
   end
 
+  def extract_entry!(path, entry, opts \\ []) do
+    File.open!(path, [:read, :binary, :raw], fn file ->
+      archive = Directory.read!(file, opts)
+
+      unless entry in archive.entries and Directory.supported?(entry),
+        do: raise(Error, message: "ZIP entry changed or has unsupported compression")
+
+      extract!(file, entry, archive.offset, opts)
+    end)
+  end
+
   defp classify!(file, entries, central, opts) do
     cond do
       Enum.any?(entries, &(not Directory.supported?(&1))) ->
