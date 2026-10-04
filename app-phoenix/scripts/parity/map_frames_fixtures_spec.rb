@@ -184,6 +184,7 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
       target = Rails.root.join('app-phoenix/test/fixtures/a8vv/visits')
       FileUtils.mkdir_p(target)
       body = response.body.gsub(/(name="authenticity_token" value=")[^"]*/, '\1CSRF')
+      body = '' if response.status >= 400 && response.media_type == 'text/html'
       File.write(target.join("#{name}.html"), body)
       write_json(target.join("#{name}.json"), {
                    now: now.iso8601, self_hosted: DawarichSettings.self_hosted?, request:, before:,
