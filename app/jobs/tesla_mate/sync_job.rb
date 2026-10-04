@@ -16,7 +16,7 @@ module TeslaMate
           TeslaMate::Sync.new(user).call if sync_allowed?(user)
         end
       end
-      return result unless result == :not_owner
+      return result unless [false, :not_owner].include?(result)
 
       Imports::TeslamateCommands.forward(user.id, event_id: job_id)
     end

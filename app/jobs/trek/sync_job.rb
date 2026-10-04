@@ -12,7 +12,7 @@ module Trek
       result = PhoenixLease.try_hold("trek-sync:#{source_id}") do
         Imports::IntegrationCommands.legacy('imports.trek_sync') { perform_legacy(source_id, after_id) }
       end
-      return result unless result == :not_owner
+      return result unless [false, :not_owner].include?(result)
 
       Imports::TrekCommands.forward('imports.trek_sync', { 'source_id' => source_id, 'after_id' => after_id },
                                     event_id: job_id)

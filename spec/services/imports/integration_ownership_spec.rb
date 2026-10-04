@@ -3,6 +3,43 @@
 require 'rails_helper'
 
 RSpec.describe 'Integration legacy ownership', :non_transactional do
+  [
+    [Import::ImmichGeodataJob, 'immich_geodata', 'immich-geodata', Immich::ImportGeodata],
+    [Import::PhotoprismGeodataJob, 'photoprism_geodata', 'photoprism-geodata', Photoprism::ImportGeodata],
+    [TeslaMate::SyncJob, 'teslamate_sync', 'teslamate-sync', TeslaMate::Sync],
+    [Trek::SyncJob, 'trek_sync', 'trek-sync', Trek::Sync]
+  ].each do |job_class, command, lease, service|
+    it "forwards #{command} with a busy lease to Oban without losing event context" do
+      user = create(:user)
+      key = "command:imports.#{command}"
+      job_owner!(key, :oban)
+      if command == 'trek_sync'
+        stub_host_addresses('trek.example.test', '93.184.216.34')
+        source = create(:trip_source, user:)
+        args = [source.id, 123]
+        payload = { 'source_id' => source.id, 'after_id' => 123 }
+      else
+        args = [user.id]
+        payload = { 'user_id' => user.id }
+        payload['time_zone'] = 'Europe/Berlin' if command.end_with?('_geodata')
+      end
+      expect(service).not_to receive(:new)
+
+      Time.use_zone('Europe/Berlin') do
+        job = job_class.new(*args)
+        hold_import_lock("#{lease}:#{args.first}") do
+          2.times { job.perform_now }
+          expect(JobOutbox.pending.where(command_type: "imports.#{command}").pluck(:event_id, :payload))
+            .to eq([[job.job_id, payload]])
+        end
+      end
+    ensure
+      source&.destroy!
+      JobOutbox.where(command_type: "imports.#{command}").delete_all
+      ActiveRecord::Base.connection.execute("DELETE FROM phoenix.job_owners WHERE key='#{key}'") if key
+    end
+  end
+
   it 'holds the legacy owner through effects while a concurrent transfer waits' do
     user = create(:user)
     key = 'command:imports.immich_geodata'
