@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'sidekiq/cron/job'
 
 RSpec.describe 'Phoenix fixture: A12d1a monthly statistics' do
   include ActiveSupport::Testing::TimeHelpers
@@ -560,5 +561,253 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
 
   def digest_select(sql)
     ActiveRecord::Base.connection.select_values("SELECT row_to_json(x)::text FROM (#{sql}) x").map { |json| JSON.parse(json) }
+  end
+
+  it 'writes or matches the digest job corpus twice byte-identically' do
+    first = digest_job_capture
+    expect(digest_job_capture).to eq(first)
+    destination = Rails.root.join('app-phoenix/test/fixtures/a12d1b2/jobs.json')
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      FileUtils.mkdir_p(destination.dirname)
+      File.write(destination, first)
+    else
+      expect(first).to eq(destination.read)
+    end
+  end
+
+  def digest_job_capture
+    schedulers = %w[monthly yearly].flat_map do |kind|
+      [
+        ['january', '2025-01-01T23:30:00Z', 'Europe/Berlin'],
+        ['march', '2024-03-31T22:30:00Z', 'Europe/Berlin'],
+        ['leap_day', '2024-02-29T23:30:00Z', 'Asia/Tokyo'],
+        ['end_month', '2025-03-31T12:00:00Z', 'Etc/UTC'],
+        ['zone_boundary', '2025-01-31T23:30:00Z', 'Asia/Tokyo'],
+        ['two_batches', '2025-04-02T04:00:00Z', 'Europe/Berlin']
+      ].map do |id, instant, zone|
+        RSpec::Mocks.with_temporary_scope do
+          digest_job_isolated { digest_job_scheduler(kind, id, instant, zone) }
+        end
+      end
+    end
+    workers = %w[monthly yearly].flat_map do |kind|
+      %w[new existing no_data missing_user deleted_user stats_return stats_database stats_raise
+         digest_raise digest_database late_stats_raise vanished].flat_map do |profile|
+        next [] if profile == 'late_stats_raise' && kind == 'monthly'
+
+        %w[en fr].map do |locale|
+          RSpec::Mocks.with_temporary_scope do
+            digest_isolated { digest_job_worker(kind, profile, locale) }
+          end
+        end
+      end
+    end
+    digest_json('version' => 1, 'schedulers' => schedulers, 'workers' => workers,
+                'toggles' => digest_job_toggles, 'triggers' => digest_job_triggers)
+  end
+
+  def digest_job_toggles
+    values = [false, true, nil, '', 0, 1, '0', 'f', 'F', 'false', 'FALSE', 'off', 'OFF', 'yes', [], {}]
+    settings = [{}] + values.flat_map do |value|
+      [{ 'value' => value }, { 'digest_emails_enabled' => value },
+       { 'value' => value, 'digest_emails_enabled' => true },
+       { 'value' => value, 'digest_emails_enabled' => false }]
+    end
+    %w[monthly yearly].flat_map do |kind|
+      key = "#{kind}_digest_emails_enabled"
+      settings.map do |item|
+        item = item.transform_keys { |name| name == 'value' ? key : name }
+        { 'kind' => kind, 'settings' => item,
+          'enabled' => Users::SafeSettings.new(item).public_send("#{key}?") }
+      end
+    end
+  end
+
+  def digest_job_isolated
+    result = nil
+    ActiveRecord::Base.transaction(requires_new: true) do
+      result = yield
+      raise ActiveRecord::Rollback
+    end
+    result
+  end
+
+  def digest_job_scheduler(kind, id, instant, zone)
+    uuid_index = 151_000
+    allow(SecureRandom).to receive(:uuid) do
+      uuid_index += 1
+      format('00000000-0000-4000-8000-%012d', uuid_index)
+    end
+    travel_to(Time.iso8601(instant)) do
+      Time.use_zone(zone) do
+        target = kind == 'monthly' ? 1.month.ago : 1.year.ago
+        cases = [
+          [1, {}, target.year, target.month, nil],
+          [2, { 'timezone' => 'America/Los_Angeles', 'locale' => ' FR ' }, target.year, target.month, nil],
+          [0, {}, target.year, target.month, nil], [3, {}, target.year, target.month, nil],
+          [1, {}, target.year, target.month, digest_now], [1, {}, nil, nil, nil],
+          [1, {}, target.year - 1, target.month, nil],
+          [1, {}, target.year, target.month == 12 ? 1 : target.month + 1, nil]
+        ]
+        cases.concat(digest_job_toggles.select { |row| row['kind'] == kind }.map do |row|
+          [1, row['settings'], target.year, target.month, nil]
+        end)
+        cases.concat(Array.new(1001) { [1, {}, target.year, target.month, nil] }) if id == 'two_batches'
+        users = cases.each_with_index.map do |(status, settings, _, _, deleted_at), index|
+          { id: 15_101 + index, email: "a12d1b2-#{index}@example.invalid", encrypted_password: '',
+            status:, settings:, plan: 0, deleted_at:, created_at: digest_now, updated_at: digest_now }
+        end
+        User.unscoped.insert_all!(users)
+        stats = cases.each_with_index.filter_map do |(_, _, year, month, _), index|
+          next unless year
+
+          { id: 16_501 + index, user_id: users[index][:id], year:, month:, distance: 0,
+            daily_distance: {}, toponyms: [], created_at: digest_now, updated_at: digest_now }
+        end
+        Stat.insert_all!(stats)
+        clear_enqueued_jobs
+        klass = digest_job_class(kind, 'SchedulingJob')
+        klass.new.perform
+        jobs = digest_job_enqueued
+        expected_ids = cases.each_with_index.filter_map do |(status, settings, year, month, deleted), index|
+          next unless [1, 2].include?(status) && deleted.nil? && year == target.year
+          next if kind == 'monthly' && month != target.month
+          next unless Users::SafeSettings.new(settings).public_send("#{kind}_digest_emails_enabled?")
+
+          users[index][:id]
+        end
+        expect(jobs.map { |job| job['arguments'].first }).to eq(expected_ids)
+        expect(jobs.length).to be > 1000 if id == 'two_batches'
+        expect(jobs.map { |job| job['timezone'] }.uniq).to eq([Time.zone.name])
+        {
+          'id' => "#{id}_#{kind}", 'kind' => kind, 'now' => instant, 'ambient_zone' => zone,
+          'period' => { 'year' => target.year, 'month' => kind == 'monthly' ? target.month : nil },
+          'users' => users.as_json, 'stats' => stats.as_json, 'jobs' => jobs
+        }
+      end
+    end
+  end
+
+  def digest_job_worker(kind, profile, locale)
+    source_profile = %w[missing_user deleted_user no_data existing].include?(profile) ? profile : 'berlin'
+    digest_users(source_profile)
+    settings = { 'timezone' => 'Asia/Tokyo', 'locale' => " #{locale.upcase} " }
+    User.unscoped.where(id: digest_user_id).update_all(settings:)
+    digest_stats(source_profile, 2025, 3)
+    digest_points(source_profile, 2025, 3)
+    digest_tracks(source_profile, 2025, 3, nil)
+    digest_existing(source_profile, kind, 2025, 3)
+    ActiveRecord::Base.connection.execute("SELECT setval('digests_id_seq', 140500, false)")
+    ActiveRecord::Base.connection.execute("SELECT setval('stats_id_seq', 150500, false)")
+    uuid_index = 141_000
+    allow(SecureRandom).to receive(:uuid) do
+      uuid_index += 1
+      format('00000000-0000-4000-8000-%012d', uuid_index)
+    end
+    calls = []
+    error_class = profile.include?('database') ? ActiveRecord::StatementInvalid : StandardError
+    error = error_class.new('synthetic digest failure')
+    error.set_backtrace((1..25).map { |line| "synthetic frame #{line}" })
+    allow(Stats::CalculateMonth).to receive(:new).and_wrap_original do |original, *args|
+      calls << { 'kind' => 'stats', 'month' => args[2], 'locale' => I18n.locale.to_s, 'zone' => Time.zone.name }
+      raise error if profile == 'stats_raise' || (profile == 'late_stats_raise' && args[2] == 7)
+
+      original.call(*args)
+    end
+    calculator = kind == 'monthly' ? Users::Digests::CalculateMonth : Users::Digests::CalculateYear
+    allow(calculator).to receive(:new).and_wrap_original do |original, *args|
+      calls << { 'kind' => 'digest', 'locale' => I18n.locale.to_s, 'zone' => Time.zone.name }
+      raise error if %w[digest_raise digest_database].include?(profile)
+
+      original.call(*args)
+    end
+    if %w[stats_return stats_database].include?(profile)
+      allow_any_instance_of(Stats::CalculateMonth).to receive(:points).and_raise(error)
+    end
+    if profile == 'vanished'
+      allow(Stats::CalculateMonth).to receive(:new) do
+        User.unscoped.where(id: digest_user_id).update_all(deleted_at: digest_now)
+        raise error
+      end
+    end
+    input = digest_input
+    before = digest_rows
+    clear_enqueued_jobs
+    job = digest_job_class(kind, 'CalculatingJob').new
+    job.job_id = '00000000-0000-4000-8000-000000141001'
+    args = [digest_user_id, 2025]
+    args << 3 if kind == 'monthly'
+    job.perform(*args)
+    emails = digest_job_enqueued
+    notifications = Notification.where(user_id: digest_user_id).order(:id).pluck(:kind, :title, :content)
+    terminal_profiles = %w[stats_raise digest_raise digest_database late_stats_raise vanished missing_user deleted_user]
+    terminal = terminal_profiles.include?(profile)
+    expect(emails.length).to eq(terminal ? 0 : 1)
+    unless terminal
+      expect(emails.first['job_class']).to eq(digest_job_class(kind, 'EmailSendingJob').name)
+      expect(emails.first['arguments']).to eq(args)
+      expect(emails.first.values_at('locale', 'timezone')).to eq([locale, 'Europe/Berlin'])
+      expect(calls.select { |call| call['kind'] == 'stats' }.map { |call| call['month'] })
+        .to eq(kind == 'monthly' ? [3] : (1..12).to_a)
+    end
+    if %w[stats_raise digest_raise digest_database late_stats_raise].include?(profile)
+      expect(notifications.length).to eq(1)
+      expect(notifications.first.last).to include('synthetic frame 20')
+      expect(notifications.first.last).not_to include('synthetic frame 21')
+    end
+    expect(notifications).to be_empty if %w[vanished missing_user deleted_user].include?(profile)
+    expect(notifications).to be_empty if %w[new existing no_data].include?(profile)
+    if profile == 'late_stats_raise'
+      expect(Stat.where(user_id: digest_user_id, year: 2025, month: 3).pick(:calculation_version)).to eq(3)
+    end
+    {
+      'id' => "#{profile}_#{kind}_#{locale}", 'kind' => kind, 'profile' => profile, 'locale' => locale,
+      'args' => args, 'ambient_zone' => Time.zone.name, 'input' => input, 'before' => before,
+      'expected' => { 'rows' => digest_rows, 'calls' => calls, 'emails' => emails, 'notifications' => notifications,
+                      'stats' => digest_select('SELECT user_id, year, month, distance, flight_distance, ' \
+                                               'daily_distance, toponyms, h3_hex_ids, calculation_version FROM stats ' \
+                                               "WHERE user_id = #{digest_user_id} ORDER BY year, month") }
+    }
+  end
+
+  def digest_job_class(kind, suffix)
+    "Users::Digests::#{kind.capitalize}::#{suffix}".constantize
+  end
+
+  def digest_job_enqueued
+    enqueued_jobs.map do |job|
+      job.slice('job_class', 'job_id', 'arguments', 'timezone', 'locale', 'queue_name')
+    end
+  end
+
+  def digest_job_triggers
+    original = ENV['TZ']
+    schedule = YAML.load_file(Rails.root.join('config/schedule.yml'))
+    cases = [
+      ['winter', nil, 'Europe/Berlin', '2025-01-01T00:00:00Z'],
+      ['summer', nil, 'Europe/Berlin', '2025-07-01T00:00:00Z'],
+      ['override', 'Asia/Tokyo', 'Europe/Berlin', '2025-01-01T00:00:00Z'],
+      ['southern_summer', 'Australia/Sydney', 'Europe/Berlin', '2025-01-01T00:00:00Z'],
+      ['southern_winter', 'Australia/Sydney', 'Europe/Berlin', '2025-07-01T00:00:00Z'],
+      ['os', nil, nil, '2025-01-01T00:00:00Z']
+    ]
+    cases.flat_map do |id, tz, zone, instant|
+      tz ? ENV['TZ'] = tz : ENV.delete('TZ')
+      Time.use_zone(zone) do
+        %w[monthly yearly].map do |kind|
+          entry = schedule.fetch("#{kind}_digest_scheduling_job")
+          cron = Sidekiq::Cron::Job.allocate.send(:do_parse_cron, entry.fetch('cron'))
+          resolved = EtOrbi.determine_local_tzone.name
+          at = cron.next_time(Time.iso8601(instant)).to_t.utc.iso8601
+          expect(at).to eq('2025-01-02T03:00:00Z') if id == 'winter' && kind == 'monthly'
+          expect(at).to eq('2025-07-02T02:00:00Z') if id == 'summer' && kind == 'monthly'
+          expect(at).to eq('2025-01-02T05:00:00Z') if id == 'winter' && kind == 'yearly'
+          { 'id' => "#{id}_#{kind}", 'kind' => kind, 'cron' => entry.fetch('cron'), 'tz' => tz,
+            'rails_zone' => zone, 'resolved_zone' => resolved, 'after' => instant, 'fires_at' => at }
+        end
+      end
+    end
+  ensure
+    original ? ENV['TZ'] = original : ENV.delete('TZ')
   end
 end
