@@ -16,18 +16,12 @@ defmodule Dawarich.TripPage do
 
   @gate """
   SELECT z.name, s.sl, s.el, s.seconds, s.near_transition,
-         t.trip_source_id IS NOT NULL
-           OR t.started_at < '1901-12-13 20:45:52'
+         t.started_at < '1901-12-13 20:45:52'
            OR t.ended_at >= '2038-01-19 03:14:08'
            OR NOT CASE WHEN t.visited_countries IN ('null'::jsonb, '{}'::jsonb) THEN true
                        WHEN jsonb_typeof(t.visited_countries) <> 'array' THEN false
                        ELSE NOT EXISTS (SELECT 1 FROM jsonb_array_elements(t.visited_countries) e
-                                        WHERE jsonb_typeof(e) <> 'string') END
-           OR EXISTS (SELECT 1 FROM planned_days x WHERE x.trip_id = t.id)
-           OR EXISTS (SELECT 1 FROM planned_reservations x WHERE x.trip_id = t.id)
-           OR EXISTS (SELECT 1 FROM planned_accommodations x WHERE x.trip_id = t.id)
-           OR EXISTS (SELECT 1 FROM planned_travellers x WHERE x.trip_id = t.id)
-           OR EXISTS (SELECT 1 FROM planned_unplanned_places x WHERE x.trip_id = t.id),
+                                        WHERE jsonb_typeof(e) <> 'string') END,
          (SELECT r.body FROM action_text_rich_texts r
           WHERE r.record_type = 'Trip' AND r.record_id = t.id AND r.name = 'description')
   FROM trips t CROSS JOIN z
@@ -108,9 +102,13 @@ defmodule Dawarich.TripPage do
       Ruby.present?(source_identifier) and
         NaiveDateTime.compare(started, DateTime.to_naive(now)) == :gt
 
+    geojson = Dawarich.Trips.PlanGeojson.build(plan)
+    plan_map = not has_path and geojson != nil and (future or map_size(day_data.stats) == 0)
+
     state =
       cond do
         has_path -> :path
+        plan_map -> :plan
         future -> :future
         map_size(day_data.stats) == 0 -> :empty
         true -> :calculating
@@ -142,7 +140,10 @@ defmodule Dawarich.TripPage do
       day_notes: notes,
       plan: plan,
       now: now,
-      plan_on_map: Dawarich.Trips.PlanGeojson.build(plan) != nil,
+      plan_on_map: geojson != nil and (has_path or plan_map),
+      plan_json: Dawarich.Trips.PlanGeojson.encode(geojson),
+      plan_toggle: has_path and geojson != nil,
+      future_start: NaiveDateTime.compare(started, DateTime.to_naive(now)) == :gt,
       description: gated.description,
       trip_stream: TripStream.stream_name(id),
       studio: TripStudio.load(user.id, zone)

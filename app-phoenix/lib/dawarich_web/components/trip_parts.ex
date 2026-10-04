@@ -153,6 +153,19 @@ defmodule DawarichWeb.TripParts do
         <span class="hidden sm:inline">{s(@locale, "flights")}</span>
       </button>
       <button
+        :if={@page.plan_toggle}
+        type="button"
+        class="btn btn-sm btn-outline gap-1"
+        data-testid="trip-plan-toggle"
+        data-trip-maplibre-target="planToggleBtn"
+        data-action="click->trip-maplibre#togglePlan"
+        aria-pressed="false"
+        title={s(@locale, "toggle_plan_on_map")}
+      >
+        <.icon name="map" class="w-4 h-4" />
+        <span class="hidden sm:inline">{s(@locale, "plan")}</span>
+      </button>
+      <button
         type="button"
         class="btn btn-sm btn-outline gap-1"
         data-trip-maplibre-target="replayToggleBtn"

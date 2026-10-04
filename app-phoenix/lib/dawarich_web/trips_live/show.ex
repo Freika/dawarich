@@ -67,6 +67,7 @@ defmodule DawarichWeb.TripsLive.Show do
         data-trip-maplibre-meters-between-routes-value={@page.settings.meters}
         data-trip-maplibre-minutes-between-routes-value={@page.settings.minutes}
         data-trip-maplibre-path-data-value={@page.path_json}
+        data-trip-maplibre-plan-value={if @page.plan_toggle, do: @page.plan_json}
         data-trip-maplibre-device-windows-value={@page.windows_json}
         data-trip-maplibre-map-style-value={@page.settings.style}
       >

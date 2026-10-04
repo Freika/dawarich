@@ -21,6 +21,30 @@ defmodule Dawarich.Trips.PlanGeojson do
     if features != [], do: %{"type" => "FeatureCollection", "features" => features}
   end
 
+  def encode(nil), do: nil
+
+  def encode(geojson),
+    do:
+      geojson
+      |> ordered()
+      |> Dawarich.ReleaseMigrations.Effects.Support.Ruby.json()
+      |> IO.iodata_to_binary()
+
+  defp ordered(value) when is_map(value) do
+    keys =
+      cond do
+        value["type"] == "FeatureCollection" -> ~w(type features)
+        value["type"] == "Feature" -> ~w(type geometry properties)
+        value["type"] in ["Point", "LineString"] -> ~w(type coordinates)
+        true -> ~w(kind name day number)
+      end
+
+    {:object, for(key <- keys, Map.has_key?(value, key), do: {key, ordered(value[key])})}
+  end
+
+  defp ordered(value) when is_list(value), do: Enum.map(value, &ordered/1)
+  defp ordered(value), do: value
+
   defp places(places, kind) do
     for place <- places,
         located?(place),

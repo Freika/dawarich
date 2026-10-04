@@ -90,7 +90,7 @@ defmodule DawarichWeb.TripsGateEndpointTest do
       ended_at: ~N[2020-01-02 08:00:00]
     })
 
-    TripsSeeds.planned!("planned_days", 881_108)
+    Dawarich.Repo.query!("UPDATE trips SET visited_countries = '[1]'::jsonb WHERE id = 881108")
 
     port = serve()
     client = connect(port)

@@ -76,12 +76,32 @@ defmodule DawarichWeb.TripForm do
             class="h-[40vh] w-full overflow-hidden rounded-lg lg:h-full lg:min-h-[24rem]"
             data-controller="trip-maplibre-preview"
             data-trip-maplibre-preview-path-value={@form.path_json}
+            data-trip-maplibre-preview-plan-value={@form.plan_json}
             data-trip-maplibre-preview-interactive-value="true"
             data-trip-maplibre-preview-map-style-value={@form.style}
           >
           </div>
         </div>
         <div class="w-full space-y-5 lg:w-1/2" data-controller="datetime">
+          <div
+            :if={@form.managed}
+            class="flex items-start gap-3 rounded-lg border border-base-content/10 p-3 text-sm"
+          >
+            <.icon name="info" class="mt-0.5 size-4 shrink-0 text-base-content/60" />
+            <p class="min-w-0 text-base-content/70">
+              {t(@locale, "trips.form.managed_by_trek_hint", %{})}
+              <a
+                :if={@form.trek_url}
+                href={@form.trek_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="link link-hover inline-flex items-center gap-1 whitespace-nowrap"
+              >{t(@locale, "trips.source_itinerary.open_in_trek", %{})}<.icon
+                name="external-link"
+                class="size-3.5"
+              /></a>
+            </p>
+          </div>
           <div class="form-control">
             <.field form={@form} name="name">
               <label class="mb-1.5 text-sm font-medium" for="trip_name">{label(@locale, "name")}</label>
@@ -90,6 +110,7 @@ defmodule DawarichWeb.TripForm do
               <input
                 class="input input-bordered w-full read-only:bg-base-200 read-only:text-base-content/60"
                 type="text"
+                readonly={if @form.managed, do: "readonly"}
                 value={@form.values["name"]}
                 name="trip[name]"
                 id="trip_name"
@@ -117,6 +138,7 @@ defmodule DawarichWeb.TripForm do
                   data-datetime-target={target}
                   data-action="change->datetime#updateCoordinates"
                   type="datetime-local"
+                  readonly={if @form.managed, do: "readonly"}
                   name={"trip[#{field}]"}
                   id={"trip_#{field}"}
                 />

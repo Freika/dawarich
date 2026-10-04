@@ -11,11 +11,7 @@ defmodule Dawarich.TripList do
   @trips "(SELECT * FROM trips WHERE user_id = $1 ORDER BY started_at DESC LIMIT #{@per_page} OFFSET $2) t"
 
   @rails """
-  (ST_IsEmpty(t.path) IS TRUE
-   OR (t.path IS NULL AND (EXISTS (SELECT 1 FROM planned_days x WHERE x.trip_id = t.id)
-                           OR EXISTS (SELECT 1 FROM planned_accommodations x WHERE x.trip_id = t.id)
-                           OR EXISTS (SELECT 1 FROM planned_unplanned_places x WHERE x.trip_id = t.id)))
-   OR NOT CASE WHEN jsonb_typeof(t.visited_countries) = 'array'
+  (NOT CASE WHEN jsonb_typeof(t.visited_countries) = 'array'
                THEN NOT EXISTS (SELECT 1 FROM jsonb_array_elements(t.visited_countries) e
                                 WHERE jsonb_typeof(e) <> 'string')
                ELSE t.visited_countries = '{}'::jsonb END)
@@ -60,31 +56,42 @@ defmodule Dawarich.TripList do
          false <- Enum.any?(rows, &Enum.at(&1, 8)),
          true <- zone_ok?(user.settings, rows) do
       {:ok,
-       %{entries: Enum.map(rows, &entry/1), total_pages: total_pages(rows), settings: settings}}
+       %{
+         entries: Enum.map(rows, &entry(&1, user.id)),
+         total_pages: total_pages(rows),
+         settings: settings
+       }}
     else
       _ -> :rails
     end
   end
 
-  defp entry([
-         id,
-         name,
-         distance,
-         countries,
-         path,
-         started_on,
-         ended_on,
-         span_us,
-         _rails,
-         _total,
-         _zone
-       ]) do
+  defp entry(
+         [
+           id,
+           name,
+           distance,
+           countries,
+           path,
+           started_on,
+           ended_on,
+           span_us,
+           _rails,
+           _total,
+           _zone
+         ],
+         user_id
+       ) do
+    {:ok, plan} = Dawarich.Trips.PlanRead.load(Dawarich.Repo, user_id, id)
+    geojson = Dawarich.Trips.PlanGeojson.build(plan)
+
     %{
       id: id,
       name: name,
       distance: distance,
       countries: countries,
       path_json: path && IO.iodata_to_binary(Ruby.json(path)),
+      plan_json: Dawarich.Trips.PlanGeojson.encode(geojson),
       started_on: started_on,
       ended_on: ended_on,
       day_count: max(-Integer.floor_div(-span_us, @day_us), 1)
