@@ -13,6 +13,8 @@ Settings use GET `/settings/users/export` and POST `/settings/users/import`.
 
 Rails and Phoenix write backup export records in ascending ID order. Rails
 previously used unspecified database order; no consumer depends on that order.
+The Rails fixture dataset resets the export sequence after its explicit IDs,
+so newly created backup records have the same order as the native fixture seeds.
 
 HTTP rollback keys are `imports`, `exports`, `active_storage` and `user_data`
 in `DAWARICH_RAILS_ROUTES`. Settings backup routes also honor `settings`.

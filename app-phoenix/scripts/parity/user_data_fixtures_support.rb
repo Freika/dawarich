@@ -135,6 +135,7 @@ module UserDataFixturesSupport
                                                        'expected_count' => 3, 'actual_count' => 3
                                                      })
     attach(raw, corpus.fetch('message'), 'synthetic.jsonl.gz.enc', 'application/octet-stream')
+    Export.connection.reset_pk_sequence!('exports')
     user
   end
 

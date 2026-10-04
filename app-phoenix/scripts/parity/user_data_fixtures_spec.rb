@@ -15,6 +15,21 @@ RSpec.describe 'Phoenix fixtures: Rails user data' do
     Time.use_zone('UTC') { travel_to(Time.utc(2026, 10, 2, 12)) { example.run } }
   end
 
+  it 'keeps Rails export ordering stable when the sequence starts below fixed fixture IDs' do
+    UserDataFixturesSupport.with_users do
+      Export.connection.execute("SELECT setval(pg_get_serial_sequence('exports','id'),1,false)")
+      UserDataFixturesSupport.with_crypto do
+        user = UserDataFixturesSupport.dataset('UTC')
+        export = Users::ExportData.new(user).export
+        entries = UserDataFixturesSupport.extracted(export)
+        names = entries.fetch('exports.jsonl').lines.map { |line| JSON.parse(line).fetch('name') }
+
+        expect(names).to eq(['synthetic export', export.name])
+        expect(export.id).to eq(988_202)
+      end
+    end
+  end
+
   it 'records every user-data entity and both reader versions' do
     result = UserDataFixturesSupport.capture
     expect(result.fetch('sections')).to contain_exactly(
