@@ -1,7 +1,7 @@
 defmodule Dawarich.Cable.PgBusTest do
   use Dawarich.JobsCase, async: false
 
-  alias Dawarich.Cable.{Bus, PgStore}
+  alias Dawarich.Cable.{Bus, PgBus, PgStore}
 
   setup do
     cable = Application.get_env(:dawarich, :cable)
@@ -84,6 +84,82 @@ defmodule Dawarich.Cable.PgBusTest do
 
     assert rows("SELECT count(*) FROM phoenix.cable_events WHERE observed_at IS NOT NULL") == [
              [101]
+           ]
+  end
+
+  test "two independent pollers deliver every event once to their own subscribers" do
+    parent = self()
+    namespace = "fanout"
+    payloads = [~s({ "v": "München" }), <<0, 255>>, "[1,\n 2]", "last"]
+
+    nodes =
+      for {server, pubsub} <- [
+            {__MODULE__.First, __MODULE__.FirstPubSub},
+            {__MODULE__.Second, __MODULE__.SecondPubSub}
+          ] do
+        start_supervised!(Supervisor.child_spec({Phoenix.PubSub, name: pubsub}, id: pubsub))
+
+        opts = [
+          name: server,
+          repo: ScratchRepo,
+          namespace: namespace,
+          pubsub: pubsub,
+          polling: false
+        ]
+
+        start_supervised!(Supervisor.child_spec({PgBus, opts}, id: server))
+        subscription = [server: server, pubsub: pubsub, namespace: namespace]
+
+        subscriber =
+          Task.async(fn ->
+            {:ok, ref} = PgBus.subscribe("points", subscription)
+            assert_receive {:cable_pg, ^pubsub, ^namespace, :subscribed, "points", ^ref} = ack
+            assert Bus.event(ack) == {:subscribed, "points"}
+            send(parent, {:ready, self()})
+
+            heard =
+              for {payload, seq} <- Enum.with_index(payloads, 1) do
+                assert_receive {:cable_pg, ^pubsub, ^namespace, "points", ^seq, ^payload} = event,
+                               1_000
+
+                assert Bus.event(event) == {:message, "points", payload}
+                payload
+              end
+
+            send(parent, {:complete, self()})
+            assert_receive :finish, 1_000
+            refute_received {:cable_pg, _, _, _, _, _}
+            {:ok, _} = PgBus.unsubscribe("points", subscription)
+            heard
+          end)
+
+        assert_receive {:ready, pid}, 1_000
+        assert pid == subscriber.pid
+        {server, subscriber}
+      end
+
+    for {payload, seq} <- Enum.with_index(payloads, 1) do
+      publisher = Task.async(fn -> PgStore.append(ScratchRepo, namespace, "points", payload) end)
+      assert Task.await(publisher) == {:ok, seq}
+      ordered = if rem(seq, 2) == 0, do: Enum.reverse(nodes), else: nodes
+
+      for {server, _} <- ordered do
+        send(server, :poll)
+        assert %{cursor: ^seq} = :sys.get_state(server)
+      end
+    end
+
+    for {server, subscriber} <- nodes do
+      pid = subscriber.pid
+      assert_receive {:complete, ^pid}, 1_000
+      send(server, :poll)
+      :sys.get_state(server)
+      send(pid, :finish)
+      assert Task.await(subscriber) == payloads
+    end
+
+    assert rows("SELECT count(*) FROM phoenix.cable_events WHERE observed_at IS NOT NULL") == [
+             [4]
            ]
   end
 end
