@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'open3'
 
 RSpec.describe 'Phoenix fixtures: achievement sharing actions', type: :request do
   include ActiveSupport::Testing::TimeHelpers
@@ -247,5 +248,73 @@ RSpec.describe 'Phoenix fixtures: achievement sharing actions', type: :request d
     expect(cases.fetch('winner').fetch('created_at')).to eq((now - 1.day).iso8601(6))
     expect(cases.fetch('foreign_unchanged')).to be(true)
     save_cases('collision', cases)
+  end
+
+  def phoenix(code, data)
+    native_env = {
+      'PATH' => "#{Dir.home}/.asdf/shims:#{ENV.fetch('PATH')}",
+      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.18.3-otp-27',
+      'MIX_ENV' => 'test', 'DATABASE_HOST' => '127.0.0.1',
+      'PHOENIX_TEST_DATABASE' => ENV.fetch('DATABASE_NAME'),
+      'PHOENIX_TEST_REDIS_URL' => ENV.fetch('PHOENIX_TEST_REDIS_URL'),
+      'A10C_DATA' => JSON.generate(data)
+    }
+    bootstrap = <<~ELIXIR
+      for app <- [:ecto_sql, :postgrex, :crypto], do: Application.ensure_all_started(app)
+      {:ok, _} = Dawarich.Repo.start_link(database: System.fetch_env!("PHOENIX_TEST_DATABASE"),
+        pool: DBConnection.ConnectionPool, pool_size: 1, prepare: :unnamed)
+      data = Jason.decode!(System.fetch_env!("A10C_DATA"))
+    ELIXIR
+    output, status = Open3.capture2e(native_env, 'mix', 'run', '--no-start', '-e', bootstrap + code,
+                                     chdir: Rails.root.join('app-phoenix').to_s)
+    expect(status.success?).to be(true), 'native interoperability failed; output withheld'
+    JSON.parse(output.lines.last)
+  end
+
+  def native_sharing(enabled)
+    phoenix(<<~ELIXIR, enabled.nil? ? {} : { 'enabled' => enabled })
+      {:ok, result} = Dawarich.Achievements.Sharing.call(Dawarich.Repo, 45101, "country_de",
+        data, %{clock: fn -> ~U[2026-10-04 10:00:00Z] end})
+      IO.puts(Jason.encode!(result))
+    ELIXIR
+  end
+
+  context 'native interoperability' do
+    self.use_transactional_tests = false
+
+    before do
+      Achievements::UnlockEvent.where(user_id: [45_101, 45_102]).delete_all
+      Achievements::Progress.where(user_id: [45_101, 45_102]).delete_all
+      User.unscoped.where(id: [45_101, 45_102]).delete_all
+    end
+
+    it 'Rails consumes native sharing carrier without state loss' do
+      actor = synthetic_user(45_101)
+      foreign = synthetic_user(45_102)
+      state = { 'synthetic' => 'preserve' }
+      carrier = create(:achievement_progress, user: actor, achievement_key: 'country_de', state:,
+                                             sharing_uuid: 'a10c0000-0000-4000-8000-000000045101',
+                                             created_at: now - 1.day, updated_at: now - 1.day)
+      other = create(:achievement_progress, user: foreign, achievement_key: 'country_de', state:,
+                                           sharing_uuid: 'a10c0000-0000-4000-8000-000000045102')
+      original = carrier.attributes.slice('state', 'created_at', 'sharing_uuid')
+      foreign_original = other.attributes
+      result = native_sharing(true)
+      expect(result).to eq('enabled' => true, 'uuid' => carrier.sharing_uuid)
+      expect(carrier.reload.attributes.slice(*original.keys)).to eq(original)
+      expect(carrier.updated_at).to eq(now)
+      get shared_achievement_path(carrier.sharing_uuid)
+      expect(response.status).to eq(200)
+      row = request_case('native_interop', actor, params: { enabled: false })
+      expect(row.fetch('json')).to include('enabled' => false, 'uuid' => carrier.sharing_uuid, 'url' => nil)
+      expect(carrier.reload.state).to eq(state)
+      expect(native_sharing(nil)).to eq('enabled' => true, 'uuid' => carrier.sharing_uuid)
+      expect(carrier.reload.attributes.slice(*original.keys)).to eq(original)
+      expect(other.reload.attributes).to eq(foreign_original)
+    ensure
+      Achievements::UnlockEvent.where(user_id: [45_101, 45_102]).delete_all
+      Achievements::Progress.where(user_id: [45_101, 45_102]).delete_all
+      User.unscoped.where(id: [45_101, 45_102]).delete_all
+    end
   end
 end

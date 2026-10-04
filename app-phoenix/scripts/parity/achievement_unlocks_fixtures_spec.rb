@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'open3'
 
 RSpec.describe 'Phoenix fixtures: achievement unlock deck', type: :request do
   include ActiveSupport::Testing::TimeHelpers
@@ -320,5 +321,97 @@ RSpec.describe 'Phoenix fixtures: achievement unlock deck', type: :request do
     expect(cases.fetch('eleventh_pending')).to be(true)
     expect(cases.fetch('cards').map { |row| row.fetch('locale') }.uniq).to eq(%w[en de es fr pl ca zh])
     save_json('cards', cases)
+  end
+
+  def phoenix(code, data)
+    native_env = {
+      'PATH' => "#{Dir.home}/.asdf/shims:#{ENV.fetch('PATH')}",
+      'ASDF_ERLANG_VERSION' => '27.3.4.1', 'ASDF_ELIXIR_VERSION' => '1.18.3-otp-27',
+      'MIX_ENV' => 'test', 'DATABASE_HOST' => '127.0.0.1',
+      'PHOENIX_TEST_DATABASE' => ENV.fetch('DATABASE_NAME'),
+      'PHOENIX_TEST_REDIS_URL' => ENV.fetch('PHOENIX_TEST_REDIS_URL'),
+      'A10C_DATA' => JSON.generate(data)
+    }
+    bootstrap = <<~ELIXIR
+      for app <- [:ecto_sql, :postgrex, :crypto], do: Application.ensure_all_started(app)
+      {:ok, _} = Dawarich.Repo.start_link(database: System.fetch_env!("PHOENIX_TEST_DATABASE"),
+        pool: DBConnection.ConnectionPool, pool_size: 1, prepare: :unnamed)
+      data = Jason.decode!(System.fetch_env!("A10C_DATA"))
+    ELIXIR
+    output, status = Open3.capture2e(native_env, 'mix', 'run', '--no-start', '-e', bootstrap + code,
+                                     chdir: Rails.root.join('app-phoenix').to_s)
+    expect(status.success?).to be(true), 'native interoperability failed; output withheld'
+    JSON.parse(output.lines.last)
+  end
+
+  def native_deck(action, bound: nil, id: nil, token: nil)
+    phoenix(<<~ELIXIR, { action:, bound:, id:, token: })
+      context = %{clock: fn -> ~U[2026-10-04 22:30:00Z] end}
+      result = case data["action"] do
+        "claim" ->
+          claim = Dawarich.Achievements.Deck.claim(Dawarich.Repo, 45201,
+            %{"batch_end_id" => data["bound"], "claim_token" => data["token"]}, context)
+          %{id: claim.event.id, token: claim.event.claim_token,
+            bound: claim.batch_end_id, remaining: claim.remaining}
+        "seen" ->
+          %{seen: Dawarich.Achievements.Deck.acknowledge(Dawarich.Repo, 45201,
+            data["id"], data["token"], context)}
+        "dismiss" ->
+          :ok = Dawarich.Achievements.Deck.dismiss_through(Dawarich.Repo, 45201,
+            data["bound"], context)
+          %{dismissed: true}
+      end
+      IO.puts(Jason.encode!(result))
+    ELIXIR
+  end
+
+  context 'native interoperability' do
+    self.use_transactional_tests = false
+
+    before do
+      Achievements::UnlockEvent.where(user_id: [45_201, 45_202]).delete_all
+      Achievements::Progress.where(user_id: [45_201, 45_202]).delete_all
+      User.unscoped.where(id: [45_201, 45_202]).delete_all
+    end
+
+    it "Rails and native resume and acknowledge each other's real deck claims" do
+      actor = synthetic_user(45_201)
+      foreign = synthetic_user(45_202)
+      first = event(actor, 45_201, 'FR')
+      second = event(actor, 45_202, 'DE')
+      future = event(actor, 45_203, 'PL')
+      other = event(foreign, 45_204, 'ES')
+      foreign_original = other.attributes
+      native = native_deck('claim', bound: second.id)
+      expect(native.except('token')).to eq('id' => first.id, 'bound' => second.id, 'remaining' => 2)
+      expect(native.fetch('token')).to match(/\A[0-9a-f]{32}\z/)
+      csrf = login(actor)
+      resume = post_unlock('/achievements/unlocks/next', csrf,
+                           { claim_token: native.fetch('token'), batch_end_id: second.id })
+      expect(resume.fetch('status')).to eq(200)
+      expect(response.parsed_body.fetch('token') == native.fetch('token')).to be(true)
+      expect(resume.fetch('json')).to include('id' => first.id, 'remaining' => 2, 'batch_end_id' => second.id)
+      seen = post_unlock("/achievements/unlocks/#{first.id}/seen", csrf,
+                         { claim_token: native.fetch('token') })
+      expect(seen.fetch('status')).to eq(204)
+      expect(first.reload.seen_at).to eq(now)
+      rails = Achievements::UnlockDeck.new(actor).claim(batch_end_id: second.id)
+      expect(rails.event.id).to eq(second.id)
+      native_resume = native_deck('claim', bound: second.id, token: rails.event.claim_token)
+      expect(native_resume.fetch('token') == rails.event.claim_token).to be(true)
+      expect(native_resume.except('token')).to eq('id' => second.id, 'bound' => second.id, 'remaining' => 1)
+      expect(native_deck('seen', id: second.id, token: rails.event.claim_token)).to eq('seen' => true)
+      expect(second.reload.seen_at).to eq(now)
+      expect(second.claim_token).to be_nil
+      fourth = event(actor, 45_205, 'IT')
+      expect(native_deck('dismiss', bound: future.id)).to eq('dismissed' => true)
+      expect(future.reload.seen_at).to eq(now)
+      expect(fourth.reload.seen_at).to be_nil
+      expect(other.reload.attributes).to eq(foreign_original)
+    ensure
+      Achievements::UnlockEvent.where(user_id: [45_201, 45_202]).delete_all
+      Achievements::Progress.where(user_id: [45_201, 45_202]).delete_all
+      User.unscoped.where(id: [45_201, 45_202]).delete_all
+    end
   end
 end
