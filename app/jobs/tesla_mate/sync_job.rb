@@ -11,12 +11,14 @@ module TeslaMate
 
     def perform(user_id)
       user = find_user_or_skip(user_id) || return
-      return if Imports::TeslamateCommands.forward(user.id, event_id: job_id)
-      return unless sync_allowed?(user)
-
-      PhoenixLease.try_hold("teslamate-sync:#{user.id}") do
-        TeslaMate::Sync.new(user).call
+      result = PhoenixLease.try_hold("teslamate-sync:#{user.id}") do
+        Imports::IntegrationCommands.legacy('imports.teslamate_sync') do
+          TeslaMate::Sync.new(user).call if sync_allowed?(user)
+        end
       end
+      return result unless result == :not_owner
+
+      Imports::TeslamateCommands.forward(user.id, event_id: job_id)
     end
 
     def report_failure(error)
