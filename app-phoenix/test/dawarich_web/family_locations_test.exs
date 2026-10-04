@@ -7,8 +7,12 @@ defmodule DawarichWeb.FamilyLocationsTest do
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{FrameSeeds, RailsUser}
 
+  @external_resource "test/fixtures/family_pages/consented_map_en.json"
+  @now FrameSeeds.load_family("consented_map_en")["now"] |> DateTime.from_iso8601() |> elem(1)
   @endpoint DawarichWeb.Endpoint
   @path "/family/locations.json"
+
+  defp freeze_clock(conn), do: Plug.Conn.assign(conn, :now, @now)
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -18,7 +22,11 @@ defmodule DawarichWeb.FamilyLocationsTest do
   end
 
   defp locations(user),
-    do: RailsUser.signed_in(user.id) |> put_req_header("accept", "application/json") |> get(@path)
+    do:
+      RailsUser.signed_in(user.id)
+      |> freeze_clock()
+      |> put_req_header("accept", "application/json")
+      |> get(@path)
 
   test "family locations accepts verified browser session and returns private no store", ctx do
     conn = locations(ctx.owner)
@@ -31,7 +39,9 @@ defmodule DawarichWeb.FamilyLocationsTest do
   end
 
   test "family locations refuses guest no family and lapsed actors", ctx do
-    guest = build_conn() |> put_req_header("accept", "application/json") |> get(@path)
+    guest =
+      build_conn() |> freeze_clock() |> put_req_header("accept", "application/json") |> get(@path)
+
     assert guest.status == 401
     assert guest.resp_body == "[]"
     assert locations(ctx.outsider).status == 404
@@ -39,7 +49,7 @@ defmodule DawarichWeb.FamilyLocationsTest do
     on_exit(fn -> System.delete_env("SELF_HOSTED") end)
 
     Repo.query!("UPDATE families SET access_until = $1 WHERE id = 91001", [
-      ~N[2026-10-03 09:59:59]
+      DateTime.add(@now, -1) |> DateTime.to_naive()
     ])
 
     Repo.query!("UPDATE users SET plan = 1 WHERE id = $1", [ctx.owner.id])
@@ -77,7 +87,9 @@ defmodule DawarichWeb.FamilyLocationsTest do
   end
 
   test "family map HTML never contains credentials or coordinates", ctx do
-    html = RailsUser.signed_in(ctx.owner.id) |> get("/family") |> html_response(200)
+    html =
+      RailsUser.signed_in(ctx.owner.id) |> freeze_clock() |> get("/family") |> html_response(200)
+
     refute html =~ "a9fpl-fixture-"
     refute html =~ "51.3397"
     refute html =~ "12.3731"
@@ -98,6 +110,7 @@ defmodule DawarichWeb.FamilyLocationsTest do
 
     empty =
       RailsUser.signed_in(ctx.owner.id)
+      |> freeze_clock()
       |> get("/family")
       |> html_response(200)
       |> LazyHTML.from_document()
