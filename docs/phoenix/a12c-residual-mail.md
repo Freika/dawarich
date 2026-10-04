@@ -71,6 +71,15 @@ M-R4-trial lets trial-expired past the compatibility skip and fails with Unknown
 Both source changes are restored. Unsupported JSON/plain response formats reach SMTP before
 Rails returns 406; the native route must hand unsupported requests back before SMTP starts.
 
-Resume at P1 after R4's restored scoped tests and byte comparisons are green.
+P1 adds pure OTP-lock/test/location rendering and five templates, with shared neutral layouts
+used by existing ExploreFeatures and Wave2. Eleven basic corpus rows match decoded bodies,
+headers, locales and MIME parts. M-P1-escape removes requester escaping and fails the location
+HTML comparison; restored rendering passes with existing layout/recovery regression tests.
+Test-mail takes an explicit clock projection (local time, offset, zone and validity), obtained
+by its caller through existing Postgres time-zone helpers. No time-zone dependency is added.
+The MIME test helper handles absent multipart transfer headers and preserves RFC2047 spaces
+across adjacent encoded words. The production SMTP serializer is unchanged.
+
+Resume at P2 after P1's restored scoped tests are green.
 Native rendering, delivery workers, ownership wiring, test-mail HTTP,
 ED allocation and final C1–C5 gates are pending. Rails source/specs and dormant stubs are retained.
