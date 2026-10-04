@@ -22,7 +22,7 @@ defmodule Dawarich.Geocoding.ReversePlaceWorkerTest do
       log: false
     )
 
-    {:ok, "OK"} = Dawarich.Redis.cache_command(["FLUSHDB"])
+    clear_response_cache!()
     too_long = load!("place_name_too_long")
     stub_requests!(too_long["requests"])
 
