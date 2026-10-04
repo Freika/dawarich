@@ -186,6 +186,39 @@ defmodule Dawarich.UserData.RestorePlacesTest do
     assert [] == rows("SELECT command_type FROM job_outbox")
   end
 
+  test "restore place import parent must be owned and cannot block victim deletion", %{
+    c: c,
+    data: data
+  } do
+    rows(
+      "INSERT INTO users(id,email,created_at,updated_at) VALUES(988002,'parent-foreign@example.invalid',$1,$1)",
+      [c.context.now]
+    )
+
+    rows(
+      "INSERT INTO imports(id,user_id,name,created_at,updated_at) VALUES(988102,988002,'foreign parent',$1,$1),(988103,$2,'owned parent',$1,$1)",
+      [c.context.now, c.user_id]
+    )
+
+    place = hd(data["places"])
+
+    assert Places.call(ScratchRepo, c.user_id, [Map.put(place, "import_id", 988_102)], c.context) ==
+             1
+
+    assert [[nil]] == rows("SELECT import_id FROM places WHERE user_id=$1", [c.user_id])
+    refute Dawarich.Imports.DestroyLease.foreign?(ScratchRepo, 988_102, 988_002)
+
+    assert {:ok, :queued} ==
+             Dawarich.Imports.Destroy.enqueue(ScratchRepo, 988_002, 988_102, c.context)
+
+    owned = place |> Map.put("name", "owned parent place") |> Map.put("import_id", 988_103)
+    assert Places.call(ScratchRepo, c.user_id, [owned], c.context) == 1
+    assert [[988_103]] == rows("SELECT import_id FROM places WHERE name='owned parent place'")
+    orphan = place |> Map.put("name", "orphan parent place") |> Map.put("import_id", 999_999)
+    assert Places.call(ScratchRepo, c.user_id, [orphan], c.context) == 1
+    assert [[nil]] == rows("SELECT import_id FROM places WHERE name='orphan parent place'")
+  end
+
   test "restore unsupported or foreign tagging references do not attach", %{c: c, data: data} do
     assert Places.call(ScratchRepo, c.user_id, data["places"], c.context) == 1
     assert Tags.call(ScratchRepo, c.user_id, data["tags"], c.context) == 1
