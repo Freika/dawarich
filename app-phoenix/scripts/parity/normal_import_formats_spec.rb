@@ -8,6 +8,7 @@ require_relative 'normal_import_records_support'
 require_relative 'normal_import_semantic_support'
 require_relative 'normal_import_phone_support'
 require_relative 'normal_import_kml_support'
+require_relative 'normal_import_create_support'
 
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   include ActiveSupport::Testing::TimeHelpers
@@ -189,6 +190,43 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
           expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
           expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
           NormalImportFormatsSupport.write(name, result)
+        end
+      end
+    end
+  end
+
+  context 'Whole create' do
+    it 'records whole create and ZIP build failure effects' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.whole_create_cases.each do |options|
+          result = NormalImportFormatsSupport.capture_whole_create(options)
+          expect(result).to include('source_transition', 'parent', 'children', 'notifications', 'jobs', 'archive')
+          expect(result.fetch('source_transition')).to eq(options.fetch(:expected_source))
+          case options.fetch(:name)
+          when 'kmz_plain'
+            expect(result.fetch('children').map { |child| child.fetch('name') })
+              .to eq(['_source.kmz (from plain.kmz)', 'first.KML (from plain.kmz)', 'last.kml (from plain.kmz)'])
+          when 'kmz_wrapped'
+            expect(result.fetch('points').map { |point| point.fetch('lonlat') }).to eq(['POINT(12.4 51.3)'])
+            expect(result.fetch('kmz_leaf').fetch('name')).to eq('first.KML')
+          when 'zip_later_child_failure', 'zip_extractor_later_child_failure'
+            expect(result.fetch('parent').fetch('status')).to eq('failed')
+            expect(result.fetch('children').map { |child| child.fetch('name') })
+              .to eq(['existing-0.csv', 'existing-1.csv', 'existing-2.csv', 'first.csv (from limited.zip)'])
+            expect(result.fetch('children').last.fetch('file')).to include('bytes', 'filename', 'content_type')
+            expect(result.fetch('jobs').select { |job| job['type'] == 'Import::ProcessJob' }).to eq([])
+          when 'csv_duplicate'
+            expect(result.fetch('points')).to eq([])
+            expect(result.fetch('parent')).to include('raw_points' => 2, 'doubles' => 2, 'status' => 'completed')
+          when 'fit_failed_return'
+            expect(result.fetch('parent').fetch('status')).to eq('failed')
+          when 'v1_profile', 'v2_profile'
+            expect(result.fetch('jobs')).to eq([{ 'type' => 'Users::ImportDataJob', 'args' => [987_101] }])
+          when 'zip_known_preference'
+            expect(result.fetch('children').map { |child| child.fetch('source') })
+              .to eq(%w[google_records google_photos])
+          end
+          NormalImportFormatsSupport.write("whole_create/#{options.fetch(:name)}", result)
         end
       end
     end
