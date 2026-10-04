@@ -13,6 +13,33 @@ RSpec.describe 'RailsCommands::A8Handlers' do
       'attachment' => attachment.attributes.slice('id', 'name', 'record_type', 'record_id', 'blob_id') }
   end
 
+  it 'videos/shared_blob is answered and persisted as Rails answered it' do
+    state = JSON.parse(Rails.root.join('app-phoenix/test/fixtures/a8vv/videos/shared_blob.json').read)
+    graph = state.fetch('after')
+    actor = graph.fetch('user')
+    create(:user, id: actor.fetch('id'), email: actor.fetch('email'))
+    graph.fetch('active_storage_blobs').each { ActiveStorage::Blob.create!(_1) }
+    graph.fetch('route_videos').each { RouteVideo.create!(_1) }
+    graph.fetch('active_storage_attachments').each { ActiveStorage::Attachment.create!(_1) }
+    clear_enqueued_jobs
+    attachment = state.fetch('before').fetch('active_storage_attachments').first
+    payload = { 'user_id' => actor.fetch('id'), 'blob_id' => attachment.fetch('blob_id'),
+                'action' => 'purge_detached',
+                'attachment' => attachment.slice('id', 'name', 'record_type', 'record_id', 'blob_id') }
+
+    RailsCommands::Registry.handler('route_videos.attachment_job').call(payload)
+
+    expect(enqueued_jobs).to be_empty
+    graph.fetch('active_storage_blobs').each do |row|
+      expect(ActiveStorage::Blob.find(row.fetch('id')).attributes.slice(*row.keys)).to eq(
+        row.transform_values { _1.is_a?(String) && _1.match?(/\A\d{4}-\d{2}-\d{2}T/) ? Time.iso8601(_1) : _1 }
+      )
+    end
+    expect(ActiveStorage::Attachment.where(blob_id: attachment.fetch('blob_id')).pluck(:id)).to eq(
+      graph.fetch('active_storage_attachments').pluck('id')
+    )
+  end
+
   it 'attachment shim retains a blob referenced by another record' do
     first = create(:route_video, :with_file, user:)
     blob = first.file.blob

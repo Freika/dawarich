@@ -22,7 +22,7 @@ defmodule DawarichWeb.RouteVideoActions do
              repo,
              user,
              conn.assigns.api_params,
-             DateTime.utc_now(),
+             Map.get(conn.assigns, :now, DateTime.utc_now()),
              locale,
              Retention.policy(System.get_env())
            ) do
@@ -48,7 +48,12 @@ defmodule DawarichWeb.RouteVideoActions do
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
     id = conn.path_params["id"] |> String.to_integer()
 
-    case RouteVideos.destroy(Jobs.repo(), user.id, id, DateTime.utc_now()) do
+    case RouteVideos.destroy(
+           Jobs.repo(),
+           user.id,
+           id,
+           Map.get(conn.assigns, :now, DateTime.utc_now())
+         ) do
       {:ok, ^id} ->
         if conn.assigns.a8_format == :turbo_stream do
           stream(conn, 200, RouteVideoStreams.destroy(id))

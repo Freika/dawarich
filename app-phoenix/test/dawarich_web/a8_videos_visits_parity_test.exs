@@ -10,6 +10,27 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
   alias DawarichWeb.{RailsAuth, RailsCsrf, A8Request, Locale, RailsHeaders, VisitSettingsActions}
 
   @dir "test/fixtures/a8vv"
+
+  defmodule SaveFailureRepo do
+    defdelegate transaction(fun), to: Dawarich.ScratchRepo
+
+    def query!(sql, params, opts \\ []) do
+      if String.starts_with?(sql, "INSERT INTO route_videos"),
+        do: raise("synthetic save failure"),
+        else: Dawarich.ScratchRepo.query!(sql, params, opts)
+    end
+  end
+
+  defmodule CapFailureRepo do
+    defdelegate transaction(fun), to: Dawarich.ScratchRepo
+
+    def query!(sql, params, opts \\ []) do
+      if String.starts_with?(sql, "UPDATE route_videos SET status"),
+        do: raise("synthetic expiry status failure"),
+        else: Dawarich.ScratchRepo.query!(sql, params, opts)
+    end
+  end
+
   @names ~w(
     settings/defaults settings/partial_save settings/raw_zero settings/raw_negative
     settings/raw_nonnumeric settings/cooldown_nil settings/cooldown_recent
@@ -50,7 +71,12 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
       "TRUNCATE places,areas,tags,taggings,visits,place_visits,notes,tracks,track_segments,points,stats,route_videos RESTART IDENTITY CASCADE"
     )
 
-    previous = Map.new(~w(SELF_HOSTED JWT_SECRET_KEY TIME_ZONE), &{&1, System.get_env(&1)})
+    previous =
+      Map.new(
+        ~w(SELF_HOSTED JWT_SECRET_KEY TIME_ZONE VIDEO_MAX_PER_USER),
+        &{&1, System.get_env(&1)}
+      )
+
     System.put_env("JWT_SECRET_KEY", "phoenix-a5-jwt-fixture-secret-not-for-production")
     System.put_env("TIME_ZONE", "Europe/Berlin")
 
@@ -114,9 +140,37 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
     {"visits/bulk_cross_day_destroy", "always update day frame"}
   ]
 
-  for {name, mutation} <- @settings_cases ++ @visit_cases do
+  @video_cases [
+    {"videos/playable_card", "omit controls"},
+    {"videos/expired_card", "omit recipe attribute"},
+    {"videos/all_recipe_keys", "omit source"},
+    {"videos/untitled", "persist blank name"},
+    {"videos/unknown_recipe", "keep unknown recipe key"},
+    {"videos/unicode_recipe_65", "slice graphemes"},
+    {"videos/exact_ceiling", "reject inclusive ceiling"},
+    {"videos/wrong_mime", "permit text/plain"},
+    {"videos/over_ceiling", "omit byte ceiling"},
+    {"videos/invalid_signature", "accept fixture blob without verification"},
+    {"videos/pre_attach_error", "omit unattached purge"},
+    {"videos/post_commit_cap_error", "replay committed save"},
+    {"videos/cap_one", "expire newest"},
+    {"videos/cap_zero", "apply disabled cap"},
+    {"videos/destroy_html", "redirect 302"},
+    {"videos/destroy_stream", "replace instead of remove"},
+    {"videos/shared_blob",
+     "detach remaining shared reference; Rails shim guard has named RSpec proof"},
+    {"videos/stored_without_file", "render missing-file download"},
+    {"videos/aged_boundary", "inclusive age cutoff"},
+    {"videos/metadata_unidentified", "admit unidentified metadata"},
+    {"videos/metadata_preidentified", "admit unanalyzed metadata"},
+    {"videos/metadata_shared_preidentified", "reject shared identified blob"}
+  ]
+
+  for {name, mutation} <- @settings_cases ++ @visit_cases ++ @video_cases do
     @name name
-    @tag capture: name, mutation: "M-P1-#{name}: #{mutation}"
+    @tag capture: name,
+         mutation: "M-P1-#{name}: #{mutation}",
+         video: String.starts_with?(name, "videos/")
     test "#{@name} is answered and persisted as Rails answered it" do
       state = load(@name)
       repo = if page_case?(@name), do: Repo, else: ScratchRepo
@@ -134,12 +188,15 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
     do:
       name not in ~w(partial_save raw_zero raw_negative raw_nonnumeric redetect_allowed redetect_recent)
 
+  defp page_case?("videos/" <> name),
+    do: name in ~w(playable_card expired_card stored_without_file)
+
   defp page_case?(_name), do: false
 
   defp seed_state(state) do
     before = state["before"]
-    user = List.first(before["users"] || [])
-    rows = Map.merge(before["rows"] || %{}, Map.drop(before, ["users", "rows"]))
+    user = before["user"] || List.first(before["users"] || [])
+    rows = Map.merge(before["rows"] || %{}, Map.drop(before, ["user", "users", "rows"]))
     rows = Map.put(rows, "users", Enum.drop(before["users"] || [], 1))
     %{"user" => user, "rows" => rows}
   end
@@ -188,6 +245,214 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
   defp assert_case_graph(_name, _state, _user, _repo), do: :ok
 
   defp now(state), do: state["now"] |> DateTime.from_iso8601() |> elem(1)
+
+  defp check_response_and_rows("videos/" <> kind = name, state, user, repo) do
+    alias Dawarich.{MapGallery, RailsMessages}
+    alias Dawarich.RouteVideos.Retention
+    alias DawarichWeb.RouteVideoActions
+
+    req = state["request"]
+    graph = state["before"]
+
+    for table <- ~w(route_videos active_storage_attachments), req["method"] == "POST" do
+      repo.query!("SELECT setval(pg_get_serial_sequence($1, 'id'), $2, false)", [
+        table,
+        req["blob_id"] + 2
+      ])
+    end
+
+    html =
+      case req["operation"] do
+        operation when operation in ["card", "expire_and_purge", "retention"] ->
+          id = req["video_id"] || hd(graph["route_videos"])["id"]
+
+          case operation do
+            "expire_and_purge" ->
+              assert Retention.expire(repo, id, now(state)) == [id]
+
+            "retention" ->
+              assert Retention.run(repo, now(state), %{
+                       retention_days: req["days"],
+                       max_per_user: req["cap"]
+                     }) == :ok
+
+            _ ->
+              :ok
+          end
+
+          video = MapGallery.route_video(user.id, id, "Europe/Berlin", repo)
+
+          render_component(&DawarichWeb.MapGalleryCards.route_video_card/1,
+            video: video,
+            locale: "en"
+          )
+
+        nil ->
+          params = req["params"] || %{}
+
+          params =
+            if req["method"] == "POST" do
+              put_in(
+                params,
+                ["route_video", "file"],
+                if(kind == "invalid_signature",
+                  do: "invalid-signed-id",
+                  else: RailsMessages.blob_id(req["blob_id"])
+                )
+              )
+            else
+              params
+            end
+
+          state = Map.merge(state, Map.put(req, "params", params))
+          conn = write_conn(state, user)
+          action = if req["method"] == "POST", do: :create, else: :destroy
+
+          selected_repo =
+            case req["fault"] do
+              "pre_attach_error" -> SaveFailureRepo
+              "post_commit_cap_error" -> CapFailureRepo
+              _ -> repo
+            end
+
+          previous = Application.get_env(:dawarich, :jobs_repo)
+          Application.put_env(:dawarich, :jobs_repo, selected_repo)
+          on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, previous) end)
+
+          System.put_env(
+            "VIDEO_MAX_PER_USER",
+            if(kind in ["cap_one", "post_commit_cap_error"], do: "1", else: "0")
+          )
+
+          if kind in ["metadata_unidentified", "metadata_preidentified"] do
+            upstream = upstream!()
+
+            {{line, body}, result} =
+              forwarded(upstream, fn -> RouteVideoActions.call(conn, action) end)
+
+            assert line == "#{req["method"]} #{req["path"]} HTTP/1.1"
+            assert body == Plug.Conn.Query.encode(params)
+            assert result.status == 204
+            assert_video_rows(graph, repo)
+            assert repo.query!("SELECT kind,payload FROM phoenix.rails_commands").rows == []
+            nil
+          else
+            conn = RouteVideoActions.call(conn, action)
+            check_headers(conn, state)
+
+            if state["flash"] != %{},
+              do: assert(rails_session(conn)["flash"]["flashes"] == state["flash"])
+
+            conn.resp_body
+          end
+      end
+
+    if html do
+      normalized =
+        Regex.replace(
+          ~r{(/rails/active_storage/blobs/(?:redirect|proxy)/)[^/]+/},
+          html,
+          "\\1BLOB_SIGNED_ID/"
+        )
+
+      assert ParityHTML.first_difference(
+               ParityHTML.normalize(normalized),
+               ParityHTML.normalize(File.read!("#{@dir}/#{name}.html"))
+             ) == "equal"
+
+      oracle = File.read!("#{@dir}/#{name}.html")
+      selectors = "[data-controller], [data-action], [data-turbo-method]"
+      assert ParityHTML.stimulus(normalized, selectors) == ParityHTML.stimulus(oracle, selectors)
+      actual_streams = LazyHTML.from_fragment(normalized) |> LazyHTML.query("turbo-stream")
+      expected_streams = LazyHTML.from_fragment(oracle) |> LazyHTML.query("turbo-stream")
+
+      for attribute <- ~w(action target) do
+        assert LazyHTML.attribute(actual_streams, attribute) ==
+                 LazyHTML.attribute(expected_streams, attribute)
+      end
+
+      assert_video_rows(state["after"], repo)
+      assert_video_effects(state, user, repo)
+    end
+  end
+
+  defp assert_video_rows(graph, repo) do
+    rows = Map.drop(graph, ["user"])
+
+    rows =
+      Map.update!(rows, "active_storage_blobs", fn blobs ->
+        Enum.map(
+          blobs,
+          &Map.update!(&1, "metadata", fn metadata ->
+            if is_map(metadata), do: Jason.encode!(metadata), else: metadata
+          end)
+        )
+      end)
+
+    assert_rows(Map.put(rows, "users", [graph["user"]]), repo)
+
+    for table <- ~w(route_videos active_storage_blobs active_storage_attachments) do
+      assert repo.query!("SELECT id FROM #{table} ORDER BY id").rows ==
+               Enum.map(rows[table], &[&1["id"]])
+    end
+  end
+
+  defp assert_video_effects(state, user, repo) do
+    before = state["before"]["active_storage_attachments"]
+    after_ids = Enum.map(state["after"]["active_storage_attachments"], & &1["id"])
+    detached = Enum.reject(before, &(&1["id"] in after_ids))
+
+    expected =
+      Enum.map(detached, fn attachment ->
+        [
+          "route_videos.attachment_job",
+          %{
+            "user_id" => user.id,
+            "blob_id" => attachment["blob_id"],
+            "action" => "purge_detached",
+            "attachment" => Map.take(attachment, ~w(id name record_type record_id blob_id))
+          }
+        ]
+      end)
+
+    expected =
+      if expected == [] do
+        for %{"job" => "ActiveStorage::PurgeJob", "args" => [%{"_aj_globalid" => gid}]} <-
+              state["jobs"],
+            do: [
+              "route_videos.attachment_job",
+              %{
+                "user_id" => user.id,
+                "blob_id" => gid |> String.split("/") |> List.last() |> String.to_integer(),
+                "action" => "purge_unattached"
+              }
+            ]
+      else
+        jobs = state["request"]["queued"] || state["jobs"]
+
+        assert Enum.map(jobs, & &1["job"]) ==
+                 Enum.map(detached, fn _ -> "ActiveStorage::PurgeJob" end)
+
+        assert Enum.map(jobs, & &1["args"]) ==
+                 Enum.map(detached, fn attachment ->
+                   [
+                     %{
+                       "_aj_globalid" =>
+                         "gid://dawarich/ActiveStorage::Blob/#{attachment["blob_id"]}"
+                     }
+                   ]
+                 end)
+
+        expected
+      end
+
+    if repo == Repo do
+      assert expected == []
+    else
+      assert repo.query!("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id").rows ==
+               expected
+    end
+  end
 
   defp check_response_and_rows("visits/" <> _ = name, state, user, repo) do
     System.put_env("SELF_HOSTED", to_string(state["self_hosted"]))
