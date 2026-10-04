@@ -73,9 +73,11 @@ defmodule DawarichWeb.AchievementActions.Gate do
   def route(_, _), do: :handoff
 
   def snapshot(actor, action, route, params, context) do
+    context = pending(actor.id, action, context)
+
     with true <- settings?(actor.settings, context.repo),
          true <- input?(action, params),
-         {:ok, state} <- state(actor.id, action, route, context.repo) do
+         {:ok, state} <- snapshot_state(actor.id, action, route, context) do
       {:ok,
        Map.merge(context, route) |> Map.put(:state, state) |> Map.put(:settings, actor.settings)}
     else
@@ -99,7 +101,25 @@ defmodule DawarichWeb.AchievementActions.Gate do
   defp input?(:sharing, params),
     do: not Map.has_key?(params, "enabled") or params["enabled"] not in [nil, ""]
 
+  defp input?(action, params) when action in [:next, :seen],
+    do: is_nil(params["claim_token"]) or is_binary(params["claim_token"])
+
   defp input?(_, _), do: true
+
+  defp pending(id, :next, context) do
+    [[pending]] =
+      query(
+        context.repo,
+        "SELECT EXISTS(SELECT 1 FROM achievement_unlock_events WHERE user_id=$1 AND seen_at IS NULL)",
+        [id]
+      )
+
+    Map.put(context, :pending, pending)
+  end
+
+  defp pending(_, _, context), do: context
+  defp snapshot_state(_, :next, _, %{pending: false}), do: {:ok, %{}}
+  defp snapshot_state(id, action, route, context), do: state(id, action, route, context.repo)
 
   defp state(id, :sharing, %{key: key}, repo) do
     case query(
