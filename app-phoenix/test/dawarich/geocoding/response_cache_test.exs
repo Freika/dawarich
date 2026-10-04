@@ -17,7 +17,7 @@ defmodule Dawarich.Geocoding.ResponseCacheTest do
     body = "{\"features\":[]}\n"
     TtlCache.put(@key, :unrelated, 60_000)
     before = System.monotonic_time(:millisecond)
-    ResponseCache.put(@key, body)
+    assert ResponseCache.put(@key, body) == :ok
     after_put = System.monotonic_time(:millisecond)
 
     assert ResponseCache.get(@key) == {:ok, body}

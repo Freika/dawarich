@@ -12,5 +12,8 @@ defmodule Dawarich.Geocoding.ResponseCache do
     end
   end
 
-  def put(key, body), do: TtlCache.put({__MODULE__, key}, body, @ttl_ms)
+  def put(key, body) do
+    TtlCache.put({__MODULE__, key}, body, @ttl_ms)
+    :ok
+  end
 end
