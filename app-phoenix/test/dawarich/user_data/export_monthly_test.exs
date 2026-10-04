@@ -22,6 +22,50 @@ defmodule Dawarich.UserData.ExportMonthlyTest do
   end
 
   @tag :tmp_dir
+  test "backup mixed-owner associations omit foreign names and coordinates", %{tmp_dir: dir} do
+    c = UserDataSeeds.seed!("UTC", ScratchRepo)
+
+    for {table, id} <- [{"imports", 988_101}, {"visits", 988_801}, {"places", 988_501}] do
+      rows(
+        "INSERT INTO #{table} SELECT (jsonb_populate_record(NULL::#{table},to_jsonb(t)||jsonb_build_object('id',id+100000,'user_id',988002,'name','foreign synthetic','latitude',63.123456,'longitude',24.654321,'lonlat','POINT(24.654321 63.123456)'))).* FROM #{table} t WHERE id=$1",
+        [id]
+      )
+    end
+
+    rows("UPDATE points SET import_id=1088101,visit_id=1088801 WHERE user_id=$1", [c.user_id])
+    rows("UPDATE visits SET place_id=1088501 WHERE user_id=$1", [c.user_id])
+    rows("UPDATE taggings SET taggable_id=1088501 WHERE tag_id=988701")
+    expected = UserDataSeeds.entries("export_UTC")
+
+    for {module, omitted} <- [
+          {Points, ~w(import_reference visit_reference)},
+          {Visits, ~w(place_reference)},
+          {Dawarich.UserData.Export.Taggings,
+           ~w(taggable_name taggable_latitude taggable_longitude)}
+        ],
+        entry <- module.write(ScratchRepo, c.user_id, dir, c.context) do
+      bytes = File.read!(entry.path)
+      refute bytes =~ "foreign synthetic"
+      refute bytes =~ "63.123456"
+      refute bytes =~ "24.654321"
+
+      decode = fn bytes ->
+        bytes |> String.split("\n", trim: true) |> Enum.map(&Jason.decode!/1)
+      end
+
+      wanted = Enum.map(decode.(expected[entry.name]), &Map.drop(&1, omitted))
+
+      actual =
+        Enum.map(
+          decode.(bytes),
+          &Map.reject(&1, fn {key, value} -> key in omitted and is_nil(value) end)
+        )
+
+      assert actual == wanted
+    end
+  end
+
+  @tag :tmp_dir
   test "backup month boundaries references and JSON numbers match Rails", %{tmp_dir: dir} do
     c = UserDataSeeds.seed!("UTC", ScratchRepo)
 

@@ -37,7 +37,7 @@ defmodule Dawarich.UserData.Export.Points do
         batch =
           RailsTime.with_zone(repo, "UTC", fn ->
             repo.query!(
-              "SELECT p.id,#{select} FROM points p LEFT JOIN point_sources ps ON ps.id=p.source_id LEFT JOIN imports i ON i.id=p.import_id LEFT JOIN countries c ON c.id=p.country_id LEFT JOIN visits v ON v.id=p.visit_id WHERE p.user_id=$1 AND p.id>$2 ORDER BY p.id LIMIT 1000",
+              "SELECT p.id,#{select} FROM points p LEFT JOIN point_sources ps ON ps.id=p.source_id LEFT JOIN imports i ON i.id=p.import_id AND i.user_id=$1 LEFT JOIN countries c ON c.id=p.country_id LEFT JOIN visits v ON v.id=p.visit_id AND v.user_id=$1 WHERE p.user_id=$1 AND p.id>$2 ORDER BY p.id LIMIT 1000",
               [user, cursor]
             ).rows
           end)

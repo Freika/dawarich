@@ -33,7 +33,7 @@ defmodule Dawarich.UserData.Export.Taggings do
           {"updated_at", updated}
         ]
 
-        pairs = base ++ taggable(repo, type, id)
+        pairs = base ++ taggable(repo, user, type, id)
         :ok = IO.binwrite(io, [Serializer.encode(%Jason.OrderedObject{values: pairs}), "\n"])
       end)
     end)
@@ -41,7 +41,7 @@ defmodule Dawarich.UserData.Export.Taggings do
     [%{name: "taggings.jsonl", path: path, count: length(rows), attachments: []}]
   end
 
-  defp taggable(repo, type, id) do
+  defp taggable(repo, user, type, id) do
     table = Map.fetch!(@tables, type)
     columns = Serializer.columns(repo, table, [])
     names = Enum.map(columns, &elem(&1, 0))
@@ -51,7 +51,7 @@ defmodule Dawarich.UserData.Export.Taggings do
         if name in names, do: ~s("#{name}"), else: "NULL"
       end)
 
-    case repo.query!("SELECT #{select} FROM #{table} WHERE id=$1", [id]).rows do
+    case repo.query!("SELECT #{select} FROM #{table} WHERE id=$1 AND user_id=$2", [id, user]).rows do
       [] ->
         []
 

@@ -14,8 +14,8 @@ defmodule Dawarich.UserData.Export.Visits do
       fn id, pairs ->
         rows =
           repo.query!(
-            "SELECT p.name,COALESCE(ST_Y(p.lonlat::geometry),p.latitude::float8,0.0),COALESCE(ST_X(p.lonlat::geometry),p.longitude::float8,0.0),p.source FROM visits v JOIN places p ON p.id=v.place_id WHERE v.id=$1",
-            [id]
+            "SELECT p.name,COALESCE(ST_Y(p.lonlat::geometry),p.latitude::float8,0.0),COALESCE(ST_X(p.lonlat::geometry),p.longitude::float8,0.0),p.source FROM visits v JOIN places p ON p.id=v.place_id AND p.user_id=$2 WHERE v.id=$1 AND v.user_id=$2",
+            [id, user]
           ).rows
 
         ref =
