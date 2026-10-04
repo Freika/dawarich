@@ -153,13 +153,11 @@ defmodule DawarichWeb.A8GateEndpointTest do
              ["http://www.example.com/map/v2?panel=timeline&date=today&status=confirmed"]
   end
 
-  test "out-of-scope API and storage requests have unchanged route ownership", ctx do
+  test "API and storage requests retain their assigned route ownership", ctx do
     upstream = upstream!()
 
     for {method, path} <- [
           {:get, "/api/v1/route_videos"},
-          {:get, "/api/v1/visits"},
-          {:patch, "/api/v1/visits/42"},
           {:post, "/rails/active_storage/direct_uploads"},
           {:get, "/rails/active_storage/blobs/redirect/synthetic/movie.mp4"}
         ] do
@@ -171,6 +169,18 @@ defmodule DawarichWeb.A8GateEndpointTest do
              ) == :error
 
       replay(ctx, upstream, method, path, "")
+    end
+
+    for {method, path, action} <- [
+          {"GET", "/api/v1/visits", :index},
+          {"PATCH", "/api/v1/visits/42", :update}
+        ] do
+      assert %{
+               plug: DawarichWeb.Api.VisitsController,
+               plug_opts: ^action,
+               pipe_through: [:api_visits],
+               slice: :api_visits
+             } = Phoenix.Router.route_info(DawarichWeb.Router, method, path, "www.example.com")
     end
 
     route =
