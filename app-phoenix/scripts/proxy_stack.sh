@@ -6,6 +6,10 @@ ENV_FILE="${ENV_FILE:-$root/../../.env}"
 PORT="${PORT:-3120}"
 STAND_DATABASE_NAME="${STAND_DATABASE_NAME:-${DATABASE_NAME:?DATABASE_NAME or STAND_DATABASE_NAME must name an isolated stand database}}"
 REDIS_PORT="${REDIS_PORT:-$((PORT + 4000))}"
+E2E_SMTP_PORT="${E2E_SMTP_PORT:-1025}"
+SMTP_SERVER="${SMTP_SERVER:-127.0.0.1}"
+MAILPIT_API_PORT="${MAILPIT_API_PORT:-8025}"
+MAILPIT_NAME="${MAILPIT_NAME:-e2e-mailpit}"
 rel="$root/app-phoenix/_build/prod/rel/dawarich/bin/dawarich"
 pidfile="$root/tmp/pids/proxy_stack.pid"
 log="$root/log/proxy_stack.log"
@@ -16,7 +20,10 @@ stack() {
   env $(grep -E '^DATABASE_(PORT|USERNAME|PASSWORD)=' "$ENV_FILE" | xargs) \
     DATABASE_HOST=127.0.0.1 RAILS_ENV=test \
     DATABASE_NAME="$STAND_DATABASE_NAME" REDIS_URL="redis://127.0.0.1:$REDIS_PORT" SELF_HOSTED="${SELF_HOSTED:-true}" \
-    E2E_DEMO_DATA="$E2E_REPO/fixtures/demo_data.json" SMTP_FROM=e2e@dawarich.test E2E_SMTP_PORT=1025 SMTP_SERVER=127.0.0.1 \
+    E2E_DEMO_DATA="$E2E_REPO/fixtures/demo_data.json" SMTP_FROM=e2e@dawarich.test \
+    E2E_PROXY_STACK=1 E2E_SMTP_DELIVERY="${E2E_SMTP_DELIVERY:-0}" \
+    E2E_SMTP_PORT="$E2E_SMTP_PORT" SMTP_SERVER="$SMTP_SERVER" SMTP_PORT="$E2E_SMTP_PORT" \
+    SMTP_AUTHENTICATION=none SMTP_SSL=false SMTP_STARTTLS=false \
     OTP_ENCRYPTION_PRIMARY_KEY=e2e-otp-primary-key-not-a-secret \
     OTP_ENCRYPTION_DETERMINISTIC_KEY=e2e-otp-deterministic-key-not-a-secret \
     OTP_ENCRYPTION_KEY_DERIVATION_SALT=e2e-otp-derivation-salt-not-a-secret \
@@ -61,8 +68,8 @@ touch "$log" "$sidekiq_log"
 log_from=$(($(wc -c <"$log") + 1))
 redis-cli -p "$REDIS_PORT" ping >/dev/null 2>&1 \
   || redis-server --port "$REDIS_PORT" --bind 127.0.0.1 --save "" --appendonly no --daemonize yes --dir "$root/tmp"
-curl -fsS -m 2 http://127.0.0.1:8025/api/v1/info >/dev/null 2>&1 \
-  || docker run -d --rm --name e2e-mailpit -p 127.0.0.1:1025:1025 -p 127.0.0.1:8025:8025 axllent/mailpit >/dev/null
+curl -fsS -m 2 "http://127.0.0.1:$MAILPIT_API_PORT/api/v1/info" >/dev/null 2>&1 \
+  || docker run -d --rm --name "$MAILPIT_NAME" -p "127.0.0.1:$E2E_SMTP_PORT:1025" -p "127.0.0.1:$MAILPIT_API_PORT:8025" axllent/mailpit >/dev/null
 
 cd "$root"
 stack bin/rails db:prepare >/dev/null

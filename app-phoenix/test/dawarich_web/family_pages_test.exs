@@ -8,7 +8,11 @@ defmodule DawarichWeb.FamilyPagesTest do
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{FrameSeeds, RailsUser}
 
+  @external_resource "test/fixtures/family_pages/owner_en.json"
+  @now FrameSeeds.load_family("owner_en")["now"] |> DateTime.from_iso8601() |> elem(1)
   @endpoint DawarichWeb.Endpoint
+
+  defp freeze_clock(conn), do: Plug.Conn.assign(conn, :now, @now)
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -22,7 +26,8 @@ defmodule DawarichWeb.FamilyPagesTest do
     %{owner: owner, member: Accounts.get(90102), outsider: Accounts.get(90103)}
   end
 
-  defp document(user, path), do: RailsUser.signed_in(user.id) |> get(path) |> html_response(200)
+  defp document(user, path),
+    do: RailsUser.signed_in(user.id) |> freeze_clock() |> get(path) |> html_response(200)
 
   defp expect_element(html, selector, expected \\ true) do
     found = html |> LazyHTML.from_document() |> LazyHTML.query(selector) |> Enum.any?()
@@ -91,7 +96,7 @@ defmodule DawarichWeb.FamilyPagesTest do
     assert params["utm_campaign"] == "family_upgrade"
 
     Repo.query!("UPDATE families SET access_until = $1 WHERE id = 91001", [
-      ~N[2026-10-03 09:59:59]
+      DateTime.add(@now, -1) |> DateTime.to_naive()
     ])
 
     Repo.query!("UPDATE users SET plan = 1 WHERE id = $1", [ctx.owner.id])
@@ -108,7 +113,7 @@ defmodule DawarichWeb.FamilyPagesTest do
     expect_element(edit, "form[action='/family.91001'] input[name='_method'][value='patch']")
     expect_element(edit, "input[name='family[name]'][value='Leipzig Fixture Family']")
     expect_element(edit, "a[href='/family'][data-turbo-method='delete'][data-turbo-confirm]")
-    conn = RailsUser.signed_in(ctx.member.id) |> get("/family/edit")
+    conn = RailsUser.signed_in(ctx.member.id) |> freeze_clock() |> get("/family/edit")
     assert conn.status == 303
     assert redirected_to(conn, 303) == "http://www.example.com/"
 
@@ -121,6 +126,7 @@ defmodule DawarichWeb.FamilyPagesTest do
 
     returned =
       RailsUser.signed_in(ctx.member.id)
+      |> freeze_clock()
       |> put_req_header("referer", "http://www.example.com/family")
       |> get("/family/edit")
 
@@ -142,7 +148,9 @@ defmodule DawarichWeb.FamilyPagesTest do
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
     for path <- ~w(/family /family/new /family/edit) do
-      response = Task.async(fn -> RailsUser.signed_in(ctx.owner.id) |> get(path) end)
+      response =
+        Task.async(fn -> RailsUser.signed_in(ctx.owner.id) |> freeze_clock() |> get(path) end)
+
       socket = accept(upstream)
       {head, _rest} = read_head(socket)
       assert request_line(head) == "GET #{path} HTTP/1.1"
