@@ -56,7 +56,12 @@ defmodule Dawarich.VisitsApi.Merge do
     {:ok, new} = Effects.load(repo, base.user_id, base.id)
     Effects.changed(repo, base, new, now)
     ids = Enum.map(rest, & &1.id)
-    repo.query!("UPDATE points SET visit_id=$1 WHERE visit_id=ANY($2)", [base.id, ids])
+
+    repo.query!(
+      "UPDATE points SET visit_id=$1,lock_version=lock_version+1 WHERE visit_id=ANY($2)",
+      [base.id, ids]
+    )
+
     repo.query!("DELETE FROM place_visits WHERE visit_id=ANY($1)", [ids])
 
     repo.query!("DELETE FROM notes WHERE attachable_type='Visit' AND attachable_id=ANY($1)", [ids])

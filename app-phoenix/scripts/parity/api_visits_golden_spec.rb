@@ -29,6 +29,7 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
     oracle = ApiVisitsGoldenOracle
     cases = oracle::CASES.map do |entry|
       kase = { method: :get, auth: :bearer, expect: :own, env: {}, content: oracle::JSON_TYPE }.merge(entry)
+      kase[:env]['STORE_GEODATA'] = kase[:store_geodata].to_s if kase.key?(:store_geodata)
       result = places_record(kase, oracle:, strict: true)
       status = result.dig('response', 'status')
       expect(status).to eq(entry.fetch(:status, 200)), "#{entry[:name]}: HTTP#{status}"

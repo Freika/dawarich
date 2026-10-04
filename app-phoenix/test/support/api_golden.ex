@@ -15,8 +15,8 @@ defmodule Dawarich.Test.ApiGolden do
       else: rails(kase, client, upstream)
   end
 
-  def insert!(table, row) do
-    Dawarich.Repo.query!(
+  def insert!(table, row, repo \\ Dawarich.Repo) do
+    repo.query!(
       "INSERT INTO #{table} SELECT * FROM json_populate_record(NULL::#{table}, $1::text::json)",
       [exact_json(row)]
     )

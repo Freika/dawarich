@@ -137,7 +137,7 @@ defmodule Dawarich.VisitsApi.ReadTest do
     assert hd(maps)["started_at"] == "2026-09-01T14:00:00.000+02:00"
 
     assert maps |> Enum.at(1) |> Map.fetch!("place") ==
-             {:object, [{"latitude", 52.6}, {"longitude", 13.6}, {"id", nil}]}
+             {:object, [{"latitude", "52.6"}, {"longitude", "13.6"}, {"id", nil}]}
 
     assert maps |> Enum.at(3) |> Map.fetch!("place") ==
              {:object, [{"latitude", nil}, {"longitude", nil}, {"id", nil}]}

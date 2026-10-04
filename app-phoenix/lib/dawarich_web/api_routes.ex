@@ -3,6 +3,37 @@ defmodule DawarichWeb.ApiRoutes do
 
   defmacro api_routes do
     quote do
+      pipeline :api_visits do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug :method_override_to_rails
+        plug DawarichWeb.Api.Body
+        plug DawarichWeb.Api.Auth, require_active: false
+      end
+
+      scope "/api/v1", DawarichWeb.Api do
+        pipe_through :api_visits
+        post "/visits/merge", VisitsController, :merge, metadata: %{slice: :api_visits}
+
+        post "/visits/bulk_update", VisitsController, :bulk_update,
+          metadata: %{slice: :api_visits}
+
+        post "/visits/batch", VisitsController, :batch, metadata: %{slice: :api_visits}
+        get "/visits", VisitsController, :index, metadata: %{slice: :api_visits}
+        post "/visits", VisitsController, :create, metadata: %{slice: :api_visits}
+        get "/visits/:id", VisitsController, :show, metadata: %{slice: :api_visits}
+        patch "/visits/:id", VisitsController, :update, metadata: %{slice: :api_visits}
+        put "/visits/:id", VisitsController, :update, metadata: %{slice: :api_visits}
+        delete "/visits/:id", VisitsController, :destroy, metadata: %{slice: :api_visits}
+
+        get "/visits/:id/possible_places", VisitsController, :possible_places,
+          metadata: %{slice: :api_visits}
+
+        post "/visits/:id/select_place", VisitsController, :select_place,
+          metadata: %{slice: :api_visits}
+      end
+
       pipeline :api_notes do
         plug :put_api_tag, "api"
         plug DawarichWeb.HostAuthorization

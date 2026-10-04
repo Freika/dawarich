@@ -10,17 +10,17 @@ defmodule Dawarich.VisitsApi.Read do
   @bounds ~w(sw_lat sw_lng ne_lat ne_lng)
   @calendar_words ~w(jan january feb february mar march apr april may jun june jul july aug august sep sept september oct october nov november dec december mon monday tue tues tuesday wed wednesday thu thur thurs thursday fri friday sat saturday sun sunday am pm ut utc gmt est edt cst cdt mst mdt pst pdt cet cest eet eest wet west bst ist jst hst akst akdt nzst nzdt now today tomorrow yesterday)
 
-  def index(owner, params, zone) do
-    RailsTime.with_zone(zone, fn ->
+  def index(owner, params, zone, repo \\ Repo) do
+    RailsTime.with_zone(repo, zone, fn ->
       box? = params["selection"] == "true" and Enum.all?(@bounds, &Ruby.present?(params[&1]))
 
-      with {:ok, from} <- time(params["start_at"], box?),
-           {:ok, to} <- time(params["end_at"], box?),
+      with {:ok, from} <- time(repo, params["start_at"], box?),
+           {:ok, to} <- time(repo, params["end_at"], box?),
            {:ok, where, args} <- area(params, box?, @active, [owner]),
            {where, args} = window(where, args, from, to),
-           {:ok, tail, headers} <- page(params, where, args) do
+           {:ok, tail, headers} <- page(repo, params, where, args) do
         order = if box?, do: " DESC", else: " ASC"
-        rows = Payload.rows(where, args, " ORDER BY v.started_at" <> order <> tail)
+        rows = Payload.rows(where, args, " ORDER BY v.started_at" <> order <> tail, repo)
         {:ok, Enum.map(rows, &Payload.term/1), headers}
       end
     end)
@@ -76,7 +76,7 @@ defmodule Dawarich.VisitsApi.Read do
     end
   end
 
-  defp time(value, optional?) do
+  defp time(repo, value, optional?) do
     cond do
       Ruby.blank?(value) ->
         if optional?, do: {:ok, nil}, else: invalid_time()
@@ -88,7 +88,7 @@ defmodule Dawarich.VisitsApi.Read do
       true ->
         case Params.timestamp(value) do
           {:ok, {:text, text}} ->
-            [[at]] = Repo.query!("SELECT $1::text::timestamptz AT TIME ZONE 'UTC'", [text]).rows
+            [[at]] = repo.query!("SELECT $1::text::timestamptz AT TIME ZONE 'UTC'", [text]).rows
             {:ok, at}
 
           _ ->
@@ -125,7 +125,7 @@ defmodule Dawarich.VisitsApi.Read do
     end
   end
 
-  defp page(params, where, args) do
+  defp page(repo, params, where, args) do
     if Ruby.blank?(params["page"]) do
       {:ok, "", []}
     else
@@ -134,7 +134,7 @@ defmodule Dawarich.VisitsApi.Read do
            true <- per > 0 do
         page = max(page, 1)
         per = min(per, 500)
-        total = Payload.count(where, args)
+        total = Payload.count(where, args, repo)
 
         headers = [
           {"x-current-page", to_string(page)},
