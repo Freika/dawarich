@@ -206,6 +206,19 @@ defmodule Dawarich.StateTest do
     assert rows("SELECT count(*) FROM phoenix.registration_setting") == [[1]]
   end
 
+  test "stored nil differs from an absent registration default" do
+    assert State.registration_enabled(ScratchRepo, true) == true
+    assert State.registration_enabled(ScratchRepo, false) == false
+    assert State.put_registration_enabled(ScratchRepo, nil) == :ok
+    assert State.registration_enabled(ScratchRepo, true) == nil
+    assert State.registration_enabled(ScratchRepo, false) == nil
+    assert State.put_registration_enabled(ScratchRepo, false) == :ok
+    assert State.registration_enabled(ScratchRepo, true) == false
+    assert State.put_registration_enabled(ScratchRepo, true) == :ok
+    assert State.registration_enabled(ScratchRepo, false) == true
+    assert rows("SELECT count(*) FROM phoenix.registration_setting") == [[1]]
+  end
+
   @claim_all_like "INSERT INTO phoenix.once_claims AS c (key, expires_at)%unnest%"
 
   test "claim_all takes each free or expired key once and returns exactly the keys it took" do

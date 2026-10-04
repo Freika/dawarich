@@ -11,7 +11,7 @@ module PhoenixTables
   ONCE_CLAIMS = 'CREATE TABLE IF NOT EXISTS phoenix.once_claims ' \
                 '(key text PRIMARY KEY, expires_at timestamptz NOT NULL)'
   REGISTRATION_SETTING = 'CREATE TABLE IF NOT EXISTS phoenix.registration_setting ' \
-                         '(id boolean PRIMARY KEY DEFAULT true CHECK (id), enabled boolean NOT NULL, ' \
+                         '(id boolean PRIMARY KEY DEFAULT true CHECK (id), enabled boolean, ' \
                          'updated_at timestamptz NOT NULL DEFAULT statement_timestamp())'
   ACHIEVEMENT_CHECKS = 'CREATE TABLE IF NOT EXISTS phoenix.achievement_checks (user_id bigint PRIMARY KEY, ' \
                        'oldest_timestamp bigint NOT NULL, revision bigint NOT NULL, expires_at timestamptz NOT NULL)'
