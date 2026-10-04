@@ -65,10 +65,60 @@ class Tracks::BackfillState
 
   def self.connection = ActiveRecord::Base.connection
 
+  def self.for_execution(user_id, cycle_id: nil, time_zone: nil)
+    new(user_id, []).send(:execution_range, cycle_id, time_zone)
+  end
+
+  def self.rearm(range)
+    new(range.fetch('user_id'), []).send(:rearm_cycle, range)
+  end
+
   private
 
   def range_key = "track_backfill_range:user:#{@user_id}"
   def schedule_key = "track_backfill:user:#{@user_id}"
+
+  def rearm_cycle(failed)
+    ActiveRecord::Base.transaction do
+      owner = JobOwnership.lock_owner('command:tracks.backfill')
+      statement = 'SELECT * FROM phoenix.track_backfill_ranges WHERE user_id = ? FOR UPDATE'
+      current = self.class.connection.select_one(ActiveRecord::Base.sanitize_sql_array([statement, @user_id]))
+      if current && current.fetch('cycle_id') == failed.fetch('cycle_id')
+        statement = 'UPDATE phoenix.track_backfill_ranges SET due_at = ?, scheduled = true, ' \
+                    'expires_at = GREATEST(expires_at, ?), updated_at = ? ' \
+                    'WHERE user_id = ? AND cycle_id = ?::uuid RETURNING *'
+        row = self.class.connection.select_one(ActiveRecord::Base.sanitize_sql_array(
+                                                 [statement, Time.current + 1.minute, Time.current + 6.hours,
+                                                  Time.current, @user_id, failed.fetch('cycle_id')]
+                                               ))
+        publish(row, owner)
+      else
+        Time.use_zone(failed.fetch('time_zone')) do
+          self.class.new(@user_id, failed.values_at('earliest_timestamp', 'latest_timestamp')).call
+        end
+      end
+    end
+  end
+
+  def execution_range(cycle_id, time_zone)
+    if cycle_id.nil?
+      snapshot = Sidekiq.redis { _1.zrange(range_key, 0, -1) }
+      if snapshot.present?
+        Time.use_zone(time_zone || Time.zone.name) do
+          self.class.accumulate(@user_id, snapshot.map(&:to_i), SecureRandom.uuid, Time.current)
+        end
+        remove_legacy_after_commit(snapshot)
+      end
+    end
+    statement = 'SELECT * FROM phoenix.track_backfill_ranges WHERE user_id = ?'
+    binds = [@user_id]
+    if cycle_id
+      statement += ' AND cycle_id = ?::uuid'
+      binds << cycle_id
+    end
+    row = self.class.connection.select_one(ActiveRecord::Base.sanitize_sql_array(["#{statement} FOR UPDATE", *binds]))
+    row if row && row.fetch('expires_at') > Time.current
+  end
 
   def consume
     snapshot = Sidekiq.redis { _1.zrange(range_key, 0, -1) }
@@ -92,7 +142,9 @@ class Tracks::BackfillState
     else
       ActiveRecord.after_all_transactions_commit do
         job = Time.use_zone(range.fetch('time_zone')) do
-          Tracks::BackfillGenerationJob.set(wait_until: range.fetch('due_at')).perform_later(@user_id)
+          Tracks::BackfillGenerationJob.set(wait_until: range.fetch('due_at')).perform_later(
+            @user_id, cycle_id: range.fetch('cycle_id'), time_zone: range.fetch('time_zone')
+          )
         end
         raise IOError, 'backfill enqueue aborted' unless job
       rescue StandardError

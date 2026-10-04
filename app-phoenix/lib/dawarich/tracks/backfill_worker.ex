@@ -23,12 +23,36 @@ defmodule Dawarich.Tracks.BackfillWorker do
   def run(repo, oban, args, opts \\ []) do
     case repo.transaction(fn -> consume(repo, oban, args, opts) end) do
       {:ok, :ok} -> :ok
-      {:error, _} -> {:snooze, 60}
+      {:error, _} -> rearm(repo, args, opts)
     end
   rescue
     error ->
       Logger.warning("Backfill range publication failed: #{inspect(error.__struct__)}")
-      {:snooze, 60}
+      rearm(repo, args, opts)
+  end
+
+  defp rearm(repo, args, opts) do
+    now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
+
+    {:ok, _} =
+      repo.transaction(fn ->
+        Ownership.lock(repo, "command:tracks.generate_range")
+
+        repo.query!(
+          "UPDATE phoenix.track_backfill_ranges SET due_at = $3, expires_at = GREATEST(expires_at, $4), " <>
+            "updated_at = $5 WHERE user_id = $1 AND cycle_id = $2",
+          [
+            args["user_id"],
+            Ecto.UUID.dump!(args["cycle_id"]),
+            DateTime.add(now, 60),
+            DateTime.add(now, 21_600),
+            now
+          ],
+          log: false
+        )
+      end)
+
+    {:snooze, 60}
   end
 
   defp consume(repo, oban, %{"user_id" => user_id, "cycle_id" => cycle}, opts) do

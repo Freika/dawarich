@@ -82,6 +82,15 @@ defmodule Dawarich.Tracks.BackfillWorkerTest do
       refute Processed.done?(ScratchRepo, args["cycle_id"])
       assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
       assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+      later = DateTime.add(@now, 120)
+
+      assert BackfillWorker.run(ScratchRepo, __MODULE__, args, now: later, hook: fail) ==
+               {:snooze, 60}
+
+      assert rows(
+               "SELECT cycle_id::text, expires_at, due_at FROM phoenix.track_backfill_ranges WHERE user_id = 1"
+             ) == [[args["cycle_id"], DateTime.add(later, 21_600), DateTime.add(later, 60)]]
+
       assert BackfillWorker.run(ScratchRepo, __MODULE__, args, now: @now) == :ok
       assert BackfillWorker.run(ScratchRepo, __MODULE__, args, now: @now) == :ok
 

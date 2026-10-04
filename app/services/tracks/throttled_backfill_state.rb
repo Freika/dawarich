@@ -36,11 +36,12 @@ class Tracks::ThrottledBackfillState
     connection.select_one(ActiveRecord::Base.sanitize_sql_array([UPSERT, *binds]))
   end
 
-  def initialize(user_id, cursor = nil, walk_id: nil, time_zone: nil)
+  def initialize(user_id, cursor = nil, walk_id: nil, time_zone: nil, event_id: nil)
     @user_id = user_id
     @cursor = cursor
     @walk_id = walk_id
     @zone = time_zone || Time.zone.name
+    @legacy_event_id = event_id if walk_id.nil?
   end
 
   def schedule
@@ -65,6 +66,18 @@ class Tracks::ThrottledBackfillState
     legacy = snapshot
     select_step(legacy)
     start_step
+  end
+
+  def forward(event_id)
+    legacy = snapshot
+    adopt(legacy, 'walking', reclaim: false) unless @walk_id
+    adopt_cursor unless @walk_id
+    walk = current
+    remove_after_commit(legacy) if legacy.present?
+    return unless walk
+
+    JobCommands.forward(TYPE, walk.slice('user_id', 'walk_id', 'cursor_timestamp', 'time_zone'),
+                        event_id:, aggregate_id: @user_id, producer: self.class.name)
   end
 
   private
@@ -96,12 +109,18 @@ class Tracks::ThrottledBackfillState
 
       @walk_id = walk.fetch('walk_id')
       user = User.find_by(id: @user_id)
-      return release unless user
+      unless user
+        mark_legacy_event
+        return release
+      end
       return unless walk.fetch('state') == 'walking'
       return if walk.fetch('step_event_id')
 
       maximum = user.points.where(timestamp: ...(@cursor || Time.current.to_i)).maximum(:timestamp)
-      return finish if maximum.nil?
+      if maximum.nil?
+        mark_legacy_event
+        return finish
+      end
 
       connection.execute(sql('UPDATE phoenix.track_backfill_walks SET step_event_id = ?::uuid, ' \
                              'selected_start_timestamp = ?, selected_end_timestamp = ? ' \
@@ -118,6 +137,8 @@ class Tracks::ThrottledBackfillState
       return unless walk&.fetch('step_event_id')
       return release unless (user = User.find_by(id: @user_id))
       return unless claim(walk.fetch('step_event_id'))
+
+      mark_legacy_event unless @legacy_event_id == walk.fetch('step_event_id')
 
       Time.use_zone(walk.fetch('time_zone')) do
         Tracks::ParallelGenerator.new(user, start_at: Time.zone.at(walk.fetch('selected_start_timestamp')),
@@ -151,6 +172,10 @@ class Tracks::ThrottledBackfillState
     connection.select_value(sql('INSERT INTO phoenix.processed_commands (event_id, handler, processed_at) ' \
                                 'VALUES (?::uuid, ?, ?) ON CONFLICT (event_id) DO NOTHING RETURNING event_id',
                                 event_id, TYPE, Time.current))
+  end
+
+  def mark_legacy_event
+    claim(@legacy_event_id) if @legacy_event_id
   end
 
   def advance(walk, owner)

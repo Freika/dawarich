@@ -13,6 +13,7 @@ RSpec.describe Tracks::ThrottledBackfillState do
   let(:connection) { ActiveRecord::Base.connection }
 
   before do
+    @legacy_events = []
     phoenix_tables!
     phoenix_state!
     @owners = connection.select_all('SELECT * FROM phoenix.job_owners WHERE key IN ' \
@@ -24,8 +25,9 @@ RSpec.describe Tracks::ThrottledBackfillState do
   end
 
   after do
-    ids = JobOutbox.where(aggregate_id: [user_id, other_id],
-                          command_type: %w[tracks.generate_range tracks.throttled_backfill]).pluck(:event_id)
+    ids = @legacy_events + JobOutbox.where(aggregate_id: [user_id, other_id],
+                                           command_type: %w[tracks.generate_range
+                                                            tracks.throttled_backfill]).pluck(:event_id)
     if ids.any?
       connection.execute(ActiveRecord::Base.sanitize_sql_array(
                            ['DELETE FROM phoenix.processed_commands WHERE event_id IN (?)', ids]
@@ -57,6 +59,12 @@ RSpec.describe Tracks::ThrottledBackfillState do
                        "(#{id}, #{user_id}, #{timestamp}, ST_GeomFromText('POINT(1 1)', 4326), now(), now())")
   end
 
+  def run_job(*args, **options)
+    job = Tracks::ThrottledBackfillJob.new(*args, **options)
+    @legacy_events << job.job_id
+    job.perform_now
+  end
+
   it 'Rails adopts legacy cursor and remaining backoff without duplicate scheduling' do
     travel_to now do
       Sidekiq.redis { _1.set(redis_key(user_id), 1, ex: 6.days.to_i) }
@@ -71,14 +79,14 @@ RSpec.describe Tracks::ThrottledBackfillState do
       expect(row.fetch('cursor_timestamp')).to be_nil
       point!(48_401, 50)
       allow(Tracks::GenerationCommand).to receive(:forward).and_raise(IOError, 'generation failed')
-      expect { Tracks::ThrottledBackfillJob.perform_now(user_id, 100) }.to raise_error(IOError, 'generation failed')
+      expect { run_job(user_id, 100) }.to raise_error(IOError, 'generation failed')
       selected = row
       expect(selected).to include('state' => 'walking', 'cursor_timestamp' => 100, 'selected_end_timestamp' => 50)
       expect(selected.fetch('expires_at')).to be_between(now + 10.hours - 1, now + 10.hours)
       expect(Sidekiq.redis { _1.exists(redis_key(user_id)) }).to eq(0)
       expect(JobOutbox.where(aggregate_id: user_id)).to be_empty
       allow(Tracks::GenerationCommand).to receive(:forward).and_call_original
-      Tracks::ThrottledBackfillJob.perform_now(user_id, 100)
+      run_job(user_id, 100)
       expect(row.fetch('cursor_timestamp')).to eq(50 - 30.days.to_i)
       expect(row.fetch('expires_at')).to eq(now + 12.hours)
       expect(JobOutbox.find_by!(command_type: 'tracks.generate_range', aggregate_id: user_id).event_id)
@@ -94,7 +102,7 @@ RSpec.describe Tracks::ThrottledBackfillState do
       expect(Sidekiq.redis { _1.exists(redis_key(other_id)) }).to eq(0)
       expect(connection.select_value('SELECT expires_at FROM phoenix.track_backfill_walks WHERE user_id = 48402'))
         .to be_between(now + 7.days - 1, now + 7.days)
-      Tracks::ThrottledBackfillJob.perform_now(other_id, nil)
+      run_job(other_id, nil)
       count = connection.select_value('SELECT count(*) FROM phoenix.track_backfill_walks WHERE user_id = 48402')
       expect(count).to eq(0)
       expect(row).to be_present
@@ -133,12 +141,12 @@ RSpec.describe Tracks::ThrottledBackfillState do
       job_owner!('command:tracks.throttled_backfill', :oban)
       JobOwnership.release!('command:tracks.throttled_backfill', by: 'test')
       allow(Tracks::GenerationCommand).to receive(:forward).and_raise(IOError, 'start failed')
-      expect { Tracks::ThrottledBackfillJob.perform_now(user_id, 200, walk_id: walk, time_zone: 'Europe/Berlin') }
+      expect { run_job(user_id, 200, walk_id: walk, time_zone: 'Europe/Berlin') }
         .to raise_error(IOError, 'start failed')
       expect(row).to include('walk_id' => walk, 'cursor_timestamp' => 200, 'step_event_id' => step,
                              'selected_start_timestamp' => first, 'selected_end_timestamp' => 100)
       allow(Tracks::GenerationCommand).to receive(:forward).and_call_original
-      Tracks::ThrottledBackfillJob.perform_now(user_id, 200, walk_id: walk, time_zone: 'Europe/Berlin')
+      run_job(user_id, 200, walk_id: walk, time_zone: 'Europe/Berlin')
       expect(JobOutbox.sole.event_id).to eq(step)
       expect(JobOutbox.sole.payload).to include('start_at' => Time.use_zone('Europe/Berlin') {
         Time.zone.at(first).iso8601(6)
@@ -152,14 +160,14 @@ RSpec.describe Tracks::ThrottledBackfillState do
       expect(enqueued_jobs.count { _1[:job] == Tracks::ThrottledBackfillJob }).to eq(1)
       expect(enqueued_jobs.find { _1[:job] == Tracks::ThrottledBackfillJob }[:args])
         .to include(user_id, first, hash_including('walk_id' => walk, 'time_zone' => 'Europe/Berlin'))
-      Tracks::ThrottledBackfillJob.perform_now(user_id, 200, walk_id: walk, time_zone: 'Europe/Berlin')
+      run_job(user_id, 200, walk_id: walk, time_zone: 'Europe/Berlin')
       expect(JobOutbox.count).to eq(1)
       expect(enqueued_jobs.count { _1[:job] == Tracks::ThrottledBackfillJob }).to eq(1)
       travel_to now + 12.hours
       expect(Tracks::ThrottledBackfillJob.schedule(user)).to be_truthy
       refute_walk = row.fetch('walk_id')
       expect(refute_walk).not_to eq(walk)
-      Tracks::ThrottledBackfillJob.perform_now(user_id, first, walk_id: walk, time_zone: 'Europe/Berlin')
+      run_job(user_id, first, walk_id: walk, time_zone: 'Europe/Berlin')
       expect(row.fetch('walk_id')).to eq(refute_walk)
       expect(row.fetch('cursor_timestamp')).to be_nil
     end

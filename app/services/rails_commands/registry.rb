@@ -44,10 +44,7 @@ module RailsCommands
       'tracks_throttled_backfill' => {
         guard: 'ThrottledBackfillJob.schedule is SET NX on track_throttled_backfill:user:<id> (12 h, 7 days ' \
                'after completion); a repeat finds the key and enqueues nothing',
-        call: lambda { |payload|
-          user = User.find_by(id: payload.fetch('user_id'))
-          Tracks::ThrottledBackfillJob.schedule(user) if user
-        }
+        call: ->(payload) { Tracks::BackfillCommands.reverse_walk(payload) }
       },
       'tracks_realtime_retrigger' => {
         guard: 'RealtimeDebouncer#trigger is a debounce claim: a repeat extends it by 2 min, or, once the job ' \

@@ -42,7 +42,9 @@ class Tracks::ThrottledBackfillJob < ApplicationJob
 
   def perform(user_id, cursor_timestamp = nil, walk_id: nil, time_zone: nil)
     if Tracks::ThrottledBackfillState.table?
-      return Tracks::ThrottledBackfillState.new(user_id, cursor_timestamp, walk_id:, time_zone:).run
+      return if Tracks::BackfillCommands.forward_walk(user_id, cursor_timestamp, job_id, walk_id:, time_zone:)
+
+      return Tracks::ThrottledBackfillState.new(user_id, cursor_timestamp, walk_id:, time_zone:, event_id: job_id).run
     end
 
     user = User.find_by(id: user_id)
