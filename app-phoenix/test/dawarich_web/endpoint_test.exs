@@ -833,7 +833,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/settings/general /settings/integrations /settings/integrations?service=trek /users/edit /insights /insights?year=all&month=3) do
+          ~w(/settings/general /settings/visits /settings/integrations /settings/integrations?service=trek /users/edit /insights /insights?year=all&month=3) do
       assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302, target
     end
   end
@@ -842,7 +842,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/settings /settings/theme?theme=light /settings/visits /settings/two_factor /settings/background_jobs /settings/users /settings/users/export /settings/trek_sources/1/select_trips /insights/details?year=2024 /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
+          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /settings/users /settings/users/export /settings/trek_sources/1/select_trips /insights/details?year=2024 /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==

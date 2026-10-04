@@ -88,7 +88,7 @@ defmodule Dawarich.RailsJobOwners do
     "Posters::CreateJob" => {:slice, :a9},
     "ReverseGeocodingJob" =>
       {:oban, ["command:geocoding.reverse_point", "command:geocoding.reverse_place"]},
-    "RouteVideos::PurgeJob" => {:slice, :a8},
+    "RouteVideos::PurgeJob" => {:oban, ["cron:route_videos_purge_job"]},
     "StaleJobsRecoveryJob" => {:slice, :a7},
     "Stats::CalculatingJob" => {:slice, :a12d1},
     "Stats::FullRecalculationJob" => {:slice, :a12d1},
