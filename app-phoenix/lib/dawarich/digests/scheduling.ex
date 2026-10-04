@@ -2,6 +2,45 @@ defmodule Dawarich.Digests.Scheduling do
   @moduledoc false
 
   alias Dawarich.TimeZoneName
+  alias Dawarich.Digests.Schedule
+  alias Dawarich.Jobs.Ownership
+
+  def run(repo, kind, opts \\ []) do
+    zone = Keyword.get(opts, :zone, System.get_env("TIME_ZONE", "Europe/Berlin"))
+    now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
+    target = period(repo, kind, now, zone)
+    schedule_batches(repo, kind, target, zone, 0, opts)
+  end
+
+  defp schedule_batches(repo, kind, target, zone, cursor, opts) do
+    key = "cron:#{kind}_digest_scheduling_job"
+
+    case Ownership.with_owner(repo, key, :oban, fn ->
+           {users, next} = batch(repo, kind, target, cursor)
+
+           Enum.each(users, fn user ->
+             case kind do
+               :monthly -> Schedule.monthly(repo, user.id, target.year, target.month, zone, opts)
+               :yearly -> Schedule.yearly(repo, user.id, target.year, zone, opts)
+             end
+           end)
+
+           next
+         end) do
+      {:ok, nil} ->
+        :ok
+
+      {:ok, next} ->
+        if callback = Keyword.get(opts, :after_batch), do: callback.(next)
+        schedule_batches(repo, kind, target, zone, next, opts)
+
+      {:skip, _} ->
+        {:cancel, :not_owner}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
 
   def period(repo, kind, now, zone \\ System.get_env("TIME_ZONE", "Europe/Berlin")) do
     months = if kind in [:monthly, "monthly"], do: 1, else: 12
