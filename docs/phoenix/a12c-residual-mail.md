@@ -22,6 +22,11 @@ All new named contracts have an independently observed named mutation failure an
 green run. The existing recovery retry regression remains unchanged. No source spec is deleted.
 Final focused native acceptance passes 137 tests. The four exact C2 Rails batches pass
 33, 32, 34 and 63 examples respectively, with zero failures and Swagger restored after each.
+C3's two generator write processes and its no-write comparison each pass six examples.
+Residual directory bytes match between writes; explore-features matches both the first write
+and its pre-change copy. RuboCop passes all ten changed Ruby files with cache disabled;
+native formatting and diff whitespace checks pass. Every touched production module/template
+is below 300 lines. Mutations are restored before tier acceptance.
 
 ## Rails corpus
 
