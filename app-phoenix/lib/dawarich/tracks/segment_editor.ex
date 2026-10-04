@@ -1,6 +1,7 @@
 defmodule Dawarich.Tracks.SegmentEditor do
   @moduledoc false
-  alias Dawarich.Tracks.{Effects, Settings, Store}
+  alias Dawarich.Tracks.{Effects, Reprocessor, Settings, Store}
+  alias Dawarich.TrackSegmentPage
   alias Dawarich.Transportation.{DominantMode, Segments}
 
   @segment_columns ~w(id track_id start_index end_index start_at end_at distance duration avg_speed max_speed transportation_mode confidence confidence_score corrected_at source updated_at)a
@@ -33,13 +34,68 @@ defmodule Dawarich.Tracks.SegmentEditor do
         render(
           repo,
           {:ok,
-           %{segment: fresh, track: Map.put(track, :dominant_mode, current_mode(repo, track_id))}},
+           %{
+             segment: fresh,
+             track: Map.put(track, :dominant_mode, current_mode(repo, track_id)),
+             page: page!(repo, user, track_id),
+             reset: false
+           }},
           ctx
         )
       else
         render(repo, {:error, %{error_code: :mode_not_enabled}}, ctx)
       end
     end)
+  end
+
+  def reset_to_auto(repo, user, track_id, id, ctx) do
+    case repo.transaction(fn ->
+           {track, _segment} = owned!(repo, user, track_id, id)
+           now = DateTime.to_naive(ctx.now)
+
+           repo.query!(
+             "UPDATE track_segments SET corrected_at=NULL,source='inferred',updated_at=$2 WHERE id=$1",
+             [id, now]
+           )
+
+           Reprocessor.reprocess!(repo, user, track, ctx.now)
+
+           mode =
+             repo |> Segments.load_segments_for_dominant_mode!(track_id) |> DominantMode.pick()
+
+           if mode,
+             do:
+               Effects.write!(repo, user.id, %{
+                 updated: [track.id],
+                 stamps: [track.start_at, track.end_at]
+               })
+
+           page = page!(repo, user, track_id)
+
+           render(
+             repo,
+             {:ok,
+              %{
+                segment: nil,
+                track: Map.put(track, :dominant_mode, current_mode(repo, track_id)),
+                page: page,
+                reset: true
+              }},
+             ctx
+           )
+         end) do
+      {:ok, result} -> result
+      {:error, :rails} -> :rails
+    end
+  rescue
+    _ -> {:error, %{error_code: :reprocess_failed}}
+  end
+
+  defp page!(repo, user, track_id) do
+    case TrackSegmentPage.load(user, track_id, repo) do
+      {:ok, page} -> page
+      :rails -> repo.rollback(:rails)
+    end
   end
 
   defp owned!(repo, user, track_id, id) do

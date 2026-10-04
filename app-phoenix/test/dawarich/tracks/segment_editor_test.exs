@@ -118,4 +118,156 @@ defmodule Dawarich.Tracks.SegmentEditorTest do
     assert snapshot() == legacy
     refute snapshot() == invalid_before
   end
+
+  defmodule DetectorFailureRepo do
+    defdelegate transaction(fun), to: Dawarich.Repo
+    defdelegate rollback(reason), to: Dawarich.Repo
+
+    def query!(sql, params, opts \\ []) do
+      if String.contains?(sql, "p.id AS point_id"),
+        do: raise("synthetic detector failure"),
+        else: Dawarich.Repo.query!(sql, params, opts)
+    end
+  end
+
+  defp reset_fixture(name) do
+    alias Dawarich.Test.{ApiGolden, RailsUser}
+    Repo.query!("TRUNCATE users,tracks,track_segments,points CASCADE")
+    state = File.read!("test/fixtures/map_writes/segments/#{name}.json") |> Jason.decode!()
+
+    user =
+      RailsUser.insert!(%{
+        id: state["user"]["id"],
+        email: "a6s4-reset@example.invalid",
+        settings: state["user"]["settings"]
+      })
+
+    for id <- state["before"]["tracks"] |> Enum.map(& &1["user_id"]) |> Enum.uniq(),
+        id != user.id,
+        do: RailsUser.insert!(%{id: id, email: "a6s4-reset-#{id}@example.invalid"})
+
+    for table <- ~w(tracks track_segments points), row <- state["before"][table] do
+      row =
+        if is_map(row["original_path"]) do
+          [[hex]] =
+            Repo.query!("SELECT encode(ST_AsEWKB(ST_GeomFromGeoJSON($1)), 'hex')", [
+              Jason.encode!(row["original_path"])
+            ]).rows
+
+          Map.put(row, "original_path", hex)
+        else
+          row
+        end
+
+      ApiGolden.insert!(table, row)
+    end
+
+    [_, track, segment] = Regex.run(~r{/tracks/(\d+)/segments/(\d+)}, state["request"]["path"])
+    track = String.to_integer(track)
+    segment = String.to_integer(segment)
+
+    Repo.query!("SELECT setval(pg_get_serial_sequence('track_segments','id'), $1, false)", [
+      segment + 5
+    ])
+
+    {:ok, now, _} = DateTime.from_iso8601(state["now"])
+    %{user: user, track: track, segment: segment, ctx: %{now: now}, state: state}
+  end
+
+  defp reset(ctx, repo \\ Repo),
+    do: SegmentEditor.reset_to_auto(repo, ctx.user, ctx.track, ctx.segment, ctx.ctx)
+
+  test "reset replaces selected correction preserves manual/source peers" do
+    ctx = reset_fixture("reset_preserved")
+
+    before =
+      Repo.query!("SELECT to_jsonb(s)::text FROM track_segments s WHERE id=ANY($1) ORDER BY id", [
+        [ctx.segment + 3, ctx.segment + 4]
+      ]).rows
+
+    assert {:ok, %{segment: nil, page: %{segments: segments}}} = reset(ctx)
+    refute Enum.any?(segments, &(&1.id == ctx.segment))
+    assert Enum.any?(segments, &(&1.id >= ctx.segment + 5))
+
+    assert Repo.query!(
+             "SELECT to_jsonb(s)::text FROM track_segments s WHERE id=ANY($1) ORDER BY id",
+             [[ctx.segment + 3, ctx.segment + 4]]
+           ).rows == before
+  end
+
+  test "empty detector output preserves Rails old-mode rule" do
+    ctx = reset_fixture("reset_empty")
+
+    before =
+      Repo.query!("SELECT dominant_mode,updated_at,lock_version FROM tracks WHERE id=$1", [
+        ctx.track
+      ]).rows
+
+    assert {:ok, %{page: %{segments: []}}} = reset(ctx)
+
+    assert Repo.query!("SELECT dominant_mode,updated_at,lock_version FROM tracks WHERE id=$1", [
+             ctx.track
+           ]).rows == before
+
+    assert commands() == []
+  end
+
+  test "reset unchanged nonnil mode keeps track timestamp and lock_version but emits epoch/broadcast intent" do
+    ctx = reset_fixture("reset_unchanged")
+
+    before =
+      Repo.query!("SELECT updated_at,lock_version FROM tracks WHERE id=$1", [ctx.track]).rows
+
+    assert {:ok, _} = reset(ctx)
+
+    assert Repo.query!("SELECT updated_at,lock_version FROM tracks WHERE id=$1", [ctx.track]).rows ==
+             before
+
+    assert [["tracks_changed", %{"updated" => ids}]] = commands()
+    assert ids == [ctx.track]
+  end
+
+  test "real reset-created row timestamps and changed track timestamp equal frozen Rails oracle" do
+    ctx = reset_fixture("reset_changed")
+    assert {:ok, _} = reset(ctx)
+
+    for expected <- ctx.state["after"]["track_segments"], expected["track_id"] == ctx.track do
+      {:ok, created} = NaiveDateTime.from_iso8601(expected["created_at"])
+      {:ok, updated} = NaiveDateTime.from_iso8601(expected["updated_at"])
+
+      [[actual_created, actual_updated]] =
+        Repo.query!("SELECT created_at,updated_at FROM track_segments WHERE id=$1", [
+          expected["id"]
+        ]).rows
+
+      assert NaiveDateTime.compare(actual_created, created) == :eq
+      assert NaiveDateTime.compare(actual_updated, updated) == :eq
+    end
+
+    expected = Enum.find(ctx.state["after"]["tracks"], &(&1["id"] == ctx.track))
+    {:ok, updated} = NaiveDateTime.from_iso8601(expected["updated_at"])
+
+    [[actual, version]] =
+      Repo.query!("SELECT updated_at,lock_version FROM tracks WHERE id=$1", [ctx.track]).rows
+
+    assert NaiveDateTime.compare(actual, updated) == :eq
+    assert version == expected["lock_version"]
+  end
+
+  test "detector failure restores rows timestamps mode effects" do
+    ctx = reset_fixture("reset_failure")
+    before = snapshot()
+    assert {:error, %{error_code: :reprocess_failed}} = reset(ctx, DetectorFailureRepo)
+    assert snapshot() == before
+    assert commands() == []
+  end
+
+  test "post-reset unrenderable rows roll back before replay" do
+    ctx = reset_fixture("reset_changed")
+    before = snapshot()
+    ctx = %{ctx | ctx: Map.put(ctx.ctx, :render, fn _ -> :rails end)}
+    assert :rails = reset(ctx)
+    assert snapshot() == before
+    assert commands() == []
+  end
 end
