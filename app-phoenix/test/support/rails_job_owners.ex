@@ -91,7 +91,7 @@ defmodule Dawarich.RailsJobOwners do
     "ReverseGeocodingJob" =>
       {:oban, ["command:geocoding.reverse_point", "command:geocoding.reverse_place"]},
     "RouteVideos::PurgeJob" => {:oban, ["cron:route_videos_purge_job"]},
-    "StaleJobsRecoveryJob" => {:slice, :a7},
+    "StaleJobsRecoveryJob" => {:oban, ["cron:stale_jobs_recovery_job"], :a7},
     "Stats::CalculatingJob" => {:oban, ["command:stats.calculate_month"]},
     "Stats::FullRecalculationJob" => {:slice, :a12d1},
     "Stats::ToponymsRefreshJob" => {:oban, ["cron:stats_toponyms_refresh_job"]},

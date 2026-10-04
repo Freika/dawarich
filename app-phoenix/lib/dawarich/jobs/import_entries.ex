@@ -3,6 +3,13 @@ defmodule Dawarich.Jobs.ImportEntries do
   def entries do
     [
       %{
+        key: "cron:stale_jobs_recovery_job",
+        kind: :cron,
+        expression: "*/30 * * * *",
+        worker: Dawarich.Imports.StaleWorker,
+        claimable: false
+      },
+      %{
         key: "cron:watcher_job",
         kind: :cron,
         expression: "0 */1 * * *",
