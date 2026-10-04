@@ -4,6 +4,16 @@ module PlacesGoldenSupport
   VOLATILE = { 'x-request-id' => '00000000-0000-0000-0000-000000000000', 'x-runtime' => '0.000000',
                'set-cookie' => 'redacted' }.freeze
 
+  def places_cases(oracle)
+    names = ENV.fetch('API_GOLDEN_CASES', '').split(',')
+    return oracle::CASES if names.empty?
+
+    entries = oracle::CASES.select { names.include?(_1[:name]) }
+    raise ArgumentError, 'Unknown golden case' unless entries.map { _1[:name] }.sort == names.sort
+
+    entries
+  end
+
   def places_exact_json(value, depth = 0)
     pad = '  ' * (depth + 1)
     case value
@@ -71,7 +81,13 @@ module PlacesGoldenSupport
   end
 
   def places_response(kase, target, headers, body, strict: false)
-    send(kase[:method], target, params: body.empty? ? nil : body, headers: headers.except('Content-Length'))
+    if kase[:method] == :get && body.present?
+      get target, headers: headers, env: { 'rack.input' => StringIO.new(body), 'CONTENT_LENGTH' => body.bytesize.to_s }
+      expect(request.raw_post).to eq(body)
+      expect(request.query_string).to eq(URI.parse(target).query.to_s)
+    else
+      send(kase[:method], target, params: body.empty? ? nil : body, headers: headers.except('Content-Length'))
+    end
     headers = response.headers.to_h.transform_keys(&:downcase).except('date', 'content-length')
     html = !strict && kase[:expect] == :rails && response.media_type == 'text/html'
     payload = if strict && response.media_type.to_s.start_with?('image/')

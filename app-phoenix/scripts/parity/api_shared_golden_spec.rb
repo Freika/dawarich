@@ -30,13 +30,15 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
     generator = ActiveSupport::CachingKeyGenerator.new(
       ActiveSupport::KeyGenerator.new(ApiSharedGoldenOracle::SECRET, iterations: 1000)
     )
-    config = Rails.application.env_config.merge('action_dispatch.key_generator' => generator)
+    config = Rails.application.env_config.merge('action_dispatch.key_generator' => generator,
+                                                'action_dispatch.show_exceptions' => :all,
+                                                'action_dispatch.show_detailed_exceptions' => false)
     allow(Rails.application).to receive(:env_config).and_return(config)
   end
 
   it 'records shared responses and database effects from Rails' do
     oracle = ApiSharedGoldenOracle
-    cases = oracle::CASES.map do |entry|
+    cases = places_cases(oracle).map do |entry|
       kase = { method: :get, auth: :none, expect: :own, env: {}, content: {},
                path: "/api/v1/shared/#{oracle::LINK}/#{entry[:action]}#{entry[:query]}" }.merge(entry)
       result = places_record(kase, oracle:, strict: true)
@@ -46,7 +48,7 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
       )
       snapshot = oracle.setups.fetch(result.fetch('setup')).to_h
       expect(snapshot.fetch('users').first).to have_key('deleted_at')
-      expect(snapshot.fetch('users').first.fetch('deleted_at')).to be_nil
+      expect(snapshot.fetch('users').first.fetch('deleted_at')).to eq(entry.dig(:user, :deleted_at)&.tr(' ', 'T'))
       expect(result.fetch('ignore')).to eq([])
       expect(result).not_to have_key('mask')
       if entry[:cookie]
@@ -58,12 +60,12 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
       expect(WebMock).not_to have_requested(:any, /a4rest-immich/) if entry[:no_fetch]
       result
     end
-    path = Rails.root.join('app-phoenix/test/fixtures/api_shared/golden.json')
+    path = Rails.root.join(ENV.fetch('API_GOLDEN_OUTPUT', 'app-phoenix/test/fixtures/api_shared/golden.json'))
     FileUtils.mkdir_p(path.dirname)
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'now' => oracle::NOW.iso8601,
                 'sequences' => oracle::SEQUENCES, 'setups' => oracle.setups.sort.to_h,
                 'cases' => cases.sort_by { _1['name'] } }
-    File.write(path, "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0)}\n")
+    File.write(path, "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0).rstrip}\n")
   end
 
   def places_seed(kase)
@@ -98,13 +100,15 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
     places_insert('shared_links', link_row.merge(kase[:link] || {}))
     places_sql('DELETE FROM shared_links') if kase[:missing]
     shared_seed_points(kase, stamps)
+    places_sql("UPDATE points SET lonlat=NULL WHERE id=#{kase[:null_id]}") if kase[:null_id]
     shared_seed_provider(kase) if kase[:seed] == :provider
     zones = Users::PrivacyZones.new(User.find(oracle::OWNER)).call
     fingerprint = Digest::MD5.hexdigest(zones.sort_by { |zone| zone.values_at(:lat, :lon, :radius) }.to_s)
     @acl_key = "shared_link/#{oracle::LINK}/photo_ids/v2/#{fingerprint}"
     kase[:cache_keys] = [@acl_key]
     link = SharedLink.find_by(id: oracle::LINK)
-    resource = link&.resource
+    places_sql("UPDATE users SET deleted_at='#{user[:deleted_at]}' WHERE id=#{oracle::OWNER}") if user[:deleted_at]
+    resource = link&.resource unless user[:deleted_at]
     range = case link&.resource_type
             when 'trip' then resource && [resource.started_at.iso8601, resource.ended_at.iso8601]
             when 'track' then resource && [resource.start_at.iso8601, resource.end_at.iso8601]
@@ -221,6 +225,7 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
     body = recorded['body']
     payload = JSON.parse(body) if body.present? && !entry[:jpeg]
     expect(payload).to eq(entry[:json]) if entry.key?(:json)
+    expect(payload).to include([0.0, 0.0, entry[:null_ts]]) if entry[:null_ts]
     expect(payload.size).to eq(entry[:size]), entry[:name] if entry[:size]
     expect(payload.map(&:last)).to eq(entry[:timestamps]), entry[:name] if entry[:timestamps]
     expect(payload['distance']).to eq(entry[:distance]) if entry[:distance]

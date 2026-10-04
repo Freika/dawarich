@@ -2,6 +2,23 @@
 
 module ApiSharedGoldenOracle
   CASES = [
+    { name: 'points_null_trip', action: 'points', null_id: 951_402, null_ts: T0 },
+    { name: 'points_null_track', action: 'points', null_id: 951_401, null_ts: T0 - 1,
+      link: { resource_type: 1, resource_id: 951_201 } },
+    { name: 'points_null_timeline', action: 'points', seed: :timeline, null_id: 951_402, null_ts: T0 - 3600,
+      link: { resource_type: 2, resource_id: nil,
+        settings: { 'start_date' => '2026-03-29', 'end_date' => '2026-03-29' } },
+      user: { timezone: 'Europe/Berlin' } },
+    { name: 'points_null_sampled', action: 'points', seed: :many, count: 10_001, size: 5001,
+      null_id: 951_401, null_ts: T0 },
+    { name: 'deleted_owner_trip', action: 'trip', user: { deleted_at: STAMP }, expect: :rails, status: 500 },
+    { name: 'deleted_owner_track', action: 'points', user: { deleted_at: STAMP }, expect: :rails, status: 500,
+      link: { resource_type: 1, resource_id: 951_201 } },
+    { name: 'deleted_owner_timeline', action: 'points', user: { deleted_at: STAMP }, expect: :rails, status: 500,
+      link: { resource_type: 2, resource_id: nil,
+        settings: { 'start_date' => '2026-03-29', 'end_date' => '2026-03-29' } } },
+    { name: 'deleted_owner_live', action: 'points', seed: :live, age: 1,
+      user: { deleted_at: STAMP }, expect: :rails, status: 500, link: { resource_type: 3, resource_id: nil } },
     { name: 'phrase_required', action: 'trip', link: { magic_phrase: 'synthetic-phrase' }, status: 401,
       json: { 'error' => 'unauthorized' } },
     { name: 'phrase_unlocked', action: 'trip', link: { magic_phrase: 'synthetic-phrase' }, cookie: :current },

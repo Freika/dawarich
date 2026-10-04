@@ -24,6 +24,17 @@ defmodule Dawarich.SharedLinks do
 
   def api_uuid?(id), do: is_binary(id) and Regex.match?(@api_uuid, id)
 
+  def api_owner_available?(id) do
+    [[unavailable]] =
+      Repo.query!(
+        "SELECT EXISTS (SELECT 1 FROM shared_links s LEFT JOIN users u ON u.id=s.user_id " <>
+          "WHERE s.id=$1::text::uuid AND (u.id IS NULL OR u.deleted_at IS NOT NULL))",
+        [id]
+      ).rows
+
+    not unavailable
+  end
+
   def active(id, %DateTime{} = now) do
     case Repo.query!(@active, [id, DateTime.to_naive(now)]).rows do
       [[id, user_id, type, name, phrase, settings, expires_at, resource_id, created_at, present]] ->

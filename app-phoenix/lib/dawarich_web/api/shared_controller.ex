@@ -16,12 +16,17 @@ defmodule DawarichWeb.Api.SharedController do
     if supported?(conn) do
       now = conn.assigns[:api_now] || DateTime.utc_now()
       id = conn.path_params["id"]
-      link = if SharedLinks.api_uuid?(id), do: SharedLinks.active(id, now)
 
-      cond do
-        is_nil(link) -> error(conn, 404, "not_found")
-        not SharedLinkCookie.unlocked?(conn, link, now) -> error(conn, 401, "unauthorized")
-        true -> dispatch(conn, action, link)
+      if SharedLinks.api_uuid?(id) && not SharedLinks.api_owner_available?(id) do
+        Body.replay(conn, "shared owner unavailable")
+      else
+        link = if SharedLinks.api_uuid?(id), do: SharedLinks.active(id, now)
+
+        cond do
+          is_nil(link) -> error(conn, 404, "not_found")
+          not SharedLinkCookie.unlocked?(conn, link, now) -> error(conn, 401, "unauthorized")
+          true -> dispatch(conn, action, link)
+        end
       end
     else
       Body.replay(conn, "unsupported shared API request")

@@ -118,7 +118,7 @@ defmodule Dawarich.SharedApi.Points do
             params ++ [step]
           ).rows
 
-        {:ok, rows}
+        {:ok, Enum.map(rows, fn [lon, lat, ts] -> [lon || 0.0, lat || 0.0, ts || 0] end)}
     end
   end
 
