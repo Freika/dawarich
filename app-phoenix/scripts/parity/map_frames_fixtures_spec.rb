@@ -205,7 +205,7 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
         names = %w[soft_delete confirm rename blank_name decline owned_place foreign_area demo_adoption month_move
                    bulk_date bulk_selection bulk_500 bulk_501 bulk_foreign bulk_hidden bulk_archive bulk_source
                    bulk_empty bulk_no_callbacks merge_points merge_cross_day merge_foreign merge_same_place
-                   merge_mixed_names bulk_cross_day_destroy]
+                   merge_mixed_names bulk_cross_day_destroy soft_delete_turbo]
         names.each_with_index do |name, index|
           Rails.cache.clear
           allow(DawarichSettings).to receive(:self_hosted?).and_return(name != 'bulk_archive')
@@ -222,11 +222,11 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
           wanted_status = 200
           cache = {}
           case name
-          when 'soft_delete'
+          when 'soft_delete', 'soft_delete_turbo'
             method = :delete
             params = {}
-            accept = 'text/html'
-            wanted_status = 303
+            accept = name == 'soft_delete' ? 'text/html' : 'text/vnd.turbo-stream.html'
+            wanted_status = name == 'soft_delete' ? 303 : 200
             points!(user, id, [now - 90.minutes], visit: id)
           when 'rename'
             params = { visit: { name: '  Renamed  ' } }
@@ -341,11 +341,16 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
           expect(response.status).to eq(wanted_status), name
           if wanted_status >= 400
             expect(a8_visit_graph(users)).to eq(before), name
-          elsif name == 'soft_delete'
+          elsif %w[soft_delete soft_delete_turbo].include?(name)
             expect(Visit.exists?(id)).to be(true)
             expect(Visit.find(id).deleted_at).to eq(now)
             expect(Point.find(id).visit_id).to eq(id)
-            expect(response).to redirect_to('/map/v2?date=today&panel=timeline')
+            if name == 'soft_delete'
+              expect(response).to redirect_to('/map/v2?date=today&panel=timeline')
+            else
+              expect(a8_visit_streams).to eq([['remove', "visit_entry_#{id}"], %w[replace timeline-calendar-frame],
+                                              %w[append flash-messages]])
+            end
           elsif name.start_with?('merge_')
             expect(Visit.exists?(id + 1)).to be(false)
             merged = Visit.find(id)

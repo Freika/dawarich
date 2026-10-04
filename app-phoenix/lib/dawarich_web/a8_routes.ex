@@ -34,6 +34,33 @@ defmodule DawarichWeb.A8Routes do
 
         post "/visits/redetections", DawarichWeb.VisitSettingsActions, :redetect,
           metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        patch "/visits/bulk_update", DawarichWeb.VisitActions, :bulk_update,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        post "/visits/bulk_update", DawarichWeb.VisitActions, :bulk_update,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        delete "/visits/bulk_destroy", DawarichWeb.VisitActions, :bulk_destroy,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        post "/visits/bulk_destroy", DawarichWeb.VisitActions, :bulk_destroy,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        post "/visits/merge", DawarichWeb.VisitActions, :merge,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        patch "/visits/:id", DawarichWeb.VisitActions, :update,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        put "/visits/:id", DawarichWeb.VisitActions, :update,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        delete "/visits/:id", DawarichWeb.VisitActions, :destroy,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        post "/visits/:id", DawarichWeb.VisitActions, :member,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
       end
 
       pipeline :a8_public do
