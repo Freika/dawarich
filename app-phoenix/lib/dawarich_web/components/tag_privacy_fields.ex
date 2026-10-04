@@ -2,9 +2,11 @@ defmodule DawarichWeb.TagPrivacyFields do
   @moduledoc false
   use DawarichWeb, :html
   import DawarichWeb.Icon, only: [icon: 1]
+  alias DawarichWeb.TagErrors
 
   attr :locale, :string, required: true
   attr :radius, :integer, default: nil
+  attr :errors, :list, default: []
 
   def fields(assigns) do
     ~H"""
@@ -30,11 +32,13 @@ defmodule DawarichWeb.TagPrivacyFields do
         class={if is_nil(@radius), do: "form-control hidden", else: "form-control"}
         data-privacy-radius-target="radiusInput"
       >
-        <label class="label" for="tag_privacy_radius_meters">{t(
-          @locale,
-          "tags.form.privacy_radius",
-          %{}
-        )}</label>
+        <TagErrors.field field="privacy_radius_meters" errors={@errors}>
+          <label class="label" for="tag_privacy_radius_meters">{t(
+            @locale,
+            "tags.form.privacy_radius",
+            %{}
+          )}</label>
+        </TagErrors.field>
         <div class="flex flex-col gap-2">
           <input
             type="range"

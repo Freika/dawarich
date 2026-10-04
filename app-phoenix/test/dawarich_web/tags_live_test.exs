@@ -153,8 +153,16 @@ defmodule DawarichWeb.TagsLiveTest do
     refute MapDataGate.tags?(put_req_header(conn, "x-dawarich-client", "test"), %{})
 
     for method <- ["POST", "PATCH", "PUT", "DELETE"] do
-      assert :error = Phoenix.Router.route_info(Router, method, "/tags", "localhost")
-      assert :error = Phoenix.Router.route_info(Router, method, "/tags/83941", "localhost")
+      if method == "POST",
+        do:
+          assert(
+            %{plug: DawarichWeb.TagActions} =
+              Phoenix.Router.route_info(Router, method, "/tags", "localhost")
+          ),
+        else: assert(:error = Phoenix.Router.route_info(Router, method, "/tags", "localhost"))
+
+      assert %{plug: DawarichWeb.TagActions} =
+               Phoenix.Router.route_info(Router, method, "/tags/83941", "localhost")
     end
   end
 end

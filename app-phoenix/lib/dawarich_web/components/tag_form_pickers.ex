@@ -2,12 +2,14 @@ defmodule DawarichWeb.TagFormPickers do
   @moduledoc false
   use DawarichWeb, :html
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
+  alias DawarichWeb.TagErrors
 
   @colors ~w(#ef4444 #f97316 #f59e0b #eab308 #84cc16 #22c55e #10b981 #14b8a6 #06b6d4 #0ea5e9 #3b82f6 #6366f1 #8b5cf6 #a855f7 #d946ef #ec4899 #f43f5e #64748b)
 
   attr :locale, :string, required: true
   attr :tag, :map, required: true
   attr :emoji, :string, required: true
+  attr :errors, :list, default: []
 
   def pickers(assigns) do
     icon =
@@ -25,7 +27,9 @@ defmodule DawarichWeb.TagFormPickers do
         data-controller="emoji-picker"
         data-emoji-picker-auto-submit-value="false"
       >
-        <label class="label" for="tag_icon">Icon</label>
+        <TagErrors.field field="icon" errors={@errors}>
+          <label class="label" for="tag_icon">Icon</label>
+        </TagErrors.field>
         <div class="relative w-full">
           <button
             type="button"
@@ -55,7 +59,9 @@ defmodule DawarichWeb.TagFormPickers do
         data-controller="color-picker"
         data-color-picker-default-value={@color}
       >
-        <label class="label" for="tag_color">Color</label>
+        <TagErrors.field field="color" errors={@errors}>
+          <label class="label" for="tag_color">Color</label>
+        </TagErrors.field>
         <div class="flex flex-col gap-3">
           <div class="grid grid-cols-6 gap-2">
             <button

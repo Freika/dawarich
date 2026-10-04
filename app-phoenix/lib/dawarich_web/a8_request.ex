@@ -4,11 +4,8 @@ defmodule DawarichWeb.A8Request do
 
   import Plug.Conn
   alias DawarichWeb.Api.Body
-  alias DawarichWeb.{RailsForm, RailsProxy}
-  alias Plug.Conn.Query
+  alias DawarichWeb.{RailsForm, WebFormParams}
 
-  @max 2_097_152
-  @pairs 4_096
   @common ~w(authenticity_token _method commit utf8)
   @visit ~w(name place_id area_id started_at ended_at status)
   @settings ~w(visit_radius_meters visit_min_points visit_min_duration_minutes)
@@ -20,7 +17,7 @@ defmodule DawarichWeb.A8Request do
   def call(conn, _opts) do
     conn = assign(conn, :api_tag, "a8")
 
-    case params(conn) do
+    case WebFormParams.params(conn, repeated: ["visit_ids[]"]) do
       {:ok, conn, params} -> admit(conn, params)
       {:replay, conn} -> Body.replay(conn, "A8 request envelope")
       {:error, conn} -> halt(conn)
@@ -48,102 +45,6 @@ defmodule DawarichWeb.A8Request do
     else
       _ -> Body.replay(conn, "A8 action or parameter shape")
     end
-  end
-
-  defp params(%{query_string: query} = conn) when query != "", do: {:replay, conn}
-
-  defp params(conn) do
-    case Body.kind(conn) do
-      :form -> read(conn, [], &urlencoded/1)
-      :none -> read(conn, [], fn "" -> %{} end)
-      _ -> multipart(conn)
-    end
-  end
-
-  defp multipart(conn) do
-    with [type] <- get_req_header(conn, "content-type"),
-         {:ok, "multipart", "form-data", %{"boundary" => boundary}} <-
-           Plug.Conn.Utils.media_type(type),
-         [length] <- get_req_header(conn, "content-length"),
-         {size, ""} when size in 0..@max <- Integer.parse(length),
-         false <- RailsProxy.Headers.chunked?(conn) do
-      read(conn, [], &parts(&1, boundary))
-    else
-      _ -> {:replay, conn}
-    end
-  end
-
-  defp read(conn, acc, parse) do
-    case read_body(conn, RailsProxy.read_options()) do
-      {:more, data, conn} ->
-        read(conn, [acc, data], parse)
-
-      {:ok, data, conn} ->
-        conn |> put_private(:dawarich_raw_body, IO.iodata_to_binary([acc, data])) |> decode(parse)
-
-      {:error, _} ->
-        {:error, conn}
-    end
-  end
-
-  defp decode(conn, parse) do
-    true = byte_size(conn.private.dawarich_raw_body) <= @max
-    {:ok, conn, parse.(conn.private.dawarich_raw_body)}
-  rescue
-    _ -> {:replay, conn}
-  end
-
-  defp urlencoded(raw) do
-    true = length(:binary.matches(raw, "&")) < @pairs
-    false = Regex.match?(~r/%(?![0-9A-Fa-f]{2})/, raw)
-
-    pairs =
-      for pair <- String.split(raw, "&", trim: true) do
-        [key, value] = String.split(pair, "=", parts: 2)
-        {URI.decode_www_form(key), URI.decode_www_form(value)}
-      end
-
-    decode_pairs(pairs)
-  end
-
-  defp parts(raw, boundary) do
-    ["" | rest] = String.split(raw, "--" <> boundary)
-    {parts, [closing]} = Enum.split(rest, -1)
-    true = closing in ["--", "--\r\n"] and length(parts) <= @pairs
-    parts |> Enum.map(&part/1) |> decode_pairs()
-  end
-
-  defp part("\r\n" <> part) do
-    [head, value] = String.split(part, "\r\n\r\n", parts: 2)
-    [_, name] = Regex.run(~r/\A(?i:content-disposition): form-data; name="([^"\r\n]*)"\z/, head)
-    true = String.ends_with?(value, "\r\n")
-    {name, String.replace_suffix(value, "\r\n", "")}
-  end
-
-  defp decode_pairs(pairs) do
-    true = unique?(pairs)
-
-    pairs
-    |> Enum.reduce(Query.decode_init(), fn {key, value} = pair, acc ->
-      true = String.valid?(key) and String.valid?(value)
-      true = Regex.match?(~r/\A[a-z_]+(?:\[[a-z_]*\]){0,3}\z/, key)
-      Query.decode_each(pair, acc)
-    end)
-    |> Query.decode_done()
-  end
-
-  defp unique?(pairs) do
-    Enum.reduce_while(pairs, MapSet.new(), fn {key, _}, seen ->
-      duplicate = MapSet.member?(seen, key) and key != "visit_ids[]"
-
-      conflict =
-        Enum.any?(
-          seen,
-          &(String.starts_with?(key, &1 <> "[") or String.starts_with?(&1, key <> "["))
-        )
-
-      if duplicate or conflict, do: {:halt, false}, else: {:cont, MapSet.put(seen, key)}
-    end) != false
   end
 
   defp action(conn, params) do
