@@ -47,7 +47,7 @@ defmodule Dawarich.UserTimeZone do
   def query!(sql, params, settings, repo),
     do: query!(sql, params, settings, repo, System.get_env())
 
-  defp query!(sql, params, settings, repo, env) do
+  def query!(sql, params, settings, repo, env) do
     n = length(params)
 
     repo.query!(
