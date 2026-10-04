@@ -25,7 +25,7 @@ RSpec.describe 'Phoenix fixtures: poster persistence and generation', type: :req
     end
     allow(Dir).to receive(:mktmpdir).and_call_original
     allow(Dir).to receive(:mktmpdir).with('poster_render').and_wrap_original do |_original, &block|
-      path = Rails.root.join('tmp/a9fpl-poster-render').to_s
+      path = 'tmp/a9fpl-poster-render'
       FileUtils.mkdir_p(path)
       begin
         block.call(path)
@@ -158,6 +158,38 @@ RSpec.describe 'Phoenix fixtures: poster persistence and generation', type: :req
       expect(poster.print_pdf.attached?).to be(false)
       expect(File.exist?(dir.join('null_lonlat.json'))).to be(true)
     end
+  end
+
+  it 'keeps rendered poster attachment paths independent of the worktree' do
+    allow(self).to receive(:write_poster) { |_name, data, _html| data }
+    travel_to now do
+      user = poster_actor(97_101)
+      poster_point(user, 97_201, -300)
+      poster_point(user, 97_202, -200)
+      data = capture_poster_generation('points_gap_boundaries', fixture_poster(user, 96_701))
+      job = JSON.parse(Base64.strict_decode64(data['attachments'].first['bytes_base64']))
+      expect(job.dig('output', 'png')).to eq('tmp/a9fpl-poster-render/poster.png')
+      expect(job.dig('output', 'pdf')).to eq('tmp/a9fpl-poster-render/poster.pdf')
+    end
+  end
+
+  it 'verifies committed poster fixtures without writing by default' do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('WRITE_POSTER_FIXTURES').and_return(nil)
+    expect(File).not_to receive(:write)
+    write_poster('missing_job_row', { 'error' => 'ActiveRecord::RecordNotFound' })
+    expect do
+      write_poster('missing_job_row', { 'error' => 'changed' })
+    end.to raise_error(RSpec::Expectations::ExpectationNotMetError, /missing_job_row.json differs/)
+  end
+
+  it 'verifies UTF-8 poster fixtures by bytes' do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('WRITE_POSTER_FIXTURES').and_return(nil)
+    expect(File).not_to receive(:write)
+    data = JSON.parse(File.read(dir.join('null_lonlat.json')))
+    html = File.read(dir.join('null_lonlat.html'))
+    write_poster('null_lonlat', data, html)
   end
 
   it 'writes poster timestamp generation outcomes in the job default timezone' do

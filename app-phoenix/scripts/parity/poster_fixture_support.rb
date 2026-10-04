@@ -60,7 +60,8 @@ module PosterFixtureSupport
     doc.css('#env_dump pre').each do |dump|
       dump.content = dump.content.gsub(/(HTTP_X_CSRF_TOKEN: )"[^"]*"/, '\1"CSRF"')
     end
-    doc.to_html.gsub(%r{(/rails/active_storage/blobs/(?:redirect|proxy)/)[^/"?]+}, '\1SIGNED')
+    doc.to_html.gsub(Rails.root.to_s, 'RAILS_ROOT')
+       .gsub(%r{(/rails/active_storage/blobs/(?:redirect|proxy)/)[^/"?]+}, '\1SIGNED')
   end
 
   def poster_card(poster)
@@ -70,8 +71,16 @@ module PosterFixtureSupport
   end
 
   def write_poster(name, data, html = '')
-    File.write(dir.join("#{name}.json"), "#{Oj.dump(data, mode: :strict, float_precision: 0, indent: 2)}\n")
-    File.write(dir.join("#{name}.html"), html)
+    files = { "#{name}.json" => "#{Oj.dump(data, mode: :strict, float_precision: 0, indent: 2)}\n",
+              "#{name}.html" => html }
+    files.each do |filename, bytes|
+      if ENV['WRITE_POSTER_FIXTURES'] == '1'
+        File.write(dir.join(filename), bytes)
+      else
+        matches = File.exist?(dir.join(filename)) && File.binread(dir.join(filename)) == bytes.b
+        expect(matches).to be(true), "#{filename} differs; regenerate with WRITE_POSTER_FIXTURES=1"
+      end
+    end
     data
   end
 
