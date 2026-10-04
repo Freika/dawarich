@@ -25,7 +25,7 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
       content = json ? "#{Oj.dump(value, mode: :strict, float_precision: 0, indent: 2)}\n" : value
       path = directory.join(name)
       if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
-        FileUtils.mkdir_p(directory)
+        FileUtils.mkdir_p(path.dirname)
         File.write(path, content)
       else
         expect(path.exist?).to be(true), name
@@ -386,6 +386,35 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
             'disabled' => true, 'flash' => client.request.flash.to_hash }
         end
         two_factor_fixture('review_legacy_hashes.json', rows)
+      end
+    end
+
+    it 'records A11c review inherited alert behavior' do
+      travel_to now do
+        actor = two_factor_actor(74_630)
+        client = two_factor_browser(actor)
+        actor.update!(otp_secret: otp_secret)
+        incoming = { 'alert' => 'A11c previous alert', 'notice' => 'A11c retained notice',
+                     'warning' => 'A11c retained warning' }
+        data = two_factor_session(client).merge('flash' => { 'discard' => [], 'flashes' => incoming })
+        two_factor_seed_session(client, data)
+        before = actor.reload.attributes
+        client.post('/settings/two_factor/verify', params: {
+                      authenticity_token: two_factor_csrf(client), otp_attempt: 'not-a-code'
+                    })
+        expect(client.response.status).to eq(422)
+        expect(actor.reload.attributes == before).to be(true)
+        message = 'Invalid verification code. Please try again.'
+        expect(client.response.body).not_to include(incoming.fetch('alert'))
+        expect(client.response.body.scan(message).size).to eq(1)
+        expect(client.request.flash.to_hash).to eq(incoming.merge('alert' => message))
+        two_factor_fixture('review_inherited_alert.json', {
+                             'status' => client.response.status, 'incoming' => incoming,
+                             'flash_entries' => client.request.flash.to_a,
+                             'cookie_flash' => two_factor_session(client).dig('flash', 'flashes')
+                           })
+        html = Nokogiri::HTML5(client.response.body).at_css('#flash-messages').to_html
+        two_factor_fixture('review/inherited_alert.html', html, json: false)
       end
     end
 

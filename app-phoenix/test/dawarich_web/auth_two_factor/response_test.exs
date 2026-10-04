@@ -25,6 +25,55 @@ defmodule DawarichWeb.AuthTwoFactor.ResponseTest do
     end)
   end
 
+  test "Rails failed verification replaces inherited alert in place" do
+    row = File.read!(@root <> "/review_inherited_alert.json") |> Jason.decode!()
+
+    RailsUser.insert!(%{
+      id: 74501,
+      email: "inherited-flash@dawarich.test",
+      api_key: "API_KEY",
+      settings: %{}
+    })
+
+    user = Accounts.get(74501)
+    {session, _} = SessionCookie.for_form(%{"locale" => "en"}, @secret)
+
+    session =
+      session
+      |> Map.put("warden.user.user.key", [[user.id], binary_part(user.encrypted_password, 0, 29)])
+      |> Map.put("flash", %{"discard" => [], "flashes" => row["incoming"]})
+
+    otp = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+
+    render = %{
+      kind: :verify,
+      secret: otp,
+      uri: Dawarich.Auth.TwoFactor.Totp.provisioning_uri(otp, user.email),
+      user: %{otp_required_for_login: false},
+      reason: :invalid_verification_code
+    }
+
+    response =
+      Response.form(
+        request(session, user, "POST", "/settings/two_factor/verify"),
+        user,
+        render,
+        row["status"],
+        %{secret: @secret}
+      )
+
+    assert response.status == 422
+    expected = Enum.map(row["flash_entries"], fn [key, value] -> {key, value} end)
+    assert response.assigns.flash_messages == expected
+    refute response.resp_body =~ row["incoming"]["alert"]
+    message = expected |> List.keyfind("alert", 0) |> elem(1)
+    assert length(String.split(response.resp_body, message)) == 2
+    page = File.read!(@root <> "/review/inherited_alert.html")
+
+    assert ParityHTML.fragment(response.resp_body, "#flash-messages") ==
+             ParityHTML.normalize(page)
+  end
+
   test "management render and redirects preserve Rails identity and flash semantics" do
     RailsUser.insert!(%{
       id: 74500,

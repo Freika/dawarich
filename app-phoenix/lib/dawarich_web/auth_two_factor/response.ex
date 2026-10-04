@@ -20,8 +20,18 @@ defmodule DawarichWeb.AuthTwoFactor.Response do
     user = Accounts.get(actor.id)
     conn = prepare(conn, user)
     {session, _} = encoded = SessionCookie.for_form(conn.assigns.rails_session, secret(context))
-    flash = if render[:reason], do: [{"alert", message(conn, render.reason)}], else: []
-    flashes = conn.assigns.flash_messages ++ flash
+
+    flashes =
+      if render[:reason],
+        do:
+          List.keystore(
+            conn.assigns.flash_messages,
+            "alert",
+            0,
+            {"alert", message(conn, render.reason)}
+          ),
+        else: conn.assigns.flash_messages
+
     conn = assign(conn, :flash_messages, flashes)
 
     assigns =
