@@ -11,6 +11,7 @@ module TeslaMate
 
     def perform(user_id)
       user = find_user_or_skip(user_id) || return
+      return if Imports::TeslamateCommands.forward(user.id, event_id: job_id)
       return unless sync_allowed?(user)
 
       PhoenixLease.try_hold("teslamate-sync:#{user.id}") do

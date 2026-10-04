@@ -185,6 +185,7 @@ module JobCommands
    .merge(Stats::Commands::COMMANDS)
    .merge(Imports::ProcessCommands::COMMANDS)
    .merge(Imports::IntegrationCommands::COMMANDS)
+   .merge(Imports::TeslamateCommands::COMMANDS)
    .merge(Posters::CreationCommand::COMMANDS).freeze
 
   module_function

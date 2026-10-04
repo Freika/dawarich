@@ -3,6 +3,26 @@
 require 'rails_helper'
 
 RSpec.describe JobCommands do
+  it 'teslamate sync queues after commit and retains failed rehome events' do
+    user = create(:user)
+    type = 'imports.teslamate_sync'
+    payload = { 'user_id' => user.id }
+    at = 1.minute.from_now
+    ActiveRecord::Base.transaction do
+      described_class::COMMANDS.fetch(type).fetch(:sidekiq).call(payload, at)
+      expect(enqueued_jobs).to be_empty
+    end
+    expect(enqueued_jobs.last[:args]).to eq([user.id])
+    job_owner!("command:#{type}", :oban)
+    described_class.forward(type, payload, event_id: SecureRandom.uuid, aggregate_id: user.id, producer: 'spec')
+    allow(TeslaMate::SyncJob.queue_adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError)
+    expect(described_class.rehome!(type, by: 'spec'))
+      .to eq({ moved: 0, left: 1, error: 'RedisClient::CannotConnectError' })
+    expect(JobOutbox.pending.count).to eq(1)
+    allow(TeslaMate::SyncJob.queue_adapter).to receive(:enqueue_at).and_call_original
+    expect(described_class.rehome!(type, by: 'spec')).to eq({ moved: 1, left: 0 })
+  end
+
   let(:trip_payload) { { 'trip_id' => 42, 'distance_unit' => 'km' } }
 
   it 'immich producer queues after commit and retains failed rehome events' do
