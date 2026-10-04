@@ -8,6 +8,8 @@ defmodule DawarichWeb.TripActions do
 
   def init(action), do: action
 
+  def call(conn, :export), do: DawarichWeb.TripExportAction.call(conn)
+
   def call(conn, :member),
     do: call(conn, if(conn.assigns.a8_action == :trip_destroy, do: :destroy, else: :update))
 
