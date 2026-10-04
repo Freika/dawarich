@@ -33,6 +33,15 @@ RSpec.describe Stats::Commands do
   context 'full recalculation routing' do
     self.use_transactional_tests = false
 
+    around do |example|
+      connection = ActiveRecord::Base.connection
+      sequence = connection.select_one('SELECT last_value, is_called FROM users_id_seq')
+      example.run
+    ensure
+      connection.execute("SELECT setval('users_id_seq', #{sequence.fetch('last_value')}, " \
+                         "#{connection.quote(sequence.fetch('is_called'))})")
+    end
+
     before do
       phoenix_tables!
       phoenix_state!
