@@ -1,11 +1,13 @@
 defmodule Dawarich.Imports.Polarsteps do
   @moduledoc false
-  alias Dawarich.Imports.{GpxProgress, ImportTime, JsonStream, NormalBatch}
+  alias Dawarich.Imports.JsonStream.Section
+  alias Dawarich.Imports.{GpxProgress, ImportTime, NormalBatch}
   alias Dawarich.Ingest.Ruby
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby, as: Number
 
   def call(path, import, context) do
-    JsonStream.reduce(path, nil, fn _, acc -> acc end, fn _ -> false end, mode: :compat)
+    {root, section} = Section.last(path, "locations")
+    section = if root.kind == :array, do: root, else: section
     context = context |> Map.put(:importer_name, "Polarsteps") |> Map.update!(:now, &live_clock/1)
 
     state = %{
@@ -14,26 +16,9 @@ defmodule Dawarich.Imports.Polarsteps do
     }
 
     state =
-      JsonStream.reduce(
-        path,
-        state,
-        fn
-          {:value, [index], point, _, _}, state when is_integer(index) ->
-            push(point, state, context)
-
-          {:value, [index, "locations"], point, _, _}, state when is_integer(index) ->
-            push(point, state, context)
-
-          _, state ->
-            state
-        end,
-        fn
-          [index] when is_integer(index) -> true
-          [index, "locations"] when is_integer(index) -> true
-          _ -> false
-        end,
-        mode: :compat
-      )
+      Section.reduce(path, section, state, fn point, state ->
+        push(point, state, context)
+      end)
 
     batch = NormalBatch.finish(state.batch)
 

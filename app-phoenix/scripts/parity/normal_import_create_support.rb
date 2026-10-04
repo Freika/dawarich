@@ -66,6 +66,33 @@ module NormalImportFormatsSupport
     ].each do |name, entries, expected_source|
       cases << { name:, filename: "#{name}.zip", bytes: zip_bytes(entries), expected_source: }
     end
+    [
+      ['mobile_photo_library', 'points', mobile_photo_library_cases, 'mobile_import_valid'],
+      ['google_records', 'locations', google_records_cases, 'records_import_legacy'],
+      ['google_semantic_history', 'timelineObjects', google_semantic_cases, 'semantic_import_legacy'],
+      ['polarsteps', 'locations', polarsteps_cases, 'polarsteps_import_legacy']
+    ].each do |source, section, inputs, input_name|
+      original = inputs.find { |row| row.first == input_name }[1]
+      ['[]', JSON.parse(original).fetch(section).to_json].each_with_index do |last, index|
+        first = index.zero? ? original : original.sub(/"#{section}":\[.*\]/m, %Q("#{section}":[]))
+        bytes = "#{first.delete_suffix('}')},#{section.to_json}:#{last}}"
+        cases << { name: "duplicate_section_#{source}_#{index}", filename: "#{source}.json",
+                   bytes:, source:, expected_source: source }
+      end
+    end
+    [true, 'invalid', {}, { invalid: true }, nil, []].each_with_index do |locations, index|
+      cases << { name: "records_shape_#{index}", filename: 'Records.json',
+                 bytes: { locations: }.to_json, source: 'google_records', expected_source: 'google_records' }
+    end
+    cases << { name: 'records_shape_missing', filename: 'Records.json', bytes: '{}',
+               source: 'google_records', expected_source: 'google_records' }
+    [
+      ['zip_unsafe_skip', [['../ignored.csv', csv], ['safe.csv', csv]], 'unsafe.zip'],
+      ['zip_dotfiles', [['.hidden.csv', csv], ['.hidden/points.csv', csv], ['readme.txt', 'text']], 'hidden.zip'],
+      ['zip_supported_source', [['safe.csv', csv], ['readme.txt', 'text']], 'archive.csv']
+    ].each do |name, entries, filename|
+      cases << { name:, filename:, bytes: zip_bytes(entries), expected_source: nil }
+    end
     cases << { name: 'empty_zip', filename: 'empty.zip', bytes: zip_bytes([]), expected_source: nil }
     cases << { name: 'malformed_zip', filename: 'broken.zip', bytes: "PK#{[3, 4].pack('C*')}broken",
                expected_source: nil }

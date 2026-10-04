@@ -1,10 +1,12 @@
 defmodule Dawarich.Imports.MobilePhotoLibrary do
   @moduledoc false
+  alias Dawarich.Imports.JsonStream.Section
   alias Dawarich.Imports.{GpxProgress, JsonStream, NormalBatch}
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby, as: Number
 
   def call(path, import, context) do
     validate!(path)
+    {_root, section} = Section.last(path, "points")
 
     context =
       context
@@ -18,22 +20,9 @@ defmodule Dawarich.Imports.MobilePhotoLibrary do
     }
 
     state =
-      JsonStream.reduce(
-        path,
-        state,
-        fn
-          {:value, [index, "points"], point, _, _}, state when is_integer(index) ->
-            push(point, state, context)
-
-          _, state ->
-            state
-        end,
-        fn
-          [index, "points"] when is_integer(index) -> true
-          _ -> false
-        end,
-        mode: :compat
-      )
+      Section.reduce(path, section, state, fn point, state ->
+        push(point, state, context)
+      end)
 
     NormalBatch.finish(state.batch)
 

@@ -1,5 +1,7 @@
 defmodule Dawarich.Imports.GoogleSemanticHistory do
   @moduledoc false
+  alias Dawarich.Imports.JsonStream.Section
+
   alias Dawarich.Imports.{
     BulkWriter,
     Fence,
@@ -15,9 +17,10 @@ defmodule Dawarich.Imports.GoogleSemanticHistory do
 
   def call(path, import, context) do
     validate!(path)
+    {_root, section} = Section.last(path, "timelineObjects")
     context = Map.update!(context, :now, &live_clock/1)
 
-    reduce(path, nil, fn object, _ ->
+    reduce(path, section, nil, fn object, _ ->
       GoogleSemanticPoints.prepare(object, context)
       nil
     end)
@@ -25,7 +28,7 @@ defmodule Dawarich.Imports.GoogleSemanticHistory do
     state = %{batch: [], size: 0, count: 0, cache: %{}, progress: %{at: nil, index: nil}}
 
     state =
-      reduce(path, state, fn object, state ->
+      reduce(path, section, state, fn object, state ->
         Enum.reduce(
           GoogleSemanticPoints.prepare(object, context),
           state,
@@ -79,24 +82,7 @@ defmodule Dawarich.Imports.GoogleSemanticHistory do
     end
   end
 
-  defp reduce(path, acc, fun) do
-    JsonStream.reduce(
-      path,
-      acc,
-      fn
-        {:value, [index, "timelineObjects"], object, _, _}, acc when is_integer(index) ->
-          fun.(object, acc)
-
-        _, acc ->
-          acc
-      end,
-      fn
-        [index, "timelineObjects"] when is_integer(index) -> true
-        _ -> false
-      end,
-      mode: :compat
-    )
-  end
+  defp reduce(path, section, acc, fun), do: Section.reduce(path, section, acc, fun)
 
   defp push(point, state, import, context) do
     now = DateTime.to_naive(clock(context.now))

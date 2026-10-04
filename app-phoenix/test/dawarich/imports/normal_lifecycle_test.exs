@@ -25,61 +25,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
       reset!(ScratchRepo)
       c = fixture(c, name)
       assert {:ok, :ok} = run(c)
-      expected = c.expected["parent"]
-
-      status =
-        Enum.find_index(
-          ~w(created processing completed failed deleting),
-          &(&1 == expected["status"])
-        )
-
-      assert [
-               [
-                 status,
-                 expected["raw_points"],
-                 expected["doubles"],
-                 expected["processed"],
-                 expected["raw_data"],
-                 expected["error_message"]
-               ]
-             ] ==
-               rows(
-                 "SELECT status,raw_points,doubles,processed,raw_data,error_message FROM imports WHERE id=$1",
-                 [c.import.id]
-               )
-
-      assert rows(
-               "SELECT ST_AsText(lonlat::geometry),timestamp FROM points WHERE import_id=$1 ORDER BY id",
-               [c.import.id]
-             ) == Enum.map(c.expected["points"], &[&1["lonlat"], &1["timestamp"]])
-
-      notifications =
-        rows(
-          "SELECT title,content,CASE kind WHEN 2 THEN 'error' WHEN 1 THEN 'warning' ELSE 'info' END FROM notifications ORDER BY id"
-        )
-
-      assert length(notifications) == length(c.expected["notifications"])
-
-      for {[title, content, kind], [expected_title, expected_content, expected_kind]} <-
-            Enum.zip(notifications, c.expected["notifications"]) do
-        assert [title, kind] == [expected_title, expected_kind]
-
-        if String.contains?(expected_content, "/Users/"),
-          do: assert(String.starts_with?(content, hd(String.split(expected_content, "/Users/")))),
-          else: assert(content == expected_content)
-      end
-
-      assert Processed.done?(ScratchRepo, c.job.args["event_id"])
-
-      assert [["terminal"]] =
-               rows("SELECT phase FROM phoenix.import_runs WHERE import_id=$1", [c.import.id])
-
-      count = Enum.count(c.expected["jobs"], &(&1["type"] == "Import::UpdatePointsCountJob"))
-
-      assert [[count]] ==
-               rows(
-                 "SELECT count(*) FROM phoenix.rails_commands WHERE kind='imports.postprocessing_step' AND payload->>'command_type'='imports.update_points_count'"
-               )
+      assert_parent(c)
     end
   end
 
@@ -245,6 +191,84 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
       assert Processed.done?(ScratchRepo, c.job.args["event_id"])
       assert_clean(c)
     end
+  end
+
+  test "duplicate JSON sections preserve Rails last-key lifecycle effects", c do
+    for source <- ~w(mobile_photo_library google_records google_semantic_history polarsteps),
+        index <- 0..1 do
+      reset!(ScratchRepo)
+      c = fixture(c, "duplicate_section_#{source}_#{index}")
+      assert {:ok, :ok} = run(c)
+      assert_parent(c)
+
+      expected =
+        for job <- c.expected["jobs"],
+            job["type"] == "Import::UpdatePointsCountJob",
+            do: ["imports.update_points_count", %{"import_id" => hd(job["args"])}]
+
+      assert expected ==
+               rows(
+                 "SELECT payload->>'command_type',payload->'command_payload' FROM phoenix.rails_commands WHERE payload->>'command_type'='imports.update_points_count' ORDER BY id"
+               )
+    end
+  end
+
+  defp assert_parent(c) do
+    expected = c.expected["parent"]
+
+    status =
+      Enum.find_index(
+        ~w(created processing completed failed deleting),
+        &(&1 == expected["status"])
+      )
+
+    assert [
+             [
+               status,
+               expected["raw_points"],
+               expected["doubles"],
+               expected["processed"],
+               expected["raw_data"],
+               expected["error_message"]
+             ]
+           ] ==
+             rows(
+               "SELECT status,raw_points,doubles,processed,raw_data,error_message FROM imports WHERE id=$1",
+               [c.import.id]
+             )
+
+    assert rows(
+             "SELECT ST_AsText(lonlat::geometry),timestamp FROM points WHERE import_id=$1 ORDER BY id",
+             [c.import.id]
+           ) == Enum.map(c.expected["points"], &[&1["lonlat"], &1["timestamp"]])
+
+    notifications =
+      rows(
+        "SELECT title,content,CASE kind WHEN 2 THEN 'error' WHEN 1 THEN 'warning' ELSE 'info' END FROM notifications ORDER BY id"
+      )
+
+    assert length(notifications) == length(c.expected["notifications"])
+
+    for {[title, content, kind], [expected_title, expected_content, expected_kind]} <-
+          Enum.zip(notifications, c.expected["notifications"]) do
+      assert [title, kind] == [expected_title, expected_kind]
+
+      if String.contains?(expected_content, "/Users/"),
+        do: assert(String.starts_with?(content, hd(String.split(expected_content, "/Users/")))),
+        else: assert(content == expected_content)
+    end
+
+    assert Processed.done?(ScratchRepo, c.job.args["event_id"])
+
+    assert [["terminal"]] =
+             rows("SELECT phase FROM phoenix.import_runs WHERE import_id=$1", [c.import.id])
+
+    count = Enum.count(c.expected["jobs"], &(&1["type"] == "Import::UpdatePointsCountJob"))
+
+    assert [[count]] ==
+             rows(
+               "SELECT count(*) FROM phoenix.rails_commands WHERE kind='imports.postprocessing_step' AND payload->>'command_type'='imports.update_points_count'"
+             )
   end
 
   defp assert_archive_children(c) do

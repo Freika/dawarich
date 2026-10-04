@@ -1,10 +1,11 @@
 defmodule Dawarich.Imports.GoogleRecords do
   @moduledoc false
-  alias Dawarich.Imports.{GpxProgress, JsonStream, NormalBatch}
+  alias Dawarich.Imports.JsonStream.Section
+  alias Dawarich.Imports.{GpxProgress, NormalBatch}
   alias Dawarich.Imports.GoogleRecords.Point
 
   def call(path, import, context) do
-    JsonStream.reduce(path, nil, fn _, acc -> acc end, fn _ -> false end, mode: :compat)
+    {_root, section} = Section.last(path, "locations")
 
     context =
       context
@@ -17,29 +18,16 @@ defmodule Dawarich.Imports.GoogleRecords do
     }
 
     state =
-      JsonStream.reduce(
-        path,
-        state,
-        fn
-          {:value, [index, "locations"], point, _, _}, state when is_integer(index) ->
-            batch = NormalBatch.push(state.batch, Point.prepare(point, import, context))
+      Section.reduce(path, section, state, fn point, state ->
+        batch = NormalBatch.push(state.batch, Point.prepare(point, import, context))
 
-            progress =
-              if state.batch.size == 999,
-                do: GpxProgress.record(import, batch.prepared - 1000, state.progress, context),
-                else: state.progress
+        progress =
+          if state.batch.size == 999,
+            do: GpxProgress.record(import, batch.prepared - 1000, state.progress, context),
+            else: state.progress
 
-            %{state | batch: batch, progress: progress}
-
-          _, state ->
-            state
-        end,
-        fn
-          [index, "locations"] when is_integer(index) -> true
-          _ -> false
-        end,
-        mode: :compat
-      )
+        %{state | batch: batch, progress: progress}
+      end)
 
     NormalBatch.finish(state.batch)
 
