@@ -590,6 +590,12 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         remaining_request(user, :delete, "/trips/#{trip.id}", {}, 'text/html')
         expect(response.status).to eq(303)
         expect(reservation.reload.planned_day_id).to be_nil
+        trip = remaining_trip(user, 9_898_301, path: nil)
+        job_owner!('command:trips.calculate', :oban)
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        remaining_request(user, :get, "/trips/#{trip.id}", {}, 'text/html')
+        expect(response.status).to eq(200)
+        expect(JobOutbox.where(aggregate_id: trip.id, command_type: 'trips.calculate').count).to eq(1)
       end
     end
   end

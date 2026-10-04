@@ -6,12 +6,13 @@ defmodule Dawarich.Trips.ShowCalculation do
 
   def admitted?(repo, user, id, now) do
     with {:ok, state} <- state(repo, user, id, now) do
-      not state.needed or
-        repo.query!(
-          "SELECT owner FROM phoenix.job_owners WHERE key = 'command:trips.calculate'",
-          [],
-          log: false
-        ).rows == [["oban"]]
+      cloud_supported?(state.needed) and
+        (not state.needed or
+           repo.query!(
+             "SELECT owner FROM phoenix.job_owners WHERE key = 'command:trips.calculate'",
+             [],
+             log: false
+           ).rows == [["oban"]])
     else
       _ -> false
     end
@@ -29,9 +30,11 @@ defmodule Dawarich.Trips.ShowCalculation do
         )
 
         with {:ok, state} <- state(repo, user, id, now) do
-          if state.needed,
-            do: WebCommands.calculate!(repo, user, id, state.unit, now),
-            else: {:ok, :ready}
+          cond do
+            not cloud_supported?(state.needed) -> {:replay, "Cloud trip calculation"}
+            state.needed -> WebCommands.calculate!(repo, user, id, state.unit, now)
+            true -> {:ok, :ready}
+          end
         end
       end)
       |> case do
@@ -40,6 +43,8 @@ defmodule Dawarich.Trips.ShowCalculation do
       end
     end
   end
+
+  defp cloud_supported?(needed), do: not needed or DawarichWeb.LayoutAssigns.self_hosted?()
 
   defp state(repo, user, id, now) do
     with {:ok, gated} <- TripPage.gate(user, id),
