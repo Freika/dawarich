@@ -1,4 +1,4 @@
-CREATE TABLE phoenix.import_archive_children (
+CREATE TABLE IF NOT EXISTS phoenix.import_archive_children (
   parent_id bigint NOT NULL,
   blob_id bigint NOT NULL,
   entry_name text NOT NULL,
