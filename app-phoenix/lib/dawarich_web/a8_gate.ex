@@ -4,7 +4,7 @@ defmodule DawarichWeb.A8Gate do
   alias DawarichWeb.{RailsAuth, Strangler}
 
   def actions?(conn, _params) do
-    conn.query_string == "" and
+    DawarichWeb.LayoutAssigns.self_hosted?() and conn.query_string == "" and
       Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and
       Plug.Conn.get_req_header(conn, "x-http-method-override") == [] and
       action_content?(conn) and
@@ -37,11 +37,12 @@ defmodule DawarichWeb.A8Gate do
   defp bounded_length?(_), do: false
 
   def navigation?(conn, _params) do
-    Strangler.page_request?(conn) and scalar_query?(conn.query_string, ~w(status locale))
+    DawarichWeb.LayoutAssigns.self_hosted?() and Strangler.page_request?(conn) and
+      scalar_query?(conn.query_string, ~w(status locale))
   end
 
   def settings?(conn, _params) do
-    scalar_query?(conn.query_string, ~w(locale)) and
+    DawarichWeb.LayoutAssigns.self_hosted?() and scalar_query?(conn.query_string, ~w(locale)) and
       case RailsAuth.call(conn, []).assigns.current_user do
         nil ->
           true

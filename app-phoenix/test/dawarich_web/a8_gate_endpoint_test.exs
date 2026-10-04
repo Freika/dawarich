@@ -33,6 +33,25 @@ defmodule DawarichWeb.A8GateEndpointTest do
     %{session: session, token: DawarichWeb.RailsCsrf.masked_token(session)}
   end
 
+  for {name, method, path, body} <- [
+        {"Cloud actions replay untouched before effects", :patch, "/visits/42",
+         "visit%5Bname%5D=Original+bytes"},
+        {"Cloud navigation replays untouched before auth", :get, "/visits?status=suggested", ""},
+        {"Cloud settings replay untouched before auth", :get, "/settings/visits?locale=en", ""}
+      ] do
+    @tag cloud: method
+    test name, ctx do
+      old = System.get_env("SELF_HOSTED")
+      System.put_env("SELF_HOSTED", "false")
+
+      on_exit(fn ->
+        if old, do: System.put_env("SELF_HOSTED", old), else: System.delete_env("SELF_HOSTED")
+      end)
+
+      replay(ctx, upstream!(), unquote(method), unquote(path), unquote(body))
+    end
+  end
+
   defp request(ctx, method, path, body) do
     Phoenix.ConnTest.build_conn()
     |> Phoenix.ConnTest.put_req_cookie("_dawarich_session", RailsUser.cookie(ctx.session))
