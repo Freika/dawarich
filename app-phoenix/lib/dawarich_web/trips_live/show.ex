@@ -14,14 +14,7 @@ defmodule DawarichWeb.TripsLive.Show do
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     with {trip_id, ""} <- Integer.parse(id),
-         {:ok, page} <- TripPage.load(socket.assigns.current_user, trip_id, socket.assigns.now),
-         {:ok, _} <-
-           Dawarich.Trips.ShowCalculation.run(
-             Dawarich.Repo,
-             socket.assigns.current_user,
-             trip_id,
-             %{now: socket.assigns.now, connected: connected?(socket)}
-           ) do
+         {:ok, page} <- TripPage.load(socket.assigns.current_user, trip_id, socket.assigns.now) do
       title = page.name |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
       title =

@@ -108,6 +108,63 @@ defmodule DawarichWeb.TripMissingDataTest do
     assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
   end
 
+  test "an owner flip before document production replays the Rails GET and response" do
+    entry = Enum.find(@effects, &(&1["name"] == "show_nil_path_sidekiq"))
+    {user, id} = seed(entry)
+    Ownership.put!(Repo, "command:trips.calculate", :oban)
+    golden = File.read!("test/fixtures/trips/remaining/pages/show_nil_path_sidekiq.html")
+    upstream = upstream!()
+    handler = {__MODULE__, :owner_flip}
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:dawarich, :repo, :query],
+        fn _, _, meta, _ ->
+          if meta.query ==
+               "SELECT owner FROM phoenix.job_owners WHERE key = 'command:trips.calculate'" and
+               Process.delete(:flip_show_owner) do
+            Ownership.put!(Repo, "command:trips.calculate", :sidekiq)
+          end
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+
+    puma =
+      Task.async(fn ->
+        socket = Dawarich.Test.RawHTTP.accept(upstream)
+        {head, rest} = Dawarich.Test.RawHTTP.read_head(socket)
+
+        Dawarich.Test.RawHTTP.reply(
+          socket,
+          "HTTP/1.1 200 OK\r\ncontent-type: text/html; charset=utf-8\r\ncontent-length: #{byte_size(golden)}\r\n\r\n" <>
+            golden
+        )
+
+        :gen_tcp.close(socket)
+        {Dawarich.Test.RawHTTP.request_line(head), rest}
+      end)
+
+    before = Repo.query!("SELECT to_jsonb(t) FROM trips t WHERE id=$1", [id]).rows
+    Process.put(:flip_show_owner, true)
+    before_user = Repo.query!("SELECT to_jsonb(u) FROM users u WHERE id=$1", [user.id]).rows
+    path = entry["request"]["path"]
+    conn = RailsUser.signed_in(user.id) |> get(path)
+    assert conn.status == 200
+    assert conn.resp_body == golden
+    assert Task.await(puma) == {"GET #{path} HTTP/1.1", ""}
+    assert Process.get(:flip_show_owner) == nil
+    assert Repo.query!("SELECT to_jsonb(t) FROM trips t WHERE id=$1", [id]).rows == before
+
+    assert Repo.query!("SELECT to_jsonb(u) FROM users u WHERE id=$1", [user.id]).rows ==
+             before_user
+
+    assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
+    assert commands() == []
+  end
+
   test "missing show renders Rails states and queues only on document mount" do
     Repo.query!("DELETE FROM countries")
 
@@ -159,13 +216,9 @@ defmodule DawarichWeb.TripMissingDataTest do
 
         assert {:ok, mounted, options} = result
 
-        if eligible and entry["request"]["owner"] == "sidekiq" and not connected do
-          assert {:redirect, %{to: target}} = mounted.redirected
-          assert target == "/trips/#{id}"
-        else
-          assert mounted.assigns.page.map_state == page.map_state
-          assert options[:temporary_assigns] == [page: nil]
-        end
+        assert mounted.assigns.page.map_state == page.map_state
+        assert options[:temporary_assigns] == [page: nil]
+        assert mounted.redirected == nil
 
         assert Repo.query!("SELECT count(*) FROM job_outbox WHERE aggregate_id=$1", [id]).rows ==
                  before
@@ -218,7 +271,9 @@ defmodule DawarichWeb.TripMissingDataTest do
 
       Repo.query!("UPDATE trips SET visited_countries = '[1]'::jsonb WHERE id=$1", [id])
       assert TripPage.gate(user, id) == :rails
-      assert {:replay, _} = ShowCalculation.run(SpyRepo, user, id, %{now: @now, connected: false})
+
+      assert {:replay, _} =
+               ShowCalculation.run(SpyRepo, user, id, %{now: @now, connected: false})
     end
 
     assert commands() == []
