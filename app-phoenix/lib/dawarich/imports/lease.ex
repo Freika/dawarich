@@ -6,7 +6,13 @@ defmodule Dawarich.Imports.Lease do
   @lane "command:imports.process_gpx"
   @worker "Dawarich.Imports.ProcessGpxWorker"
 
-  def with_import(repo, %Oban.Job{id: job_id, attempt: attempt, args: args}, import, fun)
+  def with_import(
+        repo,
+        %Oban.Job{id: job_id, attempt: attempt, args: args},
+        import,
+        fun,
+        opts \\ []
+      )
       when is_integer(job_id) and job_id > 0 and is_integer(attempt) and attempt > 0 do
     if repo.in_transaction?(),
       do: raise(ArgumentError, "Import lease cannot run inside an enclosing transaction")
@@ -24,7 +30,11 @@ defmodule Dawarich.Imports.Lease do
       event: event,
       event_id: args["event_id"],
       token: Ecto.UUID.dump!(Ecto.UUID.generate()),
-      scope: make_ref()
+      scope: make_ref(),
+      lane: Keyword.get(opts, :lane, @lane),
+      worker: Keyword.get(opts, :worker, @worker),
+      sources: Keyword.get(opts, :sources, [4]),
+      terminal_statuses: Keyword.get(opts, :terminal_statuses, [2])
     }
 
     case State.Lease.with_lease(repo, "import:#{import.id}", fn -> run(lease, fun) end,
@@ -106,7 +116,7 @@ defmodule Dawarich.Imports.Lease do
   end
 
   defp current?(lease) do
-    Ownership.lock(lease.repo, @lane) == :oban and job_current?(lease) and
+    Ownership.lock(lease.repo, lease.lane) == :oban and job_current?(lease) and
       user_current?(lease) and import_current?(lease)
   end
 
@@ -124,8 +134,8 @@ defmodule Dawarich.Imports.Lease do
            [lease.job_id],
            log: false
          ).rows do
-      [["executing", attempt, @worker, args]] ->
-        attempt == lease.attempt and args["event_id"] == lease.event_id and
+      [["executing", attempt, worker, args]] ->
+        worker == lease.worker and attempt == lease.attempt and args["event_id"] == lease.event_id and
           args["import_id"] == lease.import.id and args["user_id"] == lease.import.user_id
 
       _ ->
@@ -139,12 +149,12 @@ defmodule Dawarich.Imports.Lease do
            [lease.import.id],
            log: false
          ).rows do
-      [[user, 4, status]] when status in [0, 1, 3] ->
-        user == lease.import.user_id and Map.get(lease, :mode, :processing) == :processing
-
-      [[user, 4, 2]] ->
-        user == lease.import.user_id and Map.get(lease, :mode) == :terminal and
-          terminal_resume?(lease)
+      [[user, source, status]] ->
+        user == lease.import.user_id and source in lease.sources and
+          case Map.get(lease, :mode, :processing) do
+            :processing -> status in [0, 1, 3]
+            :terminal -> status in lease.terminal_statuses and terminal_resume?(lease)
+          end
 
       _ ->
         false

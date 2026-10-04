@@ -15,7 +15,12 @@ defmodule Dawarich.RawData.ClearWorker do
   @key "cron:raw_data_clear_job"
   @clear """
   UPDATE points SET raw_data = '{}'::jsonb
-  WHERE id IN (
+  WHERE raw_data_archived = true AND raw_data <> '{}'::jsonb
+    AND raw_data_archive_id IN (
+      SELECT a.id FROM points_raw_data_archives a
+      WHERE a.user_id = $1 AND a.verified_at <= now() - interval '7 days'
+    )
+    AND id IN (
     SELECT p.id FROM points p
     WHERE p.user_id = $1 AND p.raw_data_archived = true AND p.raw_data <> '{}'::jsonb
       AND p.id > $3

@@ -1,11 +1,15 @@
 defmodule Dawarich.Imports.JsonStream.Reader do
   @moduledoc false
+  def open({:bytes, bytes}, offset, length),
+    do: %{file: nil, buffer: binary_part(bytes, offset, length), remaining: length}
+
   def open(path, offset, length) do
     file = File.open!(path, [:read, :binary, :raw])
     {:ok, _} = :file.position(file, offset)
     %{file: file, buffer: "", remaining: length}
   end
 
+  def close(%{file: nil}), do: :ok
   def close(r), do: File.close(r.file)
   def peek(%{buffer: <<c, _::binary>>} = r), do: {c, r}
   def peek(%{remaining: 0} = r), do: {nil, r}

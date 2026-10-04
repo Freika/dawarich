@@ -4,6 +4,7 @@ require 'json'
 require 'time'
 require 'stringio'
 require 'uri'
+require 'active_support/testing/time_helpers'
 
 raise 'A11 own test DB required' unless Rails.env.test? && ENV.fetch('DATABASE_NAME').start_with?('dawarich_test_a11')
 
@@ -75,7 +76,91 @@ def consume_account_update(fixture, request)
   end
 end
 
-if ARGV[1] == 'account_update'
+def consume_two_factor_management(fixture, request)
+  label = 'Rails consumes native OTP storage backups and management cookies'
+  raise "#{label}: mode missing" unless fixture.fetch('mode', nil) == 'two_factor_management'
+
+  id = fixture.fetch('user_id')
+  email = 'a11c-protocol@dawarich.test'
+  raise "#{label}: synthetic identity required" unless id == 74_603 && fixture.fetch('email') == email
+  raise "#{label}: synthetic actor already exists" if User.exists?(id:) || User.exists?(email:)
+
+  user = nil
+  begin
+    user = User.create!(id:, email:, password: fixture.fetch('password'), settings: {}, status: :active, plan: :pro)
+    native = fixture.fetch('enabled')
+    user.update_columns(encrypted_password: fixture.fetch('hash'), locked_at: nil, failed_attempts: 0,
+                        otp_required_for_login: native.fetch('enabled'), otp_backup_codes: native.fetch('backups'),
+                        consumed_timestep: native.fetch('consumed_timestep'), active_until: 10.years.from_now)
+    User.connection.execute(User.sanitize_sql_array(['UPDATE users SET otp_secret=? WHERE id=?',
+                                                     native.fetch('ciphertext'), id]))
+    raise "#{label}: decryption failed" unless user.reload.otp_secret == fixture.fetch('secret')
+
+    backup = fixture.fetch('unused_backup')
+    raise "#{label}: native backup refused" unless user.invalidate_otp_backup_code!(backup)
+    raise "#{label}: backup replay survived" if user.reload.invalidate_otp_backup_code!(backup)
+
+    clock = Object.new.extend(ActiveSupport::Testing::TimeHelpers)
+    clock.travel_to(Time.at(fixture.fetch('at')).utc) do
+      if user.validate_and_consume_otp!(fixture.fetch('current_code'))
+        raise "#{label}: consumed timestep replay survived"
+      end
+
+      clock.travel_to(Time.at(fixture.fetch('at') + 30).utc)
+      raise "#{label}: later timestep refused" unless user.validate_and_consume_otp!(fixture.fetch('later_code'))
+      raise "#{label}: timestep not saved" unless user.reload.consumed_timestep == native.fetch('consumed_timestep') + 1
+
+      fixture.fetch('sessions').each do |name, entry|
+        decoded = jar(request, '_dawarich_session', entry.fetch('cookie')).encrypted['_dawarich_session']
+        raise "#{label}: #{name} cookie mismatch" unless decoded == entry.fetch('expected')
+      end
+      before = fixture.dig('sessions', 'before', 'expected')
+      managed = fixture.dig('sessions', 'managed', 'expected')
+      raise "#{label}: Warden or session identity changed" unless before == managed
+
+      ActionController::Base.allow_forgery_protection = true
+      client = native_client('_dawarich_session' => fixture.dig('sessions', 'managed', 'cookie'))
+      client.get('/settings/two_factor')
+      raise "#{label}: authenticated management refused" unless client.response.status == 200
+
+      client.post('/settings/two_factor', params: { authenticity_token: fixture.fetch('form_token') })
+      raise "#{label}: setup CSRF refused" unless client.response.status == 200
+      raise "#{label}: setup did not persist" unless user.reload.otp_secret != fixture.fetch('secret')
+
+      received = client.request.cookie_jar.encrypted['_dawarich_session']
+      unless received['session_id'] == before['session_id'] &&
+             received['warden.user.user.key'] == before['warden.user.user.key']
+        raise "#{label}: management lost Warden identity"
+      end
+
+      disabled = fixture.fetch('disabled')
+      raise "#{label}: native disable projection wrong" unless disabled == {
+        'enabled' => false, 'ciphertext' => nil, 'backups' => nil,
+        'consumed_timestep' => native.fetch('consumed_timestep')
+      }
+
+      user.update_columns(otp_required_for_login: false, otp_secret: nil, otp_backup_codes: nil,
+                          consumed_timestep: disabled.fetch('consumed_timestep'))
+      login = native_client({})
+      login.get('/users/sign_in')
+      token = Nokogiri::HTML5(login.response.body).at_css('meta[name="csrf-token"]')['content']
+      login.post('/users/sign_in', params: { authenticity_token: token,
+                                           user: { email:, password: fixture.fetch('password') } })
+      raise "#{label}: ordinary login refused after disable" unless login.response.status == 303
+
+      login.get('/stats')
+      raise "#{label}: ordinary session refused" unless login.response.status == 200
+    end
+    puts "#{label}: PASS decryption, backup once/replay, timestep once/later, " \
+         'setup CSRF, retained Warden, disabled login'
+  ensure
+    user&.delete
+  end
+end
+
+if ARGV[1] == 'two_factor_management'
+  consume_two_factor_management(fixture, request)
+elsif ARGV[1] == 'account_update'
   consume_account_update(fixture, request)
 else
   fixture.fetch('sessions').each do |name, entry|

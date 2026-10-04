@@ -42,4 +42,19 @@ defmodule Dawarich.QrCodeTest do
       assert QrSvg.api_key(@entry["root_url"], @entry["api_key"], 3) == @entry["svg"]
     end
   end
+
+  test "OTP QR matches source SVG without caching its secret URI" do
+    fixture = "test/fixtures/auth/two_factor/otp.json" |> File.read!() |> Jason.decode!()
+    qr = fixture["qr"]
+    key = :crypto.hash(:sha256, qr["payload"])
+    :ets.delete(Dawarich.QrCache, key)
+    on_exit(fn -> :ets.delete(Dawarich.QrCache, key) end)
+
+    assert Enum.map(QrCode.modules(qr["payload"]), fn row ->
+             Enum.map_join(row, &if(&1, do: "1", else: "0"))
+           end) == qr["modules"]
+
+    assert QrSvg.otp(qr["payload"]) == qr["svg"]
+    assert :ets.lookup(Dawarich.QrCache, key) == []
+  end
 end

@@ -1,6 +1,18 @@
 # frozen_string_literal: true
 
 module FitFixtureHelper
+  def generate_reader_fit_fixture(path, base, extra = '')
+    require 'fit4ruby'
+    source = File.binread(base)
+    header_size = source.getbyte(0)
+    data_size = source.byteslice(4, 4).unpack1('V')
+    data = source.byteslice(header_size, data_size) + extra
+    header = "#{[14, 32, 1012, data.bytesize].pack('CCvV')}.FIT"
+    crc = Object.new.extend(Fit4Ruby::CRC16)
+    header += [crc.compute_crc(StringIO.new(header), 0, header.bytesize)].pack('v')
+    File.binwrite(path, header + data + [crc.compute_crc(StringIO.new(data), 0, data.bytesize)].pack('v'))
+  end
+
   # Generates a FIT fixture where sessions may have no laps and all
   # trackpoint records are stored flat on the activity object.
   # Observed with FIT files exported from Garmin Connect.

@@ -11,6 +11,8 @@ module ImportCommands
 
   def process(import, producer:)
     unless native_gpx?(import)
+      return Imports::ProcessCommands.process(import, producer:) if Imports::ProcessCommands.native?(import)
+
       JobCommands.enqueue_after_commit(nil) { Import::ProcessJob.perform_later(import.id) }
       return :sidekiq
     end

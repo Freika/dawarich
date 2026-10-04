@@ -15,26 +15,44 @@ defmodule Dawarich.Imports.ImportState do
   end
 
   def mode(lease), do: state!(lease).mode
+  def with_blob(lease), do: effect!(lease, fn -> state!(lease).blob end)
 
   def effect!(lease, fun) do
     state = state!(lease)
     guard = if state.mode == :terminal, do: &Lease.terminal_effect!/2, else: &Lease.effect!/2
 
     guard.(lease, fn ->
-      [[status]] =
-        lease.repo.query!("SELECT status FROM imports WHERE id=$1", [lease.import.id], log: false).rows
+      [[status, source]] =
+        lease.repo.query!("SELECT status,source FROM imports WHERE id=$1", [lease.import.id],
+          log: false
+        ).rows
 
-      unless status == state.status and attachment!(lease) == state.attachment,
-        do: raise(LeaseLost)
+      unless status == state.status and source == state.import.source and
+               attachment!(lease) == state.attachment,
+             do: raise(LeaseLost)
 
       fun.()
     end)
   end
 
+  def source!(lease, source) do
+    effect!(lease, fn ->
+      lease.repo.query!(
+        "UPDATE imports SET source=$2,additional_data_extraction_status=#{availability("$2::integer")} WHERE id=$1",
+        [lease.import.id, source],
+        log: false
+      )
+    end)
+
+    state = state!(lease)
+    Process.put(key(lease), %{state | import: %{state.import | source: source}})
+    :ok
+  end
+
   def start!(lease, now) do
     effect!(lease, fn ->
       lease.repo.query!(
-        "UPDATE imports SET additional_data_extraction_status=CASE WHEN additional_data_extraction_status=5 THEN 0 ELSE additional_data_extraction_status END,status=1,raw_points=0,doubles=0,processing_started_at=CASE WHEN status<>1 THEN $2 ELSE processing_started_at END,updated_at=$2 WHERE id=$1",
+        "UPDATE imports SET additional_data_extraction_status=#{availability()},status=1,raw_points=0,doubles=0,processing_started_at=CASE WHEN status<>1 THEN $2 ELSE processing_started_at END,updated_at=$2 WHERE id=$1",
         [lease.import.id, naive(now)],
         log: false
       )
@@ -47,7 +65,7 @@ defmodule Dawarich.Imports.ImportState do
   def fail!(lease, error, now) do
     effect!(lease, fn ->
       lease.repo.query!(
-        "UPDATE imports SET additional_data_extraction_status=CASE WHEN additional_data_extraction_status=5 THEN 0 ELSE additional_data_extraction_status END,status=3,error_message=$2,updated_at=$3 WHERE id=$1",
+        "UPDATE imports SET additional_data_extraction_status=#{availability()},status=3,error_message=$2,updated_at=$3 WHERE id=$1",
         [lease.import.id, Exception.message(error), naive(now)],
         log: false
       )
@@ -61,7 +79,7 @@ defmodule Dawarich.Imports.ImportState do
     if state!(lease).status == 1 do
       effect!(lease, fn ->
         lease.repo.query!(
-          "UPDATE imports SET additional_data_extraction_status=CASE WHEN additional_data_extraction_status=5 THEN 0 ELSE additional_data_extraction_status END,status=2,updated_at=$2 WHERE id=$1",
+          "UPDATE imports SET additional_data_extraction_status=#{availability()},status=2,updated_at=$2 WHERE id=$1",
           [lease.import.id, naive(now)],
           log: false
         )
@@ -74,9 +92,24 @@ defmodule Dawarich.Imports.ImportState do
       end)
 
       change(lease, :terminal, 2)
+    else
+      if lease.lane == "command:imports.process_normal" and state!(lease).status == 3,
+        do: terminal_failed!(lease)
     end
 
     :ok
+  end
+
+  defp terminal_failed!(lease) do
+    effect!(lease, fn ->
+      lease.repo.query!(
+        "UPDATE phoenix.import_runs SET phase='terminal',attachment_snapshot=$2 WHERE import_id=$1",
+        [lease.import.id, %{"attachment" => state!(lease).attachment}],
+        log: false
+      )
+    end)
+
+    change(lease, :terminal, 3)
   end
 
   def import!(lease) do
@@ -162,6 +195,17 @@ defmodule Dawarich.Imports.ImportState do
 
   defp change(lease, mode, status),
     do: Process.put(key(lease), %{state!(lease) | mode: mode, status: status})
+
+  defp availability(source \\ "source") do
+    """
+    CASE
+      WHEN #{source} IN (0,3,4,13) AND additional_data_extraction_status=5 THEN 0
+      WHEN (#{source} IS NULL OR #{source} NOT IN (0,3,4,13))
+        AND additional_data_extraction_status=0 THEN 5
+      ELSE additional_data_extraction_status
+    END
+    """
+  end
 
   defp naive(%DateTime{} = now), do: DateTime.to_naive(now)
 end

@@ -47,7 +47,10 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
       |> Regex.scan(legacy_options, capture: :all_but_first)
       |> Enum.map(fn [email_type] -> "mail.user." <> email_type end)
 
-    rails = MapSet.new(commands ++ mails)
+    [_, normal_type] =
+      Regex.run(~r/TYPE = '([^']+)'/, RailsTree.read("app/services/imports/process_commands.rb"))
+
+    rails = MapSet.new(commands ++ mails ++ [normal_type])
 
     phoenix =
       for %{kind: :command, key: "command:" <> type} <- Registry.entries(),

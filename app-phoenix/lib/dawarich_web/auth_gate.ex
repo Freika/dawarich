@@ -4,13 +4,14 @@ defmodule DawarichWeb.AuthGate do
 
   alias Dawarich.Auth.{Admission, RegistrationSetting}
   alias Dawarich.Auth.Recovery.MailWorker
-  alias DawarichWeb.{AuthAccount, AuthApiKeys, AuthHandler, AuthRecovery}
+  alias DawarichWeb.{AuthAccount, AuthApiKeys, AuthHandler, AuthRecovery, AuthTwoFactor}
 
   @handlers [
     {"credentials", AuthHandler},
     {"recovery", AuthRecovery.Http},
     {"account", AuthAccount.Http},
-    {"api_keys", AuthApiKeys.Http}
+    {"api_keys", AuthApiKeys.Http},
+    {"two_factor", AuthTwoFactor.Http}
   ]
 
   @impl true
@@ -32,7 +33,7 @@ defmodule DawarichWeb.AuthGate do
     end
   end
 
-  defp options(flow) when flow in ["account", "api_keys"], do: [enabled: true]
+  defp options(flow) when flow in ["account", "api_keys", "two_factor"], do: [enabled: true]
   defp options(flow), do: options(flow, RegistrationSetting.fetch())
 
   defp options("credentials", {:ok, registration}),
