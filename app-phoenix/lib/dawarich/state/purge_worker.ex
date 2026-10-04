@@ -36,6 +36,20 @@ defmodule Dawarich.State.PurgeWorker do
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
     ) AND expires_at <= statement_timestamp()
+    """,
+    """
+    DELETE FROM phoenix.track_backfill_ranges WHERE user_id IN (
+      SELECT user_id FROM phoenix.track_backfill_ranges WHERE expires_at <= statement_timestamp()
+      ORDER BY expires_at LIMIT $1
+      FOR UPDATE SKIP LOCKED
+    ) AND expires_at <= statement_timestamp()
+    """,
+    """
+    DELETE FROM phoenix.track_backfill_walks WHERE user_id IN (
+      SELECT user_id FROM phoenix.track_backfill_walks WHERE expires_at <= statement_timestamp()
+      ORDER BY expires_at LIMIT $1
+      FOR UPDATE SKIP LOCKED
+    ) AND expires_at <= statement_timestamp()
     """
   ]
 

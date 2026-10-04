@@ -126,6 +126,56 @@ defmodule Dawarich.State.PurgeWorkerTest do
     assert rows("SELECT user_id FROM phoenix.achievement_checks") == [[2]]
   end
 
+  test "bounded purge deletes expired backfill state but preserves live and refreshed state" do
+    for id <- 1..4 do
+      rows(
+        """
+        INSERT INTO phoenix.track_backfill_ranges
+          (user_id, earliest_timestamp, latest_timestamp, cycle_id, time_zone, due_at, expires_at)
+        VALUES ($1, 10, 20, '00000000-0000-4000-8000-000000480001', 'Etc/UTC', now(),
+          now() + CASE WHEN $1::bigint = 2 THEN interval '1 hour' ELSE interval '-1 hour' END)
+        """,
+        [id]
+      )
+
+      rows(
+        """
+        INSERT INTO phoenix.track_backfill_walks (user_id, walk_id, state, time_zone, expires_at)
+        VALUES ($1, '00000000-0000-4000-8000-000000480002', 'walking', 'Etc/UTC',
+          now() + CASE WHEN $1::bigint = 2 THEN interval '1 hour' ELSE interval '-1 hour' END)
+        """,
+        [id]
+      )
+    end
+
+    holder =
+      hold(fn ->
+        for table <- ~w(track_backfill_ranges track_backfill_walks) do
+          rows("SELECT user_id FROM phoenix.#{table} WHERE user_id = 3 FOR UPDATE")
+
+          rows(
+            "UPDATE phoenix.#{table} SET expires_at = now() + interval '1 hour' WHERE user_id = 4"
+          )
+        end
+      end)
+
+    outcome =
+      settle(Task.async(fn -> PurgeWorker.run(ScratchRepo, 2) end), "DELETE FROM phoenix.%")
+
+    commit(holder)
+    assert outcome == {:finished, :ok}
+
+    for table <- ~w(track_backfill_ranges track_backfill_walks) do
+      assert rows("SELECT user_id FROM phoenix.#{table} ORDER BY user_id") == [[2], [3], [4]]
+    end
+
+    assert :ok = PurgeWorker.run(ScratchRepo, 2)
+
+    for table <- ~w(track_backfill_ranges track_backfill_walks) do
+      assert rows("SELECT user_id FROM phoenix.#{table} ORDER BY user_id") == [[2], [4]]
+    end
+  end
+
   defp expired!(claims, counters, leases) do
     for key <- claims,
         do:
