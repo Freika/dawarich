@@ -62,7 +62,7 @@ defmodule Dawarich.Geocoding.PlaceFetchTest do
         log: false
       )
 
-      {:ok, "OK"} = Dawarich.Redis.cache_command(["FLUSHDB"])
+      clear_response_cache!()
       f = load!(name)
       stub_requests!(f["requests"])
       before = places(f)

@@ -2,7 +2,6 @@ defmodule Dawarich.Geocoding.PointFetchTest do
   use Dawarich.GeocodingCase, async: false
 
   alias Dawarich.Geocoding.{Config, PointFetch}
-  alias Dawarich.Redis
 
   @fixtures ~w(photon_komoot photon_selfhosted_key photon_chibigeo geoapify nominatim locationiq
                store_geodata_false country_alias_and_mismatch point_force_and_rerun)
@@ -51,7 +50,7 @@ defmodule Dawarich.Geocoding.PointFetchTest do
 
     HookRepo.set_hook(fn sql, _params ->
       if String.starts_with?(sql, "UPDATE points SET") do
-        {:ok, "OK"} = Redis.cache_command(["FLUSHDB"])
+        clear_response_cache!()
 
         Task.await(
           Task.async(fn ->
