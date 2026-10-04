@@ -96,6 +96,13 @@ P4 reproduces all twenty-one captured ASCII helper rows, preserving code-point l
 stable rank ties, Ruby half rounding, chart errors, sparse heatmaps and translated trends.
 M-P4-quartile makes the first quartile inclusive and fails the boundary case; restored helpers pass.
 
-Resume at P5 after P4's restored scoped tests are green.
-Native rendering, delivery workers, ownership wiring, test-mail HTTP,
+P5 compares every R2 content row: twenty complete messages and seven data/render errors.
+Subjects, recipients, locale, URLs, HTML/text whitespace and decoded MIME parts match source.
+Control-only template lines preserve Rails newline removal, and inline style quotes are escaped.
+M-P5-utm removes monthly manage-preferences content and fails the complete message comparison;
+restored rendering and the scoped basic/Devise/ExploreFeatures/Wave2/recovery regressions pass.
+Source Ruby exceptions map to native data/type/date errors; no empty message rescue is added.
+
+The R1–R4/P1–P5 barrier is complete. Resume at P6's queued-before-sent-at staging contract.
+Delivery workers, ownership wiring, test-mail HTTP,
 ED allocation and final C1–C5 gates are pending. Rails source/specs and dormant stubs are retained.
