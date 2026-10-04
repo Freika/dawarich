@@ -92,6 +92,10 @@ All twenty successful R2 rows match, including December, invalid days, source un
 locations. M-P3-user removes the yearly owner predicate and fails the explicit foreign-user
 January assertion; restored selection passes. No calculator or page entitlement filter is used.
 
-Resume at P4 after P3's restored scoped tests are green.
+P4 reproduces all twenty-one captured ASCII helper rows, preserving code-point label widths,
+stable rank ties, Ruby half rounding, chart errors, sparse heatmaps and translated trends.
+M-P4-quartile makes the first quartile inclusive and fails the boundary case; restored helpers pass.
+
+Resume at P5 after P4's restored scoped tests are green.
 Native rendering, delivery workers, ownership wiring, test-mail HTTP,
 ED allocation and final C1–C5 gates are pending. Rails source/specs and dormant stubs are retained.
