@@ -32,7 +32,7 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
     @setup_rows @golden["setups"][kase["setup"]]
     @tag golden_case: String.to_atom(kase["name"])
     test "golden #{kase["name"]}", %{port: port, upstream: upstream} do
-      rows("TRUNCATE #{Enum.join(@tables, ",")} CASCADE")
+      Dawarich.FixtureCleanup.delete!(ScratchRepo, @tables)
       for {name, value} <- @kase["env"], do: System.put_env(name, value)
 
       for [table, seeds] <- @setup_rows, row <- seeds do

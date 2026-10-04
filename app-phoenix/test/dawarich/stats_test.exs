@@ -11,7 +11,7 @@ defmodule Dawarich.StatsTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
-    Dawarich.ScratchRepo.query!("TRUNCATE phoenix.stats_point_counts", [], log: false)
+    Dawarich.FixtureCleanup.delete!(Dawarich.ScratchRepo, ~w(phoenix.stats_point_counts))
     :ok
   end
 

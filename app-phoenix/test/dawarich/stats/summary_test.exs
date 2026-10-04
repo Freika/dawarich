@@ -10,7 +10,7 @@ defmodule Dawarich.Stats.SummaryTest do
   @zero ~s("january":0,"february":0,"march":0,"april":0,"may":0,"june":0,"july":0,"august":0,"september":0,"october":0,"november":0,"december":0)
 
   setup do
-    ScratchRepo.query!("TRUNCATE phoenix.stats_point_counts", [], log: false)
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.stats_point_counts))
     :ok
   end
 

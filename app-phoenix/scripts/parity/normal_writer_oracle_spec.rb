@@ -45,11 +45,11 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
     end
   end
 
-  def truncate!
+  def reset_fixtures!
     raise 'wrong oracle database' unless connection.current_database.start_with?('dawarich_test_')
 
     ActiveStorage::Attachment.find_each(&:purge)
-    connection.execute('TRUNCATE users, imports, points, point_sources RESTART IDENTITY CASCADE')
+    FixtureCleanup.delete!(%w[users imports points point_sources])
   end
 
   def owner!
@@ -96,7 +96,7 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
   end
 
   def capture(example)
-    truncate!
+    reset_fixtures!
     user, id = owner!
     attrs = { lonlat: 'POINT(12.4 51.3)', timestamp: 1_700_000_000, altitude: 12.75, altitude_decimal: 12.75,
               velocity: 1.2, tracker_id: 'normal-oracle', import_id: id, user_id: user,
@@ -112,12 +112,12 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
   end
 
   it 'cleans archive attachments before resetting fixture identities' do
-    truncate!
+    reset_fixtures!
     user, = owner!
     archive = create(:points_raw_data_archive, user: User.find(user))
     blob = archive.file.blob
     archive_id = archive.id
-    truncate!
+    reset_fixtures!
     expect(ActiveStorage::Attachment.where(blob_id: blob.id)).to be_empty
     expect(ActiveStorage::Blob.exists?(blob.id)).to be(false)
     expect(blob.service.exist?(blob.key)).to be(false)
@@ -128,7 +128,7 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
     )
     expect(restored.file).not_to be_attached
   ensure
-    truncate!
+    reset_fixtures!
   end
 
   it 'records every input case from a real PostgreSQL write' do
@@ -139,6 +139,6 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
     File.write(dir.join('rails_normal_writer_oracle.json'), JSON.pretty_generate(output))
     expect(output.size).to eq(inputs.size)
   ensure
-    truncate!
+    reset_fixtures!
   end
 end

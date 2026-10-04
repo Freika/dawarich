@@ -70,7 +70,7 @@ defmodule DawarichWeb.Api.PlacesGoldenTest do
   end
 
   defp seed(kase) do
-    Repo.query!("TRUNCATE places CASCADE")
+    Dawarich.FixtureCleanup.delete!(Repo, ~w(places))
 
     for [table, rows] <- @golden["setups"][kase["setup"]], row <- rows do
       true = table in @tables

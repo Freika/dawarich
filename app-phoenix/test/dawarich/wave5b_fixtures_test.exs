@@ -22,7 +22,7 @@ defmodule Dawarich.Wave5bFixturesTest do
       )
     end
 
-    truncate!()
+    reset_fixtures!()
     :ok
   end
 
@@ -45,7 +45,7 @@ defmodule Dawarich.Wave5bFixturesTest do
         end
 
         assert_round_trip!(path, input)
-        truncate!()
+        reset_fixtures!()
       end
     end
   end
@@ -116,11 +116,7 @@ defmodule Dawarich.Wave5bFixturesTest do
       host in @allowed_public_hosts
   end
 
-  defp truncate! do
-    ScratchRepo.query!(
-      "TRUNCATE #{Enum.join(Wave5bFixtures.tables(), ", ")} RESTART IDENTITY CASCADE",
-      [],
-      log: false
-    )
+  defp reset_fixtures! do
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, Wave5bFixtures.tables())
   end
 end

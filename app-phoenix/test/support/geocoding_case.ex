@@ -26,12 +26,6 @@ defmodule Dawarich.GeocodingCase do
     for var <- @vars,
         do: System.get_env(var) in [nil, ""] || raise("#{var} must be blank for geocoding tests")
 
-    ScratchRepo.query!(
-      "TRUNCATE points, places, instance_settings, countries RESTART IDENTITY CASCADE",
-      [],
-      log: false
-    )
-
     ExUnit.Callbacks.start_supervised!(FakeHttp)
     ExUnit.Callbacks.start_supervised!(hd(Redis.child_specs()))
     {:ok, "OK"} = Redis.command(["FLUSHDB"])

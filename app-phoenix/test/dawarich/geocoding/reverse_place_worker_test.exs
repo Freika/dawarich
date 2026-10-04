@@ -18,9 +18,7 @@ defmodule Dawarich.Geocoding.ReversePlaceWorkerTest do
       assert ReversePlaceWorker.perform(job(424_242)) == :ok
     end)
 
-    ScratchRepo.query!("TRUNCATE places, instance_settings RESTART IDENTITY CASCADE", [],
-      log: false
-    )
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(places  instance_settings))
 
     clear_response_cache!()
     too_long = load!("place_name_too_long")

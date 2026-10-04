@@ -6,7 +6,7 @@ defmodule Dawarich.Achievements.UiSilhouettesTest do
   @wide "MULTIPOLYGON (((12.25 51.25,12.25 51.5,12.75 51.5,12.75 51.25,12.25 51.25)))"
 
   setup do
-    rows("TRUNCATE countries,regions RESTART IDENTITY")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(countries regions))
     Dawarich.Test.AchievementSilhouettes.clear()
     on_exit(&Dawarich.Test.AchievementSilhouettes.clear/0)
     country("DE", @square)

@@ -1,6 +1,7 @@
 defmodule Dawarich.Auth.SessionCookie do
   @moduledoc false
   alias Dawarich.RailsCookies
+  alias Dawarich.Auth.Otp.Pending
   alias DawarichWeb.{RailsCsrf, RailsSession}
 
   @name "_dawarich_session"
@@ -16,6 +17,19 @@ defmodule Dawarich.Auth.SessionCookie do
     session =
       session
       |> Map.drop(@login_drop)
+      |> Map.reject(fn {key, _value} -> String.starts_with?(key, "devise.") end)
+      |> Map.put("session_id", session_id())
+      |> Map.put("warden.user.user.key", [[user.id], binary_part(user.encrypted_password, 0, 29)])
+      |> Map.put("flash", flash(notice))
+
+    encode(session, secret)
+  end
+
+  def for_otp_login(session, user, notice, secret) do
+    session =
+      session
+      |> Pending.clear()
+      |> Map.drop(~w(session_id user_return_to warden.user.user.key))
       |> Map.reject(fn {key, _value} -> String.starts_with?(key, "devise.") end)
       |> Map.put("session_id", session_id())
       |> Map.put("warden.user.user.key", [[user.id], binary_part(user.encrypted_password, 0, 29)])

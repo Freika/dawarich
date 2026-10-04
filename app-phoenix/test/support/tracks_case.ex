@@ -19,23 +19,12 @@ defmodule Dawarich.TracksCase do
       setup do
         Dawarich.LaneGuard.guard!(:tracks_db)
         Dawarich.JobsCase.reset!(ScratchRepo)
-        Dawarich.TracksCase.truncate!()
         Dawarich.TracksCase.start_services!()
       end
     end
   end
 
   def rows(sql, params \\ []), do: ScratchRepo.query!(sql, params, log: false).rows
-
-  def truncate! do
-    ScratchRepo.query!(
-      "TRUNCATE tracks, points, track_segments, imports, shared_links RESTART IDENTITY CASCADE",
-      [],
-      log: false
-    )
-
-    :ok
-  end
 
   def oban, do: @oban
 

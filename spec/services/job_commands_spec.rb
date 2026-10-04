@@ -124,6 +124,8 @@ RSpec.describe JobCommands do
   end
 
   it 'enqueues the Sidekiq job when Phoenix never migrated the database' do
+    ActiveRecord::Base.connection.execute('DROP TABLE phoenix.job_owners')
+    PhoenixSchema.reset!
     expect { expect(produce_trip).to eq(:sidekiq) }.to have_enqueued_job(Trips::CalculateAllJob).with(42, 'km')
     expect(JobOutbox.count).to eq(0)
   end
@@ -458,11 +460,7 @@ RSpec.describe JobCommands do
 
     after do
       JobOutbox.where(event_id: event_ids).delete_all
-      ActiveRecord::Base.transaction do
-        ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '2s'")
-        ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
-      end
-      PhoenixTables.install_state!
+      PhoenixTables.clear!
     end
 
     it 'moves unlocked commands and reports the pending command left behind by the relay' do
@@ -505,11 +503,7 @@ RSpec.describe JobCommands do
 
     after do
       JobOutbox.where(command_type: 'trips.calculate', aggregate_id: 42).delete_all
-      ActiveRecord::Base.transaction do
-        ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '2s'")
-        ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
-      end
-      PhoenixTables.install_state!
+      PhoenixTables.clear!
     end
 
     it 'leaves no outbox row when the caller transaction rolls back' do

@@ -25,7 +25,15 @@ RSpec.describe 'Phoenix fixture: operator commands against the Rails rake tasks 
 
   before(:all) { Rails.application.load_tasks unless Rake::Task.task_defined?('points:raw_data:status') }
 
-  around { |example| travel_to(fx::NOW) { example.run } }
+  around do |example|
+    sequences = (fx::SEQUENCES - %w[phoenix.rails_commands]).to_h do |table|
+      name = fx.conn.select_value("SELECT pg_get_serial_sequence(#{fx.conn.quote(table)},'id')")
+      [name, fx.conn.select_rows("SELECT last_value,is_called FROM #{name}").first]
+    end
+    travel_to(fx::NOW) { example.run }
+  ensure
+    sequences&.each { |name, (value, called)| fx.sql('SELECT setval(?::regclass,?,?)', name, value, called) }
+  end
 
   before do
     allow(OpenSSL::Cipher).to receive(:new).and_wrap_original do |original, *args|

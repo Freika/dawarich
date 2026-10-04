@@ -310,6 +310,52 @@ defmodule DawarichWeb.AuthGateTest do
     assert config[:dawarich][:phoenix_auth] == ~w(two_factor credentials unknown)
   end
 
+  test "OTP opt-in is independent and respects existing credentials and management keys" do
+    otp = [{:post, "/users/otp_challenge"}]
+
+    for flows <- [nil, [], ["unknown"], ~w(credentials two_factor)] do
+      if flows,
+        do: Application.put_env(:dawarich, :phoenix_auth, flows),
+        else: Application.delete_env(:dawarich, :phoenix_auth)
+
+      untouched(otp)
+    end
+
+    cache = Process.whereis(Dawarich.Redis.Cache)
+    if cache, do: Process.unregister(Dawarich.Redis.Cache)
+
+    on_exit(fn ->
+      if cache && Process.alive?(cache), do: Process.register(cache, Dawarich.Redis.Cache)
+    end)
+
+    assert RegistrationSetting.fetch() == :error
+    {session, _} = SessionCookie.for_form(%{}, Application.fetch_env!(:dawarich, :rails_secret))
+
+    body =
+      URI.encode_query(%{
+        "authenticity_token" =>
+          RailsCsrf.masked_form_token(session, "/users/otp_challenge", "POST"),
+        "otp_attempt" => "unused"
+      })
+
+    for flows <- [["otp"], ~w(otp credentials two_factor)] do
+      Application.put_env(:dawarich, :phoenix_auth, flows)
+      conn = AuthGate.call(authenticated(session, "/users/otp_challenge", body), [])
+      assert conn.status == 302
+      assert get_resp_header(conn, "x-dawarich-auth-owner") == ["native-otp"]
+      if flows == ["otp"], do: untouched(@credentials ++ [{:get, "/settings/two_factor"}])
+    end
+
+    for value <- [nil, "false", "TRUE", ""] do
+      if value, do: System.put_env("SELF_HOSTED", value), else: System.delete_env("SELF_HOSTED")
+      untouched(otp)
+    end
+
+    System.put_env("DAWARICH_PHOENIX_AUTH", " OTP, credentials, Two_Factor, unknown ")
+    config = Config.Reader.read!(Path.expand("../../config/runtime.exs", __DIR__), env: :prod)
+    assert config[:dawarich][:phoenix_auth] == ~w(otp credentials two_factor unknown)
+  end
+
   defp account_actor do
     secret = Application.fetch_env!(:dawarich, :rails_secret)
     hash = Bcrypt.hash_pwd_salt("a11rest-gate-password", log_rounds: 4)

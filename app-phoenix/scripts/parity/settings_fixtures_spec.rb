@@ -11,6 +11,227 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
   let(:helper) { ApplicationController.helpers }
   let(:zones) { JSON.parse(root.join('priv/time_zones.json').read).fetch('options') }
 
+  context 'A11d web OTP' do
+    let(:now) { Time.utc(2026, 10, 4, 12) }
+    let(:web_otp_secret) { 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' }
+    let(:web_otp_password) { 'safepassword12' }
+    let(:web_otp_hash) do
+      JSON.parse(fixtures.join('auth/requests.json').read).dig('login', 'user', 'encrypted_password')
+    end
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
+      allow(UsersMailer).to receive(:default_params)
+        .and_return(UsersMailer.default_params.merge(from: 'a11d-synthetic@dawarich.test'))
+    end
+
+    def web_otp_fixture(name, value, json: true)
+      path = fixtures.join('auth/otp', name)
+      content = json ? "#{Oj.dump(value, mode: :strict, float_precision: 0, indent: 2).chomp}\n" : value
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        FileUtils.mkdir_p(path.dirname)
+        File.write(path, content)
+      else
+        expect(path.exist?).to be(true), name
+        expect(path.read == content).to be(true), name if path.exist?
+      end
+    end
+
+    def web_otp_actor(id)
+      actor = create(:user, id: id, email: "a11d-#{id}@dawarich.test", password: web_otp_password)
+      actor.update_columns(encrypted_password: web_otp_hash, api_key: "A11D_SYNTHETIC_#{id}",
+                           settings: {}, created_at: now - 1.day, updated_at: now - 1.day,
+                           sign_in_count: 0, current_sign_in_at: nil, last_sign_in_at: nil,
+                           current_sign_in_ip: nil, last_sign_in_ip: nil,
+                           failed_attempts: 2, failed_otp_attempts: 3)
+      actor.update!(otp_secret: web_otp_secret, otp_required_for_login: true, otp_backup_codes: [web_otp_hash])
+      actor.reload
+    end
+
+    def web_otp_browser(locale: 'en', extra: {})
+      client = ActionDispatch::Integration::Session.new(Rails.application)
+      client.get('/users/sign_in', params: { locale: locale })
+      web_otp_seed(client, web_otp_session(client).merge(extra))
+      client
+    end
+
+    def web_otp_session(client)
+      jar = ActionDispatch::Cookies::CookieJar.build(
+        ActionDispatch::Request.new(Rails.application.env_config.dup),
+        '_dawarich_session' => client.cookies['_dawarich_session']
+      )
+      jar.encrypted['_dawarich_session']
+    end
+
+    def web_otp_seed(client, data)
+      jar = ActionDispatch::Request.new(Rails.application.env_config.dup).cookie_jar
+      jar.encrypted['_dawarich_session'] = { value: data }
+      client.cookies['_dawarich_session'] = jar['_dawarich_session']
+    end
+
+    def web_otp_csrf(client)
+      Nokogiri::HTML5(client.response.body).at_css('meta[name="csrf-token"]')['content']
+    end
+
+    def web_otp_start(client, actor, remember: nil)
+      client.post('/users/sign_in', params: { authenticity_token: web_otp_csrf(client),
+                                             user: { email: actor.email, password: web_otp_password,
+                                                     remember_me: remember } })
+      expect(client.response.status).to eq(422)
+    end
+
+    def web_otp_state(actor)
+      actor.reload
+      actor.attributes.slice('id', 'consumed_timestep', 'failed_attempts', 'failed_otp_attempts', 'sign_in_count',
+                             'current_sign_in_ip', 'last_sign_in_ip').merge(
+                               'otp_locked_at' => iso(actor.otp_locked_at), 'locked_at' => iso(actor.locked_at),
+                               'unlock_token' => actor.unlock_token,
+                               'backup_count' => actor.otp_backup_codes.length,
+                               'remember_created_at' => iso(actor.remember_created_at),
+                               'updated_at' => iso(actor.updated_at),
+                               'current_sign_in_at' => iso(actor.current_sign_in_at),
+                               'last_sign_in_at' => iso(actor.last_sign_in_at)
+                             )
+    end
+
+    def web_otp_projection(client, actor, before, writes, jobs, mails)
+      data = web_otp_session(client)
+      normalized = data.merge('session_id' => 'SESSION_ID')
+      normalized['_csrf_token'] = 'CSRF' if data.key?('_csrf_token')
+      normalized['warden.user.user.key'] = [[actor.id], 'SYNTHETIC_BCRYPT_SALT'] if data.key?('warden.user.user.key')
+      {
+        'status' => client.response.status, 'location' => client.response.location&.sub(%r{\Ahttps?://[^/]+}, ''),
+        'headers' => client.response.headers.slice('cache-control', 'content-type', 'x-frame-options',
+                                                   'x-xss-protection', 'x-content-type-options',
+                                                   'x-permitted-cross-domain-policies', 'referrer-policy'),
+        'session' => normalized, 'state' => web_otp_state(actor),
+        'retained' => %w[session_id _csrf_token locale user_return_to devise.synthetic].index_with do |key|
+          data[key] == before[key]
+        end,
+        'remember_cookie' => client.cookies['remember_user_token'].present?,
+        'writes' => writes, 'jobs_delta' => enqueued_jobs.size - jobs,
+        'mail_delta' => ActionMailer::Base.deliveries.size - mails
+      }
+    end
+
+    def web_otp_post(client, actor, code)
+      before = web_otp_session(client)
+      jobs = enqueued_jobs.size
+      mails = ActionMailer::Base.deliveries.size
+      writes = []
+      subscriber = lambda do |_name, _start, _finish, _id, payload|
+        sql = payload[:sql]
+        next unless sql.start_with?('UPDATE "users"')
+
+        writes << case sql
+                  when /consumed_timestep/ then 'consume_totp'
+                  when /otp_backup_codes/ then 'consume_backup'
+                  when /otp_locked_at/ then sql.include?('failed_otp_attempts') ? 'reset_otp' : 'lock_otp'
+                  when /failed_otp_attempts/ then 'increment_otp'
+                  when /sign_in_count/ then 'trackable'
+                  when /remember_created_at/ then 'remember'
+                  when /failed_attempts/ then 'reset_devise'
+                  else 'other'
+                  end
+      end
+      ActiveSupport::Notifications.subscribed(subscriber, 'sql.active_record') do
+        client.post('/users/otp_challenge', params: { authenticity_token: web_otp_csrf(client), otp_attempt: code })
+      end
+      if client.response.status == 422
+        field = Nokogiri::HTML5(client.response.body).at_css('input[name="otp_attempt"]')
+        expect(field['value'].to_s).to eq('')
+      end
+      web_otp_projection(client, actor, before, writes, jobs, mails)
+    end
+
+    it 'A11d web OTP writes deterministic challenge and transition fixtures' do
+      travel_to(now) do
+        rows = {}
+        %w[en de fr].each_with_index do |locale, index|
+          actor = web_otp_actor(75_400 + index)
+          client = web_otp_browser(locale: locale, extra: { 'otp_failed_attempts' => 3 })
+          before = web_otp_session(client)
+          state = actor.attributes
+          web_otp_start(client, actor, remember: '1')
+          expect(actor.reload.attributes == state).to be(true)
+          rows["start_#{locale}"] = web_otp_projection(client, actor, before, [], enqueued_jobs.size,
+                                                       ActionMailer::Base.deliveries.size)
+          initial = Nokogiri::HTML5(client.response.body)
+          expect(initial.at_css('h1').text).to eq(I18n.t('devise.sessions.otp_challenge.two_factor_authentication',
+                                                         locale: :en))
+          rows["start_#{locale}"]['form_locale'] = 'en'
+          rows["start_#{locale}"]['document_title'] = initial.at_css('title').text
+          rows["form_#{locale}"] = web_otp_post(client, actor, 'not-a-code')
+          doc = Nokogiri::HTML5(client.response.body)
+          expect(doc.at_css('h1').text).to eq(I18n.t('devise.sessions.otp_challenge.two_factor_authentication',
+                                                     locale: locale))
+          form = doc.at_css('form[action="/users/otp_challenge"]')
+          expect(form['data-turbo']).to eq('false')
+          expect(form.at_css('input[name="otp_attempt"]')['value'].to_s).to eq('')
+          form.css('input[name="authenticity_token"]').each { |input| input['value'] = 'CSRF' }
+          web_otp_fixture("challenge_#{locale}.html", doc.at_css('.hero').to_html, json: false)
+        end
+
+        %w[totp totp_remember backup backup_locked].each_with_index do |name, index|
+          actor = web_otp_actor(75_410 + index)
+          actor.update_columns(otp_locked_at: now - 60) if name == 'backup_locked'
+          client = web_otp_browser(extra: { 'otp_failed_attempts' => 2, 'user_return_to' => '/trips',
+                                           'devise.synthetic' => 'discarded' })
+          web_otp_start(client, actor, remember: name == 'totp_remember' ? '1' : '0')
+          code = name.start_with?('backup') ? web_otp_password : actor.current_otp
+          rows[name] = web_otp_post(client, actor, code)
+          expect(rows[name]['status']).to eq(302)
+          expect(rows[name]['state']['failed_otp_attempts']).to eq(0)
+          expect(rows[name]['state']['failed_attempts']).to eq(0)
+        end
+
+        { 'ttl_299' => now.to_i - 299, 'ttl_300' => now.to_i - 300,
+          'future' => now.to_i + 60, 'missing_time' => nil, 'missing_actor' => now.to_i }
+          .each_with_index do |(name, timestamp), index|
+          actor = web_otp_actor(75_420 + index)
+          client = web_otp_browser(extra: { 'otp_user_id' => name == 'missing_actor' ? 99_999_999 : actor.id,
+                                           'otp_challenge_at' => timestamp, 'otp_remember_me' => false,
+                                           'otp_failed_attempts' => 3 })
+          rows[name] = web_otp_post(client, actor, actor.current_otp)
+          expect(rows[name]['status']).to eq(302)
+        end
+
+        %w[invalid replay outside_drift locked_totp fifth tenth].each_with_index do |name, index|
+          actor = web_otp_actor(75_430 + index)
+          actor.update_columns(consumed_timestep: now.to_i / 30) if name == 'replay'
+          actor.update_columns(otp_locked_at: now - 60) if name == 'locked_totp'
+          actor.update_columns(failed_otp_attempts: 9) if name == 'tenth'
+          key = "otp_lockout_email_throttle/user/#{actor.id}"
+          Rails.cache.delete(key)
+          begin
+            client = web_otp_browser(extra: { 'otp_failed_attempts' => name == 'tenth' ? 4 : 0 })
+            web_otp_start(client, actor)
+            code = case name
+                   when 'replay', 'locked_totp' then actor.current_otp
+                   when 'outside_drift' then actor.otp.at(now - 60)
+                   else 'not-a-code'
+                   end
+            if name == 'fifth'
+              rows[name] = 5.times.map { web_otp_post(client, actor, code) }
+              expect(rows[name].map { |row| row['status'] }).to eq([422, 422, 422, 422, 302])
+            else
+              rows[name] = web_otp_post(client, actor, code)
+            end
+            expect(rows[name]['jobs_delta']).to eq(1) if name == 'tenth'
+          ensure
+            Rails.cache.delete(key)
+          end
+        end
+
+        rows['normalization'] = { 'session_id' => 'SESSION_ID', 'csrf' => 'CSRF',
+                                  'warden_salt' => 'SYNTHETIC_BCRYPT_SALT',
+                                  'ciphertext' => 'not emitted', 'backup_hashes' => 'cardinality only' }
+        web_otp_fixture('requests.json', rows)
+      end
+    end
+  end
+
   context 'A11c two factor management' do
     let(:now) { Time.utc(2026, 10, 4, 12, 0, 0) }
     let(:otp_secret) { 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' }
