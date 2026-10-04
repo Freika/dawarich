@@ -6,7 +6,7 @@ mode = ARGV.length > 1 ? ARGV.first : nil
 job = JSON.parse(File.read(ARGV.last))
 output = job.fetch('output')
 
-if %w[linger error-child continuous continuous-term].include?(mode)
+if %w[linger error-child exit-parent continuous continuous-term].include?(mode)
   ready_reader, ready_writer = IO.pipe
   child = fork do
     ready_reader.close
@@ -20,11 +20,12 @@ if %w[linger error-child continuous continuous-term].include?(mode)
   ready_writer.close
   ready_reader.gets
   ready_reader.close
+  Signal.trap('TERM', 'IGNORE') unless mode == 'continuous'
   $stdout.sync = true
   puts JSON.dump(pid: Process.pid, pgrp: Process.getpgrp, child:)
   exit 7 if mode == 'error-child'
+  exit 0 if mode == 'exit-parent'
 
-  Signal.trap('TERM', 'IGNORE') unless mode == 'continuous'
   loop { $stdout.write('renderer-output' * 1024) } if mode.start_with?('continuous')
   block_reader, block_writer = IO.pipe
   block_writer.sync = true

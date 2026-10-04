@@ -51,32 +51,15 @@ defmodule Dawarich.Posters.NativeRendererTest do
   @tag mutation: "kill"
   test "renderer error and timeout terminate child process group and clean temporary paths",
        ctx do
-    parent = self()
     root = Path.join(System.tmp_dir!(), "a9-render-#{System.unique_integer([:positive])}")
     on_exit(fn -> File.rm_rf!(root) end)
 
     for mode <- ~w(linger error-child) do
-      task =
-        Task.async(fn ->
-          NativeRenderer.render(ctx.poster, ctx.track, "en",
-            command: ["ruby", @fake, mode],
-            temp_root: root,
-            timeout_ms: 1500,
-            terminate_ms: 100,
-            on_output: &send(parent, {:ready, &1}),
-            on_signal: fn signal, pid -> send(parent, {:signal, signal, pid}) end
-          )
-        end)
+      {task, ready} =
+        ready_renderer(ctx, mode, temp_root: root, timeout_ms: 1500, terminate_ms: 100)
 
-      assert_receive {:ready, output}, 1500
-      ready = Jason.decode!(String.trim(output))
       assert ready["pid"] == ready["pgrp"]
-
-      on_exit(fn ->
-        System.cmd("/bin/kill", ["-KILL", "-#{ready["pgrp"]}"], stderr_to_stdout: true)
-      end)
-
-      Process.unlink(task.pid)
+      send(task.pid, :render)
       assert_receive {:signal, "-TERM", pid}, 2000
       assert pid == ready["pid"]
       assert_receive {:signal, "-KILL", ^pid}, 1000
@@ -110,45 +93,47 @@ defmodule Dawarich.Posters.NativeRendererTest do
     parent = self()
 
     for mode <- ~w(continuous continuous-term) do
-      task =
-        Task.async(fn ->
-          NativeRenderer.render(ctx.poster, ctx.track, "en",
-            command: ["ruby", @fake, mode],
-            timeout_ms: 200,
-            terminate_ms: 50,
-            on_output: fn data ->
-              unless Process.get(:renderer_ready) do
-                ready = data |> String.split("\n", parts: 2) |> hd() |> Jason.decode!()
-                send(parent, {:ready, ready})
-                Process.put(:renderer_ready, true)
-              end
+      {task, ready} =
+        ready_renderer(ctx, mode,
+          timeout_ms: 200,
+          terminate_ms: 50,
+          on_output: fn _ ->
+            phase = Process.get(:renderer_phase, :render)
 
-              {:links, links} = Process.info(self(), :links)
-              port = Enum.find(links, &is_port/1)
-              send(self(), {port, {:data, "queued-output"}})
-            end,
-            on_signal: fn signal, pid -> send(parent, {:signal, signal, pid}) end
-          )
-        end)
+            unless Process.get({:output_seen, phase}) do
+              send(parent, {:output_seen, phase})
+              Process.put({:output_seen, phase}, true)
+            end
 
-      Process.unlink(task.pid)
-      on_exit(fn -> Process.exit(task.pid, :kill) end)
-      assert_receive {:ready, ready}, 1000
+            send(self(), {Process.get(:renderer_port), {:data, "queued-output"}})
+          end
+        )
+
       pid = ready["pid"]
       assert ready["pgrp"] == pid
+      send(task.pid, :render)
 
-      on_exit(fn ->
-        System.cmd("/bin/kill", ["-KILL", "-#{pid}"], stderr_to_stdout: true)
-      end)
-
+      assert_receive {:output_seen, :render}, 1000
       assert_receive {:signal, "-TERM", ^pid}, 1000
+      assert_receive {:output_seen, :cleanup}, 1000
       assert_receive {:signal, "-KILL", ^pid}, 1000
-      assert inspect(catch_exit(Task.await(task))) =~ "Poster renderer timed out"
+      assert inspect(catch_exit(Task.await(task))) =~ "Poster renderer timed out after 200 ms"
 
       for member <- [pid, ready["child"]] do
         assert {_, status} = System.cmd("/bin/kill", ["-0", "#{member}"], stderr_to_stdout: true)
         assert status != 0
       end
+    end
+  end
+
+  @tag mutation: "configured-timeout"
+  test "renderer reports the configured timeout before any output", ctx do
+    assert_raise NativeRenderer.Error, "Poster renderer timed out after 0 ms", fn ->
+      NativeRenderer.render(ctx.poster, ctx.track, "en",
+        command: ["sh", "-c", "exec cat >/dev/null"],
+        timeout_ms: 0,
+        terminate_ms: 0
+      )
     end
   end
 
@@ -163,5 +148,68 @@ defmodule Dawarich.Posters.NativeRendererTest do
 
     assert byte_size(error.message) <= 16_384 + 64
     assert String.ends_with?(error.message, "diagnostic-tail")
+  end
+
+  defp ready_renderer(ctx, mode, opts) do
+    parent = self()
+
+    task =
+      Task.async(fn ->
+        NativeRenderer.render(
+          ctx.poster,
+          ctx.track,
+          "en",
+          Keyword.merge(
+            [
+              command: ["ruby", @fake, mode],
+              on_spawn: fn port ->
+                Process.put(:renderer_port, port)
+                ready = renderer_ready(port, "")
+                send(parent, {:ready, self(), ready})
+                receive do: (:render -> :ok)
+              end,
+              on_signal: fn signal, pid ->
+                Process.put(:renderer_phase, :cleanup)
+                send(parent, {:signal, signal, pid})
+              end
+            ],
+            opts
+          )
+        )
+      end)
+
+    Process.unlink(task.pid)
+    on_exit(fn -> Process.exit(task.pid, :kill) end)
+    task_pid = task.pid
+    task_ref = task.ref
+
+    ready =
+      receive do
+        {:ready, ^task_pid, ready} -> ready
+        {:DOWN, ^task_ref, :process, ^task_pid, reason} -> flunk(inspect(reason))
+      end
+
+    on_exit(fn ->
+      System.cmd("/bin/kill", ["-KILL", "-#{ready["pgrp"]}"], stderr_to_stdout: true)
+    end)
+
+    {task, ready}
+  end
+
+  defp renderer_ready(port, output) do
+    receive do
+      {^port, {:data, data}} ->
+        case String.split(output <> data, "\n", parts: 2) do
+          [line, rest] ->
+            if rest != "", do: send(self(), {port, {:data, rest}})
+            Jason.decode!(line)
+
+          [partial] ->
+            renderer_ready(port, partial)
+        end
+
+      {^port, {:exit_status, status}} ->
+        flunk("renderer exited before readiness: #{status}")
+    end
   end
 end
