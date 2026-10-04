@@ -47,10 +47,8 @@ RSpec.describe 'Points web destroy follow-up' do
 
   it 'follow-up enqueue failure is retained by existing poller' do
     allow(Stats::CalculatingJob).to receive(:perform_later).and_raise(RuntimeError, 'synthetic stats enqueue failure')
-    sql = ActiveRecord::Base.sanitize_sql_array([
-                                                  'INSERT INTO phoenix.rails_commands(kind,payload) VALUES (?,?::jsonb)',
-                                                  'points.web_destroy_follow_up', payload.to_json
-                                                ])
+    insert = 'INSERT INTO phoenix.rails_commands(kind,payload) VALUES (?,?::jsonb)'
+    sql = ActiveRecord::Base.sanitize_sql_array([insert, 'points.web_destroy_follow_up', payload.to_json])
     ActiveRecord::Base.connection.execute(sql)
     expect(RailsCommands::Poller.drain_once).to eq(1)
     query = 'SELECT attempts,leased_until,payload::text AS payload FROM phoenix.rails_commands'
