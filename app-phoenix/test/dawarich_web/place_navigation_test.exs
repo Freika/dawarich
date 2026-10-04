@@ -86,7 +86,8 @@ defmodule DawarichWeb.PlaceNavigationTest do
       end
     end
 
-    user = Dawarich.Accounts.get(List.last(@effects)["before"]["actor"]["id"])
+    actor = @effects |> Enum.filter(&(&1["request"]["method"] == "get")) |> List.last()
+    user = Dawarich.Accounts.get(actor["before"]["actor"]["id"])
     System.put_env("PHOTON_API_HOST", "photon.example.invalid")
 
     before =
