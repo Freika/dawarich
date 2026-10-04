@@ -525,6 +525,254 @@ module ResidualMailFixtureSupport
     expect(quartiles.fetch('output')).to eq("░\n▒\n▓\n█\n \n \n ")
   end
 
+  def queue_projection(job)
+    job.slice('job_class', 'queue_name', 'arguments', 'locale', 'timezone')
+  end
+
+  def execute_mail_job(job, smtp_failure: false)
+    sent = []
+    allow_any_instance_of(Mail::TestMailer).to receive(:deliver!) do |_transport, message|
+      sent << message_content(message)
+      raise IOError, 'synthetic residual SMTP failure' if smtp_failure
+    end
+    error = nil
+    begin
+      ActiveJob::Base.execute(job)
+    rescue StandardError => e
+      error = e.class.name
+    end
+    { 'attempts' => sent, 'error' => error }
+  end
+
+  def digest_effect_settings(name, period)
+    toggle = "#{period}_digest_emails_enabled"
+    settings = { 'locale' => 'de', 'timezone' => 'Europe/Berlin' }
+    settings[toggle] = false if %w[toggle_off explicit_off].include?(name)
+    settings['digest_emails_enabled'] = false if name == 'legacy_off'
+    settings['digest_emails_enabled'] = true if %w[legacy_on explicit_off].include?(name)
+    settings['locale'] = '' if name == 'blank_fr'
+    settings['locale'] = 'invalid' if %w[invalid_fr generation_locale].include?(name)
+    settings
+  end
+
+  def digest_effect_case(name, period, index)
+    RSpec::Mocks.with_temporary_scope do
+      settings = digest_effect_settings(name, period)
+      user = fresh_intent_user("#{period}-#{name}", settings)
+      user.update_column(:id, 460_100 + index)
+      user.update_column(:status, :inactive) if name == 'inactive'
+      uuid = format('46000000-0000-4000-8000-%012d', index)
+      digest = Users::Digest.new(digest_attributes(period).merge(id: 460_200 + index, user:, sharing_uuid: uuid))
+      digest.save!
+      digest.update_columns(month: 13) if name == 'save_failure'
+      digest.update_columns(distance: 0) if name == 'zero'
+      digest.update_columns(distance: -1500) if name == 'negative'
+      digest.update_columns(sent_at: 1.day.ago) if %w[sent clear_sent].include?(name)
+      digest.update_columns(sent_at: nil) if name == 'clear_sent'
+      digest.destroy! if name == 'missing_digest'
+      user.mark_as_deleted! if name == 'deleted_user'
+      clear_enqueued_jobs
+      klass = period == 'monthly' ? Users::Digests::Monthly::EmailSendingJob : Users::Digests::Yearly::EmailSendingJob
+      args = [name == 'missing_user' ? 469_999 : user.id, 2024]
+      args << digest.month if period == 'monthly'
+      I18n.with_locale(:fr) do
+        Time.use_zone('Europe/Berlin') do
+          if name == 'generation_locale'
+            payload = { 'user_id' => user.id, 'year' => 2024, 'month' => digest.month, 'time_zone' => Time.zone.name }
+            kind = period == 'monthly' ? 'digests.email_month' : 'digests.email_year'
+            RailsCommands::Registry.handler(kind).call(payload)
+          else
+            klass.perform_later(*args)
+          end
+        end
+      end
+      stage = enqueued_jobs.sole
+      clear_enqueued_jobs
+      observed = []
+      adapter = ActiveJob::Base.queue_adapter
+      allow(adapter).to receive(:enqueue).and_wrap_original do |original, job|
+        observed << { 'sent_at' => Users::Digest.find_by(id: digest.id)&.sent_at&.utc&.iso8601,
+                      'locale' => job.locale, 'timezone' => job.timezone, 'action' => job.arguments[1] }
+        raise IOError, 'synthetic digest enqueue failure' if name == 'enqueue_failure'
+
+        original.call(job)
+      end
+      error = nil
+      begin
+        ActiveJob::Base.execute(stage)
+      rescue StandardError => e
+        error = e.class.name
+      end
+      mail_jobs = enqueued_jobs.select { |job| job[:job] == ActionMailer::MailDeliveryJob }
+      queued_sent_at = Users::Digest.find_by(id: digest.id)&.sent_at&.utc&.iso8601
+      user.update_columns(settings: settings.merge('locale' => 'en')) if name == 'changed_preference'
+      digest.destroy! if name == 'missing_after_enqueue'
+      user.mark_as_deleted! if name == 'deleted_after_enqueue'
+      smtp_names = %w[smtp_failure blank_fr invalid_fr changed_preference generation_locale
+                      missing_after_enqueue deleted_after_enqueue]
+      smtp = (execute_mail_job(mail_jobs.sole, smtp_failure: name == 'smtp_failure') if smtp_names.include?(name))
+      { 'id' => "#{period}_#{name}", 'period' => period, 'settings' => settings, 'stage' => queue_projection(stage),
+        'enqueue_observed' => observed, 'mail_jobs' => mail_jobs.map { |job| queue_projection(job) },
+        'sent_at' => Users::Digest.find_by(id: digest.id)&.sent_at&.utc&.iso8601,
+        'queued_sent_at' => queued_sent_at, 'error' => error, 'smtp' => smtp, 'recipient' => user.email,
+        'final_preference' => user.reload.preferred_locale&.to_s }
+    ensure
+      clear_enqueued_jobs
+    end
+  end
+
+  def location_effect_case(name, index)
+    RSpec::Mocks.with_temporary_scope do
+      requester = fresh_intent_user("location-requester-#{name}", { 'timezone' => 'Europe/Berlin', 'locale' => 'en' })
+      target = fresh_intent_user("location-target-#{name}", { 'timezone' => 'UTC', 'locale' => 'de' })
+      requester.update_column(:id, 460_300 + index * 2)
+      target.update_column(:id, 460_301 + index * 2)
+      family = Family.create!(id: 460_400 + index, name: 'Residual synthetic family', creator: requester)
+      request = Family::LocationRequest.create!(id: 460_500 + index, requester:, target_user: target, family:)
+      request.update_columns(status: :accepted) if name == 'accepted'
+      request.update_columns(status: :expired, expires_at: 1.hour.ago) if name == 'expired'
+      requester.mark_as_deleted! if name == 'missing_requester'
+      target.mark_as_deleted! if name == 'missing_target'
+      request.destroy! if name == 'missing_request'
+      key = "family_location_request_mail:#{request.id}"
+      Rails.cache.delete(key)
+      clear_enqueued_jobs
+      if name == 'cache_failure'
+        allow(Rails.cache).to receive(:write).with(key, 1, unless_exist: true, expires_in: 1.day).and_return(false)
+      end
+      if name == 'enqueue_failure'
+        allow(ActiveJob::Base.queue_adapter).to receive(:enqueue).and_raise(IOError,
+                                                                            'synthetic location enqueue failure')
+      end
+      error = nil
+      I18n.with_locale(:fr) do
+        handler = RailsCommands::Registry.handler('family_location_request_mail')
+        payload = { 'request_id' => request.id, 'user_id' => requester.id }
+        begin
+          handler.call(payload)
+          handler.call(payload) if name == 'repeated'
+        rescue StandardError => e
+          error = e.class.name
+        end
+      end
+      jobs = enqueued_jobs.select { |job| job[:job] == ActionMailer::MailDeliveryJob }
+      request.destroy! if name == 'missing_after_enqueue'
+      smtp = jobs.any? ? execute_mail_job(jobs.sole) : nil
+      { 'id' => name, 'request_id' => request.id, 'requester_id' => requester.id, 'target_id' => target.id,
+        'status' => request.status, 'expired' => request.expires_at < Time.current,
+        'mail_jobs' => jobs.map { |job| queue_projection(job) }, 'claimed' => Rails.cache.exist?(key),
+        'error' => error, 'smtp' => smtp, 'recipient' => target.email, 'requester_email' => requester.email }
+    ensure
+      Rails.cache.delete(key) if key
+      clear_enqueued_jobs
+    end
+  end
+
+  def residual_mail_effects
+    previous_method = ActionMailer::Base.delivery_method
+    previous_logger = ActionMailer::Base.logger
+    ActionMailer::Base.delivery_method = :test
+    ActionMailer::Base.logger = nil
+    with_mail_defaults do
+      names = %w[default inactive toggle_off legacy_off legacy_on explicit_off missing_digest missing_user deleted_user
+                 zero
+                 negative enqueue_failure save_failure smtp_failure sent clear_sent blank_fr invalid_fr
+                 changed_preference generation_locale missing_after_enqueue deleted_after_enqueue]
+      digests = names.flat_map { |name| %w[monthly yearly].map { |period| [name, period] } }
+                     .each_with_index.map { |(name, period), index| digest_effect_case(name, period, index) }
+      locations = %w[pending accepted expired missing_request missing_requester missing_target repeated cache_failure
+                     enqueue_failure missing_after_enqueue].each_with_index.map do |name, index|
+        location_effect_case(name, index)
+      end
+      { 'digests' => digests, 'locations' => locations }
+    end
+  ensure
+    ActionMailer::Base.delivery_method = previous_method
+    ActionMailer::Base.logger = previous_logger
+  end
+
+  def assert_mail_effects(fixture)
+    fixture.fetch('digests').select { |row| row.fetch('id').end_with?('_enqueue_failure') }.each do |row|
+      expect(row.fetch('sent_at')).to be_nil, "enqueue failure changed sent_at: #{row.fetch('id')}"
+    end
+    fixture.fetch('digests').each do |row|
+      name = row.fetch('id').sub(/^(monthly|yearly)_/, '')
+      skipped = %w[toggle_off legacy_off explicit_off missing_digest missing_user deleted_user zero sent].include?(name)
+      enqueue_failed = name == 'enqueue_failure'
+      expect(row.fetch('mail_jobs').length).to eq(skipped || enqueue_failed ? 0 : 1)
+      observed = row.fetch('enqueue_observed')
+      expect(observed.length).to eq(skipped ? 0 : 1)
+      expect(observed.pluck('sent_at')).to eq([nil]) unless skipped
+      expected_error = { 'enqueue_failure' => 'IOError', 'save_failure' => 'ActiveRecord::RecordInvalid' }[name]
+      expect(row.fetch('error')).to eq(expected_error)
+      expected_sent = if name == 'sent'
+                        1.day.ago
+                      else
+                        (skipped || enqueue_failed || name == 'save_failure' ? nil : Time.current)
+                      end
+      expect(row.fetch('queued_sent_at')).to eq(expected_sent&.utc&.iso8601)
+      expected_sent = nil if name == 'missing_after_enqueue'
+      expect(row.fetch('sent_at')).to eq(expected_sent&.utc&.iso8601)
+      expected_locale = name == 'generation_locale' ? 'en' : 'fr'
+      expect(row.fetch('stage').fetch('locale')).to eq(expected_locale)
+      row.fetch('mail_jobs').each do |job|
+        expect(job.fetch('locale')).to eq(expected_locale)
+        expect(job.fetch('timezone')).to eq('Europe/Berlin')
+        expect(job.fetch('arguments').first(3)).to eq(
+          ['Users::DigestsMailer', row.fetch('period') == 'monthly' ? 'monthly_digest' : 'year_end_digest',
+           'deliver_now']
+        )
+      end
+      smtp = row.fetch('smtp')
+      next unless smtp
+
+      expect(smtp.fetch('error')).to eq(name == 'smtp_failure' ? 'IOError' : nil)
+      if name == 'missing_after_enqueue'
+        expect(smtp.fetch('attempts').length).to eq(0)
+        next
+      end
+      expect(smtp.fetch('attempts').length).to eq(1)
+      message = smtp.fetch('attempts').sole
+      expect(message.fetch('to')).to eq([row.fetch('recipient')])
+      locale = case name
+               when 'blank_fr', 'invalid_fr' then 'fr'
+               when 'changed_preference', 'generation_locale' then 'en'
+               else 'de'
+               end
+      kind = row.fetch('period') == 'monthly' ? 'monthly' : 'year_end'
+      month = I18n.l(Date.new(2024, 2), format: :month_name, locale:)
+      expect(message.fetch('subject')).to eq(I18n.t("mailers.users.digests.#{kind}.subject", month:, year: 2024,
+                                                  locale:))
+    end
+    fixture.fetch('locations').each do |row|
+      name = row.fetch('id')
+      skipped = %w[missing_request missing_requester cache_failure enqueue_failure].include?(name)
+      expect(row.fetch('mail_jobs').length).to eq(skipped ? 0 : 1)
+      expect(row.fetch('claimed')).to eq(!skipped)
+      expect(row.fetch('error')).to eq({ 'cache_failure' => 'RuntimeError', 'enqueue_failure' => 'IOError' }[name])
+      next if skipped
+
+      job = row.fetch('mail_jobs').sole
+      expect(job.fetch('locale')).to eq('fr')
+      expect(job.fetch('timezone')).to eq('Europe/Berlin')
+      smtp = row.fetch('smtp')
+      if name == 'missing_target'
+        expect(smtp.fetch('error')).to eq('NoMethodError')
+        expect(smtp.fetch('attempts').length).to eq(0)
+      elsif name == 'missing_after_enqueue'
+        expect(smtp.fetch('error')).to be_nil
+        expect(smtp.fetch('attempts').length).to eq(0)
+      else
+        expect(smtp.fetch('error')).to be_nil
+        expect(smtp.fetch('attempts').length).to eq(1)
+        expect(smtp.fetch('attempts').sole.fetch('to')).to eq([row.fetch('recipient')])
+        subject = I18n.t('mailers.family.location_request.subject',
+                         requester: row.fetch('requester_email'), locale: :de)
+        expect(smtp.fetch('attempts').sole.fetch('subject')).to eq(subject)
+      end
+    end
+  end
+
   def fixture_bytes(path, fixture)
     bytes = "#{JSON.pretty_generate(fixture)}\n"
     if ENV['WRITE_PHOENIX_FIXTURES'] == '1'

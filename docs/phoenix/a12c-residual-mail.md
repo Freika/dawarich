@@ -20,6 +20,10 @@ The original explore-features corpus remains byte-identical.
   bodies, MIME trees and data projections. Cases cover units/locales, leap dates, strict
   60-minute filtering, Unicode/tied ranks, nil/malformed JSON, negative/fractional values,
   sparse yearly stats, trend boundaries and sharing links.
+- `effects.json`: 44 digest staging/transport cases and 10 location reverse-command cases.
+  Real serialized jobs retain ambient locale/time zone; mail rendering reads current preferences.
+  Enqueue failure preserves nil `sent_at`, validation failure can leave mail queued, and later
+  SMTP failure preserves the timestamp. Negative distances and inactive users remain eligible.
 
 Devise 5.0.4 Cloud email/password callbacks invoke `deliver_now`; the capture intercepts that
 delivery boundary while retaining actual saves, callback predicates and rendering. They remain
@@ -49,6 +53,15 @@ The threshold is restored to 60. Rails sorts UTM query keys, and yearly sharing 
 on a present UUID even when sharing is disabled; the corpus retains those source behaviors.
 Malformed location integers and mixed-sign bars raise rather than producing empty mail.
 
-Resume at R3 after R2's restored named test and byte comparison are green.
+R3 observes delivery enqueue before the timestamp update. Its save-failure case uses an actual
+invalid month and model validation, with no mocked database behavior. Missing serialized digest
+records discard delivery; queued soft-deleted User records still deliver under Rails GlobalID
+lookup. Accepted/expired location requests still mail, missing targets fail rendering, missing
+requests discard, repeated reverse commands enqueue once, and enqueue failure releases the cache
+claim. Generation's retained Rails reverse handler selects `user.locale` before queueing.
+M-R3-sent-order moves the timestamp before enqueue and fails the explicit enqueue-failure
+case. The source is restored; the named capture and no-write fixture comparison pass.
+
+Resume at R4 after R3's restored named test and byte comparison are green.
 Native rendering, delivery workers, ownership wiring, test-mail HTTP,
 ED allocation and final C1–C5 gates are pending. Rails source/specs and dormant stubs are retained.

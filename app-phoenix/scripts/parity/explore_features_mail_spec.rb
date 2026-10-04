@@ -77,4 +77,20 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
     assert_digest_content(fixture)
     fixture_bytes(residual_path('digest_content'), fixture)
   end
+
+  it 'records digest staging and location request mail effects' do
+    fixture = residual_mail_effects
+    expected = %w[
+      default inactive toggle_off legacy_off legacy_on explicit_off missing_digest missing_user deleted_user
+      zero negative
+      enqueue_failure save_failure smtp_failure sent clear_sent blank_fr invalid_fr changed_preference generation_locale
+      missing_after_enqueue deleted_after_enqueue
+    ].flat_map { |name| %w[monthly yearly].map { |period| "#{period}_#{name}" } }
+    expect(fixture.fetch('digests').pluck('id')).to eq(expected)
+    locations = %w[pending accepted expired missing_request missing_requester missing_target repeated cache_failure
+                   enqueue_failure missing_after_enqueue]
+    expect(fixture.fetch('locations').pluck('id')).to eq(locations)
+    assert_mail_effects(fixture)
+    fixture_bytes(residual_path('effects'), fixture)
+  end
 end
