@@ -9,6 +9,7 @@ require_relative 'normal_import_semantic_support'
 require_relative 'normal_import_phone_support'
 require_relative 'normal_import_kml_support'
 require_relative 'normal_import_create_support'
+require_relative 'normal_import_tcx_support'
 
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   include ActiveSupport::Testing::TimeHelpers
@@ -189,6 +190,20 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
           result = NormalImportFormatsSupport.capture_json(name, bytes, zone, 9, Kml::Importer)
           expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
           expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
+          NormalImportFormatsSupport.write(name, result)
+        end
+      end
+    end
+  end
+
+  context 'TCX' do
+    it 'records TCX importer outcomes from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.tcx_cases.each do |name, bytes, zone|
+          stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !name.end_with?('_legacy'))
+          result = NormalImportFormatsSupport.capture_json(name, bytes, zone, 11, Tcx::Importer)
+          expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
+          expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'motion_data'))
           NormalImportFormatsSupport.write(name, result)
         end
       end
