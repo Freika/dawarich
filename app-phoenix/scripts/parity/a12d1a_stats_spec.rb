@@ -224,3 +224,341 @@ RSpec.describe 'Phoenix fixture: A12d1a monthly statistics' do
       'expected' => { 'stat' => stat_row(user_id, year, month) }.merge(expected) }
   end
 end
+
+RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
+  include ActiveSupport::Testing::TimeHelpers
+
+  let(:digest_now) { Time.utc(2026, 10, 3, 12) }
+  let(:digest_uuid) { '00000000-0000-4000-8000-000000140500' }
+  let(:digest_user_id) { 14_101 }
+
+  it 'writes or matches the digest calculation corpus twice byte-identically' do
+    expect(DawarichSettings.self_hosted?).to be(false)
+    first = digest_capture
+    expect(digest_capture).to eq(first)
+
+    first.each do |relative, content|
+      destination = Rails.root.join(relative)
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        FileUtils.mkdir_p(destination.dirname)
+        File.write(destination, content)
+      else
+        expect(content).to eq(destination.read)
+      end
+    end
+  end
+
+  def digest_capture
+    profiles = %w[berlin january previous_zero southern southern_alias missing_zone invalid_zone blank_zone
+                  country_shapes malformed_json malformed_daily false_daily malformed_minutes ranked_locations
+                  lite_partial lite_inherited
+                  no_data old_data existing unchanged duplicates invalid_yearly invalid_month missing_user deleted_user
+                  nil_mode missing_endpoint track_bounds default_ambient]
+    cases = profiles.flat_map do |profile|
+      %w[monthly yearly].filter_map do |kind|
+        next if %w[duplicates invalid_yearly].include?(profile) && kind == 'monthly'
+        next if profile == 'invalid_month' && kind == 'yearly'
+        next if profile == 'default_ambient' && kind == 'monthly'
+        next if profile == 'false_daily' && kind == 'yearly'
+
+        digest_isolated(profile) { digest_case(profile, kind) }
+      end
+    end
+    gaps = [[86_399, 0.1], [86_400, 0.1], [86_401, 0.1], [60, 0.099999], [60, 0.1], [60, 0.100001],
+            [2400, 99.999999], [2400, 100], [2400, 100.000001], [2399, 100], [2401, 100],
+            [86_400, 3600], [86_401, 3600], [0, 0], [-1, 0]]
+    cases.concat(gaps.each_with_index.map do |gap, index|
+      digest_isolated do
+        digest_case("gap_#{index}", 'monthly', gap)
+      end
+    end)
+    southern = Users::Digests::SeasonalityCalculator::TIMEZONE_LATITUDES.select do |_, latitude|
+      latitude.negative?
+    end.keys.sort
+    {
+      'app-phoenix/test/fixtures/a12d1b1/digests.json' => digest_json('version' => 1, 'cases' => cases),
+      'app-phoenix/priv/digest_southern_zones.json' => digest_json(southern)
+    }
+  end
+
+  def digest_json(value)
+    "#{Oj.dump(value, mode: :strict, float_precision: 0, indent: 2).chomp}\n"
+  end
+
+  def digest_isolated(profile = nil)
+    result = nil
+    zone = profile == 'default_ambient' ? Rails.application.config.time_zone : 'Europe/Berlin'
+    if profile == 'default_ambient'
+      expect(ENV).not_to have_key('TIME_ZONE')
+      expect(zone).to eq('Europe/Berlin')
+    end
+    ActiveRecord::Base.transaction(requires_new: true) do
+      travel_to(digest_now) { Time.use_zone(zone) { result = yield } }
+      raise ActiveRecord::Rollback
+    end
+    result
+  end
+
+  def digest_case(profile, kind, gap = nil)
+    digest_users(profile)
+    year, month = profile == 'january' ? [2025, 1] : [2025, 3]
+    month = 10 if %w[lite_partial lite_inherited].include?(profile)
+    month = 13 if profile == 'invalid_month'
+    digest_stats(profile, year, month)
+    digest_points(profile, year, month) unless month == 13
+    digest_tracks(profile, year, month, gap) unless month == 13
+    digest_existing(profile, kind, year, month)
+    if profile == 'unchanged'
+      travel_to(digest_now - 1.day)
+      digest_call(kind, year, month)
+      travel_to(digest_now)
+    end
+    input = digest_input
+    before = digest_rows
+    result = nil
+    error = nil
+    begin
+      result = digest_call(kind, year, month)
+    rescue StandardError => e
+      error = { 'class' => e.class.name, 'message' => e.message }
+      error['details'] = e.record.errors.details.as_json if e.is_a?(ActiveRecord::RecordInvalid)
+    end
+    if %w[missing_user deleted_user].include?(profile)
+      expect(error&.fetch('class')).to eq('ActiveRecord::RecordNotFound')
+    end
+    if profile == 'invalid_yearly'
+      expect(error&.fetch('class')).to eq('ActiveRecord::RecordInvalid')
+      expect(digest_rows).to eq(before)
+    end
+    expect(digest_rows).to eq(before) if profile == 'unchanged'
+    expect(digest_rows.map { |row| row['id'] }).to eq([14_601]) if profile == 'duplicates'
+    extra = gap ? digest_gap_oracle(year, month, gap) : {}
+    options = { 'now' => digest_now.iso8601, 'ambient_zone' => 'Europe/Berlin',
+                'env' => { 'SELF_HOSTED' => 'false',
+                           'TIME_ZONE' => Users::SafeSettings::DEFAULT_VALUES.fetch('timezone') },
+                'uuid' => digest_uuid }
+    if profile == 'default_ambient'
+      options.delete('ambient_zone')
+      options['env'].delete('TIME_ZONE')
+    end
+    {
+      'id' => "#{profile}_#{kind}",
+      'call' => { 'kind' => kind, 'user_id' => digest_user_id, 'year' => year,
+                  'month' => kind == 'monthly' ? month : nil },
+      'options' => options,
+      'legacy_duplicates' => profile == 'duplicates', 'null_segment_mode' => profile == 'nil_mode',
+      'input' => input, 'before' => before,
+      'expected' => { 'result_id' => result&.id, 'rows' => digest_rows, 'error' => error }.merge(extra)
+    }
+  end
+
+  def digest_call(kind, year, month)
+    ActiveRecord::Base.connection.execute("SELECT setval('digests_id_seq', 140500, false)")
+    allow(SecureRandom).to receive(:uuid).and_return(digest_uuid)
+    if kind == 'monthly'
+      Users::Digests::CalculateMonth.new(digest_user_id, year, month).call
+    else
+      Users::Digests::CalculateYear.new(digest_user_id, year).call
+    end
+  end
+
+  def digest_users(profile)
+    settings = case profile
+               when 'southern' then { 'timezone' => 'Australia/Sydney' }
+               when 'southern_alias' then { 'timezone' => 'Sydney' }
+               when 'missing_zone', 'default_ambient' then {}
+               when 'invalid_zone' then { 'timezone' => 'Unknown/Zone' }
+               when 'blank_zone' then { 'timezone' => '' }
+               else { 'timezone' => 'Europe/Berlin' }
+               end
+    rows = [
+      { id: digest_user_id, email: 'a12d1b1@example.invalid', encrypted_password: '', settings:, status: 1,
+        plan: profile.start_with?('lite_') || profile == 'old_data' ? 0 : 1, active_until: nil,
+        deleted_at: profile == 'deleted_user' ? digest_now : nil, created_at: digest_now, updated_at: digest_now },
+      { id: 14_102, email: 'a12d1b1-other@example.invalid', encrypted_password: '', settings: {}, status: 1,
+        plan: 2, active_until: digest_now + 1.year, deleted_at: nil, created_at: digest_now, updated_at: digest_now }
+    ]
+    rows.shift if profile == 'missing_user'
+    User.unscoped.insert_all!(rows)
+    return unless profile == 'lite_inherited'
+
+    Family.insert_all!([{ id: 14_901, name: 'Synthetic family', creator_id: 14_102, access_until: nil,
+                         created_at: digest_now, updated_at: digest_now }])
+    Family::Membership.insert_all!([
+                                     { id: 14_911, user_id: 14_102, family_id: 14_901, role: 0, created_at: digest_now,
+                                       updated_at: digest_now },
+                                     { id: 14_912, user_id: digest_user_id, family_id: 14_901, role: 1,
+                                       created_at: digest_now,
+                                       updated_at: digest_now }
+                                   ])
+  end
+
+  def digest_stats(profile, year, month)
+    return if %w[missing_user no_data].include?(profile)
+
+    tops = [
+      { 'country' => 'Germany',
+        'cities' => [{ 'city' => 'Springfield', 'stayed_for' => '31minutes' },
+                     { 'city' => 'Berlin', 'stayed_for' => 59.9 }] },
+      { 'country' => 'France', 'cities' => [{ 'city' => 'Springfield', 'stayed_for' => nil }] },
+      { 'country' => nil, 'cities' => [{ 'city' => 'Orphan city', 'stayed_for' => 3 }] },
+      { 'country' => 'Country only', 'cities' => [] },
+      { 'country' => 'Nonarray cities', 'cities' => nil }
+    ]
+    tops = { 'country' => 'Malformed', 'cities' => [] } if profile == 'malformed_json'
+    tops.first['cities'].first['stayed_for'] = {} if profile == 'malformed_minutes'
+    if profile == 'country_shapes'
+      tops.concat([nil, 'not a hash', { 'country' => 12, 'cities' => [] },
+                   { 'country' => 'Empty city', 'cities' => [nil, { 'city' => '' }, { 'city' => 2 }] },
+                   [{ 'country' => 'Nested', 'cities' => [{ 'city' => 'Nested city' }] }]])
+    end
+    if profile == 'ranked_locations'
+      tops = (0..10).map do |index|
+        { 'country' => "Country #{10 - index}", 'cities' => [{ 'city' => "City #{index}", 'stayed_for' => 10 }] }
+      end
+    end
+    previous_year, previous_month = month == 1 ? [year - 1, 12] : [year, month - 1]
+    daily_distance = case profile
+                     when 'malformed_daily' then 'invalid'
+                     when 'false_daily' then false
+                     else [[1, 12.5], %w[2 24], [3, 0]]
+                     end
+    rows = [
+      { id: 14_301, user_id: digest_user_id, year: year - 1, month: 1, distance: 7000,
+        toponyms: [{ 'country' => 'Old', 'cities' => [{ 'city' => 'Old city' }] }] },
+      { id: 14_302, user_id: digest_user_id, year: previous_year, month: previous_month,
+        distance: profile == 'previous_zero' ? 0 : 20_000, toponyms: [{ 'country' => 'Previous', 'cities' => [] }] },
+      { id: 14_303, user_id: digest_user_id, year:, month:, distance: 12_500, flight_distance: 425,
+        daily_distance:, toponyms: tops },
+      { id: 14_304, user_id: 14_102, year:, month: 3, distance: 999_999,
+        toponyms: [{ 'country' => 'Other', 'cities' => [{ 'city' => 'Other city' }] }] }
+    ]
+    if %w[lite_partial lite_inherited].include?(profile)
+      rows << { id: 14_305, user_id: digest_user_id, year:, month: 1, distance: 7777,
+                toponyms: [{ 'country' => 'Germany', 'cities' => [{ 'city' => 'Berlin' }] }] }
+      rows << { id: 14_306, user_id: digest_user_id, year:, month: 12, distance: 12_500, toponyms: [] }
+    end
+    rows = rows.reject { |row| row[:user_id] == digest_user_id && row[:year] == year } if profile == 'old_data'
+    Stat.insert_all!(rows.map do |row|
+      { distance: 0, flight_distance: 0, daily_distance: {}, toponyms: [], h3_hex_ids: {}, calculation_version: 0,
+        created_at: digest_now, updated_at: digest_now }.merge(row)
+    end)
+  end
+
+  def digest_points(profile, year, month)
+    return if profile == 'missing_user'
+
+    first = Time.utc(year, month, 1)
+    samples = [
+      [first - 1800, 'Germany', false], [first + 600, 'France', false], [first + 3600, 'France', false],
+      [first + 6.hours, 'Germany', true], [first + 12.hours, 'Germany', false], [first + 18.hours, nil, false],
+      [Time.utc(year, month, 30, 1, 30), 'Germany', false]
+    ]
+    if month == 10
+      samples.concat([[Time.utc(year, 10, 3, 11, 59, 59), 'Before cutoff', false],
+                      [Time.utc(year, 10, 3, 12), 'At cutoff', true],
+                      [Time.utc(year, 12, 31, 23, 30), 'Outside ambient year', false]])
+    end
+    if profile == 'ranked_locations'
+      samples = (0..10).map { |index| [first + index * 60, "Country #{10 - index}", index == 10] }
+    end
+    if profile == 'default_ambient'
+      samples.concat([[Time.utc(year - 1, 12, 31, 23, 30), 'Inside ambient year', false],
+                      [Time.utc(year, 12, 31, 23, 30), 'Outside ambient year', false]])
+    end
+    Point.insert_all!(samples.each_with_index.map do |(at, country_name, anomaly), index|
+      { id: 14_201 + index, user_id: digest_user_id, timestamp: at.to_i, lonlat: 'POINT(12 51)', country_name:,
+        city: nil, velocity: '0', anomaly:, created_at: digest_now, updated_at: digest_now }
+    end)
+    Point.insert_all!([{ id: 14_250, user_id: 14_102, timestamp: first.to_i, lonlat: 'POINT(12 51)',
+                        country_name: 'Other user', anomaly: false, created_at: digest_now, updated_at: digest_now }])
+  end
+
+  def digest_tracks(profile, year, month, gap)
+    return if %w[missing_user no_data old_data].include?(profile)
+
+    gap ||= [3600, 0]
+    start = Time.utc(year, month, 4)
+    starts = [start, start + 600 + gap[0]]
+    if profile == 'track_bounds'
+      starts.concat([Time.utc(year, month, 1) - 7200,
+                     Time.utc(year, month, 1).end_of_month - 7200])
+    end
+    Track.insert_all!(starts.each_with_index.map do |at, index|
+      { id: 14_401 + index, user_id: digest_user_id, start_at: at, end_at: at + 600,
+        original_path: 'LINESTRING(0 0, 0.01 0)', created_at: digest_now, updated_at: digest_now }
+    end)
+    if profile == 'nil_mode'
+      ActiveRecord::Base.connection.execute('ALTER TABLE track_segments ALTER COLUMN transportation_mode DROP NOT NULL')
+    end
+    TrackSegment.insert_all!(starts.each_with_index.map do |_, index|
+      { id: 14_501 + index, track_id: 14_401 + index, start_index: 0, end_index: 1, duration: index.zero? ? 600 : 1800,
+        transportation_mode: profile == 'nil_mode' && index == 1 ? nil : Track::TRANSPORTATION_MODES.fetch(:walking),
+        created_at: digest_now, updated_at: digest_now }
+    end)
+    degrees = gap[1] / 6371.0 * 180 / Math::PI
+    degrees = 1e-10 if gap == [0, 0]
+    boundary = [
+      { id: 14_260, track_id: 14_401, timestamp: (start + 600).to_i, lonlat: 'POINT(0 0)', anomaly: true },
+      { id: 14_261, track_id: 14_402, timestamp: starts[1].to_i, lonlat: "POINT(#{degrees} 0)", anomaly: false }
+    ]
+    boundary.pop if profile == 'missing_endpoint'
+    Point.insert_all!(boundary.map do |row|
+      row.merge(user_id: digest_user_id, created_at: digest_now, updated_at: digest_now)
+    end)
+  end
+
+  def digest_gap_oracle(year, month, gap)
+    calculator = Users::Digests::ActivityBreakdownCalculator.new(User.find(digest_user_id), year, month)
+    points = Point.where(id: [14_260, 14_261]).order(:id).to_a
+    { 'gap' => { 'seconds' => gap[0], 'distance_km' => gap[1],
+                 'classification' => calculator.send(:classify_gap_by_distance, *gap).as_json,
+                 'geocoder_distance_km' => points.first.distance_to_geocoder(points.last, :km) } }
+  end
+
+  def digest_existing(profile, kind, year, month)
+    return unless %w[existing duplicates invalid_yearly].include?(profile)
+
+    if profile == 'duplicates'
+      ActiveRecord::Base.connection.execute('DROP INDEX index_digests_on_user_year_period_type_monthless')
+    end
+    digest_month = kind == 'monthly' ? month : nil
+    digest_month = 13 if profile == 'invalid_yearly'
+    rows = [{ id: 14_601, user_id: digest_user_id, year:, month: digest_month,
+              period_type: kind == 'monthly' ? 0 : 1, distance: 123, flight_distance: 999,
+              sharing_uuid: '00000000-0000-4000-8000-000000014601', sharing_settings: { 'enabled' => true },
+              sent_at: Time.utc(2026, 9, 1), created_at: Time.utc(2026, 8, 1), updated_at: Time.utc(2026, 9, 1) }]
+    if profile == 'duplicates'
+      rows << rows.first.merge(id: 14_602, distance: 456, flight_distance: 888,
+                               sharing_uuid: '00000000-0000-4000-8000-000000014602',
+                               sharing_settings: { 'enabled' => false })
+    end
+    Users::Digest.insert_all!(rows)
+    expect(Users::Digest.where(user_id: digest_user_id, year:).count).to eq(2) if profile == 'duplicates'
+  end
+
+  def digest_input
+    {
+      'users' => digest_select('SELECT id, email, encrypted_password, settings, status, plan, active_until, ' \
+                               'deleted_at, created_at, updated_at FROM users WHERE id IN (14101, 14102) ORDER BY id'),
+      'families' => digest_select('SELECT * FROM families WHERE id = 14901 ORDER BY id'),
+      'family_memberships' => digest_select('SELECT * FROM family_memberships WHERE id IN (14911, 14912) ORDER BY id'),
+      'stats' => digest_select('SELECT * FROM stats WHERE user_id IN (14101, 14102) ORDER BY id'),
+      'tracks' => digest_select('SELECT * FROM tracks WHERE user_id IN (14101, 14102) ORDER BY id'),
+      'track_segments' => digest_select('SELECT * FROM track_segments ' \
+                                       'WHERE track_id BETWEEN 14401 AND 14404 ORDER BY id'),
+      'points' => digest_select('SELECT id, user_id, track_id, timestamp, lonlat, country_name, city, ' \
+                                'velocity, anomaly, created_at, updated_at ' \
+                                'FROM points WHERE user_id IN (14101, 14102) ORDER BY id'),
+      'digests' => digest_rows
+    }
+  end
+
+  def digest_rows
+    digest_select('SELECT * FROM digests WHERE user_id IN (14101, 14102) ORDER BY id')
+  end
+
+  def digest_select(sql)
+    ActiveRecord::Base.connection.select_values("SELECT row_to_json(x)::text FROM (#{sql}) x").map { |json| JSON.parse(json) }
+  end
+end
