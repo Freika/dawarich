@@ -151,6 +151,18 @@ defmodule DawarichWeb.A10cOwnershipTest do
       end
     end
 
+    rows(
+      "UPDATE achievement_progresses SET state='{}' WHERE user_id=44001 AND achievement_key='exploration'"
+    )
+
+    before = snapshot()
+
+    {203, headers, "Rails"} =
+      exchange(ctx, "GET", "/shared/achievements/#{uuid}?locale=de", "", proxy: true)
+
+    assert values(headers, "set-cookie") == []
+    assert snapshot() == before
+
     rows("UPDATE users SET settings='[]' WHERE id=44001")
     before = snapshot()
 

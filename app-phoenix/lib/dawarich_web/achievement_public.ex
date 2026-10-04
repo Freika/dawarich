@@ -32,7 +32,8 @@ defmodule DawarichWeb.AchievementPublic do
          [_, uuid] <- Regex.run(@path, conn.request_path),
          result when result != :handoff <-
            PublicCard.load(Keyword.get(opts, :repo, Dawarich.Repo), uuid, %{
-             viewer_id: conn.assigns.current_user && conn.assigns.current_user.id
+             viewer_id: conn.assigns.current_user && conn.assigns.current_user.id,
+             requested_locale: params["locale"]
            }),
          true <- representable?(conn, params, result) do
       {:ok, %{conn | params: params, query_params: params}, result}

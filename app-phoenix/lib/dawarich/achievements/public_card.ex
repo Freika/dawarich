@@ -10,9 +10,16 @@ defmodule Dawarich.Achievements.PublicCard do
            [uuid]
          ) do
       [[owner_id, key, settings]] ->
-        case Registry.find(key) do
-          nil -> :not_found
-          definition -> read(repo, owner_id, definition, settings, uuid, context)
+        cond do
+          context[:viewer_id] == owner_id and is_binary(context[:requested_locale]) and
+              context[:requested_locale] != Locale.resolve(nil, %{settings: settings}, %{}) ->
+            :handoff
+
+          definition = Registry.find(key) ->
+            read(repo, owner_id, definition, settings, uuid, context)
+
+          true ->
+            :not_found
         end
 
       [] ->
