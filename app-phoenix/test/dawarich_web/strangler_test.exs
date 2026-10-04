@@ -26,4 +26,10 @@ defmodule DawarichWeb.StranglerTest do
 
     assert log =~ "[strangler] /trips handed to Rails: :timeout"
   end
+
+  test "an owned HEAD request keeps its original method for the rate limiter" do
+    conn = Plug.Test.conn(:head, "http://www.example.com/stats") |> Strangler.call([])
+    assert conn.private.dawarich_method == "HEAD"
+    assert conn.method == "GET"
+  end
 end

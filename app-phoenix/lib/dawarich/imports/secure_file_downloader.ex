@@ -22,7 +22,8 @@ defmodule Dawarich.Imports.SecureFileDownloader do
           stream,
           fallback,
           Keyword.get(opts, :timeout_ms, 300_000),
-          guard
+          guard,
+          Keyword.get(opts, :start_timer, &Process.send_after/3)
         )
 
         verify!(path, blob)
@@ -67,7 +68,7 @@ defmodule Dawarich.Imports.SecureFileDownloader do
     path
   end
 
-  defp write_with_timeout!(path, stream, fallback, timeout, guard) do
+  defp write_with_timeout!(path, stream, fallback, timeout, guard, start_timer) do
     owner = self()
     tag = make_ref()
 
@@ -88,10 +89,22 @@ defmodule Dawarich.Imports.SecureFileDownloader do
       )
 
     send(guard, {:writer, pid})
-    await_writer!(pid, ref, tag, timeout)
+    timer = start_timer.(owner, {tag, :timeout}, timeout)
+
+    try do
+      await_writer!(pid, ref, tag)
+    after
+      Process.cancel_timer(timer)
+
+      receive do
+        {^tag, :timeout} -> :ok
+      after
+        0 -> :ok
+      end
+    end
   end
 
-  defp await_writer!(pid, ref, tag, timeout) do
+  defp await_writer!(pid, ref, tag) do
     receive do
       {^tag, :ok} ->
         join_writer(pid, ref)
@@ -103,8 +116,8 @@ defmodule Dawarich.Imports.SecureFileDownloader do
 
       {:DOWN, ^ref, :process, ^pid, reason} ->
         exit(reason)
-    after
-      timeout ->
+
+      {^tag, :timeout} ->
         Process.unlink(pid)
         Process.exit(pid, :kill)
         join_writer(pid, ref)

@@ -21,7 +21,7 @@ defmodule Dawarich.MapGallery do
   def route_videos(user_id, zone) do
     from(v in "route_videos",
       where: v.user_id == ^user_id,
-      order_by: [desc: v.created_at],
+      order_by: [desc: v.created_at, desc: v.id],
       limit: 10,
       select: %{
         id: v.id,
@@ -48,6 +48,35 @@ defmodule Dawarich.MapGallery do
     |> attach("RouteVideo", ["file"])
   end
 
+  def route_video(user_id, id, zone, repo \\ Repo) do
+    from(v in "route_videos",
+      where: v.user_id == ^user_id and v.id == ^id,
+      select: %{
+        id: v.id,
+        name: v.name,
+        status: v.status,
+        settings_json: fragment("?::text", v.settings),
+        shown_at:
+          fragment(
+            "to_char((coalesce(?, ?) AT TIME ZONE 'UTC') AT TIME ZONE ?, 'YYYY-MM-DD\"T\"HH24:MI:SS')",
+            v.expired_at,
+            v.updated_at,
+            ^zone
+          )
+      }
+    )
+    |> repo.all()
+    |> Enum.map(
+      &%{
+        &1
+        | settings_json: Ruby.json_text(&1.settings_json),
+          shown_at: NaiveDateTime.from_iso8601!(&1.shown_at)
+      }
+    )
+    |> attach("RouteVideo", ["file"], repo)
+    |> List.first()
+  end
+
   def blob_path(blob, disposition \\ nil, secret \\ Dawarich.RailsSecret.fetch()),
     do:
       DawarichWeb.BlobPath.redirect_path(blob.id, blob.filename,
@@ -55,9 +84,11 @@ defmodule Dawarich.MapGallery do
         secret: secret
       )
 
-  defp attach([], _type, _names), do: []
+  defp attach(rows, type, names, repo \\ Repo)
 
-  defp attach(rows, type, names) do
+  defp attach([], _type, _names, _repo), do: []
+
+  defp attach(rows, type, names, repo) do
     ids = Enum.map(rows, & &1.id)
 
     files =
@@ -67,7 +98,7 @@ defmodule Dawarich.MapGallery do
         where: a.record_type == ^type and a.record_id in ^ids and a.name in ^names,
         select: {a.record_id, a.name, %{id: b.id, filename: b.filename}}
       )
-      |> Repo.all()
+      |> repo.all()
       |> Map.new(fn {record, name, blob} -> {{record, name}, blob} end)
 
     for row <- rows, do: Map.put(row, :files, Map.new(names, &{&1, files[{row.id, &1}]}))

@@ -215,7 +215,7 @@ defmodule DawarichWeb.PublicFilesTest do
     robots = Enum.find(@fixture["requests"], &(&1["name"] == "robots"))
     assert ask(port, robots) == robots["response"]
 
-    for path <- ["/settings/visits", "/phoenix/js/phoenix.mjs.map"] do
+    for path <- ["/settings/two_factor", "/phoenix/js/phoenix.mjs.map"] do
       client = connect(port)
       send_raw(client, "GET #{path} HTTP/1.1\r\nHost: dawarich.example\r\n\r\n")
       puma = accept(upstream)

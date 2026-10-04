@@ -3,6 +3,18 @@ defmodule Dawarich.Jobs.RegistryTest do
 
   alias Dawarich.Jobs.Registry
 
+  test "retention registry preserves cron expression and rollback claimability" do
+    assert %{
+             kind: :cron,
+             expression: "45 3 * * *",
+             claimable: false,
+             worker: Dawarich.RouteVideos.PurgeWorker
+           } =
+             Enum.find(Registry.entries(), &(&1.key == "cron:route_videos_purge_job"))
+
+    assert {"45 3 * * *", Dawarich.RouteVideos.PurgeWorker} in Registry.crontab()
+  end
+
   test "release N claims nothing: every entry ships unclaimable" do
     assert Registry.claimable() == []
   end

@@ -2,7 +2,6 @@ defmodule Dawarich.TracksCase do
   @moduledoc false
   use ExUnit.CaseTemplate
 
-  alias Dawarich.Redis
   alias Dawarich.Tracks.{ChunkWorker, RangeWorker, Settings}
   alias Dawarich.TracksScratchRepo, as: ScratchRepo
 
@@ -42,15 +41,7 @@ defmodule Dawarich.TracksCase do
 
   def start_services! do
     Dawarich.JobsCase.start_oban(@oban, repo: ScratchRepo)
-    ExUnit.Callbacks.start_supervised!(hd(Redis.child_specs()))
-    {:ok, "OK"} = Redis.command(["FLUSHDB"])
     :ok
-  end
-
-  def rails_redis! do
-    config = Application.fetch_env!(:dawarich, :redis)
-    {:ok, conn} = Redix.start_link(config[:url], database: config[:database])
-    conn
   end
 
   def tracks_changed do

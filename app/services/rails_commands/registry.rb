@@ -50,13 +50,13 @@ module RailsCommands
         }
       },
       'tracks_realtime_retrigger' => {
-        guard: 'RealtimeDebouncer#trigger is SET NX: a repeat extends the 2 min TTL, or, once the job cleared ' \
-               'the key, schedules one more RealtimeGenerationJob, which claims only untracked points ' \
+        guard: 'RealtimeDebouncer#trigger is a debounce claim: a repeat extends it by 2 min, or, once the job ' \
+               'cleared it, schedules one more RealtimeGenerationJob, which claims only untracked points ' \
                'under the user lock',
         call: ->(payload) { Tracks::RealtimeDebouncer.new(payload.fetch('user_id')).trigger }
       },
       'geocode_recent_points' => {
-        guard: 'async_reverse_geocode claims geocode:enq:Point:<id> with SET NX over not_reverse_geocoded ' \
+        guard: 'async_reverse_geocode claims geocode:enq:Point:<id> once over not_reverse_geocoded ' \
                'points, so queued and finished points are skipped; a point whose job raised may cost one ' \
                'more provider lookup',
         call: lambda { |payload|
@@ -208,12 +208,13 @@ module RailsCommands
      .merge(Imports::PreparedDownloadPurgeCommands::HANDLERS)
      .merge(Imports::DestroyCommands::HANDLERS)
      .merge(Imports::ExtractionCommands::HANDLERS)
+     .merge(A8Handlers::HANDLERS)
      .merge(
        'imports.resume' => {
          guard: 'Durable event receipt and per-import lease; repeats cannot restart a completed receipt',
          call: ->(payload) { Imports::GpxResume.call(payload) }
        }
-     ).freeze
+     ).merge(Stats::Commands::HANDLERS).freeze
 
     module_function
 

@@ -114,15 +114,26 @@ defmodule DawarichWeb.InsightsEndpointTest do
     end
   end
 
-  test "the insights kill switch hands / and the details to Puma", ctx do
+  test "home and insights independently hand their owned paths to Puma", ctx do
     Application.put_env(:dawarich, :rails_routes, ["insights"])
+    assert {302, headers, ""} = phoenix(ctx.port, request("/", [{"Cookie", ctx.cookie}]))
+    assert values(headers, "location") == ["http://a/map/v2"]
 
-    for target <- ["/", "/insights/details?year=all"] do
+    for {key, target} <- [{"home", "/"}, {"insights", "/insights/details?year=all"}] do
+      Application.put_env(:dawarich, :rails_routes, [key])
+
       assert {line, [_cookie]} =
                puma(ctx.port, ctx.upstream, request(target, [{"Cookie", ctx.cookie}]))
 
       assert line == "GET #{target} HTTP/1.1"
     end
+
+    Application.put_env(:dawarich, :rails_routes, ["home"])
+
+    assert {200, _headers, body} =
+             phoenix(ctx.port, request("/insights/details?year=all", [{"Cookie", ctx.cookie}]))
+
+    assert body =~ ~s(<turbo-frame id="insights_details">)
   end
 
   test "a non-string year or month goes to Puma", ctx do

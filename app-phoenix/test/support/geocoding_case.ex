@@ -112,10 +112,9 @@ defmodule Dawarich.GeocodingCase do
         do: %{"kind" => kind, "payload" => payload}
   end
 
-  def geocoded_days do
-    {:ok, members} = Redis.command(["ZRANGE", "stats:geocoded_days:pending", "0", "-1"])
-    Enum.sort(members)
-  end
+  def geocoded_days,
+    do:
+      "SELECT member FROM phoenix.stats_geocoded_days" |> rows() |> List.flatten() |> Enum.sort()
 
   def cache_entries do
     {:ok, keys} = Redis.cache_command(["KEYS", "*"])
@@ -150,7 +149,13 @@ defmodule Dawarich.GeocodingCase do
 
   def dedupe_key(id), do: "geocode:enq:Point:#{id}"
 
-  def dedupe_key?(id), do: Redis.command(["EXISTS", dedupe_key(id)]) == {:ok, 1}
+  def dedupe_key?(id),
+    do:
+      ScratchRepo.query!(
+        "SELECT 1 FROM phoenix.once_claims WHERE key = $1 AND expires_at > statement_timestamp()",
+        [dedupe_key(id)],
+        log: false
+      ).num_rows == 1
 
   defp rows(sql), do: ScratchRepo.query!(sql, [], log: false).rows
 end

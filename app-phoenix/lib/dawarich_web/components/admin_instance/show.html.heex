@@ -1,0 +1,60 @@
+<div class="min-h-content w-full my-5">
+  <.page_header title={t(@locale, "admin.settings.show.title", %{})} />
+  <.navigation
+    locale={@locale}
+    active="instance"
+    self_hosted={@self_hosted}
+    admin={@current_user.admin == true}
+    two_factor={@two_factor}
+  />
+  <div class="max-w-5xl">
+    <p class="max-w-3xl mb-6 text-base-content/70 [text-wrap:pretty]">
+      {t(@locale, "admin.settings.show.intro", %{})}
+    </p>
+    <AdminJobHealth.card locale={@locale} health={@health} />
+    <section aria-labelledby="instance-settings-geocoding" class="mb-8">
+      <h2 id="instance-settings-geocoding" class="text-xl font-semibold">
+        {t(@locale, "admin.settings.show.geocoding.title", %{})}
+      </h2>
+      <p class="mt-1 mb-4 max-w-3xl text-base-content/70 [text-wrap:pretty]">
+        {t(@locale, "admin.settings.show.geocoding.description", %{})}
+      </p>
+      <.geocoding_status locale={@locale} data={@data} rails_csrf_token={@rails_csrf_token} />
+      <p class="mt-3 max-w-3xl text-sm text-base-content/70 [text-wrap:pretty]">
+        {t(@locale, "admin.settings.show.geocoding.chain_hint", %{})}
+      </p>
+    </section>
+    <turbo-frame data-turbo-action="advance" id="instance-settings-sections">
+      <div class="flex flex-col lg:flex-row gap-6 items-start">
+        <nav
+          class="w-full lg:w-64 shrink-0"
+          aria-label={t(@locale, "admin.settings.show.sections_nav", %{})}
+        >
+          <p class="mb-2 text-[10px] font-bold uppercase tracking-[0.05em] text-base-content/70">
+            {t(@locale, "admin.settings.show.geocoding.title", %{})}
+          </p>
+          <div class="space-y-2">
+            <.section_link
+              :for={item <- sections()}
+              locale={@locale}
+              item={item}
+              section={@section}
+              data={@data}
+            />
+          </div>
+          <div class="mt-6">
+            <.section_link locale={@locale} item="points" section={@section} data={@data} />
+          </div>
+        </nav>
+        <div class="flex-1 min-w-0 w-full">
+          <.pane
+            locale={@locale}
+            data={@data}
+            section={@section}
+            rails_csrf_token={@rails_csrf_token}
+          />
+        </div>
+      </div>
+    </turbo-frame>
+  </div>
+</div>

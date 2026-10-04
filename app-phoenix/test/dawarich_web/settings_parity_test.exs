@@ -36,6 +36,84 @@ defmodule DawarichWeb.SettingsParityTest do
   if length(@fixtures) < 35,
     do: raise("expected 35 settings fixtures, found #{length(@fixtures)}")
 
+  test "local account failures match source forms and clear password values" do
+    rows = File.read!("test/fixtures/auth/account/requests.json") |> Jason.decode!()
+
+    for row <- Enum.filter(rows, &(&1["status"] == 422)) do
+      state = File.read!(Path.join(@dir, "account_en.json")) |> Jason.decode!()
+
+      id =
+        row["email"]
+        |> String.split("-")
+        |> List.last()
+        |> String.split("@")
+        |> hd()
+        |> String.to_integer()
+
+      state = put_in(state, ["user", "id"], id)
+      state = put_in(state, ["user", "email"], row["email"])
+      state = put_in(state, ["user", "api_key"], "API_KEY")
+      user = seed!(state)
+
+      context = %{
+        locale: row["locale"],
+        now: ~U[2026-09-26 12:00:00Z],
+        self_hosted: true,
+        base_url: "http://www.example.com",
+        rails_csrf_token: "CSRF",
+        current_user: user,
+        account_errors: account_errors(row["name"]),
+        account_email: row["submitted_email"]
+      }
+
+      assigns = AccountLive.Edit.page(user, %{}, context)
+      phoenix = render_component(&AccountLive.Edit.render/1, Map.merge(context, assigns))
+      rails = File.read!("test/fixtures/auth/account/#{row["name"]}_#{row["locale"]}.html")
+      assert ParityHTML.normalize(phoenix) == ParityHTML.normalize(rails), row["name"]
+      assert ParityHTML.stimulus(phoenix, @stimulus) == ParityHTML.stimulus(rails, @stimulus)
+      doc = LazyHTML.from_fragment(phoenix)
+
+      assert doc |> LazyHTML.query("#error_explanation li") |> LazyHTML.text() |> String.trim() !=
+               ""
+
+      assert doc |> LazyHTML.query("input[type=password][value]") |> LazyHTML.to_tree() == []
+      assert doc |> LazyHTML.query("bad") |> LazyHTML.to_tree() == []
+    end
+  end
+
+  defp account_errors(name) do
+    case name do
+      name when name in ["blank_current", "missing_current", "no_op_blank_current"] ->
+        [{:current_password, :blank, %{}}]
+
+      "wrong_current" ->
+        [{:current_password, :invalid, %{}}]
+
+      name when name in ["empty_confirmation", "mismatch_confirmation"] ->
+        [{:password_confirmation, :confirmation, %{}}]
+
+      name when name in ["length_11", "multibyte_11"] ->
+        [{:password, :too_short, %{"count" => 12}}]
+
+      "length_129" ->
+        [{:password, :too_long, %{"count" => 128}}]
+
+      name when name in ["duplicate_email", "deleted_email"] ->
+        [{:email, :taken, %{}}]
+
+      "blank_email" ->
+        [{:email, :blank, %{}}]
+
+      name when name in ["multiple_errors", "errors_de"] ->
+        [
+          {:email, :invalid, %{}},
+          {:password_confirmation, :confirmation, %{}},
+          {:password, :too_short, %{"count" => 12}},
+          {:current_password, :blank, %{}}
+        ]
+    end
+  end
+
   for file <- @fixtures do
     @name Path.basename(file, ".json")
 

@@ -12,18 +12,24 @@ defmodule DawarichWeb.AccountLive.Edit do
   def mount(params, _session, socket),
     do: {:ok, assign(socket, page(socket.assigns.current_user, params, socket.assigns))}
 
-  def page(user, _params, %{
-        locale: locale,
-        now: now,
-        self_hosted: _self_hosted,
-        base_url: base_url
-      }) do
+  def page(
+        user,
+        _params,
+        %{
+          locale: locale,
+          now: now,
+          self_hosted: _self_hosted,
+          base_url: base_url
+        } = context
+      ) do
     trial = user.status == 2
     source_none = user.subscription_source in [nil, 0]
 
     %{
       page_title: t(locale, "devise.registrations.edit.account", %{}),
       rails_js: true,
+      account_errors: Map.get(context, :account_errors, []),
+      account_email: Map.get(context, :account_email),
       oauth: provider_name(locale, user.provider),
       trial: trial,
       trial_at:
@@ -85,6 +91,8 @@ defmodule DawarichWeb.AccountLive.Edit do
             <.profile
               locale={@locale}
               user={@current_user}
+              errors={@account_errors}
+              submitted_email={@account_email}
               oauth={@oauth}
               rails_csrf_token={@rails_csrf_token}
             />

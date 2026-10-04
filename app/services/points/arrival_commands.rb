@@ -20,7 +20,7 @@ module Points
         }
       },
       'tracks.realtime' => {
-        guard: 'Tracks::RealtimeDebouncer#trigger is SET NX; a repeat only extends the TTL',
+        guard: 'Tracks::RealtimeDebouncer#trigger is a debounce claim; a repeat only extends it',
         call: ->(p) { ArrivalCommands.for_user(p) { |id| Tracks::RealtimeDebouncer.new(id).trigger } }
       },
       'tracks.backfill' => {
@@ -31,18 +31,18 @@ module Points
         }
       },
       'visits.realtime' => {
-        guard: 'Visits::RealtimeDebouncer#trigger is SET NX; a repeat only extends the TTL',
+        guard: 'Visits::RealtimeDebouncer#trigger is a debounce claim; a repeat only extends it',
         call: ->(p) { ArrivalCommands.for_user(p, zone: true) { |id| Visits::RealtimeDebouncer.new(id).trigger } }
       },
       'points.live_broadcast' => {
-        guard: 'at most once: SET NX live_broadcast:done:<broadcast_id> for a day before broadcasting; ' \
+        guard: 'at most once: claims live_broadcast:done:<broadcast_id> for a day before broadcasting; ' \
                'a repeat finds it and skips',
         call: lambda { |p|
           marker = "live_broadcast:done:#{p.fetch('broadcast_id')}"
           upserted = p.fetch('upserted')
           payloads = p.fetch('payloads').map(&:symbolize_keys)
           ArrivalCommands.for_user(p, zone: true) do |id|
-            next unless Sidekiq.redis_pool.with { |redis| redis.set(marker, 1, nx: true, ex: MARKER_TTL) }
+            next unless PhoenixClaims.claim(marker, MARKER_TTL)
 
             Points::LiveBroadcaster.new(id, upserted, payloads).call
           end

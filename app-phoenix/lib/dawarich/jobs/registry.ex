@@ -3,6 +3,13 @@ defmodule Dawarich.Jobs.Registry do
 
   @base_entries [
     %{
+      key: Dawarich.RouteVideos.PurgeWorker.key(),
+      kind: :cron,
+      expression: "45 3 * * *",
+      worker: Dawarich.RouteVideos.PurgeWorker,
+      claimable: false
+    },
+    %{
       key: "command:imports.destroy",
       kind: :command,
       worker: Dawarich.Imports.DestroyWorker,
@@ -204,6 +211,26 @@ defmodule Dawarich.Jobs.Registry do
       key: "command:enhanced_import.destroy_gpx",
       kind: :command,
       worker: Dawarich.EnhancedImport.DestroyGpxWorker,
+      claimable: false
+    },
+    %{
+      key: "command:stats.calculate_month",
+      kind: :command,
+      worker: Dawarich.Stats.CalculateMonthWorker,
+      claimable: false
+    },
+    %{
+      key: Dawarich.Stats.ToponymsRefreshWorker.key(),
+      kind: :cron,
+      expression: "*/5 * * * *",
+      worker: Dawarich.Stats.ToponymsRefreshWorker,
+      claimable: false
+    },
+    %{
+      key: Dawarich.Stats.BulkSweepWorker.key(),
+      kind: :cron,
+      expression: "0 */1 * * *",
+      worker: Dawarich.Stats.BulkSweepWorker,
       claimable: false
     }
   ]

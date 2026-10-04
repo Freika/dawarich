@@ -55,11 +55,20 @@ RSpec.describe 'Phoenix fixtures: the achievement pages as Rails renders them', 
     expect(response).to have_http_status(:ok)
     node = Nokogiri::HTML5(response.body).at_css('.ach-page')
     node.css('[name="authenticity_token"]').each { |input| input['value'] = 'CSRF' }
-    File.write(dir.join("#{name}.html"), "#{node.to_html}\n")
+    html = "#{node.to_html}\n"
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      File.write(dir.join("#{name}.html"), html)
+    else
+      expect(dir.join("#{name}.html").read).to eq(html)
+    end
     record = { name:, path:, user_id: user.id, settings: user.settings.slice('timezone', 'locale'), seed_state:,
                state: user.achievement_progresses.find_by(achievement_key: 'exploration')&.state,
                view: I18n.with_locale(user.locale) { view_snapshot } }
-    File.write(dir.join("#{name}.json"), "#{JSON.pretty_generate(record.deep_stringify_keys)}\n")
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      File.write(dir.join("#{name}.json"), "#{JSON.pretty_generate(record.deep_stringify_keys)}\n")
+    else
+      expect(JSON.parse(dir.join("#{name}.json").read)).to eq(record.deep_stringify_keys.as_json)
+    end
   end
 
   def scenarios(locale)

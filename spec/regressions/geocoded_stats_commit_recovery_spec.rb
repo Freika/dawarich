@@ -98,22 +98,20 @@ RSpec.describe 'Geocoded statistics commit recovery', :non_transactional, thread
     expect(Rails.cache).to have_received(:delete).with("dawarich/user_#{user.id}_countries_visited").twice
   end
 
-  it 'excludes a second worker while another connection holds the global refresh lock' do
+  it 'excludes a second worker while another holder keeps the global refresh lease' do
     stat.id
     ReverseGeocoding::Points::FetchData.new(point.id).call
-    lock = Stats::ToponymsRefresh::LOCK_ID
-    connection = ActiveRecord::Base.connection
-    connection.execute("SELECT pg_advisory_lock(#{lock})")
+    ActiveRecord::Base.connection.execute(
+      'INSERT INTO phoenix.leases (name, holder, expires_at) ' \
+      "VALUES ('stats:toponyms_refresh', 'other-worker', statement_timestamp() + interval '60 seconds')"
+    )
+
     travel 61.minutes do
-      other = Thread.new do
-        ActiveRecord::Base.connection_pool.with_connection { Stats::ToponymsRefreshJob.perform_now }
-      end
-      expect(other.join(5)).not_to be_nil
-      other.value
+      Stats::ToponymsRefreshJob.perform_now
       expect(stat.reload.toponyms).to be_empty
       expect(Stats::GeocodedDays.due(limit: 10)).not_to be_empty
     end
   ensure
-    connection&.execute("SELECT pg_advisory_unlock(#{lock})")
+    ActiveRecord::Base.connection.execute('DELETE FROM phoenix.leases')
   end
 end

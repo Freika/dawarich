@@ -15,9 +15,9 @@ defmodule Dawarich.Timeline.MonthSummary do
 
   @empty %{tracked_seconds: 0, track_count: 0, point_count: 0, visit_count: 0, suggested_count: 0}
 
-  def build(user, month, window_now, now) do
+  def build(user, month, window_now, now, repo \\ Dawarich.Repo) do
     settings = user.settings || %{}
-    [[today, cutoff]] = context(now, window_now, settings)
+    [[today, cutoff]] = context(now, window_now, settings, repo)
 
     start =
       if Ruby.blank?(month),
@@ -28,20 +28,20 @@ defmodule Dawarich.Timeline.MonthSummary do
 
     days =
       %{}
-      |> add_visits(UserTimeZone.query!(visits_sql(), args, settings).rows)
-      |> add_points(UserTimeZone.query!(points_sql(), args, settings).rows)
-      |> add_tracks(UserTimeZone.query!(tracks_sql(), args, settings).rows)
+      |> add_visits(UserTimeZone.query!(visits_sql(), args, settings, repo).rows)
+      |> add_points(UserTimeZone.query!(points_sql(), args, settings, repo).rows)
+      |> add_tracks(UserTimeZone.query!(tracks_sql(), args, settings, repo).rows)
 
     %{month: Calendar.strftime(start, "%Y-%m"), weeks: weeks(start, days, cutoff)}
   end
 
-  defp context(now, window_now, settings) do
+  defp context(now, window_now, settings, repo) do
     """
     SELECT ($1::timestamptz AT TIME ZONE z.name)::date,
            CASE WHEN $2::timestamptz IS NULL THEN NULL ELSE (#{window_start("$2")} AT TIME ZONE z.name)::date END
     FROM z
     """
-    |> UserTimeZone.query!([now, window_now], settings)
+    |> UserTimeZone.query!([now, window_now], settings, repo)
     |> Map.fetch!(:rows)
   end
 

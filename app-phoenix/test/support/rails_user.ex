@@ -6,7 +6,7 @@ defmodule Dawarich.Test.RailsUser do
 
   @password "$2a$04$" <> String.duplicate("phoenixa5fixture", 4)
 
-  def insert!(attrs) do
+  def insert!(attrs, repo \\ Repo) do
     stamp = NaiveDateTime.utc_now()
 
     row =
@@ -24,7 +24,7 @@ defmodule Dawarich.Test.RailsUser do
         attrs
       )
 
-    Repo.insert_all("users", [row])
+    repo.insert_all("users", [row])
     row
   end
 

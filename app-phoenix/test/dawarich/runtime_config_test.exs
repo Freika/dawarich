@@ -2,7 +2,7 @@ defmodule Dawarich.RuntimeConfigTest do
   use ExUnit.Case, async: false
 
   @runtime Path.expand("../../config/runtime.exs", __DIR__)
-  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS DAWARICH_RAILS_ROUTES RAILS_MAX_THREADS REDIS_URL RAILS_JOB_QUEUE_DB RAILS_CACHE_DB)
+  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS DAWARICH_RAILS_ROUTES DAWARICH_PHOENIX_AUTH RAILS_MAX_THREADS REDIS_URL RAILS_JOB_QUEUE_DB RAILS_CACHE_DB)
 
   setup do
     saved = Map.new(@vars, &{&1, System.get_env(&1)})
@@ -34,6 +34,7 @@ defmodule Dawarich.RuntimeConfigTest do
              app_version_checking: 1,
              mailers: 2,
              trips: 2,
+             route_videos: 1,
              maintenance: 1,
              exports: 1,
              projections: 1,
@@ -44,7 +45,7 @@ defmodule Dawarich.RuntimeConfigTest do
              extractions: 1
            ]
 
-    assert repo[:pool_size] == 23
+    assert repo[:pool_size] == 24
     assert oban[:peer] == Oban.Peers.Database
     assert oban[:stager] == {Oban.Stager, []}
     assert oban[:pruner] == [max_age: {1, :day}]
@@ -54,10 +55,10 @@ defmodule Dawarich.RuntimeConfigTest do
 
   test "the pool also covers Phoenix-served requests, one connection per Puma thread" do
     assert {repo, _} = prod(%{"RAILS_MAX_THREADS" => "10"})
-    assert repo[:pool_size] == 28
+    assert repo[:pool_size] == 29
 
     assert {repo, _} = prod(%{"RAILS_MAX_THREADS" => ""})
-    assert repo[:pool_size] == 23
+    assert repo[:pool_size] == 24
   end
 
   test "reads the routes handed back to Rails, trimmed and without blanks" do
@@ -111,11 +112,11 @@ defmodule Dawarich.RuntimeConfigTest do
            ]
 
     assert repo[:pool_size] == Enum.sum(Keyword.values(oban[:queues])) + 3 + 5
-    assert repo[:pool_size] == 23
+    assert repo[:pool_size] == 24
 
     assert {repo10, oban10} = prod(%{"RAILS_MAX_THREADS" => "10"})
     assert repo10[:pool_size] == Enum.sum(Keyword.values(oban10[:queues])) + 3 + 10
-    assert repo10[:pool_size] == 28
+    assert repo10[:pool_size] == 29
   end
 
   test "every wave-5b worker's queue is configured and times out before Lifeline" do
@@ -170,7 +171,7 @@ defmodule Dawarich.RuntimeConfigTest do
     end
 
     assert oban[:queues][:maintenance] == 1
-    assert repo[:pool_size] == 23
+    assert repo[:pool_size] == 24
   end
 
   test "GPX extraction uses the measured M2 production timeout" do
@@ -244,5 +245,17 @@ defmodule Dawarich.RuntimeConfigTest do
 
     assert {repo, _} = prod(%{"DATABASE_URL" => "postgres://u:p@[::1]:5432/dawarich"})
     assert repo[:socket_options] == [:inet6]
+  end
+
+  test "reads the auth flows an operator hands to Phoenix: lower-cased, trimmed, none by default" do
+    System.put_env("DAWARICH_PHOENIX_AUTH", " Credentials, ,recovery ")
+
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:phoenix_auth] == [
+             "credentials",
+             "recovery"
+           ]
+
+    System.delete_env("DAWARICH_PHOENIX_AUTH")
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:phoenix_auth] == []
   end
 end

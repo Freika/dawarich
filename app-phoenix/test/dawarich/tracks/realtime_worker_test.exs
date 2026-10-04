@@ -35,10 +35,10 @@ defmodule Dawarich.Tracks.RealtimeWorkerTest do
     user = user!()
     rows("UPDATE users SET status = 1 WHERE id = $1", [user.id])
 
-    Redix.command!(rails_redis!(), ["SET", PerUserLock.key(user.id), "rails-token", "PX", "60000"])
+    Dawarich.JobsCase.hold_lease!(ScratchRepo, PerUserLock.key(user.id), "rails-token")
 
     assert ExUnit.CaptureLog.capture_log(fn ->
-             assert run(user.id, lock: [timeout_ms: 200]) == :ok
+             assert run(user.id, lock: [timeout_ms: 0]) == :ok
            end) =~ "lock_busy user_id=#{user.id}"
 
     assert commands() == [["tracks_realtime_retrigger", %{"user_id" => user.id}]]

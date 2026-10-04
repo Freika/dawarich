@@ -3,13 +3,21 @@
 require 'rails_helper'
 
 RSpec.describe 'Session-level advisory locks behind PgBouncer transaction pooling' do
-  let(:pre_existing) { %w[app/services/stats/toponyms_refresh.rb] }
+  let(:sources) { Dir[Rails.root.join('{app,lib,app-phoenix/lib}/**/*.{rb,rake,ex}')].sort }
+  let(:allowed_session_gem_locks) { %w[app/services/phoenix_lease.rb] }
 
-  it 'leaves no session advisory lock call in Rails or Phoenix code' do
-    offenders = Dir[Rails.root.join('{app,app-phoenix/lib}/**/*.{rb,ex}')].filter_map do |path|
-      relative = Pathname(path).relative_path_from(Rails.root).to_s
-      relative if File.read(path).match?(/pg_(try_)?advisory_(lock|unlock)(_shared|_all)?\(/i)
+  def relative(path) = Pathname(path).relative_path_from(Rails.root).to_s
+
+  it 'leaves no session advisory lock function call in Rails or Phoenix code' do
+    offenders = sources.select { |path| File.read(path).match?(/pg_(try_)?advisory_(lock|unlock)(_shared|_all)?\(/i) }
+    expect(offenders.map { relative(_1) }).to be_empty
+  end
+
+  it 'takes gem or Rails advisory locks only transaction-scoped, outside the listed files' do
+    call = /\b(?:with_advisory_lock(?:_result)?!?|get_advisory_lock)(?=[\s(])/
+    offenders = sources.select do |path|
+      File.readlines(path).any? { |line| line.match?(call) && !line.include?('transaction: true') }
     end
-    expect(offenders - pre_existing).to be_empty
+    expect(offenders.map { relative(_1) }).to eq(allowed_session_gem_locks)
   end
 end

@@ -35,7 +35,7 @@ defmodule Dawarich.Accounts do
         timezone: fragment("?->'timezone'", u.settings)
       }
     )
-    |> Repo.one()
+    |> Repo.one(log: false)
   end
 
   def settings(user_id) do

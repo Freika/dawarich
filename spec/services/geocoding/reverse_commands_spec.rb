@@ -3,11 +3,9 @@
 require 'rails_helper'
 
 RSpec.describe Geocoding::ReverseCommands do
-  before { Sidekiq.redis { |r| r.keys('geocode:enq:*').each { |k| r.del(k) } } }
+  before { clear_geocode_claims! }
 
-  def key_exists?(id)
-    Sidekiq.redis { |r| r.call('EXISTS', Point.geocode_dedup_key(id)) } == 1
-  end
+  def key_exists?(id) = !claim_seconds(Point.geocode_dedup_key(id)).nil?
 
   describe '.enqueue_points' do
     it "Sidekiq-owned enqueue_points enqueues today's per-point jobs" do
@@ -21,11 +19,7 @@ RSpec.describe Geocoding::ReverseCommands do
         .and have_enqueued_job(ReverseGeocodingJob)
         .with('Point', 103, force: false)
 
-      ids.each do |id|
-        ttl = Sidekiq.redis { |r| r.ttl(Point.geocode_dedup_key(id)) }
-        expect(ttl).to be > 0
-        expect(ttl).to be <= 86_400
-      end
+      ids.each { |id| expect(claim_seconds(Point.geocode_dedup_key(id))).to be_between(86_399, 86_400) }
       expect(JobOutbox.count).to eq(0)
     end
 
@@ -46,7 +40,7 @@ RSpec.describe Geocoding::ReverseCommands do
 
     it 'a claimed key is skipped; force clears keys' do
       ids = [201, 202, 203]
-      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(201), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+      PhoenixClaims.claim(Point.geocode_dedup_key(201), Point::GEOCODE_DEDUP_TTL)
 
       expect do
         described_class.enqueue_points(9, ids, force: false, producer: 'spec')
@@ -56,7 +50,7 @@ RSpec.describe Geocoding::ReverseCommands do
         .and have_enqueued_job(ReverseGeocodingJob)
         .with('Point', 203, force: false)
 
-      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(201), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+      PhoenixClaims.claim(Point.geocode_dedup_key(201), Point::GEOCODE_DEDUP_TTL)
 
       expect do
         described_class.enqueue_points(9, ids, force: true, producer: 'spec')
@@ -68,7 +62,7 @@ RSpec.describe Geocoding::ReverseCommands do
     it 'a failing produce clears the claimed keys and raises' do
       foreign_id = 301
       ids = [302, 303]
-      Sidekiq.redis { |r| r.set(Point.geocode_dedup_key(foreign_id), 1, ex: Point::GEOCODE_DEDUP_TTL) }
+      PhoenixClaims.claim(Point.geocode_dedup_key(foreign_id), Point::GEOCODE_DEDUP_TTL)
       allow(JobCommands).to receive(:produce).and_raise(ActiveRecord::StatementInvalid, 'boom')
 
       expect do
@@ -77,6 +71,51 @@ RSpec.describe Geocoding::ReverseCommands do
 
       ids.each { |id| expect(key_exists?(id)).to be false }
       expect(key_exists?(foreign_id)).to be true
+    end
+  end
+
+  context 'with phoenix.once_claims' do
+    let(:user) { create(:user) }
+    let(:keys) { ->(ids) { ids.map { Point.geocode_dedup_key(_1) } } }
+
+    before do
+      phoenix_state!
+      PhoenixClaims.claim('achievements_check:user:999999', 60)
+    end
+
+    def claimed_keys
+      ActiveRecord::Base.connection.select_values(
+        "SELECT key FROM phoenix.once_claims WHERE key LIKE 'geocode:enq:%' ORDER BY key"
+      )
+    end
+
+    it 'claims rows only for points without a live claim, and clears them on force' do
+      PhoenixClaims.claim(Point.geocode_dedup_key(2), 60)
+      expect(JobCommands).to receive(:produce)
+        .with('geocoding.reverse_point', { 'user_id' => user.id, 'point_ids' => [1, 3], 'force' => false },
+              aggregate_id: user.id, producer: 'spec')
+
+      described_class.enqueue_points(user.id, [1, 2, 3], force: false, producer: 'spec')
+      expect(claimed_keys).to match_array(keys.call([1, 2, 3]))
+
+      allow(JobCommands).to receive(:produce)
+      described_class.enqueue_points(user.id, [1, 2, 3], force: true, producer: 'spec')
+      expect(claimed_keys).to be_empty
+      expect(claim_seconds('achievements_check:user:999999')).to be_positive
+    end
+
+    it 'releases the rows it claimed when producing fails' do
+      allow(JobCommands).to receive(:produce).and_raise(RuntimeError, 'outbox down')
+
+      expect { described_class.enqueue_points(user.id, [5], force: false, producer: 'spec') }
+        .to raise_error(RuntimeError, 'outbox down')
+      expect(claimed_keys).to be_empty
+      expect(claim_seconds('achievements_check:user:999999')).to be_positive
+    end
+
+    it 'uses the key Phoenix releases' do
+      source = Rails.root.join('app-phoenix/lib/dawarich/geocoding/reverse_point_worker.ex').read
+      expect(source).to include("\"geocode:enq:Point:\#{id}\"")
     end
   end
 end

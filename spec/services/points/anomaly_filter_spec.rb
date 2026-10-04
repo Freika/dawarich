@@ -28,7 +28,7 @@ RSpec.describe Points::AnomalyFilter do
       expect do
         described_class.new(user.id, start_time, end_time).call
       end.not_to have_enqueued_job(Achievements::CheckJob)
-      expect(Achievements::CheckJob.pending_timestamps(user.id)).to eq([point.timestamp])
+      expect(Achievements::PendingChecks.read(user.id).first).to eq(point.timestamp)
     end
 
     # A reported accuracy radius is a confidence estimate, not evidence that the

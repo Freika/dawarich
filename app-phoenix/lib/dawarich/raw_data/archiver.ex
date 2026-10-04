@@ -3,12 +3,11 @@ defmodule Dawarich.RawData.Archiver do
 
   require Logger
 
-  alias Dawarich.RawData.{ArchiveFormat, Archives}
+  alias Dawarich.RawData.{ArchiveFormat, Archives, Contention}
   alias Dawarich.{ReleaseOperations, Storage, TimeZoneName}
 
   @chunk 50_000
   @flag_batch 5_000
-  @contention [:deadlock_detected, :lock_not_available, :query_canceled]
   @zone "SELECT name FROM pg_timezone_names WHERE name = ANY($1) ORDER BY array_position($1, name) LIMIT 1"
   @cutoff "SELECT floor(extract(epoch FROM ((now() AT TIME ZONE $1) - interval '2 months') AT TIME ZONE $1))::bigint"
   @candidates """
@@ -48,6 +47,7 @@ defmodule Dawarich.RawData.Archiver do
 
       rows ->
         results = for {{year, month}, ids} <- months(rows), do: safe_chunk(ctx, ids, year, month)
+        Enum.each(results, Keyword.get(opts, :on_result, fn _result -> :ok end))
 
         cond do
           Enum.any?(results, &match?({:error, _}, &1)) -> :done
@@ -189,7 +189,7 @@ defmodule Dawarich.RawData.Archiver do
   defp flag(ctx, archive_id, ids, sums) do
     ids
     |> Enum.chunk_every(@flag_batch)
-    |> Enum.reduce(0, fn batch, total -> total + flag_batch(ctx, archive_id, batch, sums, 0) end)
+    |> Enum.reduce(0, fn batch, total -> total + flag_batch(ctx, archive_id, batch, sums) end)
   end
 
   defp flag_unchanged(ctx, archive_id, batch, sums) do
@@ -203,24 +203,18 @@ defmodule Dawarich.RawData.Archiver do
       else: ctx.repo.query!(@flag, [unchanged, archive_id], log: false).num_rows
   end
 
-  defp flag_batch(ctx, archive_id, batch, sums, attempt) do
-    {:ok, count} =
-      ctx.repo.transaction(fn ->
-        Keyword.get(ctx.opts, :before_flag, fn -> :ok end).()
+  defp flag_batch(ctx, archive_id, batch, sums) do
+    Contention.retry(ctx.opts, fn ->
+      {:ok, count} =
+        ctx.repo.transaction(fn ->
+          Keyword.get(ctx.opts, :before_flag, fn -> :ok end).()
 
-        if ctx.repo.query!(@guard, [archive_id], log: false).rows == [[true]],
-          do: flag_unchanged(ctx, archive_id, batch, sums),
-          else: 0
-      end)
+          if ctx.repo.query!(@guard, [archive_id], log: false).rows == [[true]],
+            do: flag_unchanged(ctx, archive_id, batch, sums),
+            else: 0
+        end)
 
-    count
-  rescue
-    error in Postgrex.Error ->
-      if error.postgres[:code] in @contention and attempt < 3 do
-        Keyword.get(ctx.opts, :sleep, &Process.sleep/1).(100 * (attempt + 1) + :rand.uniform(50))
-        flag_batch(ctx, archive_id, batch, sums, attempt + 1)
-      else
-        reraise error, __STACKTRACE__
-      end
+      count
+    end)
   end
 end

@@ -53,7 +53,6 @@ RSpec.describe JobCommands do
       app/services/families/invite.rb
       app/services/families/sync_members.rb
       app/services/job_commands.rb
-      app/services/notifications/events_broadcaster.rb
       app/services/user_mail_commands.rb
       app/services/users/destroy.rb
       app/services/users/request_account_destroy.rb

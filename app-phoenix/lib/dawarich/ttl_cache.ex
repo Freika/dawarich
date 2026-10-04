@@ -13,10 +13,18 @@ defmodule Dawarich.TtlCache do
         write_concurrency: true
       ])
 
-  def fetch(key, ttl_ms, fun) when is_integer(ttl_ms) and ttl_ms >= 0 and is_function(fun, 0) do
+  def fetch(key, ttl_ms, fun, opts \\ [])
+      when is_integer(ttl_ms) and ttl_ms >= 0 and is_function(fun, 0) do
     case lookup(key) do
-      {:ok, value} -> value
-      :error -> store(key, fun.(), ttl_ms)
+      {:ok, value} ->
+        value
+
+      :error ->
+        value = fun.()
+
+        if is_nil(value) and not Keyword.get(opts, :cache_nil, true),
+          do: nil,
+          else: store(key, value, ttl_ms)
     end
   end
 
