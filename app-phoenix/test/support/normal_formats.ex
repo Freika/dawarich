@@ -6,6 +6,7 @@ defmodule Dawarich.Test.NormalFormats do
 
   def seed!(name, repo) do
     expected = @dir |> Path.join(name <> ".json") |> File.read!() |> Jason.decode!()
+    identities = expected["identities"] || %{}
 
     {1, [%{id: user}]} =
       repo.insert_all(
@@ -17,6 +18,7 @@ defmodule Dawarich.Test.NormalFormats do
             created_at: @stamp,
             updated_at: @stamp
           }
+          |> identity(:id, identities["user_id"])
         ],
         returning: [:id]
       )
@@ -32,6 +34,7 @@ defmodule Dawarich.Test.NormalFormats do
             created_at: @stamp,
             updated_at: @stamp
           }
+          |> identity(:id, identities["import_id"])
         ],
         returning: [:id]
       )
@@ -66,4 +69,7 @@ defmodule Dawarich.Test.NormalFormats do
   def decode(map) when is_map(map), do: Map.new(map, fn {key, value} -> {key, decode(value)} end)
   def decode(list) when is_list(list), do: Enum.map(list, &decode/1)
   def decode(value), do: value
+
+  defp identity(attrs, _, nil), do: attrs
+  defp identity(attrs, key, value), do: Map.put(attrs, key, value)
 end
