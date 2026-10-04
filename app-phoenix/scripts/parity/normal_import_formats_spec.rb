@@ -10,6 +10,8 @@ require_relative 'normal_import_phone_support'
 require_relative 'normal_import_kml_support'
 require_relative 'normal_import_create_support'
 require_relative 'normal_import_tcx_support'
+require_relative 'normal_import_fit_support'
+require_relative '../../../spec/support/fit_fixture_helper'
 
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   include ActiveSupport::Testing::TimeHelpers
@@ -205,6 +207,17 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
           expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
           expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'motion_data'))
           NormalImportFormatsSupport.write(name, result)
+        end
+      end
+    end
+  end
+
+  context 'FIT decoder' do
+    it 'records FIT decoder outcomes from fit4ruby' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.fit_reader_cases(self).each do |result|
+          expect(result).to include('input', 'records', 'error')
+          NormalImportFormatsSupport.write(result.fetch('name'), result.except('name'))
         end
       end
     end

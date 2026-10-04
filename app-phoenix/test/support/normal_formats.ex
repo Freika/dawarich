@@ -57,6 +57,11 @@ defmodule Dawarich.Test.NormalFormats do
   def decode(%{"__float__" => name}),
     do: %{"Infinity" => :infinity, "-Infinity" => :neg_infinity, "NaN" => :nan}[name]
 
+  def decode(%{"__float64__" => hex}) do
+    <<value::float-64>> = Base.decode16!(hex, case: :mixed)
+    value
+  end
+
   def decode(%{"__bytes__" => hex}), do: Base.decode16!(hex, case: :mixed)
 
   def decode(%{"__symbol_pairs__" => pairs}),
