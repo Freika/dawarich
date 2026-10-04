@@ -45,6 +45,39 @@ defmodule DawarichWeb.Api.AccountEndpointTest do
     no_upstream!(ctx.upstream)
   end
 
+  @tag :account_manager
+  test "exist preserves missing-id status and ignores bearer auth", ctx do
+    previous = System.get_env("SUBSCRIPTION_WEBHOOK_SECRET")
+    System.put_env("SUBSCRIPTION_WEBHOOK_SECRET", "a4rest-manager-synthetic")
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("SUBSCRIPTION_WEBHOOK_SECRET", previous),
+        else: System.delete_env("SUBSCRIPTION_WEBHOOK_SECRET")
+    end)
+
+    for body <- ["{}", ~s({"ids":null})] do
+      client =
+        request(
+          ctx.port,
+          "/api/v1/users/exist",
+          [
+            {"Accept", "application/json"},
+            {"Content-Type", "application/json"},
+            {"Content-Length", Integer.to_string(byte_size(body))},
+            {"Authorization", "Bearer unknown-synthetic"},
+            {"X-Webhook-Secret", "a4rest-manager-synthetic"}
+          ],
+          "POST"
+        )
+
+      send_raw(client, body)
+      assert {422, _, ~s({"error":"ids is required"})} = read_response(client)
+    end
+
+    no_upstream!(ctx.upstream)
+  end
+
   defp call(ctx, method, target, body \\ "", headers \\ []) do
     ctx |> submit(method, target, body, headers) |> read_response()
   end

@@ -12,6 +12,19 @@ defmodule DawarichWeb.ApiRoutes do
         plug DawarichWeb.Api.Auth, require_active: false
       end
 
+      pipeline :api_manager do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug :method_override_to_rails
+        plug DawarichWeb.Api.Body
+      end
+
+      scope "/api/v1", DawarichWeb.Api do
+        pipe_through :api_manager
+        post "/users/exist", UsersController, :exist, metadata: %{slice: :api_account}
+      end
+
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_account
         get "/users/me", UsersController, :me, metadata: %{slice: :api_account}

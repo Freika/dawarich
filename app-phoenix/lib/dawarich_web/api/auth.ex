@@ -96,6 +96,23 @@ defmodule DawarichWeb.Api.Auth do
     end
   end
 
+  def public(conn) do
+    conn = conn |> assign(:api_started, System.monotonic_time()) |> fetch_cookies()
+
+    case admission(conn) do
+      {:ok, format, vary, user} ->
+        conn
+        |> assign(:api_format, format)
+        |> assign(:api_vary, vary)
+        |> assign(:api_request_id, request_id(conn))
+        |> assign(:api_headers, Headers.dawarich(user != nil, version()))
+        |> assign(:api_if_none_match, joined(conn, "if-none-match"))
+
+      {:replay, reason} ->
+        Body.replay(conn, reason)
+    end
+  end
+
   defp known_active_until?(nil), do: true
   defp known_active_until?(%NaiveDateTime{}), do: true
   defp known_active_until?(_other), do: false
