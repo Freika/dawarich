@@ -38,7 +38,7 @@ defmodule Dawarich.Users.RecalculationPeriod do
     [[from, until]] =
       repo.query!(
         "SELECT ($1::timestamp AT TIME ZONE $3) AT TIME ZONE 'UTC', " <>
-        "($2::timestamp AT TIME ZONE $3) AT TIME ZONE 'UTC'",
+          "($2::timestamp AT TIME ZONE $3) AT TIME ZONE 'UTC'",
         [first, last, zone],
         log: false
       ).rows
