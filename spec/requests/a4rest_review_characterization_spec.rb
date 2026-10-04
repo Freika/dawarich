@@ -6,6 +6,10 @@ RSpec.describe 'A4 rest concurrent writes', type: :request, non_transactional: t
   let(:user) { create(:user) }
   let(:headers) { { 'Authorization' => "Bearer #{user.api_key}" } }
 
+  before do
+    %w[visits places].each { ActiveRecord::Base.connection.reset_pk_sequence!(_1) }
+  end
+
   after do
     Note.where(user_id: user.id).delete_all
     Visit.unscoped.where(user_id: user.id).delete_all
