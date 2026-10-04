@@ -35,7 +35,11 @@ The four trial lifecycle mail actions remain no-ops and their job wrapper skips 
 R1's two named captures have initial RED and restored GREEN evidence. M-R1-case omits
 reachable email-change rows and fails the fixed case list. M-R1-recipient changes the installed
 Devise callback recipient to the new email and fails the old-recipient assertion; source restored.
-Three generator examples pass in write and compare modes. Ruby lint passes with cache disabled.
+Three generator examples pass in write mode. The initial compare failed because Ruby compared
+binary fixture strings against UTF-8 generated strings; the helper now compares binary bytes.
+Post-fix compare is blocked before examples: Postgres reports that the database system is
+shutting down. Ruby lint passed with cache disabled before that one-line byte-comparison fix.
 
-Remaining tasks start at R2. Native rendering, delivery workers, ownership wiring, test-mail HTTP,
+Resume at R1's no-write comparison once Postgres is available, then proceed to R2.
+Native rendering, delivery workers, ownership wiring, test-mail HTTP,
 ED allocation and final C1–C5 gates are pending. Rails source/specs and dormant stubs are retained.
