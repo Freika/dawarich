@@ -53,44 +53,25 @@ const stubbedSource = source
   )
   .replace(
     'import { SettingsManager } from "maps_maplibre/utils/settings_manager"',
-    "const SettingsManager = {}",
+    "export const settingsUpdates = []; const SettingsManager = { updateSetting: (...args) => settingsUpdates.push(args) }",
   )
   .replace(
     /import \{\s*handleNewPoint,[\s\S]*?\} from "maps_maplibre\/utils\/realtime_points"/,
     `import { handleNewPoint, refreshLiveLayers, updateRecentPoint, zoomToPoint } from "${helperUrl}"`,
   )
-const { default: RealtimeController } = await import(
+const { default: RealtimeController, settingsUpdates } = await import(
   `data:text/javascript;base64,${Buffer.from(stubbedSource).toString("base64")}`
 )
 
 function buildController() {
-  const calls = { pointsRefresh: 0, filters: 0, scratchUpdate: 0 }
-  const layers = {
-    "points-mvt": { refresh: () => calls.pointsRefresh++ },
-    "map-editor": { reapplyTileFilters: () => calls.filters++ },
-    scratch: {
-      update: () => {
-        calls.scratchUpdate++
-        return Promise.resolve()
-      },
-    },
-    recentPoint: { show() {}, updateRecentPoint() {} },
-  }
-  const mapsController = {
-    layerManager: { getLayer: (id) => layers[id] },
-    realtimeDateRange: () => ({}),
-    map: { flyTo() {}, getZoom: () => 10 },
-  }
   const controller = new RealtimeController()
+  const calls = []
+  controller.enabledValue = true
+  controller.liveModeValue = false
   controller.element = {}
-  controller.application = {
-    getControllerForElementAndIdentifier: () => mapsController,
-  }
+  controller.application = { getControllerForElementAndIdentifier: () => null }
+  controller.setupChannels = () => calls.push(controller.liveModeEnabled)
   return { controller, calls }
-}
-
-function livePoint(index) {
-  return [52.5, 13.4, 80, 30, 1758196800 + index, 1.2, index + 1, "Germany"]
 }
 
 function installFakeTimers(t) {
@@ -114,6 +95,7 @@ function installFakeTimers(t) {
   })
   return {
     delays,
+    pending,
     runPending() {
       for (const [id, callback] of [...pending]) {
         pending.delete(id)
@@ -123,45 +105,41 @@ function installFakeTimers(t) {
   }
 }
 
-test("a burst of live points triggers a single tile and visited-countries refresh", (t) => {
+test("disconnect before delayed setup never creates map subscriptions", (t) => {
   const timers = installFakeTimers(t)
   const { controller, calls } = buildController()
-
-  for (let index = 0; index < 100; index++) {
-    controller.handleNewPoint(livePoint(index))
-  }
-
-  assert.equal(calls.pointsRefresh, 0)
-  assert.equal(calls.scratchUpdate, 0)
-  assert.deepEqual(timers.delays, [1000])
-
-  timers.runPending()
-
-  assert.equal(calls.pointsRefresh, 1)
-  assert.equal(calls.filters, 1)
-  assert.equal(calls.scratchUpdate, 1)
-})
-
-test("a live point after a completed refresh schedules another one", (t) => {
-  const timers = installFakeTimers(t)
-  const { controller, calls } = buildController()
-
-  controller.handleNewPoint(livePoint(0))
-  timers.runPending()
-  controller.handleNewPoint(livePoint(1))
-  timers.runPending()
-
-  assert.equal(calls.pointsRefresh, 2)
-})
-
-test("disconnect cancels a pending live refresh", (t) => {
-  const timers = installFakeTimers(t)
-  const { controller, calls } = buildController()
-
-  controller.handleNewPoint(livePoint(0))
+  controller.connect()
   controller.disconnect()
   timers.runPending()
 
-  assert.equal(calls.pointsRefresh, 0)
-  assert.equal(calls.scratchUpdate, 0)
+  assert.deepEqual(calls, [])
+  assert.equal(timers.pending.size, 0)
+})
+
+test("reconnect after early disconnect schedules exactly one setup", (t) => {
+  const timers = installFakeTimers(t)
+  const { controller, calls } = buildController()
+  controller.connect()
+  controller.disconnect()
+  controller.liveModeValue = true
+  controller.connect()
+  assert.equal(timers.pending.size, 1)
+  timers.runPending()
+
+  assert.deepEqual(calls, [true])
+  assert.equal(controller.setupTimer, null)
+})
+
+test("toggling live mode before delayed setup does not create a second subscription set", (t) => {
+  const timers = installFakeTimers(t)
+  const { controller, calls } = buildController()
+  settingsUpdates.length = 0
+  controller.connect()
+  controller.toggleLiveMode({ target: { checked: true } })
+  assert.deepEqual(calls, [true])
+  timers.runPending()
+
+  assert.deepEqual(calls, [true])
+  assert.deepEqual(settingsUpdates, [["liveMapEnabled", true]])
+  assert.equal(controller.setupTimer, null)
 })

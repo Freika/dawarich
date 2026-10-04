@@ -161,7 +161,7 @@ defmodule Dawarich.Imports.Kml.Points do
     if File.stat!(path).size <= 65_536, do: Enum.to_list(events(path)), else: path
   end
 
-  defp events(path) when is_binary(path), do: Spool.stream(path, [:raw])
+  defp events(path) when is_binary(path), do: Spool.stream(path, [:raw, read_ahead: 65_536])
   defp events(events), do: events
 
   defp point({lon, lat, alt}, time, speed, import, context) do
