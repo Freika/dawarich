@@ -14,7 +14,7 @@ end
 defmodule Dawarich.Auth.TwoFactor.ApiTest do
   use ExUnit.Case, async: false
   alias Dawarich.Auth.Account
-  alias Dawarich.Auth.TwoFactor.{Api, BackupCodes, Secret, Totp}
+  alias Dawarich.Auth.TwoFactor.{Api, BackupCodes, Management, Secret, Totp}
   alias Dawarich.Repo
 
   @now ~U[2026-10-04 12:00:00.000000Z]
@@ -23,6 +23,15 @@ defmodule Dawarich.Auth.TwoFactor.ApiTest do
           |> File.read!()
           |> Jason.decode!()
   @env Enum.find(@crypto["environments"], &(&1["name"] == "explicit keys"))["env"]
+
+  @web_oracle "../../../fixtures/auth/two_factor/requests.json"
+              |> Path.expand(__DIR__)
+              |> File.read!()
+              |> Jason.decode!()
+  @api_oracle "../../../fixtures/api_account/golden.json"
+              |> Path.expand(__DIR__)
+              |> File.read!()
+              |> Jason.decode!()
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -165,6 +174,187 @@ defmodule Dawarich.Auth.TwoFactor.ApiTest do
     assert Repo.get!(Account, c.id).consumed_timestep == timestep
 
     assert Map.drop(snapshot(c.id), ~w(otp_required_for_login otp_backup_codes updated_at)) ==
+             Map.drop(before, ~w(otp_required_for_login otp_backup_codes updated_at))
+  end
+
+  test "web setup feeds API confirm and web disable consumes API backups once", c do
+    web = Enum.find(@web_oracle, &(&1["name"] == "disable_backup"))
+    context = Map.put(c.context, :backup_options, log_rounds: 4)
+    salt = binary_part(Repo.get!(Account, c.id).encrypted_password, 0, 29)
+    {:ok, lock, _} = DateTime.from_iso8601(web["before"]["otp_locked_at"])
+
+    seed(c.id, consumed_timestep: 123, otp_locked_at: lock)
+    before = snapshot(c.id)
+    assert {:ok, %{secret: secret}} = Management.setup(c.id, salt, context)
+
+    assert Map.drop(snapshot(c.id), ~w(otp_secret updated_at)) ==
+             Map.drop(before, ~w(otp_secret updated_at))
+
+    code = Totp.at(secret, DateTime.to_unix(@now))
+    before = snapshot(c.id)
+
+    assert {:ok, 200, {:object, [{"backup_codes", codes}]}} =
+             Api.run(
+               :confirm,
+               c.id,
+               %{"password" => "safepassword12", "otp_code" => code},
+               context
+             )
+
+    assert_confirm_preserved(before, snapshot(c.id))
+
+    assert length(codes) ==
+             length(Enum.find(@web_oracle, &(&1["name"] == "verify_good"))["after"]["backups"])
+
+    assert_raise RuntimeError, "synthetic API clear-save failure", fn ->
+      Management.disable(
+        c.id,
+        salt,
+        "safepassword12",
+        hd(codes),
+        Map.put(context, :repo, __MODULE__.SecondSaveFailure)
+      )
+    end
+
+    spent = snapshot(c.id)
+    assert length(spent["otp_backup_codes"]) == length(codes) - 1
+    assert spent["consumed_timestep"] == before["consumed_timestep"]
+
+    assert {:ok, 401, _} =
+             Api.run(
+               :destroy,
+               c.id,
+               %{"password" => "safepassword12", "otp_code" => hd(codes)},
+               context
+             )
+
+    assert snapshot(c.id) == spent
+
+    assert {:ok, %{user: disabled}} =
+             Management.disable(c.id, salt, "safepassword12", Enum.at(codes, 1), context)
+
+    assert disabled.otp_backup_codes == web["after"]["backups"]
+    assert disabled.otp_secret == web["after"]["secret"]
+    assert disabled.otp_required_for_login == web["after"]["enabled"]
+    assert disabled.failed_attempts == web["after"]["failed_attempts"]
+    assert disabled.failed_otp_attempts == web["after"]["failed_otp_attempts"]
+    assert disabled.otp_locked_at == lock
+    assert disabled.consumed_timestep == before["consumed_timestep"]
+    cleared = snapshot(c.id)
+
+    assert {:ok, 401, _} =
+             Api.run(
+               :destroy,
+               c.id,
+               %{"password" => "safepassword12", "otp_code" => Enum.at(codes, 1)},
+               context
+             )
+
+    assert snapshot(c.id) == cleared
+  end
+
+  test "API setup feeds web verify and API confirm preserves web consumption before API destroy",
+       c do
+    web = Enum.find(@web_oracle, &(&1["name"] == "verify_good"))["after"]
+    api = Enum.find(@api_oracle["cases"], &(&1["name"] == "otp_destroy_backup"))
+    api_clear = hd(api["after"]["users"])
+    context = Map.put(c.context, :backup_options, log_rounds: 4)
+    salt = binary_part(Repo.get!(Account, c.id).encrypted_password, 0, 29)
+    {:ok, lock, _} = DateTime.from_iso8601(web["otp_locked_at"])
+    seed(c.id, otp_locked_at: lock)
+
+    assert {:ok, 200, {:object, setup}} =
+             Api.run(:setup, c.id, %{"password" => "safepassword12"}, context)
+
+    secret = Map.new(setup)["secret"]
+    code = Totp.at(secret, DateTime.to_unix(@now))
+
+    assert {:ok, %{user: verified, codes: web_codes}} =
+             Management.verify(c.id, salt, code, context)
+
+    assert verified.consumed_timestep == web["consumed_timestep"]
+    assert verified.failed_attempts == web["failed_attempts"]
+    assert verified.failed_otp_attempts == web["failed_otp_attempts"]
+    assert verified.otp_locked_at == lock
+    before = snapshot(c.id)
+
+    assert {:ok, 200, {:object, [{"backup_codes", codes}]}} =
+             Api.run(
+               :confirm,
+               c.id,
+               %{"password" => "safepassword12", "otp_code" => code},
+               context
+             )
+
+    assert_confirm_preserved(before, snapshot(c.id))
+
+    assert BackupCodes.consume(Repo.get!(Account, c.id).otp_backup_codes, hd(web_codes)) ==
+             :invalid
+
+    before = snapshot(c.id)
+
+    assert {:ok, 401, _} =
+             Api.run(
+               :destroy,
+               c.id,
+               %{"password" => "safepassword12", "otp_code" => code},
+               context
+             )
+
+    assert snapshot(c.id) == before
+
+    assert_raise RuntimeError, "synthetic API clear-save failure", fn ->
+      Api.run(
+        :destroy,
+        c.id,
+        %{"password" => "safepassword12", "otp_code" => hd(codes)},
+        Map.put(context, :repo, __MODULE__.SecondSaveFailure)
+      )
+    end
+
+    spent = snapshot(c.id)
+    assert length(spent["otp_backup_codes"]) == length(codes) - 1
+
+    assert {:error, %{reason: :provide_a_valid_two_factor_code_or_backup_code_to}} =
+             Management.disable(c.id, salt, "safepassword12", hd(codes), context)
+
+    assert snapshot(c.id) == spent
+
+    assert {:ok, 200, _} =
+             Api.run(
+               :destroy,
+               c.id,
+               %{"password" => "safepassword12", "otp_code" => Enum.at(codes, 1)},
+               context
+             )
+
+    disabled = Repo.get!(Account, c.id)
+    assert disabled.otp_backup_codes == api_clear["otp_backup_codes"]
+    assert disabled.otp_secret == api_clear["otp_secret"]
+    assert disabled.otp_required_for_login == api_clear["otp_required_for_login"]
+    assert disabled.consumed_timestep == web["consumed_timestep"]
+    assert disabled.failed_attempts == web["failed_attempts"]
+    assert disabled.failed_otp_attempts == web["failed_otp_attempts"]
+    assert disabled.otp_locked_at == lock
+    cleared = snapshot(c.id)
+
+    assert {:error, _} =
+             Management.disable(c.id, salt, "safepassword12", Enum.at(codes, 1), context)
+
+    assert snapshot(c.id) == cleared
+  end
+
+  defp assert_confirm_preserved(before, after_row) do
+    source = Enum.find(@api_oracle["cases"], &(&1["name"] == "otp_confirm_consumed"))
+
+    ["users", [source_before | _]] =
+      Enum.find(@api_oracle["setups"][source["setup"]], &(hd(&1) == "users"))
+
+    preserved = ~w(consumed_timestep failed_attempts failed_otp_attempts otp_locked_at)
+    assert Map.take(hd(source["after"]["users"]), preserved) == Map.take(source_before, preserved)
+    assert Map.take(after_row, preserved) == Map.take(before, preserved)
+
+    assert Map.drop(after_row, ~w(otp_required_for_login otp_backup_codes updated_at)) ==
              Map.drop(before, ~w(otp_required_for_login otp_backup_codes updated_at))
   end
 
