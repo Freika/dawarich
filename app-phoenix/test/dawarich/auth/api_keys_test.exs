@@ -1,6 +1,7 @@
 defmodule Dawarich.Auth.ApiKeysTest do
   use ExUnit.Case, async: false
   import Plug.Conn
+  import ExUnit.CaptureLog
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Auth.ApiKeys
   alias Dawarich.Test.RailsUser
@@ -92,6 +93,29 @@ defmodule Dawarich.Auth.ApiKeysTest do
     Repo.query!("UPDATE users SET email='legacy-invalid-email' WHERE id=73901")
     assert {:ok, _} = ApiKeys.rotate(73901, c.salt, c.context)
     assert Accounts.get(73901).email == "legacy-invalid-email"
+  end
+
+  test "key creation rotation and lookup never log usable credentials", c do
+    previous = Logger.level()
+    Logger.configure(level: :debug)
+    on_exit(fn -> Logger.configure(level: previous) end)
+    old_key = snapshot(73901)["api_key"]
+
+    log =
+      capture_log([level: :debug], fn ->
+        for form <- [:query, :bearer], do: assert(lookup(old_key, form) == {200, 73901})
+        assert {:ok, actor} = ApiKeys.rotate(73901, c.salt, c.context)
+        send(self(), {:rotated, actor})
+        for form <- [:query, :bearer], do: assert(lookup(actor.api_key, form) == {200, 73901})
+      end)
+
+    assert_received {:rotated, actor}
+    assert log =~ "SELECT"
+
+    for secret <- [old_key, actor.api_key, actor.encrypted_password, "a11rest-key-password-42"] do
+      absent = not String.contains?(log, secret)
+      assert absent
+    end
   end
 
   defp lookup(key, form) do

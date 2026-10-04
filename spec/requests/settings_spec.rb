@@ -22,7 +22,8 @@ RSpec.describe 'Settings', type: :request do
         ['turbo', 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml', 'http://www.example.com/users/edit'],
         ['referer', 'text/html', 'http://www.example.com/stats'],
         ['invalid_resource', 'text/html', nil], ['legacy_invalid_email', 'text/html', nil],
-        ['dirty_settings', 'text/html', nil]
+        ['dirty_settings', 'text/html', nil], ['legacy_uppercase_invalid_email', 'text/html', nil],
+        ['legacy_padded_valid_email', 'text/html', nil]
       ]
       shapes.each_with_index do |(kind, accept, referer), index|
         aggregate_failures(kind) do
@@ -35,6 +36,12 @@ RSpec.describe 'Settings', type: :request do
           expect(client.response.status).to eq(303)
           user.update_column(:email, '') if kind == 'invalid_resource'
           user.update_column(:email, 'invalid') if kind == 'legacy_invalid_email'
+          user.update_column(:email, 'INVALID') if kind == 'legacy_uppercase_invalid_email'
+          if kind == 'legacy_padded_valid_email'
+            user.update_column(:email, " A11REST-LEGACY-#{index}@DAWARICH.TEST ")
+            user.update_columns(reset_password_token: "a11rest-legacy-reset-#{index}",
+                                reset_password_sent_at: 1.hour.ago)
+          end
           if kind == 'dirty_settings'
             user.update_column(:settings,
                                user.settings.merge('immich_url' => 'https://immich.a11rest.test///'))
@@ -50,8 +57,13 @@ RSpec.describe 'Settings', type: :request do
           expect(client.response.location).to eq(referer || 'http://www.example.com/')
           after = user.reload.attributes
           expect(other.reload.attributes == other_before).to be(true)
-          if kind == 'invalid_resource'
+          if %w[invalid_resource legacy_uppercase_invalid_email].include?(kind)
             expect(after == before).to be(true)
+            probe = ActionDispatch::Integration::Session.new(Rails.application)
+            probe.get('/api/v1/users/me', params: { api_key: before['api_key'] })
+            expect(probe.response.status).to eq(200)
+            probe.get('/api/v1/users/me', headers: { 'Authorization' => "Bearer #{before['api_key']}" })
+            expect(probe.response.status).to eq(200)
             next
           end
 
@@ -59,6 +71,12 @@ RSpec.describe 'Settings', type: :request do
           expect(user.api_key == before['api_key']).to be(false)
           ignored = %w[api_key updated_at]
           ignored << 'settings' if kind == 'dirty_settings'
+          if kind == 'legacy_padded_valid_email'
+            ignored.concat(%w[email reset_password_token reset_password_sent_at])
+            expect(user.email).to eq("a11rest-legacy-#{index}@dawarich.test")
+            expect(user.reset_password_token).to be_nil
+            expect(user.reset_password_sent_at).to be_nil
+          end
           expect(after.except(*ignored) == before.except(*ignored)).to be(true)
           expect(user.settings['immich_url']).to eq('https://immich.a11rest.test') if kind == 'dirty_settings'
           probe = ActionDispatch::Integration::Session.new(Rails.application)

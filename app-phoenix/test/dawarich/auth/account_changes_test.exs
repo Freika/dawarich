@@ -1,5 +1,6 @@
 defmodule Dawarich.Auth.AccountChangesTest do
   use ExUnit.Case, async: false
+  import ExUnit.CaptureLog
   alias Dawarich.Auth.{Account, AccountChanges}
   alias Dawarich.Repo
 
@@ -257,6 +258,34 @@ defmodule Dawarich.Auth.AccountChangesTest do
       assert {:error, _} = AccountChanges.update(c.id, salt, input, c.context)
       unchanged = snapshot(c.id) == before
       assert unchanged
+    end
+  end
+
+  test "account credential updates never log passwords or their resulting hash", c do
+    previous = Logger.level()
+    Logger.configure(level: :debug)
+    on_exit(fn -> Logger.configure(level: previous) end)
+    password = "a11rest-private-new-password-42"
+
+    log =
+      capture_log([level: :debug], fn ->
+        assert {:ok, actor} =
+                 AccountChanges.update(
+                   c.id,
+                   c.salt,
+                   %{"current_password" => @password, "password" => password},
+                   c.context
+                 )
+
+        send(self(), {:updated, actor})
+      end)
+
+    assert_received {:updated, actor}
+    assert log =~ "SELECT"
+
+    for secret <- [@password, password, actor.encrypted_password] do
+      absent = not String.contains?(log, secret)
+      assert absent
     end
   end
 

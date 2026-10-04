@@ -60,7 +60,7 @@ defmodule Dawarich.Auth.AccountChanges do
       |> Ecto.Changeset.change(changes)
       |> Ecto.Changeset.unique_constraint(:email, name: :index_users_on_email)
 
-    {:ok, Map.get(context, :repo, Repo).update!(changeset)}
+    {:ok, Map.get(context, :repo, Repo).update!(changeset, log: false)}
   end
 
   def actor(id, session_salt, context) do

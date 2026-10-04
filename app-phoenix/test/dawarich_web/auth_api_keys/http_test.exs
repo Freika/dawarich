@@ -1,7 +1,7 @@
 defmodule DawarichWeb.AuthApiKeys.HttpTest do
   use ExUnit.Case, async: false
   import Plug.Conn
-  alias Dawarich.{RailsCookies, Repo}
+  alias Dawarich.{Accounts, RailsCookies, Repo}
   alias Dawarich.Auth.SessionCookie
   alias Dawarich.Test.RailsUser
   alias DawarichWeb.{AuthApiKeys.Http, RailsCsrf}
@@ -15,9 +15,9 @@ defmodule DawarichWeb.AuthApiKeys.HttpTest do
     defdelegate one(query), to: Dawarich.Repo
     defdelegate query!(query, params, opts), to: Dawarich.Repo
 
-    def update!(changeset) do
+    def update!(changeset, opts) do
       send(self(), :key_write)
-      Dawarich.Repo.update!(changeset)
+      Dawarich.Repo.update!(changeset, opts)
     end
   end
 
@@ -187,6 +187,49 @@ defmodule DawarichWeb.AuthApiKeys.HttpTest do
     refute Http.route?(request(c.session, "", "GET"))
     refute Http.route?(request(c.session, "", "HEAD"))
     refute Http.route?(request(c.session, "", "POST", "/settings/users/74001/regenerate_api_key"))
+  end
+
+  test "legacy email rotations replay original bytes before writes using Rails outcomes", c do
+    corpus = File.read!("test/fixtures/auth/account/api_keys.json") |> Jason.decode!()
+
+    for {name, email, rotated} <- [
+          {"legacy_uppercase_invalid_email", "INVALID", false},
+          {"legacy_padded_valid_email", " A11REST-LEGACY-73507@DAWARICH.TEST ", true}
+        ] do
+      oracle = Enum.find(corpus, &(&1["name"] == name))
+      assert oracle["status"] == 302
+      assert oracle["key_changed"] == rotated
+      assert oracle["reset_cleared"] == rotated
+      old_status = if rotated, do: 401, else: 200
+
+      assert oracle["lookups"] == [
+               %{"query" => old_status, "bearer" => old_status},
+               %{"query" => 200, "bearer" => 200}
+             ]
+
+      Repo.query!("UPDATE users SET email=$1 WHERE id=$2", [email, @id], log: false)
+      before = snapshot()
+      raw = URI.encode_query(%{"authenticity_token" => RailsCsrf.masked_token(c.session)})
+      result = request(c.session, raw) |> Http.call(c.opts)
+      assert result.private[:replayed] == true and result.halted
+      assert_received {:replayed, "POST", ^raw}
+      assert snapshot() == before
+      refute_received :key_write
+      assert result.resp_cookies == %{}
+      assert get_resp_header(result, "x-dawarich-auth-owner") == []
+      assert Accounts.by_api_key(before["api_key"]).id == @id
+
+      for form <- [:query, :bearer] do
+        conn = Plug.Test.conn("GET", "/api/v1/users/me") |> assign(:api_params, %{})
+
+        conn =
+          if form == :query,
+            do: assign(conn, :api_params, %{"api_key" => before["api_key"]}),
+            else: put_req_header(conn, "authorization", "Bearer " <> before["api_key"])
+
+        assert DawarichWeb.Api.Auth.call(conn, []).assigns.api_user.id == @id
+      end
+    end
   end
 
   defp request(session, body, method \\ "POST", path \\ @path) do

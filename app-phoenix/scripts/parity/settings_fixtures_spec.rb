@@ -206,13 +206,17 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
     end
 
     def account_key_corpus
-      %w[plain turbo referer invalid_resource legacy_invalid_email dirty_settings].each_with_index.map do |name, index|
+      names = %w[plain turbo referer invalid_resource legacy_invalid_email dirty_settings
+                 legacy_uppercase_invalid_email legacy_padded_valid_email]
+      names.each_with_index.map do |name, index|
         user = account_actor(73_500 + index)
         user.update_column(:api_key, "a11rest-key-#{user.id}")
         client = account_browser(user)
         user.update_column(:updated_at, now - 1.day)
         user.update_column(:email, '') if name == 'invalid_resource'
         user.update_column(:email, 'invalid') if name == 'legacy_invalid_email'
+        user.update_column(:email, 'INVALID') if name == 'legacy_uppercase_invalid_email'
+        user.update_column(:email, " A11REST-LEGACY-#{user.id}@DAWARICH.TEST ") if name == 'legacy_padded_valid_email'
         if name == 'dirty_settings'
           user.update_column(:settings, user.settings.merge('immich_url' => 'https://immich.a11rest.test///'))
         end
@@ -278,7 +282,8 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
         ]
         expect(corpus.fetch(:requests).pluck('name')).to eq(expected_requests)
         expect(corpus.fetch(:api_keys).pluck('name')).to eq(
-          %w[plain turbo referer invalid_resource legacy_invalid_email dirty_settings]
+          %w[plain turbo referer invalid_resource legacy_invalid_email dirty_settings
+             legacy_uppercase_invalid_email legacy_padded_valid_email]
         )
         turbo = corpus.fetch(:api_keys).find { |row| row['name'] == 'turbo' }
         expect(turbo.slice('status', 'location', 'changed')).to eq(
@@ -289,12 +294,22 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
            'Password is too short (minimum is 12 characters)', "Current password can't be blank"]
         )
         corpus.fetch(:api_keys).each do |row|
-          old_status = row['name'] == 'invalid_resource' ? 200 : 401
+          old_status = %w[invalid_resource legacy_uppercase_invalid_email].include?(row['name']) ? 200 : 401
           expect(row['lookups']).to eq(
             [{ 'query' => old_status, 'bearer' => old_status },
              { 'query' => 200, 'bearer' => 200 }]
           )
         end
+        legacy_invalid = corpus.fetch(:api_keys).find { |row| row['name'] == 'legacy_uppercase_invalid_email' }
+        expect(legacy_invalid.slice('status', 'email', 'changed', 'key_changed', 'reset_cleared')).to eq(
+          'status' => 302, 'email' => 'INVALID', 'changed' => [], 'key_changed' => false, 'reset_cleared' => false
+        )
+        legacy_valid = corpus.fetch(:api_keys).find { |row| row['name'] == 'legacy_padded_valid_email' }
+        expect(legacy_valid.slice('status', 'email', 'changed', 'key_changed', 'reset_cleared')).to eq(
+          'status' => 302, 'email' => 'a11rest-legacy-73507@dawarich.test',
+          'changed' => %w[api_key email reset_password_sent_at reset_password_token updated_at],
+          'key_changed' => true, 'reset_cleared' => true
+        )
         corpus.except(:html).each { |name, rows| account_fixture("#{name}.json", rows) }
         corpus.fetch(:html).each { |name, html| account_fixture("#{name}.html", html, json: false) }
       end
