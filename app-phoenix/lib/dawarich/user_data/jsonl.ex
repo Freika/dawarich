@@ -20,7 +20,8 @@ defmodule Dawarich.UserData.Jsonl do
         _, acc -> acc
       end,
       fn _ -> true end,
-      mode: :compat
+      mode: :compat,
+      errors: :rails_oj
     )
   end
 

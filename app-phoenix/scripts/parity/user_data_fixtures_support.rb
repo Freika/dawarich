@@ -258,9 +258,9 @@ module UserDataFixturesSupport
     end
   end
 
-  def failure(name)
+  def failure(name, entries: nil)
     with_users do
-      entries = name == 'missing' ? { 'unrelated.txt' => 'synthetic' } : { 'manifest.json' => '{"format_version":3}' }
+      entries ||= name == 'missing' ? { 'unrelated.txt' => 'synthetic' } : { 'manifest.json' => '{"format_version":3}' }
       save_entries(name, entries)
       service_user = owner
       service = restore(name, entries, service_user)

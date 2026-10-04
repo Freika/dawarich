@@ -79,6 +79,13 @@ RSpec.describe 'Phoenix fixtures: Rails user data' do
         .to be_nil
       [version, outcome]
     end
+    failures = %w[invalid_jsonl_root invalid_jsonl_monthly invalid_manifest].to_h do |name|
+      outcome = UserDataFixturesSupport.failure(name, entries: UserDataFixturesSupport.read_entries(name))
+      expect(outcome.fetch('service').fetch('error')).to eq(result.fetch('cases').fetch(name).fetch('error'))
+      expect(outcome.fetch('job').fetch('notifications').size).to eq(2)
+      [name, outcome]
+    end
+    UserDataFixturesSupport.write('parser_failures.json', failures)
     UserDataFixturesSupport.write('capture.json', result)
   end
 

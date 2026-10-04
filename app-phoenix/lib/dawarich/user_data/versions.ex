@@ -23,13 +23,27 @@ defmodule Dawarich.UserData.Versions do
     end
   end
 
-  def manifest(directory),
-    do: directory |> Path.join("manifest.json") |> File.read!() |> Jason.decode!()
+  def manifest(directory) do
+    bytes = directory |> Path.join("manifest.json") |> File.read!()
+
+    try do
+      Jason.decode!(bytes)
+    rescue
+      original in Jason.DecodeError ->
+        try do
+          Jsonl.decode!(bytes)
+          reraise original, __STACKTRACE__
+        rescue
+          error in JsonStream.Error ->
+            raise JsonStream.Error, message: Exception.message(error) <> " in '" <> bytes
+        end
+    end
+  end
 
   defp version(directory) do
     Map.get(manifest(directory), "format_version") || 2
   rescue
-    Jason.DecodeError -> 2
+    _error in [Jason.DecodeError, JsonStream.Error] -> 2
   end
 
   def reduce_v1(path, context, acc, fun) do

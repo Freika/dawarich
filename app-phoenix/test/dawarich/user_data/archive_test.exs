@@ -61,7 +61,7 @@ defmodule Dawarich.UserData.ArchiveTest do
                  "Unknown export format: neither manifest.json nor data.json found",
                  fn -> Versions.detect(dir) end
 
-    assert_raise Jason.DecodeError, fn ->
+    assert_raise JsonStream.Error, fn ->
       Versions.manifest(Path.join(@fixtures, "invalid_manifest/entries"))
     end
 

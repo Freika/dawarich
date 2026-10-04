@@ -52,6 +52,44 @@ defmodule Dawarich.UserData.ImportWorkerTest do
   end
 
   @tag :tmp_dir
+  test "parser failures preserve Rails service and job notification layers", %{tmp_dir: dir} do
+    capture =
+      Path.expand("../../fixtures/user_data/parser_failures.json", __DIR__)
+      |> File.read!()
+      |> Jason.decode!()
+
+    for name <- ~w(invalid_jsonl_root invalid_jsonl_monthly invalid_manifest) do
+      reset!(ScratchRepo)
+      clean()
+      {c, job} = fixture(name, dir)
+      expected = capture[name]["job"]
+
+      try do
+        ImportWorker.run(ScratchRepo, job, context: c.context)
+        flunk("parser accepted invalid archive")
+      rescue
+        error -> assert Exception.message(error) == expected["error"]["message"]
+      end
+
+      assert [[3, expected["error_message"]]] ==
+               rows("SELECT status,error_message FROM imports WHERE id=$1", [
+                 job.args["import_id"]
+               ])
+
+      assert rows("SELECT title,content,kind FROM notifications ORDER BY id") ==
+               Enum.map(expected["notifications"], &[&1["title"], &1["content"], 2])
+
+      assert [[expected["points_count"]]] ==
+               rows("SELECT points_count FROM users WHERE id=$1", [c.user_id])
+
+      assert [[1]] == rows("SELECT count(*) FROM points")
+      assert [] == rows("SELECT id FROM areas")
+      refute Processed.done?(ScratchRepo, job.args["event_id"])
+      assert [] == File.ls!(dir)
+    end
+  end
+
+  @tag :tmp_dir
   test "archive discovery queues only the fenced owner-routed restore command", %{tmp_dir: dir} do
     for owner <- [:oban, :sidekiq, :missing], changed <- [:none, :blob, :source] do
       reset!(ScratchRepo)
@@ -185,7 +223,7 @@ defmodule Dawarich.UserData.ImportWorkerTest do
   defp fixture(name, dir) do
     c = UserDataSeeds.seed!(name, ScratchRepo)
 
-    if name in ["missing", "version3"] do
+    if name in ~w(missing version3 invalid_jsonl_root invalid_jsonl_monthly invalid_manifest) do
       rows("UPDATE users SET points_count=91 WHERE id=$1", [c.user_id])
 
       rows(
