@@ -103,9 +103,8 @@ M-P5-utm removes monthly manage-preferences content and fails the complete messa
 restored rendering and the scoped basic/Devise/ExploreFeatures/Wave2/recovery regressions pass.
 Source Ruby exceptions map to native data/type/date errors; no empty message rescue is added.
 
-The R1–R4/P1–P5 barrier is complete. Resume at P6's queued-before-sent-at staging contract.
-Delivery workers, ownership wiring, test-mail HTTP,
-ED allocation and final C1–C5 gates are pending. Rails source/specs and dormant stubs are retained.
+The R1–R4/P1–P12 implementation barrier is complete. Final C1–C5 acceptance remains the
+tests-only merge gate. Rails source/specs and dormant stubs are retained.
 
 P6 adds separate monthly/yearly mail enqueue workers with exact locale-bearing command decoders.
 All 44 Rails effects rows pass against real Oban inserts and database constraints: enqueue occurs
@@ -171,4 +170,16 @@ digest/location/recovery transport success and errors containing synthetic body/
 M-P11-queue enqueues instead of immediately sending and fails the missing transport assertion;
 M-P11-log logs a complete synthetic digest message on transport failure and fails without printing
 the captured log. Both are restored and green; existing recovery retry regression also passes.
-P12 will extend the same named log test through its actual HTTP path.
+P12 extends the same named log test through HTML/Turbo endpoint success and safe transport
+faults plus the HTTP plug's render-failure seam. Repeated M-P11-log fails without printing
+captured sensitive content, then restored logging passes.
+
+P12 owns only supported self-hosted authenticated POST /settings/general/test_email.
+Its action-specific pipeline admits pure Turbo Accept without broadening settings page guards.
+Action-bound CSRF, strict forms, session identity, SMTP configuration and transport eligibility
+are checked before SMTP. Unsupported requests replay their original bytes once; both settings
+and test_email rollback keys hand back before effects. Native send faults stay terminal native.
+HTML stages Rails flash and redirects; Turbo preserves the source partial's exact append body.
+Only native responses carry x-dawarich-mail-owner: native-test-email, with no admin owner header.
+M-P12-csrf admits a missing token and fails; M-P12-key omits its route key and fails. Both restore
+to scoped GREEN. Browser, stand and image acceptance is deferred to the controller mini lane.

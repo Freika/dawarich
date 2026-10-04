@@ -78,16 +78,34 @@ defmodule Dawarich.Mail.TestEmailTest do
 
   test "mail success and render enqueue transport failures never log body or token markers" do
     start_oban(:residual_log)
-    previous = Map.take(System.get_env(), ~w(SMTP_FROM DOMAIN RAILS_ENV))
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+
+    for spec <- Dawarich.Redis.child_specs() ++ Dawarich.Redis.cache_child_specs(),
+        do: start_supervised!(spec)
+
+    Dawarich.Test.RailsUser.insert!(%{
+      id: 460_006,
+      email: "a12c-body-marker@test",
+      settings: %{"locale" => "en", "timezone" => "UTC"}
+    })
+
+    names = ~w(SMTP_FROM SMTP_SERVER SELF_HOSTED TIME_ZONE DOMAIN RAILS_ENV)
+    previous = Map.take(System.get_env(), names)
+    routes = Application.get_env(:dawarich, :rails_routes, [])
+    Application.put_env(:dawarich, :rails_routes, [])
 
     System.put_env(%{
       "SMTP_FROM" => @env["SMTP_FROM"],
+      "SMTP_SERVER" => "synthetic.test",
+      "SELF_HOSTED" => "true",
+      "TIME_ZONE" => "UTC",
       "DOMAIN" => "synthetic.test",
       "RAILS_ENV" => "staging"
     })
 
     on_exit(fn ->
-      Enum.each(~w(SMTP_FROM DOMAIN RAILS_ENV), &System.delete_env/1)
+      Application.put_env(:dawarich, :rails_routes, routes)
+      Enum.each(names, &System.delete_env/1)
       System.put_env(previous)
     end)
 
@@ -309,6 +327,62 @@ defmodule Dawarich.Mail.TestEmailTest do
           after
             0 -> flunk("recovery transport was not called")
           end
+        end
+
+        path = "/settings/general/test_email"
+        session = Dawarich.Test.RailsUser.session(460_006)
+
+        for accept <- ["text/html", "text/vnd.turbo-stream.html"], failure <- [false, true] do
+          if failure,
+            do: Process.put(:transport_result, {:error, {"IOError", Enum.join(@markers)}}),
+            else: Process.delete(:transport_result)
+
+          conn =
+            Phoenix.ConnTest.build_conn()
+            |> Plug.Conn.put_req_header("content-type", "application/x-www-form-urlencoded")
+            |> Plug.Conn.put_req_header("content-length", "0")
+            |> Plug.Conn.put_req_header("accept", accept)
+            |> Plug.Conn.put_req_header(
+              "x-csrf-token",
+              DawarichWeb.RailsCsrf.masked_form_token(session, path, "POST")
+            )
+            |> Plug.Test.put_req_cookie(
+              "_dawarich_session",
+              Dawarich.Test.RailsUser.cookie(session)
+            )
+
+          response = Phoenix.ConnTest.dispatch(conn, DawarichWeb.Endpoint, "POST", path, "")
+          assert response.status == if(accept == "text/html", do: 302, else: 200)
+
+          assert Plug.Conn.get_resp_header(response, "x-dawarich-mail-owner") == [
+                   "native-test-email"
+                 ]
+
+          receive do
+            {:mail, _} -> :ok
+          after
+            0 -> flunk("HTTP transport was not called")
+          end
+
+          refute_received {:mail, _}
+          Process.delete(:transport_result)
+
+          fault = %{
+            conn
+            | method: "POST",
+              request_path: path,
+              query_string: "",
+              path_info: String.split(path, "/", trim: true)
+          }
+
+          response = DawarichWeb.TestEmail.call(fault, clock: %{})
+          assert response.status == if(accept == "text/html", do: 302, else: 200)
+
+          assert Plug.Conn.get_resp_header(response, "x-dawarich-mail-owner") == [
+                   "native-test-email"
+                 ]
+
+          refute_received {:mail, _}
         end
       end)
 
