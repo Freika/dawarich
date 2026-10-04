@@ -12,7 +12,7 @@ defmodule Dawarich.Places.WebWrite do
     repo.transaction(fn ->
       with {:ok, previous} <- load(repo, action, user.id, id),
            {:ok, values} <- values(action, previous, attrs),
-           [] <- errors(values) do
+           [] <- errors(values, context[:locale] || DawarichWeb.Locale.resolve(nil, user, %{})) do
         {:ok, save(repo, user.id, previous, values, stamp)}
       else
         errors when is_list(errors) -> {:invalid, errors}
@@ -115,14 +115,15 @@ defmodule Dawarich.Places.WebWrite do
   defp coordinate(value, limit) when is_number(value), do: coordinate(to_string(value), limit)
   defp coordinate(_value, _limit), do: :unsupported
 
-  defp errors(values) do
-    for {true, message} <- [
-          {Ruby.blank?(values.name), "Name can't be blank"},
-          {is_binary(values.name) and length(String.codepoints(values.name)) > 255,
-           "Name is too long (maximum is 255 characters)"},
-          {values.latitude == nil or values.longitude == nil, "Lonlat can't be blank"}
+  defp errors(values, locale) do
+    for {true, field, key, bindings} <- [
+          {Ruby.blank?(values.name), "name", "errors.messages.blank", %{}},
+          {is_binary(values.name) and length(String.codepoints(values.name)) > 255, "name",
+           "errors.messages.too_long", %{"count" => 255}},
+          {values.latitude == nil or values.longitude == nil, "lonlat", "errors.messages.blank",
+           %{}}
         ],
-        do: message
+        do: Dawarich.WebValidation.message(locale, "place", field, key, bindings)
   end
 
   defp save(repo, owner, previous, values, stamp) do

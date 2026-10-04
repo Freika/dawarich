@@ -14,8 +14,8 @@ defmodule DawarichWeb.PlaceActions do
   def call(conn, action) do
     user = conn.assigns.current_user
     id = conn.path_params["id"] && String.to_integer(conn.path_params["id"])
-    ctx = %{now: conn.assigns[:now] || DateTime.utc_now()}
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
+    ctx = %{now: conn.assigns[:now] || DateTime.utc_now(), locale: locale}
 
     with :ok <- preflight(conn, action, user, id) do
       result =

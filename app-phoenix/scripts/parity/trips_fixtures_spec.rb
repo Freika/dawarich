@@ -289,6 +289,15 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         cases << { name: "foreign_#{action}", action:, foreign: true, attrs: { name: 'Rejected' }, body: 'Rejected',
                    expected: 404 }
       end
+      { blank: '', range: 'Outside range' }.each do |kind, body|
+        %w[text/html text/vnd.turbo-stream.html].each do |accept|
+          cases << { name: "note_de_#{kind}_#{accept == 'text/html' ? 'html' : 'stream'}",
+                     action: :note_create, body:, date: kind == :range ? '2026-10-06' : '2026-10-03',
+                     accept:, locale: 'de', expected: accept == 'text/html' ? 302 : 200 }
+        end
+      end
+      cases << { name: 'note_de_long_stream', action: :note_create, body: '界' * 10_001,
+                 locale: 'de', expected: 200 }
       cases
     end
 
@@ -526,6 +535,8 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         remaining_scenarios.each_with_index do |entry, index|
           id = 895_000 + index * 20
           user = remaining_user(8950 + index)
+          user.update_columns(settings: user.settings.merge('locale' => entry[:locale])) if entry[:locale]
+          user.reload
           job_owner!('command:trips.calculate', entry.fetch(:owner, :sidekiq))
           job_owner!('command:exports.points', entry.fetch(:owner, :sidekiq))
           remaining_setup(user, id, entry)

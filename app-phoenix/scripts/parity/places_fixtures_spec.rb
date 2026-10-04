@@ -267,6 +267,12 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
         .each { |key, attrs| cases << { name: "nearby_#{key}", action: :nearby, attrs:, format: 'html' } }
       cases << { name: 'nearby_enabled_zero', action: :nearby, attrs: { latitude: '0', longitude: '0' },
                  format: 'html', provider: true }
+      cases << { name: 'create_de_blank_turbo_false', action: :create, attrs: valid.merge(name: ''),
+                 format: 'turbo', framed: false, locale: 'de' }
+      cases << { name: 'update_de_blank_html_false', action: :update, attrs: { name: '' },
+                 format: 'html', framed: false, locale: 'de' }
+      cases << { name: 'update_de_long_turbo_false', action: :update, attrs: { name: '界' * 256 },
+                 format: 'turbo', framed: false, locale: 'de' }
       cases
     end
 
@@ -415,6 +421,8 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
         remainder_cases.each_with_index do |entry, index|
           id = 896_000 + index * 20
           user = reader(18_960 + index, 'timezone' => 'Europe/Berlin')
+          user.update_columns(settings: user.settings.merge('locale' => entry[:locale])) if entry[:locale]
+          user.reload
           remainder_seed(user, id, entry)
           before = remainder_graph(user, id)
           request = error = nil

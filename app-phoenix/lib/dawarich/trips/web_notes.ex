@@ -81,7 +81,10 @@ defmodule Dawarich.Trips.WebNotes do
       Map.new(note, fn {key, value} -> {Atom.to_string(key), value} end)
       |> Map.merge(%{"attachable_type" => "Trip", "attachable_id" => trip_id})
 
-    with {:ok, errors} <- Validation.errors(attrs, repo) do
+    locale = context[:locale] || DawarichWeb.Locale.resolve(nil, user, %{})
+
+    with {:ok, errors} <- Validation.errors(attrs, repo),
+         {:ok, errors} <- Dawarich.WebValidation.notes(locale, errors) do
       if errors == [] do
         stamp = context |> Map.get_lazy(:now, &DateTime.utc_now/0) |> DateTime.to_naive()
         persist(repo, user, trip_id, old, body, stamp, context)
