@@ -145,3 +145,16 @@ M-P9-off forces native selection under Sidekiq and fails the retained reverse as
 selection, real family API creation, generation, registry and owner inventory tests pass.
 The job inventory records the location command's real native API producer separately because
 there is no corresponding concrete Rails job class; digest jobs receive their exact mail keys.
+
+P10 retains the original digest email bodies behind thin ownership shims and registers version-1
+legacy mappings for monthly/yearly/location mail. Forwarding keeps the legacy job's event ID and
+captured ambient locale/timezone. Rehome preserves that locale in Rails job context, releases the
+owner and retains failed pending events. Location rollback delegates to the existing cache-guarded
+reverse handler. Scoped Rails tests prove forwarding, later preference changes, rehome, failures
+and source email-job behavior. M-P10-forward bypasses the shim and fails zero-mail under Oban;
+M-P10-rehome chooses yearly for monthly and fails the exact legacy class. Both are restored/green.
+Rails ActiveJob's raw enqueue error logging is suppressed at these bounded mail enqueue calls;
+exception classes and queue/save ordering are preserved. No message maps or error bodies log.
+Rehome covers pending public command events. Already queued standalone native DeliveryWorker
+jobs must drain under their existing owner before release rollback; route hand-back/rehome does
+not cancel SMTP jobs already queued.

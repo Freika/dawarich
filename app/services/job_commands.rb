@@ -185,7 +185,9 @@ module JobCommands
    .merge(Stats::Commands::COMMANDS)
    .merge(Imports::ProcessCommands::COMMANDS)
    .merge(Posters::CreationCommand::COMMANDS)
-   .merge(Users::Digests::Commands::COMMANDS).freeze
+   .merge(Users::Digests::Commands::COMMANDS)
+   .merge(Users::Digests::MailCommands::COMMANDS)
+   .merge(Families::LocationRequestMailCommands::COMMANDS).freeze
 
   module_function
 
