@@ -1,6 +1,5 @@
 defmodule DawarichWeb.AchievementUnlockRevealTest do
   use ExUnit.Case, async: false
-  alias Dawarich.Achievements.UiText
   alias Dawarich.Test.ParityHTML
   alias DawarichWeb.AchievementUnlockReveal
 
@@ -24,12 +23,6 @@ defmodule DawarichWeb.AchievementUnlockRevealTest do
         assert LazyHTML.query(doc, ".ach-unlock-back") |> Enum.count() ==
                  if(count > 1, do: 2, else: 0)
 
-        assert LazyHTML.query(doc, ".ach-unlock-next") |> LazyHTML.text() |> String.trim() ==
-                 UiText.t(locale, "unlocks." <> if(count > 1, do: "next", else: "done"))
-
-        assert LazyHTML.query(doc, ".ach-unlock-count") |> LazyHTML.text() ==
-                 UiText.t(locale, "unlocks.remaining", %{"count" => count})
-
         assert LazyHTML.query(doc, ".ach-unlock-front") |> LazyHTML.attribute("href") == [
                  row["card"]["path"]
                ]
@@ -38,18 +31,17 @@ defmodule DawarichWeb.AchievementUnlockRevealTest do
         refute html =~ "phx-"
         refute html =~ "data-token"
 
-        if locale in ~w(en de) and count == 2 do
-          expected = File.read!("test/fixtures/achievement_unlocks/#{locale}_next.html")
+        expected = File.read!("test/fixtures/achievement_unlocks/#{locale}_count_#{count}.html")
 
-          assert ParityHTML.normalize(html) == ParityHTML.normalize(expected),
+        assert ParityHTML.normalize(html) == ParityHTML.normalize(expected),
+               "#{locale} count=#{count}: " <>
                  ParityHTML.first_difference(
                    ParityHTML.normalize(html),
                    ParityHTML.normalize(expected)
                  )
 
-          assert actions(html) == actions(expected)
-          assert asset_paths(html) == asset_paths(expected)
-        end
+        assert actions(html) == actions(expected)
+        assert asset_paths(html) == asset_paths(expected)
       end
     end
 

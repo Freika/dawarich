@@ -204,6 +204,13 @@ RSpec.describe 'Phoenix fixtures: achievement unlock deck', type: :request do
             expect(card).to be_nil
           else
             expect(card).not_to be_nil
+            if name == 'flat_country'
+              [1, 2, 11].each do |count|
+                html = ApplicationController.render(partial: 'achievements/unlock_reveal', formats: [:html],
+                                                    locals: { card:, count: })
+                save_html("#{locale}_count_#{count}", html)
+              end
+            end
             expect(card.path).to eq('/achievements/continent_europe?q=France#collection') if name == 'flat_country'
             expect(card.path).to eq('/achievements/country_de?q=Bavaria#collection') if name == 'subdivision'
             if name == 'visited_country'
