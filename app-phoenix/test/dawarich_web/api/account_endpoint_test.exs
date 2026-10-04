@@ -139,6 +139,28 @@ defmodule DawarichWeb.Api.AccountEndpointTest do
     end
   end
 
+  @tag :account_two_factor
+  test "two factor routes stay Rails with original body", ctx do
+    before = Repo.query!("SELECT row_to_json(u)::text FROM users u WHERE id=$1", [ctx.owner]).rows
+
+    for {method, target, body} <- [
+          {"POST", "/api/v1/users/me/two_factor/setup", ~s({"password":"synthetic-setup"})},
+          {"POST", "/api/v1/users/me/two_factor/confirm",
+           ~s({"password":"synthetic-confirm","otp_code":"123456"})},
+          {"POST", "/api/v1/users/me/two_factor/backup_codes",
+           ~s({"password":"synthetic-backup"})},
+          {"DELETE", "/api/v1/users/me/two_factor",
+           ~s({"password":"synthetic-disable","otp_code":"654321"})}
+        ] do
+      replay!(ctx, method, target, body)
+
+      assert Repo.query!("SELECT row_to_json(u)::text FROM users u WHERE id=$1", [ctx.owner]).rows ==
+               before
+
+      assert rows("SELECT kind,payload FROM phoenix.rails_commands") == []
+    end
+  end
+
   defp replay!(ctx, method, target, body) do
     client = submit(ctx, method, target, body, [])
     puma = accept(ctx.upstream)
