@@ -68,7 +68,7 @@ defmodule Dawarich.TripPage do
   """
 
   @notes """
-  SELECT n.id, n.noted_at::date, n.body FROM notes n
+  SELECT n.id, n.noted_at::date, n.body, n.source_digest FROM notes n
   WHERE n.attachable_type = 'Trip' AND n.attachable_id = $1 AND n.noted_at IS NOT NULL
   """
 
@@ -100,6 +100,9 @@ defmodule Dawarich.TripPage do
     ] = row
 
     day_data = TripDays.day_data(user.id, from, to, settings.minutes * 60, zone)
+    notes = day_notes(id)
+    {:ok, plan} = Dawarich.Trips.PlanRead.load(Repo, user.id, id)
+    plan = DawarichWeb.TripPlanItems.prepare(plan, user.settings)
 
     future =
       Ruby.present?(source_identifier) and
@@ -135,7 +138,11 @@ defmodule Dawarich.TripPage do
       has_path: has_path,
       map_state: state,
       windows_json: day_data.windows_json,
-      days: days(first_day, last_day, day_data.stats, notes(id)),
+      days: days(first_day, last_day, day_data.stats, notes),
+      day_notes: notes,
+      plan: plan,
+      now: now,
+      plan_on_map: Dawarich.Trips.PlanGeojson.build(plan) != nil,
       description: gated.description,
       trip_stream: TripStream.stream_name(id),
       studio: TripStudio.load(user.id, zone)
@@ -149,8 +156,10 @@ defmodule Dawarich.TripPage do
         do: %{date: date, stats: stats[date], note: notes[date]}
       )
 
-  defp notes(trip_id),
+  def day_notes(trip_id),
     do:
       Repo.query!(@notes, [trip_id]).rows
-      |> Map.new(fn [id, date, body] -> {date, %{id: id, date: date, body: body}} end)
+      |> Map.new(fn [id, date, body, digest] ->
+        {date, %{id: id, date: date, body: body, source_digest: digest}}
+      end)
 end

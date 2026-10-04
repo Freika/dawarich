@@ -78,6 +78,14 @@ defmodule DawarichWeb.TripsLive.Show do
             <.trip_header page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />
             <turbo-frame id="share-link-modal"></turbo-frame>
             <.trip_toolbar page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />
+            <DawarichWeb.TripItinerary.itinerary
+              :if={DawarichWeb.TripPlanItems.visible?(@page.plan)}
+              plan={@page.plan}
+              notes={@page.day_notes}
+              plan_on_map={@page.plan_on_map}
+              locale={@locale}
+              now={@page.now}
+            />
             <.trip_days page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />
             <div :if={@page.description} class="mb-6">
               <h3 class="text-lg font-semibold mb-2">{t(@locale, "trips.show.trip_notes", %{})}</h3>
