@@ -15,7 +15,7 @@ defmodule Dawarich.UserData.Export.Manifest do
 
     [[places]] =
       repo.query!(
-        "SELECT count(*) FROM places p JOIN visits v ON v.place_id=p.id WHERE v.user_id=$1",
+        "SELECT count(*) FROM places p JOIN visits v ON v.place_id=p.id AND p.user_id=$1 WHERE v.user_id=$1",
         [user]
       ).rows
 

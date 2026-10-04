@@ -1,7 +1,7 @@
 defmodule Dawarich.UserData.ExportMonthlyTest do
   use Dawarich.JobsCase
   alias Dawarich.Test.UserDataSeeds
-  alias Dawarich.UserData.Export.{Places, Points, Visits, Stats, Tracks, Digests}
+  alias Dawarich.UserData.Export.{Places, Points, Visits, Stats, Tracks, Digests, Manifest}
 
   @monthly [
     {Points, "points"},
@@ -63,6 +63,9 @@ defmodule Dawarich.UserData.ExportMonthlyTest do
 
       assert actual == wanted
     end
+
+    manifest = Manifest.write(ScratchRepo, c.user_id, dir, [], c.context)
+    assert Jason.decode!(File.read!(manifest.path))["counts"]["places"] == 0
   end
 
   @tag :tmp_dir
