@@ -5,9 +5,17 @@ defmodule Dawarich.Digests.JobLifecycleTest do
   alias Dawarich.Digests.{MonthlyWorker, YearlyWorker}
   alias Dawarich.Jobs.{Dispatch, Ownership}
 
+  test "collision database guard refuses non-test database names" do
+    assert_raise ArgumentError, "collision matrix requires a Phoenix test database", fn ->
+      collision_database!("dawarich_production")
+    end
+  end
+
   @tag :rails_parity
   test "native worker completes the shared-database Rails collision matrix" do
-    assert ScratchRepo.config()[:database] == "dawarich_phoenix_test_a12d1b2_scratch"
+    assert ScratchRepo.config()[:database] ==
+             collision_database!(Dawarich.Repo.config()[:database])
+
     start_oban(__MODULE__)
     peer_send(%{op: "ready", database: ScratchRepo.config()[:database]})
 
@@ -79,6 +87,13 @@ defmodule Dawarich.Digests.JobLifecycleTest do
     assert %{"op" => "stop"} = peer_read()
     reset!(ScratchRepo)
     peer_send(%{op: "done"})
+  end
+
+  defp collision_database!(database) do
+    unless String.starts_with?(database, "dawarich_phoenix_test"),
+      do: raise(ArgumentError, "collision matrix requires a Phoenix test database")
+
+    database <> "_scratch"
   end
 
   defp peer_read do
