@@ -1,7 +1,7 @@
 defmodule DawarichWeb.AchievementActions.Gate do
   @moduledoc false
   alias Dawarich.Auth.Admission
-  alias Dawarich.Achievements.Registry
+  alias Dawarich.Achievements.{PublicCard, Registry}
   alias DawarichWeb.{AchievementContext, RailsAuth}
 
   @markers ~w(client aff via referral invitation_token pending_import_ticket dawarich_client)
@@ -75,7 +75,7 @@ defmodule DawarichWeb.AchievementActions.Gate do
   def snapshot(actor, action, route, params, context) do
     context = pending(actor.id, action, context)
 
-    with true <- settings?(actor.settings, context.repo),
+    with true <- PublicCard.supported_settings?(actor.settings, context.repo),
          true <- input?(action, params),
          {:ok, state} <- snapshot_state(actor.id, action, route, context) do
       {:ok,
@@ -86,17 +86,6 @@ defmodule DawarichWeb.AchievementActions.Gate do
   rescue
     _ -> :handoff
   end
-
-  defp settings?(settings, repo) when is_map(settings) do
-    raw = settings["timezone"] || System.get_env("TIME_ZONE", "Europe/Berlin")
-
-    is_binary(raw) and
-      query(repo, "SELECT EXISTS(SELECT 1 FROM pg_timezone_names WHERE name=$1)", [
-        Dawarich.TimeZoneName.to_iana(raw)
-      ]) == [[true]]
-  end
-
-  defp settings?(_, _), do: false
 
   defp input?(:sharing, params),
     do: not Map.has_key?(params, "enabled") or params["enabled"] not in [nil, ""]
@@ -149,25 +138,8 @@ defmodule DawarichWeb.AchievementActions.Gate do
         [] -> %{}
       end
 
-    if state?(state), do: {:ok, state}, else: :handoff
+    if PublicCard.supported_state?(state), do: {:ok, state}, else: :handoff
   end
 
-  defp state?(state) when is_map(state) do
-    earned = Map.get(state, "earned", %{})
-    celebrated = Map.get(state, "celebrated", %{})
-
-    is_map(earned) and is_map(celebrated) and
-      Enum.all?(earned, fn {key, value} -> is_binary(key) and date?(value) end)
-  end
-
-  defp state?(_), do: false
-
-  defp date?(value) when is_binary(value) do
-    if value =~ ~r/\A\d{4}-\d{2}-\d{2}\z/,
-      do: match?({:ok, _}, Date.from_iso8601(value)),
-      else: match?({:ok, _, _}, DateTime.from_iso8601(value))
-  end
-
-  defp date?(_), do: false
   defp query(repo, sql, args), do: repo.query!(sql, args, log: false, prepare: :unnamed).rows
 end
