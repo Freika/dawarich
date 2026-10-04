@@ -41,7 +41,7 @@ defmodule Dawarich.Imports.GoogleRecords.Point do
     e in Value.Error -> raise ArgumentError, Exception.message(e)
   end
 
-  defp timestamp(value, context) do
+  def timestamp(value, context) do
     parsed = datetime(value, context)
 
     parsed =

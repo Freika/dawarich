@@ -5,6 +5,7 @@ require_relative 'normal_import_formats_support'
 require_relative 'normal_import_json_support'
 require_relative 'normal_import_photos_support'
 require_relative 'normal_import_records_support'
+require_relative 'normal_import_semantic_support'
 
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   include ActiveSupport::Testing::TimeHelpers
@@ -127,6 +128,21 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
           expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
           expect(prepared).to include('prepared_points', 'device_tags')
           NormalImportFormatsSupport.write(name, result.merge(prepared))
+        end
+      end
+    end
+  end
+
+  context 'Google Semantic History' do
+    it 'records Google Semantic History importer outcomes from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.google_semantic_cases.each do |name, bytes, zone|
+          stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !name.end_with?('_legacy'))
+          result = NormalImportFormatsSupport.capture_json(name, bytes, zone, 0, GoogleMaps::SemanticHistoryImporter)
+          expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
+          expect(result.fetch('import').fetch('raw_points')).to eq(0)
+          identities = { 'user_id' => 987_001, 'import_id' => 987_101 }
+          NormalImportFormatsSupport.write(name, result.merge('identities' => identities))
         end
       end
     end
