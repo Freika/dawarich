@@ -19,7 +19,8 @@ defmodule Dawarich.Tracks.BackfillWalks do
           ON CONFLICT (user_id) DO UPDATE SET walk_id = EXCLUDED.walk_id,
             cursor_timestamp = NULL, step_event_id = NULL, selected_start_timestamp = NULL,
             selected_end_timestamp = NULL, state = 'walking', expires_at = EXCLUDED.expires_at,
-            time_zone = EXCLUDED.time_zone, inserted_at = EXCLUDED.inserted_at, updated_at = EXCLUDED.updated_at
+          time_zone = EXCLUDED.time_zone, inserted_at = EXCLUDED.inserted_at, updated_at = EXCLUDED.updated_at,
+          legacy_cursor_pending = false
           WHERE stored.expires_at <= $3
           RETURNING #{@returning}
           """,

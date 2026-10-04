@@ -5,6 +5,17 @@ require 'rails_helper'
 RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
   let(:user) { create(:user) }
 
+  around do |example|
+    ActiveRecord::Base.transaction do
+      ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.track_backfill_walks')
+      PhoenixSchema.reset!
+      example.run
+      raise ActiveRecord::Rollback
+    end
+  ensure
+    PhoenixSchema.reset!
+  end
+
   before do
     Sidekiq.redis { |redis| redis.del(described_class.redis_key(user.id)) }
     ActiveJob::Base.queue_adapter.enqueued_jobs.clear

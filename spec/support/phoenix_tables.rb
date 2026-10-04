@@ -35,12 +35,15 @@ module PhoenixTables
   end.freeze
   TRACK_BACKFILL_SCHEDULE = 'ALTER TABLE phoenix.track_backfill_ranges ' \
                             'ADD COLUMN IF NOT EXISTS scheduled boolean NOT NULL DEFAULT true'
+  TRACK_BACKFILL_LEGACY = 'ALTER TABLE phoenix.track_backfill_walks ' \
+                          'ADD COLUMN IF NOT EXISTS legacy_cursor_pending boolean NOT NULL DEFAULT false'
   PHOENIX_STATE_TABLES = %w[once_claims leases achievement_checks track_backfill_ranges track_backfill_walks].freeze
 
   def self.install_state!
     connection = ActiveRecord::Base.connection
     ['CREATE SCHEMA IF NOT EXISTS phoenix', LEASES, ONCE_CLAIMS, ACHIEVEMENT_CHECKS, ACHIEVEMENT_CHECK_REVISIONS,
-     TRACK_BACKFILL_RANGES, TRACK_BACKFILL_WALKS, TRACK_BACKFILL_SCHEDULE, *TRACK_BACKFILL_INDEXES,
+     TRACK_BACKFILL_RANGES, TRACK_BACKFILL_WALKS, TRACK_BACKFILL_SCHEDULE, TRACK_BACKFILL_LEGACY,
+     *TRACK_BACKFILL_INDEXES,
      "TRUNCATE #{PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" }.join(', ')}"].each { connection.execute(_1) }
     PhoenixSchema.reset!
   end
@@ -71,6 +74,7 @@ module PhoenixTables
     ActiveRecord::Base.connection.execute(TRACK_BACKFILL_RANGES)
     ActiveRecord::Base.connection.execute(TRACK_BACKFILL_WALKS)
     ActiveRecord::Base.connection.execute(TRACK_BACKFILL_SCHEDULE)
+    ActiveRecord::Base.connection.execute(TRACK_BACKFILL_LEGACY)
     TRACK_BACKFILL_INDEXES.each { ActiveRecord::Base.connection.execute(_1) }
     PhoenixSchema.reset!
   end

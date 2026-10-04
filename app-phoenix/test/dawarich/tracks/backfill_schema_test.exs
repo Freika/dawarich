@@ -92,6 +92,10 @@ defmodule Dawarich.Tracks.BackfillSchemaTest do
       scratch_sql!(
         "ALTER TABLE phoenix.track_backfill_ranges ADD COLUMN IF NOT EXISTS scheduled boolean NOT NULL DEFAULT true"
       )
+
+      scratch_sql!(
+        "ALTER TABLE phoenix.track_backfill_walks ADD COLUMN IF NOT EXISTS legacy_cursor_pending boolean NOT NULL DEFAULT false"
+      )
     end
   end
 
