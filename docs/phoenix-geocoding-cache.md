@@ -69,5 +69,9 @@ mode. Named real-gem empty-body/status/timeout examples make two calls and pin r
 cache contents. ExUnit uses real ETS and the existing FakeHttp recorder to check
 bytes, TTL, eviction, query identity, limiter ordering and Redis independence.
 Existing resync/seedrun scripts and relevant Rails specs remain the local gates.
+The local merge checks passed: ExUnit seeds 404 and 202 each ran 6,377 tests with
+zero failures; scoped Rails ran 216 examples with zero failures. Two final oracle
+runs each passed 32 examples in default verification mode, including all 19 raw
+fixture byte assertions. RuboCop passed the four oracle paths with caching off.
 Browser stands, images, worker activation and release/upgrade checks are deferred
 to the controller mini lane; these tests grant no Redis service retirement.
