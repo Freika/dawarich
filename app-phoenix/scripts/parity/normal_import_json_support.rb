@@ -97,7 +97,8 @@ module NormalImportFormatsSupport
         allow_json_effects(effects)
         error = nil
         begin
-          importer.new(import, user.id, path.to_s).call
+          repeats = source == 14 && name.end_with?('_duplicate') ? 2 : 1
+          repeats.times { importer.new(import, user.id, path.to_s).call }
         rescue StandardError => e
           error = { 'class' => e.class.name, 'message' => e.message }
         end

@@ -3,6 +3,7 @@
 require 'rails_helper'
 require_relative 'normal_import_formats_support'
 require_relative 'normal_import_json_support'
+require_relative 'normal_import_photos_support'
 
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   include ActiveSupport::Testing::TimeHelpers
@@ -92,6 +93,21 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
         NormalImportFormatsSupport.mobile_photo_library_cases.each do |name, bytes, zone|
           stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !name.end_with?('_legacy'))
           result = NormalImportFormatsSupport.capture_json(name, bytes, zone, 15, MobilePhotoLibrary::Importer)
+          expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
+          expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
+          NormalImportFormatsSupport.write(name, result)
+        end
+      end
+    end
+  end
+
+  context 'Photos' do
+    it 'records photo importer outcomes from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.photos_cases.each do |name, bytes, source|
+          stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !name.end_with?('_legacy'))
+          importer = source == 14 ? GooglePhotos::Importer : Photos::Importer
+          result = NormalImportFormatsSupport.capture_json(name, bytes, 'UTC', source, importer)
           expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
           expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
           NormalImportFormatsSupport.write(name, result)

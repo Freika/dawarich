@@ -31,9 +31,14 @@ defmodule Dawarich.Test.NormalFormatsAssertions do
 
     select =
       Enum.map_join(columns, ",", fn
-        "lonlat" -> "ST_AsText(lonlat::geometry)"
-        key when key in ~w(altitude_decimal course course_accuracy) -> "trim_scale(#{key})::text"
-        key -> key
+        "lonlat" ->
+          "ST_AsText(lonlat::geometry)"
+
+        key when key in ~w(altitude_decimal course course_accuracy) ->
+          "CASE WHEN #{key}=trunc(#{key}) THEN trunc(#{key})::text||'.0' ELSE trim_scale(#{key})::text END"
+
+        key ->
+          key
       end)
 
     assert rows.("SELECT #{select} FROM points WHERE import_id=$1 ORDER BY id", [c.import.id]) ==
