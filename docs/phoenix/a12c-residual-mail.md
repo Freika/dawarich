@@ -4,6 +4,23 @@ Implementation is in progress on `feat/phoenix-a12c-mail`, starting at `0672ae88
 Acceptance is tests only; stand/browser/image acceptance is deferred to the controller mini lane.
 No mail ownership has changed. Auth mail is security-sensitive; no AFFiNE writes are made.
 
+## Source spec mapping
+
+| Retained Rails source spec | Native evidence |
+| --- | --- |
+| `spec/mailers/users_mailer_spec.rb` | `mail/residual_test.exs`, `mail/test_email_test.exs` |
+| `spec/mailers/family_mailer_spec.rb` | `mail/residual_test.exs`, `mail/location_request_worker_test.exs` |
+| `spec/mailers/devise_mailer_spec.rb` | `mail/devise_residual_test.exs`, existing `auth/recovery/mail_test.exs` |
+| `spec/mailers/users/digests_mailer_spec.rb` | `mail/digests/data_test.exs`, `render_test.exs`, `delivery_worker_test.exs` |
+| Monthly/yearly `spec/jobs/users/digests/*/email_sending_job_spec.rb` | `mail/digests/enqueue_test.exs`, `delivery_worker_test.exs`, Rails `mail_commands_spec.rb` |
+| `spec/helpers/users/digests_mailer_helper_spec.rb` | `mail/digests/charts_test.exs` |
+| `spec/requests/settings/general_spec.rb` | `dawarich_web/test_email_test.exs`, `residual_mail_ownership_test.exs` |
+| `spec/services/rails_commands/family_location_request_mail_spec.rb` | `mail/location_request_worker_test.exs`, `residual_commands_test.exs`, Rails `residual_mail_rollback_spec.rb` |
+| `spec/regressions/otp_lockout_email_rate_limit_spec.rb` | Remains source-owned; R1 callback/OTP capture and P2 zero-native-enqueue assertions characterize its boundary |
+
+All new named contracts have an independently observed named mutation failure and restored
+green run. The existing recovery retry regression remains unchanged. No source spec is deleted.
+
 ## Rails corpus
 
 The existing `app-phoenix/scripts/parity/explore_features_mail_spec.rb` captures deterministic
