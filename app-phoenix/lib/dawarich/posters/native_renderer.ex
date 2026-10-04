@@ -81,13 +81,16 @@ defmodule Dawarich.Posters.NativeRenderer do
       ])
 
     {:os_pid, pid} = Port.info(port, :os_pid)
-    deadline = System.monotonic_time(:millisecond) + Keyword.get(opts, :timeout_ms, @timeout)
+    timeout = Keyword.get(opts, :timeout_ms, @timeout)
 
     try do
+      if observer = opts[:on_spawn], do: observer.(port)
+      deadline = System.monotonic_time(:millisecond) + timeout
+
       case await(port, deadline, opts, "") do
         {0, _} -> :ok
         {status, output} -> raise Error, "Poster renderer failed (#{status}): #{output}"
-        :timeout -> raise Error, "Poster renderer timed out after #{div(@timeout, 1000)} seconds"
+        :timeout -> raise Error, "Poster renderer timed out after #{timeout} ms"
       end
     after
       cleanup(port, pid, opts)
