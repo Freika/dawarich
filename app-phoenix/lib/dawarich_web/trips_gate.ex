@@ -1,7 +1,7 @@
 defmodule DawarichWeb.TripsGate do
   @moduledoc false
 
-  alias Dawarich.{TripList, TripPage}
+  alias Dawarich.TripList
 
   def index?(conn, _params) do
     case Plug.Conn.Query.decode(conn.query_string)["page"] do
@@ -14,7 +14,16 @@ defmodule DawarichWeb.TripsGate do
   end
 
   def show?(conn, %{"id" => id}),
-    do: open?(conn, &match?({:ok, _}, TripPage.gate(&1, String.to_integer(id))))
+    do:
+      open?(
+        conn,
+        &Dawarich.Trips.ShowCalculation.admitted?(
+          Dawarich.Repo,
+          &1,
+          String.to_integer(id),
+          conn.assigns[:now] || DateTime.utc_now()
+        )
+      )
 
   def form?(conn, params) do
     DawarichWeb.LayoutAssigns.self_hosted?() and conn.query_string == "" and

@@ -136,9 +136,11 @@ defmodule Dawarich.TripPageTest do
     assert {:ok, %{recalculating: false}} = TripPage.load(user, 884_201, DateTime.add(@now, 3600))
   end
 
-  test "load agrees with the gate: an uncalculated trip is :rails" do
+  test "load admits an uncalculated trip as an empty read" do
     TripsSeeds.user!(8843)
     TripsSeeds.trip!(%{id: 884_301, user_id: 8843, path: nil})
-    assert TripPage.load(Dawarich.Accounts.get(8843), 884_301, @now) == :rails
+
+    assert {:ok, %{map_state: :empty, has_path: false, path_json: ""}} =
+             TripPage.load(Dawarich.Accounts.get(8843), 884_301, @now)
   end
 end

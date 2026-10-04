@@ -3,7 +3,6 @@ defmodule DawarichWeb.TripsLive.Show do
   use DawarichWeb, :live_view
 
   import DawarichWeb.Icon, only: [icon: 1]
-  import DawarichWeb.MapReplay, only: [replay_panel: 1]
   import DawarichWeb.PosterStudio, only: [poster_studio: 1]
   import DawarichWeb.TripDaysList, only: [trip_days: 1]
   import DawarichWeb.TripParts, only: [trip_header: 1, trip_toolbar: 1]
@@ -15,7 +14,14 @@ defmodule DawarichWeb.TripsLive.Show do
   @impl true
   def mount(%{"id" => id}, _session, socket) do
     with {trip_id, ""} <- Integer.parse(id),
-         {:ok, page} <- TripPage.load(socket.assigns.current_user, trip_id, socket.assigns.now) do
+         {:ok, page} <- TripPage.load(socket.assigns.current_user, trip_id, socket.assigns.now),
+         {:ok, _} <-
+           Dawarich.Trips.ShowCalculation.run(
+             Dawarich.Repo,
+             socket.assigns.current_user,
+             trip_id,
+             %{now: socket.assigns.now, connected: connected?(socket)}
+           ) do
       title = page.name |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
       title =
@@ -66,19 +72,7 @@ defmodule DawarichWeb.TripsLive.Show do
       >
         <div class="flex flex-col lg:flex-row gap-6 lg:h-[calc(100dvh-9.75rem)]">
           <div class="w-full lg:w-3/5 h-[50vh] lg:h-full shrink-0">
-            <div
-              class="w-full h-full rounded-lg overflow-hidden relative"
-              data-trip-maplibre-target="map"
-            >
-              <div
-                data-trip-maplibre-target="loadingIndicator"
-                class="absolute bottom-4 left-4 z-10 bg-base-100/80 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center gap-2 hidden"
-              >
-                <span class="loading loading-spinner loading-sm"></span>
-                <span class="text-sm">{t(@locale, "trips.show.loading_route_data", %{})}</span>
-              </div>
-              <.replay_panel locale={@locale} stimulus="trip-maplibre" show_day_nav />
-            </div>
+            <DawarichWeb.TripMapPanel.panel page={@page} locale={@locale} />
           </div>
           <div class="w-full lg:w-2/5 lg:h-full lg:overflow-y-auto">
             <.trip_header page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />

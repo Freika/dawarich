@@ -16,12 +16,11 @@ defmodule Dawarich.TripPage do
 
   @gate """
   SELECT z.name, s.sl, s.el, s.seconds, s.near_transition,
-         t.path IS NULL OR ST_IsEmpty(t.path) OR t.distance IS NULL
-           OR t.trip_source_id IS NOT NULL OR t.source_identifier IS NOT NULL
+         t.trip_source_id IS NOT NULL
            OR t.started_at < '1901-12-13 20:45:52'
            OR t.ended_at >= '2038-01-19 03:14:08'
-           OR NOT CASE WHEN jsonb_typeof(t.visited_countries) <> 'array' THEN false
-                       WHEN jsonb_array_length(t.visited_countries) = 0 THEN false
+           OR NOT CASE WHEN t.visited_countries IN ('null'::jsonb, '{}'::jsonb) THEN true
+                       WHEN jsonb_typeof(t.visited_countries) <> 'array' THEN false
                        ELSE NOT EXISTS (SELECT 1 FROM jsonb_array_elements(t.visited_countries) e
                                         WHERE jsonb_typeof(e) <> 'string') END
            OR EXISTS (SELECT 1 FROM planned_days x WHERE x.trip_id = t.id)
@@ -62,7 +61,9 @@ defmodule Dawarich.TripPage do
          EXISTS (SELECT 1 FROM shared_links s
                  WHERE s.resource_type = 0 AND s.resource_id = t.id AND s.revoked_at IS NULL
                    AND (s.expires_at IS NULL OR s.expires_at > $3::timestamp)),
-         (SELECT array_agg(ARRAY[ST_X(p.geom), ST_Y(p.geom)] ORDER BY p.path) FROM ST_DumpPoints(t.path) p)
+         CASE WHEN ST_IsEmpty(t.path) THEN ARRAY[]::float8[]
+              ELSE (SELECT array_agg(ARRAY[ST_X(p.geom), ST_Y(p.geom)] ORDER BY p.path) FROM ST_DumpPoints(t.path) p) END,
+         t.path IS NOT NULL AND NOT ST_IsEmpty(t.path), t.source_identifier
   FROM trips t WHERE t.id = $1
   """
 
@@ -74,13 +75,13 @@ defmodule Dawarich.TripPage do
   def load(user, trip_id, now) do
     with {:ok, gated} <- gate(user, trip_id),
          [row] <- Repo.query!(@trip, [trip_id, gated.zone, DateTime.to_naive(now)]).rows do
-      {:ok, page(user, trip_id, row, gated)}
+      {:ok, page(user, trip_id, row, gated, now)}
     else
       _ -> :rails
     end
   end
 
-  defp page(user, id, row, %{settings: settings, zone: zone, span: span} = gated) do
+  defp page(user, id, row, %{settings: settings, zone: zone, span: span} = gated, now) do
     [
       name,
       distance,
@@ -93,10 +94,24 @@ defmodule Dawarich.TripPage do
       to,
       recalculating,
       shared,
-      path
+      path,
+      has_path,
+      source_identifier
     ] = row
 
     day_data = TripDays.day_data(user.id, from, to, settings.minutes * 60, zone)
+
+    future =
+      Ruby.present?(source_identifier) and
+        NaiveDateTime.compare(started, DateTime.to_naive(now)) == :gt
+
+    state =
+      cond do
+        has_path -> :path
+        future -> :future
+        map_size(day_data.stats) == 0 -> :empty
+        true -> :calculating
+      end
 
     {duration, _borrowed} =
       TripDays.duration_parts(span.started_local, span.ended_local, span.previous_month_days)
@@ -105,7 +120,7 @@ defmodule Dawarich.TripPage do
       id: id,
       name: name,
       distance: distance,
-      countries: Enum.sort(countries),
+      countries: if(is_list(countries), do: Enum.sort(countries), else: []),
       flags: CountryNames.table(),
       settings: settings,
       api_key: user.api_key,
@@ -116,7 +131,9 @@ defmodule Dawarich.TripPage do
       duration: duration,
       recalculating: recalculating,
       shared: shared,
-      path_json: IO.iodata_to_binary(Ruby.json(path)),
+      path_json: if(path, do: IO.iodata_to_binary(Ruby.json(path)), else: ""),
+      has_path: has_path,
+      map_state: state,
       windows_json: day_data.windows_json,
       days: days(first_day, last_day, day_data.stats, notes(id)),
       description: gated.description,

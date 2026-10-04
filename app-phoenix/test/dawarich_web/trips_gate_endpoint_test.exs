@@ -160,7 +160,7 @@ defmodule DawarichWeb.TripsGateEndpointTest do
 
       send_raw(
         client,
-        "POST #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\nAccept: #{accept}\r\n" <>
+        "POST #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\nAccept: #{accept}\r\nX-Dawarich-Client: legacy-web\r\n" <>
           "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n" <>
           body
       )
