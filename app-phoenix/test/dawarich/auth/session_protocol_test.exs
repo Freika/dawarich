@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.SessionProtocolTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   alias Dawarich.Auth.{ActionCsrf, SessionCookie}
   alias Dawarich.RailsCookies
 
@@ -7,6 +7,45 @@ defmodule Dawarich.Auth.SessionProtocolTest do
   @guest @fixture["csrf_guest"]["decoded"]["session"]
   @secret "phoenix-a2-cookie-fixture-secret-not-for-production"
   @now ~U[2026-10-01 16:00:00Z]
+
+  test "API management protocol preserves storage without issuing a session" do
+    path =
+      "/private/tmp/claude-501/-Users-frey-projects-dawarich/aead0408-a470-4709-ab5c-b8e98304817c/scratchpad/a4otp-protocol-test.json"
+
+    refute File.exists?(path)
+    args = System.argv()
+
+    env = %{
+      "OTP_ENCRYPTION_PRIMARY_KEY" => "a4otp-synthetic-primary-not-for-production",
+      "OTP_ENCRYPTION_DETERMINISTIC_KEY" => "a4otp-synthetic-deterministic-not-for-production",
+      "OTP_ENCRYPTION_KEY_DERIVATION_SALT" => "a4otp-synthetic-salt-not-for-production"
+    }
+
+    previous = Map.new(env, fn {key, _} -> {key, System.get_env(key)} end)
+    File.write!(path, "", [:exclusive])
+    File.chmod!(path, 0o600)
+
+    try do
+      System.put_env(env)
+      System.argv([path, "api_two_factor_management"])
+      Code.eval_file("test/support/auth/emit_protocol.exs")
+      payload = path |> File.read!() |> Jason.decode!()
+      assert payload["mode"] == "api_two_factor_management"
+      assert payload["schema"] == 1
+      assert payload["summary"] == "API storage only; no session issued"
+      assert length(payload["actors"]) == 3
+      refute Enum.any?(Map.keys(payload), &(&1 in ~w(sessions cookie token remember form_token)))
+      assert Enum.map(payload["actors"], & &1["id"]) == [954_801, 954_802, 954_803]
+      assert Enum.all?(payload["actors"], &is_map(&1["disabled"]))
+    after
+      File.rm!(path)
+      System.argv(args)
+
+      Enum.each(previous, fn {key, value} ->
+        if value, do: System.put_env(key, value), else: System.delete_env(key)
+      end)
+    end
+  end
 
   test "management protocol retains Warden identity and Rails OTP consumption projections" do
     alias Dawarich.Auth.TwoFactor.{BackupCodes, Totp}
