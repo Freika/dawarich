@@ -9,6 +9,8 @@ require_relative 'normal_import_semantic_support'
 require_relative 'normal_import_phone_support'
 require_relative 'normal_import_kml_support'
 require_relative 'normal_import_create_support'
+require_relative 'normal_import_producers_support'
+require_relative 'normal_import_sync_producers_support'
 require_relative 'normal_import_tcx_support'
 require_relative 'normal_import_fit_support'
 require_relative '../../../spec/support/fit_fixture_helper'
@@ -16,6 +18,55 @@ require_relative '../../../spec/support/fit_fixture_helper'
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   include ActiveSupport::Testing::TimeHelpers
   self.use_transactional_tests = false
+
+  it 'records integration producers and scheduler effects' do
+    travel_to Time.utc(2026, 1, 15, 23, 30) do
+      results = NormalImportFormatsSupport.capture_producers
+      results.each do |provider, cases|
+        FileUtils.mkdir_p(NormalImportFormatsSupport::DIR.join('producers', provider))
+        cases.each { |name, value| NormalImportFormatsSupport.write("producers/#{provider}/#{name}", value) }
+      end
+      expect(results.keys).to eq(%w[immich photoprism watcher stale teslamate trek])
+      %w[immich photoprism].each do |provider|
+        expect(results.fetch(provider).fetch('success').fetch('error')).to be_nil
+        row = results.fetch(provider).fetch('success').fetch('imports').first
+        expect(row.fetch('source')).to eq("#{provider}_api")
+        expect(row.fetch('file').fetch('content_type')).to eq('application/json')
+        expected_bytes = '[{"latitude":51.3,"longitude":12.4,"lonlat":"SRID=4326;POINT(12.4 51.3)",' \
+                         '"timestamp":1768519800}]'
+        expect(row.fetch('file').fetch('bytes')).to eq(NormalImportFormatsSupport.byte_value(expected_bytes))
+        expect(results.fetch(provider).fetch('duplicate').fetch('notifications').size).to eq(1)
+        expect(results.fetch(provider).fetch('empty').fetch('imports')).to eq([])
+        expect(results.fetch(provider).fetch('auth').fetch('imports')).to eq([])
+        expect(results.fetch(provider).fetch('transport').fetch('error').fetch('class')).to eq('Net::ReadTimeout')
+        expect(results.fetch(provider).fetch('quota').fetch('error').fetch('class')).to eq('ActiveRecord::RecordInvalid')
+      end
+      expect(results.fetch('watcher').fetch('duplicate').fetch('imports').map { |row| row.fetch('name') })
+        .to eq(['synthetic.csv'])
+      expect(results.fetch('watcher').fetch('cloud').fetch('imports')).to eq([])
+      %w[success monitor_failure].each do |name|
+        expect(results.fetch('stale').fetch(name).fetch('imports').map { |row| row.fetch('status') })
+          .to eq(%w[failed processing])
+      end
+      point = results.fetch('teslamate').fetch('success').fetch('points').first
+      expect(point).to include('lonlat' => 'POINT(12.4 51.3)', 'velocity' => '4.4704', 'battery' => 80)
+      expect(results.fetch('teslamate').fetch('duplicate').fetch('points')).to eq([point])
+      expect(results.fetch('teslamate').fetch('quota').fetch('points')).to eq([])
+      expect(results.fetch('teslamate').fetch('incomplete').fetch('error').fetch('class'))
+        .to eq('TeslaMate::Sync::IncompleteError')
+      expect(results.fetch('trek').fetch('success').fetch('result').fetch('error')).to be_nil
+      expect(results.fetch('trek').fetch('success').fetch('result').fetch('trips').first.fetch('source_status'))
+        .to eq('active')
+      expect(results.fetch('trek').fetch('stopped').fetch('result').fetch('trips').first.fetch('source_status'))
+        .to eq('stopped')
+      expect(results.fetch('trek').fetch('unauthorized').fetch('result').fetch('source').fetch('status'))
+        .to eq('disabled')
+      expect(results.fetch('trek').fetch('disconnected').fetch('requests')).to eq([])
+      continuation = results.fetch('trek').fetch('continuation').fetch('jobs')
+                            .find { |job| job.fetch('type') == 'Trek::ImportTripsJob' }
+      expect(continuation.fetch('args').last).to eq(100)
+    end
+  end
 
   it 'records the importer result independently of the native adapter' do
     %w[UTC Europe/Berlin America/New_York].each do |zone|
