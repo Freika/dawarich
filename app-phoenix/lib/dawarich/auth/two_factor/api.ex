@@ -30,6 +30,9 @@ defmodule Dawarich.Auth.TwoFactor.Api do
 
   defp dispatch(:backup_codes, user, _params, context), do: ApiWrite.backup_codes(user, context)
 
+  defp dispatch(:destroy, user, params, context),
+    do: ApiWrite.destroy(user, params["otp_code"], context)
+
   defp error(status, reason), do: {:ok, status, {:object, [{"error", reason}]}}
 
   defp error(status, reason, key),

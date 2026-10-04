@@ -68,7 +68,7 @@ defmodule Dawarich.Auth.TwoFactor.Management do
 
   defp valid_password?(_, _), do: false
 
-  defp consume(user, secret, code, context) do
+  def consume(user, secret, code, context) do
     case Totp.verify(secret, code, DateTime.to_unix(clock(context)), user.consumed_timestep) do
       {:ok, timestep} ->
         {:ok, persist(user, %{consumed_timestep: timestep}, context)}

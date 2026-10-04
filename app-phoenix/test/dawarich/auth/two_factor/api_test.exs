@@ -1,3 +1,16 @@
+defmodule Dawarich.Auth.TwoFactor.ApiTest.SecondSaveFailure do
+  alias Dawarich.Repo
+  defdelegate one(query, opts), to: Repo
+  defdelegate query!(sql, params, opts), to: Repo
+  defdelegate transaction(fun, opts), to: Repo
+
+  def update!(changeset, opts) do
+    if Map.has_key?(changeset.changes, :otp_secret) and is_nil(changeset.changes.otp_secret),
+      do: raise("synthetic API clear-save failure"),
+      else: Repo.update!(changeset, opts)
+  end
+end
+
 defmodule Dawarich.Auth.TwoFactor.ApiTest do
   use ExUnit.Case, async: false
   alias Dawarich.Auth.Account
@@ -229,6 +242,177 @@ defmodule Dawarich.Auth.TwoFactor.ApiTest do
 
       assert Map.drop(snapshot(c.id), ~w(otp_backup_codes updated_at)) ==
                Map.drop(before, ~w(otp_backup_codes updated_at))
+    end
+  end
+
+  test "API disable rejects wrong password without spending a usable code", c do
+    secret = Totp.generate_secret(:binary.copy(<<4>>, 20))
+    {:ok, ciphertext} = Secret.encrypt(secret, @env)
+    {:ok, codes, hashes} = BackupCodes.generate()
+    seed(c.id, otp_secret: ciphertext, otp_required_for_login: true, otp_backup_codes: hashes)
+    code = Totp.at(secret, DateTime.to_unix(@now))
+
+    for password <- [nil, "", "wrong"], candidate <- [code, hd(codes)] do
+      seed(c.id,
+        otp_secret: ciphertext,
+        otp_required_for_login: true,
+        otp_backup_codes: hashes,
+        consumed_timestep: nil
+      )
+
+      before = snapshot(c.id)
+
+      assert {:ok, 401,
+              {:object,
+               [{"error", "password_required"}, {"message", "Provide your current password."}]}} =
+               Api.run(
+                 :destroy,
+                 c.id,
+                 %{"password" => password, "otp_code" => candidate},
+                 c.context
+               )
+
+      assert snapshot(c.id) == before
+      assert {:ok, _} = Totp.verify(secret, code, DateTime.to_unix(@now))
+      assert {:ok, _} = BackupCodes.consume(Repo.get!(Account, c.id).otp_backup_codes, hd(codes))
+
+      assert {:ok, 200, _} =
+               Api.run(
+                 :destroy,
+                 c.id,
+                 %{"password" => "safepassword12", "otp_code" => candidate},
+                 c.context
+               )
+    end
+  end
+
+  test "API disable consumes TOTP or one backup then clears to an empty array", c do
+    secret = Totp.generate_secret(:binary.copy(<<4>>, 20))
+    {:ok, ciphertext} = Secret.encrypt(secret, @env)
+    {:ok, codes, hashes} = BackupCodes.generate()
+    now = DateTime.to_unix(@now)
+    current = Totp.at(secret, now)
+
+    seed(c.id,
+      otp_secret: ciphertext,
+      otp_required_for_login: true,
+      otp_backup_codes: hashes,
+      consumed_timestep: div(now, 30)
+    )
+
+    for candidate <- [nil, "", " ", "bad", current] do
+      before = snapshot(c.id)
+
+      assert {:ok, 401,
+              {:object,
+               [
+                 {"error", "otp_required"},
+                 {"message", "Provide a valid two-factor code (or backup code) to disable 2FA."}
+               ]}} =
+               Api.run(
+                 :destroy,
+                 c.id,
+                 %{"password" => "safepassword12", "otp_code" => candidate},
+                 c.context
+               )
+
+      assert snapshot(c.id) == before
+    end
+
+    for {candidate, timestep} <- [
+          {" " <> current <> " ", div(now, 30)},
+          {Totp.at(secret, now - 30), div(now, 30) - 1},
+          {Totp.at(secret, now + 30), div(now, 30) + 1},
+          {hd(codes), nil}
+        ] do
+      seed(c.id,
+        otp_secret: ciphertext,
+        otp_required_for_login: true,
+        otp_backup_codes: hashes,
+        consumed_timestep: nil
+      )
+
+      before = snapshot(c.id)
+
+      assert {:ok, 200, {:object, [{"message", "Two-factor authentication disabled"}]}} =
+               Api.run(
+                 :destroy,
+                 c.id,
+                 %{"password" => "safepassword12", "otp_code" => candidate},
+                 c.context
+               )
+
+      user = Repo.get!(Account, c.id)
+      assert is_nil(user.otp_secret) and user.otp_required_for_login == false
+      assert user.otp_backup_codes == []
+      assert user.consumed_timestep == timestep
+
+      assert Map.drop(
+               snapshot(c.id),
+               ~w(otp_secret otp_required_for_login otp_backup_codes consumed_timestep updated_at)
+             ) ==
+               Map.drop(
+                 before,
+                 ~w(otp_secret otp_required_for_login otp_backup_codes consumed_timestep updated_at)
+               )
+
+      after_row = snapshot(c.id)
+
+      assert {:ok, 401, _} =
+               Api.run(
+                 :destroy,
+                 c.id,
+                 %{"password" => "safepassword12", "otp_code" => candidate},
+                 c.context
+               )
+
+      assert snapshot(c.id) == after_row
+    end
+  end
+
+  test "API disable keeps consumption when the clear save fails", c do
+    secret = Totp.generate_secret(:binary.copy(<<4>>, 20))
+    {:ok, ciphertext} = Secret.encrypt(secret, @env)
+    {:ok, codes, hashes} = BackupCodes.generate()
+    code = Totp.at(secret, DateTime.to_unix(@now))
+
+    for kind <- [:totp, :backup] do
+      seed(c.id,
+        otp_secret: ciphertext,
+        otp_required_for_login: true,
+        otp_backup_codes: hashes,
+        consumed_timestep: nil,
+        updated_at: DateTime.add(@now, -86_400)
+      )
+
+      before = snapshot(c.id)
+      candidate = if kind == :totp, do: code, else: hd(codes)
+      context = Map.put(c.context, :repo, __MODULE__.SecondSaveFailure)
+
+      assert_raise RuntimeError, "synthetic API clear-save failure", fn ->
+        Api.run(
+          :destroy,
+          c.id,
+          %{"password" => "safepassword12", "otp_code" => candidate},
+          context
+        )
+      end
+
+      user = Repo.get!(Account, c.id)
+      assert user.otp_secret == ciphertext and user.otp_required_for_login
+      assert user.updated_at == @now
+
+      if kind == :totp do
+        assert user.consumed_timestep == div(DateTime.to_unix(@now), 30)
+        assert user.otp_backup_codes == hashes
+      else
+        assert user.consumed_timestep == nil
+        assert length(user.otp_backup_codes) == 9
+        assert BackupCodes.consume(user.otp_backup_codes, candidate) == :invalid
+      end
+
+      assert Map.drop(snapshot(c.id), ~w(consumed_timestep otp_backup_codes updated_at)) ==
+               Map.drop(before, ~w(consumed_timestep otp_backup_codes updated_at))
     end
   end
 end

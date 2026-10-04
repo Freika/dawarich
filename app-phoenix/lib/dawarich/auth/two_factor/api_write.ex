@@ -1,7 +1,8 @@
 defmodule Dawarich.Auth.TwoFactor.ApiWrite do
   @moduledoc false
-  alias Dawarich.Auth.TwoFactor.{BackupCodes, Secret, Totp}
-  alias Dawarich.Repo
+  alias Dawarich.Auth.Recovery.Token
+  alias Dawarich.Auth.TwoFactor.{BackupCodes, Management, Secret, Totp}
+  alias Dawarich.{I18n, Repo}
 
   def setup(user, context) do
     secret =
@@ -39,6 +40,35 @@ defmodule Dawarich.Auth.TwoFactor.ApiWrite do
     persist(user, %{otp_backup_codes: hashes}, context)
     {:ok, 200, {:object, [{"backup_codes", codes}]}}
   end
+
+  def destroy(user, code, context) do
+    {:ok, secret} =
+      Secret.decrypt(user.otp_secret, Map.get_lazy(context, :env, &System.get_env/0))
+
+    consumed =
+      if Token.blank?(code), do: :invalid, else: Management.consume(user, secret, code, context)
+
+    case consumed do
+      {:ok, user} ->
+        persist(
+          user,
+          %{otp_secret: nil, otp_required_for_login: false, otp_backup_codes: []},
+          context
+        )
+
+        {:ok, 200, {:object, [{"message", message("two_factor_authentication_disabled")}]}}
+
+      :invalid ->
+        {:ok, 401,
+         {:object,
+          [
+            {"error", "otp_required"},
+            {"message", message("provide_a_valid_two_factor_code_or_backup_code_to")}
+          ]}}
+    end
+  end
+
+  defp message(key), do: I18n.en!("controllers.api.v1.users.two_factor." <> key)
 
   defp persist(user, changes, context) do
     changes = Map.put(changes, :updated_at, Map.get(context, :clock, &DateTime.utc_now/0).())
