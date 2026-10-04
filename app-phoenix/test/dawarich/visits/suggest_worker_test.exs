@@ -136,11 +136,9 @@ defmodule Dawarich.Visits.SuggestWorkerTest do
 
     assert effects(actual_place_keys())["reverse_geocode_place_ids"] == [fresh_place_id]
 
-    ScratchRepo.query!(
-      "TRUNCATE users, points, visits, places, place_visits, tags, taggings, notes, " <>
-        "phoenix.rails_commands, instance_settings RESTART IDENTITY CASCADE",
-      [],
-      log: false
+    Dawarich.FixtureCleanup.delete!(
+      ScratchRepo,
+      ~w(users  points  visits  places  place_visits  tags  taggings  notes  phoenix.rails_commands  instance_settings)
     )
 
     disabled = load_visits!("suggest_geocoding_disabled")

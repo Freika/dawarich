@@ -139,7 +139,7 @@ module PlacesGoldenSupport
     oracle = ApiPlacesGoldenOracle
     user = { status: 1, timezone: 'UTC' }.merge(kase[:user] || {})
     stamps = { created_at: oracle::STAMP, updated_at: oracle::STAMP }
-    places_sql('TRUNCATE places CASCADE')
+    FixtureCleanup.delete!(%w[places])
     places_insert('users', id: oracle::OWNER, email: 'places-owner@example.invalid', api_key: oracle::KEY,
                            status: user[:status], settings: { 'timezone' => user[:timezone] },
                            visits_redetected_at: oracle::STAMP, **stamps)

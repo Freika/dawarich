@@ -172,7 +172,7 @@ defmodule DawarichWeb.AchievementsGateEndpointTest do
     )
   end
 
-  test "a write goes to Puma", ctx do
+  test "unsupported achievement writes go to Puma", ctx do
     port = serve()
 
     for method <- ~w(POST PATCH PUT DELETE) do

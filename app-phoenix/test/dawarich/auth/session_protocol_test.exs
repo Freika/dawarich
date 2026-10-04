@@ -8,6 +8,157 @@ defmodule Dawarich.Auth.SessionProtocolTest do
   @secret "phoenix-a2-cookie-fixture-secret-not-for-production"
   @now ~U[2026-10-01 16:00:00Z]
 
+  test "web OTP protocol carries source pending and completed projections across runtimes" do
+    alias Dawarich.Auth.Otp.Pending
+    source = File.read!("test/fixtures/auth/otp/requests.json") |> Jason.decode!()
+    row = source["start_en"]["session"]
+    before = Map.merge(@guest, %{"locale" => "en", "otp_failed_attempts" => 3})
+    pending = Pending.start(before, row["otp_user_id"], "1", row["otp_challenge_at"])
+    assert Pending.valid(pending, row["otp_challenge_at"]) == {:ok, row["otp_user_id"], true}
+
+    for key <- ~w(locale otp_user_id otp_challenge_at otp_remember_me otp_failed_attempts) do
+      assert pending[key] == row[key], key
+    end
+
+    user = @fixture["login"]["user"]
+    actor = %{id: user["id"], encrypted_password: user["encrypted_password"]}
+    notice = source["totp_remember"]["session"]["flash"]["flashes"]["notice"]
+    {completed, cookie} = SessionCookie.for_otp_login(pending, actor, notice, @secret)
+    assert RailsCookies.decrypt(cookie, "_dawarich_session", @secret, @now) == {:ok, completed}
+
+    for key <- ~w(otp_user_id otp_challenge_at otp_remember_me otp_failed_attempts) do
+      refute Map.has_key?(completed, key)
+    end
+
+    assert completed["flash"] == source["totp_remember"]["session"]["flash"]
+    assert completed["_csrf_token"] == pending["_csrf_token"]
+  end
+
+  test "OTP pending and completed cookies match source session and remember semantics" do
+    alias Dawarich.Auth.{Otp.Pending, RememberCookie}
+    source = File.read!("test/fixtures/auth/otp/requests.json") |> Jason.decode!()
+    Code.ensure_loaded!(SessionCookie)
+    assert function_exported?(SessionCookie, :for_otp_login, 4)
+    user = @fixture["login"]["user"]
+    user = %{id: user["id"], encrypted_password: user["encrypted_password"]}
+
+    extra = %{
+      "otp_failed_attempts" => 2,
+      "locale" => "en",
+      "user_return_to" => "/trips",
+      "devise.synthetic" => "discarded",
+      "warden.user.user.session" => %{"last_request_at" => 42}
+    }
+
+    before = Map.merge(@guest, extra)
+    pending = Pending.start(before, user.id, "1", 1_791_115_200)
+    {pending, pending_cookie} = SessionCookie.for_form(pending, @secret)
+    anonymous = not Map.has_key?(pending, "warden.user.user.key")
+    assert anonymous
+    assert pending["session_id"] == before["session_id"]
+    same_csrf = pending["_csrf_token"] == before["_csrf_token"]
+    assert same_csrf
+
+    pending_roundtrip =
+      RailsCookies.decrypt(pending_cookie, "_dawarich_session", @secret, @now) == {:ok, pending}
+
+    assert pending_roundtrip
+    action = DawarichWeb.RailsCsrf.masked_form_token(pending, "/users/otp_challenge", "POST")
+    assert ActionCsrf.valid?(pending, action, "POST", "/users/otp_challenge")
+    refute ActionCsrf.valid?(pending, action, "POST", "/users/sign_in")
+
+    notice = source["totp"]["session"]["flash"]["flashes"]["notice"]
+    {completed, cookie} = SessionCookie.for_otp_login(pending, user, notice, @secret)
+
+    completed_roundtrip =
+      RailsCookies.decrypt(cookie, "_dawarich_session", @secret, @now) == {:ok, completed}
+
+    assert completed_roundtrip
+
+    assert Map.keys(completed) --
+             ~w(session_id _csrf_token locale flash warden.user.user.key warden.user.user.session) ==
+             []
+
+    for {key, retained} <- source["totp"]["retained"] do
+      matches = completed[key] == pending[key]
+      assert matches == retained, key
+    end
+
+    identity =
+      completed["warden.user.user.key"] == [
+        [user.id],
+        binary_part(user.encrypted_password, 0, 29)
+      ]
+
+    assert identity
+    assert completed["warden.user.user.session"] == extra["warden.user.user.session"]
+    assert completed["flash"] == source["totp"]["session"]["flash"]
+
+    inherited =
+      Map.put(pending, "flash", %{
+        "discard" => ["alert"],
+        "flashes" => %{"alert" => "discarded", "warning" => "retained"}
+      })
+
+    {flashed, _} = SessionCookie.for_otp_login(inherited, user, notice, @secret)
+    assert flashed["flash"] == %{"discard" => [], "flashes" => %{"notice" => notice}}
+
+    payload = [
+      [user.id],
+      binary_part(user.encrypted_password, 0, 29),
+      Dawarich.Accounts.remember_generated_at(@now)
+    ]
+
+    remember =
+      RememberCookie.sign(payload, @secret, DateTime.add(@now, Dawarich.Accounts.remember_for()))
+
+    remembered =
+      RailsCookies.verify(remember, "remember_user_token", @secret, @now) == {:ok, payload}
+
+    assert remembered
+
+    assert_raise DawarichWeb.RailsSession.Overflow, fn ->
+      SessionCookie.for_otp_login(
+        Map.put(pending, "oversize", String.duplicate("x", 5000)),
+        user,
+        notice,
+        @secret
+      )
+    end
+  end
+
+  test "API management protocol preserves storage without issuing a session" do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+
+    path =
+      Path.join(System.tmp_dir!(), "a4otp-protocol-#{System.unique_integer([:positive])}.json")
+
+    refute File.exists?(path)
+
+    env = %{
+      "OTP_ENCRYPTION_PRIMARY_KEY" => "a4otp-synthetic-primary-not-for-production",
+      "OTP_ENCRYPTION_DETERMINISTIC_KEY" => "a4otp-synthetic-deterministic-not-for-production",
+      "OTP_ENCRYPTION_KEY_DERIVATION_SALT" => "a4otp-synthetic-salt-not-for-production"
+    }
+
+    File.write!(path, "", [:exclusive])
+    File.chmod!(path, 0o600)
+
+    try do
+      Dawarich.Auth.ApiProtocol.write(path, env)
+      payload = path |> File.read!() |> Jason.decode!()
+      assert payload["mode"] == "api_two_factor_management"
+      assert payload["schema"] == 1
+      assert payload["summary"] == "API storage only; no session issued"
+      assert length(payload["actors"]) == 3
+      refute Enum.any?(Map.keys(payload), &(&1 in ~w(sessions cookie token remember form_token)))
+      assert Enum.map(payload["actors"], & &1["id"]) == [954_801, 954_802, 954_803]
+      assert Enum.all?(payload["actors"], &is_map(&1["disabled"]))
+    after
+      File.rm(path)
+    end
+  end
+
   test "management protocol retains Warden identity and Rails OTP consumption projections" do
     alias Dawarich.Auth.TwoFactor.{BackupCodes, Totp}
     corpus = File.read!("test/fixtures/auth/two_factor/requests.json") |> Jason.decode!()

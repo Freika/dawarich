@@ -95,6 +95,7 @@ RSpec.describe JobHealth do
 
   it 'reports no reverse-outbox gauge before Phoenix migrated its tables' do
     connection = ActiveRecord::Base.connection
+    connection.execute('DROP TABLE phoenix.rails_commands_dead')
     connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
     job_control = Rails.root.join('app-phoenix/priv/repo/sql/20260927120100_job_control.sql')
     File.read(job_control).split(";\n").map(&:strip).reject(&:empty?).each { connection.execute(_1) }

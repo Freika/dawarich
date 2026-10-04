@@ -9,7 +9,7 @@ defmodule Dawarich.AirTrail.ImportFlightsWorkerTest do
   alias Dawarich.Jobs.Processed
 
   setup do
-    rows("TRUNCATE public.flights, public.notifications RESTART IDENTITY CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(public.flights  public.notifications))
     :ok
   end
 

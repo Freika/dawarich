@@ -63,7 +63,7 @@ defmodule Dawarich.Mail.FamilyInvitationWorkerTest do
     refute_received {:mail, _}
     assert rows("SELECT count(*) FROM phoenix.delivery_claims") == [[0]]
 
-    rows("TRUNCATE families CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(families))
     no_account = invitation!(inviter)
     assert perform_job(FamilyInvitationWorker, args(no_account)) == :ok
     assert_received {:mail, %{to: @invitee} = mail}
@@ -72,7 +72,7 @@ defmodule Dawarich.Mail.FamilyInvitationWorkerTest do
     assert mail.html =~ ~s(href="https://invite.example.test/family/invitations/invite-token-1")
     assert mail.text =~ "inviter@example.test"
 
-    rows("TRUNCATE families CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(families))
     recipient = user!(@invitee, %{"locale" => "fr"})
     with_account = invitation!(inviter)
     assert perform_job(FamilyInvitationWorker, args(with_account)) == :ok
@@ -80,7 +80,7 @@ defmodule Dawarich.Mail.FamilyInvitationWorkerTest do
     assert {:ok, mail.subject} == subject("fr")
 
     rows("UPDATE users SET settings = '{}' WHERE id = ANY($1)", [[inviter, recipient]])
-    rows("TRUNCATE families CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(families))
     neither = invitation!(inviter)
     assert perform_job(FamilyInvitationWorker, args(neither)) == :ok
     assert_received {:mail, mail}
@@ -106,7 +106,7 @@ defmodule Dawarich.Mail.FamilyInvitationWorkerTest do
     assert_received {:mail, %{message_id: first}}
     assert first =~ ~r/\A<[0-9a-f]{64}@invite\.example\.test>\z/
 
-    rows("TRUNCATE phoenix.delivery_claims")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.delivery_claims))
     rows("UPDATE family_invitations SET token = 'invite-token-2' WHERE id = $1", [invitation_id])
 
     assert perform_job(FamilyInvitationWorker, args(invitation_id)) == :ok

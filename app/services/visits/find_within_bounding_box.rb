@@ -36,7 +36,7 @@ module Visits
       # ended_at predicate silently drops boundary-crossing visits.
       relation = relation.where(started_at: start_at..end_at) if start_at && end_at
 
-      relation.order(started_at: :desc)
+      relation.order(started_at: :desc, id: :asc)
     end
 
     private

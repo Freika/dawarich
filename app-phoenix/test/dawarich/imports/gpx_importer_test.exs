@@ -94,7 +94,7 @@ defmodule Dawarich.Imports.GpxImporterTest do
   test "repeat import preserves metadata and records conflicts across batches", c do
     File.write!(c.path, document(1001))
     run(c)
-    rows("TRUNCATE phoenix.rails_commands")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.rails_commands))
     rows("UPDATE points SET altitude=77 WHERE import_id=$1", [c.import.id])
     assert :ok == run(c)
     assert [[2002, 1001, 0, _]] = counters(c)

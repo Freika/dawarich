@@ -110,6 +110,30 @@ defmodule DawarichWeb.MapLiveTest do
       on_exit(fn -> System.delete_env("JWT_SECRET_KEY") end)
     end
 
+    test "the map page retains the ActionCable URL and realtime values", %{user: user} do
+      for live_mode <- [true, false], path <- ["/map", "/map/v2"] do
+        Repo.query!("UPDATE users SET settings = settings || $1::jsonb WHERE id = $2", [
+          %{"live_map_enabled" => live_mode},
+          user.id
+        ])
+
+        html = RailsUser.signed_in(user.id) |> get(path) |> html_response(200)
+        doc = LazyHTML.from_document(html)
+
+        assert LazyHTML.attribute(LazyHTML.query(doc, "meta[name='action-cable-url']"), "content") ==
+                 ["/cable"]
+
+        {:ok, view, _html} = live_as(user, path)
+        root = "#maps-maplibre-container[data-controller~='maps--maplibre-realtime']"
+        assert has_element?(view, "#{root}[data-maps--maplibre-realtime-enabled-value='true']")
+
+        assert has_element?(
+                 view,
+                 "#{root}[data-maps--maplibre-realtime-live-mode-value='#{live_mode}']"
+               )
+      end
+    end
+
     test "the map root carries Rails' values", %{user: user} do
       Repo.query!(
         "UPDATE users SET settings = settings || '{\"live_map_enabled\": false}' WHERE id = $1",

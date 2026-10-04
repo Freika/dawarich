@@ -17,7 +17,7 @@ defmodule Dawarich.Imports.Kml do
         for kind <- [:placemark, :track] do
           dir
           |> Path.join(Atom.to_string(kind))
-          |> Spool.stream([:raw])
+          |> Spool.stream([:raw, read_ahead: 65_536])
           |> Enum.each(fn file ->
             Points.reduce(file, kind, import, context, fn attrs -> Spool.write!(io, attrs) end)
           end)
@@ -26,7 +26,7 @@ defmodule Dawarich.Imports.Kml do
 
       {batch, progress} =
         prepared
-        |> Spool.stream([:raw])
+        |> Spool.stream([:raw, read_ahead: 65_536])
         |> Enum.reduce(
           {NormalBatch.new(import, context, :non_atomic), %{at: nil, index: nil}},
           fn attrs, {batch, progress} ->

@@ -7,7 +7,7 @@ defmodule Dawarich.VisitsApi.MergeBulkTest do
   @stamp ~N[2026-09-01 12:00:00.000000]
 
   setup do
-    rows("TRUNCATE places,visits CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(places visits))
 
     ScratchRepo.insert_all("users", [
       %{

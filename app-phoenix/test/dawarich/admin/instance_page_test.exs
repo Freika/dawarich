@@ -5,7 +5,7 @@ defmodule Dawarich.Admin.InstancePageTest do
   alias Dawarich.Admin.InstancePage
 
   setup do
-    ScratchRepo.query!("TRUNCATE instance_settings, service_settings", [], log: false)
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(instance_settings  service_settings))
     :ok
   end
 

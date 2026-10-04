@@ -351,8 +351,7 @@ RSpec.describe 'Phoenix fixture: golden ingestion requests', type: :request do
   end
 
   def clear_phoenix_effects!
-    tables = PhoenixTables::PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" }.join(', ')
-    ActiveRecord::Base.connection.execute("TRUNCATE #{tables}")
+    FixtureCleanup.delete!(PhoenixTables::PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" })
   end
 
   def reverse_outbox_equivalent!(user, calls, name)

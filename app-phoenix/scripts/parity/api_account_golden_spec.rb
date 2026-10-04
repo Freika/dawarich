@@ -46,6 +46,31 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       before = oracle.setups.fetch(result.fetch('setup')).to_h
       after = result.fetch('after')
       owner = after.fetch('users').find { _1['id'] == oracle::OWNER }
+      prior = before.fetch('users').find { _1['id'] == oracle::OWNER }
+      if entry[:path].start_with?(oracle::T)
+        fields = %w[consumed_timestep failed_otp_attempts otp_locked_at]
+        expect(owner.keys).to include(*fields)
+        expect(owner.values_at('failed_otp_attempts', 'otp_locked_at')).to eq(
+          prior.values_at('failed_otp_attempts', 'otp_locked_at')
+        )
+        if entry[:disabled] || entry[:second_save_failure]
+          expected = entry[:code] == :current ? oracle::NOW.to_i / 30 : prior['consumed_timestep']
+          expect(owner['consumed_timestep']).to eq(expected)
+        else
+          expect(owner['consumed_timestep']).to eq(prior['consumed_timestep'])
+        end
+        if entry[:crypto] == :backup
+          expect(owner.values_at('otp_secret', 'otp_required_for_login')).to eq(
+            prior.values_at('otp_secret', 'otp_required_for_login')
+          )
+        end
+        if entry[:second_save_failure]
+          expect(owner.values_at('otp_secret', 'otp_required_for_login', 'otp_backup_codes')).to eq(
+            prior.values_at('otp_secret', 'otp_required_for_login', 'otp_backup_codes')
+          )
+          expect(payload).to eq('status' => 422, 'error' => 'Unprocessable Content')
+        end
+      end
       expect(owner['deleted_at']).to eq('2026-10-03T12:00:00') if entry[:deleted]
       if entry[:disabled]
         expect(owner.values_at('otp_secret', 'otp_required_for_login', 'otp_backup_codes')).to eq([nil, false, []])
@@ -54,7 +79,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
         expect(owner['deleted_at']).to be_nil
         expect(result.fetch('cache_after').values.first['value']).to be(true)
       end
-      untouched = kase[:method] == :get || (status >= 400 && !entry[:deleted])
+      untouched = kase[:method] == :get || (status >= 400 && !entry[:deleted] && !entry[:second_save_failure])
       expect(after).to eq(before), entry[:name] if untouched
       result['jobs_after'] = account_jobs
       expect(result['jobs_after'].length).to eq(entry[:jobs]), entry[:name] if entry[:jobs]
@@ -78,7 +103,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
     reset!
     clear_enqueued_jobs
     Rails.cache.clear
-    places_sql('TRUNCATE users,families,family_memberships,instance_settings CASCADE')
+    FixtureCleanup.delete!(%w[users families family_memberships instance_settings])
     InstanceSettings::Resolver.reset!
     allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
     allow(DawarichSettings).to receive(:two_factor_available?).and_return(kase.fetch(:available, true))
@@ -105,19 +130,26 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
     end
     @runtime_secret = nil
     @runtime_backup = nil
+    @runtime_hashes = nil
+    @first_codes = nil
     if kase[:otp]
       owner = User.find(oracle::OWNER)
       owner.otp_secret = User.generate_otp_secret
       owner.otp_required_for_login = kase[:otp] == :enabled
-      @runtime_backup = owner.generate_otp_backup_codes!.first if kase[:otp] == :enabled
+      owner.consumed_timestep = oracle::NOW.to_i / 30 if kase[:consumed]
+      owner.failed_otp_attempts = 3
+      owner.otp_locked_at = oracle::NOW - 60
+      @runtime_backup = owner.generate_otp_backup_codes!.first if kase[:otp] == :enabled || kase[:backups]
       owner.save!
       @runtime_secret = owner.otp_secret
+      @runtime_hashes = owner.otp_backup_codes
     end
     @runtime_body = (kase[:body] || {}).dup
     @runtime_body[:password] = kase[:password] == :valid ? oracle::PASSWORD : 'wrong' if kase[:password]
     if kase[:code]
       @runtime_body[:otp_code] = case kase[:code]
-                                 when :current then ROTP::TOTP.new(@runtime_secret).now
+                                 when :current
+                                   ROTP::TOTP.new(@runtime_secret).at(oracle::NOW + kase.fetch(:code_offset, 0))
                                  when :backup then @runtime_backup
                                  else 'invalid'
                                  end
@@ -148,20 +180,45 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
         expect(row['encrypted_password']).to match(/\A\$2[aby]\$04\$/)
         row['encrypted_password'] = 'runtime:password_digest'
       end
-      row['otp_secret'] = 'runtime:encrypted_otp_secret' if row['otp_secret'].present?
+      if row['otp_secret'].present?
+        expect(JSON.parse(row['otp_secret']).keys.sort).to eq(%w[h p])
+        expect(User.find(row['id']).otp_secret).to match(/\A[A-Z2-7]{32}\z/)
+        row['otp_secret'] = 'runtime:encrypted_otp_secret'
+      end
       codes = row['otp_backup_codes']
+      expect(codes.all? { _1.match?(%r{\A\$2[aby]\$04\$[./A-Za-z0-9]{53}\z}) }).to be(true) if codes
       row['otp_backup_codes'] = codes.map { 'runtime:backup_code_digest' } if codes
     end
     rows
   end
 
   def places_response(kase, target, headers, body, strict: false)
-    super if kase[:repeat]
+    if kase[:second_save_failure]
+      config = Rails.application.env_config
+      detailed = config['action_dispatch.show_detailed_exceptions']
+      config['action_dispatch.show_detailed_exceptions'] = false
+      allow_any_instance_of(User).to receive(:update!).and_wrap_original do |original, changes|
+        original.receiver.email = nil
+        original.call(changes)
+      end
+    end
+    travel_to(ApiAccountGoldenOracle::NOW + kase[:source_offset]) if kase[:source_offset]
+    if kase[:repeat]
+      first = super
+      @first_codes = JSON.parse(first['body'])['backup_codes'] if kase[:crypto] == :confirm
+    end
     super
+  ensure
+    travel_to(ApiAccountGoldenOracle::NOW) if kase[:source_offset]
+    if kase[:second_save_failure]
+      config['action_dispatch.show_detailed_exceptions'] = detailed
+      allow_any_instance_of(User).to receive(:update!).and_call_original
+    end
   end
 
   def account_crypto(result, payload, entry, owner)
     user = User.find(ApiAccountGoldenOracle::OWNER)
+    raw = result['response']['body']
     if entry[:crypto] == :setup
       expect(payload.keys).to eq(%w[provisioning_uri secret])
       expect(payload['secret'].match?(/\A[A-Z2-7]{32}\z/)).to be(true)
@@ -170,6 +227,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       expect(payload['provisioning_uri'].include?("secret=#{payload['secret']}")).to be(true)
       expect(payload['provisioning_uri'].include?('issuer=Dawarich')).to be(true)
       expect(user.otp_required_for_login).to be(false)
+      raw = raw.gsub(payload['secret'], 'runtime:otp_secret')
       payload['provisioning_uri'] = payload['provisioning_uri'].sub(payload['secret'], 'runtime:otp_secret')
       payload['secret'] = 'runtime:otp_secret'
     else
@@ -177,13 +235,20 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       expect(codes.length).to eq(10)
       expect(codes.uniq.length).to eq(10)
       expect(codes.all? { _1.match?(/\A[0-9a-f]{24}\z/) }).to be(true)
+      expect(user.otp_backup_codes.uniq.length).to eq(10)
+      expect(user.otp_backup_codes).not_to eq(@runtime_hashes)
+      expect(codes).not_to eq(@first_codes) if @first_codes
+      compatible = codes.zip(user.otp_backup_codes).all? { |code, hash| Devise::Encryptor.compare(User, hash, code) }
+      expect(compatible).to be(true)
+      expect(user.invalidate_otp_backup_code!(@runtime_backup)).to be(false) if @runtime_backup
       expect(user.invalidate_otp_backup_code!(codes.first)).to be(true)
       expect(user.invalidate_otp_backup_code!(codes.first)).to be(false)
       expect(owner['otp_backup_codes'].length).to eq(10)
       expect(owner['otp_required_for_login']).to be(true) if entry[:crypto] == :confirm
+      codes.each { raw = raw.gsub(_1, 'runtime:backup_code') }
       payload['backup_codes'] = Array.new(10, 'runtime:backup_code')
     end
-    result['response']['body'] = JSON.generate(payload)
+    result['response']['body'] = raw
     etag = result['response']['headers'].fetch('etag')
     expect(etag).to match(%r{\AW/"[0-9a-f]{32,64}"\z})
     result['response']['headers']['etag'] = 'runtime:crypto_response_etag'
@@ -213,7 +278,9 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       result['request']['body'] = JSON.generate(body)
       result['request']['headers'].reject! { _1[0] == 'Content-Length' }
       result['runtime_request'] = { 'password' => entry[:password]&.to_s, 'otp_code' => entry[:code]&.to_s }
+      result['runtime_request']['otp_code_at'] = (ApiAccountGoldenOracle::NOW + entry.fetch(:code_offset, 0)).iso8601
     end
+    result['source_time'] = (ApiAccountGoldenOracle::NOW + entry.fetch(:source_offset, 0)).iso8601
     return unless entry[:manager]
 
     result['request']['headers'].each { _1[1] = 'runtime:webhook_secret' if _1[0] == 'X-Webhook-Secret' }

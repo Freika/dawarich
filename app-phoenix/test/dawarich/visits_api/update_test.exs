@@ -7,7 +7,7 @@ defmodule Dawarich.VisitsApi.UpdateTest do
   @stamp ~N[2026-09-01 12:00:00.000000]
 
   setup do
-    rows("TRUNCATE places,areas,visits CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(places areas visits))
 
     ScratchRepo.insert_all("users", [
       %{
@@ -179,7 +179,7 @@ defmodule Dawarich.VisitsApi.UpdateTest do
              ]
            ]
 
-    rows("TRUNCATE phoenix.rails_commands")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.rails_commands))
     rows("UPDATE visits SET demo=true WHERE id=953301")
     assert {:ok, _} = update(%{"status" => "declined"})
     assert commands() == []
