@@ -30,7 +30,7 @@ defmodule Dawarich.UserData.Archive do
               File.open!(target, [:write, :binary], fn file ->
                 File.chmod!(target, 0o600)
 
-                Stream.consume!(
+                consume!(
                   archive,
                   entry,
                   central.offset,
@@ -53,5 +53,16 @@ defmodule Dawarich.UserData.Archive do
 
       fun.(directory)
     end)
+  end
+
+  defp consume!(archive, entry, central, sink, limit) do
+    Stream.consume!(archive, entry, central, sink, limit)
+  rescue
+    error in Error ->
+      if error.message == "ZIP entry exceeds extracted byte budget" do
+        raise Error, message: "Archive entry #{entry.name} exceeds maximum allowed size"
+      else
+        reraise error, __STACKTRACE__
+      end
   end
 end

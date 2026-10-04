@@ -73,7 +73,7 @@ defmodule Dawarich.UserData.ArchiveTest do
     bytes = patch_size(bytes, local + 22, 8) |> patch_size(central + 24, 8)
     File.write!(capped, bytes)
 
-    assert_raise Error, "ZIP entry exceeds extracted byte budget", fn ->
+    assert_raise Error, "Archive entry data.json exceeds maximum allowed size", fn ->
       Archive.with_directory(capped, %{}, fn _ -> flunk("overflow admitted") end,
         max_entry_bytes: 8
       )
