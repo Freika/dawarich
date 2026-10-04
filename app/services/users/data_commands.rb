@@ -28,6 +28,13 @@ module Users
     }.freeze
 
     HANDLERS = {
+      TYPE => {
+        guard: 'Each GET queues a backup command; worker event identity fences repeated delivery',
+        call: lambda { |payload|
+          JobCommands.produce(TYPE, payload, aggregate_id: payload.fetch('user_id'),
+                                        producer: 'Phoenix SettingsUsersExport')
+        }
+      },
       IMPORT_TYPE => {
         guard: 'Pending restore commands deduplicate by import id; the worker fences archive identity',
         call: ->(payload) { produce_import(payload, producer: 'Phoenix UserDataImport') }

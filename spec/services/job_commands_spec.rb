@@ -42,6 +42,9 @@ RSpec.describe JobCommands do
     expect(enqueued_jobs.last['timezone']).to eq('America/New_York')
     expect(enqueued_jobs.last['locale']).to eq('fr')
     clear_enqueued_jobs
+    RailsCommands::Registry.handler(type).call(payload)
+    expect(enqueued_jobs.last[:args]).to eq([user.id])
+    clear_enqueued_jobs
     job_owner!("command:#{type}", :oban)
     event = SecureRandom.uuid
     2.times { described_class.forward(type, payload, event_id: event, aggregate_id: user.id, producer: 'spec') }

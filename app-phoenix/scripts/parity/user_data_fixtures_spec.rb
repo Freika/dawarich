@@ -122,3 +122,49 @@ RSpec.describe 'Phoenix fixtures: Rails user data' do
     UserDataFixturesSupport.write('version3.json', result)
   end
 end
+
+RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request do
+  after { ActionController::Base.allow_forgery_protection = false }
+  it 'captures the backup form and endpoint flashes in en and de' do
+    user = create(:user, admin: false, settings: { 'timezone' => 'UTC' })
+    result = %w[en de].to_h do |locale|
+      user.update!(settings: user.settings.merge('locale' => locale))
+      sign_in(user)
+      ActionController::Base.allow_forgery_protection = true
+      get '/users/edit'
+      ActionController::Base.allow_forgery_protection = false
+      expect(response).to have_http_status(:ok)
+      form = Nokogiri::HTML5(response.body).at_css('form[action="/settings/users/import"]')
+      expect(form.at_css('input[type="file"]')['name']).to eq('archive')
+      form.css('input[name="authenticity_token"]').each { |input| input['value'] = 'CSRF' }
+      form.css('[data-direct-upload-url]').each { |input| input['data-direct-upload-url'] = 'UPLOAD' }
+      form['data-upload-url-value'] = 'UPLOAD'
+      get '/settings/users/export'
+      expect(response).to have_http_status(:found)
+      export = { 'status' => response.status, 'location' => URI(response.location).path, 'flash' => flash.to_hash }
+      get '/users/edit'
+      post '/settings/users/import', params: { archive: '' }
+      expect(response).to have_http_status(:found)
+      blank = { 'status' => response.status, 'location' => URI(response.location).path, 'flash' => flash.to_hash }
+      post '/settings/users/import', params: { archive: 'invalid-signed-id' }
+      expect(response).to have_http_status(:found)
+      invalid = { 'status' => response.status, 'location' => URI(response.location).path, 'flash' => flash.to_hash }
+      blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('synthetic archive'), filename: 'backup.zip',
+                                                    content_type: 'application/zip')
+      post '/settings/users/import', params: { archive: blob.signed_id }
+      expect(response).to have_http_status(:found)
+      valid = { 'status' => response.status, 'location' => URI(response.location).path,
+                'flash' => flash.to_hash.slice('notice') }
+      blob.update_column(:filename, '')
+      post '/settings/users/import', params: { archive: blob.signed_id }
+      expect(response).to have_http_status(:found)
+      failed = { 'status' => response.status, 'location' => URI(response.location).path,
+                 'flash' => flash.to_hash.slice('alert') }
+      sign_out(:user)
+      [locale,
+       { 'valid' => valid, 'failed' => failed, 'form' => form.to_html, 'export' => export, 'blank' => blank,
+'invalid' => invalid }]
+    end
+    UserDataFixturesSupport.write('http.json', result)
+  end
+end
