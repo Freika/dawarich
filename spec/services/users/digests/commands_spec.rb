@@ -15,6 +15,58 @@ RSpec.describe 'Users::Digests::Commands' do
     )
   end
 
+  it 'queued Rails digest calculations forward their stable ID and ambient zone once after claim' do
+    user = create(:user)
+    allow(Stats::CalculateMonth).to receive(:new).and_return(instance_double(Stats::CalculateMonth, call: true))
+    allow(Users::Digests::CalculateMonth).to receive(:new).and_return(
+      instance_double(Users::Digests::CalculateMonth, call: true)
+    )
+    allow(Users::Digests::CalculateYear).to receive(:new).and_return(
+      instance_double(Users::Digests::CalculateYear, call: true)
+    )
+
+    %w[month year].each do |period|
+      type = "digests.calculate_#{period}"
+      klass = period == 'month' ? Users::Digests::Monthly::CalculatingJob : Users::Digests::Yearly::CalculatingJob
+      arguments = [user.id, '2025']
+      arguments << '3' if period == 'month'
+      payload = { 'user_id' => user.id, 'year' => 2025, 'time_zone' => 'Asia/Tokyo' }
+      payload['month'] = 3 if period == 'month'
+      job_owner!("command:#{type}", :oban)
+      clear_enqueued_jobs
+      job = Time.use_zone('Asia/Tokyo') { klass.new(*arguments) }
+      Time.use_zone('Asia/Tokyo') { 2.times { job.perform_now } }
+
+      row = JobOutbox.where(command_type: type).sole
+      expect(row).to have_attributes(event_id: job.job_id, aggregate_id: user.id, command_version: 1, payload:)
+      expect(row.metadata).to eq('producer' => klass.name)
+      expect(enqueued_jobs).to be_empty
+      expect(user.notifications).to be_empty
+    end
+    expect(Stats::CalculateMonth).not_to have_received(:new)
+    expect(Users::Digests::CalculateMonth).not_to have_received(:new)
+    expect(Users::Digests::CalculateYear).not_to have_received(:new)
+
+    %w[month year].each do |period|
+      type = "digests.calculate_#{period}"
+      klass = period == 'month' ? Users::Digests::Monthly::CalculatingJob : Users::Digests::Yearly::CalculatingJob
+      mail = period == 'month' ? Users::Digests::Monthly::EmailSendingJob : Users::Digests::Yearly::EmailSendingJob
+      arguments = period == 'month' ? [user.id, 2025, 3] : [user.id, 2025]
+      JobOutbox.where(command_type: type).delete_all
+      ActiveRecord::Base.connection.execute("DELETE FROM phoenix.job_owners WHERE key = 'command:#{type}'")
+      [nil, :sidekiq].each do |owner|
+        job_owner!("command:#{type}", owner) if owner
+        expect { klass.perform_now(*arguments) }.to have_enqueued_job(mail).with(*arguments)
+        expect(JobOutbox.where(command_type: type)).to be_empty
+      end
+      ActiveRecord::Base.transaction do
+        ActiveRecord::Base.connection.execute('DROP TABLE phoenix.job_owners')
+        expect { klass.perform_now(*arguments) }.to have_enqueued_job(mail).with(*arguments)
+        raise ActiveRecord::Rollback
+      end
+    end
+  end
+
   it 'digest commands retain period timezone and due time on the Sidekiq path' do
     at = Time.utc(2030, 3, 29, 12, 34, 56)
     %w[month year].each do |period|
