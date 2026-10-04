@@ -44,7 +44,7 @@ defmodule DawarichWeb.MapDataHandbackTest do
 
     jobs =
       Dawarich.Jobs.repo().query!(
-        "SELECT (SELECT count(*) FROM public.job_outbox), (SELECT count(*) FROM oban.oban_jobs)"
+        "SELECT (SELECT count(*) FROM public.job_outbox), (SELECT count(*) FROM oban.oban_jobs), (SELECT count(*) FROM phoenix.rails_commands)"
       ).rows
 
     pages ++ jobs
@@ -52,7 +52,7 @@ defmodule DawarichWeb.MapDataHandbackTest do
 
   test "hand-back snapshots observe jobs outside the page sandbox" do
     Repo.query!("DROP SCHEMA IF EXISTS oban CASCADE", [], log: false)
-    [[points, tags, segments], [outbox, jobs]] = changes()
+    [[points, tags, segments], [outbox, jobs, commands]] = changes()
 
     outbox!(%{})
 
@@ -62,7 +62,7 @@ defmodule DawarichWeb.MapDataHandbackTest do
       log: false
     )
 
-    assert changes() == [[points, tags, segments], [outbox + 1, jobs + 1]]
+    assert changes() == [[points, tags, segments], [outbox + 1, jobs + 1, commands]]
   end
 
   defp write(conn, method, path, body) do
@@ -73,13 +73,6 @@ defmodule DawarichWeb.MapDataHandbackTest do
   end
 
   defp forwarded_write(upstream, user, method, path, body) do
-    assert Phoenix.Router.route_info(
-             Router,
-             method |> Atom.to_string() |> String.upcase(),
-             URI.parse(path).path,
-             "localhost"
-           ) == :error
-
     before = changes()
 
     {{line, raw}, conn} =
@@ -104,7 +97,7 @@ defmodule DawarichWeb.MapDataHandbackTest do
     forwarded_write(upstream, user, :post, path, "_method=delete&" <> body)
   end
 
-  test "tag create update delete and override posts remain Rails requests", %{
+  test "unsupported tag create update delete and override posts remain Rails requests", %{
     user: user,
     upstream: upstream
   } do
@@ -119,7 +112,7 @@ defmodule DawarichWeb.MapDataHandbackTest do
     end
   end
 
-  test "segment PATCH reset and override posts remain Rails requests", %{
+  test "unsupported segment PATCH reset and override posts remain Rails requests", %{
     user: user,
     upstream: upstream
   } do

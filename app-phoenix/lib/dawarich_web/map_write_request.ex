@@ -4,7 +4,7 @@ defmodule DawarichWeb.MapWriteRequest do
 
   import Plug.Conn
   alias DawarichWeb.Api.Body
-  alias DawarichWeb.{RailsForm, WebFormParams}
+  alias DawarichWeb.{RailsCsrf, RailsForm, WebFormParams}
 
   @common ~w(authenticity_token _method commit utf8)
   @tag ~w(name icon color privacy_radius_meters)
@@ -31,6 +31,7 @@ defmodule DawarichWeb.MapWriteRequest do
   defp admit(conn, body, query) do
     with {:ok, action, method} <- action(conn, body),
          true <- fields?(action, body),
+         true <- csrf_consistent?(conn, body),
          {:ok, format} <- format(conn, action) do
       params = Map.merge(body, query)
       conn = %{conn | body_params: body, params: Map.merge(params, conn.path_params)}
@@ -50,6 +51,14 @@ defmodule DawarichWeb.MapWriteRequest do
     else
       _ -> Body.replay(conn, "map write action or shape")
     end
+  end
+
+  defp csrf_consistent?(conn, body) do
+    tokens =
+      [body["authenticity_token"] | get_req_header(conn, "x-csrf-token")]
+      |> Enum.reject(&is_nil/1)
+
+    Enum.all?(tokens, &RailsCsrf.valid?(conn.assigns.rails_session, &1))
   end
 
   defp headers?(conn) do
