@@ -40,10 +40,19 @@ defmodule Dawarich.Imports.NormalLifecycle do
   defp process(lease, state, context) do
     Tempfiles.with_files(fn adopt ->
       case NormalPreparation.download(lease, state, context, adopt) do
-        {:file, path, filename} -> run_import(lease, state, context, path, filename)
-        {:archive, path} -> run_archive(lease, state, context, path)
-        {:legacy, _} = legacy -> legacy
-        {:error, error, stack} -> failure(lease, state.import, context, error, stack)
+        {:file, path, filename} ->
+          run_import(lease, state, context, path, filename)
+
+        {:archive, path} ->
+          run_archive(lease, state, context, path)
+
+        {:legacy, _} = legacy ->
+          legacy
+
+        {:error, error, stack} ->
+          failure(lease, state.import, context, error, stack)
+          ImportState.complete!(lease, clock(context))
+          :ok
       end
     end)
   end

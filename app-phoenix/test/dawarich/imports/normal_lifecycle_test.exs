@@ -161,8 +161,10 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
 
       failing = %{c | context: %{c.context | on_terminal: fn -> raise "marker unavailable" end}}
       assert_raise RuntimeError, "marker unavailable", fn -> run(failing) end
+
       assert [["terminal"]] =
                rows("SELECT phase FROM phoenix.import_runs WHERE import_id=$1", [c.import.id])
+
       assert [[3]] = rows("SELECT status FROM imports WHERE id=$1", [c.import.id])
       assert [[1]] = rows("SELECT count(*) FROM notifications")
       before = rows("SELECT title,content FROM notifications ORDER BY id")
@@ -181,9 +183,13 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
       assert before == rows("SELECT title,content FROM notifications ORDER BY id")
       assert [] = rows("SELECT id FROM points")
       assert Processed.done?(ScratchRepo, c.job.args["event_id"])
-      assert Enum.reject(rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id"),
-               fn [kind, _] -> kind == "imports.progress" end) ==
-             Enum.reject(commands, fn [kind, _] -> kind == "imports.progress" end)
+
+      assert Enum.reject(
+               rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id"),
+               fn [kind, _] -> kind == "imports.progress" end
+             ) ==
+               Enum.reject(commands, fn [kind, _] -> kind == "imports.progress" end)
+
       assert_clean(c)
     end
   end
