@@ -15,6 +15,21 @@ defmodule DawarichWeb.A8Routes do
       scope "/" do
         pipe_through :a8_action
 
+        post "/trips/:trip_id/notes", DawarichWeb.TripNoteActions, :create,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        patch "/trips/:trip_id/notes/:id", DawarichWeb.TripNoteActions, :update,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        put "/trips/:trip_id/notes/:id", DawarichWeb.TripNoteActions, :update,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        delete "/trips/:trip_id/notes/:id", DawarichWeb.TripNoteActions, :destroy,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        post "/trips/:trip_id/notes/:id", DawarichWeb.TripNoteActions, :member,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
         post "/trips", DawarichWeb.TripActions, :create,
           metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
 

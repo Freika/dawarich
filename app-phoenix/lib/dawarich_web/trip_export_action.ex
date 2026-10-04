@@ -36,7 +36,7 @@ defmodule DawarichWeb.TripExportAction do
         Body.replay(conn, reason)
 
       {:error, :not_found} ->
-        conn |> send_resp(404, "") |> halt()
+        TripActions.not_found(conn)
     end
   end
 

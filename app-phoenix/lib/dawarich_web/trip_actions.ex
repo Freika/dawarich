@@ -52,7 +52,7 @@ defmodule DawarichWeb.TripActions do
         Body.replay(conn, reason)
 
       {:error, :not_found} ->
-        conn |> send_resp(404, "") |> halt()
+        not_found(conn)
 
       {:error, _} ->
         conn |> send_resp(500, "") |> halt()
@@ -104,7 +104,7 @@ defmodule DawarichWeb.TripActions do
           Body.replay(conn, reason)
 
         {:error, :not_found} ->
-          conn |> send_resp(404, "") |> halt()
+          not_found(conn)
 
         {:error, _} ->
           conn |> send_resp(500, "") |> halt()
@@ -171,5 +171,10 @@ defmodule DawarichWeb.TripActions do
     |> put_resp_content_type("text/html")
     |> send_resp(status, "")
     |> halt()
+  end
+
+  def not_found(conn) do
+    html = DawarichWeb.ErrorHTML.render("404.html", %{}) |> Phoenix.HTML.Safe.to_iodata()
+    conn |> put_resp_content_type("text/html") |> send_resp(404, html) |> halt()
   end
 end
