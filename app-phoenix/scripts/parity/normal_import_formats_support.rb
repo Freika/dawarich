@@ -291,6 +291,7 @@ module NormalImportFormatsSupport
                         'topic' => nil, 'inrids' => nil, 'inregions' => [])
     cases = [
       ['owntracks_import_empty', ''], ['owntracks_import_valid', line.call(point)],
+      ['owntracks_import_legacy', line.call(point)],
       ['owntracks_import_mixed', "#{mixed.map(&line).join}1\t*\t{broken\n1\t-\t{}\n"],
       ['owntracks_import_flags', line.call(flags)],
       ['owntracks_import_whitespace', "1 * #{point.to_json}\n"],
@@ -308,7 +309,99 @@ module NormalImportFormatsSupport
     cases
   end
 
-  def capture_owntracks(name, bytes)
+  def geojson_cases
+    feature = { type: 'Feature', geometry: { type: 'Point', coordinates: [12.4, 51.3, 12.75] },
+                properties: { timestamp: 1_768_519_800, battery: 0.72, speed_kmh: 36, tracker_id: 'oracle',
+                              accuracy: 2, vertical_accuracy: 3, heading: 90.5, wifi: 'synthetic',
+                              battery_state: 'charging', motion: ['walking'], activity: false } }
+    collection = ->(features) { { type: 'FeatureCollection', features: features }.to_json }
+    cases = [
+      ['geojson_import_empty', '', 'UTC'], ['geojson_import_valid', feature.to_json, 'UTC'],
+      ['geojson_import_legacy', feature.to_json, 'UTC'],
+      ['geojson_import_duplicate', collection.call([feature] * 1001), 'UTC'],
+      ['geojson_import_milliseconds', feature.merge(properties: { timestamp: 1_768_519_800_123 }).to_json, 'UTC'],
+      ['geojson_import_alias_order', feature.merge(properties: { vel: 3, speed: 99, tst: 1_768_519_800,
+                                                               timestamp: 1, BATTERY: 0.72 }).to_json, 'UTC'],
+      ['geojson_import_invalid_utf8', feature.to_json.sub('oracle', "oracle\xFF").b, 'UTC'],
+      ['geojson_import_timeless', collection.call([feature, feature.merge(properties: {})]), 'UTC'],
+      ['geojson_import_comment', "/* root */#{feature.to_json}", 'UTC'],
+      ['geojson_import_line', { type: 'Feature', geometry: { type: 'LineString', coordinates:
+        [[12.4, 51.3, 0, 1_768_519_800], [12.5, 51.4, 0, '2026-01-15T23:31:00Z'], [12.6, 51.5]] } }.to_json, 'UTC'],
+      ['geojson_import_multi', { type: 'Feature', geometry: { type: 'MultiLineString', coordinates:
+        [[[12.4, 51.3, 0, 1_768_519_800]], [[12.5, 51.4, 0, 1_768_519_801]]] } }.to_json, 'UTC'],
+      ['geojson_import_invalid_geometry', collection.call([feature.merge(geometry: nil)]), 'UTC']
+    ]
+    [999, 1000, 1001, 2001].each do |count|
+      features = count.times.map do |i|
+        feature.merge(properties: feature[:properties].merge(timestamp: 1_768_519_800 + i))
+      end
+      cases << ["geojson_import_#{count}", collection.call(features), 'UTC']
+    end
+    features = 1001.times.map do |i|
+      properties = feature[:properties].merge(timestamp: 1_768_519_800 + i)
+      properties[:altitude] = 100_000_000 if i == 1000
+      feature.merge(properties: properties)
+    end
+    cases << ['geojson_import_failure', collection.call(features), 'UTC']
+    cases << ['geojson_import_malformed', collection.call(features).delete_suffix(']}'), 'UTC']
+    %w[UTC Europe/Berlin America/New_York].each do |zone|
+      properties = { recorded_at: '2026-01-15 23:30:00', vel: '3.25', batt: -1, deviceId: 'alias' }
+      dated = feature.merge(properties: properties)
+      cases << ["geojson_import_#{zone.tr('/', '_')}", dated.to_json, zone]
+    end
+    cases
+  end
+
+  def capture_geojson(name, bytes, zone, legacy = name.end_with?('_legacy'))
+    if legacy
+      output = nil
+      ActiveRecord::Base.transaction(requires_new: true) do
+        ActiveRecord::Base.connection.execute('ALTER TABLE points DROP COLUMN source_id, DROP COLUMN altitude_decimal')
+        Point.reset_column_information
+        Points::DimensionResolver.reset_column_availability!
+        output = capture_geojson(name, bytes, zone, false).merge('legacy' => true)
+        raise ActiveRecord::Rollback
+      end
+      return output
+    end
+    Time.use_zone(zone) do
+      I18n.with_locale(:de) do
+        user, import = owner!(zone, 'de')
+        import.update_columns(source: 6, name: "#{name}.geojson")
+        input = "#{name}.geojson"
+        path = DIR.join(input)
+        File.binwrite(path, bytes)
+        error = nil
+        begin
+          Geojson::Importer.new(import, user.id, path.to_s).call
+        rescue StandardError => e
+          error = { 'class' => e.class.name, 'message' => e.message }
+        end
+        snapshot(import).merge('zone' => zone, 'locale' => 'de', 'input' => input, 'error' => error)
+      end
+    end
+  ensure
+    connection = ActiveRecord::Base.connection
+    %w[points notifications imports users].each do |table|
+      key = table == 'users' ? 'id' : 'user_id'
+      connection.execute("DELETE FROM #{table} WHERE #{key}=987001")
+    end
+    Point.reset_column_information
+    Points::DimensionResolver.reset_column_availability!
+  end
+
+  def capture_owntracks(name, bytes, legacy = name.end_with?('_legacy'))
+    if legacy
+      output = nil
+      ActiveRecord::Base.transaction(requires_new: true) do
+        ActiveRecord::Base.connection.execute('ALTER TABLE points DROP COLUMN source_id, DROP COLUMN altitude_decimal')
+        Point.reset_column_information
+        Points::DimensionResolver.reset_column_availability!
+        output = capture_owntracks(name, bytes, false).merge('legacy' => true)
+        raise ActiveRecord::Rollback
+      end
+      return output
+    end
     Time.use_zone('UTC') do
       I18n.with_locale(:de) do
         user, import = owner!('UTC', 'de')
@@ -331,5 +424,7 @@ module NormalImportFormatsSupport
       key = table == 'users' ? 'id' : 'user_id'
       connection.execute("DELETE FROM #{table} WHERE #{key}=987001")
     end
+    Point.reset_column_information
+    Points::DimensionResolver.reset_column_availability!
   end
 end

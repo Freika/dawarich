@@ -1,6 +1,6 @@
-defmodule Dawarich.Imports.OwntracksTest do
+defmodule Dawarich.Imports.GeojsonTest do
   use Dawarich.JobsCase, async: false
-  alias Dawarich.Imports.Owntracks
+  alias Dawarich.Imports.Geojson
   alias Dawarich.Test.NormalFormats
   @dir Path.expand("../../fixtures/imports/formats", __DIR__)
   @columns ~w(lonlat timestamp altitude altitude_decimal accuracy vertical_accuracy battery velocity ping tracker_id ssid bssid topic battery_status connection trigger inrids in_regions motion_data course course_accuracy raw_data)
@@ -10,10 +10,15 @@ defmodule Dawarich.Imports.OwntracksTest do
     :ok
   end
 
-  test "owntracks recorder keeps location records and omits raw data" do
-    for path <- Path.wildcard(Path.join(@dir, "owntracks_import_*.json")),
-        Path.basename(path) != "owntracks_import_failure.json" do
+  test "geojson timeless points produce the Rails warning after commit" do
+    for path <- Path.wildcard(Path.join(@dir, "geojson_import_*.json")),
+        Path.basename(path) not in ~w(geojson_import_failure.json geojson_import_malformed.json) do
       c = NormalFormats.seed!(Path.basename(path, ".json"), ScratchRepo)
+
+      ScratchRepo.query!("UPDATE imports SET name=$2 WHERE id=$1", [
+        c.import.id,
+        c.expected["input"]
+      ])
 
       if c.expected["legacy"] do
         assert {:error, :legacy_checked} =
@@ -25,10 +30,7 @@ defmodule Dawarich.Imports.OwntracksTest do
                    Dawarich.Ingest.Sources.forget()
 
                    assert :ok =
-                            Owntracks.call(c.path, c.import, %{
-                              c.context
-                              | altitude_decimal?: false
-                            })
+                            Geojson.call(c.path, c.import, %{c.context | altitude_decimal?: false})
 
                    assert_snapshot(c)
                    ScratchRepo.rollback(:legacy_checked)
@@ -36,18 +38,31 @@ defmodule Dawarich.Imports.OwntracksTest do
 
         Dawarich.Ingest.Sources.forget()
       else
-        assert :ok = Owntracks.call(c.path, c.import, c.context)
+        assert :ok = Geojson.call(c.path, c.import, c.context)
         assert_snapshot(c)
       end
     end
   end
 
-  test "owntracks import preserves failed-batch notification text" do
-    c = NormalFormats.seed!("owntracks_import_failure", ScratchRepo)
-    assert :ok = Owntracks.call(c.path, c.import, c.context)
-    assert_snapshot(c)
-    assert length(c.expected["points"]) == 1001
-    assert length(c.expected["notifications"]) == 1
+  test "geojson validation and a late DB error leave no point effects" do
+    for name <- ~w(geojson_import_failure geojson_import_malformed) do
+      c = NormalFormats.seed!(name, ScratchRepo)
+
+      exception =
+        if name == "geojson_import_failure",
+          do: Postgrex.Error,
+          else: Dawarich.Imports.JsonStream.Error
+
+      error = assert_raise exception, fn -> Geojson.call(c.path, c.import, c.context) end
+
+      if exception == Postgrex.Error do
+        assert Dawarich.Imports.NormalBatchErrors.message(error) == c.expected["error"]["message"]
+      end
+
+      assert_snapshot(c)
+      assert c.expected["points"] == []
+      assert c.expected["notifications"] == []
+    end
   end
 
   defp assert_snapshot(c) do
@@ -65,7 +80,7 @@ defmodule Dawarich.Imports.OwntracksTest do
                  data["raw_data"],
                  0,
                  data["error_message"],
-                 1
+                 6
                ]
              ]
 
@@ -74,7 +89,7 @@ defmodule Dawarich.Imports.OwntracksTest do
     select =
       Enum.map_join(columns, ",", fn
         "lonlat" -> "ST_AsText(lonlat::geometry)"
-        key when key in ~w(altitude_decimal course course_accuracy) -> key <> "::text"
+        key when key in ~w(altitude_decimal course course_accuracy) -> "trim_scale(#{key})::text"
         key -> key
       end)
 
