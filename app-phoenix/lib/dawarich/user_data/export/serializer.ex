@@ -44,7 +44,7 @@ defmodule Dawarich.UserData.Export.Serializer do
     |> Enum.map(fn [name, type] -> {name, type} end)
   end
 
-  defp pages(repo, user, table, columns, zone) do
+  def pages(repo, user, table, columns, zone, extra \\ [], owner \\ "user_id") do
     select =
       Enum.map_join(columns, ",", fn {name, type} ->
         case type do
@@ -55,11 +55,13 @@ defmodule Dawarich.UserData.Export.Serializer do
         end
       end)
 
+    select = Enum.join([select | extra], ",")
+
     Stream.unfold(0, fn cursor ->
       rows =
         RailsTime.with_zone(repo, zone, fn ->
           repo.query!(
-            "SELECT t.id,#{select} FROM #{table} t WHERE t.user_id=$1 AND t.id>$2 ORDER BY t.id LIMIT 1000",
+            "SELECT t.id,#{select} FROM #{table} t WHERE t.#{owner}=$1 AND t.id>$2 ORDER BY t.id LIMIT 1000",
             [user, cursor]
           ).rows
         end)
@@ -73,6 +75,7 @@ defmodule Dawarich.UserData.Export.Serializer do
     |> Stream.flat_map(& &1)
   end
 
+  def value("stats", "toponyms", _type, nil), do: []
   def value(_table, _name, _type, nil), do: nil
   def value("imports", "source", _, value), do: Enum.at(@sources, value)
 
@@ -85,12 +88,32 @@ defmodule Dawarich.UserData.Export.Serializer do
   def value("exports", "file_format", _, value), do: Enum.at(~w(json gpx archive), value)
   def value("exports", "file_type", _, value), do: Enum.at(~w(points user_data), value)
   def value("notifications", "kind", _, value), do: Enum.at(~w(info warning error), value)
+  def value("places", "source", _, value), do: Enum.at(~w(manual photon gpx_waypoint), value)
+  def value("visits", "status", _, value), do: Enum.at(~w(suggested confirmed declined), value)
+  def value("digests", "period_type", _, value), do: Enum.at(~w(monthly yearly), value)
+  def value("track_segments", "confidence", _, value), do: Enum.at(~w(low medium high), value)
+
+  def value("track_segments", "transportation_mode", _, value),
+    do:
+      Enum.at(
+        ~w(unknown stationary walking running cycling driving bus train flying boat motorcycle),
+        value
+      )
+
   def value("trips", "source_status", _, value), do: Enum.at(~w(active stopped), value)
 
   def value(_table, _name, "numeric", value) do
     text = value |> Decimal.normalize() |> Decimal.to_string(:normal)
     if String.contains?(text, "."), do: text, else: text <> ".0"
   end
+
+  def value("stats", "toponyms", "jsonb", value),
+    do:
+      value
+      |> Jason.decode!(objects: :ordered_objects)
+      |> Dawarich.UserData.Export.Stats.toponyms()
+
+  def value(_table, _name, "uuid", value), do: Ecto.UUID.load!(value)
 
   def value(_table, _name, "jsonb", value), do: Jason.decode!(value, objects: :ordered_objects)
 
