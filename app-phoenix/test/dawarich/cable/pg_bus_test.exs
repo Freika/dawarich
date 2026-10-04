@@ -162,4 +162,60 @@ defmodule Dawarich.Cable.PgBusTest do
              [4]
            ]
   end
+
+  test "unsubscribe drops queued messages and resubscribe takes a new fence" do
+    [spec] = Bus.child_specs()
+    start_supervised!(spec)
+    namespace = Bus.prefix() || ""
+    {:ok, ref} = Bus.subscribe("points")
+    assert_receive {:cable_pg, _, _, :subscribed, "points", ^ref} = old_ack
+    assert Bus.event(old_ack) == {:subscribed, "points"}
+    assert Registry.lookup(Dawarich.PubSub, Bus.channel("points")) == [{self(), nil}]
+    {:ok, 1} = PgStore.append(ScratchRepo, namespace, "points", "queued")
+    send(Bus, :poll)
+    :sys.get_state(Bus)
+    assert_receive {:cable_pg, _, _, "points", 1, "queued"} = queued
+
+    {:ok, ^ref} = Bus.unsubscribe("points")
+    assert Bus.event(queued) == :ignore
+    assert Registry.lookup(Dawarich.PubSub, Bus.channel("points")) == []
+    {:ok, 2} = PgStore.append(ScratchRepo, namespace, "points", "before new fence")
+    {:ok, fresh_ref} = Bus.subscribe("points")
+    refute fresh_ref == ref
+    assert Bus.event(old_ack) == :ignore
+    assert_receive {:cable_pg, _, _, :subscribed, "points", ^fresh_ref} = ack
+    assert Bus.event(ack) == {:subscribed, "points"}
+    {:ok, 3} = PgStore.append(ScratchRepo, namespace, "points", "fresh")
+    send(Bus, :poll)
+    :sys.get_state(Bus)
+    assert_receive {:cable_pg, _, _, "points", 2, _} = old
+    assert Bus.event(old) == :ignore
+    assert_receive {:cable_pg, _, _, "points", 3, "fresh"} = event
+    assert Bus.event(event) == {:message, "points", "fresh"}
+    assert Bus.event(event) == :ignore
+
+    parent = self()
+
+    subscriber =
+      spawn(fn ->
+        {:ok, _} = Bus.subscribe("dead")
+        send(parent, {:ready, self()})
+        receive(do: (:stop -> :ok))
+      end)
+
+    monitor = Process.monitor(subscriber)
+    assert_receive {:ready, ^subscriber}, 1_000
+    assert Registry.lookup(Dawarich.PubSub, Bus.channel("dead")) == [{subscriber, nil}]
+    Process.exit(subscriber, :kill)
+    assert_receive {:DOWN, ^monitor, :process, ^subscriber, :killed}
+    assert members_gone?(Bus.channel("dead"), System.monotonic_time(:millisecond) + 1_000)
+  end
+
+  defp members_gone?(topic, deadline) do
+    cond do
+      Registry.lookup(Dawarich.PubSub, topic) == [] -> true
+      System.monotonic_time(:millisecond) >= deadline -> false
+      true -> members_gone?(topic, deadline)
+    end
+  end
 end
