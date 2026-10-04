@@ -16,6 +16,10 @@ The original explore-features corpus remains byte-identical.
 - `auth_intents.json`: 17 real-model callback/OTP cases, including suppressed notifications,
   old-email recipients, synchronous delivery failure, OTP cache throttling and enqueue failure.
   The existing A11 recovery mail/lifecycle/token/effects oracles remain dependencies.
+- `digest_content.json`: 27 monthly/yearly cases and 21 chart helper cases, with exact decoded
+  bodies, MIME trees and data projections. Cases cover units/locales, leap dates, strict
+  60-minute filtering, Unicode/tied ranks, nil/malformed JSON, negative/fractional values,
+  sparse yearly stats, trend boundaries and sharing links.
 
 Devise 5.0.4 Cloud email/password callbacks invoke `deliver_now`; the capture intercepts that
 delivery boundary while retaining actual saves, callback predicates and rendering. They remain
@@ -35,11 +39,16 @@ The four trial lifecycle mail actions remain no-ops and their job wrapper skips 
 R1's two named captures have initial RED and restored GREEN evidence. M-R1-case omits
 reachable email-change rows and fails the fixed case list. M-R1-recipient changes the installed
 Devise callback recipient to the new email and fails the old-recipient assertion; source restored.
-Three generator examples pass in write mode. The initial compare failed because Ruby compared
-binary fixture strings against UTF-8 generated strings; the helper now compares binary bytes.
-Post-fix compare is blocked before examples: Postgres reports that the database system is
-shutting down. Ruby lint passed with cache disabled before that one-line byte-comparison fix.
+R1's three generator examples now pass in no-write mode after the controller's Postgres recovery;
+Ruby lint passes with cache disabled. Binary fixture bytes compare against generated binary
+bytes, preserving the original UTF-8 content.
 
-Resume at R1's no-write comparison once Postgres is available, then proceed to R2.
+R2 captures source rendering without calculation or delivery. M-R2-threshold changes the
+significant-minute threshold to 61 and fails because the 61-minute country disappears.
+The threshold is restored to 60. Rails sorts UTM query keys, and yearly sharing links depend
+on a present UUID even when sharing is disabled; the corpus retains those source behaviors.
+Malformed location integers and mixed-sign bars raise rather than producing empty mail.
+
+Resume at R3 after R2's restored named test and byte comparison are green.
 Native rendering, delivery workers, ownership wiring, test-mail HTTP,
 ED allocation and final C1–C5 gates are pending. Rails source/specs and dormant stubs are retained.

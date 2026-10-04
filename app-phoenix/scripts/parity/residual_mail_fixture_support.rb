@@ -311,6 +311,220 @@ module ResidualMailFixtureSupport
     end
   end
 
+  def digest_attributes(period)
+    { id: 460_020, year: 2024, month: period == 'monthly' ? 2 : nil, period_type: period,
+      distance: 12_500, flight_distance: 1500, monthly_distances: { '1' => 500, '2' => 1500, '29' => 2500 },
+      time_spent_by_location: {
+        'countries' => [{ 'name' => 'Sixty', 'minutes' => 60 }, { 'name' => 'SixtyOne', 'minutes' => 61 },
+                        { 'name' => '日本<&>', 'minutes' => 120 }, { 'name' => 'Åland', 'minutes' => 120 }],
+        'cities' => [{ 'name' => '東京<&>', 'minutes' => 61 }, { 'name' => 'Berlin', 'minutes' => 120 }]
+      }, first_time_visits: { 'countries' => ['日本<&>', 'Åland', 'Third'], 'cities' => ['東京<&>', 'Berlin'] },
+      year_over_year: { 'distance_change_percent' => -100 },
+      all_time_stats: { 'total_countries' => 3, 'total_cities' => 4 },
+      sharing_uuid: nil, sharing_settings: { 'enabled' => false } }
+  end
+
+  def digest_case_options
+    basic = %w[km mi default de ambient_fr].flat_map do |suffix|
+      %w[monthly yearly].map do |period|
+        settings = { 'maps' => { 'distance_unit' => suffix == 'mi' ? 'mi' : 'km' }, 'locale' => 'en' }
+        settings.delete('maps') if suffix == 'default'
+        settings['locale'] = suffix == 'de' ? ' DE ' : 'invalid' if %w[de ambient_fr].include?(suffix)
+        ["#{period}_#{suffix}", period, {}, settings, suffix == 'ambient_fr' ? :fr : :en]
+      end
+    end
+    nil_json = { monthly_distances: nil, time_spent_by_location: nil, first_time_visits: nil,
+                 year_over_year: nil, all_time_stats: nil }
+    empty = { distance: 0, flight_distance: 0, monthly_distances: {}, time_spent_by_location: {},
+              first_time_visits: {}, year_over_year: {}, all_time_stats: {} }
+    monthly = {
+      'empty' => empty, 'equal' => { monthly_distances: { '1' => 1500, '2' => 1500 } },
+      'leap_invalid_days' => { monthly_distances: { '1' => 500, '29' => 1500, '30' => 9000, '99' => 8000 } },
+      'threshold' => {}, 'nil_json' => nil_json,
+      'negative' => { distance: -1500, flight_distance: -500, monthly_distances: { '1' => -500, '2' => 1500 } },
+      'malformed_distances' => { monthly_distances: 'bad-shape' },
+      'malformed_locations' => { time_spent_by_location: { 'countries' => [1] } },
+      'malformed_visits' => { first_time_visits: { 'countries' => 'bad-shape' } },
+      'invalid_month' => { month: 13 }
+    }
+    yearly = {
+      'empty' => empty, 'shared' => { sharing_uuid: '46000000-0000-4000-8000-000000000001',
+                                    sharing_settings: { 'enabled' => true } },
+      'sharing_disabled' => { sharing_uuid: '46000000-0000-4000-8000-000000000001' },
+      'sparse_stats' => {}, 'nil_json' => nil_json,
+      'negative' => { distance: -1500, monthly_distances: { '1' => -500, '2' => 1500 } },
+      'malformed_stats' => {}
+    }
+    basic + [monthly, yearly].zip(%w[monthly yearly]).flat_map do |entries, period|
+      entries.map { |suffix, attrs| ["#{period}_#{suffix}", period, attrs, { 'locale' => 'en' }, :en] }
+    end
+  end
+
+  def digest_stats(user, foreign, name)
+    user.stats.delete_all
+    return [] if name.end_with?('_empty', '_nil_json') || name.start_with?('monthly')
+
+    values = name.end_with?('_malformed_stats') ? 'bad-shape' : { '1' => 500, '2' => 1500, '32' => 9000 }
+    rows = [
+      [460_030, user, 2024, 1, values],
+      [460_031, user, 2024, 2, { '29' => 2500, '30' => 9999 }],
+      [460_032, user, 2024, 12, { '31' => 5000 }],
+      [460_033, user, 2023, 1, { '1' => 990_000 }],
+      [460_034, foreign, 2024, 1, { '1' => 880_000 }],
+      [460_035, user, 2024, 3, nil]
+    ]
+    rows.map do |id, owner, year, month, daily|
+      stat = Stat.find_or_initialize_by(id:)
+      stat.assign_attributes(user: owner, year:, month:, distance: 0, daily_distance: daily,
+                             toponyms: [], sharing_uuid: format('46000000-0000-4000-8000-%012d', id))
+      stat.save!
+      stat.attributes.slice('id', 'user_id', 'year', 'month', 'daily_distance')
+    end
+  end
+
+  def capture_digest_case(user, foreign, name, period, attrs, settings, ambient)
+    user.update_columns(settings:)
+    stats = digest_stats(user, foreign, name)
+    digest = Users::Digest.new(digest_attributes(period).merge(attrs).merge(user:))
+    input = { 'id' => name, 'period' => period, 'email' => user.email, 'user_id' => user.id,
+              'settings' => settings, 'ambient_locale' => ambient.to_s,
+              'locale' => (user.preferred_locale || ambient).to_s, 'stats' => stats,
+              'digest' => digest.attributes.except('created_at', 'updated_at', 'sent_at', 'toponyms',
+                                                   'travel_patterns'),
+              'base_url' => 'http://www.example.com' }
+    I18n.with_locale(ambient) do
+      action = period == 'monthly' ? :monthly_digest : :year_end_digest
+      delivery = Users::DigestsMailer.with(user:, digest:).public_send(action)
+      message = delivery.message
+      mailer = delivery.send(:processed_mailer)
+      projection = %w[distance_unit daily_distances weekday_totals active_days top_countries top_cities
+                      first_countries first_cities daily_values monthly_distances].to_h do |key|
+        value = mailer.instance_variable_get("@#{key}")
+        value = value.transform_keys(&:iso8601) if key == 'daily_values' && value
+        [key, value]
+      end
+      input.merge('projection' => projection, 'error' => nil).merge(message_content(message))
+    rescue StandardError => e
+      input.merge('error' => { 'class' => e.class.name, 'cause' => e.cause&.class&.name })
+    end
+  end
+
+  def digest_helper_case(name, method, args, kwargs = {})
+    helper = Object.new.extend(Users::DigestsMailerHelper)
+    input = { 'id' => name, 'method' => method.to_s, 'args' => args, 'kwargs' => kwargs }
+    input.merge('output' => helper.public_send(method, *args, **kwargs), 'error' => nil)
+  rescue StandardError => e
+    input.merge('error' => e.class.name)
+  end
+
+  def digest_chart_cases
+    items = [{ 'name' => '日本', 'minutes' => 61 }, { 'name' => 'Åland', 'minutes' => 61 },
+             { 'name' => '東京<&>', 'minutes' => 120.5 }]
+    [
+      digest_helper_case('hbar_empty', :ascii_hbar, [[]], { labels: [] }),
+      digest_helper_case('hbar_zero', :ascii_hbar, [[0, 0]], { labels: %w[A 東京], width: 4, suffix: ' km' }),
+      digest_helper_case('hbar_half', :ascii_hbar, [[0.5, 1]], { labels: %w[日本 Åland], width: 3 }),
+      digest_helper_case('hbar_negative', :ascii_hbar, [[-0.5, 1]], { labels: %w[A B], width: 3 }),
+      digest_helper_case('hbar_all_negative', :ascii_hbar, [[-0.5, -1]], { labels: %w[A B], width: 3 }),
+      digest_helper_case('spark_empty', :ascii_sparkline, [[]]),
+      digest_helper_case('spark_equal', :ascii_sparkline, [[0.5, 0.5, 0.5]]),
+      digest_helper_case('spark_negative_half', :ascii_sparkline, [[-1, -0.5, 0, 0.5, 1]]),
+      digest_helper_case('heatmap_empty', :ascii_year_heatmap, [{}], { start_date: Date.new(2024, 1, 1) }),
+      digest_helper_case('heatmap_quartiles', :ascii_year_heatmap,
+                         [{ Date.new(2024, 1, 1) => 1, Date.new(2024, 1, 2) => 2,
+                            Date.new(2024, 1, 3) => 3, Date.new(2024, 1, 4) => 4 }],
+                         { start_date: Date.new(2024, 1, 1) }),
+      digest_helper_case('heatmap_sparse_negative', :ascii_year_heatmap,
+                         [{ Date.new(2024, 1, 1) => -1, Date.new(2024, 1, 14) => 4 }],
+                         { start_date: Date.new(2024, 1, 3) }),
+      digest_helper_case('ranked_empty', :ascii_ranked_list, [[]], { value_key: 'minutes', label_key: 'name' }),
+      digest_helper_case('ranked_unicode_ties', :ascii_ranked_list, [items],
+                         { value_key: 'minutes', label_key: 'name', width: 4 }),
+      digest_helper_case('ranked_negative', :ascii_ranked_list, [[{ 'name' => 'A', 'minutes' => -1 },
+                                                                  { 'name' => 'B', 'minutes' => 1 }]],
+                         { value_key: 'minutes', label_key: 'name', width: 4 }),
+      digest_helper_case('trend_equal', :ascii_trend, [0, 0]),
+      digest_helper_case('trend_prior_zero', :ascii_trend, [1, 0]),
+      digest_helper_case('trend_negative_half', :ascii_trend, [199, 200]),
+      digest_helper_case('trend_positive_half', :ascii_trend, [201, 200]),
+      digest_helper_case('trend_pct_nil', :ascii_trend_from_pct, [10, nil]),
+      digest_helper_case('trend_pct_minus100_zero', :ascii_trend_from_pct, [0, -100]),
+      digest_helper_case('trend_pct_minus100_positive', :ascii_trend_from_pct, [1, -100])
+    ]
+  end
+
+  def residual_digest_content
+    user = fresh_intent_user('digest')
+    foreign = fresh_intent_user('foreign-digest')
+    user.update_column(:id, 460_010)
+    foreign.update_column(:id, 460_011)
+    deliveries = ActionMailer::Base.deliveries.length
+    queued = enqueued_jobs.length
+    with_mail_defaults do
+      options = digest_case_options.sort_by { |name, *| [name.start_with?('monthly') ? 0 : 1, digest_case_order(name)] }
+      cases = options.map { |args| capture_digest_case(user, foreign, *args) }
+      helpers = I18n.with_locale(:en) { digest_chart_cases }
+      expect(ActionMailer::Base.deliveries.length).to eq(deliveries)
+      expect(enqueued_jobs.length).to eq(queued)
+      { 'cases' => cases, 'helpers' => helpers }
+    end
+  end
+
+  def digest_case_order(name)
+    %w[km mi default de ambient_fr empty equal leap_invalid_days threshold shared sharing_disabled sparse_stats
+       nil_json negative malformed_distances malformed_locations malformed_visits invalid_month malformed_stats]
+      .index(name.sub(/^(monthly|yearly)_/, ''))
+  end
+
+  def assert_digest_content(fixture)
+    errors = %w[monthly_negative monthly_malformed_distances monthly_malformed_locations
+                monthly_malformed_visits monthly_invalid_month yearly_negative yearly_malformed_stats]
+    fixture.fetch('cases').each do |row|
+      if errors.include?(row.fetch('id'))
+        expect(row.fetch('error').present?).to be(true), "source error missing: #{row.fetch('id')}"
+        next
+      end
+      expect(row.fetch('error')).to be_nil
+      expect(row.fetch('from')).to eq(['residual@dawarich.test'])
+      expect(row.fetch('to')).to eq([row.fetch('email')])
+      expect(row.fetch('reply_to')).to be_nil
+      expect(row.fetch('tree') == row.fetch('wire_tree')).to be(true), "wire parts differ: #{row.fetch('id')}"
+      expect(row.fetch('tree').fetch('parts').pluck('type')).to eq(%w[text/plain text/html])
+      period = row.fetch('period')
+      locale = row.fetch('locale')
+      subject_key = period == 'monthly' ? 'monthly' : 'year_end'
+      month_name = I18n.l(Date.new(2024, 2), format: :month_name, locale:)
+      expect(row.fetch('subject')).to eq(I18n.t("mailers.users.digests.#{subject_key}.subject",
+                                                year: 2024, month: month_name, locale:))
+      text = row.fetch('tree').fetch('parts').first.fetch('body')
+      footer = 'http://www.example.com/settings/general'
+      if period == 'monthly'
+        footer += '?utm_campaign=monthly_digest&utm_content=manage_preferences&utm_medium=email&utm_source=email'
+      end
+      expect(text.include?("#{footer}#email-digests")).to be(true), "footer URL differs: #{row.fetch('id')}"
+      uuid = row.fetch('digest').fetch('sharing_uuid')
+      expect(text.include?("http://www.example.com/shared/digest/#{uuid}")).to be(true) if uuid
+      projection = row.fetch('projection')
+      expect(projection.fetch('distance_unit')).to eq(row.fetch('id').end_with?('_mi') ? 'mi' : 'km')
+      next if row.fetch('id').end_with?('_empty', '_nil_json')
+
+      expect(projection.fetch('top_countries').pluck('name')).to eq(['SixtyOne', '日本<&>', 'Åland'])
+      if row.fetch('period') == 'yearly'
+        expect(projection.fetch('daily_values').keys).to eq(%w[2024-01-01 2024-01-02 2024-02-29 2024-12-31])
+      end
+    end
+    threshold = fixture.fetch('cases').find { |row| row.fetch('id') == 'monthly_threshold' }
+    expect(threshold.fetch('projection').fetch('top_countries').pluck('minutes')).to eq([61, 120, 120])
+    leap = fixture.fetch('cases').find { |row| row.fetch('id') == 'monthly_leap_invalid_days' }
+    expect(leap.fetch('projection').fetch('weekday_totals')).to eq([0, 0, 0, 2, 0, 0, 0])
+    fixture.fetch('helpers').each do |row|
+      expected_error = %w[hbar_negative ranked_negative].include?(row.fetch('id')) ? 'ArgumentError' : nil
+      expect(row.fetch('error')).to eq(expected_error)
+    end
+    quartiles = fixture.fetch('helpers').find { |row| row.fetch('id') == 'heatmap_quartiles' }
+    expect(quartiles.fetch('output')).to eq("░\n▒\n▓\n█\n \n \n ")
+  end
+
   def fixture_bytes(path, fixture)
     bytes = "#{JSON.pretty_generate(fixture)}\n"
     if ENV['WRITE_PHOENIX_FIXTURES'] == '1'

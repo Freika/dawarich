@@ -56,4 +56,25 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
     assert_auth_intents(fixture)
     fixture_bytes(residual_path('auth_intents'), fixture)
   end
+
+  it 'records monthly and yearly digest content and chart edge cases' do
+    fixture = residual_digest_content
+    expected = %w[
+      monthly_km monthly_mi monthly_default monthly_de monthly_ambient_fr monthly_empty monthly_equal
+      monthly_leap_invalid_days monthly_threshold monthly_nil_json monthly_negative monthly_malformed_distances
+      monthly_malformed_locations monthly_malformed_visits monthly_invalid_month
+      yearly_km yearly_mi yearly_default yearly_de yearly_ambient_fr yearly_empty yearly_shared
+      yearly_sharing_disabled yearly_sparse_stats yearly_nil_json yearly_negative yearly_malformed_stats
+    ]
+    expect(fixture.fetch('cases').pluck('id')).to eq(expected)
+    helpers = %w[
+      hbar_empty hbar_zero hbar_half hbar_negative hbar_all_negative spark_empty spark_equal spark_negative_half
+      heatmap_empty heatmap_quartiles heatmap_sparse_negative ranked_empty ranked_unicode_ties ranked_negative
+      trend_equal trend_prior_zero trend_negative_half trend_positive_half trend_pct_nil
+      trend_pct_minus100_zero trend_pct_minus100_positive
+    ]
+    expect(fixture.fetch('helpers').pluck('id')).to eq(helpers)
+    assert_digest_content(fixture)
+    fixture_bytes(residual_path('digest_content'), fixture)
+  end
 end
