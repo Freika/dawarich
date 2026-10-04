@@ -50,8 +50,12 @@ defmodule Dawarich.Users.RecalculationPeriod do
   end
 
   def event_id(source_job_id, year) do
+    command_id("tracks.generate_range:#{source_job_id}:#{year}")
+  end
+
+  def command_id(name) do
     <<a::48, _::4, b::12, _::2, c::62, _::binary>> =
-      :crypto.hash(:sha, @url_namespace <> "tracks.generate_range:#{source_job_id}:#{year}")
+      :crypto.hash(:sha, @url_namespace <> name)
 
     Ecto.UUID.load!(<<a::48, 5::4, b::12, 2::2, c::62>>)
   end

@@ -26,5 +26,8 @@ defmodule Dawarich.Points.AnomalyBackfillProgress do
 
   def clear!(repo, args), do: State.delete_cursor(repo, key(args))
 
+  def filtered!(repo, args),
+    do: save!(repo, args, %{"completed" => ~w(reset_flags filter_months)})
+
   defp save!(repo, args, value), do: State.put_cursor(repo, key(args), Jason.encode!(value))
 end

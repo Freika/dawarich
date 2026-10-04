@@ -30,10 +30,20 @@ defmodule Dawarich.Points.AnomalyBackfill do
         {:ok, :ok} =
           repo.transaction(fn ->
             fence.()
-            Progress.clear!(repo, args)
+            Progress.filtered!(repo, args)
           end)
 
-        true
+        result = Keyword.get(opts, :complete, fn _ -> true end).(fence)
+
+        if result == true do
+          {:ok, :ok} =
+            repo.transaction(fn ->
+              fence.()
+              Progress.clear!(repo, args)
+            end)
+        end
+
+        result
       end,
       Keyword.get(opts, :lease, [])
     )
@@ -41,6 +51,8 @@ defmodule Dawarich.Points.AnomalyBackfill do
       {:error, :timeout} -> {:error, :busy}
       result -> result
     end
+  catch
+    :backfill_interrupted -> {:ok, nil}
   end
 
   defp reset!(repo, args, fence) do
@@ -109,7 +121,9 @@ defmodule Dawarich.Points.AnomalyBackfill do
           fence.()
         end)
 
-      if fun = opts[:after_month], do: fun.(first)
+      if fun = opts[:after_month] do
+        if fun.(first) == :interrupted, do: throw(:backfill_interrupted)
+      end
     end
 
     :ok

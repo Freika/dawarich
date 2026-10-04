@@ -46,6 +46,35 @@ defmodule Dawarich.Users.RecalculateWorker do
     error -> {:failed, error, __STACKTRACE__}
   end
 
+  def inline(repo, oban, args, fence, opts \\ []) do
+    case execute(repo, oban, args, fenced_options(opts, fence)) do
+      {:failed, error, stack} ->
+        {:ok, _} =
+          repo.transaction(fn ->
+            fence.()
+            RecalculationNotifications.create!(repo, args, :error, {error, stack})
+          end)
+
+        :erlang.raise(:error, error, stack)
+
+      {:ok, result} ->
+        {:ok, _} =
+          repo.transaction(fn ->
+            fence.()
+
+            if result != :skipped,
+              do: RecalculationNotifications.create!(repo, args, :success, result.years)
+
+            fence.()
+          end)
+
+        :ok
+
+      other ->
+        other
+    end
+  end
+
   defp settle(repo, args, {:error, :lock_busy}, opts, fence) do
     {:ok, result} =
       repo.transaction(fn ->
