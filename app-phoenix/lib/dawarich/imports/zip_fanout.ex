@@ -85,7 +85,7 @@ defmodule Dawarich.Imports.ZipFanout do
       File.open!(path, [:read, :binary, :raw], fn f ->
         Directory.read!(f, max_entries: max(max_files, 25_000)).entries
       end)
-      |> Enum.reject(&String.ends_with?(&1.name, "/"))
+      |> Enum.reject(&(String.ends_with?(&1.name, "/") or String.contains?(&1.name, "..")))
 
     if length(entries) > max_files,
       do: raise(ArgumentError, "Too many files in archive (max #{max_files})")
@@ -106,11 +106,31 @@ defmodule Dawarich.Imports.ZipFanout do
           {%{entry: entry, path: leaf}, total + File.stat!(leaf).size}
         end)
 
-      files = Enum.filter(files, &(String.downcase(Path.extname(&1.entry.name)) in @supported))
+      files =
+        Enum.filter(files, fn file ->
+          String.downcase(Path.extname(file.entry.name)) in @supported and
+            not Enum.any?(Path.split(file.entry.name), &String.starts_with?(&1, "."))
+        end)
+
+      extension = Path.extname(blob.filename)
 
       files =
-        if String.downcase(Path.extname(blob.filename)) == ".kmz",
-          do: [%{entry: %{name: "_source.kmz", size: File.stat!(path).size}, path: path} | files],
+        if String.downcase(extension) in @supported,
+          do: [
+            %{
+              entry: %{
+                name: "_source" <> extension,
+                size: File.stat!(path).size,
+                content_type:
+                  if(String.downcase(extension) == ".kmz",
+                    do: "application/vnd.google-earth.kmz",
+                    else: "application/zip"
+                  )
+              },
+              path: path
+            }
+            | files
+          ],
           else: files
 
       files = Enum.sort_by(files, & &1.entry.name)

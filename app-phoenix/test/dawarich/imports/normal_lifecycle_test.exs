@@ -256,6 +256,36 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     end
   end
 
+  test "ZIP hidden paths skipped names and stable source match Rails child selection", c do
+    for name <- ~w(zip_dotfiles zip_supported_source zip_path_skip) do
+      reset!(ScratchRepo)
+      c = fixture(c, name)
+      assert {:ok, :ok} = run(c)
+      assert_archive_children(c)
+      assert [] = rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
+      assert [] = rows("SELECT id FROM notifications")
+
+      expected =
+        for job <- c.expected["jobs"],
+            job["type"] == "Import::ProcessJob",
+            do: [
+              "imports.process_normal",
+              %{
+                "import_id" => hd(job["args"]),
+                "user_id" => c.import.user_id,
+                "time_zone" => c.expected["zone"]
+              }
+            ]
+
+      assert expected ==
+               rows(
+                 "SELECT command_type,payload FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY ctid"
+               )
+
+      assert_clean(c)
+    end
+  end
+
   defp assert_parent(c) do
     expected = c.expected["parent"]
 

@@ -115,7 +115,7 @@ defmodule Dawarich.Imports.ZipChildren do
 
   defp store!(lease, blob, entry, path, key, context) do
     filename = Path.basename(entry.name)
-    type = mime(filename)
+    type = Map.get_lazy(entry, :content_type, fn -> mime(filename) end)
 
     config =
       Map.get_lazy(context, :storage, fn ->
