@@ -11,8 +11,13 @@ RSpec.describe Import::ProcessJob, type: :job do
                        filename: '2024-03.rec', content_type: 'application/octet-stream')
   end
 
-  it 'processes a non-GPX import as before while another runtime holds the import lease' do
-    hold_import_lock("import:#{import.id}") { described_class.perform_now(import.id) }
+  it 'defers a non-GPX import while another runtime holds the shared import lease' do
+    hold_import_lock("import:#{import.id}") do
+      expect { described_class.perform_now(import.id) }.to have_enqueued_job(described_class).with(import.id)
+      expect(import.points.count).to eq(0)
+      expect(import.reload).to be_created
+    end
+    job.perform(import.id)
     expect(import.points.count).to eq(9)
     expect(import.reload).to be_completed
   end

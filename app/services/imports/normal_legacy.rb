@@ -16,7 +16,7 @@ module Imports
     def admission(import, event_id)
       import.reload(lock: true)
       user = User.lock('FOR SHARE').find_by(id: import.user_id)
-      return if import.deleting? || import.completed? || !user || user.deleted_at
+      return if import.deleting? || !user || user.deleted_at
 
       gpx = ImportCommands.native_gpx?(import)
       type = gpx ? 'imports.process_gpx' : ProcessCommands::TYPE
