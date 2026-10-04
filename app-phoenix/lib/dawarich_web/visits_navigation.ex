@@ -17,7 +17,7 @@ defmodule DawarichWeb.VisitsNavigation do
         "/map/v2?panel=timeline&date=today&status=" <> URI.encode_www_form(status)
     )
     |> put_resp_header("cache-control", "no-cache")
-    |> put_resp_content_type("text/html")
+    |> put_resp_header("content-type", "text/html; charset=UTF-8")
     |> send_resp(302, "")
   end
 end

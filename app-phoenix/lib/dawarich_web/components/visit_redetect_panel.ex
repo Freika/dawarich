@@ -21,7 +21,7 @@ defmodule DawarichWeb.VisitRedetectPanel do
         <form class="button_to" method="post" action="/visits/redetections">
           <button
             class={"btn btn-warning " <> if(@cooldown, do: "btn-disabled", else: "")}
-            disabled={@cooldown}
+            disabled={if @cooldown, do: "disabled"}
             data-turbo-confirm={
               text(@locale, "replace_all_suggested_visits_across_your_full_history_confirmed_visits")
             }

@@ -95,7 +95,7 @@ defmodule Dawarich.Visits.WebMerge do
       source_ids = Enum.map(sources, & &1["id"])
 
       repo.query!(
-        "UPDATE points SET visit_id=$2 WHERE visit_id=ANY($1)",
+        "UPDATE points SET visit_id=$2,lock_version=coalesce(lock_version,0)+1 WHERE visit_id=ANY($1)",
         [source_ids, base["id"]],
         log: false
       )

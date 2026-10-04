@@ -17,7 +17,7 @@ defmodule DawarichWeb.VisitSettingsActions do
            Jobs.repo(),
            user.id,
            conn.assigns.api_params["settings"],
-           DateTime.utc_now()
+           conn.assigns[:now] || DateTime.utc_now()
          ) do
       {:ok, _} -> redirect(conn, "controllers.settings.visits.visit_detection_settings_updated")
       {:replay, reason} -> Body.replay(conn, reason)
@@ -28,7 +28,12 @@ defmodule DawarichWeb.VisitSettingsActions do
     user = conn.assigns.current_user
     locale = Locale.resolve(nil, user, conn.assigns.rails_session)
 
-    case WebSettings.redetect(Jobs.repo(), user.id, DateTime.utc_now(), locale) do
+    case WebSettings.redetect(
+           Jobs.repo(),
+           user.id,
+           conn.assigns[:now] || DateTime.utc_now(),
+           locale
+         ) do
       {:ok, _} ->
         redirect(
           conn,

@@ -276,7 +276,10 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
               wanted_status = 302
             when 'bulk_500', 'bulk_501'
               count = name == 'bulk_500' ? 500 : 501
-              (1...count).each { visit!(user, id + _1, now - 2.hours, now - 1.hour, status: :suggested) }
+              (1...count).each do |offset|
+                visit!(user, id + offset,
+                       now - 2.hours + offset.seconds, now - 1.hour + offset.seconds, status: :suggested)
+              end
               params[:visit_ids] = (id...id + count).map(&:to_s)
               wanted_status = 422 if count == 501
             when 'bulk_foreign'

@@ -32,7 +32,7 @@ defmodule DawarichWeb.VisitActions do
     ctx = %{
       user: user,
       repo: Jobs.repo(),
-      now: DateTime.utc_now(),
+      now: conn.assigns[:now] || DateTime.utc_now(),
       self_hosted: LayoutAssigns.self_hosted?(),
       locale: Locale.resolve(nil, user, conn.assigns.rails_session),
       csrf: RailsCsrf.masked_token(conn.assigns.rails_session)
