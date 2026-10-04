@@ -14,6 +14,7 @@ defmodule DawarichWeb.Strangler do
     :rails_frame,
     :sharing,
     :sharing_unlock,
+    :achievement_public,
     :trial_resume,
     :admin_writes,
     :trial_welcome,
