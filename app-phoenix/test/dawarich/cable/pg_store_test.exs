@@ -1,6 +1,49 @@
 defmodule Dawarich.Cable.PgStoreTest do
   use Dawarich.JobsCase, async: false
 
+  alias Dawarich.Cable.PgStore
+
+  test "append is invisible until its outer transaction commits and preserves binary payload" do
+    parent = self()
+    payloads = [~s({ "value": "München", "n": 1 }), <<0, 255, 1>>, "[1,\n 2]"]
+
+    publisher =
+      Task.async(fn ->
+        ScratchRepo.transaction(fn ->
+          seqs =
+            Enum.map(payloads, fn payload ->
+              assert {:ok, seq} = PgStore.append(ScratchRepo, "append", "points", payload)
+              seq
+            end)
+
+          send(parent, {:pending, self(), seqs})
+
+          receive do
+            :commit -> seqs
+          end
+        end)
+      end)
+
+    assert_receive {:pending, pid, [1, 2, 3]}, 1_000
+
+    assert rows(
+             "SELECT seq, payload FROM phoenix.cable_events WHERE namespace = 'append' ORDER BY seq"
+           ) == []
+
+    assert rows("SELECT last_seq FROM phoenix.cable_streams WHERE namespace = 'append'") == []
+    send(pid, :commit)
+    assert Task.await(publisher) == {:ok, [1, 2, 3]}
+
+    assert rows(
+             "SELECT seq, channel, payload FROM phoenix.cable_events WHERE namespace = 'append' ORDER BY seq"
+           ) ==
+             Enum.with_index(payloads, 1)
+             |> Enum.map(fn {payload, seq} -> [seq, "points", payload] end)
+
+    assert {:ok, 4} = PgStore.append(ScratchRepo, "append", "points", "outside")
+    assert rows("SELECT last_seq FROM phoenix.cable_streams WHERE namespace = 'append'") == [[4]]
+  end
+
   test "Cable schema is isolated and rejects invalid sequence and retirement bounds" do
     for table <- ~w(cable_streams cable_events) do
       assert rows("SELECT to_regclass($1)::text", ["phoenix." <> table]) == [
