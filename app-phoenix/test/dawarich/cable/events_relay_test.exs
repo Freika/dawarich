@@ -43,6 +43,7 @@ defmodule Dawarich.Cable.EventsRelayTest do
 
     A12a.swap_publisher!(A12a.test_redis_url())
     for _ <- 1..3, do: assert({_, _} = A12a.heard())
+    :sys.get_state(relay)
     assert A12a.queued() == 0
 
     A12a.insert_events!(A12a.relay!("trip_path")["events"])

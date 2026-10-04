@@ -300,11 +300,12 @@ defmodule DawarichWeb.RateLimitTest do
   end
 
   test "every routed request runs the limiter right after ForceSSL" do
-    source = File.read!(Path.expand("../../lib/dawarich_web/router.ex", __DIR__))
-
     guarded =
-      source
-      |> then(&Regex.scan(~r/  pipeline :(\w+) do\n(.*?)\n  end/s, &1, capture: :all_but_first))
+      ~w(router.ex api_routes.ex a10_routes.ex)
+      |> Enum.flat_map(fn file ->
+        source = File.read!(Path.expand("../../lib/dawarich_web/#{file}", __DIR__))
+        Regex.scan(~r/^\s*pipeline :(\w+) do\n(.*?)\n\s*end/ms, source, capture: :all_but_first)
+      end)
       |> Enum.filter(fn [_name, body] ->
         body =~ ~r/plug DawarichWeb\.ForceSSL\n\s+plug DawarichWeb\.RateLimit(?:\n|$)/
       end)

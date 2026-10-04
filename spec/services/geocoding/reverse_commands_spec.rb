@@ -78,9 +78,16 @@ RSpec.describe Geocoding::ReverseCommands do
     let(:user) { create(:user) }
     let(:keys) { ->(ids) { ids.map { Point.geocode_dedup_key(_1) } } }
 
-    before { phoenix_state! }
+    before do
+      phoenix_state!
+      PhoenixClaims.claim('achievements_check:user:999999', 60)
+    end
 
-    def claimed_keys = ActiveRecord::Base.connection.select_values('SELECT key FROM phoenix.once_claims ORDER BY key')
+    def claimed_keys
+      ActiveRecord::Base.connection.select_values(
+        "SELECT key FROM phoenix.once_claims WHERE key LIKE 'geocode:enq:%' ORDER BY key"
+      )
+    end
 
     it 'claims rows only for points without a live claim, and clears them on force' do
       PhoenixClaims.claim(Point.geocode_dedup_key(2), 60)
@@ -94,6 +101,7 @@ RSpec.describe Geocoding::ReverseCommands do
       allow(JobCommands).to receive(:produce)
       described_class.enqueue_points(user.id, [1, 2, 3], force: true, producer: 'spec')
       expect(claimed_keys).to be_empty
+      expect(claim_seconds('achievements_check:user:999999')).to be_positive
     end
 
     it 'releases the rows it claimed when producing fails' do
@@ -102,6 +110,7 @@ RSpec.describe Geocoding::ReverseCommands do
       expect { described_class.enqueue_points(user.id, [5], force: false, producer: 'spec') }
         .to raise_error(RuntimeError, 'outbox down')
       expect(claimed_keys).to be_empty
+      expect(claim_seconds('achievements_check:user:999999')).to be_positive
     end
 
     it 'uses the key Phoenix releases' do

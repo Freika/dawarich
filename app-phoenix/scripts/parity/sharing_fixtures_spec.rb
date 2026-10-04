@@ -59,7 +59,12 @@ RSpec.describe 'Phoenix fixtures: the public shared-link pages as Rails renders 
   end
 
   def write_json(name, data)
-    File.write(dir.join(name), "#{Oj.dump(data.deep_stringify_keys, mode: :strict, indent: 2)}\n")
+    encoded = "#{Oj.dump(data.deep_stringify_keys, mode: :strict, indent: 2)}\n"
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      File.write(dir.join(name), encoded)
+    else
+      expect(JSON.parse(dir.join(name).read)).to eq(JSON.parse(encoded))
+    end
   end
 
   def set_cookies
@@ -81,8 +86,15 @@ RSpec.describe 'Phoenix fixtures: the public shared-link pages as Rails renders 
                 'modulepreload' => head.css('link[rel="modulepreload"]').size,
                 'translations' => head.css('script#i18n-translations').size }
     head.css('script[type="importmap"], link[rel="modulepreload"], script#i18n-translations').each(&:remove)
-    File.write(dir.join("pages/#{name}.head.html"), head.inner_html.gsub(/[ \t]+\n/, "\n").squeeze("\n"))
-    File.write(dir.join("pages/#{name}.html"), scrub(doc.at_css('body')).inner_html.gsub(/[ \t]+\n/, "\n"))
+    html = { "pages/#{name}.head.html" => head.inner_html.gsub(/[ \t]+\n/, "\n").squeeze("\n"),
+             "pages/#{name}.html" => scrub(doc.at_css('body')).inner_html.gsub(/[ \t]+\n/, "\n") }
+    html.each do |path, body|
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        File.write(dir.join(path), body)
+      else
+        expect(dir.join(path).read).to eq(body)
+      end
+    end
     { title: doc.at_css('title').text, html_lang: doc.at_css('html')['lang'], scripts: }
   end
 

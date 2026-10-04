@@ -17,6 +17,7 @@ defmodule DawarichWeb.AuthAccount.Http do
     if Keyword.get(opts, :enabled, false) == true and route?(conn) and
          Admission.headers(conn.req_headers) == :ok and html?(conn) do
       conn = conn |> DawarichWeb.HostAuthorization.call([]) |> DawarichWeb.ForceSSL.call([])
+      conn = if conn.halted, do: conn, else: DawarichWeb.RateLimit.call(conn, [])
       if conn.halted, do: conn, else: admit(conn, opts)
     else
       fallback(conn, opts)
