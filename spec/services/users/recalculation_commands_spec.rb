@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'open3'
+require 'timeout'
 
 RSpec.describe 'Users::RecalculationCommands' do
   self.use_transactional_tests = false
@@ -112,5 +114,157 @@ RSpec.describe 'Users::RecalculationCommands' do
       [@user.id, { 'notify' => true, 'oldest_timestamp' => 1_735_687_800,
                   '_aj_ruby2_keywords' => %w[notify oldest_timestamp] }]
     )
+  end
+
+  it 'actual Rails and native peers share K5 and anomaly lease exclusion' do
+    original_config = ActiveRecord::Base.connection_db_config.configuration_hash
+    fixture_mode = self.class.use_transactional_tests
+    shared_database = 'dawarich_phoenix_test_a12d1b3_scratch'
+    expect(ENV.fetch('PHOENIX_TEST_DATABASE')).to eq('dawarich_phoenix_test_a12d1b3')
+    command = %w[mix test test/dawarich/jobs/recalculation_lifecycle_test.exs
+                 --include rails_parity --only rails_parity --seed 101]
+    messages = Queue.new
+    output = +''
+    errors = +''
+    stdin, stdout, stderr, peer = Open3.popen3(
+      { 'PHOENIX_TEST_DATABASE' => ENV.fetch('PHOENIX_TEST_DATABASE'), 'SELF_HOSTED' => 'false' }, *command,
+      chdir: Rails.root.join('app-phoenix').to_s
+    )
+    reader = Thread.new do
+      stdout.each_line do |line|
+        output << line
+        messages << JSON.parse(line.delete_prefix('A12D1B3:')) if line.start_with?('A12D1B3:')
+      end
+      messages << { 'op' => 'eof' }
+    end
+    error_reader = Thread.new { errors << stderr.read }
+    expect(recalculation_message(messages)).to eq('op' => 'ready', 'database' => shared_database)
+    ActiveRecord::Base.establish_connection(original_config.merge(database: shared_database))
+    connected = true
+    source = JSON.parse(Rails.root.join('app-phoenix/test/fixtures/a12d1b3/recalculations.json').read)
+                 .fetch('cases').find { _1.fetch('id') == 'full' }
+    connection = ActiveRecord::Base.connection
+    source.fetch('input').each do |table, rows|
+      rows.each do |row|
+        columns = row.keys.sort.map { connection.quote_column_name(_1) }.join(', ')
+        connection.execute("INSERT INTO public.#{table} (#{columns}) SELECT #{columns} " \
+                           "FROM json_populate_record(NULL::public.#{table}, #{connection.quote(row.to_json)}::json)")
+      end
+    end
+    connection.execute('UPDATE points SET anomaly=true WHERE id=170201')
+    job_owner!('command:stats.full_recalculation', :oban)
+    job_owner!('command:stats.calculate_month', :sidekiq)
+    clear_enqueued_jobs
+    debouncer = Stats::RecalculationDebouncer.new(170_101)
+    debouncer.trigger
+    initial = enqueued_jobs.sole.deep_dup
+    clear_enqueued_jobs
+    ActiveJob::Base.deserialize(initial).perform_now
+    connection.execute("UPDATE job_outbox SET scheduled_at=NOW() WHERE event_id=#{connection.quote(initial['job_id'])}")
+    recalculation_send(stdin, op: 'full')
+    held = recalculation_message(messages)
+    expect(held.fetch('op')).to eq('full_held')
+    ready = Queue.new
+    trigger = Thread.new do
+      ActiveRecord::Base.connection_pool.with_connection do |db|
+        ready << db.select_value('SELECT pg_backend_pid()')
+        Stats::RecalculationDebouncer.new(170_101).trigger
+      end
+    end
+    waiting = Timeout.timeout(5) { ready.pop }
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+    loop do
+      expect(Process.clock_gettime(Process::CLOCK_MONOTONIC)).to be < deadline
+      break if connection.select_value("SELECT #{held.fetch('pid').to_i}=ANY(pg_blocking_pids(#{waiting.to_i}))")
+    end
+    recalculation_send(stdin, op: 'finish')
+    expect(recalculation_message(messages)).to eq('op' => 'full_done')
+    expect(trigger.join(5)).to eq(trigger)
+    trigger.value
+    expect(enqueued_jobs.size).to eq(1)
+    k5_query = "SELECT expires_at>NOW() FROM phoenix.once_claims WHERE key='stats_full_recalculation:user:170101'"
+    expect(connection.select_value(k5_query))
+      .to be(true)
+    recalculation_send(stdin, op: 'replay')
+    expect(recalculation_message(messages)).to eq('op' => 'replayed')
+    expect(connection.select_value(k5_query))
+      .to be(true)
+    expect(connection.select_value("SELECT count(*) FROM phoenix.rails_commands WHERE kind='stats.calculate_month'"))
+      .to eq(4)
+    later = enqueued_jobs.sole.deep_dup
+    clear_enqueued_jobs
+    ActiveJob::Base.deserialize(later).perform_now
+    expect(JobCommands.rehome!('stats.full_recalculation', by: 'shared-peer')).to eq(moved: 1, left: 0)
+    expect(JobCommands.rehome!('stats.full_recalculation', by: 'shared-peer')).to eq(moved: 0, left: 0)
+    expect(enqueued_jobs.sole.fetch('job_id')).to eq(later.fetch('job_id'))
+    expect(JobOutbox.find(initial.fetch('job_id')).state).to eq('dispatched')
+    clear_enqueued_jobs
+
+    expect(PhoenixLease.try_hold('anomaly_backfill:170101') do
+      recalculation_send(stdin, op: 'rails_lease')
+      expect(recalculation_message(messages)).to eq('op' => 'native_busy')
+      expect(Point.find(170_201).anomaly).to be(true)
+      true
+    end).to be(true)
+    recalculation_send(stdin, op: 'native_lease')
+    expect(recalculation_message(messages)).to eq('op' => 'native_held')
+    expect(Points::AnomalyBackfillUserJob.new.perform(170_101, reset: true, notify: false)).to be(false)
+    expect(Point.find(170_201).anomaly).to be(true)
+    expect(enqueued_jobs).to be_empty
+    expect(connection.select_value("SELECT count(*) FROM phoenix.leases WHERE name='anomaly_backfill:170101'"))
+      .to eq(1)
+    recalculation_send(stdin, op: 'finish')
+    expect(recalculation_message(messages)).to eq('op' => 'native_done')
+    recalculation_send(stdin, op: 'stop')
+    expect(recalculation_message(messages)).to eq('op' => 'done')
+    stdin.close
+    expect(peer.join(5)).to eq(peer)
+    reader.join
+    error_reader.join
+    puts output
+    expect(peer.value.success?).to be(true), output + errors
+    expect(output).to match(/3 tests, 0 failures, 2 excluded/)
+  ensure
+    trigger&.kill if trigger&.alive?
+    trigger&.join
+    stdin&.close unless stdin&.closed?
+    if peer && !peer.join(5)
+      Process.kill('TERM', peer.pid)
+      peer.join
+    end
+    reader&.join
+    error_reader&.join
+    puts output if output && $ERROR_INFO
+    warn errors if errors.present? && $ERROR_INFO
+    clean_recalculation_peer(initial&.fetch('job_id')) if connected
+    ActiveRecord::Base.establish_connection(original_config) if original_config
+    self.class.use_transactional_tests = fixture_mode unless fixture_mode.nil?
+  end
+
+  def recalculation_message(queue) = Timeout.timeout(5) { queue.pop }
+
+  def recalculation_send(input, message)
+    input.puts(JSON.generate(message))
+    input.flush
+  end
+
+  def clean_recalculation_peer(event_id)
+    connection = ActiveRecord::Base.connection
+    [Notification, Stat, Users::Digest, Point, Track].each { _1.where(user_id: 170_101).delete_all }
+    JobOutbox.where(aggregate_id: 170_101).delete_all
+    connection.execute("DELETE FROM phoenix.rails_commands WHERE payload->>'user_id'='170101'")
+    connection.execute("DELETE FROM phoenix.once_claims WHERE key='stats_full_recalculation:user:170101'")
+    connection.execute("DELETE FROM phoenix.leases WHERE name='anomaly_backfill:170101'")
+    backfill_event = '00000000-0000-4000-8000-000000170998'
+    progress_key = connection.quote("anomaly_backfill:progress:#{backfill_event}")
+    connection.execute("DELETE FROM phoenix.cursors WHERE key=#{progress_key}")
+    connection.execute("DELETE FROM phoenix.processed_commands WHERE event_id=#{connection.quote(backfill_event)}")
+    if event_id
+      connection.execute("DELETE FROM phoenix.processed_commands WHERE event_id=#{connection.quote(event_id)}")
+    end
+    connection.execute('DELETE FROM phoenix.job_owners WHERE key IN ' \
+                       "('command:stats.full_recalculation','command:stats.calculate_month')")
+    connection.execute("DELETE FROM oban.oban_jobs WHERE args->>'user_id'='170101'")
+    User.unscoped.where(id: 170_101).delete_all
   end
 end
