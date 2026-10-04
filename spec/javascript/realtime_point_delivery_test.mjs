@@ -63,89 +63,90 @@ const { default: RealtimeController } = await import(
   `data:text/javascript;base64,${Buffer.from(stubbedSource).toString("base64")}`
 )
 
-function buildController() {
-  const calls = { tracksRefresh: 0, filters: 0 }
-  const layers = {
-    "tracks-mvt": { refresh: () => calls.tracksRefresh++ },
-    "map-editor": { reapplyTileFilters: () => calls.filters++ },
-  }
-  const mapsController = {
-    layerManager: { getLayer: (id) => layers[id] },
-  }
-  const controller = new RealtimeController()
-  controller.element = {}
-  controller.application = {
-    getControllerForElementAndIdentifier: () => mapsController,
-  }
-  return { controller, calls }
+const railsPoint = {
+  source: "app/models/point.rb#broadcast_coordinates",
+  spec: "spec/models/point_spec.rb",
+  example: "broadcasts the complete live point tuple with a nonempty country",
+  tuple: [52.52, 13.405, "85", "100.0", "1700000000", "5", "405", "Germany"],
 }
 
-function installFakeTimers(t) {
+function buildController(t) {
+  const calls = { markers: [], flights: [], invalidations: [], shows: 0 }
   const pending = new Map()
-  const delays = []
-  let nextId = 1
   const originalSetTimeout = globalThis.setTimeout
   const originalClearTimeout = globalThis.clearTimeout
-  globalThis.setTimeout = (callback, delay) => {
-    delays.push(delay)
+  let nextId = 1
+  globalThis.setTimeout = (callback) => {
     const id = nextId++
     pending.set(id, callback)
     return id
   }
-  globalThis.clearTimeout = (id) => {
-    pending.delete(id)
-  }
+  globalThis.clearTimeout = (id) => pending.delete(id)
   t.after(() => {
     globalThis.setTimeout = originalSetTimeout
     globalThis.clearTimeout = originalClearTimeout
   })
-  return {
-    delays,
-    runPending() {
-      for (const [id, callback] of [...pending]) {
-        pending.delete(id)
-        callback()
-      }
-    },
+  const recentPoint = {
+    show: () => calls.shows++,
+    updateRecentPoint: (...args) => calls.markers.push(args),
   }
+  const maps = {
+    realtimeDateRange: () => ({
+      startValue: "2023-11-14T00:00:00Z",
+      endValue: "2023-11-14T23:59:59Z",
+    }),
+    layerManager: {
+      getLayer: (id) => (id === "recentPoint" ? recentPoint : null),
+    },
+    mapDataManager: {
+      invalidatePoints: (options) => calls.invalidations.push(options),
+    },
+    map: { getZoom: () => 10, flyTo: (options) => calls.flights.push(options) },
+  }
+  const controller = new RealtimeController()
+  controller.liveModeEnabled = true
+  controller.element = {}
+  controller.application = { getControllerForElementAndIdentifier: () => maps }
+  return { controller, calls, pending }
 }
 
-test("a burst of track updates triggers a single tracks tile refresh", (t) => {
-  const timers = installFakeTimers(t)
-  const { controller, calls } = buildController()
+test("live point delivery preserves tuple fields and longitude latitude marker order", (t) => {
+  const { controller, calls, pending } = buildController(t)
+  controller.handleNewPoint(railsPoint.tuple)
 
-  for (let index = 0; index < 120; index++) {
-    controller.handleTrackUpdate({ type: "track_update", action: "created" })
-  }
-
-  assert.equal(calls.tracksRefresh, 0)
-  assert.equal(timers.delays.length, 1)
-
-  timers.runPending()
-
-  assert.equal(calls.tracksRefresh, 1)
-  assert.equal(calls.filters, 1)
+  assert.deepEqual(calls.markers, [
+    [
+      13.405,
+      52.52,
+      {
+        id: 405,
+        battery: 85,
+        altitude: 100,
+        timestamp: "1700000000",
+        velocity: 5,
+        country_name: "Germany",
+      },
+    ],
+  ])
+  assert.deepEqual(calls.flights, [
+    { center: [13.405, 52.52], zoom: 14, duration: 2000, essential: true },
+  ])
+  assert.deepEqual(calls.invalidations, [{ appendOnly: true }])
+  assert.equal(calls.shows, 1)
+  assert.equal(pending.size, 1)
 })
 
-test("a track update after a completed refresh schedules another one", (t) => {
-  const timers = installFakeTimers(t)
-  const { controller, calls } = buildController()
+test("a point outside the active date window causes no map mutation", (t) => {
+  const { controller, calls, pending } = buildController(t)
+  const tuple = [...railsPoint.tuple]
+  tuple[4] = "1699913600"
+  controller.handleNewPoint(tuple)
 
-  controller.handleTrackUpdate({ type: "track_update" })
-  timers.runPending()
-  controller.handleTrackUpdate({ type: "track_update" })
-  timers.runPending()
-
-  assert.equal(calls.tracksRefresh, 2)
-})
-
-test("disconnect cancels a pending tracks refresh", (t) => {
-  const timers = installFakeTimers(t)
-  const { controller, calls } = buildController()
-
-  controller.handleTrackUpdate({ type: "track_update" })
-  controller.disconnect()
-  timers.runPending()
-
-  assert.equal(calls.tracksRefresh, 0)
+  assert.deepEqual(calls, {
+    markers: [],
+    flights: [],
+    invalidations: [],
+    shows: 0,
+  })
+  assert.equal(pending.size, 0)
 })
