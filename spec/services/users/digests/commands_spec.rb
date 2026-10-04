@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require 'open3'
+require 'timeout'
 
 RSpec.describe 'Users::Digests::Commands' do
   include ActiveSupport::Testing::TimeHelpers
@@ -20,6 +22,8 @@ RSpec.describe 'Users::Digests::Commands' do
         "('command:digests.calculate_month', 'command:digests.calculate_year', " \
         "'cron:monthly_digest_scheduling_job', 'cron:yearly_digest_scheduling_job')"
     )
+    ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
+    PhoenixTables.install_state!
   end
 
   def clear_digest_reverse_commands
@@ -31,6 +35,202 @@ RSpec.describe 'Users::Digests::Commands' do
   def digest_reverse!(kind, payload)
     statement = 'INSERT INTO phoenix.rails_commands (kind, payload) VALUES (?, ?::jsonb)'
     ActiveRecord::Base.connection.execute(ActiveRecord::Base.sanitize_sql_array([statement, kind, payload.to_json]))
+  end
+
+  it 'in-flight Rails and native digest workers converge in both writer orders ' \
+     'and preserve metadata and terminal effects' do
+    store = finish = rails_writer = nil
+    original_config = ActiveRecord::Base.connection_db_config.configuration_hash
+    shared_database = 'dawarich_phoenix_test_a12d1b2_scratch'
+    expect(ENV.fetch('PHOENIX_TEST_DATABASE')).to eq('dawarich_phoenix_test_a12d1b2')
+    command = %w[mix test test/dawarich/digests/job_lifecycle_test.exs
+                 --include rails_parity --only rails_parity --seed 101]
+    messages = Queue.new
+    peer_output = +''
+    peer_error = +''
+    stdin, stdout, stderr, peer = Open3.popen3({ 'SELF_HOSTED' => 'false' }, *command,
+                                               chdir: Rails.root.join('app-phoenix').to_s)
+    reader = Thread.new do
+      stdout.each_line do |line|
+        peer_output << line
+        messages << JSON.parse(line.delete_prefix('A12D1B2:')) if line.start_with?('A12D1B2:')
+      end
+      messages << { 'op' => 'eof' }
+    end
+    error_reader = Thread.new { peer_error << stderr.read }
+    expect(collision_message(messages)).to eq('op' => 'ready', 'database' => shared_database)
+    ActiveRecord::Base.establish_connection(original_config.merge(database: shared_database))
+    cases = JSON.parse(Rails.root.join('app-phoenix/test/fixtures/a12d1b2/jobs.json').read).fetch('workers')
+
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    travel_to Time.utc(2026, 10, 3, 12) do
+      %w[monthly yearly].product(%w[rails_first native_first], %w[new existing]).each do |kind, order, profile|
+        kase = cases.find { |row| row['id'] == "#{profile}_#{kind}_en" }
+        collision_send(stdin, op: 'case', kind:, order:, profile:)
+        expect(collision_message(messages)).to eq('op' => 'case_ready')
+        load_collision_fixture(kase)
+        type = kind == 'monthly' ? 'digests.calculate_month' : 'digests.calculate_year'
+        job_owner!("command:#{type}", :sidekiq)
+        rails_uuid = '00000000-0000-4000-8000-000000184001'
+        allow(SecureRandom).to receive(:uuid).and_return(rails_uuid)
+        ready = Queue.new
+        store = Queue.new
+        finish = Queue.new
+        held = false
+        allow_any_instance_of(Users::Digest).to receive(:save!).and_wrap_original do |save, *args, **opts|
+          next save.call(*args, **opts) if held
+
+          held = true
+          ActiveRecord::Base.transaction do
+            ready << { 'op' => 'rails_ready', 'pid' => ActiveRecord::Base.connection.select_value('SELECT pg_backend_pid()') }
+            store.pop
+            result = save.call(*args, **opts)
+            if order == 'rails_first'
+              ready << { 'op' => 'rails_stored' }
+              finish.pop
+            end
+            result
+          end
+        end
+        clear_enqueued_jobs
+        calculator = kind == 'monthly' ? Users::Digests::Monthly::CalculatingJob : Users::Digests::Yearly::CalculatingJob
+        mail = kind == 'monthly' ? Users::Digests::Monthly::EmailSendingJob : Users::Digests::Yearly::EmailSendingJob
+        rails_writer = Thread.new do
+          ActiveRecord::Base.connection_pool.with_connection do
+            Time.use_zone(kase.fetch('ambient_zone')) { calculator.perform_now(*kase.fetch('args')) }
+          end
+        end
+        rails_ready = collision_message(ready)
+        expect(rails_ready.fetch('op')).to eq('rails_ready')
+        collision_send(stdin, op: 'start')
+        native_ready = collision_message(messages)
+        expect(native_ready.fetch('op')).to eq('native_ready')
+        JobOwnership.release!("command:#{type}", by: 'mixed-runtime-spec')
+
+        if order == 'rails_first'
+          store << :store
+          expect(collision_message(ready)).to eq('op' => 'rails_stored')
+          collision_send(stdin, op: 'store')
+          collision_blocked!(native_ready.fetch('pid'), rails_ready.fetch('pid'))
+          finish << :finish
+          expect(collision_message(messages).fetch('op')).to eq('native_stored')
+        else
+          collision_send(stdin, op: 'store')
+          expect(collision_message(messages).fetch('op')).to eq('native_stored')
+          store << :store
+          collision_blocked!(rails_ready.fetch('pid'), native_ready.fetch('pid'))
+        end
+        collision_send(stdin, op: 'finish')
+        expect(collision_message(messages)).to eq('op' => 'native_done')
+
+        expect(rails_writer.join(5)).to eq(rails_writer)
+        rails_writer.value
+        expect(enqueued_jobs.count { |job| job[:job] == mail && job[:args] == kase['args'] }).to eq(1)
+        actual = ActiveRecord::Base.connection.select_values(
+          'SELECT row_to_json(d)::text FROM (SELECT * FROM public.digests WHERE user_id=14101) d'
+        ).map { |row| JSON.parse(row) }.sole
+        expected = kase.fetch('expected').fetch('rows').sole.except('id')
+        expected['sharing_uuid'] = rails_uuid if profile == 'new' && order == 'rails_first'
+        expect(actual.except('id')).to eq(expected), "#{kind}/#{order}/#{profile}"
+        expect(Notification.where(user_id: 14_101)).to be_empty
+        collision_send(stdin, op: 'verify', expected:)
+        expect(collision_message(messages)).to eq('op' => 'verified')
+        allow_any_instance_of(Users::Digest).to receive(:save!).and_call_original
+        allow(SecureRandom).to receive(:uuid).and_call_original
+      end
+    end
+
+    collision_send(stdin, op: 'stop')
+    expect(collision_message(messages)).to eq('op' => 'done')
+    stdin.close
+    expect(peer.join(5)).to eq(peer)
+    reader.join
+    error_reader.join
+    puts peer_output
+    expect(peer.value.success?).to be(true), peer_output + peer_error
+    expect(peer_output).to match(/3 tests, 0 failures, 2 excluded/)
+  ensure
+    store << :store if store
+    finish << :finish if finish
+    rails_writer&.kill if rails_writer&.alive?
+    rails_writer&.join
+    stdin&.close unless stdin&.closed?
+    if peer && !peer.join(5)
+      Process.kill('TERM', peer.pid)
+      peer.join
+    end
+    reader&.join
+    error_reader&.join
+    puts peer_output if peer_output && $ERROR_INFO
+    warn peer_error if peer_error.present? && $ERROR_INFO
+    ActiveRecord::Base.establish_connection(original_config) if original_config
+  end
+
+  def collision_message(queue) = Timeout.timeout(5) { queue.pop }
+
+  def collision_send(input, message)
+    input.puts(JSON.generate(message))
+    input.flush
+  end
+
+  def load_collision_fixture(kase)
+    connection = ActiveRecord::Base.connection
+    %w[users families family_memberships stats tracks track_segments points digests].each do |table|
+      kase.fetch('input').fetch(table, []).each do |row|
+        columns = row.keys.sort.map { |key| connection.quote_column_name(key) }.join(', ')
+        connection.execute("INSERT INTO public.#{table} (#{columns}) SELECT #{columns} " \
+                           "FROM json_populate_record(NULL::public.#{table}, #{connection.quote(row.to_json)}::json)")
+      end
+    end
+    connection.execute("SELECT setval('public.digests_id_seq', 140500, false)")
+    connection.execute("SELECT setval('public.stats_id_seq', 150500, false)")
+  end
+
+  def collision_blocked!(waiting, holding)
+    deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + 5
+    loop do
+      expect(Process.clock_gettime(Process::CLOCK_MONOTONIC)).to be < deadline
+      blocked = ActiveRecord::Base.connection.select_value(
+        "SELECT #{holding.to_i} = ANY(pg_blocking_pids(#{waiting.to_i}))"
+      )
+      break if blocked
+    end
+  end
+
+  it 'digest rehome keeps failed and unsupported pending rows and preserves due time' do
+    at = Time.utc(2030, 3, 29, 12, 34, 56)
+    %w[month year].each do |period|
+      type = "digests.calculate_#{period}"
+      klass = period == 'month' ? Users::Digests::Monthly::CalculatingJob : Users::Digests::Yearly::CalculatingJob
+      payload = { 'user_id' => 42, 'year' => 2025, 'time_zone' => 'Asia/Tokyo' }
+      payload['month'] = 3 if period == 'month'
+      args = period == 'month' ? [42, 2025, 3] : [42, 2025]
+      attributes = { command_type: type, command_version: 1, aggregate_id: 42, payload:, scheduled_at: at }
+      supported = JobOutbox.create!(**attributes, event_id: SecureRandom.uuid)
+      unsupported = JobOutbox.create!(**attributes.merge(command_version: 2), event_id: SecureRandom.uuid)
+      dispatched = JobOutbox.create!(**attributes, event_id: SecureRandom.uuid, state: 'dispatched')
+      job_owner!("command:#{type}", :oban)
+      clear_enqueued_jobs
+
+      expect do
+        expect(JobCommands.rehome!(type, by: 'digest-spec')).to eq(moved: 1, left: 0)
+      end.to have_enqueued_job(klass).with(*args).at(at)
+      expect(enqueued_jobs.sole['timezone']).to eq('Asia/Tokyo')
+      expect(JobOutbox.exists?(supported.event_id)).to be(false)
+      expect(unsupported.reload.state).to eq('pending')
+      expect(dispatched.reload.state).to eq('dispatched')
+      expect(ActiveRecord::Base.connection.select_rows(
+               "SELECT owner, pinned FROM phoenix.job_owners WHERE key='command:#{type}'"
+             )).to eq([['sidekiq', true]])
+
+      failed = JobOutbox.create!(**attributes, event_id: SecureRandom.uuid)
+      allow(klass).to receive(:set).and_raise(IOError, 'digest enqueue down')
+      clear_enqueued_jobs
+      expect(JobCommands.rehome!(type, by: 'digest-spec')).to eq(moved: 0, left: 1, error: 'IOError')
+      expect(enqueued_jobs).to be_empty
+      expect(failed.reload).to have_attributes(state: 'pending', scheduled_at: at, payload:)
+      allow(klass).to receive(:set).and_call_original
+    end
   end
 
   it 'a digest reverse calculation rechecks ownership and preserves run_at and timezone' do
