@@ -10,6 +10,9 @@ module PhoenixTables
              '(key text PRIMARY KEY, value bigint NOT NULL, expires_at timestamptz NOT NULL)'
   ONCE_CLAIMS = 'CREATE TABLE IF NOT EXISTS phoenix.once_claims ' \
                 '(key text PRIMARY KEY, expires_at timestamptz NOT NULL)'
+  REGISTRATION_SETTING = 'CREATE TABLE IF NOT EXISTS phoenix.registration_setting ' \
+                         '(id boolean PRIMARY KEY DEFAULT true CHECK (id), enabled boolean NOT NULL, ' \
+                         'updated_at timestamptz NOT NULL DEFAULT statement_timestamp())'
   ACHIEVEMENT_CHECKS = 'CREATE TABLE IF NOT EXISTS phoenix.achievement_checks (user_id bigint PRIMARY KEY, ' \
                        'oldest_timestamp bigint NOT NULL, revision bigint NOT NULL, expires_at timestamptz NOT NULL)'
   ACHIEVEMENT_CHECK_REVISIONS = 'CREATE SEQUENCE IF NOT EXISTS phoenix.achievement_check_revisions'
@@ -71,6 +74,43 @@ module PhoenixTables
 
   def without_phoenix_state!
     PHOENIX_STATE_TABLES.each { |table| ActiveRecord::Base.connection.execute("DROP TABLE IF EXISTS phoenix.#{table}") }
+    PhoenixSchema.reset!
+  end
+
+  def phoenix_registration!
+    connection = ActiveRecord::Base.connection
+    connection.execute('CREATE SCHEMA IF NOT EXISTS phoenix')
+    connection.execute(REGISTRATION_SETTING)
+    PhoenixSchema.reset!
+  end
+
+  def with_legacy_welcome
+    connection = ActiveRecord::Base.connection
+    connection.execute('DROP TABLE IF EXISTS phoenix.once_claims')
+    PhoenixSchema.reset!
+    yield
+  ensure
+    connection.execute(ONCE_CLAIMS)
+    PhoenixSchema.reset!
+  end
+
+  def with_legacy_registration
+    connection = ActiveRecord::Base.connection
+    present = PhoenixSchema.table?('registration_setting')
+    rows = connection.select_rows('SELECT id, enabled, updated_at FROM phoenix.registration_setting') if present
+    connection.execute('DROP TABLE IF EXISTS phoenix.registration_setting')
+    PhoenixSchema.reset!
+    yield
+  ensure
+    if present
+      phoenix_registration!
+      rows.each do |row|
+        sql = 'INSERT INTO phoenix.registration_setting (id, enabled, updated_at) VALUES (?, ?, ?)'
+        connection.execute(ActiveRecord::Base.sanitize_sql_array(
+                             [sql, *row]
+                           ))
+      end
+    end
     PhoenixSchema.reset!
   end
 

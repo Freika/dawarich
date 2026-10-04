@@ -39,7 +39,13 @@ RSpec.describe 'Phoenix fixtures: admin setting writes', type: :request do
     saved.each_key { |key| ENV.delete(key) }
     protection = ActionController::Base.allow_forgery_protection
     ActionController::Base.allow_forgery_protection = true
-    travel_to(now) { example.run }
+    travel_to(now) do
+      if example.metadata[:a10b_non_transactional]
+        example.run
+      else
+        with_legacy_registration { example.run }
+      end
+    end
   ensure
     saved.each { |key, value| ENV[key] = value }
     ActionController::Base.allow_forgery_protection = protection
@@ -392,6 +398,19 @@ RSpec.describe 'Phoenix fixtures: admin setting writes', type: :request do
     expect(background.fetch('admin')).to be(false)
     save_cases(cases)
   end
+  it 'legacy registration oracle preserves false and nil without the singleton table' do
+    expect(PhoenixSchema.table?('registration_setting')).to be(false)
+    [false, nil].each do |value|
+      DawarichSettings.set_registration_enabled(value)
+      expect(DawarichSettings.registration_enabled?).to eq(value)
+      expect(Rails.cache.read('dawarich/registration_enabled')).to eq(value)
+      key = Rails.cache.send(:normalize_key, 'dawarich/registration_enabled', {})
+      bytes = Rails.cache.redis.with { |redis| redis.get(key) }
+      expect(bytes).to be_present
+      expect(Rails.cache.send(:deserialize_entry, bytes).value).to eq(value)
+    end
+  end
+
   context 'native interoperability', :a10b_non_transactional do
     self.use_transactional_tests = false
 

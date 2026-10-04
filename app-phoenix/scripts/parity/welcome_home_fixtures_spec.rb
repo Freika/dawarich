@@ -39,7 +39,13 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     protection = ActionController::Base.allow_forgery_protection
     ENV['JWT_SECRET_KEY'] = signing_phrase
     ActionController::Base.allow_forgery_protection = true
-    travel_to(now) { example.run }
+    travel_to(now) do
+      if example.metadata[:a10b_non_transactional]
+        example.run
+      else
+        with_legacy_welcome { with_legacy_registration { example.run } }
+      end
+    end
   ensure
     ENV['JWT_SECRET_KEY'] = saved
     ActionController::Base.allow_forgery_protection = protection
@@ -369,5 +375,49 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
         location: List.first(Plug.Conn.get_resp_header(conn, "location")),
         cookie: conn.resp_cookies["_dawarich_session"].value}))
     ELIXIR
+  end
+
+  def legacy_jti_case(jti)
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    user = synthetic_user(13_071)
+    first = welcome_request('legacy_jti', user, overrides: { jti: jti })
+    expect(first).to include('location' => '/map/v2', 'signed_in' => true, 'claimed' => true)
+    expect(first.dig('trackable', 'sign_in_count_delta')).to eq(1)
+    expect(first.fetch('events').size).to eq(1)
+    expect(first.dig('cache', 'expires_at')).to eq(now.to_i + 1800)
+    expect(Rails.cache.redis.with { |redis| redis.connection.values_at(:port, :db) })
+      .to eq([URI(ENV.fetch('REDIS_URL')).port, 0])
+    expect(PhoenixSchema.table?('once_claims')).to be(false)
+    follow_redirect!
+    count = user.reload.sign_in_count
+    @events.clear
+    get '/trial/welcome', params: { token: token_for(user, jti) }
+    expect(response).to redirect_to('/map/v2')
+    expect(user.reload.sign_in_count).to eq(count)
+    expect(@events).to be_empty
+    expect(flash[:notice]).to be_blank
+    reset!
+    get '/trial/welcome', params: { token: token_for(user, jti) }
+    expect(response).to redirect_to(new_user_session_path)
+    expect(request.session['warden.user.user.key']).to be_nil
+    expect(user.reload.sign_in_count).to eq(count)
+    expect(@events).to be_empty
+    expect(response.headers).to include('Cache-Control' => 'no-store', 'Pragma' => 'no-cache',
+                                        'Referrer-Policy' => 'no-referrer')
+    expect(Rails.cache.read("trial_welcome:consumed:#{jti}")).to be(true)
+  end
+
+  it 'legacy welcome oracle uses cache DB0 when once_claims is absent' do
+    legacy_jti_case('a13g-legacy-cache')
+  end
+
+  it 'legacy welcome NUL jti preserves first consume guest replay and same actor replay' do
+    legacy_jti_case("a13g-legacy-#{0.chr}-nul")
+  end
+
+  it 'legacy welcome large incompressible jti preserves first consume guest replay and same actor replay' do
+    jti = Array.new(128) { |index| Digest::SHA256.hexdigest("a13g-legacy-large-#{index}") }.join
+    expect(jti.bytesize).to eq(8192)
+    legacy_jti_case(jti)
   end
 end
