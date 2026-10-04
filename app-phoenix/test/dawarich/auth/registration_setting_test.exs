@@ -13,7 +13,7 @@ defmodule Dawarich.Auth.RegistrationSettingTest do
   test "reads the flag Rails' cache store wrote" do
     assert RegistrationSetting.fetch(%{}, redis({:ok, bytes("true")})) == {:ok, true}
     assert RegistrationSetting.fetch(%{}, redis({:ok, bytes("false")})) == {:ok, false}
-    assert RegistrationSetting.fetch(%{}, redis({:ok, bytes("nil")})) == {:ok, false}
+    assert RegistrationSetting.fetch(%{}, redis({:ok, bytes("nil")})) == {:ok, nil}
   end
 
   test "a missing entry answers ALLOW_EMAIL_PASSWORD_REGISTRATION as Rails' fetch block does" do

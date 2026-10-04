@@ -4,7 +4,7 @@ defmodule Dawarich.Tracks.Reprocessor do
   alias Dawarich.Tracks.{Settings, Store}
   alias Dawarich.Transportation.{Detector, DominantMode, Segments}
 
-  def reprocess!(repo, user, track) do
+  def reprocess!(repo, user, track, now \\ nil) do
     preserved = Segments.clear_inference!(repo, track.id)
 
     segment_data =
@@ -14,7 +14,7 @@ defmodule Dawarich.Tracks.Reprocessor do
         fallback: false
       )
 
-    if segment_data != [], do: Segments.insert!(repo, track.id, segment_data)
+    if segment_data != [], do: Segments.insert!(repo, track.id, segment_data, now)
 
     mode =
       repo
@@ -22,7 +22,7 @@ defmodule Dawarich.Tracks.Reprocessor do
       |> DominantMode.pick()
 
     if mode,
-      do: Store.save!(repo, track, dominant_mode: Segments.mode_to_int(mode)),
+      do: Store.save!(repo, track, [dominant_mode: Segments.mode_to_int(mode)], now),
       else: track
   end
 end

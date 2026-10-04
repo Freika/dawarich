@@ -13,7 +13,7 @@ defmodule DawarichWeb.InsightsHomeTest do
     })
 
     route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", "/", "www.example.com")
-    assert route.pipe_through == [:rails_frame]
+    assert route.pipe_through == [:public_home]
     assert route.rails_gate == {DawarichWeb.HomeGate, :owned?}
     original = Application.get_env(:dawarich, :rails_routes, [])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, original) end)

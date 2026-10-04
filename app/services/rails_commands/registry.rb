@@ -201,6 +201,7 @@ module RailsCommands
         }
       }
     }.merge(Points::ArrivalCommands::HANDLERS)
+     .merge(Points::WebDestroyCommands::HANDLERS)
      .merge(Points::AnomalyFilterCommands::HANDLERS)
      .merge(Imports::PostprocessingCommands::HANDLERS)
      .merge(Imports::UploadCommands::HANDLERS)
@@ -223,7 +224,7 @@ module RailsCommands
          guard: 'Durable event receipt and per-import lease; completed receipts do not restart imports',
          call: ->(payload) { Imports::NormalResume.call(payload) }
        }
-     ).merge(Stats::Commands::HANDLERS).freeze
+     ).merge(Stats::Commands::HANDLERS).merge(Users::Digests::Commands::HANDLERS).freeze
 
     module_function
 
