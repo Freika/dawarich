@@ -87,6 +87,11 @@ M-P2-branch substitutes the old body address and fails; M-P2-retained-enqueue in
 actual recovery job at the Cloud hand-back and fails the zero-enqueue check. Both are restored.
 OTP/Cloud callers, recovery worker/lifecycle and dormant confirmation files stay with their owners.
 
-Resume at P3 after P2's restored scoped tests are green.
+P3 projects the captured monthly/yearly data with parameterized digest and user/year stat queries.
+All twenty successful R2 rows match, including December, invalid days, source units and significant
+locations. M-P3-user removes the yearly owner predicate and fails the explicit foreign-user
+January assertion; restored selection passes. No calculator or page entitlement filter is used.
+
+Resume at P4 after P3's restored scoped tests are green.
 Native rendering, delivery workers, ownership wiring, test-mail HTTP,
 ED allocation and final C1–C5 gates are pending. Rails source/specs and dormant stubs are retained.
