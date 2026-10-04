@@ -77,7 +77,11 @@ defmodule Dawarich.Cable.Bus do
   def publish(broadcasting, payload, opts \\ []) do
     if pg?() do
       repo = Keyword.get(opts, :repo, Dawarich.Jobs.repo())
-      Dawarich.Cable.PgStore.append(repo, prefix() || "", broadcasting, payload)
+
+      store =
+        Keyword.get(Application.get_env(:dawarich, :cable, []), :pg_store, Dawarich.Cable.PgStore)
+
+      store.append(repo, prefix() || "", broadcasting, payload)
     else
       Redis.command(["PUBLISH", channel(broadcasting), payload], @publisher)
     end
