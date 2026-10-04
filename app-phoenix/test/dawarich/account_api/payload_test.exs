@@ -34,4 +34,20 @@ defmodule Dawarich.AccountApi.PayloadTest do
     assert body["features"]["family"] == true
     assert is_boolean(body["features"]["reverse_geocoding"])
   end
+
+  @tag :account_malformed
+  test "malformed account settings replay without changing rows" do
+    for settings <- [
+          %{"timezone" => true},
+          %{"timezone" => "UTC", "fog_of_war_meters" => %{}},
+          %{"timezone" => "UTC", "route_opacity" => false}
+        ] do
+      id = user!(%{settings: settings})
+      before = Repo.query!("SELECT row_to_json(u)::text FROM users u WHERE id=$1", [id]).rows
+      assert {:replay, _} = Payload.read(id)
+
+      assert Repo.query!("SELECT row_to_json(u)::text FROM users u WHERE id=$1", [id]).rows ==
+               before
+    end
+  end
 end

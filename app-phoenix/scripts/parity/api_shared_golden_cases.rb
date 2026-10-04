@@ -9,6 +9,8 @@ module ApiSharedGoldenOracle
       status: 401, json: { 'error' => 'unauthorized' } },
     { name: 'trip_metadata', action: 'trip', json: { 'name' => 'Synthetic shared trip',
       'started_at' => '2026-03-29T01:00:00.000+01:00', 'ended_at' => '2026-03-29T03:00:00.000+02:00' } },
+    { name: 'trip_uuid_uppercase', action: 'trip', path: "/api/v1/shared/#{LINK.upcase}/trip" },
+    { name: 'trip_uuid_compact', action: 'trip', path: "/api/v1/shared/#{LINK.delete('-')}/trip" },
     { name: 'trip_stats_km', action: 'trip', link: { settings: { 'show_stats' => true } }, distance: 123 },
     { name: 'trip_stats_mi', action: 'trip', link: { settings: { 'show_stats' => true } },
       user: { distance_unit: 'mi' }, distance: 77 },

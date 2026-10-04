@@ -4,7 +4,7 @@ defmodule DawarichWeb.Api.SharedController do
 
   import Plug.Conn
 
-  alias Dawarich.SharedLinks
+  alias Dawarich.{Accounts, RailsCookies, RailsSecret, SharedLinks, UserTimeZone}
   alias DawarichWeb.Api.{Body, Respond}
   alias DawarichWeb.SharedLinkCookie
 
@@ -14,9 +14,9 @@ defmodule DawarichWeb.Api.SharedController do
     conn = frame(conn)
 
     if supported?(conn) do
-      now = DateTime.utc_now()
+      now = conn.assigns[:api_now] || DateTime.utc_now()
       id = conn.path_params["id"]
-      link = if SharedLinks.canonical?(id), do: SharedLinks.active(id, now)
+      link = if SharedLinks.api_uuid?(id), do: SharedLinks.active(id, now)
 
       cond do
         is_nil(link) -> error(conn, 404, "not_found")
@@ -51,7 +51,8 @@ defmodule DawarichWeb.Api.SharedController do
     client =
       List.first(get_req_header(conn, "x-dawarich-client")) || conn.assigns.api_params["client"]
 
-    client not in ["ios", "android"] and
+    not Map.has_key?(fetch_cookies(conn).req_cookies, "remember_user_token") and
+      client not in ["ios", "android"] and
       get_req_header(conn, "x-requested-with") == [] and
       conn.assigns.api_params["format"] in [nil, "json"] and
       not Enum.any?(conn.req_headers, fn {name, _} -> String.contains?(name, "_") end) and
@@ -61,13 +62,19 @@ defmodule DawarichWeb.Api.SharedController do
   defp dispatch(conn, :route, link),
     do: result(conn, Dawarich.SharedApi.Points.route(link), cache_control: cache(link))
 
-  defp dispatch(conn, :trip, link), do: result(conn, Dawarich.SharedApi.Trip.show(link), [])
+  defp dispatch(conn, :trip, link),
+    do: result(conn, Dawarich.SharedApi.Trip.show(link, zone(conn)), [])
 
   defp dispatch(conn, :points, %{type: type} = link) when type != "live",
     do: result(conn, Dawarich.SharedApi.Points.index(link), cache_control: cache(link))
 
   defp dispatch(conn, :points, link),
-    do: result(conn, Dawarich.SharedApi.Points.live(link, DateTime.utc_now()), [])
+    do:
+      result(
+        conn,
+        Dawarich.SharedApi.Points.live(link, conn.assigns[:api_now] || DateTime.utc_now()),
+        []
+      )
 
   defp dispatch(conn, action, link) when action in [:photos, :thumbnail],
     do: result(conn, Dawarich.SharedApi.Photos.response(link, action), [])
@@ -83,6 +90,20 @@ defmodule DawarichWeb.Api.SharedController do
     if Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(phrase),
       do: "max-age=30, public",
       else: "max-age=0, private, must-revalidate"
+  end
+
+  defp zone(conn) do
+    now = conn.assigns[:api_now] || DateTime.utc_now()
+    cookies = fetch_cookies(conn).req_cookies
+
+    with value when is_binary(value) <- cookies["_dawarich_session"],
+         {:ok, session} <-
+           RailsCookies.decrypt(value, "_dawarich_session", RailsSecret.fetch(), now),
+         %Accounts.User{} = user <- Accounts.from_session(session, now) do
+      UserTimeZone.name(user.settings)
+    else
+      _ -> UserTimeZone.name(%{"timezone" => ""})
+    end
   end
 
   defp error(conn, status, message),

@@ -29,6 +29,7 @@ defmodule Dawarich.AccountApi.Payload do
     raw = Accounts.settings(id)
     raw = if is_map(raw), do: raw, else: %{}
     timezone = raw["timezone"] || System.get_env("TIME_ZONE", "UTC")
+    unless is_binary(timezone), do: Ruby.unsupported!("account timezone shape")
     zone = UserTimeZone.name(raw)
 
     RailsTime.with_zone(zone, fn ->
@@ -84,8 +85,27 @@ defmodule Dawarich.AccountApi.Payload do
       |> Map.update!("visits_suggestions_enabled", &(&1 == "true"))
       |> Map.update!("globe_projection", &UserSettings.cast/1)
 
-    {:object, Enum.map(@keys, &{&1, values[&1]})}
+    maps =
+      if is_map(maps) do
+        {:object, rest} = ordered(Map.delete(maps, "distance_unit"))
+        {:object, [{"distance_unit", ordered(maps["distance_unit"])} | rest]}
+      else
+        maps
+      end
+
+    values = Map.put(values, "maps", maps)
+    {:object, Enum.map(@keys, &{&1, ordered(values[&1])})}
   end
+
+  defp ordered(value) when is_map(value),
+    do:
+      {:object,
+       value
+       |> Enum.sort_by(fn {key, _} -> {byte_size(key), key} end)
+       |> Enum.map(fn {key, value} -> {key, ordered(value)} end)}
+
+  defp ordered(value) when is_list(value), do: Enum.map(value, &ordered/1)
+  defp ordered(value), do: value
 
   defp positive(value, default) do
     n = Ruby.to_i(value)

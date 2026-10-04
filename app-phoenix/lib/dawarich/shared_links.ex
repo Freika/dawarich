@@ -4,6 +4,7 @@ defmodule Dawarich.SharedLinks do
   alias Dawarich.Repo
 
   @canonical ~r/\A[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}\z/
+  @api_uuid ~r/\A(?:[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}|[0-9a-f]{32})\z/i
   @types %{0 => "trip", 1 => "track", 2 => "timeline", 3 => "live"}
   @iso_date ~r/\A\d{4}-\d{2}-\d{2}\z/
 
@@ -20,6 +21,8 @@ defmodule Dawarich.SharedLinks do
   """
 
   def canonical?(id), do: is_binary(id) and Regex.match?(@canonical, id)
+
+  def api_uuid?(id), do: is_binary(id) and Regex.match?(@api_uuid, id)
 
   def active(id, %DateTime{} = now) do
     case Repo.query!(@active, [id, DateTime.to_naive(now)]).rows do
