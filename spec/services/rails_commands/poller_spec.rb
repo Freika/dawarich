@@ -335,6 +335,7 @@ RSpec.describe RailsCommands::Poller do
       imports.destroy_terminal imports.extraction_requested imports.extraction_destroy_requested
       route_videos.attachment_job visits.web_redetect imports.resume
       stats.calculate_month stats.caches_invalidated
+      digests.calculate_month digests.calculate_year digests.email_month digests.email_year
     ]
     expect(RailsCommands::Registry::HANDLERS.keys).to eq(expected_kinds)
     RailsCommands::Registry::HANDLERS.each_value do |handler|

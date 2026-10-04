@@ -7,15 +7,119 @@ RSpec.describe 'Users::Digests::Commands' do
 
   self.use_transactional_tests = false
 
-  before { phoenix_tables! }
+  before do
+    phoenix_tables!
+    clear_digest_reverse_commands
+  end
 
   after do
+    clear_digest_reverse_commands
     JobOutbox.where(command_type: %w[digests.calculate_month digests.calculate_year]).delete_all
     ActiveRecord::Base.connection.execute(
       'DELETE FROM phoenix.job_owners WHERE key IN ' \
         "('command:digests.calculate_month', 'command:digests.calculate_year', " \
         "'cron:monthly_digest_scheduling_job', 'cron:yearly_digest_scheduling_job')"
     )
+  end
+
+  def clear_digest_reverse_commands
+    %w[rails_commands rails_commands_dead].each do |table|
+      ActiveRecord::Base.connection.execute("DELETE FROM phoenix.#{table} WHERE kind LIKE 'digests.%'")
+    end
+  end
+
+  def digest_reverse!(kind, payload)
+    statement = 'INSERT INTO phoenix.rails_commands (kind, payload) VALUES (?, ?::jsonb)'
+    ActiveRecord::Base.connection.execute(ActiveRecord::Base.sanitize_sql_array([statement, kind, payload.to_json]))
+  end
+
+  it 'a digest reverse calculation rechecks ownership and preserves run_at and timezone' do
+    user = create(:user)
+    at = Time.utc(2030, 3, 29, 12, 34, 56)
+    %w[month year].each do |period|
+      type = "digests.calculate_#{period}"
+      klass = period == 'month' ? Users::Digests::Monthly::CalculatingJob : Users::Digests::Yearly::CalculatingJob
+      args = period == 'month' ? [user.id, 2025, 3] : [user.id, 2025]
+      payload = { 'user_id' => user.id, 'year' => 2025, 'time_zone' => 'Asia/Tokyo', 'run_at' => at.to_i }
+      payload['month'] = 3 if period == 'month'
+      job_owner!("command:#{type}", :sidekiq)
+      clear_enqueued_jobs
+      digest_reverse!(type, payload)
+      expect { RailsCommands::Poller.drain_once }.to have_enqueued_job(klass).with(*args).at(at)
+      expect(enqueued_jobs.sole['timezone']).to eq('Asia/Tokyo')
+      expect(JobOutbox.where(command_type: type)).to be_empty
+
+      clear_enqueued_jobs
+      digest_reverse!(type, payload)
+      job_owner!("command:#{type}", :oban)
+      expect { RailsCommands::Poller.drain_once }.not_to have_enqueued_job
+      row = JobOutbox.where(command_type: type).sole
+      expect(row.payload).to eq(payload.except('run_at'))
+      expect(row.scheduled_at).to eq(at)
+      expect(row.aggregate_id).to eq(user.id)
+
+      deleted = create(:user, deleted_at: Time.current)
+      [0, deleted.id].each do |id|
+        digest_reverse!(type, payload.merge('user_id' => id))
+        expect { RailsCommands::Poller.drain_once }.not_to have_enqueued_job
+      end
+      expect(JobOutbox.where(command_type: type).count).to eq(1)
+    end
+    expect(ActiveRecord::Base.connection.select_value(
+             "SELECT count(*) FROM phoenix.rails_commands WHERE kind LIKE 'digests.%'"
+           )).to eq(0)
+  end
+
+  it 'digest email reverse commands enqueue the unchanged job with saved locale and source eligibility' do
+    %w[month year].each do |period|
+      klass = period == 'month' ? Users::Digests::Monthly::EmailSendingJob : Users::Digests::Yearly::EmailSendingJob
+      action = period == 'month' ? :monthly_digest : :year_end_digest
+      %w[enabled absent sent zero disabled deleted].each do |state|
+        settings = { 'locale' => 'fr', "#{period}ly_digest_emails_enabled" => state != 'disabled' }
+        user = create(:user, settings:)
+        attributes = { user:, year: 2025, period_type: "#{period}ly", distance: state == 'zero' ? 0 : 500_000 }
+        attributes[:month] = 3 if period == 'month'
+        attributes[:sent_at] = Time.utc(2025, 4, 1) if state == 'sent'
+        digest = create(:users_digest, **attributes) unless state == 'absent'
+        user.update_column(:deleted_at, Time.current) if state == 'deleted'
+        payload = { 'user_id' => user.id, 'year' => 2025, 'time_zone' => 'Asia/Tokyo' }
+        payload['month'] = 3 if period == 'month'
+        args = period == 'month' ? [user.id, 2025, 3] : [user.id, 2025]
+        clear_enqueued_jobs
+        digest_reverse!("digests.email_#{period}", payload)
+
+        if state == 'deleted'
+          expect { RailsCommands::Poller.drain_once }.not_to have_enqueued_job(klass)
+        else
+          expect { RailsCommands::Poller.drain_once }.to have_enqueued_job(klass).with(*args)
+          job = enqueued_jobs.sole
+          expect(job['locale']).to eq('fr')
+          expect(job['timezone']).to eq('Asia/Tokyo')
+          if state == 'enabled'
+            expect { ActiveJob::Base.execute(job) }.to have_enqueued_mail(Users::DigestsMailer, action)
+            expect(digest.reload.sent_at).to be_present
+            expect(enqueued_jobs.last['locale']).to eq('fr')
+            sent_at = digest.sent_at
+            clear_enqueued_jobs
+            digest_reverse!("digests.email_#{period}", payload)
+            RailsCommands::Poller.drain_once
+            expect { ActiveJob::Base.execute(enqueued_jobs.sole) }.not_to have_enqueued_mail
+            expect(digest.reload.sent_at).to eq(sent_at)
+          else
+            before = digest&.sent_at
+            expect { ActiveJob::Base.execute(job) }.not_to have_enqueued_mail
+            expect(digest&.reload&.sent_at).to eq(before)
+          end
+        end
+      end
+      clear_enqueued_jobs
+      digest_reverse!("digests.email_#{period}", { 'user_id' => 0, 'year' => 2025, 'month' => 3,
+                                                 'time_zone' => 'Asia/Tokyo' })
+      expect { RailsCommands::Poller.drain_once }.not_to have_enqueued_job
+    end
+    expect(ActiveRecord::Base.connection.select_value(
+             "SELECT count(*) FROM phoenix.rails_commands WHERE kind LIKE 'digests.%'"
+           )).to eq(0)
   end
 
   it 'Rails digest schedulers stop under native cron ownership and keep their legacy scan otherwise' do
