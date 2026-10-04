@@ -376,84 +376,6 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
     end
   end
 
-  defp assert_video_rows(graph, repo) do
-    rows = Map.drop(graph, ["user"])
-
-    rows =
-      Map.update!(rows, "active_storage_blobs", fn blobs ->
-        Enum.map(
-          blobs,
-          &Map.update!(&1, "metadata", fn metadata ->
-            if is_map(metadata), do: Jason.encode!(metadata), else: metadata
-          end)
-        )
-      end)
-
-    assert_rows(Map.put(rows, "users", [graph["user"]]), repo)
-
-    for table <- ~w(route_videos active_storage_blobs active_storage_attachments) do
-      assert repo.query!("SELECT id FROM #{table} ORDER BY id").rows ==
-               Enum.map(rows[table], &[&1["id"]])
-    end
-  end
-
-  defp assert_video_effects(state, user, repo) do
-    before = state["before"]["active_storage_attachments"]
-    after_ids = Enum.map(state["after"]["active_storage_attachments"], & &1["id"])
-    detached = Enum.reject(before, &(&1["id"] in after_ids))
-
-    expected =
-      Enum.map(detached, fn attachment ->
-        [
-          "route_videos.attachment_job",
-          %{
-            "user_id" => user.id,
-            "blob_id" => attachment["blob_id"],
-            "action" => "purge_detached",
-            "attachment" => Map.take(attachment, ~w(id name record_type record_id blob_id))
-          }
-        ]
-      end)
-
-    expected =
-      if expected == [] do
-        for %{"job" => "ActiveStorage::PurgeJob", "args" => [%{"_aj_globalid" => gid}]} <-
-              state["jobs"],
-            do: [
-              "route_videos.attachment_job",
-              %{
-                "user_id" => user.id,
-                "blob_id" => gid |> String.split("/") |> List.last() |> String.to_integer(),
-                "action" => "purge_unattached"
-              }
-            ]
-      else
-        jobs = state["request"]["queued"] || state["jobs"]
-
-        assert Enum.map(jobs, & &1["job"]) ==
-                 Enum.map(detached, fn _ -> "ActiveStorage::PurgeJob" end)
-
-        assert Enum.map(jobs, & &1["args"]) ==
-                 Enum.map(detached, fn attachment ->
-                   [
-                     %{
-                       "_aj_globalid" =>
-                         "gid://dawarich/ActiveStorage::Blob/#{attachment["blob_id"]}"
-                     }
-                   ]
-                 end)
-
-        expected
-      end
-
-    if repo == Repo do
-      assert expected == []
-    else
-      assert repo.query!("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id").rows ==
-               expected
-    end
-  end
-
   defp check_response_and_rows("visits/" <> _ = name, state, user, repo) do
     System.put_env("SELF_HOSTED", to_string(state["self_hosted"]))
     req = state["request"]
@@ -608,6 +530,84 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
               %{"user_id" => id, "locale" => "en", "timezone" => "Europe/Berlin"}
             ]
 
+      assert repo.query!("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id").rows ==
+               expected
+    end
+  end
+
+  defp assert_video_rows(graph, repo) do
+    rows = Map.drop(graph, ["user"])
+
+    rows =
+      Map.update!(rows, "active_storage_blobs", fn blobs ->
+        Enum.map(
+          blobs,
+          &Map.update!(&1, "metadata", fn metadata ->
+            if is_map(metadata), do: Jason.encode!(metadata), else: metadata
+          end)
+        )
+      end)
+
+    assert_rows(Map.put(rows, "users", [graph["user"]]), repo)
+
+    for table <- ~w(route_videos active_storage_blobs active_storage_attachments) do
+      assert repo.query!("SELECT id FROM #{table} ORDER BY id").rows ==
+               Enum.map(rows[table], &[&1["id"]])
+    end
+  end
+
+  defp assert_video_effects(state, user, repo) do
+    before = state["before"]["active_storage_attachments"]
+    after_ids = Enum.map(state["after"]["active_storage_attachments"], & &1["id"])
+    detached = Enum.reject(before, &(&1["id"] in after_ids))
+
+    expected =
+      Enum.map(detached, fn attachment ->
+        [
+          "route_videos.attachment_job",
+          %{
+            "user_id" => user.id,
+            "blob_id" => attachment["blob_id"],
+            "action" => "purge_detached",
+            "attachment" => Map.take(attachment, ~w(id name record_type record_id blob_id))
+          }
+        ]
+      end)
+
+    expected =
+      if expected == [] do
+        for %{"job" => "ActiveStorage::PurgeJob", "args" => [%{"_aj_globalid" => gid}]} <-
+              state["jobs"],
+            do: [
+              "route_videos.attachment_job",
+              %{
+                "user_id" => user.id,
+                "blob_id" => gid |> String.split("/") |> List.last() |> String.to_integer(),
+                "action" => "purge_unattached"
+              }
+            ]
+      else
+        jobs = state["request"]["queued"] || state["jobs"]
+
+        assert Enum.map(jobs, & &1["job"]) ==
+                 Enum.map(detached, fn _ -> "ActiveStorage::PurgeJob" end)
+
+        assert Enum.map(jobs, & &1["args"]) ==
+                 Enum.map(detached, fn attachment ->
+                   [
+                     %{
+                       "_aj_globalid" =>
+                         "gid://dawarich/ActiveStorage::Blob/#{attachment["blob_id"]}"
+                     }
+                   ]
+                 end)
+
+        expected
+      end
+
+    if repo == Repo do
+      assert expected == []
+    else
       assert repo.query!("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id").rows ==
                expected
     end
