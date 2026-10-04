@@ -3,6 +3,25 @@ defmodule Dawarich.Jobs.ImportEntries do
   def entries do
     [
       %{
+        key: "command:imports.trek_import",
+        kind: :command,
+        worker: Dawarich.Imports.Trek.ImportWorker,
+        claimable: false
+      },
+      %{
+        key: "command:imports.trek_sync",
+        kind: :command,
+        worker: Dawarich.Imports.Trek.SyncWorker,
+        claimable: false
+      },
+      %{
+        key: "cron:trek_sync_job",
+        kind: :cron,
+        expression: "0 */6 * * *",
+        worker: Dawarich.Imports.Trek.ScheduleWorker,
+        claimable: false
+      },
+      %{
         key: "command:imports.teslamate_sync",
         kind: :command,
         worker: Dawarich.Imports.Teslamate.SyncWorker,

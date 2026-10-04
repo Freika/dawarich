@@ -186,12 +186,14 @@ defmodule Dawarich.Imports.Trek.Sync do
   def record_error(nil, _), do: :ok
 
   def record_error(ctx, error) do
-    ctx.repo.transaction(fn ->
-      current!(ctx)
-      attrs = %{last_error: error.message}
-      attrs = if error.status == 401, do: Map.put(attrs, :status, 1), else: attrs
-      update_source!(ctx, attrs)
-    end)
+    if ctx.opts[:record_errors?] != false do
+      ctx.repo.transaction(fn ->
+        current!(ctx)
+        attrs = %{last_error: error.message}
+        attrs = if error.status == 401, do: Map.put(attrs, :status, 1), else: attrs
+        update_source!(ctx, attrs)
+      end)
+    end
   end
 
   def update_source!(ctx, attrs) do

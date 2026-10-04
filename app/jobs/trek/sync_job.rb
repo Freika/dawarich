@@ -9,6 +9,9 @@ module Trek
     BATCH_SIZE = 100
 
     def perform(source_id, after_id = nil)
+      return if Imports::TrekCommands.forward('imports.trek_sync', { 'source_id' => source_id, 'after_id' => after_id },
+                                              event_id: job_id)
+
       source = TripSource.active.find_by(id: source_id, provider: 'trek')
       return unless source&.sync_allowed? && !source.importing?
 

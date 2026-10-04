@@ -113,9 +113,9 @@ defmodule Dawarich.RailsJobOwners do
     "TransportationModes::ReclassifyTrackJob" =>
       {:oban, ["command:transportation.reclassify_track"]},
     "TransportationModes::UserReclassifyJob" => {:slice, :a12d2},
-    "Trek::ImportTripsJob" => {:slice, :a7},
-    "Trek::SyncJob" => {:slice, :a7},
-    "Trek::SyncSchedulingJob" => {:slice, :a7},
+    "Trek::ImportTripsJob" => {:oban, ["command:imports.trek_import"]},
+    "Trek::SyncJob" => {:oban, ["command:imports.trek_sync"]},
+    "Trek::SyncSchedulingJob" => {:oban, ["cron:trek_sync_job"]},
     "Trips::CalculateAllJob" => {:oban, ["command:trips.calculate"]},
     "Trips::CalculateCountriesJob" => {:oban, ["command:trips.calculate"]},
     "Trips::CalculateDistanceJob" => {:oban, ["command:trips.calculate"]},

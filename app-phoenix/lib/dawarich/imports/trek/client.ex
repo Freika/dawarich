@@ -38,6 +38,7 @@ defmodule Dawarich.Imports.Trek.Client do
   defp get(client, path) do
     {uri, address} = Endpoint.resolve!(client.source.base_url <> path, client.opts)
     scheme = if uri.scheme == "https", do: :https, else: :http
+    headers = [{"authorization", "Bearer " <> key!(client)}, {"accept", "application/json"}]
 
     case Mint.HTTP.connect(scheme, address, uri.port,
            hostname: uri.host,
@@ -47,7 +48,6 @@ defmodule Dawarich.Imports.Trek.Client do
          ) do
       {:ok, conn} ->
         try do
-          headers = [{"authorization", "Bearer " <> key!(client)}, {"accept", "application/json"}]
           target = (uri.path || "/") <> if(uri.query, do: "?" <> uri.query, else: "")
 
           case Mint.HTTP.request(conn, "GET", target, headers, nil) do
@@ -103,7 +103,8 @@ defmodule Dawarich.Imports.Trek.Client do
            {:ok, clear} <- Dawarich.ActiveRecordEncryption.decrypt(source.api_key, key) do
         clear
       else
-        _ -> raise Error, message: "ActiveRecord::Encryption::Errors::Decryption"
+        _ ->
+          raise Error, message: "ActiveRecord::Encryption::Errors::Decryption", kind: :decryption
       end
     else
       source.api_key

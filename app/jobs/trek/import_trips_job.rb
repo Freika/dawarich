@@ -11,6 +11,13 @@ module Trek
     end
 
     def perform(source_id, identifiers, selection_token, offset = 0)
+      return if Imports::TrekCommands.forward(
+        'imports.trek_import',
+        { 'source_id' => source_id, 'identifiers' => identifiers, 'selection_token' => selection_token,
+'offset' => offset },
+        event_id: job_id
+      )
+
       source = TripSource.active.find_by(id: source_id, provider: 'trek')
       return unless source&.selection_token == selection_token
 
