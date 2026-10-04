@@ -3,6 +3,55 @@ defmodule Dawarich.Cable.PgStoreTest do
 
   alias Dawarich.Cable.PgStore
 
+  test "rollback removes its events and counter increment before the waiting publisher proceeds" do
+    parent = self()
+
+    first =
+      Task.async(fn ->
+        ScratchRepo.transaction(fn ->
+          [[backend]] = rows("SELECT pg_backend_pid()")
+          assert {:ok, 1} = PgStore.append(ScratchRepo, "rollback", "points", "first")
+          assert {:ok, 2} = PgStore.append(ScratchRepo, "rollback", "points", "second")
+          send(parent, {:holding, backend})
+          receive(do: (:rollback -> ScratchRepo.rollback(:cancelled)))
+        end)
+      end)
+
+    assert_receive {:holding, first_backend}, 1_000
+
+    second =
+      Task.async(fn ->
+        ScratchRepo.transaction(fn ->
+          [[backend]] = rows("SELECT pg_backend_pid()")
+          send(parent, {:waiting, backend})
+          PgStore.append(ScratchRepo, "rollback", "points", "survivor")
+        end)
+      end)
+
+    assert_receive {:waiting, second_backend}, 1_000
+
+    try do
+      assert_blocked(second, first_backend, second_backend)
+      assert {:ok, %{events: []}} = PgStore.snapshot(ScratchRepo, "rollback", 0)
+    after
+      send(first.pid, :rollback)
+    end
+
+    assert Task.await(first) == {:error, :cancelled}
+    assert Task.await(second) == {:ok, {:ok, 1}}
+
+    assert {:ok, %{last_seq: 1, retired_through: 0, events: [[1, "points", "survivor"]]}} =
+             PgStore.snapshot(ScratchRepo, "rollback", 0)
+
+    assert_raise Postgrex.Error, fn ->
+      ScratchRepo.transaction(fn ->
+        PgStore.append(ScratchRepo, "rollback", nil, "invalid")
+      end)
+    end
+
+    assert {:ok, 2} = PgStore.append(ScratchRepo, "rollback", "points", "after failure")
+  end
+
   test "a later publisher cannot commit past an earlier uncommitted sequence" do
     parent = self()
 
