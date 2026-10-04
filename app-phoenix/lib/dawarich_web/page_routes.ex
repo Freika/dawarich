@@ -6,6 +6,23 @@ defmodule DawarichWeb.PageRoutes do
       import DawarichWeb.A9Routes
 
       scope "/" do
+        pipe_through :map_write
+
+        post "/tags", DawarichWeb.TagActions, :create,
+          metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+
+        for method <- [:patch, :put, :delete, :post] do
+          match method, "/tags/:id", DawarichWeb.TagActions, :member,
+            metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+        end
+
+        for method <- [:delete, :post] do
+          match method, "/points/bulk_destroy", DawarichWeb.PointListActions, :destroy,
+            metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+        end
+      end
+
+      scope "/" do
         pipe_through :imports_request
         post "/imports", DawarichWeb.ImportsController, :create
         post "/imports/:id", DawarichWeb.ImportsController, :update, metadata: @native_import

@@ -4,6 +4,8 @@ class Users::Digests::Yearly::SchedulingJob < ApplicationJob
   queue_as :digests
 
   def perform
+    return if JobOwnership.oban?('cron:yearly_digest_scheduling_job')
+
     year = 1.year.ago.year # Previous year's digest
 
     ::User.active_or_trial.find_each do |user|

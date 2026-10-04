@@ -8,7 +8,17 @@ defmodule DawarichWeb.Strangler do
 
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
-  @page_pipelines [:browser, :insights, :rails_frame, :sharing, :sharing_unlock, :trial_resume]
+  @page_pipelines [
+    :browser,
+    :insights,
+    :rails_frame,
+    :sharing,
+    :sharing_unlock,
+    :trial_resume,
+    :admin_writes,
+    :trial_welcome,
+    :public_home
+  ]
   @keys %{"s" => "sharing", "invitations" => "family"}
 
   @constraints %{
@@ -39,6 +49,11 @@ defmodule DawarichWeb.Strangler do
     "/api/v1/families/location_requests/:id/decline" => %{"id" => ~r/\A\d{1,18}\z/},
     "/places/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/tags/:id/edit" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/tags/:id" => %{"id" => ~r/\A[1-9]\d{0,17}\z/},
+    "/tracks/:track_id/segments/:id" => %{
+      "track_id" => ~r/\A[1-9]\d{0,17}\z/,
+      "id" => ~r/\A[1-9]\d{0,17}\z/
+    },
     "/stats/:year" => %{"year" => ~r/\A\d{4}\z/},
     "/stats/:year/:month" => %{"year" => ~r/\A\d{4}\z/, "month" => ~r/\A(0?[1-9]|1[0-2])\z/},
     "/digests/:year" => %{"year" => ~r/\A\d{4}\z/},

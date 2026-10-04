@@ -43,7 +43,7 @@ defmodule DawarichWeb.PageRoutesTest do
            {DawarichWeb.PlacesGate, :drawer?}},
           {"/map/residency", DawarichWeb.MapFrames, :residency, [:rails_frame], %{},
            {DawarichWeb.MapFramesGate, :residency?}},
-          {"/", DawarichWeb.InsightsHome, :index, [:rails_frame], %{},
+          {"/", DawarichWeb.HomeDispatch, [], [:public_home], %{},
            {DawarichWeb.HomeGate, :owned?}}
         ] do
       route = info(path)

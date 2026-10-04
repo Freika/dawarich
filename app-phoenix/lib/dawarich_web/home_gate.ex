@@ -14,8 +14,13 @@ defmodule DawarichWeb.HomeGate do
           do: part |> String.split("=", parts: 2) |> hd() |> URI.decode_www_form()
 
     "home" not in Application.get_env(:dawarich, :rails_routes, []) and
-      conn.method in ["GET", "HEAD"] and not is_nil(user) and is_nil(conn.assigns.rails_locked) and
-      AdminGate.supported?(user) and Strangler.page_request?(conn) and
+      conn.method in ["GET", "HEAD"] and is_nil(conn.assigns.rails_locked) and
+      (is_nil(user) or AdminGate.supported?(user)) and
+      (not is_nil(user) or
+         match?(
+           {:ok, _},
+           DawarichWeb.PublicHomeLive.registration(DawarichWeb.LayoutAssigns.self_hosted?())
+         )) and Strangler.page_request?(conn) and
       Admission.headers(conn.req_headers) == :ok and
       Enum.all?(query, fn {_key, value} -> is_binary(value) end) and
       length(keys) == length(Enum.uniq(keys)) and

@@ -2,6 +2,15 @@ defmodule DawarichWeb.MapFrameRoutes do
   @moduledoc false
   defmacro map_frame_routes do
     quote do
+      scope "/" do
+        pipe_through :map_write
+
+        for method <- [:patch, :post] do
+          match method, "/tracks/:track_id/segments/:id", DawarichWeb.SegmentActions, :update,
+            metadata: %{rails_gate: {DawarichWeb.MapWriteGate, :owned?}}
+        end
+      end
+
       scope "/map" do
         pipe_through :rails_frame
 

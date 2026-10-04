@@ -29,9 +29,13 @@ defmodule Dawarich.Digests.Calculation do
       end
     end)
   rescue
-    error -> {:error, error}
+    error -> failure(error, __STACKTRACE__, opts)
   catch
-    kind, reason -> {:error, {kind, reason}}
+    kind, reason -> failure({kind, reason}, __STACKTRACE__, opts)
+  end
+
+  defp failure(error, stack, opts) do
+    if Keyword.get(opts, :error_stack, false), do: {:error, error, stack}, else: {:error, error}
   end
 
   defp callback(opts, key, value) do

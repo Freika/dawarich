@@ -23,6 +23,18 @@ defmodule Dawarich.RailsCache.Wire do
     <<0, 17, type, expires * 1.0::little-float-64, -1::little-signed-32, payload::binary>>
   end
 
+  def encode_boolean(value, expires_at: expires) when value in [true, false, nil] do
+    tag =
+      case value do
+        true -> ?T
+        false -> ?F
+        nil -> ?0
+      end
+
+    expires = if is_nil(expires), do: -1.0, else: expires * 1.0
+    <<0, 17, 1, expires::little-float-64, -1::little-signed-32, 4, 8, tag>>
+  end
+
   defp unpack(
          <<0, 17, type, expires::little-float-64, length::little-signed-32, rest::binary>>,
          opts

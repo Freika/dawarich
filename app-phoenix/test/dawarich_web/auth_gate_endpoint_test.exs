@@ -15,7 +15,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
           "user_before"
         ]["encrypted_password"]
   @key "dawarich/registration_enabled"
-  @env ~w(SELF_HOSTED APPLICATION_PROTOCOL RAILS_ENV RACK_ENV OIDC_CLIENT_ID OIDC_CLIENT_SECRET
+  @env ~w(SELF_HOSTED DAWARICH_RAILS_SLICES APPLICATION_PROTOCOL RAILS_ENV RACK_ENV OIDC_CLIENT_ID OIDC_CLIENT_SECRET
           OIDC_PKCE_ENABLED GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET)
 
   setup do
@@ -182,12 +182,19 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     assert seen.body == unsupported and seen.line == "POST #{path} HTTP/1.1"
     assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
 
+    for target <- ~w(/users/otp_challenge /api/v1/auth/otp_challenge) do
+      assert to_puma(ctx, form("POST", target, cookie, body)).body == body
+    end
+
+    System.put_env("DAWARICH_RAILS_SLICES", "api_account")
+
     for target <-
-          ~w(/users/otp_challenge /api/v1/users/me/two_factor/setup /api/v1/users/me/two_factor/confirm /api/v1/users/me/two_factor/backup_codes /api/v1/auth/otp_challenge) do
+          ~w(/api/v1/users/me/two_factor/setup /api/v1/users/me/two_factor/confirm /api/v1/users/me/two_factor/backup_codes) do
       assert to_puma(ctx, form("POST", target, cookie, body)).body == body
     end
 
     assert to_puma(ctx, form("DELETE", "/api/v1/users/me/two_factor", cookie, body)).body == body
+    System.delete_env("DAWARICH_RAILS_SLICES")
 
     disable =
       URI.encode_query(%{

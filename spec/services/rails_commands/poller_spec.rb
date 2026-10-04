@@ -329,6 +329,7 @@ RSpec.describe RailsCommands::Poller do
       release_null_island_follow_up
       points.tile_epoch
       points.anomaly_filter tracks.realtime tracks.backfill visits.realtime points.live_broadcast
+      points.web_destroy_follow_up
       points.anomaly_recalculate points.anomaly_stats imports.postprocessing_step imports.upload_created
       imports.prepare_download imports.prepared_download_purge imports.destroy_requested imports.destroy_status
       imports.destroy_callbacks imports.destroy_achievements imports.destroy_stats imports.destroy_complete
@@ -336,6 +337,7 @@ RSpec.describe RailsCommands::Poller do
       share_management.live_revoked posters.created posters.purge posters.progress
       route_videos.attachment_job visits.web_redetect imports.resume imports.normal_resume
       stats.calculate_month stats.caches_invalidated
+      digests.calculate_month digests.calculate_year digests.email_month digests.email_year
     ]
     expect(RailsCommands::Registry::HANDLERS.keys).to eq(expected_kinds)
     RailsCommands::Registry::HANDLERS.each_value do |handler|

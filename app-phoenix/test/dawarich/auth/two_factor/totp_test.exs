@@ -24,6 +24,33 @@ defmodule Dawarich.Auth.TwoFactor.TotpTest do
     assert_raise ArgumentError, fn -> Totp.decode("not-valid-base32!") end
   end
 
+  test "API direct TOTP accepts only the one-second Rails windows" do
+    secret = Totp.generate_secret(Base.decode16!(@oracle["entropy_hex"], case: :mixed))
+
+    vectors = [
+      {1_791_115_200, "446537", {:ok, 59_703_839}},
+      {1_791_115_201, "446537", :invalid},
+      {1_791_115_228, "478842", :invalid},
+      {1_791_115_229, "478842", {:ok, 59_703_841}},
+      {1_791_115_230, "923731", {:ok, 59_703_840}},
+      {1_791_115_231, "923731", :invalid},
+      {1_791_115_200, "923731", {:ok, 59_703_840}},
+      {1_791_115_200, "923731", {:ok, 59_703_840}},
+      {1_791_115_200, " 923731 ", :invalid},
+      {1_791_115_200, "923\n731", :invalid},
+      {1_791_115_200, "0923731", :invalid},
+      {1_791_115_590, "046907", {:ok, 59_703_853}},
+      {1_791_115_590, "46907", :invalid}
+    ]
+
+    for {now, code, expected} <- vectors do
+      assert Totp.api_verify(secret, code, now) == expected
+    end
+
+    assert Totp.api_verify(nil, "923731", 1_791_115_200) == :invalid
+    assert Totp.api_verify(secret, nil, 1_791_115_200) == :invalid
+  end
+
   test "provisioning URI and secret shape match Devise and ROTP" do
     assert Code.ensure_loaded?(Totp)
     entropy = Base.decode16!(@oracle["entropy_hex"], case: :mixed)

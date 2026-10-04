@@ -7,6 +7,8 @@ defmodule DawarichWeb.HomeGateTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
+    :ok = Dawarich.Auth.RegistrationSetting.put(true)
     original = Application.get_env(:dawarich, :rails_routes, [])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, original) end)
 
@@ -19,10 +21,10 @@ defmodule DawarichWeb.HomeGateTest do
     :ok
   end
 
-  test "home gate owns only supported authenticated root and respects home rollback" do
+  test "home gate owns supported authenticated and anonymous root and respects home rollback" do
     Application.put_env(:dawarich, :rails_routes, [])
     assert true == HomeGate.owned?(prepared("/?return_to=elsewhere"), %{})
-    assert false == HomeGate.owned?(Plug.Test.conn(:get, "/"), %{})
+    assert true == HomeGate.owned?(Plug.Test.conn(:get, "/"), %{})
 
     for query <-
           ~w(client=mobile referral=x _method=post format=json return_to[]=x return_to=x&return_to=y) do
