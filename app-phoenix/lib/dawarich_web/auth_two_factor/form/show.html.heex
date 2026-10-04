@@ -1,0 +1,144 @@
+<div class="min-h-content w-full my-5">
+  <.page_header title={t(@locale, "settings.two_factor.show.two_factor_authentication", %{})} />
+  <.navigation
+    locale={@locale}
+    active={@active}
+    self_hosted={@self_hosted}
+    admin={@admin}
+    two_factor={@two_factor}
+  />
+
+  <div class="max-w-lg">
+    <div class="card bg-base-200 shadow-xl">
+      <div class="card-body">
+        <%= if @enabled do %>
+          <div class="flex items-center gap-3 mb-4">
+            <.icon name="shield-check" class="text-success w-8 h-8" />
+            <div>
+              <h2 class="text-xl font-bold">
+                {t(@locale, "settings.two_factor.show.fa_is_enabled", %{})}
+              </h2>
+              <p class="text-sm text-base-content/70">
+                {t(
+                  @locale,
+                  "settings.two_factor.show.your_account_is_protected_with_two_factor_authentication",
+                  %{}
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <p class="text-sm text-base-content/70 mb-4">
+            {t(
+              @locale,
+              "settings.two_factor.show.to_disable_2fa_enter_your_password_and_a_current_authenticator",
+              %{}
+            )}
+          </p>
+
+          <form
+            action="/settings/two_factor"
+            accept-charset="UTF-8"
+            method="post"
+            data-turbo="false"
+            class="space-y-4"
+          >
+            <input type="hidden" name="_method" value="delete" /><input
+              type="hidden"
+              name="authenticity_token"
+              value={@rails_csrf_token}
+            />
+            <div class="form-control">
+              <label class="label" for="password">
+                <span class="label-text">{t(
+                  @locale,
+                  "settings.two_factor.show.current_password",
+                  %{}
+                )}</span>
+              </label>
+              <input
+                class="input input-bordered w-full"
+                required="required"
+                autocomplete="current-password"
+                type="password"
+                name="password"
+                id="password"
+              />
+            </div>
+            <div class="form-control">
+              <label class="label" for="otp_attempt">
+                <span class="label-text">{t(
+                  @locale,
+                  "settings.two_factor.show.authenticator_code_or_backup_code",
+                  %{}
+                )}</span>
+              </label>
+              <input
+                class="input input-bordered w-full"
+                required="required"
+                autocomplete="one-time-code"
+                inputmode="text"
+                type="text"
+                name="otp_attempt"
+                id="otp_attempt"
+              />
+            </div>
+            <div class="form-control">
+              <input
+                type="submit"
+                name="commit"
+                value={t(@locale, "settings.two_factor.show.disable_2fa", %{})}
+                class="btn btn-error w-full"
+                data-disable-with={t(@locale, "settings.two_factor.show.disable_2fa", %{})}
+              />
+            </div>
+          </form>
+        <% else %>
+          <div class="flex items-center gap-3 mb-4">
+            <.icon name="shield" class="text-warning w-8 h-8" />
+            <div>
+              <h2 class="text-xl font-bold">
+                {t(@locale, "settings.two_factor.show.fa_is_not_enabled", %{})}
+              </h2>
+              <p class="text-sm text-base-content/70">
+                {t(
+                  @locale,
+                  "settings.two_factor.show.add_an_extra_layer_of_security_to_your_account",
+                  %{}
+                )}
+              </p>
+            </div>
+          </div>
+
+          <div class="divider"></div>
+
+          <p class="text-sm text-base-content/70 mb-4">
+            {t(
+              @locale,
+              "settings.two_factor.show.two_factor_authentication_adds_an_extra_layer_of_security_by",
+              %{}
+            )}
+          </p>
+
+          <form
+            action="/settings/two_factor"
+            accept-charset="UTF-8"
+            method="post"
+            data-turbo="false"
+          >
+            <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
+            <input
+              type="submit"
+              name="commit"
+              value={t(@locale, "settings.two_factor.show.enable_2fa", %{})}
+              class="btn btn-primary w-full"
+              data-disable-with={t(@locale, "settings.two_factor.show.enable_2fa", %{})}
+            />
+          </form>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

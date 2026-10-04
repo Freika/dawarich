@@ -14,6 +14,15 @@ defmodule Dawarich.QrSvg do
         {length(rows), path(rows)}
       end)
 
+    serialize(count, path, size)
+  end
+
+  def otp(data, size \\ 6) do
+    rows = Dawarich.QrCode.modules(data)
+    serialize(length(rows), path(rows), size)
+  end
+
+  defp serialize(count, path, size) do
     width = count * size + 10
 
     ~s|<?xml version="1.0" standalone="yes"?><svg version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" xmlns:ev="http://www.w3.org/2001/xml-events" width="100%" height="100%" viewBox="0 0 #{width} #{width}" preserveAspectRatio="xMidYMid meet" shape-rendering="crispEdges"><rect width="#{width}" height="#{width}" x="0" y="0" fill="#fff"/><path d="#{path}" fill="#000" transform="translate(5,5) scale(#{size})"/></svg>|

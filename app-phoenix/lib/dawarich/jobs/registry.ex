@@ -3,6 +3,12 @@ defmodule Dawarich.Jobs.Registry do
 
   @base_entries [
     %{
+      key: "command:posters.create",
+      kind: :command,
+      worker: Dawarich.Posters.CreateWorker,
+      claimable: false
+    },
+    %{
       key: Dawarich.RouteVideos.PurgeWorker.key(),
       kind: :cron,
       expression: "45 3 * * *",
@@ -236,7 +242,8 @@ defmodule Dawarich.Jobs.Registry do
   ]
 
   @entries @base_entries ++
-             Dawarich.Jobs.ReleaseEntries.entries() ++ Dawarich.Digests.JobEntries.entries()
+             Dawarich.Jobs.ReleaseEntries.entries() ++
+             Dawarich.Jobs.ImportEntries.entries() ++ Dawarich.Digests.JobEntries.entries()
   @native_crontab [{"17 * * * *", Dawarich.State.PurgeWorker}]
 
   def entries, do: @entries

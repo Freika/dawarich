@@ -6,6 +6,104 @@ source = fixture["login"]["user"]
 user = %{id: source["id"], encrypted_password: source["encrypted_password"]}
 secret = Application.fetch_env!(:dawarich, :rails_secret)
 
+if Enum.at(System.argv(), 1) == "two_factor_management" do
+  alias Dawarich.Auth.TwoFactor.{Management, Totp}
+  alias Dawarich.Repo
+
+  unless System.get_env("PHOENIX_TEST_DATABASE") == "dawarich_phoenix_test_a11c",
+    do: raise("A11c own test DB required")
+
+  id = 74603
+  email = "a11c-protocol@dawarich.test"
+  now = ~U[2026-10-04 12:00:00.000000Z]
+  hash = source["encrypted_password"]
+  salt = binary_part(hash, 0, 29)
+
+  Ecto.Adapters.SQL.Sandbox.unboxed_run(Repo, fn ->
+    [[count]] =
+      Repo.query!("SELECT count(*) FROM users WHERE id=$1 OR email=$2", [id, email], log: false).rows
+
+    unless count == 0, do: raise("A11c synthetic actor already exists")
+
+    {1, _} =
+      Repo.insert_all(
+        "users",
+        [
+          %{
+            id: id,
+            email: email,
+            encrypted_password: hash,
+            status: 1,
+            plan: 1,
+            settings: %{},
+            api_key: "A11C_PROTOCOL",
+            created_at: now,
+            updated_at: now
+          }
+        ],
+        log: false
+      )
+
+    try do
+      context = %{self_hosted: true, oidc: false, clock: fn -> now end}
+      {:ok, %{secret: otp}} = Management.setup(id, salt, context)
+      current = Totp.at(otp, DateTime.to_unix(now))
+      {:ok, %{user: enabled, codes: codes}} = Management.verify(id, salt, current, context)
+
+      {before, before_cookie} =
+        SessionCookie.for_form(
+          %{
+            "user_return_to" => "/stats",
+            "devise.test" => true,
+            "warden.user.user.key" => [[id], salt]
+          },
+          secret
+        )
+
+      {managed, managed_cookie} = SessionCookie.for_form(before, secret)
+
+      {:ok, %{user: disabled}} =
+        Management.disable(id, salt, "safepassword12", hd(codes), context)
+
+      projection = fn actor ->
+        %{
+          "enabled" => actor.otp_required_for_login,
+          "ciphertext" => actor.otp_secret,
+          "backups" => actor.otp_backup_codes,
+          "consumed_timestep" => actor.consumed_timestep
+        }
+      end
+
+      result = %{
+        "mode" => "two_factor_management",
+        "user_id" => id,
+        "email" => email,
+        "password" => "safepassword12",
+        "hash" => hash,
+        "secret" => otp,
+        "at" => DateTime.to_unix(now),
+        "current_code" => current,
+        "later_code" => Totp.at(otp, DateTime.to_unix(now) + 30),
+        "unused_backup" => Enum.at(codes, 1),
+        "enabled" => projection.(enabled),
+        "disabled" => projection.(disabled),
+        "form_token" => RailsCsrf.masked_token(managed),
+        "sessions" => %{
+          "before" => %{"expected" => before, "cookie" => before_cookie},
+          "managed" => %{"expected" => managed, "cookie" => managed_cookie}
+        }
+      }
+
+      File.write!(hd(System.argv()), Jason.encode!(result))
+    after
+      Repo.query!("DELETE FROM users WHERE id=$1 AND email=$2", [id, email], log: false)
+    end
+  end)
+
+  IO.puts("A11c native management protocol emitted; owned actor removed")
+  System.halt(0)
+end
+
 if Enum.at(System.argv(), 1) == "account_update" do
   old_password = "a11rest-protocol-old-password"
   new_password = "a11rest-protocol-new-password"

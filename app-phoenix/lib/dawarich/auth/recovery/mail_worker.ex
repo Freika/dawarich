@@ -15,7 +15,7 @@ defmodule Dawarich.Auth.Recovery.MailWorker do
   }
 
   def deliverable?(env) do
-    env["RAILS_ENV"] in @mirrored_envs and present?(env["SMTP_FROM"]) and
+    (env["RAILS_ENV"] in @mirrored_envs or e2e_smtp?(env)) and present?(env["SMTP_FROM"]) and
       (present?(env["SMTP_SERVER"]) or present?(env["E2E_SMTP_PORT"])) and
       present?(env["DOMAIN"]) and base_url?(env) and transport?(env) and
       is_binary(RailsSecret.fetch())
@@ -106,4 +106,9 @@ defmodule Dawarich.Auth.Recovery.MailWorker do
   end
 
   defp present?(value), do: is_binary(value) and String.trim(value) != ""
+
+  defp e2e_smtp?(env),
+    do:
+      env["RAILS_ENV"] == "test" and env["E2E_PROXY_STACK"] == "1" and
+        env["E2E_SMTP_DELIVERY"] == "1"
 end

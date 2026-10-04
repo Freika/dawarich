@@ -881,14 +881,17 @@ defmodule DawarichWeb.EndpointTest do
     assert answered_by_phoenix(port, "GET /trips?page=2 HTTP/1.1\r\nHost: a\r\n\r\n") == 302
   end
 
-  test "every other trip route, format and method goes to Puma", ctx do
+  test "trip routes outside A8 and A9 ownership go to Puma", ctx do
     port = serve()
 
     for target <-
-          ~w(/trips/new /trips/5/edit /trips/abc /trips/12abc /trips/1234567890123456789 /trips.json /trips/5.json /trips?format=json /trips/5/share_link/new) do
+          ~w(/trips/new /trips/5/edit /trips/abc /trips/12abc /trips/1234567890123456789 /trips.json /trips/5.json /trips?format=json) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
+
+    assert answered_by_phoenix(port, "GET /trips/5/share_link/new HTTP/1.1\r\nHost: a\r\n\r\n") ==
+             302
 
     for {method, target} <- [
           {"POST", "/trips"},

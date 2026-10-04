@@ -181,9 +181,11 @@ module JobCommands
         end
       }
     }
-  }.merge(ReleaseCommands::COMMANDS).merge(Stats::Commands::COMMANDS).merge(
-    Users::Digests::Commands::COMMANDS
-  ).freeze
+  }.merge(ReleaseCommands::COMMANDS)
+   .merge(Stats::Commands::COMMANDS)
+   .merge(Imports::ProcessCommands::COMMANDS)
+   .merge(Posters::CreationCommand::COMMANDS)
+   .merge(Users::Digests::Commands::COMMANDS).freeze
 
   module_function
 

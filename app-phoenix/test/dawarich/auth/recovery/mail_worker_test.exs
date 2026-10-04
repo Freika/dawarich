@@ -202,6 +202,23 @@ defmodule Dawarich.Auth.Recovery.MailWorkerTest do
            )
   end
 
+  test "test recovery mail requires the e2e stack SMTP opt-in" do
+    base = Map.put(@deliverable, "RAILS_ENV", "test")
+    flags = %{"E2E_PROXY_STACK" => "1", "E2E_SMTP_DELIVERY" => "1"}
+
+    assert MailWorker.deliverable?(Map.merge(base, flags))
+
+    for disabled <- [
+          %{},
+          Map.delete(flags, "E2E_PROXY_STACK"),
+          Map.delete(flags, "E2E_SMTP_DELIVERY"),
+          Map.put(flags, "E2E_SMTP_DELIVERY", "0")
+        ],
+        do: refute(MailWorker.deliverable?(Map.merge(base, disabled)))
+
+    refute MailWorker.deliverable?(Map.merge(base, flags) |> Map.put("RAILS_ENV", "development"))
+  end
+
   test "the two Devise mails equal Rails' rendering and framing" do
     fixture = MailWire.fixture()
 

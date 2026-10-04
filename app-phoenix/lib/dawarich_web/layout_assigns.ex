@@ -17,7 +17,7 @@ defmodule DawarichWeb.LayoutAssigns do
     conn
     |> assign(:rails_session, session)
     |> assign(:self_hosted, self_hosted?())
-    |> assign(:now, DateTime.utc_now())
+    |> assign(:now, conn.assigns[:now] || DateTime.utc_now())
     |> assign(:request_path, safe_path(conn.request_path))
     |> assign(:query_params, conn.query_params)
     |> assign(:base_url, RequestURL.base(conn))

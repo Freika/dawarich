@@ -40,6 +40,27 @@ defmodule Dawarich.Imports.BulkWriter do
     end
   end
 
+  def write_semantic(batch, import, cache, repo, fence) when length(batch) <= @limit do
+    fence.(fn -> validate!(batch, import, repo) end)
+    rows = Enum.reject(batch, &Geometry.null_island?(&1.lonlat))
+
+    if rows == [] do
+      {0, cache}
+    else
+      {values, cache} = stamp(rows, cache, repo, fence)
+      inserted = fence.(fn -> insert!(values, repo) end)
+
+      fence.(fn ->
+        RailsCommands.insert!(repo, "points.tile_epoch", %{
+          "user_id" => import.user_id,
+          "timestamps" => Enum.map(rows, & &1.timestamp)
+        })
+      end)
+
+      {inserted, cache}
+    end
+  end
+
   defp validate!([], _import, _repo), do: :ok
 
   defp validate!(rows, %{id: id, user_id: user}, repo) do

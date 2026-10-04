@@ -112,6 +112,8 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
     begin
       inputs = JSON.parse(File.read(dir.join('normal_writer_inputs.json')))
       output = inputs.map { |example| capture(example) }
+      expect(output).to all(include('counters', 'points', 'sources', 'error'))
+      expect(output.map { |item| item.fetch('counters').size }).to all(eq(2))
       File.write(dir.join('rails_normal_writer_oracle.json'), JSON.pretty_generate(output))
       expect(output.size).to eq(inputs.size)
     ensure

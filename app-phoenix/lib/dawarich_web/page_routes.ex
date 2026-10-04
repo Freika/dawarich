@@ -1,7 +1,10 @@
 defmodule DawarichWeb.PageRoutes do
   @moduledoc false
+
   defmacro page_routes do
     quote do
+      import DawarichWeb.A9Routes
+
       scope "/" do
         pipe_through :imports_request
         post "/imports", DawarichWeb.ImportsController, :create
@@ -121,6 +124,8 @@ defmodule DawarichWeb.PageRoutes do
 
           live "/insights", DawarichWeb.InsightsLive.Index, :index,
             container: {:div, class: "contents"}
+
+          family_page_routes()
         end
       end
 

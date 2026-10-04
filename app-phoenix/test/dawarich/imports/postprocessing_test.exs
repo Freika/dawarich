@@ -247,7 +247,7 @@ defmodule Dawarich.Imports.PostprocessingTest do
                [f.import.id]
              )
 
-    assert data["started_at"] == "2026-01-15T12:00:00Z"
+    assert data["started_at"] == "2026-01-15T13:00:00+01:00"
     assert data["options"] == %{"trust_source" => false}
     assert [["extract"]] == rows("SELECT payload->>'step' FROM phoenix.rails_commands")
   end

@@ -3,17 +3,27 @@ defmodule Dawarich.Imports.XmlTokenGuard do
   @limit 1_048_576
   @prefixes ["<!--", "<![CDATA[", "<!DOCTYPE", "<?"]
 
-  def new, do: %{mode: :text, size: 0, marker: "", quote: nil}
+  def new(opts \\ []),
+    do: %{
+      mode: :text,
+      size: 0,
+      marker: "",
+      quote: nil,
+      streamed_text: Keyword.get(opts, :streamed_text, false)
+    }
+
+  defp reset(s), do: new(streamed_text: s.streamed_text)
   def feed(bytes, state), do: scan(bytes, state)
   defp scan(<<>>, state), do: state
 
   defp scan(<<byte, rest::binary>>, s) do
-    s = %{s | size: s.size + 1}
+    size = if s.streamed_text and s.mode in [:text, :cdata], do: 0, else: s.size + 1
+    s = %{s | size: size}
     if s.size > @limit, do: raise(ArgumentError, "GPX parse error: XML token exceeds limit")
     scan(rest, step(byte, s))
   end
 
-  defp step(?<, %{mode: :text}), do: %{new() | mode: :open, size: 1, marker: "<"}
+  defp step(?<, %{mode: :text} = s), do: %{reset(s) | mode: :open, size: 1, marker: "<"}
   defp step(_, %{mode: :text} = s), do: s
 
   defp step(c, %{mode: :open} = s) do
@@ -31,7 +41,7 @@ defmodule Dawarich.Imports.XmlTokenGuard do
 
   defp step(c, %{mode: :tag, quote: nil} = s) when c in [?', ?"], do: %{s | quote: c}
   defp step(c, %{mode: :tag, quote: c} = s), do: %{s | quote: nil}
-  defp step(?>, %{mode: :tag, quote: nil}), do: new()
+  defp step(?>, %{mode: :tag, quote: nil} = s), do: reset(s)
   defp step(_, %{mode: :tag} = s), do: s
 
   defp step(c, s) do
@@ -39,7 +49,7 @@ defmodule Dawarich.Imports.XmlTokenGuard do
     ending = %{comment: "-->", cdata: "]]>", pi: "?>"}[s.mode]
 
     if String.ends_with?(marker, ending),
-      do: new(),
+      do: reset(s),
       else: %{
         s
         | marker: binary_part(marker, max(byte_size(marker) - 2, 0), min(byte_size(marker), 2))
