@@ -1,8 +1,44 @@
 defmodule DawarichWeb.SegmentWriteResponse do
   @moduledoc false
   use DawarichWeb, :html
+  import Plug.Conn
   alias Dawarich.TrackSegments.DisplayLegs
-  alias DawarichWeb.{Chrome, SegmentFrame, SegmentLegs, SegmentRow, Translate}
+  alias DawarichWeb.{Chrome, SegmentFrame, SegmentLegs, SegmentRow, Translate, RailsSession}
+
+  def prepare(conn, outcome, ctx) do
+    if conn.assigns.map_write_format == :turbo_stream do
+      case render(outcome, ctx) do
+        {:ok, response} ->
+          conn =
+            conn
+            |> put_resp_content_type(response.content_type)
+            |> put_resp_header("vary", response.vary)
+
+          {:ok, Map.put(response, :conn, conn)}
+
+        :rails ->
+          :rails
+      end
+    else
+      kind = if elem(outcome, 0) == :ok, do: "notice", else: "alert"
+
+      conn =
+        conn
+        |> RailsSession.put(%{
+          "flash" => %{"discard" => [], "flashes" => %{kind => message(outcome, ctx.locale)}}
+        })
+        |> put_resp_header("location", ctx.location)
+        |> put_resp_header("cache-control", "no-cache")
+        |> put_resp_content_type("text/html")
+
+      {:ok, %{conn: conn, status: 302, body: ""}}
+    end
+  rescue
+    _ in [RailsSession.Overflow, KeyError, ArgumentError] -> :rails
+  end
+
+  def send(%{conn: conn, status: status, body: body}),
+    do: conn |> send_resp(status, body) |> halt()
 
   def render(outcome, ctx) do
     {status, streams} = streams(outcome, ctx)
