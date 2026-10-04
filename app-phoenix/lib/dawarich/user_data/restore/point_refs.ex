@@ -27,7 +27,7 @@ defmodule Dawarich.UserData.Restore.PointRefs do
       imports:
         Map.new(
           for [id, name, source, created] <- imports,
-              key <- [source, Enum.at(@sources, source)],
+              key <- [source, source_name(source)],
               do: {[name, key, created], id}
         ),
       countries:
@@ -37,6 +37,9 @@ defmodule Dawarich.UserData.Restore.PointRefs do
       visits: Map.new(visits, fn [id, name, start, finish] -> {[name, start, finish], id} end)
     }
   end
+
+  defp source_name(source) when is_integer(source), do: Enum.at(@sources, source)
+  defp source_name(source), do: source
 
   def resolve(row, original, refs, context) do
     row

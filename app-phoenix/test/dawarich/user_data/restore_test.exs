@@ -69,6 +69,45 @@ defmodule Dawarich.UserData.RestoreTest do
   end
 
   @tag :tmp_dir
+  test "v1 and v2 restore with an existing nil-source import equal Rails", %{tmp_dir: dir} do
+    capture =
+      Path.expand("../../fixtures/user_data/capture.json", __DIR__)
+      |> File.read!()
+      |> Jason.decode!()
+
+    for name <- ~w(v1 v2) do
+      reset!(ScratchRepo)
+      clean()
+      c = UserDataSeeds.seed!(name, ScratchRepo)
+
+      rows(
+        "INSERT INTO imports(user_id,name,source,created_at,updated_at) VALUES($1,'pending upload',NULL,$2,$2)",
+        [c.user_id, c.context.now]
+      )
+
+      expected = capture["nil_source_restores"][name]
+
+      assert Restore.call(
+               ScratchRepo,
+               c.user_id,
+               c.archive_path,
+               Map.put(c.context, :temp_dir, dir)
+             ) == expected["result"]
+
+      assert notes(c.user_id) ==
+               Enum.map(expected["notifications"], &Map.take(&1, ~w(title content kind)))
+
+      assert [[nil]] == rows("SELECT source FROM imports WHERE name='pending upload'")
+      assert [[length(expected["rows"]["imports"])]] == rows("SELECT count(*) FROM imports")
+
+      assert [[length(expected["rows"]["points"]), 3]] ==
+               rows("SELECT count(*),count(import_id) FROM points")
+
+      assert [] == File.ls!(dir)
+    end
+  end
+
+  @tag :tmp_dir
   test "restore transaction failure rolls back data but keeps failure notification", %{
     tmp_dir: dir
   } do

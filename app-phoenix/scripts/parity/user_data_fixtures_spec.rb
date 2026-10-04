@@ -66,6 +66,19 @@ RSpec.describe 'Phoenix fixtures: Rails user data' do
     expect(result.fetch('post_commit_storage_failure').fetch('rows').fetch('points').size).to eq(3)
     expect(result.fetch('post_commit_storage_failure').fetch('notifications').map { |row| row['title'] })
       .to eq(['Synthetic <title>&', 'Data import completed', 'Data import failed'])
+    result['nil_source_restores'] = %w[v1 v2].to_h do |version|
+      outcome = UserDataFixturesSupport.with_users do
+        user = UserDataFixturesSupport.owner
+        UserDataFixturesSupport.insert(Import, user, 988_105, name: 'pending upload', source: nil)
+        UserDataFixturesSupport.restore("nil_source_#{version}", UserDataFixturesSupport.read_entries(version), user,
+                                        save: false)
+      end
+      expect(outcome.fetch('error')).to be_nil
+      expect(outcome.fetch('result')).to include('points_created' => 3)
+      expect(outcome.fetch('rows').fetch('imports').find { |row| row['name'] == 'pending upload' }.fetch('source'))
+        .to be_nil
+      [version, outcome]
+    end
     UserDataFixturesSupport.write('capture.json', result)
   end
 
