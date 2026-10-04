@@ -6,6 +6,115 @@ defmodule Dawarich.Digests.RunTest do
 
   @now ~U[2026-10-03 12:00:00Z]
 
+  test "generation skips deleted users but continues after an internally reported stats failure" do
+    unexpected = fn _, _, _, _, _ -> flunk("calculator ran for missing user") end
+
+    for kind <- ~w(monthly yearly), profile <- ~w(missing_user deleted_user) do
+      reset!(ScratchRepo)
+      kase = job_case!("#{profile}_#{kind}_en")
+      DigestFixtures.load!(ScratchRepo, kase)
+
+      assert apply(Run, String.to_existing_atom(kind), [
+               ScratchRepo,
+               args(kase),
+               [stats: unexpected]
+             ]) == :missing
+    end
+
+    fault = %RuntimeError{message: "synthetic digest failure"}
+    returned = fn _, _, _, _, _ -> {:error, fault} end
+
+    for kind <- ~w(monthly yearly) do
+      reset!(ScratchRepo)
+      kase = job_case!("stats_return_#{kind}_en")
+      DigestFixtures.load!(ScratchRepo, kase)
+
+      assert {:ok, id} =
+               apply(Run, String.to_existing_atom(kind), [
+                 ScratchRepo,
+                 args(kase),
+                 Keyword.put(options(kase), :stats, returned)
+               ])
+
+      [expected] = kase["expected"]["rows"]
+      assert DigestFixtures.digests(ScratchRepo, 14101) == [Map.put(expected, "id", id)]
+
+      raised = fn _, _, _, _, _ -> raise fault end
+
+      assert {:error, ^fault, raised_stack} =
+               apply(Run, String.to_existing_atom(kind), [
+                 ScratchRepo,
+                 args(kase),
+                 [stats: raised]
+               ])
+
+      assert raised_stack != []
+
+      captured = [{__MODULE__, :digest_origin, 0, [file: ~c"synthetic.ex", line: 7]}]
+      monthly = fn _, _, _, _, _ -> {:error, fault, captured} end
+      yearly = fn _, _, _, _ -> {:error, fault, captured} end
+      opts = [stats: fn _, _, _, _, _ -> :ok end, monthly: monthly, yearly: yearly]
+
+      assert apply(Run, String.to_existing_atom(kind), [ScratchRepo, args(kase), opts]) ==
+               {:error, fault, captured}
+    end
+
+    assert {:error, :lookup_fault} =
+             ScratchRepo.transaction(fn ->
+               assert {:error, %Postgrex.Error{}} =
+                        ScratchRepo.query("SELECT 1/0", [], log: false)
+
+               assert_raise Postgrex.Error, fn ->
+                 Run.monthly(ScratchRepo, %{"user_id" => 14101})
+               end
+
+               ScratchRepo.rollback(:lookup_fault)
+             end)
+  end
+
+  test "returned calculator database errors preserve Rails continuation and terminal failure policy" do
+    kase = job_case!("stats_database_monthly_en")
+    DigestFixtures.load!(ScratchRepo, kase)
+    database_error = %Postgrex.Error{message: "synthetic digest failure"}
+    failing_hexagons = fn _, _, _, _ -> raise database_error end
+    stats_opts = [now: DateTime.to_naive(@now), hexagons: failing_hexagons]
+
+    assert {:error, ^database_error} =
+             Dawarich.Stats.CalculateMonth.call(ScratchRepo, 14101, 2025, 3, stats_opts)
+
+    assert [[1]] = rows("SELECT count(*) FROM notifications WHERE user_id=14101 AND kind=2")
+
+    assert {:ok, id} =
+             Run.monthly(
+               ScratchRepo,
+               args(kase),
+               Keyword.put(options(kase), :stats_opts, stats_opts)
+             )
+
+    [expected] = kase["expected"]["rows"]
+    assert DigestFixtures.digests(ScratchRepo, 14101) == [Map.put(expected, "id", id)]
+    assert [[2]] = rows("SELECT count(*) FROM notifications WHERE user_id=14101 AND kind=2")
+
+    before_store = fn _context -> raise database_error end
+    opts = Keyword.put(options(kase), :before_store, before_store)
+
+    assert {:error, ^database_error, captured} =
+             Calculation.monthly(
+               ScratchRepo,
+               14101,
+               2025,
+               3,
+               Keyword.put(opts, :error_stack, true)
+             )
+
+    assert Enum.any?(captured, &match?({Dawarich.Digests.Calculation, _, _, _}, &1))
+    assert {:error, ^database_error, stack} = Run.monthly(ScratchRepo, args(kase), opts)
+    assert Enum.any?(stack, &match?({Dawarich.Digests.Calculation, _, _, _}, &1))
+    assert stack != []
+    assert job_case!("digest_database_monthly_en")["expected"]["emails"] == []
+    assert length(kase["expected"]["emails"]) == 1
+  end
+
   test "yearly generation visits all twelve months in order and keeps earlier committed stats on a later raised error" do
     kase = job_case!("new_yearly_en")
     DigestFixtures.load!(ScratchRepo, kase)
