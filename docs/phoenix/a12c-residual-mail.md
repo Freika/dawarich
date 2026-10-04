@@ -20,6 +20,8 @@ No mail ownership has changed. Auth mail is security-sensitive; no AFFiNE writes
 
 All new named contracts have an independently observed named mutation failure and restored
 green run. The existing recovery retry regression remains unchanged. No source spec is deleted.
+Final focused native acceptance passes 137 tests. The four exact C2 Rails batches pass
+33, 32, 34 and 63 examples respectively, with zero failures and Swagger restored after each.
 
 ## Rails corpus
 
