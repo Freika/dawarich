@@ -211,6 +211,7 @@ module RailsCommands
      .merge(RailsCommands::ShareManagementCommands::HANDLERS)
      .merge(Posters::CreationCommand::HANDLERS)
      .merge(Posters::PurgeCommands::HANDLERS)
+     .merge(Exports::PurgeCommands::HANDLERS)
      .merge(Posters::ProgressCommands::HANDLERS)
      .merge(A8Handlers::HANDLERS)
      .merge(
