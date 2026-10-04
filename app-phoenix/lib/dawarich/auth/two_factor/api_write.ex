@@ -34,6 +34,12 @@ defmodule Dawarich.Auth.TwoFactor.ApiWrite do
     end
   end
 
+  def backup_codes(user, context) do
+    {:ok, codes, hashes} = BackupCodes.generate(Map.get(context, :backup_options, []))
+    persist(user, %{otp_backup_codes: hashes}, context)
+    {:ok, 200, {:object, [{"backup_codes", codes}]}}
+  end
+
   defp persist(user, changes, context) do
     changes = Map.put(changes, :updated_at, Map.get(context, :clock, &DateTime.utc_now/0).())
     user |> Ecto.Changeset.change(changes) |> Map.get(context, :repo, Repo).update!(log: false)

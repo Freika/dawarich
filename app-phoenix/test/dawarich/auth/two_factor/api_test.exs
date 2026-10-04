@@ -188,4 +188,47 @@ defmodule Dawarich.Auth.TwoFactor.ApiTest do
       assert snapshot(c.id) == before
     end
   end
+
+  test "API regeneration replaces ten compatible hashes even with no secret or enabled flag", c do
+    {:ok, ciphertext} = Secret.encrypt(Totp.generate_secret(:binary.copy(<<3>>, 20)), @env)
+
+    for {secret, enabled} <- [{nil, false}, {ciphertext, false}, {ciphertext, true}] do
+      {:ok, old_codes, hashes} = BackupCodes.generate()
+
+      seed(c.id,
+        otp_secret: secret,
+        otp_required_for_login: enabled,
+        otp_backup_codes: hashes,
+        consumed_timestep: 123
+      )
+
+      before = snapshot(c.id)
+
+      assert {:ok, 200, {:object, [{"backup_codes", codes}]}} =
+               Api.run(
+                 :backup_codes,
+                 c.id,
+                 %{"password" => "safepassword12", "otp_code" => "ignored"},
+                 c.context
+               )
+
+      user = Repo.get!(Account, c.id)
+      assert length(codes) == 10 and length(Enum.uniq(codes)) == 10
+      assert length(user.otp_backup_codes) == 10
+      assert Enum.all?(codes, &Regex.match?(~r/\A[0-9a-f]{24}\z/, &1))
+
+      assert Enum.all?(Enum.zip(codes, user.otp_backup_codes), fn {value, hash} ->
+               Bcrypt.verify_pass(value, hash)
+             end)
+
+      assert MapSet.disjoint?(MapSet.new(user.otp_backup_codes), MapSet.new(hashes))
+      assert BackupCodes.consume(user.otp_backup_codes, hd(old_codes)) == :invalid
+      assert {:ok, remaining} = BackupCodes.consume(user.otp_backup_codes, hd(codes))
+      assert length(remaining) == 9
+      assert BackupCodes.consume(remaining, hd(codes)) == :invalid
+
+      assert Map.drop(snapshot(c.id), ~w(otp_backup_codes updated_at)) ==
+               Map.drop(before, ~w(otp_backup_codes updated_at))
+    end
+  end
 end
