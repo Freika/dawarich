@@ -11,6 +11,28 @@ defmodule Dawarich.Digests.Run do
     end
   end
 
+  def yearly(repo, args, opts \\ []) do
+    case Accounts.find(repo, args["user_id"]) do
+      nil -> :missing
+      _user -> calculate_year(repo, args, opts)
+    end
+  end
+
+  defp calculate_year(repo, args, opts) do
+    stats = Keyword.get(opts, :stats, &CalculateMonth.call/5)
+
+    for month <- 1..12 do
+      stats.(repo, args["user_id"], args["year"], month, stats_options(opts))
+    end
+
+    yearly = Keyword.get(opts, :yearly, &Calculation.yearly/4)
+    yearly.(repo, args["user_id"], args["year"], calculation_options(args, opts))
+  rescue
+    error -> {:error, error, __STACKTRACE__}
+  catch
+    kind, reason -> {:error, {kind, reason}, __STACKTRACE__}
+  end
+
   defp calculate_month(repo, args, opts) do
     stats = Keyword.get(opts, :stats, &CalculateMonth.call/5)
     stats.(repo, args["user_id"], args["year"], args["month"], stats_options(opts))

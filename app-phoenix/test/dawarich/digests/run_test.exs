@@ -6,6 +6,54 @@ defmodule Dawarich.Digests.RunTest do
 
   @now ~U[2026-10-03 12:00:00Z]
 
+  test "yearly generation visits all twelve months in order and keeps earlier committed stats on a later raised error" do
+    kase = job_case!("new_yearly_en")
+    DigestFixtures.load!(ScratchRepo, kase)
+    caller = self()
+
+    stats = fn repo, id, year, month, opts ->
+      send(caller, {:month, month})
+      Dawarich.Stats.CalculateMonth.call(repo, id, year, month, opts)
+    end
+
+    opts =
+      options(kase)
+      |> Keyword.put(:stats, stats)
+      |> Keyword.put(:before_store, fn _context -> send(caller, :digest) end)
+
+    assert {:ok, id} = Run.yearly(ScratchRepo, args(kase), opts)
+
+    for month <- 1..12 do
+      assert_receive {:month, observed}
+      assert observed == month
+    end
+
+    assert_receive :digest
+    [expected] = kase["expected"]["rows"]
+    assert DigestFixtures.digests(ScratchRepo, 14101) == [Map.put(expected, "id", id)]
+
+    reset!(ScratchRepo)
+    DigestFixtures.load!(ScratchRepo, kase)
+    fault = %RuntimeError{message: "later stats constructor"}
+
+    failing = fn repo, id, year, month, opts ->
+      if month == 7, do: raise(fault)
+      Dawarich.Stats.CalculateMonth.call(repo, id, year, month, opts)
+    end
+
+    assert {:error, ^fault, stack} =
+             Run.yearly(ScratchRepo, args(kase), Keyword.put(options(kase), :stats, failing))
+
+    assert stack != []
+
+    assert [[3]] =
+             rows(
+               "SELECT calculation_version FROM stats WHERE user_id=14101 AND year=2025 AND month=3"
+             )
+
+    assert DigestFixtures.digests(ScratchRepo, 14101) == []
+  end
+
   test "monthly generation recalculates stats before persisting the exact digest" do
     for name <- ~w(new_monthly_en existing_monthly_en) do
       reset!(ScratchRepo)
