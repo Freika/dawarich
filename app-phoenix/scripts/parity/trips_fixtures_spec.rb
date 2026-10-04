@@ -30,6 +30,556 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
 
   def utc(text) = Time.iso8601(text)
 
+  context 'A8 remaining trips' do
+    let(:now) { Time.utc(2026, 10, 3, 10, 0, 0) }
+    let(:dir) { super().join('remaining') }
+
+    around do |example|
+      detailed = Rails.application.env_config['action_dispatch.show_detailed_exceptions']
+      Rails.application.env_config['action_dispatch.show_detailed_exceptions'] = false
+      example.run
+    ensure
+      Rails.application.env_config['action_dispatch.show_detailed_exceptions'] = detailed
+    end
+
+    def remaining_user(id)
+      user = create(:user, id:, email: "a8r-#{id}@example.invalid", changelog_consent: :declined)
+      user.update_columns(settings: { 'timezone' => 'Europe/Berlin', 'onboarding_completed' => true },
+                          api_key: "a8r-k-#{id}", plan: User.plans[:pro])
+      user.reload
+    end
+
+    def remaining_stamps = { created_at: now - 2.hours, updated_at: now - 2.hours }
+
+    def remaining_trip(user, id, **attrs)
+      Trip.insert!({ id:, user_id: user.id, name: 'Auwald', started_at: utc('2026-10-02T22:30:00Z'),
+                     ended_at: utc('2026-10-04T01:00:00Z'), distance: 1200, visited_countries: ['Germany'],
+                     path: 'LINESTRING(12.3712 51.3391, 12.3801 51.3422)' }.merge(remaining_stamps).merge(attrs))
+      Trip.find(id)
+    end
+
+    def remaining_note(user, trip, id, body, date: '2026-10-03', **attrs)
+      Note.insert!({ id:, user_id: user.id, attachable_type: 'Trip', attachable_id: trip.id,
+                     noted_at: utc("#{date}T12:00:00Z"), body: }.merge(remaining_stamps).merge(attrs))
+      Note.find(id)
+    end
+
+    def remaining_plan(user, trip, id, state)
+      TripSource.insert!({ id:, user_id: user.id, provider: 'trek', base_url: 'https://trek.example.invalid',
+                           status: 0 }.merge(remaining_stamps))
+      trip.update_columns(trip_source_id: id, source_identifier: 'Auwald / &', source_status: state == :stopped ? 1 : 0,
+                          source_synced_at: now - 1.hour)
+      day = trip.planned_days.create!(id:, date: '2026-10-03', position: 2, title: 'Leipzig <&>',
+                                      notes: "From TREK\nAlong the Elster", **remaining_stamps)
+      trip.planned_days.create!(id: id + 1, date: '2026-10-04', position: 1, **remaining_stamps)
+      day.planned_stops.create!(id:, name: 'Unlocated', position: 1, **remaining_stamps)
+      day.planned_stops.create!(id: id + 1, name: 'Auensee', position: 2, latitude: 51.3391, longitude: 12.3712,
+                                address: 'Leipzig', starts_at: '09:00', ends_at: '10:00', transport_mode: 'walking',
+                                category: 'Lake', duration_minutes: 60, notes: "Quiet\nWater", **remaining_stamps)
+      day.planned_stops.create!(id: id + 2, name: 'Rosental', position: 3, latitude: 51.3422, longitude: 12.3801,
+                                transport_mode: 'unlisted_mode', **remaining_stamps)
+      day.planned_stops.create!(id: id + 3, name: 'Zero', position: 4, latitude: 0, longitude: 0, **remaining_stamps)
+      day.planned_day_notes.create!(id:, position: 1, body: 'Source detail', noted_at: '09:30', **remaining_stamps)
+      trip.planned_reservations.create!(id:, planned_day: day, title: 'Train <&>', reservation_type: 'train',
+                                        starts_at: now, ends_at: now + 1.hour, location: 'Leipzig', status: 'confirmed',
+                                        notes: 'Window seat', **remaining_stamps)
+      trip.planned_reservations.create!(id: id + 1, title: 'Loose reservation', status: 'unlisted_status',
+                                       **remaining_stamps)
+      trip.planned_accommodations.create!(id:, name: 'Stay', latitude: 51.34, longitude: 12.37,
+                                          starts_on: '2026-10-03', ends_on: '2026-10-04', notes: 'Rest',
+                                         **remaining_stamps)
+      trip.planned_travellers.create!(id:, name: 'Traveller <&>', **remaining_stamps)
+      trip.planned_unplanned_places.create!(id:, name: 'Loose place', position: 1, latitude: 51.35,
+                                            longitude: 12.38, address: 'Leipzig', **remaining_stamps)
+      if %i[synced edited].include?(state)
+        body = "From TREK\nAlong the Elster"
+        remaining_note(user, trip, id, state == :synced ? body : "#{body}\nEdited",
+                       source_digest: Note.body_digest(body))
+      end
+      trip.reload
+    end
+
+    def remaining_rows(model, scope)
+      scope.order(model.primary_key).map do |row|
+        row.attributes.transform_values do |value|
+          if value.respond_to?(:utc)
+            value.utc.iso8601(6)
+          elsif value.is_a?(Date)
+            value.iso8601
+          elsif value.is_a?(BigDecimal)
+            value.to_s('F')
+          elsif value.is_a?(ActionText::Content)
+            value.to_html
+          elsif value.respond_to?(:coordinates)
+            value.coordinates
+          else
+            value
+          end
+        end
+      end
+    end
+
+    def remaining_graph(user, id)
+      range = id...id + 20
+      models = [Trip, Note, PlannedDay, PlannedStop, PlannedDayNote, PlannedReservation,
+                PlannedAccommodation, PlannedTraveller, PlannedUnplannedPlace, Point, Export, RouteVideo, Poster]
+      graph = models.to_h { |model| [model.table_name, remaining_rows(model, model.where(id: range))] }
+      graph['action_text_rich_texts'] = remaining_rows(
+        ActionText::RichText, ActionText::RichText.where(record_type: 'Trip', record_id: range)
+      )
+      graph['shared_links'] = remaining_rows(SharedLink, SharedLink.where(resource_id: range))
+      graph['trip_sources'] = TripSource.where(id: range).order(:id).map do |source|
+        source.attributes.slice('id', 'user_id', 'provider', 'base_url', 'status', 'importing')
+      end
+      graph['actor'] =
+        { id: user.id, settings: user.settings, plan: user.plan, active_until: user.active_until.utc.iso8601(6) }
+      graph
+    end
+
+    def remaining_queue(id)
+      { jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args], queue: _1[:queue] } },
+        sidekiq: Sidekiq::ActiveJob::Wrapper.jobs.map do |job|
+          { job: job['wrapped'], args: job['args'].first['arguments'], queue: job['queue'] }
+        end,
+        outbox: JobOutbox.where(aggregate_id: id...id + 20).order(:command_type, :aggregate_id).map do |row|
+          row.attributes.slice('command_type', 'command_version', 'payload', 'metadata', 'aggregate_id',
+                               'dedupe_key', 'state').merge('scheduled_at' => row.scheduled_at.utc.iso8601(6))
+        end }
+    end
+
+    def remaining_request(user, method, path, params, accept)
+      Rails.cache.clear
+      reset!
+      sign_in user
+      get '/settings/visits'
+      token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+      public_send(method, path, params:, headers: { 'X-CSRF-Token' => token, 'Accept' => accept })
+    end
+
+    def remaining_html(body)
+      body = body.gsub(/(name="authenticity_token" value=")[^"]*/, '\1CSRF')
+                 .gsub(/(name="(?:csrf-token|csp-nonce)" content=")[^"]*/, '\1CSRF')
+      if body.include?('<div class="flex w-full min-w-0 gap-5">')
+        body = body.split('<div class="flex w-full min-w-0 gap-5">', 2).last
+                   .split("\n        </div>\n      </div>\n      <div class=\"px-4", 2).first
+      end
+      body
+    end
+
+    def remaining_response(name, error = nil)
+      html = error ? '' : remaining_html(response.body)
+      path = dir.join("pages/#{name}.html")
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        File.write(path, html)
+      else
+        expect(path.read).to eq(html), name
+      end
+      textareas = html.scan(%r{<textarea\b[^>]*>(.*?)</textarea>}m).flatten.map do |raw|
+        { raw:, value: Nokogiri::HTML5.fragment("<textarea>#{raw}</textarea>").at_css('textarea').content }
+      end
+      doc = Nokogiri::HTML5.fragment(html)
+      { name:, status: error ? nil : response.status, media_type: error ? nil : response.media_type,
+        headers: error ? {} : response.headers.slice('Content-Type', 'Location', 'Vary', 'Cache-Control'),
+        location: error ? nil : response.location, flash: error ? {} : flash.to_hash,
+        error: error && { class: error.class.name, message: error.message.gsub(Rails.root.to_s, 'RAILS_ROOT')
+                                                                 .gsub(/0x[0-9a-f]+/, 'OBJECT_ID') },
+        streams: doc.css('turbo-stream').map { { action: _1['action'], target: _1['target'] } },
+        textareas:,
+        errors: doc.css('#error_explanation li, .alert-error').map { _1.text.strip },
+        controls: doc.css('form, input, textarea, trix-editor, button, [data-controller]').map do |node|
+          { tag: node.name, attributes: node.attributes.transform_values(&:value) }
+        end }
+    end
+
+    def remaining_scenarios
+      valid = { name: 'New Auwald', started_at: '2026-10-03T09:00', ended_at: '2026-10-04T19:00' }
+      dates = { blank: { started_at: '', ended_at: '' }, missing: {},
+                equal: { started_at: '2026-10-03T09:00', ended_at: '2026-10-03T09:00' },
+                reversed: { started_at: '2026-10-04T09:00', ended_at: '2026-10-03T09:00' },
+                bad_date: { started_at: 'not-a-date', ended_at: '2026-10-04T09:00' },
+                dst_gap: { started_at: '2026-03-29T02:30', ended_at: '2026-03-29T04:30' },
+                dst_fold: { started_at: '2026-10-25T02:30', ended_at: '2026-10-25T04:30' } }
+      cases = [{ name: 'new', action: :new }, { name: 'edit', action: :edit }]
+      %i[sidekiq oban].each do |owner|
+        cases << { name: "create_#{owner}", action: :create, attrs: valid, owner:, expected: 302 }
+        cases << { name: "create_ignored_demo_#{owner}", action: :create, attrs: valid.merge(demo: true), owner:,
+                   expected: 302 }
+        dates.each do |name, attrs|
+          cases << { name: "create_#{name}_#{owner}", action: :create, attrs: { name: 'Dates' }.merge(attrs), owner:,
+                     expected: %i[dst_gap dst_fold].include?(name) ? 302 : 422 }
+        end
+        cases << { name: "create_blank_name_#{owner}", action: :create, attrs: valid.merge(name: ''), owner:,
+                   expected: 422 }
+        cases << { name: "create_missing_template_#{owner}", action: :create, attrs: { name: '' }, owner:,
+                   accept: 'text/vnd.turbo-stream.html', error: 'ActionView::MissingTemplate' }
+        embedded = '<action-text-attachment content-type="image/png" ' \
+                   'url="https://example.invalid/synthetic.png"></action-text-attachment>'
+        [false, true].each do |demo|
+          { name: { name: 'Changed Auwald' }, noop: { name: 'Auwald' },
+            date: { started_at: '2026-10-03T10:00' }, empty: { description: '' },
+            finite: { description: '<div>Auwald &amp; <strong>Elster</strong><br>Leipzig</div>' },
+            embedded: { description: embedded } }.each do |name, attrs|
+            cases << { name: "update_#{name}_#{demo ? 'demo' : 'ordinary'}_#{owner}", action: :update,
+                       attrs:, demo:, owner:, description: '<div>Before</div>', expected: 303 }
+          end
+          cases << { name: "destroy_#{demo ? 'demo' : 'ordinary'}_#{owner}", action: :destroy,
+                     demo:, owner:, plan: :synced, description: '<div>Before</div>', graph: true, expected: 303 }
+        end
+        cases << { name: "update_invalid_#{owner}", action: :update, attrs: { name: '', ended_at: '' },
+                   owner:, expected: 422 }
+        cases << { name: "update_equal_#{owner}", action: :update, attrs: dates[:equal], owner:, expected: 422 }
+        cases << { name: "update_blank_start_#{owner}", action: :update, attrs: { started_at: '' }, owner:,
+                   expected: 422 }
+        cases << { name: "demo_recalculate_#{owner}", action: :recalculate, owner:, demo: true, age: nil,
+                   expected: 302 }
+        cases << { name: "demo_show_missing_#{owner}", action: :show, owner:, demo: true, show: :nil_path,
+                   expected: 200 }
+        [nil, 59, 60, 61].product(%w[text/html text/vnd.turbo-stream.html]).each do |age, accept|
+          cases << { name: "recalculate_#{age || 'nil'}_#{accept == 'text/html' ? 'html' : 'stream'}_#{owner}",
+                     action: :recalculate, owner:, age:, accept:, expected: accept == 'text/html' ? 302 : 200 }
+        end
+        %w[gpx json csv].product(['Auwald', 'Über Auwald', '!!!', '']).each_with_index do |(format, title), i|
+          cases << { name: "export_#{format}_#{i}_#{owner}", action: :export, owner:, format:, title:,
+                     expected: format == 'csv' ? 422 : 302 }
+        end
+        %i[create update recalculate show].product(%i[enqueue sql]).each do |action, fault|
+          attrs = action == :create ? valid : { started_at: '2026-10-03T10:00' }
+          error = fault == :enqueue ? 'RuntimeError' : 'ActiveRecord::StatementInvalid'
+          cases << { name: "#{action}_#{fault}_failure_#{owner}", action:, owner:, attrs:, fault:, error:,
+                     missing: action == :show }
+        end
+        %i[nil_path empty_path nil_distance zero_distance empty_countries hash_countries no_stats stats
+           future_import future_plain repeat].each do |state|
+          cases << { name: "show_#{state}_#{owner}", action: :show, owner:, show: state, expected: 200 }
+        end
+      end
+      %i[active stopped synced edited future future_stats toggle no_source no_identifier].each do |plan|
+        %i[show edit index].each do |action|
+          cases << { name: "plan_#{plan}_#{action}", action:, plan:, owner: :oban, expected: 200 }
+        end
+      end
+      cases << { name: 'managed_update', action: :update, plan: :active, attrs: { name: 'Submitted despite readonly' },
+                 expected: 303 }
+      bodies = { plain: "Auwald <&> 'quoted'", lf: "\nAuwald", lfs: "\n\nAuwald", unicode: 'É🌳',
+                 blank: '', max: 'é' * 10_000, over: 'é' * 10_001 }
+      bodies.each do |name, body|
+        %i[note_create note_update].product(%w[text/html text/vnd.turbo-stream.html]).each do |action, accept|
+          cases << { name: "#{action}_#{name}_#{accept == 'text/html' ? 'html' : 'stream'}", action:, body:, accept:,
+                     expected: accept == 'text/html' ? 302 : 200 }
+        end
+        if %i[plain lf lfs unicode].include?(name)
+          cases << { name: "note_document_#{name}", action: :show, body:, note: true, expected: 200 }
+        end
+      end
+      %w[2026-10-02 2026-10-03 2026-10-04 2026-10-05 bad-date].product(
+        %w[text/html text/vnd.turbo-stream.html]
+      ).each do |date, accept|
+        expected = accept == 'text/html' ? 302 : 200
+        expected = 422 if date == 'bad-date' && accept != 'text/html'
+        cases << { name: "note_date_#{date}_#{accept == 'text/html' ? 'html' : 'stream'}", action: :note_create,
+                   body: 'Date boundary', date:, accept:, expected: }
+      end
+      cases << { name: 'note_upsert', action: :note_create, note: true, body: 'Upserted', expected: 200 }
+      cases << { name: 'note_race', action: :note_create, note: true, body: 'Second writer', race: true, expected: 200 }
+      %w[text/html text/vnd.turbo-stream.html].each do |accept|
+        cases << { name: "note_delete_#{accept == 'text/html' ? 'html' : 'stream'}", action: :note_destroy,
+                   accept:, expected: accept == 'text/html' ? 302 : 200 }
+      end
+      %i[edit update destroy show note_update note_destroy].each do |action|
+        cases << { name: "foreign_#{action}", action:, foreign: true, attrs: { name: 'Rejected' }, body: 'Rejected',
+                   expected: 404 }
+      end
+      cases
+    end
+
+    def remaining_setup(user, id, entry)
+      return if %i[new create].include?(entry[:action])
+
+      target = entry[:foreign] && !entry[:action].to_s.start_with?('note_') ? remaining_user(user.id + 100_000) : user
+      trip = remaining_trip(target, id, demo: entry.fetch(:demo, false), name: entry.fetch(:title, 'Auwald'))
+      remaining_plan(user, trip, id, entry[:plan]) if entry[:plan]
+      if entry[:plan] == :no_source
+        trip.update_columns(trip_source_id: nil)
+      elsif entry[:plan] == :no_identifier
+        trip.update_columns(source_identifier: nil)
+      end
+      if entry[:description]
+        ActionText::RichText.insert!({ id:, record_type: 'Trip', record_id: id, name: 'description',
+                                      body: entry[:description] }.merge(remaining_stamps))
+      end
+      state = entry[:show]
+      trip.update_columns(path: nil) if entry[:missing] || %i[nil_path no_stats stats future_import future_plain
+                                                              repeat].include?(state)
+      trip.update_columns(path: 'LINESTRING EMPTY') if state == :empty_path
+      trip.update_columns(distance: nil) if state == :nil_distance
+      trip.update_columns(distance: 0) if state == :zero_distance
+      trip.update_columns(visited_countries: []) if state == :empty_countries
+      trip.update_columns(visited_countries: {}) if state == :hash_countries
+      if %i[future_import future_plain].include?(state) || %i[future future_stats].include?(entry[:plan])
+        trip.update_columns(started_at: now + 2.days, ended_at: now + 3.days, path: nil,
+                            source_identifier: state == :future_plain ? nil : 'Future plan')
+      end
+      if %i[stats future_import].include?(state) || entry[:plan] == :future_stats
+        Point.insert!({ id:, user_id: user.id, timestamp: trip.reload.started_at.to_i + 600,
+                        lonlat: 'POINT(12.3712 51.3391)' }.merge(remaining_stamps))
+      end
+      trip.update_columns(path: nil) if entry[:plan] && entry[:plan] != :toggle
+      if entry[:action] == :recalculate
+        trip.update_columns(last_recalculated_at: entry[:age] && now - entry[:age].seconds)
+      end
+      if entry[:note] || %i[note_update note_destroy].include?(entry[:action])
+        note_trip = entry[:foreign] ? remaining_trip(remaining_user(user.id + 100_000), id + 1) : trip
+        remaining_note(note_trip.user, note_trip, id, entry[:action] == :show ? entry[:body] : 'Before')
+      end
+      return unless entry[:graph]
+
+      Point.insert!({ id:, user_id: user.id, timestamp: now.to_i,
+                      lonlat: 'POINT(12.3712 51.3391)' }.merge(remaining_stamps))
+      SharedLink.insert!({ id: format('a8a80000-0000-4000-8000-%012d', id), user_id: user.id,
+                          resource_type: 0, resource_id: id, name: 'Synthetic link',
+                          settings: {} }.merge(remaining_stamps))
+      SharedLink.insert!({ id: format('a8a80000-0000-4000-8001-%012d', id), user_id: user.id,
+                          resource_type: 1, resource_id: id, name: 'Other resource',
+                          settings: {} }.merge(remaining_stamps))
+      Export.insert!({ id:, user_id: user.id, name: 'Unrelated export', status: 0, file_type: 0, file_format: 0 }
+                      .merge(remaining_stamps))
+      RouteVideo.insert!({ id:, user_id: user.id, name: 'Unrelated video', status: 1,
+                           settings: {} }.merge(remaining_stamps))
+      Poster.insert!({ id:, user_id: user.id, name: 'Unrelated poster', status: 0,
+                       settings: {} }.merge(remaining_stamps))
+    end
+
+    def remaining_target(entry, id)
+      action = entry[:action]
+      accept = entry.fetch(:accept, action.to_s.start_with?('note_') ? 'text/vnd.turbo-stream.html' : 'text/html')
+      case action
+      when :new then [:get, '/trips/new', {}, accept]
+      when :index then [:get, '/trips', {}, accept]
+      when :edit then [:get, "/trips/#{id}/edit", {}, accept]
+      when :show then [:get, "/trips/#{id}", {}, accept]
+      when :create then [:post, '/trips', { trip: entry[:attrs] }, accept]
+      when :update then [:patch, "/trips/#{id}", { trip: entry[:attrs] }, accept]
+      when :destroy then [:delete, "/trips/#{id}", {}, accept]
+      when :recalculate then [:post, "/trips/#{id}/recalculate", {}, accept]
+      when :export then [:post, "/trips/#{id}/export?file_format=#{entry[:format]}", {}, accept]
+      when :note_create
+        [:post, "/trips/#{id}/notes", { note: { date: entry.fetch(:date, '2026-10-03'), body: entry[:body] } }, accept]
+      when :note_update
+        [:patch, "/trips/#{id}/notes/#{id}", { note: { date: '1900-01-01', body: entry[:body] } }, accept]
+      when :note_destroy then [:delete, "/trips/#{id}/notes/#{id}", {}, accept]
+      end
+    end
+
+    def remaining_fault(entry)
+      if entry[:fault]
+        target = if entry[:owner] == :oban
+                   allow(JobOutbox).to(receive(:insert_all))
+                 else
+                   allow_any_instance_of(Sidekiq::Client).to(receive(:push))
+                 end
+        target.and_wrap_original do |original, *args, **kwargs|
+          raise 'synthetic queue failure' if entry[:fault] == :enqueue
+
+          result = original.call(*args, **kwargs)
+          ActiveRecord::Base.connection.execute('SELECT a8_remaining_missing_column FROM trips')
+          result
+        end
+      end
+      return unless entry[:race]
+
+      calls = 0
+      allow(Note).to receive(:for_date).and_wrap_original do |original, *args|
+        calls += 1
+        calls == 1 ? Note.none : original.call(*args)
+      end
+      allow_any_instance_of(Note).to receive(:save).and_wrap_original do |original, *args|
+        raise ActiveRecord::RecordNotUnique, 'notes unique index' if original.receiver.new_record?
+
+        original.call(*args)
+      end
+    end
+
+    def remaining_assert(entry, user, id, before, queue, error)
+      name = entry[:name]
+      if entry[:error]
+        expect(error&.class&.name).to eq(entry[:error]),
+                                      "#{name}: expected #{entry[:error]}, got #{error&.class&.name || response.status}"
+      else
+        expect(error).to be_nil, name
+        expect(response.status).to eq(entry.fetch(:expected, 200)), name
+      end
+      trip = Trip.find_by(id: id)
+      if entry[:foreign]
+        expect(remaining_graph(user, id)).to eq(before), name
+        expect(queue.values_at(:jobs, :sidekiq, :outbox)).to all(be_empty)
+      elsif entry[:fault]
+        expect(remaining_graph(user, id)).to eq(before), name
+        expect(queue[:outbox]).to be_empty
+        expect(queue[:sidekiq].length).to eq(entry[:owner] == :sidekiq && entry[:fault] == :sql ? 1 : 0), name
+      elsif entry[:action] == :create
+        created = user.trips.find_by(id: id + 10)
+        if entry[:expected] == 302
+          expect(created.name).to eq(entry[:attrs][:name]), name
+          expect(created.demo).to be(false)
+          expect(queue[:sidekiq].length + queue[:outbox].length).to eq(1), name
+          expected_start = case entry[:name]
+                           when /dst_gap/ then utc('2026-03-29T01:30:00Z')
+                           when /dst_fold/ then utc('2026-10-25T00:30:00Z')
+                           else utc('2026-10-03T07:00:00Z')
+                           end
+          expect(created.started_at.utc).to eq(expected_start), name
+        else
+          expect(created).to be_nil, name
+          expect(queue.values_at(:jobs, :sidekiq, :outbox)).to all(be_empty)
+        end
+      elsif entry[:action] == :update && !entry[:error] && entry[:expected] == 303
+        expect(trip.demo).to be(false), name
+        calculates = entry[:attrs].key?(:started_at) && !entry[:demo]
+        expect(queue[:sidekiq].length + queue[:outbox].length).to eq(calculates ? 1 : 0), name
+      elsif entry[:action] == :recalculate
+        eligible = entry[:age].nil? || entry[:age] > 60
+        expect(trip.last_recalculated_at).to eq(eligible ? now : now - entry[:age].seconds), name
+        expect(trip.updated_at).to eq(now - 2.hours), name
+        expect(queue[:sidekiq].length + queue[:outbox].length).to eq(eligible ? 1 : 0), name
+      elsif entry[:action] == :destroy && !entry[:foreign]
+        expect(trip).to be_nil
+        [Note, ActionText::RichText, PlannedDay, PlannedStop, PlannedDayNote, PlannedReservation,
+         PlannedAccommodation, PlannedTraveller, PlannedUnplannedPlace].each do |model|
+          scope = if model == ActionText::RichText
+                    model.where(record_type: 'Trip',
+                                record_id: id)
+                  else
+                    model.where(id: id...id + 20)
+                  end
+          expect(scope).to be_empty, "#{name}: #{model.name}"
+        end
+        expect([Point, Export, RouteVideo, Poster, TripSource].map { _1.where(id: id).count }).to eq([1, 1, 1, 1, 1])
+        expect(SharedLink.where(resource_id: id).pluck(:resource_type)).to eq(['track'])
+      elsif entry[:action] == :export && entry[:format] != 'csv'
+        export = user.exports.order(:id).last
+        parameter = { 'Auwald' => 'auwald', 'Über Auwald' => 'uber-auwald', '!!!' => id.to_s, '' => id.to_s }
+        expect(export.name).to eq("trip_#{parameter.fetch(entry.fetch(:title, 'Auwald'))}_2026-10-03.#{entry[:format]}")
+        expect([export.start_at, export.end_at]).to eq([trip.started_at, trip.ended_at])
+      elsif entry[:action] == :show
+        future_import = trip.source_imported? && trip.started_at > now
+        needed = !future_import && (trip.path.blank? || trip.distance.blank? || trip.visited_countries.blank?)
+        count = if needed
+                  entry[:show] == :repeat && entry[:owner] == :sidekiq ? 2 : 1
+                else
+                  0
+                end
+        expect(queue[:sidekiq].length + queue[:outbox].length).to eq(count), name
+      elsif %i[note_create note_update].include?(entry[:action]) && !entry[:error] && !entry[:foreign]
+        date = entry.fetch(:date, '2026-10-03')
+        valid = entry[:body].present? && entry[:body].length <= Note::MAX_BODY_LENGTH &&
+                %w[2026-10-03 2026-10-04].include?(date)
+        note = trip.notes.for_date('2026-10-03').first
+        if valid && date == '2026-10-03'
+          expect(note.body).to eq(entry[:body]), name
+          expect(note.noted_at.utc).to eq(utc('2026-10-03T12:00:00Z'))
+          expect(trip.notes.count).to eq(1)
+        elsif !valid && entry[:action] == :note_update
+          expect(note.body).to eq('Before'), name
+        elsif !valid
+          expect(trip.notes).to be_empty, name
+        end
+      end
+      queue[:outbox].select { _1['command_type'] == 'trips.calculate' }.each do |row|
+        expect(row['command_version']).to eq(1)
+        expect(row['payload']).to eq('trip_id' => row['aggregate_id'], 'distance_unit' => 'km')
+        expect(row['dedupe_key']).to eq(row['aggregate_id'].to_s)
+        expect(row['metadata']).to eq('producer' => 'Trip#enqueue_calculation_jobs')
+        expect(row['scheduled_at']).to eq(now.iso8601(6))
+      end
+      return if error
+
+      html = remaining_html(response.body)
+      if entry[:body] && !entry[:foreign] && (entry[:action] == :show || html.include?('<textarea'))
+        raw = html.scan(%r{<textarea\b[^>]*>(.*?)</textarea>}m).flatten.first
+        expect(raw).to eq(ERB::Util.html_escape(entry[:body])), name
+        parsed = Nokogiri::HTML5.fragment("<textarea>#{raw}</textarea>").at_css('textarea').content
+        expect(parsed).to eq(entry[:body].delete_prefix("\n")), name
+      end
+      return unless entry[:plan]
+
+      doc = Nokogiri::HTML5.fragment(html)
+      if entry[:action] == :edit
+        managed = entry[:plan] != :stopped && entry[:plan] != :no_identifier
+        expect(doc.at_css('input[name="trip[name]"]').key?('readonly')).to eq(managed), name
+      elsif entry[:action] == :show
+        section = doc.at_css('section[aria-labelledby="trip-plan-title"]')
+        expect(section).not_to be_nil, name
+        expect(section.text.include?('Source detail')).to eq(entry[:plan] != :synced), name
+        stops = trip.plan_geojson[:features].select { _1[:properties][:kind] == 'stop' }
+        expect(stops.map { _1[:properties][:number] }).to eq([2, 3, 4])
+        expect(stops.first[:geometry][:coordinates]).to eq([12.3712, 51.3391])
+      end
+    end
+
+    it 'writes A8 remaining trip responses and effects' do
+      expect(Rails.application.secret_key_base).to eq(secret)
+      allow(Trips::CalculateAllJob).to receive(:queue_adapter).and_return(ActiveJob::QueueAdapters::SidekiqAdapter.new)
+      responses = []
+      effects = []
+      travel_to now do
+        allow(ExceptionReporter).to receive(:call)
+        remaining_scenarios.each_with_index do |entry, index|
+          id = 895_000 + index * 20
+          user = remaining_user(8950 + index)
+          job_owner!('command:trips.calculate', entry.fetch(:owner, :sidekiq))
+          job_owner!('command:exports.points', entry.fetch(:owner, :sidekiq))
+          remaining_setup(user, id, entry)
+          %w[trips notes exports action_text_rich_texts].each do |table|
+            ActiveRecord::Base.connection.execute(
+              "SELECT setval(pg_get_serial_sequence('#{table}', 'id'), #{id + 10}, false)"
+            )
+          end
+          clear_enqueued_jobs
+          Sidekiq::ActiveJob::Wrapper.clear
+          before = remaining_graph(user, id)
+          method, path, params, accept = remaining_target(entry, id)
+          error = nil
+          commands = []
+          RSpec::Mocks.with_temporary_scope do
+            remaining_fault(entry)
+            allow(JobCommands).to receive(:produce).and_wrap_original do |original, type, payload, **options|
+              command = { type:, payload:, **options }
+              commands << command
+              begin
+                command[:result] = original.call(type, payload, **options)
+              rescue StandardError => e
+                command[:error] = e.class.name
+                raise
+              end
+            end
+            begin
+              ActiveRecord::Base.transaction(requires_new: true) do
+                remaining_request(user, method, path, params, accept)
+                remaining_request(user, method, path, params, accept) if entry[:show] == :repeat
+              end
+            rescue StandardError => e
+              error = e
+            end
+          end
+          queue = remaining_queue(id)
+          queue[:commands] = commands
+          remaining_assert(entry, user, id, before, queue, error)
+          request = { method: method.to_s.upcase, path:, params:, accept:, owner: entry.fetch(:owner, :sidekiq),
+                      fault: entry[:fault], race: entry[:race] }
+          responses << remaining_response(entry[:name], error).merge(request:)
+          effects << { name: entry[:name], request:, before:, after: remaining_graph(user, id), queue: }
+          next unless !error && accept == 'text/html' && entry[:action].to_s.start_with?('note_')
+
+          follow_redirect!
+          expect(response.status).to eq(200), entry[:name]
+          responses << remaining_response("#{entry[:name]}_follow")
+        end
+        write_json('responses.json', { now: now.iso8601, responses: })
+        write_json('effects.json', { now: now.iso8601, effects: })
+      end
+    end
+  end
+
   context 'A8 route videos' do
     let(:now) { Time.utc(2026, 10, 3, 10, 0, 0) }
     let(:a8_recipe) do
