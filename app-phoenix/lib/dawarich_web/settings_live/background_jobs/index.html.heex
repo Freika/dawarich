@@ -1,0 +1,95 @@
+<div class="min-h-content w-full my-5">
+  <.page_header title={label(@locale, "background_jobs")} />
+  <SettingsParts.navigation
+    locale={@locale}
+    active="background_jobs"
+    self_hosted={@self_hosted}
+    admin={@current_user.admin == true}
+    two_factor={@two_factor}
+  />
+  <div role="alert" class="alert m-5">
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      class="stroke-info h-6 w-6 shrink-0"
+    ><path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    >
+    </path></svg>
+    <span>{label(@locale, "spamming_many_new_jobs_at_once_is_a_bad_idea")}</span>
+  </div>
+  <div
+    :if={@data.notice}
+    role="alert"
+    class="alert alert-info m-5"
+    data-testid="gps-noise-recheck-pending"
+  >
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      fill="none"
+      viewBox="0 0 24 24"
+      class="stroke-current h-6 w-6 shrink-0"
+    ><path
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      stroke-width="2"
+      d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+    >
+    </path></svg>
+    <span>{label(@locale, "gps_noise_detection_changed_in_this_release_so_your_existing")}</span>
+  </div>
+  <div class="flex flex-wrap">
+    <div
+      :for={
+        {job, hint} <- [
+          {"start_reverse_geocoding", "this_job_will_re_run_reverse_geocoding_process_for_all"},
+          {"continue_reverse_geocoding",
+           "this_job_will_process_reverse_geocoding_for_all_points_that"}
+        ]
+      }
+      class="card bg-base-300 w-96 shadow-xl m-5"
+    >
+      <div class="card-body">
+        <h2 class="card-title">{label(@locale, job)}</h2><p>{label(@locale, hint)}</p>
+        <div class="card-actions justify-end">
+          <a
+            data-turbo-confirm={label(@locale, "are_you_sure")}
+            data-turbo-method="post"
+            class="btn btn-primary"
+            href={"/settings/background_jobs?job_name=#{job}"}
+          >{label(@locale, "start_job")}</a>
+        </div>
+      </div>
+    </div>
+    <div :if={@current_user.admin == true} class="card bg-base-300 w-96 shadow-xl m-5">
+      <div class="card-body">
+        <h2 class="card-title">{label(@locale, "background_jobs_dashboard")}</h2>
+        <p>{label(@locale, "this_will_open_the_background_jobs_dashboard_in_a_new")}</p>
+        <div class="card-actions justify-end">
+          <a target="_blank" class="btn btn-primary" href="/sidekiq">{label(
+            @locale,
+            "open_dashboard"
+          )}</a>
+        </div>
+      </div>
+    </div>
+    <div class="card bg-base-300 w-96 shadow-xl m-5">
+      <div class="card-body">
+        <h2 class="card-title">{label(@locale, "visits_suggestions")}</h2>
+        <p>{label(@locale, "enable_or_disable_visits_suggestions_it_s_a_background_task")}</p>
+        <div class="card-actions justify-end">
+          <a
+            data-turbo-confirm={label(@locale, "are_you_sure")}
+            data-turbo-method="patch"
+            class={if(@data.visits, do: "btn btn-error", else: "btn btn-success")}
+            href={"/settings/background_jobs?settings%5Bvisits_suggestions_enabled%5D=#{if(@data.visits, do: "false", else: "true")}"}
+          >{label(@locale, if(@data.visits, do: "disable", else: "enable"))}</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -43,18 +43,18 @@ defmodule DawarichWeb.SettingsParts do
         )}</a>
         <%= if @self_hosted do %>
           <%= if @admin do %>
-            <a role="tab" class="tab tab-lg" href="/settings/users">{t(
+            <a role="tab" class={tab(@active, "users")} href="/settings/users">{t(
               @locale,
               "settings.navigation.users",
               %{}
             )}</a>
-            <a role="tab" class="tab tab-lg" href="/admin/settings">{t(
+            <a role="tab" class={tab(@active, "instance")} href="/admin/settings">{t(
               @locale,
               "settings.navigation.instance",
               %{}
             )}</a>
           <% end %>
-          <a role="tab" class="tab tab-lg" href="/settings/background_jobs">{t(
+          <a role="tab" class={tab(@active, "background_jobs")} href="/settings/background_jobs">{t(
             @locale,
             "settings.navigation.background_jobs",
             %{}

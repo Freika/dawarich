@@ -15,7 +15,7 @@ sidekiq="sidekiq.* $(basename "$root") "
 stack() {
   env $(grep -E '^DATABASE_(PORT|USERNAME|PASSWORD)=' "$ENV_FILE" | xargs) \
     DATABASE_HOST=127.0.0.1 RAILS_ENV=test \
-    DATABASE_NAME="$STAND_DATABASE_NAME" REDIS_URL="redis://127.0.0.1:$REDIS_PORT" SELF_HOSTED=true \
+    DATABASE_NAME="$STAND_DATABASE_NAME" REDIS_URL="redis://127.0.0.1:$REDIS_PORT" SELF_HOSTED="${SELF_HOSTED:-true}" \
     E2E_DEMO_DATA="$E2E_REPO/fixtures/demo_data.json" SMTP_FROM=e2e@dawarich.test E2E_SMTP_PORT=1025 SMTP_SERVER=127.0.0.1 \
     OTP_ENCRYPTION_PRIMARY_KEY=e2e-otp-primary-key-not-a-secret \
     OTP_ENCRYPTION_DETERMINISTIC_KEY=e2e-otp-deterministic-key-not-a-secret \
@@ -69,7 +69,7 @@ stack bin/rails db:prepare >/dev/null
 stack bin/rails phoenix:i18n phoenix:achievements >/dev/null
 [ -n "$(ls -A public/assets 2>/dev/null)" ] || stack bin/rails assets:precompile >/dev/null
 stack bin/rails phoenix:importmap phoenix:time_zones >/dev/null
-(cd app-phoenix && env PATH="$HOME/.asdf/shims:$PATH" \
+(cd app-phoenix && stack env PATH="$HOME/.asdf/shims:$PATH" \
   ASDF_ERLANG_VERSION=27.3.4.1 ASDF_ELIXIR_VERSION=1.18.3-otp-27 \
   DATABASE_HOST=127.0.0.1 PHOENIX_TEST_REDIS_URL="redis://127.0.0.1:$REDIS_PORT/1" \
   PHOENIX_TEST_DATABASE="$STAND_DATABASE_NAME" MIX_ENV=prod \
