@@ -453,6 +453,7 @@ Rails.application.routes.draw do
       end
 
       resources :notes, only: %i[index show create update destroy]
+      resources :trips, only: %i[index show create update destroy]
       namespace :shared do
         get ':id/trip',   to: 'trips#show'
         get ':id/points', to: 'points#index'
