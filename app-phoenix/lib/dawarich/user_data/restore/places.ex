@@ -49,7 +49,7 @@ defmodule Dawarich.UserData.Restore.Places do
           "user_id" => user,
           "latitude" => lat,
           "longitude" => lon,
-          "lonlat" => "SRID=4326;POINT(#{lon} #{lat})",
+          "lonlat" => "SRID=4326;POINT(#{coordinate(lon)} #{coordinate(lat)})",
           "created_at" => context.now,
           "updated_at" => context.now
         })
@@ -70,4 +70,7 @@ defmodule Dawarich.UserData.Restore.Places do
   end
 
   defp number(value), do: Decimal.from_float(value)
+
+  defp coordinate(value),
+    do: value |> Dawarich.Ingest.Cast.decimal({10, 6}) |> Decimal.to_string(:normal)
 end

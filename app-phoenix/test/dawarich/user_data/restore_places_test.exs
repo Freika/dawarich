@@ -96,6 +96,17 @@ defmodule Dawarich.UserData.RestorePlacesTest do
                "SELECT user_id,to_char(created_at,'YYYY-MM-DD HH24:MI:SS'),ST_AsText(lonlat::geometry) FROM places WHERE name='zero'"
              )
 
+    rounded =
+      zero
+      |> Map.put("name", "rounded")
+      |> Map.put("latitude", 51.3000004)
+      |> Map.put("longitude", 12.4000004)
+
+    assert Places.call(ScratchRepo, c.user_id, [rounded], c.context) == 1
+
+    assert [["POINT(12.4 51.3)"]] ==
+             rows("SELECT ST_AsText(lonlat::geometry) FROM places WHERE name='rounded'")
+
     assert Places.call(
              ScratchRepo,
              c.user_id,
