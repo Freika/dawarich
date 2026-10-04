@@ -4,6 +4,7 @@ defmodule Dawarich.Achievements.Registry do
   def all, do: data().definitions
   def find(key), do: Map.get(data().by_key, key)
   def announcer(code), do: Map.get(data().announcers, code)
+  def subdivision_parent(code), do: Map.get(data().subdivision_parents, code)
 
   def approximations(locale) do
     %{"default" => default, "rules" => rules} = data().transliteration
