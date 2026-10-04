@@ -9,7 +9,7 @@ defmodule Dawarich.Trips.WebCommands do
     end
   end
 
-  def calculate!(repo, user, trip_id, unit, now) when unit in ~w(km mi) do
+  def calculate!(repo, user, trip_id, unit, now) when unit in ~w(km mi m ft yd) do
     repo.transaction(fn ->
       with :ok <- admission(repo),
            %{rows: [[^trip_id]]} <-
