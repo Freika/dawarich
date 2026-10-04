@@ -9,11 +9,12 @@ defmodule Dawarich.Auth.SessionProtocolTest do
   @now ~U[2026-10-01 16:00:00Z]
 
   test "API management protocol preserves storage without issuing a session" do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+
     path =
-      "/private/tmp/claude-501/-Users-frey-projects-dawarich/aead0408-a470-4709-ab5c-b8e98304817c/scratchpad/a4otp-protocol-test.json"
+      Path.join(System.tmp_dir!(), "a4otp-protocol-#{System.unique_integer([:positive])}.json")
 
     refute File.exists?(path)
-    args = System.argv()
 
     env = %{
       "OTP_ENCRYPTION_PRIMARY_KEY" => "a4otp-synthetic-primary-not-for-production",
@@ -21,14 +22,11 @@ defmodule Dawarich.Auth.SessionProtocolTest do
       "OTP_ENCRYPTION_KEY_DERIVATION_SALT" => "a4otp-synthetic-salt-not-for-production"
     }
 
-    previous = Map.new(env, fn {key, _} -> {key, System.get_env(key)} end)
     File.write!(path, "", [:exclusive])
     File.chmod!(path, 0o600)
 
     try do
-      System.put_env(env)
-      System.argv([path, "api_two_factor_management"])
-      Code.eval_file("test/support/auth/emit_protocol.exs")
+      Dawarich.Auth.ApiProtocol.write(path, env)
       payload = path |> File.read!() |> Jason.decode!()
       assert payload["mode"] == "api_two_factor_management"
       assert payload["schema"] == 1
@@ -38,12 +36,7 @@ defmodule Dawarich.Auth.SessionProtocolTest do
       assert Enum.map(payload["actors"], & &1["id"]) == [954_801, 954_802, 954_803]
       assert Enum.all?(payload["actors"], &is_map(&1["disabled"]))
     after
-      File.rm!(path)
-      System.argv(args)
-
-      Enum.each(previous, fn {key, value} ->
-        if value, do: System.put_env(key, value), else: System.delete_env(key)
-      end)
+      File.rm(path)
     end
   end
 
