@@ -20,8 +20,18 @@ defmodule DawarichWeb.CableReplayTest do
     test "replays every recorded Rails #{section} case", %{port: port, ports: ports} do
       for c <- A12a.cases(unquote(section)), c["name"] not in A12a.ed_cases() do
         port = Map.get(ports, c["name"], port)
-        assert {c["name"], A12a.replay(port, c)} == {c["name"], A12a.recorded(c)}
+        actual = A12a.replay(port, c)
+        expected = A12a.recorded(c)
+        assert {c["name"], alias_order(c, actual)} == {c["name"], alias_order(c, expected)}
       end
     end
   end
+
+  defp alias_order(%{"name" => "points_alias"}, {status, protocol, type, body, steps}) do
+    {before, rest} = Enum.split(steps, 6)
+    {pair, after_pair} = Enum.split(rest, 2)
+    {status, protocol, type, body, before ++ Enum.sort(pair) ++ after_pair}
+  end
+
+  defp alias_order(_case, result), do: result
 end

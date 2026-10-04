@@ -119,6 +119,63 @@ defmodule DawarichWeb.CablePgTest do
     assert A12a.next_frame(fresh, 100) == %{"error" => ":timeout"}
   end
 
+  test "PG interleaved streams deliver only to their authenticated user", %{port: port} do
+    id = ~s({"channel":"PointsChannel"})
+
+    sockets =
+      for who <- ["alice", "bob"] do
+        socket = A12a.open!(port, A12a.cookie(who))
+        on_exit(fn -> :gen_tcp.close(socket) end)
+        assert A12a.next_frame(socket) == %{"expect" => Frames.welcome()}
+        subscribe(socket, id)
+        assert A12a.next_frame(socket) == %{"expect" => Frames.confirm(id)}
+        {who, socket}
+      end
+
+    for seq <- 1..3, {who, _socket} <- Enum.reverse(sockets) do
+      payload = Jason.encode!(%{owner: who, seq: seq})
+      assert {:ok, _} = Bus.publish(A12a.broadcasting("points", who), payload)
+    end
+
+    poll()
+
+    for {who, socket} <- sockets do
+      for seq <- 1..3 do
+        payload = Jason.encode!(%{owner: who, seq: seq})
+        assert A12a.next_frame(socket) == %{"expect" => Frames.message(id, payload)}
+      end
+
+      assert A12a.next_frame(socket, 100) == %{"error" => ":timeout"}
+    end
+  end
+
+  test "PG share-only identity rejects a user channel", %{port: port} do
+    rejected_stream(port, "points_share_only", A12a.broadcasting("points", "alice"))
+  end
+
+  test "PG mismatched-share identity rejects another share stream", %{port: port} do
+    id = A12a.case!("shared_mismatch") |> A12a.identifier() |> Jason.decode!()
+
+    broadcasting =
+      Dawarich.RailsMessages.broadcasting(["shared_location", {:shared_link, id["share_id"]}])
+
+    rejected_stream(port, "shared_mismatch", broadcasting)
+  end
+
+  defp rejected_stream(port, name, broadcasting) do
+    recorded = A12a.case!(name)
+    socket = A12a.request!(port, recorded)
+    on_exit(fn -> :gen_tcp.close(socket) end)
+    assert {101, _headers} = A12a.response_head(socket)
+    assert A12a.next_frame(socket) == hd(recorded["steps"])
+    id = A12a.identifier(recorded)
+    subscribe(socket, id)
+    assert A12a.next_frame(socket) == List.last(recorded["steps"])
+    assert {:ok, _} = Bus.publish(broadcasting, "\"denied\"")
+    poll()
+    assert A12a.next_frame(socket, 100) == %{"error" => ":timeout"}
+  end
+
   defp subscribe(socket, id),
     do: A12a.send_text(socket, Jason.encode!(%{command: "subscribe", identifier: id}))
 
