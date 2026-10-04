@@ -8,6 +8,6 @@ class Users::ExportDataJob < ApplicationJob
   def perform(user_id)
     user = find_user_or_skip(user_id) || return
 
-    Users::ExportData.new(user).export
+    Users::DataExportLegacy.perform(user, event_id: job_id, zone: Time.zone.name, locale: I18n.locale.to_s)
   end
 end
