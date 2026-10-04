@@ -36,7 +36,7 @@ defmodule DawarichWeb.SettingsParts do
           "settings.navigation.visits",
           %{}
         )}</a>
-        <a :if={@two_factor} role="tab" class="tab tab-lg" href="/settings/two_factor">{t(
+        <a :if={@two_factor} role="tab" class={tab(@active, "two_factor")} href="/settings/two_factor">{t(
           @locale,
           "settings.navigation.two_factor_authentication",
           %{}

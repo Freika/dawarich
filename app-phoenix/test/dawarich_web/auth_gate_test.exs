@@ -248,6 +248,68 @@ defmodule DawarichWeb.AuthGateTest do
     end
   end
 
+  test "two_factor opts in independently without registration cache" do
+    routes = [
+      {:get, "/settings/two_factor"},
+      {:post, "/settings/two_factor"},
+      {:post, "/settings/two_factor/verify"},
+      {:delete, "/settings/two_factor"}
+    ]
+
+    for flows <- [nil, [], ["unknown"], ~w(credentials recovery account api_keys)] do
+      if flows,
+        do: Application.put_env(:dawarich, :phoenix_auth, flows),
+        else: Application.delete_env(:dawarich, :phoenix_auth)
+
+      untouched(routes)
+    end
+
+    {session, previous_secret} = account_actor()
+    cache = Process.whereis(Dawarich.Redis.Cache)
+    if cache, do: Process.unregister(Dawarich.Redis.Cache)
+
+    on_exit(fn ->
+      Application.put_env(:dawarich, :rails_secret, previous_secret)
+      if cache && Process.alive?(cache), do: Process.register(cache, Dawarich.Redis.Cache)
+    end)
+
+    assert RegistrationSetting.fetch() == :error
+    owner = self()
+    tracer = spawn(fn -> trace_calls(owner) end)
+    :erlang.trace_pattern({RegistrationSetting, :fetch, 0}, true, [:local])
+    :erlang.trace(self(), true, [:call, {:tracer, tracer}])
+
+    on_exit(fn ->
+      :erlang.trace_pattern({RegistrationSetting, :fetch, 0}, false, [:local])
+      Process.exit(tracer, :kill)
+    end)
+
+    for flows <- [["two_factor"], ~w(credentials recovery account api_keys two_factor)] do
+      Application.put_env(:dawarich, :phoenix_auth, flows)
+      conn = authenticated(session, "/settings/two_factor", "")
+      result = %{conn | method: "GET"} |> AuthGate.call([])
+      assert get_resp_header(result, "x-dawarich-auth-owner") == ["native-two-factor"]
+      assert result.status in [200, 302]
+      if flows == ["two_factor"], do: untouched(@credentials ++ @recovery)
+    end
+
+    barrier = :erlang.trace_delivered(self())
+    assert_receive {:trace_delivered, _, ^barrier}
+    send(tracer, {:barrier, barrier})
+    assert_receive {:barrier, ^barrier}
+    refute_received :registration_fetch
+    :erlang.trace(self(), false, [:call])
+
+    for value <- [nil, "false", "TRUE", ""] do
+      if value, do: System.put_env("SELF_HOSTED", value), else: System.delete_env("SELF_HOSTED")
+      untouched(routes)
+    end
+
+    System.put_env("DAWARICH_PHOENIX_AUTH", " Two_Factor, credentials, Unknown ")
+    config = Config.Reader.read!(Path.expand("../../config/runtime.exs", __DIR__), env: :prod)
+    assert config[:dawarich][:phoenix_auth] == ~w(two_factor credentials unknown)
+  end
+
   defp account_actor do
     secret = Application.fetch_env!(:dawarich, :rails_secret)
     hash = Bcrypt.hash_pwd_salt("a11rest-gate-password", log_rounds: 4)

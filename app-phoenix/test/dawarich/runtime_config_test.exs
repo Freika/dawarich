@@ -249,11 +249,12 @@ defmodule Dawarich.RuntimeConfigTest do
   end
 
   test "reads the auth flows an operator hands to Phoenix: lower-cased, trimmed, none by default" do
-    System.put_env("DAWARICH_PHOENIX_AUTH", " Credentials, ,recovery ")
+    System.put_env("DAWARICH_PHOENIX_AUTH", " Credentials, ,recovery, Two_Factor ")
 
     assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:phoenix_auth] == [
              "credentials",
-             "recovery"
+             "recovery",
+             "two_factor"
            ]
 
     System.delete_env("DAWARICH_PHOENIX_AUTH")
