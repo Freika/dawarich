@@ -6,6 +6,7 @@ require_relative 'normal_import_json_support'
 require_relative 'normal_import_photos_support'
 require_relative 'normal_import_records_support'
 require_relative 'normal_import_semantic_support'
+require_relative 'normal_import_phone_support'
 
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   include ActiveSupport::Testing::TimeHelpers
@@ -143,6 +144,19 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
           expect(result.fetch('import').fetch('raw_points')).to eq(0)
           identities = { 'user_id' => 987_001, 'import_id' => 987_101 }
           NormalImportFormatsSupport.write(name, result.merge('identities' => identities))
+        end
+      end
+    end
+  end
+
+  context 'Google Phone preparation' do
+    it 'records Google Phone point preparation from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.google_phone_point_cases.each do |name, section, value, zone, legacy|
+          stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !legacy)
+          result = NormalImportFormatsSupport.capture_phone_preparation(section, value, zone, legacy)
+          expect(result).to include('prepared_points', 'section', 'input', 'error')
+          NormalImportFormatsSupport.write(name, result)
         end
       end
     end
