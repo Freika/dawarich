@@ -67,13 +67,17 @@ defmodule Dawarich.Imports.Fit do
     {:ok, message} =
       I18n.t(context.locale, "services.fit.importer." <> key, %{"message" => reason})
 
-    Fence.run(context, fn ->
-      context.repo.query!(
-        "UPDATE imports SET status=3,error_message=$3 WHERE id=$1 AND user_id=$2",
-        [import.id, import.user_id, message],
-        log: false
-      )
-    end)
+    if fail = Map.get(context, :fail_import) do
+      fail.(message)
+    else
+      Fence.run(context, fn ->
+        context.repo.query!(
+          "UPDATE imports SET status=3,error_message=$3 WHERE id=$1 AND user_id=$2",
+          [import.id, import.user_id, message],
+          log: false
+        )
+      end)
+    end
   end
 
   defp date_time(fun) when is_function(fun, 0), do: fn -> date_time(fun.()) end

@@ -54,6 +54,120 @@ defmodule Dawarich.Test.NormalFormats do
     }
   end
 
+  def whole!(name, repo, root) do
+    expected =
+      @dir
+      |> Path.join("whole_create/" <> name <> ".json")
+      |> File.read!()
+      |> Jason.decode!()
+      |> decode()
+
+    user = expected["identities"]["user_id"]
+    id = expected["identities"]["import_id"]
+    parent = expected["parent"]
+    source = Enum.find_index(@sources, &(&1 == expected["initial_source"]))
+
+    repo.insert_all("users", [
+      %{
+        id: user,
+        email: "whole@example.test",
+        settings: %{"timezone" => expected["zone"], "locale" => expected["locale"]},
+        created_at: @stamp,
+        updated_at: @stamp
+      }
+    ])
+
+    repo.insert_all("imports", [
+      %{
+        id: id,
+        user_id: user,
+        name: parent["name"],
+        source: source,
+        created_at: @stamp,
+        updated_at: @stamp
+      }
+    ])
+
+    for point <- expected["initial_points"] do
+      repo.query!(
+        "INSERT INTO points(user_id,lonlat,timestamp,created_at,updated_at) VALUES($1,ST_GeomFromText($2,4326),$3,$4,$4)",
+        [user, point["lonlat"], point["timestamp"], @stamp]
+      )
+    end
+
+    bytes = parent["file"]["bytes"]
+    key = Dawarich.Storage.generate_key()
+    path = Dawarich.Storage.disk_path(root, key)
+    File.mkdir_p!(Path.dirname(path))
+    File.write!(path, bytes)
+
+    {1, [%{id: blob}]} =
+      repo.insert_all(
+        "active_storage_blobs",
+        [
+          %{
+            key: key,
+            filename: parent["file"]["filename"],
+            content_type: parent["file"]["content_type"],
+            byte_size: byte_size(bytes),
+            checksum: Base.encode64(:crypto.hash(:md5, bytes)),
+            service_name: "local",
+            created_at: @stamp
+          }
+        ],
+        returning: [:id]
+      )
+
+    repo.insert_all("active_storage_attachments", [
+      %{record_type: "Import", record_id: id, name: "file", blob_id: blob, created_at: @stamp}
+    ])
+
+    args = %{
+      "event_id" => Ecto.UUID.generate(),
+      "import_id" => id,
+      "user_id" => user,
+      "time_zone" => expected["zone"]
+    }
+
+    {1, [%{id: job}]} =
+      repo.insert_all(
+        "oban_jobs",
+        [
+          %{
+            state: "executing",
+            queue: "imports",
+            worker: "Dawarich.Imports.ProcessWorker",
+            args: args,
+            attempt: 1,
+            max_attempts: 3,
+            attempted_at: @stamp
+          }
+        ],
+        prefix: "oban",
+        returning: [:id]
+      )
+
+    Dawarich.Jobs.Ownership.put!(repo, "command:imports.process_normal", :oban)
+
+    %{
+      import: %{id: id, user_id: user},
+      job: %Oban.Job{id: job, attempt: 1, args: args},
+      expected: expected,
+      context: %{
+        repo: repo,
+        locale: expected["locale"],
+        zone: expected["zone"],
+        now: DateTime.from_naive!(@stamp, "Etc/UTC"),
+        services: %{"local" => %{service: "local", root: root}},
+        temp_dir: root,
+        self_hosted?: true,
+        on_terminal: fn ->
+          Dawarich.Jobs.Processed.mark!(repo, args["event_id"], "imports.process_normal")
+        end
+      }
+    }
+  end
+
   def decode(%{"__float__" => name}),
     do: %{"Infinity" => :infinity, "-Infinity" => :neg_infinity, "NaN" => :nan}[name]
 

@@ -213,6 +213,11 @@ module RailsCommands
          guard: 'Durable event receipt and per-import lease; repeats cannot restart a completed receipt',
          call: ->(payload) { Imports::GpxResume.call(payload) }
        }
+     ).merge(
+       'imports.normal_resume' => {
+         guard: 'Durable event receipt and per-import lease; completed receipts do not restart imports',
+         call: ->(payload) { Imports::NormalResume.call(payload) }
+       }
      ).merge(Stats::Commands::HANDLERS).freeze
 
     module_function

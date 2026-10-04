@@ -21,14 +21,29 @@ defmodule Dawarich.Imports.ImportState do
     guard = if state.mode == :terminal, do: &Lease.terminal_effect!/2, else: &Lease.effect!/2
 
     guard.(lease, fn ->
-      [[status]] =
-        lease.repo.query!("SELECT status FROM imports WHERE id=$1", [lease.import.id], log: false).rows
+      [[status, source]] =
+        lease.repo.query!("SELECT status,source FROM imports WHERE id=$1", [lease.import.id],
+          log: false
+        ).rows
 
-      unless status == state.status and attachment!(lease) == state.attachment,
-        do: raise(LeaseLost)
+      unless status == state.status and source == state.import.source and
+               attachment!(lease) == state.attachment,
+             do: raise(LeaseLost)
 
       fun.()
     end)
+  end
+
+  def source!(lease, source) do
+    effect!(lease, fn ->
+      lease.repo.query!("UPDATE imports SET source=$2 WHERE id=$1", [lease.import.id, source],
+        log: false
+      )
+    end)
+
+    state = state!(lease)
+    Process.put(key(lease), %{state | import: %{state.import | source: source}})
+    :ok
   end
 
   def start!(lease, now) do
@@ -74,9 +89,24 @@ defmodule Dawarich.Imports.ImportState do
       end)
 
       change(lease, :terminal, 2)
+    else
+      if lease.lane == "command:imports.process_normal" and state!(lease).status == 3,
+        do: terminal_failed!(lease)
     end
 
     :ok
+  end
+
+  defp terminal_failed!(lease) do
+    effect!(lease, fn ->
+      lease.repo.query!(
+        "UPDATE phoenix.import_runs SET phase='terminal',attachment_snapshot=$2 WHERE import_id=$1",
+        [lease.import.id, %{"attachment" => state!(lease).attachment}],
+        log: false
+      )
+    end)
+
+    change(lease, :terminal, 3)
   end
 
   def import!(lease) do

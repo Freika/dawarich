@@ -1,0 +1,191 @@
+defmodule Dawarich.Imports.NormalLifecycleTest do
+  use Dawarich.JobsCase
+  alias Dawarich.Imports.{Lease, NormalLifecycle}
+  alias Dawarich.Jobs.{Ownership, Processed}
+  alias Dawarich.Test.NormalFormats
+
+  @opts [
+    lane: "command:imports.process_normal",
+    worker: "Dawarich.Imports.ProcessWorker",
+    sources: [nil, 0, 1, 2, 3, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15],
+    terminal_statuses: [2, 3]
+  ]
+
+  setup do
+    root = Path.join(System.tmp_dir!(), "normal-lifecycle-#{System.unique_integer([:positive])}")
+    File.mkdir_p!(root)
+    on_exit(fn -> File.rm_rf!(root) end)
+    %{root: root}
+  end
+
+  test "normal lifecycle failure status notification and completion match whole Rails create",
+       c do
+    for name <-
+          ~w(csv_known csv_detected csv_duplicate csv_all_skipped fit_failed_return kmz_wrapped directory_single malformed_zip empty_zip kmz_missing_leaf invalid_manifest) do
+      reset!(ScratchRepo)
+      c = fixture(c, name)
+      assert {:ok, :ok} = run(c)
+      expected = c.expected["parent"]
+
+      status =
+        Enum.find_index(
+          ~w(created processing completed failed deleting),
+          &(&1 == expected["status"])
+        )
+
+      assert [
+               [
+                 status,
+                 expected["raw_points"],
+                 expected["doubles"],
+                 expected["processed"],
+                 expected["raw_data"],
+                 expected["error_message"]
+               ]
+             ] ==
+               rows(
+                 "SELECT status,raw_points,doubles,processed,raw_data,error_message FROM imports WHERE id=$1",
+                 [c.import.id]
+               )
+
+      assert rows(
+               "SELECT ST_AsText(lonlat::geometry),timestamp FROM points WHERE import_id=$1 ORDER BY id",
+               [c.import.id]
+             ) == Enum.map(c.expected["points"], &[&1["lonlat"], &1["timestamp"]])
+
+      notifications =
+        rows(
+          "SELECT title,content,CASE kind WHEN 2 THEN 'error' WHEN 1 THEN 'warning' ELSE 'info' END FROM notifications ORDER BY id"
+        )
+
+      assert length(notifications) == length(c.expected["notifications"])
+
+      for {[title, content, kind], [expected_title, expected_content, expected_kind]} <-
+            Enum.zip(notifications, c.expected["notifications"]) do
+        assert [title, kind] == [expected_title, expected_kind]
+
+        if String.contains?(expected_content, "/Users/"),
+          do: assert(String.starts_with?(content, hd(String.split(expected_content, "/Users/")))),
+          else: assert(content == expected_content)
+      end
+
+      assert Processed.done?(ScratchRepo, c.job.args["event_id"])
+
+      assert [["terminal"]] =
+               rows("SELECT phase FROM phoenix.import_runs WHERE import_id=$1", [c.import.id])
+
+      count = Enum.count(c.expected["jobs"], &(&1["type"] == "Import::UpdatePointsCountJob"))
+
+      assert [[count]] ==
+               rows(
+                 "SELECT count(*) FROM phoenix.rails_commands WHERE kind='imports.postprocessing_step' AND payload->>'command_type'='imports.update_points_count'"
+               )
+    end
+  end
+
+  test "normal ownership loss after download stops status and point writes", c do
+    c = fixture(c, "csv_known")
+
+    c =
+      remote(c, fn -> Ownership.put!(ScratchRepo, "command:imports.process_normal", :sidekiq) end)
+
+    assert_raise Dawarich.Imports.LeaseLost, fn -> run(c) end
+    assert [[0, 0]] = rows("SELECT status,raw_points FROM imports WHERE id=$1", [c.import.id])
+    assert [] = rows("SELECT id FROM points")
+    assert [] = rows("SELECT id FROM notifications")
+    assert [] = rows("SELECT id FROM phoenix.rails_commands")
+    refute Processed.done?(ScratchRepo, c.job.args["event_id"])
+    Task.await(c.server, :infinity)
+    assert_clean(c)
+  end
+
+  test "normal terminal resume never writes points or duplicates follow-ups", c do
+    for name <-
+          ~w(csv_known fit_failed_return malformed_zip empty_zip kmz_missing_leaf invalid_manifest),
+        handback? <- [false, true] do
+      reset!(ScratchRepo)
+      c = fixture(c, name)
+      failing = %{c | context: %{c.context | on_terminal: fn -> raise "marker unavailable" end}}
+      assert_raise RuntimeError, "marker unavailable", fn -> run(failing) end
+
+      before_rows =
+        rows("SELECT status,raw_points,doubles FROM imports WHERE id=$1", [c.import.id])
+
+      before_commands =
+        rows(
+          "SELECT kind,payload FROM phoenix.rails_commands WHERE kind<>'imports.progress' ORDER BY id"
+        )
+
+      before_notifications = rows("SELECT title,content FROM notifications ORDER BY id")
+
+      if handback? do
+        Ownership.put!(ScratchRepo, "command:imports.process_normal", :sidekiq)
+        assert :ok = Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job)
+        assert [] = rows("SELECT event_id FROM phoenix.import_handoffs")
+        Ownership.put!(ScratchRepo, "command:imports.process_normal", :oban)
+      end
+
+      rows("UPDATE oban.oban_jobs SET attempt=2 WHERE id=$1", [c.job.id])
+      assert {:ok, :ok} = run(%{c | job: %{c.job | attempt: 2}})
+
+      assert rows("SELECT status,raw_points,doubles FROM imports WHERE id=$1", [c.import.id]) ==
+               before_rows
+
+      assert rows(
+               "SELECT kind,payload FROM phoenix.rails_commands WHERE kind<>'imports.progress' ORDER BY id"
+             ) == before_commands
+
+      assert rows("SELECT title,content FROM notifications ORDER BY id") == before_notifications
+      assert Processed.done?(ScratchRepo, c.job.args["event_id"])
+      assert {:ok, :ok} = run(%{c | job: %{c.job | attempt: 2}})
+
+      assert rows(
+               "SELECT kind,payload FROM phoenix.rails_commands WHERE kind<>'imports.progress' ORDER BY id"
+             ) == before_commands
+
+      assert_clean(c)
+    end
+  end
+
+  defp fixture(c, name), do: Map.merge(c, NormalFormats.whole!(name, ScratchRepo, c.root))
+
+  defp run(c),
+    do:
+      Lease.with_import(ScratchRepo, c.job, c.import, &NormalLifecycle.call(&1, c.context), @opts)
+
+  defp assert_clean(c),
+    do:
+      assert(
+        Enum.flat_map(["import-*", "unzipped-*"], &Path.wildcard(Path.join(c.root, &1))) == []
+      )
+
+  defp remote(c, change) do
+    bytes = c.expected["parent"]["file"]["bytes"]
+    rows("UPDATE active_storage_blobs SET service_name='s3'")
+
+    {url, server} =
+      Dawarich.Test.DownloadServer.start(fn socket, _, _ ->
+        change.()
+
+        Dawarich.Test.RawHTTP.reply(
+          socket,
+          "HTTP/1.1 200 OK\r\nContent-Length: #{byte_size(bytes)}\r\nConnection: close\r\n\r\n" <>
+            bytes
+        )
+      end)
+
+    config =
+      Map.merge(
+        %{service: "s3"},
+        Dawarich.Storage.S3.config!(%{
+          "AWS_ACCESS_KEY_ID" => "AKIA_SYNTHETIC",
+          "AWS_SECRET_ACCESS_KEY" => "synthetic",
+          "AWS_REGION" => "eu-central-1",
+          "AWS_BUCKET" => "dawarich",
+          "AWS_ENDPOINT" => url
+        })
+      )
+
+    Map.put(%{c | context: %{c.context | services: %{"s3" => config}}}, :server, server)
+  end
+end

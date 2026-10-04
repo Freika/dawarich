@@ -63,9 +63,11 @@ defmodule Dawarich.RailsJobOwners do
     "Immich::VerifyEnrichmentJob" => {:slice, :a4},
     "Import::GoogleTakeoutJob" => {:slice, :a7},
     "Import::GpxResumeJob" => {:slice, :a7},
+    "Import::NormalResumeJob" => {:oban, ["command:imports.process_normal"], :a7},
     "Import::ImmichGeodataJob" => {:slice, :a7},
     "Import::PhotoprismGeodataJob" => {:slice, :a7},
-    "Import::ProcessJob" => {:oban, ["command:imports.process_gpx"], :a7},
+    "Import::ProcessJob" =>
+      {:oban, ["command:imports.process_gpx", "command:imports.process_normal"], :a7},
     "Import::UpdatePointsCountJob" => {:oban, ["command:imports.update_points_count"]},
     "Import::WatcherJob" => {:slice, :a7},
     "Imports::DestroyJob" => {:oban, ["command:imports.destroy"], :a7},
