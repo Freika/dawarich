@@ -694,7 +694,7 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
     settings = { 'timezone' => 'Asia/Tokyo', 'locale' => " #{locale.upcase} " }
     User.unscoped.where(id: digest_user_id).update_all(settings:)
     digest_stats(source_profile, 2025, 3)
-    digest_points(source_profile, 2025, 3)
+    digest_points(source_profile, 2025, 3) unless source_profile == 'no_data'
     digest_tracks(source_profile, 2025, 3, nil)
     digest_existing(source_profile, kind, 2025, 3)
     ActiveRecord::Base.connection.execute("SELECT setval('digests_id_seq', 140500, false)")
@@ -757,6 +757,7 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
     end
     expect(notifications).to be_empty if %w[vanished missing_user deleted_user].include?(profile)
     expect(notifications).to be_empty if %w[new existing no_data].include?(profile)
+    expect(digest_rows).to be_empty if profile == 'no_data'
     if profile == 'late_stats_raise'
       expect(Stat.where(user_id: digest_user_id, year: 2025, month: 3).pick(:calculation_version)).to eq(3)
     end

@@ -6,6 +6,36 @@ defmodule Dawarich.DigestFixtures do
 
   def all, do: @path |> File.read!() |> Jason.decode!() |> Map.fetch!("cases")
 
+  def job_case!(name) do
+    path = Path.expand("../fixtures/a12d1b2/jobs.json", __DIR__)
+    cases = path |> File.read!() |> Jason.decode!() |> Map.fetch!("workers")
+    kase = Enum.find(cases, &(&1["id"] == name)) || raise "missing digest job case #{name}"
+    Map.merge(%{"legacy_duplicates" => false, "null_segment_mode" => false}, kase)
+  end
+
+  def job_args(kase, event_id \\ Ecto.UUID.generate()) do
+    [id, year | month] = kase["args"]
+
+    base = %{
+      "user_id" => id,
+      "year" => year,
+      "time_zone" => kase["ambient_zone"],
+      "event_id" => event_id
+    }
+
+    if month == [], do: base, else: Map.put(base, "month", hd(month))
+  end
+
+  def job_options(kase) do
+    row = List.first(kase["expected"]["rows"]) || %{}
+
+    [
+      now: ~U[2026-10-03 12:00:00Z],
+      env: %{"SELF_HOSTED" => "false", "TIME_ZONE" => "UTC"},
+      uuid: Map.get(row, "sharing_uuid", "00000000-0000-4000-8000-000000141000")
+    ]
+  end
+
   def case!(id),
     do: Enum.find(all(), &(&1["id"] == id)) || raise(ArgumentError, "no digest corpus case #{id}")
 
