@@ -3,9 +3,9 @@ defmodule Dawarich.Imports.XmlInput do
   alias Dawarich.Imports.{XmlPreamble, XmlTokenGuard}
   @read_size 65_536
 
-  def new(io) do
+  def new(io, opts \\ []) do
     {encoding, buffer} = XmlPreamble.read(io)
-    %{io: io, encoding: encoding, pending: "", buffer: buffer, guard: XmlTokenGuard.new()}
+    %{io: io, encoding: encoding, pending: "", buffer: buffer, guard: XmlTokenGuard.new(opts)}
   end
 
   def next(s) do

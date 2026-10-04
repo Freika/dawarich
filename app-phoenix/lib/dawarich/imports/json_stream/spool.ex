@@ -70,9 +70,9 @@ defmodule Dawarich.Imports.JsonStream.Spool do
     end
   end
 
-  def stream(path) do
+  def stream(path, opts \\ []) do
     Stream.resource(
-      fn -> File.open!(path, [:read, :binary]) end,
+      fn -> File.open!(path, [:read, :binary] ++ opts) end,
       fn f ->
         case IO.binread(f, 8) do
           :eof ->

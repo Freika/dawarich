@@ -7,6 +7,7 @@ require_relative 'normal_import_photos_support'
 require_relative 'normal_import_records_support'
 require_relative 'normal_import_semantic_support'
 require_relative 'normal_import_phone_support'
+require_relative 'normal_import_kml_support'
 
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   include ActiveSupport::Testing::TimeHelpers
@@ -174,6 +175,20 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
           identities = { 'user_id' => 987_001, 'import_id' => 987_101 }
           NormalImportFormatsSupport.write(name, result.merge('identities' => identities, 'commands' => commands,
                                                               'attempted_commands' => result['commands']))
+        end
+      end
+    end
+  end
+
+  context 'KML' do
+    it 'records KML importer outcomes from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.kml_cases.each do |name, bytes, zone|
+          stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !name.end_with?('_legacy'))
+          result = NormalImportFormatsSupport.capture_json(name, bytes, zone, 9, Kml::Importer)
+          expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
+          expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
+          NormalImportFormatsSupport.write(name, result)
         end
       end
     end
