@@ -1,0 +1,17 @@
+<%= if @embed do %>
+  <main class="ach-embed-page ach-page">
+    <div class="ach-slot"><.card card={@view.card} locale={@locale} /></div>
+  </main>
+<% else %>
+  <div class="container mx-auto px-4 py-12 max-w-2xl">
+    <div class="ach-page">
+      <div class="ach-header">
+        <h1 class="ach-title">{@view.name}</h1>
+      </div>
+      <div class="ach-grid">
+        <div class="ach-slot"><.card card={@view.card} locale={@locale} /></div>
+      </div>
+      <p class="ach-footnote">{tracked(@locale)}</p>
+    </div>
+  </div>
+<% end %>

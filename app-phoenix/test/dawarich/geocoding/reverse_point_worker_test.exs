@@ -149,9 +149,7 @@ defmodule Dawarich.Geocoding.ReversePointWorkerTest do
     refute dedupe_key?(6207)
     assert dedupe_key?(6211)
 
-    ScratchRepo.query!("TRUNCATE points, instance_settings RESTART IDENTITY CASCADE", [],
-      log: false
-    )
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(points instance_settings))
 
     disabled = load!("point_job_disabled")
     [%{"point_id" => id}] = disabled["calls"]

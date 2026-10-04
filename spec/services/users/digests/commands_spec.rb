@@ -23,8 +23,8 @@ RSpec.describe 'Users::Digests::Commands' do
         "('command:digests.calculate_month', 'command:digests.calculate_year', " \
         "'cron:monthly_digest_scheduling_job', 'cron:yearly_digest_scheduling_job')"
     )
-    ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
-    PhoenixTables.install_state!
+    PhoenixTables.install! unless ActiveRecord::Base.connection.table_exists?('phoenix.job_owners')
+    PhoenixTables.clear!
   end
 
   def clear_digest_reverse_commands

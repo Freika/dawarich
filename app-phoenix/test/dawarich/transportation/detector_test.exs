@@ -9,11 +9,7 @@ defmodule Dawarich.Transportation.DetectorTest do
   @all_modes ~w(unknown stationary walking running cycling driving bus train flying boat motorcycle)
 
   setup do
-    ScratchRepo.query!(
-      "TRUNCATE tracks, points, track_segments, imports RESTART IDENTITY CASCADE",
-      [],
-      log: false
-    )
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(tracks  points  track_segments  imports))
 
     :ok
   end

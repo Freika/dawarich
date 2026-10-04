@@ -11,7 +11,7 @@ defmodule Dawarich.A12eCorpus do
     {"rake points:raw_data:clear_verified", "dawarich raw-data clear-verified"},
     {"rake points:raw_data:status", "dawarich raw-data status"}
   ]
-  @truncate "TRUNCATE users, points, points_raw_data_archives, active_storage_attachments, active_storage_blobs, job_outbox RESTART IDENTITY CASCADE"
+  @tables ~w(users points points_raw_data_archives active_storage_attachments active_storage_blobs job_outbox)
 
   def path, do: @path
   def corpus, do: @path |> File.read!() |> Jason.decode!(floats: :decimals)
@@ -83,7 +83,7 @@ defmodule Dawarich.A12eCorpus do
   end
 
   defp load!(%{"tables" => tables, "sequences" => sequences, "objects" => objects}, storage) do
-    ScratchRepo.query!(@truncate, [], log: false)
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, @tables)
     now = DateTime.utc_now()
 
     for [table, rows] <- tables, row <- rows do

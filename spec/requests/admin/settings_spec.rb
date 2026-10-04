@@ -20,6 +20,8 @@ RSpec.describe 'Admin::Settings' do
     before { JobHealth.reset! }
 
     it 'says every job runs in Sidekiq before Phoenix ever migrated' do
+      ActiveRecord::Base.connection.execute('DROP TABLE phoenix.job_owners')
+      PhoenixSchema.reset!
       sign_in admin
 
       get '/admin/settings'

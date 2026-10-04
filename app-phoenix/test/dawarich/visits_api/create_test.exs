@@ -7,7 +7,7 @@ defmodule Dawarich.VisitsApi.CreateTest do
   @stamp ~N[2026-09-01 12:00:00.000000]
 
   setup do
-    rows("TRUNCATE places,visits,tags,taggings CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(places visits tags taggings))
     rows("DELETE FROM instance_settings")
 
     ScratchRepo.insert_all("users", [

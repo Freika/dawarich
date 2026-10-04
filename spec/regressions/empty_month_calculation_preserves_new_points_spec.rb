@@ -2,7 +2,7 @@
 
 require 'rails_helper'
 
-# Deliberately avoids :non_transactional, whose shared helper truncates tables.
+# Deliberately avoids :non_transactional, whose shared helper deletes rows.
 # This standalone group cleans only the user/rows it creates.
 RSpec.describe 'Empty monthly calculation after historical points arrive', type: :request do
   before(:context) { self.class.use_transactional_tests = false }

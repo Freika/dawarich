@@ -1,11 +1,15 @@
 defmodule Dawarich.FamiliesTest do
-  use Dawarich.ScratchCase, async: true, group: :scratch_case_db
+  use Dawarich.ScratchCase,
+    async: true,
+    group: :scratch_case_db,
+    tables: ~w(family_invitations family_location_requests),
+    sequences: ~w(family_invitations family_location_requests)
 
   alias Dawarich.Families
 
   @now ~N[2026-09-26 12:00:00]
 
-  setup do
+  setup_all do
     scratch_sql!("""
     CREATE TABLE family_invitations (
       id bigserial PRIMARY KEY, status integer NOT NULL DEFAULT 0,

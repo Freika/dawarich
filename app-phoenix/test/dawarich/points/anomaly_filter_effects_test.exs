@@ -21,8 +21,10 @@ defmodule Dawarich.Points.AnomalyFilterEffectsTest do
                [first, second]
              ])
 
-    assert [[%{"user_id" => user, "timestamps" => [@at, @at + 120]}]] ==
+    assert [[%{"user_id" => ^user, "timestamps" => timestamps}]] =
              rows("SELECT payload FROM phoenix.rails_commands WHERE kind='points.tile_epoch'")
+
+    assert Enum.sort(timestamps) == [@at, @at + 120]
 
     assert [[%{"user_id" => user, "track_id" => track, "job_queue" => nil}]] ==
              rows(

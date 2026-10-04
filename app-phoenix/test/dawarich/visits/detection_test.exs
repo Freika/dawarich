@@ -31,9 +31,7 @@ defmodule Dawarich.Visits.DetectionTest do
 
   test "plan_restricted clamps the start to twelve months ago in the payload's zone" do
     for restricted <- [true, false] do
-      ScratchRepo.query!("TRUNCATE users, points, visits RESTART IDENTITY CASCADE", [],
-        log: false
-      )
+      Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(users  points  visits))
 
       Wave5bFixtures.load_input!(ScratchRepo, %{"users" => [%{"id" => 1}]})
       uid = 1
@@ -58,6 +56,10 @@ defmodule Dawarich.Visits.DetectionTest do
   end
 
   test "the history purge wipes out-of-range machine visits only, with their effects" do
+    for table <- ~w(places visits) do
+      rows("SELECT setval(pg_get_serial_sequence($1,'id'),1,false)", [table])
+    end
+
     f = load_visits!("detection_pipeline")
     uid = user_id(f)
 
@@ -179,9 +181,7 @@ defmodule Dawarich.Visits.DetectionTest do
     args = %{"time_zone" => "Europe/Berlin", "plan_restricted" => false}
 
     for anchored <- [false, true] do
-      ScratchRepo.query!("TRUNCATE users, points, visits RESTART IDENTITY CASCADE", [],
-        log: false
-      )
+      Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(users  points  visits))
 
       Wave5bFixtures.load_input!(ScratchRepo, %{"users" => [%{"id" => 7}]})
 

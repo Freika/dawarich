@@ -25,20 +25,7 @@ defmodule Dawarich.VisitsCase do
     quote do
       use Dawarich.GeocodingCase
       import Dawarich.VisitsCase
-
-      setup do: Dawarich.VisitsCase.truncate!()
     end
-  end
-
-  def truncate! do
-    ScratchRepo.query!(
-      "TRUNCATE visits, place_visits, notes, areas, tags, taggings, tracks, track_segments " <>
-        "RESTART IDENTITY CASCADE",
-      [],
-      log: false
-    )
-
-    :ok
   end
 
   def visits_fixture(name), do: Wave5bFixtures.read!(Path.join(@dir, name <> ".json"))
