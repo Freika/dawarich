@@ -25,4 +25,30 @@ defmodule Dawarich.Digests.SchedulingTest do
     |> File.read!()
     |> Jason.decode!()
   end
+
+  test "digest candidates match Rails find_each eligibility across two batches" do
+    for row <- corpus()["schedulers"] do
+      reset!(ScratchRepo)
+      Dawarich.DigestFixtures.load_scheduler!(ScratchRepo, row)
+      period = %{year: row["period"]["year"], month: row["period"]["month"]}
+      {first, cursor} = Scheduling.batch(ScratchRepo, row["kind"], period, 0)
+      {second, next_cursor} = Scheduling.batch(ScratchRepo, row["kind"], period, cursor)
+      {[], nil} = Scheduling.batch(ScratchRepo, row["kind"], period, next_cursor || cursor)
+      expected = Enum.map(row["jobs"], &hd(&1["arguments"]))
+
+      assert Enum.map(first ++ second, & &1.id) == expected, row["id"]
+      assert length(first) <= 1000
+      assert Enum.all?(first, &(&1.id <= cursor))
+      assert Enum.all?(second, &(&1.id > cursor))
+
+      if String.starts_with?(row["id"], "two_batches") do
+        assert length(expected) > 1000
+        assert second != []
+        assert next_cursor == List.last(row["users"])["id"]
+      else
+        assert second == []
+        assert next_cursor == nil
+      end
+    end
+  end
 end

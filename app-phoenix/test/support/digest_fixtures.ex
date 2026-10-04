@@ -9,6 +9,22 @@ defmodule Dawarich.DigestFixtures do
   def case!(id),
     do: Enum.find(all(), &(&1["id"] == id)) || raise(ArgumentError, "no digest corpus case #{id}")
 
+  def load_scheduler!(repo, kase) do
+    for table <- ~w(users stats) do
+      rows = kase[table]
+      columns = columns(hd(rows))
+
+      repo.query!(
+        "INSERT INTO public.#{table} (#{columns}) SELECT #{columns} " <>
+          "FROM json_populate_recordset(NULL::public.#{table}, $1::text::json)",
+        [Jason.encode!(rows)],
+        log: false
+      )
+    end
+
+    :ok
+  end
+
   def load!(repo, kase) do
     if kase["legacy_duplicates"] or kase["null_segment_mode"] do
       unless repo.in_transaction?(),
