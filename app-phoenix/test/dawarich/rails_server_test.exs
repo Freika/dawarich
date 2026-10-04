@@ -25,12 +25,28 @@ defmodule Dawarich.RailsServerTest do
 
   @tag :capture_log
   test "is restarted after an abnormal exit" do
-    pid = start(["sh", "-c", "echo up; exec sleep 5"])
-    assert_receive {:out, "up\n"}, 2_000
+    test = self()
+
+    pid =
+      start_supervised!(
+        {RailsServer,
+         argv: ["sh", "-c", "echo up; exec cat"],
+         sink: fn data ->
+           send(test, {:output_ready, self()})
+           receive do: (:deliver -> send(test, {:out, data}))
+         end,
+         on_exit: &send(test, {:exited, &1})}
+      )
+
+    receive do: ({:output_ready, ^pid} -> send(pid, :deliver))
+    assert receive(do: ({:out, data} -> data)) == "up\n"
 
     :sys.terminate(pid, :boom)
 
-    assert_receive {:out, "up\n"}, 2_000
+    restarted = receive do: ({:output_ready, restarted} -> restarted)
+    assert restarted != pid
+    send(restarted, :deliver)
+    assert receive(do: ({:out, data} -> data)) == "up\n"
   end
 
   test "sends SIGTERM to the command when stopped" do

@@ -116,30 +116,55 @@ defmodule Dawarich.Imports.SecureFileDownloaderTest do
     parent = self()
 
     capture_log(fn ->
-      path =
-        Downloader.download!(
-          @blob,
-          fn sink ->
-            n = Agent.get_and_update(count, fn n -> {n + 1, n + 1} end)
-            send(parent, {:writer, self()})
-            sink.(if n < 3, do: "partial", else: "hello")
-            if n < 3, do: Process.sleep(:infinity)
-          end,
-          &never/1,
-          temp_dir: dir,
-          timeout_ms: 40
-        )
+      task =
+        Task.async(fn ->
+          Downloader.download!(
+            @blob,
+            fn sink ->
+              n = Agent.get_and_update(count, fn n -> {n + 1, n + 1} end)
+              sink.(if n < 3, do: "partial", else: "hello")
+
+              send(parent, {:writer, self(), File.ls!(dir)})
+              receive do: (:finish -> :ok)
+            end,
+            &never/1,
+            temp_dir: dir,
+            timeout_ms: 40,
+            start_timer: fn owner, message, timeout ->
+              send(parent, {:deadline, owner, message, timeout})
+              make_ref()
+            end
+          )
+        end)
+
+      writers =
+        for attempt <- 1..3 do
+          {owner, message} =
+            receive do
+              {:deadline, owner, message, 40} -> {owner, message}
+            end
+
+          {writer, [filename]} =
+            receive do
+              {:writer, writer, files} -> {writer, files}
+            end
+
+          if attempt < 3,
+            do: send(owner, message),
+            else: send(writer, :finish)
+
+          {writer, filename}
+        end
+
+      path = Task.await(task, :infinity)
 
       assert File.read!(path) == "hello"
       assert File.ls!(dir) == [Path.basename(path)]
+      assert Enum.all?(writers, fn {pid, _} -> not Process.alive?(pid) end)
+      assert length(Enum.uniq_by(writers, &elem(&1, 1))) == 3
     end)
 
     assert Agent.get(count, & &1) == 3
-
-    for _ <- 1..3 do
-      assert_receive {:writer, pid}
-      refute Process.alive?(pid)
-    end
 
     Agent.stop(count)
   end

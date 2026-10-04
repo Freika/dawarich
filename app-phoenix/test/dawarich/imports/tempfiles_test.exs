@@ -35,6 +35,9 @@ defmodule Dawarich.Imports.TempfilesTest do
 
     {pid, ref} =
       spawn_monitor(fn ->
+        send(parent, {:caller_ready, self()})
+        receive do: (:download -> :ok)
+
         Tempfiles.with_files(fn adopt ->
           path = download(c.dir, adopt)
           send(parent, {:retained, path})
@@ -42,14 +45,33 @@ defmodule Dawarich.Imports.TempfilesTest do
         end)
       end)
 
-    assert_receive {:retained, path}
+    on_exit(fn -> Process.exit(pid, :kill) end)
+
+    receive do: ({:caller_ready, ^pid} -> :ok)
+    send(pid, :download)
+
+    path =
+      receive do
+        {:retained, path} -> path
+        {:DOWN, ^ref, :process, ^pid, reason} -> flunk("caller exited: #{inspect(reason)}")
+      end
+
     assert File.exists?(path)
     {:monitored_by, watchers} = Process.info(pid, :monitored_by)
-    [guard] = watchers -- [self()]
-    guard_ref = Process.monitor(guard)
+    guards = for guard <- watchers -- [self()], do: {guard, Process.monitor(guard)}
+    assert guards != []
     Process.exit(pid, :kill)
-    assert_receive {:DOWN, ^ref, :process, ^pid, :killed}
-    assert_receive {:DOWN, ^guard_ref, :process, ^guard, :normal}, 5_000
+
+    receive do
+      {:DOWN, ^ref, :process, ^pid, reason} -> assert reason == :killed
+    end
+
+    for {guard, guard_ref} <- guards do
+      receive do
+        {:DOWN, ^guard_ref, :process, ^guard, reason} -> assert reason in [:normal, :noproc]
+      end
+    end
+
     refute File.exists?(path)
   end
 
