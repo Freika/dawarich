@@ -39,8 +39,8 @@ defmodule DawarichWeb.PageRoutesTest do
     for {path, plug, action, pipelines, params, gate} <- [
           {"/imports/17/download", DawarichWeb.ImportsDownload, :show, [:browser, :rails_user],
            %{"id" => "17"}, {DawarichWeb.ImportsGate, :native?}},
-          {"/places/17", DawarichWeb.MapFrames, :place, [:rails_frame], %{"id" => "17"},
-           {DawarichWeb.PlacesGate, :drawer?}},
+          {"/places/17", DawarichWeb.PlaceNavigation, :show, [:rails_frame], %{"id" => "17"},
+           {DawarichWeb.PlacesGate, :navigation?}},
           {"/map/residency", DawarichWeb.MapFrames, :residency, [:rails_frame], %{},
            {DawarichWeb.MapFramesGate, :residency?}},
           {"/", DawarichWeb.HomeDispatch, [], [:public_home], %{},
