@@ -184,6 +184,7 @@ module JobCommands
   }.merge(ReleaseCommands::COMMANDS)
    .merge(Stats::Commands::COMMANDS)
    .merge(Imports::ProcessCommands::COMMANDS)
+   .merge(Imports::IntegrationCommands::COMMANDS)
    .merge(Posters::CreationCommand::COMMANDS).freeze
 
   module_function

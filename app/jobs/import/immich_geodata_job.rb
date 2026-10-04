@@ -8,6 +8,7 @@ class Import::ImmichGeodataJob < ApplicationJob
 
   def perform(user_id)
     user = find_user_or_skip(user_id) || return
+    return if Imports::IntegrationCommands.forward('immich', user.id, event_id: job_id)
 
     Immich::ImportGeodata.new(user).call
   end

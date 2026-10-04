@@ -5,6 +5,31 @@ require 'rails_helper'
 RSpec.describe JobCommands do
   let(:trip_payload) { { 'trip_id' => 42, 'distance_unit' => 'km' } }
 
+  it 'immich producer queues after commit and retains failed rehome events' do
+    payload = { 'user_id' => 987_001, 'time_zone' => Time.zone.name }
+    job_owner!('command:imports.immich_geodata', :sidekiq)
+    ActiveRecord::Base.transaction do
+      JobCommands.produce('imports.immich_geodata', payload, aggregate_id: 987_001, producer: 'spec')
+      expect(enqueued_jobs).to eq([])
+      raise ActiveRecord::Rollback
+    end
+    expect(enqueued_jobs).to eq([])
+    job_owner!('command:imports.immich_geodata', :oban)
+    event = SecureRandom.uuid
+    2.times do
+      JobCommands.forward('imports.immich_geodata', payload, event_id: event, aggregate_id: 987_001, producer: 'spec')
+    end
+    expect(JobOutbox.count).to eq(1)
+    allow(Import::ImmichGeodataJob.queue_adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError)
+    expect(JobCommands.rehome!('imports.immich_geodata', by: 'spec'))
+      .to eq({ moved: 0, left: 1, error: 'RedisClient::CannotConnectError' })
+    expect(JobOutbox.find(event).state).to eq('pending')
+    allow(Import::ImmichGeodataJob.queue_adapter).to receive(:enqueue_at).and_call_original
+    expect(JobCommands.rehome!('imports.immich_geodata', by: 'spec')).to eq({ moved: 1, left: 0 })
+    expect(JobOutbox.exists?(event)).to be(false)
+    expect(enqueued_jobs.last[:args]).to eq([987_001])
+  end
+
   def produce_trip
     described_class.produce('trips.calculate', trip_payload, aggregate_id: 42, dedupe_key: '42', producer: 'spec')
   end

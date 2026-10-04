@@ -4,6 +4,23 @@ defmodule Dawarich.Test.NormalFormats do
   @stamp ~N[2026-01-15 23:30:00]
   @sources ~w(google_semantic_history owntracks google_records google_phone_takeout gpx immich_api geojson photoprism_api user_data_archive kml csv tcx fit polarsteps google_photos mobile_photo_library)
 
+  def seed!("producers/" <> _ = name, repo) do
+    expected = @dir |> Path.join(name <> ".json") |> File.read!() |> Jason.decode!() |> decode()
+    user = expected["identities"]["user_id"]
+
+    repo.insert_all("users", [
+      %{
+        id: user,
+        email: "normal-formats@example.invalid",
+        settings: %{"timezone" => expected["zone"], "locale" => expected["locale"]},
+        created_at: @stamp,
+        updated_at: @stamp
+      }
+    ])
+
+    %{user_id: user, expected: expected, context: %{zone: expected["zone"], now: @stamp}}
+  end
+
   def seed!(name, repo) do
     expected = @dir |> Path.join(name <> ".json") |> File.read!() |> Jason.decode!()
     identities = expected["identities"] || %{}
