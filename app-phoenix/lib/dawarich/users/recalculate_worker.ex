@@ -143,15 +143,10 @@ defmodule Dawarich.Users.RecalculateWorker do
       fence.()
     end)
     |> Keyword.put(:stats, fn repo, id, year, month, options ->
-      {:ok, value} =
-        repo.transaction(fn ->
-          fence.()
-          result = stats.(repo, id, year, month, options)
-          fence.()
-          result
-        end)
-
-      value
+      fence.()
+      result = stats.(repo, id, year, month, Keyword.put(options, :fence, fence))
+      fence.()
+      result
     end)
     |> Keyword.put(:digest_opts, digest_options(Keyword.get(opts, :digest_opts, []), fence))
     |> Keyword.put(:range_opts, range_options(Keyword.get(opts, :range_opts, []), fence))

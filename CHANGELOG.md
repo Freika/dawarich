@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Full and user recalculation, anomaly backfill, and tracker repair workers are ready behind disabled Phoenix job ownership. Rails retains the source jobs and HTTP recalculation callers; live activation, cache retirement, and migrator boot remain separate steps.
 - Monthly and yearly digest calculation workers and scheduling crons are ready behind Phoenix job ownership, with all four keys disabled by default. Rails retains digest email delivery and HTTP writes; live cron activation is a separate step.
 - Opt-in Phoenix web two-factor management for ordinary signed-in local self-hosted accounts: add `two_factor` independently to `DAWARICH_PHOENIX_AUTH` (default OFF) for status, setup, verification, backup-code display and disablement. OTP sign-in challenges, API two-factor management, OAuth and Cloud remain with Rails. Omit `two_factor` to return every management action to Rails; `DAWARICH_RAILS_ROUTES=settings` alone does not disable this auth handler.
 - Opt-in Phoenix account credential updates and current-user API-key rotation for ordinary self-hosted accounts: add `account` and `api_keys` independently to `DAWARICH_PHOENIX_AUTH` (both default OFF). Omit a key to return that mutation to Rails; `DAWARICH_RAILS_ROUTES=users,settings` controls the corresponding GET pages independently. OAuth, OTP, Cloud, account deletion and admin key rotation remain with Rails.
