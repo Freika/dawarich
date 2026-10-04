@@ -79,7 +79,7 @@ defmodule Dawarich.Tags.ValidationTest do
              "en"
            ) == :rails
 
-    for raw <- [".5", "1e9999"] do
+    for raw <- [".5", "1e9999", <<0, ?1>>, <<?1, 0>>] do
       assert Validation.validate(
                Repo,
                ctx.user,

@@ -42,7 +42,7 @@ defmodule Dawarich.Tags.Validation do
       Ruby.blank?(value) ->
         {:ok, nil}
 
-      String.contains?(value, "_") or
+      String.contains?(value, ["_", <<0>>]) or
           (Regex.match?(@number, Ruby.strip(value)) and
              not match?({_, ""}, Float.parse(Ruby.strip(value)))) ->
         :rails
