@@ -51,6 +51,20 @@ defmodule Dawarich.Tracks.BackfillRangesTest do
 
     assert rows("SELECT count(*) FROM phoenix.track_backfill_ranges WHERE user_id = 3") == [[0]]
     assert rows("SELECT count(*) FROM public.job_outbox WHERE aggregate_id = 3") == [[0]]
+
+    rows("UPDATE phoenix.track_backfill_ranges SET scheduled = false WHERE user_id = 2")
+    assert {:ok, {:inserted, retry}} = put(2, [@epoch - 250_000], "Asia/Tokyo", later)
+    refute retry.cycle_id == other.cycle_id
+    assert retry.earliest_timestamp == other.earliest_timestamp
+    assert retry.latest_timestamp == @epoch - 250_000
+    assert retry.time_zone == other.time_zone
+    assert retry.due_at == DateTime.add(later, 60)
+
+    assert rows("SELECT scheduled FROM phoenix.track_backfill_ranges WHERE user_id = 2") == [
+             [true]
+           ]
+
+    assert rows("SELECT count(*) FROM public.job_outbox WHERE aggregate_id = 2") == [[2]]
   end
 
   test "ignores empty and exact-lookback inputs and reclaims expired ranges" do

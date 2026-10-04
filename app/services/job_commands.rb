@@ -182,6 +182,7 @@ module JobCommands
       }
     }
   }.merge(ReleaseCommands::COMMANDS)
+   .merge(Tracks::BackfillCommands::COMMANDS)
    .merge(Stats::Commands::COMMANDS)
    .merge(Imports::ProcessCommands::COMMANDS)
    .merge(Posters::CreationCommand::COMMANDS)

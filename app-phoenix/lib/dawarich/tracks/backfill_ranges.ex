@@ -13,12 +13,13 @@ defmodule Dawarich.Tracks.BackfillRanges do
       ELSE LEAST(stored.earliest_timestamp, EXCLUDED.earliest_timestamp) END,
     latest_timestamp = CASE WHEN stored.expires_at <= $6 THEN EXCLUDED.latest_timestamp
       ELSE GREATEST(stored.latest_timestamp, EXCLUDED.latest_timestamp) END,
-    cycle_id = CASE WHEN stored.expires_at <= $6 THEN EXCLUDED.cycle_id ELSE stored.cycle_id END,
+    cycle_id = CASE WHEN stored.expires_at <= $6 OR NOT stored.scheduled THEN EXCLUDED.cycle_id ELSE stored.cycle_id END,
     time_zone = CASE WHEN stored.expires_at <= $6 THEN EXCLUDED.time_zone ELSE stored.time_zone END,
-    due_at = CASE WHEN stored.expires_at <= $6 THEN EXCLUDED.due_at ELSE stored.due_at END,
+    due_at = CASE WHEN stored.expires_at <= $6 OR NOT stored.scheduled THEN EXCLUDED.due_at ELSE stored.due_at END,
     expires_at = EXCLUDED.expires_at,
     inserted_at = CASE WHEN stored.expires_at <= $6 THEN EXCLUDED.inserted_at ELSE stored.inserted_at END,
-    updated_at = EXCLUDED.updated_at
+    updated_at = EXCLUDED.updated_at,
+    scheduled = true
   RETURNING user_id, earliest_timestamp, latest_timestamp, cycle_id::text, time_zone,
     due_at, expires_at, inserted_at, updated_at
   """

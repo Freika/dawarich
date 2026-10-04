@@ -3,7 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::BackfillScheduler do
-  let(:user) { create(:user) }
+  self.use_transactional_tests = false
+  after(:context) { self.class.use_transactional_tests = true }
+
+  let(:user) { instance_double(User, id: 48_303) }
   let(:window_start) { Tracks::IncrementalGenerator::LOOKBACK_HOURS.hours.ago.to_i }
 
   after do

@@ -88,6 +88,10 @@ defmodule Dawarich.Tracks.BackfillSchemaTest do
       assert public_tables() == public
     after
       heal!(module)
+
+      scratch_sql!(
+        "ALTER TABLE phoenix.track_backfill_ranges ADD COLUMN IF NOT EXISTS scheduled boolean NOT NULL DEFAULT true"
+      )
     end
   end
 
