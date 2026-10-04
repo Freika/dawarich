@@ -225,7 +225,7 @@ module RailsCommands
          guard: 'Durable event receipt and per-import lease; completed receipts do not restart imports',
          call: ->(payload) { Imports::NormalResume.call(payload) }
        }
-     ).merge(Stats::Commands::HANDLERS).freeze
+     ).merge(Stats::Commands::HANDLERS).merge(Users::DataCommands::HANDLERS).freeze
 
     module_function
 

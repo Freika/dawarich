@@ -70,7 +70,8 @@ defmodule Dawarich.Imports.UploadAdmission do
       opts = [on_verified: adopt]
 
       case ArchiveDispatch.inspect(path, opts) do
-        kind when kind in [:multi_entry, :user_data_archive] -> {:ok, nil}
+        :multi_entry -> {:ok, nil}
+        :user_data_archive -> {:ok, 8}
         {:single_entry, entry} -> detect(ArchivePaths.extract(path, entry, opts), entry.name)
         :not_a_zip -> detect(path, name)
         {:legacy, _} -> {:error, :rails_format}

@@ -47,17 +47,25 @@ defmodule Dawarich.Imports.UploadRecords do
     zone = captured_zone(user, repo)
     payload = %{"import_id" => id, "user_id" => user.id, "time_zone" => zone}
 
-    if owner == :oban do
-      type = if item.source == 4, do: "imports.process_gpx", else: "imports.process_normal"
-      lane = if item.source == 4, do: "gpx", else: "normal"
+    cond do
+      item.source == 8 ->
+        Dawarich.UserData.ImportCommands.enqueue(repo, %{id: id, user_id: user.id}, %{
+          zone: zone,
+          locale: Dawarich.Mail.ExploreFeatures.locale(user.settings, nil) || "en"
+        })
 
-      repo.query!(
-        "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at) VALUES(gen_random_uuid(),$1,1,$2,$3,$4,$5,now())",
-        [type, payload, %{"producer" => "Phoenix ImportsCreate"}, id, "process-#{lane}:#{id}"],
-        log: false
-      )
-    else
-      RailsCommands.insert!(repo, "imports.upload_created", payload)
+      owner == :oban ->
+        type = if item.source == 4, do: "imports.process_gpx", else: "imports.process_normal"
+        lane = if item.source == 4, do: "gpx", else: "normal"
+
+        repo.query!(
+          "INSERT INTO public.job_outbox(event_id,command_type,command_version,payload,metadata,aggregate_id,dedupe_key,scheduled_at) VALUES(gen_random_uuid(),$1,1,$2,$3,$4,$5,now())",
+          [type, payload, %{"producer" => "Phoenix ImportsCreate"}, id, "process-#{lane}:#{id}"],
+          log: false
+        )
+
+      true ->
+        RailsCommands.insert!(repo, "imports.upload_created", payload)
     end
 
     id

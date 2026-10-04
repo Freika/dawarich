@@ -27,6 +27,7 @@ defmodule Dawarich.Imports.UploadCreate do
     end
   end
 
+  defp command(%{source: 8}), do: "users.import_data"
   defp command(%{source: 4}), do: "imports.process_gpx"
   defp command(_), do: "imports.process_normal"
 end

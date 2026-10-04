@@ -69,6 +69,7 @@ defmodule Dawarich.Imports.NormalUploadTest do
   end
 
   test "upload owner chooses GPX normal or archive command atomically", c do
+    Ownership.put!(ScratchRepo, "command:users.import_data", :oban)
     gpx = upload(c, "route.gpx", "<gpx/>")
     csv = upload(c, "points.csv", "latitude,longitude\n52,13\n")
 
@@ -102,7 +103,7 @@ defmodule Dawarich.Imports.NormalUploadTest do
              ["imports.process_gpx"],
              ["imports.process_normal"],
              ["imports.process_normal"],
-             ["imports.process_normal"]
+             ["users.import_data"]
            ] == rows("SELECT command_type FROM job_outbox ORDER BY aggregate_id")
 
     assert [[4]] ==

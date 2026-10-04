@@ -56,6 +56,39 @@ RSpec.describe JobCommands do
     expect(enqueued_jobs.last[:args]).to eq([user.id])
   end
 
+  it 'user data restore queues after commit and retains failed rehome events' do
+    record = create(:import, source: :user_data_archive, skip_background_processing: true)
+    type = 'users.import_data'
+    payload = { 'import_id' => record.id, 'user_id' => record.user_id,
+                'time_zone' => 'America/New_York', 'locale' => 'de' }
+    ActiveRecord::Base.transaction do
+      described_class::COMMANDS.fetch(type).fetch(:sidekiq).call(payload, Time.current)
+      expect(enqueued_jobs).to be_empty
+      raise ActiveRecord::Rollback
+    end
+    expect(enqueued_jobs).to be_empty
+    ActiveRecord::Base.transaction do
+      described_class::COMMANDS.fetch(type).fetch(:sidekiq).call(payload, Time.current)
+      expect(enqueued_jobs).to be_empty
+    end
+    expect(enqueued_jobs.last[:args]).to eq([record.id])
+    expect(enqueued_jobs.last['timezone']).to eq('America/New_York')
+    expect(enqueued_jobs.last['locale']).to eq('de')
+    clear_enqueued_jobs
+    job_owner!("command:#{type}", :oban)
+    event = SecureRandom.uuid
+    2.times { described_class.forward(type, payload, event_id: event, aggregate_id: record.id, producer: 'spec') }
+    expect(JobOutbox.where(command_type: type).count).to eq(1)
+    allow(Users::ImportDataJob.queue_adapter).to receive(:enqueue_at).and_raise(RedisClient::CannotConnectError)
+    expect(described_class.rehome!(type, by: 'spec'))
+      .to eq({ moved: 0, left: 1, error: 'RedisClient::CannotConnectError' })
+    expect(JobOutbox.find(event).state).to eq('pending')
+    allow(Users::ImportDataJob.queue_adapter).to receive(:enqueue_at).and_call_original
+    expect(described_class.rehome!(type, by: 'spec')).to eq({ moved: 1, left: 0 })
+    expect(JobOutbox.exists?(event)).to be(false)
+    expect(enqueued_jobs.last[:args]).to eq([record.id])
+  end
+
   let(:trip_payload) { { 'trip_id' => 42, 'distance_unit' => 'km' } }
 
   it 'immich producer queues after commit and retains failed rehome events' do

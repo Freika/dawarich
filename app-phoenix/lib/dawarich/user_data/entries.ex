@@ -3,6 +3,12 @@ defmodule Dawarich.UserData.Entries do
   def entries,
     do: [
       %{
+        key: "command:users.import_data",
+        kind: :command,
+        worker: Dawarich.UserData.ImportWorker,
+        claimable: false
+      },
+      %{
         key: "command:users.export_data",
         kind: :command,
         worker: Dawarich.UserData.ExportWorker,
