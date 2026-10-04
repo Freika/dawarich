@@ -15,6 +15,7 @@ defmodule Dawarich.Imports.ImportState do
   end
 
   def mode(lease), do: state!(lease).mode
+  def with_blob(lease), do: effect!(lease, fn -> state!(lease).blob end)
 
   def effect!(lease, fun) do
     state = state!(lease)

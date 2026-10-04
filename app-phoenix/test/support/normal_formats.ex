@@ -64,7 +64,7 @@ defmodule Dawarich.Test.NormalFormats do
 
     user = expected["identities"]["user_id"]
     id = expected["identities"]["import_id"]
-    parent = expected["parent"]
+    parent = expected["parent"] || %{"name" => archive_name(expected)}
     source = Enum.find_index(@sources, &(&1 == expected["initial_source"]))
 
     repo.insert_all("users", [
@@ -72,6 +72,7 @@ defmodule Dawarich.Test.NormalFormats do
         id: user,
         email: "whole@example.test",
         settings: %{"timezone" => expected["zone"], "locale" => expected["locale"]},
+        status: if(expected["trial"], do: 2, else: 1),
         created_at: @stamp,
         updated_at: @stamp
       }
@@ -88,6 +89,24 @@ defmodule Dawarich.Test.NormalFormats do
       }
     ])
 
+    for initial <- expected["initial_imports"] do
+      repo.insert_all("imports", [
+        %{
+          id: initial["id"],
+          user_id: user,
+          name: initial["name"],
+          source: Enum.find_index(@sources, &(&1 == initial["source"])),
+          additional_data_extraction_status: 5,
+          created_at: @stamp,
+          updated_at: @stamp
+        }
+      ])
+    end
+
+    repo.query!(
+      "SELECT setval(pg_get_serial_sequence('imports','id'),GREATEST(987200,(SELECT max(id) FROM imports)),true)"
+    )
+
     for point <- expected["initial_points"] do
       repo.query!(
         "INSERT INTO points(user_id,lonlat,timestamp,created_at,updated_at) VALUES($1,ST_GeomFromText($2,4326),$3,$4,$4)",
@@ -95,7 +114,13 @@ defmodule Dawarich.Test.NormalFormats do
       )
     end
 
-    bytes = parent["file"]["bytes"]
+    bytes =
+      if parent["file"],
+        do: parent["file"]["bytes"],
+        else: File.read!(Path.join(@dir, "whole_create/" <> expected["input"]))
+
+    filename = if parent["file"], do: parent["file"]["filename"], else: parent["name"]
+    content_type = if parent["file"], do: parent["file"]["content_type"], else: "application/zip"
     key = Dawarich.Storage.generate_key()
     path = Dawarich.Storage.disk_path(root, key)
     File.mkdir_p!(Path.dirname(path))
@@ -107,8 +132,8 @@ defmodule Dawarich.Test.NormalFormats do
         [
           %{
             key: key,
-            filename: parent["file"]["filename"],
-            content_type: parent["file"]["content_type"],
+            filename: filename,
+            content_type: content_type,
             byte_size: byte_size(bytes),
             checksum: Base.encode64(:crypto.hash(:md5, bytes)),
             service_name: "local",
@@ -166,6 +191,18 @@ defmodule Dawarich.Test.NormalFormats do
         end
       }
     }
+  end
+
+  defp archive_name(expected) do
+    name =
+      Enum.find_value(expected["children"], fn child ->
+        case Regex.run(~r/\(from (.*)\)$/, child["name"]) do
+          [_, name] -> name
+          _ -> nil
+        end
+      end)
+
+    name || String.replace(expected["input"], ".input", "")
   end
 
   def decode(%{"__float__" => name}),
