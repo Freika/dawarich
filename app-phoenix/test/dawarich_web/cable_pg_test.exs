@@ -73,6 +73,52 @@ defmodule DawarichWeb.CablePgTest do
     assert A12a.next_frame(socket, 100) == %{"error" => ":timeout"}
   end
 
+  test "PG sockets confirm after subscription readiness and deliver exact ActionCable frames",
+       %{port: port} do
+    id = ~s({"channel":"PointsChannel"})
+    broadcasting = A12a.broadcasting("points", "alice")
+    namespace = Bus.prefix() || ""
+    assert {:ok, 1} = PgStore.append(ScratchRepo, namespace, broadcasting, "\"old\"")
+    socket = A12a.open!(port, A12a.cookie("alice"))
+    on_exit(fn -> :gen_tcp.close(socket) end)
+    assert A12a.next_frame(socket) == %{"expect" => Frames.welcome()}
+    subscribe(socket, id)
+    assert A12a.next_frame(socket) == %{"expect" => Frames.confirm(id)}
+    payload = ~s({ "place": "München", "values": [1, 2] })
+    assert {:ok, 2} = PgStore.append(ScratchRepo, namespace, broadcasting, payload)
+    poll()
+    assert A12a.next_frame(socket) == %{"expect" => Frames.message(id, payload)}
+    assert A12a.next_frame(socket, 100) == %{"error" => ":timeout"}
+  end
+
+  test "PG Bus loss disconnects existing sockets with server_restart and reconnect true",
+       %{port: port} do
+    id = ~s({"channel":"PointsChannel"})
+    broadcasting = A12a.broadcasting("points", "alice")
+    namespace = Bus.prefix() || ""
+    socket = A12a.open!(port, A12a.cookie("alice"))
+    on_exit(fn -> :gen_tcp.close(socket) end)
+    assert A12a.next_frame(socket) == %{"expect" => Frames.welcome()}
+    subscribe(socket, id)
+    assert A12a.next_frame(socket) == %{"expect" => Frames.confirm(id)}
+    assert {:ok, 1} = PgStore.append(ScratchRepo, namespace, broadcasting, "\"unread\"")
+    Process.exit(Process.whereis(Bus), :kill)
+    assert A12a.next_frame(socket) == %{"expect" => Frames.disconnect("server_restart", true)}
+    assert A12a.next_frame(socket) == %{"close" => 1000}
+    stop_supervised!(Bus)
+    [spec] = Bus.child_specs()
+    start_supervised!(spec)
+    fresh = A12a.open!(port, A12a.cookie("alice"))
+    on_exit(fn -> :gen_tcp.close(fresh) end)
+    assert A12a.next_frame(fresh) == %{"expect" => Frames.welcome()}
+    subscribe(fresh, id)
+    assert A12a.next_frame(fresh) == %{"expect" => Frames.confirm(id)}
+    assert {:ok, 2} = PgStore.append(ScratchRepo, namespace, broadcasting, "\"fresh\"")
+    poll()
+    assert A12a.next_frame(fresh) == %{"expect" => Frames.message(id, "\"fresh\"")}
+    assert A12a.next_frame(fresh, 100) == %{"error" => ":timeout"}
+  end
+
   defp subscribe(socket, id),
     do: A12a.send_text(socket, Jason.encode!(%{command: "subscribe", identifier: id}))
 
