@@ -125,3 +125,12 @@ ambiguity remains; this does not provide exactly-once SMTP delivery.
 Both P7 tests pass, including eight exact Rails body/subject locale cases through both stages.
 M-P7-sent-guard suppresses queued SMTP and fails; M-P7-locale replaces fr with en between queues
 and fails. Each is restored and green, with inherited Delivery regressions.
+
+P8 adds the location-request mail worker for the already-merged API producer's version-1
+request/requester payload. Target preference controls rendering; request status/expiry do not
+add delivery guards. Missing source requests/requesters skip, while a missing target returns a
+bounded source rendering failure. Real request identities and existing Delivery claims suppress
+same-request duplicate SMTP, preserve held claims, and retain the inherited ambiguous-send
+behavior. Exact Rails bodies match for eligible source rows. M-P8-recipient sends to the requester
+and fails pending's target assertion; restored worker is green. Rails reverse-handler Redis
+cache/enqueue failure contracts remain on the retained fallback; no new Redis namespace is added.
