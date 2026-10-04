@@ -3,6 +3,107 @@ defmodule DawarichWeb.ApiRoutes do
 
   defmacro api_routes do
     quote do
+      pipeline :api_account do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug :method_override_to_rails
+        plug DawarichWeb.Api.Body
+        plug DawarichWeb.Api.Auth, require_active: false
+      end
+
+      pipeline :api_manager do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug :method_override_to_rails
+        plug DawarichWeb.Api.Body
+      end
+
+      scope "/api/v1", DawarichWeb.Api do
+        pipe_through :api_manager
+        post "/users/exist", UsersController, :exist, metadata: %{slice: :api_account}
+      end
+
+      scope "/api/v1", DawarichWeb.Api do
+        pipe_through :api_account
+        get "/users/me", UsersController, :me, metadata: %{slice: :api_account}
+      end
+
+      pipeline :api_visits do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug :method_override_to_rails
+        plug DawarichWeb.Api.Body
+        plug DawarichWeb.Api.Auth, require_active: false
+      end
+
+      scope "/api/v1", DawarichWeb.Api do
+        pipe_through :api_visits
+        post "/visits/merge", VisitsController, :merge, metadata: %{slice: :api_visits}
+
+        post "/visits/bulk_update", VisitsController, :bulk_update,
+          metadata: %{slice: :api_visits}
+
+        post "/visits/batch", VisitsController, :batch, metadata: %{slice: :api_visits}
+        get "/visits", VisitsController, :index, metadata: %{slice: :api_visits}
+        post "/visits", VisitsController, :create, metadata: %{slice: :api_visits}
+        get "/visits/:id", VisitsController, :show, metadata: %{slice: :api_visits}
+        patch "/visits/:id", VisitsController, :update, metadata: %{slice: :api_visits}
+        put "/visits/:id", VisitsController, :update, metadata: %{slice: :api_visits}
+        delete "/visits/:id", VisitsController, :destroy, metadata: %{slice: :api_visits}
+
+        get "/visits/:id/possible_places", VisitsController, :possible_places,
+          metadata: %{slice: :api_visits}
+
+        post "/visits/:id/select_place", VisitsController, :select_place,
+          metadata: %{slice: :api_visits}
+      end
+
+      pipeline :api_notes do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug :method_override_to_rails
+        plug DawarichWeb.Api.Body
+        plug DawarichWeb.Api.Auth, require_active: false
+      end
+
+      scope "/api/v1", DawarichWeb.Api do
+        pipe_through :api_notes
+        get "/notes", NotesController, :index, metadata: %{slice: :api_notes}
+        post "/notes", NotesController, :create, metadata: %{slice: :api_notes}
+        get "/notes/:id", NotesController, :show, metadata: %{slice: :api_notes}
+        patch "/notes/:id", NotesController, :update, metadata: %{slice: :api_notes}
+        put "/notes/:id", NotesController, :update, metadata: %{slice: :api_notes}
+        delete "/notes/:id", NotesController, :destroy, metadata: %{slice: :api_notes}
+      end
+
+      pipeline :api_shared do
+        plug :put_api_tag, "api"
+        plug DawarichWeb.HostAuthorization
+        plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
+        plug DawarichWeb.Api.Body
+      end
+
+      scope "/api/v1/shared", DawarichWeb.Api do
+        pipe_through :api_shared
+
+        get "/:id/trip", SharedController, :trip, metadata: %{slice: :api_shared}
+        get "/:id/points", SharedController, :points, metadata: %{slice: :api_shared}
+        get "/:id/route", SharedController, :route, metadata: %{slice: :api_shared}
+        get "/:id/photos", SharedController, :photos, metadata: %{slice: :api_shared}
+
+        get "/:id/photos/:photo_id/thumbnail", SharedController, :thumbnail,
+          metadata: %{slice: :api_shared}
+      end
+
       pipeline :api_ingest do
         plug :put_api_tag, "ingest"
         plug DawarichWeb.HostAuthorization
