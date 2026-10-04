@@ -4,9 +4,26 @@ defmodule Dawarich.Cable.BusTest do
   alias Dawarich.Cable.Bus
   alias Dawarich.Test.A12a
 
-  setup do
-    A12a.start_bus!()
+  setup context do
+    unless context[:no_bus], do: A12a.start_bus!()
     :ok
+  end
+
+  @tag :no_bus
+  test "disabled Cable starts neither transport" do
+    for transport <- [:redis, :pg] do
+      assert Bus.child_specs(bus: false, transport: transport) == []
+    end
+  end
+
+  @tag :no_bus
+  test "PG child specs keep the Bus monitor name without Cable Redix children" do
+    assert [spec] = Bus.child_specs(bus: true, transport: :pg)
+    assert spec.id == Bus
+    assert {Dawarich.Cable.PgBus, :start_link, [opts]} = spec.start
+    assert opts[:name] == Bus
+    assert opts[:transport] == :pg
+    assert length(Bus.child_specs(bus: true, transport: :redis)) == 2
   end
 
   test "the prefix follows RAILS_ENV like config/cable.yml" do

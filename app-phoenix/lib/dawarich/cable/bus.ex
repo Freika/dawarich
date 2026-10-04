@@ -13,22 +13,31 @@ defmodule Dawarich.Cable.Bus do
   }
 
   def child_specs(config \\ Application.get_env(:dawarich, :cable, [])) do
-    if Keyword.get(config, :bus, true) do
-      url = if config[:url] in [nil, ""], do: "redis://localhost:6379", else: config[:url]
-      database = if config[:database], do: [database: config[:database]], else: []
-      base = database ++ [sync_connect: false] ++ Redis.socket_options(url)
+    cond do
+      not Keyword.get(config, :bus, true) ->
+        []
 
-      [
-        %{id: @name, start: {Redix.PubSub, :start_link, [url, [name: @name] ++ base]}},
-        %{
-          id: @publisher,
-          start:
-            {Redix, :start_link, [url, [name: @publisher, exit_on_disconnection: false] ++ base]}
-        }
-      ]
-    else
-      []
+      Keyword.get(config, :transport, :redis) == :pg ->
+        [Dawarich.Cable.PgBus.child_spec(Keyword.put(config, :name, @name))]
+
+      true ->
+        redis_child_specs(config)
     end
+  end
+
+  defp redis_child_specs(config) do
+    url = if config[:url] in [nil, ""], do: "redis://localhost:6379", else: config[:url]
+    database = if config[:database], do: [database: config[:database]], else: []
+    base = database ++ [sync_connect: false] ++ Redis.socket_options(url)
+
+    [
+      %{id: @name, start: {Redix.PubSub, :start_link, [url, [name: @name] ++ base]}},
+      %{
+        id: @publisher,
+        start:
+          {Redix, :start_link, [url, [name: @publisher, exit_on_disconnection: false] ++ base]}
+      }
+    ]
   end
 
   def prefix do
