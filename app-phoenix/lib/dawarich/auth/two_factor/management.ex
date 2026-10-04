@@ -1,6 +1,7 @@
 defmodule Dawarich.Auth.TwoFactor.Management do
   @moduledoc false
   alias Dawarich.Auth.TwoFactor.{BackupCodes, Secret, Totp}
+  alias Dawarich.Auth.Recovery.Token
   alias Dawarich.{QrCode, Repo}
 
   def show(id, salt, context \\ %{}) do
@@ -33,6 +34,54 @@ defmodule Dawarich.Auth.TwoFactor.Management do
         {:ok, timestep} ->
           enable(user, timestep, context)
       end
+    end
+  end
+
+  def disable(id, salt, password, code, context \\ %{}) do
+    with {:ok, user, secret} <- ready(id, salt, context) do
+      if valid_password?(password, user.encrypted_password) do
+        case consume(user, secret, code || "", context) do
+          {:ok, user} ->
+            user =
+              persist(
+                user,
+                %{otp_required_for_login: false, otp_secret: nil, otp_backup_codes: nil},
+                context
+              )
+
+            {:ok, %{kind: :redirect, reason: :two_factor_authentication_disabled, user: user}}
+
+          :invalid ->
+            {:error,
+             %{kind: :redirect, reason: :provide_a_valid_two_factor_code_or_backup_code_to}}
+        end
+      else
+        {:error, %{kind: :redirect, reason: :incorrect_password}}
+      end
+    end
+  end
+
+  defp valid_password?(password, hash) when is_binary(password),
+    do:
+      not Token.blank?(password) and
+        Bcrypt.verify_pass(binary_part(password, 0, min(byte_size(password), 72)), hash)
+
+  defp valid_password?(_, _), do: false
+
+  defp consume(user, secret, code, context) do
+    case Totp.verify(secret, code, DateTime.to_unix(clock(context)), user.consumed_timestep) do
+      {:ok, timestep} ->
+        {:ok, persist(user, %{consumed_timestep: timestep}, context)}
+
+      :invalid ->
+        case BackupCodes.consume(
+               user.otp_backup_codes,
+               code,
+               Map.get(context, :backup_options, [])
+             ) do
+          {:ok, hashes} -> {:ok, persist(user, %{otp_backup_codes: hashes}, context)}
+          :invalid -> :invalid
+        end
     end
   end
 

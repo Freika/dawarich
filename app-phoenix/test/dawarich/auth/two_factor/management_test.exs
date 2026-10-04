@@ -178,5 +178,94 @@ defmodule Dawarich.Auth.TwoFactor.ManagementTest do
     later_code = Totp.at(vector["plaintext"], DateTime.to_unix(@now) + 30)
     assert {:ok, _} = Management.verify(c.id, c.salt, later_code, c.context)
     assert Repo.get!(Account, c.id).consumed_timestep == consumed + 1
+    seed(c.id, otp_backup_codes: [@source["user_before"]["encrypted_password"]])
+
+    assert {:ok, _} =
+             Management.disable(c.id, c.salt, "safepassword12", "safepassword12", c.context)
+
+    assert is_nil(Repo.get!(Account, c.id).otp_backup_codes)
+    before = snapshot(c.id)
+
+    assert {:error, %{reason: :provide_a_valid_two_factor_code_or_backup_code_to}} =
+             Management.disable(c.id, c.salt, "safepassword12", "safepassword12", c.context)
+
+    assert snapshot(c.id) == before
+  end
+
+  test "web disable checks password before code and clears only source fields", c do
+    assert Code.ensure_loaded?(Management) and function_exported?(Management, :disable, 5)
+    other = actor!()
+    other_before = snapshot(other)
+    [[jobs_before]] = Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows
+    {:ok, %{secret: secret}} = Management.setup(c.id, c.salt, c.context)
+    code = Totp.at(secret, DateTime.to_unix(@now))
+    {:ok, %{codes: codes}} = Management.verify(c.id, c.salt, code, c.context)
+    future_code = Totp.at(secret, DateTime.to_unix(@now) + 30)
+
+    for candidate <- [nil, "", "wrong-password"], otp <- [future_code, hd(codes)] do
+      before = snapshot(c.id)
+
+      assert {:error, %{reason: :incorrect_password}} =
+               Management.disable(c.id, c.salt, candidate, otp, c.context)
+
+      assert snapshot(c.id) == before
+    end
+
+    for otp <- [nil, "", "not-a-code", code] do
+      before = snapshot(c.id)
+
+      assert {:error, %{reason: :provide_a_valid_two_factor_code_or_backup_code_to}} =
+               Management.disable(c.id, c.salt, "safepassword12", otp, c.context)
+
+      assert snapshot(c.id) == before
+    end
+
+    for lock <- [DateTime.add(@now, -60), DateTime.add(@now, -7200)], kind <- [:totp, :backup] do
+      {:ok, ciphertext} = Secret.encrypt(secret, c.context.env)
+      {:ok, backup_codes, hashes} = BackupCodes.generate()
+
+      seed(c.id,
+        otp_secret: ciphertext,
+        otp_backup_codes: hashes,
+        otp_required_for_login: true,
+        consumed_timestep: nil,
+        otp_locked_at: lock
+      )
+
+      before = snapshot(c.id)
+      otp = if kind == :totp, do: future_code, else: hd(backup_codes)
+
+      assert {:ok, %{reason: :two_factor_authentication_disabled}} =
+               Management.disable(c.id, c.salt, "safepassword12", otp, c.context)
+
+      user = Repo.get!(Account, c.id)
+      refute user.otp_required_for_login
+      assert is_nil(user.otp_secret)
+      assert is_nil(user.otp_backup_codes)
+      timestep = if kind == :totp, do: div(DateTime.to_unix(@now), 30) + 1, else: nil
+      assert user.consumed_timestep == timestep
+
+      ignored =
+        ~w(otp_secret otp_backup_codes otp_required_for_login consumed_timestep updated_at)
+
+      assert Map.drop(snapshot(c.id), ignored) == Map.drop(before, ignored)
+      before = snapshot(c.id)
+      assert {:error, _} = Management.disable(c.id, c.salt, "safepassword12", otp, c.context)
+      assert snapshot(c.id) == before
+    end
+
+    for backups <- [nil, []] do
+      seed(c.id, otp_backup_codes: backups)
+      before = snapshot(c.id)
+
+      assert {:error, _} =
+               Management.disable(c.id, c.salt, "safepassword12", "not-a-code", c.context)
+
+      assert snapshot(c.id) == before
+    end
+
+    assert snapshot(other) == other_before
+    [[jobs_after]] = Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows
+    assert jobs_before == jobs_after
   end
 end
