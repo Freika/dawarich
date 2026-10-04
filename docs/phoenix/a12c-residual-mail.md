@@ -80,6 +80,13 @@ by its caller through existing Postgres time-zone helpers. No time-zone dependen
 The MIME test helper handles absent multipart transfer headers and preserves RFC2047 spaces
 across adjacent encoded words. The production SMTP serializer is unchanged.
 
-Resume at P2 after P1's restored scoped tests are green.
+P2 adds only pure HTML renderers for reachable Devise email-changed/password-change content.
+All twelve reachable Devise/recovery corpus rows match bodies, headers and decoded MIME.
+The email-changed recipient stays the old address while its body describes the new address.
+M-P2-branch substitutes the old body address and fails; M-P2-retained-enqueue introduces an
+actual recovery job at the Cloud hand-back and fails the zero-enqueue check. Both are restored.
+OTP/Cloud callers, recovery worker/lifecycle and dormant confirmation files stay with their owners.
+
+Resume at P3 after P2's restored scoped tests are green.
 Native rendering, delivery workers, ownership wiring, test-mail HTTP,
 ED allocation and final C1–C5 gates are pending. Rails source/specs and dormant stubs are retained.
