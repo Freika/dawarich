@@ -1,0 +1,110 @@
+<div :if={@errors != []} class="alert alert-error text-sm mb-3">{Enum.join(@errors, ", ")}</div>
+<div data-controller="hub-tabs" data-hub-tabs-active-value={@hub.tab}>
+  <div role="tablist" class="tabs tabs-bordered mb-2">
+    <a
+      :for={
+        {key, label} <- [
+          {"live", "live_location"},
+          {"timeline", "time_period"},
+          {"make", "make_something"}
+        ]
+      }
+      role="tab"
+      class="tab"
+      data-hub-tabs-target="tab"
+      data-tab={key}
+      data-action="click->hub-tabs#select"
+      data-testid={"hub-tab-#{key}"}
+    >{s(@ctx, "body", label)}</a>
+    <a
+      :if={@hub.shares != []}
+      role="tab"
+      class="tab"
+      data-hub-tabs-target="tab"
+      data-tab="shared"
+      data-action="click->hub-tabs#select"
+      data-testid="hub-tab-shared"
+    >{s(@ctx, "body", "shared")}</a>
+  </div>
+  <div data-hub-tabs-target="panel" style="min-height: 24rem;" data-tab="live" class="hidden pt-2">
+    <%= if @hub.live do %>
+      <ShareLinkActive.active
+        share={@hub.live}
+        ctx={@ctx}
+        paths={paths("live", query(@hub))}
+        subtitle={s(@ctx, "body", "your_live_location_is_shared_via_a_public_link")}
+      />
+    <% else %>
+      <ShareLinkForm.create
+        type="live"
+        ctx={@ctx}
+        paths={paths("live", query(@hub))}
+        close_path="/map/v2"
+        start_date={@hub.start_date}
+        end_date={@hub.end_date}
+      />
+    <% end %>
+  </div>
+  <div
+    data-hub-tabs-target="panel"
+    style="min-height: 24rem;"
+    data-tab="timeline"
+    class="hidden pt-2"
+  >
+    <%= if @hub.timeline do %>
+      <ShareLinkActive.active
+        share={@hub.timeline}
+        ctx={@ctx}
+        paths={paths("timeline", query(@hub))}
+        subtitle={timeline_subtitle(@ctx, @hub.timeline)}
+      />
+    <% else %>
+      <ShareLinkForm.create
+        type="timeline"
+        ctx={@ctx}
+        paths={paths("timeline", query(@hub))}
+        close_path="/map/v2"
+        start_date={@hub.start_date}
+        end_date={@hub.end_date}
+      />
+    <% end %>
+  </div>
+  <div
+    data-hub-tabs-target="panel"
+    style="min-height: 24rem;"
+    data-tab="make"
+    class="hidden pt-2"
+    data-controller="studio-launcher"
+  >
+    <p class="text-sm opacity-70 mb-4">{s(@ctx, "body", "make_something_intro")}</p>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <button
+        :for={
+          {type, action, icon} <- [
+            {"video", "openVideo", "video"},
+            {"poster", "openPoster", "image"}
+          ]
+        }
+        type="button"
+        class="flex flex-col items-start gap-1 rounded-lg border border-base-content/10 bg-base-200 p-4 text-left transition hover:border-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        data-action={"studio-launcher##{action}"}
+        data-testid={"hub-make-#{type}"}
+      >
+        <span class="flex items-center gap-2 font-medium"><.icon
+          name={icon}
+          class="h-4 w-4 opacity-70"
+        />{s(@ctx, "body", "make_#{type}")}</span>
+        <span class="text-xs opacity-60">{s(@ctx, "body", "make_#{type}_hint")}</span>
+      </button>
+    </div>
+  </div>
+  <div
+    :if={@hub.shares != []}
+    data-hub-tabs-target="panel"
+    style="min-height: 24rem;"
+    data-tab="shared"
+    class="hidden pt-2"
+  >
+    <.shared_list hub={@hub} ctx={@ctx} />
+  </div>
+</div>

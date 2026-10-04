@@ -19,12 +19,14 @@ export default class extends Controller {
   static values = { locations: Array }
 
   connect() {
+    this._disconnected = false
     if (this.locationsValue.length === 0) return
 
     requestAnimationFrame(() => this.initMap())
   }
 
   disconnect() {
+    this._disconnected = true
     if (this._initTimer) {
       clearTimeout(this._initTimer)
       this._initTimer = null
@@ -52,6 +54,7 @@ export default class extends Controller {
 
       const theme = getCurrentTheme()
       const style = await getMapStyle(theme)
+      if (this._disconnected) return
 
       this.map = new maplibregl.Map({
         container,

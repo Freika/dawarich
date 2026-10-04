@@ -1,0 +1,67 @@
+defmodule Dawarich.Posters.Persistence do
+  @moduledoc false
+  alias Dawarich.Repo
+  alias Dawarich.Ingest.Ruby
+  alias Dawarich.Jobs.Ownership
+  alias Dawarich.Posters.Command
+
+  @settings ~w(title lat lon distance theme start_at end_at source route_fill route_opacity route_width)
+
+  def delete(id, user, repo \\ Repo) do
+    repo.transaction(fn ->
+      case repo.query!("SELECT id FROM posters WHERE id=$1 AND user_id=$2 FOR UPDATE", [
+             id,
+             user.id
+           ]).rows do
+        [] ->
+          repo.rollback(:missing)
+
+        [[^id]] ->
+          blobs =
+            repo.query!(
+              "DELETE FROM active_storage_attachments WHERE record_type='Poster' AND record_id=$1 RETURNING blob_id",
+              [id]
+            ).rows
+            |> List.flatten()
+            |> Enum.uniq()
+
+          repo.query!("DELETE FROM posters WHERE id=$1 AND user_id=$2", [id, user.id])
+
+          if blobs != [] do
+            Dawarich.RailsCommands.insert!(repo, "posters.purge", %{
+              "poster_id" => id,
+              "user_id" => user.id,
+              "blob_ids" => blobs
+            })
+          end
+
+          id
+      end
+    end)
+  end
+
+  def create(params, %{id: user_id} = user, locale, repo \\ Repo) do
+    name =
+      if Ruby.blank?(params["name"]),
+        do: DawarichWeb.Translate.t(locale, "controllers.posters.untitled", %{}),
+        else: params["name"]
+
+    now = NaiveDateTime.utc_now()
+
+    repo.transaction(fn ->
+      owner = Ownership.lock(repo, "command:posters.create")
+
+      %{rows: [[id]]} =
+        repo.query!(
+          "INSERT INTO posters (name, status, settings, user_id, created_at, updated_at) VALUES ($1, 0, $2, $3, $4, $4) RETURNING id",
+          [name, Map.take(params, @settings), user_id, now],
+          log: false
+        )
+
+      Command.produce(repo, owner, id, user, locale, now)
+      id
+    end)
+  rescue
+    error -> {:error, "poster write failed: " <> inspect(error.__struct__)}
+  end
+end

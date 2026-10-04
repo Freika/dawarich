@@ -163,6 +163,44 @@ defmodule Dawarich.Test.FrameSeeds do
 
   def load(name), do: "test/fixtures/map_frames/#{name}.json" |> File.read!() |> Jason.decode!()
 
+  def load_family(name),
+    do: "test/fixtures/family_pages/#{name}.json" |> File.read!() |> Jason.decode!()
+
+  def seed_management!(name) do
+    fixture = "test/fixtures/share_management/#{name}.json" |> File.read!() |> Jason.decode!()
+
+    for actor <- fixture["actors"] do
+      {:ok, until, _} = DateTime.from_iso8601(actor["active_until"])
+      attrs = Map.new(actor, fn {key, value} -> {String.to_existing_atom(key), value} end)
+
+      RailsUser.insert!(
+        Map.merge(attrs, %{
+          active_until: DateTime.to_naive(until),
+          api_key: "a9fpl-fixture-#{actor["id"]}"
+        })
+      )
+    end
+
+    for row <- fixture["trips"], do: ApiGolden.insert!("trips", row)
+    for row <- fixture["before"], do: ApiGolden.insert!("shared_links", row)
+    Dawarich.Accounts.get(fixture["actor_id"])
+  end
+
+  def seed_family!(%{"actors" => actors, "rows" => rows, "actor_id" => actor_id}) do
+    for user <- actors do
+      attrs = Map.new(user, fn {key, value} -> {String.to_existing_atom(key), value} end)
+      attrs = Map.put(attrs, :active_until, naive(user["active_until"]))
+      RailsUser.insert!(Map.put(attrs, :api_key, "a9fpl-fixture-#{user["id"]}"))
+    end
+
+    for table <-
+          ~w(families family_memberships family_invitations family_location_requests points),
+        row <- Map.get(rows, table, []),
+        do: ApiGolden.insert!(table, row)
+
+    if actor_id, do: Dawarich.Accounts.get(actor_id)
+  end
+
   def seed!(state, repo \\ Repo)
   def seed!(%{"user" => nil}, _repo), do: nil
 

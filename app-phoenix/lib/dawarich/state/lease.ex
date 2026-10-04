@@ -37,7 +37,8 @@ defmodule Dawarich.State.Lease do
 
   def release(repo, name, holder), do: changed?(repo, @release, [name, holder])
 
-  def with_lease(repo, name, fun, opts \\ []) when is_binary(name) and is_function(fun, 0) do
+  def with_lease(repo, name, fun, opts \\ [])
+      when is_binary(name) and (is_function(fun, 0) or is_function(fun, 1)) do
     opts = options!(opts)
 
     if repo.in_transaction?(),
@@ -54,7 +55,7 @@ defmodule Dawarich.State.Lease do
       beat = spawn_link(fn -> heartbeat(repo, name, holder, opts, 0) end)
 
       try do
-        {:ok, fun.()}
+        {:ok, if(is_function(fun, 1), do: fun.(holder), else: fun.())}
       after
         Process.unlink(beat)
         Process.exit(beat, :kill)

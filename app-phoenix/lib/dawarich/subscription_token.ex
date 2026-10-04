@@ -2,8 +2,10 @@ defmodule Dawarich.SubscriptionToken do
   @moduledoc false
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
-  def url(user, now),
-    do: "#{System.get_env("MANAGER_URL")}/auth/dawarich?token=" <> generate(user, now)
+  def url(user, now, checkout \\ []),
+    do:
+      "#{System.get_env("MANAGER_URL")}/auth/dawarich?token=" <>
+        generate(user, now, Ecto.UUID.generate(), checkout)
 
   def generate(user, now, jti \\ Ecto.UUID.generate()), do: generate(user, now, jti, [])
 

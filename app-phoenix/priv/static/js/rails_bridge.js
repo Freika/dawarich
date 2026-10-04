@@ -80,7 +80,7 @@ const submitStream = async (event, bridge) => {
   }
 }
 
-const railsBridge = (element) => {
+export const railsBridge = (element) => {
   if (bridges.has(element)) return bridges.get(element)
   const bridge = { flash: appendRailsFlash }
   bridge.onSubmit = (event) => submitStream(event, bridge)

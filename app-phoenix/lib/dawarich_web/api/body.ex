@@ -19,7 +19,9 @@ defmodule DawarichWeb.Api.Body do
   def init(opts), do: opts
 
   @impl true
-  def call(conn, _opts) do
+  def call(conn, opts) do
+    conn = put_private(conn, :dawarich_nested_form, Keyword.get(opts, :nested_form))
+
     case classify(conn) do
       {:proxy, reason} -> replay(conn, reason)
       {kind, nil} -> decode(conn, kind)
@@ -111,6 +113,9 @@ defmodule DawarichWeb.Api.Body do
       api_request?(conn) and form_method_override?(raw) ->
         {:replay, "method override form parameter"}
 
+      conn.private[:dawarich_nested_form] ->
+        nested_pairs(raw, conn.private.dawarich_nested_form)
+
       true ->
         pairs(raw)
     end
@@ -128,6 +133,23 @@ defmodule DawarichWeb.Api.Body do
       {:error, _} ->
         {:replay, "JSON Jason does not read"}
     end
+  end
+
+  defp nested_pairs(raw, root) do
+    entries = String.split(raw, ~r/& */) |> Enum.reject(&(&1 == ""))
+    keys = Enum.map(entries, &(hd(String.split(&1, "=", parts: 2)) |> URI.decode_www_form()))
+    nested = Regex.compile!("\\A" <> Regex.escape(root) <> "(?:\\[[a-zA-Z_]+\\]){1,2}\\z")
+
+    if length(entries) < @pairs and Enum.all?(entries, &String.contains?(&1, "=")) and
+         Enum.all?(keys, &(&1 != "" and (not String.contains?(&1, ["[", "]"]) or &1 =~ nested))) and
+         not Enum.any?(keys, fn leaf -> Enum.any?(keys, &String.starts_with?(&1, leaf <> "[")) end) and
+         not invalid_escape?(raw) do
+      {:ok, Plug.Conn.Query.decode(Enum.join(entries, "&"))}
+    else
+      {:replay, "nested form shape"}
+    end
+  rescue
+    _error -> {:replay, "nested form shape"}
   end
 
   defp wrap(map) when is_map(map), do: map

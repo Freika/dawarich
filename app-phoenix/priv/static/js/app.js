@@ -1,5 +1,6 @@
 import { Socket } from "phoenix"
 import { LiveSocket } from "phoenix_live_view"
+import { FamilyPage } from "family_page"
 import {
   bootRailsBridges,
   MapShell,
@@ -33,7 +34,7 @@ const turboOwns = (element) => {
 
 const liveSocket = new LiveSocket("/phoenix/live", Socket, {
   params: { _csrf_token: meta("phoenix-csrf-token") },
-  hooks: { ChangelogWidget, RailsStimulus, MapShell },
+  hooks: { ChangelogWidget, RailsStimulus, MapShell, FamilyPage },
   dom: {
     onBeforeElUpdated(fromEl, toEl) {
       if (

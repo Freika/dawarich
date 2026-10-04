@@ -6,6 +6,16 @@ defmodule Dawarich.MapGallery do
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   alias Dawarich.Repo
 
+  def poster(user_id, id) do
+    from(p in "posters",
+      where: p.user_id == ^user_id and p.id == ^id,
+      select: %{id: p.id, name: p.name, status: p.status, settings: p.settings}
+    )
+    |> Repo.all()
+    |> attach("Poster", ["image", "print_pdf"])
+    |> List.first()
+  end
+
   def posters(user_id) do
     from(p in "posters",
       where: p.user_id == ^user_id,

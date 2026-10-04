@@ -7,6 +7,7 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.A10Routes
   import DawarichWeb.ApiRoutes
   import DawarichWeb.MapFrameRoutes
+  import DawarichWeb.A9Routes
 
   pipeline :browser do
     plug DawarichWeb.HostAuthorization
@@ -49,6 +50,15 @@ defmodule DawarichWeb.Router do
   end
 
   api_routes()
+
+  pipeline :family_data do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
+    plug DawarichWeb.RailsAuth
+  end
+
+  family_data_routes()
 
   pipeline :cable do
     plug DawarichWeb.HostAuthorization
@@ -94,6 +104,8 @@ defmodule DawarichWeb.Router do
       metadata: %{rails_gate: {DawarichWeb.SharingGate, :show?}}
   end
 
+  family_invitation_routes()
+
   scope "/" do
     pipe_through :sharing_unlock
 
@@ -103,6 +115,7 @@ defmodule DawarichWeb.Router do
 
   pipeline :rails_user do
     plug DawarichWeb.RequireUser
+    plug DawarichWeb.FamilyGate
   end
 
   pipeline :rails_frame do
@@ -145,6 +158,9 @@ defmodule DawarichWeb.Router do
   a10_routes()
   map_frame_routes()
   a8_routes()
+  share_page_routes()
+  share_form_routes()
+  poster_routes()
 
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
 

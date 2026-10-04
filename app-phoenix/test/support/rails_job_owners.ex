@@ -85,7 +85,7 @@ defmodule Dawarich.RailsJobOwners do
     "Points::RawData::ClearJob" => {:oban, ["cron:raw_data_clear_job"]},
     "Points::RawData::ClearUserJob" => {:oban, ["cron:raw_data_clear_job"]},
     "Points::RawData::VerifyRandomJob" => {:oban, ["cron:raw_data_verify_job"]},
-    "Posters::CreateJob" => {:slice, :a9},
+    "Posters::CreateJob" => {:oban, ["command:posters.create"]},
     "ReverseGeocodingJob" =>
       {:oban, ["command:geocoding.reverse_point", "command:geocoding.reverse_place"]},
     "RouteVideos::PurgeJob" => {:oban, ["cron:route_videos_purge_job"]},

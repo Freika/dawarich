@@ -27,6 +27,7 @@ defmodule DawarichWeb.Layouts do
       "map_shell" => "/phoenix/js/map_shell.js?vsn=#{versions.map_shell}",
       "phoenix" => "/phoenix/js/phoenix.mjs?vsn=#{versions.phoenix}",
       "rails_bridge" => "/phoenix/js/rails_bridge.js?vsn=#{versions.rails_bridge}",
+      "family_page" => "/phoenix/js/family_page.js?vsn=#{versions.family_page}",
       "phoenix_live_view" => "/phoenix/js/phoenix_live_view.esm.js?vsn=#{versions.live_view}"
     }
 

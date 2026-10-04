@@ -3,6 +3,12 @@ defmodule Dawarich.Jobs.Registry do
 
   @base_entries [
     %{
+      key: "command:posters.create",
+      kind: :command,
+      worker: Dawarich.Posters.CreateWorker,
+      claimable: false
+    },
+    %{
       key: Dawarich.RouteVideos.PurgeWorker.key(),
       kind: :cron,
       expression: "45 3 * * *",

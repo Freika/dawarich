@@ -9,9 +9,10 @@ defmodule DawarichWeb.Strangler do
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
   @page_pipelines [:browser, :insights, :rails_frame, :sharing, :sharing_unlock, :trial_resume]
-  @keys %{"s" => "sharing"}
+  @keys %{"s" => "sharing", "invitations" => "family"}
 
   @constraints %{
+    "/family/location_requests/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/api/v1/visits/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/api/v1/visits/:id/possible_places" => %{"id" => ~r/\A\d{1,18}\z/},
     "/api/v1/visits/:id/select_place" => %{"id" => ~r/\A\d{1,18}\z/},
@@ -62,7 +63,7 @@ defmodule DawarichWeb.Strangler do
         false
 
       %{pipe_through: pipelines} = route ->
-        not handed_back?(conn.path_info) and slice_owned?(route, conn) and
+        not handed_back?(conn.path_info, route) and slice_owned?(route, conn) and
           rails_constraints?(route) and
           (not Enum.any?(pipelines, &(&1 in @page_pipelines)) or page_request?(conn)) and
           gate_open?(route, conn)
@@ -100,6 +101,15 @@ defmodule DawarichWeb.Strangler do
     do: Map.get(@keys, segment, segment) in Application.get_env(:dawarich, :rails_routes, [])
 
   def handed_back?([]), do: "home" in Application.get_env(:dawarich, :rails_routes, [])
+
+  defp handed_back?(path, route) do
+    segment = List.first(path) || "home"
+
+    keys =
+      [Map.get(@keys, segment, segment), Map.get(route, :rails_key)] |> Enum.reject(&is_nil/1)
+
+    Enum.any?(keys, &(&1 in Application.get_env(:dawarich, :rails_routes, [])))
+  end
 
   def page_request?(conn) do
     not String.contains?(List.last(conn.path_info) || "", ".") and
