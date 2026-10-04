@@ -1,9 +1,10 @@
 defmodule Dawarich.Families.Requests do
   @moduledoc false
 
-  alias Dawarich.{I18n, Notifications, RailsCommands, RailsTime, Repo}
+  alias Dawarich.{I18n, Notifications, RailsTime, Repo}
   alias Dawarich.Families.{Clock, Locations, Sharing, SharingUpdate}
   alias Dawarich.Mail.ExploreFeatures
+  alias Dawarich.Mail.ResidualCommands
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   @max_id 9_223_372_036_854_775_807
@@ -79,7 +80,7 @@ defmodule Dawarich.Families.Requests do
     [[email]] = Repo.query!("SELECT email FROM users WHERE id = $1", [user.id]).rows
     notify(email, target, id, at)
 
-    RailsCommands.insert!(Repo, "family_location_request_mail", %{
+    ResidualCommands.location(Repo, %{
       "user_id" => user.id,
       "request_id" => id
     })

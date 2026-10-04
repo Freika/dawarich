@@ -134,3 +134,14 @@ same-request duplicate SMTP, preserve held claims, and retain the inherited ambi
 behavior. Exact Rails bodies match for eligible source rows. M-P8-recipient sends to the requester
 and fails pending's target assertion; restored worker is green. Rails reverse-handler Redis
 cache/enqueue failure contracts remain on the retained fallback; no new Redis namespace is added.
+
+P9 registers exactly three unclaimable mail commands. Existing digest terminal settlement and
+family API creation now choose their mail owner under the current Ownership lock. OFF retains
+exact Rails reverse kinds/payloads; ON writes the existing public outbox and dispatches one worker.
+Digest payload locale uses the source reverse handler's fresh user.locale/default-en convention,
+without changing calculator arguments. The original settlement transaction still couples mail
+selection to its processed marker, and terminal failure rolls back both. No owner is activated.
+M-P9-off forces native selection under Sidekiq and fails the retained reverse assertion; restored
+selection, real family API creation, generation, registry and owner inventory tests pass.
+The job inventory records the location command's real native API producer separately because
+there is no corresponding concrete Rails job class; digest jobs receive their exact mail keys.

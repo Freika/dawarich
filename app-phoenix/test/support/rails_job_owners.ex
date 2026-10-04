@@ -126,10 +126,10 @@ defmodule Dawarich.RailsJobOwners do
     "Users::Digests::CalculatingJob" => {:oban, ["command:digests.calculate_year"], :retire},
     "Users::Digests::EmailSendingJob" => :retire,
     "Users::Digests::Monthly::CalculatingJob" => {:oban, ["command:digests.calculate_month"]},
-    "Users::Digests::Monthly::EmailSendingJob" => {:slice, :a12c},
+    "Users::Digests::Monthly::EmailSendingJob" => {:oban, ["command:mail.digest.monthly"]},
     "Users::Digests::Monthly::SchedulingJob" => {:oban, ["cron:monthly_digest_scheduling_job"]},
     "Users::Digests::Yearly::CalculatingJob" => {:oban, ["command:digests.calculate_year"]},
-    "Users::Digests::Yearly::EmailSendingJob" => {:slice, :a12c},
+    "Users::Digests::Yearly::EmailSendingJob" => {:oban, ["command:mail.digest.yearly"]},
     "Users::Digests::Yearly::SchedulingJob" => {:oban, ["cron:yearly_digest_scheduling_job"]},
     "Users::ExportDataJob" => {:slice, :a7},
     "Users::ImportDataJob" => {:slice, :a7},
@@ -144,6 +144,10 @@ defmodule Dawarich.RailsJobOwners do
   }
 
   def owners, do: @owners
+
+  def native_producers,
+    do: %{"command:mail.family_location_request" => Dawarich.Families.Requests}
+
   def classes, do: Map.keys(@owners)
   def slices, do: @slices
 end
