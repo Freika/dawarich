@@ -233,6 +233,8 @@ module RailsCommands
          call: ->(payload) { Imports::NormalResume.call(payload) }
        }
      ).merge(Stats::Commands::HANDLERS).merge(Users::RecalculationCommands::HANDLERS)
+                                       .merge(Points::AnomalyBackfillCommands::HANDLERS)
+                                       .merge(ReleaseCommands::HANDLERS)
                                        .merge(Users::Digests::Commands::HANDLERS).freeze
 
     module_function

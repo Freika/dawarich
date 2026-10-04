@@ -27,6 +27,8 @@ class DataMigrations::RecalculateAnomaliesJob < ApplicationJob
   STALE_CLAIM_AFTER = 6.hours
 
   def perform(limit: CONCURRENCY)
+    return if ReleaseCommands.forward_recalculation(self, 'release.anomalies', { 'limit' => limit })
+
     runnable, skipped = next_users(limit)
 
     settle(skipped) if skipped.any?

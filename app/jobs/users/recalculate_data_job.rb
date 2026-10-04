@@ -30,7 +30,7 @@ class Users::RecalculateDataJob < ApplicationJob
   end
 
   def perform(user_id, year: nil, notify: true, job_queue: nil)
-    if JobOwnership.oban?('command:users.recalculate_data')
+    if executions.positive? && JobOwnership.oban?('command:users.recalculate_data')
       payload = {
         'user_id' => user_id, 'year' => year, 'notify' => notify, 'job_queue' => job_queue,
         'source_job_id' => job_id, 'ambient_zone' => Time.zone.name
