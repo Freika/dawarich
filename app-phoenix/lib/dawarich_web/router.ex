@@ -157,6 +157,15 @@ defmodule DawarichWeb.Router do
   @native_import %{rails_gate: {DawarichWeb.ImportsGate, :native?}}
 
   user_data_routes()
+  pipeline :map_write do
+    plug DawarichWeb.HostAuthorization
+    plug DawarichWeb.ForceSSL
+    plug DawarichWeb.RateLimit
+    plug DawarichWeb.RailsAuth
+    plug DawarichWeb.MapWriteRequest
+    plug DawarichWeb.RailsHeaders
+  end
+
   page_routes()
   storage_routes()
   a10_routes()

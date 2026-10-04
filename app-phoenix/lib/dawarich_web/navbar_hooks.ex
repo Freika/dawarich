@@ -8,11 +8,15 @@ defmodule DawarichWeb.NavbarHooks do
 
   @refresh 10_000
 
-  def attach(socket) do
+  def attach(socket, opts \\ []) do
     if connected?(socket), do: schedule()
 
+    socket =
+      if Keyword.get(opts, :params, true),
+        do: attach_hook(socket, :navbar_params, :handle_params, &params/3),
+        else: socket
+
     socket
-    |> attach_hook(:navbar_params, :handle_params, &params/3)
     |> attach_hook(:navbar_info, :handle_info, &info/2)
     |> attach_hook(:navbar_event, :handle_event, &event/3)
   end

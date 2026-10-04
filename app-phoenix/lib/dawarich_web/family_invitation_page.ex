@@ -68,7 +68,10 @@ defmodule DawarichWeb.FamilyInvitationPage do
   end
 
   def call(conn, :show) do
-    respond(conn, read(conn.path_params["token"], conn.assigns.current_user))
+    respond(
+      conn,
+      read(conn.path_params["token"], conn.assigns.current_user, now: conn.assigns.now)
+    )
   end
 
   def respond(conn, result) do

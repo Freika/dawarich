@@ -11,6 +11,472 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
   let(:helper) { ApplicationController.helpers }
   let(:zones) { JSON.parse(root.join('priv/time_zones.json').read).fetch('options') }
 
+  context 'A11c two factor management' do
+    let(:now) { Time.utc(2026, 10, 4, 12, 0, 0) }
+    let(:otp_secret) { 'GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ' }
+
+    before do
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+      allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
+    end
+
+    def two_factor_fixture(name, value, json: true)
+      directory = fixtures.join('auth/two_factor')
+      content = json ? "#{Oj.dump(value, mode: :strict, float_precision: 0, indent: 2)}\n" : value
+      path = directory.join(name)
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        FileUtils.mkdir_p(path.dirname)
+        File.write(path, content)
+      else
+        expect(path.exist?).to be(true), name
+        expect(path.read == content).to be(true), name if path.exist?
+      end
+    end
+
+    def two_factor_actor(id)
+      actor = create(:user, id: id, email: "a11c-#{id}@dawarich.test", password: 'a11c-fixture-password-42')
+      actor.update_columns(settings: { 'timezone' => 'Europe/Berlin', 'onboarding_completed' => true },
+                           active_until: Time.utc(3026, 1, 1), api_key: "a11c-synthetic-key-#{id}",
+                           theme: 'dark', created_at: now - 1.day)
+      actor.reload
+    end
+
+    def two_factor_browser(actor)
+      client = ActionDispatch::Integration::Session.new(Rails.application)
+      client.get('/users/sign_in')
+      client.post('/users/sign_in', params: {
+                    authenticity_token: two_factor_csrf(client),
+                    user: { email: actor.email, password: 'a11c-fixture-password-42', remember_me: '1' }
+                  })
+      expect(client.response.status).to eq(303)
+      client.get('/settings/two_factor')
+      expect(client.response.status).to eq(200)
+      client
+    end
+
+    def two_factor_csrf(client)
+      Nokogiri::HTML5(client.response.body).at_css('meta[name="csrf-token"]')['content']
+    end
+
+    def two_factor_session(client)
+      jar = ActionDispatch::Cookies::CookieJar.build(
+        ActionDispatch::Request.new(Rails.application.env_config.dup),
+        '_dawarich_session' => client.cookies['_dawarich_session']
+      )
+      jar.encrypted['_dawarich_session']
+    end
+
+    def two_factor_seed_session(client, data)
+      jar = ActionDispatch::Request.new(Rails.application.env_config.dup).cookie_jar
+      jar.encrypted['_dawarich_session'] = { value: data }
+      client.cookies['_dawarich_session'] = jar['_dawarich_session']
+    end
+
+    def two_factor_state(actor)
+      actor.reload
+      secret = if actor.otp_secret.nil?
+                 nil
+               elsif actor.otp_secret == otp_secret
+                 'SOURCE_SYNTHETIC_SECRET'
+               else
+                 'SETUP_SYNTHETIC_SECRET'
+               end
+      {
+        'secret' => secret, 'enabled' => actor.otp_required_for_login,
+        'consumed_timestep' => actor.consumed_timestep,
+        'backups' => actor.otp_backup_codes&.map { 'BCRYPT' },
+        'updated_at' => iso(actor.updated_at), 'failed_attempts' => actor.failed_attempts,
+        'failed_otp_attempts' => actor.failed_otp_attempts, 'otp_locked_at' => iso(actor.otp_locked_at)
+      }
+    end
+
+    def two_factor_html(doc)
+      doc.css('input[name="authenticity_token"]').each { |field| field['value'] = 'CSRF' }
+      doc.css('[nonce]').each { |node| node['nonce'] = 'NONCE' }
+      doc.at_css('body > div.container > div.w-full > div.flex')&.inner_html
+    end
+
+    def two_factor_case(name, id)
+      actor = two_factor_actor(id)
+      client = two_factor_browser(actor)
+      kind = name.delete_suffix('_de')
+      locale = name.end_with?('_de') ? 'de' : 'en'
+      enabled = kind == 'enabled' || kind == 'setup_enabled' || kind.start_with?('disable_', 'wrong', 'missing',
+                                                                                 'invalid')
+      backups = [Devise::Encryptor.digest(User, 'a11c-unused-backup')]
+      actor.update!(otp_secret: kind == 'disabled' ? nil : otp_secret,
+                    otp_required_for_login: enabled, otp_backup_codes: backups)
+      actor.update_columns(failed_attempts: 2, failed_otp_attempts: 3, otp_locked_at: now - 2.hours,
+                           reset_password_token: "a11c-synthetic-reset-#{id}", reset_password_sent_at: now - 1.hour,
+                           consumed_timestep: kind == 'verify_replay' ? now.to_i / 30 : nil,
+                           updated_at: now - 1.day)
+      actor.update_column(:otp_secret, nil) if kind == 'verify_missing_secret'
+      actor.update_column(:email, '') if kind == 'verify_second_save_failure'
+      actor.update_column(:otp_backup_codes, nil) if %w[nil_backups repeated_disable].include?(kind)
+      actor.update_column(:otp_backup_codes, []) if kind == 'empty_backups'
+      actor.update!(otp_secret: nil, otp_required_for_login: false) if kind == 'repeated_disable'
+      next_secret = 'JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP'
+      allow(User).to receive(:generate_otp_secret).and_return(next_secret)
+      if kind == 'setup_twice'
+        client.post('/settings/two_factor', params: { authenticity_token: two_factor_csrf(client) })
+        allow(User).to receive(:generate_otp_secret).and_return(otp_secret)
+        actor.update_column(:updated_at, now - 1.day)
+      end
+      data = two_factor_session(client).merge('user_return_to' => '/stats', 'locale' => locale, 'a11c' => 'retain')
+      two_factor_seed_session(client, data)
+      before = actor.reload.attributes
+      before_state = two_factor_state(actor)
+      remember = client.cookies['remember_user_token']
+      jobs = enqueued_jobs.size
+      mails = ActionMailer::Base.deliveries.size
+      method, path, input = two_factor_input(kind, actor)
+      params = input.merge(authenticity_token: two_factor_csrf(client))
+      codes = Array.new(10) { |index| format('%024x', index + 1) }
+      allow(SecureRandom).to receive(:hex).and_call_original
+      allow(SecureRandom).to receive(:hex).with(12).and_return(*codes)
+      allow(DawarichSettings).to receive(:two_factor_available?).and_return(kind != 'unavailable')
+      client.public_send(method, path, params: params)
+      allow(DawarichSettings).to receive(:two_factor_available?).and_return(true)
+      after = actor.reload.attributes
+      received = two_factor_session(client)
+      doc = Nokogiri::HTML5(client.response.body)
+      fields = %w[session_id _csrf_token user_return_to locale a11c warden.user.user.key]
+      displayed = doc.css('code.font-mono').map(&:text)
+      row = {
+        'name' => name, 'email' => before['email'], 'locale' => locale,
+        'method' => method.to_s.upcase, 'path' => path,
+        'input' => input.transform_values { |value| value == 'a11c-fixture-password-42' ? 'VALID_PASSWORD' : value },
+        'status' => client.response.status, 'location' => client.response.location,
+        'headers' => client.response.headers.slice('Content-Type', 'Vary', 'Cache-Control', 'X-Frame-Options',
+                                                   'Referrer-Policy', 'X-Content-Type-Options'),
+        'flash' => client.request.flash.to_hash, 'cookie_flash' => received.dig('flash', 'flashes'),
+        'session_retained' => fields.index_with { |field| data[field] == received[field] },
+        'remember_retained' => client.cookies['remember_user_token'] == remember,
+        'changed' => before.keys.reject { |field| before[field] == after[field] }.sort,
+        'before' => before_state, 'after' => two_factor_state(actor),
+        'code_input_empty' => doc.css('input[name="otp_attempt"]').all? { |field| field['value'].blank? },
+        'password_fields_empty' => doc.css('input[type="password"]').all? { |field| field['value'].blank? },
+        'backup_count' => displayed.size, 'backup_format' => displayed.all? { |code| code.match?(/\A[0-9a-f]{24}\z/) },
+        'backups_hash_valid' => displayed.empty? || actor.otp_backup_codes.zip(displayed).all? do |hash, code|
+          Devise::Encryptor.compare(User, hash, code)
+        end,
+        'jobs_delta' => enqueued_jobs.size - jobs, 'mail_delta' => ActionMailer::Base.deliveries.size - mails
+      }
+      [row, two_factor_html(doc)]
+    end
+
+    def two_factor_input(kind, actor)
+      if %w[disabled enabled unavailable].include?(kind)
+        [:get, '/settings/two_factor', {}]
+      elsif kind.start_with?('setup')
+        [:post, '/settings/two_factor', {}]
+      elsif kind.start_with?('verify')
+        code = %w[verify_bad verify_missing_secret].include?(kind) ? 'not-a-code' : actor.current_otp
+        [:post, '/settings/two_factor/verify', { otp_attempt: code }]
+      else
+        input = { password: 'a11c-fixture-password-42',
+                  otp_attempt: actor.otp_secret ? actor.current_otp : 'not-a-code' }
+        input[:otp_attempt] = 'a11c-unused-backup' if kind == 'disable_backup'
+        input[:password] = 'incorrect' if kind == 'wrong_password'
+        input.delete(:password) if kind == 'missing_password'
+        input[:otp_attempt] = 'not-a-code' if %w[invalid_code nil_backups empty_backups repeated_disable].include?(kind)
+        input.delete(:otp_attempt) if kind == 'missing_code'
+        input[:_method] = 'delete' if kind == 'disable_override'
+        [kind == 'disable_override' ? :post : :delete, '/settings/two_factor', input]
+      end
+    end
+
+    def two_factor_otp
+      actor = two_factor_actor(74_300)
+      actor.update!(otp_secret: otp_secret)
+      zero_time = (0..200).map { |index| now + index * 30 }.find { |time| actor.otp.at(time).start_with?('0') }
+      vectors = [
+        ['past_outside', now, -60, nil, :plain], ['past_edge', now, -30, nil, :plain],
+        ['current', now, 0, nil, :plain], ['future_edge', now, 30, nil, :plain],
+        ['future_outside', now, 60, nil, :plain], ['whitespace', now, 0, nil, :whitespace],
+        ['leading_zero', zero_time, 0, nil, :plain], ['short_zero', zero_time, 0, nil, :short],
+        ['unicode_space', now, 0, nil, :unicode], ['consumed_current', now, 0, now.to_i / 30, :plain],
+        ['consumed_future', now, 30, now.to_i / 30 + 1, :plain],
+        ['old_after_future', now, 0, now.to_i / 30 + 1, :plain],
+        ['boundary_29', now + 29, 30, nil, :plain], ['boundary_30', now + 30, -30, nil, :plain],
+        ['boundary_59', now + 59, -30, nil, :plain]
+      ].map do |name, at, offset, consumed, style|
+        travel_to(at)
+        actor.update_columns(consumed_timestep: consumed)
+        code = actor.otp.at(at + offset)
+        code = " \t#{code[0..2]}\n#{code[3..]}\r\f\v" if style == :whitespace
+        code = code.delete_prefix('0') if style == :short
+        code += 160.chr(Encoding::UTF_8) if style == :unicode
+        valid = actor.validate_and_consume_otp!(code)
+        { 'name' => name, 'at' => at.to_i, 'code' => code, 'consumed' => consumed,
+          'valid' => valid, 'result_timestep' => actor.reload.consumed_timestep }
+      end
+      travel_to(now)
+      labels = ['a11c@example.test', ' spaced + colon:name  ', 'üser:例@example.test'].map do |label|
+        { 'label' => label, 'uri' => actor.otp_provisioning_uri(label, issuer: 'Dawarich') }
+      end
+      uri = actor.otp_provisioning_uri(actor.email, issuer: 'Dawarich')
+      {
+        'secret' => 'BASE32_OF_SYNTHETIC_ENTROPY', 'entropy_hex' => '3132333435363738393031323334353637383930',
+        'vectors' => vectors, 'labels' => labels, 'qr' => qr_entry(uri),
+        'web_drift_seconds' => User.otp_allowed_drift, 'backup_random_bytes' => User.otp_backup_code_length,
+        'backup_count' => User.otp_number_of_backup_codes, 'bcrypt_cost' => User.stretches,
+        'api_differences' => { 'confirm_drift_seconds' => 1, 'confirm_consumes_timestep' => false,
+                               'destroy_backups' => [] },
+        'normalization' => { 'csrf' => 'CSRF', 'nonce' => 'NONCE', 'backup_hash' => 'BCRYPT',
+                             'session_cookie' => 'retention booleans',
+                             'encryption' => 'SOURCE_SYNTHETIC_SECRET or SETUP_SYNTHETIC_SECRET; nil remains nil' }
+      }
+    end
+
+    def two_factor_exclusions
+      %w[provider cloud remember_only stale_actor dirty_settings query json missing_csrf duplicate_code corrupt_secret]
+        .each_with_index.map do |name, index|
+        actor = two_factor_actor(74_400 + index)
+        client = two_factor_browser(actor)
+        actor.update!(otp_secret: otp_secret)
+        session = two_factor_session(client)
+        actor.update_columns(provider: 'github', uid: 'a11c-synthetic-provider') if name == 'provider'
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(name != 'cloud')
+        two_factor_seed_session(client, session.except('warden.user.user.key')) if name == 'remember_only'
+        if name == 'stale_actor'
+          two_factor_seed_session(client,
+                                  session.merge('warden.user.user.key' => [[actor.id],
+                                                                           'stale-salt']))
+        end
+        if name == 'dirty_settings'
+          actor.update_column(:settings,
+                              actor.settings.merge('immich_url' => 'https://a11c.example.test///'))
+        end
+        if name == 'corrupt_secret'
+          User.connection.execute("UPDATE users SET otp_secret='corrupt-ciphertext' WHERE id=#{actor.id}")
+        end
+        params = { authenticity_token: two_factor_csrf(client), otp_attempt: 'not-a-code' }
+        params.delete(:authenticity_token) if name == 'missing_csrf'
+        path = name == 'query' ? '/settings/two_factor/verify?extra=1' : '/settings/two_factor/verify'
+        headers = name == 'json' ? { 'Accept' => 'application/json' } : {}
+        if name == 'duplicate_code'
+          params = "#{URI.encode_www_form(params)}&otp_attempt=last-code"
+          headers['CONTENT_TYPE'] = 'application/x-www-form-urlencoded'
+        end
+        status = nil
+        error = nil
+        begin
+          client.post(path, params: params, headers: headers)
+          status = client.response.status
+        rescue ActiveRecord::Encryption::Errors::Decryption, ActionView::MissingTemplate => e
+          error = e.class.name
+        ensure
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+        end
+        { 'name' => name, 'owner' => 'rails', 'status' => status, 'error' => error,
+          'location' => error ? nil : client.response.location }
+      end
+    end
+
+    def two_factor_corpus
+      names = %w[
+        disabled enabled unavailable setup setup_twice setup_enabled verify_good verify_bad verify_replay
+        verify_missing_secret verify_second_save_failure disable_totp disable_backup disable_override
+        wrong_password missing_password invalid_code missing_code nil_backups empty_backups repeated_disable
+        disabled_de enabled_de setup_de verify_bad_de verify_good_de
+      ]
+      requests = []
+      html = {}
+      names.each_with_index do |name, index|
+        row, page = two_factor_case(name, 74_000 + index)
+        requests << row
+        html[name] = page if page
+      end
+      { requests: requests, otp: two_factor_otp, exclusions: two_factor_exclusions, html: html }
+    end
+
+    it 'records A11c review blank secret behavior' do
+      travel_to now do
+        rows = [nil, ''].each_with_index.map do |secret, index|
+          actor = two_factor_actor(74_600 + index)
+          client = two_factor_browser(actor)
+          actor.update!(otp_secret: secret, otp_required_for_login: true,
+                        otp_backup_codes: [Devise::Encryptor.digest(User, 'a11c-review-backup')])
+          code = ROTP::TOTP.new('').at(now)
+          before = actor.reload.attributes
+          expect(actor.validate_and_consume_otp!(code)).to be(false)
+          expect(actor.reload.attributes == before).to be(true)
+          client.post('/settings/two_factor/verify', params: {
+                        authenticity_token: two_factor_csrf(client), otp_attempt: code
+                      })
+          expect(client.response.status).to eq(422)
+          expect(actor.reload.attributes == before).to be(true)
+          verify_status = client.response.status
+          client.delete('/settings/two_factor', params: {
+                          authenticity_token: two_factor_csrf(client),
+                          password: 'a11c-fixture-password-42', otp_attempt: code
+                        })
+          expect(client.response.status).to eq(302)
+          expect(actor.reload.attributes == before).to be(true)
+          alert = client.request.flash[:alert]
+          client.get('/settings/two_factor')
+          client.delete('/settings/two_factor', params: {
+                          authenticity_token: two_factor_csrf(client),
+                          password: 'a11c-fixture-password-42', otp_attempt: 'a11c-review-backup'
+                        })
+          expect(actor.reload.attributes.values_at('otp_secret', 'otp_required_for_login', 'otp_backup_codes'))
+            .to eq([nil, false, nil])
+          { 'secret' => secret, 'code' => code, 'at' => now.to_i, 'valid' => false,
+            'verify_status' => verify_status, 'disable_alert' => alert,
+            'unchanged' => true, 'backup_disable_status' => client.response.status }
+        end
+        two_factor_fixture('review_blank_secrets.json', rows)
+      end
+    end
+
+    it 'records A11c review confirmation exclusions' do
+      travel_to now do
+        rows = %w[password otp_attempt].each_with_index.map do |field, index|
+          actor = two_factor_actor(74_610 + index)
+          client = two_factor_browser(actor)
+          actor.update!(otp_secret: otp_secret, otp_required_for_login: true,
+                        otp_backup_codes: [Devise::Encryptor.digest(User, 'a11c-review-backup')])
+          input = { 'password' => 'a11c-fixture-password-42', 'otp_attempt' => 'a11c-review-backup' }
+          input[field] += "#{0.chr}suffix"
+          before = actor.reload.attributes
+          error = nil
+          begin
+            client.delete('/settings/two_factor', params: input.merge('authenticity_token' => two_factor_csrf(client)))
+          rescue ArgumentError => e
+            error = e.class.name
+          end
+          expect(error).to eq('ArgumentError')
+          expect(actor.reload.attributes == before).to be(true)
+          { 'field' => field, 'input' => input, 'error' => error, 'unchanged' => true, 'owner' => 'rails' }
+        end
+        two_factor_fixture('review_confirmations.json', rows)
+      end
+    end
+
+    it 'records A11c review legacy hash behavior' do
+      travel_to now do
+        password = 'a11c-fixture-password-42'
+        backup = 'a11c-review-backup'
+        rows = %w[password backup].each_with_index.map do |kind, index|
+          actor = two_factor_actor(74_620 + index)
+          client = two_factor_browser(actor)
+          password_hash = BCrypt::Engine.hash_secret(password, '$2a$04$abcdefghijklmnopqrstuu')
+          backup_hash = BCrypt::Engine.hash_secret(backup, '$2a$04$abcdefghijklmnopqrstuu')
+          password_hash = password_hash.sub('$2a$', '$2y$') if kind == 'password'
+          backup_hash = backup_hash.sub('$2a$', '$2y$') if kind == 'backup'
+          expect(Devise::Encryptor.compare(User, password_hash, password)).to be(true)
+          expect(Devise::Encryptor.compare(User, backup_hash, backup)).to be(true)
+          actor.update!(encrypted_password: password_hash, otp_secret: otp_secret,
+                        otp_required_for_login: true, otp_backup_codes: [backup_hash])
+          data = two_factor_session(client).merge('warden.user.user.key' => [[actor.id], actor.authenticatable_salt])
+          two_factor_seed_session(client, data)
+          before = actor.reload.attributes
+          client.delete('/settings/two_factor', params: {
+                          authenticity_token: two_factor_csrf(client), password: password, otp_attempt: backup
+                        })
+          expect(client.response.status).to eq(302)
+          expect(actor.reload.attributes.values_at('otp_secret', 'otp_required_for_login', 'otp_backup_codes'))
+            .to eq([nil, false, nil])
+          ignored = %w[otp_secret otp_required_for_login otp_backup_codes updated_at]
+          expect(actor.attributes.except(*ignored) == before.except(*ignored)).to be(true)
+          { 'kind' => kind, 'password_hash' => password_hash, 'backup_hash' => backup_hash,
+            'input' => { 'password' => password, 'otp_attempt' => backup },
+            'password_valid' => true, 'backup_valid' => true, 'status' => client.response.status,
+            'disabled' => true, 'flash' => client.request.flash.to_hash }
+        end
+        two_factor_fixture('review_legacy_hashes.json', rows)
+      end
+    end
+
+    it 'records A11c review inherited alert behavior' do
+      travel_to now do
+        actor = two_factor_actor(74_630)
+        client = two_factor_browser(actor)
+        actor.update!(otp_secret: otp_secret)
+        incoming = { 'alert' => 'A11c previous alert', 'notice' => 'A11c retained notice',
+                     'warning' => 'A11c retained warning' }
+        data = two_factor_session(client).merge('flash' => { 'discard' => [], 'flashes' => incoming })
+        two_factor_seed_session(client, data)
+        before = actor.reload.attributes
+        client.post('/settings/two_factor/verify', params: {
+                      authenticity_token: two_factor_csrf(client), otp_attempt: 'not-a-code'
+                    })
+        expect(client.response.status).to eq(422)
+        expect(actor.reload.attributes == before).to be(true)
+        message = 'Invalid verification code. Please try again.'
+        expect(client.response.body).not_to include(incoming.fetch('alert'))
+        expect(client.response.body.scan(message).size).to eq(1)
+        expect(client.request.flash.to_hash).to eq(incoming.merge('alert' => message))
+        two_factor_fixture('review_inherited_alert.json', {
+                             'status' => client.response.status, 'incoming' => incoming,
+                             'flash_entries' => client.request.flash.to_a,
+                             'cookie_flash' => two_factor_session(client).dig('flash', 'flashes')
+                           })
+        html = Nokogiri::HTML5(client.response.body).at_css('#flash-messages').to_html
+        two_factor_fixture('review/inherited_alert.html', html, json: false)
+      end
+    end
+
+    it 'writes or verifies A11c management contract fixtures' do
+      travel_to now do
+        corpus = two_factor_corpus
+        expected_names = %w[
+          disabled enabled unavailable setup setup_twice setup_enabled verify_good verify_bad verify_replay
+          verify_missing_secret verify_second_save_failure disable_totp disable_backup disable_override
+          wrong_password missing_password invalid_code missing_code nil_backups empty_backups repeated_disable
+          disabled_de enabled_de setup_de verify_bad_de verify_good_de
+        ]
+        expect(corpus.fetch(:requests).pluck('name')).to eq(expected_names)
+        bad = corpus.fetch(:requests).find { |row| row['name'] == 'verify_bad' }
+        expect(bad.slice('status', 'code_input_empty', 'flash')).to eq(
+          'status' => 422, 'code_input_empty' => true,
+          'flash' => { 'alert' => 'Invalid verification code. Please try again.' }
+        )
+        vector_names = %w[
+          past_outside past_edge current future_edge future_outside whitespace leading_zero short_zero
+          unicode_space consumed_current consumed_future old_after_future boundary_29 boundary_30 boundary_59
+        ]
+        expect(corpus.fetch(:otp).fetch('vectors').pluck('name')).to eq(vector_names)
+        exclusion_names = %w[
+          provider cloud remember_only stale_actor dirty_settings query json missing_csrf duplicate_code corrupt_secret
+        ]
+        expect(corpus.fetch(:exclusions).pluck('name')).to eq(exclusion_names)
+        corpus.fetch(:requests).each do |row|
+          expect(row['session_retained'].values.all?).to be(true), row['name']
+          expect(row.values_at('remember_retained', 'password_fields_empty', 'backups_hash_valid')).to eq([true] * 3)
+          expect(row.values_at('jobs_delta', 'mail_delta')).to eq([0, 0])
+          expect(row['changed'] - %w[otp_secret otp_backup_codes otp_required_for_login consumed_timestep updated_at])
+            .to eq([]), row['name']
+          kind = row['name'].delete_suffix('_de')
+          status = if %w[unavailable repeated_disable].include?(kind) || kind.start_with?('disable_') ||
+                      %w[wrong_password missing_password invalid_code missing_code nil_backups
+                         empty_backups].include?(kind)
+                     302
+                   elsif %w[verify_bad verify_replay verify_missing_secret verify_second_save_failure].include?(kind)
+                     422
+                   else
+                     200
+                   end
+          expect(row['status']).to eq(status), row['name']
+          if kind == 'verify_good'
+            expect(row.values_at('backup_count', 'backup_format')).to eq([10, true])
+            expect(row.dig('after', 'enabled')).to be(true)
+          elsif %w[disable_totp disable_backup disable_override].include?(kind)
+            expect(row['after'].values_at('secret', 'enabled', 'backups')).to eq([nil, false, nil])
+          elsif kind == 'verify_second_save_failure'
+            expect(row['changed']).to eq(%w[consumed_timestep updated_at])
+          end
+        end
+        expect(corpus.fetch(:otp).fetch('vectors').pluck('valid')).to eq(
+          [false, true, true, true, false, true, true, false, false, false, false, false, true, true, true]
+        )
+        corpus.except(:html).each { |name, value| two_factor_fixture("#{name}.json", value) }
+        corpus.fetch(:html).each { |name, html| two_factor_fixture("#{name}.html", html, json: false) }
+      end
+    end
+  end
+
   context 'A11 account security' do
     before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
 

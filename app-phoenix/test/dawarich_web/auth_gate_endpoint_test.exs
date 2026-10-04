@@ -91,6 +91,123 @@ defmodule DawarichWeb.AuthGateEndpointTest do
 
   defp no_puma(ctx), do: assert({:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 200))
 
+  test "endpoint management ownership and OTP login handback remain independent", ctx do
+    names =
+      ~w(OTP_ENCRYPTION_PRIMARY_KEY OTP_ENCRYPTION_DETERMINISTIC_KEY OTP_ENCRYPTION_KEY_DERIVATION_SALT)
+
+    previous = Map.new(names, &{&1, System.get_env(&1)})
+    Enum.each(names, &System.put_env(&1, "a11c-endpoint-synthetic-not-for-production"))
+
+    on_exit(fn ->
+      for {name, value} <- previous,
+          do: if(value, do: System.put_env(name, value), else: System.delete_env(name))
+    end)
+
+    id = user!(%{email: "a11c-endpoint@dawarich.test", encrypted_password: @hash, settings: %{}})
+
+    {session, _} =
+      Dawarich.Auth.SessionCookie.for_form(%{"user_return_to" => "/stats"}, RailsSecret.fetch())
+
+    session = Map.put(session, "warden.user.user.key", [[id], binary_part(@hash, 0, 29)])
+
+    cookie =
+      "_dawarich_session=" <>
+        RailsCookies.encrypt(session, "_dawarich_session", RailsSecret.fetch())
+
+    path = "/settings/two_factor"
+    token = RailsCsrf.masked_token(session)
+    body = URI.encode_query(%{"authenticity_token" => token})
+
+    for {method, target} <- [
+          {"GET", path},
+          {"POST", path},
+          {"POST", path <> "/verify"},
+          {"DELETE", path}
+        ] do
+      seen = to_puma(ctx, form(method, target, cookie, body))
+      assert seen.body == body and seen.line == "#{method} #{target} HTTP/1.1"
+      assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+    end
+
+    Application.put_env(:dawarich, :phoenix_auth, ["two_factor"])
+
+    peer =
+      Task.async(fn ->
+        case :gen_tcp.accept(ctx.upstream.listen, 200) do
+          {:error, :timeout} ->
+            :none
+
+          {:ok, socket} ->
+            read_head(socket)
+            reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+            :puma
+        end
+      end)
+
+    assert {200, headers, _} = exchange(ctx, form("GET", path, cookie, ""))
+    assert Task.await(peer) == :none
+    assert values(headers, "x-dawarich-auth-owner") == ["native-two-factor"]
+    assert {200, headers, _} = exchange(ctx, form("POST", path, cookie, body))
+    assert values(headers, "x-dawarich-auth-owner") == ["native-two-factor"]
+    assert [[ciphertext]] = Repo.query!("SELECT otp_secret FROM users WHERE id=$1", [id]).rows
+    {:ok, secret} = Dawarich.Auth.TwoFactor.Secret.decrypt(ciphertext)
+    now = DateTime.utc_now() |> DateTime.to_unix()
+
+    verify =
+      URI.encode_query(%{
+        "authenticity_token" => token,
+        "otp_attempt" => Dawarich.Auth.TwoFactor.Totp.at(secret, now)
+      })
+
+    assert {200, headers, _} = exchange(ctx, form("POST", path <> "/verify", cookie, verify))
+    assert values(headers, "x-dawarich-auth-owner") == ["native-two-factor"]
+
+    assert Repo.query!("SELECT otp_required_for_login,sign_in_count FROM users WHERE id=$1", [id]).rows ==
+             [[true, 0]]
+
+    no_puma(ctx)
+    Application.put_env(:dawarich, :phoenix_auth, ~w(two_factor credentials))
+    registration("false")
+
+    login =
+      URI.encode_query(%{
+        "authenticity_token" => token,
+        "user[email]" => "a11c-endpoint@dawarich.test",
+        "user[password]" => "safepassword12"
+      })
+
+    assert to_puma(ctx, form("POST", "/users/sign_in", cookie, login)).body == login
+    unsupported = body <> "&_method=patch"
+    seen = to_puma(ctx, form("POST", path, cookie, unsupported))
+    assert seen.body == unsupported and seen.line == "POST #{path} HTTP/1.1"
+    assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+
+    for target <-
+          ~w(/users/otp_challenge /api/v1/users/me/two_factor/setup /api/v1/users/me/two_factor/confirm /api/v1/users/me/two_factor/backup_codes /api/v1/auth/otp_challenge) do
+      assert to_puma(ctx, form("POST", target, cookie, body)).body == body
+    end
+
+    assert to_puma(ctx, form("DELETE", "/api/v1/users/me/two_factor", cookie, body)).body == body
+
+    disable =
+      URI.encode_query(%{
+        "authenticity_token" => token,
+        "_method" => "delete",
+        "password" => "safepassword12",
+        "otp_attempt" => Dawarich.Auth.TwoFactor.Totp.at(secret, now + 30)
+      })
+
+    assert {302, headers, ""} = exchange(ctx, form("POST", path, cookie, disable))
+    assert values(headers, "x-dawarich-auth-owner") == ["native-two-factor"]
+
+    assert Repo.query!(
+             "SELECT otp_required_for_login,otp_secret,otp_backup_codes,sign_in_count FROM users WHERE id=$1",
+             [id]
+           ).rows == [[false, nil, nil, 0]]
+
+    no_puma(ctx)
+  end
+
   test "every flow is off by default: auth requests reach Puma byte for byte", ctx do
     {_session, cookie} = guest()
     body = "authenticity_token=x&user%5Bemail%5D=a%40dawarich.test&user%5Bpassword%5D=p"

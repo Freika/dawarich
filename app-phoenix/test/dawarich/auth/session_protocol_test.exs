@@ -8,6 +8,45 @@ defmodule Dawarich.Auth.SessionProtocolTest do
   @secret "phoenix-a2-cookie-fixture-secret-not-for-production"
   @now ~U[2026-10-01 16:00:00Z]
 
+  test "management protocol retains Warden identity and Rails OTP consumption projections" do
+    alias Dawarich.Auth.TwoFactor.{BackupCodes, Totp}
+    corpus = File.read!("test/fixtures/auth/two_factor/requests.json") |> Jason.decode!()
+    otp = File.read!("test/fixtures/auth/two_factor/otp.json") |> Jason.decode!()
+    user = @fixture["login"]["user"]
+
+    before =
+      Map.merge(@guest, %{
+        "user_return_to" => "/stats",
+        "locale" => "en",
+        "a11c" => "retain",
+        "devise.test" => "retain",
+        "warden.user.user.key" => [[user["id"]], binary_part(user["encrypted_password"], 0, 29)]
+      })
+
+    for row <- corpus, row["session_retained"] do
+      {session, cookie} = SessionCookie.for_form(before, @secret)
+      assert RailsCookies.decrypt(cookie, "_dawarich_session", @secret, @now) == {:ok, session}
+
+      for {key, retained} <- row["session_retained"] do
+        assert session[key] == before[key] == retained, row["name"] <> ":" <> key
+      end
+
+      assert session == before
+      assert session["warden.user.user.key"] == before["warden.user.user.key"]
+    end
+
+    secret = Totp.generate_secret(Base.decode16!(otp["entropy_hex"], case: :lower))
+
+    for vector <- otp["vectors"] do
+      expected = if vector["valid"], do: {:ok, vector["result_timestep"]}, else: :invalid
+      assert Totp.verify(secret, vector["code"], vector["at"], vector["consumed"]) == expected
+    end
+
+    {:ok, remaining} = BackupCodes.consume([user["encrypted_password"]], "safepassword12")
+    assert remaining == []
+    assert BackupCodes.consume(remaining, "safepassword12") == :invalid
+  end
+
   test "account bypass rewrites the Warden salt with source session retention" do
     Code.ensure_loaded!(SessionCookie)
     assert function_exported?(SessionCookie, :for_account_update, 4)

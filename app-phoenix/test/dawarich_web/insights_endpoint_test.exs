@@ -91,11 +91,14 @@ defmodule DawarichWeb.InsightsEndpointTest do
     assert values(headers, "location") == ["http://a/map/v2"]
   end
 
-  test "guest requests for / and the details go to Puma intact", ctx do
-    for target <- ["/", "/insights/details?year=2024"] do
-      assert {line, []} = puma(ctx.port, ctx.upstream, request(target, []))
-      assert line == "GET #{target} HTTP/1.1"
-    end
+  test "guest root renders native public home and details go to Puma intact", ctx do
+    assert {200, _headers, body} = phoenix(ctx.port, request("/", []))
+    assert body =~ "The only location history tracker"
+    assert body =~ ~s(href="/users/sign_in")
+
+    target = "/insights/details?year=2024"
+    assert {line, []} = puma(ctx.port, ctx.upstream, request(target, []))
+    assert line == "GET #{target} HTTP/1.1"
   end
 
   test "writes, formats, JSON and XHR go to Puma with the Rails cookie", ctx do

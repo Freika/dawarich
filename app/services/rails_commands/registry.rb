@@ -201,6 +201,7 @@ module RailsCommands
         }
       }
     }.merge(Points::ArrivalCommands::HANDLERS)
+     .merge(Points::WebDestroyCommands::HANDLERS)
      .merge(Points::AnomalyFilterCommands::HANDLERS)
      .merge(Imports::PostprocessingCommands::HANDLERS)
      .merge(Imports::UploadCommands::HANDLERS)

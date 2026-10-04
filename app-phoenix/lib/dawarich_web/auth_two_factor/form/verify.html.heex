@@ -1,0 +1,95 @@
+<div class="min-h-content w-full my-5">
+  <.page_header title={
+    t(@locale, "settings.two_factor.verify.set_up_two_factor_authentication", %{})
+  } />
+  <.navigation
+    locale={@locale}
+    active={@active}
+    self_hosted={@self_hosted}
+    admin={@admin}
+    two_factor={@two_factor}
+  />
+
+  <div class="max-w-lg">
+    <div class="card bg-base-200 shadow-xl">
+      <div class="card-body">
+        <h2 class="text-xl font-bold mb-2">
+          {t(@locale, "settings.two_factor.verify.scan_qr_code", %{})}
+        </h2>
+        <p class="text-sm text-base-content/70 mb-4">
+          {t(
+            @locale,
+            "settings.two_factor.verify.scan_this_qr_code_with_your_authenticator_app_google_authenticator",
+            %{}
+          )}
+        </p>
+
+        <div class="mx-auto max-w-xs overflow-hidden rounded-2xl bg-white p-4 shadow-lg flex justify-center mb-4">
+          {Phoenix.HTML.raw(@qr_svg)}
+        </div>
+
+        <details class="bg-base-100 rounded-lg mb-4">
+          <summary class="cursor-pointer text-sm font-medium p-4">
+            {t(@locale, "settings.two_factor.verify.can_t_scan_enter_the_code_manually", %{})}
+          </summary>
+          <div class="px-4 pb-4 mb-4">
+            <code class="block break-all text-sm bg-base-300 p-3 rounded">{@secret}</code>
+          </div>
+        </details>
+
+        <div class="divider"></div>
+
+        <h2 class="text-xl font-bold mb-2">
+          {t(@locale, "settings.two_factor.verify.verify_setup", %{})}
+        </h2>
+        <p class="text-sm text-base-content/70 mb-4">
+          {t(
+            @locale,
+            "settings.two_factor.verify.enter_the_6_digit_code_from_your_authenticator_app_to",
+            %{}
+          )}
+        </p>
+
+        <form
+          action="/settings/two_factor/verify"
+          accept-charset="UTF-8"
+          method="post"
+          data-turbo="false"
+          class="space-y-4"
+        >
+          <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
+          <div class="form-control">
+            <label class="label" for="otp_attempt">{t(
+              @locale,
+              "settings.two_factor.verify.verification_code",
+              %{}
+            )}</label>
+            <input
+              class="input input-bordered w-full text-center text-2xl tracking-widest"
+              maxlength="6"
+              size="6"
+              pattern="[0-9]{6}"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              autofocus="autofocus"
+              required="required"
+              placeholder="000000"
+              type="text"
+              name="otp_attempt"
+              id="otp_attempt"
+            />
+          </div>
+          <div class="form-control">
+            <input
+              type="submit"
+              name="commit"
+              value={t(@locale, "settings.two_factor.verify.verify_and_enable", %{})}
+              class="btn btn-primary w-full"
+              data-disable-with={t(@locale, "settings.two_factor.verify.verify_and_enable", %{})}
+            />
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

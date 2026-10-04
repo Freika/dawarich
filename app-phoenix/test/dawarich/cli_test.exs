@@ -61,6 +61,12 @@ defmodule Dawarich.CLITest do
           assert(help =~ ~r/^  #{Regex.escape(Enum.join(path, " "))}( |$)/m, Enum.join(path, " "))
   end
 
+  test "help lists standalone migrate with its own description" do
+    ctx = io()
+    assert CLI.run(["help"], ctx) == 0
+    assert text(ctx.out) =~ ~r/^  migrate {2,}\S/m
+  end
+
   test "an exception inside a command becomes one stderr line and exit 1" do
     ctx = io(%{repo: RaisingRepo, env: %{"SELF_HOSTED" => "true"}})
     assert CLI.run(["users", "activate"], ctx) == 1
