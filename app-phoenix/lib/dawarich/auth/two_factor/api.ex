@@ -25,6 +25,9 @@ defmodule Dawarich.Auth.TwoFactor.Api do
 
   defp dispatch(:setup, user, _params, context), do: ApiWrite.setup(user, context)
 
+  defp dispatch(:confirm, user, params, context),
+    do: ApiWrite.confirm(user, params["otp_code"], context)
+
   defp error(status, reason), do: {:ok, status, {:object, [{"error", reason}]}}
 
   defp error(status, reason, key),

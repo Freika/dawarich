@@ -1,7 +1,7 @@
 defmodule Dawarich.Auth.TwoFactor.ApiTest do
   use ExUnit.Case, async: false
   alias Dawarich.Auth.Account
-  alias Dawarich.Auth.TwoFactor.{Api, Secret, Totp}
+  alias Dawarich.Auth.TwoFactor.{Api, BackupCodes, Secret, Totp}
   alias Dawarich.Repo
 
   @now ~U[2026-10-04 12:00:00.000000Z]
@@ -95,5 +95,97 @@ defmodule Dawarich.Auth.TwoFactor.ApiTest do
     end
 
     assert Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows == [[jobs]]
+  end
+
+  test "API confirm enables and replaces backups without consuming timestep", c do
+    secret = Totp.generate_secret(:binary.copy(<<2>>, 20))
+    {:ok, ciphertext} = Secret.encrypt(secret, @env)
+    {:ok, old_codes, hashes} = BackupCodes.generate()
+    seed(c.id, otp_secret: ciphertext, otp_backup_codes: hashes, consumed_timestep: 123)
+    code = Totp.at(secret, DateTime.to_unix(@now))
+
+    for _ <- 1..2 do
+      before = snapshot(c.id)
+
+      assert {:ok, 200, {:object, [{"backup_codes", codes}]}} =
+               Api.run(
+                 :confirm,
+                 c.id,
+                 %{"password" => "safepassword12", "otp_code" => code},
+                 c.context
+               )
+
+      user = Repo.get!(Account, c.id)
+      assert user.otp_required_for_login
+      assert length(codes) == 10 and length(Enum.uniq(codes)) == 10
+      assert length(user.otp_backup_codes) == 10
+      assert user.otp_backup_codes != before["otp_backup_codes"]
+      assert Enum.all?(codes, &Regex.match?(~r/\A[0-9a-f]{24}\z/, &1))
+
+      assert Enum.all?(Enum.zip(codes, user.otp_backup_codes), fn {value, hash} ->
+               Bcrypt.verify_pass(value, hash)
+             end)
+
+      assert BackupCodes.consume(user.otp_backup_codes, hd(old_codes)) == :invalid
+
+      assert Map.drop(snapshot(c.id), ~w(otp_required_for_login otp_backup_codes updated_at)) ==
+               Map.drop(before, ~w(otp_required_for_login otp_backup_codes updated_at))
+    end
+  end
+
+  test "API confirm accepts a previously consumed timestep as Rails does", c do
+    secret = Totp.generate_secret(:binary.copy(<<2>>, 20))
+    {:ok, ciphertext} = Secret.encrypt(secret, @env)
+    timestep = div(DateTime.to_unix(@now), 30)
+    seed(c.id, otp_secret: ciphertext, consumed_timestep: timestep)
+    before = snapshot(c.id)
+    code = Totp.at(secret, DateTime.to_unix(@now))
+
+    assert {:ok, 200, {:object, [{"backup_codes", _}]}} =
+             Api.run(
+               :confirm,
+               c.id,
+               %{"password" => "safepassword12", "otp_code" => code},
+               c.context
+             )
+
+    assert Repo.get!(Account, c.id).consumed_timestep == timestep
+
+    assert Map.drop(snapshot(c.id), ~w(otp_required_for_login otp_backup_codes updated_at)) ==
+             Map.drop(before, ~w(otp_required_for_login otp_backup_codes updated_at))
+  end
+
+  test "API invalid confirm leaves the complete actor row unchanged", c do
+    secret = Totp.generate_secret(:binary.copy(<<2>>, 20))
+    {:ok, ciphertext} = Secret.encrypt(secret, @env)
+    code = Totp.at(secret, DateTime.to_unix(@now))
+
+    for {secret_field, candidate} <- [
+          {nil, code},
+          {ciphertext, nil},
+          {ciphertext, "bad"},
+          {ciphertext, Totp.at(secret, DateTime.to_unix(@now) - 60)}
+        ] do
+      seed(c.id, otp_secret: secret_field)
+      before = snapshot(c.id)
+
+      assert {:ok, 422, {:object, [{"error", "invalid_otp"}]}} =
+               Api.run(
+                 :confirm,
+                 c.id,
+                 %{"password" => "safepassword12", "otp_code" => candidate},
+                 c.context
+               )
+
+      assert {:ok, 401, _} =
+               Api.run(
+                 :confirm,
+                 c.id,
+                 %{"password" => "wrong", "otp_code" => candidate},
+                 c.context
+               )
+
+      assert snapshot(c.id) == before
+    end
   end
 end
