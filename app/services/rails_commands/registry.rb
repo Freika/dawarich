@@ -208,6 +208,10 @@ module RailsCommands
      .merge(Imports::PreparedDownloadPurgeCommands::HANDLERS)
      .merge(Imports::DestroyCommands::HANDLERS)
      .merge(Imports::ExtractionCommands::HANDLERS)
+     .merge(RailsCommands::ShareManagementCommands::HANDLERS)
+     .merge(Posters::CreationCommand::HANDLERS)
+     .merge(Posters::PurgeCommands::HANDLERS)
+     .merge(Posters::ProgressCommands::HANDLERS)
      .merge(A8Handlers::HANDLERS)
      .merge(
        'imports.resume' => {

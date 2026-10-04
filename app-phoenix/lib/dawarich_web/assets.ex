@@ -1,6 +1,13 @@
 defmodule DawarichWeb.Assets do
   @moduledoc false
 
+  @family_page_js Path.expand("../../priv/static/js/family_page.js", __DIR__)
+  @external_resource @family_page_js
+  @family_page_hash @family_page_js
+                    |> File.read!()
+                    |> then(&:crypto.hash(:md5, &1))
+                    |> Base.url_encode64(padding: false)
+
   @app_js Path.expand("../../priv/static/js/app.js", __DIR__)
   @external_resource @app_js
   @app_hash @app_js
@@ -33,7 +40,8 @@ defmodule DawarichWeb.Assets do
       live_view: to_string(Application.spec(:phoenix_live_view, :vsn)),
       app: @app_hash,
       map_shell: @map_shell_hash,
-      rails_bridge: @rails_bridge_hash
+      rails_bridge: @rails_bridge_hash,
+      family_page: @family_page_hash
     }
   end
 

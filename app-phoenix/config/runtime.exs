@@ -64,6 +64,7 @@ if config_env() != :test do
     route_videos: 1,
     maintenance: 1,
     exports: 1,
+    posters: 1,
     projections: 1,
     imports: 1,
     tracks: 2,

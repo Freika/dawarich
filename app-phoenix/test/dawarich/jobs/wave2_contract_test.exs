@@ -20,11 +20,17 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
 
   test "Rails COMMANDS and the registry name the same command types" do
     commands =
-      ~r/^\s*'([a-z0-9_.]+)' => \{/m
+      ~r/'([a-z0-9_.]+)' => \{/
       |> Regex.scan(
         RailsTree.read("app/services/job_commands.rb") <>
           RailsTree.read("app/services/release_commands.rb") <>
-          hd(String.split(RailsTree.read("app/services/stats/commands.rb"), "HANDLERS = {")),
+          hd(String.split(RailsTree.read("app/services/stats/commands.rb"), "HANDLERS = {")) <>
+          hd(
+            String.split(
+              RailsTree.read("app/services/posters/creation_command.rb"),
+              "HANDLERS = {"
+            )
+          ),
         capture: :all_but_first
       )
       |> List.flatten()

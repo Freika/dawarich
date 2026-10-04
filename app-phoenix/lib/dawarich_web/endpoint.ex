@@ -28,7 +28,7 @@ defmodule DawarichWeb.Endpoint do
   plug Plug.Static,
     at: "/phoenix/js",
     from: {:dawarich, "priv/static/js"},
-    only: ~w(app.js map_shell.js rails_bridge.js)
+    only: ~w(app.js map_shell.js rails_bridge.js family_page.js)
 
   plug DawarichWeb.PublicFiles
   plug DawarichWeb.AuthGate

@@ -333,6 +333,7 @@ RSpec.describe RailsCommands::Poller do
       imports.prepare_download imports.prepared_download_purge imports.destroy_requested imports.destroy_status
       imports.destroy_callbacks imports.destroy_achievements imports.destroy_stats imports.destroy_complete
       imports.destroy_terminal imports.extraction_requested imports.extraction_destroy_requested
+      share_management.live_revoked posters.created posters.purge posters.progress
       route_videos.attachment_job visits.web_redetect imports.resume imports.normal_resume
       stats.calculate_month stats.caches_invalidated
     ]
