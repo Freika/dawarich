@@ -33,6 +33,18 @@ defmodule Dawarich.Cable.PgStore do
     end
   end
 
+  def head(repo, namespace) do
+    case repo.query(
+           "SELECT last_seq FROM phoenix.cable_streams WHERE namespace = $1",
+           [namespace],
+           log: false
+         ) do
+      {:ok, %{rows: [[seq]]}} -> {:ok, seq}
+      {:ok, %{rows: []}} -> {:ok, 0}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp append_in_transaction(repo, namespace, channel, payload) do
     repo.query!(
       "INSERT INTO phoenix.cable_streams(namespace) VALUES ($1) ON CONFLICT DO NOTHING",

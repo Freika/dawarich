@@ -62,10 +62,17 @@ defmodule Dawarich.Cable.Bus do
   def channel(broadcasting),
     do: Enum.join(Enum.reject([prefix(), broadcasting], &is_nil/1), ":")
 
-  def subscribe(broadcasting), do: Redix.PubSub.subscribe(@name, channel(broadcasting), self())
+  def subscribe(broadcasting) do
+    if pg?(),
+      do: Dawarich.Cable.PgBus.subscribe(broadcasting),
+      else: Redix.PubSub.subscribe(@name, channel(broadcasting), self())
+  end
 
-  def unsubscribe(broadcasting),
-    do: Redix.PubSub.unsubscribe(@name, channel(broadcasting), self())
+  def unsubscribe(broadcasting) do
+    if pg?(),
+      do: Dawarich.Cable.PgBus.unsubscribe(broadcasting),
+      else: Redix.PubSub.unsubscribe(@name, channel(broadcasting), self())
+  end
 
   def publish(broadcasting, payload),
     do: Redis.command(["PUBLISH", channel(broadcasting), payload], @publisher)
@@ -76,7 +83,9 @@ defmodule Dawarich.Cable.Bus do
   def event({:redix_pubsub, _pid, _ref, :subscribed, %{channel: channel}}),
     do: {:subscribed, strip(channel)}
 
-  def event(_message), do: :ignore
+  def event(message), do: Dawarich.Cable.PgBus.event(message)
+
+  defp pg?, do: Application.get_env(:dawarich, :cable, [])[:transport] == :pg
 
   defp strip(channel) do
     case prefix() do
