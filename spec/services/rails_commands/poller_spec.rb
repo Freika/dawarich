@@ -329,6 +329,7 @@ RSpec.describe RailsCommands::Poller do
       release_null_island_follow_up
       points.tile_epoch
       points.anomaly_filter tracks.realtime tracks.backfill visits.realtime points.live_broadcast
+      points.web_destroy_follow_up
       points.anomaly_recalculate points.anomaly_stats imports.postprocessing_step imports.upload_created
       imports.prepare_download imports.prepared_download_purge imports.destroy_requested imports.destroy_status
       imports.destroy_callbacks imports.destroy_achievements imports.destroy_stats imports.destroy_complete

@@ -17,11 +17,13 @@ defmodule DawarichWeb.TagsLive.Form do
     💼 👔 🎓 🏆 🎯 🎲 🎮 🎰 🛍️ 💍
   )
 
+  def default_emoji, do: Enum.random(@emojis)
+
   def live_session(conn) do
     session = DawarichWeb.RailsAuth.live_session(conn)
 
     if conn.request_path == "/tags/new",
-      do: Map.put(session, "tag_default_emoji", Enum.random(@emojis)),
+      do: Map.put(session, "tag_default_emoji", default_emoji()),
       else: session
   end
 
@@ -49,7 +51,11 @@ defmodule DawarichWeb.TagsLive.Form do
   end
 
   @impl true
-  def render(assigns) do
+  def render(assigns), do: page(assigns)
+
+  def page(assigns) do
+    assigns = Map.put_new(assigns, :tag_errors, [])
+
     ~H"""
     <div class="container mx-auto px-4 py-8 max-w-2xl">
       <div class="mb-6">
@@ -68,7 +74,13 @@ defmodule DawarichWeb.TagsLive.Form do
       </div>
       <div class="card bg-base-100 shadow-xl">
         <div class="card-body">
-          <TagForm.form locale={@locale} tag={@tag} csrf={@rails_csrf_token} emoji={@default_emoji} />
+          <TagForm.form
+            locale={@locale}
+            tag={@tag}
+            csrf={@rails_csrf_token}
+            emoji={@default_emoji}
+            errors={@tag_errors}
+          />
         </div>
       </div>
     </div>

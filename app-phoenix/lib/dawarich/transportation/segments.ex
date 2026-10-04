@@ -147,10 +147,11 @@ defmodule Dawarich.Transportation.Segments do
     end
   end
 
-  def insert!(_repo, _track_id, []), do: []
+  def insert!(repo, track_id, segment_data, now \\ nil)
+  def insert!(_repo, _track_id, [], _now), do: []
 
-  def insert!(repo, track_id, segment_data) do
-    {values_sql, params} = build_insert_values(track_id, segment_data)
+  def insert!(repo, track_id, segment_data, now) do
+    {values_sql, params} = build_insert_values(track_id, segment_data, now)
 
     repo.query!(
       "INSERT INTO track_segments (track_id, transportation_mode, start_at, end_at, path, distance, " <>
@@ -163,20 +164,20 @@ defmodule Dawarich.Transportation.Segments do
     segment_data
   end
 
-  defp build_insert_values(track_id, segment_data) do
+  defp build_insert_values(track_id, segment_data, now) do
     {clauses, params} =
       segment_data
       |> Enum.with_index()
       |> Enum.map_reduce([], fn {data, index}, params_acc ->
-        base = index * 12
-        {clause, row_params} = insert_row(track_id, data, base)
+        base = index * if(now, do: 13, else: 12)
+        {clause, row_params} = insert_row(track_id, data, base, now)
         {clause, params_acc ++ row_params}
       end)
 
     {Enum.join(clauses, ", "), params}
   end
 
-  defp insert_row(track_id, data, base) do
+  defp insert_row(track_id, data, base, now) do
     placeholder = fn
       3 -> "to_timestamp($#{base + 3})"
       4 -> "to_timestamp($#{base + 4})"
@@ -185,7 +186,8 @@ defmodule Dawarich.Transportation.Segments do
     end
 
     placeholders = Enum.map_join(1..12, ", ", placeholder)
-    clause = "(#{placeholders}, now() AT TIME ZONE 'UTC', now() AT TIME ZONE 'UTC')"
+    stamp = if now, do: "$#{base + 13}", else: "now() AT TIME ZONE 'UTC'"
+    clause = "(#{placeholders}, #{stamp}, #{stamp})"
 
     row_params = [
       track_id,
@@ -202,7 +204,7 @@ defmodule Dawarich.Transportation.Segments do
       data.source
     ]
 
-    {clause, row_params}
+    {clause, row_params ++ if(now, do: [DateTime.to_naive(now)], else: [])}
   end
 
   defp confidence_to_int(confidence), do: Enum.find_index(@confidence_names, &(&1 == confidence))

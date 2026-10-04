@@ -58,8 +58,8 @@ defmodule Dawarich.Tracks.Store do
     end
   end
 
-  def save!(repo, track, attrs) do
-    changed = update_if_changed!(repo, track.id, attrs)
+  def save!(repo, track, attrs, now \\ nil) do
+    changed = update_if_changed!(repo, track.id, attrs, now)
     saved = Map.merge(track, Map.new(attrs))
     moved = changed and {saved.start_at, saved.end_at} != {track.start_at, track.end_at}
 
@@ -102,7 +102,7 @@ defmodule Dawarich.Tracks.Store do
     {Map.merge(track, Map.new(attrs)), changed}
   end
 
-  def update_if_changed!(repo, id, attrs) do
+  def update_if_changed!(repo, id, attrs, now \\ nil) do
     indexed = Enum.with_index(attrs, 2)
 
     sets =
@@ -115,10 +115,13 @@ defmodule Dawarich.Tracks.Store do
         "#{column} IS DISTINCT FROM #{placeholder(column, i)}"
       end)
 
+    stamp_sql = if now, do: "$#{length(attrs) + 2}", else: "now()"
+    params = [id | Keyword.values(attrs)] ++ if(now, do: [DateTime.to_naive(now)], else: [])
+
     repo.query!(
-      "UPDATE tracks SET #{sets}, updated_at = now(), lock_version = lock_version + 1 " <>
+      "UPDATE tracks SET #{sets}, updated_at = #{stamp_sql}, lock_version = lock_version + 1 " <>
         "WHERE id = $1 AND (#{distinct}) RETURNING id",
-      [id | Keyword.values(attrs)],
+      params,
       log: false
     ).rows != []
   end

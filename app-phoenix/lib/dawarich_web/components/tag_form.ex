@@ -1,12 +1,13 @@
 defmodule DawarichWeb.TagForm do
   @moduledoc false
   use DawarichWeb, :html
-  alias DawarichWeb.{TagFormPickers, TagPrivacyFields}
+  alias DawarichWeb.{TagErrors, TagFormPickers, TagPrivacyFields}
 
   attr :locale, :string, required: true
   attr :tag, :map, required: true
   attr :csrf, :string, required: true
   attr :emoji, :string, required: true
+  attr :errors, :list, default: []
 
   def form(assigns) do
     ~H"""
@@ -18,20 +19,29 @@ defmodule DawarichWeb.TagForm do
     >
       <input :if={@tag.id} type="hidden" name="_method" value="patch" />
       <input type="hidden" name="authenticity_token" value={@csrf} />
+      <TagErrors.alert locale={@locale} errors={@errors} />
       <div class="form-control">
-        <label class="label" for="tag_name">Name</label>
-        <input
-          class="input input-bordered w-full"
-          placeholder={t(@locale, "tags.form.home_work_restaurant", %{})}
-          type="text"
-          name="tag[name]"
-          id="tag_name"
-          value={@tag.name}
-        />
+        <TagErrors.field field="name" errors={@errors}>
+          <label class="label" for="tag_name">Name</label>
+        </TagErrors.field>
+        <TagErrors.field field="name" errors={@errors}>
+          <input
+            class="input input-bordered w-full"
+            placeholder={t(@locale, "tags.form.home_work_restaurant", %{})}
+            type="text"
+            name="tag[name]"
+            id="tag_name"
+            value={@tag.name}
+          />
+        </TagErrors.field>
       </div>
       <div id={"tag-fields-#{@tag.id || "new"}"} phx-hook="RailsStimulus" phx-update="ignore">
-        <TagFormPickers.pickers locale={@locale} tag={@tag} emoji={@emoji} />
-        <TagPrivacyFields.fields locale={@locale} radius={@tag.privacy_radius_meters} />
+        <TagFormPickers.pickers locale={@locale} tag={@tag} emoji={@emoji} errors={@errors} />
+        <TagPrivacyFields.fields
+          locale={@locale}
+          radius={@tag.privacy_radius_meters}
+          errors={@errors}
+        />
       </div>
       <div class="form-control mt-6">
         <div class="flex gap-2">

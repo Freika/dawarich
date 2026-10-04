@@ -2,10 +2,10 @@ defmodule Dawarich.TrackSegmentPage do
   @moduledoc false
   alias Dawarich.{Repo, Transportation.Segments, TripSettings, UserTimeZone}
 
-  def load(user, id) do
+  def load(user, id, repo \\ Repo) do
     if settings?(user.settings) do
       rows =
-        Repo.query!(
+        repo.query!(
           "SELECT s.id, t.id, s.start_index, s.end_index, s.start_at, s.end_at, s.distance, s.duration, s.transportation_mode, s.confidence_score, s.corrected_at FROM public.tracks t LEFT JOIN public.track_segments s ON s.track_id = t.id WHERE t.user_id = $1 AND t.id = $2 ORDER BY s.start_at, s.start_index",
           [user.id, id]
         ).rows
