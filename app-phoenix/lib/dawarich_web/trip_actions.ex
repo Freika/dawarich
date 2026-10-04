@@ -11,6 +11,52 @@ defmodule DawarichWeb.TripActions do
   def call(conn, :member),
     do: call(conn, if(conn.assigns.a8_action == :trip_destroy, do: :destroy, else: :update))
 
+  def call(conn, :recalculate) do
+    user = conn.assigns.current_user
+
+    ctx = %{
+      now: conn.assigns[:now] || DateTime.utc_now(),
+      locale: Locale.resolve(nil, user, conn.assigns.rails_session)
+    }
+
+    id = String.to_integer(conn.path_params["id"])
+
+    case Dawarich.Trips.WebRecalculate.run(Jobs.repo(), user, id, ctx) do
+      {:ok, result} ->
+        notice =
+          Translate.t(
+            ctx.locale,
+            "controllers.trips." <>
+              if(result == :queued,
+                do: "recalculating_the_page_will_update_automatically_when_it_s_ready",
+                else: "already_recalculating_this_page_will_update_when_it_s_done"
+              ),
+            %{}
+          )
+
+        if conn.assigns.a8_format == :turbo_stream do
+          html = DawarichWeb.TripRecalculateStream.render(id, result, notice, ctx.locale)
+
+          conn
+          |> put_resp_header("vary", "Accept")
+          |> put_resp_content_type("text/vnd.turbo-stream.html")
+          |> send_resp(200, html)
+          |> halt()
+        else
+          redirect(conn, 302, "/trips/#{id}", notice)
+        end
+
+      {:replay, reason} ->
+        Body.replay(conn, reason)
+
+      {:error, :not_found} ->
+        conn |> send_resp(404, "") |> halt()
+
+      {:error, _} ->
+        conn |> send_resp(500, "") |> halt()
+    end
+  end
+
   def call(conn, action) do
     user = conn.assigns.current_user
 

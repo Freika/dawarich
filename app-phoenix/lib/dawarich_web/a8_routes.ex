@@ -18,6 +18,9 @@ defmodule DawarichWeb.A8Routes do
         post "/trips", DawarichWeb.TripActions, :create,
           metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
 
+        post "/trips/:id/recalculate", DawarichWeb.TripActions, :recalculate,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
         patch "/trips/:id", DawarichWeb.TripActions, :update,
           metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
 
