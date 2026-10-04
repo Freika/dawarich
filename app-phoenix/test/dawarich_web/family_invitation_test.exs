@@ -7,7 +7,11 @@ defmodule DawarichWeb.FamilyInvitationTest do
   alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{FrameSeeds, RailsUser}
 
+  @external_resource "test/fixtures/family_pages/owner_en.json"
+  @now FrameSeeds.load_family("owner_en")["now"] |> DateTime.from_iso8601() |> elem(1)
   @endpoint DawarichWeb.Endpoint
+
+  defp freeze_clock(conn), do: Plug.Conn.assign(conn, :now, @now)
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
@@ -20,7 +24,7 @@ defmodule DawarichWeb.FamilyInvitationTest do
     do: html |> LazyHTML.from_document() |> LazyHTML.query(selector) |> Enum.any?()
 
   test "public invitation distinguishes pending expired processed and missing token" do
-    pending = build_conn() |> get("/invitations/a9fpl-pending")
+    pending = build_conn() |> freeze_clock() |> get("/invitations/a9fpl-pending")
     assert pending.status == 200
     assert element?(pending.resp_body, "h1")
 
@@ -29,7 +33,7 @@ defmodule DawarichWeb.FamilyInvitationTest do
           {"a9fpl-cancelled", "this_invitation_is_no_longer_valid"},
           {"a9fpl-accepted", "this_invitation_is_no_longer_valid"}
         ] do
-      conn = build_conn() |> get("/invitations/" <> token)
+      conn = build_conn() |> freeze_clock() |> get("/invitations/" <> token)
       assert conn.status == 302
       assert redirected_to(conn) == "http://www.example.com/"
 
@@ -38,12 +42,17 @@ defmodule DawarichWeb.FamilyInvitationTest do
     end
 
     assert_raise DawarichWeb.NotFoundError, fn ->
-      build_conn() |> get("/invitations/missing-a9fpl")
+      build_conn() |> freeze_clock() |> get("/invitations/missing-a9fpl")
     end
   end
 
   test "signed out invitation offers existing registration and sign in paths" do
-    html = build_conn() |> get("/invitations/a9fpl-pending?locale=de") |> html_response(200)
+    html =
+      build_conn()
+      |> freeze_clock()
+      |> get("/invitations/a9fpl-pending?locale=de")
+      |> html_response(200)
+
     assert element?(html, "a[href='/users/sign_up?invitation_token=a9fpl-pending']")
     assert element?(html, "a[href='/users/sign_in?invitation_token=a9fpl-pending']")
     refute element?(html, "a[data-method='post']")
@@ -54,7 +63,10 @@ defmodule DawarichWeb.FamilyInvitationTest do
   test "accept control preserves Rails signed in behavior and keeps Rails endpoint", ctx do
     for user <- [ctx.invitee, ctx.owner] do
       html =
-        RailsUser.signed_in(user.id) |> get("/invitations/a9fpl-pending") |> html_response(200)
+        RailsUser.signed_in(user.id)
+        |> freeze_clock()
+        |> get("/invitations/a9fpl-pending")
+        |> html_response(200)
 
       assert element?(
                html,
@@ -69,11 +81,12 @@ defmodule DawarichWeb.FamilyInvitationTest do
     on_exit(fn -> for key <- ~w(SELF_HOSTED JWT_SECRET_KEY), do: System.delete_env(key) end)
 
     Repo.query!("UPDATE families SET access_until = $1 WHERE id = 91001", [
-      ~N[2026-10-03 09:59:59]
+      DateTime.add(@now, -1) |> DateTime.to_naive()
     ])
 
     html =
       RailsUser.signed_in(ctx.invitee.id)
+      |> freeze_clock()
       |> get("/invitations/a9fpl-pending")
       |> html_response(200)
 
@@ -103,7 +116,7 @@ defmodule DawarichWeb.FamilyInvitationTest do
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
     for path <- ~w(/invitations/a9fpl-pending /family/invitations/a9fpl-pending) do
-      response = Task.async(fn -> build_conn() |> get(path) end)
+      response = Task.async(fn -> build_conn() |> freeze_clock() |> get(path) end)
       socket = accept(upstream)
       {head, _rest} = read_head(socket)
       assert request_line(head) == "GET #{path} HTTP/1.1"
@@ -117,11 +130,12 @@ defmodule DawarichWeb.FamilyInvitationTest do
 
   test "request document belongs only to its target and submits Rails accept decline", ctx do
     Repo.query!("UPDATE family_location_requests SET expires_at = $1 WHERE id = 94001", [
-      NaiveDateTime.add(NaiveDateTime.utc_now(), 3600)
+      DateTime.add(@now, 3600) |> DateTime.to_naive()
     ])
 
     html =
       RailsUser.signed_in(ctx.member.id)
+      |> freeze_clock()
       |> get("/family/location_requests/94001")
       |> html_response(200)
 
@@ -133,18 +147,29 @@ defmodule DawarichWeb.FamilyInvitationTest do
     end
 
     assert element?(html, "select[name='duration'] option[value='24h'][selected]")
-    foreign = RailsUser.signed_in(ctx.owner.id) |> get("/family/location_requests/94001")
+
+    foreign =
+      RailsUser.signed_in(ctx.owner.id)
+      |> freeze_clock()
+      |> get("/family/location_requests/94001")
+
     assert foreign.status == 302
     assert redirected_to(foreign) == "http://www.example.com/family"
 
     expired =
       RailsUser.signed_in(ctx.member.id)
+      |> freeze_clock()
       |> get("/family/location_requests/94002")
       |> html_response(200)
 
     assert element?(expired, ".badge-error")
     refute element?(expired, "form[action^='/family/location_requests/']")
-    index = RailsUser.signed_in(ctx.owner.id) |> get("/family/invitations") |> html_response(200)
+
+    index =
+      RailsUser.signed_in(ctx.owner.id)
+      |> freeze_clock()
+      |> get("/family/invitations")
+      |> html_response(200)
 
     assert element?(
              index,
@@ -152,7 +177,10 @@ defmodule DawarichWeb.FamilyInvitationTest do
            )
 
     member_index =
-      RailsUser.signed_in(ctx.member.id) |> get("/family/invitations") |> html_response(200)
+      RailsUser.signed_in(ctx.member.id)
+      |> freeze_clock()
+      |> get("/family/invitations")
+      |> html_response(200)
 
     refute element?(member_index, "a[data-turbo-method='delete'][href^='/family/invitations/']")
   end
