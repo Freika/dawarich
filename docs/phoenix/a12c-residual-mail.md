@@ -114,3 +114,14 @@ validation leaves its queued delivery observable. Ambient locale/timezone surviv
 M-P6-save-first moves timestamp persistence before insertion and fails monthly_enqueue_failure;
 restored staging passes. The shared digest Store now exposes only the source-equivalent validated
 sent_at update. SMTP and ownership remain pending at P7/P9.
+
+P7 adds the separate digest DeliveryWorker. It loads serialized-record identities afresh,
+including soft-deleted queued users, and does not recheck sent_at or settings guards. Missing
+digests discard delivery, matching the Rails ActionMailer deserialization result. Existing
+Delivery claims retain duplicate/held/retry behavior; keys include the originating event so a
+source-legal later send after timestamp clearing remains possible. SMTP and render errors
+return bounded codes, with no mail-map/body/token logging. The inherited crash-after-accept
+ambiguity remains; this does not provide exactly-once SMTP delivery.
+Both P7 tests pass, including eight exact Rails body/subject locale cases through both stages.
+M-P7-sent-guard suppresses queued SMTP and fails; M-P7-locale replaces fr with en between queues
+and fails. Each is restored and green, with inherited Delivery regressions.

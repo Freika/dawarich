@@ -44,6 +44,25 @@ defmodule Dawarich.Mail.Digests.Data do
     end
   end
 
+  def delivery(repo, user_id, digest_id) do
+    case repo.query!(
+           "SELECT u.id, u.email, u.settings, row_to_json(d) FROM public.users u, public.digests d WHERE u.id=$1 AND d.id=$2",
+           [user_id, digest_id],
+           log: false
+         ).rows do
+      [[id, email, settings, digest]] ->
+        kind = if digest["period_type"] == 0, do: "monthly", else: "yearly"
+
+        %{
+          user: %{id: id, email: email, settings: settings},
+          digest: Map.put(digest, "period_type", kind)
+        }
+
+      [] ->
+        nil
+    end
+  end
+
   def project(repo, user, digest) do
     unit = distance_unit(user.settings)
 
