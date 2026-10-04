@@ -99,9 +99,29 @@ defmodule Dawarich.Imports.Fit.Fields do
   def selected(number, values) do
     profile =
       case number do
-        20 -> @record
-        18 -> @session
-        19 -> @lap
+        0 ->
+          %{0 => {"type", :raw}}
+
+        23 ->
+          %{
+            0 => {"device_index", :raw},
+            1 => {"device_type", :raw},
+            2 => {"manufacturer", :raw},
+            3 => {"serial_number", :raw},
+            4 => {"product", :raw}
+          }
+
+        34 ->
+          %{0 => {"total_timer_time", {1000, 0}}, 253 => {"timestamp", :time}}
+
+        20 ->
+          @record
+
+        18 ->
+          @session
+
+        19 ->
+          @lap
       end
 
     Map.new(Enum.filter(values, fn {id, _} -> Map.has_key?(profile, id) end), fn {id, value} ->

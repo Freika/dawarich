@@ -18,7 +18,10 @@ defmodule Dawarich.Test.NormalFormatsAssertions do
                  data["doubles"],
                  data["processed"],
                  data["raw_data"],
-                 0,
+                 Enum.find_index(
+                   ~w(created processing completed failed deleting),
+                   &(&1 == data["status"])
+                 ),
                  data["error_message"],
                  source
                ]

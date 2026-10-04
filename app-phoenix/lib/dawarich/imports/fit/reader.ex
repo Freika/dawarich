@@ -3,9 +3,15 @@ defmodule Dawarich.Imports.Fit.Reader do
   import Bitwise
   alias Dawarich.Imports.Fit.{Crc, Definitions, Fields}
 
-  def reduce(path, acc, fun) do
+  def reduce(path, acc, fun, opts \\ []) do
     File.open!(path, [:read, :binary, :raw], fn file ->
-      entities(file, File.stat!(path).size, %{}, MapSet.new(), acc, fun)
+      callback = fn entry, state ->
+        if Keyword.get(opts, :activity, false) or entry["number"] in [18, 19, 20],
+          do: fun.(entry, state),
+          else: state
+      end
+
+      entities(file, File.stat!(path).size, %{}, MapSet.new(), acc, callback)
     end)
   end
 
@@ -73,7 +79,7 @@ defmodule Dawarich.Imports.Fit.Reader do
             else: descriptions
 
         acc =
-          if definition.number in [18, 19, 20],
+          if definition.number in [0, 18, 19, 20, 23, 34],
             do:
               fun.(
                 %{

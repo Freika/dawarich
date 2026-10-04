@@ -3,6 +3,84 @@
 module NormalImportFormatsSupport
   module_function
 
+  def fit_import_cases(spec)
+    base = DIR.join('fit_reader_standard.input.fit')
+    flat = DIR.join('fit_reader_flat.input.fit')
+    spec.generate_fit_fixture(base.to_s)
+    spec.generate_flat_record_fit_fixture(flat.to_s)
+    fields = [[253, 4, 134], [0, 4, 133], [1, 4, 133], [2, 2, 132], [6, 2, 132], [73, 4, 134]]
+    definition = [64, 0, 0, 20, fields.size].pack('CCCvC') + fields.flatten.pack('C*')
+    values = [1_100_000_000, 626_349_397, 159_925_070, 2563, 3250, 4250]
+    record = [0].pack('C') + values.pack('VllvvV')
+    lap = [65, 0, 0, 19, 1].pack('CCCvC') + [253, 4, 134, 1].pack('C*') + [1_100_000_001].pack('V')
+    session = [66, 0, 0, 18, 2].pack('CCCvC') + [253, 4, 134, 5, 1, 0, 2].pack('C*') +
+              [1_100_000_002].pack('V') + [1].pack('C')
+    specs = [['fit_import_standard', File.binread(base)], ['fit_import_flat', File.binread(flat)],
+             ['fit_import_legacy', File.binread(base)], ['fit_import_empty', '']]
+    { 'enhanced' => definition + record + lap + session,
+      'multiple_sessions' => definition + record + lap + session,
+      'no_position' => definition + [0].pack('C') + values.dup.tap { |v| v[1] = 0x7fffffff }.pack('VllvvV'),
+      'missing_timestamp' => definition + [0].pack('C') + values.dup.tap { |v| v[0] = 0xffffffff }.pack('VllvvV'),
+      'earlier_timestamp' => definition + [0].pack('C') + values.dup.tap { |v| v[0] = 1 }.pack('VllvvV'),
+      'laps_fallback' => definition + record + lap }.each do |name, bytes|
+      path = DIR.join("fit_import_#{name}.source.fit")
+      spec.generate_reader_fit_fixture(path.to_s, base.to_s, bytes)
+      specs << ["fit_import_#{name}", File.binread(path)]
+      File.delete(path)
+    end
+    no_device = DIR.join('fit_import_no_device.source.fit')
+    spec.generate_fit_fixture_without_device_info(no_device.to_s)
+    specs << ['fit_import_no_device', File.binread(no_device)]
+    File.delete(no_device)
+    { 'data_crc' => -1, 'header_crc' => 12 }.each do |name, index|
+      bytes = File.binread(base)
+      bytes.setbyte(index, bytes.getbyte(index) ^ 1)
+      specs << ["fit_import_#{name}", bytes]
+    end
+    specs << ['fit_import_truncated', File.binread(base)[0...-10]]
+    specs << ['fit_import_bad_later_segment', File.binread(base) + File.binread(base)[0...-10]]
+    file_id = fit_message(0, 0, [[0, 1, 0]], [4].pack('C'))
+    activity = fit_message(1, 34, [[253, 4, 134], [0, 4, 134]], [1_100_000_010, 1000].pack('VV'))
+    early_session = fit_message(2, 18, [[5, 1, 0], [25, 2, 132], [26, 2, 132]], [1, 0, 1].pack('Cvv'))
+    standalone_record = fit_message(3, 20, fields, values.pack('VllvvV'))
+    standalone_lap = fit_message(4, 19, [[253, 4, 134]], [1_100_000_001].pack('V'))
+    extras = { 'real_flat' => file_id + early_session + standalone_record + activity,
+      'real_laps' => file_id + standalone_record + standalone_lap + activity,
+      'no_type' => activity,
+      'no_activity_timestamp' => file_id + standalone_record,
+      'duplicate' => file_id + standalone_record + standalone_record + activity,
+      'skipped' => file_id + fit_message(3, 20, fields, values.dup.tap { |v|
+        v[1] = 0x7fffffff
+      }.pack('VllvvV')) + activity,
+      'absent_timestamp' => file_id + fit_message(3, 20, fields.drop(1), values.drop(1).pack('llvvV')) + activity,
+      'speed_zero' => file_id + fit_message(3, 20, fields, values.dup.tap { |v| v[5] = 0 }.pack('VllvvV')) + activity,
+      'speed_fallback' => file_id + fit_message(3, 20, fields, values.dup.tap { |v|
+        v[5] = 0xffffffff
+      }.pack('VllvvV')) + activity }
+    [999, 1000, 1001, 2001].each do |count|
+      rows = count.times.map do |i|
+        numbers = values.dup
+        numbers[0] += i
+        numbers[1] += i
+        fit_message(3, 20, fields, numbers.pack('VllvvV'))
+      end.join
+      extras["batch#{count}"] = file_id + rows + activity
+    end
+    extras.each do |name, data|
+      header = "#{[14, 32, 1012, data.bytesize].pack('CCvV')}.FIT"
+      crc = Object.new.extend(Fit4Ruby::CRC16)
+      header += [crc.compute_crc(StringIO.new(header), 0, header.bytesize)].pack('v')
+      bytes = header + data + [crc.compute_crc(StringIO.new(data), 0, data.bytesize)].pack('v')
+      specs << ["fit_import_#{name}", bytes]
+    end
+    specs.map { |name, bytes| [name, bytes, 'UTC'] }
+  end
+
+  def fit_message(local, number, fields, values)
+    [64 + local, 0, 0, number, fields.size].pack('CCCvC') + fields.flatten.pack('C*') +
+      [local].pack('C') + values
+  end
+
   def fit_reader_cases(spec)
     base = DIR.join('fit_reader_standard.input.fit')
     flat = DIR.join('fit_reader_flat.input.fit')

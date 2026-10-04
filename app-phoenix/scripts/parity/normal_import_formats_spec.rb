@@ -212,6 +212,20 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
     end
   end
 
+  context 'FIT importer' do
+    it 'records FIT hierarchy and importer outcomes from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.fit_import_cases(self).each do |name, bytes, zone|
+          stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !name.end_with?('_legacy'))
+          result = NormalImportFormatsSupport.capture_json(name, bytes, zone, 12, Fit::Importer)
+          expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data', 'status')
+          expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'velocity', 'motion_data'))
+          NormalImportFormatsSupport.write(name, result)
+        end
+      end
+    end
+  end
+
   context 'FIT decoder' do
     it 'records FIT decoder outcomes from fit4ruby' do
       travel_to Time.utc(2026, 1, 15, 23, 30) do
