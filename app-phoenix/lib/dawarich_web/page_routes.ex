@@ -25,7 +25,6 @@ defmodule DawarichWeb.PageRoutes do
         end
       end
 
-
       scope "/" do
         pipe_through :insights
 
