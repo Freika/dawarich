@@ -1177,4 +1177,125 @@ defmodule DawarichWeb.EndpointTest do
 
     assert answered_by_phoenix(port, drawer) == 302
   end
+
+  test "endpoint account and key hand-back reaches Puma once with original payload", ctx do
+    alias Dawarich.{RailsCookies, Repo}
+    alias Dawarich.Auth.SessionCookie
+    alias Dawarich.Test.RailsUser
+    alias DawarichWeb.RailsCsrf
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    previous = Map.new(~w(SELF_HOSTED APPLICATION_PROTOCOL RAILS_ENV), &{&1, System.get_env(&1)})
+    flows = Application.fetch_env(:dawarich, :phoenix_auth)
+    System.put_env("SELF_HOSTED", "true")
+    System.put_env("APPLICATION_PROTOCOL", "http")
+    System.put_env("RAILS_ENV", "test")
+
+    on_exit(fn ->
+      for {key, value} <- previous do
+        if value, do: System.put_env(key, value), else: System.delete_env(key)
+      end
+
+      case flows do
+        {:ok, value} -> Application.put_env(:dawarich, :phoenix_auth, value)
+        :error -> Application.delete_env(:dawarich, :phoenix_auth)
+      end
+    end)
+
+    hash = Bcrypt.hash_pwd_salt("a11rest-endpoint-password", log_rounds: 4)
+
+    RailsUser.insert!(%{
+      id: 74004,
+      email: "a11rest-endpoint@dawarich.test",
+      encrypted_password: hash,
+      api_key: "A11REST_ENDPOINT_KEY",
+      settings: %{}
+    })
+
+    secret = Application.fetch_env!(:dawarich, :rails_secret)
+    {session, _} = SessionCookie.for_form(%{"retained" => true}, secret)
+    session = Map.put(session, "warden.user.user.key", [[74004], binary_part(hash, 0, 29)])
+    cookie = RailsCookies.encrypt(session, "_dawarich_session", secret)
+    token = RailsCsrf.masked_token(session)
+
+    body =
+      URI.encode_query(%{
+        "user[current_password]" => "a11rest-endpoint-password",
+        "user[email]" => "a11rest-endpoint-updated@dawarich.test",
+        "authenticity_token" => token
+      })
+
+    key_body = URI.encode_query(%{"authenticity_token" => token})
+    port = serve()
+
+    request = fn method, path, body ->
+      "#{method} #{path} HTTP/1.1\r\nHost: www.example.com\r\nAccept: text/html\r\n" <>
+        "Cookie: _dawarich_session=#{cookie}\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+        "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+    end
+
+    snapshot = fn ->
+      [[row]] =
+        Repo.query!("SELECT to_jsonb(users) FROM users WHERE id=74004", [], log: false).rows
+
+      row
+    end
+
+    cases = [
+      {[], "PUT", "/users", body},
+      {[], "POST", "/settings/generate_api_key", key_body},
+      {["api_keys"], "PUT", "/users", body},
+      {["account"], "POST", "/settings/generate_api_key", key_body},
+      {["account"], "POST", "/users", body},
+      {["account"], "POST", "/users", body <> "&_method=delete"},
+      {["account"], "PUT", "/users", body <> "&unknown=original%2Bbytes"},
+      {["api_keys"], "POST", "/settings/generate_api_key",
+       key_body <> "&unknown=original%2Bbytes"},
+      {["account"], "PUT", "/users", "user%5Bemail%5D=invalid-csrf%40dawarich.test"},
+      {["api_keys"], "POST", "/settings/generate_api_key", ""}
+    ]
+
+    for {flows, method, path, raw} <- cases do
+      Application.put_env(:dawarich, :phoenix_auth, flows)
+      before = snapshot.()
+      client = connect(port)
+      send_raw(client, request.(method, path, raw))
+      puma = accept(ctx.upstream)
+      {head, rest} = read_head(puma)
+      assert request_line(head) == "#{method} #{path} HTTP/1.1"
+      assert read_at_least(puma, rest, byte_size(raw)) == raw
+      reply(puma, "HTTP/1.1 302 Found\r\nLocation: /users/edit\r\nContent-Length: 0\r\n\r\n")
+      assert {302, headers, ""} = read_response(client)
+      assert values(headers, "x-dawarich-auth-owner") == []
+      assert snapshot.() == before
+      :gen_tcp.close(client)
+      :gen_tcp.close(puma)
+    end
+
+    Application.put_env(:dawarich, :phoenix_auth, ~w(account api_keys))
+
+    for {method, path, raw, status, owner, fields} <- [
+          {"PUT", "/users", body, 303, "native-account",
+           ~w(email updated_at reset_password_token reset_password_sent_at)},
+          {"POST", "/users", body <> "&_method=patch", 303, "native-account",
+           ~w(email updated_at reset_password_token reset_password_sent_at)},
+          {"POST", "/settings/generate_api_key", key_body, 302, "native-api-keys",
+           ~w(api_key updated_at)}
+        ] do
+      before = snapshot.()
+      client = connect(port)
+      send_raw(client, request.(method, path, raw))
+      assert {^status, headers, _} = read_response(client)
+      assert values(headers, "x-dawarich-auth-owner") == [owner]
+      assert Map.drop(snapshot.(), fields) == Map.drop(before, fields)
+
+      if owner == "native-account",
+        do: assert(snapshot.()["email"] == "a11rest-endpoint-updated@dawarich.test"),
+        else: assert(snapshot.()["api_key"] != before["api_key"])
+
+      :gen_tcp.close(client)
+    end
+
+    assert {:error, :timeout} == :gen_tcp.accept(ctx.upstream.listen, 0)
+  end
 end

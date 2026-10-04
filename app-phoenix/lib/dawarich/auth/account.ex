@@ -4,6 +4,7 @@ defmodule Dawarich.Auth.Account do
 
   schema "users" do
     field(:email, :string)
+    field(:api_key, :string, redact: true)
     field(:encrypted_password, :string, redact: true)
     field(:failed_attempts, :integer, default: 0)
     field(:locked_at, :utc_datetime_usec)
