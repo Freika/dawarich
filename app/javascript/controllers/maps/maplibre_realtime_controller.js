@@ -29,7 +29,8 @@ export default class extends Controller {
       this.connectedChannels = new Set()
       this.liveModeEnabled = this.liveModeValue
 
-      setTimeout(() => {
+      this.setupTimer = setTimeout(() => {
+        this.setupTimer = null
         try {
           this.setupChannels()
         } catch (error) {
@@ -50,6 +51,8 @@ export default class extends Controller {
   }
 
   disconnect() {
+    clearTimeout(this.setupTimer)
+    this.setupTimer = null
     clearTimeout(this.liveRefreshTimer)
     this.liveRefreshTimer = null
     clearTimeout(this.trackRefreshTimer)
@@ -85,6 +88,8 @@ export default class extends Controller {
 
     this.updateRecentPointLayerVisibility()
 
+    clearTimeout(this.setupTimer)
+    this.setupTimer = null
     if (this.channels) {
       this.channels.unsubscribeAll()
     }
