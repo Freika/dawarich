@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Monthly and yearly digest calculation workers and scheduling crons are ready behind Phoenix job ownership, with all four keys disabled by default. Rails retains digest email delivery and HTTP writes; live cron activation is a separate step.
 - Opt-in Phoenix account credential updates and current-user API-key rotation for ordinary self-hosted accounts: add `account` and `api_keys` independently to `DAWARICH_PHOENIX_AUTH` (both default OFF). Omit a key to return that mutation to Rails; `DAWARICH_RAILS_ROUTES=users,settings` controls the corresponding GET pages independently. OAuth, OTP, Cloud, account deletion and admin key rotation remain with Rails.
 - Maintenance commands in the app container: `docker exec -it dawarich_app dawarich help` lists them. `dawarich raw-data …` runs the raw-data archive tasks (status, archive, verify, clear-verified, archive-full, restore, restore-all, reset-all), `dawarich users …` activates users, makes a user an administrator, changes an email or sets a password (read from standard input), `dawarich jobs status` prints the job-ownership summary and `dawarich migrate status` shows whether this image accepts the database. The rake task names work as arguments too, e.g. `dawarich "points:raw_data:restore[1,2026,1]"`. The `bin/rails`/`rake` tasks keep working until Rails is removed.
 - Shared achievement links now show a preview of the achievement card with its geography and progress. (#3721)
