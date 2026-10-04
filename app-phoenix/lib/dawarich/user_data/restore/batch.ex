@@ -3,6 +3,20 @@ defmodule Dawarich.UserData.Restore.Batch do
   alias Dawarich.Imports.{Fence, NormalCast}
   alias Dawarich.Ingest.Ruby
 
+  def create!(repo, table, row, context) do
+    {columns, [row]} = prepare!(repo, table, [row], context)
+    names = Enum.map_join(columns, ",", &~s("#{&1}"))
+    select = Enum.map_join(columns, ",", &~s(r."#{&1}"))
+
+    Fence.run(context, fn ->
+      repo.query!(
+        "INSERT INTO #{table}(#{names}) SELECT #{select} FROM jsonb_populate_record(NULL::#{table},$1::jsonb) r RETURNING id",
+        [row],
+        log: false
+      ).num_rows
+    end)
+  end
+
   def write(repo, table, rows, context) do
     rows
     |> Enum.chunk_every(1000)
@@ -36,6 +50,12 @@ defmodule Dawarich.UserData.Restore.Batch do
   end
 
   defp prepare(repo, table, rows, context) do
+    prepare!(repo, table, rows, context)
+  rescue
+    _ -> nil
+  end
+
+  defp prepare!(repo, table, rows, context) do
     columns = hd(rows) |> Map.keys() |> Enum.sort()
 
     unless Enum.all?(rows, &(Enum.sort(Map.keys(&1)) == columns)),
@@ -57,8 +77,22 @@ defmodule Dawarich.UserData.Restore.Batch do
       end)
 
     {columns, data}
-  rescue
-    _ -> nil
+  end
+
+  defp cast("places", "source", _type, value, _context) do
+    cond do
+      value in [nil, 0, 1, 2] ->
+        value
+
+      Ruby.blank?(value) ->
+        nil
+
+      value in ["manual", "photon", "gpx_waypoint"] ->
+        Enum.find_index(~w(manual photon gpx_waypoint), &(&1 == value))
+
+      true ->
+        raise ArgumentError, "Invalid place source"
+    end
   end
 
   defp cast("notifications", "kind", _type, value, _context) do
@@ -101,6 +135,11 @@ defmodule Dawarich.UserData.Restore.Batch do
   end
 
   defp cast(_table, _name, {"timestamp", _, _}, value, context), do: timestamp(value, context)
+  defp cast(_table, _name, {"bool", _, _}, "", _context), do: nil
+
+  defp cast(_table, _name, {"bool", _, _}, value, _context),
+    do: value not in [false, 0, "0", "f", "F", "false", "FALSE", "off", "OFF"]
+
   defp cast(_table, _name, _type, value, _context), do: value
 
   defp integer(value) when is_binary(value),
