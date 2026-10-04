@@ -12,7 +12,14 @@ defmodule Dawarich.UserData.Restore.Batch do
     {"exports", "status"} => ~w(created processing completed failed),
     {"exports", "file_format"} => ~w(json gpx archive),
     {"exports", "file_type"} => ~w(points user_data),
-    {"trips", "source_status"} => ~w(active stopped)
+    {"trips", "source_status"} => ~w(active stopped),
+    {"visits", "status"} => ~w(suggested confirmed declined),
+    {"digests", "period_type"} => ~w(monthly yearly),
+    {"tracks", "dominant_mode"} =>
+      ~w(unknown stationary walking running cycling driving bus train flying boat motorcycle),
+    {"track_segments", "transportation_mode"} =>
+      ~w(unknown stationary walking running cycling driving bus train flying boat motorcycle),
+    {"track_segments", "confidence"} => ~w(low medium high)
   }
 
   def create!(repo, table, row, context) do
@@ -39,6 +46,19 @@ defmodule Dawarich.UserData.Restore.Batch do
         ).rows
 
       id
+    end)
+  end
+
+  def update!(repo, table, id, row, context) do
+    {columns, [row]} = prepare!(repo, table, [row], context)
+    assignments = Enum.map_join(columns, ",", &~s("#{&1}"=r."#{&1}"))
+
+    Fence.run(context, fn ->
+      repo.query!(
+        "UPDATE #{table} t SET #{assignments} FROM jsonb_populate_record(NULL::#{table},$1::jsonb) r WHERE t.id=$2",
+        [row, id],
+        log: false
+      )
     end)
   end
 
@@ -152,7 +172,7 @@ defmodule Dawarich.UserData.Restore.Batch do
   defp cast(_table, _name, {type, _, _}, value, _context) when type in ["varchar", "text"],
     do: NormalCast.Text.cast(value)
 
-  defp cast(_table, _name, {type, _, _}, value, _context) when type in ["int4", "int8"],
+  defp cast(_table, _name, {type, _, _}, value, _context) when type in ["int2", "int4", "int8"],
     do: integer(value)
 
   defp cast(_table, _name, {"numeric", p, s}, value, _context) do
@@ -170,7 +190,13 @@ defmodule Dawarich.UserData.Restore.Batch do
     end
   end
 
-  defp cast(_table, _name, {"timestamp", _, _}, value, context), do: timestamp(value, context)
+  defp cast(_table, _name, {type, _, _}, value, context)
+       when type in ["timestamp", "timestamptz"],
+       do: timestamp(value, context)
+
+  defp cast(_table, _name, {type, _, _}, value, _context) when type in ["float4", "float8"],
+    do: if(Ruby.blank?(value), do: nil, else: Ruby.to_f(value))
+
   defp cast(_table, _name, {"bool", _, _}, "", _context), do: nil
 
   defp cast(_table, _name, {"bool", _, _}, value, _context),
