@@ -37,19 +37,29 @@ defmodule Dawarich.Auth.TwoFactor.Totp do
       :invalid
     else
       input = String.replace(input, ~r/[\x09-\x0D ]+/, "")
-      key = decode(secret)
-
-      div(at - 30, 30)..div(at + 30, 30)
-      |> Enum.reduce(:invalid, fn timestep, result ->
-        if (is_nil(consumed) or timestep > consumed) and
-             Plug.Crypto.secure_compare(input, code(key, timestep)),
-           do: {:ok, timestep},
-           else: result
-      end)
+      match(secret, input, at, 30, consumed)
     end
   end
 
   def verify(_, _, _, _), do: :invalid
+
+  def api_verify(secret, input, at) when is_binary(secret) and is_binary(input) do
+    if Token.blank?(secret), do: :invalid, else: match(secret, input, at, 1, nil)
+  end
+
+  def api_verify(_, _, _), do: :invalid
+
+  defp match(secret, input, at, drift, consumed) do
+    key = decode(secret)
+
+    div(at - drift, 30)..div(at + drift, 30)
+    |> Enum.reduce(:invalid, fn timestep, result ->
+      if (is_nil(consumed) or timestep > consumed) and
+           Plug.Crypto.secure_compare(input, code(key, timestep)),
+         do: {:ok, timestep},
+         else: result
+    end)
+  end
 
   def provisioning_uri(secret, label, issuer \\ "Dawarich") do
     issuer = issuer |> Account.strip() |> String.replace(":", "_")

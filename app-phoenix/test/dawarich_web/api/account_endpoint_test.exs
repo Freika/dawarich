@@ -140,7 +140,8 @@ defmodule DawarichWeb.Api.AccountEndpointTest do
   end
 
   @tag :account_two_factor
-  test "two factor routes stay Rails with original body", ctx do
+  test "two factor rollback preserves original body", ctx do
+    System.put_env("DAWARICH_RAILS_SLICES", "api_account")
     before = Repo.query!("SELECT row_to_json(u)::text FROM users u WHERE id=$1", [ctx.owner]).rows
 
     for {method, target, body} <- [
