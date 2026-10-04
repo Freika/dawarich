@@ -4,32 +4,43 @@ defmodule Dawarich.ReleaseMigrations.Effects.CopyRegistrationSetting do
   alias Dawarich.RailsCache.{Marshal, Wire}
 
   def run(repo, opts \\ []) do
-    env = Keyword.get(opts, :env, System.get_env())
-    command = Keyword.fetch!(opts, :command)
-
-    with {:ok, bytes} <- command.(["GET", "dawarich/registration_enabled"]),
-         {:ok, value} <- decode(bytes, env) do
-      repo.query!(
-        "INSERT INTO phoenix.registration_setting (id, enabled) VALUES (true, $1) " <>
-          "ON CONFLICT (id) DO NOTHING",
-        [value],
-        log: false
-      )
-
-      %{rows: [[winner]]} =
-        repo.query!("SELECT enabled FROM phoenix.registration_setting WHERE id = true", [],
-          log: false
-        )
-
-      {:ok, winner}
-    else
-      _ -> {:error, :registration_copy_refused}
+    case registration(repo) do
+      [[value]] -> {:ok, value}
+      [] -> copy(repo, opts)
     end
   rescue
     _ -> {:error, :registration_copy_refused}
   catch
     _ -> {:error, :registration_copy_refused}
   end
+
+  defp copy(repo, opts) do
+    env = Keyword.get(opts, :env, System.get_env())
+    command = Keyword.fetch!(opts, :command)
+
+    with {:ok, bytes} <- command.(["GET", "dawarich/registration_enabled"]),
+         {:ok, value} <- decode(bytes, env) do
+      repo.transaction(fn ->
+        repo.query!(
+          "INSERT INTO phoenix.registration_setting (id, enabled) VALUES (true, $1) " <>
+            "ON CONFLICT (id) DO NOTHING",
+          [value],
+          log: false
+        )
+
+        [[winner]] = registration(repo)
+        winner
+      end)
+    else
+      _ -> {:error, :registration_copy_refused}
+    end
+  end
+
+  defp registration(repo),
+    do:
+      repo.query!("SELECT enabled FROM phoenix.registration_setting WHERE id = true", [],
+        log: false
+      ).rows
 
   defp decode(nil, env), do: {:ok, env["ALLOW_EMAIL_PASSWORD_REGISTRATION"] == "true"}
 

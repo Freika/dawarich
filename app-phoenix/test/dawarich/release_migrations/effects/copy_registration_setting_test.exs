@@ -52,6 +52,53 @@ defmodule Dawarich.ReleaseMigrations.Effects.CopyRegistrationSettingTest do
     end
   end
 
+  test "existing registration row including nil skips Redis and wins on rerun" do
+    for value <- [true, false, nil] do
+      Dawarich.State.put_registration_enabled(ScratchRepo, value)
+      command = fn _ -> flunk("existing singleton must not read Redis") end
+      assert {:ok, ^value} = Copy.run(ScratchRepo, command: command)
+      assert rows("SELECT enabled FROM phoenix.registration_setting") == [[value]]
+    end
+  end
+
+  test "two real copy contenders keep one singleton and a committed admin value" do
+    parent = self()
+    source = Base.decode64!(fixture()["registration"]["true"])
+
+    stale =
+      Task.async(fn ->
+        Copy.run(ScratchRepo,
+          command: fn ["GET", "dawarich/registration_enabled"] ->
+            send(parent, {:reading, self()})
+            receive do: (:continue -> {:ok, source})
+          end
+        )
+      end)
+
+    on_exit(fn -> if Process.alive?(stale.pid), do: Task.shutdown(stale, :brutal_kill) end)
+    stale_pid = stale.pid
+    assert_receive {:reading, ^stale_pid}
+    assert {:ok, true} = copy(source, false)
+
+    admin =
+      Dawarich.LockRace.hold(fn ->
+        Dawarich.State.put_registration_enabled(ScratchRepo, false)
+      end)
+
+    send(stale.pid, :continue)
+    assert :blocked = Dawarich.LockRace.settle(stale, "INSERT INTO phoenix.registration_setting%")
+    assert :ok = Dawarich.LockRace.commit(admin)
+    assert {:ok, false} = Task.await(stale)
+    assert rows("SELECT enabled FROM phoenix.registration_setting") == [[false]]
+  end
+
+  test "failed copy can retry without a phantom completion" do
+    assert {:error, :registration_copy_refused} = copy("unknown", true)
+    assert rows("SELECT enabled FROM phoenix.registration_setting") == []
+    assert {:ok, false} = copy(Base.decode64!(fixture()["registration"]["false"]), true)
+    assert rows("SELECT enabled FROM phoenix.registration_setting") == [[false]]
+  end
+
   defp fixture, do: @fixture |> File.read!() |> Jason.decode!()
   defp clear, do: rows("DELETE FROM phoenix.registration_setting")
 
