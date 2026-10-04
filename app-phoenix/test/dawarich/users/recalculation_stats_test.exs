@@ -5,6 +5,18 @@ defmodule Dawarich.Users.RecalculationStatsTest do
   alias Dawarich.Stats.CalculateMonth
   alias Dawarich.Users.Recalculation
 
+  setup do
+    pool =
+      start_supervised!({ScratchRepo, [name: nil, pool_size: 2, parameters: [timezone: "UTC"]]},
+        id: :utc_stats
+      )
+
+    ScratchRepo.put_dynamic_repo(pool)
+    on_exit(fn -> ScratchRepo.put_dynamic_repo(ScratchRepo) end)
+    start_oban(:recalculation_stats)
+    :ok
+  end
+
   test "runs all twelve months for all source years before any track parent" do
     for id <- ~w(user_all user_specific user_no_data user_missing user_deleted) do
       reset!(ScratchRepo)
@@ -21,8 +33,8 @@ defmodule Dawarich.Users.RecalculationStatsTest do
             phase: fn kind, year, _state -> send(parent, {:phase, kind, year}) end
           ]
 
-      {:ok, _} =
-        in_source_zone(fn -> Recalculation.run(ScratchRepo, :unused, args(source), options) end)
+      assert {:ok, _} =
+               Recalculation.run(ScratchRepo, :recalculation_stats, args(source), options)
 
       expected =
         for call <- source["expected"]["calls"],
@@ -62,7 +74,7 @@ defmodule Dawarich.Users.RecalculationStatsTest do
           phase: fn kind, year, _ -> send(parent, {:phase, kind, year}) end
         ]
 
-    assert {:ok, _} = Recalculation.run(ScratchRepo, :unused, args(source), opts)
+    assert {:ok, _} = Recalculation.run(ScratchRepo, :recalculation_stats, args(source), opts)
     for month <- 1..12, do: assert_receive({:month, 2025, ^month, "fr"})
     assert_receive {:phase, :tracks, 2025}
 
@@ -85,7 +97,7 @@ defmodule Dawarich.Users.RecalculationStatsTest do
     assert_raise RuntimeError, "synthetic escaping failure", fn ->
       Recalculation.run(
         ScratchRepo,
-        :unused,
+        :recalculation_stats,
         args(source),
         Keyword.put(options(source), :before_month, escaping)
       )
@@ -105,7 +117,7 @@ defmodule Dawarich.Users.RecalculationStatsTest do
     assert {:ok, %{zone: "Etc/UTC"}} =
              Recalculation.run(
                ScratchRepo,
-               :unused,
+               :recalculation_stats,
                args(nested),
                Keyword.put(options(nested), :before_month, hook)
              )
@@ -132,13 +144,6 @@ defmodule Dawarich.Users.RecalculationStatsTest do
       0 -> []
     end
   end
-
-  defp in_source_zone(fun),
-    do:
-      ScratchRepo.transaction(fn ->
-        rows("SELECT set_config('TimeZone', 'UTC', true)")
-        fun.()
-      end)
 
   defp stats,
     do:

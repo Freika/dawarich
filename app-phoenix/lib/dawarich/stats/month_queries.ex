@@ -119,6 +119,7 @@ defmodule Dawarich.Stats.MonthQueries do
 
   def fold(repo, sql, params, runs) do
     repo
+    |> then(& &1.get_dynamic_repo())
     |> Ecto.Adapters.SQL.stream(sql, params, max_rows: 2_000, log: false)
     |> Enum.reduce(runs, fn %{rows: rows}, acc -> Enum.reduce(rows, acc, &ToponymRuns.add/2) end)
   end
