@@ -3,6 +3,56 @@ defmodule Dawarich.Cable.PgStoreTest do
 
   alias Dawarich.Cable.PgStore
 
+  test "a later publisher cannot commit past an earlier uncommitted sequence" do
+    parent = self()
+
+    first =
+      Task.async(fn ->
+        ScratchRepo.transaction(fn ->
+          [[backend]] = rows("SELECT pg_backend_pid()")
+          assert {:ok, 1} = PgStore.append(ScratchRepo, "ordering", "points", "first")
+          send(parent, {:holding, backend})
+          receive(do: (:commit -> :committed))
+        end)
+      end)
+
+    assert_receive {:holding, first_backend}, 1_000
+
+    second =
+      Task.async(fn ->
+        ScratchRepo.transaction(fn ->
+          [[backend]] = rows("SELECT pg_backend_pid()")
+          send(parent, {:waiting, backend})
+          PgStore.append(ScratchRepo, "ordering", "points", "second")
+        end)
+      end)
+
+    assert_receive {:waiting, second_backend}, 1_000
+
+    try do
+      assert_blocked(second, first_backend, second_backend)
+
+      assert {:ok, %{last_seq: 0, retired_through: 0, events: []}} =
+               PgStore.snapshot(ScratchRepo, "ordering", 0)
+
+      assert {:ok, 1} = PgStore.append(ScratchRepo, "independent", "points", "other")
+
+      assert {:ok, %{events: [[1, "points", "other"]]}} =
+               PgStore.snapshot(ScratchRepo, "independent", 0)
+    after
+      send(first.pid, :commit)
+    end
+
+    assert Task.await(first) == {:ok, :committed}
+    assert Task.await(second) == {:ok, {:ok, 2}}
+
+    assert {:ok, %{last_seq: 2, retired_through: 0, events: events}} =
+             PgStore.snapshot(ScratchRepo, "ordering", 0)
+
+    assert events == [[1, "points", "first"], [2, "points", "second"]]
+    assert {:ok, %{events: []}} = PgStore.snapshot(ScratchRepo, "ordering", 2)
+  end
+
   test "append is invisible until its outer transaction commits and preserves binary payload" do
     parent = self()
     payloads = [~s({ "value": "München", "n": 1 }), <<0, 255, 1>>, "[1,\n 2]"]
@@ -84,5 +134,23 @@ defmodule Dawarich.Cable.PgStoreTest do
     reset!(ScratchRepo)
     assert rows("SELECT * FROM phoenix.cable_streams") == []
     assert rows("SELECT * FROM phoenix.cable_events") == []
+  end
+
+  defp assert_blocked(
+         task,
+         holder,
+         waiter,
+         deadline \\ System.monotonic_time(:millisecond) + 1_000
+       ) do
+    assert System.monotonic_time(:millisecond) < deadline, "publisher never blocked"
+
+    case rows("SELECT $1::int = ANY(pg_blocking_pids($2::int))", [holder, waiter]) do
+      [[true]] ->
+        :ok
+
+      [[false]] ->
+        assert Task.yield(task, 0) == nil, "publisher committed before the earlier transaction"
+        assert_blocked(task, holder, waiter, deadline)
+    end
   end
 end
