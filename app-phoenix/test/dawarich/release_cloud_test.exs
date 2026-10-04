@@ -30,7 +30,7 @@ defmodule Dawarich.ReleaseCloudTest do
     test "is :schemas_behind without the phoenix ledger and does not create it" do
       assert Release.migrate() == :ok
       Repo.query!("DROP TABLE phoenix.phoenix_schema_migrations")
-      on_exit(&drop_schemas_and_role/0)
+      on_exit(&restore_schemas_and_role/0)
 
       assert Release.readiness() == :schemas_behind
       refute relation?("phoenix.phoenix_schema_migrations")
@@ -96,7 +96,7 @@ defmodule Dawarich.ReleaseCloudTest do
     setup do
       drop_schemas_and_role()
       Repo.query!("CREATE ROLE #{@role} LOGIN PASSWORD '#{@password}'")
-      on_exit(&drop_schemas_and_role/0)
+      on_exit(&restore_schemas_and_role/0)
 
       pool =
         start_supervised!(
@@ -125,6 +125,34 @@ defmodule Dawarich.ReleaseCloudTest do
       assert error.postgres.code == :insufficient_privilege
       assert with_pool(pool, &Release.readiness/0) == :schemas_behind
     end
+  end
+
+  test "cloud schema cleanup leaves a later recovery mail consumer able to enqueue" do
+    assert Release.migrate() == :ok
+    Repo.query!("DROP TABLE phoenix.phoenix_schema_migrations")
+    restore_schemas_and_role()
+
+    notification = %Dawarich.Auth.Recovery.Notification{
+      kind: :reset_password_instructions,
+      user_id: 1,
+      raw: "schema-isolation-token",
+      digest: "schema-isolation-digest",
+      locale: "en"
+    }
+
+    assert {:error, :probe_complete} =
+             Repo.transaction(fn ->
+               assert :ok = Dawarich.Auth.Recovery.MailWorker.enqueue(notification)
+
+               assert Repo.query!(
+                        "SELECT queue FROM oban.oban_jobs WHERE args->>'digest'=$1",
+                        [notification.digest]
+                      ).rows == [["mailers"]]
+
+               Repo.rollback(:probe_complete)
+             end)
+
+    assert Release.readiness() == :ready
   end
 
   test "Oban peers lead only with a per-container node name taken from HOSTNAME" do
@@ -178,6 +206,11 @@ defmodule Dawarich.ReleaseCloudTest do
     fun.()
   after
     Repo.put_dynamic_repo(Repo)
+  end
+
+  defp restore_schemas_and_role do
+    drop_schemas_and_role()
+    Release.migrate()
   end
 
   defp drop_schemas_and_role do

@@ -115,10 +115,10 @@ defmodule Dawarich.Auth.HttpBoundaryTest do
     assert decoded["_csrf_token"] == token
   end
 
-  test "login form escapes submitted email and alert HTML" do
-    html = AuthForm.render("token", "\"><script>alert(1)</script>", "<script>bad</script>")
+  test "login form escapes the submitted email and keeps the remember-me hidden field" do
+    html = AuthForm.render("token", "\"><script>alert(1)</script>")
     refute html =~ "<script>"
     assert html =~ "&lt;script&gt;"
-    assert html =~ "name=\"user[remember_me]\" value=\"0\""
+    assert html =~ "name=\"user[remember_me]\" type=\"hidden\" value=\"0\""
   end
 end

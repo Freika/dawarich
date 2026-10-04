@@ -17,8 +17,10 @@ defmodule DawarichWeb.AuthRecovery.Http do
   ]
   def init(opts), do: opts
 
+  def route?(conn), do: {conn.method, conn.request_path} in @routes
+
   def call(conn, opts) do
-    if Keyword.get(opts, :enabled, false) == true and {conn.method, conn.request_path} in @routes and
+    if Keyword.get(opts, :enabled, false) == true and route?(conn) and
          Admission.headers(conn.req_headers) == :ok do
       conn = conn |> DawarichWeb.HostAuthorization.call([]) |> DawarichWeb.ForceSSL.call([])
       if conn.halted, do: conn, else: admit(conn, opts)
@@ -82,10 +84,7 @@ defmodule DawarichWeb.AuthRecovery.Http do
                  ) do
               dispatch(conn, method, params, opts, context)
             else
-              conn
-              |> put_resp_content_type("text/html")
-              |> send_resp(422, "Invalid authenticity token")
-              |> halt()
+              fallback(conn, opts)
             end
           else
             _ -> fallback(conn, opts)
@@ -119,7 +118,7 @@ defmodule DawarichWeb.AuthRecovery.Http do
         conn
         |> AuthCookie.session({result.session, cookie})
         |> headers()
-        |> put_resp_header("location", result.location)
+        |> put_resp_header("location", RequestURL.base(conn) <> result.location)
         |> send_resp(result.status, "")
         |> halt()
 

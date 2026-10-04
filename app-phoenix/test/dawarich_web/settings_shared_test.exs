@@ -54,6 +54,28 @@ defmodule DawarichWeb.SettingsSharedTest do
     assert cloud |> LazyHTML.query("a[role='tab']") |> Enum.count() == 3
   end
 
+  test "settings navigation marks users instance and background active only on their own pages" do
+    for {active, path} <- [
+          {"users", "/settings/users"},
+          {"instance", "/admin/settings"},
+          {"background_jobs", "/settings/background_jobs"}
+        ] do
+      html =
+        render_component(&SettingsParts.navigation/1,
+          locale: "en",
+          active: active,
+          self_hosted: true,
+          admin: true,
+          two_factor: false
+        )
+
+      assert html
+             |> LazyHTML.from_fragment()
+             |> LazyHTML.query("a.tab-active")
+             |> LazyHTML.attribute("href") == [path]
+    end
+  end
+
   test "the Stimulus comparator takes the caller's selector" do
     html =
       ~s(<div data-controller="upload" data-upload-url-value="/x"><input data-upload-target="input"></div><a data-turbo-confirm="Sure?" href="/y">y</a>)

@@ -196,8 +196,9 @@ defmodule Dawarich.ReleaseMigration do
 
   def job(class, args \\ [], wait_seconds \\ 0), do: {class, args, wait_seconds}
 
-  def self_hosted? do
-    System.get_env("SELF_HOSTED", "true")
+  def self_hosted?(env \\ System.get_env()) do
+    env
+    |> Map.get("SELF_HOSTED", "true")
     |> String.replace(["\"", "'"], "")
     |> ruby_strip()
     |> String.downcase()

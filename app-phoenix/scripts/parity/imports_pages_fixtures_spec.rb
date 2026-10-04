@@ -19,7 +19,13 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
     ActionController::Base.allow_forgery_protection = false
   end
 
-  def write_json(name, data) = File.write(dir.join(name), "#{JSON.pretty_generate(data)}\n")
+  def write_json(name, data)
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      File.write(dir.join(name), "#{JSON.pretty_generate(data)}\n")
+    else
+      expect(JSON.parse(dir.join(name).read)).to eq(data.as_json)
+    end
+  end
 
   def users
     [
@@ -120,8 +126,12 @@ RSpec.describe 'Phoenix fixtures: the new-import, GPX import and preparing-downl
         doc = Nokogiri::HTML5(response.body)
         doc.css('input[name="authenticity_token"]').each { |node| node['value'] = 'CSRF' }
         doc.css('a[href*="/rails/active_storage/"]').each { |node| node['href'] = 'ORIGINAL' }
-        File.write(dir.join("pages/#{name}.html"),
-                   doc.at_css('body > div.container > div.w-full > div.flex').inner_html)
+        html = doc.at_css('body > div.container > div.w-full > div.flex').inner_html
+        if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+          File.write(dir.join("pages/#{name}.html"), html)
+        else
+          expect(dir.join("pages/#{name}.html").read).to eq(html)
+        end
         sign_out :user
         { name:, user_id:, path:, status:, title: doc.at_css('title').text }
       end

@@ -77,6 +77,19 @@ curl -fsS "http://127.0.0.1:$DAWARICH_APP_PORT/api/v1/health" | grep -q '"status
 docker exec a0_db psql -U postgres -d dawarich_development -Atc \
   "SELECT string_agg(nspname, ',' ORDER BY nspname) FROM pg_namespace WHERE nspname IN ('oban','phoenix')" \
   | grep -qx 'oban,phoenix' || fail "schemas missing"
+docker exec a0_app dawarich help | grep -q 'raw-data restore USER_ID YEAR MONTH' || fail "dawarich help is not routed to the CLI"
+docker exec a0_app dawarich migrate status | grep -qx 'public schema: current' || fail "migrate status does not see a current public schema"
+docker exec a0_app dawarich jobs status | grep -q '"summary"' || fail "jobs status did not print its JSON"
+[ "$(docker exec a0_app dawarich 'points:raw_data:status' | head -1 | wc -c | tr -d ' ')" = 139 ] || fail "raw-data status through the rake name failed or re-encoded its header"
+docker exec -u 0 a0_app dawarich raw-data status >/dev/null || fail "the CLI fails as root"
+docker exec a0_app sh -c 'printf "%s\n" phoenix-a12e-smoke-login-not-for-production | dawarich users password demo@dawarich.app' >/dev/null || fail "users password failed"
+[ "$(docker exec a0_app bin/rails runner 'print User.find_by(email: "demo@dawarich.app").valid_password?("phoenix-a12e-smoke-login-not-for-production")' 2>/dev/null | tail -1)" = true ] \
+  || fail "Rails does not accept the password the CLI set"
+set +e
+docker exec a0_app dawarich jobs resume 00000000-0000-4000-8000-00000000a12e >"$work/resume.out" 2>&1
+resume=$?
+set -e
+[ "$resume" -eq 1 ] && grep -q 'is not a failed or stalled release operation' "$work/resume.out" || fail "jobs resume did not reach the release operations (exit $resume)"
 echo "docker stats: $(docker stats --no-stream --format '{{.Name}} {{.MemUsage}} {{.CPUPerc}}' a0_app)"
 
 docker exec a0_app sh -c 'cat /proc/net/tcp /proc/net/tcp6' | awk '$4 == "0A" {print $2}' >"$work/listeners"

@@ -8,10 +8,14 @@ defmodule DawarichWeb.Strangler do
 
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
-  @page_pipelines [:browser, :insights, :rails_frame, :sharing, :sharing_unlock]
+  @page_pipelines [:browser, :insights, :rails_frame, :sharing, :sharing_unlock, :trial_resume]
   @keys %{"s" => "sharing"}
 
   @constraints %{
+    "/settings/users/:id" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/settings/users/:id/edit" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/tracks/:track_id/segments" => %{"track_id" => ~r/\A\d{1,18}\z/},
+    "/points/:id/address" => %{"id" => ~r/\A\d{1,18}\z/},
     "/api/v1/photos/:id/thumbnail" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
     "/api/v1/photos/:id/thumbnail.jpg" => %{"id" => ~r/\A[0-9A-Za-z_-]{1,128}\z/},
     "/api/v1/places/:id" => %{"id" => ~r/\A\d{1,18}\z/},
@@ -22,6 +26,7 @@ defmodule DawarichWeb.Strangler do
     "/api/v1/families/location_requests/:id/accept" => %{"id" => ~r/\A\d{1,18}\z/},
     "/api/v1/families/location_requests/:id/decline" => %{"id" => ~r/\A\d{1,18}\z/},
     "/places/:id" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/tags/:id/edit" => %{"id" => ~r/\A\d{1,18}\z/},
     "/stats/:year" => %{"year" => ~r/\A\d{4}\z/},
     "/stats/:year/:month" => %{"year" => ~r/\A\d{4}\z/, "month" => ~r/\A(0?[1-9]|1[0-2])\z/},
     "/digests/:year" => %{"year" => ~r/\A\d{4}\z/},
@@ -79,16 +84,16 @@ defmodule DawarichWeb.Strangler do
     false
   end
 
-  defp rails_constraints?(%{route: route, path_params: params}),
+  def rails_constraints?(%{route: route, path_params: params}),
     do:
       Enum.all?(Map.get(@constraints, route, %{}), fn {name, pattern} ->
         Regex.match?(pattern, params[name])
       end)
 
-  defp handed_back?([segment | _]),
+  def handed_back?([segment | _]),
     do: Map.get(@keys, segment, segment) in Application.get_env(:dawarich, :rails_routes, [])
 
-  defp handed_back?([]), do: false
+  def handed_back?([]), do: "home" in Application.get_env(:dawarich, :rails_routes, [])
 
   def page_request?(conn) do
     not String.contains?(List.last(conn.path_info) || "", ".") and

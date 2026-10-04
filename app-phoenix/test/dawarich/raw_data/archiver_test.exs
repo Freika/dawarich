@@ -309,4 +309,16 @@ defmodule Dawarich.RawData.ArchiverTest do
     assert count("active_storage_blobs") == 0
     assert count("phoenix.raw_data_archive_chunks") == 0
   end
+
+  test "on_result receives one result per month chunk", ctx do
+    Wave6Fixtures.point!(ctx.user, %{"raw_data" => %{"a" => 1}, "timestamp" => 1_577_836_800})
+    Wave6Fixtures.point!(ctx.user, %{"raw_data" => %{"a" => 2}, "timestamp" => @february})
+    me = self()
+
+    pass(ctx, on_result: &send(me, {:result, &1}))
+
+    assert_received {:result, {:ok, 1}}
+    assert_received {:result, {:ok, 1}}
+    refute_received {:result, _}
+  end
 end

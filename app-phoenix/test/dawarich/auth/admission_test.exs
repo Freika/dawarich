@@ -47,4 +47,22 @@ defmodule Dawarich.Auth.AdmissionTest do
 
     assert {:ok, %{"user[remember_me]" => "0"}} = Admission.form("user%5Bremember_me%5D=0", "")
   end
+
+  test "oidc?/1 is Rails' OIDC/Google switch" do
+    refute Admission.oidc?(%{})
+
+    assert Admission.oidc?(%{
+             "GOOGLE_OAUTH_CLIENT_ID" => "g",
+             "GOOGLE_OAUTH_CLIENT_SECRET" => "s"
+           })
+
+    refute Admission.oidc?(%{
+             "GOOGLE_OAUTH_CLIENT_ID" => "g",
+             "GOOGLE_OAUTH_CLIENT_SECRET" => " "
+           })
+
+    assert Admission.oidc?(%{"OIDC_CLIENT_ID" => "o", "OIDC_CLIENT_SECRET" => "s"})
+    assert Admission.oidc?(%{"OIDC_CLIENT_ID" => "o", "OIDC_PKCE_ENABLED" => " TRUE "})
+    refute Admission.oidc?(%{"OIDC_CLIENT_ID" => "o", "OIDC_PKCE_ENABLED" => "yes"})
+  end
 end

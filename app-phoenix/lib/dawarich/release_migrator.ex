@@ -52,32 +52,50 @@ defmodule Dawarich.ReleaseMigrator do
     :dawarich |> Application.app_dir("priv/release_migrations/baseline.sql") |> File.read!()
   end
 
-  defp preflight(repo) do
-    with :ok <- Lease.require_two_connections(repo) do
-      %{rows: [[timezone, schema, others]]} = repo.query!(@preflight_sql, [], log: false)
-      ledger = read_versions(repo, "schema_migrations")
+  def status(repo, opts \\ []) do
+    releases = Keyword.get_lazy(opts, :releases, &ReleaseMigrations.all/0)
+    known = Enum.flat_map(releases, &ReleaseMigration.versions/1)
 
-      cond do
-        timezone != "UTC" ->
-          {:error, {:timezone, timezone}}
+    with :ok <- checks(repo) do
+      case Ledger.classify(read_versions(repo, "schema_migrations"), known) do
+        :fresh ->
+          {:ok, :fresh}
 
-        rails = rails_migrator(repo) ->
-          {:error, {:rails_migrating, rails}}
+        :current ->
+          {:ok, :current}
 
-        schema != "public" or others != [] ->
-          {:error, {:foreign_schema, schema, others}}
+        {:pending, versions} ->
+          {:ok, {:pending, Enum.map(versions, &{release_of(releases, &1), &1})}}
 
-        count = Ledger.not_dawarich(ledger) ->
-          {:error, {:not_dawarich, count}}
-
-        release = Ledger.below_floor(ledger) ->
-          {:error, {:below_floor, release}}
-
-        true ->
-          :ok
+        refusal ->
+          {:error, refusal}
       end
     end
   end
+
+  defp preflight(repo) do
+    with :ok <- Lease.require_two_connections(repo), do: checks(repo)
+  end
+
+  defp checks(repo) do
+    %{rows: [[timezone, schema, others]]} = repo.query!(@preflight_sql, [], log: false)
+    ledger = read_versions(repo, "schema_migrations")
+
+    cond do
+      timezone != "UTC" -> {:error, {:timezone, timezone}}
+      rails = rails_migrator(repo) -> {:error, {:rails_migrating, rails}}
+      schema != "public" or others != [] -> {:error, {:foreign_schema, schema, others}}
+      count = Ledger.not_dawarich(ledger) -> {:error, {:not_dawarich, count}}
+      release = Ledger.below_floor(ledger) -> {:error, {:below_floor, release}}
+      true -> :ok
+    end
+  end
+
+  defp release_of(releases, version),
+    do:
+      Enum.find_value(releases, fn module ->
+        if version in ReleaseMigration.versions(module), do: module.release()
+      end)
 
   defp rails_migrator(repo) do
     %{rows: [[database]]} = repo.query!("SELECT current_database()::text", [], log: false)
