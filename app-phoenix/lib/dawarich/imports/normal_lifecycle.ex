@@ -7,7 +7,8 @@ defmodule Dawarich.Imports.NormalLifecycle do
     LeaseLost,
     NormalPreparation,
     Postprocessing,
-    Tempfiles
+    Tempfiles,
+    ZipFanout
   }
 
   alias Dawarich.Imports.Kml.Kmz
@@ -25,6 +26,9 @@ defmodule Dawarich.Imports.NormalLifecycle do
           {:legacy, _} = legacy ->
             legacy
 
+          :removed ->
+            :ok
+
           :ok ->
             finish(lease, context)
             :ok
@@ -37,10 +41,26 @@ defmodule Dawarich.Imports.NormalLifecycle do
     Tempfiles.with_files(fn adopt ->
       case NormalPreparation.download(lease, state, context, adopt) do
         {:file, path, filename} -> run_import(lease, state, context, path, filename)
+        {:archive, path} -> run_archive(lease, state, context, path)
         {:legacy, _} = legacy -> legacy
         {:error, error, stack} -> failure(lease, state.import, context, error, stack)
       end
     end)
+  end
+
+  defp run_archive(lease, state, context, path) do
+    ImportState.start!(lease, clock(context))
+    publish(lease, context)
+
+    case ZipFanout.call(lease, path, context) do
+      :removed ->
+        :removed
+
+      {:error, error, stack} ->
+        failure(lease, state.import, context, error, stack)
+        ImportState.complete!(lease, clock(context))
+        :ok
+    end
   end
 
   defp run_import(lease, state, context, path, filename) do

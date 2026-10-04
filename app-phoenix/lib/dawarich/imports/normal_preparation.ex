@@ -19,7 +19,7 @@ defmodule Dawarich.Imports.NormalPreparation do
           {:legacy, :user_data_archive}
 
         :multi_entry ->
-          {:legacy, :multi_entry}
+          {:archive, path}
 
         {:single_entry, entry} ->
           path = ArchivePaths.extract(path, entry, opts)

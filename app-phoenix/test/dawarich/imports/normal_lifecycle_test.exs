@@ -147,6 +147,83 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     end
   end
 
+  test "plain and client-wrapped KMZ have different whole-create effects", c do
+    for name <- ~w(kmz_plain kmz_wrapped) do
+      reset!(ScratchRepo)
+      c = fixture(c, name)
+      assert {:ok, :ok} = run(c)
+
+      if name == "kmz_plain" do
+        assert [] = rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
+        assert_archive_children(c)
+      else
+        assert [[2, 1]] = rows("SELECT status,raw_points FROM imports WHERE id=$1", [c.import.id])
+        assert [] = rows("SELECT child_id FROM phoenix.import_archive_children")
+        assert [[1]] = rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
+      end
+
+      assert_clean(c)
+    end
+  end
+
+  test "whole-create fanout uses complete build then enqueue order", c do
+    for name <- ~w(zip_known_preference zip_later_child_failure unsupported_single) do
+      reset!(ScratchRepo)
+      c = fixture(c, name)
+      assert {:ok, :ok} = run(c)
+      assert_archive_children(c)
+      parent = c.expected["parent"]
+
+      if parent do
+        assert [[3, parent["error_message"]]] ==
+                 rows("SELECT status,error_message FROM imports WHERE id=$1", [c.import.id])
+
+        assert [[title, content]] = rows("SELECT title,content FROM notifications")
+        [expected_title, expected_content, _] = hd(c.expected["notifications"])
+        assert title == expected_title
+        assert String.starts_with?(content, hd(String.split(expected_content, "/Users/")))
+      else
+        assert [] = rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
+      end
+
+      ids =
+        for job <- c.expected["jobs"], job["type"] == "Import::ProcessJob", do: hd(job["args"])
+
+      assert Enum.sort(ids) ==
+               rows(
+                 "SELECT (payload->'command_payload'->>'import_id')::bigint FROM phoenix.rails_commands WHERE payload->>'command_type'='imports.process_normal' UNION ALL SELECT (payload->>'import_id')::bigint FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY 1"
+               )
+               |> List.flatten()
+
+      assert Processed.done?(ScratchRepo, c.job.args["event_id"])
+      assert_clean(c)
+    end
+  end
+
+  defp assert_archive_children(c) do
+    initial = Enum.map(c.expected["initial_imports"], & &1["id"])
+    children = Enum.reject(c.expected["children"], &(&1["id"] in initial))
+
+    assert rows(
+             "SELECT id,name,status FROM imports WHERE id<>$1 AND NOT(id=ANY($2)) ORDER BY id",
+             [c.import.id, initial]
+           ) == Enum.map(children, &[&1["id"], &1["name"], 0])
+
+    for child <- children do
+      assert [[key, filename, type]] =
+               rows(
+                 "SELECT b.key,b.filename,b.content_type FROM active_storage_attachments a JOIN active_storage_blobs b ON b.id=a.blob_id WHERE a.record_type='Import' AND a.record_id=$1",
+                 [child["id"]]
+               )
+
+      assert [filename, type, File.read!(Dawarich.Storage.disk_path(c.root, key))] == [
+               child["file"]["filename"],
+               child["file"]["content_type"],
+               child["file"]["bytes"]
+             ]
+    end
+  end
+
   defp fixture(c, name), do: Map.merge(c, NormalFormats.whole!(name, ScratchRepo, c.root))
 
   defp run(c),
