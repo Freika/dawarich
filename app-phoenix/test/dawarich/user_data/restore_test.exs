@@ -92,6 +92,40 @@ defmodule Dawarich.UserData.RestoreTest do
   end
 
   @tag :tmp_dir
+  test "post-commit storage failure preserves Rails counts rows and notifications", %{
+    tmp_dir: dir
+  } do
+    c = UserDataSeeds.seed!("v2", ScratchRepo)
+
+    expected =
+      Path.expand("../../fixtures/user_data/capture.json", __DIR__)
+      |> File.read!()
+      |> Jason.decode!()
+      |> Map.fetch!("post_commit_storage_failure")
+
+    upload = fn _storage, _path, _filename, _type, _key ->
+      refute ScratchRepo.in_transaction?()
+      assert [[3]] == rows("SELECT count(*) FROM points")
+      assert List.last(notes(c.user_id))["content"] =~ "3"
+      raise expected["error"]["message"]
+    end
+
+    context = c.context |> Map.put(:temp_dir, dir) |> Map.put(:upload, upload)
+
+    assert_raise RuntimeError, expected["error"]["message"], fn ->
+      Restore.call(ScratchRepo, c.user_id, c.archive_path, context)
+    end
+
+    assert [[length(expected["rows"]["points"])]] == rows("SELECT count(*) FROM points")
+    assert [[3]] == rows("SELECT count(*) FROM active_storage_attachments")
+
+    assert notes(c.user_id) ==
+             Enum.map(expected["notifications"], &Map.take(&1, ~w(title content kind)))
+
+    assert [] == File.ls!(dir)
+  end
+
+  @tag :tmp_dir
   test "post-commit anomaly failure cannot undo restored data", %{tmp_dir: dir} do
     c = UserDataSeeds.seed!("v2", ScratchRepo)
 

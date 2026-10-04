@@ -2,7 +2,7 @@ defmodule Dawarich.UserData.Restore do
   @moduledoc false
   require Logger
   alias Dawarich.UserData.{Archive, Versions}
-  alias Dawarich.UserData.Restore.{V1, V2, Messages}
+  alias Dawarich.UserData.Restore.{V1, V2, Messages, Files}
   alias Dawarich.Imports.Fence
 
   @entities ~w(areas places tags taggings imports exports trips stats digests notifications visits tracks points raw_data_archives)
@@ -17,33 +17,35 @@ defmodule Dawarich.UserData.Restore do
   def call(repo, user, path, context, opts \\ []) do
     stats =
       Archive.with_directory(path, context, fn directory ->
-        Fence.run(context, fn ->
-          {:ok, stats} =
-            repo.transaction(fn ->
-              stats =
-                case Versions.detect(directory) do
-                  1 ->
-                    V1.call(repo, user, directory, context)
+        Files.with_uploads(context, fn context ->
+          Fence.run(context, fn ->
+            {:ok, stats} =
+              repo.transaction(fn ->
+                stats =
+                  case Versions.detect(directory) do
+                    1 ->
+                      V1.call(repo, user, directory, context)
 
-                  2 ->
-                    V2.call(repo, user, directory, context)
+                    2 ->
+                      V2.call(repo, user, directory, context)
 
-                  version ->
-                    raise elem(
-                            Dawarich.I18n.t(
-                              locale(repo, user, context),
-                              "services.users.import_data.unsupported_format_version",
-                              %{"version" => version}
-                            ),
-                            1
-                          )
-                end
+                    version ->
+                      raise elem(
+                              Dawarich.I18n.t(
+                                locale(repo, user, context),
+                                "services.users.import_data.unsupported_format_version",
+                                %{"version" => version}
+                              ),
+                              1
+                            )
+                  end
 
-              Messages.success(repo, user, stats, context)
-              stats
-            end)
+                Messages.success(repo, user, stats, context)
+                stats
+              end)
 
-          stats
+            stats
+          end)
         end)
       end)
 
