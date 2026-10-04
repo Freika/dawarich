@@ -12,6 +12,8 @@ defmodule DawarichWeb.Strangler do
   @keys %{"s" => "sharing"}
 
   @constraints %{
+    "/route_videos/:id" => %{"id" => ~r/\A\d{1,18}\z/},
+    "/visits/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/settings/users/:id" => %{"id" => ~r/\A\d{1,18}\z/},
     "/settings/users/:id/edit" => %{"id" => ~r/\A\d{1,18}\z/},
     "/tracks/:track_id/segments" => %{"track_id" => ~r/\A\d{1,18}\z/},

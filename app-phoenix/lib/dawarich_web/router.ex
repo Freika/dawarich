@@ -2,6 +2,7 @@ defmodule DawarichWeb.Router do
   use Phoenix.Router
   import Phoenix.LiveView.Router
   import DawarichWeb.AchievementRoutes
+  import DawarichWeb.A8Routes
   import DawarichWeb.PageRoutes
   import DawarichWeb.A10Routes
   import DawarichWeb.ApiRoutes
@@ -143,6 +144,7 @@ defmodule DawarichWeb.Router do
   page_routes()
   a10_routes()
   map_frame_routes()
+  a8_routes()
 
   defp put_api_tag(conn, tag), do: Plug.Conn.assign(conn, :api_tag, tag)
 

@@ -159,30 +159,46 @@ defmodule Dawarich.Test.FrameSeeds do
         }
       ])
 
-  @tables ~w(places areas tags taggings visits place_visits tracks track_segments points stats)
+  @tables ~w(users families family_memberships places areas tags visits place_visits notes tracks track_segments points stats taggings active_storage_blobs route_videos active_storage_attachments)
 
   def load(name), do: "test/fixtures/map_frames/#{name}.json" |> File.read!() |> Jason.decode!()
 
-  def seed!(%{"user" => nil}), do: nil
+  def seed!(state, repo \\ Repo)
+  def seed!(%{"user" => nil}, _repo), do: nil
 
-  def seed!(%{"user" => u, "rows" => rows}) do
-    RailsUser.insert!(%{
-      id: u["id"],
-      email: u["email"],
-      theme: u["theme"],
-      settings: u["settings"],
-      admin: u["admin"],
-      status: u["status"],
-      plan: u["plan"],
-      active_until: naive(u["active_until"]),
-      subscription_source: u["subscription_source"],
-      changelog_consent: u["changelog_consent"],
-      api_key: u["api_key"],
-      visits_redetected_at: naive(u["visits_redetected_at"])
-    })
+  def seed!(%{"user" => u, "rows" => rows}, repo) do
+    RailsUser.insert!(user_attrs(u), repo)
 
-    for table <- @tables, row <- Map.get(rows, table, []), do: ApiGolden.insert!(table, row)
-    Dawarich.Accounts.get(u["id"])
+    for table <- @tables,
+        row <- Map.get(rows, table, []),
+        row["id"] != u["id"] or table != "users" do
+      row =
+        if table == "family_memberships",
+          do: Map.update!(row, "role", &Map.get(%{"owner" => 0, "member" => 1}, &1, &1)),
+          else: row
+
+      row =
+        if table == "active_storage_blobs" and is_map(row["metadata"]),
+          do: Map.update!(row, "metadata", &Jason.encode!/1),
+          else: row
+
+      if table == "users",
+        do: RailsUser.insert!(user_attrs(row), repo),
+        else: ApiGolden.insert!(table, row, repo)
+    end
+
+    repo.get(Dawarich.Accounts.User, u["id"])
+  end
+
+  defp user_attrs(user) do
+    Map.new(user, fn {key, value} ->
+      value =
+        if key in ~w(active_until visits_redetected_at created_at updated_at deleted_at),
+          do: naive(value),
+          else: value
+
+      {String.to_atom(key), value}
+    end)
   end
 
   defp naive(nil), do: nil

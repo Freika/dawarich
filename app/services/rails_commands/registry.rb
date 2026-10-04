@@ -208,6 +208,7 @@ module RailsCommands
      .merge(Imports::PreparedDownloadPurgeCommands::HANDLERS)
      .merge(Imports::DestroyCommands::HANDLERS)
      .merge(Imports::ExtractionCommands::HANDLERS)
+     .merge(A8Handlers::HANDLERS)
      .merge(
        'imports.resume' => {
          guard: 'Durable event receipt and per-import lease; repeats cannot restart a completed receipt',

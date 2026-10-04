@@ -61,6 +61,7 @@ if config_env() != :test do
     app_version_checking: 1,
     mailers: 2,
     trips: 2,
+    route_videos: 1,
     maintenance: 1,
     exports: 1,
     projections: 1,

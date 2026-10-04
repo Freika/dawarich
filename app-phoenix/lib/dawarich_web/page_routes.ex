@@ -109,6 +109,10 @@ defmodule DawarichWeb.PageRoutes do
           live "/settings/general", DawarichWeb.SettingsLive.General, :index,
             container: {:div, class: "contents"}
 
+          live "/settings/visits", DawarichWeb.SettingsLive.Visits, :index,
+            container: {:div, class: "contents"},
+            metadata: %{rails_gate: {DawarichWeb.A8Gate, :settings?}}
+
           live "/settings/integrations", DawarichWeb.SettingsLive.Integrations, :index,
             container: {:div, class: "contents"}
 

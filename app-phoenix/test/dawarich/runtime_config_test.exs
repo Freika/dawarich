@@ -34,6 +34,7 @@ defmodule Dawarich.RuntimeConfigTest do
              app_version_checking: 1,
              mailers: 2,
              trips: 2,
+             route_videos: 1,
              maintenance: 1,
              exports: 1,
              projections: 1,
@@ -44,7 +45,7 @@ defmodule Dawarich.RuntimeConfigTest do
              extractions: 1
            ]
 
-    assert repo[:pool_size] == 23
+    assert repo[:pool_size] == 24
     assert oban[:peer] == Oban.Peers.Database
     assert oban[:stager] == {Oban.Stager, []}
     assert oban[:pruner] == [max_age: {1, :day}]
@@ -54,10 +55,10 @@ defmodule Dawarich.RuntimeConfigTest do
 
   test "the pool also covers Phoenix-served requests, one connection per Puma thread" do
     assert {repo, _} = prod(%{"RAILS_MAX_THREADS" => "10"})
-    assert repo[:pool_size] == 28
+    assert repo[:pool_size] == 29
 
     assert {repo, _} = prod(%{"RAILS_MAX_THREADS" => ""})
-    assert repo[:pool_size] == 23
+    assert repo[:pool_size] == 24
   end
 
   test "reads the routes handed back to Rails, trimmed and without blanks" do
@@ -111,11 +112,11 @@ defmodule Dawarich.RuntimeConfigTest do
            ]
 
     assert repo[:pool_size] == Enum.sum(Keyword.values(oban[:queues])) + 3 + 5
-    assert repo[:pool_size] == 23
+    assert repo[:pool_size] == 24
 
     assert {repo10, oban10} = prod(%{"RAILS_MAX_THREADS" => "10"})
     assert repo10[:pool_size] == Enum.sum(Keyword.values(oban10[:queues])) + 3 + 10
-    assert repo10[:pool_size] == 28
+    assert repo10[:pool_size] == 29
   end
 
   test "every wave-5b worker's queue is configured and times out before Lifeline" do
@@ -170,7 +171,7 @@ defmodule Dawarich.RuntimeConfigTest do
     end
 
     assert oban[:queues][:maintenance] == 1
-    assert repo[:pool_size] == 23
+    assert repo[:pool_size] == 24
   end
 
   test "GPX extraction uses the measured M2 production timeout" do

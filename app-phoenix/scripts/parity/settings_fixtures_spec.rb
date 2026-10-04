@@ -335,6 +335,152 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
       svg: ResponsiveQrSvg.call(payload) }
   end
 
+  context 'A8 visit settings' do
+    let(:now) { Time.utc(2026, 10, 3, 10, 0, 0) }
+
+    def a8_settings_json(path, data)
+      File.write(path, "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2)}\n")
+    end
+
+    def a8_settings_user(id, plan: :pro, settings: {})
+      user = member(id, plan:, consent: :declined, settings:)
+      user.update_columns(visits_redetected_at: nil, theme: 'dark')
+      user.reload
+    end
+
+    def a8_settings_graph(user, others = [])
+      ids = [user, *others].map(&:id)
+      { users: [user, *others].map { user_json(_1).merge(visits_redetected_at: iso(_1.visits_redetected_at)) },
+        families: Family.where(creator_id: ids).order(:id).map do
+          _1.attributes.transform_values do |v|
+            v.respond_to?(:utc) ? iso(v) : v
+          end
+        end,
+        family_memberships: Family::Membership.where(user_id: ids).order(:id).map { _1.attributes.transform_values { |v| v.respond_to?(:utc) ? iso(v) : v } } }
+    end
+
+    def a8_settings_capture(name, user, method, path, params: {}, status: 200, others: [])
+      reset!
+      Rails.cache.clear
+      sign_in user if user
+      token = nil
+      if method != :get
+        get '/settings/visits'
+        token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+      end
+      before = user ? a8_settings_graph(user, others) : {}
+      clear_enqueued_jobs
+      public_send(method, path, params:, headers: token ? { 'X-CSRF-Token' => token } : {})
+      expect(response.status).to eq(status), name
+      yield if block_given?
+      doc = Nokogiri::HTML5(response.body)
+      doc.css('input[name="authenticity_token"]').each { _1['value'] = 'CSRF' }
+      doc.css('meta[name="csrf-token"]').each { _1['content'] = 'CSRF' }
+      content = doc.at_css('body > div.container > div.w-full > div.flex')
+      body = content ? content.inner_html : response.body
+      target = fixtures.join('a8vv/settings')
+      FileUtils.mkdir_p(target)
+      File.write(target.join("#{name}.html"), body)
+      data = { method: method.to_s.upcase, path:, params:, now: now.iso8601,
+               self_hosted: DawarichSettings.self_hosted?,
+               before:, after: user ? a8_settings_graph(user.reload, others) : {},
+               status: response.status, content_type: response.media_type, location: response.location,
+               flash: flash.to_hash,
+               headers: response.headers.slice('Content-Type', 'Location', 'Vary', 'Cache-Control',
+                                               'X-Frame-Options', 'Referrer-Policy', 'X-Content-Type-Options'),
+               jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args] } } }
+      a8_settings_json(target.join("#{name}.json"), data)
+    end
+
+    it 'writes A8 visit settings and redirects' do
+      travel_to now do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        user = a8_settings_user(8801, settings: { 'visit_min_points' => 3, 'unrelated' => 'survives' })
+        a8_settings_capture('partial_save', user, :patch, '/settings/visits',
+                            params: { settings: { visit_radius_meters: '75' } }, status: 302) do
+          expect(response).to redirect_to('/settings/visits')
+          expect(user.reload.settings).to include('visit_radius_meters' => 75, 'visit_min_points' => 3,
+                                                  'unrelated' => 'survives')
+        end
+        defaults = a8_settings_user(8802)
+        a8_settings_capture('defaults', defaults, :get, '/settings/visits') do
+          doc = Nokogiri::HTML5(response.body)
+          expect(doc.at_css('#settings_visit_radius_meters')['value']).to eq('100')
+          expect(doc.at_css('#settings_visit_min_points')['value']).to eq('3')
+          expect(doc.at_css('#settings_visit_min_duration_minutes')['value']).to eq('5')
+        end
+        [['raw_zero', 'visit_radius_meters', '0', 0, 5],
+         ['raw_negative', 'visit_min_points', '-2', -2, 2],
+         ['raw_nonnumeric', 'visit_radius_meters', 'nonsense', 0,
+          5]].each_with_index do |(name, key, raw, stored, shown), i|
+          raw_user = a8_settings_user(8810 + i)
+          a8_settings_capture(name, raw_user, :patch, '/settings/visits',
+                              params: { settings: { key => raw } }, status: 302) do
+            expect(response).to redirect_to('/settings/visits')
+            expect(raw_user.reload.settings.fetch(key)).to eq(stored)
+            expect(raw_user.safe_settings.public_send(key)).to eq(shown)
+          end
+        end
+        [['cooldown_nil', nil, false], ['cooldown_recent', now - 3599, true],
+         ['cooldown_exact_hour', now - 3600, false]].each_with_index do |(name, stamp, disabled), i|
+          cooldown_user = a8_settings_user(8820 + i)
+          cooldown_user.update_columns(visits_redetected_at: stamp)
+          a8_settings_capture(name, cooldown_user.reload, :get, '/settings/visits') do
+            button = Nokogiri::HTML5(response.body).at_css('form[action="/visits/redetections"] button')
+            expect(button.key?('disabled')).to eq(disabled)
+          end
+        end
+        lite = a8_settings_user(8830, plan: :lite)
+        a8_settings_capture('lite_hint', lite, :get, '/settings/visits') do
+          hint = I18n.t('settings.visits.redetect_panel.on_the_lite_plan_re_detection_covers_your_visible_12')
+          expect(response.body).to include(hint)
+        end
+        a8_settings_capture('signed_out', nil, :get, '/settings/visits', status: 302) do
+          expect(response).to redirect_to('/users/sign_in')
+        end
+        [['navigation_default', nil, 'confirmed'], ['navigation_suggested', 'suggested', 'suggested'],
+         ['navigation_declined', 'declined', 'declined'], ['navigation_empty', '', '']].each do |name, value, wanted|
+          path = value.nil? ? '/visits' : "/visits?status=#{value}"
+          a8_settings_capture(name, nil, :get, path, status: 302) do
+            expect(response).to redirect_to("/map/v2?panel=timeline&date=today&status=#{wanted}")
+          end
+        end
+        allowed = a8_settings_user(8840)
+        a8_settings_capture('redetect_allowed', allowed, :post, '/visits/redetections', status: 302) do
+          expect(response).to redirect_to('/settings/visits')
+          expect(enqueued_jobs.select { _1[:job] == Visits::FullHistoryRedetectJob }.map { _1[:args] }).to eq([[8840]])
+          expect(allowed.reload.visits_redetected_at).to be_nil
+        end
+        recent = a8_settings_user(8841)
+        recent.update_columns(visits_redetected_at: now - 10)
+        a8_settings_capture('redetect_recent', recent.reload, :post, '/visits/redetections', status: 429) do
+          expect(response.location).to eq('http://www.example.com/settings/visits')
+          expect(enqueued_jobs).to be_empty
+          message = I18n.t('controllers.visits.redetections.re_detect_ran_recently_try_again_in_an_hour')
+          expect(flash[:alert]).to eq(message)
+        end
+      end
+    end
+
+    it 'writes A8 inherited family detection access' do
+      travel_to now do
+        allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+        owner = a8_settings_user(8850, plan: :family)
+        user = a8_settings_user(8851, plan: :lite)
+        family = Family.create!(id: 8850, name: 'Synthetic A8 family', creator: owner, access_until: now + 1.day)
+        Family::Membership.create!(id: 8850, family:, user: owner, role: :owner)
+        Family::Membership.create!(id: 8851, family:, user:, role: :member)
+        expect(user.reload.inherited_family_access?).to be(true)
+        expect(user.full_access?).to be(true)
+        a8_settings_capture('family_access', user, :get, '/settings/visits', others: [owner]) do
+          hint = I18n.t('settings.visits.redetect_panel.on_the_lite_plan_re_detection_covers_your_visible_12')
+          expect(response.body).not_to include(hint)
+          expect(response.body).to include('action="/visits/redetections"')
+        end
+      end
+    end
+  end
+
   def heatmap_entry(year, today, months)
     stats = months.map { |month, daily| Stat.new(year:, month:, daily_distance: daily) }
     travel_to(Time.find_zone('Europe/Berlin').local(today.year, today.month, today.day, 12)) do
