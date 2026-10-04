@@ -63,9 +63,19 @@ defmodule DawarichWeb.UserDataController do
     result =
       repo.transaction(fn ->
         Ownership.lock(repo, "command:users.import_data")
-        repo.query!("SELECT id FROM users WHERE id=$1 FOR UPDATE", [user.id], log: false)
+
+        [[status, subscription]] =
+          repo.query!(
+            "SELECT status,subscription_source FROM users WHERE id=$1 FOR UPDATE",
+            [user.id],
+            log: false
+          ).rows
 
         with {:ok, blob} <- Uploads.fetch(repo, value), true <- zip?(blob) do
+          if status == 2 and subscription == 0 and
+               (blob.byte_size > 11 * 1024 * 1024 or trial_count(repo, user.id) >= 5),
+             do: repo.rollback(:validation)
+
           name = unique_name(repo, user.id, blob.filename, context.zone)
 
           if String.trim(name) == "" or exists?(repo, user.id, name),
@@ -112,6 +122,15 @@ defmodule DawarichWeb.UserDataController do
     do:
       blob.content_type in ["application/zip", "application/x-zip-compressed"] or
         String.downcase(Path.extname(blob.filename)) == ".zip"
+
+  defp trial_count(repo, user) do
+    [[count]] =
+      repo.query!("SELECT count(*) FROM imports WHERE user_id=$1 AND demo=false", [user],
+        log: false
+      ).rows
+
+    count
+  end
 
   defp exists?(repo, user, name),
     do:

@@ -75,6 +75,80 @@ defmodule DawarichWeb.UserDataTest do
     assert get_resp_header(signed_out, "location") == ["http://www.example.com/users/sign_in"]
   end
 
+  test "backup legacy trial count and size boundaries equal Rails", c do
+    for locale <- ~w(en de) do
+      Repo.query!("DELETE FROM active_storage_attachments")
+      Repo.query!("DELETE FROM imports")
+      Repo.query!("DELETE FROM job_outbox")
+      Repo.query!("DELETE FROM phoenix.rails_commands")
+
+      Repo.query!(
+        "UPDATE users SET status=2,subscription_source=0,settings=jsonb_set(settings,'{locale}',$1::text::jsonb) WHERE id=9891",
+        [Jason.encode!(locale)]
+      )
+
+      Repo.query!(
+        "INSERT INTO imports(user_id,name,created_at,updated_at) SELECT 9891,'trial boundary '||n,now(),now() FROM generate_series(1,4) n"
+      )
+
+      Repo.query!(
+        "INSERT INTO imports(user_id,name,demo,created_at,updated_at) VALUES(9891,'demo boundary',true,now(),now())"
+      )
+
+      file = blob(c, "trial.zip")
+
+      Repo.query!("UPDATE active_storage_blobs SET byte_size=$1 WHERE id=$2", [
+        11 * 1024 * 1024,
+        file.id
+      ])
+
+      for boundary <- ~w(count_four count_five size_limit size_over subscribed) do
+        Repo.query!("UPDATE active_storage_blobs SET filename=$1 WHERE id=$2", [
+          locale <> "-" <> boundary <> ".zip",
+          file.id
+        ])
+
+        if boundary == "size_limit", do: Repo.query!("UPDATE imports SET demo=true")
+
+        if boundary == "size_over",
+          do:
+            Repo.query!("UPDATE active_storage_blobs SET byte_size=$1 WHERE id=$2", [
+              11 * 1024 * 1024 + 1,
+              file.id
+            ])
+
+        if boundary == "subscribed" do
+          Repo.query!("UPDATE users SET subscription_source=1 WHERE id=9891")
+
+          Repo.query!(
+            "INSERT INTO imports(user_id,name,created_at,updated_at) SELECT 9891,'subscribed boundary '||n,now(),now() FROM generate_series(1,5) n"
+          )
+        end
+
+        [[imports, attachments, jobs]] =
+          Repo.query!(
+            "SELECT (SELECT count(*) FROM imports),(SELECT count(*) FROM active_storage_attachments),(SELECT count(*) FROM job_outbox)"
+          ).rows
+
+        expected = c.expected[locale]["trial"][boundary]
+        result(request(c, :post, "/settings/users/import", body(file)), expected)
+
+        assert [
+                 [
+                   imports + expected["imports_created"],
+                   attachments + expected["attachments_created"],
+                   jobs + expected["jobs_created"]
+                 ]
+               ] ==
+                 Repo.query!(
+                   "SELECT (SELECT count(*) FROM imports),(SELECT count(*) FROM active_storage_attachments),(SELECT count(*) FROM job_outbox)"
+                 ).rows
+
+        assert [] == commands()
+      end
+    end
+  end
+
   test "backup hand-back keys forward original requests without effects", c do
     route!()
     old = Application.get_env(:dawarich, :rails_routes)

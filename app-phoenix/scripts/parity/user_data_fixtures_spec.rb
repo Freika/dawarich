@@ -160,10 +160,34 @@ RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request d
       expect(response).to have_http_status(:found)
       failed = { 'status' => response.status, 'location' => URI(response.location).path,
                  'flash' => flash.to_hash.slice('alert') }
+      user.update_columns(status: User.statuses.fetch('trial'), subscription_source: 0)
+      user.imports.update_all(demo: true)
+      4.times { |index| user.imports.create!(name: "#{locale} trial boundary #{index}", source: :user_data_archive) }
+      blob.update_columns(filename: 'trial.zip', byte_size: 11.megabytes)
+      trial = {}
+      %w[count_four count_five size_limit size_over subscribed].each do |boundary|
+        blob.update_column(:filename, "#{locale}-#{boundary}.zip")
+        user.imports.update_all(demo: true) if boundary == 'size_limit'
+        blob.update_column(:byte_size, 11.megabytes + 1) if boundary == 'size_over'
+        if boundary == 'subscribed'
+          user.update_column(:subscription_source, User.subscription_sources.fetch('paddle'))
+          5.times { |index| user.imports.create!(name: "#{locale} subscribed boundary #{index}") }
+        end
+        before = [user.imports.count, ActiveStorage::Attachment.count, enqueued_jobs.size]
+        post '/settings/users/import', params: { archive: blob.signed_id }
+        rejected = %w[count_five size_over].include?(boundary)
+        expect(flash.to_hash).to have_key(rejected ? 'alert' : 'notice')
+        expect(user.imports.count - before[0]).to eq(rejected ? 0 : 1)
+        trial[boundary] = { 'status' => response.status, 'location' => URI(response.location).path,
+                            'flash' => flash.to_hash.slice(rejected ? 'alert' : 'notice'),
+                            'imports_created' => user.imports.count - before[0],
+                            'attachments_created' => ActiveStorage::Attachment.count - before[1],
+                            'jobs_created' => enqueued_jobs.size - before[2] }
+      end
       sign_out(:user)
       [locale,
        { 'valid' => valid, 'failed' => failed, 'form' => form.to_html, 'export' => export, 'blank' => blank,
-'invalid' => invalid }]
+'invalid' => invalid, 'trial' => trial }]
     end
     UserDataFixturesSupport.write('http.json', result)
   end
