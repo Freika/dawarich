@@ -4,6 +4,8 @@ class Users::Digests::Monthly::SchedulingJob < ApplicationJob
   queue_as :digests
 
   def perform
+    return if JobOwnership.oban?('cron:monthly_digest_scheduling_job')
+
     target = 1.month.ago
     year   = target.year
     month  = target.month
