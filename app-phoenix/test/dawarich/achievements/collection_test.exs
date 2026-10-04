@@ -7,7 +7,7 @@ defmodule Dawarich.Achievements.CollectionTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Dawarich.Test.AchievementSilhouettes.clear()
     on_exit(&Dawarich.Test.AchievementSilhouettes.clear/0)
-    rows("TRUNCATE countries,regions RESTART IDENTITY")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(countries regions))
 
     rows(
       "INSERT INTO users(id,email,created_at,updated_at) VALUES(901,'collection@example.test',now(),now())"

@@ -39,7 +39,7 @@ defmodule Dawarich.Achievements.CheckerTest do
   @fixture Path.expand("../../fixtures/achievements/check.json", __DIR__)
 
   setup do
-    rows("TRUNCATE public.countries, public.regions RESTART IDENTITY")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(public.countries  public.regions))
     fixture = @fixture |> File.read!() |> Jason.decode!()
     %{fixture: fixture, uid: fixture["user"]["id"], steps: fixture["steps"]}
   end

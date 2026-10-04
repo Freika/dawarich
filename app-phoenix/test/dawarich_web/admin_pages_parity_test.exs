@@ -13,7 +13,7 @@ defmodule DawarichWeb.AdminPagesParityTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    Repo.query!("TRUNCATE instance_settings, service_settings", [], log: false)
+    Dawarich.FixtureCleanup.delete!(Repo, ~w(instance_settings  service_settings))
     :ok
   end
 

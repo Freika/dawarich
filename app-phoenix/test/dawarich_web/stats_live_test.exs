@@ -147,7 +147,7 @@ defmodule DawarichWeb.StatsLiveTest do
             ~w(PHOTON_API_HOST GEOAPIFY_API_KEY NOMINATIM_API_HOST LOCATIONIQ_API_KEY STORE_GEODATA SELF_HOSTED),
           do: System.delete_env(key)
 
-      Dawarich.ScratchRepo.query!("TRUNCATE phoenix.stats_point_counts", [], log: false)
+      Dawarich.FixtureCleanup.delete!(Dawarich.ScratchRepo, ~w(phoenix.stats_point_counts))
 
       Dawarich.ScratchRepo.query!(
         "INSERT INTO phoenix.stats_point_counts VALUES ($1, 77, 1, now())",

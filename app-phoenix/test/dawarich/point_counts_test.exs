@@ -22,7 +22,7 @@ defmodule Dawarich.Stats.PointCountsTest do
   test "counts the user's reverse-geocoded points, and those without data only with store_geodata" do
     now = ~U[2026-09-26 12:00:00Z]
     assert PointCounts.fetch(5601, true, now) == %{geocoded: 3, without_data: 1}
-    ScratchRepo.query!("TRUNCATE phoenix.stats_point_counts", [])
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.stats_point_counts))
     assert PointCounts.fetch(5601, false, now) == %{geocoded: 3, without_data: nil}
   end
 

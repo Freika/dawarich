@@ -31,7 +31,7 @@ defmodule Dawarich.Geocoding.ConfigTest do
   end
 
   defp case_config(name) do
-    ScratchRepo.query!("TRUNCATE instance_settings", [], log: false)
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(instance_settings))
     c = find_case(name)
     Wave5bFixtures.load_input!(ScratchRepo, c["input"])
     Config.resolve(ScratchRepo, c["env"])

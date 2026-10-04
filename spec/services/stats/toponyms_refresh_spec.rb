@@ -9,18 +9,14 @@ RSpec.describe Stats::ToponymsRefresh do
 
   before do
     clear_geocoded_days
-    Sidekiq.redis do |r|
-      r.del(described_class::CURSOR_KEY,
-            described_class::DISCOVERY_KEY, described_class::TURN_KEY)
-    end
+    [described_class::CURSOR_KEY, described_class::DISCOVERY_KEY, described_class::TURN_KEY]
+      .each { PhoenixCursors.del(_1) }
   end
 
   after do
     clear_geocoded_days
-    Sidekiq.redis do |r|
-      r.del(described_class::CURSOR_KEY,
-            described_class::DISCOVERY_KEY, described_class::TURN_KEY)
-    end
+    [described_class::CURSOR_KEY, described_class::DISCOVERY_KEY, described_class::TURN_KEY]
+      .each { PhoenixCursors.del(_1) }
   end
 
   it 'bounds historical repair globally and advances through existing statistics' do
@@ -28,7 +24,7 @@ RSpec.describe Stats::ToponymsRefresh do
       create(:point, user: user, timestamp: Time.utc(2014, month, 15).to_i, city: 'Berlin', country: 'Germany')
       create(:stat, user: user, year: 2014, month: month, toponyms: [])
     end
-    Sidekiq.redis { |r| r.set(described_class::CURSOR_KEY, stats.first.id - 1) }
+    PhoenixCursors.set(described_class::CURSOR_KEY, stats.first.id - 1)
     described_class.new.call
     expect(stats.count { |stat| stat.reload.toponyms.present? }).to eq(2)
     described_class.new.call
@@ -57,7 +53,7 @@ RSpec.describe Stats::ToponymsRefresh do
 
   it 'schedules complete statistics when the month does not yet exist' do
     point = create(:point, user: user, timestamp: Time.utc(2014, 6, 15).to_i)
-    Sidekiq.redis { |r| r.set(described_class::DISCOVERY_KEY, [user.id + 1, 0].to_json) }
+    PhoenixCursors.set(described_class::DISCOVERY_KEY, [user.id + 1, 0].to_json)
     Stats::GeocodedDays.mark(user.id, point.timestamp)
     travel 61.minutes do
       expect { described_class.new.call }
@@ -68,7 +64,7 @@ RSpec.describe Stats::ToponymsRefresh do
   it 'discovers a historical month even when both its stats and notification are absent' do
     create(:point, user: user, timestamp: Time.utc(2014, 6, 15).to_i,
                    city: 'Berlin', country: 'Germany', reverse_geocoded_at: Time.current)
-    Sidekiq.redis { |r| r.set(described_class::DISCOVERY_KEY, [user.id, 0].to_json) }
+    PhoenixCursors.set(described_class::DISCOVERY_KEY, [user.id, 0].to_json)
     expect { described_class.new.call }
       .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2014, 6, notify_on_failure: false)
   end
@@ -78,7 +74,7 @@ RSpec.describe Stats::ToponymsRefresh do
       create(:point, user: user, timestamp: timestamp)
       Stats::GeocodedDays.mark(user.id, timestamp)
     end
-    Sidekiq.redis { |r| r.set(described_class::DISCOVERY_KEY, [user.id, 0].to_json) }
+    PhoenixCursors.set(described_class::DISCOVERY_KEY, [user.id, 0].to_json)
     travel 61.minutes do
       expect { described_class.new.call }
         .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2014, 6, notify_on_failure: false).exactly(:once)
@@ -115,7 +111,7 @@ RSpec.describe Stats::ToponymsRefresh do
       'INSERT INTO phoenix.leases (name, holder, expires_at) ' \
       "VALUES ('stats:toponyms_refresh', 'other', statement_timestamp() + interval '60 seconds')"
     )
-    turn = -> { Sidekiq.redis { |r| r.get(described_class::TURN_KEY) } }
+    turn = -> { PhoenixCursors.get(described_class::TURN_KEY) }
 
     expect { described_class.new.call }.not_to(change { turn.call })
     connection.execute("DELETE FROM phoenix.leases WHERE name = 'stats:toponyms_refresh'")

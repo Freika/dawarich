@@ -29,7 +29,7 @@ defmodule Dawarich.Exports.PointsWorkerTest do
   @payloads "test/fixtures/wave2/payloads.json" |> File.read!() |> Jason.decode!()
 
   setup do
-    rows("TRUNCATE public.exports RESTART IDENTITY")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(public.exports))
     root = Path.join(System.tmp_dir!(), "w2-worker-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
     backend = System.get_env("STORAGE_BACKEND")

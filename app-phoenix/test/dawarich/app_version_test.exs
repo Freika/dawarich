@@ -35,7 +35,7 @@ defmodule Dawarich.AppVersionTest do
     for version <- [AppVersion.current(), "0.0.0"] do
       insert_version(version, now)
       refute AppVersion.update_available?(now)
-      ScratchRepo.query!("TRUNCATE phoenix.app_version")
+      Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.app_version))
     end
   end
 

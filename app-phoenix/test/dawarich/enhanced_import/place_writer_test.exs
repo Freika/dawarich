@@ -11,7 +11,7 @@ defmodule Dawarich.EnhancedImport.PlaceWriterTest do
 
   test "every GPX fixture ends with Rails' places, tags and taggings" do
     for name <- @written do
-      truncate!()
+      reset_fixtures!()
       fixture = load!(name)
       [import] = fixture["input"]["imports"]
       expected = fixture["expected"]
@@ -91,7 +91,8 @@ defmodule Dawarich.EnhancedImport.PlaceWriterTest do
   end
 
   defp pins!(pins) do
-    truncate!()
+    reset_fixtures!()
+    rows("SELECT setval(pg_get_serial_sequence('users','id'),1,false)")
     user_id = user!()
 
     for {id, name} <- pins do

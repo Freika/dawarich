@@ -14,7 +14,7 @@ defmodule Dawarich.VisitsApi.BatchTest do
   }
 
   setup do
-    rows("TRUNCATE places,visits CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(places visits))
     rows("DELETE FROM instance_settings")
 
     ScratchRepo.insert_all("users", [

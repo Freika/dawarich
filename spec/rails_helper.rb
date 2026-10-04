@@ -89,7 +89,7 @@ RSpec.configure do |config|
 
   config.after(:each, type: :system) do
     # Clean up database after system tests
-    ActiveRecord::Base.connection.truncate_tables(*ActiveRecord::Base.connection.tables)
+    FixtureCleanup.delete!(ActiveRecord::Base.connection.tables)
     # Re-enable WebMock after system tests
     WebMock.enable!
     WebMock.disable_net_connect!

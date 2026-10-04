@@ -2,6 +2,8 @@
 
 module PhoenixTables
   SQL_FILES = Dir[Rails.root.join('app-phoenix/priv/repo/sql/*.sql')].sort.freeze
+  SQL_TABLES = SQL_FILES.flat_map { |file| File.read(file).scan(/CREATE TABLE IF NOT EXISTS (phoenix\.\w+)/).flatten }
+                        .freeze
   LEASES = 'CREATE TABLE IF NOT EXISTS phoenix.leases ' \
            '(name text PRIMARY KEY, holder text NOT NULL, expires_at timestamptz NOT NULL)'
   COUNTERS = 'CREATE TABLE IF NOT EXISTS phoenix.counters ' \
@@ -16,16 +18,38 @@ module PhoenixTables
   def self.install_state!
     connection = ActiveRecord::Base.connection
     ['CREATE SCHEMA IF NOT EXISTS phoenix', LEASES, ONCE_CLAIMS, ACHIEVEMENT_CHECKS, ACHIEVEMENT_CHECK_REVISIONS,
-     "TRUNCATE #{PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" }.join(', ')}"].each { connection.execute(_1) }
+     *PHOENIX_STATE_TABLES.map { "DELETE FROM phoenix.#{_1}" }].each { connection.execute(_1) }
+    PhoenixSchema.reset!
+  end
+
+  def self.install!
+    return if installed?
+
+    connection = ActiveRecord::Base.connection
+    install_state!
+    connection.execute(COUNTERS)
+    SQL_FILES.each do |file|
+      File.read(file).split(";\n").map(&:strip).reject(&:empty?).each { |statement| connection.execute(statement) }
+    end
+  end
+
+  def self.installed?
+    connection = ActiveRecord::Base.connection
+    tables = SQL_TABLES + %w[phoenix.counters] + PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" }
+    names = tables.map { connection.quote(_1) }.join(', ')
+    connection.select_value("SELECT bool_and(to_regclass(name) IS NOT NULL) FROM unnest(ARRAY[#{names}]) name")
+  end
+
+  def self.clear!
+    connection = ActiveRecord::Base.connection
+    (SQL_TABLES.reverse + %w[phoenix.counters] + PHOENIX_STATE_TABLES.map { "phoenix.#{_1}" }).each do |table|
+      connection.execute("DELETE FROM #{table}")
+    end
     PhoenixSchema.reset!
   end
 
   def phoenix_tables!
-    connection = ActiveRecord::Base.connection
-    phoenix_leases!
-    SQL_FILES.each do |file|
-      File.read(file).split(";\n").map(&:strip).reject(&:empty?).each { |statement| connection.execute(statement) }
-    end
+    PhoenixTables.install!
   end
 
   def phoenix_counters!
@@ -83,6 +107,9 @@ end
 
 RSpec.configure do |config|
   config.include PhoenixTables
-  config.before(:suite) { PhoenixTables.install_state! }
+  config.before(:suite) do
+    PhoenixTables.install!
+    PhoenixTables.clear!
+  end
   config.after { PhoenixSchema.reset! }
 end
