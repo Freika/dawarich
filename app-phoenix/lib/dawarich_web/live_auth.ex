@@ -20,7 +20,7 @@ defmodule DawarichWeb.LiveAuth do
       {:cont,
        socket
        |> assign_new(:current_user, fn -> rendered && Dawarich.Accounts.get(rendered) end)
-       |> assign(:now, DateTime.utc_now())
+       |> assign_new(:now, &DateTime.utc_now/0)
        |> assign(:navbar, nil)
        |> assign(:page_title, nil)
        |> assign(:flash_messages, [])
