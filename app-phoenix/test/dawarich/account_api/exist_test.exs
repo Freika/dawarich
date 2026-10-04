@@ -26,6 +26,21 @@ defmodule Dawarich.AccountApi.ExistTest do
            }
   end
 
+  @tag :account_order
+  @tag mutation: "M-A2-order"
+  test "exist preserves Rails unordered database results" do
+    first = user!(%{id: 953_812})
+    second = user!(%{id: 953_811})
+    Repo.query!("ANALYZE users")
+    ids = [second, first]
+
+    assert Repo.query!("SELECT id FROM users WHERE id=ANY($1) AND deleted_at IS NULL", [ids]).rows ==
+             [[first], [second]]
+
+    assert {:ok, 200, term} = Exist.run(%{"ids" => ids}, @secret, env())
+    assert decode(term)["existing"] == [first, second]
+  end
+
   defp env, do: %{"SUBSCRIPTION_WEBHOOK_SECRET" => @secret}
   defp decode(term), do: term |> Ruby.json() |> IO.iodata_to_binary() |> Jason.decode!()
 end
