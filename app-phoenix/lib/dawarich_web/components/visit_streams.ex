@@ -41,7 +41,7 @@ defmodule DawarichWeb.VisitStreams do
     }
 
     day = List.first(feed.days)
-    entry = if action == :update, do: entry(ctx, result.visit, window, window_now)
+    entry = if action == :update, do: entry(ctx, result.visit)
 
     calendar =
       if action != :merge,
@@ -132,20 +132,8 @@ defmodule DawarichWeb.VisitStreams do
     }
   end
 
-  defp entry(ctx, visit, window, window_now) do
-    {:ok, first, _} = DateTime.from_iso8601(window.start)
-    {:ok, last, _} = DateTime.from_iso8601(window.end)
-
-    rows =
-      DayRows.fetch(
-        ctx.user,
-        {DateTime.to_unix(first), DateTime.to_unix(last)},
-        {window.start_date, window.end_date},
-        window_now,
-        ctx.repo,
-        visit["id"]
-      )
-
+  defp entry(ctx, visit) do
+    rows = DayRows.visit(ctx.user, visit["id"], ctx.repo)
     row = Enum.find(rows.visits, &(&1.id == visit["id"]))
     Days.entry(row, rows)
   end

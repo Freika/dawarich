@@ -66,13 +66,13 @@ defmodule Dawarich.RouteVideos.Retention do
     {:ok, eligible} =
       repo.transaction(fn ->
         case repo.query!(
-               "SELECT user_id FROM route_videos WHERE id=$1 AND status=0 FOR UPDATE",
+               "SELECT user_id,name FROM route_videos WHERE id=$1 AND status=0 FOR UPDATE",
                [id],
                log: false
              ).rows do
-          [[user_id]] ->
+          [[user_id, name]] ->
             Writes.detach(repo, user_id, id, stamp)
-            true
+            {:expire, name}
 
           [] ->
             false
@@ -80,6 +80,9 @@ defmodule Dawarich.RouteVideos.Retention do
       end)
 
     if eligible do
+      {:expire, name} = eligible
+      if Ruby.blank?(name), do: raise("route video name validation")
+
       repo.query!(
         "UPDATE route_videos SET status=1,expired_at=$2,updated_at=$2 WHERE id=$1 AND status=0 RETURNING id",
         [id, stamp],

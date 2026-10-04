@@ -6,7 +6,8 @@ defmodule Dawarich.Visits.WebDelete do
     with {:ok, id} <- WebEffects.single_id(id),
          {:ok, zone} <- WebEffects.zone(repo, user, context) do
       WebEffects.transact(repo, fn ->
-        with {:ok, [old]} <- WebScope.load(repo, user, [id], context.now, context.self_hosted) do
+        with {:ok, [old]} <- WebScope.load(repo, user, [id], context.now, context.self_hosted),
+             :ok <- WebEffects.validate(old) do
           new =
             WebEffects.persist(
               repo,

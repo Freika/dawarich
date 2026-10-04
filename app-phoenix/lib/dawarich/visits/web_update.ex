@@ -124,13 +124,7 @@ defmodule Dawarich.Visits.WebUpdate do
         do: Map.put(new, "status", 1),
         else: new
 
-    if Ruby.blank?(new["name"]) or new["status"] not in [0, 1, 2] or
-         not is_integer(new["duration"]) or is_nil(new["started_at"]) or is_nil(new["ended_at"]) or
-         NaiveDateTime.compare(new["ended_at"], new["started_at"]) != :gt do
-      {:replay, "visit validation requires Rails response"}
-    else
-      {:ok, new}
-    end
+    with :ok <- WebEffects.validate(new), do: {:ok, new}
   end
 
   defp suggestion_name(repo, old) do

@@ -15,6 +15,18 @@ defmodule Dawarich.Timeline.DayRows do
     visits = visits(user.id, start_s, end_s, window_now, settings, repo, include_id)
     tracks = tracks(user.id, start_s, end_s, window_now, settings, repo)
 
+    associations(user, visits, tracks, first, last, repo)
+  end
+
+  def visit(user, id, repo \\ Repo) do
+    visits = visits(user.id, nil, nil, nil, user.settings || %{}, repo, id)
+    day = hd(visits).day
+    associations(user, visits, [], day, day, repo)
+  end
+
+  defp associations(user, visits, tracks, first, last, repo) do
+    settings = user.settings || %{}
+
     suggestions =
       DayAssociations.suggestions(
         for(visit <- visits, visit.status == "suggested", do: visit.id),
@@ -78,8 +90,9 @@ defmodule Dawarich.Timeline.DayRows do
            #{epoch("v.started_at")}, #{epoch("v.ended_at")}, #{local("v.started_at")}, #{offset("v.started_at")},
            #{local("v.ended_at")}, #{offset("v.ended_at")}, #{day("v.started_at")}, z.name
     FROM visits v CROSS JOIN z
-    WHERE v.user_id = $1 AND v.deleted_at IS NULL AND (v.status <> 2 OR v.id=$5)
-      AND v.started_at BETWEEN #{utc("$2")} AND #{utc("$3")} AND #{windowed("v.started_at", "$4")}
+    WHERE v.user_id = $1 AND
+      (v.id=$5 OR (v.deleted_at IS NULL AND v.status <> 2
+      AND v.started_at BETWEEN #{bound("$2")} AND #{bound("$3")} AND #{windowed("v.started_at", "$4")}))
     ORDER BY v.started_at, v.id
     """
     |> UserTimeZone.query!([user_id, start_s, end_s, window_now, include_id], settings, repo)
@@ -127,7 +140,7 @@ defmodule Dawarich.Timeline.DayRows do
            #{local("t.end_at")}, #{offset("t.end_at")}, #{day("t.start_at")}, z.name, #{total("t")}, s.day, s.seconds
     FROM tracks t CROSS JOIN z
     #{shares("t")}
-    WHERE t.user_id = $1 AND t.start_at <= #{utc("$3")} AND t.end_at >= #{utc("$2")}
+    WHERE t.user_id = $1 AND t.start_at <= #{bound("$3")} AND t.end_at >= #{bound("$2")}
       AND NOT (t.dominant_mode = 1 AND t.distance < 100) AND #{windowed("t.start_at", "$4")}
     ORDER BY t.start_at, t.id, s.day
     """
@@ -184,4 +197,6 @@ defmodule Dawarich.Timeline.DayRows do
       shares: shares_of(total, day, slices)
     }
   end
+
+  defp bound(param), do: "(to_timestamp(#{param}::float8) AT TIME ZONE 'UTC')"
 end

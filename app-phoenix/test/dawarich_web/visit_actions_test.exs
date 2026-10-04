@@ -180,8 +180,7 @@ defmodule DawarichWeb.VisitActionsTest do
              "http://www.example.com/map/v2?date=today&panel=timeline"
            ]
 
-    assert get_in(rails_session(conn), ["flash", "flashes", "notice"]) ==
-             "Visit removed. Your location points are still here."
+    refute Map.has_key?(conn.resp_cookies, "_dawarich_session")
 
     edit = fixture("rename")
     body = "_method=patch&visit%5Bname%5D=Renamed"

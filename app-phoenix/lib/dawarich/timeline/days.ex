@@ -11,7 +11,10 @@ defmodule Dawarich.Timeline.Days do
   def load(user, window, window_now, repo \\ Dawarich.Repo) do
     {:ok, from, _} = DateTime.from_iso8601(window.start)
     {:ok, to, _} = DateTime.from_iso8601(window.end)
-    range = {DateTime.to_unix(from), DateTime.to_unix(to)}
+
+    range =
+      {DateTime.to_unix(from, :microsecond) / 1_000_000,
+       DateTime.to_unix(to, :microsecond) / 1_000_000}
 
     if elem(range, 1) - elem(range, 0) > @max_range do
       %{days: [], redetected: false}

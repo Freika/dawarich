@@ -54,7 +54,9 @@ defmodule DawarichWeb.VisitActions do
               status,
               location,
               "notice",
-              VisitStreams.notice(action, result, ctx.locale)
+              if(action in [:bulk_update, :bulk_destroy],
+                do: VisitStreams.notice(action, result, ctx.locale)
+              )
             )
           end
 
@@ -146,8 +148,15 @@ defmodule DawarichWeb.VisitActions do
     absolute =
       if String.starts_with?(location, "/"), do: RequestURL.base(conn) <> location, else: location
 
+    conn =
+      if message,
+        do:
+          RailsSession.stage(conn, %{
+            "flash" => %{"discard" => [], "flashes" => %{type => message}}
+          }),
+        else: conn
+
     conn
-    |> RailsSession.stage(%{"flash" => %{"discard" => [], "flashes" => %{type => message}}})
     |> put_resp_header("location", absolute)
     |> put_resp_header("cache-control", "no-cache")
     |> put_resp_content_type("text/html")

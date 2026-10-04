@@ -43,6 +43,7 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
     videos/post_commit_cap_error videos/cap_one videos/cap_zero videos/destroy_html
     videos/destroy_stream videos/shared_blob videos/stored_without_file videos/aged_boundary
     videos/metadata_unidentified videos/metadata_preidentified videos/metadata_shared_preidentified
+    videos/blank_name_cap videos/blank_name_cron
     visits/confirm visits/rename visits/blank_name visits/decline visits/owned_place
     visits/suggested_foreign_place visits/foreign_area visits/demo_adoption visits/soft_delete
     visits/soft_delete_turbo visits/month_move visits/bulk_date visits/bulk_selection
@@ -50,6 +51,10 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
     visits/bulk_source visits/bulk_empty visits/bulk_no_callbacks visits/merge_points
     visits/merge_cross_day visits/merge_foreign visits/merge_same_place visits/merge_mixed_names
     visits/merge_noted visits/bulk_cross_day_destroy
+    visits/missing_timezone_midnight visits/missing_timezone_dst visits/fractional_final_second
+    visits/lite_cutoff_move visits/invalid_confidence_update visits/invalid_confidence_destroy
+    visits/invalid_confidence_merge visits/html_update visits/html_destroy visits/html_merge
+    visits/accept_html_preferred visits/accept_turbo_preferred
   )
 
   @tag :index
@@ -137,7 +142,19 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
     {"visits/merge_same_place", "concatenate same-place names"},
     {"visits/merge_mixed_names", "omit case-insensitive deduplication"},
     {"visits/merge_noted", "omit polymorphic note guard"},
-    {"visits/bulk_cross_day_destroy", "always update day frame"}
+    {"visits/bulk_cross_day_destroy", "always update day frame"},
+    {"visits/missing_timezone_midnight", "force missing timezone to UTC"},
+    {"visits/missing_timezone_dst", "force missing timezone to UTC"},
+    {"visits/fractional_final_second", "refilter the committed visit by day"},
+    {"visits/lite_cutoff_move", "refilter the committed visit by cutoff"},
+    {"visits/invalid_confidence_update", "omit confidence validation"},
+    {"visits/invalid_confidence_destroy", "omit confidence validation"},
+    {"visits/invalid_confidence_merge", "omit confidence validation"},
+    {"visits/html_update", "stage an extra success notice"},
+    {"visits/html_destroy", "stage an extra success notice"},
+    {"visits/html_merge", "stage an extra success notice"},
+    {"visits/accept_html_preferred", "ignore Accept preference"},
+    {"visits/accept_turbo_preferred", "ignore Accept preference"}
   ]
 
   @video_cases [
@@ -163,7 +180,9 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
     {"videos/aged_boundary", "inclusive age cutoff"},
     {"videos/metadata_unidentified", "admit unidentified metadata"},
     {"videos/metadata_preidentified", "admit unanalyzed metadata"},
-    {"videos/metadata_shared_preidentified", "reject shared identified blob"}
+    {"videos/metadata_shared_preidentified", "reject shared identified blob"},
+    {"videos/blank_name_cap", "omit expiry name validation"},
+    {"videos/blank_name_cron", "omit expiry name validation"}
   ]
 
   for {name, mutation} <- @settings_cases ++ @visit_cases ++ @video_cases do
@@ -263,10 +282,24 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
 
     html =
       case req["operation"] do
-        operation when operation in ["card", "expire_and_purge", "retention"] ->
+        operation
+        when operation in ["card", "expire_and_purge", "retention", "retention_failure"] ->
           id = req["video_id"] || hd(graph["route_videos"])["id"]
 
           case operation do
+            "retention_failure" ->
+              Dawarich.Jobs.Ownership.put!(repo, "cron:route_videos_purge_job", :oban)
+
+              assert_raise RuntimeError, "route video name validation", fn ->
+                Dawarich.RouteVideos.PurgeWorker.run(repo, now(state), %{
+                  retention_days: req["days"],
+                  max_per_user: req["cap"]
+                })
+              end
+
+              assert_video_rows(state["before"], repo)
+              assert repo.query!("SELECT kind,payload FROM phoenix.rails_commands").rows == []
+
             "expire_and_purge" ->
               assert Retention.expire(repo, id, now(state)) == [id]
 
@@ -282,10 +315,12 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
 
           video = MapGallery.route_video(user.id, id, "Europe/Berlin", repo)
 
-          render_component(&DawarichWeb.MapGalleryCards.route_video_card/1,
-            video: video,
-            locale: "en"
-          )
+          if operation != "retention_failure",
+            do:
+              render_component(&DawarichWeb.MapGalleryCards.route_video_card/1,
+                video: video,
+                locale: "en"
+              )
 
         nil ->
           params = req["params"] || %{}
@@ -321,7 +356,7 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
 
           System.put_env(
             "VIDEO_MAX_PER_USER",
-            if(kind in ["cap_one", "post_commit_cap_error"], do: "1", else: "0")
+            if(kind in ["cap_one", "post_commit_cap_error", "blank_name_cap"], do: "1", else: "0")
           )
 
           if kind in ["metadata_unidentified", "metadata_preidentified"] do
@@ -391,7 +426,8 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
 
     conn = write_conn(state, user)
 
-    if state["status"] >= 400 or name == "visits/merge_noted" do
+    if state["status"] >= 400 or name == "visits/merge_noted" or
+         String.starts_with?(name, "visits/invalid_confidence_") do
       upstream = upstream!()
 
       {{line, body}, result} =
@@ -419,8 +455,12 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
              ) ==
                Enum.map(state["streams"] || [], &List.to_tuple/1)
 
-      if state["flash"] != %{},
-        do: assert(rails_session(conn)["flash"]["flashes"] == state["flash"])
+      actual_flash =
+        if Map.has_key?(conn.resp_cookies, "_dawarich_session"),
+          do: get_in(rails_session(conn), ["flash", "flashes"]) || %{},
+          else: %{}
+
+      assert actual_flash == state["flash"]
 
       assert_rows(flat_graph(state["after"]), repo)
 
@@ -471,6 +511,8 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
                    "[data-controller], [data-action]"
                  )
 
+        System.put_env("SELF_HOSTED", "true")
+
         conn =
           Phoenix.ConnTest.dispatch(
             RailsUser.signed_in(user.id),
@@ -481,8 +523,11 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
           )
 
         check_headers(conn, state)
+        System.put_env("SELF_HOSTED", to_string(state["self_hosted"]))
 
       state["method"] == "GET" ->
+        System.put_env("SELF_HOSTED", "true")
+
         conn =
           Phoenix.ConnTest.dispatch(
             Phoenix.ConnTest.build_conn(),
@@ -498,6 +543,7 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
           do: assert(rails_session(conn)["flash"]["flashes"] == state["flash"])
 
         assert conn.resp_body == File.read!("#{@dir}/#{name}.html")
+        System.put_env("SELF_HOSTED", to_string(state["self_hosted"]))
 
       name == "settings/redetect_recent" ->
         conn = write_conn(state, user)

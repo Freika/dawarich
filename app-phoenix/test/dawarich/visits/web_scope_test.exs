@@ -46,6 +46,34 @@ defmodule Dawarich.Visits.WebScopeTest do
     do:
       ScratchRepo.transaction(fn -> WebScope.load(ScratchRepo, user, ids, @now, self_hosted) end)
 
+  @tag :timezone_fallback
+  test "missing timezone cutoff uses configured DST zone and blank remains UTC", %{user: user} do
+    previous = System.get_env("TIME_ZONE")
+    System.put_env("TIME_ZONE", "Europe/Berlin")
+
+    on_exit(fn ->
+      if previous, do: System.put_env("TIME_ZONE", previous), else: System.delete_env("TIME_ZONE")
+    end)
+
+    for settings <- [%{}, %{"timezone" => nil}] do
+      assert {:ok, ~N[2025-03-29 02:30:00.000000]} =
+               WebScope.cutoff(
+                 ScratchRepo,
+                 %{user | settings: settings},
+                 ~U[2026-03-29 01:30:00Z],
+                 false
+               )
+    end
+
+    assert {:ok, ~N[2025-03-29 01:30:00.000000]} =
+             WebScope.cutoff(
+               ScratchRepo,
+               %{user | settings: %{"timezone" => ""}},
+               ~U[2026-03-29 01:30:00Z],
+               false
+             )
+  end
+
   test "mixed owned and foreign selection cannot partially mutate", %{user: user} do
     visit!(890_100)
     visit!(890_101, %{user_id: 8901})

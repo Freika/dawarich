@@ -264,6 +264,47 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
       end
     end
 
+    %w[blank_name_cap blank_name_cron].each_with_index do |name, index|
+      it "writes A8 review #{name} from Rails" do
+        travel_to now do
+          user = a8_video_user(8887 + index)
+          id = 888_070 + index * 10
+          video = a8_video(user, id + 1, blob: a8_blob(id + 1), created_at: now - 31.days)
+          video.update_columns(name: '')
+          allow(DawarichSettings).to receive(:video_retention_days).and_return(30)
+          allow(DawarichSettings).to receive(:video_max_per_user).and_return(name == 'blank_name_cap' ? 1 : 0)
+          allow(ExceptionReporter).to receive(:call)
+          if name == 'blank_name_cap'
+            blob = a8_blob(id)
+            %w[route_videos active_storage_attachments].each do |table|
+              ActiveRecord::Base.connection.execute(
+                "SELECT setval(pg_get_serial_sequence('#{table}', 'id'), #{id + 2}, false)"
+              )
+            end
+            before = a8_video_graph(user)
+            params = { route_video: { name: 'Saved route', file: blob.signed_id, settings: a8_recipe } }
+            a8_video_request(user, :post, '/route_videos', params:)
+            expect(response.status).to eq(422)
+            expect(user.route_videos.count).to eq(2)
+            expect(video.reload.status).to eq('stored')
+            expect(video.file.attached?).to be(false)
+            expect(video.updated_at).to eq(now)
+            expect(video.expired_at).to be_nil
+            request = { method: 'POST', path: '/route_videos', accept: 'text/vnd.turbo-stream.html',
+                        params: params.deep_merge(route_video: { file: 'BLOB_SIGNED_ID' }), blob_id: blob.id }
+            a8_video_record(name, user, before, request)
+          else
+            before = a8_video_graph(user)
+            clear_enqueued_jobs
+            expect { RouteVideos::PurgeJob.perform_now }.to raise_error(ActiveRecord::RecordInvalid, /Name/)
+            expect(a8_video_graph(user)).to eq(before)
+            a8_video_record(name, user, before, { operation: 'retention_failure', days: 30, cap: 0,
+                                                error: 'ActiveRecord::RecordInvalid' }, body: '', status: 422)
+          end
+        end
+      end
+    end
+
     it 'writes A8 attachment identification boundaries' do
       travel_to now do
         allow(DawarichSettings).to receive(:video_max_per_user).and_return(0)

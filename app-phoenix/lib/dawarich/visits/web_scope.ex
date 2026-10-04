@@ -87,12 +87,16 @@ defmodule Dawarich.Visits.WebScope do
     {:error, if(archived, do: :archived, else: :missing)}
   end
 
-  defp zone(repo, %{"timezone" => zone}) when is_binary(zone), do: known_zone(repo, zone)
+  def zone(repo, %{"timezone" => zone}) when is_binary(zone),
+    do: known_zone(repo, if(zone == "", do: "UTC", else: zone))
 
-  defp zone(repo, %{} = settings) when not is_map_key(settings, "timezone"),
-    do: known_zone(repo, "UTC")
+  def zone(repo, %{} = settings) when not is_map_key(settings, "timezone"),
+    do: known_zone(repo, UserTimeZone.zone(settings, System.get_env()))
 
-  defp zone(_repo, _settings), do: {:replay, "visit time zone shape"}
+  def zone(repo, %{"timezone" => nil}),
+    do: known_zone(repo, UserTimeZone.zone(%{}, System.get_env()))
+
+  def zone(_repo, _settings), do: {:replay, "visit time zone shape"}
 
   defp known_zone(repo, name) do
     zone = TimeZoneName.to_iana(name)

@@ -19,10 +19,8 @@ defmodule Dawarich.Visits.WebEffects do
   end
 
   def zone(repo, user, context) do
-    setting = Map.get(user.settings, "timezone", "UTC")
-    setting = if setting == "", do: "UTC", else: setting
-
-    with {:ok, _} <-
+    with {:ok, setting} <- WebScope.zone(repo, user.settings),
+         {:ok, _} <-
            WebScope.day_bounds(setting, Date.to_iso8601(DateTime.to_date(context.now)), repo),
          do: {:ok, TimeZoneName.to_iana(setting)}
   end
@@ -37,6 +35,21 @@ defmodule Dawarich.Visits.WebEffects do
   end
 
   def single_id(_), do: {:replay, "visit id"}
+
+  def validate(row) do
+    confidence = row["confidence"]
+
+    if Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(row["name"]) or
+         row["status"] not in [0, 1, 2] or not is_integer(row["duration"]) or
+         not match?(%NaiveDateTime{}, row["started_at"]) or
+         not match?(%NaiveDateTime{}, row["ended_at"]) or
+         NaiveDateTime.compare(row["ended_at"], row["started_at"]) != :gt or
+         (not is_nil(confidence) and (not is_integer(confidence) or confidence not in 0..100)) do
+      {:replay, "visit validation requires Rails response"}
+    else
+      :ok
+    end
+  end
 
   def after_change(repo, user, old, new, _context) do
     RailsEffects.visit_months(repo, user.id, stamps([old, new]))

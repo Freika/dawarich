@@ -91,29 +91,31 @@ defmodule Dawarich.Visits.WebMerge do
           "status" => 1
         })
 
-      new = WebEffects.persist(repo, base, new, context.now)
-      source_ids = Enum.map(sources, & &1["id"])
+      with :ok <- WebEffects.validate(new) do
+        new = WebEffects.persist(repo, base, new, context.now)
+        source_ids = Enum.map(sources, & &1["id"])
 
-      repo.query!(
-        "UPDATE points SET visit_id=$2,lock_version=coalesce(lock_version,0)+1 WHERE visit_id=ANY($1)",
-        [source_ids, base["id"]],
-        log: false
-      )
+        repo.query!(
+          "UPDATE points SET visit_id=$2,lock_version=coalesce(lock_version,0)+1 WHERE visit_id=ANY($1)",
+          [source_ids, base["id"]],
+          log: false
+        )
 
-      repo.query!("DELETE FROM place_visits WHERE visit_id=ANY($1)", [source_ids], log: false)
-      repo.query!("DELETE FROM visits WHERE id=ANY($1)", [source_ids], log: false)
-      RailsEffects.visit_months(repo, user.id, WebEffects.stamps(rows ++ [new]))
+        repo.query!("DELETE FROM place_visits WHERE visit_id=ANY($1)", [source_ids], log: false)
+        repo.query!("DELETE FROM visits WHERE id=ANY($1)", [source_ids], log: false)
+        RailsEffects.visit_months(repo, user.id, WebEffects.stamps(rows ++ [new]))
 
-      RailsEffects.orphan_places(
-        repo,
-        user.id,
-        sources
-        |> Enum.reject(& &1["demo"])
-        |> Enum.map(& &1["place_id"])
-        |> Enum.reject(&is_nil/1)
-      )
+        RailsEffects.orphan_places(
+          repo,
+          user.id,
+          sources
+          |> Enum.reject(& &1["demo"])
+          |> Enum.map(& &1["place_id"])
+          |> Enum.reject(&is_nil/1)
+        )
 
-      {:ok, %{visit: new, source_ids: source_ids, rows: rows, zone: zone}}
+        {:ok, %{visit: new, source_ids: source_ids, rows: rows, zone: zone}}
+      end
     end
   end
 end

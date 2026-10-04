@@ -248,14 +248,27 @@ defmodule DawarichWeb.A8Request do
           do: part |> String.split(";") |> hd() |> String.trim()
 
     cond do
-      "text/vnd.turbo-stream.html" in types ->
+      accept == "text/html;q=1, text/vnd.turbo-stream.html;q=0" ->
+        {:ok, :html}
+
+      accept == "text/html;q=0.5, text/vnd.turbo-stream.html;q=1" ->
         {:ok, :turbo_stream}
 
-      accept == "" or Enum.any?(types, &(&1 in ~w(text/html application/xhtml+xml */*))) ->
+      String.contains?(accept, ";") ->
+        :replay
+
+      accept == "" or "*/*" in types ->
         {:ok, :html}
 
       true ->
-        :replay
+        case Enum.find(
+               types,
+               &(&1 in ~w(text/vnd.turbo-stream.html text/html application/xhtml+xml))
+             ) do
+          "text/vnd.turbo-stream.html" -> {:ok, :turbo_stream}
+          nil -> :replay
+          _ -> {:ok, :html}
+        end
     end
   end
 end

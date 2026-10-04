@@ -200,6 +200,77 @@ RSpec.describe 'Phoenix fixtures: the map frames as Rails renders them', type: :
       Nokogiri::HTML5.fragment(response.body).css('turbo-stream').map { [_1['action'], _1['target']] }
     end
 
+    %w[missing_timezone_midnight missing_timezone_dst fractional_final_second lite_cutoff_move
+       invalid_confidence_update invalid_confidence_destroy invalid_confidence_merge
+       html_update html_destroy html_merge accept_html_preferred
+       accept_turbo_preferred].each_with_index do |name, index|
+      it "writes A8 review #{name} from Rails" do
+        travel_to now do
+          Rails.cache.clear
+          allow(DawarichSettings).to receive(:self_hosted?).and_return(name != 'lite_cutoff_move')
+          user = reader(9300 + index, plan: name == 'lite_cutoff_move' ? :lite : :pro)
+          id = 930_000 + index * 10
+          visit!(user, id, now - 2.hours, now - 1.hour, name: 'Cafe', status: :suggested)
+          visit = Visit.find(id)
+          method = :patch
+          path = "/visits/#{id}"
+          params = { visit: { name: 'Renamed' } }
+          accept = 'text/vnd.turbo-stream.html'
+          if name.start_with?('missing_timezone_')
+            user.update_columns(settings: user.settings.except('timezone'))
+            expect(user.reload.safe_settings.timezone).to eq('Europe/Berlin')
+            local = name.end_with?('midnight') ? '2026-10-03T00:15:00' : '2026-03-29T03:15:00'
+            params[:visit].merge!(started_at: local, ended_at: local.sub('15:00', '45:00'))
+          elsif name == 'fractional_final_second'
+            params[:visit].merge!(started_at: '2026-10-03T23:59:59.500+02:00',
+                                  ended_at: '2026-10-04T00:30:00+02:00')
+          elsif name == 'lite_cutoff_move'
+            visit.update_columns(started_at: now - 1.year + 30.minutes, ended_at: now - 1.year + 2.hours)
+            params[:visit].merge!(started_at: '2025-10-03T09:00:00+02:00', ended_at: '2025-10-03T14:00:00+02:00')
+          end
+          visit.update_columns(confidence: 101) if name.start_with?('invalid_confidence_')
+          if name.end_with?('_destroy')
+            method = :delete
+            params = {}
+          elsif name.end_with?('_merge')
+            method = :post
+            path = '/visits/merge'
+            visit!(user, id + 1, now - 45.minutes, now - 30.minutes, name: 'Park', status: :suggested)
+            params = { visit_ids: [id.to_s, (id + 1).to_s] }
+          end
+          accept = 'text/html' if name.start_with?('html_')
+          accept = 'text/html;q=1, text/vnd.turbo-stream.html;q=0' if name == 'accept_html_preferred'
+          accept = 'text/html;q=0.5, text/vnd.turbo-stream.html;q=1' if name == 'accept_turbo_preferred'
+          before = a8_visit_graph([user])
+          a8_visit_request(user, method, path, params, accept:)
+          wanted = if name.start_with?('invalid_confidence_')
+                     { 'invalid_confidence_update' => 200, 'invalid_confidence_merge' => 422,
+                       'invalid_confidence_destroy' => 422 }.fetch(name)
+                   elsif name.start_with?('html_') || name == 'accept_html_preferred'
+                     method == :delete ? 303 : 302
+                   else
+                     200
+                   end
+          expect(response.status).to eq(wanted)
+          if name.start_with?('invalid_confidence_')
+            expect(a8_visit_graph([user])).to eq(before)
+          else
+            unless method == :delete
+              expect(Visit.find(id).name).to eq(name.end_with?('_merge') ? 'Cafe, Park' : 'Renamed')
+            end
+            expect(flash.to_hash).to eq({}) if name.start_with?('html_') || name == 'accept_html_preferred'
+            if name.start_with?('missing_timezone_')
+              expected = name.end_with?('midnight') ? Time.utc(2026, 10, 2, 22, 15) : Time.utc(2026, 3, 29, 1, 15)
+              expect(visit.reload.started_at).to eq(expected)
+            end
+            expect(response.body).to include("visit_entry_#{id}") if %w[fractional_final_second
+                                                                        lite_cutoff_move].include?(name)
+          end
+          a8_visit_record(name, [user], before, { method: method.to_s.upcase, path:, params:, accept: })
+        end
+      end
+    end
+
     it 'writes A8 visit responses and effects' do
       travel_to now do
         names = %w[soft_delete confirm rename blank_name decline owned_place foreign_area demo_adoption month_move
