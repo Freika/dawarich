@@ -4,6 +4,7 @@ require 'rails_helper'
 require_relative 'normal_import_formats_support'
 require_relative 'normal_import_json_support'
 require_relative 'normal_import_photos_support'
+require_relative 'normal_import_records_support'
 
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   include ActiveSupport::Testing::TimeHelpers
@@ -111,6 +112,21 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
           expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
           expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
           NormalImportFormatsSupport.write(name, result)
+        end
+      end
+    end
+  end
+
+  context 'Google Records' do
+    it 'records Google Records preparation and importer outcomes from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.google_records_cases.each do |name, bytes, zone|
+          stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !name.end_with?('_legacy'))
+          result = NormalImportFormatsSupport.capture_json(name, bytes, zone, 2, GoogleMaps::RecordsStorageImporter)
+          prepared = NormalImportFormatsSupport.capture_records_preparation(bytes, zone)
+          expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
+          expect(prepared).to include('prepared_points', 'device_tags')
+          NormalImportFormatsSupport.write(name, result.merge(prepared))
         end
       end
     end
