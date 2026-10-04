@@ -33,10 +33,11 @@ defmodule Dawarich.Cable.PgBus do
       polling: Keyword.get(opts, :polling, true),
       poll: Keyword.get(opts, :poll, 200),
       clock: Keyword.get(opts, :clock),
+      retention: Keyword.get(opts, :retention, 10_000),
       backoff: Keyword.get(opts, :backoff, 5_000)
     }
 
-    {:ok, schedule(state, state.poll)}
+    {:ok, state |> schedule(state.poll) |> schedule(state.retention, :retain)}
   end
 
   def subscribe(broadcasting, opts \\ []) do
@@ -134,6 +135,26 @@ defmodule Dawarich.Cable.PgBus do
     end
   end
 
+  def handle_info(:retain, state) do
+    case retain(state) do
+      {:ok, _} ->
+        {:noreply, schedule(state, state.retention, :retain)}
+
+      {:error, reason} ->
+        Logger.warning("[Cable] PG retention: #{inspect(error_class(reason))}")
+        {:noreply, schedule(state, state.backoff, :retain)}
+    end
+  end
+
+  defp retain(state) do
+    with {:ok, _} <- PgStore.observe(state.repo, state.namespace, state.clock),
+         do: PgStore.prune(state.repo, state.namespace, state.clock)
+  rescue
+    error -> {:error, error.__struct__}
+  catch
+    kind, _ -> {:error, kind}
+  end
+
   defp read(state) do
     PgStore.snapshot(state.repo, state.namespace, state.cursor, state.clock)
   rescue
@@ -146,8 +167,8 @@ defmodule Dawarich.Cable.PgBus do
   defp error_class(kind) when is_atom(kind), do: kind
   defp error_class(_), do: :query_error
 
-  defp schedule(state, delay) do
-    if state.polling, do: Process.send_after(self(), :poll, delay)
+  defp schedule(state, delay, message \\ :poll) do
+    if state.polling, do: Process.send_after(self(), message, delay)
     state
   end
 

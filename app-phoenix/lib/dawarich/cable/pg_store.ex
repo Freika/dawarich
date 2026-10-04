@@ -51,6 +51,66 @@ defmodule Dawarich.Cable.PgStore do
     end
   end
 
+  def observe(repo, namespace, clock \\ nil) do
+    sql = """
+    WITH batch AS (
+      SELECT seq FROM phoenix.cable_events WHERE namespace = $1 AND observed_at IS NULL
+      ORDER BY seq LIMIT 100
+    )
+    UPDATE phoenix.cable_events e SET observed_at = COALESCE($2::timestamptz, statement_timestamp())
+    FROM batch b WHERE e.namespace = $1 AND e.seq = b.seq AND e.observed_at IS NULL
+    """
+
+    case repo.query(sql, [namespace, clock], log: false) do
+      {:ok, %{num_rows: count}} -> {:ok, count}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def prune(repo, namespace, clock \\ nil, limit \\ 100) when limit in 1..100 do
+    repo.transaction(fn ->
+      sql = """
+      SELECT retired_through, COALESCE($2::timestamptz, statement_timestamp()) - interval '60 seconds'
+      FROM phoenix.cable_streams WHERE namespace = $1 FOR UPDATE
+      """
+
+      case repo.query!(sql, [namespace, clock], log: false).rows do
+        [] -> 0
+        [[retired, cutoff]] -> retire(repo, namespace, retired, cutoff, limit)
+      end
+    end)
+  end
+
+  defp retire(repo, namespace, retired, cutoff, limit) do
+    sql = """
+    SELECT seq, COALESCE(observed_at <= $2, false) FROM phoenix.cable_events
+    WHERE namespace = $1 AND seq > $3 ORDER BY seq LIMIT $4 FOR UPDATE
+    """
+
+    through =
+      repo.query!(sql, [namespace, cutoff, retired, limit], log: false).rows
+      |> Enum.reduce_while(retired, fn [seq, expired], through ->
+        if seq == through + 1 and expired, do: {:cont, seq}, else: {:halt, through}
+      end)
+
+    %{rows: deleted} =
+      repo.query!(
+        "DELETE FROM phoenix.cable_events WHERE namespace = $1 AND seq > $2 AND seq <= $3 RETURNING seq",
+        [namespace, retired, through],
+        log: false
+      )
+
+    actual = Enum.reduce(deleted, retired, fn [seq], acc -> max(seq, acc) end)
+
+    repo.query!(
+      "UPDATE phoenix.cable_streams SET retired_through = $2 WHERE namespace = $1",
+      [namespace, actual],
+      log: false
+    )
+
+    length(deleted)
+  end
+
   defp append_in_transaction(repo, namespace, channel, payload) do
     repo.query!(
       "INSERT INTO phoenix.cable_streams(namespace) VALUES ($1) ON CONFLICT DO NOTHING",
