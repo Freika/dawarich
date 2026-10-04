@@ -41,6 +41,37 @@ defmodule Dawarich.NotesApi.WriteTest do
     %{owner: owner, other: other}
   end
 
+  @tag mutation: "M-review-note-dirty"
+  test "title PATCH preserves an interleaved body PATCH", %{owner: owner} do
+    handler = "a4rest-note-dirty"
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:dawarich, :repo, :query],
+        &__MODULE__.interleave/4,
+        {self(), owner, handler}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+    assert {:ok, 200, _} = Write.update(owner, 952_201, %{"title" => "Edited title"}, "UTC", @now)
+    assert_received :body_committed
+
+    assert Repo.query!("SELECT title,body FROM notes WHERE id=952201").rows ==
+             [["Edited title", "Concurrent body"]]
+  end
+
+  def interleave(_event, _measurements, %{query: query}, {parent, owner, handler}) do
+    if self() == parent && String.starts_with?(query, "SELECT title, body, attachable_type") do
+      :telemetry.detach(handler)
+
+      assert {:ok, 200, _} =
+               Write.update(owner, 952_201, %{"body" => "Concurrent body"}, "UTC", @now)
+
+      send(parent, :body_committed)
+    end
+  end
+
   test "body validation accepts 10000 multibyte characters and rejects 10001", %{owner: owner} do
     for body <- [String.duplicate("é", 10_000), String.duplicate("e" <> <<0x301::utf8>>, 5000)] do
       assert {:ok, 201, _} = Write.create(owner, %{@input | "body" => body}, "UTC", @now)

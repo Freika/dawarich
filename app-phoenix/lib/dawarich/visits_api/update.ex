@@ -134,25 +134,26 @@ defmodule Dawarich.VisitsApi.Update do
         NaiveDateTime.compare(v.ended_at, v.started_at) == :gt
 
   defp save(repo, old, values, now) do
-    if old != values do
+    changed =
+      Enum.filter(
+        ~w(name place_id area_id status started_at ended_at)a,
+        &(old[&1] != values[&1])
+      )
+
+    if changed != [] do
+      assignments =
+        Enum.map_join(Enum.with_index(changed, 3), ",", fn {key, index} ->
+          "#{key}=$#{index}"
+        end)
+
       repo.query!(
-        "UPDATE visits SET name=$3,place_id=$4,area_id=$5,status=$6,started_at=$7,ended_at=$8,updated_at=$9 WHERE user_id=$1 AND id=$2",
-        [
-          old.user_id,
-          old.id,
-          values.name,
-          values.place_id,
-          values.area_id,
-          values.status,
-          values.started_at,
-          values.ended_at,
-          now
-        ]
+        "UPDATE visits SET #{assignments},updated_at=$#{length(changed) + 3} WHERE user_id=$1 AND id=$2",
+        [old.user_id, old.id] ++ Enum.map(changed, &values[&1]) ++ [now]
       )
     end
 
     {:ok, new} = Effects.load(repo, old.user_id, old.id, false)
-    Effects.changed(repo, old, new, now, old.place_id != new.place_id)
+    Effects.changed(repo, old, values, now, old.place_id != values.place_id)
     {:ok, new}
   end
 

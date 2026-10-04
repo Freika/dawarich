@@ -136,11 +136,22 @@ defmodule Dawarich.NotesApi.Write do
   end
 
   defp persist(owner, id, old, values, now) do
-    if old != values do
+    changed = Enum.filter(@keys, &(old[&1] != values[&1]))
+
+    if changed != [] do
+      assignments =
+        Enum.map_join(Enum.with_index(changed, 3), ",", fn {key, index} ->
+          value =
+            if key == "lonlat",
+              do: "ST_GeomFromEWKB(decode($#{index}::text,'hex'))::geography",
+              else: "$#{index}"
+
+          "#{key}=#{value}"
+        end)
+
       Repo.query!(
-        "UPDATE notes SET title=$2,body=$3,attachable_type=$4,attachable_id=$5,noted_at=$6,lonlat=#{@point},updated_at=$8 " <>
-          "WHERE user_id=$1 AND id=$9",
-        args(owner, values) ++ [now, id]
+        "UPDATE notes SET #{assignments},updated_at=$#{length(changed) + 3} WHERE user_id=$1 AND id=$2",
+        [owner, id] ++ Enum.map(changed, &values[&1]) ++ [now]
       )
     end
 

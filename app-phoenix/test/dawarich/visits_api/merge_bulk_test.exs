@@ -74,6 +74,62 @@ defmodule Dawarich.VisitsApi.MergeBulkTest do
     :ok
   end
 
+  @tag mutation: "M-review-bulk-active"
+  test "bulk confirm counts only IDs still active after an interleaved decline" do
+    interleaved_bulk("confirmed", "UPDATE visits SET status=2 WHERE id=953301")
+    assert rows("SELECT status FROM visits WHERE id=953301") == [[2]]
+    assert commands() == []
+  end
+
+  @tag mutation: "M-review-bulk-tombstone"
+  test "bulk decline excludes an interleaved tombstone and preserves captured orphan IDs" do
+    interleaved_bulk("declined", "UPDATE visits SET deleted_at=NOW() WHERE id=953301")
+    assert rows("SELECT status FROM visits WHERE id=953301") == [[0]]
+
+    assert commands() == [
+             [
+               "places_delete_if_orphan",
+               %{"user_id" => 953_001, "place_ids" => [953_201, 953_202]}
+             ]
+           ]
+  end
+
+  defp interleaved_bulk(status, sql) do
+    handler = "a4rest-bulk-" <> status
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:dawarich, :scratch_repo, :query],
+        &__MODULE__.interleave/4,
+        {self(), handler, sql}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+
+    assert {:ok, 1} =
+             BulkUpdate.call(953_001, [953_301, 953_302, 953_303, 953_304, 959_999], status)
+
+    assert_received :concurrent_commit
+  end
+
+  def interleave(_event, _measurements, %{query: query}, {parent, handler, sql}) do
+    if self() == parent && String.starts_with?(query, "SELECT id,place_id FROM visits") do
+      :telemetry.detach(handler)
+      [[primary]] = rows("SELECT pg_backend_pid()")
+
+      Task.async(fn ->
+        ScratchRepo.checkout(fn ->
+          assert rows("SELECT pg_backend_pid()") != [[primary]]
+          rows(sql)
+        end)
+      end)
+      |> Task.await()
+
+      send(parent, :concurrent_commit)
+    end
+  end
+
   test "merge preserves earliest base and reassigns points before dependent deletes" do
     assert {:ok, visit} = merge([953_302, 953_301])
     assert visit.id == 953_301

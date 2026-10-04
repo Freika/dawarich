@@ -42,11 +42,14 @@ defmodule Dawarich.VisitsApi.BulkUpdate do
       ids = Enum.map(selected, &hd/1)
 
       %{num_rows: count} =
-        repo.query!("UPDATE visits SET status=$3 WHERE user_id=$1 AND id=ANY($2)", [
-          owner,
-          ids,
-          Map.fetch!(@statuses, status)
-        ])
+        repo.query!(
+          "UPDATE visits SET status=$3 WHERE user_id=$1 AND id=ANY($2) AND deleted_at IS NULL AND status!=2",
+          [
+            owner,
+            ids,
+            Map.fetch!(@statuses, status)
+          ]
+        )
 
       if status == "declined",
         do:

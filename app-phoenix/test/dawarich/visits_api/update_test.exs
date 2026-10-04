@@ -73,6 +73,45 @@ defmodule Dawarich.VisitsApi.UpdateTest do
     :ok
   end
 
+  @tag mutation: "M-review-visit-dirty"
+  test "name PATCH preserves an interleaved decline and does not emit its orphan effect" do
+    rows("UPDATE visits SET status=1 WHERE id=953301")
+    handler = "a4rest-visit-dirty"
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:dawarich, :scratch_repo, :query],
+        &__MODULE__.interleave/4,
+        {self(), handler}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler) end)
+    assert {:ok, visit} = update(%{"name" => "Edited name"})
+    assert_received :decline_committed
+    assert visit.name == "Edited name"
+    assert rows("SELECT name,status FROM visits WHERE id=953301") == [["Edited name", 2]]
+    refute Enum.any?(commands(), fn [kind, _] -> kind == "places_delete_if_orphan" end)
+  end
+
+  def interleave(_event, _measurements, %{query: query}, {parent, handler}) do
+    if self() == parent &&
+         String.starts_with?(query, "SELECT id,user_id,place_id,area_id,name,status") do
+      :telemetry.detach(handler)
+      [[primary]] = rows("SELECT pg_backend_pid()")
+
+      Task.async(fn ->
+        ScratchRepo.checkout(fn ->
+          assert rows("SELECT pg_backend_pid()") != [[primary]]
+          rows("UPDATE visits SET status=2 WHERE id=953301")
+        end)
+      end)
+      |> Task.await()
+
+      send(parent, :decline_committed)
+    end
+  end
+
   test "editing suggested visit confirms unless explicit status supplied" do
     assert {:ok, visit} = update(%{"name" => "Edited", "latitude" => 0, "longitude" => 0})
     assert visit.status == 1
