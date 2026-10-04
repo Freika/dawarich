@@ -13,6 +13,11 @@ defmodule DawarichWeb.MapDataRoutesTest do
     assert actual == [
              {:post, "/api/v1/users/exist", [:api_manager], :api_account, nil},
              {:get, "/api/v1/users/me", [:api_account], :api_account, nil},
+             {:post, "/api/v1/users/me/two_factor/setup", [:api_account], :api_account, nil},
+             {:post, "/api/v1/users/me/two_factor/confirm", [:api_account], :api_account, nil},
+             {:post, "/api/v1/users/me/two_factor/backup_codes", [:api_account], :api_account,
+              nil},
+             {:delete, "/api/v1/users/me/two_factor", [:api_account], :api_account, nil},
              {:post, "/api/v1/visits/merge", [:api_visits], :api_visits, nil},
              {:post, "/api/v1/visits/bulk_update", [:api_visits], :api_visits, nil},
              {:post, "/api/v1/visits/batch", [:api_visits], :api_visits, nil},

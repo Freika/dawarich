@@ -6,12 +6,20 @@ require 'stringio'
 require 'uri'
 require 'active_support/testing/time_helpers'
 
-raise 'A11 own test DB required' unless Rails.env.test? && ENV.fetch('DATABASE_NAME').start_with?('dawarich_test_a11')
+mode = ARGV[1]
+database_allowed = if mode == 'api_two_factor_management'
+                     ENV.fetch('DATABASE_NAME') == 'dawarich_test_a4otp'
+                   else
+                     ENV.fetch('DATABASE_NAME').start_with?('dawarich_test_a11')
+                   end
+raise 'Protocol own test DB required' unless Rails.env.test? && database_allowed
 
 ActiveJob::Base.queue_adapter = :test
 ActionMailer::Base.delivery_method = :test
 ActionMailer::Base.perform_deliveries = false
 fixture = JSON.parse(File.read(ARGV.fetch(0)))
+raise 'Protocol fixture mode must match dispatch' unless fixture.fetch('mode', nil) == mode
+
 Rails.application.reload_routes!
 rack_env = {
   'REQUEST_METHOD' => 'GET', 'PATH_INFO' => '/', 'HTTP_HOST' => 'www.example.com',
@@ -158,9 +166,88 @@ def consume_two_factor_management(fixture, request)
   end
 end
 
-if ARGV[1] == 'two_factor_management'
+def api_protocol_assert(condition, detail)
+  raise "Rails accepts native API secret and backup once: #{detail}" unless condition
+end
+
+def install_api_projection(user, native, hash)
+  user.update_columns(encrypted_password: hash, otp_required_for_login: native.fetch('enabled'),
+                      otp_backup_codes: native.fetch('backups'), consumed_timestep: native.fetch('consumed_timestep'))
+  User.connection.execute(User.sanitize_sql_array(['UPDATE users SET otp_secret=? WHERE id=?',
+                                                   native.fetch('ciphertext'), user.id]))
+  user.reload
+end
+
+def consume_api_two_factor_management(fixture)
+  ids = [954_801, 954_802, 954_803]
+  emails = ids.map { |id| "a4otp-protocol-#{id}@example.invalid" }
+  actors = fixture.fetch('actors')
+  api_protocol_assert(fixture.fetch('schema') == 1, 'schema mismatch')
+  api_protocol_assert(actors.map { |actor| actor.fetch('id') } == ids, 'identity mismatch')
+  api_protocol_assert(actors.map { |actor| actor.fetch('email') } == emails, 'email mismatch')
+  api_protocol_assert(!User.where(id: ids).exists? && !User.where(email: emails).exists?, 'synthetic actor exists')
+  api_protocol_assert((fixture.keys & %w[sessions cookie token remember form_token]).empty?, 'session issued')
+  created = []
+  clock = Object.new.extend(ActiveSupport::Testing::TimeHelpers)
+
+  begin
+    actors.each do |actor|
+      user = User.create!(id: actor.fetch('id'), email: actor.fetch('email'),
+                          password: fixture.fetch('password'), settings: {}, status: :active, plan: :pro)
+      created << user
+      confirmed = actor.fetch('confirmed')
+      api_protocol_assert(confirmed.fetch('consumed_timestep').nil?, 'API confirm consumed timestep')
+      api_protocol_assert(confirmed.fetch('enabled') == (user.id != 954_803), 'enabled flag changed')
+
+      [confirmed, actor['consumed']].compact.each do |native|
+        install_api_projection(user, native, actor.fetch('hash'))
+        api_protocol_assert(user.otp_secret == actor.fetch('secret'), 'decryption failed')
+        backup = actor.fetch('unused_backup')
+        api_protocol_assert(user.invalidate_otp_backup_code!(backup), 'native backup refused')
+        api_protocol_assert(!user.reload.invalidate_otp_backup_code!(backup), 'backup replay survived')
+        next unless actor.fetch('secret')
+
+        clock.travel_to(Time.at(fixture.fetch('at')).utc) do
+          accepted = user.validate_and_consume_otp!(actor.fetch('current_code'))
+          api_protocol_assert(accepted == native.fetch('consumed_timestep').nil?, 'current timestep mismatch')
+          replay_rejected = !user.reload.validate_and_consume_otp!(actor.fetch('current_code'))
+          api_protocol_assert(replay_rejected, 'TOTP replay survived')
+          clock.travel_to(Time.at(fixture.fetch('at') + 30).utc)
+          api_protocol_assert(user.validate_and_consume_otp!(actor.fetch('later_code')), 'later timestep refused')
+          api_protocol_assert(user.reload.consumed_timestep == fixture.fetch('at') / 30 + 1, 'later save mismatch')
+        end
+      end
+
+      install_api_projection(user, confirmed, actor.fetch('hash'))
+      client = native_client({})
+      clock.travel_to(Time.at(fixture.fetch('at')).utc) do
+        client.delete('/api/v1/users/me/two_factor',
+                      params: { password: fixture.fetch('password'), otp_code: actor.fetch('unused_backup') },
+                      headers: { 'Authorization' => "Bearer #{user.api_key}", 'Accept' => 'application/json' })
+      end
+      api_protocol_assert(client.response.status == 200, 'API controller disable refused')
+      api_protocol_assert(user.reload.otp_backup_codes == [] && user.otp_secret.nil? &&
+                          !user.otp_required_for_login?, 'Rails disable projection mismatch')
+      disabled = actor.fetch('disabled')
+      api_protocol_assert(disabled.fetch('backups') == [] && disabled.fetch('ciphertext').nil? &&
+                          disabled.fetch('enabled') == false, 'native disable projection mismatch')
+      expected_step = actor['consumed']&.fetch('consumed_timestep')
+      api_protocol_assert(disabled.fetch('consumed_timestep') == expected_step, 'native disable lost consumption')
+      install_api_projection(user, disabled, actor.fetch('hash'))
+      api_protocol_assert(user.otp_backup_codes == [] && user.otp_secret.nil?, 'native empty array not preserved')
+    end
+    puts 'Rails accepts native API secret and backup once: PASS all API storage checks'
+  ensure
+    created.each(&:delete)
+  end
+end
+
+case ARGV[1]
+when 'api_two_factor_management'
+  consume_api_two_factor_management(fixture)
+when 'two_factor_management'
   consume_two_factor_management(fixture, request)
-elsif ARGV[1] == 'account_update'
+when 'account_update'
   consume_account_update(fixture, request)
 else
   fixture.fetch('sessions').each do |name, entry|
