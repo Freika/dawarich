@@ -4,9 +4,14 @@ defmodule DawarichWeb.AuthGate do
 
   alias Dawarich.Auth.{Admission, RegistrationSetting}
   alias Dawarich.Auth.Recovery.MailWorker
-  alias DawarichWeb.{AuthHandler, AuthRecovery}
+  alias DawarichWeb.{AuthAccount, AuthApiKeys, AuthHandler, AuthRecovery}
 
-  @handlers [{"credentials", AuthHandler}, {"recovery", AuthRecovery.Http}]
+  @handlers [
+    {"credentials", AuthHandler},
+    {"recovery", AuthRecovery.Http},
+    {"account", AuthAccount.Http},
+    {"api_keys", AuthApiKeys.Http}
+  ]
 
   @impl true
   def init(opts), do: opts
@@ -15,7 +20,7 @@ defmodule DawarichWeb.AuthGate do
   def call(conn, _opts) do
     case claimed(conn) do
       nil -> conn
-      {flow, handler} -> handler.call(conn, options(flow, RegistrationSetting.fetch()))
+      {flow, handler} -> handler.call(conn, options(flow))
     end
   end
 
@@ -26,6 +31,9 @@ defmodule DawarichWeb.AuthGate do
       Enum.find(@handlers, fn {flow, handler} -> flow in flows and handler.route?(conn) end)
     end
   end
+
+  defp options(flow) when flow in ["account", "api_keys"], do: [enabled: true]
+  defp options(flow), do: options(flow, RegistrationSetting.fetch())
 
   defp options("credentials", {:ok, registration}),
     do: [enabled: true, registration_enabled: registration]

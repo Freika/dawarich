@@ -2,6 +2,59 @@ defmodule Dawarich.Auth.AdmissionTest do
   use ExUnit.Case, async: true
   alias Dawarich.Auth.Admission
 
+  test "account field lists do not widen credential admission" do
+    fields =
+      ~w(authenticity_token user[email] user[password] user[password_confirmation] user[current_password] commit utf8 _method)
+
+    keys = ~w(authenticity_token commit utf8)
+
+    raw =
+      "user%5Bemail%5D=a%2Bb%40test&user%5Bcurrent_password%5D=old&user%5Bpassword_confirmation%5D=new%26value&_method=put"
+
+    assert {:ok,
+            %{
+              "user[email]" => "a+b@test",
+              "user[current_password]" => "old",
+              "user[password_confirmation]" => "new&value",
+              "_method" => "put"
+            }} = Admission.form(raw, "", fields)
+
+    assert {:handoff, :parameters} = Admission.form(raw, "")
+    assert {:handoff, :parameters} = Admission.form("user%5Bcurrent_password%5D=old", "")
+    assert {:handoff, :parameters} = Admission.form("user%5Bpassword_confirmation%5D=new", "")
+    assert {:ok, %{}} = Admission.form("", "", keys)
+
+    assert {:ok, %{"authenticity_token" => "token"}} =
+             Admission.form("authenticity_token=token", "", keys)
+
+    assert {:handoff, :parameters} = Admission.form("user%5Bemail%5D=a", "", keys)
+
+    for duplicate <- [
+          "user%5Bemail%5D=a&user%5Bemail%5D=b",
+          "user%5Bcurrent_password%5D=a&user%5Bcurrent_password%5D=b",
+          "commit=one&commit=two"
+        ] do
+      original = :binary.copy(duplicate)
+      assert {:handoff, :duplicate_parameters} = Admission.form(duplicate, "", fields)
+      assert duplicate == original
+    end
+
+    for unsupported <- [
+          "user%5Bemail%5D=%FF",
+          "user%5Bemail%5D=%ZZ",
+          "user%5Bemail%5D%5Bnested%5D=a"
+        ] do
+      assert {:handoff, :parameters} = Admission.form(unsupported, "", fields)
+    end
+
+    assert {:handoff, :parameters} = Admission.form(raw, "locale=de", fields)
+    assert {:handoff, :parameters} = Admission.form(String.duplicate("x", 65_537), "", fields)
+    checkbox = "user%5Bremember_me%5D=0&user%5Bremember_me%5D=1"
+    assert {:ok, %{"user[remember_me]" => "1"}} = Admission.form(checkbox, "")
+    assert {:handoff, :parameters} = Admission.form(checkbox, "", fields)
+    assert {:handoff, :duplicate_parameters} = Admission.form(checkbox, "", ["user[remember_me]"])
+  end
+
   test "special session, mobile, OIDC and cloud requests hand back before authentication" do
     assert Admission.context(%{}, [], false, true) == :ok
 
