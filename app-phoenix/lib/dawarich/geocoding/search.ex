@@ -1,8 +1,7 @@
 defmodule Dawarich.Geocoding.Search do
   @moduledoc false
 
-  alias Dawarich.Geocoding.{Http, Providers, Query, RateLimiter}
-  alias Dawarich.Redis
+  alias Dawarich.Geocoding.{Http, Providers, Query, RateLimiter, ResponseCache}
   alias Dawarich.ReleaseMigration
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
@@ -31,8 +30,8 @@ defmodule Dawarich.Geocoding.Search do
         (Providers.api_key_required?(c.provider) and Ruby.blank?(c.api_key))
 
   defp fetch(config, url, key, headers) do
-    case Redis.cache_command(["GET", key]) do
-      {:ok, body} when is_binary(body) and body != "" -> decode(config.provider, body)
+    case ResponseCache.get(key) do
+      {:ok, body} -> decode(config.provider, body)
       _ -> request(config.provider, url, key, headers)
     end
   end
@@ -40,7 +39,7 @@ defmodule Dawarich.Geocoding.Search do
   defp request(provider, url, key, headers) do
     with {:ok, status, body} <- Http.get(url, headers),
          :ok <- status_error(status) do
-      if status in 200..399, do: Redis.cache_command(["SET", key, body, "EX", "86400"])
+      if status in 200..399, do: ResponseCache.put(key, body)
       decode(provider, body)
     end
   end

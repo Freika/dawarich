@@ -41,6 +41,7 @@ defmodule Dawarich.ApiEndpointCase do
   def call(conn, opts) do
     conn
     |> Plug.Conn.assign(:api_now, opts[:api_now])
+    |> Plug.Conn.assign(:api_repo, opts[:api_repo])
     |> DawarichWeb.Endpoint.call(DawarichWeb.Endpoint.init([]))
   end
 
@@ -50,7 +51,7 @@ defmodule Dawarich.ApiEndpointCase do
 
     plug =
       if context[:api_now],
-        do: {__MODULE__, [api_now: context.api_now]},
+        do: {__MODULE__, [api_now: context.api_now, api_repo: context[:api_repo]]},
         else: DawarichWeb.Endpoint
 
     bandit =

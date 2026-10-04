@@ -34,6 +34,8 @@ defmodule Dawarich.Test.ApiGolden do
     %{"status" => status, "headers" => expected} = kase["response"]
     body = body(kase["response"])
     {got_status, headers, got_body} = read_response(client)
+    assert got_status == status
+    {comparison_body, headers} = crypto_comparison(got_body, headers, options)
     ignore = (kase["ignore"] || []) ++ float_derived_headers(options)
 
     names =
@@ -46,7 +48,7 @@ defmodule Dawarich.Test.ApiGolden do
     unordered = kase["unordered"] || []
 
     assert {got_status,
-            got_body |> comparable_body(options) |> masked(masks) |> normalized(unordered)} ==
+            comparison_body |> comparable_body(options) |> masked(masks) |> normalized(unordered)} ==
              {status, body |> comparable_body(options) |> masked(masks) |> normalized(unordered)}
 
     assert Enum.sort(names) == Enum.sort(Map.keys(expected) -- ignore)
@@ -96,6 +98,27 @@ defmodule Dawarich.Test.ApiGolden do
     assert received == body
   end
 
+  defp crypto_comparison(raw, headers, options) do
+    case options[:crypto] do
+      nil ->
+        {raw, headers}
+
+      validator ->
+        digest = :crypto.hash(:sha256, raw) |> Base.encode16(case: :lower) |> binary_part(0, 32)
+        assert values(headers, "etag") == [~s(W/"#{digest}")]
+        assert values(headers, "content-length") == [Integer.to_string(byte_size(raw))]
+        body = validator.(raw)
+
+        headers =
+          Enum.map(headers, fn
+            {"etag", _} -> {"etag", "runtime:crypto_response_etag"}
+            pair -> pair
+          end)
+
+        {body, headers}
+    end
+  end
+
   def normalized(body, []), do: body
 
   def normalized(body, keys) do
@@ -139,7 +162,8 @@ defmodule Dawarich.Test.ApiGolden do
   defp content_length_body(got_body, _body, float_precision: _precision, float_fields: _fields),
     do: got_body
 
-  defp content_length_body(_got_body, body, _options), do: body
+  defp content_length_body(got_body, body, options),
+    do: if(options[:crypto], do: got_body, else: body)
 
   defp float_derived_headers(float_precision: _precision, float_fields: _fields),
     do: ["etag", "set-cookie"]

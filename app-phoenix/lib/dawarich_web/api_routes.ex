@@ -30,6 +30,18 @@ defmodule DawarichWeb.ApiRoutes do
       scope "/api/v1", DawarichWeb.Api do
         pipe_through :api_account
         get "/users/me", UsersController, :me, metadata: %{slice: :api_account}
+
+        post "/users/me/two_factor/setup", TwoFactorController, :setup,
+          metadata: %{slice: :api_account}
+
+        post "/users/me/two_factor/confirm", TwoFactorController, :confirm,
+          metadata: %{slice: :api_account}
+
+        post "/users/me/two_factor/backup_codes", TwoFactorController, :backup_codes,
+          metadata: %{slice: :api_account}
+
+        delete "/users/me/two_factor", TwoFactorController, :destroy,
+          metadata: %{slice: :api_account}
       end
 
       pipeline :api_visits do
