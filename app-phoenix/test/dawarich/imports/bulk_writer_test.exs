@@ -117,7 +117,7 @@ defmodule Dawarich.Imports.BulkWriterTest do
   test "repeat import skips point updates and increments conflict counters without a tile command",
        %{import: import} do
     assert {1, cache} = write([point(import)], import)
-    Repo.query!("TRUNCATE phoenix.rails_commands")
+    Dawarich.FixtureCleanup.delete!(Repo, ~w(phoenix.rails_commands))
     assert {0, _} = write([point(import, "POINT(13.4 52.5)", 100, 99)], import, cache)
     assert counters(import) == [[2, 1, 0]]
 

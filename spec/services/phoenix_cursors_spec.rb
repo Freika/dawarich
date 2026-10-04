@@ -25,6 +25,8 @@ RSpec.describe PhoenixCursors do
   end
 
   it 'uses the Redis string on a database Phoenix never migrated' do
+    ActiveRecord::Base.connection.execute('DROP TABLE phoenix.cursors')
+    PhoenixSchema.reset!
     described_class.set(key, 5)
     expect(Sidekiq.redis { |redis| redis.get(key) }).to eq('5')
     expect(described_class.incr(key)).to eq(6)

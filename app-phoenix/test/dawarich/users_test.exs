@@ -1,9 +1,13 @@
 defmodule Dawarich.UsersTest do
-  use Dawarich.ScratchCase, async: true, group: :scratch_case_db
+  use Dawarich.ScratchCase,
+    async: true,
+    group: :scratch_case_db,
+    tables: ~w(points users),
+    sequences: ~w(users)
 
   alias Dawarich.Users
 
-  setup do
+  setup_all do
     scratch_sql!("""
     CREATE TABLE users (
       id bigserial PRIMARY KEY, status integer DEFAULT 0, deleted_at timestamp(6),

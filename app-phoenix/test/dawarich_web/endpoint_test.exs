@@ -956,7 +956,7 @@ defmodule DawarichWeb.EndpointTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     Dawarich.Test.SharingSeeds.load!()
-    Dawarich.ScratchRepo.query!("TRUNCATE phoenix.counters", [], log: false)
+    Dawarich.FixtureCleanup.delete!(Dawarich.ScratchRepo, ~w(phoenix.counters))
     port = serve()
     id = "a9500000-0000-4000-8000-000000000001"
     page = "GET /s/#{id}?locale=de HTTP/1.1\r\nHost: a\r\n\r\n"

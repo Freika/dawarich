@@ -5,7 +5,7 @@ defmodule Dawarich.Imports.UpdatePointsCountWorkerTest do
   alias Dawarich.Imports.UpdatePointsCountWorker
 
   setup do
-    rows("TRUNCATE public.imports, public.points RESTART IDENTITY CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(public.imports  public.points))
 
     [[user_id]] =
       rows(

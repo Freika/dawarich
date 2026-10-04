@@ -9,9 +9,7 @@ defmodule Dawarich.Wave6Fixtures do
   def load!(name), do: @dir |> Path.join("#{name}.json") |> File.read!() |> Jason.decode!()
 
   def reset! do
-    ScratchRepo.query!("TRUNCATE places, place_visits, countries RESTART IDENTITY CASCADE", [],
-      log: false
-    )
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(places place_visits countries))
 
     :ok
   end

@@ -13,7 +13,7 @@ RSpec.describe InstanceSettings::Backfill do
     InstanceSettings::Resolver.reset!
   end
 
-  before { ActiveRecord::Base.connection.execute('TRUNCATE users CASCADE') }
+  before { FixtureCleanup.delete!(%w[users]) }
 
   def geocoding_setting(user, host:, provider: 'photon', api_key: nil, rps: nil)
     config = { 'host' => host, 'use_https' => true }

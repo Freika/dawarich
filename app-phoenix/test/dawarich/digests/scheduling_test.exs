@@ -43,7 +43,7 @@ defmodule Dawarich.Digests.SchedulingTest do
       assert worker.perform(job, opts) == :ok
       assert [[count]] = rows("SELECT count(*) FROM oban.oban_jobs")
       assert count == 2 * length(expected)
-      rows("TRUNCATE oban.oban_jobs")
+      Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(oban.oban_jobs))
       parent = self()
 
       release = fn cursor ->

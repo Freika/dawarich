@@ -23,7 +23,6 @@ defmodule Dawarich.EnhancedImportCase do
   end
 
   def setup! do
-    truncate!()
     HookRepo.clear_hook()
     ExUnit.Callbacks.on_exit(&HookRepo.clear_hook/0)
     root = Path.join(System.tmp_dir!(), "w5b-extract-#{System.unique_integer([:positive])}")
@@ -32,15 +31,12 @@ defmodule Dawarich.EnhancedImportCase do
     %{storage: %{service: "local", root: root}}
   end
 
-  def truncate! do
-    ScratchRepo.query!(
-      "TRUNCATE users, imports, places, tags, taggings, visits, place_visits, notes, tracks, " <>
-        "active_storage_attachments, active_storage_blobs, phoenix.rails_commands RESTART IDENTITY CASCADE",
-      [],
-      log: false
+  def reset_fixtures! do
+    Dawarich.FixtureCleanup.delete!(
+      ScratchRepo,
+      ~w(users imports places tags taggings visits place_visits notes tracks
+         active_storage_attachments active_storage_blobs phoenix.rails_commands)
     )
-
-    :ok
   end
 
   def fixture(name), do: Wave5bFixtures.read!(Path.join(@dir, name <> ".json"))

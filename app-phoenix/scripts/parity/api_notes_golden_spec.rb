@@ -182,7 +182,7 @@ RSpec.describe 'Phoenix fixture: golden notes API requests', type: :request do
     oracle = ApiNotesGoldenOracle
     reset!
     allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
-    places_sql("TRUNCATE #{oracle::TABLES.join(',')} CASCADE")
+    FixtureCleanup.delete!(oracle::TABLES)
     stamps = { created_at: oracle::STAMP, updated_at: oracle::STAMP }
     user = { status: 1, timezone: 'UTC' }.merge(kase[:user] || {})
     places_insert('users', id: oracle::OWNER, email: 'a4rest-notes@example.invalid', api_key: oracle::KEY,

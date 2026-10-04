@@ -58,6 +58,8 @@ RSpec.describe 'dawarich:jobs' do
   end
 
   it 'propagates a RuntimeError from release when Phoenix has never migrated the database' do
+    ActiveRecord::Base.connection.execute('DROP TABLE phoenix.job_owners')
+    PhoenixSchema.reset!
     Rake::Task['dawarich:jobs:release'].reenable
 
     expect { Rake::Task['dawarich:jobs:release'].invoke('cron:app_version_checking_job') }

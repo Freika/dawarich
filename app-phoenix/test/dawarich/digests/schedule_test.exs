@@ -17,7 +17,7 @@ defmodule Dawarich.Digests.ScheduleTest do
       Ownership.put!(ScratchRepo, "cron:#{period}ly_digest_scheduling_job", :oban)
 
       for owner <- [nil, :sidekiq, :oban] do
-        rows("TRUNCATE phoenix.rails_commands, oban.oban_jobs")
+        Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.rails_commands  oban.oban_jobs))
         if owner, do: Ownership.put!(ScratchRepo, "command:" <> type, owner)
         assert enqueue(period, opts) == :ok
 
@@ -40,7 +40,7 @@ defmodule Dawarich.Digests.ScheduleTest do
           assert reverse["run_at"] == DateTime.to_unix(at, :microsecond) / 1_000_000
         end
 
-        rows("TRUNCATE phoenix.rails_commands, oban.oban_jobs")
+        Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.rails_commands  oban.oban_jobs))
 
         assert {:error, :caller_rollback} =
                  ScratchRepo.transaction(fn ->

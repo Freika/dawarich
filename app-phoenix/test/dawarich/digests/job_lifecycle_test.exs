@@ -7,7 +7,9 @@ defmodule Dawarich.Digests.JobLifecycleTest do
 
   @tag :rails_parity
   test "native worker completes the shared-database Rails collision matrix" do
-    assert ScratchRepo.config()[:database] == "dawarich_phoenix_test_a12d1b2_scratch"
+    assert ScratchRepo.config()[:database] ==
+             System.fetch_env!("PHOENIX_TEST_DATABASE") <> "_scratch"
+
     start_oban(__MODULE__)
     peer_send(%{op: "ready", database: ScratchRepo.config()[:database]})
 

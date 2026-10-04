@@ -14,8 +14,9 @@ defmodule DawarichWeb.VisitActionsTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
 
-    rows(
-      "TRUNCATE places,tags,taggings,visits,place_visits,areas,notes,tracks,track_segments RESTART IDENTITY CASCADE"
+    Dawarich.FixtureCleanup.delete!(
+      ScratchRepo,
+      ~w(places tags taggings visits place_visits areas notes tracks track_segments)
     )
 
     previous = Application.get_env(:dawarich, :jobs_repo)

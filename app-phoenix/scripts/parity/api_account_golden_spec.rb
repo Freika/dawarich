@@ -103,7 +103,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
     reset!
     clear_enqueued_jobs
     Rails.cache.clear
-    places_sql('TRUNCATE users,families,family_memberships,instance_settings CASCADE')
+    FixtureCleanup.delete!(%w[users families family_memberships instance_settings])
     InstanceSettings::Resolver.reset!
     allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
     allow(DawarichSettings).to receive(:two_factor_available?).and_return(kase.fetch(:available, true))
