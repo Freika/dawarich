@@ -45,4 +45,45 @@ defmodule Dawarich.Cable.PgBusTest do
       stop_supervised!(Bus)
     end
   end
+
+  test "bounded polling advances only dispatched rows and keeps the cursor on a read failure" do
+    [spec] = Bus.child_specs()
+    start_supervised!(spec)
+    namespace = Bus.prefix() || ""
+    assert {:ok, ref} = Bus.subscribe("points")
+    assert_receive {:cable_pg, _, _, :subscribed, "points", ^ref} = ack
+    assert Bus.event(ack) == {:subscribed, "points"}
+
+    for seq <- 1..101 do
+      assert {:ok, ^seq} =
+               PgStore.append(ScratchRepo, namespace, "points", Integer.to_string(seq))
+    end
+
+    send(Bus, :poll)
+    assert %{cursor: 100} = :sys.get_state(Bus)
+    :sys.replace_state(Bus, &%{&1 | repo: Dawarich.NotStartedRepo})
+    pid = Process.whereis(Bus)
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      send(Bus, :poll)
+      assert %{cursor: 100} = :sys.get_state(Bus)
+      assert Process.whereis(Bus) == pid
+    end)
+
+    :sys.replace_state(Bus, &%{&1 | repo: ScratchRepo})
+    send(Bus, :poll)
+    assert %{cursor: 101, poll: 200} = :sys.get_state(Bus)
+
+    for seq <- 1..101 do
+      assert_receive {:cable_pg, _, _, "points", ^seq, payload} = message
+      assert payload == Integer.to_string(seq)
+      assert Bus.event(message) == {:message, "points", payload}
+    end
+
+    refute_received {:cable_pg, _, _, _, _, _}
+
+    assert rows("SELECT count(*) FROM phoenix.cable_events WHERE observed_at IS NOT NULL") == [
+             [101]
+           ]
+  end
 end

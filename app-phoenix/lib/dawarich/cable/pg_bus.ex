@@ -1,6 +1,7 @@
 defmodule Dawarich.Cable.PgBus do
   @moduledoc false
   use GenServer
+  require Logger
 
   alias Dawarich.Cable.{Bus, PgStore}
 
@@ -20,13 +21,18 @@ defmodule Dawarich.Cable.PgBus do
 
   @impl true
   def init(opts) do
-    {:ok,
-     %{
-       repo: Keyword.get(opts, :repo, Dawarich.Jobs.repo()),
-       namespace: Keyword.get(opts, :namespace, Bus.prefix() || ""),
-       pubsub: Keyword.get(opts, :pubsub, Dawarich.PubSub),
-       cursor: 0
-     }}
+    state = %{
+      repo: Keyword.get(opts, :repo, Dawarich.Jobs.repo()),
+      namespace: Keyword.get(opts, :namespace, Bus.prefix() || ""),
+      pubsub: Keyword.get(opts, :pubsub, Dawarich.PubSub),
+      cursor: 0,
+      polling: Keyword.get(opts, :polling, true),
+      poll: Keyword.get(opts, :poll, 200),
+      clock: Keyword.get(opts, :clock),
+      backoff: Keyword.get(opts, :backoff, 5_000)
+    }
+
+    {:ok, schedule(state, state.poll)}
   end
 
   def subscribe(broadcasting, opts \\ []) do
@@ -101,21 +107,44 @@ defmodule Dawarich.Cable.PgBus do
 
   @impl true
   def handle_info(:poll, state) do
-    {:ok, snapshot} = PgStore.snapshot(state.repo, state.namespace, state.cursor)
+    case read(state) do
+      {:ok, snapshot} ->
+        cursor =
+          Enum.reduce(snapshot.events, state.cursor, fn [seq, broadcasting, payload], _cursor ->
+            :ok =
+              Phoenix.PubSub.local_broadcast(
+                state.pubsub,
+                topic(state.namespace, broadcasting),
+                {:cable_pg, state.pubsub, state.namespace, broadcasting, seq, payload}
+              )
 
-    cursor =
-      Enum.reduce(snapshot.events, state.cursor, fn [seq, broadcasting, payload], _cursor ->
-        :ok =
-          Phoenix.PubSub.local_broadcast(
-            state.pubsub,
-            topic(state.namespace, broadcasting),
-            {:cable_pg, state.pubsub, state.namespace, broadcasting, seq, payload}
-          )
+            seq
+          end)
 
-        seq
-      end)
+        delay = if length(snapshot.events) == 100, do: 0, else: state.poll
+        {:noreply, schedule(%{state | cursor: cursor}, delay)}
 
-    {:noreply, %{state | cursor: cursor}}
+      {:error, reason} ->
+        Logger.warning("[Cable] PG poll: #{inspect(error_class(reason))}")
+        {:noreply, schedule(state, state.backoff)}
+    end
+  end
+
+  defp read(state) do
+    PgStore.snapshot(state.repo, state.namespace, state.cursor, state.clock)
+  rescue
+    error -> {:error, error.__struct__}
+  catch
+    kind, _ -> {:error, kind}
+  end
+
+  defp error_class(%{__struct__: kind}), do: kind
+  defp error_class(kind) when is_atom(kind), do: kind
+  defp error_class(_), do: :query_error
+
+  defp schedule(state, delay) do
+    if state.polling, do: Process.send_after(self(), :poll, delay)
+    state
   end
 
   defp options(opts) do

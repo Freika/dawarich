@@ -9,19 +9,25 @@ defmodule Dawarich.Cable.PgStore do
     end
   end
 
-  def snapshot(repo, namespace, cursor) do
+  def snapshot(repo, namespace, cursor, clock \\ nil) do
     sql = """
+    WITH batch AS MATERIALIZED (
+      SELECT seq, channel, payload FROM phoenix.cable_events
+      WHERE namespace = $1 AND seq > $2 ORDER BY seq LIMIT 100
+    ), observed AS (
+      UPDATE phoenix.cable_events e
+      SET observed_at = COALESCE($3::timestamptz, statement_timestamp())
+      FROM batch b WHERE e.namespace = $1 AND e.seq = b.seq AND e.observed_at IS NULL
+      RETURNING e.seq
+    )
     SELECT COALESCE(s.last_seq, 0), COALESCE(s.retired_through, 0), e.seq, e.channel, e.payload
     FROM (SELECT 1) AS anchor
     LEFT JOIN phoenix.cable_streams s ON s.namespace = $1
-    LEFT JOIN LATERAL (
-      SELECT seq, channel, payload FROM phoenix.cable_events
-      WHERE namespace = s.namespace AND seq > $2 ORDER BY seq LIMIT 100
-    ) e ON true
+    LEFT JOIN batch e ON true
     ORDER BY e.seq
     """
 
-    case repo.query(sql, [namespace, cursor], log: false) do
+    case repo.query(sql, [namespace, cursor, clock], log: false) do
       {:ok, %{rows: [[last_seq, retired_through | _] | _] = rows}} ->
         events =
           for [_, _, seq, channel, payload] <- rows, not is_nil(seq), do: [seq, channel, payload]
