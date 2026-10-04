@@ -5,6 +5,7 @@ defmodule DawarichWeb.A8Routes do
       pipeline :a8_action do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
         plug DawarichWeb.RailsAuth
         plug DawarichWeb.A8Request
         plug DawarichWeb.Locale
@@ -66,6 +67,7 @@ defmodule DawarichWeb.A8Routes do
       pipeline :a8_public do
         plug DawarichWeb.HostAuthorization
         plug DawarichWeb.ForceSSL
+        plug DawarichWeb.RateLimit
         plug DawarichWeb.RailsHeaders
       end
 

@@ -65,6 +65,27 @@ defmodule DawarichWeb.A8GateEndpointTest do
     |> Phoenix.ConnTest.dispatch(DawarichWeb.Endpoint, method, path, body)
   end
 
+  @tag limiter: :action
+  test "A8 action pipeline runs the limiter before parsing", ctx do
+    conn = request(ctx, :patch, "/settings/visits", "settings%5Bvisit_radius_meters%5D=75")
+    assert conn.status == 302
+    assert conn.private.dawarich_rate_limit == []
+  end
+
+  @tag limiter: :public
+  test "A8 public pipeline runs the limiter", ctx do
+    conn = request(ctx, :get, "/visits", "")
+    assert conn.status == 302
+    assert conn.private.dawarich_rate_limit == []
+  end
+
+  @tag limiter: :browser
+  test "visits settings browser pipeline runs the limiter", ctx do
+    conn = request(ctx, :get, "/settings/visits", "")
+    assert conn.status == 200
+    assert conn.private.dawarich_rate_limit == []
+  end
+
   defp replay(ctx, upstream, method, path, body) do
     {{line, actual}, conn} = forwarded(upstream, fn -> request(ctx, method, path, body) end)
     assert line == "#{String.upcase(to_string(method))} #{path} HTTP/1.1"

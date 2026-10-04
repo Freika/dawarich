@@ -71,22 +71,11 @@ defmodule DawarichWeb.NavbarEnd do
               <details>
                 <summary class="relative">
                   <Icon.icon name="bell" class="size-6" />
-                  <span
-                    id="notifications-badge"
-                    class={"badge badge-xs badge-primary absolute top-0 right-0 #{if @data.unread.count == 0, do: "hidden"}"}
-                  >{count(@data.unread.count)}</span>
+                  <.badge count={@data.unread.count} />
                 </summary>
                 <ul class="p-2 bg-base-100 rounded-t-none z-[50] min-w-52" id="notifications-list">
                   <li><a href="/notifications">{t(@locale, "shared.navbar.see_all", %{})}</a></li>
-                  <li
-                    :for={item <- @data.unread.items}
-                    class="notification-item"
-                    id={"navbar_notification_#{item.id}"}
-                  >
-                    <div class="divider p-0 m-0"></div>
-                    <a href={"/notifications/#{item.id}"}>{item.title}
-                    <div class={"badge badge-xs justify-self-end badge-#{item.kind}"}></div></a>
-                  </li>
+                  <.navbar_item :for={item <- @data.unread.items} item={item} />
                 </ul>
               </details>
             </li>
@@ -211,6 +200,29 @@ defmodule DawarichWeb.NavbarEnd do
       t(locale, "shared.navbar.trial_ends_in", %{
         time: TimeAgo.words(locale, subscription.active_until, now)
       })
+
+  attr :item, :map, required: true
+
+  def navbar_item(assigns) do
+    ~H"""
+    <li class="notification-item" id={"navbar_notification_#{@item.id}"}>
+      <div class="divider p-0 m-0"></div>
+      <a href={"/notifications/#{@item.id}"}>{@item.title}
+      <div class={"badge badge-xs justify-self-end badge-#{@item.kind}"}></div></a>
+    </li>
+    """
+  end
+
+  attr :count, :integer, required: true
+
+  def badge(assigns) do
+    ~H"""
+    <span
+      id="notifications-badge"
+      class={"badge badge-xs badge-primary absolute top-0 right-0 #{if @count == 0, do: "hidden"}"}
+    >{count(@count)}</span>
+    """
+  end
 
   defp count(count) when count > 99, do: "99+"
   defp count(count), do: count

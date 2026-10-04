@@ -28,6 +28,16 @@ defmodule Dawarich.Auth.SessionCookie do
     encode(%{"session_id" => session_id(), "flash" => flash(notice)}, secret)
   end
 
+  def for_account_update(session, user, notice, secret) do
+    session =
+      session
+      |> Map.reject(fn {key, _} -> String.starts_with?(key, "devise.") end)
+      |> Map.put("warden.user.user.key", [[user.id], binary_part(user.encrypted_password, 0, 29)])
+      |> Map.put("flash", flash(notice))
+
+    encode(session, secret)
+  end
+
   def for_restore(session, user, secret) do
     session =
       session

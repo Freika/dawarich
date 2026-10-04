@@ -56,8 +56,8 @@ class Visits::Suggest
 
   # The debouncer can schedule a run every five minutes; without this an outage
   # would bury the notification list under hundreds of identical rows. The claim
-  # is a Redis SET NX so two concurrent runs can't both pass the check, and it
-  # fails open — a Redis problem must never swallow the error notification.
+  # is atomic so two concurrent runs can't both pass the check, and it fails
+  # open — a store problem must never swallow the error notification.
   def notify_failure(error)
     return unless claim_error_window?
 
@@ -71,9 +71,7 @@ class Visits::Suggest
   end
 
   def claim_error_window?
-    Sidekiq.redis do |redis|
-      redis.set("visit_suggest_error:user:#{user.id}", 1, nx: true, ex: ERROR_DEDUP_WINDOW.to_i)
-    end
+    PhoenixClaims.claim("visit_suggest_error:user:#{user.id}", ERROR_DEDUP_WINDOW.to_i)
   rescue StandardError => e
     Rails.logger.warn("[Visits::Suggest] error-notification dedupe unavailable: #{e.class}: #{e.message}")
     true

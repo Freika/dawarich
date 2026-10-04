@@ -13,7 +13,7 @@ defmodule DawarichWeb.A8RoutesTest do
 
   test "existing page routes survive declaration extraction" do
     for {path, module, action, pipelines} <- [
-          {"/", DawarichWeb.InsightsHome, :index, [:insights]},
+          {"/", DawarichWeb.InsightsHome, :index, [:rails_frame]},
           {"/settings/general", Phoenix.LiveView.Plug, :index, [:browser, :rails_user]},
           {"/settings/integrations", Phoenix.LiveView.Plug, :index, [:browser, :rails_user]},
           {"/imports/42/download", DawarichWeb.ImportsDownload, :show, [:browser, :rails_user]},

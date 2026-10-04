@@ -52,5 +52,27 @@ RSpec.describe Stats::CalculatingJob, type: :job do
         expect(user.notifications.last.content).to include('boom')
       end
     end
+
+    it 'Oban-owned: forwards the month with integer year and month and calculates nothing' do
+      job_owner!(described_class::OWNER_KEY, :oban)
+      job = described_class.new(user.id, '2024', '3', notify_on_failure: false)
+
+      job.perform_now
+
+      expect(JobOutbox.sole).to have_attributes(
+        command_type: 'stats.calculate_month', aggregate_id: user.id, event_id: job.job_id,
+        payload: { 'user_id' => user.id, 'year' => 2024, 'month' => 3, 'notify_on_failure' => false }
+      )
+      expect(Stats::CalculateMonth).not_to have_received(:new)
+    end
+
+    it 'Oban-owned: a failing forward raises for a Sidekiq retry and notifies nobody' do
+      job_owner!(described_class::OWNER_KEY, :oban)
+      allow(JobCommands).to receive(:forward).and_raise(ActiveRecord::ConnectionNotEstablished, 'down')
+
+      expect do
+        expect { described_class.perform_now(user.id, 2024, 1) }.to raise_error(ActiveRecord::ConnectionNotEstablished)
+      end.not_to change(Notification, :count)
+    end
   end
 end

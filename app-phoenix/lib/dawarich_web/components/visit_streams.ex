@@ -18,7 +18,7 @@ defmodule DawarichWeb.VisitStreams do
     zone = result.zone
     dates = WebEffects.dates(ctx.repo, result_rows(action, result), zone)
     date = date(action, result, dates, ctx, zone)
-    restricted = not Entitlements.full_access?(ctx.user, ctx.self_hosted, ctx.now, ctx.repo)
+    restricted = not Entitlements.full_access?(ctx.repo, ctx.user, ctx.self_hosted, ctx.now)
     window_now = if restricted, do: ctx.now
     window = window(ctx.repo, zone, date)
     feed = Days.load(ctx.user, window, window_now, ctx.repo)

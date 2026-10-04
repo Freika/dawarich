@@ -20,7 +20,12 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
   before { FileUtils.mkdir_p(dir.join('pages')) }
 
   def write_json(name, data)
-    File.write(dir.join(name), "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2)}\n")
+    encoded = "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2)}\n"
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      File.write(dir.join(name), encoded)
+    else
+      expect(JSON.parse(dir.join(name).read)).to eq(JSON.parse(encoded))
+    end
   end
 
   def utc(text) = Time.iso8601(text)
@@ -557,7 +562,12 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
     expect(response).to have_http_status(:ok)
     doc = Nokogiri::HTML5(response.body)
     doc.css('input[name="authenticity_token"]').each { |node| node['value'] = 'CSRF' }
-    File.write(dir.join("pages/#{name}.html"), doc.at_css('body > div.container > div.w-full > div.flex').inner_html)
+    html = doc.at_css('body > div.container > div.w-full > div.flex').inner_html
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      File.write(dir.join("pages/#{name}.html"), html)
+    else
+      expect(dir.join("pages/#{name}.html").read).to eq(html)
+    end
     sign_out :user
     { name:, user_id:, path:, title: doc.at_css('title').text }
   end

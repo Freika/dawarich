@@ -109,7 +109,7 @@ defmodule Dawarich.ReleaseOperations do
 
     Logger.error(
       "release operation #{op.id} (#{op.worker.command_type()}) failed at #{inspect(op.cursor)}; " <>
-        "resume with Dawarich.ReleaseOperations.resume(Dawarich.Jobs.repo(), Oban, \"#{op.id}\")"
+        "resume with dawarich jobs resume #{op.id}"
     )
   end
 

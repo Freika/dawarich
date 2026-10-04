@@ -201,6 +201,34 @@ RSpec.describe JobCommands do
     )
   end
 
+  it 'stats.calculate_month enqueues the month with its delay; rehome keeps an unsent row when the push fails' do
+    user = create(:user)
+    at = Time.zone.parse('2026-03-29 12:34:56 UTC')
+    payload = { 'user_id' => user.id, 'year' => 2024, 'month' => 3, 'notify_on_failure' => false }
+
+    described_class::COMMANDS.fetch('stats.calculate_month').fetch(:sidekiq).call(payload, at)
+    expect(Stats::CalculatingJob).to have_been_enqueued.with(user.id, 2024, 3, notify_on_failure: false).at(at)
+
+    job_owner!('command:stats.calculate_month', :oban)
+    2.times do
+      described_class.forward('stats.calculate_month', payload, event_id: SecureRandom.uuid, aggregate_id: user.id,
+                                                                producer: 'spec', scheduled_at: at)
+    end
+    pushes = 0
+    %i[enqueue enqueue_at].each do |push|
+      allow(ApplicationJob.queue_adapter).to receive(push).and_wrap_original do |original, *args|
+        pushes += 1
+        raise RedisClient::CannotConnectError, 'redis down' if pushes == 2
+
+        original.call(*args)
+      end
+    end
+
+    expect(described_class.rehome!('stats.calculate_month', by: 'spec'))
+      .to eq({ moved: 1, left: 1, error: 'RedisClient::CannotConnectError' })
+    expect(described_class.rehome!('stats.calculate_month', by: 'spec')).to eq({ moved: 1, left: 0 })
+  end
+
   it 're-homes pending achievement and relabel commands to their Sidekiq jobs' do
     user = create(:user)
     area = create(:area, user: user)
@@ -320,6 +348,7 @@ RSpec.describe JobCommands do
         ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '2s'")
         ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
       end
+      PhoenixTables.install_state!
     end
 
     it 'moves unlocked commands and reports the pending command left behind by the relay' do
@@ -366,6 +395,7 @@ RSpec.describe JobCommands do
         ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '2s'")
         ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
       end
+      PhoenixTables.install_state!
     end
 
     it 'leaves no outbox row when the caller transaction rolls back' do

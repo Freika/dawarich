@@ -37,7 +37,7 @@ defmodule Dawarich.Visits.WebScope do
   end
 
   def cutoff(repo, user, now, self_hosted) do
-    if Entitlements.full_access?(user, self_hosted, now, repo) do
+    if Entitlements.full_access?(repo, user, self_hosted, now) do
       {:ok, nil}
     else
       with {:ok, zone} <- zone(repo, user.settings) do

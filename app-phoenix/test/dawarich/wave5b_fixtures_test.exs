@@ -14,7 +14,7 @@ defmodule Dawarich.Wave5bFixturesTest do
   setup do
     unless ScratchRepo.query!("SELECT to_regclass('public.users') IS NOT NULL", [], log: false).rows ==
              [[true]] do
-      Dawarich.ScratchCase.recreate_public!()
+      Dawarich.ScratchCase.recreate_public!(ScratchRepo)
 
       ScratchRepo.query!(Dawarich.ReleaseMigrator.baseline_sql(), [],
         query_type: :text,

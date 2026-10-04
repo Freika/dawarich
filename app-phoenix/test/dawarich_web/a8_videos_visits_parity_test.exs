@@ -242,7 +242,7 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
                [user.id]
              ).rows
 
-    assert Entitlements.full_access?(user, false, now(state), repo)
+    assert Entitlements.full_access?(repo, user, false, now(state))
   end
 
   defp assert_case_graph("visits/suggested_foreign_place", _state, user, repo) do

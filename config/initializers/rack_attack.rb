@@ -1,17 +1,16 @@
 # frozen_string_literal: true
 
-# Per-plan API rate limiting using rack-attack with Redis backend.
+# Per-plan API rate limiting using rack-attack.
 # Self-hosted instances are exempt from rate limiting, except two brute-force
 # guards kept everywhere: shared_links/unlock and auth/account_link_challenge_*.
 # Cloud plans: Lite = 200 req/hr, Pro = 1,000 req/hr.
 # Points creation endpoints: 10,000 req/hr, cloud only.
 
-Rack::Attack.cache.store = ActiveSupport::Cache::RedisCacheStore.new(
-  url: ENV['REDIS_URL'],
-  db: ENV.fetch('RACK_ATTACK_REDIS_DB', '3').to_i # dbs 0-2 are reserved for app caching, sidekiq and ws.
-)
-
 require Rails.root.join('lib/rack_attack/request_helpers')
+require Rails.root.join('lib/rack_attack/phoenix_counter_store')
+
+Rack::Attack.cache.store =
+  Rails.env.test? ? ActiveSupport::Cache::MemoryStore.new : RackAttack::PhoenixCounterStore.new
 
 # Disabled in the test environment so request specs aren't throttled by
 # accumulated counters across examples (login throttle is 5/min by IP,

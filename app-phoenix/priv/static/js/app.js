@@ -34,6 +34,18 @@ const turboOwns = (element) => {
 const liveSocket = new LiveSocket("/phoenix/live", Socket, {
   params: { _csrf_token: meta("phoenix-csrf-token") },
   hooks: { ChangelogWidget, RailsStimulus, MapShell },
+  dom: {
+    onBeforeElUpdated(fromEl, toEl) {
+      if (
+        fromEl.matches(".navbar-end details") &&
+        toEl.matches("details") &&
+        fromEl.querySelector('a[href="/users/sign_out"]') &&
+        toEl.querySelector('a[href="/users/sign_out"]')
+      ) {
+        toEl.toggleAttribute("open", fromEl.hasAttribute("open"))
+      }
+    },
+  },
 })
 liveSocket.connect()
 window.liveSocket = liveSocket

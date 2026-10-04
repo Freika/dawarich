@@ -146,11 +146,14 @@ defmodule Dawarich.ReleaseOperationsTest do
     id = Ecto.UUID.generate()
     Process.put(:raise_after_write, true)
 
-    ExUnit.CaptureLog.capture_log(fn ->
-      assert_raise RuntimeError, fn ->
-        run(%{"version" => 1, "event_id" => id, "cursor" => cursor(user, 0, 3)}, 10, 10)
-      end
-    end)
+    log =
+      ExUnit.CaptureLog.capture_log(fn ->
+        assert_raise RuntimeError, fn ->
+          run(%{"version" => 1, "event_id" => id, "cursor" => cursor(user, 0, 3)}, 10, 10)
+        end
+      end)
+
+    assert log =~ "resume with dawarich jobs resume #{id}"
 
     assert rows("SELECT status, error FROM phoenix.release_operations WHERE id = $1", [
              Ecto.UUID.dump!(id)

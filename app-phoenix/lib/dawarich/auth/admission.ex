@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.Admission do
-  @moduledoc "Pre-effect boundary for the inactive credentials HTTP slice."
+  @moduledoc false
 
   @special ~w(invitation_token pending_import_ticket dawarich_client)
   @fields ~w(authenticity_token user[email] user[password] user[remember_me] commit utf8 _method)
@@ -37,29 +37,41 @@ defmodule Dawarich.Auth.Admission do
     end
   end
 
-  def form(raw, query) when is_binary(raw) and is_binary(query) do
+  def oidc?(env \\ System.get_env()) do
+    (present?(env, "GOOGLE_OAUTH_CLIENT_ID") and present?(env, "GOOGLE_OAUTH_CLIENT_SECRET")) or
+      (present?(env, "OIDC_CLIENT_ID") and
+         (present?(env, "OIDC_CLIENT_SECRET") or
+            String.downcase(Dawarich.ReleaseMigration.ruby_strip(env["OIDC_PKCE_ENABLED"] || "")) ==
+              "true"))
+  end
+
+  def form(raw, query), do: form(raw, query, @fields)
+
+  def form(raw, query, fields) when is_binary(raw) and is_binary(query) and is_list(fields) do
     if query != "" or byte_size(raw) > 65_536 do
       {:handoff, :parameters}
     else
       raw
       |> String.split("&", trim: true)
-      |> Enum.reduce_while({:ok, %{}}, &pair/2)
+      |> Enum.reduce_while({:ok, %{}}, &pair(&1, &2, fields))
     end
   end
 
-  defp pair(segment, {:ok, acc}) do
+  defp present?(env, key), do: Dawarich.ReleaseMigration.ruby_strip(env[key] || "") != ""
+
+  defp pair(segment, {:ok, acc}, fields) do
     with [key, value] <- String.split(segment, "=", parts: 2),
          key <- URI.decode_www_form(key),
          value <- URI.decode_www_form(value),
          true <- not Regex.match?(~r/%(?![0-9a-fA-F]{2})/, segment),
          true <- String.valid?(key) and String.valid?(value),
-         true <- key in @fields,
+         true <- key in fields,
          true <- key != "user[remember_me]" or value in ["0", "1"] do
       case Map.fetch(acc, key) do
         :error ->
           {:cont, {:ok, Map.put(acc, key, value)}}
 
-        {:ok, "0"} when key == "user[remember_me]" and value == "1" ->
+        {:ok, "0"} when key == "user[remember_me]" and value == "1" and fields == @fields ->
           {:cont, {:ok, Map.put(acc, key, value)}}
 
         _ ->

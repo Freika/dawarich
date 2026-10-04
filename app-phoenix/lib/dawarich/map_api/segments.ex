@@ -79,8 +79,8 @@ defmodule Dawarich.MapApi.Segments do
         if row["start_at"], do: epoch(row["start_at"]), else: (row["start_index"] || 0) * 1.0
       end)
 
-  defp color(number) when number in 0..10, do: Enum.at(@colors, number)
-  defp color(_number), do: "#CBD5E1"
+  def color(number) when number in 0..10, do: Enum.at(@colors, number)
+  def color(_number), do: "#CBD5E1"
 
   defp confidence(number) when number in 0..2, do: Enum.at(~w(low medium high), number)
   defp confidence(_number), do: nil

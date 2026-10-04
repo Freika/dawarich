@@ -37,6 +37,147 @@ defmodule DawarichWeb.EndpointTest do
     port
   end
 
+  @tag a10_boundary: :writes
+  test "A10 ownership serves supported GETs and proxies every retained action untouched", ctx do
+    cookie = a10_actor!()
+    port = serve()
+
+    for {target, view} <- [
+          {"/admin/settings", DawarichWeb.AdminLive.Instance},
+          {"/settings/users", DawarichWeb.SettingsLive.UsersIndex},
+          {"/settings/users/10001", DawarichWeb.SettingsLive.UserShow},
+          {"/settings/users/10001/edit", DawarichWeb.SettingsLive.UserEdit},
+          {"/settings/background_jobs", DawarichWeb.SettingsLive.BackgroundJobs}
+        ] do
+      route = Phoenix.Router.route_info(DawarichWeb.Router, "GET", target, "a")
+      assert match?(%{phoenix_live_view: {^view, _, _, _}}, route), target
+
+      assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n#{cookie}\r\n") ==
+               200,
+             target
+    end
+
+    body = "user%5Bemail%5D=a10%40example.invalid&literal=%00%26"
+
+    for {method, target, headers} <- [
+          {"POST", "/admin/settings?section=photon", ""},
+          {"PATCH", "/admin/settings", ""},
+          {"PUT", "/admin/settings", ""},
+          {"POST", "/admin/settings/test_geocoding", ""},
+          {"POST", "/settings/users", ""},
+          {"PUT", "/settings/users/10001", ""},
+          {"PATCH", "/settings/users/10001", ""},
+          {"DELETE", "/settings/users/10001", ""},
+          {"POST", "/settings/users/10001/send_password_reset", ""},
+          {"POST", "/settings/users/10001/regenerate_api_key", ""},
+          {"POST", "/settings/users/import", ""},
+          {"PATCH", "/settings/users/update_registration_settings", ""},
+          {"GET", "/settings/users/export?kind=all", ""},
+          {"GET", "/trial/welcome?token=synthetic-invalid", ""},
+          {"GET", "/sidekiq", ""},
+          {"GET", "/admin/flipper", ""},
+          {"GET", "/settings/users/export/edit", ""},
+          {"GET", "/settings/users/99999", ""},
+          {"GET", "/settings/users/10001.json", ""},
+          {"GET", "/admin/settings?format=json", ""},
+          {"GET", "/admin/settings", "Turbo-Frame: instance-settings-sections\r\n"},
+          {"GET", "/settings/users", "Accept: application/json\r\n"},
+          {"PATCH", "/settings/background_jobs", ""},
+          {"POST", "/settings/background_jobs?job_name=start_immich_import", ""}
+        ] do
+      client = connect(port)
+
+      send_raw(
+        client,
+        "#{method} #{target} HTTP/1.1\r\nHost: a\r\n#{cookie}#{headers}Content-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n#{body}"
+      )
+
+      puma = accept(ctx.upstream)
+      {head, rest} = read_head(puma)
+      assert request_line(head) == "#{method} #{target} HTTP/1.1"
+      assert header(head, "content-length") == [to_string(byte_size(body))]
+      assert read_at_least(puma, rest, byte_size(body)) == body
+      reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+      assert {200, _, "puma"} = read_response(client)
+    end
+
+    assert [[0]] == Dawarich.Repo.query!("SELECT count(*) FROM job_outbox", [], log: false).rows
+  end
+
+  @tag a10_boundary: :keys
+  test "A10 admin settings trial and home keys restore Rails routing", ctx do
+    cookie = a10_actor!()
+    port = serve()
+
+    for {key, target, status} <- [
+          {"admin", "/admin/settings?section=points", 200},
+          {"settings", "/settings/users?search=a10", 200},
+          {"settings", "/settings/general", 200},
+          {"trial", "/trial/upgrade?plan=pro", 302},
+          {"home", "/?return_to=elsewhere", 302}
+        ] do
+      Application.put_env(:dawarich, :rails_routes, [])
+      request = "GET #{target} HTTP/1.1\r\nHost: a\r\n#{cookie}\r\n"
+      assert answered_by_phoenix(port, request) == status
+      Application.put_env(:dawarich, :rails_routes, [key])
+      if key == "home", do: assert(DawarichWeb.Strangler.handed_back?([]))
+      assert answered_by_puma(port, ctx.upstream, request) == "GET #{target} HTTP/1.1"
+    end
+  end
+
+  @tag a10_boundary: :id
+  test "unroutable user export never matches the numeric target route" do
+    a10_actor!()
+
+    for suffix <- ["", "/edit"] do
+      route =
+        Phoenix.Router.route_info(
+          DawarichWeb.Router,
+          "GET",
+          "/settings/users/10001" <> suffix,
+          "a"
+        )
+
+      assert match?(%{rails_gate: {DawarichWeb.AdminGate, :users?}}, route)
+
+      assert true ==
+               DawarichWeb.Strangler.gate_open?(route, Dawarich.Test.RailsUser.signed_in(10001))
+
+      assert DawarichWeb.Strangler.rails_constraints?(route)
+      refute DawarichWeb.Strangler.rails_constraints?(%{route | path_params: %{"id" => "export"}})
+
+      refute DawarichWeb.Strangler.rails_constraints?(%{
+               route
+               | path_params: %{"id" => "1000000000000000000"}
+             })
+    end
+  end
+
+  defp a10_actor! do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
+    original = System.get_env("SELF_HOSTED")
+    System.put_env("SELF_HOSTED", "true")
+    Application.put_env(:dawarich, :rails_routes, [])
+
+    on_exit(fn ->
+      if original,
+        do: System.put_env("SELF_HOSTED", original),
+        else: System.delete_env("SELF_HOSTED")
+    end)
+
+    Dawarich.Test.RailsUser.insert!(%{
+      id: 10001,
+      email: "a10-route@example.invalid",
+      admin: true,
+      api_key: "a10-k-10001",
+      settings: %{"timezone" => "Europe/Berlin", "onboarding_completed" => true}
+    })
+
+    "Cookie: _dawarich_session=#{Dawarich.Test.RailsUser.cookie(Dawarich.Test.RailsUser.session(10001))}\r\n"
+  end
+
   test "a path Phoenix does not route goes to Puma with its body unread", ctx do
     client = connect(serve())
 
@@ -55,7 +196,8 @@ defmodule DawarichWeb.EndpointTest do
     assert values(headers, "location") == ["/settings"]
   end
 
-  test "a /cable upgrade goes to Puma as an upgrade", ctx do
+  test "a handed-back /cable upgrade goes to Puma as an upgrade", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["cable"])
     port = serve()
     client = ws_request(port, "/cable", [{"Origin", "http://127.0.0.1:#{port}"}])
     puma = accept(ctx.upstream)
@@ -552,6 +694,8 @@ defmodule DawarichWeb.EndpointTest do
   end
 
   test "stopping the production listener closes a proxied cable connection normally", ctx do
+    Application.put_env(:dawarich, :rails_routes, ["cable"])
+
     plan =
       {:proxy,
        %{
@@ -809,8 +953,7 @@ defmodule DawarichWeb.EndpointTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     Dawarich.Test.SharingSeeds.load!()
-    start_supervised!(hd(Dawarich.Redis.rack_attack_child_specs()))
-    Redix.command!(Dawarich.Redis.rack_attack(), ["FLUSHDB"])
+    Dawarich.ScratchRepo.query!("TRUNCATE phoenix.counters", [], log: false)
     port = serve()
     id = "a9500000-0000-4000-8000-000000000001"
     page = "GET /s/#{id}?locale=de HTTP/1.1\r\nHost: a\r\n\r\n"
@@ -967,7 +1110,8 @@ defmodule DawarichWeb.EndpointTest do
           "/map/timeline_feeds/calendar?month=2026-09",
           "/map/timeline_feeds/calendar",
           "/map/residency?year=2026",
-          "/map/residency"
+          "/map/residency",
+          "/tracks/5/segments"
         ],
         do:
           assert(
@@ -1000,7 +1144,7 @@ defmodule DawarichWeb.EndpointTest do
           {"/map/residency?year=abc", frame},
           {"/map/residency?year=", frame},
           {"/map/residency?year=2040", frame},
-          {"/tracks/5/segments", frame}
+          {"/tracks/5/segments?locale=de", frame}
         ],
         do:
           assert(
@@ -1032,5 +1176,126 @@ defmodule DawarichWeb.EndpointTest do
         "Turbo-Frame: place-drawer\r\n\r\n"
 
     assert answered_by_phoenix(port, drawer) == 302
+  end
+
+  test "endpoint account and key hand-back reaches Puma once with original payload", ctx do
+    alias Dawarich.{RailsCookies, Repo}
+    alias Dawarich.Auth.SessionCookie
+    alias Dawarich.Test.RailsUser
+    alias DawarichWeb.RailsCsrf
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
+    previous = Map.new(~w(SELF_HOSTED APPLICATION_PROTOCOL RAILS_ENV), &{&1, System.get_env(&1)})
+    flows = Application.fetch_env(:dawarich, :phoenix_auth)
+    System.put_env("SELF_HOSTED", "true")
+    System.put_env("APPLICATION_PROTOCOL", "http")
+    System.put_env("RAILS_ENV", "test")
+
+    on_exit(fn ->
+      for {key, value} <- previous do
+        if value, do: System.put_env(key, value), else: System.delete_env(key)
+      end
+
+      case flows do
+        {:ok, value} -> Application.put_env(:dawarich, :phoenix_auth, value)
+        :error -> Application.delete_env(:dawarich, :phoenix_auth)
+      end
+    end)
+
+    hash = Bcrypt.hash_pwd_salt("a11rest-endpoint-password", log_rounds: 4)
+
+    RailsUser.insert!(%{
+      id: 74004,
+      email: "a11rest-endpoint@dawarich.test",
+      encrypted_password: hash,
+      api_key: "A11REST_ENDPOINT_KEY",
+      settings: %{}
+    })
+
+    secret = Application.fetch_env!(:dawarich, :rails_secret)
+    {session, _} = SessionCookie.for_form(%{"retained" => true}, secret)
+    session = Map.put(session, "warden.user.user.key", [[74004], binary_part(hash, 0, 29)])
+    cookie = RailsCookies.encrypt(session, "_dawarich_session", secret)
+    token = RailsCsrf.masked_token(session)
+
+    body =
+      URI.encode_query(%{
+        "user[current_password]" => "a11rest-endpoint-password",
+        "user[email]" => "a11rest-endpoint-updated@dawarich.test",
+        "authenticity_token" => token
+      })
+
+    key_body = URI.encode_query(%{"authenticity_token" => token})
+    port = serve()
+
+    request = fn method, path, body ->
+      "#{method} #{path} HTTP/1.1\r\nHost: www.example.com\r\nAccept: text/html\r\n" <>
+        "Cookie: _dawarich_session=#{cookie}\r\nContent-Type: application/x-www-form-urlencoded\r\n" <>
+        "Content-Length: #{byte_size(body)}\r\n\r\n#{body}"
+    end
+
+    snapshot = fn ->
+      [[row]] =
+        Repo.query!("SELECT to_jsonb(users) FROM users WHERE id=74004", [], log: false).rows
+
+      row
+    end
+
+    cases = [
+      {[], "PUT", "/users", body},
+      {[], "POST", "/settings/generate_api_key", key_body},
+      {["api_keys"], "PUT", "/users", body},
+      {["account"], "POST", "/settings/generate_api_key", key_body},
+      {["account"], "POST", "/users", body},
+      {["account"], "POST", "/users", body <> "&_method=delete"},
+      {["account"], "PUT", "/users", body <> "&unknown=original%2Bbytes"},
+      {["api_keys"], "POST", "/settings/generate_api_key",
+       key_body <> "&unknown=original%2Bbytes"},
+      {["account"], "PUT", "/users", "user%5Bemail%5D=invalid-csrf%40dawarich.test"},
+      {["api_keys"], "POST", "/settings/generate_api_key", ""}
+    ]
+
+    for {flows, method, path, raw} <- cases do
+      Application.put_env(:dawarich, :phoenix_auth, flows)
+      before = snapshot.()
+      client = connect(port)
+      send_raw(client, request.(method, path, raw))
+      puma = accept(ctx.upstream)
+      {head, rest} = read_head(puma)
+      assert request_line(head) == "#{method} #{path} HTTP/1.1"
+      assert read_at_least(puma, rest, byte_size(raw)) == raw
+      reply(puma, "HTTP/1.1 302 Found\r\nLocation: /users/edit\r\nContent-Length: 0\r\n\r\n")
+      assert {302, headers, ""} = read_response(client)
+      assert values(headers, "x-dawarich-auth-owner") == []
+      assert snapshot.() == before
+      :gen_tcp.close(client)
+      :gen_tcp.close(puma)
+    end
+
+    Application.put_env(:dawarich, :phoenix_auth, ~w(account api_keys))
+
+    for {method, path, raw, status, owner, fields} <- [
+          {"PUT", "/users", body, 303, "native-account",
+           ~w(email updated_at reset_password_token reset_password_sent_at)},
+          {"POST", "/users", body <> "&_method=patch", 303, "native-account",
+           ~w(email updated_at reset_password_token reset_password_sent_at)},
+          {"POST", "/settings/generate_api_key", key_body, 302, "native-api-keys",
+           ~w(api_key updated_at)}
+        ] do
+      before = snapshot.()
+      client = connect(port)
+      send_raw(client, request.(method, path, raw))
+      assert {^status, headers, _} = read_response(client)
+      assert values(headers, "x-dawarich-auth-owner") == [owner]
+      assert Map.drop(snapshot.(), fields) == Map.drop(before, fields)
+
+      if owner == "native-account",
+        do: assert(snapshot.()["email"] == "a11rest-endpoint-updated@dawarich.test"),
+        else: assert(snapshot.()["api_key"] != before["api_key"])
+
+      :gen_tcp.close(client)
+    end
+
+    assert {:error, :timeout} == :gen_tcp.accept(ctx.upstream.listen, 0)
   end
 end
