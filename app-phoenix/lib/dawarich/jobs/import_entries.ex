@@ -3,6 +3,13 @@ defmodule Dawarich.Jobs.ImportEntries do
   def entries do
     [
       %{
+        key: "cron:watcher_job",
+        kind: :cron,
+        expression: "0 */1 * * *",
+        worker: Dawarich.Imports.WatcherWorker,
+        claimable: false
+      },
+      %{
         key: "command:imports.photoprism_geodata",
         kind: :command,
         worker: Dawarich.Imports.Integrations.PhotoprismWorker,

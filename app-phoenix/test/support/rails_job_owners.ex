@@ -69,7 +69,7 @@ defmodule Dawarich.RailsJobOwners do
     "Import::ProcessJob" =>
       {:oban, ["command:imports.process_gpx", "command:imports.process_normal"], :a7},
     "Import::UpdatePointsCountJob" => {:oban, ["command:imports.update_points_count"]},
-    "Import::WatcherJob" => {:slice, :a7},
+    "Import::WatcherJob" => {:oban, ["cron:watcher_job"]},
     "Imports::DestroyJob" => {:oban, ["command:imports.destroy"], :a7},
     "Imports::PrepareDownloadJob" => {:oban, ["command:imports.prepare_download"], :a7},
     "Lite::ArchivalWarningJob" => {:oban, ["cron:lite_archival_warning_job"]},
