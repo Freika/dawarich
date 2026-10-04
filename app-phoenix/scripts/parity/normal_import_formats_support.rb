@@ -94,20 +94,26 @@ module NormalImportFormatsSupport
 
   def snapshot(import)
     connection = ActiveRecord::Base.connection
-    sql = POINT_COLUMNS.map do |column|
+    sql = (POINT_COLUMNS & Point.column_names).map do |column|
       column == 'lonlat' ? 'ST_AsText(lonlat::geometry) AS lonlat' : connection.quote_column_name(column)
     end.join(',')
     points = connection.select_all("SELECT #{sql} FROM points WHERE import_id=#{import.id} ORDER BY id").to_a
     points.each do |point|
       %w[motion_data raw_data].each { |key| point[key] = JSON.parse(point[key]) if point[key].is_a?(String) }
       %w[inrids in_regions].each { |key| point[key] = Point.type_for_attribute(key).deserialize(point[key]) }
-      %w[altitude_decimal course course_accuracy].each { |key| point[key] = point[key]&.to_s }
+      %w[altitude_decimal course course_accuracy].each do |key|
+        point[key] = point[key]&.to_s if point.key?(key)
+      end
     end
-    sources = connection.select_all(<<~SQL).to_a
-      SELECT digest,tracker_id,topic,ssid,bssid,connection,trigger,battery_status,
-             array_to_json(inrids) AS inrids,array_to_json(in_regions) AS in_regions
-      FROM point_sources WHERE id IN (SELECT source_id FROM points WHERE import_id=#{import.id}) ORDER BY digest
-    SQL
+    sources = if Point.column_names.include?('source_id')
+                connection.select_all(<<~SQL).to_a
+                  SELECT digest,tracker_id,topic,ssid,bssid,connection,trigger,battery_status,
+                         array_to_json(inrids) AS inrids,array_to_json(in_regions) AS in_regions
+                  FROM point_sources WHERE id IN (SELECT source_id FROM points WHERE import_id=#{import.id}) ORDER BY digest
+                SQL
+              else
+                []
+              end
     sources.each do |source|
       %w[inrids in_regions].each { |key| source[key] = JSON.parse(source[key]) if source[key].is_a?(String) }
     end
@@ -204,5 +210,71 @@ module NormalImportFormatsSupport
       ['empty', ''], ['missing', "latitude,timestamp\n51.3,1\n"],
       ['quoted_newline', "latitude,longitude,timestamp\n\"51\n.3\",12.4,1\n"]
     ]
+  end
+
+  def csv_import_cases
+    header = "latitude,longitude,timestamp,altitude,speed,accuracy,battery,heading,tracker_id\n"
+    row = lambda { |index, altitude = '12.75'|
+      "51.3,12.4,#{1_768_519_800 + index},#{altitude},1.25,2.9,88.7,42.12345,oracle\n"
+    }
+    cases = [
+      ['csv_import_empty', '', 'UTC', false],
+      ['csv_import_header', header, 'UTC', false],
+      ['csv_import_skipped', "#{header},12.4,1768519800,,,,,,\n51.3,,1768519800,,,,,,\n#{row.call(0)}", 'UTC', false],
+      ['csv_import_duplicate', header + row.call(0) * 1001, 'UTC', false],
+      ['csv_import_bad_quote', "#{header}\"51.3,12.4,1768519800\n", 'UTC', false],
+      ['csv_import_failure', header + 2001.times.map { |i| row.call(i, i == 1000 ? '100000000' : '12.75') }.join,
+       'UTC', false],
+      ['csv_import_legacy', header + row.call(0), 'UTC', true]
+    ]
+    [999, 1000, 1001, 2001].each do |count|
+      cases << ["csv_import_#{count}", header + count.times.map { |i| row.call(i) }.join, 'UTC', false]
+    end
+    %w[UTC Europe/Berlin America/New_York].each do |zone|
+      cases << ["csv_import_time_#{zone.tr('/', '_')}",
+                "latitude,longitude,date,time,altitude\n51.3,12.4,2026-01-15,23:30:00,12.75\n", zone, false]
+    end
+    csv_detector_cases.first(5).each do |name, bytes|
+      cases << ["csv_import_detection_#{name}", bytes, 'UTC', false]
+    end
+    cases
+  end
+
+  def capture_csv_case(name, bytes, zone, legacy)
+    if legacy
+      output = nil
+      ActiveRecord::Base.transaction(requires_new: true) do
+        ActiveRecord::Base.connection.execute('ALTER TABLE points DROP COLUMN source_id, DROP COLUMN altitude_decimal')
+        Point.reset_column_information
+        Points::DimensionResolver.reset_column_availability!
+        output = capture_csv_case(name, bytes, zone, false).merge('legacy' => true)
+        raise ActiveRecord::Rollback
+      end
+      return output
+    end
+
+    Time.use_zone(zone) do
+      I18n.with_locale(:de) do
+        user, import = owner!(zone, 'de')
+        input = "#{name}.csv"
+        path = DIR.join(input)
+        File.write(path, bytes)
+        error = nil
+        begin
+          Csv::Importer.new(import, user.id, path.to_s).call
+        rescue StandardError => e
+          error = { 'class' => e.class.name, 'message' => e.message }
+        end
+        snapshot(import).merge('zone' => zone, 'locale' => 'de', 'input' => input, 'error' => error)
+      end
+    end
+  ensure
+    connection = ActiveRecord::Base.connection
+    %w[points notifications imports users].each do |table|
+      key = table == 'users' ? 'id' : 'user_id'
+      connection.execute("DELETE FROM #{table} WHERE #{key}=987001")
+    end
+    Point.reset_column_information
+    Points::DimensionResolver.reset_column_availability!
   end
 end

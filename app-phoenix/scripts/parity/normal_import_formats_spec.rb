@@ -44,4 +44,30 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
       .to eq('CSV::MalformedCSVError')
     NormalImportFormatsSupport.write('csv_lexical', lexical)
   end
+
+  context 'CSV' do
+    it 'records CSV importer outcomes from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.csv_import_cases.each do |name, bytes, zone, legacy|
+          stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !legacy)
+          effects = []
+          allow(Points::TileEpoch).to receive(:bump).and_wrap_original do |method, user_id, timestamps:|
+            effects << { 'kind' => 'points.tile_epoch', 'payload' => { 'timestamps' => timestamps } }
+            method.call(user_id, timestamps:)
+          end
+          allow(Turbo::StreamsChannel).to receive(:broadcast_replace_to).and_wrap_original do |method, *args, **options|
+            if options[:partial] == 'imports/table_row'
+              effects << { 'kind' => 'imports.progress', 'payload' => { 'locale' => 'de' } }
+            end
+            method.call(*args, **options)
+          end
+          result = NormalImportFormatsSupport.capture_csv_case(name, bytes, zone, legacy)
+          expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
+          expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
+          expect(result.fetch('import').fetch('doubles')).to be_a(Integer)
+          NormalImportFormatsSupport.write(name, result.merge('commands' => effects))
+        end
+      end
+    end
+  end
 end
