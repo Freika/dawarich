@@ -103,4 +103,14 @@ defmodule Dawarich.Tags.ValidationTest do
     assert Enum.map(taken.errors, & &1["type"]) == ["taken"]
     assert Repo.query!("SELECT count(*) FROM tags").rows == [[2]]
   end
+
+  test "Unicode radius whitespace follows Rails numeric stripping and blank handling", ctx do
+    compare(ctx, "radius_unicode_space")
+    compare(ctx, "radius_unicode_blank")
+  end
+
+  test "radius comparison rounds noninteger strings to Rails fifteen significant digits", ctx do
+    compare(ctx, "radius_precision_limit")
+    compare(ctx, "radius_precision_exponent")
+  end
 end

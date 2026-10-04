@@ -2,6 +2,7 @@ defmodule Dawarich.Tags.Validation do
   @moduledoc false
 
   alias Dawarich.I18n
+  alias Dawarich.RubyInteger
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   @fields ~w(name icon color privacy_radius_meters)
@@ -42,15 +43,12 @@ defmodule Dawarich.Tags.Validation do
         {:ok, nil}
 
       String.contains?(value, "_") or
-          (Regex.match?(@number, String.trim(value)) and
-             not match?({_, ""}, Float.parse(String.trim(value)))) ->
+          (Regex.match?(@number, Ruby.strip(value)) and
+             not match?({_, ""}, Float.parse(Ruby.strip(value)))) ->
         :rails
 
       true ->
-        case Integer.parse(String.trim_leading(value)) do
-          {integer, _} -> bounded(integer)
-          :error -> {:ok, 0}
-        end
+        bounded(RubyInteger.to_i(value))
     end
   end
 
@@ -106,12 +104,15 @@ defmodule Dawarich.Tags.Validation do
   defp number(value) when is_integer(value), do: {:ok, value}
 
   defp number(value) when is_binary(value) do
-    value = String.trim(value)
+    value = Ruby.strip(value)
 
     if Regex.match?(@number, value) do
       case Float.parse(value) do
-        {number, ""} -> {:ok, number}
-        _ -> :error
+        {number, ""} ->
+          {:ok, number |> :erlang.float_to_binary(scientific: 14) |> String.to_float()}
+
+        _ ->
+          :error
       end
     else
       :error

@@ -11,7 +11,8 @@ defmodule DawarichWeb.MapWritesParityTest do
     radius_blank radius_one radius_limit radius_zero radius_negative radius_over radius_nonnumeric
     radius_decimal_small radius_decimal_over radius_prefix radius_exponent radius_space radius_plus radius_hex
     multi_error partial_update update_self update_empty update_nondemo_noop failed_demo_update update_put
-    override_patch override_put delete override_delete foreign_update missing_update foreign_delete guest_create prior_flash_invalid)
+    override_patch override_put delete override_delete foreign_update missing_update foreign_delete guest_create prior_flash_invalid
+    radius_unicode_space radius_precision_limit radius_precision_exponent radius_unicode_blank)
   @segments ~w(override_condensed override_raw override_unchanged override_tied disabled reset_changed reset_unchanged
     reset_preserved reset_empty reset_failure html_referer html_root html_disabled html_reset_failure
     override_post reset_post foreign_track wrong_nested missing_track missing_segment guest
@@ -284,6 +285,28 @@ defmodule DawarichWeb.MapWritesParityTest do
     end
   end
 
+  test "write cookie metadata preserves session changes and declares unchanged session exceptions" do
+    for name <- ~w(blank_name prior_flash_invalid) do
+      {state, user, ctx, conn} = seed("tags", name)
+      attrs = state["request"]["params"]["tag"]
+
+      current =
+        if name == "prior_flash_invalid", do: atom_keys(hd(state["before"]["tags"])), else: %{}
+
+      invalid = Dawarich.Tags.Validation.validate(Repo, user, attrs, current)
+      {:ok, response} = TagWriteResponse.prepare(conn, :tag_create, {:invalid, invalid}, ctx)
+      assert_metadata(response, state, name)
+    end
+
+    {state, _, ctx, conn} = seed("segments", "disabled")
+    conn = assign(conn, :map_write_format, :turbo_stream)
+
+    {:ok, response} =
+      SegmentWriteResponse.prepare(conn, {:error, %{error_code: :mode_not_enabled}}, ctx)
+
+    assert_metadata(response, state, "disabled")
+  end
+
   defp seed(kind, name) do
     Repo.query!(
       "TRUNCATE users,imports,points,places,tags,taggings,visits,tracks,track_segments CASCADE"
@@ -384,6 +407,15 @@ defmodule DawarichWeb.MapWritesParityTest do
              state["content_type"],
            name
 
+    unchanged = state["session_before"] == state["session_after"]
+
+    exception =
+      unchanged and
+        (response.status == 422 or state["content_type"] == "text/vnd.turbo-stream.html")
+
+    expected_cookie = state["set_cookie"] and not exception
+    assert Map.has_key?(response.conn.resp_cookies, "_dawarich_session") == expected_cookie, name
+
     session =
       if response.conn.resp_cookies["_dawarich_session"],
         do: Dawarich.Test.RailsFormRequests.rails_session(response.conn),
@@ -391,6 +423,7 @@ defmodule DawarichWeb.MapWritesParityTest do
 
     assert session["flash"] == state["session_after"]["flash"], name
     assert is_binary(session["_csrf_token"]) == state["session_after"]["csrf_present"], name
+    assert session["user_return_to"] == state["session_after"]["user_return_to"], name
   end
 
   defp assert_state(expected, name) do

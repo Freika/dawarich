@@ -18,11 +18,6 @@ defmodule DawarichWeb.FamilyPagesTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
     owner = FrameSeeds.seed_family!(FrameSeeds.load_family("owner_en"))
-
-    Repo.query!("UPDATE family_invitations SET expires_at = $1 WHERE id IN (93001,93004,93005)", [
-      NaiveDateTime.add(NaiveDateTime.utc_now(), 3600)
-    ])
-
     %{owner: owner, member: Accounts.get(90102), outsider: Accounts.get(90103)}
   end
 

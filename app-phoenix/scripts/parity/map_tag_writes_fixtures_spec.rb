@@ -92,7 +92,11 @@ RSpec.describe 'Phoenix fixtures: map tag writes', type: :request do
       ['missing_update', :patch, { name: 'Missing' }, 404],
       ['foreign_delete', :delete, nil, 404],
       ['guest_create', :post, { name: 'Guest' }, 302],
-      ['prior_flash_invalid', :patch, { name: '' }, 422]
+      ['prior_flash_invalid', :patch, { name: '' }, 422],
+      ['radius_unicode_space', :post, { name: 'Radius', privacy_radius_meters: ' 1 ' }, 422],
+      ['radius_precision_limit', :post, { name: 'Radius', privacy_radius_meters: '5000.000000000001' }, 302],
+      ['radius_precision_exponent', :post, { name: 'Radius', privacy_radius_meters: '5.000000000000001e3' }, 302],
+      ['radius_unicode_blank', :post, { name: 'Radius', privacy_radius_meters: ' ' }, 302]
     ]
   end
 
@@ -202,6 +206,15 @@ headers: { 'X-CSRF-Token' => token, 'Accept' => accept }
     expect(probe['cast_radius']).to eq(0) if name == 'radius_decimal_small'
     expect(probe['cast_radius']).to eq(5000) if name == 'radius_decimal_over'
     expect(probe['cast_radius']).to be_nil if name == 'radius_blank'
+    if name == 'radius_unicode_space'
+      expect(probe.values_at('raw_radius', 'cast_radius', 'valid')).to eq([' 1 ', 0, false])
+      expect(probe['errors'].map { _1['type'] }).to eq(['not_a_number'])
+    end
+    if name.start_with?('radius_precision_')
+      cast = name == 'radius_precision_exponent' ? 5 : 5000
+      expect(probe.values_at('cast_radius', 'valid', 'errors')).to eq([cast, true, []])
+    end
+    expect(probe.values_at('cast_radius', 'valid', 'errors')).to eq([nil, true, []]) if name == 'radius_unicode_blank'
     return unless name == 'multi_error'
 
     expect(probe['errors'].map do
