@@ -15,6 +15,7 @@ RSpec.describe 'Users::Digests::Commands' do
   end
 
   after do
+    clear_digest_command_fixtures
     clear_digest_reverse_commands
     JobOutbox.where(command_type: %w[digests.calculate_month digests.calculate_year]).delete_all
     ActiveRecord::Base.connection.execute(
@@ -30,6 +31,32 @@ RSpec.describe 'Users::Digests::Commands' do
     %w[rails_commands rails_commands_dead].each do |table|
       ActiveRecord::Base.connection.execute("DELETE FROM phoenix.#{table} WHERE kind LIKE 'digests.%'")
     end
+  end
+
+  def digest_command_user(**attributes)
+    user = create(:user, **attributes)
+    (@digest_command_user_ids ||= []) << user.id
+    user
+  end
+
+  def clear_digest_command_fixtures
+    ids = @digest_command_user_ids || []
+    [Notification, Stat, Users::Digest].each { |model| model.where(user_id: ids).delete_all }
+    User.unscoped.where(id: ids).delete_all
+  end
+
+  it 'command fixture cleanup removes its users and dependent rows while preserving unrelated rows' do
+    unrelated = create(:user)
+    user = digest_command_user
+    stat = create(:stat, user:)
+    digest = create(:users_digest, user:)
+    clear_digest_command_fixtures
+    expect(User.unscoped.exists?(user.id)).to be(false)
+    expect(Stat.exists?(stat.id)).to be(false)
+    expect(Users::Digest.exists?(digest.id)).to be(false)
+    expect(User.unscoped.exists?(unrelated.id)).to be(true)
+  ensure
+    unrelated&.destroy!
   end
 
   def digest_reverse!(kind, payload)
@@ -234,7 +261,7 @@ RSpec.describe 'Users::Digests::Commands' do
   end
 
   it 'a digest reverse calculation rechecks ownership and preserves run_at and timezone' do
-    user = create(:user)
+    user = digest_command_user
     at = Time.utc(2030, 3, 29, 12, 34, 56)
     %w[month year].each do |period|
       type = "digests.calculate_#{period}"
@@ -258,7 +285,7 @@ RSpec.describe 'Users::Digests::Commands' do
       expect(row.scheduled_at).to eq(at)
       expect(row.aggregate_id).to eq(user.id)
 
-      deleted = create(:user, deleted_at: Time.current)
+      deleted = digest_command_user(deleted_at: Time.current)
       [0, deleted.id].each do |id|
         digest_reverse!(type, payload.merge('user_id' => id))
         expect { RailsCommands::Poller.drain_once }.not_to have_enqueued_job
@@ -276,7 +303,7 @@ RSpec.describe 'Users::Digests::Commands' do
       action = period == 'month' ? :monthly_digest : :year_end_digest
       %w[enabled absent sent zero disabled deleted].each do |state|
         settings = { 'locale' => 'fr', "#{period}ly_digest_emails_enabled" => state != 'disabled' }
-        user = create(:user, settings:)
+        user = digest_command_user(settings:)
         attributes = { user:, year: 2025, period_type: "#{period}ly", distance: state == 'zero' ? 0 : 500_000 }
         attributes[:month] = 3 if period == 'month'
         attributes[:sent_at] = Time.utc(2025, 4, 1) if state == 'sent'
@@ -323,7 +350,7 @@ RSpec.describe 'Users::Digests::Commands' do
   end
 
   it 'Rails digest schedulers stop under native cron ownership and keep their legacy scan otherwise' do
-    user = create(:user, status: :active)
+    user = digest_command_user(status: :active)
     create(:stat, user:, year: 2030, month: 2)
     create(:stat, user:, year: 2029, month: 1)
     allow(User).to receive(:active_or_trial).and_call_original
@@ -366,7 +393,7 @@ RSpec.describe 'Users::Digests::Commands' do
   end
 
   it 'queued Rails digest calculations forward their stable ID and ambient zone once after claim' do
-    user = create(:user)
+    user = digest_command_user
     allow(Stats::CalculateMonth).to receive(:new).and_return(instance_double(Stats::CalculateMonth, call: true))
     allow(Users::Digests::CalculateMonth).to receive(:new).and_return(
       instance_double(Users::Digests::CalculateMonth, call: true)

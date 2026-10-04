@@ -231,9 +231,28 @@ end
 RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
   include ActiveSupport::Testing::TimeHelpers
 
+  before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
   let(:digest_now) { Time.utc(2026, 10, 3, 12) }
   let(:digest_uuid) { '00000000-0000-4000-8000-000000140500' }
   let(:digest_user_id) { 14_101 }
+
+  it 'digest captures preserve sequence state after rollback and an escaping error' do
+    connection = ActiveRecord::Base.connection
+    %w[digests stats].each do |table|
+      statement = "SELECT last_value, is_called FROM #{table}_id_seq"
+      original = connection.select_one(statement)
+      digest_isolated { connection.execute("SELECT setval('#{table}_id_seq', 42, false)") }
+      expect(connection.select_one(statement)).to eq(original)
+      expect do
+        digest_isolated do
+          connection.execute("SELECT setval('#{table}_id_seq', 43, true)")
+          raise 'capture failure'
+        end
+      end.to raise_error('capture failure')
+      expect(connection.select_one(statement)).to eq(original)
+    end
+  end
 
   it 'writes or matches the digest calculation corpus twice byte-identically' do
     expect(DawarichSettings.self_hosted?).to be(false)
@@ -290,6 +309,10 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
 
   def digest_isolated(profile = nil)
     result = nil
+    connection = ActiveRecord::Base.connection
+    sequences = %w[digests stats].index_with do |table|
+      connection.select_one("SELECT last_value, is_called FROM #{table}_id_seq")
+    end
     zone = profile == 'default_ambient' ? Rails.application.config.time_zone : 'Europe/Berlin'
     if profile == 'default_ambient'
       expect(ENV).not_to have_key('TIME_ZONE')
@@ -300,6 +323,11 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
       raise ActiveRecord::Rollback
     end
     result
+  ensure
+    sequences&.each do |table, state|
+      connection.execute("SELECT setval('#{table}_id_seq', #{state.fetch('last_value')}, " \
+                         "#{connection.quote(state.fetch('is_called'))})")
+    end
   end
 
   def digest_case(profile, kind, gap = nil)
