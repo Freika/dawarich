@@ -27,6 +27,11 @@ defmodule Dawarich.UserData.Restore.Batch do
     1
   end
 
+  def rows!(repo, table, rows, context) do
+    {_columns, rows} = prepare!(repo, table, rows, context)
+    rows
+  end
+
   def row!(repo, table, row, context) do
     {_columns, [row]} = prepare!(repo, table, [row], context)
     row
@@ -123,6 +128,10 @@ defmodule Dawarich.UserData.Restore.Batch do
 
     {columns, data}
   end
+
+  defp cast("points", name, _type, value, _context)
+       when name in ~w(connection trigger battery_status),
+       do: NormalCast.enum(String.to_existing_atom(name), value)
 
   defp cast("places", "source", _type, value, _context) do
     cond do

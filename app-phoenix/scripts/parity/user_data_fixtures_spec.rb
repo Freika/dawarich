@@ -69,6 +69,26 @@ RSpec.describe 'Phoenix fixtures: Rails user data' do
     UserDataFixturesSupport.write('capture.json', result)
   end
 
+  it 'captures rescued point SQL failure aborting the outer transaction' do
+    capture = UserDataFixturesSupport.with_users do
+      user = UserDataFixturesSupport.owner
+      result = {}
+      begin
+        ActiveRecord::Base.transaction do
+          data = [{ 'timestamp' => 1_767_225_600, 'lonlat' => 'POINT(12.4 51.3)', 'course' => '100000000000' }]
+          result['inserted'] = Users::ImportData::Points.new(user, data).call
+          ActiveRecord::Base.connection.select_value('SELECT 1')
+        end
+      rescue ActiveRecord::StatementInvalid => e
+        result['sqlstate'] = e.cause.result.error_field(PG::Result::PG_DIAG_SQLSTATE)
+      end
+      result['points'] = user.points.count
+      result
+    end
+    expect(capture).to eq('inserted' => 0, 'sqlstate' => '25P02', 'points' => 0)
+    UserDataFixturesSupport.write('points_sql_failure.json', capture)
+  end
+
   it 'portable raw payload is plaintext gzip' do
     result = UserDataFixturesSupport.portable
     bytes = Base64.strict_decode64(result.fetch('bytes'))
