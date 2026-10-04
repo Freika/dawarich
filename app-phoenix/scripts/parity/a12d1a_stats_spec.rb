@@ -6,6 +6,8 @@ require 'sidekiq/cron/job'
 RSpec.describe 'Phoenix fixture: A12d1a monthly statistics' do
   include ActiveSupport::Testing::TimeHelpers
 
+  before { allow(DawarichSettings).to receive(:self_hosted?).and_return(false) }
+
   let(:path) { Rails.root.join('app-phoenix/test/fixtures/a12d1a/stats.json') }
   let(:now) { Time.utc(2026, 10, 3, 12) }
   let(:grid_sql) do
@@ -592,8 +594,8 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
     end
     workers = %w[monthly yearly].flat_map do |kind|
       %w[new existing no_data missing_user deleted_user stats_return stats_database stats_raise
-         digest_raise digest_database late_stats_raise vanished].flat_map do |profile|
-        next [] if profile == 'late_stats_raise' && kind == 'monthly'
+         digest_raise digest_database late_stats_raise vanished year_boundary].flat_map do |profile|
+        next [] if %w[late_stats_raise year_boundary].include?(profile) && kind == 'monthly'
 
         %w[en fr].map do |locale|
           RSpec::Mocks.with_temporary_scope do
@@ -695,6 +697,13 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
     User.unscoped.where(id: digest_user_id).update_all(settings:)
     digest_stats(source_profile, 2025, 3)
     digest_points(source_profile, 2025, 3) unless source_profile == 'no_data'
+    if profile == 'year_boundary'
+      Point.insert_all!([Time.utc(2024, 12, 31, 16, 30), Time.utc(2025, 12, 31, 20)].each_with_index.map do |at, index|
+        { id: 14_290 + index, user_id: digest_user_id, timestamp: at.to_i, lonlat: 'POINT(12 51)',
+          country_name: index.zero? ? 'Outside ambient year' : 'Inside ambient year', velocity: '0', anomaly: false,
+          created_at: digest_now, updated_at: digest_now }
+      end)
+    end
     digest_tracks(source_profile, 2025, 3, nil)
     digest_existing(source_profile, kind, 2025, 3)
     ActiveRecord::Base.connection.execute("SELECT setval('digests_id_seq', 140500, false)")
