@@ -45,8 +45,9 @@ defmodule DawarichWeb.Api.Respond do
 
   defp finish(status, conn, body), do: conn |> send_resp(status, body) |> halt()
 
-  def head(conn, status) do
-    conn = frame(conn, "text/html")
+  def head(conn, status, type \\ "text/html") do
+    conn = frame(conn, type || "")
+    conn = if is_nil(type), do: delete_resp_header(conn, "content-type"), else: conn
     log(conn, status)
     conn |> cache(status, "", []) |> send_resp(status, "") |> halt()
   end

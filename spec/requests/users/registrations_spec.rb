@@ -3,6 +3,203 @@
 require 'rails_helper'
 
 RSpec.describe 'Users::Registrations', type: :request do
+  context 'A11 account security' do
+    include ActiveSupport::Testing::TimeHelpers
+
+    around do |example|
+      previous = ActionController::Base.allow_forgery_protection
+      ActionController::Base.allow_forgery_protection = true
+      example.run
+    ensure
+      ActionController::Base.allow_forgery_protection = previous
+    end
+
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+    def account_client(user, remember: false)
+      client = ActionDispatch::Integration::Session.new(Rails.application)
+      client.get('/users/sign_in')
+      token = Nokogiri::HTML5(client.response.body).at_css('meta[name="csrf-token"]')['content']
+      client.post('/users/sign_in', params: {
+                    authenticity_token: token,
+                    user: { email: user.email, password: 'a11rest-password-42', remember_me: remember ? '1' : '0' }
+                  })
+      expect(client.response.status).to eq(303)
+      client.get('/users/edit')
+      expect(client.response.status).to eq(200)
+      client
+    end
+
+    def account_token(client)
+      Nokogiri::HTML5(client.response.body).at_css('meta[name="csrf-token"]')['content']
+    end
+
+    def account_session(client)
+      request = ActionDispatch::Request.new(Rails.application.env_config.dup)
+      jar = ActionDispatch::Cookies::CookieJar.build(request,
+                                                     '_dawarich_session' => client.cookies['_dawarich_session'])
+      jar.encrypted['_dawarich_session']
+    end
+
+    def replace_account_session(client, data)
+      jar = ActionDispatch::Request.new(Rails.application.env_config.dup).cookie_jar
+      jar.encrypted['_dawarich_session'] = { value: data }
+      client.cookies['_dawarich_session'] = jar['_dawarich_session']
+    end
+
+    it 'matches the local credential update request matrix' do
+      collision = create(:user, email: 'a11rest-taken@dawarich.test')
+      deleted = create(:user, email: 'a11rest-deleted@dawarich.test')
+      deleted.update_column(:deleted_at, Time.current)
+      cases = [
+        ['put', :put, {}, []], ['patch', :patch, {}, []],
+        ['post_put', :post, { override: 'put' }, []], ['post_patch', :post, { override: 'patch' }, []],
+        ['blank_current', :put, { current_password: '' }, ["Current password can't be blank"]],
+        ['missing_current', :put, { omit_current: true }, ["Current password can't be blank"]],
+        ['no_op_blank_current', :put, { same_email: true, current_password: '' }, ["Current password can't be blank"]],
+        ['wrong_current', :put, { current_password: 'wrong-password' }, ['Current password is invalid']],
+        ['email_only', :put, { email: ' A11REST-CHANGED@dawarich.test ' }, []],
+        ['password_only', :put,
+         { password: 'a11rest-new-password', password_confirmation: 'a11rest-new-password' }, []],
+        ['both', :put, { email: 'a11rest-both@dawarich.test', password: 'a11rest-new-password',
+                        password_confirmation: 'a11rest-new-password' }, []],
+        ['no_op', :put, { same_email: true, password: '', password_confirmation: '' }, []],
+        ['omitted_confirmation', :put, { password: 'a11rest-new-password' }, []],
+        ['empty_confirmation', :put, { password: 'a11rest-new-password', password_confirmation: '' },
+         ["Password confirmation doesn't match Password"]],
+        ['mismatch_confirmation', :put, { password: 'a11rest-new-password', password_confirmation: 'different' },
+         ["Password confirmation doesn't match Password"]],
+        ['length_11', :put, { password: 'x' * 11 }, ['Password is too short (minimum is 12 characters)']],
+        ['length_12', :put, { password: 'x' * 12 }, []], ['length_128', :put, { password: 'x' * 128 }, []],
+        ['length_129', :put, { password: 'x' * 129 }, ['Password is too long (maximum is 128 characters)']],
+        ['multibyte_11', :put, { password: 'ü' * 11 }, ['Password is too short (minimum is 12 characters)']],
+        ['multibyte_12', :put, { password: 'ü' * 12 }, []],
+        ['duplicate_email', :put, { email: collision.email.upcase }, ['Email has already been taken']],
+        ['deleted_email', :put, { email: deleted.email }, ['Email has already been taken']],
+        ['multiple_errors', :put,
+         { email: '<bad>', password: 'short', password_confirmation: '', current_password: '' },
+         ['Email is invalid', "Password confirmation doesn't match Password",
+          'Password is too short (minimum is 12 characters)', "Current password can't be blank"]],
+        ['blank_email', :put, { email: '' }, ["Email can't be blank"]],
+        ['duplicate_scalar_email', :put, { duplicate_email: true }, []],
+        ['duplicate_scalar_current', :put, { duplicate_current: true }, []],
+        ['malformed_encoding', :put, { malformed: true }, nil],
+        ['type_conflict', :put, { type_conflict: true }, nil]
+      ]
+
+      cases.each_with_index do |(name, method, options, errors), index|
+        aggregate_failures(name) do
+          user = create(:user, email: "a11rest-matrix-#{index}@dawarich.test", password: 'a11rest-password-42')
+          client = account_client(user)
+          before = user.reload.attributes
+          params = { email: "a11rest-#{name}@dawarich.test", current_password: 'a11rest-password-42' }
+          params.merge!(options.except(:override, :same_email, :duplicate_email, :duplicate_current,
+                                       :malformed, :type_conflict, :omit_current))
+          params.delete(:current_password) if options[:omit_current]
+          params[:email] = user.email if options[:same_email] || name == 'password_only'
+          body = URI.encode_www_form({ authenticity_token: account_token(client), _method: options[:override] }.compact)
+          body += "&#{URI.encode_www_form(params.to_h { |key, value| ["user[#{key}]", value] })}"
+          body += '&user%5Bemail%5D=a11rest-last%40dawarich.test' if options[:duplicate_email]
+          body = "user%5Bcurrent_password%5D=wrong&#{body}" if options[:duplicate_current]
+          body += '&user%5Bemail%5D=%FF' if options[:malformed]
+          body += '&user%5Bemail%5D%5Bnested%5D=value' if options[:type_conflict]
+          client.public_send(method, '/users', params: body,
+                             headers: { 'CONTENT_TYPE' => 'application/x-www-form-urlencoded' })
+          expect(client.response.status).to eq(if errors.nil?
+                                                 400
+                                               else
+                                                 errors.empty? ? 303 : 422
+                                               end)
+          after = user.reload.attributes
+          if errors.nil? || errors.any?
+            expect(after == before).to be(true)
+            next if errors.nil?
+
+            doc = Nokogiri::HTML5(client.response.body)
+            expect(doc.css('#error_explanation li').map(&:text)).to eq(errors)
+            expect(doc.at_css('#user_email')['value']).to eq(params[:email].strip.downcase)
+            expect(doc.css('input[type="password"]').all? { |field| field['value'].blank? }).to be(true)
+          else
+            expect(client.response.location).to eq('http://www.example.com/')
+            expected_email = options[:duplicate_email] ? 'a11rest-last@dawarich.test' : params[:email].strip.downcase
+            expect(user.email).to eq(expected_email)
+            password = params[:password].presence || 'a11rest-password-42'
+            expect(user.valid_password?(password)).to be(true)
+            expect(user.valid_password?('a11rest-password-42')).to be(params[:password].blank?)
+            expect(after.except('email', 'encrypted_password', 'updated_at') ==
+                   before.except('email', 'encrypted_password', 'updated_at')).to be(true)
+            expect(after['updated_at'] == before['updated_at']).to be(name == 'no_op')
+          end
+        end
+      end
+    end
+
+    it 'pins bypass session and recoverable effects without login callbacks' do
+      %w[email_only password_only no_op key_rotation].each_with_index do |kind, index|
+        aggregate_failures(kind) do
+          user = create(:user, email: "a11rest-effects-#{index}@dawarich.test", password: 'a11rest-password-42')
+          client = account_client(user, remember: true)
+          user.update_columns(reset_password_token: "a11rest-reset-digest-#{index}", reset_password_sent_at: 1.hour.ago,
+                              failed_attempts: 2, failed_otp_attempts: 3, otp_locked_at: 2.hours.ago)
+          before = user.reload.attributes
+          session = account_session(client).merge('devise.test' => 'expire', 'user_return_to' => '/stats',
+                                                  'locale' => 'en', 'a11rest' => 'retain')
+          replace_account_session(client, session)
+          remember = client.cookies['remember_user_token']
+          jobs = enqueued_jobs.size
+          mails = ActionMailer::Base.deliveries.size
+          if kind == 'key_rotation'
+            client.post('/settings/generate_api_key', params: '',
+                        headers: { 'CONTENT_TYPE' => 'application/x-www-form-urlencoded',
+                                   'X-CSRF-Token' => account_token(client) })
+          else
+            params = { email: user.email, current_password: 'a11rest-password-42', password: '',
+password_confirmation: '' }
+            params[:email] = "a11rest-updated-#{index}@dawarich.test" if kind == 'email_only'
+            if kind == 'password_only'
+              params.merge!(password: 'a11rest-new-password', password_confirmation: 'a11rest-new-password')
+            end
+            client.put('/users', params: { user: params, authenticity_token: account_token(client) })
+          end
+          expect(client.response.status).to eq(kind == 'key_rotation' ? 302 : 303)
+          after = user.reload.attributes
+          received = account_session(client)
+          expect(received.values_at('session_id', '_csrf_token', 'user_return_to', 'locale', 'a11rest') ==
+                 session.values_at('session_id', '_csrf_token', 'user_return_to', 'locale', 'a11rest')).to be(true)
+          expect(received.key?('devise.test')).to be(kind == 'key_rotation')
+          expect(received.dig('warden.user.user.key',
+                              1) == session.dig('warden.user.user.key', 1)).to be(kind != 'password_only')
+          expect(received.dig('warden.user.user.key', 1) == user.authenticatable_salt).to be(true)
+          expect(client.cookies['remember_user_token'] == remember).to be(true)
+          unless kind == 'key_rotation'
+            expect(received.dig('flash', 'flashes',
+                                'notice')).to eq('Your account has been updated successfully.')
+          end
+          changed = %w[email_only password_only].include?(kind)
+          expect(user.reset_password_token.nil?).to be(changed)
+          expect(user.reset_password_sent_at.nil?).to be(changed)
+          unless changed
+            expect(after.values_at('reset_password_token', 'reset_password_sent_at') ==
+                   before.values_at('reset_password_token', 'reset_password_sent_at')).to be(true)
+          end
+          ignored = %w[email encrypted_password updated_at api_key reset_password_token reset_password_sent_at]
+          expect(after.except(*ignored) == before.except(*ignored)).to be(true)
+          expect(after['updated_at'] == before['updated_at']).to be(kind == 'no_op')
+          expect(enqueued_jobs.size).to eq(jobs)
+          expect(ActionMailer::Base.deliveries.size).to eq(mails)
+          old_client = ActionDispatch::Integration::Session.new(Rails.application)
+          replace_account_session(old_client, session)
+          old_client.get('/users/edit')
+          expect(old_client.response.status).to eq(kind == 'password_only' ? 302 : 200)
+          remembered_client = ActionDispatch::Integration::Session.new(Rails.application)
+          remembered_client.cookies['remember_user_token'] = remember
+          remembered_client.get('/users/edit')
+          expect(remembered_client.response.status).to eq(kind == 'password_only' ? 302 : 200)
+        end
+      end
+    end
+  end
+
   let(:family_owner) { create(:user) }
   let(:family) { create(:family, creator: family_owner) }
   let!(:owner_membership) { create(:family_membership, user: family_owner, family: family, role: :owner) }

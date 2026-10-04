@@ -98,17 +98,20 @@ defmodule Dawarich.Auth.Recovery.HttpTest do
     refute_received {:intent, _}
   end
 
-  test "invalid CSRF and foreign origin cause zero recovery mutation", c do
-    for {params, row} <- [
-          {%{"user[email]" => c.email}, "missing"},
-          {%{"user[email]" => c.email, "authenticity_token" => "bad"}, "invalid"}
+  test "invalid CSRF and foreign origin hand the request and its body to Rails with zero recovery mutation",
+       c do
+    for params <- [
+          %{"user[email]" => c.email},
+          %{"user[email]" => c.email, "authenticity_token" => "bad"},
+          %{"user[email]" => c.email, "authenticity_token" => c.token}
         ] do
-      assert (post(c, params) |> Http.call(c.opts)).status == @effects[row]["status"]
+      conn = post(c, params)
+      conn = if params["authenticity_token"] == c.token, do: foreign(conn), else: conn
+      conn = Http.call(conn, c.opts)
+      assert conn.private[:recovery_fallback]
+      assert conn.private[:dawarich_raw_body] == URI.encode_query(params)
+      assert conn.status == nil
     end
-
-    assert (post(c, %{"user[email]" => c.email, "authenticity_token" => c.token})
-            |> put_req_header("origin", "http://foreign.test")
-            |> Http.call(c.opts)).status == @effects["foreign_origin"]["status"]
 
     [[token]] = Repo.query!("SELECT reset_password_token FROM users WHERE id=$1", [c.id]).rows
     assert token == nil
@@ -132,7 +135,7 @@ defmodule Dawarich.Auth.Recovery.HttpTest do
     assert token == nil
   end
 
-  test "delivery-owner missing hands back before issuance; failed delivery preserves issuance",
+  test "delivery-owner missing hands back before issuance; failed delivery rolls issuance back and answers 500",
        c do
     params = %{"authenticity_token" => c.token, "user[email]" => c.email}
 
@@ -157,7 +160,7 @@ defmodule Dawarich.Auth.Recovery.HttpTest do
 
     assert (post(c, params) |> Http.call(failed)).status == @effects["delivery_failure"]["status"]
     [[token]] = Repo.query!("SELECT reset_password_token FROM users WHERE id=$1", [c.id]).rows
-    assert is_binary(token)
+    assert token == nil
   end
 
   test "a request body that cannot be read answers 400 instead of crashing", c do
@@ -181,6 +184,7 @@ defmodule Dawarich.Auth.Recovery.HttpTest do
   end
 
   defp post(c, params), do: request(c, "POST", "/users/password", URI.encode_query(params))
+  defp foreign(conn), do: put_req_header(conn, "origin", "http://foreign.test")
 
   defp request(c, method, path, raw) do
     Plug.Test.conn(method, "http://localhost" <> path, raw)

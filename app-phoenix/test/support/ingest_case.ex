@@ -14,12 +14,16 @@ defmodule Dawarich.IngestCase do
     end
   end
 
-  setup do
+  setup context do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
-    Repo.query!("CREATE SCHEMA IF NOT EXISTS phoenix")
-    Repo.query!(File.read!(@sql), [], query_type: :text)
-    Repo.query!(File.read!(@owners), [], query_type: :text)
+
+    unless context[:api_public_only] do
+      Repo.query!("CREATE SCHEMA IF NOT EXISTS phoenix")
+      Repo.query!(File.read!(@sql), [], query_type: :text)
+      Repo.query!(File.read!(@owners), [], query_type: :text)
+    end
+
     Dawarich.Ingest.Sources.forget()
     :ok
   end

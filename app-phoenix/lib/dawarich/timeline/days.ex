@@ -8,15 +8,18 @@ defmodule Dawarich.Timeline.Days do
   @max_range 2_678_400
   @chip_min 0.5
 
-  def load(user, window, window_now) do
+  def load(user, window, window_now, repo \\ Dawarich.Repo) do
     {:ok, from, _} = DateTime.from_iso8601(window.start)
     {:ok, to, _} = DateTime.from_iso8601(window.end)
-    range = {DateTime.to_unix(from), DateTime.to_unix(to)}
+
+    range =
+      {DateTime.to_unix(from, :microsecond) / 1_000_000,
+       DateTime.to_unix(to, :microsecond) / 1_000_000}
 
     if elem(range, 1) - elem(range, 0) > @max_range do
       %{days: [], redetected: false}
     else
-      rows = DayRows.fetch(user, range, {window.start_date, window.end_date}, window_now)
+      rows = DayRows.fetch(user, range, {window.start_date, window.end_date}, window_now, repo)
       %{days: build(rows, unit(user.settings)), redetected: rows.redetected}
     end
   end
@@ -79,7 +82,7 @@ defmodule Dawarich.Timeline.Days do
 
   defp entries(date, bucket, rows, unit) do
     {day_start, day_end} = Map.fetch!(rows.midnights, date)
-    visits = Enum.map(bucket.visits, &visit_entry(&1, rows))
+    visits = Enum.map(bucket.visits, &entry(&1, rows))
 
     journeys =
       Enum.map(
@@ -99,7 +102,7 @@ defmodule Dawarich.Timeline.Days do
     end)
   end
 
-  defp visit_entry(visit, rows) do
+  def entry(visit, rows) do
     place = visit.place_id && Map.fetch!(rows.places, visit.place_id)
 
     entry = %{

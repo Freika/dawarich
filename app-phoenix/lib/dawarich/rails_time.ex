@@ -16,14 +16,18 @@ defmodule Dawarich.RailsTime do
   end
 
   def with_zone(setting, fun) do
+    with_zone(Repo, setting, fun)
+  end
+
+  def with_zone(repo, setting, fun) do
     setting = if is_nil(setting), do: System.get_env("TIME_ZONE", "UTC"), else: setting
     zone = if is_binary(setting), do: TimeZoneName.to_iana(setting), else: setting
 
     if is_binary(zone) and zone =~ @zone do
-      Repo.transaction(fn ->
-        case set_zone(zone) do
+      repo.transaction(fn ->
+        case set_zone(repo, zone) do
           :ok -> fun.()
-          replay -> Repo.rollback(replay)
+          replay -> repo.rollback(replay)
         end
       end)
       |> case do
@@ -47,8 +51,8 @@ defmodule Dawarich.RailsTime do
       "CASE WHEN to_char(#{at}, 'TZ') IN ('UTC', 'UCT') THEN 'Z' ELSE to_char(#{at}, 'TZH:TZM') END END"
   end
 
-  defp set_zone(zone) do
-    case Repo.query("SELECT set_config('TimeZone', $1, true)", [zone]) do
+  defp set_zone(repo, zone) do
+    case repo.query("SELECT set_config('TimeZone', $1, true)", [zone]) do
       {:ok, %{rows: [[^zone]]}} -> :ok
       {:ok, _} -> {:replay, "time zone #{zone} is not PostgreSQL's canonical spelling"}
       {:error, %Postgrex.Error{}} -> {:replay, "PostgreSQL does not know time zone #{zone}"}

@@ -69,7 +69,11 @@ defmodule DawarichWeb.ExportsCreateTest do
 
     session = rails_session(conn)
     assert session["flash"] == %{"discard" => [], "flashes" => %{"notice" => @notice}}
-    assert Map.delete(session, "flash") == ctx.session
+    identity_valid = Regex.match?(~r/\A[0-9a-f]{32}\z/, session["session_id"] || "")
+    assert identity_valid
+
+    assert Map.delete(session, "flash") ==
+             Map.put_new(ctx.session, "session_id", session["session_id"])
 
     assert [[id, "export_from_2024-03-01_to_2024-03-31.json", 0, 0, 0, start_at, end_at, 7331]] =
              exports()

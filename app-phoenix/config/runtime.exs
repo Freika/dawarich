@@ -61,6 +61,7 @@ if config_env() != :test do
     app_version_checking: 1,
     mailers: 2,
     trips: 2,
+    route_videos: 1,
     maintenance: 1,
     exports: 1,
     projections: 1,
@@ -111,6 +112,13 @@ config :dawarich,
        (System.get_env("DAWARICH_RAILS_ROUTES") || "")
        |> String.split(",")
        |> Enum.map(&String.trim/1)
+       |> Enum.reject(&(&1 == ""))
+
+config :dawarich,
+       :phoenix_auth,
+       (System.get_env("DAWARICH_PHOENIX_AUTH") || "")
+       |> String.split(",")
+       |> Enum.map(&(&1 |> String.trim() |> String.downcase()))
        |> Enum.reject(&(&1 == ""))
 
 case System.get_env("DAWARICH_RAILS_ARGS") do

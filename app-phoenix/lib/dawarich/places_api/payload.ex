@@ -12,15 +12,15 @@ defmodule Dawarich.PlacesApi.Payload do
   @counts "SELECT place_id, count(*) FROM visits WHERE place_id = ANY($1) " <>
             "AND deleted_at IS NULL AND status <> 2 GROUP BY place_id"
 
-  def places(owner, where, params, tail \\ "") do
-    rows = Repo.query!(select() <> " AND " <> where <> tail, [owner | params]).rows
+  def places(owner, where, params, tail \\ "", repo \\ Repo) do
+    rows = repo.query!(select() <> " AND " <> where <> tail, [owner | params]).rows
     ids = Enum.map(rows, &hd/1)
 
     tags =
-      Repo.query!(@tags, [ids]).rows
+      repo.query!(@tags, [ids]).rows
       |> Enum.group_by(&hd/1, fn [_place | tag] -> {:object, Enum.zip(@tag_keys, tag)} end)
 
-    counts = Map.new(Repo.query!(@counts, [ids]).rows, &List.to_tuple/1)
+    counts = Map.new(repo.query!(@counts, [ids]).rows, &List.to_tuple/1)
     Enum.map(rows, &term(&1, Map.get(tags, hd(&1), []), Map.get(counts, hd(&1), 0)))
   end
 

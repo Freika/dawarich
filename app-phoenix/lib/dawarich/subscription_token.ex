@@ -1,18 +1,29 @@
 defmodule Dawarich.SubscriptionToken do
   @moduledoc false
+  alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   def url(user, now),
     do: "#{System.get_env("MANAGER_URL")}/auth/dawarich?token=" <> generate(user, now)
 
-  def generate(user, now, jti \\ Ecto.UUID.generate()) do
+  def generate(user, now, jti \\ Ecto.UUID.generate()), do: generate(user, now, jti, [])
+
+  def generate(user, now, jti, opts) do
+    options =
+      for key <- [:plan, :interval, :variant],
+          value = Keyword.get(opts, key),
+          Ruby.present?(value),
+          do: {Atom.to_string(key), value}
+
     payload =
-      Jason.OrderedObject.new([
-        {"user_id", user.id},
-        {"email", user.email},
-        {"purpose", "checkout"},
-        {"jti", jti},
-        {"exp", DateTime.to_unix(now) + 1800}
-      ])
+      Jason.OrderedObject.new(
+        [
+          {"user_id", user.id},
+          {"email", user.email},
+          {"purpose", "checkout"},
+          {"jti", jti},
+          {"exp", DateTime.to_unix(now) + 1800}
+        ] ++ options
+      )
 
     input = encode(~s({"alg":"HS256"})) <> "." <> encode(Jason.encode!(payload))
 

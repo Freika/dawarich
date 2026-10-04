@@ -36,14 +36,25 @@ defmodule Dawarich.ApiEndpointCase do
     end)
   end
 
-  setup do
+  def init(opts), do: opts
+
+  def call(conn, opts) do
+    conn
+    |> Plug.Conn.assign(:api_now, opts[:api_now])
+    |> DawarichWeb.Endpoint.call(DawarichWeb.Endpoint.init([]))
+  end
+
+  setup context do
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
+    plug =
+      if context[:api_now],
+        do: {__MODULE__, [api_now: context.api_now]},
+        else: DawarichWeb.Endpoint
+
     bandit =
-      start_supervised!(
-        {Bandit, [plug: DawarichWeb.Endpoint] ++ Dawarich.Front.http_options({127, 0, 0, 1}, 0)}
-      )
+      start_supervised!({Bandit, [plug: plug] ++ Dawarich.Front.http_options({127, 0, 0, 1}, 0)})
 
     {:ok, {_ip, port}} = ThousandIsland.listener_info(bandit)
     previous = System.get_env("TIME_ZONE")

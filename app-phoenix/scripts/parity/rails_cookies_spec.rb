@@ -85,7 +85,19 @@ RSpec.describe 'Phoenix fixture: the cookies Rails issues at sign-in', type: :re
         expected_remember: signed_in.signed['remember_user_token'],
         csrf: { session_cookie: csrf_session, masked_token: masked }
       }
-      File.write(Rails.root.join('app-phoenix/test/fixtures/rails_cookies.json'), "#{JSON.pretty_generate(fixture)}\n")
+      path = Rails.root.join('app-phoenix/test/fixtures/rails_cookies.json')
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        File.write(path, "#{JSON.pretty_generate(fixture)}\n")
+      else
+        recorded = JSON.parse(path.read)
+        stable = %w[rails_test_secret now remember_for_seconds lockable lock_strategy unlock_strategy
+                    time_unlock unlock_in_seconds]
+        expect(recorded.slice(*stable)).to eq(fixture.as_json.slice(*stable))
+        original = jar("_dawarich_session=#{recorded.fetch('session_cookie')}")
+        expect(original.encrypted['_dawarich_session']).to eq(recorded.fetch('expected_session'))
+        remember = jar("remember_user_token=#{recorded.fetch('remember_cookie')}")
+        expect(remember.signed['remember_user_token']).to eq(recorded.fetch('expected_remember'))
+      end
     end
   end
 end

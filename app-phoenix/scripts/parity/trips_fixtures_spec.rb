@@ -20,10 +20,333 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
   before { FileUtils.mkdir_p(dir.join('pages')) }
 
   def write_json(name, data)
-    File.write(dir.join(name), "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2)}\n")
+    encoded = "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2)}\n"
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      File.write(dir.join(name), encoded)
+    else
+      expect(JSON.parse(dir.join(name).read)).to eq(JSON.parse(encoded))
+    end
   end
 
   def utc(text) = Time.iso8601(text)
+
+  context 'A8 route videos' do
+    let(:now) { Time.utc(2026, 10, 3, 10, 0, 0) }
+    let(:a8_recipe) do
+      { 'theme' => 'dark', 'format' => 'landscape', 'duration_sec' => '15', 'camera_mode' => 'follow',
+        'follow_zoom' => '14', 'track_color' => '#aa33cc', 'track_width' => '4', 'hud_scale' => '1',
+        'units' => 'km', 'watermark' => 'true', 'visualization_mode' => 'route', 'fog_opacity' => '0.4',
+        'fog_color' => '#ffffff', 'show_marker' => 'true', 'show_route' => 'true', 'source' => 'trip',
+        'start_at' => '2026-10-03T08:00:00Z', 'end_at' => '2026-10-03T09:00:00Z' }
+    end
+
+    def a8_video_user(id)
+      user = create(:user, id:, email: "a8vv-#{id}@dawarich.test", changelog_consent: :declined)
+      user.update_columns(settings: { 'timezone' => 'Europe/Berlin', 'onboarding_completed' => true },
+                          plan: User.plans[:pro], api_key: "a8vv-k-#{id}", theme: 'dark')
+      user.reload
+    end
+
+    def a8_blob(id, type: 'video/mp4', size: nil)
+      bytes = Rails.root.join('spec/fixtures/files/route_video.mp4').binread
+      blob = ActiveStorage::Blob.create!(id:, key: "a8vv-synthetic-#{id}", filename: 'synthetic-route.mp4',
+                                         content_type: type, byte_size: size || bytes.bytesize,
+                                         checksum: Digest::MD5.base64digest(bytes), service_name: 'test',
+                                         metadata: { identified: true, analyzed: true }, created_at: now - 1.hour)
+      blob.service.upload(blob.key, StringIO.new(bytes), checksum: blob.checksum)
+      blob
+    end
+
+    def a8_video(user, id, blob: nil, created_at: now - 2.hours, status: :stored)
+      video = RouteVideo.create!(id:, user:, name: 'Synthetic route', settings: a8_recipe,
+                                 status:, created_at:, updated_at: created_at,
+                                 expired_at: status == :expired ? now - 1.hour : nil)
+      if blob
+        ActiveStorage::Attachment.create!(id:, name: 'file', record: video, blob:, created_at:)
+        video.update_columns(updated_at: created_at)
+      end
+      video.reload
+    end
+
+    def a8_video_graph(user)
+      video_ids = user.route_videos.order(:id).pluck(:id)
+      first_blob = user.id < 8880 ? 886_000 + (user.id - 8860) * 10 : 888_000 + (user.id - 8880) * 10
+      blob_ids = ActiveStorage::Blob.where(id: first_blob...first_blob + 10).order(:id).pluck(:id)
+      { user: { id: user.id, email: user.email, settings: user.settings, plan: User.plans[user.plan],
+                theme: user.theme, active_until: user.active_until.utc.iso8601(6) },
+        route_videos: RouteVideo.where(id: video_ids).order(:id).map { a8_video_attributes(_1) },
+        active_storage_attachments: ActiveStorage::Attachment.where(blob_id: blob_ids).order(:id).map do
+          a8_video_attributes(_1)
+        end,
+        active_storage_blobs: ActiveStorage::Blob.where(id: blob_ids).order(:id).map { a8_video_attributes(_1) } }
+    end
+
+    def a8_video_attributes(row)
+      attrs = row.attributes.transform_values { _1.respond_to?(:utc) ? _1.utc.iso8601(6) : _1 }
+      attrs['status'] = RouteVideo.statuses[row.status] if row.is_a?(RouteVideo)
+      attrs
+    end
+
+    def a8_video_card(video)
+      ApplicationController.render(partial: 'route_videos/route_video', locals: { route_video: video })
+    end
+
+    def a8_video_record(name, user, before, request, body: response.body, status: response.status)
+      target = Rails.root.join('app-phoenix/test/fixtures/a8vv/videos')
+      FileUtils.mkdir_p(target)
+      body = body.gsub(%r{(/rails/active_storage/blobs/(?:redirect|proxy)/)[^/]+/}, '\1BLOB_SIGNED_ID/')
+      File.write(target.join("#{name}.html"), body)
+      data = { now: now.iso8601, request:, before:, after: a8_video_graph(user), status:,
+               content_type: request[:method] ? response.media_type : 'text/html',
+               location: request[:method] ? response.location : nil,
+               flash: request[:method] ? flash.to_hash : {},
+               headers: if request[:method]
+                          response.headers.slice('Content-Type', 'Location', 'Vary', 'Cache-Control',
+                                                 'X-Frame-Options', 'Referrer-Policy', 'X-Content-Type-Options')
+                        else
+                          {}
+                        end,
+               jobs: enqueued_jobs.map { { job: _1[:job].name, args: _1[:args], queue: _1[:queue] } } }
+      File.write(target.join("#{name}.json"),
+                 "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2)}\n")
+    end
+
+    def a8_video_request(user, method, path, params: {}, accept: 'text/vnd.turbo-stream.html')
+      reset!
+      sign_in user
+      get '/settings/visits'
+      token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+      clear_enqueued_jobs
+      public_send(method, path, params:, headers: { 'X-CSRF-Token' => token, 'Accept' => accept })
+    end
+
+    it 'writes A8 video responses and effects' do
+      travel_to now do
+        allow(DawarichSettings).to receive(:video_max_per_user).and_return(10)
+        allow(ExceptionReporter).to receive(:call)
+        cases = %w[all_recipe_keys untitled unknown_recipe unicode_recipe_65 exact_ceiling wrong_mime
+                   over_ceiling invalid_signature pre_attach_error post_commit_cap_error cap_one cap_zero]
+        cases.each_with_index do |name, index|
+          user = a8_video_user(8860 + index)
+          id = 886_000 + index * 10
+          allow(DawarichSettings).to receive(:video_max_per_user).and_return(name == 'cap_one' ? 1 : 0)
+          mime = name == 'wrong_mime' ? 'text/plain' : 'video/mp4'
+          size = { 'exact_ceiling' => 250 * 1024 * 1024, 'over_ceiling' => 250 * 1024 * 1024 + 1 }[name]
+          blob = a8_blob(id, type: mime, size:)
+          old = nil
+          if %w[cap_one cap_zero post_commit_cap_error].include?(name)
+            old = a8_video(user, id + 1, blob: a8_blob(id + 1))
+            allow(DawarichSettings).to receive(:video_max_per_user).and_return(name == 'cap_zero' ? 0 : 1)
+          end
+          %w[route_videos active_storage_attachments].each do |table|
+            ActiveRecord::Base.connection.execute(
+              "SELECT setval(pg_get_serial_sequence('#{table}', 'id'), #{id + 2}, false)"
+            )
+          end
+          recipe = a8_recipe.dup
+          recipe['unknown'] = 'discard' if name == 'unknown_recipe'
+          unicode = "#{'a' * 61}é👩‍💻end"
+          recipe['source'] = unicode if name == 'unicode_recipe_65'
+          params = { route_video: { name: name == 'untitled' ? '' : 'Saved route', file: blob.signed_id,
+                                   settings: recipe } }
+          params[:route_video][:file] = 'invalid-signed-id' if name == 'invalid_signature'
+          before = a8_video_graph(user)
+          RSpec::Mocks.with_temporary_scope do
+            if name == 'pre_attach_error'
+              allow_any_instance_of(RouteVideo).to receive(:save!).and_raise(ActiveRecord::RecordInvalid.new(RouteVideo.new))
+            elsif name == 'post_commit_cap_error'
+              allow_any_instance_of(RouteVideo).to receive(:update!).and_raise('synthetic expiry status failure')
+            end
+            a8_video_request(user, :post, '/route_videos', params:)
+          end
+          rejected = %w[wrong_mime over_ceiling invalid_signature pre_attach_error post_commit_cap_error].include?(name)
+          expect(response.status).to eq(rejected ? 422 : 200), name
+          saved = user.route_videos.find_by(id: id + 2)
+          if %w[wrong_mime over_ceiling invalid_signature pre_attach_error].include?(name)
+            expect(saved).to be_nil, name
+            expect(blob.attachments).to be_empty
+            if name == 'invalid_signature'
+              expect(enqueued_jobs).to be_empty
+            else
+              expect(enqueued_jobs.select { _1[:job] == ActiveStorage::PurgeJob }.size).to eq(1)
+            end
+          else
+            expect(saved).to be_present, name
+            expect(saved.file.blob.id).to eq(blob.id)
+            expect(saved.name).to eq(name == 'untitled' ? I18n.t('controllers.route_videos.untitled') : 'Saved route')
+            wanted = a8_recipe.merge(name == 'unicode_recipe_65' ? { 'source' => "#{'a' * 61}é👩" } : {})
+            expect(saved.settings).to eq(wanted), name
+            if old
+              expect(old.reload.status).to eq(name == 'cap_one' ? 'expired' : 'stored')
+              expect(old.file.attached?).to eq(name == 'cap_zero')
+              expect(old.updated_at).to eq(name == 'cap_zero' ? now - 2.hours : now)
+              expect(old.expired_at).to eq(name == 'cap_one' ? now : nil)
+            end
+            streams = Nokogiri::HTML5.fragment(response.body).css('turbo-stream').map { [_1['action'], _1['target']] }
+            wanted_streams = if name == 'post_commit_cap_error'
+                               [%w[append flash-messages]]
+                             else
+                               [%w[prepend route-video-gallery-list],
+                                *(name == 'cap_one' ? [['replace', "route_video_#{old.id}"]] : []),
+                                %w[append flash-messages]]
+                             end
+            expect(streams).to eq(wanted_streams)
+          end
+          reference = name == 'invalid_signature' ? 'INVALID_SIGNED_ID' : 'BLOB_SIGNED_ID'
+          request = { method: 'POST', path: '/route_videos', accept: 'text/vnd.turbo-stream.html',
+                      params: params.deep_merge(route_video: { file: reference }),
+                      blob_id: blob.id,
+                      fault: %w[pre_attach_error post_commit_cap_error].include?(name) ? name : nil }
+          a8_video_record(name, user, before, request)
+        end
+
+        %w[playable_card expired_card stored_without_file destroy_html destroy_stream shared_blob
+           aged_boundary].each_with_index do |name, index|
+          user = a8_video_user(8880 + index)
+          id = 888_000 + index * 10
+          blob = a8_blob(id) unless name == 'stored_without_file'
+          video = a8_video(user, id, blob:, status: name == 'expired_card' ? :expired : :stored)
+          before = a8_video_graph(user)
+          clear_enqueued_jobs
+          if name.start_with?('destroy_')
+            accept = name == 'destroy_html' ? 'text/html' : 'text/vnd.turbo-stream.html'
+            a8_video_request(user, :delete, "/route_videos/#{id}", accept:)
+            expect(response.status).to eq(name == 'destroy_html' ? 303 : 200)
+            expect(RouteVideo.exists?(id)).to be(false)
+            expect(ActiveStorage::Attachment.where(record_type: 'RouteVideo', record_id: id)).to be_empty
+            expect(enqueued_jobs.select { _1[:job] == ActiveStorage::PurgeJob }.size).to eq(1)
+            if name == 'destroy_html'
+              expect(response).to redirect_to('/map/v2')
+            else
+              expect(response.body).to eq(
+                "<turbo-stream action=\"remove\" target=\"route_video_#{id}\"></turbo-stream>"
+              )
+            end
+            a8_video_record(name, user, before, { method: 'DELETE', path: "/route_videos/#{id}", accept: })
+          elsif name == 'shared_blob'
+            second = a8_video(user, id + 1, blob:)
+            before = a8_video_graph(user)
+            video.expire!
+            expect(video.reload.status).to eq('expired')
+            expect(video.file.attached?).to be(false)
+            expect(video.settings).to eq(a8_recipe)
+            expect(video.updated_at).to eq(now)
+            expect(video.expired_at).to eq(now)
+            purge_args = enqueued_jobs.select { _1[:job] == ActiveStorage::PurgeJob }.map { _1[:args] }
+            expect(purge_args).to eq([[{ '_aj_globalid' => "gid://dawarich/ActiveStorage::Blob/#{blob.id}" }]])
+            queued = enqueued_jobs.map { { job: _1[:job].name, args: _1[:args] } }
+            perform_enqueued_jobs(only: ActiveStorage::PurgeJob)
+            expect(second.reload.file.attached?).to be(true)
+            expect(ActiveStorage::Blob.exists?(blob.id)).to be(true)
+            expect(blob.service.exist?(blob.key)).to be(true)
+            a8_video_record(name, user, before, { operation: 'expire_and_purge', video_id: id, queued: },
+                            body: a8_video_card(video), status: 200)
+          elsif name == 'aged_boundary'
+            video.update_columns(created_at: now - 30.days - 1.second)
+            boundary = a8_video(user, id + 1, blob: a8_blob(id + 1), created_at: now - 30.days)
+            allow(DawarichSettings).to receive(:video_retention_days).and_return(30)
+            allow(DawarichSettings).to receive(:video_max_per_user).and_return(0)
+            before = a8_video_graph(user)
+            RouteVideos::PurgeJob.perform_now
+            expect(video.reload.status).to eq('expired')
+            expect(video.file.attached?).to be(false)
+            expect(boundary.reload.status).to eq('stored')
+            expect(boundary.file.attached?).to be(true)
+            a8_video_record(name, user, before, { operation: 'retention', days: 30, cap: 0 },
+                            body: a8_video_card(video), status: 200)
+          else
+            body = a8_video_card(video)
+            if name == 'playable_card'
+              expect(Nokogiri::HTML5.fragment(body).at_css('video')['controls']).not_to be_nil
+              expect(body).to include('disposition=attachment')
+            else
+              expect(Nokogiri::HTML5.fragment(body).css('video')).to be_empty
+              expect(body).to include('video-studio#restoreSettings')
+            end
+            a8_video_record(name, user, before, { operation: 'card', video_id: id }, body:, status: 200)
+          end
+        end
+      end
+    end
+
+    %w[blank_name_cap blank_name_cron].each_with_index do |name, index|
+      it "writes A8 review #{name} from Rails" do
+        travel_to now do
+          user = a8_video_user(8887 + index)
+          id = 888_070 + index * 10
+          video = a8_video(user, id + 1, blob: a8_blob(id + 1), created_at: now - 31.days)
+          video.update_columns(name: '')
+          allow(DawarichSettings).to receive(:video_retention_days).and_return(30)
+          allow(DawarichSettings).to receive(:video_max_per_user).and_return(name == 'blank_name_cap' ? 1 : 0)
+          allow(ExceptionReporter).to receive(:call)
+          if name == 'blank_name_cap'
+            blob = a8_blob(id)
+            %w[route_videos active_storage_attachments].each do |table|
+              ActiveRecord::Base.connection.execute(
+                "SELECT setval(pg_get_serial_sequence('#{table}', 'id'), #{id + 2}, false)"
+              )
+            end
+            before = a8_video_graph(user)
+            params = { route_video: { name: 'Saved route', file: blob.signed_id, settings: a8_recipe } }
+            a8_video_request(user, :post, '/route_videos', params:)
+            expect(response.status).to eq(422)
+            expect(user.route_videos.count).to eq(2)
+            expect(video.reload.status).to eq('stored')
+            expect(video.file.attached?).to be(false)
+            expect(video.updated_at).to eq(now)
+            expect(video.expired_at).to be_nil
+            request = { method: 'POST', path: '/route_videos', accept: 'text/vnd.turbo-stream.html',
+                        params: params.deep_merge(route_video: { file: 'BLOB_SIGNED_ID' }), blob_id: blob.id }
+            a8_video_record(name, user, before, request)
+          else
+            before = a8_video_graph(user)
+            clear_enqueued_jobs
+            expect { RouteVideos::PurgeJob.perform_now }.to raise_error(ActiveRecord::RecordInvalid, /Name/)
+            expect(a8_video_graph(user)).to eq(before)
+            a8_video_record(name, user, before, { operation: 'retention_failure', days: 30, cap: 0,
+                                                error: 'ActiveRecord::RecordInvalid' }, body: '', status: 422)
+          end
+        end
+      end
+    end
+
+    it 'writes A8 attachment identification boundaries' do
+      travel_to now do
+        allow(DawarichSettings).to receive(:video_max_per_user).and_return(0)
+        %w[unidentified preidentified shared_preidentified].each_with_index do |name, index|
+          user = a8_video_user(8895 + index)
+          id = 888_150 + index * 10
+          blob = a8_blob(id)
+          metadata = name == 'unidentified' ? {} : { identified: true }
+          metadata[:analyzed] = true if name == 'shared_preidentified'
+          blob.update!(metadata:)
+          other = a8_video(user, id + 1, blob:) if name == 'shared_preidentified'
+          %w[route_videos active_storage_attachments].each do |table|
+            ActiveRecord::Base.connection.execute(
+              "SELECT setval(pg_get_serial_sequence('#{table}', 'id'), #{id + 2}, false)"
+            )
+          end
+          before = a8_video_graph(user)
+          params = { route_video: { name: 'Metadata route', file: blob.signed_id, settings: a8_recipe } }
+          a8_video_request(user, :post, '/route_videos', params:)
+          expect(response.status).to eq(200), name
+          saved = user.route_videos.find_by!(name: 'Metadata route')
+          expect(saved.file.blob.id).to eq(id)
+          expect(blob.reload.identified?).to be(true)
+          if name == 'shared_preidentified'
+            expect(blob.attachments.count).to eq(2)
+            expect(other.reload.file.blob.id).to eq(id)
+            expect(enqueued_jobs).to be_empty
+          else
+            expect(enqueued_jobs.map { _1[:job] }).to eq([ActiveStorage::AnalyzeJob])
+          end
+          request = { method: 'POST', path: '/route_videos', accept: 'text/vnd.turbo-stream.html',
+                      params: params.deep_merge(route_video: { file: 'BLOB_SIGNED_ID' }), blob_id: id }
+          a8_video_record("metadata_#{name}", user, before, request)
+        end
+      end
+    end
+  end
 
   def user_settings
     {
@@ -239,7 +562,12 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
     expect(response).to have_http_status(:ok)
     doc = Nokogiri::HTML5(response.body)
     doc.css('input[name="authenticity_token"]').each { |node| node['value'] = 'CSRF' }
-    File.write(dir.join("pages/#{name}.html"), doc.at_css('body > div.container > div.w-full > div.flex').inner_html)
+    html = doc.at_css('body > div.container > div.w-full > div.flex').inner_html
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      File.write(dir.join("pages/#{name}.html"), html)
+    else
+      expect(dir.join("pages/#{name}.html").read).to eq(html)
+    end
     sign_out :user
     { name:, user_id:, path:, title: doc.at_css('title').text }
   end

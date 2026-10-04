@@ -3,6 +3,13 @@ defmodule Dawarich.Jobs.Registry do
 
   @base_entries [
     %{
+      key: Dawarich.RouteVideos.PurgeWorker.key(),
+      kind: :cron,
+      expression: "45 3 * * *",
+      worker: Dawarich.RouteVideos.PurgeWorker,
+      claimable: false
+    },
+    %{
       key: "command:imports.destroy",
       kind: :command,
       worker: Dawarich.Imports.DestroyWorker,
