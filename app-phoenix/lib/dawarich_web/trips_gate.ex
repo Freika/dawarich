@@ -16,6 +16,14 @@ defmodule DawarichWeb.TripsGate do
   def show?(conn, %{"id" => id}),
     do: open?(conn, &match?({:ok, _}, TripPage.gate(&1, String.to_integer(id))))
 
+  def form?(conn, params) do
+    DawarichWeb.LayoutAssigns.self_hosted?() and conn.query_string == "" and
+      open?(conn, fn user ->
+        id = params["id"] && String.to_integer(params["id"])
+        match?({:ok, _}, Dawarich.Trips.WebForm.load(Dawarich.Repo, user, id, %{}))
+      end)
+  end
+
   def page_number(page), do: max(DawarichWeb.Params.ruby_to_i(page), 1)
 
   def open?(conn, check) do
