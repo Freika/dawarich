@@ -21,8 +21,11 @@ defmodule DawarichWeb.MapFrameRoutes do
       scope "/places" do
         pipe_through :rails_frame
 
-        get "/:id", DawarichWeb.MapFrames, :place,
-          metadata: %{rails_gate: {DawarichWeb.PlacesGate, :drawer?}}
+        get "/nearby", DawarichWeb.PlaceNavigation, :nearby,
+          metadata: %{rails_gate: {DawarichWeb.PlacesGate, :nearby?}}
+
+        get "/:id", DawarichWeb.PlaceNavigation, :show,
+          metadata: %{rails_gate: {DawarichWeb.PlacesGate, :navigation?}}
       end
 
       scope "/" do
