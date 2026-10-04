@@ -53,7 +53,7 @@ defmodule DawarichWeb.TagWriteResponse do
         page_title: nil,
         tag_title: Translate.t(ctx.locale, "tags.#{kind}.#{kind}_tag", %{}),
         tag_errors: invalid.errors,
-        default_emoji: Form.default_emoji(),
+        default_emoji: Map.get_lazy(ctx, :default_emoji, &Form.default_emoji/0),
         navbar:
           Navbar.load(conn.assigns.current_user,
             now: ctx.now,
@@ -66,6 +66,7 @@ defmodule DawarichWeb.TagWriteResponse do
     html = Layouts.root(Map.put(assigns, :inner_content, app)) |> Phoenix.HTML.Safe.to_iodata()
     changes = Map.get(conn.private, :dawarich_rails_session_changes, %{})
     conn = if changes == %{}, do: conn, else: RailsSession.put(conn, changes)
-    {:ok, %{conn: put_resp_content_type(conn, "text/html"), status: 422, body: html}}
+    conn = conn |> put_resp_content_type("text/html") |> put_resp_header("vary", "Accept")
+    {:ok, %{conn: conn, status: 422, body: html}}
   end
 end
