@@ -21,11 +21,15 @@ defmodule Dawarich.Cable.PgBus do
 
   @impl true
   def init(opts) do
+    repo = Keyword.get(opts, :repo, Dawarich.Jobs.repo())
+    namespace = Keyword.get(opts, :namespace, Bus.prefix() || "")
+    {:ok, cursor} = PgStore.head(repo, namespace)
+
     state = %{
-      repo: Keyword.get(opts, :repo, Dawarich.Jobs.repo()),
-      namespace: Keyword.get(opts, :namespace, Bus.prefix() || ""),
+      repo: repo,
+      namespace: namespace,
       pubsub: Keyword.get(opts, :pubsub, Dawarich.PubSub),
-      cursor: 0,
+      cursor: cursor,
       polling: Keyword.get(opts, :polling, true),
       poll: Keyword.get(opts, :poll, 200),
       clock: Keyword.get(opts, :clock),

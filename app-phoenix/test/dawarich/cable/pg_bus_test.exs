@@ -211,6 +211,53 @@ defmodule Dawarich.Cable.PgBusTest do
     assert members_gone?(Bus.channel("dead"), System.monotonic_time(:millisecond) + 1_000)
   end
 
+  test "a new poller starts at committed high-water rather than replaying history" do
+    [spec] = Bus.child_specs()
+    start_supervised!(spec)
+    namespace = Bus.prefix() || ""
+    {:ok, 1} = PgStore.append(ScratchRepo, namespace, "points", "history one")
+    {:ok, 2} = PgStore.append(ScratchRepo, namespace, "points", "history two")
+    send(Bus, :poll)
+    assert %{cursor: 2} = :sys.get_state(Bus)
+    stop_supervised!(Bus)
+    start_supervised!(spec)
+
+    :ok = Phoenix.PubSub.subscribe(Dawarich.PubSub, Bus.channel("points"))
+    parent = self()
+
+    subscriber =
+      Task.async(fn ->
+        {:ok, ref} = Bus.subscribe("points")
+        assert_receive {:cable_pg, _, _, :subscribed, "points", ^ref} = ack
+        assert Bus.event(ack) == {:subscribed, "points"}
+        send(parent, {:ready, self()})
+
+        consume = fn consume ->
+          receive do
+            message ->
+              case Bus.event(message) do
+                :ignore -> consume.(consume)
+                event -> event
+              end
+          end
+        end
+
+        consume.(consume)
+      end)
+
+    assert_receive {:ready, pid}, 1_000
+    assert pid == subscriber.pid
+    send(Bus, :poll)
+    :sys.get_state(Bus)
+    refute_received {:cable_pg, _, _, _, _, _}
+    {:ok, 3} = PgStore.append(ScratchRepo, namespace, "points", "fresh")
+    send(Bus, :poll)
+    assert %{cursor: 3} = :sys.get_state(Bus)
+    assert_receive {:cable_pg, _, _, "points", 3, "fresh"}
+    assert Task.await(subscriber) == {:message, "points", "fresh"}
+    :ok = Phoenix.PubSub.unsubscribe(Dawarich.PubSub, Bus.channel("points"))
+  end
+
   defp members_gone?(topic, deadline) do
     cond do
       Registry.lookup(Dawarich.PubSub, topic) == [] -> true
