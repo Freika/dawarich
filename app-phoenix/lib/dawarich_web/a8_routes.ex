@@ -51,6 +51,21 @@ defmodule DawarichWeb.A8Routes do
         post "/trips/:id", DawarichWeb.TripActions, :member,
           metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
 
+        post "/places", DawarichWeb.PlaceActions, :create,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        patch "/places/:id", DawarichWeb.PlaceActions, :update,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        put "/places/:id", DawarichWeb.PlaceActions, :update,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        delete "/places/:id", DawarichWeb.PlaceActions, :destroy,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
+        post "/places/:id", DawarichWeb.PlaceActions, :member,
+          metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
+
         post "/route_videos", DawarichWeb.RouteVideoActions, :create,
           metadata: %{rails_gate: {DawarichWeb.A8Gate, :actions?}}
 
