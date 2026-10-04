@@ -158,3 +158,17 @@ exception classes and queue/save ordering are preserved. No message maps or erro
 Rehome covers pending public command events. Already queued standalone native DeliveryWorker
 jobs must drain under their existing owner before release rollback; route hand-back/rehome does
 not cancel SMTP jobs already queued.
+
+P11 adds immediate test-email delivery using the existing configured transport and pure renderer.
+SMTP_SERVER presence matches Rails' configuration predicate. Repeated calls send again with no
+queue, persistent claim or row writes. Corpus-proved category/detail pairs preserve source alert
+text; unsupported transport configurations hand back before SMTP, while unfamiliar native errors
+receive bounded class-only terminal alerts without logging arbitrary details. Native error terms
+cannot reproduce every Ruby exception message; exact supported categories and safe fallbacks
+are the bounded transport contract, not a claim of full exception-class equivalence.
+The named log test covers pure residual/Devise/digest rendering, enqueue faults, native selection,
+digest/location/recovery transport success and errors containing synthetic body/token/URL markers.
+M-P11-queue enqueues instead of immediately sending and fails the missing transport assertion;
+M-P11-log logs a complete synthetic digest message on transport failure and fails without printing
+the captured log. Both are restored and green; existing recovery retry regression also passes.
+P12 will extend the same named log test through its actual HTTP path.
