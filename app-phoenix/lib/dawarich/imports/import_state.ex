@@ -37,7 +37,9 @@ defmodule Dawarich.Imports.ImportState do
 
   def source!(lease, source) do
     effect!(lease, fn ->
-      lease.repo.query!("UPDATE imports SET source=$2 WHERE id=$1", [lease.import.id, source],
+      lease.repo.query!(
+        "UPDATE imports SET source=$2,additional_data_extraction_status=#{availability("$2::integer")} WHERE id=$1",
+        [lease.import.id, source],
         log: false
       )
     end)
@@ -50,7 +52,7 @@ defmodule Dawarich.Imports.ImportState do
   def start!(lease, now) do
     effect!(lease, fn ->
       lease.repo.query!(
-        "UPDATE imports SET additional_data_extraction_status=CASE WHEN additional_data_extraction_status=5 THEN 0 ELSE additional_data_extraction_status END,status=1,raw_points=0,doubles=0,processing_started_at=CASE WHEN status<>1 THEN $2 ELSE processing_started_at END,updated_at=$2 WHERE id=$1",
+        "UPDATE imports SET additional_data_extraction_status=#{availability()},status=1,raw_points=0,doubles=0,processing_started_at=CASE WHEN status<>1 THEN $2 ELSE processing_started_at END,updated_at=$2 WHERE id=$1",
         [lease.import.id, naive(now)],
         log: false
       )
@@ -63,7 +65,7 @@ defmodule Dawarich.Imports.ImportState do
   def fail!(lease, error, now) do
     effect!(lease, fn ->
       lease.repo.query!(
-        "UPDATE imports SET additional_data_extraction_status=CASE WHEN additional_data_extraction_status=5 THEN 0 ELSE additional_data_extraction_status END,status=3,error_message=$2,updated_at=$3 WHERE id=$1",
+        "UPDATE imports SET additional_data_extraction_status=#{availability()},status=3,error_message=$2,updated_at=$3 WHERE id=$1",
         [lease.import.id, Exception.message(error), naive(now)],
         log: false
       )
@@ -77,7 +79,7 @@ defmodule Dawarich.Imports.ImportState do
     if state!(lease).status == 1 do
       effect!(lease, fn ->
         lease.repo.query!(
-          "UPDATE imports SET additional_data_extraction_status=CASE WHEN additional_data_extraction_status=5 THEN 0 ELSE additional_data_extraction_status END,status=2,updated_at=$2 WHERE id=$1",
+          "UPDATE imports SET additional_data_extraction_status=#{availability()},status=2,updated_at=$2 WHERE id=$1",
           [lease.import.id, naive(now)],
           log: false
         )
@@ -193,6 +195,17 @@ defmodule Dawarich.Imports.ImportState do
 
   defp change(lease, mode, status),
     do: Process.put(key(lease), %{state!(lease) | mode: mode, status: status})
+
+  defp availability(source \\ "source") do
+    """
+    CASE
+      WHEN #{source} IN (0,3,4,13) AND additional_data_extraction_status=5 THEN 0
+      WHEN (#{source} IS NULL OR #{source} NOT IN (0,3,4,13))
+        AND additional_data_extraction_status=0 THEN 5
+      ELSE additional_data_extraction_status
+    END
+    """
+  end
 
   defp naive(%DateTime{} = now), do: DateTime.to_naive(now)
 end

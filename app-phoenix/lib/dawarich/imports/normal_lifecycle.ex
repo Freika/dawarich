@@ -111,7 +111,7 @@ defmodule Dawarich.Imports.NormalLifecycle do
     ImportState.effect!(lease, fn ->
       import = ImportState.import!(lease)
       if import.status == 2, do: Postprocessing.enqueue_extraction!(lease.repo, import, context)
-      publish(lease, context)
+      if import.status == 2, do: publish(lease, context)
       Map.get(context, :on_terminal, fn -> :ok end).()
     end)
 

@@ -41,6 +41,16 @@ defmodule Dawarich.Imports.Postprocessing.Snapshot do
     end)
   end
 
+  def local_iso(context) do
+    now = clock(context)
+    name = Dawarich.TimeZoneName.to_iana(context.zone)
+    local = Dawarich.Imports.ZonePeriod.load!(name) |> Dawarich.Imports.ZonePeriod.local_now(now)
+    offset = NaiveDateTime.diff(local, DateTime.to_naive(now), :second)
+
+    NaiveDateTime.to_iso8601(NaiveDateTime.truncate(local, :second)) <>
+      Dawarich.LocalTime.offset(name, offset, :iso)
+  end
+
   def clock(%{now: fun}) when is_function(fun, 0), do: fun.()
   def clock(%{now: now}), do: now
   def naive(context), do: context |> clock() |> DateTime.to_naive()

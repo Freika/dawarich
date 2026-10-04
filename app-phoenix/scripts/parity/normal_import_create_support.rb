@@ -74,7 +74,7 @@ module NormalImportFormatsSupport
     ].each do |source, section, inputs, input_name|
       original = inputs.find { |row| row.first == input_name }[1]
       ['[]', JSON.parse(original).fetch(section).to_json].each_with_index do |last, index|
-        first = index.zero? ? original : original.sub(/"#{section}":\[.*\]/m, %Q("#{section}":[]))
+        first = index.zero? ? original : original.sub(/"#{section}":\[.*\]/m, %("#{section}":[]))
         bytes = "#{first.delete_suffix('}')},#{section.to_json}:#{last}}"
         cases << { name: "duplicate_section_#{source}_#{index}", filename: "#{source}.json",
                    bytes:, source:, expected_source: source }
@@ -162,7 +162,8 @@ module NormalImportFormatsSupport
         archive = capture_archive(input)
         ActiveJob::Base.queue_adapter.enqueued_jobs.clear
         effects = []
-        allow_json_effects(effects)
+        ordered = []
+        allow_json_effects(effects, ordered)
         before_source = import.reload.source
         if options[:direct]
           Imports::ZipExtractor.new(import, user.id, input).call
@@ -186,6 +187,7 @@ module NormalImportFormatsSupport
                    'parent' => parent && whole_import_row(parent), 'children' => children,
                    'points' => points['points'], 'sources' => points['sources'],
                    'notifications' => Notification.where(user_id: 987_001).order(:id).pluck(:title, :content, :kind),
+                   'ordered_effects' => ordered,
                    'jobs' => ActiveJob::Base.queue_adapter.enqueued_jobs.map do |job|
                      { 'type' => job[:job].name, 'args' => job[:args] }
                    end, 'commands' => effects, 'archive' => archive, 'error' => failure }

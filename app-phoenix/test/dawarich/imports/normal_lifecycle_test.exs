@@ -2,7 +2,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
   use Dawarich.JobsCase
   alias Dawarich.Imports.{Lease, NormalLifecycle}
   alias Dawarich.Jobs.{Ownership, Processed}
-  alias Dawarich.Test.NormalFormats
+  alias Dawarich.Test.{NormalFormats, NormalWholeAssertions}
 
   @opts [
     lane: "command:imports.process_normal",
@@ -155,6 +155,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
         assert [[1]] = rows("SELECT count(*) FROM points WHERE import_id=$1", [c.import.id])
       end
 
+      NormalWholeAssertions.assert_contract(c, ScratchRepo)
       assert_clean(c)
     end
   end
@@ -189,6 +190,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
                |> List.flatten()
 
       assert Processed.done?(ScratchRepo, c.job.args["event_id"])
+      NormalWholeAssertions.assert_contract(c, ScratchRepo)
       assert_clean(c)
     end
   end
@@ -326,63 +328,32 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     assert_clean(c)
   end
 
-  defp assert_parent(c) do
-    expected = c.expected["parent"]
+  test "whole lifecycle compares the complete Rails contract in both followup owner arms", c do
+    excluded =
+      ~w(v1_profile v2_profile v1_large zip_extractor_later_child_failure zip_unsafe_skip zip_duplicate_entries bounded_tcx_nodes bounded_csv_line bounded_rec_line)
 
-    status =
-      Enum.find_index(
-        ~w(created processing completed failed deleting),
-        &(&1 == expected["status"])
-      )
+    directory = Path.expand("../../fixtures/imports/formats/whole_create", __DIR__)
 
-    assert [
-             [
-               status,
-               expected["raw_points"],
-               expected["doubles"],
-               expected["processed"],
-               expected["raw_data"],
-               expected["error_message"]
-             ]
-           ] ==
-             rows(
-               "SELECT status,raw_points,doubles,processed,raw_data,error_message FROM imports WHERE id=$1",
-               [c.import.id]
-             )
+    for path <- Path.wildcard(Path.join(directory, "*.json")),
+        not String.contains?(path, ".input."),
+        name = Path.basename(path, ".json"),
+        name not in excluded,
+        owner <- [:sidekiq, :oban] do
+      reset!(ScratchRepo)
+      Dawarich.Ingest.Sources.forget()
+      c = fixture(c, name)
 
-    assert rows(
-             "SELECT ST_AsText(lonlat::geometry),timestamp FROM points WHERE import_id=$1 ORDER BY id",
-             [c.import.id]
-           ) == Enum.map(c.expected["points"], &[&1["lonlat"], &1["timestamp"]])
+      for type <- ~w(tracks.generate_range imports.update_points_count),
+          do: Ownership.put!(ScratchRepo, "command:" <> type, owner)
 
-    notifications =
-      rows(
-        "SELECT title,content,CASE kind WHEN 2 THEN 'error' WHEN 1 THEN 'warning' ELSE 'info' END FROM notifications ORDER BY id"
-      )
-
-    assert length(notifications) == length(c.expected["notifications"])
-
-    for {[title, content, kind], [expected_title, expected_content, expected_kind]} <-
-          Enum.zip(notifications, c.expected["notifications"]) do
-      assert [title, kind] == [expected_title, expected_kind]
-
-      if String.contains?(expected_content, "/Users/"),
-        do: assert(String.starts_with?(content, hd(String.split(expected_content, "/Users/")))),
-        else: assert(content == expected_content)
+      assert {:ok, :ok} = run(c)
+      NormalWholeAssertions.assert_contract(c, ScratchRepo, owner)
+      assert Processed.done?(ScratchRepo, c.job.args["event_id"])
+      assert_clean(c)
     end
-
-    assert Processed.done?(ScratchRepo, c.job.args["event_id"])
-
-    assert [["terminal"]] =
-             rows("SELECT phase FROM phoenix.import_runs WHERE import_id=$1", [c.import.id])
-
-    count = Enum.count(c.expected["jobs"], &(&1["type"] == "Import::UpdatePointsCountJob"))
-
-    assert [[count]] ==
-             rows(
-               "SELECT count(*) FROM phoenix.rails_commands WHERE kind='imports.postprocessing_step' AND payload->>'command_type'='imports.update_points_count'"
-             )
   end
+
+  defp assert_parent(c), do: NormalWholeAssertions.assert_contract(c, ScratchRepo)
 
   defp assert_archive_children(c) do
     initial = Enum.map(c.expected["initial_imports"], & &1["id"])

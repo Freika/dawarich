@@ -116,16 +116,32 @@ module NormalImportFormatsSupport
     Points::DimensionResolver.reset_column_availability!
   end
 
-  def allow_json_effects(effects)
+  def allow_json_effects(effects, ordered = nil)
     mocks = RSpec::Mocks::ExampleMethods
     observer = Object.new.extend(mocks)
+    if ordered
+      %i[enqueue enqueue_at].each do |name|
+        observer.allow(ActiveJob::Base.queue_adapter).to(
+          observer.receive(name).and_wrap_original do |method, job, *args|
+            result = method.call(job, *args)
+            ordered << { 'kind' => 'rails.job', 'payload' => { 'type' => job.class.name,
+                                                           'args' => job.serialize.fetch('arguments') } }
+            result
+          end
+        )
+      end
+    end
     observer.allow(Points::TileEpoch).to observer.receive(:bump).and_wrap_original do |method, user_id, timestamps:|
-      effects << { 'kind' => 'points.tile_epoch', 'payload' => { 'timestamps' => timestamps } }
+      effect = { 'kind' => 'points.tile_epoch', 'payload' => { 'timestamps' => timestamps } }
+      effects << effect
+      ordered&.push(effect)
       method.call(user_id, timestamps:)
     end
     observer.allow(Turbo::StreamsChannel).to observer.receive(:broadcast_replace_to).and_wrap_original do |m, *a, **o|
       if o[:partial] == 'imports/table_row'
-        effects << { 'kind' => 'imports.progress', 'payload' => { 'locale' => 'de' } }
+        effect = { 'kind' => 'imports.progress', 'payload' => { 'locale' => I18n.locale.to_s } }
+        effects << effect
+        ordered&.push(effect)
       end
       m.call(*a, **o)
     end

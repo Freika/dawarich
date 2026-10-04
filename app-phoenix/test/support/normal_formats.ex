@@ -131,6 +131,7 @@ defmodule Dawarich.Test.NormalFormats do
         "active_storage_blobs",
         [
           %{
+            id: 987_301,
             key: key,
             filename: filename,
             content_type: content_type,
@@ -142,6 +143,8 @@ defmodule Dawarich.Test.NormalFormats do
         ],
         returning: [:id]
       )
+
+    repo.query!("SELECT setval(pg_get_serial_sequence('active_storage_blobs','id'),987301,true)")
 
     repo.insert_all("active_storage_attachments", [
       %{record_type: "Import", record_id: id, name: "file", blob_id: blob, created_at: @stamp}
