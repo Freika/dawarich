@@ -253,13 +253,14 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
                   country_shapes malformed_json malformed_daily malformed_minutes ranked_locations
                   lite_partial lite_inherited
                   no_data old_data existing unchanged duplicates invalid_yearly invalid_month missing_user deleted_user
-                  nil_mode missing_endpoint track_bounds]
+                  nil_mode missing_endpoint track_bounds default_ambient]
     cases = profiles.flat_map do |profile|
       %w[monthly yearly].filter_map do |kind|
         next if %w[duplicates invalid_yearly].include?(profile) && kind == 'monthly'
         next if profile == 'invalid_month' && kind == 'yearly'
+        next if profile == 'default_ambient' && kind == 'monthly'
 
-        digest_isolated { digest_case(profile, kind) }
+        digest_isolated(profile) { digest_case(profile, kind) }
       end
     end
     gaps = [[86_399, 0.1], [86_400, 0.1], [86_401, 0.1], [60, 0.099999], [60, 0.1], [60, 0.100001],
@@ -280,13 +281,18 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
   end
 
   def digest_json(value)
-    "#{Oj.dump(value, mode: :strict, float_precision: 0, indent: 2)}\n"
+    "#{Oj.dump(value, mode: :strict, float_precision: 0, indent: 2).chomp}\n"
   end
 
-  def digest_isolated
+  def digest_isolated(profile = nil)
     result = nil
+    zone = profile == 'default_ambient' ? Rails.application.config.time_zone : 'Europe/Berlin'
+    if profile == 'default_ambient'
+      expect(ENV).not_to have_key('TIME_ZONE')
+      expect(zone).to eq('Europe/Berlin')
+    end
     ActiveRecord::Base.transaction(requires_new: true) do
-      travel_to(digest_now) { Time.use_zone('Europe/Berlin') { result = yield } }
+      travel_to(digest_now) { Time.use_zone(zone) { result = yield } }
       raise ActiveRecord::Rollback
     end
     result
@@ -326,14 +332,19 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
     expect(digest_rows).to eq(before) if profile == 'unchanged'
     expect(digest_rows.map { |row| row['id'] }).to eq([14_601]) if profile == 'duplicates'
     extra = gap ? digest_gap_oracle(year, month, gap) : {}
+    options = { 'now' => digest_now.iso8601, 'ambient_zone' => 'Europe/Berlin',
+                'env' => { 'SELF_HOSTED' => 'false',
+                           'TIME_ZONE' => Users::SafeSettings::DEFAULT_VALUES.fetch('timezone') },
+                'uuid' => digest_uuid }
+    if profile == 'default_ambient'
+      options.delete('ambient_zone')
+      options['env'].delete('TIME_ZONE')
+    end
     {
       'id' => "#{profile}_#{kind}",
       'call' => { 'kind' => kind, 'user_id' => digest_user_id, 'year' => year,
                   'month' => kind == 'monthly' ? month : nil },
-      'options' => { 'now' => digest_now.iso8601, 'ambient_zone' => 'Europe/Berlin',
-                     'env' => { 'SELF_HOSTED' => 'false',
-                                'TIME_ZONE' => Users::SafeSettings::DEFAULT_VALUES.fetch('timezone') },
-                     'uuid' => digest_uuid },
+      'options' => options,
       'legacy_duplicates' => profile == 'duplicates', 'null_segment_mode' => profile == 'nil_mode',
       'input' => input, 'before' => before,
       'expected' => { 'result_id' => result&.id, 'rows' => digest_rows, 'error' => error }.merge(extra)
@@ -354,7 +365,7 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
     settings = case profile
                when 'southern' then { 'timezone' => 'Australia/Sydney' }
                when 'southern_alias' then { 'timezone' => 'Sydney' }
-               when 'missing_zone' then {}
+               when 'missing_zone', 'default_ambient' then {}
                when 'invalid_zone' then { 'timezone' => 'Unknown/Zone' }
                when 'blank_zone' then { 'timezone' => '' }
                else { 'timezone' => 'Europe/Berlin' }
@@ -444,6 +455,10 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
     end
     if profile == 'ranked_locations'
       samples = (0..10).map { |index| [first + index * 60, "Country #{10 - index}", index == 10] }
+    end
+    if profile == 'default_ambient'
+      samples.concat([[Time.utc(year - 1, 12, 31, 23, 30), 'Inside ambient year', false],
+                      [Time.utc(year, 12, 31, 23, 30), 'Outside ambient year', false]])
     end
     Point.insert_all!(samples.each_with_index.map do |(at, country_name, anomaly), index|
       { id: 14_201 + index, user_id: digest_user_id, timestamp: at.to_i, lonlat: 'POINT(12 51)', country_name:,

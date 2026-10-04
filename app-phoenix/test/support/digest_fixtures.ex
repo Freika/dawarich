@@ -67,7 +67,13 @@ defmodule Dawarich.DigestFixtures do
   def options(kase) do
     options = kase["options"]
     {:ok, now, 0} = DateTime.from_iso8601(options["now"])
-    [now: now, ambient_zone: options["ambient_zone"], env: options["env"], uuid: options["uuid"]]
+
+    ambient =
+      if Map.has_key?(options, "ambient_zone"),
+        do: [ambient_zone: options["ambient_zone"]],
+        else: []
+
+    [now: now, env: options["env"], uuid: options["uuid"]] ++ ambient
   end
 
   defp columns(row), do: row |> Map.keys() |> Enum.sort() |> Enum.map_join(", ", &~s("#{&1}"))

@@ -11,7 +11,7 @@ defmodule Dawarich.Digests.Context do
     user = user!(repo, user_id)
     env = Keyword.get(opts, :env, System.get_env())
     now = Keyword.get_lazy(opts, :now, &DateTime.utc_now/0)
-    ambient = Keyword.get(opts, :ambient_zone, env["TIME_ZONE"] || "UTC")
+    ambient = Keyword.get(opts, :ambient_zone, env["TIME_ZONE"] || "Europe/Berlin")
     ambient_zone = resolve(repo, ambient) || raise(ArgumentError, "Invalid Timezone: #{ambient}")
     raw = user.settings["timezone"]
     effective = raw || env["TIME_ZONE"] || "UTC"

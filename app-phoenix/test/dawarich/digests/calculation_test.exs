@@ -29,6 +29,22 @@ defmodule Dawarich.Digests.CalculationTest do
     end
   end
 
+  test "yearly public call defaults ambient bounds to Berlin without changing the UTC user fallback" do
+    kase = DigestFixtures.case!("default_ambient_yearly")
+    opts = DigestFixtures.options(kase)
+    refute Keyword.has_key?(opts, :ambient_zone)
+    refute Map.has_key?(opts[:env], "TIME_ZONE")
+    DigestFixtures.load!(ScratchRepo, kase)
+    context = Dawarich.Digests.Context.load!(ScratchRepo, 14101, opts)
+    assert context.effective_zone == "UTC"
+    assert {:ok, id} = calculate(kase)
+    expected = Enum.map(kase["expected"]["rows"], &Map.put(&1, "id", id))
+    assert DigestFixtures.digests(ScratchRepo, 14101) == expected
+    countries = hd(expected)["time_spent_by_location"]["countries"]
+    assert Enum.any?(countries, &(&1["name"] == "Inside ambient year"))
+    refute Enum.any?(countries, &(&1["name"] == "Outside ambient year"))
+  end
+
   test "failure rolls back digest writes and reports the original exception" do
     kase = DigestFixtures.case!("duplicates_yearly")
     assert {:ok, :ok} = ScratchRepo.transaction(fn -> DigestFixtures.load!(ScratchRepo, kase) end)
