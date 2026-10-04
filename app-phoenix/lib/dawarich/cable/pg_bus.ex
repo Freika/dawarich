@@ -113,6 +113,9 @@ defmodule Dawarich.Cable.PgBus do
   @impl true
   def handle_info(:poll, state) do
     case read(state) do
+      {:ok, %{retired_through: through}} when state.cursor < through ->
+        {:stop, :retention_window_lost, state}
+
       {:ok, snapshot} ->
         cursor =
           Enum.reduce(snapshot.events, state.cursor, fn [seq, broadcasting, payload], _cursor ->

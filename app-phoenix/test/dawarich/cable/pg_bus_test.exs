@@ -265,4 +265,27 @@ defmodule Dawarich.Cable.PgBusTest do
       true -> members_gone?(topic, deadline)
     end
   end
+
+  test "a cursor behind retired_through terminates the Bus instead of skipping loss" do
+    [spec] = Bus.child_specs()
+    start_supervised!(spec)
+    namespace = Bus.prefix() || ""
+    {:ok, ref} = Bus.subscribe("points")
+    assert_receive {:cable_pg, _, _, :subscribed, "points", ^ref} = ack
+    assert Bus.event(ack) == {:subscribed, "points"}
+    {:ok, 1} = PgStore.append(ScratchRepo, namespace, "points", "lost")
+    now = ~U[2026-10-04 12:00:00.000000Z]
+    assert {:ok, 1} = PgStore.observe(ScratchRepo, namespace, now)
+    assert {:ok, 1} = PgStore.prune(ScratchRepo, namespace, DateTime.add(now, 60))
+    {:ok, 2} = PgStore.append(ScratchRepo, namespace, "points", "must not escape")
+    pid = Process.whereis(Bus)
+    monitor = Process.monitor(pid)
+
+    ExUnit.CaptureLog.capture_log(fn ->
+      send(Bus, :poll)
+      assert_receive {:DOWN, ^monitor, :process, ^pid, :retention_window_lost}, 1_000
+    end)
+
+    refute_received {:cable_pg, _, _, "points", _, _}
+  end
 end
