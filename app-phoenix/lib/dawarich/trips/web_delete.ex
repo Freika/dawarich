@@ -12,7 +12,7 @@ defmodule Dawarich.Trips.WebDelete do
              log: false
            ).rows do
         [[^id]] ->
-          case supported?(repo, id) do
+          case Dawarich.Trips.PlanRead.supported?(repo, user.id, id) and supported?(repo, id) do
             true ->
               delete(repo, id)
               {:ok, :deleted}

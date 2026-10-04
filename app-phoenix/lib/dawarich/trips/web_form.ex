@@ -58,23 +58,26 @@ defmodule Dawarich.Trips.WebForm do
            log: false
          ).rows do
       [[id, name, started, ended, path, body, _source, identifier]] ->
-        {:ok, plan} = Dawarich.Trips.PlanRead.load(repo, user_id, id)
-        geojson = if path in [nil, []], do: Dawarich.Trips.PlanGeojson.build(plan)
+        with {:ok, plan} <- Dawarich.Trips.PlanRead.load(repo, user_id, id) do
+          geojson = if path in [nil, []], do: Dawarich.Trips.PlanGeojson.build(plan)
 
-        {:ok,
-         %{
-           id: id,
-           name: name,
-           started_at: started,
-           ended_at: ended,
-           description: body,
-           path_json: if(path, do: Jason.encode!(path), else: ""),
-           plan_json: Dawarich.Trips.PlanGeojson.encode(geojson),
-           managed:
-             Dawarich.ReleaseMigrations.Effects.Support.Ruby.present?(identifier) and
-               plan.trip.source_status == 0,
-           trek_url: DawarichWeb.TripPlanItems.trek_url(plan)
-         }}
+          {:ok,
+           %{
+             id: id,
+             name: name,
+             started_at: started,
+             ended_at: ended,
+             description: body,
+             path_json: if(path, do: Jason.encode!(path), else: ""),
+             plan_json: Dawarich.Trips.PlanGeojson.encode(geojson),
+             managed:
+               Dawarich.ReleaseMigrations.Effects.Support.Ruby.present?(identifier) and
+                 plan.trip.source_status == 0,
+             trek_url: DawarichWeb.TripPlanItems.trek_url(plan)
+           }}
+        else
+          _ -> {:replay, "planned trip ownership"}
+        end
 
       [] ->
         {:error, :not_found}

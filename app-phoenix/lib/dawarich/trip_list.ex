@@ -25,7 +25,8 @@ defmodule Dawarich.TripList do
     with {:ok, _settings} <- TripSettings.read(user.settings),
          [[false, zone]] <-
            UserTimeZone.query!(@gate, [user.id, offset(page)], user.settings).rows,
-         true <- TripSettings.zone?(user.settings, zone) do
+         true <- TripSettings.zone?(user.settings, zone),
+         true <- supported_plans?(user.id, page) do
       :phoenix
     else
       _ -> :rails
@@ -33,6 +34,11 @@ defmodule Dawarich.TripList do
   end
 
   def offset(page), do: (page - 1) * @per_page
+
+  defp supported_plans?(user_id, page) do
+    Dawarich.Repo.query!("SELECT t.id FROM #{@trips}", [user_id, offset(page)], log: false).rows
+    |> Enum.all?(fn [id] -> Dawarich.Trips.PlanRead.supported?(Dawarich.Repo, user_id, id) end)
+  end
 
   @page """
   SELECT t.id, t.name, t.distance,
@@ -54,7 +60,8 @@ defmodule Dawarich.TripList do
     with {:ok, settings} <- TripSettings.read(user.settings),
          %{rows: rows} <- UserTimeZone.query!(@page, [user.id, offset(page)], user.settings),
          false <- Enum.any?(rows, &Enum.at(&1, 8)),
-         true <- zone_ok?(user.settings, rows) do
+         true <- zone_ok?(user.settings, rows),
+         true <- supported_plans?(user.id, page) do
       {:ok,
        %{
          entries: Enum.map(rows, &entry(&1, user.id)),

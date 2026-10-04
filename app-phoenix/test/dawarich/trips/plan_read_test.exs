@@ -12,7 +12,11 @@ defmodule Dawarich.Trips.PlanReadTest do
   defmodule ReadRepo do
     def query!(sql, params, opts \\ []) do
       unless String.starts_with?(String.trim(sql), "SELECT"), do: raise("plan read wrote SQL")
-      Dawarich.Repo.query!(sql, params, opts)
+
+      if Process.get(:skip_plan_preflight, false) and
+           String.starts_with?(String.trim(sql), "SELECT NOT EXISTS"),
+         do: %{rows: [[true]]},
+         else: Dawarich.Repo.query!(sql, params, opts)
     end
   end
 
@@ -32,6 +36,78 @@ defmodule Dawarich.Trips.PlanReadTest do
 
       true ->
         raw
+    end
+  end
+
+  test "mixed owner plan associations stay on Rails without exposing foreign data" do
+    user = TripsSeeds.user!(8981)
+    foreign = TripsSeeds.user!(8982)
+    stamp = ~N[2026-10-03 08:00:00.000000]
+    id = TripsSeeds.trip!(%{id: 898_101, user_id: user.id})
+    other = TripsSeeds.trip!(%{id: 898_201, user_id: foreign.id})
+
+    Repo.insert_all("trip_sources", [
+      %{
+        id: id,
+        user_id: foreign.id,
+        provider: "trek",
+        base_url: "https://foreign.example.invalid",
+        status: 0,
+        created_at: stamp,
+        updated_at: stamp
+      }
+    ])
+
+    Repo.query!("UPDATE trips SET trip_source_id=$2 WHERE id=$1", [id, id])
+
+    for association <- [:source, :reservation, :day] do
+      if association != :source do
+        Repo.query!("UPDATE trips SET trip_source_id=NULL WHERE id=$1", [id])
+        Repo.query!("DELETE FROM planned_reservations")
+        Repo.query!("DELETE FROM planned_days")
+        day_trip = if association == :reservation, do: id, else: other
+        reservation_trip = if association == :reservation, do: other, else: id
+
+        Repo.insert_all("planned_days", [
+          %{
+            id: id,
+            trip_id: day_trip,
+            date: ~D[2026-10-03],
+            position: 1,
+            created_at: stamp,
+            updated_at: stamp
+          }
+        ])
+
+        Repo.insert_all("planned_reservations", [
+          %{
+            id: id,
+            trip_id: reservation_trip,
+            planned_day_id: id,
+            title: "Foreign reservation",
+            created_at: stamp,
+            updated_at: stamp
+          }
+        ])
+      end
+
+      assert :rails == PlanRead.load(ReadRepo, user.id, id), to_string(association)
+      assert :rails == Dawarich.TripPage.gate(user, id), to_string(association)
+      assert :rails == Dawarich.TripList.gate(user, 1), to_string(association)
+      assert :rails == Dawarich.TripList.load(user, 1), to_string(association)
+      assert {:replay, _} = Dawarich.Trips.WebForm.load(ReadRepo, user, id, %{})
+      Process.put(:skip_plan_preflight, true)
+      assert {:ok, scoped} = PlanRead.load(ReadRepo, user.id, id)
+      if association == :source, do: assert(scoped.source == nil)
+
+      if association == :reservation do
+        assert scoped.reservations == []
+        assert Enum.all?(scoped.days, &(&1.reservations == []))
+      end
+
+      Process.delete(:skip_plan_preflight)
+      assert commands() == []
+      assert Repo.query!("SELECT count(*) FROM job_outbox").rows == [[0]]
     end
   end
 

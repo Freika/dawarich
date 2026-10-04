@@ -74,6 +74,33 @@ defmodule Dawarich.Trips.WebDeleteTest do
     end)
   end
 
+  test "trip deletion retains mixed owner reservations without nullifying them" do
+    user = seed()
+    foreign = TripsSeeds.user!(8982)
+    id = hd(@entry["before"]["trips"])["id"]
+    TripsSeeds.trip!(%{id: id + 100, user_id: foreign.id})
+
+    Repo.insert_all("planned_reservations", [
+      %{
+        id: id + 100,
+        trip_id: id + 100,
+        planned_day_id: id,
+        title: "Foreign reservation",
+        created_at: @stamp,
+        updated_at: @stamp
+      }
+    ])
+
+    before = graph()
+    assert {:replay, _} = WebDelete.run(Repo, user, id, %{})
+    assert graph() == before
+    Repo.query!("UPDATE trips SET user_id=$2 WHERE id=$1", [id + 100, user.id])
+    assert {:ok, :deleted} = WebDelete.run(Repo, user, id, %{})
+
+    assert Repo.query!("SELECT planned_day_id FROM planned_reservations WHERE id=$1", [id + 100]).rows ==
+             [[nil]]
+  end
+
   test "trip deletion removes supported graph and preserves other owners" do
     user = seed()
     id = hd(@entry["before"]["trips"])["id"]

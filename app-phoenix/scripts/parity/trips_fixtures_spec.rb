@@ -576,6 +576,20 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
         end
         write_json('responses.json', { now: now.iso8601, responses: })
         write_json('effects.json', { now: now.iso8601, effects: })
+        user = remaining_user(98_981)
+        foreign = remaining_user(98_982)
+        trip = remaining_trip(user, 9_898_101)
+        other = remaining_trip(foreign, 9_898_201)
+        remaining_plan(foreign, trip, trip.id, :active)
+        other.planned_reservations.create!(planned_day_id: trip.planned_days.first.id,
+                                           title: 'Foreign reservation', **remaining_stamps)
+        remaining_request(user, :get, "/trips/#{trip.id}", {}, 'text/html')
+        expect(response.status).to eq(200)
+        expect(response.body).to include('Foreign reservation', 'trek.example.invalid')
+        reservation = other.planned_reservations.first
+        remaining_request(user, :delete, "/trips/#{trip.id}", {}, 'text/html')
+        expect(response.status).to eq(303)
+        expect(reservation.reload.planned_day_id).to be_nil
       end
     end
   end

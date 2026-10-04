@@ -31,6 +31,7 @@ defmodule Dawarich.TripPage do
 
   def gate(user, trip_id) do
     with {:ok, %{photos: false} = settings} <- TripSettings.read(user.settings),
+         true <- Dawarich.Trips.PlanRead.supported?(Repo, user.id, trip_id),
          [[zone, started_local, ended_local, seconds, near_transition, false, body]] <-
            UserTimeZone.query!(@gate, [trip_id, user.id], user.settings).rows,
          {:ok, description} <- TripDescription.read(body),
