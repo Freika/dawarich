@@ -99,6 +99,29 @@ defmodule Dawarich.ReleaseMigrations.Effects.CopyRegistrationSettingTest do
     assert rows("SELECT enabled FROM phoenix.registration_setting") == [[false]]
   end
 
+  test "copy closes its owned cache connection on success and refusal" do
+    bytes = Base.decode64!(fixture()["registration"]["false"])
+
+    for {source, expected} <- [
+          {bytes, {:ok, false}},
+          {"unknown", {:error, :registration_copy_refused}}
+        ] do
+      clear()
+
+      assert Copy.run(ScratchRepo,
+               cache_command: fn ["GET", "dawarich/registration_enabled"], conn ->
+                 assert {:ok, "PONG"} = Redix.command(conn, ["PING"])
+                 send(self(), {:connection, conn, Process.monitor(conn)})
+                 {:ok, source}
+               end
+             ) == expected
+
+      assert_received {:connection, conn, ref}
+      on_exit(fn -> if Process.alive?(conn), do: Redix.stop(conn) end)
+      assert_receive {:DOWN, ^ref, :process, ^conn, :normal}
+    end
+  end
+
   defp fixture, do: @fixture |> File.read!() |> Jason.decode!()
   defp clear, do: rows("DELETE FROM phoenix.registration_setting")
 
