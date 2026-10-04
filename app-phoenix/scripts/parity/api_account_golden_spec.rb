@@ -218,6 +218,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
 
   def account_crypto(result, payload, entry, owner)
     user = User.find(ApiAccountGoldenOracle::OWNER)
+    raw = result['response']['body']
     if entry[:crypto] == :setup
       expect(payload.keys).to eq(%w[provisioning_uri secret])
       expect(payload['secret'].match?(/\A[A-Z2-7]{32}\z/)).to be(true)
@@ -226,6 +227,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       expect(payload['provisioning_uri'].include?("secret=#{payload['secret']}")).to be(true)
       expect(payload['provisioning_uri'].include?('issuer=Dawarich')).to be(true)
       expect(user.otp_required_for_login).to be(false)
+      raw = raw.gsub(payload['secret'], 'runtime:otp_secret')
       payload['provisioning_uri'] = payload['provisioning_uri'].sub(payload['secret'], 'runtime:otp_secret')
       payload['secret'] = 'runtime:otp_secret'
     else
@@ -243,9 +245,10 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       expect(user.invalidate_otp_backup_code!(codes.first)).to be(false)
       expect(owner['otp_backup_codes'].length).to eq(10)
       expect(owner['otp_required_for_login']).to be(true) if entry[:crypto] == :confirm
+      codes.each { raw = raw.gsub(_1, 'runtime:backup_code') }
       payload['backup_codes'] = Array.new(10, 'runtime:backup_code')
     end
-    result['response']['body'] = JSON.generate(payload)
+    result['response']['body'] = raw
     etag = result['response']['headers'].fetch('etag')
     expect(etag).to match(%r{\AW/"[0-9a-f]{32,64}"\z})
     result['response']['headers']['etag'] = 'runtime:crypto_response_etag'

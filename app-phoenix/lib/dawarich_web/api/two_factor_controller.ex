@@ -1,6 +1,7 @@
 defmodule DawarichWeb.Api.TwoFactorController do
   @moduledoc false
   @behaviour Plug
+  require Logger
   alias Dawarich.Auth.TwoFactor.Api
   alias DawarichWeb.Api.{Body, Respond}
 
@@ -10,6 +11,11 @@ defmodule DawarichWeb.Api.TwoFactorController do
     result =
       if supported?(conn) do
         context = %{self_hosted: true}
+
+        context =
+          if conn.assigns[:api_repo],
+            do: Map.put(context, :repo, conn.assigns.api_repo),
+            else: context
 
         context =
           if conn.assigns[:api_now],
@@ -25,6 +31,30 @@ defmodule DawarichWeb.Api.TwoFactorController do
       {:ok, status, term} -> Respond.json(conn, status, term)
       {:replay, reason} -> Body.replay(conn, reason)
     end
+  rescue
+    Ecto.InvalidChangesetError ->
+      validation_error(conn, action)
+  end
+
+  defp validation_error(conn, action) do
+    elapsed =
+      System.convert_time_unit(
+        System.monotonic_time() - conn.assigns.api_started,
+        :native,
+        :microsecond
+      )
+
+    Logger.info("[api] #{conn.method} #{conn.request_path} action=#{action} status=422")
+
+    %{conn | resp_headers: []}
+    |> Plug.Conn.put_resp_header("content-type", "application/json; charset=UTF-8")
+    |> Plug.Conn.put_resp_header("x-request-id", conn.assigns.api_request_id)
+    |> Plug.Conn.put_resp_header(
+      "x-runtime",
+      :erlang.float_to_binary(elapsed / 1_000_000, decimals: 6)
+    )
+    |> Plug.Conn.send_resp(422, ~s({"status":422,"error":"Unprocessable Content"}))
+    |> Plug.Conn.halt()
   end
 
   defp supported?(conn) do
