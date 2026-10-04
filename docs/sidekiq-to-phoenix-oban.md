@@ -11,6 +11,9 @@ Export deletion supports DELETE and form POST with `_method=DELETE`.
 Signed Active Storage routes retain their capability and checksum checks.
 Settings use GET `/settings/users/export` and POST `/settings/users/import`.
 
+Rails and Phoenix write backup export records in ascending ID order. Rails
+previously used unspecified database order; no consumer depends on that order.
+
 HTTP rollback keys are `imports`, `exports`, `active_storage` and `user_data`
 in `DAWARICH_RAILS_ROUTES`. Settings backup routes also honor `settings`.
 HTTP rollback does not change worker ownership or drain queued commands.
@@ -36,12 +39,13 @@ inputs. `JobCommands.rehome!` returns pending outbox commands to their Rails
 producer; failed pushes retain unpushed rows. The HTTP `user_data` rollback
 key alone does not rehome either user-data command.
 
-Local acceptance uses `resync-check.sh` seed 404, `seedrun.sh` seeds 202 and
-303, the plan's scoped Rails specs, two fixture recordings and byte diffs,
+Local branch acceptance uses `resync-check.sh` seed 404, `seedrun.sh` seed 202,
+the plan's scoped Rails specs, two fixture recordings and byte diffs,
 RuboCop without cache, and branch/changed-file gitleaks scans. Existing schema
 isolation, import writer, GPX, storage, crypto, lease and export tests remain
 part of the full ExUnit tier. Final totals are recorded in the controller's
-`orch/out/finish-a7r2.report.md` handoff.
+`orch/out/fix-a7r2.report.md` handoff. Seed 303 runs on the controller's
+integration head.
 
 Full RSpec, browser/stand, image/Compose and PgBouncer topology acceptance
 remain controller release work. No AFFiNE synchronization is performed for
