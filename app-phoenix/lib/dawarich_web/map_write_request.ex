@@ -72,7 +72,8 @@ defmodule DawarichWeb.MapWriteRequest do
   defp query(%{path_info: ["points", "bulk_destroy"], query_string: raw}) do
     with false <- Regex.match?(~r/%(?![0-9A-Fa-f]{2})/, raw),
          {:ok, pairs} <- Body.segments(raw),
-         true <- Enum.all?(pairs, fn {key, value} -> key in @filters and is_binary(value) end),
+         true <-
+           Enum.all?(pairs, fn {key, value} -> key in ["page" | @filters] and is_binary(value) end),
          true <- length(pairs) == length(Enum.uniq_by(pairs, &elem(&1, 0))) do
       {:ok, Map.new(pairs)}
     else
@@ -138,7 +139,7 @@ defmodule DawarichWeb.MapWriteRequest do
   end
 
   defp fields?(:point_destroy, params) do
-    root?(params, ["point_ids" | @filters]) and
+    root?(params, ["point_ids", "page" | @filters]) and
       Enum.all?(params, fn
         {"point_ids", ids} when is_list(ids) -> Enum.all?(ids, &is_binary/1)
         {_, value} -> is_binary(value)
