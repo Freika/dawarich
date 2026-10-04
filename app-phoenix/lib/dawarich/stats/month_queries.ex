@@ -18,7 +18,7 @@ defmodule Dawarich.Stats.MonthQueries do
       SELECT points.*, COALESCE(imports.source IN (5, 7, 14, 15), FALSE) AS snapshot_import
       FROM (
         SELECT id, timestamp, lonlat, import_id FROM points
-        WHERE user_id = $7 AND (anomaly = FALSE OR anomaly IS NULL) AND timestamp BETWEEN $8 AND $9
+        WHERE user_id = $7 AND (anomaly = FALSE OR anomaly IS NULL) AND timestamp BETWEEN $8::bigint AND $9::bigint
       ) AS points
       LEFT JOIN imports ON imports.id = points.import_id
     ) AS points
@@ -54,11 +54,11 @@ defmodule Dawarich.Stats.MonthQueries do
   """
   @exists """
   SELECT EXISTS (SELECT 1 FROM points
-    WHERE user_id = $1 AND (anomaly = FALSE OR anomaly IS NULL) AND timestamp BETWEEN $2 AND $3)
+    WHERE user_id = $1 AND (anomaly = FALSE OR anomaly IS NULL) AND timestamp BETWEEN $2::bigint AND $3::bigint)
   """
   @local_points """
   SELECT id, timestamp, city, country_name, country_id, velocity FROM points
-  WHERE user_id = $1 AND (anomaly = FALSE OR anomaly IS NULL) AND timestamp BETWEEN $2 AND $3
+  WHERE user_id = $1 AND (anomaly = FALSE OR anomaly IS NULL) AND timestamp BETWEEN $2::bigint AND $3::bigint
     AND EXTRACT(year FROM (to_timestamp(timestamp) AT TIME ZONE $4)) = $5::int
     AND EXTRACT(month FROM (to_timestamp(timestamp) AT TIME ZONE $4)) = $6::int
   ORDER BY timestamp, id

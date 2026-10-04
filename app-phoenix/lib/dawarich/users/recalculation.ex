@@ -3,6 +3,7 @@ defmodule Dawarich.Users.Recalculation do
 
   alias Dawarich.Mail.ExploreFeatures
   alias Dawarich.Stats.CalculateMonth
+  alias Dawarich.Digests.Calculation
   alias Dawarich.Users.RecalculationPeriod, as: Period
   alias Dawarich.Users.RecalculationTracks
 
@@ -46,7 +47,24 @@ defmodule Dawarich.Users.Recalculation do
       stats.(repo, state.user_id, year, month, stats_options(opts))
     end
 
-    with :ok <- RecalculationTracks.run(repo, oban, state, args, opts), do: {:ok, state}
+    with :ok <- RecalculationTracks.run(repo, oban, state, args, opts) do
+      for year <- state.years do
+        Keyword.get(opts, :phase, fn _, _, _ -> :ok end).(:digest, year, state)
+
+        options =
+          Keyword.get(opts, :digest_opts, [])
+          |> Keyword.merge(ambient_zone: state.zone, error_stack: true, env: env(opts))
+
+        options = if opts[:now], do: Keyword.put(options, :now, opts[:now]), else: options
+
+        case Calculation.yearly(repo, state.user_id, year, options) do
+          {:ok, _} -> :ok
+          {:error, error, stack} -> :erlang.raise(:error, error, stack)
+        end
+      end
+
+      {:ok, state}
+    end
   end
 
   defp stats_options(opts) do

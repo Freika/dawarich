@@ -42,7 +42,12 @@ defmodule Dawarich.Users.RecalculationStatsTest do
             do: {:month, Enum.at(call["args"], 1), Enum.at(call["args"], 2), call["locale"]}
 
       years = expected |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
-      assert events() == expected ++ Enum.map(years, &{:phase, :tracks, &1})
+
+      assert events() ==
+               expected ++
+                 Enum.map(years, &{:phase, :tracks, &1}) ++
+                 Enum.map(years, &{:phase, :digest, &1})
+
       assert stats() == source_stats(source), id
     end
   end
@@ -77,6 +82,7 @@ defmodule Dawarich.Users.RecalculationStatsTest do
     assert {:ok, _} = Recalculation.run(ScratchRepo, :recalculation_stats, args(source), opts)
     for month <- 1..12, do: assert_receive({:month, 2025, ^month, "fr"})
     assert_receive {:phase, :tracks, 2025}
+    assert_receive {:phase, :digest, 2025}
 
     messages =
       rows("SELECT kind,title,content FROM notifications WHERE user_id=$1 ORDER BY id", [170_101])
