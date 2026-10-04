@@ -45,6 +45,7 @@ defmodule Dawarich.Imports.NormalCast do
 
   defp decimal(value, _ps) when value == [] or value == %{}, do: nil
   defp decimal(nil, _ps), do: nil
+  defp decimal(%Decimal{} = value, {_p, s}), do: Decimal.round(value, s, :half_up)
   defp decimal(true, {_p, s}), do: Decimal.round(Decimal.new(1), s)
   defp decimal(false, {_p, s}), do: Decimal.round(Decimal.new(0), s)
 

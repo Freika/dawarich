@@ -1,7 +1,7 @@
 defmodule Dawarich.Imports.GooglePhone.Points do
   @moduledoc false
   alias Dawarich.Imports.{ImportTime, NormalCast}
-  alias Dawarich.Imports.GooglePhone.{Activity, Coordinates}
+  alias Dawarich.Imports.GooglePhone.{Activity, Coordinates, Timestamps}
   alias Dawarich.Ingest.Ruby
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby, as: Value
 
@@ -149,7 +149,7 @@ defmodule Dawarich.Imports.GooglePhone.Points do
                 else: source
 
             {lat, lon, _} = coordinate
-            {timestamp, state} = assign(source, lat, lon, state)
+            {timestamp, state} = Timestamps.assign(source, lat, lon, state)
             {point(coordinate, timestamp, raw, context), state}
           else
             {nil, state}
@@ -157,26 +157,6 @@ defmodule Dawarich.Imports.GooglePhone.Points do
         end)
 
       {Enum.reject(points, &is_nil/1), state}
-    end
-  end
-
-  defp assign(source, lat, lon, state) do
-    key = {source, lat, lon}
-
-    if Map.has_key?(state.assigned, key) do
-      {state.assigned[key], state}
-    else
-      offset =
-        Enum.find(0..59, 59, fn offset -> not MapSet.member?(state.used, source + offset) end)
-
-      stamp = source + offset
-
-      {stamp,
-       %{
-         state
-         | assigned: Map.put(state.assigned, key, stamp),
-           used: MapSet.put(state.used, stamp)
-       }}
     end
   end
 

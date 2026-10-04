@@ -162,6 +162,23 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
     end
   end
 
+  context 'Google Phone importer' do
+    it 'records Google Phone importer outcomes from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.google_phone_cases.each do |name, bytes, zone|
+          stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !name.end_with?('_legacy'))
+          result = NormalImportFormatsSupport.capture_phone_import(name, bytes, zone)
+          expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
+          expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
+          commands = result['error'] ? [] : result['commands']
+          identities = { 'user_id' => 987_001, 'import_id' => 987_101 }
+          NormalImportFormatsSupport.write(name, result.merge('identities' => identities, 'commands' => commands,
+                                                              'attempted_commands' => result['commands']))
+        end
+      end
+    end
+  end
+
   context 'GeoJSON' do
     it 'records GeoJSON importer outcomes from Rails' do
       travel_to Time.utc(2026, 1, 15, 23, 30) do
