@@ -3,17 +3,42 @@ defmodule Dawarich.UserData.Restore.Batch do
   alias Dawarich.Imports.{Fence, NormalCast}
   alias Dawarich.Ingest.Ruby
 
+  @enums %{
+    {"imports", "status"} => ~w(created processing completed failed deleting),
+    {"imports", "source"} =>
+      ~w(google_semantic_history owntracks google_records google_phone_takeout gpx immich_api geojson photoprism_api user_data_archive kml csv tcx fit polarsteps google_photos mobile_photo_library),
+    {"imports", "additional_data_extraction_status"} =>
+      ~w(not_attempted pending running completed failed unsupported),
+    {"exports", "status"} => ~w(created processing completed failed),
+    {"exports", "file_format"} => ~w(json gpx archive),
+    {"exports", "file_type"} => ~w(points user_data),
+    {"trips", "source_status"} => ~w(active stopped)
+  }
+
   def create!(repo, table, row, context) do
+    create_record!(repo, table, row, context)
+    1
+  end
+
+  def row!(repo, table, row, context) do
+    {_columns, [row]} = prepare!(repo, table, [row], context)
+    row
+  end
+
+  def create_record!(repo, table, row, context) do
     {columns, [row]} = prepare!(repo, table, [row], context)
     names = Enum.map_join(columns, ",", &~s("#{&1}"))
     select = Enum.map_join(columns, ",", &~s(r."#{&1}"))
 
     Fence.run(context, fn ->
-      repo.query!(
-        "INSERT INTO #{table}(#{names}) SELECT #{select} FROM jsonb_populate_record(NULL::#{table},$1::jsonb) r RETURNING id",
-        [row],
-        log: false
-      ).num_rows
+      [[id]] =
+        repo.query!(
+          "INSERT INTO #{table}(#{names}) SELECT #{select} FROM jsonb_populate_record(NULL::#{table},$1::jsonb) r RETURNING id",
+          [row],
+          log: false
+        ).rows
+
+      id
     end)
   end
 
@@ -92,6 +117,17 @@ defmodule Dawarich.UserData.Restore.Batch do
 
       true ->
         raise ArgumentError, "Invalid place source"
+    end
+  end
+
+  defp cast(table, name, _type, value, _context) when is_map_key(@enums, {table, name}) do
+    values = @enums[{table, name}]
+
+    cond do
+      Ruby.blank?(value) -> nil
+      is_integer(value) and value >= 0 and value < length(values) -> value
+      value in values -> Enum.find_index(values, &(&1 == value))
+      true -> raise ArgumentError, "Invalid #{table}.#{name}"
     end
   end
 
