@@ -332,7 +332,8 @@ RSpec.describe RailsCommands::Poller do
       points.anomaly_recalculate points.anomaly_stats imports.postprocessing_step imports.upload_created
       imports.prepare_download imports.prepared_download_purge imports.destroy_requested imports.destroy_status
       imports.destroy_callbacks imports.destroy_achievements imports.destroy_stats imports.destroy_complete
-      imports.destroy_terminal imports.extraction_requested imports.extraction_destroy_requested imports.resume
+      imports.destroy_terminal imports.extraction_requested imports.extraction_destroy_requested
+      route_videos.attachment_job visits.web_redetect imports.resume
       stats.calculate_month stats.caches_invalidated
     ]
     expect(RailsCommands::Registry::HANDLERS.keys).to eq(expected_kinds)
