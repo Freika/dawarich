@@ -1,5 +1,6 @@
 defmodule Dawarich.Imports.NormalPreparation do
   @moduledoc false
+  alias Dawarich.Imports.GpxArchive.Error, as: ArchiveError
   alias Dawarich.Imports.{ArchiveDispatch, ArchivePaths, ImportState, LeaseLost, SourceDetector}
   alias Dawarich.Storage.{Reader, ImportServices}
 
@@ -14,6 +15,9 @@ defmodule Dawarich.Imports.NormalPreparation do
       ImportState.effect!(lease, fn -> :ok end)
 
       case ArchiveDispatch.inspect(path, opts) do
+        {:legacy, reason} ->
+          {:legacy, reason}
+
         :user_data_archive ->
           ImportState.source!(lease, 8)
           {:legacy, :user_data_archive}
@@ -32,6 +36,7 @@ defmodule Dawarich.Imports.NormalPreparation do
     end
   rescue
     error in LeaseLost -> reraise error, __STACKTRACE__
+    error in ArchiveError -> {:legacy, {:archive_policy, error.message}}
     error -> {:error, error, __STACKTRACE__}
   end
 

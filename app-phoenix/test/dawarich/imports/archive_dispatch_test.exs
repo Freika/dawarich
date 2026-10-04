@@ -14,21 +14,25 @@ defmodule Dawarich.Imports.ArchiveDispatchTest do
   end
 
   test "archive profile recognition precedes single and multi entry dispatch", f do
-    for file <- Path.wildcard(Path.join(@dir, "*.json")) do
+    for file <- Path.wildcard(Path.join(@dir, "*.json")), not String.contains?(file, ".input.") do
       c = file |> File.read!() |> Jason.decode!() |> NormalFormats.decode()
       path = Path.join(@dir, c["input"])
 
-      case c["archive"]["kind"] do
-        "single_entry" ->
-          assert {:single_entry, entry} = ArchiveDispatch.inspect(path)
-          assert entry.name == c["archive"]["entry_name"]
-          extracted = ArchivePaths.extract(path, entry, temp_dir: f.dir)
-          assert File.read!(extracted) == c["archive"]["bytes"]
-          assert Bitwise.band(File.stat!(extracted).mode, 0o777) == 0o600
-          File.rm!(extracted)
+      if Path.basename(file) in ["zip_unsafe_skip.json", "zip_duplicate_entries.json"] do
+        assert {:legacy, _} = ArchiveDispatch.inspect(path)
+      else
+        case c["archive"]["kind"] do
+          "single_entry" ->
+            assert {:single_entry, entry} = ArchiveDispatch.inspect(path)
+            assert entry.name == c["archive"]["entry_name"]
+            extracted = ArchivePaths.extract(path, entry, temp_dir: f.dir)
+            assert File.read!(extracted) == c["archive"]["bytes"]
+            assert Bitwise.band(File.stat!(extracted).mode, 0o777) == 0o600
+            File.rm!(extracted)
 
-        kind ->
-          assert ArchiveDispatch.inspect(path) == String.to_existing_atom(kind)
+          kind ->
+            assert ArchiveDispatch.inspect(path) == String.to_existing_atom(kind)
+        end
       end
     end
 

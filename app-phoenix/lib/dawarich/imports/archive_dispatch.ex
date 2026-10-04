@@ -9,12 +9,27 @@ defmodule Dawarich.Imports.ArchiveDispatch do
       {:entry, entry} -> {:single_entry, entry}
       {:legacy, :user_data_archive} -> :user_data_archive
       {:legacy, :multi_entry} -> :multi_entry
-      {:legacy, reason} -> raise Error, message: "Unsupported normal import archive: #{reason}"
+      {:legacy, reason} -> {:legacy, reason}
     end
   rescue
     error in Error ->
-      if error.message == "ZIP central directory is missing",
-        do: :not_a_zip,
-        else: reraise(error, __STACKTRACE__)
+      cond do
+        error.message == "ZIP central directory is missing" ->
+          :not_a_zip
+
+        error.message in [
+          "Unsafe ZIP entry path",
+          "Duplicate ZIP entry names",
+          "ZIP entry is not a regular file or directory",
+          "ZIP central directory exceeds metadata budget",
+          "ZIP entry count exceeds budget",
+          "Split ZIP archives are not supported",
+          "Duplicate ZIP extra metadata"
+        ] ->
+          {:legacy, {:archive_policy, error.message}}
+
+        true ->
+          reraise(error, __STACKTRACE__)
+      end
   end
 end

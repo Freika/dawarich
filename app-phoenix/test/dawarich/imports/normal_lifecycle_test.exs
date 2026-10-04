@@ -223,6 +223,39 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     end
   end
 
+  test "stricter ZIP policies hand Rails accepted archives back before native effects", c do
+    for name <- ~w(zip_unsafe_skip zip_duplicate_entries) do
+      reset!(ScratchRepo)
+      c = fixture(c, name)
+      assert c.expected["parent"] == nil or c.expected["parent"]["status"] == "completed"
+      assert c.expected["children"] != [] or c.expected["points"] != []
+      before = rows("SELECT status,source,raw_points FROM imports WHERE id=$1", [c.import.id])
+      assert {:ok, {:legacy, _}} = run(c)
+
+      assert rows("SELECT status,source,raw_points FROM imports WHERE id=$1", [c.import.id]) ==
+               before
+
+      assert [] == rows("SELECT id FROM points")
+      assert [] == rows("SELECT id FROM notifications")
+      assert [] == rows("SELECT child_id FROM phoenix.import_archive_children")
+      assert [] == rows("SELECT kind FROM phoenix.rails_commands")
+      assert :ok = Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job, :legacy)
+
+      assert [[c.import.id, c.import.user_id, c.expected["zone"], true]] ==
+               rows(
+                 "SELECT import_id,user_id,time_zone,native_fallback FROM phoenix.import_handoffs"
+               )
+
+      assert [["imports.normal_resume", c.job.args]] ==
+               rows("SELECT kind,payload FROM phoenix.rails_commands ORDER BY id")
+
+      assert :ok = Dawarich.Imports.NormalHandover.resume(ScratchRepo, c.job, :legacy)
+      assert [[1]] == rows("SELECT count(*) FROM phoenix.import_handoffs")
+      assert [[1]] == rows("SELECT count(*) FROM phoenix.rails_commands")
+      assert_clean(c)
+    end
+  end
+
   defp assert_parent(c) do
     expected = c.expected["parent"]
 

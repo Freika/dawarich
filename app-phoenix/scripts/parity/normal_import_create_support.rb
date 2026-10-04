@@ -93,6 +93,11 @@ module NormalImportFormatsSupport
     ].each do |name, entries, filename|
       cases << { name:, filename:, bytes: zip_bytes(entries), expected_source: nil }
     end
+    duplicate_entries = zip_bytes([['one.csv', csv], ['two.csv', csv.sub('51.3', '51.4')]])
+    cases << { name: 'zip_duplicate_entries', filename: 'duplicates.zip',
+               bytes: duplicate_entries.gsub('two.csv', 'one.csv'), expected_source: 'csv' }
+    cases << { name: 'zip_path_skip', filename: 'skip.zip',
+               bytes: zip_bytes([['ignored..csv', csv], ['safe.csv', csv]]), expected_source: nil }
     cases << { name: 'empty_zip', filename: 'empty.zip', bytes: zip_bytes([]), expected_source: nil }
     cases << { name: 'malformed_zip', filename: 'broken.zip', bytes: "PK#{[3, 4].pack('C*')}broken",
                expected_source: nil }
