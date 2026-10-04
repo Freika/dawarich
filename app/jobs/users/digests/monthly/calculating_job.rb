@@ -2,8 +2,17 @@
 
 class Users::Digests::Monthly::CalculatingJob < ApplicationJob
   queue_as :digests
+  OWNER_KEY = 'command:digests.calculate_month'
 
   def perform(user_id, year, month)
+    return forward(user_id, year, month) if JobOwnership.oban?(OWNER_KEY)
+
+    calculate(user_id, year, month)
+  end
+
+  private
+
+  def calculate(user_id, year, month)
     user = find_user_or_skip(user_id) || return
 
     I18n.with_locale(user.locale) do
@@ -16,7 +25,12 @@ class Users::Digests::Monthly::CalculatingJob < ApplicationJob
     create_digest_failed_notification(user_id, e)
   end
 
-  private
+  def forward(user_id, year, month)
+    JobCommands.forward('digests.calculate_month',
+                        { 'user_id' => user_id, 'year' => year.to_i, 'month' => month.to_i,
+                          'time_zone' => Time.zone.name },
+                        event_id: job_id, aggregate_id: user_id, producer: self.class.name)
+  end
 
   BACKTRACE_LINE_LIMIT = 20
 
