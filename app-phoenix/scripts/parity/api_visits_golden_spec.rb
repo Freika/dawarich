@@ -27,7 +27,7 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
 
   it 'records visits responses and database effects from Rails' do
     oracle = ApiVisitsGoldenOracle
-    cases = oracle::CASES.map do |entry|
+    cases = places_cases(oracle).map do |entry|
       kase = { method: :get, auth: :bearer, expect: :own, env: {}, content: oracle::JSON_TYPE }.merge(entry)
       kase[:env]['STORE_GEODATA'] = kase[:store_geodata].to_s if kase.key?(:store_geodata)
       result = places_record(kase, oracle:, strict: true)
@@ -74,11 +74,19 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
         expect(after.fetch('notes')).to eq([])
         expect(after.fetch('place_visits').map { _1['visit_id'] }).to eq([953_301])
       end
+      if entry[:dropped_fields]
+        place = after.fetch('places').find { _1['id'] == payload['id'] }
+        expect(place.values_at('city', 'country')).to eq([nil, nil])
+      end
       if entry[:selected]
         row = after.fetch('visits').find { _1['id'] == 953_301 }
         expect(row.values_at('name', 'status')).to eq([payload['name'], 1])
         expect(row['place_id']).to eq(payload['id'])
         expect(payload['id']).to eq(953_202) if entry[:dedup]
+      end
+      if entry[:place_fields]
+        place = after.fetch('places').find { _1['id'] == payload['id'] }
+        expect(place.slice(*entry[:place_fields].keys)).to eq(entry[:place_fields])
       end
       if entry[:adopted]
         expect(after.fetch('places').find { _1['id'] == 953_202 }['demo']).to be(false)
@@ -92,12 +100,12 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
       expect(result).not_to have_key('mask')
       result
     end
-    path = Rails.root.join('app-phoenix/test/fixtures/api_visits/golden.json')
+    path = Rails.root.join(ENV.fetch('API_GOLDEN_OUTPUT', 'app-phoenix/test/fixtures/api_visits/golden.json'))
     FileUtils.mkdir_p(path.dirname)
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'now' => oracle::NOW.iso8601,
                 'sequences' => oracle::SEQUENCES, 'setups' => oracle.setups.sort.to_h,
                 'cases' => cases.sort_by { _1['name'] } }
-    File.write(path, "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0)}\n")
+    File.write(path, "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0).rstrip}\n")
   end
 
   def places_seed(kase)

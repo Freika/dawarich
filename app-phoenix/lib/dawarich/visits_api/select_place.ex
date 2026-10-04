@@ -68,9 +68,13 @@ defmodule Dawarich.VisitsApi.SelectPlace do
           lon < -180 || lon > 180 ->
             missing("longitude")
 
+          length(String.codepoints(Ruby.to_s(attrs["name"]))) > 255 ->
+            {:error, 422, "Validation failed: Name is too long (maximum is 255 characters)"}
+
           true ->
             {:ok,
              attrs
+             |> scalar_fields()
              |> Map.put("name", Ruby.to_s(attrs["name"]))
              |> Map.put("latitude", lat)
              |> Map.put("longitude", lon)}
@@ -79,6 +83,19 @@ defmodule Dawarich.VisitsApi.SelectPlace do
   end
 
   defp input(_), do: {:replay, "photon root shape"}
+
+  defp scalar_fields(attrs) do
+    Enum.reduce(~w(city country), attrs, fn key, values ->
+      case values[key] do
+        value when is_map(value) or is_list(value) -> Map.delete(values, key)
+        nil -> values
+        true -> Map.put(values, key, "t")
+        false -> Map.put(values, key, "f")
+        value -> Map.put(values, key, Ruby.to_s(value))
+      end
+    end)
+  end
+
   defp number(value) when is_number(value), do: value * 1.0
   defp number(value), do: Ruby.to_f(value)
 
