@@ -101,7 +101,7 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
       client = two_factor_browser(actor)
       kind = name.delete_suffix('_de')
       locale = name.end_with?('_de') ? 'de' : 'en'
-      enabled = kind == 'enabled' || kind == 'setup_enabled' || kind.start_with?('disable', 'wrong', 'missing',
+      enabled = kind == 'enabled' || kind == 'setup_enabled' || kind.start_with?('disable_', 'wrong', 'missing',
                                                                                  'invalid')
       backups = [Devise::Encryptor.digest(User, 'a11c-unused-backup')]
       actor.update!(otp_secret: kind == 'disabled' ? nil : otp_secret,

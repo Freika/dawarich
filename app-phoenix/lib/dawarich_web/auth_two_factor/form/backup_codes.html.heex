@@ -1,0 +1,47 @@
+<div class="min-h-content w-full my-5">
+  <.page_header title={
+    t(@locale, "settings.two_factor.backup_codes.two_factor_authentication_enabled", %{})
+  } />
+  <.navigation
+    locale={@locale}
+    active={@active}
+    self_hosted={@self_hosted}
+    admin={@admin}
+    two_factor={@two_factor}
+  />
+
+  <div class="max-w-lg">
+    <div class="card bg-base-200 shadow-xl">
+      <div class="card-body">
+        <div class="flex items-center gap-3 mb-4">
+          <.icon name="shield-check" class="text-success w-8 h-8" />
+          <h2 class="text-xl font-bold">
+            {t(@locale, "settings.two_factor.backup_codes.save_your_backup_codes", %{})}
+          </h2>
+        </div>
+
+        <div class="alert alert-warning mb-4">
+          <span>{t(
+            @locale,
+            "settings.two_factor.backup_codes.store_these_codes_in_a_safe_place_each_code_can",
+            %{}
+          )}</span>
+        </div>
+
+        <div class="bg-base-100 rounded-lg p-4 mb-4">
+          <div class="grid grid-cols-2 gap-2">
+            <%= for code <- @codes do %>
+              <code class="block text-center text-xs font-mono p-2 bg-base-300 rounded truncate">{code}</code>
+            <% end %>
+          </div>
+        </div>
+
+        <a href="/settings/two_factor" class="btn btn-primary w-full">{t(
+          @locale,
+          "settings.two_factor.backup_codes.done",
+          %{}
+        )}</a>
+      </div>
+    </div>
+  </div>
+</div>
