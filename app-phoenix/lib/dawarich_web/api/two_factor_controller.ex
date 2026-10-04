@@ -28,7 +28,8 @@ defmodule DawarichWeb.Api.TwoFactorController do
   end
 
   defp supported?(conn) do
-    conn.assigns.api_format in [:json, :html, :all] and
+    not String.ends_with?(conn.request_path, "/") and
+      conn.assigns.api_format in [:json, :html, :all] and
       not Map.has_key?(conn.assigns.api_params, "_method") and
       Enum.all?(conn.assigns.api_params, fn {_key, value} -> is_nil(value) or is_binary(value) end) and
       unique_pairs?(conn.query_string) and unique_body?(conn)

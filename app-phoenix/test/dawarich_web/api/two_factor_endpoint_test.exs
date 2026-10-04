@@ -163,6 +163,120 @@ defmodule DawarichWeb.Api.TwoFactorEndpointTest do
     no_upstream!(c.upstream)
   end
 
+  test "all four API OTP actions are native independently of web auth switches", c do
+    before = state(c)
+
+    for auth <- [nil, "credentials"] do
+      if auth,
+        do: System.put_env("DAWARICH_PHOENIX_AUTH", auth),
+        else: System.delete_env("DAWARICH_PHOENIX_AUTH")
+
+      for {method, target} <- @actions do
+        route = Phoenix.Router.route_info(DawarichWeb.Router, method, target, "localhost")
+        assert route.plug == DawarichWeb.Api.TwoFactorController
+        assert route.pipe_through == [:api_account] and route.slice == :api_account
+      end
+
+      assert {200, _, raw} =
+               call(
+                 c,
+                 "POST",
+                 "/api/v1/users/me/two_factor/setup",
+                 ~s({"password":"safepassword12"})
+               )
+
+      secret = Jason.decode!(raw)["secret"]
+      assert Secret.decrypt(Repo.get!(Account, c.owner).otp_secret, @env) == {:ok, secret}
+      code = Totp.at(secret, DateTime.to_unix(c.api_now))
+
+      assert {200, _, raw} =
+               call(
+                 c,
+                 "POST",
+                 "/api/v1/users/me/two_factor/confirm",
+                 Jason.encode!(%{"password" => "safepassword12", "otp_code" => code})
+               )
+
+      assert length(Jason.decode!(raw)["backup_codes"]) == 10
+      assert Repo.get!(Account, c.owner).otp_required_for_login
+      assert Repo.get!(Account, c.owner).consumed_timestep == nil
+
+      assert {200, _, raw} =
+               call(
+                 c,
+                 "POST",
+                 "/api/v1/users/me/two_factor/backup_codes",
+                 ~s({"password":"safepassword12"})
+               )
+
+      backup = hd(Jason.decode!(raw)["backup_codes"])
+
+      assert {200, headers, raw} =
+               call(
+                 c,
+                 "DELETE",
+                 "/api/v1/users/me/two_factor",
+                 Jason.encode!(%{"password" => "safepassword12", "otp_code" => backup})
+               )
+
+      assert raw == ~s({"message":"Two-factor authentication disabled"})
+      assert values(headers, "set-cookie") == []
+      user = Repo.get!(Account, c.owner)
+
+      assert user.otp_secret == nil and user.otp_backup_codes == [] and
+               not user.otp_required_for_login
+    end
+
+    assert state(c).effects == before.effects and state(c).other == before.other
+    no_upstream!(c.upstream)
+  end
+
+  test "api_account rollback and Cloud replay all four actions without mutation", c do
+    previous = Application.get_env(:dawarich, :rails_routes, [])
+    on_exit(fn -> Application.put_env(:dawarich, :rails_routes, previous) end)
+    before = state(c)
+    body = ~s({"password":"safepassword12","otp_code":"123456"})
+
+    for kind <- [:slice, :broad, :cloud] do
+      System.put_env("DAWARICH_RAILS_SLICES", if(kind == :slice, do: "api_account", else: ""))
+      System.put_env("SELF_HOSTED", if(kind == :cloud, do: "false", else: "true"))
+      Application.put_env(:dawarich, :rails_routes, if(kind == :broad, do: ["api"], else: []))
+
+      for {method, target} <- @actions do
+        replay!(c, method, target <> "?unrelated=%2B", body, [])
+        assert state(c) == before
+      end
+    end
+
+    System.delete_env("DAWARICH_RAILS_SLICES")
+    System.put_env("SELF_HOSTED", "true")
+    Application.put_env(:dawarich, :rails_routes, [])
+
+    for {method, target} <- @actions,
+        {verb, path} <- [{"HEAD", target}, {method, target <> ".json"}, {method, target <> "/"}] do
+      replay!(c, verb, path, body, [])
+      assert state(c) == before
+    end
+  end
+
+  test "mobile auth and challenge routes remain Rails after management activation", c do
+    before = state(c)
+    body = ~s({"password":"safepassword12","otp_code":"123456"})
+
+    for {method, target} <- [
+          {"POST", "/api/v1/auth/register"},
+          {"POST", "/api/v1/auth/login"},
+          {"POST", "/api/v1/auth/apple"},
+          {"POST", "/api/v1/auth/google"},
+          {"POST", "/api/v1/auth/otp_challenge"},
+          {"GET", "/users/otp_challenge"},
+          {"POST", "/users/otp_challenge"}
+        ] do
+      replay!(c, method, target, body, [])
+      assert state(c) == before
+    end
+  end
+
   defp native_route? do
     case Phoenix.Router.route_info(
            DawarichWeb.Router,
@@ -218,7 +332,8 @@ defmodule DawarichWeb.Api.TwoFactorEndpointTest do
     assert header(head, "x-original") == ["synthetic-byte-check"]
     assert header(head, "content-type") == [Keyword.get(opts, :type, "application/json")]
     assert read_at_least(puma, rest, byte_size(body)) == body
-    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: 5\r\n\r\nrails")
-    assert {200, _, "rails"} = read_response(client)
+    response = if method == "HEAD", do: "", else: "rails"
+    reply(puma, "HTTP/1.1 200 OK\r\nContent-Length: #{byte_size(response)}\r\n\r\n#{response}")
+    assert {200, _, ^response} = read_response(client, method: method)
   end
 end
