@@ -8,6 +8,9 @@ defmodule DawarichWeb.AchievementActions.Unlocks do
 
   def init(opts), do: opts
 
+  def call(%{assigns: %{achievement_action: {actor, params, context}}} = conn, _opts),
+    do: execute(conn, actor, params, context)
+
   def call(conn, opts) do
     action = Keyword.get_lazy(opts, :action, fn -> action(conn) end)
 
@@ -32,7 +35,10 @@ defmodule DawarichWeb.AchievementActions.Unlocks do
   end
 
   defp execute(conn, actor, params, context) do
-    conn = Locale.call(%{conn | params: params}, [])
+    conn =
+      if conn.assigns[:achievement_action],
+        do: conn,
+        else: Locale.call(%{conn | params: params}, [])
 
     case context.action do
       :next ->

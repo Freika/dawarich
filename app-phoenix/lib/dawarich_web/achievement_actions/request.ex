@@ -8,6 +8,30 @@ defmodule DawarichWeb.AchievementActions.Request do
   @limit 65_536
   @common ~w(authenticity_token _method locale)
 
+  def init(opts), do: opts
+
+  def call(conn, opts) do
+    action =
+      Enum.find([:sharing, :next, :seen, :dismiss], &match?({:ok, _}, Gate.route(conn, &1)))
+
+    case load(conn, action, opts) do
+      {:ok, conn, actor, params, context} ->
+        if DawarichWeb.AchievementActions.Response.supported?(conn) do
+          conn
+          |> Map.put(:params, params)
+          |> assign(:achievement_action, {actor, params, context})
+        else
+          handoff(conn, opts)
+        end
+
+      {:handoff, %{halted: true} = conn} ->
+        conn
+
+      {:handoff, conn} ->
+        handoff(conn, opts)
+    end
+  end
+
   def load(conn, action, opts \\ []) do
     context = Gate.context(opts)
 
@@ -136,5 +160,14 @@ defmodule DawarichWeb.AchievementActions.Request do
       {:ok, raw, conn} -> {:ok, IO.iodata_to_binary([acc, raw]), conn}
       {:error, _} -> {:error, conn}
     end
+  end
+
+  defp handoff(conn, opts) do
+    upstream =
+      Keyword.get_lazy(opts, :upstream, fn ->
+        Application.fetch_env!(:dawarich, :rails_upstream)
+      end)
+
+    conn |> RailsProxy.call(upstream) |> halt()
   end
 end

@@ -8,6 +8,9 @@ defmodule DawarichWeb.AchievementActions.Sharing do
 
   def init(opts), do: opts
 
+  def call(%{assigns: %{achievement_action: {actor, params, context}}} = conn, _opts),
+    do: execute(conn, actor, params, context)
+
   def call(conn, opts) do
     case Request.load(conn, :sharing, opts) do
       {:ok, conn, actor, params, context} ->
@@ -24,7 +27,10 @@ defmodule DawarichWeb.AchievementActions.Sharing do
   end
 
   defp execute(conn, actor, params, context) do
-    conn = Locale.call(%{conn | params: params}, [])
+    conn =
+      if conn.assigns[:achievement_action],
+        do: conn,
+        else: Locale.call(%{conn | params: params}, [])
 
     case Carrier.call(context.repo, actor.id, context.key, params, context) do
       {:ok, result} -> Map.get(context, :respond, &Response.sharing/3).(conn, result, context)
