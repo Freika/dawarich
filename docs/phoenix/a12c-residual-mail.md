@@ -106,3 +106,11 @@ Source Ruby exceptions map to native data/type/date errors; no empty message res
 The R1–R4/P1–P5 barrier is complete. Resume at P6's queued-before-sent-at staging contract.
 Delivery workers, ownership wiring, test-mail HTTP,
 ED allocation and final C1–C5 gates are pending. Rails source/specs and dormant stubs are retained.
+
+P6 adds separate monthly/yearly mail enqueue workers with exact locale-bearing command decoders.
+All 44 Rails effects rows pass against real Oban inserts and database constraints: enqueue occurs
+before the validated timestamp update; enqueue failure keeps nil sent_at, and invalid digest
+validation leaves its queued delivery observable. Ambient locale/timezone survive staging.
+M-P6-save-first moves timestamp persistence before insertion and fails monthly_enqueue_failure;
+restored staging passes. The shared digest Store now exposes only the source-equivalent validated
+sent_at update. SMTP and ownership remain pending at P7/P9.
