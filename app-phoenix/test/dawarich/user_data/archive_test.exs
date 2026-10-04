@@ -97,43 +97,6 @@ defmodule Dawarich.UserData.ArchiveTest do
       end
     end
 
-    for fixture <- ["v1", "v1_reversed"] do
-      source = Path.join(@fixtures, fixture <> "/entries/data.json")
-
-      {:object, pairs} =
-        JsonStream.reduce(
-          source,
-          nil,
-          fn
-            {:value, [], value, _, _}, _ -> value
-            _, acc -> acc
-          end,
-          fn _ -> true end
-        )
-
-      sections = ~w(settings areas imports exports trips stats notifications counts)
-
-      expected =
-        Enum.flat_map(pairs, fn
-          {"places", rows} -> Enum.map(rows, &{:row, "places", Jsonl.value(&1)})
-          {key, value} -> if key in sections, do: [{:section, key, Jsonl.value(value)}], else: []
-        end)
-
-      expected =
-        expected ++
-          Enum.flat_map(["visits", "points"], fn section ->
-            Enum.map(Map.get(Map.new(pairs), section, []), &{:row, section, Jsonl.value(&1)})
-          end)
-
-      actual = Versions.reduce_v1(source, %{}, [], fn event, acc -> acc ++ [event] end)
-      assert actual == expected
-      assert List.last(actual) |> elem(1) == "points"
-
-      assert Enum.find(actual, &match?({:section, "settings", _}, &1))
-             |> elem(2)
-             |> Map.fetch!("gps_filtering_enabled") == false
-    end
-
     File.write!(
       path,
       ~s({"points":[null,false,{},42],"places":[null,false,{}],"visits":[null,false,{}]})
@@ -151,6 +114,26 @@ defmodule Dawarich.UserData.ArchiveTest do
 
     assert_raise JsonStream.Error, fn ->
       Versions.reduce_v1(path, %{}, nil, fn _, acc -> acc end)
+    end
+  end
+
+  test "v1 reader value and event order equal the literal Rails capture" do
+    expected = @fixtures |> Path.join("v1_reader_events.json") |> File.read!() |> Jason.decode!()
+
+    for fixture <- ~w(v1 v1_reversed) do
+      source = Path.join(@fixtures, fixture <> "/entries/data.json")
+
+      actual =
+        Versions.reduce_v1(source, %{}, [], fn {kind, name, value}, acc ->
+          acc ++ [[Atom.to_string(kind), name, value]]
+        end)
+
+      assert actual == expected[fixture]
+      assert List.last(actual) |> Enum.at(1) == "points"
+
+      assert Enum.find(actual, &match?(["section", "settings", _], &1))
+             |> Enum.at(2)
+             |> Map.fetch!("gps_filtering_enabled") == false
     end
   end
 

@@ -86,6 +86,36 @@ RSpec.describe 'Phoenix fixtures: Rails user data' do
       [name, outcome]
     end
     UserDataFixturesSupport.write('parser_failures.json', failures)
+    events = %w[v1 v1_reversed].to_h do |version|
+      recorded = UserDataFixturesSupport.with_users do
+        user = UserDataFixturesSupport.owner
+        Dir.mktmpdir('user-data-reader') do |directory|
+          path = Pathname.new(directory)
+          path.join('data.json').binwrite(UserDataFixturesSupport.read_entries(version).fetch('data.json'))
+          reader = Users::ImportData::V1Handler.new(user, path, {})
+          values = []
+          sections = %w[counts settings areas imports exports trips stats notifications]
+          allow(reader).to receive(:handle_section) do |name, value|
+            values << ['section', name, value] if sections.include?(name)
+          end
+          allow(reader).to receive(:import_places_batch) do |batch|
+            batch.each { |row| values << ['row', 'places', row] }
+          end
+          allow(reader).to receive(:import_visits_batch) do |batch|
+            batch.each { |row| values << ['row', 'visits', row] }
+          end
+          allow_any_instance_of(Users::ImportData::Points).to receive(:add) do |_importer, row|
+            values << ['row', 'points', row]
+          end
+          allow_any_instance_of(Users::ImportData::Points).to receive(:finalize).and_return(0)
+          reader.process
+          values
+        end
+      end
+      expect(recorded.last[0..1]).to eq(%w[row points])
+      [version, recorded]
+    end
+    UserDataFixturesSupport.write('v1_reader_events.json', events)
     UserDataFixturesSupport.write('capture.json', result)
   end
 
