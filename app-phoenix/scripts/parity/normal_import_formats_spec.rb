@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative 'normal_import_formats_support'
+require_relative 'normal_import_json_support'
 
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   include ActiveSupport::Testing::TimeHelpers
@@ -66,6 +67,20 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
           expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
           expect(result.fetch('import').fetch('doubles')).to be_a(Integer)
           NormalImportFormatsSupport.write(name, result.merge('commands' => effects))
+        end
+      end
+    end
+  end
+
+  context 'Polarsteps' do
+    it 'records Polarsteps importer outcomes from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.polarsteps_cases.each do |name, bytes, zone|
+          stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !name.end_with?('_legacy'))
+          result = NormalImportFormatsSupport.capture_json(name, bytes, zone, 13, Polarsteps::Importer)
+          expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
+          expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
+          NormalImportFormatsSupport.write(name, result)
         end
       end
     end
