@@ -24,6 +24,10 @@ The original explore-features corpus remains byte-identical.
   Real serialized jobs retain ambient locale/time zone; mail rendering reads current preferences.
   Enqueue failure preserves nil `sent_at`, validation failure can leave mail queued, and later
   SMTP failure preserves the timestamp. Negative distances and inactive users remain eligible.
+- `http.json`: 27 real test-mail endpoint cases, exact Turbo append responses, source-safe
+  SMTP error descriptions, HTML flashes/redirects, locale selection, unsupported method/format
+  behavior and a missing-CSRF 422. Trial mail actions produce no delivery and no native mapping;
+  the retained member-joined template has no runtime producer or native mail mapping.
 
 Devise 5.0.4 Cloud email/password callbacks invoke `deliver_now`; the capture intercepts that
 delivery boundary while retaining actual saves, callback predicates and rendering. They remain
@@ -62,6 +66,11 @@ claim. Generation's retained Rails reverse handler selects `user.locale` before 
 M-R3-sent-order moves the timestamp before enqueue and fails the explicit enqueue-failure
 case. The source is restored; the named capture and no-write fixture comparison pass.
 
-Resume at R4 after R3's restored named test and byte comparison are green.
+R4's M-R4-sync replaces synchronous Mail delivery and fails the first send-count assertion.
+M-R4-trial lets trial-expired past the compatibility skip and fails with UnknownEmailType.
+Both source changes are restored. Unsupported JSON/plain response formats reach SMTP before
+Rails returns 406; the native route must hand unsupported requests back before SMTP starts.
+
+Resume at P1 after R4's restored scoped tests and byte comparisons are green.
 Native rendering, delivery workers, ownership wiring, test-mail HTTP,
 ED allocation and final C1–C5 gates are pending. Rails source/specs and dormant stubs are retained.

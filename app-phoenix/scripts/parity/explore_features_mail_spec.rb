@@ -93,4 +93,19 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
     assert_mail_effects(fixture)
     fixture_bytes(residual_path('effects'), fixture)
   end
+
+  context 'test mail HTTP capture', type: :request do
+    it 'records test mail HTTP outcomes and retired mail no ops' do
+      fixture = residual_mail_http
+      expected = %w[
+        html_success turbo_success guest cloud not_configured preferred_de query_locale body_locale
+        socket_error timeout_error ssl_error system_error argument_error smtp_error unsafe_error turbo_error
+        json_accept text_accept mixed_accept json_body malformed_json extra_body missing_csrf get_method head_method
+        patch_method json_extension
+      ]
+      expect(fixture.fetch('cases').pluck('id')).to eq(expected)
+      assert_mail_http(fixture)
+      fixture_bytes(residual_path('http'), fixture)
+    end
+  end
 end

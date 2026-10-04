@@ -773,6 +773,164 @@ module ResidualMailFixtureSupport
     end
   end
 
+  def test_mail_http_options
+    [
+      ['html_success', {}], ['turbo_success', { accept: 'text/vnd.turbo-stream.html' }],
+      ['guest', { guest: true }], ['cloud', { cloud: true }], ['not_configured', { configured: false }],
+      ['preferred_de', { locale: 'de' }], ['query_locale', { query: '?locale=fr' }],
+      ['body_locale', { params: { locale: 'de' } }],
+      ['socket_error', { error: SocketError.new('synthetic DNS error') }],
+      ['timeout_error', { error: Timeout::Error.new('synthetic timeout') }],
+      ['ssl_error', { error: OpenSSL::SSL::SSLError.new('synthetic SSL error') }],
+      ['system_error', { error: Errno::ECONNREFUSED.new('synthetic refusal') }],
+      ['argument_error', { error: ArgumentError.new('synthetic argument error') }],
+      ['smtp_error', { error: Net::SMTPAuthenticationError.new('synthetic SMTP error') }],
+      ['unsafe_error', { error: IOError.new('synthetic private error detail') }],
+      ['turbo_error', { error: IOError.new('synthetic private error detail'), accept: 'text/vnd.turbo-stream.html' }],
+      ['json_accept', { accept: 'application/json' }], ['text_accept', { accept: 'text/plain' }],
+      ['mixed_accept', { accept: 'text/vnd.turbo-stream.html, text/html' }],
+      ['json_body', { params: '{"unexpected":true}', content_type: 'application/json' }],
+      ['malformed_json', { params: '{broken', content_type: 'application/json' }],
+      ['extra_body', { params: { unexpected: 'ignored' } }], ['missing_csrf', { csrf: true }],
+      ['get_method', { method: :get }], ['head_method', { method: :head }], ['patch_method', { method: :patch }],
+      ['json_extension', { extension: '.json' }]
+    ]
+  end
+
+  def test_mail_http_case(name, options, index)
+    RSpec::Mocks.with_temporary_scope do
+      reset!
+      user = fresh_intent_user("test-http-#{name}", { 'locale' => options.fetch(:locale, 'en'), 'timezone' => 'UTC' })
+      user.update_column(:id, 460_600 + index)
+      sign_in user unless options[:guest]
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(!options[:cloud])
+      allow(DawarichSettings).to receive(:email_configured?).and_return(options.fetch(:configured, true))
+      ActionController::Base.allow_forgery_protection = options.fetch(:csrf, false)
+      clear_enqueued_jobs
+      attempts = []
+      allow_any_instance_of(Mail::TestMailer).to receive(:deliver!) do |_transport, message|
+        attempts << message_content(message)
+        raise options[:error] if options[:error]
+      end
+      headers = { 'Accept' => options.fetch(:accept, 'text/html') }
+      headers['CONTENT_TYPE'] = options[:content_type] if options[:content_type]
+      method = options.fetch(:method, :post)
+      path = "/settings/general/test_email#{options.fetch(:extension, '')}#{options.fetch(:query, '')}"
+      error = nil
+      begin
+        public_send(method, path, params: options.fetch(:params, {}), headers:)
+      rescue StandardError => e
+        error = e.class.name
+      end
+      output = if error.nil?
+                 body = response.media_type == 'text/vnd.turbo-stream.html' ? response.body : nil
+                 { 'status' => response.status, 'media_type' => response.media_type, 'location' => response.location,
+                   'flash' => flash.to_hash, 'body' => body }
+               end
+      { 'id' => name, 'method' => method.to_s.upcase, 'path' => path, 'accept' => headers['Accept'],
+        'content_type' => options.fetch(:content_type, 'application/x-www-form-urlencoded'),
+        'params' => options.fetch(:params, {}), 'csrf_protection' => options.fetch(:csrf, false),
+        'authenticated' => !options[:guest], 'self_hosted' => !options[:cloud],
+        'configured' => options.fetch(:configured, true), 'recipient' => user.email,
+        'preference' => user.reload.preferred_locale&.to_s,
+        'transport_error' => options[:error]&.class&.name, 'transport_error_message' => options[:error]&.message,
+        'attempts' => attempts, 'queued' => enqueued_jobs.length, 'response' => output, 'error' => error }
+    ensure
+      clear_enqueued_jobs
+    end
+  end
+
+  def retired_mail_contract
+    user = fresh_intent_user('retired-mail')
+    types = %w[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late]
+    clear_enqueued_jobs
+    count = ActionMailer::Base.deliveries.length
+    types.each { |type| UsersMailer.with(user:).public_send(type).deliver_now }
+    source = Dir[Rails.root.join('{app,lib}/**/*.rb')].reject { |file| file.end_with?('/mailers/family_mailer.rb') }
+    producers = source.select { |file| File.read(file).match?(/\bmember_joined\b/) }
+                      .map { |file| Pathname.new(file).relative_path_from(Rails.root).to_s }
+    native = Dir[Rails.root.join('app-phoenix/lib/dawarich/{mail,jobs}/**/*.ex')].map { |file| File.read(file) }.join
+    { 'trial_types' => types, 'trial_deliveries' => ActionMailer::Base.deliveries.length - count,
+      'trial_enqueued' => enqueued_jobs.length, 'trial_native_mapping' => types.any? { |type| native.include?(type) },
+      'member_joined_producers' => producers, 'member_joined_native_mapping' => native.include?('member_joined'),
+      'retained_member_joined_template' => Rails.root.join('app/views/family_mailer/member_joined.html.erb').file? }
+  end
+
+  def residual_mail_http
+    previous_method = ActionMailer::Base.delivery_method
+    previous_logger = ActionMailer::Base.logger
+    previous_protection = ActionController::Base.allow_forgery_protection
+    ActionMailer::Base.delivery_method = :test
+    ActionMailer::Base.logger = nil
+    with_mail_defaults do
+      cases = test_mail_http_options.each_with_index.map do |(name, options), index|
+        test_mail_http_case(name, options, index)
+      end
+      { 'cases' => cases, 'retired' => retired_mail_contract }
+    end
+  ensure
+    ActionMailer::Base.delivery_method = previous_method
+    ActionMailer::Base.logger = previous_logger
+    ActionController::Base.allow_forgery_protection = previous_protection
+  end
+
+  def assert_mail_http(fixture)
+    fixture.fetch('cases').each do |row|
+      name = row.fetch('id')
+      no_send = %w[guest cloud not_configured malformed_json missing_csrf get_method head_method
+                   patch_method].include?(name)
+      expect(row.fetch('attempts').length).to eq(no_send ? 0 : 1), "synchronous send differs: #{name}"
+      expect(row.fetch('queued')).to eq(0)
+      if name == 'missing_csrf'
+        expect(row.fetch('error')).to be_nil
+        expect(row.fetch('response').fetch('status')).to eq(422)
+        next
+      end
+      next if %w[json_accept text_accept malformed_json get_method head_method patch_method
+                 json_extension].include?(name)
+
+      expect(row.fetch('error')).to be_nil
+      response = row.fetch('response')
+      locale = row.fetch('preference') || 'en'
+      if %w[turbo_success mixed_accept turbo_error].include?(name)
+        expect(response.fetch('status')).to eq(200)
+        expect(response.fetch('media_type')).to eq('text/vnd.turbo-stream.html')
+        expect(response.fetch('body').include?('<turbo-stream action="append" target="flash-messages">')).to be(true)
+      else
+        expect(response.fetch('status')).to eq(name == 'cloud' ? 303 : 302)
+        path = case name
+               when 'guest' then '/users/sign_in'
+               when 'cloud' then '/'
+               else '/settings/general'
+               end
+        expect(URI.parse(response.fetch('location')).path).to eq(path)
+      end
+      next if %w[guest cloud].include?(name)
+
+      if row.fetch('transport_error')
+        description = row.fetch('transport_error')
+        description += ": #{row.fetch('transport_error_message')}" unless %w[unsafe_error turbo_error].include?(name)
+        expected = I18n.t('controllers.settings.general.test_email_failed', error: description, locale:)
+      elsif name == 'not_configured'
+        expected = I18n.t('controllers.settings.general.smtp_not_configured', locale:)
+      else
+        expected = I18n.t('controllers.settings.general.test_email_sent', email: row.fetch('recipient'), locale:)
+      end
+      if response.fetch('media_type') == 'text/vnd.turbo-stream.html'
+        expect(response.fetch('body').include?(ERB::Util.html_escape(expected))).to be(true),
+                                                                                    "Turbo flash differs: #{name}"
+      else
+        expect(response.fetch('flash').values).to include(expected)
+      end
+    end
+    expect(fixture.fetch('retired')).to eq(
+      'trial_types' => %w[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late],
+      'trial_deliveries' => 0, 'trial_enqueued' => 0, 'trial_native_mapping' => false,
+      'member_joined_producers' => [], 'member_joined_native_mapping' => false,
+      'retained_member_joined_template' => true
+    )
+  end
+
   def fixture_bytes(path, fixture)
     bytes = "#{JSON.pretty_generate(fixture)}\n"
     if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
