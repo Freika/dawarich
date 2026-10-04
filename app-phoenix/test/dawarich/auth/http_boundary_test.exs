@@ -7,6 +7,113 @@ defmodule Dawarich.Auth.HttpBoundaryTest do
 
   @secret "phoenix-a2-cookie-fixture-secret-not-for-production"
 
+  test "OTP initiation replays Turbo Stream XHR unsupported Accept and query-format requests without native effects" do
+    alias Dawarich.{Repo, Test.RailsUser}
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    old_hosted = System.get_env("SELF_HOSTED")
+    System.put_env("SELF_HOSTED", "true")
+
+    on_exit(fn ->
+      if old_hosted,
+        do: System.put_env("SELF_HOSTED", old_hosted),
+        else: System.delete_env("SELF_HOSTED")
+    end)
+
+    fixtures = File.read!("test/fixtures/auth/requests.json") |> Jason.decode!()
+    crypto = File.read!("test/fixtures/active_record_encryption.json") |> Jason.decode!()
+    env = Enum.find(crypto["environments"], &(&1["name"] == "explicit keys"))["env"]
+
+    RailsUser.insert!(%{
+      id: 75540,
+      email: "a11d-boundary@dawarich.test",
+      api_key: "A11D_BOUNDARY",
+      encrypted_password: fixtures["login"]["user"]["encrypted_password"],
+      otp_required_for_login: true,
+      settings: %{}
+    })
+
+    {session, cookie} = SessionCookie.for_form(%{}, @secret)
+
+    raw =
+      URI.encode_query(%{
+        "authenticity_token" => DawarichWeb.RailsCsrf.masked_token(session),
+        "user[email]" => "a11d-boundary@dawarich.test",
+        "user[password]" => "safepassword12"
+      })
+
+    before = Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows
+
+    opts = [
+      enabled: true,
+      registration_enabled: false,
+      otp_enabled: true,
+      otp_context: %{self_hosted: true, oidc: false, env: env},
+      fallback: fn conn ->
+        original = conn.private[:dawarich_raw_body] || elem(read_body(conn), 1)
+
+        send(
+          self(),
+          {:otp_boundary_replay, conn.method, original, get_req_header(conn, "cookie")}
+        )
+
+        put_private(conn, :handed_to_rails, true)
+      end
+    ]
+
+    for {path, extra} <- [
+          {"/users/sign_in", [{"accept", "text/vnd.turbo-stream.html, text/html"}]},
+          {"/users/sign_in", [{"x-requested-with", "XMLHttpRequest"}]},
+          {"/users/sign_in", [{"accept", "text/plain"}]},
+          {"/users/sign_in", [{"accept", "application/json"}]},
+          {"/users/sign_in", [{"accept", "application/xml"}]},
+          {"/users/sign_in?format=html", []},
+          {"/users/sign_in?locale=de", []},
+          {"/users/sign_in.json", []}
+        ] do
+      conn =
+        Plug.Test.conn(:post, path, raw)
+        |> put_req_header("content-type", "application/x-www-form-urlencoded")
+        |> put_req_header("content-length", Integer.to_string(byte_size(raw)))
+        |> put_req_header("cookie", "_dawarich_session=#{cookie}")
+
+      conn = Enum.reduce(extra, conn, fn {key, value}, acc -> put_req_header(acc, key, value) end)
+      response = AuthHandler.call(conn, opts)
+      assert response.private[:handed_to_rails] == true
+      assert response.resp_cookies == %{}
+      assert get_resp_header(response, "x-dawarich-auth-owner") == []
+      assert_received {:otp_boundary_replay, "POST", ^raw, [original_cookie]}
+      preserved = original_cookie == "_dawarich_session=#{cookie}"
+      assert preserved
+      refute_received {:otp_boundary_replay, _, _, _}
+
+      unchanged =
+        Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows == before
+
+      assert unchanged
+    end
+
+    supported =
+      Plug.Test.conn(:post, "/users/sign_in", raw)
+      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> put_req_header("content-length", Integer.to_string(byte_size(raw)))
+      |> put_req_header("cookie", "_dawarich_session=#{cookie}")
+      |> put_req_header("accept", "text/html")
+
+    response = AuthHandler.call(supported, opts)
+    assert response.status == 422
+    assert get_resp_header(response, "x-dawarich-auth-owner") == ["native-otp"]
+    Repo.query!("UPDATE users SET otp_required_for_login=false WHERE id=75540", [], log: false)
+
+    conn =
+      Plug.Test.conn(:post, "/users/sign_in", raw)
+      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> put_req_header("content-length", Integer.to_string(byte_size(raw)))
+      |> put_req_header("cookie", "_dawarich_session=#{cookie}")
+      |> put_req_header("accept", "text/vnd.turbo-stream.html, text/html")
+
+    assert AuthHandler.call(conn, opts).status == 303
+  end
+
   setup do
     old = Application.get_env(:dawarich, :rails_secret)
     Application.put_env(:dawarich, :rails_secret, @secret)
@@ -52,8 +159,24 @@ defmodule Dawarich.Auth.HttpBoundaryTest do
       |> put_req_header("content-type", "application/x-www-form-urlencoded")
       |> put_req_header("content-length", Integer.to_string(byte_size(override)))
 
+    upstream = Dawarich.Test.RawHTTP.listen()
+    previous_upstream = Application.get_env(:dawarich, :rails_upstream)
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
+    on_exit(fn -> Application.put_env(:dawarich, :rails_upstream, previous_upstream) end)
+
+    peer =
+      Task.async(fn ->
+        socket = Dawarich.Test.RawHTTP.accept(upstream)
+        {head, rest} = Dawarich.Test.RawHTTP.read_head(socket)
+        body = Dawarich.Test.RawHTTP.read_at_least(socket, rest, byte_size(override))
+        Dawarich.Test.RawHTTP.reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n")
+        :gen_tcp.close(socket)
+        {Dawarich.Test.RawHTTP.request_line(head), body}
+      end)
+
     replayed = AuthHandler.call(conn, enabled: true, registration_enabled: false, fallback: & &1)
-    refute replayed.halted
+    assert replayed.status == 200 and replayed.halted
+    assert Task.await(peer) == {"POST /users/sign_in HTTP/1.1", override}
     assert replayed.private.dawarich_raw_body == override
 
     raw = "user%5Bemail%5D=unknown&user%5Bpassword%5D=secret"

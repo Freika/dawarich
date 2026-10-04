@@ -91,6 +91,142 @@ defmodule DawarichWeb.AuthGateEndpointTest do
 
   defp no_puma(ctx), do: assert({:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 200))
 
+  test "real endpoint supports native and Rails OTP phases without duplicate effects", ctx do
+    names =
+      ~w(OTP_ENCRYPTION_PRIMARY_KEY OTP_ENCRYPTION_DETERMINISTIC_KEY OTP_ENCRYPTION_KEY_DERIVATION_SALT)
+
+    old = Map.new(names, &{&1, System.get_env(&1)})
+    Enum.each(names, &System.put_env(&1, "a11d-endpoint-synthetic"))
+
+    on_exit(fn ->
+      for {k, v} <- old, do: if(v, do: System.put_env(k, v), else: System.delete_env(k))
+    end)
+
+    otp = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ"
+    {:ok, cipher} = Dawarich.Auth.TwoFactor.Secret.encrypt(otp)
+    id = user!(%{email: "a11d-endpoint@dawarich.test", encrypted_password: @hash, settings: %{}})
+
+    Repo.query!(
+      "UPDATE users SET otp_required_for_login=true,otp_secret=$2 WHERE id=$1",
+      [id, cipher],
+      log: false
+    )
+
+    {session, cookie} = guest()
+
+    login =
+      URI.encode_query(%{
+        "authenticity_token" => RailsCsrf.masked_token(session),
+        "user[email]" => "a11d-endpoint@dawarich.test",
+        "user[password]" => "safepassword12"
+      })
+
+    Application.put_env(:dawarich, :phoenix_auth, ~w(credentials otp))
+    registration("false")
+
+    peer =
+      Task.async(fn ->
+        case :gen_tcp.accept(ctx.upstream.listen, 200) do
+          {:error, :timeout} ->
+            :none
+
+          {:ok, socket} ->
+            read_head(socket)
+            reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\npuma")
+            :puma
+        end
+      end)
+
+    response =
+      exchange(ctx, form("POST", "/users/sign_in", cookie, login, "Accept: text/html\r\n"))
+
+    assert Task.await(peer) == :none
+    assert {422, headers, _} = response
+    assert values(headers, "x-dawarich-auth-owner") == ["native-otp"]
+
+    pending_cookie =
+      Enum.find(values(headers, "set-cookie"), &String.starts_with?(&1, "_dawarich_session="))
+      |> String.split(";")
+      |> hd()
+
+    [_, value] = String.split(pending_cookie, "=", parts: 2)
+
+    {:ok, pending} =
+      RailsCookies.decrypt(value, "_dawarich_session", RailsSecret.fetch(), DateTime.utc_now())
+
+    assert pending["otp_user_id"] == id and pending["warden.user.user.key"] == nil
+
+    attempt =
+      URI.encode_query(%{
+        "authenticity_token" =>
+          RailsCsrf.masked_form_token(pending, "/users/otp_challenge", "POST"),
+        "otp_attempt" => "invalid"
+      })
+
+    Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
+    seen = to_puma(ctx, form("POST", "/users/otp_challenge", pending_cookie, attempt))
+    assert seen.body == attempt
+    Application.put_env(:dawarich, :phoenix_auth, ["otp"])
+
+    parsed =
+      Plug.Test.conn("POST", "http://www.example.com/users/otp_challenge", attempt)
+      |> Plug.Conn.put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> Plug.Conn.put_req_header("content-length", Integer.to_string(byte_size(attempt)))
+      |> Plug.Test.put_req_cookie("_dawarich_session", value)
+
+    DawarichWeb.AuthOtp.Http.call(parsed,
+      enabled: true,
+      fallback: fn conn ->
+        preserved = conn.private[:dawarich_raw_body] == attempt
+        assert preserved
+        conn
+      end
+    )
+
+    seen = to_puma(ctx, form("POST", "/users/otp_challenge", pending_cookie, attempt))
+    assert seen.body == attempt and seen.response == {200, ["rails=1; path=/"], [], "puma"}
+
+    assert Repo.query!(
+             "SELECT sign_in_count,consumed_timestep,failed_otp_attempts FROM users WHERE id=$1",
+             [id],
+             log: false
+           ).rows == [[0, nil, 0]]
+
+    now = DateTime.utc_now() |> DateTime.to_unix()
+
+    source_pending =
+      Map.merge(session, %{
+        "otp_user_id" => id,
+        "otp_challenge_at" => now,
+        "otp_remember_me" => false
+      })
+
+    source_cookie =
+      "_dawarich_session=" <>
+        RailsCookies.encrypt(source_pending, "_dawarich_session", RailsSecret.fetch())
+
+    good =
+      URI.encode_query(%{
+        "authenticity_token" => RailsCsrf.masked_token(source_pending),
+        "otp_attempt" => Dawarich.Auth.TwoFactor.Totp.at(otp, now)
+      })
+
+    {:ok, _} = Redis.cache_command(["DEL", @key])
+
+    assert {302, headers, ""} =
+             exchange(ctx, form("POST", "/users/otp_challenge", source_cookie, good))
+
+    assert values(headers, "x-dawarich-auth-owner") == ["native-otp"]
+    assert Repo.query!("SELECT sign_in_count FROM users WHERE id=$1", [id]).rows == [[1]]
+    assert to_puma(ctx, form("POST", "/users/otp_challenge", source_cookie, good)).body == good
+
+    for path <- ~w(/users/password /api/v1/auth/otp_challenge /users/auth/github /users/sign_in) do
+      assert to_puma(ctx, form("POST", path, cookie, attempt)).body == attempt
+    end
+
+    no_puma(ctx)
+  end
+
   test "endpoint management ownership and OTP login handback remain independent", ctx do
     names =
       ~w(OTP_ENCRYPTION_PRIMARY_KEY OTP_ENCRYPTION_DETERMINISTIC_KEY OTP_ENCRYPTION_KEY_DERIVATION_SALT)
