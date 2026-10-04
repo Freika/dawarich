@@ -1,21 +1,39 @@
 defmodule Dawarich.Places.WebTags do
   @moduledoc false
+  @max 9_223_372_036_854_775_807
+  @min -9_223_372_036_854_775_808
 
   def supported?(attrs),
     do:
       not Map.has_key?(attrs, "tag_ids") or
         (is_list(attrs["tag_ids"]) and
-           Enum.all?(
-             attrs["tag_ids"],
-             &(is_nil(&1) or is_integer(&1) or (is_binary(&1) and &1 =~ ~r/\A\d*\z/))
-           ))
+           Enum.all?(attrs["tag_ids"], &valid_id?/1))
+
+  defp valid_id?(id) when id in [nil, ""], do: true
+  defp valid_id?(id) when is_integer(id), do: id >= @min and id <= @max
+
+  defp valid_id?(id) when is_binary(id) do
+    normalized = canonical(id)
+    id =~ ~r/\A\d+\z/ and byte_size(normalized) <= 19 and String.to_integer(normalized) <= @max
+  end
+
+  defp valid_id?(_), do: false
+
+  defp canonical(id) do
+    case String.trim_leading(id, "0") do
+      "" -> "0"
+      normalized -> normalized
+    end
+  end
 
   def save(repo, action, owner, id, attrs, stamp) do
     if Map.has_key?(attrs, "tag_ids") do
       ids =
         attrs["tag_ids"]
         |> Enum.reject(&(&1 in [nil, ""]))
-        |> Enum.map(fn id -> if is_integer(id), do: id, else: String.to_integer(id) end)
+        |> Enum.map(fn id ->
+          if is_integer(id), do: id, else: String.to_integer(canonical(id))
+        end)
         |> Enum.uniq()
 
       repo.transaction(fn ->

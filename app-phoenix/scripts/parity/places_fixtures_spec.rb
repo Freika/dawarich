@@ -438,6 +438,21 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
         end
         remainder_json('responses.json', { now: now.iso8601, responses: })
         remainder_json('effects.json', { now: now.iso8601, effects: })
+        %i[create update].each_with_index do |action, index|
+          user = reader(98_950 + index, 'timezone' => 'Europe/Berlin')
+          id = 989_000 + index * 20
+          entry = { action:, demo: true, framed: false, format: action == :create ? 'turbo' : 'html',
+                    attrs: { name: 'Rails bounds', latitude: '51.34', longitude: '12.37',
+                             tag_ids: ['9223372036854775808'] } }
+          remainder_seed(user, id, entry)
+          _, error = remainder_request(user, id, entry)
+          expect(error).to be_nil
+          expect(response.status).to eq(action == :create ? 200 : 303)
+          place = Place.find(action == :create ? id + 10 : id)
+          expect(place.name).to eq('Rails bounds')
+          expect(place.demo).to be(false)
+          expect(place.tags).to be_empty
+        end
       end
     end
   end

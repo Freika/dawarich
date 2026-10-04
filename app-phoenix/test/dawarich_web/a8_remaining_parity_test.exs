@@ -109,6 +109,38 @@ defmodule DawarichWeb.A8RemainingParityTest do
     assert snapshot() == before
   end
 
+  test "out of range place tag IDs replay before create or demo adoption" do
+    upstream = upstream!()
+
+    for name <- ~w(create_ordinary_turbo_false update_demo_html_false) do
+      entry = Enum.find(@places, &(&1["name"] == name))
+      user = FrameSeeds.seed_place_remainder!(entry)
+
+      for value <- ["9223372036854775808", String.duplicate("9", 100), "00009223372036854775808"] do
+        request = entry["request"]
+
+        attrs =
+          request["params"]["place"]
+          |> Map.put("tag_ids", [value])
+          |> Map.put("name", "Must stay on Rails")
+
+        entry = put_in(entry, ["request", "params", "place"], attrs)
+        {run, raw} = submit(entry, user)
+        replay(upstream, run, raw)
+      end
+    end
+
+    assert Dawarich.Places.WebTags.supported?(%{
+             "tag_ids" => ["", nil, "0", "0000", "9223372036854775807", "0009223372036854775807"]
+           })
+
+    assert Dawarich.Places.WebTags.supported?(%{
+             "tag_ids" => [-9_223_372_036_854_775_808, 9_223_372_036_854_775_807]
+           })
+
+    refute Dawarich.Places.WebTags.supported?(%{"tag_ids" => [-9_223_372_036_854_775_809]})
+  end
+
   test "remaining corpus matches responses effects markup and rollback" do
     upstream = upstream!()
     previous_jobs = Application.get_env(:dawarich, :jobs_repo)
