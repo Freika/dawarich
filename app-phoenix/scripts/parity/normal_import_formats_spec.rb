@@ -70,4 +70,29 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
       end
     end
   end
+
+  context 'OwnTracks' do
+    it 'records OwnTracks importer outcomes from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.owntracks_cases.each do |name, bytes|
+          effects = []
+          allow(Points::TileEpoch).to receive(:bump).and_wrap_original do |method, user_id, timestamps:|
+            effects << { 'kind' => 'points.tile_epoch', 'payload' => { 'timestamps' => timestamps } }
+            method.call(user_id, timestamps:)
+          end
+          allow(Turbo::StreamsChannel).to receive(:broadcast_replace_to).and_wrap_original do |method, *args, **options|
+            if options[:partial] == 'imports/table_row'
+              effects << { 'kind' => 'imports.progress', 'payload' => { 'locale' => 'de' } }
+            end
+            method.call(*args, **options)
+          end
+          result = NormalImportFormatsSupport.capture_owntracks(name, bytes)
+          expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
+          expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
+          expect(result.fetch('import').fetch('doubles')).to be_a(Integer)
+          NormalImportFormatsSupport.write(name, result.merge('commands' => effects))
+        end
+      end
+    end
+  end
 end

@@ -277,4 +277,59 @@ module NormalImportFormatsSupport
     Point.reset_column_information
     Points::DimensionResolver.reset_column_availability!
   end
+
+  def owntracks_cases
+    point = { '_type' => 'location', 'lat' => 51.3, 'lon' => 12.4, 'tst' => 1_768_519_800,
+              'alt' => 12.75, 'vel' => 36.0, 'topic' => 'owntracks/test', 'SSID' => 'synthetic',
+              'BSSID' => 'synthetic', 'batt' => 88, 'acc' => 2, 'vac' => 3, 'bs' => 2, 'conn' => 'w',
+              't' => 'p', 'm' => 0, 'tid' => 'oracle', 'inrids' => [], 'inregions' => nil }
+    line = ->(attrs) { "2026-01-15T23:30:00Z\t*\t#{attrs.to_json}\n" }
+    mixed = [point, point.merge('_type' => 'waypoint', 'tst' => point['tst'] + 1),
+             point.merge('_type' => 'status', 'tst' => point['tst'] + 2),
+             point.except('_type').merge('tst' => point['tst'] + 3), point.merge('lat' => nil)]
+    flags = point.merge('m' => false, 'p' => false, 'batt' => false, 'vel' => false,
+                        'topic' => nil, 'inrids' => nil, 'inregions' => [])
+    cases = [
+      ['owntracks_import_empty', ''], ['owntracks_import_valid', line.call(point)],
+      ['owntracks_import_mixed', "#{mixed.map(&line).join}1\t*\t{broken\n1\t-\t{}\n"],
+      ['owntracks_import_flags', line.call(flags)],
+      ['owntracks_import_whitespace', "1 * #{point.to_json}\n"],
+      ['owntracks_import_duplicate', line.call(point) * 1001],
+      ['owntracks_import_invalid_utf8', line.call(point).sub('oracle', "oracle\xFF").b],
+      ['owntracks_import_bad', "1\t*\t{broken\nmissing\n"],
+      ['owntracks_import_failure', 2001.times.map do |i|
+        line.call(point.merge('tst' => point['tst'] + i, 'alt' => i == 1000 ? 100_000_000 : 12.75))
+      end.join]
+    ]
+    [999, 1000, 1001, 2001].each do |count|
+      bytes = count.times.map { |i| line.call(point.merge('tst' => point['tst'] + i)) }.join
+      cases << ["owntracks_import_#{count}", bytes]
+    end
+    cases
+  end
+
+  def capture_owntracks(name, bytes)
+    Time.use_zone('UTC') do
+      I18n.with_locale(:de) do
+        user, import = owner!('UTC', 'de')
+        import.update_columns(source: 1, name: "#{name}.rec")
+        input = "#{name}.rec"
+        path = DIR.join(input)
+        File.binwrite(path, bytes)
+        error = nil
+        begin
+          OwnTracks::Importer.new(import, user.id, path.to_s).call
+        rescue StandardError => e
+          error = { 'class' => e.class.name, 'message' => e.message }
+        end
+        snapshot(import).merge('zone' => 'UTC', 'locale' => 'de', 'input' => input, 'error' => error)
+      end
+    end
+  ensure
+    connection = ActiveRecord::Base.connection
+    %w[points notifications imports users].each do |table|
+      key = table == 'users' ? 'id' : 'user_id'
+      connection.execute("DELETE FROM #{table} WHERE #{key}=987001")
+    end
+  end
 end
