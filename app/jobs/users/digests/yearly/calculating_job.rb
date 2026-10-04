@@ -2,8 +2,17 @@
 
 class Users::Digests::Yearly::CalculatingJob < ApplicationJob
   queue_as :digests
+  OWNER_KEY = 'command:digests.calculate_year'
 
   def perform(user_id, year)
+    return forward(user_id, year) if JobOwnership.oban?(OWNER_KEY)
+
+    calculate(user_id, year)
+  end
+
+  private
+
+  def calculate(user_id, year)
     user = find_user_or_skip(user_id) || return
 
     I18n.with_locale(user.locale) do
@@ -16,7 +25,11 @@ class Users::Digests::Yearly::CalculatingJob < ApplicationJob
     create_digest_failed_notification(user_id, e)
   end
 
-  private
+  def forward(user_id, year)
+    JobCommands.forward('digests.calculate_year',
+                        { 'user_id' => user_id, 'year' => year.to_i, 'time_zone' => Time.zone.name },
+                        event_id: job_id, aggregate_id: user_id, producer: self.class.name)
+  end
 
   def recalculate_monthly_stats(user_id, year)
     (1..12).each do |month|

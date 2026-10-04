@@ -48,6 +48,7 @@ defmodule Dawarich.Auth.AdmissionTest do
     end
 
     assert {:handoff, :parameters} = Admission.form(raw, "locale=de", fields)
+    assert {:handoff, :parameters} = Admission.form("", "&&", fields)
     assert {:handoff, :parameters} = Admission.form(String.duplicate("x", 65_537), "", fields)
     checkbox = "user%5Bremember_me%5D=0&user%5Bremember_me%5D=1"
     assert {:ok, %{"user[remember_me]" => "1"}} = Admission.form(checkbox, "")

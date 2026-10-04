@@ -8,7 +8,17 @@ defmodule DawarichWeb.Strangler do
 
   @browser_like ~r/,\s*\*\/\*|\*\/\*\s*,/
   @page_types ~w(text/html */* application/xhtml+xml text/vnd.turbo-stream.html)
-  @page_pipelines [:browser, :insights, :rails_frame, :sharing, :sharing_unlock, :trial_resume]
+  @page_pipelines [
+    :browser,
+    :insights,
+    :rails_frame,
+    :sharing,
+    :sharing_unlock,
+    :trial_resume,
+    :admin_writes,
+    :trial_welcome,
+    :public_home
+  ]
   @keys %{"s" => "sharing", "invitations" => "family"}
 
   @constraints %{
