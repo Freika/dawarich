@@ -13,6 +13,20 @@ defmodule Dawarich.Test.UserDataSeeds do
 
     if export do
       insert_rows(repo, export["seed_rows"])
+
+      repo.insert_all("exports", [
+        %{
+          id: 988_202,
+          user_id: user,
+          name: "user_data_export_20261002_120000.zip",
+          file_format: 2,
+          file_type: 1,
+          status: 1,
+          processing_started_at: @stamp,
+          created_at: @stamp,
+          updated_at: @stamp
+        }
+      ])
     else
       repo.insert_all("users", [
         %{
@@ -42,6 +56,7 @@ defmodule Dawarich.Test.UserDataSeeds do
 
     %{
       user_id: user,
+      export_id: if(export, do: 988_202),
       archive_path: path,
       expected: expected,
       context: %{
