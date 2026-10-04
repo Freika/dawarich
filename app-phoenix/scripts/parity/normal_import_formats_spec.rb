@@ -86,6 +86,20 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
     end
   end
 
+  context 'Mobile photo library' do
+    it 'records mobile photo library importer outcomes from Rails' do
+      travel_to Time.utc(2026, 1, 15, 23, 30) do
+        NormalImportFormatsSupport.mobile_photo_library_cases.each do |name, bytes, zone|
+          stub_const('Point::ALTITUDE_DECIMAL_SUPPORTED', !name.end_with?('_legacy'))
+          result = NormalImportFormatsSupport.capture_json(name, bytes, zone, 15, MobilePhotoLibrary::Importer)
+          expect(result.fetch('import')).to include('doubles', 'raw_points', 'processed', 'raw_data')
+          expect(result.fetch('points')).to all(include('lonlat', 'timestamp', 'raw_data'))
+          NormalImportFormatsSupport.write(name, result)
+        end
+      end
+    end
+  end
+
   context 'GeoJSON' do
     it 'records GeoJSON importer outcomes from Rails' do
       travel_to Time.utc(2026, 1, 15, 23, 30) do

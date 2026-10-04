@@ -36,6 +36,45 @@ module NormalImportFormatsSupport
     cases
   end
 
+  def mobile_photo_library_cases
+    point = { latitude: 51.3, longitude: 12.4, timestamp: 1_768_519_800, altitude: 12.75 }
+    envelope = { type: 'DawarichPhotoLibrary', version: 1, points: [point] }
+    encode = ->(value) { JSON.generate(value, allow_nan: true) }
+    collection = ->(points) { encode.call(envelope.merge(points: points)) }
+    boundaries = [point.merge(latitude: -90, longitude: -180, timestamp: 2_147_483_647, altitude: 99_999_999.99),
+                  point.merge(latitude: 90, longitude: 180, timestamp: 1, altitude: -99_999_999.99),
+                  point.merge(timestamp: 2_147_483_648), point.merge(timestamp: 1_768_519_800_123),
+                  point.merge(timestamp: 0.5), point.merge(altitude: 100_000_000, timestamp: 2),
+                  point.merge(altitude: -100_000_000, timestamp: 3),
+                  point.merge(latitude: 90.1), point.merge(longitude: -180.1),
+                  point.merge(latitude: 0, longitude: 0), point.merge(timestamp: -1),
+                  point.merge(timestamp: '2026-01-15'), point.merge(latitude: Float::INFINITY),
+                  point.merge(longitude: Float::NAN), point.merge(altitude: Float::INFINITY, timestamp: 4),
+                  point.merge(latitude: false), point.merge(timestamp: nil), nil, false, [],
+                  point.merge(latitude: '51.3', longitude: '12.4', timestamp: '1768519801', altitude: '12.75')]
+    cases = [['mobile_import_empty', '', 'UTC'], ['mobile_import_valid', encode.call(envelope), 'UTC'],
+             ['mobile_import_boundaries', collection.call(boundaries), 'UTC'],
+             ['mobile_import_legacy', encode.call(envelope), 'UTC'],
+             ['mobile_import_version', encode.call(envelope.merge(version: 2)), 'UTC'],
+             ['mobile_import_wrong_type', encode.call(envelope.merge(type: 'other')), 'UTC'],
+             ['mobile_import_wrong_points', encode.call(envelope.merge(points: {})), 'UTC'],
+             ['mobile_import_missing_points', encode.call(envelope.except(:points)), 'UTC'],
+             ['mobile_import_array', encode.call([point]), 'UTC'],
+             ['mobile_import_null', 'null', 'UTC'], ['mobile_import_none', collection.call([]), 'UTC'],
+             ['mobile_import_duplicate', collection.call([point] * 1001), 'UTC'],
+             ['mobile_import_rejected', collection.call([nil] * 1001), 'UTC'],
+             ['mobile_import_second_rejected', collection.call(1000.times.map do |i|
+               point.merge(timestamp: point[:timestamp] + i)
+             end + [point.merge(timestamp: 2_147_483_648)]), 'UTC']]
+    [999, 1000, 1001, 2001].each do |count|
+      cases << ["mobile_import_#{count}", collection.call(count.times.map do |i|
+        point.merge(timestamp: point[:timestamp] + i)
+      end), 'UTC']
+    end
+    cases << ['mobile_import_malformed', cases.last[1].delete_suffix(']}'), 'UTC']
+    cases
+  end
+
   def capture_json(name, bytes, zone, source, importer, legacy = name.end_with?('_legacy'))
     if legacy
       output = nil
