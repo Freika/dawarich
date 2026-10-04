@@ -249,7 +249,7 @@ defmodule Dawarich.Imports.JsonStream.Scalar do
     end
   end
 
-  defp scrub(bytes) do
+  def scrub(bytes) do
     if String.valid?(bytes), do: bytes, else: bytes |> scrub(0, 0, []) |> IO.iodata_to_binary()
   end
 
