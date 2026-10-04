@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe 'Users::Digests::Commands' do
+  include ActiveSupport::Testing::TimeHelpers
+
   self.use_transactional_tests = false
 
   before { phoenix_tables! }
@@ -11,8 +13,52 @@ RSpec.describe 'Users::Digests::Commands' do
     JobOutbox.where(command_type: %w[digests.calculate_month digests.calculate_year]).delete_all
     ActiveRecord::Base.connection.execute(
       'DELETE FROM phoenix.job_owners WHERE key IN ' \
-        "('command:digests.calculate_month', 'command:digests.calculate_year')"
+        "('command:digests.calculate_month', 'command:digests.calculate_year', " \
+        "'cron:monthly_digest_scheduling_job', 'cron:yearly_digest_scheduling_job')"
     )
+  end
+
+  it 'Rails digest schedulers stop under native cron ownership and keep their legacy scan otherwise' do
+    user = create(:user, status: :active)
+    create(:stat, user:, year: 2030, month: 2)
+    create(:stat, user:, year: 2029, month: 1)
+    allow(User).to receive(:active_or_trial).and_call_original
+    schedulers = {
+      'monthly' => [Users::Digests::Monthly::SchedulingJob, Users::Digests::Monthly::CalculatingJob,
+                    [user.id, 2030, 2]],
+      'yearly' => [Users::Digests::Yearly::SchedulingJob, Users::Digests::Yearly::CalculatingJob, [user.id, 2029]]
+    }
+
+    travel_to Time.zone.local(2030, 3, 2, 12) do
+      schedulers.each do |period, (scheduler, _calculator, _args)|
+        job_owner!("cron:#{period}_digest_scheduling_job", :oban)
+        expect { scheduler.perform_now }.not_to have_enqueued_job
+      end
+      expect(User).not_to have_received(:active_or_trial)
+
+      schedulers.each do |period, (scheduler, calculator, args)|
+        key = "cron:#{period}_digest_scheduling_job"
+        ActiveRecord::Base.connection.execute("DELETE FROM phoenix.job_owners WHERE key = '#{key}'")
+        [nil, :sidekiq].each do |owner|
+          job_owner!(key, owner) if owner
+          clear_enqueued_jobs
+          expect { scheduler.perform_now }.to have_enqueued_job(calculator).with(*args)
+        end
+        ActiveRecord::Base.transaction do
+          ActiveRecord::Base.connection.execute('DROP TABLE phoenix.job_owners')
+          expect { scheduler.perform_now }.to have_enqueued_job(calculator).with(*args)
+          raise ActiveRecord::Rollback
+        end
+
+        type = period == 'monthly' ? 'digests.calculate_month' : 'digests.calculate_year'
+        job_owner!("command:#{type}", :oban)
+        clear_enqueued_jobs
+        expect { scheduler.perform_now }.to have_enqueued_job(calculator).with(*args)
+        expect(JobOutbox.where(command_type: type)).to be_empty
+        calculator.perform_now(*args)
+        expect(JobOutbox.where(command_type: type).sole.payload).to include('user_id' => user.id, 'year' => args[1])
+      end
+    end
   end
 
   it 'queued Rails digest calculations forward their stable ID and ambient zone once after claim' do
