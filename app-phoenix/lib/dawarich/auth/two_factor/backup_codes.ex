@@ -42,7 +42,7 @@ defmodule Dawarich.Auth.TwoFactor.BackupCodes do
   defp valid_hash?(nil), do: true
 
   defp valid_hash?(hash) when is_binary(hash),
-    do: Token.blank?(hash) or Regex.match?(~r/\A\$2[aby]\$\d{2}\$[.\/A-Za-z0-9]{53}\z/, hash)
+    do: Token.blank?(hash) or Regex.match?(~r/\A\$2[ab]\$\d{2}\$[.\/A-Za-z0-9]{53}\z/, hash)
 
   defp valid_hash?(_), do: false
 

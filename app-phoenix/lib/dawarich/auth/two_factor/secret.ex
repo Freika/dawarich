@@ -57,7 +57,7 @@ defmodule Dawarich.Auth.TwoFactor.Secret do
     hash = user.encrypted_password
 
     cond do
-      not is_binary(hash) or not Regex.match?(~r/\A\$2[aby]\$\d{2}\$[.\/A-Za-z0-9]{53}\z/, hash) ->
+      not is_binary(hash) or not Regex.match?(~r/\A\$2[ab]\$\d{2}\$[.\/A-Za-z0-9]{53}\z/, hash) ->
         {:handoff, :actor}
 
       not is_binary(salt) or not Plug.Crypto.secure_compare(binary_part(hash, 0, 29), salt) ->

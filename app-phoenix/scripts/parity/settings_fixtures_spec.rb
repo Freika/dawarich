@@ -354,6 +354,41 @@ RSpec.describe 'Phoenix fixtures: settings, account and insights as Rails render
       end
     end
 
+    it 'records A11c review legacy hash behavior' do
+      travel_to now do
+        password = 'a11c-fixture-password-42'
+        backup = 'a11c-review-backup'
+        rows = %w[password backup].each_with_index.map do |kind, index|
+          actor = two_factor_actor(74_620 + index)
+          client = two_factor_browser(actor)
+          password_hash = BCrypt::Engine.hash_secret(password, '$2a$04$abcdefghijklmnopqrstuu')
+          backup_hash = BCrypt::Engine.hash_secret(backup, '$2a$04$abcdefghijklmnopqrstuu')
+          password_hash = password_hash.sub('$2a$', '$2y$') if kind == 'password'
+          backup_hash = backup_hash.sub('$2a$', '$2y$') if kind == 'backup'
+          expect(Devise::Encryptor.compare(User, password_hash, password)).to be(true)
+          expect(Devise::Encryptor.compare(User, backup_hash, backup)).to be(true)
+          actor.update!(encrypted_password: password_hash, otp_secret: otp_secret,
+                        otp_required_for_login: true, otp_backup_codes: [backup_hash])
+          data = two_factor_session(client).merge('warden.user.user.key' => [[actor.id], actor.authenticatable_salt])
+          two_factor_seed_session(client, data)
+          before = actor.reload.attributes
+          client.delete('/settings/two_factor', params: {
+                          authenticity_token: two_factor_csrf(client), password: password, otp_attempt: backup
+                        })
+          expect(client.response.status).to eq(302)
+          expect(actor.reload.attributes.values_at('otp_secret', 'otp_required_for_login', 'otp_backup_codes'))
+            .to eq([nil, false, nil])
+          ignored = %w[otp_secret otp_required_for_login otp_backup_codes updated_at]
+          expect(actor.attributes.except(*ignored) == before.except(*ignored)).to be(true)
+          { 'kind' => kind, 'password_hash' => password_hash, 'backup_hash' => backup_hash,
+            'input' => { 'password' => password, 'otp_attempt' => backup },
+            'password_valid' => true, 'backup_valid' => true, 'status' => client.response.status,
+            'disabled' => true, 'flash' => client.request.flash.to_hash }
+        end
+        two_factor_fixture('review_legacy_hashes.json', rows)
+      end
+    end
+
     it 'writes or verifies A11c management contract fixtures' do
       travel_to now do
         corpus = two_factor_corpus

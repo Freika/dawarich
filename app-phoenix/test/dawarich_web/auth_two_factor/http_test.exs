@@ -129,6 +129,45 @@ defmodule DawarichWeb.AuthTwoFactor.HttpTest do
     refute_received :otp_write
   end
 
+  test "Rails legacy password hash replays before effects", c do
+    legacy_hash_exclusion(c, "password")
+  end
+
+  test "Rails legacy backup hash replays before effects", c do
+    legacy_hash_exclusion(c, "backup")
+  end
+
+  defp legacy_hash_exclusion(c, kind) do
+    rows =
+      File.read!("test/fixtures/auth/two_factor/review_legacy_hashes.json") |> Jason.decode!()
+
+    row = Enum.find(rows, &(&1["kind"] == kind))
+    {:ok, ciphertext} = Secret.encrypt("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", @env)
+
+    seed(
+      encrypted_password: row["password_hash"],
+      otp_secret: ciphertext,
+      otp_required_for_login: true,
+      otp_backup_codes: [row["backup_hash"]],
+      consumed_timestep: nil
+    )
+
+    session =
+      Map.put(c.session, "warden.user.user.key", [[@id], binary_part(row["password_hash"], 0, 29)])
+
+    params = Map.put(row["input"], "authenticity_token", action_token(session, "DELETE", @path))
+    raw = URI.encode_query(params)
+    assert row["password_valid"] and row["backup_valid"] and row["disabled"]
+    assert row["status"] == 302
+    before = snapshot()
+    result = request(session, raw, "DELETE") |> Http.call(c.opts)
+    assert result.private[:replayed] == true and result.halted
+    assert_received {:replayed, "DELETE", ^raw}
+    assert snapshot() == before
+    assert result.resp_cookies == %{}
+    refute_received :otp_write
+  end
+
   test "management HTTP dispatch matches source actions and CSRF-bound overrides", c do
     assert Code.ensure_loaded?(Http), "management HTTP module must exist"
     assert Http.init([]) == []
