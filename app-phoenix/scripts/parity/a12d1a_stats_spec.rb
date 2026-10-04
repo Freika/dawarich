@@ -250,7 +250,7 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
 
   def digest_capture
     profiles = %w[berlin january previous_zero southern southern_alias missing_zone invalid_zone blank_zone
-                  country_shapes malformed_json malformed_daily malformed_minutes ranked_locations
+                  country_shapes malformed_json malformed_daily false_daily malformed_minutes ranked_locations
                   lite_partial lite_inherited
                   no_data old_data existing unchanged duplicates invalid_yearly invalid_month missing_user deleted_user
                   nil_mode missing_endpoint track_bounds default_ambient]
@@ -259,6 +259,7 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
         next if %w[duplicates invalid_yearly].include?(profile) && kind == 'monthly'
         next if profile == 'invalid_month' && kind == 'yearly'
         next if profile == 'default_ambient' && kind == 'monthly'
+        next if profile == 'false_daily' && kind == 'yearly'
 
         digest_isolated(profile) { digest_case(profile, kind) }
       end
@@ -417,13 +418,18 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
       end
     end
     previous_year, previous_month = month == 1 ? [year - 1, 12] : [year, month - 1]
+    daily_distance = case profile
+                     when 'malformed_daily' then 'invalid'
+                     when 'false_daily' then false
+                     else [[1, 12.5], %w[2 24], [3, 0]]
+                     end
     rows = [
       { id: 14_301, user_id: digest_user_id, year: year - 1, month: 1, distance: 7000,
         toponyms: [{ 'country' => 'Old', 'cities' => [{ 'city' => 'Old city' }] }] },
       { id: 14_302, user_id: digest_user_id, year: previous_year, month: previous_month,
         distance: profile == 'previous_zero' ? 0 : 20_000, toponyms: [{ 'country' => 'Previous', 'cities' => [] }] },
       { id: 14_303, user_id: digest_user_id, year:, month:, distance: 12_500, flight_distance: 425,
-        daily_distance: profile == 'malformed_daily' ? 'invalid' : [[1, 12.5], %w[2 24], [3, 0]], toponyms: tops },
+        daily_distance:, toponyms: tops },
       { id: 14_304, user_id: 14_102, year:, month: 3, distance: 999_999,
         toponyms: [{ 'country' => 'Other', 'cities' => [{ 'city' => 'Other city' }] }] }
     ]

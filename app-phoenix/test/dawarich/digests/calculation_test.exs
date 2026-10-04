@@ -45,6 +45,16 @@ defmodule Dawarich.Digests.CalculationTest do
     refute Enum.any?(countries, &(&1["name"] == "Outside ambient year"))
   end
 
+  test "monthly public call accepts false daily distance as an empty recorded Rails hash" do
+    kase = DigestFixtures.case!("false_daily_monthly")
+    assert Enum.any?(kase["input"]["stats"], &(&1["daily_distance"] == false))
+    DigestFixtures.load!(ScratchRepo, kase)
+    assert {:ok, id} = calculate(kase)
+    expected = Enum.map(kase["expected"]["rows"], &Map.put(&1, "id", id))
+    assert DigestFixtures.digests(ScratchRepo, 14101) == expected
+    assert hd(expected)["monthly_distances"] == %{}
+  end
+
   test "failure rolls back digest writes and reports the original exception" do
     kase = DigestFixtures.case!("duplicates_yearly")
     assert {:ok, :ok} = ScratchRepo.transaction(fn -> DigestFixtures.load!(ScratchRepo, kase) end)

@@ -6,7 +6,7 @@ defmodule Dawarich.Digests.CorpusTest do
 
   test "loads every recorded digest input without losing JSON types or other users" do
     cases = DigestFixtures.all()
-    assert length(cases) == 67
+    assert length(cases) == 68
 
     for kase <- cases do
       assert {:error, :loaded} =

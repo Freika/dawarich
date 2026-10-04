@@ -43,7 +43,7 @@ defmodule Dawarich.Digests.CalculateMonth do
     end
   end
 
-  defp daily(nil), do: %{}
+  defp daily(value) when value in [nil, false], do: %{}
   defp daily(value) when is_map(value), do: value
 
   defp daily(value) when is_list(value),
