@@ -171,6 +171,269 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
     sign_out user if user
   end
 
+  context 'A8 remaining places' do
+    let(:dir) { super().join('remaining') }
+
+    around do |example|
+      detailed = Rails.application.env_config['action_dispatch.show_detailed_exceptions']
+      Rails.application.env_config['action_dispatch.show_detailed_exceptions'] = false
+      example.run
+    ensure
+      Rails.application.env_config['action_dispatch.show_detailed_exceptions'] = detailed
+    end
+
+    before { FileUtils.mkdir_p(dir.join('pages')) }
+
+    def remainder_json(name, data)
+      encoded = "#{Oj.dump(data.deep_stringify_keys, mode: :strict, float_precision: 0, indent: 2)}\n"
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        File.write(dir.join(name), encoded)
+      else
+        expect(JSON.parse(dir.join(name).read)).to eq(JSON.parse(encoded))
+      end
+    end
+
+    def remainder_rows(model, scope)
+      scope.order(model.primary_key).map do |row|
+        row.attributes.transform_values do |value|
+          if value.respond_to?(:utc)
+            value.utc.iso8601(6)
+          elsif value.is_a?(BigDecimal)
+            value.to_s('F')
+          elsif value.respond_to?(:coordinates)
+            value.coordinates
+          else
+            value
+          end
+        end
+      end
+    end
+
+    def remainder_graph(user, id)
+      { places: remainder_rows(Place, Place.where(id: id...id + 20)),
+        visits: remainder_rows(Visit, Visit.where(id: id...id + 20)),
+        place_visits: remainder_rows(PlaceVisit, PlaceVisit.where(visit_id: id...id + 20)),
+        notes: remainder_rows(Note, Note.where(id: id...id + 20)),
+        tags: remainder_rows(Tag, Tag.where(id: id...id + 20)),
+        taggings: remainder_rows(Tagging, Tagging.where(taggable_type: 'Place', taggable_id: id...id + 20)),
+        actor: user_row(user) }
+    end
+
+    def remainder_cases
+      valid = { name: 'Café <&> Leipzig', latitude: '51.34', longitude: '12.37', source: 'manual', note: "\nPlain <&>" }
+      creates = {
+        ordinary: valid, default: valid.merge(name: Place::DEFAULT_NAME),
+        unicode255: valid.merge(name: '界' * 255), unicode256: valid.merge(name: '界' * 256),
+        blank_name: valid.merge(name: ''), missing_name: valid.except(:name),
+        blank_lat: valid.merge(latitude: ''), nil_lon: valid.merge(longitude: nil),
+        missing_coords: valid.except(:latitude, :longitude), zero: valid.merge(latitude: '0', longitude: '0'),
+        photon: valid.merge(source: 'photon'), gpx: valid.merge(source: 'gpx_waypoint'),
+        blank_source: valid.merge(source: ''), invalid_source: valid.merge(source: 'bogus'),
+        tags: valid.merge(tag_ids: :mixed), empty_tags: valid.merge(tag_ids: [])
+      }
+      updates = {
+        name: { name: 'Edited Café' }, noop: { name: 'Before' }, default: { name: Place::DEFAULT_NAME },
+        unicode255: { name: '界' * 255 }, unicode256: { name: '界' * 256 }, blank_name: { name: '' },
+        blank_coords: { latitude: '', longitude: '' }, nil_coords: { latitude: nil, longitude: nil },
+        coords: { latitude: '51.4', longitude: '12.4' }, zero: { latitude: '0', longitude: '0' },
+        source: { source: 'gpx_waypoint' }, blank_source: { source: '' }, invalid_source: { source: 'bogus' },
+        note: { note: "\nEdited <&>" }, empty_note: { note: '' }, nil_note: { note: nil },
+        omitted_tags: { note: 'Keep tags' }, empty_tags: { tag_ids: [] },
+        mixed_tags: { tag_ids: :mixed }, foreign_tags: { tag_ids: :foreign }
+      }
+      cases = []
+      %w[html turbo].each do |format|
+        [false, true].each do |framed|
+          creates.each do |key, attrs|
+            cases << { name: "create_#{key}_#{format}_#{framed}", action: :create, attrs:, format:, framed: }
+          end
+          updates.each do |key, attrs|
+            cases << { name: "update_#{key}_#{format}_#{framed}", action: :update, attrs:, format:, framed: }
+          end
+          cases << { name: "update_demo_#{format}_#{framed}", action: :update, attrs: { name: 'Adopted' },
+                     format:, framed:, demo: true }
+          cases << { name: "delete_#{format}_#{framed}", action: :destroy, format:, framed: }
+          %i[show update destroy].each do |action|
+            cases << { name: "foreign_#{action}_#{format}_#{framed}", action:, format:, framed:, foreign: true,
+                       attrs: { name: 'Forbidden' } }
+          end
+          cases << { name: "show_#{format}_#{framed}", action: :show, format:, framed: }
+        end
+      end
+      { disabled: { latitude: '51.34', longitude: '12.37' }, zero: { latitude: '0', longitude: '0' },
+        missing: {}, blank_lat: { latitude: '', longitude: '12.37' },
+        missing_lon: { latitude: '51.34' },
+        radius: { latitude: '51.34', longitude: '12.37', radius: '1.5', limit: '3' } }
+        .each { |key, attrs| cases << { name: "nearby_#{key}", action: :nearby, attrs:, format: 'html' } }
+      cases << { name: 'nearby_enabled_zero', action: :nearby, attrs: { latitude: '0', longitude: '0' },
+                 format: 'html', provider: true }
+      cases
+    end
+
+    def remainder_seed(user, id, entry)
+      foreign = reader(user.id + 100_000, 'timezone' => 'Europe/Berlin')
+      target = entry[:foreign] ? foreign : user
+      place!(target, id, 'Before', demo: entry.fetch(:demo, false), name_locked_at: now - 1.day, note: 'Before note')
+      place!(user, id + 1, 'Unrelated')
+      tag!(user, id, 'Original', id, now - 1.day, icon: '☕', color: '#aa33cc')
+      tag!(user, id + 1, 'Another', id + 1, now - 1.day)
+      tag!(foreign, id + 2, 'Foreign', id + 1, now - 1.day)
+      visit!(target, id, id, 'Active visit', now - 1.day, 30)
+      visit!(target, id + 1, id, 'Tombstoned visit', now - 2.days, 40, deleted_at: now - 1.day)
+      visit!(user, id + 2, id + 1, 'Unrelated visit', now - 3.days, 50)
+      PlaceVisit.insert!({ id:, visit_id: id, place_id: id, **stamps })
+      PlaceVisit.insert!({ id: id + 1, visit_id: id, place_id: id + 1, **stamps })
+      Note.insert!({ id:, user_id: target.id, attachable_type: 'Place', attachable_id: id,
+                     body: 'Attached note', noted_at: now, **stamps })
+      Note.insert!({ id: id + 1, user_id: user.id, body: 'Unrelated note', noted_at: now, **stamps })
+      %w[places tags taggings notes place_visits].each do |table|
+        sql = "SELECT setval(pg_get_serial_sequence('#{table}', 'id'), #{id + 10}, false)"
+        ActiveRecord::Base.connection.execute(sql)
+      end
+    end
+
+    def remainder_request(user, id, entry)
+      Rails.cache.clear
+      reset!
+      sign_in user
+      get '/settings/visits'
+      token = Nokogiri::HTML5(response.body).at_css('meta[name="csrf-token"]')['content']
+      attrs = entry.fetch(:attrs, {}).dup
+      attrs[:tag_ids] = [''] if attrs[:tag_ids] == []
+      attrs[:tag_ids] = [id, id + 1, id + 1, id + 2, ''] if attrs[:tag_ids] == :mixed
+      attrs[:tag_ids] = [id + 2] if attrs[:tag_ids] == :foreign
+      method, path, params = case entry[:action]
+                             when :create then [:post, '/places', { place: attrs }]
+                             when :update then [:patch, "/places/#{id}", { place: attrs }]
+                             when :destroy then [:delete, "/places/#{id}?page=2", {}]
+                             when :show then [:get, "/places/#{id}", {}]
+                             when :nearby then [:get, '/places/nearby', attrs]
+                             end
+      accept = entry[:format] == 'turbo' ? 'text/vnd.turbo-stream.html' : 'text/html'
+      headers = { 'X-CSRF-Token' => token, 'Accept' => accept }
+      headers['Turbo-Frame'] = 'place-drawer' if entry[:framed]
+      error = nil
+      begin
+        public_send(method, path, params:, headers:)
+      rescue StandardError => e
+        error = e
+      end
+      [{ method:, path:, params:, accept:, framed: !!entry[:framed], decoded: request.request_parameters }, error]
+    end
+
+    def remainder_assert(entry, id, before, after, error)
+      name = entry[:name]
+      if entry[:foreign]
+        expect(response.status).to eq(404), name
+        expect(after).to eq(before), name
+      elsif entry.dig(:attrs, :source) == 'bogus'
+        expect(error).to be_a(ArgumentError), name
+        expect(after).to eq(before), name
+      elsif entry[:action] == :update && entry[:attrs].key?(:latitude) && entry[:attrs][:latitude].blank?
+        expect(error).to be_a(ActiveRecord::NotNullViolation), "#{name}: #{error.inspect}"
+        expect(after).to eq(before), name
+      elsif entry[:action] == :nearby
+        expect(after).to eq(before), name
+        missing = entry[:attrs][:latitude].blank? || entry[:attrs][:longitude].blank?
+        expect(response.status).to eq(missing ? 400 : 200), name
+        expect(response.body).to include('No nearby places found') unless missing
+      elsif entry[:action] == :destroy
+        expect(error).to be_nil, name
+        expect(Place.exists?(id)).to be(false), name
+        expect(Tagging.where(taggable_type: 'Place', taggable_id: id)).to be_empty
+        expect(Note.exists?(id)).to be(false), name
+        expect(PlaceVisit.where(place_id: id)).to be_empty
+        expect(after[:visits].first(2)).to eq(before[:visits].first(2).map { _1.merge('place_id' => nil) }), name
+        expect(after[:places].find { _1['id'] == id + 1 }).to eq(before[:places].find { _1['id'] == id + 1 }), name
+        expect(after[:notes]).to eq(before[:notes].reject { _1['id'] == id }), name
+        expect(after[:tags]).to eq(before[:tags]), name
+        expect(after[:place_visits]).to eq(before[:place_visits].reject { _1['place_id'] == id }), name
+        expect(response.status).to eq(entry[:framed] ? 200 : 303), name
+      elsif %i[create update].include?(entry[:action])
+        remainder_assert_save(entry, id, before, after, error)
+      else
+        expect(after).to eq(before), name
+        expect(response.status).to eq(entry[:framed] ? 200 : 302), name
+      end
+    end
+
+    def remainder_assert_save(entry, id, before, after, error)
+      attrs = entry[:attrs]
+      create = entry[:action] == :create
+      invalid = (attrs.key?(:name) && attrs[:name].blank?) || attrs[:name].to_s.length > 255 ||
+                (create && (!attrs[:name] || attrs[:latitude].blank? || attrs[:longitude].blank?))
+      row = Place.find_by(id: create ? id + 10 : id)
+      if invalid
+        expect(after).to eq(before), entry[:name]
+        expect(row).to be_nil if create
+      else
+        expect(row).to be_present, entry[:name]
+        expect(row.name).to eq(attrs[:name]) if attrs.key?(:name)
+        expect(row.name_locked_at).to eq(now) if attrs[:name] && !['Before', Place::DEFAULT_NAME].include?(attrs[:name])
+        expect(row.name_locked_at).to be_nil if attrs[:name] == Place::DEFAULT_NAME
+        expect(row.name_locked_at).to eq(now - 1.day) if !create && attrs[:name] == 'Before'
+        expect(row.demo).to be(false) if entry[:demo]
+        expect(row.note).to eq(attrs[:note]) if attrs.key?(:note)
+        if attrs.key?(:tag_ids)
+          expected = attrs[:tag_ids] == :mixed ? [id, id + 1] : []
+          expect(row.tags.order(:id).pluck(:id)).to eq(expected), entry[:name]
+        elsif !create
+          expect(row.tags.pluck(:id)).to eq([id]), entry[:name]
+        end
+      end
+      if create && entry[:format] == 'html'
+        expect(response.status).to eq(406), entry[:name]
+      else
+        expect(error).to be_nil, entry[:name]
+        expect(response.status).to eq(entry[:format] == 'html' ? 303 : 200), entry[:name]
+      end
+    end
+
+    def remainder_response(entry, error)
+      html = error ? '' : scrub(response.body).gsub(/(name="(?:csrf-token|csp-nonce)" content=")[^"]*/, '\1CSRF')
+      path = dir.join("pages/#{entry[:name]}.html")
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        File.write(path, html)
+      else
+        expect(path.read).to eq(html), entry[:name]
+      end
+      doc = Nokogiri::HTML5.fragment(html)
+      { name: entry[:name], status: error ? nil : response.status, media_type: error ? nil : response.media_type,
+        headers: error ? {} : response.headers.slice('Content-Type', 'Location', 'Vary', 'Cache-Control'),
+        flash: error ? {} : flash.to_hash,
+        error: error && { class: error.class.name, message: error.message },
+        streams: doc.css('turbo-stream').map { { action: _1['action'], target: _1['target'] } },
+        controls: doc.css('form, input, textarea, button, [data-controller]').map do |node|
+          { tag: node.name, attributes: node.attributes.transform_values(&:value) }
+        end }
+    end
+
+    it 'writes A8 remaining place responses and effects' do
+      responses = []
+      effects = []
+      travel_to now do
+        remainder_cases.each_with_index do |entry, index|
+          id = 896_000 + index * 20
+          user = reader(18_960 + index, 'timezone' => 'Europe/Berlin')
+          remainder_seed(user, id, entry)
+          before = remainder_graph(user, id)
+          request = error = nil
+          RSpec::Mocks.with_temporary_scope do
+            configure_instance_geocoding if entry[:provider]
+            expect(Geocoding::Search).not_to receive(:call)
+            request, error = remainder_request(user, id, entry)
+          end
+          after = remainder_graph(user, id)
+          remainder_assert(entry, id, before, after, error)
+          responses << remainder_response(entry, error).merge(request:)
+          effects << { name: entry[:name], request:, before:, after: }
+        end
+        remainder_json('responses.json', { now: now.iso8601, responses: })
+        remainder_json('effects.json', { now: now.iso8601, effects: })
+      end
+    end
+  end
+
   it 'writes the places list and drawer renders' do
     expect(ENV.fetch('TIME_ZONE', nil)).to be_nil
     expect(DawarichSettings.self_hosted?).to be(true)
