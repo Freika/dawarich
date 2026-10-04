@@ -5,6 +5,18 @@ module ApiAccountGoldenOracle
   PASSWORD = 'a4rest-account-synthetic-password'
   WEBHOOK = 'a4rest-account-synthetic-webhook'
   CASES = [
+    { name: 'auth_param_valid_bearer_invalid', path: "#{P}?api_key=#{KEY}", auth: :unknown, me: true },
+    { name: 'auth_param_invalid_bearer_valid', path: "#{P}?api_key=invalid", status: 401 },
+    { name: 'auth_param_blank_bearer_valid', path: "#{P}?api_key=", status: 401 },
+    { name: 'auth_param_blank_bearer_invalid', path: "#{P}?api_key=", auth: :unknown, status: 401 },
+    { name: 'auth_param_valid_bearer_valid', path: "#{P}?api_key=#{KEY}", me: true },
+    { name: 'auth_param_invalid_bearer_invalid', path: "#{P}?api_key=invalid", auth: :unknown, status: 401 },
+    { name: 'auth_json_nil_bearer', path: P, body: { api_key: nil }, me: true },
+    { name: 'auth_json_false_bearer', path: P, body: { api_key: false }, me: true },
+    { name: 'auth_body_invalid_query_valid', path: "#{P}?api_key=#{KEY}",
+      body: { api_key: 'invalid' }, auth: :unknown, me: true },
+    { name: 'auth_body_valid_query_invalid', path: "#{P}?api_key=invalid",
+      body: { api_key: KEY }, status: 401 },
     { name: 'me_pending', path: P, user: { status: 3 }, status: 402, error: 'payment_required' },
     { name: 'me_defaults', path: P, me: true },
     { name: 'me_berlin', path: P, me: true, user: { timezone: 'Europe/Berlin' } },

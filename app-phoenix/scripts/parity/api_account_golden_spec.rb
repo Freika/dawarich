@@ -27,7 +27,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
 
   it 'records account responses and database effects from Rails' do
     oracle = ApiAccountGoldenOracle
-    cases = oracle::CASES.map do |entry|
+    cases = places_cases(oracle).map do |entry|
       kase = { method: :get, auth: :bearer, expect: :own, env: {}, content: oracle::JSON_TYPE }.merge(entry)
       result = places_record(kase, oracle:, strict: true)
       status = result.dig('response', 'status')
@@ -64,13 +64,13 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       expect(result).not_to have_key('mask')
       result
     end
-    path = Rails.root.join('app-phoenix/test/fixtures/api_account/golden.json')
+    path = Rails.root.join(ENV.fetch('API_GOLDEN_OUTPUT', 'app-phoenix/test/fixtures/api_account/golden.json'))
     FileUtils.mkdir_p(path.dirname)
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'now' => oracle::NOW.iso8601,
                 'runtime_seed_fields' => %w[users.encrypted_password users.otp_secret users.otp_backup_codes],
                 'sequences' => oracle::SEQUENCES, 'setups' => oracle.setups.sort.to_h,
                 'cases' => cases.sort_by { _1['name'] } }
-    File.write(path, "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0)}\n")
+    File.write(path, "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0).rstrip}\n")
   end
 
   def places_seed(kase)
