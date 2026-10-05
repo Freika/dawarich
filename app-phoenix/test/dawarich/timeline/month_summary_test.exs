@@ -1,11 +1,9 @@
 defmodule Dawarich.Timeline.MonthSummaryTest do
-  use Dawarich.JobsCase, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.Test.FrameSeeds, as: S
   alias Dawarich.Timeline.MonthSummary
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     %{user: S.user!(7031)}
   end
 
