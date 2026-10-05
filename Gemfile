@@ -96,7 +96,7 @@ end
 
 group :test do
   gem 'capybara'
-  gem 'fakeredis'
+  gem 'fakeredis', require: ENV['E2E_PROXY_STACK'] != '1'
   gem 'selenium-webdriver'
   gem 'shoulda-matchers'
   gem 'simplecov', require: false
