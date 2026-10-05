@@ -27,6 +27,38 @@ RSpec.describe 'Cache command routing' do
     clear_enqueued_jobs
   end
 
+  it 'cache cleaning remains Rails-only and does not claim preheat or erase unrelated state' do
+    job_owner!('command:cache.preheat_user', :oban)
+    job_owner!('cron:cache_preheating_job', :sidekiq)
+    keys = %w[stats_full_recalculation:user:180101 map:tile_epoch:180101:all]
+    keys.each { |key| Rails.cache.write(key, 17, expires_in: 1.day) }
+    Rails.cache.write('cache_jobs_scheduled', true)
+    Rails.cache.write(CheckAppVersion::VERSION_CACHE_KEY, 'source-version')
+    owners = ActiveRecord::Base.connection.select_all(
+      "SELECT * FROM phoenix.job_owners WHERE key IN ('command:cache.preheat_user','cron:cache_preheating_job') " \
+      'ORDER BY key'
+    ).to_a
+    clear_enqueued_jobs
+
+    Cache::Clean.call
+
+    expect(keys.map { |key| Rails.cache.read(key) }).to eq([17, 17])
+    expect(Rails.cache.read('cache_jobs_scheduled')).to be_nil
+    expect(Rails.cache.read(CheckAppVersion::VERSION_CACHE_KEY)).to be_nil
+    expect(ActiveRecord::Base.connection.select_all(
+      "SELECT * FROM phoenix.job_owners WHERE key IN ('command:cache.preheat_user','cron:cache_preheating_job') " \
+      'ORDER BY key'
+    ).to_a).to eq(owners)
+    expect(JobOutbox.where(command_type: 'cache.preheat_user', aggregate_id: 180_101)).to be_empty
+    expect(ActiveRecord::Base.connection.select_value(
+             "SELECT count(*) FROM phoenix.rails_commands WHERE kind IN ('cache.preheat_user','cache.preheat_sweep')"
+           )).to eq(0)
+    expect(enqueued_jobs).to be_empty
+    expect(RailsCommands::Registry::HANDLERS).not_to have_key('cache.clean')
+  ensure
+    keys&.each { |key| Rails.cache.delete(key) }
+  end
+
   it 'pending rehome reclaim and forward retain the same source job UUID zone and due time' do
     travel_to(Time.utc(2026, 10, 3, 12)) do
       User.insert_all!([{ id: 180_101, email: 'cache-command@example.invalid', encrypted_password: '', status: 1,
