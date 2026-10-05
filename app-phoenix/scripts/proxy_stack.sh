@@ -103,7 +103,8 @@ else
 fi
 
 sidekiq_from=$(($(wc -c <"$sidekiq_log") + 1))
-stack sh -c 'echo $$ >"$1"; exec nohup bundle exec sidekiq' _ "$sidekiq_pidfile" >>"$sidekiq_log" 2>&1 &
+stack sh -c 'echo $$ >"$1"; shift; exec nohup "$@"' _ "$sidekiq_pidfile" \
+  bundle exec ruby -r sidekiq/cli -e 'Sidekiq.configure_server { |config| config.on(:startup) { RailsCommands::Poller.send(:spawn) } }; cli = Sidekiq::CLI.instance; cli.parse; cli.run' >>"$sidekiq_log" 2>&1 &
 tries=0
 until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
   tries=$((tries + 1))

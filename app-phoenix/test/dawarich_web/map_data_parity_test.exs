@@ -313,6 +313,13 @@ defmodule DawarichWeb.MapDataParityTest do
 
   defp tag_island(nodes) when is_list(nodes), do: Enum.flat_map(nodes, &tag_island/1)
 
+  defp tag_island({"fieldset", attrs, children}) do
+    assert Enum.sort(attrs) ==
+             Enum.sort([{"disabled", ""}, {"data-rails-form-ready", ""}, {"class", "contents"}])
+
+    tag_island(children)
+  end
+
   defp tag_island({"div", attrs, children} = node) do
     case Map.new(attrs) do
       %{"id" => "tag-fields-" <> id, "phx-hook" => "RailsStimulus", "phx-update" => "ignore"} ->
@@ -322,7 +329,22 @@ defmodule DawarichWeb.MapDataParityTest do
                  Enum.sort([
                    {"id", "tag-fields-" <> id},
                    {"phx-hook", "RailsStimulus"},
-                   {"phx-update", "ignore"}
+                   {"phx-update", "ignore"},
+                   {"inert", ""}
+                 ])
+
+        tag_island(children)
+
+      %{"id" => "points-page-" <> key, "phx-hook" => "RailsStimulus"} ->
+        assert {:ok, _query} = Base.url_decode64(key, padding: false)
+
+        assert Enum.sort(attrs) ==
+                 Enum.sort([
+                   {"id", "points-page-" <> key},
+                   {"data-controller", "checkbox-select-all"},
+                   {"phx-hook", "RailsStimulus"},
+                   {"phx-update", "ignore"},
+                   {"inert", ""}
                  ])
 
         tag_island(children)

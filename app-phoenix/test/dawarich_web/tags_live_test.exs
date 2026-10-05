@@ -111,6 +111,30 @@ defmodule DawarichWeb.TagsLiveTest do
     assert attr(html, "[data-color-picker-target='swatch']", "data-color") |> length() == 18
   end
 
+  test "tag name and picker values share the client-owned form island", %{user: user} do
+    tag!(user, 83922)
+
+    conn =
+      get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), "/tags/83922/edit")
+
+    assert attr(conn.resp_body, "#tag-fields-83922 input[name='tag[name]']", "value") == [
+             "Home & <café>"
+           ]
+
+    {:ok, _view, html} = live(conn)
+    assert attr(html, "#tag-fields-83922", "phx-update") == ["ignore"]
+    assert attr(html, "#tag-fields-83922 input[name='tag[name]']", "value") == ["Home & <café>"]
+    assert attr(html, "#tag-fields-83922 input[name='tag[color]']", "id") == ["tag_color"]
+  end
+
+  test "form islands wait for their controllers before accepting input", %{user: user} do
+    for path <- ["/tags/new", "/points"] do
+      conn = get(RailsUser.signed_in(user.id) |> RailsUser.connecting_as(user.id), path)
+      assert attr(conn.resp_body, "[phx-hook='RailsStimulus']", "inert") == [""]
+      assert attr(conn.resp_body, "fieldset[data-rails-form-ready]", "disabled") == [""]
+    end
+  end
+
   test "privacy controls mirror enabled and disabled states", %{user: user} do
     tag!(user, 83931)
     {:ok, _view, html} = live_as(user, "/tags/83931/edit")

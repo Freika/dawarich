@@ -45,7 +45,8 @@ const registerControllers = async (app, root) => {
 const startStimulus = async (element) => {
   const { Application } = await import("@hotwired/stimulus")
   const { lazyLoadControllersFrom } = await import("@hotwired/stimulus-loading")
-  const app = Application.start(element)
+  const app = new Application(element)
+  await app.start()
   islands.add(app)
   await registerControllers(app, element)
   lazyLoadControllersFrom("controllers", app, element)
@@ -86,8 +87,15 @@ export const railsBridge = (element) => {
   bridge.onSubmit = (event) => submitStream(event, bridge)
   element.addEventListener("submit", bridge.onSubmit)
   bridge.ready = startStimulus(element)
+  bridge.ready.then(() => enableForm(element))
   bridges.set(element, bridge)
   return bridge
+}
+
+const enableForm = (element) => {
+  element.removeAttribute("inert")
+  for (const fieldset of element.querySelectorAll("[data-rails-form-ready]"))
+    fieldset.disabled = false
 }
 
 export const RailsStimulus = {
@@ -96,6 +104,7 @@ export const RailsStimulus = {
     this.reconnected()
   },
   reconnected() {
+    this.bridge.ready.then(() => enableForm(this.el))
     this.bridge.flash = (content) => {
       const alert = content.querySelector("[role='alert']")
       this.pushEvent("rails_flash", {
@@ -106,6 +115,9 @@ export const RailsStimulus = {
   },
   disconnected() {
     this.bridge.flash = appendRailsFlash
+  },
+  updated() {
+    this.bridge.ready.then(() => enableForm(this.el))
   },
   destroyed() {
     const bridge = bridges.get(this.el)
