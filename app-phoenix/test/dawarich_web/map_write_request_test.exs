@@ -180,6 +180,27 @@ defmodule DawarichWeb.MapWriteRequestTest do
     end
   end
 
+  test "browser tag document Accept admits create update delete with CSRF intact", ctx do
+    for accept <- [
+          "text/vnd.turbo-stream.html, text/html, application/xhtml+xml",
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+        ],
+        {path, suffix, action} <- [
+          {"/tags", "tag[name]=Browser", :tag_create},
+          {"/tags/42", "_method=patch&tag[name]=Browser", :tag_update},
+          {"/tags/42", "_method=delete", :tag_destroy}
+        ] do
+      conn = request(ctx, :post, path, body(ctx, suffix), [{"accept", accept}])
+      refute conn.halted
+      assert conn.assigns.map_write_action == action
+      assert conn.assigns.map_write_format == :html
+      replay(ctx, :post, path, "authenticity_token=invalid&" <> suffix, [{"accept", accept}])
+    end
+
+    assert snapshot() == [[0, 0, 0]]
+    assert commands() == []
+  end
+
   test "scalar point filters honor captured Rails query precedence", ctx do
     raw = body(ctx, "point_ids[]=42&start_at=body&end_at=end&order_by=asc&import_id=17")
     conn = request(ctx, :delete, "/points/bulk_destroy?start_at=query&order_by=desc", raw)
