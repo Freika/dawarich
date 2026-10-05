@@ -31,6 +31,10 @@ admin value cannot be overwritten by a stale copy. Refusal leaves no copy marker
 or phantom default; the operator can retry the upgrade after correcting the source.
 Existing public Rails tables and its migration ledger do not change.
 
+Release 1.13.1 owns the copied registration effect and its revised Rails adapter
+in `inline_effects.tsv`. Its callable copy entry point runs only from the Phoenix
+schema upgrade; historical public migration steps do not invoke it.
+
 With the table present, Rails and Phoenix registration readers/writers use PG.
 A missing singleton or SQL failure refuses service instead of falling back to
 Redis or an environment default. Rails retains its original cache behavior only

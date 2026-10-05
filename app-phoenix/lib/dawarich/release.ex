@@ -57,7 +57,7 @@ defmodule Dawarich.Release do
   end
 
   defp copy_registration(repo, opts) do
-    case Dawarich.ReleaseMigrations.Effects.CopyRegistrationSetting.run(repo, opts) do
+    case Dawarich.ReleaseMigrations.V1_13_1.copy_registration_setting(repo, opts) do
       {:ok, _} -> :ok
       {:error, _} -> raise "registration copy refused"
     end
