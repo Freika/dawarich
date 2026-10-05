@@ -50,6 +50,32 @@ defmodule Dawarich.Families.AutoCreateTest do
       )
       |> hd()
 
+  test "source-handled family and membership insert failures complete without partial rows or retry" do
+    for table <- ["families", "family_memberships"] do
+      user = user!()
+      event = Ecto.UUID.generate()
+      rows("ALTER TABLE #{table} ADD CONSTRAINT a12d2_creation_failure CHECK (false) NOT VALID")
+
+      try do
+        log =
+          ExUnit.CaptureLog.capture_log(fn ->
+            assert Dawarich.Families.AutoCreateWorker.run(
+                     ScratchRepo,
+                     %{"user_id" => user, "time_zone" => "Europe/Berlin", "event_id" => event},
+                     now: @now
+                   ) == :ok
+          end)
+
+        assert log =~ "Family creation failed: Postgrex.Error"
+        assert Dawarich.Jobs.Processed.done?(ScratchRepo, event)
+        assert counts(user) == [0, 0, 0]
+        assert settings(user) == %{}
+      after
+        rows("ALTER TABLE #{table} DROP CONSTRAINT a12d2_creation_failure")
+      end
+    end
+  end
+
   test "eligible Cloud owner gets one localised family membership and source sharing defaults" do
     user = user!(%{"locale" => " DE ", "sentinel" => true, "timezone" => "Asia/Tokyo"})
     assert run(user) == true

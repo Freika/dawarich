@@ -47,19 +47,41 @@ defmodule Dawarich.Families.AutoCreate do
     locale = ExploreFeatures.locale(settings, "en")
     {:ok, name} = I18n.t(locale, "services.families.auto_create.default_name")
 
-    [[family]] =
+    case create_membership(repo, user_id, name, now) do
+      false -> false
+      family -> complete(repo, user_id, family, settings, locale, name, now, opts)
+    end
+  end
+
+  defp create_membership(repo, user_id, name, now) do
+    repo.query!("SAVEPOINT family_auto_create", [], log: false)
+
+    try do
+      [[family]] =
+        repo.query!(
+          "INSERT INTO families (name, creator_id, created_at, updated_at) VALUES ($1, $2, $3, $3) RETURNING id",
+          [String.trim(name), user_id, DateTime.to_naive(now)],
+          log: false
+        ).rows
+
       repo.query!(
-        "INSERT INTO families (name, creator_id, created_at, updated_at) VALUES ($1, $2, $3, $3) RETURNING id",
-        [String.trim(name), user_id, DateTime.to_naive(now)],
+        "INSERT INTO family_memberships (family_id, user_id, role, created_at, updated_at) VALUES ($1, $2, 0, $3, $3)",
+        [family, user_id, DateTime.to_naive(now)],
         log: false
-      ).rows
+      )
 
-    repo.query!(
-      "INSERT INTO family_memberships (family_id, user_id, role, created_at, updated_at) VALUES ($1, $2, 0, $3, $3)",
-      [family, user_id, DateTime.to_naive(now)],
-      log: false
-    )
+      repo.query!("RELEASE SAVEPOINT family_auto_create", [], log: false)
+      family
+    rescue
+      error ->
+        repo.query!("ROLLBACK TO SAVEPOINT family_auto_create", [], log: false)
+        repo.query!("RELEASE SAVEPOINT family_auto_create", [], log: false)
+        Logger.warning("Family creation failed: #{inspect(error.__struct__)}")
+        false
+    end
+  end
 
+  defp complete(repo, user_id, family, settings, locale, name, now, opts) do
     hook(opts, :joined)
 
     updated =
