@@ -4,6 +4,65 @@ defmodule Dawarich.Cache.PreheatDigestsTest do
   alias Dawarich.Cache.PreheatDigests
   alias Dawarich.DigestFixtures, as: F
 
+  test "missing and soft-deleted users produce no calculations or cache effects" do
+    for profile <- ~w(missing_user deleted_user) do
+      reset!(ScratchRepo)
+      kase = F.case!("#{profile}_yearly")
+      F.load!(ScratchRepo, kase)
+
+      opts =
+        Keyword.put(F.options(kase), :calculate, fn _, _, _, _ ->
+          send(self(), {:unexpected_preheat, profile})
+          {:ok, nil}
+        end)
+
+      assert PreheatDigests.call(ScratchRepo, 14101, opts) == :ok
+      refute_receive {:unexpected_preheat, _}
+      assert F.digests(ScratchRepo, 14101) == []
+      assert [[0]] = rows("SELECT count(*) FROM phoenix.rails_commands")
+    end
+  end
+
+  test "a second-year failure retains the first save logs once and stops remaining work" do
+    for failure_at <- [1, 2], shape <- [:return, :raise] do
+      reset!(ScratchRepo)
+      kase = F.case!("berlin_yearly")
+      F.load!(ScratchRepo, kase)
+      opts = Keyword.delete(F.options(kase), :uuid)
+      failed_year = if failure_at == 1, do: 2025, else: 2024
+      fault = %RuntimeError{message: "synthetic calculation failure"}
+
+      calculate = fn repo, id, year, options ->
+        send(self(), {:attempt, year})
+
+        if year == failed_year do
+          if shape == :raise, do: raise(fault), else: {:error, fault}
+        else
+          Dawarich.Digests.Calculation.yearly(repo, id, year, options)
+        end
+      end
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert PreheatDigests.call(ScratchRepo, 14101, Keyword.put(opts, :calculate, calculate)) ==
+                   :ok
+        end)
+
+      assert_receive {:attempt, 2025}
+      if failure_at == 2, do: assert_receive({:attempt, 2024})
+      refute_receive {:attempt, _}
+
+      assert Enum.map(F.digests(ScratchRepo, 14101), & &1["year"]) ==
+               if(failure_at == 1, do: [], else: [2025])
+
+      assert length(Regex.scan(~r/Failed to preheat insights digest/, log)) == 1
+      assert log =~ "RuntimeError: synthetic calculation failure"
+      refute log =~ "@"
+      assert [[0]] = rows("SELECT count(*) FROM phoenix.rails_commands")
+      assert [[0]] = rows("SELECT count(*) FROM notifications")
+    end
+  end
+
   test "preheat calculates missing blank and older yearly rows but keeps equal fresh and no-update rows" do
     for state <- ~w(missing blank nil false list whitespace older equal fresh no_update) do
       reset!(ScratchRepo)

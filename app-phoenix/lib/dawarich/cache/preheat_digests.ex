@@ -1,5 +1,6 @@
 defmodule Dawarich.Cache.PreheatDigests do
   @moduledoc false
+  require Logger
 
   alias Dawarich.Digests.Calculation
   alias Dawarich.TimeZoneName
@@ -32,10 +33,26 @@ defmodule Dawarich.Cache.PreheatDigests do
     calculate = Keyword.get(opts, :calculate, &Calculation.yearly/4)
 
     Enum.each(years, fn [year] ->
-      if stale?(repo, id, year), do: calculate.(repo, id, year, opts)
+      if stale?(repo, id, year), do: calculate!(calculate, repo, id, year, opts)
     end)
 
     :ok
+  rescue
+    error ->
+      Logger.error(
+        "Failed to preheat insights digest for user #{id}: " <>
+          "#{inspect(error.__struct__)}: #{Exception.message(error)}"
+      )
+
+      :ok
+  end
+
+  defp calculate!(calculate, repo, id, year, opts) do
+    case calculate.(repo, id, year, opts) do
+      {:ok, _} -> :ok
+      {:error, %{__exception__: true} = error} -> raise error
+      {:error, _} -> raise "Calculation failed"
+    end
   end
 
   defp stale?(repo, id, year) do
