@@ -133,7 +133,7 @@ defmodule Dawarich.Test.RawHTTP do
 
     send_raw(socket, [
       "GET #{path} HTTP/1.1\r\nHost: #{host || "127.0.0.1:#{port}"}\r\nConnection: Upgrade\r\nUpgrade: websocket\r\n",
-      "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n",
+      "Sec-WebSocket-Version: 13\r\nSec-WebSocket-Key: #{Base.encode64("the sample nonce")}\r\n",
       Enum.map(headers, fn {name, value} -> "#{name}: #{value}\r\n" end),
       "\r\n"
     ])

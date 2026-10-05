@@ -22,6 +22,97 @@ defmodule Dawarich.UserData.RestorePlacesTest do
     %{c: c, data: data}
   end
 
+  test "restore place batches reuse metadata and identity reads and refresh changed schemas", %{
+    c: c
+  } do
+    ref = make_ref()
+    owner = self()
+
+    :ok =
+      :telemetry.attach(
+        ref,
+        [:dawarich, :scratch_repo, :query],
+        fn _, _, metadata, _ ->
+          if self() == owner do
+            cond do
+              String.contains?(metadata.query, "information_schema.columns") ->
+                send(owner, {ref, :columns})
+
+              String.contains?(metadata.query, "FROM places") ->
+                send(owner, {ref, :identity})
+
+              String.contains?(metadata.query, "FROM imports") ->
+                send(owner, {ref, :import})
+
+              true ->
+                :ok
+            end
+          end
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(ref) end)
+
+    places =
+      for n <- 1..3,
+          do: %{"name" => "metadata-#{n}", "latitude" => n, "longitude" => n}
+
+    assert Places.call(ScratchRepo, c.user_id, places, c.context) == 3
+    assert_received {^ref, :columns}
+    refute_received {^ref, :columns}
+    assert_received {^ref, :identity}
+    refute_received {^ref, :identity}
+    refute_received {^ref, :import}
+
+    rows("ALTER TABLE places ADD COLUMN loadtest_note text")
+
+    try do
+      place = %{
+        "name" => "new column",
+        "latitude" => 4,
+        "longitude" => 4,
+        "loadtest_note" => "fresh"
+      }
+
+      assert Places.call(ScratchRepo, c.user_id, [place], c.context) == 1
+      assert [["fresh"]] == rows("SELECT loadtest_note FROM places WHERE name='new column'")
+      assert_received {^ref, :columns}
+      refute_received {^ref, :columns}
+    after
+      rows("ALTER TABLE places DROP COLUMN loadtest_note")
+    end
+  end
+
+  test "restore place batch identities treat signed and rounded zero as one database value", %{
+    c: c
+  } do
+    places =
+      for lat <- [-0.0, 0.0, -0.0000004, 0.0000004],
+          do: %{"name" => "same zero", "latitude" => lat, "longitude" => lat}
+
+    assert Places.call(ScratchRepo, c.user_id, places, c.context) == 1
+    assert Places.call(ScratchRepo, c.user_id, places, c.context) == 0
+    assert [[1]] == rows("SELECT count(*) FROM places WHERE name='same zero'")
+  end
+
+  test "restore place batches preserve earlier inserts before invalid coordinates", %{c: c} do
+    for {value, error, index} <- [
+          {true, Dawarich.Ingest.Unsupported, 1},
+          {10_000.0, Postgrex.Error, 2}
+        ] do
+      valid = %{"name" => "before failure #{index}", "latitude" => 1, "longitude" => 2}
+      invalid = %{valid | "name" => "invalid #{index}", "latitude" => value}
+
+      assert_raise error, fn ->
+        Places.call(ScratchRepo, c.user_id, [valid, invalid], c.context)
+      end
+
+      assert [[valid["name"]]] ==
+               rows("SELECT name FROM places WHERE name=$1", [valid["name"]])
+    end
+  end
+
   @tag :tmp_dir
   test "restore place batches tag identity and taggable references equal Rails", %{
     c: c,
