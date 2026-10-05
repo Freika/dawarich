@@ -3,6 +3,7 @@ defmodule Dawarich.Integrations.SyncScheduling do
 
   alias Dawarich.{Entitlements, RailsCommands}
   alias Dawarich.AirTrail.ImportFlightsWorker
+  alias Dawarich.Imports.{Teslamate, Trek}
   alias Dawarich.Jobs.{Ownership, Processed}
   alias DawarichWeb.LayoutAssigns
 
@@ -42,10 +43,7 @@ defmodule Dawarich.Integrations.SyncScheduling do
   defp batch(repo, oban, kind, slot, opts, cursor) do
     rows = repo.query!(query(kind), [cursor], log: false).rows
 
-    owner =
-      if kind == :airtrail,
-        do: Ownership.lock(repo, "command:imports.airtrail_flights"),
-        else: :sidekiq
+    owner = Ownership.lock(repo, command_key(kind))
 
     Enum.each(rows, fn [id, user_id] ->
       if allowed?(repo, kind, user_id, opts) and
@@ -92,15 +90,42 @@ defmodule Dawarich.Integrations.SyncScheduling do
 
   defp allowed?(_repo, _kind, _user_id, _opts), do: true
 
+  defp command_key(:airtrail), do: "command:imports.airtrail_flights"
+  defp command_key(:teslamate), do: "command:imports.teslamate_sync"
+  defp command_key(:trek), do: "command:imports.trek_sync"
+
   defp publish(_repo, oban, :airtrail, :oban, _id, payload),
     do: Oban.insert!(oban, ImportFlightsWorker.new(payload))
 
   defp publish(repo, _oban, :airtrail, :sidekiq, _id, payload),
     do: RailsCommands.insert!(repo, "integrations.airtrail_flights", payload)
 
+  defp publish(_repo, oban, :teslamate, :oban, _id, payload),
+    do:
+      native_child(
+        oban,
+        Teslamate.SyncWorker,
+        Map.take(payload, ["user_id"]),
+        payload["event_id"]
+      )
+
+  defp publish(_repo, oban, :trek, :oban, id, payload),
+    do:
+      native_child(
+        oban,
+        Trek.SyncWorker,
+        %{"source_id" => id, "after_id" => nil},
+        payload["event_id"]
+      )
+
   defp publish(repo, _oban, :teslamate, :sidekiq, _id, payload),
     do: RailsCommands.insert!(repo, "integrations.teslamate_sync", payload)
 
   defp publish(repo, _oban, :trek, :sidekiq, id, payload),
     do: RailsCommands.insert!(repo, "integrations.trek_sync", Map.put(payload, "source_id", id))
+
+  defp native_child(oban, worker, payload, event_id) do
+    {:ok, args} = worker.args_from_command(1, payload)
+    Oban.insert!(oban, worker.new(Map.put(args, "event_id", event_id)))
+  end
 end
