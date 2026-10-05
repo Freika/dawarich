@@ -45,6 +45,10 @@
       </script>
     <% end %>
     <.favicon />
+    <script :if={assigns[:rails_trix] == true} type="module">
+      import "trix"
+      import "@rails/actiontext"
+    </script>
     <.head_scripts self_hosted={@self_hosted} />
   </head>
   <body class="min-h-screen flex flex-col">{@inner_content}</body>

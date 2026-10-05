@@ -32,6 +32,7 @@ defmodule Dawarich.TripListTest do
              name: "trip 885101",
              distance: 1000,
              countries: 1,
+             plan_json: nil,
              path_json: ~S([[12.5,51.25],[12.37346812345679,51.34]]),
              started_on: ~D[2026-05-10],
              ended_on: ~D[2026-05-11],
@@ -56,7 +57,7 @@ defmodule Dawarich.TripListTest do
 
   test "the page agrees with the gate", %{user: user} do
     TripsSeeds.trip!(%{id: 885_301, user_id: 8851, path: nil})
-    TripsSeeds.planned!("planned_accommodations", 885_301)
+    Dawarich.Repo.query!("UPDATE trips SET visited_countries = '[1]'::jsonb WHERE id = 885301")
     assert TripList.load(user, 1) == :rails
     assert TripList.gate(user, 1) == :rails
   end

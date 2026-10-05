@@ -146,7 +146,7 @@ defmodule DawarichWeb.TripsLiveTest do
       refute has_element?(far, "[role='navigation']")
     end
 
-    test "patching to a page that lists a planned trip without a path hands it to Rails", %{
+    test "patching to a page with malformed countries hands it to Rails", %{
       user: user
     } do
       for n <- 1..6,
@@ -161,7 +161,7 @@ defmodule DawarichWeb.TripsLiveTest do
         ended_at: ~N[2024-01-01 09:00:00]
       })
 
-      TripsSeeds.planned!("planned_days", 883_510)
+      Dawarich.Repo.query!("UPDATE trips SET visited_countries = '[1]'::jsonb WHERE id = 883510")
       {:ok, view, _html} = live_as(user, "/trips")
 
       assert {:error, {:redirect, %{to: "/trips?page=2"}}} = render_patch(view, "/trips?page=2")

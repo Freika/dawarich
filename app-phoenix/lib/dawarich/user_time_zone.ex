@@ -52,7 +52,7 @@ defmodule Dawarich.UserTimeZone do
 
     repo.query!(
       """
-      WITH z AS (SELECT coalesce(
+      WITH z AS MATERIALIZED (SELECT coalesce(
         (SELECT name FROM pg_timezone_names WHERE name = $#{n + 1}),
         (SELECT name FROM pg_timezone_names WHERE name = $#{n + 2}),
         'UTC') AS name)
