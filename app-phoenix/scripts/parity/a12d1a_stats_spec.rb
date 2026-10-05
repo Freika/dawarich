@@ -1531,7 +1531,7 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
     def cache_user(id = 180_101, **attributes)
       User.unscoped.insert_all!([{ id:, email: "cache-#{id}@example.invalid", encrypted_password: '',
                                   status: 1, plan: 1, settings: { 'timezone' => 'Asia/Tokyo' },
-                                  created_at: now, updated_at: now }.merge(attributes)])
+                                  created_at: now, updated_at: now, visits_redetected_at: now }.merge(attributes)])
       User.unscoped.find(id)
     end
 
@@ -1661,8 +1661,12 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
                                          else
                                            state == 'missing' ? 1000 : 777
                                          end)
-          { 'state' => state, 'distance' => result&.distance, 'calculation_calls' => calls,
-            'activity_pairs' => result&.travel_patterns&.fetch('activity_breakdown', {})&.to_a }
+          projection = { 'state' => state, 'distance' => result&.distance, 'calculation_calls' => calls,
+                         'activity_pairs' => result&.travel_patterns&.fetch('activity_breakdown', {})&.to_a }
+          if %w[warm stale_snapshot cached_nil].include?(state)
+            cache_redis { |redis| projection['wire'] = Base64.strict_encode64(redis.get(key)) }
+          end
+          projection
         end
       end
     end

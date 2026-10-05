@@ -18,6 +18,55 @@ defmodule Dawarich.Insights.DetailsDBTest do
 
   defp digests, do: Repo.query!("SELECT id, updated_at FROM digests ORDER BY id", []).rows
 
+  test "yearly readers preserve warm stale snapshots cached nil and cold corrupt unavailable hand-back results" do
+    oracle =
+      Path.expand("../fixtures/a12d1b4/cache.json", __DIR__) |> File.read!() |> Jason.decode!()
+
+    user!(180_101)
+    Repo.query!("UPDATE stats SET year=2025 WHERE user_id=180101", [])
+    stamp = ~N[2026-10-03 12:00:00]
+
+    Dawarich.Test.StatsSeeds.digest!(180_101, %{
+      id: 71,
+      year: 2025,
+      period_type: 1,
+      distance: 777,
+      updated_at: stamp,
+      travel_patterns: %{"activity_breakdown" => %{"walking" => 1, "flying" => 2}}
+    })
+
+    key = Details.yearly_key(180_101, 2025, stamp)
+    assert key == hd(oracle["staleness"])["key"]
+
+    for state <- ~w(warm stale_snapshot cached_nil cold corrupt failure) do
+      expected = Enum.find(oracle["readers"], &(&1["state"] == state))
+
+      Repo.query!("UPDATE digests SET distance=$1 WHERE id=71", [
+        if(state == "stale_snapshot", do: 888, else: 777)
+      ])
+
+      assert {:ok, _} = Redis.cache_command(["DEL", key])
+
+      cond do
+        expected["wire"] -> cache!(key, Base.decode64!(expected["wire"]))
+        state == "corrupt" -> Redis.cache_command(["SET", key, "corrupt fixture"])
+        state == "failure" -> stop_supervised!(Dawarich.Redis.Cache)
+        true -> :ok
+      end
+
+      before = Repo.query!("SELECT * FROM digests ORDER BY id", []).rows
+
+      {digest, hand_back} =
+        Dawarich.Insights.Details.Digests.yearly(180_101, 2025, [%{"year" => 2025}])
+
+      assert hand_back == state in ~w(cold corrupt failure)
+      assert (digest && digest["distance"]) == expected["distance"]
+      pairs = digest && Dawarich.RailsCache.JsonOrder.pattern_pairs(digest).activity_pairs
+      assert (pairs && Enum.map(pairs, &Tuple.to_list/1)) == expected["activity_pairs"]
+      assert Repo.query!("SELECT * FROM digests ORDER BY id", []).rows == before
+    end
+  end
+
   test "a missing yearly digest for a year with stats is Rails' to calculate", %{user: user} do
     monthly_digest!(4, ~N[2024-04-01 00:00:00])
     before = digests()
