@@ -115,6 +115,97 @@ defmodule DawarichWeb.PublicHomeTest do
     assert render_hook(view, "lv:clear-flash", %{"key" => "notice"}) =~ "Location history"
   end
 
+  test "registration-disabled Rails notice survives the guest transport join and is consumed once" do
+    native_auth()
+    :ok = RegistrationSetting.put(false)
+    notice = "Registration is not available. Please contact your administrator for access."
+
+    conn =
+      build_conn()
+      |> put_req_cookie(
+        "_dawarich_session",
+        RailsUser.cookie(%{"flash" => %{"discard" => [], "flashes" => %{"notice" => notice}}})
+      )
+      |> get("/")
+
+    assert_guest_notice(conn, notice)
+  end
+
+  test "native logout notice survives the guest transport join and is consumed once" do
+    native_auth()
+    session = RailsUser.session(15701)
+
+    body =
+      URI.encode_query(%{
+        "_method" => "delete",
+        "authenticity_token" => DawarichWeb.RailsCsrf.masked_token(session)
+      })
+
+    conn =
+      build_conn()
+      |> put_req_cookie("_dawarich_session", RailsUser.cookie(session))
+      |> put_req_header("content-type", "application/x-www-form-urlencoded")
+      |> put_req_header("content-length", to_string(byte_size(body)))
+      |> post("/users/sign_out", body)
+
+    assert conn.status == 303
+    assert get_resp_header(conn, "x-dawarich-auth-owner") == ["native-credentials"]
+    assert get_resp_header(conn, "location") == ["http://www.example.com/"]
+    assert_guest_notice(conn |> recycle() |> get("/"), "Signed out successfully.")
+  end
+
+  defp native_auth do
+    previous = System.get_env("SELF_HOSTED")
+    flows = Application.get_env(:dawarich, :phoenix_auth)
+    System.put_env("SELF_HOSTED", "true")
+    Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("SELF_HOSTED", previous),
+        else: System.delete_env("SELF_HOSTED")
+
+      if flows,
+        do: Application.put_env(:dawarich, :phoenix_auth, flows),
+        else: Application.delete_env(:dawarich, :phoenix_auth)
+    end)
+  end
+
+  defp assert_guest_notice(conn, notice) do
+    assert conn.status == 200
+    assert conn.resp_body =~ notice
+    assert get_resp_header(conn, "location") == []
+
+    token =
+      conn.resp_body
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("meta[name='phoenix-csrf-token']")
+      |> LazyHTML.attribute("content")
+      |> hd()
+
+    request = conn |> browser_recycle() |> Map.put(:params, %{"_csrf_token" => token})
+
+    info =
+      Phoenix.Socket.Transport.connect_info(request, @endpoint,
+        session: {:mfa, {@endpoint, :session_options, []}}
+      )
+
+    assert is_map(info.session), "guest WebSocket session must pass Phoenix CSRF validation"
+    assert is_nil(info.session["rails_user_id"])
+    {:ok, view, html} = conn |> put_private(:live_view_connect_info, info) |> live()
+    assert html =~ notice
+    assert has_element?(view, "#flash-messages", notice)
+    next = conn |> browser_recycle() |> get("/")
+    assert next.status == 200
+    refute next.resp_body =~ notice
+  end
+
+  defp browser_recycle(conn) do
+    conn = recycle(conn)
+    cookie = conn |> get_req_header("cookie") |> Enum.join("; ")
+    conn |> delete_req_header("cookie") |> put_req_header("cookie", cookie)
+  end
+
   defp session(locale, self_hosted) do
     %{
       "rails_user_id" => nil,
