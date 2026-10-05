@@ -105,7 +105,8 @@ module PhoenixBuildInputs
   end
 
   def time_zones_json
-    JSON.generate('options' => Object.new.extend(UserHelper).settings_time_zone_options)
+    JSON.generate('tzinfo_data_version' => Gem.loaded_specs.fetch('tzinfo-data').version.to_s,
+                  'options' => Object.new.extend(UserHelper).settings_time_zone_options)
   end
 
   def importmap_json(manifest = nil)
