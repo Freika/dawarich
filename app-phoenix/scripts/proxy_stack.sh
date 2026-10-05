@@ -14,6 +14,7 @@ MAILPIT_NAME="${MAILPIT_NAME:-e2e-mailpit}"
 rel="$root/app-phoenix/_build/prod/rel/dawarich/bin/dawarich"
 pidfile="$root/tmp/pids/proxy_stack_$PORT.pid"
 sidekiq_pidfile="$root/tmp/pids/proxy_stack_sidekiq_$PORT.pid"
+rails_pidfile="$root/tmp/pids/proxy_stack_rails_$PORT.pid"
 log="$root/log/proxy_stack_$PORT.log"
 sidekiq_log="$root/log/proxy_stack_sidekiq_$PORT.log"
 
@@ -36,6 +37,7 @@ if [ "${1:-}" = --down ]; then
   if epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; then
     stack "$rel" stop
   fi
+  [ -f "$rails_pidfile" ] && kill "$(cat "$rails_pidfile")" 2>/dev/null || true
   [ -f "$sidekiq_pidfile" ] && kill "$(cat "$sidekiq_pidfile")" 2>/dev/null || true
   tries=0
   while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || { [ -f "$sidekiq_pidfile" ] && kill -0 "$(cat "$sidekiq_pidfile")" 2>/dev/null; } || epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; do
@@ -44,7 +46,7 @@ if [ "${1:-}" = --down ]; then
     sleep 1
   done
   redis-cli -p "$REDIS_PORT" shutdown nosave >/dev/null 2>&1 || true
-  rm -f "$pidfile" "$sidekiq_pidfile"
+  rm -f "$pidfile" "$sidekiq_pidfile" "$rails_pidfile"
   exit 0
 fi
 
@@ -103,7 +105,7 @@ else
 fi
 
 sidekiq_from=$(($(wc -c <"$sidekiq_log") + 1))
-stack ruby -e 'Process.daemon(true, true); File.write(ARGV.shift, Process.pid.to_s); exec(*ARGV)' "$sidekiq_pidfile" bundle exec ruby -e 'require "sidekiq/cli"; Sidekiq.configure_server { |config| config.on(:startup) { RailsCommands::Poller.send(:spawn) } }; cli = Sidekiq::CLI.instance; cli.parse; cli.run' >>"$sidekiq_log" 2>&1
+stack ruby -e 'Process.daemon(true, true); exec(*ARGV)' bundle exec ruby -e 'File.write(ARGV.shift, Process.pid.to_s); require "sidekiq/cli"; Sidekiq.configure_server { |config| config.on(:startup) { RailsCommands::Poller.send(:spawn) } }; cli = Sidekiq::CLI.instance; cli.parse; cli.run' "$sidekiq_pidfile" >>"$sidekiq_log" 2>&1
 tries=0
 until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
   tries=$((tries + 1))

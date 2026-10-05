@@ -1173,6 +1173,60 @@ def consume_web_otp(fixture, request)
 end
 
 case ARGV[1]
+when 'account_link_stand', 'account_link_stand_cleanup', 'account_link_stand_verify'
+  raise 'Allocated stand database required' unless ENV.fetch('DATABASE_NAME') == 'dawarich_test_rel2b1'
+  raise 'Private stand payload required' unless (File.stat(ARGV.fetch(0)).mode & 0o777) == 0o600
+
+  ids = [911_456_101, 911_456_102, 911_456_103]
+  emails = ids.map { |id| "a11e-stand-#{id}@example.invalid" }
+  if mode == 'account_link_stand_verify'
+    actors = ids.zip(emails).map { |id, email| User.unscoped.find_by!(id:, email:) }
+    raise 'Correct confirmation did not link and authenticate' unless actors[0].provider == 'openid_connect' &&
+                                                                      actors[0].uid == "a11e-stand-#{ids[0]}" &&
+                                                                      actors[0].sign_in_count.positive?
+    raise 'Refusal or email changed identity' unless actors[1].provider.nil? && actors[1].uid.nil? &&
+                                                     actors[1].sign_in_count.zero?
+    raise 'OTP link authenticated' unless actors[2].provider == 'openid_connect' &&
+                                          actors[2].uid == "a11e-stand-#{ids[2]}" && actors[2].sign_in_count.zero?
+
+    puts 'Rails account-link stand state: PASS linked sign-in, unchanged refusal, OTP link without authentication'
+  elsif mode == 'account_link_stand_cleanup'
+    ids.zip(emails).each do |id, email|
+      User.unscoped.where(id:, email:).delete_all
+      Rails.cache.delete("oauth_account_link:rate_limit:#{id}")
+    end
+    puts 'Rails account-link stand actors: CLEANED'
+  else
+    existing = User.unscoped.where(id: ids).exists? || User.unscoped.where(email: emails).exists?
+    raise 'Stand actors already exist' if existing
+
+    Rails.application.routes.append do
+      devise_scope :user do
+        get 'users/auth/openid_connect/callback', to: 'users/omniauth_callbacks#openid_connect'
+      end
+    end
+    Rails.application.reload_routes!
+    Rails.application.env_config['devise.mapping'] = Devise.mappings[:user]
+    OmniAuth.config.test_mode = true
+    ActionController::Base.allow_forgery_protection = true
+    fixture['actors'] = ids.zip(emails).map do |id, email|
+      user = User.create!(id:, email:, password: 'safepassword12', settings: {}, status: :active,
+                          plan: :pro, skip_auto_trial: true, skip_family_sync: true)
+      user.update_columns(otp_required_for_login: id == ids.last, active_until: 10.years.from_now)
+      wire, _token, state = account_link_source_pair(user, "a11e-stand-#{id}")
+      raise 'Source pending identity missing' unless state.dig('pending_oauth_link', 'user_id') == id
+      raise 'Source pending identity authenticated' if state.key?('warden.user.user.key')
+
+      { 'id' => id, 'email' => email, 'cookie' => wire }
+    end
+    clock = Object.new.extend(ActiveSupport::Testing::TimeHelpers)
+    clock.travel_to(20.minutes.ago) do
+      user = User.unscoped.find_by!(id: ids[1], email: emails[1])
+      fixture['expired_cookie'] = account_link_source_pair(user, "a11e-stand-#{ids[1]}").first
+    end
+    File.write(ARGV.fetch(0), JSON.generate(fixture))
+    puts 'Rails account-link stand fixture: PASS three callback-issued anonymous pending sessions and expiry'
+  end
 when 'api_auth_otp_work'
   consume_api_otp_work(fixture)
 when 'api_auth_password_work'
