@@ -9,6 +9,7 @@ visit_suggesting_job:
   cron: "5 0 * * *" # every day at 00:05
   class: "BulkVisitsSuggestingJob"
   queue: visit_suggesting
+  args: ["a12d3_cron"]
 
 watcher_job:
   cron: "0 */1 * * *" # every 1 hour

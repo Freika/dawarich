@@ -44,6 +44,8 @@ defmodule Dawarich.Visits.BulkSweepWorkerTest do
             "event_id" => Ecto.UUID.generate()
           }
 
+          args = Map.put(args, "source_job_id", args["event_id"])
+
           assert {:ok, decoded} =
                    BulkSweepWorker.args_from_command(1, Map.delete(args, "event_id"))
 
@@ -129,6 +131,32 @@ defmodule Dawarich.Visits.BulkSweepWorkerTest do
     assert rows(
              "SELECT count(*) FROM oban.oban_jobs WHERE worker = 'Dawarich.Visits.SuggestWorker'"
            ) == [[1001]]
+
+    reset!(ScratchRepo)
+    f = Enum.find(cases, &(&1["id"] == "cron_defaults"))
+    load_users(f["users"])
+    Ownership.put!(ScratchRepo, BulkSweepWorker.key(), :oban)
+    {:ok, now, _} = DateTime.from_iso8601(f["now"])
+
+    assert BulkSweepWorker.run_cron(ScratchRepo, @oban, DateTime.to_unix(now),
+             env: env("cron_defaults"),
+             time_zone: f["ambient_zone"],
+             now: now
+           ) == :ok
+
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
+    intents = rows("SELECT kind, payload FROM phoenix.rails_commands ORDER BY id")
+    assert length(intents) == length(f["jobs"])
+
+    for [kind, payload] <- intents do
+      assert kind == "visits.suggest"
+
+      assert Map.keys(payload) |> Enum.sort() ==
+               ~w(end_at event_id plan_restricted start_at stepping time_zone user_id)
+
+      assert payload["stepping"] == "fixed"
+      assert payload["time_zone"] == "Asia/Tokyo"
+    end
   end
 
   defp load_users(users) do

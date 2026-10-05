@@ -150,11 +150,7 @@ module JobCommands
     },
     'visits.suggest' => {
       version: 1,
-      sidekiq: lambda { |payload, at|
-        JobCommands.enqueue_after_commit(nil) do
-          VisitSuggestingJob.set(wait_until: at).perform_later(**Visits::Commands.job_arguments(payload))
-        end
-      }
+      sidekiq: ->(payload, at) { Visits::BulkCommands.enqueue_suggest(payload, at) }
     },
     'visits.full_history_redetect' => {
       version: 1,
@@ -188,6 +184,7 @@ module JobCommands
    .merge(Achievements::BulkCommands::COMMANDS)
    .merge(Stats::Commands::COMMANDS)
    .merge(Cache::Commands::COMMANDS)
+   .merge(Visits::BulkCommands::COMMANDS)
    .merge(Users::RecalculationCommands::COMMANDS)
    .merge(Points::AnomalyBackfillCommands::COMMANDS)
    .merge(Imports::ProcessCommands::COMMANDS)

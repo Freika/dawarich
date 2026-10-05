@@ -8,10 +8,18 @@ defmodule Dawarich.Visits.BulkSweepWorker do
 
   def args_from_command(
         1,
-        %{"start_at" => a, "end_at" => b, "user_ids" => ids, "time_zone" => zone} = p
+        %{
+          "start_at" => a,
+          "end_at" => b,
+          "user_ids" => ids,
+          "time_zone" => zone,
+          "source_job_id" => source_id
+        } = p
       )
-      when map_size(p) == 4 and is_binary(a) and is_binary(b) and is_list(ids) and is_binary(zone) do
+      when map_size(p) == 5 and is_binary(a) and is_binary(b) and is_list(ids) and is_binary(zone) and
+             is_binary(source_id) do
     if Enum.all?(ids, &(is_integer(&1) and &1 > 0)) and
+         match?({:ok, _}, Ecto.UUID.cast(source_id)) and
          match?({:ok, _, _}, DateTime.from_iso8601(a)) and
          match?({:ok, _, _}, DateTime.from_iso8601(b)),
        do: {:ok, p},
