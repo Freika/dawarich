@@ -3,7 +3,7 @@ defmodule Dawarich.ReleaseCloudTest do
 
   alias Dawarich.{Release, ReleaseMigration, Repo}
 
-  @role "dawarich_phoenix_nocreate"
+  defp role, do: "dawarich_phoenix_nocreate" <> System.get_env("MIX_TEST_PARTITION", "")
   @password "nocreate"
 
   setup do
@@ -95,7 +95,7 @@ defmodule Dawarich.ReleaseCloudTest do
   describe "a role without CREATE on the database" do
     setup do
       drop_schemas_and_role()
-      Repo.query!("CREATE ROLE #{@role} LOGIN PASSWORD '#{@password}'")
+      Repo.query!("CREATE ROLE #{role()} LOGIN PASSWORD '#{@password}'")
       on_exit(&restore_schemas_and_role/0)
 
       pool =
@@ -104,7 +104,7 @@ defmodule Dawarich.ReleaseCloudTest do
            name: nil,
            pool: DBConnection.ConnectionPool,
            pool_size: 2,
-           username: @role,
+           username: role(),
            password: @password}
         )
 
@@ -120,8 +120,8 @@ defmodule Dawarich.ReleaseCloudTest do
       for {name, value} <- [{"false", false}, {"nil", nil}] do
         Repo.query!("DROP SCHEMA IF EXISTS phoenix CASCADE")
         Repo.query!("DROP SCHEMA IF EXISTS oban CASCADE")
-        Repo.query!("CREATE SCHEMA phoenix AUTHORIZATION #{@role}")
-        Repo.query!("CREATE SCHEMA oban AUTHORIZATION #{@role}")
+        Repo.query!("CREATE SCHEMA phoenix AUTHORIZATION #{role()}")
+        Repo.query!("CREATE SCHEMA oban AUTHORIZATION #{role()}")
         source = Base.decode64!(fixture["registration"][name])
 
         assert with_pool(pool, fn ->
@@ -244,9 +244,9 @@ defmodule Dawarich.ReleaseCloudTest do
     Repo.query!("""
     DO $$
     BEGIN
-      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '#{@role}') THEN
-        DROP OWNED BY #{@role};
-        DROP ROLE #{@role};
+      IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '#{role()}') THEN
+        DROP OWNED BY #{role()};
+        DROP ROLE #{role()};
       END IF;
     END
     $$

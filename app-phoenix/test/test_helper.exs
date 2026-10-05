@@ -1,4 +1,12 @@
 ExUnit.start(exclude: [:rails_parity])
+
+if System.get_env("MIX_TEST_PARTITION", "") != "" do
+  tmp = Application.fetch_env!(:dawarich, :test_tmp_dir)
+  File.mkdir_p!(tmp)
+  System.put_env("TMPDIR", tmp)
+  System.put_env("PHOENIX_TEST_REDIS_URL", Application.fetch_env!(:dawarich, :redis)[:url])
+end
+
 Application.put_env(:dawarich, :allowed_hosts, [])
 Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :auto)
 

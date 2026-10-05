@@ -7,7 +7,28 @@ connection = [
   password: System.get_env("DATABASE_PASSWORD", "postgres")
 ]
 
-test_database = System.get_env("PHOENIX_TEST_DATABASE", "dawarich_phoenix_test")
+partition = System.get_env("MIX_TEST_PARTITION", "")
+
+if partition != "" and partition not in ~w(1 2 3 4),
+  do: raise("MIX_TEST_PARTITION must be between 1 and 4")
+
+test_database = System.get_env("PHOENIX_TEST_DATABASE", "dawarich_phoenix_test") <> partition
+redis_url = System.get_env("PHOENIX_TEST_REDIS_URL", "redis://127.0.0.1:7153")
+
+redis_url =
+  if partition == "" do
+    redis_url
+  else
+    uri = URI.parse(redis_url)
+    URI.to_string(%{uri | port: (uri.port || 6379) + String.to_integer(partition) - 1})
+  end
+
+test_root =
+  if partition == "",
+    do: Path.expand("../tmp", __DIR__),
+    else: Path.expand("../tmp/partitions/#{partition}", __DIR__)
+
+config :dawarich, :test_tmp_dir, Path.join(test_root, "system")
 
 config :dawarich,
        Dawarich.Repo,
@@ -38,7 +59,7 @@ config :dawarich,
 config :dawarich, Oban, testing: :manual
 
 config :dawarich, :redis,
-  url: System.get_env("PHOENIX_TEST_REDIS_URL", "redis://127.0.0.1:7153"),
+  url: redis_url,
   database: 1,
   cache_database: 0
 
@@ -57,8 +78,11 @@ config :logger, level: :warning
 
 config :dawarich, :rails_secret, "phoenix-a2-cookie-fixture-secret-not-for-production"
 
-config :dawarich, :i18n_path, Path.expand("../tmp/i18n.json", __DIR__)
-config :dawarich, :achievements_path, Path.expand("../tmp/achievements.json", __DIR__)
+config :dawarich, :i18n_path, Path.join(test_root, "i18n.json")
+config :dawarich, :achievements_path, Path.join(test_root, "achievements.json")
 
 config :dawarich, :cable, bus: false
-config :dawarich, :cable_prefix, "dawarich_a12a"
+
+config :dawarich,
+       :cable_prefix,
+       if(partition == "", do: "dawarich_a12a", else: "dawarich_a12a_part#{partition}")
