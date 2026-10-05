@@ -3,6 +3,50 @@
 require 'rails_helper'
 
 RSpec.describe ReleaseCommands do
+  it 'A12rel rehome and reverse bulk retain source arguments and scheduled time' do
+    payload = { 'import_id' => 54_001, 'ambient_zone' => 'Asia/Tokyo' }
+    samples = [
+      ['release.achievements_backfill', {}, DataMigrations::BackfillAchievementsJob, []],
+      ['release.import_backfill', payload, TransportationModes::ImportBackfillJob, [54_001]]
+    ]
+    samples.each do |type, data, klass, arguments|
+      command = JobCommands::COMMANDS.fetch(type)
+      expect(command.fetch(:version)).to eq(1)
+      expect { command.fetch(:sidekiq).call(data, at) }.to have_enqueued_job(klass).with(*arguments).at(at)
+      expect(enqueued_jobs.last['timezone'])
+        .to eq(type == 'release.import_backfill' ? 'Asia/Tokyo' : Time.zone.name)
+      clear_enqueued_jobs
+      job_owner!("command:#{type}", :oban)
+      JobCommands.forward(type, data, event_id: SecureRandom.uuid, aggregate_id: nil, producer: 'spec',
+scheduled_at: at)
+      expect { expect(JobCommands.rehome!(type, by: 'spec')).to eq({ moved: 1, left: 0 }) }
+        .to have_enqueued_job(klass).with(*arguments).at(at)
+      expect(JobOutbox.count).to eq(0)
+      clear_enqueued_jobs
+    end
+
+    job_id = '2ce791c6-a6d3-57d0-a80b-f180c7944093'
+    root = 'e18e8b6f-370a-5f22-a306-3291938cd8c5'
+    options = { 'notify' => false, 'force' => true, 'stale_only' => true }
+    reverse = { 'job_id' => job_id, 'options' => options, 'run_at' => at.iso8601(6) }
+    %i[sidekiq oban].each do |owner|
+      job_owner!('command:achievements.bulk_check', owner)
+      job_owner!('command:achievements.check', owner == :oban ? :sidekiq : :oban)
+      expect { RailsCommands::Registry::HANDLERS.fetch('release_achievements_bulk_check').fetch(:call).call(reverse) }
+        .to have_enqueued_job(Achievements::BulkCheckJob).with(**options.symbolize_keys).at(at)
+      serialized = enqueued_jobs.last
+      expect(serialized['job_id']).to eq(job_id)
+      expect(Achievements::BulkCommands.root(job_id, nil)).to eq(root)
+      if owner == :oban
+        ActiveJob::Base.deserialize(serialized).perform_now
+        expect(JobOutbox.sole).to have_attributes(event_id: root, command_type: 'achievements.bulk_check',
+                                                  payload: options)
+        JobOutbox.delete_all
+      end
+      clear_enqueued_jobs
+    end
+  end
+
   samples = {
     'release.point_dimensions_country' => [
       [{ 'phase' => 'dimensions', 'start_id' => nil, 'batch_size' => 50_000, 'repair_collisions' => false },
