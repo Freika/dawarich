@@ -75,7 +75,7 @@ defmodule Dawarich.Points.WebDestroyTest do
     assert {:ok, %{deleted: deleted, selected: true}} =
              WebDestroy.run(Repo, ctx.user, ["", "919810", "919810", "919819", "919811"], ctx.ctx)
 
-    assert Enum.map(deleted, & &1.id) |> Enum.sort() == [919_810, 919_811]
+    assert Enum.map(deleted, & &1.id) == [919_810, 919_811]
     assert Repo.query!("SELECT id FROM points ORDER BY id").rows == [[919_812], [919_819]]
     assert [["points.web_destroy_follow_up", payload]] = commands()
     assert payload["timestamps"] == [1_767_223_800, 1_767_224_700]
@@ -83,6 +83,22 @@ defmodule Dawarich.Points.WebDestroyTest do
     assert payload["oldest_timestamp"] == 1_767_223_800
     assert payload["timezone"] == "Europe/Berlin"
     assert payload["locale"] == "de"
+  end
+
+  test "deleted points and follow-up timestamps use ascending ids despite descending insertion",
+       ctx do
+    Repo.query!("DELETE FROM points WHERE id IN (919810,919811)")
+    FrameSeeds.point!(ctx.user.id, 919_811, 1_767_224_700)
+    FrameSeeds.point!(ctx.user.id, 919_810, 1_767_223_800)
+    Repo.query!("SET LOCAL enable_indexscan=off")
+    Repo.query!("SET LOCAL enable_bitmapscan=off")
+
+    assert {:ok, %{deleted: deleted}} =
+             WebDestroy.run(Repo, ctx.user, ["919811", "919810"], ctx.ctx)
+
+    assert Enum.map(deleted, & &1.id) == [919_810, 919_811]
+    assert [["points.web_destroy_follow_up", payload]] = commands()
+    assert payload["timestamps"] == [1_767_223_800, 1_767_224_700]
   end
 
   test "actual deleted rows adjust user import counters preserve archives", ctx do
