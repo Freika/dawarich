@@ -16,8 +16,23 @@ defmodule Dawarich.Release do
 
   def migrate_oban, do: with_repos(&install_oban/1)
 
-  def readiness do
-    if Enum.all?(map_repos(&schemas_ready?/1)), do: :ready, else: :schemas_behind
+  def readiness(opts \\ []) do
+    mode = Dawarich.Release.Lifecycle.mode(Keyword.get(opts, :env, System.get_env()))
+
+    ready =
+      map_repos(
+        fn repo ->
+          schemas_ready?(repo) and
+            case mode do
+              {:ok, :rails} -> true
+              {:ok, :native} -> Dawarich.Release.Native.ready?(repo, opts)
+              {:error, _} -> false
+            end
+        end,
+        opts
+      )
+
+    if Enum.all?(ready), do: :ready, else: :schemas_behind
   rescue
     DBConnection.ConnectionError -> :no_connection
   end
@@ -103,7 +118,7 @@ defmodule Dawarich.Release do
 
   defp schemas_ready?(repo) do
     [
-      {Ecto.Migrator.migrations_path(repo), @ledger_schema},
+      {Application.app_dir(@app, "priv/repo/migrations"), @ledger_schema},
       {oban_migrations_path(), @oban_schema}
     ]
     |> Enum.all?(fn {path, prefix} ->

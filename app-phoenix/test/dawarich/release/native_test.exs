@@ -240,6 +240,29 @@ defmodule Dawarich.Release.NativeTest do
     refute relation?("oban.oban_jobs")
   end
 
+  test "native readiness rejects pending public versions without writes" do
+    Release.migrate(opts())
+    ScratchRepo.query!("DELETE FROM schema_migrations WHERE version='20991005000002'")
+    before = readiness_snapshot()
+    assert Release.readiness(opts()) == :schemas_behind
+    assert readiness_snapshot() == before
+    assert Release.readiness(opts(env: %{})) == :ready
+    assert readiness_snapshot() == before
+  end
+
+  defp readiness_snapshot do
+    for table <- [
+          "public.schema_migrations",
+          "phoenix.phoenix_schema_migrations",
+          "oban.phoenix_schema_migrations",
+          "phoenix.release_migration_jobs",
+          "phoenix.registration_setting",
+          "oban.oban_jobs"
+        ] do
+      ScratchRepo.query!("SELECT row_to_json(t) FROM #{table} t ORDER BY row_to_json(t)::text").rows
+    end
+  end
+
   defp env,
     do: %{
       "DAWARICH_PHOENIX_LIFECYCLE" => "true",

@@ -4,6 +4,8 @@ defmodule Dawarich.Release.Native do
   alias Dawarich.{Release, ReleaseMigrator, ReleaseMigrations}
   alias Dawarich.ReleaseMigrator.Lease
 
+  def ready?(repo, opts), do: ReleaseMigrator.status(repo, opts) == {:ok, :current}
+
   def migrate(repo, opts) do
     opts = Keyword.put(opts, :rails_lock_check, false)
     classify!(repo, opts)
