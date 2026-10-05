@@ -84,6 +84,8 @@ RSpec.describe Tracks::ThrottledBackfillJob, type: :job do
 
       it 'Oban-owned slice forwards with low priority and still advances the cursor' do
         job_owner!(Tracks::GenerationCommand::OWNER_KEY, :oban)
+        ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.track_backfill_walks')
+        PhoenixSchema.reset!
         job = described_class.new(user.id, nil)
 
         job.perform_now

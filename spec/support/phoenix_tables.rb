@@ -2,8 +2,9 @@
 
 module PhoenixTables
   SQL_FILES = Dir[Rails.root.join('app-phoenix/priv/repo/sql/*.sql')].sort.freeze
-  SQL_TABLES = SQL_FILES.flat_map { |file| File.read(file).scan(/CREATE TABLE IF NOT EXISTS (phoenix\.\w+)/).flatten }
-                        .freeze
+  SQL_TABLES = SQL_FILES.flat_map do |file|
+    File.read(file).scan(/CREATE TABLE (?:IF NOT EXISTS )?(phoenix\.\w+)/).flatten
+  end.freeze
   LEASES = 'CREATE TABLE IF NOT EXISTS phoenix.leases ' \
            '(name text PRIMARY KEY, holder text NOT NULL, expires_at timestamptz NOT NULL)'
   COUNTERS = 'CREATE TABLE IF NOT EXISTS phoenix.counters ' \
@@ -60,7 +61,12 @@ module PhoenixTables
     install_state!
     connection.execute(COUNTERS)
     SQL_FILES.each do |file|
-      File.read(file).split(";\n").map(&:strip).reject(&:empty?).each { |statement| connection.execute(statement) }
+      File.read(file).split(";\n").map(&:strip).reject(&:empty?).each do |statement|
+        table = statement[/\ACREATE TABLE (?:IF NOT EXISTS )?(phoenix\.\w+)/, 1]
+        next if table && connection.select_value("SELECT to_regclass(#{connection.quote(table)})")
+
+        connection.execute(statement)
+      end
     end
   end
 
