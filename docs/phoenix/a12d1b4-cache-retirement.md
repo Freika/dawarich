@@ -17,6 +17,10 @@ The native cron checks ownership under the existing lock and inserts a reverse
 once per invocation and fans out source jobs in 500-user batches. Self-hosted
 includes all nondeleted users; Cloud includes statuses 1 and 2. Separate nightly
 invocations are not collapsed by a new uniqueness policy.
+The Rails nightly schedule supplies a `cron` argument, whose enqueue callback
+uses the same ownership lock to enqueue only under Sidekiq ownership. Boot,
+manual and reverse requests omit that argument and remain unconditional.
+Already accepted sweeps retain warming and fanout after ownership transfers.
 
 For either owner, each Rails user job writes years tracked, geocoding counts,
 countries, cities and total distance for one day, then runs the original yearly

@@ -6,6 +6,49 @@ RSpec.describe Cache::PreheatingJob do
   include ActiveSupport::Testing::TimeHelpers
   before { Rails.cache.clear }
 
+  it 'nightly enqueue follows ownership while manual and accepted sweeps still warm after a transfer' do
+    phoenix_tables!
+    User.insert_all!([{ id: 180_119, email: 'cache-cron@example.invalid', encrypted_password: '', status: 1,
+                       plan: 1, settings: {}, created_at: Time.current, updated_at: Time.current }])
+    config = YAML.load_file(Rails.root.join('config/schedule.yml')).fetch('cache_preheating_job')
+    cron = Sidekiq::Cron::Job.new(config.merge('name' => 'cache_preheating_job', 'status' => 'enabled',
+                                               'last_enqueue_time' => '2026-10-03 00:00:00 +0000'))
+    writes = []
+    listener = ->(*, payload) { writes << payload.slice(:key, :expires_in) }
+
+    %i[oban sidekiq].each do |owner|
+      job_owner!('cron:cache_preheating_job', owner)
+      clear_enqueued_jobs
+      cron.enqueue_active_job(described_class)
+      expect(enqueued_jobs.length).to eq(owner == :sidekiq ? 1 : 0)
+      next if owner == :oban
+
+      request = enqueued_jobs.sole.deep_dup
+      expect(request.fetch('arguments')).to eq(['cron'])
+      job_owner!('cron:cache_preheating_job', :oban)
+      clear_enqueued_jobs
+      writes.clear
+      ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') do
+        ActiveJob::Base.deserialize(request).perform_now
+      end
+      expect(writes).to eq([{ key: 'dawarich/countries_codes', expires_in: 86_400 }])
+      expect(enqueued_jobs.sole.fetch('arguments')).to eq([180_119])
+    end
+
+    job_owner!('cron:cache_preheating_job', :oban)
+    clear_enqueued_jobs
+    described_class.perform_later
+    request = enqueued_jobs.sole.deep_dup
+    expect(request.fetch('arguments')).to eq([])
+    clear_enqueued_jobs
+    writes.clear
+    ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') do
+      ActiveJob::Base.deserialize(request).perform_now
+    end
+    expect(writes).to eq([{ key: 'dawarich/countries_codes', expires_in: 86_400 }])
+    expect(enqueued_jobs.sole.fetch('arguments')).to eq([180_119])
+  end
+
   it 'both cron owners retain the one-day global write and original warming fanout' do
     phoenix_tables!
     connection = ActiveRecord::Base.connection

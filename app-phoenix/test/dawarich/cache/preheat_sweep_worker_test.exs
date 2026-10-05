@@ -47,7 +47,6 @@ defmodule Dawarich.Cache.PreheatSweepWorkerTest do
   end
 
   test "owned native cron delegates one source warming sweep with carried zone and due time" do
-    Ownership.put!(ScratchRepo, "cron:cache_preheating_job", :oban)
     source = Ecto.UUID.generate()
     now = 1_791_028_800
     start_oban(CacheSweep)
@@ -60,6 +59,11 @@ defmodule Dawarich.Cache.PreheatSweepWorkerTest do
       oban: CacheSweep
     ]
 
+    Ownership.put!(ScratchRepo, "cron:cache_preheating_job", :sidekiq)
+    assert Worker.run(ScratchRepo, opts) == {:cancel, :not_owner}
+    assert [[0]] = rows("SELECT count(*) FROM phoenix.rails_commands")
+
+    Ownership.put!(ScratchRepo, "cron:cache_preheating_job", :oban)
     assert Worker.run(ScratchRepo, opts) == :ok
 
     assert [["cache.preheat_sweep", payload]] =

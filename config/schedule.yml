@@ -39,6 +39,7 @@ cache_preheating_job:
   cron: "0 0 * * *" # every day at 0:00
   class: "Cache::PreheatingJob"
   queue: cache
+  args: ["cron"]
 
 daily_track_generation_job:
   cron: "0 */12 * * *" # every 12 hours (real-time generation handles most cases)
