@@ -68,12 +68,18 @@ defmodule DawarichWeb.Strangler do
 
   @impl true
   def call(conn, _opts) do
-    if owned?(conn),
-      do: conn |> Plug.Conn.put_private(:dawarich_method, conn.method) |> Plug.Head.call([]),
-      else:
+    cond do
+      owned?(conn) ->
+        conn |> Plug.Conn.put_private(:dawarich_method, conn.method) |> Plug.Head.call([])
+
+      DawarichWeb.TurboVisit.live_view_visit?(conn) ->
+        DawarichWeb.TurboVisit.reload(conn)
+
+      true ->
         conn
         |> DawarichWeb.RailsProxy.call(Application.fetch_env!(:dawarich, :rails_upstream))
         |> halt()
+    end
   end
 
   defp owned?(conn) do
