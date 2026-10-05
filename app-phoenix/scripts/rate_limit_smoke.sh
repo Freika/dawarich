@@ -230,7 +230,8 @@ rpc 'body = ~s({"email":"shared@example.invalid"})
 early_in 60
 rpc 'body = ~s({"email":"released@example.invalid"})
   for _ <- 1..3 do
-    Plug.Test.conn(:post, "/api/v1/auth/login", body)
+    conn = Plug.Test.conn(:post, "/api/v1/auth/login", body)
+    %{conn | host: "127.0.0.1", req_headers: [{"host", "127.0.0.1:3911"} | conn.req_headers]}
     |> Plug.Conn.put_req_header("content-type", "application/json")
     |> Plug.Conn.put_req_header("content-length", Integer.to_string(byte_size(body)))
     |> DawarichWeb.RateLimit.call([])
