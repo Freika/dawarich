@@ -32,6 +32,26 @@ defmodule Dawarich.ApplicationTest do
   defp ids(plan),
     do: Enum.map(Dawarich.Application.children(plan), &Supervisor.child_spec(&1, []).id)
 
+  test "sidekiq idle role starts no Repo Endpoint Puma Oban relay or cron and exits cleanly on shutdown" do
+    idle = Dawarich.Application.plan(@argv, %{"DAWARICH_PROCESS_ROLE" => "sidekiq_idle"})
+    assert idle == :sidekiq_idle
+    assert ids(idle) == []
+
+    {:ok, supervisor} =
+      Supervisor.start_link(Dawarich.Application.children(idle), strategy: :one_for_one)
+
+    assert Supervisor.which_children(supervisor) == []
+    monitor = Process.monitor(supervisor)
+    assert Supervisor.stop(supervisor) == :ok
+    assert_receive {:DOWN, ^monitor, :process, ^supervisor, :normal}
+    assert Dawarich.Application.plan(nil, %{}) == :none
+    assert Dawarich.Application.plan(nil, %{"DAWARICH_PROCESS_ROLE" => "web"}) == :none
+
+    assert_raise ArgumentError, "DAWARICH_PROCESS_ROLE must be web or sidekiq_idle", fn ->
+      Dawarich.Application.plan(nil, %{"DAWARICH_PROCESS_ROLE" => "sidekiq"})
+    end
+  end
+
   test "stops the jobs first, then the front, then PubSub, Oban and the repo, in every front mode" do
     base = [
       Dawarich.Repo,
