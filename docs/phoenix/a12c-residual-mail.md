@@ -1,7 +1,8 @@
 # A12c residual mail
 
-Implementation is in progress on `feat/phoenix-a12c-mail`, starting at `0672ae88e`.
-Acceptance is tests only; stand/browser/image acceptance is deferred to the controller mini lane.
+Implementation on `feat/phoenix-a12c-mail` started at `0672ae88e` and synced to
+integration head `bc3b78a94`. C1–C5 tests-only acceptance is complete;
+stand/browser/image acceptance is deferred to the controller mini lane.
 No mail ownership has changed. Auth mail is security-sensitive; no AFFiNE writes are made.
 
 ## Source spec mapping
@@ -127,8 +128,8 @@ M-P5-utm removes monthly manage-preferences content and fails the complete messa
 restored rendering and the scoped basic/Devise/ExploreFeatures/Wave2/recovery regressions pass.
 Source Ruby exceptions map to native data/type/date errors; no empty message rescue is added.
 
-The R1–R4/P1–P12 implementation barrier is complete. Final C1–C5 acceptance remains the
-tests-only merge gate. Rails source/specs and dormant stubs are retained.
+The R1–R4/P1–P12 implementation barrier and C1–C5 tests-only acceptance are complete.
+Rails source/specs and dormant stubs are retained.
 
 P6 adds separate monthly/yearly mail enqueue workers with exact locale-bearing command decoders.
 All 44 Rails effects rows pass against real Oban inserts and database constraints: enqueue occurs
@@ -207,3 +208,30 @@ HTML stages Rails flash and redirects; Turbo preserves the source partial's exac
 Only native responses carry x-dawarich-mail-owner: native-test-email, with no admin owner header.
 M-P12-csrf admits a missing token and fails; M-P12-key omits its route key and fails. Both restore
 to scoped GREEN. Browser, stand and image acceptance is deferred to the controller mini lane.
+
+## Tests-only handoff
+
+After the authorized integration sync, C4 passes full ExUnit seeds 404 and 202:
+6,490 tests, zero failures and six excluded per seed, each with one terminal summary.
+The existing resync script's dependency, warnings-as-errors compilation and formatting
+checks pass. Seeds 101 and 303 are omitted under the controller's branch merge gate;
+the controller runs the third seed on the integration head.
+
+The two existing census tests now read P10's residual Rails command maps and identify
+P9's exact monthly/yearly mail owners, explicitly checking `claimable: false`.
+Their stale inventories first failed on the synced head, then passed all eight scoped tests.
+C5's branch-commit and changed-file secret scans pass with redacted output retained in SP.
+ED-460..462 record only the diagnostic header, disabled queue implementation and inherited
+delivery/wire framing; recovery and digest-worker ED scopes remain unchanged.
+
+All three residual mail keys remain unclaimable. Test-email rollback uses either
+`DAWARICH_RAILS_ROUTES=settings` or `DAWARICH_RAILS_ROUTES=test_email` before SMTP.
+Job rollback rehomes pending public commands through the existing Rails callers;
+already queued native delivery jobs drain under their existing owner. No ownership
+activation, cron change, public DDL or Rails retirement is included.
+
+Reachable residual content and auth callback intents proved; eligible test-email route
+and disabled digest/location mail workers ready. OTP and Cloud notification chaining
+remain Rails-owned. Confirmation/reconfirmation module, route and producer are absent;
+successful parity is deferred until the owner supplies a real Rails contract.
+Rails fallbacks and dormant stubs remain until A12f. Stand/browser/image acceptance deferred.
