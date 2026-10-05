@@ -1,7 +1,7 @@
 defmodule Dawarich.RailsJobOwners do
   @moduledoc false
 
-  alias Dawarich.ReleaseOperations.PlacesUserId
+  alias Dawarich.ReleaseOperations.{AddPointDimensions, DropLegacyCoordinates, PlacesUserId}
 
   @slices ~w(a4 a7 a8 a9 a12c a12d1 a12d2 a12h)a
   @mail ~w(command:users.explore_features_mail command:mail.user.welcome command:mail.user.archival_approaching command:mail.user.oauth_account_link command:mail.user.account_destroy_confirmation)
@@ -19,7 +19,7 @@ defmodule Dawarich.RailsJobOwners do
     "Cache::CleaningJob" => {:slice, :a12d1},
     "Cache::PreheatingJob" => {:slice, :a12d1},
     "Cache::UserPreheatingJob" => {:slice, :a12d1},
-    "DataMigrations::AddPointDimensionColumnsJob" => {:slice, :a12h},
+    "DataMigrations::AddPointDimensionColumnsJob" => {:migrator, AddPointDimensions},
     "DataMigrations::BackfillAchievementsJob" => {:slice, :a12d2},
     "DataMigrations::BackfillAltitudeJob" => {:oban, ["command:release.altitude"]},
     "DataMigrations::BackfillAltitudeUserJob" => {:oban, ["command:release.altitude"]},
@@ -40,7 +40,7 @@ defmodule Dawarich.RailsJobOwners do
     "DataMigrations::CleanupNullIslandJob" => {:oban, ["command:release.null_island"]},
     "DataMigrations::DedupeTracksForUniqueIndexJob" => :retire,
     "DataMigrations::DestroyOrphanedTracksJob" => {:oban, ["command:release.orphaned_tracks"]},
-    "DataMigrations::DropLegacyLatLonJob" => {:slice, :a12h},
+    "DataMigrations::DropLegacyLatLonJob" => {:migrator, DropLegacyCoordinates},
     "DataMigrations::FixRouteOpacityJob" => {:oban, ["command:release.route_opacity"]},
     "DataMigrations::MigratePlacesLonlatJob" => :retire,
     "DataMigrations::PrefillPointsCounterCacheJob" => :retire,
