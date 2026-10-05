@@ -189,6 +189,59 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
       end
     end
 
+    it 'Rails nightly cron stops batches after Oban claim and resumes after pinned Sidekiq release ' \
+       'with invalidation intact' do
+      configure_instance_geocoding
+      points = Array.new(1001) do |index|
+        { user_id: user.id, timestamp: 1_791_115_200 + index, lonlat: 'POINT(13 52)',
+          reverse_geocoded_at: nil, created_at: Time.current, updated_at: Time.current }
+      end
+      Point.insert_all!(points)
+      job_owner!('cron:nightly_reverse_geocoding_job', :oban)
+      allow(Cache::InvalidateUserCaches).to receive(:new).and_call_original
+      described_class.new.perform
+      expect(enqueued_jobs.size).to eq(0)
+      expect(Cache::InvalidateUserCaches).not_to have_received(:new)
+      JobOwnership.release!('cron:nightly_reverse_geocoding_job', by: 'a12d3-test')
+      batches = 0
+      allow(Geocoding::ReverseCommands).to receive(:enqueue_points).and_wrap_original do |original, *args, **options|
+        batches += 1
+        result = original.call(*args, **options)
+        job_owner!('cron:nightly_reverse_geocoding_job', :oban) if batches == 1
+        result
+      end
+      source = described_class.new
+      source.enqueued_at = Time.utc(2026, 10, 4, 1, 15)
+      source.perform
+      expect(enqueued_jobs.size).to eq(1000)
+      expect(enqueued_jobs.map { ActiveJob::Arguments.deserialize(_1[:args]).last }).to all(eq(force: true))
+      expect(Cache::InvalidateUserCaches).to have_received(:new).with(user.id).once
+      JobOwnership.release!('cron:nightly_reverse_geocoding_job', by: 'a12d3-test')
+      source.perform
+      expect(enqueued_jobs.size).to eq(1001)
+      expect(Cache::InvalidateUserCaches).to have_received(:new).with(user.id).twice
+
+      clear_enqueued_jobs
+      payload = { 'user_id' => user.id, 'point_ids' => [Point.order(:id).first.id], 'force' => true,
+                  'event_id' => source.job_id }
+      inline = ActiveSupport::IsolatedExecutionState[:job_commands_inline]
+      begin
+        ActiveSupport::IsolatedExecutionState[:job_commands_inline] = true
+        RailsCommands::Registry.handler('geocoding.reverse_point').call(payload)
+        expect(enqueued_jobs.map { _1[:job] }).to eq([ReverseGeocodingJob])
+        expect(ActiveJob::Arguments.deserialize(enqueued_jobs.first[:args])).to eq(
+          ['Point', payload['point_ids'].first, { force: true }]
+        )
+        clear_enqueued_jobs
+        job_owner!('command:geocoding.reverse_point', :oban)
+        RailsCommands::Registry.handler('geocoding.reverse_point').call(payload)
+        expect(enqueued_jobs).to be_empty
+        expect(JobOutbox.find(source.job_id).payload).to eq(payload.except('event_id'))
+      ensure
+        ActiveSupport::IsolatedExecutionState[:job_commands_inline] = inline
+      end
+    end
+
     describe 'queue configuration' do
       it 'uses the reverse_geocoding queue' do
         expect(described_class.queue_name).to eq('reverse_geocoding')

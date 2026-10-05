@@ -22,11 +22,18 @@ defmodule Dawarich.Geocoding.NightlySweep do
       case Ownership.with_owner(repo, NightlyWorker.key(), :oban, fn ->
              batch(repo, oban, args, opts)
            end) do
-        {:ok, :ok} -> :ok
-        {:skip, _} -> {:cancel, :not_owner}
-        {:error, reason} -> {:error, reason}
+        {:ok, :ok} ->
+          :ok
+
+        {:skip, _} ->
+          finish_accepted(repo, args)
+          {:cancel, :not_owner}
+
+        {:error, reason} ->
+          {:error, reason}
       end
     else
+      finish_accepted(repo, args)
       :ok
     end
   end
@@ -69,11 +76,29 @@ defmodule Dawarich.Geocoding.NightlySweep do
 
         Oban.insert!(oban, NightlyWorker.new(next))
       else
-        Processed.mark!(repo, root, "geocoding.nightly")
+        finish!(repo, root, affected)
       end
     end
 
     :ok
+  end
+
+  defp finish_accepted(_repo, %{"affected_user_ids" => []}), do: :ok
+
+  defp finish_accepted(repo, args) do
+    repo.transaction(fn -> finish!(repo, root_id(args["slot"]), args["affected_user_ids"]) end)
+  end
+
+  defp finish!(repo, root, affected) do
+    if Processed.claim!(repo, root, "geocoding.nightly") do
+      for user <- affected do
+        RailsCommands.insert!(repo, "stats.caches_invalidated", %{
+          "user_id" => user,
+          "year" => nil,
+          "scope" => "all"
+        })
+      end
+    end
   end
 
   defp publish(_repo, oban, payload, event, :oban) do

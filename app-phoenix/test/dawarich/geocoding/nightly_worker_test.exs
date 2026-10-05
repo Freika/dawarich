@@ -121,7 +121,7 @@ defmodule Dawarich.Geocoding.NightlyWorkerTest do
     for batch <- batches, id <- batch["point_ids"] do
       rows(
         "INSERT INTO points (id,user_id,timestamp,lonlat,anomaly,created_at,updated_at) " <>
-            "VALUES ($1,$2,1791115200 + $1::bigint,ST_GeogFromText('POINT(13 52)'),true,now(),now())",
+          "VALUES ($1,$2,1791115200 + $1::bigint,ST_GeogFromText('POINT(13 52)'),true,now(),now())",
         [id, batch["user_id"]]
       )
     end
@@ -130,6 +130,66 @@ defmodule Dawarich.Geocoding.NightlyWorkerTest do
       "INSERT INTO points (id,user_id,timestamp,reverse_geocoded_at,created_at,updated_at) " <>
         "VALUES (48302,48101,1791115200,now(),now(),now())"
     )
+  end
+
+  test "native nightly sweep stops new batches after pinned Sidekiq release and preserves accepted leaves and pending invalidation" do
+    f =
+      Jason.decode!(File.read!(@fixture))["classes"]["Points::NightlyReverseGeocodingJob"][
+        "cases"
+      ]
+      |> Enum.find(&(&1["id"] == "batches"))
+
+    load_points(f, "batches")
+    Ownership.put!(ScratchRepo, NightlyWorker.key(), :oban)
+    Ownership.put!(ScratchRepo, "command:geocoding.reverse_point", :oban)
+    assert NightlyWorker.run(ScratchRepo, @oban, @slot, env: @env) == :ok
+
+    accepted =
+      rows(
+        "SELECT args FROM oban.oban_jobs WHERE worker = 'Dawarich.Geocoding.ReversePointWorker' ORDER BY id"
+      )
+
+    assert length(accepted) == 11
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+
+    assert [[next]] =
+             rows(
+               "SELECT args FROM oban.oban_jobs WHERE worker = 'Dawarich.Geocoding.NightlyWorker'"
+             )
+
+    Ownership.put!(ScratchRepo, NightlyWorker.key(), :sidekiq, pinned: true)
+    result = NightlySweep.run(ScratchRepo, @oban, next, env: @env)
+
+    assert rows(
+             "SELECT args FROM oban.oban_jobs WHERE worker = 'Dawarich.Geocoding.ReversePointWorker' ORDER BY id"
+           ) == accepted
+
+    assert result == {:cancel, :not_owner}
+    intents = rows("SELECT kind, payload FROM phoenix.rails_commands ORDER BY id")
+
+    assert intents ==
+             Enum.map(
+               [48_101, 48_102],
+               &["stats.caches_invalidated", %{"user_id" => &1, "year" => nil, "scope" => "all"}]
+             )
+
+    assert NightlySweep.run(ScratchRepo, @oban, next, env: @env) == {:cancel, :not_owner}
+    assert rows("SELECT kind, payload FROM phoenix.rails_commands ORDER BY id") == intents
+    Ownership.put!(ScratchRepo, "command:geocoding.reverse_point", :sidekiq, pinned: true)
+    [leaf] = Enum.find(accepted, fn [args] -> args["point_ids"] == [48_303] end)
+
+    rows(
+      "INSERT INTO instance_settings (key, value, created_at, updated_at) VALUES ('photon_api_host',$1,now(),now())",
+      ["photon.example.invalid"]
+    )
+
+    start_supervised!(Dawarich.Geocoding.FakeHttp)
+    start_supervised!(hd(Dawarich.Redis.child_specs()))
+    config = Dawarich.Geocoding.Config.resolve(ScratchRepo)
+    {url, _, _} = Dawarich.Geocoding.Query.build(config, {52.0, 13.0}, [], "synthetic")
+    Dawarich.Geocoding.FakeHttp.stub(url, 200, Jason.encode!(%{"features" => []}))
+    assert ReversePointWorker.perform(%Oban.Job{args: leaf, conf: Oban.config(@oban)}) == :ok
+    assert rows("SELECT reverse_geocoded_at IS NOT NULL FROM points WHERE id = 48303") == [[true]]
   end
 
   defp continue(env) do
