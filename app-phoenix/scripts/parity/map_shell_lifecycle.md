@@ -14,9 +14,11 @@ BASE_URL=http://127.0.0.1:3120 E2E_WORKERS=1 \
   --project=chromium --no-deps --reporter=line
 ```
 
-The three cases cover same-document Back/Forward replacement, a real controller
+The four cases cover same-document Back/Forward replacement, a real controller
 asset finishing after unmount, and a shell import finishing after its hook root
-has detached. Asset routes delay the actual responses; they do not substitute
+has detached, plus realtime setup after leaving the map and returning. The last
+case uses the Playwright clock to verify detached and active subscriptions.
+Asset routes delay the actual responses; they do not substitute
 controller implementations. No fixed sleeps, retries or extended test timeouts
 are required. This is a Phoenix-specific contract probe; the canonical Rails
 page acceptance specs remain in the Playwright repository.

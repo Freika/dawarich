@@ -8,7 +8,6 @@ defmodule Dawarich.Build.RailsParityTest do
   @moduletag :rails_parity
   @moduletag timeout: :infinity
 
-  @proc ~r/,"nth":\{"ordinals":"#<Proc:[^"]*","ordinalized":"#<Proc:[^"]*"\}/
   @env [{"RAILS_ENV", "test"}, {"SECRET_KEY_BASE_DUMMY", "1"}, {"LANG", "en_US.UTF-8"}]
 
   setup_all do
@@ -31,14 +30,15 @@ defmodule Dawarich.Build.RailsParityTest do
     %{root: root, dir: dir, elixir: elixir, assets: assets}
   end
 
-  test "the i18n export is Rails' byte for byte, less the two Active Support lambdas", %{
-    root: root,
-    dir: dir
-  } do
+  test "the locales tree export is Rails' byte for byte, including the empty Active Support nth object",
+       %{
+         root: root,
+         dir: dir
+       } do
     ruby = File.read!(Path.join(dir, "i18n.json"))
 
-    assert length(Regex.scan(@proc, ruby)) == 1
-    assert IO.iodata_to_binary(Build.I18n.export(root)) == Regex.replace(@proc, ruby, "")
+    assert get_in(Jason.decode!(ruby), ["en", "number", "nth"]) == %{}
+    assert IO.iodata_to_binary(Build.I18n.export(root)) == ruby
   end
 
   test "the achievements export is Rails' byte for byte", %{root: root, dir: dir} do

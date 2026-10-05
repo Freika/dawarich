@@ -178,3 +178,54 @@ test("an interrupted shell import never mounts a detached hook root", async ({
     release()
   }
 })
+
+test("leaving before realtime setup cannot subscribe the detached map", async ({ page }) => {
+  await page.clock.install()
+  await page.clock.pauseAt(new Date())
+  await page.goto("/map/v2")
+  await expect.poll(() => page.evaluate(() => {
+    const element = document.getElementById("maps-maplibre-container")
+    const controller = window.Stimulus?.getControllerForElementAndIdentifier(
+      element, "maps--maplibre-realtime",
+    )
+    return Boolean(controller?.setupTimer)
+  })).toBe(true)
+  await page.evaluate(async () => {
+    const element = document.getElementById("maps-maplibre-container")
+    window.__a6LateRealtime = window.Stimulus.getControllerForElementAndIdentifier(
+      element, "maps--maplibre-realtime",
+    )
+    const shell = await import("map_shell")
+    const root = document.getElementById("map-shell")
+    shell.unmount(root)
+    root.remove()
+  })
+  await page.clock.runFor(1001)
+  expect(await page.evaluate(() => Boolean(window.__a6LateRealtime.channels))).toBe(false)
+  await page.goto("/map/v2")
+  await expect.poll(() => page.evaluate(() => {
+    const element = document.getElementById("maps-maplibre-container")
+    return Boolean(window.Stimulus?.getControllerForElementAndIdentifier(
+      element, "maps--maplibre-realtime",
+    )?.setupTimer)
+  })).toBe(true)
+  await page.clock.runFor(1001)
+  const subscriptions = await page.evaluate(async () => {
+    const element = document.getElementById("maps-maplibre-container")
+    const controller = window.Stimulus.getControllerForElementAndIdentifier(
+      element, "maps--maplibre-realtime",
+    )
+    const features = JSON.parse(document.querySelector(
+      "[data-family-members-features-value]",
+    )?.dataset.familyMembersFeaturesValue || "{}")
+    const consumer = controller.channels.subscriptions.tracks.consumer
+    const expected = ["TracksChannel", "MapEditsChannel"]
+    if (features.family) expected.push("FamilyLocationsChannel")
+    if (controller.liveModeEnabled) expected.push("PointsChannel")
+    const actual = consumer.subscriptions.subscriptions.map((subscription) =>
+      JSON.parse(subscription.identifier).channel,
+    ).filter((channel) => expected.includes(channel))
+    return { expected: expected.sort(), actual: actual.sort() }
+  })
+  expect(subscriptions.actual).toEqual(subscriptions.expected)
+})

@@ -232,6 +232,69 @@ defmodule DawarichWeb.AuthApiKeys.HttpTest do
     end
   end
 
+  test "browser navigation rotation owns the Rails document POST and rejects other overrides",
+       c do
+    oracle =
+      File.read!("test/fixtures/auth/account/api_keys.json")
+      |> Jason.decode!()
+      |> Enum.find(&(&1["name"] == "browser_navigation"))
+
+    raw =
+      String.replace(
+        oracle["body"],
+        "CSRF",
+        URI.encode_www_form(RailsCsrf.masked_token(c.session))
+      )
+
+    input =
+      request(c.session, raw)
+      |> put_req_header("accept", oracle["accept"])
+      |> put_req_header("referer", oracle["referer"])
+      |> put_req_header("origin", "http://www.example.com")
+
+    before = snapshot()
+    result = Http.call(input, c.opts)
+    assert result.status == oracle["status"] and result.halted
+    assert get_resp_header(result, "location") == [oracle["location"]]
+    assert get_resp_header(result, "x-dawarich-auth-owner") == ["native-api-keys"]
+    after_row = snapshot()
+
+    assert Enum.filter(Map.keys(before), &(before[&1] != after_row[&1])) |> Enum.sort() ==
+             oracle["changed"]
+
+    assert after_row["api_key"] =~ ~r/\A[0-9a-f]{64}\z/
+    assert Accounts.by_api_key(before["api_key"]) == nil
+    assert Accounts.by_api_key(after_row["api_key"]).id == @id
+    assert result.assigns.rails_session == c.session
+    assert result.resp_cookies == %{}
+    assert_received :key_write
+    refute_received :key_write
+    refute_received {:replayed, _, _}
+
+    for body <- [
+          String.replace(raw, "_method=post", "_method=patch"),
+          String.replace(raw, "_method=post", "_method=delete"),
+          String.replace(raw, "_method=post", "_method=get"),
+          String.replace(raw, "_method=post", "_method="),
+          String.replace(raw, "_method=post", "_method=post%20"),
+          raw <> "&_method=post",
+          raw <> "&unknown=1",
+          "_method=post&authenticity_token=bad"
+        ] do
+      result =
+        request(c.session, body)
+        |> put_req_header("accept", oracle["accept"])
+        |> put_req_header("referer", oracle["referer"])
+        |> Http.call(c.opts)
+
+      assert result.private[:replayed] and result.halted
+      assert_received {:replayed, "POST", ^body}
+      assert snapshot() == after_row
+      assert get_resp_header(result, "x-dawarich-auth-owner") == []
+      refute_received :key_write
+    end
+  end
+
   defp request(session, body, method \\ "POST", path \\ @path) do
     Plug.Test.conn(method, "http://www.example.com" <> path, body)
     |> put_private(:original_body, body)

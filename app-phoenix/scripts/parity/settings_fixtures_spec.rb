@@ -1375,7 +1375,7 @@ skip_family_sync: true)
 
     def account_key_corpus
       names = %w[plain turbo referer invalid_resource legacy_invalid_email dirty_settings
-                 legacy_uppercase_invalid_email legacy_padded_valid_email]
+                 legacy_uppercase_invalid_email legacy_padded_valid_email browser_navigation]
       names.each_with_index.map do |name, index|
         user = account_actor(73_500 + index)
         user.update_column(:api_key, "a11rest-key-#{user.id}")
@@ -1393,10 +1393,17 @@ skip_family_sync: true)
         remember = client.cookies['remember_user_token']
         jobs = enqueued_jobs.size
         mails = ActionMailer::Base.deliveries.size
-        referer = { 'turbo' => 'http://www.example.com/users/edit', 'referer' => 'http://www.example.com/stats' }[name]
+        referer = { 'turbo' => 'http://www.example.com/users/edit', 'referer' => 'http://www.example.com/stats',
+                    'browser_navigation' => 'http://www.example.com/users/edit' }[name]
         accept = name == 'turbo' ? 'text/vnd.turbo-stream.html, text/html, application/xhtml+xml' : 'text/html'
-        client.post('/settings/generate_api_key', params: '', headers: {
-          'CONTENT_TYPE' => 'application/x-www-form-urlencoded', 'X-CSRF-Token' => account_csrf(client),
+        browser = name == 'browser_navigation'
+        if browser
+          accept = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,' \
+                   '*/*;q=0.8,application/signed-exchange;v=b3;q=0.7'
+        end
+        body = browser ? URI.encode_www_form('_method' => 'post', 'authenticity_token' => account_csrf(client)) : ''
+        client.post('/settings/generate_api_key', params: body, headers: {
+          'CONTENT_TYPE' => 'application/x-www-form-urlencoded', 'X-CSRF-Token' => browser ? nil : account_csrf(client),
                       'Accept' => accept, 'Referer' => referer
         }.compact)
         projection = account_projection(client, user, before, session, remember, jobs, mails)
@@ -1407,8 +1414,10 @@ skip_family_sync: true)
           probe.get('/api/v1/users/me', headers: { 'Authorization' => "Bearer #{key}" })
           { 'query' => query, 'bearer' => probe.response.status }
         end
-        projection.merge('name' => name, 'referer' => referer, 'accept' => accept, 'body' => '',
-                         'csrf_transport' => 'header', 'key_changed' => user.api_key != before['api_key'],
+        projection.merge('name' => name, 'referer' => referer, 'accept' => accept,
+                         'body' => browser ? '_method=post&authenticity_token=CSRF' : '',
+                         'csrf_transport' => browser ? 'body' : 'header',
+                         'key_changed' => user.api_key != before['api_key'],
                          'key_format' => user.api_key.match?(/\A[0-9a-f]{64}\z/), 'lookups' => lookups,
                          'settings_cleaned' => name == 'dirty_settings' &&
                            user.settings['immich_url'].end_with?('.test'))
@@ -1451,7 +1460,7 @@ skip_family_sync: true)
         expect(corpus.fetch(:requests).pluck('name')).to eq(expected_requests)
         expect(corpus.fetch(:api_keys).pluck('name')).to eq(
           %w[plain turbo referer invalid_resource legacy_invalid_email dirty_settings
-             legacy_uppercase_invalid_email legacy_padded_valid_email]
+             legacy_uppercase_invalid_email legacy_padded_valid_email browser_navigation]
         )
         turbo = corpus.fetch(:api_keys).find { |row| row['name'] == 'turbo' }
         expect(turbo.slice('status', 'location', 'changed')).to eq(
