@@ -313,7 +313,7 @@ module A12eFixtureSupport
     recorded.group_by { |name, _entry| name.start_with?('A12h') ? 'seeds' : 'cli' }.each do |corpus, entries|
       data = { 'cases' => entries.sort.map { |name, entry| entry.merge('name' => name) } }
       data['human_sizes'] = human_sizes if corpus == 'cli'
-      DIR.join("#{corpus}.json").write("#{Oj.dump(data, mode: :strict, indent: 2, float_precision: 0)}\n")
+      DIR.join("#{corpus}.json").write("#{Oj.dump(data, mode: :strict, indent: 2, float_precision: 0).chomp}\n")
     end
   end
 end
