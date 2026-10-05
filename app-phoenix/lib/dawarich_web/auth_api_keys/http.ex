@@ -8,6 +8,7 @@ defmodule DawarichWeb.AuthApiKeys.Http do
 
   @path "/settings/generate_api_key"
   @turbo "text/vnd.turbo-stream.html, text/html, application/xhtml+xml"
+  @browser "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
 
   def init(opts), do: opts
   def route?(conn), do: conn.method == "POST" and conn.request_path == @path
@@ -67,7 +68,9 @@ defmodule DawarichWeb.AuthApiKeys.Http do
         {:ok, raw, conn} ->
           conn = put_private(conn, :dawarich_raw_body, raw)
 
-          with {:ok, params} <- Admission.form(raw, conn.query_string, ["authenticity_token"]),
+          with {:ok, params} <-
+                 Admission.form(raw, conn.query_string, ["authenticity_token", "_method"]),
+               true <- is_nil(params["_method"]) or String.upcase(params["_method"]) == "POST",
                true <- csrf?(conn, params),
                {:ok, _actor} <- ApiKeys.rotate(id, salt, context) do
             conn
@@ -125,7 +128,7 @@ defmodule DawarichWeb.AuthApiKeys.Http do
   end
 
   defp html?(conn) do
-    get_req_header(conn, "accept") in [[], ["text/html"], ["*/*"], [@turbo]]
+    get_req_header(conn, "accept") in [[], ["text/html"], ["*/*"], [@turbo], [@browser]]
   end
 
   defp fallback(conn, opts) do
