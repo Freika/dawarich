@@ -414,6 +414,16 @@ RSpec.describe 'Phoenix fixtures: admin setting writes', type: :request do
   context 'native interoperability', :a10b_non_transactional do
     self.use_transactional_tests = false
 
+    around do |example|
+      with_legacy_registration do
+        phoenix_registration!
+        ActiveRecord::Base.connection.execute('INSERT INTO phoenix.registration_setting (enabled) VALUES (true)')
+        example.run
+      ensure
+        ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.registration_setting')
+      end
+    end
+
     before do
       @prior_cache = Rails.cache
       @native_cache = ActiveSupport::Cache::RedisCacheStore.new(url: "#{ENV.fetch('REDIS_URL')}/0", driver: :ruby)
@@ -425,8 +435,8 @@ RSpec.describe 'Phoenix fixtures: admin setting writes', type: :request do
       @native_cache.redis.with(&:close)
     end
 
-    it 'Rails reads native cache booleans and decrypts native instance secrets' do
-      synthetic_user(15_911, admin: true)
+    it 'Rails and native registration share true false nil and hand-back writes' do
+      actor = synthetic_user(15_911, admin: true)
       key = 'dawarich/registration_enabled'
       expect(Rails.cache.redis.with do |redis|
         redis.connection.values_at(:port,
@@ -434,6 +444,7 @@ RSpec.describe 'Phoenix fixtures: admin setting writes', type: :request do
       end).to be(true), 'Rails cache must use allocated Redis DB0'
       owned_secret = !InstanceSetting.exists?(key: 'geoapify_api_key')
       expect(owned_secret).to be(true)
+      Rails.cache.write(key, true)
       [true, false, nil].each do |value|
         result = phoenix(<<~ELIXIR, 'A10B_CACHE_VALUE' => JSON.generate(value))
           value = Jason.decode!(System.fetch_env!("A10B_CACHE_VALUE"))
@@ -441,11 +452,18 @@ RSpec.describe 'Phoenix fixtures: admin setting writes', type: :request do
           IO.puts(Jason.encode!(%{saved: true}))
         ELIXIR
         expect(result.fetch('saved')).to be(true)
-        bytes = Rails.cache.redis.with { |redis| redis.get(key) }
-        expect(bytes.nil?).to be(false), 'native cache entry absent in Rails Redis connection'
-        expect(Rails.cache.send(:deserialize_entry, bytes).value).to eq(value)
-        expect(Rails.cache.read(key)).to eq(value)
-        Rails.cache.write(key, value)
+        expect(DawarichSettings.registration_enabled?).to eq(value)
+        expect(Rails.cache.read(key)).to be(true)
+        DawarichSettings.set_registration_enabled(!value)
+        login(actor, page: settings_users_path)
+        csrf = Nokogiri::HTML(response.body).at_css('meta[name="csrf-token"]')['content']
+        cast = value.nil? ? '' : value.to_s
+        body = URI.encode_www_form('registration_enabled' => cast)
+        patch update_registration_settings_settings_users_path, params: body,
+                                                              headers: form_headers.merge('X-CSRF-Token' => csrf)
+        expect(response.status).to eq(302)
+        expect(DawarichSettings.registration_enabled?).to eq(value)
+        expect(Rails.cache.read(key)).to be(true)
         result = phoenix(<<~ELIXIR)
           {:ok, value} = Dawarich.Auth.RegistrationSetting.fetch()
           IO.puts(Jason.encode!(%{value: value}))
