@@ -19,6 +19,7 @@ airtrail_flight_import_job:
   cron: "0 2 * * *" # every day at 02:00
   class: "AirTrail::SyncSchedulingJob"
   queue: imports
+  args: ["a12d2_cron"]
 
 teslamate_sync_job:
   cron: "30 2 * * *" # every day at 02:30
