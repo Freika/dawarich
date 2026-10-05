@@ -7,11 +7,7 @@ require 'uri'
 require 'active_support/testing/time_helpers'
 
 mode = ARGV[1]
-database_allowed = if mode == 'api_two_factor_management'
-                     ENV.fetch('DATABASE_NAME') == 'dawarich_test_a4otp'
-                   else
-                     ENV.fetch('DATABASE_NAME').start_with?('dawarich_test_a11')
-                   end
+database_allowed = ENV.fetch('DATABASE_NAME').start_with?('dawarich_test')
 raise 'Protocol own test DB required' unless Rails.env.test? && database_allowed
 
 ActiveJob::Base.queue_adapter = :test
@@ -621,7 +617,7 @@ end
 def consume_web_otp(fixture, request)
   label = 'Rails consumes native pending success and refusal state without duplicate OTP effects'
   raise "#{label}: mode missing" unless fixture.fetch('mode', nil) == 'web_otp'
-  raise "#{label}: own DB required" unless ENV.fetch('DATABASE_NAME') == 'dawarich_test_a11d'
+  raise "#{label}: own DB required" unless ENV.fetch('DATABASE_NAME').start_with?('dawarich_test')
   raise "#{label}: private payload required" unless File.stat(ARGV.fetch(0)).mode & 0o777 == 0o600
 
   id = fixture.fetch('user_id')

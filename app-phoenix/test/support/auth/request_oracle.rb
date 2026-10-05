@@ -3,7 +3,7 @@
 require 'json'
 require 'time'
 
-unless Rails.env.test? && ENV.fetch('DATABASE_NAME').start_with?('dawarich_test_a11')
+unless Rails.env.test? && ENV.fetch('DATABASE_NAME').start_with?('dawarich_test')
   raise 'A11 oracle requires its own test database'
 end
 

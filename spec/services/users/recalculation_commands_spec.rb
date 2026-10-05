@@ -116,11 +116,26 @@ RSpec.describe 'Users::RecalculationCommands' do
     )
   end
 
+  it 'recalculation database guard refuses non-test Rails and Phoenix database names' do
+    expect { recalculation_database!('dawarich_production', 'dawarich_test_example') }
+      .to raise_error(ArgumentError, 'recalculation peers require test databases')
+    expect { recalculation_database!('dawarich_phoenix_test_example', 'dawarich_production') }
+      .to raise_error(ArgumentError, 'recalculation peers require test databases')
+  end
+
+  def recalculation_database!(phoenix_database = ENV.fetch('PHOENIX_TEST_DATABASE'),
+                              rails_database = ENV.fetch('DATABASE_NAME'))
+    unless phoenix_database.start_with?('dawarich_phoenix_test') && rails_database.start_with?('dawarich_test')
+      raise ArgumentError, 'recalculation peers require test databases'
+    end
+
+    "#{phoenix_database}_scratch"
+  end
+
   it 'actual Rails and native peers share K5 and anomaly lease exclusion' do
     original_config = ActiveRecord::Base.connection_db_config.configuration_hash
     fixture_mode = self.class.use_transactional_tests
-    shared_database = 'dawarich_phoenix_test_a12d1b3_scratch'
-    expect(ENV.fetch('PHOENIX_TEST_DATABASE')).to eq('dawarich_phoenix_test_a12d1b3')
+    shared_database = recalculation_database!
     command = %w[mix test test/dawarich/jobs/recalculation_lifecycle_test.exs
                  --include rails_parity --only rails_parity --seed 101]
     messages = Queue.new
@@ -223,7 +238,7 @@ RSpec.describe 'Users::RecalculationCommands' do
     error_reader.join
     puts output
     expect(peer.value.success?).to be(true), output + errors
-    expect(output).to match(/3 tests, 0 failures, 2 excluded/)
+    expect(output).to match(/4 tests, 0 failures, 3 excluded/)
   ensure
     trigger&.kill if trigger&.alive?
     trigger&.join

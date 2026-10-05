@@ -10,6 +10,12 @@ defmodule Dawarich.Jobs.RecalculationLifecycleTest do
 
   @k5 "stats_full_recalculation:user:170101"
 
+  test "recalculation database guard refuses non-test database names" do
+    assert_raise ArgumentError, "recalculation peer requires a Phoenix test database", fn ->
+      recalculation_database!("dawarich_production")
+    end
+  end
+
   test "accepted composites finish after release while pending requests rehome once" do
     start_oban(__MODULE__)
     F.load!(ScratchRepo, F.case!("user_specific"))
@@ -93,7 +99,9 @@ defmodule Dawarich.Jobs.RecalculationLifecycleTest do
 
   @tag :rails_parity
   test "native recalculation peer completes shared-state exclusion" do
-    assert ScratchRepo.config()[:database] == "dawarich_phoenix_test_a12d1b3_scratch"
+    assert ScratchRepo.config()[:database] ==
+             recalculation_database!(Dawarich.Repo.config()[:database])
+
     start_oban(__MODULE__)
     peer_send(%{op: "ready", database: ScratchRepo.config()[:database]})
     assert %{"op" => "full"} = peer_read()
@@ -226,6 +234,13 @@ defmodule Dawarich.Jobs.RecalculationLifecycleTest do
       "ambient_zone" => "UTC",
       "progress" => %{}
     }
+  end
+
+  defp recalculation_database!(database) do
+    unless String.starts_with?(database, "dawarich_phoenix_test"),
+      do: raise(ArgumentError, "recalculation peer requires a Phoenix test database")
+
+    database <> "_scratch"
   end
 
   defp options, do: [now: ~U[2026-10-03 12:00:00Z], env: %{"SELF_HOSTED" => "false"}]
