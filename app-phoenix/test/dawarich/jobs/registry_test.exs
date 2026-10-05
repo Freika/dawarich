@@ -3,12 +3,13 @@ defmodule Dawarich.Jobs.RegistryTest do
 
   alias Dawarich.Jobs.Registry
 
-  test "registry keys are unique and existing native crons map to 20 unique Rails keys" do
+  test "registry keys are unique and existing native crons map to 23 unique Rails keys" do
     entries = Registry.entries()
     keys = Enum.map(entries, & &1.key)
     assert length(keys) == length(Enum.uniq(keys))
     crons = Enum.filter(entries, &(&1.kind == :cron and &1.key != "cron:cache_preheating_job"))
-    assert length(crons) == 20
+    assert length(crons) == 23
+    assert Enum.count(entries, &(&1.kind == :cron and &1.key == "cron:cache_preheating_job")) == 1
     schedule = File.read!(Path.expand("../../../../config/schedule.yml", __DIR__))
 
     for %{key: "cron:" <> name, expression: expression} <- crons do
