@@ -10,32 +10,40 @@ defmodule Dawarich.State.PurgeWorker do
   @batch 5_000
   @statements [
     """
-    DELETE FROM phoenix.once_claims WHERE key IN (
+    WITH batch AS MATERIALIZED (
       SELECT key FROM phoenix.once_claims WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
-    ) AND expires_at <= statement_timestamp()
+    )
+    DELETE FROM phoenix.once_claims WHERE key IN (SELECT key FROM batch)
+    AND expires_at <= statement_timestamp()
     """,
     """
-    DELETE FROM phoenix.counters WHERE key IN (
+    WITH batch AS MATERIALIZED (
       SELECT key FROM phoenix.counters WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
-    ) AND expires_at <= statement_timestamp()
+    )
+    DELETE FROM phoenix.counters WHERE key IN (SELECT key FROM batch)
+    AND expires_at <= statement_timestamp()
     """,
     """
-    DELETE FROM phoenix.leases WHERE name IN (
+    WITH batch AS MATERIALIZED (
       SELECT name FROM phoenix.leases WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
-    ) AND expires_at <= statement_timestamp()
+    )
+    DELETE FROM phoenix.leases WHERE name IN (SELECT name FROM batch)
+    AND expires_at <= statement_timestamp()
     """,
     """
-    DELETE FROM phoenix.achievement_checks WHERE user_id IN (
+    WITH batch AS MATERIALIZED (
       SELECT user_id FROM phoenix.achievement_checks WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
-    ) AND expires_at <= statement_timestamp()
+    )
+    DELETE FROM phoenix.achievement_checks WHERE user_id IN (SELECT user_id FROM batch)
+    AND expires_at <= statement_timestamp()
     """
   ]
 

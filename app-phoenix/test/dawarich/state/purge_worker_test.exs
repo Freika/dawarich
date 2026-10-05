@@ -50,6 +50,25 @@ defmodule Dawarich.State.PurgeWorkerTest do
     assert rows("SELECT count(*) FROM phoenix.counters") == [[0]]
   end
 
+  test "purge drains batches when heap order differs from expiry order under a nested-loop plan" do
+    ScratchRepo.transaction(fn ->
+      rows("SET LOCAL enable_material = off")
+      rows("SET LOCAL enable_hashjoin = off")
+      rows("SET LOCAL enable_mergejoin = off")
+      rows("ANALYZE phoenix.counters")
+
+      for n <- [3, 1, 5, 2, 4] do
+        rows(
+          "INSERT INTO phoenix.counters(key,value,expires_at) VALUES($1,1,statement_timestamp()-make_interval(secs=>$2))",
+          ["c:#{n}", 10 - n]
+        )
+      end
+
+      assert PurgeWorker.run(ScratchRepo, 2) == :ok
+      assert rows("SELECT count(*) FROM phoenix.counters") == [[0]]
+    end)
+  end
+
   test "purge skips rows a transaction holds locked, without waiting, and deletes them on the next run" do
     expired!(~w(o:locked o:free), ~w(c:locked c:free), ~w(l:locked l:free))
 
