@@ -4,6 +4,87 @@ defmodule Dawarich.Imports.KmlTest do
   alias Dawarich.Test.{NormalFormats, NormalFormatsAssertions}
   @dir Path.expand("../../fixtures/imports/formats", __DIR__)
 
+  defmodule FullDevice do
+    def write(_, _), do: {:error, :enospc}
+    def close(nil), do: :ok
+    def close(io), do: File.close(io)
+  end
+
+  @tag :tmp_dir
+  test "KML close flush exhaustion preserves the spool write error", %{tmp_dir: dir} do
+    alias Dawarich.Imports.Kml.Handler
+
+    error =
+      assert_raise File.Error, fn ->
+        Handler.with_state(dir, fn state ->
+          state = put_in(state.indexes.placemark, faulted_index(state.indexes.placemark))
+          state = Handler.event({:startElement, [], ~c"Placemark", {[], []}, []}, nil, state)
+          Handler.event({:endElement, [], [], []}, nil, state)
+        end)
+      end
+
+    assert error.reason == :enospc
+    assert error.action == "write"
+    assert error.path == "private JSON spool"
+  end
+
+  @tag :tmp_dir
+  test "KML index close failures preserve the primary parse error", %{tmp_dir: dir} do
+    alias Dawarich.Imports.Kml.Handler
+
+    assert_raise ArgumentError, "primary parse error", fn ->
+      Handler.with_state(dir, fn state ->
+        case state.indexes.placemark do
+          {:file_descriptor, :raw_file_io_delayed, _} = io ->
+            io = faulted_index(io)
+            :ok = :file.write(io, "pending index bytes")
+
+          _ ->
+            :ok
+        end
+
+        raise ArgumentError, "primary parse error"
+      end)
+    end
+  end
+
+  defp faulted_index({:file_descriptor, :raw_file_io_delayed, %{pid: pid}} = io) do
+    :sys.replace_state(pid, fn {status, data} ->
+      {status, %{data | handle: {:file_descriptor, FullDevice, data.handle}}}
+    end)
+
+    io
+  end
+
+  defp faulted_index(_), do: {:file_descriptor, FullDevice, nil}
+
+  @tag :tmp_dir
+  test "KML spool failures occur on write rather than a delayed close flush", %{tmp_dir: dir} do
+    alias Dawarich.Imports.Kml.Handler
+    alias Dawarich.Imports.JsonStream.Spool
+
+    Handler.with_state(dir, fn state ->
+      for io <- Map.values(state.indexes),
+          do: assert(match?({:file_descriptor, :prim_file, _}, io))
+
+      state = Handler.event({:startElement, [], ~c"Placemark", {[], []}, []}, nil, state)
+
+      state =
+        Handler.event(
+          {:characters, String.to_charlist(String.duplicate("x", 65_537))},
+          nil,
+          state
+        )
+
+      [capture] = state.captures
+      assert {:file_descriptor, :prim_file, _} = capture.io
+      :ok = File.close(capture.io)
+      error = assert_raise File.Error, fn -> Spool.write!(capture.io, :unwritten) end
+      assert error.action == "write"
+      assert error.path == "private JSON spool"
+    end)
+  end
+
   @tag :tmp_dir
   test "small KML captures stay inline and large captures spill without losing events", %{
     tmp_dir: dir

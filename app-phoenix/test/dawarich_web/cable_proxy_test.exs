@@ -207,7 +207,7 @@ defmodule DawarichWeb.CableProxyTest do
     on_exit(fn -> :telemetry.detach(ref) end)
 
     :ok = :gen_tcp.close(puma)
-    receive do: ({^ref, :close_sent} -> :ok)
+    assert_receive {^ref, :close_sent}, 5_000
 
     assert {{:close, <<1011::16>>}, _rest} = ws_recv(socket, rest)
   end

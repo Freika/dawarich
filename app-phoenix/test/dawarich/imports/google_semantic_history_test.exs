@@ -4,6 +4,23 @@ defmodule Dawarich.Imports.GoogleSemanticHistoryTest do
   alias Dawarich.Test.{NormalFormats, NormalFormatsAssertions}
   @dir Path.expand("../../fixtures/imports/formats", __DIR__)
 
+  test "semantic importer reads each zone once and clears its cache" do
+    c = NormalFormats.seed!("semantic_import_1000", ScratchRepo)
+    alias Dawarich.Imports.ZonePeriod
+    Code.ensure_loaded!(ZonePeriod)
+    function = {ZonePeriod, :read!, 1}
+    :erlang.trace_pattern(function, true, [:call_count])
+
+    try do
+      assert :ok = GoogleSemanticHistory.call(c.path, c.import, c.context)
+      assert {:call_count, 1} = :erlang.trace_info(function, :call_count)
+      assert Process.get({ZonePeriod, :cache}) == nil
+      NormalFormatsAssertions.assert_snapshot(c, ScratchRepo)
+    after
+      :erlang.trace_pattern(function, false, [:call_count])
+    end
+  end
+
   for path <- Path.wildcard(Path.join(@dir, "semantic_import_*.json")),
       not String.ends_with?(path, ".input.json"),
       Path.basename(path) != "semantic_import_duplicate.json" do

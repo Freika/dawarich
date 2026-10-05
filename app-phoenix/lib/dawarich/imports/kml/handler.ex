@@ -6,9 +6,9 @@ defmodule Dawarich.Imports.Kml.Handler do
   def with_state(dir, fun) do
     File.open!(
       Path.join(dir, "placemark"),
-      [:write, :binary, :raw, :delayed_write],
+      [:write, :binary, :raw],
       fn placemarks ->
-        File.open!(Path.join(dir, "track"), [:write, :binary, :raw, :delayed_write], fn tracks ->
+        File.open!(Path.join(dir, "track"), [:write, :binary, :raw], fn tracks ->
           state = %{
             dir: dir,
             indexes: %{placemark: placemarks, track: tracks},
@@ -123,7 +123,7 @@ defmodule Dawarich.Imports.Kml.Handler do
     if bytes <= @capture_limit do
       %{capture | events: [event | capture.events], bytes: bytes}
     else
-      io = File.open!(capture.file, [:write, :binary, :raw, :exclusive, :delayed_write])
+      io = File.open!(capture.file, [:write, :binary, :raw, :exclusive])
       File.chmod!(capture.file, 0o600)
       Process.put({__MODULE__, dir}, [io | Process.get({__MODULE__, dir}, [])])
       Enum.each(Enum.reverse(capture.events), &Spool.write!(io, &1))

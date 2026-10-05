@@ -252,8 +252,8 @@ defmodule Dawarich.Imports.GpxLifecycleTest do
 
       rows(unquote(sql), [target])
       send(server.pid, :release)
-      Task.await(task, :infinity)
-      Task.await(server, :infinity)
+      Task.await(task)
+      Task.await(server)
       assert [[0]] == rows("SELECT count(*) FROM points")
       assert [[0]] == rows("SELECT count(*) FROM notifications")
       refute Processed.done?(ScratchRepo, c.job.args["event_id"])

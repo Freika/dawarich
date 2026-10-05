@@ -212,7 +212,7 @@ defmodule Dawarich.Imports.ProcessGpxWorkerTest do
     receive do: (:holding -> :ok)
     assert {:snooze, 5} = ProcessGpxWorker.perform(c.job)
     send(holder.pid, :release)
-    assert {:ok, :ok} = Task.await(holder, :infinity)
+    assert {:ok, :ok} = Task.await(holder)
     refute Processed.done?(ScratchRepo, c.job.args["event_id"])
   end
 

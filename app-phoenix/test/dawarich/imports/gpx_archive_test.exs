@@ -224,8 +224,8 @@ defmodule Dawarich.Imports.GpxArchiveTest do
       end
 
     Process.exit(pid, :kill)
-    receive do: ({:DOWN, ^ref, :process, ^pid, :killed} -> :ok)
-    receive do: ({:DOWN, ^guard_ref, :process, ^guard, :normal} -> :ok)
+    assert_receive {:DOWN, ^ref, :process, ^pid, :killed}
+    assert_receive {:DOWN, ^guard_ref, :process, ^guard, :normal}, 500
     refute File.exists?(path)
     assert File.ls!(f.dir) == ["source.zip"]
   end
