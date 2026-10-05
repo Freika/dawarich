@@ -55,6 +55,14 @@ defmodule DawarichWeb.RailsPagesRoutes do
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.TripsGate, :index?}}
 
+          live "/trips/new", DawarichWeb.TripsLive.Form, :new,
+            container: {:div, class: "contents"},
+            metadata: %{rails_gate: {DawarichWeb.TripsGate, :form?}}
+
+          live "/trips/:id/edit", DawarichWeb.TripsLive.Form, :edit,
+            container: {:div, class: "contents"},
+            metadata: %{rails_gate: {DawarichWeb.TripsGate, :form?}}
+
           live "/trips/:id", DawarichWeb.TripsLive.Show, :show,
             container: {:div, class: "contents"},
             metadata: %{rails_gate: {DawarichWeb.TripsGate, :show?}}

@@ -3,7 +3,6 @@ defmodule DawarichWeb.TripsLive.Show do
   use DawarichWeb, :live_view
 
   import DawarichWeb.Icon, only: [icon: 1]
-  import DawarichWeb.MapReplay, only: [replay_panel: 1]
   import DawarichWeb.PosterStudio, only: [poster_studio: 1]
   import DawarichWeb.TripDaysList, only: [trip_days: 1]
   import DawarichWeb.TripParts, only: [trip_header: 1, trip_toolbar: 1]
@@ -61,29 +60,26 @@ defmodule DawarichWeb.TripsLive.Show do
         data-trip-maplibre-meters-between-routes-value={@page.settings.meters}
         data-trip-maplibre-minutes-between-routes-value={@page.settings.minutes}
         data-trip-maplibre-path-data-value={@page.path_json}
+        data-trip-maplibre-plan-value={if @page.plan_toggle, do: @page.plan_json}
         data-trip-maplibre-device-windows-value={@page.windows_json}
         data-trip-maplibre-map-style-value={@page.settings.style}
       >
         <div class="flex flex-col lg:flex-row gap-6 lg:h-[calc(100dvh-9.75rem)]">
           <div class="w-full lg:w-3/5 h-[50vh] lg:h-full shrink-0">
-            <div
-              class="w-full h-full rounded-lg overflow-hidden relative"
-              data-trip-maplibre-target="map"
-            >
-              <div
-                data-trip-maplibre-target="loadingIndicator"
-                class="absolute bottom-4 left-4 z-10 bg-base-100/80 backdrop-blur-sm rounded-lg px-3 py-2 flex items-center gap-2 hidden"
-              >
-                <span class="loading loading-spinner loading-sm"></span>
-                <span class="text-sm">{t(@locale, "trips.show.loading_route_data", %{})}</span>
-              </div>
-              <.replay_panel locale={@locale} stimulus="trip-maplibre" show_day_nav />
-            </div>
+            <DawarichWeb.TripMapPanel.panel page={@page} locale={@locale} />
           </div>
           <div class="w-full lg:w-2/5 lg:h-full lg:overflow-y-auto">
             <.trip_header page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />
             <turbo-frame id="share-link-modal"></turbo-frame>
             <.trip_toolbar page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />
+            <DawarichWeb.TripItinerary.itinerary
+              :if={DawarichWeb.TripPlanItems.visible?(@page.plan)}
+              plan={@page.plan}
+              notes={@page.day_notes}
+              plan_on_map={@page.plan_on_map}
+              locale={@locale}
+              now={@page.now}
+            />
             <.trip_days page={@page} locale={@locale} rails_csrf_token={@rails_csrf_token} />
             <div :if={@page.description} class="mb-6">
               <h3 class="text-lg font-semibold mb-2">{t(@locale, "trips.show.trip_notes", %{})}</h3>

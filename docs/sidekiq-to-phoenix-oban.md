@@ -49,6 +49,13 @@ part of the full ExUnit tier. Final totals are recorded in the controller's
 `orch/out/fix-a7r2.report.md` handoff. Seed 303 runs on the controller's
 integration head.
 
+The merged-slice regressions materialize purge batches before deleting rows,
+so nested-loop plans cannot change the selected batch during deletion.
+Geocoding cache-hit coverage observes the successful Rails Lua reservations
+without relying on a short-lived bucket surviving between assertions.
+Achievement ownership checks retain explicit `user_data` rollback replay,
+and public achievement pages compare the complete tracked Rails import map.
+
 Full RSpec, browser/stand, image/Compose and PgBouncer topology acceptance
 remain controller release work. No AFFiNE synchronization is performed for
 this data-exposure-sensitive task.

@@ -228,6 +228,64 @@ defmodule Dawarich.Test.FrameSeeds do
     repo.get(Dawarich.Accounts.User, u["id"])
   end
 
+  def seed_place_remainder!(entry) do
+    before = entry["before"]
+    actor = before["actor"]
+    RailsUser.insert!(user_attrs(actor))
+
+    owners =
+      Enum.flat_map(~w(places visits notes tags), fn table ->
+        Enum.map(before[table], & &1["user_id"])
+      end)
+      |> Enum.uniq()
+
+    for id <- owners,
+        id != nil and id != actor["id"],
+        do: RailsUser.insert!(%{id: id, email: "a8-place-#{id}@example.invalid"})
+
+    for table <- ~w(places visits place_visits notes tags taggings), row <- before[table] do
+      row =
+        case table do
+          "places" ->
+            Map.update!(
+              row,
+              "source",
+              &Map.get(%{"manual" => 0, "photon" => 1, "gpx_waypoint" => 2}, &1)
+            )
+
+          "visits" ->
+            Map.update!(
+              row,
+              "status",
+              &Map.get(%{"suggested" => 0, "confirmed" => 1, "declined" => 2}, &1)
+            )
+
+          _ ->
+            row
+        end
+
+      row =
+        if table in ~w(places notes) do
+          Map.update!(row, "lonlat", fn
+            [lon, lat] -> "SRID=4326;POINT(#{lon} #{lat})"
+            nil -> nil
+          end)
+        else
+          row
+        end
+
+      ApiGolden.insert!(table, row)
+    end
+
+    id = hd(before["places"])["id"]
+
+    for table <- ~w(places taggings),
+        do:
+          Repo.query!("SELECT setval($1::text::regclass, $2, false)", ["#{table}_id_seq", id + 10])
+
+    Dawarich.Accounts.get(actor["id"])
+  end
+
   defp user_attrs(user) do
     Map.new(user, fn {key, value} ->
       value =

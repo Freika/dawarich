@@ -894,7 +894,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/trips/new /trips/5/edit /trips/abc /trips/12abc /trips/1234567890123456789 /trips.json /trips/5.json /trips?format=json) do
+          ~w(/trips/new?format=json /trips/5/edit?format=json /trips/abc /trips/12abc /trips/1234567890123456789 /trips.json /trips/5.json /trips?format=json) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end

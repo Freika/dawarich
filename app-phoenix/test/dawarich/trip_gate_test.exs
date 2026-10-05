@@ -28,7 +28,7 @@ defmodule Dawarich.TripGateTest do
       assert TripList.gate(user, 10_000_000_000_000) == :rails
     end
 
-    test "a listed trip with a plan preview, an empty path or odd countries sends only its page to Rails",
+    test "a listed trip with a plan preview or an empty path stays with Phoenix",
          %{user: user} do
       for n <- 1..6,
           do:
@@ -44,14 +44,14 @@ defmodule Dawarich.TripGateTest do
 
       TripsSeeds.planned!("planned_days", 880_510)
 
-      assert TripList.gate(user, 1) == :rails
+      assert TripList.gate(user, 1) == :phoenix
       assert TripList.gate(user, 2) == :phoenix
 
       TripsSeeds.path!(880_510, @path)
       assert TripList.gate(user, 1) == :phoenix
 
       TripsSeeds.empty_path!(880_510)
-      assert TripList.gate(user, 1) == :rails
+      assert TripList.gate(user, 1) == :phoenix
     end
 
     test "countries must be an empty object or an array of strings", %{user: user} do
@@ -77,7 +77,7 @@ defmodule Dawarich.TripGateTest do
       assert TripList.gate(foreign, 1) == :rails
     end
 
-    test "a planned_unplanned_places row alone also sends a path-less trip's page to Rails", %{
+    test "a planned_unplanned_places row alone keeps a path-less trip's page in Phoenix", %{
       user: user
     } do
       trip!(880_701, %{
@@ -88,7 +88,7 @@ defmodule Dawarich.TripGateTest do
 
       TripsSeeds.planned!("planned_unplanned_places", 880_701)
 
-      assert TripList.gate(user, 1) == :rails
+      assert TripList.gate(user, 1) == :phoenix
     end
 
     test "a zone PostgreSQL does not list or a timezone that is not a string sends the list to Rails" do
@@ -120,32 +120,34 @@ defmodule Dawarich.TripGateTest do
       assert TripPage.gate(foreign, 880_101) == :rails
     end
 
-    test "an uncalculated trip goes to Rails, because Rails enqueues its calculation on this render",
+    test "uncalculated trips admit rendering while malformed countries stay on Rails",
          %{user: user} do
       for {id, attrs} <- [
             {880_102, %{path: nil}},
             {880_103, %{distance: nil}},
             {880_104, %{visited_countries: []}},
-            {880_105, %{visited_countries: %{}}},
-            {880_106, %{visited_countries: ["Germany", 7]}}
+            {880_105, %{visited_countries: %{}}}
           ] do
         trip!(id, attrs)
-        assert TripPage.gate(user, id) == :rails, inspect(attrs)
+        assert {:ok, _} = TripPage.gate(user, id), inspect(attrs)
       end
+
+      trip!(880_106, %{visited_countries: ["Germany", 7]})
+      assert TripPage.gate(user, 880_106) == :rails
 
       trip!(880_107, %{path: nil})
       TripsSeeds.empty_path!(880_107)
-      assert TripPage.gate(user, 880_107) == :rails
+      assert {:ok, _} = TripPage.gate(user, 880_107)
     end
 
-    test "TREK rows, a TREK source, a description Phoenix cannot render exactly and a date past int4 go to Rails",
+    test "TREK reads stay native while unsupported descriptions and dates stay on Rails",
          %{user: user} do
       ~w(planned_days planned_reservations planned_accommodations planned_travellers planned_unplanned_places)
       |> Enum.with_index(880_110)
       |> Enum.each(fn {table, id} ->
         trip!(id)
         TripsSeeds.planned!(table, id)
-        assert TripPage.gate(user, id) == :rails, table
+        assert {:ok, _} = TripPage.gate(user, id), table
       end)
 
       trip!(880_120, %{source_identifier: "12"})
@@ -163,8 +165,8 @@ defmodule Dawarich.TripGateTest do
         ~s(<action-text-attachment sgid="x"></action-text-attachment>)
       )
 
-      assert TripPage.gate(user, 880_120) == :rails
-      assert TripPage.gate(user, 880_121) == :rails
+      assert {:ok, _} = TripPage.gate(user, 880_120)
+      assert {:ok, _} = TripPage.gate(user, 880_121)
       assert {:ok, %{description: "<div>Along the Elster</div>"}} = TripPage.gate(user, 880_122)
       assert {:ok, %{description: nil}} = TripPage.gate(user, 880_123)
       assert TripPage.gate(user, 880_124) == :rails

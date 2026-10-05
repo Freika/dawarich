@@ -90,7 +90,7 @@ defmodule DawarichWeb.TripsGateEndpointTest do
       ended_at: ~N[2020-01-02 08:00:00]
     })
 
-    TripsSeeds.planned!("planned_days", 881_108)
+    Dawarich.Repo.query!("UPDATE trips SET visited_countries = '[1]'::jsonb WHERE id = 881108")
 
     port = serve()
     client = connect(port)
@@ -160,7 +160,7 @@ defmodule DawarichWeb.TripsGateEndpointTest do
 
       send_raw(
         client,
-        "POST #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\nAccept: #{accept}\r\n" <>
+        "POST #{target} HTTP/1.1\r\nHost: a\r\nCookie: #{cookie}\r\nAccept: #{accept}\r\nX-Dawarich-Client: legacy-web\r\n" <>
           "Content-Type: application/x-www-form-urlencoded\r\nContent-Length: #{byte_size(body)}\r\n\r\n" <>
           body
       )
