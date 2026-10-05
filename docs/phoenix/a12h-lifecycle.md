@@ -82,6 +82,11 @@ Ecto locking; the existing lease/fences span public migration, registration copy
 and seed writes. Release-level tests cover fresh/current migration concurrency,
 Rails try-lock refusal, seed concurrency and migrate-versus-seeds exclusion.
 
+The dedicated connection preserves the Repo's connection settings, including
+IPv6 socket options. It stops on disconnect with no supervisor restarts; its
+link terminates the native write caller on backend loss. It never reconnects
+or reacquires a lost lock, and both unlock results must confirm release.
+
 With documented `DATABASE_ADVISORY_LOCKS=false`, native takes no session lock,
 using Visits.Persister's parsing. This is Rails source parity: the operator's
 single-migrator rule applies across both runtimes, including PgBouncer transaction

@@ -25,12 +25,21 @@ defmodule Dawarich.Release.NativeTest.Pending do
   def data_versions, do: ["20991005000003"]
 end
 
+defmodule Dawarich.Release.NativeTest.Inet6Repo do
+  def config do
+    Dawarich.ScratchCaseRepo.config()
+    |> Keyword.put(:hostname, "::1")
+    |> Keyword.put(:socket_options, [:inet6])
+    |> Keyword.put(:parameters, application_name: "a12h-inet6-lock")
+  end
+end
+
 defmodule Dawarich.Release.NativeTest do
   use Dawarich.ScratchCase, async: true, group: :scratch_case_db
 
   alias Dawarich.{Release, ReleaseMigrator}
   alias Dawarich.ReleaseMigrator.Floor
-  alias Dawarich.Release.NativeTest.{Pending, Probe}
+  alias Dawarich.Release.NativeTest.{Inet6Repo, Pending, Probe}
 
   setup do
     ScratchRepo.query!("DROP SCHEMA IF EXISTS phoenix CASCADE")
@@ -189,6 +198,18 @@ defmodule Dawarich.Release.NativeTest do
         assert ScratchRepo.query!("SELECT pg_advisory_unlock($1)", [key]).rows == [[true]]
       end
     end)
+  end
+
+  test "native lock connection preserves IPv6 socket options and session parameters" do
+    assert Dawarich.Release.Native.with_lock(Inet6Repo, opts(), fn ->
+             assert ScratchRepo.query!(
+                      "SELECT client_addr::text FROM pg_stat_activity WHERE application_name='a12h-inet6-lock' AND pid IN (SELECT pid FROM pg_locks WHERE locktype='advisory' AND objsubid=1 AND database=(SELECT oid FROM pg_database WHERE datname=current_database()))"
+                    ).rows == [["::1/128"]]
+
+             :ok
+           end) == :ok
+
+    refute advisory_held?()
   end
 
   test "native pending data refusal releases the lock without registration writes" do

@@ -69,15 +69,30 @@ defmodule Dawarich.Release.Native do
       config =
         Keyword.take(repo.config(), [
           :hostname,
+          :endpoints,
           :port,
           :username,
           :password,
           :database,
           :socket_dir,
+          :socket,
+          :socket_options,
           :ssl,
           :ssl_opts,
           :types,
-          :parameters
+          :parameters,
+          :target_server_type,
+          :connect_timeout,
+          :handshake_timeout,
+          :ping_timeout,
+          :timeout,
+          :prepare,
+          :transactions,
+          :disconnect_on_error_codes,
+          :disable_composite_types,
+          :after_connect,
+          :after_connect_timeout,
+          :configure
         ])
 
       {:ok, conn} = Postgrex.start_link(config ++ [backoff_type: :stop, max_restarts: 0])
