@@ -5,7 +5,14 @@ defmodule Dawarich.Release do
   @oban_schema "oban"
 
   def migrate, do: migrate([])
-  def migrate(opts), do: with_repos(&migrate_schemas(&1, opts))
+
+  def migrate(opts) do
+    case Dawarich.Release.Lifecycle.mode(Keyword.get(opts, :env, System.get_env())) do
+      {:ok, :rails} -> with_repos(&migrate_schemas(&1, opts), opts)
+      {:ok, :native} -> with_repos(&Dawarich.Release.Native.migrate(&1, opts), opts)
+      {:error, reason} -> raise Dawarich.CLI.Migrate.describe(reason)
+    end
+  end
 
   def migrate_oban, do: with_repos(&install_oban/1)
 
@@ -35,25 +42,37 @@ defmodule Dawarich.Release do
   @doc false
   def ledger_schema, do: @ledger_schema
 
-  defp with_repos(fun) do
-    map_repos(fun)
+  defp with_repos(fun, opts \\ []) do
+    map_repos(fun, opts)
     :ok
   end
 
-  defp map_repos(fun) do
+  defp map_repos(fun, opts \\ []) do
     load_app()
 
-    for repo <- Application.fetch_env!(@app, :ecto_repos) do
+    repos = if opts[:repo], do: [opts[:repo]], else: Application.fetch_env!(@app, :ecto_repos)
+
+    for repo <- repos do
       {:ok, result, _} = Ecto.Migrator.with_repo(repo, fun)
       result
     end
   end
 
   defp migrate_schemas(repo, opts) do
-    ensure_schema(repo, @ledger_schema)
-    Ecto.Migrator.run(repo, :up, all: true, prefix: @ledger_schema, log: false)
-    install_oban(repo)
+    install_schemas(repo)
     copy_registration(repo, opts)
+  end
+
+  def install_schemas(repo) do
+    ensure_schema(repo, @ledger_schema)
+
+    Ecto.Migrator.run(repo, Application.app_dir(@app, "priv/repo/migrations"), :up,
+      all: true,
+      prefix: @ledger_schema,
+      log: false
+    )
+
+    install_oban(repo)
   end
 
   defp copy_registration(repo, opts) do

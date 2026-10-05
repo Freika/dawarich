@@ -24,8 +24,10 @@ defmodule Dawarich.ReleaseMigrator do
   def migrate(repo, opts \\ []) do
     releases = Keyword.get_lazy(opts, :releases, &ReleaseMigrations.all/0)
 
-    with :ok <- preflight(repo) do
-      Lease.with_lease(repo, opts, fn lease ->
+    with :ok <- preflight(repo, opts) do
+      with_lease(repo, opts, fn lease ->
+        lease = Map.put(lease, :rails_lock_check, Keyword.get(opts, :rails_lock_check, true))
+
         run(
           repo,
           lease,
@@ -63,7 +65,7 @@ defmodule Dawarich.ReleaseMigrator do
     releases = Keyword.get_lazy(opts, :releases, &ReleaseMigrations.all/0)
     known = Enum.flat_map(releases, &ReleaseMigration.versions/1)
 
-    with :ok <- checks(repo) do
+    with :ok <- checks(repo, opts) do
       case Ledger.classify(read_versions(repo, "schema_migrations"), known) do
         :fresh ->
           {:ok, :fresh}
@@ -80,21 +82,36 @@ defmodule Dawarich.ReleaseMigrator do
     end
   end
 
-  defp preflight(repo) do
-    with :ok <- Lease.require_two_connections(repo), do: checks(repo)
+  defp with_lease(repo, opts, fun) do
+    if lease = opts[:lease], do: fun.(lease), else: Lease.with_lease(repo, opts, fun)
   end
 
-  defp checks(repo) do
+  defp preflight(repo, opts \\ []) do
+    with :ok <- Lease.require_two_connections(repo), do: checks(repo, opts)
+  end
+
+  defp checks(repo, opts) do
     %{rows: [[timezone, schema, others]]} = repo.query!(@preflight_sql, [], log: false)
     ledger = read_versions(repo, "schema_migrations")
 
     cond do
-      timezone != "UTC" -> {:error, {:timezone, timezone}}
-      rails = rails_migrator(repo) -> {:error, {:rails_migrating, rails}}
-      schema != "public" or others != [] -> {:error, {:foreign_schema, schema, others}}
-      count = Ledger.not_dawarich(ledger) -> {:error, {:not_dawarich, count}}
-      release = Ledger.below_floor(ledger) -> {:error, {:below_floor, release}}
-      true -> :ok
+      timezone != "UTC" ->
+        {:error, {:timezone, timezone}}
+
+      rails = Keyword.get(opts, :rails_lock_check, true) && rails_migrator(repo) ->
+        {:error, {:rails_migrating, rails}}
+
+      schema != "public" or others != [] ->
+        {:error, {:foreign_schema, schema, others}}
+
+      count = Ledger.not_dawarich(ledger) ->
+        {:error, {:not_dawarich, count}}
+
+      release = Ledger.below_floor(ledger) ->
+        {:error, {:below_floor, release}}
+
+      true ->
+        :ok
     end
   end
 
@@ -174,7 +191,7 @@ defmodule Dawarich.ReleaseMigrator do
   end
 
   defp run_version(repo, lease, step, job_mode) do
-    if rails = rails_migrator(repo) do
+    if rails = Map.get(lease, :rails_lock_check, true) && rails_migrator(repo) do
       {:error, {:rails_migrating, rails}}
     else
       result = step.fun.(repo)
@@ -217,7 +234,9 @@ defmodule Dawarich.ReleaseMigrator do
   end
 
   defp fence!(repo, lease) do
-    if rails = rails_migrator(repo), do: repo.rollback({:rails_migrating, rails})
+    if rails = Map.get(lease, :rails_lock_check, true) && rails_migrator(repo),
+      do: repo.rollback({:rails_migrating, rails})
+
     unless Lease.fenced?(repo, lease), do: repo.rollback({:lease_lost, lease.holder})
   end
 

@@ -86,5 +86,19 @@ defmodule Dawarich.CLI.Migrate do
       "refused: a Rails migrator holds its advisory lock (backend #{pid}); stop it, or if no Rails process runs, " <>
         "wait for PgBouncer's server_lifetime or restart PgBouncer"
 
+  def describe({:pending_data, _}),
+    do:
+      "refused: pending data migrations; run the last Rails image before enabling native lifecycle"
+
+  def describe(:registration_copy_refused), do: "registration copy refused"
+
+  def describe(:invalid_lifecycle_flag),
+    do: "refused: DAWARICH_PHOENIX_LIFECYCLE must be true or false"
+
+  def describe(:cloud_native_lifecycle), do: "refused: native lifecycle requires self-hosted mode"
+
+  def describe(:migration_lock_busy),
+    do: "refused: another migrator holds the database advisory lock"
+
   def describe(error) when is_exception(error), do: "refused: #{Exception.message(error)}"
 end

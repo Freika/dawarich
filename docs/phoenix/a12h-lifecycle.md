@@ -13,8 +13,8 @@ repository. The implementation report is `SP/orch/out/impl-a12h.report.md`.
 `DAWARICH_PHOENIX_LIFECYCLE` has a strict policy: absent or literal `false` selects
 Rails; literal `true` selects native only for self-hosted configuration. Other
 values and Cloud-native configuration are rejected by the policy module.
-The current Release, CLI and entrypoint callers do not consume that policy yet.
-Setting the flag on this head does not switch migrations or seeds to Phoenix.
+Release.migrate now consumes this policy. The CLI and shell wiring remain pending;
+do not activate boot using the flag until those tasks and release gates close.
 
 The retained self-hosted `docker/web-entrypoint.sh` path is:
 
@@ -89,20 +89,27 @@ adapters are merged. The import release's 120-second initial delay and 10-second
 spacing remain unchanged. Before activation, close complete Release coordination, strict CLI
 and shell branching, readiness, real upgrade vectors, C3/C4 and release rehearsals.
 
-Task 9 is blocked. Its local prototype held Rails' lock in a separate transaction
-through private bootstrap, public DDL and registration copy. The concurrent-index
-test waited on that lock-holder's virtual xid, preventing the complete call from
-finishing. The prototype and its unfinished tests were removed; no orchestration
-or exclusion proof is retained. Rails' Migrator initializer also creates its
-metadata tables before acquiring its normal advisory lock, leaving fresh bootstrap
-outside that exclusion mechanism.
+Task 9 implements source parity under the controller's 2026-10-05 ruling.
+Native classification refuses unsupported ledgers before private schema writes.
+Like Rails, it creates empty schema_migrations/ar_internal_metadata idempotently
+before the lock, then reclassifies under Rails' exact advisory key. No native
+version or registration rows are written before exclusion. A real metadata race
+can fail loudly at bootstrap with no native version, job or registration writes.
 
-The prerequisite owner must supply and prove coordination that covers Rails
-metadata bootstrap and remains usable during nontransactional DDL and PgBouncer
-transaction pooling. A session-pinned/direct release connection for the existing
-session advisory lock, with Rails bootstrap protected before metadata writes,
-needs a controller decision and proof before Task 9 resumes. Operator quiescence
-does not close this prerequisite.
+A dedicated Postgrex connection stays pinned for the whole migrate call, with
+no transaction open while holding the session advisory lock. Lock acquisition
+uses completed pg_try_advisory_lock queries before the required pg_advisory_lock;
+waiting SELECT/DO lock calls retain snapshots that block CREATE INDEX CONCURRENTLY.
+Both lock counts are released in an after path; disconnect also releases them.
+The existing lease/fences span public migration and registration copy. Tests
+exercise concurrent fresh/current calls and Rails' source try-lock refusal.
+
+DATABASE_ADVISORY_LOCKS=false uses the same false/no/off parsing as Visits.Persister
+and takes no session lock. This is Rails source parity, including PgBouncer
+transaction pooling: operators must run only one migrator across both runtimes.
+Never take a session advisory lock through a transaction pooler. ED-534 records
+this setting as source parity, not a native exclusion gap. Whole-call migrate
+versus seeds serialization still awaits Task 15.
 
 Raw intents have no execution/disposition marker and may be offline proof output
 or already executed through Rails. Establish a known baseline and resolve any
