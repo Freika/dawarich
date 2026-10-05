@@ -1,6 +1,5 @@
 defmodule Dawarich.UserTimeZoneIanaTest do
-  use Dawarich.JobsCase
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.UserTimeZone
 
   test "a Rails zone name maps to its IANA name, an IANA name stays, an unknown name is Etc/UTC" do

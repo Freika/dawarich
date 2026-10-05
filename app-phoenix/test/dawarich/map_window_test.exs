@@ -1,15 +1,10 @@
 defmodule Dawarich.MapWindowTest do
-  use ExUnit.Case, async: false
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.MapWindow
   alias DawarichWeb.LocalizedDate
 
   @now ~U[2026-09-29 10:00:00Z]
   @berlin %{"timezone" => "Europe/Berlin"}
-
-  setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
-  end
 
   defp build(params, settings \\ @berlin, range \\ nil, env \\ %{}),
     do: MapWindow.build(params, settings, @now, range, env)
