@@ -64,6 +64,7 @@ defmodule Dawarich.Achievements.BulkCheck do
       AND u.id IN (SELECT user_id FROM points WHERE (anomaly=false OR anomaly IS NULL) AND lonlat IS NOT NULL)
       AND (NOT $1 OR u.id NOT IN (SELECT user_id FROM achievement_progresses
         WHERE achievement_key='exploration' AND COALESCE((state->>'calculation_version')::integer,0)>=$2))
+      ORDER BY u.id
       """,
       [stale, Checker.calculation_version()],
       log: false

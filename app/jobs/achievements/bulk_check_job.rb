@@ -45,6 +45,7 @@ module Achievements
 
       User.where(status: statuses)
           .where(id: Point.not_anomaly.where.not(lonlat: nil).select(:user_id))
+          .order(:id)
           .pluck(:id)
     end
 

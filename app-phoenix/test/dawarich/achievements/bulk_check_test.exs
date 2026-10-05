@@ -26,6 +26,44 @@ defmodule Dawarich.Achievements.BulkCheckTest do
     }
   end
 
+  test "shuffled source eligibility fixes each user offset across stale filtering and hand-back",
+       %{args: args} do
+    ids = Enum.to_list(59_001..59_402)
+
+    for id <- Enum.reverse(ids) do
+      rows(
+        "INSERT INTO users(id,email,status,created_at,updated_at) VALUES($1,$2,1,now(),now())",
+        [id, "bulk-achievements-order-#{id}@example.test"]
+      )
+
+      point(id)
+    end
+
+    rows(
+      "INSERT INTO achievement_progresses(user_id,achievement_key,state,created_at,updated_at) VALUES($1,'exploration',$2,now(),now())",
+      [59_002, %{"calculation_version" => 3}]
+    )
+
+    assert BulkCheckWorker.run(ScratchRepo, @oban, args, now: @now) == :ok
+
+    expected =
+      Enum.with_index(ids -- [59_002]) |> Enum.map(fn {id, i} -> [id, div(i, 200) * 300] end)
+
+    assert rows(
+             "SELECT (args->>'user_id')::bigint,extract(epoch FROM scheduled_at-$1)::int FROM oban.oban_jobs ORDER BY (args->>'user_id')::bigint",
+             [@now]
+           ) == expected
+
+    Ownership.put!(ScratchRepo, "command:achievements.check", :sidekiq)
+    handed = Map.put(args, "event_id", Ecto.UUID.generate())
+    assert BulkCheckWorker.run(ScratchRepo, @oban, handed, now: @now) == :ok
+
+    assert rows(
+             "SELECT (payload->>'user_id')::bigint,extract(epoch FROM (payload->>'run_at')::timestamptz-$1)::int FROM phoenix.rails_commands ORDER BY (payload->>'user_id')::bigint",
+             [@now]
+           ) == expected
+  end
+
   test "bulk eligibility and stale filter stagger source batches with notify unchanged", %{
     args: args
   } do
