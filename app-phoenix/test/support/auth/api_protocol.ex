@@ -36,7 +36,8 @@ defmodule Dawarich.Auth.ApiProtocol do
 
     stamp = NaiveDateTime.utc_now()
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "users",
       [
         %{
@@ -465,7 +466,7 @@ defmodule Dawarich.Auth.ApiProtocol do
           }
         end
 
-      {4, _} = Repo.insert_all("users", rows, log: false)
+      {4, _} = Dawarich.Test.SeedIds.insert_all!(Repo, "users", rows, log: false)
 
       actors =
         for {id, index} <- Enum.with_index(@auth_ids) do
@@ -646,11 +647,15 @@ defmodule Dawarich.Auth.ApiProtocol do
     columns = Enum.join(@auth_fields, ",")
     fields = Enum.map_join(@auth_fields, ",", &"r.#{&1}")
 
-    Repo.query!(
-      "INSERT INTO users (#{columns}, status, plan, subscription_source, created_at, updated_at) SELECT #{fields}, 1, 1, 0, now(), now() FROM jsonb_populate_record(NULL::users,$1) r",
-      [state],
-      log: false
-    )
+    result =
+      Repo.query!(
+        "INSERT INTO users (#{columns}, status, plan, subscription_source, created_at, updated_at) SELECT #{fields}, 1, 1, 0, now(), now() FROM jsonb_populate_record(NULL::users,$1) r",
+        [state],
+        log: false
+      )
+
+    Dawarich.Test.SeedIds.advance!(Repo, "users", [state["id"]])
+    result
   end
 
   defp auth_delete!,
@@ -715,7 +720,7 @@ defmodule Dawarich.Auth.ApiProtocol do
         }
       end)
 
-    {3, _} = Repo.insert_all("users", rows, log: false)
+    {3, _} = Dawarich.Test.SeedIds.insert_all!(Repo, "users", rows, log: false)
 
     try do
       actors =

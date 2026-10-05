@@ -49,7 +49,7 @@ defmodule Dawarich.Test.TripsSeeds do
         attrs
       )
 
-    Repo.insert_all("trips", [row])
+    Dawarich.Test.SeedIds.insert_all!(Repo, "trips", [row])
     if path, do: path!(attrs.id, path)
     attrs.id
   end
@@ -69,22 +69,26 @@ defmodule Dawarich.Test.TripsSeeds do
   def point!(attrs) do
     [lon, lat] = attrs.at
 
-    Repo.query!(@point, [
-      attrs.id,
-      attrs.user_id,
-      attrs.timestamp,
-      lon * 1.0,
-      lat * 1.0,
-      attrs[:tracker_id],
-      attrs[:source_id],
-      attrs[:anomaly],
-      stamp()
-    ])
+    result =
+      Repo.query!(@point, [
+        attrs.id,
+        attrs.user_id,
+        attrs.timestamp,
+        lon * 1.0,
+        lat * 1.0,
+        attrs[:tracker_id],
+        attrs[:source_id],
+        attrs[:anomaly],
+        stamp()
+      ])
+
+    Dawarich.Test.SeedIds.advance!(Repo, "points", [attrs.id])
+    result
   end
 
   def source!(id, tracker_id),
     do:
-      Repo.insert_all("point_sources", [
+      Dawarich.Test.SeedIds.insert_all!(Repo, "point_sources", [
         %{
           id: id,
           tracker_id: tracker_id,
@@ -96,12 +100,12 @@ defmodule Dawarich.Test.TripsSeeds do
 
   def country!(name, a2, a3),
     do:
-      Repo.insert_all("countries", [
+      Dawarich.Test.SeedIds.insert_all!(Repo, "countries", [
         %{name: name, iso_a2: a2, iso_a3: a3, created_at: stamp(), updated_at: stamp()}
       ])
 
   def note!(attrs) do
-    Repo.insert_all("notes", [
+    Dawarich.Test.SeedIds.insert_all!(Repo, "notes", [
       %{
         id: attrs.id,
         attachable_type: attrs[:attachable_type] || "Trip",
@@ -116,7 +120,7 @@ defmodule Dawarich.Test.TripsSeeds do
   end
 
   def shared_link!(attrs) do
-    Repo.insert_all("shared_links", [
+    Dawarich.Test.SeedIds.insert_all!(Repo, "shared_links", [
       %{
         id: Ecto.UUID.dump!(attrs.id),
         name: "Fixture link",
@@ -134,12 +138,12 @@ defmodule Dawarich.Test.TripsSeeds do
 
   def planned!(table, trip_id),
     do:
-      Repo.insert_all(table, [
+      Dawarich.Test.SeedIds.insert_all!(Repo, table, [
         Map.merge(@planned[table], %{trip_id: trip_id, created_at: stamp(), updated_at: stamp()})
       ])
 
   def trip_source!(id, user_id) do
-    Repo.insert_all("trip_sources", [
+    Dawarich.Test.SeedIds.insert_all!(Repo, "trip_sources", [
       %{
         id: id,
         user_id: user_id,
@@ -152,7 +156,7 @@ defmodule Dawarich.Test.TripsSeeds do
   end
 
   def rich_text!(trip_id, body) do
-    Repo.insert_all("action_text_rich_texts", [
+    Dawarich.Test.SeedIds.insert_all!(Repo, "action_text_rich_texts", [
       %{
         name: "description",
         record_type: "Trip",
@@ -166,12 +170,15 @@ defmodule Dawarich.Test.TripsSeeds do
 
   def poster!(attrs),
     do:
-      Repo.insert_all("posters", [
+      Dawarich.Test.SeedIds.insert_all!(Repo, "posters", [
         Map.merge(%{settings: %{}, updated_at: attrs.created_at}, attrs)
       ])
 
   def route_video!(attrs),
-    do: Repo.insert_all("route_videos", [Map.merge(%{updated_at: attrs.created_at}, attrs)])
+    do:
+      Dawarich.Test.SeedIds.insert_all!(Repo, "route_videos", [
+        Map.merge(%{updated_at: attrs.created_at}, attrs)
+      ])
 
   def load!(seed, now) do
     for u <- seed["users"],

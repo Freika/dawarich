@@ -55,7 +55,7 @@ defmodule Dawarich.Test.A12a do
   def seed! do
     for table <- @tables do
       rows = for row <- @corpus["rows"][table], do: Map.new(row, &column(table, &1))
-      Repo.insert_all(table, rows)
+      Dawarich.Test.SeedIds.insert_all!(Repo, table, rows)
     end
 
     :ok
@@ -484,7 +484,7 @@ defmodule Dawarich.Test.A12a do
             updated_at: stamp
           }
 
-    Repo.insert_all("notifications", rows)
+    Dawarich.Test.SeedIds.insert_all!(Repo, "notifications", rows)
     for id <- first..(first + n - 1), do: %{"notification_id" => id}
   end
 

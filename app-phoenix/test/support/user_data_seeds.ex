@@ -14,7 +14,7 @@ defmodule Dawarich.Test.UserDataSeeds do
     if export do
       insert_rows(repo, export["seed_rows"])
 
-      repo.insert_all("exports", [
+      Dawarich.Test.SeedIds.insert_all!(repo, "exports", [
         %{
           id: 988_202,
           user_id: user,
@@ -28,7 +28,7 @@ defmodule Dawarich.Test.UserDataSeeds do
         }
       ])
     else
-      repo.insert_all("users", [
+      Dawarich.Test.SeedIds.insert_all!(repo, "users", [
         %{
           id: user,
           email: "user-data-target@example.invalid",
@@ -126,6 +126,8 @@ defmodule Dawarich.Test.UserDataSeeds do
           "INSERT INTO public.#{table}(#{names}) SELECT #{selects} FROM jsonb_populate_record(NULL::public.#{table},$1::jsonb) r",
           [row]
         )
+
+        Dawarich.Test.SeedIds.advance!(repo, table, [row["id"]])
       end)
     end)
   end
@@ -141,7 +143,7 @@ defmodule Dawarich.Test.UserDataSeeds do
           content_type: file["content_type"]
         )
 
-      repo.insert_all("active_storage_attachments", [
+      Dawarich.Test.SeedIds.insert_all!(repo, "active_storage_attachments", [
         %{
           name: "file",
           record_type: file["record_type"],

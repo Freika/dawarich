@@ -2,7 +2,7 @@ defmodule DawarichWeb.AdminSettingWritesTest do
   use ExUnit.Case, async: false
   import Plug.Conn
   alias Dawarich.Repo
-  alias Dawarich.Test.RailsUser
+  alias Dawarich.Test.{LaterFailureRepo, RailsUser}
   alias DawarichWeb.RailsCsrf
   alias DawarichWeb.AdminWrites.Settings
 
@@ -72,7 +72,7 @@ defmodule DawarichWeb.AdminSettingWritesTest do
 
     opts = [
       action: :instance,
-      context: Map.put(c.context, :repo, Dawarich.Admin.InstanceWritesTest.LaterFailureRepo)
+      context: Map.put(c.context, :repo, LaterFailureRepo)
     ]
 
     conn =

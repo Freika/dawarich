@@ -47,7 +47,7 @@ defmodule Dawarich.IngestCase do
         attrs
       )
 
-    {1, [%{id: id}]} = Repo.insert_all("users", [row], returning: [:id])
+    {1, [%{id: id}]} = Dawarich.Test.SeedIds.insert_all!(Repo, "users", [row], returning: [:id])
     id
   end
 

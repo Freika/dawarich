@@ -65,10 +65,11 @@ defmodule Dawarich.Test.InsightsSeeds do
             plan: user["plan"]
           })
 
-    Repo.insert_all("stats", Enum.map(corpus["stats"], &row/1))
-    Repo.insert_all("digests", Enum.map(corpus["digests"], &row/1))
+    Dawarich.Test.SeedIds.insert_all!(Repo, "stats", Enum.map(corpus["stats"], &row/1))
+    Dawarich.Test.SeedIds.insert_all!(Repo, "digests", Enum.map(corpus["digests"], &row/1))
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "visits",
       Enum.map(corpus["visits"], &row(Map.put(&1, "created_at", &1["started_at"])))
     )

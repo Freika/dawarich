@@ -94,6 +94,7 @@ defmodule Dawarich.Wave6Fixtures do
         log: false
       )
 
+    Dawarich.Test.SeedIds.advance!(ScratchRepo, table, [columns["id"]])
     id
   end
 
