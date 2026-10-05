@@ -143,6 +143,32 @@ defmodule Dawarich.Mail.Digests.DeliveryWorkerTest do
     end
   end
 
+  test "foreign user digest pairs create no SMTP attempt or delivery claim" do
+    for {row, index} <- effects(), String.ends_with?(row["id"], "smtp_failure") do
+      reset!(ScratchRepo)
+      args = stage(row, index)
+
+      DigestFixtures.row!(ScratchRepo, "users", %{
+        "id" => 460_999,
+        "email" => "foreign-digest@test",
+        "settings" => %{"locale" => "en"},
+        "created_at" => @now,
+        "updated_at" => @now
+      })
+
+      args = Map.put(args, "user_id", 460_999)
+      assert DeliveryWorker.perform(%Oban.Job{args: args}) == :ok
+
+      receive do
+        {:mail, _} -> flunk("foreign digest reached SMTP")
+      after
+        0 -> :ok
+      end
+
+      assert rows("SELECT count(*) FROM phoenix.delivery_claims") == [[0]]
+    end
+  end
+
   defp effects,
     do: @effects |> File.read!() |> Jason.decode!() |> Map.fetch!("digests") |> Enum.with_index()
 

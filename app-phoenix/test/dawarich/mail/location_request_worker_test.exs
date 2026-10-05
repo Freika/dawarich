@@ -105,6 +105,40 @@ defmodule Dawarich.Mail.LocationRequestWorkerTest do
     refute_received {:mail, _}
   end
 
+  test "foreign requester request pairs create no SMTP attempt or delivery claim" do
+    previous = Map.take(System.get_env(), ~w(SMTP_FROM DOMAIN RAILS_ENV))
+
+    System.put_env(%{
+      "SMTP_FROM" => "residual@test",
+      "DOMAIN" => "www.example.com",
+      "RAILS_ENV" => "staging"
+    })
+
+    on_exit(fn ->
+      Enum.each(~w(SMTP_FROM DOMAIN RAILS_ENV), &System.delete_env/1)
+      System.put_env(previous)
+    end)
+
+    row = @path |> File.read!() |> Jason.decode!() |> Map.fetch!("locations") |> hd()
+    load(row)
+
+    args = %{
+      "request_id" => row["request_id"],
+      "user_id" => row["target_id"],
+      "event_id" => Ecto.UUID.generate()
+    }
+
+    assert LocationRequestWorker.perform(%Oban.Job{args: args}) == :ok
+
+    receive do
+      {:mail, _} -> flunk("foreign request reached SMTP")
+    after
+      0 -> :ok
+    end
+
+    assert rows("SELECT count(*) FROM phoenix.delivery_claims") == [[0]]
+  end
+
   defp load(row) do
     for {id, email, locale} <- [
           {row["requester_id"], row["requester_email"], "en"},

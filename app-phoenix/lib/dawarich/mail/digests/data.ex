@@ -46,7 +46,7 @@ defmodule Dawarich.Mail.Digests.Data do
 
   def delivery(repo, user_id, digest_id) do
     case repo.query!(
-           "SELECT u.id, u.email, u.settings, row_to_json(d) FROM public.users u, public.digests d WHERE u.id=$1 AND d.id=$2",
+           "SELECT u.id, u.email, u.settings, row_to_json(d) FROM public.users u JOIN public.digests d ON d.user_id=u.id WHERE u.id=$1 AND d.id=$2",
            [user_id, digest_id],
            log: false
          ).rows do

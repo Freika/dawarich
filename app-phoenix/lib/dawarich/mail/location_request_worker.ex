@@ -23,8 +23,8 @@ defmodule Dawarich.Mail.LocationRequestWorker do
     case repo.query!(
            "SELECT r.created_at, q.email, t.email, t.settings FROM public.family_location_requests r " <>
              "JOIN public.users q ON q.id=r.requester_id AND q.deleted_at IS NULL " <>
-             "LEFT JOIN public.users t ON t.id=r.target_user_id AND t.deleted_at IS NULL WHERE r.id=$1",
-           [args["request_id"]],
+             "LEFT JOIN public.users t ON t.id=r.target_user_id AND t.deleted_at IS NULL WHERE r.id=$1 AND r.requester_id=$2",
+           [args["request_id"], args["user_id"]],
            log: false
          ).rows do
       [] ->
