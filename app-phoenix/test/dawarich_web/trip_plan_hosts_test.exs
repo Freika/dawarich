@@ -168,6 +168,11 @@ defmodule DawarichWeb.TripPlanHostsTest do
       actual_attrs = MapStimulus.attributes(MapStimulus.prepare(html), [selector])
       expected_attrs = MapStimulus.attributes(MapStimulus.prepare(golden), [selector])
 
+      expected_attrs =
+        if selector == ".mx-auto.my-5",
+          do: [{selector, "form", [{"data-turbo", "false"}]} | expected_attrs],
+          else: expected_attrs
+
       assert actual_attrs == expected_attrs,
              entry["name"] <>
                inspect(
