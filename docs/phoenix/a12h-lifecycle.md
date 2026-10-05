@@ -45,8 +45,10 @@ pending Tasks 9–10 and 15–19 and is not an operator procedure on this head.
 and inserts existing worker changesets through the supplied repo with prefix
 `oban`, inside that version's transaction. Raw intents and ledger entries commit
 with transactional source effects and native jobs. Delay, queue, priority and
-max attempts are retained. Skip records the raw intent only; deferred, invalid
-or unknown jobs refuse the version. The default `:record` remains unchanged.
+max attempts are retained. Skip records the raw intent only; invalid or unknown
+jobs refuse the version. The default `:record` remains unchanged.
+After syncing A12rel, all recorded self-hosted release vectors decode to valid
+executable workers or the two intentional family skips. Task 6 is closed.
 
 Reentry does not replay historical raw intents or change existing native job IDs,
 payloads, schedule or state. The public migrator lease serializes its callers;
@@ -74,19 +76,33 @@ tests, with production defaults remaining the real clock and entropy.
 | Case | Current evidence and remaining condition |
 |---|---|
 | Flag absent/false | Existing Rails lifecycle and fallback remain in production callers. |
-| Fresh self-hosted / supported 1.0.0+ schema | Synthetic migrator/job tests and Rails seed corpus prove components; live Release orchestration and real-vector closure are pending. |
+| Fresh self-hosted / supported 1.0.0+ schema | Synthetic migrator/job tests, Rails seed corpus and real-vector decoder closure prove components; live Release orchestration is pending. |
 | Below product 1.0.0 | Public migrator refuses the missing schema state, including floor 0.37.2. Existing CLI remedy: start Dawarich 1.15.2 once so Rails upgrades it, then retry. Final last-Rails image selection belongs to the release owner. |
 | Foreign/newer/non-Dawarich ledger, UTC/pool/lease refusal | Existing public migrator checks remain; refusal before all private writes awaits Task 9. |
-| Deferred release jobs | Achievement and import adapters must close Task 6. No restricted upgrade range or substitute workers is accepted. |
+| Release job decoder | A12rel achievement and import adapters are merged; Task 6 accepts all recorded self-hosted argument vectors and validates executable worker changesets. |
 | Concurrent native lifecycle callers | Private bootstrap, public DDL, registration copy, seeds and migrate-versus-seeds require a common complete write scope and Release-level race tests in Tasks 9/15. |
 | Rails starts after preflight | Observing Rails' advisory lock does not exclude a later Rails migrator, especially during nontransactional DDL. Task 9 exclusion proof is an activation blocker. Operator quiescence is required operationally but is not that proof. |
 | Cloud | Native lifecycle remains unsupported; existing Rails deploy/provisioning remains. |
 
-Before activation, close the real achievement release wrapper (countries guard,
-missing-region load and bulk/child ownership) and import activity-file backfill
-plus track reprocessing adapter. Preserve the import release's 120-second initial
-delay and 10-second spacing. Then close complete Release coordination, strict CLI
+The real achievement release wrapper and import activity-file/track-reprocess
+adapters are merged. The import release's 120-second initial delay and 10-second
+spacing remain unchanged. Before activation, close complete Release coordination, strict CLI
 and shell branching, readiness, real upgrade vectors, C3/C4 and release rehearsals.
+
+Task 9 is blocked. Its local prototype held Rails' lock in a separate transaction
+through private bootstrap, public DDL and registration copy. The concurrent-index
+test waited on that lock-holder's virtual xid, preventing the complete call from
+finishing. The prototype and its unfinished tests were removed; no orchestration
+or exclusion proof is retained. Rails' Migrator initializer also creates its
+metadata tables before acquiring its normal advisory lock, leaving fresh bootstrap
+outside that exclusion mechanism.
+
+The prerequisite owner must supply and prove coordination that covers Rails
+metadata bootstrap and remains usable during nontransactional DDL and PgBouncer
+transaction pooling. A session-pinned/direct release connection for the existing
+session advisory lock, with Rails bootstrap protected before metadata writes,
+needs a controller decision and proof before Task 9 resumes. Operator quiescence
+does not close this prerequisite.
 
 Raw intents have no execution/disposition marker and may be offline proof output
 or already executed through Rails. Establish a known baseline and resolve any
@@ -100,7 +116,7 @@ The two independent Task 20 tests prove actual upstream request/body receipt for
 `DAWARICH_RAILS_ROUTES` route metadata and `DAWARICH_RAILS_SLICES`, before native
 pipelines, with auth configuration and ordinary job-owner reads unchanged. This
 is request hand-back. Stateful native-on then Rails-off lifecycle evidence awaits
-Task 6 and orchestration; it does not yet prove disposition of pending Oban work.
+Task 9 orchestration; it does not yet prove disposition of pending Oban work.
 
 Older-image rollback requires compatible public DDL/data and an explicit native-job
 disposition. G48 remains blocked until the release owner supplies the existing
