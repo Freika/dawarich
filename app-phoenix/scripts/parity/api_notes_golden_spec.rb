@@ -133,8 +133,38 @@ RSpec.describe 'Phoenix fixture: golden notes API requests', type: :request do
   include ActiveSupport::Testing::TimeHelpers
   include PlacesGoldenSupport
 
+  before do
+    config = Rails.application.env_config.merge('action_dispatch.show_detailed_exceptions' => false)
+    allow(Rails.application).to receive(:env_config).and_return(config)
+  end
+
   it 'records notes responses and database effects from Rails' do
+    notes_golden_fixture
+  end
+
+  it 'compares notes fixtures without writing in read-back mode' do
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('WRITE_PHOENIX_FIXTURES').and_return(nil)
+    path = Rails.root.join(ENV.fetch('API_GOLDEN_OUTPUT', 'app-phoenix/test/fixtures/api_notes/golden.json'))
+    expect(File).not_to receive(:write).with(path, anything)
+    expect(FileUtils).not_to receive(:mkdir_p).with(path.dirname)
+
+    notes_golden_fixture
+  end
+
+  it 'records a stable bad-request response for an empty note root' do
     oracle = ApiNotesGoldenOracle
+    entry = oracle::CASES.find { _1[:name] == 'create_empty_root' }
+    kase = { auth: :bearer, env: {}, content: oracle::JSON_TYPE }.merge(entry)
+    result = places_record(kase, oracle:, strict: true)
+
+    expect(result.dig('response', 'status')).to eq(400)
+    expect(result.dig('response', 'body') == JSON.generate(status: 400, error: 'Bad Request')).to be(true)
+  end
+
+  def notes_golden_fixture
+    oracle = ApiNotesGoldenOracle
+    oracle.setups.clear
     cases = places_cases(oracle).map do |entry|
       kase = { method: :get, auth: :bearer, expect: :own, env: {}, content: oracle::JSON_TYPE }.merge(entry)
       result = places_record(kase, oracle:, strict: true)
@@ -171,11 +201,16 @@ RSpec.describe 'Phoenix fixture: golden notes API requests', type: :request do
       result
     end
     path = Rails.root.join(ENV.fetch('API_GOLDEN_OUTPUT', 'app-phoenix/test/fixtures/api_notes/golden.json'))
-    FileUtils.mkdir_p(path.dirname)
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'now' => oracle::NOW.iso8601,
                 'sequences' => oracle::SEQUENCES, 'setups' => oracle.setups.sort.to_h,
                 'cases' => cases.sort_by { _1['name'] } }
-    File.write(path, "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0).rstrip}\n")
+    encoded = "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0).rstrip}\n"
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      FileUtils.mkdir_p(path.dirname)
+      File.write(path, encoded)
+    else
+      expect(path.read == encoded).to be(true), 'notes golden fixture differs from Rails'
+    end
   end
 
   def places_seed(kase)
