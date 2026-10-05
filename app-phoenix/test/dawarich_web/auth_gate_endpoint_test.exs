@@ -348,7 +348,13 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     no_puma(ctx)
   end
 
-  test "every flow is off by default: auth requests reach Puma byte for byte", ctx do
+  test "disabled credentials flow leaves Rails request untouched while revised Rails reads PG registration",
+       ctx do
+    assert {:ok, false} = Dawarich.Auth.RegistrationSetting.fetch()
+
+    claims =
+      Repo.query!("SELECT key, expires_at FROM phoenix.once_claims ORDER BY key", [], log: false).rows
+
     {_session, cookie} = guest()
     body = "authenticity_token=x&user%5Bemail%5D=a%40dawarich.test&user%5Bpassword%5D=p"
 
@@ -369,6 +375,12 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     for path <-
           ~w(/users/sign_in /users/password/new /users/password/edit /users/unlock/new /users/unlock),
         do: assert(to_puma(ctx, get(path)).line == "GET #{path} HTTP/1.1")
+
+    assert {:ok, false} = Dawarich.Auth.RegistrationSetting.fetch()
+
+    assert Repo.query!("SELECT key, expires_at FROM phoenix.once_claims ORDER BY key", [],
+             log: false
+           ).rows == claims
   end
 
   test "credentials on: Phoenix answers the sign-in form with Rails' sign-up link rule", ctx do
