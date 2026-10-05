@@ -90,6 +90,63 @@ defmodule Dawarich.Imports.ActivityBackfill.PhoneTest do
     end
   end
 
+  test "phone writes retain first selection order and first write failure commits no points",
+       %{path: path} do
+    for name <- ["phone_object", "phone_array"] do
+      profile = F.profile(name)
+      F.seed!(profile)
+      File.write!(path, F.input(profile))
+      Process.put(:a12rel_phone_updates, [])
+      assert Phone.run(__MODULE__.ObservedRepo, 987_101, path, F.context()) == :ok
+      assert Process.get(:a12rel_phone_updates) == [56304, 56301, 56303]
+      assert Process.get(:a12rel_phone_updates) == profile["update_order"]
+      F.assert_points(profile["after"])
+    end
+
+    profile = F.profile("phone_sql_failure")
+    F.seed!(profile)
+    before = F.snapshot()
+    File.write!(path, F.input(profile))
+
+    F.query("""
+    CREATE FUNCTION a12rel_activity_failure() RETURNS trigger LANGUAGE plpgsql AS $$
+    BEGIN
+      IF NEW.id=56304 THEN RAISE EXCEPTION 'A12rel first phone write failure'; END IF;
+      RETURN NEW;
+    END $$
+    """)
+
+    F.query("""
+    CREATE TRIGGER a12rel_activity_failure BEFORE UPDATE OF motion_data ON points
+    FOR EACH ROW EXECUTE FUNCTION a12rel_activity_failure()
+    """)
+
+    Process.put(:a12rel_phone_updates, [])
+
+    assert_raise Postgrex.Error, ~r/A12rel first phone write failure/, fn ->
+      Phone.run(__MODULE__.ObservedRepo, 987_101, path, F.context())
+    end
+
+    assert Process.get(:a12rel_phone_updates) == profile["update_order"]
+    assert F.committed_snapshot() == before
+    F.assert_points(profile["observed"])
+    F.query("DROP TRIGGER a12rel_activity_failure ON points")
+    F.query("DROP FUNCTION a12rel_activity_failure()")
+    assert Phone.run(ScratchRepo, 987_101, path, F.context()) == :ok
+    F.assert_points(profile["retry"]["after"])
+    F.assert_untouched(before)
+  end
+
+  defmodule ObservedRepo do
+    def query!(sql, params, opts) do
+      if String.starts_with?(sql, "UPDATE points SET motion_data") do
+        Process.put(:a12rel_phone_updates, Process.get(:a12rel_phone_updates) ++ [hd(params)])
+      end
+
+      Dawarich.ScratchRepo.query!(sql, params, opts)
+    end
+  end
+
   defp record(timestamp, label),
     do: %{
       "timestamp" => timestamp,

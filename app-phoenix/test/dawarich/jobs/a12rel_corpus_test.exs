@@ -93,14 +93,19 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
         now: @now
       }
 
-      repo = if profile["id"] == "sql_failure", do: ActivityFailureRepo, else: ScratchRepo
+      repo =
+        if profile["id"] in ~w(sql_failure phone_sql_failure),
+          do: ActivityFailureRepo,
+          else: ScratchRepo
+
       Process.put(:a12rel_activity_updates, 0)
+      Process.put(:a12rel_phone_failure, profile["id"] == "phone_sql_failure")
 
       case profile["id"] do
         "shape_error" ->
           assert_raise ArgumentError, fn -> ImportBackfill.run(repo, args, context) end
 
-        "sql_failure" ->
+        failure when failure in ~w(sql_failure phone_sql_failure) ->
           assert_raise Postgrex.Error, fn -> ImportBackfill.run(repo, args, context) end
 
         _ ->
@@ -123,10 +128,16 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
       assert rows("SELECT count(*) FROM phoenix.notification_events") == [[0]]
       assert Dawarich.Jobs.Processed.done?(ScratchRepo, event) == is_nil(profile["error"])
 
-      if profile["id"] == "sql_failure" do
+      if profile["id"] in ~w(sql_failure phone_sql_failure) do
+        F.assert_points(profile["observed"])
+        assert rows("SELECT dominant_mode FROM tracks WHERE id=56201") == [[5]]
+        assert rows("SELECT count(*) FROM track_segments WHERE track_id=56201") == [[0]]
         assert ImportBackfill.run(ScratchRepo, args, context) == :ok
         F.assert_points(profile["retry"]["after"])
         assert Dawarich.Jobs.Processed.done?(ScratchRepo, event)
+
+        assert rows("SELECT count(*) FROM phoenix.rails_commands WHERE kind='tracks_changed'") ==
+                 [[1]]
       end
 
       if is_nil(profile["error"]) do
@@ -158,7 +169,9 @@ defmodule Dawarich.Jobs.A12relCorpusTest do
         count = Process.get(:a12rel_activity_updates, 0) + 1
         Process.put(:a12rel_activity_updates, count)
 
-        if count == 2,
+        failure = if Process.get(:a12rel_phone_failure), do: hd(params) == 56304, else: count == 2
+
+        if failure,
           do: Dawarich.ScratchRepo.query!("UPDATE points SET a12rel_missing_column=1", [], opts)
       end
 

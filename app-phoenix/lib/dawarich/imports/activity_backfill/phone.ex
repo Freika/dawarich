@@ -21,12 +21,14 @@ defmodule Dawarich.Imports.ActivityBackfill.Phone do
       |> List.to_tuple()
 
     if section && tuple_size(points) > 0 do
-      chosen =
-        Section.reduce(path, section, %{}, fn signal, chosen ->
+      {chosen, order} =
+        Section.reduce(path, section, {%{}, []}, fn signal, chosen ->
           choose(Semantic.plain(signal), points, context, chosen)
         end)
 
-      for {id, {record, _distance}} <- chosen do
+      for id <- Enum.reverse(order) do
+        {record, _distance} = Map.fetch!(chosen, id)
+
         repo.query!(
           "UPDATE points SET motion_data=COALESCE(motion_data,'{}'::jsonb) || $2::jsonb WHERE id=$1",
           [id, %{"activityRecord" => record}],
@@ -41,15 +43,17 @@ defmodule Dawarich.Imports.ActivityBackfill.Phone do
       if error.reason == :syntax, do: :ok, else: reraise(error, __STACKTRACE__)
   end
 
-  defp choose(%{"activityRecord" => record}, points, context, chosen) when is_map(record) do
+  defp choose(%{"activityRecord" => record}, points, context, {chosen, order} = state)
+       when is_map(record) do
     with timestamp when not is_nil(timestamp) <- Semantic.timestamp(record["timestamp"], context),
          {id, distance} <- nearest(points, timestamp) do
       case chosen[id] do
-        {_, previous} when previous <= distance -> chosen
-        _ -> Map.put(chosen, id, {record, distance})
+        {_, previous} when previous <= distance -> state
+        nil -> {Map.put(chosen, id, {record, distance}), [id | order]}
+        _ -> {Map.put(chosen, id, {record, distance}), order}
       end
     else
-      _ -> chosen
+      _ -> state
     end
   end
 

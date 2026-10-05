@@ -25,7 +25,7 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
     corpus = capture_release_imports
     cases = corpus.fetch('cases').index_by { _1.fetch('id') }
     expect(corpus.fetch('retry').fetch('max_attempts')).to eq(26)
-    %w[missing deleted unsupported nil_source shape_error sql_failure].each do |name|
+    %w[missing deleted unsupported nil_source shape_error sql_failure phone_sql_failure].each do |name|
       expect(cases.fetch(name).fetch('track_calls')).to eq([])
     end
     %w[google_records owntracks geojson absent download_error malformed checksum size empty].each do |name|
@@ -39,6 +39,7 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
     expect(semantic.find { _1.fetch('id') == 56_303 }.fetch('motion_data'))
       .to include('retained' => 'point', 'activityType' => 'CYCLING')
     %w[phone_object phone_array].each do |name|
+      expect(cases.fetch(name).fetch('update_order')).to eq([56_304, 56_301, 56_303])
       point = cases.fetch(name).fetch('after').fetch('points').find { _1.fetch('id') == 56_304 }
       expect(point.fetch('motion_data').fetch('activityRecord')).to include('extra' => 'exact_first')
     end
@@ -47,6 +48,14 @@ RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
     expect(failure.fetch('observed')).to eq(failure.fetch('after'))
     expect(failure.fetch('after')).not_to eq(failure.fetch('before'))
     expect(failure.fetch('retry').fetch('error')).to be_nil
+    phone_failure = cases.fetch('phone_sql_failure')
+    expect(phone_failure.fetch('error').fetch('class')).to eq('ActiveRecord::StatementInvalid')
+    expect(phone_failure.fetch('update_order')).to eq([56_304])
+    expect(phone_failure.fetch('observed')).to eq(phone_failure.fetch('before'))
+    expect(phone_failure.fetch('after')).to eq(phone_failure.fetch('before'))
+    expect(phone_failure.fetch('retry').fetch('error')).to be_nil
+    expect(phone_failure.fetch('retry').fetch('after')).to eq(cases.fetch('phone_object').fetch('after'))
+    expect(phone_failure.fetch('retry').fetch('track_calls')).to eq([987_101])
     expect(capture_release_imports).to eq(corpus)
     record_import_release_fixture('imports', corpus)
   end

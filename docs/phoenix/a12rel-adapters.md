@@ -47,7 +47,11 @@ stale filtering, publication rollback, retry and completed replay.
 Import source support stays integer 0/1/2/3/6. Semantic timelineObjects and phone
 rawSignals/root-array activities modify only selected import points, preserve full
 motion_data records and existing keys, and keep source time ranges, sixty-second
-windows and tie rules. Google records, OwnTracks and GeoJSON skip activity parsing
+windows and tie rules. Phone writes retain first-selection order when a closer
+record replaces an earlier choice. The Rails corpus proves updates
+56304 → 56301 → 56303 and no committed points on a failed first write, followed
+by a successful retry; native failure also prevents tracks and completion.
+Google records, OwnTracks and GeoJSON skip activity parsing
 and still run the track phase. Missing/deleted/unsupported imports do nothing;
 absent attachments, failed downloads and rescued malformed JSON still reprocess
 tracks. Shape and SQL errors stop before tracks while retaining earlier activity

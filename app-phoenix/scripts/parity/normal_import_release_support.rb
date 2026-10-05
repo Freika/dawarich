@@ -17,7 +17,7 @@ module NormalImportReleaseSupport
                     command:tracks.reclassify command:tracks.reclassify_user].freeze
   IMPORT_CASES = %w[semantic phone_object phone_array google_records owntracks geojson missing deleted
                     unsupported nil_source deleting absent download_error malformed shape_error sql_failure
-                    repeat checksum size empty].freeze
+                    phone_sql_failure repeat checksum size empty].freeze
   BATCH_CASES = %w[selection preservation empty fallback sql_failure unchanged nil_user deleted_user].freeze
 
   def record_import_release_fixture(name, corpus)
@@ -113,12 +113,17 @@ module NormalImportReleaseSupport
     end
     before = release_import_snapshot
     connection = ActiveRecord::Base.connection
-    if profile == 'sql_failure'
+    updates = []
+    if profile == 'sql_failure' || profile.start_with?('phone')
       count = 0
       allow(connection).to receive(:exec_update).and_wrap_original do |original, sql, *args, **kwargs|
         if sql.start_with?('UPDATE "points"')
           count += 1
-          next connection.execute('UPDATE points SET a12rel_missing_column = 1') if count == 2
+          updates << args.last.last.value_for_database if profile.start_with?('phone')
+          failure_at = profile == 'phone_sql_failure' ? 1 : 2
+          if %w[sql_failure phone_sql_failure].include?(profile) && count == failure_at
+            next connection.execute('UPDATE points SET a12rel_missing_column = 1')
+          end
         end
         original.call(sql, *args, **kwargs)
       end
@@ -135,7 +140,8 @@ module NormalImportReleaseSupport
     input = nil if %w[missing deleted absent].include?(profile)
     result = { 'id' => profile, 'source' => source, 'input' => input, 'before' => before, 'after' => after,
                'error' => error, 'downloads' => downloads, 'track_calls' => track_calls.dup, 'jobs' => source_jobs }
-    if profile == 'sql_failure'
+    result['update_order'] = updates.dup if profile.start_with?('phone')
+    if %w[sql_failure phone_sql_failure].include?(profile)
       result['observed'] = release_import_observed { |second| release_import_snapshot(second) }
       allow(connection).to receive(:exec_update).and_call_original
       result['retry'] = { 'error' => release_import_error { TransportationModes::ImportBackfillJob.new.perform(id) },
