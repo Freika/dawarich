@@ -41,11 +41,23 @@ defmodule Dawarich.Cache.PreheatDigests do
     error ->
       Logger.error(
         "Failed to preheat insights digest for user #{id}: " <>
-          "#{inspect(error.__struct__)}: #{Exception.message(error)}"
+          "#{inspect(error.__struct__)}: #{safe_message(error)}"
       )
 
       :ok
   end
+
+  defp safe_message(%Postgrex.Error{postgres: postgres}) do
+    code = if is_map(postgres), do: postgres[:pg_code]
+
+    if is_binary(code) and Regex.match?(~r/\A[0-9A-Z]{5}\z/, code),
+      do: "Database error (SQLSTATE #{code})",
+      else: "Database error"
+  end
+
+  defp safe_message(%DBConnection.ConnectionError{}), do: "Database connection error"
+  defp safe_message(%RuntimeError{message: "Calculation failed"}), do: "Calculation failed"
+  defp safe_message(_error), do: "Preheat failed"
 
   defp calculate!(calculate, repo, id, year, opts) do
     case calculate.(repo, id, year, opts) do

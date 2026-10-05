@@ -56,10 +56,69 @@ defmodule Dawarich.Cache.PreheatDigestsTest do
                if(failure_at == 1, do: [], else: [2025])
 
       assert length(Regex.scan(~r/Failed to preheat insights digest/, log)) == 1
-      assert log =~ "RuntimeError: synthetic calculation failure"
+      assert log =~ "RuntimeError: Preheat failed"
       refute log =~ "@"
       assert [[0]] = rows("SELECT count(*) FROM phoenix.rails_commands")
       assert [[0]] = rows("SELECT count(*) FROM notifications")
+    end
+  end
+
+  test "failure diagnostics omit sensitive exception fields and retain only safe messages and SQLSTATE" do
+    fault = %Postgrex.Error{
+      query: "SELECT synthetic_query_location_sentinel",
+      message: "synthetic_message_location_sentinel",
+      postgres: %{
+        severity: "ERROR",
+        code: :check_violation,
+        pg_code: "23514",
+        message: "synthetic_postgres_location_sentinel",
+        detail: "synthetic_detail_location_sentinel"
+      }
+    }
+
+    failures = [
+      {fault, "Postgrex.Error: Database error (SQLSTATE 23514)"},
+      {%{fault | postgres: nil}, "Postgrex.Error: Database error"},
+      {%{fault | postgres: %{fault.postgres | pg_code: "synthetic_code_location_sentinel"}},
+       "Postgrex.Error: Database error"},
+      {%DBConnection.ConnectionError{message: "synthetic_connection_location_sentinel"},
+       "DBConnection.ConnectionError: Database connection error"},
+      {%RuntimeError{message: "synthetic_runtime_location_sentinel"},
+       "RuntimeError: Preheat failed"},
+      {%RuntimeError{message: "Calculation failed"}, "RuntimeError: Calculation failed"}
+    ]
+
+    for {error, diagnostic} <- failures, failure_at <- [2025, 2024], shape <- [:return, :raise] do
+      reset!(ScratchRepo)
+      kase = F.case!("berlin_yearly")
+      F.load!(ScratchRepo, kase)
+      opts = Keyword.delete(F.options(kase), :uuid)
+
+      calculate = fn repo, id, year, options ->
+        send(self(), {:safe_attempt, year})
+
+        if year == failure_at do
+          if shape == :raise, do: raise(error), else: {:error, error}
+        else
+          Dawarich.Digests.Calculation.yearly(repo, id, year, options)
+        end
+      end
+
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert PreheatDigests.call(ScratchRepo, 14101, Keyword.put(opts, :calculate, calculate)) ==
+                   :ok
+        end)
+
+      refute log =~ "location_sentinel"
+      assert log =~ "Failed to preheat insights digest for user 14101: #{diagnostic}"
+      assert length(Regex.scan(~r/Failed to preheat insights digest/, log)) == 1
+      assert_receive {:safe_attempt, 2025}
+      if failure_at == 2024, do: assert_receive({:safe_attempt, 2024})
+      refute_receive {:safe_attempt, _}
+
+      assert Enum.map(F.digests(ScratchRepo, 14101), & &1["year"]) ==
+               if(failure_at == 2025, do: [], else: [2025])
     end
   end
 

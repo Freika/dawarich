@@ -34,6 +34,9 @@ Preheat uses all year's stats, independently of HTTP Lite restrictions. Missing
 or soft-deleted users do no work. A service failure stops later years, keeps
 earlier saves and logs once without mail; lookup/dispatch/marker failures remain
 retryable with the existing three-attempt worker policy.
+Diagnostics retain the exception type and fixed safe text. Postgrex errors add
+only a validated SQLSTATE; query, detail and arbitrary exception messages are
+never logged by native preheat.
 
 Stable forwarded events use existing Processed markers. Calculation and marking
 are separate transactions: a crash can recalculate before settlement, and the
