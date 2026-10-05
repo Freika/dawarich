@@ -19,8 +19,13 @@ defmodule DawarichWeb.StatsParityTest do
 
   for file <- Path.wildcard("test/fixtures/stats/*.json") do
     @name Path.basename(file, ".json")
+    @title_ed @name in ~w(year_ca digests_ca digest_full_fr)
+    @test_name if(@title_ed,
+                 do: "#{@name} matches Rails except title double-escaping (ED-551)",
+                 else: "#{@name} matches the page Rails renders"
+               )
 
-    test "#{@name} matches the page Rails renders" do
+    test @test_name do
       state = @dir |> Path.join(@name <> ".json") |> File.read!() |> Jason.decode!()
       {:ok, now, 0} = DateTime.from_iso8601(state["now"])
       user = seed!(state, now)
@@ -53,7 +58,19 @@ defmodule DawarichWeb.StatsParityTest do
         |> LazyHTML.query("title")
         |> LazyHTML.text()
 
-      assert title == state["title"]
+      if @title_ed do
+        assert state["title"] =~ "&#39;"
+
+        rails_title =
+          "<title>#{state["title"]}</title>"
+          |> LazyHTML.from_document()
+          |> LazyHTML.query("title")
+          |> LazyHTML.text()
+
+        assert title == rails_title
+      else
+        assert title == state["title"]
+      end
     end
   end
 
