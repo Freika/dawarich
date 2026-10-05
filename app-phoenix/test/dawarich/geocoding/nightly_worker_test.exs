@@ -192,6 +192,48 @@ defmodule Dawarich.Geocoding.NightlyWorkerTest do
     assert rows("SELECT reverse_geocoded_at IS NOT NULL FROM points WHERE id = 48303") == [[true]]
   end
 
+  test "root replay after first-batch leaves finish drains every accepted continuation user once" do
+    f =
+      Jason.decode!(File.read!(@fixture))["classes"]["Points::NightlyReverseGeocodingJob"][
+        "cases"
+      ]
+      |> Enum.find(&(&1["id"] == "batches"))
+
+    load_points(f, "batches")
+    rows("DELETE FROM points WHERE reverse_geocoded_at IS NULL")
+
+    rows(
+      "INSERT INTO points (id,user_id,timestamp,lonlat,created_at,updated_at) " <>
+        "SELECT 49000+n,CASE WHEN n <= 1000 THEN 48101 ELSE 48102 END,1791115200+n," <>
+        "ST_GeogFromText('POINT(13 52)'),now(),now() FROM generate_series(1,1001) n"
+    )
+
+    Ownership.put!(ScratchRepo, NightlyWorker.key(), :oban)
+    Ownership.put!(ScratchRepo, "command:geocoding.reverse_point", :oban)
+    assert NightlyWorker.run(ScratchRepo, @oban, @slot, env: @env) == :ok
+
+    assert [[next]] =
+             rows(
+               "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Geocoding.NightlyWorker'"
+             )
+
+    assert next["affected_user_ids"] == [48_101]
+    rows("UPDATE points SET reverse_geocoded_at=now() WHERE id BETWEEN 49001 AND 50000")
+    assert NightlyWorker.run(ScratchRepo, @oban, @slot, env: @env) == :ok
+    assert NightlySweep.run(ScratchRepo, @oban, next, env: @env) == :ok
+    assert NightlySweep.run(ScratchRepo, @oban, next, env: @env) == :ok
+
+    assert rows(
+             "SELECT payload->>'user_id',count(*) FROM phoenix.rails_commands " <>
+               "WHERE kind='stats.caches_invalidated' GROUP BY payload->>'user_id' ORDER BY 1"
+           ) == [["48101", 1], ["48102", 1]]
+
+    assert rows(
+             "SELECT sum(jsonb_array_length(args->'point_ids')) FROM oban.oban_jobs " <>
+               "WHERE worker='Dawarich.Geocoding.ReversePointWorker'"
+           ) == [[1001]]
+  end
+
   defp continue(env) do
     case rows(
            "SELECT id, args FROM oban.oban_jobs WHERE worker = 'Dawarich.Geocoding.NightlyWorker' AND state = 'available' ORDER BY id LIMIT 1"

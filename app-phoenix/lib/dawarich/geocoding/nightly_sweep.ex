@@ -41,7 +41,9 @@ defmodule Dawarich.Geocoding.NightlySweep do
   defp batch(repo, oban, args, opts) do
     root = root_id(args["slot"])
 
-    unless Processed.done?(repo, root) do
+    if Processed.done?(repo, root) do
+      finish!(repo, root, args["affected_user_ids"])
+    else
       rows = repo.query!(@points, [args["after_id"]], log: false).rows
       owner = Ownership.lock(repo, "command:geocoding.reverse_point")
 
@@ -90,8 +92,12 @@ defmodule Dawarich.Geocoding.NightlySweep do
   end
 
   defp finish!(repo, root, affected) do
-    if Processed.claim!(repo, root, "geocoding.nightly") do
-      for user <- affected do
+    Processed.claim!(repo, root, "geocoding.nightly")
+
+    for user <- affected do
+      receipt = uuid(Ecto.UUID.dump!(root), "invalidated:#{user}")
+
+      if Processed.claim!(repo, receipt, "geocoding.nightly") do
         RailsCommands.insert!(repo, "stats.caches_invalidated", %{
           "user_id" => user,
           "year" => nil,
