@@ -3,6 +3,8 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::ParallelGenerator do
+  include ActiveSupport::Testing::TimeHelpers
+
   let(:user) { create(:user) }
   let(:generator) { described_class.new(user, **options) }
   let(:options) { {} }
@@ -378,6 +380,8 @@ RSpec.describe Tracks::ParallelGenerator do
       end
 
       describe '#daily_time_range' do
+        around { |example| freeze_time { example.run } }
+
         let(:day) { 2.days.ago.to_date }
         let(:generator) { described_class.new(user, start_at: day) }
 

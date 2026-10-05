@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::BackfillScheduler do
+  include ActiveSupport::Testing::TimeHelpers
+
+  around { |example| freeze_time { example.run } }
+
   self.use_transactional_tests = false
   after(:context) { self.class.use_transactional_tests = true }
 

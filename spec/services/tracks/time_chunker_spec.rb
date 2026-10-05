@@ -3,6 +3,10 @@
 require 'rails_helper'
 
 RSpec.describe Tracks::TimeChunker do
+  include ActiveSupport::Testing::TimeHelpers
+
+  around { |example| freeze_time { example.run } }
+
   let(:user) { create(:user) }
   let(:chunker) { described_class.new(user, **options) }
   let(:options) { {} }
