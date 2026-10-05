@@ -6,11 +6,13 @@ defmodule Dawarich.UserData.Restore.Places do
 
   def call(repo, user, data, context) do
     if Enumerable.impl_for(data) do
-      context = Batch.with_column_types(repo, "places", context)
+      repo.checkout(fn ->
+        context = Batch.with_column_types(repo, "places", context)
 
-      Enum.reduce(data, 0, fn
-        row, count when is_map(row) -> count + restore_checked(repo, user, row, context)
-        _, count -> count
+        Enum.reduce(data, 0, fn
+          row, count when is_map(row) -> count + restore_checked(repo, user, row, context)
+          _, count -> count
+        end)
       end)
     else
       0
@@ -21,7 +23,8 @@ defmodule Dawarich.UserData.Restore.Places do
     repo.query!(
       "SELECT id FROM places WHERE user_id=$1 AND name=$2 AND latitude=$3::numeric(10,6) AND longitude=$4::numeric(10,6) ORDER BY id LIMIT 1",
       [user, Text.cast(name), number(lat), number(lon)],
-      log: false
+      log: false,
+      cache_statement: "restore_place_identity"
     ).rows
   end
 

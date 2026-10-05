@@ -79,7 +79,7 @@ defmodule Dawarich.UserData.RestorePlacesTest do
                 send(owner, {ref, :columns})
 
               String.contains?(metadata.query, "FROM places") ->
-                send(owner, {ref, :identity})
+                send(owner, {ref, :identity, ScratchRepo.checked_out?()})
 
               String.contains?(metadata.query, "FROM imports") ->
                 send(owner, {ref, :import})
@@ -101,8 +101,8 @@ defmodule Dawarich.UserData.RestorePlacesTest do
     assert Places.call(ScratchRepo, c.user_id, places, c.context) == 3
     assert_received {^ref, :columns}
     refute_received {^ref, :columns}
-    for _ <- 1..3, do: assert_received({^ref, :identity})
-    refute_received {^ref, :identity}
+    for _ <- 1..3, do: assert_received({^ref, :identity, true})
+    refute_received {^ref, :identity, _}
     refute_received {^ref, :import}
 
     rows("ALTER TABLE places ADD COLUMN loadtest_note text")
