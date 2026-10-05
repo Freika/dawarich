@@ -4,16 +4,33 @@ defmodule Dawarich.CLI.Migrate do
   import Dawarich.CLI, only: [puts: 2, fail: 2]
 
   alias Dawarich.{Release, ReleaseMigrator}
+  alias Dawarich.Release.Lifecycle
 
   @last_rails_release "1.15.2"
 
   def migrate([], ctx) do
-    :ok = Release.migrate()
-    puts(ctx, "phoenix and oban schemas: current")
+    :ok = Release.migrate(release_opts(ctx))
+
+    message =
+      if Lifecycle.mode(ctx.env) == {:ok, :native},
+        do: "public, phoenix and oban schemas: current",
+        else: "phoenix and oban schemas: current"
+
+    puts(ctx, message)
     0
   end
 
   def migrate(_args, ctx), do: fail(ctx, "usage: dawarich migrate [status]")
+
+  def native_migrate(args, ctx) do
+    case Lifecycle.mode(ctx.env) do
+      {:ok, :native} -> migrate(args, ctx)
+      {:ok, :rails} -> fail(ctx, describe(:lifecycle_disabled))
+      {:error, reason} -> fail(ctx, describe(reason))
+    end
+  end
+
+  def release_opts(ctx), do: Enum.to_list(Map.take(ctx, [:repo, :env]))
 
   def status([], ctx) do
     case Release.readiness() do

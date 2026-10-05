@@ -1,7 +1,7 @@
 defmodule Dawarich.CLI do
   @moduledoc false
 
-  alias Dawarich.CLI.{Jobs, Migrate, RawData, RawDataReset, RawDataStatus, Users}
+  alias Dawarich.CLI.{Jobs, Migrate, RawData, RawDataReset, RawDataStatus, Seeds, Users}
 
   @rule String.duplicate("━", 46)
 
@@ -9,6 +9,7 @@ defmodule Dawarich.CLI do
     ["help"] => :help,
     ["migrate"] => {Migrate, :migrate},
     ["migrate", "status"] => {Migrate, :status},
+    ["seeds"] => {Seeds, :seeds},
     ["jobs", "status"] => {Jobs, :status},
     ["jobs", "resume"] => {Jobs, :resume},
     ["users", "activate"] => {Users, :activate},
@@ -25,12 +26,14 @@ defmodule Dawarich.CLI do
     ["raw-data", "reset-all"] => {RawDataReset, :reset_all}
   }
 
-  @own_repo [{Migrate, :migrate}]
+  @own_repo [{Migrate, :migrate}, {Migrate, :native_migrate}, {Seeds, :seeds}]
 
   @rake %{
     "users:activate" => ["users", "activate"],
     "dawarich:jobs:status" => ["jobs", "status"],
     "db:migrate:status" => ["migrate", "status"],
+    "db:migrate" => ["native-migrate"],
+    "db:seed" => ["seeds"],
     "points:raw_data:status" => ["raw-data", "status"],
     "points:raw_data:archive" => ["raw-data", "archive"],
     "points:raw_data:initial_archive" => ["raw-data", "archive"],
@@ -79,6 +82,7 @@ defmodule Dawarich.CLI do
   Maintenance commands:
     migrate                                       Bring the phoenix and oban schemas up to date
     migrate status                                Show what this image sees in the database; exit 1 if it refuses it
+    seeds                                         Seed an ordinary self-hosted install with native lifecycle enabled
     jobs status                                   Job owners, outbox, Phoenix nodes and Oban job counts as JSON
     jobs resume OPERATION_ID                      Resume a failed release backfill
     users activate                                Activate every user (self-hosted only)
@@ -147,6 +151,7 @@ defmodule Dawarich.CLI do
     do: {:ok, @commands[[a, b]], args}
 
   defp command([a | args]) when is_map_key(@commands, [a]), do: {:ok, @commands[[a]], args}
+  defp command(["native-migrate" | args]), do: {:ok, {Migrate, :native_migrate}, args}
   defp command(_argv), do: :unknown
 
   defp rake_task(name) do

@@ -62,4 +62,29 @@ defmodule Dawarich.CLI.MigrateTest do
     assert Repo.query!("SELECT to_regclass('phoenix.job_owners') IS NOT NULL").rows == [[true]]
     assert StringIO.contents(out) |> elem(1) == "phoenix and oban schemas: current\n"
   end
+
+  test "native migrate reports refused upgrades and retains the floor remedy" do
+    ScratchRepo.transaction(fn ->
+      forget(hd(Floor.versions()))
+      {:ok, out} = StringIO.open("")
+      {:ok, err} = StringIO.open("")
+
+      ctx = %{
+        repo: ScratchRepo,
+        out: out,
+        err: err,
+        stdin: out,
+        env: %{"DAWARICH_PHOENIX_LIFECYCLE" => "true", "SELF_HOSTED" => "true"}
+      }
+
+      assert CLI.run(["migrate"], ctx) == 1
+      assert StringIO.contents(err) |> elem(1) =~ "start the Dawarich 1.15.2 image once"
+      assert StringIO.contents(out) |> elem(1) == ""
+      ScratchRepo.rollback(:done)
+    end)
+
+    {:ok, out} = StringIO.open("")
+    assert CLI.run(["db:migrate"], %{out: out, err: out, stdin: out, env: %{}}) == 1
+    assert StringIO.contents(out) |> elem(1) =~ "native lifecycle is disabled"
+  end
 end
