@@ -100,7 +100,7 @@ else
 fi
 
 sidekiq_from=$(($(wc -c <"$sidekiq_log") + 1))
-stack nohup bundle exec sidekiq >>"$sidekiq_log" 2>&1 &
+stack bundle exec ruby -e 'Process.daemon(true, true); exec("bundle", "exec", "sidekiq")' >>"$sidekiq_log" 2>&1
 tries=0
 until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
   tries=$((tries + 1))
