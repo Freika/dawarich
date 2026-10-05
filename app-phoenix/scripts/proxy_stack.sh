@@ -14,6 +14,7 @@ MAILPIT_NAME="${MAILPIT_NAME:-e2e-mailpit}"
 rel="$root/app-phoenix/_build/prod/rel/dawarich/bin/dawarich"
 pidfile="$root/tmp/pids/proxy_stack_$PORT.pid"
 sidekiq_pidfile="$root/tmp/pids/proxy_stack_sidekiq_$PORT.pid"
+rails_pidfile="$root/tmp/pids/proxy_stack_rails_$PORT.pid"
 log="$root/log/proxy_stack_$PORT.log"
 sidekiq_log="$root/log/proxy_stack_sidekiq_$PORT.log"
 
@@ -36,15 +37,16 @@ if [ "${1:-}" = --down ]; then
   if epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; then
     stack "$rel" stop
   fi
+  [ -f "$rails_pidfile" ] && kill "$(cat "$rails_pidfile")" 2>/dev/null || true
   [ -f "$sidekiq_pidfile" ] && kill "$(cat "$sidekiq_pidfile")" 2>/dev/null || true
   tries=0
-  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || { [ -f "$sidekiq_pidfile" ] && kill -0 "$(cat "$sidekiq_pidfile")" 2>/dev/null; }; do
+  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || { [ -f "$sidekiq_pidfile" ] && kill -0 "$(cat "$sidekiq_pidfile")" 2>/dev/null; } || { epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; }; do
     tries=$((tries + 1))
     [ "$tries" -lt 60 ] || { echo "the stack did not stop" >&2; exit 1; }
     sleep 1
   done
   redis-cli -p "$REDIS_PORT" shutdown nosave >/dev/null 2>&1 || true
-  rm -f "$pidfile" "$sidekiq_pidfile"
+  rm -f "$pidfile" "$sidekiq_pidfile" "$rails_pidfile"
   exit 0
 fi
 
