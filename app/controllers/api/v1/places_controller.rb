@@ -41,6 +41,8 @@ module Api
           else                  @places.map_visible(current_api_user)
           end
 
+        @places = @places.order(id: :asc)
+
         # Support pagination (defaults to page 1 with all results if no page param)
         page = params[:page].presence || 1
         per_page = [params[:per_page]&.to_i || 100, 500].min
