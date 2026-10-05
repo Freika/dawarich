@@ -89,7 +89,7 @@ for release_env in "$root/app-phoenix/_build/prod/rel/dawarich/releases/"*/env.s
   mv "$release_env.tmp" "$release_env"
 done
 stack "$rel" eval 'Dawarich.Release.migrate()'
-stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$PORT")" \
+stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$PORT" -b 127.0.0.1)" \
   bundle exec ruby -e 'Process.daemon(true, true); File.write(ARGV.fetch(0), Process.pid.to_s); exec(ARGV.fetch(1), "start")' \
   "$pidfile" "$rel" >>"$log" 2>&1
 
