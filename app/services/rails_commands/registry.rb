@@ -237,6 +237,7 @@ module RailsCommands
                    call: ->(payload) { Imports::NormalResume.call(payload) }
                  }
                ).merge(Stats::Commands::HANDLERS)
+               .merge(Cache::Commands::HANDLERS)
                .merge(Users::DataCommands::HANDLERS)
                .merge(Users::RecalculationCommands::HANDLERS)
                .merge(Points::AnomalyBackfillCommands::HANDLERS)

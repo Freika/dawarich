@@ -24,8 +24,19 @@ defmodule Dawarich.RailsCommands do
     do: raise(ArgumentError, "invalid release bulk payload")
 
   def insert!(repo, kind, %{"user_id" => user_id} = payload)
-      when is_binary(kind) and is_integer(user_id) do
-    insert_row!(repo, kind, payload)
+      when is_binary(kind) and is_integer(user_id),
+      do: insert_row!(repo, kind, payload)
+
+  def insert!(
+        repo,
+        "cache.preheat_sweep",
+        %{"time_zone" => zone, "source_job_id" => uuid, "run_at" => at} = payload
+      )
+      when is_binary(zone) and is_binary(uuid) and byte_size(uuid) == 36 and is_integer(at) and
+             map_size(payload) == 3 do
+    if match?({:ok, _}, Ecto.UUID.cast(uuid)),
+      do: insert_row!(repo, "cache.preheat_sweep", payload),
+      else: raise(ArgumentError, "invalid source job UUID")
   end
 
   def insert!(repo, "places_bulk_name_fetch" = kind, payload)
