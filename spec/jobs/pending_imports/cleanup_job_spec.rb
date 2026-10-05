@@ -8,6 +8,20 @@ RSpec.describe PendingImports::CleanupJob do
   end
 
   describe '#perform' do
+    it 'pending cleanup skips under native cron ownership and still cleans source work after pinned release' do
+      expired = create(:pending_import, :with_file, expires_at: 1.day.ago)
+      blob = expired.file.blob
+      job_owner!('cron:pending_imports_cleanup', :oban)
+      described_class.new.perform
+      expect(PendingImport.exists?(expired.id)).to be true
+      expect(expired.reload.file.download).to be_present
+      expect(ActiveStorage::Blob.exists?(blob.id)).to be true
+      JobOwnership.release!('cron:pending_imports_cleanup', by: 'a12d3-test')
+      described_class.new.perform
+      expect(PendingImport.exists?(expired.id)).to be false
+      expect(ActiveStorage::Blob.exists?(blob.id)).to be false
+    end
+
     it 'destroys expired unclaimed pending imports' do
       expired = create(:pending_import, :with_file, expires_at: 1.day.ago)
       fresh = create(:pending_import, :with_file, expires_at: 1.day.from_now)

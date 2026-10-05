@@ -4,6 +4,14 @@ defmodule Dawarich.Jobs.ScheduleEntries do
   def entries do
     [
       %{
+        key: "cron:pending_imports_cleanup",
+        kind: :cron,
+        expression: "15 3 * * *",
+        worker: Dawarich.PendingImports.CleanupWorker,
+        claimable: false,
+        catch_up: false
+      },
+      %{
         key: "cron:nightly_reverse_geocoding_job",
         kind: :cron,
         expression: "15 1 * * *",
