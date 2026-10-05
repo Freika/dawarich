@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixture: a trip calculated by Rails' do
   include ActiveSupport::Testing::TimeHelpers
@@ -73,7 +74,7 @@ RSpec.describe 'Phoenix fixture: a trip calculated by Rails' do
 
       path = Rails.root.join('app-phoenix/test/fixtures/trips/calculation.json')
       FileUtils.mkdir_p(path.dirname)
-      File.write(path, "#{JSON.pretty_generate(fixture)}\n")
+      FixtureRecording.verify(path, "#{JSON.pretty_generate(fixture)}\n")
     end
   end
 end

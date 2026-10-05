@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for normal import rows' do
   self.use_transactional_tests = false
@@ -136,7 +137,7 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
     output = inputs.map { |example| capture(example) }
     expect(output).to all(include('counters', 'points', 'sources', 'error'))
     expect(output.map { |item| item.fetch('counters').size }).to all(eq(2))
-    File.write(dir.join('rails_normal_writer_oracle.json'), JSON.pretty_generate(output))
+    FixtureRecording.verify(dir.join('rails_normal_writer_oracle.json'), JSON.pretty_generate(output))
     expect(output.size).to eq(inputs.size)
   ensure
     reset_fixtures!
