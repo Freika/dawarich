@@ -3,6 +3,7 @@ set -eu
 cd "$(dirname "$0")/../.."
 
 IMAGE="${IMAGE:-dawarich:a13c-local}"
+POSTGIS_IMAGE="${POSTGIS_IMAGE:-postgis/postgis:17-3.5-alpine}"
 MODE="${MODE:-smoke}"
 KEEP="${KEEP:-0}"
 WAIT="${SMOKE_WAIT_SECONDS:-300}"
@@ -126,7 +127,7 @@ unlock() {
 }
 
 docker network create --label "$run" "$net" >/dev/null
-docker run -d --name a13c_db --label "$run" --network "$net" -e POSTGRES_PASSWORD=postgres postgis/postgis:17-3.5-alpine >/dev/null
+docker run -d --name a13c_db --label "$run" --network "$net" -e POSTGRES_PASSWORD=postgres "$POSTGIS_IMAGE" >/dev/null
 docker run -d --name a13c_redis --label "$run" --network "$net" redis:7.4-alpine >/dev/null
 mkdir "$work/bouncer"
 cat >"$work/bouncer/pgbouncer.ini" <<EOF
@@ -155,7 +156,12 @@ COPY pgbouncer.ini userlist.txt /etc/pgbouncer/
 USER nobody
 CMD ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]
 EOF
-docker build -q -t a13c-pgbouncer:local "$work/bouncer" >/dev/null
+df -h /System/Volumes/Data
+[ "$(df -k /System/Volumes/Data | awk 'NR == 2 {print $4}')" -ge 15728640 ] || fail "less than 15 GiB free before PgBouncer build"
+build_ec=0
+docker build -q -t a13c-pgbouncer:local "$work/bouncer" >/dev/null || build_ec=$?
+docker builder prune -af
+[ "$build_ec" -eq 0 ] || fail "PgBouncer build failed ($build_ec)"
 docker run -d --name a13c_bouncer --label "$run" --network "$net" a13c-pgbouncer:local >/dev/null
 
 wait_until '[ "$(docker logs a13c_db 2>&1 | grep -c "ready to accept connections")" -ge 2 ]' "database did not start"
@@ -225,7 +231,8 @@ rpc 'body = ~s({"email":"shared@example.invalid"})
 early_in 60
 rpc 'body = ~s({"email":"released@example.invalid"})
   for _ <- 1..3 do
-    Plug.Test.conn(:post, "/api/v1/auth/login", body)
+    Plug.Test.conn(:post, "http://127.0.0.1/api/v1/auth/login", body)
+    |> Map.update!(:req_headers, &[{"host", "127.0.0.1"} | &1])
     |> Plug.Conn.put_req_header("content-type", "application/json")
     |> Plug.Conn.put_req_header("content-length", Integer.to_string(byte_size(body)))
     |> DawarichWeb.RateLimit.call([])

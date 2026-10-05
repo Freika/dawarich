@@ -3,6 +3,8 @@ set -eu
 cd "$(dirname "$0")/../.."
 
 IMAGE="${IMAGE:-dawarich:a0-local}"
+POSTGIS_IMAGE="${POSTGIS_IMAGE:-postgis/postgis:17-3.5-alpine}"
+KEEP="${KEEP:-0}"
 PLATFORM="${PLATFORM:-}"
 WAIT="${SMOKE_WAIT_SECONDS:-300}"
 export DAWARICH_APP_PORT=3900
@@ -15,6 +17,7 @@ override_off="$(mktemp)"
   echo "    container_name: a0_redis"
   echo "  dawarich_db:"
   echo "    container_name: a0_db"
+  echo "    image: $POSTGIS_IMAGE"
   echo "  dawarich_app:"
   echo "    container_name: a0_app"
   echo "    image: $IMAGE"
@@ -28,6 +31,11 @@ compose="docker compose -p phoenix-a0 -f docker/docker-compose.yml -f $override"
 
 cleanup() {
   ec=$?
+  if [ "$KEEP" = 1 ]; then
+    echo "kept Compose override: $override"
+    echo "cleanup: $compose down -v; rm -rf $override $work $override_off"
+    exit "$ec"
+  fi
   $compose down -v >/dev/null 2>&1 || true
   rm -f "$override"
   rm -rf "$work" "$override_off"
