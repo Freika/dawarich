@@ -183,6 +183,19 @@ Rehome covers pending public command events. Already queued standalone native De
 jobs must drain under their existing owner before release rollback; route hand-back/rehome does
 not cancel SMTP jobs already queued.
 
+The review corrections bind P7 delivery lookup to `d.user_id = u.id` and P8 lookup to the
+requester ID carried in the job. Foreign pairs return the existing missing-record outcome
+without SMTP or a delivery claim; removing either predicate fails its named worker test.
+Queued soft-deleted digest users retain the captured delivery behavior.
+
+P10's Rails monthly/yearly shims now keep legacy enqueue and `sent_at` update inside
+`JobOwnership.with_owner`, forwarding only on `:not_owner`. A real two-connection test
+pauses at mail enqueue: the owner flip times out behind the held row lock, then succeeds
+after Rails commits. Native admission sees the committed timestamp, and a later Rails
+job forwards without another mail enqueue. Separate monthly/yearly fence mutations fail
+the same named test. Enqueue-before-save and queued-mail-on-validation-failure remain
+pinned by the unchanged effects corpus.
+
 P11 adds immediate test-email delivery using the existing configured transport and pure renderer.
 SMTP_SERVER presence matches Rails' configuration predicate. Repeated calls send again with no
 queue, persistent claim or row writes. Corpus-proved category/detail pairs preserve source alert

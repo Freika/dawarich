@@ -71,4 +71,81 @@ RSpec.describe 'Users::Digests::MailCommands' do
 
     markers.each { |marker| expect(buffer.string.include?(marker)).to be(false), 'sensitive mail marker logged' }
   end
+
+  context 'with committed records and concurrent owner changes' do
+    self.use_transactional_tests = false
+
+    it 'holds digest mail ownership through legacy enqueue and commits sent_at before a native admission' do
+      logger = ActiveSupport::Logger.new(File::NULL)
+      logger.level = Logger::UNKNOWN
+      allow(Rails).to receive(:logger).and_return(logger)
+      allow(ActiveJob::Base).to receive(:logger).and_return(logger)
+      allow(ActionMailer::Base).to receive(:logger).and_return(logger)
+
+      %i[monthly yearly].each do |period|
+        user = create(:user, settings: { "#{period}_digest_emails_enabled" => true })
+        digest = create(:users_digest, user:, period_type: period, year: 2024,
+                                      month: period == :monthly ? 2 : nil, distance: 12_500)
+        klass = period == :monthly ? Users::Digests::Monthly::EmailSendingJob : Users::Digests::Yearly::EmailSendingJob
+        key = "command:mail.digest.#{period}"
+        args = [user.id, 2024]
+        args << 2 if period == :monthly
+        job_owner!(key, :sidekiq)
+        clear_enqueued_jobs
+        holding = Queue.new
+        release = Queue.new
+        adapter = ActionMailer::MailDeliveryJob.queue_adapter
+
+        allow(adapter).to receive(:enqueue).and_wrap_original do |original, job|
+          holding << true
+          release.pop
+          original.call(job)
+        end
+
+        holder = Thread.new do
+          ActiveRecord::Base.connection_pool.with_connection { klass.new.perform(*args) }
+        end
+
+        begin
+          Timeout.timeout(5) { holding.pop }
+          expect(digest.reload.sent_at).to be_nil
+
+          expect do
+            ActiveRecord::Base.transaction do
+              ActiveRecord::Base.connection.execute("SET LOCAL lock_timeout = '50ms'")
+              ActiveRecord::Base.connection.execute(
+                "UPDATE phoenix.job_owners SET owner = 'oban' WHERE key = '#{key}'"
+              )
+            end
+          end.to raise_error(ActiveRecord::LockWaitTimeout)
+        ensure
+          release << true
+          raise 'digest mail holder did not finish' unless holder.join(5)
+
+          holder.value
+        end
+
+        expect(enqueued_jobs.size).to eq(1)
+        expect(digest.reload.sent_at).to be_present
+        JobOwnership.put!(key, :oban, pinned: false, by: 'spec')
+        observed = JobOwnership.with_owner(key, :oban) { Users::Digest.find(digest.id).sent_at }
+        expect(observed).to eq(digest.sent_at)
+        forwarded = klass.new(*args)
+        forwarded.perform(*args)
+        expect(JobOutbox.find(forwarded.job_id).command_type).to eq("mail.digest.#{period}")
+        expect(enqueued_jobs.size).to eq(1)
+        sent = 0
+        allow_any_instance_of(Mail::TestMailer).to receive(:deliver!) { sent += 1 }
+        ActiveJob::Base.execute(enqueued_jobs.sole)
+        expect(sent).to eq(1)
+      ensure
+        allow(adapter).to receive(:enqueue).and_call_original if adapter
+        JobOutbox.where(aggregate_id: user.id.to_s).delete_all if user
+        digest&.delete
+        user&.delete
+        PhoenixTables.clear!
+        clear_enqueued_jobs
+      end
+    end
+  end
 end

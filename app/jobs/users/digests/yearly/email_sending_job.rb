@@ -5,12 +5,11 @@ class Users::Digests::Yearly::EmailSendingJob < ApplicationJob
   OWNER_KEY = 'command:mail.digest.yearly'
 
   def perform(user_id, year)
-    if JobOwnership.oban?(OWNER_KEY)
-      return Users::Digests::MailCommands.forward(:yearly, user_id, year, nil,
-                                                  event_id: job_id, producer: self.class.name)
-    end
+    result = JobOwnership.with_owner(OWNER_KEY) { send_digest(user_id, year) }
+    return unless result == :not_owner
 
-    send_digest(user_id, year)
+    Users::Digests::MailCommands.forward(:yearly, user_id, year, nil,
+                                         event_id: job_id, producer: self.class.name)
   end
 
   private
