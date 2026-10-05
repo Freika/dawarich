@@ -9,7 +9,7 @@ defmodule DawarichWeb.ShareManagementDocument do
     assigns = assigns |> assign(:close_path, close_path) |> assign(:paths, paths)
 
     ~H"""
-    <turbo-frame id="share-link-modal">
+    <turbo-frame id="share-link-modal" phx-hook="RailsStimulus" phx-update="ignore">
       <div class="modal modal-open" data-controller="share-link-modal" style="z-index: 10000;">
         <div class="modal-box max-w-xl">
           <a

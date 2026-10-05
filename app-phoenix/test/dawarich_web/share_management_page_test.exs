@@ -18,6 +18,23 @@ defmodule DawarichWeb.ShareManagementPageTest do
   defp element?(html, selector),
     do: html |> LazyHTML.from_document() |> LazyHTML.query(selector) |> Enum.any?()
 
+  test "full sharing pages boot their modal controllers without a LiveView mount", ctx do
+    Repo.query!("DELETE FROM shared_links WHERE user_id = $1", [ctx.actor.id])
+
+    for path <- ~w(/share_links/hub /share_links/live/new /trips/99101/share_link/new) do
+      html = RailsUser.signed_in(ctx.actor.id) |> get(path) |> html_response(200)
+
+      controller? =
+        element?(html, "[phx-hook='RailsStimulus'] [data-controller='share-link-modal']")
+
+      phrase? =
+        element?(html, "[phx-hook='RailsStimulus'] input[name='shared_link[magic_phrase]']")
+
+      assert controller?, path
+      assert phrase?, path
+    end
+  end
+
   test "hub frame retains live timeline shared tab forms and indicators", ctx do
     html =
       RailsUser.signed_in(ctx.actor.id)

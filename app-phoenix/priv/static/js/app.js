@@ -3,6 +3,7 @@ import { LiveSocket } from "phoenix_live_view"
 import { FamilyPage } from "family_page"
 import {
   bootRailsBridges,
+  bootTurboFrames,
   MapShell,
   meta,
   RailsStimulus,
@@ -50,13 +51,6 @@ const liveSocket = new LiveSocket("/phoenix/live", Socket, {
 })
 liveSocket.connect()
 window.liveSocket = liveSocket
-
-const bootTurboFrames = () => {
-  if (!document.querySelector("turbo-frame[src]")) return
-  import("@hotwired/turbo-rails").then(({ Turbo }) => {
-    Turbo.session.drive = false
-  })
-}
 
 const boot = () => {
   bootRailsBridges()
