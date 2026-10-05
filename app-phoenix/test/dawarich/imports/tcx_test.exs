@@ -4,13 +4,13 @@ defmodule Dawarich.Imports.TcxTest do
   alias Dawarich.Test.{NormalFormats, NormalFormatsAssertions}
   @dir Path.expand("../../fixtures/imports/formats", __DIR__)
 
-  test "tcx singleton multiple tracks and escaped ampersands match Rails" do
-    for path <- Path.wildcard(Path.join(@dir, "tcx_import_*.json")),
-        not String.ends_with?(path, ".input.json"),
-        not String.ends_with?(path, "_missing.json") do
-      Dawarich.JobsCase.reset!(ScratchRepo)
+  for path <- Path.wildcard(Path.join(@dir, "tcx_import_*.json")),
+      not String.ends_with?(path, ".input.json"),
+      not String.ends_with?(path, "_missing.json") do
+    @fixture Path.basename(path, ".json")
+    test "tcx singleton multiple tracks and escaped ampersands match Rails: #{@fixture}" do
       Dawarich.Ingest.Sources.forget()
-      c = NormalFormats.seed!(Path.basename(path, ".json"), ScratchRepo)
+      c = NormalFormats.seed!(@fixture, ScratchRepo)
       c = %{c | context: %{c.context | altitude_decimal?: c.expected["legacy"] != true}}
 
       if c.expected["legacy"] do

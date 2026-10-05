@@ -68,6 +68,37 @@ defmodule Dawarich.Jobs.ClaimerTest do
     Task.yield(claim, 5_000) || Task.shutdown(claim, :brutal_kill)
   end
 
+  test "empty ownership opt-in claims nothing and explicit known keys preserve operator pins" do
+    for value <- [nil, "", "  "], do: assert(Claimer.entries(value) == [])
+    assert Claimer.run(repo: ScratchRepo, oban: @oban, ready?: fn -> true end) == :ok
+    assert rows("SELECT count(*) FROM phoenix.job_owners") == [[0]]
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
+
+    pinned = "command:visits.suggest"
+    selected = "command:geocoding.reverse_point"
+    Ownership.put!(ScratchRepo, pinned, :sidekiq, pinned: true)
+    entries = Claimer.entries(" #{pinned}, #{selected} ")
+    assert Enum.map(entries, & &1.key) == [pinned, selected]
+    assert Enum.all?(entries, &(&1.claimable == false))
+
+    assert Claimer.run(repo: ScratchRepo, oban: @oban, entries: entries, ready?: fn -> true end) ==
+             :ok
+
+    assert owner(pinned) == [["sidekiq", true]]
+    assert owner(selected) == [["oban", false]]
+    assert rows("SELECT count(*) FROM phoenix.job_owners") == [[2]]
+
+    for invalid <- [
+          "*",
+          "command:unknown",
+          "#{selected},#{selected}",
+          "#{selected},",
+          ",#{selected}"
+        ] do
+      assert_raise ArgumentError, fn -> Claimer.entries(invalid) end
+    end
+  end
+
   test "claims an unpinned key, creating a missing row first" do
     assert Claimer.claim_all(ScratchRepo, @oban, [@command]) == [{"command:test.echo", :claimed}]
     assert owner("command:test.echo") == [["oban", false]]

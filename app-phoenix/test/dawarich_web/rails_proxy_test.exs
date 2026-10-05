@@ -213,8 +213,12 @@ defmodule DawarichWeb.RailsProxyTest do
 
   test "a long response streams to the client with its length and without buffering", ctx do
     client = connect(ctx.port)
-    send_raw(client, "GET /big.bin HTTP/1.1\r\nHost: a\r\n\r\n")
-    puma = accept(ctx.upstream)
+
+    {puma, :ok} =
+      accept_on_request(ctx.upstream, fn ->
+        send_raw(client, "GET /big.bin HTTP/1.1\r\nHost: a\r\n\r\n")
+      end)
+
     _ = read_head(puma)
     mib = :binary.copy("x", 1_048_576)
 

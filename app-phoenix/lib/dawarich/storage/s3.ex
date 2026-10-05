@@ -52,9 +52,22 @@ defmodule Dawarich.Storage.S3 do
   end
 
   def delete(config, key) do
-    _ = request(config, :delete, key, nil, %{}, "", %{})
-    :ok
+    case request(config, :delete, key, nil, %{}, "", %{}) do
+      {:ok, %{status_code: status}} when status in 200..299 -> :ok
+      {:ok, %{status_code: 404} = response} -> missing_delete(response)
+      {:error, {:http_error, 404, response}} -> missing_delete(response)
+      {:error, reason} -> {:error, reason}
+      other -> {:error, {:delete_failed, status(other)}}
+    end
   end
+
+  defp missing_delete(%{body: body}) when is_binary(body) do
+    if body =~ "<Code>NoSuchKey</Code>",
+      do: :ok,
+      else: {:error, :unconfirmed_missing_object}
+  end
+
+  defp missing_delete(_), do: {:error, :unconfirmed_missing_object}
 
   def download!(config, key, dest),
     do: File.open!(dest, [:write, :binary], &range!(config, key, &1, 0))

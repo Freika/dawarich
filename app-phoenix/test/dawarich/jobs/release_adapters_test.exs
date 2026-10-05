@@ -140,10 +140,11 @@ defmodule Dawarich.Jobs.ReleaseAdaptersTest do
         telemetry,
         [:dawarich, :scratch_repo, :query],
         fn _, _, metadata, caller ->
-          if self() == caller && String.starts_with?(metadata.query, "UPDATE regions\nSET geom") do
+          if self() == caller &&
+               String.starts_with?(metadata.query, "SELECT key, owner FROM phoenix.job_owners") do
             [[first]] = rows("SELECT pg_backend_pid()")
 
-            {second, result} =
+            task =
               Task.async(fn ->
                 ScratchRepo.checkout(fn ->
                   [[second]] = rows("SELECT pg_backend_pid()")
@@ -153,11 +154,11 @@ defmodule Dawarich.Jobs.ReleaseAdaptersTest do
                    Ownership.put!(ScratchRepo, "command:achievements.bulk_check", :sidekiq)}
                 end)
               end)
-              |> Task.await()
 
-            assert first != second
-            assert result == :ok
-            send(parent, :parent_released)
+            assert Dawarich.LockRace.settle(task, "SELECT key FROM phoenix.job_owners%") ==
+                     :blocked
+
+            send(parent, {:parent_released, first, task})
           end
         end,
         self()
@@ -167,16 +168,35 @@ defmodule Dawarich.Jobs.ReleaseAdaptersTest do
     event = Ecto.UUID.generate()
     args = %{"version" => 1, "event_id" => event}
     assert Achievements.run(ScratchRepo, @oban, args, now: now) == :ok
-    assert_receive :parent_released
+    assert_receive {:parent_released, first, task}
+    assert {second, :ok} = Task.await(task)
+    assert first != second
     :telemetry.detach(telemetry)
+
+    root = BulkCheck.job_id(BulkCheck.release_job_id(event))
+
+    assert [[%{"event_id" => ^root}]] =
+             rows(
+               "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.Achievements.BulkCheckWorker'"
+             )
+
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+    assert Processed.done?(ScratchRepo, event)
+    assert Achievements.run(ScratchRepo, @oban, args, now: now) == :ok
+    assert rows("SELECT count(*) FROM oban.oban_jobs") == [[1]]
+    rows("DELETE FROM oban.oban_jobs")
+    source_event = Ecto.UUID.generate()
+
+    assert Achievements.run(ScratchRepo, @oban, Map.put(args, "event_id", source_event), now: now) ==
+             :ok
 
     [["release_achievements_bulk_check", payload]] =
       rows("SELECT kind,payload FROM phoenix.rails_commands")
 
-    assert payload["job_id"] == BulkCheck.release_job_id(event)
+    assert payload["job_id"] == BulkCheck.release_job_id(source_event)
     assert payload["options"] == %{"notify" => false, "force" => true, "stale_only" => true}
     assert payload["run_at"] == DateTime.to_iso8601(now)
-    assert Processed.done?(ScratchRepo, event)
+    assert Processed.done?(ScratchRepo, source_event)
     rows("DELETE FROM phoenix.rails_commands")
 
     for id <- 54_501..54_903 do
@@ -224,7 +244,7 @@ defmodule Dawarich.Jobs.ReleaseAdaptersTest do
             end)
 
           assert Dawarich.LockRace.wait_until(fn ->
-                   Dawarich.LockRace.blocked("INSERT INTO phoenix.job_owners%") > 0
+                   Dawarich.LockRace.blocked("SELECT key FROM phoenix.job_owners%") > 0
                  end)
 
           send(parent, {:child_released, task})

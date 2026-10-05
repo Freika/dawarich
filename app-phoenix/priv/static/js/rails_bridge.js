@@ -3,6 +3,7 @@ export const meta = (name) =>
 
 const bridges = new WeakMap()
 const islands = new Set()
+let streamBridge = null
 window.StimulusIslands = islands
 window.Stimulus ??= {
   getControllerForElementAndIdentifier: (element, identifier) => {
@@ -82,10 +83,37 @@ const submitStream = async (event, bridge) => {
 
 export const railsBridge = (element) => {
   if (bridges.has(element)) return bridges.get(element)
-  const bridge = { flash: appendRailsFlash }
-  bridge.onSubmit = (event) => submitStream(event, bridge)
-  element.addEventListener("submit", bridge.onSubmit)
-  bridge.ready = startStimulus(element)
+  const bridge = { pendingFlash: null }
+  bridge.offlineFlash = (content) => {
+    bridge.pendingFlash = content.cloneNode(true)
+    appendRailsFlash(content)
+  }
+  bridge.flash = bridge.offlineFlash
+  bridge.onSubmit = (event) => {
+    streamBridge = bridge
+    submitStream(event, bridge)
+  }
+  bridge.onStream = (event) => {
+    const stream = event.target
+    if (
+      streamBridge !== bridge ||
+      stream.getAttribute("action") !== "append" ||
+      stream.getAttribute("target") !== "flash-messages"
+    )
+      return
+    const content = stream.querySelector("template")?.content
+    if (!content) return
+    event.preventDefault()
+    bridge.flash(content)
+  }
+  element.addEventListener("submit", bridge.onSubmit, true)
+  document.addEventListener("turbo:before-stream-render", bridge.onStream)
+  const controls = [...element.querySelectorAll("button, input, select, textarea")]
+    .map((control) => [control, control.disabled])
+  for (const [control] of controls) control.disabled = true
+  bridge.ready = startStimulus(element).finally(() => {
+    for (const [control, disabled] of controls) control.disabled = disabled
+  })
   bridges.set(element, bridge)
   return bridge
 }
@@ -103,14 +131,20 @@ export const RailsStimulus = {
         message: alert?.querySelector("span")?.textContent || "",
       })
     }
+    if (this.bridge.pendingFlash) {
+      this.bridge.flash(this.bridge.pendingFlash)
+      this.bridge.pendingFlash = null
+    }
   },
   disconnected() {
-    this.bridge.flash = appendRailsFlash
+    this.bridge.flash = this.bridge.offlineFlash
   },
   destroyed() {
     const bridge = bridges.get(this.el)
     if (!bridge) return
-    this.el.removeEventListener("submit", bridge.onSubmit)
+    this.el.removeEventListener("submit", bridge.onSubmit, true)
+    document.removeEventListener("turbo:before-stream-render", bridge.onStream)
+    if (streamBridge === bridge) streamBridge = null
     bridge.ready.then((app) => {
       app.stop()
       islands.delete(app)
@@ -141,6 +175,13 @@ export const bootRailsBridges = () => {
     railsBridge(element)
   for (const element of document.querySelectorAll("[phx-hook='MapShell']"))
     mapShell().then((shell) => shell.mount(element))
+}
+
+export const bootTurboFrames = () => {
+  if (!document.querySelector("turbo-frame")) return
+  return import("@hotwired/turbo-rails").then(({ Turbo }) => {
+    Turbo.session.drive = false
+  })
 }
 
 const expireRailsAlert = (node) => {

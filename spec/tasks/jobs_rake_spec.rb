@@ -7,12 +7,40 @@ RSpec.describe 'dawarich:jobs' do
   before(:all) { Rails.application.load_tasks unless Rake::Task.task_defined?('dawarich:jobs:release') }
 
   after do
-    %w[release unpin rehome status].each { |task| Rake::Task["dawarich:jobs:#{task}"].reenable }
+    %w[release unpin rehome status drain_status].each { |task| Rake::Task["dawarich:jobs:#{task}"].reenable }
   end
 
   def run(task, *args)
     Rake::Task[task].reenable
     expect { Rake::Task[task].invoke(*args) }.to output.to_stdout
+  end
+
+  it 'restored source cron controls produce one batch after pinned rollback' do
+    phoenix_tables!
+    user = create(:user, settings: { 'teslamate_url' => 'https://teslamate.example.invalid' })
+    key = 'cron:teslamate_sync_job'
+    name = "impl-a12d3-resume-#{SecureRandom.uuid}"
+    config = YAML.load_file(Rails.root.join('config/schedule.yml')).fetch('teslamate_sync_job')
+    expect(Sidekiq::Cron::Job.load_from_hash(name => config.merge('status' => 'disabled'))).to eq({})
+    cron = Sidekiq::Cron::Job.find(name)
+    at = cron.send(:parsed_cron).next_time(Time.utc(2026, 10, 24, 12)).to_t.utc + 1
+    job_owner!(key, :oban)
+    expect { cron.test_and_enqueue_for_time!(at) }.not_to have_enqueued_job
+    run('dawarich:jobs:release', key)
+    expect(ActiveRecord::Base.connection.select_rows(
+             "SELECT owner, pinned FROM phoenix.job_owners WHERE key = 'cron:teslamate_sync_job'"
+           )).to eq([['sidekiq', true]])
+    cron.enable!
+    restored = Sidekiq::Cron::Job.find(name)
+    expect { 2.times { restored.test_and_enqueue_for_time!(at) } }
+      .to have_enqueued_job(TeslaMate::SyncSchedulingJob).exactly(:once)
+    expect(restored.enabled?).to be(true)
+    request = enqueued_jobs.sole.deep_dup
+    job = ActiveJob::Base.deserialize(request)
+    job.enqueued_at = at
+    expect { 2.times { job.perform_now } }.to have_enqueued_job(TeslaMate::SyncJob).with(user.id).exactly(:once)
+  ensure
+    Sidekiq::Cron::Job.find(name)&.destroy if name
   end
 
   it 'releases a key to Sidekiq, pinned, and unpins it' do
@@ -143,8 +171,13 @@ RSpec.describe 'dawarich:jobs' do
     Rake::Task['dawarich:jobs:release'].reenable
 
     expect { Rake::Task['dawarich:jobs:release'].invoke('cron:lite_archival_warning_job') }
-      .to output(/cron:lite_archival_warning_job: sidekiq \(pinned\).*command:mail\.user\.archival_approaching: /m)
+      .to output(/command:mail\.user\.archival_approaching: sidekiq \(pinned\).*cron:lite_archival_warning_job: /m)
       .to_stdout
+  end
+
+  it 'prints the redacted drain observation from the installed task' do
+    expect { Rake::Task['dawarich:jobs:drain_status'].invoke }
+      .to output(/"status":.*"(?:BLOCKED|OBSERVED_EMPTY)".*"observation": true/m).to_stdout
   end
 
   it 'prints the health summary and gauges' do

@@ -3,6 +3,7 @@ import { LiveSocket } from "phoenix_live_view"
 import { FamilyPage } from "family_page"
 import {
   bootRailsBridges,
+  bootTurboFrames,
   MapShell,
   meta,
   RailsStimulus,
@@ -51,13 +52,6 @@ const liveSocket = new LiveSocket("/phoenix/live", Socket, {
 liveSocket.connect()
 window.liveSocket = liveSocket
 
-const bootTurboFrames = () => {
-  if (!document.querySelector("turbo-frame[src]")) return
-  import("@hotwired/turbo-rails").then(({ Turbo }) => {
-    Turbo.session.drive = false
-  })
-}
-
 const boot = () => {
   bootRailsBridges()
   bootTurboFrames()
@@ -71,6 +65,11 @@ if (document.readyState === "loading") {
 }
 
 const joined = () => liveSocket.main?.isConnected() === true
+
+document.addEventListener("turbo:before-fetch-request", (event) => {
+  if (document.querySelector("[data-phx-main]"))
+    event.detail.fetchOptions.headers["X-Dawarich-LiveView"] = "true"
+})
 
 document.addEventListener("click", (event) => {
   if (!joined() && event.target.closest?.("a[data-phx-link]"))

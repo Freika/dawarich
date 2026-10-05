@@ -111,6 +111,22 @@ RSpec.describe 'Phoenix fixture: A12d2 residual jobs' do
     )
   end
 
+  it 'captures A12d3 schedule parents twice with fixed source outcomes' do
+    corpus = capture_schedule_parents
+    nightly = corpus.fetch('classes').fetch('Points::NightlyReverseGeocodingJob').fetch('cases')
+    forced = nightly.find { _1.fetch('id') == 'dedup' }
+    expect(forced.fetch('jobs').map { _1.fetch('arguments').last.fetch('force') }.uniq).to eq([true])
+    expect(capture_schedule_parents).to eq(corpus)
+    serialized = "#{JSON.pretty_generate(corpus)}\n"
+    schedules_path = Rails.root.join('app-phoenix/test/fixtures/a12d3/schedules.json')
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      FileUtils.mkdir_p(schedules_path.dirname)
+      File.write(schedules_path, serialized)
+    else
+      expect(serialized).to eq(schedules_path.read)
+    end
+  end
+
   it 'captures family sync failures after the source transaction rolls back' do
     %w[sync_error error].each do |profile|
       captured = source_isolated('Families::AutoCreationJob', profile) do

@@ -86,6 +86,7 @@ defmodule DawarichWeb.AchievementsLive do
       id="phx-achievements"
       class="w-full my-5 ach-page"
       phx-hook="RailsStimulus"
+      phx-update="ignore"
       data-controller="card-modal"
       data-action="turbo:before-cache@document->card-modal#prepareForCache"
       data-card-modal-labels-value={AchievementModal.labels(@locale)}

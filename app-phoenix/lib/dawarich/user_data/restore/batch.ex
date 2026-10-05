@@ -32,6 +32,10 @@ defmodule Dawarich.UserData.Restore.Batch do
     rows
   end
 
+  def with_column_types(repo, table, context) do
+    Map.put(context, :restore_column_types, {repo, table, column_types!(repo, table)})
+  end
+
   def row!(repo, table, row, context) do
     {_columns, [row]} = prepare!(repo, table, [row], context)
     row
@@ -112,12 +116,10 @@ defmodule Dawarich.UserData.Restore.Batch do
       do: raise(ArgumentError, "All objects must have the same keys")
 
     types =
-      repo.query!(
-        "SELECT column_name,udt_name,numeric_precision,numeric_scale FROM information_schema.columns WHERE table_schema='public' AND table_name=$1",
-        [table],
-        log: false
-      ).rows
-      |> Map.new(fn [name, type, p, s] -> {name, {type, p, s}} end)
+      case Map.get(context, :restore_column_types) do
+        {^repo, ^table, types} -> types
+        _ -> column_types!(repo, table)
+      end
 
     data =
       Enum.map(rows, fn row ->
@@ -127,6 +129,15 @@ defmodule Dawarich.UserData.Restore.Batch do
       end)
 
     {columns, data}
+  end
+
+  defp column_types!(repo, table) do
+    repo.query!(
+      "SELECT column_name,udt_name,numeric_precision,numeric_scale FROM information_schema.columns WHERE table_schema='public' AND table_name=$1",
+      [table],
+      log: false
+    ).rows
+    |> Map.new(fn [name, type, p, s] -> {name, {type, p, s}} end)
   end
 
   defp cast("points", name, _type, value, _context)

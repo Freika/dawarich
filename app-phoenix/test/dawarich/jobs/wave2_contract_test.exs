@@ -40,6 +40,7 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
           ) <>
           hd(String.split(RailsTree.read("app/services/stats/commands.rb"), "HANDLERS = {")) <>
           hd(String.split(RailsTree.read("app/services/cache/commands.rb"), "HANDLERS = {")) <>
+          hd(String.split(RailsTree.read("app/services/visits/bulk_commands.rb"), "HANDLERS = {")) <>
           hd(
             String.split(
               RailsTree.read("app/services/users/recalculation_commands.rb"),
@@ -188,6 +189,11 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
 
     for %{worker: worker} <- Registry.entries() do
       assert Keyword.has_key?(queues, worker.__opts__()[:queue]), inspect(worker)
+    end
+
+    for worker <- [Dawarich.PendingImports.CleanupWorker, Dawarich.PendingImports.PurgeWorker] do
+      assert worker.__opts__()[:queue] == :maintenance
+      assert worker.__opts__()[:priority] == 3
     end
 
     assert config[Dawarich.Repo][:pool_size] == Enum.sum(Keyword.values(queues)) + 3 + 5

@@ -14,7 +14,10 @@ class Users::Digests::Monthly::SchedulingJob < ApplicationJob
       next unless user.safe_settings.monthly_digest_emails_enabled?
       next unless user.stats.where(year: year, month: month).exists?
 
-      Users::Digests::Monthly::CalculatingJob.perform_later(user.id, year, month)
+      result = JobOwnership.with_owner('cron:monthly_digest_scheduling_job') do
+        Users::Digests::Monthly::CalculatingJob.perform_later(user.id, year, month)
+      end
+      break if result == :not_owner
     end
   end
 end

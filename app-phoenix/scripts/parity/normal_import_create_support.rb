@@ -186,7 +186,7 @@ module NormalImportFormatsSupport
                    'trial' => options[:trial] == true,
                    'parent' => parent && whole_import_row(parent), 'children' => children,
                    'points' => points['points'], 'sources' => points['sources'],
-                   'notifications' => Notification.where(user_id: 987_001).order(:id).pluck(:title, :content, :kind),
+                   'notifications' => portable_create_notifications,
                    'ordered_effects' => ordered,
                    'jobs' => ActiveJob::Base.queue_adapter.enqueued_jobs.map do |job|
                      { 'type' => job[:job].name, 'args' => job[:args] }
@@ -207,8 +207,26 @@ module NormalImportFormatsSupport
 
   def write_whole_input(options)
     path = DIR.join('whole_create', "#{options.fetch(:name)}.input#{File.extname(options.fetch(:filename))}")
-    File.binwrite(path, options.fetch(:bytes))
+    FixtureRecording.verify(path, options.fetch(:bytes))
     path.to_s
+  end
+
+  def portable_notification(content)
+    message, marker, frames = content.partition(/(?:stacktrace|backtrace): /i)
+    return content if marker.empty?
+
+    frames = frames.gsub("#{Rails.root}#{File::SEPARATOR}", '')
+    Gem.loaded_specs.each_value do |gem|
+      frames = frames.gsub(gem.full_gem_path, "<gems>/#{gem.name}")
+    end
+    frames = frames.gsub(RbConfig::CONFIG.fetch('prefix'), '<ruby>')
+    message + marker + frames
+  end
+
+  def portable_create_notifications
+    Notification.where(user_id: 987_001).order(:id).pluck(:title, :content, :kind).map do |title, content, kind|
+      [title, portable_notification(content), kind]
+    end
   end
 
   def whole_import_row(import)
