@@ -5,6 +5,19 @@ defmodule Dawarich.Seeds.AssetsTest do
 
   test "seed asset resolves through application priv and matches repository source bytes" do
     source = Path.expand("../../../../lib/assets/countries.geojson.gz", __DIR__)
+    root = Path.expand("../..", Path.dirname(source))
+
+    assert File.read_link!(Path.join(root, "app-phoenix/priv/countries.geojson.gz")) ==
+             "../../lib/assets/countries.geojson.gz"
+
+    assert "app-phoenix/priv/countries.geojson.gz" in String.split(
+             File.read!(Path.join(root, ".dockerignore")),
+             "\n"
+           )
+
+    assert File.read!(Path.join(root, "docker/Dockerfile")) =~
+             "COPY lib/assets/countries.geojson.gz priv/countries.geojson.gz"
+
     asset = Countries.asset_path()
     assert asset == Application.app_dir(:dawarich, "priv/countries.geojson.gz")
     assert File.read!(asset) == File.read!(source)
