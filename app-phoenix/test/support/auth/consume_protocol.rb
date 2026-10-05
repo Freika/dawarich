@@ -7,7 +7,11 @@ require 'uri'
 require 'active_support/testing/time_helpers'
 
 mode = ARGV[1]
-database_allowed = ENV.fetch('DATABASE_NAME').start_with?('dawarich_test')
+database_allowed = if %w[api_auth api_auth_password_work api_auth_otp_work].include?(mode)
+                     ENV.fetch('DATABASE_NAME') == 'dawarich_test_a11f'
+                   else
+                     ENV.fetch('DATABASE_NAME').start_with?('dawarich_test')
+                   end
 raise 'Protocol own test DB required' unless Rails.env.test? && database_allowed
 
 ActiveJob::Base.queue_adapter = :test
@@ -534,6 +538,383 @@ def install_api_projection(user, native, hash)
   user.reload
 end
 
+def consume_api_password_work(fixture)
+  label = 'API password native preflight doubles actual Rails work for the same actor or miss'
+  id = 911_510_010
+  email = 'a11f-password-work@example.invalid'
+  rows = fixture.fetch('rows')
+  names = %w[known-wrong known-wrong-low-cost known-wrong-2a-low-cost rejected-2a-low-cost
+             rejected-2y-low-cost rejected-2x-low-cost wrong-nul-known wrong-nul-unknown wrong-nul-deleted
+             correct-nul correct-nul-otp wrong-nul-form correct-nul-form unicode-known unicode-unknown unicode-deleted
+             unknown deleted blank-hash
+             provider provider-low-cost
+             settings settings-low-cost metadata metadata-low-cost validation validation-low-cost]
+  names += %w[2a 2b 2x 2y].product(%w[00 01 02 03 32 99]).map { |minor, rounds| "uncomputable-#{minor}-#{rounds}" }
+  names += %w[uncomputable-2z uncomputable-1a invalid-hash]
+  unless fixture['id'] == id && fixture['email'] == email &&
+         rows.map { |row| row['name'] } == names &&
+         File.stat(ARGV.fetch(0)).mode & 0o777 == 0o600
+    raise "#{label}: owned payload required"
+  end
+  raise "#{label}: actor collision" if User.unscoped.where(id: id).exists? || User.unscoped.where(email: email).exists?
+
+  dummy_hash = Api::V1::Auth::SessionsController::DUMMY_PASSWORD_HASH
+  cost = BCrypt::Password.new(dummy_hash).cost
+  raise "#{label}: source dummy cost mismatch" unless fixture.fetch('dummy_cost') == cost
+
+  BCrypt::Engine.singleton_class.prepend(Module.new do
+    define_method(:hash_secret) do |*args|
+      result = super(*args)
+      Thread.current[:a11f_password_work]&.push(args[1].split('$')[2].to_i) if result
+      result
+    end
+  end)
+  previous_attack = Rack::Attack.enabled
+  previous_work = Thread.current[:a11f_password_work]
+  baseline = nil
+  begin
+    Rack::Attack.enabled = false
+    rows.each do |row|
+      state = row.fetch('state')
+      raise "#{label}: actor id mismatch" unless state['id'] == id
+
+      columns = state.keys.join(',')
+      values = state.keys.map { |field| "r.#{field}" }.join(',')
+      sql = "INSERT INTO users (#{columns},created_at,updated_at) " \
+            "SELECT #{values},now(),now() FROM jsonb_populate_record(NULL::users,?::jsonb) r"
+      User.connection.execute(User.sanitize_sql_array([sql, JSON.generate(state)]))
+      before = User.unscoped.find(id).attributes
+      Thread.current[:a11f_password_work] = []
+      client = native_client({})
+      failure = nil
+      begin
+        client.post('/api/v1/auth/login', params: row.fetch('raw'), headers: { 'CONTENT_TYPE' => row.fetch('type') })
+      rescue BCrypt::Errors::InvalidHash, ArgumentError => e
+        failure = e
+      end
+      source_work = Thread.current[:a11f_password_work]
+      if row['name'].include?('nul')
+        unless row.fetch('native_work').empty? && row.fetch('native_lookups').zero? && source_work.empty? &&
+               failure.is_a?(ArgumentError) && failure.message == 'string contains null byte' &&
+               User.unscoped.find(id).attributes == before
+          raise "#{label}: #{row['name']} NUL admission or source outcome changed"
+        end
+
+        User.unscoped.find(id).delete
+        next
+      end
+      if row['name'] == 'invalid-hash'
+        unless row.fetch('native_work').empty? && row.fetch('native_lookups') == 1 && source_work.empty? &&
+               failure.is_a?(BCrypt::Errors::InvalidHash) && User.unscoped.find(id).attributes == before
+          raise "#{label}: invalid hash exception ownership changed"
+        end
+
+        User.unscoped.find(id).delete
+        next
+      end
+      raise "#{label}: unexpected source exception" if failure
+
+      if row['name'].start_with?('unicode')
+        expected_cost = row['name'] == 'unicode-known' ? BCrypt::Password.new(state['encrypted_password']).cost : cost
+        unless row.fetch('native_work').empty? && row.fetch('native_lookups').zero? &&
+               source_work == [expected_cost]
+          raise "#{label}: Unicode replay work mismatch"
+        end
+      else
+        raise "#{label}: lookup trace mismatch" unless row.fetch('native_lookups') == 1
+      end
+
+      combined = row.fetch('native_work') + source_work
+      source_expected =
+        case row['name']
+        when 'blank-hash', /\Auncomputable-/ then []
+        when 'unknown', 'deleted', 'unicode-unknown', 'unicode-deleted' then [cost]
+        else [BCrypt::Password.new(state.fetch('encrypted_password')).cost]
+        end
+      native_expected = if row['name'].start_with?('unicode')
+                          []
+                        else
+                          source_expected.empty? ? [cost, cost] : source_expected
+                        end
+      rails_baseline = source_work.empty? ? [cost] : source_work
+      combined_expected = row['name'].start_with?('unicode') ? source_work : rails_baseline * 2
+      raise "#{label}: #{row['name']} native work mismatch" unless row['native_work'] == native_expected
+      raise "#{label}: #{row['name']} source work mismatch" unless source_work == source_expected
+      raise "#{label}: #{row['name']} combined work mismatch" unless combined == combined_expected
+
+      body = JSON.parse(client.response.body)
+      baseline ||= body
+      unless client.response.status == 401 && body == baseline && !client.response.headers['Set-Cookie'] &&
+             User.unscoped.find(id).attributes == before
+        raise "#{label}: #{row['name']} refusal contract or state changed"
+      end
+
+      User.unscoped.find(id).delete
+    end
+    puts "#{label}: PASS combined work doubles each Rails-only pattern; blank hash compensated; " \
+         "NUL replay has no native lookup/work; dummy cost #{cost}"
+  ensure
+    Thread.current[:a11f_password_work] = previous_work
+    Rack::Attack.enabled = previous_attack
+    User.unscoped.where(id: id).delete_all
+  end
+end
+
+def consume_api_otp_work(fixture)
+  label = 'API OTP preflight mirrors actual Rails read-only verification work'
+  id = 911_510_011
+  email = 'a11f-otp-work@example.invalid'
+  unless fixture['id'] == id && fixture['email'] == email && File.stat(ARGV.fetch(0)).mode & 0o777 == 0o600
+    raise "#{label}: owned payload required"
+  end
+  raise "#{label}: actor collision" if User.unscoped.where(id: id).exists? || User.unscoped.where(email: email).exists?
+
+  previous_env = fixture.fetch('env').keys.index_with { |key| ENV[key] }
+  encryption = ActiveRecord::Encryption.config
+  previous_encryption = %i[primary_key deterministic_key key_derivation_salt].index_with do |key|
+    encryption.public_send(key)
+  end
+  previous_cache = Rails.cache
+  previous_attack = Rack::Attack.enabled
+  previous_work = Thread.current[:a11f_otp_work]
+  clock = Object.new.extend(ActiveSupport::Testing::TimeHelpers)
+  BCrypt::Engine.singleton_class.prepend(Module.new do
+    define_method(:hash_secret) do |*args|
+      result = super(*args)
+      Thread.current[:a11f_otp_work]&.push(args[1].split('$')[2].to_i) if result
+      result
+    end
+  end)
+  ROTP::OTP.prepend(Module.new do
+    define_method(:generate_otp) do |*args|
+      result = super(*args)
+      Thread.current[:a11f_otp_work]&.push('totp')
+      result
+    end
+  end)
+  begin
+    Rack::Attack.enabled = false
+    Rails.cache = ActiveSupport::Cache::MemoryStore.new
+    previous_env.each_key { |key| fixture['env'][key].nil? ? ENV.delete(key) : ENV[key] = fixture['env'][key] }
+    ActiveRecord::Encryption.configure(primary_key: fixture['env']['OTP_ENCRYPTION_PRIMARY_KEY'],
+                                       deterministic_key: fixture['env']['OTP_ENCRYPTION_DETERMINISTIC_KEY'],
+                                       key_derivation_salt: fixture['env']['OTP_ENCRYPTION_KEY_DERIVATION_SALT'])
+    clock.travel_to(Time.at(fixture.fetch('at')).utc) do
+      fixture.fetch('rows').each do |row|
+        row_env = row.fetch('env')
+        previous_env.each_key { |key| row_env[key].nil? ? ENV.delete(key) : ENV[key] = row_env[key] }
+        ActiveRecord::Encryption.configure(primary_key: row_env['OTP_ENCRYPTION_PRIMARY_KEY'],
+                                           deterministic_key: row_env['OTP_ENCRYPTION_DETERMINISTIC_KEY'],
+                                           key_derivation_salt: row_env['OTP_ENCRYPTION_KEY_DERIVATION_SALT'])
+        state = row.fetch('state')
+        raise "#{label}: actor id mismatch" unless state['id'] == id && state['email'] == email
+
+        columns = state.keys.join(',')
+        values = state.keys.map { |field| "r.#{field}" }.join(',')
+        sql = "INSERT INTO users (#{columns},status,plan,subscription_source,created_at,updated_at) " \
+              "SELECT #{values},1,1,0,now(),now() FROM jsonb_populate_record(NULL::users,?::jsonb) r"
+        User.connection.execute(User.sanitize_sql_array([sql, JSON.generate(state)]))
+        Thread.current[:a11f_otp_work] = []
+        client = native_client({})
+        failure = nil
+        begin
+          client.post('/api/v1/auth/otp_challenge',
+                      params: { challenge_token: fixture.fetch('token'), otp_code: row.fetch('code') }, as: :json)
+        rescue ActiveRecord::Encryption::Errors::Decryption, ROTP::Base32::Base32Error,
+               BCrypt::Errors::InvalidHash, ArgumentError => e
+          failure = e
+        end
+        source_work = Thread.current[:a11f_otp_work]
+        expected = row.fetch('expected_work')
+        unless source_work == expected && row.fetch('native_work') == source_work
+          raise "#{label}: #{row['name']} work mismatch: " \
+                "source=#{source_work.inspect}, native=#{row['native_work'].inspect}"
+        end
+
+        if %w[unreadable-secret invalid-secret invalid-backup].include?(row['name'])
+          raise "#{label}: #{row['name']} exception changed" unless failure
+        else
+          raise "#{label}: #{row['name']} unexpected exception" if failure
+
+          expected_status = if %w[provider-totp provider-backup legacy-backup nil-secret-backup].include?(row['name'])
+                              200
+                            elsif row['name'].start_with?('locked')
+                              423
+                            else
+                              401
+                            end
+          unless client.response.status == expected_status && !client.response.headers['Set-Cookie']
+            raise "#{label}: #{row['name']} source response changed"
+          end
+        end
+        User.unscoped.find(id).delete
+        Rails.cache.clear
+      end
+      fixture.fetch('out_of_range_tokens').each do |token|
+        Thread.current[:a11f_otp_work] = []
+        client = native_client({})
+        client.post('/api/v1/auth/otp_challenge', params: { challenge_token: token, otp_code: 'wrong' }, as: :json)
+        unless client.response.status == 401 && JSON.parse(client.response.body)['error'] == 'auth_failed' &&
+               !client.response.headers['Set-Cookie'] && Thread.current[:a11f_otp_work].empty?
+          raise "#{label}: out-of-range JWT source refusal changed"
+        end
+      end
+    end
+    puts "#{label}: PASS supported/provider/legacy/secret-state/locked/success controls; replay before native writes"
+  ensure
+    Thread.current[:a11f_otp_work] = previous_work
+    previous_env.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
+    ActiveRecord::Encryption.configure(**previous_encryption)
+    Rails.cache = previous_cache
+    Rack::Attack.enabled = previous_attack
+    User.unscoped.where(id: id).delete_all
+  end
+end
+
+def consume_api_auth(fixture)
+  label = 'Rails accepts native API challenges and rejects native consumed JTIs'
+  continuity = 'API auth shared RDB retains the same live actors and markers across runtimes'
+  ids = [911_510_001, 911_510_002, 911_510_003, 911_510_004]
+  emails = ids.map { |id| "a11f-protocol-#{id}@example.invalid" }
+  actors = fixture.fetch('actors')
+  shared = fixture.fetch('lifecycle') == 'shared_rdb'
+  raise "#{label}: lifecycle refused" unless %w[projection shared_rdb].include?(fixture['lifecycle'])
+  raise "#{label}: owned payload required" unless actors.map { |actor| actor['id'] } == ids &&
+                                                  actors.map { |actor| actor['email'] } == emails &&
+                                                  File.stat(ARGV.fetch(0)).mode & 0o777 == 0o600
+
+  previous_cache = Rails.cache
+  previous_attack = Rack::Attack.enabled
+  previous_env = fixture.fetch('env').keys.grep(/\AOTP_ENCRYPTION_|\AJWT_SECRET_KEY\z/).index_with { |key| ENV[key] }
+  encryption = ActiveRecord::Encryption.config
+  previous_encryption = %i[primary_key deterministic_key key_derivation_salt].index_with do |key|
+    encryption.public_send(key)
+  end
+  redis = Redis.new(url: "#{ENV.fetch('REDIS_URL')}/0", driver: :ruby)
+  keys = fixture.fetch('marker_keys').dup
+  keys << "otp_lockout_email_throttle/user/#{ids.last}"
+  success = false
+  clock = Object.new.extend(ActiveSupport::Testing::TimeHelpers)
+  state = lambda do |id|
+    query = ['SELECT to_jsonb(users) FROM users WHERE id=? AND email=?',
+             id, "a11f-protocol-#{id}@example.invalid"]
+    row = User.connection.select_value(User.sanitize_sql_array(query))
+    row = JSON.parse(row) if row.is_a?(String)
+    row&.slice(*actors.first.fetch('state').keys)
+  end
+  submit = lambda do |token, code|
+    client = native_client({})
+    client.post('/api/v1/auth/otp_challenge', params: { challenge_token: token, otp_code: code }, as: :json)
+    client
+  end
+  begin
+    unless redis.connection[:db].zero? && redis._client.options[:driver] == Redis::Connection::Ruby
+      raise "#{label}: real Ruby cache driver DB zero required"
+    end
+
+    Rails.cache = ActiveSupport::Cache::RedisCacheStore.new(redis: redis, error_handler: ->(**_failure) {})
+    Rack::Attack.enabled = false
+    previous_env.each_key { |key| fixture['env'][key].nil? ? ENV.delete(key) : ENV[key] = fixture['env'][key] }
+    ActiveRecord::Encryption.configure(primary_key: fixture['env']['OTP_ENCRYPTION_PRIMARY_KEY'],
+                                       deterministic_key: fixture['env']['OTP_ENCRYPTION_DETERMINISTIC_KEY'],
+                                       key_derivation_salt: fixture['env']['OTP_ENCRYPTION_KEY_DERIVATION_SALT'])
+    unless Auth::InternalTokenSecret.call == 'phoenix-a2-cookie-fixture-secret-not-for-production'
+      raise "#{label}: source secret mismatch"
+    end
+
+    if shared
+      actors.each { |actor| raise "#{continuity}: row mismatch" unless state.call(actor['id']) == actor['state'] }
+      puts "#{continuity}: PASS source observes native persisted rows"
+    else
+      if User.unscoped.where(id: ids).exists? || User.unscoped.where(email: emails).exists?
+        raise "#{label}: owned row collision"
+      end
+
+      actors.each do |actor|
+        fields = actor.fetch('state').keys
+        columns = fields.join(',')
+        values = fields.map { |field| "r.#{field}" }.join(',')
+        sql = "INSERT INTO users (#{columns},status,plan,subscription_source,created_at,updated_at) " \
+              "SELECT #{values},1,1,0,now(),now() FROM jsonb_populate_record(NULL::users,?::jsonb) r"
+        User.connection.execute(User.sanitize_sql_array([sql, JSON.generate(actor['state'])]))
+      end
+    end
+    clock.travel_to(Time.at(fixture.fetch('at')).utc) do
+      Time.use_zone('UTC') do
+        clock.travel_to(Time.at(fixture.fetch('at') + 30).utc)
+        replay = submit.call(actors.first.fetch('token'), ROTP::TOTP.new(fixture.fetch('secret')).at(Time.current))
+        raise "#{label}: native consumed JTI accepted" unless replay.response.status == 401
+
+        marker = fixture['marker_keys'].first
+        unless Rails.cache.read(marker) == true && redis.pttl(marker).between?(1, 300_000)
+          raise "#{label}: native cache marker TTL mismatch"
+        end
+
+        clock.travel_to(Time.at(fixture.fetch('at')).utc)
+        [actors[1], actors[2]].each_with_index do |actor, index|
+          code = index.zero? ? ROTP::TOTP.new(fixture.fetch('secret')).at(Time.current) : 'a11f backup one'
+          client = submit.call(actor.fetch('token'), code)
+          raise "#{label}: native challenge refused" unless client.response.status == 200
+          raise "#{label}: web cookie issued" if client.response.headers['Set-Cookie']
+
+          result = JSON.parse(client.response.body)
+          raise "#{label}: subject key changed" unless result['api_key'] == actor['state']['api_key']
+
+          reader = native_client({})
+          reader.get('/api/v1/users/me', headers: { 'Authorization' => "Bearer #{result['api_key']}" })
+          raise "#{label}: source API reader refused" unless reader.response.status == 200
+
+          user = User.find(actor['id'])
+          raise "#{label}: reset mismatch" unless user.failed_otp_attempts.zero? && user.otp_locked_at.nil?
+          raise "#{label}: timestep mismatch" if index.zero? && user.consumed_timestep != fixture['at'] / 30
+          raise "#{label}: backup not removed" if index == 1 && user.otp_backup_codes.size != 1
+
+          marker = "otp_challenge:consumed:#{actor['jti']}"
+          unless Rails.cache.read(marker) == true && redis.pttl(marker).between?(1, 300_000)
+            raise "#{label}: source cache marker TTL mismatch"
+          end
+        end
+        before_jobs = ActiveJob::Base.queue_adapter.enqueued_jobs.size
+        refusal = submit.call(actors.last.fetch('token'), 'invalid otp')
+        user = User.find(ids.last)
+        unless refusal.response.status == 401 && user.failed_otp_attempts == 10 && user.otp_locked?
+          raise "#{label}: invalid code effects mismatch"
+        end
+
+        locked = submit.call(actors.last.fetch('token'), ROTP::TOTP.new(fixture.fetch('secret')).at(Time.current))
+        unless locked.response.status == 423 && user.reload.failed_otp_attempts == 10 &&
+               ActiveJob::Base.queue_adapter.enqueued_jobs.size == before_jobs + 1
+          raise "#{label}: lockout effects duplicated"
+        end
+
+        source_actors = actors.map do |actor|
+          token = Auth::IssueOtpChallengeToken.new(User.find(actor['id'])).call
+          claims, = JWT.decode(token, Auth::InternalTokenSecret.call, true, algorithm: 'HS256')
+          key = "otp_challenge:consumed:#{claims['jti']}"
+          keys << key
+          { 'id' => actor['id'], 'email' => actor['email'], 'token' => token, 'jti' => claims['jti'],
+            'state' => state.call(actor['id']) }
+        end
+        races = JSON.parse(File.read(Rails.root.join('app-phoenix/test/fixtures/auth/api_auth/races.json')))
+        fixture['rails'] = { 'actors' => source_actors, 'marker_keys' => keys - fixture['marker_keys'],
+                             'source_races' => races }
+        File.write(ARGV.fetch(0), JSON.generate(fixture))
+      end
+    end
+    puts "#{label}: PASS source JWT, controller, cache, key reader and lockout"
+    success = true
+  ensure
+    clock.travel_back
+    User.unscoped.where(id: ids, email: emails).delete_all unless success && shared
+    keys.each { |key| redis.del(key) } unless success
+    redis.close
+    Rails.cache = previous_cache
+    Rack::Attack.enabled = previous_attack
+    previous_env.each { |key, value| value.nil? ? ENV.delete(key) : ENV[key] = value }
+    ActiveRecord::Encryption.configure(**previous_encryption)
+  end
+end
+
 def consume_api_two_factor_management(fixture)
   ids = [954_801, 954_802, 954_803]
   emails = ids.map { |id| "a4otp-protocol-#{id}@example.invalid" }
@@ -792,6 +1173,12 @@ def consume_web_otp(fixture, request)
 end
 
 case ARGV[1]
+when 'api_auth_otp_work'
+  consume_api_otp_work(fixture)
+when 'api_auth_password_work'
+  consume_api_password_work(fixture)
+when 'api_auth'
+  consume_api_auth(fixture)
 when 'account_link'
   consume_account_link(fixture, request)
 when 'web_otp'

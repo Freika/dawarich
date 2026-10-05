@@ -182,11 +182,13 @@ module JobCommands
       }
     }
   }.merge(ReleaseCommands::COMMANDS)
+   .merge(ReleaseAdapterCommands::COMMANDS)
    .merge(Tracks::BackfillCommands::COMMANDS)
    .merge(Families::JobCommands::COMMANDS)
    .merge(Places::JobCommands::COMMANDS)
    .merge(Achievements::BulkCommands::COMMANDS)
    .merge(Stats::Commands::COMMANDS)
+   .merge(Cache::Commands::COMMANDS)
    .merge(Users::RecalculationCommands::COMMANDS)
    .merge(Points::AnomalyBackfillCommands::COMMANDS)
    .merge(Imports::ProcessCommands::COMMANDS)
@@ -201,7 +203,7 @@ module JobCommands
 
   module_function
 
-  def produce(type, payload, aggregate_id:, producer:, scheduled_at: Time.current, dedupe_key: nil)
+  def produce(type, payload, aggregate_id:, producer:, scheduled_at: Time.current, dedupe_key: nil, &source_complete)
     payload = Users::RecalculationCommands.normalize(payload) if type == 'users.recalculate_data'
     command = COMMANDS.fetch(type)
     ActiveRecord::Base.transaction do
@@ -210,7 +212,7 @@ module JobCommands
                               aggregate_id:, producer:, scheduled_at:, dedupe_key:)
         :outbox
       else
-        command.fetch(:sidekiq).call(payload, scheduled_at)
+        source_complete ? source_complete.call : command.fetch(:sidekiq).call(payload, scheduled_at)
         :sidekiq
       end
     end

@@ -27,6 +27,7 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
           RailsTree.read("app/services/imports/teslamate_commands.rb") <>
           RailsTree.read("app/services/imports/trek_commands.rb") <>
           RailsTree.read("app/services/release_commands.rb") <>
+          RailsTree.read("app/services/release_adapter_commands.rb") <>
           RailsTree.read("app/services/tracks/backfill_commands.rb") <>
           hd(
             String.split(RailsTree.read("app/services/families/job_commands.rb"), "HANDLERS = {")
@@ -38,6 +39,7 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
             )
           ) <>
           hd(String.split(RailsTree.read("app/services/stats/commands.rb"), "HANDLERS = {")) <>
+          hd(String.split(RailsTree.read("app/services/cache/commands.rb"), "HANDLERS = {")) <>
           hd(
             String.split(
               RailsTree.read("app/services/users/recalculation_commands.rb"),

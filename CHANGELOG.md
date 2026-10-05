@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 
 - Phoenix release lifecycle prerequisites: transactional native release-job insertion, two native DDL workers and ordinary install seed components with Rails parity. Live lifecycle commands and entrypoint activation remain pending external release adapters and exclusion proof; existing Rails boot behavior stays in place. See `docs/phoenix/a12h-lifecycle.md`.
+- Opt-in Phoenix API authentication for supported local self-hosted accounts: add `api_auth` to `DAWARICH_PHOENIX_AUTH` (default OFF) for password login, five-minute OTP challenge issuance and valid TOTP or backup-code completion. Successful login and OTP completion return the existing API key without issuing a web sign-in session. Invalid credentials, tokens and codes, lockout and mail, Cloud, providers, registration and mobile or session-marker requests remain with Rails. Omit `api_auth` to return both endpoints to Rails; the `users` route rollback and `api_account` slice stay independent.
+- Cache preheat workers are ready behind disabled Phoenix ownership. Rails retains global, per-user and yearly snapshot warming for both owners, along with existing readers, invalidation and cleaning; cache retirement and live activation remain separate steps.
 - Opt-in Phoenix OAuth account-link confirmation for supported self-hosted accounts: add `account_link` to `DAWARICH_PHOENIX_AUTH` (default OFF) to render Rails-issued pending OpenID Connect challenges and complete correct-password confirmations. Accounts requiring two-factor authentication are linked and returned to sign-in without authenticated access. Provider entry/callback/failure, password refusals, expiry, email fallback and token redemption remain with Rails. Omit `account_link` to return challenge and confirmation to Rails; pending cookies remain compatible. The `otp` and `two_factor` keys stay independent, and `DAWARICH_RAILS_ROUTES=users` alone does not disable this handler.
 - Full and user recalculation, anomaly backfill, and tracker repair workers are ready behind disabled Phoenix job ownership. Rails retains the source jobs and HTTP recalculation callers; live activation, cache retirement, and migrator boot remain separate steps.
 - Monthly and yearly digest calculation workers and scheduling crons are ready behind Phoenix job ownership, with all four keys disabled by default. Rails retains digest email delivery and HTTP writes; live cron activation is a separate step.
@@ -78,6 +80,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Fixed
 
+- Phoenix API password login mirrors each actor's stored bcrypt cost before returning unsupported actors to Rails. Missing or deleted actors use default-cost dummy work; blank stored hashes receive compensation where Rails skips password comparison. Refusals remain Rails-owned.
 - Phoenix pages link the digested stylesheets from Rails' configured asset manifest.
 - Map realtime subscriptions cancel pending setup when leaving the map or toggling live mode before setup, preventing late or duplicate subscription sets in the shared Rails/Phoenix controller.
 - Native KML imports use bounded read-ahead for private spool reads to reduce small file-read overhead.

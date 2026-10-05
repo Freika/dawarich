@@ -23,6 +23,11 @@ module Wave6Inventory
     'DataMigrations::RecalculatePerTrackerTracksJob' => 'release.per_tracker'
   }.freeze
 
+  ADAPTERS = {
+    'DataMigrations::BackfillAchievementsJob' => 'release.achievements_backfill',
+    'TransportationModes::ImportBackfillJob' => 'release.import_backfill'
+  }.freeze
+
   OTHER = {
     'DataMigrations::StartSettingsPointsCountryIdsJob' => :retire,
     'DataMigrations::SetPointsCountryIdsJob' => :retire,
@@ -35,10 +40,8 @@ module Wave6Inventory
     'DataMigrations::BackfillFamiliesForFamilyPlanJob' => :retire,
     'DataMigrations::BackfillFamilyMemberEntitlementsJob' => :retire,
     'DataMigrations::BackfillPlacesUserIdJob' => :a12_decoder,
-    'DataMigrations::BackfillAchievementsJob' => :a12,
     'DataMigrations::AddPointDimensionColumnsJob' => :a12,
     'DataMigrations::DropLegacyLatLonJob' => :a12,
-    'TransportationModes::ImportBackfillJob' => :a7,
     'BulkStatsCalculatingJob' => :pre_floor_other_owner,
     'Import::UpdatePointsCountJob' => :pre_floor_other_owner,
     'Trips::CalculatePathJob' => :pre_floor_other_owner,
@@ -59,7 +62,7 @@ module Wave6Inventory
 end
 
 RSpec.describe 'Wave 6 job inventory' do
-  let(:classified) { Wave6Inventory::RELEASE.keys + Wave6Inventory::OTHER.keys }
+  let(:classified) { Wave6Inventory::RELEASE.keys + Wave6Inventory::ADAPTERS.keys + Wave6Inventory::OTHER.keys }
 
   it 'gives every job a migration or data migration enqueues a disposition' do
     expect(Wave6Inventory.enqueued - classified - Wave6Inventory::DELETED).to be_empty
@@ -86,8 +89,9 @@ RSpec.describe 'Wave 6 job inventory' do
 
   it 'maps every release class onto a release command type its file forwards' do
     expect(Wave6Inventory::RELEASE.values.uniq).to match_array(ReleaseCommands::COMMANDS.keys)
+    expect(Wave6Inventory::ADAPTERS.values).to match_array(ReleaseAdapterCommands::COMMANDS.keys)
 
-    Wave6Inventory::RELEASE.each do |name, type|
+    Wave6Inventory::RELEASE.merge(Wave6Inventory::ADAPTERS).each do |name, type|
       expect(File.read(Wave6Inventory.path(name))).to include("'#{type}'"), name
     end
   end

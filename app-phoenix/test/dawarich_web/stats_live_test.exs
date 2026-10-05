@@ -213,6 +213,31 @@ defmodule DawarichWeb.StatsLiveTest do
         |> Enum.map(&LazyHTML.text/1)
         |> Enum.reject(&(&1 == ""))
 
+    test "stats summaries and year cards remain locale and unit correct without Rails fragments",
+         %{user: user} do
+      for {unit, total} <- [{"km", "70"}, {"mi", "44"}], locale <- ~w(en de) do
+        Dawarich.Repo.query!(
+          "UPDATE users SET settings=jsonb_set(settings,'{maps,distance_unit}',$1::jsonb) WHERE id=$2",
+          [unit, user.id]
+        )
+
+        html =
+          RailsUser.signed_in(user.id) |> get("/stats?locale=#{locale}") |> html_response(200)
+
+        assert Enum.map(texts(html, ".stat-value.text-primary"), &String.trim/1) == [
+                 "#{total} #{unit}"
+               ]
+
+        assert texts(html, "h2.card-title > div > a:first-child") == ["2024", "2023"]
+        cards = if unit == "km", do: ["50 km", "20 km"], else: ["31 mi", "12 mi"]
+
+        assert Enum.map(texts(html, ".card.w-full.shadow-xl > .card-body > p"), &String.trim/1) ==
+                 cards
+
+        assert html =~ if(locale == "de", do: "Statistiken", else: "Statistics")
+      end
+    end
+
     test "the index: Rails' totals, method links, one card per year", %{user: user} do
       {:ok, view, html} = live_as(user, "/stats", on_error: [duplicate_id: :warn])
       assert html =~ "<title>Statistics | Dawarich</title>"

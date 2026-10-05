@@ -2,6 +2,7 @@
 
 require 'rails_helper'
 require_relative 'normal_import_formats_support'
+require_relative 'normal_import_release_support'
 require_relative 'normal_import_json_support'
 require_relative 'normal_import_photos_support'
 require_relative 'normal_import_records_support'
@@ -17,7 +18,88 @@ require_relative '../../../spec/support/fit_fixture_helper'
 
 RSpec.describe 'Phoenix fixtures: normal Rails import formats' do
   include ActiveSupport::Testing::TimeHelpers
+  include NormalImportReleaseSupport
   self.use_transactional_tests = false
+
+  it 'A12rel import parent records file backfill and track effects' do
+    corpus = capture_release_imports
+    cases = corpus.fetch('cases').index_by { _1.fetch('id') }
+    expect(corpus.fetch('retry').fetch('max_attempts')).to eq(26)
+    %w[missing deleted unsupported nil_source shape_error sql_failure phone_sql_failure].each do |name|
+      expect(cases.fetch(name).fetch('track_calls')).to eq([])
+    end
+    %w[google_records owntracks geojson absent download_error malformed checksum size empty].each do |name|
+      expect(cases.fetch(name).fetch('track_calls')).to eq([987_101])
+      expect(cases.fetch(name).fetch('error')).to be_nil
+    end
+    %w[google_records owntracks geojson].each do |name|
+      expect(cases.fetch(name).fetch('downloads')).to eq(0)
+    end
+    semantic = cases.fetch('semantic').fetch('after').fetch('points')
+    expect(semantic.find { _1.fetch('id') == 56_303 }.fetch('motion_data'))
+      .to include('retained' => 'point', 'activityType' => 'CYCLING')
+    %w[phone_object phone_array].each do |name|
+      expect(cases.fetch(name).fetch('update_order')).to eq([56_304, 56_301, 56_303])
+      point = cases.fetch(name).fetch('after').fetch('points').find { _1.fetch('id') == 56_304 }
+      expect(point.fetch('motion_data').fetch('activityRecord')).to include('extra' => 'exact_first')
+    end
+    failure = cases.fetch('sql_failure')
+    expect(failure.fetch('error').fetch('class')).to eq('ActiveRecord::StatementInvalid')
+    expect(failure.fetch('observed')).to eq(failure.fetch('after'))
+    expect(failure.fetch('after')).not_to eq(failure.fetch('before'))
+    expect(failure.fetch('retry').fetch('error')).to be_nil
+    phone_failure = cases.fetch('phone_sql_failure')
+    expect(phone_failure.fetch('error').fetch('class')).to eq('ActiveRecord::StatementInvalid')
+    expect(phone_failure.fetch('update_order')).to eq([56_304])
+    expect(phone_failure.fetch('observed')).to eq(phone_failure.fetch('before'))
+    expect(phone_failure.fetch('after')).to eq(phone_failure.fetch('before'))
+    expect(phone_failure.fetch('retry').fetch('error')).to be_nil
+    expect(phone_failure.fetch('retry').fetch('after')).to eq(cases.fetch('phone_object').fetch('after'))
+    expect(phone_failure.fetch('retry').fetch('track_calls')).to eq([987_101])
+    expect(capture_release_imports).to eq(corpus)
+    record_import_release_fixture('imports', corpus)
+  end
+
+  it 'A12rel import batch preserves segments and continues after a broken track' do
+    corpus = capture_release_track_batches
+    cases = corpus.fetch('cases').index_by { _1.fetch('id') }
+    batch = cases.fetch('sql_failure')
+    expect(batch.fetch('attempted')).to eq(3)
+    expect(batch.fetch('reported')).to include(include('class' => 'ActiveRecord::StatementInvalid'))
+    expect(batch.fetch('observed')).to eq(batch.fetch('after'))
+    expect(batch.fetch('after').fetch('tracks').take(3).map { _1.fetch('dominant_mode') })
+      .to eq(%w[unknown driving unknown])
+    expect(cases.fetch('unchanged').fetch('broadcasts').size).to eq(3)
+    expect(cases.fetch('unchanged').fetch('tile_ranges').size).to eq(3)
+    expect(cases.fetch('empty').fetch('after').fetch('tracks').take(3).map { _1.fetch('dominant_mode') })
+      .to eq(%w[driving driving driving])
+    expect(cases.fetch('nil_user').fetch('detectors').map { _1.fetch('enabled_modes') }.uniq).to eq([nil])
+    expect(cases.fetch('selection').fetch('attempted')).to eq(3)
+    expect(capture_release_track_batches).to eq(corpus)
+    record_import_release_fixture('track_batches', corpus)
+  end
+
+  it 'A12rel import migrations record schema-specific selections and delays' do
+    corpus = capture_release_import_vectors
+    vectors = corpus.fetch('vectors').index_by { _1.fetch('id') }
+    expect(vectors.fetch('integer_historical').fetch('jobs')).to eq([])
+    expect(vectors.fetch('integer_historical').fetch('reported'))
+      .to include(include('uninitialized constant'), include('invalid input syntax for type integer'))
+    historical = vectors.fetch('text_historical').fetch('jobs')
+                        .select { _1.fetch('class') == 'TransportationModes::ImportBackfillJob' }
+    expect(historical.map { _1.fetch('due_offset') }).to eq([180, 190, 200, 210, 220])
+    current = vectors.fetch('integer_unreleased').fetch('jobs')
+                     .select { _1.fetch('class') == 'TransportationModes::ImportBackfillJob' }
+    expect(current.map { _1.fetch('arguments').first }).to eq([987_101, 987_102, 987_103, 987_104, 987_105])
+    expect(current.map { _1.fetch('due_offset') }).to eq([120, 130, 140, 150, 160])
+    expect(vectors.fetch('integer_unreleased').fetch('jobs').first.fetch('class'))
+      .to eq('DataMigrations::BackfillTransportationModesJob')
+    expect(vectors.fetch('integer_no_tracks').fetch('jobs').none? do |job|
+      job.fetch('class') == 'DataMigrations::BackfillTransportationModesJob'
+    end).to be(true)
+    expect(capture_release_import_vectors).to eq(corpus)
+    record_import_release_fixture('import_release_vectors', corpus)
+  end
 
   it 'records integration producers and scheduler effects' do
     travel_to Time.utc(2026, 1, 15, 23, 30) do

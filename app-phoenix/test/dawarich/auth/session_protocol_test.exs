@@ -225,6 +225,71 @@ defmodule Dawarich.Auth.SessionProtocolTest do
     end
   end
 
+  test "API auth protocol projects supported JWT and OTP state without issuing web sessions" do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
+    config = Application.fetch_env!(:dawarich, :redis)
+    conn = start_supervised!({Redix, {config[:url], [database: config[:cache_database]]}})
+
+    env =
+      Jason.decode!(File.read!("test/fixtures/active_record_encryption.json"))["environments"]
+      |> Enum.find(&(&1["name"] == "explicit keys"))
+      |> Map.fetch!("env")
+
+    path =
+      Path.join(System.tmp_dir!(), "a11f-protocol-#{System.unique_integer([:positive])}.json")
+
+    refute File.exists?(path)
+
+    context = %{
+      env: Map.put(env, "JWT_SECRET_KEY", nil),
+      rails_secret: @secret,
+      cache_command: fn args -> Redix.command(conn, args) end
+    }
+
+    try do
+      Dawarich.Auth.ApiProtocol.auth_write(path, context, "projection")
+      payload = path |> File.read!() |> Jason.decode!()
+      assert payload["mode"] == "api_auth" and payload["lifecycle"] == "projection"
+      assert Bitwise.band(File.stat!(path).mode, 0o777) == 0o600
+
+      assert Enum.map(payload["actors"], & &1["id"]) == [
+               911_510_001,
+               911_510_002,
+               911_510_003,
+               911_510_004
+             ]
+
+      refute Enum.any?(Map.keys(payload), &(&1 in ~w(sessions cookie remember form_token)))
+      first = hd(payload["actors"])
+      assert first["state"]["consumed_timestep"] == div(payload["at"], 30)
+      assert first["state"]["failed_otp_attempts"] == 0
+      assert Enum.all?(tl(payload["actors"]), &is_nil(&1["state"]["consumed_timestep"]))
+
+      for actor <- payload["actors"] do
+        [_, body, _] = String.split(actor["token"], ".")
+        claims = body |> Base.url_decode64!(padding: false) |> Jason.decode!()
+        assert claims["purpose"] == "otp_challenge"
+        assert claims["user_id"] == actor["id"]
+        assert claims["exp"] - claims["iat"] == 300
+      end
+
+      assert {:ok, marker} = Redix.command(conn, ["GET", hd(payload["marker_keys"])])
+      assert is_binary(marker)
+
+      assert Dawarich.Repo.query!(
+               "SELECT id FROM users WHERE id=ANY($1)",
+               [Enum.map(payload["actors"], & &1["id"])],
+               log: false
+             ).rows == []
+    after
+      if File.exists?(path) do
+        payload = path |> File.read!() |> Jason.decode!()
+        for key <- payload["marker_keys"], do: Redix.command(conn, ["DEL", key])
+        File.rm!(path)
+      end
+    end
+  end
+
   test "API management protocol preserves storage without issuing a session" do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
 

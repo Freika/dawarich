@@ -7,10 +7,12 @@ defmodule Dawarich.ReleaseJobsTest do
   @app Path.expand("../..", __DIR__)
   @keywords %{"repair_collisions" => true, "_aj_ruby2_keywords" => ["repair_collisions"]}
   @v1 %{"version" => 1}
-  @arg_keys ~w(version operation_id cursor user_id)
+  @arg_keys ~w(version operation_id cursor user_id event_id import_id ambient_zone)
   @command_payloads %{
     "DataMigrations::AddPointDimensionColumnsJob" => %{},
     "DataMigrations::DropLegacyLatLonJob" => %{},
+    "DataMigrations::BackfillAchievementsJob" => %{},
+    "TransportationModes::ImportBackfillJob" => %{"import_id" => 42},
     "DataMigrations::BackfillPointDimensionsJob" => %{
       "phase" => "dimensions",
       "start_id" => nil,
@@ -66,6 +68,58 @@ defmodule Dawarich.ReleaseJobsTest do
         assert ReleaseJobs.decode(class, extras) == {:error, :invalid_arguments}
       end
     end
+  end
+
+  test "achievement and import release vectors decode to executable adapters" do
+    start_oban(:a12rel_vectors)
+    ledger = rows("SELECT * FROM phoenix.release_migration_jobs ORDER BY id")
+
+    for {class, arguments, worker} <- [
+          {"DataMigrations::BackfillAchievementsJob", [], Ops.Achievements},
+          {"TransportationModes::ImportBackfillJob", [54001], Ops.ImportBackfill}
+        ] do
+      assert {:ok, ^worker, args} = ReleaseJobs.decode(class, arguments)
+      assert {:ok, _} = Ecto.UUID.cast(args["event_id"])
+      assert worker.new(args).valid?
+      assert {:ok, ^worker, other} = ReleaseJobs.decode(class, arguments)
+      refute other["event_id"] == args["event_id"]
+
+      if worker == Ops.ImportBackfill do
+        assert args["import_id"] == 54001
+
+        assert args["ambient_zone"] ==
+                 Dawarich.TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
+      end
+    end
+
+    vectors =
+      for name <- ~w(release_vectors import_release_vectors),
+          vector <-
+            File.read!(Path.join(@app, "test/fixtures/a12rel/#{name}.json"))
+            |> Jason.decode!()
+            |> Map.fetch!("vectors"),
+          job <- vector["jobs"],
+          job["class"] in ~w(DataMigrations::BackfillAchievementsJob TransportationModes::ImportBackfillJob),
+          do: job
+
+    for vector <- vectors do
+      assert {:ok, worker, args} = ReleaseJobs.decode(vector["class"], vector["arguments"])
+      payload = Map.drop(args, ["event_id", "version"])
+      assert {:ok, decoded} = worker.args_from_command(1, payload)
+      assert decoded == Map.delete(args, "event_id")
+      before = DateTime.utc_now()
+      changeset = worker.new(args, schedule_in: trunc(vector["due_offset"]))
+      assert changeset.valid?
+      job = Oban.insert!(:a12rel_vectors, changeset)
+      assert job.args == args
+      assert job.worker == to_string(worker) |> String.trim_leading("Elixir.")
+      assert job.queue == "maintenance"
+      assert job.priority == 3
+      assert job.max_attempts == 26
+      assert abs(DateTime.diff(job.scheduled_at, before) - vector["due_offset"]) <= 1
+    end
+
+    assert rows("SELECT * FROM phoenix.release_migration_jobs ORDER BY id") == ledger
   end
 
   test "keeps executable anomaly and tracker classes enumerated with invalid-argument errors" do
@@ -181,7 +235,7 @@ defmodule Dawarich.ReleaseJobsTest do
            }
   end
 
-  test "classes without a Phoenix worker defer to their owner with a versioned, id-only payload" do
+  test "all recorded self-hosted classes have executable or skipped decisions" do
     System.put_env("SELF_HOSTED", "true")
 
     deferred =
@@ -189,11 +243,7 @@ defmodule Dawarich.ReleaseJobsTest do
           {:deferred, _owner, _payload} = outcome <- [ReleaseJobs.decode(class, arguments)],
           do: {class, outcome}
 
-    assert Enum.sort(deferred) == [
-             {"DataMigrations::BackfillAchievementsJob", {:deferred, :a12d2, @v1}},
-             {"TransportationModes::ImportBackfillJob",
-              {:deferred, :a7, %{"version" => 1, "import_id" => 42}}}
-           ]
+    assert deferred == []
   end
 
   test "decoded args equal what the worker builds from the forwarded command" do
@@ -205,6 +255,9 @@ defmodule Dawarich.ReleaseJobsTest do
           worker != Ops.PlacesUserId do
         payload =
           cond do
+            worker == Ops.ImportBackfill ->
+              Map.take(args, ["import_id", "ambient_zone"])
+
             class == "DataMigrations::BackfillPointCountryIdJob" ->
               @country_payloads |> List.keyfind(arguments, 0) |> elem(1)
 
@@ -215,7 +268,8 @@ defmodule Dawarich.ReleaseJobsTest do
               Map.fetch!(@command_payloads, class)
           end
 
-        assert worker.args_from_command(1, payload) == {:ok, Map.delete(args, "operation_id")},
+        assert worker.args_from_command(1, payload) ==
+                 {:ok, Map.drop(args, ["operation_id", "event_id"])},
                class
 
         class
@@ -287,6 +341,74 @@ defmodule Dawarich.ReleaseJobsTest do
                     )),
                "#{class}: #{inspect(value)}"
       end
+    end
+  end
+end
+
+defmodule Dawarich.ReleaseJobsSourceVectorsTest do
+  use Dawarich.ScratchCase
+  alias Dawarich.ReleaseMigrations.{Unreleased, V1_0_2, V1_15_2}
+
+  @fixtures Path.expand("../fixtures/a12rel", __DIR__)
+
+  test "historical integer source schema preserves rescued no-jobs vector" do
+    seed("integer")
+    assert step(V1_0_2, "20260125100000").(ScratchRepo) == {:jobs, jobs("integer_historical")}
+  end
+
+  test "historical text source schema preserves import selection and delays" do
+    seed("text")
+    assert step(V1_0_2, "20260125100000").(ScratchRepo) == {:jobs, jobs("text_historical")}
+  end
+
+  test "unreleased integer source vectors preserve sorted imports and fleet jobs" do
+    seed("integer")
+    scratch_sql!("INSERT INTO tracks(id) VALUES(56201)")
+    assert step(Unreleased, "20260925100100").(ScratchRepo) == {:jobs, jobs("integer_unreleased")}
+    scratch_sql!("DELETE FROM tracks")
+    assert step(Unreleased, "20260925100100").(ScratchRepo) == {:jobs, jobs("integer_no_tracks")}
+  end
+
+  test "both achievement release steps preserve empty arguments and zero wait" do
+    corpus = File.read!(Path.join(@fixtures, "release_vectors.json")) |> Jason.decode!()
+
+    for {module, version} <- [{V1_15_2, "20260922120000"}, {Unreleased, "20260923180000"}] do
+      vector = Enum.find(corpus["vectors"], &(&1["version"] == version))
+      assert step(module, version).(ScratchRepo) == {:jobs, Enum.map(vector["jobs"], &tuple/1)}
+    end
+  end
+
+  defp step(module, version), do: module.steps() |> List.keyfind(version, 0) |> elem(1)
+  defp tuple(job), do: {job["class"], job["arguments"], trunc(job["due_offset"])}
+
+  defp jobs(name) do
+    corpus = File.read!(Path.join(@fixtures, "import_release_vectors.json")) |> Jason.decode!()
+
+    corpus["vectors"]
+    |> Enum.find(&(&1["id"] == name))
+    |> Map.fetch!("jobs")
+    |> Enum.map(&tuple/1)
+  end
+
+  defp seed(type) do
+    scratch_sql!("CREATE TABLE users(id bigint PRIMARY KEY,deleted_at timestamp)")
+    scratch_sql!("INSERT INTO users VALUES(987001,NULL),(987002,NULL),(987003,'2026-01-15')")
+    scratch_sql!("CREATE TABLE imports(id bigint PRIMARY KEY,user_id bigint,source #{type})")
+    scratch_sql!("CREATE TABLE tracks(id bigint PRIMARY KEY)")
+
+    sources =
+      if type == "text",
+        do:
+          ~w(google_semantic_history google_phone_takeout google_records owntracks geojson csv) ++
+            [nil],
+        else: [0, 1, 2, 3, 6, 10, nil]
+
+    for {source, index} <- Enum.with_index(sources) do
+      ScratchRepo.query!(
+        "INSERT INTO imports VALUES($1,$2,$3)",
+        [987_101 + index, if(index == 4, do: 987_003, else: 987_001), source],
+        log: false
+      )
     end
   end
 end

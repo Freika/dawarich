@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: POST /exports as Rails answers it', type: :request do
   include ActiveSupport::Testing::TimeHelpers
@@ -8,9 +9,14 @@ RSpec.describe 'Phoenix fixtures: POST /exports as Rails answers it', type: :req
   let(:dir) { Rails.root.join('app-phoenix/test/fixtures/point_exports') }
   let(:now) { Time.utc(2026, 9, 30, 12, 0, 0) }
 
-  before { FileUtils.mkdir_p(dir) }
+  around { |example| Time.use_zone('Europe/Berlin') { example.run } }
 
-  def write_json(name, data) = File.write(dir.join(name), "#{JSON.pretty_generate(data)}\n")
+  before do
+    stub_const('Users::SafeSettings::DEFAULT_VALUES',
+               Users::SafeSettings::DEFAULT_VALUES.merge('timezone' => 'UTC'))
+  end
+
+  def write_json(name, data) = FixtureRecording.verify(dir.join(name), "#{JSON.pretty_generate(data)}\n")
   def stamp(time) = time&.utc&.strftime('%Y-%m-%dT%H:%M:%S.%6NZ')
 
   def header_names

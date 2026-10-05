@@ -3,6 +3,43 @@
 require 'rails_helper'
 
 RSpec.describe 'Release command routers' do
+  it 'A12rel parents forward with stable identity only under their exact owner keys' do
+    import = create(:import, source: :csv)
+    at = 1.hour.from_now.change(usec: 0)
+    samples = [
+      [DataMigrations::BackfillAchievementsJob, [], 'release.achievements_backfill', {}],
+      [TransportationModes::ImportBackfillJob, [import.id], 'release.import_backfill',
+       { 'import_id' => import.id, 'ambient_zone' => 'Asia/Tokyo' }]
+    ]
+    samples.each do |klass, arguments, type, payload|
+      Time.use_zone('Asia/Tokyo') do
+        [nil, :sidekiq, :oban].each do |owner|
+          phoenix_tables!
+          JobOutbox.delete_all
+          JobOwnership.release!("command:#{type}", by: 'spec')
+          job_owner!("command:#{type}", owner) if owner
+          job_owner!('command:achievements.bulk_check', owner == :oban ? :sidekiq : :oban)
+          job = klass.new(*arguments)
+          job.scheduled_at = at
+          RSpec::Mocks.with_temporary_scope do
+            if owner == :oban
+              expect(Country).not_to receive(:none?) if arguments.empty?
+              expect(Import).not_to receive(:find_by) unless arguments.empty?
+              expect { 2.times { job.perform_now } }.not_to have_enqueued_job
+              expect(JobOutbox.sole).to have_attributes(command_type: type, event_id: job.job_id,
+                                                        payload:, scheduled_at: at, aggregate_id: nil)
+            else
+              expect(Country).to receive(:none?).and_call_original if arguments.empty?
+              expect(Import).to receive(:find_by).with(id: import.id).and_call_original unless arguments.empty?
+              job.perform_now
+              expect(JobOutbox.count).to eq(0)
+            end
+          end
+        end
+      end
+    end
+  end
+
   rows = [
     { job: DataMigrations::BackfillPointDimensionsJob, args: [nil, 50_000], kwargs: {},
       type: 'release.point_dimensions_country',

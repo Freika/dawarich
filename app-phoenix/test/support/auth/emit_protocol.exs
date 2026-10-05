@@ -1,3 +1,59 @@
+if Enum.at(System.argv(), 1) in [
+     "api_auth",
+     "api_auth_source",
+     "api_auth_password_work",
+     "api_auth_otp_work"
+   ] do
+  database = System.fetch_env!("PHOENIX_TEST_DATABASE")
+
+  unless database in ["dawarich_phoenix_test_a11f", "dawarich_test_a11f"],
+    do: raise("A11f allocated test DB required")
+
+  for app <- [:ecto_sql, :postgrex, :bcrypt_elixir, :crypto],
+      do: {:ok, _} = Application.ensure_all_started(app)
+
+  if Process.whereis(Dawarich.Repo) == nil, do: {:ok, _} = Dawarich.Repo.start_link()
+  config = Application.fetch_env!(:dawarich, :redis)
+  {:ok, redis} = Redix.start_link(config[:url], database: config[:cache_database])
+
+  env =
+    Jason.decode!(File.read!("test/fixtures/active_record_encryption.json"))["environments"]
+    |> Enum.find(&(&1["name"] == "explicit keys"))
+    |> Map.fetch!("env")
+    |> Map.put("JWT_SECRET_KEY", nil)
+
+  context = %{
+    env: env,
+    rails_secret: "phoenix-a2-cookie-fixture-secret-not-for-production",
+    cache_command: fn args -> Redix.command(redis, args) end
+  }
+
+  lifecycle = if database == "dawarich_test_a11f", do: "shared_rdb", else: "projection"
+
+  Ecto.Adapters.SQL.Sandbox.unboxed_run(Dawarich.Repo, fn ->
+    case Enum.at(System.argv(), 1) do
+      "api_auth" ->
+        Dawarich.Auth.ApiProtocol.auth_write(hd(System.argv()), context, lifecycle)
+
+      "api_auth_source" ->
+        Dawarich.Auth.ApiProtocol.auth_source(hd(System.argv()), context, lifecycle)
+
+      "api_auth_password_work" ->
+        Dawarich.Auth.ApiProtocol.password_work(
+          hd(System.argv()),
+          Map.merge(context, %{self_hosted: true, oidc: false})
+        )
+
+      "api_auth_otp_work" ->
+        Dawarich.Auth.ApiProtocol.otp_work(hd(System.argv()), context)
+    end
+  end)
+
+  GenServer.stop(redis)
+  IO.puts("A11f API auth protocol completed")
+  System.halt(0)
+end
+
 if Enum.at(System.argv(), 1) in ["account_link", "account_link_source"] and
      Process.whereis(Dawarich.Repo) == nil do
   unless System.get_env("PHOENIX_TEST_DATABASE") in [

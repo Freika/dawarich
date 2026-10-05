@@ -5,6 +5,11 @@ defmodule Dawarich.Auth.TwoFactor.Api do
 
   def run(action, id, params, context) do
     cond do
+      Enum.any?(~w(password otp_code), fn key ->
+        is_binary(params[key]) and String.contains?(params[key], <<0>>)
+      end) ->
+        {:replay, :parameters}
+
       context[:self_hosted] != true ->
         {:replay, :cloud}
 
