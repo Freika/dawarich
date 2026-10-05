@@ -51,6 +51,7 @@ defmodule DawarichWeb.TripForm do
       action={if @form.id, do: "/trips/#{@form.id}", else: "/trips"}
       accept-charset="UTF-8"
       method="post"
+      data-turbo="false"
     >
       <input :if={@form.id} type="hidden" name="_method" value="patch" />
       <input type="hidden" name="authenticity_token" value={@csrf} />
