@@ -8,7 +8,7 @@ defmodule Dawarich.AirTrail.FlightsTest do
   @berlin "Europe/Berlin"
 
   setup do
-    rows("TRUNCATE public.flights, public.notifications RESTART IDENTITY CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(public.flights  public.notifications))
 
     settings = %{
       "timezone" => "Europe/Berlin",

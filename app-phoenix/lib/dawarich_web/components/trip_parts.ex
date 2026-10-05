@@ -44,7 +44,8 @@ defmodule DawarichWeb.TripParts do
             data-trip-maplibre-target="posterBtn"
             data-action="click->trip-maplibre#openPosterStudio"
             aria-label={s(@locale, "create_poster")}
-            title={s(@locale, "create_poster")}
+            title={s(@locale, if(@page.has_path, do: "create_poster", else: "poster_unavailable"))}
+            disabled={!@page.has_path}
           >
             <.icon name="image" class="w-4 h-4" />
           </button>
@@ -53,7 +54,8 @@ defmodule DawarichWeb.TripParts do
             class="btn btn-sm btn-ghost"
             data-action="click->trip-maplibre#openVideoStudio"
             aria-label={s(@locale, "create_video")}
-            title={s(@locale, "create_video")}
+            title={s(@locale, if(@page.has_path, do: "create_video", else: "video_unavailable"))}
+            disabled={!@page.has_path}
           >
             <.icon name="video" class="w-4 h-4" />
           </button>
@@ -117,9 +119,15 @@ defmodule DawarichWeb.TripParts do
         {t(@locale, "trips.countries.middot", %{})}
         {TripFormat.duration(@locale, @page.duration)}
         {t(@locale, "trips.countries.middot", %{})}
-        {t(@locale, "trips.countries.country_count", %{count: length(@page.countries)})}
+        <%= if @page.countries != [] do %>
+          {t(@locale, "trips.countries.country_count", %{count: length(@page.countries)})}
+        <% else %>
+          <span class="text-base-content/40">{Phoenix.HTML.raw(
+            t(@locale, "trips.countries.mdash", %{})
+          )}</span>
+        <% end %>
       </p>
-      <div class="flex flex-wrap items-center gap-1.5 mt-2">
+      <div :if={@page.countries != []} class="flex flex-wrap items-center gap-1.5 mt-2">
         <.country_flag :for={country <- @page.countries} name={country} table={@page.flags} />
       </div>
     </div>
@@ -143,6 +151,19 @@ defmodule DawarichWeb.TripParts do
       >
         <.icon name="plane" class="w-4 h-4" />
         <span class="hidden sm:inline">{s(@locale, "flights")}</span>
+      </button>
+      <button
+        :if={@page.plan_toggle}
+        type="button"
+        class="btn btn-sm btn-outline gap-1"
+        data-testid="trip-plan-toggle"
+        data-trip-maplibre-target="planToggleBtn"
+        data-action="click->trip-maplibre#togglePlan"
+        aria-pressed="false"
+        title={s(@locale, "toggle_plan_on_map")}
+      >
+        <.icon name="map" class="w-4 h-4" />
+        <span class="hidden sm:inline">{s(@locale, "plan")}</span>
       </button>
       <button
         type="button"

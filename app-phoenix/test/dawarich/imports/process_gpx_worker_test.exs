@@ -4,7 +4,7 @@ defmodule Dawarich.Imports.ProcessGpxWorkerTest do
   alias Dawarich.Jobs.{Dispatch, Ownership, Processed}
 
   setup do
-    rows("TRUNCATE phoenix.import_handoffs")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.import_handoffs))
     previous_repo = Application.fetch_env(:dawarich, :jobs_repo)
     Application.put_env(:dawarich, :jobs_repo, ScratchRepo)
 

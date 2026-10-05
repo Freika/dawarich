@@ -132,7 +132,7 @@ defmodule Dawarich.Tracks.SegmentEditorTest do
 
   defp reset_fixture(name) do
     alias Dawarich.Test.{ApiGolden, RailsUser}
-    Repo.query!("TRUNCATE users,tracks,track_segments,points CASCADE")
+    Dawarich.FixtureCleanup.delete!(Repo, ~w(users tracks track_segments points))
     state = File.read!("test/fixtures/map_writes/segments/#{name}.json") |> Jason.decode!()
 
     user =

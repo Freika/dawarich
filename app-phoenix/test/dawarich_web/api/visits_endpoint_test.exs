@@ -9,7 +9,7 @@ defmodule DawarichWeb.Api.VisitsEndpointTest do
   @stamp ~N[2026-09-01 12:00:00.000000]
 
   setup do
-    rows("TRUNCATE visits,places CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(visits places))
     rows("DELETE FROM instance_settings")
     user!(%{id: 953_001, api_key: @key, status: 0, settings: %{"timezone" => "UTC"}})
 

@@ -55,7 +55,7 @@ defmodule Dawarich.ReleaseMigrations.Effects.SeedGeocodingFromEnvTest do
 
     assert active_providers() == [{geoapify_user, "geoapify"}]
 
-    Dawarich.ScratchCaseRepo.query!("TRUNCATE service_settings")
+    Dawarich.FixtureCleanup.delete!(Dawarich.ScratchCaseRepo, ~w(service_settings))
     seed(env(%{"NOMINATIM_API_HOST" => "nominatim.example.test", "LOCATIONIQ_API_KEY" => "l"}))
 
     assert active_providers() == [{geoapify_user, "nominatim"}]

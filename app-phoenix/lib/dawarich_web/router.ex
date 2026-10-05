@@ -17,6 +17,7 @@ defmodule DawarichWeb.Router do
     plug :fetch_query_params
     plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
+    plug DawarichWeb.TripDocument
     plug DawarichWeb.ImportsHeaders
     plug DawarichWeb.MapDataHeaders
     plug :phoenix_session

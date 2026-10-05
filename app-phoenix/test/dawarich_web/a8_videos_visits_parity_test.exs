@@ -72,8 +72,9 @@ defmodule DawarichWeb.A8VideosVisitsParityTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
 
-    ScratchRepo.query!(
-      "TRUNCATE places,areas,tags,taggings,visits,place_visits,notes,tracks,track_segments,points,stats,route_videos RESTART IDENTITY CASCADE"
+    Dawarich.FixtureCleanup.delete!(
+      ScratchRepo,
+      ~w(places areas tags taggings visits place_visits notes tracks track_segments points stats route_videos)
     )
 
     previous =

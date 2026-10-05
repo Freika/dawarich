@@ -11,6 +11,8 @@ defmodule Dawarich.ScratchCase do
     quote do
       alias Dawarich.ScratchCaseRepo, as: ScratchRepo
       import Dawarich.ScratchCase, only: [scratch_sql!: 1]
+      @moduletag scratch_fixture_tables: unquote(opts[:tables])
+      @moduletag scratch_fixture_sequences: unquote(opts[:sequences] || [])
     end
   end
 
@@ -27,14 +29,33 @@ defmodule Dawarich.ScratchCase do
     :ok
   end
 
-  setup do
-    Dawarich.LaneGuard.guard!(:scratch_case_db)
-    recreate_public!(ScratchCaseRepo)
+  setup_all context do
+    if context[:scratch_fixture_tables] do
+      recreate_public!(ScratchCaseRepo)
+      ExUnit.Callbacks.on_exit(fn -> recreate_public!(ScratchCaseRepo) end)
+    end
 
-    ScratchCaseRepo.query!(
-      "TRUNCATE phoenix.release_migration_jobs, phoenix.release_migrator_leases",
-      [],
-      log: false
+    :ok
+  end
+
+  setup context do
+    Dawarich.LaneGuard.guard!(:scratch_case_db)
+
+    if tables = context[:scratch_fixture_tables] do
+      Dawarich.FixtureCleanup.delete!(ScratchCaseRepo, tables)
+
+      for table <- context.scratch_fixture_sequences do
+        ScratchCaseRepo.query!("SELECT setval(pg_get_serial_sequence($1,'id'),1,false)", [table],
+          log: false
+        )
+      end
+    else
+      recreate_public!(ScratchCaseRepo)
+    end
+
+    Dawarich.FixtureCleanup.delete!(
+      ScratchCaseRepo,
+      ~w(phoenix.release_migration_jobs phoenix.release_migrator_leases)
     )
 
     :ok

@@ -75,7 +75,7 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorkerTest do
 
   test "completes with counts, card and untracked kinds", %{storage: storage} do
     for name <- @extracted do
-      truncate!()
+      reset_fixtures!()
       {id, _user_id, fixture} = prepare!(storage, name)
       expected = fixture["expected"]
       record_cards(id)
@@ -192,7 +192,7 @@ defmodule Dawarich.EnhancedImport.ExtractGpxWorkerTest do
     assert {1, %{"error_message" => "writer boom"}, _} = import_state(id)
     assert [{"running", _}, {"pending", _}] = writes()
 
-    rows("TRUNCATE phoenix.rails_commands")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(phoenix.rails_commands))
 
     assert_raise RuntimeError, "writer boom", fn ->
       run(HookRepo, job(id, attempt: 3), storage)

@@ -4,12 +4,31 @@ defmodule DawarichWeb.A8Gate do
   alias DawarichWeb.{RailsAuth, Strangler}
 
   def actions?(conn, _params) do
-    DawarichWeb.LayoutAssigns.self_hosted?() and conn.query_string == "" and
+    DawarichWeb.LayoutAssigns.self_hosted?() and action_query?(conn) and
       Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and
       Plug.Conn.get_req_header(conn, "x-http-method-override") == [] and
       action_content?(conn) and
       not String.contains?(List.last(conn.path_info) || "", ".")
   end
+
+  defp action_query?(%{query_string: ""}), do: true
+
+  defp action_query?(conn) do
+    case conn.path_info do
+      ["trips", id, "export"] ->
+        conn.method == "POST" and numeric?(id) and
+          scalar_query?(conn.query_string, ~w(file_format))
+
+      ["places", id] ->
+        conn.method in ~w(POST DELETE) and numeric?(id) and
+          scalar_query?(conn.query_string, ~w(page))
+
+      _ ->
+        false
+    end
+  end
+
+  defp numeric?(id), do: Regex.match?(~r/\A\d{1,18}\z/, id)
 
   defp action_content?(conn) do
     DawarichWeb.Api.Body.kind(conn) in [:form, :none] or

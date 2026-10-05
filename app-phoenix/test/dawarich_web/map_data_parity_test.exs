@@ -63,8 +63,9 @@ defmodule DawarichWeb.MapDataParityTest do
   end
 
   defp compare(name) do
-    Repo.query!(
-      "TRUNCATE public.users, public.imports, public.points, public.places, public.areas, public.tags, public.taggings, public.visits, public.place_visits, public.tracks, public.track_segments, public.stats, public.instance_settings CASCADE"
+    Dawarich.FixtureCleanup.delete!(
+      Repo,
+      ~w(public.users  public.imports  public.points  public.places  public.areas  public.tags  public.taggings  public.visits  public.place_visits  public.tracks  public.track_segments  public.stats  public.instance_settings)
     )
 
     state = File.read!("#{@dir}/#{name}.json") |> Jason.decode!()

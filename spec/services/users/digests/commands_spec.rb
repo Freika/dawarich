@@ -23,8 +23,8 @@ RSpec.describe 'Users::Digests::Commands' do
         "('command:digests.calculate_month', 'command:digests.calculate_year', " \
         "'cron:monthly_digest_scheduling_job', 'cron:yearly_digest_scheduling_job')"
     )
-    ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
-    PhoenixTables.install_state!
+    PhoenixTables.install! unless ActiveRecord::Base.connection.table_exists?('phoenix.job_owners')
+    PhoenixTables.clear!
   end
 
   def clear_digest_reverse_commands
@@ -68,8 +68,8 @@ RSpec.describe 'Users::Digests::Commands' do
      'and preserve metadata and terminal effects' do
     store = finish = rails_writer = nil
     original_config = ActiveRecord::Base.connection_db_config.configuration_hash
-    shared_database = 'dawarich_phoenix_test_a12d1b2_scratch'
-    expect(ENV.fetch('PHOENIX_TEST_DATABASE')).to eq('dawarich_phoenix_test_a12d1b2')
+    shared_database = "#{ENV.fetch('PHOENIX_TEST_DATABASE')}_scratch"
+    expect(shared_database).to start_with('dawarich_phoenix_test_')
     command = %w[mix test test/dawarich/digests/job_lifecycle_test.exs
                  --include rails_parity --only rails_parity --seed 101]
     messages = Queue.new

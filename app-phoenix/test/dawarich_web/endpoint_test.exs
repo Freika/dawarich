@@ -885,7 +885,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/trips/new /trips/5/edit /trips/abc /trips/12abc /trips/1234567890123456789 /trips.json /trips/5.json /trips?format=json) do
+          ~w(/trips/new?format=json /trips/5/edit?format=json /trips/abc /trips/12abc /trips/1234567890123456789 /trips.json /trips/5.json /trips?format=json) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
@@ -956,7 +956,7 @@ defmodule DawarichWeb.EndpointTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     Dawarich.Test.SharingSeeds.load!()
-    Dawarich.ScratchRepo.query!("TRUNCATE phoenix.counters", [], log: false)
+    Dawarich.FixtureCleanup.delete!(Dawarich.ScratchRepo, ~w(phoenix.counters))
     port = serve()
     id = "a9500000-0000-4000-8000-000000000001"
     page = "GET /s/#{id}?locale=de HTTP/1.1\r\nHost: a\r\n\r\n"

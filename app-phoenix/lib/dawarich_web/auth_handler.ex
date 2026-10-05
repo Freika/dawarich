@@ -4,6 +4,8 @@ defmodule DawarichWeb.AuthHandler do
   import Plug.Conn
   alias Dawarich.Accounts
   alias Dawarich.Auth.{ActionCsrf, Admission, Credentials}
+  alias Dawarich.Auth.Otp.Start
+  alias DawarichWeb.AuthOtp.Response
   alias DawarichWeb.{AuthMessages, AuthResponse, RailsAuth, RailsProxy, RequestURL}
 
   @routes [
@@ -19,6 +21,7 @@ defmodule DawarichWeb.AuthHandler do
     if Keyword.get(opts, :enabled, false) and route?(conn) do
       if Admission.headers(conn.req_headers) == :ok do
         conn = conn |> DawarichWeb.HostAuthorization.call([]) |> DawarichWeb.ForceSSL.call([])
+        conn = if conn.halted, do: conn, else: DawarichWeb.RateLimit.call(conn, [])
         if conn.halted, do: conn, else: admitted(conn, opts)
       else
         fallback(conn, opts)
@@ -103,6 +106,8 @@ defmodule DawarichWeb.AuthHandler do
     end
   end
 
+  defp read_all(%{private: %{dawarich_raw_body: raw}} = conn, []), do: {:ok, raw, conn}
+
   defp read_all(conn, acc) do
     case read_body(conn, RailsProxy.read_options()) do
       {:more, raw, conn} -> read_all(conn, [acc, raw])
@@ -141,6 +146,62 @@ defmodule DawarichWeb.AuthHandler do
   end
 
   defp login(conn, params, opts) do
+    if Keyword.get(opts, :otp_enabled, false),
+      do: otp_login(conn, params, opts),
+      else: credentials_login(conn, params, opts)
+  end
+
+  defp otp_login(conn, params, opts) do
+    context =
+      Keyword.get(opts, :otp_context, %{})
+      |> Map.put_new(:self_hosted, System.get_env("SELF_HOSTED") == "true")
+      |> Map.put_new_lazy(:oidc, &Admission.oidc?/0)
+      |> Map.put(:remember, params["user[remember_me]"])
+
+    cond do
+      not Start.candidate?(params["user[email]"], context) ->
+        credentials_login(conn, params, opts)
+
+      not otp_document?(conn) or not local_return?(conn.assigns.rails_session["user_return_to"]) ->
+        fallback(conn, opts)
+
+      true ->
+        case Start.prepare(
+               params["user[email]"],
+               params["user[password]"],
+               conn.assigns.rails_session,
+               context
+             ) do
+          {:challenge, _user, pending} -> Response.form(conn, pending, context)
+          :ordinary -> credentials_login(conn, params, opts)
+          {:handoff, _} -> fallback(conn, opts)
+        end
+    end
+  end
+
+  defp otp_document?(conn) do
+    conn.query_string == "" and get_req_header(conn, "x-requested-with") == [] and
+      Enum.all?(get_req_header(conn, "accept"), fn value ->
+        String.trim(hd(String.split(value, [",", ";"]))) in [
+          "text/html",
+          "application/xhtml+xml",
+          "*/*"
+        ] and
+          not String.contains?(value, ["application/json", "text/vnd.turbo-stream.html"]) and
+          not Regex.match?(~r/;\s*q=0(?:\.0*)?(?:;|\z)/, value)
+      end)
+  end
+
+  defp local_return?(nil), do: true
+
+  defp local_return?("/" <> rest = path),
+    do:
+      not String.starts_with?(rest, "/") and
+        not String.contains?(path, ["\\", "\t", "\r", "\n", <<0>>])
+
+  defp local_return?(_), do: false
+
+  defp credentials_login(conn, params, opts) do
     context = %{
       ip: to_string(:inet.ntoa(conn.remote_ip)),
       remember: params["user[remember_me]"] == "1"

@@ -299,9 +299,44 @@ defmodule DawarichWeb.RateLimitTest do
     assert rows("SELECT value FROM phoenix.counters ORDER BY key") == [[0], [0]]
   end
 
+  test "native OTP handlers halt throttled requests before admission with Rails counters" do
+    previous = Map.new(~w(SELF_HOSTED APPLICATION_PROTOCOL RAILS_ENV), &{&1, System.get_env(&1)})
+    System.put_env("SELF_HOSTED", "false")
+    System.put_env("APPLICATION_PROTOCOL", "http")
+    System.put_env("RAILS_ENV", "test")
+
+    on_exit(fn ->
+      for {key, value} <- previous,
+          do: if(value, do: System.put_env(key, value), else: System.delete_env(key))
+    end)
+
+    for {handler, path, throttle, period, limit} <- [
+          {DawarichWeb.AuthHandler, "/users/sign_in", "logins/ip", 60, 20},
+          {DawarichWeb.AuthOtp.Http, "/users/otp_challenge", "users/otp_challenge_session", 900,
+           5}
+        ] do
+      ip = "203.0.113.41"
+      now = System.os_time(:second)
+      key = Rules.key(now, period, throttle, ip)
+      State.increment(ScratchRepo, key, limit, period)
+
+      input =
+        %{Plug.Test.conn(:post, path, "otp_attempt=invalid") | remote_ip: {203, 0, 113, 41}}
+        |> put_req_header("content-type", "application/x-www-form-urlencoded")
+        |> put_req_header("content-length", "19")
+
+      result = handler.call(input, enabled: true, otp_enabled: true, fallback: & &1)
+      assert result.status == 429 and result.halted, "#{inspect(handler)} must throttle"
+      assert get_resp_header(result, "retry-after") != []
+      refute Map.has_key?(result.assigns, :rails_session)
+      assert rows("SELECT value FROM phoenix.counters WHERE key=$1", [key]) == [[limit + 1]]
+      assert result.private.dawarich_raw_body == "otp_attempt=invalid"
+    end
+  end
+
   test "every routed request runs the limiter right after ForceSSL" do
     guarded =
-      ~w(router.ex api_routes.ex a10_routes.ex a8_routes.ex a9_routes.ex)
+      ~w(router.ex api_routes.ex a10_routes.ex a8_routes.ex a9_routes.ex achievement_routes.ex)
       |> Enum.flat_map(fn file ->
         source = File.read!(Path.expand("../../lib/dawarich_web/#{file}", __DIR__))
         Regex.scan(~r/^\s*pipeline :(\w+) do\n(.*?)\n\s*end/ms, source, capture: :all_but_first)
@@ -310,6 +345,14 @@ defmodule DawarichWeb.RateLimitTest do
         body =~ ~r/plug DawarichWeb\.ForceSSL\n\s+plug DawarichWeb\.RateLimit(?:\n|$)/
       end)
       |> MapSet.new(fn [name, _body] -> String.to_existing_atom(name) end)
+
+    for file <- ~w(auth_handler.ex auth_otp/http.ex) do
+      source = File.read!(Path.expand("../../lib/dawarich_web/#{file}", __DIR__))
+
+      assert source =~
+               ~r/DawarichWeb\.ForceSSL\.call\(\[\]\)\n\s+conn = if conn.halted, do: conn, else: DawarichWeb\.RateLimit\.call\(conn, \[\]\)/,
+             "#{file} has no guarded auth pipeline"
+    end
 
     for route <- DawarichWeb.Router.__routes__() do
       info =

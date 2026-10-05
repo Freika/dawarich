@@ -4,7 +4,7 @@ defmodule Dawarich.ExportsTest do
   alias Dawarich.Exports
 
   setup do
-    rows("TRUNCATE public.exports RESTART IDENTITY")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(public.exports))
     :ok
   end
 

@@ -115,7 +115,7 @@ RSpec.describe 'Phoenix fixture: golden visits API requests', type: :request do
     Rails.cache.clear
     allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
     allow(DawarichSettings).to receive(:store_geodata?).and_return(kase.fetch(:store_geodata, true))
-    places_sql("TRUNCATE #{oracle::TABLES.join(',')} CASCADE")
+    FixtureCleanup.delete!(oracle::TABLES)
     InstanceSettings::Resolver.reset!
     stamps = { created_at: oracle::STAMP, updated_at: oracle::STAMP }
     user = { status: 1, timezone: 'UTC' }.merge(kase[:user] || {})

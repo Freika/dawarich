@@ -33,8 +33,11 @@ module A12eFixtureSupport
   end
 
   def reset!
-    conn.execute('TRUNCATE users, points, points_raw_data_archives, active_storage_attachments, ' \
-                 'active_storage_blobs, job_outbox RESTART IDENTITY CASCADE')
+    FixtureCleanup.delete!(%w[users points points_raw_data_archives active_storage_attachments
+                              active_storage_blobs job_outbox])
+    (SEQUENCES - %w[phoenix.rails_commands]).each do |table|
+      conn.execute("SELECT setval(pg_get_serial_sequence('#{table}','id'),1,false)")
+    end
     %w[job_owners runtime_nodes rails_commands rails_commands_dead].each do |table|
       conn.execute("DELETE FROM phoenix.#{table}")
     end

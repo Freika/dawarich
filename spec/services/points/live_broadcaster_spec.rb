@@ -121,19 +121,21 @@ RSpec.describe Points::LiveBroadcaster do
 
       context 'when family sharing is enabled' do
         it 'broadcasts to FamilyLocationsChannel with the user payload' do
+          user.update!(email: 'a6-upsert@example.test')
           expect(FamilyLocationsChannel).to receive(:broadcast_to).with(
             family,
-            hash_including(
+            {
               user_id: user.id,
-              email: user.email,
-              email_initial: user.email.first.upcase,
+              email: 'a6-upsert@example.test',
+              email_initial: 'A',
               latitude: 52.52,
               longitude: 13.405,
-              timestamp: 1_700_000_000
-            )
+              timestamp: 1_700_000_000,
+              updated_at: '2023-11-14T23:13:20+01:00'
+            }
           )
 
-          described_class.new(user.id, upserted_results, payloads).call
+          Time.use_zone('Europe/Berlin') { described_class.new(user.id, upserted_results, payloads).call }
         end
 
         it 'broadcasts even when live_map_enabled is false' do
