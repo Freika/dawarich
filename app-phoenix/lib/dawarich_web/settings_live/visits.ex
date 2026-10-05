@@ -48,7 +48,13 @@ defmodule DawarichWeb.SettingsLive.Visits do
         two_factor={@two_factor}
       />
       <div class="card bg-base-200 shadow-xl mb-6" data-controller="visit-detection-settings">
-        <form action="/settings/visits" accept-charset="UTF-8" method="post">
+        <form
+          id="visit-detection-settings"
+          phx-update="ignore"
+          action="/settings/visits"
+          accept-charset="UTF-8"
+          method="post"
+        >
           <input type="hidden" name="_method" value="patch" />
           <input
             :if={@rails_csrf_token}

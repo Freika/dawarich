@@ -140,6 +140,21 @@ defmodule Dawarich.Visits.WebSettingsTest do
     )
   end
 
+  test "connected rendering preserves edits inside the visit settings HTTP form", %{user: user} do
+    page = WebSettings.page(user, WebSettings.load(Repo, user.id), @now, false)
+
+    form =
+      html(user, page)
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("form#visit-detection-settings[phx-update='ignore']")
+
+    assert LazyHTML.attribute(form, "action") == ["/settings/visits"]
+    assert LazyHTML.attribute(form, "method") == ["post"]
+
+    assert form |> LazyHTML.query("input[type='number']") |> LazyHTML.attribute("name") ==
+             ~w(settings[visit_radius_meters] settings[visit_min_points] settings[visit_min_duration_minutes])
+  end
+
   test "settings defaults and clamped display values match safe settings", %{user: user} do
     for {settings, values} <- [
           {%{}, [100, 3, 5]},

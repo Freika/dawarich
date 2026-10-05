@@ -101,6 +101,9 @@ const stop = (event) => {
 }
 
 const submitMethodLink = (link, method) => {
+  if (method.toLowerCase() === "get") {
+    return window.open(link.href, link.target || "_self")
+  }
   const form = document.createElement("form")
   const field = (name, value) => {
     const input = document.createElement("input")
