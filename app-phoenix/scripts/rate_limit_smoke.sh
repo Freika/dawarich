@@ -155,7 +155,12 @@ COPY pgbouncer.ini userlist.txt /etc/pgbouncer/
 USER nobody
 CMD ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]
 EOF
-docker build -q -t a13c-pgbouncer:local "$work/bouncer" >/dev/null
+df -h /System/Volumes/Data
+[ "$(df -k /System/Volumes/Data | awk 'NR == 2 { print $4 }')" -ge 10485760 ] || fail "less than 10 GiB free before the pooler build"
+build_rc=0
+docker build -q -t a13c-pgbouncer:local "$work/bouncer" >/dev/null || build_rc=$?
+docker builder prune -af
+[ "$build_rc" -eq 0 ] || fail "pooler build failed (exit $build_rc)"
 docker run -d --name a13c_bouncer --label "$run" --network "$net" a13c-pgbouncer:local >/dev/null
 
 wait_until '[ "$(docker logs a13c_db 2>&1 | grep -c "ready to accept connections")" -ge 2 ]' "database did not start"
