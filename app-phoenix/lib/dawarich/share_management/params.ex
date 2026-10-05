@@ -2,6 +2,7 @@ defmodule Dawarich.ShareManagement.Params do
   @moduledoc false
 
   alias Dawarich.{I18n, UserTimeZone}
+  alias Dawarich.SharedLinks.FamilyAudience
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
 
   @settings ~w(show_photos show_stats show_route show_countries show_description show_days show_day_notes)
@@ -22,7 +23,7 @@ defmodule Dawarich.ShareManagement.Params do
       Enum.all?(params, fn {key, value} ->
         key in @top and (key == "shared_link" or text?(value))
       end) and
-      is_map(raw) and Enum.all?(~w(name magic_phrase expires_at), &text?(raw[&1])) and
+      is_map(raw) and Enum.all?(~w(name magic_phrase expires_at audience), &text?(raw[&1])) and
       date_shape?(raw["expires_at"]) and settings?(raw["settings"])
   end
 
@@ -55,6 +56,16 @@ defmodule Dawarich.ShareManagement.Params do
         do: %{"show_photos" => false, "show_route" => false},
         else: %{"show_photos" => false, "show_stats" => false}
 
+    family = type == "trip" and raw["audience"] == "family"
+
+    audience =
+      if family,
+        do: %{
+          "audience" => "family",
+          "family_id" => FamilyAudience.family_id(user.id, DateTime.utc_now())
+        },
+        else: %{}
+
     name = if Ruby.blank?(raw["name"]), do: default_name(type, trip, locale), else: raw["name"]
 
     {:ok,
@@ -63,11 +74,12 @@ defmodule Dawarich.ShareManagement.Params do
        resource_type: if(type == "live", do: 3, else: 0),
        resource_id: if(trip, do: trip.id),
        name: name,
-       magic_phrase: if(Ruby.blank?(raw["magic_phrase"]), do: nil, else: raw["magic_phrase"]),
+       magic_phrase:
+         if(family or Ruby.blank?(raw["magic_phrase"]), do: nil, else: raw["magic_phrase"]),
        expires_at: expiry_from(raw["expires_at"], user.settings),
        settings:
          Map.merge(
-           defaults,
+           Map.merge(defaults, audience),
            settings
            |> Map.take(@settings)
            |> Map.new(fn {key, value} -> {key, boolean(value)} end)
@@ -79,19 +91,30 @@ defmodule Dawarich.ShareManagement.Params do
     original = Keyword.get(opts, :original)
     expiry_changed? = is_nil(original) or attrs.expires_at != original.expires_at
 
-    [
-      {Ruby.blank?(attrs.name), :name, "errors.messages.blank", %{}},
-      {codepoints(attrs.name) > 255, :name, "errors.messages.too_long", %{"count" => 255}},
-      {codepoints(attrs.magic_phrase) > 255, :magic_phrase, "errors.messages.too_long",
-       %{"count" => 255}},
-      {expiry_changed? and not is_nil(attrs.expires_at) and
-         NaiveDateTime.compare(attrs.expires_at, DateTime.to_naive(now)) != :gt, :expires_at,
-       "models.shared_link.must_be_in_the_future", %{}}
-    ]
-    |> Enum.flat_map(fn
-      {true, field, key, bindings} -> [{field, full_message(locale, field, key, bindings)}]
-      _ -> []
-    end)
+    family_errors =
+      if FamilyAudience.family_only?(attrs) and
+           (attrs.resource_type != 0 or
+              not FamilyAudience.accessible?(attrs, %{id: attrs.user_id}, now)) do
+        {:ok, message} = I18n.t(locale, "shared_links.family.unavailable")
+        [{:base, message}]
+      else
+        []
+      end
+
+    family_errors ++
+      ([
+         {Ruby.blank?(attrs.name), :name, "errors.messages.blank", %{}},
+         {codepoints(attrs.name) > 255, :name, "errors.messages.too_long", %{"count" => 255}},
+         {codepoints(attrs.magic_phrase) > 255, :magic_phrase, "errors.messages.too_long",
+          %{"count" => 255}},
+         {expiry_changed? and not is_nil(attrs.expires_at) and
+            NaiveDateTime.compare(attrs.expires_at, DateTime.to_naive(now)) != :gt, :expires_at,
+          "models.shared_link.must_be_in_the_future", %{}}
+       ]
+       |> Enum.flat_map(fn
+         {true, field, key, bindings} -> [{field, full_message(locale, field, key, bindings)}]
+         _ -> []
+       end))
   end
 
   defp full_message(locale, field, key, bindings) do

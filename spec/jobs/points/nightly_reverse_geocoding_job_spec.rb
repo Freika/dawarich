@@ -93,25 +93,24 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
           expect { described_class.perform_now }.to have_enqueued_job(ReverseGeocodingJob).exactly(3).times
         end
 
-        it 'enqueues jobs with force: true to bypass the dedup guard' do
+        it 'enqueues jobs with force: false to preserve the dedup guard' do
           expect { described_class.perform_now }
             .to have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding1.id, force: true)
+            .with('Point', point_without_geocoding1.id, force: false)
             .and have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding2.id, force: true)
+            .with('Point', point_without_geocoding2.id, force: false)
             .and have_enqueued_job(ReverseGeocodingJob)
-            .with('Point', point_without_geocoding3.id, force: true)
+            .with('Point', point_without_geocoding3.id, force: false)
         end
 
-        it 'enqueues even when dedup keys already exist (rescue path)' do
-          Sidekiq.redis do |r|
+        it 'keeps pending claims instead of enqueueing duplicates' do
+          Sidekiq.redis do |_r|
             [point_without_geocoding1, point_without_geocoding2, point_without_geocoding3].each do |p|
-              r.set(Point.geocode_dedup_key(p.id), 1, ex: Point::GEOCODE_DEDUP_TTL)
+              PhoenixClaims.claim(Point.geocode_dedup_key(p.id), 86_400)
             end
           end
 
-          expect { described_class.perform_now }
-            .to have_enqueued_job(ReverseGeocodingJob).exactly(3).times
+          expect { described_class.perform_now }.not_to have_enqueued_job(ReverseGeocodingJob)
         end
 
         it 'uses in_batches with correct batch size' do
@@ -176,6 +175,7 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
         user_b = create(:user)
         create_list(:point, 150, user: user_a, reverse_geocoded_at: nil)
         create_list(:point, 30, user: user_b, reverse_geocoded_at: nil)
+        clear_geocode_claims!
         allow(Cache::InvalidateUserCaches).to receive(:new).and_call_original
 
         expect { described_class.perform_now }.not_to have_enqueued_job(ReverseGeocodingJob)
@@ -183,7 +183,7 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
         rows = JobOutbox.where(command_type: 'geocoding.reverse_point').order(:created_at)
         expect(rows.map { |r| [r.payload['user_id'], r.payload['point_ids'].size] })
           .to contain_exactly([user_a.id, 100], [user_a.id, 50], [user_b.id, 30])
-        expect(rows.map { |r| r.payload['force'] }.uniq).to eq([true])
+        expect(rows.map { |r| r.payload['force'] }.uniq).to eq([false])
         expect(Cache::InvalidateUserCaches).to have_received(:new).with(user_a.id).once
         expect(Cache::InvalidateUserCaches).to have_received(:new).with(user_b.id).once
       end
@@ -215,7 +215,7 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
       source.perform
       RailsCommands::Poller.drain_once
       expect(enqueued_jobs.size).to eq(1000)
-      expect(enqueued_jobs.map { ActiveJob::Arguments.deserialize(_1[:args]).last }).to all(eq(force: true))
+      expect(enqueued_jobs.map { ActiveJob::Arguments.deserialize(_1[:args]).last }).to all(eq(force: false))
       expect(Cache::InvalidateUserCaches).to have_received(:new).with(user.id, year: nil).once
       JobOwnership.release!('cron:nightly_reverse_geocoding_job', by: 'a12d3-test')
       source.perform
@@ -281,8 +281,8 @@ RSpec.describe Points::NightlyReverseGeocodingJob, type: :job do
 
         described_class.perform_now
 
-        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', point.id, force: true)
-        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', other_point.id, force: true)
+        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', point.id, force: false)
+        expect(ReverseGeocodingJob).to have_been_enqueued.with('Point', other_point.id, force: false)
       end
     end
 

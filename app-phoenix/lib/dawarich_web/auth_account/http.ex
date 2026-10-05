@@ -7,7 +7,7 @@ defmodule DawarichWeb.AuthAccount.Http do
   alias DawarichWeb.{RailsAuth, RailsProxy, RequestURL}
   alias DawarichWeb.AuthAccount.Response
 
-  @fields ~w(user[email] user[password] user[password_confirmation] user[current_password] authenticity_token commit utf8 _method)
+  @fields ~w(user[first_name] user[last_name] user[email] user[password] user[password_confirmation] user[current_password] authenticity_token commit utf8 _method)
   @routes [{"PUT", "/users"}, {"PATCH", "/users"}, {"POST", "/users"}]
 
   def init(opts), do: opts

@@ -118,7 +118,7 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
             when 'trip' then resource && [resource.started_at.iso8601, resource.ended_at.iso8601]
             when 'track' then resource && [resource.start_at.iso8601, resource.end_at.iso8601]
             end
-    kase[:cache_keys] << "photos_search/#{oracle::OWNER}/#{range.join('/')}" if range
+    kase[:cache_keys] << "photos_search/#{oracle::OWNER}/v2/#{range.join('/')}" if range
   end
 
   def places_headers(kase, body, oracle:)

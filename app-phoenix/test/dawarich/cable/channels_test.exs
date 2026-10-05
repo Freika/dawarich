@@ -32,6 +32,19 @@ defmodule Dawarich.Cable.ChannelsTest do
     end
   end
 
+  test "family streams exclude the viewer from realtime member locations" do
+    own = Jason.encode!(%{"user_id" => to_string(alice().user.id)})
+    other = Jason.encode!(%{"user_id" => alice().user.id + 1})
+
+    for channel <- ["FamilyLocationsChannel", "::FamilyLocationsChannel"] do
+      id = Jason.encode!(%{"channel" => channel})
+      refute Channels.visible?(id, own, alice())
+      assert Channels.visible?(id, other, alice())
+    end
+
+    assert Channels.visible?(Jason.encode!(%{"channel" => "PointsChannel"}), own, alice())
+  end
+
   test "family locations need the families feature and a membership" do
     bob = %{user: A12a.user!("bob"), share: nil}
     family = A12a.family_id!("bob")

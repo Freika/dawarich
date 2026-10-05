@@ -60,6 +60,7 @@ defmodule Dawarich.Families.Mine do
      [
        {"user_id", member.id},
        {"email", member.email},
+       {"name", member.name},
        {"email_initial", Locations.initial(member.email)},
        {"owner", member.role == 0},
        {"sharing_enabled", Sharing.enabled?(member.settings, now)},

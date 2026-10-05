@@ -24,12 +24,14 @@ defmodule DawarichWeb.ShareManagementDocument do
               ctx={@ctx}
               share={@page.share}
               paths={@paths}
-              subtitle={subtitle(@ctx, @page.trip)}
+              subtitle={subtitle(@ctx, @page.trip, @page.share)}
             />
           <% else %>
             <h3 class="font-bold text-lg mb-1">{title(@ctx, @page.trip)}</h3>
             <p class="text-sm text-base-content/70 mb-5">
-              {m(@ctx, "anyone_with_the_link_will_be_able_to_view_this")}
+              {if @page.trip,
+                do: t(@ctx.locale, "shared_links.family.choose_audience", %{}),
+                else: m(@ctx, "anyone_with_the_link_will_be_able_to_view_this")}
             </p>
             <ShareLinkForm.create
               ctx={@ctx}
@@ -56,12 +58,19 @@ defmodule DawarichWeb.ShareManagementDocument do
   defp title(ctx, nil), do: t(ctx.locale, "share_links.lives.new.share_your_live_location", %{})
   defp title(ctx, trip), do: t(ctx.locale, "trips.share_links.new.share_trip", %{trip: trip.name})
 
-  defp subtitle(ctx, nil),
+  defp subtitle(ctx, nil, _share),
     do: t(ctx.locale, "share_links.lives.new.your_live_location_is_shared_via_a_public_link", %{})
 
-  defp subtitle(ctx, trip),
+  defp subtitle(ctx, trip, share),
     do:
-      t(ctx.locale, "trips.share_links.new.trip_is_shared_via_a_public_link", %{trip: trip.name})
+      t(
+        ctx.locale,
+        if(Dawarich.SharedLinks.FamilyAudience.family_only?(share),
+          do: "shared_links.family.shared_trip",
+          else: "trips.share_links.new.trip_is_shared_via_a_public_link"
+        ),
+        %{trip: trip.name}
+      )
 
   defp m(ctx, key), do: t(ctx.locale, "shared_links.modal." <> key, %{})
 end

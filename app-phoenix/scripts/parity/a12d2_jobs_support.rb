@@ -209,9 +209,7 @@ module A12d2JobsSupport
       end)
     end
     keys = Point.not_reverse_geocoded.order(:id).pluck(:id).map { Point.geocode_dedup_key(_1) }
-    if profile == 'dedup'
-      Sidekiq.redis { |redis| keys.each { redis.set(_1, 'synthetic-claim', ex: Point::GEOCODE_DEDUP_TTL) } }
-    end
+    keys.each { PhoenixClaims.claim(_1, 86_400) } if profile == 'dedup'
     batches = []
     allow(Geocoding::ReverseCommands).to receive(:enqueue_points).and_wrap_original do |original, id, ids, **options|
       batches << { 'user_id' => id, 'point_ids' => ids, 'force' => options.fetch(:force) }

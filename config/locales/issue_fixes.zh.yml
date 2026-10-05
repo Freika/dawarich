@@ -1,0 +1,32 @@
+zh:
+  devise:
+    registrations:
+      edit:
+        first_name: "名"
+        last_name: "姓"
+  controllers:
+    settings:
+      general:
+        test_email_queued: "已将发送至 %{email} 的测试邮件加入队列。请检查收件箱和 Sidekiq 中的发送失败记录。"
+  settings:
+    general:
+      index:
+        test_email_worker_hint: "通过发送系统邮件的同一后台进程将测试邮件加入队列"
+  shared_links:
+    family:
+      audience: "谁可以查看此行程？"
+      public_link: "任何持有链接的人"
+      only: "仅限家庭成员"
+      label: "家庭"
+      link: "家庭链接"
+      shared_trip: "%{trip} 已与您的家庭共享。"
+      trips: "与您的家庭共享的行程"
+      hint: "家庭行程会显示在家庭的行程列表中。成员必须登录。密码短语仅用于公开链接。"
+      choose_audience: "选择谁可以查看此行程以及要包含哪些详情。"
+      sections: "共享页面的内容"
+      unavailable: "请先加入一个有效的家庭，再与家庭成员共享行程。"
+      back_to_trips: "返回行程列表"
+      your_map: "这些日期的个人地图"
+  trips:
+    show:
+      open_in_map: "在地图中打开"

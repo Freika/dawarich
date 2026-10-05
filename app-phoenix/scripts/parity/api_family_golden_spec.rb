@@ -157,7 +157,9 @@ RSpec.describe 'Phoenix fixture: golden family API requests', type: :request do
 
   def family_setup
     rows = ApiFamilyGoldenOracle::TABLES.map do |table|
-      values = ActiveRecord::Base.connection.select_values("SELECT row_to_json(t)::text FROM #{table} t ORDER BY id")
+      values = ActiveRecord::Base.connection.select_values(
+        "SELECT row_to_json(t)::text FROM #{table} t WHERE id BETWEEN 880001 AND 884999 ORDER BY id"
+      )
       [table, values.map { JSON.parse(_1).compact }]
     end
     key = Digest::SHA256.hexdigest(JSON.generate(rows))[0, 16]

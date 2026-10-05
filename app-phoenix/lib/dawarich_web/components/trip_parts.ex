@@ -16,6 +16,13 @@ defmodule DawarichWeb.TripParts do
       <div class="flex items-start justify-between gap-3 mb-1">
         <h1 class="text-3xl font-bold leading-tight">{@page.name}</h1>
         <div class="flex items-center gap-1 shrink-0" data-testid="trip-header-actions">
+          <a
+            href={"/map/v2?" <> DawarichWeb.Params.to_query(%{"start_at" => DawarichWeb.HumanDatetime.iso8601(@page.started_at), "end_at" => DawarichWeb.HumanDatetime.iso8601(@page.ended_at)})}
+            class="btn btn-sm btn-ghost"
+            data-testid="trip-open-map"
+            title={s(@locale, "open_in_map")}
+            aria-label={s(@locale, "open_in_map")}
+          ><.icon name="map" class="w-4 h-4" /></a>
           <div class="dropdown dropdown-end">
             <label tabindex="0" class="btn btn-sm btn-ghost" title={s(@locale, "download_trip")}>
               <.icon name="download" class="w-4 h-4" />

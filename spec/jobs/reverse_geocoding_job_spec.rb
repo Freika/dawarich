@@ -59,7 +59,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       before { configure_instance_geocoding }
 
       it 'releases the claim after a non-forced run' do
-        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
+        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 86_400)
 
         described_class.new.perform('Point', point.id)
 
@@ -80,7 +80,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       end
 
       it 'leaves a concurrent claim intact when the run is forced' do
-        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
+        PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 86_400)
 
         described_class.new.perform('Point', point.id, force: true)
 
@@ -97,7 +97,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
     end
 
     it 'leaves point claims alone when the job runs for a place' do
-      PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
+      PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 86_400)
 
       described_class.new.perform('place', point.id)
 
@@ -113,7 +113,7 @@ RSpec.describe ReverseGeocodingJob, type: :job do
     it 'a point forwards once with the job id and keeps the dedupe key' do
       job_owner!('command:geocoding.reverse_point', :oban)
       point = create(:point, user:, reverse_geocoded_at: nil)
-      PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
+      PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 86_400)
       allow(ReverseGeocoding::Points::FetchData).to receive(:new)
       job = described_class.new
 
@@ -137,22 +137,22 @@ RSpec.describe ReverseGeocodingJob, type: :job do
       expect(row.payload).to eq('place_id' => place.id)
     end
 
-    it 'a failing forward releases the key and raises' do
+    it 'a failing forward retains the key through retries and raises' do
       job_owner!('command:geocoding.reverse_point', :oban)
       point = create(:point, user:, reverse_geocoded_at: nil)
-      PhoenixClaims.claim(Point.geocode_dedup_key(point.id), Point::GEOCODE_DEDUP_TTL)
+      PhoenixClaims.claim(Point.geocode_dedup_key(point.id), 86_400)
       allow(JobCommands).to receive(:forward).and_raise(ActiveRecord::StatementInvalid, 'boom')
 
       expect { described_class.new.perform('Point', point.id) }.to raise_error(ActiveRecord::StatementInvalid)
 
-      expect(claim_seconds(Point.geocode_dedup_key(point.id))).to be_nil
+      expect(claim_seconds(Point.geocode_dedup_key(point.id))).not_to be_nil
     end
 
     it 'force forwards and never touches the key' do
       job_owner!('command:geocoding.reverse_point', :oban)
       point = create(:point, user:, reverse_geocoded_at: nil)
       foreign_key_owner_id = create(:point, user:, reverse_geocoded_at: nil).id
-      PhoenixClaims.claim(Point.geocode_dedup_key(foreign_key_owner_id), Point::GEOCODE_DEDUP_TTL)
+      PhoenixClaims.claim(Point.geocode_dedup_key(foreign_key_owner_id), 86_400)
 
       described_class.new.perform('Point', point.id, force: true)
 

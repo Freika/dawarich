@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
+## [1.15.3] - 2026-09-30, Berlin
+
 ### Added
 
 - Default-off native Phoenix release lifecycle for self-hosted installs: public/private upgrades, transactional release jobs, guarded ordinary seeds, migration exclusion with Rails source parity and fail-closed web/deploy entrypoints. Same-image Rails hand-back preserves pending native work. Cloud native lifecycle remains unsupported; release, image, C4 and rollback rehearsals remain required before activation. See `docs/phoenix/a12h-lifecycle.md`.
@@ -18,6 +20,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Opt-in Phoenix web two-factor management for ordinary signed-in local self-hosted accounts: add `two_factor` independently to `DAWARICH_PHOENIX_AUTH` (default OFF) for status, setup, verification, backup-code display and disablement. The independent `otp` key controls supported web OTP sign-in; API management uses the independent `api_account` slice; OAuth and Cloud remain with Rails. Omit `two_factor` to return every management action to Rails; `DAWARICH_RAILS_ROUTES=settings` alone does not disable this auth handler.
 - Opt-in Phoenix account credential updates and current-user API-key rotation for ordinary self-hosted accounts: add `account` and `api_keys` independently to `DAWARICH_PHOENIX_AUTH` (both default OFF). Omit a key to return that mutation to Rails; `DAWARICH_RAILS_ROUTES=users,settings` controls the corresponding GET pages independently. OAuth, OTP, Cloud, account deletion and admin key rotation remain with Rails.
 - Maintenance commands in the app container: `docker exec -it dawarich_app dawarich help` lists them. `dawarich raw-data …` runs the raw-data archive tasks (status, archive, verify, clear-verified, archive-full, restore, restore-all, reset-all), `dawarich users …` activates users, makes a user an administrator, changes an email or sets a password (read from standard input), `dawarich jobs status` prints the job-ownership summary and `dawarich migrate status` shows whether this image accepts the database. The rake task names work as arguments too, e.g. `dawarich "points:raw_data:restore[1,2026,1]"`. The `bin/rails`/`rake` tasks keep working until Rails is removed.
+- Trips can be shared privately with family members, who see them in their trip list and a read-only map. Access follows family membership, sharing settings and privacy zones. (#3751)
+- Account settings allow editing first and last names. Family maps use these names when available and fall back to email. (#3748)
+- Trip pages link to the full map for the exact trip interval, preserving seconds in the date filters. (#3756)
 - Shared achievement links now show a preview of the achievement card with its geography and progress. (#3721)
 
 ### Changed
@@ -107,6 +112,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Delete Family, Leave Family, Remove member and Cancel invitation now ask for confirmation first and send a single request once confirmed; cancelling the confirmation no longer carries out the action.
 - Upgrading across 1.7.6 no longer fails with a duplicate-key error when a deleted account has duplicate tracks.
 - Choosing an import file right after the imports page opens is no longer silently ignored.
+- Geocoding jobs keep their duplicate-work guard through long queues and retries, and nightly scheduling no longer queues the same pending points again. (#3754)
+- GPX exports work when an older database lacks the decimal-altitude column, while retaining decimal precision when it is available. (#3752)
+- Test email is queued through the same worker as system mail, and the notice reports enqueueing rather than confirmed delivery. (#3746)
+- Archived Immich photos are excluded from map and trip results, including results previously cached before the fix. (#3740)
+- The Family Members map layer shows only other members, avoiding duplicate routes and markers for the current user.
 - Map point editing keeps route colors and uncovered edges in sync, restores visible undo and redo history, and avoids stale lines and false save failures.
 - Point markers overlapping routes remain selectable. Markers with multiple points zoom until one point can be selected, and never offer to delete an arbitrary point. (#3719)
 - Insights shows the current year first with a distinct color for the previous year, and hosted settings hide the What's New notice preference.

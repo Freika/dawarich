@@ -154,7 +154,14 @@ defmodule DawarichWeb.TripPlanHostsTest do
 
             Phoenix.LiveViewTest.render_component(
               &DawarichWeb.TripsLive.Index.render/1,
-              Map.merge(list, %{locale: "en", page: 1, query: %{}})
+              Map.merge(list, %{
+                locale: "en",
+                page: 1,
+                query: %{},
+                family_entries: [],
+                family_total_pages: 0,
+                family_page: 1
+              })
             )
         end
 

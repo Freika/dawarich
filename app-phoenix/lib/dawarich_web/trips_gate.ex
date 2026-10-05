@@ -6,7 +6,11 @@ defmodule DawarichWeb.TripsGate do
   def index?(conn, _params) do
     case Plug.Conn.Query.decode(conn.query_string)["page"] do
       page when is_binary(page) or is_nil(page) ->
-        open?(conn, &(TripList.gate(&1, page_number(page)) == :phoenix))
+        family_page = Plug.Conn.Query.decode(conn.query_string)["family_page"]
+
+        (is_nil(family_page) or is_binary(family_page)) and
+          page_number(family_page) <= 1_000_000_000_000 and
+          open?(conn, &(TripList.gate(&1, page_number(page)) == :phoenix))
 
       _page ->
         false

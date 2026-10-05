@@ -22,6 +22,13 @@ defmodule Dawarich.Auth.AccountValidation do
     changes = if email == current_email, do: %{}, else: %{email: email}
     changes = if is_nil(password), do: changes, else: Map.put(changes, :password, password)
 
+    changes =
+      Enum.reduce([:first_name, :last_name], changes, fn key, acc ->
+        if Map.has_key?(params, Atom.to_string(key)),
+          do: Map.put(acc, key, params[Atom.to_string(key)]),
+          else: acc
+      end)
+
     %{
       changes: changes,
       errors: errors,

@@ -95,7 +95,13 @@ defmodule Dawarich.Imports.ImmichTest do
           request,
           "body",
           Jason.encode!(
-            put_in(payload, ["assets", "items"], [missing_frame, before_start, zero_coordinate])
+            put_in(payload, ["assets", "items"], [
+              missing_frame,
+              before_start,
+              zero_coordinate,
+              Map.put(asset, "isArchived", true),
+              Map.put(asset, "visibility", "archive")
+            ])
           )
         )
       end)

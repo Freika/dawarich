@@ -7,6 +7,7 @@ defmodule DawarichWeb.Api.SharedController do
   alias Dawarich.{Accounts, RailsCookies, RailsSecret, SharedLinks, UserTimeZone}
   alias DawarichWeb.Api.{Body, Respond}
   alias DawarichWeb.SharedLinkCookie
+  alias Dawarich.SharedLinks.FamilyAudience
 
   def init(action), do: action
 
@@ -23,9 +24,22 @@ defmodule DawarichWeb.Api.SharedController do
         link = if SharedLinks.api_uuid?(id), do: SharedLinks.active(id, now)
 
         cond do
-          is_nil(link) -> error(conn, 404, "not_found")
-          not SharedLinkCookie.unlocked?(conn, link, now) -> error(conn, 401, "unauthorized")
-          true -> dispatch(conn, action, link)
+          is_nil(link) ->
+            error(conn, 404, "not_found")
+
+          not FamilyAudience.accessible?(
+            link,
+            DawarichWeb.RailsAuth.session_user(conn, now: now),
+            now
+          ) ->
+            error(conn, 404, "not_found")
+
+          not FamilyAudience.family_only?(link) and
+              not SharedLinkCookie.unlocked?(conn, link, now) ->
+            error(conn, 401, "unauthorized")
+
+          true ->
+            dispatch(assign(conn, :family_share, FamilyAudience.family_only?(link)), action, link)
         end
       end
     else
@@ -70,6 +84,12 @@ defmodule DawarichWeb.Api.SharedController do
   defp dispatch(conn, :trip, link),
     do: result(conn, Dawarich.SharedApi.Trip.show(link, zone(conn)), [])
 
+  defp dispatch(%{assigns: %{family_share: true}} = conn, :points, %{settings: settings} = link) do
+    if settings["show_route"] in [nil, false, "", "0", "false", "FALSE", "f", "F", "off", "OFF"],
+      do: result(conn, {:ok, []}, []),
+      else: result(conn, Dawarich.SharedApi.Points.index(link), [])
+  end
+
   defp dispatch(conn, :points, %{type: type} = link) when type != "live",
     do: result(conn, Dawarich.SharedApi.Points.index(link), cache_control: cache(link))
 
@@ -86,10 +106,17 @@ defmodule DawarichWeb.Api.SharedController do
 
   defp dispatch(conn, _action, _link), do: Body.replay(conn, "shared API action pending")
 
-  defp result(conn, {:ok, term}, opts), do: Respond.json(conn, 200, term, opts)
+  defp result(conn, {:ok, term}, opts),
+    do: Respond.json(conn, 200, term, private_opts(conn, opts))
+
   defp result(conn, {:error, status, message}, _opts), do: error(conn, status, message)
   defp result(conn, {:replay, reason}, _opts), do: Body.replay(conn, reason)
   defp result(conn, {:head, status}, _opts), do: Respond.head(conn, status, "application/json")
+
+  defp private_opts(%{assigns: %{family_share: true}}, opts),
+    do: Keyword.put(opts, :cache_control, "private, no-store")
+
+  defp private_opts(_, opts), do: opts
 
   defp cache(%{magic_phrase: phrase}) do
     if Dawarich.ReleaseMigrations.Effects.Support.Ruby.blank?(phrase),

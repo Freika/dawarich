@@ -33,5 +33,18 @@
         <%= paginate @trips %>
       </div>
     <% end %>
+    <% if @family_trips.any? %>
+      <section class="mt-8" aria-label="<%= t('shared_links.family.trips') %>">
+        <h2 class="text-xl font-bold mb-4"><%= t('shared_links.family.trips') %></h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <% @family_trips.each do |trip| %>
+            <%= render 'family_trip', trip: trip, share: @family_trip_links.fetch(trip.id) %>
+          <% end %>
+        </div>
+        <div class="flex justify-center mt-4">
+          <%= paginate @family_trips, param_name: :family_page %>
+        </div>
+      </section>
+    <% end %>
   </div>
 </div>

@@ -19,7 +19,7 @@ RSpec.describe Geocoding::ReverseCommands do
         .and have_enqueued_job(ReverseGeocodingJob)
         .with('Point', 103, force: false)
 
-      ids.each { |id| expect(claim_seconds(Point.geocode_dedup_key(id))).to be_between(86_399, 86_400) }
+      ids.each { |id| expect(claim_seconds(Point.geocode_dedup_key(id))).to eq(Float::INFINITY) }
       expect(JobOutbox.count).to eq(0)
     end
 
@@ -40,7 +40,7 @@ RSpec.describe Geocoding::ReverseCommands do
 
     it 'a claimed key is skipped; force clears keys' do
       ids = [201, 202, 203]
-      PhoenixClaims.claim(Point.geocode_dedup_key(201), Point::GEOCODE_DEDUP_TTL)
+      PhoenixClaims.claim(Point.geocode_dedup_key(201), 86_400)
 
       expect do
         described_class.enqueue_points(9, ids, force: false, producer: 'spec')
@@ -50,7 +50,7 @@ RSpec.describe Geocoding::ReverseCommands do
         .and have_enqueued_job(ReverseGeocodingJob)
         .with('Point', 203, force: false)
 
-      PhoenixClaims.claim(Point.geocode_dedup_key(201), Point::GEOCODE_DEDUP_TTL)
+      PhoenixClaims.claim(Point.geocode_dedup_key(201), 86_400)
 
       expect do
         described_class.enqueue_points(9, ids, force: true, producer: 'spec')
@@ -62,7 +62,7 @@ RSpec.describe Geocoding::ReverseCommands do
     it 'a failing produce clears the claimed keys and raises' do
       foreign_id = 301
       ids = [302, 303]
-      PhoenixClaims.claim(Point.geocode_dedup_key(foreign_id), Point::GEOCODE_DEDUP_TTL)
+      PhoenixClaims.claim(Point.geocode_dedup_key(foreign_id), 86_400)
       allow(JobCommands).to receive(:produce).and_raise(ActiveRecord::StatementInvalid, 'boom')
 
       expect do

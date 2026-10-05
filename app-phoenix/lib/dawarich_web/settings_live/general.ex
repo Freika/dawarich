@@ -119,7 +119,7 @@ defmodule DawarichWeb.SettingsLive.General do
                         >{t(@locale, "settings.general.index.send_test_email", %{})}</a>
                         <span class="text-sm text-base-content/70">{t(
                           @locale,
-                          "settings.general.index.test_email_hint",
+                          "settings.general.index.test_email_worker_hint",
                           %{}
                         )}</span>
                       </div>

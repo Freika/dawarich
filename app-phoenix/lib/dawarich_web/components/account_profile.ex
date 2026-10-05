@@ -96,6 +96,21 @@ defmodule DawarichWeb.AccountProfile do
               </div>
             </div>
           </div>
+          <div :for={field <- [:first_name, :last_name]} class="form-control">
+            <label class="label" for={"user_#{field}"}><span class="label-text">{t(
+              @locale,
+              "devise.registrations.edit.#{field}",
+              %{}
+            )}</span></label>
+            <input
+              class="input input-bordered w-full"
+              type="text"
+              value={Map.get(@user, field)}
+              name={"user[#{field}]"}
+              id={"user_#{field}"}
+              autocomplete={if field == :first_name, do: "given-name", else: "family-name"}
+            />
+          </div>
           <div class="form-control">
             <.field_error invalid={:email in @invalid}>
               <label class="label" for="user_email"><span class="label-text">{t(

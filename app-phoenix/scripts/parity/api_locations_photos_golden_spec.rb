@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 module ApiLocationsPhotosGoldenOracle
   TABLES = %w[users points].freeze
@@ -103,6 +104,8 @@ module ApiLocationsPhotosGoldenOracle
 end
 
 RSpec.describe 'Phoenix fixture: golden locations and photos API requests', type: :request do
+  let(:fixture_models) { [User, Point] }
+  include FixtureRecording::DeterministicInputs
   after(:all) do
     path = Rails.root.join('app-phoenix/test/fixtures/api_locations_photos/golden.json')
     FileUtils.mkdir_p(path.dirname)

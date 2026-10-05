@@ -26,7 +26,23 @@ defmodule DawarichWeb.TripsLive.Index do
 
     with page when is_binary(page) or is_nil(page) <- params["page"],
          number = TripsGate.page_number(page),
+         family_page when is_binary(family_page) or is_nil(family_page) <- params["family_page"],
+         family_number = TripsGate.page_number(family_page),
          {:ok, result} <- TripList.load(socket.assigns.current_user, number) do
+      family =
+        Dawarich.SharedLinks.FamilyAudience.trips(
+          socket.assigns.current_user,
+          family_number,
+          DateTime.utc_now()
+        )
+
+      result =
+        Map.merge(result, %{
+          family_entries: family.entries,
+          family_total_pages: family.total_pages,
+          family_page: family_number
+        })
+
       {:noreply,
        socket |> assign(page: number, query: URI.decode_query(query || "")) |> assign(result)}
     else
@@ -84,6 +100,53 @@ defmodule DawarichWeb.TripsLive.Index do
             />
           </div>
         <% end %>
+        <section
+          :if={@family_entries != []}
+          class="mt-8"
+          aria-label={t(@locale, "shared_links.family.trips", %{})}
+        >
+          <h2 class="text-xl font-bold mb-4">{t(@locale, "shared_links.family.trips", %{})}</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <a :for={trip <- @family_entries} href={"/s/#{trip.share_id}"} class="block group">
+              <div
+                class="border border-base-300 rounded-xl overflow-hidden transition-all duration-200 hover:border-primary/30 hover:shadow-lg"
+                data-testid="family-trip-card"
+              >
+                <div
+                  style="width: 100%; aspect-ratio: 16/10;"
+                  class="flex items-center justify-center bg-base-200"
+                >
+                  <.icon name="map" class="w-12 h-12 text-base-content/40" />
+                </div>
+                <div class="px-4 py-3">
+                  <h3 class="font-semibold text-base group-hover:text-primary truncate">
+                    {trip.name}
+                  </h3><p class="text-xs text-base-content/50 mt-0.5">
+                    {DawarichWeb.LocalizedDate.l(@locale, trip.started_on, "day_month_year")} {t(
+                      @locale,
+                      "trips.trip.ndash",
+                      %{}
+                    )} {DawarichWeb.LocalizedDate.l(@locale, trip.ended_on, "day_month_year")}
+                  </p><span class="badge badge-success badge-sm mt-3">{t(
+                    @locale,
+                    "shared_links.family.label",
+                    %{}
+                  )}</span>
+                </div>
+              </div>
+            </a>
+          </div>
+          <div class="flex justify-center mt-4">
+            <.paginator
+              locale={@locale}
+              path="/trips"
+              query={@query}
+              page={@family_page}
+              total_pages={@family_total_pages}
+              param_name="family_page"
+            />
+          </div>
+        </section>
       </div>
     </div>
     """

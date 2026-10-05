@@ -92,7 +92,7 @@ test("initial map instant is rendered with the profile offset", () => {
   const instant = new Date("2020-04-17T00:00:00-07:00")
   assert.equal(
     DateManager.formatDateForAPI(instant, "America/Los_Angeles"),
-    "2020-04-17T00:00-07:00",
+    "2020-04-17T00:00:00-07:00",
   )
 })
 
@@ -118,8 +118,8 @@ test("Friday navigation requests Friday in the profile timezone", async (t) => {
     endAt: "2020-04-17T23:59:59",
   })
   assert.deepEqual(requestedRange(frame), [
-    "2020-04-17T00:00-07:00",
-    "2020-04-17T23:59-07:00",
+    "2020-04-17T00:00:00-07:00",
+    "2020-04-17T23:59:59-07:00",
   ])
 })
 
@@ -131,8 +131,8 @@ test("Thursday and Friday navigation produce adjacent profile days", async (t) =
       endAt: `${day}T23:59:59`,
     })
     assert.deepEqual(requestedRange(frame), [
-      `${day}T00:00-07:00`,
-      `${day}T23:59-07:00`,
+      `${day}T00:00:00-07:00`,
+      `${day}T23:59:59-07:00`,
     ])
   }
 })
@@ -141,8 +141,8 @@ test("month navigation uses the profile offset on both sides of DST", (t) => {
   const { map, frame } = buildMap(t)
   map.monthChanged({ target: { value: "2020-03" } })
   assert.deepEqual(requestedRange(frame), [
-    "2020-03-01T00:00-08:00",
-    "2020-03-31T23:59-07:00",
+    "2020-03-01T00:00:00-08:00",
+    "2020-03-31T23:59:00-07:00",
   ])
 })
 
@@ -153,8 +153,8 @@ test("explicit UTC range retains its instant in the profile timezone", async (t)
     endAt: "2020-04-18T06:59:00Z",
   })
   assert.deepEqual(requestedRange(frame), [
-    "2020-04-17T00:00-07:00",
-    "2020-04-17T23:59-07:00",
+    "2020-04-17T00:00:00-07:00",
+    "2020-04-17T23:59:00-07:00",
   ])
 })
 
@@ -165,8 +165,8 @@ test("spring DST day uses each boundary's profile offset", async (t) => {
     endAt: "2020-03-08T23:59:59",
   })
   assert.deepEqual(requestedRange(frame), [
-    "2020-03-08T00:00-08:00",
-    "2020-03-08T23:59-07:00",
+    "2020-03-08T00:00:00-08:00",
+    "2020-03-08T23:59:59-07:00",
   ])
 })
 
@@ -177,8 +177,8 @@ test("fall-back DST day uses each boundary's profile offset", async (t) => {
     endAt: "2020-11-01T23:59:59",
   })
   assert.deepEqual(requestedRange(frame), [
-    "2020-11-01T00:00-07:00",
-    "2020-11-01T23:59-08:00",
+    "2020-11-01T00:00:00-07:00",
+    "2020-11-01T23:59:59-08:00",
   ])
 })
 
@@ -194,8 +194,8 @@ test("midnight DST gap starts the day at its first valid minute", async (t) => {
       endAt: `${day}T23:59:59`,
     })
     assert.deepEqual(requestedRange(frame), [
-      `${day}T01:00${offset}`,
-      `${day}T23:59${offset}`,
+      `${day}T01:00:00${offset}`,
+      `${day}T23:59:59${offset}`,
     ])
   }
 })
@@ -224,7 +224,7 @@ test("connect renders the initial range in the profile timezone", async (t) => {
   const map = await connectMap(t, "America/Los_Angeles")
   assert.deepEqual(
     [map.startDateValue, map.endDateValue],
-    ["2020-04-17T00:00-07:00", "2020-04-17T23:59-07:00"],
+    ["2020-04-17T00:00:00-07:00", "2020-04-17T23:59:59-07:00"],
   )
 })
 
@@ -232,7 +232,7 @@ test("connect falls back to the browser offset for an unknown timezone", async (
   const map = await connectMap(t, "Not/AZone")
   assert.deepEqual(
     [map.startDateValue, map.endDateValue],
-    ["2020-04-17T09:00+02:00", "2020-04-18T08:59+02:00"],
+    ["2020-04-17T09:00:00+02:00", "2020-04-18T08:59:59+02:00"],
   )
 })
 

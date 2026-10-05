@@ -23,6 +23,25 @@ module PhoenixClaims
 
   module_function
 
+  def claim_persistent_all(keys)
+    keys = keys.uniq.sort
+    return [] if keys.empty?
+
+    unless table?
+      script = "if redis.call('SET', KEYS[1], '1', 'NX') then return 1 end " \
+               "redis.call('PERSIST', KEYS[1]); return 0"
+      results = Sidekiq.redis { |r| r.pipelined { |p| keys.each { p.call('EVAL', script, 1, _1) } } }
+      return keys.zip(results).filter_map { |key, result| key if result == 1 }
+    end
+
+    connection.transaction do
+      sql = CLAIM_ALL.sub('statement_timestamp() + make_interval(secs => $2)', "'infinity'::timestamptz")
+      claimed = connection.exec_query(sql, 'PhoenixClaims', [text_array(keys)]).rows.flatten
+      update("UPDATE phoenix.once_claims SET expires_at = 'infinity' WHERE key = ANY($1::text[])", text_array(keys))
+      claimed
+    end
+  end
+
   def claim(key, ttl)
     return Sidekiq.redis { |r| r.set(key, 1, nx: true, ex: ttl) } == 'OK' unless table?
 

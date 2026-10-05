@@ -52,14 +52,22 @@ defmodule Dawarich.Geocoding.NightlySweep do
           Processed.claim!(repo, receipt_id(root, id), "geocoding.nightly")
         end)
 
-      State.unclaim_all(repo, Enum.map(selected, fn [id, _] -> "geocode:enq:Point:#{id}" end))
+      claimed =
+        State.claim_persistent_all(
+          repo,
+          Enum.map(selected, fn [id, _] -> "geocode:enq:Point:#{id}" end)
+        )
+        |> MapSet.new()
+
+      selected =
+        Enum.filter(selected, fn [id, _] -> MapSet.member?(claimed, "geocode:enq:Point:#{id}") end)
 
       selected
       |> Enum.group_by(&List.last/1, &hd/1)
       |> Enum.sort_by(fn {_user, ids} -> hd(ids) end)
       |> Enum.each(fn {user, ids} ->
         for chunk <- Enum.chunk_every(ids, 100) do
-          payload = %{"user_id" => user, "point_ids" => chunk, "force" => true}
+          payload = %{"user_id" => user, "point_ids" => chunk, "force" => false}
           publish(repo, oban, payload, child_id(root, user, chunk), owner)
         end
 

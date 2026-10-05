@@ -35,7 +35,7 @@ defmodule DawarichWeb.FamilyLocationsTest do
     assert get_resp_header(conn, "content-type") == ["application/json; charset=utf-8"]
     assert get_resp_header(conn, "etag") == []
     assert conn.private.phoenix_router == DawarichWeb.Router
-    assert Enum.count(json_response(conn, 200)) == 2
+    assert Enum.count(json_response(conn, 200)) == 1
   end
 
   test "family locations refuses guest no family and lapsed actors", ctx do
@@ -63,12 +63,12 @@ defmodule DawarichWeb.FamilyLocationsTest do
   end
 
   test "web projection preserves member email order and omits API only fields", ctx do
-    conn = locations(ctx.member)
-    [member, owner] = json_response(conn, 200)
-    assert [member["user_id"], owner["user_id"]] == [90102, 90101]
+    conn = locations(ctx.owner)
+    [member] = json_response(conn, 200)
+    assert member["user_id"] == 90102
 
     assert Enum.sort(Map.keys(member)) ==
-             ~w(email latitude longitude timestamp updated_at user_id)
+             ~w(email latitude longitude name timestamp updated_at user_id)
 
     assert member["latitude"] == 51.3397
     assert member["longitude"] == 12.3731

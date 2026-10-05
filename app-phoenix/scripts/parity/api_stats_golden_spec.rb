@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixture: ISO codes and flags of Countries::IsoCodeMapper' do
   it 'writes priv/country_codes.json in COUNTRIES order' do
@@ -113,6 +114,8 @@ module ApiStatsGoldenOracle
 end
 
 RSpec.describe 'Phoenix fixture: golden stats API requests', type: :request do
+  let(:fixture_models) { [User, Country, Stat, Users::Digest, Visit, Point, Flight] }
+  include FixtureRecording::DeterministicInputs
   after(:all) do
     path = Rails.root.join('app-phoenix/test/fixtures/api_stats/golden.json')
     FileUtils.mkdir_p(path.dirname)
@@ -234,7 +237,8 @@ RSpec.describe 'Phoenix fixture: golden stats API requests', type: :request do
               ['Cafe', Time.utc(2024, 6, 1, 10), 1, 2], ['Office', Time.utc(2024, 3, 1, 9), 100, 1],
               ['Office', Time.utc(2024, 12, 31, 23, 30), 100, 1], ['Gym', Time.utc(2024, 5, 1, 18), 500, 1]]
     Visit.insert_all(visits.map do |name, at, duration, status|
-      { user_id: user.id, name:, started_at: at, ended_at: at, duration:, status: }
+      { user_id: user.id, name:, started_at: at, ended_at: at, duration:, status:,
+        created_at: Time.current, updated_at: Time.current }
     end)
   end
 

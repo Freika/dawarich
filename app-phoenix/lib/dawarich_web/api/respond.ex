@@ -103,7 +103,13 @@ defmodule DawarichWeb.Api.Respond do
     )
   end
 
-  defp cache(conn, _status, _body, _opts), do: put_resp_header(conn, "cache-control", "no-cache")
+  defp cache(conn, _status, _body, _opts),
+    do:
+      put_resp_header(
+        conn,
+        "cache-control",
+        if(conn.assigns[:family_share], do: "private, no-store", else: "no-cache")
+      )
 
   def rack_etag(conn, body, cache_control \\ "max-age=0, private, must-revalidate") do
     conn

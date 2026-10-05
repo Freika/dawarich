@@ -892,8 +892,8 @@ module ResidualMailFixtureSupport
       name = row.fetch('id')
       no_send = %w[guest cloud not_configured malformed_json missing_csrf get_method head_method
                    patch_method].include?(name)
-      expect(row.fetch('attempts').length).to eq(no_send ? 0 : 1), "synchronous send differs: #{name}"
-      expect(row.fetch('queued')).to eq(0)
+      expect(row.fetch('attempts').length).to eq(0), "queued mail sent inline: #{name}"
+      expect(row.fetch('queued')).to eq(no_send ? 0 : 1)
       if name == 'missing_csrf'
         expect(row.fetch('error')).to be_nil
         expect(row.fetch('response').fetch('status')).to eq(422)
@@ -920,15 +920,11 @@ module ResidualMailFixtureSupport
       end
       next if %w[guest cloud].include?(name)
 
-      if row.fetch('transport_error')
-        description = row.fetch('transport_error')
-        description += ": #{row.fetch('transport_error_message')}" unless %w[unsafe_error turbo_error].include?(name)
-        expected = I18n.t('controllers.settings.general.test_email_failed', error: description, locale:)
-      elsif name == 'not_configured'
-        expected = I18n.t('controllers.settings.general.smtp_not_configured', locale:)
-      else
-        expected = I18n.t('controllers.settings.general.test_email_sent', email: row.fetch('recipient'), locale:)
-      end
+      expected = if name == 'not_configured'
+                   I18n.t('controllers.settings.general.smtp_not_configured', locale:)
+                 else
+                   I18n.t('controllers.settings.general.test_email_queued', email: row.fetch('recipient'), locale:)
+                 end
       if response.fetch('media_type') == 'text/vnd.turbo-stream.html'
         expect(response.fetch('body').include?(ERB::Util.html_escape(expected))).to be(true),
                                                                                     "Turbo flash differs: #{name}"

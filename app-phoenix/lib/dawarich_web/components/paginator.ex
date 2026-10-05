@@ -8,6 +8,7 @@ defmodule DawarichWeb.Paginator do
   attr :locale, :string, required: true
   attr :path, :string, required: true
   attr :query, :map, required: true
+  attr :param_name, :string, default: "page"
   attr :page, :integer, required: true
   attr :total_pages, :integer, required: true
   attr :anchor, :string, default: nil
@@ -27,7 +28,7 @@ defmodule DawarichWeb.Paginator do
         <%= case tag do %>
           <% :prev -> %>
             <.link
-              {nav(@patch, url(@path, @query, @page - 1, @anchor))}
+              {nav(@patch, url(@path, @query, @page - 1, @anchor, @param_name))}
               rel="prev"
               class="join-item btn"
             >{t(
@@ -37,7 +38,7 @@ defmodule DawarichWeb.Paginator do
             )}</.link>
           <% :next -> %>
             <.link
-              {nav(@patch, url(@path, @query, @page + 1, @anchor))}
+              {nav(@patch, url(@path, @query, @page + 1, @anchor, @param_name))}
               rel="next"
               class="join-item btn"
             >{t(
@@ -52,7 +53,7 @@ defmodule DawarichWeb.Paginator do
               <button class="join-item btn btn-active">{number}</button>
             <% else %>
               <.link
-                {nav(@patch, url(@path, @query, number, @anchor))}
+                {nav(@patch, url(@path, @query, number, @anchor, @param_name))}
                 rel={rel(number, @page)}
                 class="join-item btn"
               >{number}</.link>
@@ -102,9 +103,9 @@ defmodule DawarichWeb.Paginator do
   defp nav(true, url), do: [patch: url]
   defp nav(false, url), do: [href: url]
 
-  defp url(path, query, number, anchor) do
-    query = query |> Map.drop(@form_keys) |> Map.delete("page")
-    query = if number > 1, do: Map.put(query, "page", Integer.to_string(number)), else: query
+  defp url(path, query, number, anchor, param_name) do
+    query = query |> Map.drop(@form_keys) |> Map.delete(param_name)
+    query = if number > 1, do: Map.put(query, param_name, Integer.to_string(number)), else: query
     fragment = if anchor, do: "#" <> anchor, else: ""
 
     case query |> Enum.map(&URI.encode_query([&1])) |> Enum.sort() |> Enum.join("&") do
