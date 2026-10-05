@@ -1,5 +1,5 @@
 defmodule Dawarich.AccountApi.ExistTest do
-  use Dawarich.IngestCase
+  use Dawarich.DataCase, async: true
   alias Dawarich.AccountApi.Exist
   alias Dawarich.ReleaseMigrations.Effects.Support.Ruby
   @moduletag api_public_only: true
