@@ -15,23 +15,9 @@ defmodule Dawarich.Jobs.ImportEntries do
         claimable: false
       },
       %{
-        key: "cron:trek_sync_job",
-        kind: :cron,
-        expression: "0 */6 * * *",
-        worker: Dawarich.Imports.Trek.ScheduleWorker,
-        claimable: false
-      },
-      %{
         key: "command:imports.teslamate_sync",
         kind: :command,
         worker: Dawarich.Imports.Teslamate.SyncWorker,
-        claimable: false
-      },
-      %{
-        key: "cron:teslamate_sync_job",
-        kind: :cron,
-        expression: "30 2 * * *",
-        worker: Dawarich.Imports.Teslamate.ScheduleWorker,
         claimable: false
       },
       %{

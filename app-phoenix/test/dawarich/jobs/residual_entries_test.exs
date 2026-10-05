@@ -1,6 +1,6 @@
 defmodule Dawarich.Jobs.ResidualEntriesTest do
   use Dawarich.JobsCase
-  alias Dawarich.Jobs.{Dispatch, Registry, ResidualEntries}
+  alias Dawarich.Jobs.{Claimer, Dispatch, Registry, ResidualEntries}
   alias Dawarich.RailsJobOwners
   @oban __MODULE__.Oban
 
@@ -101,6 +101,41 @@ defmodule Dawarich.Jobs.ResidualEntriesTest do
             worker.args_from_command(1, Map.put(payload, field, 9_223_372_036_854_775_808)) ==
               {:error, "invalid_payload"}
           )
+    end
+  end
+
+  test "old integration scheduler debt blocks activation and remains visible until completion" do
+    start_oban(@oban)
+
+    for {key, worker} <- [
+          {"cron:trek_sync_job", Dawarich.Imports.Trek.ScheduleWorker},
+          {"cron:teslamate_sync_job", Dawarich.Imports.Teslamate.ScheduleWorker}
+        ],
+        state <- ~w(available scheduled executing retryable discarded) do
+      entry = Enum.find(Registry.entries(), &(&1.key == key))
+
+      job =
+        Oban.insert!(@oban, worker.new(%{}, scheduled_at: DateTime.add(DateTime.utc_now(), 3600)))
+
+      rows("UPDATE oban.oban_jobs SET state = $2 WHERE id = $1", [job.id, state])
+      assert Claimer.claim(ScratchRepo, @oban, entry) == {:error, {:legacy_scheduler_jobs, 1}}
+      assert rows("SELECT owner FROM phoenix.job_owners WHERE key = $1", [key]) == [["sidekiq"]]
+      assert rows("SELECT state FROM oban.oban_jobs WHERE id = $1", [job.id]) == [[state]]
+      {:ok, out} = StringIO.open("")
+      ctx = %{repo: ScratchRepo, out: out, err: out, env: %{}}
+      assert Dawarich.CLI.Jobs.status([], ctx) == 0
+      json = out |> StringIO.contents() |> elem(1) |> Jason.decode!()
+      debt = Enum.find(json["gauges"]["legacy_schedulers"], &(&1["key"] == key))
+      assert debt == %{"key" => key, "worker" => Oban.Worker.to_string(worker), "incomplete" => 1}
+
+      rows("UPDATE oban.oban_jobs SET state = 'completed', completed_at = now() WHERE id = $1", [
+        job.id
+      ])
+
+      assert Claimer.claim(ScratchRepo, @oban, entry) == :claimed
+      assert rows("SELECT state FROM oban.oban_jobs WHERE id = $1", [job.id]) == [["completed"]]
+      rows("DELETE FROM oban.oban_jobs")
+      rows("DELETE FROM phoenix.job_owners WHERE key = $1", [key])
     end
   end
 

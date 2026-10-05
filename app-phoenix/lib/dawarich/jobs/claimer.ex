@@ -5,6 +5,33 @@ defmodule Dawarich.Jobs.Claimer do
 
   alias Dawarich.Jobs.Registry
 
+  @legacy_schedulers %{
+    "cron:trek_sync_job" => "Dawarich.Imports.Trek.ScheduleWorker",
+    "cron:teslamate_sync_job" => "Dawarich.Imports.Teslamate.ScheduleWorker"
+  }
+
+  def legacy_scheduler_counts(repo) do
+    for {key, worker} <- Enum.sort(@legacy_schedulers),
+        do: %{key: key, worker: worker, incomplete: legacy_scheduler_count(repo, key)}
+  end
+
+  def legacy_scheduler_count(repo, key) do
+    case @legacy_schedulers[key] do
+      nil ->
+        0
+
+      worker ->
+        [[count]] =
+          repo.query!(
+            "SELECT count(*) FROM oban.oban_jobs WHERE worker = $1 AND state NOT IN ('completed', 'cancelled')",
+            [worker],
+            log: false
+          ).rows
+
+        count
+    end
+  end
+
   def start_link(opts \\ []), do: Task.start_link(__MODULE__, :run, [opts])
 
   def run(opts) do
@@ -108,6 +135,9 @@ defmodule Dawarich.Jobs.Claimer do
         :already
 
       [["sidekiq", false]] ->
+        count = legacy_scheduler_count(repo, entry.key)
+        if count > 0, do: repo.rollback({:legacy_scheduler_jobs, count})
+
         repo.query!(
           "UPDATE phoenix.job_owners SET owner = 'oban', updated_at = $2, updated_by = $3 WHERE key = $1",
           [entry.key, DateTime.utc_now(), "claimer:" <> Oban.config(oban).node],

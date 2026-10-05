@@ -3,6 +3,28 @@ defmodule Dawarich.Jobs.RegistryTest do
 
   alias Dawarich.Jobs.Registry
 
+  test "registry keys are unique and existing native crons map to 20 unique Rails keys" do
+    entries = Registry.entries()
+    keys = Enum.map(entries, & &1.key)
+    assert length(keys) == length(Enum.uniq(keys))
+    crons = Enum.filter(entries, &(&1.kind == :cron and &1.key != "cron:cache_preheating_job"))
+    assert length(crons) == 20
+    schedule = File.read!(Path.expand("../../../../config/schedule.yml", __DIR__))
+
+    for %{key: "cron:" <> name, expression: expression} <- crons do
+      assert [_, ^expression] = Regex.run(~r/^#{name}:\n\s+cron: "([^"]+)"/m, schedule)
+    end
+
+    for {key, worker} <- [
+          {"cron:trek_sync_job", Dawarich.Integrations.TrekSchedulingWorker},
+          {"cron:teslamate_sync_job", Dawarich.Integrations.TeslaMateSchedulingWorker}
+        ] do
+      assert [%{worker: ^worker}] = Enum.filter(entries, &(&1.key == key))
+    end
+
+    assert Registry.claimable() == []
+  end
+
   test "cache entries remain unclaimable and only preheating has a cron" do
     entries = Enum.filter(Registry.entries(), &String.contains?(&1.key, "cache"))
     assert length(entries) == 2

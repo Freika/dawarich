@@ -4,6 +4,7 @@ defmodule Dawarich.CLI.Jobs do
   import Dawarich.CLI, only: [puts: 2, fail: 2]
 
   alias Dawarich.ReleaseOperations
+  alias Dawarich.Jobs.Claimer
   alias Jason.OrderedObject, as: O
 
   @flags """
@@ -95,6 +96,11 @@ defmodule Dawarich.CLI.Jobs do
       owners: all(repo, @owners),
       nodes: all(repo, @nodes),
       oban: if(table?(repo, "oban.oban_jobs"), do: all(repo, @oban), else: []),
+      legacy_schedulers:
+        if(table?(repo, "oban.oban_jobs"),
+          do: Claimer.legacy_scheduler_counts(repo),
+          else: "unknown"
+        ),
       rails_commands:
         if(table?(repo, "phoenix.rails_commands_dead"), do: one(repo, @rails_commands))
     )
