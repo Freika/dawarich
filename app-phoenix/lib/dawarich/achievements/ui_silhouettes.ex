@@ -37,7 +37,7 @@ defmodule Dawarich.Achievements.UiSilhouettes do
     end) || nil
   end
 
-  defp key(level, code), do: "achievements/silhouette/v3/#{level}/#{code}"
+  defp key(level, code), do: "achievements/silhouette/v4/#{level}/#{code}"
 
   defp build(_repo, _level, []), do: %{}
 
@@ -57,7 +57,7 @@ defmodule Dawarich.Achievements.UiSilhouettes do
       repo,
       "country",
       codes,
-      "SELECT 'collection' AS code, ST_CollectionExtract(ST_Collect(#{geometry}), 3) AS g0 FROM src"
+      "SELECT 'collection' AS code, ST_CollectionExtract(ST_Collect(#{geometry} ORDER BY id), 3) AS g0 FROM src"
     )["collection"]
   end
 
@@ -69,7 +69,7 @@ defmodule Dawarich.Achievements.UiSilhouettes do
       end
 
     sql = """
-    WITH src AS (SELECT #{column} AS code,geom::geometry AS g0 FROM #{table} WHERE #{column}=ANY($1)),
+    WITH src AS (SELECT id,#{column} AS code,geom::geometry AS g0 FROM #{table} WHERE #{column}=ANY($1)),
     framed AS MATERIALIZED (#{framed}),
     shifted AS MATERIALIZED (SELECT code,g0,ST_ShiftLongitude(g0) AS shifted FROM framed),
     unwrapped AS MATERIALIZED (SELECT code,CASE WHEN ST_XMax(g0)-ST_XMin(g0)>180 AND ST_XMax(shifted)-ST_XMin(shifted)<180 THEN shifted ELSE g0 END AS g0 FROM shifted),
