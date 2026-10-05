@@ -73,6 +73,115 @@ defmodule Dawarich.Posters.NativeRendererTest do
     end
   end
 
+  @tag mutation: "group-argv"
+  test "group kill argv separates options from negative PGID on macOS", ctx do
+    parent = self()
+
+    {task, ready} =
+      ready_renderer(ctx, "linger",
+        timeout_ms: 0,
+        terminate_ms: 100,
+        kill_command: fn executable, args, options ->
+          send(parent, {:kill_argv, executable, args})
+          System.cmd(executable, args, options)
+        end
+      )
+
+    send(task.pid, :render)
+    assert inspect(catch_exit(Task.await(task))) =~ "timed out"
+    pgid = "-#{ready["pgrp"]}"
+    assert_receive {:kill_argv, "/bin/kill", ["-0", "--", ^pgid]}
+    assert_receive {:kill_argv, "/bin/kill", ["-TERM", "--", ^pgid]}
+    assert_receive {:kill_argv, "/bin/kill", ["-KILL", "--", ^pgid]}
+  end
+
+  @tag mutation: "procps-group"
+  test "procps group cleanup removes leader and descendant within termination budget", ctx do
+    parent = self()
+
+    {task, ready} =
+      ready_renderer(ctx, "linger",
+        timeout_ms: 0,
+        kill_command: fn executable, args, options ->
+          send(parent, :procps_kill)
+
+          if Enum.at(args, 1) == "--",
+            do: System.cmd(executable, args, options),
+            else: {"failed to parse argument", 1}
+        end
+      )
+
+    assert ready["pid"] == ready["pgrp"]
+
+    assert {_, 0} =
+             System.cmd("/bin/kill", ["-0", "--", "#{ready["child"]}"], stderr_to_stdout: true)
+
+    started = System.monotonic_time(:millisecond)
+    send(task.pid, :render)
+    assert inspect(catch_exit(Task.await(task, 6_000))) =~ "timed out"
+    assert System.monotonic_time(:millisecond) - started < 6_000
+    assert_receive :procps_kill
+
+    for member <- [ready["pid"], ready["child"]] do
+      {_, status} = System.cmd("/bin/kill", ["-0", "--", "#{member}"], stderr_to_stdout: true)
+      assert status != 0
+    end
+
+    {_, status} =
+      System.cmd("/bin/kill", ["-0", "--", "-#{ready["pgrp"]}"], stderr_to_stdout: true)
+
+    assert status != 0
+  end
+
+  @tag mutation: "term-status"
+  test "failed TERM immediately falls through to group KILL", ctx do
+    parent = self()
+
+    {task, _ready} =
+      ready_renderer(ctx, "linger",
+        timeout_ms: 0,
+        terminate_ms: 100,
+        kill_command: fn executable, args, options ->
+          if hd(args) == "-TERM" do
+            send(self(), {Process.get(:renderer_port), {:data, "after-failed-term"}})
+            {"TERM failed", 1}
+          else
+            System.cmd(executable, args, options)
+          end
+        end,
+        on_output: fn output -> send(parent, {:unexpected_wait, output}) end
+      )
+
+    send(task.pid, :render)
+    assert inspect(catch_exit(Task.await(task))) =~ "timed out"
+    assert_receive {:signal, "-KILL", _}
+    refute_receive {:unexpected_wait, _}
+  end
+
+  @tag mutation: "kill-status"
+  test "failed group KILL is visible and still closes the port", ctx do
+    parent = self()
+
+    {task, _ready} =
+      ready_renderer(ctx, "linger",
+        timeout_ms: 0,
+        terminate_ms: 0,
+        kill_command: fn executable, args, options ->
+          if hd(args) == "-KILL" do
+            send(parent, {:cleanup_port, Process.get(:renderer_port)})
+            {"KILL failed", 1}
+          else
+            System.cmd(executable, args, options)
+          end
+        end
+      )
+
+    send(task.pid, :render)
+    assert inspect(catch_exit(Task.await(task))) =~ "group KILL failed (1): KILL failed"
+    assert_receive {:cleanup_port, port}
+    assert Port.info(port) == nil
+  end
+
   @tag mutation: "argv"
   test "renderer honors existing command override as argv without shell interpolation", ctx do
     saved = System.get_env("POSTER_RENDERER_CMD")
@@ -190,7 +299,7 @@ defmodule Dawarich.Posters.NativeRendererTest do
       end
 
     on_exit(fn ->
-      System.cmd("/bin/kill", ["-KILL", "-#{ready["pgrp"]}"], stderr_to_stdout: true)
+      System.cmd("/bin/kill", ["-KILL", "--", "-#{ready["pgrp"]}"], stderr_to_stdout: true)
     end)
 
     {task, ready}

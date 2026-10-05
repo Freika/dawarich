@@ -76,6 +76,14 @@ RSpec.describe RateLimitBench do
     expect { described_class.gate!(branch, baseline) }.to raise_error(/samples/)
   end
 
+  it 'samples PgBouncer directly when the benchmark runs inside a container' do
+    allow(ENV).to receive(:[]).with('BENCH_IN_CONTAINER').and_return('1')
+    expect(described_class.pool_sample_command).to eq(
+      ['psql', '-h', 'a13c_bouncer', '-p', '6432', '-U', 'dawarich_cloud',
+       '-A', '-c', 'SHOW POOLS', 'pgbouncer']
+    )
+  end
+
   it 'rejects unsuccessful HTTP responses instead of treating throttles as fast requests' do
     expect(Open3).to receive(:capture3).and_return(['429 0.001', '', instance_double(Process::Status, success?: true)])
     expect { described_class.http_time('http://127.0.0.1:3911/tiles') }.to raise_error(/HTTP 429/)
