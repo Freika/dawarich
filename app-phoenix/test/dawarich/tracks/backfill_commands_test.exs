@@ -90,8 +90,10 @@ defmodule Dawarich.Tracks.BackfillCommandsTest do
     assert [[reverse]] =
              rows("SELECT payload FROM phoenix.rails_commands WHERE kind = 'tracks.backfill'")
 
-    assert reverse["time_zone"] == "Asia/Tokyo"
-    assert reverse["timestamps"] == [@epoch - 100_000, @epoch - 100_000]
+    assert reverse == %{
+             "user_id" => 1,
+             "timestamps" => [@epoch - 100_000, @epoch - 100_000]
+           }
   end
 
   test "daily bootstrap uses selected backfill owner at the existing size boundary" do

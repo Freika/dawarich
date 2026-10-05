@@ -9,7 +9,8 @@ defmodule Dawarich.Tracks.BackfillCommands do
     [[zone]] =
       repo.query!("SELECT settings->>'timezone' FROM users WHERE id = $1", [user_id], log: false).rows
 
-    put(repo, user_id, timestamps, Keyword.put_new(opts, :time_zone, zone))
+    opts = opts |> Keyword.put_new(:time_zone, zone) |> Keyword.put(:legacy_ingest, true)
+    put(repo, user_id, timestamps, opts)
   end
 
   def put(repo, user_id, timestamps, opts \\ []) do
@@ -37,11 +38,9 @@ defmodule Dawarich.Tracks.BackfillCommands do
         )
 
       :sidekiq ->
-        RailsCommands.insert!(repo, "tracks.backfill", %{
-          "user_id" => user_id,
-          "timestamps" => timestamps,
-          "time_zone" => zone
-        })
+        payload = %{"user_id" => user_id, "timestamps" => timestamps}
+        payload = if opts[:legacy_ingest], do: payload, else: Map.put(payload, "time_zone", zone)
+        RailsCommands.insert!(repo, "tracks.backfill", payload)
 
         :ok
     end)
