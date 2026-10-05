@@ -1,37 +1,35 @@
 defmodule Dawarich.Trial.WelcomeTest do
-  use ExUnit.Case, async: false
+  use Dawarich.JobsCase, async: false
   import Plug.Conn
   alias Dawarich.Trial.Welcome
-  alias Dawarich.{RailsCookies, RailsSecret, Redis, Repo}
+  alias Dawarich.{RailsCookies, RailsSecret}
+  alias Dawarich.ScratchRepo, as: Repo
   alias Dawarich.Test.RailsUser
+  alias __MODULE__.ObservedRepo
   @now ~U[2026-10-04 10:00:00.000000Z]
   @jwt "synthetic-a10b-welcome-signing-phrase"
 
   setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-
-    if is_nil(Process.whereis(Redis.Cache)),
-      do:
-        start_supervised!(
-          {Redix, {System.fetch_env!("PHOENIX_TEST_REDIS_URL"), [name: Redis.Cache, database: 0]}}
-        )
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
 
     for id <- [15601, 15602] do
+      RailsUser.insert!(
+        %{
+          id: id,
+          email: "a10b-welcome-#{id}@example.invalid",
+          status: 2,
+          active_until: ~N[2026-10-11 10:00:00.000000],
+          settings: %{"locale" => "en", "timezone" => "UTC"}
+        },
+        Repo
+      )
+
       RailsUser.insert!(%{
         id: id,
-        email: "a10b-welcome-#{id}@example.invalid",
-        status: 2,
-        active_until: ~N[2026-10-11 10:00:00.000000],
-        settings: %{"locale" => "en", "timezone" => "UTC"}
+        email: "a13g-auth-#{id}@example.invalid",
+        settings: %{"timezone" => "UTC"}
       })
     end
-
-    keys =
-      for suffix <- ~w(mismatch replay first same head),
-          do: "trial_welcome:consumed:a10b-flow-#{suffix}"
-
-    Redis.cache_command(["DEL" | keys])
-    on_exit(fn -> Redis.cache_command(["DEL" | keys]) end)
 
     %{
       context: %{
@@ -39,6 +37,7 @@ defmodule Dawarich.Trial.WelcomeTest do
         secret: RailsSecret.fetch(),
         env: %{},
         oidc: false,
+        repo: Repo,
         clock: fn -> @now end
       }
     }
@@ -48,11 +47,8 @@ defmodule Dawarich.Trial.WelcomeTest do
     assert Code.ensure_loaded?(Welcome), "welcome flow must exist"
     parent = self()
 
-    context =
-      Map.put(c.context, :cache_command, fn args ->
-        send(parent, :claim_attempted)
-        Redis.cache_command(args)
-      end)
+    Process.put(:claim_observer, parent)
+    context = Map.put(c.context, :repo, ObservedRepo)
 
     assert {:ok, mismatch} =
              Welcome.prepare(conn(RailsUser.session(15602)), claims("mismatch"), context)
@@ -60,7 +56,7 @@ defmodule Dawarich.Trial.WelcomeTest do
     assert {:ok, result} = Welcome.consume(mismatch, context)
     assert result.path == "/" and result.flash["alert"] =~ "Another user"
     refute_receive :claim_attempted
-    assert {:ok, nil} = Redis.cache_command(["GET", "trial_welcome:consumed:a10b-flow-mismatch"])
+    refute Dawarich.State.claimed?(Repo, claim_key("a10b-flow-mismatch"))
 
     for {session, overrides} <- [
           {%{"opaque" => String.duplicate("x", 5000)}, %{}},
@@ -79,11 +75,14 @@ defmodule Dawarich.Trial.WelcomeTest do
     refute_receive :claim_attempted
     Repo.query!("UPDATE users SET otp_required_for_login=false WHERE id=15601", [], log: false)
 
-    RailsUser.insert!(%{
-      id: 0,
-      email: "a10b-zero-id@example.invalid",
-      settings: %{"timezone" => "UTC"}
-    })
+    RailsUser.insert!(
+      %{
+        id: 0,
+        email: "a10b-zero-id@example.invalid",
+        settings: %{"timezone" => "UTC"}
+      },
+      Repo
+    )
 
     for {params, key} <- [
           {%{"token" => "malformed"}, "link_invalid_or_expired_please_sign_in"},
@@ -120,7 +119,8 @@ defmodule Dawarich.Trial.WelcomeTest do
     assert snapshot() == before
   end
 
-  test "first welcome emits Rails accepted rotated session and source trackable redirect", c do
+  test "welcome consumes in supplied repo before Trackable and preserves cookie replay outcomes",
+       c do
     assert Code.ensure_loaded?(Welcome), "welcome flow must exist"
 
     for {locale, suffix, actor} <- [
@@ -140,6 +140,16 @@ defmodule Dawarich.Trial.WelcomeTest do
       assert {:ok, prepared} = Welcome.prepare(conn(session, method), claims(suffix), c.context)
       assert snapshot() == before
       assert {:ok, result} = Welcome.consume(prepared, c.context)
+      key = claim_key("a10b-flow-" <> suffix)
+
+      assert [[^key]] =
+               Repo.query!("SELECT key FROM phoenix.once_claims WHERE key=$1", [key], log: false).rows
+
+      assert [] =
+               Dawarich.Repo.query!("SELECT key FROM phoenix.once_claims WHERE key=$1", [key],
+                 log: false
+               ).rows
+
       assert result.path == "/map/v2"
       {issued, cookie} = result.cookie
 
@@ -170,11 +180,7 @@ defmodule Dawarich.Trial.WelcomeTest do
                c.context
              )
 
-    assert {:ok, result} =
-             Welcome.consume(
-               prepared,
-               Map.put(c.context, :cache_command, fn _ -> {:ok, "OK"} end)
-             )
+    assert {:ok, result} = Welcome.consume(prepared, c.context)
 
     assert result.flash["notice"] =~ "activated"
   end
@@ -215,4 +221,17 @@ defmodule Dawarich.Trial.WelcomeTest do
         [],
         log: false
       ).rows
+
+  defmodule ObservedRepo do
+    def query!(sql, params, opts) do
+      if String.starts_with?(sql, "INSERT INTO phoenix.once_claims"),
+        do: send(Process.get(:claim_observer), :claim_attempted)
+
+      Dawarich.ScratchRepo.query!(sql, params, opts)
+    end
+  end
+
+  defp claim_key(jti),
+    do:
+      "trial_welcome:consumed:sha256:" <> Base.encode16(:crypto.hash(:sha256, jti), case: :lower)
 end

@@ -4,7 +4,8 @@ defmodule Dawarich.Release do
   @ledger_schema "phoenix"
   @oban_schema "oban"
 
-  def migrate, do: with_repos(&migrate_schemas/1)
+  def migrate, do: migrate([])
+  def migrate(opts), do: with_repos(&migrate_schemas(&1, opts))
 
   def migrate_oban, do: with_repos(&install_oban/1)
 
@@ -48,10 +49,18 @@ defmodule Dawarich.Release do
     end
   end
 
-  defp migrate_schemas(repo) do
+  defp migrate_schemas(repo, opts) do
     ensure_schema(repo, @ledger_schema)
     Ecto.Migrator.run(repo, :up, all: true, prefix: @ledger_schema, log: false)
     install_oban(repo)
+    copy_registration(repo, opts)
+  end
+
+  defp copy_registration(repo, opts) do
+    case Dawarich.ReleaseMigrations.V1_13_1.copy_registration_setting(repo, opts) do
+      {:ok, _} -> :ok
+      {:error, _} -> raise "registration copy refused"
+    end
   end
 
   defp install_oban(repo) do

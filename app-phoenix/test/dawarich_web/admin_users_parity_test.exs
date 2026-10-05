@@ -1,7 +1,7 @@
 defmodule DawarichWeb.AdminUsersParityTest do
   use ExUnit.Case, async: false
   import Phoenix.LiveViewTest, only: [render_component: 2]
-  alias Dawarich.{Accounts, Redis, Repo}
+  alias Dawarich.{Accounts, Repo}
   alias Dawarich.Test.{ParityHTML, RailsUser}
   alias DawarichWeb.SettingsLive.{UsersIndex, UserShow, UserEdit}
 
@@ -10,7 +10,6 @@ defmodule DawarichWeb.AdminUsersParityTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    start_supervised!(hd(Redis.cache_child_specs()))
     :ok
   end
 
@@ -202,12 +201,7 @@ defmodule DawarichWeb.AdminUsersParityTest do
       })
     end
 
-    {:ok, _} =
-      Redis.cache_command([
-        "SET",
-        "dawarich/registration_enabled",
-        <<4, 8, if(state["registration"], do: ?T, else: ?F)>>
-      ])
+    Dawarich.State.put_registration_enabled(Repo, state["registration"])
 
     %{
       locale: "en",

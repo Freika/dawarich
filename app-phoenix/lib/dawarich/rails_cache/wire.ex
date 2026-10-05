@@ -59,6 +59,9 @@ defmodule Dawarich.RailsCache.Wire do
 
   defp legacy(payload, opts) do
     case Marshal.decode(payload, opts) do
+      {:ok, []} ->
+        {:ok, %{value: nil, expires_at: nil}}
+
       {:ok, [value | rest]} when length(rest) <= 2 ->
         {:ok, %{value: value, expires_at: List.first(rest)}}
 

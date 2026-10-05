@@ -1,45 +1,68 @@
 defmodule Dawarich.Auth.RegistrationSettingTest do
-  use ExUnit.Case, async: true
+  use Dawarich.JobsCase, async: false
 
   alias Dawarich.Auth.RegistrationSetting
+  alias Dawarich.State
 
   @activation Path.expand("../../fixtures/auth/activation.json", __DIR__)
-  @external_resource @activation
-  @fixture Jason.decode!(File.read!(@activation))
 
-  defp redis(reply), do: fn ["GET", "dawarich/registration_enabled"] -> reply end
-  defp bytes(name), do: Base.decode64!(@fixture["registration"][name])
-
-  test "reads the flag Rails' cache store wrote" do
-    assert RegistrationSetting.fetch(%{}, redis({:ok, bytes("true")})) == {:ok, true}
-    assert RegistrationSetting.fetch(%{}, redis({:ok, bytes("false")})) == {:ok, false}
-    assert RegistrationSetting.fetch(%{}, redis({:ok, bytes("nil")})) == {:ok, nil}
+  defmodule FailureRepo do
+    def transaction(fun), do: {:ok, fun.()}
+    def query!(_, _, _), do: raise(DBConnection.ConnectionError, message: "synthetic PG refusal")
   end
 
-  test "a missing entry answers ALLOW_EMAIL_PASSWORD_REGISTRATION as Rails' fetch block does" do
-    missing = redis({:ok, nil})
+  test "native registration reads copied false and stored nil without Redis" do
+    config = Application.fetch_env!(:dawarich, :redis)
 
-    assert RegistrationSetting.fetch(%{"ALLOW_EMAIL_PASSWORD_REGISTRATION" => "true"}, missing) ==
-             {:ok, true}
+    options =
+      Dawarich.Redis.options(config[:url], config[:cache_database]) |> Keyword.delete(:name)
 
-    assert RegistrationSetting.fetch(%{"ALLOW_EMAIL_PASSWORD_REGISTRATION" => "TRUE"}, missing) ==
-             {:ok, false}
+    conn = start_supervised!({Redix, {config[:url], options}})
+    {:ok, prior} = Redix.command(conn, ["GET", "dawarich/registration_enabled"])
+    fixture = @activation |> File.read!() |> Jason.decode!()
+    bytes = Base.decode64!(fixture["registration"]["true"])
 
-    assert RegistrationSetting.fetch(%{}, missing) == {:ok, false}
+    try do
+      assert {:ok, "OK"} = Redix.command(conn, ["SET", "dawarich/registration_enabled", bytes])
+
+      for value <- [false, nil] do
+        State.put_registration_enabled(ScratchRepo, value)
+
+        assert {:ok, ^value} =
+                 RegistrationSetting.fetch(
+                   %{"ALLOW_EMAIL_PASSWORD_REGISTRATION" => "true"},
+                   ScratchRepo
+                 )
+
+        assert {:ok, ^bytes} = Redix.command(conn, ["GET", "dawarich/registration_enabled"])
+      end
+    after
+      if prior,
+        do: Redix.command(conn, ["SET", "dawarich/registration_enabled", prior]),
+        else: Redix.command(conn, ["DEL", "dawarich/registration_enabled"])
+    end
   end
 
-  test "anything else is unknown" do
-    expiring = <<0, 0x11, 1, 5.0e9::little-float-64, -1::little-signed-32, 4, 8, ?T>>
-    versioned = <<0, 0x11, 1, -1.0::little-float-64, 1::little-signed-32, ?v, 4, 8, ?T>>
-    string = <<0, 0x11, 2, -1.0::little-float-64, -1::little-signed-32, "true">>
+  test "native writes update initialized PG row and PG failure stays unknown" do
+    State.put_registration_enabled(ScratchRepo, true)
 
-    for reply <- [
-          {:ok, expiring},
-          {:ok, versioned},
-          {:ok, string},
-          {:ok, <<4, 8, ?T>>},
-          {:error, {:exit, :noproc}}
-        ],
-        do: assert(RegistrationSetting.fetch(%{}, redis(reply)) == :error)
+    for value <- [false, nil, true] do
+      assert :ok = RegistrationSetting.put(value, ScratchRepo)
+      assert {:ok, ^value} = RegistrationSetting.fetch(%{}, ScratchRepo)
+      assert rows("SELECT enabled FROM phoenix.registration_setting") == [[value]]
+    end
+
+    rows("DELETE FROM phoenix.registration_setting")
+
+    assert :error =
+             RegistrationSetting.fetch(
+               %{"ALLOW_EMAIL_PASSWORD_REGISTRATION" => "true"},
+               ScratchRepo
+             )
+
+    assert {:error, :database} = RegistrationSetting.put(true, ScratchRepo)
+    assert rows("SELECT enabled FROM phoenix.registration_setting") == []
+    assert :error = RegistrationSetting.fetch(%{}, FailureRepo)
+    assert {:error, :database} = RegistrationSetting.put(true, FailureRepo)
   end
 end

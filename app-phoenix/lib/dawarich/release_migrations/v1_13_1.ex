@@ -19,6 +19,8 @@ defmodule Dawarich.ReleaseMigrations.V1_13_1 do
   @impl true
   def data_versions, do: []
 
+  def copy_registration_setting(repo, opts), do: Effects.CopyRegistrationSetting.run(repo, opts)
+
   @impl true
   def steps do
     [

@@ -12,6 +12,7 @@ defmodule DawarichWeb.A10bOwnershipTest do
     Ecto.Adapters.SQL.Sandbox.mode(Repo, {:shared, self()})
     for spec <- Redis.child_specs() ++ Redis.cache_child_specs(), do: start_supervised!(spec)
     Repo.query!("DELETE FROM instance_settings", [], log: false)
+    Dawarich.State.put_registration_enabled(Repo, true)
 
     saved =
       for key <- ~w(SELF_HOSTED JWT_SECRET_KEY STORE_GEODATA TIME_ZONE),
@@ -175,6 +176,36 @@ defmodule DawarichWeb.A10bOwnershipTest do
         ] do
       Application.put_env(:dawarich, :rails_routes, [key])
       handoff!(method, path, body, actor)
+    end
+  end
+
+  test "trial settings home hand-back reaches Rails before native effects and shared state remains PG" do
+    Dawarich.State.put_registration_enabled(Repo, false)
+    before = snapshot()
+
+    claims =
+      Repo.query!("SELECT key, expires_at FROM phoenix.once_claims ORDER BY key", [], log: false).rows
+
+    large =
+      Enum.map_join(1..128, fn index ->
+        Base.encode16(:crypto.hash(:sha256, Integer.to_string(index)), case: :lower)
+      end)
+
+    for {key, method, path, body, actor} <- [
+          {"settings", "PATCH", "/settings/users/update_registration_settings",
+           "registration_enabled=1", 15801},
+          {"trial", "GET", welcome_path(), "", nil},
+          {"trial", "GET", welcome_path(large), "", nil},
+          {"home", "GET", "/", "", nil}
+        ] do
+      Application.put_env(:dawarich, :rails_routes, [key])
+      handoff!(method, path, body, actor)
+      assert snapshot() == before
+      assert {:ok, false} = Dawarich.Auth.RegistrationSetting.fetch()
+
+      assert Repo.query!("SELECT key, expires_at FROM phoenix.once_claims ORDER BY key", [],
+               log: false
+             ).rows == claims
     end
   end
 
@@ -353,20 +384,18 @@ defmodule DawarichWeb.A10bOwnershipTest do
   defp snapshot,
     do:
       Repo.query!(
-        "SELECT id,email,admin,status,deleted_at,reset_password_token FROM users ORDER BY id",
+        "SELECT id,email,admin,status,deleted_at,reset_password_token,sign_in_count FROM users ORDER BY id",
         [],
         log: false
       ).rows
 
-  defp welcome_path do
+  defp welcome_path(jti \\ "a10b-ownership-welcome") do
     payload = %{
       "purpose" => "trial_welcome",
       "user_id" => 15802,
-      "jti" => "a10b-ownership-welcome",
+      "jti" => jti,
       "exp" => System.system_time(:second) + 1800
     }
-
-    Redis.cache_command(["DEL", "trial_welcome:consumed:a10b-ownership-welcome"])
 
     input =
       Base.url_encode64(~s({"alg":"HS256"}), padding: false) <>

@@ -131,7 +131,7 @@ defmodule Dawarich.ReleaseTest do
     Repo.query!("DROP SCHEMA IF EXISTS oban CASCADE")
     Repo.query!("DROP SCHEMA IF EXISTS phoenix CASCADE")
 
-    assert Release.migrate() == :ok
+    assert Release.migrate(copy_opts()) == :ok
 
     assert SchemaFingerprint.public() == baseline
     assert ledger_versions("phoenix") == source_versions("migrations")
@@ -141,15 +141,15 @@ defmodule Dawarich.ReleaseTest do
   end
 
   test "is idempotent" do
-    assert Release.migrate() == :ok
+    assert Release.migrate(copy_opts()) == :ok
     before = SchemaFingerprint.public()
 
-    assert Release.migrate() == :ok
+    assert Release.migrate(copy_opts()) == :ok
     assert SchemaFingerprint.public() == before
   end
 
   test "an unprefixed migration in priv/repo/migrations lands in phoenix, not public or oban" do
-    assert Release.migrate() == :ok
+    assert Release.migrate(copy_opts()) == :ok
     unique = System.unique_integer([:positive, :monotonic])
     version = 20_990_000_000_000 + unique
     tmp_dir = Path.join(System.tmp_dir!(), "release_probe_#{unique}")
@@ -224,4 +224,6 @@ defmodule Dawarich.ReleaseTest do
     end)
     |> Enum.sort()
   end
+
+  defp copy_opts, do: [command: fn _ -> {:ok, nil} end, env: %{}]
 end

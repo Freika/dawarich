@@ -126,7 +126,7 @@ defmodule Dawarich.State do
     end
   end
 
-  def put_registration_enabled(repo, enabled) when is_boolean(enabled) do
+  def put_registration_enabled(repo, enabled) when enabled in [true, false, nil] do
     repo.query!(@put_registration, [enabled], log: false)
     :ok
   end

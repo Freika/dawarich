@@ -5,16 +5,12 @@ defmodule DawarichWeb.AuthGateEndpointTest do
 
   import Dawarich.Test.RawHTTP
 
-  alias Dawarich.{RailsCookies, RailsSecret, Redis}
+  alias Dawarich.{RailsCookies, RailsSecret}
   alias DawarichWeb.RailsCsrf
 
-  @activation Path.expand("../fixtures/auth/activation.json", __DIR__)
-  @external_resource @activation
-  @fixture Jason.decode!(File.read!(@activation))
   @hash Jason.decode!(File.read!(Path.expand("../fixtures/auth/requests.json", __DIR__)))[
           "user_before"
         ]["encrypted_password"]
-  @key "dawarich/registration_enabled"
   @env ~w(SELF_HOSTED DAWARICH_RAILS_SLICES APPLICATION_PROTOCOL RAILS_ENV RACK_ENV OIDC_CLIENT_ID OIDC_CLIENT_SECRET
           OIDC_PKCE_ENABLED GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_CLIENT_SECRET)
 
@@ -59,8 +55,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
   setup context do
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
-    start_supervised!(hd(Redis.cache_child_specs()))
-    {:ok, _} = Redis.cache_command(["DEL", @key])
+    Dawarich.State.put_registration_enabled(Repo, false)
     previous = Map.new(@env, &{&1, System.get_env(&1)})
     Enum.each(@env, &System.delete_env/1)
     System.put_env("SELF_HOSTED", "true")
@@ -92,8 +87,10 @@ defmodule DawarichWeb.AuthGateEndpointTest do
 
   defp registration(name),
     do:
-      {:ok, "OK"} =
-        Redis.cache_command(["SET", @key, Base.decode64!(@fixture["registration"][name])])
+      Dawarich.State.put_registration_enabled(
+        Repo,
+        %{"true" => true, "false" => false, "nil" => nil}[name]
+      )
 
   defp guest do
     session = %{"session_id" => "a11a-guest", "_csrf_token" => RailsCsrf.new_token()}
@@ -612,7 +609,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
         "otp_attempt" => Dawarich.Auth.TwoFactor.Totp.at(otp, now)
       })
 
-    {:ok, _} = Redis.cache_command(["DEL", @key])
+    Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
 
     assert {302, headers, ""} =
              exchange(ctx, form("POST", "/users/otp_challenge", source_cookie, good))
@@ -752,7 +749,13 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     no_puma(ctx)
   end
 
-  test "every flow is off by default: auth requests reach Puma byte for byte", ctx do
+  test "disabled credentials flow leaves Rails request untouched while revised Rails reads PG registration",
+       ctx do
+    assert {:ok, false} = Dawarich.Auth.RegistrationSetting.fetch()
+
+    claims =
+      Repo.query!("SELECT key, expires_at FROM phoenix.once_claims ORDER BY key", [], log: false).rows
+
     {_session, cookie} = guest()
     body = "authenticity_token=x&user%5Bemail%5D=a%40dawarich.test&user%5Bpassword%5D=p"
 
@@ -773,6 +776,12 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     for path <-
           ~w(/users/sign_in /users/password/new /users/password/edit /users/unlock/new /users/unlock),
         do: assert(to_puma(ctx, get(path)).line == "GET #{path} HTTP/1.1")
+
+    assert {:ok, false} = Dawarich.Auth.RegistrationSetting.fetch()
+
+    assert Repo.query!("SELECT key, expires_at FROM phoenix.once_claims ORDER BY key", [],
+             log: false
+           ).rows == claims
   end
 
   test "credentials on: Phoenix answers the sign-in form with Rails' sign-up link rule", ctx do
@@ -818,6 +827,25 @@ defmodule DawarichWeb.AuthGateEndpointTest do
     no_puma(ctx)
   end
 
+  test "nil or failed registration read retains each auth reader admission boundary", ctx do
+    Application.put_env(:dawarich, :phoenix_auth, ~w(credentials recovery))
+    registration("nil")
+
+    for path <- ["/users/sign_in", "/users/password/new"] do
+      assert to_puma(ctx, get(path)).line == "GET #{path} HTTP/1.1"
+    end
+
+    Repo.query!(
+      "ALTER TABLE phoenix.registration_setting RENAME COLUMN enabled TO unavailable",
+      [],
+      log: false
+    )
+
+    for path <- ["/users/sign_in", "/users/password/new"] do
+      assert to_puma(ctx, get(path)).line == "GET #{path} HTTP/1.1"
+    end
+  end
+
   test "credentials on: what Phoenix cannot serve reaches Puma with the request intact", ctx do
     Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
     registration("false")
@@ -834,7 +862,7 @@ defmodule DawarichWeb.AuthGateEndpointTest do
       assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
     end
 
-    {:ok, "OK"} = Redis.cache_command(["SET", @key, <<4, 8, ?T>>])
+    registration("nil")
     assert to_puma(ctx, get("/users/sign_in")).line == "GET /users/sign_in HTTP/1.1"
 
     registration("false")

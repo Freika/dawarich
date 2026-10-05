@@ -7,8 +7,7 @@ defmodule DawarichWeb.HomeGateTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
-    :ok = Dawarich.Auth.RegistrationSetting.put(true)
+    :ok = Dawarich.State.put_registration_enabled(Repo, true)
     original = Application.get_env(:dawarich, :rails_routes, [])
     on_exit(fn -> Application.put_env(:dawarich, :rails_routes, original) end)
 
