@@ -2,19 +2,8 @@ defmodule Dawarich.Admin.InstanceWritesTest do
   use ExUnit.Case, async: false
   alias Dawarich.Admin.{InstancePage, InstanceWrites}
   alias Dawarich.{Accounts, ActiveRecordEncryption, Redis, Repo}
-  alias Dawarich.Test.RailsUser
+  alias Dawarich.Test.{LaterFailureRepo, RailsUser}
   @now ~U[2026-10-04 10:00:00.000000Z]
-
-  defmodule LaterFailureRepo do
-    defdelegate transaction(fun), to: Dawarich.Repo
-
-    def query!(sql, params, opts) do
-      if String.starts_with?(sql, "INSERT INTO instance_settings") and
-           hd(params) == "reverse_geocoding_rps",
-         do: raise("synthetic later persistence failure"),
-         else: Dawarich.Repo.query!(sql, params, opts)
-    end
-  end
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
