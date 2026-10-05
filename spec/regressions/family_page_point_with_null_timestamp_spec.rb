@@ -13,10 +13,14 @@ RSpec.describe 'Family location lookup with incomplete points' do
   let(:newest_at) { Time.zone.parse('2026-07-15 12:00') }
 
   let(:owner) { create(:user) }
+  let(:viewer) { create(:user) }
   let(:family) { create(:family, creator: owner) }
 
   before do
     create(:family_membership, user: owner, family: family, role: :owner)
+    create(:family_membership, user: viewer, family: family, role: :member)
+    viewer.update_family_location_sharing!(true)
+    create(:point, user: viewer, timestamp: Time.current.to_i)
     owner.update_family_location_sharing!(true)
     create(:point, user: owner, timestamp: latest_at.to_i)
   end
@@ -50,7 +54,7 @@ RSpec.describe 'Family location lookup with incomplete points' do
     end
 
     it 'reports that point through the family locations API' do
-      location = Families::Locations.new(owner).call.first
+      location = Families::Locations.new(viewer).call.sole
 
       expect(location[:timestamp]).to eq(latest_at.to_i)
       expect(location[:updated_at]).to eq(Time.zone.at(latest_at.to_i))
@@ -69,7 +73,7 @@ RSpec.describe 'Family location lookup with incomplete points' do
     end
 
     it 'reports that point through the family locations API' do
-      location = Families::Locations.new(owner).call.first
+      location = Families::Locations.new(viewer).call.sole
 
       expect(location[:timestamp]).to eq(latest_at.to_i)
       expect(location[:latitude]).to be_present
@@ -82,7 +86,7 @@ RSpec.describe 'Family location lookup with incomplete points' do
       owner.points.update_all(timestamp: nil)
 
       expect(owner.latest_location_for_family).to be_nil
-      expect(Families::Locations.new(owner).call).to be_empty
+      expect(Families::Locations.new(viewer).call).to be_empty
     end
   end
 
@@ -95,8 +99,8 @@ RSpec.describe 'Family location lookup with incomplete points' do
     end
 
     it 'omits it instead of emitting a null coordinate pair into the track' do
-      history = Families::Locations.new(owner).history(start_at: earlier_at, end_at: newest_at + 1.day)
-      points = history.first[:points]
+      history = Families::Locations.new(viewer).history(start_at: earlier_at, end_at: newest_at + 1.day)
+      points = history.sole[:points]
 
       expect(points).to be_present
       expect(points.map { _1[0] }).to all(be_present)
@@ -114,8 +118,8 @@ RSpec.describe 'Family location lookup with incomplete points' do
       add_incomplete_point(owner, timestamp: nil)
     end
 
-    it 'still reports both members' do
-      locations = Families::Locations.new(owner).call
+    it 'reports both other sharing members and excludes the viewer' do
+      locations = Families::Locations.new(viewer).call
 
       expect(locations.map { _1[:user_id] }).to match_array([owner.id, relative.id])
       expect(locations.map { _1[:timestamp] }).to all(eq(latest_at.to_i))
@@ -123,7 +127,7 @@ RSpec.describe 'Family location lookup with incomplete points' do
   end
 
   describe 'GET /family', type: :request do
-    before { sign_in owner }
+    before { sign_in viewer }
 
     it 'renders when a member has a point without a timestamp' do
       add_incomplete_point(owner, timestamp: nil)
