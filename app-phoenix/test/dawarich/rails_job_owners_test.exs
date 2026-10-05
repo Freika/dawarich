@@ -4,6 +4,17 @@ defmodule Dawarich.RailsJobOwnersTest do
   alias Dawarich.{RailsJobOwners, RailsTree, ReleaseJobs}
   alias Dawarich.Jobs.Registry
 
+  test "cache classes map to preheat owners or retire without a cleaning worker" do
+    owners = RailsJobOwners.owners()
+    assert owners["Cache::CleaningJob"] == :retire
+    assert owners["Cache::PreheatingJob"] == {:oban, ["cron:cache_preheating_job"]}
+    assert owners["Cache::UserPreheatingJob"] == {:oban, ["command:cache.preheat_user"]}
+    refute "Cache::CleaningJob" in ReleaseJobs.classes()
+    refute "Cache::PreheatingJob" in ReleaseJobs.classes()
+    refute "Cache::UserPreheatingJob" in ReleaseJobs.classes()
+    refute Enum.any?(Registry.entries(), &String.contains?(&1.key, "cleaning"))
+  end
+
   test "every Rails job class has an owner decision and every decision names a Rails job class" do
     scanned = MapSet.new(job_files(), &class_for/1)
     owned = MapSet.new(RailsJobOwners.classes())
