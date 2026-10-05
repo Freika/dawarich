@@ -24,7 +24,7 @@ defmodule Dawarich.Test.RailsUser do
         attrs
       )
 
-    repo.insert_all("users", [row])
+    Dawarich.Test.SeedIds.insert_all!(repo, "users", [row])
     row
   end
 

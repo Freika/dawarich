@@ -24,7 +24,12 @@ defmodule Dawarich.Test.SharingSeeds do
             api_key: user["api_key"]
           })
 
-    Repo.insert_all("shared_links", Enum.map(seed["shared_links"], &row(&1, shift)))
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
+      "shared_links",
+      Enum.map(seed["shared_links"], &row(&1, shift))
+    )
+
     seed
   end
 

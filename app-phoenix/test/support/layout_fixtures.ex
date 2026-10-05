@@ -73,7 +73,8 @@ defmodule Dawarich.Test.LayoutFixtures do
     insert_user(user)
     insert_family(state["family"], user["id"])
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "notifications",
       for n <- state["notifications"] do
         at = naive(n["created_at"])
@@ -91,7 +92,8 @@ defmodule Dawarich.Test.LayoutFixtures do
       end
     )
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "imports",
       for i <- state["imports"] || [] do
         %{
@@ -129,7 +131,7 @@ defmodule Dawarich.Test.LayoutFixtures do
       admin: user["admin"]
     )
     |> then(fn _ ->
-      Repo.insert_all("users", [
+      Dawarich.Test.SeedIds.insert_all!(Repo, "users", [
         %{
           id: user["id"],
           email: user["email"],
@@ -157,7 +159,7 @@ defmodule Dawarich.Test.LayoutFixtures do
     creator = family["creator"]
     if creator["id"] != user_id, do: insert_user(creator)
 
-    Repo.insert_all("families", [
+    Dawarich.Test.SeedIds.insert_all!(Repo, "families", [
       %{
         id: family["id"],
         name: "F",
@@ -172,7 +174,8 @@ defmodule Dawarich.Test.LayoutFixtures do
       {user_id, family["role"]} | if(creator["id"] != user_id, do: [{creator["id"], 0}], else: [])
     ]
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "family_memberships",
       for(
         {id, role} <- members,

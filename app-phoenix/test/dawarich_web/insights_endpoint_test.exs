@@ -261,6 +261,7 @@ defmodule DawarichWeb.InsightsEndpointTest do
   end
 
   test "a digest Rails would calculate or cache sends the request to Puma unchanged", ctx do
+    Dawarich.Repo.query!("SELECT setval('digests_id_seq', 71, false)")
     ctx = digest_user!(ctx)
     cookie = [{"Cookie", ctx.cookie}]
 

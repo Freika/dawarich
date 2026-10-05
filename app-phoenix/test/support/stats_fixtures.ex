@@ -28,8 +28,17 @@ defmodule Dawarich.StatsFixtures do
     for table <- @tables, row <- Map.get(input, table, []), do: row!(table, row)
 
     case kase["generated_points"] do
-      %{"sql" => sql, "params" => params} -> query(sql, params)
-      nil -> :ok
+      %{"sql" => sql, "params" => params} ->
+        query(sql, params)
+
+        Dawarich.Test.SeedIds.advance!(
+          ScratchRepo,
+          "points",
+          List.flatten(query("SELECT max(id) FROM points"))
+        )
+
+      nil ->
+        :ok
     end
 
     :ok
@@ -73,6 +82,7 @@ defmodule Dawarich.StatsFixtures do
       [Jason.encode!(row)]
     )
 
+    Dawarich.Test.SeedIds.advance!(ScratchRepo, table, [row["id"]])
     :ok
   end
 

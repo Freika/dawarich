@@ -25,6 +25,7 @@ defmodule Dawarich.RecalculationFixtures do
       log: false
     )
 
+    Dawarich.Test.SeedIds.advance!(repo, table, [row["id"]])
     :ok
   end
 end

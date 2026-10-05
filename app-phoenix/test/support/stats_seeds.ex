@@ -20,14 +20,14 @@ defmodule Dawarich.Test.StatsSeeds do
         attrs
       )
 
-    Repo.insert_all("stats", [row])
+    Dawarich.Test.SeedIds.insert_all!(Repo, "stats", [row])
     row
   end
 
   def digest!(user_id, attrs) do
     stamp = NaiveDateTime.utc_now(:second)
 
-    Repo.insert_all("digests", [
+    Dawarich.Test.SeedIds.insert_all!(Repo, "digests", [
       Map.merge(
         %{user_id: user_id, period_type: 1, distance: 0, created_at: stamp, updated_at: stamp},
         attrs
@@ -41,7 +41,7 @@ defmodule Dawarich.Test.StatsSeeds do
   def point!(user_id, attrs) do
     stamp = NaiveDateTime.utc_now(:second)
 
-    Repo.insert_all("points", [
+    Dawarich.Test.SeedIds.insert_all!(Repo, "points", [
       Map.merge(%{user_id: user_id, created_at: stamp, updated_at: stamp}, attrs)
     ])
   end
@@ -63,6 +63,6 @@ defmodule Dawarich.Test.StatsSeeds do
         do: rows,
         else: [%{key: "store_geodata", value: false, created_at: stamp, updated_at: stamp} | rows]
 
-    Repo.insert_all("instance_settings", rows)
+    Dawarich.Test.SeedIds.insert_all!(Repo, "instance_settings", rows)
   end
 end

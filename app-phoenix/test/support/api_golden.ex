@@ -16,10 +16,14 @@ defmodule Dawarich.Test.ApiGolden do
   end
 
   def insert!(table, row, repo \\ Dawarich.Repo) do
-    repo.query!(
-      "INSERT INTO #{table} SELECT * FROM json_populate_record(NULL::#{table}, $1::text::json)",
-      [exact_json(row)]
-    )
+    result =
+      repo.query!(
+        "INSERT INTO #{table} SELECT * FROM json_populate_record(NULL::#{table}, $1::text::json)",
+        [exact_json(row)]
+      )
+
+    Dawarich.Test.SeedIds.advance!(repo, table, [row["id"]])
+    result
   end
 
   defp raw(%{"method" => method, "target" => target, "headers" => headers} = request),

@@ -27,6 +27,22 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
     :ok
   end
 
+  test "timeline cache TTL accounts for elapsed time" do
+    key = "timeline_month_summary/ttl_regression"
+    primed_at = System.monotonic_time(:millisecond) - 3_000
+    assert {:ok, "OK"} = Dawarich.RailsCache.put(key, "primed", expires_in: 300)
+    assert {:ok, 1} = Dawarich.Redis.cache_command(["PEXPIRE", key, "297000"])
+    kase = %{"cache_after" => %{key => %{}}, "expect" => "rails"}
+    assert_months([], kase, primed_at)
+
+    for ttl <- [290_000, 301_000] do
+      assert {:ok, 1} = Dawarich.Redis.cache_command(["PEXPIRE", key, to_string(ttl)])
+      assert_raise ExUnit.AssertionError, fn -> assert_months([], kase, primed_at) end
+    end
+
+    Dawarich.Redis.cache_command(["DEL", key])
+  end
+
   for kase <- @golden["cases"] do
     @kase kase
     @setup_rows @golden["setups"][kase["setup"]]
@@ -46,6 +62,8 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
 
       for {key, _} <- @kase["cache_after"], do: Dawarich.Redis.cache_command(["DEL", key])
 
+      primed_at = System.monotonic_time(:millisecond)
+
       for {key, _} <- @kase["cache_after"],
           String.starts_with?(key, "timeline_month_summary/"),
           do: assert(Dawarich.RailsCache.put(key, "primed", expires_in: 300) == {:ok, "OK"})
@@ -60,7 +78,7 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
          do: assert(effects == [])
 
       assert_jobs(effects, @kase["jobs_after"] || [])
-      assert_months(effects, @kase)
+      assert_months(effects, @kase, primed_at)
       for {key, _} <- @kase["cache_after"], do: Dawarich.Redis.cache_command(["DEL", key])
     end
   end
@@ -88,12 +106,17 @@ defmodule DawarichWeb.Api.VisitsGoldenTest do
     assert Enum.sort(actual) == Enum.sort(jobs)
   end
 
-  defp assert_months(effects, kase) do
+  defp assert_months(effects, kase, primed_at) do
     for {key, _} <- kase["cache_after"] do
       timeline? = String.starts_with?(key, "timeline_month_summary/")
       assert Dawarich.RailsCache.get(key) == if(timeline?, do: {:ok, "primed"}, else: :miss)
       assert {:ok, ttl} = Dawarich.Redis.cache_command(["TTL", key])
-      assert if(timeline?, do: ttl in 298..300, else: ttl == -2)
+      elapsed = (System.monotonic_time(:millisecond) - primed_at) / 1_000
+
+      assert if(timeline?,
+               do: ttl > 0 and ttl <= 300 and ttl >= 300 - ceil(elapsed),
+               else: ttl == -2
+             )
     end
 
     if kase["expect"] == "own" do

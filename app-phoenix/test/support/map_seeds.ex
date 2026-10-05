@@ -26,7 +26,8 @@ defmodule Dawarich.Test.MapSeeds do
 
     rows = fn key, fun -> Enum.map(state[key] || [], fun) end
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "imports",
       rows.(
         "imports",
@@ -66,7 +67,8 @@ defmodule Dawarich.Test.MapSeeds do
             ]
           )
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "tags",
       rows.(
         "tags",
@@ -82,7 +84,8 @@ defmodule Dawarich.Test.MapSeeds do
       )
     )
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "shared_links",
       rows.(
         "shared_links",
@@ -98,7 +101,8 @@ defmodule Dawarich.Test.MapSeeds do
       )
     )
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "posters",
       rows.(
         "posters",
@@ -114,7 +118,8 @@ defmodule Dawarich.Test.MapSeeds do
       )
     )
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "route_videos",
       rows.(
         "route_videos",
@@ -131,7 +136,8 @@ defmodule Dawarich.Test.MapSeeds do
       )
     )
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "active_storage_blobs",
       rows.(
         "blobs",
@@ -148,7 +154,8 @@ defmodule Dawarich.Test.MapSeeds do
       )
     )
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "active_storage_attachments",
       rows.(
         "attachments",
@@ -162,13 +169,17 @@ defmodule Dawarich.Test.MapSeeds do
       )
     )
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "instance_settings",
       rows.(
         "instance_settings",
         &%{key: &1["key"], value: &1["value"], created_at: stamp, updated_at: stamp}
       )
     )
+
+    for table <- ~w(points places),
+        do: Dawarich.Test.SeedIds.advance!(Repo, table, Enum.map(state[table] || [], & &1["id"]))
 
     Dawarich.Accounts.get(u["id"])
   end

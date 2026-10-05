@@ -525,7 +525,8 @@ if Enum.at(System.argv(), 1) == "two_factor_management" do
     unless count == 0, do: raise("A11c synthetic actor already exists")
 
     {1, _} =
-      Repo.insert_all(
+      Dawarich.Test.SeedIds.insert_all!(
+        Repo,
         "users",
         [
           %{

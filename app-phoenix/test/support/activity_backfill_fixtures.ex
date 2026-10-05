@@ -13,7 +13,7 @@ defmodule Dawarich.Test.ActivityBackfillFixtures do
   def seed!(profile) do
     cleanup()
 
-    ScratchRepo.insert_all("users", [
+    Dawarich.Test.SeedIds.insert_all!(ScratchRepo, "users", [
       %{
         id: 987_001,
         email: "a12rel-replay@example.invalid",
@@ -75,8 +75,12 @@ defmodule Dawarich.Test.ActivityBackfillFixtures do
   def query(sql, params \\ []), do: ScratchRepo.query!(sql, params, log: false).rows
 
   defp insert!(table, attrs) do
-    query("INSERT INTO #{table} SELECT (json_populate_record(NULL::#{table},$1::json)).*", [
-      attrs
-    ])
+    result =
+      query("INSERT INTO #{table} SELECT (json_populate_record(NULL::#{table},$1::json)).*", [
+        attrs
+      ])
+
+    Dawarich.Test.SeedIds.advance!(ScratchRepo, table, [attrs["id"]])
+    result
   end
 end

@@ -38,6 +38,7 @@ defmodule Dawarich.Test.FrameSeeds do
       [id, user_id, name, "Leipzig", "Germany", @lat + dy, @lon + dx]
     )
 
+    Dawarich.Test.SeedIds.advance!(Repo, "places", [id])
     id
   end
 
@@ -56,7 +57,7 @@ defmodule Dawarich.Test.FrameSeeds do
         attrs
       )
 
-    Repo.insert_all("visits", [row])
+    Dawarich.Test.SeedIds.insert_all!(Repo, "visits", [row])
     id
   end
 
@@ -93,17 +94,18 @@ defmodule Dawarich.Test.FrameSeeds do
       ]
     )
 
+    Dawarich.Test.SeedIds.advance!(Repo, "tracks", [id])
     id
   end
 
   def segment!(track_id, id, attrs),
     do:
-      Repo.insert_all("track_segments", [
+      Dawarich.Test.SeedIds.insert_all!(Repo, "track_segments", [
         Map.merge(%{id: id, track_id: track_id, created_at: stamp(), updated_at: stamp()}, attrs)
       ])
 
   def tag!(user_id, id, name, place_id, created_at) do
-    Repo.insert_all("tags", [
+    Dawarich.Test.SeedIds.insert_all!(Repo, "tags", [
       %{
         id: id,
         user_id: user_id,
@@ -114,7 +116,7 @@ defmodule Dawarich.Test.FrameSeeds do
       }
     ])
 
-    Repo.insert_all("taggings", [
+    Dawarich.Test.SeedIds.insert_all!(Repo, "taggings", [
       %{
         id: id,
         tag_id: id,
@@ -128,7 +130,7 @@ defmodule Dawarich.Test.FrameSeeds do
 
   def suggest!(id, visit_id, place_id),
     do:
-      Repo.insert_all("place_visits", [
+      Dawarich.Test.SeedIds.insert_all!(Repo, "place_visits", [
         %{
           id: id,
           visit_id: visit_id,
@@ -139,16 +141,20 @@ defmodule Dawarich.Test.FrameSeeds do
       ])
 
   def point!(user_id, id, timestamp, attrs \\ %{}) do
-    Repo.query!(
-      "INSERT INTO points (id, user_id, timestamp, visit_id, country_name, lonlat, created_at, updated_at) " <>
-        "VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography, now(), now())",
-      [id, user_id, timestamp, attrs[:visit_id], attrs[:country_name], @lon, @lat]
-    )
+    result =
+      Repo.query!(
+        "INSERT INTO points (id, user_id, timestamp, visit_id, country_name, lonlat, created_at, updated_at) " <>
+          "VALUES ($1, $2, $3, $4, $5, ST_SetSRID(ST_MakePoint($6, $7), 4326)::geography, now(), now())",
+        [id, user_id, timestamp, attrs[:visit_id], attrs[:country_name], @lon, @lat]
+      )
+
+    Dawarich.Test.SeedIds.advance!(Repo, "points", [id])
+    result
   end
 
   def stat!(user_id, year, month),
     do:
-      Repo.insert_all("stats", [
+      Dawarich.Test.SeedIds.insert_all!(Repo, "stats", [
         %{
           user_id: user_id,
           year: year,

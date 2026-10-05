@@ -50,6 +50,8 @@ defmodule Dawarich.DigestFixtures do
         [Jason.encode!(rows)],
         log: false
       )
+
+      Dawarich.Test.SeedIds.advance!(repo, table, Enum.map(rows, & &1["id"]))
     end
 
     :ok
@@ -85,6 +87,7 @@ defmodule Dawarich.DigestFixtures do
       log: false
     )
 
+    Dawarich.Test.SeedIds.advance!(repo, table, [row["id"]])
     :ok
   end
 

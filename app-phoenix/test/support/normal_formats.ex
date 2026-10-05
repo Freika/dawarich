@@ -8,7 +8,7 @@ defmodule Dawarich.Test.NormalFormats do
     expected = @dir |> Path.join(name <> ".json") |> File.read!() |> Jason.decode!() |> decode()
     user = expected["identities"]["user_id"]
 
-    repo.insert_all("users", [
+    Dawarich.Test.SeedIds.insert_all!(repo, "users", [
       %{
         id: user,
         email: "normal-formats@example.invalid",
@@ -26,7 +26,8 @@ defmodule Dawarich.Test.NormalFormats do
     identities = expected["identities"] || %{}
 
     {1, [%{id: user}]} =
-      repo.insert_all(
+      Dawarich.Test.SeedIds.insert_all!(
+        repo,
         "users",
         [
           %{
@@ -41,7 +42,8 @@ defmodule Dawarich.Test.NormalFormats do
       )
 
     {1, [%{id: id}]} =
-      repo.insert_all(
+      Dawarich.Test.SeedIds.insert_all!(
+        repo,
         "imports",
         [
           %{
@@ -84,7 +86,7 @@ defmodule Dawarich.Test.NormalFormats do
     parent = expected["parent"] || %{"name" => archive_name(expected)}
     source = Enum.find_index(@sources, &(&1 == expected["initial_source"]))
 
-    repo.insert_all("users", [
+    Dawarich.Test.SeedIds.insert_all!(repo, "users", [
       %{
         id: user,
         email: "whole@example.test",
@@ -95,7 +97,7 @@ defmodule Dawarich.Test.NormalFormats do
       }
     ])
 
-    repo.insert_all("imports", [
+    Dawarich.Test.SeedIds.insert_all!(repo, "imports", [
       %{
         id: id,
         user_id: user,
@@ -107,7 +109,7 @@ defmodule Dawarich.Test.NormalFormats do
     ])
 
     for initial <- expected["initial_imports"] do
-      repo.insert_all("imports", [
+      Dawarich.Test.SeedIds.insert_all!(repo, "imports", [
         %{
           id: initial["id"],
           user_id: user,
@@ -144,7 +146,8 @@ defmodule Dawarich.Test.NormalFormats do
     File.write!(path, bytes)
 
     {1, [%{id: blob}]} =
-      repo.insert_all(
+      Dawarich.Test.SeedIds.insert_all!(
+        repo,
         "active_storage_blobs",
         [
           %{
@@ -163,7 +166,7 @@ defmodule Dawarich.Test.NormalFormats do
 
     repo.query!("SELECT setval(pg_get_serial_sequence('active_storage_blobs','id'),987301,true)")
 
-    repo.insert_all("active_storage_attachments", [
+    Dawarich.Test.SeedIds.insert_all!(repo, "active_storage_attachments", [
       %{record_type: "Import", record_id: id, name: "file", blob_id: blob, created_at: @stamp}
     ])
 
@@ -175,7 +178,8 @@ defmodule Dawarich.Test.NormalFormats do
     }
 
     {1, [%{id: job}]} =
-      repo.insert_all(
+      Dawarich.Test.SeedIds.insert_all!(
+        repo,
         "oban_jobs",
         [
           %{

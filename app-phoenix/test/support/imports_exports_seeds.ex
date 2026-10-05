@@ -27,7 +27,7 @@ defmodule Dawarich.Test.ImportsExportsSeeds do
         attrs
       )
 
-    Repo.insert_all("imports", [row])
+    Dawarich.Test.SeedIds.insert_all!(Repo, "imports", [row])
     row
   end
 
@@ -49,15 +49,18 @@ defmodule Dawarich.Test.ImportsExportsSeeds do
         attrs
       )
 
-    Repo.insert_all("exports", [row])
+    Dawarich.Test.SeedIds.insert_all!(Repo, "exports", [row])
     row
   end
 
   def file!(record_type, record_id, name, blob_id, byte_size, filename) do
     stamp = NaiveDateTime.utc_now()
-    Repo.insert_all("active_storage_blobs", [blob(blob_id, filename, byte_size, stamp)])
 
-    Repo.insert_all("active_storage_attachments", [
+    Dawarich.Test.SeedIds.insert_all!(Repo, "active_storage_blobs", [
+      blob(blob_id, filename, byte_size, stamp)
+    ])
+
+    Dawarich.Test.SeedIds.insert_all!(Repo, "active_storage_attachments", [
       %{
         name: name,
         record_type: record_type,
@@ -72,7 +75,8 @@ defmodule Dawarich.Test.ImportsExportsSeeds do
     for u <- seed["users"],
         do: RailsUser.insert!(%{id: u["id"], email: u["email"], settings: u["settings"]})
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "imports",
       for r <- seed["imports"] do
         %{
@@ -92,7 +96,8 @@ defmodule Dawarich.Test.ImportsExportsSeeds do
       end
     )
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "exports",
       for r <- seed["exports"] do
         %{
@@ -110,12 +115,14 @@ defmodule Dawarich.Test.ImportsExportsSeeds do
       end
     )
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "active_storage_blobs",
       for(b <- seed["blobs"], do: blob(b["id"], b["filename"], b["byte_size"], now))
     )
 
-    Repo.insert_all(
+    Dawarich.Test.SeedIds.insert_all!(
+      Repo,
       "active_storage_attachments",
       for a <- seed["attachments"] do
         %{
