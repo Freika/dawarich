@@ -53,9 +53,18 @@ module A12aFixtureSupport
     JSON.parse(DIR.join(name).read)
   end
 
-  def write(name, data)
-    FileUtils.mkdir_p(DIR)
-    DIR.join(name).write("#{Oj.dump(data, mode: :strict, float_precision: 0, indent: 2)}\n")
+  def capture_json(data)
+    "#{Oj.dump(data, mode: :strict, float_precision: 0, indent: 2)}\n"
+  end
+
+  def write(name, data, directory: DIR)
+    FileUtils.mkdir_p(directory)
+    directory.join(name).write(capture_json(data))
+  end
+
+  def capture_output(name, data)
+    directory = ENV['A12A_CAPTURE_DIR']
+    write(name, data, directory: Pathname.new(directory)) if directory.present?
   end
 
   def normalized(data)

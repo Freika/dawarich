@@ -70,6 +70,29 @@ defmodule DawarichWeb.CableRouteTest do
     end)
   end
 
+  test "transport selection does not change cable ownership or hand-back", %{port: port} do
+    previous = Application.get_env(:dawarich, :cable)
+    on_exit(fn -> Application.put_env(:dawarich, :cable, previous) end)
+
+    for transport <- [:redis, :pg] do
+      Application.put_env(:dawarich, :cable, transport: transport, bus: false)
+      Application.put_env(:dawarich, :rails_routes, [])
+      assert {101, _} = upgrade!(port)
+      refute_receive {:cable_request, "/cable", _, _}, 100
+      Application.put_env(:dawarich, :rails_routes, ["cable"])
+      assert {101, _} = upgrade!(port)
+      assert_receive {:cable_request, "/cable", _, _}
+      Application.put_env(:dawarich, :rails_routes, [])
+
+      for {name, value} <- [{"SELF_HOSTED", "false"}, {"DAWARICH_RAILS_SLICES", "cable"}] do
+        with_system_env(name, value, fn ->
+          assert {101, _} = upgrade!(port)
+          assert_receive {:cable_request, "/cable", _, _}
+        end)
+      end
+    end
+  end
+
   test "map and cable rollback keys remain independent", %{port: port} do
     Application.put_env(:dawarich, :rails_routes, ["map"])
     assert DawarichWeb.Strangler.handed_back?(["map"])

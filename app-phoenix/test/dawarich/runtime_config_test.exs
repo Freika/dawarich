@@ -2,7 +2,7 @@ defmodule Dawarich.RuntimeConfigTest do
   use ExUnit.Case, async: false
 
   @runtime Path.expand("../../config/runtime.exs", __DIR__)
-  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS DAWARICH_RAILS_ROUTES DAWARICH_PHOENIX_AUTH RAILS_MAX_THREADS REDIS_URL RAILS_JOB_QUEUE_DB RAILS_CACHE_DB)
+  @vars ~w(HOSTNAME DATABASE_URL DATABASE_HOST DATABASE_NAME PGSSLMODE PGSSLROOTCERT DAWARICH_RAILS_ARGS DAWARICH_RAILS_ROUTES DAWARICH_PHOENIX_AUTH RAILS_MAX_THREADS REDIS_URL RAILS_JOB_QUEUE_DB RAILS_CACHE_DB DAWARICH_CABLE_TRANSPORT)
 
   setup do
     saved = Map.new(@vars, &{&1, System.get_env(&1)})
@@ -25,6 +25,26 @@ defmodule Dawarich.RuntimeConfigTest do
   defp redis(env) do
     Enum.each(env, fn {name, value} -> System.put_env(name, value) end)
     Config.Reader.read!(@runtime, env: :prod)[:dawarich][:redis]
+  end
+
+  test "Cable defaults to Redis and accepts only explicit pg or redis transport" do
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:cable][:transport] == :redis
+
+    for {value, transport} <- [{"pg", :pg}, {"redis", :redis}] do
+      System.put_env("DAWARICH_CABLE_TRANSPORT", value)
+      assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:cable][:transport] == transport
+    end
+
+    System.put_env("DAWARICH_CABLE_TRANSPORT", "")
+    assert Config.Reader.read!(@runtime, env: :prod)[:dawarich][:cable][:transport] == :redis
+
+    for value <- ["postgres", "PG", " pg "] do
+      System.put_env("DAWARICH_CABLE_TRANSPORT", value)
+
+      assert_raise ArgumentError, ~r/DAWARICH_CABLE_TRANSPORT/, fn ->
+        Config.Reader.read!(@runtime, env: :prod)
+      end
+    end
   end
 
   test "sizes the pool from the queue limits and enables Oban's services" do
