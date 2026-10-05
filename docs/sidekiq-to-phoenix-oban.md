@@ -4,7 +4,8 @@ The default-off A12d3 schedule and reversible drain procedure is documented in
 [A12d3 schedules and Sidekiq drain](phoenix/a12d3-schedules-drain.md). It retains
 all 125 source classes and framework jobs, maps 24 Rails schedules (cache
 coexistence still blocks full closure), and uses existing owner/rehome/status
-tools. Explicit idle-role configuration is available only after release drain
+tools. Native redacted drain inspection is `dawarich jobs drain-status`; default
+`dawarich jobs status` retains its Rails parity output. Explicit idle-role configuration is available only after release drain
 acceptance; tests do not authorize a live Sidekiq shutdown. ED-520–ED-522 record
 UTC firing instants, skipped activation catch-up and pending-import retention.
 Source jobs and Redis stay through the separately approved rollback window.

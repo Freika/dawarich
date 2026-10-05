@@ -1,7 +1,8 @@
 defmodule Dawarich.PendingImports.PurgeWorker do
   @moduledoc false
   use Oban.Worker,
-    queue: :low_priority,
+    queue: :maintenance,
+    priority: 3,
     max_attempts: 26,
     unique: [
       keys: [:pending_import_id, :blob_id, :attachment_id],

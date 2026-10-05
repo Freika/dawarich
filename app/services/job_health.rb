@@ -70,19 +70,20 @@ module JobHealth
     connection.select_one(sanitize([FLAGS_SQL, { node: node.to_s, stale: STALE_SECONDS, overdue: OVERDUE_SECONDS }]))
   end
 
-  def gauges
+  def gauges(include_drain: false)
     read do
       next { tables: false } unless JobOwnership.table?
 
-      {
+      metrics = {
         tables: true,
-        drain: drain_counts,
         outbox: connection.select_one(OUTBOX_SQL),
         owners: connection.select_all(OWNERS_SQL).to_a,
         nodes: connection.select_all(NODES_SQL).to_a,
         oban: oban_counts,
         rails_commands: rails_commands_counts
       }
+      metrics[:drain] = drain_counts if include_drain
+      metrics
     end
   rescue StandardError => e
     Rails.logger.warn("[JobHealth] gauges failed: #{e.class}")
@@ -175,8 +176,6 @@ module JobHealth
 
   RAILS_COMMANDS_SQL = <<~SQL.squish
     SELECT
-      (SELECT count(*) FROM phoenix.rails_commands)::integer AS pending,
-      (SELECT count(*) FROM phoenix.rails_commands WHERE available_at > now())::integer AS future,
       (SELECT count(*) FROM phoenix.rails_commands
          WHERE available_at <= now() AND (leased_until IS NULL OR leased_until < now()))::integer AS due,
       (SELECT count(*) FROM phoenix.rails_commands WHERE leased_until >= now())::integer AS leased,
@@ -189,7 +188,6 @@ module JobHealth
 
   OUTBOX_SQL = <<~SQL.squish
     SELECT
-      count(*) FILTER (WHERE state = 'pending')::integer AS pending,
       count(*) FILTER (WHERE state = 'pending' AND scheduled_at <= now())::integer AS due,
       count(*) FILTER (WHERE state = 'pending' AND scheduled_at > now())::integer AS scheduled,
       count(*) FILTER (WHERE state = 'quarantined')::integer AS quarantined,

@@ -57,9 +57,13 @@ defmodule Dawarich.Jobs.ResidualEntriesTest do
 
     for {class, keys} <- @owners, do: assert(RailsJobOwners.owners()[class] == {:oban, keys})
 
-    for class <-
-          ~w(BulkVisitsSuggestingJob PendingImports::CleanupJob EnqueueBackgroundJob),
-        do: assert(RailsJobOwners.owners()[class] == {:slice, :a12d2})
+    assert RailsJobOwners.owners()["BulkVisitsSuggestingJob"] ==
+             {:oban, ["cron:visit_suggesting_job", "command:visits.bulk_suggest"]}
+
+    assert RailsJobOwners.owners()["PendingImports::CleanupJob"] ==
+             {:oban, ["cron:pending_imports_cleanup"]}
+
+    assert RailsJobOwners.owners()["EnqueueBackgroundJob"] == {:slice, :a12d2}
 
     assert RailsJobOwners.owners()["TeslaMate::SyncJob"] ==
              {:oban, ["command:imports.teslamate_sync"]}
@@ -123,9 +127,9 @@ defmodule Dawarich.Jobs.ResidualEntriesTest do
       assert rows("SELECT state FROM oban.oban_jobs WHERE id = $1", [job.id]) == [[state]]
       {:ok, out} = StringIO.open("")
       ctx = %{repo: ScratchRepo, out: out, err: out, env: %{}}
-      assert Dawarich.CLI.Jobs.status([], ctx) == 0
+      assert Dawarich.CLI.Jobs.drain_status([], ctx) == 0
       json = out |> StringIO.contents() |> elem(1) |> Jason.decode!()
-      debt = Enum.find(json["gauges"]["legacy_schedulers"], &(&1["key"] == key))
+      debt = Enum.find(json["legacy_schedulers"], &(&1["key"] == key))
       assert debt == %{"key" => key, "worker" => Oban.Worker.to_string(worker), "incomplete" => 1}
 
       rows("UPDATE oban.oban_jobs SET state = 'completed', completed_at = now() WHERE id = $1", [

@@ -1,6 +1,6 @@
 defmodule Dawarich.PendingImports.CleanupWorker do
   @moduledoc false
-  use Oban.Worker, queue: :low_priority, max_attempts: 26
+  use Oban.Worker, queue: :maintenance, priority: 3, max_attempts: 26
 
   alias Dawarich.Jobs.Ownership
   alias Dawarich.PendingImports.Cleanup

@@ -86,7 +86,7 @@ RSpec.describe JobHealth do
     connection.execute('CREATE TABLE oban.oban_jobs (worker text, state text)')
     connection.execute("INSERT INTO oban.oban_jobs VALUES ('Dawarich.Imports.Trek.ScheduleWorker', 'scheduled')")
 
-    drain = described_class.gauges[:drain]
+    drain = described_class.drain_counts
     expect(drain[:counts]).to include('pending_outbox' => 1, 'future_outbox' => 1, 'reverse_pending' => 1,
                                       'reverse_future' => 1, 'reverse_dead' => 1, 'incomplete_oban' => 1)
     expect(drain[:producer_kinds].map { _1[:kind] }).to eq(RailsCommands::Registry::HANDLERS.keys.sort)

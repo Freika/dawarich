@@ -26,7 +26,7 @@ module JobDrain
     reasons << 'process_heartbeat_invalid' if processes.any? { |process| process['beat'].to_f < 60.seconds.ago.to_f }
     reasons << 'unknown_work' if counts[:unknown].positive?
     counts.each { |key, count| reasons << "#{key}_work" if key != :unknown && count.positive? }
-    gauges = JobHealth.gauges
+    gauges = JobHealth.gauges(include_drain: true)
     bridge = bridge_status(gauges[:drain])
     reasons << 'database_unreadable' unless gauges[:tables] == true
     reasons << 'sql_bridge_blocked' if bridge[:forward] == 'BLOCKED'

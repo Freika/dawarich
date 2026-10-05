@@ -152,7 +152,9 @@ remain debt. Never decode arbitrary serialized Ruby as a migration strategy.
    Do not clear schedule state. If there is no safe installed switch, stop and make the smallest
    change to existing initializer/entrypoint in a separately authorized implementation step.
 6. **Observe both runtimes under quiescence.** Run existing extended `dawarich:jobs:drain_status`
-   and `dawarich jobs status`. Require all relevant owner keys Oban, 24 unique schedules, no
+   and `dawarich jobs drain-status`. Default `dawarich jobs status` retains the Rails parity
+   output; drain inspection separately reports redacted SQL debt and legacy schedulers.
+   Require all relevant owner keys Oban, 24 unique schedules, no
    ActiveJob/unknown work in every queue, scheduled/retry/dead/busy zero, no live fetch/reserved
    work, no future/due pending or quarantined public outbox debt, no future/due/leased/retrying
    or dead reverse debt, no unfinished source-dependent native/release operations. Historical
@@ -245,9 +247,19 @@ The real Ruby/BEAM collision test proves missing-owner locks, timeout, old slot,
 publish rollback, both owner directions and pinned original-slot replay.
 This provides no exactly-once external mail/webhook guarantee.
 
+Slotted source nightly geocoding commits point receipts, stable reverse intents and
+user invalidation intents together in SQL before Sidekiq delivery. A failed enqueue
+leaves the intents recoverable by the reverse poller. Root completion and user
+invalidation use separate shared identities; accepted continuations settle their
+carried users even after a replay completes the root. Un-slotted source calls retain
+their existing enqueue path.
+
 ED-522: native unshared expired pending-import rows/references remain until
 retryable object deletion succeeds, unlike Rails purge/purge_later row removal.
 Rechecks retain live shared references; this admits no wrong-owner/blob purge.
+S3 deletion treats blank or ambiguous 404 responses as unconfirmed absence and
+retains all references. Only an explicit object-specific `NoSuchKey` confirms absence.
+Both pending-import workers use the configured maintenance queue at priority 3.
 
 ## Release prerequisites beyond this branch
 
