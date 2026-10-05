@@ -9,7 +9,7 @@ defmodule Dawarich.Auth.Otp.Completion do
 
   defp commit_saves(prepared, context) do
     ip = Map.fetch!(context, :ip)
-    user = save(prepared.user, prepared.changes, context)
+    user = consume(prepared, context)
     user = reset_otp(user, context)
 
     user =
@@ -33,7 +33,9 @@ defmodule Dawarich.Auth.Otp.Completion do
     {:ok, %{user: user, remember: remember, session: prepared.session}}
   end
 
-  defp reset_otp(user, context) do
+  def consume(prepared, context), do: save(prepared.user, prepared.changes, context)
+
+  def reset_otp(user, context) do
     if user.failed_otp_attempts != 0 or not is_nil(user.otp_locked_at) do
       changeset =
         user
@@ -74,11 +76,8 @@ defmodule Dawarich.Auth.Otp.Completion do
         refusal
 
       {:ok, user} ->
-        env = Map.get_lazy(context, :env, &System.get_env/0)
-
-        with {:ok, secret} <- Secret.decrypt(user.otp_secret, env),
-             :ok <- supported(user, secret, code),
-             {:ok, kind, changes} <- select(user, secret, code, now, context) do
+        with {:ok, kind, changes} <-
+               prepare_code(user, code, Map.put(context, :clock, fn -> now end)) do
           {:ok,
            %{
              user: user,
@@ -89,6 +88,15 @@ defmodule Dawarich.Auth.Otp.Completion do
            }}
         end
     end
+  end
+
+  def prepare_code(user, code, context) do
+    env = Map.get_lazy(context, :env, &System.get_env/0)
+    now = clock(context)
+
+    with {:ok, secret} <- Secret.decrypt(user.otp_secret, env),
+         :ok <- supported(user, secret, code),
+         do: select(user, secret, code, now, context)
   end
 
   defp supported(user, secret, code) do

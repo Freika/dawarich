@@ -137,6 +137,187 @@ defmodule DawarichWeb.AuthGateEndpointTest do
 
   defp no_puma(ctx), do: assert({:error, :timeout} = :gen_tcp.accept(ctx.upstream.listen, 200))
 
+  @tag api_public_only: true
+  test "real endpoint preserves API auth success refusal bytes and rollback without duplicate writes",
+       ctx do
+    start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
+    {id, context, key} = a11f_actor()
+    Application.put_env(:dawarich, :api_auth_context, context)
+    Application.put_env(:dawarich, :phoenix_auth, ["api_auth"])
+
+    on_exit(fn ->
+      Application.delete_env(:dawarich, :api_auth_context)
+      config = Application.fetch_env!(:dawarich, :redis)
+      {:ok, conn} = Redix.start_link(config[:url], database: config[:cache_database])
+      Redix.command(conn, ["DEL", key])
+      GenServer.stop(conn)
+    end)
+
+    raw = ~s({"email":"a11f-endpoint@example.invalid","password":"safepassword12"})
+    login = a11f_request("/api/v1/auth/login", raw)
+    {status, headers, answer} = a11f_exchange(ctx, login)
+    assert status == 200
+    assert values(headers, "x-dawarich-auth-owner") == ["native-api-auth"]
+    assert Jason.decode!(answer)["user_id"] == id
+    assert values(headers, "set-cookie") == []
+    before = Repo.query!("SELECT to_jsonb(u) FROM users u WHERE id=$1", [id], log: false).rows
+
+    for request <- [
+          a11f_request("/api/v1/auth/login", String.replace(raw, "safepassword12", "wrong")),
+          a11f_request("/api/v1/auth/login", "{"),
+          a11f_request("/api/v1/auth/google", raw)
+        ] do
+      seen = to_puma(ctx, request)
+      assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+      expected = request |> String.split("\r\n\r\n", parts: 2) |> List.last()
+      assert seen.body == expected
+
+      assert Repo.query!("SELECT to_jsonb(u) FROM users u WHERE id=$1", [id], log: false).rows ==
+               before
+    end
+
+    Repo.query!("UPDATE users SET otp_required_for_login=true WHERE id=$1", [id], log: false)
+    {202, headers, challenge} = a11f_exchange(ctx, login)
+    assert values(headers, "x-dawarich-auth-owner") == ["native-api-auth"]
+    token = Jason.decode!(challenge)["challenge_token"]
+
+    code =
+      Dawarich.Auth.TwoFactor.Totp.at(
+        "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ",
+        DateTime.to_unix(context.clock.())
+      )
+
+    redeem =
+      a11f_request(
+        "/api/v1/auth/otp_challenge",
+        Jason.encode!(%{challenge_token: token, otp_code: code})
+      )
+
+    Application.put_env(:dawarich, :phoenix_auth, [])
+
+    assert to_puma(ctx, redeem).body ==
+             redeem |> String.split("\r\n\r\n", parts: 2) |> List.last()
+
+    assert Repo.get!(Dawarich.Auth.Account, id).consumed_timestep == nil
+    Application.put_env(:dawarich, :phoenix_auth, ["api_auth"])
+    {200, headers, answer} = a11f_exchange(ctx, redeem)
+    assert values(headers, "x-dawarich-auth-owner") == ["native-api-auth"]
+    assert values(headers, "set-cookie") == []
+    assert Jason.decode!(answer)["user_id"] == id
+    assert Repo.get!(Dawarich.Auth.Account, id).failed_otp_attempts == 0
+    assert Repo.get!(Dawarich.Auth.Account, id).sign_in_count == 0
+
+    assert to_puma(ctx, redeem).body ==
+             redeem |> String.split("\r\n\r\n", parts: 2) |> List.last()
+
+    for flows <- [[], ~w(credentials otp account_link two_factor)] do
+      Application.put_env(:dawarich, :phoenix_auth, flows)
+      assert to_puma(ctx, login).body == raw
+    end
+
+    Application.put_env(:dawarich, :phoenix_auth, ["api_auth"])
+    System.put_env("DAWARICH_RAILS_SLICES", "api_account,users")
+    Repo.query!("UPDATE users SET otp_required_for_login=false WHERE id=$1", [id], log: false)
+    assert {200, headers, _} = a11f_exchange(ctx, login)
+    assert values(headers, "x-dawarich-auth-owner") == ["native-api-auth"]
+  end
+
+  @tag api_public_only: true
+  test "real endpoint initializes API framing before success and fallback logging", ctx do
+    {_id, context, _key} = a11f_actor()
+    Application.put_env(:dawarich, :api_auth_context, context)
+    Application.put_env(:dawarich, :phoenix_auth, ["api_auth"])
+    previous = Logger.level()
+    Logger.configure(level: :info)
+
+    on_exit(fn ->
+      Application.delete_env(:dawarich, :api_auth_context)
+      Logger.configure(level: previous)
+    end)
+
+    logs =
+      ExUnit.CaptureLog.capture_log([level: :info], fn ->
+        assert {200, headers, _} =
+                 a11f_exchange(
+                   ctx,
+                   a11f_request(
+                     "/api/v1/auth/login",
+                     ~s({"email":"a11f-endpoint@example.invalid","password":"safepassword12"})
+                   )
+                 )
+
+        assert values(headers, "x-dawarich-auth-owner") == ["native-api-auth"]
+        seen = to_puma(ctx, a11f_request("/api/v1/auth/login", "{"))
+        assert seen.body == "{"
+        assert seen.response == {200, ["rails=1; path=/"], [], "puma"}
+      end)
+
+    assert String.contains?(logs, "[api]")
+    assert String.contains?(logs, "POST /api/v1/auth/login 200")
+    assert String.contains?(logs, "handed to Rails")
+  end
+
+  defp a11f_actor do
+    crypto =
+      Jason.decode!(File.read!("test/fixtures/active_record_encryption.json"))["environments"]
+      |> Enum.find(&(&1["name"] == "explicit keys"))
+      |> Map.fetch!("env")
+
+    env = Map.put(crypto, "JWT_SECRET_KEY", "a11f-endpoint-synthetic-signing")
+
+    {:ok, cipher} =
+      Dawarich.Auth.TwoFactor.Secret.encrypt("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", env)
+
+    id =
+      user!(%{
+        email: "a11f-endpoint@example.invalid",
+        encrypted_password: @hash,
+        otp_secret: cipher,
+        api_key: "a11f-endpoint-synthetic-api",
+        settings: %{},
+        plan: 1,
+        subscription_source: 0,
+        failed_otp_attempts: 3
+      })
+
+    jti = Ecto.UUID.generate()
+
+    {id,
+     %{
+       self_hosted: true,
+       oidc: false,
+       env: env,
+       clock: fn -> ~U[2026-10-04 12:00:00.000000Z] end,
+       jti: fn -> jti end
+     }, "otp_challenge:consumed:" <> jti}
+  end
+
+  defp a11f_request(path, body),
+    do:
+      "POST #{path} HTTP/1.1\r\nHost: a\r\nAccept: application/json\r\nContent-Type: application/json\r\nContent-Length: #{byte_size(body)}\r\n\r\n#{body}"
+
+  defp a11f_exchange(ctx, request) do
+    peer =
+      Task.async(fn ->
+        case :gen_tcp.accept(ctx.upstream.listen, 200) do
+          {:error, :timeout} ->
+            :native
+
+          {:ok, socket} ->
+            {head, rest} = read_head(socket)
+            length = head |> header("content-length") |> hd() |> String.to_integer()
+            read_at_least(socket, rest, length)
+            reply(socket, "HTTP/1.1 409 Rails\r\nContent-Length: 4\r\n\r\npuma")
+            :gen_tcp.close(socket)
+            :rails
+        end
+      end)
+
+    result = exchange(ctx, request)
+    assert Task.await(peer) == :native
+    result
+  end
+
   @tag account_link_committed: true, api_public_only: true
   test "independent native Endpoint confirmations match the Rails overlap oracle and OFF forwarding",
        ctx do

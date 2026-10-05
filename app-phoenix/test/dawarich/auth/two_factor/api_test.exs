@@ -64,6 +64,21 @@ defmodule Dawarich.Auth.TwoFactor.ApiTest do
     row
   end
 
+  test "API two-factor NUL inputs replay before actor lookup or writes", c do
+    before = snapshot(c.id)
+    context = Map.put(c.context, :repo, :must_not_load_actor)
+
+    for action <- [:setup, :confirm, :backup_codes, :destroy],
+        params <- [
+          %{"password" => "wrong" <> <<0>> <> "suffix"},
+          %{"password" => "safepassword12" <> <<0>> <> "suffix"},
+          %{"password" => "safepassword12", "otp_code" => "safepassword12" <> <<0>> <> "suffix"}
+        ] do
+      assert {:replay, :parameters} = Api.run(action, c.id, params, context)
+      assert snapshot(c.id) == before
+    end
+  end
+
   test "API setup checks availability before password and rejects enabled accounts after password",
        c do
     seed(c.id, otp_required_for_login: true)

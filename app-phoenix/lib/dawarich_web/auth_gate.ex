@@ -12,7 +12,8 @@ defmodule DawarichWeb.AuthGate do
     AuthRecovery,
     AuthTwoFactor,
     AuthOtp,
-    AuthAccountLink
+    AuthAccountLink,
+    AuthApi
   }
 
   @handlers [
@@ -22,7 +23,8 @@ defmodule DawarichWeb.AuthGate do
     {"api_keys", AuthApiKeys.Http},
     {"two_factor", AuthTwoFactor.Http},
     {"otp", AuthOtp.Http},
-    {"account_link", AuthAccountLink.Http}
+    {"account_link", AuthAccountLink.Http},
+    {"api_auth", AuthApi.Http}
   ]
 
   @impl true
@@ -46,6 +48,9 @@ defmodule DawarichWeb.AuthGate do
 
   defp options("account_link"),
     do: [enabled: true, context: Application.get_env(:dawarich, :account_link_context, %{})]
+
+  defp options("api_auth"),
+    do: [enabled: true, context: Application.get_env(:dawarich, :api_auth_context, %{})]
 
   defp options(flow) when flow in ["account", "api_keys", "two_factor", "otp"],
     do: [enabled: true]
