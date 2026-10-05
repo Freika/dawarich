@@ -164,7 +164,11 @@ defmodule Dawarich.Points.AnomalyBackfillRebuildTest do
                  [achievement]
                ]
 
-        assert Dispatch.run(repo: ScratchRepo, oban: :anomaly_rebuild) == %{dispatched: 2}
+        [[now]] = rows("SELECT clock_timestamp()")
+
+        assert Dispatch.run(repo: ScratchRepo, oban: :anomaly_rebuild, now: now) == %{
+                 dispatched: 2
+               }
 
         assert rows("SELECT worker FROM oban.oban_jobs ORDER BY worker") == [
                  ["Dawarich.Achievements.CheckWorker"],
