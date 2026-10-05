@@ -201,6 +201,38 @@ defmodule DawarichWeb.MapWriteRequestTest do
     assert commands() == []
   end
 
+  test "captured points list browser POST admits fixed routing query and document Accept", ctx do
+    accept =
+      "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+
+    path =
+      "/points/bulk_destroy?action=index&controller=points&start_at=2020-07-04T00%3A00%3A00Z&end_at=2020-07-04T23%3A59%3A59Z&import_id=17&order_by=asc"
+
+    suffix = "_method=delete&point_ids[]=42"
+    raw = body(ctx, suffix)
+    conn = request(ctx, :post, path, raw, [{"accept", accept}])
+    refute conn.halted
+    assert conn.assigns.map_write_action == :point_destroy
+    assert conn.assigns.map_write_method == "DELETE"
+    assert conn.assigns.map_write_format == :html
+    assert conn.assigns.api_params["point_ids"] == ["42"]
+    assert conn.private.dawarich_raw_body == raw
+    replay(ctx, :post, path, "authenticity_token=invalid&" <> suffix, [{"accept", accept}])
+
+    for query <- [
+          "controller=tags&action=index",
+          "controller=points&action=destroy",
+          "controller=points&controller=points&action=index",
+          "controller[bad]=points&action=index"
+        ] do
+      replay(ctx, :post, "/points/bulk_destroy?" <> query, raw, [{"accept", accept}])
+    end
+
+    replay(ctx, :post, path, raw, [{"accept", "application/json"}])
+    assert snapshot() == [[0, 0, 0]]
+    assert commands() == []
+  end
+
   test "scalar point filters honor captured Rails query precedence", ctx do
     raw = body(ctx, "point_ids[]=42&start_at=body&end_at=end&order_by=asc&import_id=17")
     conn = request(ctx, :delete, "/points/bulk_destroy?start_at=query&order_by=desc", raw)
