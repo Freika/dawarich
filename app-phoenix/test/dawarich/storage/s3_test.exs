@@ -122,10 +122,22 @@ defmodule Dawarich.Storage.S3Test do
   end
 
   test "S3 deletion preserves failed DELETE response as an error", %{root: root} do
-    for status <- [200, 204, 404] do
+    for status <- [200, 204] do
       c = config(root, fn _, _, _ -> {:ok, %{status_code: status, headers: [], body: ""}} end)
       assert S3.delete(c, "a12d3synthetic") == :ok
     end
+
+    for body <- ["", " \n", "<Error><Code>NoSuchBucket</Code></Error>"] do
+      c = config(root, fn _, _, _ -> {:ok, %{status_code: 404, headers: [], body: body}} end)
+      assert S3.delete(c, "a12d3synthetic") == {:error, :unconfirmed_missing_object}
+    end
+
+    c =
+      config(root, fn _, _, _ ->
+        {:ok, %{status_code: 404, headers: [], body: "<Error><Code>NoSuchKey</Code></Error>"}}
+      end)
+
+    assert S3.delete(c, "a12d3synthetic") == :ok
 
     for status <- [400, 403, 500] do
       c = config(root, fn _, _, _ -> {:ok, %{status_code: status, headers: [], body: ""}} end)

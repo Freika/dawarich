@@ -97,9 +97,50 @@ defmodule Dawarich.PendingImports.PurgeWorkerTest do
     end
   end
 
-  defp storage("test", root, _), do: %{service: "local", root: root}
+  test "blank-body S3 404 retains every pending reference until explicit NoSuchKey confirms absence",
+       %{root: root} do
+    rows(
+      "INSERT INTO pending_imports (id,original_filename,origin,expires_at,created_at,updated_at) VALUES (48901,'synthetic.zip','https://example.invalid','2026-10-03',now(),now())"
+    )
 
-  defp storage("s3", root, status) do
+    rows(
+      "INSERT INTO active_storage_blobs (id,key,filename,service_name,byte_size,created_at) VALUES (48500,'a12d3purgeobject','synthetic.zip','s3',30,now())"
+    )
+
+    rows(
+      "INSERT INTO active_storage_attachments (id,name,record_type,record_id,blob_id,created_at) VALUES (48501,'file','PendingImport',48901,48500,now())"
+    )
+
+    services = %{services: %{"s3" => storage("s3", root, 404)}}
+    Ownership.put!(ScratchRepo, "cron:pending_imports_cleanup", :oban)
+    assert CleanupWorker.run(ScratchRepo, @oban, @now, services: services) == :ok
+
+    assert [[args]] =
+             rows(
+               "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.PendingImports.PurgeWorker'"
+             )
+
+    assert PurgeWorker.run(ScratchRepo, args, services: services) ==
+             {:error, {:storage_delete, :unconfirmed_missing_object}}
+
+    assert rows("SELECT id FROM pending_imports") == [[48901]]
+
+    assert rows("SELECT id,blob_id,record_id FROM active_storage_attachments") == [
+             [48501, 48500, 48901]
+           ]
+
+    assert rows("SELECT id,key FROM active_storage_blobs") == [[48500, "a12d3purgeobject"]]
+    confirmed = storage("s3", root, 404, "<Error><Code>NoSuchKey</Code></Error>")
+    assert PurgeWorker.run(ScratchRepo, args, services: %{services: %{"s3" => confirmed}}) == :ok
+    assert rows("SELECT count(*) FROM pending_imports") == [[0]]
+    assert rows("SELECT count(*) FROM active_storage_attachments") == [[0]]
+    assert rows("SELECT count(*) FROM active_storage_blobs") == [[0]]
+  end
+
+  defp storage(service, root, status, body \\ "")
+  defp storage("test", root, _, _), do: %{service: "local", root: root}
+
+  defp storage("s3", root, status, body) do
     c =
       Storage.config!(
         %{
@@ -118,7 +159,7 @@ defmodule Dawarich.PendingImports.PurgeWorkerTest do
           Keyword.merge(c.ex_aws,
             http_client: FakeClient,
             retry: [max_attempts: 1],
-            http_opts: [respond: fn -> {:ok, %{status_code: status, headers: [], body: ""}} end]
+            http_opts: [respond: fn -> {:ok, %{status_code: status, headers: [], body: body}} end]
           )
     }
   end

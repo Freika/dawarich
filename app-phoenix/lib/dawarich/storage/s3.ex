@@ -62,7 +62,7 @@ defmodule Dawarich.Storage.S3 do
   end
 
   defp missing_delete(%{body: body}) when is_binary(body) do
-    if String.trim(body) == "" or body =~ "<Code>NoSuchKey</Code>",
+    if body =~ "<Code>NoSuchKey</Code>",
       do: :ok,
       else: {:error, :unconfirmed_missing_object}
   end
