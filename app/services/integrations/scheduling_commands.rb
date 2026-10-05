@@ -6,6 +6,14 @@ module Integrations
       'integrations.airtrail_flights' => {
         guard: 'The unchanged import leaf upserts source flights; repeat delivery repeats a convergent sync',
         call: ->(payload) { airtrail_flights(payload) }
+      },
+      'integrations.teslamate_sync' => {
+        guard: 'The unchanged TeslaMate leaf imports only missing drives; replay repeats a convergent sync',
+        call: ->(payload) { teslamate_sync(payload) }
+      },
+      'integrations.trek_sync' => {
+        guard: 'The unchanged Trek leaf upserts source trips and skips importing sources on replay',
+        call: ->(payload) { trek_sync(payload) }
       }
     }.freeze
 
@@ -66,6 +74,38 @@ module Integrations
       return unless User.exists?(id: user_id)
 
       AirTrail::ImportFlightsJob.perform_later(user_id)
+    end
+
+    def schedule_teslamate(ids, kind, slot)
+      ids.each do |user_id|
+        next unless claim(kind, slot, user_id)
+
+        JobCommands.enqueue_after_commit(nil) { TeslaMate::SyncJob.perform_later(user_id) }
+      end
+    end
+
+    def schedule_trek(ids, kind, slot)
+      TripSource.where(id: ids).pluck(:id, :user_id).each do |source_id, user_id|
+        next unless DawarichSettings.self_hosted? || User.select(:id, :plan).find(user_id).full_access?
+        next unless claim(kind, slot, source_id)
+
+        JobCommands.enqueue_after_commit(nil) { Trek::SyncJob.perform_later(source_id) }
+      end
+    end
+
+    def teslamate_sync(payload)
+      user_id = payload.fetch('user_id')
+      return unless User.exists?(id: user_id)
+
+      TeslaMate::SyncJob.perform_later(user_id)
+    end
+
+    def trek_sync(payload)
+      user_id = payload.fetch('user_id')
+      source_id = payload.fetch('source_id')
+      return unless User.exists?(id: user_id) && TripSource.exists?(id: source_id, user_id: user_id)
+
+      Trek::SyncJob.perform_later(source_id)
     end
   end
 end
