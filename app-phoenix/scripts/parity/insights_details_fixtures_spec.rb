@@ -26,6 +26,82 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
     store.redis.then { |client| client.respond_to?(:with) ? client.with { _1.get(key) } : client.get(key) }
   end
 
+  def cache_redis(&block)
+    Rails.cache.redis.then { |client| client.respond_to?(:with) ? client.with(&block) : block.call(client) }
+  end
+
+  def details_isolated
+    connection = ActiveRecord::Base.connection
+    sequences = %w[users points visits tracks track_segments stats digests countries
+                   notifications].index_with do |table|
+      connection.select_one("SELECT last_value, is_called FROM #{table}_id_seq")
+    end
+    caching = InsightsController.perform_caching
+    locale = I18n.locale
+    cache = {}
+    RSpec::Mocks.with_temporary_scope do
+      %i[write_entry delete_entry].each do |method|
+        allow(Rails.cache).to receive(method).and_wrap_original do |original, key, *args, **kwargs|
+          remember_cache(cache, key)
+          original.call(key, *args, **kwargs)
+        end
+      end
+      allow(Rails.cache).to receive(:delete_matched).and_wrap_original do |original, pattern, **kwargs|
+        cache_redis { |redis| redis.scan_each(match: pattern).each { |key| remember_cache(cache, key) } }
+        original.call(pattern, **kwargs)
+      end
+      ActiveRecord::Base.transaction(requires_new: true) do
+        sequences.each_key { |table| connection.execute("SELECT setval('#{table}_id_seq', 960500, false)") }
+        cache_redis do |redis|
+          ['insights/yearly_digest/960[12]/*', 'views/insights/details:*/960[12]/*'].each do |pattern|
+            redis.scan_each(match: pattern).each do |key|
+              remember_cache(cache, key)
+              redis.del(key)
+            end
+          end
+        end
+        yield
+        raise ActiveRecord::Rollback
+      end
+    ensure
+      restore_cache(cache)
+    end
+  ensure
+    sequences&.each do |table, state|
+      connection.execute("SELECT setval('#{table}_id_seq', #{state.fetch('last_value')}, " \
+                         "#{connection.quote(state.fetch('is_called'))})")
+      expect(connection.select_one("SELECT last_value, is_called FROM #{table}_id_seq")).to eq(state), table
+    end
+    InsightsController.perform_caching = caching
+    I18n.locale = locale if locale
+  end
+
+  def remember_cache(cache, key)
+    return if cache.key?(key)
+
+    cache_redis do |redis|
+      ttl = redis.pttl(key)
+      cache[key] =
+        [redis.get(key), ttl.negative? ? ttl : Process.clock_gettime(Process::CLOCK_MONOTONIC) + ttl / 1000.0]
+    end
+  end
+
+  def restore_cache(cache)
+    cache_redis do |redis|
+      cache.each do |key, (bytes, expiry)|
+        clock = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+        remaining = expiry.negative? ? expiry : ((expiry - clock) * 1000).floor
+        if bytes.nil? || remaining == -2 || remaining.zero? || (expiry.positive? && remaining.negative?)
+          redis.del(key)
+        elsif remaining == -1
+          redis.set(key, bytes)
+        else
+          redis.set(key, bytes, px: remaining)
+        end
+      end
+    end
+  end
+
   def user!(id, email)
     user = create(:user, id:, email:, settings:, plan: :pro)
     user.update_columns(encrypted_password: '', api_key: "insights-fixture-#{id}")
@@ -127,7 +203,54 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
     active
   end
 
+  it 'selected details generator restores every advanced sequence and touched cache TTL on an escaping error' do
+    connection = ActiveRecord::Base.connection
+    tables = %w[users points visits tracks track_segments stats digests countries notifications]
+    sequences = tables.index_with { |table| connection.select_one("SELECT last_value, is_called FROM #{table}_id_seq") }
+    key = 'insights/yearly_digest/9601/2024/1710000000'
+    sentinel = 'a12d1b4/unrelated'
+    cache = {}
+    [key, sentinel, 'a12d1b4/new-key'].each { |name| remember_cache(cache, name) }
+    Rails.cache.write(key, 'prior snapshot', expires_in: 5.minutes)
+    Rails.cache.write(sentinel, 'untouched', expires_in: 10.minutes)
+    prior = raw(key)
+    ttl = cache_redis { |redis| redis.pttl(key) }
+    caching = InsightsController.perform_caching
+
+    expect do
+      details_isolated do
+        reader = reader!
+        active!
+        sign_in reader
+        frame('/insights/details?year=2024&month=4')
+        Rails.cache.write(key, 'replaced', expires_in: 1.hour)
+        Rails.cache.write('a12d1b4/new-key', 'new', expires_in: 1.hour)
+        InsightsController.perform_caching = false
+        raise 'selected capture failure'
+      end
+    end.to raise_error('selected capture failure')
+
+    sequences.each do |table, state|
+      expect(connection.select_one("SELECT last_value, is_called FROM #{table}_id_seq")).to eq(state), table
+    end
+    expect(raw(key)).to eq(prior)
+    expect(cache_redis { |redis| redis.pttl(key) }).to be_between(ttl - 30_000, ttl)
+    expect(raw('a12d1b4/new-key')).to be_nil
+    expect(Rails.cache.read(sentinel)).to eq('untouched')
+    expect(InsightsController.perform_caching).to eq(caching)
+  ensure
+    restore_cache(cache) if cache
+    sequences&.each do |table, state|
+      connection.execute("SELECT setval('#{table}_id_seq', #{state.fetch('last_value')}, " \
+                         "#{connection.quote(state.fetch('is_called'))})")
+    end
+  end
+
   it 'writes the details frames Rails renders for a Leipzig corpus and the yearly digest cache entries' do
+    details_isolated { capture_details }
+  end
+
+  def capture_details
     reader = reader!
     active = active!
     User.where(id: [reader.id, active.id]).update_all(visits_redetected_at: Time.current)

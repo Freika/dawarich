@@ -320,6 +320,35 @@ RSpec.describe RailsCommands::Poller do
     users.each { expect(Visits::Detection::MachineVisitWipe).to have_received(:bust_month_caches).with(_1, kind_of(Array)).ordered }
   end
 
+  it 'cache.preheat_user preserves identity zone and run_at while scheduling source warming for either owner' do
+    phoenix_tables!
+    connection = ActiveRecord::Base.connection
+    sequences = %w[users_id_seq phoenix.rails_commands_id_seq].index_with do |sequence|
+      connection.select_one("SELECT last_value, is_called FROM #{sequence}")
+    end
+    source = SecureRandom.uuid
+    due = Time.utc(2026, 10, 3, 13)
+    payload = { 'user_id' => user.id, 'time_zone' => 'Asia/Tokyo', 'source_job_id' => source, 'run_at' => due.to_i }
+    %i[sidekiq oban].each do |owner|
+      job_owner!('command:cache.preheat_user', owner)
+      clear_enqueued_jobs
+      command!('cache.preheat_user', payload)
+      expect(described_class.drain_once).to eq(1)
+      queued = enqueued_jobs.sole
+      expect(queued.fetch('job_class')).to eq('Cache::UserPreheatingJob')
+      expect(queued.fetch('job_id')).to eq(source)
+      expect(queued.fetch('timezone')).to eq('Asia/Tokyo')
+      expect(queued.fetch('arguments')).to eq([user.id])
+      expect(Time.iso8601(queued.fetch('scheduled_at'))).to eq(due)
+      expect(JobOutbox.where(command_type: 'cache.preheat_user')).to be_empty
+    end
+  ensure
+    sequences&.each do |sequence, state|
+      connection.execute("SELECT setval('#{sequence}', #{state.fetch('last_value')}, " \
+                         "#{connection.quote(state.fetch('is_called'))})")
+    end
+  end
+
   it 'every registered kind declares a repeat guard and a callable' do
     expected_kinds = %w[
       achievements.check
@@ -341,6 +370,7 @@ RSpec.describe RailsCommands::Poller do
       places_orphan_cleanup places_bulk_name_fetch achievements.bulk_check_leaf trips.calculate
       imports.resume imports.normal_resume
       stats.full_recalculation stats.calculate_month stats.caches_invalidated
+      cache.preheat_user cache.preheat_sweep
       users.export_data users.import_data users.recalculate_data points.anomaly_backfill
       release.anomalies release.anomalies_user release.per_tracker
       digests.calculate_month digests.calculate_year digests.email_month digests.email_year

@@ -3,6 +3,27 @@ defmodule Dawarich.Jobs.RegistryTest do
 
   alias Dawarich.Jobs.Registry
 
+  test "cache entries remain unclaimable and only preheating has a cron" do
+    entries = Enum.filter(Registry.entries(), &String.contains?(&1.key, "cache"))
+    assert length(entries) == 2
+
+    assert %{kind: :command, worker: Dawarich.Cache.PreheatUserWorker, claimable: false} =
+             Enum.find(entries, &(&1.key == "command:cache.preheat_user"))
+
+    assert %{
+             kind: :cron,
+             worker: Dawarich.Cache.PreheatSweepWorker,
+             claimable: false,
+             expression: "0 0 * * *",
+             catch_up: false
+           } =
+             Enum.find(entries, &(&1.key == "cron:cache_preheating_job"))
+
+    assert Registry.command("cache.preheat_user") == {:ok, Dawarich.Cache.PreheatUserWorker}
+    assert Registry.command("cache.preheat_sweep") == :error
+    assert Registry.claimable() == []
+  end
+
   test "retention registry preserves cron expression and rollback claimability" do
     assert %{
              kind: :cron,

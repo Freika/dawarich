@@ -10,6 +10,34 @@ RSpec.describe Stats::Commands do
 
   def handle(kind, payload) = described_class::HANDLERS.fetch(kind).fetch(:call).call(payload)
 
+  it 'native invalidation still evicts the shared Rails yearly snapshots consumed by both readers' do
+    other = create(:user)
+    keys = ["insights/yearly_digest/#{user.id}/2024/1700000000",
+            "insights/yearly_digest/#{user.id}/2024/1700000001",
+            "insights/yearly_digest/#{user.id}/2025/1700000000",
+            "insights/yearly_digest/#{other.id}/2024/1700000000"]
+    keys.each { |key| Rails.cache.write(key, 'snapshot', expires_in: 1.hour, version: 'source-v1') }
+    total = "dawarich/user_#{user.id}_total_distance"
+    Rails.cache.write(total, 99, expires_in: 1.day)
+    expect(Rails.cache.read(keys.last, version: 'other')).to be_nil
+    Rails.cache.redis.with do |redis|
+      expect(redis.ttl(keys.last)).to be_between(3590, 3600)
+      expect(redis.ttl(total)).to be_between(86_390, 86_400)
+    end
+
+    handler = RailsCommands::Registry::HANDLERS.fetch('stats.caches_invalidated').fetch(:call)
+    handler.call('user_id' => user.id, 'year' => 2024, 'scope' => 'toponyms')
+    expect(keys.first(2).map { |key| Rails.cache.read(key, version: 'source-v1') }).to eq([nil, nil])
+    expect(keys.last(2).map { |key| Rails.cache.read(key, version: 'source-v1') }).to eq(%w[snapshot snapshot])
+    expect(Rails.cache.read(total)).to eq(99)
+
+    handler.call('user_id' => user.id, 'year' => nil, 'scope' => 'all')
+    expect(Rails.cache.read(keys[2], version: 'source-v1')).to be_nil
+    expect(Rails.cache.read(total)).to be_nil
+    expect(Rails.cache.read(keys.last, version: 'source-v1')).to eq('snapshot')
+    Rails.cache.redis.with { |redis| expect(redis.ttl(keys.last)).to be_between(3590, 3600) }
+  end
+
   it 'stats.calculate_month enqueues the month at run_at with its notification flag' do
     expect { handle('stats.calculate_month', month.merge('run_at' => at.to_i)) }
       .to have_enqueued_job(Stats::CalculatingJob).with(user.id, 2024, 3, notify_on_failure: false).at(at)

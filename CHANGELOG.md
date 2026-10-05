@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ### Added
 
+- Cache preheat workers are ready behind disabled Phoenix ownership. Rails retains global, per-user and yearly snapshot warming for both owners, along with existing readers, invalidation and cleaning; cache retirement and live activation remain separate steps.
 - Opt-in Phoenix OAuth account-link confirmation for supported self-hosted accounts: add `account_link` to `DAWARICH_PHOENIX_AUTH` (default OFF) to render Rails-issued pending OpenID Connect challenges and complete correct-password confirmations. Accounts requiring two-factor authentication are linked and returned to sign-in without authenticated access. Provider entry/callback/failure, password refusals, expiry, email fallback and token redemption remain with Rails. Omit `account_link` to return challenge and confirmation to Rails; pending cookies remain compatible. The `otp` and `two_factor` keys stay independent, and `DAWARICH_RAILS_ROUTES=users` alone does not disable this handler.
 - Full and user recalculation, anomaly backfill, and tracker repair workers are ready behind disabled Phoenix job ownership. Rails retains the source jobs and HTTP recalculation callers; live activation, cache retirement, and migrator boot remain separate steps.
 - Monthly and yearly digest calculation workers and scheduling crons are ready behind Phoenix job ownership, with all four keys disabled by default. Rails retains digest email delivery and HTTP writes; live cron activation is a separate step.
