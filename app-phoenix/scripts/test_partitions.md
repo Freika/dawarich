@@ -10,7 +10,16 @@ PHOENIX_TEST_REDIS_URL=redis://127.0.0.1:7271/1 \
 
 The runner pins Elixir 1.18.3 / OTP 27.3.4.1 and starts one Mix process per
 partition. Set PostgreSQL connection variables before running it. Create the
-main databases first; `test_helper.exs` creates and migrates their scratch repos.
+main databases first and load the Rails schema into each one. For example, from
+the repository root, with the private Rails Redis URL configured:
+
+```sh
+RAILS_ENV=test DATABASE_NAME=dawarich_phoenix_test_part1 \
+  bundle exec rails db:schema:load
+```
+
+Repeat for each partition database. `test_helper.exs` creates and migrates their
+scratch repos; it does not create the Rails tables in the main database.
 The default database base requires `dawarich_phoenix_test_part1` through `part4`.
 Start private Redis servers on ports 7271 through 7274, with database 0 for the
 cache and database 1 for jobs. With another Redis URL, its port is the base port.
