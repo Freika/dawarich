@@ -59,3 +59,9 @@ the seed go to `mix test`; all processes receive the same seed. Logs default to
 log and seed, and prints the summed test/failure counts. A failed process,
 missing/ambiguous summary, or missing seed makes the runner exit nonzero.
 Whole-suite runs still require the controller's `slot.sh` around this runner.
+
+The 2026-10-05 sync of `feat/phoenix-port` was checked for new shared resources.
+Pending-import cleanup/purge fixtures use `System.tmp_dir!()`, and the new
+schedule, drain, geocoding, and visit tests use the configured scratch repos.
+The schedule Rails peer test remains excluded by `:rails_parity`; its database
+assertion belongs to the standalone peer protocol rather than this suite.
