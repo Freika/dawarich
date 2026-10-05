@@ -90,7 +90,8 @@ for release_env in "$root/app-phoenix/_build/prod/rel/dawarich/releases/"*/env.s
 done
 stack "$rel" eval 'Dawarich.Release.migrate()'
 stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$PORT")" \
-  sh -c 'echo $$ >"$1"; exec nohup "$2" start' _ "$pidfile" "$rel" >>"$log" 2>&1 &
+  bundle exec ruby -e 'Process.daemon(true, true); File.write(ARGV.fetch(0), Process.pid.to_s); exec(ARGV.fetch(1), "start")' \
+  "$pidfile" "$rel" >>"$log" 2>&1
 
 tries=0
 until [ "$(curl -s -o /dev/null -w '%{http_code}' -m 5 \
