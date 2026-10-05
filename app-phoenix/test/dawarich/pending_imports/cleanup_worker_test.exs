@@ -60,6 +60,14 @@ defmodule Dawarich.PendingImports.CleanupWorkerTest do
       Ownership.put!(ScratchRepo, "cron:pending_imports_cleanup", :oban)
       assert CleanupWorker.run(ScratchRepo, @oban, @now, services: services) == :ok
 
+      for [args] <-
+            rows(
+              "SELECT args FROM oban.oban_jobs WHERE worker='Dawarich.PendingImports.PurgeWorker'"
+            ) do
+        assert Dawarich.PendingImports.PurgeWorker.run(ScratchRepo, args, services: services) ==
+                 :ok
+      end
+
       assert rows("SELECT EXISTS(SELECT 1 FROM pending_imports WHERE id=48901)") == [
                [f["pending_exists"]]
              ]

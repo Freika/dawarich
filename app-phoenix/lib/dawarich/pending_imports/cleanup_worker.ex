@@ -25,7 +25,7 @@ defmodule Dawarich.PendingImports.CleanupWorker do
 
     result =
       Enum.reduce_while(ids, :ok, fn id, :ok ->
-        case Cleanup.clean(repo, id, DateTime.to_naive(now), services) do
+        case Cleanup.clean(repo, id, DateTime.to_naive(now), services, oban) do
           {:ok, :ok} -> {:cont, :ok}
           {:skip, _} -> {:halt, {:cancel, :not_owner}}
           {:error, reason} -> {:halt, {:error, reason}}

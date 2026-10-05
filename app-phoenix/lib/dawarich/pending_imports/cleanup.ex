@@ -2,7 +2,7 @@ defmodule Dawarich.PendingImports.Cleanup do
   @moduledoc false
 
   alias Dawarich.Jobs.Ownership
-  alias Dawarich.Storage
+  alias Dawarich.PendingImports.PurgeWorker
 
   @eligible "((claimed_at IS NULL AND expires_at <= $2) OR claimed_at < $2 - interval '7 days')"
 
@@ -15,7 +15,7 @@ defmodule Dawarich.PendingImports.Cleanup do
     |> List.flatten()
   end
 
-  def clean(repo, id, now, services) do
+  def clean(repo, id, now, _services, oban) do
     Ownership.with_owner(repo, "cron:pending_imports_cleanup", :oban, fn ->
       case repo.query!(
              "SELECT id FROM pending_imports WHERE id=$1 AND #{@eligible} FOR UPDATE",
@@ -23,12 +23,12 @@ defmodule Dawarich.PendingImports.Cleanup do
              log: false
            ).rows do
         [] -> :ok
-        [[^id]] -> clean_file(repo, id, services)
+        [[^id]] -> clean_file(repo, id, now, oban)
       end
     end)
   end
 
-  defp clean_file(repo, id, services) do
+  defp clean_file(repo, id, now, oban) do
     attachment =
       repo.query!(
         "SELECT id,blob_id FROM active_storage_attachments WHERE record_type='PendingImport' AND record_id=$1 AND name='file' ORDER BY id FOR UPDATE",
@@ -37,9 +37,9 @@ defmodule Dawarich.PendingImports.Cleanup do
       ).rows
 
     for [attachment_id, blob_id] <- attachment do
-      [[key, service]] =
+      [[^blob_id]] =
         repo.query!(
-          "SELECT key,service_name FROM active_storage_blobs WHERE id=$1 FOR UPDATE",
+          "SELECT id FROM active_storage_blobs WHERE id=$1 FOR UPDATE",
           [blob_id],
           log: false
         ).rows
@@ -51,27 +51,24 @@ defmodule Dawarich.PendingImports.Cleanup do
           log: false
         ).rows
 
-      unless shared do
-        case Storage.delete(Storage.service!(services, service), key) do
-          :ok -> :ok
-          {:error, reason} -> repo.rollback({:storage_delete, reason})
-        end
-      end
-
-      repo.query!("DELETE FROM active_storage_attachments WHERE id=$1", [attachment_id],
-        log: false
-      )
-
-      unless shared do
-        repo.query!("DELETE FROM active_storage_variant_records WHERE blob_id=$1", [blob_id],
-          log: false
+      if shared do
+        PurgeWorker.finalize(repo, id, attachment_id, blob_id, true)
+      else
+        Oban.insert!(
+          oban,
+          PurgeWorker.new(%{
+            "pending_import_id" => id,
+            "attachment_id" => attachment_id,
+            "blob_id" => blob_id,
+            "now" => NaiveDateTime.to_iso8601(now)
+          })
         )
-
-        repo.query!("DELETE FROM active_storage_blobs WHERE id=$1", [blob_id], log: false)
       end
     end
 
-    repo.query!("DELETE FROM pending_imports WHERE id=$1", [id], log: false)
+    if attachment == [],
+      do: repo.query!("DELETE FROM pending_imports WHERE id=$1", [id], log: false)
+
     :ok
   end
 end
