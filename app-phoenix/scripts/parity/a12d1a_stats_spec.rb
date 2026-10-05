@@ -1119,6 +1119,14 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
                    job.perform_now
                  end
         expect(result).to be(profile != 'backfill_busy') unless profile == 'backfill_interrupted'
+        if profile == 'backfill_busy'
+          expect(enqueued_jobs).to be_empty
+          expect(Point.find(170_201).anomaly).to be(true)
+          expect(Notification.where(user_id: 170_101)).not_to exist
+          PhoenixLease.release('anomaly_backfill:170101', 'synthetic-busy')
+          expect(enqueued_jobs).to be_empty
+          expect(calls).to be_empty
+        end
         if %w[backfill_reset backfill_disabled].include?(profile)
           expect(Point.find(170_201).anomaly).to be(false)
           expect(calls.any? { |row| row['kind'] == 'points.tile_epoch' }).to be(true)

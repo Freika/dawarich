@@ -18,6 +18,36 @@ defmodule Dawarich.Points.AnomalyBackfillRebuildTest do
     :ok
   end
 
+  test "a standalone busy request completes without scheduling a later reset" do
+    source = Fixtures.case!("backfill_busy")
+    Fixtures.load!(ScratchRepo, source)
+    args = args(source, "inline")
+    previous = Application.get_env(:dawarich, :jobs_repo)
+    Application.put_env(:dawarich, :jobs_repo, ScratchRepo)
+
+    on_exit(fn ->
+      if previous,
+        do: Application.put_env(:dawarich, :jobs_repo, previous),
+        else: Application.delete_env(:dawarich, :jobs_repo)
+    end)
+
+    hold_lease!(ScratchRepo, "anomaly_backfill:170101", "other")
+    job = Oban.insert!(:anomaly_rebuild, Worker.new(args))
+    drained = Oban.drain_queue(:anomaly_rebuild, queue: :maintenance)
+    assert drained.success == 1
+    assert drained.snoozed == 0
+    assert rows("SELECT state FROM oban.oban_jobs WHERE id=$1", [job.id]) == [["completed"]]
+    rows("DELETE FROM phoenix.leases WHERE holder='other'")
+
+    assert Oban.drain_queue(:anomaly_rebuild, queue: :maintenance, with_scheduled: true).success ==
+             0
+
+    assert rows("SELECT anomaly FROM points WHERE id=170201") == [[true]]
+
+    for table <- ~w(stats digests notifications phoenix.track_generations phoenix.rails_commands),
+        do: assert(rows("SELECT count(*) FROM " <> table) == [[0]])
+  end
+
   test "distinguishes busy interrupted and completed inline rebuild outcomes" do
     source = Fixtures.case!("backfill_reset")
     Fixtures.load!(ScratchRepo, source)

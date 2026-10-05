@@ -15,8 +15,9 @@ defmodule Dawarich.Points.AnomalyBackfillWorker do
   def perform(%Oban.Job{args: args, conf: conf}) do
     case run(Dawarich.Jobs.repo(), conf.name, args) do
       {:ok, true} -> :ok
-      {:ok, false} -> {:snooze, 3}
+      {:ok, false} -> :ok
       {:ok, nil} -> {:snooze, 3}
+      {:error, :execution_busy} -> {:snooze, 3}
       error -> error
     end
   end
@@ -34,7 +35,12 @@ defmodule Dawarich.Points.AnomalyBackfillWorker do
              else
                complete = fn fence -> complete(repo, oban, args, opts, fence) end
 
-               case AnomalyBackfill.run(repo, args, Keyword.put(opts, :complete, complete)) do
+               backfill_opts =
+                 opts
+                 |> Keyword.put(:complete, complete)
+                 |> Keyword.put_new(:lease, timeout_ms: 0)
+
+               case AnomalyBackfill.run(repo, args, backfill_opts) do
                  {:error, :busy} -> {:ok, false}
                  {:ok, {:error, _} = error} -> error
                  other -> other
@@ -44,7 +50,7 @@ defmodule Dawarich.Points.AnomalyBackfillWorker do
            Keyword.get(opts, :lease, [])
          ) do
       {:ok, result} -> result
-      {:error, :timeout} -> {:ok, false}
+      {:error, :timeout} -> {:error, :execution_busy}
     end
   end
 

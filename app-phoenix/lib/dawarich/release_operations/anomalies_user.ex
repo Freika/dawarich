@@ -76,6 +76,9 @@ defmodule Dawarich.ReleaseOperations.AnomaliesUser do
       {:error, :lock_busy} ->
         busy(repo, op)
 
+      {:error, :execution_busy} ->
+        busy(repo, op)
+
       {:ok, nil} ->
         Ops.commit(repo, op, fn ->
           Oban.insert!(op.oban, AnomalyBackfillWorker.new(args))
