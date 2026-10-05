@@ -311,7 +311,12 @@ defmodule Dawarich.Imports.ProcessWorkerTest do
       assert [[title, content]] = rows("SELECT title,content FROM notifications")
       [expected_title, expected_content, "error"] = hd(c.expected["notifications"])
       assert title == expected_title
-      assert String.starts_with?(content, hd(String.split(expected_content, "/Users/")))
+      [prefix, _stacktrace] = String.split(content, ~r/, stacktrace: /i, parts: 2)
+
+      [expected_prefix, _stacktrace] =
+        String.split(expected_content, ~r/, stacktrace: /i, parts: 2)
+
+      assert prefix == expected_prefix
       assert [] = rows("SELECT id FROM points")
     end
   end
