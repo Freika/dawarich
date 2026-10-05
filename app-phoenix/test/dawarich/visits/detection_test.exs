@@ -30,16 +30,26 @@ defmodule Dawarich.Visits.DetectionTest do
   end
 
   test "plan_restricted clamps the start to twelve months ago in the payload's zone" do
+    now = DateTime.to_unix(~U[2026-10-26 01:30:00Z])
+    cutoff = DateTime.to_unix(~U[2025-10-26 01:30:00Z])
+
+    HookRepo.set_hook(fn sql, _params ->
+      if sql == "SELECT floor(extract(epoch FROM now() - interval '12 months'))::bigint" do
+        {:query,
+         "SELECT floor(extract(epoch FROM to_timestamp($1::bigint) - interval '12 months'))::bigint",
+         [now]}
+      end
+    end)
+
     for restricted <- [true, false] do
       Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(users  points  visits))
 
       Wave5bFixtures.load_input!(ScratchRepo, %{"users" => [%{"id" => 1}]})
       uid = 1
-      now = System.os_time(:second)
-      old_ts = now - 400 * 86_400
+      old_ts = cutoff - 1200
       recent_ts = now - 86_400
 
-      for base <- [old_ts, recent_ts], i <- 0..5 do
+      for base <- [old_ts, recent_ts], i <- 0..8 do
         rows(
           "INSERT INTO points (user_id, timestamp, lonlat, accuracy, created_at, updated_at) VALUES " <>
             "($1, $2, ST_GeomFromText('POINT(12.3731 51.3397)', 4326)::geography, 10, now(), now())",
@@ -48,10 +58,10 @@ defmodule Dawarich.Visits.DetectionTest do
       end
 
       args = %{"time_zone" => "Europe/Berlin", "plan_restricted" => restricted}
-      SmartDetect.run(ScratchRepo, uid, old_ts - 10_000, recent_ts + 7200, args)
+      SmartDetect.run(HookRepo, uid, old_ts - 10_000, recent_ts + 7200, args)
       started = for v <- visits(uid), do: v["started_at"]
 
-      assert started == if(restricted, do: [recent_ts], else: [old_ts, recent_ts])
+      assert started == if(restricted, do: [cutoff, recent_ts], else: [old_ts, recent_ts])
     end
   end
 

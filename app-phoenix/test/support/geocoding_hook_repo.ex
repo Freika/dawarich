@@ -7,12 +7,12 @@ defmodule Dawarich.Geocoding.HookRepo do
   def clear_hook, do: :persistent_term.erase(__MODULE__)
 
   def query!(sql, params \\ [], opts \\ []) do
-    hook(sql, params)
+    {sql, params} = hooked_query(sql, params)
     ScratchRepo.query!(sql, params, opts)
   end
 
   def query(sql, params \\ [], opts \\ []) do
-    hook(sql, params)
+    {sql, params} = hooked_query(sql, params)
     ScratchRepo.query(sql, params, opts)
   end
 
@@ -22,4 +22,11 @@ defmodule Dawarich.Geocoding.HookRepo do
 
   defp hook(sql, params),
     do: :persistent_term.get(__MODULE__, fn _sql, _params -> :ok end).(sql, params)
+
+  defp hooked_query(sql, params) do
+    case hook(sql, params) do
+      {:query, replacement, values} -> {replacement, values}
+      _ -> {sql, params}
+    end
+  end
 end
