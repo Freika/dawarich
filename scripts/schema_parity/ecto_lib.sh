@@ -15,7 +15,9 @@ fail() {
 }
 
 scrubbed() {
-  env -i PATH="$PATH" HOME="$HOME" LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 "$@"
+  env -i PATH="$HOME/.asdf/shims:$PATH" HOME="$HOME" LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 \
+    ASDF_RUBY_VERSION="${ASDF_RUBY_VERSION:-3.4.9}" ASDF_ERLANG_VERSION=27.3.4.1 ASDF_ELIXIR_VERSION=1.18.3-otp-27 \
+    PHOENIX_TEST_REDIS_URL="redis://127.0.0.1:$redis_port/1" DOCKER_CONTEXT="${DOCKER_CONTEXT:-orbstack}" "$@"
 }
 
 query() {
