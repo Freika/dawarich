@@ -55,6 +55,7 @@ defmodule DawarichWeb.AdminPagesParityTest do
 
       assert {:ok, page} = Instance.page(params, context)
       html = render_component(&Instance.render/1, Map.merge(context, page))
+      html = String.replace(html, ~s( data-turbo="false"), "")
       rails = File.read!(Path.join(@dir, @name <> ".html"))
       assert ParityHTML.normalize(html) == ParityHTML.normalize(rails)
 

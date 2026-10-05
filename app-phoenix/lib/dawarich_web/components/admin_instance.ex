@@ -32,6 +32,7 @@ defmodule DawarichWeb.AdminInstance do
     ~H"""
     <a
       href={"/admin/settings?section=" <> @item}
+      data-turbo="false"
       class={"flex items-center gap-3 rounded-box border p-3 transition-colors " <> if(@active, do: "border-primary/60 bg-base-200", else: "border-base-content/10 hover:border-base-content/25")}
       aria-current={@active && "page"}
       data-testid={"instance-settings-section-" <> @item}
