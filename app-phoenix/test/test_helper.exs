@@ -1,5 +1,19 @@
 ExUnit.start(exclude: [:rails_parity])
 Application.put_env(:dawarich, :allowed_hosts, [])
+Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :auto)
+
+Dawarich.Repo.query!("CREATE SCHEMA IF NOT EXISTS phoenix", [], log: false)
+
+Ecto.Migrator.run(
+  Dawarich.Repo,
+  Ecto.Migrator.migrations_path(Dawarich.Repo),
+  :up,
+  all: true,
+  prefix: "phoenix",
+  log: false
+)
+
+Dawarich.MigrationModules.purge()
 Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, :manual)
 
 scratch_repos = [Dawarich.ScratchRepo, Dawarich.ScratchCaseRepo, Dawarich.TracksScratchRepo]

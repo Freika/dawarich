@@ -55,7 +55,10 @@ defmodule DawarichWeb.AuthGateEndpointTest do
   setup context do
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
-    Dawarich.State.put_registration_enabled(Repo, false)
+
+    unless context[:account_link_committed],
+      do: Dawarich.State.put_registration_enabled(Repo, false)
+
     previous = Map.new(@env, &{&1, System.get_env(&1)})
     Enum.each(@env, &System.delete_env/1)
     System.put_env("SELF_HOSTED", "true")
@@ -176,8 +179,10 @@ defmodule DawarichWeb.AuthGateEndpointTest do
 
       assert count == 0
       for key <- keys, do: assert(Dawarich.State.count(Dawarich.ScratchRepo, key) == 0)
+      registration_before = Repo.query!("SELECT enabled FROM phoenix.registration_setting").rows
 
       try do
+        Dawarich.State.put_registration_enabled(Repo, false)
         before = hd(source["overlap"]["responses"])["before"]
 
         Dawarich.Test.RailsUser.insert!(%{
@@ -332,6 +337,11 @@ defmodule DawarichWeb.AuthGateEndpointTest do
         for pid <- Process.get(:a11e_http_prepared, []), do: send(pid, {:save, 0})
         for task <- Process.get(:a11e_http_workers, []), do: Task.shutdown(task, :brutal_kill)
         Repo.query!("DELETE FROM users WHERE id=$1 AND email=$2", [id, email], log: false)
+
+        case registration_before do
+          [] -> Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
+          [[enabled]] -> Dawarich.State.put_registration_enabled(Repo, enabled)
+        end
 
         for key <- keys,
             do:
