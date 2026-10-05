@@ -8,6 +8,14 @@ defmodule Dawarich.ReleaseOperations.AnomalyClaimsTest do
   @queued "anomaly_rules_recalculation_queued_at"
   @done "anomaly_rules_recalculated_at"
 
+  test "claims preserve requested order while excluding users claimed by another dispatcher" do
+    Fixtures.load!(ScratchRepo, Fixtures.case!("dispatch_predicates"))
+    assert Claims.claim(ScratchRepo, [170_102], @now) == [170_102]
+
+    assert Claims.claim(ScratchRepo, [170_104, 170_102, 170_101, 170_103], @now) ==
+             [170_104, 170_101, 170_103]
+  end
+
   test "uses source claimable predicates and Boolean filtering across stale offsets" do
     source = Fixtures.case!("dispatch_predicates")
     Fixtures.load!(ScratchRepo, source)

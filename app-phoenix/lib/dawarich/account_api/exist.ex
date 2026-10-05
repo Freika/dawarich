@@ -27,9 +27,12 @@ defmodule Dawarich.AccountApi.Exist do
         Enum.filter(ids, &(&1 >= -9_223_372_036_854_775_808 and &1 <= 9_223_372_036_854_775_807))
 
       existing =
-        Repo.query!("SELECT id FROM users WHERE id=ANY($1) AND deleted_at IS NULL", [
-          bounded
-        ]).rows
+        Repo.query!(
+          "SELECT id FROM users WHERE id=ANY($1) AND deleted_at IS NULL ORDER BY id ASC",
+          [
+            bounded
+          ]
+        ).rows
         |> List.flatten()
 
       {:ok, 200, {:object, [{"existing", existing}, {"missing", ids -- existing}]}}

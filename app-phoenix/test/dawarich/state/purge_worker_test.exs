@@ -7,6 +7,14 @@ defmodule Dawarich.State.PurgeWorkerTest do
   alias Dawarich.State
   alias Dawarich.State.{Lease, PurgeWorker}
 
+  defmodule ObservedRepo do
+    def query!(sql, params, opts) do
+      result = Dawarich.ScratchRepo.query!(sql, params, opts)
+      send(self(), {:purged, result.num_rows})
+      result
+    end
+  end
+
   test "purge deletes expired claims, counters and leases and keeps live rows, epochs and the registration row" do
     rows("""
     INSERT INTO phoenix.once_claims (key, expires_at) VALUES
@@ -67,6 +75,44 @@ defmodule Dawarich.State.PurgeWorkerTest do
       assert PurgeWorker.run(ScratchRepo, 2) == :ok
       assert rows("SELECT count(*) FROM phoenix.counters") == [[0]]
     end)
+  end
+
+  test "purge selects each out-of-order expiry batch once and drains every state table" do
+    assert {:ok, :ok} =
+             ScratchRepo.transaction(fn ->
+               rows("SET LOCAL enable_hashjoin = off")
+               rows("SET LOCAL enable_mergejoin = off")
+               rows("SET LOCAL enable_material = off")
+               rows("SET LOCAL plan_cache_mode = force_custom_plan")
+
+               for {table, columns, value} <- [
+                     {"once_claims", "key", "'o:' || age"},
+                     {"counters", "key, value", "'c:' || age, 1"},
+                     {"leases", "name, holder", "'l:' || age, 'h'"},
+                     {"achievement_checks", "user_id, oldest_timestamp, revision", "age, 100, 1"}
+                   ] do
+                 rows("ANALYZE phoenix.#{table}")
+
+                 rows("""
+                 INSERT INTO phoenix.#{table} (#{columns}, expires_at)
+                 SELECT #{value}, statement_timestamp() - interval '1 minute' + age * interval '1 second'
+                 FROM unnest(ARRAY[3, 1, 5, 2, 4]) AS age
+                 """)
+               end
+
+               assert PurgeWorker.run(ObservedRepo, 2) == :ok
+
+               for table <- ~w(once_claims counters leases achievement_checks) do
+                 assert rows("SELECT count(*) FROM phoenix.#{table}") == [[0]]
+
+                 for expected <- [2, 2, 1, 0] do
+                   assert_receive {:purged, count}
+                   assert count == expected
+                 end
+               end
+
+               :ok
+             end)
   end
 
   test "purge skips rows a transaction holds locked, without waiting, and deletes them on the next run" do

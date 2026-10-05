@@ -66,15 +66,19 @@ defmodule Dawarich.ReleaseOperations.AnomalyClaims do
   defp stamp(_repo, [], _now, _values), do: []
 
   defp stamp(repo, ids, now, values) do
-    repo.query!(
-      """
-      UPDATE users SET settings=COALESCE(settings,'{}'::jsonb) || $3::jsonb
-      WHERE deleted_at IS NULL AND id=ANY($2) AND #{@predicate} RETURNING id
-      """,
-      [cutoff(now), ids, values],
-      log: false
-    ).rows
-    |> List.flatten()
+    claimed =
+      repo.query!(
+        """
+        UPDATE users SET settings=COALESCE(settings,'{}'::jsonb) || $3::jsonb
+        WHERE deleted_at IS NULL AND id=ANY($2) AND #{@predicate} RETURNING id
+        """,
+        [cutoff(now), ids, values],
+        log: false
+      ).rows
+      |> List.flatten()
+      |> MapSet.new()
+
+    Enum.filter(ids, &MapSet.member?(claimed, &1))
   end
 
   defp cutoff(now), do: DateTime.add(now, -6 * 60 * 60)

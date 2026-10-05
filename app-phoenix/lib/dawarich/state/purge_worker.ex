@@ -15,8 +15,8 @@ defmodule Dawarich.State.PurgeWorker do
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
     )
-    DELETE FROM phoenix.once_claims WHERE key IN (SELECT key FROM batch)
-    AND expires_at <= statement_timestamp()
+    DELETE FROM phoenix.once_claims USING batch
+    WHERE once_claims.key = batch.key AND once_claims.expires_at <= statement_timestamp()
     """,
     """
     WITH batch AS MATERIALIZED (
@@ -24,8 +24,8 @@ defmodule Dawarich.State.PurgeWorker do
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
     )
-    DELETE FROM phoenix.counters WHERE key IN (SELECT key FROM batch)
-    AND expires_at <= statement_timestamp()
+    DELETE FROM phoenix.counters USING batch
+    WHERE counters.key = batch.key AND counters.expires_at <= statement_timestamp()
     """,
     """
     WITH batch AS MATERIALIZED (
@@ -33,8 +33,8 @@ defmodule Dawarich.State.PurgeWorker do
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
     )
-    DELETE FROM phoenix.leases WHERE name IN (SELECT name FROM batch)
-    AND expires_at <= statement_timestamp()
+    DELETE FROM phoenix.leases USING batch
+    WHERE leases.name = batch.name AND leases.expires_at <= statement_timestamp()
     """,
     """
     WITH batch AS MATERIALIZED (
@@ -42,8 +42,8 @@ defmodule Dawarich.State.PurgeWorker do
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
     )
-    DELETE FROM phoenix.achievement_checks WHERE user_id IN (SELECT user_id FROM batch)
-    AND expires_at <= statement_timestamp()
+    DELETE FROM phoenix.achievement_checks USING batch
+    WHERE achievement_checks.user_id = batch.user_id AND achievement_checks.expires_at <= statement_timestamp()
     """
   ]
 
@@ -53,7 +53,7 @@ defmodule Dawarich.State.PurgeWorker do
   def run(repo, batch), do: Enum.each(@statements, &drain(repo, &1, batch))
 
   defp drain(repo, sql, batch) do
-    if repo.query!(sql, [batch], log: false).num_rows == batch,
+    if repo.query!(sql, [batch], log: false).num_rows > 0,
       do: drain(repo, sql, batch),
       else: :ok
   end
