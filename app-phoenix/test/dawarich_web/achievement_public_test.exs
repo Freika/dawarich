@@ -10,19 +10,21 @@ defmodule DawarichWeb.AchievementPublicTest do
   @root "test/fixtures/achievement_public"
   @scripts "script[type='importmap'],script#i18n-translations,link[rel='modulepreload']"
 
-  setup do
-    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
-    asset_key = {DawarichWeb.Assets, :rails_imports}
-    previous_imports = :persistent_term.get(asset_key, nil)
-    imports = importmap(File.read!("#{@root}/en_direct.html")) |> Map.fetch!("imports")
-    :persistent_term.put(asset_key, imports)
+  setup_all do
+    key = {DawarichWeb.Assets, :rails_imports}
+    previous = :persistent_term.get(key, nil)
+    imports = File.read!("#{@root}/en_direct.html") |> importmap() |> Map.fetch!("imports")
+    :persistent_term.put(key, imports)
 
     on_exit(fn ->
-      if previous_imports == nil,
-        do: :persistent_term.erase(asset_key),
-        else: :persistent_term.put(asset_key, previous_imports)
+      if previous == nil,
+        do: :persistent_term.erase(key),
+        else: :persistent_term.put(key, previous)
     end)
+  end
 
+  setup do
+    :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Dawarich.Test.AchievementSilhouettes.clear()
     on_exit(&Dawarich.Test.AchievementSilhouettes.clear/0)
     square = "MULTIPOLYGON (((12.25 51.25,12.25 51.5,12.5 51.5,12.5 51.25,12.25 51.25)))"
@@ -73,7 +75,7 @@ defmodule DawarichWeb.AchievementPublicTest do
       assert LazyHTML.query(doc, ".ach-child-grid, [data-controller='achievement-unlocks']")
              |> Enum.count() == 0
 
-      assert importmap(html) == importmap(expected)
+      assert importmap(html) == importmap(expected), row["name"]
 
       for {key, value} <- row["metadata"],
           do:
@@ -140,6 +142,14 @@ defmodule DawarichWeb.AchievementPublicTest do
     end
   end
 
+  defp importmap(html),
+    do:
+      html
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("script[type='importmap']")
+      |> LazyHTML.text()
+      |> Jason.decode!()
+
   defp request(method, path, params) do
     query = URI.encode_query(params)
     target = path <> if(query == "", do: "", else: "?" <> query)
@@ -189,14 +199,6 @@ defmodule DawarichWeb.AchievementPublicTest do
   end
 
   defp rows(sql, args \\ []), do: Repo.query!(sql, args, log: false).rows
-
-  defp importmap(html),
-    do:
-      html
-      |> LazyHTML.from_document()
-      |> LazyHTML.query("script[type='importmap']")
-      |> LazyHTML.text()
-      |> Jason.decode!()
 
   defp snapshot,
     do:
