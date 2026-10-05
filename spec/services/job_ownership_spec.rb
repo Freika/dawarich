@@ -117,11 +117,132 @@ RSpec.describe JobOwnership do
     end
   end
 
+  it 'source cron publication batches stop after a native flip at a user boundary' do
+    users = create_list(:user, 2, status: :active,
+                                  settings: { 'monthly_digest_emails_enabled' => true,
+                                              'yearly_digest_emails_enabled' => true })
+    users.each do |user|
+      create(:stat, user:, year: 1.month.ago.year, month: 1.month.ago.month)
+      create(:stat, user:, year: 1.year.ago.year, month: 1)
+    end
+    allow(ENV).to receive(:[]).and_call_original
+    allow(ENV).to receive(:[]).with('ARCHIVE_RAW_DATA').and_return('true')
+    [
+      [Points::RawData::ArchiveJob, Points::RawData::ArchiveUserJob, 'cron:raw_data_archive_job'],
+      [Points::RawData::ClearJob, Points::RawData::ClearUserJob, 'cron:raw_data_clear_job'],
+      [Users::Digests::Monthly::SchedulingJob, Users::Digests::Monthly::CalculatingJob,
+       'cron:monthly_digest_scheduling_job'],
+      [Users::Digests::Yearly::SchedulingJob, Users::Digests::Yearly::CalculatingJob,
+       'cron:yearly_digest_scheduling_job']
+    ].each do |parent, child, owner_key|
+      job_owner!(owner_key, :sidekiq)
+      published = []
+      allow(child).to receive(:perform_later) do |*arguments|
+        published << arguments
+        JobOwnership.put!(owner_key, :oban, pinned: false, by: 'spec')
+        true
+      end
+      parent.perform_now
+      expect(published.size).to eq(1), parent.name
+    end
+
+    job_owner!('cron:bulk_stats_calculating_job', :sidekiq)
+    published = []
+    allow(Stats::BulkCalculator).to receive(:new) do |user_id|
+      calculator = instance_double(Stats::BulkCalculator)
+      allow(calculator).to receive(:call) do
+        published << user_id
+        JobOwnership.put!('cron:bulk_stats_calculating_job', :oban, pinned: false, by: 'spec')
+      end
+      calculator
+    end
+    BulkStatsCalculatingJob.perform_now
+    expect(published.size).to eq(1), 'BulkStatsCalculatingJob'
+
+    job_owner!('cron:raw_data_verify_job', :sidekiq)
+    2.times { |index| create(:points_raw_data_archive, user: users.first, chunk_number: index + 1) }
+    verifier = instance_double(Points::RawData::Verifier)
+    allow(Points::RawData::Verifier).to receive(:new).and_return(verifier)
+    verified = []
+    allow(verifier).to receive(:verify_specific_archive) do |archive_id|
+      verified << archive_id
+      JobOwnership.put!('cron:raw_data_verify_job', :oban, pinned: false, by: 'spec')
+    end
+    Points::RawData::VerifyRandomJob.perform_now
+    expect(verified.size).to eq(1), 'Points::RawData::VerifyRandomJob'
+  end
+
+  it 'source watcher recovery and retention recheck ownership between individual effects' do
+    user = create(:user)
+    job_owner!('cron:watcher_job', :sidekiq)
+    watcher = Imports::Watcher.new
+    allow(Imports::Watcher).to receive(:new).and_return(watcher)
+    allow(watcher).to receive(:user_directories).and_return([user.email])
+    allow(watcher).to receive(:file_names).and_return(%w[first.gpx second.gpx])
+    published = []
+    allow(watcher).to receive(:create_import) do |_, _, filename|
+      published << filename
+      JobOwnership.put!('cron:watcher_job', :oban, pinned: false, by: 'spec')
+    end
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
+    Import::WatcherJob.perform_now
+    expect(published).to eq(['first.gpx'])
+
+    job_owner!('cron:stale_jobs_recovery_job', :sidekiq)
+    exports = create_list(:export, 2, user:, status: :processing, start_at: 1.week.ago, end_at: Time.current)
+    exports.each { |export| export.update_column(:processing_started_at, 3.hours.ago) }
+    allow_any_instance_of(Notifications::Create).to receive(:call).and_wrap_original do |original|
+      original.call
+      JobOwnership.put!('cron:stale_jobs_recovery_job', :oban, pinned: false, by: 'spec')
+    end
+    StaleJobsRecoveryJob.perform_now
+    expect(exports.map { |export| export.reload.status }).to eq(%w[failed processing])
+
+    job_owner!('cron:route_videos_purge_job', :sidekiq)
+    allow(DawarichSettings).to receive_messages(video_retention_days: 30, video_max_per_user: 0)
+    videos = create_list(:route_video, 2, :with_file, user:, created_at: 31.days.ago)
+    allow_any_instance_of(RouteVideo).to receive(:expire!).and_wrap_original do |original|
+      original.call
+      JobOwnership.put!('cron:route_videos_purge_job', :oban, pinned: false, by: 'spec')
+    end
+    RouteVideos::PurgeJob.perform_now
+    expect(videos.map { |video| video.reload.status }).to eq(%w[expired stored])
+  end
+
   describe 'the lock protocol' do
     self.use_transactional_tests = false
 
     after do
       PhoenixTables.clear!
+    end
+
+    it 'fences a first source effect against the first native claim when the owner row is absent' do
+      phoenix_tables!
+      holding = Queue.new
+      release = Queue.new
+      holder = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          described_class.with_owner(key) do
+            holding << true
+            release.pop
+            :effect_done
+          end
+        end
+      end
+
+      begin
+        Timeout.timeout(5) { holding.pop }
+        stub_const('JobOwnership::LOCK_TIMEOUT', '50ms')
+        expect { described_class.put!(key, :oban, pinned: false, by: 'spec') }
+          .to raise_error(ActiveRecord::LockWaitTimeout)
+      ensure
+        release << true
+        raise 'source effect still holds its lock' unless holder.join(5)
+      end
+
+      expect(holder.value).to eq(:effect_done)
+      described_class.put!(key, :oban, pinned: false, by: 'spec')
+      expect(described_class.with_owner(key) { :late }).to eq(:not_owner)
     end
 
     it 'makes an owner change wait for a gate that holds the row' do

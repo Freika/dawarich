@@ -15,9 +15,9 @@ done
 rel=_build/prod/rel/dawarich/bin/dawarich
 work="$(mktemp -d)"
 export DAWARICH_COOKIE_FILE="$work/cookie"
-export DATABASE_NAME="${PHOENIX_TEST_DATABASE:-dawarich_phoenix_test}"
+release_db="${PHOENIX_TEST_DATABASE:?PHOENIX_TEST_DATABASE must name a private smoke database}"
 
-status3_db="${DATABASE_NAME}_a0c_status3"
+status3_db="${release_db}_a0c_status3"
 PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" \
   -U "${DATABASE_USERNAME:-postgres}" -d postgres -v ON_ERROR_STOP=1 -c "DROP DATABASE IF EXISTS $status3_db" >/dev/null
 PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${DATABASE_PORT:-5432}" \
@@ -32,48 +32,48 @@ PGPASSWORD="${DATABASE_PASSWORD:-}" psql -h "${DATABASE_HOST:-localhost}" -p "${
   || { echo "halt_unless_ready did not exit 3 for a database missing the phoenix schema (got $status3)"; cat "$work/status3.out" >&2; exit 1; }
 
 set +e
-DATABASE_PORT=1 "$rel" eval 'Dawarich.Release.halt_unless_ready()' >"$work/status5.out" 2>&1
+DATABASE_PORT=1 DATABASE_NAME="$release_db" "$rel" eval 'Dawarich.Release.halt_unless_ready()' >"$work/status5.out" 2>&1
 status5=$?
 set -e
 [ "$status5" -eq 5 ] \
   || { echo "halt_unless_ready did not exit 5 without a database connection (got $status5)"; cat "$work/status5.out" >&2; exit 1; }
 
-"$rel" help >"$work/help.out" 2>&1 || { echo "dawarich help failed"; cat "$work/help.out" >&2; exit 1; }
+DATABASE_NAME="$release_db" "$rel" help >"$work/help.out" 2>&1 || { echo "dawarich help failed"; cat "$work/help.out" >&2; exit 1; }
 grep -q 'raw-data restore USER_ID YEAR MONTH' "$work/help.out" || { echo "help does not list the operator commands"; exit 1; }
 set +e
-"$rel" users >"$work/users.out" 2>&1
+DATABASE_NAME="$release_db" "$rel" users >"$work/users.out" 2>&1
 users=$?
-"$rel" 'dawarich:jobs:rehome[command:x]' >"$work/retired.out" 2>&1
+DATABASE_NAME="$release_db" "$rel" 'dawarich:jobs:rehome[command:x]' >"$work/retired.out" 2>&1
 retired=$?
-"$rel" 'points:raw_data:status' >"$work/status.out" 2>&1
+DATABASE_NAME="$release_db" "$rel" 'points:raw_data:status' >"$work/status.out" 2>&1
 rawstatus=$?
 set -e
 [ "$users" -eq 1 ] && grep -q 'Usage: dawarich COMMAND' "$work/users.out" || { echo "an incomplete command did not print the usage (exit $users)"; exit 1; }
 [ "$retired" -eq 1 ] && grep -q 'removed together with Sidekiq' "$work/retired.out" || { echo "a retired rake name was not explained (exit $retired)"; exit 1; }
 [ "$rawstatus" -eq 0 ] && [ "$(head -1 "$work/status.out" | wc -c | tr -d ' ')" = 139 ] || { echo "raw-data status through the rake name failed or re-encoded its header (exit $rawstatus)"; cat "$work/status.out" >&2; exit 1; }
 set +e
-printf '%s\n' phoenix-a12e-smoke-login-not-for-production | "$rel" users password nobody@example.invalid >"$work/password.out" 2>&1
+printf '%s\n' phoenix-a12e-smoke-login-not-for-production | DATABASE_NAME="$release_db" "$rel" users password nobody@example.invalid >"$work/password.out" 2>&1
 password=$?
 set -e
 [ "$password" -eq 1 ] && [ "$(cat "$work/password.out")" = "dawarich: no user with email nobody@example.invalid" ] || { echo "users password with a piped password did not answer cleanly (exit $password)"; cat "$work/password.out" >&2; exit 1; }
 set +e
-DATABASE_PORT=1 "$rel" migrate status >"$work/nodb.out" 2>"$work/nodb.err"
+DATABASE_PORT=1 DATABASE_NAME="$release_db" "$rel" migrate status >"$work/nodb.out" 2>"$work/nodb.err"
 nodb=$?
 set -e
 [ "$nodb" -eq 1 ] && [ "$(cat "$work/nodb.out")" = "phoenix and oban schemas: the database did not answer" ] || { echo "migrate status without a database did not answer on stdout alone (exit $nodb)"; cat "$work/nodb.out" "$work/nodb.err" >&2; exit 1; }
 uuid="$(od -An -N16 -tx1 /dev/urandom | tr -d ' \n' | sed 's/^\(.\{8\}\)\(.\{4\}\)\(.\{4\}\)\(.\{4\}\)/\1-\2-\3-\4-/')"
 set +e
-"$rel" jobs resume "$uuid" >"$work/resume.out" 2>&1
+DATABASE_NAME="$release_db" "$rel" jobs resume "$uuid" >"$work/resume.out" 2>&1
 resume=$?
 set -e
 [ "$resume" -eq 1 ] && grep -q "$uuid is not a failed or stalled release operation" "$work/resume.out" || { echo "jobs resume did not reach the release operations (exit $resume)"; cat "$work/resume.out" >&2; exit 1; }
-[ "$("$rel" eval 'IO.puts(:still_eval)')" = still_eval ] || { echo "eval no longer reaches the release"; exit 1; }
-"$rel" version | grep -q '^dawarich ' || { echo "version no longer reaches the release"; exit 1; }
+[ "$(DATABASE_NAME="$release_db" "$rel" eval 'IO.puts(:still_eval)')" = still_eval ] || { echo "eval no longer reaches the release"; exit 1; }
+DATABASE_NAME="$release_db" "$rel" version | grep -q '^dawarich ' || { echo "version no longer reaches the release"; exit 1; }
 
 DAWARICH_RAILS_ARGS="$(printf '%s\037' sh -c 'printf "M\303\274nchen\n"; echo "args:[$1][$2][$3] $#"; echo "cookie:${RELEASE_COOKIE:-unset}"; while [ ! -f "$0" ]; do sleep 0.1; done; exit 7' "$work/go" "" x "")"
 export DAWARICH_RAILS_ARGS
 
-"$rel" start >"$work/out" 2>&1 &
+DATABASE_NAME="$release_db" "$rel" start >"$work/out" 2>&1 &
 node_pid=$!
 
 cleanup() {
@@ -89,7 +89,7 @@ trap cleanup EXIT
 
 prefix=""
 for _ in 1 2 3 4 5 6 7 8 9 10; do
-  prefix="$("$rel" rpc 'IO.puts(Oban.config().prefix)' 2>/dev/null || true)"
+  prefix="$(DATABASE_NAME="$release_db" "$rel" rpc 'IO.puts(Oban.config().prefix)' 2>/dev/null || true)"
   [ "$prefix" = "oban" ] && break
   sleep 1
 done

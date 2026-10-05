@@ -44,6 +44,7 @@ defmodule Dawarich.LockRace do
   end
 
   def blocked(pattern) do
+    ScratchRepo.query!("SELECT pg_stat_clear_snapshot()", [], log: false)
     [[count]] = ScratchRepo.query!(@blocked, [pattern], log: false).rows
     count
   end

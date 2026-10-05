@@ -15,10 +15,11 @@ defmodule Dawarich.RailsJobOwners do
     "AppVersionCheckingJob" => {:oban, ["cron:app_version_checking_job"]},
     "Areas::RelabelVisitsJob" => {:oban, ["command:areas.relabel_visits"]},
     "BulkStatsCalculatingJob" => {:oban, ["cron:bulk_stats_calculating_job"]},
-    "BulkVisitsSuggestingJob" => {:slice, :a12d2},
-    "Cache::CleaningJob" => :retire,
-    "Cache::PreheatingJob" => {:oban, ["cron:cache_preheating_job"]},
-    "Cache::UserPreheatingJob" => {:oban, ["command:cache.preheat_user"]},
+    "BulkVisitsSuggestingJob" =>
+      {:oban, ["cron:visit_suggesting_job", "command:visits.bulk_suggest"]},
+    "Cache::CleaningJob" => {:slice, :a12d1},
+    "Cache::PreheatingJob" => {:oban, ["cron:cache_preheating_job"], :a12d1},
+    "Cache::UserPreheatingJob" => {:oban, ["command:cache.preheat_user"], :a12d1},
     "DataMigrations::AddPointDimensionColumnsJob" => {:migrator, AddPointDimensions},
     "DataMigrations::BackfillAchievementsJob" =>
       {:oban, ["command:release.achievements_backfill"]},
@@ -76,14 +77,14 @@ defmodule Dawarich.RailsJobOwners do
     "Imports::PrepareDownloadJob" => {:oban, ["command:imports.prepare_download"], :a7},
     "Lite::ArchivalWarningJob" => {:oban, ["cron:lite_archival_warning_job"]},
     "Partnero::CustomerSignupJob" => {:slice, :a12d2},
-    "PendingImports::CleanupJob" => {:slice, :a12d2},
+    "PendingImports::CleanupJob" => {:oban, ["cron:pending_imports_cleanup"]},
     "Places::BulkNameFetchingJob" => {:oban, ["command:places.bulk_name_fetch"]},
     "Places::DeleteIfOrphanJob" => {:oban, ["command:places.delete_if_orphan"]},
     "Places::NameFetchingJob" => {:oban, ["command:places.name_fetch"]},
     "Places::OrphanCleanupJob" => {:oban, ["command:places.orphan_cleanup"]},
     "Points::AnomalyBackfillUserJob" => {:oban, ["command:points.anomaly_backfill"]},
     "Points::AnomalyFilterJob" => {:slice, :a12d1},
-    "Points::NightlyReverseGeocodingJob" => {:slice, :a12d2},
+    "Points::NightlyReverseGeocodingJob" => {:oban, ["cron:nightly_reverse_geocoding_job"]},
     "Points::RawData::ArchiveJob" => {:oban, ["cron:raw_data_archive_job"]},
     "Points::RawData::ArchiveUserJob" => {:oban, ["cron:raw_data_archive_job"]},
     "Points::RawData::ClearJob" => {:oban, ["cron:raw_data_clear_job"]},
@@ -146,6 +147,17 @@ defmodule Dawarich.RailsJobOwners do
   }
 
   def owners, do: @owners
+
+  def coexistence_reasons do
+    %{
+      "Cache::CleaningJob" =>
+        "retained source cleaning resets the cache_jobs_scheduled boot sentinel and coexistence keys",
+      "Cache::PreheatingJob" =>
+        "retained source warming remains behind the b4 native sweep's reverse intent",
+      "Cache::UserPreheatingJob" =>
+        "retained source warming precedes b4 native digest calculation"
+    }
+  end
 
   def native_producers,
     do: %{"command:mail.family_location_request" => Dawarich.Families.Requests}

@@ -39,6 +39,266 @@ module A12d2JobsSupport
                   command:places.delete_if_orphan command:places.orphan_cleanup command:achievements.bulk_check
                   command:achievements.check cron:airtrail_flight_import_job cron:teslamate_sync_job
                   cron:trek_sync_job cron:achievements_bulk_check_job].freeze
+  SCHEDULE_CASES = {
+    'BulkVisitsSuggestingJob' => %w[cron_defaults explicit singular union disabled selection nil_count nil_bounds
+                                    error berlin_dst berlin_fall tokyo utc year_chunks future string_bounds],
+    'Points::NightlyReverseGeocodingJob' => %w[selection disabled dedup batches repeat error],
+    'PendingImports::CleanupJob' => %w[expired expiry_boundary fresh claimed_old seven_day_boundary
+                                       claimed_recent shared_expired shared_claimed missing_file missing_object
+                                       failed_delete]
+  }.freeze
+  SCHEDULE_SEQUENCES = (SEQUENCES + %w[instance_settings pending_imports imports active_storage_blobs
+                                       active_storage_attachments active_storage_variant_records]).freeze
+
+  def capture_schedule_parents
+    classes = SCHEDULE_CASES.to_h do |name, profiles|
+      cases = profiles.map do |profile|
+        schedule_isolated(profile) do
+          method = { 'BulkVisitsSuggestingJob' => :schedule_visits,
+                     'Points::NightlyReverseGeocodingJob' => :schedule_geocoding,
+                     'PendingImports::CleanupJob' => :schedule_pending }.fetch(name)
+          { 'id' => profile, 'now' => Time.current.iso8601(6), 'ambient_zone' => Time.zone.tzinfo.name,
+            'owner' => 'sidekiq' }.merge(send(method, profile))
+        end
+      end
+      job = name.constantize.new
+      [name, { 'queue' => job.queue_name, 'sidekiq_retry' => name.constantize.get_sidekiq_options.fetch('retry'),
+               'cases' => cases }]
+    end
+    { 'version' => 1, 'classes' => classes }
+  end
+
+  def schedule_isolated(profile)
+    connection = ActiveRecord::Base.connection
+    sequences = source_sequences_for(SCHEDULE_SEQUENCES, connection)
+    redis = schedule_redis_snapshot
+    result = nil
+    RSpec::Mocks.with_temporary_scope do
+      source_stubs
+      allow(Rails).to receive(:cache).and_return(ActiveSupport::Cache::MemoryStore.new)
+      ActiveRecord::Base.transaction(requires_new: true) do
+        phoenix_tables!
+        %w[command:visits.suggest command:geocoding.reverse_point command:geocoding.reverse_place].each do |key|
+          JobOwnership.put!(key, :sidekiq, pinned: true, by: 'a12d3-source')
+        end
+        without_phoenix_state!
+        sequences.each_key { connection.execute("SELECT setval('#{_1}_id_seq', 48500, false)") }
+        ActiveSupport::IsolatedExecutionState[:job_commands_inline] = true
+        stamp = case profile
+                when 'berlin_dst' then Time.utc(2024, 4, 1, 12)
+                when 'berlin_fall' then Time.utc(2024, 10, 28, 12)
+                else NOW
+                end
+        zone = { 'tokyo' => 'Asia/Tokyo', 'utc' => 'Etc/UTC' }.fetch(profile, 'Europe/Berlin')
+        travel_to(stamp) { Time.use_zone(zone) { I18n.with_locale(:en) { result = yield } } }
+        raise ActiveRecord::Rollback
+      end
+    end
+    result
+  ensure
+    ActiveSupport::IsolatedExecutionState[:job_commands_inline] = nil
+    source_restore_sequences(connection, sequences)
+    schedule_restore_redis(redis)
+    InstanceSettings::Resolver.reset!
+    PhoenixSchema.reset!
+    clear_enqueued_jobs
+  end
+
+  def source_sequences_for(tables, connection)
+    tables.filter_map do |table|
+      next unless connection.select_value("SELECT to_regclass('#{table}_id_seq') IS NOT NULL")
+
+      [table, connection.select_one("SELECT last_value, is_called FROM #{table}_id_seq")]
+    end.to_h
+  end
+
+  def schedule_redis_snapshot
+    Sidekiq.redis do |redis|
+      (48_301..49_304).to_h do |id|
+        key = Point.geocode_dedup_key(id)
+        ttl = redis.pttl(key)
+        [key, [redis.dump(key), ttl.positive? ? Process.clock_gettime(Process::CLOCK_MONOTONIC) * 1000 + ttl : ttl]]
+      end
+    end
+  end
+
+  def schedule_restore_redis(snapshot)
+    return unless snapshot
+
+    Sidekiq.redis do |redis|
+      snapshot.each do |key, (bytes, deadline)|
+        redis.del(key)
+        next unless bytes
+
+        ttl = deadline == -1 ? 0 : (deadline - Process.clock_gettime(Process::CLOCK_MONOTONIC) * 1000).ceil
+        redis.restore(key, ttl, bytes) if ttl >= 0
+      end
+    end
+  end
+
+  def schedule_jobs
+    jobs = enqueued_jobs.map do |job|
+      { 'class' => job.fetch(:job).name, 'queue' => job.fetch(:queue),
+        'arguments' => source_value(ActiveJob::Arguments.deserialize(job.fetch(:args))),
+        'serialized_arguments' => job.fetch(:args) }
+    end
+    jobs.sort_by { |job| [job.fetch('class'), JSON.generate(job.fetch('serialized_arguments'))] }
+  end
+
+  def schedule_visits(profile)
+    configure_instance_geocoding unless profile == 'disabled'
+    user = source_user(points_count: 1)
+    other = source_user(OTHER_ID, points_count: 2)
+    if profile == 'selection'
+      source_user(48_103, points_count: 1, status: :inactive)
+      source_user(48_104, points_count: 1, status: :trial)
+      source_user(48_105, points_count: 0)
+      source_user(48_106, points_count: 1, settings: { 'visits_suggestions_enabled' => 'false' })
+      source_user(48_107, points_count: 1).update_columns(deleted_at: Time.current)
+      source_user(48_108, points_count: 1, plan: :lite)
+      source_user(48_109, points_count: 1, active_until: 1.day.ago)
+    end
+    if profile == 'nil_count'
+      allow_any_instance_of(User).to receive(:points_count) { |row| row.id == user.id ? nil : row[:points_count] }
+    end
+    arguments = case profile
+                when 'singular' then { user_id: user.id }
+                when 'union' then { user_ids: [user.id, nil, user.id], user_id: other.id }
+                when 'explicit' then { user_ids: [user.id], start_at: 2.days.ago, end_at: 1.day.ago }
+                when 'nil_bounds' then { start_at: nil, end_at: nil }
+                when 'year_chunks' then { start_at: DateTime.new(2023, 12, 30), end_at: DateTime.new(2026, 1, 2) }
+                when 'future' then { start_at: 2.days.from_now, end_at: 1.day.from_now }
+                when 'string_bounds' then { start_at: '2024-03-31T00:00:00+01:00',
+                                            end_at: '2024-03-31T23:59:59+02:00' }
+                else {}
+                end
+    calls = []
+    allow(Visits::TimeChunks).to receive(:new).and_wrap_original do |original, **bounds|
+      calls << bounds.transform_values { { 'type' => _1.class.name, 'value' => _1.iso8601(6) } }
+      original.call(**bounds)
+    end
+    if profile == 'error'
+      allow(VisitSuggestingJob).to receive(:perform_later).and_raise('fixture visit publication failure')
+    end
+    parent = BulkVisitsSuggestingJob.new(**arguments)
+    effects = source_effects do
+      parent.perform(**arguments)
+      nil
+    end
+    serialized_parent = parent.serialize.slice('job_class', 'job_id', 'queue_name', 'arguments')
+    effects.merge('input' => source_value(arguments), 'serialized_parent' => serialized_parent,
+                  'time_chunks_calls' => source_value(calls), 'jobs' => schedule_jobs,
+                  'users' => User.unscoped.where(id: 48_101..48_109).order(:id).map do |row|
+                    { 'id' => row.id, 'status' => row.status, 'plan' => row.plan, 'points_count' => row.points_count,
+                      'suggestions' => row.safe_settings.visits_suggestions_enabled?, 'deleted' => row.deleted? }
+                  end)
+  end
+
+  def schedule_geocoding(profile)
+    configure_instance_geocoding unless profile == 'disabled'
+    user = source_user
+    other = source_user(OTHER_ID)
+    source_point(user.id, NOW.to_i)
+    source_point(user.id, NOW.to_i + 1, id: 48_302, reverse_geocoded_at: Time.current)
+    source_point(other.id, NOW.to_i + 2, id: 48_303)
+    other.update_columns(deleted_at: Time.current) if profile == 'selection'
+    if profile == 'batches'
+      Point.insert_all!(Array.new(1001) do |index|
+        { id: 48_304 + index, user_id: user.id, timestamp: NOW.to_i + index + 3, lonlat: 'POINT(13 52)',
+          created_at: Time.current, updated_at: Time.current }
+      end)
+    end
+    keys = Point.not_reverse_geocoded.order(:id).pluck(:id).map { Point.geocode_dedup_key(_1) }
+    if profile == 'dedup'
+      Sidekiq.redis { |redis| keys.each { redis.set(_1, 'synthetic-claim', ex: Point::GEOCODE_DEDUP_TTL) } }
+    end
+    batches = []
+    allow(Geocoding::ReverseCommands).to receive(:enqueue_points).and_wrap_original do |original, id, ids, **options|
+      batches << { 'user_id' => id, 'point_ids' => ids, 'force' => options.fetch(:force) }
+      raise 'fixture geocoding publication failure' if profile == 'error'
+
+      original.call(id, ids, **options)
+    end
+    invalidated = []
+    allow(Cache::InvalidateUserCaches).to receive(:new).and_wrap_original do |original, id, **options|
+      invalidated << id
+      original.call(id, **options)
+    end
+    deletes = []
+    allow(Rails.cache).to receive(:delete).and_wrap_original do |original, key, *args|
+      deletes << key
+      original.call(key, *args)
+    end
+    effects = source_effects do
+      Points::NightlyReverseGeocodingJob.new.perform
+      Points::NightlyReverseGeocodingJob.new.perform if profile == 'repeat'
+      nil
+    end
+    effects.merge('batches' => batches, 'invalidated_user_ids' => invalidated, 'cache_deletes' => deletes,
+                  'remaining_claims' => Sidekiq.redis { |redis| keys.select { redis.exists(_1).positive? } },
+                  'jobs' => schedule_jobs)
+  end
+
+  def schedule_pending(profile)
+    user = source_user
+    attributes = { id: 48_901, original_filename: 'synthetic.zip', origin: 'https://example.invalid',
+                   expires_at: 1.day.ago }
+    attributes[:expires_at] = Time.current if profile == 'expiry_boundary'
+    attributes[:expires_at] = 1.day.from_now if profile == 'fresh'
+    if %w[claimed_old shared_claimed seven_day_boundary claimed_recent].include?(profile)
+      attributes[:claimed_at] = case profile
+                                when 'seven_day_boundary' then 7.days.ago
+                                when 'claimed_recent' then 6.days.ago
+                                else 8.days.ago
+                                end
+      attributes[:claimed_by_user_id] = user.id
+    end
+    pending = PendingImport.create!(**attributes)
+    blob = nil
+    object_path = nil
+    original_bytes = nil
+    unless profile == 'missing_file'
+      key = "a12d3pending#{profile.delete('_')}"
+      service = ActiveStorage::Blob.services.fetch('test')
+      object_path = service.send(:path_for, key)
+      original_bytes = File.binread(object_path) if File.file?(object_path)
+      content = 'synthetic pending-import bytes'
+      blob = ActiveStorage::Blob.create_before_direct_upload!(key:, filename: 'synthetic.zip',
+                                                              byte_size: content.bytesize, checksum: Digest::MD5.base64digest(content),
+                                                              content_type: 'application/zip', service_name: 'test')
+      service.upload(key, StringIO.new(content))
+      pending.file.attach(blob)
+      service.delete(key) if profile == 'missing_object'
+    end
+    import = nil
+    if %w[shared_expired shared_claimed].include?(profile)
+      import = create(:import, id: 48_902, user:, skip_background_processing: true)
+      import.file.attach(blob)
+    end
+    if profile == 'failed_delete'
+      allow(blob.service).to receive(:delete).with(blob.key).and_raise(IOError,
+                                                                       'fixture object delete failure')
+    end
+    effects = source_effects do
+      PendingImports::CleanupJob.new.perform
+      nil
+    end
+    effects.merge('input' => source_value(attributes), 'jobs' => schedule_jobs,
+                  'pending_exists' => PendingImport.exists?(pending.id),
+                  'blob_exists' => blob ? ActiveStorage::Blob.exists?(blob.id) : nil,
+                  'object_exists' => blob&.service&.exist?(blob.key),
+                  'attachments' => blob ? blob.attachments.order(:id).pluck(:record_type, :record_id) : [],
+                  'import_attached' => import ? import.reload.file.attached? : nil)
+  ensure
+    if object_path
+      if original_bytes
+        FileUtils.mkdir_p(File.dirname(object_path))
+        File.binwrite(object_path, original_bytes)
+      else
+        FileUtils.rm_f(object_path)
+      end
+    end
+  end
 
   def capture_jobs
     classes = CASES.to_h do |name, profiles|

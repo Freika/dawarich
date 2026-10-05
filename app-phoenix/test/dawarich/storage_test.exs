@@ -93,6 +93,21 @@ defmodule Dawarich.StorageTest do
     assert Storage.disk_path("/r", key) == "/r/ab/cd/" <> key
   end
 
+  test "disk deletion reports real filesystem failure and rejects unsafe paths", %{config: config} do
+    key = "a12d3deleteobject"
+    path = Storage.disk_path(config.root, key)
+    File.mkdir_p!(path)
+    assert {:error, :eperm} = Storage.delete(config, key)
+    File.rmdir!(path)
+    assert Storage.delete(config, key) == :ok
+    File.write!(path, "synthetic")
+    assert Storage.delete(config, key) == :ok
+    refute File.exists?(path)
+
+    for bad <- ["", "../escape", "/../../escape", <<0>>, "a/../b"],
+        do: assert(Storage.delete(config, bad) == {:error, :unsafe_path})
+  end
+
   test "digest_file!/1 returns base64 MD5 and size of a 12 MiB file", %{rails_root: root} do
     bin = :crypto.strong_rand_bytes(12 * 1024 * 1024)
     path = Path.join(root, "big.bin")

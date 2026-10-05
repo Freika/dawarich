@@ -39,6 +39,7 @@ defmodule Dawarich.Jobs.ReleaseEntries do
         %{
           key: RawData.VerifyWorker.key(),
           kind: :cron,
+          catch_up: false,
           expression: "0 5 * * *",
           worker: RawData.VerifyWorker,
           claimable: false

@@ -4,6 +4,7 @@ defmodule Dawarich.CLI.Jobs do
   import Dawarich.CLI, only: [puts: 2, fail: 2]
 
   alias Dawarich.ReleaseOperations
+  alias Dawarich.Jobs.Drain
   alias Jason.OrderedObject, as: O
 
   @flags """
@@ -46,6 +47,13 @@ defmodule Dawarich.CLI.Jobs do
   end
 
   def status(_args, ctx), do: fail(ctx, "usage: dawarich jobs status")
+
+  def drain_status([], ctx) do
+    puts(ctx, Jason.encode!(Drain.status(ctx.repo), pretty: true))
+    0
+  end
+
+  def drain_status(_args, ctx), do: fail(ctx, "usage: dawarich jobs drain-status")
 
   def resume([id], ctx) do
     with {:ok, uuid} <- Ecto.UUID.cast(id),

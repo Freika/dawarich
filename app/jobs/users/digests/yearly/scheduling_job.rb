@@ -13,7 +13,10 @@ class Users::Digests::Yearly::SchedulingJob < ApplicationJob
       next unless user.stats.where(year: year).exists?
 
       # Schedule calculation; email is chained from the calculating job
-      Users::Digests::Yearly::CalculatingJob.perform_later(user.id, year)
+      result = JobOwnership.with_owner('cron:yearly_digest_scheduling_job') do
+        Users::Digests::Yearly::CalculatingJob.perform_later(user.id, year)
+      end
+      break if result == :not_owner
     end
   end
 end

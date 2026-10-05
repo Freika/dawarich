@@ -10,28 +10,36 @@ module Stats
     RECONCILIATIONS_PER_RUN = 2
     RUN_BUDGET = 30.seconds
 
-    def call
+    def call(owner_key: nil)
       PhoenixLease.try_hold(LOCK_NAME) do
-        @deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + RUN_BUDGET
-        @remaining = MONTHS_PER_RUN
-        @results = {}
-        @scheduled_full = Set.new
-        discover_missing_month
-        first = PhoenixCursors.incr(TURN_KEY).odd?
-        if first
-          reconcile
-          @results.clear
-          refresh_pending
+        if owner_key
+          JobOwnership.with_owner(owner_key) { sweep }
         else
-          @remaining -= RECONCILIATIONS_PER_RUN
-          refresh_pending
-          @remaining = RECONCILIATIONS_PER_RUN
-          reconcile if within_budget?
+          sweep
         end
       end
     end
 
     private
+
+    def sweep
+      @deadline = Process.clock_gettime(Process::CLOCK_MONOTONIC) + RUN_BUDGET
+      @remaining = MONTHS_PER_RUN
+      @results = {}
+      @scheduled_full = Set.new
+      discover_missing_month
+      first = PhoenixCursors.incr(TURN_KEY).odd?
+      if first
+        reconcile
+        @results.clear
+        refresh_pending
+      else
+        @remaining -= RECONCILIATIONS_PER_RUN
+        refresh_pending
+        @remaining = RECONCILIATIONS_PER_RUN
+        reconcile if within_budget?
+      end
+    end
 
     def reconcile
       cursor = PhoenixCursors.get(CURSOR_KEY).to_i

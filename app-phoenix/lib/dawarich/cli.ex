@@ -11,6 +11,7 @@ defmodule Dawarich.CLI do
     ["migrate", "status"] => {Migrate, :status},
     ["seeds"] => {Seeds, :seeds},
     ["jobs", "status"] => {Jobs, :status},
+    ["jobs", "drain-status"] => {Jobs, :drain_status},
     ["jobs", "resume"] => {Jobs, :resume},
     ["users", "activate"] => {Users, :activate},
     ["users", "admin"] => {Users, :admin},
@@ -84,6 +85,7 @@ defmodule Dawarich.CLI do
     migrate status                                Show what this image sees in the database; exit 1 if it refuses it
     seeds                                         Seed an ordinary self-hosted install with native lifecycle enabled
     jobs status                                   Job owners, outbox, Phoenix nodes and Oban job counts as JSON
+    jobs drain-status                             Redacted native drain debt and rollback blockers as JSON
     jobs resume OPERATION_ID                      Resume a failed release backfill
     users activate                                Activate every user (self-hosted only)
     users admin EMAIL                             Make a user an administrator
