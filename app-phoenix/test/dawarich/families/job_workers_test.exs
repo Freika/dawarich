@@ -92,7 +92,7 @@ defmodule Dawarich.Families.JobWorkersTest do
 
     for worker <- [AutoCreateWorker, MemberSyncWorker] do
       assert worker.__opts__()[:max_attempts] == 26
-      assert worker.__opts__()[:queue] == :families
+      assert worker.__opts__()[:queue] == :maintenance
       assert worker.backoff(%Oban.Job{attempt: 10}) in 6576..6675
     end
   end
