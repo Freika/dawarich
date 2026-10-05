@@ -57,7 +57,7 @@ defmodule DawarichWeb.PlaceDrawerFrame do
             ><.icon name="lock" class="w-4 h-4 inline" /></span>
           </h2>
           <p :if={@location != ""} class="place-drawer__location">{@location}</p>
-          <p class="place-drawer__source" phx-no-format>{t(@locale, "places.drawer.source", %{})} {t(@locale, "enums.place.source." <> @drawer.source, %{})}</p>
+          <p class="place-drawer__source" phx-no-format>{t(@locale, "places.drawer.source", %{})} {source(@locale, @drawer.source)}</p>
         </div>
         <button
           type="button"
@@ -185,6 +185,15 @@ defmodule DawarichWeb.PlaceDrawerFrame do
     </div>
     """
   end
+
+  defp source(locale, nil),
+    do:
+      "{" <>
+        Enum.map_join(~w(manual photon gpx_waypoint), ", ", fn key ->
+          key <> ": " <> Jason.encode!(t(locale, "enums.place.source." <> key, %{}))
+        end) <> "}"
+
+  defp source(locale, value), do: t(locale, "enums.place.source." <> value, %{})
 
   defp chip_style(color),
     do: if(Ruby.present?(color), do: "background-color: #{color};", else: "")

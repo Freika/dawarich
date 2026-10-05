@@ -29,6 +29,21 @@ defmodule DawarichWeb.TripCard do
               phx-update="ignore"
             >
             </div>
+          <% @trip.plan_json -> %>
+            <div style="width: 100%; aspect-ratio: 16/10;" class="relative bg-base-200">
+              <div
+                class="h-full w-full"
+                data-controller="trip-maplibre-preview"
+                data-trip-maplibre-preview-plan-value={@trip.plan_json}
+                data-trip-maplibre-preview-map-style-value={@settings.style}
+              >
+              </div>
+              <span class="trip-plan-caption trip-plan-caption--compact">{t(
+                @locale,
+                "trips.trip.plan",
+                %{}
+              )}</span>
+            </div>
           <% @trip.distance -> %>
             <div
               style="width: 100%; aspect-ratio: 16/10;"

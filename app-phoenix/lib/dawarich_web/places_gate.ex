@@ -21,6 +21,35 @@ defmodule DawarichWeb.PlacesGate do
       TripsGate.open?(conn, &(PlaceDrawer.load(&1, String.to_integer(id)) != :rails))
   end
 
+  def navigation?(conn, params) do
+    case Plug.Conn.get_req_header(conn, "turbo-frame") do
+      ["place-drawer"] -> drawer?(conn, params)
+      [] -> conn.query_string == "" and Plug.Conn.get_req_header(conn, "x-dawarich-client") == []
+      _ -> false
+    end
+  end
+
+  def nearby?(conn, _params) do
+    DawarichWeb.LayoutAssigns.self_hosted?() and
+      Plug.Conn.get_req_header(conn, "x-dawarich-client") == [] and valued?(conn.query_string) and
+      scalar_nearby?(conn.query_string) and
+      TripsGate.open?(conn, fn _user ->
+        DawarichWeb.PlaceNavigation.nearby_state(Plug.Conn.Query.decode(conn.query_string)) !=
+          :rails
+      end)
+  end
+
+  defp scalar_nearby?(query) do
+    pairs = URI.query_decoder(query) |> Enum.to_list()
+
+    Enum.all?(pairs, fn {key, value} ->
+      key in ~w(latitude longitude radius limit) and String.valid?(value)
+    end) and
+      length(pairs) == length(Enum.uniq_by(pairs, &elem(&1, 0)))
+  rescue
+    _ -> false
+  end
+
   defp valued?(query),
     do: query |> String.split("&", trim: true) |> Enum.all?(&String.contains?(&1, "="))
 end

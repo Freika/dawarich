@@ -87,7 +87,7 @@ defmodule DawarichWeb.MapDataRoutesTest do
           {:get, "/map", [:browser, :rails_user], nil},
           {:get, "/map/v2", [:browser, :rails_user], nil},
           {:get, "/places", [:browser, :rails_user], {DawarichWeb.PlacesGate, :index?}},
-          {:get, "/places/:id", [:rails_frame], {DawarichWeb.PlacesGate, :drawer?}},
+          {:get, "/places/:id", [:rails_frame], {DawarichWeb.PlacesGate, :navigation?}},
           {:get, "/map/timeline_feeds", [:rails_frame], {DawarichWeb.MapFramesGate, :feed?}},
           {:get, "/map/timeline_feeds/calendar", [:rails_frame],
            {DawarichWeb.MapFramesGate, :calendar?}},
