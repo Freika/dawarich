@@ -1,7 +1,7 @@
 # A12c residual mail
 
 Implementation on `feat/phoenix-a12c-mail` started at `0672ae88e` and synced to
-integration head `bc3b78a94`. C1–C5 tests-only acceptance is complete;
+integration head `812cbecfc`. C1–C5 tests-only acceptance is complete;
 stand/browser/image acceptance is deferred to the controller mini lane.
 No mail ownership has changed. Auth mail is security-sensitive; no AFFiNE writes are made.
 
@@ -21,8 +21,9 @@ No mail ownership has changed. Auth mail is security-sensitive; no AFFiNE writes
 
 All new named contracts have an independently observed named mutation failure and restored
 green run. The existing recovery retry regression remains unchanged. No source spec is deleted.
-Final focused native acceptance passes 137 tests. The four exact C2 Rails batches pass
-33, 32, 34 and 63 examples respectively, with zero failures and Swagger restored after each.
+After the three review corrections, focused native acceptance passes 139 tests.
+The four exact C2 Rails batches pass 33, 33, 34 and 63 examples respectively,
+with zero failures and Swagger restored after each.
 C3's two generator write processes and its no-write comparison each pass six examples.
 Residual directory bytes match between writes; explore-features matches both the first write
 and its pre-change copy. RuboCop passes all ten changed Ruby files with cache disabled;
@@ -227,10 +228,16 @@ to scoped GREEN. Browser, stand and image acceptance is deferred to the controll
 
 ## Tests-only handoff
 
-After the authorized integration sync, C4 passes full ExUnit seeds 404 and 202:
-6,490 tests, zero failures and six excluded per seed, each with one terminal summary.
-The existing resync script's dependency, warnings-as-errors compilation and formatting
-checks pass. Seeds 101 and 303 are omitted under the controller's branch merge gate;
+C4's review gate passes seed 404 on review head `43d0a80c1`: 6,492 tests,
+zero failures and six excluded, with one terminal summary. Its resync dependency,
+warnings-as-errors compilation and formatting checks pass. Seed 202 initially
+failed `DawarichWeb.Api.PlacesGoldenTest`'s `golden index_default` because place
+ordering differed. The controller fixed both Rails and Phoenix ordering on the
+integration branch. After the authorized sync to `812cbecfc` (merge `64b1a3c80`),
+seed 202 passes 6,523 tests, zero failures and six excluded in 503.0 seconds,
+with one terminal summary. Per the session-6 ruling, only the failed seed was
+rerun; C1–C3 and seed 404 retain the review-head evidence above.
+Seeds 101 and 303 are omitted under the controller's branch merge gate;
 the controller runs the third seed on the integration head.
 
 The two existing census tests now read P10's residual Rails command maps and identify
