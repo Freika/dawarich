@@ -18,6 +18,8 @@ RSpec.describe 'phoenix:i18n' do
       # rubocop:disable Style/FormatStringToken
       expect(data.dig('en', 'datetime', 'distance_in_words', 'x_days', 'other')).to eq('%{count} days')
       # rubocop:enable Style/FormatStringToken
+    ensure
+      Rake::Task['phoenix:i18n'].reenable
     end
   end
 end

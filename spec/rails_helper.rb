@@ -96,7 +96,10 @@ RSpec.configure do |config|
   end
 
   config.after(:suite) do
+    Rake::Task['rswag:generate'].reenable
     Rake::Task['rswag:generate'].invoke
+  ensure
+    Rake::Task['rswag:generate'].reenable
   end
 end
 
