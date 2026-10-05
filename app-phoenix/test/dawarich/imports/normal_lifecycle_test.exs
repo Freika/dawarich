@@ -165,6 +165,11 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
       reset!(ScratchRepo)
       c = fixture(c, name)
       assert {:ok, :ok} = run(c)
+
+      rows(
+        "UPDATE job_outbox SET error_code=error_code WHERE aggregate_id=(SELECT min(aggregate_id) FROM job_outbox)"
+      )
+
       assert_archive_children(c)
       parent = c.expected["parent"]
 
@@ -185,7 +190,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
 
       assert ids ==
                rows(
-                 "SELECT (payload->>'import_id')::bigint FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY ctid"
+                 "SELECT (payload->>'import_id')::bigint FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY aggregate_id"
                )
                |> List.flatten()
 
@@ -263,6 +268,11 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
       reset!(ScratchRepo)
       c = fixture(c, name)
       assert {:ok, :ok} = run(c)
+
+      rows(
+        "UPDATE job_outbox SET error_code=error_code WHERE aggregate_id=(SELECT min(aggregate_id) FROM job_outbox)"
+      )
+
       assert_archive_children(c)
       assert [] = rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
       assert [] = rows("SELECT id FROM notifications")
@@ -281,7 +291,7 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
 
       assert expected ==
                rows(
-                 "SELECT command_type,payload FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY ctid"
+                 "SELECT command_type,payload FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY aggregate_id"
                )
 
       assert_clean(c)
@@ -326,6 +336,24 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
     assert [[1]] = rows("SELECT count(*) FROM phoenix.import_handoffs")
     assert [[1]] = rows("SELECT count(*) FROM phoenix.rails_commands")
     assert_clean(c)
+  end
+
+  test "whole-create effects preserve enqueue order after heap rows move", c do
+    for name <- ~w(duplicate_section_polarsteps_0 zip_known_preference) do
+      reset!(ScratchRepo)
+      c = fixture(c, name)
+      assert {:ok, :ok} = run(c)
+
+      ScratchRepo.query!(
+        "UPDATE phoenix.rails_commands SET attempts=attempts WHERE payload->>'step'='extract'"
+      )
+
+      ScratchRepo.query!(
+        "UPDATE job_outbox SET error_code=error_code WHERE aggregate_id=(SELECT min(aggregate_id) FROM job_outbox)"
+      )
+
+      NormalWholeAssertions.assert_contract(c, ScratchRepo)
+    end
   end
 
   test "whole lifecycle compares the complete Rails contract in both followup owner arms", c do
