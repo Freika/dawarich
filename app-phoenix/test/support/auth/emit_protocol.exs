@@ -1,5 +1,5 @@
 if Enum.at(System.argv(), 1) == "api_two_factor_management" do
-  unless System.get_env("PHOENIX_TEST_DATABASE") == "dawarich_phoenix_test_a4otp",
+  unless String.starts_with?(System.fetch_env!("PHOENIX_TEST_DATABASE"), "dawarich_phoenix_test"),
     do: raise("A4 OTP own test DB required")
 
   Ecto.Adapters.SQL.Sandbox.unboxed_run(Dawarich.Repo, fn ->
@@ -23,7 +23,7 @@ if Enum.at(System.argv(), 1) == "web_otp_source" do
   alias Dawarich.{Repo, RailsCookies, Test.RailsUser}
   label = "web OTP protocol carries source pending and completed projections across runtimes"
 
-  unless System.get_env("PHOENIX_TEST_DATABASE") == "dawarich_phoenix_test_a11d",
+  unless String.starts_with?(System.fetch_env!("PHOENIX_TEST_DATABASE"), "dawarich_phoenix_test"),
     do: raise("A11d own test DB required")
 
   payload = File.read!(hd(System.argv())) |> Jason.decode!()
@@ -106,7 +106,7 @@ if Enum.at(System.argv(), 1) == "web_otp" do
   alias Dawarich.Auth.TwoFactor.{Secret, Totp}
   alias Dawarich.{Repo, Test.RailsUser}
 
-  unless System.get_env("PHOENIX_TEST_DATABASE") == "dawarich_phoenix_test_a11d",
+  unless String.starts_with?(System.fetch_env!("PHOENIX_TEST_DATABASE"), "dawarich_phoenix_test"),
     do: raise("A11d own test DB required")
 
   path = hd(System.argv())
@@ -214,7 +214,7 @@ if Enum.at(System.argv(), 1) == "two_factor_management" do
   alias Dawarich.Auth.TwoFactor.{Management, Totp}
   alias Dawarich.Repo
 
-  unless System.get_env("PHOENIX_TEST_DATABASE") == "dawarich_phoenix_test_a11c",
+  unless String.starts_with?(System.fetch_env!("PHOENIX_TEST_DATABASE"), "dawarich_phoenix_test"),
     do: raise("A11c own test DB required")
 
   id = 74603

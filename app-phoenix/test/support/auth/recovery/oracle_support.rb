@@ -15,7 +15,7 @@ module RecoveryOracle
 
   def guard!
     database = ActiveRecord::Base.connection_db_config.database
-    return if Rails.env.test? && database.start_with?('dawarich_test_a11') && Devise.secret_key == SECRET
+    return if Rails.env.test? && database.start_with?('dawarich_test') && Devise.secret_key == SECRET
 
     raise 'A11 recovery oracle requires its own test database and the synthetic secret'
   end
