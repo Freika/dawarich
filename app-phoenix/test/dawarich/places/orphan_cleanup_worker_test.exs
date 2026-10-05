@@ -45,6 +45,13 @@ defmodule Dawarich.Places.OrphanCleanupWorkerTest do
     }
   end
 
+  test "source deleted-user cleanup retains orphan places", %{user: user, args: args} do
+    id = place(user, 1, nil)
+    rows("UPDATE users SET deleted_at=now() WHERE id=$1", [user])
+    assert Worker.run(ScratchRepo, @oban, args) == :ok
+    assert rows("SELECT id FROM places WHERE id=$1", [id]) == [[id]]
+  end
+
   test "cleanup drains source-sized user batches preserving custom and referenced places", %{
     user: user,
     other: other,
