@@ -44,9 +44,9 @@ defmodule Dawarich.RailsJobOwners do
     "DataMigrations::FixRouteOpacityJob" => {:oban, ["command:release.route_opacity"]},
     "DataMigrations::MigratePlacesLonlatJob" => :retire,
     "DataMigrations::PrefillPointsCounterCacheJob" => :retire,
-    "DataMigrations::RecalculateAnomaliesJob" => {:slice, :a12d1},
-    "DataMigrations::RecalculateAnomaliesUserJob" => {:slice, :a12d1},
-    "DataMigrations::RecalculatePerTrackerTracksJob" => {:slice, :a12d1},
+    "DataMigrations::RecalculateAnomaliesJob" => {:oban, ["command:release.anomalies"]},
+    "DataMigrations::RecalculateAnomaliesUserJob" => {:oban, ["command:release.anomalies_user"]},
+    "DataMigrations::RecalculatePerTrackerTracksJob" => {:oban, ["command:release.per_tracker"]},
     "DataMigrations::SetPointsCountryIdsJob" => :retire,
     "DataMigrations::SetReverseGeocodedAtForPointsJob" => :retire,
     "DataMigrations::StartSettingsPointsCountryIdsJob" => :retire,
@@ -65,12 +65,12 @@ defmodule Dawarich.RailsJobOwners do
     "Import::GoogleTakeoutJob" => {:slice, :a7},
     "Import::GpxResumeJob" => {:slice, :a7},
     "Import::NormalResumeJob" => {:oban, ["command:imports.process_normal"], :a7},
-    "Import::ImmichGeodataJob" => {:slice, :a7},
-    "Import::PhotoprismGeodataJob" => {:slice, :a7},
+    "Import::ImmichGeodataJob" => {:oban, ["command:imports.immich_geodata"]},
+    "Import::PhotoprismGeodataJob" => {:oban, ["command:imports.photoprism_geodata"]},
     "Import::ProcessJob" =>
       {:oban, ["command:imports.process_gpx", "command:imports.process_normal"], :a7},
     "Import::UpdatePointsCountJob" => {:oban, ["command:imports.update_points_count"]},
-    "Import::WatcherJob" => {:slice, :a7},
+    "Import::WatcherJob" => {:oban, ["cron:watcher_job"]},
     "Imports::DestroyJob" => {:oban, ["command:imports.destroy"], :a7},
     "Imports::PrepareDownloadJob" => {:oban, ["command:imports.prepare_download"], :a7},
     "Lite::ArchivalWarningJob" => {:oban, ["cron:lite_archival_warning_job"]},
@@ -80,7 +80,7 @@ defmodule Dawarich.RailsJobOwners do
     "Places::DeleteIfOrphanJob" => {:oban, ["command:places.delete_if_orphan"]},
     "Places::NameFetchingJob" => {:oban, ["command:places.name_fetch"]},
     "Places::OrphanCleanupJob" => {:oban, ["command:places.orphan_cleanup"]},
-    "Points::AnomalyBackfillUserJob" => {:slice, :a12d1},
+    "Points::AnomalyBackfillUserJob" => {:oban, ["command:points.anomaly_backfill"]},
     "Points::AnomalyFilterJob" => {:slice, :a12d1},
     "Points::NightlyReverseGeocodingJob" => {:slice, :a12d2},
     "Points::RawData::ArchiveJob" => {:oban, ["cron:raw_data_archive_job"]},
@@ -92,11 +92,11 @@ defmodule Dawarich.RailsJobOwners do
     "ReverseGeocodingJob" =>
       {:oban, ["command:geocoding.reverse_point", "command:geocoding.reverse_place"]},
     "RouteVideos::PurgeJob" => {:oban, ["cron:route_videos_purge_job"]},
-    "StaleJobsRecoveryJob" => {:slice, :a7},
+    "StaleJobsRecoveryJob" => {:oban, ["cron:stale_jobs_recovery_job"], :a7},
     "Stats::CalculatingJob" => {:oban, ["command:stats.calculate_month"]},
-    "Stats::FullRecalculationJob" => {:slice, :a12d1},
+    "Stats::FullRecalculationJob" => {:oban, ["command:stats.full_recalculation"]},
     "Stats::ToponymsRefreshJob" => {:oban, ["cron:stats_toponyms_refresh_job"]},
-    "TeslaMate::SyncJob" => {:slice, :a7},
+    "TeslaMate::SyncJob" => {:oban, ["command:imports.teslamate_sync"]},
     "TeslaMate::SyncSchedulingJob" => {:oban, ["cron:teslamate_sync_job"]},
     "TrackSegments::TimeAnchorBackfillJob" => {:oban, ["command:release.time_anchor"]},
     "Tracks::BackfillGenerationJob" => {:oban, ["command:tracks.backfill"]},
@@ -114,8 +114,8 @@ defmodule Dawarich.RailsJobOwners do
     "TransportationModes::ReclassifyTrackJob" =>
       {:oban, ["command:transportation.reclassify_track"]},
     "TransportationModes::UserReclassifyJob" => {:slice, :a12d2},
-    "Trek::ImportTripsJob" => {:slice, :a7},
-    "Trek::SyncJob" => {:slice, :a7},
+    "Trek::ImportTripsJob" => {:oban, ["command:imports.trek_import"]},
+    "Trek::SyncJob" => {:oban, ["command:imports.trek_sync"]},
     "Trek::SyncSchedulingJob" => {:oban, ["cron:trek_sync_job"]},
     "Trips::CalculateAllJob" => {:oban, ["command:trips.calculate"]},
     "Trips::CalculateCountriesJob" => {:oban, ["command:trips.calculate"]},
@@ -127,16 +127,16 @@ defmodule Dawarich.RailsJobOwners do
     "Users::Digests::CalculatingJob" => {:oban, ["command:digests.calculate_year"], :retire},
     "Users::Digests::EmailSendingJob" => :retire,
     "Users::Digests::Monthly::CalculatingJob" => {:oban, ["command:digests.calculate_month"]},
-    "Users::Digests::Monthly::EmailSendingJob" => {:slice, :a12c},
+    "Users::Digests::Monthly::EmailSendingJob" => {:oban, ["command:mail.digest.monthly"]},
     "Users::Digests::Monthly::SchedulingJob" => {:oban, ["cron:monthly_digest_scheduling_job"]},
     "Users::Digests::Yearly::CalculatingJob" => {:oban, ["command:digests.calculate_year"]},
-    "Users::Digests::Yearly::EmailSendingJob" => {:slice, :a12c},
+    "Users::Digests::Yearly::EmailSendingJob" => {:oban, ["command:mail.digest.yearly"]},
     "Users::Digests::Yearly::SchedulingJob" => {:oban, ["cron:yearly_digest_scheduling_job"]},
-    "Users::ExportDataJob" => {:slice, :a7},
-    "Users::ImportDataJob" => {:slice, :a7},
+    "Users::ExportDataJob" => {:oban, ["command:users.export_data"]},
+    "Users::ImportDataJob" => {:oban, ["command:users.import_data"]},
     "Users::MailerSendingJob" => {:oban, @mail, :retire},
     "Users::PointsCounterCorrectionJob" => {:oban, ["cron:points_counter_correction_job"]},
-    "Users::RecalculateDataJob" => {:slice, :a12d1},
+    "Users::RecalculateDataJob" => {:oban, ["command:users.recalculate_data"]},
     "Users::ResetPointsCounterJob" => :retire,
     "VisitSuggestingJob" => {:oban, ["command:visits.suggest"]},
     "Visits::FleetRedetectJob" => {:oban, ["command:release.visits_fleet_redetect"]},
@@ -145,6 +145,10 @@ defmodule Dawarich.RailsJobOwners do
   }
 
   def owners, do: @owners
+
+  def native_producers,
+    do: %{"command:mail.family_location_request" => Dawarich.Families.Requests}
+
   def classes, do: Map.keys(@owners)
   def slices, do: @slices
 end

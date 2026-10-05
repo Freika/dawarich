@@ -9,9 +9,8 @@ defmodule Dawarich.Admin.SettingWrites do
 
     with {:ok, _} <- actor(actor, repo, context, true) do
       value = UserSettings.cast(params["registration_enabled"])
-      command = Map.get(context, :cache_command, &Dawarich.Redis.cache_command(&1, 1_000))
 
-      case RegistrationSetting.put(value, command) do
+      case RegistrationSetting.put(value, repo) do
         :ok -> {:ok, value}
         _ -> {:terminal, :cache}
       end

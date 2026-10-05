@@ -157,9 +157,7 @@ defmodule DawarichWeb.A8GateEndpointTest do
     upstream = upstream!()
 
     for {method, path} <- [
-          {:get, "/api/v1/route_videos"},
-          {:post, "/rails/active_storage/direct_uploads"},
-          {:get, "/rails/active_storage/blobs/redirect/synthetic/movie.mp4"}
+          {:get, "/api/v1/route_videos"}
         ] do
       assert Phoenix.Router.route_info(
                DawarichWeb.Router,
@@ -169,6 +167,29 @@ defmodule DawarichWeb.A8GateEndpointTest do
              ) == :error
 
       replay(ctx, upstream, method, path, "")
+    end
+
+    for {method, path, action, pipeline} <- [
+          {:post, "/rails/active_storage/direct_uploads", :direct_upload, :storage_upload},
+          {:get, "/rails/active_storage/blobs/redirect/synthetic/movie.mp4", :redirect,
+           :storage_public}
+        ] do
+      assert %{
+               plug: DawarichWeb.StorageRoutes,
+               plug_opts: ^action,
+               pipe_through: [^pipeline],
+               rails_key: "active_storage"
+             } =
+               Phoenix.Router.route_info(
+                 DawarichWeb.Router,
+                 String.upcase(to_string(method)),
+                 path,
+                 "www.example.com"
+               )
+
+      Application.put_env(:dawarich, :rails_routes, ["active_storage"])
+      replay(ctx, upstream, method, path, "")
+      Application.put_env(:dawarich, :rails_routes, [])
     end
 
     for {method, path, action} <- [

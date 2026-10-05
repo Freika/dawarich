@@ -3,7 +3,7 @@ defmodule Dawarich.Trial.Welcome do
   require Logger
   alias Dawarich.Auth.Trackable
   alias Dawarich.Auth.Recovery.Settings
-  alias Dawarich.{I18n, RailsCookies, Redis, Repo, UserTimeZone}
+  alias Dawarich.{I18n, RailsCookies, Repo, UserTimeZone}
   alias Dawarich.Trial.{WelcomeClaim, WelcomeSession, WelcomeToken}
   alias DawarichWeb.{Locale, LocalizedDate, RailsAuth}
   @prefix "controllers.trial.welcome."
@@ -45,10 +45,10 @@ defmodule Dawarich.Trial.Welcome do
   def consume(%{result: result}, _context), do: {:ok, result}
 
   def consume(prepared, context) do
-    command = Map.get(context, :cache_command, &Redis.cache_command/1)
+    repo = Map.get(context, :repo, Repo)
     now = DateTime.to_unix(clock(context))
 
-    case WelcomeClaim.claim(prepared.claims["jti"], prepared.claims["exp"], now, command) do
+    case WelcomeClaim.claim(prepared.claims["jti"], prepared.claims["exp"], now, repo) do
       :claimed ->
         Logger.info(fn ->
           Jason.encode!(%{

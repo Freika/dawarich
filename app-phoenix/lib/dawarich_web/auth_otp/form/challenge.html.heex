@@ -1,0 +1,56 @@
+<div class="hero min-h-content bg-base-200">
+  <div class="hero-content flex-col lg:flex-row-reverse w-full my-10">
+    <div class="text-center lg:text-left">
+      <h1 class="text-5xl font-bold text-base-content">
+        {text(@locale, "two_factor_authentication")}
+      </h1>
+      <p class="py-6 text-base-content opacity-70">
+        {text(@locale, "enter_the_6_digit_code_from_your_authenticator_app_to")}
+      </p>
+    </div>
+    <div class="card flex-shrink-0 w-full max-w-sm shadow-2xl bg-base-100 px-5 py-5">
+      <form
+        class="form-body"
+        data-turbo="false"
+        action="/users/otp_challenge"
+        accept-charset="UTF-8"
+        method="post"
+      >
+        <input type="hidden" name="authenticity_token" value={@rails_csrf_token} />
+        <div class="form-control">
+          <label class="label" for="otp_attempt">
+            <span class="label-text">{text(@locale, "authentication_code")}</span>
+          </label>
+          <input
+            class="input input-bordered text-center text-2xl tracking-widest"
+            maxlength="32"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            autofocus="autofocus"
+            required="required"
+            placeholder="000000"
+            size="32"
+            type="text"
+            name="otp_attempt"
+            id="otp_attempt"
+          />
+          <p class="text-xs text-base-content/50 mt-2">
+            {text(@locale, "you_can_also_use_a_backup_code")}
+          </p>
+        </div>
+        <div class="form-control mt-6">
+          <input
+            type="submit"
+            name="commit"
+            value={text(@locale, "verify")}
+            class="btn btn-primary"
+            data-disable-with={text(@locale, "verify")}
+          />
+        </div>
+      </form>
+      <div class="text-center mt-4">
+        <a class="link link-hover text-sm" href="/users/sign_in">{text(@locale, "back_to_login")}</a>
+      </div>
+    </div>
+  </div>
+</div>

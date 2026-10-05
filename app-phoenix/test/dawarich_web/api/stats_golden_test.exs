@@ -7,7 +7,7 @@ defmodule DawarichWeb.Api.StatsGoldenTest do
   @tables ~w(users countries stats digests visits points flights)
 
   setup do
-    Dawarich.ScratchRepo.query!("TRUNCATE phoenix.stats_point_counts", [], log: false)
+    Dawarich.FixtureCleanup.delete!(Dawarich.ScratchRepo, ~w(phoenix.stats_point_counts))
     if zone = @golden["time_zone"], do: System.put_env("TIME_ZONE", zone)
     :ok
   end

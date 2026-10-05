@@ -26,10 +26,10 @@ defmodule Dawarich.Cable.TurboEvents do
   def drain(jobs_repo, repo), do: notifications(jobs_repo, repo) + trips(jobs_repo, repo)
 
   def notifications(jobs_repo, repo),
-    do: each_event(jobs_repo, @claim_notification, &notify(repo, &1), 0)
+    do: each_event(jobs_repo, @claim_notification, &notify(repo, &1, jobs_repo), 0)
 
   def trips(jobs_repo, repo, now \\ NaiveDateTime.utc_now()),
-    do: each_event(jobs_repo, @claim_trip, &trip(repo, &1, now), 0)
+    do: each_event(jobs_repo, @claim_trip, &trip(repo, &1, now, jobs_repo), 0)
 
   defp each_event(_jobs_repo, _claim, _publish, @batch), do: @batch
 
@@ -49,32 +49,45 @@ defmodule Dawarich.Cable.TurboEvents do
     if claimed?, do: each_event(jobs_repo, claim, publish, done + 1), else: done
   end
 
-  defp notify(repo, [notification_id]) do
+  defp notify(repo, [notification_id], jobs_repo) do
     for [id, user_id, title, kind, unread] <-
           repo.query!(@notification, [notification_id], log: false).rows do
       item = %{id: id, title: title, kind: Notifications.kind_name(kind)}
       stream = [{:user, user_id}, "notifications"]
-      :ok = Cable.turbo(stream, "prepend", "notifications-list", CableTurbo.navbar_item(item))
-      :ok = Cable.turbo(stream, "replace", "notifications-badge", CableTurbo.badge(unread))
+
+      :ok =
+        Cable.turbo(stream, "prepend", "notifications-list", CableTurbo.navbar_item(item),
+          repo: jobs_repo
+        )
+
+      :ok =
+        Cable.turbo(stream, "replace", "notifications-badge", CableTurbo.badge(unread),
+          repo: jobs_repo
+        )
     end
   end
 
-  defp trip(repo, [_id, trip_id, "path", _failed], now) do
-    if recalculating(repo, trip_id, now) != nil, do: :ok = Cable.refresh([{:trip, trip_id}])
+  defp trip(repo, [_id, trip_id, "path", _failed], now, jobs_repo) do
+    if recalculating(repo, trip_id, now) != nil,
+      do: :ok = Cable.refresh([{:trip, trip_id}], repo: jobs_repo)
   end
 
-  defp trip(repo, [_id, trip_id, "finished", failed], now) do
+  defp trip(repo, [_id, trip_id, "finished", failed], now, jobs_repo) do
     case recalculating(repo, trip_id, now) do
       nil ->
         :ok
 
       busy ->
         html = CableTurbo.recalculate_button(trip_id, busy, failed)
-        :ok = Cable.turbo([{:trip, trip_id}], "replace", "trip_recalculate_frame", html)
+
+        :ok =
+          Cable.turbo([{:trip, trip_id}], "replace", "trip_recalculate_frame", html,
+            repo: jobs_repo
+          )
     end
   end
 
-  defp trip(_repo, _event, _now), do: :ok
+  defp trip(_repo, _event, _now, _jobs_repo), do: :ok
 
   defp recalculating(repo, trip_id, now) do
     case repo.query!(@trip, [trip_id, now], log: false).rows do

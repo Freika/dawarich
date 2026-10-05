@@ -29,7 +29,7 @@ defmodule Dawarich.Ingest.Cast do
   }
   @decimals %{altitude_decimal: {10, 2}, course: {8, 5}, course_accuracy: {8, 5}}
   @integers ~w(accuracy altitude battery vertical_accuracy timestamp)a
-  @strings ~w(velocity tracker_id ssid bssid topic ping)a
+  @strings ~w(velocity tracker_id external_track_id ssid bssid topic ping)a
 
   def column(:lonlat, wkt), do: Geo.ewkb!(wkt)
   def column(:user_id, id), do: id

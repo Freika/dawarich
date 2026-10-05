@@ -1,24 +1,42 @@
 defmodule Dawarich.Auth.RegistrationSetting do
   @moduledoc false
 
-  @key "dawarich/registration_enabled"
-  @entry <<0, 0x11, 1, -1.0::little-float-64, -1::little-signed-32, 4, 8>>
+  alias Dawarich.{Repo, State}
 
-  def fetch(env \\ System.get_env(), command \\ &Dawarich.Redis.cache_command(&1, 1_000)) do
-    case command.(["GET", @key]) do
-      {:ok, nil} -> {:ok, env["ALLOW_EMAIL_PASSWORD_REGISTRATION"] == "true"}
-      {:ok, <<@entry::binary, ?T>>} -> {:ok, true}
-      {:ok, <<@entry::binary, ?F>>} -> {:ok, false}
-      {:ok, <<@entry::binary, ?0>>} -> {:ok, nil}
+  def fetch(env \\ System.get_env(), repo \\ Repo) do
+    case repo.transaction(fn ->
+           initialized!(repo, "FOR SHARE")
+           State.registration_enabled(repo, env["ALLOW_EMAIL_PASSWORD_REGISTRATION"] == "true")
+         end) do
+      {:ok, value} -> {:ok, value}
       _ -> :error
     end
+  rescue
+    _ -> :error
+  catch
+    _ -> :error
   end
 
-  def put(value, command \\ &Dawarich.Redis.cache_command(&1, 1_000))
-      when value in [true, false, nil] do
-    case command.(["SET", @key, Dawarich.RailsCache.Wire.encode_boolean(value, expires_at: nil)]) do
-      {:ok, "OK"} -> :ok
-      _ -> {:error, :cache}
+  def put(value, repo \\ Repo) when value in [true, false, nil] do
+    case repo.transaction(fn ->
+           initialized!(repo, "FOR UPDATE")
+           State.put_registration_enabled(repo, value)
+         end) do
+      {:ok, :ok} -> :ok
+      _ -> {:error, :database}
+    end
+  rescue
+    _ -> {:error, :database}
+  catch
+    _ -> {:error, :database}
+  end
+
+  defp initialized!(repo, lock) do
+    case repo.query!("SELECT id FROM phoenix.registration_setting WHERE id = true " <> lock, [],
+           log: false
+         ).rows do
+      [[true]] -> :ok
+      [] -> repo.rollback(:incomplete_registration_copy)
     end
   end
 end

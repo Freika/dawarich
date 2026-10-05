@@ -3,6 +3,33 @@
 require 'rails_helper'
 
 RSpec.describe StaleJobsRecoveryJob do
+  it 'keeps extraction reporting on Rails and skips recovery for the Oban owner' do
+    job_owner!('cron:stale_jobs_recovery_job', :oban)
+    user = create(:user)
+    import = create(:import, user:, status: :processing)
+    import.update_column(:processing_started_at, 7.hours.ago)
+    export = create(:export, user:, status: :processing, start_at: 1.week.ago, end_at: Time.current)
+    export.update_column(:processing_started_at, 3.hours.ago)
+    extraction = create(:import, user:, source: :google_phone_takeout)
+    extraction.update_columns(additional_data_extraction_status: :pending,
+                              additional_data_extraction: { 'started_at' => 7.hours.ago.iso8601 })
+    metrics = Yabeda.dawarich_imports
+    metrics.extractions_stalled.set({}, 0)
+    expect { described_class.new.perform }.not_to change(Notification, :count)
+    expect(import.reload.status).to eq('processing')
+    expect(export.reload.status).to eq('processing')
+    expect(metrics.extractions_stalled.get).to eq(1)
+    job_owner!('cron:stale_jobs_recovery_job', :sidekiq)
+    connection = ActiveRecord::Base.connection
+    connection.execute('INSERT INTO phoenix.leases(name,holder,expires_at) ' \
+                       "VALUES('import:#{import.id}','active-worker',now()+interval '1 hour')")
+    expect { described_class.new.perform }.to change(Notification, :count).by(1)
+    expect(import.reload.status).to eq('processing')
+    connection.execute("DELETE FROM phoenix.leases WHERE name='import:#{import.id}'")
+    expect { described_class.new.perform }.to change(Notification, :count).by(1)
+    expect(import.reload.status).to eq('failed')
+  end
+
   describe '#perform' do
     let(:user) { create(:user) }
 

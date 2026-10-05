@@ -32,7 +32,13 @@ defmodule DawarichWeb.ImportsExtractionCard do
         else: %{}
 
     status = Enum.at(@statuses, record.additional_data_extraction_status, "not_attempted")
-    resolved = if status == "unsupported", do: "not_attempted", else: status
+    unavailable = record.source not in [0, 3, 4, 13]
+
+    resolved =
+      if unavailable,
+        do: "unsupported",
+        else: if(status == "unsupported", do: "not_attempted", else: status)
+
     {badge, spinner} = @badges[resolved]
 
     assigns =
@@ -42,7 +48,8 @@ defmodule DawarichWeb.ImportsExtractionCard do
         badge: badge,
         spinner: spinner,
         label: resolved,
-        no_waypoints: no_waypoints?(record.raw_data),
+        unavailable: unavailable,
+        no_waypoints: record.source == 4 and no_waypoints?(record.raw_data),
         stalled: status in ["pending", "running"] and stalled?(data["started_at"], assigns.now),
         counts: if(is_map(data["counts"]), do: data["counts"], else: %{}),
         error: data["error_message"]
@@ -68,6 +75,10 @@ defmodule DawarichWeb.ImportsExtractionCard do
             <% @no_waypoints -> %>
               <p class="text-sm text-base-content/70">
                 {text(@locale, "this_gpx_file_holds_no_waypoints")}
+              </p>
+            <% @unavailable -> %>
+              <p class="text-sm text-base-content/70">
+                {text(@locale, "this_import_format_doesn_t_carry_visits_named_places_or")}
               </p>
             <% @status == "completed" -> %>
               <p class="text-sm text-base-content/70 mb-4">
@@ -130,7 +141,7 @@ defmodule DawarichWeb.ImportsExtractionCard do
         </div>
       </div>
       <DawarichWeb.ImportsExtractionDialog.dialog
-        :if={not @no_waypoints}
+        :if={not @no_waypoints and not @unavailable}
         id={@id}
         locale={@locale}
         csrf={@csrf}

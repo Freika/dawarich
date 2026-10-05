@@ -5,11 +5,7 @@ defmodule Dawarich.Transportation.SegmentsTest do
   alias Dawarich.Transportation.Segments
 
   setup do
-    ScratchRepo.query!(
-      "TRUNCATE tracks, points, track_segments, imports RESTART IDENTITY CASCADE",
-      [],
-      log: false
-    )
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(tracks  points  track_segments  imports))
 
     :ok
   end

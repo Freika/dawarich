@@ -1,24 +1,17 @@
 defmodule Dawarich.Auth.RegistrationSettingRedisTest do
-  use ExUnit.Case, async: false
+  use Dawarich.JobsCase, async: false
 
   @moduletag :capture_log
 
-  import Dawarich.Test.RawHTTP
-
   alias Dawarich.Auth.RegistrationSetting
-  alias Dawarich.Redis
 
-  test "a cache Redis that never answers costs the read about one second, as in Rails" do
-    sink = listen()
+  test "request read needs no live Redis" do
+    start_supervised!({Redix, {"redis://127.0.0.1:1", [name: Dawarich.Redis.Cache]}})
+    Dawarich.State.put_registration_enabled(ScratchRepo, false)
 
-    start_supervised!({Redix, {"redis://127.0.0.1:#{sink.port}", [name: Redis.Cache]}})
-
-    socket = accept(sink)
-    {elapsed, result} = :timer.tc(fn -> RegistrationSetting.fetch(%{}) end)
-    :gen_tcp.close(socket)
-
-    assert result == :error
-    assert elapsed >= 900_000
-    assert elapsed < 3_000_000
+    assert RegistrationSetting.fetch(
+             %{"ALLOW_EMAIL_PASSWORD_REGISTRATION" => "true"},
+             ScratchRepo
+           ) == {:ok, false}
   end
 end

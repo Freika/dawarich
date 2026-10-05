@@ -8,6 +8,8 @@ defmodule DawarichWeb.Router do
   import DawarichWeb.ApiRoutes
   import DawarichWeb.MapFrameRoutes
   import DawarichWeb.A9Routes
+  import DawarichWeb.StorageRoutes
+  import DawarichWeb.UserDataRoutes
 
   pipeline :browser do
     plug DawarichWeb.HostAuthorization
@@ -17,6 +19,7 @@ defmodule DawarichWeb.Router do
     plug :fetch_query_params
     plug DawarichWeb.TurboVisit
     plug DawarichWeb.RailsAuth
+    plug DawarichWeb.TripDocument
     plug DawarichWeb.ImportsHeaders
     plug DawarichWeb.MapDataHeaders
     plug :phoenix_session
@@ -154,6 +157,8 @@ defmodule DawarichWeb.Router do
 
   @native_import %{rails_gate: {DawarichWeb.ImportsGate, :native?}}
 
+  user_data_routes()
+
   pipeline :map_write do
     plug DawarichWeb.HostAuthorization
     plug DawarichWeb.ForceSSL
@@ -164,6 +169,7 @@ defmodule DawarichWeb.Router do
   end
 
   page_routes()
+  storage_routes()
   a10_routes()
   map_frame_routes()
   a8_routes()

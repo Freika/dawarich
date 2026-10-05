@@ -6,6 +6,11 @@ RSpec.describe 'Phoenix fixture: the registration flag and Devise recovery mail 
   let(:path) { Rails.root.join('app-phoenix/test/fixtures/auth/activation.json') }
   let(:sender) { 'Dawarich <a11a@dawarich.test>' }
   let(:flag) { 'dawarich/registration_enabled' }
+  let(:registration_values) { { 'true' => true, 'false' => false, 'nil' => nil } }
+
+  around do |example|
+    with_legacy_registration { example.run }
+  end
   let(:controls) do
     {
       'ascii_none' => '<p>Hello</p>', 'ascii_one' => "<p>Hello</p>\n", 'ascii_two' => "<p>Hello</p>\n\n",
@@ -31,6 +36,55 @@ RSpec.describe 'Phoenix fixture: the registration flag and Devise recovery mail 
     Rails.cache.redis.with { |redis| redis.get(flag) }
   ensure
     Rails.cache.delete(flag)
+  end
+
+  def registration_coders
+    serializer = ActiveSupport::Cache::SerializerWithFallback
+    {
+      'coder_7_1' => ActiveSupport::Cache::Coder.new(serializer['marshal_7_1'.to_sym], Zlib),
+      'marshal_7_0_uncompressed' => serializer['marshal_7_0'.to_sym],
+      'marshal_7_0_compressed' => serializer['marshal_7_0'.to_sym]
+    }
+  end
+
+  def registration_bytes(format, value, version: nil, expires_at: nil)
+    coder = registration_coders.fetch(format)
+    entry = ActiveSupport::Cache::Entry.new(value, version: version, expires_at: expires_at)
+    bytes = if format.end_with?('_compressed')
+              coder.dump_compressed(entry, 1024)
+            else
+              coder.dump(entry)
+            end
+    decoded = coder.load(bytes)
+    expect(decoded.value).to eq(value)
+    expect(decoded.version).to eq(version)
+    expect(decoded.expires_at).to eq(expires_at)
+    if format == 'coder_7_1'
+      expect(bytes.bytes.first(2)).to eq([0, 17])
+    else
+      large = value.is_a?(String) && value.bytesize > 1024 || version.to_s.bytesize > 1024
+      expected = format.end_with?('_compressed') && large ? 1 : 0
+      expect(bytes.getbyte(0)).to eq(expected)
+    end
+    Base64.strict_encode64(bytes)
+  end
+
+  def registration_legacy
+    registration_coders.keys.grep(/^marshal/).index_with do |format|
+      registration_values.transform_values { |value| registration_bytes(format, value) }
+    end
+  end
+
+  def registration_controls
+    registration_coders.keys.to_h do |format|
+      values = registration_values.flat_map do |name, value|
+        [["versioned_#{name}", registration_bytes(format, value, version: 'a13g-version')],
+         ["expiring_#{name}", registration_bytes(format, value, expires_at: 1_800_000_000.0)]]
+      end.to_h
+      values['non_boolean'] = registration_bytes(format, 'x' * 4096)
+      values['compressed_versioned_false'] = registration_bytes(format, false, version: 'v' * 4096)
+      [format, values]
+    end
   end
 
   def devise_mail(kind, locale)
@@ -78,8 +132,9 @@ RSpec.describe 'Phoenix fixture: the registration flag and Devise recovery mail 
       'rails_version' => Rails.version,
       'reset_password_within_seconds' => Devise.reset_password_within.to_i,
       'base_url' => 'http://www.example.com',
-      'registration' => { 'true' => true, 'false' => false, 'nil' => nil }
-        .transform_values { |value| Base64.strict_encode64(flag_bytes(value)) },
+      'registration' => registration_values.transform_values { |value| Base64.strict_encode64(flag_bytes(value)) },
+      'registration_legacy' => registration_legacy,
+      'registration_controls' => registration_controls,
       'mails' => kinds.map { |kind, locale| devise_mail(kind, locale) },
       'controls' => controls.to_h { |name, html| [name, control(name, html)] }
     }

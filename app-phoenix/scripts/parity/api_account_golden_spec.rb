@@ -90,12 +90,17 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
       result
     end
     path = Rails.root.join(ENV.fetch('API_GOLDEN_OUTPUT', 'app-phoenix/test/fixtures/api_account/golden.json'))
-    FileUtils.mkdir_p(path.dirname)
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'now' => oracle::NOW.iso8601,
                 'runtime_seed_fields' => %w[users.encrypted_password users.otp_secret users.otp_backup_codes],
                 'sequences' => oracle::SEQUENCES, 'setups' => oracle.setups.sort.to_h,
                 'cases' => cases.sort_by { _1['name'] } }
-    File.write(path, "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0).rstrip}\n")
+    encoded = "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0).rstrip}\n"
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      FileUtils.mkdir_p(path.dirname)
+      File.write(path, encoded)
+    else
+      expect(path.read == encoded).to be(true), 'account golden fixture differs from Rails'
+    end
   end
 
   def places_seed(kase)
@@ -103,7 +108,7 @@ RSpec.describe 'Phoenix fixture: golden account API requests', type: :request do
     reset!
     clear_enqueued_jobs
     Rails.cache.clear
-    places_sql('TRUNCATE users,families,family_memberships,instance_settings CASCADE')
+    FixtureCleanup.delete!(%w[users families family_memberships instance_settings])
     InstanceSettings::Resolver.reset!
     allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
     allow(DawarichSettings).to receive(:two_factor_available?).and_return(kase.fetch(:available, true))

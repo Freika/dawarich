@@ -4,6 +4,22 @@ defmodule Dawarich.Trial.WelcomeTokenTest do
   @secret "synthetic-a10b-welcome-signing-phrase"
   @now 1_791_108_000
 
+  test "decimal string coercion follows Ruby digit separators whitespace and suffixes" do
+    for {value, expected} <- [
+          {"1_791_109_800", 1_791_109_800},
+          {" \t\r\n\v\f+01_2suffix", 12},
+          {"-0_1", -1},
+          {"1__2", 1},
+          {"1_", 1},
+          {"0x12", 0},
+          {"1" <> <<0>> <> "2", 1},
+          {" 1_2", 0},
+          {"invalid", 0}
+        ] do
+      assert WelcomeToken.integer(value) == {:ok, expected}
+    end
+  end
+
   test "verifies HS256 purpose required expiry and source claim semantics" do
     assert Code.ensure_loaded?(WelcomeToken), "welcome token decoder must exist"
 

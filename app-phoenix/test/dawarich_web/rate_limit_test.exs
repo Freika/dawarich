@@ -197,6 +197,34 @@ defmodule DawarichWeb.RateLimitTest do
     def query!(_sql, _params, _opts), do: raise(DBConnection.ConnectionError, "down")
   end
 
+  defmodule RefundRepo do
+    def query!(_sql, ["a11e-refund-failed", -1, _ttl], _opts),
+      do: raise(DBConnection.ConnectionError, "a11e-refund-down")
+
+    def query!(sql, params, opts), do: Dawarich.ScratchRepo.query!(sql, params, opts)
+  end
+
+  test "failed counter refunds retain only unrefunded entries and never replay to Rails" do
+    previous = Application.get_env(:dawarich, :jobs_repo)
+    Application.put_env(:dawarich, :jobs_repo, RefundRepo)
+    on_exit(fn -> Application.put_env(:dawarich, :jobs_repo, previous) end)
+    entries = for key <- ~w(a11e-refund-ok a11e-refund-failed a11e-refund-last), do: {key, 901}
+    for {key, ttl} <- entries, do: State.increment(ScratchRepo, key, 1, ttl)
+    conn = Plug.Test.conn(:post, "/auth/account_link/challenge")
+    conn = put_private(conn, :dawarich_rate_limit, entries)
+    assert {:error, remaining} = RateLimit.release(conn)
+    assert remaining.private.dawarich_rate_limit == tl(entries)
+    assert State.count(ScratchRepo, "a11e-refund-ok") == 0
+    assert State.count(ScratchRepo, "a11e-refund-failed") == 1
+    assert State.count(ScratchRepo, "a11e-refund-last") == 1
+
+    assert_raise RuntimeError, "rate limit refund failed", fn ->
+      DawarichWeb.RailsProxy.call(remaining, {{127, 0, 0, 1}, 1})
+    end
+
+    assert State.count(ScratchRepo, "a11e-refund-failed") == 1
+  end
+
   test "a counter-store error hands the request to Puma uncounted" do
     conn = %{Plug.Test.conn(:post, "/s/abc/unlock") | remote_ip: {203, 0, 113, 41}}
 
@@ -299,17 +327,61 @@ defmodule DawarichWeb.RateLimitTest do
     assert rows("SELECT value FROM phoenix.counters ORDER BY key") == [[0], [0]]
   end
 
+  test "native OTP handlers halt throttled requests before admission with Rails counters" do
+    previous = Map.new(~w(SELF_HOSTED APPLICATION_PROTOCOL RAILS_ENV), &{&1, System.get_env(&1)})
+    System.put_env("SELF_HOSTED", "false")
+    System.put_env("APPLICATION_PROTOCOL", "http")
+    System.put_env("RAILS_ENV", "test")
+
+    on_exit(fn ->
+      for {key, value} <- previous,
+          do: if(value, do: System.put_env(key, value), else: System.delete_env(key))
+    end)
+
+    for {handler, path, throttle, period, limit} <- [
+          {DawarichWeb.AuthHandler, "/users/sign_in", "logins/ip", 60, 20},
+          {DawarichWeb.AuthOtp.Http, "/users/otp_challenge", "users/otp_challenge_session", 900,
+           5}
+        ] do
+      ip = "203.0.113.41"
+      now = System.os_time(:second)
+      key = Rules.key(now, period, throttle, ip)
+      State.increment(ScratchRepo, key, limit, period)
+
+      input =
+        %{Plug.Test.conn(:post, path, "otp_attempt=invalid") | remote_ip: {203, 0, 113, 41}}
+        |> put_req_header("content-type", "application/x-www-form-urlencoded")
+        |> put_req_header("content-length", "19")
+
+      result = handler.call(input, enabled: true, otp_enabled: true, fallback: & &1)
+      assert result.status == 429 and result.halted, "#{inspect(handler)} must throttle"
+      assert get_resp_header(result, "retry-after") != []
+      refute Map.has_key?(result.assigns, :rails_session)
+      assert rows("SELECT value FROM phoenix.counters WHERE key=$1", [key]) == [[limit + 1]]
+      assert result.private.dawarich_raw_body == "otp_attempt=invalid"
+    end
+  end
+
   test "every routed request runs the limiter right after ForceSSL" do
     guarded =
-      ~w(router.ex api_routes.ex a10_routes.ex a8_routes.ex a9_routes.ex)
+      Path.expand("../../lib/dawarich_web/*.ex", __DIR__)
+      |> Path.wildcard()
       |> Enum.flat_map(fn file ->
-        source = File.read!(Path.expand("../../lib/dawarich_web/#{file}", __DIR__))
+        source = File.read!(file)
         Regex.scan(~r/^\s*pipeline :(\w+) do\n(.*?)\n\s*end/ms, source, capture: :all_but_first)
       end)
       |> Enum.filter(fn [_name, body] ->
         body =~ ~r/plug DawarichWeb\.ForceSSL\n\s+plug DawarichWeb\.RateLimit(?:\n|$)/
       end)
       |> MapSet.new(fn [name, _body] -> String.to_existing_atom(name) end)
+
+    for file <- ~w(auth_handler.ex auth_otp/http.ex) do
+      source = File.read!(Path.expand("../../lib/dawarich_web/#{file}", __DIR__))
+
+      assert source =~
+               ~r/DawarichWeb\.ForceSSL\.call\(\[\]\)\n\s+conn = if conn.halted, do: conn, else: DawarichWeb\.RateLimit\.call\(conn, \[\]\)/,
+             "#{file} has no guarded auth pipeline"
+    end
 
     for route <- DawarichWeb.Router.__routes__() do
       info =

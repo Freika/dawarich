@@ -10,46 +10,58 @@ defmodule Dawarich.State.PurgeWorker do
   @batch 5_000
   @statements [
     """
-    DELETE FROM phoenix.once_claims WHERE key IN (
+    WITH batch AS MATERIALIZED (
       SELECT key FROM phoenix.once_claims WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
-    ) AND expires_at <= statement_timestamp()
+    )
+    DELETE FROM phoenix.once_claims USING batch
+    WHERE once_claims.key = batch.key AND once_claims.expires_at <= statement_timestamp()
     """,
     """
-    DELETE FROM phoenix.counters WHERE key IN (
+    WITH batch AS MATERIALIZED (
       SELECT key FROM phoenix.counters WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
-    ) AND expires_at <= statement_timestamp()
+    )
+    DELETE FROM phoenix.counters USING batch
+    WHERE counters.key = batch.key AND counters.expires_at <= statement_timestamp()
     """,
     """
-    DELETE FROM phoenix.leases WHERE name IN (
+    WITH batch AS MATERIALIZED (
       SELECT name FROM phoenix.leases WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
-    ) AND expires_at <= statement_timestamp()
+    )
+    DELETE FROM phoenix.leases USING batch
+    WHERE leases.name = batch.name AND leases.expires_at <= statement_timestamp()
     """,
     """
-    DELETE FROM phoenix.achievement_checks WHERE user_id IN (
+    WITH batch AS MATERIALIZED (
       SELECT user_id FROM phoenix.achievement_checks WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
-    ) AND expires_at <= statement_timestamp()
+    )
+    DELETE FROM phoenix.achievement_checks USING batch
+    WHERE achievement_checks.user_id = batch.user_id AND achievement_checks.expires_at <= statement_timestamp()
     """,
     """
-    DELETE FROM phoenix.track_backfill_ranges WHERE user_id IN (
+    WITH batch AS MATERIALIZED (
       SELECT user_id FROM phoenix.track_backfill_ranges WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
-    ) AND expires_at <= statement_timestamp()
+    )
+    DELETE FROM phoenix.track_backfill_ranges USING batch
+    WHERE track_backfill_ranges.user_id = batch.user_id AND track_backfill_ranges.expires_at <= statement_timestamp()
     """,
     """
-    DELETE FROM phoenix.track_backfill_walks WHERE user_id IN (
+    WITH batch AS MATERIALIZED (
       SELECT user_id FROM phoenix.track_backfill_walks WHERE expires_at <= statement_timestamp()
       ORDER BY expires_at LIMIT $1
       FOR UPDATE SKIP LOCKED
-    ) AND expires_at <= statement_timestamp()
+    )
+    DELETE FROM phoenix.track_backfill_walks USING batch
+    WHERE track_backfill_walks.user_id = batch.user_id AND track_backfill_walks.expires_at <= statement_timestamp()
     """
   ]
 
@@ -59,7 +71,7 @@ defmodule Dawarich.State.PurgeWorker do
   def run(repo, batch), do: Enum.each(@statements, &drain(repo, &1, batch))
 
   defp drain(repo, sql, batch) do
-    if repo.query!(sql, [batch], log: false).num_rows == batch,
+    if repo.query!(sql, [batch], log: false).num_rows > 0,
       do: drain(repo, sql, batch),
       else: :ok
   end

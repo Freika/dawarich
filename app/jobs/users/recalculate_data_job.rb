@@ -30,6 +30,17 @@ class Users::RecalculateDataJob < ApplicationJob
   end
 
   def perform(user_id, year: nil, notify: true, job_queue: nil)
+    if executions.positive? && JobOwnership.oban?('command:users.recalculate_data')
+      payload = {
+        'user_id' => user_id, 'year' => year, 'notify' => notify, 'job_queue' => job_queue,
+        'source_job_id' => job_id, 'ambient_zone' => Time.zone.name
+      }
+      payload = Users::RecalculationCommands.normalize(payload)
+      return JobCommands.forward('users.recalculate_data', payload, event_id: job_id,
+                                 aggregate_id: user_id, producer: self.class.name,
+                                 scheduled_at: scheduled_at || Time.current)
+    end
+
     @user = find_user_or_skip(user_id) || return
 
     @year = year&.to_i

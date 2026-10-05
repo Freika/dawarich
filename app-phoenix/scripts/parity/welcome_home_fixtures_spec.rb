@@ -30,7 +30,9 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     ELIXIR
     output, status = Open3.capture2e(native_env, 'mix', 'run', '--no-start', '-e', bootstrap + code,
                                      chdir: Rails.root.join('app-phoenix').to_s)
-    expect(status.success?).to be(true), 'native interoperability failed; output withheld'
+    failure = output.lines.grep(/\*\* \(/).first.to_s.split(')').first
+    frame = output.lines.find { _1.match?(%r{lib/dawarich[^ ]*:[0-9]+:}) }.to_s.strip
+    expect(status.success?).to be(true), "native interoperability failed #{failure}; #{frame}"
     JSON.parse(output.lines.last)
   end
 
@@ -39,7 +41,13 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     protection = ActionController::Base.allow_forgery_protection
     ENV['JWT_SECRET_KEY'] = signing_phrase
     ActionController::Base.allow_forgery_protection = true
-    travel_to(now) { example.run }
+    travel_to(now) do
+      if example.metadata[:a10b_non_transactional]
+        example.run
+      else
+        with_legacy_welcome { with_legacy_registration { example.run } }
+      end
+    end
   ensure
     ENV['JWT_SECRET_KEY'] = saved
     ActionController::Base.allow_forgery_protection = protection
@@ -102,6 +110,17 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     results << welcome_request('active_until_nil', user)
     expect(results.last['flash']['notice']).to include('activated')
     user.update_columns(active_until: now + 7.days)
+    [
+      ['underscore_exp', { exp: '1_791_109_800' }, true],
+      ['underscore_future_nbf', { nbf: '1_791_109_800' }, false],
+      ['underscore_past_nbf', { nbf: '1_791_106_200' }, true]
+    ].each do |name, overrides, accepted|
+      capture = welcome_request(name, user, overrides: overrides)
+      expect(capture).to include('signed_in' => accepted, 'claimed' => accepted)
+      expect(capture.dig('trackable', 'sign_in_count_delta')).to eq(accepted ? 1 : 0)
+      expect(capture.fetch('events').size).to eq(accepted ? 1 : 0)
+      results << capture
+    end
     malformed = [
       ['missing_token', nil, {}], ['malformed_token', 'not-a-jwt', {}],
       ['wrong_purpose', :signed, { purpose: 'different' }],
@@ -178,7 +197,7 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
 
   def token_for(user, jti, overrides = {}, algorithm: 'HS256')
     payload = { user_id: user.id, purpose: 'trial_welcome', exp: now.to_i + 1800, jti: jti }.merge(overrides)
-    if payload[:exp].is_a?(String)
+    if payload[:exp].is_a?(String) || payload[:nbf].is_a?(String)
       header = Base64.urlsafe_encode64(Oj.dump({ 'alg' => algorithm }, mode: :strict), padding: false)
       body = Base64.urlsafe_encode64(Oj.dump(payload.compact, mode: :strict), padding: false)
       input = "#{header}.#{body}"
@@ -244,9 +263,9 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
       'bytes_hex' => bytes.unpack1('H*') }
   end
 
-  def cookie_value
-    line = Array(response.headers['Set-Cookie']).flat_map { |header| header.split("\n") }
-                                                .find { |header| header.start_with?('_dawarich_session=') }
+  def cookie_value(reply = response)
+    line = Array(reply.headers['Set-Cookie']).flat_map { |header| header.split("\n") }
+                                             .find { |header| header.start_with?('_dawarich_session=') }
     expect(line.present?).to be(true)
     line.split(';').first.split('=', 2).last
   end
@@ -271,7 +290,8 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
     cases = welcome_cases
     expect(cases.map { |capture| capture.fetch('name') }).to eq(
       %w[valid_en valid_de midnight_guest_en midnight_actor_en midnight_guest_de midnight_actor_de
-         active_until_nil missing_token malformed_token wrong_purpose missing_purpose
+         active_until_nil underscore_exp underscore_future_nbf underscore_past_nbf
+         missing_token malformed_token wrong_purpose missing_purpose
          expired missing_exp wrong_algorithm missing_jti blank_jti malformed_user_id missing_user deleted_user
          malformed_exp malformed_jti different_actor same_actor_first same_actor_replay guest_replay ttl_floor
          head_success]
@@ -307,10 +327,22 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
   context 'native interoperability', :a10b_non_transactional do
     self.use_transactional_tests = false
 
+    around do |example|
+      with_legacy_registration do
+        phoenix_registration!
+        ActiveRecord::Base.connection.execute('INSERT INTO phoenix.registration_setting (enabled) VALUES (true)')
+        example.run
+      ensure
+        ActiveRecord::Base.connection.execute('DROP TABLE IF EXISTS phoenix.registration_setting')
+      end
+    end
+
     before do
       @prior_cache = Rails.cache
       @native_cache = ActiveSupport::Cache::RedisCacheStore.new(url: "#{ENV.fetch('REDIS_URL')}/0", driver: :ruby)
       Rails.cache = @native_cache
+      phoenix_state!
+      PhoenixSchema.reset!
     end
 
     after do
@@ -318,56 +350,150 @@ RSpec.describe 'Phoenix fixtures: welcome and public home', type: :request do
       @native_cache.redis.with(&:close)
     end
 
-    it 'Rails consumes native welcome cookie and prevents cross runtime replay' do
+    it 'Rails consumes native welcome cookie and prevents cross runtime PG replay' do
       allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
       user = synthetic_user(15_921)
-      @owned_keys = %w[trial_welcome:consumed:a10b-native-interop trial_welcome:consumed:a10b-rails-interop]
-      @owned_keys.each { |key| Rails.cache.delete(key) }
-      native_token = token_for(user, 'a10b-native-interop')
-      result = native_welcome(native_token)
-      expect(result.fetch('status')).to eq(302)
-      expect(result.fetch('location')).to eq('http://www.example.com/map/v2')
-      browser = ActionDispatch::Integration::Session.new(Rails.application)
-      browser.get('/map/v2', headers: { 'Cookie' => "_dawarich_session=#{result.fetch('cookie')}" })
-      identity = browser.request.env.fetch('warden').user(:user)
-      expect(identity&.id).to eq(user.id)
-      expect(browser.response.status).to eq(200)
-      expect(browser.request.flash[:notice]).to eq(I18n.t('controllers.trial.welcome.trial_active_until',
-                                                          date: I18n.l((now + 7.days).to_date, format: :long)))
-      expect(user.reload.sign_in_count).to eq(1)
-      expect(Rails.cache.read(@owned_keys.first)).to be(true)
-      alert = I18n.t('controllers.trial.welcome.this_welcome_link_has_already_been_used')
-      replay = ActionDispatch::Integration::Session.new(Rails.application)
-      replay.get('/trial/welcome', params: { token: native_token })
-      expect(URI(replay.response.location).path).to eq('/users/sign_in')
-      expect(replay.request.flash[:alert]).to eq(alert)
-      rails_token = token_for(user, 'a10b-rails-interop')
-      source = ActionDispatch::Integration::Session.new(Rails.application)
-      source.get('/trial/welcome', params: { token: rails_token })
-      expect(URI(source.response.location).path).to eq('/map/v2')
+      @owned_keys = []
+      ['ordinary', 'Grüße', "nul-#{0.chr}-jti"].each do |suffix|
+        native_jti = "a13g-native-#{suffix}"
+        rails_jti = "a13g-rails-#{suffix}"
+        @owned_keys.concat([native_jti, rails_jti].map { "trial_welcome:consumed:#{_1}" })
+        @owned_keys.each { |key| Rails.cache.delete(key) }
+        count = user.reload.sign_in_count
+        native_token = token_for(user, native_jti)
+        result = native_welcome(native_token)
+        expect(result.fetch('status')).to eq(302)
+        expect(result.fetch('location')).to eq('http://www.example.com/map/v2')
+        expect(result.fetch('headers')).to include('cache-control' => 'no-store', 'pragma' => 'no-cache',
+                                                   'referrer-policy' => 'no-referrer')
+        browser = ActionDispatch::Integration::Session.new(Rails.application)
+        browser.get('/map/v2', headers: { 'Cookie' => "_dawarich_session=#{result.fetch('cookie')}" })
+        identity = browser.request.env.fetch('warden').user(:user)
+        expect(identity&.id).to eq(user.id)
+        expect(browser.response.status).to eq(200)
+        expect(browser.request.flash[:notice]).to eq(I18n.t('controllers.trial.welcome.trial_active_until',
+                                                            date: I18n.l((now + 7.days).to_date, format: :long)))
+        expect(user.reload.sign_in_count).to eq(count + 1)
+        expect(Rails.cache.read("trial_welcome:consumed:#{native_jti}")).to be_nil
+        browser.get('/trial/welcome', params: { token: native_token })
+        expect(URI(browser.response.location).path).to eq('/map/v2')
+        expect(user.reload.sign_in_count).to eq(count + 1)
+        alert = I18n.t('controllers.trial.welcome.this_welcome_link_has_already_been_used')
+        replay = ActionDispatch::Integration::Session.new(Rails.application)
+        replay.get('/trial/welcome', params: { token: native_token })
+        expect(URI(replay.response.location).path).to eq('/users/sign_in')
+        expect(claim_seconds(pg_welcome_key(native_jti))).to be_between(1798, 1800)
+        expect(replay.request.flash[:alert]).to eq(alert)
+        rails_token = token_for(user, rails_jti)
+        source = ActionDispatch::Integration::Session.new(Rails.application)
+        source.get('/trial/welcome', params: { token: rails_token })
+        expect(URI(source.response.location).path).to eq('/map/v2')
+        expect(claim_seconds(pg_welcome_key(rails_jti))).to be_between(1798, 1800)
+        expect(Rails.cache.read("trial_welcome:consumed:#{rails_jti}")).to be_nil
+        count = user.reload.sign_in_count
+        native_replay = native_welcome(rails_token)
+        expect(URI(native_replay.fetch('location')).path).to eq('/users/sign_in')
+        expect(user.reload.sign_in_count).to eq(count)
+        session = rails_session(native_replay.fetch('cookie'))
+        expect(session.dig('flash', 'flashes', 'alert')).to eq(alert)
+        same = native_welcome(rails_token, cookie: cookie_value(source.response))
+        expect(URI(same.fetch('location')).path).to eq('/map/v2')
+        expect(user.reload.sign_in_count).to eq(count)
+      end
+      large = Array.new(128) { |index| Digest::SHA256.hexdigest("a13g-legacy-large-#{index}") }.join
+      signed = token_for(user, large)
+      expect(native_welcome(signed, probe: true)).to eq('handoff' => true)
+      expect(claim_seconds(pg_welcome_key(large))).to be_nil
+      client = ActionDispatch::Integration::Session.new(Rails.application)
       count = user.reload.sign_in_count
-      native_replay = native_welcome(rails_token)
-      expect(URI(native_replay.fetch('location')).path).to eq('/users/sign_in')
-      expect(user.reload.sign_in_count).to eq(count)
-      session = rails_session(native_replay.fetch('cookie'))
-      expect(session.dig('flash', 'flashes', 'alert')).to eq(alert)
+      client.get('/trial/welcome', params: { token: signed })
+      expect(URI(client.response.location).path).to eq('/map/v2')
+      client.get('/trial/welcome', params: { token: signed })
+      expect(URI(client.response.location).path).to eq('/map/v2')
+      replay = ActionDispatch::Integration::Session.new(Rails.application)
+      replay.get('/trial/welcome', params: { token: signed })
+      expect(URI(replay.response.location).path).to eq('/users/sign_in')
+      expect(user.reload.sign_in_count).to eq(count + 1)
+      expect(claim_seconds(pg_welcome_key(large))).to be_between(1798, 1800)
+      @owned_keys << "trial_welcome:consumed:#{large}"
     ensure
       User.unscoped.where(id: 15_921).delete_all
-      @owned_keys&.each { |key| Rails.cache.delete(key) }
+      @owned_keys&.each do |key|
+        Rails.cache.delete(key)
+        digest_key = pg_welcome_key(key.delete_prefix('trial_welcome:consumed:'))
+        ActiveRecord::Base.connection.execute("DELETE FROM phoenix.once_claims WHERE key=#{ActiveRecord::Base.connection.quote(digest_key)}")
+      end
     end
   end
 
-  def native_welcome(token)
-    phoenix(<<~ELIXIR, 'A10B_TOKEN' => token, 'A10B_NOW' => now.iso8601)
+  def native_welcome(token, cookie: nil, probe: false)
+    extra = { 'A10B_TOKEN' => token, 'A10B_NOW' => now.iso8601,
+              'A13G_COOKIE' => cookie.to_s, 'A13G_PROBE' => probe.to_s }
+    phoenix(<<~ELIXIR, extra)
       {:ok, now, _} = DateTime.from_iso8601(System.fetch_env!("A10B_NOW"))
       context = %{secret: Dawarich.RailsSecret.fetch(), jwt_secret: System.fetch_env!("JWT_SECRET_KEY"),
         env: %{}, oidc: false, clock: fn -> now end}
       query = URI.encode_query(%{"token" => System.fetch_env!("A10B_TOKEN")})
       conn = Plug.Test.conn(:get, "http://www.example.com/trial/welcome?" <> query)
-        |> DawarichWeb.TrialWelcome.call(context: context)
+      cookie = System.fetch_env!("A13G_COOKIE")
+      conn = if cookie == "", do: conn, else: Plug.Test.put_req_cookie(conn, "_dawarich_session", cookie)
+      if System.fetch_env!("A13G_PROBE") == "true" do
+        IO.puts(Jason.encode!(%{handoff: not DawarichWeb.WelcomeGate.owned?(conn, %{}, context: context)}))
+      else
+      conn = DawarichWeb.TrialWelcome.call(conn, context: context)
       IO.puts(Jason.encode!(%{status: conn.status,
         location: List.first(Plug.Conn.get_resp_header(conn, "location")),
-        cookie: conn.resp_cookies["_dawarich_session"].value}))
+        headers: Map.new(conn.resp_headers) |> Map.take(["cache-control", "pragma", "referrer-policy"]),
+        cookie: conn.resp_cookies["_dawarich_session"] && conn.resp_cookies["_dawarich_session"].value}))
+      end
     ELIXIR
+  end
+
+  def pg_welcome_key(jti)
+    "trial_welcome:consumed:sha256:#{Digest::SHA256.hexdigest(jti)}"
+  end
+
+  def legacy_jti_case(jti)
+    allow(DawarichSettings).to receive(:self_hosted?).and_return(false)
+    user = synthetic_user(13_071)
+    first = welcome_request('legacy_jti', user, overrides: { jti: jti })
+    expect(first).to include('location' => '/map/v2', 'signed_in' => true, 'claimed' => true)
+    expect(first.dig('trackable', 'sign_in_count_delta')).to eq(1)
+    expect(first.fetch('events').size).to eq(1)
+    expect(first.dig('cache', 'expires_at')).to eq(now.to_i + 1800)
+    expect(Rails.cache.redis.with { |redis| redis.connection.values_at(:port, :db) })
+      .to eq([URI(ENV.fetch('REDIS_URL')).port, 0])
+    expect(PhoenixSchema.table?('once_claims')).to be(false)
+    follow_redirect!
+    count = user.reload.sign_in_count
+    @events.clear
+    get '/trial/welcome', params: { token: token_for(user, jti) }
+    expect(response).to redirect_to('/map/v2')
+    expect(user.reload.sign_in_count).to eq(count)
+    expect(@events).to be_empty
+    expect(flash[:notice]).to be_blank
+    reset!
+    get '/trial/welcome', params: { token: token_for(user, jti) }
+    expect(response).to redirect_to(new_user_session_path)
+    expect(request.session['warden.user.user.key']).to be_nil
+    expect(user.reload.sign_in_count).to eq(count)
+    expect(@events).to be_empty
+    expect(response.headers).to include('Cache-Control' => 'no-store', 'Pragma' => 'no-cache',
+                                        'Referrer-Policy' => 'no-referrer')
+    expect(Rails.cache.read("trial_welcome:consumed:#{jti}")).to be(true)
+  end
+
+  it 'legacy welcome oracle uses cache DB0 when once_claims is absent' do
+    legacy_jti_case('a13g-legacy-cache')
+  end
+
+  it 'legacy welcome NUL jti preserves first consume guest replay and same actor replay' do
+    legacy_jti_case("a13g-legacy-#{0.chr}-nul")
+  end
+
+  it 'legacy welcome large incompressible jti preserves first consume guest replay and same actor replay' do
+    jti = Array.new(128) { |index| Digest::SHA256.hexdigest("a13g-legacy-large-#{index}") }.join
+    expect(jti.bytesize).to eq(8192)
+    legacy_jti_case(jti)
   end
 end

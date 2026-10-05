@@ -6,6 +6,7 @@ RSpec.describe 'assets:remove_manifest' do
   let(:manifest_path) { Rails.application.config.assets.manifest.to_s }
 
   after do
+    Rake::Task['assets:remove_manifest'].reenable
     FileUtils.rm_f(manifest_path)
   end
 

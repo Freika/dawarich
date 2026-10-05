@@ -4,7 +4,7 @@ defmodule Dawarich.JobsCase do
 
   alias Dawarich.ScratchRepo
 
-  @phoenix ~w(job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events notification_events delivery_claims export_claims rails_commands rails_commands_dead track_generations track_generation_chunks stats_point_counts import_archive_children import_runs import_handoffs import_download_requests import_destroy_runs import_blob_purges release_operations raw_data_archive_chunks once_claims counters epochs leases registration_setting stats_geocoded_days cursors achievement_checks)
+  @phoenix ~w(cable_events cable_streams job_owners job_outbox_replays processed_commands runtime_nodes app_version supporter_checks trip_events notification_events delivery_claims export_claims rails_commands rails_commands_dead track_generations track_generation_chunks stats_point_counts import_archive_children import_runs import_handoffs import_download_requests import_destroy_runs import_blob_purges release_operations raw_data_archive_chunks once_claims counters epochs leases registration_setting stats_geocoded_days cursors achievement_checks)
   @backfill ~w(track_backfill_ranges track_backfill_walks)
   @oban ~w(oban_jobs oban_peers)
 
@@ -33,17 +33,13 @@ defmodule Dawarich.JobsCase do
       )
     end
 
-    repo.query!(
-      "TRUNCATE public.job_outbox, public.exports, public.imports, public.users, public.point_sources, public.active_storage_attachments, public.active_storage_blobs, public.family_invitations, public.families CASCADE",
-      [],
-      log: false
-    )
-
     tables =
-      Enum.map(@phoenix ++ @backfill, &("phoenix." <> &1)) ++ Enum.map(@oban, &("oban." <> &1))
+      ~w(public.job_outbox public.exports public.imports public.users public.point_sources
+         public.active_storage_attachments public.active_storage_blobs public.family_invitations
+         public.families public.places public.countries public.instance_settings public.regions) ++
+        Enum.map(@phoenix ++ @backfill, &("phoenix." <> &1)) ++ Enum.map(@oban, &("oban." <> &1))
 
-    repo.query!("TRUNCATE #{Enum.join(tables, ", ")} RESTART IDENTITY", [], log: false)
-    :ok
+    Dawarich.FixtureCleanup.delete!(repo, tables)
   end
 
   def rows(sql, params \\ []), do: ScratchRepo.query!(sql, params, log: false).rows

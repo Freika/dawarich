@@ -61,11 +61,16 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
       result
     end
     path = Rails.root.join(ENV.fetch('API_GOLDEN_OUTPUT', 'app-phoenix/test/fixtures/api_shared/golden.json'))
-    FileUtils.mkdir_p(path.dirname)
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'now' => oracle::NOW.iso8601,
                 'sequences' => oracle::SEQUENCES, 'setups' => oracle.setups.sort.to_h,
                 'cases' => cases.sort_by { _1['name'] } }
-    File.write(path, "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0).rstrip}\n")
+    encoded = "#{Oj.dump(fixture, mode: :strict, indent: 2, float_precision: 0).rstrip}\n"
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      FileUtils.mkdir_p(path.dirname)
+      File.write(path, encoded)
+    else
+      expect(path.read == encoded).to be(true), 'shared golden fixture differs from Rails'
+    end
   end
 
   def places_seed(kase)
@@ -74,7 +79,7 @@ RSpec.describe 'Phoenix fixture: golden shared API requests', type: :request do
     allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
     Rails.cache.clear
     WebMock.reset!
-    places_sql("TRUNCATE #{oracle::TABLES.join(',')} CASCADE")
+    FixtureCleanup.delete!(oracle::TABLES)
     stamps = { created_at: oracle::STAMP, updated_at: oracle::STAMP }
     user = { status: 1, timezone: 'UTC', distance_unit: 'km' }.merge(kase[:user] || {})
     settings = { 'timezone' => user[:timezone], 'maps' => { 'distance_unit' => user[:distance_unit] } }

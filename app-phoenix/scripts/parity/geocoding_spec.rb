@@ -459,6 +459,61 @@ RSpec.describe 'Phoenix fixture: Rails reverse geocoding' do
     { 'raised' => e.class.name, 'message' => e.message, 'requests' => http.size - before }
   end
 
+  it 'Rails repeats an HTTP 200 empty binary lookup', fixture: :search_outcomes do
+    c = search_case('empty_binary',
+                    settings: { photon_api_host: 'photon.selfhosted.example.test', photon_api_use_https: true },
+                    responses: [[selfhosted_url, json_response('')]], calls: 2)
+    expect(c['outcomes']).to eq(Array.new(2) do
+      { 'raised' => 'Geocoder::ResponseParseError', 'message' => 'Geocoder::ResponseParseError', 'requests' => 1 }
+    end)
+    expect(c['requests'].size).to eq(2)
+    expect(c['cache']).to eq([{ 'key' => 'https://photon.selfhosted.example.test/reverse?lang=en&lat=51.3407&lon=12.3731',
+                               'value' => '' }])
+  end
+
+  it 'Rails caches an HTTP 200 empty FeatureCollection', fixture: :search_outcomes do
+    body = { type: 'FeatureCollection', features: [] }.to_json
+    c = search_case('empty_features',
+                    settings: { photon_api_host: 'photon.selfhosted.example.test', photon_api_use_https: true },
+                    responses: [[selfhosted_url, json_response(body)]], calls: 2)
+    expect(c['outcomes']).to eq([{ 'results' => 0, 'data' => [], 'requests' => 1 },
+                                 { 'results' => 0, 'data' => [], 'requests' => 0 }])
+    expect(c['requests'].size).to eq(1)
+    expect(c['cache']).to eq([{ 'key' => 'https://photon.selfhosted.example.test/reverse?lang=en&lat=51.3407&lon=12.3731',
+                               'value' => body }])
+  end
+
+  { 400 => 'Geocoder::InvalidRequest', 401 => 'Geocoder::RequestDenied',
+    402 => 'Geocoder::OverQueryLimitError', 404 => nil, 429 => 'Geocoder::OverQueryLimitError',
+    503 => 'Geocoder::ServiceUnavailable' }.each do |status, error|
+    it "Rails repeats HTTP #{status} without caching", fixture: :search_outcomes do
+      c = search_case("status_#{status}",
+                      settings: { photon_api_host: 'photon.selfhosted.example.test', photon_api_use_https: true },
+                      responses: [[selfhosted_url, json_response(photon_body(leipzig_lat, leipzig_lon), status:)]],
+                      calls: 2)
+      outcome = if error
+                  { 'raised' => error, 'message' => error, 'requests' => 1 }
+                else
+                  { 'results' => 1, 'data' => [photon_feature(leipzig_lat, leipzig_lon).deep_stringify_keys],
+                    'requests' => 1 }
+                end
+      expect(c['outcomes']).to eq([outcome, outcome])
+      expect(c['requests'].size).to eq(2)
+      expect(c['cache']).to eq([])
+    end
+  end
+
+  it 'Rails repeats a timed-out lookup without caching', fixture: :search_outcomes do
+    c = search_case('timeout_boundary',
+                    settings: { photon_api_host: 'photon.selfhosted.example.test', photon_api_use_https: true },
+                    responses: [[selfhosted_url, :timeout]], calls: 2)
+    expect(c['outcomes']).to eq(Array.new(2) do
+      { 'raised' => 'Geocoder::LookupTimeout', 'message' => 'Geocoder::LookupTimeout', 'requests' => 1 }
+    end)
+    expect(c['requests'].size).to eq(2)
+    expect(c['cache']).to eq([])
+  end
+
   it 'records what the search raises or returns for each provider body and status', fixture: :search_outcomes do
     photon = { photon_api_host: 'photon.selfhosted.example.test', photon_api_use_https: true }
     nominatim = { nominatim_api_host: 'nominatim.selfhosted.example.test', nominatim_api_use_https: false }

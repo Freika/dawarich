@@ -32,6 +32,8 @@ defmodule Dawarich.Ingest.Intake do
   def write(prepared, user_id, opts) do
     repo = Keyword.get(opts, :repo, Repo)
     sleep = Keyword.get(opts, :sleep, &Process.sleep/1)
+    mode = Keyword.get(opts, :mode, :realtime)
+    unless mode in [:realtime, :bulk], do: raise(ArgumentError, "unsupported intake mode")
 
     {rows, _cache} =
       prepared
@@ -46,8 +48,11 @@ defmodule Dawarich.Ingest.Intake do
 
     commit!(repo, fn ->
       count!(repo, user_id, rows)
-      commands!(repo, user_id, rows, prepared, opts)
-      Keyword.get(opts, :hook, fn _ -> :ok end).(:commands)
+
+      if mode == :realtime do
+        commands!(repo, user_id, rows, prepared, opts)
+        Keyword.get(opts, :hook, fn _ -> :ok end).(:commands)
+      end
     end)
 
     rows

@@ -24,7 +24,7 @@ defmodule Dawarich.Test.MailWire do
         params
         |> Map.get(:content_type_params, [])
         |> Enum.find_value(fn {k, v} -> String.downcase(k) == "charset" && String.downcase(v) end),
-      transfer: value.("content-transfer-encoding") |> String.downcase(),
+      transfer: downcase(value.("content-transfer-encoding")),
       subject: words(value.("subject")),
       from: address(value.("from")),
       reply_to: address(value.("reply-to")),
@@ -36,12 +36,15 @@ defmodule Dawarich.Test.MailWire do
 
   defp unfold(value), do: String.replace(value, ~r/\r\n[ \t]+/, " ")
 
+  defp downcase(nil), do: nil
+  defp downcase(value), do: String.downcase(value)
+
   defp words(nil), do: nil
 
   defp words(value) do
     Regex.replace(~r/=\?utf-8\?([qb])\?([^?]*)\?=(?:\s+(?==\?))?/i, value, fn _, encoding, text ->
       if String.downcase(encoding) == "q",
-        do: text |> String.replace("_", " ") |> :mimemail.decode_quoted_printable(),
+        do: text |> String.replace("_", "=20") |> :mimemail.decode_quoted_printable(),
         else: Base.decode64!(text)
     end)
   end

@@ -8,8 +8,9 @@ defmodule Dawarich.StatsFixtures do
   @stamp "2026-10-01T00:00:00"
 
   def reset! do
-    query(
-      "TRUNCATE countries, points, stats, flights, imports, notifications RESTART IDENTITY CASCADE"
+    Dawarich.FixtureCleanup.delete!(
+      ScratchRepo,
+      ~w(countries points stats flights imports notifications)
     )
 
     :ok

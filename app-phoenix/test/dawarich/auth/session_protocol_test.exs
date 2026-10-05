@@ -1,5 +1,5 @@
 defmodule Dawarich.Auth.SessionProtocolTest do
-  use ExUnit.Case, async: false
+  use ExUnit.Case, async: true
   alias Dawarich.Auth.{ActionCsrf, SessionCookie}
   alias Dawarich.RailsCookies
 
@@ -7,6 +7,223 @@ defmodule Dawarich.Auth.SessionProtocolTest do
   @guest @fixture["csrf_guest"]["decoded"]["session"]
   @secret "phoenix-a2-cookie-fixture-secret-not-for-production"
   @now ~U[2026-10-01 16:00:00Z]
+
+  test "account-link protocol round-trips source pending and native completed session projections" do
+    source = File.read!("test/fixtures/auth/account_link/requests.json") |> Jason.decode!()
+
+    pending =
+      Map.merge(source["challenge_en"]["session"], Map.take(@guest, ~w(session_id _csrf_token)))
+
+    {form, cookie} = SessionCookie.for_form(pending, @secret)
+    assert RailsCookies.decrypt(cookie, "_dawarich_session", @secret, @now) == {:ok, form}
+    assert form["pending_oauth_link"] == pending["pending_oauth_link"]
+
+    for action <- ~w(/auth/account_link/challenge /auth/account_link/email) do
+      token = DawarichWeb.RailsCsrf.masked_form_token(form, action, "POST")
+      assert ActionCsrf.valid?(form, token, "POST", action)
+      refute ActionCsrf.valid?(form, token, "POST", "/users/sign_in")
+    end
+
+    rows =
+      source["sequential_replay"] ++
+        source["superseded_collision"] ++
+        [source["transplant"]] ++ source["overlap"]["responses"] ++ [source["otp"]]
+
+    for row <- rows do
+      actor = row["before"]
+      user = %{id: actor["id"], encrypted_password: actor["encrypted_password"]}
+      kind = if actor["otp_required_for_login"], do: :link_only, else: :sign_in
+      notice = row["session"]["flash"]["flashes"]["notice"]
+      {completed, wire} = SessionCookie.for_account_link(form, user, kind, notice, @secret)
+      assert RailsCookies.decrypt(wire, "_dawarich_session", @secret, @now) == {:ok, completed}
+
+      assert Map.drop(completed, ~w(session_id _csrf_token warden.user.user.key)) ==
+               Map.drop(row["session"], ~w(session_id _csrf_token warden.user.user.key))
+
+      refute Map.has_key?(completed, "pending_oauth_link")
+      refute Map.has_key?(completed, "pending_oauth_link_attempts")
+      assert completed["_csrf_token"] == form["_csrf_token"]
+      assert Map.has_key?(completed, "warden.user.user.key") == (kind == :sign_in)
+    end
+  end
+
+  test "account-link cookies preserve source form link-only and default sign-in semantics" do
+    source = File.read!("test/fixtures/auth/account_link/requests.json") |> Jason.decode!()
+    actor = source["success_en"]["before"]
+    user = %{id: actor["id"], encrypted_password: actor["encrypted_password"]}
+
+    before =
+      source["challenge_en"]["session"]
+      |> Map.merge(Map.take(@guest, ~w(session_id _csrf_token)))
+      |> Map.put("warden.user.user.session", %{"last_request_at" => 42})
+
+    {form, cookie} = SessionCookie.for_form(before, @secret)
+    assert form == before
+    assert RailsCookies.decrypt(cookie, "_dawarich_session", @secret, @now) == {:ok, form}
+    action = DawarichWeb.RailsCsrf.masked_form_token(form, "/auth/account_link/challenge", "POST")
+    assert ActionCsrf.valid?(form, action, "POST", "/auth/account_link/challenge")
+
+    for {kind, row} <- [{:sign_in, source["success_en"]}, {:link_only, source["otp"]}] do
+      notice = row["session"]["flash"]["flashes"]["notice"]
+      {completed, cookie} = SessionCookie.for_account_link(before, user, kind, notice, @secret)
+      assert RailsCookies.decrypt(cookie, "_dawarich_session", @secret, @now) == {:ok, completed}
+      refute Map.has_key?(completed, "pending_oauth_link")
+      refute Map.has_key?(completed, "pending_oauth_link_attempts")
+
+      for {key, retained} <- row["retained"] do
+        assert completed[key] == before[key] == retained, key
+      end
+
+      assert completed["warden.user.user.session"] == before["warden.user.user.session"]
+      assert completed["flash"] == row["session"]["flash"]
+
+      if kind == :sign_in do
+        assert completed["warden.user.user.key"] == [
+                 [user.id],
+                 binary_part(user.encrypted_password, 0, 29)
+               ]
+      else
+        refute Map.has_key?(completed, "warden.user.user.key")
+      end
+
+      conn = Plug.Test.conn(:get, "/") |> DawarichWeb.AuthCookie.session({completed, cookie})
+      flags = conn.resp_cookies["_dawarich_session"]
+      assert flags[:path] == "/"
+      assert flags[:http_only]
+      assert flags[:same_site] == "Lax"
+      assert flags[:secure] == DawarichWeb.ForceSSL.enabled?()
+      refute Map.has_key?(conn.resp_cookies, "remember_user_token")
+
+      assert_raise DawarichWeb.RailsSession.Overflow, fn ->
+        SessionCookie.for_account_link(
+          Map.put(before, "oversize", String.duplicate("x", 5000)),
+          user,
+          kind,
+          notice,
+          @secret
+        )
+      end
+    end
+  end
+
+  test "web OTP protocol carries source pending and completed projections across runtimes" do
+    alias Dawarich.Auth.Otp.Pending
+    source = File.read!("test/fixtures/auth/otp/requests.json") |> Jason.decode!()
+    row = source["start_en"]["session"]
+    before = Map.merge(@guest, %{"locale" => "en", "otp_failed_attempts" => 3})
+    pending = Pending.start(before, row["otp_user_id"], "1", row["otp_challenge_at"])
+    assert Pending.valid(pending, row["otp_challenge_at"]) == {:ok, row["otp_user_id"], true}
+
+    for key <- ~w(locale otp_user_id otp_challenge_at otp_remember_me otp_failed_attempts) do
+      assert pending[key] == row[key], key
+    end
+
+    user = @fixture["login"]["user"]
+    actor = %{id: user["id"], encrypted_password: user["encrypted_password"]}
+    notice = source["totp_remember"]["session"]["flash"]["flashes"]["notice"]
+    {completed, cookie} = SessionCookie.for_otp_login(pending, actor, notice, @secret)
+    assert RailsCookies.decrypt(cookie, "_dawarich_session", @secret, @now) == {:ok, completed}
+
+    for key <- ~w(otp_user_id otp_challenge_at otp_remember_me otp_failed_attempts) do
+      refute Map.has_key?(completed, key)
+    end
+
+    assert completed["flash"] == source["totp_remember"]["session"]["flash"]
+    assert completed["_csrf_token"] == pending["_csrf_token"]
+  end
+
+  test "OTP pending and completed cookies match source session and remember semantics" do
+    alias Dawarich.Auth.{Otp.Pending, RememberCookie}
+    source = File.read!("test/fixtures/auth/otp/requests.json") |> Jason.decode!()
+    Code.ensure_loaded!(SessionCookie)
+    assert function_exported?(SessionCookie, :for_otp_login, 4)
+    user = @fixture["login"]["user"]
+    user = %{id: user["id"], encrypted_password: user["encrypted_password"]}
+
+    extra = %{
+      "otp_failed_attempts" => 2,
+      "locale" => "en",
+      "user_return_to" => "/trips",
+      "devise.synthetic" => "discarded",
+      "warden.user.user.session" => %{"last_request_at" => 42}
+    }
+
+    before = Map.merge(@guest, extra)
+    pending = Pending.start(before, user.id, "1", 1_791_115_200)
+    {pending, pending_cookie} = SessionCookie.for_form(pending, @secret)
+    anonymous = not Map.has_key?(pending, "warden.user.user.key")
+    assert anonymous
+    assert pending["session_id"] == before["session_id"]
+    same_csrf = pending["_csrf_token"] == before["_csrf_token"]
+    assert same_csrf
+
+    pending_roundtrip =
+      RailsCookies.decrypt(pending_cookie, "_dawarich_session", @secret, @now) == {:ok, pending}
+
+    assert pending_roundtrip
+    action = DawarichWeb.RailsCsrf.masked_form_token(pending, "/users/otp_challenge", "POST")
+    assert ActionCsrf.valid?(pending, action, "POST", "/users/otp_challenge")
+    refute ActionCsrf.valid?(pending, action, "POST", "/users/sign_in")
+
+    notice = source["totp"]["session"]["flash"]["flashes"]["notice"]
+    {completed, cookie} = SessionCookie.for_otp_login(pending, user, notice, @secret)
+
+    completed_roundtrip =
+      RailsCookies.decrypt(cookie, "_dawarich_session", @secret, @now) == {:ok, completed}
+
+    assert completed_roundtrip
+
+    assert Map.keys(completed) --
+             ~w(session_id _csrf_token locale flash warden.user.user.key warden.user.user.session) ==
+             []
+
+    for {key, retained} <- source["totp"]["retained"] do
+      matches = completed[key] == pending[key]
+      assert matches == retained, key
+    end
+
+    identity =
+      completed["warden.user.user.key"] == [
+        [user.id],
+        binary_part(user.encrypted_password, 0, 29)
+      ]
+
+    assert identity
+    assert completed["warden.user.user.session"] == extra["warden.user.user.session"]
+    assert completed["flash"] == source["totp"]["session"]["flash"]
+
+    inherited =
+      Map.put(pending, "flash", %{
+        "discard" => ["alert"],
+        "flashes" => %{"alert" => "discarded", "warning" => "retained"}
+      })
+
+    {flashed, _} = SessionCookie.for_otp_login(inherited, user, notice, @secret)
+    assert flashed["flash"] == %{"discard" => [], "flashes" => %{"notice" => notice}}
+
+    payload = [
+      [user.id],
+      binary_part(user.encrypted_password, 0, 29),
+      Dawarich.Accounts.remember_generated_at(@now)
+    ]
+
+    remember =
+      RememberCookie.sign(payload, @secret, DateTime.add(@now, Dawarich.Accounts.remember_for()))
+
+    remembered =
+      RailsCookies.verify(remember, "remember_user_token", @secret, @now) == {:ok, payload}
+
+    assert remembered
+
+    assert_raise DawarichWeb.RailsSession.Overflow, fn ->
+      SessionCookie.for_otp_login(
+        Map.put(pending, "oversize", String.duplicate("x", 5000)),
+        user,
+        notice,
+        @secret
+      )
+    end
+  end
 
   test "API management protocol preserves storage without issuing a session" do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)

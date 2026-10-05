@@ -22,6 +22,7 @@ app/services/instance_settings/backfill.rb	1.15.0
 app/services/instance_settings/registry.rb	1.13.1
 app/services/instance_settings/registry.rb	1.15.0
 app/services/instance_settings/resolver.rb	1.13.1
+app/services/phoenix_registration_setting.rb	1.13.1
 app/services/tracks/deduplicator.rb	1.7.6
 config/application.rb	1.13.1
 config/application.rb	1.15.0

@@ -15,7 +15,7 @@ defmodule Dawarich.VisitsApi.SelectPlaceTest do
 
   setup do
     start_supervised!(Dawarich.Geocoding.FakeHttp)
-    rows("TRUNCATE places,visits CASCADE")
+    Dawarich.FixtureCleanup.delete!(ScratchRepo, ~w(places visits))
     rows("DELETE FROM instance_settings")
 
     ScratchRepo.insert_all("users", [

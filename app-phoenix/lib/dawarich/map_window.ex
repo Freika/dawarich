@@ -46,6 +46,19 @@ defmodule Dawarich.MapWindow do
 
   def iso?(value), do: Regex.match?(@iso, value)
 
+  def local_utc(naive, zone, repo \\ Repo) do
+    [[epochs, offsets]] =
+      repo.query!(@candidates, [[NaiveDateTime.truncate(naive, :second)], [zone]]).rows
+
+    utc =
+      zone
+      |> ZoneDst.pick(Enum.zip(epochs, offsets))
+      |> DateTime.from_unix!()
+      |> DateTime.to_naive()
+
+    %{utc | microsecond: naive.microsecond}
+  end
+
   def build(params, settings, now, import_range, env \\ System.get_env()) do
     %{rows: [[main]]} = UserTimeZone.query!("SELECT z.name FROM z", [], settings, env)
     names = zone_names(settings, env)

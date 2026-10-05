@@ -12,6 +12,121 @@ defmodule Dawarich.Auth.AuthHandlerTest do
   @base "http://www.example.com"
   @markup AuthMarkup.fixture()["signin"]
 
+  test "credentials dispatch starts OTP only after CSRF and only with its opt-in", ctx do
+    crypto = File.read!("test/fixtures/active_record_encryption.json") |> Jason.decode!()
+    env = Enum.find(crypto["environments"], &(&1["name"] == "explicit keys"))["env"]
+    context = %{self_hosted: true, oidc: false, env: env}
+
+    Repo.query!(
+      "UPDATE users SET otp_required_for_login=true,settings='{}',failed_attempts=2,failed_otp_attempts=3 WHERE id=$1",
+      [ctx.id],
+      log: false
+    )
+
+    session = Map.merge(guest(), %{"otp_failed_attempts" => 2, "locale" => "de"})
+
+    body =
+      sign_in(session, ctx.email, "safepassword12")
+      |> String.replace("user%5Bremember_me%5D=0", "user%5Bremember_me%5D=1")
+
+    before = otp_snapshot()
+
+    opts = [
+      enabled: true,
+      registration_enabled: false,
+      otp_enabled: true,
+      otp_context: context,
+      fallback: fn conn ->
+        send(self(), :otp_replayed)
+        put_private(conn, :handed_to_rails, true)
+      end
+    ]
+
+    response =
+      request(:post, "/users/sign_in", [session_cookie(session)], body, [{"origin", @base}])
+      |> AuthHandler.call(opts)
+
+    assert response.status == 422 and response.halted
+    assert get_resp_header(response, "x-dawarich-auth-owner") == ["native-otp"]
+    pending = response_session(response)
+    assert pending["otp_user_id"] == ctx.id and pending["otp_remember_me"] == true
+    assert pending["otp_failed_attempts"] == 2 and pending["locale"] == "de"
+    refute Map.has_key?(pending, "warden.user.user.key")
+    refute Map.has_key?(response.resp_cookies, "remember_user_token")
+    refute_received :otp_replayed
+    unchanged = otp_snapshot() == before
+    assert unchanged
+
+    for {submitted_session, email, password, headers, enabled} <- [
+          {session, ctx.email, "safepassword12", [], false},
+          {session, String.upcase(ctx.email), "safepassword12", [], true},
+          {session, " #{ctx.email} ", "safepassword12", [], true},
+          {session, ctx.email, "wrong", [], true},
+          {session, ctx.email, "", [], true},
+          {session, ctx.email, "safepassword12", [{"origin", "http://foreign.invalid"}], true},
+          {Map.put(session, "user_return_to", "//foreign.invalid"), ctx.email, "safepassword12",
+           [], true}
+        ] do
+      raw = sign_in(submitted_session, email, password)
+      conn = request(:post, "/users/sign_in", [session_cookie(submitted_session)], raw, headers)
+      conn = AuthHandler.call(conn, Keyword.put(opts, :otp_enabled, enabled))
+      assert conn.private[:handed_to_rails] == true
+      assert conn.private[:dawarich_raw_body] == raw
+      assert conn.resp_cookies == %{}
+      assert_received :otp_replayed
+      refute_received :otp_replayed
+      unchanged = otp_snapshot() == before
+      assert unchanged
+    end
+
+    invalid =
+      request(
+        :post,
+        "/users/sign_in",
+        [session_cookie(session)],
+        sign_in(guest(), ctx.email, "safepassword12"),
+        []
+      )
+
+    assert AuthHandler.call(invalid, opts).private[:handed_to_rails] == true
+    assert_received :otp_replayed
+
+    for cookies <- [
+          [session_cookie(signed_in(ctx.id))],
+          [session_cookie(session), remember_cookie(ctx.id)]
+        ] do
+      Repo.query!(
+        "UPDATE users SET remember_created_at=now() - interval '1 minute' WHERE id=$1",
+        [ctx.id],
+        log: false
+      )
+
+      conn = request(:post, "/users/sign_in", cookies, body, []) |> AuthHandler.call(opts)
+      assert conn.private[:handed_to_rails] == true and conn.resp_cookies == %{}
+      assert_received :otp_replayed
+    end
+
+    Repo.query!("UPDATE users SET otp_required_for_login=false WHERE id=$1", [ctx.id], log: false)
+    session = guest()
+
+    response =
+      request(
+        :post,
+        "/users/sign_in",
+        [session_cookie(session)],
+        sign_in(session, ctx.email, "safepassword12"),
+        []
+      )
+      |> AuthHandler.call(opts)
+
+    assert response.status == 303
+    assert state(ctx.id).sign_in_count == 1
+    refute_received :otp_replayed
+  end
+
+  defp otp_snapshot,
+    do: Repo.query!("SELECT to_jsonb(u) FROM users u ORDER BY id", [], log: false).rows
+
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     previous = System.get_env("SELF_HOSTED")

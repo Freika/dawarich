@@ -6,8 +6,9 @@ defmodule Dawarich.Visits.WebDeleteTest do
   @stamp ~N[2026-10-03 10:00:00.000000]
 
   test "soft delete retains points place links notes and tombstone" do
-    rows(
-      "TRUNCATE places, tags, taggings, visits, place_visits, areas, notes RESTART IDENTITY CASCADE"
+    Dawarich.FixtureCleanup.delete!(
+      ScratchRepo,
+      ~w(places  tags  taggings  visits  place_visits  areas  notes)
     )
 
     ScratchRepo.insert_all("users", [

@@ -57,8 +57,18 @@ defmodule Dawarich.Digests.JobEntriesTest do
              {:oban, ["command:digests.calculate_year"], :retire}
 
     assert RailsJobOwners.owners()["Users::Digests::EmailSendingJob"] == :retire
-    assert RailsJobOwners.owners()["Users::Digests::Monthly::EmailSendingJob"] == {:slice, :a12c}
-    assert RailsJobOwners.owners()["Users::Digests::Yearly::EmailSendingJob"] == {:slice, :a12c}
+
+    for {class, key, worker} <- [
+          {"Users::Digests::Monthly::EmailSendingJob", "command:mail.digest.monthly",
+           Dawarich.Mail.Digests.MonthlyWorker},
+          {"Users::Digests::Yearly::EmailSendingJob", "command:mail.digest.yearly",
+           Dawarich.Mail.Digests.YearlyWorker}
+        ] do
+      assert RailsJobOwners.owners()[class] == {:oban, [key]}
+      assert %{kind: :command, worker: ^worker, claimable: false} = entries[key]
+      refute class in ReleaseJobs.classes()
+    end
+
     assert Registry.claimable() == []
   end
 

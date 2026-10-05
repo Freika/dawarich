@@ -56,8 +56,27 @@ module ReleaseCommands
     },
     'release.altitude' => {
       version: 1, sidekiq: ->(_payload, at) { later(DataMigrations::BackfillAltitudeJob, at) }
+    },
+    'release.anomalies' => {
+      version: 1, sidekiq: ->(payload, at) { recalculation('release.anomalies', payload, at) }
+    },
+    'release.anomalies_user' => {
+      version: 1, sidekiq: ->(payload, at) { recalculation('release.anomalies_user', payload, at) }
+    },
+    'release.per_tracker' => {
+      version: 1, sidekiq: ->(payload, at) { recalculation('release.per_tracker', payload, at) }
     }
   }.freeze
+
+  HANDLERS = %w[release.anomalies release.anomalies_user release.per_tracker].index_with do |type|
+    {
+      guard: 'The migration retains source job identity and converges under its source claims and user leases',
+      call: lambda { |payload|
+        JobCommands.produce(type, payload.except('run_at'), aggregate_id: payload['user_id'], producer: name,
+                            scheduled_at: Time.zone.at(payload.fetch('run_at')))
+      }
+    }
+  end.freeze
 
   module_function
 
@@ -70,5 +89,32 @@ module ReleaseCommands
 
     JobCommands.forward(type, payload, event_id: job.job_id, aggregate_id:, producer: job.class.name)
     true
+  end
+
+  def forward_recalculation(job, type, payload)
+    return false unless job.executions.positive? && JobOwnership.oban?("command:#{type}")
+
+    payload = payload.merge('source_job_id' => job.job_id, 'ambient_zone' => Time.zone.name)
+    JobCommands.forward(type, payload, event_id: job.job_id, aggregate_id: payload['user_id'],
+                         producer: job.class.name, scheduled_at: job.scheduled_at || Time.current)
+    true
+  end
+
+  def recalculation(type, payload, at)
+    JobCommands.enqueue_after_commit(nil) do
+      Time.use_zone(payload.fetch('ambient_zone')) do
+        job = case type
+              when 'release.anomalies'
+                DataMigrations::RecalculateAnomaliesJob.new(limit: payload.fetch('limit'))
+              when 'release.anomalies_user'
+                DataMigrations::RecalculateAnomaliesUserJob.new(payload.fetch('user_id'),
+                                                                attempt: payload.fetch('attempt'))
+              when 'release.per_tracker'
+                DataMigrations::RecalculatePerTrackerTracksJob.new(payload.fetch('user_id'))
+              end
+        job.job_id = payload.fetch('source_job_id')
+        job.enqueue(wait_until: at)
+      end
+    end
   end
 end

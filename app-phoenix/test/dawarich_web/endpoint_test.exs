@@ -364,6 +364,7 @@ defmodule DawarichWeb.EndpointTest do
       {"GET", "/imports"},
       {"GET", "/imports/new"},
       {"GET", "/imports/:id"},
+      {"GET", "/imports/:id/edit"},
       {"GET", "/imports/:id/download"},
       {"POST", "/imports"},
       {"POST", "/imports/:id"},
@@ -372,7 +373,9 @@ defmodule DawarichWeb.EndpointTest do
       {"POST", "/imports/:id/extraction"},
       {"DELETE", "/imports/:id/extraction"},
       {"GET", "/exports"},
-      {"POST", "/exports"}
+      {"POST", "/exports"},
+      {"POST", "/exports/:id"},
+      {"DELETE", "/exports/:id"}
     ]
 
     assert actual == Enum.sort(expected)
@@ -407,14 +410,15 @@ defmodule DawarichWeb.EndpointTest do
     end
   end
 
-  test "a foreign or non-GPX import's pages, download and writes go to Puma", ctx do
+  test "foreign or unsupported imports stay on Puma while owned normal pages are native", ctx do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     alias Dawarich.Test.{RailsUser, ImportsExportsSeeds}
     RailsUser.insert!(%{id: 7691, email: "tcp-owner@example.test"})
     RailsUser.insert!(%{id: 7692, email: "tcp-foreign@example.test"})
     ImportsExportsSeeds.import!(%{id: 769_101, user_id: 7691, name: "private-owner.gpx"})
-    ImportsExportsSeeds.import!(%{id: 769_102, user_id: 7692, name: "own.geojson", source: 6})
+    ImportsExportsSeeds.import!(%{id: 769_102, user_id: 7692, name: "unsupported", source: 16})
+    ImportsExportsSeeds.import!(%{id: 769_103, user_id: 7692, name: "own.geojson", source: 6})
     session = RailsUser.session(7692)
     cookie = RailsUser.cookie(session)
     token = DawarichWeb.RailsCsrf.masked_token(session)
@@ -444,7 +448,12 @@ defmodule DawarichWeb.EndpointTest do
       assert answered_by_puma(port, ctx.upstream, request) == "#{method} #{target} HTTP/1.1"
     end
 
-    assert [["private-owner.gpx", 2], ["own.geojson", 2]] ==
+    for target <- ["/imports/769103", "/imports/769103/edit"] do
+      request = "GET #{target} HTTP/1.1\r\nHost: a\r\nCookie: _dawarich_session=#{cookie}\r\n\r\n"
+      assert answered_by_phoenix(port, request) == 200
+    end
+
+    assert [["private-owner.gpx", 2], ["unsupported", 2], ["own.geojson", 2]] ==
              Dawarich.Repo.query!("SELECT name,status FROM imports ORDER BY id", [], log: false).rows
   end
 
@@ -885,7 +894,7 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/trips/new /trips/5/edit /trips/abc /trips/12abc /trips/1234567890123456789 /trips.json /trips/5.json /trips?format=json) do
+          ~w(/trips/new?format=json /trips/5/edit?format=json /trips/abc /trips/12abc /trips/1234567890123456789 /trips.json /trips/5.json /trips?format=json) do
       assert answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==
                "GET #{target} HTTP/1.1"
     end
@@ -956,7 +965,7 @@ defmodule DawarichWeb.EndpointTest do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
     Dawarich.Test.SharingSeeds.load!()
-    Dawarich.ScratchRepo.query!("TRUNCATE phoenix.counters", [], log: false)
+    Dawarich.FixtureCleanup.delete!(Dawarich.ScratchRepo, ~w(phoenix.counters))
     port = serve()
     id = "a9500000-0000-4000-8000-000000000001"
     page = "GET /s/#{id}?locale=de HTTP/1.1\r\nHost: a\r\n\r\n"
@@ -979,16 +988,16 @@ defmodule DawarichWeb.EndpointTest do
     port = serve()
 
     for target <-
-          ~w(/settings/general /settings/visits /settings/integrations /settings/integrations?service=trek /users/edit /insights /insights?year=all&month=3) do
+          ~w(/settings/general /settings/visits /settings/integrations /settings/integrations?service=trek /settings/users/export /users/edit /insights /insights?year=all&month=3) do
       assert answered_by_phoenix(port, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") == 302, target
     end
   end
 
-  test "every other settings, account and insights path, and every write, goes to Puma", ctx do
+  test "unsupported settings, account and insights requests go to Puma", ctx do
     port = serve()
 
     for target <-
-          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /settings/users /settings/users/export /settings/trek_sources/1/select_trips /insights/details?year=2024 /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
+          ~w(/settings /settings/theme?theme=light /settings/two_factor /settings/background_jobs /settings/users /settings/trek_sources/1/select_trips /insights/details?year=2024 /users/sign_in /users/sign_up /users/edit.json /settings/general.json /insights.json),
         do:
           assert(
             answered_by_puma(port, ctx.upstream, "GET #{target} HTTP/1.1\r\nHost: a\r\n\r\n") ==

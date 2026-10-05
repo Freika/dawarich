@@ -71,7 +71,7 @@ class Import < ApplicationRecord
   end
 
   def process_user_data_archive!
-    Users::ImportDataJob.perform_later(id)
+    Users::DataCommands.process_import(self, producer: 'Import process_user_data_archive!')
   end
 
   def reverse_geocoded_points_count

@@ -32,8 +32,11 @@ defmodule DawarichWeb.AuthGateTest do
     {:get, "/users/sign_up"}
   ]
 
+  @account_link [{:get, "/auth/account_link/challenge"}, {:post, "/auth/account_link/challenge"}]
+
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Dawarich.State.put_registration_enabled(Repo, false)
     Application.delete_env(:dawarich, :phoenix_auth)
     previous = System.get_env("SELF_HOSTED")
     previous_flows = System.get_env("DAWARICH_PHOENIX_AUTH")
@@ -69,7 +72,7 @@ defmodule DawarichWeb.AuthGateTest do
   end
 
   test "with no flow named, every auth request passes through untouched" do
-    untouched(@credentials ++ @recovery ++ @elsewhere)
+    untouched(@credentials ++ @recovery ++ @elsewhere ++ @account_link)
   end
 
   test "reserved and unknown flow names change nothing" do
@@ -79,17 +82,17 @@ defmodule DawarichWeb.AuthGateTest do
       ~w(registration two_factor remember oauth bogus)
     )
 
-    untouched(@credentials ++ @recovery ++ @elsewhere)
+    untouched(@credentials ++ @recovery ++ @elsewhere ++ @account_link)
   end
 
   test "credentials claims only its own four routes" do
     Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
-    untouched(@recovery ++ @elsewhere)
+    untouched(@recovery ++ @elsewhere ++ @account_link)
   end
 
   test "recovery claims only its own seven routes" do
     Application.put_env(:dawarich, :phoenix_auth, ["recovery"])
-    untouched(@credentials ++ @elsewhere)
+    untouched(@credentials ++ @elsewhere ++ @account_link)
   end
 
   test "credentials and recovery on, an instance that is not self-hosted: even their own routes pass untouched" do
@@ -167,7 +170,7 @@ defmodule DawarichWeb.AuthGateTest do
     System.delete_env("DAWARICH_PHOENIX_AUTH")
   end
 
-  test "account writes do not require registration cache availability" do
+  test "account writes do not require registration state availability" do
     {session, previous_secret} = account_actor()
     cache = Process.whereis(Dawarich.Redis.Cache)
     if cache, do: Process.unregister(Dawarich.Redis.Cache)
@@ -177,6 +180,7 @@ defmodule DawarichWeb.AuthGateTest do
       if cache && Process.alive?(cache), do: Process.register(cache, Dawarich.Redis.Cache)
     end)
 
+    Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
     assert RegistrationSetting.fetch() == :error
     Application.put_env(:dawarich, :phoenix_auth, ~w(account api_keys credentials recovery))
     owner = self()
@@ -248,7 +252,7 @@ defmodule DawarichWeb.AuthGateTest do
     end
   end
 
-  test "two_factor opts in independently without registration cache" do
+  test "two_factor opts in independently without registration state" do
     routes = [
       {:get, "/settings/two_factor"},
       {:post, "/settings/two_factor"},
@@ -273,6 +277,7 @@ defmodule DawarichWeb.AuthGateTest do
       if cache && Process.alive?(cache), do: Process.register(cache, Dawarich.Redis.Cache)
     end)
 
+    Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
     assert RegistrationSetting.fetch() == :error
     owner = self()
     tracer = spawn(fn -> trace_calls(owner) end)
@@ -308,6 +313,53 @@ defmodule DawarichWeb.AuthGateTest do
     System.put_env("DAWARICH_PHOENIX_AUTH", " Two_Factor, credentials, Unknown ")
     config = Config.Reader.read!(Path.expand("../../config/runtime.exs", __DIR__), env: :prod)
     assert config[:dawarich][:phoenix_auth] == ~w(two_factor credentials unknown)
+  end
+
+  test "OTP opt-in is independent and respects existing credentials and management keys" do
+    otp = [{:post, "/users/otp_challenge"}]
+
+    for flows <- [nil, [], ["unknown"], ~w(credentials two_factor)] do
+      if flows,
+        do: Application.put_env(:dawarich, :phoenix_auth, flows),
+        else: Application.delete_env(:dawarich, :phoenix_auth)
+
+      untouched(otp)
+    end
+
+    cache = Process.whereis(Dawarich.Redis.Cache)
+    if cache, do: Process.unregister(Dawarich.Redis.Cache)
+
+    on_exit(fn ->
+      if cache && Process.alive?(cache), do: Process.register(cache, Dawarich.Redis.Cache)
+    end)
+
+    Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
+    assert RegistrationSetting.fetch() == :error
+    {session, _} = SessionCookie.for_form(%{}, Application.fetch_env!(:dawarich, :rails_secret))
+
+    body =
+      URI.encode_query(%{
+        "authenticity_token" =>
+          RailsCsrf.masked_form_token(session, "/users/otp_challenge", "POST"),
+        "otp_attempt" => "unused"
+      })
+
+    for flows <- [["otp"], ~w(otp credentials two_factor)] do
+      Application.put_env(:dawarich, :phoenix_auth, flows)
+      conn = AuthGate.call(authenticated(session, "/users/otp_challenge", body), [])
+      assert conn.status == 302
+      assert get_resp_header(conn, "x-dawarich-auth-owner") == ["native-otp"]
+      if flows == ["otp"], do: untouched(@credentials ++ [{:get, "/settings/two_factor"}])
+    end
+
+    for value <- [nil, "false", "TRUE", ""] do
+      if value, do: System.put_env("SELF_HOSTED", value), else: System.delete_env("SELF_HOSTED")
+      untouched(otp)
+    end
+
+    System.put_env("DAWARICH_PHOENIX_AUTH", " OTP, credentials, Two_Factor, unknown ")
+    config = Config.Reader.read!(Path.expand("../../config/runtime.exs", __DIR__), env: :prod)
+    assert config[:dawarich][:phoenix_auth] == ~w(otp credentials two_factor unknown)
   end
 
   defp account_actor do

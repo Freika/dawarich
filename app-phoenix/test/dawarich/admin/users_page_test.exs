@@ -8,7 +8,7 @@ defmodule Dawarich.Admin.UsersPageTest do
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     start_supervised!(hd(Redis.cache_child_specs()))
-    {:ok, _} = Redis.cache_command(["DEL", "dawarich/registration_enabled"])
+    Dawarich.State.put_registration_enabled(Repo, true)
     original = System.get_env("ALLOW_EMAIL_PASSWORD_REGISTRATION")
     System.put_env("ALLOW_EMAIL_PASSWORD_REGISTRATION", "true")
 
@@ -143,20 +143,21 @@ defmodule Dawarich.Admin.UsersPageTest do
     assert :rails == UsersPage.find(actor, 10002, :show)
   end
 
-  test "registration presentation reads the Rails cache flag", %{actor: actor} do
-    for {value, tag} <- [{true, ?T}, {false, ?F}] do
-      {:ok, _} = Redis.cache_command(["SET", "dawarich/registration_enabled", <<4, 8, tag>>])
+  test "admin list registration comes from PG and stored nil retains pre-render hand-back", %{
+    actor: actor
+  } do
+    bytes = Dawarich.RailsCache.Wire.encode_boolean(true, expires_at: nil)
+    assert {:ok, "OK"} = Redis.cache_command(["SET", "dawarich/registration_enabled", bytes])
+
+    for value <- [false, true] do
+      Dawarich.State.put_registration_enabled(Repo, value)
       assert {:ok, result} = UsersPage.list(actor, %{})
       assert result.registration == value
     end
 
-    {:ok, _} = Redis.cache_command(["DEL", "dawarich/registration_enabled"])
-    assert {:ok, result} = UsersPage.list(actor, %{})
-    assert result.registration
-    System.put_env("ALLOW_EMAIL_PASSWORD_REGISTRATION", "1")
-    assert {:ok, result} = UsersPage.list(actor, %{})
-    refute result.registration
-    stop_supervised!(Dawarich.Redis.Cache)
+    Dawarich.State.put_registration_enabled(Repo, nil)
+    assert :rails == UsersPage.list(actor, %{})
+    Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
     assert :rails == UsersPage.list(actor, %{})
   end
 

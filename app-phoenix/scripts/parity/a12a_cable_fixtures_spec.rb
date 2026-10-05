@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+ENV['SECRET_KEY_BASE'] = 'phoenix-a2-cookie-fixture-secret-not-for-production'
+
 require 'rails_helper'
 require_relative 'a12a_fixture_support'
 
@@ -13,6 +15,7 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
   def shares = fx::SHARES
 
   before(:all) do
+    expect(Rails.application.secret_key_base).to eq('phoenix-a2-cookie-fixture-secret-not-for-production')
     @previous_cable = ActionCable.server.config.cable
     @puma = A12aFixtureSupport.boot!
     @port = @puma.connected_ports.first
@@ -262,6 +265,18 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
       s.text(fx.unsubscribe(points))
       s.produce(PointsChannel.broadcasting_for(@alice), points_meta) { PointsChannel.broadcast_to(@alice, ['after']) }
     end
+    record('points_alias', 'commands', cookies: ['alice']) do |s|
+      other = { channel: '::PointsChannel' }
+      s.text(fx.subscribe(points))
+      s.text(fx.subscribe(other))
+      s.produce(PointsChannel.broadcasting_for(@alice), points_meta) do
+        PointsChannel.broadcast_to(@alice, ['both'])
+      end
+      s.text(fx.unsubscribe(other))
+      s.produce(PointsChannel.broadcasting_for(@alice), points_meta) do
+        PointsChannel.broadcast_to(@alice, ['remaining'])
+      end
+    end
     { 'message_action_subscribed' => 'subscribed', 'message_action_unknown' => 'nope' }.each do |name, action|
       record(name, 'commands', cookies: ['alice']) do |s|
         s.text(fx.subscribe(points))
@@ -472,6 +487,29 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
     fx.normalized(data.except('sessions').merge('pings' => data['pings'].except('gap_seconds')))
   end
 
+  def without_alias(data)
+    data.merge(data.slice('cases', 'producers').transform_values do |entries|
+      entries.reject { |entry| entry['name'] == 'points_alias' }
+    end)
+  end
+
+  it 'capture retains every deterministic cable field' do
+    data = fx.read('cable.json')
+    projection = deterministic(data)
+    captured = fx.capture_json(projection)
+    expect(JSON.parse(captured) == projection).to be(true)
+
+    projection.each_key do |key|
+      changed = Marshal.load(Marshal.dump(data))
+      changed[key] = key == 'pings' ? { 'sample' => 'changed' } : { 'changed' => true }
+      expect(fx.capture_json(deterministic(changed)) == captured).to be(false), key
+    end
+
+    data['sessions'] = { 'changed' => true }
+    data['pings']['gap_seconds'] = -1
+    expect(fx.capture_json(deterministic(data)) == captured).to be(true)
+  end
+
   def phoenix_encodings
     fx.phoenix('IO.puts(Jason.encode!(Enum.map(Dawarich.Test.A12a.producer_inputs(), ' \
                '&Dawarich.Test.A12a.phoenix_encoding/1)))')
@@ -495,10 +533,15 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
       setup!
       encodings = phoenix_encodings
       if fx.write?
+        if ENV['A12A_ALIAS_ONLY'] == '1'
+          expect(encodings.reject { |entry| entry['name'] == 'points_alias' })
+            .to eq(fx.read('phoenix.json')['producers'].reject { |entry| entry['name'] == 'points_alias' })
+        end
         fx.write('phoenix.json', { 'producers' => encodings })
       else
         expect(encodings).to eq(fx.read('phoenix.json')['producers'])
       end
+      fx.capture_output('phoenix.json', { 'producers' => encodings })
       redis = Redis.new(url: ENV.fetch('REDIS_URL'), driver: :ruby)
       by_case = encodings.group_by { |e| e['name'] }
       fx.read('cable.json')['cases'].select { |c| c['section'] == 'messages' }.each do |c|
@@ -518,10 +561,17 @@ RSpec.describe 'Phoenix fixture: A12a ActionCable corpus', type: :request do
       expect(@cases.size).to be >= 80
       expect(@cases.find { |c| c['name'] == 'user' }['steps'].first).to eq('expect' => '{"type":"welcome"}')
       if fx.write?
-        fx.write('cable.json', data)
+        if ENV['A12A_ALIAS_ONLY'] == '1'
+          fixture = fx.read('cable.json')
+          expect(deterministic(without_alias(data))).to eq(deterministic(without_alias(fixture)))
+          fx.write('cable.json', fixture.merge(data.slice('cases', 'producers')))
+        else
+          fx.write('cable.json', data)
+        end
       else
         expect(deterministic(data)).to eq(deterministic(fx.read('cable.json')))
       end
+      fx.capture_output('cable-projection.json', deterministic(data))
     ensure
       cleanup!
     end

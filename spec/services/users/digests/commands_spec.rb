@@ -23,8 +23,8 @@ RSpec.describe 'Users::Digests::Commands' do
         "('command:digests.calculate_month', 'command:digests.calculate_year', " \
         "'cron:monthly_digest_scheduling_job', 'cron:yearly_digest_scheduling_job')"
     )
-    ActiveRecord::Base.connection.execute('DROP SCHEMA IF EXISTS phoenix CASCADE')
-    PhoenixTables.install_state!
+    PhoenixTables.install! unless ActiveRecord::Base.connection.table_exists?('phoenix.job_owners')
+    PhoenixTables.clear!
   end
 
   def clear_digest_reverse_commands
@@ -64,12 +64,27 @@ RSpec.describe 'Users::Digests::Commands' do
     ActiveRecord::Base.connection.execute(ActiveRecord::Base.sanitize_sql_array([statement, kind, payload.to_json]))
   end
 
+  it 'collision database guard refuses non-test Rails and Phoenix database names' do
+    expect { collision_database!('dawarich_production', 'dawarich_test_example') }
+      .to raise_error(ArgumentError, 'collision matrix requires test databases')
+    expect { collision_database!('dawarich_phoenix_test_example', 'dawarich_production') }
+      .to raise_error(ArgumentError, 'collision matrix requires test databases')
+  end
+
+  def collision_database!(phoenix_database = ENV.fetch('PHOENIX_TEST_DATABASE'),
+                          rails_database = ENV.fetch('DATABASE_NAME'))
+    unless phoenix_database.start_with?('dawarich_phoenix_test') && rails_database.start_with?('dawarich_test')
+      raise ArgumentError, 'collision matrix requires test databases'
+    end
+
+    "#{phoenix_database}_scratch"
+  end
+
   it 'in-flight Rails and native digest workers converge in both writer orders ' \
      'and preserve metadata and terminal effects' do
     store = finish = rails_writer = nil
     original_config = ActiveRecord::Base.connection_db_config.configuration_hash
-    shared_database = 'dawarich_phoenix_test_a12d1b2_scratch'
-    expect(ENV.fetch('PHOENIX_TEST_DATABASE')).to eq('dawarich_phoenix_test_a12d1b2')
+    shared_database = collision_database!
     command = %w[mix test test/dawarich/digests/job_lifecycle_test.exs
                  --include rails_parity --only rails_parity --seed 101]
     messages = Queue.new
@@ -175,7 +190,7 @@ RSpec.describe 'Users::Digests::Commands' do
     error_reader.join
     puts peer_output
     expect(peer.value.success?).to be(true), peer_output + peer_error
-    expect(peer_output).to match(/3 tests, 0 failures, 2 excluded/)
+    expect(peer_output).to match(/4 tests, 0 failures, 3 excluded/)
   ensure
     store << :store if store
     finish << :finish if finish

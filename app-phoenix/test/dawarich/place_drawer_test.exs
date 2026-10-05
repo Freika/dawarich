@@ -186,7 +186,7 @@ defmodule Dawarich.PlaceDrawerTest do
 
   test "an unknown source hands back", %{user: user} do
     set!("places", 844_101, "source = NULL", [])
-    assert PlaceDrawer.load(user, 844_101) == :rails
+    assert {:ok, %{source: nil}} = PlaceDrawer.load(user, 844_101)
     set!("places", 844_101, "source = 7", [])
     assert PlaceDrawer.load(user, 844_101) == :rails
 

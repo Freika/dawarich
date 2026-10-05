@@ -26,6 +26,7 @@ defmodule DawarichWeb.PublicHomeTest do
     on_exit(fn -> Logger.configure(level: level) end)
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    Dawarich.State.put_registration_enabled(Dawarich.Repo, true)
     RailsUser.insert!(%{id: 15701, email: "a10b-home@example.invalid"})
     {:ok, before} = Dawarich.Redis.cache_command(["GET", "dawarich/registration_enabled"])
 
@@ -38,8 +39,30 @@ defmodule DawarichWeb.PublicHomeTest do
     :ok
   end
 
-  test "anonymous home matches Rails en de markup and registration links" do
+  test "credentials and public home obey copied false while Cloud home keeps signup" do
     assert Code.ensure_loaded?(PublicHomeLive), "public home LiveView must exist"
+
+    previous = System.get_env("SELF_HOSTED")
+    flows = Application.get_env(:dawarich, :phoenix_auth)
+    System.put_env("SELF_HOSTED", "true")
+    Application.put_env(:dawarich, :phoenix_auth, ["credentials"])
+
+    on_exit(fn ->
+      if previous,
+        do: System.put_env("SELF_HOSTED", previous),
+        else: System.delete_env("SELF_HOSTED")
+
+      if flows,
+        do: Application.put_env(:dawarich, :phoenix_auth, flows),
+        else: Application.delete_env(:dawarich, :phoenix_auth)
+    end)
+
+    bytes = Dawarich.RailsCache.Wire.encode_boolean(true, expires_at: nil)
+    {:ok, "OK"} = Dawarich.Redis.cache_command(["SET", "dawarich/registration_enabled", bytes])
+    :ok = RegistrationSetting.put(false)
+    conn = DawarichWeb.AuthGate.call(Plug.Test.conn(:get, "/users/sign_in"), [])
+    assert conn.status == 200
+    refute conn.resp_body =~ ~s(href="/users/sign_up")
 
     for locale <- ~w(en de), mode <- [:enabled, :disabled, :cloud] do
       :ok = RegistrationSetting.put(mode == :enabled)
@@ -77,7 +100,7 @@ defmodule DawarichWeb.PublicHomeTest do
       refute HomeGate.owned?(Plug.Test.conn(:get, "/?" <> query), %{})
     end
 
-    Dawarich.Redis.cache_command(["SET", "dawarich/registration_enabled", "invalid"])
+    Dawarich.Repo.query!("DELETE FROM phoenix.registration_setting", [], log: false)
     refute HomeGate.owned?(Plug.Test.conn(:get, "/"), %{})
   end
 

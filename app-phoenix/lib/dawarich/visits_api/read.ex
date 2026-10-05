@@ -20,7 +20,15 @@ defmodule Dawarich.VisitsApi.Read do
            {where, args} = window(where, args, from, to),
            {:ok, tail, headers} <- page(repo, params, where, args) do
         order = if box?, do: " DESC", else: " ASC"
-        rows = Payload.rows(where, args, " ORDER BY v.started_at" <> order <> tail, repo)
+
+        rows =
+          Payload.rows(
+            where,
+            args,
+            " ORDER BY v.started_at" <> order <> ", v.id ASC" <> tail,
+            repo
+          )
+
         {:ok, Enum.map(rows, &Payload.term/1), headers}
       end
     end)

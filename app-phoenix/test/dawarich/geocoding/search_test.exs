@@ -1,8 +1,8 @@
 defmodule Dawarich.Geocoding.SearchTest do
   use Dawarich.GeocodingCase, async: false
 
-  alias Dawarich.Geocoding.{RateLimiter, Search}
-  alias Dawarich.Redis
+  alias Dawarich.Geocoding.{Query, RateLimiter, ResponseCache, Search}
+  alias Dawarich.{Redis, TtlCache}
 
   @errors %{
     "Geocoder::OverQueryLimitError" => :over_query_limit,
@@ -24,29 +24,51 @@ defmodule Dawarich.Geocoding.SearchTest do
 
   test "a 200 invalid-JSON body is cached, then a parse error" do
     c = search_case("photon_invalid_json_200")
+    [%{"key" => key, "value" => body}] = c["cache"]
+    own_key!(key)
     stub_requests!(c["requests"])
 
+    before = System.monotonic_time(:millisecond)
     assert reverse(c) == {:error, :response_parse_error}
     assert cache_entries() == c["cache"]
-    {:ok, ttl} = Redis.cache_command(["TTL", hd(c["cache"])["key"]])
-    assert ttl in 86_390..86_400
+    after_put = System.monotonic_time(:millisecond)
+    assert [{_, ^body, deadline}] = native_entry(key)
+    assert deadline in (before + 86_400_000)..(after_put + 86_400_000)
     assert reverse(c) == {:error, :response_parse_error}
     assert length(FakeHttp.requests()) == 1
   end
 
-  test "a cache hit makes no request but takes a slot" do
+  test "a cache hit makes no request but takes a slot even after the bucket expires" do
     c = search_case("photon_cache_hit")
     [%{"key" => key, "value" => value}] = c["cache"]
-    {:ok, "OK"} = Redis.cache_command(["SET", key, value])
+    own_key!(key)
+    ResponseCache.put(key, value)
+    stub_requests!(c["requests"])
     config = %{config_from(c["config"]) | rps: 10.0}
     limiter = "geocoding:rate_limit:" <> RateLimiter.key(config)
+    observer = {__MODULE__, self()}
+
+    :ok =
+      :telemetry.attach(observer, [:redix, :pipeline, :stop], &__MODULE__.reservation/4, self())
+
+    on_exit(fn -> :telemetry.detach(observer) end)
+
+    source =
+      File.read!(Path.expand("../../../../app/services/geocoding/rate_limiter.rb", __DIR__))
+
+    [_, lua] = Regex.run(~r/RESERVE_LUA = <<~LUA\n(.*?)\n[ \t]*LUA\n/s, source)
+    lua = String.replace(lua, ~r/^ {6}/m, "") <> "\n"
+    command = ["EVAL", lua, "1", limiter, "100000", "-1"]
 
     assert Search.reverse(config, query(c), []) == {:ok, hd(c["outcomes"])["data"]}
-    first = slot(limiter)
+    assert_received {:reservation, [^command], nil}
+    assert {:ok, _} = Redis.command(["DEL", limiter])
     assert Search.reverse(config, query(c), []) == {:ok, hd(c["outcomes"])["data"]}
+    assert_received {:reservation, [^command], nil}
+    assert {:ok, _} = Redis.command(["DEL", limiter])
 
     assert FakeHttp.requests() == []
-    assert slot(limiter) - first == 100_000
+    refute_received {:reservation, _, _}
   end
 
   test "provider-specific bodies" do
@@ -105,13 +127,208 @@ defmodule Dawarich.Geocoding.SearchTest do
     assert Redis.command(["KEYS", "geocoding:rate_limit:*"]) == {:ok, []}
   end
 
-  test "a cache outage still looks the result up" do
+  test "no Redis cache process is needed for a native miss and hit" do
     c = search_case("photon_cache_hit")
+    [%{"key" => key, "value" => body}] = c["cache"]
+    own_key!(key)
     stub_requests!(c["requests"])
-    stop_supervised!(Dawarich.Redis.Cache)
+
+    assert Process.whereis(Dawarich.Redis.Cache) == nil
+    assert reverse(c) == {:ok, hd(c["outcomes"])["data"]}
+    assert reverse(c) == {:ok, hd(c["outcomes"])["data"]}
+    assert length(FakeHttp.requests()) == 1
+    assert [{_, ^body, _}] = native_entry(key)
+  end
+
+  test "two successful lookups use one HTTP response and the native cache" do
+    start_supervised!(hd(Redis.cache_child_specs()))
+    assert Redis.cache_command(["FLUSHDB"]) == {:ok, "OK"}
+    c = search_case("photon_cache_hit")
+    [%{"key" => key, "value" => body}] = c["cache"]
+    own_key!(key)
+    stub_requests!(c["requests"])
+
+    assert reverse(c) == {:ok, hd(c["outcomes"])["data"]}
+    assert reverse(c) == {:ok, hd(c["outcomes"])["data"]}
+    assert length(FakeHttp.requests()) == 1
+    assert [{_, ^body, _}] = native_entry(key)
+    assert Redis.cache_command(["GET", key]) == {:ok, nil}
+  end
+
+  test "a cached provider error is decoded again without another request" do
+    c = search_case("locationiq_error_1")
+    [%{"key" => key, "value" => body}] = c["cache"]
+    own_key!(key)
+    stub_requests!(c["requests"])
+
+    assert reverse(c) == {:error, :invalid_api_key}
+    assert reverse(c) == {:error, :invalid_api_key}
+    assert length(FakeHttp.requests()) == 1
+    assert [{_, ^body, _}] = native_entry(key)
+  end
+
+  test "an empty raw body misses again but empty features hit" do
+    config = boundary_config()
+    coords = {51.3407, 12.3731}
+    {url, key, _} = Query.build(config, coords, [], "9.9.9")
+    own_key!(key)
+    FakeHttp.stub(url, 200, "")
+
+    for call <- 1..2 do
+      assert Search.reverse(config, coords, []) == {:error, :response_parse_error}
+      assert length(FakeHttp.requests()) == call
+      assert [{_, "", _}] = native_entry(key)
+    end
+
+    TtlCache.delete({ResponseCache, key})
+    body = ~s({"type":"FeatureCollection","features":[]})
+    FakeHttp.stub(url, 200, body)
+
+    assert Search.reverse(config, coords, []) == {:ok, []}
+    assert length(FakeHttp.requests()) == 3
+    assert Search.reverse(config, coords, []) == {:ok, []}
+    assert length(FakeHttp.requests()) == 3
+    assert [{_, ^body, _}] = native_entry(key)
+    assert cache_entries() == [%{"key" => key, "value" => body}]
+  end
+
+  test "noncacheable responses and timeouts are looked up again" do
+    config = boundary_config()
+    coords = {51.3407, 12.3731}
+    {url, key, _} = Query.build(config, coords, [], "9.9.9")
+    own_key!(key)
+    c = search_case("photon_cache_hit")
+    body = hd(c["cache"])["value"]
+
+    cases = [
+      {400, {:error, :invalid_request}},
+      {401, {:error, :request_denied}},
+      {402, {:error, :over_query_limit}},
+      {404, {:ok, hd(c["outcomes"])["data"]}},
+      {429, {:error, :over_query_limit}},
+      {503, {:error, :service_unavailable}},
+      {:timeout, {:error, :timeout}}
+    ]
+
+    for {status, outcome} <- cases do
+      TtlCache.delete({ResponseCache, key})
+      before = length(FakeHttp.requests())
+
+      if status == :timeout,
+        do: FakeHttp.stub_error(url, :timeout),
+        else: FakeHttp.stub(url, status, body)
+
+      for call <- 1..2 do
+        assert {status, Search.reverse(config, coords, [])} == {status, outcome}
+        assert {status, length(FakeHttp.requests()) - before} == {status, call}
+      end
+
+      assert native_entry(key) == []
+      assert cache_entries() == []
+    end
+  end
+
+  test "hits retain the deadline and expiry requests a fresh response" do
+    c = search_case("photon_cache_hit")
+    [%{"key" => key, "value" => body}] = c["cache"]
+    own_key!(key)
+    stub_requests!(c["requests"])
+
+    assert reverse(c) == {:ok, hd(c["outcomes"])["data"]}
+    assert [{native_key, ^body, deadline}] = native_entry(key)
+    assert reverse(c) == {:ok, hd(c["outcomes"])["data"]}
+    assert [{^native_key, ^body, ^deadline}] = native_entry(key)
+    assert length(FakeHttp.requests()) == 1
+    now = System.monotonic_time(:millisecond)
+    :ets.insert(TtlCache, {native_key, body, now})
+
+    assert reverse(c) == {:ok, hd(c["outcomes"])["data"]}
+    assert length(FakeHttp.requests()) == 2
+    assert [{^native_key, ^body, renewed}] = native_entry(key)
+    assert renewed > now
+  end
+
+  test "existing TtlCache eviction makes geocoding a cold miss" do
+    c = search_case("photon_cache_hit")
+    key = hd(c["cache"])["key"]
+    own_key!(key)
+    previous = :ets.tab2list(TtlCache)
+
+    on_exit(fn ->
+      :ets.match_delete(TtlCache, {{:a13d_eviction, :_}, :_, :_})
+      :ets.insert(TtlCache, previous)
+    end)
+
+    stub_requests!(c["requests"])
+    assert reverse(c) == {:ok, hd(c["outcomes"])["data"]}
+    assert native_entry(key) != []
+    assert reverse(c) == {:ok, hd(c["outcomes"])["data"]}
+    assert length(FakeHttp.requests()) == 1
+
+    for n <- 1..10_001, do: TtlCache.put({:a13d_eviction, n}, n, 60_000)
+    assert :ets.info(TtlCache, :size) <= 10_000
+    assert native_entry(key) == []
+    assert reverse(c) == {:ok, hd(c["outcomes"])["data"]}
+    assert length(FakeHttp.requests()) == 2
+  end
+
+  test "cache identity separates hosts coordinates and place options" do
+    c = search_case("photon_cache_hit")
+    config = config_from(c["config"])
+    body = hd(c["cache"])["value"]
+
+    variations = [
+      {config, query(c), []},
+      {%{config | host: "other.photon.example.test"}, query(c), []},
+      {config, {51.3407, 12.3731}, []},
+      {config, query(c), [limit: 10, radius: 1, distance_sort: true]}
+    ]
+
+    keys =
+      for {conf, coords, opts} <- variations do
+        {url, key, _} = Query.build(conf, coords, opts, "9.9.9")
+        own_key!(key)
+        FakeHttp.stub(url, 200, body)
+        before = length(FakeHttp.requests())
+        assert Search.reverse(conf, coords, opts) == {:ok, hd(c["outcomes"])["data"]}
+        assert Search.reverse(conf, coords, opts) == {:ok, hd(c["outcomes"])["data"]}
+        assert length(FakeHttp.requests()) - before == 1
+        assert [{_, ^body, _}] = native_entry(key)
+        key
+      end
+
+    assert length(Enum.uniq(keys)) == 4
+    assert length(FakeHttp.requests()) == 4
+  end
+
+  test "a Rails-warmed Redis body does not warm the native cache" do
+    start_supervised!(hd(Redis.cache_child_specs()))
+    c = search_case("photon_cache_hit")
+    [%{"key" => key, "value" => body}] = c["cache"]
+    own_key!(key)
+    warmed = ~s({"type":"FeatureCollection","features":[]})
+    assert Redis.cache_command(["SET", key, warmed]) == {:ok, "OK"}
+    stub_requests!(c["requests"])
 
     assert reverse(c) == {:ok, hd(c["outcomes"])["data"]}
     assert length(FakeHttp.requests()) == 1
+    assert [{_, ^body, _}] = native_entry(key)
+    assert Redis.cache_command(["GET", key]) == {:ok, warmed}
+  end
+
+  test "clearing geocoding entries preserves unrelated cache entries" do
+    key = "https://namespace-clear.example.test/reverse"
+    own_key!(key)
+    TtlCache.delete(key)
+    on_exit(fn -> TtlCache.delete(key) end)
+    ResponseCache.put(key, "raw body")
+    TtlCache.put(key, :unrelated, 60_000)
+
+    Dawarich.GeocodingCase.clear_response_cache!()
+
+    assert ResponseCache.get(key) == :error
+    assert TtlCache.lookup(key) == {:ok, :unrelated}
+    assert cache_entries() == []
   end
 
   test "a disabled configuration makes no request" do
@@ -135,12 +352,21 @@ defmodule Dawarich.Geocoding.SearchTest do
   defp search_case(name),
     do: Enum.find(fixture("search_outcomes")["cases"], &(&1["name"] == name))
 
-  defp slot(key) do
-    {:ok, value} = Redis.command(["GET", key])
-    String.to_integer(value)
+  def reservation(_event, _measurements, metadata, owner) do
+    if metadata.connection_name == Redis and match?([["EVAL" | _]], metadata.commands),
+      do: send(owner, {:reservation, metadata.commands, metadata[:kind]})
+  end
+
+  defp boundary_config, do: config_from(search_case("photon_cache_hit")["config"])
+
+  defp native_entry(key), do: :ets.lookup(TtlCache, {ResponseCache, key})
+
+  defp own_key!(key) do
+    TtlCache.delete({ResponseCache, key})
+    on_exit(fn -> TtlCache.delete({ResponseCache, key}) end)
   end
 
   defp reset! do
-    {:ok, "OK"} = Redis.cache_command(["FLUSHDB"])
+    clear_response_cache!()
   end
 end

@@ -4,14 +4,25 @@ defmodule DawarichWeb.AuthGate do
 
   alias Dawarich.Auth.{Admission, RegistrationSetting}
   alias Dawarich.Auth.Recovery.MailWorker
-  alias DawarichWeb.{AuthAccount, AuthApiKeys, AuthHandler, AuthRecovery, AuthTwoFactor}
+
+  alias DawarichWeb.{
+    AuthAccount,
+    AuthApiKeys,
+    AuthHandler,
+    AuthRecovery,
+    AuthTwoFactor,
+    AuthOtp,
+    AuthAccountLink
+  }
 
   @handlers [
     {"credentials", AuthHandler},
     {"recovery", AuthRecovery.Http},
     {"account", AuthAccount.Http},
     {"api_keys", AuthApiKeys.Http},
-    {"two_factor", AuthTwoFactor.Http}
+    {"two_factor", AuthTwoFactor.Http},
+    {"otp", AuthOtp.Http},
+    {"account_link", AuthAccountLink.Http}
   ]
 
   @impl true
@@ -33,13 +44,18 @@ defmodule DawarichWeb.AuthGate do
     end
   end
 
-  defp options(flow) when flow in ["account", "api_keys", "two_factor"], do: [enabled: true]
+  defp options("account_link"),
+    do: [enabled: true, context: Application.get_env(:dawarich, :account_link_context, %{})]
+
+  defp options(flow) when flow in ["account", "api_keys", "two_factor", "otp"],
+    do: [enabled: true]
+
   defp options(flow), do: options(flow, RegistrationSetting.fetch())
 
   defp options("credentials", {:ok, registration}),
-    do: [enabled: true, registration_enabled: registration]
+    do: [enabled: true, registration_enabled: registration, otp_enabled: otp_enabled?()]
 
-  defp options("credentials", :error), do: [enabled: true]
+  defp options("credentials", :error), do: [enabled: true, otp_enabled: otp_enabled?()]
 
   defp options("recovery", registration) do
     env = System.get_env()
@@ -51,6 +67,8 @@ defmodule DawarichWeb.AuthGate do
 
     [enabled: true, context: context]
   end
+
+  defp otp_enabled?, do: "otp" in Application.get_env(:dawarich, :phoenix_auth, [])
 
   defp put_registration(context, {:ok, value}), do: Map.put(context, :registration_enabled, value)
   defp put_registration(context, :error), do: context

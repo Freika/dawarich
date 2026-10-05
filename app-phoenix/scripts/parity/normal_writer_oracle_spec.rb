@@ -45,7 +45,12 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
     end
   end
 
-  def truncate! = connection.execute('TRUNCATE users, imports, points, point_sources RESTART IDENTITY CASCADE')
+  def reset_fixtures!
+    raise 'wrong oracle database' unless connection.current_database.start_with?('dawarich_test_')
+
+    ActiveStorage::Attachment.find_each(&:purge)
+    FixtureCleanup.delete!(%w[users imports points point_sources])
+  end
 
   def owner!
     user = connection.select_value(<<~SQL).to_i
@@ -91,7 +96,7 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
   end
 
   def capture(example)
-    truncate!
+    reset_fixtures!
     user, id = owner!
     attrs = { lonlat: 'POINT(12.4 51.3)', timestamp: 1_700_000_000, altitude: 12.75, altitude_decimal: 12.75,
               velocity: 1.2, tracker_id: 'normal-oracle', import_id: id, user_id: user,
@@ -106,18 +111,34 @@ RSpec.describe 'Phoenix fixture: points persisted by Imports::BulkInsertable for
       'points' => points(id), 'sources' => sources }
   end
 
-  it 'records every input case from a real PostgreSQL write' do
-    raise 'wrong oracle database' unless connection.current_database.start_with?('dawarich_test_')
+  it 'cleans archive attachments before resetting fixture identities' do
+    reset_fixtures!
+    user, = owner!
+    archive = create(:points_raw_data_archive, user: User.find(user))
+    blob = archive.file.blob
+    archive_id = archive.id
+    reset_fixtures!
+    expect(ActiveStorage::Attachment.where(blob_id: blob.id)).to be_empty
+    expect(ActiveStorage::Blob.exists?(blob.id)).to be(false)
+    expect(blob.service.exist?(blob.key)).to be(false)
+    user, = owner!
+    restored = Points::RawDataArchive.create!(
+      id: archive_id, user_id: user, year: 2026, month: 1, chunk_number: 1,
+      point_count: 1, point_ids_checksum: 'synthetic-cleanup', archived_at: stamp
+    )
+    expect(restored.file).not_to be_attached
+  ensure
+    reset_fixtures!
+  end
 
-    begin
-      inputs = JSON.parse(File.read(dir.join('normal_writer_inputs.json')))
-      output = inputs.map { |example| capture(example) }
-      expect(output).to all(include('counters', 'points', 'sources', 'error'))
-      expect(output.map { |item| item.fetch('counters').size }).to all(eq(2))
-      File.write(dir.join('rails_normal_writer_oracle.json'), JSON.pretty_generate(output))
-      expect(output.size).to eq(inputs.size)
-    ensure
-      truncate!
-    end
+  it 'records every input case from a real PostgreSQL write' do
+    inputs = JSON.parse(File.read(dir.join('normal_writer_inputs.json')))
+    output = inputs.map { |example| capture(example) }
+    expect(output).to all(include('counters', 'points', 'sources', 'error'))
+    expect(output.map { |item| item.fetch('counters').size }).to all(eq(2))
+    File.write(dir.join('rails_normal_writer_oracle.json'), JSON.pretty_generate(output))
+    expect(output.size).to eq(inputs.size)
+  ensure
+    reset_fixtures!
   end
 end

@@ -2,8 +2,28 @@
 
 require 'rails_helper'
 require 'rake'
+require 'open3'
 
 RSpec.describe PhoenixBuildInputs do
+  it 'exports byte-identical translations in separate processes without callable ordinals' do
+    exports = Array.new(2) do
+      output, error, status = Open3.capture3(
+        RbConfig.ruby, '-r', Rails.root.join('config/environment').to_s,
+        '-r', Rails.root.join('lib/phoenix_build_inputs').to_s,
+        '-e', 'STDOUT.write(PhoenixBuildInputs.i18n_json)'
+      )
+      expect(status.success?).to be(true), error
+      output
+    end
+
+    expect(exports.first == exports.last).to be(true), 'fresh-process translation exports differ'
+    translations = JSON.parse(exports.first)
+    expect(translations.dig('en', 'number', 'nth')).not_to have_key('ordinals')
+    expect(translations.dig('en', 'number', 'nth')).not_to have_key('ordinalized')
+    expect(translations.dig('en', 'date', 'month_names')).to eq(I18n.t('date.month_names', locale: :en))
+    expect(translations.dig('en', 'number', 'format')).to eq(I18n.t('number.format', locale: :en).stringify_keys)
+  end
+
   describe PhoenixBuildInputs::ManifestResolver do
     it 'maps a logical path through the manifest and leaves absolute paths and URLs alone' do
       Dir.mktmpdir do |dir|
@@ -116,6 +136,8 @@ RSpec.describe PhoenixBuildInputs do
       Rake::Task['phoenix:time_zones'].invoke(path)
 
       expect(File.read(path)).to eq(described_class.time_zones_json)
+    ensure
+      Rake::Task['phoenix:time_zones'].reenable
     end
   end
 

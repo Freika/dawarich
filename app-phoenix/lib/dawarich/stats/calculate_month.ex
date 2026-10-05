@@ -61,6 +61,7 @@ defmodule Dawarich.Stats.CalculateMonth do
   defp update!(%{repo: repo, user: user, year: year, month: month} = ctx, window) do
     {:ok, :ok} =
       repo.transaction(fn ->
+        fence!(ctx)
         id = locked(ctx) || insert!(ctx)
         pending = GeocodedDays.snapshot_month(repo, user.id, user.zone, year, month)
         daily = MonthQueries.daily(repo, user, year, month, window)
@@ -82,6 +83,7 @@ defmodule Dawarich.Stats.CalculateMonth do
 
         invalidated!(ctx)
         GeocodedDays.acknowledge(repo, pending, ctx.clock)
+        fence!(ctx)
       end)
 
     :ok
@@ -90,6 +92,8 @@ defmodule Dawarich.Stats.CalculateMonth do
   defp reset!(%{repo: repo, user: user, year: year, month: month} = ctx, window) do
     {:ok, :ok} =
       repo.transaction(fn ->
+        fence!(ctx)
+
         case locked(ctx) do
           nil ->
             :ok
@@ -103,6 +107,8 @@ defmodule Dawarich.Stats.CalculateMonth do
               invalidated!(ctx)
             end
         end
+
+        fence!(ctx)
       end)
 
     :ok
@@ -143,7 +149,7 @@ defmodule Dawarich.Stats.CalculateMonth do
     {:error, error}
   end
 
-  defp notify!(%{repo: repo, user: user}, message, backtrace) do
+  defp notify!(%{repo: repo, user: user} = ctx, message, backtrace) do
     locale = ExploreFeatures.locale(user.settings, nil)
     {:ok, title} = I18n.t(locale, "services.stats.calculate_month.stats_update_failed")
 
@@ -153,6 +159,16 @@ defmodule Dawarich.Stats.CalculateMonth do
         "backtrace" => backtrace
       })
 
-    Notifications.create!(repo, user.id, :error, title, content)
+    {:ok, _} =
+      repo.transaction(fn ->
+        fence!(ctx)
+        result = Notifications.create!(repo, user.id, :error, title, content)
+        fence!(ctx)
+        result
+      end)
+  end
+
+  defp fence!(ctx) do
+    if fence = ctx.opts[:fence], do: fence.(), else: :ok
   end
 end

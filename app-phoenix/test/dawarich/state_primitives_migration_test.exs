@@ -2,6 +2,11 @@ defmodule Dawarich.StatePrimitivesMigrationTest do
   use Dawarich.ScratchCase
 
   @version 20_261_002_120_000
+  @forward_version 20_261_004_170_000
+  @forward_source Path.expand(
+                    "../../priv/repo/migrations/20261004170000_allow_nil_registration_setting.exs",
+                    __DIR__
+                  )
   @source Path.expand(
             "../../priv/repo/migrations/20261002120000_create_state_primitives.exs",
             __DIR__
@@ -59,8 +64,16 @@ defmodule Dawarich.StatePrimitivesMigrationTest do
       end)
     end
 
-    assert_built()
+    assert_current()
     assert @version in ledger()
+    assert @forward_version in ledger()
+  end
+
+  test "historical primitive proof cleanup restores current nullable registration schema" do
+    healing(compile(), &assert_built/0)
+    assert_current()
+    assert @version in ledger()
+    assert @forward_version in ledger()
   end
 
   defp compile do
@@ -75,7 +88,14 @@ defmodule Dawarich.StatePrimitivesMigrationTest do
       fun.()
     after
       heal!(module)
+      restore_forward!()
     end
+  end
+
+  defp restore_forward! do
+    [{module, _}] = Code.compile_file(@forward_source)
+    rows("DELETE FROM phoenix.phoenix_schema_migrations WHERE version = $1", [@forward_version])
+    :ok = Ecto.Migrator.up(ScratchRepo, @forward_version, module, prefix: "phoenix", log: false)
   end
 
   defp heal!(module) do
@@ -99,6 +119,23 @@ defmodule Dawarich.StatePrimitivesMigrationTest do
   defp assert_built do
     assert placed() == Enum.map(@tables, &["phoenix", &1])
     assert columns() == @columns
+    assert indexes() == @indexes
+    assert singleton() == [["CHECK (id)"]]
+  end
+
+  defp assert_current do
+    assert placed() == Enum.map(@tables, &["phoenix", &1])
+
+    expected =
+      Enum.map(@columns, fn
+        ["registration_setting", "enabled", type, _] ->
+          ["registration_setting", "enabled", type, "YES"]
+
+        column ->
+          column
+      end)
+
+    assert columns() == expected
     assert indexes() == @indexes
     assert singleton() == [["CHECK (id)"]]
   end
