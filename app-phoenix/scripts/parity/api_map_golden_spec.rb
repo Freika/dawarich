@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 module ApiMapGoldenOracle
   TABLES = %w[users countries point_sources tracks track_segments points].freeze
@@ -173,10 +174,9 @@ end
 RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request do
   after(:all) do
     path = Rails.root.join('app-phoenix/test/fixtures/api_map/golden.json')
-    FileUtils.mkdir_p(path.dirname)
     fixture = { 'time_zone' => ENV.fetch('TIME_ZONE', nil), 'setups' => ApiMapGoldenOracle.setups.sort.to_h,
                 'cases' => ApiMapGoldenOracle.results.sort_by { _1['name'] } }
-    File.write(path, "#{map_exact_json(fixture)}\n")
+    FixtureRecording.verify(path, "#{map_exact_json(fixture)}\n")
   end
 
   ApiMapGoldenOracle::CASES.each do |kase|
