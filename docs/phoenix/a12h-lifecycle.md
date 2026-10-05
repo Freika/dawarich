@@ -62,8 +62,8 @@ private readiness/fallback behavior. Route/auth/job-owner flags stay independent
 
 Unsupported, below-floor, foreign and newer public ledgers refuse before private
 schema writes. The floor is schema release 0.37.2, corresponding to product 1.0.0.
-The remedy remains to start Dawarich 1.15.2 once for Rails upgrades, then retry;
-the release owner must choose the final last-Rails comparator before shipping.
+The remedy is to start Dawarich 1.15.3 once for Rails upgrades, then retry.
+This final Rails release shares 1.15.2's schema state.
 Pending data migrations refuse rather than silently skipping work.
 
 Like Rails, native creates empty schema_migrations/ar_internal_metadata with

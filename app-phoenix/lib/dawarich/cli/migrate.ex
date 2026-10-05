@@ -6,7 +6,7 @@ defmodule Dawarich.CLI.Migrate do
   alias Dawarich.{Release, ReleaseMigrator}
   alias Dawarich.Release.Lifecycle
 
-  @last_rails_release "1.15.2"
+  @last_rails_release "1.15.3"
 
   def migrate([], ctx) do
     :ok = Release.migrate(release_opts(ctx))

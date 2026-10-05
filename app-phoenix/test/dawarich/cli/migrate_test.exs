@@ -52,7 +52,7 @@ defmodule Dawarich.CLI.MigrateTest do
   test "a database below the 1.0.0 floor is refused with the remedy and exits 1" do
     assert {1, out} = status(fn -> forget(hd(Floor.versions())) end)
     assert out =~ "public schema: refused: this database has not reached Dawarich"
-    assert out =~ "start the Dawarich 1.15.2 image once"
+    assert out =~ "start the Dawarich 1.15.3 image once"
   end
 
   test "migrate creates the phoenix and oban schemas" do
@@ -78,7 +78,7 @@ defmodule Dawarich.CLI.MigrateTest do
       }
 
       assert CLI.run(["migrate"], ctx) == 1
-      assert StringIO.contents(err) |> elem(1) =~ "start the Dawarich 1.15.2 image once"
+      assert StringIO.contents(err) |> elem(1) =~ "start the Dawarich 1.15.3 image once"
       assert StringIO.contents(out) |> elem(1) == ""
       ScratchRepo.rollback(:done)
     end)

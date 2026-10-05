@@ -11,7 +11,7 @@ defmodule Mix.Tasks.Dawarich.ReleaseMigrateTest do
 
     assert message ==
              "refused: this database has not reached Dawarich 0.37.0, and this image upgrades only from 1.0.0; " <>
-               "start the Dawarich 1.15.2 image once so Rails upgrades it, then start this image"
+               "start the Dawarich 1.15.3 image once so Rails upgrades it, then start this image"
 
     assert [_, "0.37.0"] = Regex.run(@harness_refusal, "** (Mix) " <> message)
   end

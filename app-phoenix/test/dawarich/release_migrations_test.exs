@@ -14,6 +14,31 @@ defmodule Dawarich.ReleaseMigrationsTest do
     assert List.last(ReleaseMigrations.all()) == Unreleased
   end
 
+  test "1.15.3 shares the historical 1.15.2 state and remains a supported upgrade" do
+    module = ReleaseMigrations.find("1.15.3")
+    assert module == ReleaseMigrations.find("1.15.2")
+    assert module.release() == "1.15.2"
+
+    states = RailsTree.states()
+    state = Enum.find(states, &("1.15.3" in &1["releases"]))
+    assert state["first_release"] == "1.15.2"
+
+    ledger =
+      states
+      |> Enum.flat_map(& &1["schema_added"])
+      |> MapSet.new()
+
+    known =
+      ReleaseMigrations.all()
+      |> Enum.reject(&(&1 == Unreleased))
+      |> Enum.flat_map(&ReleaseMigration.versions/1)
+
+    assert Ledger.classify(ledger, known) == :current
+
+    assert Ledger.classify(ledger, known ++ ReleaseMigration.versions(Unreleased)) ==
+             {:pending, ReleaseMigration.versions(Unreleased)}
+  end
+
   test "release modules follow db/release_migrations.json and end with Unreleased" do
     releases = Enum.map(ReleaseMigrations.all(), & &1.release())
     assert List.last(releases) == "unreleased"
