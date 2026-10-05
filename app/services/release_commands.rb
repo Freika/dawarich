@@ -84,10 +84,10 @@ module ReleaseCommands
     JobCommands.enqueue_after_commit(nil) { job.set(wait_until: at).perform_later(*args, **kwargs) }
   end
 
-  def forwarded?(job, type, payload, aggregate_id: nil)
+  def forwarded?(job, type, payload, aggregate_id: nil, scheduled_at: Time.current)
     return false unless JobOwnership.oban?("command:#{type}")
 
-    JobCommands.forward(type, payload, event_id: job.job_id, aggregate_id:, producer: job.class.name)
+    JobCommands.forward(type, payload, event_id: job.job_id, aggregate_id:, producer: job.class.name, scheduled_at:)
     true
   end
 

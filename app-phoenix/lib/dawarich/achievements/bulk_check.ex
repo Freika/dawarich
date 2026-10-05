@@ -8,6 +8,8 @@ defmodule Dawarich.Achievements.BulkCheck do
   @key "cron:achievements_bulk_check_job"
 
   def cron_id(slot), do: uuid(@namespace, "achievements.bulk:cron:#{slot}")
+  def job_id(job_id), do: uuid(@namespace, "achievements.bulk:job:#{job_id}")
+  def release_job_id(event_id), do: uuid(Ecto.UUID.dump!(event_id), "release.achievements.bulk")
   def child_id(root, user), do: uuid(Ecto.UUID.dump!(root), "check:#{user}")
   def receipt_id(root, user), do: uuid(Ecto.UUID.dump!(root), "scheduled:#{user}")
 

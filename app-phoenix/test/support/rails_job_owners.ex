@@ -20,7 +20,8 @@ defmodule Dawarich.RailsJobOwners do
     "Cache::PreheatingJob" => {:oban, ["cron:cache_preheating_job"]},
     "Cache::UserPreheatingJob" => {:oban, ["command:cache.preheat_user"]},
     "DataMigrations::AddPointDimensionColumnsJob" => {:slice, :a12h},
-    "DataMigrations::BackfillAchievementsJob" => {:slice, :a12d2},
+    "DataMigrations::BackfillAchievementsJob" =>
+      {:oban, ["command:release.achievements_backfill"]},
     "DataMigrations::BackfillAltitudeJob" => {:oban, ["command:release.altitude"]},
     "DataMigrations::BackfillAltitudeUserJob" => {:oban, ["command:release.altitude"]},
     "DataMigrations::BackfillCountryNameJob" => :retire,
@@ -110,7 +111,7 @@ defmodule Dawarich.RailsJobOwners do
     "Tracks::ThrottledBackfillJob" => {:oban, ["command:tracks.throttled_backfill"]},
     "Tracks::TimeChunkProcessorJob" => {:oban, ["command:tracks.generate_range"]},
     "TransportationModes::FleetReclassifyJob" => {:oban, ["command:release.transportation"]},
-    "TransportationModes::ImportBackfillJob" => {:slice, :a7},
+    "TransportationModes::ImportBackfillJob" => {:oban, ["command:release.import_backfill"]},
     "TransportationModes::ReclassifyTrackJob" =>
       {:oban, ["command:transportation.reclassify_track"]},
     "TransportationModes::UserReclassifyJob" => {:slice, :a12d2},

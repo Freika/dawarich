@@ -58,7 +58,7 @@ defmodule Dawarich.Jobs.ResidualEntriesTest do
     for {class, keys} <- @owners, do: assert(RailsJobOwners.owners()[class] == {:oban, keys})
 
     for class <-
-          ~w(BulkVisitsSuggestingJob PendingImports::CleanupJob EnqueueBackgroundJob DataMigrations::BackfillAchievementsJob),
+          ~w(BulkVisitsSuggestingJob PendingImports::CleanupJob EnqueueBackgroundJob),
         do: assert(RailsJobOwners.owners()[class] == {:slice, :a12d2})
 
     assert RailsJobOwners.owners()["TeslaMate::SyncJob"] ==
