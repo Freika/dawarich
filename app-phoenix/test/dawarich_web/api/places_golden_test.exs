@@ -28,6 +28,28 @@ defmodule DawarichWeb.Api.PlacesGoldenTest do
     end
   end
 
+  test "index returns ascending ids before pagination despite descending insertion" do
+    seed(Enum.find(@golden["cases"], &(&1["name"] == "index_empty")))
+
+    for id <- [950_203, 950_201, 950_202] do
+      Repo.query!(
+        "INSERT INTO places (id, user_id, name, source, latitude, longitude, created_at, updated_at) " <>
+          "VALUES ($1, 950001, 'Manual', 0, 51.34, 12.37, $2, $2)",
+        [id, ~N[2026-09-01 12:00:00]]
+      )
+    end
+
+    user = Accounts.by_api_key("phoenix-a4pl-golden-key")
+
+    assert {:ok, 200, places, _headers} =
+             PlacesApi.run(:index, user, %{"filter" => "bogus"}, @now)
+
+    assert for({:object, [{"id", id} | _]} <- places, do: id) == [950_201, 950_202, 950_203]
+
+    assert {:ok, 200, [{:object, [{"id", 950_202} | _]}], _headers} =
+             PlacesApi.run(:index, user, %{"page" => "2", "per_page" => "1"}, @now)
+  end
+
   test "a failure after the first write rolls every table back and hands the request to Rails" do
     kase = Enum.find(@golden["cases"], &(&1["name"] == "destroy_linked"))
     seed(kase)
