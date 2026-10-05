@@ -6,6 +6,13 @@ defmodule Dawarich.Achievements.Registry do
   def announcer(code), do: Map.get(data().announcers, code)
   def subdivision_parent(code), do: Map.get(data().subdivision_parents, code)
 
+  def subdivision_codes do
+    all()
+    |> Enum.filter(&(&1.level == "subdivision"))
+    |> Enum.flat_map(& &1.region_codes)
+    |> MapSet.new()
+  end
+
   def approximations(locale) do
     %{"default" => default, "rules" => rules} = data().transliteration
     Map.merge(default, Map.get(rules, locale, %{}))
