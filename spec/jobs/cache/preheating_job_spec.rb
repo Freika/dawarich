@@ -5,6 +5,37 @@ require 'rails_helper'
 RSpec.describe Cache::PreheatingJob do
   before { Rails.cache.clear }
 
+  it 'delegated source sweep keeps 500-user batches exact eligibility and one global warm' do
+    phoenix_tables!
+    users = (0..503).map do |index|
+      { id: 180_201 + index * 2, email: "sweep-#{index}@example.invalid", encrypted_password: '',
+        status: index % 4, settings: {}, plan: 1, deleted_at: index == 503 ? Time.current : nil,
+        created_at: Time.current, updated_at: Time.current }
+    end
+    User.unscoped.insert_all!(users)
+    batches = []
+    allow(ActiveJob).to receive(:perform_all_later).and_wrap_original do |original, jobs|
+      batches << jobs.map { |job| job.arguments.first }
+      original.call(jobs)
+    end
+    writes = []
+    listener = ->(*, payload) { writes << payload.slice(:key, :expires_in) }
+
+    [false, true].product(%i[sidekiq oban]).each do |self_hosted, owner|
+      job_owner!('cron:cache_preheating_job', owner)
+      allow(DawarichSettings).to receive(:self_hosted?).and_return(self_hosted)
+      batches.clear
+      writes.clear
+      clear_enqueued_jobs
+      ActiveSupport::Notifications.subscribed(listener, 'cache_write.active_support') { described_class.new.perform }
+      expected = users.reject { |user| user[:deleted_at] || (!self_hosted && ![1, 2].include?(user[:status])) }
+                      .map { |user| user[:id] }
+      expect(batches.flatten).to eq(expected)
+      expect(batches.map(&:length)).to eq(self_hosted ? [500, 3] : [252])
+      expect(writes).to eq([{ key: 'dawarich/countries_codes', expires_in: 86_400 }])
+    end
+  end
+
   describe '#perform' do
     # skip_auto_trial pins the factory status: the after_commit :activate /
     # :start_trial hooks would otherwise rewrite it based on self_hosted?,
