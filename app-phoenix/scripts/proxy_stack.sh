@@ -105,7 +105,7 @@ else
 fi
 
 sidekiq_from=$(($(wc -c <"$sidekiq_log") + 1))
-stack ruby -e 'Process.daemon(true, true); File.write(ARGV.shift, Process.pid.to_s); exec(*ARGV)' "$sidekiq_pidfile" bundle exec ruby -e 'require "sidekiq/cli"; Sidekiq.configure_server { |config| config.on(:startup) { RailsCommands::Poller.send(:spawn) } }; cli = Sidekiq::CLI.instance; cli.parse; cli.run' >>"$sidekiq_log" 2>&1
+stack ruby -e 'Process.daemon(true, true); exec(*ARGV)' bundle exec ruby -e 'File.write(ARGV.shift, Process.pid.to_s); require "sidekiq/cli"; Sidekiq.configure_server { |config| config.on(:startup) { RailsCommands::Poller.send(:spawn) } }; cli = Sidekiq::CLI.instance; cli.parse; cli.run' "$sidekiq_pidfile" >>"$sidekiq_log" 2>&1
 tries=0
 until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
   tries=$((tries + 1))
