@@ -199,6 +199,50 @@ defmodule DawarichWeb.TrialWelcomeTest do
     end
   end
 
+  test "claim connection error is not a consumed or successful welcome", c do
+    parent = self()
+    server = Dawarich.Test.RawHTTP.listen()
+    old = Application.get_env(:dawarich, :rails_upstream)
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, server.port})
+
+    on_exit(fn ->
+      Application.put_env(:dawarich, :rails_upstream, old)
+      :gen_tcp.close(server.listen)
+    end)
+
+    start_supervised!(
+      {Task,
+       fn ->
+         socket = Dawarich.Test.RawHTTP.accept(server)
+         Dawarich.Test.RawHTTP.read_head(socket)
+         send(parent, :upstream_replayed)
+
+         Dawarich.Test.RawHTTP.reply(
+           socket,
+           "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
+         )
+
+         :gen_tcp.close(socket)
+       end}
+    )
+
+    before = Repo.query!("SELECT sign_in_count FROM users WHERE id=15611", [], log: false).rows
+
+    result =
+      TrialWelcome.call(request(%{"jti" => "claim-error"}, nil),
+        context: %{c.context | repo: ClaimFailureRepo}
+      )
+
+    assert result.status == 500 and result.halted and result.resp_body == ""
+    assert result.resp_cookies == %{}
+    refute_receive :upstream_replayed
+
+    assert Repo.query!("SELECT sign_in_count FROM users WHERE id=15611", [], log: false).rows ==
+             before
+
+    assert [] = Repo.query!("SELECT key FROM phoenix.once_claims", [], log: false).rows
+  end
+
   defmodule ClaimFailureRepo do
     def query!(sql, params, opts) do
       if String.starts_with?(sql, "INSERT INTO phoenix.once_claims"),

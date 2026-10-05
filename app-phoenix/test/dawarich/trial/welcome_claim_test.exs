@@ -2,6 +2,7 @@ defmodule Dawarich.Trial.WelcomeClaimTest do
   use Dawarich.JobsCase, async: false
 
   alias Dawarich.Trial.WelcomeClaim
+  alias Dawarich.LockRace
 
   @now 1_791_108_000
 
@@ -65,4 +66,31 @@ defmodule Dawarich.Trial.WelcomeClaimTest do
   defp key(jti),
     do:
       "trial_welcome:consumed:sha256:" <> Base.encode16(:crypto.hash(:sha256, jti), case: :lower)
+
+  test "two real PG welcome contenders permit exactly one claim" do
+    parent = self()
+
+    holder =
+      LockRace.hold(fn ->
+        assert :claimed = WelcomeClaim.claim("contended", @now + 1800, @now, ScratchRepo)
+
+        send(
+          parent,
+          {:winning_expiry,
+           rows("SELECT expires_at FROM phoenix.once_claims WHERE key=$1", [key("contended")])}
+        )
+      end)
+
+    assert_receive {:winning_expiry, expiry}
+
+    loser =
+      LockRace.attempt(fn -> WelcomeClaim.claim("contended", @now + 3600, @now, ScratchRepo) end)
+
+    assert :blocked = LockRace.settle(loser, "%INSERT INTO phoenix.once_claims%")
+    LockRace.commit(holder)
+    assert {:ok, :consumed} = Task.await(loser)
+
+    assert rows("SELECT expires_at FROM phoenix.once_claims WHERE key=$1", [key("contended")]) ==
+             expiry
+  end
 end
