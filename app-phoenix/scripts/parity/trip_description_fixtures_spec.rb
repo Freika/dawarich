@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: trip descriptions as Rails renders them on the trip page' do
   let(:path) { Rails.root.join('app-phoenix/test/fixtures/trips/descriptions.json') }
@@ -73,6 +74,6 @@ RSpec.describe 'Phoenix fixtures: trip descriptions as Rails renders them on the
       { name:, body:, expect:, rendered: rendered.presence&.to_s }
     end
 
-    File.write(path, "#{Oj.dump({ 'cases' => rows.map(&:stringify_keys) }, mode: :strict, indent: 2)}\n")
+    FixtureRecording.verify(path, "#{Oj.dump({ 'cases' => rows.map(&:stringify_keys) }, mode: :strict, indent: 2)}\n")
   end
 end
