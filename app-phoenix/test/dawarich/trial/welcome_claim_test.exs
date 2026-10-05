@@ -1,100 +1,68 @@
 defmodule Dawarich.Trial.WelcomeClaimTest do
-  use ExUnit.Case, async: false
+  use Dawarich.JobsCase, async: false
+
   alias Dawarich.Trial.WelcomeClaim
-  alias Dawarich.{Redis, RailsCache.Wire}
+
   @now 1_791_108_000
 
-  setup do
-    if is_nil(Process.whereis(Redis.Cache)),
-      do:
-        start_supervised!(
-          {Redix, {System.fetch_env!("PHOENIX_TEST_REDIS_URL"), [name: Redis.Cache, database: 0]}}
-        )
+  test "PG welcome claims retain key coercion ttl floor and expiry without Redis" do
+    for jti <- ["a10b-claim-floor", "Grüße", <<"nul", 0, "jti">>] do
+      assert :claimed = WelcomeClaim.claim(jti, @now + 10, @now, ScratchRepo)
+      key = key(jti)
 
-    keys = Enum.map(~w(floor source race), &"trial_welcome:consumed:a10b-claim-#{&1}")
-    Redis.cache_command(["DEL" | keys])
-    on_exit(fn -> Redis.cache_command(["DEL" | keys]) end)
-    :ok
-  end
+      assert [[^key, seconds]] =
+               rows(
+                 "SELECT key, extract(epoch FROM expires_at - statement_timestamp())::float8 FROM phoenix.once_claims WHERE key=$1",
+                 [key]
+               )
 
-  test "claims Rails welcome key once with source boolean bytes and minimum ttl" do
-    assert Code.ensure_loaded?(WelcomeClaim), "welcome claim must exist"
-    oracle = File.read!("test/fixtures/welcome_home/ttl_floor.json") |> Jason.decode!()
-    expected = Base.decode16!(oracle["cache"]["bytes_hex"], case: :mixed)
-    key = "trial_welcome:consumed:a10b-claim-floor"
+      assert seconds > 59 and seconds <= 60
 
-    assert :claimed =
-             WelcomeClaim.claim("a10b-claim-floor", @now + 10, @now, &Redis.cache_command/1)
+      assert [[false]] =
+               rows("SELECT key = $1 FROM phoenix.once_claims WHERE key=$2", [
+                 "trial_welcome:consumed:" <> String.replace(jti, <<0>>, ""),
+                 key
+               ])
 
-    assert {:ok, ^expected} = Redis.cache_command(["GET", key])
-    assert {:ok, ttl} = Redis.cache_command(["PTTL", key])
-    assert ttl > 59_000 and ttl <= 60_000
+      rows(
+        "UPDATE phoenix.once_claims SET expires_at=statement_timestamp()-interval '1 second' WHERE key=$1",
+        [key]
+      )
 
-    assert :consumed =
-             WelcomeClaim.claim("a10b-claim-floor", @now + 1800, @now, &Redis.cache_command/1)
-
-    assert {:ok, ^expected} = Redis.cache_command(["GET", key])
-    source = File.read!("test/fixtures/welcome_home/valid_en.json") |> Jason.decode!()
-    source_bytes = Base.decode16!(source["cache"]["bytes_hex"], case: :mixed)
-
-    assert {:ok, "OK"} =
-             Redis.cache_command([
-               "SET",
-               "trial_welcome:consumed:a10b-claim-source",
-               source_bytes,
-               "PX",
-               60_000
-             ])
-
-    assert :consumed =
-             WelcomeClaim.claim("a10b-claim-source", @now + 1800, @now, &Redis.cache_command/1)
-
-    assert {:ok, %{value: true, expires_at: expires}} = Wire.decode(expected)
-    assert expires == @now + 60
-    parent = self()
-
-    capture = fn args ->
-      send(parent, {:command, args})
-      {:ok, "OK"}
+      assert :claimed = WelcomeClaim.claim(jti, Integer.to_string(@now + 30), @now, ScratchRepo)
     end
 
-    assert :claimed = WelcomeClaim.claim("bounded-jti", @now + 1800.9, @now, capture)
+    assert :claimed = WelcomeClaim.claim("float-expiry", @now + 1800.9, @now, ScratchRepo)
 
-    assert_receive {:command,
-                    ["SET", "trial_welcome:consumed:bounded-jti", bytes, "NX", "PX", "1800000"]}
+    assert [[seconds]] =
+             rows(
+               "SELECT extract(epoch FROM expires_at-statement_timestamp())::float8 FROM phoenix.once_claims WHERE key=$1",
+               [key("float-expiry")]
+             )
 
-    assert {:ok, %{value: true, expires_at: expires}} = Wire.decode(bytes)
-    assert expires == @now + 1800
-
-    assert {:error, :unsupported_key} =
-             WelcomeClaim.claim(String.duplicate("x", 1024), @now + 10, @now, capture)
-
-    refute_receive {:command, _}
+    assert seconds > 1799 and seconds <= 1800
   end
 
-  test "two real Redis contenders permit exactly one claim and preserve errors" do
-    assert Code.ensure_loaded?(WelcomeClaim), "welcome claim must exist"
-    command = &Redis.cache_command/1
+  test "second welcome claim cannot extend a live claim and bad keys never write" do
+    assert :claimed = WelcomeClaim.claim("once", @now + 1800, @now, ScratchRepo)
+    before = rows("SELECT key, expires_at FROM phoenix.once_claims")
+    assert :consumed = WelcomeClaim.claim("once", @now + 3600, @now, ScratchRepo)
+    assert rows("SELECT key, expires_at FROM phoenix.once_claims") == before
 
-    contenders =
-      for _ <- 1..2,
-          do:
-            Task.async(fn ->
-              WelcomeClaim.claim("a10b-claim-race", @now + 1800, @now, command)
-            end)
+    for jti <- [nil, 42, <<255>>, String.duplicate("x", 1024)] do
+      refute WelcomeClaim.supported?(jti)
+      assert {:error, :unsupported_key} = WelcomeClaim.claim(jti, @now + 10, @now, ScratchRepo)
+    end
 
-    assert contenders |> Enum.map(&Task.await/1) |> Enum.sort() == [:claimed, :consumed]
+    for exp <- [true, %{}, []] do
+      assert {:error, :unsupported_expiry} =
+               WelcomeClaim.claim("invalid-expiry", exp, @now, ScratchRepo)
+    end
 
-    assert {:error, :synthetic_redis_failure} =
-             WelcomeClaim.claim("a10b-claim-race", @now + 1800, @now, fn _ ->
-               {:error, :synthetic_redis_failure}
-             end)
-
-    assert {:error, _} =
-             WelcomeClaim.claim("a10b-claim-race", @now + 1800, @now, fn _ ->
-               Redis.cache_command(["SET", "trial_welcome:consumed:a10b-claim-race"])
-             end)
-
-    assert :consumed = WelcomeClaim.claim("a10b-claim-race", @now + 1800, @now, command)
+    assert rows("SELECT key, expires_at FROM phoenix.once_claims") == before
   end
+
+  defp key(jti),
+    do:
+      "trial_welcome:consumed:sha256:" <> Base.encode16(:crypto.hash(:sha256, jti), case: :lower)
 end
