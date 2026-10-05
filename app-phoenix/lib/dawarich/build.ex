@@ -1,7 +1,7 @@
 defmodule Dawarich.Build do
   @moduledoc false
 
-  def root, do: Application.get_env(:dawarich, :rails_root) || Path.expand("..")
+  def root, do: Dawarich.RailsRoot.root()
 
   def write!(path, iodata) do
     File.mkdir_p!(Path.dirname(path))
@@ -26,7 +26,7 @@ defmodule Dawarich.Build do
         Path.join(root, "config/locales/**/*.yml"),
         Path.join(root, "config/achievements.yml"),
         Path.join(root, "config/achievements/*.yml"),
-        Path.expand("lib/dawarich/build/**/*.ex")
+        Path.join(__DIR__, "build/**/*.ex")
       ],
       &Path.wildcard/1
     )

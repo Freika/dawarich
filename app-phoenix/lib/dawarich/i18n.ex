@@ -113,7 +113,7 @@ defmodule Dawarich.I18n do
           Application.get_env(
             :dawarich,
             :i18n_path,
-            Path.join(File.cwd!(), "tmp/phoenix/i18n.json")
+            Dawarich.RailsRoot.join("tmp/phoenix/i18n.json")
           )
 
         tree =

@@ -69,7 +69,7 @@ defmodule DawarichWeb.Assets do
 
   defp manifest do
     case :persistent_term.get(__MODULE__, nil) do
-      nil -> tap(read_manifest(File.cwd!()), &:persistent_term.put(__MODULE__, &1))
+      nil -> tap(read_manifest(Dawarich.RailsRoot.root()), &:persistent_term.put(__MODULE__, &1))
       assets -> assets
     end
   end

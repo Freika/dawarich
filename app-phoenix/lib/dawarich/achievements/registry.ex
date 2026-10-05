@@ -36,7 +36,7 @@ defmodule Dawarich.Achievements.Registry do
       Application.get_env(
         :dawarich,
         :achievements_path,
-        Path.join(File.cwd!(), "tmp/phoenix/achievements.json")
+        Dawarich.RailsRoot.join("tmp/phoenix/achievements.json")
       )
 
     export =

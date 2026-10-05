@@ -8,19 +8,16 @@ defmodule Dawarich.ShareManagement.Read do
   @keys ~w(id user_id resource_type resource_id name magic_phrase settings expires_at revoked_at created_at updated_at view_count last_accessed_at)a
   @types %{0 => "trip", 1 => "track", 2 => "timeline", 3 => "live"}
   @active "revoked_at IS NULL AND (expires_at IS NULL OR expires_at > $2)"
+  @source Path.expand("../../../../config/shared_link_wordlist.txt", __DIR__)
+  @external_resource if File.regular?(@source),
+                       do: @source,
+                       else: Path.expand("../../../priv/shared_link_wordlist.txt", __DIR__)
+  @words @external_resource |> File.read!() |> String.split("\n", trim: true)
 
   def phrase do
-    root = Application.get_env(:dawarich, :rails_root, Path.expand("../..", File.cwd!()))
-
-    words =
-      root
-      |> Path.join("config/shared_link_wordlist.txt")
-      |> File.read!()
-      |> String.split("\n", trim: true)
-
     Enum.map_join(1..3, "-", fn _ ->
-      index = :crypto.strong_rand_bytes(8) |> :binary.decode_unsigned() |> rem(length(words))
-      Enum.at(words, index)
+      index = :crypto.strong_rand_bytes(8) |> :binary.decode_unsigned() |> rem(length(@words))
+      Enum.at(@words, index)
     end)
   end
 

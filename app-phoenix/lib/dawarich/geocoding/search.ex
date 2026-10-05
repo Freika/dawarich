@@ -102,7 +102,7 @@ defmodule Dawarich.Geocoding.Search do
   defp version,
     do:
       :dawarich
-      |> Application.get_env(:app_version_file, ".app_version")
+      |> Application.get_env(:app_version_file, Dawarich.RailsRoot.join(".app_version"))
       |> File.read!()
       |> ReleaseMigration.ruby_strip()
 end

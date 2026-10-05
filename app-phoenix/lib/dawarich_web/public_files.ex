@@ -45,7 +45,7 @@ defmodule DawarichWeb.PublicFiles do
     %{
       env: env,
       rails_env: RailsSecret.rails_env(env),
-      root: Application.get_env(:dawarich, :public_root) || Path.join(File.cwd!(), "public")
+      root: Application.get_env(:dawarich, :public_root) || Dawarich.RailsRoot.join("public")
     }
   end
 
