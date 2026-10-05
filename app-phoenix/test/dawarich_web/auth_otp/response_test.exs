@@ -70,7 +70,7 @@ defmodule DawarichWeb.AuthOtp.ResponseTest do
 
     log =
       capture_log(fn ->
-        for locale <- ~w(en de fr) do
+        for locale <- ~w(en de es fr pl ca zh) do
           {before, _} =
             SessionCookie.for_form(
               %{"locale" => locale, "otp_failed_attempts" => 2, "user_return_to" => "/trips"},

@@ -132,14 +132,14 @@ RSpec.describe 'Phoenix fixtures: authenticated share management', type: :reques
       foreign = management_actor(98_102)
       management_trip(user, 99_101)
       management_trip(foreign, 99_102)
-      %w[en de].each do |locale|
+      %w[en de es fr pl ca zh].each do |locale|
         user.update_columns(settings: user.settings.merge('locale' => locale))
         management_pages(user, foreign, locale)
         management_creates(user, foreign, locale)
         management_mutations(user, foreign, locale)
       end
       expect(File.exist?(dir.join('hub_empty_live_en.json'))).to be(true)
-      %w[en de].each do |locale|
+      %w[en de es fr pl ca zh].each do |locale|
         html = File.read(dir.join("ambiguous_override_#{locale}.html"))
         expect(html).not_to match(/_csrf_token:|session_id:|warden\.user\.user\.key:/)
         expect(html).to include('HTTP_X_CSRF_TOKEN: "CSRF"')

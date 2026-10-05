@@ -2,6 +2,7 @@
 
 require 'zip'
 require_relative 'a12b_fixture_support'
+require_relative 'fixture_recording'
 
 module UserDataFixturesSupport
   DIR = Rails.root.join('app-phoenix/test/fixtures/user_data')
@@ -18,7 +19,7 @@ module UserDataFixturesSupport
 
   def write(name, data)
     FileUtils.mkdir_p(DIR)
-    DIR.join(name).binwrite("#{JSON.pretty_generate(data)}\n")
+    FixtureRecording.verify(DIR.join(name), "#{JSON.pretty_generate(data)}\n")
   end
 
   def with_users

@@ -99,7 +99,10 @@ RSpec.describe 'Phoenix fixtures: the achievement pages as Rails renders them', 
 
     %w[en de es fr pl ca zh].each_with_index do |locale, index|
       picked = scenarios(locale)
-      picked = picked.select { |name, *| %w[index-progress detail-page2].include?(name) } if index > 1
+      if index > 1
+        existing, additional = picked.partition { |name, *| %w[index-progress detail-page2].include?(name) }
+        picked = existing + additional
+      end
       picked.each_with_index do |(name, path, state), offset|
         user = create(:user, id: 79_401 + (index * 20) + offset, email: "a10-#{locale}-#{name}@example.invalid",
                              settings: { 'timezone' => 'Europe/Berlin', 'locale' => locale })

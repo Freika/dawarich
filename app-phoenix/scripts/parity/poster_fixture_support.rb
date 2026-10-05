@@ -56,6 +56,7 @@ module PosterFixtureSupport
   def poster_html(html)
     doc = Nokogiri::HTML5.fragment(html)
     doc.css('input[name="authenticity_token"]').each { |input| input['value'] = 'CSRF' }
+    doc.css('[data-exception-object-id]').each { |node| node['data-exception-object-id'] = 'EXCEPTION' }
     doc.css('#session_dump pre').each { |dump| dump.content = 'SESSION' }
     doc.css('#env_dump pre').each do |dump|
       dump.content = dump.content.gsub(/(HTTP_X_CSRF_TOKEN: )"[^"]*"/, '\1"CSRF"')

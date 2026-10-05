@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 require 'bigdecimal'
 
 RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entries Rails writes', type: :request do
@@ -256,12 +257,15 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
     User.where(id: [reader.id, active.id]).update_all(visits_redetected_at: Time.current)
     requests = [[reader, '/insights/details?year=2024&month=4', 'details-en.html'],
                 [reader, '/insights/details?year=2024&month=4&locale=de', 'details-de.html'],
-                [active, '/insights/details?year=2024', 'details-activity.html']]
+                [active, '/insights/details?year=2024', 'details-activity.html']] +
+               %w[es fr pl ca zh].map do |locale|
+                 [reader, "/insights/details?year=2024&month=4&locale=#{locale}", "details-#{locale}.html"]
+               end
     written = requests.map do |user, path, fixture|
       reset!
       sign_in User.find(user.id)
       markup, keys = frame(path)
-      File.write(dir.join(fixture), "#{markup}\n")
+      FixtureRecording.verify(dir.join(fixture), "#{markup}\n")
       keys.grep(%r{\Aviews/insights/details:})
     end
 
@@ -278,7 +282,7 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
         { 'user_id' => user.id, 'path' => path, 'fixture' => fixture, 'fragment_keys' => keys }
       end
     )
-    File.write(dir.join('details-corpus.json'), "#{JSON.pretty_generate(corpus.as_json)}\n")
+    FixtureRecording.verify(dir.join('details-corpus.json'), "#{JSON.pretty_generate(corpus.as_json)}\n")
   end
 
   it 'writes the activity card Rails renders for fresh and persisted JSON key order' do
@@ -293,7 +297,7 @@ RSpec.describe 'Phoenix fixtures: the insights details frame and the cache entri
     { 'fresh' => fresh, 'persisted' => persisted }.each do |state, value|
       markup = ApplicationController.render(partial: 'insights/activity_breakdown',
                                             assigns: { activity_breakdown: value })
-      File.write(dir.join("activity-#{state}.html"), markup)
+      FixtureRecording.verify(dir.join("activity-#{state}.html"), markup)
     end
   end
 

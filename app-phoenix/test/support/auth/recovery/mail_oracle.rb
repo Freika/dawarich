@@ -4,7 +4,7 @@ require 'digest'
 require_relative 'oracle_support'
 
 RAW = 'safe-synthetic-raw'
-rows = %w[en de fr].flat_map do |locale|
+rows = %w[en de fr es pl ca zh].flat_map do |locale|
   user = User.new(email: 'recovery&safe@dawarich.test', settings: { 'locale' => locale })
   %i[reset_password_instructions unlock_instructions].map do |kind|
     mail = DeviseMailer.public_send(kind, user, RAW)

@@ -232,7 +232,7 @@ RSpec.describe 'Phoenix fixtures: achievement unlock deck', type: :request do
   end
 
   def visible_http_cases(state)
-    %w[en de].each_with_index.flat_map do |locale, index|
+    %w[en de es fr pl ca zh].each_with_index.flat_map do |locale, index|
       actor = synthetic_user(42_201 + index, locale:)
       create(:achievement_progress, id: actor.id, user: actor, achievement_key: 'exploration', state:)
       first = event(actor, 42_301 + index * 10, 'FR')

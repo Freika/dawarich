@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'fixture_recording'
+
 module ShareManagementFixtureSupport
   def management_id(number) = format('a9f10000-0000-4000-8000-%012d', number)
 
@@ -95,8 +97,9 @@ module ShareManagementFixtureSupport
              'content_type' => response.media_type, 'flash' => flash.to_hash, 'streams' => streams,
              'actors' => management_actors, 'trips' => management_rows('trips'),
              'before' => before, 'after' => management_rows('shared_links'), 'events' => events }
-    File.write(dir.join("#{name}.html"), html)
-    File.write(dir.join("#{name}.json"), "#{Oj.dump(data, mode: :strict, float_precision: 0, indent: 2)}\n")
+    FixtureRecording.verify(dir.join("#{name}.html"), html)
+    FixtureRecording.verify(dir.join("#{name}.json"),
+                            "#{Oj.dump(data, mode: :strict, float_precision: 0, indent: 2)}\n")
     sign_out user if user
     data
   ensure

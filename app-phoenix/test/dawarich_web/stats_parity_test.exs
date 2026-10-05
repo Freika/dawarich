@@ -43,7 +43,17 @@ defmodule DawarichWeb.StatsParityTest do
       assert normalized(phoenix) == normalized(rails)
       assert ParityHTML.stimulus(phoenix) == ParityHTML.stimulus(rails)
       assert charts(phoenix) == charts(rails)
-      assert DawarichWeb.Layouts.page_title(locale, assigns.page_title) == state["title"]
+
+      title =
+        render_component(
+          &DawarichWeb.Layouts.root/1,
+          Map.merge(context, %{inner_content: "", page_title: assigns.page_title})
+        )
+        |> LazyHTML.from_document()
+        |> LazyHTML.query("title")
+        |> LazyHTML.text()
+
+      assert title == state["title"]
     end
   end
 

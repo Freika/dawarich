@@ -273,6 +273,11 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
                  format: 'html', framed: false, locale: 'de' }
       cases << { name: 'update_de_long_turbo_false', action: :update, attrs: { name: '界' * 256 },
                  format: 'turbo', framed: false, locale: 'de' }
+      cases += cases.select { |entry| entry[:locale] == 'de' }.flat_map do |entry|
+        %w[es fr pl ca zh].map do |locale|
+          entry.merge(name: entry[:name].sub('_de_', "_#{locale}_"), locale:)
+        end
+      end
       cases
     end
 

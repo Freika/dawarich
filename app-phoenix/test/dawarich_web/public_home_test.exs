@@ -64,7 +64,7 @@ defmodule DawarichWeb.PublicHomeTest do
     assert conn.status == 200
     refute conn.resp_body =~ ~s(href="/users/sign_up")
 
-    for locale <- ~w(en de), mode <- [:enabled, :disabled, :cloud] do
+    for locale <- ~w(en de es fr pl ca zh), mode <- [:enabled, :disabled, :cloud] do
       :ok = RegistrationSetting.put(mode == :enabled)
 
       {:ok, view, html} =

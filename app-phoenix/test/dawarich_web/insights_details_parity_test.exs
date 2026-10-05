@@ -121,12 +121,19 @@ defmodule DawarichWeb.InsightsDetailsParityTest do
         assert {200, _, body} = read_response(client)
 
         if state == nil do
-          message =
-            if request["path"] =~ "locale=de",
-              do: "Keine Aktivitätsdaten für diese Periode verfügbar",
-              else: "No activity data available for this period"
+          locale =
+            URI.parse(request["path"]).query
+            |> to_string()
+            |> URI.decode_query()
+            |> Map.get("locale", "en")
 
-          assert body =~ message
+          {:ok, message} =
+            Dawarich.I18n.t(
+              locale,
+              "insights.activity_breakdown.no_activity_data_available_for_this_period"
+            )
+
+          assert body |> LazyHTML.from_document() |> LazyHTML.text() =~ message
           assert body =~ ~s(<turbo-frame id="insights_details">)
         else
           assert ParityHTML.fragment(body, "turbo-frame#insights_details") == expected

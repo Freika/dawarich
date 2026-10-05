@@ -103,13 +103,13 @@ RSpec.describe 'Phoenix fixtures: family documents as Rails renders them', type:
       family_invitations!(family, owner, outsider.email)
       family_request!(94_001, family, owner, member)
       family_request!(94_002, family, owner, member, expires_at: now - 1.second)
-      aggregate_failures('en/de family document leaves') do
-        %w[en de].each { |locale| capture_locale(locale, owner, member, outsider, family) }
+      aggregate_failures('all-locale family document leaves') do
+        %w[en de es fr pl ca zh].each { |locale| capture_locale(locale, owner, member, outsider, family) }
       end
       allow(DawarichSettings).to receive(:self_hosted?).and_return(true)
-      %w[en de].each { |locale| capture_family_sharing_stream(owner, locale) }
+      %w[en de es fr pl ca zh].each { |locale| capture_family_sharing_stream(owner, locale) }
       expect(File.exist?(dir.join('owner_en.json'))).to be(true)
-      expect(Dir[dir.join('*.json')].length).to eq(84)
+      expect(Dir[dir.join('*.json')].length).to eq(294)
     end
   end
 end

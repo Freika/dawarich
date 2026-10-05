@@ -67,7 +67,7 @@ RSpec.describe 'Phoenix fixtures: poster persistence and generation', type: :req
       poster = fixture_poster(user, turbo ? 96_501 : 96_502)
       capture_poster_request("delete_#{turbo}_#{locale}", user, :delete, "/posters/#{poster.id}", turbo:)
     end
-    poster = fixture_poster(foreign, locale == 'en' ? 96_601 : 96_602)
+    poster = fixture_poster(foreign, 96_601 + %w[en de es fr pl ca zh].index(locale))
     capture_poster_request("delete_foreign_#{locale}", user, :delete, "/posters/#{poster.id}", turbo: true)
   end
 
@@ -133,10 +133,11 @@ RSpec.describe 'Phoenix fixtures: poster persistence and generation', type: :req
     travel_to now do
       user = poster_actor(97_101)
       foreign = poster_actor(97_102)
-      %w[en de].each { |locale| poster_requests(user, foreign, locale) }
+      %w[en de es fr pl ca zh].each { |locale| poster_requests(user, foreign, locale) }
+      user.update_columns(settings: user.settings.merge('locale' => 'de'))
       poster_geometry_cases(user)
       expect(File.exist?(dir.join('create_whitelist_en.json'))).to be(true)
-      %w[en de].each do |locale|
+      %w[en de es fr pl ca zh].each do |locale|
         html = File.read(dir.join("delete_foreign_#{locale}.html"))
         expect(html).not_to match(/_csrf_token:|session_id:|warden\.user\.user\.key:/)
         expect(html).to include('HTTP_X_CSRF_TOKEN: "CSRF"')

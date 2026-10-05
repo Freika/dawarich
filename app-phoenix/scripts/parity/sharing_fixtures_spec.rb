@@ -125,19 +125,28 @@ RSpec.describe 'Phoenix fixtures: the public shared-link pages as Rails renders 
              'live_route_zero_en' => 12, 'live_route_unset_en' => 13, 'timeline_blank_phrase_en' => 14,
              'not_found_unknown_en' => 99 }
     entries = show.map { |name, number| capture(name, :get, "/s/#{link_id(number)}") }
-    entries += { 'live_de' => 1, 'live_named_prompt_de' => 2, 'timeline_range_de' => 3, 'timeline_years_de' => 6,
-                 'missing_track_de' => 8, 'not_found_revoked_de' => 9 }.map do |name, number|
-      capture(name, :get, "/s/#{link_id(number)}?locale=de")
+    %w[de es fr pl ca zh].each do |locale|
+      { 'live' => 1, 'live_named_prompt' => 2, 'timeline_range' => 3, 'timeline_years' => 6,
+        'missing_track' => 8, 'not_found_revoked' => 9 }.each do |name, number|
+        entries << capture("#{name}_#{locale}", :get, "/s/#{link_id(number)}?locale=#{locale}")
+      end
     end
     entries + unlocks
   end
 
   def unlocks
+    additions = %w[es fr pl ca zh].map do |locale|
+      reset!
+      capture("unlock_wrong_#{locale}", :post, "/s/#{link_id(2)}/unlock?locale=#{locale}",
+              params: { phrase: 'falsch' })
+    end
+    reset!
     entries = [capture('unlock_wrong_en', :post, "/s/#{link_id(2)}/unlock", params: { phrase: 'falsch' }),
                capture('unlock_wrong_de', :post, "/s/#{link_id(2)}/unlock?locale=de", params: { phrase: 'falsch' }),
                capture('unlock_unknown_en', :post, "/s/#{link_id(99)}/unlock", params: { phrase: phrase }),
                capture('unlock_open_en', :post, "/s/#{link_id(1)}/unlock"),
                capture('unlock_right_en', :post, "/s/#{link_id(2)}/unlock", params: { phrase: phrase })]
+    entries += additions
     cookie = unlock_cookie(link_id(2))
     entries << capture('unlocked_live_named_en', :get, "/s/#{link_id(2)}", cookie:)
     entries << capture('unlock_blank_en', :post, "/s/#{link_id(14)}/unlock", params: { phrase: " \t" })

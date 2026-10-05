@@ -6,7 +6,7 @@ defmodule DawarichWeb.AuthOtp.FormTest do
   test "challenge form matches source document navigation and empty code markup" do
     assert Code.ensure_loaded?(Form)
 
-    for locale <- ~w(en de fr) do
+    for locale <- ~w(en de es fr pl ca zh) do
       source = File.read!("test/fixtures/auth/otp/challenge_#{locale}.html")
 
       assigns = %{

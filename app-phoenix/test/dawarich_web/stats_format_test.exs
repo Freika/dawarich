@@ -5,7 +5,7 @@ defmodule DawarichWeb.StatsFormatTest do
 
   @corpus "test/fixtures/stats_corpus.json" |> File.read!() |> Jason.decode!()
 
-  test "LocalizedDate matches I18n.l for every corpus date and format in en and de" do
+  test "LocalizedDate matches I18n.l for every corpus date and format in all shipped locales" do
     for %{"locale" => locale, "date" => date, "format" => format, "output" => output} <-
           @corpus["dates"],
         do:

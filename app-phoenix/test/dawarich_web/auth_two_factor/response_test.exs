@@ -106,7 +106,12 @@ defmodule DawarichWeb.AuthTwoFactor.ResponseTest do
     log =
       capture_log(fn ->
         for name <-
-              ~w(disabled enabled setup verify_bad verify_good disabled_de enabled_de setup_de verify_bad_de verify_good_de) do
+              ~w(disabled enabled setup verify_bad verify_good disabled_de enabled_de setup_de verify_bad_de verify_good_de) ++
+                for(
+                  locale <- ~w(es fr pl ca zh),
+                  name <- ~w(disabled enabled setup verify_bad verify_good),
+                  do: name <> "_" <> locale
+                ) do
           row = Enum.find(@rows, &(&1["name"] == name))
           page = File.read!(@root <> "/" <> name <> ".html")
           doc = LazyHTML.from_fragment(page)

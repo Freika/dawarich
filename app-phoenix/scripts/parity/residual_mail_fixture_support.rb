@@ -7,7 +7,10 @@ module ResidualMailFixtureSupport
   REQUESTER = %q(requester<>&"'@dawarich.test)
   TOKEN = 'a12c-synthetic-token-not-issued'
   LOCALES = { 'en' => [{ 'locale' => 'en' }, :en], 'de' => [{ 'locale' => ' DE ' }, :en],
-              'fallback_fr' => [{ 'locale' => 'invalid' }, :fr] }.freeze
+              'fallback_fr' => [{ 'locale' => 'invalid' }, :fr],
+              'es' => [{ 'locale' => 'es' }, :en], 'fr' => [{ 'locale' => 'fr' }, :en],
+              'pl' => [{ 'locale' => 'pl' }, :en], 'ca' => [{ 'locale' => 'ca' }, :en],
+              'zh' => [{ 'locale' => 'zh' }, :en] }.freeze
 
   def with_mail_defaults
     defaults = ApplicationMailer.default_params
@@ -463,6 +466,11 @@ module ResidualMailFixtureSupport
     with_mail_defaults do
       options = digest_case_options.sort_by { |name, *| [name.start_with?('monthly') ? 0 : 1, digest_case_order(name)] }
       cases = options.map { |args| capture_digest_case(user, foreign, *args) }
+      %w[monthly yearly].product(%w[es fr pl ca zh]).each do |period, locale|
+        original = options.find { |name, *| name == "#{period}_de" }
+        cases << capture_digest_case(user, foreign, "#{period}_#{locale}", period, original[2],
+                                     { 'locale' => locale }, :en)
+      end
       helpers = I18n.with_locale(:en) { digest_chart_cases }
       expect(ActionMailer::Base.deliveries.length).to eq(deliveries)
       expect(enqueued_jobs.length).to eq(queued)

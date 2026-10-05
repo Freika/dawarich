@@ -190,9 +190,9 @@ end
 
 RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request do
   after { ActionController::Base.allow_forgery_protection = false }
-  it 'captures the backup form and endpoint flashes in en and de' do
+  it 'captures the backup form and endpoint flashes in all shipped locales' do
     user = create(:user, admin: false, settings: { 'timezone' => 'UTC' })
-    result = %w[en de].to_h do |locale|
+    result = %w[en de es fr pl ca zh].to_h do |locale|
       user.update!(settings: user.settings.merge('locale' => locale))
       sign_in(user)
       ActionController::Base.allow_forgery_protection = true
@@ -214,10 +214,12 @@ RSpec.describe 'Phoenix fixtures: user data settings boundary', type: :request d
       post '/settings/users/import', params: { archive: 'invalid-signed-id' }
       expect(response).to have_http_status(:found)
       invalid = { 'status' => response.status, 'location' => URI(response.location).path, 'flash' => flash.to_hash }
-      blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('synthetic archive'), filename: 'backup.zip',
+      filename = %w[en de].include?(locale) ? 'backup.zip' : "#{locale}-backup.zip"
+      blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('synthetic archive'), filename: filename,
                                                     content_type: 'application/zip')
       post '/settings/users/import', params: { archive: blob.signed_id }
       expect(response).to have_http_status(:found)
+      expect(flash.to_hash).to have_key('notice')
       valid = { 'status' => response.status, 'location' => URI(response.location).path,
                 'flash' => flash.to_hash.slice('notice') }
       blob.update_column(:filename, '')

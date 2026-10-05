@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'rails_helper'
+require_relative 'fixture_recording'
 
 RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them', type: :request do
   include ActiveSupport::Testing::TimeHelpers
@@ -8,7 +9,7 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
   let(:fixtures) { Rails.root.join('app-phoenix/test/fixtures') }
   let(:now) { Time.utc(2026, 9, 26, 12, 0, 0) }
 
-  def write_json(name, data) = File.write(fixtures.join(name), "#{JSON.pretty_generate(data)}\n")
+  def write_json(name, data) = FixtureRecording.verify(fixtures.join(name), "#{JSON.pretty_generate(data)}\n")
 
   around do |example|
     ActionController::Base.allow_forgery_protection = true
@@ -38,8 +39,8 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
     expect(response).to have_http_status(:ok)
     doc = Nokogiri::HTML5(response.body)
     doc.css('input[name="authenticity_token"]').each { |node| node['value'] = 'CSRF' }
-    File.write(fixtures.join("notifications/#{name}.html"),
-               doc.at_css('body > div.container > div.w-full > div.flex').inner_html)
+    FixtureRecording.verify(fixtures.join("notifications/#{name}.html"),
+                            doc.at_css('body > div.container > div.w-full > div.flex').inner_html)
     notifications = user.notifications.order(:id).map do |n|
       { id: n.id, title: n.title, content: n.content, kind: Notification.kinds[n.kind], read: n.read_at.present?,
         offset: (now - n.created_at).round }
@@ -64,8 +65,11 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
       de = reader(9102, 'parity-de@dawarich.test', 'de')
       seed(de, 3, 920_000)
       sign_in de
-      page('index_de', de, '/notifications')
-      page('show_de', de, "/notifications/#{de.notifications.order(:id).last.id}")
+      %w[de es fr pl ca zh].each do |locale|
+        de.update_columns(settings: de.settings.merge('locale' => locale))
+        page("index_#{locale}", de, '/notifications')
+        page("show_#{locale}", de, "/notifications/#{de.notifications.order(:id).last.id}")
+      end
       sign_out de
 
       many = reader(9103, 'parity-many@dawarich.test')
@@ -116,7 +120,7 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
                2_591_970, 5_183_969, 5_183_970, 31_535_969, 31_536_000, 47_304_000, 63_072_000, 94_608_000,
                126_230_400, 315_360_000]
     corpus = travel_to(now) do
-      %w[en de].flat_map do |locale|
+      %w[en de es fr pl ca zh].flat_map do |locale|
         offsets.map do |seconds|
           words = I18n.with_locale(locale) { ApplicationController.helpers.relative_distance_in_words(now - seconds) }
           { locale:, seconds:, words: }
@@ -131,7 +135,7 @@ RSpec.describe 'Phoenix fixtures: the notification pages as Rails renders them',
     system_zone = ENV.fetch('TZ', nil)
     ENV['TZ'] = 'UTC'
     zones = %w[UTC Europe/Berlin America/New_York Pacific/Kiritimati]
-    corpus = spans.product(zones, %w[en de]).map do |(from, to), zone, locale|
+    corpus = spans.product(zones, %w[en de es fr pl ca zh]).map do |(from, to), zone, locale|
       words = travel_to(Time.iso8601(to)) do
         Time.use_zone(zone) do
           created_at = Time.iso8601(from).in_time_zone

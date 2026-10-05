@@ -8,7 +8,8 @@ defmodule DawarichWeb.PostersParityTest do
   @dir "test/fixtures/posters"
   @requests ~w(create_whitelist create_blank_name create_blank_title create_missing_title create_error_true create_error_false delete_true delete_false delete_foreign)
   @cards ~w(absent_points already_completed_without_pair antimeridian clamps_high clamps_low clamps_zero deletion_during_render missing_job_row null_lonlat outside_frame overlapping_tracks_theme_basename phase_drawing_map phase_drawing_route phase_fetching_data phase_saving phase_unknown points_gap_boundaries render_title_0 render_title_1 unknown_theme)
-  @names for(name <- @requests, locale <- ~w(en de), do: name <> "_" <> locale) ++ @cards
+  @names for(name <- @requests, locale <- ~w(en de es fr pl ca zh), do: name <> "_" <> locale) ++
+           @cards
 
   @tag mutation: "poster-corpus"
   test "poster response corpus is complete" do

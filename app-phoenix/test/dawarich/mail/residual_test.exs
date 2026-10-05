@@ -18,10 +18,16 @@ defmodule Dawarich.Mail.ResidualTest do
       |> Map.fetch!("cases")
       |> Enum.filter(&(&1["kind"] in ~w(otp_account_locked test_email location_request)))
 
-    assert Enum.map(rows, & &1["id"]) ==
-             ~w(otp_account_locked_en otp_account_locked_de otp_account_locked_fallback_fr
-                test_email_en test_email_de test_email_fallback_fr test_email_berlin test_email_invalid_zone
-                location_request_en location_request_de location_request_fallback_fr)
+    expected =
+      Enum.flat_map(~w(otp_account_locked test_email location_request), fn kind ->
+        ids = for locale <- ~w(en de fallback_fr es fr pl ca zh), do: kind <> "_" <> locale
+
+        if kind == "test_email",
+          do: ids ++ ~w(test_email_berlin test_email_invalid_zone),
+          else: ids
+      end)
+
+    assert Enum.map(rows, & &1["id"]) == expected
 
     for row <- rows do
       {:ok, now, 0} = DateTime.from_iso8601(row["now"])

@@ -155,7 +155,7 @@ RSpec.describe 'Phoenix fixtures: achievement sharing actions', type: :request d
   end
 
   def auth_cases(actor)
-    rows = %w[en de].map do |locale|
+    rows = %w[en de es fr pl ca zh].map do |locale|
       row = request_case("guest_#{locale}", nil, locale:)
       expect(row['status']).to eq(401)
       expect(row.dig('json', 'error')).to eq(I18n.t('devise.failure.unauthenticated', locale:))

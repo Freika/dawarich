@@ -28,7 +28,7 @@ defmodule DawarichWeb.AuthAccountLink.ResponseTest do
     assert Code.ensure_loaded?(Response)
     context = %{secret: @secret, clock: fn -> @now end}
 
-    for locale <- ~w(en de fr) do
+    for locale <- ~w(en de es fr pl ca zh) do
       row = @source["challenge_#{locale}"]
 
       {session, _} =
@@ -115,7 +115,7 @@ defmodule DawarichWeb.AuthAccountLink.ResponseTest do
   end
 
   test "owned challenge matches Rails incoming alert escaping presence and one-request lifetime" do
-    for locale <- ~w(en de fr) do
+    for locale <- ~w(en de es fr pl ca zh) do
       row = @source["challenge_alert_#{locale}"]
 
       {session, _} =

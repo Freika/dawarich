@@ -11,7 +11,12 @@ defmodule Dawarich.Mail.Digests.RenderTest do
           monthly_malformed_distances monthly_malformed_locations monthly_malformed_visits
           monthly_invalid_month yearly_km yearly_mi yearly_default yearly_de yearly_ambient_fr
           yearly_empty yearly_shared yearly_sharing_disabled yearly_sparse_stats yearly_nil_json
-          yearly_negative yearly_malformed_stats)
+          yearly_negative yearly_malformed_stats) ++
+         for(
+           period <- ~w(monthly yearly),
+           locale <- ~w(es fr pl ca zh),
+           do: period <> "_" <> locale
+         )
   @now "2026-10-04T12:00:00Z"
 
   test "monthly and yearly digest messages equal every Rails content row" do

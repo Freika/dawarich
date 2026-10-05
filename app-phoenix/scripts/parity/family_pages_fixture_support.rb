@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative 'fixture_recording'
+
 module FamilyPagesFixtureSupport
   def family_actor(id, email, locale: 'en', plan: :family)
     user = create(:user, id:, email:, plan:, skip_auto_trial: true, changelog_consent: :declined)
@@ -116,8 +118,9 @@ module FamilyPagesFixtureSupport
              end,
              'session' => { 'user_return_to' => session[:user_return_to] },
              'actors' => family_actors, 'rows' => family_rows }
-    File.write(dir.join("#{name}.html"), html)
-    File.write(dir.join("#{name}.json"), "#{Oj.dump(data, mode: :strict, float_precision: 0, indent: 2)}\n")
+    FixtureRecording.verify(dir.join("#{name}.html"), html)
+    FixtureRecording.verify(dir.join("#{name}.json"),
+                            "#{Oj.dump(data, mode: :strict, float_precision: 0, indent: 2)}\n")
     sign_out actor if actor
     { 'html' => html, 'state' => data }
   end
@@ -135,7 +138,7 @@ module FamilyPagesFixtureSupport
     doc.css('input[name="authenticity_token"]').each { |input| input['value'] = 'CSRF' }
     expect(doc.css('turbo-stream').map { |stream| stream['target'] })
       .to include("location-sharing-#{actor.id}", 'family-navbar-indicator', 'family-getting-started-slot')
-    File.write(dir.join("sharing_toggle_#{locale}.stream.html"), doc.to_html)
+    FixtureRecording.verify(dir.join("sharing_toggle_#{locale}.stream.html"), doc.to_html)
     sign_out actor
   end
 end

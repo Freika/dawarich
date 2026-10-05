@@ -31,7 +31,7 @@ defmodule DawarichWeb.ShareManagementParityTest do
     trip_phrase_missing trip_revoke trip_revoke_missing trip_settings trip_url trip_url_missing)
   @names [
     "failed_live_replacement"
-    | for(name <- @cases, locale <- ~w(en de), do: name <> "_" <> locale)
+    | for(name <- @cases, locale <- ~w(en de es fr pl ca zh), do: name <> "_" <> locale)
   ]
 
   @tag mutation: "corpus"
@@ -40,7 +40,7 @@ defmodule DawarichWeb.ShareManagementParityTest do
       @dir |> Path.join("*.json") |> Path.wildcard() |> Enum.map(&Path.basename(&1, ".json"))
 
     assert Enum.sort(actual) == Enum.sort(@names)
-    assert length(@names) == 145
+    assert length(@names) == 505
   end
 
   for name <- @names do

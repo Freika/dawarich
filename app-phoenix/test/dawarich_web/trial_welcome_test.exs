@@ -155,7 +155,7 @@ defmodule DawarichWeb.TrialWelcomeTest do
       log: false
     )
 
-    for locale <- ~w(en de), actor <- [nil, 15611] do
+    for locale <- ~w(en de es fr pl ca zh), actor <- [nil, 15611] do
       Repo.query!(
         "UPDATE users SET settings=$1 WHERE id=15611",
         [%{"locale" => locale, "timezone" => "UTC"}],
