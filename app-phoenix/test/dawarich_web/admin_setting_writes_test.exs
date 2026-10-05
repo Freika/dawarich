@@ -6,6 +6,15 @@ defmodule DawarichWeb.AdminSettingWritesTest do
   alias DawarichWeb.RailsCsrf
   alias DawarichWeb.AdminWrites.Settings
 
+  defmodule RegistrationFailureRepo do
+    def query!(sql, params, opts), do: Dawarich.Repo.query!(sql, params, opts)
+
+    def transaction(_) do
+      send(self(), :registration_sql_attempt)
+      raise DBConnection.ConnectionError, message: "synthetic registration SQL refusal"
+    end
+  end
+
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
     Repo.query!("DELETE FROM instance_settings", [], log: false)
@@ -82,14 +91,73 @@ defmodule DawarichWeb.AdminSettingWritesTest do
     refute Map.has_key?(conn.private, :dawarich_proxy_owner)
   end
 
-  defp request(session, values) do
+  test "denied admin update and failed PG write preserve state and source HTTP outcome", c do
+    alias Dawarich.Admin.SettingWrites
+    Dawarich.State.put_registration_enabled(Repo, true)
+    RailsUser.insert!(%{id: 15512, email: "a13g-denied-member@example.invalid"})
+    member = Dawarich.Accounts.get(15512)
+    admin = Dawarich.Accounts.get(15511)
+
+    assert {:handoff, :actor} =
+             SettingWrites.registration(member, %{"registration_enabled" => "0"}, c.context)
+
+    assert {:handoff, :cloud} =
+             SettingWrites.registration(admin, %{}, %{c.context | self_hosted: false})
+
+    assert {:handoff, :oidc} = SettingWrites.registration(admin, %{}, %{c.context | oidc: true})
+
+    assert Repo.query!("SELECT enabled FROM phoenix.registration_setting", [], log: false).rows ==
+             [[true]]
+
+    server = Dawarich.Test.RawHTTP.listen()
+    parent = self()
+    previous = Application.get_env(:dawarich, :rails_upstream)
+    Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, server.port})
+
+    on_exit(fn ->
+      :gen_tcp.close(server.listen)
+      Application.put_env(:dawarich, :rails_upstream, previous)
+    end)
+
+    start_supervised!(
+      {Task,
+       fn ->
+         socket = Dawarich.Test.RawHTTP.accept(server)
+         Dawarich.Test.RawHTTP.read_head(socket)
+         send(parent, :registration_upstream_called)
+         Dawarich.Test.RawHTTP.reply(socket, "HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+         :gen_tcp.close(socket)
+       end}
+    )
+
+    conn =
+      request(
+        c.session,
+        [{"registration_enabled", "0"}],
+        "/settings/users/update_registration_settings"
+      )
+      |> Settings.call(
+        action: :registration,
+        context: Map.put(c.context, :repo, RegistrationFailureRepo)
+      )
+
+    assert conn.status == 500 and conn.halted and conn.resp_body == ""
+    assert_received :registration_sql_attempt
+    refute_received :registration_upstream_called
+    refute Map.has_key?(conn.private, :dawarich_proxy_owner)
+
+    assert Repo.query!("SELECT enabled FROM phoenix.registration_setting", [], log: false).rows ==
+             [[true]]
+  end
+
+  defp request(session, values, path \\ "/admin/settings") do
     raw =
       URI.encode_query([
         {"authenticity_token", RailsCsrf.masked_token(session)},
         {"_method", "patch"} | values
       ])
 
-    Plug.Test.conn("POST", "/admin/settings", raw)
+    Plug.Test.conn("POST", path, raw)
     |> Plug.Test.put_req_cookie("_dawarich_session", RailsUser.cookie(session))
     |> put_req_header("content-type", "application/x-www-form-urlencoded")
     |> put_req_header("content-length", Integer.to_string(byte_size(raw)))

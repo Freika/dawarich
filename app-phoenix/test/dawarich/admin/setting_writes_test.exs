@@ -38,20 +38,24 @@ defmodule Dawarich.Admin.SettingWritesTest do
     }
   end
 
-  test "writes source cast boolean readable by Rails and native registration fetch", c do
-    assert Code.ensure_loaded?(SettingWrites), "admin setting writes must exist"
-    assert Code.ensure_loaded?(Wire), "boolean cache encoder must exist"
-    assert function_exported?(Wire, :encode_boolean, 2), "boolean cache encoder must exist"
+  test "admin registration casts persist true false nil in the caller repo", c do
+    Dawarich.JobsCase.reset!(Dawarich.ScratchRepo)
 
-    if is_nil(Process.whereis(Redis.Cache)),
-      do:
-        start_supervised!(
-          {Redix, {System.fetch_env!("PHOENIX_TEST_REDIS_URL"), [name: Redis.Cache, database: 0]}}
-        )
+    RailsUser.insert!(
+      %{id: c.admin.id, email: "a13g-scratch-admin@example.invalid", admin: true},
+      Dawarich.ScratchRepo
+    )
 
+    Dawarich.State.put_registration_enabled(Repo, false)
+    Dawarich.State.put_registration_enabled(Dawarich.ScratchRepo, true)
+    context = Map.put(c.context, :repo, Dawarich.ScratchRepo)
+    for spec <- Redis.cache_child_specs(), do: start_supervised!(spec)
     {:ok, original} = Redis.cache_command(["GET", @key])
+    bytes = Wire.encode_boolean(true, expires_at: nil)
 
     try do
+      assert {:ok, "OK"} = Redis.cache_command(["SET", @key, bytes])
+
       for {input, value} <- [
             {"1", true},
             {"0", false},
@@ -63,20 +67,14 @@ defmodule Dawarich.Admin.SettingWritesTest do
             {nil, nil}
           ] do
         assert {:ok, ^value} =
-                 SettingWrites.registration(
-                   c.admin,
-                   %{"registration_enabled" => input},
-                   c.context
-                 )
+                 SettingWrites.registration(c.admin, %{"registration_enabled" => input}, context)
 
-        {:ok, bytes} = Redis.cache_command(["GET", @key])
-        assert is_binary(bytes), "shared Rails registration cache was not written"
-        assert {:ok, %{value: ^value, expires_at: nil}} = Wire.decode(bytes)
+        assert {:ok, ^value} = RegistrationSetting.fetch(%{}, Dawarich.ScratchRepo)
 
-        assert {:ok, ^value} =
-                 RegistrationSetting.fetch(%{"ALLOW_EMAIL_PASSWORD_REGISTRATION" => "true"})
+        assert Repo.query!("SELECT enabled FROM phoenix.registration_setting", [], log: false).rows ==
+                 [[false]]
 
-        assert Wire.encode_boolean(value, expires_at: nil) == bytes
+        assert {:ok, ^bytes} = Redis.cache_command(["GET", @key])
       end
 
       for value <- [true, false, nil] do
@@ -84,15 +82,13 @@ defmodule Dawarich.Admin.SettingWritesTest do
                  Wire.decode(Wire.encode_boolean(value, expires_at: 2_000_000_000))
       end
 
-      {:ok, before} = Redis.cache_command(["GET", @key])
-
       assert {:handoff, :actor} =
                SettingWrites.registration(c.member, %{"registration_enabled" => "1"}, c.context)
 
       assert {:handoff, :cloud} =
                SettingWrites.registration(c.admin, %{}, %{c.context | self_hosted: false})
 
-      assert {:ok, ^before} = Redis.cache_command(["GET", @key])
+      assert {:ok, ^bytes} = Redis.cache_command(["GET", @key])
     after
       if original,
         do: Redis.cache_command(["SET", @key, original]),
