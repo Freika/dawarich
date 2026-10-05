@@ -4,6 +4,7 @@ root="$(cd "$(dirname "$0")/../.." && pwd)"
 E2E_REPO="${E2E_REPO:-$HOME/projects/dawarich/e2e-dawarich-playwright/.worktrees/phoenix-port}"
 ENV_FILE="${ENV_FILE:-$root/../../.env}"
 PORT="${PORT:-3120}"
+RELEASE_NODE="dawarich_$PORT@localhost"
 STAND_DATABASE_NAME="${STAND_DATABASE_NAME:-${DATABASE_NAME:?DATABASE_NAME or STAND_DATABASE_NAME must name an isolated stand database}}"
 REDIS_PORT="${REDIS_PORT:-$((PORT + 4000))}"
 E2E_SMTP_PORT="${E2E_SMTP_PORT:-1025}"
@@ -11,10 +12,10 @@ SMTP_SERVER="${SMTP_SERVER:-127.0.0.1}"
 MAILPIT_API_PORT="${MAILPIT_API_PORT:-8025}"
 MAILPIT_NAME="${MAILPIT_NAME:-e2e-mailpit}"
 rel="$root/app-phoenix/_build/prod/rel/dawarich/bin/dawarich"
-pidfile="$root/tmp/pids/proxy_stack.pid"
-log="$root/log/proxy_stack.log"
-sidekiq_log="$root/log/proxy_stack_sidekiq.log"
-sidekiq="sidekiq.* $(basename "$root") "
+pidfile="$root/tmp/pids/proxy_stack_$PORT.pid"
+sidekiq_pidfile="$root/tmp/pids/proxy_stack_sidekiq_$PORT.pid"
+log="$root/log/proxy_stack_$PORT.log"
+sidekiq_log="$root/log/proxy_stack_sidekiq_$PORT.log"
 
 stack() {
   env $(grep -E '^DATABASE_(PORT|USERNAME|PASSWORD)=' "$ENV_FILE" | xargs) \
@@ -27,21 +28,23 @@ stack() {
     OTP_ENCRYPTION_PRIMARY_KEY=e2e-otp-primary-key-not-a-secret \
     OTP_ENCRYPTION_DETERMINISTIC_KEY=e2e-otp-deterministic-key-not-a-secret \
     OTP_ENCRYPTION_KEY_DERIVATION_SALT=e2e-otp-derivation-salt-not-a-secret \
-    WEB_CONCURRENCY=0 RAILS_MAX_THREADS=10 APPLICATION_HOSTS="${APPLICATION_HOSTS:-localhost,127.0.0.1}" DAWARICH_COOKIE_FILE="$root/tmp/proxy_stack.cookie" \
+    WEB_CONCURRENCY=0 RAILS_MAX_THREADS=10 APPLICATION_HOSTS="${APPLICATION_HOSTS:-localhost,127.0.0.1}" DAWARICH_COOKIE_FILE="$root/tmp/proxy_stack.cookie" RELEASE_NODE="$RELEASE_NODE" \
     DAWARICH_RAILS_ROUTES="${DAWARICH_RAILS_ROUTES:-}" DAWARICH_PHOENIX_AUTH="${DAWARICH_PHOENIX_AUTH:-}" ${DOMAIN:+DOMAIN="$DOMAIN"} "$@"
 }
 
 if [ "${1:-}" = --down ]; then
-  [ -f "$pidfile" ] && kill "$(cat "$pidfile")" 2>/dev/null || true
-  pkill -f "$sidekiq" 2>/dev/null || true
+  if epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; then
+    stack "$rel" stop
+  fi
+  [ -f "$sidekiq_pidfile" ] && kill "$(cat "$sidekiq_pidfile")" 2>/dev/null || true
   tries=0
-  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || pgrep -f "$sidekiq" >/dev/null 2>&1; do
+  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || { [ -f "$sidekiq_pidfile" ] && kill -0 "$(cat "$sidekiq_pidfile")" 2>/dev/null; }; do
     tries=$((tries + 1))
     [ "$tries" -lt 60 ] || { echo "the stack did not stop" >&2; exit 1; }
     sleep 1
   done
   redis-cli -p "$REDIS_PORT" shutdown nosave >/dev/null 2>&1 || true
-  rm -f "$pidfile"
+  rm -f "$pidfile" "$sidekiq_pidfile"
   exit 0
 fi
 
@@ -57,12 +60,12 @@ case "${DOCKER_HOST:-$(docker context inspect --format '{{.Endpoints.docker.Host
   *) echo "the Docker engine is not local" >&2; exit 1 ;;
 esac
 [ -f "$ENV_FILE" ] || { echo "$ENV_FILE with the DATABASE_* settings is missing" >&2; exit 1; }
-if epmd -names 2>/dev/null | grep -q '^name dawarich at'; then
-  echo "another local Dawarich release is running (rel/env.sh.eex fixes RELEASE_NODE=dawarich@localhost); stop it first" >&2
+if epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; then
+  echo "the local Dawarich release $RELEASE_NODE is running; stop it first" >&2
   exit 1
 fi
 if curl -s -m 2 -o /dev/null "http://127.0.0.1:$PORT/"; then echo "port $PORT is in use" >&2; exit 1; fi
-if pgrep -f "$sidekiq" >/dev/null 2>&1; then echo "a Sidekiq from an earlier run is still up; run $0 --down first" >&2; exit 1; fi
+if [ -f "$sidekiq_pidfile" ] && kill -0 "$(cat "$sidekiq_pidfile")" 2>/dev/null; then echo "a Sidekiq from an earlier run is still up; run $0 --down first" >&2; exit 1; fi
 mkdir -p "$root/log" "$root/tmp/pids"
 touch "$log" "$sidekiq_log"
 log_from=$(($(wc -c <"$log") + 1))
@@ -82,8 +85,8 @@ stack bin/rails phoenix:importmap phoenix:time_zones >/dev/null
   PHOENIX_TEST_DATABASE="$STAND_DATABASE_NAME" MIX_ENV=prod \
   sh -c 'mix --version | grep -q "^Mix 1.18.3 " && mix compile --force >/dev/null && mix release --overwrite >/dev/null')
 stack "$rel" eval 'Dawarich.Release.migrate()'
-stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$PORT")" \
-  sh -c 'echo $$ >"$1"; exec nohup "$2" start' _ "$pidfile" "$rel" >>"$log" 2>&1 &
+stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -b 127.0.0.1 -p "$PORT")" \
+  ruby -e 'Process.daemon(true, true); File.write(ARGV.shift, Process.pid.to_s); exec(*ARGV)' "$pidfile" "$rel" start >>"$log" 2>&1
 
 tries=0
 until [ "$(curl -s -o /dev/null -w '%{http_code}' -m 5 \
@@ -100,7 +103,7 @@ else
 fi
 
 sidekiq_from=$(($(wc -c <"$sidekiq_log") + 1))
-stack nohup bundle exec sidekiq >>"$sidekiq_log" 2>&1 &
+stack ruby -e 'Process.daemon(true, true); File.write(ARGV.shift, Process.pid.to_s); exec(*ARGV)' "$sidekiq_pidfile" bundle exec ruby -e 'require "sidekiq/cli"; Sidekiq.configure_server { |config| config.on(:startup) { RailsCommands::Poller.send(:spawn) } }; cli = Sidekiq::CLI.instance; cli.parse; cli.run' >>"$sidekiq_log" 2>&1
 tries=0
 until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
   tries=$((tries + 1))
@@ -110,3 +113,6 @@ done
 stack bin/rails e2e:reset_and_seed >"$root/log/proxy_stack_seed.log" 2>&1 || { tail -20 "$root/log/proxy_stack_seed.log" >&2; exit 1; }
 [ -z "${EXTRA_SEEDS:-}" ] || "$root/app-phoenix/scripts/proxy_stack.sh" --seed
 echo "BASE_URL=http://127.0.0.1:$PORT"
+if [ "${PROXY_STACK_FOREGROUND:-0}" = 1 ]; then
+  wait
+fi

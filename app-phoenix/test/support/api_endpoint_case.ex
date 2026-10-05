@@ -46,6 +46,14 @@ defmodule Dawarich.ApiEndpointCase do
   end
 
   setup context do
+    if context[:real_stand] do
+      %{port: String.to_integer(System.fetch_env!("RELEASE_STAND_PORT"))}
+    else
+      isolated_endpoint(context)
+    end
+  end
+
+  defp isolated_endpoint(context) do
     upstream = listen()
     Application.put_env(:dawarich, :rails_upstream, {{127, 0, 0, 1}, upstream.port})
 
