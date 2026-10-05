@@ -15,14 +15,18 @@ defmodule Dawarich.Test.ApiGolden do
       else: rails(kase, client, upstream)
   end
 
-  def insert!(table, row, repo \\ Dawarich.Repo) do
+  def insert!(table, rows, repo \\ Dawarich.Repo)
+
+  def insert!(table, row, repo) when is_map(row), do: insert!(table, [row], repo)
+
+  def insert!(table, rows, repo) when is_list(rows) do
     result =
       repo.query!(
-        "INSERT INTO #{table} SELECT * FROM json_populate_record(NULL::#{table}, $1::text::json)",
-        [exact_json(row)]
+        "INSERT INTO #{table} SELECT * FROM json_populate_recordset(NULL::#{table}, $1::text::json)",
+        [exact_json(rows)]
       )
 
-    Dawarich.Test.SeedIds.advance!(repo, table, [row["id"]])
+    Dawarich.Test.SeedIds.advance!(repo, table, Enum.map(rows, & &1["id"]))
     result
   end
 
