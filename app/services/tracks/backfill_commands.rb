@@ -83,7 +83,9 @@ module Tracks::BackfillCommands
       end
     else
       user = User.find_by(id: payload.fetch('user_id'))
-      Tracks::ThrottledBackfillJob.schedule(user) if user
+      Time.use_zone(payload['time_zone'] || Time.zone.name) do
+        Tracks::ThrottledBackfillJob.schedule(user) if user
+      end
     end
   end
 

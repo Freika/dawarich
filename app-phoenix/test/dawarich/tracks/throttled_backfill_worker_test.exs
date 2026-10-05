@@ -25,6 +25,11 @@ defmodule Dawarich.Tracks.ThrottledBackfillWorkerTest do
     rows("UPDATE points SET anomaly = true WHERE id = $1", [anomaly])
     point!(other.id, cursor - 1, 1, 1)
     args = walk(user.id, cursor)
+
+    rows("UPDATE phoenix.track_backfill_walks SET time_zone = 'Berlin' WHERE user_id = $1", [
+      user.id
+    ])
+
     payload = Map.delete(args, "event_id")
     assert ThrottledBackfillWorker.args_from_command(1, payload) == {:ok, payload}
 

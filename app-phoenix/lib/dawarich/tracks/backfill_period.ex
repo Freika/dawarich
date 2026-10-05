@@ -2,6 +2,8 @@ defmodule Dawarich.Tracks.BackfillPeriod do
   @moduledoc false
 
   def payload(repo, user_id, earliest, latest, zone, now) do
+    zone = Dawarich.TimeZoneName.to_iana(zone)
+
     [[from, until]] =
       repo.query!(
         """

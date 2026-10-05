@@ -103,7 +103,7 @@ defmodule Dawarich.Tracks.ThrottledBackfill do
       "user_id" => step.user_id,
       "start_at" => iso(step.selected_start_timestamp),
       "end_at" => iso(step.selected_end_timestamp),
-      "time_zone" => step.time_zone,
+      "time_zone" => Dawarich.TimeZoneName.to_iana(step.time_zone),
       "mode" => "bulk",
       "untracked_only" => true,
       "import_id" => nil,

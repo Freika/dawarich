@@ -22,6 +22,8 @@ defmodule Dawarich.Tracks.BackfillWorkerTest do
     for {zone, earliest, latest, from, until} <- [
           {"Europe/Berlin", ~U[2026-03-29 12:00:00Z], ~U[2026-03-29 14:00:00Z],
            "2026-03-28T23:00:00.000000Z", "2026-03-29T21:59:59.999999Z"},
+          {"Berlin", ~U[2026-03-29 12:00:00Z], ~U[2026-03-29 14:00:00Z],
+           "2026-03-28T23:00:00.000000Z", "2026-03-29T21:59:59.999999Z"},
           {"Asia/Tokyo", ~U[2026-03-29 12:00:00Z], ~U[2026-03-29 14:00:00Z],
            "2026-03-28T15:00:00.000000Z", "2026-03-29T14:59:59.999999Z"},
           {"Etc/UTC", ~U[2026-04-01 12:00:00Z], @now, "2026-04-01T00:00:00.000000Z",
@@ -50,7 +52,7 @@ defmodule Dawarich.Tracks.BackfillWorkerTest do
                "user_id" => 1,
                "start_at" => from,
                "end_at" => until,
-               "time_zone" => zone,
+               "time_zone" => Dawarich.TimeZoneName.to_iana(zone),
                "mode" => "bulk",
                "untracked_only" => true,
                "import_id" => nil,
