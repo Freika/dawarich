@@ -39,10 +39,11 @@ const liveSocket = new LiveSocket("/phoenix/live", Socket, {
   dom: {
     onBeforeElUpdated(fromEl, toEl) {
       if (
-        fromEl.matches(".navbar-end details") &&
-        toEl.matches("details") &&
-        fromEl.querySelector('a[href="/users/sign_out"]') &&
-        toEl.querySelector('a[href="/users/sign_out"]')
+        (fromEl.matches("dialog") && toEl.matches("dialog")) ||
+        (fromEl.matches(".navbar-end details") &&
+          toEl.matches("details") &&
+          fromEl.querySelector('a[href="/users/sign_out"]') &&
+          toEl.querySelector('a[href="/users/sign_out"]'))
       ) {
         toEl.toggleAttribute("open", fromEl.hasAttribute("open"))
       }

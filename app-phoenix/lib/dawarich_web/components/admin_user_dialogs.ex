@@ -9,7 +9,7 @@ defmodule DawarichWeb.AdminUserDialogs do
 
   def dialogs(assigns) do
     ~H"""
-    <dialog id="create_user" class="modal">
+    <dialog id="create_user" class="modal" phx-update="ignore">
       <div class="modal-box">
         <h2 class="text-2xl font-bold">
           {t(@locale, "settings.users.index.create_a_new_user", %{})}
@@ -71,6 +71,7 @@ defmodule DawarichWeb.AdminUserDialogs do
       :if={user.id != @actor.id}
       id={"delete_user_#{user.id}"}
       class="modal"
+      phx-update="ignore"
     >
       <div class="modal-box">
         <h3 class="text-lg font-bold">{t(@locale, "settings.users.index.delete_user", %{})}</h3>

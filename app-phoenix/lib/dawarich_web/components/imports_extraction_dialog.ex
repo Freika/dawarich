@@ -10,7 +10,7 @@ defmodule DawarichWeb.ImportsExtractionDialog do
 
   def dialog(assigns) do
     ~H"""
-    <dialog id={"extraction-dialog-#{@id}"} class="modal">
+    <dialog id={"extraction-dialog-#{@id}"} class="modal" phx-update="ignore">
       <div class="modal-box max-w-xl">
         <h3 class="font-bold text-lg">{text(@locale, "extract_additional_data_from_this_import")}</h3>
         <div class="prose prose-sm mt-4 text-base-content/80">
