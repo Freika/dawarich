@@ -15,13 +15,17 @@ defmodule Dawarich.Digests.JobsCorpusTest do
   alias Dawarich.Mail.ExploreFeatures
   alias Dawarich.Stats.{Accounts, CalculateMonth}
 
-  test "native digest job observable values match every Rails b2 corpus case" do
-    data = corpus()
-    assert Enum.any?(data["workers"], &(&1["profile"] == "year_boundary"))
-    start_oban(__MODULE__)
+  @corpus __DIR__
+          |> Path.join("../../fixtures/a12d1b2/jobs.json")
+          |> File.read!()
+          |> Jason.decode!()
+  true = Enum.any?(@corpus["workers"], &(&1["profile"] == "year_boundary"))
 
-    for row <- data["schedulers"] do
-      reset!(ScratchRepo)
+  for row <- @corpus["schedulers"] do
+    @row row
+    test "native digest scheduler matches Rails b2 corpus: #{row["id"]}" do
+      row = @row
+      start_oban(__MODULE__)
       F.load_scheduler!(ScratchRepo, row)
       kind = row["kind"]
       worker = if kind == "monthly", do: MonthlyScheduleWorker, else: YearlyScheduleWorker
@@ -49,9 +53,13 @@ defmodule Dawarich.Digests.JobsCorpusTest do
         assert is_number(payload["run_at"])
       end
     end
+  end
 
-    for row <- data["workers"] do
-      reset!(ScratchRepo)
+  for row <- @corpus["workers"] do
+    @row row
+    test "native digest worker matches Rails b2 corpus: #{row["id"]}" do
+      row = @row
+      start_oban(__MODULE__)
       kase = Map.merge(%{"legacy_duplicates" => false, "null_segment_mode" => false}, row)
       F.load!(ScratchRepo, kase)
       args = F.job_args(kase)
@@ -199,8 +207,4 @@ defmodule Dawarich.Digests.JobsCorpusTest do
     assert String.trim(stack) != ""
     prefix
   end
-
-  defp corpus,
-    do:
-      __DIR__ |> Path.join("../../fixtures/a12d1b2/jobs.json") |> File.read!() |> Jason.decode!()
 end
