@@ -16,6 +16,14 @@ defmodule Dawarich.Release do
 
   def migrate_oban, do: with_repos(&install_oban/1)
 
+  def seed(opts \\ []) do
+    case Dawarich.Release.Lifecycle.mode(Keyword.get(opts, :env, System.get_env())) do
+      {:ok, :native} -> with_repos(&Dawarich.Release.Native.seed(&1, opts), opts)
+      {:ok, :rails} -> raise Dawarich.CLI.Migrate.describe(:lifecycle_disabled)
+      {:error, reason} -> raise Dawarich.CLI.Migrate.describe(reason)
+    end
+  end
+
   def readiness(opts \\ []) do
     mode = Dawarich.Release.Lifecycle.mode(Keyword.get(opts, :env, System.get_env()))
 
@@ -62,7 +70,7 @@ defmodule Dawarich.Release do
     :ok
   end
 
-  defp map_repos(fun, opts \\ []) do
+  defp map_repos(fun, opts) do
     load_app()
 
     repos = if opts[:repo], do: [opts[:repo]], else: Application.fetch_env!(@app, :ecto_repos)

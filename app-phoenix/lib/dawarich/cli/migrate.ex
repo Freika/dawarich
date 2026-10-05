@@ -100,5 +100,11 @@ defmodule Dawarich.CLI.Migrate do
   def describe(:migration_lock_busy),
     do: "refused: another migrator holds the database advisory lock"
 
+  def describe(:lifecycle_disabled),
+    do: "refused: native lifecycle is disabled; enable DAWARICH_PHOENIX_LIFECYCLE=true"
+
+  def describe(:seeds_require_current),
+    do: "refused: seeds require current public and private schemas; run dawarich migrate"
+
   def describe(error) when is_exception(error), do: "refused: #{Exception.message(error)}"
 end

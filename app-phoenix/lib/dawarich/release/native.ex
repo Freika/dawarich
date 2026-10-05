@@ -6,6 +6,29 @@ defmodule Dawarich.Release.Native do
 
   def ready?(repo, opts), do: ReleaseMigrator.status(repo, opts) == {:ok, :current}
 
+  def seed(repo, opts) do
+    opts = Keyword.put(opts, :rails_lock_check, false)
+    require_current!(repo, opts)
+
+    with_lock(repo, opts, fn ->
+      require_current!(repo, opts)
+
+      Lease.with_lease(repo, opts, fn lease ->
+        fence!(repo, lease)
+        require_current!(repo, opts)
+        Dawarich.Seeds.run(repo, Keyword.put(opts, :lease, lease))
+        fence!(repo, lease)
+        :ok
+      end)
+      |> result!()
+    end)
+  end
+
+  defp require_current!(repo, opts) do
+    unless classify!(repo, opts) == :current and Release.readiness(opts) == :ready,
+      do: refuse!(:seeds_require_current)
+  end
+
   def migrate(repo, opts) do
     opts = Keyword.put(opts, :rails_lock_check, false)
     classify!(repo, opts)

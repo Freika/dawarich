@@ -250,6 +250,41 @@ defmodule Dawarich.Release.NativeTest do
     assert readiness_snapshot() == before
   end
 
+  test "Release migrate versus seeds share exclusion" do
+    parent = self()
+    c = Dawarich.A12hSeeds.case!("A12h_fresh")
+    priv = Dawarich.A12hSeeds.country_priv!(c["sources"]["countries"])
+    asset = Path.join(priv, "regions.json")
+    File.write!(asset, Jason.encode!(c["sources"]["regions"]))
+
+    command = fn _ ->
+      send(parent, {:copy_stage, self()})
+      receive do: (:continue -> {:ok, nil})
+    end
+
+    baseline =
+      ReleaseMigrator.baseline_sql() <> "DELETE FROM public.schema_migrations; " <> baseline()
+
+    migrate = Task.async(fn -> Release.migrate(opts(baseline: baseline, command: command)) end)
+    assert_receive {:copy_stage, caller}, 5_000
+
+    seeds =
+      Task.async(fn ->
+        Release.seed(opts(lease_sleep: lock_waiter(parent), priv_dir: priv, asset: asset))
+      end)
+
+    assert_receive {:lock_waiting, waiter}, 5_000
+    assert ScratchRepo.query!("SELECT count(*) FROM users").rows == [[0]]
+    send(caller, :continue)
+    assert Task.await(migrate) == :ok
+    send(waiter, :continue)
+    assert Task.await(seeds) == :ok
+    assert ScratchRepo.query!("SELECT count(*) FROM users").rows == [[1]]
+    assert ScratchRepo.query!("SELECT count(*) FROM tags").rows == [[4]]
+    assert ScratchRepo.query!("SELECT enabled FROM phoenix.registration_setting").rows == [[true]]
+    assert ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[1]]
+  end
+
   defp readiness_snapshot do
     for table <- [
           "public.schema_migrations",
