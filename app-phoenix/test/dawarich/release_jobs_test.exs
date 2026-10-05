@@ -9,6 +9,8 @@ defmodule Dawarich.ReleaseJobsTest do
   @v1 %{"version" => 1}
   @arg_keys ~w(version operation_id cursor user_id)
   @command_payloads %{
+    "DataMigrations::AddPointDimensionColumnsJob" => %{},
+    "DataMigrations::DropLegacyLatLonJob" => %{},
     "DataMigrations::BackfillPointDimensionsJob" => %{
       "phase" => "dimensions",
       "start_id" => nil,
@@ -47,6 +49,24 @@ defmodule Dawarich.ReleaseJobsTest do
      }}
   ]
   @fixed_strings ~w(dimensions country users missing)
+
+  test "A12h DDL vectors decode to executable workers and reject extras" do
+    for {class, worker} <- [
+          {"DataMigrations::AddPointDimensionColumnsJob", Ops.AddPointDimensions},
+          {"DataMigrations::DropLegacyLatLonJob", Ops.DropLegacyCoordinates}
+        ] do
+      assert class in ReleaseJobs.classes()
+      assert ReleaseJobs.decode(class, []) == {:ok, worker, @v1}
+      assert worker.args_from_command(1, %{}) == {:ok, @v1}
+      assert worker.new(@v1).valid?
+      assert Ecto.Changeset.get_field(worker.new(@v1), :max_attempts) == 288
+      assert worker.backoff(%Oban.Job{attempt: 2}) == 300
+
+      for extras <- [[1], [%{}], [nil]] do
+        assert ReleaseJobs.decode(class, extras) == {:error, :invalid_arguments}
+      end
+    end
+  end
 
   test "keeps executable anomaly and tracker classes enumerated with invalid-argument errors" do
     start_oban(:release_recalculation_classes)
@@ -170,9 +190,7 @@ defmodule Dawarich.ReleaseJobsTest do
           do: {class, outcome}
 
     assert Enum.sort(deferred) == [
-             {"DataMigrations::AddPointDimensionColumnsJob", {:deferred, :a12h, @v1}},
              {"DataMigrations::BackfillAchievementsJob", {:deferred, :a12d2, @v1}},
-             {"DataMigrations::DropLegacyLatLonJob", {:deferred, :a12h, @v1}},
              {"TransportationModes::ImportBackfillJob",
               {:deferred, :a7, %{"version" => 1, "import_id" => 42}}}
            ]

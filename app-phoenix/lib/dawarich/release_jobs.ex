@@ -5,14 +5,13 @@ defmodule Dawarich.ReleaseJobs do
 
   @families ~w(DataMigrations::BackfillFamiliesForFamilyPlanJob DataMigrations::BackfillFamilyMemberEntitlementsJob)
   @deferred %{
-    "DataMigrations::AddPointDimensionColumnsJob" => :a12h,
-    "DataMigrations::DropLegacyLatLonJob" => :a12h,
     "DataMigrations::BackfillAchievementsJob" => :a12d2
   }
   @a12 Map.keys(@deferred)
   @classes @families ++
              @a12 ++
-             ~w(DataMigrations::BackfillPointDimensionsJob DataMigrations::BackfillPointCountryIdJob
+             ~w(DataMigrations::AddPointDimensionColumnsJob DataMigrations::DropLegacyLatLonJob
+                DataMigrations::BackfillPointDimensionsJob DataMigrations::BackfillPointCountryIdJob
                 DataMigrations::FixRouteOpacityJob DataMigrations::BackfillOnboardingCompletedJob
                 DataMigrations::DestroyOrphanedTracksJob Tracks::DeduplicationJob
                 DataMigrations::BackfillPlacesUserIdJob DataMigrations::BackfillPlaceNameLocksJob
@@ -23,6 +22,9 @@ defmodule Dawarich.ReleaseJobs do
                 DataMigrations::RecalculateAnomaliesJob DataMigrations::RecalculatePerTrackerTracksJob)
 
   def classes, do: @classes
+
+  def decode("DataMigrations::AddPointDimensionColumnsJob", []), do: once(Ops.AddPointDimensions)
+  def decode("DataMigrations::DropLegacyLatLonJob", []), do: once(Ops.DropLegacyCoordinates)
 
   def decode("DataMigrations::RecalculateAnomaliesJob", []),
     do: recalculation(Ops.Anomalies, %{"limit" => 2})
