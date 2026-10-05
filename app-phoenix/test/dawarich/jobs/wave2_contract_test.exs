@@ -25,6 +25,7 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
         RailsTree.read("app/services/job_commands.rb") <>
           RailsTree.read("app/services/release_commands.rb") <>
           hd(String.split(RailsTree.read("app/services/stats/commands.rb"), "HANDLERS = {")) <>
+          hd(String.split(RailsTree.read("app/services/cache/commands.rb"), "HANDLERS = {")) <>
           hd(
             String.split(
               RailsTree.read("app/services/users/recalculation_commands.rb"),
