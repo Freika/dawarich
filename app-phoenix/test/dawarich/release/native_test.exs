@@ -142,6 +142,55 @@ defmodule Dawarich.Release.NativeTest do
     refute advisory_held?()
   end
 
+  test "backend loss stops native writes before Rails can migrate under the released key" do
+    parent = self()
+
+    {native, ref} =
+      spawn_monitor(fn ->
+        Process.put(:native_gate, fn ->
+          send(parent, {:native_writing, self()})
+          receive do: (:continue -> :ok)
+        end)
+
+        Release.migrate(opts())
+      end)
+
+    on_exit(fn -> Process.exit(native, :kill) end)
+    assert_receive {:native_writing, ^native}, 5_000
+
+    [[backend]] =
+      ScratchRepo.query!(
+        "SELECT pid FROM pg_locks WHERE locktype='advisory' AND objsubid=1 AND database=(SELECT oid FROM pg_database WHERE datname=current_database())"
+      ).rows
+
+    assert ScratchRepo.query!("SELECT pg_terminate_backend($1)", [backend]).rows == [[true]]
+    assert_receive {:DOWN, ^ref, :process, ^native, reason}, 5_000
+    refute reason == :normal
+
+    ScratchRepo.checkout(fn ->
+      [[database]] = ScratchRepo.query!("SELECT current_database()::text").rows
+      key = 2_053_462_845 * :erlang.crc32(database)
+      assert ScratchRepo.query!("SELECT pg_try_advisory_lock($1)", [key]).rows == [[true]]
+
+      try do
+        send(native, :continue)
+        assert ScratchRepo.query!("SELECT id FROM native_items").rows == []
+        assert ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[0]]
+
+        assert ScratchRepo.query!("SELECT count(*) FROM phoenix.registration_setting").rows == [
+                 [0]
+               ]
+
+        refute ScratchRepo.query!(
+                 "SELECT EXISTS(SELECT 1 FROM schema_migrations WHERE version=$1)",
+                 ["20991005000001"]
+               ).rows == [[true]]
+      after
+        assert ScratchRepo.query!("SELECT pg_advisory_unlock($1)", [key]).rows == [[true]]
+      end
+    end)
+  end
+
   test "native pending data refusal releases the lock without registration writes" do
     assert_raise RuntimeError, ~r/pending data/, fn ->
       Release.migrate(opts(releases: [Probe, Pending]))

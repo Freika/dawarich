@@ -80,7 +80,7 @@ defmodule Dawarich.Release.Native do
           :parameters
         ])
 
-      {:ok, conn} = Postgrex.start_link(config)
+      {:ok, conn} = Postgrex.start_link(config ++ [backoff_type: :stop, max_restarts: 0])
 
       try do
         %{rows: [[database]]} = Postgrex.query!(conn, "SELECT current_database()::text", [])
@@ -95,10 +95,15 @@ defmodule Dawarich.Release.Native do
         try do
           fun.()
         after
-          Postgrex.query!(conn, "SELECT pg_advisory_unlock($1), pg_advisory_unlock($1)", [key])
+          unless Postgrex.query!(
+                   conn,
+                   "SELECT pg_advisory_unlock($1), pg_advisory_unlock($1)",
+                   [key]
+                 ).rows == [[true, true]],
+                 do: refuse!(:migration_lock_lost)
         end
       after
-        GenServer.stop(conn)
+        if Process.alive?(conn), do: GenServer.stop(conn)
       end
     else
       fun.()
