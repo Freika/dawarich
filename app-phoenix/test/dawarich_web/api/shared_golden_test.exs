@@ -29,10 +29,7 @@ defmodule DawarichWeb.Api.SharedGoldenTest do
     test "golden #{kase["name"]}", ctx do
       for {name, value} <- @kase["env"], do: System.put_env(name, value)
 
-      for [table, seeds] <- ctx.fixture["setups"][@kase["setup"]], row <- seeds do
-        assert table in @tables
-        ApiGolden.insert!(table, row)
-      end
+      seed!(ctx.fixture["setups"][@kase["setup"]])
 
       for {name, value} <- ctx.fixture["sequences"],
           do: Repo.query!("SELECT setval($1::text::regclass,$2,false)", [name, value])
@@ -51,6 +48,49 @@ defmodule DawarichWeb.Api.SharedGoldenTest do
         assert Dawarich.RailsCache.get(key) == :miss
         assert Dawarich.Redis.cache_command(["TTL", key]) == {:ok, -2}
       end
+    end
+  end
+
+  test "pinned fixture batches advance each table sequence once", %{fixture: fixture} do
+    kase = Enum.find(fixture["cases"], &(&1["name"] == "points_10001"))
+
+    setup =
+      for [table, seeds] <- fixture["setups"][kase["setup"]], do: [table, Enum.take(seeds, 3)]
+
+    handler = {__MODULE__, self()}
+    :ok = :telemetry.attach(handler, [:dawarich, :repo, :query], &__MODULE__.query/4, self())
+    on_exit(fn -> :telemetry.detach(handler) end)
+
+    seed!(setup)
+
+    queries = queries()
+    tables = Enum.count(setup, fn [_, seeds] -> seeds != [] end)
+    pinned = Enum.count(setup, fn [_, seeds] -> Enum.any?(seeds, &is_integer(&1["id"])) end)
+    assert Enum.count(queries, &String.starts_with?(&1, "SELECT setval")) == pinned
+    assert Enum.count(queries, &String.starts_with?(&1, "INSERT INTO")) == tables
+
+    [_, points] = Enum.find(setup, fn [table, _] -> table == "points" end)
+    [[id]] = Repo.query!("SELECT nextval(pg_get_serial_sequence('points', 'id'))").rows
+    assert id > Enum.max(Enum.map(points, & &1["id"]))
+    Dawarich.Test.SeedIds.advance!(Repo, "points", [1])
+    assert [[next]] = Repo.query!("SELECT nextval(pg_get_serial_sequence('points', 'id'))").rows
+    assert next > id
+  end
+
+  def query(_event, _measurements, %{query: query}, parent), do: send(parent, {:query, query})
+
+  defp queries do
+    receive do
+      {:query, query} -> [query | queries()]
+    after
+      0 -> []
+    end
+  end
+
+  defp seed!(setup) do
+    for [table, seeds] <- setup, seeds != [] do
+      assert table in @tables
+      ApiGolden.insert!(table, seeds)
     end
   end
 

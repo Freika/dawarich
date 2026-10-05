@@ -318,15 +318,36 @@ defmodule DawarichWeb.Api.IngestEndpointTest do
     end
 
     test "APPLICATION_PROTOCOL=https redirects a plain request as Rails' ForceSSL does",
-         %{port: port} do
+         %{port: port, upstream: upstream} do
+      previous = System.get_env("RAILS_ENV")
+      previous_protocol = System.get_env("APPLICATION_PROTOCOL")
+      System.put_env("RAILS_ENV", "production")
       System.put_env("APPLICATION_PROTOCOL", "https")
-      on_exit(fn -> System.delete_env("APPLICATION_PROTOCOL") end)
+
+      on_exit(fn ->
+        if previous_protocol,
+          do: System.put_env("APPLICATION_PROTOCOL", previous_protocol),
+          else: System.delete_env("APPLICATION_PROTOCOL")
+
+        if previous,
+          do: System.put_env("RAILS_ENV", previous),
+          else: System.delete_env("RAILS_ENV")
+      end)
+
+      assert DawarichWeb.ForceSSL.enabled?()
 
       client = post(port, "/api/v1/points")
       assert {308, headers, ""} = read_response(client)
       assert [location] = values(headers, "location")
       assert location =~ ~r{\Ahttps://[^/]+/api/v1/points\z}
       assert [[0]] = Repo.query!("SELECT count(*) FROM points").rows
+      assert {:error, :timeout} = :gen_tcp.accept(upstream.listen, 0)
+
+      closed_client = connect(upstream.port)
+      :ok = upstream |> accept() |> :gen_tcp.close()
+
+      assert %MatchError{term: {:error, :closed}} =
+               assert_raise(MatchError, fn -> read_response(closed_client) end)
     end
   end
 end
