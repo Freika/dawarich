@@ -186,6 +186,14 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
     end
   end
 
+  it 'isolates golden map seeds from orphaned point sources' do
+    map_insert('point_sources', id: 850_999, digest: 'e' * 32,
+                                created_at: ApiMapGoldenOracle::STAMP, updated_at: ApiMapGoldenOracle::STAMP)
+    map_seed(seed: :none, user: {})
+
+    expect(PointSource.exists?(850_999)).to be(false)
+  end
+
   def map_exact_json(value, depth = 0)
     pad = '  ' * (depth + 1)
     case value
@@ -299,6 +307,7 @@ RSpec.describe 'Phoenix fixture: golden map read API requests', type: :request d
 
   def map_seed(kase)
     oracle = ApiMapGoldenOracle
+    FixtureCleanup.delete!(oracle::TABLES)
     user = { status: 1, timezone: 'UTC', active_until: nil }.merge(kase[:user])
     stamps = { created_at: oracle::STAMP, updated_at: oracle::STAMP }
     map_insert('users', id: oracle::OWNER, email: 'map-owner@example.invalid', api_key: oracle::KEY,

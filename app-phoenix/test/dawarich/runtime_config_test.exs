@@ -69,7 +69,7 @@ defmodule Dawarich.RuntimeConfigTest do
     assert repo[:pool_size] == 25
     assert oban[:peer] == Oban.Peers.Database
     assert oban[:stager] == {Oban.Stager, []}
-    assert oban[:pruner] == [max_age: {1, :day}]
+    assert oban[:pruner] == false
     assert oban[:lifeline] == [rescue_after: {60, :minute}]
     assert oban[:shutdown_grace_period] == 12_000
   end

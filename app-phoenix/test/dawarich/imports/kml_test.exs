@@ -4,6 +4,38 @@ defmodule Dawarich.Imports.KmlTest do
   alias Dawarich.Test.{NormalFormats, NormalFormatsAssertions}
   @dir Path.expand("../../fixtures/imports/formats", __DIR__)
 
+  @tag :tmp_dir
+  test "small KML captures stay inline and large captures spill without losing events", %{
+    tmp_dir: dir
+  } do
+    alias Dawarich.Imports.Kml.Handler
+    alias Dawarich.Imports.JsonStream.Spool
+
+    Handler.with_state(dir, fn state ->
+      state = Handler.event({:startElement, [], ~c"Placemark", {[], []}, []}, nil, state)
+      state = Handler.event({:characters, ~c"small"}, nil, state)
+      state = Handler.event({:endElement, [], [], []}, nil, state)
+      assert Path.wildcard(Path.join(dir, "object-*")) == []
+
+      state = Handler.event({:startElement, [], ~c"Placemark", {[], []}, []}, nil, state)
+
+      state =
+        Handler.event(
+          {:characters, String.to_charlist(String.duplicate("x", 65_537))},
+          nil,
+          state
+        )
+
+      Handler.event({:endElement, [], [], []}, nil, state)
+    end)
+
+    [small, large] = Enum.to_list(Spool.stream(Path.join(dir, "placemark"), [:raw]))
+    assert [{:start, _}, {:text, _, "small"}, {:end, _}] = small
+    assert is_binary(large)
+    assert [{:start, _}, {:text, _, text}, {:end, _}] = Enum.to_list(Spool.stream(large, [:raw]))
+    assert text == String.duplicate("x", 65_537)
+  end
+
   test "kml interpolation namespaces and track pairing equal Rails" do
     for path <- Path.wildcard(Path.join(@dir, "kml_import_*.json")),
         not String.ends_with?(path, ".input.json"),

@@ -18,7 +18,7 @@ defmodule DawarichWeb.CableProxyTest do
     {"X-Dawarich-Remote-Addr", "6.6.6.6"}
   ]
 
-  @key "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+  @key "Sec-WebSocket-Key: #{Base.encode64("the sample nonce")}\r\n"
 
   defp serve(upstream_port) do
     bandit =
@@ -45,7 +45,7 @@ defmodule DawarichWeb.CableProxyTest do
     assert_receive {:cable_request, "/cable", "share_id=7", upstream}
     assert {"origin", "https://dawarich.example"} in upstream
     assert {"cookie", "other_app=Gr\xC3\xBC\xC3\x9Fe; _dawarich_session=abc"} in upstream
-    assert {"sec-websocket-key", "dGhlIHNhbXBsZSBub25jZQ=="} in upstream
+    assert {"sec-websocket-key", Base.encode64("the sample nonce")} in upstream
 
     assert for(
              {name, _} <- upstream,
@@ -65,14 +65,16 @@ defmodule DawarichWeb.CableProxyTest do
     port = proxy(upstream.port)
     client = connect(port)
 
-    send_raw(client, [
-      "GET /cable HTTP/1.1\r\nHost: a\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\n",
-      @key,
-      "Connection: Upgrade, X-Forwarded-For, X-Forwarded-Proto, Forwarded, Host\r\n",
-      "X-Forwarded-For: 203.0.113.9\r\nX-Forwarded-Proto: https\r\nForwarded: for=198.51.100.1\r\n\r\n"
-    ])
+    {puma, :ok} =
+      accept_on_request(upstream, fn ->
+        send_raw(client, [
+          "GET /cable HTTP/1.1\r\nHost: a\r\nUpgrade: websocket\r\nSec-WebSocket-Version: 13\r\n",
+          @key,
+          "Connection: Upgrade, X-Forwarded-For, X-Forwarded-Proto, Forwarded, Host\r\n",
+          "X-Forwarded-For: 203.0.113.9\r\nX-Forwarded-Proto: https\r\nForwarded: for=198.51.100.1\r\n\r\n"
+        ])
+      end)
 
-    puma = accept(upstream)
     {head, _} = read_head(puma)
 
     assert header(head, "host") == ["a"]
@@ -142,9 +144,10 @@ defmodule DawarichWeb.CableProxyTest do
   test "a frame Puma writes together with its 101 reaches the client" do
     upstream = listen()
     port = proxy(upstream.port)
-    socket = ws_request(port, "/cable", @client_headers)
 
-    puma = accept(upstream)
+    {puma, socket} =
+      accept_on_request(upstream, fn -> ws_request(port, "/cable", @client_headers) end)
+
     {head, _} = read_head(puma)
     key = head |> header("sec-websocket-key") |> hd()
     accept_key = Base.encode64(:crypto.hash(:sha, key <> "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
@@ -187,9 +190,24 @@ defmodule DawarichWeb.CableProxyTest do
   end
 
   test "Puma going away closes the client with 1011" do
-    {socket, puma, rest} = upgraded(listen())
+    {socket, puma, rest, connection} = upgraded(listen())
+    ref = make_ref()
+    owner = self()
+
+    :ok =
+      :telemetry.attach(
+        ref,
+        [:bandit, :websocket, :stop],
+        fn _, _, _, _ ->
+          if self() == connection, do: send(owner, {ref, :close_sent})
+        end,
+        nil
+      )
+
+    on_exit(fn -> :telemetry.detach(ref) end)
 
     :ok = :gen_tcp.close(puma)
+    receive do: ({^ref, :close_sent} -> :ok)
 
     assert {{:close, <<1011::16>>}, _rest} = ws_recv(socket, rest)
   end
@@ -204,7 +222,7 @@ defmodule DawarichWeb.CableProxyTest do
   end
 
   test "fragmented messages and pings from Puma are relayed, and a close without a code becomes 1000" do
-    {socket, puma, rest} = upgraded(listen())
+    {socket, puma, rest, _connection} = upgraded(listen())
 
     reply(puma, [
       server_frame(1, "wel", 0),
@@ -219,7 +237,7 @@ defmodule DawarichWeb.CableProxyTest do
   end
 
   test "a frame Puma should never send closes the client with 1002" do
-    {socket, puma, rest} = upgraded(listen())
+    {socket, puma, rest, _connection} = upgraded(listen())
 
     reply(puma, <<1::1, 0::3, 1::4, 1::1, 1::7, 0::32, "x">>)
 
@@ -231,8 +249,11 @@ defmodule DawarichWeb.CableProxyTest do
   end
 
   defp upgraded(upstream) do
-    socket = ws_request(proxy(upstream.port), "/cable", @client_headers)
-    puma = accept(upstream)
+    {bandit, port} = serve(upstream.port)
+
+    {puma, socket} =
+      accept_on_request(upstream, fn -> ws_request(port, "/cable", @client_headers) end)
+
     {head, _} = read_head(puma)
     key = head |> header("sec-websocket-key") |> hd()
     accept_key = Base.encode64(:crypto.hash(:sha, key <> "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"))
@@ -243,7 +264,8 @@ defmodule DawarichWeb.CableProxyTest do
     )
 
     {101, _headers, rest} = read_response_head(socket)
-    {socket, puma, rest}
+    {:ok, [connection]} = ThousandIsland.connection_pids(bandit)
+    {socket, puma, rest, connection}
   end
 
   defp masked_recv(socket, acc) do

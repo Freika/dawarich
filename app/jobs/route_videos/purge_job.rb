@@ -13,10 +13,8 @@ class RouteVideos::PurgeJob < ApplicationJob
   OWNERSHIP_KEY = 'cron:route_videos_purge_job'
 
   def perform
-    JobOwnership.with_owner(OWNERSHIP_KEY) do
-      expire_aged_out
-      expire_over_cap
-    end
+    expire_aged_out
+    expire_over_cap
   end
 
   private
@@ -28,14 +26,24 @@ class RouteVideos::PurgeJob < ApplicationJob
     RouteVideo.status_stored
               .with_attached_file
               .where(created_at: ...days.days.ago)
-              .find_each(batch_size: BATCH_SIZE, &:expire!)
+              .find_each(batch_size: BATCH_SIZE) do |video|
+      return :not_owner if expire_owned(video) == :not_owner
+    end
   end
 
   def expire_over_cap
     cap = DawarichSettings.video_max_per_user
     return if cap.zero?
 
-    user_ids_over_cap(cap).each { |user_id| RouteVideo.expire_over_cap(user_id, cap) }
+    user_ids_over_cap(cap).sort.each do |user_id|
+      RouteVideo.status_stored.with_attached_file.where(user_id:).newest_first.offset(cap).each do |video|
+        return :not_owner if expire_owned(video) == :not_owner
+      end
+    end
+  end
+
+  def expire_owned(video)
+    JobOwnership.with_owner(OWNERSHIP_KEY) { video.expire! }
   end
 
   def user_ids_over_cap(cap)

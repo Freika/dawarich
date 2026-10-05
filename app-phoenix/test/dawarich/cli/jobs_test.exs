@@ -36,6 +36,28 @@ defmodule Dawarich.CLI.JobsTest do
              Jason.decode!(out)["gauges"]["oban"]
   end
 
+  test "drain inspection is separately selected redacted and leaves default status and debt intact" do
+    outbox!(command_type: "trips.calculate", payload: %{"private_marker" => "synthetic-private"})
+    before = rows("SELECT event_id,payload,state FROM job_outbox")
+    assert {0, out, ""} = run(~w(jobs drain-status))
+    drain = Jason.decode!(out)
+    assert drain["observation"] == true
+    assert drain["forward"] == "BLOCKED"
+    assert drain["counts"]["pending_outbox"] == 1
+    refute out =~ "synthetic-private"
+    assert rows("SELECT event_id,payload,state FROM job_outbox") == before
+    assert {0, status, ""} = run(~w(jobs status))
+    gauges = Jason.decode!(status)["gauges"]
+    refute Map.has_key?(gauges, "drain")
+    refute Map.has_key?(gauges, "legacy_schedulers")
+    refute Map.has_key?(gauges["outbox"], "pending")
+    refute Map.has_key?(gauges["rails_commands"], "future")
+    assert {1, "", err} = run(~w(jobs drain-status extra))
+    assert err == "dawarich: usage: dawarich jobs drain-status\n"
+    assert {0, unreadable, ""} = run(~w(jobs drain-status), %{repo: BrokenRepo})
+    assert Jason.decode!(unreadable)["forward_reasons"] == ["database_unreadable"]
+  end
+
   test "resume re-enqueues a failed release operation and refuses anything else" do
     start_oban(@oban)
     id = Ecto.UUID.generate()

@@ -3,6 +3,14 @@
 require 'rails_helper'
 
 RSpec.describe 'Integrations::SchedulingCommands' do
+  it 'a cron marker without its source timestamp never invents a current schedule slot' do
+    job = TeslaMate::SyncSchedulingJob.new
+    expect(Integrations::SchedulingCommands.slot(job, 'a12d2_cron')).to be_nil
+    expect(Integrations::SchedulingCommands.slot(job, nil)).to be_nil
+    job.enqueued_at = Time.iso8601('2026-10-25T02:30:00+01:00')
+    expect(Integrations::SchedulingCommands.slot(job, 'a12d2_cron')).to eq(1_792_891_800)
+  end
+
   it 'AirTrail reverse handler enqueues the unchanged import leaf for its source user' do
     user = create(:user, status: :inactive)
     other = create(:user)
