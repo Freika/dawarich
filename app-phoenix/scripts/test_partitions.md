@@ -65,3 +65,26 @@ Pending-import cleanup/purge fixtures use `System.tmp_dir!()`, and the new
 schedule, drain, geocoding, and visit tests use the configured scratch repos.
 The schedule Rails peer test remains excluded by `:rails_parity`; its database
 assertion belongs to the standalone peer protocol rather than this suite.
+
+Verification on `f8638719f` (2026-10-05), through the controller's `slot.sh`:
+
+| Partitions | Seed | Tests | Failures | Wall seconds | Starting load averages |
+| --- | --- | --- | --- | --- | --- |
+| 1 | 404 | 7143 | 1 | 650.47 | 7.88 / 11.24 / 16.16 |
+| 3 | 404 | 7143 | 1 | 290 | 18.41 / 20.83 / 24.73 |
+| 3 | 202 | 7143 | 3 | 440 | 15.57 / 18.20 / 21.80 |
+
+Both three-partition runs completed all summaries with counts
+2118 + 2403 + 2622 = 7143, matching the single-partition baseline.
+Every partition reported the requested seed. Seed 404's observed speedup was
+2.24 times. The controller's session-3 ruling reused the earlier N=1 timing;
+these measurements span sessions and have different host loads.
+
+Both seeds hit the acknowledged `ProcessWorkerTest` localized failure-prefix
+assertion defect. Seed 202 also hit `SecureFileDownloaderTest`'s four-attempt
+assertion (three attempts observed with a 40 ms deadline) and `RailsProxyTest`'s
+Puma request-forwarding test (`RawHTTP.accept/1` socket timeout). Each additional
+test passed three isolated runs with seed 202 and its original partition.
+These results support timing sensitivity, but the two tests are outside the
+brief's explicitly named load exceptions; controller disposition remains
+pending. The runner correctly exited nonzero for both full runs.
