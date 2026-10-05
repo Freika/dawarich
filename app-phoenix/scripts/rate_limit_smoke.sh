@@ -160,7 +160,7 @@ USER nobody
 CMD ["pgbouncer", "/etc/pgbouncer/pgbouncer.ini"]
 EOF
 df -h /System/Volumes/Data
-[ "$(df -k /System/Volumes/Data | awk 'NR == 2 {print $4}')" -ge 15728640 ] || fail "less than 15 GiB free before PgBouncer build"
+[ "$(df -k /System/Volumes/Data | awk 'NR == 2 {print $4}')" -ge "${SMOKE_MIN_BUILD_FREE_KIB:-15728640}" ] || fail "less than required free disk before PgBouncer build"
 build_ec=0
 docker build -q -t a13c-pgbouncer:local "$work/bouncer" >/dev/null || build_ec=$?
 docker builder prune -af
