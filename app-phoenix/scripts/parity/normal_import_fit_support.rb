@@ -1,13 +1,15 @@
 # frozen_string_literal: true
 
+require 'fit4ruby'
+
 module NormalImportFormatsSupport
   module_function
 
   def fit_import_cases(spec)
     base = DIR.join('fit_reader_standard.input.fit')
     flat = DIR.join('fit_reader_flat.input.fit')
-    spec.generate_fit_fixture(base.to_s)
-    spec.generate_flat_record_fit_fixture(flat.to_s)
+    spec.generate_fit_fixture(base.to_s) if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+    spec.generate_flat_record_fit_fixture(flat.to_s) if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
     fields = [[253, 4, 134], [0, 4, 133], [1, 4, 133], [2, 2, 132], [6, 2, 132], [73, 4, 134]]
     definition = [64, 0, 0, 20, fields.size].pack('CCCvC') + fields.flatten.pack('C*')
     values = [1_100_000_000, 626_349_397, 159_925_070, 2563, 3250, 4250]
@@ -84,8 +86,8 @@ module NormalImportFormatsSupport
   def fit_reader_cases(spec)
     base = DIR.join('fit_reader_standard.input.fit')
     flat = DIR.join('fit_reader_flat.input.fit')
-    spec.generate_fit_fixture(base.to_s)
-    spec.generate_flat_record_fit_fixture(flat.to_s)
+    spec.generate_fit_fixture(base.to_s) if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+    spec.generate_flat_record_fit_fixture(flat.to_s) if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
     fields = [[253, 4, 134], [0, 4, 133], [1, 4, 133], [2, 2, 132], [6, 2, 132], [73, 4, 134]]
     little = [64, 0, 0, 20, fields.size].pack('CCCvC') + fields.flatten.pack('C*')
     big = [64, 0, 1, 20, fields.size].pack('CCCnC') + fields.flatten.pack('C*')
@@ -111,14 +113,16 @@ module NormalImportFormatsSupport
     { 'endian' => replacement, 'compressed' => compressed, 'invalid' => invalid,
       'developer' => developer }.each do |name, bytes|
       path = DIR.join("fit_reader_#{name}.input.fit")
-      spec.generate_reader_fit_fixture(path.to_s, base.to_s, bytes)
+      spec.generate_reader_fit_fixture(path.to_s, base.to_s, bytes) if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
       specs << ["fit_reader_#{name}", path]
     end
     sport_definition = [64, 0, 0, 18, 1, 5, 1, 0].pack('CCCvCCCC')
     sport_ids = (0..48).to_a + [53, 62, 64, 76, 77, 254]
     sports = sport_ids.map { |sport| [0, sport].pack('CC') }.join
     path = DIR.join('fit_reader_sports.input.fit')
-    spec.generate_reader_fit_fixture(path.to_s, base.to_s, sport_definition + sports)
+    if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+      spec.generate_reader_fit_fixture(path.to_s, base.to_s, sport_definition + sports)
+    end
     specs << ['fit_reader_sports', path]
     header12 = DIR.join('fit_reader_header12.input.fit')
     source = File.binread(base)
@@ -126,17 +130,17 @@ module NormalImportFormatsSupport
     header = "#{[12, 32, 1012, data.bytesize].pack('CCvV')}.FIT"
     bytes = header + data
     crc = Object.new.extend(Fit4Ruby::CRC16).compute_crc(StringIO.new(bytes), 0, bytes.bytesize)
-    File.binwrite(header12, bytes + [crc].pack('v'))
+    FixtureRecording.verify(header12, bytes + [crc].pack('v'))
     specs << ['fit_reader_header12', header12]
     { 'data_crc' => -1, 'header_crc' => 12 }.each do |name, index|
       path = DIR.join("fit_reader_#{name}.input.fit")
       bytes = File.binread(base)
       bytes.setbyte(index, bytes.getbyte(index) ^ 1)
-      File.binwrite(path, bytes)
+      FixtureRecording.verify(path, bytes)
       specs << ["fit_reader_#{name}", path]
     end
     truncated = DIR.join('fit_reader_truncated.input.fit')
-    File.binwrite(truncated, File.binread(base)[0...-10])
+    FixtureRecording.verify(truncated, File.binread(base)[0...-10])
     specs << ['fit_reader_truncated', truncated]
     specs.map { |name, path| capture_fit_reader(spec, name, path) }
   end
