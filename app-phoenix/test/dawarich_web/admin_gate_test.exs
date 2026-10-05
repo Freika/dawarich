@@ -9,6 +9,7 @@ defmodule DawarichWeb.AdminGateTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    Dawarich.State.put_registration_enabled(Repo, false)
     start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
     original = System.get_env("SELF_HOSTED")
     System.put_env("SELF_HOSTED", "true")

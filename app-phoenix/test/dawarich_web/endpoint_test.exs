@@ -156,6 +156,7 @@ defmodule DawarichWeb.EndpointTest do
   defp a10_actor! do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Dawarich.Repo)
     Ecto.Adapters.SQL.Sandbox.mode(Dawarich.Repo, {:shared, self()})
+    Dawarich.State.put_registration_enabled(Dawarich.Repo, false)
     start_supervised!(hd(Dawarich.Redis.cache_child_specs()))
     original = System.get_env("SELF_HOSTED")
     System.put_env("SELF_HOSTED", "true")

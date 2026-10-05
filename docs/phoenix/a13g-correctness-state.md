@@ -41,6 +41,19 @@ Redis or an environment default. Rails retains its original cache behavior only
 before table presence. Self-hosted registration denial, invitations, Cloud rules,
 admin authorization and existing reader-specific hand-back boundaries remain.
 
+## Main test database setup
+
+The ExUnit helper applies the Phoenix schema migrations to the main Repo before
+switching its sandbox to manual mode, as well as to the scratch repos. This
+includes the nullable registration migration; Oban migrations alone do not bring
+the main test database up to the application's schema.
+
+A10 gate and endpoint fixtures initialize the registration singleton inside their
+sandbox. An absent singleton correctly hands the users page back to Rails.
+The committed account-link overlap fixture initializes registration inside its
+unboxed scope and restores the previous singleton in cleanup, keeping independent
+HTTP connections and committed effects visible without leaking fixture state.
+
 ## Welcome consumption
 
 Both callers derive exactly `trial_welcome:consumed:sha256:` followed by the
