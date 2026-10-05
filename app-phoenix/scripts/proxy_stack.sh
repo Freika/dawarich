@@ -112,3 +112,6 @@ done
 stack bin/rails e2e:reset_and_seed >"$root/log/proxy_stack_seed.log" 2>&1 || { tail -20 "$root/log/proxy_stack_seed.log" >&2; exit 1; }
 [ -z "${EXTRA_SEEDS:-}" ] || "$root/app-phoenix/scripts/proxy_stack.sh" --seed
 echo "BASE_URL=http://127.0.0.1:$PORT"
+if [ "${PROXY_STACK_FOREGROUND:-0}" = 1 ]; then
+  wait
+fi
