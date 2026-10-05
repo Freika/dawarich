@@ -296,6 +296,14 @@ namespace :e2e do
              )
     holder.tags = tags
     holder.save!
+    if ENV['E2E_PROXY_STACK'] == '1'
+      user.tags.find_or_create_by!(name: 'Release adoption fixture') { |tag| tag.demo = true }
+      user.imports.find_or_create_by!(name: 'Release adoption marker', demo: true) do |import|
+        import.source = :geojson
+        import.status = :completed
+        import.skip_background_processing = true
+      end
+    end
     puts "  ↪ tag-holder place ##{holder.id} \"#{holder.name}\" has tags #{holder.reload.tags.map(&:name).inspect}"
   end
 
@@ -333,7 +341,11 @@ namespace :e2e do
     step_seconds = span_seconds / (point_count - 1)
     base_lat = 52.5200
     base_lon = 13.4050
-    step_deg = 0.0005
+    step_deg = if tracker_id == 'e2e-journey-track' && ENV['E2E_PROXY_STACK'] == '1'
+                 0.005
+               else
+                 0.0005
+               end
 
     points = []
     point_count.times do |i|
