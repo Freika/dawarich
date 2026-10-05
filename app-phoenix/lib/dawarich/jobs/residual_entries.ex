@@ -28,6 +28,7 @@ defmodule Dawarich.Jobs.ResidualEntries do
         %{
           key: "cron:" <> key,
           kind: :cron,
+          catch_up: false,
           expression: expression,
           worker: worker,
           claimable: false

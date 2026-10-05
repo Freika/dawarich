@@ -8,7 +8,9 @@ defmodule Dawarich.Jobs.A12d2CorpusTest do
   @now ~U[2026-10-04 12:00:00Z]
   @slot 1_791_115_200
 
-  test "native residual effects match every source corpus projection" do
+  setup :prepare_corpus
+
+  defp prepare_corpus(%{corpus_case: true}) do
     if rows("SELECT EXISTS(SELECT 1 FROM places)") == [[true]] do
       Dawarich.ScratchCase.recreate_public!(ScratchRepo)
       Dawarich.JobsCase.reset!(ScratchRepo)
@@ -29,30 +31,37 @@ defmodule Dawarich.Jobs.A12d2CorpusTest do
         else: System.delete_env("SELF_HOSTED")
     end)
 
-    corpus = Jason.decode!(File.read!("test/fixtures/a12d2/jobs.json"))
+    :ok
+  end
 
-    count =
-      for {name, entry} <- corpus["classes"], row <- entry["cases"] do
-        Dawarich.JobsCase.reset!(ScratchRepo)
-        clean_corpus_places()
-        System.put_env("SELF_HOSTED", "false")
-        Dawarich.Geocoding.HookRepo.clear_hook()
-        actual = native_projection(name, row)
-        expected = source_projection(name, row)
+  defp prepare_corpus(_), do: :ok
 
-        differing = Enum.filter(Map.keys(expected), &(actual[&1] != expected[&1]))
+  @corpus Jason.decode!(File.read!("test/fixtures/a12d2/jobs.json"))
+  126 = Enum.sum(for {_, entry} <- @corpus["classes"], do: length(entry["cases"]))
 
-        assert actual == expected,
-               "#{name}/#{row["id"]}: #{inspect(Map.take(actual, differing), limit: 15)} != #{inspect(Map.take(expected, differing), limit: 15)}"
+  for {name, entry} <- @corpus["classes"], row <- entry["cases"] do
+    @name name
+    @row row
+    @tag :corpus_case
+    test "native residual effects match source corpus: #{name}/#{row["id"]}" do
+      name = @name
+      row = @row
+      clean_corpus_places()
+      System.put_env("SELF_HOSTED", "false")
+      Dawarich.Geocoding.HookRepo.clear_hook()
+      actual = native_projection(name, row)
+      expected = source_projection(name, row)
 
-        1
-      end
+      differing = Enum.filter(Map.keys(expected), &(actual[&1] != expected[&1]))
 
-    assert Enum.sum(count) == 126
+      assert actual == expected,
+             "#{name}/#{row["id"]}: #{inspect(Map.take(actual, differing), limit: 15)} != #{inspect(Map.take(expected, differing), limit: 15)}"
+    end
   end
 
   defp clean_corpus_places do
     ids = Enum.to_list(49000..50999) ++ [48201, 48202, 48203]
+    rows("DELETE FROM visits WHERE place_id=ANY($1)", [ids])
     rows("DELETE FROM place_visits WHERE place_id=ANY($1)", [ids])
     rows("DELETE FROM taggings WHERE taggable_type='Place' AND taggable_id=ANY($1)", [ids])
     rows("DELETE FROM places WHERE id=ANY($1)", [ids])

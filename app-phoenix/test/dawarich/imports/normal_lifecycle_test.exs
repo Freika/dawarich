@@ -182,7 +182,11 @@ defmodule Dawarich.Imports.NormalLifecycleTest do
         assert [[title, content]] = rows("SELECT title,content FROM notifications")
         [expected_title, expected_content, _] = hd(c.expected["notifications"])
         assert title == expected_title
-        assert String.starts_with?(content, hd(String.split(expected_content, "/Users/")))
+
+        assert String.starts_with?(
+                 content,
+                 hd(Regex.split(~r/(?:Stacktrace|Backtrace): /i, expected_content))
+               )
       else
         assert [] = rows("SELECT id FROM imports WHERE id=$1", [c.import.id])
       end

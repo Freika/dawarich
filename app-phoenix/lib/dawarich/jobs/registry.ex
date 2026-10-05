@@ -11,6 +11,7 @@ defmodule Dawarich.Jobs.Registry do
     %{
       key: Dawarich.RouteVideos.PurgeWorker.key(),
       kind: :cron,
+      catch_up: false,
       expression: "45 3 * * *",
       worker: Dawarich.RouteVideos.PurgeWorker,
       claimable: false
@@ -42,6 +43,7 @@ defmodule Dawarich.Jobs.Registry do
     %{
       key: "cron:app_version_checking_job",
       kind: :cron,
+      catch_up: false,
       expression: "0 */6 * * *",
       worker: Dawarich.AppVersion.CheckWorker,
       claimable: false
@@ -61,6 +63,7 @@ defmodule Dawarich.Jobs.Registry do
     %{
       key: Dawarich.Families.InvitationCleanupWorker.key(),
       kind: :cron,
+      catch_up: false,
       expression: "30 2 * * *",
       worker: Dawarich.Families.InvitationCleanupWorker,
       claimable: false
@@ -68,6 +71,7 @@ defmodule Dawarich.Jobs.Registry do
     %{
       key: Dawarich.Families.LocationRequestExpiryWorker.key(),
       kind: :cron,
+      catch_up: false,
       expression: "30 * * * *",
       worker: Dawarich.Families.LocationRequestExpiryWorker,
       claimable: false
@@ -75,6 +79,7 @@ defmodule Dawarich.Jobs.Registry do
     %{
       key: Dawarich.Users.PointsCounterCorrectionWorker.key(),
       kind: :cron,
+      catch_up: false,
       expression: "0 */6 * * *",
       worker: Dawarich.Users.PointsCounterCorrectionWorker,
       claimable: false
@@ -124,6 +129,7 @@ defmodule Dawarich.Jobs.Registry do
     %{
       key: Dawarich.Lite.ArchivalWarningWorker.key(),
       kind: :cron,
+      catch_up: false,
       expression: "0 3 * * *",
       worker: Dawarich.Lite.ArchivalWarningWorker,
       claimable: false
@@ -179,6 +185,7 @@ defmodule Dawarich.Jobs.Registry do
     %{
       key: "cron:daily_track_generation_job",
       kind: :cron,
+      catch_up: false,
       expression: "0 */12 * * *",
       worker: Dawarich.Tracks.DailyWorker,
       claimable: false
@@ -228,6 +235,7 @@ defmodule Dawarich.Jobs.Registry do
     %{
       key: Dawarich.Stats.ToponymsRefreshWorker.key(),
       kind: :cron,
+      catch_up: false,
       expression: "*/5 * * * *",
       worker: Dawarich.Stats.ToponymsRefreshWorker,
       claimable: false
@@ -235,6 +243,7 @@ defmodule Dawarich.Jobs.Registry do
     %{
       key: Dawarich.Stats.BulkSweepWorker.key(),
       kind: :cron,
+      catch_up: false,
       expression: "0 */1 * * *",
       worker: Dawarich.Stats.BulkSweepWorker,
       claimable: false
@@ -249,7 +258,8 @@ defmodule Dawarich.Jobs.Registry do
              Dawarich.Digests.JobEntries.entries() ++
              Dawarich.Mail.ResidualEntries.entries() ++
              Dawarich.Jobs.CacheEntries.entries() ++
-             Dawarich.Jobs.ResidualEntries.entries()
+             Dawarich.Jobs.ResidualEntries.entries() ++
+             Dawarich.Jobs.ScheduleEntries.entries()
   @native_crontab [{"17 * * * *", Dawarich.State.PurgeWorker}]
 
   def entries, do: @entries

@@ -4,11 +4,18 @@ defmodule Dawarich.RailsJobOwnersTest do
   alias Dawarich.{RailsJobOwners, RailsTree, ReleaseJobs}
   alias Dawarich.Jobs.Registry
 
-  test "cache classes map to preheat owners or retire without a cleaning worker" do
+  test "coexistence cache and boot jobs remain explicit drain blockers rather than claimed native schedules" do
     owners = RailsJobOwners.owners()
-    assert owners["Cache::CleaningJob"] == :retire
-    assert owners["Cache::PreheatingJob"] == {:oban, ["cron:cache_preheating_job"]}
-    assert owners["Cache::UserPreheatingJob"] == {:oban, ["command:cache.preheat_user"]}
+    assert owners["Cache::CleaningJob"] == {:slice, :a12d1}
+    assert owners["Cache::PreheatingJob"] == {:oban, ["cron:cache_preheating_job"], :a12d1}
+    assert owners["Cache::UserPreheatingJob"] == {:oban, ["command:cache.preheat_user"], :a12d1}
+
+    for class <- ~w(Cache::CleaningJob Cache::PreheatingJob Cache::UserPreheatingJob),
+        do: assert(String.contains?(RailsJobOwners.coexistence_reasons()[class], "retained"))
+
+    assert RailsTree.read("config/initializers/cache_jobs.rb") =~ "cache_jobs_scheduled"
+    assert RailsTree.read("app/services/cache/clean.rb") =~ "delete_control_flag"
+    assert Registry.claimable() == []
     refute "Cache::CleaningJob" in ReleaseJobs.classes()
     refute "Cache::PreheatingJob" in ReleaseJobs.classes()
     refute "Cache::UserPreheatingJob" in ReleaseJobs.classes()

@@ -33,9 +33,9 @@ module Integrations
     def slot(job, marker)
       raise ArgumentError, 'invalid cron marker' unless marker.nil? || marker == 'a12d2_cron'
 
-      return if marker.nil? && job.enqueued_at.nil?
+      return if job.enqueued_at.nil?
 
-      (job.enqueued_at || Time.current).to_i / 60 * 60
+      job.enqueued_at.to_i / 60 * 60
     end
 
     def event_id(kind, slot, row_id)

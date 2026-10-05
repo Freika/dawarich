@@ -26,10 +26,18 @@ module JobOwnership
   def lock_owner(key)
     return :sidekiq unless table?
 
-    owner = ActiveRecord::Base.connection.select_value(
-      ActiveRecord::Base.sanitize_sql_array(['SELECT owner FROM phoenix.job_owners WHERE key = ? FOR SHARE', key])
-    )
-    owner == 'oban' ? :oban : :sidekiq
+    keys = joint_keys(key)
+    keys.each do |owner_key|
+      ActiveRecord::Base.connection.execute(ActiveRecord::Base.sanitize_sql_array(
+                                              ['INSERT INTO phoenix.job_owners (key) VALUES (?) ' \
+                                               'ON CONFLICT (key) DO NOTHING', owner_key]
+                                            ))
+    end
+    owners = ActiveRecord::Base.connection.select_rows(ActiveRecord::Base.sanitize_sql_array(
+                                                         ['SELECT key, owner FROM phoenix.job_owners ' \
+                                                          'WHERE key IN (?) ORDER BY key FOR SHARE', keys]
+                                                       ))
+    owners.include?([key, 'oban']) ? :oban : :sidekiq
   end
 
   def release!(key, by:)
@@ -40,6 +48,7 @@ module JobOwnership
     require_table!
     keys = joint_keys(key)
     with_lock_timeout do
+      lock_keys(keys)
       ActiveRecord::Base.connection.update(ActiveRecord::Base.sanitize_sql_array(
                                              ['UPDATE phoenix.job_owners SET pinned = false, updated_at = now(), ' \
                                               'updated_by = ? WHERE key IN (?)', by, keys]
@@ -71,7 +80,14 @@ module JobOwnership
   end
 
   def joint_keys(key)
-    JOINT_KEYS.find { |keys| keys.include?(key) } || [key]
+    (JOINT_KEYS.find { |keys| keys.include?(key) } || [key]).sort
+  end
+
+  def lock_keys(keys)
+    ActiveRecord::Base.connection.select_rows(ActiveRecord::Base.sanitize_sql_array(
+                                                ['SELECT key FROM phoenix.job_owners WHERE key IN (?) ' \
+                                                 'ORDER BY key FOR UPDATE', keys]
+                                              ))
   end
 
   def with_lock_timeout

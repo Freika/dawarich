@@ -56,20 +56,6 @@ defmodule Dawarich.Trips.CalculationTest do
   defp blocked_by?(waiting, holding),
     do: rows("SELECT $2::int = ANY(pg_blocking_pids($1::int))", [waiting, holding]) == [[true]]
 
-  defp wait_until(fun, deadline \\ System.monotonic_time(:millisecond) + 5_000) do
-    cond do
-      fun.() ->
-        :ok
-
-      System.monotonic_time(:millisecond) > deadline ->
-        flunk("condition not reached within 5 s")
-
-      true ->
-        Process.sleep(20)
-        wait_until(fun, deadline)
-    end
-  end
-
   test "computes the path, distance and countries Rails computes for the same rows, and reports each step" do
     fixture = load!()
     id = fixture["trip"]["id"]
@@ -149,9 +135,14 @@ defmodule Dawarich.Trips.CalculationTest do
         end)
       end)
 
-    assert_receive :path_computed
-    assert_receive {:calculation_backend, calculation_backend}
-    wait_until(fn -> blocked_by?(calculation_backend, holder_backend) end)
+    assert Dawarich.LockRace.settle(
+             calculating,
+             "SELECT started_at, ended_at FROM trips WHERE id =%"
+           ) == :blocked
+
+    assert_received :path_computed
+    assert_received {:calculation_backend, calculation_backend}
+    assert blocked_by?(calculation_backend, holder_backend)
 
     send(holder.pid, :update_and_release)
     assert {:ok, %{num_rows: 1}} = Task.await(holder)

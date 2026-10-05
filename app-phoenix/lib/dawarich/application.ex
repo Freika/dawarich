@@ -6,6 +6,26 @@ defmodule Dawarich.Application do
 
   @impl true
   def start(_type, _args) do
+    plan = plan(Application.get_env(:dawarich, :rails_argv), System.get_env())
+    start_plan(plan)
+  end
+
+  def plan(argv, env) do
+    case env["DAWARICH_PROCESS_ROLE"] do
+      "sidekiq_idle" -> :sidekiq_idle
+      role when role in [nil, "", "web"] -> Front.plan(argv, env)
+      _ -> raise ArgumentError, "DAWARICH_PROCESS_ROLE must be web or sidekiq_idle"
+    end
+  end
+
+  defp start_plan(:sidekiq_idle) do
+    Supervisor.start_link(children(:sidekiq_idle),
+      strategy: :one_for_one,
+      name: Dawarich.Supervisor
+    )
+  end
+
+  defp start_plan(plan) do
     Dawarich.QrCache.create_table()
     Dawarich.TtlCache.create_table()
 
@@ -13,7 +33,6 @@ defmodule Dawarich.Application do
       Oban.Telemetry.attach_default_logger(level: :info, events: [:job, :peer])
     end
 
-    plan = Front.plan(Application.get_env(:dawarich, :rails_argv), System.get_env())
     Front.log(plan)
     Application.put_env(:dawarich, :rails_upstream, Front.upstream(plan))
     Application.put_env(:dawarich, :public_files, DawarichWeb.PublicFiles.boot_config())
@@ -21,6 +40,8 @@ defmodule Dawarich.Application do
 
     Supervisor.start_link(children(plan), strategy: :one_for_one, name: Dawarich.Supervisor)
   end
+
+  def children(:sidekiq_idle), do: []
 
   def children(plan) do
     oban = Application.fetch_env!(:dawarich, Oban)
@@ -46,7 +67,11 @@ defmodule Dawarich.Application do
 
   defp jobs(node) do
     if jobs_runtime?(),
-      do: [{Dawarich.Jobs.Supervisor, node: node}, Dawarich.Cable.EventsRelay.supervisor_spec()],
+      do: [
+        {Dawarich.Jobs.Supervisor,
+         node: node, entries: Application.get_env(:dawarich, :job_entries, [])},
+        Dawarich.Cable.EventsRelay.supervisor_spec()
+      ],
       else: []
   end
 

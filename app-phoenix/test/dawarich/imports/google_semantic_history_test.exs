@@ -4,13 +4,13 @@ defmodule Dawarich.Imports.GoogleSemanticHistoryTest do
   alias Dawarich.Test.{NormalFormats, NormalFormatsAssertions}
   @dir Path.expand("../../fixtures/imports/formats", __DIR__)
 
-  test "semantic visits activities and waypoint paths equal Rails" do
-    for path <- Path.wildcard(Path.join(@dir, "semantic_import_*.json")),
-        not String.ends_with?(path, ".input.json"),
-        Path.basename(path) != "semantic_import_duplicate.json" do
-      Dawarich.JobsCase.reset!(ScratchRepo)
+  for path <- Path.wildcard(Path.join(@dir, "semantic_import_*.json")),
+      not String.ends_with?(path, ".input.json"),
+      Path.basename(path) != "semantic_import_duplicate.json" do
+    @fixture Path.basename(path, ".json")
+    test "semantic visits activities and waypoint paths equal Rails: #{@fixture}" do
       Dawarich.Ingest.Sources.forget()
-      c = NormalFormats.seed!(Path.basename(path, ".json"), ScratchRepo)
+      c = NormalFormats.seed!(@fixture, ScratchRepo)
 
       if c.expected["legacy"] do
         assert {:error, :legacy_checked} =

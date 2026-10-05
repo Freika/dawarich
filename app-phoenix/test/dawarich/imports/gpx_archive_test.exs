@@ -194,6 +194,8 @@ defmodule Dawarich.Imports.GpxArchiveTest do
 
     {pid, ref} =
       spawn_monitor(fn ->
+        receive do: (:prepare -> :ok)
+
         GpxArchive.prepare!(f.input,
           temp_dir: f.dir,
           on_verified: fn path ->
@@ -203,10 +205,28 @@ defmodule Dawarich.Imports.GpxArchiveTest do
         )
       end)
 
-    assert_receive {:verified, ^pid, path, @gpx}
+    on_exit(fn -> Process.exit(pid, :kill) end)
+    :erlang.trace(pid, true, [:procs])
+    send(pid, :prepare)
+
+    guard =
+      receive do
+        {:trace, ^pid, :spawn, guard, _} -> guard
+        {:DOWN, ^ref, :process, ^pid, reason} -> flunk("extractor exited: #{inspect(reason)}")
+      end
+
+    guard_ref = Process.monitor(guard)
+
+    path =
+      receive do
+        {:verified, ^pid, path, @gpx} -> path
+        {:DOWN, ^ref, :process, ^pid, reason} -> flunk("extractor exited: #{inspect(reason)}")
+      end
+
     Process.exit(pid, :kill)
-    assert_receive {:DOWN, ^ref, :process, ^pid, :killed}
-    wait_deleted(path, 100)
+    receive do: ({:DOWN, ^ref, :process, ^pid, :killed} -> :ok)
+    receive do: ({:DOWN, ^guard_ref, :process, ^guard, :normal} -> :ok)
+    refute File.exists?(path)
     assert File.ls!(f.dir) == ["source.zip"]
   end
 
@@ -221,20 +241,6 @@ defmodule Dawarich.Imports.GpxArchiveTest do
     end
 
     assert File.ls!(f.dir) == ["source.zip"]
-  end
-
-  defp wait_deleted(path, tries) do
-    cond do
-      not File.exists?(path) ->
-        :ok
-
-      tries > 0 ->
-        Process.sleep(5)
-        wait_deleted(path, tries - 1)
-
-      true ->
-        flunk("cancelled archive output remains")
-    end
   end
 
   test "actual browser fflate0.8.2 zip fixture yields the original GPX", f do

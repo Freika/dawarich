@@ -4,13 +4,13 @@ defmodule Dawarich.Imports.GoogleRecordsTest do
   alias Dawarich.Test.{NormalFormats, NormalFormatsAssertions}
   @dir Path.expand("../../fixtures/imports/formats", __DIR__)
 
-  test "records storage batches preserve offsets and prior failed-batch effects" do
-    for path <- Path.wildcard(Path.join(@dir, "records_import_*.json")),
-        not String.ends_with?(path, ".input.json"),
-        Path.basename(path) not in ["records_import_empty.json", "records_import_malformed.json"] do
-      Dawarich.JobsCase.reset!(ScratchRepo)
+  for path <- Path.wildcard(Path.join(@dir, "records_import_*.json")),
+      not String.ends_with?(path, ".input.json"),
+      Path.basename(path) not in ["records_import_empty.json", "records_import_malformed.json"] do
+    @fixture Path.basename(path, ".json")
+    test "records storage batches preserve offsets and prior failed-batch effects: #{@fixture}" do
       Dawarich.Ingest.Sources.forget()
-      c = NormalFormats.seed!(Path.basename(path, ".json"), ScratchRepo)
+      c = NormalFormats.seed!(@fixture, ScratchRepo)
 
       if c.expected["legacy"] do
         assert {:error, :legacy_checked} =

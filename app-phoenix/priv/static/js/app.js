@@ -72,6 +72,11 @@ if (document.readyState === "loading") {
 
 const joined = () => liveSocket.main?.isConnected() === true
 
+document.addEventListener("turbo:before-fetch-request", (event) => {
+  if (document.querySelector("[data-phx-main]"))
+    event.detail.fetchOptions.headers["X-Dawarich-LiveView"] = "true"
+})
+
 document.addEventListener("click", (event) => {
   if (!joined() && event.target.closest?.("a[data-phx-link]"))
     event.stopPropagation()

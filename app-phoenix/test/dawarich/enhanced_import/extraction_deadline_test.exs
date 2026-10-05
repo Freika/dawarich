@@ -15,8 +15,6 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
 
       receive do
         :release -> :ok
-      after
-        1_000 -> :ok
       end
 
       xml = "<gpx/>"
@@ -60,8 +58,17 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
     end
   end
 
-  defp assert_cleanup(storage, uid) do
-    assert_received {:blocked, pid}
+  defp run_blocked(id, attempt, storage, repo \\ ScratchRepo) do
+    deadline = %{at: :deferred, timeout_ms: 200, minutes: 0}
+    extraction = Task.async(fn -> run(id, attempt, storage, repo, deadline: deadline) end)
+
+    pid = receive do: ({:blocked, pid} -> pid)
+    send(extraction.pid, :start_deadline)
+    Task.await(extraction, :infinity)
+    pid
+  end
+
+  defp assert_cleanup(storage, uid, pid) do
     refute Process.alive?(pid)
     assert Path.wildcard(Path.join(storage.root, ".phoenix-tmp/*")) == []
     assert lease_holders(ScratchRepo, PerUserLock.key(uid)) == []
@@ -89,14 +96,14 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
             Keyword.merge(s3.ex_aws, http_client: BlockedClient, http_opts: [caller: self()])
       }
 
-      run(id, unquote(attempt), s3)
+      pid = run_blocked(id, unquote(attempt), s3)
 
       assert {unquote(status),
               %{"error_message" => "GPX extraction did not finish within 0 minutes"},
               _} =
                import_state(id)
 
-      assert_cleanup(storage, uid)
+      assert_cleanup(storage, uid, pid)
 
       assert Enum.any?(kinds(), &(&1["kind"] == "schedule_untracked_tracks")) ==
                (unquote(attempt) == 3)
@@ -116,20 +123,18 @@ defmodule Dawarich.EnhancedImport.ExtractionDeadlineTest do
 
         receive do
           :release -> :ok
-        after
-          1_000 -> :ok
         end
       end
 
       :ok
     end)
 
-    run(id, 3, storage, HookRepo)
+    pid = run_blocked(id, 3, storage, HookRepo)
 
     assert {4, %{"error_message" => "GPX extraction did not finish within 0 minutes"}, _} =
              import_state(id)
 
-    assert_cleanup(storage, uid)
+    assert_cleanup(storage, uid, pid)
     assert List.last(kinds())["kind"] == "schedule_untracked_tracks"
     assert rows("SELECT count(*) FROM places WHERE name = 'TimeoutPin'") == [[0]]
   end

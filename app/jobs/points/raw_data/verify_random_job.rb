@@ -24,7 +24,8 @@ module Points
         verifier = Verifier.new
 
         archives.each do |archive|
-          verifier.verify_specific_archive(archive.id)
+          result = JobOwnership.with_owner(OWNER_KEY) { verifier.verify_specific_archive(archive.id) }
+          break if result == :not_owner
         end
       rescue StandardError => e
         ExceptionReporter.call(e, 'Archive verification spot-check failed')

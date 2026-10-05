@@ -30,6 +30,12 @@ fi
 
 warn_if_development_env
 
+case "${DAWARICH_PROCESS_ROLE:-}" in
+  sidekiq_idle) exec dawarich start ;;
+  "" | web) ;;
+  *) echo "DAWARICH_PROCESS_ROLE must be web or sidekiq_idle" >&2; exit 1 ;;
+esac
+
 # Parse DATABASE_URL if present, otherwise use individual variables
 if [ -n "$DATABASE_URL" ]; then
   # Strip scheme (postgres:// or postgresql://)
