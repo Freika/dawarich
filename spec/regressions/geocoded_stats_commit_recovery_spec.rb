@@ -8,14 +8,10 @@ RSpec.describe 'Geocoded statistics commit recovery', :non_transactional, thread
   around do |example|
     country_ids = Country.pluck(:id)
     stat_ids = Stat.pluck(:id)
-    owner_keys = ActiveRecord::Base.connection.select_values('SELECT key FROM phoenix.job_owners')
     example.run
   ensure
     Stat.where.not(id: stat_ids).delete_all
     Country.where.not(id: country_ids).delete_all
-    quoted = owner_keys.map { ActiveRecord::Base.connection.quote(_1) }
-    predicate = quoted.empty? ? '' : "WHERE key NOT IN (#{quoted.join(',')})"
-    ActiveRecord::Base.connection.execute("DELETE FROM phoenix.job_owners #{predicate}")
   end
 
   let(:user) { create(:user, settings: { 'timezone' => 'Etc/UTC', 'min_minutes_spent_in_city' => 0 }) }
