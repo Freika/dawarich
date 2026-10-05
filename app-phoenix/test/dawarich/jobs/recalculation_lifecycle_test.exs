@@ -106,7 +106,8 @@ defmodule Dawarich.Jobs.RecalculationLifecycleTest do
     peer_send(%{op: "ready", database: ScratchRepo.config()[:database]})
     assert %{"op" => "full"} = peer_read()
     refute State.debounce(ScratchRepo, @k5, 300)
-    assert Dispatch.run(repo: ScratchRepo, oban: __MODULE__) == %{dispatched: 1}
+    [[now]] = rows("SELECT clock_timestamp()")
+    assert Dispatch.run(repo: ScratchRepo, oban: __MODULE__, now: now) == %{dispatched: 1}
     [[id]] = rows("SELECT id FROM oban.oban_jobs")
     job = ScratchRepo.get!(Oban.Job, id, prefix: "oban")
     parent = self()
