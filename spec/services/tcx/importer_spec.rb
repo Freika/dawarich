@@ -35,6 +35,10 @@ RSpec.describe Tcx::Importer do
         expect(Point.where(import_id: import.id).pluck(:motion_data).uniq)
           .to eq([{ 'activity_type' => 'running' }])
       end
+
+      it 'leaves tracker_id nil when no <Creator> element is present' do
+        expect(Point.where(import_id: import.id).pluck(:tracker_id).uniq).to eq([nil])
+      end
     end
 
     context 'with no-GPS TCX (indoor)' do
@@ -104,10 +108,38 @@ RSpec.describe Tcx::Importer do
         end
       end
     end
+
+    context 'with a Polar-style <Creator> element' do
+      let(:file) { Tempfile.new(['creator', '.tcx']) }
+      let(:file_path) { file.path }
+      let(:tcx_content) { build_tcx(device: 'Polar Grit X') }
+
+      before do
+        file.write(tcx_content)
+        file.close
+        described_class.new(import, user.id, file_path).call
+      end
+
+      after { file.unlink }
+
+      it 'assigns the device name as tracker_id' do
+        expect(Point.where(import_id: import.id).pluck(:tracker_id).uniq).to eq(['Polar Grit X'])
+      end
+
+      it 'stamps a point source for the tracker' do
+        expect(Point.where(import_id: import.id).pluck(:source_id).uniq).to all(be_present)
+      end
+    end
   end
 
-  def build_tcx(id: 'Morning Run', notes: nil)
+  def build_tcx(id: 'Morning Run', notes: nil, device: nil)
     notes_xml = notes ? "<Extensions><TPX><Notes>#{notes}</Notes></TPX></Extensions>" : ''
+    creator_xml = if device
+                    %(<Creator xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:type="Device_t">) +
+                      "<Name>#{device}</Name><ProductID>217</ProductID></Creator>"
+                  else
+                    ''
+                  end
 
     <<~XML
       <?xml version="1.0" encoding="UTF-8"?>
@@ -115,6 +147,7 @@ RSpec.describe Tcx::Importer do
         <Activities>
           <Activity Sport="Running">
             <Id>#{id}</Id>
+            #{creator_xml}
             <Lap StartTime="2024-01-01T10:00:00Z">
               <Track>
                 <Trackpoint>
