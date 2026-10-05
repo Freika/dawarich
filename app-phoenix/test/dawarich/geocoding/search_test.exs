@@ -38,7 +38,7 @@ defmodule Dawarich.Geocoding.SearchTest do
     assert length(FakeHttp.requests()) == 1
   end
 
-  test "a cache hit makes no request but takes a slot" do
+  test "a cache hit makes no request but takes a slot even after the bucket expires" do
     c = search_case("photon_cache_hit")
     [%{"key" => key, "value" => value}] = c["cache"]
     own_key!(key)
@@ -46,13 +46,29 @@ defmodule Dawarich.Geocoding.SearchTest do
     stub_requests!(c["requests"])
     config = %{config_from(c["config"]) | rps: 10.0}
     limiter = "geocoding:rate_limit:" <> RateLimiter.key(config)
+    observer = {__MODULE__, self()}
+
+    :ok =
+      :telemetry.attach(observer, [:redix, :pipeline, :stop], &__MODULE__.reservation/4, self())
+
+    on_exit(fn -> :telemetry.detach(observer) end)
+
+    source =
+      File.read!(Path.expand("../../../../app/services/geocoding/rate_limiter.rb", __DIR__))
+
+    [_, lua] = Regex.run(~r/RESERVE_LUA = <<~LUA\n(.*?)\n[ \t]*LUA\n/s, source)
+    lua = String.replace(lua, ~r/^ {6}/m, "") <> "\n"
+    command = ["EVAL", lua, "1", limiter, "100000", "-1"]
 
     assert Search.reverse(config, query(c), []) == {:ok, hd(c["outcomes"])["data"]}
-    first = slot(limiter)
+    assert_received {:reservation, [^command], nil}
+    assert {:ok, _} = Redis.command(["DEL", limiter])
     assert Search.reverse(config, query(c), []) == {:ok, hd(c["outcomes"])["data"]}
+    assert_received {:reservation, [^command], nil}
+    assert {:ok, _} = Redis.command(["DEL", limiter])
 
     assert FakeHttp.requests() == []
-    assert slot(limiter) - first == 100_000
+    refute_received {:reservation, _, _}
   end
 
   test "provider-specific bodies" do
@@ -336,9 +352,9 @@ defmodule Dawarich.Geocoding.SearchTest do
   defp search_case(name),
     do: Enum.find(fixture("search_outcomes")["cases"], &(&1["name"] == name))
 
-  defp slot(key) do
-    {:ok, value} = Redis.command(["GET", key])
-    String.to_integer(value)
+  def reservation(_event, _measurements, metadata, owner) do
+    if metadata.connection_name == Redis and match?([["EVAL" | _]], metadata.commands),
+      do: send(owner, {:reservation, metadata.commands, metadata[:kind]})
   end
 
   defp boundary_config, do: config_from(search_case("photon_cache_hit")["config"])

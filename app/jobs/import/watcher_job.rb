@@ -7,6 +7,6 @@ class Import::WatcherJob < ApplicationJob
   def perform
     return unless DawarichSettings.self_hosted?
 
-    Imports::Watcher.new.call
+    JobOwnership.with_owner('cron:watcher_job') { Imports::Watcher.new.call }
   end
 end

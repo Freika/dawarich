@@ -23,6 +23,9 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
       ~r/'([a-z0-9_.]+)' => \{/
       |> Regex.scan(
         RailsTree.read("app/services/job_commands.rb") <>
+          RailsTree.read("app/services/imports/integration_commands.rb") <>
+          RailsTree.read("app/services/imports/teslamate_commands.rb") <>
+          RailsTree.read("app/services/imports/trek_commands.rb") <>
           RailsTree.read("app/services/release_commands.rb") <>
           hd(String.split(RailsTree.read("app/services/stats/commands.rb"), "HANDLERS = {")) <>
           hd(
@@ -67,7 +70,14 @@ defmodule Dawarich.Jobs.Wave2ContractTest do
     [_, normal_type] =
       Regex.run(~r/TYPE = '([^']+)'/, RailsTree.read("app/services/imports/process_commands.rb"))
 
-    rails = MapSet.new(commands ++ mails ++ [normal_type])
+    data_types =
+      ~r/^\s*(?:IMPORT_)?TYPE = '([^']+)'/m
+      |> Regex.scan(RailsTree.read("app/services/users/data_commands.rb"),
+        capture: :all_but_first
+      )
+      |> List.flatten()
+
+    rails = MapSet.new(commands ++ mails ++ [normal_type] ++ data_types)
 
     phoenix =
       for %{kind: :command, key: "command:" <> type} <- Registry.entries(),

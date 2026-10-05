@@ -34,30 +34,32 @@ defmodule DawarichWeb.ImportsNativePagesTest do
     refute html =~ "/imports/direct_uploads"
   end
 
-  test "the owner's show page is a native LiveView and the edit page is Rails'", c do
+  test "the owner's show and edit pages are native LiveViews", c do
     {:ok, _view, html} = live_as(c.user, "/imports/759101")
     assert html =~ "native.gpx"
     assert html =~ "data-phx-main"
 
-    {request, conn} =
-      forwarded(upstream!(), fn -> get(RailsUser.signed_in(c.user.id), "/imports/759101/edit") end)
-
-    assert {request, conn.status} == {{"GET /imports/759101/edit HTTP/1.1", ""}, 204}
+    {:ok, _view, edit} = live_as(c.user, "/imports/759101/edit")
+    assert edit =~ ~s(name="import[source]")
+    assert edit =~ "data-phx-main"
   end
 
-  test "a foreign import and an owned non-GPX import are shown by Rails", c do
+  test "a foreign import is shown by Rails while an owned non-GPX import is native", c do
     other = RailsUser.insert!(%{id: 7592, email: "foreign-pages@example.test"})
     ImportsExportsSeeds.import!(%{id: 759_102, user_id: c.user.id, name: "owned.kml", source: 9})
     upstream = upstream!()
 
     for {user_id, path} <- [
           {other.id, "/imports/759101"},
-          {other.id, "/imports/759101/edit"},
-          {c.user.id, "/imports/759102"},
-          {c.user.id, "/imports/759102/edit"}
+          {other.id, "/imports/759101/edit"}
         ] do
       {request, conn} = forwarded(upstream, fn -> get(RailsUser.signed_in(user_id), path) end)
       assert {request, conn.status} == {{"GET #{path} HTTP/1.1", ""}, 204}
+    end
+
+    for path <- ["/imports/759102", "/imports/759102/edit"] do
+      {:ok, _view, html} = live_as(c.user, path)
+      assert html =~ "owned.kml"
     end
   end
 
@@ -85,7 +87,7 @@ defmodule DawarichWeb.ImportsNativePagesTest do
              Repo.query!("SELECT payload FROM job_outbox WHERE command_type='imports.destroy'").rows
   end
 
-  test "a non-GPX row keeps Rails' delete link and its delete event never runs natively", c do
+  test "a non-GPX row keeps the Turbo delete link and supports owner-scoped native deletion", c do
     ImportsExportsSeeds.import!(%{id: 759_103, user_id: c.user.id, name: "owned.csv", source: 10})
     {:ok, view, _} = live_as(c.user, "/imports")
     refute has_element?(view, "#import_759103 form[phx-submit=delete_import]")
@@ -97,8 +99,10 @@ defmodule DawarichWeb.ImportsNativePagesTest do
 
     render_hook(view, "delete_import", %{"import_id" => "759103"})
 
-    assert [[2]] = Repo.query!("SELECT status FROM imports WHERE id=759103").rows
-    assert [] = Repo.query!("SELECT event_id FROM job_outbox").rows
+    assert [[4]] = Repo.query!("SELECT status FROM imports WHERE id=759103").rows
+
+    assert [[%{"import_id" => 759_103, "user_id" => 7591}]] =
+             Repo.query!("SELECT payload FROM job_outbox").rows
   end
 
   test "a failed extraction card offers a retry and turns into start-over once it stalls", c do

@@ -244,11 +244,23 @@ defmodule Dawarich.Imports.ProcessWorkerTest do
       assert :ok = ProcessWorker.perform(c.job)
       assert [[8, 0]] = rows("SELECT source,status FROM imports WHERE id=$1", [c.import.id])
 
-      assert [["imports.normal_resume", payload]] =
+      assert c.expected["jobs"] == [
+               %{"type" => "Users::ImportDataJob", "args" => [c.import.id]}
+             ]
+
+      assert [["users.import_data", payload]] =
                rows("SELECT kind,payload FROM phoenix.rails_commands")
 
-      assert payload == c.job.args
-      assert [[true]] = rows("SELECT native_fallback FROM phoenix.import_handoffs")
+      assert payload == %{
+               "import_id" => c.import.id,
+               "user_id" => c.import.user_id,
+               "time_zone" => c.expected["zone"],
+               "locale" => c.expected["locale"]
+             }
+
+      assert [] = rows("SELECT event_id FROM phoenix.import_handoffs")
+      assert [] = rows("SELECT import_id FROM phoenix.import_runs")
+      assert Processed.done?(ScratchRepo, c.job.args["event_id"])
       assert [] = rows("SELECT id FROM points")
     end
   end

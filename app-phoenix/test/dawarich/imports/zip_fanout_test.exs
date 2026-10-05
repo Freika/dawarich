@@ -4,6 +4,8 @@ defmodule Dawarich.Imports.ZipFanoutTest do
   alias Dawarich.Test.NormalFormats
 
   setup do
+    Dawarich.Test.NormalWholeEffects.record_order!(ScratchRepo)
+    on_exit(fn -> Dawarich.Test.NormalWholeEffects.remove_order!(ScratchRepo) end)
     root = Path.join(System.tmp_dir!(), "zip-fanout-#{System.unique_integer([:positive])}")
     File.mkdir_p!(root)
     on_exit(fn -> File.rm_rf!(root) end)
@@ -66,6 +68,25 @@ defmodule Dawarich.Imports.ZipFanoutTest do
       assert queued(c) == expected_queue(c)
       assert_clean(c)
     end
+  end
+
+  test "zip fanout retains Rails enqueue order after physical row reordering", c do
+    c = fixture(c, "zip_known_preference")
+    assert {:ok, :removed} = run(c)
+    assert length(expected_queue(c)) == 2
+
+    ScratchRepo.transaction(fn ->
+      rows("CREATE TEMP TABLE reordered_effects AS SELECT * FROM job_outbox")
+      rows("DELETE FROM job_outbox")
+
+      rows(
+        "INSERT INTO job_outbox SELECT * FROM reordered_effects ORDER BY test_enqueue_order DESC"
+      )
+
+      rows("DROP TABLE reordered_effects")
+    end)
+
+    assert queued(c) == expected_queue(c)
   end
 
   test "zip total bytes and count caps clean up partial files", c do
@@ -189,7 +210,7 @@ defmodule Dawarich.Imports.ZipFanoutTest do
 
     native =
       rows(
-        "SELECT command_type,payload FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY aggregate_id"
+        "SELECT command_type,payload FROM job_outbox WHERE command_type='imports.process_normal' ORDER BY test_enqueue_order"
       )
 
     reverse ++ native

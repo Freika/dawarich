@@ -37,10 +37,10 @@ defmodule Dawarich.Imports.GpxArchive.Directory do
 
     trailer = zip64!(file, trailer)
 
-    if trailer.size > Keyword.get(opts, :max_directory_bytes, 16_777_216),
+    if exceeds?(trailer.size, Keyword.get(opts, :max_directory_bytes, 16_777_216)),
       do: fail!("ZIP central directory exceeds metadata budget")
 
-    if trailer.count > Keyword.get(opts, :max_entries, 25_000),
+    if exceeds?(trailer.count, Keyword.get(opts, :max_entries, 25_000)),
       do: fail!("ZIP entry count exceeds budget")
 
     unless trailer.position >= 0 and trailer.position + trailer.size == trailer.trailer,
@@ -52,9 +52,12 @@ defmodule Dawarich.Imports.GpxArchive.Directory do
     unless ending == trailer.position + trailer.size,
       do: fail!("ZIP central directory size does not match")
 
-    names = Enum.map(entries, & &1.name)
-    if length(Enum.uniq(names)) != length(names), do: fail!("Duplicate ZIP entry names")
-    Enum.each(entries, &safe!/1)
+    unless Keyword.get(opts, :path_policy) == :user_data do
+      names = Enum.map(entries, & &1.name)
+      if length(Enum.uniq(names)) != length(names), do: fail!("Duplicate ZIP entry names")
+      Enum.each(entries, &safe!/1)
+    end
+
     %{entries: entries, offset: trailer.position}
   end
 
@@ -209,5 +212,7 @@ defmodule Dawarich.Imports.GpxArchive.Directory do
       do: fail!("ZIP entry is not a regular file or directory")
   end
 
+  defp exceeds?(_value, :infinity), do: false
+  defp exceeds?(value, limit), do: value > limit
   defp fail!(message), do: raise(Error, message: message)
 end

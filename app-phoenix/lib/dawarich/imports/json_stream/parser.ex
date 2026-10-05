@@ -38,7 +38,16 @@ defmodule Dawarich.Imports.JsonStream.Parser do
     length = Keyword.get_lazy(opts, :length, fn -> source_size(path) - offset end)
     reader = Reader.open(path, offset, length)
     mode = Keyword.get(opts, :mode, :saj)
-    state = %{select: select, total: length, offset: offset, opts: opts, mode: mode, documents: 0}
+
+    state = %{
+      source: path,
+      select: select,
+      total: length,
+      offset: offset,
+      opts: opts,
+      mode: mode,
+      documents: 0
+    }
 
     try do
       documents(Reader.space(reader), state)
@@ -114,7 +123,23 @@ defmodule Dawarich.Imports.JsonStream.Parser do
     case Reader.get(r) do
       {?}, r} -> {[], r}
       {?", r} -> member(r, path, keep, depth, {[], %{}}, s)
+      {?], r} -> object_close(r, s)
       _ -> throw(:invalid)
+    end
+  end
+
+  defp object_close(r, s) do
+    if Keyword.get(s.opts, :errors) == :rails_oj do
+      {:bytes, bytes} = s.source
+      lines = bytes |> binary_part(0, at(r, s)) |> :binary.split("\n", [:global])
+      line = length(lines)
+      column = byte_size(List.last(lines))
+
+      raise Error,
+        message:
+          "expected hash pair or close, not an array close (after ) at line #{line}, column #{column} [parse.c:790]"
+    else
+      throw(:invalid)
     end
   end
 
