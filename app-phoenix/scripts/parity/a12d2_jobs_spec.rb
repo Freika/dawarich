@@ -2,10 +2,12 @@
 
 require 'rails_helper'
 require_relative 'a12d2_jobs_support'
+require_relative 'a12d2_release_support'
 
 RSpec.describe 'Phoenix fixture: A12d2 residual jobs' do
   include ActiveSupport::Testing::TimeHelpers
   include A12d2JobsSupport
+  include A12d2ReleaseSupport
   self.use_transactional_tests = false
 
   let(:path) { Rails.root.join('app-phoenix/test/fixtures/a12d2/jobs.json') }
@@ -14,6 +16,50 @@ RSpec.describe 'Phoenix fixture: A12d2 residual jobs' do
        TeslaMate::SyncSchedulingJob Trek::SyncSchedulingJob Families::AutoCreationJob
        Families::MemberSyncJob Places::NameFetchingJob Places::BulkNameFetchingJob
        Places::DeleteIfOrphanJob Places::OrphanCleanupJob Achievements::BulkCheckJob]
+  end
+
+  it 'A12rel achievements parent records guard load ordering and failures' do
+    corpus = capture_release_achievements
+    cases = corpus.fetch('cases').index_by { _1.fetch('id') }
+    expect(corpus.fetch('retry').fetch('max_attempts')).to eq(26)
+    expect(cases.fetch('countries_empty')).to include('jobs' => [], 'statements' => [], 'error' => nil)
+    %w[required_present cloud self_hosted legacy_disabled repeat].each do |name|
+      row = cases.fetch(name)
+      expect(row.fetch('error')).to be_nil
+      expect(row.fetch('jobs').size).to eq(name == 'repeat' ? 2 : 1)
+      row.fetch('jobs').each do |job|
+        expect(job).to include('class' => 'Achievements::BulkCheckJob', 'due_offset' => 0,
+                               'arguments' => [{ 'notify' => false, 'force' => true, 'stale_only' => true }])
+      end
+    end
+    expect(cases.fetch('equal_count_missing').fetch('before').size).to eq(corpus.fetch('required_codes').size)
+    expect(cases.fetch('equal_count_missing').fetch('statements').map { _1.fetch('kind') })
+      .to eq(%w[upsert repair])
+    %w[load_failure enqueue_failure repair_failure].each do |name|
+      expect(cases.fetch(name).fetch('error')).not_to be_nil
+      expect(cases.fetch(name).fetch('jobs')).to eq([])
+    end
+    %w[enqueue_failure repair_failure].each do |name|
+      row = cases.fetch(name)
+      expect(row.fetch('observed')).to eq(row.fetch('after'))
+      expect(row.fetch('retry').fetch('jobs').size).to eq(1)
+      expect(row.fetch('retry').fetch('statements')).to eq([])
+    end
+    expect(cases.fetch('repair_failure').fetch('after').any? { !_1.fetch('valid') }).to be(true)
+    expect(capture_release_achievements).to eq(corpus)
+    record_release_fixture('achievements', corpus)
+  end
+
+  it 'A12rel achievement migrations record no-argument immediate jobs' do
+    corpus = capture_release_achievement_vectors
+    expect(corpus.fetch('vectors').map { _1.fetch('version') }).to eq(%w[20260922120000 20260923180000])
+    corpus.fetch('vectors').each do |row|
+      expected = { 'class' => 'DataMigrations::BackfillAchievementsJob', 'queue' => 'data_migrations',
+                   'arguments' => [], 'due_offset' => 0 }
+      expect(row.fetch('jobs')).to eq([expected])
+    end
+    expect(capture_release_achievement_vectors).to eq(corpus)
+    record_release_fixture('release_vectors', corpus)
   end
 
   it 'captures residual jobs with fixed ids clocks and source outcomes' do

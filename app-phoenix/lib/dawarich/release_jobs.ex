@@ -6,8 +6,7 @@ defmodule Dawarich.ReleaseJobs do
   @families ~w(DataMigrations::BackfillFamiliesForFamilyPlanJob DataMigrations::BackfillFamilyMemberEntitlementsJob)
   @deferred %{
     "DataMigrations::AddPointDimensionColumnsJob" => :a12h,
-    "DataMigrations::DropLegacyLatLonJob" => :a12h,
-    "DataMigrations::BackfillAchievementsJob" => :a12d2
+    "DataMigrations::DropLegacyLatLonJob" => :a12h
   }
   @a12 Map.keys(@deferred)
   @classes @families ++
@@ -19,10 +18,13 @@ defmodule Dawarich.ReleaseJobs do
                 TrackSegments::TimeAnchorBackfillJob DataMigrations::BackfillTransportationModesJob
                 Visits::FleetRedetectJob DataMigrations::CleanupNullIslandJob
                 DataMigrations::BackfillMotionDataJob DataMigrations::BackfillAltitudeJob
-                TransportationModes::ImportBackfillJob
+                TransportationModes::ImportBackfillJob DataMigrations::BackfillAchievementsJob
                 DataMigrations::RecalculateAnomaliesJob DataMigrations::RecalculatePerTrackerTracksJob)
 
   def classes, do: @classes
+
+  def decode("DataMigrations::BackfillAchievementsJob", []),
+    do: {:ok, Ops.Achievements, %{"version" => 1, "event_id" => Ecto.UUID.generate()}}
 
   def decode("DataMigrations::RecalculateAnomaliesJob", []),
     do: recalculation(Ops.Anomalies, %{"limit" => 2})
@@ -82,8 +84,14 @@ defmodule Dawarich.ReleaseJobs do
     do: {:deferred, Map.fetch!(@deferred, class), %{"version" => 1}}
 
   def decode("TransportationModes::ImportBackfillJob", [import_id])
-      when is_integer(import_id) and import_id > 0,
-      do: {:deferred, :a7, %{"version" => 1, "import_id" => import_id}}
+      when is_integer(import_id) and import_id > 0 do
+    zone = Dawarich.TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
+
+    {:ok, args} =
+      Ops.ImportBackfill.args_from_command(1, %{"import_id" => import_id, "ambient_zone" => zone})
+
+    {:ok, Ops.ImportBackfill, Map.put(args, "event_id", Ecto.UUID.generate())}
+  end
 
   def decode(class, _arguments) when class in @classes, do: {:error, :invalid_arguments}
   def decode(_class, _arguments), do: {:error, :unknown_class}
