@@ -6,7 +6,7 @@ defmodule Dawarich.ReleaseOperations.AchievementsTest do
 
   @oban __MODULE__.Oban
   @event "00000000-0000-4000-8000-000000540001"
-  @now ~U[2026-10-04 12:00:00Z]
+  @now ~U[2026-10-04 12:00:00.000000Z]
   @args %{"version" => 1, "event_id" => @event}
   @valid "ST_Multi(ST_GeomFromText('POLYGON((0 0,1 0,1 1,0 1,0 0))',4326))"
 
@@ -92,6 +92,105 @@ defmodule Dawarich.ReleaseOperations.AchievementsTest do
 
     assert_raise Postgrex.Error, ~r/A12rel upsert failure/, fn -> run() end
     assert snapshot() == []
+  end
+
+  test "release bulk reverse insertion accepts only the validated fleet payload" do
+    payload = %{
+      "job_id" => @event,
+      "options" => %{"notify" => false, "force" => true, "stale_only" => true},
+      "run_at" => DateTime.to_iso8601(@now)
+    }
+
+    assert Dawarich.RailsCommands.insert!(ScratchRepo, "release_achievements_bulk_check", payload) ==
+             :ok
+
+    assert rows("SELECT kind,payload FROM phoenix.rails_commands") == [
+             ["release_achievements_bulk_check", payload]
+           ]
+
+    invalid =
+      Enum.map(Map.keys(payload), &Map.delete(payload, &1)) ++
+        [
+          Map.put(payload, "extra", 1),
+          Map.put(payload, "user_id", 54001),
+          Map.put(payload, "job_id", "invalid"),
+          Map.put(payload, "job_id", nil),
+          Map.put(payload, "run_at", "invalid"),
+          Map.put(payload, "run_at", "2026-10-04T12:00:00"),
+          Map.put(payload, "options", %{}),
+          put_in(payload, ["options", "notify"], "false"),
+          put_in(payload, ["options", "force"], 1),
+          put_in(payload, ["options", "stale_only"], nil),
+          put_in(payload, ["options", "extra"], false)
+        ]
+
+    for bad <- invalid do
+      assert_raise ArgumentError, fn ->
+        Dawarich.RailsCommands.insert!(ScratchRepo, "release_achievements_bulk_check", bad)
+      end
+    end
+
+    assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[1]]
+  end
+
+  test "release parent publishes silent stale bulk after regions to its command owner" do
+    country()
+    codes = Registry.subdivision_codes() |> MapSet.to_list()
+    options = %{"notify" => false, "force" => true, "stale_only" => true}
+    job_id = "2ce791c6-a6d3-57d0-a80b-f180c7944093"
+    root = "e18e8b6f-370a-5f22-a306-3291938cd8c5"
+
+    for owner <- [:oban, :sidekiq] do
+      opposite = if owner == :oban, do: :sidekiq, else: :oban
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:release.achievements_backfill", :sidekiq)
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:achievements.bulk_check", owner)
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, "cron:achievements_bulk_check_job", opposite)
+      Dawarich.Jobs.Ownership.put!(ScratchRepo, "command:achievements.check", opposite)
+
+      assert Achievements.run(ScratchRepo, @oban, @args, now: @now) == :ok
+      assert required_count(codes) == length(codes)
+      assert Dawarich.Jobs.Processed.done?(ScratchRepo, @event)
+      refute Dawarich.Jobs.Processed.done?(ScratchRepo, root)
+
+      if owner == :oban do
+        assert rows("SELECT worker,args,scheduled_at FROM oban.oban_jobs") == [
+                 [
+                   "Dawarich.Achievements.BulkCheckWorker",
+                   Map.put(options, "event_id", root),
+                   DateTime.to_naive(@now)
+                 ]
+               ]
+
+        assert rows("SELECT count(*) FROM phoenix.rails_commands") == [[0]]
+
+        assert {:ok, ^options} =
+                 Dawarich.Achievements.BulkCheckWorker.args_from_command(1, options)
+      else
+        assert rows("SELECT kind,payload FROM phoenix.rails_commands") == [
+                 [
+                   "release_achievements_bulk_check",
+                   %{
+                     "job_id" => job_id,
+                     "options" => options,
+                     "run_at" => DateTime.to_iso8601(@now)
+                   }
+                 ]
+               ]
+
+        assert rows("SELECT count(*) FROM oban.oban_jobs") == [[0]]
+      end
+
+      assert Achievements.run(ScratchRepo, @oban, @args, now: @now) == :ok
+      assert rows("SELECT count(*) FROM oban.oban_jobs") == [[if(owner == :oban, do: 1, else: 0)]]
+
+      assert rows("SELECT count(*) FROM phoenix.rails_commands") == [
+               [if(owner == :sidekiq, do: 1, else: 0)]
+             ]
+
+      rows("DELETE FROM oban.oban_jobs")
+      rows("DELETE FROM phoenix.rails_commands")
+      rows("DELETE FROM phoenix.processed_commands WHERE event_id=$1", [Ecto.UUID.dump!(@event)])
+    end
   end
 
   defp run(opts \\ []) do
