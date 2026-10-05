@@ -32,7 +32,12 @@ config :dawarich, :test_tmp_dir, Path.join(test_root, "system")
 
 config :dawarich,
        Dawarich.Repo,
-       connection ++ [database: test_database, pool: Ecto.Adapters.SQL.Sandbox, pool_size: 5]
+       connection ++
+         [
+           database: test_database,
+           pool: Ecto.Adapters.SQL.Sandbox,
+           pool_size: System.schedulers_online() * 2
+         ]
 
 scratch =
   connection ++
