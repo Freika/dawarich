@@ -12,8 +12,7 @@ defmodule Dawarich.ReleaseMigrations.V1_14_4 do
   """
 
   @delete_duplicate_stats """
-  DELETE FROM stats
-  WHERE id IN (
+  WITH batch AS MATERIALIZED (
     SELECT s1.id FROM stats s1
     WHERE EXISTS (
       SELECT 1 FROM stats s2
@@ -24,6 +23,7 @@ defmodule Dawarich.ReleaseMigrations.V1_14_4 do
     )
     LIMIT 1000
   )
+  DELETE FROM stats USING batch WHERE stats.id = batch.id
   """
 
   @impl true
