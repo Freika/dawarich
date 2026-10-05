@@ -59,6 +59,11 @@ namespace :dawarich do
       puts "#{args[:event_id]}: pending"
     end
 
+    desc 'Inspect retained Sidekiq work without exposing job payloads or changing ownership'
+    task drain_status: :environment do
+      puts JSON.pretty_generate(JobDrain.status)
+    end
+
     desc 'Show who runs each job key, the outbox, Phoenix heartbeats and Oban job counts'
     task status: :environment do
       summary = JobHealth.compute(ENV.fetch('DAWARICH_PHOENIX_NODE', nil))

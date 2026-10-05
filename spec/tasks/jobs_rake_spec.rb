@@ -7,7 +7,7 @@ RSpec.describe 'dawarich:jobs' do
   before(:all) { Rails.application.load_tasks unless Rake::Task.task_defined?('dawarich:jobs:release') }
 
   after do
-    %w[release unpin rehome status].each { |task| Rake::Task["dawarich:jobs:#{task}"].reenable }
+    %w[release unpin rehome status drain_status].each { |task| Rake::Task["dawarich:jobs:#{task}"].reenable }
   end
 
   def run(task, *args)
@@ -145,6 +145,11 @@ RSpec.describe 'dawarich:jobs' do
     expect { Rake::Task['dawarich:jobs:release'].invoke('cron:lite_archival_warning_job') }
       .to output(/command:mail\.user\.archival_approaching: sidekiq \(pinned\).*cron:lite_archival_warning_job: /m)
       .to_stdout
+  end
+
+  it 'prints the redacted drain observation from the installed task' do
+    expect { Rake::Task['dawarich:jobs:drain_status'].invoke }
+      .to output(/"status":.*"(?:BLOCKED|OBSERVED_EMPTY)".*"observation": true/m).to_stdout
   end
 
   it 'prints the health summary and gauges' do
