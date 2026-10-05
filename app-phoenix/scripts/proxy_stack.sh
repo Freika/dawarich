@@ -17,6 +17,18 @@ sidekiq_pidfile="$root/tmp/pids/proxy_stack_sidekiq_$PORT.pid"
 rails_pidfile="$root/tmp/pids/proxy_stack_rails_$PORT.pid"
 log="$root/log/proxy_stack_$PORT.log"
 sidekiq_log="$root/log/proxy_stack_sidekiq_$PORT.log"
+sidekiq_tag="dawarich_proxy_stack_$PORT"
+
+sidekiq_pids() {
+  {
+    pgrep -f "^sidekiq [^ ]+ $sidekiq_tag( |$)" || true
+    if [ -f "$sidekiq_pidfile" ]; then
+      while IFS= read -r pid || [ -n "$pid" ]; do
+        kill -0 "$pid" 2>/dev/null && echo "$pid" || true
+      done < "$sidekiq_pidfile"
+    fi
+  } | sort -u
+}
 
 stack() {
   env $(grep -E '^DATABASE_(PORT|USERNAME|PASSWORD)=' "$ENV_FILE" | xargs) \
@@ -38,9 +50,9 @@ if [ "${1:-}" = --down ]; then
     stack "$rel" stop
   fi
   [ -f "$rails_pidfile" ] && kill "$(cat "$rails_pidfile")" 2>/dev/null || true
-  [ -f "$sidekiq_pidfile" ] && kill "$(cat "$sidekiq_pidfile")" 2>/dev/null || true
+  for pid in $(sidekiq_pids); do kill "$pid" 2>/dev/null || true; done
   tries=0
-  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || { [ -f "$sidekiq_pidfile" ] && kill -0 "$(cat "$sidekiq_pidfile")" 2>/dev/null; } || epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; do
+  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || { [ -f "$rails_pidfile" ] && kill -0 "$(cat "$rails_pidfile")" 2>/dev/null; } || [ -n "$(sidekiq_pids)" ] || epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; do
     tries=$((tries + 1))
     [ "$tries" -lt 60 ] || { echo "the stack did not stop" >&2; exit 1; }
     sleep 1
@@ -67,7 +79,7 @@ if epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; then
   exit 1
 fi
 if curl -s -m 2 -o /dev/null "http://127.0.0.1:$PORT/"; then echo "port $PORT is in use" >&2; exit 1; fi
-if [ -f "$sidekiq_pidfile" ] && kill -0 "$(cat "$sidekiq_pidfile")" 2>/dev/null; then echo "a Sidekiq from an earlier run is still up; run $0 --down first" >&2; exit 1; fi
+if [ -n "$(sidekiq_pids)" ]; then echo "a Sidekiq from an earlier run is still up; run $0 --down first" >&2; exit 1; fi
 mkdir -p "$root/log" "$root/tmp/pids"
 touch "$log" "$sidekiq_log"
 log_from=$(($(wc -c <"$log") + 1))
@@ -105,7 +117,7 @@ else
 fi
 
 sidekiq_from=$(($(wc -c <"$sidekiq_log") + 1))
-stack ruby -e 'Process.daemon(true, true); exec(*ARGV)' bundle exec ruby -e 'File.write(ARGV.shift, Process.pid.to_s); require "sidekiq/cli"; Sidekiq.configure_server { |config| config.on(:startup) { RailsCommands::Poller.send(:spawn) } }; cli = Sidekiq::CLI.instance; cli.parse; cli.run' "$sidekiq_pidfile" >>"$sidekiq_log" 2>&1
+stack ruby -e 'Process.daemon(true, true); exec(*ARGV)' bundle exec ruby -e 'File.open(ARGV.shift, "a") { |file| file.puts(Process.pid) }; require "sidekiq/cli"; Sidekiq.configure_server { |config| config.on(:startup) { RailsCommands::Poller.send(:spawn) } }; cli = Sidekiq::CLI.instance; cli.parse(ARGV); cli.run' "$sidekiq_pidfile" --tag "$sidekiq_tag" >>"$sidekiq_log" 2>&1
 tries=0
 until tail -c "+$sidekiq_from" "$sidekiq_log" | grep -q 'Running in ruby'; do
   tries=$((tries + 1))
