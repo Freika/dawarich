@@ -87,5 +87,6 @@ defmodule Dawarich.ReleaseMigrations do
 
   def all, do: @releases
 
+  def find("1.15.3"), do: find("1.15.2")
   def find(release), do: Enum.find(@releases, &(&1.release() == release))
 end

@@ -1,6 +1,6 @@
 # Release schema snapshots
 
-One snapshot per migration state in `db/release_migrations.json` (87 states covering 259 release tags), plus every
+One snapshot per migration state in `db/release_migrations.json` (87 states covering 260 release tags), plus every
 shipped `db/schema.rb` that differs from its state's snapshot. The Ecto migrator (ADR 0015, roadmap step C2) consumes
 them. Everything the README cites lives in this directory; `tmp/schema_parity/` (git-ignored) only holds local run
 output: logs, diffs, `summary.txt`, `summary_schemarb.txt`.
@@ -172,6 +172,12 @@ Every other release's schema.rb matches its state's snapshot, including 1.7.0 to
 upgrading.
 
 ## Ledgers
+
+Rails 1.15.3 is the last Rails release and shares 1.15.2's migration state. The
+release commit `93cc71f2b` changes no `db/` files. `db/release_migrations.json`
+lists both releases in that state, and the Ecto registry resolves 1.15.3 to the
+historical `V1_15_2` module. No new steps, ledger versions or upgrade snapshots
+are required.
 
 A real install's `schema_migrations` and `data_migrations` are supersets of the state's set in
 `db/release_migrations.json`:
@@ -353,7 +359,7 @@ reference `Dawarich.ReleaseMigrator`; today its only entry is the test-env mix t
    versions). A ledger lacking one is refused before the lease and before any change, with this message
    (`describe/1` in the mix task, reused verbatim by the harness and `expected_diffs.md`):
 
-   `refused: this database has not reached Dawarich <release>, and this image upgrades only from 1.0.0; start the Dawarich 1.15.2 image once so Rails upgrades it, then start this image`
+   `refused: this database has not reached Dawarich <release>, and this image upgrades only from 1.0.0; start the Dawarich 1.15.3 image once so Rails upgrades it, then start this image`
 
    The remedy names one release, `@last_rails_release` in the mix task, rather than "any image from 1.0.0": 1.3.2
    and 1.7.0–1.7.2 crash on upgrades from 1.0.0 or earlier (see "Why the fallbacks exist") after the floor versions
