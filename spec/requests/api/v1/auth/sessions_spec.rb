@@ -17,6 +17,130 @@ RSpec.describe 'POST /api/v1/auth/login', type: :request do
 
   after { Rack::Attack.enabled = false }
 
+  context 'A11f API auth' do
+    around { |example| Time.use_zone('UTC') { example.run } }
+    before { allow(DawarichSettings).to receive(:self_hosted?).and_return(true) }
+
+    it 'A11f API auth preserves password login responses without web sign-in effects' do
+      travel_to(Time.utc(2026, 10, 4, 12)) do
+        caller = create(:user, email: 'a11f-caller@example.com', settings: { 'timezone' => 'Europe/Berlin' })
+        family = create(:family, creator: caller)
+        create(:family_membership, :owner, family: family, user: caller)
+        create(:family_membership, family: family, user: user)
+        keys = %w[user_id email api_key status plan effective_plan subscription_source active_until]
+        jobs = enqueued_jobs.dup
+        fields = %w[encrypted_password sign_in_count current_sign_in_at last_sign_in_at current_sign_in_ip
+                    last_sign_in_ip remember_created_at failed_attempts locked_at failed_otp_attempts
+                    otp_locked_at consumed_timestep api_key settings created_at updated_at]
+
+        User.statuses.each_key do |status|
+          User.plans.each_key do |plan|
+            User.subscription_sources.each_key do |source|
+              user.update_columns(status: User.statuses.fetch(status), plan: User.plans.fetch(plan),
+                                  subscription_source: User.subscription_sources.fetch(source),
+                                  locked_at: Time.current, failed_attempts: 7, failed_otp_attempts: 4,
+                                  active_until: Time.utc(2020, 1, 2, 3, 4, 5))
+              baseline = user.reload.attributes.slice(*fields)
+              post '/api/v1/auth/login',
+                   params: { email: '  ME@Example.com  ', password: 'secret123456' },
+                   headers: { 'Authorization' => "Bearer #{caller.api_key}", 'Accept-Language' => 'de' }, as: :json
+              expect(response.status).to eq(200)
+              body = JSON.parse(response.body)
+              expect(body.keys).to eq(keys)
+              expect(body['user_id']).to eq(user.id)
+              expect(body['email']).to eq(user.email)
+              expect(body['api_key'] == user.api_key).to be(true)
+              expect(body.slice('status', 'plan', 'effective_plan', 'subscription_source', 'active_until')).to eq(
+                'status' => status, 'plan' => plan, 'effective_plan' => plan,
+                'subscription_source' => source, 'active_until' => '2020-01-02T04:04:05+01:00'
+              )
+              expect(response.headers['X-Dawarich-Response']).to eq("Hey, I'm alive and authenticated!")
+              expect(response.headers['X-Dawarich-Version']).to eq(APP_VERSION)
+              expect(response.headers['Content-Type']).to eq('application/json; charset=utf-8')
+              expect(response.headers['Cache-Control']).to eq('max-age=0, private, must-revalidate')
+              expect(response.headers['ETag']).to match(%r{\AW/"[0-9a-f]{32}"\z})
+              expect(response.headers.keys.grep(/\AX-RateLimit-/i)).to be_empty
+              expect(response.headers['Set-Cookie']).to be_nil
+              expect(user.reload.attributes.slice(*fields) == baseline).to be(true)
+              expect(request.env['warden'].authenticated?(:user)).to be(false)
+            end
+          end
+        end
+
+        user.update_columns(active_until: Time.utc(2026, 1, 2, 3, 4, 5, 123_456))
+        post '/api/v1/auth/login', params: { email: user.email, password: 'secret123456' },
+             headers: { 'Authorization' => '' }, as: :json
+        expect(JSON.parse(response.body)['active_until']).to eq('2026-01-02T03:04:05Z')
+        user.update_columns(active_until: nil)
+        post '/api/v1/auth/login', params: { email: user.email, password: 'secret123456', api_key: caller.api_key }
+        expect(response.status).to eq(200)
+        expect(JSON.parse(response.body)['active_until']).to be_nil
+        expect(JSON.parse(response.body)['user_id']).to eq(user.id)
+        expect(response.headers['Set-Cookie']).to be_nil
+
+        [nil, 'unknown-a11f-key'].each do |key|
+          post '/api/v1/auth/login', params: { email: user.email, password: 'secret123456', api_key: key }
+          expect(response.status).to eq(200)
+          expect(response.headers['X-Dawarich-Response']).to eq("Hey, I'm alive!")
+        end
+
+        failures = [
+          { email: user.email, password: 'wrong' }, { email: 'absent-a11f@example.com', password: 'wrong' },
+          { email: nil, password: 'secret123456' }, { email: '  ', password: 'secret123456' },
+          { email: user.email, password: nil }, { email: user.email, password: '' }
+        ]
+        failures.each do |params|
+          baseline = user.reload.attributes
+          messages = %w[en de].map do |locale|
+            post '/api/v1/auth/login', params: params, headers: { 'Accept-Language' => locale }, as: :json
+            expect(response.status).to eq(401)
+            expect(response.headers['Set-Cookie']).to be_nil
+            JSON.parse(response.body)
+          end
+          expect(messages.first).to eq(messages.last)
+          expect(user.reload.attributes == baseline).to be(true)
+        end
+
+        [["#{'a' * 72}x", "#{'a' * 72}y"], %w[pässwörd-旅行-123456 pässwörd-旅行-123456]].each do |stored, supplied|
+          user.update!(password: stored, password_confirmation: stored)
+          baseline = user.reload.attributes
+          post '/api/v1/auth/login', params: { email: user.email, password: supplied }, as: :json
+          expect(response.status).to eq(200)
+          expect(user.reload.attributes == baseline).to be(true)
+        end
+
+        user.update!(otp_secret: User.generate_otp_secret, otp_required_for_login: true)
+        [false, true].each do |available|
+          allow(DawarichSettings).to receive(:two_factor_available?).and_return(available)
+          baseline = user.reload.attributes
+          post '/api/v1/auth/login', params: { email: user.email, password: 'pässwörd-旅行-123456' }, as: :json
+          body = JSON.parse(response.body)
+          expect(response.status).to eq(available ? 202 : 200)
+          if available
+            expect(body.keys).to eq(%w[two_factor_required challenge_token ttl])
+            expect(body['two_factor_required']).to be(true)
+            expect(body['ttl']).to eq(300)
+            claims, = JWT.decode(body['challenge_token'], Auth::InternalTokenSecret.call, true, algorithm: 'HS256')
+            expect(claims['user_id']).to eq(user.id)
+            expect(claims['purpose']).to eq('otp_challenge')
+          else
+            expect(body['api_key'] == user.api_key).to be(true)
+          end
+          expect(response.headers['Set-Cookie']).to be_nil
+          expect(user.reload.attributes == baseline).to be(true)
+        end
+
+        user.update_columns(otp_required_for_login: false)
+        post '/api/v1/auth/login', params: { email: user.email, password: 'pässwörd-旅行-123456' }
+        expect(response.status).to eq(200)
+        user.update_columns(deleted_at: Time.current)
+        post '/api/v1/auth/login', params: { email: user.email, password: 'pässwörd-旅行-123456' }, as: :json
+        expect(response.status).to eq(401)
+        expect(enqueued_jobs).to eq(jobs)
+      end
+    end
+  end
+
   it 'returns 200 with api_key on correct credentials' do
     post '/api/v1/auth/login', params: { email: 'me@example.com', password: 'secret123456' }
     expect(response).to have_http_status(:ok)

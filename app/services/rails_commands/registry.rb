@@ -3,6 +3,10 @@
 module RailsCommands
   module Registry
     HANDLERS = {
+      'release_achievements_bulk_check' => {
+        guard: 'Stable bulk job identity preserves the existing explicit bulk command root',
+        call: ->(payload) { ReleaseAdapterCommands.reverse_bulk(payload) }
+      },
       'achievements.check' => {
         guard: 'The existing achievement checker converges on the user and oldest timestamp',
         call: lambda { |payload|
@@ -203,44 +207,44 @@ module RailsCommands
         }
       }
     }.merge(Points::ArrivalCommands::HANDLERS)
-     .merge(Points::WebDestroyCommands::HANDLERS)
-     .merge(Points::AnomalyFilterCommands::HANDLERS)
-     .merge(Imports::PostprocessingCommands::HANDLERS)
-     .merge(Imports::UploadCommands::HANDLERS)
-     .merge(Imports::DownloadCommands::HANDLERS)
-     .merge(Imports::PreparedDownloadPurgeCommands::HANDLERS)
-     .merge(Imports::DestroyCommands::HANDLERS)
-     .merge(Imports::ExtractionCommands::HANDLERS)
-     .merge(RailsCommands::ShareManagementCommands::HANDLERS)
-     .merge(Posters::CreationCommand::HANDLERS)
-     .merge(Posters::PurgeCommands::HANDLERS)
-     .merge(Exports::PurgeCommands::HANDLERS)
-     .merge(Posters::ProgressCommands::HANDLERS)
-     .merge(A8Handlers::HANDLERS)
-     .merge(Integrations::SchedulingCommands::HANDLERS)
-     .merge(Families::JobCommands::HANDLERS)
-     .merge(Places::JobCommands::HANDLERS)
-     .merge(Achievements::BulkCommands::HANDLERS)
-     .merge(Visits::BulkCommands::HANDLERS)
-     .merge(Geocoding::NightlyCommands::HANDLERS)
-     .merge(Trips::CalculationCommands::HANDLERS)
-     .merge(
-       'imports.resume' => {
-         guard: 'Durable event receipt and per-import lease; repeats cannot restart a completed receipt',
-         call: ->(payload) { Imports::GpxResume.call(payload) }
-       }
-     ).merge(
-       'imports.normal_resume' => {
-         guard: 'Durable event receipt and per-import lease; completed receipts do not restart imports',
-         call: ->(payload) { Imports::NormalResume.call(payload) }
-       }
-     ).merge(Stats::Commands::HANDLERS)
-      .merge(Cache::Commands::HANDLERS)
-      .merge(Users::DataCommands::HANDLERS)
-      .merge(Users::RecalculationCommands::HANDLERS)
-      .merge(Points::AnomalyBackfillCommands::HANDLERS)
-      .merge(ReleaseCommands::HANDLERS)
-      .merge(Users::Digests::Commands::HANDLERS).freeze
+               .merge(Points::WebDestroyCommands::HANDLERS)
+               .merge(Points::AnomalyFilterCommands::HANDLERS)
+               .merge(Imports::PostprocessingCommands::HANDLERS)
+               .merge(Imports::UploadCommands::HANDLERS)
+               .merge(Imports::DownloadCommands::HANDLERS)
+               .merge(Imports::PreparedDownloadPurgeCommands::HANDLERS)
+               .merge(Imports::DestroyCommands::HANDLERS)
+               .merge(Imports::ExtractionCommands::HANDLERS)
+               .merge(RailsCommands::ShareManagementCommands::HANDLERS)
+               .merge(Posters::CreationCommand::HANDLERS)
+               .merge(Posters::PurgeCommands::HANDLERS)
+               .merge(Exports::PurgeCommands::HANDLERS)
+               .merge(Posters::ProgressCommands::HANDLERS)
+               .merge(A8Handlers::HANDLERS)
+               .merge(Integrations::SchedulingCommands::HANDLERS)
+               .merge(Families::JobCommands::HANDLERS)
+               .merge(Places::JobCommands::HANDLERS)
+               .merge(Achievements::BulkCommands::HANDLERS)
+               .merge(Visits::BulkCommands::HANDLERS)
+               .merge(Geocoding::NightlyCommands::HANDLERS)
+               .merge(Trips::CalculationCommands::HANDLERS)
+               .merge(
+                 'imports.resume' => {
+                   guard: 'Durable event receipt and per-import lease; repeats cannot restart a completed receipt',
+                   call: ->(payload) { Imports::GpxResume.call(payload) }
+                 }
+               ).merge(
+                 'imports.normal_resume' => {
+                   guard: 'Durable event receipt and per-import lease; completed receipts do not restart imports',
+                   call: ->(payload) { Imports::NormalResume.call(payload) }
+                 }
+               ).merge(Stats::Commands::HANDLERS)
+               .merge(Cache::Commands::HANDLERS)
+               .merge(Users::DataCommands::HANDLERS)
+               .merge(Users::RecalculationCommands::HANDLERS)
+               .merge(Points::AnomalyBackfillCommands::HANDLERS)
+               .merge(ReleaseCommands::HANDLERS)
+               .merge(Users::Digests::Commands::HANDLERS).freeze
 
     module_function
 

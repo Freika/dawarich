@@ -351,6 +351,7 @@ RSpec.describe RailsCommands::Poller do
 
   it 'every registered kind declares a repeat guard and a callable' do
     expected_kinds = %w[
+      release_achievements_bulk_check
       achievements.check
       visit_months_changed airtrail_stats tracks_changed tracks_generate_range tracks_throttled_backfill
       tracks_realtime_retrigger geocode_recent_points transport_progress schedule_untracked_tracks

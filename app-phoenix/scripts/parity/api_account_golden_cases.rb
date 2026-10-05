@@ -1,6 +1,60 @@
 # frozen_string_literal: true
 
 module ApiAccountGoldenOracle
+  API_AUTH_LOGIN_CASES = [
+    { name: 'json', format: :json }, { name: 'form', format: :form },
+    { name: 'normalization', email: '  A11F-SOURCE@EXAMPLE.INVALID  ' },
+    { name: 'password-72', password: "#{'a' * 72}x", supplied: "#{'a' * 72}y" },
+    { name: 'password-unicode', password: 'pässwörd-旅行-123456' },
+    { name: 'password-wrong', supplied: 'wrong', status: 401 },
+    { name: 'unknown-email', email: 'a11f-absent@example.invalid', status: 401 },
+    { name: 'blank-email', email: ' ', status: 401 },
+    { name: 'missing-email', email: nil, status: 401 },
+    { name: 'blank-password', supplied: '', status: 401 },
+    { name: 'nil-password', supplied: nil, status: 401 },
+    { name: 'caller-bearer', caller: :bearer }, { name: 'caller-param', caller: :param },
+    { name: 'caller-unknown', caller: :unknown }, { name: 'caller-null', caller: :null },
+    { name: 'locale-en', locale: 'en' }, { name: 'locale-de', locale: 'de' },
+    { name: 'active-nil', active_until: nil },
+    { name: 'active-offset', caller: :bearer, active_until: Time.utc(2020, 1, 2, 3, 4, 5) },
+    { name: 'active-precision', active_until: Time.utc(2026, 1, 2, 3, 4, 5, 123_456) },
+    { name: 'password-locked', locked: true }, { name: 'family-member', family: true, plan: :lite },
+    { name: 'deleted', deleted: true, status: 401 },
+    { name: 'otp-configured-enabled', otp: true, available: true, status: 202 },
+    { name: 'otp-config-unavailable', otp: true, available: false },
+    { name: 'otp-disabled', otp: false, available: true }
+  ].freeze
+  API_AUTH_CHALLENGE_CASES = [
+    { name: 'totp-success' }, { name: 'backup-success', code: :backup },
+    { name: 'locked-backup-success', locked: true, code: :backup },
+    { name: 'leading-zero-success', code: :leading }, { name: 'strip-success', code: :strip },
+    { name: 'internal-whitespace-success', code: :whitespace },
+    { name: 'drift-behind-success', offset: -30 }, { name: 'drift-ahead-success', offset: 30 },
+    { name: 'outside-drift', offset: -60, status: 401 },
+    { name: 'consumed-timestep', consumed: true, status: 401 },
+    { name: 'used-backup', code: :backup, no_backup: true, status: 401 },
+    { name: 'locked-totp-refusal', locked: true, status: 423 },
+    { name: 'fifth-invalid', attempts: 4, code: :invalid, status: 401 },
+    { name: 'tenth-invalid', attempts: 9, code: :invalid, status: 401 },
+    { name: 'expired-lock-invalid', expired_lock: true, attempts: 10, code: :invalid, status: 401 },
+    { name: 'flag-disabled-after-issue', changed_flag: true },
+    { name: 'identity-changed-after-issue', changed_identity: true },
+    { name: 'password-changed-after-issue', changed_password: true },
+    { name: 'secret-changed-after-issue', changed_secret: true, status: 401 },
+    { name: 'cache-mark-failure', failure: :mark }, { name: 'reset-failure', failure: :reset },
+    { name: 'render-failure', failure: :render }, { name: 'sequential-replay', replay: true, status: 401 }
+  ].freeze
+  API_AUTH_LOGIN_NAMES = %w[json form normalization password-72 password-unicode password-wrong unknown-email
+                            blank-email missing-email blank-password nil-password caller-bearer caller-param
+                            caller-unknown caller-null locale-en locale-de active-nil active-offset active-precision
+                            password-locked family-member deleted otp-configured-enabled otp-config-unavailable
+                            otp-disabled].freeze
+  API_AUTH_CHALLENGE_NAMES = %w[totp-success backup-success locked-backup-success leading-zero-success strip-success
+                                internal-whitespace-success drift-behind-success drift-ahead-success outside-drift
+                                consumed-timestep used-backup locked-totp-refusal fifth-invalid tenth-invalid
+                                expired-lock-invalid flag-disabled-after-issue identity-changed-after-issue
+                                password-changed-after-issue secret-changed-after-issue cache-mark-failure
+                                reset-failure render-failure sequential-replay].freeze
   EXIST = '/api/v1/users/exist'
   PASSWORD = 'a4rest-account-synthetic-password'
   WEBHOOK = 'a4rest-account-synthetic-webhook'

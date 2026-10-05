@@ -178,6 +178,7 @@ module JobCommands
       }
     }
   }.merge(ReleaseCommands::COMMANDS)
+   .merge(ReleaseAdapterCommands::COMMANDS)
    .merge(Tracks::BackfillCommands::COMMANDS)
    .merge(Families::JobCommands::COMMANDS)
    .merge(Places::JobCommands::COMMANDS)

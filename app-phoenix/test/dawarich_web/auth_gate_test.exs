@@ -71,6 +71,100 @@ defmodule DawarichWeb.AuthGateTest do
     end
   end
 
+  test "api_auth is independently off by default and owns both endpoints only when selected" do
+    previous = Application.get_env(:dawarich, :api_auth_context)
+
+    env =
+      Jason.decode!(File.read!("test/fixtures/active_record_encryption.json"))["environments"]
+      |> Enum.find(&(&1["name"] == "explicit keys"))
+      |> Map.fetch!("env")
+
+    context = %{
+      self_hosted: true,
+      oidc: false,
+      env:
+        Map.put(
+          env,
+          "JWT_SECRET_KEY",
+          Dawarich.Auth.TwoFactor.Totp.generate_secret("a11f signing fixture")
+        ),
+      timezone: "Etc/UTC"
+    }
+
+    Application.put_env(:dawarich, :api_auth_context, context)
+    on_exit(fn -> Application.put_env(:dawarich, :api_auth_context, previous) end)
+
+    hash =
+      Jason.decode!(File.read!("test/fixtures/auth/requests.json"))["login"]["user"][
+        "encrypted_password"
+      ]
+
+    RailsUser.insert!(%{
+      id: 75_1110,
+      email: "a11f-gate@example.invalid",
+      encrypted_password: hash,
+      api_key: "synthetic fixture words",
+      settings: %{},
+      subscription_source: 0,
+      active_until: nil
+    })
+
+    raw = ~s({"email":"a11f-gate@example.invalid","password":"safepassword12"})
+
+    conn =
+      Plug.Test.conn("POST", "/api/v1/auth/login", raw)
+      |> put_req_header("content-type", "application/json")
+      |> put_req_header("content-length", Integer.to_string(byte_size(raw)))
+      |> put_req_header("accept", "application/json")
+
+    otp = %{conn | request_path: "/api/v1/auth/otp_challenge"}
+
+    for flows <- [nil, [], ~w(credentials recovery account api_keys two_factor otp account_link)] do
+      if flows,
+        do: Application.put_env(:dawarich, :phoenix_auth, flows),
+        else: Application.delete_env(:dawarich, :phoenix_auth)
+
+      assert AuthGate.call(conn, []) == conn
+      assert AuthGate.call(otp, []) == otp
+    end
+
+    for flows <- [
+          ["api_auth"],
+          ~w(credentials recovery account api_keys two_factor otp account_link api_auth)
+        ] do
+      Application.put_env(:dawarich, :phoenix_auth, flows)
+      result = AuthGate.call(conn, [])
+      assert result.status == 200
+      assert get_resp_header(result, "x-dawarich-auth-owner") == ["native-api-auth"]
+    end
+
+    {:ok, cipher} =
+      Dawarich.Auth.TwoFactor.Secret.encrypt("GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ", env)
+
+    Repo.query!(
+      "UPDATE users SET otp_required_for_login=true,otp_secret=$2 WHERE id=$1",
+      [75_1110, cipher],
+      log: false
+    )
+
+    assert AuthGate.call(conn, []).status == 202
+
+    for path <- [
+          "/api/v1/auth/register",
+          "/api/v1/auth/apple",
+          "/api/v1/auth/google",
+          "/api/v1/auth/login/",
+          "/api/v1/users/me"
+        ] do
+      elsewhere = %{conn | request_path: path}
+      assert AuthGate.call(elsewhere, []) == elsewhere
+    end
+
+    System.put_env("SELF_HOSTED", "false")
+    assert AuthGate.call(conn, []) == conn
+    assert AuthGate.call(otp, []) == otp
+  end
+
   test "with no flow named, every auth request passes through untouched" do
     untouched(@credentials ++ @recovery ++ @elsewhere ++ @account_link)
   end

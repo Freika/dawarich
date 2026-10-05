@@ -27,8 +27,8 @@ queued instances to finish or an explicit controller disposition.
 Native state purge at `17 * * * *` is additional correctness-state maintenance,
 not a Rails schedule. TeslaMate/Trek each have one registered wrapper; accepted
 older scheduler workers remain supported and block activation until complete.
-23 source schedules have native mappings; cache preheating is a coexistence
-blocker. No claim of all 24 being native or of an idle Sidekiq is made here.
+23 source schedules have native execution coverage; the 24th cache-preheat
+wrapper delegates to Rails and remains a coexistence blocker. No claim of all 24 being native or of an idle Sidekiq is made here.
 
 | Name | Expression / Rails queue | Native module and prerequisites |
 |---|---|---|
@@ -39,7 +39,7 @@ blocker. No claim of all 24 being native or of an idle Sidekiq is made here.
 | teslamate_sync_job | `30 2 * * *` / imports | Keep `integrations/teslamate_scheduling_worker.ex`; older duplicate registration removed from ImportEntries; child routed by current owner. |
 | trek_sync_job | `0 */6 * * *` / imports | Keep `integrations/trek_scheduling_worker.ex`; older duplicate registration removed from ImportEntries; child routed by current owner. |
 | app_version_checking_job | `0 */6 * * *` / app_version_checking | `app_version/check_worker.ex`, existing. |
-| cache_preheating_job | `0 0 * * *` / cache | Missing at this head; b4 coexistence warming and later post-coexistence retirement prerequisites; native cleaning is not provided here. |
+| cache_preheating_job | `0 0 * * *` / cache | Retained `cache/preheat_sweep_worker.ex` delegates to Rails during b4 coexistence; warming and cleaning closure require separate authorization. |
 | daily_track_generation_job | `0 */12 * * *` / tracks | `tracks/daily_worker.ex`, existing K9 native path; accepted walkers drain independently. |
 | nightly_reverse_geocoding_job | `15 1 * * *` / reverse_geocoding | `geocoding/nightly_worker.ex`; A12d3 native composition and source shim. Preserve force and invalidation. |
 | nightly_family_invitations_cleanup_job | `30 2 * * *` / families | `families/invitation_cleanup_worker.ex`, existing. |
@@ -68,7 +68,7 @@ blocker. No claim of all 24 being native or of an idle Sidekiq is made here.
 | `bulk_visits_suggesting_job.rb` | 1 | A12d3 native parent seam; explicit forms and cron distinguished. |
 | `cache/{cleaning,preheating,user_preheating}_job.rb` | 3 | residual b4 + post-coexistence assignment; Rails boot/cache consumers remain. |
 | `data_migrations/{add_point_dimension_columns,drop_legacy_lat_lon}_job.rb` | 2 | A12h DDL/migrator closure, not runtime scheduling port. |
-| `data_migrations/backfill_achievements_job.rb` | 1 | deferred parent; calls native-capable bulk leaf, release decoder still needs its owning cut. |
+| `data_migrations/backfill_achievements_job.rb` | 1 | A12rel native release adapter; accepted legacy parents/children remain supported. |
 | `data_migrations/{backfill_altitude,backfill_altitude_user,backfill_motion_data,backfill_onboarding_completed,backfill_place_name_locks,backfill_point_country_id,backfill_point_dimensions,backfill_transportation_modes,cleanup_null_island,destroy_orphaned_tracks,fix_route_opacity,recalculate_anomalies,recalculate_anomalies_user,recalculate_per_tracker_tracks}_job.rb` | 14 | native release seams; old user/continuation jobs still finish or forward under characterized identity. |
 | `data_migrations/backfill_places_user_id_job.rb` | 1 | synchronous `ReleaseOperations.PlacesUserId` migrator outcome, not a registry job owner. |
 | `data_migrations/{backfill_country_name,backfill_families_for_family_plan,backfill_family_member_entitlements,dedupe_tracks_for_unique_index,migrate_places_lonlat,prefill_points_counter_cache,set_points_country_ids,set_reverse_geocoded_at_for_points,start_settings_points_country_ids}_job.rb` | 9 | declared retirement; queued instances still require source completion or an explicit release decision, never silently delete as superseded. |
@@ -94,7 +94,7 @@ blocker. No claim of all 24 being native or of an idle Sidekiq is made here.
 | `track_segments/time_anchor_backfill_job.rb` | 1 | native release seam. |
 | `tracks/{backfill_generation,boundary_resolver,daily_generation,deduplication,parallel_generator,realtime_generation,recalculate,throttled_backfill,time_chunk_processor}_job.rb` | 9 | native seams; BoundaryResolver/TimeChunk legacy accepted session work must drain, native range replacement alone is insufficient. |
 | `transportation_modes/{fleet_reclassify,reclassify_track}_job.rb` | 2 | native release/leaf seams. |
-| `transportation_modes/{import_backfill,user_reclassify}_job.rb` | 2 | residual import/user fan-out and progress/callback semantics. |
+| `transportation_modes/{import_backfill,user_reclassify}_job.rb` | 2 | ImportBackfill has the A12rel native adapter; UserReclassify remains residual with progress/callback semantics. |
 | `trek/{import_trips,sync,sync_scheduling}_job.rb` | 3 | native leaves/scheduler exist; d2 scheduler reverse-only child publication fixed here. |
 | `trips/{calculate_all,calculate_countries,calculate_distance,calculate_path}_job.rb` | 4 | native composite seam, stable run token for legacy children. |
 | `users/{creation_webhook,destroy,destruction_webhook}_job.rb` | 3 | residual external notifications and destructive account lifecycle. |
@@ -108,11 +108,12 @@ blocker. No claim of all 24 being native or of an idle Sidekiq is made here.
 ## Reverse handlers and framework debt
 
 `RailsCommands::Registry.keys` and native `RailsCommands.closure_kinds/0` are
-checked against each other. All 77 retained reverse kinds at implementation
+checked against each other. All 78 retained reverse kinds after the A12rel integration sync
 remain BLOCKED producers even if their current backlog is zero. Operator
 status lists each kind; it includes mail/digests, geocoding/place effects,
 tile/cache invalidation, import-card/progress updates, storage purge,
-visit-month invalidation, tracks scheduling and retained cache warming.
+visit-month invalidation, tracks scheduling, release achievements fanout and
+retained cache warming.
 Inspect the live registry on each integration head; do not infer closure from
 this historical count. Unknown jobs and framework attachment/mail callbacks
 remain debt. Never decode arbitrary serialized Ruby as a migration strategy.
@@ -127,7 +128,7 @@ remain debt. Never decode arbitrary serialized Ruby as a migration strategy.
 2. **Finish producer closure before final drain.** Complete the residual list below. Verify
    exact owner-class/key and reverse-kind mapping using existing tests/tools; grep producers
    and framework attachment/mail callbacks. A transient zero backlog with live Rails producers
-   cannot satisfy the row-15 release condition. Cache coexistence is still a blocker.
+   cannot satisfy final release acceptance. Cache coexistence is still a blocker.
 3. **Incremental opt-in.** Controller selects explicit ready command/cron keys, preserves pins,
    and starts/restarts native boot with that selection. Joint Lite keys flip atomically. Lock
    conflicts fail without partial changes; don't force-flip locked long imports. Cron source
@@ -256,14 +257,14 @@ The following remain named work, not compressed into “enable all jobs.”
 1. **Cache closure:** finish b4 disabled composition, then separately authorize post-coexistence
    native warming/invalidation/reader/cache-cleaning retirement. Current `cache_jobs_scheduled`
    boot sentinel, Cache::CleaningJob and warming reverse delegation keep Rails/Sidekiq alive.
-2. **A12d2 residual parents:** EnqueueBackgroundJob; DataMigrations::BackfillAchievementsJob;
-   Visits::UserRedetectJob; TransportationModes::UserReclassifyJob. Preserve exact dispatcher
+2. **A12d2 residual parents:** EnqueueBackgroundJob; Visits::UserRedetectJob;
+   TransportationModes::UserReclassifyJob. A12rel supplies the achievements parent adapter. Preserve exact dispatcher
    forms, lock/progress and notification effects before claiming their replacement keys.
 3. **Account/external effects:** Users::{DestroyJob,CreationWebhookJob,DestructionWebhookJob},
    Partnero::CustomerSignupJob; user soft-delete/dependency/attachment lifecycle and external
    delivery/retry semantics need a dedicated bounded security-sensitive cut.
 4. **A7/A4 closure:** GoogleTakeout/GPX resume, EnhancedImport non-GPX source fallback,
-   Process/NormalResume residual payloads, TransportationModes::ImportBackfillJob, storage
+   Process/NormalResume residual payloads, retained import-backfill compatibility, storage
    purge/representation/analyze jobs and Immich::VerifyEnrichmentJob. Do not mark a native
    Import route as proof its callback and reverse-effect chain is native.
 5. **Release/migrator:** A12h runs native recorded jobs/seeds/entrypoints, closes remaining DDL
@@ -289,6 +290,6 @@ Open questions for Eugene (release decisions only):
 - Which release closes the rollback window and what disposition is approved for any unrecoverable
   historical dead/unsupported job? Default here is retain/block, never destructive clearing.
 
-Execution allocation is assigned by controller ruling 1 and verified in Task 0. These two open
-release decisions preserve the cache and retain/block fences in Tasks 11/16/21; neither
-prevents writing the default-off branch implementation or this plan.
+The assigned local rehearsal resources are Redis 7247, Rails database
+`dawarich_test_a12d3` and Phoenix database `dawarich_phoenix_test_a12d3`.
+The open release decisions preserve cache coexistence and retain/block defaults.

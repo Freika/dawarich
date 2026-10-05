@@ -15,7 +15,7 @@ defmodule Dawarich.RailsCommands do
     points.anomaly_filter points.anomaly_recalculate points.anomaly_stats points.live_broadcast
     points.tile_epoch points.web_destroy_follow_up posters.created posters.progress
     posters.purge release.anomalies release.anomalies_user release.per_tracker
-    release_null_island_follow_up release_reclassify_tracks release_user_redetect reverse_geocode_place
+    release_achievements_bulk_check release_null_island_follow_up release_reclassify_tracks release_user_redetect reverse_geocode_place
     route_videos.attachment_job schedule_untracked_tracks share_management.live_revoked stats.caches_invalidated
     stats.calculate_month stats.full_recalculation tracks.backfill tracks.realtime
     tracks_changed tracks_generate_range tracks_realtime_retrigger tracks_throttled_backfill
@@ -25,6 +25,28 @@ defmodule Dawarich.RailsCommands do
   )
 
   def closure_kinds, do: @closure_kinds
+
+  def insert!(
+        repo,
+        "release_achievements_bulk_check" = kind,
+        %{
+          "job_id" => job_id,
+          "options" => %{"notify" => notify, "force" => force, "stale_only" => stale} = options,
+          "run_at" => run_at
+        } = payload
+      )
+      when map_size(payload) == 3 and map_size(options) == 3 and is_binary(job_id) and
+             is_binary(run_at) and is_boolean(notify) and is_boolean(force) and is_boolean(stale) do
+    with {:ok, _} <- Ecto.UUID.cast(job_id),
+         {:ok, _, _} <- DateTime.from_iso8601(run_at) do
+      insert_row!(repo, kind, payload)
+    else
+      _ -> raise ArgumentError, "invalid release bulk payload"
+    end
+  end
+
+  def insert!(_repo, "release_achievements_bulk_check", _payload),
+    do: raise(ArgumentError, "invalid release bulk payload")
 
   def insert!(repo, kind, %{"user_id" => user_id} = payload)
       when is_binary(kind) and is_integer(user_id),

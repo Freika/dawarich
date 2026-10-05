@@ -113,6 +113,23 @@ defmodule DawarichWeb.Api.TwoFactorEndpointTest do
     end
   end
 
+  test "API two-factor replays NUL passwords and codes with original JSON and form bytes", c do
+    before = state(c)
+
+    for {method, target} <- @actions,
+        field <- ~w(password otp_code),
+        prefix <- ["wrong", "safepassword12"],
+        type <- ["application/json", "application/x-www-form-urlencoded"] do
+      params = %{"password" => "safepassword12", field => prefix <> <<0>> <> "suffix"}
+
+      body =
+        if type == "application/json", do: Jason.encode!(params), else: URI.encode_query(params)
+
+      replay!(c, method, target, body, type: type)
+      assert state(c) == before
+    end
+  end
+
   test "API post-save failure is terminal and never reaches Puma", c do
     assert native_route?()
     secret = Totp.generate_secret(:binary.copy(<<4>>, 20))
