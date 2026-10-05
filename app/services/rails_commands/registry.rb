@@ -214,6 +214,7 @@ module RailsCommands
      .merge(Integrations::SchedulingCommands::HANDLERS)
      .merge(Families::JobCommands::HANDLERS)
      .merge(Places::JobCommands::HANDLERS)
+     .merge(Achievements::BulkCommands::HANDLERS)
      .merge(
        'imports.resume' => {
          guard: 'Durable event receipt and per-import lease; repeats cannot restart a completed receipt',

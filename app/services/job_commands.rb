@@ -185,6 +185,7 @@ module JobCommands
    .merge(Tracks::BackfillCommands::COMMANDS)
    .merge(Families::JobCommands::COMMANDS)
    .merge(Places::JobCommands::COMMANDS)
+   .merge(Achievements::BulkCommands::COMMANDS)
    .merge(Stats::Commands::COMMANDS)
    .merge(Imports::ProcessCommands::COMMANDS)
    .merge(Posters::CreationCommand::COMMANDS)
