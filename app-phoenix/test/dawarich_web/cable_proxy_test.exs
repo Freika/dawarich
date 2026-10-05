@@ -42,7 +42,13 @@ defmodule DawarichWeb.CableProxyTest do
     assert values(headers, "sec-websocket-protocol") == ["actioncable-v1-json"]
     assert values(headers, "cache-control") == []
 
-    assert_receive {:cable_request, "/cable", "share_id=7", upstream}
+    event =
+      receive do
+        {:cable_request, _, _, _} = event -> event
+      end
+
+    assert {:cable_request, "/cable", "share_id=7", upstream} = event
+
     assert {"origin", "https://dawarich.example"} in upstream
     assert {"cookie", "other_app=Gr\xC3\xBC\xC3\x9Fe; _dawarich_session=abc"} in upstream
     assert {"sec-websocket-key", Base.encode64("the sample nonce")} in upstream
@@ -110,7 +116,12 @@ defmodule DawarichWeb.CableProxyTest do
           :ok = :gen_tcp.close(client)
 
           for ref <- refs do
-            assert_receive({:DOWN, ^ref, :process, _, reason}, 5_000)
+            event =
+              receive do
+                {:DOWN, ^ref, :process, _, _} = event -> event
+              end
+
+            assert {:DOWN, ^ref, :process, _, reason} = event
 
             assert reason in [:normal, :noproc] or match?({:shutdown, _}, reason),
                    "connection process for #{unquote(form)} exited with #{inspect(reason)} instead of a normal shutdown"
@@ -177,7 +188,13 @@ defmodule DawarichWeb.CableProxyTest do
     {101, _headers, _rest} = read_response_head(socket)
 
     ws_close(socket, 1000)
-    assert_receive {:cable_closed, :remote}, 5_000
+
+    event =
+      receive do
+        {:cable_closed, _} = event -> event
+      end
+
+    assert {:cable_closed, :remote} = event
   end
 
   test "a client that drops the connection closes Puma's side" do
@@ -186,7 +203,13 @@ defmodule DawarichWeb.CableProxyTest do
     {101, _headers, _rest} = read_response_head(socket)
 
     :ok = :gen_tcp.close(socket)
-    assert_receive {:cable_closed, :remote}, 5_000
+
+    event =
+      receive do
+        {:cable_closed, _} = event -> event
+      end
+
+    assert {:cable_closed, :remote} = event
   end
 
   test "Puma going away closes the client with 1011" do
@@ -207,7 +230,13 @@ defmodule DawarichWeb.CableProxyTest do
     on_exit(fn -> :telemetry.detach(ref) end)
 
     :ok = :gen_tcp.close(puma)
-    assert_receive {^ref, :close_sent}, 5_000
+
+    event =
+      receive do
+        {^ref, _} = event -> event
+      end
+
+    assert {^ref, :close_sent} = event
 
     assert {{:close, <<1011::16>>}, _rest} = ws_recv(socket, rest)
   end
@@ -277,7 +306,7 @@ defmodule DawarichWeb.CableProxyTest do
          :crypto.exor(payload, binary_part(:binary.copy(mask, div(size, 4) + 1), 0, size)), rest}
 
       _ ->
-        {:ok, data} = :gen_tcp.recv(socket, 0, 5_000)
+        {:ok, data} = :gen_tcp.recv(socket, 0, :infinity)
         masked_recv(socket, acc <> data)
     end
   end

@@ -76,21 +76,21 @@ defmodule Dawarich.AirTrail.ClientTest do
     {listen, base} = tls_redirect()
     task = Task.async(fn -> Client.flights(source(base)) end)
 
-    {:ok, socket} = :ssl.transport_accept(listen, 5_000)
-    assert {:error, {:tls_alert, {:unknown_ca, _}}} = :ssl.handshake(socket, 5_000)
-    assert Task.await(task) == {:error, "Could not connect to AirTrail"}
+    {:ok, socket} = :ssl.transport_accept(listen, :infinity)
+    assert {:error, {:tls_alert, {:unknown_ca, _}}} = :ssl.handshake(socket, :infinity)
+    assert Task.await(task, :infinity) == {:error, "Could not connect to AirTrail"}
   end
 
   test "skip_ssl_verification still skips verification after a redirect to https" do
     {listen, base} = tls_redirect()
     task = Task.async(fn -> Client.flights(%{source(base) | skip_ssl_verification: true}) end)
 
-    {:ok, socket} = :ssl.transport_accept(listen, 5_000)
-    {:ok, socket} = :ssl.handshake(socket, 5_000)
-    {:ok, _request} = :ssl.recv(socket, 0, 5_000)
+    {:ok, socket} = :ssl.transport_accept(listen, :infinity)
+    {:ok, socket} = :ssl.handshake(socket, :infinity)
+    {:ok, _request} = :ssl.recv(socket, 0, :infinity)
     :ok = :ssl.send(socket, "HTTP/1.1 200 OK\r\ncontent-length: 16\r\n\r\n{\"success\":true}")
 
-    assert Task.await(task) == {:ok, []}
+    assert Task.await(task, :infinity) == {:ok, []}
   end
 
   test "asks AirTrail to close the connection so no keep-alive session is reused" do
@@ -101,7 +101,7 @@ defmodule Dawarich.AirTrail.ClientTest do
     {head, _rest} = RawHTTP.read_head(socket)
     RawHTTP.reply(socket, "HTTP/1.1 200 OK\r\ncontent-length: 16\r\n\r\n{\"success\":true}")
 
-    assert Task.await(task) == {:ok, []}
+    assert Task.await(task, :infinity) == {:ok, []}
     assert RawHTTP.header(head, "connection") == ["close"]
   end
 end

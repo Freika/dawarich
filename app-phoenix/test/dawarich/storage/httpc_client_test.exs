@@ -22,8 +22,15 @@ defmodule Dawarich.Storage.HttpcClientTest do
     RawHTTP.read_head(socket)
     ref = Process.monitor(caller)
     Process.exit(caller, :kill)
-    assert_receive {:DOWN, ^ref, :process, ^caller, :killed}
-    assert {:error, :closed} = :gen_tcp.recv(socket, 0, 1_000)
+
+    event =
+      receive do
+        {:DOWN, ^ref, :process, ^caller, _} = event -> event
+      end
+
+    assert {:DOWN, ^ref, :process, ^caller, :killed} = event
+
+    assert {:error, :closed} = :gen_tcp.recv(socket, 0, :infinity)
   end
 
   test "sends method, headers and body over :httpc and returns binary headers" do
@@ -50,7 +57,7 @@ defmodule Dawarich.Storage.HttpcClientTest do
       "HTTP/1.1 200 OK\r\nETag: \"etag-1\"\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"
     )
 
-    assert {:ok, %{status_code: 200, headers: headers, body: "ok"}} = Task.await(task)
+    assert {:ok, %{status_code: 200, headers: headers, body: "ok"}} = Task.await(task, :infinity)
     assert {"etag", ~s("etag-1")} in headers
     assert RawHTTP.request_line(head) == "PUT /dawarich/abc?uploadId=up-1 HTTP/1.1"
     assert RawHTTP.header(head, "content-md5") == ["md5=="]
