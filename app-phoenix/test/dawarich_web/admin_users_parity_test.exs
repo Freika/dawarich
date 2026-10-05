@@ -13,6 +13,34 @@ defmodule DawarichWeb.AdminUsersParityTest do
     :ok
   end
 
+  test "client-owned admin and extraction dialogs ignore LiveView child patches" do
+    admin =
+      render_component(&DawarichWeb.AdminUserDialogs.dialogs/1,
+        locale: "en",
+        rows: [%{id: 2, email: "dialog@dawarich.test"}],
+        actor: %{id: 1},
+        rails_csrf_token: "synthetic-csrf"
+      )
+
+    extraction =
+      render_component(&DawarichWeb.ImportsExtractionDialog.dialog/1,
+        id: 3,
+        locale: "en",
+        csrf: "synthetic-csrf"
+      )
+
+    dialogs = LazyHTML.from_fragment(admin <> extraction) |> LazyHTML.query("dialog")
+
+    assert LazyHTML.attribute(dialogs, "id") == [
+             "create_user",
+             "delete_user_2",
+             "extraction-dialog-3"
+           ]
+
+    assert LazyHTML.attribute(dialogs, "phx-update") == ["ignore", "ignore", "ignore"]
+    assert LazyHTML.attribute(dialogs, "open") == []
+  end
+
   for name <- @cases do
     @name name
     @tag a10_users: String.to_atom(@name)

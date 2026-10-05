@@ -11,7 +11,7 @@ const globals = {
     constructor(_path, _socket, config) { options = config }
     connect() {}
   },
-  MapShell: {}, RailsStimulus: {}, meta: () => null,
+  MapShell: {}, RailsStimulus: {}, FamilyPage: {}, meta: () => null,
   document: { readyState: "loading", addEventListener() {}, querySelectorAll: () => [] },
   window: { addEventListener() {}, setTimeout() {} },
 }
@@ -23,13 +23,13 @@ const end = client.indexOf("\nvar dom_default = DOM;", start)
 assert.ok(start >= 0 && end > start, "installed LiveView DOM implementation required")
 const DOM = vm.runInNewContext(`${client.slice(start, end)}\nDOM`)
 
-function element({ open = false, navbar = true, logout = true, title = "old", content = "old action" } = {}) {
+function element({ open = false, tag = "details", navbar = true, logout = true, title = "old", content = "old action" } = {}) {
   const attrs = new Map([["title", title], ["data-server-revision", title]])
   if (open) attrs.set("open", "")
   return {
     children: [content],
     get attributes() { return [...attrs].map(([name, value]) => ({ name, value })) },
-    matches(selector) { return selector === "details" || (selector === ".navbar-end details" && navbar) },
+    matches(selector) { return selector === tag || (selector === ".navbar-end details" && tag === "details" && navbar) },
     querySelector(selector) { return selector === 'a[href="/users/sign_out"]' && logout ? {} : null },
     getAttribute(name) { return attrs.get(name) ?? null },
     hasAttribute(name) { return attrs.has(name) },
@@ -43,6 +43,18 @@ function reconcile(from, incoming) {
   options.dom?.onBeforeElUpdated?.(from, incoming)
   DOM.mergeAttrs(from, incoming)
 }
+
+test("client-opened dialogs preserve browser open and closed state while accepting server attributes", () => {
+  for (const open of [true, false]) {
+    const current = element({ tag: "dialog", open })
+    const incoming = element({ tag: "dialog", open: !open, title: "server update", content: "updated dialog" })
+    reconcile(current, incoming)
+    assert.equal(current.hasAttribute("open"), open)
+    assert.equal(current.getAttribute("title"), "server update")
+    assert.equal(current.getAttribute("data-server-revision"), "server update")
+    assert.deepEqual(incoming.children, ["updated dialog"])
+  }
+})
 
 test("account disclosure survives server reconciliation without rewriting incoming content", () => {
   for (const open of [true, false]) {
