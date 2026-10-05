@@ -46,7 +46,8 @@ RSpec.describe ReleaseCommands do
 
   it 'JobCommands serves every release type' do
     expect(JobCommands::COMMANDS.keys).to include(*described_class::COMMANDS.keys)
-    expect(described_class::COMMANDS.keys).to match_array(samples.keys)
+    expect(described_class::COMMANDS.keys)
+      .to match_array(samples.keys + %w[release.anomalies release.anomalies_user release.per_tracker])
   end
 
   it 'rehome moves a pending release row to Sidekiq with its delay' do

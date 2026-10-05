@@ -195,6 +195,20 @@ RSpec.describe Users::MailerSendingJob, type: :job do
     end
 
     context 'when email_type is a legacy trial lifecycle email' do
+      it 'legacy trial types enqueue no mail and have no native command mapping' do
+        allow(UsersMailer).to receive(:with).and_call_original
+        user
+        clear_enqueued_jobs
+        types = %w[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late]
+        expect(described_class::LEGACY_MANAGER_EMAIL_TYPES).to eq(types)
+        types.each do |type|
+          expect(UserMailCommands::TYPES).not_to have_key(type)
+          expect(described_class::MAILER_REGISTRY).not_to have_key(type)
+          described_class.new.perform(user.id, type)
+          expect(enqueued_jobs.length).to eq(0)
+        end
+      end
+
       %w[trial_expired trial_expires_soon post_trial_reminder_early post_trial_reminder_late].each do |email_type|
         it "skips #{email_type}" do
           expect do

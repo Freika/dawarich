@@ -3,7 +3,7 @@ defmodule Dawarich.Digests.Generation do
 
   alias Dawarich.Digests.{Failure, Run}
   alias Dawarich.Jobs.Processed
-  alias Dawarich.RailsCommands
+  alias Dawarich.Mail.ResidualCommands
 
   def run(repo, kind, args, opts \\ []) do
     event_id = Map.fetch!(args, "event_id")
@@ -41,10 +41,7 @@ defmodule Dawarich.Digests.Generation do
   end
 
   defp terminal(repo, _kind, period, args, {:ok, _id}) do
-    fields =
-      if period == "month", do: ~w(user_id year month time_zone), else: ~w(user_id year time_zone)
-
-    RailsCommands.insert!(repo, "digests.email_" <> period, Map.take(args, fields))
+    ResidualCommands.digest(repo, period, args)
   end
 
   defp terminal(repo, kind, _period, args, {:error, error, stack}),

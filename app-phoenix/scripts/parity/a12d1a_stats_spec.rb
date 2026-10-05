@@ -848,4 +848,596 @@ RSpec.describe 'Phoenix fixture: A12d1b1 digest calculators' do
   ensure
     original ? ENV['TZ'] = original : ENV.delete('TZ')
   end
+
+  context 'A12d1b3 committed source captures' do
+    self.use_transactional_tests = false
+
+    before { phoenix_tables! }
+
+    it 'writes or matches the A12d1b3 recalculation corpus twice byte-identically' do
+      first = recalculation_capture
+      expect(recalculation_capture).to eq(first)
+      expect(first).not_to include(Rails.root.to_s)
+      destination = Rails.root.join('app-phoenix/test/fixtures/a12d1b3/recalculations.json')
+      if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
+        FileUtils.mkdir_p(destination.dirname)
+        File.write(destination, first)
+      else
+        expect(first).to eq(destination.read)
+      end
+    end
+
+    def recalculation_capture
+      cases = recalculation_profiles.map do |profile|
+        RSpec::Mocks.with_temporary_scope do
+          recalculation_isolated { recalculation_case(profile) }
+        end
+      end
+      digest_json('version' => 1, 'cases' => cases, 'timestamps' => recalculation_timestamps,
+                  'policies' => recalculation_policies, 'release_zones' => recalculation_release_zones,
+                  'mixed_retries' => recalculation_mixed_retries)
+    end
+
+    def recalculation_mixed_retries
+      RSpec::Mocks.with_temporary_scope do
+        recalculation_isolated do
+          source = recalculation_case('fleet_rebuild_retry')
+          steps = [recalculation_retry_snapshot('first_error')]
+          job = DataMigrations::RecalculateAnomaliesUserJob.deserialize(enqueued_jobs.last)
+          clear_enqueued_jobs
+          expect(PhoenixLease.acquire('anomaly_backfill:170101', 'synthetic-busy', 60)).to be(true)
+          job.perform_now
+          steps << recalculation_retry_snapshot('busy')
+          expect(enqueued_jobs.last.fetch('exception_executions')).to eq({})
+          PhoenixLease.release('anomaly_backfill:170101', 'synthetic-busy')
+          3.times do |index|
+            job = DataMigrations::RecalculateAnomaliesUserJob.deserialize(enqueued_jobs.last)
+            clear_enqueued_jobs
+            job.perform_now
+            steps << recalculation_retry_snapshot("after_busy_error_#{index + 1}")
+          end
+          expect(steps.map { |step| step.fetch('failed') }).to eq([false, false, false, false, true])
+          expect(steps.map { |step| step.fetch('slots') }).to eq([0, 0, 0, 0, 1])
+          { 'input' => source.fetch('input'), 'steps' => steps }
+        end
+      end
+    end
+
+    def recalculation_retry_snapshot(name)
+      jobs = recalculation_jobs
+      retry_job = jobs.find { |job| job['job_class'] == 'DataMigrations::RecalculateAnomaliesUserJob' }
+      failed = DataMigrations::RecalculateAnomaliesUserJob::FAILED_SETTINGS_KEY
+      { 'name' => name, 'jobs' => jobs, 'failed' => User.find(170_101).settings.key?(failed),
+        'slots' => jobs.count { |job| job['job_class'] == 'DataMigrations::RecalculateAnomaliesJob' },
+        'delay' => retry_job && Time.iso8601(retry_job.fetch('scheduled_at')).to_i - digest_now.to_i }
+    end
+
+    def recalculation_release_zones
+      %w[Europe/Berlin Asia/Tokyo].map do |zone|
+        fleet = RSpec::Mocks.with_temporary_scope do
+          recalculation_isolated { Time.use_zone(zone) { recalculation_case('fleet_disabled') } }
+        end
+        tracker = RSpec::Mocks.with_temporary_scope do
+          recalculation_isolated { Time.use_zone(zone) { recalculation_boundary_tracker } }
+        end
+        { 'zone' => zone, 'fleet' => fleet, 'tracker' => tracker }
+      end
+    end
+
+    def recalculation_boundary_tracker
+      User.unscoped.insert_all!([{ id: 170_101, email: 'boundary@example.invalid', encrypted_password: '',
+                                  status: 1, plan: 1, settings: { 'gps_filtering_enabled' => false },
+                                  created_at: digest_now, updated_at: digest_now }])
+      Import.insert_all!([{ id: 170_801, user_id: 170_101, name: 'Records.json',
+                           source: Import.sources[:google_records], created_at: digest_now, updated_at: digest_now }])
+      at = Timestamps.parse_timestamp('1960-01-01T00:00:00Z')
+      Point.insert_all!([{ id: 170_201, user_id: 170_101, import_id: 170_801, timestamp: at,
+                          lonlat: 'POINT(12 51)', tracker_id: 'legacy-import-170801', raw_data: {},
+                          created_at: digest_now, updated_at: digest_now }])
+      records = Oj.dump({ 'locations' => [{ 'timestamp' => '1960-01-01T00:00:00Z', 'deviceTag' => 77,
+                                          'latitudeE7' => 510_000_000, 'longitudeE7' => 120_000_000 }] }, mode: :strict)
+      import = Import.find(170_801)
+      import.file.attach(io: StringIO.new(records), filename: 'Records.json', content_type: 'application/json')
+      @recalculation_blob_ids << import.file.blob.id
+      input = recalculation_rows(input: true)
+      count = Points::DeviceTagBackfiller.new(import).call
+      expect(count).to eq(1)
+      expect(Point.find(170_201).tracker_id).to eq('google-records-device-77')
+      { 'input' => input, 'records' => records, 'timestamp' => at, 'count' => count,
+        'tracker_id' => Point.find(170_201).tracker_id }
+    end
+
+    def recalculation_profiles
+      %w[full full_missing full_deleted full_stale
+         user_all user_specific user_coerced user_zero user_blank user_float user_invalid_year
+         user_tokyo user_dst user_invalid_zone user_nested_argument user_no_data user_missing user_deleted
+         user_notify_false user_notify_null user_notify_empty user_stats_handled user_stats_escape
+         user_digest_escape user_busy user_busy_exhausted user_busy_false user_busy_null user_busy_empty
+         backfill_reset backfill_async backfill_nonreset backfill_disabled backfill_busy backfill_interrupted
+         fleet_success fleet_missing fleet_done fleet_disabled fleet_busy fleet_busy_exhausted fleet_interrupted
+         fleet_rebuild_retry fleet_rebuild_exhausted fleet_manual_failed fleet_done_empty
+         dispatch_predicates dispatch_disabled dispatch_malformed tracker_records tracker_missing tracker_corrupt
+         tracker_retry tracker_stagger tracker_stagger_zero]
+    end
+
+    def recalculation_isolated(&block)
+      connection = ActiveRecord::Base.connection
+      configuration = ActiveRecord::Base.connection_db_config.configuration_hash
+      fixture_mode = use_transactional_tests
+      expect(connection.open_transactions).to eq(0)
+      @recalculation_sessions = []
+      @recalculation_blob_ids = []
+      sequences = %w[stats_id_seq digests_id_seq notifications_id_seq active_storage_blobs_id_seq
+                     active_storage_attachments_id_seq active_storage_variant_records_id_seq
+                     phoenix.achievement_check_revisions].index_with do |sequence|
+        connection.select_one("SELECT last_value, is_called FROM #{sequence}")
+      end
+      sequences.each_key { |sequence| connection.execute("SELECT setval('#{sequence}', 170900, false)") }
+      uuid_index = 170_000
+      allow(SecureRandom).to receive(:uuid) do
+        uuid_index += 1
+        format('00000000-0000-4000-8000-%012d', uuid_index)
+      end
+      allow(SecureRandom).to receive(:hex).with(8).and_return('1700000000000000')
+      allow(Kernel).to receive(:rand).and_call_original
+      allow(Kernel).to receive(:rand).with(no_args).and_return(0)
+      allow(ActiveStorage::Blob).to receive(:generate_unique_secure_token).and_return('a12d1b3-records-source')
+      allow(Tracks::SessionManager).to receive(:create_for_user).and_wrap_original do |original, *args|
+        original.call(*args).tap { |session| @recalculation_sessions << session }
+      end
+      travel_to(digest_now) { Time.use_zone('Europe/Berlin', &block) }
+    ensure
+      begin
+        @recalculation_sessions&.each(&:cleanup_session)
+        ActiveStorage::Attachment.where(blob_id: @recalculation_blob_ids || []).delete_all
+        ActiveStorage::Blob.where(id: @recalculation_blob_ids || []).find_each(&:purge)
+        TrackSegment.where(track_id: Track.where(user_id: 170_101..170_120).select(:id)).delete_all
+        [Point, Track, Stat, Users::Digest, Notification, Import].each do |model|
+          model.where(user_id: 170_101..170_120).delete_all
+        end
+        User.unscoped.where(id: 170_101..170_120).delete_all
+        %w[stats_full_recalculation:user:170101 anomaly_backfill:170101 tracks:per_user_lock:170101].each do |key|
+          connection.execute("DELETE FROM phoenix.once_claims WHERE key = #{connection.quote(key)}")
+          connection.execute("DELETE FROM phoenix.leases WHERE name = #{connection.quote(key)}")
+        end
+        connection.execute('DELETE FROM phoenix.achievement_checks WHERE user_id = 170101')
+        Rails.cache.delete('dawarich/user_170101_years_tracked')
+        %w[points tracks].each do |domain|
+          %w[all 2024 2025].each { |year| Rails.cache.delete("#{domain}:tile_epoch:170101:#{year}") }
+        end
+      ensure
+        sequences&.each do |sequence, state|
+          connection.execute("SELECT setval('#{sequence}', #{state.fetch('last_value')}, " \
+                             "#{connection.quote(state.fetch('is_called'))})")
+        end
+        clear_enqueued_jobs
+        ActiveRecord::Base.connection_pool.release_connection
+        ActiveRecord::Base.establish_connection(configuration) if configuration
+        self.use_transactional_tests = fixture_mode unless fixture_mode.nil?
+      end
+    end
+
+    def recalculation_case(profile)
+      settings = { 'timezone' => 'Europe/Berlin', 'locale' => ' FR ', 'gps_filtering_enabled' => true }
+      settings['timezone'] = 'Asia/Tokyo' if profile == 'user_tokyo'
+      settings['timezone'] = 'Unknown/Zone' if profile == 'user_invalid_zone'
+      settings['gps_filtering_enabled'] = 'off' if profile.end_with?('_disabled')
+      done = DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY
+      failed = DataMigrations::RecalculateAnomaliesUserJob::FAILED_SETTINGS_KEY
+      settings[done] = digest_now.iso8601 if profile == 'fleet_done'
+      settings[done] = '' if profile == 'fleet_done_empty'
+      settings[failed] = digest_now.iso8601 if profile == 'fleet_manual_failed'
+      missing = %w[full_missing user_missing fleet_missing].include?(profile)
+      unless missing
+        User.unscoped.insert_all!([{ id: 170_101, email: 'a12d1b3@example.invalid', encrypted_password: '',
+                                    status: 1, plan: 1, settings:,
+                                    deleted_at: profile.end_with?('_deleted') ? digest_now : nil,
+                                    created_at: digest_now, updated_at: digest_now }])
+      end
+      recalculation_points unless missing || profile == 'user_no_data'
+      calls = recalculation_observe(profile)
+      case profile
+      when /^full/ then recalculation_full(profile, calls)
+      when /^user/ then recalculation_user(profile, calls)
+      when /^backfill/ then recalculation_backfill(profile, calls)
+      when /^fleet/ then recalculation_fleet(profile, calls)
+      when /^dispatch/ then recalculation_dispatch(profile, calls)
+      when /^tracker/ then recalculation_tracker(profile, calls)
+      end
+    end
+
+    def recalculation_points
+      instants = ['2024-12-31T23:30:00Z', '2025-01-01T01:00:00Z', '2025-03-15T12:00:00Z',
+                  '2025-03-15T12:00:00Z', '2025-03-15T12:00:00Z', '2025-03-15T12:10:00Z',
+                  '2025-03-30T00:30:00Z', '2025-12-31T23:30:00Z']
+      Point.insert_all!(instants.each_with_index.map do |instant, index|
+        position = (2..4).cover?(index) ? index - 2 : index
+        { id: 170_201 + index, user_id: 170_101, timestamp: Time.iso8601(instant).to_i,
+          lonlat: "POINT(#{12 + position * 0.0001} #{51 + position * 0.0001})", velocity: '0',
+          anomaly: index.zero?, tracker_id: index == 7 ? 'real-device' : nil,
+          raw_data: index == 1 ? { 'deviceTag' => ' 7 ', 'tid' => 'ignored' } : { 'tid' => ' real-tid ' },
+          created_at: digest_now, updated_at: digest_now }
+      end)
+    end
+
+    def recalculation_observe(profile)
+      calls = []
+      error = StandardError.new('synthetic recalculation failure')
+      error.set_backtrace((1..25).map { |line| "synthetic frame #{line}" })
+      replayed = false
+      allow(Stats::CalculateMonth).to receive(:new).and_wrap_original do |original, *args|
+        calls << { 'kind' => 'stats', 'args' => args, 'locale' => I18n.locale.to_s, 'zone' => Time.zone.name }
+        raise error if profile == 'user_stats_escape'
+
+        if profile == 'user_nested_argument' && args.last == 2 && !replayed
+          replayed = true
+          raise ArgumentError, 'synthetic nested argument'
+        end
+        original.call(*args)
+      end
+      if profile == 'user_stats_handled'
+        allow_any_instance_of(Stats::CalculateMonth).to receive(:points).and_raise(error)
+      end
+      allow(Tracks::ParallelGenerator).to receive(:new).and_wrap_original do |original, user, **kwargs|
+        calls << { 'kind' => 'tracks', 'user_id' => user.id, 'options' => kwargs.as_json,
+                   'locale' => I18n.locale.to_s, 'zone' => Time.zone.name,
+                   'start_timestamp' => kwargs.fetch(:start_at).to_i,
+                   'end_timestamp' => kwargs.fetch(:end_at).to_i,
+                   'end_microsecond' => kwargs.fetch(:end_at).usec }
+        if profile.include?('busy') && profile.start_with?('user_')
+          raise Tracks::PerUserLock::AcquisitionTimeout, 'synthetic track lock contention'
+        end
+        raise error if profile.start_with?('fleet_rebuild')
+
+        recalculation_service(original.call(user, **kwargs), calls.last)
+      end
+      allow(Users::Digests::CalculateYear).to receive(:new).and_wrap_original do |original, *args|
+        calls << { 'kind' => 'digest', 'args' => args, 'locale' => I18n.locale.to_s, 'zone' => Time.zone.name }
+        raise error if profile == 'user_digest_escape'
+
+        recalculation_service(original.call(*args), calls.last)
+      end
+      allow(Points::AnomalyFilter).to receive(:new).and_wrap_original do |original, *args, **kwargs|
+        calls << { 'kind' => 'filter', 'args' => args, 'options' => kwargs.as_json }
+        original.call(*args, **kwargs)
+      end
+      allow(Points::TileEpoch).to receive(:bump).and_wrap_original do |original, *args, **kwargs|
+        calls << { 'kind' => 'points.tile_epoch', 'args' => args, 'options' => kwargs.as_json }
+        original.call(*args, **kwargs)
+      end
+      calls
+    end
+
+    def recalculation_service(service, row)
+      allow(service).to receive(:call).and_wrap_original do |original|
+        result = original.call
+        row['result'] = result.is_a?(Tracks::SessionManager) ? result.get_session_data : result.as_json
+        result
+      end
+      service
+    end
+
+    def recalculation_full(profile, calls)
+      key = 'stats_full_recalculation:user:170101'
+      PhoenixClaims.debounce(key, 300)
+      if profile == 'full_stale'
+        user = User.find(170_101)
+        user.years_tracked
+        Point.insert_all!([{ id: 170_220, user_id: user.id, timestamp: Time.utc(2025, 6, 1, 12).to_i,
+                            lonlat: 'POINT(13 52)', anomaly: true, created_at: digest_now, updated_at: digest_now }])
+      end
+      job = Stats::FullRecalculationJob.new(170_101)
+      recalculation_run(profile, job, calls) do
+        result = job.perform_now
+        expect(claim_seconds(key)).to be_nil
+        jobs = recalculation_jobs
+        if %w[full_missing full_deleted].include?(profile)
+          expect(jobs).to be_empty
+        else
+          expect(jobs).not_to be_empty
+          expect(jobs.map { |row| row['job_class'] }.uniq).to eq(['Stats::CalculatingJob'])
+          expect(jobs.map { |row| row['arguments'][1] }).to eq(jobs.map { |row| row['arguments'][1] }.sort.reverse)
+        end
+        result
+      end
+    end
+
+    def recalculation_user(profile, calls)
+      year = case profile
+             when 'user_all', 'user_no_data', 'user_missing', 'user_deleted' then nil
+             when 'user_coerced' then ' 2025tail'
+             when 'user_zero' then 0
+             when 'user_blank' then ''
+             when 'user_float' then 2025.9
+             when 'user_invalid_year' then true
+             else 2025
+             end
+      notify = case profile
+               when 'user_notify_false', 'user_busy_false' then false
+               when 'user_notify_null', 'user_busy_null' then nil
+               when 'user_notify_empty', 'user_busy_empty' then ''
+               else true
+               end
+      job = Users::RecalculateDataJob.new(170_101, year:, notify:)
+      job.exception_executions = { '[Tracks::PerUserLock::AcquisitionTimeout]' => 4 } if profile.include?('busy_')
+      recalculation_run(profile, job, calls) do
+        result = job.perform_now
+        unless %w[user_missing user_deleted user_no_data].include?(profile) || profile.include?('busy')
+          kinds = calls.map { |row| row['kind'] }.select { |kind| %w[stats tracks digest].include?(kind) }
+          expect(kinds).to eq(kinds.sort_by { |kind| %w[stats tracks digest].index(kind) })
+          expect(calls.select { |row| row['kind'] == 'tracks' }).not_to be_empty
+          track_calls = calls.select { |row| row['kind'] == 'tracks' }
+          expect(track_calls.map { |row| row['end_microsecond'] }.uniq).to eq([999_999])
+          expect(recalculation_jobs.none? { |row| row['job_class'].include?('EmailSending') }).to be(true)
+        end
+        result
+      end
+    end
+
+    def recalculation_backfill(profile, calls)
+      reset = profile != 'backfill_nonreset'
+      rebuild = profile == 'backfill_async' ? :async : :inline
+      job = Points::AnomalyBackfillUserJob.new(170_101, reset:, notify: true, rebuild:)
+      if profile == 'backfill_busy'
+        expect(PhoenixLease.acquire('anomaly_backfill:170101', 'synthetic-busy', 60)).to be(true)
+      end
+      recalculation_run(profile, job, calls) do
+        result = if profile == 'backfill_interrupted'
+                   interrupt_job_during_step(Points::AnomalyBackfillUserJob, :filter_months,
+                                             cursor: Time.utc(2025, 1, 1).to_i) { job.perform_now }
+                 else
+                   job.perform_now
+                 end
+        expect(result).to be(profile != 'backfill_busy') unless profile == 'backfill_interrupted'
+        if profile == 'backfill_busy'
+          expect(enqueued_jobs).to be_empty
+          expect(Point.find(170_201).anomaly).to be(true)
+          expect(Notification.where(user_id: 170_101)).not_to exist
+          PhoenixLease.release('anomaly_backfill:170101', 'synthetic-busy')
+          expect(enqueued_jobs).to be_empty
+          expect(calls).to be_empty
+        end
+        if %w[backfill_reset backfill_disabled].include?(profile)
+          expect(Point.find(170_201).anomaly).to be(false)
+          expect(calls.any? { |row| row['kind'] == 'points.tile_epoch' }).to be(true)
+          expect(calls.any? { |row| row['kind'] == 'tracks' }).to be(true)
+        end
+        result
+      end
+    end
+
+    def recalculation_fleet(profile, calls)
+      if profile.include?('busy')
+        expect(PhoenixLease.acquire('anomaly_backfill:170101', 'synthetic-busy', 60)).to be(true)
+      end
+      attempt = profile == 'fleet_busy_exhausted' ? 8 : 1
+      job = DataMigrations::RecalculateAnomaliesUserJob.new(170_101, attempt:)
+      job.exception_executions = { '[StandardError]' => 2 } if profile == 'fleet_rebuild_exhausted'
+      recalculation_run(profile, job, calls) do
+        result = if profile == 'fleet_interrupted'
+                   interrupt_job_during_step(Points::AnomalyBackfillUserJob, :filter_months,
+                                             cursor: Time.utc(2025, 1, 1).to_i) { job.perform_now }
+                 else
+                   job.perform_now
+                 end
+        successors = recalculation_jobs.select { |row| row['job_class'] == 'DataMigrations::RecalculateAnomaliesJob' }
+        terminal = !%w[fleet_busy fleet_rebuild_retry].include?(profile)
+        expect(successors.size).to eq(terminal ? 1 : 0)
+        expect(successors.first['arguments']).to eq([{ 'limit' => 1, '_aj_ruby2_keywords' => ['limit'] }]) if terminal
+        if %w[fleet_success fleet_manual_failed fleet_done_empty].include?(profile)
+          done = DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY
+          expect(User.find(170_101).settings[done]).to be_present
+          expect(calls.any? { |row| row['kind'] == 'tracks' }).to be(true)
+          expect(Notification.where(user_id: 170_101).count).to eq(1)
+        end
+        result
+      end
+    end
+
+    def recalculation_dispatch(profile, calls)
+      User.unscoped.where(id: 170_101).delete_all if Point.where(user_id: 170_101).delete_all >= 0
+      queued = DataMigrations::RecalculateAnomaliesUserJob::QUEUED_SETTINGS_KEY
+      done = DataMigrations::RecalculateAnomaliesUserJob::RECALCULATED_SETTINGS_KEY
+      failed = DataMigrations::RecalculateAnomaliesUserJob::FAILED_SETTINGS_KEY
+      stamps = [{}, { queued => nil }, { queued => 'garbage' }, { queued => '2020-01-01T10:00:00-07:00' },
+                { queued => '2026-10-03T05:00:00-07:00' }, { queued => 'garbage', done => nil },
+                { failed => nil }, { failed => false }, { 'gps_filtering_enabled' => 'off' },
+                { 'gps_filtering_enabled' => '' }]
+      stamps = [{ queued => '2025-99-99T01:02:03Z' }] if profile == 'dispatch_malformed'
+      if profile == 'dispatch_disabled'
+        stamps = ['off', '0', false, '', nil, true].map { |value| { 'gps_filtering_enabled' => value } }
+      end
+      stamps.each_with_index do |stamp, index|
+        id = 170_101 + index
+        User.unscoped.insert_all!([{ id:, email: "a12d1b3-dispatch-#{index}@example.invalid", encrypted_password: '',
+                                    points_count: 0, status: 1, plan: 1, settings: stamp,
+                                    created_at: digest_now, updated_at: digest_now }])
+        Point.insert_all!([{ id: 170_201 + index, user_id: id, timestamp: Time.utc(2025, 3, 15).to_i,
+                            lonlat: 'POINT(12 51)', anomaly: true, created_at: digest_now, updated_at: digest_now }])
+      end
+      job = DataMigrations::RecalculateAnomaliesJob.new
+      recalculation_run(profile, job, calls) do
+        runnable = job.send(:pending_users).order(:id).pluck(:id)
+        calls << { 'kind' => 'pending', 'user_ids' => runnable }
+        expect(runnable).not_to include(170_105, 170_106, 170_107, 170_108) if profile == 'dispatch_predicates'
+        result = job.perform_now
+        expect(recalculation_jobs.size).to eq(2)
+        if profile == 'dispatch_disabled'
+          expect(User.where(id: 170_101..170_104).pluck(:settings).all? { |settings| settings.key?(done) }).to be(true)
+          expect(Point.where(user_id: 170_101..170_104).pluck(:anomaly).uniq).to eq([true])
+        end
+        result
+      end
+    end
+
+    def recalculation_tracker(profile, calls)
+      Import.insert_all!([{ id: 170_801, user_id: 170_101, name: 'Records.json',
+                           source: Import.sources[:google_records],
+                           created_at: digest_now, updated_at: digest_now }])
+      Point.where(id: 170_203..170_206).update_all(import_id: 170_801, tracker_id: 'legacy-import-170801')
+      if %w[tracker_records tracker_retry tracker_corrupt].include?(profile)
+        bytes = Rails.root.join('app-phoenix/test/fixtures/a12d1b3/Records.json').binread
+        bytes = '{broken' if profile == 'tracker_corrupt'
+        import = Import.find(170_801)
+        import.file.attach(io: StringIO.new(bytes), filename: 'Records.json', content_type: 'application/json')
+        @recalculation_blob_ids << import.file.blob.id
+      end
+      allow(Points::DeviceTagBackfiller).to receive(:new).and_wrap_original do |original, *args|
+        calls << { 'kind' => 'records', 'import_id' => args.first.id }
+        recalculation_service(original.call(*args), calls.last)
+      end
+      allow(Points::TrackerIdBackfiller).to receive(:new).and_wrap_original do |original, *args|
+        calls << { 'kind' => 'raw', 'user_id' => args.first.id }
+        recalculation_service(original.call(*args), calls.last)
+      end
+      once = false
+      if profile == 'tracker_retry'
+        allow(Users::RecalculateDataJob).to receive(:new).and_wrap_original do |original, *args|
+          unless once
+            once = true
+            raise Tracks::PerUserLock::AcquisitionTimeout, 'synthetic rebuild contention'
+          end
+          original.call(*args)
+        end
+      end
+      stagger = profile.start_with?('tracker_stagger')
+      job = if stagger
+              DataMigrations::RecalculatePerTrackerTracksJob.new
+            else
+              DataMigrations::RecalculatePerTrackerTracksJob.new(170_101)
+            end
+      delay = profile == 'tracker_stagger_zero' ? 0 : 3600
+      allow(job).to receive(:rand).with(0..3600).and_return(delay) if stagger
+      recalculation_run(profile, job, calls) do
+        if profile == 'tracker_retry'
+          expect do
+            job.perform_now
+          end.to raise_error(Tracks::PerUserLock::AcquisitionTimeout, 'synthetic rebuild contention')
+          expect(Point.where(user_id: 170_101, tracker_id: nil)).not_to exist
+        end
+        result = job.perform_now
+        if stagger
+          expect(recalculation_jobs.size).to eq(1)
+          expect(recalculation_jobs.first['arguments']).to eq([170_101])
+          expect(Time.iso8601(recalculation_jobs.first.fetch('scheduled_at')).to_i).to eq(digest_now.to_i + delay)
+        else
+          expect(calls.index { |row| row['kind'] == 'records' }).to be < calls.index { |row| row['kind'] == 'raw' }
+          expect(calls.any? { |row| row['kind'] == 'tracks' }).to be(true)
+          expect(Point.find(170_208).tracker_id).to eq('real-device')
+          expect(Point.find(170_202).tracker_id).to eq('google-records-device-7')
+          expect(Notification.where(user_id: 170_101)).not_to exist
+          if %w[tracker_records tracker_retry].include?(profile)
+            expect(Point.where(id: 170_203..170_206).order(:id).pluck(:tracker_id))
+              .to eq(%w[google-records-device-11 google-records-device-22
+                        legacy-import-170801 google-records-device-55])
+          end
+        end
+        result
+      end
+    end
+
+    def recalculation_run(profile, job, calls)
+      clear_enqueued_jobs
+      job.job_id = '00000000-0000-4000-8000-000000170001'
+      input = recalculation_rows(input: true)
+      serialization = job.serialize.deep_dup
+      result = error = nil
+      begin
+        result = yield
+      rescue StandardError => e
+        raise if e.is_a?(RSpec::Expectations::ExpectationNotMetError)
+
+        error = { 'class' => e.class.name, 'message' => e.message }
+      end
+      faults = %w[user_stats_escape user_digest_escape user_invalid_year dispatch_malformed]
+      expect(error).to be_nil unless faults.include?(profile)
+      expect(error).not_to be_nil if faults.include?(profile)
+      parents = calls.select { |row| row['kind'] == 'tracks' && row['result'].is_a?(Hash) }
+      parents.each do |row|
+        expect(row['result'].fetch('status')).to eq('processing')
+        expect(row['result'].fetch('total_chunks')).to be_positive
+        expect(row['result'].fetch('completed_chunks')).to eq(0)
+      end
+      if %w[user_all user_specific backfill_reset backfill_disabled fleet_success tracker_records tracker_retry]
+         .include?(profile)
+        expect(parents).not_to be_empty
+      end
+      notifications = Notification.where(user_id: 170_101).order(:id).pluck(:kind, :title, :content)
+      if %w[user_stats_escape user_digest_escape].include?(profile)
+        expect(notifications.first.last).to include('synthetic frame 10')
+        expect(notifications.first.last).not_to include('synthetic frame 11')
+      end
+      result = result.serialize if result.is_a?(ActiveJob::Base)
+      { 'id' => profile, 'job' => serialization, 'input' => input, 'ambient_zone' => Time.zone.name,
+        'database_zone' => ActiveRecord::Base.connection.select_value('SHOW timezone'),
+        'expected' => { 'result' => result.as_json, 'error' => error, 'rows' => recalculation_rows,
+                        'calls' => calls, 'jobs' => recalculation_jobs,
+                        'notifications' => notifications } }
+    end
+
+    def recalculation_rows(input: false)
+      user_ids = (170_101..170_120).to_a.join(',')
+      tables = %w[users imports points stats tracks track_segments digests].index_with do |table|
+        filter = table == 'users' ? "id IN (#{user_ids})" : "user_id IN (#{user_ids})"
+        filter = "track_id IN (SELECT id FROM tracks WHERE user_id IN (#{user_ids}))" if table == 'track_segments'
+        projection = case table
+                     when 'users' then 'id, email, encrypted_password, settings, status, plan, deleted_at, ' \
+                                       'created_at, updated_at'
+                     when 'points' then 'id, user_id, import_id, timestamp, ST_AsText(lonlat) AS lonlat, tracker_id, ' \
+                                        'track_id, anomaly, raw_data, velocity, created_at, ' \
+                                        "CASE WHEN updated_at = created_at THEN 'unchanged' " \
+                                        "ELSE 'updated' END AS update_state"
+                     else '*'
+                     end
+        if input && table == 'points'
+          projection = projection.sub("CASE WHEN updated_at = created_at THEN 'unchanged' " \
+                                      "ELSE 'updated' END AS update_state", 'updated_at')
+        end
+        digest_select("SELECT #{projection} FROM #{table} WHERE #{filter} ORDER BY id")
+      end
+      tables.merge('active_storage_blobs' => digest_select('SELECT * FROM active_storage_blobs WHERE id = 170900'),
+                   'active_storage_attachments' => digest_select('SELECT * FROM active_storage_attachments ' \
+                     "WHERE record_type = 'Import' AND record_id = 170801"))
+    end
+
+    def recalculation_jobs
+      enqueued_jobs.map do |job|
+        job.slice('job_class', 'job_id', 'arguments', 'timezone', 'locale', 'queue_name',
+                  'scheduled_at', 'executions', 'exception_executions', 'continuation', 'resumptions')
+      end
+    end
+
+    def recalculation_timestamps
+      values = [nil, 0, 1_742_040_000, 1_742_040_000_000, '1742040000000', '-1', '-1000000000000',
+                'garbage', '', '2025-03-15', '2025-03-15T12:00:00Z', '2025-03-15T12:00:00+09:00',
+                '1960-01-01T00:00:00Z', '2200-01-01T00:00:00Z', '2025', true, {}, []]
+      travel_to(digest_now) do
+        %w[Europe/Berlin Asia/Tokyo Etc/UTC].flat_map do |zone|
+          Time.use_zone(zone) do
+            values.map do |value|
+              result = error = nil
+              begin
+                result = Timestamps.parse_timestamp(value)
+              rescue StandardError => e
+                error = { 'class' => e.class.name, 'message' => e.message }
+              end
+              { 'zone' => zone, 'value' => value, 'result' => result, 'error' => error }
+            end
+          end
+        end
+      end
+    end
+
+    def recalculation_policies
+      require 'sidekiq/job_retry'
+      { 'sidekiq_retry' => Sidekiq.default_job_options.fetch('retry'),
+        'retry_jitter' => Users::RecalculateDataJob.retry_jitter, 'jitter_draw' => 0,
+        'sidekiq_max_retries' => Sidekiq.default_configuration[:max_retries] || Sidekiq::JobRetry::DEFAULT_MAX_RETRY_ATTEMPTS,
+        'lock_attempts' => DataMigrations::RecalculateAnomaliesUserJob::MAX_LOCK_ATTEMPTS,
+        'rebuild_attempts' => DataMigrations::RecalculateAnomaliesUserJob::MAX_REBUILD_ATTEMPTS,
+        'lock_wait' => DataMigrations::RecalculateAnomaliesUserJob::LOCK_RETRY_WAIT.to_i,
+        'max_resumptions' => Points::AnomalyBackfillUserJob.max_resumptions,
+        'resume_wait' => Points::AnomalyBackfillUserJob.resume_options.fetch(:wait).to_i }
+    end
+  end
 end

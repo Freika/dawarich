@@ -6,6 +6,8 @@ class DataMigrations::RecalculatePerTrackerTracksJob < ApplicationJob
   STAGGER_WINDOW_SECONDS = 3600
 
   def perform(user_id = nil)
+    return if ReleaseCommands.forward_recalculation(self, 'release.per_tracker', { 'user_id' => user_id })
+
     return enqueue_pending_users if user_id.nil?
 
     user = User.find_by(id: user_id)

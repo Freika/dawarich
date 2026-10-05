@@ -3,7 +3,7 @@ defmodule Dawarich.Mail.Wave2 do
   require EEx
 
   alias Dawarich.I18n
-  alias Dawarich.Mail.{Delivery, ExploreFeatures, Recipient}
+  alias Dawarich.Mail.{Delivery, ExploreFeatures, Layout, Recipient}
   alias Dawarich.ReleaseMigration
 
   @dir Path.expand("../../../priv/mail", __DIR__)
@@ -33,15 +33,6 @@ defmodule Dawarich.Mail.Wave2 do
     defp body(unquote(surface), unquote(format), unquote({:assigns, [], nil})),
       do: unquote(compiled)
   end
-
-  for file <- ~w(layout.html layout.text), do: @external_resource(Path.join(@dir, file <> ".eex"))
-
-  EEx.function_from_file(:defp, :html_layout, Path.join(@dir, "layout.html.eex"), [
-    :locale,
-    :inner
-  ])
-
-  EEx.function_from_file(:defp, :text_layout, Path.join(@dir, "layout.text.eex"), [:inner])
 
   def welcome(user, locale, env),
     do: build(:welcome, user.email, locale, %{email: user.email}, %{}, env)
@@ -104,8 +95,8 @@ defmodule Dawarich.Mail.Wave2 do
 
     %{
       subject: text!(locale, subject, subject_bindings),
-      html: html_layout(locale, body(surface, :html, html)),
-      text: text_layout(body(surface, :text, text))
+      html: Layout.html(locale, body(surface, :html, html)),
+      text: Layout.text(body(surface, :text, text))
     }
   end
 

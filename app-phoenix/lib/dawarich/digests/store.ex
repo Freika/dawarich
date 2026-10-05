@@ -102,6 +102,27 @@ defmodule Dawarich.Digests.Store do
     end
   end
 
+  def mark_sent!(repo, owner, digest, now) do
+    type = if digest["period_type"] == "monthly", do: 0, else: 1
+    validate!(repo, owner, digest["year"], type, digest["month"])
+
+    if repo.query!(
+         "SELECT id FROM public.digests WHERE user_id=$1 AND year=$2 AND period_type=$3 " <>
+           "AND month IS NOT DISTINCT FROM $4 AND id<>$5 LIMIT 1",
+         [owner, digest["year"], type, digest["month"], digest["id"]],
+         log: false
+       ).rows != [],
+       do: invalid!("Year has already been taken", %{"year" => [%{"error" => "taken"}]})
+
+    repo.query!(
+      "UPDATE public.digests SET sent_at=$2, updated_at=$2 WHERE id=$1",
+      [digest["id"], naive(now)],
+      log: false
+    )
+
+    :ok
+  end
+
   defp locked(repo, owner, year, type, month) do
     scope = if type == 0, do: " AND month = $4", else: ""
     params = if type == 0, do: [owner, year, type, month], else: [owner, year, type]
