@@ -4,14 +4,16 @@ defmodule Dawarich.Tracks.Reprocessor do
   alias Dawarich.Tracks.{Settings, Store}
   alias Dawarich.Transportation.{Detector, DominantMode, Segments}
 
-  def reprocess!(repo, user, track, now \\ nil) do
+  def reprocess!(repo, user, track, now \\ nil, opts \\ []) do
     preserved = Segments.clear_inference!(repo, track.id)
 
+    detector = Keyword.get(opts, :detector, &Detector.call/3)
+
     segment_data =
-      Detector.call(repo, track,
-        enabled_modes: Settings.enabled_modes(user),
+      detector.(repo, track,
+        enabled_modes: user && Settings.enabled_modes(user),
         preserved: preserved,
-        fallback: false
+        fallback: Keyword.get(opts, :fallback, false)
       )
 
     if segment_data != [], do: Segments.insert!(repo, track.id, segment_data, now)
