@@ -1,5 +1,5 @@
 defmodule Dawarich.Points.WebDestroyTest do
-  use Dawarich.IngestCase, async: false
+  use Dawarich.DataCase, async: true
   alias Dawarich.Points.WebDestroy
   alias Dawarich.Test.{FrameSeeds, RailsUser}
 

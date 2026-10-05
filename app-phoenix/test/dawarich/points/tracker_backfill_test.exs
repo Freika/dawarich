@@ -1,6 +1,5 @@
 defmodule Dawarich.Points.TrackerBackfillTest do
-  use Dawarich.JobsCase
-
+  use Dawarich.DataCase, async: true
   alias Dawarich.RecalculationFixtures, as: Fixtures
   alias Dawarich.Points.TrackerBackfill
 
