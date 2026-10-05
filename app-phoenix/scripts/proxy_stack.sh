@@ -10,8 +10,10 @@ E2E_SMTP_PORT="${E2E_SMTP_PORT:-1025}"
 SMTP_SERVER="${SMTP_SERVER:-127.0.0.1}"
 MAILPIT_API_PORT="${MAILPIT_API_PORT:-8025}"
 MAILPIT_NAME="${MAILPIT_NAME:-e2e-mailpit}"
+STAND_RELEASE_NODE="${STAND_RELEASE_NODE:-dawarich@localhost}"
 rel="$root/app-phoenix/_build/prod/rel/dawarich/bin/dawarich"
 pidfile="$root/tmp/pids/proxy_stack.pid"
+rails_pidfile="$root/tmp/pids/server.pid"
 log="$root/log/proxy_stack.log"
 sidekiq_log="$root/log/proxy_stack_sidekiq.log"
 sidekiq="sidekiq.* $(basename "$root") "
@@ -33,6 +35,7 @@ stack() {
 
 if [ "${1:-}" = --down ]; then
   [ -f "$pidfile" ] && kill "$(cat "$pidfile")" 2>/dev/null || true
+  [ -f "$rails_pidfile" ] && kill "$(cat "$rails_pidfile")" 2>/dev/null || true
   pkill -f "$sidekiq" 2>/dev/null || true
   tries=0
   while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || pgrep -f "$sidekiq" >/dev/null 2>&1; do
@@ -57,8 +60,8 @@ case "${DOCKER_HOST:-$(docker context inspect --format '{{.Endpoints.docker.Host
   *) echo "the Docker engine is not local" >&2; exit 1 ;;
 esac
 [ -f "$ENV_FILE" ] || { echo "$ENV_FILE with the DATABASE_* settings is missing" >&2; exit 1; }
-if epmd -names 2>/dev/null | grep -q '^name dawarich at'; then
-  echo "another local Dawarich release is running (rel/env.sh.eex fixes RELEASE_NODE=dawarich@localhost); stop it first" >&2
+if epmd -names 2>/dev/null | grep -Fq "name ${STAND_RELEASE_NODE%@*} at"; then
+  echo "another local Dawarich release is running with node $STAND_RELEASE_NODE" >&2
   exit 1
 fi
 if curl -s -m 2 -o /dev/null "http://127.0.0.1:$PORT/"; then echo "port $PORT is in use" >&2; exit 1; fi
@@ -81,6 +84,10 @@ stack bin/rails phoenix:importmap phoenix:time_zones >/dev/null
   DATABASE_HOST=127.0.0.1 PHOENIX_TEST_REDIS_URL="redis://127.0.0.1:$REDIS_PORT/1" \
   PHOENIX_TEST_DATABASE="$STAND_DATABASE_NAME" MIX_ENV=prod \
   sh -c 'mix --version | grep -q "^Mix 1.18.3 " && mix compile --force >/dev/null && mix release --overwrite >/dev/null')
+for release_env in "$root/app-phoenix/_build/prod/rel/dawarich/releases/"*/env.sh; do
+  sed "s/^export RELEASE_NODE=dawarich@localhost$/export RELEASE_NODE=$STAND_RELEASE_NODE/" "$release_env" >"$release_env.tmp"
+  mv "$release_env.tmp" "$release_env"
+done
 stack "$rel" eval 'Dawarich.Release.migrate()'
 stack DAWARICH_RAILS_ARGS="$(printf '%s\037' bundle exec bin/rails server -p "$PORT")" \
   sh -c 'echo $$ >"$1"; exec nohup "$2" start' _ "$pidfile" "$rel" >>"$log" 2>&1 &
