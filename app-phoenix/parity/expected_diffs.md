@@ -449,3 +449,11 @@ The Rails b2 oracle now contains 12 schedulers, 46 worker cases, 130 toggle case
 The post-sync Rails gate passes 329 selected examples and 251 Swagger setup examples, with the actual shared-database peer passing three tests. The existing generators pass two separate write processes and verification; all four outputs are byte-identical and the three pre-b2 artifacts remain unchanged. Capture isolation restores both sequence values and their called state after rollback or exceptions; nontransactional command specs delete only their recorded users and dependent rows. The cloud-mode stub stays scoped to the digest corpus. Named isolation regressions and mutations pin these test contracts.
 
 Local implementation checks are complete. Final Wave scripts, full seed summaries, byte comparisons and deferred release work are recorded in the implementation report under `SP/orch/out/impl-a12d1b2.report.md`; local acceptance does not activate ownership. Canonical plan: `/Users/frey/projects/dawarich/superpowers/plans/2026-10-03-phoenix-a12-next-slice-plan.md`. Browser, Docker/image/compose/pooler and mini work are deferred to the controller mini lane. No AFFiNE write in this exception-content/data-exposure task.
+
+## A12h ordinary install seeds
+
+The standalone seed components remain release prerequisites. Live lifecycle orchestration is pending the achievement and import release adapters and Rails/native exclusion proof; no native activation is claimed.
+
+| ID | Surface | Rails today | Phoenix | Owner | Status |
+|---|---|---|---|---|---|
+| ED-532 | Ordinary install bootstrap credential logging | `db/seeds.rb` writes initial account credentials to the debug log | The bootstrap seed writes no account credentials to logs. Password hashing, API-key generation, database defaults, scoped emptiness guard and self-hosted activation remain characterized against the Rails seeds corpus. | A12h Task 14; `seeds/bootstrap_user_test.exs` | closed |

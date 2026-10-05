@@ -1,8 +1,8 @@
 defmodule Dawarich.Admin.UserCreate do
   @moduledoc false
-  alias Dawarich.Admin.UserValidation
+  alias Dawarich.Admin.{UserPersistence, UserValidation}
   alias Dawarich.Auth.Account
-  alias Dawarich.{Repo, UserTimeZone}
+  alias Dawarich.Repo
   @rounds if(Mix.env() == :test, do: 4, else: 12)
 
   def call(actor, params, context) do
@@ -47,38 +47,18 @@ defmodule Dawarich.Admin.UserCreate do
     bytes = binary_part(changes.password, 0, min(byte_size(changes.password), 72))
     hash = Bcrypt.hash_pwd_salt(bytes, log_rounds: @rounds)
 
-    result =
-      repo.transaction(fn ->
-        case repo.query!(
-               "INSERT INTO users(email,encrypted_password,created_at,updated_at) VALUES($1,$2,$3,$3) ON CONFLICT(email) DO NOTHING RETURNING id",
-               [changes.email, hash, now],
-               log: false
-             ).rows do
-          [[id]] ->
-            key = :crypto.strong_rand_bytes(32) |> Base.encode16(case: :lower)
-            repo.query!("UPDATE users SET api_key=$1 WHERE id=$2", [key, id], log: false)
-            id
+    case UserPersistence.insert(repo, changes.email, hash, now) do
+      {:ok, id} ->
+        UserPersistence.activate(
+          repo,
+          id,
+          now,
+          context.settings,
+          Map.get(context, :env, System.get_env())
+        )
 
-          [] ->
-            repo.rollback(:unique)
-        end
-      end)
-
-    case result do
-      {:ok, id} -> activate(repo, id, now, context)
-      {:error, :unique} -> {:terminal, :unique}
+      {:error, :unique} ->
+        {:terminal, :unique}
     end
-  end
-
-  defp activate(repo, id, now, context) do
-    zone = UserTimeZone.iana(repo, context.settings, Map.get(context, :env, System.get_env()))
-
-    repo.query!(
-      "UPDATE users SET status=1,plan=1,active_until=((($1::timestamp AT TIME ZONE 'UTC') AT TIME ZONE $2)+interval '1000 years') AT TIME ZONE $2 AT TIME ZONE 'UTC',updated_at=$1 WHERE id=$3",
-      [now, zone, id],
-      log: false
-    )
-
-    {:ok, id}
   end
 end

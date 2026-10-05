@@ -127,4 +127,16 @@ defmodule Dawarich.Admin.UserCreateTest do
       log: false
     ).rows
   end
+
+  test "admin creation still requires a real authorized actor", c do
+    params = %{"email" => "a12h-refused@example.invalid", "password" => "a12h-create-password"}
+    before = Repo.query!("SELECT count(*) FROM users", [], log: false).rows
+    Repo.query!("UPDATE users SET admin=false WHERE id=$1", [c.actor.id], log: false)
+    assert {:handoff, :actor} = UserCreate.call(c.actor, params, c.context)
+    assert {:handoff, :actor} = UserCreate.call(%{id: -1, settings: %{}}, params, c.context)
+    assert Repo.query!("SELECT count(*) FROM users", [], log: false).rows == before
+
+    assert {:handoff, :cloud} =
+             UserCreate.call(c.actor, params, %{c.context | self_hosted: false})
+  end
 end
