@@ -338,9 +338,11 @@ RSpec.describe RailsCommands::Poller do
       share_management.live_revoked posters.created posters.purge exports.purge posters.progress
       route_videos.attachment_job visits.web_redetect
       integrations.airtrail_flights integrations.teslamate_sync integrations.trek_sync mail.family_lapse
-      places_orphan_cleanup places_bulk_name_fetch achievements.bulk_check_leaf trips.calculate imports.resume imports.normal_resume
+      places_orphan_cleanup places_bulk_name_fetch achievements.bulk_check_leaf trips.calculate
+      imports.resume imports.normal_resume
       stats.full_recalculation stats.calculate_month stats.caches_invalidated
-      users.export_data users.import_data users.recalculate_data points.anomaly_backfill release.anomalies release.anomalies_user release.per_tracker
+      users.export_data users.import_data users.recalculate_data points.anomaly_backfill
+      release.anomalies release.anomalies_user release.per_tracker
       digests.calculate_month digests.calculate_year digests.email_month digests.email_year
     ]
     expect(RailsCommands::Registry::HANDLERS.keys).to eq(expected_kinds)
