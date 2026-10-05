@@ -1,0 +1,18 @@
+<%= @t.("location_request") %>
+================
+
+<%= @t.("hi_there") %>
+
+<%= @requester %> <%= @t.("is_requesting_your_location_on_dawarich") %>
+
+<%= @t.("you_can_review_this_request_and_choose_to_accept_or_2") %>
+<%= @t.("if_you_accept_you_can_select_how_long_to_share") %>
+
+<%= @t.("view_request_2") %> <%= @request_url %>
+
+<%= @t.("important_this_request_will_expire_in_24_hours_if_not_2") %>
+
+<%= @t.("if_you_don_t_want_to_share_your_location_simply") %>
+
+<%= @t.("best_regards") %>
+<%= @t.("evgenii_from_dawarich") %>

@@ -1,0 +1,30 @@
+<%= @v.(@title) %>
+──────────────────────────────
+
+<%= @v.(@subtitle) %>
+
+<%= @t.("the_numbers") %>
+  <%= @t.("distance") %>       <%= @v.(@distance) %>
+  <%= @t.("countries") %>      <%= @v.(@countries_count) %>
+  <%= @t.("cities") %>         <%= @v.(@cities_count) %>
+
+<%= if @heatmap? do %><%= @t.("activity_heatmap") %>
+<%= @v.(@heatmap) %>
+
+<%= @t.("none_light_moderate_high_peak") %>
+
+<% end %><%= @t.("monthly_distance") %>
+<%= @v.(@monthly) %>
+
+<%= if @top_countries? do %><%= @t.("top_countries") %>
+<%= @v.(@countries_chart) %>
+
+<% end %><%= if @trend? do %><%= @t.("vs_previous_year") %>
+  <%= @t.("distance") %>  <%= @v.(@trend) %>
+
+<% end %><%= @t.("view_full_insights") %> <%= @v.(@insights_url) %>
+<%= if @shared? do %><%= @t.("share_your_year") %>    <%= @v.(@shared_url) %>
+<% end %>
+─────────────────────────────────────────
+<%= @t.("you_re_receiving_this_because_yearly_digest_emails_are_on_3") %>
+<%= @t.("manage_email_preferences_2") %> <%= @v.(@preferences_url) %>
