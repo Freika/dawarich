@@ -160,6 +160,92 @@ defmodule DawarichWeb.InsightsEndpointTest do
 
   defp digests, do: Dawarich.Repo.query!("SELECT id, updated_at FROM digests ORDER BY id").rows
 
+  test "warm nil stale cold failed and handed-back details preserve existing proxy admission",
+       ctx do
+    oracle =
+      Path.expand("../fixtures/a12d1b4/cache.json", __DIR__) |> File.read!() |> Jason.decode!()
+
+    ctx = digest_user!(ctx)
+    cookie = ctx.cookie
+    frame = [{"Cookie", cookie}, {"Turbo-Frame", "insights_details"}, {"Accept", "text/html"}]
+    target = "/insights/details?year=2024&month=4&user_id=9301"
+    key = Dawarich.Insights.Details.yearly_key(93, 2024, ~N[2024-03-05 00:00:00])
+    before = digests()
+
+    for state <- ~w(warm stale_snapshot cached_nil cold corrupt) do
+      expected = Enum.find(oracle["readers"], &(&1["state"] == state))
+      assert expected["calculation_calls"] == 0
+      Dawarich.Redis.cache_command(["DEL", key])
+
+      if state == "stale_snapshot",
+        do: Dawarich.Repo.query!("UPDATE digests SET distance=888 WHERE id=71", [])
+
+      if state in ~w(warm stale_snapshot), do: InsightsSeeds.warm!()
+      if state == "cached_nil", do: InsightsSeeds.cache!(key, Base.decode64!(expected["wire"]))
+      if state == "corrupt", do: Dawarich.Redis.cache_command(["SET", key, "corrupt fixture"])
+
+      if state in ~w(warm stale_snapshot cached_nil) do
+        assert {200, headers, body} = phoenix(ctx.port, request(target, frame))
+        assert values(headers, "content-type") == ["text/html; charset=utf-8"]
+        assert body =~ ~s(<turbo-frame id="insights_details">)
+        refute body =~ "<!DOCTYPE"
+        client = connect(ctx.port)
+        send_raw(client, request(target, frame, "HEAD"))
+        assert {200, _, ""} = read_response(client, method: "HEAD")
+      else
+        assert {line, [^cookie]} = puma(ctx.port, ctx.upstream, request(target, frame))
+        assert line == "GET #{target} HTTP/1.1"
+      end
+
+      assert digests() == before
+    end
+
+    InsightsSeeds.warm!()
+    Application.put_env(:dawarich, :rails_routes, ["insights"])
+    assert {line, [^cookie]} = puma(ctx.port, ctx.upstream, request(target, frame))
+    assert line == "GET #{target} HTTP/1.1"
+    Application.put_env(:dawarich, :rails_routes, [])
+
+    for {path, headers} <- [
+          {target, []},
+          {"/insights/details?year%5B%5D=2025", frame},
+          {target, [{"Cookie", cookie}, {"Accept", "application/json"}]}
+        ] do
+      assert {line, _} = puma(ctx.port, ctx.upstream, request(path, headers))
+      assert line == "GET #{path} HTTP/1.1"
+    end
+
+    stop_supervised!(Dawarich.Redis.Cache)
+    assert {line, [^cookie]} = puma(ctx.port, ctx.upstream, request(target, frame))
+    assert line == "GET #{target} HTTP/1.1"
+    assert digests() == before
+  end
+
+  test "disconnected and connected mounts preserve source fragment hits write policy and TTL" do
+    before = digests()
+    conn = get(RailsUser.signed_in(9301), "/insights/details?year=all")
+    assert html_response(conn, 200) =~ ~s(<turbo-frame id="insights_details">)
+    assert {:ok, keys} = Dawarich.Redis.cache_command(["KEYS", "views/*"])
+    assert length(keys) == 6
+
+    for key <- keys do
+      assert {:ok, ttl} = Dawarich.Redis.cache_command(["TTL", key])
+      assert ttl > 86_390 and ttl <= 86_400
+      Dawarich.RailsCache.put(key, "<b>source mount fragment</b>", expires_in: 86400)
+    end
+
+    {:ok, view, html} = live(RailsUser.connecting_as(conn, 9301))
+    assert length(String.split(html, "source mount fragment")) == 7
+    assert render(view) =~ "source mount fragment"
+    for key <- keys, do: Dawarich.Redis.cache_command(["DEL", key])
+    GenServer.stop(view.pid)
+    {:ok, view, html} = live(RailsUser.connecting_as(conn, 9301))
+    assert html =~ ~s(<turbo-frame id="insights_details">)
+    refute render(view) =~ "source mount fragment"
+    assert {:ok, []} = Dawarich.Redis.cache_command(["KEYS", "views/*"])
+    assert digests() == before
+  end
+
   test "a warm yearly digest is answered by Phoenix without writing digests", ctx do
     ctx = digest_user!(ctx)
     InsightsSeeds.warm!()
