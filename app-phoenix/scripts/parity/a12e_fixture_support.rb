@@ -168,7 +168,7 @@ module A12eFixtureSupport
     { 'tables' => tables, 'sequences' => SEQUENCES, 'objects' => objects }
   end
 
-  def normalized(data) = JSON.parse(Oj.dump(data, mode: :strict, float_precision: 0))
+  def normalized(data) = JSON.parse(Oj.dump(FixtureRecording.normalize(data), mode: :strict, float_precision: 0))
   def comparable(entry) = normalized(entry).except('seed')
   def human_sizes = SIZES.map { |n| [n, ActiveSupport::NumberHelper.number_to_human_size(n)] }
 
@@ -182,7 +182,7 @@ module A12eFixtureSupport
 
     hash, long_hash = JSON.parse(out.lines.last)
     data = { 'hash' => hash, 'long_hash' => long_hash, 'salt' => SALT }
-    path.write("#{Oj.dump(data, mode: :strict, indent: 2)}\n")
+    path.write("#{Oj.dump(FixtureRecording.normalize(data), mode: :strict, indent: 2)}\n")
   end
 
   def archive_lines!(archive_id, lines)
@@ -313,7 +313,8 @@ module A12eFixtureSupport
     recorded.group_by { |name, _entry| name.start_with?('A12h') ? 'seeds' : 'cli' }.each do |corpus, entries|
       data = { 'cases' => entries.sort.map { |name, entry| entry.merge('name' => name) } }
       data['human_sizes'] = human_sizes if corpus == 'cli'
-      DIR.join("#{corpus}.json").write("#{Oj.dump(data, mode: :strict, indent: 2, float_precision: 0).chomp}\n")
+      DIR.join("#{corpus}.json").write("#{Oj.dump(FixtureRecording.normalize(data), mode: :strict, indent: 2,
+float_precision: 0).chomp}\n")
     end
   end
 end

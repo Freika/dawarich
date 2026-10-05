@@ -181,8 +181,8 @@ RSpec.describe 'Phoenix fixtures: the trips pages as Rails renders them', type: 
       { name:, status: error ? nil : response.status, media_type: error ? nil : response.media_type,
         headers: error ? {} : response.headers.slice('Content-Type', 'Location', 'Vary', 'Cache-Control'),
         location: error ? nil : response.location, flash: error ? {} : flash.to_hash,
-        error: error && { class: error.class.name, message: error.message.gsub(Rails.root.to_s, 'RAILS_ROOT')
-                                                                 .gsub(/0x[0-9a-f]+/, 'OBJECT_ID') },
+        error: error && { class: error.class.name, message: FixtureRecording.normalize(error.message)
+                                                                            .gsub(/0x[0-9a-f]+/, 'OBJECT_ID') },
         streams: doc.css('turbo-stream').map { { action: _1['action'], target: _1['target'] } },
         textareas:,
         errors: doc.css('#error_explanation li, .alert-error').map { _1.text.strip },

@@ -949,7 +949,7 @@ module ResidualMailFixtureSupport
   end
 
   def fixture_bytes(path, fixture)
-    bytes = "#{JSON.pretty_generate(fixture)}\n"
+    bytes = "#{JSON.pretty_generate(FixtureRecording.normalize(fixture))}\n"
     if ENV['WRITE_PHOENIX_FIXTURES'] == '1'
       FileUtils.mkdir_p(path.dirname)
       File.write(path, bytes)

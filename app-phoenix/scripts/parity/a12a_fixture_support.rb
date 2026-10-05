@@ -54,7 +54,7 @@ module A12aFixtureSupport
   end
 
   def capture_json(data)
-    "#{Oj.dump(data, mode: :strict, float_precision: 0, indent: 2)}\n"
+    "#{Oj.dump(FixtureRecording.normalize(data), mode: :strict, float_precision: 0, indent: 2)}\n"
   end
 
   def write(name, data, directory: DIR)
@@ -68,7 +68,7 @@ module A12aFixtureSupport
   end
 
   def normalized(data)
-    JSON.parse(Oj.dump(data, mode: :strict, float_precision: 0))
+    JSON.parse(Oj.dump(FixtureRecording.normalize(data), mode: :strict, float_precision: 0))
   end
 
   def boot!

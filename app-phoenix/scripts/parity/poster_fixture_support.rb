@@ -61,8 +61,8 @@ module PosterFixtureSupport
     doc.css('#env_dump pre').each do |dump|
       dump.content = dump.content.gsub(/(HTTP_X_CSRF_TOKEN: )"[^"]*"/, '\1"CSRF"')
     end
-    doc.to_html.gsub(Rails.root.to_s, 'RAILS_ROOT')
-       .gsub(%r{(/rails/active_storage/blobs/(?:redirect|proxy)/)[^/"?]+}, '\1SIGNED')
+    FixtureRecording.normalize(doc.to_html)
+                    .gsub(%r{(/rails/active_storage/blobs/(?:redirect|proxy)/)[^/"?]+}, '\1SIGNED')
   end
 
   def poster_card(poster)
@@ -75,6 +75,7 @@ module PosterFixtureSupport
     files = { "#{name}.json" => "#{Oj.dump(data, mode: :strict, float_precision: 0, indent: 2)}\n",
               "#{name}.html" => html }
     files.each do |filename, bytes|
+      bytes = FixtureRecording.normalize(bytes)
       if ENV['WRITE_POSTER_FIXTURES'] == '1'
         File.write(dir.join(filename), bytes)
       else

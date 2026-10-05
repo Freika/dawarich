@@ -412,7 +412,7 @@ RSpec.describe 'Phoenix fixtures: the places list and drawer as Rails renders th
       { name: entry[:name], status: error ? nil : response.status, media_type: error ? nil : response.media_type,
         headers: error ? {} : response.headers.slice('Content-Type', 'Location', 'Vary', 'Cache-Control'),
         flash: error ? {} : flash.to_hash,
-        error: error && { class: error.class.name, message: error.message },
+        error: error && { class: error.class.name, message: FixtureRecording.normalize(error.message) },
         streams: doc.css('turbo-stream').map { { action: _1['action'], target: _1['target'] } },
         controls: doc.css('form, input, textarea, button, [data-controller]').map do |node|
           { tag: node.name, attributes: node.attributes.transform_values(&:value) }
