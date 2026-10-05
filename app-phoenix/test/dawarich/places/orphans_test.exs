@@ -14,6 +14,25 @@ defmodule Dawarich.Places.OrphansTest do
         "INSERT INTO users(email,created_at,updated_at) VALUES ('other-orphans@example.test',now(),now()) RETURNING id"
       )
 
+    on_exit(fn ->
+      rows(
+        "DELETE FROM place_visits WHERE place_id IN (SELECT id FROM places WHERE user_id=ANY($1))",
+        [[user, other]]
+      )
+
+      rows(
+        "UPDATE visits SET place_id=NULL WHERE place_id IN (SELECT id FROM places WHERE user_id=ANY($1))",
+        [[user, other]]
+      )
+
+      rows(
+        "DELETE FROM taggings WHERE taggable_type='Place' AND taggable_id IN (SELECT id FROM places WHERE user_id=ANY($1))",
+        [[user, other]]
+      )
+
+      rows("DELETE FROM places WHERE user_id=ANY($1)", [[user, other]])
+    end)
+
     %{user: user, other: other}
   end
 

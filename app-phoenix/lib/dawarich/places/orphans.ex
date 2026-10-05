@@ -2,21 +2,21 @@ defmodule Dawarich.Places.Orphans do
   @moduledoc false
   require Logger
 
-  def delete(repo, user_id, place_id) do
-    if eligible?(repo, user_id, place_id, "") do
-      {:ok, result} = repo.transaction(fn -> delete_locked(repo, user_id, place_id) end)
+  def delete(repo, user_id, place_id, opts \\ []) do
+    if eligible?(repo, user_id, place_id, "", opts) do
+      {:ok, result} = repo.transaction(fn -> delete_locked(repo, user_id, place_id, opts) end)
       result
     else
       false
     end
   end
 
-  defp delete_locked(repo, user_id, place_id) do
+  defp delete_locked(repo, user_id, place_id, opts) do
     repo.query!("SAVEPOINT guarded_orphan", [], log: false)
 
     try do
       result =
-        if eligible?(repo, user_id, place_id, " FOR UPDATE") do
+        if eligible?(repo, user_id, place_id, " FOR UPDATE", opts) do
           repo.query!("UPDATE visits SET place_id=NULL WHERE place_id=$1", [place_id], log: false)
           repo.query!("DELETE FROM place_visits WHERE place_id=$1", [place_id], log: false)
 
@@ -33,7 +33,7 @@ defmodule Dawarich.Places.Orphans do
       result
     rescue
       error in Postgrex.Error ->
-        if error.postgres.code == :foreign_key_violation do
+        if error.postgres.code == :foreign_key_violation && !Keyword.get(opts, :sweep, false) do
           repo.query!("ROLLBACK TO SAVEPOINT guarded_orphan", [], log: false)
           repo.query!("RELEASE SAVEPOINT guarded_orphan", [], log: false)
           Logger.warning("orphan deletion retained place after foreign key conflict")
@@ -44,14 +44,14 @@ defmodule Dawarich.Places.Orphans do
     end
   end
 
-  defp eligible?(repo, user_id, place_id, lock) do
+  defp eligible?(repo, user_id, place_id, lock, opts) do
     case repo.query!(
            "SELECT source, note FROM places WHERE id=$1 AND user_id=$2" <> lock,
            [place_id, user_id],
            log: false
          ).rows do
       [[1, note]] ->
-        blank?(note) &&
+        blank?(note, opts) &&
           repo.query!(
             "SELECT 1 FROM visits WHERE place_id=$1 AND deleted_at IS NULL AND status<>2 LIMIT 1",
             [place_id],
@@ -68,6 +68,9 @@ defmodule Dawarich.Places.Orphans do
     end
   end
 
-  defp blank?(nil), do: true
-  defp blank?(note), do: String.trim(note) == ""
+  defp blank?(nil, _opts), do: true
+
+  defp blank?(note, opts) do
+    if Keyword.get(opts, :sweep, false), do: note == "", else: String.trim(note) == ""
+  end
 end
