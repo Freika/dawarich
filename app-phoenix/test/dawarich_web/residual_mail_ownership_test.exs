@@ -21,12 +21,14 @@ defmodule DawarichWeb.ResidualMailOwnershipTest do
       settings: %{"locale" => "en", "timezone" => "UTC"}
     })
 
-    names = ~w(SELF_HOSTED SMTP_SERVER SMTP_FROM TIME_ZONE)
+    names = ~w(SELF_HOSTED SMTP_SERVER SMTP_FROM SMTP_AUTHENTICATION SMTP_STARTTLS TIME_ZONE)
     previous = Map.take(System.get_env(), names)
 
     System.put_env(%{
       "SELF_HOSTED" => "true",
       "SMTP_SERVER" => "synthetic.test",
+      "SMTP_AUTHENTICATION" => "none",
+      "SMTP_STARTTLS" => "false",
       "SMTP_FROM" => "Dawarich <residual@dawarich.test>",
       "TIME_ZONE" => "UTC"
     })

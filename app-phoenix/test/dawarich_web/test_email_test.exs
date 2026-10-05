@@ -11,6 +11,8 @@ defmodule DawarichWeb.TestEmailTest do
   @clock %{local: ~N[2026-10-04 12:00:00], offset: 0, zone: "UTC", valid: true}
   @env %{
     "SMTP_SERVER" => "synthetic.test",
+    "SMTP_AUTHENTICATION" => "none",
+    "SMTP_STARTTLS" => "false",
     "SMTP_FROM" => "Dawarich <residual@dawarich.test>",
     "TIME_ZONE" => "UTC"
   }
@@ -35,10 +37,10 @@ defmodule DawarichWeb.TestEmailTest do
     assert Code.ensure_loaded?(TestEmail), "test mail HTTP plug must exist"
     assert Code.ensure_loaded?(TestEmailGate), "test mail gate must exist"
     cases = @fixture |> File.read!() |> Jason.decode!() |> Map.fetch!("cases")
-    assert length(cases) == 27
+    assert length(cases) == 34
 
     admitted =
-      ~w(html_success turbo_success not_configured preferred_de socket_error timeout_error ssl_error system_error argument_error smtp_error unsafe_error turbo_error mixed_accept)
+      ~w(html_success turbo_success not_configured preferred_de socket_error timeout_error ssl_error system_error argument_error smtp_error unsafe_error turbo_error mixed_accept smtp_fatal smtp_busy smtp_syntax smtp_auth_reply smtp_unknown smtp_multiline turbo_smtp_fatal)
 
     for row <- Enum.filter(cases, &(&1["id"] in admitted)) do
       Repo.query!(
@@ -50,12 +52,7 @@ defmodule DawarichWeb.TestEmailTest do
       env = if row["configured"], do: @env, else: Map.delete(@env, "SMTP_SERVER")
       opts = Keyword.put(c.opts, :context, %{self_hosted: true, oidc: false, env: env})
 
-      reason =
-        if row["transport_error"],
-          do: {:error, {row["transport_error"], row["transport_error_message"]}},
-          else: :ok
-
-      Process.put(:transport_result, reason)
+      Process.put(:transport_result, Dawarich.Mail.TestTransport.result(row))
       before = snapshot()
 
       conn =
@@ -141,6 +138,15 @@ defmodule DawarichWeb.TestEmailTest do
     )
 
     refute_received {:mail, _}
+
+    for env <- [
+          Map.put(@env, "SMTP_AUTHENTICATION", "plain"),
+          Map.put(@env, "SMTP_STARTTLS", "true"),
+          Map.put(@env, "SMTP_SSL", "true")
+        ] do
+      assert_handoff(TestEmail.admit(base, context: %{self_hosted: true, oidc: false, env: env}))
+      refute_received {:mail, _}
+    end
   end
 
   defp request(session, method, path, raw, headers \\ []) do

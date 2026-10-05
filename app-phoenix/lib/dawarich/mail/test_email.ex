@@ -10,8 +10,12 @@ defmodule Dawarich.Mail.TestEmail do
     do: is_binary(env["SMTP_SERVER"]) and String.trim(env["SMTP_SERVER"]) != ""
 
   def supported?(env) do
-    if configured?(env), do: SmtpConfig.options(env)
-    true
+    if configured?(env) do
+      options = SmtpConfig.options(env)
+      options[:auth] == :never and options[:tls] == :never and options[:ssl] == false
+    else
+      true
+    end
   rescue
     _ -> false
   end
@@ -68,18 +72,38 @@ defmodule Dawarich.Mail.TestEmail do
     do: class <> ": " <> detail
 
   defp description({"IOError", _}), do: "IOError"
-  defp description({_type, {:network_failure, _host, {:error, :timeout}}}), do: "Timeout::Error"
+  defp description(:invalid_port), do: "ArgumentError: invalid port"
+
+  defp description({_type, {:network_failure, _host, {:error, :timeout}}}),
+    do: "Timeout::Error: connection timed out"
 
   defp description({_type, {:network_failure, _host, {:error, :econnrefused}}}),
-    do: "Errno::ECONNREFUSED"
+    do: "Errno::ECONNREFUSED: Connection refused - SMTP connection"
 
-  defp description({_type, {:network_failure, _host, {:error, :nxdomain}}}), do: "SocketError"
+  defp description({_type, {:network_failure, _host, {:error, :nxdomain}}}),
+    do: "SocketError: non-existing domain"
 
   defp description({_type, {:permanent_failure, _host, :auth_failed}}),
-    do: "Net::SMTPAuthenticationError"
+    do: "Net::SMTPAuthenticationError: authentication failed"
 
   defp description({_type, {:temporary_failure, _host, :tls_failed}}),
-    do: "OpenSSL::SSL::SSLError"
+    do: "OpenSSL::SSL::SSLError: TLS negotiation failed"
+
+  defp description({_type, {kind, _host, reply}})
+       when kind in [:permanent_failure, :temporary_failure, :unexpected_response] and
+              is_binary(reply) do
+    class =
+      case reply do
+        "4" <> _ -> "Net::SMTPServerBusy"
+        "50" <> _ -> "Net::SMTPSyntaxError"
+        "53" <> _ -> "Net::SMTPAuthenticationError"
+        "5" <> _ -> "Net::SMTPFatalError"
+        _ -> "Net::SMTPUnknownError"
+      end
+
+    detail = reply |> String.replace("\r\n", "\n") |> String.split("\n") |> hd()
+    class <> ": " <> detail <> "\n"
+  end
 
   defp description(_), do: "IOError"
 

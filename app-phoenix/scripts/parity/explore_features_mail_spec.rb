@@ -99,7 +99,9 @@ RSpec.describe 'Phoenix fixture: the explore_features mail as Rails renders it' 
       fixture = residual_mail_http
       expected = %w[
         html_success turbo_success guest cloud not_configured preferred_de query_locale body_locale
-        socket_error timeout_error ssl_error system_error argument_error smtp_error unsafe_error turbo_error
+        socket_error timeout_error ssl_error system_error argument_error smtp_error
+        smtp_fatal smtp_busy smtp_syntax smtp_auth_reply smtp_unknown smtp_multiline turbo_smtp_fatal
+        unsafe_error turbo_error
         json_accept text_accept mixed_accept json_body malformed_json extra_body missing_csrf get_method head_method
         patch_method json_extension
       ]

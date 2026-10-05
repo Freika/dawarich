@@ -12,6 +12,8 @@ defmodule Dawarich.Mail.TestEmailTest do
   @clock %{local: ~N[2026-10-04 12:00:00], offset: 0, zone: "UTC", valid: true}
   @env %{
     "SMTP_SERVER" => "synthetic.test",
+    "SMTP_AUTHENTICATION" => "none",
+    "SMTP_STARTTLS" => "false",
     "SMTP_FROM" => "Dawarich <residual@dawarich.test>",
     "TIME_ZONE" => "UTC"
   }
@@ -22,7 +24,7 @@ defmodule Dawarich.Mail.TestEmailTest do
     cases = @http |> File.read!() |> Jason.decode!() |> Map.fetch!("cases")
 
     names =
-      ~w(html_success not_configured preferred_de socket_error timeout_error ssl_error system_error argument_error smtp_error unsafe_error)
+      ~w(html_success not_configured preferred_de socket_error timeout_error ssl_error system_error argument_error smtp_error unsafe_error smtp_fatal smtp_busy smtp_syntax smtp_auth_reply smtp_unknown smtp_multiline)
 
     cases = Enum.filter(cases, &(&1["id"] in names))
     assert length(cases) == length(names)
@@ -32,12 +34,7 @@ defmodule Dawarich.Mail.TestEmailTest do
       recipient = %{email: row["recipient"], settings: %{"locale" => row["preference"]}}
       env = if row["configured"], do: @env, else: Map.delete(@env, "SMTP_SERVER")
 
-      error =
-        if row["transport_error"],
-          do: {:error, {row["transport_error"], row["transport_error_message"]}},
-          else: :ok
-
-      Process.put(:transport_result, error)
+      Process.put(:transport_result, Dawarich.Mail.TestTransport.result(row))
       expected = row["response"]["flash"]
       [{kind, description}] = Map.to_list(expected)
 
@@ -73,6 +70,10 @@ defmodule Dawarich.Mail.TestEmailTest do
     end
 
     assert TestEmail.supported?(Map.put(@env, "SMTP_AUTHENTICATION", "unsupported")) == false
+    assert TestEmail.supported?(Map.put(@env, "SMTP_AUTHENTICATION", "plain")) == false
+    assert TestEmail.supported?(Map.put(@env, "SMTP_STARTTLS", "true")) == false
+    assert TestEmail.supported?(Map.put(@env, "SMTP_SSL", "true")) == false
+    assert TestEmail.supported?(@env) == true
     assert TestEmail.supported?(Map.delete(@env, "SMTP_SERVER")) == true
   end
 
@@ -89,7 +90,9 @@ defmodule Dawarich.Mail.TestEmailTest do
       settings: %{"locale" => "en", "timezone" => "UTC"}
     })
 
-    names = ~w(SMTP_FROM SMTP_SERVER SELF_HOSTED TIME_ZONE DOMAIN RAILS_ENV)
+    names =
+      ~w(SMTP_FROM SMTP_SERVER SMTP_AUTHENTICATION SMTP_STARTTLS SELF_HOSTED TIME_ZONE DOMAIN RAILS_ENV)
+
     previous = Map.take(System.get_env(), names)
     routes = Application.get_env(:dawarich, :rails_routes, [])
     Application.put_env(:dawarich, :rails_routes, [])
@@ -97,6 +100,8 @@ defmodule Dawarich.Mail.TestEmailTest do
     System.put_env(%{
       "SMTP_FROM" => @env["SMTP_FROM"],
       "SMTP_SERVER" => "synthetic.test",
+      "SMTP_AUTHENTICATION" => "none",
+      "SMTP_STARTTLS" => "false",
       "SELF_HOSTED" => "true",
       "TIME_ZONE" => "UTC",
       "DOMAIN" => "synthetic.test",

@@ -49,7 +49,7 @@ The original explore-features corpus remains byte-identical.
   Real serialized jobs retain ambient locale/time zone; mail rendering reads current preferences.
   Enqueue failure preserves nil `sent_at`, validation failure can leave mail queued, and later
   SMTP failure preserves the timestamp. Negative distances and inactive users remain eligible.
-- `http.json`: 27 real test-mail endpoint cases, exact Turbo append responses, source-safe
+- `http.json`: 34 real test-mail endpoint cases, exact Turbo append responses, source-safe
   SMTP error descriptions, HTML flashes/redirects, locale selection, unsupported method/format
   behavior and a missing-CSRF 422. Trial mail actions produce no delivery and no native mapping;
   the retained member-joined template has no runtime producer or native mail mapping.
@@ -186,10 +186,13 @@ not cancel SMTP jobs already queued.
 P11 adds immediate test-email delivery using the existing configured transport and pure renderer.
 SMTP_SERVER presence matches Rails' configuration predicate. Repeated calls send again with no
 queue, persistent claim or row writes. Corpus-proved category/detail pairs preserve source alert
-text; unsupported transport configurations hand back before SMTP, while unfamiliar native errors
-receive bounded class-only terminal alerts without logging arbitrary details. Native error terms
-cannot reproduce every Ruby exception message; exact supported categories and safe fallbacks
-are the bounded transport contract, not a claim of full exception-class equivalence.
+text. Tests exercise the actual gen_smtp result shapes returned by `Smtp.deliver/2`.
+Binary replies retain the Rails `Net::SMTP` category and first-line detail, including its newline;
+network, authentication, TLS and invalid-port terms retain captured safe class/message pairs.
+Authentication and TLS configurations hand back before SMTP because gen_smtp discards
+the underlying rejection or TLS diagnostic. Native test-email admission therefore requires
+an unauthenticated relay with both implicit TLS and STARTTLS disabled, or unconfigured SMTP.
+Unknown failures remain terminal native outcomes and are never proxied after sending.
 The named log test covers pure residual/Devise/digest rendering, enqueue faults, native selection,
 digest/location/recovery transport success and errors containing synthetic body/token/URL markers.
 M-P11-queue enqueues instead of immediately sending and fails the missing transport assertion;

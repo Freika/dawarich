@@ -779,12 +779,13 @@ module ResidualMailFixtureSupport
       ['guest', { guest: true }], ['cloud', { cloud: true }], ['not_configured', { configured: false }],
       ['preferred_de', { locale: 'de' }], ['query_locale', { query: '?locale=fr' }],
       ['body_locale', { params: { locale: 'de' } }],
-      ['socket_error', { error: SocketError.new('synthetic DNS error') }],
-      ['timeout_error', { error: Timeout::Error.new('synthetic timeout') }],
-      ['ssl_error', { error: OpenSSL::SSL::SSLError.new('synthetic SSL error') }],
-      ['system_error', { error: Errno::ECONNREFUSED.new('synthetic refusal') }],
-      ['argument_error', { error: ArgumentError.new('synthetic argument error') }],
-      ['smtp_error', { error: Net::SMTPAuthenticationError.new('synthetic SMTP error') }],
+      ['socket_error', { error: SocketError.new('non-existing domain') }],
+      ['timeout_error', { error: Timeout::Error.new('connection timed out') }],
+      ['ssl_error', { error: OpenSSL::SSL::SSLError.new('TLS negotiation failed') }],
+      ['system_error', { error: Errno::ECONNREFUSED.new('SMTP connection') }],
+      ['argument_error', { error: ArgumentError.new('invalid port') }],
+      ['smtp_error', { error: Net::SMTPAuthenticationError.new('authentication failed') }],
+      *smtp_reply_cases,
       ['unsafe_error', { error: IOError.new('synthetic private error detail') }],
       ['turbo_error', { error: IOError.new('synthetic private error detail'), accept: 'text/vnd.turbo-stream.html' }],
       ['json_accept', { accept: 'application/json' }], ['text_accept', { accept: 'text/plain' }],
@@ -795,6 +796,18 @@ module ResidualMailFixtureSupport
       ['get_method', { method: :get }], ['head_method', { method: :head }], ['patch_method', { method: :patch }],
       ['json_extension', { extension: '.json' }]
     ]
+  end
+
+  def smtp_reply_cases
+    { 'smtp_fatal' => "550 rejected\n", 'smtp_busy' => "451 try later\n",
+      'smtp_syntax' => "501 invalid command\n", 'smtp_auth_reply' => "535 denied\n",
+      'smtp_unknown' => "399 unexpected\n", 'smtp_multiline' => "550-first line\n550 second line\n",
+      'turbo_smtp_fatal' => "550 rejected\n" }.map do |name, reply|
+      response = Net::SMTP::Response.parse(reply)
+      options = { error: response.exception_class.new(response) }
+      options[:accept] = 'text/vnd.turbo-stream.html' if name == 'turbo_smtp_fatal'
+      [name, options]
+    end
   end
 
   def test_mail_http_case(name, options, index)
@@ -892,7 +905,7 @@ module ResidualMailFixtureSupport
       expect(row.fetch('error')).to be_nil
       response = row.fetch('response')
       locale = row.fetch('preference') || 'en'
-      if %w[turbo_success mixed_accept turbo_error].include?(name)
+      if %w[turbo_success mixed_accept turbo_error turbo_smtp_fatal].include?(name)
         expect(response.fetch('status')).to eq(200)
         expect(response.fetch('media_type')).to eq('text/vnd.turbo-stream.html')
         expect(response.fetch('body').include?('<turbo-stream action="append" target="flash-messages">')).to be(true)
