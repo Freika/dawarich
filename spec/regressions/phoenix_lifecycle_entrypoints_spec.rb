@@ -55,9 +55,31 @@ RSpec.describe 'Phoenix lifecycle entrypoints' do
     result = run_script('web-entrypoint.sh', *server)
     expect(result[:status]).to be_success
     expect(result[:calls]).to eq([
-                                   'dawarich migrate', 'dawarich seeds', 'dawarich eval Dawarich.Release.halt_unless_ready()',
+                                   'dawarich migrate', 'dawarich seeds',
+                                   'dawarich eval Dawarich.Release.halt_unless_ready()',
                                    'dawarich start bundle|exec|puma|-C|config/puma.rb|-p|5000|--tag|two words|'
                                  ])
+  end
+
+  it 'self-hosted native release runs migration and seeds without Rails tasks' do
+    result = run_script('release.sh')
+    expect(result[:status]).to be_success
+    expect(result[:calls]).to eq(['dawarich migrate', 'dawarich seeds'])
+    %w[STUB_MIGRATE_STATUS STUB_SEEDS_STATUS].each do |failure|
+      result = run_script('release.sh', **{ failure => '7' })
+      expect(result[:status].exitstatus).to eq(7)
+      expected = failure == 'STUB_MIGRATE_STATUS' ? ['dawarich migrate'] : ['dawarich migrate', 'dawarich seeds']
+      expect(result[:calls]).to eq(expected)
+    end
+  end
+
+  it 'Cloud native lifecycle refuses before either migrator runs' do
+    %w[release.sh web-entrypoint.sh].each do |script|
+      result = run_script(script, *server, SELF_HOSTED: 'false')
+      expect(result[:status]).not_to be_success
+      expect(result[:stderr]).to include('requires self-hosted mode')
+      expect(result[:calls]).to be_empty
+    end
   end
 
   it 'native web boot stops on migration or seed failure' do

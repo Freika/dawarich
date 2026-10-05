@@ -4,9 +4,16 @@ set -e
 
 . "$(dirname "$0")/entrypoint-env-guard.sh"
 . "$(dirname "$0")/entrypoint-common.sh"
+validate_phoenix_lifecycle
 
 bootstrap "$0" "$@"
 wait_for_database 60
+
+if phoenix_lifecycle_is_native; then
+  dawarich migrate
+  dawarich seeds
+  exit 0
+fi
 
 echo "Running schema migrations..."
 bundle exec rails db:migrate
