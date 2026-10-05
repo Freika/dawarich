@@ -5,6 +5,8 @@ defmodule Dawarich.Jobs.ReleaseEntries do
   alias Dawarich.ReleaseOperations, as: Ops
 
   @commands [
+    {"release.achievements_backfill", Ops.Achievements},
+    {"release.import_backfill", Ops.ImportBackfill},
     {"release.point_dimensions_country", Ops.PointBackfill},
     {"release.route_opacity", Ops.RouteOpacity},
     {"release.onboarding_completed", Ops.OnboardingCompleted},

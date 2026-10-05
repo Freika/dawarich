@@ -7,8 +7,10 @@ defmodule Dawarich.ReleaseJobsTest do
   @app Path.expand("../..", __DIR__)
   @keywords %{"repair_collisions" => true, "_aj_ruby2_keywords" => ["repair_collisions"]}
   @v1 %{"version" => 1}
-  @arg_keys ~w(version operation_id cursor user_id)
+  @arg_keys ~w(version operation_id cursor user_id event_id import_id ambient_zone)
   @command_payloads %{
+    "DataMigrations::BackfillAchievementsJob" => %{},
+    "TransportationModes::ImportBackfillJob" => %{"import_id" => 42},
     "DataMigrations::BackfillPointDimensionsJob" => %{
       "phase" => "dimensions",
       "start_id" => nil,
@@ -47,6 +49,26 @@ defmodule Dawarich.ReleaseJobsTest do
      }}
   ]
   @fixed_strings ~w(dimensions country users missing)
+
+  test "achievement and import release vectors decode to executable adapters" do
+    for {class, arguments, worker} <- [
+          {"DataMigrations::BackfillAchievementsJob", [], Ops.Achievements},
+          {"TransportationModes::ImportBackfillJob", [54001], Ops.ImportBackfill}
+        ] do
+      assert {:ok, ^worker, args} = ReleaseJobs.decode(class, arguments)
+      assert {:ok, _} = Ecto.UUID.cast(args["event_id"])
+      assert worker.new(args).valid?
+      assert {:ok, ^worker, other} = ReleaseJobs.decode(class, arguments)
+      refute other["event_id"] == args["event_id"]
+
+      if worker == Ops.ImportBackfill do
+        assert args["import_id"] == 54001
+
+        assert args["ambient_zone"] ==
+                 Dawarich.TimeZoneName.to_iana(System.get_env("TIME_ZONE", "Europe/Berlin"))
+      end
+    end
+  end
 
   test "keeps executable anomaly and tracker classes enumerated with invalid-argument errors" do
     start_oban(:release_recalculation_classes)
@@ -171,10 +193,7 @@ defmodule Dawarich.ReleaseJobsTest do
 
     assert Enum.sort(deferred) == [
              {"DataMigrations::AddPointDimensionColumnsJob", {:deferred, :a12h, @v1}},
-             {"DataMigrations::BackfillAchievementsJob", {:deferred, :a12d2, @v1}},
-             {"DataMigrations::DropLegacyLatLonJob", {:deferred, :a12h, @v1}},
-             {"TransportationModes::ImportBackfillJob",
-              {:deferred, :a7, %{"version" => 1, "import_id" => 42}}}
+             {"DataMigrations::DropLegacyLatLonJob", {:deferred, :a12h, @v1}}
            ]
   end
 
@@ -187,6 +206,9 @@ defmodule Dawarich.ReleaseJobsTest do
           worker != Ops.PlacesUserId do
         payload =
           cond do
+            worker == Ops.ImportBackfill ->
+              Map.take(args, ["import_id", "ambient_zone"])
+
             class == "DataMigrations::BackfillPointCountryIdJob" ->
               @country_payloads |> List.keyfind(arguments, 0) |> elem(1)
 
@@ -197,7 +219,8 @@ defmodule Dawarich.ReleaseJobsTest do
               Map.fetch!(@command_payloads, class)
           end
 
-        assert worker.args_from_command(1, payload) == {:ok, Map.delete(args, "operation_id")},
+        assert worker.args_from_command(1, payload) ==
+                 {:ok, Map.drop(args, ["operation_id", "event_id"])},
                class
 
         class

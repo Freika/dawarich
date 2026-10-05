@@ -48,7 +48,7 @@ defmodule Dawarich.ReleaseOperations.ReverseOutboxContractTest do
       |> Enum.sort()
 
     assert kinds ==
-             ~w(release_null_island_follow_up release_reclassify_tracks release_user_redetect tracks_changed)
+             ~w(release_achievements_bulk_check release_null_island_follow_up release_reclassify_tracks release_user_redetect tracks_changed)
 
     for kind <- kinds, do: assert(kind in handlers, kind)
   end
