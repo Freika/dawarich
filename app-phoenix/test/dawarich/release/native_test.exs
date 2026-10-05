@@ -7,10 +7,7 @@ defmodule Dawarich.Release.NativeTest.Probe do
     [
       {"20991005000001",
        fn repo ->
-         if parent = Process.get(:native_gate) do
-           send(parent, {:public_stage, self()})
-           receive do: (:continue -> :ok)
-         end
+         if gate = Process.get(:native_gate), do: gate.()
 
          sql!(repo, "INSERT INTO native_items VALUES (1)")
          {:jobs, [job("Visits::FleetRedetectJob")]}
@@ -64,7 +61,7 @@ defmodule Dawarich.Release.NativeTest do
   end
 
   test "native migrate applies public versions after private schema setup and keeps registration copy" do
-    assert :ok = Release.migrate(opts())
+    assert :ok = Release.migrate(opts(job_mode: :record))
     assert {:ok, :current} = ReleaseMigrator.status(ScratchRepo, releases: [Probe])
     assert ScratchRepo.query!("SELECT id FROM native_items").rows == [[1]]
     assert ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[1]]
@@ -78,18 +75,16 @@ defmodule Dawarich.Release.NativeTest do
   test "Release concurrent fresh migrate calls serialize the complete write path" do
     parent = self()
 
-    first =
-      Task.async(fn ->
-        Process.put(:native_gate, parent)
-        Release.migrate(opts())
-      end)
+    Process.put(:native_gate, fn ->
+      assert advisory_held?()
+      second = Task.async(fn -> Release.migrate(opts(lease_sleep: lock_waiter(parent))) end)
+      on_exit(fn -> Process.exit(second.pid, :kill) end)
+      assert_receive {:lock_waiting, waiter}, 5_000
+      send(parent, {:competitor, second, waiter})
+    end)
 
-    assert_receive {:public_stage, caller}, 5_000
-    assert advisory_held?()
-    second = Task.async(fn -> Release.migrate(opts(lease_sleep: lock_waiter(parent))) end)
-    assert_receive {:lock_waiting, waiter}, 5_000
-    send(caller, :continue)
-    assert Task.await(first) == :ok
+    assert Release.migrate(opts()) == :ok
+    assert_receive {:competitor, second, waiter}
     send(waiter, :continue)
     assert Task.await(second) == :ok
     assert ScratchRepo.query!("SELECT count(*) FROM oban.oban_jobs").rows == [[1]]
@@ -108,16 +103,15 @@ defmodule Dawarich.Release.NativeTest do
                [1]
              ]
 
-      send(parent, {:copy_stage, self()})
-      receive do: (:continue -> {:ok, nil})
+      second = Task.async(fn -> Release.migrate(opts(lease_sleep: lock_waiter(parent))) end)
+      on_exit(fn -> Process.exit(second.pid, :kill) end)
+      assert_receive {:lock_waiting, waiter}, 5_000
+      send(parent, {:competitor, second, waiter})
+      {:ok, nil}
     end
 
-    first = Task.async(fn -> Release.migrate(opts(command: command)) end)
-    assert_receive {:copy_stage, caller}, 5_000
-    second = Task.async(fn -> Release.migrate(opts(lease_sleep: lock_waiter(parent))) end)
-    assert_receive {:lock_waiting, waiter}, 5_000
-    send(caller, :continue)
-    assert Task.await(first) == :ok
+    assert Release.migrate(opts(command: command)) == :ok
+    assert_receive {:competitor, second, waiter}
     send(waiter, :continue)
     assert Task.await(second) == :ok
     assert ScratchRepo.query!("SELECT enabled FROM phoenix.registration_setting").rows == [[true]]
@@ -125,35 +119,26 @@ defmodule Dawarich.Release.NativeTest do
   end
 
   test "Rails starting between classification and DDL cannot overlap native writes" do
-    parent = self()
-
-    native =
-      Task.async(fn ->
-        Process.put(:native_gate, parent)
-        Release.migrate(opts())
-      end)
-
-    assert_receive {:public_stage, caller}, 5_000
-
-    rails =
-      Task.async(fn ->
-        ScratchRepo.checkout(fn ->
-          [[database]] = ScratchRepo.query!("SELECT current_database()::text").rows
-          key = 2_053_462_845 * :erlang.crc32(database)
-          result = ScratchRepo.query!("SELECT pg_try_advisory_lock($1)", [key]).rows
-          if result == [[true]], do: ScratchRepo.query!("SELECT pg_advisory_unlock($1)", [key])
-          result
+    Process.put(:native_gate, fn ->
+      rails =
+        Task.async(fn ->
+          ScratchRepo.checkout(fn ->
+            [[database]] = ScratchRepo.query!("SELECT current_database()::text").rows
+            key = 2_053_462_845 * :erlang.crc32(database)
+            result = ScratchRepo.query!("SELECT pg_try_advisory_lock($1)", [key]).rows
+            if result == [[true]], do: ScratchRepo.query!("SELECT pg_advisory_unlock($1)", [key])
+            result
+          end)
         end)
-      end)
 
-    assert Task.await(rails) == [[false]]
+      assert Task.await(rails) == [[false]]
 
-    assert ScratchRepo.query!(
-             "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND query LIKE '%pg_advisory_lock%' AND state='idle in transaction'"
-           ).rows == [[0]]
+      assert ScratchRepo.query!(
+               "SELECT count(*) FROM pg_stat_activity WHERE datname=current_database() AND query LIKE '%pg_advisory_lock%' AND state='idle in transaction'"
+             ).rows == [[0]]
+    end)
 
-    send(caller, :continue)
-    assert Task.await(native) == :ok
+    assert Release.migrate(opts()) == :ok
     refute advisory_held?()
   end
 
@@ -167,19 +152,8 @@ defmodule Dawarich.Release.NativeTest do
   end
 
   test "disabled database advisory locks preserve Rails parsing and take no session lock" do
-    parent = self()
-
-    native =
-      Task.async(fn ->
-        Process.put(:native_gate, parent)
-        Release.migrate(opts(env: Map.put(env(), "DATABASE_ADVISORY_LOCKS", "false")))
-      end)
-
-    assert_receive {:public_stage, caller}, 5_000
-    held = advisory_held?()
-    send(caller, :continue)
-    assert Task.await(native) == :ok
-    refute held
+    Process.put(:native_gate, fn -> refute advisory_held?() end)
+    assert Release.migrate(opts(env: Map.put(env(), "DATABASE_ADVISORY_LOCKS", "false"))) == :ok
 
     assert ScratchRepo.query!("SELECT count(*) FROM phoenix.release_migrator_leases").rows == [
              [0]
@@ -258,25 +232,23 @@ defmodule Dawarich.Release.NativeTest do
     File.write!(asset, Jason.encode!(c["sources"]["regions"]))
 
     command = fn _ ->
-      send(parent, {:copy_stage, self()})
-      receive do: (:continue -> {:ok, nil})
+      seeds =
+        Task.async(fn ->
+          Release.seed(opts(lease_sleep: lock_waiter(parent), priv_dir: priv, asset: asset))
+        end)
+
+      on_exit(fn -> Process.exit(seeds.pid, :kill) end)
+      assert_receive {:lock_waiting, waiter}, 5_000
+      assert ScratchRepo.query!("SELECT count(*) FROM users").rows == [[0]]
+      send(parent, {:competitor, seeds, waiter})
+      {:ok, nil}
     end
 
-    baseline =
-      ReleaseMigrator.baseline_sql() <> "DELETE FROM public.schema_migrations; " <> baseline()
+    scratch_sql!(ReleaseMigrator.baseline_sql())
+    scratch_sql!("DELETE FROM public.schema_migrations; " <> baseline())
 
-    migrate = Task.async(fn -> Release.migrate(opts(baseline: baseline, command: command)) end)
-    assert_receive {:copy_stage, caller}, 5_000
-
-    seeds =
-      Task.async(fn ->
-        Release.seed(opts(lease_sleep: lock_waiter(parent), priv_dir: priv, asset: asset))
-      end)
-
-    assert_receive {:lock_waiting, waiter}, 5_000
-    assert ScratchRepo.query!("SELECT count(*) FROM users").rows == [[0]]
-    send(caller, :continue)
-    assert Task.await(migrate) == :ok
+    assert Release.migrate(opts(command: command)) == :ok
+    assert_receive {:competitor, seeds, waiter}
     send(waiter, :continue)
     assert Task.await(seeds) == :ok
     assert ScratchRepo.query!("SELECT count(*) FROM users").rows == [[1]]

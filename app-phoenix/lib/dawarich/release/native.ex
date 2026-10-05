@@ -42,7 +42,7 @@ defmodule Dawarich.Release.Native do
         fence!(repo, lease)
         classify!(repo, opts)
 
-        case ReleaseMigrator.migrate(repo, opts ++ [lease: lease, job_mode: :enqueue]) do
+        case ReleaseMigrator.migrate(repo, Keyword.merge(opts, lease: lease, job_mode: :enqueue)) do
           {:ok, %{pending_data: []}} -> :ok
           {:ok, %{pending_data: versions}} -> refuse!({:pending_data, versions})
           {:error, reason} -> refuse!(reason)
