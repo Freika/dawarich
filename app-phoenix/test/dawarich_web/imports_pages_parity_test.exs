@@ -116,6 +116,8 @@ defmodule DawarichWeb.ImportsPagesParityTest do
   end
 
   defp wiring(html) do
+    html = String.replace(html, ~s(<turbo-frame data-turbo="false"), "<turbo-frame")
+
     for {tag, attrs} <- ParityHTML.stimulus(html, @stimulus),
         not delete_control?({tag, attrs}),
         do: {tag, List.keydelete(attrs, "data-testid", 0)}

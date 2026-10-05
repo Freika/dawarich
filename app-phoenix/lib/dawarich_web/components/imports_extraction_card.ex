@@ -57,6 +57,7 @@ defmodule DawarichWeb.ImportsExtractionCard do
 
     ~H"""
     <turbo-frame
+      data-turbo="false"
       data-controller="import-extraction"
       id={"import-#{@id}-extraction"}
       phx-hook="RailsStimulus"

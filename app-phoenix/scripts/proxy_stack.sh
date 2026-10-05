@@ -38,7 +38,7 @@ if [ "${1:-}" = --down ]; then
   fi
   [ -f "$sidekiq_pidfile" ] && kill "$(cat "$sidekiq_pidfile")" 2>/dev/null || true
   tries=0
-  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || { [ -f "$sidekiq_pidfile" ] && kill -0 "$(cat "$sidekiq_pidfile")" 2>/dev/null; }; do
+  while { [ -f "$pidfile" ] && kill -0 "$(cat "$pidfile")" 2>/dev/null; } || { [ -f "$sidekiq_pidfile" ] && kill -0 "$(cat "$sidekiq_pidfile")" 2>/dev/null; } || epmd -names 2>/dev/null | grep -q "^name ${RELEASE_NODE%@*} at"; do
     tries=$((tries + 1))
     [ "$tries" -lt 60 ] || { echo "the stack did not stop" >&2; exit 1; }
     sleep 1
