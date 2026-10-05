@@ -12,6 +12,17 @@ defmodule DawarichWeb.AchievementPublicTest do
 
   setup do
     :ok = Ecto.Adapters.SQL.Sandbox.checkout(Repo)
+    asset_key = {DawarichWeb.Assets, :rails_imports}
+    previous_imports = :persistent_term.get(asset_key, nil)
+    imports = importmap(File.read!("#{@root}/en_direct.html")) |> Map.fetch!("imports")
+    :persistent_term.put(asset_key, imports)
+
+    on_exit(fn ->
+      if previous_imports == nil,
+        do: :persistent_term.erase(asset_key),
+        else: :persistent_term.put(asset_key, previous_imports)
+    end)
+
     Dawarich.Test.AchievementSilhouettes.clear()
     on_exit(&Dawarich.Test.AchievementSilhouettes.clear/0)
     square = "MULTIPOLYGON (((12.25 51.25,12.25 51.5,12.5 51.5,12.5 51.25,12.25 51.25)))"
@@ -62,11 +73,7 @@ defmodule DawarichWeb.AchievementPublicTest do
       assert LazyHTML.query(doc, ".ach-child-grid, [data-controller='achievement-unlocks']")
              |> Enum.count() == 0
 
-      assert LazyHTML.query(doc, "script[type='importmap']")
-             |> LazyHTML.text()
-             |> Jason.decode!()
-             |> Map.fetch!("imports")
-             |> Map.fetch!("application") == DawarichWeb.Assets.rails_imports()["application"]
+      assert importmap(html) == importmap(expected)
 
       for {key, value} <- row["metadata"],
           do:
@@ -182,6 +189,14 @@ defmodule DawarichWeb.AchievementPublicTest do
   end
 
   defp rows(sql, args \\ []), do: Repo.query!(sql, args, log: false).rows
+
+  defp importmap(html),
+    do:
+      html
+      |> LazyHTML.from_document()
+      |> LazyHTML.query("script[type='importmap']")
+      |> LazyHTML.text()
+      |> Jason.decode!()
 
   defp snapshot,
     do:
